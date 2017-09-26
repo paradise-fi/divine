@@ -22,14 +22,13 @@
 #include <divine/vm/dbg-node.hpp>
 #include <divine/vm/dbg-print.hpp>
 #include <divine/vm/dbg-dot.hpp>
+#include <divine/vm/lart.h>
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/logo.hpp>
 #include <brick-string>
 #include <brick-yaml>
 #include <cstring>
-
-#include <runtime/libc/include/sys/lart.h>
 
 #if OPT_SIM
 #include <histedit.h>

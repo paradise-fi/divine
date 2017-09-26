@@ -27,7 +27,7 @@ file( GLOB SRC_libm libm/src/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
-set( H_DIVM ${CMAKE_CURRENT_BINARY_DIR}/libc/include/sys/divm.h )
+set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/libc/include/sys/ )
 
 macro( mkobjs var flags )
   foreach( f ${SRC_${var}} )
@@ -35,7 +35,7 @@ macro( mkobjs var flags )
     file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
     list( APPEND BC_${var} bc/${out} )
     add_custom_command(
-        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${H_DIVM}
+        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${SYSINC}/divm.h ${SYSINC}/lart.h ${SYSINC}/vmutil.h
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
         COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
@@ -58,11 +58,13 @@ macro( mklib lib )
   stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
 
-add_custom_command(
-    OUTPUT ${H_DIVM}
-    DEPENDS ${divine_SOURCE_DIR}/divine/vm/divm.h
+foreach( hdr divm.h lart.h vmutil.h )
+  add_custom_command(
+    OUTPUT ${SYSINC}/${hdr}
+    DEPENDS ${divine_SOURCE_DIR}/divine/vm/${hdr}
     VERBATIM
-    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/divm.h ${H_DIVM} )
+    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/${hdr} ${SYSINC}/${hdr} )
+endforeach()
 
 include( compile-rt.flags )
 
