@@ -22,7 +22,7 @@
 #include <divine/vm/dbg-node.hpp>
 #include <divine/vm/dbg-print.hpp>
 #include <divine/vm/dbg-dot.hpp>
-#include <divine/vm/lart.h>
+#include <divine/vm/vmutil.h>
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/logo.hpp>
@@ -224,56 +224,31 @@ struct Help : Teflon { std::string _cmd; };
 using Context = vm::dbg::Context< vm::CowHeap >;
 namespace dbg = vm::dbg;
 
-static const char *reg_name( int id ) {
-#define DIVM_REG_NAME( X ) case X: return #X + 7
-    switch ( id ) {
-        DIVM_REG_NAME( _VM_CR_Constants );
-        DIVM_REG_NAME( _VM_CR_Globals );
-        DIVM_REG_NAME( _VM_CR_Frame );
-        DIVM_REG_NAME( _VM_CR_PC );
+static std::ostream &dump_flag( uint64_t val, std::ostream &o )
+{
+    if ( const char *n = __vmutil_flag_name( val ) )
+        return o << n;
 
-        DIVM_REG_NAME( _VM_CR_Scheduler );
-        DIVM_REG_NAME( _VM_CR_State );
-        DIVM_REG_NAME( _VM_CR_IntFrame );
-        DIVM_REG_NAME( _VM_CR_Flags );
-
-        DIVM_REG_NAME( _VM_CR_FaultHandler );
-        DIVM_REG_NAME( _VM_CR_ObjIdShuffle );
-        DIVM_REG_NAME( _VM_CR_User1 );
-        DIVM_REG_NAME( _VM_CR_User2 );
-    }
-    throw brick::except::Error( "Invalid register number " + std::to_string( id ) );
-#undef DIVM_REG_NAME
+    return o << std::hex << "0x" << val << std::dec;
 }
 
-static void dump_flag( uint64_t val, std::ostream &o ) {
-    switch ( val ) {
-#define DIVM_FLAG_NAME( X ) case X: o << #X; return
-        DIVM_FLAG_NAME( _VM_CF_Mask );
-        DIVM_FLAG_NAME( _VM_CF_Interrupted );
-        DIVM_FLAG_NAME( _VM_CF_Accepting );
-        DIVM_FLAG_NAME( _VM_CF_Error );
-        DIVM_FLAG_NAME( _VM_CF_Cancel );
-        DIVM_FLAG_NAME( _VM_CF_KernelMode );
-
-        DIVM_FLAG_NAME( _LART_CF_RelaxedMemRuntime );
-#undef DIVM_FLAG_NAME
-    }
-    o << std::hex << "0x" << val << std::dec;
-}
-
-static void dump_flags( uint64_t flags, std::ostream &o ) {
+static void dump_flags( uint64_t flags, std::ostream &o )
+{
     bool any = false;
-    for ( uint64_t m = 1; m; m <<= 1 ) {
-        if ( flags & m ) {
+    for ( uint64_t m = 1; m; m <<= 1 )
+    {
+        if ( flags & m )
+        {
             if ( any )
                 o << " | ";
             dump_flag( m, o );
             any = true;
         }
     }
+
     if ( !any )
         o << 0;
+
     o << std::endl;
 }
 
@@ -896,10 +871,10 @@ struct Interpreter
     {
         size_t name_length = 0;
         for ( int i = 0; i < _VM_CR_Last; ++i )
-            name_length = std::max( name_length, std::strlen( reg_name( i ) ) );
+            name_length = std::max( name_length, std::strlen( __vmutil_reg_name( i ) ) );
 
         for ( int i = 0; i < _VM_CR_Last; ++i ) {
-            auto name = reg_name( i );
+            auto name = __vmutil_reg_name( i );
             int pad = name_length - strlen( name );
             out() << name << ": " << std::string( pad, ' ' );
             if ( i == _VM_CR_Flags )
