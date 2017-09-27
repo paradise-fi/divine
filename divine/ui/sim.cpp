@@ -29,6 +29,7 @@
 #include <brick-string>
 #include <brick-yaml>
 #include <cstring>
+#include <optional>
 
 #if OPT_SIM
 #include <histedit.h>
@@ -930,27 +931,100 @@ struct Interpreter
             throw brick::except::Error( "encountered an error while running '" + c.function + "'" );
     }
 
-    DN frame_up( DN frame ) {
-        auto fup = std::make_unique< DN >( frame );
-        if ( !_debug_kernel ) {
-            // TODO: obtain this through some DiOS API?
-            std::regex fault( "{Fault}::fault_handler", std::regex::basic );
-            if ( frame._kind == dbg::DNKind::Frame &&
-                    std::regex_search( frame.attribute( "symbol" ), fault  ) )
-                return get( "frame:deref", false, std::move( fup ), true );
+    struct Stack
+    {
+        Stack( Interpreter &i, std::optional< DN > top = std::nullopt ) :
+            _i( &i ),
+            _top( top.value_or( _i->get( "$top" ) ) )
+        { }
+
+        // returns invalid DN if there is none
+        DN raw_up( DN frame )
+        {
+            return _i->get( "caller", true, std::make_unique< DN >( std::move( frame ) ) );
         }
-        return get( "caller", false, std::move( fup ) );
+
+        DN top() { return _top; }
+
+        DN bottom()
+        {
+            DN i = _top, prev = _top;
+            while ( i.valid() ) {
+                prev = i;
+                i = raw_up( i );
+            }
+            return prev;
+        }
+
+        bool is_kernel()
+        {
+            vm::CodePointer sched_pc = _i->_ctx.get( _VM_CR_Scheduler ).pointer;
+            vm::CodePointer bottom_pc = bottom().pc();
+            return sched_pc.function() == bottom_pc.function();
+        }
+
+        std::optional< Stack > get_userspace_stack()
+        {
+            auto int_frame = _i->_ctx.get( _VM_CR_IntFrame ).pointer;
+            if ( !is_kernel() || int_frame.null() )
+                return std::nullopt;
+
+            DN other_top = _top;
+            other_top.address( vm::dbg::DNKind::Frame, int_frame );
+            return Stack( *_i, other_top );
+        }
+
+      private:
+        Interpreter *_i;
+        DN _top;
+    };
+
+    DN frame_up( DN frame ) {
+        Stack stack( *this, frame );
+        DN up = stack.raw_up( frame );
+
+        // possibly switch to userspace if in kernel
+        if ( stack.is_kernel() && ( !_debug_kernel || !up.valid() ) )
+        {
+            auto nstack = stack.get_userspace_stack();
+            if ( nstack )
+            {
+                stack = nstack.value();
+                up = stack.top();
+            }
+        }
+
+        // skip up to fault handler if in fault
+        if ( !_debug_kernel && up.valid() )
+        {
+            auto fh = _ctx.get( _VM_CR_FaultHandler ).pointer;
+            if ( !fh.null() )
+            {
+                vm::CodePointer fault_handler = fh;
+                DN i = up;
+                while ( (i = stack.raw_up( i )).valid() )
+                {
+                    vm::CodePointer i_pc = i.pc();
+                    if ( i_pc.function() == fault_handler.function() )
+                    {
+                        up = stack.raw_up( i );
+                        break;
+                    }
+                }
+            }
+        }
+        return up;
     }
 
     void go( command::Up ) {
         auto current =  get( "$_" );
         if ( current._kind != dbg::DNKind::Frame )
             throw brick::except::Error( "$_ not set to a frame, can't go up" );
-        try {
-            set( "$_", frame_up( current ) );
-        } catch ( brick::except::Error & ) {
+
+        auto up = frame_up( current );
+        if ( !up.valid() )
             throw brick::except::Error( "outermost frame selected, can't go up" );
-        }
+        set( "$_", up );
     }
 
     void go( command::Down ) {
