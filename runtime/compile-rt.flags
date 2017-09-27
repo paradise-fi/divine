@@ -45,7 +45,9 @@ set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
 set( OPS_dest "divine/Instruction.def" )
 file( COPY ${OPS_src} DESTINATION "divine" )
 stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
-stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/divm.h )
+foreach( hdr divm.h lart.h vmutil.h )
+  stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/${hdr} )
+endforeach()
 stringlist( "runtime" runtime )
 
 # vim: ft=cmake
