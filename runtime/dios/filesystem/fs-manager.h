@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <utility>
 #include <array>
-#include <divine/stat.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <dios/core/main.hpp>
@@ -15,6 +14,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <dios.h>
+#include <sys/vmutil.h>
 
 
 #include "fs-utils.h"

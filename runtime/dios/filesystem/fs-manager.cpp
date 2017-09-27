@@ -729,7 +729,7 @@ void Manager::initializeFromSnapshot( const _VM_Env *env ) {
             name[env->size] = 0;
 
             ++env; //stat
-            const _DivineStat* statInfo( reinterpret_cast<const _DivineStat*>( env->value ) );
+            const __vmutil_stat * statInfo( reinterpret_cast<const __vmutil_stat*>( env->value ) );
 
             auto inMap = inodeMap.find( statInfo->st_ino );
             if ( inMap != inodeMap.end( ) ) {

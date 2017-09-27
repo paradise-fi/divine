@@ -104,6 +104,29 @@ static const char *__vmutil_flag_name( uint64_t val )
     return 0;
 }
 
+typedef struct
+{
+    uint64_t st_dev;
+    uint64_t st_ino;
+    uint64_t st_mode;
+    uint64_t st_nlink;
+    uint64_t st_uid;
+    uint64_t st_gid;
+    uint64_t st_rdev;
+    uint64_t st_size;
+    uint64_t st_blksize;
+    uint64_t st_blocks;
+
+    uint64_t st_atim_tv_sec;
+    uint32_t st_atim_tv_nsec;
+
+    uint64_t st_mtim_tv_sec;
+    uint32_t st_mtim_tv_nsec;
+
+    uint64_t st_ctim_tv_sec;
+    uint32_t st_ctim_tv_nsec;
+} __vmutil_stat;
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

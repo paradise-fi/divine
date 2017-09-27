@@ -21,12 +21,11 @@
 #include <divine/ui/parser.hpp>
 #include <divine/vm/bitcode.hpp>
 #include <divine/vm/run.hpp>
+#include <divine/vm/vmutil.h>
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
 #include <brick-string>
 #include <brick-fs>
-
-#include <runtime/divine/stat.h>
 
 DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
@@ -69,8 +68,8 @@ bstr readContent( const std::string& path, const struct stat& s ) {
 }
 
 bstr packStat( const struct stat& s ) {
-    bstr ret( sizeof( _DivineStat ) );
-    auto *ss = reinterpret_cast< _DivineStat * >( ret.data() );
+    bstr ret( sizeof( __vmutil_stat ) );
+    auto *ss = reinterpret_cast< __vmutil_stat * >( ret.data() );
     ss->st_dev = s.st_dev;
     ss->st_ino = s.st_ino;
     ss->st_mode = s.st_mode;
