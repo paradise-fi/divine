@@ -19,7 +19,11 @@
 #ifndef _SYS_LART_H_
 #define _SYS_LART_H_
 
+#ifdef __divine__
 #include <sys/divm.h>
+#else
+#include <divine/vm/divm.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
