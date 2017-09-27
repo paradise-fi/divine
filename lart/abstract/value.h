@@ -3,9 +3,11 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
+#include <llvm/IR/CallSite.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domains/domains.h>
+#include <lart/analysis/postorder.h>
 #include <lart/abstract/util.h>
 #include <lart/abstract/types.h>
 
@@ -52,6 +54,37 @@ using AbstractValues = std::vector< AbstractValue >;
 inline bool operator==( const AbstractValue & a, const AbstractValue & b ) {
     return std::tie( a.domain, a.value ) == std::tie( b.domain, b.value );
 }
+
+inline bool operator!=( const AbstractValue & a, const AbstractValue & b ) {
+    return !(a == b);
+}
+
+inline bool operator<( const AbstractValue & a, const AbstractValue & b ) {
+    return std::tie( a.domain, a.value ) < std::tie( b.domain, b.value );
+}
+
+inline AbstractValues reachFrom( const AbstractValues & roots ) {
+    auto succs = [&] ( const AbstractValue& av ) -> AbstractValues {
+        // do not propagate through calls that are not in roots
+        // i.e. that are those calls which do not return an abstract value
+        bool root = std::find( roots.begin(), roots.end(), av ) != roots.end();
+        if ( llvm::CallSite( av.value ) && !root )
+            return {};
+        if ( !av.isAbstract() )
+            return {};
+
+        return query::query( av.value->users() )
+            .map( [&] ( const auto & val ) -> AbstractValue {
+                return { val, av.domain };
+            } ).freeze();
+    };
+
+    return lart::analysis::postorder( roots, succs );
+};
+
+inline AbstractValues reachFrom( const AbstractValue & root ) {
+    return reachFrom( AbstractValues{ root } );
+};
 
 } // namespace abstract
 } // namespace lart

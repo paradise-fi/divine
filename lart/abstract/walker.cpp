@@ -25,45 +25,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-struct ValuesPostOrder {
-    ValuesPostOrder( const AbstractValues & roots )
-        : roots( roots ) {}
-
-    auto succs() const {
-        return [&] ( const AbstractValue& n ) -> AbstractValues {
-            // do not propagate through calls that are not in roots
-            // i.e. that are those calls which do not return an abstract value
-            bool root = std::find( roots.begin(), roots.end(), n ) != roots.end();
-            if ( llvm::CallSite( n.value ) && !root )
-                return {};
-            if ( !n.isAbstract() )
-                return {};
-
-            return query::query( n.value->users() )
-            .map( [&] ( const auto & val ) -> AbstractValue {
-                return { val, n.domain };
-            } ).freeze();
-        };
-    }
-
-    AbstractValues get() const {
-        return lart::analysis::postorder( roots, succs() );
-    }
-
-    const AbstractValues & roots;
-};
-
-// FunctionNode
-AbstractValues FunctionNode::postorder() const {
-    AbstractValues unordered = { origins.begin(), origins.end() };
-    return ValuesPostOrder( unordered ).get();
-}
-
-// Walker
-std::vector< FunctionNodePtr > Walker::postorder() const {
-    auto succs = [] ( const FunctionNodePtr& f ) { return f->succs; };
-    return analysis::postorder( functions, succs );
-}
+namespace {
 
 AbstractValue getValueFromAnnotation( const llvm::CallInst * call ) {
     auto data = llvm::cast< llvm::GlobalVariable >(
