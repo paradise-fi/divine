@@ -1,13 +1,6 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/abstraction.h>
-
-DIVINE_RELAX_WARNINGS
-#include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
-DIVINE_UNRELAX_WARNINGS
-
 #include <lart/abstract/intrinsic.h>
-#include <lart/support/lowerselect.h>
 
 namespace lart {
 namespace abstract {
@@ -40,44 +33,40 @@ struct CallInterupt {
 
 }
 
+AbstractValues Abstraction::FunctionNode::reachedValues() const {
+    return reachFrom( { roots().begin(), roots().end() } );
+}
+
 void Abstraction::run( llvm::Module & m ) {
-    auto preprocess = [] ( llvm::Function * fn ) {
-        auto lowerSwitchInsts = std::unique_ptr< llvm::FunctionPass >(
-                                llvm::createLowerSwitchPass() );
-        lowerSwitchInsts.get()->runOnFunction( *fn );
-
-        // FIXME lower only abstract selects
-        LowerSelect lowerSelectInsts;
-        lowerSelectInsts.runOnFunction( *fn );
-
-        llvm::UnifyFunctionExitNodes ufen;
-        ufen.runOnFunction( *fn );
-    };
+    // create function prototypes
+    Map< FunctionNode, llvm::Function * > prototypes;
+    for ( auto & fn : VPA().run( m ) ) {
+        const auto& as = fn.second.annRoots;
+        for ( auto & rs : fn.second.argRoots ) {
+            auto fnode = FunctionNode( fn.first, unionRoots( as, rs.second ) );
+            prototypes[ fnode ] = process( fnode );
+        }
+    }
 
     Functions remove;
-    auto functions = Walker( m, preprocess ).postorder();
-
-    // create function prototypes
-    Map< FunctionNodePtr, llvm::Function * > prototypes;
-
-    for ( const auto & node : functions )
-        prototypes[ node ] = process( node );
-    for ( const auto & node : functions ) {
+    for ( const auto & p : prototypes ) {
         LiftMap< llvm::Value *, llvm::Value * > vmap;
         auto builder = make_builder( vmap, data.tmap, fns );
+        auto fnode = p.first;
 
         // 1. if signature changes create a new function declaration
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
         // TODO what about function with abstract argument and abstract annotation?
-        bool called = query::query( node->origins ).any( [] ( const auto & n ) {
+        bool called = query::query( fnode.roots() ).any( [] ( const auto & n ) {
             return n.template isa< llvm::Argument >();
         } );
 
-        if ( called ) clone( node );
+        if ( called )
+            fnode = clone( fnode );
 
         // 2. process function abstract entries
-        auto postorder = node->postorder();
+        auto postorder = fnode.reachedValues();
         for ( auto & av : lart::util::reverse( postorder ) )
             builder.process( av );
 
@@ -90,8 +79,8 @@ void Abstraction::run( llvm::Module & m ) {
         clean( deps );
 
         // 4. copy function to declaration and handle function uses
-        auto fn = node->function;
-        auto & changed = prototypes[ node ];
+        auto fn = fnode.function();
+        auto & changed = p.second;
         if ( changed != fn ) {
             remove.push_back( fn );
             llvm::ValueToValueMapTy vtvmap;
@@ -112,15 +101,15 @@ void Abstraction::run( llvm::Module & m ) {
         fn->eraseFromParent();
 }
 
-llvm::Function * Abstraction::process( const FunctionNodePtr & node ) {
-    auto rets = filterA< llvm::ReturnInst >( node->postorder() );
-    auto args = filterA< llvm::Argument >( node->postorder() );
+llvm::Function * Abstraction::process( const FunctionNode & fnode ) {
+    auto rets = filterA< llvm::ReturnInst >( fnode.reachedValues() );
+    auto args = filterA< llvm::Argument >( fnode.reachedValues() );
 
     // Signature does not need to be changed
     if ( rets.empty() && args.empty() )
-        return node->function;
+        return fnode.first;
 
-    auto fn = node->function;
+    auto fn = fnode.first;
     auto dom = !rets.empty() ? rets[ 0 ].domain : Domain::LLVM;
     auto rty = liftType( fn->getReturnType(), dom, data.tmap );
 
@@ -128,7 +117,7 @@ llvm::Function * Abstraction::process( const FunctionNodePtr & node ) {
     for ( const auto & a : args )
         amap[ a.get< llvm::Argument >()->getArgNo() ] = a.type( data.tmap );
 
-    auto as = remapFn( node->function->args(), [&] ( const auto & a ) {
+    auto as = remapFn( fnode.first->args(), [&] ( const auto & a ) {
         return amap.count( a.getArgNo() ) ? amap[ a.getArgNo() ] : a.getType();
     } );
 
@@ -138,32 +127,31 @@ llvm::Function * Abstraction::process( const FunctionNodePtr & node ) {
     return newfn;
 }
 
-void Abstraction::clone( const FunctionNodePtr & node ) {
+Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node ) {
     llvm::ValueToValueMapTy vmap;
-    auto clone = CloneFunction( node->function, vmap, true, nullptr );
-    node->function->getParent()->getFunctionList().push_back( clone );
+    auto clone = CloneFunction( node.function(), vmap, true, nullptr );
+    node.function()->getParent()->getFunctionList().push_back( clone );
 
-    Set< AbstractValue > origins;
-    for ( const auto & origin : node->origins )
+    std::set< AbstractValue > roots;
+    for ( const auto & origin : node.roots() )
         if ( const auto & arg = origin.safeGet< llvm::Argument >() )
-            origins.emplace( argAt( clone, arg->getArgNo() ), origin.domain );
+            roots.emplace( argAt( clone, arg->getArgNo() ), origin.domain );
 
-    auto a = query::query( *node->function ).flatten();
+    auto a = query::query( *node.function() ).flatten();
     auto b = query::query( *clone ).flatten();
     auto aIt = a.begin();
     auto bIt = b.begin();
 
     for ( ; aIt != a.end() && bIt != b.end(); ++aIt, ++bIt ) {
-        auto o = node->isOrigin( &( *aIt ) );
-        if ( o.isJust() )
-            origins.emplace( &(*bIt), o.value().domain );
+        auto root = std::find_if( node.roots().begin(), node.roots().end(),
+        [&] ( const auto & r ) { return r.value == &(*aIt); } );
+        if ( root != node.roots().end() )
+            roots.emplace( &(*bIt), root->domain );
     }
 
-    if ( fns.count( node->function ) )
-        fns.assign( clone, node->function );
-
-    node->function = clone;
-    node->origins = origins;
+    if ( fns.count( node.function() ) )
+        fns.assign( clone, node.function() );
+    return Abstraction::FunctionNode( clone, roots );
 }
 
 void Abstraction::clean( Values & deps ) {

@@ -5,100 +5,75 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <deque>
 #include <lart/abstract/value.h>
 
 namespace lart {
 namespace abstract {
 
-
-struct FunctionNode;
-
-using FunctionNodePtr = std::shared_ptr< FunctionNode >;
-using FunctionNodes = std::vector< FunctionNodePtr >;
-
-using Indices = FieldTrie< Domain >::Path;
-
-template< typename Value >
-using ValueField = std::pair< Value, Indices >;
-
-template< typename Value >
-struct AbstractFields {
-    using Field = ValueField< Value >;
-
-    void insert( const Field & field, Domain dom ) {
-        fields[ field.first ].insert( field.second, dom );
-    }
-
-    std::optional< Domain > getDomain( const Field & field ) {
-        return fields[ field.first ].search( field.second );
-    }
-
-    std::map< Value, FieldTrie< Domain > > fields;
+using RootsSet = std::set< AbstractValue >;
+using ArgDomains = std::vector< Domain >;
+struct FunctionRoots {
+    RootsSet annRoots;                         // annotation roots
+    std::map< ArgDomains, RootsSet > argRoots; // argument dependent roots
 };
 
+using Reached = std::map< llvm::Function *, FunctionRoots >;
 
-struct Walker {
-    using Preprocessor = std::function< void( llvm::Function * ) >;
+struct Parent;
 
-    Walker( llvm::Module & m, Preprocessor p )
-        : preprocess( p ) { init( m ); }
+using ParentPtr = std::shared_ptr< Parent >;
 
-    std::vector< FunctionNodePtr > postorder() const;
+struct Parent {
+    explicit Parent( ParentPtr p, RootsSet & r ) : parent( p ), roots( r ) {}
+
+    ParentPtr parent;
+    RootsSet & roots;
+};
+
+inline ParentPtr make_parent( ParentPtr pp, RootsSet & rs ) {
+    return std::make_shared< Parent >( pp, rs );
+}
+
+struct Propagate {
+    explicit Propagate( AbstractValue v, RootsSet & r, ParentPtr p )
+        : value( v ), roots( r ), parent( p ) {}
+
+    AbstractValue value;        // propagated value
+    RootsSet& roots;            // roots in which is value propagated
+    ParentPtr parent;           // parent from which was the function called
+};
+
+inline bool operator==( const Propagate & a, const Propagate & b ) {
+    return std::tie( a.value, a.roots, a.parent ) == std::tie( b.value, b.roots, b.parent );
+}
+
+using Task = std::variant< Propagate >;
+
+// ValuesPropagationAnalysis
+struct VPA {
+    // Returns pairs of funcions with reached roots
+    Reached run( llvm::Module & m );
 
 private:
-    void init( llvm::Module & m );
+    void record( llvm::Function * fn );
 
-    // returns functions with packed annotated values
-    std::vector< FunctionNodePtr > annotations( llvm::Module & m );
+    void dispach( Task && );
+    void preprocess( llvm::Function * );
+    void propagate( const Propagate & );
 
-    // returns dependent functions
-    std::vector< FunctionNodePtr > process( FunctionNodePtr & processed );
+    std::deque< Task > tasks;
 
-    // returns set of origins for propagation of abstract values for processed function
-    Set< AbstractValue > origins( const FunctionNodePtr & processed );
-
-    // returns true if propagation created new entry
-    bool propagateThroughCalls( FunctionNodePtr & processed );
-
-    // returns dependent function nodes
-    std::vector< FunctionNodePtr > dependencies( const FunctionNodePtr & processed );
-
-    // returns calls of 'processed' from other nodes
-    std::vector< FunctionNodePtr > callsOf( const FunctionNodePtr & processed );
-
-    std::vector< FunctionNodePtr > functions;
-    std::unordered_set< FunctionNodePtr > seen;
-    Preprocessor preprocess;
-
-    AbstractFields< llvm::Value * > fields;
+    Reached reached;
 };
 
-
-struct FunctionNode {
-    FunctionNode() = default;
-    FunctionNode( const FunctionNode & ) = default;
-    FunctionNode( FunctionNode && ) = default;
-
-    FunctionNode( llvm::Function * fn,
-                  const Set< AbstractValue > & origins,
-                  FunctionNodes succs = {} )
-        : function( fn ), origins( origins ), succs( succs )
-    {}
-
-    FunctionNode &operator=( FunctionNode && other ) = default;
-
-    std::vector< AbstractValue > postorder() const;
-
-    Maybe< AbstractValue > isOrigin( llvm::Value * v ) const;
-
-    llvm::Function * function;
-    Set< AbstractValue > origins;
-    FunctionNodes succs;
-};
-
-inline bool operator==( const FunctionNode& l, const FunctionNode& r ) {
-    return l.function == r.function
-        && l.origins  == r.origins;
+template< typename A, typename B >
+static inline std::set< AbstractValue > unionRoots( const A& a, const B& b ) {
+    std::set< AbstractValue > u;
+    using std::set_union;
+    set_union( a.begin(), a.end(), b.begin(), b.end(), std::inserter( u, u.begin() ) );
+    return u;
 }
+
 } // namespace abstract
 } // namespace lart
