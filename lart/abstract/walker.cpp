@@ -210,6 +210,12 @@ void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
             auto av = AbstractValue{ gep, t.gep.domain };
             dispach( Propagate( av, t.roots, t.parent ) );
         }
+
+    auto rf = reachFrom( AbstractValue{ t.value, Domain::Undefined } );
+    for ( auto & v : lart::util::reverse( rf ) )
+        if ( auto mem = v.safeGet< llvm::MemIntrinsic >() )
+            if ( t.value != mem->getDest() )
+                dispach( PropagateFromGEP( mem->getDest(), t.gep, t.roots, t.parent ) );
 }
 
 void VPA::propagate( const Propagate & t ) {
