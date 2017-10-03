@@ -50,6 +50,21 @@ inline bool operator==( const Propagate & a, const Propagate & b ) {
     return std::tie( a.value, a.roots, a.parent ) == std::tie( b.value, b.roots, b.parent );
 }
 
+struct PropagateFromGEP {
+    explicit PropagateFromGEP( llvm::Value * a, AbstractValue v, RootsSet& r, ParentPtr p )
+        : value( a ), gep( v ), roots( r ), parent( p ) {}
+
+    llvm::Value * value; // value root
+    AbstractValue gep; // original GEP
+    RootsSet& roots;
+    ParentPtr parent;
+};
+
+inline bool operator==( const PropagateFromGEP & a, const PropagateFromGEP & b ) {
+    return std::tie( a.value, a.gep, a.roots, a.parent ) ==
+           std::tie( b.value, b.gep, b.roots, b.parent );
+}
+
 struct StepIn {
     explicit StepIn( ParentPtr p ) : parent( p ) {}
 
@@ -74,7 +89,7 @@ inline bool operator==( const StepOut & a, const StepOut & b) {
     return std::tie( a.domain, a.parent ) == std::tie( b.domain, b.parent );
 }
 
-using Task = std::variant< Propagate, StepIn, StepOut >;
+using Task = std::variant< Propagate, PropagateFromGEP, StepIn, StepOut >;
 
 // ValuesPropagationAnalysis
 struct VPA {
@@ -87,6 +102,7 @@ private:
     void dispach( Task && );
     void preprocess( llvm::Function * );
     void propagate( const Propagate & );
+    void propagateFromGEP( const PropagateFromGEP & );
 
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );

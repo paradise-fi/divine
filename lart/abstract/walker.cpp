@@ -124,6 +124,8 @@ Reached VPA::run( llvm::Module & m ) {
             stepIn( *si );
         else if ( auto so = std::get_if< StepOut >( &t ) )
             stepOut( *so );
+        else if ( auto pfg = std::get_if< PropagateFromGEP >( &t ) )
+            propagateFromGEP( *pfg );
         tasks.pop_front();
     }
 
@@ -197,6 +199,19 @@ Domain VPA::returns( llvm::Function * fn, const RootsSet & rs ) {
     return Domain::LLVM;
 }
 
+void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
+    auto rgep = t.gep.get< llvm::GetElementPtrInst >();
+
+    // TODO maybe we need to compute reachable set from alloca
+    auto geps = query::query( llvmFilter< llvm::GetElementPtrInst >( t.value->users() ) ).freeze();
+
+    for ( auto & gep : geps )
+        if ( std::equal( gep->idx_begin(), gep->idx_end(), rgep->idx_begin(), rgep->idx_end() ) ) {
+            auto av = AbstractValue{ gep, t.gep.domain };
+            dispach( Propagate( av, t.roots, t.parent ) );
+        }
+}
+
 void VPA::propagate( const Propagate & t ) {
     if ( t.roots.count( t.value ) )
         return; // value has been already propagated in this RootsSet
@@ -206,9 +221,14 @@ void VPA::propagate( const Propagate & t ) {
             t.roots.insert( v );
         } else if ( v.isa< llvm::Argument >() ) {
             t.roots.insert( v );
+        } else if ( v.isa< llvm::GetElementPtrInst >() ) {
+            t.roots.insert( v );
         }  else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
             auto av = AbstractValue( s->getPointerOperand(), v.domain );
-            dispach( Propagate( av, t.roots, t.parent ) );
+            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( s->getPointerOperand() ) )
+                dispach( PropagateFromGEP( gep->getPointerOperand(), av, t.roots, t.parent ) );
+            else
+                dispach( Propagate( av, t.roots, t.parent ) );
         } else if ( auto cs = llvm::CallSite( v.value ) ) {
             if ( t.value.value != v.value )
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
