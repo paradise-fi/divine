@@ -656,8 +656,8 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call1 = m->getFunction( "_Z5call1v.5" );
-        auto call2 = m->getFunction( "_Z5call2i.4" );
+        auto call1 = m->getFunction( "_Z5call1v.4" );
+        auto call2 = m->getFunction( "_Z5call2i.5" );
         auto call3 = m->getFunction( "_Z5call3i.3" );
         auto call4 = m->getFunction( "_Z5call4i.2" );
         ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
@@ -837,13 +837,13 @@ struct Abstraction {
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4callii.3" );
+        auto call = m->getFunction( "_Z4callii.2" );
         ASSERT_EQ( call->getNumUses(), 2 );
         ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
                  , llvm::Type::getInt32Ty( m->getContext() ) );
-        auto call2 = m->getFunction( "_Z4callii.2" );
+        auto call2 = m->getFunction( "_Z4callii.3" );
         ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call2->getFunctionType()->getParamType( 1 )
