@@ -43,79 +43,35 @@ struct TrampolineFrame : _VM_Frame {
     void ( *handler )( int );
 };
 
-template < class T >
-struct SortedStorage
-{
+template < typename T >
+struct TaskStorage: Array< std::unique_ptr< T > > {
     using Tid = decltype( std::declval< T >().getId() );
-    SortedStorage() {}
-    SortedStorage( const SortedStorage & ) = delete;
 
     T *find( Tid id ) noexcept {
-        for ( auto t : *this )
+        for ( auto& t : *this )
             if ( t->getId() == id )
-                return t;
+                return t.get();
         return nullptr;
     }
 
     bool remove( Tid id ) noexcept {
-        int s = size();
-        for ( int i = 0; i != s; i++ ) {
-
-            if ( _storage[ i ]->getId() != id )
+        for ( auto& t : *this ) {
+            if ( t ->getId() != id )
                 continue;
-            delete_object( _storage[ i ] );
-            _storage[ i ] = _storage[ s - 1 ];
-            resize ( size() - 1 );
-            sort();
+            std::swap( t, this->back() );
+            this->pop_back();
             return true;
         }
         return false;
     }
 
-    template < class... Args >
-    T *emplace( Args... args ) noexcept {
-        resize( size() + 1 );
-        int idx = size() - 1;
-        T *ret = _storage[ idx ] = new_object< T >( args... );
-        sort();
-        return ret;
-    }
-
-    void insert( T* t ) noexcept {
-        resize( size() + 1 );
-        int idx = size() - 1;
-        _storage[ idx ] = t;
-        sort();
-    }
-
-    void erase( T** first, T** last ) noexcept {
-        if ( empty() )
-            return;
-        int orig_size = size();
-        int s = last - first;
-        if ( s != orig_size )
-            memmove( first, last, ( end() - last ) * sizeof( T * ) );
-        resize( orig_size - s );
-        sort();
-    }
-
-    void resize( int n ) { __vm_obj_resize( this, std::max( 1,
-                                    static_cast< int > (sizeof( *this ) + n * sizeof( T * ) ) ) ); }
-    T **begin() noexcept { return _storage; }
-    T **end() noexcept { return _storage + size(); }
-    int size() const noexcept { return ( __vm_obj_size( this ) - sizeof( *this ) ) / sizeof( T * ); }
-    bool empty() const noexcept { return size() == 0; };
-    T *operator[]( int i ) const noexcept { return _storage[ i ]; };
-private:
     void sort() {
-        if ( empty() )
+        if ( this->empty() )
             return;
-        std::sort( begin(), end(), []( T *a, T *b ) {
+        std::sort( this->begin(), this->end(), []( const auto& a, const auto& b ) {
             return a->getId() < b->getId();
         });
     }
-
-    T *_storage[];
 };
 
 template < typename Process >
