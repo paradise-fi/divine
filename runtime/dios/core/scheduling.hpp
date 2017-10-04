@@ -175,10 +175,9 @@ struct Scheduler : public Next
     };
 
     using Task = __dios::Task< Process >;
-    using Tasks = SortedStorage< Task >;
+    using Tasks = TaskStorage< Task >;
 
     Scheduler() :
-        tasks( *new_object< Tasks >() ),
         debug( new_object< Debug >() ),
         sighandlers( nullptr )
     {
@@ -188,7 +187,6 @@ struct Scheduler : public Next
     ~Scheduler()
     {
         delete_object( debug );
-        delete_object( &tasks );
     }
 
     template< typename Setup >
@@ -222,7 +220,7 @@ struct Scheduler : public Next
     {
         if ( tasks.empty() )
             return nullptr;
-        return tasks[ __vm_choose( tasks.size() ) ];
+        return tasks[ __vm_choose( tasks.size() ) ].get();
     }
 
     __attribute__(( noinline, __annotate__( "divine.debugfn" ) ))
@@ -265,14 +263,20 @@ struct Scheduler : public Next
     Task *newTaskMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
         __dios_assert_v( routine, "Invalid task routine" );
-        return tasks.emplace( mainFrame, mainTls, routine, tls_size, proc );
+        Task *ret = tasks.emplace_back(
+            new_object< Task >( mainFrame, mainTls, routine, tls_size, proc ) ).get();
+        tasks.sort();
+        return ret;
     }
 
     template< typename... Args >
     Task *newTask( void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
         __dios_assert_v( routine, "Invalid task routine" );
-        return tasks.emplace( routine, tls_size, proc );
+        Task *ret = tasks.emplace_back(
+            new_object< Task >( routine, tls_size, proc ) ).get();
+        tasks.sort();
+        return ret;
     }
 
     void setupMainTask( Task * t, int argc, char** argv, char** envp ) noexcept {
@@ -300,27 +304,17 @@ struct Scheduler : public Next
         if ( !id ) {
 
             size_t c = tasks.size();
-
-            for ( int i = 0; i < c; ++i )
-                delete_object( tasks[ i ] );
-
             tasks.erase( tasks.begin(), tasks.end() );
             __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
             // ToDo: Erase processes
             return;
         }
 
-        auto r = std::remove_if( tasks.begin(), tasks.end(), [&]( Task *t )
+        auto r = std::remove_if( tasks.begin(), tasks.end(), [&]( auto& t )
                                  {
                                      if ( t->_tls == __dios_get_task_handle() )
                                          __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
-                                     if ( t->_proc->pid == id )
-                                     {
-                                         zombies.insert( {id, t->_proc} );
-                                         delete_object( t );
-                                         return true;
-                                     }
-                                     return false;
+                                     return t->_proc->pid == id;
                                 } );
 
         tasks.erase( r, tasks.end() );
@@ -401,11 +395,11 @@ struct Scheduler : public Next
         sighandler_t handler;
         bool found = false;
         Task *task;
-        for ( auto t : tasks )
+        for ( auto& t : tasks )
             if ( t->_proc->pid == pid )
             {
                 found = true;
-                task = t;
+                task = t.get();
                 break;
             }
         if ( !found )
@@ -483,7 +477,7 @@ struct Scheduler : public Next
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 
-    Tasks &tasks;
+    Tasks tasks;
     Debug *debug;
     Map< pid_t, Process* > zombies;
     sighandler_t *sighandlers;

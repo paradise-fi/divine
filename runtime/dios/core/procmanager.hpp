@@ -50,14 +50,14 @@ struct ProcessManager : public Next
 
     Process* findProcess( pid_t pid )
     {
-        auto task = std::find_if( this->tasks.begin(), this->tasks.end(), [&]( Task *t )
-                                     { return proc(t)->pid == pid; } );
+        auto task = std::find_if( this->tasks.begin(), this->tasks.end(), [&]( auto& t )
+                                     { return proc(t.get())->pid == pid; } );
         if ( task == this->tasks.end() )
         {
             *__dios_get_errno() = ESRCH;
             return nullptr;
         }
-        return proc(*task);
+        return proc(task->get());
     }
 
     pid_t getppid()
@@ -76,8 +76,8 @@ struct ProcessManager : public Next
     pid_t setsid()
     {
         Process* p = proc(this->getCurrentTask());
-        for( Task* t : this->tasks )
-            if( proc(t)->sid == p->sid && proc(t)->pgid == p->pid )
+        for( auto& t : this->tasks )
+            if( proc(t.get())->sid == p->sid && proc(t.get())->pgid == p->pid )
             {
                 *__dios_get_errno() = EPERM;
                 return -1;
@@ -125,8 +125,8 @@ struct ProcessManager : public Next
             *__dios_get_errno() = EPERM;
             return -1;
         }
-        if ( std::find_if( this->tasks.begin(), this->tasks.end(), [&]( Task *t )
-                          { return proc(t)->pgid == pgid && proc(t)->sid == procToSet->sid; } )
+        if ( std::find_if( this->tasks.begin(), this->tasks.end(), [&]( auto& t )
+                          { return proc(t.get())->pgid == pgid && proc(t.get())->sid == procToSet->sid; } )
             == this->tasks.end() )
             if ( procToSet->pid != pgid && pgid != 0 )
             {
@@ -164,10 +164,10 @@ struct ProcessManager : public Next
         Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
 
         pid_t maxPid = 0;
-        for( auto t : this->tasks )
+        for( auto& t : this->tasks )
         {
-            if ( (proc(t))->pid > maxPid )
-                maxPid = (proc(t))->pid;
+            if ( (proc(t.get()))->pid > maxPid )
+                maxPid = (proc(t.get()))->pid;
         }
 
         Process *newTaskProc = proc( newTask );
@@ -176,7 +176,7 @@ struct ProcessManager : public Next
         newTaskProc->ppid = taskProc->pid;
         newTaskProc->sid = taskProc->sid;
         newTaskProc->pgid = taskProc->pgid;
-        this->tasks.insert( newTask );
+        this->tasks.emplace_back( newTask );
         return newTaskProc->pid;
     }
 
@@ -194,7 +194,7 @@ struct ProcessManager : public Next
         Process* parent = proc( this->tasks.find( __dios_get_task_handle() ) );
         pid_t childpid;
 
-        auto pid_criteria_func = [&]( auto pr )
+        auto pid_criteria_func = [&]( auto& pr )
         {
             Process* p = proc( pr );
 
@@ -210,14 +210,16 @@ struct ProcessManager : public Next
         };
 
         auto child = std::find_if( this->zombies.begin(), this->zombies.end(),
-                                   [&]( auto p ) { return pid_criteria_func( p.second ); } );
+                                   [&]( auto& p ) { return pid_criteria_func( p.second ); } );
 
         if ( child == this->zombies.end() )
         {
             if ( options & WNOHANG )
             {
                 *__dios_get_errno() = ECHILD;
-                if ( std::count_if( this->tasks.begin(), this->tasks.end(), pid_criteria_func ) )
+                if ( std::count_if( this->tasks.begin(), this->tasks.end(), [&]( auto& pr ) {
+                    return pid_criteria_func( pr->_proc );
+                } ) )
                     return 0;
                 else
                     return -1;
