@@ -100,8 +100,7 @@ void traceInFile( const char *file, const char *msg, size_t size ) noexcept
 __attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace_t( const char *txt ) noexcept
 {
-    /* __vm_trace( _VM_T_Text, txt ); */
-    __dios_trace( 0, txt );
+    __dios::traceInternal( 0, "%s", txt );
 }
 
 __attribute__(( __annotate__( "divine.debugfn" ) ))
