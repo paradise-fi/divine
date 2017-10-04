@@ -16,7 +16,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 + ^T: FAULT: null pointer dereference
 + ^# executing .*::handler
 > trace --choices 0 0 0 0
-+ traced states: #1 #2 #5
++ traced states: #1 #2 #4
 + unused choices: 0/0
 EOF
 
