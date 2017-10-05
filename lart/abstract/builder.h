@@ -7,7 +7,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/walker.h>
+#include <lart/abstract/vpa.h>
 #include <lart/abstract/domains/domains.h>
 #include <lart/support/util.h>
 #include <lart/abstract/util.h>

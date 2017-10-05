@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/substitution.h>
 
-#include <lart/abstract/walker.h>
+#include <lart/abstract/vpa.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/util.h>
 #include <lart/support/query.h>

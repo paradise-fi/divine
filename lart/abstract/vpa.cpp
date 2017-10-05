@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2017 Henrich Lauko <xlauko@mail.muni.cz>
-#include <lart/abstract/walker.h>
+#include <lart/abstract/vpa.h>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/ADT/Hashing.h>
