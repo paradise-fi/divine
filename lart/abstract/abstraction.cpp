@@ -40,13 +40,30 @@ AbstractValues Abstraction::FunctionNode::reachedValues() const {
 void Abstraction::run( llvm::Module & m ) {
     // create function prototypes
     Map< FunctionNode, llvm::Function * > prototypes;
+
+    std::vector< FunctionNode > sorted;
     for ( auto & fn : VPA().run( m ) ) {
         const auto& as = fn.second.annRoots;
-        for ( auto & rs : fn.second.argRoots ) {
-            auto fnode = FunctionNode( fn.first, unionRoots( as, rs.second ) );
-            prototypes[ fnode ] = process( fnode );
-        }
+        for ( auto & rs : fn.second.argRoots )
+            sorted.emplace_back( fn.first, unionRoots( as, rs.second ) );
     }
+
+    std::sort( sorted.begin(), sorted.end(), [] ( FunctionNode l, FunctionNode r ) {
+        auto arghash = [] ( const FunctionNode & fn ) -> size_t {
+            size_t sum = 0;
+            for ( auto & a : filterA< llvm::Argument >( fn.roots() ) )
+                sum += a.get< llvm::Argument >()->getArgNo();
+            return sum;
+        };
+
+        auto ln = l.first->getName().str();
+        auto rn = r.first->getName().str();
+
+        return ln == rn ? arghash( l ) < arghash( r ) : ln < rn;
+    } );
+
+    for ( auto & fnode : sorted )
+        prototypes[ fnode ] = process( fnode );
 
     Functions remove;
     for ( const auto & p : prototypes ) {

@@ -595,14 +595,14 @@ struct Abstraction {
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto add = m->getFunction( "_Z3addv.3" );
+        auto add = m->getFunction( "_Z3addv.2" );
         ASSERT_EQ( add->getNumUses(), 2 );
         for ( const auto & u : add->users() ) {
             ASSERT_EQ( llvm::cast< llvm::CallInst >( u )->getParent()->getParent()
                      , main );
         }
         ASSERT_EQ( add->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        auto nondet = m->getFunction( "_Z6nondetv.2" );
+        auto nondet = m->getFunction( "_Z6nondetv.3" );
         ASSERT_EQ( nondet->getNumUses(), 2 );
         for ( const auto & u : nondet->users() ) {
             ASSERT_EQ( llvm::cast< llvm::CallInst >( u )->getParent()->getParent()
@@ -628,8 +628,8 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call1 = m->getFunction( "_Z5call1v.3" );
-        auto call2 = m->getFunction( "_Z5call2i.2" );
+        auto call1 = m->getFunction( "_Z5call1v.2" );
+        auto call2 = m->getFunction( "_Z5call2i.3" );
         ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
@@ -656,10 +656,10 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call1 = m->getFunction( "_Z5call1v.4" );
-        auto call2 = m->getFunction( "_Z5call2i.5" );
-        auto call3 = m->getFunction( "_Z5call3i.3" );
-        auto call4 = m->getFunction( "_Z5call4i.2" );
+        auto call1 = m->getFunction( "_Z5call1v.2" );
+        auto call2 = m->getFunction( "_Z5call2i.3" );
+        auto call3 = m->getFunction( "_Z5call3i.4" );
+        auto call4 = m->getFunction( "_Z5call4i.5" );
         ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
