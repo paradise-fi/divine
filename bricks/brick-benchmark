@@ -177,19 +177,22 @@ struct Axis
     }
 };
 
-struct BenchmarkBase : unittest::TestCaseBase {
+struct BenchmarkBase : unittest::TestBase
+{
     int fds[2];
 
     virtual double normal() = 0;
     virtual int parameter( Axis, int ) = 0;
     virtual std::pair< Axis, Axis > axes() = 0;
     virtual std::string describe() = 0;
-    virtual std::string group() { return ""; } // TestCaseBase
+    virtual std::string group() { return ""; }
     int64_t p, q;
+
+    BenchmarkBase( std::string n ) : TestBase( n ) {}
 };
 
-
-struct BenchmarkGroup {
+struct Group
+{
     Axis x, y; // z is time
     int64_t p, q; // parameter values on x and y axes
     struct timespec start, end;
@@ -201,15 +204,17 @@ struct BenchmarkGroup {
 #endif
     }
 
-    BenchmarkGroup() : p( 0 ), q( 0 ) {}
-    virtual ~BenchmarkGroup();
-    virtual int64_t parameter( Axis a, int seq ) {
+    Group() : p( 0 ), q( 0 ) {}
+    virtual ~Group() {}
+    virtual int64_t parameter( Axis a, int seq )
+    {
         if ( !a.log )
             return a.min + seq * a.step;
         for ( int i = 0; i < seq; ++i )
             a.min = a.min * a.step;
         return a.min;
     }
+
     virtual void setup( int _p, int _q ) { p = _p; q = _q; }
     virtual std::string describe() { return ""; }
     virtual std::string describe_axes()
@@ -277,8 +282,6 @@ struct ResultLog
 };
 
 namespace {
-
-std::vector< BenchmarkBase * > *benchmarks = nullptr;
 
 std::vector< std::string > time_units = { "s", "ms", "μs", "ns", "ps", "fs", "as", "zs", "ys" };
 
@@ -384,9 +387,12 @@ ResultLog::Value repeat( BenchmarkBase *tc )
 
     double factor = x.normal( tc->p ) * y.normal( tc->q ) * tc->normal();
 
-    std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << x.render( tc->p ) << " " << x.unit
-              << " "  << y.name << ": " << std::setw( y.amplitude() ) << y.render( tc->q ) << " " << y.unit
-              << " μ: " << render_ci( stats.m_mean, stats.m_mean - stats.b_mean.low, stats.b_mean.high - stats.m_mean, factor )
+    std::cerr << "  " << x.name << ": "
+              << std::setw( x.amplitude() ) << x.render( tc->p ) << " " << x.unit
+              << " "  << y.name << ": "
+              << std::setw( y.amplitude() ) << y.render( tc->q ) << " " << y.unit
+              << " μ: " << render_ci( stats.m_mean, stats.m_mean - stats.b_mean.low,
+                                      stats.b_mean.high - stats.m_mean, factor )
               << " m: " << render_ci( stats.b_sample.median,
                                       stats.b_sample.median - stats.b_median.low,
                                       stats.b_median.high - stats.b_sample.median, factor )
@@ -412,41 +418,11 @@ ResultLog::Value repeat( BenchmarkBase *tc )
 using unittest::BeginsWith;
 using unittest::Filter;
 using unittest::split;
+using unittest::list;
 
-std::string shortdesc( std::string d, bool invert = false ) {
-    std::vector< std::string > bits, keep;
-    std::string res;
-
-    split( d, bits, ' ' );
-    int types = std::count_if( bits.begin(), bits.end(), BeginsWith( "type:" ) );
-    std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
-                  [ types, invert ]( std::string s ) {
-                      bool v = !BeginsWith( "x:" )( s ) &&
-                               !BeginsWith( "y:" )( s ) &&
-                               (types == 1 || !BeginsWith( "type:" )( s ) );
-                      return invert ? !v : v;
-                  } );
-    for ( auto k : keep )
-        res += k + " ";
-    return std::string( res, 0, res.length() - 1 );
-}
-
-void list( int argc, const char **argv ) {
-    ASSERT( benchmarks );
-    Filter flt( argc, argv );
-    for ( auto tc : *benchmarks ) {
-        std::string d = tc->describe();
-        if ( !flt.matches( d ) )
-            continue;
-        std::vector< std::string > extra;
-        std::cerr << "• " << shortdesc( d ) << std::endl;
-        if ( !shortdesc( d, true ).empty() )
-            std::cerr << "  " << shortdesc( d, true ) << std::endl;
-    }
-}
-
-void run( int argc, const char **argv ) {
-    ASSERT( benchmarks );
+int run( int argc, const char **argv )
+{
+    ASSERT( unittest::TestBase::testcases );
 
     bool norun = false;
 
@@ -462,15 +438,20 @@ void run( int argc, const char **argv ) {
     ResultLog log;
     ResultLog::Key key;
 
-    for ( auto tc : *benchmarks ) {
-        if ( !flt.matches( tc->describe() ) )
+    for ( auto tb : *unittest::TestBase::testcases )
+    {
+        if ( !flt.matches( tb->describe_long() ) )
             continue;
 
-        key.benchmark = tc->describe();
+        auto tc = dynamic_cast< BenchmarkBase * >( tb );
+        if ( !tc )
+            continue;
+
+        key.benchmark = tc->describe_long();
 
         gnuplot::Plot &plot = plots.append();
 
-        std::cerr << "## " << shortdesc( tc->describe() ) << std::endl;
+        std::cerr << tc->describe() << std::endl;
         auto axes = tc->axes();
         Axis x = axes.first, y = axes.second;
         bool box = x.type == Axis::Disabled && y.type == Axis::Qualitative;
@@ -530,7 +511,7 @@ void run( int argc, const char **argv ) {
             plot.axis     ( gnuplot::Plot::Z, y.name, y.unit );
         }
 
-        plot.name     ( shortdesc( tc->describe() ) );
+        plot.name     ( tc->describe() );
         switch ( y.type ) {
             case Axis::Qualitative: plot.style( gnuplot::Style::Spot ); break;
             case Axis::Quantitative: plot.style( gnuplot::Style::Gradient ); break;
@@ -538,6 +519,7 @@ void run( int argc, const char **argv ) {
         }
     }
     std::cout << plots.plot();
+    return 0;
 }
 
 using brick::unittest::_typeid;
@@ -583,7 +565,8 @@ struct Benchmark : BenchmarkBase
 #endif
     }
 
-    std::string describe() {
+    std::string describe_long()
+    {
         BenchGroup bg;
         std::string d = bg.describe();
         if ( d.empty() )
@@ -591,40 +574,51 @@ struct Benchmark : BenchmarkBase
         return d + " " + "test:" + name;
     }
 
-    Benchmark() {
-        p = q = 0;
-        if ( !benchmarks )
-            benchmarks = new std::vector< BenchmarkBase * >;
-        benchmarks->push_back( this );
+    std::string describe_short( bool invert = false )
+    {
+        std::vector< std::string > bits, keep;
+        std::string res;
+
+        split( describe_long(), bits, ' ' );
+        int types = std::count_if( bits.begin(), bits.end(), BeginsWith( "type:" ) );
+        std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
+                      [ types, invert ]( std::string s ) {
+                          bool v = !BeginsWith( "x:" )( s ) &&
+                                   !BeginsWith( "y:" )( s ) &&
+                                   (types == 1 || !BeginsWith( "type:" )( s ) );
+                          return invert ? !v : v;
+                      } );
+        for ( auto k : keep )
+            res += k + " ";
+        return std::string( res, 0, res.length() - 1 );
     }
+
+    std::string describe()
+    {
+        std::stringstream fmt;
+        fmt << "• " << describe_short() << std::endl;
+        if ( !describe_short( true ).empty() )
+            fmt << "  " << describe_short( true ) << std::endl;
+        return fmt.str();
+    }
+
+    Benchmark( std::string n ) : BenchmarkBase( n ) {}
 };
 
-#ifndef BRICK_BENCHMARK_REG
-
-#define BENCHMARK(n) void n()
-
+#ifdef BRICK_BENCHMARK_REG
+#define BENCHMARK(n) TEST_(n,benchmark::Benchmark,)
 #else
-
-#define BENCHMARK(n)                                                    \
-    void __reg_ ## n() {                                                \
-        using __T = typename std::remove_reference< decltype(*this) >::type; \
-        ::brick::unittest::_register_g<                                 \
-            ::brick::benchmark::Benchmark, __T, &__T::n, &__T::__reg_ ## n >( #n, false ); \
-    }                                                                   \
-    void n()
-
+#define BENCHMARK(n) void n()
 #endif
 
 }
-}
 
-namespace brick_test {
+namespace t_benchmark {
 
 using namespace ::brick::benchmark;
 
-namespace benchmark {
-
-struct SelfTest : BenchmarkGroup {
+struct SelfTest : benchmark::Group
+{
     SelfTest() {
         x.type = Axis::Quantitative;
         x.name = "items";
@@ -640,7 +634,7 @@ struct SelfTest : BenchmarkGroup {
         y.unit = "k";
     }
 
-    virtual ~SelfTest();
+    virtual ~SelfTest() {}
 
     std::string describe() { return "category:selftest"; }
 
@@ -652,6 +646,15 @@ struct SelfTest : BenchmarkGroup {
 };
 
 }
+}
+
+#endif
+
+#ifdef BRICK_BENCHMARK_MAIN
+
+int main( int argc, const char **argv )
+{
+    return brick::benchmark::run( argc, argv );
 }
 
 #endif
