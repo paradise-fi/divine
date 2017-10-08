@@ -31,6 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-unittest>
+#include <brick-fs>
 #include <brick-gnuplot>
 
 #include <numeric>
@@ -356,8 +357,9 @@ struct SampleStats
 ResultLog::Value repeat( BenchmarkBase *tc )
 {
 #ifdef __unix
-    char buf[1024];
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
+    fs::PosixBuf buf( tc->fds[ 0 ] );
+    std::istream istream( &buf );
 #endif
     SampleStats stats;
 
@@ -366,17 +368,15 @@ ResultLog::Value repeat( BenchmarkBase *tc )
     int iterations = 0;
 
     while ( ( sum( stats.sample ) < 3 && iterations < 300 ) ||
-            ( stats.sample.size() < 100 && iterations < 200 ) ) {
-        for ( int i = 0; i < 10; ++i ) { /* get 10 data points at once */
+            ( stats.sample.size() < 100 && iterations < 200 ) )
+    {
+        for ( int i = 0; i < 10; ++i ) /* get 10 data points at once */
+        {
             iterations ++;
             unittest::fork_test( tc, tc->fds );
 #ifdef __unix
-            int r = ::read( tc->fds[0], buf, sizeof( buf ) );
-            if ( r >= 0 )
-                buf[r] = 0;
-            std::stringstream parse( buf );
             double time;
-            parse >> time;
+            istream >> time;
             stats.sample.push_back( time );
 #endif
         }
@@ -561,7 +561,7 @@ struct Benchmark : BenchmarkBase
             s -= 1;
             ns += 1000000000;
         }
-        std::cout << s << "." << std::setfill( '0' ) << std::setw( 9 ) << ns;
+        std::cout << s << "." << std::setfill( '0' ) << std::setw( 9 ) << ns << std::endl;
 #endif
     }
 
