@@ -102,7 +102,7 @@ template< typename E >
 Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
 {
     std::mt19937 rand;
-    std::uniform_int_distribution<> dist( 0, s.size() );
+    std::uniform_int_distribution<> dist( 0, s.size() - 1 );
 
     Sample result;
     for ( int i = 0; i < iterations; ++i ) {
