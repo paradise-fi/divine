@@ -504,7 +504,7 @@ int run( int argc, const char **argv )
             plot.axis     ( gnuplot::Plot::Z, y.name, y.unit );
         }
 
-        plot.name     ( tc->describe() );
+        plot.name     ( tc->describe_long() );
         switch ( y.type ) {
             case Axis::Qualitative: plot.style( gnuplot::Style::Spot ); break;
             case Axis::Quantitative: plot.style( gnuplot::Style::Gradient ); break;
