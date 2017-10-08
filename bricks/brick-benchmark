@@ -612,27 +612,29 @@ using namespace ::brick::benchmark;
 
 struct SelfTest : benchmark::Group
 {
-    SelfTest() {
+    SelfTest()
+    {
         x.type = Axis::Quantitative;
-        x.name = "items";
-        x.unit = "kfrob";
+        x.name = "outer";
+        x.unit = "iter";
         x.normalize = Axis::Div;
 
         y.type = Axis::Quantitative;
+        y.name = "inner";
+        y.unit = "k-iter";
         y.min =      800000;
         y.max =     6400000;
         y.unit_div =   1000;
         y.log = true;
         y.step = 2;
-        y.unit = "k";
     }
 
     virtual ~SelfTest() {}
 
     std::string describe() { return "category:selftest"; }
 
-    BENCHMARK(empty) {}
-    BENCHMARK(delay) {
+    BENCHMARK(delay)
+    {
         for ( int i = 0; i < p; ++i )
             for ( int j = 0; j < q; ++j );
     }
