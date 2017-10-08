@@ -332,17 +332,11 @@ struct SampleStats
 
         m_mean = mean( bs_mean );
 
-        if ( b_median.high - b_median.low < 0.05 * b_sample.median &&
-             b_mean.high - b_mean.low < 0.05 * m_sample &&
+        if ( b_median.high - b_median.low < 0.1 * b_sample.median &&
+             b_mean.high - b_mean.low < 0.1 * m_sample &&
              ( sum( sample ) > 1 || sample.size() >= 100 ) )
-            return Satisfactory; /* the confidence interval is less than 5% => good enough */
+            return Satisfactory; /* the confidence interval is less than 10% => good enough */
 
-        /* if the sample is reasonably big but unsatisfactory, cut off outliers */
-        if ( int( sample.size() ) > cutLimit || ( sumLimit > 0 && sum( sample ) > sumLimit ) ) {
-            auto end = std::remove_if( sample.begin(), sample.end(),
-                                       [&]( double n ) { return fabs(n - m_sample) > 3 * iqr; } );
-            sample.erase( end, sample.end() ); // TODO: store the outliers
-        }
         return Unsatisfactory;
     }
 
@@ -399,8 +393,7 @@ ResultLog::Value repeat( BenchmarkBase *tc )
               << " σ: " << render_ci( stats.sd_sample,
                                       stats.sd_sample - stats.b_stddev.low,
                                       stats.b_stddev.high - stats.sd_sample, factor )
-              << " | n = " << std::setw( 3 ) << stats.sample.size()
-              << ", bad = " << std::setw( 3 ) << iterations - stats.sample.size() << std::endl;
+              << " | n = " << std::setw( 3 ) << stats.sample.size() << std::endl;
 
     auto res = std::make_tuple( x.scaled( tc->p ),
                                 y.scaled( stats.m_mean * factor ),
