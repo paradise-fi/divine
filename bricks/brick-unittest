@@ -67,7 +67,8 @@ struct TestCaseBase {
     }
 };
 
-struct TestFailed : std::exception {
+struct TestFailed : std::exception
+{
     const char *what() const noexcept { return "TestFailed"; }
 };
 
@@ -76,7 +77,8 @@ namespace {
 
 #if (defined( __unix__ ) || defined( POSIX )) && !defined( __divine__ )
 
-void panic() {
+void panic()
+{
     try {
         std::rethrow_exception( std::current_exception() );
     } catch ( std::exception &e ) {
@@ -85,7 +87,8 @@ void panic() {
     }
 }
 
-void fork_test( TestCaseBase *tc, int *fds ) {
+void fork_test( TestBase *tc, int *fds )
+{
     pid_t pid = fork();
     if ( pid < 0 ) {
         std::cerr << "W: fork failed" << std::endl;
@@ -147,7 +150,9 @@ int list() {
 
 std::string simplify( std::string s, std::string l, bool fill = true ) {
     int cut = 0, stop = 0;
-    while ( cut < int( s.length() ) && cut < int( l.length() ) && s[cut] == l[cut] ) {
+
+    while ( cut < int( s.length() ) && cut < int( l.length() ) && s[cut] == l[cut] )
+    {
         ++cut;
         if ( l[cut - 1] == ':' )
             stop = cut;
@@ -158,7 +163,8 @@ std::string simplify( std::string s, std::string l, bool fill = true ) {
     while ( cut < int( s.length() ) && s[ cut ] != '<' )
         ++cut;
 
-    if ( s[cut] == '<' ) {
+    if ( s[cut] == '<' )
+    {
         s = std::string( s, 0, cut + 1 ) +
             simplify( std::string( s, cut + 1, std::string::npos),
                       std::string( s, 0, cut - 1 ), false );
@@ -169,28 +175,33 @@ std::string simplify( std::string s, std::string l, bool fill = true ) {
 
 /* TODO duplicated from brick-shelltest */
 template< typename C >
-void split( std::string s, C &c, char delim = ',' ) {
+void split( std::string s, C &c, char delim = ',' )
+{
     std::stringstream ss( s );
     std::string item;
     while ( std::getline( ss, item, delim ) )
         c.push_back( item );
 }
 
-struct BeginsWith {
+struct BeginsWith
+{
     std::string p;
     BeginsWith( std::string p ) : p( p ) {}
-    bool operator()( std::string s ) {
+    bool operator()( std::string s )
+    {
         return std::string( s, 0, p.size() ) == p;
     }
 };
 
-struct Filter {
+struct Filter
+{
     using Clause = std::vector< std::string >;
     using F = std::vector< Clause >;
 
     F formula;
 
-    bool matches( std::string d ) {
+    bool matches( std::string d )
+    {
         for ( auto clause : formula ) {
             bool ok = false;
             for ( auto atom : clause )
@@ -204,7 +215,8 @@ struct Filter {
         return true;
     }
 
-    Filter( int argc, const char **argv ) {
+    Filter( int argc, const char **argv )
+    {
         for ( int i = 1; i < argc; ++i ) {
             if ( BeginsWith( "--" )( argv[i] ) )
                 continue;
@@ -333,7 +345,8 @@ struct TestCase : TestCaseBase {
             throw std::runtime_error("test passed unexpectedly");
     }
 
-    std::string group() {
+    std::string group()
+    {
         return _typeid< TestGroup >();
     }
 

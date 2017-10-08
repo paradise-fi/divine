@@ -76,18 +76,21 @@ Box box( Sample s, double width = 0.5 )
     return result;
 }
 
-double sum( Sample s ) {
+double sum( Sample s )
+{
     double r = 0;
     for ( auto n : s )
         r += n;
     return r;
 }
 
-double mean( Sample s ) {
+double mean( Sample s )
+{
     return sum( s ) / s.size();
 }
 
-double stddev( Sample s ) {
+double stddev( Sample s )
+{
     double avg = mean( s ), sum = 0;
     for ( auto n : s )
         sum += (avg - n) * (avg - n);
@@ -112,7 +115,8 @@ Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
 
 }
 
-struct Axis {
+struct Axis
+{
     bool log; /* if true, step is multiplicative, in percent */
     enum { Quantitative, Qualitative, Disabled } type;
     enum { Mult, Div, None } normalize; /* scale time per unit on this axis? */
@@ -131,7 +135,8 @@ struct Axis {
         _render = []( int64_t ) { return ""; };
     }
 
-    std::string render( int64_t p ) {
+    std::string render( int64_t p )
+    {
         if ( !_render( p ).empty() )
             return _render( p );
         std::stringstream s;
@@ -140,7 +145,8 @@ struct Axis {
     }
 
     double scaled( double p ) { return (p * unit_mul) / unit_div; }
-    double normal( double p ) {
+    double normal( double p )
+    {
         switch( normalize ) {
             case None: return 1;
             case Mult: return p;
@@ -149,11 +155,13 @@ struct Axis {
         }
     }
 
-    int amplitude() {
+    int amplitude()
+    {
         return floor( 1 + log10( scaled( max ) ) );
     }
 
-    int count() {
+    int count()
+    {
         if ( type == Disabled )
             return 1;
         ASSERT_LEQ( min, max );
@@ -186,7 +194,8 @@ struct BenchmarkGroup {
     int64_t p, q; // parameter values on x and y axes
     struct timespec start, end;
 
-    void reset() {
+    void reset()
+    {
 #ifdef BRICK_BENCHMARK_REG
         clock_gettime( CLOCK_MONOTONIC, &start );
 #endif
@@ -203,18 +212,22 @@ struct BenchmarkGroup {
     }
     virtual void setup( int _p, int _q ) { p = _p; q = _q; }
     virtual std::string describe() { return ""; }
-    virtual std::string describe_axes() {
+    virtual std::string describe_axes()
+    {
         return "x:" + x.name + " y:" + y.name +
                " x:unit:" + x.unit + " y:unit:" + y.unit;
     }
     virtual double normal() { return 1.0; }
 };
 
-struct ResultLog {
-    struct Key {
+struct ResultLog
+{
+    struct Key
+    {
         std::string benchmark;
         int p, q;
-        bool operator<( const Key &o ) const {
+        bool operator<( const Key &o ) const
+        {
             return std::make_tuple( benchmark, p, q ) < std::make_tuple( o.benchmark, o.p, o.q );
         }
     };
@@ -247,9 +260,11 @@ struct ResultLog {
         try {
             std::ifstream ifs( "benchmark.log" );
             char linebuf[4096];
-            while ( ifs.good() && !ifs.eof() ) {
+            while ( ifs.good() && !ifs.eof() )
+            {
                 ifs.getline(linebuf, 4096);
-                if (linebuf[0] == ':') {
+                if (linebuf[0] == ':')
+                {
                     std::stringstream str( linebuf + 2 );
                     double x, v, lo, hi;
                     str >> last.p >> last.q >> x >> v >> lo >> hi;
@@ -290,11 +305,13 @@ std::string render_ci( double point, double low_err, double high_err, double fac
     return str.str();
 }
 
-struct SampleStats {
+struct SampleStats
+{
     enum SampleQuality { Satisfactory, Unsatisfactory };
 
     // returns true if samples are satisfactory
-    SampleQuality processSamples( int cutLimit = 50, int sumLimit = 5 ) {
+    SampleQuality processSamples( int cutLimit = 50, int sumLimit = 5 )
+    {
         b_sample = box( sample );
         m_sample = mean( sample );
         sd_sample = stddev( sample );
@@ -333,7 +350,8 @@ struct SampleStats {
     double sd_sample;
 };
 
-ResultLog::Value repeat( BenchmarkBase *tc ) {
+ResultLog::Value repeat( BenchmarkBase *tc )
+{
 #ifdef __unix
     char buf[1024];
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
@@ -529,22 +547,26 @@ using brick::unittest::_typeid;
 template< typename BenchGroup, void (BenchGroup::*testcase)() >
 struct Benchmark : BenchmarkBase
 {
-    std::pair< Axis, Axis > axes() {
+    std::pair< Axis, Axis > axes()
+    {
         BenchGroup bg;
         return std::make_pair( bg.x, bg.y );
     }
 
-    int parameter( Axis a, int p ) {
+    int parameter( Axis a, int p )
+    {
         BenchGroup bg;
         return bg.parameter( a, p );
     }
 
-    double normal() {
+    double normal()
+    {
         BenchGroup bg;
         return bg.normal();
     }
 
-    void run() {
+    void run()
+    {
         BenchGroup bg;
         bg.setup( p, q );
 #ifdef __unix // TODO: figure out a win32 implementation
