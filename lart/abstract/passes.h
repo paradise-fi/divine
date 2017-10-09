@@ -128,8 +128,6 @@ struct TestCompile {
     }
 
     TestCompile( const Files & link, const Files & hdrs ) : TestCompile() {
-        std::vector< std::string > flags = { "-std=c++14" };
-
         for ( const auto & f : link )
             mapVirtualFile( cmp, f, source( f ) );
         for ( const auto & f : hdrs )
