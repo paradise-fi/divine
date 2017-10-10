@@ -22,6 +22,7 @@
 
 #include <divine/vm/bitcode.hpp>
 #include <divine/cc/options.hpp>
+#include <divine/sim/trace.hpp>
 
 #include <divine/ui/common.hpp>
 #include <divine/ui/curses.hpp>
@@ -157,15 +158,21 @@ struct Run : WithBC {
     void trace();
 };
 
-namespace sim { struct Trace; }
-
 struct Sim : WithBC
 {
     bool _batch = false, _skip_init = false, _load_report = false;
     std::shared_ptr< sim::Trace > _trace;
 
+#if OPT_SIM
     void process_options() override;
     void run() override;
+#else
+    void process_options() {}
+    void run()
+    {
+        throw std::runtime_error( "This build of DIVINE does not support the 'sim' command." );
+    }
+#endif
 };
 
 struct Draw : WithBC
