@@ -55,11 +55,6 @@
 namespace brick {
 namespace types {
 
-struct Unit {
-    bool operator<( Unit ) const { return false; }
-    bool operator==( Unit ) const { return true; }
-};
-
 struct Preferred { CONSTEXPR Preferred() { } };
 struct NotPreferred { CONSTEXPR NotPreferred( Preferred ) {} };
 
@@ -95,6 +90,11 @@ auto operator<=( const T &a, const T& b )
 }
 
 using Comparable = Ord;
+
+struct Unit : Ord {
+    bool operator<( Unit ) const { return false; }
+    bool operator==( Unit ) const { return true; }
+};
 
 struct Defer {
     template< typename F >
