@@ -293,22 +293,32 @@ void VPA::propagateDown( const PropagateDown & t ) {
 
 void VPA::propagateUp( const PropagateUp & t ) {
     auto av =  AbstractValue{ t.arg, t.domain };
-    if ( t.roots.count( av ) )
-        return; // already propagated
+    if ( t.parent ) {
+        auto r = reachFrom( { t.parent->roots.begin(), t.parent->roots.end() } );
+        auto arg = t.parent->callsite->getOperand( t.arg->getArgNo() );
+        auto abs = std::find_if( r.begin(), r.end(), [&] ( const auto & a ) {
+            return a.value == arg;
+        } );
+        if ( abs != r.end() )
+            return; // already abstracted
+    }
     t.roots.insert( av );
-
     // TODO propagation through multiple calls
     assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden.");
     if ( t.parent ) {
-        UNREACHABLE( "We don't know to propagate to known parent yet." );
+        auto o = origin( t.parent->callsite->getOperand( t.arg->getArgNo() ) );
+        auto root = AbstractValue{ o, t.domain };
+        dispach( PropagateDown( root, t.parent->roots, t.parent->parent ) );
     } else {
         for ( auto u : t.arg->getParent()->users() ) {
-            auto o = origin( u->getOperand( t.arg->getArgNo() ) );
             auto fn = getFunction( u );
             record( fn );
             auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
             reached[ fn ].argRoots[ key ] = {};
-            dispach( PropagateDown( AbstractValue{ o, t.domain }, reached[ fn ].annRoots, nullptr ) );
+
+            auto o = origin( u->getOperand( t.arg->getArgNo() ) );
+            auto root = AbstractValue{ o, t.domain };
+            dispach( PropagateDown( root, reached[ fn ].annRoots, nullptr ) );
         }
     }
 }
