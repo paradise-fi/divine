@@ -115,41 +115,6 @@ struct Defer {
     bool _deleted;
 };
 
-namespace mixin {
-
-#if __cplusplus >= 201103L
-template< typename Self >
-struct LexComparable {
-    const Self &lcSelf() const { return *static_cast< const Self * >( this ); }
-
-    bool operator==( const Self &o ) const {
-        return lcSelf().toTuple() == o.toTuple();
-    }
-
-    bool operator!=( const Self &o ) const {
-        return lcSelf().toTuple() != o.toTuple();
-    }
-
-    bool operator<( const Self &o ) const {
-        return lcSelf().toTuple() < o.toTuple();
-    }
-
-    bool operator<=( const Self &o ) const {
-        return lcSelf().toTuple() <= o.toTuple();
-    }
-
-    bool operator>( const Self &o ) const {
-        return lcSelf().toTuple() > o.toTuple();
-    }
-
-    bool operator>=( const Self &o ) const {
-        return lcSelf().toTuple() >= o.toTuple();
-    }
-};
-#endif
-
-}
-
 #if __cplusplus < 201103L
 
 /*
