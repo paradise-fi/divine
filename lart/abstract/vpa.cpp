@@ -113,13 +113,15 @@ Reached VPA::run( llvm::Module & m ) {
         auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
         reached[ fn ].argRoots[ key ] = {};
 
-        dispach( Propagate( a, reached[ fn ].annRoots, nullptr ) );
+        dispach( PropagateDown( a, reached[ fn ].annRoots, nullptr ) );
     }
 
     while ( !tasks.empty() ) {
         auto t = tasks.front();
-        if ( auto p = std::get_if< Propagate >( &t ) )
-            propagate( *p );
+        if ( auto pd = std::get_if< PropagateDown >( &t ) )
+            propagateDown( *pd );
+        else if ( auto pu = std::get_if< PropagateUp >( &t ) )
+            propagateUp( *pu );
         else if ( auto si = std::get_if< StepIn >( &t ) )
             stepIn( *si );
         else if ( auto so = std::get_if< StepOut >( &t ) )
@@ -152,10 +154,20 @@ void VPA::stepIn( const StepIn & si ) {
         return;
     auto args = abstractArgs( si.parent->roots, si.parent->callsite );
     if ( reached.count( fn ) ) {
+        // check argument roots
         auto doms = argDomains( args );
         if ( reached[ fn ].argRoots.count( doms ) ) {
             auto rs = reached[ fn ].argRoots[ doms ];
             auto dom = returns( fn, rs );
+            if ( dom != Domain::LLVM )
+                dispach( StepOut( fn, dom, si.parent ) );
+            return; // We have already seen 'fn' with this abstract signature
+        }
+
+        // check annotation roots
+        auto annargs = filterA< llvm::Argument >( reached[ fn ].annRoots );
+        if ( doms == argDomains( annargs ) ) {
+            auto dom = returns( fn, {} );
             if ( dom != Domain::LLVM )
                 dispach( StepOut( fn, dom, si.parent ) );
             return; // We have already seen 'fn' with this abstract signature
@@ -166,13 +178,13 @@ void VPA::stepIn( const StepIn & si ) {
 
     auto doms = argDomains( args );
     for ( const auto & arg : args )
-        dispach( Propagate( arg, reached[ fn ].argRoots[ doms ], si.parent ) );
+        dispach( PropagateDown( arg, reached[ fn ].argRoots[ doms ], si.parent ) );
 }
 
 void VPA::stepOut( const StepOut & so ) {
     if ( auto p = so.parent ) {
         AbstractValue av{ p->callsite.getInstruction(), so.domain };
-        dispach( Propagate( av, p->roots, p->parent ) );
+        dispach( PropagateDown( av, p->roots, p->parent ) );
     } else {
         for ( const auto & u : so.function->users() ) {
             if ( auto cs = llvm::CallSite( u ) ) {
@@ -183,7 +195,7 @@ void VPA::stepOut( const StepOut & so ) {
                     auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
                     reached[ fn ].argRoots[ key ] = {};
                 }
-                dispach( Propagate( av, reached[ fn ].annRoots, nullptr ) );
+                dispach( PropagateDown( av, reached[ fn ].annRoots, nullptr ) );
             }
         }
     }
@@ -199,6 +211,31 @@ Domain VPA::returns( llvm::Function * fn, const RootsSet & rs ) {
     return Domain::LLVM;
 }
 
+llvm::Value * origin( llvm::Value * value  ) {
+    if ( auto a = llvm::dyn_cast< llvm::AllocaInst >( value ) )
+        return a;
+    if ( auto a = llvm::dyn_cast< llvm::Argument >( value ) )
+        return a;
+    if ( auto l = llvm::dyn_cast< llvm::LoadInst >( value ) )
+        return origin( l->getPointerOperand() );
+    if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( value ) )
+        return origin( g->getPointerOperand() );
+    if ( auto c = llvm::dyn_cast< llvm::CastInst >( value ) )
+        return origin( c->getOperand( 0 ) );
+    UNREACHABLE( "Dont know how to get root!." );
+}
+
+llvm::Argument * isArgStoredTo( llvm::Value * v ) {
+    if ( auto a = llvm::dyn_cast< llvm::Argument >( v ) )
+        return a;
+
+    auto stores = llvmFilter< llvm::StoreInst >( v->users() );
+    for ( auto & s : stores )
+        if ( auto a = llvm::dyn_cast< llvm::Argument >( s->getValueOperand() ) )
+            return a;
+    return nullptr;
+}
+
 void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
     auto rgep = t.gep.get< llvm::GetElementPtrInst >();
 
@@ -208,7 +245,7 @@ void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
     for ( auto & gep : geps )
         if ( std::equal( gep->idx_begin(), gep->idx_end(), rgep->idx_begin(), rgep->idx_end() ) ) {
             auto av = AbstractValue{ gep, t.gep.domain };
-            dispach( Propagate( av, t.roots, t.parent ) );
+            dispach( PropagateDown( av, t.roots, t.parent ) );
         }
 
     auto rf = reachFrom( AbstractValue{ t.value, Domain::Undefined } );
@@ -218,9 +255,17 @@ void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
                 dispach( PropagateFromGEP( mem->getDest(), t.gep, t.roots, t.parent ) );
 }
 
-void VPA::propagate( const Propagate & t ) {
+void VPA::propagateDown( const PropagateDown & t ) {
     if ( t.roots.count( t.value ) )
         return; // value has been already propagated in this RootsSet
+    if ( !llvm::CallSite( t.value.value ) ) {
+        auto o = origin( t.value.value );
+        if ( auto a = isArgStoredTo( o ) ) {
+            dispach( PropagateDown( AbstractValue{ o, t.value.domain }, t.roots, t.parent ) );
+            dispach( PropagateUp( a, t.value.domain, t.roots, t.parent ) );
+        }
+    }
+
     auto rf = reachFrom( t.value );
     for ( auto & v : lart::util::reverse( rf ) ) {
         if ( v.isa< llvm::AllocaInst >() ) {
@@ -229,19 +274,41 @@ void VPA::propagate( const Propagate & t ) {
             t.roots.insert( v );
         } else if ( v.isa< llvm::GetElementPtrInst >() ) {
             t.roots.insert( v );
-        }  else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
+        } else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
             auto av = AbstractValue( s->getPointerOperand(), v.domain );
             if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( s->getPointerOperand() ) )
                 dispach( PropagateFromGEP( gep->getPointerOperand(), av, t.roots, t.parent ) );
             else
-                dispach( Propagate( av, t.roots, t.parent ) );
+                dispach( PropagateDown( av, t.roots, t.parent ) );
         } else if ( auto cs = llvm::CallSite( v.value ) ) {
             if ( t.value.value != v.value )
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
             else
-                t.roots.insert( v ); // we are propagationg from this call
+                t.roots.insert( v ); // we are propagating from this call
         } else if ( v.isa< llvm::ReturnInst >() ) {
             dispach( StepOut( getFunction( v.value ), v.domain, t.parent ) );
+        }
+    }
+}
+
+void VPA::propagateUp( const PropagateUp & t ) {
+    auto av =  AbstractValue{ t.arg, t.domain };
+    if ( t.roots.count( av ) )
+        return; // already propagated
+    t.roots.insert( av );
+
+    // TODO propagation through multiple calls
+    assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden.");
+    if ( t.parent ) {
+        UNREACHABLE( "We don't know to propagate to known parent yet." );
+    } else {
+        for ( auto u : t.arg->getParent()->users() ) {
+            auto o = origin( u->getOperand( t.arg->getArgNo() ) );
+            auto fn = getFunction( u );
+            record( fn );
+            auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
+            reached[ fn ].argRoots[ key ] = {};
+            dispach( PropagateDown( AbstractValue{ o, t.domain }, reached[ fn ].annRoots, nullptr ) );
         }
     }
 }

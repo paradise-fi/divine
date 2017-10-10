@@ -25,9 +25,15 @@ static inline llvm::Type * stripPtr( llvm::Type * type ) {
     return type->isPointerTy() ? type->getPointerElementType() : type;
 }
 
+static inline llvm::Type * stripPtrs( llvm::Type * type ) {
+    while ( type->isPointerTy() )
+        type = type->getPointerElementType();
+    return type;
+}
+
 template< typename TMap >
 static bool isAbstract( llvm::Type * type, TMap & tmap ) {
-    type = stripPtr( type );
+    type = stripPtrs( type );
     return tmap.safeOrigin( type ).isJust();
 }
 
@@ -61,14 +67,31 @@ static llvm::Type * _lift( llvm::Type * type, Domain dom, TMap & tmap ) {
     return l;
 }
 
+static inline size_t getPointerRank( llvm::Type * type ) {
+    size_t rank = 0;
+    while ( type->isPointerTy() ) {
+        ++rank;
+        type = type->getPointerElementType();
+    }
+    return rank;
+}
+
+
+static inline llvm::Type * setPointerRank( llvm::Type * type, size_t rank ) {
+    for ( size_t i = 0; i < rank; ++i )
+        type = type->getPointerTo();
+    return type;
+}
+
 } // anonymous namespace
 
 template< typename TMap >
 static llvm::Type * liftType( llvm::Type * type, Domain dom, TMap & tmap ) {
     if ( dom == Domain::LLVM )
         return type;
-    auto res = _lift( stripPtr( type ), dom, tmap );
-    return type->isPointerTy() ? res->getPointerTo() : res;
+    auto pr = getPointerRank( type );
+    auto res = _lift( stripPtrs( type ), dom, tmap );
+    return setPointerRank( res, pr );
 }
 
 static llvm::Type * liftType( llvm::Type * type, Domain dom ) {

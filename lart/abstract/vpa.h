@@ -37,8 +37,8 @@ inline ParentPtr make_parent( llvm::CallSite cs, ParentPtr pp, RootsSet & rs ) {
     return std::make_shared< Parent >( cs, pp, rs );
 }
 
-struct Propagate {
-    explicit Propagate( AbstractValue v, RootsSet & r, ParentPtr p )
+struct PropagateDown {
+    explicit PropagateDown( AbstractValue v, RootsSet & r, ParentPtr p )
         : value( v ), roots( r ), parent( p ) {}
 
     AbstractValue value;        // propagated value
@@ -46,7 +46,7 @@ struct Propagate {
     ParentPtr parent;           // parent from which was the function called
 };
 
-inline bool operator==( const Propagate & a, const Propagate & b ) {
+inline bool operator==( const PropagateDown & a, const PropagateDown & b ) {
     return std::tie( a.value, a.roots, a.parent ) == std::tie( b.value, b.roots, b.parent );
 }
 
@@ -89,7 +89,23 @@ inline bool operator==( const StepOut & a, const StepOut & b) {
     return std::tie( a.domain, a.parent ) == std::tie( b.domain, b.parent );
 }
 
-using Task = std::variant< Propagate, PropagateFromGEP, StepIn, StepOut >;
+struct PropagateUp {
+    explicit PropagateUp( llvm::Argument * a, Domain d, RootsSet& r, ParentPtr p )
+        : arg( a ), domain( d ), roots( r ), parent( p ) {}
+
+    llvm::Argument * arg;
+    Domain domain;
+    RootsSet& roots;
+    ParentPtr parent;
+};
+
+
+inline bool operator==( const PropagateUp & a, const PropagateUp & b) {
+    return std::tie( a.arg, a.domain, a.roots, a.parent ) ==
+           std::tie( b.arg, b.domain, b.roots, b.parent );
+}
+
+using Task = std::variant< PropagateDown, PropagateFromGEP, PropagateUp, StepIn, StepOut >;
 
 // ValuesPropagationAnalysis
 struct VPA {
@@ -101,7 +117,8 @@ private:
 
     void dispach( Task && );
     void preprocess( llvm::Function * );
-    void propagate( const Propagate & );
+    void propagateDown( const PropagateDown & );
+    void propagateUp( const PropagateUp & );
     void propagateFromGEP( const PropagateFromGEP & );
 
     void stepIn( const StepIn & );

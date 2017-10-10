@@ -1036,6 +1036,25 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
+
+    TEST( output_int_arg_1 ) {
+        auto s = R"(void init( int * i ) {
+                        _SYM int v;
+                        *i = v;
+                    }
+                    int main() {
+                        int i;
+                        init( &i );
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto call = m->getFunction( "_Z4initPi.2" );
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {
