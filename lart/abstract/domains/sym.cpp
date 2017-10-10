@@ -113,7 +113,7 @@ bool Symbolic::is( llvm::Type * type ) {
 }
 
 llvm::Type * Symbolic::abstract( llvm::Type * type ) {
-    return type->isPointerTy() ? formula_type->getPointerTo() : formula_type;
+    return setPointerRank( formula_type, getPointerRank( type ) );
 }
 
 } // namespace abstract

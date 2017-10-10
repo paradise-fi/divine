@@ -91,7 +91,7 @@ struct Substituter {
 
 private:
     llvm::Value * argLift( llvm::Argument * arg ) {
-        auto dom = tmap.origin( arg->getType() ).second;
+        auto dom = tmap.origin( stripPtrs( arg->getType() ) ).second;
         std::string name = "__lart_lift_" + DomainTable[ dom ];
         auto abstraction = abs[ dom ];
         auto rty = process( arg->getType() );

@@ -47,7 +47,7 @@ bool Zero::is( llvm::Type * type ) {
 }
 
 llvm::Type * Zero::abstract( llvm::Type * type ) {
-    return type->isPointerTy() ? zero_type->getPointerTo() : zero_type;
+    return setPointerRank( zero_type, getPointerRank( type ) );
 }
 
 } // namespace abstract
