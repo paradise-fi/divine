@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D vm ss mc ui cc ltl )
+foreach( D vm ss mc ui cc ltl sim )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -33,19 +33,18 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-stringify( doc ${divine_SOURCE_DIR}/doc manual/sim.md )
-
 add_library( divine-cc ${CPP_cc} )
 add_library( divine-ltl ${CPP_ltl} )
 # add_library( divine-ss ${CPP_ss} )
 # add_library( divine-mc ${CPP_mc} )
-add_library( divine-ui ${CPP_ui} ${doc_FILES}
-                       ${VERSION_FILE} ${VERSION_FILE}.check
-                       "flags-generated.cpp" )
+add_library( divine-ui ${CPP_ui} ${VERSION_FILE} ${VERSION_FILE}.check "flags-generated.cpp" )
 add_library( divine-vm ${CPP_vm} )
 
 if ( OPT_SIM )
-  target_link_libraries( divine-ui edit )
+  stringify( doc ${divine_SOURCE_DIR}/doc manual/sim.md )
+  add_library( divine-sim ${CPP_sim} ${doc_FILES} )
+  target_link_libraries( divine-sim edit )
+  target_link_libraries( divine-ui divine-sim )
 endif()
 
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
