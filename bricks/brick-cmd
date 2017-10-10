@@ -806,25 +806,26 @@ struct Parser
 {
     using PT = ParserT< Validator, Ts... >;
     PT _rep;
-    Match _match = Match::None;
-    bool _failed = false;
+    Match _match;
+    bool _failed;
 
     template< typename U >
     auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
     {
-        return parse_rec( _rep, res, b, e );
+        _match = Match::None;
+        _failed = false;
+        return _parse_rec( _rep, res, b, e );
     }
 
     template< typename U >
-    auto parse_rec( ParserT< Validator > &, U &, Tokens::iterator b, Tokens::iterator )
+    auto _parse_rec( ParserT< Validator > &, U &, Tokens::iterator b, Tokens::iterator )
     {
         return b;
     }
 
     template< typename Rec, typename U >
-    auto parse_rec( Rec &rec, U &res, Tokens::iterator b, Tokens::iterator e )
+    auto _parse_rec( Rec &rec, U &res, Tokens::iterator b, Tokens::iterator e )
     {
-
         if (b == e)
         {
             return b;
@@ -852,7 +853,7 @@ struct Parser
                 break;
         }
 
-        auto rv = parse_rec( rec.cdr, res, b, e );
+        auto rv = _parse_rec( rec.cdr, res, b, e );
 
         if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
             rec.car.matches( *b ) == _match )
