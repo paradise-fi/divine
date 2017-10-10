@@ -12,6 +12,29 @@ template < typename T >
 struct Array {
     Array() : _data( nullptr ) {}
 
+    ~Array() {
+        erase( begin(), end() );
+    }
+
+    Array( const Array& other ) : _data( nullptr ) {
+        _resize( other.size() );
+        for( int i = 0; i != other.size(); i++ ) {
+            new ( begin() + i ) T( other[ i ] );
+        }
+    };
+
+    Array( Array&& other ) : _data( nullptr ) { swap( other ); };
+
+    Array& operator=( Array other ) {
+        swap( other );
+        return *this;
+    };
+
+    void swap( Array& other ) {
+        using std::swap;
+        swap( _data, other._data );
+    }
+
     using size_type = int;
     using value_type = T;
     using iterator = T *;
