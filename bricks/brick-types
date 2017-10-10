@@ -61,30 +61,41 @@ struct NotPreferred { CONSTEXPR NotPreferred( Preferred ) {} };
 template< typename _T >
 struct Witness { using T = _T; };
 
-struct Eq { typedef bool IsEq; };
+// requires operator==
+struct Eq { };
+
+template< typename Trait, typename Ret, typename T >
+using HatTrait = typename std::enable_if< std::is_base_of< Trait, T >::value, Ret >::type;
 
 template< typename T >
-typename T::IsEq operator!=( const T &a, const T &b ) { return !(a == b); }
-
-struct Ord : Eq { typedef bool IsOrd; };
+using IsEq = HatTrait< Eq, bool, T >;
 
 template< typename T >
-typename T::IsOrd operator<( const T &a, const T &b ) { return !(b <= a); }
+IsEq< T > operator!=( const T &a, const T &b ) { return !(a == b); }
+
+// requires operator <=
+struct Ord : Eq { };
 
 template< typename T >
-typename T::IsOrd operator>( const T &a, const T &b ) { return !(a <= b); }
+using IsOrd = HatTrait< Ord, bool, T >;
 
 template< typename T >
-typename T::IsOrd operator>=( const T &a, const T &b ) { return b <= a; }
+IsOrd< T > operator<( const T &a, const T &b ) { return !(b <= a); }
 
 template< typename T >
-typename T::IsOrd operator==( const T &a, const T &b ) {
+IsOrd< T > operator>( const T &a, const T &b ) { return !(a <= b); }
+
+template< typename T >
+IsOrd< T > operator>=( const T &a, const T &b ) { return b <= a; }
+
+template< typename T >
+IsOrd< T > operator==( const T &a, const T &b ) {
     return a <= b && b <= a;
 }
 
 template< typename T >
 auto operator<=( const T &a, const T& b )
-    -> decltype( a.as_tuple() <= b.as_tuple(), typename T::IsOrd() )
+    -> decltype( a.as_tuple() <= b.as_tuple(), IsOrd< T >() )
 {
     return a.as_tuple() <= b.as_tuple();
 }
@@ -1234,6 +1245,23 @@ struct IntegerOrd : Ord {
 public:
     IntegerOrd(int val) : val(val) {}
     bool operator<=( const IntegerOrd& o ) const { return val <= o.val; }
+};
+
+struct IntegerEqOrdLt : Ord {
+    int val;
+public:
+    IntegerEqOrdLt(int val) : val(val) {}
+    bool operator==( const IntegerEqOrdLt& o ) const { return val == o.val; }
+    bool operator<( const IntegerEqOrdLt& o ) const { return val < o.val; }
+};
+
+struct IntegerEqOrdBoth : Ord {
+    int val;
+public:
+    IntegerEqOrdBoth(int val) : val(val) {}
+    bool operator==( const IntegerEqOrdBoth& o ) const { return val == o.val; }
+    bool operator<=( const IntegerEqOrdBoth& o ) const { return val <= o.val; }
+    bool operator<( const IntegerEqOrdBoth& o ) const { return val < o.val; }
 };
 
 struct Mixins {
