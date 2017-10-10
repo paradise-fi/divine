@@ -5,6 +5,7 @@
 
 #include <sys/divm.h>
 #include <iterator>
+#include <cstring>
 
 namespace __dios {
 
@@ -42,13 +43,18 @@ struct Array {
     using reverse_iterator = std::reverse_iterator< iterator >;
     using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
-    iterator begin() { return _data; }
-    const_iterator begin() const { return _data; }
-    const_iterator cbegin() const { return _data; }
+    struct _Item {
+        T _items[ 0 ];
+        T *get() { return reinterpret_cast< T * >( _items ); }
+    };
 
-    iterator end() { return _data + size(); }
-    const_iterator end() const { return _data + size(); }
-    const_iterator cend() const { return _data + size(); }
+    iterator begin() { return _data->get(); }
+    const_iterator begin() const { return _data->get(); }
+    const_iterator cbegin() const { return _data->get(); }
+
+    iterator end() { return _data->get() + size(); }
+    const_iterator end() const { return _data->get() + size(); }
+    const_iterator cend() const { return _data->get() + size(); }
 
     reverse_iterator rbegin() { return reverse_iterator( end() ); }
     const_reverse_iterator rbegin() const { return reverse_iterator( end() ); }
@@ -67,7 +73,7 @@ struct Array {
             return;
         auto s = size();
         for ( size_type i = 0; i != s; i++ )
-            _data[ i ].~T();
+            _data->get()[ i ].~T();
         __vm_obj_free( _data );
         _data = nullptr;
     }
@@ -105,8 +111,8 @@ struct Array {
         return last;
     }
 
-    T& operator[]( size_type idx ) { return _data[ idx ]; }
-    const T& operator[]( size_type idx ) const { return _data[ idx ]; }
+    T& operator[]( size_type idx ) { return _data->get()[ idx ]; }
+    const T& operator[]( size_type idx ) const { return _data->get()[ idx ]; }
 
     void _resize( size_type n ) {
         if ( n == 0 ) {
@@ -115,12 +121,12 @@ struct Array {
             _data = nullptr;
         }
         else if ( empty() )
-            _data = static_cast< T * >( __vm_obj_make( n * sizeof( T ) ) );
+            _data = static_cast< _Item * >( __vm_obj_make( n * sizeof( T ) ) );
         else
             __vm_obj_resize( _data, n * sizeof( T ) );
     }
 
-    T *_data;
+    _Item *_data;
 };
 
 } // namespace __dios
