@@ -55,14 +55,31 @@ struct Array {
     }
 
     template < typename... Args >
-    void emplace_back( Args&&... args ) {
+    T& emplace_back( Args&&... args ) {
         _resize( size() + 1 );
         new ( &back() ) T( std::forward< Args >( args )... );
+        return back();
     }
 
     void pop_back() {
         back().~T();
         _resize( size() - 1 );
+    }
+
+    iterator erase( iterator it ) {
+        return erase( it, std::next( it ) );
+    }
+
+    iterator erase( iterator first, iterator last ) {
+        if ( empty() )
+            return;
+        int origSize = size();
+        int shift = std::distance( first, last );
+        for ( iterator it = first; it != last; it++ )
+            it->~T();
+        memmove( first, last, ( end() - last ) * sizeof( T ) );
+        _resize( origSize - shift );
+        return last;
     }
 
     T& operator[]( size_type idx ) { return _data[ idx ]; }
