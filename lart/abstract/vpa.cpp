@@ -86,8 +86,8 @@ ArgDomains argDomains( const AbstractValues & args ) {
     return doms;
 };
 
-AbstractValues abstractArgs( const RootsSet & roots, const llvm::CallSite & cs ) {
-    return abstractArgs( reachFrom( { roots.begin(), roots.end() } ), cs );
+AbstractValues abstractArgs( const RootsSet * roots, const llvm::CallSite & cs ) {
+    return abstractArgs( reachFrom( { roots->cbegin(), roots->cend() } ), cs );
 }
 
 } // anonymous namespace
@@ -111,9 +111,9 @@ Reached VPA::run( llvm::Module & m ) {
         record( fn );
 
         auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
-        reached[ fn ].argRoots[ key ] = {};
+        reached[ fn ].argRoots[ key ] = std::make_unique< RootsSet >();
 
-        dispach( PropagateDown( a, reached[ fn ].annRoots, nullptr ) );
+        dispach( PropagateDown( a, reached[ fn ].annRoots.get(), nullptr ) );
     }
 
     while ( !tasks.empty() ) {
@@ -133,13 +133,13 @@ Reached VPA::run( llvm::Module & m ) {
 
     // TODO cleanup
 
-    return reached;
+    return std::move( reached );
 }
 
 void VPA::record( llvm::Function * fn ) {
     if ( !reached.count( fn ) ) {
         preprocess( fn );
-        reached[ fn ] = FunctionRoots();
+        reached[ fn ].annRoots = std::make_unique< RootsSet >();
     }
 }
 
@@ -153,11 +153,11 @@ void VPA::stepIn( const StepIn & si ) {
     if ( fn->isIntrinsic() )
         return;
     auto args = abstractArgs( si.parent->roots, si.parent->callsite );
+    auto doms = argDomains( args );
     if ( reached.count( fn ) ) {
         // check argument roots
-        auto doms = argDomains( args );
         if ( reached[ fn ].argRoots.count( doms ) ) {
-            auto rs = reached[ fn ].argRoots[ doms ];
+            auto rs = reached[ fn ].argRoots[ doms ].get();
             auto dom = returns( fn, rs );
             if ( dom != Domain::LLVM )
                 dispach( StepOut( fn, dom, si.parent ) );
@@ -165,9 +165,9 @@ void VPA::stepIn( const StepIn & si ) {
         }
 
         // check annotation roots
-        auto annargs = filterA< llvm::Argument >( reached[ fn ].annRoots );
+        auto annargs = filterA< llvm::Argument >( *reached[ fn ].annRoots );
         if ( doms == argDomains( annargs ) ) {
-            auto dom = returns( fn, {} );
+            auto dom = returns( fn );
             if ( dom != Domain::LLVM )
                 dispach( StepOut( fn, dom, si.parent ) );
             return; // We have already seen 'fn' with this abstract signature
@@ -176,9 +176,11 @@ void VPA::stepIn( const StepIn & si ) {
         record( fn );
     }
 
-    auto doms = argDomains( args );
+    if ( !reached[ fn ].argRoots[ doms ] )
+        reached[ fn ].argRoots[ doms ] = std::make_unique< RootsSet >();
+
     for ( const auto & arg : args )
-        dispach( PropagateDown( arg, reached[ fn ].argRoots[ doms ], si.parent ) );
+        dispach( PropagateDown( arg, reached[ fn ].argRoots[ doms ].get(), si.parent ) );
 }
 
 void VPA::stepOut( const StepOut & so ) {
@@ -193,17 +195,18 @@ void VPA::stepOut( const StepOut & so ) {
                 if ( !reached.count( fn ) ) {
                     record( fn );
                     auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
-                    reached[ fn ].argRoots[ key ] = {};
+                    reached[ fn ].argRoots[ key ] = std::make_unique< RootsSet >();
                 }
-                dispach( PropagateDown( av, reached[ fn ].annRoots, nullptr ) );
+                dispach( PropagateDown( av, reached[ fn ].annRoots.get(), nullptr ) );
             }
         }
     }
 }
 
-Domain VPA::returns( llvm::Function * fn, const RootsSet & rs ) {
+Domain VPA::returns( llvm::Function * fn, const RootsSet * rs ) {
     // TODO cache return results
-    auto roots = unionRoots( reached[ fn ].annRoots, rs );
+    auto roots = rs ? unionRoots( reached[ fn ].annRoots.get(), rs )
+                    : *reached[ fn ].annRoots;
     auto rf = reachFrom( { roots.begin(), roots.end() } );
     for ( auto & v : lart::util::reverse( rf ) )
         if ( v.isa< llvm::ReturnInst >() )
@@ -256,7 +259,7 @@ void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
 }
 
 void VPA::propagateDown( const PropagateDown & t ) {
-    if ( t.roots.count( t.value ) )
+    if ( t.roots->count( t.value ) )
         return; // value has been already propagated in this RootsSet
     if ( !llvm::CallSite( t.value.value ) ) {
         auto o = origin( t.value.value );
@@ -269,11 +272,11 @@ void VPA::propagateDown( const PropagateDown & t ) {
     auto rf = reachFrom( t.value );
     for ( auto & v : lart::util::reverse( rf ) ) {
         if ( v.isa< llvm::AllocaInst >() ) {
-            t.roots.insert( v );
+            t.roots->insert( v );
         } else if ( v.isa< llvm::Argument >() ) {
-            t.roots.insert( v );
+            t.roots->insert( v );
         } else if ( v.isa< llvm::GetElementPtrInst >() ) {
-            t.roots.insert( v );
+            t.roots->insert( v );
         } else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
             auto av = AbstractValue( s->getPointerOperand(), v.domain );
             if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( s->getPointerOperand() ) )
@@ -284,7 +287,7 @@ void VPA::propagateDown( const PropagateDown & t ) {
             if ( t.value.value != v.value )
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
             else
-                t.roots.insert( v ); // we are propagating from this call
+                t.roots->insert( v ); // we are propagating from this call
         } else if ( v.isa< llvm::ReturnInst >() ) {
             dispach( StepOut( getFunction( v.value ), v.domain, t.parent ) );
         }
@@ -294,7 +297,7 @@ void VPA::propagateDown( const PropagateDown & t ) {
 void VPA::propagateUp( const PropagateUp & t ) {
     auto av =  AbstractValue{ t.arg, t.domain };
     if ( t.parent ) {
-        auto r = reachFrom( { t.parent->roots.begin(), t.parent->roots.end() } );
+        auto r = reachFrom( { t.parent->roots->begin(), t.parent->roots->end() } );
         auto arg = t.parent->callsite->getOperand( t.arg->getArgNo() );
         auto abs = std::find_if( r.begin(), r.end(), [&] ( const auto & a ) {
             return a.value == arg;
@@ -302,7 +305,8 @@ void VPA::propagateUp( const PropagateUp & t ) {
         if ( abs != r.end() )
             return; // already abstracted
     }
-    t.roots.insert( av );
+    t.roots->insert( av );
+    // TODO remap fn map key
     // TODO propagation through multiple calls
     assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden.");
     if ( t.parent ) {
@@ -314,11 +318,11 @@ void VPA::propagateUp( const PropagateUp & t ) {
             auto fn = getFunction( u );
             record( fn );
             auto key = ArgDomains( fn->arg_size(), Domain::LLVM );
-            reached[ fn ].argRoots[ key ] = {};
+            reached[ fn ].argRoots[ key ] = std::make_unique< RootsSet >();
 
             auto o = origin( u->getOperand( t.arg->getArgNo() ) );
             auto root = AbstractValue{ o, t.domain };
-            dispach( PropagateDown( root, reached[ fn ].annRoots, nullptr ) );
+            dispach( PropagateDown( root, reached[ fn ].annRoots.get(), nullptr ) );
         }
     }
 }

@@ -12,10 +12,11 @@ namespace lart {
 namespace abstract {
 
 using RootsSet = std::set< AbstractValue >;
+using RootsSetPtr = std::unique_ptr< RootsSet >;
 using ArgDomains = std::vector< Domain >;
 struct FunctionRoots {
-    RootsSet annRoots;                         // annotation roots
-    std::map< ArgDomains, RootsSet > argRoots; // argument dependent roots
+    RootsSetPtr annRoots; // annotation roots
+    std::map< ArgDomains, RootsSetPtr > argRoots; // argument dependent roots
 };
 
 using Reached = std::map< llvm::Function *, FunctionRoots >;
@@ -25,24 +26,24 @@ struct Parent;
 using ParentPtr = std::shared_ptr< Parent >;
 
 struct Parent {
-    explicit Parent( llvm::CallSite cs, ParentPtr p, RootsSet & r )
+    explicit Parent( llvm::CallSite cs, ParentPtr p, RootsSet * r )
         : callsite( cs ), parent( p ), roots( r ) {}
 
     llvm::CallSite callsite;
     ParentPtr parent;
-    RootsSet & roots;
+    RootsSet * roots;
 };
 
-inline ParentPtr make_parent( llvm::CallSite cs, ParentPtr pp, RootsSet & rs ) {
+inline ParentPtr make_parent( llvm::CallSite cs, ParentPtr pp, RootsSet * rs ) {
     return std::make_shared< Parent >( cs, pp, rs );
 }
 
 struct PropagateDown {
-    explicit PropagateDown( AbstractValue v, RootsSet & r, ParentPtr p )
+    explicit PropagateDown( AbstractValue v, RootsSet * r, ParentPtr p )
         : value( v ), roots( r ), parent( p ) {}
 
     AbstractValue value;        // propagated value
-    RootsSet& roots;            // roots in which is value propagated
+    RootsSet * roots;            // roots in which is value propagated
     ParentPtr parent;           // parent from which was the function called
 };
 
@@ -51,12 +52,12 @@ inline bool operator==( const PropagateDown & a, const PropagateDown & b ) {
 }
 
 struct PropagateFromGEP {
-    explicit PropagateFromGEP( llvm::Value * a, AbstractValue v, RootsSet& r, ParentPtr p )
+    explicit PropagateFromGEP( llvm::Value * a, AbstractValue v, RootsSet * r, ParentPtr p )
         : value( a ), gep( v ), roots( r ), parent( p ) {}
 
     llvm::Value * value; // value root
     AbstractValue gep; // original GEP
-    RootsSet& roots;
+    RootsSet * roots;
     ParentPtr parent;
 };
 
@@ -90,12 +91,12 @@ inline bool operator==( const StepOut & a, const StepOut & b) {
 }
 
 struct PropagateUp {
-    explicit PropagateUp( llvm::Argument * a, Domain d, RootsSet& r, ParentPtr p )
+    explicit PropagateUp( llvm::Argument * a, Domain d, RootsSet * r, ParentPtr p )
         : arg( a ), domain( d ), roots( r ), parent( p ) {}
 
     llvm::Argument * arg;
     Domain domain;
-    RootsSet& roots;
+    RootsSet * roots;
     ParentPtr parent;
 };
 
@@ -124,7 +125,7 @@ private:
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );
 
-    Domain returns( llvm::Function *, const RootsSet & );
+    Domain returns( llvm::Function *, const RootsSet * rs = nullptr );
 
     std::deque< Task > tasks;
 
@@ -135,7 +136,7 @@ template< typename A, typename B >
 static inline std::set< AbstractValue > unionRoots( const A& a, const B& b ) {
     std::set< AbstractValue > u;
     using std::set_union;
-    set_union( a.begin(), a.end(), b.begin(), b.end(), std::inserter( u, u.begin() ) );
+    set_union( a->begin(), a->end(), b->begin(), b->end(), std::inserter( u, u.begin() ) );
     return u;
 }
 
