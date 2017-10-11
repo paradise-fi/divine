@@ -98,6 +98,7 @@ void Substitution::run( llvm::Module & m ) {
     { // begin RAII substitution builder
     auto sb = make_sbuilder( data.tmap, fns, m );
     auto functions = abstractFunctions( m, data.tmap );
+
     for ( auto & fn : functions ) {
         assert( fn->getName() != "main" );
         fns[ fn ] = sb.prototype( fn );
@@ -156,13 +157,18 @@ void Substitution::run( llvm::Module & m ) {
 
     } // end RAII substitution builder
 
-    auto remapArg = [] ( llvm::Argument & a ) {
+    auto remapArg = [&] ( llvm::Argument & a ) {
         if ( const auto & cs = llvm::CallSite( *a.user_begin() ) )
             if ( cs.getCalledFunction()->hasName() &&
                  cs.getCalledFunction()->getName().startswith( "__lart_lift" ) )
             {
                 cs.getInstruction()->replaceAllUsesWith( &a );
                 cs.getInstruction()->eraseFromParent();
+            }
+        if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( *a.user_begin() ) )
+            if ( bc->getSrcTy() == bc->getDestTy() ) {
+                bc->replaceAllUsesWith( &a );
+                bc->eraseFromParent();
             }
     };
 

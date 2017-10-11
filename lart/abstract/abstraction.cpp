@@ -114,6 +114,7 @@ void Abstraction::run( llvm::Module & m ) {
             CallInterupt().run( changed );
         }
     }
+
     for ( auto & fn : lart::util::reverse( remove ) )
         fn->eraseFromParent();
 }

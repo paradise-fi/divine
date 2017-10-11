@@ -91,10 +91,13 @@ struct Substituter {
 
 private:
     llvm::Value * argLift( llvm::Argument * arg ) {
+        auto rty = process( arg->getType() );
+        if ( arg->getType()->isPointerTy() )
+            return IRB( getFunction( arg )->front().begin() ).CreateBitCast( arg, rty );
+
         auto dom = tmap.origin( stripPtrs( arg->getType() ) ).second;
         std::string name = "__lart_lift_" + DomainTable[ dom ];
         auto abstraction = abs[ dom ];
-        auto rty = process( arg->getType() );
         auto fty = llvm::FunctionType::get( rty, { arg->getType() }, false );
         auto lift = getModule( arg )->getOrInsertFunction( name, fty );
         return IRB( getFunction( arg )->front().begin() ).CreateCall( lift, { arg } );
