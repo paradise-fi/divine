@@ -7,14 +7,90 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <deque>
 #include <lart/abstract/value.h>
+#include <lart/abstract/util.h>
 
 namespace lart {
 namespace abstract {
 
 using RootsSet = std::set< AbstractValue >;
 using RootsSetPtr = std::unique_ptr< RootsSet >;
-using ArgDomains = std::vector< Domain >;
+
+namespace {
+
+template< typename A, typename B >
+static inline std::set< AbstractValue > unionRoots( const A& a, const B& b ) {
+    std::set< AbstractValue > u;
+    std::set_union( a->begin(), a->end(), b->begin(), b->end(), std::inserter( u, u.begin() ) );
+    return u;
+}
+
+} // anonymous namespace
+
+
 struct FunctionRoots {
+
+    RootsSet * annotations() const {
+        return annRoots.get();
+    }
+
+    RootsSet * argDepRoots( const ArgDomains & doms ) {
+        if ( !argRoots.count( doms ) )
+            argRoots[ doms ] = std::make_unique< RootsSet >();
+        return argRoots[ doms ].get();
+    }
+
+    RootsSet roots( const ArgDomains & doms ) const {
+        return unionRoots( annRoots, argRoots.at( doms ).get() );
+    }
+
+    void insert( AbstractValue av, const ArgDomains & doms ) {
+        assert( !doms.empty() );
+        if ( av.isa< llvm::Argument >() )
+            assert( false && "Insert argument" );
+        argRoots[ doms ]->insert( av );
+    }
+
+    void insert( AbstractValue av ) {
+        if ( av.isa< llvm::Argument >() )
+            assert( false && "Insert argument" );
+        annRoots->insert( av );
+    }
+
+    void init( size_t argSize ) {
+        if ( !annRoots )
+            annRoots = std::make_unique< RootsSet >();
+        auto key = ArgDomains( argSize, Domain::LLVM );
+        argRoots[ key ] = std::make_unique< RootsSet >();
+    }
+
+
+    bool has( const ArgDomains & doms ) const {
+        return argRoots.count( doms );
+    }
+
+    using ArgRootsSets = std::map< ArgDomains, RootsSetPtr >;
+    using RootsIterator = ArgRootsSets::iterator;
+
+    class iterator: public std::iterator< std::bidirectional_iterator_tag, RootsSet > {
+    public:
+        explicit iterator( RootsIterator roots, FunctionRoots & froots )
+            : roots( roots ), froots( froots ) {}
+
+        iterator& operator++() { roots++; return *this; }
+        iterator operator++( int ) { iterator retval = *this; ++(*this); return retval; }
+
+        bool operator==( iterator other ) const { return roots == other.roots; }
+        bool operator!=( iterator other ) const { return !( *this == other ); }
+        value_type operator*() const { return unionRoots( roots->second, froots.annRoots ); }
+    private:
+        RootsIterator roots;
+        FunctionRoots & froots;
+    };
+
+    iterator begin() { return iterator( argRoots.begin(), *this ); }
+    iterator end() { return iterator( argRoots.end(), *this ); }
+
+private:
     RootsSetPtr annRoots; // annotation roots
     std::map< ArgDomains, RootsSetPtr > argRoots; // argument dependent roots
 };
@@ -131,14 +207,6 @@ private:
 
     Reached reached;
 };
-
-template< typename A, typename B >
-static inline std::set< AbstractValue > unionRoots( const A& a, const B& b ) {
-    std::set< AbstractValue > u;
-    using std::set_union;
-    set_union( a->begin(), a->end(), b->begin(), b->end(), std::inserter( u, u.begin() ) );
-    return u;
-}
 
 } // namespace abstract
 } // namespace lart

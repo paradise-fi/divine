@@ -49,6 +49,8 @@ using Insts = std::vector< llvm::Instruction * >;
 using Args = Values;
 using ArgTypes = Types;
 
+using ArgDomains = std::vector< Domain >;
+
 template< typename Values >
 static inline Types typesOf( const Values & vs ) {
     return query::query( vs ).map( [] ( const auto & v ) {
@@ -284,6 +286,23 @@ static inline llvm::Function * getFunction( llvm::Value * val ) {
 static inline llvm::Module * getModule( llvm::Value * val ) {
     return getFunction( val )->getParent();
 }
+
+template< typename Arguments >
+static inline ArgDomains argDomains( llvm::Function * fn, const Arguments & args ) {
+    auto doms = ArgDomains( fn->arg_size(),  Domain::LLVM );
+    for ( const auto & a : args )
+        doms[ a.template get< llvm::Argument >()->getArgNo() ] = a.domain;
+    return doms;
+};
+
+template< typename Arguments >
+static inline ArgDomains argDomains( const Arguments & args ) {
+    if ( args.empty() )
+        return {};
+    auto fn = getFunction( args[ 0 ].value );
+    return argDomains( fn, args );
+};
+
 
 } // namespace abstract
 } // namespace lart

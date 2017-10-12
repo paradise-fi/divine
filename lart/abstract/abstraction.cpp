@@ -42,11 +42,9 @@ void Abstraction::run( llvm::Module & m ) {
     Map< FunctionNode, llvm::Function * > prototypes;
 
     std::vector< FunctionNode > sorted;
-    for ( auto & fn : VPA().run( m ) ) {
-        const auto& as = fn.second.annRoots;
-        for ( auto & rs : fn.second.argRoots )
-            sorted.emplace_back( fn.first, unionRoots( as, rs.second ) );
-    }
+    for ( auto & fn : VPA().run( m ) )
+        for ( const auto & rs : fn.second )
+            sorted.emplace_back( fn.first, rs );
 
     std::sort( sorted.begin(), sorted.end(), [] ( FunctionNode l, FunctionNode r ) {
         auto arghash = [] ( const FunctionNode & fn ) -> size_t {
