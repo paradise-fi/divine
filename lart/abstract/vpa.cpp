@@ -142,8 +142,7 @@ void VPA::stepIn( const StepIn & si ) {
     auto doms = argDomains( args );
     if ( reached.count( fn ) ) {
         if ( reached[ fn ].has( doms ) ) {
-            auto rs = reached[ fn ].argDepRoots( doms );
-            auto dom = returns( fn, rs );
+            auto dom = reached[ fn ].returns( doms );
             if ( dom != Domain::LLVM )
                 dispach( StepOut( fn, dom, si.parent ) );
             return; // We have already seen 'fn' with this abstract signature
@@ -152,8 +151,10 @@ void VPA::stepIn( const StepIn & si ) {
         record( fn );
     }
 
-    for ( const auto & arg : args )
-        dispach( PropagateDown( arg, reached[ fn ].argDepRoots( doms ), si.parent ) );
+    for ( const auto & arg : args ) {
+        auto roots = reached[ fn ].argDepRoots( doms );
+        dispach( PropagateDown( arg, roots, si.parent ) );
+    }
 }
 
 void VPA::stepOut( const StepOut & so ) {
@@ -171,17 +172,6 @@ void VPA::stepOut( const StepOut & so ) {
             }
         }
     }
-}
-
-Domain VPA::returns( llvm::Function * fn, const RootsSet * rs ) {
-    // TODO cache return results
-    auto doms = argDomains( fn, filterA< llvm::Argument >( *rs ) );
-    auto roots = reached[ fn ].roots( doms );
-    auto rf = reachFrom( { roots.begin(), roots.end() } );
-    for ( auto & v : lart::util::reverse( rf ) )
-        if ( v.isa< llvm::ReturnInst >() )
-            return v.domain;
-    return Domain::LLVM;
 }
 
 llvm::Value * origin( llvm::Value * value  ) {
@@ -244,7 +234,7 @@ void VPA::propagateDown( const PropagateDown & t ) {
         if ( v.isa< llvm::AllocaInst >() ) {
             t.roots->insert( v );
         } else if ( v.isa< llvm::Argument >() ) {
-            t.roots->insert( v );
+            reached[ getFunction( v.value ) ].insert( v, t.roots );
         } else if ( v.isa< llvm::GetElementPtrInst >() ) {
             t.roots->insert( v );
         } else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
@@ -275,9 +265,9 @@ void VPA::propagateUp( const PropagateUp & t ) {
         if ( abs != r.end() )
             return; // already abstracted
     }
-    t.roots->insert( av );
 
-    // TODO propagation through multiple calls
+    reached[ getFunction( av.value ) ].insert( av, t.roots );
+
     assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden.");
     if ( t.parent ) {
         auto o = origin( t.parent->callsite->getOperand( t.arg->getArgNo() ) );

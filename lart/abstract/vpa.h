@@ -43,16 +43,35 @@ struct FunctionRoots {
         return unionRoots( annRoots, argRoots.at( doms ).get() );
     }
 
-    void insert( AbstractValue av, const ArgDomains & doms ) {
-        assert( !doms.empty() );
-        if ( av.isa< llvm::Argument >() )
-            assert( false && "Insert argument" );
-        argRoots[ doms ]->insert( av );
+    RootsSet roots( RootsSet * rs ) const {
+        return unionRoots( annRoots, rs );
+    }
+
+    void insert( AbstractValue av, RootsSet * rs ) {
+        if ( auto a = av.get< llvm::Argument >() ) {
+            if ( rs == annRoots.get() ) {
+                auto fn = getFunction( a );
+                auto doms = argDomains( fn, filterA< llvm::Argument >( *rs ) );
+                rs = argRoots[ doms ].get();
+                annRoots->insert( av );
+            }
+
+            auto roots = std::find_if( argRoots.begin(), argRoots.end(),
+                [&] ( const auto & r ) { return r.second.get() == rs; } );
+
+            assert( roots != argRoots.end() );
+            if ( roots->first[ a->getArgNo() ] == Domain::LLVM ) {
+                ArgDomains doms = roots->first;
+                doms[ a->getArgNo() ] = av.domain;
+                argRoots.insert( { doms, std::move( roots->second ) } );
+                argRoots.erase( roots );
+            }
+        }
+        rs->insert( av );
     }
 
     void insert( AbstractValue av ) {
-        if ( av.isa< llvm::Argument >() )
-            assert( false && "Insert argument" );
+        assert( !av.isa< llvm::Argument >() );
         annRoots->insert( av );
     }
 
@@ -67,6 +86,17 @@ struct FunctionRoots {
     bool has( const ArgDomains & doms ) const {
         return argRoots.count( doms );
     }
+
+    Domain returns( const ArgDomains & doms ) const {
+        // TODO cache return results
+        auto rs = roots( doms );
+        auto rf = reachFrom( { rs.begin(), rs.end() } );
+        for ( auto & v : lart::util::reverse( rf ) )
+            if ( v.isa< llvm::ReturnInst >() )
+                return v.domain;
+        return Domain::LLVM;
+    }
+
 
     using ArgRootsSets = std::map< ArgDomains, RootsSetPtr >;
     using RootsIterator = ArgRootsSets::iterator;
@@ -200,8 +230,6 @@ private:
 
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );
-
-    Domain returns( llvm::Function *, const RootsSet * rs = nullptr );
 
     std::deque< Task > tasks;
 

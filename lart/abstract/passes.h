@@ -1047,11 +1047,13 @@ struct Abstraction {
                         init( &i );
                     })";
         auto m = test_abstraction( annotation + s );
-        auto call = m->getFunction( "_Z4initPi.2" );
+        auto init = m->getFunction( "_Z4initPi.2" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+        ASSERT_EQ( init->getNumUses(), 1 );
+        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType() );
+        ASSERT_EQ( init->getFunctionType()->getParamType( 1 )
+                 , alloca->getReturnType()->getPointerElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -1071,6 +1073,63 @@ struct Abstraction {
         ASSERT_EQ( call->getNumUses(), 1 );
         ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( output_int_arg_3 ) {
+        auto s = R"(
+                    void init_impl( int * i ) {
+                        _SYM int v;
+                        *i = v;
+                    }
+                    void init( int * i ) {
+                        init_impl( i );
+                    }
+                    int main() {
+                        int i;
+                        init( &i );
+                        int v = i;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto init = m->getFunction( "_Z4initPi.2" );
+        auto init_impl = m->getFunction( "_Z9init_implPi.3" );
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT_EQ( init->getNumUses(), 1 );
+        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType() );
+        ASSERT_EQ( init_impl->getNumUses(), 1 );
+        ASSERT_EQ( init_impl->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( output_int_arg_4 ) {
+        auto s = R"(
+                    void init_impl( int * i, int v ) {
+                        *i = v;
+                    }
+                    void init( int * i ) {
+                        _SYM int v;
+                        init_impl( i, v );
+                    }
+                    int main() {
+                        int i;
+                        init( &i );
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto init = m->getFunction( "_Z4initPi.2" );
+        auto init_impl = m->getFunction( "_Z9init_implPii.3" );
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT_EQ( init->getNumUses(), 1 );
+        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType() );
+        ASSERT_EQ( init_impl->getNumUses(), 1 );
+        ASSERT_EQ( init_impl->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType() );
+        ASSERT_EQ( init_impl->getFunctionType()->getParamType( 1 )
+                 , alloca->getReturnType()->getPointerElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
