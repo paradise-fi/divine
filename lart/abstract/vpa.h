@@ -8,7 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <deque>
 #include <lart/abstract/value.h>
 #include <lart/abstract/util.h>
-
+#include <lart/abstract/fieldtrie.h>
 namespace lart {
 namespace abstract {
 
@@ -25,7 +25,6 @@ static inline std::set< AbstractValue > unionRoots( const A& a, const B& b ) {
 }
 
 } // anonymous namespace
-
 
 struct FunctionRoots {
 
@@ -157,21 +156,6 @@ inline bool operator==( const PropagateDown & a, const PropagateDown & b ) {
     return std::tie( a.value, a.roots, a.parent ) == std::tie( b.value, b.roots, b.parent );
 }
 
-struct PropagateFromGEP {
-    explicit PropagateFromGEP( llvm::Value * a, AbstractValue v, RootsSet * r, ParentPtr p )
-        : value( a ), gep( v ), roots( r ), parent( p ) {}
-
-    llvm::Value * value; // value root
-    AbstractValue gep; // original GEP
-    RootsSet * roots;
-    ParentPtr parent;
-};
-
-inline bool operator==( const PropagateFromGEP & a, const PropagateFromGEP & b ) {
-    return std::tie( a.value, a.gep, a.roots, a.parent ) ==
-           std::tie( b.value, b.gep, b.roots, b.parent );
-}
-
 struct StepIn {
     explicit StepIn( ParentPtr p ) : parent( p ) {}
 
@@ -212,7 +196,7 @@ inline bool operator==( const PropagateUp & a, const PropagateUp & b) {
            std::tie( b.arg, b.domain, b.roots, b.parent );
 }
 
-using Task = std::variant< PropagateDown, PropagateFromGEP, PropagateUp, StepIn, StepOut >;
+using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut >;
 
 // ValuesPropagationAnalysis
 struct VPA {
@@ -225,15 +209,20 @@ private:
     void dispach( Task && );
     void preprocess( llvm::Function * );
     void propagateDown( const PropagateDown & );
+    void propagateScalarDown( const PropagateDown & );
+    void propagateStructDown( const PropagateDown & );
     void propagateUp( const PropagateUp & );
-    void propagateFromGEP( const PropagateFromGEP & );
+    void propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent );
 
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );
 
     std::deque< Task > tasks;
 
+    AbstractFields< llvm::Value * > fields;
     Reached reached;
+
+    std::set< llvm::Value * > seen;
 };
 
 } // namespace abstract

@@ -80,6 +80,39 @@ AbstractValues abstractArgs( const RootsSet * roots, const llvm::CallSite & cs )
     return abstractArgs( reachFrom( { roots->cbegin(), roots->cend() } ), cs );
 }
 
+llvm::Value * origin( llvm::Value * value  ) {
+    if ( auto a = llvm::dyn_cast< llvm::AllocaInst >( value ) )
+        return a;
+    if ( auto a = llvm::dyn_cast< llvm::Argument >( value ) )
+        return a;
+    if ( auto l = llvm::dyn_cast< llvm::LoadInst >( value ) )
+        return origin( l->getPointerOperand() );
+    if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( value ) )
+        return origin( g->getPointerOperand() );
+    if ( auto c = llvm::dyn_cast< llvm::CastInst >( value ) )
+        return origin( c->getOperand( 0 ) );
+    UNREACHABLE( "Dont know how to get root!." );
+}
+
+llvm::Argument * isArgStoredTo( llvm::Value * v ) {
+    if ( auto a = llvm::dyn_cast< llvm::Argument >( v ) )
+        return a;
+
+    auto stores = llvmFilter< llvm::StoreInst >( v->users() );
+    for ( auto & s : stores )
+        if ( auto a = llvm::dyn_cast< llvm::Argument >( s->getValueOperand() ) )
+            return a;
+    return nullptr;
+}
+
+ValueField< llvm::Value * > createFieldPath( llvm::GetElementPtrInst * gep ) {
+    auto inds = query::query( gep->idx_begin(), gep->idx_end() )
+        .map ( [] ( const auto & idx ) -> size_t {
+            return llvm::cast< llvm::ConstantInt >( idx )->getZExtValue();
+        } ).freeze();
+    return { gep->getPointerOperand(), gep, inds };
+}
+
 } // anonymous namespace
 
 
@@ -112,8 +145,6 @@ Reached VPA::run( llvm::Module & m ) {
             stepIn( *si );
         else if ( auto so = std::get_if< StepOut >( &t ) )
             stepOut( *so );
-        else if ( auto pfg = std::get_if< PropagateFromGEP >( &t ) )
-            propagateFromGEP( *pfg );
         tasks.pop_front();
     }
 
@@ -174,53 +205,34 @@ void VPA::stepOut( const StepOut & so ) {
     }
 }
 
-llvm::Value * origin( llvm::Value * value  ) {
-    if ( auto a = llvm::dyn_cast< llvm::AllocaInst >( value ) )
-        return a;
-    if ( auto a = llvm::dyn_cast< llvm::Argument >( value ) )
-        return a;
-    if ( auto l = llvm::dyn_cast< llvm::LoadInst >( value ) )
-        return origin( l->getPointerOperand() );
-    if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( value ) )
-        return origin( g->getPointerOperand() );
-    if ( auto c = llvm::dyn_cast< llvm::CastInst >( value ) )
-        return origin( c->getOperand( 0 ) );
-    UNREACHABLE( "Dont know how to get root!." );
-}
-
-llvm::Argument * isArgStoredTo( llvm::Value * v ) {
-    if ( auto a = llvm::dyn_cast< llvm::Argument >( v ) )
-        return a;
-
-    auto stores = llvmFilter< llvm::StoreInst >( v->users() );
-    for ( auto & s : stores )
-        if ( auto a = llvm::dyn_cast< llvm::Argument >( s->getValueOperand() ) )
-            return a;
-    return nullptr;
-}
-
-void VPA::propagateFromGEP( const PropagateFromGEP & t ) {
-    auto rgep = t.gep.get< llvm::GetElementPtrInst >();
-
-    // TODO maybe we need to compute reachable set from alloca
-    auto geps = query::query( llvmFilter< llvm::GetElementPtrInst >( t.value->users() ) ).freeze();
-
-    for ( auto & gep : geps )
-        if ( std::equal( gep->idx_begin(), gep->idx_end(), rgep->idx_begin(), rgep->idx_end() ) ) {
-            auto av = AbstractValue{ gep, t.gep.domain };
-            dispach( PropagateDown( av, t.roots, t.parent ) );
+void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent ) {
+    llvm::Value * curr = gep, * prev = nullptr;
+    while ( curr != prev ) {
+        prev = curr;
+        if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( curr ) ) {
+            fields.insert( createFieldPath( g ), dom );
+            curr = g->getPointerOperand();
         }
+    }
 
-    auto rf = reachFrom( AbstractValue{ t.value, Domain::Undefined } );
-    for ( auto & v : lart::util::reverse( rf ) )
-        if ( auto mem = v.safeGet< llvm::MemIntrinsic >() )
-            if ( t.value != mem->getDest() )
-                dispach( PropagateFromGEP( mem->getDest(), t.gep, t.roots, t.parent ) );
+    // curr is now origin of gep
+    assert( llvm::isa< llvm::AllocaInst >( curr ) );
+    dispach( PropagateDown( AbstractValue{ curr, Domain::Undefined }, roots, parent ) );
 }
 
-void VPA::propagateDown( const PropagateDown & t ) {
-    if ( t.roots->count( t.value ) )
-        return; // value has been already propagated in this RootsSet
+void VPA::propagateStructDown( const PropagateDown & t ) {
+    auto rf = reachFrom( t.value );
+    for ( auto & v : lart::util::reverse( rf ) ) {
+        if ( auto gep = v.safeGet< llvm::GetElementPtrInst >() )
+            if ( auto dom = fields.getDomain( createFieldPath( gep ) ) ) {
+                auto av = AbstractValue{ gep, dom.value() };
+                t.roots->insert( av );
+                dispach( PropagateDown( av, t.roots, t.parent ) );
+            }
+    }
+}
+
+void VPA::propagateScalarDown( const PropagateDown & t ) {
     if ( !llvm::CallSite( t.value.value ) ) {
         auto o = origin( t.value.value );
         if ( auto a = isArgStoredTo( o ) ) {
@@ -240,7 +252,7 @@ void VPA::propagateDown( const PropagateDown & t ) {
         } else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
             auto av = AbstractValue( s->getPointerOperand(), v.domain );
             if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( s->getPointerOperand() ) )
-                dispach( PropagateFromGEP( gep->getPointerOperand(), av, t.roots, t.parent ) );
+                propagateFromGEP( gep, v.domain, t.roots, t.parent );
             else
                 dispach( PropagateDown( av, t.roots, t.parent ) );
         } else if ( auto cs = llvm::CallSite( v.value ) ) {
@@ -252,6 +264,17 @@ void VPA::propagateDown( const PropagateDown & t ) {
             dispach( StepOut( getFunction( v.value ), v.domain, t.parent ) );
         }
     }
+}
+
+void VPA::propagateDown( const PropagateDown & t ) {
+    if ( seen.count( t.value.value ) )
+        return; // The value has been already propagated.
+    auto type = stripPtrs( t.value.value->getType() );
+    if ( type->isStructTy() )
+        propagateStructDown( t );
+    if ( type->isSingleValueType() )
+        propagateScalarDown( t );
+    seen.insert( t.value.value );
 }
 
 void VPA::propagateUp( const PropagateUp & t ) {
