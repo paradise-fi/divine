@@ -82,9 +82,9 @@ struct GenericPointer : brick::types::Comparable
     void raw( PointerRaw r ) { _rep.raw = r; }
     bool null() const { return object() == 0; } /* check whether a pointer is null */
 
-    bool operator<= ( GenericPointer o ) const
+    bool operator< ( GenericPointer o ) const
     {
-        return _rep.raw <= o._rep.raw;
+        return _rep.raw < o._rep.raw;
     }
 
     auto type() { return _rep.type; }
