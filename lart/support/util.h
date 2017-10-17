@@ -504,11 +504,11 @@ struct BBEdge : brick::types::Ord {
     }
 };
 
-inline util::Set< BBEdge > getBackEdges( llvm::Function &fn ) {
+inline util::StableSet< BBEdge > getBackEdges( llvm::Function &fn ) {
     std::vector< llvm::succ_iterator > stack;
     util::Set< llvm::BasicBlock * > inStack;
     util::Set< llvm::BasicBlock * > seen;
-    util::Set< BBEdge > backedges;
+    util::StableSet< BBEdge > backedges;
     stack.emplace_back( succ_begin( fn.begin() ) );
 
     while ( !stack.empty() ) {
@@ -519,7 +519,8 @@ inline util::Set< BBEdge > getBackEdges( llvm::Function &fn ) {
         } else {
             auto *dst = *stack.back();
             if ( inStack.count( dst ) )
-                backedges.emplace( stack.back().getSource(), stack.back().getSuccessorIndex() );
+                backedges.insert( BBEdge{ stack.back().getSource(),
+                                          stack.back().getSuccessorIndex() } );
             ++stack.back();
             if ( seen.insert( dst ).second ) {
                 stack.emplace_back( succ_begin( dst ) );
