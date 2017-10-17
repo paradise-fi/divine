@@ -43,6 +43,7 @@ struct Debug
 {
     AutoIncMap< _DiOS_TaskHandle, int > hids;
     ArrayMap< _DiOS_TaskHandle, short > trace_indent;
+    ArrayMap< _DiOS_TaskHandle, String > trace_buf;
     short kernel_indent = 0;
 };
 

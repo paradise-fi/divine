@@ -4,6 +4,8 @@
 #include <signal.h>
 #include <dios.h>
 #include <dios/core/memory.hpp>
+#include <dios/core/trace.hpp>
+#include <abstract/common.h>
 #include <sys/fault.h>
 #include <sys/trace.h>
 
@@ -172,14 +174,18 @@ struct VmTraceFile : File {
     bool read( char *, size_t, size_t & ) override {
         return false;
     }
-    bool write( const char *buffer, size_t, size_t &length ) override {
+
+    __attribute__(( __annotate__( "divine.debugfn" ) ))
+    bool write( const char *buffer, size_t, size_t &length ) override
+    {
         if ( buffer[ length - 1 ] == 0 )
-            __dios_trace_t( buffer );
-        else {
+            __dios::traceInternal( 0, "%s", buffer );
+        else
+        {
             char buf[ length + 1 ];
             std::copy( buffer, buffer + length, buf );
             buf[ length ] = 0;
-            __dios_trace_t( buf );
+            __dios::traceInternal( 0, "%s", buf );
         }
         return true;
     }
@@ -188,7 +194,8 @@ struct VmTraceFile : File {
 };
 
 
-struct VmBuffTraceFile : File {
+struct VmBuffTraceFile : File
+{
 
     size_t size() const override {
         return 0;
@@ -202,26 +209,40 @@ struct VmBuffTraceFile : File {
     bool read( char *, size_t, size_t & ) override {
         return false;
     }
-    bool write( const char *buffer, size_t, size_t & length ) override {
-        _buffer.insert(_buffer.length(), buffer, length );
-        auto newLinePos = _buffer.find_last_of("\n");
-        if(newLinePos != std::string::npos ) {
-            __dios_trace_t( _buffer.substr(0, newLinePos).c_str());
-            _buffer.erase(0, newLinePos+1);
+
+    __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
+    void do_write( const char *data, size_t &length )
+    {
+        auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_get_task_handle() ) ];
+        buf.insert( buf.length(), data, length );
+        auto nl = buf.find_last_of( "\n" );
+
+        {
+            __dios::traceInternal( 0, "%s", buf.substr( 0, nl ).c_str() );
+            buf.erase( 0, nl + 1 );
         }
+        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+    }
+
+    __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
+    void do_flush()
+    {
+        for ( auto &b : get_debug().trace_buf )
+        {
+            __dios::traceInternal( 0, "%s", b.second.c_str() );
+            b.second.clear();
+        }
+    }
+
+    bool write( const char *data, size_t, size_t & length ) override
+    {
+        do_write( data, length );
         return true;
     }
-    void clear() override {
-        _buffer.clear();
-    }
-    ~VmBuffTraceFile() {
-        if(_buffer.length() > 0){
-             __dios_trace_t(_buffer.c_str());
-        }
-        _buffer.clear();
-    }
-private:
-    __dios::String _buffer;
+
+    void clear() override {}
+    ~VmBuffTraceFile() { do_flush(); }
+
 };
 
 struct StandardInput : File {
