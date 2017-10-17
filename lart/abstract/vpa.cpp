@@ -224,12 +224,16 @@ void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet 
 void VPA::propagateStructDown( const PropagateDown & t ) {
     auto rf = reachFrom( t.value );
     for ( auto & v : lart::util::reverse( rf ) ) {
-        if ( auto gep = v.safeGet< llvm::GetElementPtrInst >() )
+        if ( auto gep = v.safeGet< llvm::GetElementPtrInst >() ) {
             if ( auto dom = fields.getDomain( createFieldPath( gep ) ) ) {
                 auto av = AbstractValue{ gep, dom.value() };
                 t.roots->insert( av );
                 dispach( PropagateDown( av, t.roots, t.parent ) );
             }
+        }
+        if ( auto bc = v.safeGet< llvm::BitCastInst >() ) {
+            fields.alias( bc->getOperand( 0 ), bc );
+        }
     }
 }
 

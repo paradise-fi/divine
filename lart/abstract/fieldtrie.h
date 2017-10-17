@@ -164,8 +164,9 @@ struct AbstractFields {
     }
 
     void alias( const Value & a, const Value & b ) {
-        assert( fields.count( a.first ) );
-        fields[ b.first ] = fields[ a.first ];
+        assert( fields.count( a ) );
+        auto handle = fields.at( a );
+        fields.insert( { b, handle } );
     }
 
     std::optional< Domain > getDomain( const Field & field ) {
