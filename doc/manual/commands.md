@@ -109,7 +109,7 @@ be logged for benchmarking purposes:
 
 `--report {fmt}`
 :   At the end of a verification run, produce a comprehensive, machine-readable
-    report. Currently the available formats are `none` -- disables the report
+    report. Currently the available formats are: `none` -- disables the report
     entirely, `yaml` -- prints a concise, yaml-fomatted summary of the results
     (without memory statistics or machine-readable counterexample data) and
     `yaml-long` which prints everything as yaml.

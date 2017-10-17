@@ -3,7 +3,7 @@ Installation
 
 This section is only relevant when you are installing from source.  We will
 assume that you have obtained a source tarball from <http://divine.fi.muni.cz>,
-eg. `divine-@version@.tar.gz`.
+e.g. `divine-@version@.tar.gz`.
 
 DIVINE can be built on Linux and possibly on other POSIX-compatible systems
 including macOS (not tested). There is currently no support for DIVINE on

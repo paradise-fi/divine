@@ -44,95 +44,96 @@ DIVINE will now compile your program and run the verifier on the compiled
 code. After a short while, it will produce the following output:
 
 ```
-compiling /tmp/test.c
+compiling program.c
 loading bitcode … LART … RR … constants … done
 booting … done
-found 183 states in 0:00, averaging 358.8
+found 83 states in 0:00, averaging 164.7
 
-state count: 183
-states per second: 358.824
-version: 4.0.3+d6ac9355109
+state count: 83
+states per second: 164.683
+version: 4.0.12+3c13c2b13ac1
 
-architecture: Intel(R) Core(TM) i7-3520M CPU @ 2.90GHz
-memory used: 759940
-physical memory used: 385836
-user time: 3.020000
-system time: 0.060000
-wall time: 3.123273
+architecture: Intel(R) Core(TM) i5-4690 CPU @ 3.50GHz
+memory used: 1261248
+physical memory used: 565456
+user time: 6.830000
+system time: 0.090000
+wall time: 6.639394
 
 timers:
-  lart: 0.463
-  loader: 0.796
-  boot: 0.12
-  search: 0.51
-  ce: 0.272
+  lart: 0.761
+  loader: 1.92
+  boot: 1.23
+  search: 0.504
+  ce: 1.67
 error found: yes
 error trace: |
-  writing at index 0
-  writing at index 1
-  writing at index 2
-  writing at index 3
-  writing at index 4
-  FAULT: access of size 1 at [heap* 712567f3 10 ddp] is 1 bytes out of bounds
-  Fault in userspace: memory
-  Backtrace:
-    1: foo
-    2: main
-    3: _start
+  [0] writing at index 0
+  [0] writing at index 1
+  [0] writing at index 2
+  [0] writing at index 3
+  [0] writing at index 4
+  FAULT: access of size 4 at [heap* 53e6ba2a 10 ddp] is 4 bytes out of bounds
+  [0] Fault in userspace: memory
+  [0] Backtrace:
+  [0]   1: foo
+  [0]   2: main
+  [0]   3: _start
 
-choices made: 0^182
 error state:
   backtrace 1: # active stack
-    - address: heap* 567b80fb 0+0
-      pc: code* 129 52
-      location: /divine/src/dios/core/fault.cpp:49
-      symbol: __dios::Fault::sc_handler(__dios::Context&, int*, void*, __va_list_tag*)
+    - address: heap* c237acdc 0+0
+      pc: code* 16a 5c
+      location: /divine/include/dios/core/fault.hpp:172
+      symbol: {Fault}::fault_handler(int, _VM_Frame*, int)
 
-    - address: heap* c25416f1 0+0
-      pc: code* 132 1
-      location: /divine/src/dios/core/fault.cpp:274
-      symbol: __sc::fault_handler(__dios::Context&, int*, void*, __va_list_tag*)
+    - address: heap* 53b4676 0+0
+      pc: code* 1be e3
+      location: /divine/include/dios/core/syscall.hpp:70
+      symbol: {Syscall}::fault_handlerWrappper({Context}&, void*, __va_list_tag*)
 
-    - address: heap* dc1c5195 0+0
-      pc: code* 11b 18
-      location: /divine/include/dios/core/syscall.hpp:39
-      symbol: __dios::Syscall::handle(__dios::Context*)
+    - address: heap* 743beb3 0+0
+      pc: code* 1a6 14
+      location: /divine/include/dios/core/syscall.hpp:41
+      symbol: {Syscall}::handle({Context}&, _DiOS_Syscall&)
 
-    - address: heap* 11 0+0
-      pc: code* fd 32
-      location: /divine/include/dios/core/scheduling.hpp:198
-      symbol: void __dios::sched<false>()
+    - address: heap* 10 0+0
+      pc: code* 18f 41
+      location: /divine/include/dios/core/scheduling.hpp:467
+      symbol: void {Scheduler}::run_scheduler<{Context} >()
 
   backtrace 2:
-    - address: heap* cfbb6a51 0+0
-      pc: code* c0d 17
+    - address: heap* dbc1a03b 0+0
+      pc: code* 100e 15
       location: /divine/src/libc/functions/unistd/syscall.c:14
       symbol: __dios_trap
 
-    - address: heap* 6637de5b 0+0
-      pc: code* c0e c
-      location: /divine/src/libc/functions/unistd/syscall.c:27
+    - address: heap* 4a840476 0+0
+      pc: code* 100f 9
+      location: /divine/src/libc/functions/unistd/syscall.c:26
       symbol: __dios_syscall
 
-    - address: heap* 12 0+0
-      pc: code* 12b 16
-      location: /divine/src/dios/core/fault.cpp:76
-      symbol: __dios::Fault::handler(_VM_Fault, _VM_Frame*, void (*)(), ...)
+    - address: heap* 11 0+0
+      pc: code* 169 1c
+      location: /divine/include/dios/core/fault.hpp:198
+      symbol: void {Fault}::handler<{Context} >(_VM_Fault, _VM_Frame*, void (*)(), ...)
 
-    - address: heap* 4a0081dc 0+0
-      pc: code* 1 10
-      location: /tmp/test.c:8
+    - address: heap* 73fbe04e 0+0
+      pc: code* 1 11
+      location: program.c:7
       symbol: foo
 
-    - address: heap* bf24efc5 0+0
-      pc: code* 2 3
-      location: /tmp/test.c:14
+    - address: heap* fab409f3 0+0
+      pc: code* 2 4
+      location: program.c:13
       symbol: main
 
-    - address: heap* 14f75f5a 0+0
-      pc: code* 143 7
-      location: /divine/src/dios/core/main.cpp:152
+    - address: heap* 3340f329 0+0
+      pc: code* 100c b
+      location: /divine/src/libc/functions/sys/start.cpp:72
       symbol: _start
+
+a report was written to program.report.cqlyph
 ```
 
 The output begins with compile- and load-time report messages,
@@ -157,27 +158,27 @@ is introduced. The error-related information contains:
 [^choices]: this information is run-length encoded (e.g. `0^2 2^4` means the first two
     choices returned 0 and the following four returned 2);
 
-In our case, the most important information is `FAULT: access of size 1 at
-[heap* 712567f3 10 ddp] is 1 bytes out of bounds` which indicates the error is
+In our case, the most important information is `FAULT: access of size 4 at
+[heap* 53e6ba2a 10 ddp] is 4 bytes out of bounds` which indicates the error is
 caused by an invalid memory access. The other crucial information is the line of code
 which caused it (this can be found on the second stack, in the entry for the `foo`
 function):
 
 ```
-- address: heap* 4a0081dc 0+0
-  pc: code* 1 10
-  location: /tmp/program.c:8
+- address: heap* 73fbe04e 0+0
+  pc: code* 1 11
+  location: program.c:7
   symbol: foo
 ```
 
-Hence we can see that the problem is caused by an invalid memory access on line 8 in
+Hence we can see that the problem is caused by an invalid memory access on line 7 in
 our program.
 
-*Note*: one might notice that the addresses in DIVINE are printed in the form `
-[heap* 712567f3 10 ddp]`; the meaning of which is: the pointer in question is a heap
+*Note:* one might notice that the addresses in DIVINE are printed in the form
+`[heap* 53e6ba2a 10 ddp]`; the meaning of which is: the pointer in question is a heap
 pointer (other types of pointers are constant pointers and global pointers; stack
 pointers are not distinguished from heap pointers); the object id (in hexadecimal, assigned
-to the allocation) is `712567f3`; the offset (again in hexadecimal) is `10` and the value is a
+to the allocation) is `53e6ba2a`; the offset (again in hexadecimal) is `10` and the value is a
 defined pointer (`ddp`, i.e. it is not an uninitialised value).
 
 ### Debugging Counterexamples with the Interactive Simulator
@@ -200,14 +201,14 @@ Welcome to 'divine sim', an interactive debugger. Type 'help' to get started.
 
 There are a few commands we could use in this situation. For instance,
 the `start` command brings the program to the beginning of the `main`
-function (skipping the internal program initialization process). However, since
-we have the error trace, we will instead jump to the end of the trace with `trace 0^182`
-(the sequence of numbers after the `trace` keyword should be replaced by the value taken from
-`choices made` from the output of `divine verify`). The simulator now outputs
-identifiers of the produced states, together with outputs the program printed so far
-(prefixed with `T:`), and ends just after the last choice before the error. We
-can now let the simulator run the program until the error is found (or a new
-state is produced) with `stepa`.
+function (skipping the internal program initialization process). Another
+alternative is to invoke sim by passing the generated report (the name of
+which is specified at the very end of the `verify` output) using the
+`--load-report` option. The simulator now outputs identifiers of the produced
+states, together with outputs the program printed so far (prefixed with `T:`),
+and ends just after the last choice before the error. We can now let the
+simulator run the program until the error is found (or a new state is produced)
+with `stepa` (step *atomic*).
 
 At this point, the simulator should have stopped in the fault handler which is
 executed by DIVINE when an error is found. We can use the `up` command to step
