@@ -234,6 +234,12 @@ void VPA::propagateStructDown( const PropagateDown & t ) {
         if ( auto bc = v.safeGet< llvm::BitCastInst >() ) {
             fields.alias( bc->getOperand( 0 ), bc );
         }
+        if ( auto mem = v.safeGet< llvm::MemIntrinsic >() ) {
+            auto dest = mem->getDest();
+            assert( llvm::isa< llvm::AllocaInst >( dest ) );
+            fields.alias( mem->getOperand( 1 ), dest );
+            dispach( PropagateDown( AbstractValue{ dest, Domain::Undefined }, t.roots, t.parent ) );
+        }
     }
 }
 
