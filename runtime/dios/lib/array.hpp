@@ -6,11 +6,12 @@
 #include <sys/divm.h>
 #include <iterator>
 #include <cstring>
+#include <brick-types>
 
 namespace __dios {
 
 template < typename T >
-struct Array {
+struct Array : brick::types::Ord {
     Array() : _data( nullptr ) {}
 
     ~Array() {
@@ -124,6 +125,14 @@ struct Array {
             _data = static_cast< _Item * >( __vm_obj_make( n * sizeof( T ) ) );
         else
             __vm_obj_resize( _data, n * sizeof( T ) );
+    }
+
+    bool operator==( const Array &o ) const {
+        return size() == o.size() && std::equal( begin(), end(), o.begin() );
+    }
+
+    bool operator<( const Array &o ) const {
+        return std::lexicographical_compare( begin(), end(), o.begin(), o.end() );
     }
 
     _Item *_data;
