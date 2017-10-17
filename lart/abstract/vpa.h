@@ -148,7 +148,7 @@ struct PropagateDown {
         : value( v ), roots( r ), parent( p ) {}
 
     AbstractValue value;        // propagated value
-    RootsSet * roots;            // roots in which is value propagated
+    RootsSet * roots;           // roots in which is value propagated
     ParentPtr parent;           // parent from which was the function called
 };
 
@@ -222,7 +222,7 @@ private:
     AbstractFields< llvm::Value * > fields;
     Reached reached;
 
-    std::set< llvm::Value * > seen;
+    std::map< RootsSet *, std::set< llvm::Value * > > seen;
 };
 
 } // namespace abstract

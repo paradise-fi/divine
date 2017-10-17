@@ -207,6 +207,7 @@ void VPA::stepOut( const StepOut & so ) {
 
 void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent ) {
     llvm::Value * curr = gep, * prev = nullptr;
+
     while ( curr != prev ) {
         prev = curr;
         if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( curr ) ) {
@@ -267,14 +268,15 @@ void VPA::propagateScalarDown( const PropagateDown & t ) {
 }
 
 void VPA::propagateDown( const PropagateDown & t ) {
-    if ( seen.count( t.value.value ) )
+    if ( seen[ t.roots ].count( t.value.value ) ) {
         return; // The value has been already propagated.
+    }
     auto type = stripPtrs( t.value.value->getType() );
     if ( type->isStructTy() )
         propagateStructDown( t );
     if ( type->isSingleValueType() )
         propagateScalarDown( t );
-    seen.insert( t.value.value );
+    seen[ t.roots ].insert( t.value.value );
 }
 
 void VPA::propagateUp( const PropagateUp & t ) {
