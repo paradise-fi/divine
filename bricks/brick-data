@@ -42,6 +42,7 @@
 #include <memory>
 
 #include <brick-assert>
+#include <brick-types>
 
 #ifndef BRICK_DATA_H
 #define BRICK_DATA_H
@@ -551,7 +552,7 @@ struct SmallVector {
 
 template < typename Key, typename Val, typename Compare = std::less< Key >,
            typename Container = std::vector< std::pair< Key, Val > > >
-class ArrayMap {
+class ArrayMap : brick::types::Ord {
 public:
     using key_type = Key;
     using mapped_type = Val;
@@ -653,6 +654,15 @@ public:
             throw std::out_of_range( "ArrayMap::at" );
         return it->second;
     }
+
+    bool operator<( const ArrayMap &o ) const {
+        return _container < o._container;
+    }
+
+    bool operator==( const ArrayMap &o ) const {
+        return _container == o._container;
+    }
+
 private:
     auto comparator() const {
         return []( const_reference a, const_reference b ) {
@@ -1358,6 +1368,33 @@ struct TestArrayMap {
             am.at( 2 );
             ASSERT( false );
         } catch ( std::out_of_range & ) { }
+    }
+
+    TEST(comparison) {
+        ArrayMap< int, int > m;
+        m.emplace( 1, 1 );
+        m.emplace( 2, 1 );
+
+        auto m2 = m;
+        ASSERT( m == m2 );
+        ASSERT( !(m != m2) );
+
+        ASSERT( m <= m2 );
+        ASSERT( m2 <= m );
+
+        ASSERT( !(m < m2) );
+        ASSERT( !(m2 < m) );
+
+        m2.emplace( 3, 1 );
+        ASSERT( m != m2 );
+        ASSERT( m <= m2 );
+        ASSERT( m < m2 );
+
+        m2.erase( m2.find( 3 ) );
+        m2[ 2 ] = 2;
+        ASSERT( m != m2 );
+        ASSERT( m <= m2 );
+        ASSERT( m < m2 );
     }
 };
 
