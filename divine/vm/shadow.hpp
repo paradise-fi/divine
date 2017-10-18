@@ -268,7 +268,7 @@ struct PooledShadow
     {
         const int size = sizeof( typename V::Raw );
         auto t = type( l, size );
-        if ( value.pointer() )
+        if ( value.pointer() && l.offset % 4 == 0 )
         {
             t[ 0 ] = ShadowType::Data;
             t[ 4 ] = ShadowType::Pointer;
@@ -301,9 +301,7 @@ struct PooledShadow
         value.defbits( _def );
 
         auto t = type( l, size );
-        value.pointer( size == PointerBytes &&
-                       t[ 0 ] == ShadowType::Data &&
-                       t[ 4 ] == ShadowType::Pointer );
+        value.pointer( t[ 0 ] == ShadowType::Data && t[ 4 ] == ShadowType::Pointer );
     }
 
     template< typename FromSh >
@@ -454,6 +452,17 @@ struct PooledShadow
         heap.write( obj, 0, p1 );
         heap.read< PointerV >( obj, 0, p2 );
         ASSERT( p2.defined() );
+        ASSERT( p2.pointer() );
+    }
+
+    TEST( read_ptr_unaligned )
+    {
+        PointerV p1( vm::nullPointer() ), p2;
+        heap.write( obj, 0, p1 );
+        heap.write( obj, 4, p1 );
+        heap.read< PointerV >( obj, 1, p2 );
+        ASSERT( p2.defined() );
+        ASSERT( ! p2.pointer() );
     }
 
     TEST( read_2_ptr )
