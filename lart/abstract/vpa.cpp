@@ -105,9 +105,13 @@ llvm::Argument * isArgStoredTo( llvm::Value * v ) {
     return nullptr;
 }
 
+ValueField< llvm::Value * > createFieldPath( llvm::LoadInst * load ) {
+    return { load->getPointerOperand(), load, { LoadStep{} } };
+}
+
 ValueField< llvm::Value * > createFieldPath( llvm::GetElementPtrInst * gep ) {
     auto inds = query::query( gep->idx_begin(), gep->idx_end() )
-        .map ( [] ( const auto & idx ) -> size_t {
+        .map ( [] ( const auto & idx ) -> Step {
             return llvm::cast< llvm::ConstantInt >( idx )->getZExtValue();
         } ).freeze();
     return { gep->getPointerOperand(), gep, inds };

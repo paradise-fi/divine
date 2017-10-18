@@ -3,13 +3,20 @@
 
 #include <lart/abstract/util.h>
 
+#include <brick-types>
+
 namespace lart {
 namespace abstract {
 
-template< typename T >
+struct LoadStep : brick::types::Unit, brick::types::Eq {};
+
+using GEPStep = size_t;
+using Step = std::variant< GEPStep, LoadStep >;
+
+using Path = std::vector< Step >;
+
+template< typename K, typename T >
 struct FieldTrie {
-    using key_type = size_t;
-    using Path = std::vector< key_type >;
 
     struct TrieNode;
     using TrieNodePtr = std::unique_ptr< TrieNode >;
@@ -20,7 +27,7 @@ struct FieldTrie {
     };
 
     struct Internal {
-        ArrayMap< key_type, TrieNodePtr > children;
+        ArrayMap< K, TrieNodePtr > children;
 
         bool isLeaf() const {
             return children.size() == 1 && children.count( 0 ) &&
@@ -38,7 +45,7 @@ struct FieldTrie {
             return std::get< Leaf >( *children.at( 0 ) ).value;
         }
 
-        TrieNode * getOrInsertChild( key_type key ) {
+        TrieNode * getOrInsertChild( const K & key ) {
             if ( !children.count( key ) )
                 children[ key ] = TrieNode::make_internal();
             return children[ key ].get();
@@ -132,21 +139,20 @@ struct FieldTrie {
     TrieNodePtr _root;
 };
 
-using Indices = FieldTrie< Domain >::Path;
-
 template< typename Value >
 struct ValueField {
-    ValueField( Value from, Value to, Indices indices )
+    ValueField( Value from, Value to, Path indices )
         : from( from ), to( to ), indices( indices ) {}
 
     Value from;
     Value to;
-    Indices indices;
+    Path indices;
 };
 
 template< typename Value >
 struct AbstractFields {
     using Field = ValueField< Value >;
+    using Trie = FieldTrie< Step, Domain >;
 
     void insert( const Field & field, Domain dom ) {
         if ( fields.count( field.to ) ) {
@@ -156,7 +162,7 @@ struct AbstractFields {
             fields.insert( { field.from, handle } );
         } else {
             if ( !fields.count( field.from ) ) {
-                auto& t = tries.emplace_back( std::make_unique< FieldTrie< Domain > >() );
+                auto& t = tries.emplace_back( std::make_unique< Trie >() );
                 fields.insert( { field.from, t->root() } );
             }
             fields.at( field.from ).insert( field.indices, dom );
@@ -172,7 +178,7 @@ struct AbstractFields {
     std::optional< Domain > getDomain( const Field & field ) {
         auto handle = fields.at( field.from ).search( field.indices );
         if ( handle.getRoot() ) {
-            auto& node = std::get< FieldTrie< Domain >::Internal >( *handle.getRoot() );
+            auto& node = std::get< Trie::Internal >( *handle.getRoot() );
             if ( node.isLeaf() )
                 return node.value();
             fields.insert( { field.to, handle } );
@@ -180,8 +186,8 @@ struct AbstractFields {
         return std::nullopt;
     }
 
-    using FieldTriePtr = std::unique_ptr< FieldTrie< Domain > >;
-    std::map< Value, FieldTrie< Domain >::Handle > fields;
+    using FieldTriePtr = std::unique_ptr< Trie >;
+    std::map< Value, Trie::Handle > fields;
     std::vector< FieldTriePtr > tries;
 };
 
