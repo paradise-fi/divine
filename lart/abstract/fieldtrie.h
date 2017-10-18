@@ -14,54 +14,6 @@ struct FieldTrie {
     struct TrieNode;
     using TrieNodePtr = std::unique_ptr< TrieNode >;
 
-    struct Handle {
-        Handle( FieldTrie * trie, TrieNode * root ) : trie( trie ), root( root ) {}
-
-        Handle( const Handle & ) = default;
-        Handle( Handle && ) = default;
-        Handle& operator=( const Handle & ) = default;
-        Handle& operator=( Handle && ) = default;
-
-        std::optional< T > search( const Path & keys ) {
-            assert( root );
-            auto level = root;
-            for ( auto k : keys ) {
-                if ( !level )
-                    return {};
-                auto & i = std::get< Internal >( *level );
-                if ( !i.children.count( k ) )
-                    return {};
-                level = i.children.at( k ).get();
-            }
-            if ( std::get< Internal >( *level ).isLeaf() )
-                return std::get< Internal >( *level ).value();
-            return std::nullopt;
-        }
-
-        Handle insert( const Path & keys, T val ) {
-            std::get< Internal >( *( trie->createPath( keys, root ) ) ).setValue( val );
-            if ( !root ) {
-                assert( trie->_root );
-                root = trie->_root.get();
-            }
-            return { trie, root };
-        }
-
-        Handle rebase( const Path & keys ) {
-            assert( trie->_root );
-            assert( root = trie->_root.get() );
-            auto r = trie->rebase( keys );
-            return { trie, r };
-        }
-
-    private:
-        FieldTrie * trie;
-        TrieNode * root;
-    };
-
-
-    Handle root() { return Handle( this, _root.get() ); }
-
     struct Leaf {
         Leaf( T v ) : value( v ) {}
         T value;
@@ -105,6 +57,54 @@ struct FieldTrie {
             return std::make_unique< TrieNode >( Leaf{ val } );
         }
     };
+
+    struct Handle {
+        Handle( FieldTrie * trie, TrieNode * root ) : trie( trie ), root( root ) {}
+
+        Handle( const Handle & ) = default;
+        Handle( Handle && ) = default;
+        Handle& operator=( const Handle & ) = default;
+        Handle& operator=( Handle && ) = default;
+
+        Handle search( const Path & keys ) {
+            assert( root );
+            auto level = root;
+            for ( auto k : keys ) {
+                if ( !level )
+                    return { trie, nullptr };
+                auto & i = std::get< Internal >( *level );
+                if ( !i.children.count( k ) )
+                    return { nullptr, nullptr };
+                level = i.children.at( k ).get();
+            }
+            return { trie, level };
+        }
+
+        Handle insert( const Path & keys, T val ) {
+            std::get< Internal >( *( trie->createPath( keys, root ) ) ).setValue( val );
+            if ( !root ) {
+                assert( trie->_root );
+                root = trie->_root.get();
+            }
+            return { trie, root };
+        }
+
+        Handle rebase( const Path & keys ) {
+            assert( trie->_root );
+            assert( root = trie->_root.get() );
+            auto r = trie->rebase( keys );
+            return { trie, r };
+        }
+
+        TrieNode * getRoot() const {
+            return root;
+        }
+    private:
+        FieldTrie * trie;
+        TrieNode * root;
+    };
+
+    Handle root() { return Handle( this, _root.get() ); }
 
     TrieNode * createPath( const Path & keys, TrieNode * handle ) {
         if ( !handle ) {
@@ -170,7 +170,14 @@ struct AbstractFields {
     }
 
     std::optional< Domain > getDomain( const Field & field ) {
-        return fields.at( field.from ).search( field.indices );
+        auto handle = fields.at( field.from ).search( field.indices );
+        if ( handle.getRoot() ) {
+            auto& node = std::get< FieldTrie< Domain >::Internal >( *handle.getRoot() );
+            if ( node.isLeaf() )
+                return node.value();
+            fields.insert( { field.to, handle } );
+        }
+        return std::nullopt;
     }
 
     using FieldTriePtr = std::unique_ptr< FieldTrie< Domain > >;
