@@ -73,16 +73,24 @@ struct BitContainer
 template< typename IP >
 using PointerLocation = brick::types::Union< InObject< IP >, InVoid, InValue >;
 
-enum class ShadowType { Data, Pointer1, Pointer2, Exception };
+/* Type of each 4-byte word */
+enum class ShadowType {
+    Data,             /// Generic data or offset of a pointer
+    Pointer,          /// Object ID (4 most significant bytes) of a pointer
+    DataException,    /// As 'Data', but with partially initialized bytes
+    PointerException  /// Word containing parts of pointers, may contain bytes
+                      /// of data (and these may be partially initialized).
+};
+
 enum class ExceptionType { Pointer, Data };
 
 inline std::ostream &operator<<( std::ostream &o, ShadowType t )
 {
     switch ( t ) {
-        case ShadowType::Exception: return o << "e";
-        case ShadowType::Pointer1: return o << "1";
-        case ShadowType::Pointer2: return o << "2";
         case ShadowType::Data: return o << "d";
+        case ShadowType::Pointer: return o << "p";
+        case ShadowType::DataException: return o << "D";
+        case ShadowType::PointerException: return o << "P";
         default: return o << "?";
     }
 }
@@ -187,16 +195,16 @@ struct PooledShadow
             t_iterator _i;
             proxy( PointerC * p, t_iterator i ) : _parent( p ), _i( i )
             {
-                ASSERT( *i == ShadowType::Pointer1 || *i == ShadowType::Exception );
+                ASSERT( *(i + 4) == ShadowType::Pointer || *(i + 4) == ShadowType::PointerException );
             }
             proxy *operator->() { return this; }
             int offset() const { return _i._pos - _parent->types.begin()._pos; }
             int size() const
             {
-                if ( *_i == ShadowType::Pointer1 && *(_i + 4) == ShadowType::Pointer2 )
-                    return 8;
-                if ( *_i == ShadowType::Pointer1 )
+                if ( *_i == ShadowType::Pointer )
                     return 4;
+                if ( *(_i + 4) == ShadowType::Pointer )
+                    return 8;
                 NOT_IMPLEMENTED();
             }
             bool operator==( const proxy &o ) const
@@ -211,10 +219,10 @@ struct PooledShadow
             t_iterator _self;
             void seek()
             {
-                while ( _self < _parent->types.end() &&
-                        *_self != ShadowType::Pointer1 &&
-                        *_self != ShadowType::Exception ) _self = _self + 4;
-                if ( ! ( _self < _parent->types.end() ) )
+                while ( _self + 4 < _parent->types.end() &&
+                        *(_self + 4) != ShadowType::Pointer &&
+                        *(_self + 4) != ShadowType::PointerException ) _self = _self + 4;
+                if ( ! ( _self + 4 < _parent->types.end() ) )
                     _self = _parent->types.end();
             }
             iterator &operator++() { _self = _self + 4; seek(); return *this; }
@@ -252,35 +260,15 @@ struct PooledShadow
         return *_shared.template machinePointer< bool >( p );
     }
 
-    template< typename CB >
-    void fix_boundary( Loc l, int size, CB cb )
-    {
-        auto t = type( l, size );
-
-        if ( t[ 0 ] == ShadowType::Pointer2 ) /* first word of the write */
-        {
-            t[ -4 ] = ShadowType::Data; /* TODO exception */
-            cb( InVoid(), InObj( l.object, l.offset - 4, 4 ) );
-        }
-        /* last word of the write */
-        if ( t[ size - 4 ] == ShadowType::Pointer1 )
-        {
-            t[ size ] = ShadowType::Data; /* TODO exception */
-            cb( InVoid(), InObj( l.object, l.offset + size - 4, 4 ) );
-        }
-    }
-
-    template< typename V, typename CB >
-    void write( Loc l, V value, CB cb )
+    template< typename V >
+    void write( Loc l, V value )
     {
         const int size = sizeof( typename V::Raw );
-        fix_boundary( l, size, cb );
         auto t = type( l, size );
         if ( value.pointer() )
         {
-            t[ 0 ] = ShadowType::Pointer1;
-            t[ 4 ] = ShadowType::Pointer2;
-            cb( InValue(), InObj( l.object, l.offset, 8 ) );
+            t[ 0 ] = ShadowType::Data;
+            t[ 4 ] = ShadowType::Pointer;
         }
         else
             for ( int i = 0; i < size; i += 4 )
@@ -310,14 +298,12 @@ struct PooledShadow
         value.defbits( _def );
 
         auto t = type( l, size );
-        value.pointer( t[ 0 ] == ShadowType::Pointer1 && t[ 4 ] == ShadowType::Pointer2 );
+        value.pointer( t[ 0 ] == ShadowType::Data && t[ 4 ] == ShadowType::Pointer );
     }
 
-    template< typename FromSh, typename CB >
-    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz, CB cb )
+    template< typename FromSh >
+    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz )
     {
-        fix_boundary( to, sz, cb );
-
         auto from_def = from_sh.defined( from, sz );
         auto to_def = defined( to, sz );
         std::copy( from_def.begin(), from_def.end(), to_def.begin() );
@@ -333,13 +319,11 @@ struct PooledShadow
                 NOT_IMPLEMENTED(); /* exception */
             if ( ptrloc.offset() + 8 > sz )
                 break;
-            t[ ptrloc.offset() ] = ShadowType::Pointer1;
-            t[ ptrloc.offset() + 4 ] = ShadowType::Pointer2;
+            t[ ptrloc.offset() + 4 ] = ShadowType::Pointer;
         }
     }
 
-    template< typename CB >
-    void copy( Loc from, Loc to, int sz, CB cb ) { return copy( *this, from, to, sz, cb ); }
+    void copy( Loc from, Loc to, int sz ) { return copy( *this, from, to, sz ); }
 
     void dump( std::string what, Loc l, int sz )
     {
@@ -380,16 +364,15 @@ struct NonHeap
         return r;
     }
 
-    template< typename T, typename CB >
-    void write( Ptr p, int off, T t, CB cb ) { shadows.write( shloc( p, off ), t, cb ); }
+    template< typename T >
+    void write( Ptr p, int off, T t ) { shadows.write( shloc( p, off ), t ); }
 
     template< typename T >
     void read( Ptr p, int off, T &t ) { shadows.read( shloc( p, off ), t ); }
 
-    template< typename CB >
-    void copy( Ptr pf, int of, Ptr pt, int ot, int sz, CB cb )
+    void copy( Ptr pf, int of, Ptr pt, int ot, int sz )
     {
-        shadows.copy( shloc( pf, of ), shloc( pt, ot ), sz, cb );
+        shadows.copy( shloc( pf, of ), shloc( pt, ot ), sz );
     }
 };
 
@@ -445,7 +428,7 @@ struct PooledShadow
     TEST( read_int )
     {
         vm::value::Int< 16 > i1( 32, 0xFFFF, false ), i2;
-        heap.write( obj, 0, i1, []( auto, auto ) {} );
+        heap.write( obj, 0, i1 );
         heap.read( obj, 0, i2 );
         ASSERT( i2.defined() );
     }
@@ -453,8 +436,8 @@ struct PooledShadow
     TEST( copy_int )
     {
         vm::value::Int< 16 > i1( 32, 0xFFFF, false ), i2;
-        heap.write( obj, 0, i1, []( auto, auto ) {} );
-        heap.copy( obj, 0, obj, 2, 2, []( auto, auto ) {} );
+        heap.write( obj, 0, i1 );
+        heap.copy( obj, 0, obj, 2, 2 );
         heap.read( obj, 2, i2 );
         ASSERT( i2.defined() );
     }
@@ -462,7 +445,7 @@ struct PooledShadow
     TEST( read_ptr )
     {
         PointerV p1( vm::nullPointer() ), p2;
-        heap.write( obj, 0, p1, []( auto, auto ) {} );
+        heap.write( obj, 0, p1 );
         heap.read< PointerV >( obj, 0, p2 );
         ASSERT( p2.defined() );
     }
@@ -470,8 +453,8 @@ struct PooledShadow
     TEST( read_2_ptr )
     {
         PointerV p1( vm::nullPointer() ), p2;
-        heap.write( obj, 0, p1, []( auto, auto ) {} );
-        heap.write( obj, 8, p1, []( auto, auto ) {} );
+        heap.write( obj, 0, p1 );
+        heap.write( obj, 8, p1 );
         heap.read< PointerV >( obj, 0, p2 );
         ASSERT( p2.defined() );
         heap.read< PointerV >( obj, 8, p2 );
@@ -482,8 +465,8 @@ struct PooledShadow
     {
         PointerV p1( vm::nullPointer() ), p2;
         ASSERT( p1.pointer() );
-        heap.write( obj, 0, p1, []( auto, auto ) {} );
-        heap.copy( obj, 0, obj, 8, 8, []( auto, auto ) {} );
+        heap.write( obj, 0, p1 );
+        heap.copy( obj, 0, obj, 8, 8 );
         heap.read< PointerV >( obj, 8, p2 );
         ASSERT( p2.defined() );
     }

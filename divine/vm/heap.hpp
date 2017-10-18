@@ -643,7 +643,7 @@ struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
-        _shadows.write( shloc( p, i ), t, []( auto, auto ) {} );
+        _shadows.write( shloc( p, i ), t );
         *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
         if ( t.pointer() && shared( p ) )
             if ( shared( value::Pointer( t ).cooked(), true ) )
@@ -669,7 +669,7 @@ struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
             return false;
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
         _shadows.copy( from_h.shadows(), from_h.shloc( _from, _from_i ),
-                       shloc( _to, _to_i ), bytes,  []( auto, auto ) {} );
+                       shloc( _to, _to_i ), bytes );
 
         if ( _shadows.shared( _to_i ) )
             for ( auto pos : _shadows.pointers( shloc( _to, _to_i ), bytes ) )
@@ -719,7 +719,7 @@ struct CowHeap : SimpleHeap< CowHeap >
 
             while ( offset + 4 <= size )
             {
-                if ( *t != ShadowType::Pointer2 ) /* NB. assumes little endian */
+                if ( *t != ShadowType::Pointer ) /* NB. assumes little endian */
                     high.update( base + offset, 4 );
                 offset += 4;
                 t += 4;
@@ -821,7 +821,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         _l.exceptions[ p.object() ] = obj;
         auto newloc = shloc( p, obj );
         auto newbytes = unsafe_bytes( p, obj, 0, sz );
-        _shadows.copy( _shadows, oldloc, newloc, sz, []( auto, auto ) {} );
+        _shadows.copy( _shadows, oldloc, newloc, sz );
         std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
         _shadows.shared( obj ) = _shadows.shared( i );
         return obj;
