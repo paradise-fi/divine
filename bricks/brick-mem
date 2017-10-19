@@ -149,7 +149,7 @@ struct PoolPointer : brick::types::Comparable
 
     explicit operator bool() const { return slab(); }
     bool operator!() const { return !slab(); }
-    bool operator<=( PoolPointer o ) const { return intptr() <= o.intptr(); }
+    bool operator<( PoolPointer o ) const { return intptr() < o.intptr(); }
     Raw intptr() const
     {
         return ( Raw( slab() ) << Rep::chunk_bits ) | chunk();

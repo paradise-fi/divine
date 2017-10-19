@@ -65,39 +65,39 @@ struct Witness { using T = _T; };
 struct Eq { };
 
 template< typename Trait, typename Ret, typename T >
-using HatTrait = typename std::enable_if< std::is_base_of< Trait, T >::value, Ret >::type;
+using HasTrait = typename std::enable_if< std::is_base_of< Trait, T >::value, Ret >::type;
 
 template< typename T >
-using IsEq = HatTrait< Eq, bool, T >;
+using IsEq = HasTrait< Eq, bool, T >;
 
 template< typename T >
 IsEq< T > operator!=( const T &a, const T &b ) { return !(a == b); }
 
-// requires operator <=
+// requires operator <
 struct Ord : Eq { };
 
 template< typename T >
-using IsOrd = HatTrait< Ord, bool, T >;
+using IsOrd = HasTrait< Ord, bool, T >;
 
 template< typename T >
-IsOrd< T > operator<( const T &a, const T &b ) { return !(b <= a); }
+IsOrd< T > operator>( const T &a, const T &b ) { return b < a; }
 
 template< typename T >
-IsOrd< T > operator>( const T &a, const T &b ) { return !(a <= b); }
+IsOrd< T > operator>=( const T &a, const T &b ) { return !(a < b); }
 
 template< typename T >
-IsOrd< T > operator>=( const T &a, const T &b ) { return b <= a; }
+IsOrd< T > operator<=( const T &a, const T &b ) { return !(b < a); }
 
 template< typename T >
 IsOrd< T > operator==( const T &a, const T &b ) {
-    return a <= b && b <= a;
+    return !(a < b) && !(b < a);
 }
 
 template< typename T >
-auto operator<=( const T &a, const T& b )
-    -> decltype( a.as_tuple() <= b.as_tuple(), IsOrd< T >() )
+auto operator<( const T &a, const T& b )
+    -> decltype( a.as_tuple(), IsOrd< T >() )
 {
-    return a.as_tuple() <= b.as_tuple();
+    return a.as_tuple() < b.as_tuple();
 }
 
 using Comparable = Ord;
@@ -159,12 +159,12 @@ struct Maybe : Comparable {
         return Maybe( true, df ); }
     operator T() const { return value(); }
 
-    bool operator <=( const Maybe< T > &o ) const {
-        if (o.nothing())
-            return true;
-        if (nothing())
+    bool operator <( const Maybe< T > &o ) const {
+        if ( nothing() )
+            return !o.nothing();
+        if ( o.nothing() )
             return false;
-        return value() <= o.value();
+        return value() < o.value();
     }
 protected:
     bool m_nothing:1;
@@ -225,12 +225,12 @@ struct Maybe : Comparable
             _v.t.~StorableRef< T >();
     }
 
-    bool operator <=( const Maybe< T > &o ) const {
-        if (o.isNothing())
-            return true;
-        if (isNothing())
+    bool operator <( const Maybe< T > &o ) const {
+        if ( isNothing() )
+            return !o.nothing();
+        if ( o.isNothing() )
             return false;
-        return value() <= o.value();
+        return value() < o.value();
     }
 
 protected:
@@ -1222,7 +1222,7 @@ struct Integer : Comparable
     int val;
 public:
     Integer(int val) : val(val) {}
-    bool operator<=( const Integer& o ) const { return val <= o.val; }
+    bool operator<( const Integer& o ) const { return val < o.val; }
 };
 
 struct IntegerEq : Eq {
@@ -1237,31 +1237,18 @@ struct IntegerEqOrd : Ord {
 public:
     IntegerEqOrd(int val) : val(val) {}
     bool operator==( const IntegerEqOrd& o ) const { return val == o.val; }
-    bool operator<=( const IntegerEqOrd& o ) const { return val <= o.val; }
+    bool operator<( const IntegerEqOrd& o ) const { return val < o.val; }
 };
 
 struct IntegerOrd : Ord {
     int val;
 public:
     IntegerOrd(int val) : val(val) {}
-    bool operator<=( const IntegerOrd& o ) const { return val <= o.val; }
+    bool operator<( const IntegerOrd& o ) const { return val < o.val; }
 };
 
-struct IntegerEqOrdLt : Ord {
-    int val;
-public:
-    IntegerEqOrdLt(int val) : val(val) {}
-    bool operator==( const IntegerEqOrdLt& o ) const { return val == o.val; }
-    bool operator<( const IntegerEqOrdLt& o ) const { return val < o.val; }
-};
-
-struct IntegerEqOrdBoth : Ord {
-    int val;
-public:
-    IntegerEqOrdBoth(int val) : val(val) {}
-    bool operator==( const IntegerEqOrdBoth& o ) const { return val == o.val; }
-    bool operator<=( const IntegerEqOrdBoth& o ) const { return val <= o.val; }
-    bool operator<( const IntegerEqOrdBoth& o ) const { return val < o.val; }
+struct IntegerEqOrdChild : IntegerEqOrd {
+    using IntegerEqOrd::IntegerEqOrd;
 };
 
 struct Mixins {
@@ -1323,6 +1310,10 @@ struct Mixins {
         ord< IntegerEqOrd >();
     }
 
+    TEST(eqord_child) {
+        eq< IntegerEqOrdChild >();
+        ord< IntegerEqOrdChild >();
+    }
 };
 
 #if __cplusplus >= 201103L
