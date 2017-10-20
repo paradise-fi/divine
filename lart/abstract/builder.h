@@ -82,6 +82,8 @@ struct AbstractBuilder {
         IRB irb( arg->getParent()->front().begin() );
         if ( isAbstract( arg->getType() ) )
             vmap.insert( arg, arg );
+        else if ( operatesWithStructTy( arg ) )
+            vmap.insert( arg, arg );
         else
             vmap.insert( arg, lift( { arg, dom }, irb ) );
     }
@@ -93,6 +95,21 @@ struct AbstractBuilder {
             vmap.insert( inst, abstract );
             for ( auto & lift : liftsOf( inst ) )
                 lift->replaceAllUsesWith( abstract );
+        }
+    }
+
+    void processStructOp( const AbstractValue & av ) {
+        if ( auto cs = llvm::CallSite( av.value ) ) {
+            auto fn = cs.getCalledFunction();
+            if ( fn->isIntrinsic() ) {
+                createIntrinsicCall( av );
+            } else {
+                if ( !isIntrinsic( cs.getInstruction() ) )
+                    vmap.insert( av.value, createCallSite( av ) );
+            }
+        } else {
+            if ( !isAbstract( av.value->getType() ) && operatesWithStructTy( av.value ) )
+                vmap.insert( av.value, av.value );
         }
     }
 
@@ -185,16 +202,20 @@ private:
         auto fn = i->getCalledFunction();
         assert( fn->isIntrinsic() );
 
+        auto name = llvm::Intrinsic::getName( i->getIntrinsicID() );
+
         if ( i->getType()->isPointerTy() ) {
             // skip llvm.ptr.annotation function calls
             assert( fn->getName().startswith( "llvm.ptr.annotation" ) );
             i->replaceAllUsesWith( i->getArgOperand( 0 ) );
+        } else if ( name == "llvm.memcpy" ) {
+
         } else {
             Set< std::string > ignore = {"llvm.lifetime.start"
                                         ,"llvm.lifetime.end"
                                         ,"llvm.var.annotation"
             };
-            if ( !ignore.count( llvm::Intrinsic::getName( i->getIntrinsicID() ) ) ) {
+            if ( !ignore.count( name ) ) {
                 std::cerr << "ERR: unknown intrinsic: ";
                 i->dump();
                 std::exit( EXIT_FAILURE );
@@ -227,6 +248,7 @@ private:
             auto inv = llvm::dyn_cast< llvm::InvokeInst >( i );
             intr = irb.CreateInvoke( calle, inv->getNormalDest(), inv->getUnwindDest(), args );
         }
+        assert( intr );
 
         if ( intr->getType() == i->getType() )
             i->replaceAllUsesWith( intr );
@@ -304,6 +326,8 @@ private:
         if ( l.isJust() ) return l.value();
 
         auto type = av.value->getType();
+        if ( getType( av ) == type )
+            return av.value;
         auto fty = llvm::FunctionType::get( getType( av ), { type }, false );
         auto name = "lart." + DomainTable[ av.domain ] + ".lift." + llvmname( type );
         auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( name, fty );

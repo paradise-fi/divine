@@ -87,13 +87,17 @@ struct FieldTrie {
             return { trie, level };
         }
 
-        Handle insert( const Path & keys, T val ) {
-            std::get< Internal >( *( trie->createPath( keys, root ) ) ).setValue( val );
+        using FromToHandles = std::pair< Handle, Handle >;
+        FromToHandles insert( const Path & keys, T val ) {
+            auto node = trie->createPath( keys, root );
+            auto in = std::get_if< Internal >( node );
+            if ( in->children.empty() )
+                in->setValue( val );
             if ( !root ) {
                 assert( trie->_root );
                 root = trie->_root.get();
             }
-            return { trie, root };
+            return { Handle{ trie, root }, Handle{ trie, node } };
         }
 
         Handle rebase( const Path & keys ) {
@@ -165,7 +169,9 @@ struct AbstractFields {
                 auto& t = tries.emplace_back( std::make_unique< Trie >() );
                 fields.insert( { field.from, t->root() } );
             }
-            fields.at( field.from ).insert( field.indices, dom );
+            auto ft = fields.at( field.from ).insert( field.indices, dom );
+            fields.insert( { field.from, ft.first } );
+            fields.insert( { field.to, ft.second } );
         }
     }
 

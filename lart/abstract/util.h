@@ -219,6 +219,21 @@ static inline ArgDomains argDomains( const Arguments & args ) {
     return argDomains( fn, args );
 };
 
+static inline bool isBaseStructTy( llvm::Type * type ) {
+    return stripPtrs( type )->isStructTy();
+}
+
+static inline bool operatesWithStructTy( llvm::Value * value ) {
+    if ( llvm::isa< llvm::GetElementPtrInst >( value ) && !isBaseStructTy( value->getType() ) )
+        return false;
+    if ( isBaseStructTy( value->getType() ) )
+        return true;
+    if ( auto user = llvm::dyn_cast< llvm::User >( value ) )
+        for ( const auto & o : user->operands() )
+            if ( isBaseStructTy( o->getType() ) )
+                return true;
+    return false;
+}
 
 } // namespace abstract
 } // namespace lart

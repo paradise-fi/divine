@@ -217,6 +217,8 @@ private:
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );
 
+    llvm::Value * origin( llvm::Value * value, Domain dom );
+
     std::deque< Task > tasks;
 
     AbstractFields< llvm::Value * > fields;

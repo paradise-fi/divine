@@ -33,8 +33,18 @@ struct CallInterupt {
 
 }
 
-AbstractValues Abstraction::FunctionNode::reachedValues() const {
-    return reachFrom( { roots().begin(), roots().end() } );
+AbstractValues Abstraction::FunctionNode::reached() const {
+    auto rs = query::query( roots() ).filter( [] ( const auto & r ) {
+        return !isBaseStructTy( r.value->getType() );
+    } ).freeze();
+    return reachFrom( rs );
+}
+
+AbstractValues Abstraction::FunctionNode::structs() const {
+    auto rs = query::query( roots() ).filter( [] ( const auto & r ) {
+        return isBaseStructTy( r.value->getType() );
+    } ).freeze();
+    return reachFrom( rs );
 }
 
 void Abstraction::run( llvm::Module & m ) {
@@ -50,6 +60,8 @@ void Abstraction::run( llvm::Module & m ) {
         auto arghash = [] ( const FunctionNode & fn ) -> size_t {
             size_t sum = 0;
             for ( auto & a : filterA< llvm::Argument >( fn.roots() ) )
+                sum += a.get< llvm::Argument >()->getArgNo();
+            for ( auto & a : filterA< llvm::Argument >( fn.structs() ) )
                 sum += a.get< llvm::Argument >()->getArgNo();
             return sum;
         };
@@ -81,17 +93,25 @@ void Abstraction::run( llvm::Module & m ) {
             fnode = clone( fnode );
 
         // 2. process function abstract entries
-        auto postorder = fnode.reachedValues();
+        auto postorder = fnode.reached();
         for ( auto & av : lart::util::reverse( postorder ) )
             builder.process( av );
+        auto structs = fnode.structs();
+        for ( auto & av : lart::util::reverse( structs ) )
+            builder.processStructOp( av );
 
         // 3. clean function
-        // FIXME let builder take annotation structure
-        Values deps;
+        std::set< llvm::Value * > deps;
         for ( auto & av : postorder )
             if ( !av.isa< llvm::GetElementPtrInst >() )
-                deps.emplace_back( av.value );
-        clean( deps );
+                deps.insert( av.value );
+        for ( auto & av : structs )
+            if ( auto cs = llvm::CallSite( av.value ) ) {
+                auto fn = cs.getCalledFunction();
+                if ( !fn->isIntrinsic() && !isIntrinsic( fn ) )
+                    deps.insert( av.value );
+            }
+        clean( { deps.begin(), deps.end() } );
 
         // 4. copy function to declaration and handle function uses
         auto fn = fnode.function();
@@ -118,8 +138,8 @@ void Abstraction::run( llvm::Module & m ) {
 }
 
 llvm::Function * Abstraction::process( const FunctionNode & fnode ) {
-    auto rets = filterA< llvm::ReturnInst >( fnode.reachedValues() );
-    auto args = filterA< llvm::Argument >( fnode.reachedValues() );
+    auto rets = filterA< llvm::ReturnInst >( fnode.reached() );
+    auto args = filterA< llvm::Argument >( fnode.roots() );
 
     // Signature does not need to be changed
     if ( rets.empty() && args.empty() )
@@ -130,8 +150,11 @@ llvm::Function * Abstraction::process( const FunctionNode & fnode ) {
     auto rty = liftType( fn->getReturnType(), dom, data.tmap );
 
     Map< unsigned, llvm::Type * > amap;
-    for ( const auto & a : args )
-        amap[ a.get< llvm::Argument >()->getArgNo() ] = a.type( data.tmap );
+    for ( const auto & a : args ) {
+        auto ano = a.get< llvm::Argument >()->getArgNo();
+        amap[ ano ] = stripPtrs( a.value->getType() )->isStructTy()
+                    ? a.value->getType() : a.type( data.tmap );
+    }
 
     auto as = remapFn( fnode.first->args(), [&] ( const auto & a ) {
         return amap.count( a.getArgNo() ) ? amap[ a.getArgNo() ] : a.getType();
@@ -170,7 +193,7 @@ Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node ) {
     return Abstraction::FunctionNode( clone, roots );
 }
 
-void Abstraction::clean( Values & deps ) {
+void Abstraction::clean( Values && deps ) {
     auto is = llvmFilter< llvm::Instruction >( deps );
     for ( auto & inst : is ) {
         for ( auto & lift : liftsOf( inst ) )

@@ -17,7 +17,8 @@ struct Abstraction {
     struct FunctionNode : FunctionNodeDecl {
         using FunctionNodeDecl::FunctionNodeDecl;
 
-        AbstractValues reachedValues() const;
+        AbstractValues reached() const;
+        AbstractValues structs() const;
         llvm::Function * function() const { return first; }
         const RootsSet& roots() const { return second; }
     };
@@ -29,7 +30,7 @@ struct Abstraction {
     llvm::Function * process( const FunctionNode & node );
     FunctionNode clone( const FunctionNode & node );
 
-    void clean( Values & deps );
+    void clean( Values && deps );
 
     PassData & data;
     FunctionMap< llvm::Function *, Types > fns;

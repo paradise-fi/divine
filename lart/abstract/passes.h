@@ -230,7 +230,7 @@ bool liftingPointer( llvm::Module &m ) {
                 return abstract::isLift( call );
             } )
             .any( []( llvm::CallInst * call ) {
-                return call->getOperand( 0 )->getType()
+                    return call->getOperand( 0 )->getType()
                            ->isPointerTy();
             } );
 }
