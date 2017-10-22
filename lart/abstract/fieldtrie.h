@@ -181,14 +181,23 @@ struct AbstractFields {
         fields.insert( { b, handle } );
     }
 
-    std::optional< Domain > getDomain( const Field & field ) {
+    void add( const Field & field ) {
         auto handle = fields.at( field.from ).search( field.indices );
-        if ( handle.getRoot() ) {
-            auto& node = std::get< Trie::Internal >( *handle.getRoot() );
-            if ( node.isLeaf() )
-                return node.value();
+        if ( handle.getRoot() )
             fields.insert( { field.to, handle } );
+    }
+
+    std::optional< Domain > getDomain( const Field & field ) {
+        add( field );
+        if ( fields.count( field.to ) ) {
+            auto handle = fields.at( field.to );
+            if ( handle.getRoot() ) {
+                auto& node = std::get< Trie::Internal >( *handle.getRoot() );
+                if ( node.isLeaf() )
+                    return node.value();
+            }
         }
+
         return std::nullopt;
     }
 

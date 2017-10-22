@@ -1133,6 +1133,75 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
+
+    TEST( output_struct_arg_1 ) {
+        auto s = R"(struct Widget{ int i; };
+                    void init( Widget * w ) {
+                        _SYM int v;
+                        w->i = v;
+                    }
+                    int main() {
+                        Widget w;
+                        init( &w );
+
+                        if ( w.i == 0 ) return 42;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto init = m->getFunction( "_Z4initP6Widget.2" );
+        ASSERT_EQ( init->getNumUses(), 1 );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( output_struct_arg_2 ) {
+        auto s = R"(struct Widget{ int i; };
+                    void init( Widget * w ) {
+                        _SYM int v;
+                        w->i = v % 10;
+                    }
+
+                    bool check( Widget * w ) {
+                        return w->i < 10;
+                    }
+                    int main() {
+                        Widget w;
+                        init( &w );
+                        check( &w );
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto init = m->getFunction( "_Z4initP6Widget.2" );
+        auto check = m->getFunction( "_Z5checkP6Widget.3" );
+        ASSERT_EQ( init->getNumUses(), 1 );
+        ASSERT_EQ( check->getNumUses(), 1 );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( output_struct_arg_3 ) {
+        auto s = R"(struct Widget{ int i; };
+                    struct Store{ Widget * w; };
+                    void init( Widget * w ) {
+                        _SYM int v;
+                        w->i = v % 10;
+                    }
+
+                    void init( Store * s, Widget * w ) {
+                        s->w = w;
+                    }
+                    int main() {
+                        Store store;
+                        Widget w;
+                        init( &w );
+                        init( &store, &w  );
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto init = m->getFunction( "_Z4initP6Widget.3" );
+        auto check = m->getFunction( "_Z4initP5StoreP6Widget.2" );
+        ASSERT_EQ( init->getNumUses(), 1 );
+        ASSERT_EQ( check->getNumUses(), 1 );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {

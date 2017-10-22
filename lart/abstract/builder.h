@@ -104,8 +104,10 @@ struct AbstractBuilder {
             if ( fn->isIntrinsic() ) {
                 createIntrinsicCall( av );
             } else {
-                if ( !isIntrinsic( cs.getInstruction() ) )
-                    vmap.insert( av.value, createCallSite( av ) );
+                if ( !isIntrinsic( cs.getInstruction() ) ) {
+                    if ( !vmap.safeLift( av.value ) )
+                        vmap.insert( av.value, createCallSite( av ) );
+                }
             }
         } else {
             if ( !isAbstract( av.value->getType() ) && operatesWithStructTy( av.value ) )
