@@ -70,7 +70,7 @@ namespace {
 
 
         Domain domain() const {
-            return ::lart::abstract::domain( condition() );
+            return ::lart::abstract::domain( condition()->getType() );
         }
 
         llvm::Instruction * assume;
@@ -205,14 +205,11 @@ void BCP::process( llvm::Instruction * assume ) {
     Assume ass = { assume, data.tmap };
 
     // create constraints on arguments from condition that created tristate
-    auto lhs = ass.constrain( ass.domain(), Assume::AssumeValue::LHS );
-    auto rhs = ass.constrain( ass.domain(), Assume::AssumeValue::RHS );
-    auto pre = ass.constrain( ass.domain(), Assume::AssumeValue::Predicate );
-
-    // forward propagate constrained values
-    propagate( lhs );
-    propagate( rhs );
-    propagate( pre );
+    if ( isIntrinsic( ass.condition() ) ) {
+        propagate( ass.constrain( ass.domain(), Assume::AssumeValue::LHS ) );
+        propagate( ass.constrain( ass.domain(), Assume::AssumeValue::RHS ) );
+    }
+    propagate( ass.constrain( ass.domain(), Assume::AssumeValue::Predicate ) );
 
     assume->eraseFromParent();
 }

@@ -116,11 +116,17 @@ static bool isAlloca( llvm::Instruction * i ) {
 }
 
 static Domain domain( llvm::Function * fn ) {
+    assert( isIntrinsic( fn ) );
     return intrinsic::parse( fn ).value().domain;
 }
 
 static Domain domain( llvm::CallInst * call ) {
     return domain( call->getCalledFunction() );
+}
+
+static Domain domain( llvm::Type * type ) {
+    auto tokens = intrinsic::parse( llvmname( type ) );
+    return DomainTable[ tokens[ 1 ] ];
 }
 
 using IntrinsicCalls = std::vector< llvm::CallInst * >;
