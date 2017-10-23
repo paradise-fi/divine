@@ -54,10 +54,12 @@ static Maybe< IntrinsicWrapper > parse( llvm::Function * fn ) {
 } // anonymous namespace
 
 static bool isIntrinsic( llvm::Function * fn ) {
+    if ( !fn ) return false;
     return intrinsic::parse( fn ).isJust();
 }
 
 static bool isIntrinsic( llvm::Instruction * i ) {
+    if ( !i ) return false;
     if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
         return isIntrinsic( call->getCalledFunction() );
     return false;

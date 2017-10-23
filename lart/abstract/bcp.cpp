@@ -23,10 +23,10 @@ namespace {
         Assume( I * assume, TMap & tmap ) : assume( assume ), tmap( tmap ) {}
 
         /* Abstract icmp condition constrained by given assume. */
-        llvm::CallInst * condition() const {
+        llvm::Value * condition() const {
             auto call = llvm::cast< llvm::CallInst >( assume );
-            return llvm::cast< llvm::CallInst > (
-                   llvm::cast< llvm::CallInst >( call->getArgOperand( 0 ) )->getArgOperand( 0 ) );
+            auto tristate = llvm::cast< llvm::CallInst >( call->getArgOperand( 0 ) );
+            return tristate->getArgOperand( 0 );
         }
 
         /* Creates appropriate assume in given domain about predicate, left
@@ -38,20 +38,23 @@ namespace {
             StructType * rty;
             Values args;
 
+            auto cond = condition();
+            auto cmp = llvm::dyn_cast< llvm::CallInst >( cond );
             switch ( v ) {
                 case AssumeValue::Predicate:
-                    rty = llvm::cast< StructType >( condition()->getType() );
-                    args.push_back( condition() );
+                    rty = llvm::cast< StructType >( cond->getType() );
+                    args.push_back( cond );
                     break;
                 case AssumeValue::LHS:
-                    rty = llvm::cast< StructType >( condition()->getArgOperand( 0 )->getType() );
-                    args.push_back( condition()->getArgOperand( 0 ) );
+                    rty = llvm::cast< StructType >( cmp->getArgOperand( 0 )->getType() );
+                    args.push_back( cmp->getArgOperand( 0 ) );
                     break;
                 case AssumeValue::RHS:
-                    rty = llvm::cast< StructType >( condition()->getArgOperand( 1 )->getType() );
-                    args.push_back( condition()->getArgOperand( 1 ) );
+                    rty = llvm::cast< StructType >( cmp->getArgOperand( 1 )->getType() );
+                    args.push_back( cmp->getArgOperand( 1 ) );
+                    break;
             };
-            args.push_back( condition() );
+            args.push_back( cond );
 
             auto call = llvm::cast< llvm::CallInst >( assume );
             args.push_back( call->getArgOperand( 1 ) );
@@ -205,9 +208,12 @@ void BCP::process( llvm::Instruction * assume ) {
     Assume ass = { assume, data.tmap };
 
     // create constraints on arguments from condition that created tristate
-    if ( isIntrinsic( ass.condition() ) ) {
-        propagate( ass.constrain( ass.domain(), Assume::AssumeValue::LHS ) );
-        propagate( ass.constrain( ass.domain(), Assume::AssumeValue::RHS ) );
+    auto cond = ass.condition();
+    if ( auto cmp = llvm::dyn_cast< llvm::CallInst >( cond ) ) {
+        if ( isIntrinsic( cmp ) ) {
+            propagate( ass.constrain( ass.domain(), Assume::AssumeValue::LHS ) );
+            propagate( ass.constrain( ass.domain(), Assume::AssumeValue::RHS ) );
+        }
     }
     propagate( ass.constrain( ass.domain(), Assume::AssumeValue::Predicate ) );
 
