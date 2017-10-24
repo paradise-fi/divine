@@ -16,7 +16,7 @@ function( update_file name content )
   endif()
 endfunction()
 
-function( bricks_make_runner name main flags )
+function( bricks_make_runner name flags )
   set( file "${CMAKE_CURRENT_BINARY_DIR}/${name}-runner.cpp" )
   set( n 0 )
   set( libs "" )
@@ -30,19 +30,7 @@ function( bricks_make_runner name main flags )
     list( APPEND libs ${name}-${n} )
   endforeach( src )
 
-  set( main "
-    namespace brick { namespace unittest {
-        std::vector< TestCaseBase * > *testcases\;
-        std::set< std::string > *registered\;
-    } }
-    int main( int argc, const char **argv ) {
-      int r = 1\;
-      ${main}
-      return r\;
-    }"
-  )
-
-  update_file( ${file} "${main}" )
+  update_file( ${file} "" )
 
   add_executable( ${name} EXCLUDE_FROM_ALL ${file} )
   target_link_libraries( ${name} ${libs} )
@@ -57,13 +45,13 @@ endfunction()
 # to run the testsuite.
 
 function( bricks_unittest name )
-  bricks_make_runner( ${name} "r = brick::unittest::run( argc, argv )\;"
-                      "-UNDEBUG -DBRICK_UNITTEST_REG -include brick-unittest" ${ARGN} )
+  set( flags "-UNDEBUG -DBRICK_UNITTEST_REG -DBRICK_UNITTEST_MAIN -include brick-unittest" )
+  bricks_make_runner( ${name} "${flags}" ${ARGN} )
 endfunction()
 
 function( bricks_benchmark name )
-  bricks_make_runner( ${name} "brick-benchmark" "brick::benchmark::run( argc, argv )\;"
-                      "-DBRICK_BENCHMARK_REG -include brick-benchmark" ${ARGN} )
+  set( flags "-DBRICK_BENCHMARK_REG -DBRICK_BENCHMARK_MAIN -include brick-benchmark" )
+  bricks_make_runner( ${name} "${flags}" ${ARGN} )
   target_link_libraries( ${name} rt )
 endfunction()
 

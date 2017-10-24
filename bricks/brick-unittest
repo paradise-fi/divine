@@ -447,14 +447,14 @@ struct SelfTest
 }
 
 
-#endif
-
 #ifdef BRICK_UNITTEST_MAIN
 
 int main( int argc, const char **argv )
 {
     return brick::unittest::run( argc, argv );
 }
+
+#endif
 
 #endif
 
