@@ -314,13 +314,11 @@ struct SampleStats
     enum SampleQuality { Satisfactory, Unsatisfactory };
 
     // returns true if samples are satisfactory
-    SampleQuality processSamples( int cutLimit = 50, int sumLimit = 5 )
+    SampleQuality processSamples()
     {
         b_sample = box( sample );
         m_sample = mean( sample );
         sd_sample = stddev( sample );
-
-        double iqr = b_sample.high - b_sample.low;
 
         bs_mean = bootstrap( sample, mean );
         bs_median = bootstrap( sample, []( Sample s ) { return box( s ).median; } );
