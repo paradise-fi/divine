@@ -1,9 +1,7 @@
 real_mem=`cat /proc/meminfo | grep MemTotal | sed 's/^[^0-9]*\([0-9]*\).*$/\1/'`
 real_cpus=`cat /proc/cpuinfo  | grep processor | wc -l`
 
-mem=$(($real_mem / 1024 / 2))
-test $mem -gt 12288 && mem=12288
-test $mem -lt 4096 && mem=4096
+mem=12288
 cpus=$(($real_cpus / 2))
 test $cpus -gt 8 && cpus=8
 test $cpus -lt 1 && cpus=1
@@ -16,7 +14,7 @@ if [[ "$1" != "--pack-only" ]]; then
 
     test -e $img || wget https://cloud-images.ubuntu.com/$dist/current/$img
     qemu-img create -o backing_file=$img -f qcow2 divine-$dist.qcow2 20G
-    qemu-img create -f qcow2 divine-build.qcow2 20G
+    qemu-img create -f qcow2 divine-build.qcow2 25G
     mkdir -p cloud-config
 
     cat > cloud-config/meta-data <<EOF
@@ -86,7 +84,7 @@ if [[ "$1" != "--skip-vbox" ]]; then
                           --vendor "ParaDiSe Lab, FI MU, CZ" \
                           --vendorurl "https://paradise.fi.muni.cz"
     rm -f $vdi.xz
-    xz -vk -9 $vdi
+    xz -vk -T $cpus -9 $vdi
     VBoxManage unregistervm $vm --delete
     rm -rf _vbox
     chmod go=r $ova
