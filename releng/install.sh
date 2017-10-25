@@ -1,7 +1,15 @@
 #!/bin/sh
 
 set -e
-version=4.0.0
+version=@version@
+
+if [ ! -z $DIVINE_IMAGE_VERSION ]; then
+    version=$DIVINE_IMAGE_VERSION
+fi
+
+if echo $version | grep -q '^http'; then
+    darcs=$DIVINE_IMAGE_VERSION
+fi
 prefix=/opt/divine
 
 if test -d $prefix; then
@@ -13,9 +21,14 @@ if test -d $prefix; then
     exit 1
 fi
 
-wget https://divine.fi.muni.cz/download/divine-$version.tar.gz
-tar xzf divine-$version.tar.gz
-cd divine-$version
+if [ -z $darcs ]; then
+    wget https://divine.fi.muni.cz/download/divine-$version.tar.gz
+    tar xzf divine-$version.tar.gz
+    cd divine-$version
+else
+    darcs get $darcs divine-darcs
+    cd divine-darcs
+fi
 
 make prerequisites
 make

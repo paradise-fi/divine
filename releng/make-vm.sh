@@ -10,6 +10,19 @@ resources="-m $mem -smp $cpus"
 dist=xenial
 img=xenial-server-cloudimg-amd64-disk1.img
 
+install_env=
+install_darcs=
+install_version=
+if [[ -n "$DIVINE_IMAGE_VERSION" ]]; then
+    install_env="env DIVINE_IMAGE_VERSION=$DIVINE_IMAGE_VERSION"
+    if echo $DIVINE_IMAGE_VERSION | grep -q '^http'; then
+        install_darcs=darcs
+        install_version=darcs
+    else
+        install_version=$DIVINE_IMAGE_VERSION
+    fi
+fi
+
 if [[ "$1" != "--pack-only" ]]; then
 
     test -e $img || wget https://cloud-images.ubuntu.com/$dist/current/$img
@@ -32,11 +45,11 @@ users:
    sudo: ALL=(ALL) NOPASSWD:ALL
 runcmd:
  - apt-get update
- - apt-get install -y make
+ - apt-get install -y make $install_darcs
  - mkfs.ext4 /dev/sdb
  - mount /dev/sdb /mnt
  - cd /mnt
- - "curl https://divine.fi.muni.cz/install.sh | sh"
+ - "curl https://divine.fi.muni.cz/install.sh | $install_env sh"
  - "curl https://divine.fi.muni.cz/install-vm.sh | sh"
  - apt-get remove -y cloud-init
  - poweroff
@@ -62,6 +75,7 @@ fi
 
 if [[ "$1" != "--skip-vbox" ]]; then
     version=$(curl -s https://divine.fi.muni.cz/install.sh | grep version= | head -n1 | sed 's/version=//')
+    test ! -z $install_version && version=$install_version
 
     base=divine-$version
     ova=$base.ova
