@@ -47,6 +47,11 @@ ExecStart=/bin/mount -t vboxsf divine-vbox /mnt/divine-vbox
 WantedBy=multi-user.target
 EOF
 
+cat <<EOF > /etc/network/interfaces.d/51-vbox.cfg
+auto enp0s3
+iface enp0s3 inet dhcp
+EOF
+
 systemctl daemon-reload
 systemctl enable divine-job.service
 systemctl enable vboxmount-divine.service
