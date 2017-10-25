@@ -45,9 +45,22 @@ add_custom_command(
  COMMAND perl ${SRCDIR}/../bib2md.pl ${SRCDIR}/../papers.bib |
          pandoc -s --smart --template ${SRCDIR}/template.html > papers.html )
 
+set( INSTALL_SH ${CMAKE_SOURCE_DIR}/releng/install.sh )
+set( INSTALL_VM_SH ${CMAKE_SOURCE_DIR}/releng/install-vm.sh )
+
+add_custom_command(
+  OUTPUT install.sh
+  DEPENDS ${INSTALL_SH}
+  COMMAND sed "s/@version@/${DIVINE_VERSION}/" ${INSTALL_SH} > install.sh )
+
+add_custom_command(
+  OUTPUT install-vm.sh
+  COMMAND ${CMAKE_COMMAND} -E copy ${INSTALL_VM_SH} install-vm.sh
+  VERBATIM )
+
 page( whatsnew.html .. "--toc" NEWS )
 page( roadmap.html .. "" ROADMAP )
 page( manual.html ../manual "--toc -N" ${MANUAL_SRC} )
 pages( . download.md index.md status.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
-add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html )
+add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html install.sh install-vm.sh )
