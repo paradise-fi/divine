@@ -8,7 +8,7 @@
 namespace lart {
 namespace abstract {
 
-struct LoadStep : brick::types::Unit, brick::types::Eq {};
+struct LoadStep : brick::types::Unit {};
 
 using GEPStep = size_t;
 using Step = std::variant< GEPStep, LoadStep >;
