@@ -1171,8 +1171,10 @@ struct Abstraction {
         auto m = test_abstraction( annotation + s );
         auto init = m->getFunction( "_Z4initP6Widget.2" );
         auto check = m->getFunction( "_Z5checkP6Widget.3" );
+        auto sym_i1 = m->getFunction( "lart.sym.icmp_slt.i32" );
         ASSERT_EQ( init->getNumUses(), 1 );
         ASSERT_EQ( check->getNumUses(), 1 );
+        ASSERT_EQ( check->getReturnType(), sym_i1->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }

@@ -139,6 +139,14 @@ private:
     Map< Function, Functions > data;
 };
 
+static inline bool isScalarType( llvm::Type * type ) {
+    return type->isIntegerTy();
+}
+
+static inline bool isScalarType( llvm::Value * val ) {
+    return isScalarType( val->getType() );
+}
+
 template< typename Vs, typename Fn >
 static inline auto remapFn( const Vs & vs, Fn fn ) {
     return query::query( vs ).map( [&] ( const auto & v ) {

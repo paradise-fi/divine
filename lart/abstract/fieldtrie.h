@@ -2,8 +2,9 @@
 #pragma once
 
 #include <lart/abstract/util.h>
-
 #include <brick-types>
+
+#include <fstream>
 
 namespace lart {
 namespace abstract {
@@ -13,7 +14,7 @@ struct LoadStep : brick::types::Unit {};
 using GEPStep = size_t;
 using Step = std::variant< GEPStep, LoadStep >;
 
-using Path = std::vector< Step >;
+using Indices = std::vector< Step >;
 
 template< typename K, typename T >
 struct FieldTrie {
@@ -73,7 +74,7 @@ struct FieldTrie {
         Handle& operator=( const Handle & ) = default;
         Handle& operator=( Handle && ) = default;
 
-        Handle search( const Path & keys ) {
+        Handle search( const Indices & keys ) {
             assert( root );
             auto level = root;
             for ( auto k : keys ) {
@@ -87,20 +88,23 @@ struct FieldTrie {
             return { trie, level };
         }
 
+        void setValue( T val ) {
+            auto in = std::get_if< Internal >( root );
+            assert( in && in->children.empty() );
+            in->setValue( val );
+        }
+
         using FromToHandles = std::pair< Handle, Handle >;
-        FromToHandles insert( const Path & keys, T val ) {
+        FromToHandles createPath( const Indices & keys ) {
             auto node = trie->createPath( keys, root );
-            auto in = std::get_if< Internal >( node );
-            if ( in->children.empty() )
-                in->setValue( val );
             if ( !root ) {
                 assert( trie->_root );
                 root = trie->_root.get();
             }
-            return { Handle{ trie, root }, Handle{ trie, node } };
+            return { { trie, root }, { trie, node } };
         }
 
-        Handle rebase( const Path & keys ) {
+        Handle rebase( const Indices & keys ) {
             assert( trie->_root );
             assert( root = trie->_root.get() );
             auto r = trie->rebase( keys );
@@ -110,6 +114,7 @@ struct FieldTrie {
         TrieNode * getRoot() const {
             return root;
         }
+
     private:
         FieldTrie * trie;
         TrieNode * root;
@@ -117,7 +122,7 @@ struct FieldTrie {
 
     Handle root() { return Handle( this, _root.get() ); }
 
-    TrieNode * createPath( const Path & keys, TrieNode * handle ) {
+    TrieNode * createPath( const Indices & keys, TrieNode * handle ) {
         if ( !handle ) {
             assert( _root == nullptr );
             _root = TrieNode::make_internal();
@@ -131,7 +136,7 @@ struct FieldTrie {
         return level;
     }
 
-    TrieNode * rebase( const Path & keys ) {
+    TrieNode * rebase( const Indices & keys ) {
         for ( auto k = keys.rbegin(); k != keys.rend(); ++k ) {
             auto level = TrieNode::make_internal();
             std::get< Internal >( *level ).children[ *k ] = std::move( _root );
@@ -143,36 +148,68 @@ struct FieldTrie {
     TrieNodePtr _root;
 };
 
-template< typename Value >
-struct ValueField {
-    ValueField( Value from, Value to, Path indices )
-        : from( from ), to( to ), indices( indices ) {}
-
-    Value from;
-    Value to;
-    Path indices;
-};
 
 template< typename Value >
 struct AbstractFields {
-    using Field = ValueField< Value >;
+
+    struct Path {
+        Path( Value from, Value to, Indices indices )
+            : from( from ), to( to ), indices( indices ) {}
+        Path( Value from, Indices indices )
+            : Path( from, nullptr, indices ) {}
+
+        Value from;
+        Value to;
+        Indices indices;
+    };
+
     using Trie = FieldTrie< Step, Domain >;
 
-    void insert( const Field & field, Domain dom ) {
-        if ( fields.count( field.to ) ) {
-            if ( fields.count( field.from ) )
-                return;
-            auto handle = fields.at( field.to ).rebase( field.indices );
-            fields.insert( { field.from, handle } );
-        } else {
-            if ( !fields.count( field.from ) ) {
-                auto& t = tries.emplace_back( std::make_unique< Trie >() );
-                fields.insert( { field.from, t->root() } );
-            }
-            auto ft = fields.at( field.from ).insert( field.indices, dom );
-            fields.insert( { field.from, ft.first } );
-            fields.insert( { field.to, ft.second } );
+    void create( const Value & root ) {
+        assert( root );
+        if ( !fields.count( root ) ) {
+            auto& t = tries.emplace_back( std::make_unique< Trie >() );
+            fields.insert( { root, t->root() } );
+            // create load edge
+            fields.at( root ).createPath( { LoadStep{} } );
         }
+    }
+
+    void addPath( const Path & path ) {
+        assert( fields.count( path.from ) );
+        auto handle = fields.at( path.from ).createPath( path.indices );
+        if ( path.to )
+            fields.insert( { path.to, handle.second } );
+    }
+
+    void insert( const Path & path ) {
+        if ( fields.count( path.to ) ) {
+            if ( fields.count( path.from ) )
+                return;
+            auto handle = fields.at( path.to ).rebase( path.indices );
+            fields.insert( { path.from, handle } );
+        } else {
+            if ( !fields.count( path.from ) ) {
+                auto& t = tries.emplace_back( std::make_unique< Trie >() );
+                fields.insert( { path.from, t->root() } );
+            }
+            auto ft = fields.at( path.from ).createPath( path.indices );
+            fields.insert( { path.from, ft.first } );
+            fields.insert( { path.to, ft.second } );
+        }
+    }
+
+    void setDomain( const Path & path, Domain dom ) {
+        addPath( path );
+        auto handle = fields.at( path.from ).search( path.indices );
+        assert( handle.getRoot() );
+        handle.setValue( dom );
+    }
+
+    void setDomain( const Value & val, Domain dom ) {
+        assert( fields.count( val ) );
+        assert( val->getType()->isIntegerTy() );
+        setDomain( { val, val, {} }, dom );
     }
 
     void alias( const Value & a, const Value & b ) {
@@ -181,23 +218,29 @@ struct AbstractFields {
         fields.insert( { b, handle } );
     }
 
-    void add( const Field & field ) {
-        auto handle = fields.at( field.from ).search( field.indices );
-        if ( handle.getRoot() )
-            fields.insert( { field.to, handle } );
+    bool has( const Value & v ) { return fields.count( v ); }
+
+    std::optional< Domain > getDomain( const Path & path ) {
+        if ( fields.count( path.from ) ) {
+            auto handle = fields.at( path.from ).search( path.indices );
+            return getDomain( handle );
+        }
+        return std::nullopt;
     }
 
-    std::optional< Domain > getDomain( const Field & field ) {
-        add( field );
-        if ( fields.count( field.to ) ) {
-            auto handle = fields.at( field.to );
-            if ( handle.getRoot() ) {
-                auto& node = std::get< Trie::Internal >( *handle.getRoot() );
-                if ( node.isLeaf() )
-                    return node.value();
-            }
-        }
+    std::optional< Domain > getDomain( const Value & val ) {
+        if ( fields.count( val ) )
+            return getDomain( fields.at( val ) );
+        return std::nullopt;
+    }
 
+private:
+    std::optional< Domain > getDomain( const Trie::Handle & handle ) {
+        if ( handle.getRoot() ) {
+            auto& node = std::get< Trie::Internal >( *handle.getRoot() );
+            if ( node.isLeaf() )
+                return node.value();
+        }
         return std::nullopt;
     }
 

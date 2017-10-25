@@ -86,6 +86,55 @@ inline AbstractValues reachFrom( const AbstractValue & root ) {
     return reachFrom( AbstractValues{ root } );
 };
 
+template< typename T >
+static inline decltype( auto ) get_value( const AbstractValue & av ) {
+    return av.safeGet< T >();
+}
+
+static inline decltype( auto ) Alloca( const AbstractValue & av ) {
+    return get_value< llvm::AllocaInst >( av );
+}
+
+static inline decltype( auto ) Argument( const AbstractValue & av ) {
+    return get_value< llvm::Argument >( av );
+}
+
+static inline decltype( auto ) GEP( const AbstractValue & av ) {
+    return get_value< llvm::GetElementPtrInst >( av );
+}
+
+static inline decltype( auto ) Load( const AbstractValue & av ) {
+    return get_value< llvm::LoadInst >( av );
+}
+
+static inline decltype( auto ) Store( const AbstractValue & av ) {
+    return get_value< llvm::StoreInst >( av );
+}
+
+static inline decltype( auto ) BitCast( const AbstractValue & av ) {
+    return get_value< llvm::BitCastInst >( av );
+}
+
+static inline decltype( auto ) Ret( const AbstractValue & av ) {
+    return get_value< llvm::ReturnInst >( av );
+}
+
+static inline decltype( auto ) Branch( const AbstractValue & av ) {
+    return get_value< llvm::BranchInst >( av );
+}
+
+static inline decltype( auto ) CallSite( const AbstractValue & av ) {
+    return llvm::CallSite( av.value );
+}
+
+static inline decltype( auto ) Cmp( const AbstractValue & av ) {
+    return get_value< llvm::CmpInst >( av );
+}
+
+static inline decltype( auto ) MemIntrinsic( const AbstractValue & av ) {
+    return get_value< llvm::MemIntrinsic >( av );
+}
+
 } // namespace abstract
 } // namespace lart
 

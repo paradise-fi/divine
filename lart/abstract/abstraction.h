@@ -18,7 +18,6 @@ struct Abstraction {
         using FunctionNodeDecl::FunctionNodeDecl;
 
         AbstractValues reached() const;
-        AbstractValues structs() const;
         llvm::Function * function() const { return first; }
         const RootsSet& roots() const { return second; }
     };

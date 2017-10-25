@@ -31,20 +31,32 @@ struct CallInterupt {
     }
 };
 
+bool isScalarOp( const AbstractValue & av ) {
+    auto type = av.value->getType();
+    if ( Branch( av ) )
+        return true;
+    else if ( auto cmp = Cmp( av ) )
+        return !( cmp->getOperand( 0 )->getType()->isPointerTy() ||
+                  cmp->getOperand( 1 )->getType()->isPointerTy() );
+    else if ( auto s = Store( av ) )
+        return isScalarType( s->getValueOperand()->getType() );
+    else if ( auto r = Ret( av ) )
+        return isScalarType( r->getReturnValue()->getType() );
+    else if ( ( Argument( av ) || Alloca( av ) || GEP( av ) || CallSite( av ) )
+        && type->isPointerTy() && isScalarType( type->getPointerElementType() ) )
+        return true;
+    else if ( auto bc = BitCast( av ) )
+        return type->isPointerTy() &&
+               isScalarType( bc->getSrcTy()->getPointerElementType() );
+    else if ( isScalarType( av.value ) )
+        return true;
+    return false;
 }
+
+} // anonymous namespace
 
 AbstractValues Abstraction::FunctionNode::reached() const {
-    auto rs = query::query( roots() ).filter( [] ( const auto & r ) {
-        return !isBaseStructTy( r.value->getType() );
-    } ).freeze();
-    return reachFrom( rs );
-}
-
-AbstractValues Abstraction::FunctionNode::structs() const {
-    auto rs = query::query( roots() ).filter( [] ( const auto & r ) {
-        return isBaseStructTy( r.value->getType() );
-    } ).freeze();
-    return reachFrom( rs );
+    return reachFrom( { roots().begin(), roots().end() } );
 }
 
 void Abstraction::run( llvm::Module & m ) {
@@ -61,8 +73,6 @@ void Abstraction::run( llvm::Module & m ) {
             size_t sum = 0;
             for ( auto & a : filterA< llvm::Argument >( fn.roots() ) )
                 sum += a.get< llvm::Argument >()->getArgNo();
-            for ( auto & a : filterA< llvm::Argument >( fn.structs() ) )
-                sum += a.get< llvm::Argument >()->getArgNo();
             return sum;
         };
 
@@ -77,9 +87,11 @@ void Abstraction::run( llvm::Module & m ) {
 
     Functions remove;
     for ( const auto & p : prototypes ) {
+        auto fnode = p.first;
+        if ( fnode.roots().empty() )
+            continue;
         LiftMap< llvm::Value *, llvm::Value * > vmap;
         auto builder = make_builder( vmap, data.tmap, fns );
-        auto fnode = p.first;
 
         // 1. if signature changes create a new function declaration
         // if proccessed function is called with abstract argument create clone of it
@@ -91,24 +103,26 @@ void Abstraction::run( llvm::Module & m ) {
 
         if ( called )
             fnode = clone( fnode );
-
         // 2. process function abstract entries
         auto postorder = fnode.reached();
         for ( auto & av : lart::util::reverse( postorder ) )
-            builder.process( av );
-        auto structs = fnode.structs();
-        for ( auto & av : lart::util::reverse( structs ) )
-            builder.processStructOp( av );
+            if ( isScalarOp( av ) )
+                builder.process( av );
+            else
+                builder.processStructOp( av );
 
         // 3. clean function
         std::set< llvm::Value * > deps;
         for ( auto & av : postorder )
-            if ( !av.isa< llvm::GetElementPtrInst >() )
+            if ( isScalarOp( av ) && !av.isa< llvm::GetElementPtrInst >() ) {
                 deps.insert( av.value );
-        for ( auto & av : structs )
-            if ( auto cs = llvm::CallSite( av.value ) ) {
+            } else if ( auto cs = llvm::CallSite( av.value ) ) {
                 auto fn = cs.getCalledFunction();
-                if ( !fn->isIntrinsic() && !isIntrinsic( fn ) )
+                if ( MemIntrinsic( av ) )
+                    continue;
+                else if ( fn->isIntrinsic() ) // LLVM intrinsic
+                    deps.insert( av.value );
+                else if ( !isIntrinsic( fn ) ) // Not a LART intrinsic
                     deps.insert( av.value );
             }
         clean( { deps.begin(), deps.end() } );

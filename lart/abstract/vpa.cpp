@@ -88,15 +88,17 @@ llvm::StoreInst * isArgStoredTo( llvm::Value * v ) {
     return nullptr;
 }
 
-ValueField< llvm::Value * > createFieldPath( llvm::LoadInst * load ) {
+using Path = AbstractFields< llvm::Value * >::Path;
+
+Path createFieldPath( llvm::LoadInst * load ) {
     return { load->getPointerOperand(), load, { LoadStep{} } };
 }
 
-ValueField< llvm::Value * > createFieldPath( llvm::StoreInst * store ) {
+Path createFieldPath( llvm::StoreInst * store ) {
     return { store->getPointerOperand(), store->getValueOperand(), { LoadStep{} } };
 }
 
-ValueField< llvm::Value * > createFieldPath( llvm::GetElementPtrInst * gep ) {
+Path createFieldPath( llvm::GetElementPtrInst * gep ) {
     auto inds = query::query( gep->idx_begin(), gep->idx_end() )
         .map ( [] ( const auto & idx ) -> Step {
             return llvm::cast< llvm::ConstantInt >( idx )->getZExtValue();
@@ -178,8 +180,8 @@ void VPA::stepIn( const StepIn & si ) {
         auto roots = reached[ fn ].argDepRoots( doms );
         auto arg = av.get< llvm::Argument >();
         auto op = cs.getInstruction()->getOperand( arg->getArgNo() );
-        if ( stripPtrs( op->getType() )->isStructTy() )
-            fields.alias( op, arg );
+        if ( !isScalarType( op->getType() ) )
+            fields.alias( op, arg ); // TODO maybe copy
         dispach( PropagateDown( av, roots, si.parent ) );
     }
 }
@@ -201,15 +203,15 @@ void VPA::stepOut( const StepOut & so ) {
     }
 }
 
-llvm::Value * VPA::origin( llvm::Value * value, Domain dom ) {
-    llvm::Value * curr = value, * prev = nullptr;
+llvm::Value * VPA::origin( llvm::Value * val ) {
+    llvm::Value * curr = val, * prev = nullptr;
     while ( curr != prev ) {
         prev = curr;
         if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( curr ) ) {
-            fields.insert( createFieldPath( g ), dom );
+            fields.insert( createFieldPath( g ) );
             curr = g->getPointerOperand();
         } else if ( auto l = llvm::dyn_cast< llvm::LoadInst >( curr ) ) {
-            fields.insert( createFieldPath( l ), dom );
+            fields.insert( createFieldPath( l ) );
             curr = l->getPointerOperand();
         }
     }
@@ -217,107 +219,207 @@ llvm::Value * VPA::origin( llvm::Value * value, Domain dom ) {
 }
 
 void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent ) {
-    auto o = origin( gep, dom );
-    dispach( PropagateDown( AbstractValue{ o, Domain::Undefined }, roots, parent ) );
+    auto o = origin( gep );
+    // TODO set domain
+    dispach( PropagateDown( AbstractValue{ o, dom }, roots, parent ) );
 }
 
-void VPA::propagateStructDown( const PropagateDown & t ) {
-    auto rf = reachFrom( t.value );
-    for ( auto & v : lart::util::reverse( rf ) ) {
-        if ( v.isa< llvm::AllocaInst >() ) {
-            t.roots->insert( v );
-        } else if ( v.isa< llvm::Argument >() ) {
-            reached[ getFunction( v.value ) ].insert( v, t.roots );
-        } else if ( auto gep = v.safeGet< llvm::GetElementPtrInst >() ) {
-            if ( auto dom = fields.getDomain( createFieldPath( gep ) ) ) {
-                auto av = AbstractValue{ gep, dom.value() };
-                if ( !isBaseStructTy( gep->getType() ) )
-                    t.roots->insert( av );
-                dispach( PropagateDown( av, t.roots, t.parent ) );
-            }
-        } else if ( auto l = v.safeGet< llvm::LoadInst >() ) {
-            if ( l->getType()->isPointerTy() )
-                fields.add( createFieldPath( l ) );
-        } else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
-            if ( isBaseStructTy( s->getValueOperand()->getType() ) ) {
-                fields.insert( createFieldPath( s ), v.domain );
+void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
+    auto val = t.value.value;
+    assert( !isScalarType( val ) );
 
-                auto av = AbstractValue( s->getPointerOperand(), v.domain );
-                if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( s->getPointerOperand() ) )
-                    propagateFromGEP( gep, v.domain, t.roots, t.parent );
-                else
-                    dispach( PropagateDown( av, t.roots, t.parent ) );
+    auto rf = reachFrom( t.value );
+    rf = query::query( rf ).filter( [] ( const auto & av ) {
+        if ( Load( av ) )
+            return true;
+        if ( auto ret = Ret( av ) )
+            return true;
+        if ( CallSite( av ) )
+            return true; // maybe check args and ret
+        return !isScalarType( av.value );
+    } ).freeze();
+
+    for ( auto & av : lart::util::reverse( rf ) ) {
+        if ( auto a = Alloca( av ) ) {
+            t.roots->insert( av );
+            fields.create( a );
+
+            if ( isScalarType( a->getAllocatedType() ) ) {
+                Path path = { a, { LoadStep{} } };
+                if ( !fields.getDomain( path ) )
+                    fields.setDomain( path, t.value.domain );
             }
-        } else if ( auto bc = v.safeGet< llvm::BitCastInst >() ) {
+        }
+        else if ( Argument( av ) ) {
+            reached[ getFunction( av.value ) ].insert( av, t.roots );
+        }
+        else if ( auto l = Load( av ) ) {
+            Path path = createFieldPath( l );
+            fields.addPath( path );
+
+            if ( isScalarType( l ) ) {
+                if ( auto dom = fields.getDomain( l ) ) {
+                    AbstractValue v = { l, dom.value() };
+                    dispach( PropagateDown( v, t.roots, t.parent ) );
+                }
+            }
+        }
+        else if ( auto s = Store( av ) ) {
+            Path path = createFieldPath( s );
+            auto ptr = s->getPointerOperand();
+            // TODO copy
+            fields.create( ptr );
+            fields.addPath( path );
+            auto dom = t.value.domain;
+            if ( isScalarType( s->getValueOperand() ) ) {
+                if ( auto setted = fields.getDomain( path ) )
+                    dom = setted.value();
+                else
+                    fields.setDomain( path, dom );
+            }
+
+            auto o = origin( ptr );
+            dispach( PropagateDown( { o, dom }, t.roots, t.parent ) );
+        }
+        else if ( auto gep = GEP( av ) ) {
+            auto path = createFieldPath( gep );
+            fields.addPath( path );
+        }
+        else if ( auto bc = BitCast( av ) ) {
             fields.alias( bc->getOperand( 0 ), bc );
-        } else if ( auto mem = v.safeGet< llvm::MemIntrinsic >() ) {
+        }
+        else if ( auto mem = MemIntrinsic( av ) ) {
             auto dest = mem->getDest();
             // TODO copy
             fields.alias( mem->getOperand( 1 ), dest );
-            dispach( PropagateDown( AbstractValue{ dest, Domain::Undefined }, t.roots, t.parent ) );
-        } else if ( auto cs = llvm::CallSite( v.value ) ) {
-            if ( t.value.value != v.value )
-                dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
+            dispach( PropagateDown( AbstractValue{ dest, av.domain }, t.roots, t.parent ) );
+        }
+        else if ( auto cs = CallSite( av ) ) {
+            if ( cs.getInstruction() == val )
+                UNREACHABLE( "We dont know to propagate struct from call yet." );
             else
-                t.roots->insert( v ); // we are propagating from this call
+                dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
+        }
+        else if ( auto r = Ret( av ) ) {
+            assert( r->getReturnValue()->getType()->isSingleValueType() &&
+                    "We don't know to return abstract struct type." );
+            dispach( StepOut( getFunction( av.value ), av.domain, t.parent ) );
         }
     }
 }
 
-void VPA::propagateScalarDown( const PropagateDown & t ) {
+void VPA::propagateIntDown( const PropagateDown & t ) {
+    auto isRoot = [&] ( const auto & v ) { return v == t.value.value; };
     auto rf = reachFrom( t.value );
-    for ( auto & v : lart::util::reverse( rf ) ) {
-        if ( v.isa< llvm::AllocaInst >() ) {
-            t.roots->insert( v );
-        } else if ( v.isa< llvm::Argument >() ) {
-            reached[ getFunction( v.value ) ].insert( v, t.roots );
-        } else if ( v.isa< llvm::GetElementPtrInst >() ) {
-            t.roots->insert( v );
-        } else if ( auto s = v.safeGet< llvm::StoreInst >() ) {
-            auto av = AbstractValue( s->getPointerOperand(), v.domain );
-            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( s->getPointerOperand() ) )
-                propagateFromGEP( gep, v.domain, t.roots, t.parent );
+    for ( auto & av : lart::util::reverse( rf ) ) {
+        auto dom = av.domain;
+        assert( dom != Domain::Undefined );
+
+        if ( Argument( av )  ) {
+            reached[ getFunction( av.value ) ].insert( av, t.roots );
+        }
+        else if ( GEP( av ) ) {
+            t.roots->insert( av );
+        }
+        else if ( auto l = Load( av ) ) {
+            if ( isRoot( l ) ) {
+                auto a = llvm::dyn_cast< llvm::AllocaInst >( l->getPointerOperand() );
+                if ( a && a->getAllocatedType()->isIntegerTy() )
+                    continue; // root of this load is alloca
+                if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( l->getPointerOperand() ) )
+                    t.roots->insert( { gep, dom } );
+                else
+                    t.roots->insert( av );
+            }
+        }
+        else if ( auto s = Store( av ) ) {
+            auto ptr = s->getPointerOperand();
+            Path path = { ptr, { LoadStep{} } };
+            AbstractValue root = { ptr, dom };
+
+            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( ptr ) ) {
+                if ( !fields.has( gep ) ) {
+                    // TODO use copy
+                    fields.create( gep );
+                    fields.setDomain( path, dom );
+                }
+                t.roots->insert( root );
+            } else if ( auto maybedom = fields.getDomain( path ) ) {
+                assert( maybedom == dom );
+            } else {
+                // TODO use copy
+                fields.create( ptr );
+                fields.setDomain( path, dom );
+            }
+
+            auto o = origin( ptr );
+            dispach( PropagateDown( { o,  dom }, t.roots, t.parent ) );
+        }
+        else if ( auto cs = CallSite( av ) ) {
+            if ( isRoot( cs.getInstruction() ) )
+                t.roots->insert( av ); // we are propagating from this call
             else
-                dispach( PropagateDown( av, t.roots, t.parent ) );
-        } else if ( auto cs = llvm::CallSite( v.value ) ) {
-            if ( t.value.value != v.value )
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
-            else
-                t.roots->insert( v ); // we are propagating from this call
-        } else if ( v.isa< llvm::ReturnInst >() ) {
-            dispach( StepOut( getFunction( v.value ), v.domain, t.parent ) );
+        }
+        else if ( Ret( av ) ) {
+            dispach( StepOut( getFunction( av.value ), dom, t.parent ) );
         }
     }
 }
 
 void VPA::propagateDown( const PropagateDown & t ) {
-    if ( seen[ t.roots ].count( t.value.value ) )
+    auto val = t.value.value;
+    auto dom = t.value.domain;
+    if ( seen[ t.roots ].count( val ) )
         return; // The value has been already propagated.
-    if ( !llvm::CallSite( t.value.value ) ) {
-        auto o = origin( t.value.value, t.value.domain );
-        auto dom = t.value.domain;
-        if ( auto arg = t.value.safeGet< llvm::Argument >() ) {
-            dispach( PropagateUp( arg, dom, t.roots, t.parent ) );
+
+    if ( !llvm::CallSite( val ) ) {
+        auto o = origin( val );
+        if ( auto arg = Argument( t.value ) ) {
+            if ( arg->getType()->isPointerTy() )
+                dispach( PropagateUp( arg, t.roots, t.parent ) );
         } else if ( auto s = isArgStoredTo( o ) ) {
-            auto arg = llvm::cast< llvm::Argument >( s->getValueOperand() );
-            fields.insert( createFieldPath( s ), dom );
-            dispach( PropagateDown( AbstractValue{ o, dom }, t.roots, t.parent ) );
-            dispach( PropagateUp( arg, dom, t.roots, t.parent ) );
+            auto vop = s->getValueOperand();
+            auto arg = llvm::cast< llvm::Argument >( vop );
+            if ( arg->getType()->isPointerTy() ) {
+                // TODO copy trie
+                Path path = { arg, { LoadStep{} } };
+                if ( auto maybedom = fields.getDomain( path ) ) {
+                    assert( maybedom == dom );
+                } else {
+                    // TODO use copy
+                    fields.create( arg );
+                    fields.setDomain( path, dom );
+                }
+
+                dispach( PropagateDown( AbstractValue{ o, dom }, t.roots, t.parent ) );
+                dispach( PropagateUp( arg, t.roots, t.parent ) );
+            }
         }
     }
 
-    if ( operatesWithStructTy( t.value.value ) )
-        propagateStructDown( t );
+    if ( val->getType()->isIntegerTy() )
+        propagateIntDown( t );
     else
-        propagateScalarDown( t );
-    seen[ t.roots ].insert( t.value.value );
+        propagatePtrOrStructDown( t );
+
+    seen[ t.roots ].insert( val );
 }
 
 void VPA::propagateUp( const PropagateUp & t ) {
-    auto av =  AbstractValue{ t.arg, t.domain };
+    assert( !isScalarType( t.arg ) );
+    assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden." );
+
+    Path path = { t.arg, { LoadStep{} } };
+    // FIXME getting correct domain
+    auto dom = fields.getDomain( path ) ? fields.getDomain( path ).value() : Domain::Symbolic;
+
+    auto av =  AbstractValue{ t.arg, dom };
+    auto ano = t.arg->getArgNo();
+
     if ( t.parent ) {
         auto r = reachFrom( { t.parent->roots->begin(), t.parent->roots->end() } );
-        auto arg = t.parent->callsite->getOperand( t.arg->getArgNo() );
+        auto arg = t.parent->callsite->getOperand( ano );
         auto abs = std::find_if( r.begin(), r.end(), [&] ( const auto & a ) {
             return a.value == arg;
         } );
@@ -327,25 +429,22 @@ void VPA::propagateUp( const PropagateUp & t ) {
 
     reached[ getFunction( av.value ) ].insert( av, t.roots );
 
-    assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden.");
+    auto propagate = [&] ( auto op, auto roots, auto parent ) {
+        fields.alias( t.arg, op );
+        auto o = origin( op );
+        auto root = AbstractValue{ o, dom };
+        dispach( PropagateDown( root, roots, parent ) );
+    };
+
     if ( t.parent ) {
-        auto op = t.parent->callsite->getOperand( t.arg->getArgNo() );
-        if ( stripPtrs( t.arg->getType() )->isStructTy() )
-            fields.alias( t.arg, op );
-        auto o = origin( op, t.domain );
-        auto root = AbstractValue{ o, t.domain };
-        dispach( PropagateDown( root, t.parent->roots, t.parent->parent ) );
+        auto op = t.parent->callsite->getOperand( ano );
+        propagate( op, t.parent->roots, t.parent->parent );
     } else {
         for ( auto u : t.arg->getParent()->users() ) {
             auto fn = getFunction( u );
             record( fn );
-
-            auto op = u->getOperand( t.arg->getArgNo() );
-            if ( stripPtrs( t.arg->getType() )->isStructTy() )
-                fields.alias( t.arg, op );
-            auto o = origin( op, t.domain );
-            auto root = AbstractValue{ o, t.domain };
-            dispach( PropagateDown( root, reached[ fn ].annotations(), nullptr ) );
+            auto op = u->getOperand( ano );
+            propagate( op, reached[ fn ].annotations(), nullptr );
         }
     }
 }

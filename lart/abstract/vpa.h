@@ -181,19 +181,17 @@ inline bool operator==( const StepOut & a, const StepOut & b) {
 }
 
 struct PropagateUp {
-    explicit PropagateUp( llvm::Argument * a, Domain d, RootsSet * r, ParentPtr p )
-        : arg( a ), domain( d ), roots( r ), parent( p ) {}
+    explicit PropagateUp( llvm::Argument * a, RootsSet * r, ParentPtr p )
+        : arg( a ), roots( r ), parent( p ) {}
 
     llvm::Argument * arg;
-    Domain domain;
     RootsSet * roots;
     ParentPtr parent;
 };
 
 
 inline bool operator==( const PropagateUp & a, const PropagateUp & b) {
-    return std::tie( a.arg, a.domain, a.roots, a.parent ) ==
-           std::tie( b.arg, b.domain, b.roots, b.parent );
+    return std::tie( a.arg, a.roots, a.parent ) == std::tie( b.arg, b.roots, b.parent );
 }
 
 using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut >;
@@ -209,15 +207,15 @@ private:
     void dispach( Task && );
     void preprocess( llvm::Function * );
     void propagateDown( const PropagateDown & );
-    void propagateScalarDown( const PropagateDown & );
-    void propagateStructDown( const PropagateDown & );
+    void propagateIntDown( const PropagateDown & );
+    void propagatePtrOrStructDown( const PropagateDown & );
     void propagateUp( const PropagateUp & );
     void propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent );
 
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );
 
-    llvm::Value * origin( llvm::Value * value, Domain dom );
+    llvm::Value * origin( llvm::Value * value );
 
     std::deque< Task > tasks;
 

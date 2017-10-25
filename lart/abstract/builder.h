@@ -95,23 +95,32 @@ struct AbstractBuilder {
             vmap.insert( inst, abstract );
             for ( auto & lift : liftsOf( inst ) )
                 lift->replaceAllUsesWith( abstract );
+            // TODO replace unnecessery bitcasts
         }
     }
 
     void processStructOp( const AbstractValue & av ) {
-        if ( auto cs = llvm::CallSite( av.value ) ) {
+        auto v = av.value;
+        if ( auto cs = llvm::CallSite( v ) ) {
             auto fn = cs.getCalledFunction();
             if ( fn->isIntrinsic() ) {
                 createIntrinsicCall( av );
             } else {
                 if ( !isIntrinsic( cs.getInstruction() ) ) {
-                    if ( !vmap.safeLift( av.value ) )
-                        vmap.insert( av.value, createCallSite( av ) );
+                    if ( !vmap.safeLift( v ) )
+                        vmap.insert( v, createCallSite( av ) );
                 }
             }
-        } else {
-            if ( !isAbstract( av.value->getType() ) && operatesWithStructTy( av.value ) )
-                vmap.insert( av.value, av.value );
+        } else if ( !v->getType()->isVoidTy() && !operatesWithStructTy( v ) && !vmap.safeLift( v ) ) {
+            if ( auto i = av.get< llvm::Instruction >() ) {
+                auto type = getType( av );
+                auto bc = llvm::cast< llvm::Instruction >( IRB( i ).CreateBitCast( v, type ) );
+                bc->removeFromParent();
+                bc->insertAfter( i );
+                vmap.insert( i, bc );
+            }
+        } else if ( !isAbstract( v->getType() ) && operatesWithStructTy( v ) ) {
+            vmap.insert( v, v );
         }
     }
 
@@ -128,8 +137,19 @@ private:
     }
 
     Args createArgsOf( const AbstractValue & av, IRB & irb ) {
-        return query::query( operands( av ) ).map( [&] ( const auto & op ) {
-            return lift( { op.get(), av.domain }, irb );
+        return query::query( operands( av ) ).map( [&] ( const auto & op ) -> llvm::Value * {
+            assert( !op->getType()->isStructTy() );
+
+            if ( !llvm::isa< llvm::Argument >( op ) && op->getType()->isPointerTy() ) {
+                if ( auto l = vmap.safeLift( op.get() ) )
+                    return l.value();
+                auto type = getType( { op.get(), av.domain } );
+                auto bc = llvm::cast< llvm::Instruction >( irb.CreateBitCast( op.get(), type ) );
+                vmap.insert( op.get(), bc );
+                return bc;
+            } else {
+                return lift( { op.get(), av.domain }, irb );
+            }
         } ).freeze();
     }
 
@@ -294,13 +314,13 @@ private:
             auto dest = i->getSuccessor( 0 );
             return irb.CreateBr( dest );
         } else {
-            llvm::Value * cond;
-            if ( vmap.safeLift( i->getCondition() ).isJust() ) {
-                auto acond = vmap.lift( i->getCondition() );
-                auto tristate = toTristate( acond, av.domain, irb );
-                cond = lower( tristate, irb );
-            } else {
-                cond = i->getCondition();
+            llvm::Value * cond = i->getCondition();
+            if ( vmap.safeLift( cond ).isJust() ) {
+                auto acond = vmap.lift( cond );
+                if ( isAbstract( acond->getType() ) ) {
+                    auto tristate = toTristate( acond, av.domain, irb );
+                    cond = lower( tristate, irb );
+                }
             }
             return irb.CreateCondBr( cond, i->getSuccessor( 0 ), i->getSuccessor( 1 ) );
         }
