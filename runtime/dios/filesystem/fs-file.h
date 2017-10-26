@@ -211,7 +211,7 @@ struct VmBuffTraceFile : File
     }
 
     __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
-    void do_write( const char *data, size_t &length )
+    void do_write( const char *data, size_t &length ) noexcept
     {
         auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_get_task_handle() ) ];
         buf.insert( buf.length(), data, length );
@@ -225,7 +225,7 @@ struct VmBuffTraceFile : File
     }
 
     __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
-    void do_flush()
+    void do_flush() noexcept
     {
         for ( auto &b : get_debug().trace_buf )
         {
