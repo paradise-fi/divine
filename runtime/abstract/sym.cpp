@@ -29,6 +29,16 @@ struct State {
 
 State state;
 
+extern "C" {
+void __sym_formula_dump() {
+    PCFragment * pcf = state.pcFragments;
+    while ( pcf != NULL ) {
+        puts( __sym_formula_to_string( pcf ) );
+        pcf = pcf->next;
+    }
+}
+}
+
 Formula **__abstract_sym_alloca( int bitwidth ) {
     return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth }, state.counter++ ) ) );
 }

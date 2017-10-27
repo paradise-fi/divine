@@ -45,4 +45,5 @@ sym::Formula *__abstract_sym_assume( sym::Formula *value,
                                      sym::Formula *constraint,
                                      bool assume ) _ROOT _NOTHROW;
 
+void __sym_formula_dump();
 }
