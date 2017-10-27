@@ -128,6 +128,7 @@ namespace {
         needtomerge = reach.reachable( obb, ubb );
         assert( !reach.reachable( cbb, ubb ) );
         e.show();
+        // FIXME merge assumes aswell
 
         return needtomerge;
     }
@@ -211,11 +212,11 @@ void BCP::process( llvm::Instruction * assume ) {
     auto cond = ass.condition();
     if ( auto cmp = llvm::dyn_cast< llvm::CallInst >( cond ) ) {
         if ( isIntrinsic( cmp ) ) {
-            propagate( ass.constrain( ass.domain(), Assume::AssumeValue::LHS ) );
-            propagate( ass.constrain( ass.domain(), Assume::AssumeValue::RHS ) );
+            ass.constrain( ass.domain(), Assume::AssumeValue::LHS );
+            ass.constrain( ass.domain(), Assume::AssumeValue::RHS );
         }
     }
-    propagate( ass.constrain( ass.domain(), Assume::AssumeValue::Predicate ) );
+    ass.constrain( ass.domain(), Assume::AssumeValue::Predicate );
 
     assume->eraseFromParent();
 }
