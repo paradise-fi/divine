@@ -161,7 +161,8 @@ llvm::Function * Abstraction::process( const FunctionNode & fnode ) {
 
     auto fn = fnode.first;
     auto dom = !rets.empty() ? rets[ 0 ].domain : Domain::LLVM;
-    auto rty = liftType( fn->getReturnType(), dom, data.tmap );
+    auto frty = fn->getReturnType();
+    auto rty = frty->isPointerTy() ? frty : liftType( fn->getReturnType(), dom, data.tmap );
 
     Map< unsigned, llvm::Type * > amap;
     for ( const auto & a : args ) {

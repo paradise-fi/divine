@@ -296,7 +296,7 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         }
         else if ( auto cs = CallSite( av ) ) {
             if ( cs.getInstruction() == val )
-                UNREACHABLE( "We dont know to propagate struct from call yet." );
+                t.roots->insert( av ); // we are propagating from this call
             else
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
         }
