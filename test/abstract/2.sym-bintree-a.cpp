@@ -16,25 +16,30 @@ struct BinTree {
     };
 
     void insert( Node *node ) {
-        root = insert_impl( root, node );
+        if ( !root )
+            root = node;
+        else
+            insert_impl( root, node );
     }
 
-    Node * insert_impl( Node *node, Node *in ) {
-        assert( in );
-        if ( !node )
-            return in;
+    void insert_impl( Node *node, Node *in ) {
         if ( in->val < node->val )
-            node->left = insert_impl( node->left, in );
+            if ( !node->left )
+                node->left = in;
+            else
+                insert_impl( node->left, in );
         else
-            node->right = insert_impl( node->right, in );
-        return node;
+            if ( !node->right )
+                node->right = in;
+            else
+                insert_impl( node->right, in );
     }
 
     bool is_correct_impl( Node *node, value_type min, value_type max ) {
         if ( !node ) return true;
         if ( node->val < min || node->val > max )
             return false;
-        return is_correct_impl( node->left, min, node->val - 1 ) &&
+        return is_correct_impl( node->left, min, node->val ) &&
                is_correct_impl( node->right, node->val, max );
     }
 
@@ -49,17 +54,19 @@ struct BinTree {
 
 BinTree::Node make_abstract_node() {
     _SYM int x;
-    return { x };
+    return x;
 }
 
 int main() {
     BinTree bt;
 
-    std::array< BinTree::Node, 100 > ns;
-    std::generate( ns.begin(), ns.end(), [] { return make_abstract_node(); } );
+    auto n1 = make_abstract_node();
+    auto n2 = make_abstract_node();
+    auto n3 = make_abstract_node();
 
-    for ( auto & n : ns )
-        bt.insert( &n );
+    bt.insert( &n1 );
+    bt.insert( &n2 );
+    bt.insert( &n3 );
 
     assert( bt.is_correct() );
 }
