@@ -85,7 +85,7 @@ void Abstraction::run( llvm::Module & m ) {
     for ( auto & fnode : sorted )
         prototypes[ fnode ] = process( fnode );
 
-    Functions remove;
+    std::set< llvm::Function * > remove;
     for ( const auto & p : prototypes ) {
         auto fnode = p.first;
         if ( fnode.roots().empty() )
@@ -131,7 +131,7 @@ void Abstraction::run( llvm::Module & m ) {
         auto fn = fnode.function();
         auto & changed = p.second;
         if ( changed != fn ) {
-            remove.push_back( fn );
+            remove.insert( fn );
             llvm::ValueToValueMapTy vtvmap;
             cloneFunctionInto( changed, fn, vtvmap );
             // Remove lifts of abstract arguments
