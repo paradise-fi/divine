@@ -223,14 +223,13 @@ private:
 
     llvm::Instruction * createIntrinsicCall( const AbstractValue & av ) {
         auto i = av.get< llvm::IntrinsicInst >();
-        auto fn = i->getCalledFunction();
-        assert( fn->isIntrinsic() );
+        assert( i->getCalledFunction()->isIntrinsic() );
 
         auto name = llvm::Intrinsic::getName( i->getIntrinsicID() );
 
         if ( i->getType()->isPointerTy() ) {
             // skip llvm.ptr.annotation function calls
-            assert( fn->getName().startswith( "llvm.ptr.annotation" ) );
+            assert( i->getCalledFunction()->getName().startswith( "llvm.ptr.annotation" ) );
             i->replaceAllUsesWith( i->getArgOperand( 0 ) );
         } else if ( name == "llvm.memcpy" ) {
 

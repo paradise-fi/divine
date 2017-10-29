@@ -308,8 +308,8 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
             else
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
         }
-        else if ( auto r = Ret( av ) ) {
-            assert( r->getReturnValue()->getType()->isSingleValueType() &&
+        else if ( Ret( av ) ) {
+            assert( Ret( av )->getReturnValue()->getType()->isSingleValueType() &&
                     "We don't know to return abstract struct type." );
             if ( fields.has( av.value ) )
                 dispach( StepOut( getFunction( av.value ), av.domain, t.parent ) );
@@ -353,9 +353,7 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
                     fields.setDomain( path, dom );
                 }
                 t.roots->insert( root );
-            } else if ( auto maybedom = fields.getDomain( path ) ) {
-                assert( maybedom == dom );
-            } else {
+            } else if ( !fields.getDomain( path ) ) {
                 // TODO use copy
                 fields.create( ptr );
                 fields.setDomain( path, dom );
@@ -430,9 +428,7 @@ void VPA::propagateDown( const PropagateDown & t ) {
             if ( arg->getType()->isPointerTy() ) {
                 // TODO copy trie
                 Path path = { arg, { LoadStep{} } };
-                if ( auto maybedom = fields.getDomain( path ) ) {
-                    assert( maybedom == dom );
-                } else {
+                if ( !fields.getDomain( path ) ) {
                     // TODO use copy
                     fields.create( arg );
                     fields.setDomain( path, dom );
