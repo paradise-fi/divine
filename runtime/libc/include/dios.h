@@ -101,6 +101,8 @@ void __run_atfork_handlers( unsigned short index ) NOTHROW;
 
 void __dios_exit_process( int code ) NOTHROW;
 
+void __dios_yield() NOTHROW;
+
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \

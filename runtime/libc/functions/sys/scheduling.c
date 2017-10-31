@@ -27,3 +27,7 @@ _DiOS_TaskHandle __dios_start_task( void ( *routine )( void * ), void *arg, int 
 void __dios_die() {
     __dios_syscall( SYS_die, NULL );
 }
+
+void __dios_yield() {
+    __dios_syscall( SYS_yield, NULL );
+}
