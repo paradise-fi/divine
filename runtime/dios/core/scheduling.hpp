@@ -64,14 +64,6 @@ struct TaskStorage: Array< std::unique_ptr< T > > {
         }
         return false;
     }
-
-    void sort() {
-        if ( this->empty() )
-            return;
-        std::sort( this->begin(), this->end(), []( const auto& a, const auto& b ) {
-            return a->getId() < b->getId();
-        });
-    }
 };
 
 template < typename Process >
@@ -189,6 +181,14 @@ struct Scheduler : public Next
         delete_object( debug );
     }
 
+    void sortTasks() {
+        if ( tasks.empty() )
+            return;
+        std::sort( tasks.begin(), tasks.end(), []( const auto& a, const auto& b ) {
+            return a->getId() < b->getId();
+        });
+    }
+
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< Scheduler >( "{Scheduler}" );
@@ -269,7 +269,7 @@ struct Scheduler : public Next
         __dios_assert_v( routine, "Invalid task routine" );
         Task *ret = tasks.emplace_back(
             new_object< Task >( mainFrame, mainTls, routine, tls_size, proc ) ).get();
-        tasks.sort();
+        sortTasks();
         return ret;
     }
 
@@ -279,7 +279,7 @@ struct Scheduler : public Next
         __dios_assert_v( routine, "Invalid task routine" );
         Task *ret = tasks.emplace_back(
             new_object< Task >( routine, tls_size, proc ) ).get();
-        tasks.sort();
+        sortTasks();
         return ret;
     }
 
