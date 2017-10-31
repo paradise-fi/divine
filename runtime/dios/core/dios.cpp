@@ -12,6 +12,7 @@
 #include <dios.h>
 #include <dios/core/main.hpp>
 #include <dios/core/scheduling.hpp>
+#include <dios/core/sync_scheduling.hpp>
 #include <dios/core/syscall.hpp>
 #include <dios/core/trace.hpp>
 #include <dios/core/fault.hpp>
@@ -127,6 +128,9 @@ using PassthruConfiguration =
 using ReplayConfiguration =
     Fault< Scheduler < fs::Replay < MachineParams < MonitorManager < BaseContext > > > > >;
 
+using SynchronousConfiguration =
+    fs::VFS< Fault< SyncScheduler< MachineParams< MonitorManager< BaseContext > > > > >;
+
 void init( const _VM_Env *env )
 {
     MemoryPool deterministicPool( 2 );
@@ -146,15 +150,19 @@ void init( const _VM_Env *env )
     SetupBase setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
     if ( cfg == "standard" )
         boot< DefaultConfiguration >( setup );
-    else if (cfg == "passthrough") {
-        if (__dios_clear_file("passtrough.out") == 0)
+    else if ( cfg == "passthrough" ) {
+        if ( __dios_clear_file( "passtrough.out" ) == 0 )
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
 
         boot< PassthruConfiguration >( setup );
-
-    } else if (cfg == "replay") {
+    } else if ( cfg == "replay" ) {
         boot< ReplayConfiguration >( setup );
-    } else {
+    }
+    else if ( cfg == "synchronous" ) {
+        boot< SynchronousConfiguration >( setup );
+    }
+    else {
+        __dios_trace_f( "Unknown configaration: %s", cfg.c_str() );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
     }
 }
