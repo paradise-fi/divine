@@ -49,13 +49,13 @@ struct Array : brick::types::Ord {
         T *get() { return reinterpret_cast< T * >( _items ); }
     };
 
-    iterator begin() { return _data->get(); }
-    const_iterator begin() const { return _data->get(); }
-    const_iterator cbegin() const { return _data->get(); }
+    iterator begin() { return _data ?_data->get() : nullptr; }
+    const_iterator begin() const { return _data ?_data->get() : nullptr; }
+    const_iterator cbegin() const { return _data ?_data->get() : nullptr; }
 
-    iterator end() { return _data->get() + size(); }
-    const_iterator end() const { return _data->get() + size(); }
-    const_iterator cend() const { return _data->get() + size(); }
+    iterator end() { return _data ? _data->get() + size() : nullptr; }
+    const_iterator end() const { return _data ? _data->get() + size() : nullptr; }
+    const_iterator cend() const { return _data ? _data->get() + size() : nullptr; }
 
     reverse_iterator rbegin() { return reverse_iterator( end() ); }
     const_reverse_iterator rbegin() const { return reverse_iterator( end() ); }
