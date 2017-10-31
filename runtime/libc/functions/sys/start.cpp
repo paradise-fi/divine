@@ -59,7 +59,7 @@ void __dios_run_dtors() {
             []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
 }
 
-void _start( int l, int argc, char **argv, char **envp ) {
+__attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp ) {
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __pthread_initialize(); // must run before constructors, constructors can
                             // use pthreads (such as pthread_once or thread
@@ -87,6 +87,18 @@ void _start( int l, int argc, char **argv, char **envp ) {
 
     freeMainArgs( argv );
     freeMainArgs( envp );
+    return res;
+}
 
+void _start( int l, int argc, char **argv, char **envp ) {
+    int res = __execute_main( l, argc, argv, envp );
     exit( res );
+}
+
+void _start_synchronous( int l, int argc, char **argv, char **envp ) {
+    int res = __execute_main( l, argc, argv, envp );
+    if ( res ) {
+        __dios_trace_f( "Non-zero stup code: %d", res );
+        __dios_fault( _DiOS_F_ExitFault, "setup ended with non-zero value" );
+    }
 }

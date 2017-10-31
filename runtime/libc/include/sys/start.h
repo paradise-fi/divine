@@ -15,6 +15,7 @@
  * unwind stack.
  */
 EXTERN_C void _start( int variant, int argc, char **argv, char **envp );
+EXTERN_C void _start_synchronous( int variant, int argc, char **argv, char **envp );
 
 EXTERN_C void __dios_run_ctors();
 
