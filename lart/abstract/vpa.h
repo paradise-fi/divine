@@ -189,17 +189,27 @@ struct PropagateUp {
     ParentPtr parent;
 };
 
-
 inline bool operator==( const PropagateUp & a, const PropagateUp & b) {
     return std::tie( a.arg, a.roots, a.parent ) == std::tie( b.arg, b.roots, b.parent );
 }
 
-using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut >;
+struct PropagateGlobal {
+    explicit PropagateGlobal( llvm::GlobalValue * v ) : value( v ) {}
+    llvm::GlobalValue * value;
+};
+
+inline bool operator==( const PropagateGlobal & a, const PropagateGlobal & b) {
+    return a.value == b.value;
+}
+
+using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut, PropagateGlobal >;
 
 // ValuesPropagationAnalysis
 struct VPA {
+    using Globals = RootsSet;
+    using Roots = std::tuple< Reached, Globals >;
     // Returns pairs of funcions with reached roots
-    Reached run( llvm::Module & m );
+    Roots run( llvm::Module & m );
 
 private:
     void record( llvm::Function * fn );
@@ -215,12 +225,16 @@ private:
     void stepIn( const StepIn & );
     void stepOut( const StepOut & );
 
+    void markGlobal( llvm::GlobalValue * value );
+
     llvm::Value * origin( llvm::Value * value );
 
     std::deque< Task > tasks;
 
     AbstractFields< llvm::Value * > fields;
+
     Reached reached;
+    Globals globals;
 
     std::map< RootsSet *, std::set< llvm::Value * > > seen;
 };

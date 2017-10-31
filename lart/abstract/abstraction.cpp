@@ -64,7 +64,13 @@ void Abstraction::run( llvm::Module & m ) {
     Map< FunctionNode, llvm::Function * > prototypes;
 
     std::vector< FunctionNode > sorted;
-    for ( auto & fn : VPA().run( m ) )
+
+    VPA::Globals globals;
+    Reached functions;
+
+    std::tie( functions, globals ) = VPA().run( m );
+
+    for ( auto & fn : functions )
         for ( const auto & rs : fn.second )
             sorted.emplace_back( fn.first, rs );
 
@@ -82,6 +88,19 @@ void Abstraction::run( llvm::Module & m ) {
         return ln == rn ? arghash( l ) < arghash( r ) : ln < rn;
     } );
 
+    // create globals
+    LiftMap< llvm::Value *, llvm::Value * > globmap;
+    for ( auto & av : globals ) {
+        auto glob = llvm::cast< llvm::GlobalVariable >( av.value );
+        auto dom = av.domain;
+
+        auto type = liftType( glob->getValueType(), dom, data.tmap );
+        auto name = glob->getName() + "." + DomainTable[ dom ];
+        auto ag = llvm::cast< llvm::GlobalVariable >( m.getOrInsertGlobal( name.str(), type ) );
+
+        globmap.insert( glob, ag );
+    }
+
     for ( auto & fnode : sorted )
         prototypes[ fnode ] = process( fnode );
 
@@ -90,7 +109,7 @@ void Abstraction::run( llvm::Module & m ) {
         auto fnode = p.first;
         if ( fnode.roots().empty() )
             continue;
-        LiftMap< llvm::Value *, llvm::Value * > vmap;
+        LiftMap< llvm::Value *, llvm::Value * > vmap = globmap;
         auto builder = make_builder( vmap, data.tmap, fns );
 
         // 1. if signature changes create a new function declaration
@@ -149,6 +168,9 @@ void Abstraction::run( llvm::Module & m ) {
 
     for ( auto & fn : lart::util::reverse( remove ) )
         fn->eraseFromParent();
+
+    for ( const auto & g : globals )
+        llvm::cast< llvm::GlobalVariable >( g.value )->eraseFromParent();
 }
 
 llvm::Function * Abstraction::process( const FunctionNode & fnode ) {

@@ -1204,6 +1204,23 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
+
+    TEST( global_1 ) {
+        auto s = R"(int g;
+
+                    int f() { return g; }
+
+                    int main() {
+                        _SYM int v;
+                        g = v;
+                        f();
+                    })";
+        auto m = test_abstraction( annotation + s );
+        ASSERT( m->getFunction( "_Z1fv.2" ) );
+        ASSERT( m->getGlobalVariable( "g.sym" ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {

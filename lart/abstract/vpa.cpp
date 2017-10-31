@@ -121,7 +121,7 @@ void VPA::preprocess( llvm::Function * fn ) {
     ufen.runOnFunction( *fn );
 }
 
-Reached VPA::run( llvm::Module & m ) {
+VPA::Roots VPA::run( llvm::Module & m ) {
     for ( const auto & a : annotations( m ) ) {
         auto fn = a.getFunction();
         record( fn );
@@ -143,7 +143,7 @@ Reached VPA::run( llvm::Module & m ) {
 
     // TODO cleanup
 
-    return std::move( reached );
+    return std::make_tuple( std::move( reached ), globals );
 }
 
 void VPA::record( llvm::Function * fn ) {
@@ -367,11 +367,36 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
     }
 }
 
+void VPA::markGlobal( llvm::GlobalValue * value ) {
+    auto dom = fields.getDomain( { value, { LoadStep{} } } );
+    assert( dom );
+    AbstractValue av = { value, dom.value() };
+
+    if ( globals.count( av ) )
+        return;
+    globals.insert( av );
+
+    for ( const auto & u : value->users() ) {
+        if ( auto l = llvm::dyn_cast< llvm::LoadInst >( u ) ) {
+            auto fn = getFunction( l );
+            if ( !reached.count( fn ) )
+                record( fn );
+            AbstractValue al = { l, dom.value() };
+            dispach( PropagateDown( al, reached[ fn ].annotations(), nullptr ) );
+        }
+    }
+}
+
 void VPA::propagateDown( const PropagateDown & t ) {
     auto val = t.value.value;
     auto dom = t.value.domain;
     if ( seen[ t.roots ].count( val ) )
         return; // The value has been already propagated.
+
+    if ( auto g = llvm::dyn_cast< llvm::GlobalValue >( val ) ) {
+        markGlobal( g );
+        return;
+    }
 
     if ( !llvm::CallSite( val ) ) {
         auto o = origin( val );
