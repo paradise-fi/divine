@@ -202,17 +202,21 @@ struct Scheduler : public Next
         setupMainTask( mainTask, argv.first, argv.second, envp.second );
 
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context > );
+        setupDebug( s, argv, envp );
+        environ = envp.second;
 
+        Next::setup( s );
+    }
+
+    template < typename Setup >
+    void setupDebug( Setup s, std::pair< int, char** >& argv, std::pair< int, char** >& envp )
+    {
         if ( extractOpt( "debug", "mainargs", s.opts ) ||
              extractOpt( "debug", "mainarg", s.opts ) )
         {
             trace_main_arg( 1, "main argv", argv );
             trace_main_arg( 1, "main envp", envp );
         }
-
-        environ = envp.second;
-
-        Next::setup( s );
     }
 
     int taskCount() const noexcept { return tasks.size(); }
