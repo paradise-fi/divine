@@ -20,6 +20,7 @@ namespace intrinsic {
 struct IntrinsicWrapper {
     IntrinsicWrapper( std::string name, Domain dom )
         : name( name ), domain( dom ) {}
+    bool isLoad() const { return name == "load"; }
     bool isLift() const { return name == "lift"; }
     bool isLower() const { return name == "lower"; }
     bool isAssume() const { return name == "assume"; }
@@ -75,6 +76,19 @@ static bool isAssume( llvm::Function * fn ) {
 static bool isAssume( llvm::Instruction * i ) {
     if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
         return isAssume( call->getCalledFunction() );
+    return false;
+}
+
+static bool isLoad( llvm::Function * fn ) {
+    auto intr = intrinsic::parse( fn );
+    if ( intr.isJust() )
+        return intr.value().isLoad();
+    return false;
+}
+
+static bool isLoad( llvm::Instruction * i ) {
+    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+        return isLoad( call->getCalledFunction() );
     return false;
 }
 

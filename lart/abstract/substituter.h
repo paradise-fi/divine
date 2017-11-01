@@ -71,6 +71,20 @@ struct Substituter {
         }
     }
 
+    void process( llvm::GlobalVariable * glob ) {
+        auto type = glob->getValueType();
+        auto atype = process( type );
+
+        auto name = glob->getName().rsplit('.');
+        auto aname = "__" + name.first + "_" + name.second;
+
+        auto m = glob->getParent();
+        auto ag = llvm::cast< llvm::GlobalVariable >( m->getOrInsertGlobal( aname.str(), atype ) );
+        ag->setInitializer( llvm::Constant::getNullValue( atype ) );
+
+        vmap[ glob ] = ag;
+    }
+
     llvm::Type * process( llvm::Type * type ) {
         if ( !isAbstract( type ) )
             return type;

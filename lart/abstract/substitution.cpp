@@ -104,6 +104,14 @@ void Substitution::run( llvm::Module & m ) {
         fns[ fn ] = sb.prototype( fn );
     }
 
+    std::vector< llvm::GlobalVariable * > globals;
+    for ( auto & g : m.globals() ) {
+        if ( isAbstract( g.getType(), data.tmap ) ) {
+            sb.process( &g );
+            globals.push_back( &g );
+        }
+    }
+
     // TODO solve returns of functions without arguments
     // = move changing of returns to here
     auto intrs = intrinsics( &m );
@@ -121,9 +129,13 @@ void Substitution::run( llvm::Module & m ) {
         return isAGEPCast( i, data.tmap );
     } ).freeze();
 
+    auto gloads = query::query( intrs ).filter( [] ( const auto & i ) {
+        return isLoad( i ) && llvm::isa< llvm::GlobalVariable >( i->getOperand( 0 ) );
+    } ).freeze();
+
     auto calls = callSitesOf( functions );
 
-    auto abstract = concat( allocas, lifts, calls, btcsts );
+    auto abstract = concat( allocas, lifts, calls, btcsts, gloads );
 
     Map< llvm::Function *, Values > funToValMap;
     for ( const auto &a : abstract )
@@ -153,6 +165,11 @@ void Substitution::run( llvm::Module & m ) {
             if( const auto & i = llvm::dyn_cast< llvm::Instruction >( dep ) )
                 sb.process( i );
         }
+    }
+
+    for ( const auto & g : globals ) {
+        g->replaceAllUsesWith( llvm::UndefValue::get( g->getType() ) );
+        g->eraseFromParent();
     }
 
     } // end RAII substitution builder
