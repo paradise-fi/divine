@@ -49,6 +49,10 @@ void freeMainArgs( char** argv ) noexcept {
 
 } // namespace
 
+extern "C" {
+    __attribute__((noinline,weak)) void __lart_globals_initialize() {}
+}
+
 void __dios_run_ctors() {
     runCtorsDtors( "llvm.global_ctors",
             []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
@@ -61,6 +65,7 @@ void __dios_run_dtors() {
 
 __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp ) {
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
+    __lart_globals_initialize();
     __pthread_initialize(); // must run before constructors, constructors can
                             // use pthreads (such as pthread_once or thread
                             // local storage)
