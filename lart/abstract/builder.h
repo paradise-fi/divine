@@ -144,8 +144,9 @@ private:
                 if ( auto l = vmap.safeLift( op.get() ) )
                     return l.value();
                 auto type = getType( { op.get(), av.domain } );
-                auto bc = llvm::cast< llvm::Instruction >( irb.CreateBitCast( op.get(), type ) );
-                vmap.insert( op.get(), bc );
+                auto bc = irb.CreateBitCast( op.get(), type );
+                if ( llvm::isa< llvm::Instruction >( bc ) )
+                    vmap.insert( op.get(), bc );
                 return bc;
             } else {
                 return lift( { op.get(), av.domain }, irb );

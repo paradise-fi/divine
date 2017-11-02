@@ -130,7 +130,14 @@ void Substitution::run( llvm::Module & m ) {
     } ).freeze();
 
     auto gloads = query::query( intrs ).filter( [] ( const auto & i ) {
-        return isLoad( i ) && llvm::isa< llvm::GlobalVariable >( i->getOperand( 0 ) );
+        if ( isLoad( i ) ) {
+            if ( llvm::isa< llvm::GlobalVariable >( i->getOperand( 0 ) ) )
+                return true;
+            if ( auto bc = llvm::dyn_cast< llvm::BitCastOperator >( i->getOperand( 0 ) ) )
+                if ( llvm::isa< llvm::GlobalVariable >( bc->getOperand( 0 ) ) )
+                    return true;
+        }
+        return false;
     } ).freeze();
 
     auto calls = callSitesOf( functions );

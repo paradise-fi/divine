@@ -85,7 +85,7 @@ struct Substituter {
         vmap[ glob ] = ag;
     }
 
-    llvm::Type * process( llvm::Type * type ) {
+    llvm::Type * process( llvm::Type * type ) const {
         if ( !isAbstract( type ) )
             return type;
         return getAbstraction( type )->abstract( type );
@@ -129,6 +129,11 @@ private:
     Values remapArgs( const Vs & vals ) const {
         return remapFn( vals, [&] ( const auto & u ) {
             auto v = u.get();
+            auto bc = llvm::dyn_cast< llvm::BitCastOperator >( v );
+            if ( bc && !llvm::isa< llvm::Instruction >( bc ) && isAbstract( bc->getType() ) ) {
+                auto destTy = process( bc->getDestTy() );
+                return IRB( bc->getContext() ).CreateBitCast( v, destTy );
+            }
             return isAbstract( v->getType() ) ? vmap.at( v ) : v;
         } );
     }
