@@ -53,6 +53,41 @@ bool isScalarOp( const AbstractValue & av ) {
     return false;
 }
 
+struct InitGlobals {
+    using Globals = VPA::Globals;
+    using FNode = Abstraction::FunctionNode;
+
+    FNode run( llvm::Module & m, Globals & gvars ) {
+        auto fty = llvm::FunctionType::get(
+            llvm::Type::getVoidTy( m.getContext() ), false );
+
+        auto initFunction = llvm::cast< llvm::Function >(
+            m.getOrInsertFunction( "__lart_globals_initialize", fty ) );
+
+        initFunction->deleteBody();
+        auto bb = llvm::BasicBlock::Create( m.getContext(), "entry", initFunction );
+
+        initializer = { initFunction, {} };
+        auto irb = llvm::IRBuilder<>( bb );
+
+        for ( auto & g : gvars )
+            init( g, irb );
+
+        irb.CreateRetVoid();
+        return initializer;
+    }
+
+    void init( const AbstractValue & av, llvm::IRBuilder<> & irb ) {
+        auto gvar = av.get< llvm::GlobalVariable >();
+        assert( gvar->getInitializer() );
+        auto store = irb.CreateStore( gvar->getInitializer(), gvar );
+        initializer.roots().insert( { store, av.domain } );
+    }
+
+private:
+    FNode initializer;
+};
+
 } // anonymous namespace
 
 AbstractValues Abstraction::FunctionNode::reached() const {
@@ -62,13 +97,14 @@ AbstractValues Abstraction::FunctionNode::reached() const {
 void Abstraction::run( llvm::Module & m ) {
     // create function prototypes
     Map< FunctionNode, llvm::Function * > prototypes;
-
     std::vector< FunctionNode > sorted;
 
     VPA::Globals globals;
     Reached functions;
 
     std::tie( functions, globals ) = VPA().run( m );
+
+    sorted.emplace_back( InitGlobals().run( m, globals ) );
 
     for ( auto & fn : functions )
         for ( const auto & rs : fn.second )

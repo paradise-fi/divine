@@ -20,6 +20,7 @@ struct Abstraction {
         AbstractValues reached() const;
         llvm::Function * function() const { return first; }
         const RootsSet& roots() const { return second; }
+        RootsSet& roots() { return second; }
     };
 
     Abstraction( PassData & data ) : data( data ) {}
@@ -34,7 +35,6 @@ struct Abstraction {
     PassData & data;
     FunctionMap< llvm::Function *, Types > fns;
 };
-
 
 } // namespace abstract
 } // namespace lart
