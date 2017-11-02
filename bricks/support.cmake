@@ -30,7 +30,7 @@ function( bricks_make_runner name flags )
     list( APPEND libs ${name}-${n} )
   endforeach( src )
 
-  update_file( ${file} "" )
+  update_file( ${file} "/* nothing */" )
 
   add_executable( ${name} EXCLUDE_FROM_ALL ${file} )
   target_link_libraries( ${name} ${libs} )
