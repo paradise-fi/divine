@@ -4,9 +4,12 @@
 
 int x;
 
+int get() { return x; }
+
 int main() {
-    _SYM int in;
-    x = in;
-    int y = 0;
-    assert( x != y ); /* ERROR */
+    _SYM int val;
+    x = val;
+
+    int y = get();
+    assert( x == y );
 }
