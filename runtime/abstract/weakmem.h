@@ -28,7 +28,7 @@ int __lart_weakmem_min_ordering() _WM_INTERFACE;
 enum __lart_weakmem_order {
     __lart_wmo_not_atomic = 0,
     __lart_wmo_unordered  = (1 << 0),
-    __lart_wmo_monotonic  = (1 << 1),
+    __lart_wmo_monotonic  = (1 << 1) | __lart_wmo_unordered,
     __lart_wmo_acquire    = (1 << 2) | __lart_wmo_monotonic,
     __lart_wmo_release    = (1 << 3) | __lart_wmo_monotonic,
     __lart_wmo_acq_rel    = __lart_wmo_acquire | __lart_wmo_release,
@@ -63,7 +63,7 @@ void __lart_weakmem_dump() _WM_NOTHROW;
 namespace lart {
 namespace weakmem {
 
-enum class MemoryOrder : uint32_t {
+enum class MemoryOrder : uint8_t {
     NotAtomic = __lart_wmo_not_atomic,
     Unordered = __lart_wmo_unordered,
     Monotonic = __lart_wmo_monotonic,

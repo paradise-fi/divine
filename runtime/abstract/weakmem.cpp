@@ -9,6 +9,7 @@
 #include <sys/lart.h>
 #include <dios/kernel.hpp> // get_debug
 #include <abstract/common.h> // weaken
+#include <optional>
 
 #define forceinline __attribute__((always_inline))
 
@@ -30,8 +31,7 @@ static char *baseptr( char *ptr ) {
     return reinterpret_cast< char * >( base );
 }
 
-namespace lart {
-namespace weakmem {
+namespace lart::weakmem {
 
 struct InterruptMask {
     InterruptMask() {
@@ -63,25 +63,27 @@ namespace {
 MemoryOrder minMemOrd() forceinline { return MemoryOrder( __lart_weakmem_min_ordering() ); }
 bool minIsAcqRel() forceinline { return subseteq( MemoryOrder::AcqRel, minMemOrd() ); }
 
-template< typename Collection >
-struct Reversed {
-    using T = typename Collection::value_type;
-    using iterator = std::reverse_iterator< typename Collection::iterator >;
-    using const_iterator = std::reverse_iterator< typename Collection::const_iterator >;
+template< typename It >
+struct Range {
+    using T = typename It::value_type;
+    using iterator = It;
+    using const_iterator = It;
 
-    Reversed( Collection &data ) : data( data ) { }
-    Reversed( const Reversed & ) = default;
+    Range( It begin, It end ) : _begin( begin ), _end( end ) { }
+    Range( const Range & ) = default;
 
-    iterator begin() { return iterator( data.end() ); }
-    iterator end() { return iterator( data.begin() ); }
-    const_iterator begin() const { return const_iterator( data.end() ); }
-    const_iterator end() const { return const_iterator( data.begin() ); }
+    iterator begin() const { return _begin; }
+    iterator end() const { return _end; }
 
-    Collection &data;
+  private:
+    It _begin, _end;
 };
 
+template< typename It >
+static Range< It > range( It begin, It end ) { return Range< It >( begin, end ); }
+
 template< typename T >
-static Reversed< T > reversed( T &x ) { return Reversed< T >( x ); }
+static auto reversed( T &x ) { return range( x.rbegin(), x.rend() ); }
 
 template< typename T >
 static T *alloc( int n ) {
@@ -120,34 +122,29 @@ uint64_t load( char *addr, uint32_t bitwidth ) {
     return 0;
 }
 
-struct BufferLine {
+struct BufferLine : brick::types::Ord {
 
     BufferLine() = default;
-    BufferLine( MemoryOrder order ) { this->order = order; } // fence
+    BufferLine( MemoryOrder order ) : order( order ) { } // fence
     BufferLine( char *addr, uint64_t value, uint32_t bitwidth, MemoryOrder order ) :
-        addr( addr ), value( value )
-    {
-        this->bitwidth = bitwidth;
-        this->order = order;
-    }
+        addr( addr ), value( value ), bitwidth( bitwidth ), order( order )
+    { }
 
     bool isFence() const { return !addr; }
     bool isStore() const { return addr; }
 
     void store() {
-        if ( isStore() ) {
-            switch ( bitwidth ) {
-                case 1: case 8: store< uint8_t >(); break;
-                case 16: store< uint16_t >(); break;
-                case 32: store< uint32_t >(); break;
-                case 64: store< uint64_t >(); break;
-                default: __dios_fault( _VM_F_Control, "Unhandled case" );
-            }
+        switch ( bitwidth ) {
+            case 1: case 8: store< uint8_t >(); break;
+            case 16: store< uint16_t >(); break;
+            case 32: store< uint32_t >(); break;
+            case 64: store< uint64_t >(); break;
+            default: __dios_fault( _VM_F_Control, "Unhandled case" );
         }
     }
 
     template< typename T >
-    void store() const {
+    void store() {
         *reinterpret_cast< T * >( addr ) = T( value );
     }
 
@@ -159,15 +156,23 @@ struct BufferLine {
         return matches( mem, mem + size );
     }
 
+    bool matches( BufferLine &o ) {
+        return matches( o.addr, o.bitwidth / 8 );
+    }
+
     char *addr = nullptr;
     uint64_t value = 0;
-    union {
-        uint64_t _init = 0; // make sure value is recognised as defined by DIVINE
-        struct {
-            uint32_t bitwidth:8;
-            MemoryOrder order:8;
-        };
-    };
+
+    uint8_t bitwidth = 0;
+    MemoryOrder order = MemoryOrder::NotAtomic;
+    int16_t sc_seq = 0; // note: we can go negative in the flushing process
+    int16_t at_seq = 0; // same here
+
+    auto as_tuple() const {
+        // note: ignore status in comparison, take into account only part
+        // relevant to memory behaviour
+        return std::tie( addr, value, bitwidth, order, sc_seq, at_seq );
+    }
 
     void dump() const {
         char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 00 bit; WA SC]";
@@ -180,7 +185,47 @@ struct BufferLine {
     }
 };
 
+static_assert( sizeof( BufferLine ) == 3 * sizeof( uint64_t ) );
+
 struct Buffer : Array< BufferLine > {
+
+    struct ID {
+        ID() = default;
+        ID( Buffer &b, Buffer::iterator it ) : _b( &b ), _it( it ) { }
+
+        auto &operator*() { return *_it; }
+        auto *operator->() { return &*_it; }
+
+        explicit operator bool() const { return _b; }
+        operator Buffer::iterator() { return _it; }
+
+        // NOTE: these operators represent partial order, so it can happen that
+        // !(a < b) && !(b < a) && !(a == b)
+        bool operator<( const ID &o ) const {
+            if ( _b == o._b )
+                return _it < o._it;
+            if ( _it->sc_seq == 0 && o._it->sc_seq == 0
+                    && (_it->addr != o._it->addr || (_it->at_seq == 0 && o._it->at_seq == 0)) )
+                return false; // not explicitly ordered
+            return _it->sc_seq < o._it->sc_seq
+                || (_it->addr == o._it->addr && _it->at_seq < o._it->at_seq);
+        }
+
+        bool operator==( const ID &o ) const {
+            return _b == o._b && _it == o._it;
+        }
+
+        bool operator>( const ID &o ) const {
+            return o < *this;
+        }
+
+        Buffer &buffer() { return *_b; }
+
+        Buffer *_b{};
+        Buffer::iterator _it{};
+    };
+
+    Buffer() = default;
 
     int storeCount() {
         return std::count_if( begin(), end(), []( BufferLine &l ) { return l.isStore(); } );
@@ -189,7 +234,7 @@ struct Buffer : Array< BufferLine > {
     BufferLine &newest() { return end()[ -1 ]; }
     BufferLine &oldest() { return *begin(); }
 
-    void push( BufferLine &&l ) {
+    void _push( BufferLine &&l ) {
         push_back( std::move( l ) );
 
         // there can be fence as oldest entry, so we need while here
@@ -201,7 +246,11 @@ struct Buffer : Array< BufferLine > {
     }
 
     void erase( const int i ) {
-        std::move( begin() + i + 1, end(), begin() + i );
+        erase( begin() + i );
+    }
+
+    void erase( iterator i ) {
+        std::move( i + 1, end(), i );
         pop_back();
     }
 
@@ -235,25 +284,41 @@ struct Buffer : Array< BufferLine > {
         _resize( cnt );
     }
 
-    void flushOne() __attribute__((__always_inline__, __flatten__)) {
+    ID find_ws_pre( iterator it ) {
+        for ( reverse_iterator rb{ it }, end = rend(); rb != end; ++rb ) {
+            if ( it->matches( *rb ) )
+                return { *this, std::prev( rb.base() ) };
+        }
+        return { };
+    }
+
+    template< typename SBs >
+    void _flush_one( SBs &bufs ) __attribute__((__always_inline__, __flatten__)) {
         int sz = size();
         assume( sz > 0 );
         // If minimal ordering is acquire-release, there is no point in
         // reordering, as it will sync anyway
         int i = sz == 1 || minIsAcqRel() ? 0 : __vm_choose( sz );
 
-        BufferLine &entry = (*this)[ i ];
+        auto entry = begin() + i;
+
+        assume( entry->sc_seq <= 1 );
+        assume( entry->at_seq <= 1 );
 
         // release stores can be flushed only if they are first
-        assume( i == 0 || !subseteq( MemoryOrder::Release, entry.order ) );
+        assume( i == 0 || !subseteq( MemoryOrder::Release, entry->order ) );
 
         // check that there are no older writes to overlapping memory
         for ( int j = 0; j < i; ++j ) {
             auto &other = (*this)[ j ];
             // don't flush stores after any mathcing stores
-            assume( !other.matches( entry.addr, entry.bitwidth / 8 ) );
+            assume( !other.matches( entry->addr, entry->bitwidth / 8 ) );
         }
-        entry.store();
+        entry->store();
+        if ( entry->at_seq )
+            bufs.fix_at_seq( *entry );
+        if ( entry->sc_seq )
+            bufs.fix_sc_seq( *entry );
         erase( i );
         if ( i == 0 )
             cleanOldAndFlushed();
@@ -272,11 +337,13 @@ struct Buffer : Array< BufferLine > {
 
 struct Buffers : ThreadMap< Buffer > {
 
-    void flushOne( _DiOS_TaskHandle which ) __attribute__((__noinline__, __flatten__)) {
+    using Super = ThreadMap< Buffer >;
+
+    void flush_one( _DiOS_TaskHandle which ) __attribute__((__noinline__, __flatten__)) {
         __dios::InterruptMask masked;
         auto *buf = getIfExists( which );
         assert( bool( buf ) );
-        buf->flushOne();
+        buf->_flush_one( *this );
     }
 
     Buffer *getIfExists( _DiOS_TaskHandle h ) {
@@ -297,6 +364,110 @@ struct Buffers : ThreadMap< Buffer > {
     Buffer *getIfExists() { return getIfExists( __dios_get_task_handle() ); }
     Buffer &get() { return get( __dios_get_task_handle() ); }
 
+    template< typename T, T v >
+    struct Const {
+        template< typename... Args >
+        T operator()( Args &&... ) const { return v; }
+    };
+
+    template< typename Self, typename Yield, typename Filter >
+    static void _for_each( Self &self, Yield yield, Filter filt )
+    {
+        for ( auto &p : self ) {
+            for ( auto &l : p.second ) {
+                if ( filt( p.first ) )
+                    yield( p.second, l );
+            }
+        }
+    }
+
+    template< typename Yield, typename Filter = Const< bool, true > >
+    void for_each( Yield y, Filter filt = Filter() ) { _for_each( *this, y, filt ); }
+
+    template< typename Yield, typename Filter = Const< bool, true > >
+    void for_each( Yield y, Filter filt = Filter() ) const { _for_each( *this, y, filt ); }
+
+    using Super::find;
+
+    template< typename Pred >
+    Buffer::ID find( Pred pred )
+    {
+        for ( auto &p : *this ) {
+            for ( auto it = p.second.begin(), end = p.second.end(); it != end; ++it ) {
+                if ( pred( *it ) ) {
+                    return Buffer::ID{ p.second, it };
+                }
+            }
+        }
+        return Buffer::ID{ };
+    }
+
+    template< typename Filter = Const< bool, true > >
+    int16_t get_next_sc_seq( Filter filt = Filter() ) const
+    {
+        int16_t max = 0;
+        for_each( [&]( auto &, auto &l ) { max = std::max( max, l.sc_seq ); }, filt );
+        return max + 1;
+    }
+
+    template< typename Filter = Const< bool, true > >
+    int16_t get_next_at_seq( char *addr, int bitwidth, Filter filt = Filter() ) const
+    {
+        int16_t max = 0;
+        for_each( [&]( auto &, auto &l ) {
+                if ( l.addr == addr && l.bitwidth == bitwidth ) {
+                    if ( l.at_seq > max ) {
+                        max = l.at_seq;
+                    }
+                } else if ( l.matches( addr, bitwidth / 8 ) ) {
+                    __dios_fault( _VM_F_Memory, "Atomic operations over overlapping, "
+                            "but not same memory locations are not allowed" );
+                }
+            }, filt );
+        return max + 1;
+    }
+
+    void fix_at_seq( BufferLine &entry )
+    {
+        for_each( [&]( auto &, auto &l ) {
+                if ( l.addr == entry.addr && l.bitwidth == entry.bitwidth && l.at_seq ) {
+                    l.at_seq -= entry.at_seq;
+                }
+            } );
+    }
+
+    void fix_sc_seq( BufferLine &entry )
+    {
+        for_each( [&]( auto &, auto &l ) {
+                if ( l.sc_seq ) {
+                    l.sc_seq -= entry.sc_seq;
+                }
+            } );
+    }
+
+    void push( Buffer &b, BufferLine &&line )
+    {
+        if ( subseteq( MemoryOrder::AtomicOp, line.order ) )
+            line.at_seq = get_next_at_seq( line.addr, line.bitwidth );
+        if ( subseteq( MemoryOrder::SeqCst, line.order ) )
+            line.sc_seq = get_next_sc_seq();
+        b._push( std::move( line ) );
+    }
+
+    Buffer::ID find_sc_pre( BufferLine &line ) {
+        if ( line.sc_seq > 1 )
+            return find( [seq = line.sc_seq - 1]( auto &l ) { return l.sc_seq == seq; } );
+        return { };
+    }
+
+    Buffer::ID find_at_pre( BufferLine &line ) {
+        if ( line.at_seq > 1 )
+            return find( [&, seq = line.at_seq - 1]( auto &l ) {
+                    return l.addr == line.addr && l.at_seq == seq;
+                } );
+        return { };
+    }
+
     void dump() {
         auto &hids = __dios::get_debug().hids;
         for ( auto &p : *this ) {
@@ -314,9 +485,21 @@ struct Buffers : ThreadMap< Buffer > {
             }
         }
     }
-};
 
-}
+    void read_barrier( MemoryOrder mo, _DiOS_TaskHandle tid ) noexcept {
+        read_barrier( nullptr, 0, mo, tid );
+    }
+
+    void read_barrier( char *addr, int bitwidth, MemoryOrder mo, _DiOS_TaskHandle tid ) noexcept
+    {
+        auto filter = [tid]( _DiOS_TaskHandle h ) { return h != tid; };
+        if ( subseteq( MemoryOrder::SeqCst, mo ) )
+            assume( get_next_sc_seq( filter ) == 1 ); // no SC atomics stored in any SB
+        if ( subseteq( MemoryOrder::AtomicOp, mo ) )
+            // no atomic actions on this address
+            assume( get_next_at_seq( addr, bitwidth, filter ) == 1 );
+    }
+};
 
 }
 }
@@ -346,7 +529,7 @@ void __lart_weakmem_flusher_main( void *_which ) {
     _DiOS_TaskHandle which = static_cast< _DiOS_TaskHandle >( _which );
 
     while ( true )
-        __lart_weakmem.storeBuffers.flushOne( which );
+        __lart_weakmem.storeBuffers.flush_one( which );
 }
 
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
@@ -368,7 +551,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
         return;
     }
     auto &buf = __lart_weakmem.storeBuffers.get();
-    buf.push( std::move( line ) );
+    __lart_weakmem.storeBuffers.push( buf, std::move( line ) );
 }
 
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
@@ -384,10 +567,12 @@ void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
         return; // should not be called recursivelly
 
     MemoryOrder ord = MemoryOrder( _ord );
-    auto *buf = __lart_weakmem.storeBuffers.getIfExists();
+    auto tid = __dios_get_task_handle();
+    auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
     if ( !buf )
         return;
 
+    // TODO: do we want this? it is necessary for syscalls now, but not good
     if ( subseteq( MemoryOrder::SeqCst, ord ) ) {
         for ( auto &l : *buf )
             l.store();
@@ -395,10 +580,10 @@ void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
         return;
     }
     if ( subseteq( MemoryOrder::Release, ord ) && !buf->newest().isFence() ) { // write barrier
-        buf->push( BufferLine{ MemoryOrder::Release } );
+        __lart_weakmem.storeBuffers.push( *buf, BufferLine{ MemoryOrder::Release } );
     }
     if ( subseteq( MemoryOrder::Acquire, ord ) ) // read barrier
-        ; // TODO: none for PSO, needed for NSW and RMO
+        __lart_weakmem.storeBuffers.read_barrier( ord, tid );
 }
 
 union I64b {
@@ -406,55 +591,12 @@ union I64b {
     char b[8];
 };
 
-uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord,
-                              InterruptMask &masked )
-                              noexcept __attribute__((__always_inline__))
+static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
 {
-    if ( !addr )
-        __dios_fault( _VM_F_Memory, "weakmem.load: invalid address" );
-    if ( bitwidth <= 0 || bitwidth > 64 )
-        __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
-
-    MemoryOrder ord = MemoryOrder( _ord );
-
-    // first wait, SequentiallyConsistent loads have to synchronize with all SC stores
-    if ( masked.kernelOrWM()
-            || ( direct( addr ) && ord != MemoryOrder::SeqCst && !subseteq( MemoryOrder::AtomicOp, ord ) ) )
-    { // private -> not in any store buffer
-        return load( addr, bitwidth );
-    }
-
-    auto tid = __dios_get_task_handle();
-    if ( subseteq( MemoryOrder::AtomicOp, ord ) ) {
-        // make sure we read the last value of this address
-        for ( auto &p : __lart_weakmem.storeBuffers ) {
-            if ( p.first == tid )
-                continue;
-            for ( auto &e : p.second )
-                assume( !e.matches( addr, bitwidth / 8 ) );
-        }
-    }
-    if ( ord == MemoryOrder::SeqCst ) {
-        // make sure there are no other SC ops pending
-        for ( auto &p : __lart_weakmem.storeBuffers ) {
-            if ( p.first == tid )
-                continue;
-            for ( auto &e : p.second )
-                assume( e.order != MemoryOrder::SeqCst );
-        }
-    }
-
-    // fastpath for SC loads (after synchrnonization)
-    if ( direct( addr ) ) { // private -> not in any store buffer
-        return load( addr, bitwidth );
-    }
-
-
     I64b val = { .i64 = 0 };
     I64b mval = { .i64 = load( addr, bitwidth ) }; // always attempt load from memory to check for invalidated memory
     bool bmask[8] = { false };
     bool any = false;
-    Buffer *buf = __lart_weakmem.storeBuffers.getIfExists();
     if ( buf ) {
 
         for ( const auto &it : reversed( *buf ) ) { // go from newest entry
@@ -491,6 +633,36 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
         return val.i64;
     }
     return mval.i64;
+}
+
+uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord,
+                              InterruptMask &masked )
+                              noexcept __attribute__((__always_inline__))
+{
+    if ( !addr )
+        __dios_fault( _VM_F_Memory, "weakmem.load: invalid address" );
+    if ( bitwidth <= 0 || bitwidth > 64 )
+        __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
+
+    MemoryOrder ord = MemoryOrder( _ord );
+
+    // first wait, SequentiallyConsistent loads have to synchronize with all SC stores
+    if ( masked.kernelOrWM()
+            || ( direct( addr ) && !subseteq( MemoryOrder::SeqCst, ord ) && !subseteq( MemoryOrder::AtomicOp, ord ) ) )
+    { // private -> not in any store buffer
+        return load( addr, bitwidth );
+    }
+
+    auto *tid = __dios_get_task_handle();
+    Buffer *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
+
+    __lart_weakmem.storeBuffers.read_barrier( addr, bitwidth, ord, tid );
+
+    // fastpath for SC loads (after synchrnonization)
+    if ( direct( addr ) ) { // private -> not in any store buffer
+        return load( addr, bitwidth );
+    }
+    return doLoad( buf, addr, bitwidth );
 }
 
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord ) noexcept {
