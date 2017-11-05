@@ -145,13 +145,17 @@ struct Pipe {
     }
 
     void closeRead() {
-        if ( _fds[0] >= 0 )
-            ::close( _fds[0] );
+        int r = _fds[0];
+        _fds[0] = -1;
+        if ( r >= 0 )
+            ::close( r );
     }
 
     void closeWrite() {
-        if ( _fds[1] >= 0 )
-            ::close( _fds[1] );
+        int w = _fds[1];
+        _fds[1] = -1;
+        if ( w >= 0 )
+            ::close( w );
     }
 
     std::string drain() {
