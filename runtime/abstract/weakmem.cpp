@@ -339,11 +339,13 @@ struct Buffers : ThreadMap< Buffer > {
 
     using Super = ThreadMap< Buffer >;
 
-    void flush_one( _DiOS_TaskHandle which ) __attribute__((__noinline__, __flatten__)) {
+    void flush_one() __attribute__((__noinline__, __flatten__)) {
         __dios::InterruptMask masked;
-        auto *buf = getIfExists( which );
-        assert( bool( buf ) );
-        buf->_flush_one( *this );
+        assume( !this->empty() ); // cut the edge if there is nothing to do
+
+        int which = __vm_choose( this->size() );
+        auto &buf = this->begin()[ which ].second;
+        buf._flush_one( *this );
     }
 
     Buffer *getIfExists( _DiOS_TaskHandle h ) {
@@ -355,8 +357,9 @@ struct Buffers : ThreadMap< Buffer > {
         Buffer *b = getIfExists( tid );
         if ( !b ) {
             b = &emplace( tid, Buffer{} ).first->second;
-            // start flusher thread when store buffer for the thread is first used
-            __dios_start_task( &__lart_weakmem_flusher_main, tid, 0 );
+            // start flusher thread when store buffer is first used
+            if ( !flusher )
+                flusher = __dios_start_task( &__lart_weakmem_flusher_main, nullptr, 0 );
         }
         return *b;
     }
@@ -499,6 +502,10 @@ struct Buffers : ThreadMap< Buffer > {
             // no atomic actions on this address
             assume( get_next_at_seq( addr, bitwidth, filter ) == 1 );
     }
+
+    bool thread_filter( _DiOS_TaskHandle ) noexcept { return true; }
+
+    _DiOS_TaskHandle flusher = nullptr;
 };
 
 }
@@ -525,11 +532,9 @@ void __lart_weakmem_dump() noexcept __attribute__((__annotate__("divine.debugfn"
 
 using namespace lart::weakmem;
 
-void __lart_weakmem_flusher_main( void *_which ) {
-    _DiOS_TaskHandle which = static_cast< _DiOS_TaskHandle >( _which );
-
+void __lart_weakmem_flusher_main( void * ) {
     while ( true )
-        __lart_weakmem.storeBuffers.flush_one( which );
+        __lart_weakmem.storeBuffers.flush_one();
 }
 
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
