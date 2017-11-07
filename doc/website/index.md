@@ -47,15 +47,14 @@ Use in Publications
 When you refer to DIVINE in an academic paper, we would appreciate if you could
 use the following reference (our currently most up-to-date tool paper):
 
-    @InProceedings{BBH+13,
-      author    = "Jiří Barnat and Luboš Brim and Vojtěch Havel
-                   and Jan Havlíček and Jan Kriho and Milan Lenčo
-                   and Petr Ročkai and Vladimír Štill and Jiří Weiser",
-      title     = "{DiVinE 3.0 -- An Explicit-State Model Checker
-                    for Multithreaded C \& C++ Programs}",
-      booktitle = "{Computer Aided Verification (CAV 2013)}",
-      pages     = "863--868",
-      volume    = "8044",
-      series    = "LNCS",
-      year      = "2013",
-      publisher = "Springer"}
+    @InProceedings{BBK+17,
+      author = {Zuzana Baranová and Jiří Barnat and Katarína Kejstová
+                and Tadeáš Kučera and Henrich Lauko and Jan Mrázek
+                and Petr Ročkai and Vladimír Štill},
+      title = {Model Checking of {C} and {C}++ with {DIVINE} 4},
+      booktitle = {Automated Technology for Verification and Analysis (ATVA 2017)},
+      pages     = {201-207},
+      volume = {10482},
+      series = {LNCS},
+      year = {2017},
+      publisher = {Springer}}
