@@ -1,10 +1,14 @@
 // -*- C++ -*- (c) 2017 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
+DIVINE_RELAX_WARNINGS
+#include <llvm/Support/raw_os_ostream.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/util.h>
 #include <brick-types>
 
 #include <fstream>
+#include <sstream>
 
 namespace lart {
 namespace abstract {
@@ -13,6 +17,14 @@ struct LoadStep : brick::types::Unit {};
 
 using GEPStep = size_t;
 using Step = std::variant< GEPStep, LoadStep >;
+
+inline std::ostream& operator<<(std::ostream& os, const Step& step) {
+    if ( auto label = std::get_if< GEPStep >( &step ) )
+        os << *label;
+    else
+        os << "Load";
+    return os;
+}
 
 using Indices = std::vector< Step >;
 
@@ -25,6 +37,10 @@ struct FieldTrie {
     struct Leaf {
         Leaf( T v ) : value( v ) {}
         T value;
+
+        void draw( std::ofstream & os ) const {
+            os << '"' << this << "\"[label=\"" << value << "\"];\n";
+        }
     };
 
     struct Internal {
@@ -51,6 +67,17 @@ struct FieldTrie {
                 children[ key ] = TrieNode::make_internal();
             return children[ key ].get();
         }
+
+        void draw( std::ofstream & os ) const {
+            os << '"' << this << "\";\n";
+            for ( auto & child : children ) {
+                child.second->draw( os );
+                os << '"' << this
+                   << "\" -> \""
+                   << child.second.get() << '"';
+                os << "[label = \"" << child.first << "\"];\n";
+            }
+        }
     };
 
     using Storage = std::variant< Leaf, Internal >;
@@ -63,6 +90,10 @@ struct FieldTrie {
 
         static TrieNodePtr make_leaf( T val ) {
             return std::make_unique< TrieNode >( Leaf{ val } );
+        }
+
+        void draw( std::ofstream & os ) const {
+            std::visit( [&] ( const auto & node ) { node.draw( os ); }, *this );
         }
     };
 
@@ -145,6 +176,9 @@ struct FieldTrie {
         return _root.get();
     }
 
+    void draw( std::ofstream & os ) const {
+        _root->draw( os );
+    }
     TrieNodePtr _root;
 };
 
@@ -232,6 +266,40 @@ struct AbstractFields {
         if ( fields.count( val ) )
             return getDomain( fields.at( val ) );
         return std::nullopt;
+    }
+
+    void draw( const std::string & path ) const {
+        std::ofstream out( path, std::ios::out );
+        out << "digraph FieldTrie {\n";
+
+        // draw tries
+        for ( const auto & trie : tries )
+            trie->draw( out );
+
+        // draw handles
+        llvm::raw_os_ostream ros( out );
+        for ( const auto & h : fields ) {
+            ros << '"';
+
+            std::ostringstream ss;
+            llvm::raw_os_ostream rss( ss );
+            rss << h.first;
+            rss.flush();
+
+            llvm::StringRef name(ss.str());
+
+            ros.write_escaped( name );
+            ros << "\" [shape=rectangle, ";
+            ros << "label= \"";
+            h.first->printAsOperand( ros, false );
+            ros << "\"];\n";
+            ros << '"';
+            ros.write_escaped( name );
+            ros << "\" -> \"" << h.second.getRoot() << "\";\n";
+        }
+        ros.flush();
+
+        out << "}\n";
     }
 
 private:

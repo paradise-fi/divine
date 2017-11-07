@@ -24,5 +24,10 @@ const Bimap< Domain, std::string > DomainTable = {
     ,{ Domain::Zero, "zero" }
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Domain& domain) {
+    os << DomainTable[ domain ];
+    return os;
+}
+
 } // namespace abstract
 } // namespace lart
