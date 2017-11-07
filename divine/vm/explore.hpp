@@ -203,6 +203,7 @@ struct Explore_
     using HT = hashset::Concurrent< Snapshot, Hasher >;
     HT _states;
     explore::State _initial;
+    bool _overwrite = false;
 
     auto &program() { return _bc->program(); }
     auto &pool() { return _ctx.heap()._snapshots; }
@@ -214,9 +215,12 @@ struct Explore_
 
     auto store( Snapshot snap )
     {
-        auto r = _states.insert( snap );
+        auto r = _states.insert( snap, _overwrite );
         if ( *r != snap )
+        {
+            ASSERT( !_overwrite );
             pool().free( snap ), _ctx.load( *r );
+        }
         else
             _ctx.flush_ptr2i();
         return r;

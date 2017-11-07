@@ -57,6 +57,7 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
     auto last = states.begin(), next = last + 1;
     auto hasher = ex._states.hasher; /* fixme */
     ex._ctx._debug_allowed = true;
+    ex._overwrite = true;
 
     auto process =
         [&]( auto &label )
