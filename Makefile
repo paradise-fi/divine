@@ -18,7 +18,6 @@ EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d
          if test -n "$(JOBS)"; then echo -j $(JOBS); fi
 
 TOOLDIR = $(OBJ)toolchain
-TOOLSTAMP = $(TOOLDIR)/stamp-v1
 CLANG = $(TOOLDIR)/clang/
 RTBIN = $(TOOLDIR)/runtime
 RTSRC = $(PWD)/runtime
@@ -39,12 +38,13 @@ CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include
             -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument
 
 TOOLCHAIN_ = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
-	    -DCMAKE_CXX_COMPILER=$(CLANG)/bin/clang++ \
-	    -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)"
-TOOLCHAIN = $(TOOLCHAIN_) \
-	    -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
+	     -DCMAKE_CXX_COMPILER=$(CLANG)/bin/clang++ \
+	     -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)"
+TOOLCHAIN  ?= $(TOOLCHAIN_) \
+	      -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
+TOOLSTAMP  ?= $(TOOLDIR)/stamp-v1
 # Hack to hide shared libraries from clang
-STATIC_TOOLCHAIN = $(TOOLCHAIN_) -DCMAKE_EXE_LINKER_FLAGS="$(STATIC_LDFLAGS)" -DBUILD_PREFER_STATIC=ON
+STATIC_TOOLCHAIN ?= $(TOOLCHAIN_) -DCMAKE_EXE_LINKER_FLAGS="$(STATIC_LDFLAGS)" -DBUILD_PREFER_STATIC=ON
 
 CONFIG += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
 static_FLAGS = -DCMAKE_BUILD_TYPE=Release $(STATIC_TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
