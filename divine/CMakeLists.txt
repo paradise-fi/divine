@@ -43,7 +43,7 @@ add_library( divine-vm ${CPP_vm} )
 if ( OPT_SIM )
   stringify( doc ${divine_SOURCE_DIR}/doc manual/sim.md )
   add_library( divine-sim ${CPP_sim} ${doc_FILES} )
-  target_link_libraries( divine-sim edit )
+  target_link_libraries( divine-sim edit divine-vm )
   target_link_libraries( divine-ui divine-sim )
 endif()
 
@@ -59,7 +59,7 @@ endforeach()
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject clang clangBasic clangCodeGen )
-target_link_libraries( divine-vm liblart divine-rt )
+target_link_libraries( divine-vm liblart divine-rt divine-cc ) # FIXME divine-cc
 target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker )
 target_link_libraries( divine-ui divine-rt divine-cc divine-vm )
 
