@@ -216,7 +216,7 @@ struct VmBuffTraceFile : File
         auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_get_task_handle() ) ];
         buf.insert( buf.length(), data, length );
         auto nl = buf.find_last_of( "\n" );
-
+        if ( nl != std::string::npos )
         {
             __dios::traceInternal( 0, "%s", buf.substr( 0, nl ).c_str() );
             buf.erase( 0, nl + 1 );
