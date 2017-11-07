@@ -58,45 +58,44 @@ void Run::prepare( int model )
     auto script = scr.execute();
     script.first();
     _script = script.get< std::string >( 0 );
+    _log = ui::make_odbc( *this, _odbc );
 }
 
 void Run::execute( int job_id )
 {
     _done = false;
 
-    auto exec = [&]( auto &cmd )
+    auto prepare = [&]( auto &cmd )
     {
         if ( _done )
             throw brick::except::Error( "only one model checker run is allowed per model" );
         _done = true;
-        executeWithLog( job_id, [&]( ui::SinkPtr log ) { execute( cmd, log ); } );
+        cmd._interactive = false;
+        cmd._report = ui::Report::None;
+        cmd._log = _log;
+        cmd.setup();
     };
 
-    divcheck::execute( _script, [&]( auto &cc ) { cc._files = _files; }, exec );
+    log_start( job_id );
+    divcheck::execute( _script,
+                       [&]( ui::Cc &cc ) { cc._files = _files; },
+                       [&]( ui::Verify &v ) { prepare( v ); },
+                       [&]( ui::Check &c ) { prepare( c ); } );
+    log_done( job_id );
 }
 
-void Run::execute( ui::Verify &job, ui::SinkPtr log ) {
-    job._interactive = false;
-    job._report = ui::Report::None;
-    job.setup();
-    job._log = log;
-    job.run();
-}
-
-void Run::executeWithLog( int job_id, std::function< void ( ui::SinkPtr ) > runjob )
+void Run::log_start( int job_id )
 {
-    _done = true;
-
-    auto log = ui::make_odbc( *this, _odbc );
-    int exec_id = log->log_id();
+    int exec_id = _log->log_id();
 
     nanodbc::statement exec( _conn, "update job set execution = ? where id = ?" );
     exec.bind( 0, &exec_id );
     exec.bind( 1, &job_id );
     exec.execute();
+}
 
-    runjob( log );
-
+void Run::log_done( int job_id )
+{
     nanodbc::statement done( _conn, "update job set status = 'D' where id = ?" );
     done.bind( 0, &job_id );
     done.execute();

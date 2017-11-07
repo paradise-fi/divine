@@ -83,32 +83,33 @@ void RunExternal::execute( int job_id )
         script << _script;
     }
 
-    executeWithLog( job_id, [&]( ui::SinkPtr log0 )
-        {
-            auto log = std::dynamic_pointer_cast< ui::TimedSink >( log0 );
-            ASSERT( log );
+    log_start( job_id );
 
-            auto r = proc::spawnAndWait( proc::ShowCmd, _driver, "script" );
-            if ( !r )
-                throw brick::except::Error( "benchmark driver failed: exitcode " + std::to_string( r.exitcode() )
-                                            + ", signal " + std::to_string( r.signal() ) );
+    auto log = std::dynamic_pointer_cast< ui::TimedSink >( _log );
+    ASSERT( log );
 
-            std::string report = fs::readFile( "report.yaml" );
-            std::cerr << "REPORT: " << std::endl << report << std::endl;
+    auto r = proc::spawnAndWait( proc::ShowCmd, _driver, "script" );
+    if ( !r )
+        throw brick::except::Error( "benchmark driver failed: exitcode " + std::to_string( r.exitcode() )
+                                    + ", signal " + std::to_string( r.signal() ) );
 
-            yaml::Parser yreport( report );
-            for ( auto &&i : { "lart", "rr", "const", "load", "boot", "search", "ce" } ) {
-                try {
-                    log->set_time( i, yreport.get< double >( { "timers", i } ) * 1000 );
-                } catch ( std::runtime_error & ) { }
-            }
+    std::string report = fs::readFile( "report.yaml" );
+    std::cerr << "REPORT: " << std::endl << report << std::endl;
 
-            auto states = yreport.getOr< long >( { "states count" }, 0 );
-            auto result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ), true );
-            if ( result == Result::None )
-                result = toResult( yreport.getOr< std::string >( { "property holds" }, "null" ), false );
-            log->set_result( result, states );
-        } );
+    yaml::Parser yreport( report );
+    for ( auto &&i : { "lart", "rr", "const", "load", "boot", "search", "ce" } ) {
+        try {
+            log->set_time( i, yreport.get< double >( { "timers", i } ) * 1000 );
+        } catch ( std::runtime_error & ) { }
+    }
+
+    auto states = yreport.getOr< long >( { "states count" }, 0 );
+    auto result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ), true );
+    if ( result == Result::None )
+        result = toResult( yreport.getOr< std::string >( { "property holds" }, "null" ), false );
+    log->set_result( result, states );
+
+    log_done( job_id );
 }
 
 } // namespace benchmark

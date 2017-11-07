@@ -48,8 +48,8 @@ std::vector< std::string > parse( std::string txt )
     return script;
 }
 
-template< typename P, typename F >
-void execute( std::string script_txt, P prepare_cc, F execute )
+template< typename... F >
+void execute( std::string script_txt, F... prepare )
 {
     auto script = parse( script_txt );
     brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
@@ -61,15 +61,8 @@ void execute( std::string script_txt, P prepare_cc, F execute )
         ui::CLI cli( tok );
 
         auto cmd = cli.parse( cli.commands() );
-        cmd.match( [&]( ui::Cc &cc ) { prepare_cc( cc ); } );
-        cmd.match( [&]( ui::Command &c ) { c.setup(); } );
-        cmd.match( [&]( ui::Verify &v ) { execute( v ); },
-                   [&]( ui::Run &r ) { execute( r ); },
-                   [&]( ui::Cc &cc ) { cc.run(); },
-                   [&]( ui::Command & )
-                   {
-                       throw brick::except::Error( "unsupported command " + cmdstr );
-                   } );
+        cmd.match( prepare..., [&]( ui::Command &c ) { c.setup(); } );
+        cmd.match( [&]( ui::Command &c ) { c.run(); } );
     }
 }
 

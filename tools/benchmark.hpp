@@ -117,16 +117,14 @@ struct Run : JobBase, virtual odbc::BuildID
     std::vector< std::pair< std::string, std::string > > _files;
     std::string _script;
     bool _done = false, _single = false;
+    ui::SinkPtr _log;
 
     void prepare( int model );
+    int get_instance();
 
     virtual void execute( int job );
-    virtual void executeWithLog( int job, std::function< void ( ui::SinkPtr ) > exec );
-
-    void execute( ui::Verify &, ui::SinkPtr );
-    void execute( ui::Run &, ui::SinkPtr ) { NOT_IMPLEMENTED(); }
-
-    int get_instance();
+    void log_start( int job );
+    void log_done( int job );
 
     virtual void run();
 };
