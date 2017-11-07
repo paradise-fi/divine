@@ -38,7 +38,7 @@ void Run::prepare( int model )
 
     std::cerr << "loading model " << model << std::endl;
     std::stringstream q;
-    q << "select filename, text from model "
+    q << "select filename, text, length(text) from model "
       << "left join model_srcs on model_srcs.model  = model.id "
       << "left join source     on model_srcs.source = source.id "
       << " where model.id = ?";
@@ -48,8 +48,11 @@ void Run::prepare( int model )
     auto file = sel.execute();
 
     while ( file.next() )
+    {
+        std::string text = file.get< std::string >( 1 );
         _files.emplace_back( file.get< std::string >( 0 ),
-                             file.get< std::string >( 1 ) );
+                             std::string( text, 0, file.get< int >( 2 ) ) );
+    }
 
     auto scr_q = "select text from model join source on model.script = source.id where model.id = ?";
     auto scr = nanodbc::statement( _conn, scr_q );
