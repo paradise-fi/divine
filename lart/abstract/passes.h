@@ -841,7 +841,7 @@ struct Abstraction {
                  , alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
                  , llvm::Type::getInt32Ty( m->getContext() ) );
-        auto call2 = m->getFunction( "_Z4callii.3" );
+        auto call2 = m->getFunction( "_Z4callii.4" );
         ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( call2->getFunctionType()->getParamType( 1 )

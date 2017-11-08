@@ -270,16 +270,11 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
             // TODO copy
             fields.create( ptr );
             fields.addPath( path );
-            auto dom = t.value.domain;
-            if ( isScalarType( s->getValueOperand() ) ) {
-                if ( auto setted = fields.getDomain( path ) )
-                    dom = setted.value();
-                else
-                    fields.setDomain( path, dom );
-            }
 
-            auto o = origin( ptr );
-            dispach( PropagateDown( { o, dom }, t.roots, t.parent ) );
+            if ( !isScalarType( s->getValueOperand() ) ) {
+                auto o = origin( ptr );
+                dispach( PropagateDown( { o, Domain::Symbolic }, t.roots, t.parent ) );
+            }
         }
         else if ( auto gep = GEP( av ) ) {
             auto path = createFieldPath( gep );
@@ -346,18 +341,10 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
             Path path = { ptr, { LoadStep{} } };
             AbstractValue root = { ptr, dom };
 
-            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( ptr ) ) {
-                if ( !fields.has( gep ) ) {
-                    // TODO use copy
-                    fields.create( gep );
-                    fields.setDomain( path, dom );
-                }
-                t.roots->insert( root );
-            } else if ( !fields.getDomain( path ) ) {
-                // TODO use copy
+            if ( !fields.has( ptr ) )
                 fields.create( ptr );
+            if ( !fields.getDomain( path ) )
                 fields.setDomain( path, dom );
-            }
 
             auto o = origin( ptr );
             dispach( PropagateDown( { o,  dom }, t.roots, t.parent ) );
