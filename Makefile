@@ -31,7 +31,7 @@ LDFLAGS_ = -L$(LIBUNWIND_LDIR) -Wl,-rpath,$(LIBUNWIND_LDIR) \
            -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR)
 BUILD_RPATH = $(LIBUNWIND_LDIR):$(CXX_LDIR)
 
-STATIC_LDFLAGS = -L$(STLIB)
+STATIC_LDFLAGS += -L$(STLIB)
 
 CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
             -isystem $(RTSRC)/libunwind/include \
