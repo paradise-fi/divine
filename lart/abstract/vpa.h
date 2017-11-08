@@ -177,7 +177,7 @@ struct StepOut {
 };
 
 inline bool operator==( const StepOut & a, const StepOut & b) {
-    return std::tie( a.domain, a.parent ) == std::tie( b.domain, b.parent );
+    return std::tie( a.function, a.domain, a.parent ) == std::tie( b.function, b.domain, b.parent );
 }
 
 struct PropagateUp {
