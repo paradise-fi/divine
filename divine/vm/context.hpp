@@ -409,7 +409,11 @@ struct Context
         if ( fh.null() || _debug_mode )
         {
             if ( _debug_mode )
+            {
                 trace( "FATAL: cannot handle a fault during dbg.call" );
+                _debug_depth = 0; /* short-circuit */
+                leave_debug();
+            }
             if ( fh.null() )
                 trace( "FATAL: no fault handler installed" );
             doublefault();
