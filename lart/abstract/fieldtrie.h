@@ -34,6 +34,8 @@ struct FieldTrie {
     struct TrieNode;
     using TrieNodePtr = std::unique_ptr< TrieNode >;
 
+    using Useless = std::set< TrieNode * >;
+
     struct Leaf {
         Leaf( T v ) : value( v ) {}
         T value;
@@ -52,8 +54,10 @@ struct FieldTrie {
         }
 
         void setValue( T val ) {
-            if ( children.empty() )
+            if ( children.empty() ) {
                 children[ 0 ] = TrieNode::make_leaf( val );
+                children[ 0 ]->parent = this;
+            }
             assert( isLeaf() && value() == val );
         }
 
@@ -63,8 +67,10 @@ struct FieldTrie {
         }
 
         TrieNode * getOrInsertChild( const K & key ) {
-            if ( !children.count( key ) )
+            if ( !children.count( key ) ) {
                 children[ key ] = TrieNode::make_internal();
+                children[ key ]->parent = this;
+            }
             return children[ key ].get();
         }
 
@@ -77,6 +83,15 @@ struct FieldTrie {
                    << child.second.get() << '"';
                 os << "[label = \"" << child.first << "\"];\n";
             }
+        }
+
+        bool useless( Useless & nodes ) {
+            bool hasNoLeaf = true;
+            for ( auto & child : children )
+                hasNoLeaf &= child.second->useless( nodes );
+            if ( hasNoLeaf )
+                nodes.insert( reinterpret_cast< TrieNode * >( this ) );
+            return hasNoLeaf;
         }
     };
 
@@ -95,6 +110,14 @@ struct FieldTrie {
         void draw( std::ofstream & os ) const {
             std::visit( [&] ( const auto & node ) { node.draw( os ); }, *this );
         }
+
+        bool useless( Useless & nodes ) {
+            if ( auto in = std::get_if< Internal >( this ) )
+                return in->useless( nodes );
+            return false;
+        }
+
+        Internal * parent = nullptr;
     };
 
     struct Handle {
@@ -170,15 +193,24 @@ struct FieldTrie {
     TrieNode * rebase( const Indices & keys ) {
         for ( auto k = keys.rbegin(); k != keys.rend(); ++k ) {
             auto level = TrieNode::make_internal();
+            _root->parent = std::get_if< Internal >( level.get() );
             std::get< Internal >( *level ).children[ *k ] = std::move( _root );
             _root = std::move( level );
         }
         return _root.get();
     }
 
+    Useless useless() {
+        if ( !_root )
+            return {};
+        Useless nodes;
+        _root->useless( nodes );
+        return nodes;
+    }
     void draw( std::ofstream & os ) const {
         _root->draw( os );
     }
+
     TrieNodePtr _root;
 };
 
@@ -302,6 +334,17 @@ struct AbstractFields {
         out << "}\n";
     }
 
+    void clean() {
+        for ( auto & trie : tries ) {
+            auto useless = trie->useless();
+            for ( auto it = fields.begin(); it != fields.end(); ) {
+                if ( useless.count( it->second.getRoot() ) )
+                    it = fields.erase( it );
+                else
+                    ++it;
+            }
+        }
+    }
 private:
     std::optional< Domain > getDomain( const Trie::Handle & handle ) {
         if ( handle.getRoot() ) {
