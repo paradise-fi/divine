@@ -30,8 +30,6 @@ struct Abstraction {
     llvm::Function * process( const FunctionNode & node );
     FunctionNode clone( const FunctionNode & node );
 
-    void clean( Values && deps );
-
     PassData & data;
     FunctionMap< llvm::Function *, Types > fns;
 };

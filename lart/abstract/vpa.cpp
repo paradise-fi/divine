@@ -141,9 +141,8 @@ VPA::Roots VPA::run( llvm::Module & m ) {
         tasks.pop_front();
     }
 
-    // TODO cleanup
-
-    return std::make_tuple( std::move( reached ), globals );
+    // TODO cleanup - remove unnecessery prototypes
+    return std::make_tuple( std::move( reached ), globals, std::move( fields ) );
 }
 
 void VPA::record( llvm::Function * fn ) {

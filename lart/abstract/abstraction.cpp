@@ -88,30 +88,32 @@ private:
     FNode initializer;
 };
 
-} // anonymous namespace
+struct GlobMap : LiftMap< llvm::Value *, llvm::Value * > {
+    GlobMap( PassData & data, llvm::Module & m ) : data( data ), m( m ) {}
 
-AbstractValues Abstraction::FunctionNode::reached() const {
-    return reachFrom( { roots().begin(), roots().end() } );
-}
+    void populate( VPA::Globals & globals ) {
+        for ( auto & av : globals ) {
+            auto glob = llvm::cast< llvm::GlobalVariable >( av.value );
+            auto dom = av.domain;
 
-void Abstraction::run( llvm::Module & m ) {
-    // create function prototypes
-    Map< FunctionNode, llvm::Function * > prototypes;
-    std::vector< FunctionNode > sorted;
+            auto type = liftType( glob->getValueType(), dom, data.tmap );
+            auto name = glob->getName() + "." + DomainTable[ dom ];
+            auto ag = llvm::cast< llvm::GlobalVariable >(
+                                  m.getOrInsertGlobal( name.str(), type ) );
 
-    VPA::Globals globals;
-    Reached functions;
+            this->insert( glob, ag );
+        }
+    }
+private:
+    PassData & data;
+    llvm::Module & m;
+};
 
-    std::tie( functions, globals ) = VPA().run( m );
+using FNode = Abstraction::FunctionNode;
 
-    sorted.emplace_back( InitGlobals().run( m, globals ) );
-
-    for ( auto & fn : functions )
-        for ( const auto & rs : fn.second )
-            sorted.emplace_back( fn.first, rs );
-
-    std::sort( sorted.begin(), sorted.end(), [] ( FunctionNode l, FunctionNode r ) {
-        auto arghash = [] ( const FunctionNode & fn ) -> size_t {
+void sortFunctionNodes( std::vector< FNode > & fnodes ) {
+    std::sort( fnodes.begin(), fnodes.end(), [] ( FNode l, FNode r ) {
+        auto arghash = [] ( const FNode & fn ) -> size_t {
             size_t sum = 0;
             for ( auto & a : filterA< llvm::Argument >( fn.roots() ) )
                 sum += a.get< llvm::Argument >()->getArgNo();
@@ -123,21 +125,87 @@ void Abstraction::run( llvm::Module & m ) {
 
         return ln == rn ? arghash( l ) < arghash( r ) : ln < rn;
     } );
+}
 
-    // create globals
-    LiftMap< llvm::Value *, llvm::Value * > globmap;
-    for ( auto & av : globals ) {
-        auto glob = llvm::cast< llvm::GlobalVariable >( av.value );
-        auto dom = av.domain;
-
-        auto type = liftType( glob->getValueType(), dom, data.tmap );
-        auto name = glob->getName() + "." + DomainTable[ dom ];
-        auto ag = llvm::cast< llvm::GlobalVariable >( m.getOrInsertGlobal( name.str(), type ) );
-
-        globmap.insert( glob, ag );
+void cleanFNode( Values && deps ) {
+    auto is = llvmFilter< llvm::Instruction >( deps );
+    for ( auto & inst : is ) {
+        for ( auto & lift : liftsOf( inst ) )
+            if ( std::find( is.begin(), is.end(), lift ) == is.end() )
+                    lift->eraseFromParent();
+        inst->removeFromParent();
     }
+    for ( auto & inst : is )
+        inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
+    for ( auto & inst : is )
+        delete inst;
+}
 
-    for ( auto & fnode : sorted )
+template< typename Builder >
+void processFNode( FNode & fnode, Builder & builder ) {
+    auto postorder = fnode.reached();
+    for ( auto & av : lart::util::reverse( postorder ) )
+        if ( isScalarOp( av ) )
+            builder.process( av );
+        else
+            builder.processStructOp( av );
+
+    // clean function
+    std::set< llvm::Value * > deps;
+    for ( auto & av : postorder )
+        if ( isScalarOp( av ) && !av.isa< llvm::GetElementPtrInst >() ) {
+            deps.insert( av.value );
+        } else if ( auto cs = llvm::CallSite( av.value ) ) {
+            auto fn = cs.getCalledFunction();
+            if ( MemIntrinsic( av ) )
+                continue;
+            else if ( fn->isIntrinsic() ) // LLVM intrinsic
+                deps.insert( av.value );
+            else if ( !isIntrinsic( fn ) ) // Not a LART intrinsic
+                deps.insert( av.value );
+        }
+    cleanFNode( { deps.begin(), deps.end() } );
+}
+
+void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
+    for ( auto & arg : fn->args() ) {
+        if ( data.tmap.isAbstract( arg.getType() ) ) {
+            for ( auto & lift : lifts( arg.users() ) ) {
+                lift->replaceAllUsesWith( &arg );
+                lift->eraseFromParent();
+            }
+        }
+    }
+}
+
+} // anonymous namespace
+
+AbstractValues Abstraction::FunctionNode::reached() const {
+    return reachFrom( { roots().begin(), roots().end() } );
+}
+
+void Abstraction::run( llvm::Module & m ) {
+    // create function prototypes
+    Map< FNode, llvm::Function * > prototypes;
+    std::vector< FNode > fnodes;
+
+    VPA::Globals globals;
+    Reached functions;
+    Fields fields;
+
+    // Value propagation analysis
+    std::tie( functions, globals, fields ) = VPA().run( m );
+
+    fnodes.emplace_back( InitGlobals().run( m, globals ) );
+    for ( auto & fn : functions )
+        for ( const auto & rs : fn.second )
+            fnodes.emplace_back( fn.first, rs );
+    sortFunctionNodes( fnodes );
+
+    GlobMap globmap( data, m );
+    globmap.populate( globals );
+
+    for ( auto & fnode : fnodes )
         prototypes[ fnode ] = process( fnode );
 
     std::set< llvm::Function * > remove;
@@ -145,59 +213,28 @@ void Abstraction::run( llvm::Module & m ) {
         auto fnode = p.first;
         if ( fnode.roots().empty() )
             continue;
-        LiftMap< llvm::Value *, llvm::Value * > vmap = globmap;
+        auto vmap = globmap;
         auto builder = make_builder( vmap, data.tmap, fns );
 
-        // 1. if signature changes create a new function declaration
+        // If signature changes create a new function declaration
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
-        // TODO what about function with abstract argument and abstract annotation?
         bool called = query::query( fnode.roots() ).any( [] ( const auto & n ) {
             return n.template isa< llvm::Argument >();
         } );
+        if ( called ) fnode = clone( fnode );
 
-        if ( called )
-            fnode = clone( fnode );
-        // 2. process function abstract entries
-        auto postorder = fnode.reached();
-        for ( auto & av : lart::util::reverse( postorder ) )
-            if ( isScalarOp( av ) )
-                builder.process( av );
-            else
-                builder.processStructOp( av );
+        // Create abstract intrinsics in the function node
+        processFNode( fnode, builder );
 
-        // 3. clean function
-        std::set< llvm::Value * > deps;
-        for ( auto & av : postorder )
-            if ( isScalarOp( av ) && !av.isa< llvm::GetElementPtrInst >() ) {
-                deps.insert( av.value );
-            } else if ( auto cs = llvm::CallSite( av.value ) ) {
-                auto fn = cs.getCalledFunction();
-                if ( MemIntrinsic( av ) )
-                    continue;
-                else if ( fn->isIntrinsic() ) // LLVM intrinsic
-                    deps.insert( av.value );
-                else if ( !isIntrinsic( fn ) ) // Not a LART intrinsic
-                    deps.insert( av.value );
-            }
-        clean( { deps.begin(), deps.end() } );
-
-        // 4. copy function to declaration and handle function uses
+        // Copy function to declaration and handle function uses
         auto fn = fnode.function();
         auto & changed = p.second;
         if ( changed != fn ) {
             remove.insert( fn );
             llvm::ValueToValueMapTy vtvmap;
             cloneFunctionInto( changed, fn, vtvmap );
-            // Remove lifts of abstract arguments
-            for ( auto & arg : changed->args() ) {
-                if ( data.tmap.isAbstract( arg.getType() ) ) {
-                    for ( auto & lift : lifts( arg.users() ) ) {
-                        lift->replaceAllUsesWith( &arg );
-                        lift->eraseFromParent();
-                    }
-                }
-            }
+            removeArgumentLifts( changed, data );
             CallInterupt().run( changed );
         }
     }
@@ -264,20 +301,6 @@ Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node ) {
     if ( fns.count( node.function() ) )
         fns.assign( clone, node.function() );
     return Abstraction::FunctionNode( clone, roots );
-}
-
-void Abstraction::clean( Values && deps ) {
-    auto is = llvmFilter< llvm::Instruction >( deps );
-    for ( auto & inst : is ) {
-        for ( auto & lift : liftsOf( inst ) )
-            if ( std::find( is.begin(), is.end(), lift ) == is.end() )
-                    lift->eraseFromParent();
-        inst->removeFromParent();
-    }
-    for ( auto & inst : is )
-        inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
-    for ( auto & inst : is )
-        delete inst;
 }
 
 } // abstract

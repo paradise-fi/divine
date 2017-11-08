@@ -204,10 +204,12 @@ inline bool operator==( const PropagateGlobal & a, const PropagateGlobal & b) {
 
 using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut, PropagateGlobal >;
 
+using Fields = AbstractFields< llvm::Value * >;
+
 // ValuesPropagationAnalysis
 struct VPA {
     using Globals = RootsSet;
-    using Roots = std::tuple< Reached, Globals >;
+    using Roots = std::tuple< Reached, Globals, Fields >;
     // Returns pairs of funcions with reached roots
     Roots run( llvm::Module & m );
 
@@ -231,10 +233,9 @@ private:
 
     std::deque< Task > tasks;
 
-    AbstractFields< llvm::Value * > fields;
-
     Reached reached;
     Globals globals;
+    Fields fields;
 
     std::map< RootsSet *, std::set< llvm::Value * > > seen;
 };
