@@ -9,5 +9,5 @@ int main( int argc, const char **argv )
     }
 
     auto script = brick::fs::readFile( argv[1] );
-    divcheck::execute( script, []( auto & ) {}, []( auto &cmd ) { cmd.run(); } );
+    divcheck::execute( script );
 }
