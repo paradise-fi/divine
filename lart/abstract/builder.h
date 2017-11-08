@@ -4,6 +4,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -409,9 +410,10 @@ private:
             return i->getType();
         }
 
-        using ICmpKey = std::tuple< Predicate, Domain >;
-        ICmpKey icmpKey( llvm::ICmpInst * icmp, Domain dom ) {
-            return std::make_tuple( icmp->getPredicate(), dom );
+        using BitWidth = size_t;
+        using ICmpKey = std::tuple< Predicate, BitWidth, Domain >;
+        ICmpKey icmpKey( llvm::ICmpInst * icmp, BitWidth bw, Domain dom ) {
+            return std::make_tuple( icmp->getPredicate(), bw, dom );
         }
 
 
@@ -430,8 +432,10 @@ private:
 
         using Key = Union< IKey, ICmpKey, CastKey >;
         Key key( const AbstractValue & av ) {
-            if ( auto icmp = av.safeGet< llvm::ICmpInst >() )
-                return icmpKey( icmp, av.domain );
+            if ( auto icmp = av.safeGet< llvm::ICmpInst >() ) {
+                auto bw = llvm::cast< llvm::IntegerType >( icmp->getOperand( 0 )->getType() )->getBitWidth();
+                return icmpKey( icmp, bw, av.domain );
+            }
             if ( auto cast = av.safeGet< llvm::CastInst >() )
                 return castKey( cast, av.domain );
             return iKey( av.get< llvm::Instruction >(), av.domain );
