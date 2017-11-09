@@ -17,15 +17,21 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
     bool kernel = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
 
+    int nice_id = -1;
+    short *indent = nullptr;
     auto tid = abstract::weaken( __dios_get_task_handle() );
-    auto &hids = get_debug().hids;
-    auto &indent = tid ? get_debug().trace_indent[ tid ] : get_debug().kernel_indent;
-    auto nice_id_it = tid ? hids.find( tid ): hids.end();
-    int nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
 
-    if ( shift < 0 && indent > 0 )
+    if ( have_debug() )
     {
-        indent += shift * 2;
+        auto &hids = get_debug().hids;
+        indent = tid ? &get_debug().trace_indent[ tid ] : &get_debug().kernel_indent;
+        auto nice_id_it = tid ? hids.find( tid ): hids.end();
+        nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
+    }
+
+    if ( indent && shift < 0 && *indent > 0 )
+    {
+        *indent += shift * 2;
         __vm_trace( _VM_T_DebugPersist, &get_debug() );
     }
 
@@ -41,16 +47,17 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
         else
             n = snprintf( buffer, 1024, "[  ] " );
 
-        for ( int i = 0; i < indent && i < 32 && indent >= 0; ++i )
-            buffer[ n++ ] = ' ';
+        if ( indent )
+            for ( int i = 0; i < *indent && i < 32 && *indent >= 0; ++i )
+                buffer[ n++ ] = ' ';
 
         vsnprintf( buffer + n, 1024 - n, fmt, ap );
         __vm_trace( _VM_T_Text, buffer );
     }
 
-    if ( shift > 0 && indent < 32 )
+    if ( indent && shift > 0 && *indent < 32 )
     {
-        indent += shift * 2;
+        *indent += shift * 2;
         __vm_trace( _VM_T_DebugPersist, &get_debug() );
     }
 }
