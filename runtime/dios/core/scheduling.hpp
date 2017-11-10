@@ -304,13 +304,25 @@ struct Scheduler : public Next
         __dios_assert_v( res, "Killing non-existing task" );
     }
 
+    template< typename I >
+    void eraseProcesses( I pivot )
+    {
+        Set< Process * > p;
+        for ( auto i = pivot; i != tasks.end(); ++i )
+            p.insert( (*i)->_proc );
+        for ( auto i = tasks.begin(); i != pivot; ++i )
+            p.erase( (*i)->_proc );
+        for ( auto &proc : p )
+            delete_object( proc );
+    }
+
     void killProcess( pid_t id ) noexcept  {
         if ( !id ) {
 
             size_t c = tasks.size();
+            eraseProcesses( tasks.begin() );
             tasks.erase( tasks.begin(), tasks.end() );
             __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
-            // ToDo: Erase processes
             return;
         }
 
@@ -321,8 +333,8 @@ struct Scheduler : public Next
                                      return t->_proc->pid == id;
                                 } );
 
+        eraseProcesses( r );
         tasks.erase( r, tasks.end() );
-        // ToDo: Erase processes
     }
 
     int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact ) {
