@@ -19,14 +19,15 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
 
     int nice_id = -1;
     short *indent = nullptr;
-    auto tid = abstract::weaken( __dios_get_task_handle() );
+    auto tid = __dios_get_task_handle();
 
     if ( have_debug() )
     {
+        auto key = abstract::weaken( tid );
         auto &hids = get_debug().hids;
-        indent = tid ? &get_debug().trace_indent[ tid ] : &get_debug().kernel_indent;
-        auto nice_id_it = tid ? hids.find( tid ): hids.end();
-        nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
+        indent = tid ? &get_debug().trace_indent[ key ] : &get_debug().kernel_indent;
+        auto nice_id_it = tid ? hids.find( key ): hids.end();
+        nice_id = nice_id_it == hids.end() ? -2 : nice_id_it->second;
     }
 
     if ( indent && shift < 0 && *indent > 0 )
