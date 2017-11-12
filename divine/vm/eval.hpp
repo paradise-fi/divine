@@ -993,14 +993,15 @@ struct Eval
             {
                 auto &reg_r = context().ref( reg ).integer;
                 auto mask = operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
+                auto val = operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
                 if ( mask & _VM_CF_DebugMode )
                     fault( _VM_F_Hypercall ) << "cannot change debug mode";
-                else if ( ! ( reg_r & _VM_CF_KernelMode ) && ( mask & _VM_CF_KernelMode ) )
+                else if ( !( reg_r & _VM_CF_KernelMode ) && ( val & mask & _VM_CF_KernelMode ) )
                     fault( _VM_F_Hypercall ) << "cannot set kernel mode outside of kernel";
                 else
                 {
                     reg_r &= ~mask;
-                    reg_r |= operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
+                    reg_r |= val;
                 }
             }
             else
