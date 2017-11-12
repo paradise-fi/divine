@@ -233,7 +233,7 @@ struct ProcessManager : public Next
             if ( wstatus )
                 *wstatus = p->exitStatus;
             childpid = p->pid;
-            __vm_obj_free( p );
+            delete_object( p );
             this->zombies.erase( pid );
         }
         return childpid;
