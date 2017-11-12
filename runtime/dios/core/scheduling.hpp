@@ -326,12 +326,14 @@ struct Scheduler : public Next
             return;
         }
 
-        auto r = std::remove_if( tasks.begin(), tasks.end(), [&]( auto& t )
+        auto r = std::partition( tasks.begin(), tasks.end(), [&]( auto& t )
                                  {
+                                     if ( t->_proc->pid != id )
+                                         return true;
                                      if ( t->_tls == __dios_get_task_handle() )
                                          __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
-                                     return t->_proc->pid == id;
-                                } );
+                                     return false;
+                                 } );
 
         eraseProcesses( r );
         tasks.erase( r, tasks.end() );
