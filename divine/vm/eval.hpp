@@ -951,7 +951,14 @@ struct Eval
             int action = operandCk< IntV >( idx++, o_inst, o_frame ).cooked();
             auto reg = _VM_ControlRegister( operandCk< IntV >( idx++, o_inst, o_frame ).cooked() );
             if ( action == _VM_CA_Set && reg == _VM_CR_Flags )
-                context().set( reg, operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked() );
+            {
+                auto val = operandCk< PointerV >( idx++, o_inst, o_frame ).cooked();
+                auto orig = context().get( reg ).integer;
+                if ( ( val.raw() & _VM_CF_KernelMode ) && !( orig & _VM_CF_KernelMode ) )
+                    fault( _VM_F_Hypercall ) << "cannot set kernel mode outside of kernel";
+                else
+                    context().set( reg, val );
+            }
             else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
             {
                 auto ptr = operandCk< PointerV >( idx++, o_inst, o_frame ).cooked();
@@ -985,8 +992,16 @@ struct Eval
             else if ( action == _VM_CA_Bit && reg == _VM_CR_Flags )
             {
                 auto &reg_r = context().ref( reg ).integer;
-                reg_r &= ~operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
-                reg_r |= operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
+                auto mask = operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
+                if ( mask & _VM_CF_DebugMode )
+                    fault( _VM_F_Hypercall ) << "cannot change debug mode";
+                else if ( ! ( reg_r & _VM_CF_KernelMode ) && ( mask & _VM_CF_KernelMode ) )
+                    fault( _VM_F_Hypercall ) << "cannot set kernel mode outside of kernel";
+                else
+                {
+                    reg_r &= ~mask;
+                    reg_r |= operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
+                }
             }
             else
             {
