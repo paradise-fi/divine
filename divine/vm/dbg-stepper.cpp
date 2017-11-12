@@ -37,7 +37,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     bool moved = false;
     CodePointer oldpc = eval.pc();
 
-    while ( !_sigint && !ctx.frame().null() &&
+    while ( !_sigint && !ctx.frame().null() && !_check( _states ) &&
             ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, oldpc, moved ) ) &&
             ( error_set || ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error ) == 0 ) &&
             ( in_fault || eval.pc().function()
