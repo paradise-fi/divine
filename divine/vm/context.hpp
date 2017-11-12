@@ -145,6 +145,8 @@ struct Context
         flush_ptr2i();
         set( _VM_CR_User1, 0 );
         set( _VM_CR_User2, 0 );
+        set( _VM_CR_User3, 0 );
+        set( _VM_CR_User4, 0 );
         set( _VM_CR_ObjIdShuffle, 0 );
         _mem_loads.clear();
         _mem_stores.clear();

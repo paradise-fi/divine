@@ -89,6 +89,8 @@ static const char *__vmutil_reg_name( int id )
         DIVM_REG_NAME( _VM_CR_ObjIdShuffle );
         DIVM_REG_NAME( _VM_CR_User1 );
         DIVM_REG_NAME( _VM_CR_User2 );
+        DIVM_REG_NAME( _VM_CR_User3 );
+        DIVM_REG_NAME( _VM_CR_User4 );
     }
     __builtin_unreachable();
 }

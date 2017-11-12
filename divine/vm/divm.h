@@ -180,8 +180,11 @@ enum _VM_ControlRegister
 
     _VM_CR_FaultHandler,     /* write-once, function pointer */
     _VM_CR_ObjIdShuffle,
+
     _VM_CR_User1,
     _VM_CR_User2,
+    _VM_CR_User3,
+    _VM_CR_User4,
 
     _VM_CR_Last
 };
