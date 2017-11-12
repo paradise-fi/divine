@@ -187,13 +187,18 @@ struct Explore_
     using State = explore::State;
     using Snapshot = CowHeap::Snapshot;
 
-    struct Label
+    struct Label : brick::types::Ord
     {
         std::vector< std::string > trace;
         std::vector< Choice > stack;
         std::vector< Interrupt > interrupts;
         bool accepting:1;
         bool error:1;
+        auto as_tuple() const
+        {
+            /* skip the text trace for comparison purposes */
+            return std::make_tuple( stack, interrupts, accepting, error );
+        }
     };
 
     BC _bc;

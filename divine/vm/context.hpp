@@ -32,11 +32,15 @@ namespace llvm { class Value; }
 namespace divine {
 namespace vm {
 
-struct Interrupt
+struct Interrupt : brick::types::Ord
 {
     enum Type { Mem, Cfl } type:1;
     uint32_t ictr:31;
     CodePointer pc;
+    auto as_tuple() const { return std::make_tuple( type, ictr, pc ); }
+    Interrupt( Type t = Mem, uint32_t ictr = 0, CodePointer pc = CodePointer() )
+        : type( t ), ictr( ictr ), pc( pc )
+    {}
 };
 
 static inline std::ostream &operator<<( std::ostream &o, Interrupt i )
