@@ -14,7 +14,7 @@
 namespace __dios {
 
 // DiOS register constants
-static const uint64_t _DiOS_CF_SyscallSchedule = 0b000001 << 8;
+static const uint64_t _DiOS_CF_SyscallSchedule = 0b000001 << _VM_CFB_OS;
 
 template < typename T >
 void __attribute__((__noinline__)) traceAlias( const char *name, T *type = nullptr ) {
