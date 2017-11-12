@@ -31,8 +31,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
                   vm::SymbolicExplore::Snapshot *initial = nullptr )
 {
     vm::SymbolicExplore ex( bc );
-
-    ex._ctx._debug_allowed = true;
+    ex._ctx.enable_debug();
 
     if ( ctx )
     {

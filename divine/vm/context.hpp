@@ -102,14 +102,18 @@ struct Context
     std::vector< Interrupt > _interrupts;
 
     uint32_t _instruction_counter;
-    bool _debug_mode = false, _debug_allowed = false;
     int _debug_depth = 0;
+    bool _debug_allowed = false;
     TraceDebugPersist _debug_persist;
     typename Heap::Snapshot _debug_snap;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
     std::vector< std::unordered_set< GenericPointer > > _cfl_visited;
     MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
+
+    bool debug_allowed() { return _debug_allowed; }
+    bool debug_mode() { return _reg[ _VM_CR_Flags ].integer & _VM_CF_DebugMode; }
+    void enable_debug() { _debug_allowed = true; }
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -123,6 +127,7 @@ struct Context
             else
                 set( cr, ctx.get( cr ).pointer );
         }
+        ASSERT( !debug_mode() );
         _heap = ctx.heap();
     }
 
@@ -233,11 +238,15 @@ struct Context
 
     bool enter_debug()
     {
-        if ( _debug_allowed && !_debug_mode )
+        if ( !debug_allowed() )
+            -- _instruction_counter; /* dbg.call does not count */
+
+        if ( debug_allowed() && !debug_mode() )
         {
+            -- _instruction_counter;
             ASSERT( !_debug_depth );
-            _debug_mode = true;
             std::copy( _reg, _reg + _VM_CR_Last, _debug_reg );
+            _reg[ _VM_CR_Flags ].integer |= _VM_CF_DebugMode;
             with_snap( [&]( auto &h ) { _debug_snap = h.snapshot(); } );
             return true;
         }
@@ -247,10 +256,9 @@ struct Context
 
     void leave_debug()
     {
-        ASSERT( _debug_allowed );
-        ASSERT( _debug_mode );
+        ASSERT( debug_allowed() );
+        ASSERT( debug_mode() );
         ASSERT( !_debug_depth );
-        _debug_mode = false;
         std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
         if ( _debug_persist.ptr.null() )
             with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
@@ -286,7 +294,7 @@ struct Context
 
     void cfl_interrupt( CodePointer pc )
     {
-        if( in_kernel() || _debug_mode )
+        if( in_kernel() || debug_mode() )
             return;
 
         if ( _cfl_visited.back().count( pc ) )
@@ -297,7 +305,7 @@ struct Context
 
     void entered( CodePointer )
     {
-        if ( _debug_mode )
+        if ( debug_mode() )
             ++ _debug_depth;
         else
             _cfl_visited.emplace_back();
@@ -305,7 +313,7 @@ struct Context
 
     void left( CodePointer )
     {
-        if ( _debug_mode )
+        if ( debug_mode() )
         {
             ASSERT_LEQ( 1, _debug_depth );
             -- _debug_depth;
@@ -328,7 +336,7 @@ struct Context
 
     void mem_interrupt( CodePointer pc, GenericPointer ptr, int size, int type )
     {
-        if( in_kernel() || _debug_mode )
+        if( in_kernel() || debug_mode() )
             return;
 
         if ( ptr.heap() && !heap().shared( ptr ) )
@@ -359,7 +367,7 @@ struct Context
 
     void count_instruction()
     {
-        if ( !_debug_mode )
+        if ( !debug_mode() )
             ++ _instruction_counter;
     }
 
@@ -369,7 +377,7 @@ struct Context
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return false;
 
-        ASSERT( !_debug_mode );
+        ASSERT( !debug_mode() );
 
         if( in_kernel() )
         {
@@ -410,9 +418,9 @@ struct Context
     void fault( Fault f, HeapPointer frame, CodePointer pc )
     {
         auto fh = get( _VM_CR_FaultHandler ).pointer;
-        if ( fh.null() || _debug_mode )
+        if ( fh.null() || debug_mode() )
         {
-            if ( _debug_mode )
+            if ( debug_mode() )
             {
                 trace( "FATAL: cannot handle a fault during dbg.call" );
                 _debug_depth = 0; /* short-circuit */

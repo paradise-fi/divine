@@ -79,7 +79,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         else
             eval.dispatch();
 
-        while ( ctx._debug_mode )
+        while ( ctx.debug_mode() )
             eval.advance(), eval.dispatch();
 
         if ( schedule( ctx ) )

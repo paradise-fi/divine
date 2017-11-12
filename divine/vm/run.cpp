@@ -32,7 +32,7 @@ void Run::run()
     Eval eval( _ctx );
 
     setup::boot( _ctx );
-    _ctx._debug_allowed = true;
+    _ctx.enable_debug();
     eval.run();
     if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
         ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );

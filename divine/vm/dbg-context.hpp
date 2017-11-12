@@ -72,7 +72,7 @@ struct Context : DNContext< Heap >
         : DNContext< Heap >( p, dbg, h ), _lock_mode( LockDisabled ),
           _state_di_type( nullptr ), _state_type( nullptr )
     {
-        this->_debug_allowed = true;
+        this->enable_debug();
     }
 
     void reset()

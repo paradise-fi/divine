@@ -103,6 +103,7 @@ static const char *__vmutil_flag_name( uint64_t val )
         DIVM_FLAG_NAME( _VM_CF_Error );
         DIVM_FLAG_NAME( _VM_CF_Cancel );
         DIVM_FLAG_NAME( _VM_CF_KernelMode );
+        DIVM_FLAG_NAME( _VM_CF_DebugMode );
 
         DIVM_FLAG_NAME( _LART_CF_RelaxedMemRuntime );
     }

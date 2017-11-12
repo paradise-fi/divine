@@ -138,12 +138,13 @@ enum _VM_ControlAction
  */
 
 static const uint64_t _VM_CF_None        = 0;
-static const uint64_t _VM_CF_Mask        = 0b000001;
-static const uint64_t _VM_CF_Interrupted = 0b000010;
-static const uint64_t _VM_CF_Accepting   = 0b000100;
-static const uint64_t _VM_CF_Error       = 0b001000;
-static const uint64_t _VM_CF_Cancel      = 0b010000;
-static const uint64_t _VM_CF_KernelMode  = 0b100000;
+static const uint64_t _VM_CF_Mask        = 0b00000001;
+static const uint64_t _VM_CF_Interrupted = 0b00000010;
+static const uint64_t _VM_CF_Accepting   = 0b00000100;
+static const uint64_t _VM_CF_Error       = 0b00001000;
+static const uint64_t _VM_CF_Cancel      = 0b00010000;
+static const uint64_t _VM_CF_KernelMode  = 0b00100000;
+static const uint64_t _VM_CF_DebugMode   = 0b01000000;
 
 /*
  * Control flags are split up into 4 blocks of 16 bits, each reserved for a
