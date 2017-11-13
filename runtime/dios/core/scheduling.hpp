@@ -299,7 +299,7 @@ struct Scheduler : public Next
 
     void killTask( TaskHandle tid ) noexcept  {
         if ( tid == __dios_get_task_handle() )
-            __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
+            reschedule();
         bool res = tasks.remove( tid );
         __dios_assert_v( res, "Killing non-existing task" );
     }
@@ -316,13 +316,23 @@ struct Scheduler : public Next
             delete_object( proc );
     }
 
+    void reschedule()
+    {
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _DiOS_CF_Reschedule, _DiOS_CF_Reschedule );
+    }
+
+    bool need_reschedule()
+    {
+        return uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _DiOS_CF_Reschedule;
+    }
+
     void killProcess( pid_t id ) noexcept  {
         if ( !id ) {
 
             size_t c = tasks.size();
             eraseProcesses( tasks.begin() );
             tasks.erase( tasks.begin(), tasks.end() );
-            __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
+            reschedule();
             return;
         }
 
@@ -331,7 +341,7 @@ struct Scheduler : public Next
                                      if ( t->_proc->pid != id )
                                          return true;
                                      if ( t->_tls == __dios_get_task_handle() )
-                                         __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
+                                         reschedule();
                                      return false;
                                  } );
 
@@ -457,6 +467,25 @@ struct Scheduler : public Next
                    ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
     }
 
+    template< typename Context >
+    static void check_final( Context &ctx )
+    {
+        if ( ctx.tasks.empty() )
+            ctx.finalize();
+    }
+
+    __attribute__((__always_inline__))
+    void run( Task &t )
+    {
+        __vm_control( _VM_CA_Set, _VM_CR_Frame, t._frame,
+                      _VM_CA_Set, _VM_CR_Globals, t._proc->globals,
+                      _VM_CA_Set, _VM_CR_User2, reinterpret_cast< uint64_t >( t.getId() ),
+                      _VM_CA_Set, _VM_CR_User3, debug,
+                      _VM_CA_Bit, _VM_CR_Flags,
+                      uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
+        t._frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
+    }
+
     template < typename Context >
     static void run_scheduler() noexcept
     {
@@ -466,30 +495,32 @@ struct Scheduler : public Next
 
         scheduler.traceTasks();
         Task *t = scheduler.chooseTask();
+
         while ( t && t->_frame )
         {
-            __vm_control( _VM_CA_Set, _VM_CR_User2,
-                reinterpret_cast< int64_t >( t->getId() ) );
-            __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
-                          _VM_CA_Set, _VM_CR_Globals, t->_proc->globals,
-                          _VM_CA_Set, _VM_CR_User3, scheduler.debug,
-                          _VM_CA_Bit, _VM_CR_Flags,
-                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
-            t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
-
+            scheduler.run( *t );
             scheduler.runMonitors();
 
             auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-            if ( syscall || Sys::handle( scheduler, *syscall ) == SchedCommand::RESCHEDULE )
+            if ( syscall )
+            {
+                Sys::handle( scheduler, *syscall );
+                __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
+            }
+            else
+            {
+                if ( !t->_frame )
+                    check_final( scheduler );
                 return;
+            }
+
+            if ( scheduler.need_reschedule() )
+                return check_final( scheduler );
 
             /* reset intframe to ourselves */
             auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
             __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
         }
-
-        // Program ends
-        scheduler.finalize();
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 

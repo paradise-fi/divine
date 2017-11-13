@@ -14,17 +14,15 @@
 namespace __dios {
 
 // DiOS register constants
-static const uint64_t _DiOS_CF_SyscallSchedule = 0b000001 << _VM_CFB_OS;
+static const uint64_t _DiOS_CF_Reschedule = 0b000001 << _VM_CFB_OS;
 
 template < typename T >
 void __attribute__((__noinline__)) traceAlias( const char *name, T *type = nullptr ) {
     __vm_trace( _VM_T_TypeAlias, type, name );
 }
 
-enum SchedCommand { RESCHEDULE, CONTINUE };
-
 using SysOpts = Vector< std::pair< String, String > >;
-using SC_Handler = SchedCommand (*)( void *ctx, int *err, void* retval, va_list vl );
+using SC_Handler = void (*)( void *ctx, int *err, void* retval, va_list vl );
 
 struct sighandler_t
 {

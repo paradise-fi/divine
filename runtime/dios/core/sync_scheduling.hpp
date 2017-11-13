@@ -67,16 +67,16 @@ struct SyncScheduler : public Scheduler< Next >
                 reinterpret_cast< int64_t >( t.getId() ) );
             auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
             __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
-            __vm_control( _VM_CA_Set, _VM_CR_Frame, t._frame,
-                          _VM_CA_Set, _VM_CR_Globals, t._proc->globals,
-                          _VM_CA_Set, _VM_CR_User3, ctx.debug,
-                          _VM_CA_Bit, _VM_CR_Flags,
-                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
+            ctx.run( t );
             t._frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
 
             auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
             __vm_control( _VM_CA_Set, _VM_CR_User1, ctx.debug );
-            if ( syscall || Sys::handle( ctx, *syscall ) == SchedCommand::RESCHEDULE )
+
+            if ( syscall )
+                 Sys::handle( ctx, *syscall );
+
+            if ( uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _DiOS_CF_Reschedule )
             {
                 if ( !ctx._yield )
                     continue;

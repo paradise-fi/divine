@@ -34,17 +34,17 @@ namespace __dios {
 template < typename Context >
 struct Syscall
 {
-    using ScHandler = SchedCommand (*)( Context& c, void *, va_list );
+    using ScHandler = void (*)( Context& c, void *, va_list );
 
-    static SchedCommand handle( Context& c, _DiOS_Syscall& s ) noexcept {
-        if ( s._syscode != SYS_NONE ) {
-            auto cmd = ( *( table[ s._syscode ] ) )( c, s._ret, s._args );
+    static void handle( Context& c, _DiOS_Syscall& s ) noexcept
+    {
+        if ( s._syscode != SYS_NONE )
+        {
+            ( *( table[ s._syscode ] ) )( c, s._ret, s._args );
             s._syscode = SYS_NONE;
-            if ( __dios_get_errno() && *__dios_get_errno() == EAGAIN2 )
-                return SchedCommand::RESCHEDULE;
-            return cmd;
+            if ( !c.need_reschedule() && *__dios_get_errno() == EAGAIN2 )
+                c.reschedule();
         }
-        return SchedCommand::RESCHEDULE;
     }
 
     static void kernelHandle( void *ctx, _DiOS_SC syscode, void *ret, va_list vl ) noexcept {
@@ -84,22 +84,14 @@ struct Syscall
         unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), c, f, rv, vl );
     }
 
-    static uint64_t cmdToFlag( SchedCommand cmd ) {
-        return cmd == SchedCommand::RESCHEDULE ? _DiOS_CF_SyscallSchedule : 0;
-    }
-
-    static SchedCommand flagToCmd( void *flags ) {
-        return ( reinterpret_cast< uint64_t >( flags ) & _DiOS_CF_SyscallSchedule ) ?
-            SchedCommand::RESCHEDULE : SchedCommand::CONTINUE;
-    }
-
     #include <dios/macro/no_memory_tags>
-    #define SYSCALL( name, schedule, ret, arg ) \
-        __attribute__(( __always_inline__, __flatten__)) static SchedCommand name ## Wrappper( Context& ctx, void *rv, va_list vl) { \
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _DiOS_CF_SyscallSchedule, \
-                cmdToFlag( schedule ) ); \
-            unpack( ctx, &Context::name, rv, vl ); \
-            return flagToCmd( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ); \
+    #define SYSCALL( name, schedule, ret, arg )                                      \
+        __attribute__(( __always_inline__, __flatten__))                             \
+        static void name ## Wrappper( Context& ctx, void *rv, va_list vl )           \
+        {                                                                            \
+            const uint64_t CONTINUE = 0, RESCHEDULE = _DiOS_CF_Reschedule;           \
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _DiOS_CF_Reschedule, schedule ); \
+            unpack( ctx, &Context::name, rv, vl );                                   \
         }
     #define SYSCALLSEP SYSCALL
     #include <sys/syscall.def>
