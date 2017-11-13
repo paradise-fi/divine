@@ -24,6 +24,8 @@
 #include <divine/vm/dbg-util.hpp>
 #include <divine/ss/search.hpp>
 
+#include <optional>
+
 namespace divine {
 namespace mc {
 
@@ -50,8 +52,12 @@ struct Trace
     vm::CowHeap::Snapshot final;
 };
 
+template< typename Ex >
+using StateTrace = std::deque< std::pair< vm::CowHeap::Snapshot,
+                                          std::optional< typename Ex::Label > > >;
+
 template< typename Explore >
-Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
+Trace trace( Explore &ex, StateTrace< Explore > states )
 {
     Trace t;
     auto last = states.begin(), next = last + 1;
@@ -75,14 +81,16 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
                 ss::listen(
                     [&]( auto from, auto to, auto label )
                     {
-                        ASSERT( t.final || last != states.end() );
+                        ASSERT( last != states.end() );
 
-                        if ( t.final || !hasher.equal( from.snap, *last ) )
+                        if ( !hasher.equal( from.snap, last->first ) )
                             return ss::Listen::Ignore;
 
                         if ( next == states.end() )
                             return ss::Listen::Terminate;
-                        if ( !hasher.equal( to.snap, *next ) )
+                        if ( !hasher.equal( to.snap, next->first ) )
+                            return ss::Listen::Ignore;
+                        if ( next->second.has_value() && label != next->second.value() )
                             return ss::Listen::Ignore;
 
                         process( label );

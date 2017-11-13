@@ -33,7 +33,7 @@ struct Safety : Job
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
     using MasterPool = typename vm::CowHeap::SnapPool;
     using SlavePool = brick::mem::SlavePool< MasterPool >;
-    using CEStates = std::deque< vm::CowHeap::Snapshot >;
+    using StateTrace = mc::StateTrace< Explore >;
 
     Explore _ex;
     SlavePool _ext;
@@ -94,14 +94,14 @@ struct Safety : Job
         if ( !_error_found )
             return Trace();
 
-        CEStates rv;
+        StateTrace rv;
         auto i = _error.snap;
         while ( i != _ex._initial.snap )
         {
-            rv.push_front( i );
+            rv.emplace_front( i, std::nullopt );
             i = *_ext.machinePointer< vm::CowHeap::Snapshot >( i );
         }
-        rv.push_front( _ex._initial.snap );
+        rv.emplace_front( _ex._initial.snap, std::nullopt );
         return mc::trace( _ex, rv );
     }
 
