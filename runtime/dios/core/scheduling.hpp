@@ -472,7 +472,7 @@ struct Scheduler : public Next
                 reinterpret_cast< int64_t >( t->getId() ) );
             __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
                           _VM_CA_Set, _VM_CR_Globals, t->_proc->globals,
-                          _VM_CA_Set, _VM_CR_User1, scheduler.debug,
+                          _VM_CA_Set, _VM_CR_User3, scheduler.debug,
                           _VM_CA_Bit, _VM_CR_Flags,
                           uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
             t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
@@ -480,9 +480,7 @@ struct Scheduler : public Next
             scheduler.runMonitors();
 
             auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-            __vm_control( _VM_CA_Set, _VM_CR_User1, scheduler.debug );
-            if ( syscall == reinterpret_cast< _DiOS_Syscall * >( scheduler.debug ) ||
-                 Sys::handle( scheduler, *syscall ) == SchedCommand::RESCHEDULE )
+            if ( syscall || Sys::handle( scheduler, *syscall ) == SchedCommand::RESCHEDULE )
                 return;
 
             /* reset intframe to ourselves */

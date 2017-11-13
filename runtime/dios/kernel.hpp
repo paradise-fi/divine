@@ -47,15 +47,15 @@ struct Debug
     short kernel_indent = 0;
 };
 
-static inline Debug &get_debug() noexcept
-{
-    void *dbg = __vm_control( _VM_CA_Get, _VM_CR_User1 );
-    return *static_cast< Debug * >( dbg );
-}
-
 static inline bool have_debug() noexcept
 {
-    return __vm_control( _VM_CA_Get, _VM_CR_User1 );
+    return __vm_control( _VM_CA_Get, _VM_CR_User3 );
+}
+
+static inline Debug &get_debug() noexcept
+{
+    void *dbg = __vm_control( _VM_CA_Get, _VM_CR_User3 );
+    return *static_cast< Debug * >( dbg );
 }
 
 } // namespace __dios
