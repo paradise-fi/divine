@@ -49,11 +49,13 @@ struct Debug
 
 static inline bool have_debug() noexcept
 {
-    return __vm_control( _VM_CA_Get, _VM_CR_User3 );
+    return __vm_control( _VM_CA_Get, _VM_CR_User3 ) &&
+           ( uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_DebugMode );
 }
 
 static inline Debug &get_debug() noexcept
 {
+    __dios_assert( have_debug() );
     void *dbg = __vm_control( _VM_CA_Get, _VM_CR_User3 );
     return *static_cast< Debug * >( dbg );
 }
