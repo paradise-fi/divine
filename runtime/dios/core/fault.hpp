@@ -15,6 +15,7 @@
 #include <cstdarg>
 #include <divine/metadata.h>
 #include <cxxabi.h>
+#include <sys/trace.h>
 
 #include <dios/core/main.hpp>
 #include <dios/core/trace.hpp>
@@ -132,7 +133,7 @@ struct Fault: public Next {
             flags |= config[ x ] & FaultFlag::Enabled ? bit : 0;
         auto *meta = __md_get_global_meta( "_DiOS_SimFail_flags" );
         if ( !meta )
-            traceInternal( 0, "Warning: Cannot update SimFail" );
+            __dios_trace_t( "Warning: Cannot update SimFail" );
         else
             *reinterpret_cast< char *>( meta->address ) = flags;
     }
@@ -147,17 +148,18 @@ struct Fault: public Next {
             int status;
             char *b = __cxxabiv1::__cxa_demangle( name, buffer, &len, &status );
             if ( b )
-                traceInternal( 0, "  %d: %s", ++i, b );
+                __dios_trace_f( "  %d: %s", ++i, b );
             else
-                traceInternal( 0, "  %d: %s", ++i, name );
+                __dios_trace_f( "  %d: %s", ++i, name );
         }
         free( buffer );
     }
 
     void fault_handler( int kernel, _VM_Frame * frame, int what )
     {
-        if ( what >= fault_count ) {
-            traceInternal( 0, "Unknown fault in handler" );
+        if ( what >= fault_count )
+        {
+            __dios_trace_t( "Unknown fault in handler" );
             Next::die();
         }
 
@@ -166,11 +168,11 @@ struct Fault: public Next {
         uint8_t fault_cfg = cfg ? cfg[ what ] : FaultFlag::Enabled;
         if ( !ready || fault_cfg & FaultFlag::Enabled ) {
             if ( kernel )
-                traceInternal( 0, "Fault in kernel: %s", fault_to_str( what ).c_str() );
+                __dios_trace_f( "Fault in kernel: %s", fault_to_str( what ).c_str() );
             else
-                traceInternal( 0, "Fault in userspace: %s", fault_to_str( what ).c_str() );
+                __dios_trace_f( "Fault in userspace: %s", fault_to_str( what ).c_str() );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-            traceInternal( 0, "Backtrace:" );
+            __dios_trace_t( "Backtrace:" );
             backtrace( frame );
 
             if ( !ready || !( fault_cfg & FaultFlag::Continue ) )

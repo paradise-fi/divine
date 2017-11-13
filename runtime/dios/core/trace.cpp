@@ -12,7 +12,8 @@
 
 namespace __dios {
 
-void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
+void __attribute__((always_inline))
+static traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 {
     bool kernel = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
@@ -65,6 +66,7 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
 
 void traceInternal( int indent, const char *fmt, ... ) noexcept
 {
+    __dios_assert( have_debug() );
     va_list ap;
     va_start( ap, fmt );
     traceInternalV( indent, fmt, ap );
