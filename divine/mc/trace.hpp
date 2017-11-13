@@ -93,23 +93,18 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                         if ( next->second.has_value() && label != next->second.value() )
                             return ss::Listen::Ignore;
 
+                        if ( label.error )
+                        {
+                            ASSERT( !t.final );
+                            t.final = last->first;
+                        }
+
                         process( label );
                         ++last, ++next;
                         return ss::Listen::Process;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
     ASSERT( next == states.end() );
-    typename Explore::State origin;
-    origin.snap = *last;
-    ex.edges( origin, [&]( auto, auto label, bool )
-              {
-                  if ( label.error && !t.final )
-                  {
-                      t.final = *last;
-                      process( label );
-                  }
-              } );
-
     ASSERT( t.final );
     return t;
 }

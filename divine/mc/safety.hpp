@@ -40,7 +40,8 @@ struct Safety : Job
     Next _next;
 
     bool _error_found;
-    typename Builder::State _error;
+    typename Builder::State _error, _error_to;
+    typename Builder::Label _error_label;
 
     auto make_search()
     {
@@ -58,6 +59,8 @@ struct Safety : Job
                     {
                         _error_found = true;
                         _error = from; /* the error edge may not be the parent of 'to' */
+                        _error_to = to;
+                        _error_label = label;
                         return ss::Listen::Terminate;
                     }
                     return _next.edge( from, to, label, isnew );
@@ -95,6 +98,7 @@ struct Safety : Job
             return Trace();
 
         StateTrace rv;
+        rv.emplace_front( _error_to.snap, _error_label );
         auto i = _error.snap;
         while ( i != _ex._initial.snap )
         {
