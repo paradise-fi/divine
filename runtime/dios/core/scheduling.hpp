@@ -461,11 +461,7 @@ struct Scheduler : public Next
         return 0;
     }
 
-    void die() noexcept {
-        killProcess( 0 );
-        static_cast< _VM_Frame * >
-                   ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
-    }
+    void die() noexcept { killProcess( 0 ); }
 
     template< typename Context >
     static void check_final( Context &ctx )
