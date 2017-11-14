@@ -127,7 +127,22 @@ void sortFunctionNodes( std::vector< FNode > & fnodes ) {
     } );
 }
 
-void cleanFNode( Values && deps ) {
+template< typename Abstracted >
+void cleanFNode( Abstracted & abstracted ) {
+    std::set< llvm::Value * > deps;
+    for ( auto & av : abstracted )
+        if ( isScalarOp( av ) && !av.template isa< llvm::GetElementPtrInst >() ) {
+            deps.insert( av.value );
+        } else if ( auto cs = llvm::CallSite( av.value ) ) {
+            auto fn = cs.getCalledFunction();
+            if ( MemIntrinsic( av ) )
+                continue;
+            else if ( fn->isIntrinsic() ) // LLVM intrinsic
+                deps.insert( av.value );
+            else if ( !isIntrinsic( fn ) ) // Not a LART intrinsic
+                deps.insert( av.value );
+        }
+
     auto is = llvmFilter< llvm::Instruction >( deps );
     for ( auto & inst : is ) {
         for ( auto & lift : liftsOf( inst ) )
@@ -141,30 +156,17 @@ void cleanFNode( Values && deps ) {
         delete inst;
 }
 
-template< typename Builder >
-void processFNode( FNode & fnode, Builder & builder ) {
-    auto postorder = fnode.reached();
-    for ( auto & av : lart::util::reverse( postorder ) )
+template< typename Fields, typename Builder >
+void processFNode( FNode & fnode, Fields & fields, Builder & builder ) {
+    auto postorder = fnode.reached( fields );
+    for ( auto & av : lart::util::reverse( postorder ) ) {
         if ( isScalarOp( av ) )
             builder.process( av );
         else
             builder.processStructOp( av );
+    }
 
-    // clean function
-    std::set< llvm::Value * > deps;
-    for ( auto & av : postorder )
-        if ( isScalarOp( av ) && !av.isa< llvm::GetElementPtrInst >() ) {
-            deps.insert( av.value );
-        } else if ( auto cs = llvm::CallSite( av.value ) ) {
-            auto fn = cs.getCalledFunction();
-            if ( MemIntrinsic( av ) )
-                continue;
-            else if ( fn->isIntrinsic() ) // LLVM intrinsic
-                deps.insert( av.value );
-            else if ( !isIntrinsic( fn ) ) // Not a LART intrinsic
-                deps.insert( av.value );
-        }
-    cleanFNode( { deps.begin(), deps.end() } );
+    cleanFNode( postorder );
 }
 
 void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
@@ -180,8 +182,19 @@ void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
 
 } // anonymous namespace
 
-AbstractValues Abstraction::FunctionNode::reached() const {
-    return reachFrom( { roots().begin(), roots().end() } );
+AbstractValues Abstraction::FunctionNode::reached( const Fields & fields ) const {
+    auto filter = [&] ( const AbstractValue & av ) {
+        if ( !isScalarOp( av ) )
+            return false;
+        if ( auto load = Load( av ) )
+            return !fields.has( load );
+        if ( auto store = Store( av ) )
+            return !fields.has( store->getPointerOperand() );
+        if ( auto gep = GEP( av ) )
+            return !fields.has( gep );
+        return false;
+    };
+    return reachFrom( { roots().begin(), roots().end() }, filter );
 }
 
 void Abstraction::run( llvm::Module & m ) {
@@ -206,7 +219,7 @@ void Abstraction::run( llvm::Module & m ) {
     globmap.populate( globals );
 
     for ( auto & fnode : fnodes )
-        prototypes[ fnode ] = process( fnode );
+        prototypes[ fnode ] = process( fnode, fields );
 
     std::set< llvm::Function * > remove;
     for ( const auto & p : prototypes ) {
@@ -222,10 +235,10 @@ void Abstraction::run( llvm::Module & m ) {
         bool called = query::query( fnode.roots() ).any( [] ( const auto & n ) {
             return n.template isa< llvm::Argument >();
         } );
-        if ( called ) fnode = clone( fnode );
+        if ( called ) fnode = clone( fnode, fields );
 
         // Create abstract intrinsics in the function node
-        processFNode( fnode, builder );
+        processFNode( fnode, fields, builder );
 
         // Copy function to declaration and handle function uses
         auto fn = fnode.function();
@@ -238,7 +251,6 @@ void Abstraction::run( llvm::Module & m ) {
             CallInterupt().run( changed );
         }
     }
-
     for ( auto & fn : lart::util::reverse( remove ) )
         fn->eraseFromParent();
 
@@ -246,8 +258,8 @@ void Abstraction::run( llvm::Module & m ) {
         llvm::cast< llvm::GlobalVariable >( g.value )->eraseFromParent();
 }
 
-llvm::Function * Abstraction::process( const FunctionNode & fnode ) {
-    auto rets = filterA< llvm::ReturnInst >( fnode.reached() );
+llvm::Function * Abstraction::process( const FunctionNode & fnode, const Fields & fields ) {
+    auto rets = filterA< llvm::ReturnInst >( fnode.reached( fields ) );
     auto args = filterA< llvm::Argument >( fnode.roots() );
 
     // Signature does not need to be changed
@@ -276,7 +288,7 @@ llvm::Function * Abstraction::process( const FunctionNode & fnode ) {
     return newfn;
 }
 
-Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node ) {
+Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node, Fields & fields ) {
     llvm::ValueToValueMapTy vmap;
     auto clone = CloneFunction( node.function(), vmap, true, nullptr );
     node.function()->getParent()->getFunctionList().push_back( clone );

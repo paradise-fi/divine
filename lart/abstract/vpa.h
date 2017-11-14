@@ -163,7 +163,6 @@ struct StepIn {
 };
 
 inline bool operator==( const StepIn & a, const StepIn & b ) {
-    // TODO parent comparison
     return a.parent == b.parent;
 }
 
@@ -204,7 +203,10 @@ inline bool operator==( const PropagateGlobal & a, const PropagateGlobal & b) {
 
 using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut, PropagateGlobal >;
 
+
 using Fields = AbstractFields< llvm::Value * >;
+
+using Path = AbstractFields< llvm::Value * >::Path;
 
 // ValuesPropagationAnalysis
 struct VPA {
@@ -228,8 +230,6 @@ private:
     void stepOut( const StepOut & );
 
     void markGlobal( llvm::GlobalValue * value );
-
-    llvm::Value * origin( llvm::Value * value );
 
     std::deque< Task > tasks;
 

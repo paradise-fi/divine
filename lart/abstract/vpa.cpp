@@ -88,8 +88,6 @@ llvm::StoreInst * isArgStoredTo( llvm::Value * v ) {
     return nullptr;
 }
 
-using Path = AbstractFields< llvm::Value * >::Path;
-
 Path createFieldPath( llvm::LoadInst * load ) {
     return { load->getPointerOperand(), load, { LoadStep{} } };
 }
@@ -98,12 +96,15 @@ Path createFieldPath( llvm::StoreInst * store ) {
     return { store->getPointerOperand(), store->getValueOperand(), { LoadStep{} } };
 }
 
-Path createFieldPath( llvm::GetElementPtrInst * gep ) {
-    auto inds = query::query( gep->idx_begin(), gep->idx_end() )
+Indices gepIndices( llvm::GetElementPtrInst * gep ) {
+    return query::query( gep->idx_begin(), gep->idx_end() )
         .map ( [] ( const auto & idx ) -> Step {
             return llvm::cast< llvm::ConstantInt >( idx )->getZExtValue();
         } ).freeze();
-    return { gep->getPointerOperand(), gep, inds };
+}
+
+Path createFieldPath( llvm::GetElementPtrInst * gep ) {
+    return { gep->getPointerOperand(), gep, gepIndices( gep ) };
 }
 
 } // anonymous namespace
@@ -143,6 +144,7 @@ VPA::Roots VPA::run( llvm::Module & m ) {
 
     // TODO cleanup - remove unnecessery prototypes
     fields.clean();
+
     return std::make_tuple( std::move( reached ), globals, std::move( fields ) );
 }
 
@@ -181,7 +183,7 @@ void VPA::stepIn( const StepIn & si ) {
         auto arg = av.get< llvm::Argument >();
         auto op = cs.getInstruction()->getOperand( arg->getArgNo() );
         if ( !isScalarType( op->getType() ) )
-            fields.alias( op, arg ); // TODO maybe copy
+            fields.alias( op, arg );
         dispach( PropagateDown( av, roots, si.parent ) );
     }
 }
@@ -203,7 +205,8 @@ void VPA::stepOut( const StepOut & so ) {
     }
 }
 
-llvm::Value * VPA::origin( llvm::Value * val ) {
+template< typename Fields >
+llvm::Value * origin( llvm::Value * val, Fields & fields ) {
     llvm::Value * curr = val, * prev = nullptr;
     while ( curr != prev ) {
         prev = curr;
@@ -219,31 +222,30 @@ llvm::Value * VPA::origin( llvm::Value * val ) {
 }
 
 void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent ) {
-    auto o = origin( gep );
+    auto o = origin( gep, fields );
     // TODO set domain
     dispach( PropagateDown( AbstractValue{ o, dom }, roots, parent ) );
 }
 
 void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
     auto val = t.value.value;
-    assert( !isScalarType( val ) );
 
-    auto rf = reachFrom( t.value );
-    rf = query::query( rf ).filter( [] ( const auto & av ) {
+    auto filter = [] ( const AbstractValue & av ) {
         if ( Load( av ) )
-            return true;
-        if ( auto ret = Ret( av ) )
-            return true;
+            return false;
+        if ( GEP( av ) )
+            return false;
         if ( CallSite( av ) )
-            return true; // maybe check args and ret
-        return !isScalarType( av.value );
-    } ).freeze();
+            return false;
+        return isScalarType( av.value->getType() );
+    };
 
+    auto rf = reachFrom( t.value, filter );
     for ( auto & av : lart::util::reverse( rf ) ) {
         if ( auto a = Alloca( av ) ) {
             t.roots->insert( av );
-            fields.create( a );
-
+            if ( !fields.has( a ) )
+                fields.create( a );
             if ( isScalarType( a->getAllocatedType() ) ) {
                 Path path = { a, { LoadStep{} } };
                 if ( !fields.getDomain( path ) )
@@ -255,7 +257,7 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         }
         else if ( auto l = Load( av ) ) {
             Path path = createFieldPath( l );
-            fields.addPath( path );
+            fields.insert( path );
 
             if ( isScalarType( l ) ) {
                 if ( auto dom = fields.getDomain( l ) ) {
@@ -278,7 +280,7 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         }
         else if ( auto gep = GEP( av ) ) {
             auto path = createFieldPath( gep );
-            fields.addPath( path );
+            fields.insert( path );
         }
         else if ( auto bc = BitCast( av ) ) {
             fields.alias( bc->getOperand( 0 ), bc );
@@ -322,31 +324,14 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
         if ( Argument( av )  ) {
             reached[ getFunction( av.value ) ].insert( av, t.roots );
         }
-        else if ( GEP( av ) ) {
-            t.roots->insert( av );
-        }
-        else if ( auto l = Load( av ) ) {
-            if ( isRoot( l ) ) {
-                auto a = llvm::dyn_cast< llvm::AllocaInst >( l->getPointerOperand() );
-                if ( a && a->getAllocatedType()->isIntegerTy() )
-                    continue; // root of this load is alloca
-                if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( l->getPointerOperand() ) )
-                    t.roots->insert( { gep, dom } );
-                else
-                    t.roots->insert( av );
-            }
-        }
         else if ( auto s = Store( av ) ) {
             auto ptr = s->getPointerOperand();
-            Path path = { ptr, { LoadStep{} } };
-            AbstractValue root = { ptr, dom };
-
-            if ( !fields.has( ptr ) )
-                fields.create( ptr );
+            Path path = createFieldPath( s );
+            fields.insert( path );
             if ( !fields.getDomain( path ) )
                 fields.setDomain( path, dom );
 
-            auto o = origin( ptr );
+            auto o = origin( ptr, fields );
             dispach( PropagateDown( { o,  dom }, t.roots, t.parent ) );
         }
         else if ( auto l = Load( av ) ) {
@@ -396,6 +381,7 @@ void VPA::markGlobal( llvm::GlobalValue * value ) {
 void VPA::propagateDown( const PropagateDown & t ) {
     auto val = t.value.value;
     auto dom = t.value.domain;
+
     if ( seen[ t.roots ].count( val ) )
         return; // The value has been already propagated.
 
@@ -405,22 +391,13 @@ void VPA::propagateDown( const PropagateDown & t ) {
     }
 
     if ( !llvm::CallSite( val ) ) {
-        auto o = origin( val );
+        auto o = origin( val, fields );
         if ( auto arg = Argument( t.value ) ) {
             if ( arg->getType()->isPointerTy() )
                 dispach( PropagateUp( arg, t.roots, t.parent ) );
         } else if ( auto s = isArgStoredTo( o ) ) {
-            auto vop = s->getValueOperand();
-            auto arg = llvm::cast< llvm::Argument >( vop );
+            auto arg = llvm::cast< llvm::Argument >( s->getValueOperand() );
             if ( arg->getType()->isPointerTy() ) {
-                // TODO copy trie
-                Path path = { arg, { LoadStep{} } };
-                if ( !fields.getDomain( path ) ) {
-                    // TODO use copy
-                    fields.create( arg );
-                    fields.setDomain( path, dom );
-                }
-
                 dispach( PropagateDown( AbstractValue{ o, dom }, t.roots, t.parent ) );
                 dispach( PropagateUp( arg, t.roots, t.parent ) );
             }
@@ -439,11 +416,7 @@ void VPA::propagateUp( const PropagateUp & t ) {
     assert( !isScalarType( t.arg ) );
     assert( t.arg->getType()->isPointerTy() && "Propagating up non pointer type is forbidden." );
 
-    Path path = { t.arg, { LoadStep{} } };
-    // FIXME getting correct domain
-    auto dom = fields.getDomain( path ) ? fields.getDomain( path ).value() : Domain::Symbolic;
-
-    auto av =  AbstractValue{ t.arg, dom };
+    auto av =  AbstractValue{ t.arg, Domain::Symbolic };
     auto ano = t.arg->getArgNo();
 
     if ( t.parent ) {
@@ -460,8 +433,8 @@ void VPA::propagateUp( const PropagateUp & t ) {
 
     auto propagate = [&] ( auto op, auto roots, auto parent ) {
         fields.alias( t.arg, op );
-        auto o = origin( op );
-        auto root = AbstractValue{ o, dom };
+        auto o = origin( op, fields );
+        auto root = AbstractValue{ o, Domain::Symbolic };
         dispach( PropagateDown( root, roots, parent ) );
     };
 

@@ -117,6 +117,10 @@ static inline decltype( auto ) GEP( const AbstractValue & av ) {
     return get_value< llvm::GetElementPtrInst >( av );
 }
 
+static inline decltype( auto ) PHINode( const AbstractValue & av ) {
+    return get_value< llvm::PHINode >( av );
+}
+
 static inline decltype( auto ) Load( const AbstractValue & av ) {
     return get_value< llvm::LoadInst >( av );
 }

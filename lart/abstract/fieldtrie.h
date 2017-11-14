@@ -54,10 +54,8 @@ struct FieldTrie {
         }
 
         void setValue( T val ) {
-            if ( children.empty() ) {
+            if ( children.empty() )
                 children[ 0 ] = TrieNode::make_leaf( val );
-                children[ 0 ]->parent = this;
-            }
             assert( isLeaf() && value() == val );
         }
 
@@ -69,7 +67,8 @@ struct FieldTrie {
         TrieNode * getOrInsertChild( const K & key ) {
             if ( !children.count( key ) ) {
                 children[ key ] = TrieNode::make_internal();
-                children[ key ]->parent = this;
+                auto child = std::get_if< Internal >( children[ key ].get() );
+                child->parent = this;
             }
             return children[ key ].get();
         }
@@ -93,6 +92,8 @@ struct FieldTrie {
                 nodes.insert( reinterpret_cast< TrieNode * >( this ) );
             return hasNoLeaf;
         }
+
+        Internal * parent = nullptr;
     };
 
     using Storage = std::variant< Leaf, Internal >;
@@ -117,7 +118,21 @@ struct FieldTrie {
             return false;
         }
 
-        Internal * parent = nullptr;
+        TrieNodePtr copy() const {
+            if ( auto leaf = std::get_if< Leaf >( this ) )
+                return make_leaf( leaf->value );
+            auto newNode = make_internal();
+            auto newNodeIn = std::get_if< Internal >( newNode.get() );
+
+            auto inter = std::get_if< Internal >( this );
+            assert( inter );
+            for ( const auto & ch : inter->children ) {
+                newNodeIn->children[ ch.first ] = ch.second->copy();
+                if ( auto ich = std::get_if< Internal >( newNodeIn->children[ ch.first ].get() ) )
+                    ich->parent = newNodeIn;
+            }
+            return newNode;
+        }
     };
 
     struct Handle {
@@ -160,15 +175,25 @@ struct FieldTrie {
 
         Handle rebase( const Indices & keys ) {
             assert( trie->_root );
-            assert( root = trie->_root.get() );
-            auto r = trie->rebase( keys );
-            return { trie, r };
+
+            auto rebaseroot = std::get_if< Internal >( root );
+            auto k = keys.rbegin();
+            size_t count = 0;
+            while ( k != keys.rend() && rebaseroot->parent ) {
+                rebaseroot = rebaseroot->parent;
+                ++k;
+                count++;
+            }
+
+            Indices indices = { keys.begin(), keys.end() - count };
+            auto troot = std::get_if< Internal >( trie->_root.get() );
+            if ( rebaseroot == troot )
+                return { trie, trie->rebase( indices ) };
+            else
+                return { trie, reinterpret_cast< TrieNode * >( rebaseroot ) };
         }
 
-        TrieNode * getRoot() const {
-            return root;
-        }
-
+        TrieNode * getRoot() const { return root; }
     private:
         FieldTrie * trie;
         TrieNode * root;
@@ -184,8 +209,8 @@ struct FieldTrie {
         }
         auto level = handle;
         for ( auto k : keys ) {
-            auto & i = std::get< Internal >( *level );
-            level = i.getOrInsertChild( k );
+            auto i = std::get_if< Internal >( level );
+            level = i->getOrInsertChild( k );
         }
         return level;
     }
@@ -193,7 +218,8 @@ struct FieldTrie {
     TrieNode * rebase( const Indices & keys ) {
         for ( auto k = keys.rbegin(); k != keys.rend(); ++k ) {
             auto level = TrieNode::make_internal();
-            _root->parent = std::get_if< Internal >( level.get() );
+            auto r = std::get_if< Internal >( _root.get() );
+            r->parent = std::get_if< Internal >( level.get() );
             std::get< Internal >( *level ).children[ *k ] = std::move( _root );
             _root = std::move( level );
         }
@@ -207,6 +233,7 @@ struct FieldTrie {
         _root->useless( nodes );
         return nodes;
     }
+
     void draw( std::ofstream & os ) const {
         _root->draw( os );
     }
@@ -237,7 +264,6 @@ struct AbstractFields {
         if ( !fields.count( root ) ) {
             auto& t = tries.emplace_back( std::make_unique< Trie >() );
             fields.insert( { root, t->root() } );
-            // create load edge
             fields.at( root ).createPath( { LoadStep{} } );
         }
     }
@@ -285,7 +311,14 @@ struct AbstractFields {
         fields.insert( { b, handle } );
     }
 
-    bool has( const Value & v ) { return fields.count( v ); }
+    Trie::Handle get( const Path & path ) {
+        auto at = fields.at( path.from );
+        auto s = at.search( path.indices );
+        return s;
+    }
+    
+    bool has( CValue v ) const { return fields.count( v ); }
+    bool has( const Path & path ) const { return fields.count( path.from ) && fields.count( path.to ); }
 
     std::optional< Domain > getDomain( const Path & path ) {
         if ( fields.count( path.from ) ) {
