@@ -836,6 +836,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         if ( !r.isnew() )
         {
             ASSERT_NEQ( *r, si.second );
+            _shadows.free( si.second );
             _objects.free( si.second );
         }
         si.second = *r;

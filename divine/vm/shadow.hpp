@@ -63,33 +63,38 @@ struct BitContainer
     Pool &_pool;
     int _from, _to;
 
-    BitContainer( Pool &p, Ptr b, int f, int t ) : _base( b ), _pool( p ), _from( f ), _to( t ) {}
+    BitContainer( Pool &p, Ptr b, int f, int t )
+        : _base( b ), _pool( p ), _from( f ), _to( t )
+    {}
     iterator begin() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _from ); }
     iterator end() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _to ); }
-    Proxy operator[]( int i )
-    {
-        ASSERT_LT( _from + i, _to );
-        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i );
-    }
+    Proxy operator[]( int i ) {
+        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i ); }
 };
 
 template< typename IP >
 using PointerLocation = brick::types::Union< InObject< IP >, InVoid, InValue >;
 
 /* Type of each 4-byte word */
-enum class ShadowType {
-    Data,             /// Generic data or offset of a pointer
+enum ShadowType
+{
+    Data = 0,         /// Generic data or offset of a pointer
     Pointer,          /// Object ID (4 most significant bytes) of a pointer
     DataException,    /// As 'Data', but with partially initialized bytes
     PointerException  /// Word containing parts of pointers, may contain bytes
                       /// of data (and these may be partially initialized).
 };
 
-enum class ExceptionType { Pointer, Data };
+enum ExceptionType
+{
+    PointerExc = 0,
+    DataExc = 1
+};
 
 inline std::ostream &operator<<( std::ostream &o, ShadowType t )
 {
-    switch ( t ) {
+    switch ( t )
+    {
         case ShadowType::Data: return o << "d";
         case ShadowType::Pointer: return o << "p";
         case ShadowType::DataException: return o << "D";
@@ -98,24 +103,60 @@ inline std::ostream &operator<<( std::ostream &o, ShadowType t )
     }
 }
 
+inline std::ostream &operator<<( std::ostream &o, ExceptionType t )
+{
+    switch ( t )
+    {
+        case ExceptionType::DataExc: return o << "data";
+        case ExceptionType::PointerExc: return o << "pointer";
+        default: return o << "?";
+    }
+}
+
 union ShadowException
 {
     struct
     {
-        ExceptionType type   : 1;
-        uint32_t offset      : 30;
-        uint32_t unalignment : 2;
-        /* within the pointer */
-        uint32_t ptr_off     : 3;
-        uint32_t ptr_len     : 3;
+        uint32_t obj;              // Object ID of the original pointer
+        ExceptionType type    : 1; // Pointer Exception
+        uint8_t valid         : 1;
+        uint8_t byte_index    : 2; // Position of byte in the orig. pointer
     };
+
     struct
     {
-        ExceptionType : 1;
-        uint32_t      : 30;
-        uint32_t bitmask;
+        uint8_t bitmask[4];        // Definedness of the word
+        ExceptionType /*type*/: 1; // Data Exception
+        uint8_t /*valid*/     : 1;
     };
+
+    bool bitmask_is_trivial() const {
+        for ( int i = 0; i < 4; ++i )
+            if ( bitmask[ i ] != 0x00 && bitmask[ i ] != 0xff )
+                return false;
+        return true;
+    }
 };
+
+inline std::ostream &operator<<( std::ostream &o, const ShadowException &e )
+{
+    if ( !e.valid )
+    {
+        o << "INVALID ";
+    }
+
+    o << e.type << " exc.: ";
+    if ( e.type == ExceptionType::DataExc )
+    {
+        for ( int i = 0; i < 4; ++i )
+            o << std::hex << std::setw( 2 ) << std::internal
+                << std::setfill( '0' ) << int( e.bitmask[ i ] ) << std::dec;
+    } else {
+        o << "UNIMPLEMENTED";
+    }
+
+    return o;
+}
 
 template< typename MasterPool >
 struct PooledShadow
@@ -125,19 +166,171 @@ struct PooledShadow
     using Pool = mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
 
-    Pool _type, _defined, _shared;
+    Pool _type,
+         _defined,
+         _shared;
 
-    PooledShadow( const MasterPool &mp ) : _type( mp ), _defined( mp ), _shared( mp ) {}
+    /* Relation between _type and _defined:
+     * _type      _defined  byte contains
+     * (per 4 B)  (per 1 B)
+     * Data           1     Initialized data
+     * Pointer        1     Initialized part of continuous object id
+     * DataExcept     1     Initialized data byte
+     * PointerExc     1     Initialized data byte or part of non-continuous object id
+     * Data           0     Uninitialized data byte
+     * Pointer        0     --
+     * DataExcept     0     Uninitialized or per-bit initialized data
+     * PointerExc     0     Uninitialized or per-bit initialized data
+     */
 
-    struct Loc
+    PooledShadow( const MasterPool &mp )
+        : _type( mp ), _defined( mp ), _shared( mp ), _exceptions( new Exceptions )
+    {}
+
+    struct Loc : public brick::types::Ord
     {
         Internal object;
         Anchor anchor;
         int offset;
-        Loc( Internal o, Anchor a, int off = 0 ) : object( o ), anchor( a ), offset( off ) {}
+        Loc( Internal o, Anchor a, int off = 0 )
+            : object( o ), anchor( a ), offset( off )
+        {}
         Loc operator-( int i ) const { Loc r = *this; r.offset -= i; return r; }
         Loc operator+( int i ) const { Loc r = *this; r.offset += i; return r; }
+        bool operator==( const Loc & o) const
+        {
+            return object == o.object && offset == o.offset;
+        }
+        bool operator<=(const Loc & o) const
+        {
+            return object < o.object || (object == o.object && offset <= o.offset);
+        }
+        bool operator<(const Loc & o) const
+        {
+            return object < o.object || (object == o.object && offset < o.offset);
+        }
     };
+
+    struct Exceptions
+    {
+        using ExcMap = std::multimap< Loc, ShadowException >;
+        using Lock = std::lock_guard< std::mutex >;
+
+        Exceptions &operator=( const Exceptions & o ) = delete;
+
+        void dump() const
+        {
+            std::cout << "exceptions: {\n";
+            for ( auto &e : _map )
+            {
+                std::cout << "  {" << e.first.object._raw << " + "
+                   << e.first.offset << ": " << e.second << "}\n";
+            }
+            std::cout << "}\n";
+        }
+
+        /** Which bits of 'pos'th byte in pool object 'obj' are initialized */
+        uint8_t defined( Internal obj, int pos )
+        {
+            Lock lk( _mtx );
+
+            int wpos = ( pos / 4 ) * 4;
+            auto range = _map.equal_range( Loc( obj, Anchor(), wpos ) );
+            while ( range.first != range.second )
+            {
+                if ( range.first->second.valid && range.first->second.type == ExceptionType::DataExc )
+                {
+                    return range.first->second.bitmask[ pos % 4 ];
+                }
+                ++range.first;
+            }
+            return 0x00;
+        }
+
+        /** Change definedness mask of 'pos'th byte in pool object 'obj' to 'def'
+         * @return true, if there is an exception in definedness */
+        bool definedness_changed( Internal obj, int pos, uint8_t def,
+                uint8_t shword, bool exc_should_exist )
+        {
+            Lock lk( _mtx );
+
+            int wpos = ( pos / 4 ) * 4;
+            auto range = _map.equal_range( Loc( obj, Anchor(), wpos ) );
+
+            while ( range.first != range.second )
+            {
+                if ( range.first->second.type == ExceptionType::DataExc )
+                    break;
+                ++range.first;
+            }
+
+            bool exc_exists = range.first != range.second;
+            bool def_trivial = def == 0x00 || def == 0xff;
+
+            ASSERT( ( exc_exists && range.first->second.valid ) == exc_should_exist );
+
+            if ( def_trivial && (! exc_exists || ! range.first->second.valid) )
+                return false;
+
+            if ( ! exc_exists )
+            {
+                // Create new data exception
+                ShadowException e;
+                e.type = ExceptionType::DataExc;
+                e.valid = false;
+                range.first = _map.insert( range.second, std::make_pair( Loc( obj, Anchor(), wpos ), e ));
+            }
+
+            auto & exc = range.first->second;
+
+            if ( ! exc.valid )
+            {
+                // Load current state
+                set_word_definedness( exc.bitmask, shword, wpos );
+                exc.valid = true;
+            }
+
+            exc.bitmask[ pos % 4 ] = def;
+
+            // Check whether the exception is needed
+            if ( def_trivial && exc_exists && exc.bitmask_is_trivial() )
+                exc.valid = false;
+
+            return exc.valid;
+        }
+
+        void free( Internal obj )
+        {
+            Lock lk( _mtx );
+
+            auto lb = _map.lower_bound( Loc( obj, {}, 0 ) );
+            auto ub = _map.upper_bound( Loc( obj, {}, (1 << _VM_PB_Off) - 1 ) );
+            while (lb != ub)
+            {
+                lb->second.valid = false;
+                ++lb;
+            }
+        }
+
+    private:
+        void set_word_definedness( uint8_t *mask, uint8_t shadow_content, int pos )
+        {
+            if ( pos % 8 < 4 )
+                shadow_content >>= 4;
+            for ( int i = 0; i < 4; ++i )
+            {
+                bool shbit = shadow_content & 0x01;
+                mask[ 3 - i ] = shbit ? 0xff : 0x00;
+                shadow_content >>= 1;
+            }
+        }
+
+        ExcMap _map;
+        mutable std::mutex _mtx;
+
+    };
+
+    std::shared_ptr< Exceptions > _exceptions;
 
     struct TypeProxy
     {
@@ -148,46 +341,158 @@ struct PooledShadow
         TypeProxy &operator=( const TypeProxy &o ) { return *this = ShadowType( o ); }
         TypeProxy &operator=( ShadowType st )
         {
-            word() &= ~mask();
-            word() |= uint8_t( st ) << shift();
+            set(st);
             return *this;
         }
         ShadowType get() const
         {
             return ShadowType( ( word() & mask() ) >> shift() );
         }
+        void set( ShadowType st )
+        {
+            word() &= ~mask();
+            word() |= uint8_t( st ) << shift();
+        }
+        bool is_exception() const
+        {
+            return get() == ShadowType::PointerException || get() == ShadowType::DataException;
+        }
+        void exceptionise_data()
+        {
+            auto tp = get();
+            if ( tp == ShadowType::Data )
+                set( ShadowType::DataException );
+            else if ( tp == ShadowType::Pointer )
+                set( ShadowType::PointerException );
+        }
+        void unexceptionise_data()
+        {
+            auto tp = get();
+            if ( tp == ShadowType::DataException )
+                set( ShadowType::Data );
+        }
         operator ShadowType() const { return get(); }
         bool operator==( const TypeProxy &o ) const { return get() == o.get(); }
         bool operator!=( const TypeProxy &o ) const { return get() != o.get(); }
         TypeProxy *operator->() { return this; }
-        TypeProxy( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
-    };
-
-    struct DefinedProxy
-    {
-        uint8_t *_base; int _pos;
-        uint8_t mask() const { return uint8_t( 1 ) << ( _pos % 8 ); }
-        uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
-        DefinedProxy &operator=( const DefinedProxy &o ) { return *this = uint8_t( o ); }
-        DefinedProxy &operator=( uint8_t b )
-        {
-            if ( b == 0xff )
-                word() |= mask();
-            else
-                word() &= ~mask();
-            return *this;
-        }
-        operator uint8_t() const
-        {
-            return word() & mask() ? 0xff : 0;
-        }
-        bool operator==( const DefinedProxy &o ) const { return uint8_t( *this ) == uint8_t( o ); }
-        bool operator!=( const DefinedProxy &o ) const { return uint8_t( *this ) != uint8_t( o ); }
-        DefinedProxy( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
+        TypeProxy( uint8_t *b, int p )
+            : _base( b ), _pos( p )
+        {}
     };
 
     using TypeC = BitContainer< TypeProxy, Pool >;
-    using DefinedC = BitContainer< DefinedProxy, Pool >;
+
+    struct DefinedC
+    {
+        struct proxy
+        {
+            DefinedC *_parent;
+            uint8_t *_base;
+            uint8_t *_type_base;
+            int _pos;
+            Exceptions &exceptions() const { return _parent->_exceptions; }
+            uint8_t mask() const { return uint8_t( 0x80 ) >> ( _pos % 8 ); }
+            uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
+            proxy *operator->() { return this; }
+            proxy &operator=( const proxy &o ) { return *this = uint8_t( o ); }
+            proxy &operator=( uint8_t b )
+            {
+                auto tp = TypeProxy(_type_base, _pos);
+                bool is_exc = tp.is_exception();
+                if ( b == 0xff && ! ( word() & mask() ) )
+                {
+                    word() |= mask();
+                    if ( is_exc )
+                    {
+                        if ( ! exceptions().definedness_changed( _parent->_base, _pos, b, word(), is_exc ) )
+                        {
+                            tp.unexceptionise_data();
+                            // TODO: unexceptionise pointer exceptions
+                        }
+                    }
+                }
+                else if ( b != 0xff )
+                {
+                    word() &= ~mask();
+                    if ( b != 0x00 || is_exc )
+                    {
+                        if ( exceptions().definedness_changed(_parent->_base, _pos, b, word(), is_exc) )
+                        {
+                            tp.exceptionise_data();
+                        }
+                        else
+                        {
+                            tp.unexceptionise_data();
+                        }
+                    }
+                }
+                return *this;
+            }
+            operator uint8_t() const
+            {
+                if ( word() & mask() )
+                    return 0xFF;
+
+                if ( TypeProxy( _type_base, _pos ).is_exception() )
+                    return exceptions().defined( _parent->_base, _pos );
+
+                return 0x00;
+            }
+            bool raw() const
+            {
+                return word() & mask();
+            }
+            bool operator==( const proxy &o ) const { return uint8_t( *this ) == uint8_t( o ); }
+            bool operator!=( const proxy &o ) const { return ! ( *this == o ); }
+            proxy( DefinedC *c, uint8_t *b, uint8_t *tb, int p )
+                : _parent( c ), _base( b ), _type_base( tb ), _pos( p )
+            {}
+        };
+
+        struct iterator : std::iterator< std::forward_iterator_tag, proxy >
+        {
+            DefinedC *_parent;
+            uint8_t *_base;
+            uint8_t *_type_base;
+            int _pos;
+
+            iterator &operator++() { ++_pos; return *this; }
+            iterator &operator+=( int off ) { _pos += off; return *this; }
+            proxy operator*() const { return proxy( _parent, _base, _type_base, _pos ); }
+            proxy operator->() const { return proxy( _parent, _base, _type_base, _pos ); }
+            bool operator==( iterator o ) const {
+                return _parent == o._parent
+                    && _base == o._base
+                    && _type_base == o._type_base
+                    && _pos == o._pos;
+            }
+            bool operator!=( iterator o ) const { return ! ( *this == o ); }
+            bool operator<( iterator o ) const { return _pos < o._pos; }
+            iterator( DefinedC *c, uint8_t *b, uint8_t *tb, int p )
+                : _parent( c ), _base( b ), _type_base( tb ), _pos( p )
+            {}
+        };
+
+        Internal _base;
+        Pool & _sh_defined;
+        Pool & _sh_type;
+        Exceptions & _exceptions;
+        int _from;
+        int _to;
+
+        DefinedC(Pool &def, Pool &type, Exceptions &exc, Internal base, int from, int to)
+            : _base(base), _sh_defined(def), _sh_type(type), _exceptions(exc), _from(from), _to(to)
+        {}
+        iterator begin() { return iterator( this, _sh_defined.template machinePointer< uint8_t >( _base ),
+                _sh_type.template machinePointer< uint8_t >( _base ), _from ); }
+        iterator end() { return iterator( this, _sh_defined.template machinePointer< uint8_t >( _base ),
+                _sh_type.template machinePointer< uint8_t >( _base ), _to ); }
+        proxy operator[]( int i )
+        {
+            return proxy( this, _sh_defined.template machinePointer< uint8_t >( _base ),
+                    _sh_type.template machinePointer< uint8_t >( _base ), _from + i );
+        }
+    };
 
     struct PointerC
     {
@@ -233,14 +538,18 @@ struct PooledShadow
             proxy operator->() const { return proxy( _parent, _self ); }
             bool operator!=( iterator o ) const { return _parent != o._parent || _self != o._self; }
             bool operator==( iterator o ) const { return _parent == o._parent && _self == o._self; }
-            iterator( PointerC *p, t_iterator s ) : _parent( p ), _self( s ) {}
+            iterator( PointerC *p, t_iterator s )
+                : _parent( p ), _self( s )
+            {}
         };
 
         TypeC types;
         iterator begin() { auto b = iterator( this, types.begin() ); b.seek(); return b; }
         iterator end() { return iterator( this, types.end() ); }
         proxy atoffset( int i ) { return *iterator( types.begin() + i ); }
-        PointerC( Pool &p, Internal i, int f, int t ) : types( p, i, f, t ) {}
+        PointerC( Pool &p, Internal i, int f, int t )
+            : types( p, i, f, t )
+        {}
     };
 
     Anchor make( Internal p, int size )
@@ -252,12 +561,23 @@ struct PooledShadow
         return Anchor();
     }
 
-    void free( Loc ) {} /* noop */
+    void free( Internal p )
+    {
+        _exceptions->free( p );
+    }
 
-    auto type( Loc l, int sz ) { return TypeC( _type, l.object, l.offset, l.offset + sz ); }
-    auto defined( Loc l, int sz ) { return DefinedC( _defined, l.object, l.offset, l.offset + sz ); }
-    auto pointers( Loc l, int sz ) { return PointerC( _type, l.object, l.offset, l.offset + sz ); }
-
+    auto type( Loc l, int sz )
+    {
+        return TypeC( _type, l.object, l.offset, l.offset + sz );
+    }
+    auto defined( Loc l, int sz )
+    {
+        return DefinedC( _defined, _type, *_exceptions, l.object, l.offset, l.offset + sz );
+    }
+    auto pointers( Loc l, int sz )
+    {
+        return PointerC( _type, l.object, l.offset, l.offset + sz );
+    }
     bool &shared( Internal p )
     {
         return *_shared.template machinePointer< bool >( p );
@@ -274,8 +594,11 @@ struct PooledShadow
             t[ 4 ] = ShadowType::Pointer;
         }
         else
+        {
             for ( int i = 0; i < size; i += 4 )
-                t[ i ] = ShadowType::Data;
+                if ( !t[ i ].is_exception() )
+                    t[ i ] = ShadowType::Data;
+        }
 
         union {
             typename V::Raw _def;
@@ -307,23 +630,21 @@ struct PooledShadow
     template< typename FromSh >
     void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz )
     {
+        auto from_type = from_sh.type( from, sz );
+        auto to_type = type( to, sz );
+        auto from_type_it = from_type.begin();
+        auto to_type_it = to_type.begin();
+        while ( from_type_it < from_type.end() )
+        {
+            if ( ! to_type_it->is_exception() && ! from_type_it->is_exception() )
+                *to_type_it = *from_type_it;
+            to_type_it += 4;
+            from_type_it += 4;
+        }
+
         auto from_def = from_sh.defined( from, sz );
         auto to_def = defined( to, sz );
         std::copy( from_def.begin(), from_def.end(), to_def.begin() );
-
-        auto t = type( to, sz );
-
-        for ( auto dt : t )
-            dt = ShadowType::Data;
-
-        for ( auto ptrloc : from_sh.pointers( from, sz ) )
-        {
-            if ( ptrloc.size() != 8 )
-                NOT_IMPLEMENTED(); /* exception */
-            if ( ptrloc.offset() + 8 > sz )
-                break;
-            t[ ptrloc.offset() + 4 ] = ShadowType::Pointer;
-        }
     }
 
     void copy( Loc from, Loc to, int sz ) { return copy( *this, from, to, sz ); }
@@ -472,8 +793,10 @@ struct PooledShadow
         heap.write( obj, 8, p1 );
         heap.read< PointerV >( obj, 0, p2 );
         ASSERT( p2.defined() );
+        ASSERT( p2.pointer() );
         heap.read< PointerV >( obj, 8, p2 );
         ASSERT( p2.defined() );
+        ASSERT( p2.pointer() );
     }
 
     TEST( copy_ptr )
@@ -486,15 +809,47 @@ struct PooledShadow
         ASSERT( p2.defined() );
     }
 
-    TEST( pointers )
+    TEST( read_partially_initialized )
     {
-        PointerV p1( vm::HeapPointer( 10, 0 ) );
-        heap.write( obj, 0, p1 );
-        int count = 0;
-        for ( auto x : heap.pointers( obj, 100 ) )
-            static_cast< void >( x ), count ++;
-        ASSERT_EQ( count, 1 );
+        vm::value::Int< 16 > i1( 32, 0x0AFF, false ), i2, i3;
+        ASSERT( i1.defbits() == 0x0AFF );
+        heap.write( obj, 0, i1 );
+        heap.read( obj, 0, i2 );
+        ASSERT( i2.defbits() == 0x0AFF );
+
+        heap.write( obj, 3, i1 );
+        heap.read( obj, 3, i3 );
+        ASSERT( i3.defbits() == 0x0AFF );
+
+        heap.read( obj, 0, i2 );
+        ASSERT( i2.defbits() == 0x0AFF );
     }
+
+    TEST( read_truly_partially_initialized )
+    {
+        vm::value::Int< 16 > i1( 32, 0x0AFE, false ), i2, i3;
+        ASSERT( i1.defbits() == 0x0AFE );
+        heap.write( obj, 0, i1 );
+        heap.read( obj, 0, i2 );
+        ASSERT( i2.defbits() == 0x0AFE );
+
+        heap.write( obj, 3, i1 );
+        heap.read( obj, 3, i3 );
+        ASSERT( i3.defbits() == 0x0AFE );
+
+        heap.read( obj, 0, i2 );
+        ASSERT( i2.defbits() == 0x0AFE );
+    }
+
+    TEST( copy_partially_initialized )
+    {
+        vm::value::Int< 16 > i1( 32, 0x0AFF, false ), i2;
+        heap.write( obj, 0, i1 );
+        heap.copy( obj, 0, obj, 3, 2 );
+        heap.read( obj, 3, i2 );
+        ASSERT( i2.defbits() == 0x0AFF );
+    }
+
 
 #if 0
     TEST( copy_aligned_ptr )
