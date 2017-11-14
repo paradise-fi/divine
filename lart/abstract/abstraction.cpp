@@ -281,6 +281,11 @@ Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node ) {
     auto clone = CloneFunction( node.function(), vmap, true, nullptr );
     node.function()->getParent()->getFunctionList().push_back( clone );
 
+    for ( const auto & v : vmap ) {
+        if ( fields.has( v.first ) )
+            fields.alias( v.first, v.second );
+    }
+
     std::set< AbstractValue > roots;
     for ( const auto & origin : node.roots() )
         if ( const auto & arg = origin.safeGet< llvm::Argument >() )
