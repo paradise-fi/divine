@@ -364,6 +364,10 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
             auto o = origin( ptr );
             dispach( PropagateDown( { o,  dom }, t.roots, t.parent ) );
         }
+        else if ( auto l = Load( av ) ) {
+            if ( llvm::isa< llvm::GlobalValue >( l->getPointerOperand() ) )
+                t.roots->insert( av );
+        }
         else if ( auto phi = PHINode( av ) ) {
             for ( auto & v : phi->incoming_values() ) {
                 if ( fields.has( v ) ) {
