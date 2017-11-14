@@ -51,6 +51,9 @@ using ArgTypes = Types;
 
 using ArgDomains = std::vector< Domain >;
 
+template< typename T >
+using ConstifyPtr = std::add_pointer_t< std::add_const_t< std::remove_pointer_t< T > > >;
+
 template< typename Values >
 static inline Types typesOf( const Values & vs ) {
     return query::query( vs ).map( [] ( const auto & v ) {

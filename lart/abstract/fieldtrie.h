@@ -218,6 +218,7 @@ struct FieldTrie {
 template< typename Value >
 struct AbstractFields {
 
+    using CValue = ConstifyPtr< Value >;
     struct Path {
         Path( Value from, Value to, Indices indices )
             : from( from ), to( to ), indices( indices ) {}
@@ -272,13 +273,13 @@ struct AbstractFields {
         handle.setValue( dom );
     }
 
-    void setDomain( const Value & val, Domain dom ) {
+    void setDomain( CValue val, Domain dom ) {
         assert( fields.count( val ) );
         assert( val->getType()->isIntegerTy() );
         setDomain( { val, val, {} }, dom );
     }
 
-    void alias( const Value & a, const Value & b ) {
+    void alias( CValue a, CValue b ) {
         assert( fields.count( a ) );
         auto handle = fields.at( a );
         fields.insert( { b, handle } );
@@ -294,7 +295,7 @@ struct AbstractFields {
         return std::nullopt;
     }
 
-    std::optional< Domain > getDomain( const Value & val ) {
+    std::optional< Domain > getDomain( CValue val ) {
         if ( fields.count( val ) )
             return getDomain( fields.at( val ) );
         return std::nullopt;
@@ -356,7 +357,7 @@ private:
     }
 
     using FieldTriePtr = std::unique_ptr< Trie >;
-    std::map< Value, Trie::Handle > fields;
+    std::map< CValue , Trie::Handle > fields;
     std::vector< FieldTriePtr > tries;
 };
 
