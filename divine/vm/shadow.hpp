@@ -165,7 +165,6 @@ inline std::ostream &operator<<( std::ostream &o, const ShadowException &e )
 template< typename MasterPool >
 struct PooledShadow
 {
-    struct Anchor {};
     using InObj = InObject< typename MasterPool::Pointer >;
     using Pool = mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
@@ -194,10 +193,9 @@ struct PooledShadow
     struct Loc : public brick::types::Ord
     {
         Internal object;
-        Anchor anchor;
         int offset;
-        Loc( Internal o, Anchor a, int off = 0 )
-            : object( o ), anchor( a ), offset( off )
+        Loc( Internal o, int off = 0 )
+            : object( o ), offset( off )
         {}
         Loc operator-( int i ) const { Loc r = *this; r.offset -= i; return r; }
         Loc operator+( int i ) const { Loc r = *this; r.offset += i; return r; }
@@ -239,7 +237,7 @@ struct PooledShadow
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto range = _map.equal_range( Loc( obj, Anchor(), wpos ) );
+            auto range = _map.equal_range( Loc( obj, wpos ) );
             while ( range.first != range.second )
             {
                 if ( range.first->second.valid && range.first->second.type == ExceptionType::DataExc )
@@ -259,7 +257,7 @@ struct PooledShadow
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto range = _map.equal_range( Loc( obj, Anchor(), wpos ) );
+            auto range = _map.equal_range( Loc( obj, wpos ) );
 
             while ( range.first != range.second )
             {
@@ -282,7 +280,7 @@ struct PooledShadow
                 ShadowException e;
                 e.type = ExceptionType::DataExc;
                 e.valid = false;
-                range.first = _map.insert( range.second, std::make_pair( Loc( obj, Anchor(), wpos ), e ));
+                range.first = _map.insert( range.second, std::make_pair( Loc( obj, wpos ), e ));
             }
 
             auto & exc = range.first->second;
@@ -307,8 +305,8 @@ struct PooledShadow
         {
             Lock lk( _mtx );
 
-            auto lb = _map.lower_bound( Loc( obj, {}, 0 ) );
-            auto ub = _map.upper_bound( Loc( obj, {}, (1 << _VM_PB_Off) - 1 ) );
+            auto lb = _map.lower_bound( Loc( obj, 0 ) );
+            auto ub = _map.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
             while (lb != ub)
             {
                 lb->second.valid = false;
@@ -556,13 +554,12 @@ struct PooledShadow
         {}
     };
 
-    Anchor make( Internal p, int size )
+    void make( Internal p, int size )
     {
         /* types: 2 bits per word (= 1/2 bit per byte), defined: 1 bit per byte */
         _type.materialise( p, ( size / 16 ) + ( size % 16 ? 1 : 0 ) );
         _defined.materialise( p, ( size / 8 )  + ( size % 8  ? 1 : 0 ));
         _shared.materialise( p, 1 );
-        return Anchor();
     }
 
     void free( Internal p )
@@ -683,18 +680,16 @@ struct NonHeap
     Pool pool;
     Shadow< Pool > shadows;
     using Loc = typename Shadow< Pool >::Loc;
-    using Anchor = typename Shadow< Pool >::Anchor;
 
     NonHeap() : shadows( pool ) {}
 
     Anchor &anchor( Ptr p ) { return *pool.template machinePointer< Anchor >( p ); }
     Loc shloc( Ptr p, int off ) { return Loc( p, anchor( p ), off ); }
-    auto pointers( Ptr p, int sz ) { return shadows.pointers( shloc( p, 0 ), sz ); }
 
     Ptr make( int sz )
     {
         auto r = pool.allocate( sizeof( Ptr ) );
-        anchor( r ) = shadows.make( r, sz );
+        shadows.make( r, sz );
         return r;
     }
 

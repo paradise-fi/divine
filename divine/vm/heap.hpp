@@ -169,7 +169,7 @@ int hash( Heap &heap, HeapPointer root,
 
     int ptr_data[2];
     auto pointers = heap.shadows().pointers(
-            typename Heap::Shadows::Loc( i, typename Heap::Shadows::Anchor(), 0 ), size );
+            typename Heap::Shadows::Loc( i, 0 ), size );
     for ( auto pos : pointers )
     {
         value::Pointer ptr;
@@ -426,7 +426,6 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
     using Shadows = PooledShadow< ObjPool >;
     using PointerV = value::Pointer;
     using ShadowLoc = typename Shadows::Loc;
-    using ShadowAnchor = typename Shadows::Anchor;
 
     struct SnapItem
     {
@@ -458,7 +457,7 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
 
     ShadowLoc shloc( HeapPointer p, Internal i ) const
     {
-        return ShadowLoc( i, ShadowAnchor(), p.offset() );
+        return ShadowLoc( i, p.offset() );
     }
 
     ShadowLoc shloc( HeapPointer p ) const { return shloc( p, ptr2i( p ) ); }
@@ -729,7 +728,7 @@ struct CowHeap : SimpleHeap< CowHeap >
 
             brick::hash::jenkins::SpookyState high( 0, 0 );
 
-            auto types = shadows().type( ShadowLoc( i, ShadowAnchor(), 0 ), size );
+            auto types = shadows().type( ShadowLoc( i, 0 ), size );
             auto t = types.begin();
             int offset = 0;
 
@@ -764,7 +763,7 @@ struct CowHeap : SimpleHeap< CowHeap >
                 return false;
             if ( shadows().shared( a ) != shadows().shared( b ) )
                 return false;
-            ShadowLoc a_shloc( a, ShadowAnchor(), 0 ), b_shloc( b, ShadowAnchor(), 0 );
+            ShadowLoc a_shloc( a, 0 ), b_shloc( b, 0 );
             auto a_def = shadows().defined( a_shloc, size ),
                  b_def = shadows().defined( b_shloc, size );
             if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin() ) )
