@@ -56,7 +56,8 @@ struct Syscall
     template< typename T > using Void = void;
 
     template< typename Rem, typename Done, typename S, typename T, typename... Args >
-    __attribute__(( __always_inline__, __flatten__)) static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
+    __attribute__(( __always_inline__, __flatten__))
+    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
         -> typename std::enable_if< !std::is_same< T, Void< typename Rem::Empty > >::value >::type
     {
         auto rvt = reinterpret_cast< T* >( rv );
@@ -64,14 +65,16 @@ struct Syscall
     }
 
     template< typename Rem, typename Done, typename S, typename T, typename... Args >
-    __attribute__(( __always_inline__, __flatten__)) static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
+    __attribute__(( __always_inline__, __flatten__))
+    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
         -> typename std::enable_if< std::is_same< T, Void< typename Rem::Empty > >::value >::type
     {
         brick::tuple::pass( [&]( auto... x ) { return (c.*f)( x... ); }, d );
     }
 
     template< typename Rem, typename Done, typename S, typename T, typename... Args >
-    __attribute__(( __always_inline__, __flatten__)) static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
+    __attribute__(( __always_inline__, __flatten__))
+    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
         -> Void< typename Rem::Head >
     {
         auto next = std::tuple_cat( d, std::make_tuple( va_arg( vl, typename Rem::Head ) ) );
@@ -79,7 +82,8 @@ struct Syscall
     }
 
     template< typename S, typename T, typename... Args >
-    __attribute__(( __always_inline__, __flatten__)) static void unpack( Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
+    __attribute__(( __always_inline__, __flatten__))
+    static void unpack( Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
     {
         unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), c, f, rv, vl );
     }
