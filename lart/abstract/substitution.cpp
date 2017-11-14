@@ -129,20 +129,22 @@ void Substitution::run( llvm::Module & m ) {
         return isAGEPCast( i, data.tmap );
     } ).freeze();
 
-    auto gloads = query::query( intrs ).filter( [] ( const auto & i ) {
+    auto loads = query::query( intrs ).filter( [] ( const auto & i ) {
         if ( isLoad( i ) ) {
             if ( llvm::isa< llvm::GlobalVariable >( i->getOperand( 0 ) ) )
                 return true;
             if ( auto bc = llvm::dyn_cast< llvm::BitCastOperator >( i->getOperand( 0 ) ) )
                 if ( llvm::isa< llvm::GlobalVariable >( bc->getOperand( 0 ) ) )
                     return true;
+            if ( llvm::isa< llvm::Argument >( i->getOperand( 0 ) ) )
+                return true;
         }
         return false;
     } ).freeze();
 
     auto calls = callSitesOf( functions );
 
-    auto abstract = concat( allocas, lifts, calls, btcsts, gloads );
+    auto abstract = concat( allocas, lifts, calls, btcsts, loads );
 
     Map< llvm::Function *, Values > funToValMap;
     for ( const auto &a : abstract )
@@ -182,18 +184,20 @@ void Substitution::run( llvm::Module & m ) {
     } // end RAII substitution builder
 
     auto remapArg = [&] ( llvm::Argument & a ) {
-        if ( const auto & cs = llvm::CallSite( *a.user_begin() ) )
-            if ( cs.getCalledFunction()->hasName() &&
-                 cs.getCalledFunction()->getName().startswith( "__lart_lift" ) )
-            {
-                cs.getInstruction()->replaceAllUsesWith( &a );
-                cs.getInstruction()->eraseFromParent();
-            }
-        if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( *a.user_begin() ) )
-            if ( bc->getSrcTy() == bc->getDestTy() ) {
-                bc->replaceAllUsesWith( &a );
-                bc->eraseFromParent();
-            }
+        if ( !a.use_empty() ) {
+            if ( const auto & cs = llvm::CallSite( *a.user_begin() ) )
+                if ( cs.getCalledFunction()->hasName() &&
+                     cs.getCalledFunction()->getName().startswith( "__lart_lift" ) )
+                {
+                    cs.getInstruction()->replaceAllUsesWith( &a );
+                    cs.getInstruction()->eraseFromParent();
+                }
+            if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( *a.user_begin() ) )
+                if ( bc->getSrcTy() == bc->getDestTy() ) {
+                    bc->replaceAllUsesWith( &a );
+                    bc->eraseFromParent();
+                }
+        }
     };
 
     for ( auto & fn : fns ) {
@@ -202,6 +206,7 @@ void Substitution::run( llvm::Module & m ) {
         for ( auto & arg : fn.second->args() )
             remapArg( arg );
     }
+
     clean( fns, m );
 }
 
