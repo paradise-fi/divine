@@ -288,6 +288,14 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         else if ( auto bc = BitCast( av ) ) {
             fields.alias( bc->getOperand( 0 ), bc );
         }
+        else if ( auto phi = PHINode( av ) ) {
+            for ( auto & v : phi->incoming_values() ) {
+                if ( fields.has( v ) ) {
+                    fields.alias( v,  phi );
+                    break;
+                }
+            }
+        }
         else if ( auto mem = MemIntrinsic( av ) ) {
             auto dest = mem->getDest();
             // TODO copy
@@ -354,6 +362,14 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
 
             auto o = origin( ptr );
             dispach( PropagateDown( { o,  dom }, t.roots, t.parent ) );
+        }
+        else if ( auto phi = PHINode( av ) ) {
+            for ( auto & v : phi->incoming_values() ) {
+                if ( fields.has( v ) ) {
+                    fields.alias( v,  phi );
+                    break;
+                }
+            }
         }
         else if ( auto cs = CallSite( av ) ) {
             if ( isRoot( cs.getInstruction() ) )
