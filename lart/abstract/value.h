@@ -63,7 +63,8 @@ inline bool operator<( const AbstractValue & a, const AbstractValue & b ) {
     return std::tie( a.domain, a.value ) < std::tie( b.domain, b.value );
 }
 
-inline AbstractValues reachFrom( const AbstractValues & roots ) {
+template< typename Filter >
+inline AbstractValues reachFrom( const AbstractValues & roots, Filter filter ) {
     auto succs = [&] ( const AbstractValue& av ) -> AbstractValues {
         // do not propagate through calls that are not in roots
         // i.e. that are those calls which do not return an abstract value
@@ -72,18 +73,31 @@ inline AbstractValues reachFrom( const AbstractValues & roots ) {
             return {};
         if ( !av.isAbstract() )
             return {};
-
-        return query::query( av.value->users() )
-            .map( [&] ( const auto & val ) -> AbstractValue {
-                return { val, av.domain };
-            } ).freeze();
+        AbstractValues res;
+        for ( const auto & v : av.value->users() ) {
+            AbstractValue au = { v, av.domain };
+            if ( !filter( au ) )
+                res.push_back( au );
+        }
+        return res;
     };
 
     return lart::analysis::postorder( roots, succs );
 };
 
+auto EmptyFilter = [] ( const AbstractValue & ) { return false; };
+
+inline AbstractValues reachFrom( const AbstractValues & roots ) {
+    return reachFrom( roots, EmptyFilter );
+};
+
+template< typename Filter >
+inline AbstractValues reachFrom( const AbstractValue & root, Filter filter ) {
+    return reachFrom( AbstractValues{ root }, filter );
+};
+
 inline AbstractValues reachFrom( const AbstractValue & root ) {
-    return reachFrom( AbstractValues{ root } );
+    return reachFrom( AbstractValues{ root }, EmptyFilter );
 };
 
 template< typename T >
