@@ -311,7 +311,8 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         else if ( auto r = Ret( av ) ) {
             assert( r->getReturnValue()->getType()->isSingleValueType() &&
                     "We don't know to return abstract struct type." );
-            dispach( StepOut( getFunction( av.value ), av.domain, t.parent ) );
+            if ( fields.has( av.value ) )
+                dispach( StepOut( getFunction( av.value ), av.domain, t.parent ) );
         }
     }
 }
