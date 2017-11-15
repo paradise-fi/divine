@@ -95,6 +95,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
             {
                 init( st );
                 vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
+                dn._ref.get();
                 dn.address( vm::dbg::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
