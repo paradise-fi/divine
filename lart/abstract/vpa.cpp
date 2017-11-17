@@ -227,6 +227,40 @@ void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet 
     dispach( PropagateDown( AbstractValue{ o, dom }, roots, parent ) );
 }
 
+template< typename Fields >
+void visitOrigins( llvm::Value * val, Fields & fields ) {
+    std::vector< Path > visited;
+
+    llvm::Value * curr = val;
+    while ( true ) {
+        if ( fields.has( curr ) )
+            break;
+        if ( auto g = llvm::dyn_cast< llvm::GetElementPtrInst >( curr ) ) {
+            curr = g->getPointerOperand();
+            Indices inds = gepIndices( g );
+            visited.push_back( { curr, g, inds } );
+        } else if ( auto l = llvm::dyn_cast< llvm::LoadInst >( curr ) ) {
+            curr = l->getPointerOperand();
+            Indices inds = { LoadStep{} };
+            visited.push_back( { curr, l, inds } );
+        } else if ( auto a = llvm::dyn_cast< llvm::AllocaInst >( curr ) ) {
+            fields.create( a );
+        } else {
+            return;
+        }
+    }
+
+     for ( auto & v : lart::util::reverse( visited ) )
+        fields.insert( v );
+}
+
+template< typename Fields >
+bool isBackEdge( const Path & path, Fields & fields ) {
+    if ( !fields.has( path.from ) || !fields.has( path.to ) )
+        return false;
+    return fields.reachable( path.to, path.from );
+}
+
 void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
     auto val = t.value.value;
 
@@ -269,12 +303,31 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         else if ( auto s = Store( av ) ) {
             Path path = createFieldPath( s );
             auto ptr = s->getPointerOperand();
-            // TODO copy
-            fields.create( ptr );
-            fields.addPath( path );
+            auto val = s->getValueOperand();
 
-            if ( !isScalarType( s->getValueOperand() ) ) {
-                auto o = origin( ptr );
+            if ( auto c = llvm::dyn_cast< llvm::Constant >( val ) )
+                if ( c->isNullValue() )
+                    return; // storing of null is boring
+
+            if ( !isScalarType( val ) ) {
+                visitOrigins( val, fields );
+                visitOrigins( ptr, fields );
+            }
+
+            if ( fields.has( path.from ) &&
+                 fields.has( path.to ) &&
+                 !fields.inSameTrie( path.from, path.to ) )
+            {
+                fields.storeUnder( path.to, path.from ); // We are storing to another trie
+            } else {
+                if ( isBackEdge( path, fields ) )
+                    fields.insertBackEdge( path );
+                else
+                    fields.insert( path );
+            }
+
+            if ( !isScalarType( val ) ) {
+                auto o = origin( ptr, fields );
                 dispach( PropagateDown( { o, Domain::Symbolic }, t.roots, t.parent ) );
             }
         }
@@ -295,7 +348,6 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         }
         else if ( auto mem = MemIntrinsic( av ) ) {
             auto dest = mem->getDest();
-            // TODO copy
             fields.alias( mem->getOperand( 1 ), dest );
             dispach( PropagateDown( AbstractValue{ dest, av.domain }, t.roots, t.parent ) );
         }
