@@ -32,198 +32,263 @@ template< typename K, typename T >
 struct FieldTrie {
 
     struct TrieNode;
-    using TrieNodePtr = std::unique_ptr< TrieNode >;
 
-    using Useless = std::set< TrieNode * >;
+    using BackEdge = TrieNode *;
+    using ForwardEdge = std::unique_ptr< TrieNode >;
+    using EdgeStorage = std::variant< ForwardEdge, BackEdge >;
 
-    struct Leaf {
-        Leaf( T v ) : value( v ) {}
-        T value;
+    struct Edge : EdgeStorage {
+        using EdgeStorage::EdgeStorage;
+        using pointer = TrieNode *;
 
-        void draw( std::ofstream & os ) const {
-            os << '"' << this << "\"[label=\"" << value << "\"];\n";
+        explicit operator bool() const { return get(); }
+        pointer operator->() const { return get(); }
+
+        pointer get() const {
+            if ( auto fwd = std::get_if< ForwardEdge >( this ) )
+                return fwd->get();
+            else
+                return std::get< BackEdge >( *this );
         }
     };
 
-    struct Internal {
-        ArrayMap< K, TrieNodePtr > children;
+    static bool isBackEdge( const Edge & e ) {
+        return std::holds_alternative< BackEdge >( e );
+    }
 
-        bool isLeaf() const {
-            return children.size() == 1 && children.count( 0 ) &&
-                   std::holds_alternative< Leaf >( *children.at( 0 ) );
+    using TrieNodePtr = Edge;
+    using Useless = std::set< TrieNode * >;
+
+    struct TrieNode {
+        using Children = ArrayMap< K, Edge >;
+
+        TrieNode( TrieNode * parent ) : _parent( parent ) {}
+
+        static TrieNodePtr make_node( TrieNode * parent = nullptr ) {
+            return std::make_unique< TrieNode >( parent );
         }
+
+        bool isLeaf() const { return _data.has_value(); }
 
         void setValue( T val ) {
-            if ( children.empty() )
-                children[ 0 ] = TrieNode::make_leaf( val );
-            assert( isLeaf() && value() == val );
+            assert( !_data && _children.empty() );
+            _data = val;
         }
 
-        T & value() const {
+        T const& value() const {
             assert( isLeaf() );
-            return std::get< Leaf >( *children.at( 0 ) ).value;
+            return _data.value();
+        }
+
+        template< class... Args >
+        void emplaceChild( Args&&... args ) {
+            _children.emplace( std::forward< Args >( args )... );
         }
 
         TrieNode * getOrInsertChild( const K & key ) {
-            if ( !children.count( key ) ) {
-                children[ key ] = TrieNode::make_internal();
-                auto child = std::get_if< Internal >( children[ key ].get() );
-                child->parent = this;
-            }
-            return children[ key ].get();
+            if ( !_children.count( key ) )
+                emplaceChild( key, make_node( this ) );
+            return _children[ key ].get();
         }
 
-        void draw( std::ofstream & os ) const {
-            os << '"' << this << "\";\n";
-            for ( auto & child : children ) {
-                child.second->draw( os );
-                os << '"' << this
-                   << "\" -> \""
-                   << child.second.get() << '"';
-                os << "[label = \"" << child.first << "\"];\n";
-            }
+        void eraseChild( const K & key ) {
+            assert( _children.at( key )->children().empty() );
+            _children.erase( key );
         }
 
-        bool useless( Useless & nodes ) {
-            bool hasNoLeaf = true;
-            for ( auto & child : children )
-                hasNoLeaf &= child.second->useless( nodes );
-            if ( hasNoLeaf )
-                nodes.insert( reinterpret_cast< TrieNode * >( this ) );
-            return hasNoLeaf;
-        }
+        bool reachable( TrieNode * node ) {
+            auto reachableIn = [&] ( const Edge & e ) {
+                if ( e.get() == node )
+                    return true;
+                if ( isBackEdge( e ) )
+                    return false;
+                return e->reachable( node );
+            };
 
-        Internal * parent = nullptr;
-    };
-
-    using Storage = std::variant< Leaf, Internal >;
-    struct TrieNode : Storage {
-        using Storage::Storage;
-
-        static TrieNodePtr make_internal() {
-            return std::make_unique< TrieNode >( Internal{} );
-        }
-
-        static TrieNodePtr make_leaf( T val ) {
-            return std::make_unique< TrieNode >( Leaf{ val } );
-        }
-
-        void draw( std::ofstream & os ) const {
-            std::visit( [&] ( const auto & node ) { node.draw( os ); }, *this );
-        }
-
-        bool useless( Useless & nodes ) {
-            if ( auto in = std::get_if< Internal >( this ) )
-                return in->useless( nodes );
+            for ( const auto & ch : _children )
+                if ( reachableIn( ch.second ) )
+                    return true;
             return false;
         }
 
-        TrieNodePtr copy() const {
-            if ( auto leaf = std::get_if< Leaf >( this ) )
-                return make_leaf( leaf->value );
-            auto newNode = make_internal();
-            auto newNodeIn = std::get_if< Internal >( newNode.get() );
-
-            auto inter = std::get_if< Internal >( this );
-            assert( inter );
-            for ( const auto & ch : inter->children ) {
-                newNodeIn->children[ ch.first ] = ch.second->copy();
-                if ( auto ich = std::get_if< Internal >( newNodeIn->children[ ch.first ].get() ) )
-                    ich->parent = newNodeIn;
+        TrieNode * computeBackEdge( const TrieNode * a, const TrieNode * b, const TrieNode * p ) const {
+            while ( a->parent() && b->parent() ) {
+                if ( a->parent() == p )
+                    return b->parent();
+                a = a->parent();
+                b = b->parent();
             }
-            return newNode;
+            return nullptr;
         }
+
+        TrieNodePtr copy( TrieNode * parent ) const {
+            auto node = make_node( parent );
+            if ( isLeaf() ) {
+                node->setValue( _data.value() );
+            } else {
+                for ( const auto & ch : _children ) {
+                    if ( isBackEdge( ch.second ) ) {
+                        auto back = computeBackEdge( this, node.get(), ch.second.get() );
+                        assert( back && "BackEdge is not reachable in copy." );
+                        node->emplaceChild( ch.first, back );
+                    } else {
+                        auto childCopy = ch.second->copy( node.get() );
+                        node->emplaceChild( ch.first, std::move( childCopy ) );
+                    }
+                }
+            }
+            return node;
+        }
+
+        void draw( std::ofstream & os ) const {
+            if ( isLeaf() ) {
+                os << '"' << this << "\"[label=\"" << _data.value() << "\"];\n";
+            } else {
+                os << '"' << this << "\";\n";
+                for ( auto & child : _children ) {
+                    if ( !isBackEdge( child.second ) )
+                        child.second->draw( os );
+                    os << '"' << this
+                       << "\" -> \""
+                       << child.second.get() << '"';
+                    os << "[label = \"" << child.first << "\"];\n";
+                }
+            }
+        }
+
+        bool useless( Useless & nodes ) {
+            if ( isLeaf() )
+                return false;
+
+            bool hasNoLeaf = true;
+            for ( auto & child : _children )
+                if ( !isBackEdge( child.second ) )
+                    hasNoLeaf &= child.second->useless( nodes );
+            if ( hasNoLeaf )
+                nodes.insert( this );
+            return hasNoLeaf;
+        }
+
+        void setParent( TrieNode * parent ) { _parent = parent; }
+        TrieNode * parent() const { return _parent; }
+        Children const& children() const { return _children; }
+    private:
+        TrieNode * _parent;
+        std::optional< T > _data;
+        Children _children;
     };
 
     struct Handle {
-        Handle( FieldTrie * trie, TrieNode * root ) : trie( trie ), root( root ) {}
+        Handle( FieldTrie * trie, TrieNode * ptr ) : _trie( trie ), _ptr( ptr ) {}
 
         Handle( const Handle & ) = default;
         Handle( Handle && ) = default;
         Handle& operator=( const Handle & ) = default;
         Handle& operator=( Handle && ) = default;
 
+        explicit operator bool() const { return _ptr && _trie; }
+
         Handle search( const Indices & keys ) {
-            assert( root );
-            auto level = root;
+            assert( _ptr );
+            auto level = _ptr;
             for ( auto k : keys ) {
                 if ( !level )
-                    return { trie, nullptr };
-                auto & i = std::get< Internal >( *level );
-                if ( !i.children.count( k ) )
+                    return { _trie, nullptr };
+                auto & i = *level;
+                if ( !i.children().count( k ) )
                     return { nullptr, nullptr };
-                level = i.children.at( k ).get();
+                level = i.children().at( k ).get();
             }
-            return { trie, level };
+            return { _trie, level };
         }
 
         void setValue( T val ) {
-            auto in = std::get_if< Internal >( root );
-            assert( in && in->children.empty() );
-            in->setValue( val );
+            assert( _ptr && _ptr->children().empty() );
+            _ptr->setValue( val );
+        }
+
+        void setNode( TrieNode * node ) {
+            _ptr = node;
         }
 
         using FromToHandles = std::pair< Handle, Handle >;
         FromToHandles createPath( const Indices & keys ) {
-            auto node = trie->createPath( keys, root );
-            if ( !root ) {
-                assert( trie->_root );
-                root = trie->_root.get();
+            auto handle = _trie->createPath( keys, _ptr );
+            if ( !_ptr ) {
+                assert( _trie->root() );
+                _ptr = _trie->root().ptr();
             }
-            return { { trie, root }, { trie, node } };
+            return { _trie->root(), handle };
+        }
+
+        void createBackEdge( const Step & step, BackEdge && to ) {
+            if ( _ptr->children().count( step ) )
+                _ptr->eraseChild( step );
+            _ptr->emplaceChild( step, std::move( to ) );
+        }
+
+        bool isBackEdge( const Step & step ) {
+            const auto& children = _ptr->children();
+            if ( children.count( step ) )
+                return FieldTrie::isBackEdge( children.at( step ) );
+            return false;
         }
 
         Handle rebase( const Indices & keys ) {
-            assert( trie->_root );
+            assert( _trie->root() );
 
-            auto rebaseroot = std::get_if< Internal >( root );
+            auto rebaseroot = _ptr;
             auto k = keys.rbegin();
             size_t count = 0;
-            while ( k != keys.rend() && rebaseroot->parent ) {
-                rebaseroot = rebaseroot->parent;
+            while ( k != keys.rend() && rebaseroot->parent() ) {
+                rebaseroot = rebaseroot->parent();
                 ++k;
                 count++;
             }
 
             Indices indices = { keys.begin(), keys.end() - count };
-            auto troot = std::get_if< Internal >( trie->_root.get() );
-            if ( rebaseroot == troot )
-                return { trie, trie->rebase( indices ) };
+
+            if ( rebaseroot == _trie->root().ptr() )
+                return _trie->rebase( indices );
             else
-                return { trie, reinterpret_cast< TrieNode * >( rebaseroot ) };
+                return { _trie, rebaseroot };
         }
 
-        TrieNode * getRoot() const { return root; }
+        bool reachable( Handle && handle ) {
+            if ( _trie != handle.trie() )
+                return false;
+            return _ptr->reachable( handle.ptr() );
+        }
+
+        TrieNode * ptr() const { return _ptr; }
+        FieldTrie * trie() const { return _trie; }
     private:
-        FieldTrie * trie;
-        TrieNode * root;
+        FieldTrie * _trie;
+        TrieNode * _ptr;
     };
 
     Handle root() { return Handle( this, _root.get() ); }
 
-    TrieNode * createPath( const Indices & keys, TrieNode * handle ) {
-        if ( !handle ) {
-            assert( _root == nullptr );
-            _root = TrieNode::make_internal();
-            handle = _root.get();
+    Handle createPath( const Indices & keys, TrieNode * from ) {
+        if ( !from ) {
+            assert( !_root );
+            _root = TrieNode::make_node();
+            from = _root.get();
         }
-        auto level = handle;
-        for ( auto k : keys ) {
-            auto i = std::get_if< Internal >( level );
-            level = i->getOrInsertChild( k );
-        }
-        return level;
+        auto level = from;
+        for ( auto k : keys )
+            level = level->getOrInsertChild( k );
+        return Handle( this, level );
     }
 
-    TrieNode * rebase( const Indices & keys ) {
+    Handle rebase( const Indices & keys ) {
         for ( auto k = keys.rbegin(); k != keys.rend(); ++k ) {
-            auto level = TrieNode::make_internal();
-            auto r = std::get_if< Internal >( _root.get() );
-            r->parent = std::get_if< Internal >( level.get() );
-            std::get< Internal >( *level ).children[ *k ] = std::move( _root );
+            auto level = TrieNode::make_node();
+            _root->setParent( level.get() );
+            level->emplaceChild( *k, std::move( _root ) );
             _root = std::move( level );
         }
-        return _root.get();
+        return root();
     }
 
     Useless useless() {
@@ -292,10 +357,30 @@ struct AbstractFields {
         }
     }
 
+    void insertBackEdge( const Path & path ) {
+        assert( has( path.from ) && has( path.to ) );
+        auto fh = fields.at( path.from );
+        auto th = fields.at( path.to );
+
+        assert( path.indices.size() == 1 );
+        auto step = path.indices.at( 0 );
+
+        if ( fh.isBackEdge( step ) )
+            return; // back edge already exists
+
+        if ( auto ch = fh.search( path.indices ) ) {
+            for ( auto & v : fields )
+                if ( v.second.ptr() == ch.ptr() )
+                    v.second.setNode( th.ptr() );
+        }
+
+        fields.at( path.from ).createBackEdge( step, th.ptr() );
+    }
+
     void setDomain( const Path & path, Domain dom ) {
         addPath( path );
         auto handle = fields.at( path.from ).search( path.indices );
-        assert( handle.getRoot() );
+        assert( handle.ptr() );
         handle.setValue( dom );
     }
 
@@ -311,14 +396,13 @@ struct AbstractFields {
         fields.insert( { b, handle } );
     }
 
-    Trie::Handle get( const Path & path ) {
-        auto at = fields.at( path.from );
-        auto s = at.search( path.indices );
-        return s;
-    }
-    
     bool has( CValue v ) const { return fields.count( v ); }
-    bool has( const Path & path ) const { return fields.count( path.from ) && fields.count( path.to ); }
+
+    bool inSameTrie( CValue a, CValue b ) const {
+        if ( !has( a ) || !has( b ) )
+            return false;
+        return fields.at( a ).trie() == fields.at( b ).trie();
+    }
 
     std::optional< Domain > getDomain( const Path & path ) {
         if ( fields.count( path.from ) ) {
@@ -334,8 +418,19 @@ struct AbstractFields {
         return std::nullopt;
     }
 
+    bool reachable( CValue from, CValue to ) {
+        return fields.at( from ).reachable( std::move( fields.at( to ) ) );
+    }
+
+    void storeUnder( CValue from, CValue to ) {
+        auto fromH = fields.at( from );
+        auto toH = fields.at( to ).createPath( { LoadStep{} } ).second;
+        storeUnderImpl( fromH, toH );
+    }
+
     void draw( const std::string & path ) const {
-        std::ofstream out( path, std::ios::out );
+        auto tmpPath = path + ".tmp";
+        std::ofstream out( tmpPath, std::ios::out );
         out << "digraph FieldTrie {\n";
 
         // draw tries
@@ -361,18 +456,23 @@ struct AbstractFields {
             ros << "\"];\n";
             ros << '"';
             ros.write_escaped( name );
-            ros << "\" -> \"" << h.second.getRoot() << "\";\n";
+            ros << "\" -> \"" << h.second.ptr() << "\";\n";
         }
         ros.flush();
 
-        out << "}\n";
+        out << "}" << std::endl;
+        std::rename( tmpPath.c_str(), path.c_str() );
+    }
+
+    void erase( CValue v ) {
+        fields.erase( v );
     }
 
     void clean() {
         for ( auto & trie : tries ) {
             auto useless = trie->useless();
             for ( auto it = fields.begin(); it != fields.end(); ) {
-                if ( useless.count( it->second.getRoot() ) )
+                if ( useless.count( it->second.ptr() ) )
                     it = fields.erase( it );
                 else
                     ++it;
@@ -380,17 +480,32 @@ struct AbstractFields {
         }
     }
 private:
+    using Handle = Trie::Handle;
+
     std::optional< Domain > getDomain( const Trie::Handle & handle ) {
-        if ( handle.getRoot() ) {
-            auto& node = std::get< Trie::Internal >( *handle.getRoot() );
-            if ( node.isLeaf() )
-                return node.value();
-        }
+        if ( handle.ptr() && handle.ptr()->isLeaf() )
+            return handle.ptr()->value();
         return std::nullopt;
     }
 
+    void storeUnderImpl( Handle from, Handle to ) {
+        for ( const auto & ch : from.ptr()->children() ) {
+            if ( Trie::isBackEdge( ch.second ) )
+                continue;
+            if ( to.ptr()->children().count( ch.first ) ) {
+                auto toptr = to.ptr()->children().at( ch.first ).get();
+                Handle toh = { to.trie(), toptr };
+                Handle fromh = { from.trie(), ch.second.get() };
+                storeUnderImpl( fromh, toh );
+            } else {
+                auto node = ch.second->copy( to.ptr() );
+                to.ptr()->emplaceChild( ch.first, std::move( node ) );
+            }
+        }
+    }
+
     using FieldTriePtr = std::unique_ptr< Trie >;
-    std::map< CValue , Trie::Handle > fields;
+    std::map< CValue , Handle > fields;
     std::vector< FieldTriePtr > tries;
 };
 
