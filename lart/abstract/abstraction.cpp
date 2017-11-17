@@ -127,8 +127,8 @@ void sortFunctionNodes( std::vector< FNode > & fnodes ) {
     } );
 }
 
-template< typename Abstracted >
-void cleanFNode( Abstracted & abstracted ) {
+template< typename Abstracted, typename Fields >
+void cleanFNode( Abstracted & abstracted, Fields & fields ) {
     std::set< llvm::Value * > deps;
     for ( auto & av : abstracted )
         if ( isScalarOp( av ) && !av.template isa< llvm::GetElementPtrInst >() ) {
@@ -151,12 +151,14 @@ void cleanFNode( Abstracted & abstracted ) {
         inst->removeFromParent();
     }
     for ( auto & inst : is )
+        fields.erase( inst );
+    for ( auto & inst : is )
         inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
     for ( auto & inst : is )
         delete inst;
 }
 
-template< typename Fields, typename Builder >
+template< typename Builder, typename Fields >
 void processFNode( FNode & fnode, Fields & fields, Builder & builder ) {
     auto postorder = fnode.reached( fields );
     for ( auto & av : lart::util::reverse( postorder ) ) {
@@ -166,7 +168,7 @@ void processFNode( FNode & fnode, Fields & fields, Builder & builder ) {
             builder.processStructOp( av );
     }
 
-    cleanFNode( postorder );
+    cleanFNode( postorder, fields );
 }
 
 void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
@@ -226,6 +228,7 @@ void Abstraction::run( llvm::Module & m ) {
         auto fnode = p.first;
         if ( fnode.roots().empty() )
             continue;
+
         auto vmap = globmap;
         auto builder = make_builder( vmap, data.tmap, fns );
 
