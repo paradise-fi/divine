@@ -50,6 +50,8 @@
 #ifndef BRICK_PROC
 #define BRICK_PROC
 
+extern char **environ;
+
 namespace brick {
 namespace proc {
 
