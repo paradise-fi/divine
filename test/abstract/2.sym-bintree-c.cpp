@@ -9,10 +9,13 @@ struct BinTree {
     using value_type = int64_t;
 
     struct Node {
-        Node( value_type v = 0 ) : val( v ){}
+        Node( value_type v = 0 ) : val( v ) {}
+
+        Node * min() { return ( left == nullptr ) ? this : left->min(); }
+        Node * succ() { return ( right == nullptr ) ? nullptr : right->min(); }
 
         value_type val;
-        Node *left = nullptr, *right = nullptr;
+        Node *left = nullptr, *right = nullptr, *parent = nullptr;
     };
 
     void insert( Node *node ) {
@@ -24,15 +27,54 @@ struct BinTree {
 
     void insert_impl( Node *node, Node *in ) {
         if ( in->val < node->val )
-            if ( !node->left )
+            if ( !node->left ) {
                 node->left = in;
-            else
+                in->parent = node;
+            } else {
                 insert_impl( node->left, in );
+            }
         else
-            if ( !node->right )
+            if ( !node->right ) {
                 node->right = in;
-            else
+                in->parent = node;
+            } else {
                 insert_impl( node->right, in );
+            }
+    }
+
+    void transplant(Node * u, Node * v) {
+        if( u->parent == nullptr )
+            root = v;
+        else if( u == u->parent->left )
+            u->parent->left = v;
+        else
+            u->parent->right = v;
+
+        if( v != nullptr )
+            v->parent = u->parent;
+    }
+
+    void erase( value_type v ) {
+        if ( Node * n = search( v ) )
+            erase_impl( n );
+    }
+
+    void erase_impl( Node * node ) {
+        if ( node->left == nullptr ) {
+            transplant( node, node->right );
+        } else if ( node->right == nullptr ) {
+            transplant( node, node->left );
+        } else {
+            Node* succ = node->succ();
+            if ( succ->parent != node ) {
+                transplant( succ, succ->right );
+                succ->right = node->right;
+                node->right->parent = succ;
+            }
+            transplant( node, succ );
+            succ->left = node->left;
+            node->left->parent = succ;
+        }
     }
 
     Node * search( value_type v ) const {
@@ -88,8 +130,7 @@ int main() {
     bt.insert( &n2 );
     bt.insert( &n3 );
 
+    bt.erase( n2.val );
+
     assert( bt.is_correct() );
-    assert( bt.contains( n1.val ) );
-    assert( bt.contains( n2.val ) );
-    assert( bt.contains( n3.val ) );
 }
