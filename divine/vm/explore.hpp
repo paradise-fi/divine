@@ -102,7 +102,7 @@ struct Context : vm::Context< Program, CowHeap >
 struct SymbolicContext : Context {
     using Context::Context;
 
-    // note: for some reason complier does not accept out-of-line definition of
+    // note: for some reason compiler does not accept out-of-line definition of
     // trace here, so defer it to extra, non-overloaded version
     using Context::trace;
     void trace( TraceAlg ta ) { return traceAlg( ta ); }

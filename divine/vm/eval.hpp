@@ -1439,7 +1439,7 @@ struct Eval
                     decltype( v.get() ) edit;
                     auto loc = operand< PointerV >( 0 );
                     if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ), true ) )
-                        return; // TODO: destory pre-existing register value
+                        return; // TODO: destroy pre-existing register value
                     heap().read( ptr2h( loc ), edit );
                     this->result( edit );
                     heap().write( ptr2h( loc ), impl( edit, v.get( 2 ) ) );

@@ -151,7 +151,7 @@ struct Stepper
             return false; /* nothing to be done */
 
         if ( _stop_on_error && ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error ) )
-            return false; /* can't schedule if ther is an error and we should stop */
+            return false; /* can't schedule if there is an error and we should stop */
 
         if ( _booting && ctx.frame().null() && !setup::postboot_check( ctx ) )
             return false; /* boot failed */
