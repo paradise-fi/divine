@@ -63,13 +63,13 @@ static std::string name( const AbstractValue & av ) {
 
 } // anonymous namespace
 
-template< typename VMap, typename TMap, typename Fns >
+template< typename VMap, typename TMap, typename Fns, typename Fields >
 struct AbstractBuilder {
 
     using IRB = llvm::IRBuilder<>;
 
-    AbstractBuilder( VMap & vmap, TMap & tmap, Fns & fns )
-        : vmap( vmap ), tmap( tmap ), fns( fns ), ibuilder(*this) {}
+    AbstractBuilder( VMap & vmap, TMap & tmap, Fns & fns, Fields & fields )
+        : vmap( vmap ), tmap( tmap ), fns( fns ), fields( fields ), ibuilder(*this) {}
 
     void process( const AbstractValue & av ) {
         if ( auto v = av.safeGet< llvm::Instruction >() )
@@ -261,7 +261,18 @@ private:
             return l.isJust() ? l.value() : op.get();
         } );
 
-        auto calle = fns.get( cs.getCalledFunction(), typesOf( args ) );
+        std::vector< size_t > sig;
+        size_t idx = 0;
+
+        for ( auto & a : args ) {
+            bool scalar = isScalarType( a->getType() );
+            if ( ( fields.has( a ) && !scalar ) || isAbstract( a->getType() ) )
+                sig.push_back( idx );
+            ++idx;
+        }
+        std::sort( sig.begin(), sig.end() );
+
+        auto calle = fns.get( cs.getCalledFunction(), sig );
         IRB irb( i );
 
         llvm::Instruction * intr = nullptr;
@@ -367,7 +378,6 @@ private:
         auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( name, fty );
         auto call = irb.CreateCall( fn , v );
 
-        // TODO have to be here?
         vmap.insert( v, call );
         return call;
     }
@@ -448,12 +458,14 @@ private:
     TMap & tmap;
     Fns & fns;
 
+    Fields & fields;
+
     IntrinsicBuilder ibuilder;
 };
 
-template< typename VMap, typename TMap, typename Fns >
-static auto make_builder( VMap & vmap, TMap & tmap, Fns & fns ) {
-    return AbstractBuilder< VMap, TMap, Fns >( vmap, tmap, fns );
+template< typename VMap, typename TMap, typename Fns, typename Fields >
+static auto make_builder( VMap & vmap, TMap & tmap, Fns & fns, Fields & fields ) {
+    return AbstractBuilder< VMap, TMap, Fns, Fields >( vmap, tmap, fns, fields );
 }
 
 } // namespace abstract

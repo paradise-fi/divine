@@ -1,4 +1,11 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
+
+
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/Module.h>
+#include <llvm/Transforms/IPO.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <lart/abstract/abstraction.h>
 #include <lart/abstract/intrinsic.h>
 
@@ -230,7 +237,7 @@ void Abstraction::run( llvm::Module & m ) {
             continue;
 
         auto vmap = globmap;
-        auto builder = make_builder( vmap, data.tmap, fns );
+        auto builder = make_builder( vmap, data.tmap, fns, fields );
 
         // If signature changes create a new function declaration
         // if proccessed function is called with abstract argument create clone of it
@@ -259,6 +266,9 @@ void Abstraction::run( llvm::Module & m ) {
 
     for ( const auto & g : globals )
         llvm::cast< llvm::GlobalVariable >( g.value )->eraseFromParent();
+
+    auto sdp = llvm::createStripDeadPrototypesPass();
+    sdp->runOnModule( m );
 }
 
 llvm::Function * Abstraction::process( const FunctionNode & fnode, const Fields & fields ) {
@@ -287,7 +297,8 @@ llvm::Function * Abstraction::process( const FunctionNode & fnode, const Fields 
 
     auto fty = llvm::FunctionType::get( rty, as, fn->getFunctionType()->isVarArg() );
     auto newfn = llvm::Function::Create( fty, fn->getLinkage(), fn->getName(), fn->getParent() );
-    fns.insert( fn, newfn );
+
+    fns.insert( fn, argIndices( args ), newfn );
     return newfn;
 }
 

@@ -50,6 +50,7 @@ using Args = Values;
 using ArgTypes = Types;
 
 using ArgDomains = std::vector< Domain >;
+using ArgIndices = std::vector< size_t >;
 
 template< typename T >
 using ConstifyPtr = std::add_pointer_t< std::add_const_t< std::remove_pointer_t< T > > >;
@@ -112,34 +113,28 @@ struct LiftMap {
 template< typename Function, typename Signature >
 struct FunctionMap {
     Function get( const Function & fn, const Signature & sig ) const {
-        auto p = data.find( fn );
-        if ( ( signature( fn ) == sig ) && p == data.end() )
-            return fn;
-        if ( p != data.end() ) {
-            for ( const auto & r : p->second )
-                if ( equal( signature( r ), sig ) )
-                    return r;
+        auto p = _data.find( fn );
+        if ( p != _data.end() ) {
+            auto val = p->second.find( sig );
+            if ( val != p->second.end() )
+                return val->second;
         }
         return nullptr;
     }
 
     void assign( const Function & a, const Function & b ) {
-        data[ a ] = data[ b ];
+        _data[ a ].insert( _data[ b ].begin(), _data[ b ].end() );
     }
 
-    void insert( Function a, Function b ) {
-        data[ a ].push_back( b );
+    void insert( Function a, Signature s, Function b ) {
+        _data[ a ][ s ] = b;
     }
 
     size_t count( const Function & fn ) const {
-        return data.count( fn );
+        return _data.count( fn );
     }
 private:
-    Signature signature( const Function & fn ) const {
-        return fn->getFunctionType()->params().vec();
-    }
-
-    Map< Function, Functions > data;
+    Map< Function, Map< Signature, Function > > _data;
 };
 
 static inline bool isScalarType( llvm::Type * type ) {
@@ -229,6 +224,16 @@ static inline ArgDomains argDomains( const Arguments & args ) {
     auto fn = getFunction( args[ 0 ].value );
     return argDomains( fn, args );
 };
+
+template< typename Arguments >
+static inline std::vector< size_t > argIndices( const Arguments & args ) {
+    std::vector< size_t > ind;
+    for ( auto & a : args )
+        ind.push_back( llvm::cast< llvm::Argument >( a.value )->getArgNo() );
+    std::sort( ind.begin(), ind.end() );
+    return ind;
+}
+
 
 static inline bool isBaseStructTy( llvm::Type * type ) {
     return stripPtrs( type )->isStructTy();

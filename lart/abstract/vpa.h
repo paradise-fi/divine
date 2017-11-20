@@ -32,14 +32,14 @@ struct FunctionRoots {
         return annRoots.get();
     }
 
-    RootsSet * argDepRoots( const ArgDomains & doms ) {
-        if ( !argRoots.count( doms ) )
-            argRoots[ doms ] = std::make_unique< RootsSet >();
-        return argRoots[ doms ].get();
+    RootsSet * argDepRoots( const ArgIndices & ins ) {
+        if ( !argRoots.count( ins ) )
+            argRoots[ ins ] = std::make_unique< RootsSet >();
+        return argRoots[ ins ].get();
     }
 
-    RootsSet roots( const ArgDomains & doms ) const {
-        return unionRoots( annRoots, argRoots.at( doms ).get() );
+    RootsSet roots( const ArgIndices & ins ) const {
+        return unionRoots( annRoots, argRoots.at( ins ).get() );
     }
 
     RootsSet roots( RootsSet * rs ) const {
@@ -49,9 +49,8 @@ struct FunctionRoots {
     void insert( AbstractValue av, RootsSet * rs ) {
         if ( auto a = av.get< llvm::Argument >() ) {
             if ( rs == annRoots.get() ) {
-                auto fn = getFunction( a );
-                auto doms = argDomains( fn, filterA< llvm::Argument >( *rs ) );
-                rs = argRoots[ doms ].get();
+                auto ins = argIndices( filterA< llvm::Argument >( *rs ) );
+                rs = argRoots[ ins ].get();
                 annRoots->insert( av );
             }
 
@@ -59,10 +58,12 @@ struct FunctionRoots {
                 [&] ( const auto & r ) { return r.second.get() == rs; } );
 
             assert( roots != argRoots.end() );
-            if ( roots->first[ a->getArgNo() ] == Domain::LLVM ) {
-                ArgDomains doms = roots->first;
-                doms[ a->getArgNo() ] = av.domain;
-                argRoots.insert( { doms, std::move( roots->second ) } );
+            auto ins = roots->first;
+
+            auto find = std::find( ins.begin(), ins.end(), a->getArgNo() );
+            if ( find == ins.end() ) {
+                ins.push_back( a->getArgNo() );
+                argRoots.insert( { ins, std::move( roots->second ) } );
                 argRoots.erase( roots );
             }
         }
@@ -74,21 +75,20 @@ struct FunctionRoots {
         annRoots->insert( av );
     }
 
-    void init( size_t argSize ) {
+    void init() {
         if ( !annRoots )
             annRoots = std::make_unique< RootsSet >();
-        auto key = ArgDomains( argSize, Domain::LLVM );
-        argRoots[ key ] = std::make_unique< RootsSet >();
+        argRoots[ {} ] = std::make_unique< RootsSet >();
     }
 
 
-    bool has( const ArgDomains & doms ) const {
-        return argRoots.count( doms );
+    bool has( const ArgIndices & ins ) const {
+        return argRoots.count( ins );
     }
 
-    Domain returns( const ArgDomains & doms ) const {
+    Domain returns( const ArgIndices & ins ) const {
         // TODO cache return results
-        auto rs = roots( doms );
+        auto rs = roots( ins );
         auto rf = reachFrom( { rs.begin(), rs.end() } );
         for ( auto & v : lart::util::reverse( rf ) )
             if ( v.isa< llvm::ReturnInst >() )
@@ -97,7 +97,7 @@ struct FunctionRoots {
     }
 
 
-    using ArgRootsSets = std::map< ArgDomains, RootsSetPtr >;
+    using ArgRootsSets = std::map< ArgIndices, RootsSetPtr >;
     using RootsIterator = ArgRootsSets::iterator;
 
     class iterator: public std::iterator< std::bidirectional_iterator_tag, RootsSet > {
@@ -121,7 +121,7 @@ struct FunctionRoots {
 
 private:
     RootsSetPtr annRoots; // annotation roots
-    std::map< ArgDomains, RootsSetPtr > argRoots; // argument dependent roots
+    std::map< ArgIndices, RootsSetPtr > argRoots; // argument dependent roots
 };
 
 using Reached = std::map< llvm::Function *, FunctionRoots >;

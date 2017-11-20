@@ -32,7 +32,9 @@ struct Abstraction {
     FunctionNode clone( const FunctionNode & node, Fields & );
 
     PassData & data;
-    FunctionMap< llvm::Function *, Types > fns;
+
+    using Signature = std::vector< size_t >;
+    FunctionMap< llvm::Function *, Signature > fns;
 };
 
 } // namespace abstract

@@ -63,21 +63,39 @@ AbstractValues annotations( llvm::Module & m ) {
     return values;
 }
 
-AbstractValues abstractArgs( const AbstractValues & reached, const llvm::CallSite & cs ) {
+template< typename Fields >
+AbstractValues abstractArgs( const AbstractValues & reached,
+                             const Fields & fields,
+                             const llvm::CallSite & cs )
+{
     auto fn = cs.getCalledFunction();
     AbstractValues res;
     for ( size_t i = 0; i < cs.getNumArgOperands(); ++i ) {
         auto find = std::find_if( reached.begin(), reached.end(), [&] ( const auto & a ) {
-            return a.value == cs.getArgOperand( i );
+            if ( a.value == cs.getArgOperand( i ) ) {
+                if ( !isScalarType( a.value->getType() ) ) {
+                    if ( fields.has( a.value ) )
+                        return true;
+                } else {
+                    return true;
+                }
+            }
+            return false;
         } );
+        auto arg = std::next( fn->arg_begin(), i );
         if ( find != reached.end() )
-            res.emplace_back( std::next( fn->arg_begin(), i ), find->domain );
+            res.emplace_back( arg, find->domain );
     }
     return res;
 }
 
-AbstractValues abstractArgs( const RootsSet * roots, const llvm::CallSite & cs ) {
-    return abstractArgs( reachFrom( { roots->cbegin(), roots->cend() } ), cs );
+
+template< typename Fields >
+AbstractValues abstractArgs( const RootsSet * roots,
+                             const Fields & fields,
+                             const llvm::CallSite & cs )
+{
+    return abstractArgs( reachFrom( { roots->cbegin(), roots->cend() } ), fields, cs );
 }
 
 llvm::StoreInst * isArgStoredTo( llvm::Value * v ) {
@@ -151,7 +169,7 @@ VPA::Roots VPA::run( llvm::Module & m ) {
 void VPA::record( llvm::Function * fn ) {
     if ( !reached.count( fn ) ) {
         preprocess( fn );
-        reached[ fn ].init( fn->arg_size() );
+        reached[ fn ].init();
     }
 }
 
@@ -165,11 +183,12 @@ void VPA::stepIn( const StepIn & si ) {
     auto fn = cs.getCalledFunction();
     if ( fn->isIntrinsic() )
         return;
-    auto args = abstractArgs( si.parent->roots, cs );
-    auto doms = argDomains( args );
+
+    auto args = abstractArgs( si.parent->roots, fields, cs );
+    auto ins = argIndices( args );
     if ( reached.count( fn ) ) {
-        if ( reached[ fn ].has( doms ) ) {
-            auto dom = reached[ fn ].returns( doms );
+        if ( reached[ fn ].has( ins ) ) {
+            auto dom = reached[ fn ].returns( ins );
             if ( dom != Domain::LLVM )
                 dispach( StepOut( fn, dom, si.parent ) );
             return; // We have already seen 'fn' with this abstract signature
@@ -178,8 +197,8 @@ void VPA::stepIn( const StepIn & si ) {
         record( fn );
     }
 
+    auto roots = reached[ fn ].argDepRoots( ins );
     for ( const auto & av : args ) {
-        auto roots = reached[ fn ].argDepRoots( doms );
         auto arg = av.get< llvm::Argument >();
         auto op = cs.getInstruction()->getOperand( arg->getArgNo() );
         if ( !isScalarType( op->getType() ) )
@@ -223,7 +242,6 @@ llvm::Value * origin( llvm::Value * val, Fields & fields ) {
 
 void VPA::propagateFromGEP( llvm::GetElementPtrInst * gep, Domain dom, RootsSet * roots, ParentPtr parent ) {
     auto o = origin( gep, fields );
-    // TODO set domain
     dispach( PropagateDown( AbstractValue{ o, dom }, roots, parent ) );
 }
 
@@ -328,6 +346,8 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
 
             if ( !isScalarType( val ) ) {
                 auto o = origin( ptr, fields );
+                if ( auto a = llvm::dyn_cast< llvm::Argument >( o ) )
+                    dispach( PropagateUp( a, t.roots, t.parent ) );
                 dispach( PropagateDown( { o, Domain::Symbolic }, t.roots, t.parent ) );
             }
         }
@@ -384,6 +404,8 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
                 fields.setDomain( path, dom );
 
             auto o = origin( ptr, fields );
+            if ( auto a = llvm::dyn_cast< llvm::Argument >( o ) )
+                dispach( PropagateUp( a, t.roots, t.parent ) );
             dispach( PropagateDown( { o,  dom }, t.roots, t.parent ) );
         }
         else if ( auto l = Load( av ) ) {
