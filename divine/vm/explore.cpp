@@ -13,7 +13,7 @@ namespace proc = brick::proc;
 
 sym::Formula *stripAssumes( sym::Formula *f, FormulaMap &m )
 {
-    while ( f->op == sym::Op::Assume )
+    while ( f->op() == sym::Op::Assume )
         f = m.hp2form( f->assume.value );
     return f;
 }
@@ -67,7 +67,7 @@ bool SymbolicHasher::smtEqual( SymPairs &symPairs ) const
         auto f1 = stripAssumes( m1.hp2form( p.first ), m1 ),
              f2 = stripAssumes( m2.hp2form( p.second ), m2 );
 
-        if ( f1->op == sym::Op::Variable && f2->op == sym::Op::Variable )
+        if ( f1->op() == sym::Op::Variable && f2->op() == sym::Op::Variable )
         {
             if ( f1->var.id != f2->var.id )
                 return false;
@@ -75,7 +75,7 @@ bool SymbolicHasher::smtEqual( SymPairs &symPairs ) const
                 continue;
         }
 
-        if ( f1->op == sym::Op::Constant && f2->op == sym::Op::Constant )
+        if ( f1->op() == sym::Op::Constant && f2->op() == sym::Op::Constant )
         {
             if ( match( f1->con, f2->con ) )
                 continue;

@@ -31,9 +31,9 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
         return it->second;
 
     auto formula = hp2form( ptr );
-    int bw = formula->type.bitwidth();
+    int bw = formula->type().bitwidth();
 
-    switch ( formula->op )
+    switch ( formula->op() )
     {
         case sym::Op::Variable:
         {
@@ -58,11 +58,11 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
     }
 
     smt::Printer op;
-    if ( sym::isUnary( formula->op ) )
+    if ( sym::isUnary( formula->op() ) )
     {
         sym::Unary &unary = formula->unary;
         auto arg = smt::symbol( convert( unary.child ) );
-        int childbw = hp2form( unary.child )->type.bitwidth();
+        int childbw = hp2form( unary.child )->type().bitwidth();
 
         switch ( unary.op ) {
             case sym::Op::Trunc:
@@ -103,13 +103,13 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
                 UNREACHABLE_F( "unknown unary operation %d", unary.op );
         }
     }
-    else if ( sym::isBinary( formula->op ) )
+    else if ( sym::isBinary( formula->op() ) )
     {
         sym::Binary &binary = formula->binary;
         auto a = smt::symbol( convert( binary.left ) );
         auto b = smt::symbol( convert( binary.right ) );
         auto fa = hp2form( binary.left ), fb = hp2form( binary.right );
-        int abw = fa->type.bitwidth(), bbw = fb->type.bitwidth();
+        int abw = fa->type().bitwidth(), bbw = fb->type().bitwidth();
         ASSERT_EQ( abw, bbw );
 
         if ( abw > 1 ) {
