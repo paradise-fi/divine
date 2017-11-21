@@ -42,7 +42,7 @@
 #include <sstream>
 #include <functional>
 
-#if _LIBCPP_VERSION >= 4000
+#if _LIBCPP_VERSION >= 4000 || __GLIBCXX__ >= 20170630
 #include <string_view>
 #else
 #include <experimental/string_view>
