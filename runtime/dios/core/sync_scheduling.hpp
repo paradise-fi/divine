@@ -34,10 +34,6 @@ struct SyncScheduler : public Scheduler< Next >
         Next::setup( s );
     }
 
-    void exit_process( int code ) {
-        Scheduler< Next >::killTask( __dios_get_task_handle() );
-    }
-
     Task* getCurrentTask() {
         if ( _setupTask )
             return _setupTask.get();

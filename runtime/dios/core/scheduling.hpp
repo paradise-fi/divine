@@ -385,6 +385,11 @@ struct Scheduler : public Next
         return t->getId();
     }
 
+    void exit_process( int code )
+    {
+        die();
+    }
+
     void kill_task( _DiOS_TaskHandle id ) {
         killTask( id );
     }
