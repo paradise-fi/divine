@@ -4,7 +4,7 @@ email()
 {
     echo "From: xrockai@fi.muni.cz"
     echo "To: $address"
-    echo "Subject: DIVINE daily $today: $patches"
+    echo "Subject: ${failsubj}DIVINE daily $today: $patches"
     echo
     cat report.txt
 }
@@ -38,11 +38,13 @@ cantbuild()
 
 failed()
 {
+    failsubj="failed "
     if test -e $list; then
         echo "Some tests failed:"
         echo
-        grep -v passed $list | perl -pe 's,([a-z]+):(.*) (.*),    $3: [$1] $2,'
+        grep failed $list | perl -pe 's,([a-z]+):(.*) (.*),    $3: [$1] $2,'
         echo
+        if egrep -q 'warnings|skipped' $list; then warnings; fi
         echo "Remaining $(grep -c passed $list) tests passed. Stopping here."
     else
         echo "Make check failed:"
@@ -77,6 +79,7 @@ address=$1
 upstream=$2
 downstream=$3
 today=$(date +%Y-%m-%d)
+failsubj=
 
 # anything new?
 darcs pull --dry -a --match 'not name XXX' --no-deps -s --no-set-default $upstream 2>&1 | \
