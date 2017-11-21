@@ -1048,7 +1048,7 @@ struct Parallel
     static HS< int > _multi( std::size_t count, int from, int to )
     {
         shmem::ThreadSet< Insert > arr;
-        arr.resize( count, Insert() );
+        arr.resize( count );
         arr[ 0 ].set.initialSize( isize );
 
         for ( std::size_t i = 0; i < count; ++i )
