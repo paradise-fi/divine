@@ -135,7 +135,7 @@ std::string to_string( const SystemOutput &o ) {
 
 struct Pipe {
     Pipe() {
-        if ( ::pipe( _fds ) == -1 )
+        if ( ::pipe2( _fds, O_CLOEXEC ) == -1 )
             throw ProcError( "could not create pipe" );
     }
 
