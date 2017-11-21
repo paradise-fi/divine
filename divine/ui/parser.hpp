@@ -38,110 +38,126 @@ struct CLI : Interface
 
     auto validator()
     {
-        return cmd::make_validator()->
-            add( "file", []( std::string s, auto good, auto bad )
-                 {
-                     if ( s[0] == '-' ) /* FIXME! zisit, kde sa to rozbije */
-                         return bad( cmd::BadFormat, "file must not start with -" );
-                     if ( !brick::fs::access( s, F_OK ) )
-                         return bad( cmd::BadContent, "file " + s + " does not exist");
-                     if ( !brick::fs::access( s, R_OK ) )
-                         return bad( cmd::BadContent, "file " + s + " is not readable");
-                     return good( s );
-                 } ) ->
-            add( "vfsdir", []( std::string s, auto good, auto bad )
-                {
-                    WithBC::VfsDir dir { .followSymlink = true };
-                    std::regex sep(":");
-                    std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
-                    int i;
-                    for ( i = 0; it != std::sregex_token_iterator(); it++, i++ )
-                        switch ( i ) {
-                        case 0:
-                            dir.capture = *it;
-                            dir.mount = *it;
-                            break;
-                        case 1:
-                            if ( *it == "follow" )
-                                dir.followSymlink = true;
-                            else if ( *it == "nofollow" )
-                                dir.followSymlink = false;
-                            else
-                                return bad( cmd::BadContent, "invalid option for follow links" );
-                            break;
-                        case 2:
-                            dir.mount = *it;
-                            break;
-                        default:
-                            return bad( cmd::BadContent, " unexpected attribute "
-                                + std::string( *it ) + " in vfsdir" );
-                    }
+        auto file = []( std::string s, auto good, auto bad )
+        {
+            if ( s[0] == '-' ) /* FIXME! zisit, kde sa to rozbije */
+                return bad( cmd::BadFormat, "file must not start with -" );
+            if ( !brick::fs::access( s, F_OK ) )
+                return bad( cmd::BadContent, "file " + s + " does not exist");
+            if ( !brick::fs::access( s, R_OK ) )
+                return bad( cmd::BadContent, "file " + s + " is not readable");
+            return good( s );
+        };
 
-                    if ( i < 1 )
-                        return bad( cmd::BadContent, "missing a directory to capture" );
-                    if ( !brick::fs::access( dir.capture, F_OK ) )
-                        return bad( cmd::BadContent, "file or directory " + dir.capture + " does not exist" );
-                    if ( !brick::fs::access( dir.capture, R_OK ) )
-                        return bad( cmd::BadContent, "file or directory " + dir.capture + " is not readable" );
-                    return good( dir );
-                } ) ->
-            add( "mem", []( std::string s, auto good, auto bad )
-                {
-                    try {
-                        size_t size = memFromString( s );
-                        return good( size );
-                    }
-                    catch ( const std::invalid_argument& e ) {
-                        return bad( cmd::BadContent, std::string("cannot read size: ")
-                            + e.what() );
-                    }
-                    catch ( const std::out_of_range& e ) {
-                        return bad( cmd::BadContent, "size overflow" );
-                    }
-                } ) ->
-            add( "repfmt", []( std::string s, auto good, auto bad )
-                {
-                    if ( s.compare("none") == 0 )
-                        return good( Report::None );
-                    if ( s.compare("yaml-long") == 0 )
-                        return good( Report::YamlLong );
-                    if ( s.compare("yaml") == 0 )
-                        return good( Report::Yaml );
-                    return bad( cmd::BadContent, s + " is not a valid report format" );
-                } ) ->
-            add( "label", []( std::string s, auto good, auto bad )
-                {
-                    if ( s.compare("none") == 0 )
-                        return good( Draw::None );
-                    if ( s.compare("all") == 0 )
-                        return good( Draw::All );
-                    if ( s.compare("trace") == 0 )
-                        return good( Draw::Trace );
-                    return bad( cmd::BadContent, s + " is not a valid label type" );
-                } ) ->
-            add( "tracepoints", []( std::string s, auto good, auto bad )
-                {
-                    if ( s == "calls" )
-                        return good( vm::AutoTrace::Calls );
-                    if ( s == "none" )
-                        return good( vm::AutoTrace::Nothing );
-                    return bad( cmd::BadContent, s + " is nod a valid tracepoint specification" );
-                } ) ->
-            add( "paths", []( std::string s, auto good, auto )
-                {
-                    std::vector< std::string > out;
-                    std::regex sep(":");
-                    std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
-                    std::copy( it, std::sregex_token_iterator(), std::back_inserter( out ) );
-                    return good( out );
-                } ) ->
-            add( "commasep", []( std::string s, auto good, auto )
-                {
-                    std::vector< std::string > out;
-                    for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
-                        out.emplace_back( x );
-                    return good( out );
-                } );
+        auto vfsdir = []( std::string s, auto good, auto bad )
+        {
+            WithBC::VfsDir dir { .followSymlink = true };
+            std::regex sep(":");
+            std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
+            int i;
+            for ( i = 0; it != std::sregex_token_iterator(); it++, i++ )
+                switch ( i ) {
+                case 0:
+                    dir.capture = *it;
+                    dir.mount = *it;
+                    break;
+                case 1:
+                    if ( *it == "follow" )
+                        dir.followSymlink = true;
+                    else if ( *it == "nofollow" )
+                        dir.followSymlink = false;
+                    else
+                        return bad( cmd::BadContent, "invalid option for follow links" );
+                    break;
+                case 2:
+                    dir.mount = *it;
+                    break;
+                default:
+                    return bad( cmd::BadContent, " unexpected attribute "
+                        + std::string( *it ) + " in vfsdir" );
+            }
+
+            if ( i < 1 )
+                return bad( cmd::BadContent, "missing a directory to capture" );
+            if ( !brick::fs::access( dir.capture, F_OK ) )
+                return bad( cmd::BadContent, "file or directory " + dir.capture + " does not exist" );
+            if ( !brick::fs::access( dir.capture, R_OK ) )
+                return bad( cmd::BadContent, "file or directory " + dir.capture + " is not readable" );
+            return good( dir );
+        };
+
+        auto mem = []( std::string s, auto good, auto bad )
+        {
+            try {
+                size_t size = memFromString( s );
+                return good( size );
+            }
+            catch ( const std::invalid_argument& e ) {
+                return bad( cmd::BadContent, std::string("cannot read size: ")
+                    + e.what() );
+            }
+            catch ( const std::out_of_range& e ) {
+                return bad( cmd::BadContent, "size overflow" );
+            }
+        };
+
+        auto repfmt = []( std::string s, auto good, auto bad )
+        {
+            if ( s.compare("none") == 0 )
+                return good( Report::None );
+            if ( s.compare("yaml-long") == 0 )
+                return good( Report::YamlLong );
+            if ( s.compare("yaml") == 0 )
+                return good( Report::Yaml );
+            return bad( cmd::BadContent, s + " is not a valid report format" );
+        };
+
+        auto label = []( std::string s, auto good, auto bad )
+        {
+            if ( s.compare("none") == 0 )
+                return good( Draw::None );
+            if ( s.compare("all") == 0 )
+                return good( Draw::All );
+            if ( s.compare("trace") == 0 )
+                return good( Draw::Trace );
+            return bad( cmd::BadContent, s + " is not a valid label type" );
+        };
+
+        auto tracepoints = []( std::string s, auto good, auto bad )
+        {
+            if ( s == "calls" )
+                return good( vm::AutoTrace::Calls );
+            if ( s == "none" )
+                return good( vm::AutoTrace::Nothing );
+            return bad( cmd::BadContent, s + " is nod a valid tracepoint specification" );
+        };
+
+        auto paths = []( std::string s, auto good, auto )
+        {
+            std::vector< std::string > out;
+            std::regex sep(":");
+            std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
+            std::copy( it, std::sregex_token_iterator(), std::back_inserter( out ) );
+            return good( out );
+        };
+
+        auto commasep = []( std::string s, auto good, auto )
+        {
+            std::vector< std::string > out;
+            for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
+                out.emplace_back( x );
+            return good( out );
+        };
+
+        return cmd::make_validator()->
+            add( "file", file )->
+            add( "vfsdir", vfsdir )->
+            add( "mem", mem )->
+            add( "repfmt", repfmt )->
+            add( "label", label )->
+            add( "tracepoints", tracepoints )->
+            add( "paths", paths )->
+            add( "commasep", commasep );
     }
 
     auto commands()
