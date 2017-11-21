@@ -51,7 +51,8 @@ struct CLI : Interface
 
         auto vfsdir = []( std::string s, auto good, auto bad )
         {
-            WithBC::VfsDir dir { .followSymlink = true };
+            WithBC::VfsDir dir;
+            dir.followSymlink = true;
             std::regex sep(":");
             std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
             int i;
