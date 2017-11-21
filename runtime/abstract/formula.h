@@ -239,7 +239,7 @@ template< typename Formula >
 struct Assume_ {
 
     Assume_( Formula value, Formula constraint ) :
-        op( Op::Assume ), type( value->type ), value( value ), constraint( constraint )
+        op( Op::Assume ), type( value->type() ), value( value ), constraint( constraint )
     { }
 
     Op op;
@@ -261,12 +261,16 @@ using Assume = Assume_< divine::vm::HeapPointer >;
 #endif
 
 union Formula {
-    Formula() : op( Op::Invalid ) { }
+    Formula() : hdr{ Op::Invalid, Type() } { }
 
     struct {
         Op op;
         Type type;
-    };
+    } hdr;
+
+    Op op() const { return hdr.op; }
+    Type type() const { return hdr.type; }
+
     Variable var;
     Constant con;
     Unary unary;

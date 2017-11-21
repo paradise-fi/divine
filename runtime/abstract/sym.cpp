@@ -47,11 +47,11 @@ Formula *__abstract_sym_load( Formula **a, int bitwidth ) {
     if ( bitwidth > 64 )
         UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
     auto *val = *a;
-    if ( val->type.bitwidth() > bitwidth ) {
+    if ( val->type().bitwidth() > bitwidth ) {
         return __abstract_sym_trunc( val, bitwidth );
-    } else if ( val->type.bitwidth() < bitwidth ) {
+    } else if ( val->type().bitwidth() < bitwidth ) {
         UNREACHABLE_F( "Loading of %d bit value from %d bit abstract value is not supported (yet).",
-                       bitwidth, val->type.bitwidth() );
+                       bitwidth, val->type().bitwidth() );
     }
     return mark( val );
 }
@@ -67,7 +67,7 @@ Formula *__abstract_sym_lift( int64_t val, int bitwidth ) {
 }
 
 #define BINARY( suff, op ) Formula *__abstract_sym_ ## suff( Formula *a, Formula *b ) { \
-    return mark( __newf< Binary >( Op::op, a->type, weaken( a ), weaken( b ) ) ); \
+    return mark( __newf< Binary >( Op::op, a->type(), weaken( a ), weaken( b ) ) ); \
 }
 
 BINARY( add, Add );
@@ -85,7 +85,7 @@ BINARY( lshr, LShr );
 BINARY( ashr, AShr );
 
 #define CAST( suff, op ) Formula *__abstract_sym_ ## suff( Formula *a, int bitwidth ) { \
-    Type t = a->type; \
+    Type t = a->type(); \
     t.bitwidth( bitwidth ); \
     return mark( __newf< Unary >( Op::op, t, weaken( a ) ) ); \
 }
@@ -119,7 +119,7 @@ Tristate *__abstract_sym_bool_to_tristate( Formula * ) {
 Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool assume ) {
     Formula *wconstraint = weaken( constraint );
     if ( !assume )
-        wconstraint = __newf< Unary >( Op::BoolNot, wconstraint->type, wconstraint );
+        wconstraint = __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint );
     state.pcFragments = weaken( __new< PCFragment >( wconstraint, state.pcFragments ) );
     __vm_trace( _VM_T_Alg, state.pcFragments );
     return mark( __newf< Assume >( weaken( value ), wconstraint ) );
