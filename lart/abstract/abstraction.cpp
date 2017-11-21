@@ -100,15 +100,17 @@ struct GlobMap : LiftMap< llvm::Value *, llvm::Value * > {
 
     void populate( VPA::Globals & globals ) {
         for ( auto & av : globals ) {
-            auto glob = llvm::cast< llvm::GlobalVariable >( av.value );
-            auto dom = av.domain;
+            if ( !av.value->getType()->getPointerElementType()->isStructTy() ) {
+                auto glob = llvm::cast< llvm::GlobalVariable >( av.value );
+                auto dom = av.domain;
 
-            auto type = liftType( glob->getValueType(), dom, data.tmap );
-            auto name = glob->getName() + "." + DomainTable[ dom ];
-            auto ag = llvm::cast< llvm::GlobalVariable >(
-                                  m.getOrInsertGlobal( name.str(), type ) );
+                auto type = liftType( glob->getValueType(), dom, data.tmap );
+                auto name = glob->getName() + "." + DomainTable[ dom ];
+                auto ag = llvm::cast< llvm::GlobalVariable >(
+                                      m.getOrInsertGlobal( name.str(), type ) );
 
-            this->insert( glob, ag );
+                this->insert( glob, ag );
+            }
         }
     }
 private:
@@ -203,7 +205,18 @@ AbstractValues Abstraction::FunctionNode::reached( const Fields & fields ) const
             return !fields.has( gep );
         return false;
     };
-    return reachFrom( { roots().begin(), roots().end() }, filter );
+
+    AbstractValues avroots;
+    for ( const auto & av : roots() ) {
+        Domain dom = av.domain;
+        if ( auto maybedom = fields.getDomain( av.value ) )
+            dom = maybedom.value();
+        if ( auto maybedom = fields.getDomain( { av.value, { LoadStep{} } } ) )
+            dom = maybedom.value();
+        avroots.emplace_back( av.value, dom );
+    }
+
+    return reachFrom( avroots, filter );
 }
 
 void Abstraction::run( llvm::Module & m ) {
@@ -265,7 +278,8 @@ void Abstraction::run( llvm::Module & m ) {
         fn->eraseFromParent();
 
     for ( const auto & g : globals )
-        llvm::cast< llvm::GlobalVariable >( g.value )->eraseFromParent();
+        if ( !g.value->getType()->getPointerElementType()->isStructTy() )
+            llvm::cast< llvm::GlobalVariable >( g.value )->eraseFromParent();
 
     auto sdp = llvm::createStripDeadPrototypesPass();
     sdp->runOnModule( m );

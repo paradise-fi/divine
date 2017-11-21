@@ -375,6 +375,9 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
         else if ( auto gep = GEP( av ) ) {
             auto path = createFieldPath( gep );
             fields.insert( path );
+
+            if ( llvm::isa< llvm::GlobalValue >( gep->getPointerOperand() ) )
+                t.roots->insert( av );
         }
         else if ( auto bc = BitCast( av ) ) {
             fields.alias( bc->getOperand( 0 ), bc );
@@ -454,9 +457,11 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
 }
 
 void VPA::markGlobal( llvm::GlobalValue * value ) {
-    auto dom = fields.getDomain( { value, { LoadStep{} } } );
-    assert( dom );
-    AbstractValue av = { value, dom.value() };
+    Domain dom = Domain::Undefined;
+    if ( auto maybedom = fields.getDomain( { value, { LoadStep{} } } ) )
+        dom = maybedom.value();
+
+    AbstractValue av = { value, dom };
 
     if ( globals.count( av ) )
         return;
@@ -467,8 +472,21 @@ void VPA::markGlobal( llvm::GlobalValue * value ) {
             auto fn = getFunction( l );
             if ( !reached.count( fn ) )
                 record( fn );
-            AbstractValue al = { l, dom.value() };
+
+            AbstractValue al = { l, dom };
             dispach( PropagateDown( al, reached[ fn ].annotations(), nullptr ) );
+        }
+        else if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( u ) ) {
+            auto fn = getFunction( gep );
+            if ( !reached.count( fn ) )
+                record( fn );
+
+            auto path = createFieldPath( gep );
+            if ( auto maybedom = fields.getDomain( path ) )
+                dom = maybedom.value();
+
+            AbstractValue ag = { gep, dom };
+            dispach( PropagateDown( ag, reached[ fn ].annotations(), nullptr ) );
         }
     }
 }

@@ -188,7 +188,7 @@ struct FieldTrie {
 
         explicit operator bool() const { return _ptr && _trie; }
 
-        Handle search( const Indices & keys ) {
+        Handle search( const Indices & keys ) const {
             assert( _ptr );
             auto level = _ptr;
             for ( auto k : keys ) {
@@ -404,7 +404,7 @@ struct AbstractFields {
         return fields.at( a ).trie() == fields.at( b ).trie();
     }
 
-    std::optional< Domain > getDomain( const Path & path ) {
+    std::optional< Domain > getDomain( const Path & path ) const {
         if ( fields.count( path.from ) ) {
             auto handle = fields.at( path.from ).search( path.indices );
             return getDomain( handle );
@@ -412,7 +412,7 @@ struct AbstractFields {
         return std::nullopt;
     }
 
-    std::optional< Domain > getDomain( CValue val ) {
+    std::optional< Domain > getDomain( CValue val ) const {
         if ( fields.count( val ) )
             return getDomain( fields.at( val ) );
         return std::nullopt;
@@ -482,7 +482,7 @@ struct AbstractFields {
 private:
     using Handle = Trie::Handle;
 
-    std::optional< Domain > getDomain( const Trie::Handle & handle ) {
+    std::optional< Domain > getDomain( const Trie::Handle & handle ) const {
         if ( handle.ptr() && handle.ptr()->isLeaf() )
             return handle.ptr()->value();
         return std::nullopt;

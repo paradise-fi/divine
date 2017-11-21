@@ -72,10 +72,11 @@ struct AbstractBuilder {
         : vmap( vmap ), tmap( tmap ), fns( fns ), fields( fields ), ibuilder(*this) {}
 
     void process( const AbstractValue & av ) {
+        Domain dom = av.domain;
         if ( auto v = av.safeGet< llvm::Instruction >() )
-            return process( v, av.domain );
+            return process( v, dom );
         if ( auto a = av.safeGet< llvm::Argument >() )
-            return process( a, av.domain );
+            return process( a, dom );
         UNREACHABLE( "Trying to process unsupported value.");
     }
 
@@ -92,11 +93,12 @@ struct AbstractBuilder {
     void process( llvm::Instruction * inst, Domain dom ) {
         if ( isLift( inst ) )
             return; // skip
-        if ( auto abstract = create( { inst, dom } ) ) {
-            vmap.insert( inst, abstract );
-            for ( auto & lift : liftsOf( inst ) )
-                lift->replaceAllUsesWith( abstract );
-            // TODO replace unnecessery bitcasts
+        if ( !vmap.safeLift( inst ) ) {
+            if ( auto abstract = create( { inst, dom } ) ) {
+                vmap.insert( inst, abstract );
+                for ( auto & lift : liftsOf( inst ) )
+                    lift->replaceAllUsesWith( abstract );
+            }
         }
     }
 
