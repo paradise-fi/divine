@@ -1096,7 +1096,10 @@ struct TestCmd
         auto opts = cmd::make_option_set< Common >( v )
                     .option( "[-x]", &Common::x )
                     .option( "[-y]", &Common::y );
-        Common c = { .x = false, .y = false };
+
+        Common c;
+        c.x = false;
+        c.y = false;
 
         cmd::Tokens in = { "-x" };
         opts.parse( c, in.begin(), in.end() );
@@ -1112,7 +1115,9 @@ struct TestCmd
                     .option( "[-y]", &Common::y )
                     .option( "[(-a {int}|-b {int})]", &Common::a );
 
-        Common c = { .x = false, .y = false };
+        Common c;
+        c.x = false;
+        c.y = false;
 
         cmd::Tokens in = { "-x", "-b", "10", "-y" };
         opts.parse( c, in.begin(), in.end() );
