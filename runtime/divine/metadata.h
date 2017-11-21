@@ -236,11 +236,6 @@ struct TypeSig {
             y( Accum() );
     }
 
-    template< int limit, typename List = Types, typename Yield >
-    void decode( Yield &&y, List = List() ) {
-        decode< limit >( sig, std::forward< Yield >( y ), List() );
-    }
-
   private:
     template< typename >
     struct ToType_ { };
