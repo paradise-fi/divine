@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <functional>
 
 #ifndef LART_SUPPORT_META_H
 #define LART_SUPPORT_META_H
