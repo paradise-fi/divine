@@ -19,6 +19,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <functional>
 #include <divine/ui/withreport.hpp>
 
 #include <bricks/brick-shmem>
