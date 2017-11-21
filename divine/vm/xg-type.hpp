@@ -70,8 +70,8 @@ struct Types
             auto SL = TD.getStructLayout( ST );
             for ( int i = 0; i < items; ++i )
             {
-                _VM_TypeItem item { .type_id = add( ST->getElementType( i ) ),
-                        .offset = unsigned( SL->getElementOffset( i ) ) };
+                _VM_TypeItem item { .offset = unsigned( SL->getElementOffset( i ) ),
+                                    .type_id = add( ST->getElementType( i ) ) };
                 _types[ key + 1 + i ].item = item;
             }
         }

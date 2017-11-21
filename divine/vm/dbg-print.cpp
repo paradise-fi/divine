@@ -24,7 +24,7 @@ namespace divine::vm::dbg::print
 {
 
 #define HANDLE_INST(num, opc, class) [num] = #opc ## s,
-static std::string _opcode[] = {
+static std::string _opcode[] = { "",
 #include <llvm/IR/Instruction.def>
 };
 #undef HANDLE_INST
