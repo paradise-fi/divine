@@ -1,78 +1,217 @@
-This document outlines the features that are not currently available in DIVINE
-but are planned for a future release. When new features are included in minor
-releases (as they become available), they are removed from this
-list. Therefore, if a feature you were interested in is gone from here, please
-check the latest documentation and release notes before contacting us.
+The roadmap was last updated in November 2017.
 
-DIVINE 4.1 (July 2017)
-======================
+# Short-Term Goals: Q4 2017
 
-- Update LLVM to 3.9 or 4.0. [P. Ročkai]
+This section documents specific short-term development goals, approximately a
+quarter into the future.
 
-## Virtual Machine
+ * Allow DIVINE to be compiled with current C++17 compilers and with
+   `libstdc++`. [P. Ročkai]
+ * Update LLVM to a current version. [P. Ročkai]
+ * Minor user interface cleanups. [P. Ročkai]
+ * Implement bit-precise initialisation tracking. [A. Matoušek]
+ * A prototype implementation of `divcc` (the compiler part of the
+   toolchain). [Z. Baranová]
+ * Demonstrate the viability of symbolic model checking in DIVINE using a
+   realistic example (a C implementation of an AVL tree). [H. Lauko]
 
-- Make the program text part of the program's address space, using a suitable
-  (flat) instruction encoding. [P. Rockai]
-- Delta-compression of heap snapshots using logarithmically-deep delta chains
-  to reduce memory use of snapshots (that is, objid → content maps). [P.
-  Ročkai]
-- Delta-compression of heap data. Like above, but for object data (content).
-  [P. Ročkai]
+# Medium-Term Goals: 2018
 
-## Model Checking
+This section outlines the research and development plan of DIVINE for
+approximately a year ahead. Those goals approximately align with the long-term
+goals outlined in the [next section](#long-term-goals) (please read the
+long-term goals first if you are not yet familiar with them).
 
-- Re-introduce a context-switch-directed safety checking algorithm [V. Štill]
-- Add a parallel SCC decomposition algorithm based on a union-find data
-  structure [P. Ročkai]
-- Add a translator from LTL to a DiOS-compatible monitor automaton. [T. Kučera]
+Additionally, we have a few medium-term goals that do not neatly fit any of the
+long-term categories, because they either span the entire project or in which
+multiple sub-projects interact:
 
-## DiOS
+ * Applying symbolic verification to synchronous systems. DIVINE (or more
+   precisely, DiOS) already supports such synchronous systems: the goal is to
+   ensure that they can be verified using symbolic methods. This also covers
+   verification of LTL properties. [J. Mrázek, H. Lauko]
+ * Improve test coverage. DIVINE currently contains a suite of 690 automated
+   regression tests. However, there are components that have no testing
+   coverage (`divine run`, `divine draw`, the passthrough mode of DiOS) or the
+   coverage is rather poor (`divine sim`). We would like to bring the total to
+   approximately 1000 test cases, primarily covering the currently untested
+   functionality.
 
-- Implement the `fork()` system call [Z. Baranová & H. Mrázek]
-- Implement a fair scheduler that'd allow model checking of simple (safety)
-  properties with fairness assumptions (e.g. that a particular program location
-  is reached in every possible execution / thread interleaving of the program).
-  [H. Mrázek]
+## Symbolic Model Checking
 
-## User Interface
+DIVINE currently contains a prototype implementation of a symbolic verification
+mode, based on program transformations. While the primary motivation is to
+allow verification of open-ended programs (those with inputs), we would like to
+also use it to improve verification of closed programs:
 
-- Make the stdout of all relevant commands valid, machine-parseable YAML. [V. Štill]
-- Implement a `search` command in `divine sim`, that will automatically look
-  for an error in a given maximal distance from a particular program state. [P. Ročkai]
+ * The primary role of pointers in a program is to reference memory. They are,
+   however, sometimes used as keys in data structures such as binary search
+   trees or hash tables. In those cases, the behaviour of the program may
+   depend on the exact numeric value of the pointer. DIVINE currently neglects
+   this fact. Our goal is to implement a suitable *abstract domain* which would
+   allow DIVINE to analyse behaviours of programs that depend on the numeric
+   values of pointers. [H. Lauko & P. Ročkai]
 
-## Testing Coverage
+The other two goals are generally useful with all abstractions:
 
-- Import and allow execution of the libc++ testsuite in DIVINE. [V. Štill]
+ * Implement a refinement loop. For instance, the above abstract domain is, in
+   many cases, not needed: some programs do not use numeric pointer
+   comparisons. If we assume that no such comparisons are done, we can verify
+   the program more efficiently, but also need to detect when this assumption
+   is violated and refine it. [H. Lauko & P. Ročkai]
+ * The symbolic representation of values currently only works with scalar
+   values that are at least as long as a pointer (64 bits). We want to lift
+   this limitation and allow byte-sized symbolic values. [A. Matoušek &
+   H. Lauko]
 
-DIVINE 4.2 (January 2018)
-=========================
+## Toolchain
 
-- Implement bit-precise initialisation tracking. [J. Weiser]
-- Track partial pointers. [J. Weiser]
-- Implement adjustable τ-reduction to allow monitors that react to each change
-  in a particular variable (even if that change is invisible to other threads).
-- Implement loading of multiple bitcode files (i.e. multiple executable images)
-  into a single virtual machine instance.
-- Add a C/C++ expression evaluator and make it available in `divine sim`.
-- Add an implementation of Coloured (shared-memory parallel) Nested DFS.
-- Optimise handling of shadow memory (that is, tracking of pointers and
-  uninitialised values) in the VM. [J. Weiser]
-- A tracing mode for DiOS, where a single execution in a forwarding mode (based
-  on `__vm_syscall`) is recorded and re-used for verification. [K. Kejstová]
-- Implement model checking of liveness properties expressed in terms of LTL
-  formulae, including fairness assumptions. [T. Kučera]
-- Data-symbolic model checking.
-- Implement divine-cc and divine-ld as drop-in replacements for the system
-  compiler and linker. [V. Štill]
+ * A production-ready implementation of `divcc`, that is, the compiler part of
+   the toolchain. [Z. Baranová & P. Ročkai]
+ * An implementation of `divld` that allows linking hybrid object files (which
+   are created by `divcc`) and handles static libraries. [Z. Baranová &
+   P. Ročkai]
 
-Long-Term Goals
-===============
+Together, those two goals should allow building of most small and medium-sized
+software packages written in C. In this stage, the resulting executable binary
+will use the native C library, while the bitcode will be linked with the DIVINE
+version of `libc` and building C++ programs will only work when the system C++
+library matches the C++ library used in DIVINE. Lifting both these limitations
+is a long-term goal.
 
-- Support for weak memory models. [V. Štill]
-- Support for (over-approximating) abstract domains (predicate abstraction &c).
-- Automated abstraction refinement.
-- Fuzzing: system call traces (offline -- explicit, online -- symbolic) and
-  function call arguments (online -- randomised and symbolic).
-- An OS distribution with `divcc` as a system compiler -- all programs and
-  libraries carry DIVINE-verifiable bitcode.
-- Integration with the McSema LLVM decompiler.
+## Runtime Verification
+
+ * DIVINE can replay recorded system call traces in the exact order they
+   happened during the recorded run. We want to relax this ordering and explore
+   behaviours in which the system calls are executed in a different, but
+   compatible, order. [K. Kejestová & P. Ročkai]
+ * There is a number of limitations in `divine run` and in the implementation
+   of the passthrough mode in DiOS. Our goal is to lift those limitations and
+   make `divine run` a practically useful tool. [K. Kejstová & P. Ročkai]
+
+## Relaxed Memory
+
+ * We aim to have practically usable support for a relaxed memory model that
+   matches the `x86` processor architecture. We primarily target programs with
+   2 threads. [V. Štill]
+ * To evaluate the usability of verification under a relaxed memory model, we
+   will collect a set of benchmark programs (written in C), that we can also
+   use to compare our implementation with related tools. [V. Štill]
+
+# Long-Term Goals
+
+This section describes the various long-term sub-projects that drive the
+development of DIVINE as a tool. The typical timeline is 2-3 years. Each
+sub-project has an owner, who is responsible for the project as a whole and
+coordinates the work on the particular sub-project, as well as its interaction
+with the rest of the team.
+
+## Symbolic Model Checking [H. Lauko]
+
+The large number of bugs discovered in almost all software products quite
+clearly demonstrates that ensuring correctness of software is a very hard
+problem. Of course, making software more reliable first requires existing bugs
+to be found and then fixed. Software is routinely tested by the QA departments
+of software vendors, but even then, bugs often slip into the final product and
+are later discovered by users.
+
+Part of the problem with software testing is the very large number of scenarios
+that need to be checked. While it is possible to automate many testing tasks
+using computers, in many cases, the number of scenarios is too large even for a
+computer to try.
+
+A different approach is to use reasoning to ensure the behaviour of the program
+matches expectations. This is the unifying principle behind a number of
+techniques: static types, contracts, loop invariants, formal correctness proofs
+and so on. The gist of this high-level approach is that many of the details of
+how the program exactly works are not important for demonstrating a particular
+bug, or even proving a particular property of the program. Of course, humans
+naturally take advantage of this fact in their reasoning.
+
+Automated abstraction and symbolic program representation both apply those
+principles to *automated* reasoning procedures. Model checking is one such
+automated reasoning procedure, and can greatly benefit from abstraction. The
+goal of this sub-project is, therefore, to design program transformations that
+remove unnecessary detail from programs before using the model checker.
+
+## Runtime Verification [K. Kejstová]
+
+When executing (as opposed to model checking) programs, DIVINE can currently
+record system call traces. During model checking, then, it can load these
+traces and play them back to the program. However, currently only executions
+that exactly correspond to the system call trace can be explored by the model
+checker.
+
+The overall goal of this project is to make the model checker more flexible
+with respect to the recorded trace. The first possible improvement is that
+certain system calls commute, that is, the observed effects of two such system
+calls do not depend on their order. The linear order of the trace can therefore
+be changed to a partial order, increasing the number of executions available
+for exploration. A different approach is increasing coverage by introducing
+non-deterministic mutations into the traces -- an approach similar to fuzzing:
+an established and successful technique. Finally, it is also possible to use
+symbolic representation of system call parameters which appear in key locations
+of the trace, improving the coverage further.
+
+## Relaxed Memory [V. Štill]
+
+When checking correctness of parallel programs, it is important to consider the
+behaviour of contemporary hardware. Naturally, one would expect that reads and
+writes performed by the program are executed in the order in which they are
+specified in the source code and that they are immediately visible to all CPU
+cores. However, with modern processors, it can happen, for example, that a
+value written to memory by one core is not observed by other cores immediately.
+Indeed, reads can appear to be executed before writes which occur earlier in
+the program. The specific behaviour of processor and memory is described by a
+*memory model*, which specifies how reads and writes performed by one core can
+be observed by the remaining cores. Different types of processors exhibit
+different behaviours.
+
+Unfortunately, such effects are often neglected by software analysis tools. For
+this reason, such tools can miss a large number of errors. To make matters
+worse, programmers can also easily miss these errors, as the real behaviour of
+hardware is quite unnatural.
+
+With DIVINE, we work on support for analysis of parallel programs with takes
+these effects into account and can therefore discover these hard-to-find bugs.
+Such an analysis adds further complexity to the already hard problem of
+analysis of parallel programs. Therefore, we will first focus on techniques to
+tackle this complexity for the relatively simple memory model (Partial Store
+Order, PSO), which allows more reordering than the memory model of Intel `x86`
+processors (and can be easily restricted to match it) and under-approximates
+the ARM memory model. To this end, we have devised a way to analyse execution
+of program under PSO with can significantly decrease the number of possible
+operation reorderings which need to be analysed, while still preserving the
+ability to find all errors caused by reordering allowed under PSO (up to some
+bound on the distance of reordered operations).
+
+Based on the results of this initial implementation, we will either first focus
+on extending DIVINE toward memory models which allow more reordering (such as
+the ARM memory model and the memory model specified in the C11 and C++11
+programming language standards), or first seek further improvements in
+performance of our analysis. The end goal of the work is to have analysis
+capable of discovering a wide range of errors exhibited by C/C++ programs
+running on modern processors, which can be applied to unit tests for parallel
+data structures and algorithms.
+
+## Toolchain [Z. Baranová]
+
+Programs can be automatically analysed at various levels: some tools work
+directly with the source code, while others load a compiled, executable
+binary. However, both those approaches have substantial downsides. For complex
+languages (like C++ or Rust), working with the source code is too
+difficult. Binary code, on the other hand, is often too hard to analyse because
+most of the high-level structure of the program has been erased at this point,
+and is tied to a particular CPU instruction set.
+
+For this reason, many analysis tools opt to instead work with an intermediate
+representation -- the LLVM IR in the case of DIVINE. However, this means that
+the software to be analysed must be compiled to this intermediate
+representation, and this currently needs to be done by hand. The goal of this
+project is to design and implement an extension to the C and C++ compiler
+toolchain based on LLVM and CLang, which would store the bitcode along standard
+machine code in the standard UNIX binary format known as ELF. The extended
+compiler, linker and related tools should transparently work with existing
+build systems. The hybrid binaries produced this way should be directly
+executable, but it should also be possible to load them into the DIVINE model
+checker (and possibly other LLVM-based tools) for analysis.
