@@ -476,6 +476,14 @@ void VPA::markGlobal( llvm::GlobalValue * value ) {
             AbstractValue al = { l, dom };
             dispach( PropagateDown( al, reached[ fn ].annotations(), nullptr ) );
         }
+        else if ( auto s = llvm::dyn_cast< llvm::StoreInst >( u ) ) {
+            auto fn = getFunction( s );
+            if ( !reached.count( fn ) )
+                record( fn );
+            auto o = origin( s->getValueOperand(), fields );
+            AbstractValue ao = { o, dom };
+            dispach( PropagateDown( ao, reached[ fn ].annotations(), nullptr ) );
+        }
         else if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( u ) ) {
             auto fn = getFunction( gep );
             if ( !reached.count( fn ) )
