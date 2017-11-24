@@ -71,6 +71,11 @@ struct Job : ss::Job
             _monitor( true );
     }
 
+    void stop() override
+    {
+        _search->stop();
+    }
+
     using PoolStats = std::map< std::string, brick::mem::Stats >;
     using DbgCtx = vm::dbg::Context< vm::CowHeap >;
 

@@ -21,6 +21,7 @@ namespace shmem = ::brick::shmem;
 struct Job
 {
     virtual void start( int threads ) = 0;
+    virtual void stop() = 0;
     virtual void wait() = 0;
     std::function< int64_t() > qsize;
 };
@@ -218,6 +219,11 @@ struct Search : Job
             res.get();
         ws_each( []( auto &, auto & ) { UNREACHABLE( "workset not empty!" ); } );
         _workset->second.clear();
+    }
+
+    void stop() override
+    {
+        _terminate->store( true );
     }
 };
 

@@ -151,10 +151,13 @@ struct NestedDFS : ss::Job
             throw new std::runtime_error( "Nested DFS only supports one thread." );
         _thread = std::async( [&]{ ndfs(); } );
     }
+
     void wait() override
     {
         _thread.get();
     }
+
+    void stop() override { NOT_IMPLEMENTED(); }
 };
 
 template< typename Next, typename Explore = vm::Explore >
