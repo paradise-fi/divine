@@ -215,10 +215,20 @@ struct Search : Job
 
     void wait() override
     {
-        for ( auto &res : _threads )
-            res.get();
-        ws_each( []( auto &, auto & ) { UNREACHABLE( "workset not empty!" ); } );
-        _workset->second.clear();
+        auto cleanup = [&]
+        {
+            _terminate->store( true );
+            for ( auto &res : _threads )
+                if ( res.valid() )
+                    /* not get(), since the only way futures are still valid
+                     * here is because an exception is already propagating */
+                    res.wait();
+            ws_each( []( auto &, auto & ) { UNREACHABLE( "workset not empty!" ); } );
+            _workset->second.clear();
+        };
+
+        while ( brick::shmem::wait( _threads.begin(), _threads.end(), cleanup ) !=
+                std::future_status::ready );
     }
 
     void stop() override
