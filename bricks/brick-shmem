@@ -42,10 +42,10 @@
 #include <iostream>
 #include <typeinfo>
 
-#include <mutex>
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <future>
 
 #include <unistd.h> // alarm
 #include <vector>
@@ -636,6 +636,40 @@ struct Chunked
 
 template< typename T >
 using SharedQueue = Chunked< LockedQueue, T >;
+
+namespace
+{
+
+using steady_time = std::chrono::time_point< std::chrono::steady_clock >;
+
+steady_time later( int ms )
+{
+    return std::chrono::steady_clock::now() + std::chrono::milliseconds( ms );
+}
+
+template< typename I, typename F >
+std::future_status wait( I b, I e, F cleanup, steady_time until = later( 500 ) ) try
+{
+    int total = 0, ready = 0;
+    for ( auto i = b; i != e; ++i )
+    {
+        if ( !i->valid() ) continue;
+        ++ total;
+        if ( i->wait_until( until ) == std::future_status::ready )
+        {
+            ++ ready;
+            i->get(); /* throw any exceptions */
+        }
+    }
+    if ( total == ready )
+    {
+        cleanup();
+        return std::future_status::ready;
+    }
+    return std::future_status::timeout;
+} catch ( ... ) { cleanup(); throw; };
+
+}
 
 }
 
