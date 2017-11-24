@@ -17,6 +17,7 @@
  */
 
 #include <divine/sim/cli.hpp>
+#include <optional>
 
 namespace divine::sim
 {
