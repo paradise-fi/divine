@@ -1,5 +1,5 @@
 #include <divine/cc/clang.hpp>
-#include <divine/rt/runtime.hpp>
+#include <divine/cc/paths.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Bitcode/ReaderWriter.h>
@@ -49,7 +49,7 @@ int main( int argc, const char **argv )
                 if ( !relpath.empty() ) {
                     while ( fs::isPathSeparator( relpath[0] ) )
                         relpath.erase( relpath.begin() );
-                    return fs::joinPath( rt::directory( relpath ), relpath );
+                    return fs::joinPath( cc::directory( relpath ), relpath );
                 }
                 return p;
             } );
