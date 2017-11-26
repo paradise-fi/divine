@@ -300,7 +300,7 @@ struct HeapBytes
     uint8_t &operator[]( int i ) { return *( _start + i ); }
 };
 
-template< typename Self, typename Internal >
+template< typename Self, typename Shadows, typename Internal >
 struct HeapMixin
 {
     using PointerV = value::Pointer;
@@ -311,16 +311,18 @@ struct HeapMixin
     auto &shadows() { return self()._shadows; }
     const auto &shadows() const { return self()._shadows; }
 
-    auto shloc( HeapPointer &p, int &from, int &sz, Internal i )
+    template< typename F >
+    auto with_shadow( F f, HeapPointer p, int from, int sz, Internal i )
     {
         sz = sz ? sz : self().size( p, i ) - from;
         p.offset( from );
-        return self().shloc( p, i );
+        auto shl = self().shloc( p, i );
+        return (shadows().*f)( shl, sz );
     }
 
     auto pointers( HeapPointer p, Internal i, int from = 0, int sz = 0 )
     {
-        return shadows().pointers( shloc( p, from, sz, i ), sz );
+        return with_shadow( &Shadows::pointers, p, from, sz, i );
     }
 
     auto pointers( HeapPointer p, int from = 0, int sz = 0 )
@@ -335,12 +337,12 @@ struct HeapMixin
 
     auto defined( HeapPointer p, Internal i, int from = 0, int sz = 0 )
     {
-        return shadows().defined( shloc( p, from, sz, i ), sz );
+        return with_shadow( &Shadows::defined, p, from, sz, i );
     }
 
     auto type( HeapPointer p, int from = 0, int sz = 0 )
     {
-        return shadows().type( shloc( p, from, sz, self().ptr2i( p ) ), sz );
+        return with_shadow( &Shadows::type, p, from, sz, self().ptr2i( p ) );
     }
 
     template< typename T >
@@ -408,7 +410,8 @@ struct PoolRep
 };
 
 template< typename Self, typename PR = PoolRep<> >
-struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
+struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
+                               typename mem::Pool< PR >::Pointer >
 {
     Self &self() { return *static_cast< Self * >( this ); }
 
