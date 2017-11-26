@@ -63,7 +63,7 @@ struct FunctionRoots {
             auto find = std::find( ins.begin(), ins.end(), a->getArgNo() );
             if ( find == ins.end() ) {
                 ins.push_back( a->getArgNo() );
-                argRoots.insert( { ins, std::move( roots->second ) } );
+                argRoots.emplace( ins, std::move( roots->second ) );
                 argRoots.erase( roots );
             }
         }
