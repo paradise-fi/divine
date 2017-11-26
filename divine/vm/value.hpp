@@ -454,6 +454,32 @@ struct TestPtr
         p.defbits( 32 );
         ASSERT( !p.defined() );
     }
+
+    TEST( isptr )
+    {
+        vm::value::Pointer p( vm::HeapPointer( 3, 0 ), true, true );
+        ASSERT( p.pointer() );
+        p = p + 20;
+        ASSERT( p.pointer() );
+        ASSERT_EQ( p.cooked().offset(), 20 );
+        p = p + (-20);
+        ASSERT( p.pointer() );
+        ASSERT_EQ( p.cooked().object(), 3 );
+        ASSERT_EQ( p.cooked().offset(), 0 );
+    }
+
+    TEST( intptr )
+    {
+        using I = vm::value::Int< vm::PointerBytes * 8 >;
+        vm::value::Pointer p( vm::HeapPointer( 3, 0 ), true, true );
+        I i( p );
+        i = i + I( 20 );
+        p = vm::value::Pointer( i );
+        ASSERT( p.pointer() );
+        ASSERT_EQ( p.cooked().object(), 3 );
+        ASSERT_EQ( p.cooked().offset(), 20 );
+    }
+
 };
 
 }
