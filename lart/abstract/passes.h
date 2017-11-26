@@ -102,12 +102,12 @@ std::string source( const File & name ) {
 
 void setupFS( Compile & c ) {
 	auto each = [&]( auto filter ) {
-        return [&filter]( std::function< void( std::string, rt::string_view ) > yield ) {
+        return [&filter]( std::function< void( std::string, std::string_view ) > yield ) {
             rt::each( filter( yield ) );
         };
     };
 
-    c.setupFS( each( [&]( std::function< void( std::string, rt::string_view ) > yield ) {
+    c.setupFS( each( [&]( std::function< void( std::string, std::string_view ) > yield ) {
         return [&]( auto path, auto src ) {
 			if ( !brick::string::endsWith( path, ".bc" ) )
 				yield( path, src );
