@@ -439,8 +439,11 @@ struct InPlace { };
 
 struct NullUnion { };
 
-template< typename... Types >
-struct Union : Comparable {
+namespace _impl {
+
+template< bool AllowCopy, typename... Types >
+struct Union : Comparable
+{
     static_assert( sizeof...( Types ) < 0xff, "Too much unioned types, sorry" );
     static_assert( _impl::AllDistinct< Types... >::value,
             "All types in union must be distinct" );
@@ -899,6 +902,25 @@ struct Union : Comparable {
         UNREACHABLE( "Invalid _doSwapDifferent" );
     }
 };
+
+template< typename... Types >
+struct Union< false, Types... > : Union< true, Types... >
+{
+    using Union< true, Types... >::Union;
+    using Union< true, Types... >::operator=;
+
+    Union( const Union & ) = delete;
+    Union( Union && ) = default;
+    Union() = default;
+    template< typename T >
+    Union &operator=( const T &other ) = delete;
+    Union &operator=( Union && ) = default;
+};
+
+}
+
+template< typename... Types >
+using Union = _impl::Union< ( std::is_copy_constructible_v< Types > && ... ), Types... >;
 
 template< typename Left, typename Right >
 struct Either : Union< Left, Right > {
