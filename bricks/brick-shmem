@@ -203,7 +203,7 @@ auto thread( L &&l )
 {
     Thread< LambdaWrapper< L > > thr( std::forward< L >( l ) );
     thr._start_on_move = true;
-    return thr;
+    return std::move( thr );
 }
 
 template< typename T >
