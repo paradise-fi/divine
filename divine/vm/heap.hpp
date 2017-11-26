@@ -946,6 +946,18 @@ struct MutableHeap
         ASSERT_EQ( heap.size( p.cooked() ), 8 );
     }
 
+    TEST(pointers)
+    {
+        vm::MutableHeap<> heap;
+        auto p = heap.make( 16 ), q = heap.make( 16 ), r = PointerV( vm::nullPointer() );
+        heap.write( p.cooked(), q );
+        heap.write( q.cooked(), r );
+        int count = 0;
+        for ( auto pos : heap.pointers( p.cooked() ) )
+            static_cast< void >( pos ), ++ count;
+        ASSERT_EQ( count, 1 );
+    }
+
     TEST(clone_int)
     {
         vm::MutableHeap<> heap, cloned;
@@ -958,7 +970,22 @@ struct MutableHeap
         ASSERT( ( i == IntV( 33 ) ).defined() );
     }
 
-    TEST(clone_ptr)
+    TEST(clone_ptr_chain)
+    {
+        vm::MutableHeap<> heap, cloned;
+        auto p = heap.make( 16 ), q = heap.make( 16 ), r = PointerV( vm::nullPointer() );
+        heap.write( p.cooked(), q );
+        heap.write( q.cooked(), r );
+
+        auto c_p = vm::heap::clone( heap, cloned, p.cooked() );
+        PointerV c_q, c_r;
+        cloned.read( c_p, c_q );
+        ASSERT( c_q.pointer() );
+        cloned.read( c_q.cooked(), c_r );
+        ASSERT( c_r.cooked().null() );
+    }
+
+    TEST(clone_ptr_loop)
     {
         vm::MutableHeap<> heap, cloned;
         auto p = heap.make( 16 ), q = heap.make( 16 );
@@ -966,8 +993,8 @@ struct MutableHeap
         heap.write( q.cooked(), p );
         auto c_p1 = vm::heap::clone( heap, cloned, p.cooked() );
         PointerV c_q, c_p2;
-        IntV i;
         cloned.read( c_p1, c_q );
+        ASSERT( c_q.pointer() );
         cloned.read( c_q.cooked(), c_p2 );
         ASSERT( vm::GenericPointer( c_p1 ) == c_p2.cooked() );
     }

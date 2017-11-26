@@ -356,6 +356,7 @@ struct NonHeap
 
     Anchor &anchor( Ptr p ) { return *pool.template machinePointer< Anchor >( p ); }
     Loc shloc( Ptr p, int off ) { return Loc( p, anchor( p ), off ); }
+    auto pointers( Ptr p, int sz ) { return shadows.pointers( shloc( p, 0 ), sz ); }
 
     Ptr make( int sz )
     {
@@ -469,6 +470,16 @@ struct PooledShadow
         heap.copy( obj, 0, obj, 8, 8 );
         heap.read< PointerV >( obj, 8, p2 );
         ASSERT( p2.defined() );
+    }
+
+    TEST( pointers )
+    {
+        PointerV p1( vm::HeapPointer( 10, 0 ) );
+        heap.write( obj, 0, p1 );
+        int count = 0;
+        for ( auto x : heap.pointers( obj, 100 ) )
+            static_cast< void >( x ), count ++;
+        ASSERT_EQ( count, 1 );
     }
 
 #if 0
