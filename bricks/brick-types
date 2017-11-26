@@ -920,7 +920,7 @@ struct Union< false, Types... > : Union< true, Types... >
 }
 
 template< typename... Types >
-using Union = _impl::Union< ( std::is_copy_constructible_v< Types > && ... ), Types... >;
+using Union = _impl::Union< ( std::is_copy_constructible< Types >::value && ... ), Types... >;
 
 template< typename Left, typename Right >
 struct Either : Union< Left, Right > {
