@@ -8,7 +8,6 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <iostream>
-#include <variant>
 #include <optional>
 
 #include <brick-data>

@@ -201,7 +201,7 @@ inline bool operator==( const PropagateGlobal & a, const PropagateGlobal & b) {
     return a.value == b.value;
 }
 
-using Task = std::variant< PropagateDown, PropagateUp, StepIn, StepOut, PropagateGlobal >;
+using Task = brick::types::Union< PropagateDown, PropagateUp, StepIn, StepOut, PropagateGlobal >;
 
 
 using Fields = AbstractFields< llvm::Value * >;

@@ -16,10 +16,10 @@ namespace abstract {
 struct LoadStep : brick::types::Unit {};
 
 using GEPStep = size_t;
-using Step = std::variant< GEPStep, LoadStep >;
+using Step = brick::types::Union< GEPStep, LoadStep >;
 
 inline std::ostream& operator<<(std::ostream& os, const Step& step) {
-    if ( auto label = std::get_if< GEPStep >( &step ) )
+    if ( auto label = step.template asptr< GEPStep >() )
         os << *label;
     else
         os << "Load";
@@ -35,25 +35,26 @@ struct FieldTrie {
 
     using BackEdge = TrieNode *;
     using ForwardEdge = std::unique_ptr< TrieNode >;
-    using EdgeStorage = std::variant< ForwardEdge, BackEdge >;
+    using EdgeStorage = brick::types::Union< ForwardEdge, BackEdge >;
 
     struct Edge : EdgeStorage {
         using EdgeStorage::EdgeStorage;
         using pointer = TrieNode *;
 
+        Edge() : EdgeStorage( ForwardEdge() ) {}
         explicit operator bool() const { return get(); }
         pointer operator->() const { return get(); }
 
         pointer get() const {
-            if ( auto fwd = std::get_if< ForwardEdge >( this ) )
+            if ( auto fwd = EdgeStorage::template asptr< ForwardEdge >() )
                 return fwd->get();
             else
-                return std::get< BackEdge >( *this );
+                return EdgeStorage::template get< BackEdge >();
         }
     };
 
     static bool isBackEdge( const Edge & e ) {
-        return std::holds_alternative< BackEdge >( e );
+        return e.template is< BackEdge >();
     }
 
     using TrieNodePtr = Edge;

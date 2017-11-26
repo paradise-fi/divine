@@ -170,13 +170,13 @@ VPA::Roots VPA::run( llvm::Module & m ) {
 
     while ( !tasks.empty() ) {
         auto t = tasks.front();
-        if ( auto pd = std::get_if< PropagateDown >( &t ) )
+        if ( auto pd = t.template asptr< PropagateDown >() )
             propagateDown( *pd );
-        else if ( auto pu = std::get_if< PropagateUp >( &t ) )
+        else if ( auto pu = t.template asptr< PropagateUp >() )
             propagateUp( *pu );
-        else if ( auto si = std::get_if< StepIn >( &t ) )
+        else if ( auto si = t.template asptr< StepIn >() )
             stepIn( *si );
-        else if ( auto so = std::get_if< StepOut >( &t ) )
+        else if ( auto so = t.template asptr< StepOut >() )
             stepOut( *so );
         tasks.pop_front();
     }
