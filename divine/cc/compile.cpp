@@ -187,7 +187,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
         };
 
     for ( auto &f : po.files )
-        brick::types::visit_alternatives( f,
+        f.match(
             [&]( const File &f ) {
                 if ( f.type == FT::Unknown )
                     throw std::runtime_error( "cannot detect file format for file '" + f.name + "', please supply -x option for it" );
