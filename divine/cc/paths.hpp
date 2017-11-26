@@ -17,20 +17,25 @@
  */
 
 #pragma once
+#include <brick-fs>
+#include <brick-string>
 
-#include <divine/cc/paths.hpp>
-#include <string_view>
-
-namespace divine::rt
+namespace divine::cc
 {
 
-void each( std::function< void( std::string, std::string_view ) > yield );
+const std::string includeDir = "/divine/include";
+const std::string srcDir = "/divine/src";
 
-static std::string_view source( std::string path )
+static std::string directory( std::string name )
 {
-    std::string_view res;
-    each( [&]( auto n, auto c ) { if ( n == path ) res = c; } );
-    return res;
+    using brick::fs::joinPath;
+    using brick::string::endsWith;
+    for ( auto suffix : { ".c", ".cpp", ".cc" } )
+        if ( endsWith( name, suffix ) )
+            return srcDir;
+    if ( endsWith( name, ".bc" ) || endsWith( name, ".a" ) )
+        return "/lib";
+    return includeDir;
 }
 
 }

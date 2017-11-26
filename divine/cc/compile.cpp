@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 
 #include <divine/cc/compile.hpp>
-#include <divine/rt/runtime.hpp>
+#include <divine/cc/paths.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Support/raw_os_ostream.h>
@@ -53,13 +53,13 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     opts( opts ), compiler( ctx ), linker( new brick::llvm::Linker() )
 {
     commonFlags = { "-D__divine__=4"
-                  , "-isystem", rt::includeDir
-                  , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
-                  , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )
-                  , "-isystem", joinPath( rt::includeDir, "libunwind/include" )
-                  , "-isystem", joinPath( rt::includeDir, "libc/include" )
-                  , "-isystem", joinPath( rt::includeDir, "libc/internals" )
-                  , "-isystem", joinPath( rt::includeDir, "libm/include" )
+                  , "-isystem", includeDir
+                  , "-isystem", joinPath( includeDir, "libcxx/include" )
+                  , "-isystem", joinPath( includeDir, "libcxxabi/include" )
+                  , "-isystem", joinPath( includeDir, "libunwind/include" )
+                  , "-isystem", joinPath( includeDir, "libc/include" )
+                  , "-isystem", joinPath( includeDir, "libc/internals" )
+                  , "-isystem", joinPath( includeDir, "libm/include" )
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
