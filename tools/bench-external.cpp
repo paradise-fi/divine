@@ -103,10 +103,8 @@ void RunExternal::execute( int job_id )
         } catch ( std::runtime_error & ) { }
     }
 
-    auto states = yreport.getOr< long >( { "states count" }, 0 );
+    auto states = yreport.getOr< long >( { "state count" }, 0 );
     auto result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ), true );
-    if ( result == Result::None )
-        result = toResult( yreport.getOr< std::string >( { "property holds" }, "null" ), false );
     log->set_result( result, states );
 
     log_done( job_id );
