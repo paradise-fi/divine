@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <pthread.h>
+#include <cassert>
 
 std::atomic< bool > flag[2];
 std::atomic< int > turn;
