@@ -1,6 +1,9 @@
 #include <abstract/domains.h>
 #include <sys/fault.h>
 #include <stdint.h>
+#include <assert.h>
+#include <stdbool.h>
+
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wuninitialized"
@@ -10,6 +13,7 @@
 
 extern "C" {
 
+_SVC_NONDET(bool, bool)
 _SVC_NONDET(char, char)
 _SVC_NONDET(int, int)
 _SVC_NONDET(short, short)
@@ -34,6 +38,10 @@ void __VERIFIER_atomic_begin() {
 
 void __VERIFIER_atomic_end() {
 	__vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
+}
+
+void __VERIFIER_assert( int cond ) {
+    assert( cond );
 }
 
 }
