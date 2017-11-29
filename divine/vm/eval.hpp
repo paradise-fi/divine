@@ -1014,13 +1014,15 @@ struct Eval
                 PointerV ptr;
                 if ( !frame().null() )
                 {
-                    heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
-                    context().set( _VM_CR_PC, ptr.cooked() );
                     using brick::bitlevel::mixdown;
                     if ( heap().valid( frame() ) )
+                    {
+                        heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
+                        context().set( _VM_CR_PC, ptr.cooked() );
                         context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
                                 heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
                                 context().get( _VM_CR_Frame ).pointer.object() );
+                    }
                     else
                         fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
                 }
