@@ -344,6 +344,11 @@ struct Eval
         return boundcheck( [this]( auto t ) { return fault( t ); }, p, sz, write, dsc );
     }
 
+    bool boundcheck_nop( PointerV p, int sz, bool write )
+    {
+        return boundcheck( [this]( auto ) { return std::stringstream(); }, p, sz, write, "" );
+    }
+
     int ptr2sz( PointerV p )
     {
         auto pp = p.cooked();
@@ -973,7 +978,12 @@ struct Eval
             else if ( action == _VM_CA_Set )
             {
                 context().sync_pc();
-                context().set( reg, operandCk< PointerV >( idx++, o_inst, o_frame ).cooked() );
+                auto ptr = operandCk< PointerV >( idx++, o_inst, o_frame );
+                if ( reg == _VM_CR_Frame && !ptr.cooked().null() &&
+                     !boundcheck_nop( ptr, 2 * PointerBytes, true ) )
+                    fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
+                else
+                    context().set( reg, ptr.cooked() );
             }
             else if ( action == _VM_CA_Get && reg == _VM_CR_Flags )
             {
@@ -1015,16 +1025,11 @@ struct Eval
                 if ( !frame().null() )
                 {
                     using brick::bitlevel::mixdown;
-                    if ( heap().valid( frame() ) )
-                    {
-                        heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
-                        context().set( _VM_CR_PC, ptr.cooked() );
-                        context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
-                                heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
-                                context().get( _VM_CR_Frame ).pointer.object() );
-                    }
-                    else
-                        fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
+                    heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
+                    context().set( _VM_CR_PC, ptr.cooked() );
+                    context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
+                            heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
+                            context().get( _VM_CR_Frame ).pointer.object() );
                 }
             }
         }
