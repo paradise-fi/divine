@@ -44,6 +44,25 @@ struct Cmd
     virtual void run() = 0;
 };
 
+struct Help
+{
+    std::string _cmd = std::string("");
+
+    template< typename P >
+    void run( P cmds )
+    {
+        std::string description = cmds.describe( _cmd );
+        if ( description.empty() && !_cmd.empty() )
+            die( "Unknown command '" + _cmd + "'. Available commands are:\n" + cmds.describe() );
+        if ( _cmd.empty() )
+        {
+            std::cerr << "To print details about a specific command, run 'divine help {command}'.\n\n";
+            std::cerr << cmds.describe() << std::endl;
+        }
+        else std::cerr << description << std::endl;
+    }
+};
+
 struct Import : Cmd
 {
     std::string _name, _script, _variant;

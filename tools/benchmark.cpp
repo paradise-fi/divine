@@ -206,6 +206,9 @@ int main( int argc, const char **argv )
     auto validator = cmd::make_validator();
     auto args = cmd::from_argv( argc, argv );
 
+    auto helpopts = cmd::make_option_set< Help >( validator )
+        .option( "[{string}]", &Help::_cmd, "print man to specified command"s );
+
     auto opts_db = cmd::make_option_set< Cmd >( validator )
         .option( "[-d {string}]", &Cmd::_odbc, "ODBC connection string (default: $DIVBENCH_DB)" );
 
@@ -247,9 +250,17 @@ int main( int argc, const char **argv )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
         .command< Run >( opts_db, opts_run, opts_job )
+        .command< Help >( helpopts )
         .command< RunExternal >( opts_db, opts_external, opts_run, opts_job );
     auto cmd = cmds.parse( args.begin(), args.end() );
 
-    cmd.match( [&]( Cmd &cmd ) { cmd.setup(); cmd.run(); } );
+    if ( cmd.empty()  )
+    {
+        Help().run( cmds );
+        return 0;
+    }
+
+    cmd.match( [&]( Help &help ) { help.run( cmds ); },
+               [&]( Cmd &cmd ) { cmd.setup(); cmd.run(); } );
     return 0;
 }
