@@ -291,14 +291,14 @@ llvm::Function * Abstraction::process( const FunctionNode & fnode, const Fields 
     auto rets = filterA< llvm::ReturnInst >( fnode.reached( fields ) );
     auto args = filterA< llvm::Argument >( fnode.roots() );
 
+    auto fn = fnode.first;
+    auto frty = fn->getReturnType();
     // Signature does not need to be changed
-    if ( rets.empty() && args.empty() )
+    if ( ( rets.empty() || !isScalarType( frty ) ) && args.empty() )
         return fnode.first;
 
-    auto fn = fnode.first;
     auto dom = !rets.empty() ? rets[ 0 ].domain : Domain::LLVM;
-    auto frty = fn->getReturnType();
-    auto rty = frty->isPointerTy() ? frty : liftType( fn->getReturnType(), dom, data.tmap );
+    auto rty = !isScalarType( frty ) ? frty : liftType( fn->getReturnType(), dom, data.tmap );
 
     Map< unsigned, llvm::Type * > amap;
     for ( const auto & a : args ) {

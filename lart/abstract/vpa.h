@@ -52,6 +52,8 @@ struct FunctionRoots {
                 auto ins = argIndices( filterA< llvm::Argument >( *rs ) );
                 rs = argRoots[ ins ].get();
                 annRoots->insert( av );
+            } else {
+                rs->insert( av );
             }
 
             auto roots = std::find_if( argRoots.begin(), argRoots.end(),
@@ -63,11 +65,13 @@ struct FunctionRoots {
             auto find = std::find( ins.begin(), ins.end(), a->getArgNo() );
             if ( find == ins.end() ) {
                 ins.push_back( a->getArgNo() );
+                std::sort( ins.begin(), ins.end() );
                 argRoots.emplace( ins, std::move( roots->second ) );
                 argRoots.erase( roots );
             }
+        } else {
+            rs->insert( av );
         }
-        rs->insert( av );
     }
 
     void insert( AbstractValue av ) {
@@ -86,14 +90,14 @@ struct FunctionRoots {
         return argRoots.count( ins );
     }
 
-    Domain returns( const ArgIndices & ins ) const {
+    std::optional< AbstractValue > returns( const ArgIndices & ins ) const {
         // TODO cache return results
         auto rs = roots( ins );
         auto rf = reachFrom( { rs.begin(), rs.end() } );
         for ( auto & v : lart::util::reverse( rf ) )
             if ( v.isa< llvm::ReturnInst >() )
-                return v.domain;
-        return Domain::LLVM;
+                return v;
+        return {};
     }
 
 
@@ -167,16 +171,16 @@ inline bool operator==( const StepIn & a, const StepIn & b ) {
 }
 
 struct StepOut {
-    explicit StepOut( llvm::Function * f, Domain d, ParentPtr p )
-        : function( f ), domain( d ), parent( p ) {}
+    explicit StepOut( llvm::Function * f, AbstractValue v, ParentPtr p )
+        : function( f ), value( v ), parent( p ) {}
 
     llvm::Function * function;
-    Domain domain;
+    AbstractValue value;
     ParentPtr parent;
 };
 
 inline bool operator==( const StepOut & a, const StepOut & b) {
-    return std::tie( a.function, a.domain, a.parent ) == std::tie( b.function, b.domain, b.parent );
+    return std::tie( a.function, a.value, a.parent ) == std::tie( b.function, b.value, b.parent );
 }
 
 struct PropagateUp {

@@ -265,15 +265,13 @@ private:
 
         std::vector< size_t > sig;
         size_t idx = 0;
-
         for ( auto & a : args ) {
             bool scalar = isScalarType( a->getType() );
-            if ( ( fields.has( a ) && !scalar ) || isAbstract( a->getType() ) )
+            if ( vmap.safeOrigin( a ) || ( fields.has( a ) && !scalar ) || isAbstract( a->getType() ) )
                 sig.push_back( idx );
             ++idx;
         }
         std::sort( sig.begin(), sig.end() );
-
         auto calle = fns.get( cs.getCalledFunction(), sig );
         IRB irb( i );
 

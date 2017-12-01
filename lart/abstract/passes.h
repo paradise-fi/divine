@@ -1069,7 +1069,7 @@ struct Abstraction {
                         init( &i, v );
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initPii.3" );
+        auto init = m->getFunction( "_Z4initPii.2" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         ASSERT_EQ( init->getNumUses(), 1 );
         ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
@@ -1123,7 +1123,7 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto init = m->getFunction( "_Z4initPi.2" );
-        auto init_impl = m->getFunction( "_Z9init_implPii.4" );
+        auto init_impl = m->getFunction( "_Z9init_implPii.3" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         ASSERT_EQ( init->getNumUses(), 1 );
         ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
@@ -1200,8 +1200,8 @@ struct Abstraction {
                         init( &store, &w  );
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initP6Widget.4" );
-        auto check = m->getFunction( "_Z4initP5StoreP6Widget.3" );
+        auto init = m->getFunction( "_Z4initP6Widget.3" );
+        auto check = m->getFunction( "_Z4initP5StoreP6Widget.2" );
         ASSERT_EQ( init->getNumUses(), 1 );
         ASSERT_EQ( check->getNumUses(), 1 );
         ASSERT( ! containsUndefValue( *m ) );

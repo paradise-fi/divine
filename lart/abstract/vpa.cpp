@@ -117,7 +117,9 @@ Path createFieldPath( llvm::StoreInst * store ) {
 Indices gepIndices( llvm::GetElementPtrInst * gep ) {
     return query::query( gep->idx_begin(), gep->idx_end() )
         .map ( [] ( const auto & idx ) -> Step {
-            return llvm::cast< llvm::ConstantInt >( idx )->getZExtValue();
+            if ( auto c = llvm::dyn_cast< llvm::ConstantInt >( idx ) )
+                return c->getZExtValue();
+            throw( std::invalid_argument( "Nonconstant gep index." ) );
         } ).freeze();
 }
 
@@ -190,6 +192,7 @@ VPA::Roots VPA::run( llvm::Module & m ) {
 void VPA::record( llvm::Function * fn ) {
     if ( !reached.count( fn ) ) {
         preprocess( fn );
+        assert( !reached.count( fn ) );
         reached[ fn ].init();
     }
 }
@@ -209,9 +212,8 @@ void VPA::stepIn( const StepIn & si ) {
     auto ins = argIndices( args );
     if ( reached.count( fn ) ) {
         if ( reached[ fn ].has( ins ) ) {
-            auto dom = reached[ fn ].returns( ins );
-            if ( dom != Domain::LLVM )
-                dispach( StepOut( fn, dom, si.parent ) );
+            if ( auto av = reached[ fn ].returns( ins ) )
+                dispach( StepOut( fn, av.value(), si.parent ) );
             return; // We have already seen 'fn' with this abstract signature
         }
     } else {
@@ -229,14 +231,24 @@ void VPA::stepIn( const StepIn & si ) {
 }
 
 void VPA::stepOut( const StepOut & so ) {
+    auto dom = so.value.domain;
+    auto ret = Ret( so.value )->getReturnValue();
     if ( auto p = so.parent ) {
-        AbstractValue av{ p->callsite.getInstruction(), so.domain };
+        auto call = p->callsite.getInstruction();
+        if ( !isScalarType( ret->getType() ) )
+            fields.alias( ret, call );
+
+        AbstractValue av{ call, dom };
         dispach( PropagateDown( av, p->roots, p->parent ) );
     } else {
         for ( const auto & u : so.function->users() ) {
             if ( auto cs = llvm::CallSite( u ) ) {
-                AbstractValue av{ cs.getInstruction(), so.domain };
-                auto fn = getFunction( cs.getInstruction() );
+                auto call = cs.getInstruction();
+                if ( !isScalarType( ret->getType() ) )
+                    fields.alias( ret, call );
+
+                AbstractValue av{ call, dom };
+                auto fn = getFunction( call );
                 if ( !reached.count( fn ) )
                     record( fn );
                 dispach( PropagateDown( av, reached[ fn ].annotations(), nullptr ) );
@@ -256,6 +268,8 @@ llvm::Value * origin( llvm::Value * val, Fields & fields ) {
         } else if ( auto l = llvm::dyn_cast< llvm::LoadInst >( curr ) ) {
             fields.insert( createFieldPath( l ) );
             curr = l->getPointerOperand();
+        } else if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( curr ) ) {
+            curr = bc->getOperand( 0 );
         }
     }
     return curr;
@@ -401,11 +415,9 @@ void VPA::propagatePtrOrStructDown( const PropagateDown & t ) {
             else
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
         }
-        else if ( Ret( av ) ) {
-            assert( Ret( av )->getReturnValue()->getType()->isSingleValueType() &&
-                    "We don't know to return abstract struct type." );
-            if ( fields.has( av.value ) )
-                dispach( StepOut( getFunction( av.value ), av.domain, t.parent ) );
+        else if ( auto ret = Ret( av ) ) {
+            if ( fields.has( ret->getReturnValue() ) )
+                dispach( StepOut( getFunction( ret ), av, t.parent ) );
         }
     }
 }
@@ -451,7 +463,7 @@ void VPA::propagateIntDown( const PropagateDown & t ) {
                 dispach( StepIn( make_parent( cs, t.parent, t.roots ) ) );
         }
         else if ( Ret( av ) ) {
-            dispach( StepOut( getFunction( av.value ), dom, t.parent ) );
+            dispach( StepOut( getFunction( av.value ), av, t.parent ) );
         }
     }
 }

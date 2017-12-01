@@ -112,8 +112,6 @@ void Substitution::run( llvm::Module & m ) {
         }
     }
 
-    // TODO solve returns of functions without arguments
-    // = move changing of returns to here
     auto intrs = intrinsics( &m );
 
     auto allocas = query::query( intrs ).filter( [] ( const auto & i ) {
@@ -159,15 +157,17 @@ void Substitution::run( llvm::Module & m ) {
         return { v->user_begin(), v->user_end() };
     };
 
-    for ( auto & fn : funToValMap )
-        for ( auto & arg : fn.first->args() )
+    for ( auto & fn : m )
+        for ( auto & arg : fn.args() )
             if ( isAbstract( arg.getType(), data.tmap ) )
-                fn.second.push_back( &arg );
+                funToValMap[ &fn ].push_back( &arg );
+
     for ( auto & fn : funToValMap ) {
         if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
             continue;
         removeInvalidAttributes( fn.first, data.tmap );
         auto deps = analysis::postorder( fn.second, succs );
+
         for ( const auto & dep : lart::util::reverse( deps ) ) {
             if( const auto & a = llvm::dyn_cast< llvm::Argument >( dep ) )
                 sb.process( a );
