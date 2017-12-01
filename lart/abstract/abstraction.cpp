@@ -195,6 +195,8 @@ void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
 
 AbstractValues Abstraction::FunctionNode::reached( const Fields & fields ) const {
     auto filter = [&] ( const AbstractValue & av ) {
+        if ( auto icmp = Cmp( av ) )
+            return !isScalarType( icmp->getOperand( 0 )->getType() );
         if ( !isScalarOp( av ) )
             return false;
         if ( auto load = Load( av ) )
