@@ -158,7 +158,8 @@ private:
             auto val = llvm::cast< llvm::Value >( phi->getIncomingValue( i ) );
             assert( vmap.count( val ) );
             auto parent = phi->getIncomingBlock( i );
-            incoming.push_back( { vmap[ val ], parent } );
+            if ( vmap.count( val ) )
+                incoming.emplace_back( vmap[ val ], parent );
         }
 
         if ( incoming.size() > 0 ) {
@@ -171,10 +172,13 @@ private:
                 vmap[ phi ] = node;
             }
 
-            for ( size_t i = 0; i < node->getNumIncomingValues(); ++i )
-                node->removeIncomingValue( i, false );
-            for ( auto & in : incoming )
-                node->addIncoming( in.first, in.second );
+            for ( auto & in : incoming ) {
+                auto idx = node->getBasicBlockIndex( in.second );
+                if ( idx != -1 )
+                    node->setIncomingValue( idx, in.first );
+                else
+                    node->addIncoming( in.first, in.second );
+            }
         }
     }
 

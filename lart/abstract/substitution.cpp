@@ -166,6 +166,7 @@ void Substitution::run( llvm::Module & m ) {
         if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
             continue;
         removeInvalidAttributes( fn.first, data.tmap );
+
         auto deps = analysis::postorder( fn.second, succs );
 
         for ( const auto & dep : lart::util::reverse( deps ) ) {
@@ -174,6 +175,10 @@ void Substitution::run( llvm::Module & m ) {
             if( const auto & i = llvm::dyn_cast< llvm::Instruction >( dep ) )
                 sb.process( i );
         }
+
+        for ( const auto & dep : deps )
+            if ( llvm::isa< llvm::PHINode >( dep ) )
+                sb.process( dep );
     }
 
     for ( const auto & g : globals ) {
