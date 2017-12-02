@@ -110,7 +110,7 @@ private:
             return IRB( getFunction( arg )->front().begin() ).CreateBitCast( arg, rty );
 
         auto dom = tmap.origin( stripPtrs( arg->getType() ) ).second;
-        std::string name = "__lart_lift_" + DomainTable[ dom ];
+        std::string name = "__lart_lift_" + llvmname( arg->getType() );
         auto abstraction = abs[ dom ];
         auto fty = llvm::FunctionType::get( rty, { arg->getType() }, false );
         auto lift = getModule( arg )->getOrInsertFunction( name, fty );
