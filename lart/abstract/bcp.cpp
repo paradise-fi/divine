@@ -209,11 +209,13 @@ void BCP::process( llvm::Instruction * assume ) {
     Assume ass = { assume, data.tmap };
 
     // create constraints on arguments from condition that created tristate
-    auto cond = ass.condition();
-    if ( auto cmp = llvm::dyn_cast< llvm::CallInst >( cond ) ) {
-        if ( isIntrinsic( cmp ) ) {
-            ass.constrain( ass.domain(), Assume::AssumeValue::LHS );
-            ass.constrain( ass.domain(), Assume::AssumeValue::RHS );
+    if ( ass.domain() != Domain::Symbolic ) {
+        auto cond = ass.condition();
+        if ( auto cmp = llvm::dyn_cast< llvm::CallInst >( cond ) ) {
+            if ( isIntrinsic( cmp ) ) {
+                ass.constrain( ass.domain(), Assume::AssumeValue::LHS );
+                ass.constrain( ass.domain(), Assume::AssumeValue::RHS );
+            }
         }
     }
     ass.constrain( ass.domain(), Assume::AssumeValue::Predicate );
