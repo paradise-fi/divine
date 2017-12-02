@@ -69,6 +69,7 @@ struct Substituter {
                 std::exit( EXIT_FAILURE );
             } );
         }
+        replaceLifts( val );
     }
 
     void process( llvm::GlobalVariable * glob ) {
@@ -104,14 +105,37 @@ struct Substituter {
     }
 
 private:
+    void replaceLifts( llvm::Value * val ) {
+        for ( const auto & u : val->users() ) {
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) ) {
+                auto fn = call->getCalledFunction();
+                if ( fn->hasName() && fn->getName().startswith( "__lart_lift" ) ) {
+                    assert( vmap.count( val ) );
+                    auto call = llvm::cast< llvm::CallInst >( u );
+                    call->replaceAllUsesWith( vmap[ val ] );
+                    call->eraseFromParent();
+                }
+            }
+        }
+    }
+
+    llvm::Value * lift( llvm::Instruction * val ) const {
+        auto rty = process( val->getType() );
+        std::string name = "__lart_lift_" + llvmname( val->getType() );
+        auto fty = llvm::FunctionType::get( rty, { val->getType() }, false );
+        auto lift = getModule( val )->getOrInsertFunction( name, fty );
+        if ( auto phi = llvm::dyn_cast< llvm::PHINode >( val ) )
+            return IRB( phi->getParent()->getFirstNonPHI() ).CreateCall( lift, { val } );
+        else
+            return IRB( val ).CreateCall( lift, { val } );
+    }
+
     llvm::Value * argLift( llvm::Argument * arg ) {
         auto rty = process( arg->getType() );
         if ( arg->getType()->isPointerTy() )
             return IRB( getFunction( arg )->front().begin() ).CreateBitCast( arg, rty );
 
-        auto dom = tmap.origin( stripPtrs( arg->getType() ) ).second;
         std::string name = "__lart_lift_" + llvmname( arg->getType() );
-        auto abstraction = abs[ dom ];
         auto fty = llvm::FunctionType::get( rty, { arg->getType() }, false );
         auto lift = getModule( arg )->getOrInsertFunction( name, fty );
         return IRB( getFunction( arg )->front().begin() ).CreateCall( lift, { arg } );
@@ -134,7 +158,16 @@ private:
                 auto destTy = process( bc->getDestTy() );
                 return IRB( bc->getContext() ).CreateBitCast( v, destTy );
             }
-            return isAbstract( v->getType() ) ? vmap.at( v ) : v;
+            if ( isAbstract( v->getType() ) ) {
+                if ( vmap.count( v ) ) {
+                    return vmap.at( v );
+                } else {
+                    auto i = llvm::cast< llvm::Instruction >( v );
+                    return lift( i );
+                }
+            } else {
+                return v;
+            }
         } );
     }
 
@@ -156,7 +189,6 @@ private:
         std::vector< std::pair< llvm::Value *, llvm::BasicBlock * > > incoming;
         for ( size_t i = 0; i < niv; ++i ) {
             auto val = llvm::cast< llvm::Value >( phi->getIncomingValue( i ) );
-            assert( vmap.count( val ) );
             auto parent = phi->getIncomingBlock( i );
             if ( vmap.count( val ) )
                 incoming.emplace_back( vmap[ val ], parent );
