@@ -27,11 +27,11 @@ struct State {
     PCFragment *pcFragments = nullptr;
 };
 
-State state;
+State __sym_state;
 
 extern "C" {
 void __sym_formula_dump() {
-    PCFragment * pcf = state.pcFragments;
+    PCFragment * pcf = __sym_state.pcFragments;
     while ( pcf != NULL ) {
         puts( __sym_formula_to_string( pcf ) );
         pcf = pcf->next;
@@ -40,7 +40,7 @@ void __sym_formula_dump() {
 }
 
 Formula **__abstract_sym_alloca( int bitwidth ) {
-    return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth }, state.counter++ ) ) );
+    return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth }, __sym_state.counter++ ) ) );
 }
 
 Formula *__abstract_sym_load( Formula **a, int bitwidth ) {
@@ -120,7 +120,7 @@ Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool assume
     Formula *wconstraint = weaken( constraint );
     if ( !assume )
         wconstraint = __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint );
-    state.pcFragments = weaken( __new< PCFragment >( wconstraint, state.pcFragments ) );
-    __vm_trace( _VM_T_Alg, state.pcFragments );
+    __sym_state.pcFragments = weaken( __new< PCFragment >( wconstraint, __sym_state.pcFragments ) );
+    __vm_trace( _VM_T_Alg, __sym_state.pcFragments );
     return mark( __newf< Assume >( weaken( value ), wconstraint ) );
 }
