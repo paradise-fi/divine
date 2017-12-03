@@ -284,6 +284,7 @@ struct Explore_
             typename Context::MemMap loads, stores;
             Label lbl;
             Snapshot snap;
+            bool free;
         };
 
         std::vector< Check > to_check;
@@ -315,6 +316,7 @@ struct Explore_
                     tc.lock.push_back( c );
 
                 tc.snap = _ctx.heap().snapshot();
+                tc.free = !_ctx.heap().is_shared( tc.snap );
                 tc.lbl = label();
             }
         } while ( !_ctx.finished() );
@@ -339,7 +341,8 @@ struct Explore_
                 do_yield( tc.snap, tc.lbl );
             else
             {
-                pool().free( tc.snap );
+                if ( tc.free )
+                    pool().free( tc.snap );
                 _ctx._lock = tc.lock;
                 _ctx.load( from.snap );
                 ASSERT( _ctx._stack.empty() );

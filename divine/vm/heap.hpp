@@ -892,6 +892,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         return s;
     }
 
+    bool is_shared( Snapshot s ) const { return s == _l.snapshot; }
     void restore( Snapshot s )
     {
         _l.exceptions.clear();
