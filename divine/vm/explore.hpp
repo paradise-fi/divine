@@ -61,6 +61,7 @@ struct Context : vm::Context< Program, CowHeap >
         if ( _lock.size() )
         {
             auto rv = _lock.front();
+            ASSERT_EQ( count, rv.total );
             _lock.pop_front();
             _stack.push_back( rv );
             return rv.taken;

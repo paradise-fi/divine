@@ -89,12 +89,14 @@ struct Context : DNContext< Heap >
         {
             case LockDisabled: case LockScheduler:
                 if ( _lock.choices.empty() )
-                    _lock.choices.emplace_back( 0, 0 ); break;
+                    _lock.choices.emplace_back( 0, count );
+                break;
             default:
                 ASSERT( !_lock.choices.empty() );
         }
 
         auto front = _lock.choices.front();
+        ASSERT_EQ( count, front.total );
         ASSERT_LT( front.taken, count );
         if ( front.total )
             ASSERT_EQ( front.total, count );
