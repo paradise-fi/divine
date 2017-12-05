@@ -56,8 +56,7 @@ enum class Op : uint16_t {
     Variable,
     Constant,
 
-    FirstUnary,
-    BitCast = FirstUnary,
+    BitCast, FirstUnary = BitCast,
 
     SExt,
     ZExt,
@@ -74,11 +73,9 @@ enum class Op : uint16_t {
     UIntToFP,
 
     BoolNot,
-    Extract,
-    LastUnary = Extract,
+    Extract, LastUnary = Extract,
 
-    FirstBinary,
-    Add = FirstBinary,
+    Add, FirstBinary = Add,
     Sub,
     Mul,
     UDiv,
@@ -113,24 +110,23 @@ enum class Op : uint16_t {
 
     // Fcmp
     FcFalse, // no comparison, always returns false
-    FcOEQ, // ordered and equal
-    FcOGT, // ordered and greater than
-    FcOGE, // ordered and greater than or equal
-    FcOLT, // ordered and less than
-    FcOLE, // ordered and less than or equal
-    FcONE, // ordered and not equal
-    FcORD, // ordered (no nans)
-    FcUEQ, // unordered or equal
-    FcUGT, // unordered or greater than
-    FcUGE, // unordered or greater than or equal
-    FcULT, // unordered or less than
-    FcULE, // unordered or less than or equal
-    FcUNE, // unordered or not equal
-    FcUNO, // unordered (either nans)
-    FcTrue, // no comparison, always returns true
+    FcOEQ,   // ordered and equal
+    FcOGT,   // ordered and greater than
+    FcOGE,   // ordered and greater than or equal
+    FcOLT,   // ordered and less than
+    FcOLE,   // ordered and less than or equal
+    FcONE,   // ordered and not equal
+    FcORD,   // ordered (no nans)
+    FcUEQ,   // unordered or equal
+    FcUGT,   // unordered or greater than
+    FcUGE,   // unordered or greater than or equal
+    FcULT,   // unordered or less than
+    FcULE,   // unordered or less than or equal
+    FcUNE,   // unordered or not equal
+    FcUNO,   // unordered (either nans)
+    FcTrue,  // no comparison, always returns true
 
-    Concat,
-    LastBinary = Concat,
+    Concat, LastBinary = Concat,
 
     Assume
 };
