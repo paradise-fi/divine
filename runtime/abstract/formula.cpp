@@ -46,9 +46,11 @@ std::string toString( const Formula *root )
         UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
 }
 
-std::string toString( Op x ) {
-    switch ( x ) {
-
+std::string toString( Op x )
+{
+    switch ( x )
+    {
+        case Op::Invalid: return "INVALID";
         case Op::Variable: return "var";
         case Op::Constant: return "con";
 
@@ -67,6 +69,9 @@ std::string toString( Op x ) {
         case Op::FPToUInt: return "fptouint";
         case Op::SIntToFP: return "sinttofp";
         case Op::UIntToFP: return "uinttofp";
+
+        case Op::BoolNot: return "!";
+        case Op::Extract: return "extract";
 
         case Op::Add: return "+";
         case Op::Sub: return "-";
@@ -119,9 +124,10 @@ std::string toString( Op x ) {
         case Op::FcUNO: return "funo"; // unordered (either nans)
         case Op::FcTrue: return "fctrue"; // no comparison: always returns true
 
-        default:
-            UNREACHABLE_F( "Unknown formula operation %d", int( x ) );
+        case Op::Concat: return "concat";
+        case Op::Assume: return "assume";
     }
+    UNREACHABLE_F( "invalid operation %d in sym::toString", int( x ) );
 }
 
 }
