@@ -33,7 +33,7 @@ extern "C" {
 void __sym_formula_dump() {
     PCFragment * pcf = __sym_state.pcFragments;
     while ( pcf != NULL ) {
-        puts( __sym_formula_to_string( pcf ) );
+        __vm_trace( _VM_T_Text, sym::toString( pcf->assume ).c_str() );
         pcf = pcf->next;
     }
 }
