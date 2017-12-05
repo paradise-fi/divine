@@ -420,16 +420,15 @@ struct Context
     void fault( Fault f, HeapPointer frame, CodePointer pc )
     {
         auto fh = get( _VM_CR_FaultHandler ).pointer;
-        if ( fh.null() || debug_mode() )
+        if ( debug_mode() )
         {
-            if ( debug_mode() )
-            {
-                trace( "FATAL: cannot handle a fault during dbg.call" );
-                _debug_depth = 0; /* short-circuit */
-                leave_debug();
-            }
-            if ( fh.null() )
-                trace( "FATAL: no fault handler installed" );
+            trace( "W: cannot handle a fault during dbg.call (abandoned)" );
+            _debug_depth = 0; /* short-circuit */
+            leave_debug();
+        }
+        else if ( fh.null() )
+        {
+            trace( "FATAL: no fault handler installed" );
             doublefault();
         }
         else
