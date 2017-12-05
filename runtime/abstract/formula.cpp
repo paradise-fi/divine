@@ -193,12 +193,4 @@ void *__sym_mk_op( int _op, int type, int bitwidth ... ) {
 }
 #endif
 
-char *__sym_formula_to_string( void *root ) {
-    auto form = toString( static_cast< sym::Formula * >( root ) );
-    char *out = static_cast< char * >( __vm_obj_make( form.size() + 1 ) );
-    *std::copy( form.begin(), form.end(), out ) = 0;
-    return out;
-}
-
-
 #endif

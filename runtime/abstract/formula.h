@@ -38,7 +38,6 @@ extern "C" {
  */
 void *__sym_mk_op( int op, int type, int bitwidth ... );
 #endif
-char *__sym_formula_to_string( void *root );
 
 #ifdef __cplusplus
 } // extern "C"
