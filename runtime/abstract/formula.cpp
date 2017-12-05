@@ -27,7 +27,8 @@ std::string toString( Type t ) {
     return str;
 }
 
-std::string toString( const Formula *root ) {
+std::string toString( const Formula *root )
+{
     if ( root->op() == Op::Variable )
         return "[v "s + std::to_string( root->var.id ) + ":"s + toString( root->type() ) + "]"s;
     else if ( root->op() == Op::Constant )
@@ -41,8 +42,8 @@ std::string toString( const Formula *root ) {
     else if ( root->op() == Op::Assume )
         return "assume("s + toString( root->assume.value ) + ", "s
                 + toString( root->assume.constraint ) + ")"s;
-
-    UNREACHABLE_F( "unknown operation in to_string: %d", root->op() );
+    else
+        UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
 }
 
 std::string toString( Op x ) {
