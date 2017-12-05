@@ -75,7 +75,7 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
                 ASSERT_LT( childbw, bw );
                 op = childbw > 1
                      ? smt::binop< smt::Op::Concat >( smt::bitvec( 0, bw - childbw ), arg )
-                     : smt::ite( arg, smt::bitvec( 0, bw ), smt::bitvec( 1, bw ) );
+                     : smt::ite( arg, smt::bitvec( 1, bw ), smt::bitvec( 0, bw ) );
                 break;
             case sym::Op::SExt:
                 ASSERT_LT( childbw, bw );
@@ -87,8 +87,8 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
                                    smt::unop< smt::Op::BvNot >( smt::bitvec( 0, bw - childbw ) ),
                                    smt::bitvec( 0, bw - childbw ) ),
                          arg )
-                     : smt::ite( arg, smt::bitvec( 0, bw ),
-                                 smt::unop< smt::Op::Not >( smt::bitvec( 0, bw ) ) );
+                     : smt::ite( arg, smt::unop< smt::Op::Not >( smt::bitvec( 0, bw ) ),
+                                      smt::bitvec( 0, bw ) );
                 break;
             case sym::Op::BoolNot:
                 ASSERT_EQ( childbw, bw );
