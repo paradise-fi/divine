@@ -96,7 +96,8 @@ struct Context : DNContext< Heap >
         }
 
         auto front = _lock.choices.front();
-        ASSERT_EQ( count, front.total );
+        if ( front.total )
+            ASSERT_EQ( count, front.total );
         ASSERT_LT( front.taken, count );
         if ( front.total )
             ASSERT_EQ( front.total, count );
