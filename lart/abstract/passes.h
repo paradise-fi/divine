@@ -1486,7 +1486,7 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.75.76" );
+        auto abstract_call = m->getFunction( "_Z4callv.80.81" );
         ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
         ASSERT_EQ( abstract_call->getReturnType()
