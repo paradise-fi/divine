@@ -46,6 +46,9 @@ struct Fault: public Next {
         uint8_t faultConfig[ _DiOS_SF_Last ];
     };
 
+    uint8_t _flags;
+    enum Flags { Ready = 1, PrintBacktrace = 2 };
+
     struct MallocNofailGuard {
     private:
         MallocNofailGuard( Fault< Next >& f )
@@ -73,9 +76,7 @@ struct Fault: public Next {
         return { *this };
     }
 
-    Fault()
-        : ready( false )
-    {}
+    Fault() : _flags( 0 ) {}
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -87,7 +88,9 @@ struct Fault: public Next {
             trace_config( 1 );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         }
-        ready = true;
+        _flags = Ready;
+        if ( extractOpt( "debug", "faultbt", s.opts ) )
+            _flags |= PrintBacktrace;
         Next::setup( s );
     }
 
@@ -138,7 +141,11 @@ struct Fault: public Next {
             *reinterpret_cast< char *>( meta->address ) = flags;
     }
 
-    void backtrace( _VM_Frame * frame ) {
+    void backtrace( _VM_Frame * frame )
+    {
+        if ( ( _flags & PrintBacktrace ) == 0 )
+            return;
+        __dios_trace_t( "Backtrace:" );
         auto guard = makeMallocNofail();
         char *buffer = static_cast< char * >( malloc( 1024 ) );
         size_t len = 1024;
@@ -166,16 +173,16 @@ struct Fault: public Next {
         auto *cfg = getCurrentConfig();
         // If no task exists, trigger the fault
         uint8_t fault_cfg = cfg ? cfg[ what ] : FaultFlag::Enabled;
-        if ( !ready || fault_cfg & FaultFlag::Enabled ) {
+        if ( !( _flags & Ready ) || fault_cfg & FaultFlag::Enabled )
+        {
             if ( kernel )
                 __dios_trace_f( "Fault in kernel: %s", fault_to_str( what ).c_str() );
             else
                 __dios_trace_f( "Fault in userspace: %s", fault_to_str( what ).c_str() );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-            __dios_trace_t( "Backtrace:" );
             backtrace( frame );
 
-            if ( !ready || !( fault_cfg & FaultFlag::Continue ) )
+            if ( !( _flags & Ready ) || !( fault_cfg & FaultFlag::Continue ) )
                 Next::die();
         }
     }
@@ -388,8 +395,6 @@ struct Fault: public Next {
             return _DiOS_FC_EInvalidFault;
         return _faultToStatus( fault );
     }
-
-    bool ready;
 };
 
 } // namespace __dios
