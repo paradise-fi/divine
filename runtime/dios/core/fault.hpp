@@ -201,7 +201,8 @@ struct Fault: public Next {
         // Continue if we get the control back
         __vm_control( _VM_CA_Set, _VM_CR_Frame, cont_frame,
                       _VM_CA_Set, _VM_CR_PC, cont_pc,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, mask ? _VM_CF_Mask : 0 );
+                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, mask ? _VM_CF_Mask : 0,
+                      _VM_CA_DestroyFrame );
         __builtin_unreachable();
     }
 
