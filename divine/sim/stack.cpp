@@ -75,8 +75,8 @@ DN CLI::frame_up( DN frame )
     Stack stack( *this, frame );
     DN up = stack.raw_up( frame );
 
-    // possibly switch to userspace if in kernel
-    if ( stack.is_kernel() && ( !_debug_kernel || !up.valid() ) )
+    // switch to userspace if we hit the bottom of the kernel stack
+    if ( stack.is_kernel() && !up.valid() )
     {
         auto nstack = stack.get_userspace_stack();
         if ( nstack )
@@ -86,25 +86,6 @@ DN CLI::frame_up( DN frame )
         }
     }
 
-    // skip up to fault handler if in fault
-    if ( !_debug_kernel && up.valid() )
-    {
-        auto fh = _ctx.get( _VM_CR_FaultHandler ).pointer;
-        if ( !fh.null() )
-        {
-            vm::CodePointer fault_handler = fh;
-            DN i = up;
-            while ( (i = stack.raw_up( i )).valid() )
-            {
-                vm::CodePointer i_pc = i.pc();
-                if ( i_pc.function() == fault_handler.function() )
-                {
-                    up = stack.raw_up( i );
-                    break;
-                }
-            }
-        }
-    }
     return up;
 }
 
