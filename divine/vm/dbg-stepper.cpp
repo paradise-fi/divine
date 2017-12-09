@@ -40,13 +40,13 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     {
         in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
 
-        if ( _check( _states ) )
-            break;
-
         if ( in_kernel && _ff_kernel )
             eval.advance();
         else
         {
+            if ( _check( _states ) )
+                break;
+
             if ( check( ctx, eval, oldpc, moved ) )
                 break;
 
