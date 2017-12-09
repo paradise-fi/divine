@@ -41,6 +41,13 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
         in_fault = eval.pc().function() == fault_handler;
 
+        if ( !error_set && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error )
+        {
+            if ( rewind_to_fault )
+                ctx = _backup;
+            break;
+        }
+
         if ( in_kernel && _ff_kernel )
             eval.advance();
         else
@@ -51,17 +58,10 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             if ( check( ctx, eval, oldpc, moved ) )
                 break;
 
-            if ( !error_set && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error )
-            {
-                if ( rewind_to_fault )
-                    ctx = _backup;
-                break;
-            }
-
             if ( _stop_on_fault && in_fault )
                 break;
 
-            if ( _stop_on_error && in_fault && !rewind_to_fault )
+            if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_kernel )
             {
                 rewind_to_fault = true;
                 _backup = ctx;
