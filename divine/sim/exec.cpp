@@ -66,6 +66,7 @@ void CLI::reach_user()
     Stepper step;
     step._instructions = std::make_pair( 1, 1 );
     step._ff_kernel = true;
+    step._sched_policy = []{ throw brick::except::Error( "could not reach userspace" ); };
     run( step, false ); /* make 0 (user mode) steps */
 }
 
