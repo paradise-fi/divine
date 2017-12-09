@@ -132,6 +132,7 @@ void Verify::safety()
         using Stepper = vm::dbg::Stepper< decltype( dbg ) >;
         Stepper step;
         step._stop_on_error = true;
+        step._ff_kernel = true;
         step.run( dbg, Stepper::Quiet );
         std::stringstream bt;
         mc::backtrace( bt, dbg, dbg.snapshot(), _num_callers );
