@@ -29,8 +29,8 @@
 namespace divine {
 namespace mc {
 
-template< typename Dbg >
-void backtrace( std::ostream &ostr, Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
+template< typename BT, typename Fmt, typename Dbg >
+void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
 {
     vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
     dn.address( vm::dbg::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
@@ -39,9 +39,8 @@ void backtrace( std::ostream &ostr, Dbg &dbg, vm::CowHeap::Snapshot snap, int ma
     dn_top.address( vm::dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
     vm::dbg::DNSet visited;
     int stacks = 1;
-    ostr << "  backtrace 1: # active stack" << std::endl;
-    vm::dbg::backtrace( ostr, dn_top, visited, stacks, maxdepth );
-    vm::dbg::backtrace( ostr, dn, visited, stacks, maxdepth );
+    vm::dbg::backtrace( bt, fmt, dn_top, visited, stacks, maxdepth );
+    vm::dbg::backtrace( bt, fmt, dn, visited, stacks, maxdepth );
 }
 
 struct Trace
