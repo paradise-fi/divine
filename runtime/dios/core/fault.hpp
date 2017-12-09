@@ -175,10 +175,8 @@ struct Fault: public Next {
         uint8_t fault_cfg = cfg ? cfg[ what ] : FaultFlag::Enabled;
         if ( !( _flags & Ready ) || fault_cfg & FaultFlag::Enabled )
         {
-            if ( kernel )
-                __dios_trace_f( "Fault in kernel: %s", fault_to_str( what ).c_str() );
-            else
-                __dios_trace_f( "Fault in userspace: %s", fault_to_str( what ).c_str() );
+            __dios_trace_f( "FATAL: %s in %s", fault_to_str( what, true ).c_str(),
+                            kernel ? "kernel" : "userspace" );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
             backtrace( frame );
 
@@ -240,17 +238,18 @@ struct Fault: public Next {
         return static_cast< _VM_Fault >( -1 );
     }
 
-    static String fault_to_str( int f )  {
-        switch( f ) {
-            case _VM_F_Assert: return "assert";
-            case _VM_F_Arithmetic: return "arithmetic";
-            case _VM_F_Memory: return "memory";
-            case _VM_F_Control: return "control";
-            case _VM_F_Locking: return "locking";
-            case _VM_F_Hypercall: return "hypercall";
-            case _VM_F_NotImplemented: return "notimplemented";
-            case _DiOS_F_Assert: return "diosassert";
-            case _DiOS_F_Config: return "diosconfig";
+    static String fault_to_str( int f, bool ext = false )  {
+        switch( f )
+        {
+            case _VM_F_Assert: return ext ? "assertion failure" : "assert";
+            case _VM_F_Arithmetic: return ext ? "arithmetic error" : "arithmetic";
+            case _VM_F_Memory: return ext ? "memory error" : "memory";
+            case _VM_F_Control: return ext ? "control error" : "control";
+            case _VM_F_Locking: return ext ? "locking error" : "locking";
+            case _VM_F_Hypercall: return ext ? "bad hypercall" : "hypercall";
+            case _VM_F_NotImplemented: return ext ? "not implemented" : "notimplemented";
+            case _DiOS_F_Assert: return ext ? "dios assertion violation" : "diosassert";
+            case _DiOS_F_Config: return ext ? "config error" : "diosconfig";
             case _DiOS_SF_Malloc: return "malloc";
         }
         return "unknown";
