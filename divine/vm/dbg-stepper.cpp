@@ -30,31 +30,38 @@ template< typename Context >
 void Stepper< Context >::run( Context &ctx, Verbosity verb )
 {
     Eval< Context, value::Void > eval( ctx );
-    bool in_fault = !_stop_on_fault ||
-                    eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
-    bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+    auto fault_handler = ctx.get( _VM_CR_FaultHandler ).pointer.object();
+    bool in_fault = !_stop_on_fault || eval.pc().function() == fault_handler;
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-    bool moved = false;
+    bool moved = false, in_kernel;
     CodePointer oldpc = eval.pc();
 
-    while ( !_sigint && !ctx.frame().null() && !_check( _states ) &&
-            ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, oldpc, moved ) ) &&
-            ( error_set || ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error ) == 0 ) &&
-            ( in_fault || eval.pc().function()
-              != ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
+    while ( !_sigint && !ctx.frame().null() )
     {
         in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-        moved = true;
+
+        if ( _check( _states ) )
+            break;
 
         if ( in_kernel && _ff_kernel )
             eval.advance();
         else
         {
+            if ( check( ctx, eval, oldpc, moved ) )
+                break;
+
+            if ( !error_set && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error )
+                break;
+
+            if ( !in_fault && eval.pc().function() == fault_handler )
+                break;
+
             in_frame( ctx.frame(), ctx.heap() );
             eval.advance();
             instruction();
         }
 
+        moved = true;
         oldpc = eval.pc();
 
         if ( ( verb == PrintInstructions || verb == TraceInstructions ) &&
