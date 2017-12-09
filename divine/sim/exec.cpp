@@ -61,8 +61,11 @@ Stepper CLI::stepper( command::WithSteps s, bool jmp )
 
 void CLI::reach_user()
 {
+    if ( _debug_kernel )
+        return;
     Stepper step;
     step._instructions = std::make_pair( 1, 1 );
+    step._ff_kernel = true;
     run( step, false ); /* make 0 (user mode) steps */
 }
 
