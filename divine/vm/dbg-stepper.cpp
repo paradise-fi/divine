@@ -31,14 +31,15 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
 {
     Eval< Context, value::Void > eval( ctx );
     auto fault_handler = ctx.get( _VM_CR_FaultHandler ).pointer.object();
-    bool in_fault = !_stop_on_fault || eval.pc().function() == fault_handler;
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-    bool moved = false, in_kernel;
+    bool moved = false, in_kernel, in_fault, rewind_to_fault = false;
     CodePointer oldpc = eval.pc();
+    Context _backup( ctx.program(), ctx.debug() );
 
     while ( !_sigint && !ctx.frame().null() )
     {
         in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+        in_fault = eval.pc().function() == fault_handler;
 
         if ( in_kernel && _ff_kernel )
             eval.advance();
@@ -51,10 +52,20 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
                 break;
 
             if ( !error_set && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error )
+            {
+                if ( rewind_to_fault )
+                    ctx = _backup;
+                break;
+            }
+
+            if ( _stop_on_fault && in_fault )
                 break;
 
-            if ( !in_fault && eval.pc().function() == fault_handler )
-                break;
+            if ( _stop_on_error && in_fault && !rewind_to_fault )
+            {
+                rewind_to_fault = true;
+                _backup = ctx;
+            }
 
             in_frame( ctx.frame(), ctx.heap() );
             eval.advance();
@@ -63,11 +74,11 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
 
         moved = true;
         oldpc = eval.pc();
+        auto frame = ctx.frame();
 
         if ( ( verb == PrintInstructions || verb == TraceInstructions ) &&
              ( !in_kernel || !_ff_kernel ) )
         {
-            auto frame = ctx.frame();
             std::string output = print::instruction( ctx.debug(), eval, 2 );
             std::string indent = ( verb == PrintInstructions ) ? "  " : "";
             eval.dispatch();
@@ -85,6 +96,9 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         }
         else
             eval.dispatch();
+
+        if ( in_fault && !ctx.heap().valid( frame ) )
+            rewind_to_fault = false;
 
         while ( ctx.debug_mode() )
             eval.advance(), eval.dispatch();
