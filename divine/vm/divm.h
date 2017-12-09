@@ -117,7 +117,8 @@ enum _VM_ControlAction
 {
     _VM_CA_Set, /* set the register to next_argument */
     _VM_CA_Get, /* return the current value */
-    _VM_CA_Bit  /* set or clear bits in a register */
+    _VM_CA_Bit, /* set or clear bits in a register */
+    _VM_CA_DestroyFrame
 };
 
 /*

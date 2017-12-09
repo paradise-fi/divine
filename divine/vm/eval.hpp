@@ -1014,6 +1014,8 @@ struct Eval
                     reg_r |= val;
                 }
             }
+            else if ( action == _VM_CA_DestroyFrame )
+                heap().free( o_frame );
             else
             {
                 fault( _VM_F_Hypercall ) << "invalid __vm_control sequence at index " << idx;
