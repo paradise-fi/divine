@@ -164,6 +164,7 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
         case PointerType::Weak: return o << "weak";
         case PointerType::Marked: return o << "marked";
     }
+    UNREACHABLE( "impossible pointer type" );
 }
 
 template< typename P,

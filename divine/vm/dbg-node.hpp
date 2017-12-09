@@ -41,6 +41,7 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
         case DNKind::Globals: return o << "frame";
         case DNKind::Object: return o << "object";
     }
+    UNREACHABLE( "impossible debug node kind" );
 }
 
 template< typename Program, typename Heap >
