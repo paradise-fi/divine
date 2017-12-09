@@ -102,7 +102,12 @@ void Sim::run()
     }
 
     if ( _trace )
+    {
         interp.go( sim::command::Trace( *_trace ) );
+        interp.reach_error();
+        interp.set( "$_", interp.frameDN() );
+        interp.update();
+    }
 
     while ( !interp._exit )
     {

@@ -69,6 +69,13 @@ void CLI::reach_user()
     run( step, false ); /* make 0 (user mode) steps */
 }
 
+void CLI::reach_error()
+{
+    Stepper step;
+    step._stop_on_error = true;
+    run( step, false );
+}
+
 void CLI::bplist( command::Break b )
 {
     std::deque< decltype( _bps )::iterator > remove;

@@ -185,6 +185,7 @@ struct CLI
     Stepper stepper();
     Stepper stepper( command::WithSteps s, bool jmp );
     void reach_user();
+    void reach_error();
 
     void bplist( command::Break b );
 
