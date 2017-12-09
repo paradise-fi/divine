@@ -134,11 +134,26 @@ void CLI::go( command::Rewind re )
     set( "$_", re.var );
 }
 
-void CLI::go( command::BackTrace bt )
+void CLI::go( command::BackTrace backtrace )
 {
     dbg::DNSet visited;
+
+    auto fmt = [this]( auto dn )
+    {
+        auto loc = dn.attribute( "location" ), sym = dn.attribute( "symbol" );
+        out() << "  " << sym;
+        if ( sym.size() > 80 )
+            out() << std::endl << "    ";
+        out() << " at " << loc << std::endl;
+    };
+
+    auto bt = [&]( int id )
+    {
+        out() << "# backtrace " << id << ":" << std::endl;
+    };
+
     int stacks = 0;
-    dbg::backtrace( out(), get( bt.var ), visited, stacks, 100 );
+    dbg::backtrace( bt, fmt, get( backtrace.var ), visited, stacks, 100 );
 }
 
 void CLI::go( command::Show cmd )
