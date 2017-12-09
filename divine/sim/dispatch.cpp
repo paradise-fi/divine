@@ -215,6 +215,7 @@ void CLI::go( command::Call c )
 
 void CLI::go( command::Up )
 {
+    check_running();
     auto current =  get( "$_" );
     if ( current._kind != dbg::DNKind::Frame )
         throw brick::except::Error( "$_ not set to a frame, can't go up" );
@@ -227,6 +228,7 @@ void CLI::go( command::Up )
 
 void CLI::go( command::Down )
 {
+    check_running();
     auto frame = get( "$top" ), prev = frame, current = get( "$_" );
     if ( current._kind != dbg::DNKind::Frame )
         throw brick::except::Error( "$_ not set to a frame, can't go down" );
