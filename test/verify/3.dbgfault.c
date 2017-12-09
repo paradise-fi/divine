@@ -1,7 +1,5 @@
 #include <assert.h>
 
-/* ERRSPEC: fault during dbg.call */
-
 __attribute__((__annotate__("divine.debugfn")))
 void fault( int *x )
 {
@@ -11,5 +9,5 @@ void fault( int *x )
 int main()
 {
     fault( 0 );
-    assert( 0 );
+    assert( 0 ); /* ERROR */
 }
