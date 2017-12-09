@@ -34,7 +34,7 @@ divine verify $resources $extra $opts $run $args
 
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
-    printf "stepa --count 1000\nbacktrace" | \
+    printf "backtrace" | \
         divine sim --skip-init --load-report verify.out 2>&1 | tee sim.out
 fi
 check verify "$1"
