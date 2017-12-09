@@ -95,13 +95,14 @@ struct YamlSink : TimedSink
     {
         TimedSink::progress( states, q, last );
 
-        if ( !last )
+        if ( !last || !_detailed )
             return;
 
         _out << std::endl << "state count: " << states
              << std::endl << "states per second: " << timeavg( states, _time_search )
+             << std::endl
              << std::endl << "version: " << version()
-             << std::endl << std::endl;
+             << std::endl;
         _sysinfo.report( [this]( auto k, auto v )
                          { _out << k << ": " << v << std::endl; } );
     }
@@ -110,6 +111,7 @@ struct YamlSink : TimedSink
     {
         if ( !last || !_detailed )
             return;
+        _out << std::endl;
         for ( auto p : st )
             printpool( _out, p.first, p.second );
     }
@@ -117,13 +119,16 @@ struct YamlSink : TimedSink
     void result( mc::Result result, const mc::Trace &trace ) override
     {
         TimedSink::result( result, trace );
-        _out << "timers:";
-        _out << std::setprecision( 3 );
-        _out << std::endl << "  lart: " << double( _time_lart.count() ) / 1000
-             << std::endl << "  loader: " << double( _time_rr.count() + _time_const.count() ) / 1000
-             << std::endl << "  boot: " << double( _time_boot.count() ) / 1000
-             << std::endl << "  search: " << double( _time_search.count() ) / 1000
-             << std::endl << "  ce: " << double( _time_ce.count() ) / 1000 << std::endl;
+        if ( _detailed )
+        {
+            _out << "timers:";
+            _out << std::setprecision( 3 );
+            _out << std::endl << "  lart: " << double( _time_lart.count() ) / 1000
+                 << std::endl << "  loader: " << double( _time_rr.count() + _time_const.count() ) / 1000
+                 << std::endl << "  boot: " << double( _time_boot.count() ) / 1000
+                 << std::endl << "  search: " << double( _time_search.count() ) / 1000
+                 << std::endl << "  ce: " << double( _time_ce.count() ) / 1000 << std::endl;
+        }
 
         _out << result << std::endl;
         if ( result == mc::Result::None || result == mc::Result::Valid )
