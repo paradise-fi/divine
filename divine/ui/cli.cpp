@@ -232,7 +232,6 @@ void WithBC::setup()
     int i = 0;
 
     process_options();
-    report_options();
 
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;

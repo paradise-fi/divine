@@ -106,6 +106,7 @@ void Verify::safety()
                            sysinfo.updateAndCheckTimeLimit( _max_time );
                    } );
     safety->wait();
+    report_options();
 
     if ( safety->result() == mc::Result::Valid )
         return _log->result( safety->result(), mc::Trace() );
