@@ -50,21 +50,22 @@ void _PDCLIB_assert89( char const * const ) _PDCLIB_nothrow;
 #undef assert
 
 #ifdef __divine__
+#include <sys/divm.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void _PDCLIB_assert_dios( const char *msg ) _PDCLIB_nothrow;
+void __dios_fault( int f, const char *msg, ... ) _PDCLIB_nothrow __attribute__(( __noinline__ ));
 #ifdef __cplusplus
 }
 #endif
 
 #define assert(expression) \
     do { if(!(expression)) { \
-        _PDCLIB_assert_dios( "Assertion failed: " _PDCLIB_symbol2string(expression)\
-                         ", file " __FILE__ \
-                         ", line " _PDCLIB_symbol2string( __LINE__ ) \
-                         "." ); \
+        __dios_fault( _VM_F_Assert, "Assertion failed: " _PDCLIB_symbol2string(expression) \
+                      ", file " __FILE__ \
+                      ", line " _PDCLIB_symbol2string( __LINE__ ) \
+                      "." ); \
       } \
     } while(0)
 
