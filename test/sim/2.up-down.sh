@@ -19,11 +19,9 @@ sim $SRC <<EOF
 > up
 + ^#.*frame in __dios_fault
 > up
-> up
 + ^#.*frame in main
 > show
 + symbol:.*main
-> down
 > down
 > down
 > down

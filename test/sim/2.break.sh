@@ -6,12 +6,12 @@ sim $SRC <<EOF
 + ^# executing __boot
 > start
 + ^# executing main
-> break _PDCLIB_assert_dios
+> break __dios_fault
 > break --list
-+ ^ 1: _PDCLIB_assert
++ ^ 1: __dios_fault
 > stepa
-+ ^# stopped at breakpoint _PDCLIB_assert_dios
-+ ^# executing _PDCLIB_assert_dios
++ ^# stopped at breakpoint __dios_fault
++ ^# executing __dios_fault
 EOF
 
 sim $SRC <<EOF
