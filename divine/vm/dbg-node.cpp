@@ -760,6 +760,18 @@ std::string Node< Prog, Heap >::attribute( std::string key )
     return res;
 }
 
+template< typename Prog, typename Heap >
+Node< Prog, Heap > Node< Prog, Heap >::related( std::string key )
+{
+    Node< Prog, Heap > res( _ctx, _snapshot );
+    related( [&]( auto k, auto v )
+             {
+                 if ( k == key )
+                     res = v;
+             } );
+    return res;
+}
+
 template struct Node< Program, CowHeap >;
 
 }

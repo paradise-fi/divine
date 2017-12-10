@@ -178,6 +178,7 @@ struct Node
 
     void components( YieldDN yield );
     void related( YieldDN yield, bool anon = true );
+    Node related( std::string name );
     void struct_fields( HeapPointer hloc, YieldDN yield );
     void array_elements( YieldDN yield );
     void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
