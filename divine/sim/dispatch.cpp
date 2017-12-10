@@ -142,7 +142,7 @@ void CLI::go( command::BackTrace backtrace )
     {
         auto loc = dn.attribute( "location" ), sym = dn.attribute( "symbol" );
         out() << "  " << sym;
-        if ( sym.size() > 80 )
+        if ( sym.size() + loc.size() >= 80 && !_batch )
             out() << std::endl << "    ";
         out() << " at " << loc << std::endl;
     };
