@@ -210,7 +210,12 @@ struct Program
     }
 
     CodePointer advance( CodePointer pc ) { return nextpc( pc + 1 ); }
-    bool valid( CodePointer pc ) { return pc.instruction() < function( pc ).instructions.size(); }
+    bool valid( CodePointer pc )
+    {
+        if ( pc.function() >= functions.size() )
+            return false;
+        return pc.instruction() < function( pc ).instructions.size();
+    }
 
     SlotRef allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
     {

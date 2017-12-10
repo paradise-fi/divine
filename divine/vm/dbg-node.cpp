@@ -129,6 +129,10 @@ bool Node< Prog, Heap >::valid()
         return false;
     if ( !boundcheck( addr, size() ) )
         return false;
+
+    if ( _kind == DNKind::Frame )
+        if ( pc().type() != PointerType::Code || !_ctx.program().valid( pc() ) )
+            return false;
     return true;
 }
 
