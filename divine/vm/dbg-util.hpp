@@ -34,14 +34,14 @@ void backtrace( BT bt, Fmt fmt, DN dn, DNSet &visited, int &stacks, int maxdepth
     if ( !maxdepth )
         return;
 
-    if ( dn.kind() == DNKind::Frame )
+    if ( dn.kind() == DNKind::Frame && dn.valid() )
         fmt( dn );
 
     auto follow =
         [&]( std::string k, auto rel )
         {
             if ( rel.kind() == DNKind::Frame && k != "caller" &&
-                 rel.address().type() == PointerType::Heap &&
+                 rel.address().type() == PointerType::Heap && rel.valid() &&
                  !visited.count( rel.sortkey() ) && maxdepth > 1 )
                 bt( ++stacks );
             backtrace( bt, fmt, rel, visited, stacks, k == "caller" ? maxdepth - 1 : maxdepth );
