@@ -98,13 +98,16 @@ struct YamlSink : TimedSink
     {
         TimedSink::progress( states, q, last );
 
-        if ( !last || !_detailed )
+        if ( !last )
             return;
 
-        _out << std::endl << "state count: " << states
-             << std::endl << "states per second: " << timeavg( states, _time_search )
-             << std::endl
-             << std::endl << "version: " << version()
+        _out << "states per second: " << timeavg( states, _time_search ) << std::endl
+             << "state count: " << states << std::endl;
+
+        if ( !_detailed )
+            return;
+
+        _out << std::endl << "version: " << version()
              << std::endl;
         _sysinfo.report( [this]( auto k, auto v )
                          { _out << k << ": " << v << std::endl; } );
@@ -187,15 +190,14 @@ struct InteractiveSink : TimedSink
     {
         TimedSink::progress( states, queued, last );
         if ( last )
-            std::cerr << "\rfound " << states
-                      << " states in " << interval_str( _time_search )
-                      << ", averaging " << timeavg_str( states, _time_search )
-                      << "                             " << std::endl;
+            std::cerr << "\r                                     "
+                      << "                                     \r"
+                      << std::flush;
         else
             std::cerr << "\rsearching: " << states
                       << " states found in " << interval_str( interval() )
                       << ", averaging " << timeavg_str( states, interval() )
-                      << ", queued: " << queued << "      ";
+                      << "/s, queued: " << queued << "          ";
     }
 
     void loader( Phase p ) override
@@ -227,7 +229,12 @@ SinkPtr nullsink()
 }
 
 SinkPtr make_yaml( std::ostream &o, bool d ) { return std::make_shared< YamlSink >( o, d ); }
-SinkPtr make_interactive() { return std::make_shared< InteractiveSink >(); }
+SinkPtr make_interactive()
+{
+    if ( ::isatty( 2 ) )
+        return std::make_shared< InteractiveSink >();
+    return nullsink();
+}
 
 SinkPtr make_composite( std::vector< SinkPtr > s )
 {
