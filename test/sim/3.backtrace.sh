@@ -9,6 +9,6 @@ sim $TESTS/pthread/2.mutex-good.c <<EOF
 + ^# stopped at breakpoint
 > stepa
 > backtrace \$state
-+ symbol: (__pthread_entry|main)
-+ symbol: (__pthread_entry|main)
++   (__pthread_entry|main) at
++   (__pthread_entry|main) at
 EOF

@@ -6,8 +6,8 @@ sim $TESTS/c/1.assert.c <<EOF
 > setup --sticky "backtrace"
 > start
 + ^\s*3 int main\(\)
-+ \s*symbol: main
-+ \s*symbol: _start
++   main at
++   _start at
 EOF
 
 sim $TESTS/c/1.assert.c <<EOF

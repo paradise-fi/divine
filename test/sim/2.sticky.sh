@@ -12,6 +12,6 @@ sim $TESTS/c/1.assert.c <<EOF
 > start
 > setup --sticky "backtrace $state"
 > stepi
-+ \s*symbol: main
-+ \s*symbol: _start
++   main at
++   _start at
 EOF
