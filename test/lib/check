@@ -159,18 +159,18 @@ verify() {
     if fgrep -q '/* ERRSPEC:' "$1"; then
         spec=$(fgrep '/* ERRSPEC:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
         echo spec: $spec
-        if ! grep -q "^      [^ .][a-z]*:.*$spec" verify.out; then
+        if ! grep -q "^  [ -] [^ .][a-z]*:.*$spec" verify.out; then
             echo "# expected error to be found in $spec, but it was not"
             exit 1
         fi
     elif fgrep -q '/* ERROR' "$1"; then
         location=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f1-2`
-        if ! grep -q "^      location: $location" verify.out; then
+        if ! grep -q "^    location: $location" verify.out; then
             nl -ba "$1"
             echo "# expected error to be found at $location, but it was not"
             exit 1
         fi
-        if ! grep -q "^      location: $location" sim.out; then
+        if ! grep -q "^  [{}a-zA-Z_].* at $location" sim.out; then
             nl -ba "$1"
             echo "# expected error to be found in divine sim at $location, but it was not"
             exit 1
@@ -179,7 +179,7 @@ verify() {
         if ! grep -q "error found: no" verify.out &&
            ! grep -q "error found: boot" verify.out; then
             nl -ba "$1"
-            grep '^      location' verify.out || true
+            grep '^    location' verify.out || true
             echo "# no errors were expected but one was found anyway"
             exit 1
         fi
