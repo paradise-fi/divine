@@ -46,12 +46,13 @@ TOOLSTAMP  ?= $(TOOLDIR)/stamp-v1
 # Hack to hide shared libraries from clang
 STATIC_TOOLCHAIN ?= $(TOOLCHAIN_) -DCMAKE_EXE_LINKER_FLAGS="$(STATIC_LDFLAGS)" -DBUILD_PREFER_STATIC=ON
 
-CONFIG += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
-static_FLAGS = -DCMAKE_BUILD_TYPE=Release $(STATIC_TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
-release_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
-semidbg_FLAGS = -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
-debug_FLAGS = -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
-asan_CXXFLAGS = -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O1
+CONFIG        += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
+static_FLAGS  += -DCMAKE_BUILD_TYPE=Release $(STATIC_TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
+release_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
+semidbg_FLAGS += -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
+debug_FLAGS   += -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
+
+asan_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O1
 asan_FLAGS = $(debug_FLAGS) -DCMAKE_CXX_FLAGS_DEBUG="$(asan_CXXFLAGS)"
 
 toolchain_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
