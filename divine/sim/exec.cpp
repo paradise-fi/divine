@@ -72,7 +72,7 @@ void CLI::reach_user()
 
 void CLI::reach_error()
 {
-    Stepper step;
+    auto step = stepper();
     step._stop_on_error = true;
     run( step, false );
 }
