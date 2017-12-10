@@ -25,6 +25,8 @@ if test -f /etc/os-release; then
     # Fedora, CentOS and hopefully RHEL have ID or ID_LIKE containing 'fedora'
     elif grep -q fedora /etc/os-release; then
         pmgr=yum
+    elif grep -q alpine /etc/os-release; then
+        pmgr=apk
     elif grep -q arch /etc/os-release; then
         pmgr=pacman
     fi
@@ -57,6 +59,8 @@ elif [ $pmgr = "yum" ]; then
     pkgs="perl make cmake $ninja python2 gcc-c++ libedit-devel ncurses-devel"
 elif [ $pmgr = "pacman" ]; then
     pkgs="perl make cmake ninja python2 gcc libedit ncurses"
+elif [ $pmgr = apk ]; then
+    pkgs="perl make cmake ninja python2 g++ libedit-dev ncurses-dev ncurses-static"
 fi
 
 if [ -n $1 ] && [ "$1" = "get" ]; then
@@ -88,6 +92,8 @@ elif test $pmgr = "yum"; then
 elif test $pmgr = "pacman"; then
     # --needed disables reinstallation of already installed packages
     cmd="pacman -S --needed $pkgs"
+elif test $pmgr = apk; then
+    cmd="apk add $pkgs"
 fi
 
 echo + $cmd
