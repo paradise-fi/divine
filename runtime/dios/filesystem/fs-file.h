@@ -229,7 +229,9 @@ struct VmBuffTraceFile : File
     {
         for ( auto &b : get_debug().trace_buf )
         {
-            __dios::traceInternal( 0, "%s", b.second.c_str() );
+            auto buf = b.second.substr( 0, b.second.find_last_of( "\n" ) );
+            if ( !buf.empty() )
+                __dios::traceInternal( 0, "%s", b.second.c_str() );
             b.second.clear();
         }
     }
