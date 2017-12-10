@@ -102,7 +102,8 @@ void Verify::safety()
                        _log->progress( safety->statecount(),
                                        safety->queuesize(), last );
                        _log->memory( safety->poolstats(), last );
-                       sysinfo.updateAndCheckTimeLimit( _max_time );
+                       if ( !last )
+                           sysinfo.updateAndCheckTimeLimit( _max_time );
                    } );
     safety->wait();
 
