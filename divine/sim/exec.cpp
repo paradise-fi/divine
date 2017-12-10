@@ -75,6 +75,8 @@ void CLI::reach_error()
     auto step = stepper();
     step._stop_on_error = true;
     run( step, false );
+    set( "$_", frameDN().related( "caller" ) );
+    update();
 }
 
 void CLI::bplist( command::Break b )
