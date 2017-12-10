@@ -25,13 +25,9 @@ RTSRC = $(PWD)/runtime
 LIBUNWIND_LDIR = $(RTBIN)/libunwind/src
 CXX_LDIR = $(TOOLDIR)/lib
 
-STLIB = $(TOOLDIR)/stlib
-
 LDFLAGS_ = -L$(LIBUNWIND_LDIR) -Wl,-rpath,$(LIBUNWIND_LDIR) \
            -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR)
 BUILD_RPATH = $(LIBUNWIND_LDIR):$(CXX_LDIR)
-
-STATIC_LDFLAGS += -L$(STLIB)
 
 CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
             -isystem $(RTSRC)/libunwind/include \
@@ -43,11 +39,10 @@ TOOLCHAIN_ = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 TOOLCHAIN  ?= $(TOOLCHAIN_) \
 	      -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
 TOOLSTAMP  ?= $(TOOLDIR)/stamp-v1
-# Hack to hide shared libraries from clang
-STATIC_TOOLCHAIN ?= $(TOOLCHAIN_) -DCMAKE_EXE_LINKER_FLAGS="$(STATIC_LDFLAGS)" -DBUILD_PREFER_STATIC=ON
 
 CONFIG        += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
-static_FLAGS  += -DCMAKE_BUILD_TYPE=Release $(STATIC_TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
+static_FLAGS  += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) $(CONFIG) \
+                 -DBUILD_SHARED_LIBS=OFF -DSTATIC_BUILD=ON
 release_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
 semidbg_FLAGS += -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS   += -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
@@ -88,7 +83,6 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 	touch $@
 
 ${TARGETS:%=static-%}:
-	$(MAKE) static-toolchain-libs
 	$(MAKE) $(OBJ)static/cmake.stamp $(GETCONFDEPS) FLAVOUR=static
 	$(SETENV) $(CMAKE) --build $(OBJ)static --target ${@:static-%=%} -- $(EXTRA)
 
@@ -121,15 +115,6 @@ $(TOOLSTAMP):
 	touch $@
 
 CURSES = libncursesw.a libncurses.a libcurses.a
-
-static-toolchain-libs : toolchain
-	mkdir -p $(STLIB)
-	-ln -s $(LIBUNWIND_LDIR)/libunwind.a $(STLIB)/
-	-ln -s $(CXX_LDIR)/libc++.a $(STLIB)/
-	-ln -s $(CXX_LDIR)/libc++abi.a $(STLIB)/
-	-for i in $(CURSES); do test -f /usr/lib/$$i && ln -s /usr/lib/$$i $(STLIB)/libcurses.a; done
-	-test -f /usr/lib/libedit.a && ln -s /usr/lib/libedit.a $(STLIB)/
-	-test -f /usr/lib/libodbc.a && ln -s /usr/lib/libodbc.a $(STLIB)/
 
 ${FLAVOURS:%=%-env}:
 	$(MAKE) ${@:%-env=%} ${@:%-env=%}-llvm-utils
