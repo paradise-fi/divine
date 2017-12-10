@@ -57,7 +57,7 @@ set( LIBCXX_CXX_ABI_INCLUDE_PATHS "${CMAKE_SOURCE_DIR}/runtime/libcxxabi/include
 set( LIBCXX_CXX_ABI_INTREE 1 CACHE BOOL "" )
 set( LIBCXX_CXX_ABI "libcxxabi" CACHE STRING "" )
 
-set( BUILD_PREFER_STATIC OFF CACHE BOOL "prefer static library dependencies" )
+set( STATIC_BUILD OFF CACHE BOOL "link binaries statically" )
 
 project( divine-meta )
 enable_language( CXX )
@@ -68,8 +68,12 @@ else()
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z" )
 endif()
 
-if ( BUILD_PREFER_STATIC )
-    SET( CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so" )
+if ( STATIC_BUILD )
+    set( CMAKE_LINK_SEARCH_START_STATIC ON )
+    # get rid of -rdynamic
+    set( CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "" )
+    set( CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "" )
+    string( APPEND CMAKE_EXE_LINKER_FLAGS " -static" )
 endif()
 
 function(build_llvm)
