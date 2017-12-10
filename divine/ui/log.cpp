@@ -41,6 +41,9 @@ struct CompositeSink : LogSink
     void memory( const mc::Job::PoolStats &st, bool l ) override
     { each( [&]( auto s ) { s->memory( st, l ); } ); }
 
+    void backtrace( DbgContext &c, int lim ) override
+    { each( [&]( auto s ) { s->backtrace( c, lim ); } ); }
+
     void info( std::string i, bool detail ) override
     { each( [&]( auto s ) { s->info( i, detail ); } ); }
 
@@ -149,6 +152,25 @@ struct YamlSink : TimedSink
             }
             _out << std::endl;
         }
+    }
+
+    void backtrace( DbgContext &ctx, int lim ) override
+    {
+        std::stringstream active;
+        std::ostream *str = &active;
+        auto bt = [&]( int id ) { str = &_out; _out << "stack " << id << ":" << std::endl;  };
+        auto fmt = [&]( auto dn )
+        {
+            *str << "  - symbol: " << dn.attribute( "symbol" ) << std::endl
+                 << "    location: " << dn.attribute( "location" ) << std::endl;
+            if ( _detailed )
+                *str << "    pc: " << dn.attribute( "pc" ) << std::endl
+                     << "    address: " << dn.attribute( "address" )
+                     << std::endl << std::endl;
+        };
+        mc::backtrace( bt, fmt, ctx, ctx.snapshot(), _detailed ? 10000 : lim );
+        _out << "active stack:" << std::endl;
+        _out << active.str();
     }
 
     void info( std::string str, bool detail ) override

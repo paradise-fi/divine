@@ -26,6 +26,7 @@ namespace divine::ui
 {
 
 enum class Phase { LART, RR, Constants, Done };
+using DbgContext = vm::dbg::Context< vm::CowHeap >;
 
 struct LogSink
 {
@@ -34,6 +35,7 @@ struct LogSink
     virtual void loader( Phase ) {}
     virtual void info( std::string, bool = false ) {}
     virtual void result( mc::Result, const mc::Trace & ) {}
+    virtual void backtrace( DbgContext &, int ) {}
     virtual void start() {}
     virtual int log_id() { return 0; } // only useful for ODBC logs
     virtual ~LogSink() {}

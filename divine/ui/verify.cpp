@@ -123,7 +123,6 @@ void Verify::safety()
 
     if ( safety->result() == mc::Result::Error )
     {
-        _log->info( "error state:\n" );
         safety->dbg_fill( dbg );
         dbg.load( trace.final );
         dbg._lock = trace.steps.back();
@@ -134,9 +133,7 @@ void Verify::safety()
         step._stop_on_error = true;
         step._ff_kernel = true;
         step.run( dbg, Stepper::Quiet );
-        std::stringstream bt;
-        mc::backtrace( bt, dbg, dbg.snapshot(), _num_callers );
-        _log->info( bt.str() );
+        _log->backtrace( dbg, _num_callers );
     }
 
     if ( !_report_filename.empty() )
