@@ -107,6 +107,8 @@ void Sim::run()
         interp.reach_error();
     }
 
+    interp.finalize( sim::command::CastIron() );
+
     while ( !interp._exit )
     {
         interp.info();
