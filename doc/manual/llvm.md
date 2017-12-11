@@ -133,3 +133,41 @@ every time.
 
 ω-Regular Properties and LTL
 ----------------------------
+
+Symbolic verification
+---------------------
+
+In DIVINE, we support verification of programs with inputs, using a
+symbolic representation of data. You can denote a symbolic variable with an
+annotation when you declare it in the code:
+
+```{.c}
+_SYM int x;
+```
+
+To do so, you need to include a header file `abstract/domains.h`. The annotated
+value does not need to be initialized since it is inherently considered to have
+an arbitrary value of given type. A verification of program with symbolic
+variables requires a special exploration algorithm. You can turn it on with
+`--symbolic` option when you verify a program:
+
+```{.bash}
+$ divine check --symbolic program.cpp
+```
+
+Besides annotations, DIVINE supports [SV-COMP](https://sv-comp.sosy-lab.org/) intrinsics as defined in
+competition rules. Implementation of intrinsics using symbolic
+domain is compiled and linked with a verified program and can be directly used
+with verified program without any includes. DIVINE provides following intrinsics:
+
+- `__VERIFIER_nondet_X()` to model nondeterministic values of
+type`X` (`bool, char, int, uint, short, ushort, long, ulong`),
+- `__VERIFIER_assume(int expression)` restricts a program behaviour
+    according to the expression,
+- `__VERIFIER_assert(int condition)`,
+- `__VERIFIER_error()`,
+- `__VERIFIER_atomic_begin()`,
+- `__VERIFIER_atomic_end()`.
+
+The implementation of the intrinsics can be found in the file `runtime/abstract/svcomp.cpp`.
+
