@@ -53,7 +53,6 @@
 #include <string>
 #include <iomanip>
 #include <cstring>
-#include <sys/cdefs.h>
 #include <sys/types.h>
 
 namespace brick {
@@ -89,7 +88,6 @@ typedef struct _SHA512_CTX {
 
 typedef SHA512_CTX SHA384_CTX;
 
-#include <sys/cdefs.h>
 
 /*
  * UNROLLED TRANSFORM LOOP NOTE:

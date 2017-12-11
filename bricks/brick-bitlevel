@@ -28,7 +28,7 @@
 #include <limits>
 
 #ifdef __linux
-#include <asm/byteorder.h>
+#include <sys/types.h>
 #include <byteswap.h>
 #elif !defined LITTLE_ENDIAN // if defined _WIN32
 #define BYTE_ORDER 1234
