@@ -21,14 +21,19 @@ while (<STDIN>)
     {
         my $positive = ( $match =~ /^[+] / ) ? 1 : 0;
         my $re = $match;
-        $re =~ s,^[+-] ,,;
+        $re =~ s,^[-+!] ,,;
         $fail = 1 if ( !$positive && $line =~ m,$re, );
+        if ( $fail and $match =~ /^!/ )
+        {
+            print "immediate negative match failed at $line\n";
+            exit( 1 );
+        }
         next if ( !$positive && $fail );
 
         if ( $positive && $line =~ m,$re, )
         {
             print "$line" . (" " x (60 - length $line)) . " | $re\n";
-            shift @res while ( $res[0] =~ /^-/ );
+            shift @res while ( $res[0] =~ /^[-!]/ );
             shift @res;
             $fail = 0;
             last;
