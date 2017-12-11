@@ -231,8 +231,7 @@ bool CLI::check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
         if ( pc != bp_pc )
             return false;
         auto name = _bc->debug().function( pc )->getName();
-        out() << "# stopped at breakpoint " << name.str()
-        << std::endl;
+        out() << "# stopped at breakpoint " << name.str() << std::endl;
         return true;
     };
 
@@ -246,8 +245,7 @@ bool CLI::check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
             return false;
         if ( !brick::string::endsWith( current.first, l.first ) )
             return false;
-        out() << "# stopped at breakpoint "
-        << l.first << ":" << l.second << std::endl;
+        out() << "# stopped at breakpoint " << l.first << ":" << l.second << std::endl;
         return true;
     };
 
