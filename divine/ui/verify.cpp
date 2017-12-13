@@ -66,7 +66,6 @@ void Verify::setup()
         {
             setup_report_file();
             _report_file.reset( new std::ofstream( _report_filename ) );
-
             log.push_back( make_yaml( *_report_file.get(), true ) );
         }
 
@@ -144,7 +143,10 @@ void Verify::safety()
         step.run( dbg, Stepper::Quiet );
         _log->backtrace( dbg, _num_callers );
     }
+}
 
+void Verify::cleanup()
+{
     if ( !_report_filename.empty() )
         std::cerr << "a report was written to " << _report_filename << std::endl;
 }

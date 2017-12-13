@@ -285,6 +285,7 @@ struct CLI : Interface
                        {
                            c.setup();
                            c.run();
+                           c.cleanup();
                        } );
             return 0;
         }

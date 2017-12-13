@@ -48,6 +48,7 @@ struct Command
 {
     virtual void run() = 0;
     virtual void setup() {}
+    virtual void cleanup() {}
     virtual ~Command() {}
 };
 
@@ -143,6 +144,8 @@ struct Verify : WithBC
 
     void setup() override;
     void run() override;
+    void cleanup() override;
+
     void safety();
     void liveness();
 };
