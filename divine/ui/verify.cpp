@@ -28,17 +28,25 @@ namespace ui {
 
 void Verify::setup_report_file()
 {
+    if ( _report_filename.empty() )
+        _report_filename = outputName( _file, "report" );
+
+    if ( !_report_unique )
+        return;
+
     std::random_device rd;
     std::uniform_int_distribution< char > dist( 'a', 'z' );
-    std::string rand;
+    std::string fn;
     int fd;
 
-    for ( int i = 0; i < 6; ++i )
-        rand += dist( rd );
+    do {
+        fn = _report_filename + ".";
+        for ( int i = 0; i < 6; ++i )
+            fn += dist( rd );
+        fd = open( fn.c_str(), O_CREAT | O_EXCL, 0666 );
+    } while ( fd < 0 );
 
-    _report_filename = outputName( _file, "report." + rand );
-    if ( ( fd = open( _report_filename.c_str(), O_CREAT | O_EXCL, 0666 ) ) < 0 )
-        return setup_report_file();
+    _report_filename = fn;
     close( fd );
 }
 
@@ -56,8 +64,7 @@ void Verify::setup()
 
         if ( !_no_report_file )
         {
-            if ( _report_filename.empty() )
-                setup_report_file();
+            setup_report_file();
             _report_file.reset( new std::ofstream( _report_filename ) );
 
             log.push_back( make_yaml( *_report_file.get(), true ) );

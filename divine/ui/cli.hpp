@@ -134,6 +134,7 @@ struct Verify : WithBC
     bool _interactive = true;
     bool _liveness = false;
     bool _no_report_file = false;
+    bool _report_unique = false;
     Report _report = Report::Yaml;
 
     std::shared_ptr< std::ostream > _report_file;

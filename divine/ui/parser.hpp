@@ -218,6 +218,8 @@ struct CLI : Interface
             .option( "[--no-report-file]", &Verify::_no_report_file, "skip creation of a report file"s )
             .option( "[--report-filename {string}]", &Verify::_report_filename,
                      "write the report into a given file"s )
+            .option( "[--report-unique]", &Verify::_report_unique,
+                     "ensure the report filename is unique"s )
             .option( "[--num-callers {int}]"s, &Verify::_num_callers,
                      "the number of frames to print in a backtrace [default = 10]" );
 
