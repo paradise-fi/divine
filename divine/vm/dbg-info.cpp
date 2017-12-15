@@ -34,6 +34,13 @@ std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
     return std::make_pair( "", 0 );
 }
 
+std::pair< llvm::StringRef, int > Info::fileline( CodePointer pc )
+{
+    auto npc = _program.nextpc( pc );
+    auto op = find( nullptr, npc ).first;
+    return dbg::fileline( *op );
+}
+
 std::string location( const llvm::Instruction &insn )
 {
     return location( fileline( insn ) );
@@ -44,6 +51,23 @@ std::string location( std::pair< llvm::StringRef, int > fl )
     if ( fl.second )
         return fl.first.str() + ":" + brick::string::fmt( fl.second );
     return "(unknown location)";
+}
+
+bool Info::in_component( CodePointer pc, Components comp )
+{
+    auto file = fileline( pc ).first;
+    using brick::string::startsWith;
+    if ( comp & Component::LibC )
+        if ( startsWith( file, "/divine/src/libc/" ) ||
+             startsWith( file, "/divine/src/divine/" ) ||
+             startsWith( file, "/divine/include/libc/" ) ||
+             startsWith( file, "/divine/include/divine/" ) )
+            return true;
+    if ( startsWith( file, "/divine/src/libcxx" ) && comp & Component::LibCxx )
+        return true;
+    if ( startsWith( file, "/divine/src/abstract/" ) && comp & Component::LibAbstract )
+        return true;
+    return false;
 }
 
 }

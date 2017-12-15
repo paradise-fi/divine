@@ -31,6 +31,16 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::vm::dbg
 {
 
+enum class Component
+{
+    Kernel      = 0b0001,
+    LibC        = 0b0010,
+    LibCxx      = 0b0100,
+    LibAbstract = 0b1000
+};
+
+using Components = brick::types::StrongEnumFlags< Component >;
+
 std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn );
 std::string location( const llvm::Instruction &insn );
 std::string location( std::pair< llvm::StringRef, int > );
@@ -43,6 +53,9 @@ struct Info
     {
         return _funmap[ pc.function() ];
     }
+
+    std::pair< llvm::StringRef, int > fileline( CodePointer pc );
+    bool in_component( CodePointer pc, Components comp );
 
     auto find( llvm::Instruction *I, CodePointer pc )
         -> std::pair< llvm::Instruction *, CodePointer >

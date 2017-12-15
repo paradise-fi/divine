@@ -32,13 +32,12 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     Eval< Context, value::Void > eval( ctx );
     auto fault_handler = ctx.get( _VM_CR_FaultHandler ).pointer.object();
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-    bool moved = false, in_kernel, in_fault, rewind_to_fault = false;
+    bool moved = false, in_fault, rewind_to_fault = false;
     CodePointer oldpc = eval.pc();
     Context _backup( ctx.program(), ctx.debug() );
 
     while ( !_sigint && !ctx.frame().null() )
     {
-        in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
         in_fault = eval.pc().function() == fault_handler;
 
         if ( !error_set && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error )
@@ -49,7 +48,9 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             break;
         }
 
-        if ( in_kernel && _ff_kernel )
+        bool ff = ctx.in_component( _ff_components );
+
+        if ( ff )
             eval.advance();
         else
         {
@@ -62,7 +63,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             if ( _stop_on_fault && in_fault )
                 break;
 
-            if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_kernel )
+            if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_components )
             {
                 rewind_to_fault = true;
                 _backup = ctx;
@@ -78,8 +79,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         oldpc = eval.pc();
         auto frame = ctx.frame();
 
-        if ( ( verb == PrintInstructions || verb == TraceInstructions ) &&
-             ( !in_kernel || !_ff_kernel ) )
+        if ( ( verb == PrintInstructions || verb == TraceInstructions ) && !ff )
         {
             std::string output = print::instruction( ctx.debug(), eval, 2 );
             std::string indent = ( verb == PrintInstructions ) ? "  " : "";
@@ -108,8 +108,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         if ( schedule( ctx ) )
             state();
 
-        in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-        if ( !in_kernel || !_ff_kernel )
+        if ( !ff )
             in_frame( ctx.frame(), ctx.heap() );
 
         if ( _sched_policy )
