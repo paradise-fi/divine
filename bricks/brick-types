@@ -336,6 +336,8 @@ struct StrongEnumFlags {
         return store;
     }
 
+    constexpr This operator~() const noexcept { return This( ~store ); }
+
   private:
     UnderlyingType store;
 };
