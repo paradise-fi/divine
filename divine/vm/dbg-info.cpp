@@ -57,16 +57,32 @@ bool Info::in_component( CodePointer pc, Components comp )
 {
     auto file = fileline( pc ).first;
     using brick::string::startsWith;
+
     if ( comp & Component::LibC )
         if ( startsWith( file, "/divine/src/libc/" ) ||
              startsWith( file, "/divine/src/divine/" ) ||
              startsWith( file, "/divine/include/libc/" ) ||
              startsWith( file, "/divine/include/divine/" ) )
             return true;
-    if ( startsWith( file, "/divine/src/libcxx" ) && comp & Component::LibCxx )
+
+    if ( comp & Component::LibCxx )
+        if ( startsWith( file, "/divine/src/libcxx" ) ||
+             startsWith( file, "/divine/include/libcxx" ) )
+            return true;
+
+    if ( comp & Component::LibAbstract )
+        if ( startsWith( file, "/divine/src/abstract/" ) ||
+             startsWith( file, "/divine/include/abstract/" ) )
+            return true;
+
+    if ( comp & Component::DiOS )
+        if ( startsWith( file, "/divine/src/dios/" ) ||
+             startsWith( file, "/divine/include/dios/" ) )
+            return true;
+
+    if ( comp & Component::Program && !startsWith( file, "/divine/" ) )
         return true;
-    if ( startsWith( file, "/divine/src/abstract/" ) && comp & Component::LibAbstract )
-        return true;
+
     return false;
 }
 

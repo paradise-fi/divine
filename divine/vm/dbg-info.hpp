@@ -33,10 +33,12 @@ namespace divine::vm::dbg
 
 enum class Component
 {
-    Kernel      = 0b0001,
-    LibC        = 0b0010,
-    LibCxx      = 0b0100,
-    LibAbstract = 0b1000
+    Kernel      = 0b000001,
+    DiOS        = 0b000010, /* non-kernel dios components */
+    LibC        = 0b000100,
+    LibCxx      = 0b001000,
+    LibAbstract = 0b010000,
+    Program     = 0b100000
 };
 
 using Components = brick::types::StrongEnumFlags< Component >;
