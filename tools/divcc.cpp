@@ -202,6 +202,14 @@ int main( int argc, char **argv ) {
             return 1;
         }
 
+        if ( po.preprocessOnly ) {
+            for ( auto srcFile : po.files ) {
+                std::string ifn = std::get< cc::File >( srcFile ).name;
+                std::cout << clang.preprocessModule( ifn, po.opts );
+            }
+            return 0;
+        }
+
         for ( auto srcFile : po.files ) {
             if ( std::holds_alternative< cc::File >( srcFile ) ) {
                 std::string ofn = po.outputFile != "" ? po.outputFile
