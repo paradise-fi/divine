@@ -35,7 +35,7 @@ void Run::trace()
 {
     using Stepper = vm::dbg::Stepper< vm::DbgRunContext >;
     Stepper step;
-    step._ff_kernel = true;
+    step._ff_components = vm::dbg::Component::Kernel;
     step._booting = true;
 
     vm::DbgRunContext ctx( bitcode()->program(), bitcode()->debug() );
