@@ -35,7 +35,7 @@ struct Stepper
     enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions, TraceInstructions };
     using Snapshot = typename Context::Heap::Snapshot;
     using YieldState = std::function< Snapshot( Snapshot ) >;
-    using SchedPolicy = std::function< void() >;
+    using CallBack = std::function< bool() >;
     using Breakpoint = std::function< bool( CodePointer, bool ) >;
 
     GenericPointer _frame, _frame_cur, _parent_cur;
@@ -48,7 +48,7 @@ struct Stepper
 
     Breakpoint _breakpoint;
     YieldState _yield_state;
-    SchedPolicy _sched_policy;
+    CallBack _callback;
 
     Stepper()
         : _frame( nullPointer() ),

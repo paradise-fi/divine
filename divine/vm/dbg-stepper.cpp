@@ -111,8 +111,8 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         if ( !ff )
             in_frame( ctx.frame(), ctx.heap() );
 
-        if ( _sched_policy )
-            _sched_policy();
+        if ( _callback && !_callback() )
+            break;
 
         if ( verb != Quiet )
         {
