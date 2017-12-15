@@ -130,7 +130,7 @@ struct CLI : Interface
                 return good( vm::AutoTrace::Calls );
             if ( s == "none" )
                 return good( vm::AutoTrace::Nothing );
-            return bad( cmd::BadContent, s + " is nod a valid tracepoint specification" );
+            return bad( cmd::BadContent, s + " is not a valid tracepoint specification" );
         };
 
         auto paths = []( std::string s, auto good, auto )

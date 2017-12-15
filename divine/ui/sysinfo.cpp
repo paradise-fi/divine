@@ -272,11 +272,11 @@ void SysInfo::setMemoryLimitInBytes( uint64_t memory ) {
 #else
     if ( double pvs = peakVmSize() )
         if ( memory < pvs * 1024 * 1.1 )
-            throw std::runtime_error( "memory limit lower then memory required to start" );
+            throw std::runtime_error( "memory limit lower than memory required to start" );
     setrlimit( RLIMIT_AS, &r );
 #endif
 #else
-    throw std::runtime_error( "setMemoryLimitInBytes called on plafrom which does not support it" );
+    throw std::runtime_error( "setMemoryLimitInBytes called on a platform which does not support it" );
 #endif
 }
 
