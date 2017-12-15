@@ -71,12 +71,13 @@ void CLI::reach_user()
         throw brick::except::Error( "could not reach userspace" );
     };
     run( step, false ); /* make 0 (user mode) steps */
+    set( "$_", frameDN() );
+    update();
 }
 
 void CLI::reach_error()
 {
     auto step = stepper();
-    step._stop_on_error = true;
     run( step, false );
     set( "$_", frameDN().related( "caller" ) );
     update();
@@ -253,6 +254,78 @@ bool CLI::check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
         if ( bp.match( match_pc, match_loc ) )
             return true;
     return false;
+}
+
+void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
+{
+    std::set< vm::CowHeap::Snapshot > visited;
+
+    auto step = stepper();
+    if ( ( step._booting = boot ) )
+        vm::setup::boot( _ctx );
+
+    auto old_mode = _ctx._lock_mode;
+    _ctx._lock_mode = simple ? Context::LockChoices : Context::LockBoth;
+    brick::types::Defer _( [&](){ _ctx._lock_mode = old_mode; } );
+
+    auto update_lock = [&]( vm::CowHeap::Snapshot snap )
+    {
+        ASSERT( !tr.steps.empty() );
+        _trace[ snap ] = _ctx._lock = tr.steps.front();
+        tr.steps.pop_front();
+    };
+
+    auto last = get( "#last", true ).snapshot();
+    out() << "traced states:";
+    bool stop = false;
+    step._callback = [&]()
+    {
+        if ( simple && _ctx._lock.choices.empty() )
+            stop = true;
+        if ( !simple && tr.steps.empty() )
+            stop = true;
+        return !stop;
+    };
+    step._stop_on_error = false;
+    step._yield_state =
+        [&]( auto snap )
+        {
+            auto next = newstate( snap, false, true );
+            if ( visited.count( next ) )
+            {
+                out() << " [loop closed]" << std::flush;
+                stop = true;
+                return next;
+            }
+            visited.insert( next );
+            _ctx._instruction_counter = 0;
+            if ( !simple )
+                update_lock( snap );
+            last = get( "#last", true ).snapshot();
+            return next;
+        };
+    run( step, Stepper::Quiet );
+
+    out() << std::endl;
+
+    if ( simple && !_ctx._lock.choices.empty() )
+    {
+        out() << "unused choices:";
+        for ( auto c : _ctx._lock.choices )
+            out() << " " << c;
+        out() << std::endl;
+    }
+
+    if ( !simple && !tr.steps.empty() )
+        out() << "WARNING: Program terminated unexpectedly." << std::endl;
+
+    if ( !_ctx._trace.empty() )
+        out() << "trace:" << std::endl;;
+    for ( auto t : _ctx._trace )
+        out() << "T: " << t << std::endl;
+    _ctx._trace.clear();
+
+    end();
 }
 
 }

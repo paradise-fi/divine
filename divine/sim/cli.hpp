@@ -188,6 +188,7 @@ struct CLI
     Stepper stepper( command::WithSteps s, bool jmp );
     void reach_user();
     void reach_error();
+    void trace( sim::Trace, bool, bool, std::function< void() > );
 
     void bplist( command::Break b );
     void dump_registers();

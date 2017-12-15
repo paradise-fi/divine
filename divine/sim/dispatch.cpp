@@ -238,14 +238,7 @@ void CLI::go( command::Set s )
 
 void CLI::go( command::Trace tr )
 {
-    auto step = stepper();
-
-    if ( tr.from.empty() )
-    {
-        vm::setup::boot( _ctx );
-        step._booting = true;
-    }
-    else
+    if ( !tr.from.empty() )
     {
         _ctx.load( get( tr.from ).snapshot() );
         vm::setup::scheduler( _ctx );
@@ -253,79 +246,17 @@ void CLI::go( command::Trace tr )
 
     _trace.clear();
     bool simple = false;
-    _ctx._lock_mode = Context::LockBoth;
 
     if ( !tr.simple_choices.empty() )
     {
         simple = true;
-        _ctx._lock_mode = Context::LockChoices;
         if ( !tr.steps.empty() )
             throw brick::except::Error( "Can't specify both steps and (simple) choices." );
         for ( auto i : tr.simple_choices )
             _ctx._lock.choices.emplace_back( i, 0 );
     }
 
-    std::set< vm::CowHeap::Snapshot > visited;
-
-    auto update_lock = [&]( vm::CowHeap::Snapshot snap )
-    {
-        _trace[ snap ] = _ctx._lock = tr.steps.front();
-        tr.steps.pop_front();
-    };
-
-    auto last = get( "#last", true ).snapshot();
-    out() << "traced states:";
-    bool stop = false;
-    step._sched_policy = [&]()
-    {
-        if ( simple && _ctx._lock.choices.empty() )
-            stop = true;
-        if ( !simple && tr.steps.empty() )
-            stop = true;
-    };
-    step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
-    step._stop_on_error = false;
-    step._yield_state =
-        [&]( auto snap )
-        {
-            auto next = newstate( snap, false, true );
-            if ( visited.count( next ) )
-            {
-                out() << " [loop closed]" << std::flush;
-                step._ff_kernel = false;
-                stop = true;
-                return next;
-            }
-            visited.insert( next );
-            _ctx._instruction_counter = 0;
-            if ( !simple )
-                update_lock( snap );
-            last = get( "#last", true ).snapshot();
-            return next;
-        };
-    run( step, Stepper::Quiet );
-
-    out() << std::endl;
-
-    if ( simple && !_ctx._lock.choices.empty() )
-    {
-        out() << "unused choices:";
-        for ( auto c : _ctx._lock.choices )
-            out() << " " << c;
-        out() << std::endl;
-    }
-
-    if ( !simple && !tr.steps.empty() )
-        out() << "WARNING: Program terminated unexpectedly." << std::endl;
-
-    if ( !_ctx._trace.empty() )
-        out() << "trace:" << std::endl;;
-    for ( auto t : _ctx._trace )
-        out() << "T: " << t << std::endl;
-    _ctx._trace.clear();
-    reach_user();
-    _ctx._lock_mode = Context::LockScheduler;
-    set( "$_", frameDN() );
+    trace( tr, simple, tr.from.empty(), [=]() { reach_user(); } );
 }
 
 void CLI::go( command::Thread thr )

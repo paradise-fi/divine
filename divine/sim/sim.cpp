@@ -102,10 +102,7 @@ void Sim::run()
     }
 
     if ( _trace )
-    {
-        interp.go( sim::command::Trace( *_trace ) );
-        interp.reach_error();
-    }
+        interp.trace( *_trace, false, true, [&]() { interp.reach_error(); } );
 
     interp.finalize( sim::command::CastIron() );
 
