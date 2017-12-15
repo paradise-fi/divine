@@ -66,8 +66,11 @@ struct BitContainer
     BitContainer( Pool &p, Ptr b, int f, int t ) : _base( b ), _pool( p ), _from( f ), _to( t ) {}
     iterator begin() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _from ); }
     iterator end() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _to ); }
-    Proxy operator[]( int i ) {
-        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i ); }
+    Proxy operator[]( int i )
+    {
+        ASSERT_LT( _from + i, _to );
+        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i );
+    }
 };
 
 template< typename IP >
@@ -298,7 +301,9 @@ struct PooledShadow
         value.defbits( _def );
 
         auto t = type( l, size );
-        value.pointer( t[ 0 ] == ShadowType::Data && t[ 4 ] == ShadowType::Pointer );
+        value.pointer( size == PointerBytes &&
+                       t[ 0 ] == ShadowType::Data &&
+                       t[ 4 ] == ShadowType::Pointer );
     }
 
     template< typename FromSh >
