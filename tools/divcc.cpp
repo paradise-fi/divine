@@ -1,5 +1,6 @@
 #include <divine/cc/clang.hpp>
 #include <divine/cc/compile.hpp>
+#include <divine/rt/runtime.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include "llvm/Target/TargetMachine.h"
@@ -192,10 +193,22 @@ int main( int argc, char **argv ) {
     try {
         cc::Compiler clang;
         clang.allowIncludePath( "/" );
+        divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } ); // clang.setupFS( rt::each );
+        std::vector< std::pair< std::string, std::string > > objFiles;
 
         std::vector< std::string > opts;
         std::copy( argv + 1, argv + argc, std::back_inserter( opts ) );
         auto po = cc::parseOpts( opts );
+
+        using brick::fs::joinPath;
+
+        po.opts.insert( po.opts.end(), {  "-isystem", rt::includeDir
+                      , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
+                      , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )
+                      , "-isystem", joinPath( rt::includeDir, "libunwind/include" )
+                      , "-isystem", joinPath( rt::includeDir, "libc/include" )
+                      , "-isystem", joinPath( rt::includeDir, "libc/internals" )
+                      , "-isystem", joinPath( rt::includeDir, "libm/include" ) } );
 
         if ( po.files.size() > 1 && po.outputFile != "" ) {
             std::cerr << "Cannot specify -o with multiple files" << std::endl;
@@ -212,16 +225,45 @@ int main( int argc, char **argv ) {
 
         for ( auto srcFile : po.files ) {
             if ( std::holds_alternative< cc::File >( srcFile ) ) {
+                std::string ifn = std::get< cc::File >( srcFile ).name;
                 std::string ofn = po.outputFile != "" ? po.outputFile
-                    : brick::fs::dropExtension( std::get< cc::File >( srcFile ).name ) + ".o";
+                    : brick::fs::dropExtension( ifn ) + ".o";
 
-                auto mod = clang.compileModule( std::get< cc::File >( srcFile ).name, po.opts );
-
-                emitObjFile( *mod, ofn );
+                objFiles.emplace_back( ifn, ofn );
             }
         }
 
+        if ( po.toObjectOnly ) {
+            for ( auto file : objFiles ) {
+                auto mod = clang.compileModule( file.first, po.opts );
+                emitObjFile( *mod, file.second );
+            }
+            return 0;
+        }
+        else {
+            std::string s;
+            for ( auto file : objFiles ) {
+                std::string ofn = file.second;
+                ofn.insert( ofn.length()-2, ".temp" );
+                auto mod = clang.compileModule( file.first, po.opts );
+                emitObjFile( *mod, ofn );
+                s += ofn + " ";
+            }
+            if ( po.outputFile != "" )
+                s += " -o " + po.outputFile;
+            s.insert( 0, "gcc " );
+            s.append( " -static" );
+            system( s.c_str() );
+        }
+
+        for ( auto file : objFiles ) {
+            std::string ofn = file.second;
+            ofn.insert( ofn.length()-2,".temp" );
+            unlink( ofn.c_str() );
+        }
+
         return 0;
+
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
         return 1;
