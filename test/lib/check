@@ -1,5 +1,5 @@
 #!/bin/sh
-# -*- sh -*-
+
 set -e
 . util
 
