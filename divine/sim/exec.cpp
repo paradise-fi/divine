@@ -43,7 +43,7 @@ Stepper CLI::stepper()
 {
     Stepper step;
     step._ff_kernel = !_debug_kernel;
-    step._sched_policy = [this]() { sched_policy(); };
+    step._callback = [this]() { sched_policy(); return true; };
     step._yield_state = [this]( auto snap ) { return newstate( snap ); };
     return step;
 }
