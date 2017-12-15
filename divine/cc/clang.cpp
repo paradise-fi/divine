@@ -276,6 +276,8 @@ Compiler::FileType Compiler::typeFromFile( std::string name ) {
         return FileType::IR;
     if ( ext == ".S" || ext == ".s" )
         return FileType::Asm;
+    if ( ext == ".o" )
+        return FileType::Obj;
     return FileType::Unknown;
 }
 
@@ -290,6 +292,8 @@ Compiler::FileType Compiler::typeFromXOpt( std::string selector ) {
         return FileType::CPrepocessed;
     if ( selector == "ir" )
         return FileType::IR;
+    if ( selector == "obj" )
+        return FileType::Obj;
     return FileType::Unknown;
 }
 
@@ -315,6 +319,8 @@ std::vector< std::string > Compiler::argsOfType( FileType t ) {
         case FileType::Asm:
             add( out, { "assembler-with-cpp" } );
             break;
+        case FileType::Obj:
+            add( out, { "obj" } );
         case FileType::Unknown:
             UNREACHABLE( "Unknown file type" );
     }
