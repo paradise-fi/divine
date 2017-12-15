@@ -215,9 +215,14 @@ int main( int argc, char **argv ) {
             return 1;
         }
 
+        using cc::Compiler::FileType;
+        using cc::Compiler::typeFromFile;
+
         if ( po.preprocessOnly ) {
             for ( auto srcFile : po.files ) {
                 std::string ifn = std::get< cc::File >( srcFile ).name;
+                if ( typeFromFile( ifn ) == FileType::Obj )
+                    continue;
                 std::cout << clang.preprocessModule( ifn, po.opts );
             }
             return 0;
@@ -235,6 +240,8 @@ int main( int argc, char **argv ) {
 
         if ( po.toObjectOnly ) {
             for ( auto file : objFiles ) {
+                if ( typeFromFile( file.first ) == FileType::Obj )
+                    continue; // TODO: missing .llvm section
                 auto mod = clang.compileModule( file.first, po.opts );
                 emitObjFile( *mod, file.second );
             }
@@ -243,6 +250,11 @@ int main( int argc, char **argv ) {
         else {
             std::string s;
             for ( auto file : objFiles ) {
+                if ( typeFromFile( file.first ) == FileType::Obj ) {
+                    s += file.first + " ";
+                    // TODO: missing .llvm section
+                    continue;
+                }
                 std::string ofn = file.second;
                 ofn.insert( ofn.length()-2, ".temp" );
                 auto mod = clang.compileModule( file.first, po.opts );
@@ -257,6 +269,8 @@ int main( int argc, char **argv ) {
         }
 
         for ( auto file : objFiles ) {
+            if ( cc::Compiler::typeFromFile( file.first ) == FileType::Obj )
+                continue;
             std::string ofn = file.second;
             ofn.insert( ofn.length()-2,".temp" );
             unlink( ofn.c_str() );
