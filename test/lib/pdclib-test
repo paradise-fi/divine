@@ -17,7 +17,7 @@ divine cc -D_PDCLIB_BUILD -DTEST -I$SRC_ROOT/runtime/libc/testing $FLAGS \
           $EXTRA_FILES $SRC_ROOT/test/pdclib/iotestenv.c $FILE -o unittest.bc
 llvm-nm unittest.bc | grep -w 'T main' || skip
 
-divine verify --max-memory 4GiB --threads 1 --num-callers 65536 -o nofail:malloc unittest.bc | tee verify.out
+divine verify --max-memory 4GiB --threads 1 -o nofail:malloc unittest.bc | tee verify.out
 check verify "$1"
 
 # vim: syntax=sh

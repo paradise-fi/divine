@@ -92,4 +92,4 @@ mkdir capture/link/dir
 touch capture/link/file
 ln capture/link/file capture/link/hardlinkFile
 
-divine verify -std=c++14  --threads 1 --num-callers 65536 --capture capture/link:follow:/ capture/fs-rmmkdir-capture.cpp
+divine verify -std=c++14  --threads 1 --capture capture/link:follow:/ capture/fs-rmmkdir-capture.cpp

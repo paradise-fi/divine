@@ -24,7 +24,7 @@ TESTNS=`grep 'namespace t_' $TESTFILE | sed 's/^.*\(t_[^ ]*\).*$/\1/'` \
 
 divine cc -std=c++14 -DBRICK_UNITTEST_REG -DNVALGRIND -I$SRC_ROOT/bricks $FLAGS $EXTRA_FILES unittest.cpp -o unittest.bc
 for NS in $TESTNS; do
-    divine verify --threads 1 --num-callers 65536 -o nofail:malloc unittest.bc $NS | tee verify.out
+    divine verify --threads 1 -o nofail:malloc unittest.bc $NS | tee verify.out
 done
 
 check verify "$1"

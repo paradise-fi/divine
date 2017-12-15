@@ -44,5 +44,5 @@ mkdir capture/dir
 touch capture/dir/file
 ln capture/dir/file capture/dir/hardlinkFile
 
-divine verify --threads 1 --num-callers 65536 --capture capture/dir:follow:/ capture/fs-links-capture.c
+divine verify --threads 1 --capture capture/dir:follow:/ capture/fs-links-capture.c
 
