@@ -18,6 +18,7 @@
 
 #pragma once
 #include <divine/sim/trace.hpp>
+#include <divine/vm/dbg-info.hpp>
 #include <string>
 
 namespace divine::sim::command
@@ -119,11 +120,11 @@ struct BackTrace : WithVar, Teflon
 
 struct Setup : Teflon
 {
-    bool debug_kernel;
     bool clear_sticky, pygmentize = false;
     std::string xterm;
     std::vector< std::string > sticky_commands;
-    Setup() : debug_kernel( false ), clear_sticky( false ) {}
+    std::vector< vm::dbg::Component > debug_components, ignore_components;
+    Setup() : clear_sticky( false ) {}
 };
 
 struct Down : CastIron {};

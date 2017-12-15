@@ -299,7 +299,6 @@ void CLI::go( command::Source src )
 void CLI::go( command::Setup set )
 {
     OneLineTokenizer tok;
-    _debug_kernel = set.debug_kernel;
     if ( set.pygmentize )
         _pygmentize = true;
     if ( set.clear_sticky )
@@ -312,6 +311,12 @@ void CLI::go( command::Setup set )
     }
     for ( const std::string& cmd : set.sticky_commands )
         _sticky_commands.push_back( tok.tokenize( cmd ) );
+    if ( !set.debug_components.empty() && !set.ignore_components.empty() )
+        throw brick::except::Error( "sorry, cannot mix --ignore and --debug" );
+    for ( auto c : set.debug_components )
+        _ff_components &= ~Components( c );
+    for ( auto c : set.ignore_components )
+        _ff_components |= c;
 }
 
 }

@@ -42,7 +42,7 @@ void CLI::run( Stepper &step, Stepper::Verbosity verbose )
 Stepper CLI::stepper()
 {
     Stepper step;
-    step._ff_kernel = !_debug_kernel;
+    step._ff_components = _ff_components;
     step._callback = [this]() { sched_policy(); return true; };
     step._yield_state = [this]( auto snap ) { return newstate( snap ); };
     return step;
@@ -61,11 +61,8 @@ Stepper CLI::stepper( command::WithSteps s, bool jmp )
 
 void CLI::reach_user()
 {
-    if ( _debug_kernel )
-        return;
-    Stepper step;
+    Stepper step = stepper();
     step._instructions = std::make_pair( 1, 1 );
-    step._ff_kernel = true;
     step._yield_state = []( Snapshot ) -> Snapshot
     {
         throw brick::except::Error( "could not reach userspace" );

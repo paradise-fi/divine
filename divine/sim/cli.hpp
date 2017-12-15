@@ -85,7 +85,10 @@ struct CLI
 
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
-    bool _sched_random, _debug_kernel, _pygmentize = false;
+    bool _sched_random, _pygmentize = false;
+    using Comp = vm::dbg::Component;
+    using Components = vm::dbg::Components;
+    Components _ff_components = ~Components( Comp::Program );
 
     std::vector< cmd::Tokens > _sticky_commands;
 
@@ -161,7 +164,7 @@ struct CLI
 
     CLI( BC bc )
         : _exit( false ), _batch( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
-          _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program(), _bc->debug() ),
+          _sched_random( false ), _ctx( _bc->program(), _bc->debug() ),
           _state_count( 0 ), _stream( &std::cerr )
     {
         _ctx._lock_mode = Context::LockScheduler;

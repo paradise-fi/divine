@@ -38,6 +38,15 @@ auto make_parser()
             add( "step", []( std::string, auto, auto bad )
                 {
                     return bad( cmd::BadFormat, "not implemented yet" );
+                } )->
+            add( "component", []( std::string s, auto good, auto bad )
+                {
+                    if ( s == "kernel" ) return good( vm::dbg::Component::Kernel );
+                    if ( s == "dios" ) return good( vm::dbg::Component::DiOS );
+                    if ( s == "libc" ) return good( vm::dbg::Component::LibC );
+                    if ( s == "libcxx" ) return good( vm::dbg::Component::LibCxx );
+                    if ( s == "libabstract" ) return good( vm::dbg::Component::LibAbstract );
+                    return bad( cmd::BadFormat, "unknown component" );
                 } );
 
     auto teflopts = cmd::make_option_set< command::Teflon >( v )
@@ -73,7 +82,10 @@ auto make_parser()
         .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
         .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
     auto setupopts = cmd::make_option_set< command::Setup >( v )
-        .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s )
+        .option( "[--debug {component}]", &command::Setup::debug_components,
+                 "enable debugging of {component}"s )
+        .option( "[--ignore {component}]", &command::Setup::ignore_components,
+                 "disable debugging of {component}"s )
         .option( "[--xterm {string}]", &command::Setup::xterm, "setup & name an X terminal"s )
         .option( "[--clear-sticky]", &command::Setup::clear_sticky, "remove sticky commands"s )
         .option( "[--pygmentize]", &command::Setup::pygmentize, "pygmentize source listings"s )
