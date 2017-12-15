@@ -47,6 +47,8 @@ struct ParsedOpts {
     std::vector< FileEntry > files;
     std::string outputFile;
     std::vector< std::string > allowedPaths;
+    bool toObjectOnly = false;
+    bool preprocessOnly = false;
 };
 
 ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );

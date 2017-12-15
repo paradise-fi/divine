@@ -165,6 +165,10 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
         }
         else if ( !brick::string::startsWith( *it, "-" ) )
             po.files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
+        else if ( *it == "-c" )
+            po.toObjectOnly = true;
+        else if ( *it == "-E" )
+            po.preprocessOnly = true;
         else
             po.opts.emplace_back( *it );
     }
