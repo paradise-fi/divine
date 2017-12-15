@@ -18,40 +18,11 @@
 
 #include <divine/vm/dbg-util.hpp>
 #include <divine/vm/dbg-dot.hpp>
-#include <divine/vm/vmutil.h>
 #include <divine/sim/cli.hpp>
 #include <brick-proc>
 
 namespace divine::sim
 {
-
-std::ostream &dump_flag( uint64_t val, std::ostream &o )
-{
-    if ( const char *n = __vmutil_flag_name( val ) )
-        return o << n;
-
-    return o << std::hex << "0x" << val << std::dec;
-}
-
-void dump_flags( uint64_t flags, std::ostream &o )
-{
-    bool any = false;
-    for ( uint64_t m = 1; m; m <<= 1 )
-    {
-        if ( flags & m )
-        {
-            if ( any )
-                o << " | ";
-            dump_flag( m, o );
-            any = true;
-        }
-    }
-
-    if ( !any )
-        o << 0;
-
-    o << std::endl;
-}
 
 void CLI::go( command::Exit )
 {
@@ -165,22 +136,21 @@ void CLI::go( command::Show cmd )
         dn.format( out(), cmd.depth, cmd.deref );
 }
 
-void CLI::go( command::Register )
+void CLI::go( command::Info inf )
 {
-    size_t name_length = 0;
-    for ( int i = 0; i < _VM_CR_Last; ++i )
-        name_length = std::max( name_length, std::strlen( __vmutil_reg_name( i ) ) );
+    OneLineTokenizer tok;
 
-    for ( int i = 0; i < _VM_CR_Last; ++i ) {
-        auto name = __vmutil_reg_name( i );
-        int pad = name_length - strlen( name );
-        out() << name << ": " << std::string( pad, ' ' );
-        if ( i == _VM_CR_Flags )
-            dump_flags( _ctx.ref( _VM_CR_Flags ).integer, out() );
-        else
-            out() << std::hex << _ctx.ref( _VM_ControlRegister( i ) ).integer
-                    << std::dec << std::endl;
+    if ( inf.setup.empty() )
+    {
+        if ( inf.cmd == "registers" )
+            return dump_registers();
+        /* other builtins? */
+        if ( !_info_cmd.count( inf.cmd ) )
+            throw brick::except::Error( "No such info sub-command: " + inf.cmd );
+        command_raw( _info_cmd[ inf.cmd ] );
     }
+    else
+        _info_cmd[ inf.cmd ] = tok.tokenize( inf.setup );
 }
 
 void CLI::go( command::Dot cmd )

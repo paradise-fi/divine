@@ -17,6 +17,7 @@
  */
 
 #include <divine/sim/cli.hpp>
+#include <divine/vm/vmutil.h>
 
 namespace divine::sim
 {
@@ -108,6 +109,52 @@ void CLI::update()
         set( "$data", "$_" );
     if ( !get( "$frame", true ).valid() )
         set( "$frame", "$top" );
+}
+
+std::ostream &dump_flag( uint64_t val, std::ostream &o )
+{
+    if ( const char *n = __vmutil_flag_name( val ) )
+        return o << n;
+
+    return o << std::hex << "0x" << val << std::dec;
+}
+
+void dump_flags( uint64_t flags, std::ostream &o )
+{
+    bool any = false;
+    for ( uint64_t m = 1; m; m <<= 1 )
+    {
+        if ( flags & m )
+        {
+            if ( any )
+                o << " | ";
+            dump_flag( m, o );
+            any = true;
+        }
+    }
+
+    if ( !any )
+        o << 0;
+
+    o << std::endl;
+}
+
+void CLI::dump_registers()
+{
+    size_t name_length = 0;
+    for ( int i = 0; i < _VM_CR_Last; ++i )
+        name_length = std::max( name_length, std::strlen( __vmutil_reg_name( i ) ) );
+
+    for ( int i = 0; i < _VM_CR_Last; ++i ) {
+        auto name = __vmutil_reg_name( i );
+        int pad = name_length - strlen( name );
+        out() << name << ": " << std::string( pad, ' ' );
+        if ( i == _VM_CR_Flags )
+            dump_flags( _ctx.ref( _VM_CR_Flags ).integer, out() );
+        else
+            out() << std::hex << _ctx.ref( _VM_ControlRegister( i ) ).integer
+                    << std::dec << std::endl;
+    }
 }
 
 }

@@ -101,11 +101,13 @@ struct CLI
 
     static bool *_sigint;
 
+    std::map< std::string, cmd::Tokens > _info_cmd;
     std::map< std::string, brick::proc::XTerm > _xterms;
     std::ostream *_stream;
     std::ostream &out() { return *_stream; }
 
     void command( cmd::Tokens cmd );
+    void command_raw( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
 
     RefLocation location( vm::CodePointer pc )
@@ -188,6 +190,7 @@ struct CLI
     void reach_error();
 
     void bplist( command::Break b );
+    void dump_registers();
 
     DN frame_up( DN frame );
 
@@ -201,10 +204,10 @@ struct CLI
     void go( command::Rewind re );
     void go( command::BackTrace bt );
     void go( command::Show cmd );
-    void go( command::Register );
     void go( command::Dot cmd );
     void go( command::Inspect i );
     void go( command::Call c );
+    void go( command::Info i );
 
     void go( command::Up );
     void go( command::Down );

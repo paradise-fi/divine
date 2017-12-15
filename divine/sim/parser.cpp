@@ -87,6 +87,10 @@ auto make_parser()
         .option( "[--from {string}]", &command::Trace::from,
                     "start in a given state, instead of initial"s );
 
+    auto o_info = cmd::make_option_set< command::Info >( v )
+        .option( "{string}", &command::Info::cmd, "what info to print" )
+        .option( "[--setup {string}]", &command::Info::setup, "set up a new info source" );
+
     auto dotopts = cmd::make_option_set< command::Dot >( v )
         .option( "[-T{string}|-T {string}]", &command::Dot::type,
                 "type of output (none,ps,svg,png…)"s )
@@ -112,7 +116,7 @@ auto make_parser()
         .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
         .command< command::Call >( "run a custom information-gathering function"s,
                                     teflopts, callopts )
-        .command< command::Register >( "show (manipulate) machine control registers"s )
+        .command< command::Info >( "print information"s, o_info )
         .command< command::Draw >( "draw a portion of the heap"s, varopts )
         .command< command::Dot >( "draw a portion of the heap to a file of given type"s,
                                     teflopts, varopts, dotopts )
@@ -142,6 +146,13 @@ void CLI::command( cmd::Tokens tok )
     cmd.match( [&] ( command::Help h ) { help( parser, h._cmd ); },
                [&] ( auto opt ) { prepare( opt ); go( opt ); finalize( opt ); } );
     _stream = &std::cerr; /* always revert to the main output */
+}
+
+void CLI::command_raw( cmd::Tokens tok )
+{
+    auto parser = make_parser();
+    auto cmd = parser.parse( tok.begin(), tok.end() );
+    cmd.match( [&] ( auto opt ) { go( opt ); } );
 }
 
 }

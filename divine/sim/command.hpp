@@ -96,7 +96,12 @@ struct Call : Teflon
     std::string function;
 };
 
-struct Register : Teflon {};
+struct Info : Teflon
+{
+    std::string cmd;
+    std::string setup;
+};
+
 struct Thread : CastIron  { std::string spec; bool random; };
 
 struct Trace : CastIron, sim::Trace
