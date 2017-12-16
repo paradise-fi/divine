@@ -334,8 +334,8 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
             eval._instruction = insn;
             yield( "insn", print::instruction( _ctx.debug(), eval, 0, 1000 ) );
         }
-        auto npc = program.nextpc( pc() );
-        auto op = _ctx.debug().find( nullptr, npc ).first;
+
+        auto op = _ctx.debug().find( nullptr, active_pc() ).first;
         yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
@@ -356,7 +356,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
         auto &i = prog.instruction( iter );
         eval._instruction = &i;
         _ctx.set( _VM_CR_PC, iter );
-        out << ( iter == prog.advance( pc() ) ? ">>" : "  " );
+        out << ( iter == active_pc() ? ">>" : "  " );
         if ( i.opcode == lx::OpBB )
         {
             auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
@@ -378,7 +378,7 @@ void Node< Prog, Heap >::source( std::ostream &out, std::function< std::string( 
     auto s = subprogram();
     if ( !s )
         throw brick::except::Error( "cannot display source code, no debugging information found" );
-    out << print::source( _ctx.debug(), s, _ctx.program(), _ctx.program().advance( pc() ), pp );
+    out << print::source( _ctx.debug(), s, _ctx.program(), active_pc(), pp );
 }
 
 template< typename Prog, typename Heap >

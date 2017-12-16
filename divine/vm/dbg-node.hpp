@@ -56,6 +56,7 @@ struct Node
     int _offset;
     Snapshot _snapshot;
     DNKind _kind;
+    bool _executing;
     brick::mem::RefCnt< typename Context::RefCnt > _ref;
 
     std::map< std::string, int > _related_count;
@@ -86,7 +87,7 @@ struct Node
     void type( llvm::Type *type ) { _type = type; }
 
     void offset( int off ) { _offset = off; }
-    void address( DNKind k, GenericPointer l )
+    void address( DNKind k, GenericPointer l, bool exec = false )
     {
         _address = l;
         _kind = k;
@@ -94,6 +95,7 @@ struct Node
         {
             _ctx.set( _VM_CR_Frame, _address );
             _ctx.set( _VM_CR_PC, pc() );
+            _executing = exec;
         }
         if ( _kind == DNKind::Globals )
             _ctx.set( _VM_CR_Globals, _address );
@@ -122,7 +124,7 @@ struct Node
     {
         _ctx.load( s );
         _ref = decltype( _ref )( _ctx._refcnt, s );
-        address( _kind, _address );
+        address( _kind, _address, _executing );
     }
 
     DNKind kind() { return _kind; }
@@ -136,6 +138,14 @@ struct Node
         if ( boundcheck( PointerV( _address ), PointerBytes ) )
             _ctx.heap().read( _address, pc );
         return pc.cooked();
+    }
+
+    CodePointer active_pc()
+    {
+        if ( _executing )
+            return _ctx.program().advance( pc() );
+        else
+            return _ctx.program().nextpc( pc() );
     }
 
     llvm::DISubprogram *subprogram()
