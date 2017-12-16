@@ -12,17 +12,17 @@ sim file.c <<EOF
 > setup --debug kernel
 - ^# executing
 + ^# executing main at
-> register
+> info registers
 + ^\s*Constants
 + ^\s*Globals
 + ^\s*Frame
 + ^\s*PC
 > stepa
 + ^# executing \{Fault\}
-> register
+> info registers
 + ^\s*Flags:.*Mask
-> register
+> info registers
 + ^\s*Flags:.*Error
-> register
+> info registers
 + ^\s*Flags:.*KernelMode
 EOF
