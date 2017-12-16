@@ -22,6 +22,10 @@
 #include <divine/vm/xg-code.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/formula.hpp>
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/CFG.h>
+DIVINE_UNRELAX_WARNINGS
+#include <queue>
 
 namespace divine::vm::dbg
 {
@@ -567,8 +571,8 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
     auto type = var->getType()->getPointerElementType();
     auto name = divar->getName().str();
 
-    if ( divar->getScope() != subprogram() )
-        name += "$" + brick::string::fmt( ++ _related_count[ name ] );
+    if ( _related_count[ name ] ++ )
+        return;
 
     Node lvar( _ctx, _snapshot );
     lvar.address( DNKind::Object, ptr.cooked() );
@@ -601,8 +605,8 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
     auto type = var->getType();
     auto name = divar->getName().str();
 
-    if ( divar->getScope() != subprogram() )
-        name += "$" + brick::string::fmt( ++ _related_count[ name ] );
+    if ( _related_count[ name ] ++ )
+        return;
 
     Node lvar( _ctx, _snapshot );
     lvar.address( DNKind::Object, ptr );
@@ -617,16 +621,34 @@ void Node< Prog, Heap >::framevars( YieldDN yield )
     if ( pc().type() != PointerType::Code )
         return;
 
+    std::queue< llvm::BasicBlock * > q;
+    std::set< llvm::BasicBlock * > seen;
+
     auto npc = _ctx.program().nextpc( pc() );
     auto op = _ctx.debug().find( nullptr, npc ).first;
-    auto F = op->getParent()->getParent();
+    q.push( op->getParent() );
 
-    for ( auto &BB : *F )
-        for ( auto &I : BB )
-            if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
+    while ( !q.empty() )
+    {
+        auto BB = q.front();
+        q.pop();
+
+        bool skip = BB == op->getParent();
+
+        for ( auto iter = BB->rbegin(); iter != BB->rend(); ++ iter )
+        {
+            if ( skip && &*iter == op ) skip = false;
+            if ( skip ) continue;
+            if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &*iter ) )
                 localvar( yield, DDI );
-            else if ( auto DDV = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
+            if ( auto DDV = llvm::dyn_cast< llvm::DbgValueInst >( &*iter ) )
                 localvar( yield, DDV );
+        }
+
+        for ( auto P : llvm::predecessors( BB ) )
+            if ( !seen.count( BB ) )
+                q.push( P ), seen.insert( BB );
+    }
 }
 
 template< typename Prog, typename Heap >
