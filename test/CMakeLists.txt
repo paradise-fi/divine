@@ -36,4 +36,4 @@ add_custom_target( functional
 )
 
 add_executable( runner lib/runner.cpp )
-add_dependencies( functional divine llvm-utils )
+add_dependencies( functional divine llvm-utils divcc )
