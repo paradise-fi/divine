@@ -22,7 +22,6 @@ DIVINE_UNRELAX_WARNINGS
 
 // used to calculate frame size & encode function types
 #include <divine/vm/divm.h>
-#include <runtime/native/vm.h>
 #include <runtime/divine/metadata.h>
 
 namespace lart {
@@ -47,10 +46,9 @@ std::string encLLVMFunType( llvm::FunctionType *ft ) {
 }
 
 struct FunctionMeta {
-    template< typename Index >
-    explicit FunctionMeta( llvm::Function &fn, Index &index ) :
+    explicit FunctionMeta( llvm::Function &fn ) :
         entryPoint( &fn ),
-        frameSize( sizeof( _VM_Frame ) + argsSize( fn, index ) + sizeof( nativeRuntime::FrameEx ) ), // re-filed by the loader
+        frameSize( 0 ), // re-written by the loader
         argCount( fn.arg_size() ),
         isVariadic( fn.isVarArg() ),
         type( encLLVMFunType( fn.getFunctionType() ) ),
@@ -131,7 +129,7 @@ struct IndexFunctions {
         for ( auto &fn : mod ) {
             if ( fn.isDeclaration() )
                 continue;
-            funMeta.emplace_back( fn, *this );
+            funMeta.emplace_back( fn );
         }
 
         // build metadata table
