@@ -11,13 +11,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
-#include <csignal>
-#include <cstdlib>
-#include <algorithm>
-#include <utility>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
 #include <dios.h>
-#include <dios/core/stdlibwrap.hpp>
-#include <tuple>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
@@ -44,8 +41,9 @@ typedef unsigned short ushort;
 
 struct _PThread { // (user-space) information maintained for every (running)
                 // thread
-    _PThread() noexcept {
-        std::memset( this, 0, sizeof( _PThread ) );
+    _PThread() noexcept
+    {
+        memset( this, 0, sizeof( _PThread ) );
     }
 
     // avoid accidental copies
@@ -82,60 +80,79 @@ struct _PThread { // (user-space) information maintained for every (running)
     }
 };
 
-using Destructor = void (*)( void * );
+template< typename Handler >
+struct _PthreadHandlers
+{
+    _PthreadHandlers() noexcept = default;
+    _PthreadHandlers( const _PthreadHandlers & ) noexcept = delete;
+    _PthreadHandlers( _PthreadHandlers && ) noexcept = delete;
 
-struct _PthreadTLSDestructors {
-
-    _PthreadTLSDestructors() noexcept = default;
-    _PthreadTLSDestructors( const _PthreadTLSDestructors & ) noexcept = delete;
-    _PthreadTLSDestructors( _PthreadTLSDestructors && ) noexcept = delete;
-
-    int count() noexcept {
-        return __vm_obj_size( _dtors ) / sizeof( Destructor );
+    int count() noexcept
+    {
+        return __vm_obj_size( _dtors ) / sizeof( Handler );
     }
 
     int getFirstAvailable() noexcept {
         int k = -1;
         int c = count();
         for ( int i = 0; i < c; ++i )
-            if ( _dtors[ i ] == nullptr ) {
+            if ( !_dtors[ i ] )
+            {
                 k = i;
                 break;
             }
 
         if ( k < 0 ) {
             k = c;
-            __vm_obj_resize( _dtors, sizeof( Destructor ) * (k + 1) );
+            __vm_obj_resize( _dtors, sizeof( Handler ) * (k + 1) );
         }
         return k;
     }
 
-    void shrink() noexcept {
+    void shrink() noexcept
+    {
         int toDrop = 0;
         int c = count();
-        for ( int i = c - 1; i >= 0; --i ) {
-            if ( _dtors[ i ] == nullptr )
-                ++toDrop;
+
+        for ( int i = c - 1; i >= 0; --i )
+        {
+            if ( !_dtors[ i ] )
+                ++ toDrop;
             else
                 break;
         }
+
+        int newsz = c - toDrop;
+        if ( newsz < 1 ) newsz = 1;
+
         if ( toDrop )
-            __vm_obj_resize( _dtors, std::max( size_t( 1 ), (c - toDrop) * sizeof( Destructor ) ) );
+            __vm_obj_resize( _dtors, newsz * sizeof( Handler ) );
     }
 
     void init() noexcept {
         assert( !_dtors );
-        _dtors = static_cast< Destructor * >( __vm_obj_make( 1 ) ); // placeholder so that resize works
+        _dtors = static_cast< Handler * >( __vm_obj_make( 1 ) ); // placeholder so that resize works
     }
 
-    Destructor &operator[]( size_t x ) noexcept { return _dtors[ x ]; }
-
-    Destructor *_dtors;
+    Handler &operator[]( size_t x ) noexcept { return _dtors[ x ]; }
+    Handler *_dtors;
 };
 
+using Destructor = void (*)( void * );
+
+struct ForkHandler
+{
+    void (*prepare)();
+    void (*parent)();
+    void (*child)();
+    bool operator!() const { return !prepare && !parent && !child; }
+};
+
+using _PthreadTLSDestructors = _PthreadHandlers< Destructor >;
+using _PthreadAtFork = _PthreadHandlers< ForkHandler >;
+
 static _PthreadTLSDestructors tlsDestructors;
-using ForkHandler = void ( * )( void );
-static __dios::Vector< std::tuple< ForkHandler, ForkHandler, ForkHandler > > atForkHandlers;
+static _PthreadAtFork atForkHandlers;
 
 struct _PthreadTLS {
 
@@ -253,32 +270,38 @@ static void iterateThreads( Yield yield ) noexcept {
 }
 
 /* Process */
-int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ), void ( *child )( void ) ) noexcept {
+int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ),
+                    void ( *child )( void ) ) noexcept
+{
     if ( __vm_choose( 2 ) )
         return ENOMEM;
-    atForkHandlers.emplace_back( prepare, parent, child );
+    int i = atForkHandlers.getFirstAvailable();
+    atForkHandlers[i].prepare = prepare;
+    atForkHandlers[i].parent = parent;
+    atForkHandlers[i].child = child;
     return 0;
 }
 
 void __run_atfork_handlers( ushort index ) noexcept {
 
-    auto invoke = []( ForkHandler h ){ if ( h ) h(); };
+    auto invoke = []( void (*h)() ){ if ( h ) h(); };
+    auto &h = atForkHandlers;
 
     if ( index == 0 )
-        for( auto h = atForkHandlers.rbegin(); h != atForkHandlers.rend(); ++h )
-            invoke( std::get< 0 >( *h ) );
+        for ( int i = h.count() - 1; i >= 0; --i )
+            invoke( h[i].prepare );
     else
-        for( auto h : atForkHandlers )
-        {
+        for ( int i = 0; i < h.count(); ++ i )
             if ( index == 1 )
-                invoke( std::get< 1 >( h ) );
+                invoke( h[i].parent );
             else
             {
                 getThread().is_main = true;
-                invoke( std::get< 2 >( h ) );
+                invoke( h[i].child );
             }
-        }
 }
+
+inline void* operator new ( size_t, void* p ) noexcept { return p; }
 
 static void __init_thread( const _DiOS_TaskHandle gtid, const pthread_attr_t attr ) noexcept {
     __dios_assert( gtid );
@@ -298,9 +321,11 @@ static void __init_thread( const _DiOS_TaskHandle gtid, const pthread_attr_t att
     thread->sigmaxused = 0;
 }
 
-void __pthread_initialize() noexcept {
+void __pthread_initialize() noexcept
+{
     // initialize implicitly created main thread
     tlsDestructors.init();
+    atForkHandlers.init();
     __init_thread( __dios_get_task_handle(), PTHREAD_CREATE_DETACHED );
     getThread().is_main = true;
 }
@@ -348,17 +373,17 @@ static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
 }
 
 template < typename Cond >
-static void waitOrCancel( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
+static void waitOrCancel( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
-    return _wait< true >( mask, std::forward< Cond >( cond ) );
+    return _wait< true >( mask, cond );
 }
 
 template < typename Cond >
-static void wait( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
+static void wait( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
-    return _wait< false >( mask, std::forward< Cond >( cond ) );
+    return _wait< false >( mask, cond );
 }
 
 static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_TaskHandle tid ) noexcept
@@ -382,18 +407,21 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
     // non-NULL values with associated destructors exist, even though this
     // might result in an infinite loop.
     int iter = 0;
+    bool done;
+
     auto &tls = ::tls( tid );
     do {
+        done = true;
         for ( auto tld : tls ) {
             if ( tld.getData() ) {
+                done = false;
                 auto *data = tld.getData();
                 tld.setData( nullptr );
                 tld.destructor()( data );
             }
         }
         ++iter;
-    } while ( iter <= PTHREAD_DESTRUCTOR_ITERATIONS
-              && std::find_if( tls.begin(), tls.end(), []( auto tls ) { return !tls.getData(); } ) != tls.end() );
+    } while ( iter <= PTHREAD_DESTRUCTOR_ITERATIONS && !done );
 
     thread.running = false;
 

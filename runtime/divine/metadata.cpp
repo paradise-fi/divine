@@ -1,7 +1,6 @@
-#include <cstring>
 #include <divine/metadata.h>
-#include <limits>
-#include <algorithm>
+#include <string.h>
+#include <limits.h>
 
 extern const _MD_Function __md_functions[];
 extern const int __md_functions_count;
@@ -46,19 +45,13 @@ _MD_RegInfo __md_get_register_info( _VM_Frame *frame, _VM_CodePointer pc, const 
     return { base + imeta.val_offset, imeta.val_width };
 }
 
-bool cmpGlobal( const _MD_Global &g, const char *name ) noexcept {
-    return std::strcmp( g.name, name ) < 0;
-}
-
-bool cmpGlobal( const char *name, const _MD_Global &g ) noexcept {
-    return std::strcmp( name, g.name ) < 0;
-}
-
-const _MD_Global *__md_get_global_meta( const char *name ) noexcept {
-    const auto *end = __md_globals + __md_globals_count;
-    auto range = std::equal_range( __md_globals, end, name,
-            []( const auto &a, const auto &b ) { return cmpGlobal( a, b ); } );
-    if ( range.first == end || range.first == range.second )
-        return nullptr;
-    return range.first;
+const _MD_Global *__md_get_global_meta( const char *name ) noexcept
+{
+    const auto *b = __md_globals, *e = b + __md_globals_count;
+    while ( b < e )
+        if ( ::strcmp( b->name, name ) == 0 )
+            return b;
+        else
+            ++ b;
+    return nullptr;
 }

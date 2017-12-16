@@ -3,9 +3,10 @@
 #include <setjmp.h>
 #include <sys/bitcode.h>
 #include <dios.h>
-#include <cassert>
+#include <assert.h>
 
-int setjmp( jmp_buf env ) {
+int setjmp( jmp_buf env )
+{
     _VM_Frame *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
     env->__jumpFrame = frame;
     const _VM_CodePointer pc = frame->pc;
@@ -17,7 +18,8 @@ int setjmp( jmp_buf env ) {
     return 0;
 }
 
-void longjmp( jmp_buf env, int val ) {
+void longjmp( jmp_buf env, int val )
+{
     auto retreg = __md_get_register_info( env->__jumpFrame, env->__jumpPC, env->__jumpFunctionMeta );
     assert( retreg.width == sizeof( int ) );
     if ( val == 0 )

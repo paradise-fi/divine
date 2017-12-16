@@ -9,8 +9,8 @@
 #include <divine/metadata.h>
 #include <sys/bitcode.h>
 #include <dios.h>
-#include <climits>
-#include <cstring>
+#include <limits.h>
+#include <string.h>
 
 struct _Unwind_Context {
     _Unwind_Context( _VM_Frame *f ) : frame( f ) { }
