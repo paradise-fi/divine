@@ -67,6 +67,10 @@ struct Info
         ASSERT( F );
         ASSERT( pcf.function() );
 
+        /* no LLVM instruction corresponds to OpBB */
+        if ( pc.function() && _program.instruction( pc ).opcode == lx::OpBB )
+            return std::make_pair( nullptr, pc );
+
         for ( auto &BB : *F )
         {
             ASSERT_EQ( _program.instruction( pcf ).opcode, lx::OpBB );
