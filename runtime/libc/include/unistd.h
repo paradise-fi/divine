@@ -5,6 +5,8 @@
 #ifndef _UNISTD_H_
 #define _UNISTD_H_
 
+#define _POSIX_VERSION 200809L
+
 #define F_OK        0
 #define X_OK        1
 #define W_OK        2
