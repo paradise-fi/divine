@@ -30,7 +30,7 @@
 #define _SYS_VMUTIL_H_
 
 #ifndef _VMUTIL_INLINE
-#define _VMUTIL_INLINE extern inline
+#define _VMUTIL_INLINE static inline
 #define _VMUTIL_INLINE_UNDEF
 #endif
 
