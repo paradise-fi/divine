@@ -12,6 +12,7 @@ EOF
 sim file.cpp <<EOF
 + ^# executing __boot at
 > start
+> step --count 3
 + ^# executing main at
 > show .x
 + ^attributes
