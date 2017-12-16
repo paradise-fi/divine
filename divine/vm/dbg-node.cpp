@@ -356,7 +356,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
         auto &i = prog.instruction( iter );
         eval._instruction = &i;
         _ctx.set( _VM_CR_PC, iter );
-        out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
+        out << ( iter == prog.advance( pc() ) ? ">>" : "  " );
         if ( i.opcode == lx::OpBB )
         {
             auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
@@ -378,7 +378,7 @@ void Node< Prog, Heap >::source( std::ostream &out, std::function< std::string( 
     auto s = subprogram();
     if ( !s )
         throw brick::except::Error( "cannot display source code, no debugging information found" );
-    out << print::source( _ctx.debug(), s, _ctx.program(), pc(), pp );
+    out << print::source( _ctx.debug(), s, _ctx.program(), _ctx.program().advance( pc() ), pp );
 }
 
 template< typename Prog, typename Heap >
