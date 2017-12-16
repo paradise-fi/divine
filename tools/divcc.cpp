@@ -211,7 +211,9 @@ int main( int argc, char **argv ) {
                       , "-isystem", joinPath( includeDir, "libc/internals" )
                       , "-isystem", joinPath( includeDir, "libm/include" ) } );
 
-        if ( po.files.size() > 1 && po.outputFile != "" ) {
+        if ( po.files.size() > 1 && po.outputFile != ""
+             && ( po.preprocessOnly || po.toObjectOnly ) )
+        {
             std::cerr << "Cannot specify -o with multiple files" << std::endl;
             return 1;
         }
