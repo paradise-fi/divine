@@ -33,8 +33,10 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     auto fault_handler = ctx.get( _VM_CR_FaultHandler ).pointer.object();
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
     bool moved = false, in_fault, rewind_to_fault = false;
-    CodePointer oldpc = eval.pc();
     Context _backup( ctx.program(), ctx.debug() );
+
+    if ( auto insn = ctx.debug().find( nullptr, ctx.program().advance( eval.pc() ) ).first )
+        _line = dbg::fileline( *insn );
 
     while ( !_sigint && !ctx.frame().null() )
     {
@@ -64,7 +66,8 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             if ( _check( _states ) )
                 break;
 
-            if ( check( ctx, eval, oldpc, moved ) )
+            auto nextpc = ctx.program().advance( eval.pc() );
+            if ( check( ctx, eval, nextpc, moved ) )
                 break;
 
             if ( _stop_on_fault && in_fault )
@@ -76,7 +79,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         }
 
         moved = true;
-        oldpc = eval.pc();
+        CodePointer oldpc = eval.pc();
         auto frame = ctx.frame();
 
         if ( ( verb == PrintInstructions || verb == TraceInstructions ) && !ff )
