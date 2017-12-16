@@ -120,7 +120,7 @@ struct BackTrace : WithVar, Teflon
 
 struct Setup : Teflon
 {
-    bool clear_sticky, pygmentize = false;
+    bool clear_sticky, pygmentize = false, debug_everything = false;
     std::string xterm;
     std::vector< std::string > sticky_commands;
     std::vector< vm::dbg::Component > debug_components, ignore_components;

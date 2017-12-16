@@ -311,12 +311,15 @@ void CLI::go( command::Setup set )
     }
     for ( const std::string& cmd : set.sticky_commands )
         _sticky_commands.push_back( tok.tokenize( cmd ) );
-    if ( !set.debug_components.empty() && !set.ignore_components.empty() )
+    if ( ( set.debug_everything || !set.debug_components.empty() ) && !set.ignore_components.empty() )
         throw brick::except::Error( "sorry, cannot mix --ignore and --debug" );
+
     for ( auto c : set.debug_components )
         _ff_components &= ~Components( c );
     for ( auto c : set.ignore_components )
         _ff_components |= c;
+    if ( set.debug_everything )
+        _ff_components = vm::dbg::Components();
 }
 
 }

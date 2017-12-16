@@ -86,6 +86,8 @@ auto make_parser()
                  "enable debugging of {component}"s )
         .option( "[--ignore {component}]", &command::Setup::ignore_components,
                  "disable debugging of {component}"s )
+        .option( "[--debug-everything]", &command::Setup::debug_everything,
+                 "enable debugging of all components"s )
         .option( "[--xterm {string}]", &command::Setup::xterm, "setup & name an X terminal"s )
         .option( "[--clear-sticky]", &command::Setup::clear_sticky, "remove sticky commands"s )
         .option( "[--pygmentize]", &command::Setup::pygmentize, "pygmentize source listings"s )
