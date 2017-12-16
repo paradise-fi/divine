@@ -1,5 +1,5 @@
 #include <sys/divm.h>
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 #include <sys/bitcode.h>
 #include <string.h>
 

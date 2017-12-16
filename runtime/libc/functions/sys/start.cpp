@@ -1,8 +1,7 @@
 #include <stdlib.h>
-#include <sys/start.h>
 #include <pthread.h>
-
-#include <divine/metadata.h>
+#include <sys/start.h>
+#include <sys/metadata.h>
 
 namespace {
 

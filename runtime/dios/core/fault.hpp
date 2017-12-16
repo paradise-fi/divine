@@ -13,8 +13,8 @@
 
 #include <algorithm>
 #include <cstdarg>
-#include <divine/metadata.h>
 #include <cxxabi.h>
+#include <sys/metadata.h>
 #include <sys/trace.h>
 
 #include <dios/core/main.hpp>

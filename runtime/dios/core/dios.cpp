@@ -7,7 +7,7 @@
 
 #include <sys/utsname.h>
 #include <sys/bitcode.h>
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 
 #include <dios.h>
 #include <dios/core/main.hpp>

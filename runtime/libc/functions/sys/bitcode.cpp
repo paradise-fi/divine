@@ -1,5 +1,5 @@
 #include <sys/bitcode.h>
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 
 _VM_CodePointer __dios_get_function_entry( _VM_CodePointer pc )
 {

@@ -1,4 +1,4 @@
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 #include <string.h>
 #include <limits.h>
 

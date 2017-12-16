@@ -65,6 +65,11 @@ int __dios_get_fault_config( int fault ) _PDCLIB_nothrow;
  */
 void __dios_fault( int f, const char *msg, ... ) _PDCLIB_nothrow __attribute__(( __noinline__ ));
 
+static inline int __dios_sim_fail( enum _DiOS_SimFail x )
+{
+    return _DiOS_SimFail_flags & ( 1 << ( x - _DiOS_SF_First ) );
+}
+
 _PDCLIB_EXTERN_END
 
 #ifdef __cplusplus
@@ -94,10 +99,6 @@ struct DetectFault
     int _fault;
     int _orig;
 };
-
-static inline bool simFail( _DiOS_SimFail x ) {
-    return _DiOS_SimFail_flags & ( 1 << ( x - _DiOS_SF_First ) );
-}
 
 } // namespace __dios
 

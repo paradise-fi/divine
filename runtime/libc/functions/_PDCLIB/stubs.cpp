@@ -17,6 +17,7 @@
 extern "C" {
 
 #define NOT_IMPLEMENTED { __dios_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
+
 double atof( const char * ) noexcept NOT_IMPLEMENTED;
 double strtod( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 float strtof( const char *, char ** ) noexcept NOT_IMPLEMENTED;
@@ -49,6 +50,9 @@ int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 void tzset() { __dios_fault( _VM_F_NotImplemented, "tzset" ); };
 int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;
 
+void *dlsym( void *, void * ) NOT_IMPLEMENTED;
+void *__errno_location() NOT_IMPLEMENTED;
+
 int mbtowc( wchar_t *, const char *s, size_t )
 {
     if ( s )/* not stateless */
@@ -59,7 +63,8 @@ int mbtowc( wchar_t *, const char *s, size_t )
 int chown(const char* /*path*/, uid_t /*owner*/, gid_t /*group*/) NOT_IMPLEMENTED;
 
 
-locale_t newlocale( int, const char *lc, locale_t ) {
+locale_t newlocale( int, const char *lc, locale_t )
+{
     if ( strcmp( lc, "C" ) == 0 )
         return const_cast< locale_t >( &_PDCLIB_global_locale );
 
@@ -67,7 +72,8 @@ locale_t newlocale( int, const char *lc, locale_t ) {
     return 0;
 }
 
-int gettimeofday( struct timeval *tp, void * /* tzp */ ) {
+int gettimeofday( struct timeval *tp, void * /* tzp */ )
+{
     tp->tv_sec = 0;
     tp->tv_usec = 0;
     return 0;

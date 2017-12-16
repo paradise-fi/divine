@@ -6,7 +6,7 @@
 #include <sys/divm.h>
 #include <sys/interrupt.h>
 #include <sys/fault.h>
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 #include <sys/bitcode.h>
 #include <dios.h>
 #include <limits.h>

@@ -10,12 +10,12 @@
 #include <sys/monitor.h>
 #include <sys/signal.h>
 #include <sys/start.h>
+#include <sys/metadata.h>
 #include <dios.h>
 
 #include <dios/core/main.hpp>
 #include <dios/core/syscall.hpp>
 #include <dios/lib/map.hpp>
-#include <divine/metadata.h>
 
 #include <abstract/common.h>
 

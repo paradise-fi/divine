@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <pthread.h>
 
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 #include <dios/core/main.hpp>
 
 namespace __dios {

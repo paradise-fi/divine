@@ -1,15 +1,14 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
 
+#include <_PDCLIB_aux.h>
 #include <stdint.h>
-#include <divine/metadata.h>
+#include <sys/metadata.h>
 #include <sys/divm.h>
 
 #ifndef _SETJMP_H_
 #define _SETJMP_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+_PDCLIB_EXTERN_C
 
 // minimal implementation
 struct __jmp_buf_tag
@@ -27,8 +26,6 @@ int setjmp( jmp_buf env ) __attribute__((__noinline__, __returns_twice__, __noth
 void longjmp( jmp_buf env, int val ) __attribute__((__nothrow__));
 // void siglongjmp( sigjmp_buf env, int val );
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+_PDCLIB_EXTERN_END
 
 #endif // _SETJMP_H_
