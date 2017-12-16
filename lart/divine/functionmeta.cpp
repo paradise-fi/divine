@@ -22,7 +22,7 @@ DIVINE_UNRELAX_WARNINGS
 
 // used to calculate frame size & encode function types
 #include <divine/vm/divm.h>
-#include <runtime/divine/metadata.h>
+#include <runtime/libc/include/sys/metadata.h>
 
 namespace lart {
 namespace divine {
