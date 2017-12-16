@@ -48,6 +48,13 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             break;
         }
 
+        if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_components )
+        {
+            rewind_to_fault = true;
+            _backup = ctx;
+            ctx.flush_ptr2i();
+        }
+
         bool ff = ctx.in_component( _ff_components );
 
         if ( ff )
@@ -62,13 +69,6 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
 
             if ( _stop_on_fault && in_fault )
                 break;
-
-            if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_components )
-            {
-                rewind_to_fault = true;
-                _backup = ctx;
-                ctx.flush_ptr2i();
-            }
 
             in_frame( ctx.frame(), ctx.heap() );
             eval.advance();
