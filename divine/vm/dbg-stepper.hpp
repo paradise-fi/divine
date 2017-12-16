@@ -100,8 +100,7 @@ struct Stepper
     template< typename Eval >
     bool check( Context &ctx, Eval &eval, CodePointer oldpc, bool moved )
     {
-        if ( moved && eval.instruction().opcode != lx::OpDbg &&
-             check_location( eval.pc(), ctx.debug().find( nullptr, oldpc ).first ) )
+        if ( moved && check_location( eval.pc(), ctx.debug().find( nullptr, oldpc ).first ) )
             return true;
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;
