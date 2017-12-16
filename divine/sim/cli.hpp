@@ -120,17 +120,17 @@ struct CLI
         return dbg::fileline( *insn );
     };
 
-    DN dn( vm::GenericPointer p, dbg::DNKind k, llvm::Type *t, llvm::DIType *dit )
+    DN dn( vm::GenericPointer p, dbg::DNKind k, llvm::Type *t, llvm::DIType *dit, bool exec = false )
     {
         DN r( _ctx, _ctx.snapshot() );
-        r.address( k, p );
+        r.address( k, p, exec );
         r.type( t );
         r.di_type( dit );
         return r;
     }
 
     DN nullDN() { return dn( vm::nullPointer(), dbg::DNKind::Object, nullptr, nullptr ); }
-    DN frameDN() { return dn( _ctx.frame(), dbg::DNKind::Frame, nullptr, nullptr ); }
+    DN frameDN() { return dn( _ctx.frame(), dbg::DNKind::Frame, nullptr, nullptr, true ); }
 
     DN objDN( vm::GenericPointer p, llvm::Type *t, llvm::DIType *dit )
     {
