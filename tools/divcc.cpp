@@ -201,27 +201,28 @@ int main( int argc, char **argv ) {
         auto po = cc::parseOpts( opts );
 
         using brick::fs::joinPath;
+        using divine::cc::includeDir;
 
-        po.opts.insert( po.opts.end(), {  "-isystem", rt::includeDir
-                      , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
-                      , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )
-                      , "-isystem", joinPath( rt::includeDir, "libunwind/include" )
-                      , "-isystem", joinPath( rt::includeDir, "libc/include" )
-                      , "-isystem", joinPath( rt::includeDir, "libc/internals" )
-                      , "-isystem", joinPath( rt::includeDir, "libm/include" ) } );
+        po.opts.insert( po.opts.end(), {  "-isystem", includeDir
+                      , "-isystem", joinPath( includeDir, "libcxx/include" )
+                      , "-isystem", joinPath( includeDir, "libcxxabi/include" )
+                      , "-isystem", joinPath( includeDir, "libunwind/include" )
+                      , "-isystem", joinPath( includeDir, "libc/include" )
+                      , "-isystem", joinPath( includeDir, "libc/internals" )
+                      , "-isystem", joinPath( includeDir, "libm/include" ) } );
 
         if ( po.files.size() > 1 && po.outputFile != "" ) {
             std::cerr << "Cannot specify -o with multiple files" << std::endl;
             return 1;
         }
 
-        using cc::Compiler::FileType;
-        using cc::Compiler::typeFromFile;
+        using FileType = cc::Compiler::FileType;
+        using namespace brick::types;
 
         if ( po.preprocessOnly ) {
             for ( auto srcFile : po.files ) {
-                std::string ifn = std::get< cc::File >( srcFile ).name;
-                if ( typeFromFile( ifn ) == FileType::Obj )
+                std::string ifn = srcFile.get< cc::File >().name;
+                if ( cc::Compiler::typeFromFile( ifn ) == FileType::Obj )
                     continue;
                 std::cout << clang.preprocessModule( ifn, po.opts );
             }
@@ -229,8 +230,8 @@ int main( int argc, char **argv ) {
         }
 
         for ( auto srcFile : po.files ) {
-            if ( std::holds_alternative< cc::File >( srcFile ) ) {
-                std::string ifn = std::get< cc::File >( srcFile ).name;
+            if ( srcFile.is< cc::File >() ) {
+                std::string ifn = srcFile.get< cc::File >().name;
                 std::string ofn = po.outputFile != "" ? po.outputFile
                     : brick::fs::dropExtension( ifn ) + ".o";
 
@@ -240,7 +241,7 @@ int main( int argc, char **argv ) {
 
         if ( po.toObjectOnly ) {
             for ( auto file : objFiles ) {
-                if ( typeFromFile( file.first ) == FileType::Obj )
+                if ( cc::Compiler::typeFromFile( file.first ) == FileType::Obj )
                     continue; // TODO: missing .llvm section
                 auto mod = clang.compileModule( file.first, po.opts );
                 emitObjFile( *mod, file.second );
@@ -250,7 +251,7 @@ int main( int argc, char **argv ) {
         else {
             std::string s;
             for ( auto file : objFiles ) {
-                if ( typeFromFile( file.first ) == FileType::Obj ) {
+                if ( cc::Compiler::typeFromFile( file.first ) == FileType::Obj ) {
                     s += file.first + " ";
                     // TODO: missing .llvm section
                     continue;
