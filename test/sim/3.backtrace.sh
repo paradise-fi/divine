@@ -2,6 +2,7 @@
 
 sim $TESTS/pthread/2.mutex-good.c <<EOF
 + ^# executing __boot
+> setup --debug libc
 > start
 + ^# executing main
 > break 2.mutex-good.c:19

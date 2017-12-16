@@ -18,7 +18,7 @@ sim file.cpp <<EOF
 - ^# executing
 + ^# executing main at
 > bitcode
-+ >>\s*label %.*:
++ >>.*alloca
 + invoke .*foo.*label %.*label %
 + label %.*:
 + landingpad

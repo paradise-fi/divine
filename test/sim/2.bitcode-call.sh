@@ -15,7 +15,7 @@ sim file.cpp <<EOF
 - ^# executing
 + ^# executing main at
 > bitcode
-+ >>\s*label %.*:
++ >>.*alloca
 + call .*foo.*%.*[i32 4 d]
 + ret
 EOF

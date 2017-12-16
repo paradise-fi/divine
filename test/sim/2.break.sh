@@ -6,6 +6,7 @@ sim $SRC <<EOF
 + ^# executing __boot
 > start
 + ^# executing main
+> setup --debug libc
 > break __dios_fault
 > break --list
 + ^ 1: __dios_fault

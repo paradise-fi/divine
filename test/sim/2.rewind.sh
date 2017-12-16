@@ -1,8 +1,9 @@
 . lib/testcase
 
-SRC=$TESTS/c/1.assert.c
+SRC=$TESTS/demo/1.deadlock.c
 
 sim $SRC <<EOF
+> setup --debug libc
 > stepa
 > stepa
 > rewind #1

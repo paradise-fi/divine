@@ -2,6 +2,7 @@
 
 sim $TESTS/c/1.malloc.c <<EOF
 + ^# executing __boot at
+> setup --debug libc
 > trace --choices 0 0 1
 - FAULT
 + ^traced states: #1 #2
@@ -14,7 +15,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 > step --out
 > step --count 2
 + ^T: FAULT: null pointer dereference
-+ ^# executing .*::handler
++ ^# executing __dios_syscall
 > trace --choices 0 0 0 0
 + traced states: #1 #2 #4
 + unused choices: 0/0

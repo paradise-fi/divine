@@ -4,7 +4,7 @@ SRC=$TESTS/c/1.assert.c
 
 sim $SRC <<EOF
 + ^# executing __boot
-> setup --debug kernel --debug libc
+> setup --debug-everything
 > start
 + ^# executing main
 > stepa
