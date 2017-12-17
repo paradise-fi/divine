@@ -1,17 +1,15 @@
-The DIVINE Virtual Machine
-==========================
+# The DIVINE Virtual Machine
 
 Programs in DIVINE are executed by a virtual machine (DIVINE VM or DiVM for
 short). The machine code executed by this virtual machine is the LLVM
-bitcode. The details of the "machine language" are, therefore, described in the
-[LLVM Documentation] [1].
+bitcode. The details of the "machine language" are, therefore, described in
+the [LLVM Documentation] [1].
 
 [1]: http://llvm.org/docs/LangRef.html
 
-Activation Frames
------------------
+## Activation Frames
 
-Unlike in 'traditional' implementations of C, there is no continuous stack in
+Unlike in a 'traditional' implementations of C, there is no continuous stack in
 DiVM. Instead, each activation record (frame) is allocated from the heap and
 its size is fixed. Allocations that are normally done at runtime from the stack
 are instead done from the heap, using the `alloca` LLVM
@@ -27,8 +25,7 @@ and a pointer to the caller's activation frame. The header of the activation
 record has a C-compatible representation, available as `struct _VM_Frame` in
 `divine.h`.
 
-Control Registers
------------------
+## Control Registers {#sec:control}
 
 The state of the VM consists of two parts, a set of *control registers* and the
 *heap* (structured memory). All available registers are described by `enum
@@ -86,8 +83,7 @@ edge-specific flags are:
     become a part of the state space and neither will its target state, unless
     also reachable some other way)
 
-Heap
-----
+## Heap
 
 The entire *persistent* state of the VM is stored in the heap. The heap is
 represented as a directed graph of objects, where pointers stored in those
@@ -102,8 +98,7 @@ heap. The heap is also stored in a way that makes it quite efficient (both
 time- and memory-wise) for the VM to take snapshots and store them. This is how
 model checking and reversible debugging is realized in DIVINE.
 
-Scheduling
-----------
+## Scheduling
 
 The DIVINE VM has no intrinsic concept of threads or processes. Instead, it
 relies on an "operating system" to implement such abstractions and the VM
@@ -147,8 +142,7 @@ also be stored indirectly, behind a pointer to another heap object). In other
 words, the object pointed to by `_VM_CR_State` serves as the *root* of the
 heap.
 
-Faults
-------
+## Faults
 
 An important role of DIVINE is to detect errors -- various types of safety
 violations -- in the program. For this reason, it needs to interpret the
@@ -186,8 +180,7 @@ which case, the VM could not finish its evaluation. The continuation passed to
 the fault handler is the best estimate by the VM on where the execution should
 resume. The fault handler is free to choose a different location.)
 
-Boot Sequence
--------------
+## Boot Sequence
 
 The virtual machine explicitly recognizes two modes of execution: privileged
 (kernel) mode and normal, unprivileged user mode. When the VM is started, it
