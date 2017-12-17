@@ -20,11 +20,9 @@ which uses `apt-get`, `yum` or `pacman` as a package manager) the easiest way to
 get dependencies of DIVINE is to run `make prerequisites` in the directory with
 the sources (you will need to have `make` installed):
 
-```{.bash}
-$ tar xvzf divine-@version@.tar.gz
-$ cd divine-@version@
-$ make prerequisites
-```
+    $ tar xvzf divine-@version@.tar.gz
+    $ cd divine-@version@
+    $ make prerequisites
 
 ### Manual Installation
 
