@@ -26,7 +26,7 @@ add_custom_command(
   OUTPUT manual.html
   DEPENDS ${SOURCES}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND pandoc --smart -s -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
+  COMMAND pandoc --smart -s ${MANUAL_OPT} -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
 )
 
 add_custom_command(
