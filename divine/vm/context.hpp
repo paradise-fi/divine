@@ -421,7 +421,7 @@ struct Context
         auto fh = get( _VM_CR_FaultHandler ).pointer;
         if ( debug_mode() )
         {
-            trace( "W: cannot handle a fault during dbg.call (abandoned)" );
+            trace( "W: cannot handle a fault in debug mode (abandoned)" );
             _debug_depth = 0; /* short-circuit */
             leave_debug();
         }
