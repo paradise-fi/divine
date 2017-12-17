@@ -166,7 +166,7 @@ void __dios_trace_out( const char *msg, size_t size) noexcept
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
-    __dios::traceInFile("passtrough.out", msg, size);
+    __dios::traceInFile("passthrough.out", msg, size);
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
