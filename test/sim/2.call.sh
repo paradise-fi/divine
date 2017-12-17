@@ -25,7 +25,7 @@ sim file.c <<EOF
 + hello world
 > call die
 + FAULT: null pointer dereference
-+ ^ERROR: encountered an error while running 'die'
++ cannot handle a fault in debug mode
 > start
 + executing main()
 > call print_hello
