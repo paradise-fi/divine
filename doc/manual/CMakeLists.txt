@@ -22,11 +22,14 @@ if( GUI AND QCOLLECTIONGENERATOR_EXECUTABLE )
   set( QTHELP "divine.qhc;manual.qch" )
 endif()
 
+separate_arguments( HTML_OPT UNIX_COMMAND ${MANUAL_OPT} )
+
 add_custom_command(
   OUTPUT manual.html
   DEPENDS ${SOURCES}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND pandoc --smart -s ${MANUAL_OPT} -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
+  COMMAND pandoc --smart -s ${HTML_OPT} -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
+  VERBATIM
 )
 
 add_custom_command(
