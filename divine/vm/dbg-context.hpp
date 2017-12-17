@@ -85,6 +85,13 @@ struct Context : DNContext< Heap >
     template< typename I >
     int choose( int count, I, I )
     {
+        if ( this->debug_mode() )
+        {
+            trace( "FAULT: __vm_choose is not allowed in debug mode" );
+            this->fault( _VM_F_Hypercall, HeapPointer(), CodePointer() );
+            return -1;
+        }
+
         switch ( _lock_mode )
         {
             case LockDisabled: case LockScheduler:

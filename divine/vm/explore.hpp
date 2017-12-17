@@ -58,6 +58,7 @@ struct Context : vm::Context< Program, CowHeap >
     template< typename I >
     int choose( int count, I, I )
     {
+        ASSERT( !this->debug_mode() );
         if ( _lock.size() )
         {
             auto rv = _lock.front();

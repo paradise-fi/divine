@@ -1173,7 +1173,11 @@ struct Eval
                 if ( !p.empty() && int( p.size() ) != options )
                     fault( _VM_F_Hypercall );
                 else
-                    result( IntV( context().choose( options, p.begin(), p.end() ) ) );
+                {
+                    int choice = context().choose( options, p.begin(), p.end() );
+                    if ( choice >= 0 )
+                        result( IntV( choice ) );
+                }
                 return;
             }
 
