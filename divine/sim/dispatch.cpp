@@ -188,14 +188,11 @@ void CLI::go( command::Call c )
 
     Context ctx( _ctx );
     vm::Eval< Context, vm::value::Void > eval( ctx );
+    ctx.ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode | _VM_CF_DebugMode;
     ctx.enter( pc, PointerV() );
-    ctx.set( _VM_CR_FaultHandler, vm::nullPointer() );
-    ctx.ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
     eval.run();
     for ( auto t : ctx._trace )
         out() << "  " << t << std::endl;
-    if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error )
-        throw brick::except::Error( "encountered an error while running '" + c.function + "'" );
 }
 
 void CLI::go( command::Up )
