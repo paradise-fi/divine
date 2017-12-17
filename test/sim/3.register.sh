@@ -9,7 +9,7 @@ EOF
 sim file.c <<EOF
 + ^# executing __boot at
 > start
-> setup --debug kernel
+> setup --debug-everything
 - ^# executing
 + ^# executing main at
 > info registers
