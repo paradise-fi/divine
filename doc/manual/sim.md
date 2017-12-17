@@ -100,3 +100,74 @@ useful for quickly glancing at nearby values:
     related:     [ caller ]
 
 This is how a frame is presented when we look at it with `show`.
+
+## Collecting Information
+
+Apart from `show` and `inspect` which simply print structured program data to
+the screen, there are additional commands for data extraction. First,
+`backtrace` will print the entire stack trace in one go, by default starting
+with the currently executing frame. It is also possible to obtain *all* stack
+traces reachable from a given heap variable, e.g.
+
+    > backtrace $state
+    # backtrace 1:
+      __dios::_InterruptMask<true>::Without::Without(__dios::_InterruptMask<true>&)
+          at /divine/include/libc/include/sys/interrupt.h:42
+      _pthread_join(__dios::_InterruptMask<true>&, _DiOS_TLS*, void**)
+          at /divine/include/libc/include/sys/interrupt.h:77
+      pthread_join at /divine/src/libc/functions/sys/pthread.cpp:539
+      main at test/pthread/2.mutex-good.c:22
+      _start at /divine/src/libc/functions/sys/start.cpp:76
+    # backtrace 2:
+      __pthread_entry at /divine/src/libc/functions/sys/pthread.cpp:447
+
+Another command to gather data is `call`, which allows you to call a function
+defined in the program. The function must not take any parameters and will be
+executed in *debug mode* (see [@sec:debugmode] -- the important caveat is that
+any `dbg.call` instructions in your info function will be ignored). Execution
+of the function will have no effect on the state of the simulated program. If
+you have a program like this:
+
+~~~ {.c}
+#include <sys/divm.h>
+
+void print_hello()
+{
+    __vm_trace( _VM_T_Text, "hello world" );
+}
+
+int main() {}
+~~~
+
+The `call` command works like this:
+
+    > call print_hello
+      hello world
+
+Finally, the `info` command serves as an universal information gathering alias
+-- you can set up your own commands that then become available as `info`
+sub-commands:
+
+    > info --setup "call print_hello" hello
+    > info hello
+      hello world
+
+The `info` command also provides a built-in sub-command `registers` which
+prints the current values of machine control registers (see also
+[@sec:control]):
+
+    > info registers
+    Constants:    220000000
+    Globals:      120000000
+    Frame:        9cd2566220000000
+    PC:           340000000
+    Scheduler:    eb40000000
+    State:        4d7b876d20000000
+    IntFrame:     1020000000
+    Flags:        0
+    FaultHandler: b940000000
+    ObjIdShuffle: faa6693f
+    User1:        0
+    User2:        201879b120000000
+    User3:        6ca5bc2260000000
+    User4:        0
