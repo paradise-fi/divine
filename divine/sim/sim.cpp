@@ -125,7 +125,7 @@ void Sim::run()
             history( hist, &hist_ev, H_ENTER, cmd_ );
 
         if ( _batch )
-            std::cerr << "> " << cmd << std::endl;
+            std::cerr << "> " << cmd << std::flush;
 
         try
         {
