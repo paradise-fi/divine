@@ -31,9 +31,9 @@ namespace __dios {
 String extractDiosConfiguration( SysOpts& o ) {
     auto r = std::find_if( o.begin(), o.end(),
         []( const auto& opt ) {
-            return opt.first == "configuration";
+            return opt.first == "config";
         } );
-    String cfg( "standard" );
+    String cfg( "default" );
     if ( r != o.end() ) {
         cfg = r->second;
         o.erase( r );
@@ -42,19 +42,16 @@ String extractDiosConfiguration( SysOpts& o ) {
 }
 
 void traceHelpOption( int i, String opt, String desc, const Vector<String>& args ) {
-    __dios_trace_i( i, "- \"%s\":", opt.c_str() );
-    __dios_trace_i( i + 2, "description: %s", desc.c_str() );
-    __dios_trace_i( i + 2, "arguments:" );
+    __dios_trace_i( i, "- %s: %s", opt.c_str(), desc.c_str() );
+    __dios_trace_i( i, "  arguments:" );
     for ( const auto& arg : args )
-        __dios_trace_i( i + 3, "- %s", arg.c_str() );
+        __dios_trace_i( i, "   - %s", arg.c_str() );
 }
 
 void traceHelp( int i, const Map< String, HelpOption >& help ) {
-    __dios_trace_i( i, "help:" );
-    __dios_trace_i( i + 1, "supported commands:" );
     for ( const auto& option : help )
-        traceHelpOption( i + 2, option.first, option.second.description,
-            option.second.options );
+        traceHelpOption( i, option.first, option.second.description,
+                         option.second.options );
 }
 
 void traceEnv( int ind, const _VM_Env *env ) {
@@ -72,34 +69,30 @@ void boot( SetupBase sb ) {
     traceAlias< Syscall< Configuration > >( "{Syscall}" );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
 
-    const char *bootInfo = "DiOS boot info:";
-    bool initTrace = false;
-    if ( extractOpt( "debug", "help", sb.opts ) ) {
-        if ( !initTrace )
-            __dios_trace_i( 0, bootInfo );
-        initTrace = true;
-
+    if ( extractOpt( "debug", "help", sb.opts ) )
+    {
         Map< String, HelpOption > help = {
-            { "configuration" , { "run DiOS in given configuration",
-                { "standard - threads, processes, vfs" } } },
+            { "config" , { "run DiOS in a given configuration",
+                           { "default: async threads, processes, vfs",
+                             "passthrough: pass syscalls to the host OS",
+                             "replay: re-use a trace recorded in passthrough mode",
+                             "synchronous: for use with synchronous systems" } } },
             { "debug", { "print debug information during boot",
-                { "help - help of selected configuration and exit",
-                  // ToDo: trace binary blobs
-                  /*"rawenvironment - user DiOS boot parameters",*/
-                  "machineparams - specified by user, e.g. number of cpus",
-                  "mainargs - argv and envp",
-                  "faultcfg - fault and simfail configuration" } } }
+                         { "help - help of selected configuration and exit",
+                           // ToDo: trace binary blobs
+                           /*"rawenvironment - user DiOS boot parameters",*/
+                           "machineparams - specified by user, e.g. number of cpus",
+                           "mainargs - argv and envp",
+                           "faultcfg - fault and simfail configuration" } } }
         };
         context->getHelp( help );
-        traceHelp( 1, help );
+        traceHelp( 0, help );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
         return;
     }
 
-    if ( extractOpt( "debug", "rawenvironment", sb.opts ) ) {
-        if ( !initTrace )
-            __dios_trace_i( 0, bootInfo );
-        initTrace = true;
+    if ( extractOpt( "debug", "rawenvironment", sb.opts ) )
+    {
         traceEnv( 1, sb.env );
     }
 
@@ -148,7 +141,7 @@ void init( const _VM_Env *env )
 
     auto cfg = extractDiosConfiguration( sysOpts );
     SetupBase setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
-    if ( cfg == "standard" )
+    if ( cfg == "default" )
         boot< DefaultConfiguration >( setup );
     else if ( cfg == "passthrough" ) {
         if ( __dios_clear_file( "passtrough.out" ) == 0 )
