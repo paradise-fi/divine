@@ -1,15 +1,16 @@
-# The DIVINE Virtual Machine
+# DiVM: A Virtual Machine for Verification
 
-Programs in DIVINE are executed by a virtual machine (DIVINE VM or DiVM for
-short). The machine code executed by this virtual machine is the LLVM
-bitcode. The details of the "machine language" are, therefore, described in
-the [LLVM Documentation] [1].
+Programs in DIVINE are executed by a virtual machine (called DiVM). The machine
+code executed by this virtual machine is an extension of the LLVM bitcode. The
+LLVM part of this “machine language” is described in detail in
+the [LLVM Documentation] [1]. The extensions of the language and the semantics
+specific to DiVM are the subject of this chapter.
 
 [1]: http://llvm.org/docs/LangRef.html
 
 ## Activation Frames
 
-Unlike in a 'traditional' implementations of C, there is no continuous stack in
+Unlike in a ‘traditional’ implementations of C, there is no continuous stack in
 DiVM. Instead, each activation record (frame) is allocated from the heap and
 its size is fixed. Allocations that are normally done at runtime from the stack
 are instead done from the heap, using the `alloca` LLVM
@@ -23,17 +24,18 @@ DiVM-specific "program counter" register (this is an actual register, but is
 saved across calls automatically by the VM, see also [Control Registers] below)
 and a pointer to the caller's activation frame. The header of the activation
 record has a C-compatible representation, available as `struct _VM_Frame` in
-`divine.h`.
+`sys/divm.h`.
 
 ## Control Registers {#sec:control}
 
 The state of the VM consists of two parts, a set of *control registers* and the
-*heap* (structured memory). All available registers are described by `enum
-_VM_ControlRegister` defined in `divine.h` and can be manipulated through the
-`__vm_control` hypercall (see also [The Hypercall Interface] below). The
-registers are of two types, holding either an integer or a pointer. There are 2
-integer registers, `_VM_CR_Flags`, which is used as a bitfield, and
-`_VM_CR_User1` (the latter is not used or examined by the VM itself).
+*heap* (structured memory). All available control registers are described by
+`enum _VM_ControlRegister` defined in `sys/divm.h` and can be manipulated
+through the `__vm_control` hypercall (see also [@sec:hypercalls]]
+below). Please note that control registers and LLVM registers (SSA values) are
+two different things. The control registers are of two types, holding either an
+integer or a pointer. There only integer register, `_VM_CR_Flags`, is used as a
+bitfield.
 
 Four control registers govern address translation and normal execution:
 
@@ -45,19 +47,21 @@ Four control registers govern address translation and normal execution:
   * `_VM_CR_PC` is the program counter
 
 Additional 4 registers are concerned with scheduling and interrupt control (for
-details, see [Scheduling] below):
+details, see [@sec:scheduling] below):
 
   * `_VM_CR_Scheduler` is the entry address of the scheduler
   * `_VM_CR_State` is the object holding persistent state of the scheduler
-  * `_VM_CR_IntFrame`
+  * `_VM_CR_IntFrame` the address of the interrupted frame (see also [@sec:scheduling])
   * `_VM_CR_Flags` is described in more detail below
 
 Finally, there's `_VM_CR_FaultHandler` (the address of the fault handler, see
-[Faults]) and a pair of user registers (`_VM_CR_User1` and `_VM_CR_User2`).
+[@sec:faults]) and 4 user registers (`_VM_CR_User1` through `_VM_CR_User4`) of
+unspecified types: they can hold either a 64 bit integer or a pointer. The VM
+itself never looks at the content of those registers.
 
 The flags register (`_VM_CR_Flags`) is further broken down into individual
-bits, described by `enum _VM_ControlFlags`, again defined in `divine.h`. These
-are:
+bits, described by `enum _VM_ControlFlags`, again defined in
+`sys/divm.h`. These are:
 
   * `_VM_CF_Mask`, if set, blocks *all* interrupts
   * `_VM_CF_Interrupted`, if set, causes an immediate interrupt (unless
@@ -72,11 +76,11 @@ The remaining 3 flags indicate properties of the resulting edge in the state
 space (see also [State Space of a Program]). These may be set by the program
 itself or by a special monitor automaton, a feature of DiOS which enables
 modular specification of non-trivial (sequence-dependent) properties. These 3
-flags are reset by the VM upon entering the scheduler (see [Scheduling]). The
-edge-specific flags are:
+flags are reset by the VM upon entering the scheduler (see
+[@sec:scheduling]). The edge-specific flags are:
 
   * `_VM_CF_Error` indicates that an error -- a safety violation -- ought to be
-    reported (a good place to set this is the *fault handler*, see [Faults]),
+    reported (a good place to set this is the *fault handler*, see [@sec:faults]),
   * `_VM_CF_Accepting` indicates that the edge is accepting, under a Büchi
     acceptance condition (see also [ω-Regular Properties and LTL]).
   * `_VM_CF_Cancel` indicates that this edge should be abandoned (it will not
@@ -98,7 +102,30 @@ heap. The heap is also stored in a way that makes it quite efficient (both
 time- and memory-wise) for the VM to take snapshots and store them. This is how
 model checking and reversible debugging is realized in DIVINE.
 
-## Scheduling
+## The Hypercall Interface
+
+The interface between the program and the VM is based on a small set of
+*hypercalls* (a list is provided in [@tbl:hypercalls]). This way, unlike pure
+LLVM, the DiVM language is capable of encoding an operating system, along with
+a syscall interface and all the usual functionality included in system
+libraries.
+
+| Hypercall       | Description                                                |
+|:----------------|:-----------------------------------------------------------|
+| `obj_make`      | Create a new object in the memory graph of the program     |
+| `obj_free`      | Explicitly destroys an object in the memory graph          |
+| `obj_size`      | Obtain the current size of an object                       |
+| `obj_resize`    | Efficiently resize an object (optional)                    |
+| `obj_shared`    | Mark an object as *shared* for τ reduction (optional)      |
+| `trace`         | Attach a piece of data to an edge in the execution graph   |
+| `interrupt_mem` | Mark a memory-access-related interrupt point               |
+| `interrupt_cfl` | Mark a control-flow-related interrupt point                |
+| `choose`        | Non-deterministic choice (a fork in the execution graph)   |
+| `control`       | Read or manipulate machine control registers               |
+
+: A list of hypercalls provided by DiVM. {#tbl:hypercalls}
+
+## Scheduling {#sec:scheduling}
 
 The DIVINE VM has no intrinsic concept of threads or processes. Instead, it
 relies on an "operating system" to implement such abstractions and the VM
@@ -142,7 +169,7 @@ also be stored indirectly, behind a pointer to another heap object). In other
 words, the object pointed to by `_VM_CR_State` serves as the *root* of the
 heap.
 
-## Faults
+## Faults {#sec:faults}
 
 An important role of DIVINE is to detect errors -- various types of safety
 violations -- in the program. For this reason, it needs to interpret the
@@ -169,7 +196,7 @@ control register). Out of the box, DiOS (see [DiOS, DIVINE's Operating System])
 provides a configurable fault handler. If a fault handler is set, faults are
 not fatal (the only exception is a double fault, that is, a fault that occurs
 while the fault handler itself is active). The fault handler, possibly with
-cooperation from the scheduler (see [Scheduling] above), can terminate the
+cooperation from the scheduler (see [@sec:scheduling]), can terminate the
 program, or raise the `_VM_CF_Error` flag, or take other appropriate actions.
 
 The handler can also choose to continue with execution despite the fault, by
@@ -194,6 +221,68 @@ debugging or verification tools outside the VM) about the C/C++ *type* (or
 DWARF type, to be precise, as this is also possible for non-C languages)
 associated with the OS state. This is accomplished by an appropriate
 `__vm_trace` call (see also below).
+
+## Memory Management Hypercalls
+
+Since LLVM bitcode is not tied to a memory representation, its apparatus for
+memory management is quite limited. Just like in C, `malloc`, `free`, and
+related functions are provided by libraries, but ultimately based on some
+lower-level mechanism, like, for example, the `mmap` system call. This is often
+the case in POSIX systems targeting machines with a flat-addressed virtual
+memory system: `mmap` is tailored to allocate comparatively large, contiguous
+chunks of memory (the requested size must be an integer multiple of hardware
+page size) and management of individual objects is done entirely in user-level
+code. Lack of any per-object protections is also a source of many common
+programming errors, which are often hard to detect and debug.
+
+It is therefore highly desirable that a single object obtained from `malloc`
+corresponds to a single VM-managed and properly isolated object. This way,
+object boundaries can easily be enforced by the model checker, and any
+violations reported back to the user. This means that, instead of subdividing
+memory obtained from `mmap`, the `libc` running in DiVM uses `obj_make` to
+create a separate object for each memory allocation. The `obj_make` hypercall
+obtains the object size as a parameter and writes the address of the newly
+created object into the corresponding LLVM register (LLVM registers are stored
+in memory, and therefore participate in the graph structure; this is described
+in more detail in [@sec:frames]). Therefore, the newly created object is
+immediately and atomically connected to the rest of the memory graph.
+
+The standard counterpart to `malloc` is `free`, which returns memory, which is
+no longer needed by the program, into the pool used by `malloc`. Again, in
+DiVM, there is a hypercall -- `obj_free` -- with a role similar to that of
+standard `free`. In particular, `obj_free` takes a pointer as an argument, and
+marks the corresponding object as *invalid*. Any further access to this object
+is a *fault* (faults are described in more detail in [@sec:faults]). The
+remaining hypercalls in the `obj_` family exist to simplify bookkeeping and are
+not particularly important to the semantics of the language.
+
+## Non-deterministic Choice and Counterexamples {#sec:nondeterminism}
+
+It is often the case that the behaviour of a program depends on outside
+influences, which cannot be reasonably described in a deterministic fashion and
+wired into the SUT. Such influences are collectively known as the
+*environment*, and the effects of the environment translate into
+non-deterministic behaviour. A major source of this non-determinism is thread
+interleaving -- or, equivalently, the choice of which thread should run next
+after an interrupt.
+
+In our design, all non-determinism in the program (and the operating system) is
+derived from uses of the `choose` hypercall (which non-deterministically
+returns an integer between 0 and a given number). Since everything else in the
+SUT is completely deterministic, the succession of values produced by calls to
+`choose` specifies an execution trace unambiguously. This trait makes it quite
+simple to store counterexamples and other traces in a tool-neutral,
+machine-readable fashion. Additionally, hints about which interrupts fired can
+be included in case the counterexample consumer does not wish to reproduce the
+exact interrupt semantics of the given VM implementation.
+
+Finally, the `trace` hypercall serves to attach additional information to
+transitions in the execution graph. In particular, this information then
+becomes part of the counterexample when it is presented to the user. For
+example, the `libc` provided by DIVINE uses the `trace` hypercall in the
+implementation of standard IO functions. This way, if a program prints
+something to its standard output during the violating run, this output becomes
+visible in the counterexample.
 
 ## Debug Mode {#sec:debugmode}
 
