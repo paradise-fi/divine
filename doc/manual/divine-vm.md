@@ -195,6 +195,28 @@ DWARF type, to be precise, as this is also possible for non-C languages)
 associated with the OS state. This is accomplished by an appropriate
 `__vm_trace` call (see also below).
 
-The Hypercall Interface
------------------------
+## Debug Mode {#sec:debugmode}
 
+The virtual machine has a special *debug* mode which allows instrumentation of
+the program under test with additional tracing or other information gathering
+functionality. This is achieved by a special `dbg.call` instruction, which is
+emitted by the bitcode loader whenever it encounters an LLVM `call` instruction
+that targets a function annotated with `divine.debugfn`. For instance, the DiOS
+tracing functions (`__dios_trace*`) carry this annotation. The virtual machine
+has two operation modes differentiated by how they treat `dbg.call`
+instructions. In the *debug allowed* mode, the instruction is executed and for
+the duration of the call, the VM enters a *debug mode*. In the other mode
+(debug forbidden), the instruction is simply ignored.
+
+Typically, verification (state space generation) would be done in the *debug
+forbidden* operation mode, while the counter-example trace would be obtained or
+replayed in the *debug allowed* mode. To make this approach feasible, there are
+certain limitations on the behaviour of a function called using `dbg.call`:
+
+   * when in *debug mode* (i.e. when already executing a `dbg.call`
+     instruction), all further `dbg.call` instructions are *ignored*
+   * faults in debug mode always cause the execution of `dbg.call` to be
+     abandoned and the program continues executing as if the `dbg.call`
+     returned normally
+   * interrupts and the `vm_choose` hypercall are forbidden in `dbg.call` and
+     both will cause a fault (and hence abandonment of the call)
