@@ -83,7 +83,7 @@ void free( void * p) { if ( p ) __vm_obj_free( p ); }
 
 void *__dso_handle; /* this is emitted by clang for calls to __cxa_exit for whatever reason */
 
-void _PDCLIB_Exit( int rv )
+void _exit( int rv )
 {
     if ( rv )
     {
@@ -118,11 +118,6 @@ int usleep( useconds_t usec )
 {
     (void) usec;
     return 0;
-}
-
-void _exit( int rv )
-{
-    _PDCLIB_Exit( rv );
 }
 
 /* signals */
