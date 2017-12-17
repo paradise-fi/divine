@@ -380,11 +380,9 @@ struct Context
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return false;
 
-        ASSERT( !debug_mode() );
-
-        if( in_kernel() )
+        if( in_kernel() || debug_mode() )
         {
-            eval.fault( _VM_F_Control ) << " illegal interrupt in kernel mode";
+            eval.fault( _VM_F_Control ) << "illegal interrupt in kernel or debug mode";
             return false;
         }
 
