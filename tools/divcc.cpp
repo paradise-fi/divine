@@ -246,6 +246,8 @@ int main( int argc, char **argv ) {
             }
         }
 
+        int ret = 0;
+
         if ( po.toObjectOnly ) {
             for ( auto file : objFiles ) {
                 if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
@@ -274,7 +276,7 @@ int main( int argc, char **argv ) {
                 s += " -o " + po.outputFile;
             s.insert( 0, "gcc " );
             s.append( " -static" );
-            system( s.c_str() );
+            ret = WEXITSTATUS( system( s.c_str() ) );
         }
 
         for ( auto file : objFiles ) {
@@ -285,7 +287,7 @@ int main( int argc, char **argv ) {
             unlink( ofn.c_str() );
         }
 
-        return 0;
+        return ret;
 
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
