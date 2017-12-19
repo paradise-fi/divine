@@ -278,6 +278,8 @@ Compiler::FileType Compiler::typeFromFile( std::string name ) {
         return FileType::Asm;
     if ( ext == ".o" )
         return FileType::Obj;
+    if ( ext == ".a" )
+        return FileType::Archive;
     return FileType::Unknown;
 }
 
@@ -294,6 +296,8 @@ Compiler::FileType Compiler::typeFromXOpt( std::string selector ) {
         return FileType::IR;
     if ( selector == "obj" )
         return FileType::Obj;
+    if ( selector == "archive" )
+        return FileType::Archive;
     return FileType::Unknown;
 }
 
@@ -321,6 +325,8 @@ std::vector< std::string > Compiler::argsOfType( FileType t ) {
             break;
         case FileType::Obj:
             add( out, { "obj" } );
+        case FileType::Archive:
+            add( out, { "archive" } );
         case FileType::Unknown:
             UNREACHABLE( "Unknown file type" );
     }
