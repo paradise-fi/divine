@@ -188,6 +188,11 @@ int emitObjFile( Module &m, std::string filename ) {
     return 0;
 }
 
+bool isType( std::string file, cc::Compiler::FileType type )
+{
+    return cc::Compiler::typeFromFile( file ) == type;
+}
+
 /* usage: same as gcc */
 int main( int argc, char **argv ) {
     try {
@@ -224,7 +229,7 @@ int main( int argc, char **argv ) {
         if ( po.preprocessOnly ) {
             for ( auto srcFile : po.files ) {
                 std::string ifn = srcFile.get< cc::File >().name;
-                if ( cc::Compiler::typeFromFile( ifn ) == FileType::Obj )
+                if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
                     continue;
                 std::cout << clang.preprocessModule( ifn, po.opts );
             }
@@ -243,7 +248,7 @@ int main( int argc, char **argv ) {
 
         if ( po.toObjectOnly ) {
             for ( auto file : objFiles ) {
-                if ( cc::Compiler::typeFromFile( file.first ) == FileType::Obj )
+                if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                     continue; // TODO: missing .llvm section
                 auto mod = clang.compileModule( file.first, po.opts );
                 emitObjFile( *mod, file.second );
@@ -253,7 +258,8 @@ int main( int argc, char **argv ) {
         else {
             std::string s;
             for ( auto file : objFiles ) {
-                if ( cc::Compiler::typeFromFile( file.first ) == FileType::Obj ) {
+                if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
+                {
                     s += file.first + " ";
                     // TODO: missing .llvm section
                     continue;
@@ -272,7 +278,7 @@ int main( int argc, char **argv ) {
         }
 
         for ( auto file : objFiles ) {
-            if ( cc::Compiler::typeFromFile( file.first ) == FileType::Obj )
+            if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                 continue;
             std::string ofn = file.second;
             ofn.insert( ofn.length()-2,".temp" );
