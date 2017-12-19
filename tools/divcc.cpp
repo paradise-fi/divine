@@ -41,55 +41,51 @@ using namespace llvm;
 
 /// addPassesToX helper drives creation and initialization of TargetPassConfig.
 static llvm::MCContext *
-addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM,
-                        bool DisableVerify ) {
+addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM, bool DisableVerify )
+{
     // Add internal analysis passes from the target machine.
-    PM.add(createTargetTransformInfoWrapperPass( TM->getTargetIRAnalysis()) );
+    PM.add( createTargetTransformInfoWrapperPass( TM->getTargetIRAnalysis() ) );
 
     // Targets may override createPassConfig to provide a target-specific
     // subclass.
-    TargetPassConfig *PassConfig = TM->createPassConfig(PM);
+    TargetPassConfig *PassConfig = TM->createPassConfig( PM );
     PassConfig->setStartStopPasses( nullptr, nullptr, nullptr );
 
     // Set PassConfig options provided by TargetMachine.
     PassConfig->setDisableVerify( DisableVerify );
 
-    PM.add(PassConfig);
+    PM.add( PassConfig );
 
     PassConfig->addIRPasses();
-
     PassConfig->addCodeGenPrepare();
-
     PassConfig->addPassesToHandleExceptions();
-
     PassConfig->addISelPrepare();
 
     // Install a MachineModuleInfo class, which is an immutable pass that holds
     // all the per-module stuff we're generating, including MCContext.
-    MachineModuleInfo *MMI = new MachineModuleInfo(
-      *TM->getMCAsmInfo(), *TM->getMCRegisterInfo(), TM->getObjFileLowering());
-    PM.add(MMI);
+    MachineModuleInfo *MMI = new MachineModuleInfo( *TM->getMCAsmInfo(),
+                                                    *TM->getMCRegisterInfo(),
+                                                     TM->getObjFileLowering() );
+    PM.add( MMI );
 
     // Set up a MachineFunction for the rest of CodeGen to work on.
-    PM.add( new MachineFunctionAnalysis( *TM, nullptr) );
+    PM.add( new MachineFunctionAnalysis( *TM, nullptr ) );
 
     // Ask the target for an isel.
     if ( PassConfig->addInstSelector() )
         return nullptr;
 
     PassConfig->addMachinePasses();
-
     PassConfig->setInitialized();
 
     return &MMI->getContext();
 }
 
-bool addPassesToEmitObjFile(
-  PassManagerBase &PM, raw_pwrite_stream &Out, LLVMTargetMachine *target,
-  MCStreamer** RawAsmStreamer) {
+bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
+                             LLVMTargetMachine *target, MCStreamer** RawAsmStreamer )
+{
     // Add common CodeGen passes.
-    MCContext *Context =
-      addPassesToGenerateCode( target, PM, true );
+    MCContext *Context = addPassesToGenerateCode( target, PM, true );
     if ( !Context )
         return true;
 
@@ -103,22 +99,24 @@ bool addPassesToEmitObjFile(
     // Create the code emitter for the target if it exists.  If not, .o file
     // emission fails.
     MCCodeEmitter *MCE = target->getTarget().createMCCodeEmitter( MII, MRI, *Context );
-    MCAsmBackend *MAB =
-        target->getTarget().createMCAsmBackend( MRI, target->getTargetTriple().str(), target->getTargetCPU() );
-    if (!MCE || !MAB)
+    MCAsmBackend *MAB = target->getTarget().createMCAsmBackend( MRI, target->getTargetTriple().str(),
+                                                                target->getTargetCPU() );
+    if ( !MCE || !MAB )
       return true;
 
     // Don't waste memory on names of temp labels.
     Context->setUseNamesOnTempLabels( false );
 
-    Triple T(target->getTargetTriple().str());
-    *RawAsmStreamer = target->getTarget().createMCObjectStreamer(
-        T, *Context, *MAB, Out, MCE, STI, target->Options.MCOptions.MCRelaxAll,
-        /*DWARFMustBeAtTheEnd*/ true );
+    Triple T( target->getTargetTriple().str() );
+    *RawAsmStreamer = target->getTarget().createMCObjectStreamer( T, *Context, *MAB,
+                                                                  Out, MCE, STI,
+                                                                  target->Options.MCOptions.MCRelaxAll,
+                                                                  /*DWARFMustBeAtTheEnd*/ true );
 
     // Create the AsmPrinter, which takes ownership of AsmStreamer if successful.
     FunctionPass *Printer =
-      target->getTarget().createAsmPrinter( *target, std::unique_ptr<MCStreamer>(*RawAsmStreamer) );
+            target->getTarget().createAsmPrinter( *target,
+                                                  std::unique_ptr< MCStreamer >( *RawAsmStreamer ) );
     if ( !Printer )
         return true;
 
@@ -127,7 +125,8 @@ bool addPassesToEmitObjFile(
     return false;
 }
 
-int emitObjFile( Module &m, std::string filename ) {
+int emitObjFile( Module &m, std::string filename )
+{
     auto TargetTriple = sys::getDefaultTargetTriple();
 
     LLVMInitializeAllTargetInfos();
@@ -142,7 +141,8 @@ int emitObjFile( Module &m, std::string filename ) {
     // Print an error and exit if we couldn't find the requested target.
     // This generally occurs if we've forgotten to initialise the
     // TargetRegistry or we have a bogus target triple.
-    if ( !Target ) {
+    if ( !Target )
+    {
         errs() << Error;
         return 1;
     }
@@ -154,22 +154,24 @@ int emitObjFile( Module &m, std::string filename ) {
     auto RM = Reloc::Model();
     auto TargetMachine = Target->createTargetMachine( TargetTriple, CPU, Features, opt, RM );
 
-    m.setDataLayout(TargetMachine->createDataLayout());
-    m.setTargetTriple(TargetTriple);
+    m.setDataLayout( TargetMachine->createDataLayout() );
+    m.setTargetTriple( TargetTriple );
 
     std::error_code EC;
     raw_fd_ostream dest( filename, EC, sys::fs::F_None );
 
-    if ( EC ) {
+    if ( EC )
+    {
         errs() << "Could not open file: " << EC.message();
         return 1;
     }
 
     legacy::PassManager pass;
 
-    MCStreamer* AsmStreamer;
+    MCStreamer *AsmStreamer;
 
-    if ( addPassesToEmitObjFile( pass, dest, dynamic_cast< LLVMTargetMachine* >(TargetMachine), &AsmStreamer ) ) {
+    if ( addPassesToEmitObjFile( pass, dest, dynamic_cast< LLVMTargetMachine* >( TargetMachine ), &AsmStreamer ) )
+    {
         errs() << "TargetMachine can't emit a file of this type";
         return 1;
     }
@@ -194,11 +196,12 @@ bool isType( std::string file, cc::Compiler::FileType type )
 }
 
 /* usage: same as gcc */
-int main( int argc, char **argv ) {
+int main( int argc, char **argv )
+{
     try {
         cc::Compiler clang;
         clang.allowIncludePath( "/" );
-        divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } ); // clang.setupFS( rt::each );
+        divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
         std::vector< std::pair< std::string, std::string > > objFiles;
 
         std::vector< std::string > opts;
@@ -226,8 +229,10 @@ int main( int argc, char **argv ) {
         using FileType = cc::Compiler::FileType;
         using namespace brick::types;
 
-        if ( po.preprocessOnly ) {
-            for ( auto srcFile : po.files ) {
+        if ( po.preprocessOnly )
+        {
+            for ( auto srcFile : po.files )
+            {
                 std::string ifn = srcFile.get< cc::File >().name;
                 if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
                     continue;
@@ -236,8 +241,10 @@ int main( int argc, char **argv ) {
             return 0;
         }
 
-        for ( auto srcFile : po.files ) {
-            if ( srcFile.is< cc::File >() ) {
+        for ( auto srcFile : po.files )
+        {
+            if ( srcFile.is< cc::File >() )
+            {
                 std::string ifn = srcFile.get< cc::File >().name;
                 std::string ofn = po.outputFile != "" ? po.outputFile
                     : brick::fs::dropExtension( ifn ) + ".o";
@@ -248,8 +255,10 @@ int main( int argc, char **argv ) {
 
         int ret = 0;
 
-        if ( po.toObjectOnly ) {
-            for ( auto file : objFiles ) {
+        if ( po.toObjectOnly )
+        {
+            for ( auto file : objFiles )
+            {
                 if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                     continue; // TODO: missing .llvm section
                 auto mod = clang.compileModule( file.first, po.opts );
@@ -257,9 +266,11 @@ int main( int argc, char **argv ) {
             }
             return 0;
         }
-        else {
+        else
+        {
             std::string s;
-            for ( auto file : objFiles ) {
+            for ( auto file : objFiles )
+            {
                 if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                 {
                     s += file.first + " ";
@@ -279,11 +290,12 @@ int main( int argc, char **argv ) {
             ret = WEXITSTATUS( system( s.c_str() ) );
         }
 
-        for ( auto file : objFiles ) {
+        for ( auto file : objFiles )
+        {
             if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                 continue;
             std::string ofn = file.second;
-            ofn.insert( ofn.length()-2,".temp" );
+            ofn.insert( ofn.length()-2, ".temp" );
             unlink( ofn.c_str() );
         }
 
