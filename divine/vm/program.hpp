@@ -271,41 +271,10 @@ struct Program
 
     void initConstant( Slot slot, llvm::Value * );
 
-    int getSubcode( llvm::Instruction *I )
-    {
-        if ( auto IC = llvm::dyn_cast< llvm::ICmpInst >( I ) )
-            return IC->getPredicate();
-        if ( auto FC = llvm::dyn_cast< llvm::FCmpInst >( I ) )
-            return FC->getPredicate();
-        if ( auto ARMW = llvm::dyn_cast< llvm::AtomicRMWInst >( I ) )
-            return ARMW->getOperation();
-        if ( auto INV = llvm::dyn_cast< llvm::InvokeInst >( I ) ) /* FIXME remove */
-            return _addr.code( INV->getUnwindDest() ).instruction();
-
-        UNREACHABLE( "bad instruction type in Program::getPredicate" );
-    }
-
-    int getSubcode( llvm::ConstantExpr *E ) { return E->getPredicate(); }
-
     template< typename IorCE >
     int initSubcode( IorCE *I )
     {
-        if ( I->getOpcode() == llvm::Instruction::GetElementPtr )
-            return _types_gen.add( I->getOperand( 0 )->getType() );
-        if ( I->getOpcode() == llvm::Instruction::ExtractValue )
-            return _types_gen.add( I->getOperand( 0 )->getType() );
-        if ( I->getOpcode() == llvm::Instruction::InsertValue )
-            return _types_gen.add( I->getType() );
-        if ( I->getOpcode() == llvm::Instruction::Alloca )
-            return _types_gen.add( I->getType()->getPointerElementType() );
-        if ( I->getOpcode() == llvm::Instruction::Call )
-            return xg::intrinsic_id( I );
-        if ( I->getOpcode() == llvm::Instruction::ICmp ||
-             I->getOpcode() == llvm::Instruction::FCmp ||
-             I->getOpcode() == llvm::Instruction::Invoke ||
-             I->getOpcode() == llvm::Instruction::AtomicRMW )
-            return getSubcode( I );
-        return 0;
+        return xg::subcode( _types_gen, _addr, I );
     }
 
     template< typename T >

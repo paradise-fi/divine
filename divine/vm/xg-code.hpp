@@ -28,18 +28,11 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Function.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/lx-code.hpp>
-
-/*
- * RR generation goes like this:
- * - assign addresses to basic blocks
- * - assign addresses to slots
- * - compute constants (consulting the above assignments)
- * - generate the image for initial mutable globals
- * - generate the instruction stream
- */
+#include <divine/vm/xg-type.hpp>
 
 namespace divine::vm::xg
 {
@@ -144,7 +137,21 @@ struct AddressMap
 namespace
 {
 
-static int intrinsic_id( llvm::Value *v )
+int predicate( llvm::Instruction *I )
+{
+    if ( auto IC = llvm::dyn_cast< llvm::ICmpInst >( I ) )
+        return IC->getPredicate();
+    if ( auto FC = llvm::dyn_cast< llvm::FCmpInst >( I ) )
+        return FC->getPredicate();
+    if ( auto ARMW = llvm::dyn_cast< llvm::AtomicRMWInst >( I ) )
+        return ARMW->getOperation();
+
+    UNREACHABLE( "bad instruction type in Program::getPredicate" );
+}
+
+int predicate( llvm::ConstantExpr *E ) { return E->getPredicate(); }
+
+int intrinsic_id( llvm::Value *v )
 {
     auto insn = llvm::dyn_cast< llvm::Instruction >( v );
     if ( !insn || insn->getOpcode() != llvm::Instruction::Call )
@@ -154,6 +161,29 @@ static int intrinsic_id( llvm::Value *v )
     if ( !f )
         return llvm::Intrinsic::not_intrinsic;
     return f->getIntrinsicID();
+}
+
+template< typename IorCE >
+int subcode( Types &tg, AddressMap &am, IorCE *I )
+{
+    if ( I->getOpcode() == llvm::Instruction::GetElementPtr )
+        return tg.add( I->getOperand( 0 )->getType() );
+    if ( I->getOpcode() == llvm::Instruction::ExtractValue )
+        return tg.add( I->getOperand( 0 )->getType() );
+    if ( I->getOpcode() == llvm::Instruction::InsertValue )
+        return tg.add( I->getType() );
+    if ( I->getOpcode() == llvm::Instruction::Alloca )
+        return tg.add( I->getType()->getPointerElementType() );
+    if ( I->getOpcode() == llvm::Instruction::Call )
+        return intrinsic_id( I );
+    if ( auto INV = llvm::dyn_cast< llvm::InvokeInst >( I ) ) /* FIXME remove */
+        return am.code( INV->getUnwindDest() ).instruction();
+    if ( I->getOpcode() == llvm::Instruction::ICmp ||
+         I->getOpcode() == llvm::Instruction::FCmp ||
+         I->getOpcode() == llvm::Instruction::Invoke ||
+         I->getOpcode() == llvm::Instruction::AtomicRMW )
+        return predicate( I );
+    return 0;
 }
 
 lx::Hypercall hypercall( llvm::Function *f )
