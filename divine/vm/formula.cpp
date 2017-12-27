@@ -39,7 +39,7 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
         {
             it = ptr2Sym.emplace( ptr, "var_"s + std::to_string( formula->var.id ) ).first;
             if ( inputs.insert( formula->var.id ).second )
-                out << smt::declareConst( it->second, type( bw ) )
+                out << smt::declareFun( it->second, {}, type( bw ) )
                     << " ";
             return it->second;
         }
