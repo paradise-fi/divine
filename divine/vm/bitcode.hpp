@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <vector>
+#include <optional>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/LLVMContext.h>
@@ -29,6 +30,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/clang.hpp>
 #include <divine/vm/dbg-info.hpp>
+#include <divine/vm/solver.hpp>
 
 namespace llvm {
 class LLVMContext;
@@ -55,10 +57,13 @@ struct BitCode {
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     AutoTraceFlags _autotrace;
-    bool _reduce = false, _symbolic = false, _sequential = false;
+    bool _reduce = false, _sequential = false;
     Env _env;
     std::vector< std::string > _lart;
     std::string _relaxed;
+
+    std::optional< SymbolicConfig > _symbolic;
+    bool is_symbolic() const { return _symbolic.has_value(); }
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
     dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
@@ -70,7 +75,7 @@ struct BitCode {
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
     void sequential( bool s ) { _sequential = s; }
-    void symbolic( bool s ) { _symbolic = s; }
+    void symbolic( SymbolicConfig && cfg ) { _symbolic.emplace( std::move( cfg ) ); }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
     void relaxed( std::string r ) { _relaxed = r; }

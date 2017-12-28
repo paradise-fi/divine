@@ -212,9 +212,9 @@ struct Liveness : Job
 };
 
 template< typename Next >
-std::shared_ptr< Job > make_liveness( vm::explore::BC bc, Next next, bool symbolic = false )
+std::shared_ptr< Job > make_liveness( vm::explore::BC bc, Next next )
 {
-    if ( symbolic )
+    if ( bc->is_symbolic() )
         return std::make_shared< Liveness< Next, vm::SymbolicExplore > >( bc, next );
     return std::make_shared< Liveness< Next, vm::Explore > >( bc, next );
 }

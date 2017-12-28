@@ -96,7 +96,7 @@ void Verify::safety()
     if ( !_threads )
         _threads = std::min( 4u, std::thread::hardware_concurrency() );
 
-    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), _symbolic );
+    auto safety = mc::make_safety( bitcode(), ss::passive_listen() );
 
     SysInfo sysinfo;
     sysinfo.setMemoryLimitInBytes( _max_mem );
@@ -153,7 +153,7 @@ void Verify::cleanup()
 
 void Verify::liveness()
 {
-    auto liveness = mc::make_liveness( bitcode(), ss::passive_listen(), _symbolic );
+    auto liveness = mc::make_liveness( bitcode(), ss::passive_listen() );
 
     liveness->start( 1 ); // threadcount
     liveness->wait();

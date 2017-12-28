@@ -23,6 +23,7 @@
 #include <divine/vm/setup.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/bitcode.hpp>
+#include <divine/vm/solver.hpp>
 #include <divine/ss/search.hpp> /* unit tests */
 
 #include <set>

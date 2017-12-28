@@ -72,7 +72,7 @@ struct WithBC : Command
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
     bool _symbolic = false, _sequential = false;
-    std::string _solver;
+    std::string _solver = "z3";
     bool _init_done = false;
     SinkPtr _log = nullsink();
     std::string _relaxed;
