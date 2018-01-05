@@ -18,27 +18,61 @@
 
 #pragma once
 
+#include <divine/vm/heap.hpp>
+#include <divine/vm/formula.hpp>
+
+#include <vector>
+
 namespace divine {
 namespace vm {
 
+
+using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
+
 struct Solver {
+    using Options = std::vector< std::string >;
+
     struct Config {
-        Config( std::string name )
-            : name( name )
-        {}
-
-        std::string name;
+        Config( Options && opts ) : opts( std::move( opts ) ) {}
+        Options opts;
     };
-};
 
-struct SymbolicConfig {
-    SymbolicConfig( Solver::Config && solver_cfg )
-        : _solver_cfg( std::move( solver_cfg ) )
+    enum class Result { False, True, Unknown };
+
+    Solver( Config && cfg )
+        : _cfg( std::move( cfg ) )
     {}
 
-    const Solver::Config _solver_cfg;
+    Options options() const { return _cfg.opts; }
+
+    const Config _cfg;
 };
 
+
+struct SMTLibSolver : Solver {
+    using Solver::Solver;
+
+    Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) const;
+    Result feasible( CowHeap & heap, HeapPointer assumes ) const;
+private:
+    Result query( const std::string & formula ) const;
+};
+
+
+struct Z3SMTLibSolver : SMTLibSolver {
+    Z3SMTLibSolver() : SMTLibSolver( Config( { "z3", "-in", "-smt2" } ) ) {}
+};
+
+
+struct BoolectorSMTLib : SMTLibSolver {
+    BoolectorSMTLib() : SMTLibSolver( Config( { "boolector", "--smt2" } ) ) {}
+};
+
+
+struct SymbolicConfig {
+    SymbolicConfig( std::string solver ) : solver( solver ) {}
+    const std::string solver;
+};
 
 } // namespace vm
 } // namespace divine

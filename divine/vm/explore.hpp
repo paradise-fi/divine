@@ -437,6 +437,13 @@ private:
 };
 
 using Explore = Explore_< explore::Hasher, explore::Context >;
+
+template< typename Solver >
+using SymbolicExplore = SymbolicExplore_< Solver, explore::SymbolicHasher, explore::SymbolicContext >;
+
+using Z3Explore = SymbolicExplore< Z3SMTLibSolver >;
+using BoolectorExplore = SymbolicExplore< BoolectorSMTLib >;
+
 } // namespace vm
 
 namespace t_vm {
