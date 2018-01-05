@@ -125,14 +125,6 @@ struct Safety : Job
     }
 };
 
-template< typename Next >
-std::shared_ptr< Job > make_safety( vm::explore::BC bc, Next next )
-{
-    if ( bc->is_symbolic() )
-        return std::make_shared< Safety< Next, vm::SymbolicExplore > >( bc, next );
-    return std::make_shared< Safety< Next, vm::Explore > >( bc, next );
-}
-
 }
 
 namespace t_mc {
@@ -143,7 +135,7 @@ struct TestSafety
     {
         auto bc = t_vm::prog_int( "4", "*r - 1" );
         int edgecount = 0, statecount = 0;
-        auto safe = mc::make_safety(
+        auto safe = mc::make_job< mc::Safety >(
             bc, ss::passive_listen(
                 [&]( auto, auto, auto ) { ++edgecount; },
                 [&]( auto ) { ++statecount; } ) );

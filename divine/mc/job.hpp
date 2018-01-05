@@ -86,6 +86,19 @@ struct Job : ss::Job
     virtual void start( int ) override = 0;
 };
 
+template< template< typename, typename > class Job_, typename Next >
+std::shared_ptr< Job > make_job( vm::explore::BC bc, Next next )
+{
+    if ( bc->is_symbolic() ) {
+        auto solver = bc->solver();
+        if ( solver == "z3" )
+            return std::make_shared< Job_< Next, vm::Z3Explore > >( bc, next );
+        else if ( solver == "boolector" )
+            return std::make_shared< Job_< Next, vm::BoolectorExplore > >( bc, next );
+        UNREACHABLE( "Using unsupported solver." );
+    }
+    return std::make_shared< Job_< Next, vm::Explore > >( bc, next );
+}
 
 }
 }
