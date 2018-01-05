@@ -26,21 +26,11 @@
 namespace divine {
 namespace mc {
 
-std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
-                  vm::explore::SymbolicContext *ctx = nullptr,
-                  vm::SymbolicExplore::Snapshot *initial = nullptr )
+namespace {
+
+template< typename Explore >
+std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int distance, bool heap )
 {
-    vm::SymbolicExplore ex( bc );
-    ex._ctx.enable_debug();
-
-    if ( ctx )
-    {
-        ASSERT( initial );
-        ex.start( *ctx, *initial );
-    }
-    else
-        ex.start();
-
     vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
     dbg.load( ex._ctx );
     vm::setup::boot( dbg );
@@ -109,6 +99,29 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
             } ) );
     str << "}";
     return str.str();
+}
+
+} // anonymous namespace
+
+std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap )
+{
+    ASSERT( !bc->is_symbolic() );
+    vm::Explore ex( bc );
+    ex._ctx.enable_debug();
+    ex.start();
+    return draw_impl( ex, bc, distance, heap );
+}
+
+template< typename Explore, template< typename > class SymbolicHasher >
+std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
+                  SymbolicHasher< typename Explore::Solver > *ctx = nullptr,
+                  typename Explore::Snapshot *initial = nullptr )
+{
+    Explore ex( bc );
+    ex._ctx.enable_debug();
+    ASSERT( initial );
+    ex.start( *ctx, *initial );
+    return draw_impl( ex, bc, distance, heap );
 }
 
 }
