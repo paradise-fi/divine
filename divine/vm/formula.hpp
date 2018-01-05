@@ -17,6 +17,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #include <divine/vm/heap.hpp>
 #include <runtime/abstract/formula.h>
 #include <brick-smt>
