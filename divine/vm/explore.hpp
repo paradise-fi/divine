@@ -102,14 +102,28 @@ struct Context : vm::Context< Program, CowHeap >
     }
 };
 
+template< typename Solver >
 struct SymbolicContext : Context {
     using Context::Context;
+    using SolverPtr = std::shared_ptr< Solver >;
+
+    SymbolicContext( Program &program, SolverPtr solver )
+        : Context( program ), _solver( solver )
+    {}
 
     // note: for some reason compiler does not accept out-of-line definition of
     // trace here, so defer it to extra, non-overloaded version
     using Context::trace;
     void trace( TraceAlg ta ) { return traceAlg( ta ); }
-    void traceAlg( TraceAlg ta );
+    void traceAlg( TraceAlg ta )
+    {
+        ASSERT_EQ( ta.args.size(), 1 );
+
+        if ( _solver->feasible( heap(), ta.args[0] ) == Solver::Result::False )
+            set( _VM_CR_Flags, get( _VM_CR_Flags ).integer | _VM_CF_Cancel );
+    }
+
+    SolverPtr _solver;
 };
 
 struct Hasher
@@ -145,8 +159,14 @@ struct Hasher
     }
 };
 
+template< typename Solver >
 struct SymbolicHasher : Hasher {
-    SymbolicHasher( const CowHeap &heap ) : Hasher( heap ) { }
+    using SolverPtr = std::shared_ptr< Solver >;
+
+    SymbolicHasher( const CowHeap &heap, SolverPtr solver )
+        : Hasher( heap ), _solver( solver )
+    {
+    }
 
     using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
 
@@ -157,27 +177,27 @@ struct SymbolicHasher : Hasher {
         h1.restore( a );
         h2.restore( b );
 
-        SymPairs symPairs;
-        auto symPairsExtract = [&]( HeapPointer a, HeapPointer b ) {
+        SymPairs sym_pairs;
+        auto sym_pairs_extract = [&]( HeapPointer a, HeapPointer b ) {
             a.type( PointerType::Weak ); // unmark pointers so they are equal to their
             b.type( PointerType::Weak ); // weak equivalents inside the formula
-            symPairs.emplace_back( a, b );
+            sym_pairs.emplace_back( a, b );
         };
-        if ( heap::compare( h1, h2, root, root, symPairsExtract ) != 0 )
+        if ( heap::compare( h1, h2, root, root, sym_pairs_extract ) != 0 )
             return false;
 
-        if ( symPairs.empty() )
+        if ( sym_pairs.empty() )
             return true;
 
-        return smtEqual( symPairs );
+        return _solver->equal( sym_pairs, h1, h2 ) == Solver::Result::True;
     }
 
-    bool smtEqual( SymPairs &simPair ) const;
+    SolverPtr _solver;
 };
 
 using BC = std::shared_ptr< BitCode >;
 
-}
+} // namespace explore
 
 template< typename Hasher, typename Context >
 struct Explore_
@@ -218,6 +238,11 @@ struct Explore_
 
     Explore_( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( _ctx.heap(), 1024 )
+    {
+    }
+
+    Explore_( BC bc, Context ctx, HT states )
+        : _bc( bc ), _ctx( ctx ), _states( states )
     {
     }
 
@@ -377,10 +402,42 @@ struct Explore_
     }
 };
 
-using Explore = Explore_< explore::Hasher, explore::Context >;
-using SymbolicExplore = Explore_< explore::SymbolicHasher, explore::SymbolicContext >;
+template< typename Solver_,
+          template< typename > class Hasher_,
+          template< typename > class Context_ >
+struct SymbolicExplore_ : Explore_< Hasher_< Solver_ > , Context_< Solver_ > >
+{
+    using Solver = Solver_;
+    using Hasher = Hasher_< Solver >;
+    using Context = Context_< Solver >;
+    using Super = Explore_< Hasher, Context >;
+    using BC = explore::BC;
+    using Snapshot = CowHeap::Snapshot;
+    using HashTable = hashset::Concurrent< Snapshot, Hasher >;
+    using SolverPtr = std::shared_ptr< Solver >;
 
-}
+    SymbolicExplore_( BC bc )
+        : SymbolicExplore_( bc, std::make_shared< Solver >() )
+    {
+    }
+
+private:
+    SymbolicExplore_( BC bc, Context ctx, SolverPtr solver )
+        : Super( bc, ctx, HashTable( Hasher( ctx.heap(), solver ), 1024 ) ),
+          _solver( solver )
+    {
+    }
+
+    SymbolicExplore_( BC bc, SolverPtr solver )
+        : SymbolicExplore_( bc, Context( bc->program(), solver ), solver )
+    {
+    }
+
+    SolverPtr _solver;
+};
+
+using Explore = Explore_< explore::Hasher, explore::Context >;
+} // namespace vm
 
 namespace t_vm {
 

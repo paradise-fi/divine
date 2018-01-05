@@ -64,6 +64,10 @@ struct BitCode {
 
     std::optional< SymbolicConfig > _symbolic;
     bool is_symbolic() const { return _symbolic.has_value(); }
+    std::string solver() const {
+        ASSERT( is_symbolic() );
+        return _symbolic.value().solver;
+    }
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
     dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
@@ -75,7 +79,7 @@ struct BitCode {
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
     void sequential( bool s ) { _sequential = s; }
-    void symbolic( SymbolicConfig && cfg ) { _symbolic.emplace( std::move( cfg ) ); }
+    void symbolic( SymbolicConfig cfg ) { _symbolic.emplace( cfg ); }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
     void relaxed( std::string r ) { _relaxed = r; }
