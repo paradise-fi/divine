@@ -258,7 +258,11 @@ inline Printer binop( Printer a, Printer b ) {
 }
 
 inline Printer bigand( Vector args ) {
-    return args.empty() ? symbol( "true" ) : _expr( Op::And, args );
+    if ( args.empty() )
+        return symbol( "true" );
+    else if ( args.size() == 1 )
+        return args[ 0 ];
+    return _expr( Op::And, args );
 }
 
 template< typename It >
@@ -267,7 +271,11 @@ inline Printer bigand( It begin, It end ) {
 }
 
 inline Printer bigor( Vector args ) {
-    return args.empty() ? symbol( "false" ) : _expr( Op::Or, args );
+    if ( args.empty() )
+        return symbol( "false" );
+    else if ( args.size() == 1 )
+        return args[ 0 ];
+    return _expr( Op::Or, args );
 }
 
 template< typename It >
