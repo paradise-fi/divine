@@ -161,14 +161,20 @@ struct Int : Base
     }
 
     template< int w >
-    Int operator>>( Int< w, false > sh ) {
+    Int operator>>( Int< w, false > sh )
+    {
         if ( !sh.defined() )
             return Int( 0, 0, false );
 
         const int bits = 8 * sizeof( Raw );
         Raw mask = _m >> sh._raw;
         if ( !is_signed || _m >> ( bits - 1 ) ) // unsigned or defined sign bit
+        {
+            if ( sh._raw >= bits ) /* all original bits rotated away */
+                mask = bitlevel::ones< Raw >( bits );
+            else /* only some of the bits are new */
                 mask |= ~bitlevel::ones< Raw >( bits - sh._raw );
+        }
 
         return Int( cooked() >> sh.cooked(), mask, false );
     }
