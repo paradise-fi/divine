@@ -1324,14 +1324,15 @@ struct Eval
             return;
         }
 
-        if ( target.instruction() )
+        const auto &function = program().function( target );
+
+        if ( target != program().entry( target ) )
         {
-            fault( _VM_F_Control ) << "invalid call on a code pointer which does not point to a function entry: "
-                                   << target;
+            fault( _VM_F_Control ) << "invalid call on a code pointer which does not point "
+                                   << "to a function entry: " << target;
             return;
         }
 
-        const auto &function = program().function( target );
 
         /* report problems with the call before pushing the new stackframe */
         const int argcount = instruction().argcount() - ( invoke ? 3 : 1 );

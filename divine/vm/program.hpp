@@ -207,6 +207,14 @@ struct Program
         return pc;
     }
 
+    CodePointer entry( CodePointer pc )
+    {
+        auto &f = function( pc );
+        auto rv = CodePointer( pc.function(), brick::bitlevel::align( f.argcount + f.vararg, 4 ) );
+        ASSERT_EQ( instruction( rv ).opcode, lx::OpBB );
+        return rv;
+    }
+
     CodePointer advance( CodePointer pc ) { return nextpc( pc + 1 ); }
     bool valid( CodePointer pc )
     {

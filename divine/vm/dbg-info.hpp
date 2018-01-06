@@ -63,12 +63,18 @@ struct Info
         -> std::pair< llvm::Instruction *, CodePointer >
     {
         llvm::Function *F = I ? I->getParent()->getParent() : function( pc );
-        CodePointer pcf( pc.function() ? pc.function() : _program._addr.code( F ).function(), 0 );
+
+        CodePointer pcf = pc;
+        if ( !pc.function() )
+            pcf = _program._addr.code( F );
+        pcf = _program.entry( pcf );
+
         ASSERT( F );
         ASSERT( pcf.function() );
 
         /* no LLVM instruction corresponds to OpBB */
-        if ( pc.function() && _program.instruction( pc ).opcode == lx::OpBB )
+        if ( pc.function() && ( _program.instruction( pc ).opcode == lx::OpBB ||
+                                pc.instruction() < pcf.instruction() ) )
             return std::make_pair( nullptr, pc );
 
         for ( auto &BB : *F )

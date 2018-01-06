@@ -504,7 +504,6 @@ void Program::computeStatic()
 
 void Program::pass()
 {
-    CodePointer pc( 0, 0 );
     int _framealign = framealign;
 
     for ( auto &function : *module )
@@ -512,24 +511,14 @@ void Program::pass()
         if ( function.isDeclaration() )
             continue; /* skip */
 
-        auto name = function.getName();
-
-        pc.function( pc.function() + 1 );
-        if ( !pc.function() )
-            throw std::logic_error(
-                "Program::build in " + name.str() +
-                "\nToo many functions, capacity exceeded" );
-
-        if ( function.begin() == function.end() )
-            throw std::logic_error(
-                "Program::build in " + name.str() +
-                "\nCan't deal with empty functions" );
-
-        makeFit( functions, pc.function() );
-        pc.instruction( 0 );
+        auto pc = _addr.code( &function );
+        makeFit( this->functions, pc.function() );
+        makeFit( this->function( pc ).instructions, pc.instruction() );
 
         if ( !codepointers )
         {
+            CodePointer apc( pc.function(), 0 );
+
             framealign = 1; /* force all args to go in in the first pass */
 
             auto &pi_function = this->functions[ pc.function() ];
@@ -539,6 +528,8 @@ void Program::pass()
 
             for ( auto &arg : function.args() )
             {
+                this->instruction( apc ).opcode = lx::OpArg;
+                apc = apc + 1;
                 insert( pc.function(), &arg );
                 ++ pi_function.argcount;
             }
@@ -547,9 +538,18 @@ void Program::pass()
             {
                 Slot vaptr( Slot::Local );
                 vaptr.type = Slot::Ptr;
-                allocateSlot( vaptr, pc.function() );
+                int idx = function.arg_size();
+                makeFit( functions[ pc.function() ].values, idx );
+                overlaySlot( pc.function(), vaptr, nullptr );
+                functions[ pc.function() ].values[ idx ] = vaptr;
+                this->instruction( apc ).opcode = lx::OpArg;
+                apc = apc + 1;
             }
 
+            while ( apc.instruction() % 4 )
+                apc = apc + 1;
+
+            ASSERT_EQ( apc, pc );
             framealign = _framealign;
 
             this->function( pc ).framesize =
@@ -558,20 +558,12 @@ void Program::pass()
 
         for ( auto &block : function )
         {
-            makeFit( this->function( pc ).instructions, pc.instruction() );
-            this->instruction( pc ).opcode = lx::OpBB;
-            pc.instruction( pc.instruction() + 1 ); /* leave one out for use as a bb label */
-
-            if ( block.begin() == block.end() )
-                throw std::logic_error(
-                    std::string( "Program::build: " ) +
-                    "Can't deal with an empty BasicBlock in function " + name.str() );
-
-            Program::Position p( pc, block.begin() );
+            Program::Position p( _addr.code( &block ), block.begin() );
+            makeFit( this->function( p.pc ).instructions, p.pc.instruction() );
+            this->instruction( p.pc ).opcode = lx::OpBB;
+            p.pc = p.pc + 1;
             while ( p.I != block.end() )
                 p = insert( p );
-
-            pc = p.pc;
         }
     }
 

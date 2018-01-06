@@ -333,7 +333,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
             return;
         auto *insn = &program.instruction( pc() );
         ASSERT_EQ( eval.pc(), CodePointer( pc() ) );
-        if ( insn->opcode != lx::OpBB )
+        if ( insn->opcode != lx::OpBB && insn->opcode != lx::OpArg )
         {
             eval._instruction = insn;
             yield( "insn", print::instruction( _ctx.debug(), eval, 0, 1000 ) );
@@ -366,6 +366,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
             auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
             out << print::value( _ctx.debug(), eval, iop->getParent() ) << ":" << std::endl;
         }
+        else if ( i.opcode == lx::OpArg );
         else
             out << "  " << print::instruction( _ctx.debug(), eval, 4 ) << std::endl;
     }

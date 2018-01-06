@@ -312,7 +312,9 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     /* figure out the source code span the function covers; painfully */
     for ( iter = program.nextpc( iter ); program.valid( iter ); iter = program.advance( iter ) )
     {
-        auto dl = dbg.find( nullptr, iter ).first->getDebugLoc().get();
+        if ( program.instruction( iter ).opcode == lx::OpArg ) continue;
+        auto di = dbg.find( nullptr, iter ).first;
+        auto dl = di ? di->getDebugLoc().get() : nullptr;
         if ( !dl )
             continue;
         while ( dl->getInlinedAt() )
