@@ -565,7 +565,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
         return;
 
     PointerV ptr;
-    _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
+    _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ] ), ptr );
     _related_ptrs.insert( ptr.cooked() );
 
     auto type = var->getType()->getPointerElementType();
@@ -592,10 +592,10 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
     if ( vmap.find( var ) == vmap.end() )
         return;
 
-    auto sref = _ctx.program().valuemap[ var ];
-    auto ptr = sref.slot.location == Prog::Slot::Local ?
-               eval.s2ptr( sref.slot ) :
-               _ctx.program().s2ptr( sref );
+    auto slot = _ctx.program().valuemap[ var ];
+    auto ptr = _ctx.program()._addr.has_addr( var ) && slot.location != Prog::Slot::Local ?
+               _ctx.program().addr( var ) :
+               eval.s2ptr( slot );
     PointerV deref;
     if ( boundcheck( PointerV( ptr ), PointerBytes ) )
         _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
@@ -657,15 +657,16 @@ void Node< Prog, Heap >::globalvars( YieldDN yield )
     DNEval< Heap > eval( _ctx );
     llvm::DebugInfoFinder finder;
     finder.processModule( *_ctx.program().module );
-    auto &map = _ctx.program().globalmap;
     std::map< std::string, int > disamb;
 
     for ( auto GV : finder.global_variables() )
     {
         auto var = GV->getVariable();
-        if ( !map.count( var ) )
+        if ( !var || !llvm::isa< llvm::GlobalVariable >( var ) )
             continue;
-        auto ptr = _ctx.program().s2ptr( map[ var ] );
+        auto ptr = _ctx.program().addr( var );
+        if ( ptr.null() )
+            continue;
 
         PointerV deref;
         if ( boundcheck( PointerV( ptr ), PointerBytes ) )

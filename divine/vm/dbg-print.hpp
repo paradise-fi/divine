@@ -91,7 +91,7 @@ static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
 
     if ( name.empty() && disp != DisplayVal::Name )
     {
-        auto slot = eval.program().valuemap[ val ].slot;
+        auto slot = eval.program().valuemap[ val ];
         if ( slot.type == Eval::Slot::Agg )
             name = "<aggregate>";
         else
