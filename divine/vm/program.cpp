@@ -256,7 +256,8 @@ Program::Slot Program::insert( int function, llvm::Value *val, bool )
 
     if ( auto U = dyn_cast< llvm::User >( val ) )
         for ( int i = 0; i < int( U->getNumOperands() ); ++i )
-            insert( function, U->getOperand( i ) );
+            if ( !isa< llvm::MetadataAsValue >( U->getOperand( i ) ) )
+                insert( function, U->getOperand( i ) );
 
     return slot;
 }
@@ -335,7 +336,8 @@ Program::Position Program::insert( Position p )
     {
         insn.values.resize( 1 + p.I->getNumOperands() );
         for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
-            insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) );
+            if ( !isa< llvm::MetadataAsValue >( p.I->getOperand( i ) ) )
+                insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) );
         insn.values[0] = insert( p.pc.function(), &*p.I );
 
         if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
