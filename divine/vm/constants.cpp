@@ -71,20 +71,14 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
             }
             _toinit.emplace_back( [=]{
                 ASSERT( valuemap.find(op) != valuemap.end() );
-                initConstant( valuemap[ op ].slot, op );
+                initConstant( valuemap[ op ], op );
             } );
         }
 
     if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
     {
         ASSERT( valuemap.count( GV->getInitializer() ) );
-        SlotRef location;
-        if ( GV->isConstant() )
-            location = valuemap[ GV->getInitializer() ];
-        else {
-            location = globalmap[ GV ];
-        }
-        heap.write_shift( ptr, value::Pointer( s2ptr( location ) ) );
+        heap.write_shift( ptr, value::Pointer( addr( GV ) ) );
         _doneinit.insert( GV );
     }
 
@@ -108,7 +102,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
                 C->getOperand( i )->dump();
                 UNREACHABLE( "oops" );
             }
-            comp.values.push_back( valuemap[ C->getOperand( i ) ].slot );
+            comp.values.push_back( valuemap[ C->getOperand( i ) ] );
         }
         eval._instruction = &comp;
         eval.dispatch(); /* compute and write out the value */
@@ -176,7 +170,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
             }
 
             ASSERT( valuemap.count( C->getOperand( i ) ) );
-            auto sub = valuemap[ C->getOperand( i ) ].slot;
+            auto sub = valuemap[ C->getOperand( i ) ];
             heap.copy( eval.s2ptr( sub ), eval.s2ptr( v, offset ), sub.size() );
             offset += sub.size();
             ASSERT_LEQ( offset, v.size() );
