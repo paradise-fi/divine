@@ -178,6 +178,20 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
 }
 
 template< typename Eval >
+static std::string dbginst( llvm::Instruction *I, dbg::Info &dbg, Eval &eval )
+{
+    if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( I ) )
+        return DDI->getVariable()->getName().str();
+
+    if ( auto DDV = llvm::dyn_cast< llvm::DbgValueInst >( I ) )
+        return DDV->getVariable()->getName().str() + " " +
+               value( dbg, eval, DDV->getValue(), DisplayVal::Value );
+
+    I->dump();
+    UNREACHABLE( "dbginst called on a bad instruction type" );
+}
+
+template< typename Eval >
 static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int colmax = 80 )
 {
     std::stringstream out;
@@ -213,6 +227,9 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
             out << ( oname.empty() ? "?" : oname ) << " ";
         }
     }
+
+    if ( insn.opcode == lx::OpDbg )
+        out << dbginst( I, dbg, eval ) << " ";
 
     auto result = [&]( int col )
                   {
