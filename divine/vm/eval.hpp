@@ -1261,21 +1261,30 @@ struct Eval
                 return;
             }
             case lx::HypercallObjFree:
-                if ( !freeobj( operand< PointerV >( 0 ).cooked() ) )
+            {
+                auto ptr = operandCk< PointerV >( 0 ).cooked();
+                if ( !ptr.heap() )
+                    fault( _VM_F_Memory ) << "non-heap pointer passed to __vm_obj_free";
+                else if ( !freeobj( ptr ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
                 return;
+            }
             case lx::HypercallObjShared:
                 heap().shared( operandCk< PointerV >( 0 ).cooked(), true );
                 return;
             case lx::HypercallObjResize:
-                if ( !heap().resize( operandCk< PointerV >( 0 ).cooked(),
-                                     operandCk< IntV >( 1 ).cooked() ) )
+            {
+                auto ptr = operandCk< PointerV >( 0 ).cooked();
+                if ( !ptr.heap() )
+                    fault( _VM_F_Memory ) << "non-heap pointer passed to __vm_obj_resize";
+                else if ( !heap().resize( ptr, operandCk< IntV >( 1 ).cooked() ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_resize";
                 return;
+            }
             case lx::HypercallObjSize:
             {
                 auto ptr = operandCk< PointerV >( 0 ).cooked();
-                if ( !heap().valid( ptr ) )
+                if ( !ptr.heap() || !heap().valid( ptr ) )
                     fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_size";
                 else
                     result( IntV( heap().size( ptr ) ) );
@@ -1284,7 +1293,7 @@ struct Eval
             case lx::HypercallObjClone:
             {
                 auto ptr = operandCk< PointerV >( 0 ).cooked();
-                if ( !heap().valid( ptr ) )
+                if ( !ptr.heap() || !heap().valid( ptr ) )
                     fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_clone";
                 else
                     result( PointerV( heap::clone( heap(), heap(), ptr ) ) );

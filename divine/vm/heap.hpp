@@ -542,7 +542,7 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
 
     bool resize( HeapPointer p, int sz_new )
     {
-        if ( p.offset() )
+        if ( p.offset() || !valid( p ) )
             return false;
         int sz_old = size( p );
         auto obj_old = ptr2i( p );
