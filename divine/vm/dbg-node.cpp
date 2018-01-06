@@ -616,6 +616,24 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
 }
 
 template< typename Prog, typename Heap >
+void Node< Prog, Heap >::localvar( YieldDN yield, llvm::Argument *arg )
+{
+    DNEval< Heap > eval( _ctx );
+
+    auto slot = _ctx.program().valuemap[ arg ];
+    auto ptr = eval.s2ptr( slot );
+    auto name = arg->getName().str();
+
+    if ( _related_count[ name ] ++ )
+        return;
+
+    Node lvar( _ctx, _snapshot );
+    lvar.address( DNKind::Object, ptr );
+    lvar.type( arg->getType() );
+    yield( name, lvar );
+}
+
+template< typename Prog, typename Heap >
 void Node< Prog, Heap >::framevars( YieldDN yield )
 {
     if ( pc().type() != PointerType::Code )
@@ -626,7 +644,8 @@ void Node< Prog, Heap >::framevars( YieldDN yield )
 
     auto npc = _ctx.program().nextpc( pc() );
     auto op = _ctx.debug().find( nullptr, npc ).first;
-    q.push( op->getParent() );
+    auto start = op->getParent();
+    q.push( start );
 
     while ( !q.empty() )
     {
@@ -649,6 +668,9 @@ void Node< Prog, Heap >::framevars( YieldDN yield )
             if ( !seen.count( BB ) )
                 q.push( P ), seen.insert( BB );
     }
+
+    for ( auto &a : start->getParent()->args() )
+        localvar( yield, &a );
 }
 
 template< typename Prog, typename Heap >

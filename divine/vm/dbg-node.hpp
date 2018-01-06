@@ -193,6 +193,7 @@ struct Node
     void array_elements( YieldDN yield );
     void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
     void localvar( YieldDN yield, llvm::DbgValueInst *DDV );
+    void localvar( YieldDN yield, llvm::Argument *arg );
     void framevars( YieldDN yield );
     void globalvars( YieldDN yield );
 
