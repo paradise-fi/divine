@@ -360,7 +360,11 @@ struct XTerm
                             slavepts + "/" + brick::string::fmt( _d.slavefd );
         const char *argv[] = { "xterm", slave.c_str(), nullptr };
 
-        posix_spawnp( &_d.pid, "xterm", nullptr, nullptr,
+        posix_spawnattr_t sp;
+        posix_spawnattr_init( &sp );
+        posix_spawnattr_setflags( &sp, POSIX_SPAWN_SETPGROUP );
+        posix_spawnattr_setpgroup( &sp, 0 );
+        posix_spawnp( &_d.pid, "xterm", nullptr, &sp,
                       const_cast< char ** >( argv ), environ );
 
         char buf[8];
