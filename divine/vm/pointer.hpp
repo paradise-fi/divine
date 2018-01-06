@@ -34,7 +34,8 @@ enum class PointerType : unsigned { Global = _VM_PT_Global,
                                     Code = _VM_PT_Code,
                                     Heap = _VM_PT_Heap,
                                     Weak = _VM_PT_Weak,
-                                    Marked = _VM_PT_Marked };
+                                    Marked = _VM_PT_Marked,
+                                    Local = _VM_PT_Local };
 
 static const int PointerBytes = _VM_PB_Full / 8;
 using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
@@ -123,6 +124,19 @@ struct CodePointer : GenericPointer
     void instruction( OffT i ) { _rep.off = i; }
 };
 
+template< PointerType T >
+struct SlotPointer : GenericPointer
+{
+    explicit SlotPointer( ObjT obj = 0, OffT off = 0 )
+        : GenericPointer( T, obj, off ) {}
+
+    SlotPointer( GenericPointer r ) : GenericPointer( r )
+    {
+        if ( null() )
+            type( T );
+        ASSERT_EQ( type(), T );
+    }
+};
 /*
  * Pointer to a global variable. Global pointers need to be indirected, because
  * multiple copies of the program (processes) must be able to co-exist within a
@@ -132,17 +146,8 @@ struct CodePointer : GenericPointer
  * the global variable object this pointer points to. The offset is in bytes,
  * counting from the start of the slot.
  */
-struct GlobalPointer : GenericPointer
-{
-    explicit GlobalPointer( ObjT obj = 0, OffT off = 0 )
-        : GenericPointer( PointerType::Global, obj, off ) {}
-    GlobalPointer( GenericPointer r ) : GenericPointer( r )
-    {
-        if ( null() )
-            type( PointerType::Global );
-        ASSERT_EQ( type(), PointerType::Global );
-    }
-};
+using GlobalPointer = SlotPointer< PointerType::Global >;
+using LocalPointer = SlotPointer< PointerType::Local >;
 
 struct HeapPointer : GenericPointer
 {
@@ -165,6 +170,7 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
         case PointerType::Heap: return o << "heap";
         case PointerType::Weak: return o << "weak";
         case PointerType::Marked: return o << "marked";
+        case PointerType::Local: return o << "local";
     }
     UNREACHABLE( "impossible pointer type" );
 }

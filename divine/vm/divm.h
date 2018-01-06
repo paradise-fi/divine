@@ -10,7 +10,8 @@ enum { _VM_PB_Full = 64,
        _VM_PB_Obj = 32,
        _VM_PB_Type = 3,
        _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
-enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked };
+enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked,
+                       _VM_PT_Local };
 
 #endif
 
