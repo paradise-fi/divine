@@ -1,20 +1,23 @@
 . lib/testcase
 
-check_help() {
-    cat > test.c <<EOF
-int main() {}
-EOF
-
-    divine run -ohelp -oconfiguration:$1 test.c &> run.out
-    cat run.out | grep 'I:' | cut -c 4- > trace.out
-    if ! perl -e 'local $/; my $stdin = <>; exit 0 if $stdin =~ /help:\n\s*supported commands:/; exit 1' trace.out; then
-        echo "# Unexpected help output for configuration $1:"
+check_help()
+{
+    divine run -o help -o config:$1 test.c > trace.out
+    if ! grep "config: run" trace.out; then
+        echo "# unexpected help output for configuration $1:"
         cat trace.out
         result=1
     fi
 }
 
+cat > test.c <<EOF
+int main() {}
+EOF
+
 result=0
-check_help "standard"
+check_help "default"
+check_help "passthrough"
+check_help "synchronous"
+check_help "replay"
 
 exit $result
