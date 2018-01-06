@@ -36,6 +36,7 @@ multiple sub-projects interact:
    coverage is rather poor (`divine sim`). We would like to bring the total to
    approximately 1000 test cases, primarily covering the currently untested
    functionality.
+ * Prepare DIVINE for participation in SV-COMP 2018. [V. Štill]
 
 ## Symbolic Model Checking
 
