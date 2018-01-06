@@ -50,16 +50,10 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
     for ( auto *f = from; f != to; ) {
         auto *meta = __md_get_pc_meta( f->pc );
         auto *inst = meta->inst_table;
+        auto base = reinterpret_cast< uint8_t * >( f );
         for ( int i = 0; i < meta->inst_table_size; ++i, ++inst )
-        {
             if ( inst->opcode == OpCode::Alloca )
-            {
-                _VM_CodePointer pc = _VM_CodePointer( uintptr_t( meta->entry_point ) + i );
-                void *regaddr = __md_get_register_info( f, pc, meta ).start;
-                void *regval = *static_cast< void ** >( regaddr );
-                __vm_obj_free( regval );
-            }
-        }
+                __vm_obj_free( *reinterpret_cast< void ** >( base + inst->val_offset ) );
         auto *old = f;
         f = f->parent;
         *parentUpdateLocation = f;
