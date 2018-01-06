@@ -35,8 +35,7 @@ _MD_RegInfo __md_get_register_info( _VM_Frame *frame, _VM_CodePointer pc, const 
 {
     if ( !frame || !funMeta || !pc )
         return { nullptr, 0 };
-    uintptr_t entry = uintptr_t( pc ) & ~uintptr_t( _VM_PM_Off );
-    intptr_t offset = uintptr_t( pc ) - entry;
+    intptr_t offset = uintptr_t( pc ) & _VM_PM_Off;
     if ( offset < 0 || offset > funMeta->inst_table_size )
         return { nullptr, 0 };
 
