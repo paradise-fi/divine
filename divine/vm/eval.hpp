@@ -23,7 +23,6 @@
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/context.hpp>
-#include <divine/vm/heap.hpp> /* for tests */
 
 #include <divine/vm/divm.h>
 
@@ -94,8 +93,8 @@ template<typename T> class generic_gep_type_iterator;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 }
 
-namespace divine {
-namespace vm {
+namespace divine::vm
+{
 
 using ::llvm::ICmpInst;
 using ::llvm::FCmpInst;
@@ -736,7 +735,6 @@ struct Eval
     {
         auto origin = pc();
         context().set( _VM_CR_PC, target );
-        // std::cerr << "switchBB: " << pc() << std::endl;
 
         target.instruction( target.instruction() + 1 );
         auto &i0 = program().instruction( target );
@@ -877,7 +875,7 @@ struct Eval
                 // the argument of the intrinsic
                 const auto &f = program().functions[ pc().function() ];
                 if ( !f.vararg ) {
-                    fault( _VM_F_Hypercall ) << "va_start called in non-variadic function";
+                    fault( _VM_F_Hypercall ) << "va_start called in a non-variadic function";
                     return;
                 }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
@@ -1820,8 +1818,10 @@ struct Eval
 
 }
 
-#ifdef BRICK_UNITTEST_REG
-namespace t_vm
+#include <divine/vm/heap.hpp>
+#include <divine/vm/dbg-node.hpp>
+
+namespace divine::t_vm
 {
 
 using vm::CodePointer;
@@ -1852,6 +1852,7 @@ struct TContext : vm::Context< Prog, vm::MutableHeap<> >
     TContext( Prog &p ) : vm::Context< Prog, vm::MutableHeap<> >( p ), _fault( _VM_F_NoFault ) {}
 };
 
+#ifdef BRICK_UNITTEST_REG
 struct Eval
 {
     using IntV = vm::value::Int< 32 >;
@@ -2327,8 +2328,6 @@ struct Eval
         testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 1, 1 );
     }
 };
-
-}
 #endif
 
 }
