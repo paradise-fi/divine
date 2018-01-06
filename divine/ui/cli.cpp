@@ -217,7 +217,7 @@ void WithBC::report_options()
 
     if ( _symbolic ) {
         _log->info( "symbolic: 1\n" );
-        _log->info( "smt solver: " + _solver + "\n" );
+        _log->info( "smt solver: " + _solver + "\n", true );
     }
     if ( _sequential )
         _log->info( "sequential: 1\n", true );
