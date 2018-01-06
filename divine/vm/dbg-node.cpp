@@ -360,13 +360,15 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
         auto &i = prog.instruction( iter );
         eval._instruction = &i;
         _ctx.set( _VM_CR_PC, iter );
+        if ( i.opcode == lx::OpArg || !i.opcode )
+            continue;
+
         out << ( iter == active_pc() ? ">>" : "  " );
         if ( i.opcode == lx::OpBB )
         {
             auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
             out << print::value( _ctx.debug(), eval, iop->getParent() ) << ":" << std::endl;
         }
-        else if ( i.opcode == lx::OpArg );
         else
             out << "  " << print::instruction( _ctx.debug(), eval, 4 ) << std::endl;
     }

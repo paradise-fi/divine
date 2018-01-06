@@ -196,8 +196,10 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
 {
     std::stringstream out;
     auto &insn = eval.instruction();
+
     auto I = dbg.find( nullptr, eval.pc() ).first;
-    ASSERT( I );
+    if ( !I )
+        return opcode( insn );
 
     bool printres = true;
 
