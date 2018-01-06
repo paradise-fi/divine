@@ -49,6 +49,7 @@ struct Slot : _VM_Operand, _VM_OperandExt
         if ( type == F80 ) return 16; /* f80 is magical */
         return width() % 8 ? width() / 8 + 1 : width() / 8;
     }
+
     int width() const
     {
         switch ( type )
@@ -83,7 +84,8 @@ struct Slot : _VM_Operand, _VM_OperandExt
     friend std::ostream &operator<<( std::ostream &o, Slot p )
     {
         static std::vector< std::string > t =
-            { "void", "ptr", "int", "float", "agg", "code", "alloca" };
+            { "i1", "i8", "i16", "i32", "i64", "f32", "f64", "f80",
+              "ptr", "ptrc", "ptra", "agg", "void", "other" };
         static std::vector< std::string > l = { "const", "global", "local", "invalid" };
         return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
                  << p.width() << "]";
