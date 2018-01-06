@@ -26,4 +26,8 @@ int main()
     assert( int_st->can_catch( int_st, adj_i ) );
     assert( e_st->can_catch( e_st, adj_e ) );
     assert( e_st->can_catch( ba_st, adj_ba ) );
+
+    assert( !int_st->can_catch( e_st, adj_e ) );
+    assert( !ba_st->can_catch( e_st, adj_e ) );
+    assert( !ba_st->can_catch( int_st, adj_i ) );
 }
