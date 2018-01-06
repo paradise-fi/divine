@@ -51,12 +51,10 @@ CodePointer Program::functionByName( std::string s )
 GenericPointer Program::globalByName( std::string s )
 {
     llvm::GlobalVariable *g = module->getGlobalVariable( s );
-    if ( !g )
-        return GlobalPointer();
-    if ( g->isConstant() )
-        return s2ptr( valuemap.find( g->getInitializer() )->second );
+    if ( g )
+        return addr( g );
     else
-        return s2ptr( globalmap.find( g )->second );
+        return nullPointer();
 }
 
 bool Program::isCodePointerConst( llvm::Value *val )
@@ -171,7 +169,7 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
             for ( auto v : c[ result.offset + i ] )
                 if ( lifetimeOverlap( val, v ) ) {
                     ASSERT( valuemap.find( v ) != valuemap.end());
-                    auto s = valuemap[ v ].slot;
+                    auto s = valuemap[ v ];
                     result.offset = s.offset + s.size();
                     good = false;
                     break;
@@ -188,7 +186,7 @@ out:
     c[ result.offset ].push_back( val );
 }
 
-Program::SlotRef Program::insert( int function, llvm::Value *val )
+Program::Slot Program::insert( int function, llvm::Value *val, bool )
 {
     Slot::Location sl;
 
@@ -201,7 +199,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
     auto val_i = valuemap.find( val );
     if ( val_i != valuemap.end() )
     {
-        ASSERT_EQ( val_i->second.slot.location, sl );
+        ASSERT_EQ( val_i->second.location, sl );
         return val_i->second;
     }
 
@@ -209,7 +207,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
     {
         auto r = insert( function, const_cast< llvm::GlobalObject * >( GA->getBaseObject() ) );
         valuemap.insert( std::make_pair( val, r ) );
-        ASSERT( r.slot.location != Slot::Invalid );
+        ASSERT( r.location != Slot::Invalid );
         return r;
     }
 
@@ -218,12 +216,12 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
 
     makeFit( functions, function );
 
-    auto slot = initSlot( val, sl );
+    auto slot_i = initSlot( val, sl );
 
-    if ( slot.size() % framealign )
-        return SlotRef(); /* ignore for now, later pass will assign this one */
+    if ( slot_i.size() % framealign )
+        return Slot(); /* ignore for now, later pass will assign this one */
 
-    auto sref = allocateSlot( slot, function, val );
+    Slot slot;
 
     if ( auto G = dyn_cast< llvm::GlobalVariable >( val ) )
     {
@@ -234,25 +232,33 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
                 std::string( "Unresolved symbol (global variable): " ) +
                 G->getValueName()->getKey().str() );
 
+        slot = allocateSlot( slot_i, function, nullptr );
         insert( 0, G->getInitializer() );
+        Slot slot_val = initSlot( G->getInitializer(), G->isConstant() ? Slot::Const : Slot::Global );
 
-        if ( !G->isConstant() )
+        if ( G->isConstant() )
         {
-            Slot slot = initSlot( G->getInitializer(), Slot::Global );
-            globalmap[ G ] = allocateSlot( slot );
+            int idx = _addr.addr( G ).object();
+            makeFit( _globals, idx );
+            ASSERT( valuemap.count( G->getInitializer() ) );
+            _globals[ idx ] = valuemap[ G->getInitializer() ];
         }
+        else
+            globalmap[ G ] = allocateSlot( slot_val, 0, G );
     }
-    if ( isa< llvm::Constant >( val ) || isCodePointerConst( val ) )
-        _toinit.emplace_back( [=]{ initConstant( sref.slot, val ); } );
+    else slot = allocateSlot( slot_i, function, val );
 
-    ASSERT( sref.slot.location != Slot::Invalid );
-    valuemap.insert( std::make_pair( val, sref ) );
+    if ( isa< llvm::Constant >( val ) || isCodePointerConst( val ) )
+        _toinit.emplace_back( [=]{ initConstant( slot, val ); } );
+
+    ASSERT( slot.location != Slot::Invalid );
+    valuemap.insert( std::make_pair( val, slot ) );
 
     if ( auto U = dyn_cast< llvm::User >( val ) )
         for ( int i = 0; i < int( U->getNumOperands() ); ++i )
             insert( function, U->getOperand( i ) );
 
-    return sref;
+    return slot;
 }
 
 void Program::hypercall( Position p )
@@ -284,10 +290,10 @@ void Program::insertIndices( Position p )
     for ( unsigned i = 0; i < I->getNumIndices(); ++i )
     {
         Slot v( Slot::Const, Slot::I32 );
-        auto sr = allocateSlot( v );
+        auto slot = allocateSlot( v );
         _toinit.emplace_back(
-            [=]{ initConstant( sr.slot, value::Int< 32 >( I->getIndices()[ i ] ) ); } );
-        insn.values[ shift + i ] = sr.slot;
+            [=]{ initConstant( slot, value::Int< 32 >( I->getIndices()[ i ] ) ); } );
+        insn.values[ shift + i ] = slot;
     }
 }
 
@@ -329,14 +335,14 @@ Program::Position Program::insert( Position p )
     {
         insn.values.resize( 1 + p.I->getNumOperands() );
         for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
-            insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) ).slot;
-        insn.values[0] = insert( p.pc.function(), &*p.I ).slot;
+            insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) );
+        insn.values[0] = insert( p.pc.function(), &*p.I );
 
         if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
             for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )
             {
                 auto from = _addr.terminator( PHI->getIncomingBlock( idx ) );
-                auto slot = allocateSlot( Slot( Slot::Const, Slot::PtrC ) ).slot;
+                auto slot = allocateSlot( Slot( Slot::Const, Slot::PtrC ) );
                 _toinit.emplace_back( [=]{ initConstant( slot, value::Pointer( from ) ); } );
                 insn.values.push_back( slot );
             }
@@ -348,8 +354,11 @@ Program::Position Program::insert( Position p )
             insertIndices< llvm::InsertValueInst >( p );
     }
 
+    auto block = p.I->getParent();
     ++ p.I; /* next please */
-    p.pc.instruction( p.pc.instruction() + 1 );
+    p.pc = p.pc + 1;
+    if ( p.I != block->end() )
+        ASSERT_EQ( _addr.code( &*p.I ), p.pc );
 
     if ( !p.pc.instruction() )
         throw std::logic_error(
@@ -416,7 +425,7 @@ void Program::computeStatic()
         ASSERT( valuemap.find( var->getInitializer() ) != valuemap.end() );
         auto location = valuemap[ var->getInitializer() ];
         auto target = globalmap[ var ];
-        _ccontext.heap().copy( s2hptr( location.slot ), s2hptr( target.slot ), location.slot.size() );
+        _ccontext.heap().copy( s2hptr( location ), s2hptr( target ), location.size() );
     }
 
     auto md_func_var = module->getGlobalVariable( "__md_functions" );
@@ -425,7 +434,7 @@ void Program::computeStatic()
 
     auto md_func = dyn_cast< llvm::ConstantArray >( md_func_var->getInitializer() );
     ASSERT( valuemap.count( md_func ) );
-    auto slotref = valuemap[ md_func ];
+    auto slot = valuemap[ md_func ];
 
     auto md2name = [&]( auto op )
     {
@@ -464,7 +473,7 @@ void Program::computeStatic()
         auto writeMetaElem = [&]( int idx, auto val ) {
             int offset = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i
                           + SL_item->getElementOffset( idx );
-            _ccontext.heap().write( s2hptr( slotref.slot, offset ), val );
+            _ccontext.heap().write( s2hptr( slot, offset ), val );
         };
         writeMetaElem( 2, value::Int< 32 >( func.framesize ) ); // frame size
         writeMetaElem( 6, value::Int< 32 >( func.instructions.size() ) ); // inst count
@@ -524,7 +533,7 @@ void Program::pass()
             auto &pi_function = this->functions[ pc.function() ];
             pi_function.argcount = 0;
             if ( function.hasPersonalityFn() )
-                pi_function.personality = insert( 0, function.getPersonalityFn() ).slot;
+                pi_function.personality = insert( 0, function.getPersonalityFn() );
 
             for ( auto &arg : function.args() )
             {

@@ -72,13 +72,6 @@ struct Program
     llvm::DataLayout TD;
     using Slot = lx::Slot;
 
-    struct SlotRef
-    {
-        Slot slot;
-        int seqno;
-        explicit SlotRef( Slot s = Slot(), int n = -1 ) : slot( s ), seqno( n ) {}
-    };
-
     struct Instruction
     {
         uint32_t opcode:16;
@@ -143,8 +136,8 @@ struct Program
     int framealign;
     bool codepointers;
 
-    std::map< const llvm::Value *, SlotRef > valuemap;
-    std::map< const llvm::Value *, SlotRef > globalmap;
+    std::map< const llvm::Value *, Slot > valuemap;
+    std::map< const llvm::Value *, Slot > globalmap;
     std::map< const llvm::Type *, int > typemap;
     std::map< const llvm::Value *, std::string > anonmap;
     std::set< const llvm::Function * > is_debug;
@@ -199,6 +192,11 @@ struct Program
         return functions[ _addr.code( F ).function() ];
     }
 
+    GenericPointer addr( llvm::Value *v )
+    {
+        return _addr.addr( v );
+    }
+
     CodePointer nextpc( CodePointer pc )
     {
         if ( !valid( pc ) )
@@ -217,37 +215,42 @@ struct Program
         return pc.instruction() < function( pc ).instructions.size();
     }
 
-    SlotRef allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
+    Slot allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
     {
         switch ( slot.location )
         {
             case Slot::Const:
                 slot.offset = _constants_size;
                 _constants_size = mem::align( _constants_size + slot.size(), 4 );
-                _globals.push_back( slot );
-                return SlotRef( slot, _globals.size() - 1 );
+                if ( val && _addr.has_slot( val ) )
+                {
+                    int idx = _addr.addr( val ).object();
+                    makeFit( _globals, idx );
+                    _globals[ idx ] = slot;
+                }
+                return slot;
             case Slot::Global:
                 slot.offset = _globals_size;
                 _globals_size = mem::align( _globals_size + slot.size(), 4 );
-                _globals.push_back( slot );
-                return SlotRef( slot, _globals.size() - 1 );
+                ASSERT( val && _addr.has_slot( val ) );
+                {
+                    int idx = _addr.addr( val ).object();
+                    makeFit( _globals, idx );
+                    _globals[ idx ] = slot;
+                }
+                return slot;
             case Slot::Local:
+            {
                 ASSERT( function );
+                ASSERT( val );
+                int idx = _addr.addr( val ).object();
                 overlaySlot( function, slot, val );
-                functions[ function ].values.push_back( slot );
-                return SlotRef( slot, 0 );
+                makeFit( functions[ function ].values, idx );
+                functions[ function ].values[ idx ] = slot;
+                return slot;
+            }
             default:
                 UNREACHABLE( "invalid slot location" );
-        }
-    }
-
-    GenericPointer s2ptr( SlotRef sr )
-    {
-        switch ( sr.slot.location )
-        {
-            case Slot::Const:
-            case Slot::Global: return GlobalPointer( sr.seqno, 0 );
-            default: UNREACHABLE( "invalid slot type in Program::s2ptr" );
         }
     }
 
@@ -297,7 +300,7 @@ struct Program
     Position lower( Position ); // convert intrinsic into normal insns
     void hypercall( Position );
     Slot initSlot( llvm::Value *val, Slot::Location loc );
-    SlotRef insert( int function, llvm::Value *val );
+    Slot insert( int function, llvm::Value *val, bool noinit = false );
     int insert( llvm::Type *t );
 
     void pass(); /* internal */
