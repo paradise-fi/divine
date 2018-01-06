@@ -1,11 +1,31 @@
-#ifndef __DIVINE_H__
-#define __DIVINE_H__
+/* -*- C++ -*- but can be built as C too */
+
+#if !defined(__DIVM_H_CONST__) && ( defined(__divine__) || defined(__divm_const__) )
+#define __DIVM_H_CONST__
+
+enum { _VM_PM_Off  = 0x000000001FFFFFFFull,
+       _VM_PM_Type = 0x00000000E0000000ull,
+       _VM_PM_Obj  = 0xFFFFFFFF00000000ull };
+enum { _VM_PB_Full = 64,
+       _VM_PB_Obj = 32,
+       _VM_PB_Type = 3,
+       _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
+enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked };
+
+#endif
+
+#if !defined(__DIVM_H__) && !defined(__divm_const__)
+#define __DIVM_H__
+
+#if !defined(__divine__) /* #included in divine/vm */
+#include <divine/vm/pointer.hpp>
+#endif
 
 #include <stdint.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
-#define CPP_END }
+#define EXTERN_END }
 #if __cplusplus >= 201103L
 #define NOTHROW noexcept
 #else
@@ -13,14 +33,20 @@
 #endif
 #else
 #define EXTERN_C
-#define CPP_END
+#define EXTERN_END
 #define NOTHROW __attribute__((__nothrow__))
 #endif
 
-#ifdef DIVINE_NATIVE_RUNTIME
-#define NATIVE_VISIBLE __attribute__ ((visibility("default")))
-#else
 #define NATIVE_VISIBLE
+
+#if defined(__divine__)
+typedef void (*_VM_CodePointer)( void );
+typedef int (*_VM_Personality)( void *, void *, void * ); // ?
+typedef void *_VM_Pointer;
+#else
+typedef divine::vm::CodePointer _VM_CodePointer;
+typedef divine::vm::CodePointer _VM_Personality;
+typedef divine::vm::GenericPointer _VM_Pointer;
 #endif
 
 struct _VM_Instruction
@@ -61,7 +87,6 @@ struct _VM_OperandExt
 #endif
 };
 
-typedef void (*_VM_CodePointer)( void );
 
 struct _VM_Frame
 {
@@ -212,15 +237,6 @@ struct _VM_Env
 
 enum _VM_MemAccessType { _VM_MAT_Load = 0x1, _VM_MAT_Store = 0x2, _VM_MAT_Both = 0x3 };
 
-enum { _VM_PM_Off  = 0x000000001FFFFFFFull,
-       _VM_PM_Type = 0x00000000E0000000ull,
-       _VM_PM_Obj  = 0xFFFFFFFF00000000ull };
-enum { _VM_PB_Full = 64,
-       _VM_PB_Obj = 32,
-       _VM_PB_Type = 3,
-       _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
-enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked };
-
 enum _VM_SC_ValueType
 {
     _VM_SC_Int32 = 0, _VM_SC_Int64 = 1, _VM_SC_Mem = 2,
@@ -350,12 +366,12 @@ void *__vm_obj_clone( const void * ) NOTHROW NATIVE_VISIBLE;
 
 int __vm_syscall( int id, int retval_type, ... ) NOTHROW;
 
-CPP_END
+EXTERN_END
 
 #endif // __divine__
 
 #undef EXTERN_C
-#undef CPP_END
+#undef EXTERN_END
 #undef NOTHROW
 #undef NATIVE_VISIBLE
 

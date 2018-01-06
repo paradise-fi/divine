@@ -21,7 +21,9 @@
 #include <brick-bitlevel>
 #include <brick-mem>
 
+#define __divm_const__ /* we need the constants but not anything else here */
 #include <divine/vm/divm.h>
+#undef __divm_const__
 
 namespace divine {
 namespace vm {
