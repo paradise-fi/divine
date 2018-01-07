@@ -33,6 +33,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-fs>
 #include <brick-llvm>
 #include <iostream>
+#include <sys/wait.h>
 
 static const std::string bcsec = ".llvm_bc";
 
