@@ -858,17 +858,43 @@ struct TestCase {
         return ss.str();
     }
 
-    std::string tag( std::string n ) {
+    std::string tag( std::string n, std::string print = "" )
+    {
         if ( options.batch )
             return "## ";
         int pad = (12 - n.length());
-        return "### " + std::string( pad, ' ' ) + n + ": ";
+        return "### " + std::string( pad, ' ' ) + ( print.empty() ? n : print ) + ": ";
     }
 
-    std::string tag( Journal::R r ) {
+    std::string tag( Journal::R r )
+    {
         std::stringstream s;
         s << r;
-        return tag( s.str() );
+        return tag( s.str(), colour( r ) );
+    }
+
+    std::string colour( Journal::R r )
+    {
+        std::stringstream rv;
+
+        if ( isatty( STDOUT_FILENO ) )
+        {
+            rv << "\033[";
+
+            switch ( r )
+            {
+                case Journal::PASSED: rv << "32m"; break;
+                case Journal::SKIPPED:
+                case Journal::WARNED: rv << "33m"; break;
+                case Journal::FAILED: rv << "31m"; break;
+                default: rv << "0m"; break;
+            }
+        }
+
+        rv << r;
+        if ( isatty( STDOUT_FILENO ) )
+            rv << "\033[0m";
+        return rv.str();
     }
 
     void parent()
@@ -922,7 +948,8 @@ struct TestCase {
 
         if ( options.batch ) {
             int spaces = std::max( 64 - int(pretty().length()), 0 );
-            progress( Last ) << " " << std::string( spaces, '.' ) << " " << r << std::endl;
+            progress( Last ) << " " << std::string( spaces, '.' ) << " "
+                             << colour( r ) << std::endl;
             if ( r == Journal::PASSED )
                 progress( Last ) << "   " << rusage() << std::endl;
         } else
