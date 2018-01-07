@@ -504,8 +504,6 @@ void Program::computeStatic()
 
 void Program::pass()
 {
-    int _framealign = framealign;
-
     for ( auto &function : *module )
     {
         if ( function.isDeclaration() )
@@ -518,8 +516,6 @@ void Program::pass()
         if ( !codepointers )
         {
             CodePointer apc( pc.function(), 0 );
-
-            framealign = 1; /* force all args to go in in the first pass */
 
             auto &pi_function = this->functions[ pc.function() ];
             pi_function.argcount = 0;
@@ -550,10 +546,6 @@ void Program::pass()
                 apc = apc + 1;
 
             ASSERT_EQ( apc, pc );
-            framealign = _framealign;
-
-            this->function( pc ).framesize =
-                mem::align( this->function( pc ).framesize, framealign );
         }
 
         for ( auto &block : function )
