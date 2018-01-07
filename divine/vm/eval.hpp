@@ -1840,6 +1840,7 @@ namespace Intrinsic = ::llvm::Intrinsic;
 struct TProgram
 {
     struct Slot { enum Location { Invalid }; using Type = int; };
+    struct Function { int argcount = 0; };
     struct Instruction {};
 };
 

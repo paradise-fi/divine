@@ -209,13 +209,16 @@ struct Context
         return rv;
     }
 
-    void push( PointerV ) {}
+    void push( typename Program::Function &f, int i, HeapPointer )
+    {
+        ASSERT_EQ( f.argcount, i );
+    }
 
     template< typename X, typename... Args >
-    void push( PointerV p, X x, Args... args )
+    void push( typename Program::Function &f, int i, HeapPointer p, X x, Args... args )
     {
-        heap().write_shift( p, x );
-        push( p, args... );
+        heap().write( p + f.instructions[ i ].result().offset, x );
+        push( f, i + 1, p, args... );
     }
 
     template< typename H, typename F >
@@ -277,12 +280,13 @@ struct Context
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
     {
-        auto frameptr = heap().make( program().function( pc ).framesize, 16 );
-        set( _VM_CR_Frame, frameptr.cooked() );
+        auto &f = program().function( pc );
+        auto frameptr = heap().make( f.framesize, 16 ).cooked();
+        set( _VM_CR_Frame, frameptr );
         set( _VM_CR_PC, pc );
-        heap().write_shift( frameptr, PointerV( pc ) );
-        heap().write_shift( frameptr, parent );
-        push( frameptr, args... );
+        heap().write( frameptr, PointerV( pc ) );
+        heap().write( frameptr + PointerBytes, parent );
+        push( f, 0, frameptr, args... );
         entered( pc );
     }
 
