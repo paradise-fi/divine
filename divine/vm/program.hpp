@@ -115,7 +115,6 @@ struct Program
         int argcount:31;
         bool vararg:1;
         Slot personality;
-        std::vector< Slot > values; /* TODO only store arguments; rename, use SmallVector */
         std::vector< Instruction > instructions;
 
         Instruction &instruction( CodePointer pc )
@@ -251,10 +250,7 @@ struct Program
             {
                 ASSERT( function );
                 ASSERT( val );
-                int idx = _addr.addr( val ).object();
                 overlaySlot( function, slot, val );
-                makeFit( functions[ function ].values, idx );
-                functions[ function ].values[ idx ] = slot;
                 return slot;
             }
             default:

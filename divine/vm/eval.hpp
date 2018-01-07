@@ -878,7 +878,7 @@ struct Eval
                     fault( _VM_F_Hypercall ) << "va_start called in a non-variadic function";
                     return;
                 }
-                auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
+                auto vaptr_loc = s2ptr( f.instructions[ f.argcount ].result() );
                 auto vaList = operand< PointerV >( 0 );
                 if ( !boundcheck( vaList, operand( 0 ).size(), true ) )
                     return;
@@ -1367,8 +1367,8 @@ struct Eval
         /* Copy arguments to the new frame. */
         for ( int i = 0; i < argcount && i < int( function.argcount ); ++i )
             heap().copy( s2ptr( operand( i ) ),
-                         s2ptr( function.values[ i ], 0, frameptr.cooked() ),
-                         function.values[ i ].size() );
+                         s2ptr( function.instructions[ i ].result(), 0, frameptr.cooked() ),
+                         function.instructions[ i ].result().size() );
 
         if ( function.vararg )
         {
@@ -1376,7 +1376,8 @@ struct Eval
             for ( int i = function.argcount; i < argcount; ++i )
                 size += operand( i ).size();
             auto vaptr = size ? makeobj( size, 1 ) : nullPointerV();
-            auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
+            auto vaptr_loc = s2ptr( function.instructions[ function.argcount ].result(),
+                                    0, frameptr.cooked() );
             heap().write( vaptr_loc, vaptr );
             for ( int i = function.argcount; i < argcount; ++i )
             {

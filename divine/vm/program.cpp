@@ -525,8 +525,10 @@ void Program::pass()
             for ( auto &arg : function.args() )
             {
                 this->instruction( apc ).opcode = lx::OpArg;
+                auto &vs = this->instruction( apc ).values;
+                makeFit( vs, 1 );
+                vs[ 0 ] = insert( pc.function(), &arg );
                 apc = apc + 1;
-                insert( pc.function(), &arg );
                 ++ pi_function.argcount;
             }
 
@@ -534,10 +536,10 @@ void Program::pass()
             {
                 Slot vaptr( Slot::Local );
                 vaptr.type = Slot::Ptr;
-                int idx = function.arg_size();
-                makeFit( functions[ pc.function() ].values, idx );
                 overlaySlot( pc.function(), vaptr, nullptr );
-                functions[ pc.function() ].values[ idx ] = vaptr;
+                auto &vs = this->instruction( apc ).values;
+                makeFit( vs, 1 );
+                vs[ 0 ] = vaptr;
                 this->instruction( apc ).opcode = lx::OpArg;
                 apc = apc + 1;
             }
