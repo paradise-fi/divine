@@ -68,8 +68,12 @@ struct BitContainer
     {}
     iterator begin() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _from ); }
     iterator end() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _to ); }
-    Proxy operator[]( int i ) {
-        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i ); }
+
+    Proxy operator[]( int i )
+    {
+        ASSERT_LT( _from + i, _to );
+        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i );
+    }
 };
 
 template< typename IP >
@@ -623,8 +627,13 @@ struct PooledShadow
         std::copy( def.begin(), def.end(), _def_bytes );
         value.defbits( _def );
 
-        auto t = type( l, size );
-        value.pointer( t[ 0 ] == ShadowType::Data && t[ 4 ] == ShadowType::Pointer );
+        if ( l.offset % 4 == 0 )
+        {
+            auto t = type( l, size );
+            value.pointer( size == PointerBytes &&
+                           t[ 0 ] == ShadowType::Data &&
+                           t[ 4 ] == ShadowType::Pointer );
+        }
     }
 
     template< typename FromSh >
@@ -807,6 +816,17 @@ struct PooledShadow
         heap.copy( obj, 0, obj, 8, 8 );
         heap.read< PointerV >( obj, 8, p2 );
         ASSERT( p2.defined() );
+        ASSERT( p2.pointer() );
+    }
+
+    TEST( pointers )
+    {
+        PointerV p1( vm::HeapPointer( 10, 0 ) );
+        heap.write( obj, 0, p1 );
+        int count = 0;
+        for ( auto x : heap.pointers( obj, 100 ) )
+            static_cast< void >( x ), count ++;
+        ASSERT_EQ( count, 1 );
     }
 
     TEST( read_partially_initialized )
