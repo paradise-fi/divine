@@ -211,7 +211,7 @@ struct Context
 
     void push( typename Program::Function &f, int i, HeapPointer )
     {
-        ASSERT_EQ( f.argcount, i );
+        ASSERT_EQ( f.argcount + f.vararg , i );
     }
 
     template< typename X, typename... Args >
