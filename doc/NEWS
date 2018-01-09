@@ -1,44 +1,51 @@
-DIVINE 4.0
-==========
+# DIVINE 4.0
 
-- [4.0.0] Improved compatibility of text output with YAML.
-- [4.0.0] `make prerequisites` installs dependencies on common distributions.
-- [4.0.1] Support weak pointers that do not count towards state comparison.
-- [4.0.1] A new `__vm_syscall` hypercall for accessing the host OS.
-- [4.0.1] Make the objid hint a VM control register, `_VM_SC_ObjIdShuffle`.
-- [4.0.1] **Experimental** support for `verify --symbolic` (needs Z3).
-- [4.0.1] Extended memory use statistics when `--report yaml-long` is specified.
-- [4.0.1] **Experimental** support for `run -o syscall:passthrough`.
-- [4.0.1] A complete `libm` implementation is now bundled with `divine cc`.
-- [4.0.1] Support for `regex.h` has been added to `divine cc`.
-- [4.0.1] Preliminary support for user-provided program monitoring functions.
-- [4.0.2] Improved bitcode linker, libraries as .a archives.
-- [4.0.2] Detailed, SQL-based reporting and logging.
-- [4.0.2] Inclusion of a (semi-)automated benchmarking tool, 'divbench'.
-- [4.0.2] Update pdclib to the current upstream (2017-01-18).
-- [4.0.2] Numerous improvements in symbolic verification support.
-- [4.0.2] Faster verification of thread-less programs with `--sequential`.
-- [4.0.2] An important bugfix in treatment of memory access in tau reduction.
-- [4.0.2] A more efficient runtime representation of the bitcode.
-- [4.0.2] Intrinsic lowering is now handled in LART.
-- [4.0.3] An improved and much faster implementation of C++ exceptions.
-- [4.0.3] Improved verification speed and smaller memory footprint.
-- [4.0.4] Improved POSIX signal handling in DiOS.
-- [4.0.4] Cleaner layout of runtime headers (libc/dios/divm).
-- [4.0.4] Fix a build error when the system compiler is clang 4.
-- [4.0.5] Make standard IO unbuffered by default to save memory.
-- [4.0.6] A rudimentary version of `verify --liveness`.
-- [4.0.6] The DiOS kernel has been separated into reusable components.
-- [4.0.8] Improved precision of memory access tracking in τ reduction.
-- [4.0.8] Update the bundled `libc++abi` and `libc++` to version 4.0.0.
-- [4.0.10] Preliminary support for syscall passthrough in `divine run`.
-- [4.0.10] Initial implementation of the `fork` system call.
-- [4.0.11] Add a `--trace` option to `divine run` to trace instructions.
-- [4.0.12] Implement assorted process-related syscalls.
-- [4.0.12] Add `pthread_atfork` to the threading library.
+- In 4.0.0:
+    - Improved compatibility of text output with YAML.
+    - `make prerequisites` installs dependencies on common distributions.
+- In 4.0.1:
+    - Support weak pointers that do not count towards state comparison.
+    - A new `__vm_syscall` hypercall for accessing the host OS.
+    - Make the objid hint a VM control register, `_VM_SC_ObjIdShuffle`.
+    - *Experimental* support for `verify --symbolic` (needs Z3).
+    - Extended memory use statistics when `--report yaml-long` is specified.
+    - *Experimental* support for `run -o syscall:passthrough`.
+    - A complete `libm` implementation is now bundled with `divine cc`.
+    - Support for `regex.h` has been added to `divine cc`.
+    - Preliminary support for user-provided program monitoring functions.
+- In 4.0.2:
+    - Improved bitcode linker, libraries as .a archives.
+    - Detailed, SQL-based reporting and logging.
+    - Inclusion of a (semi-)automated benchmarking tool, 'divbench'.
+    - Update pdclib to the current upstream (2017-01-18).
+    - Numerous improvements in symbolic verification support.
+    - Faster verification of thread-less programs with `--sequential`.
+    - An important bugfix in treatment of memory access in tau reduction.
+    - A more efficient runtime representation of the bitcode.
+    - Intrinsic lowering is now handled in LART.
+- In 4.0.3:
+    - An improved and much faster implementation of C++ exceptions.
+    - Improved verification speed and smaller memory footprint.
+- In 4.0.4:
+    - Improved POSIX signal handling in DiOS.
+    -  Cleaner layout of runtime headers (libc/dios/divm).
+    -  Fix a build error when the system compiler is clang 4.
+- In 4.0.5: Make standard IO unbuffered by default to save memory.
+- In 4.0.6:
+    - A rudimentary version of `verify --liveness`.
+    - The DiOS kernel has been separated into reusable components.
+- In 4.0.8:
+    - Improved precision of memory access tracking in τ reduction.
+    - Update the bundled `libc++abi` and `libc++` to version 4.0.0.
+- In 4.0.10:
+    - Preliminary support for syscall passthrough in `divine run`.
+    - Initial implementation of the `fork` system call.
+- In 4.0.11: Add a `--trace` option to `divine run` to trace instructions.
+- In 4.0.12:
+    - Implement assorted process-related syscalls.
+    - Add `pthread_atfork` to the threading library.
 
-DIVINE 3.90
-===========
+# DIVINE 3.90
 
 - Substantial rewrite with focus on software verification.
 - More flexible and cohesive interface between the program and the VM.
@@ -52,8 +59,9 @@ and are planned for a later version in the 4.x series. Only C and C++ models
 are supported at this time: DVE, DESS, CESMI, UPPAAL and other input formalisms
 are not supported, but may become available in later versions.
 
-DIVINE 3.3.x
-============
+# DIVINE 3.x
+
+## 3.3
 
 - [3.3.1] Implement --fair (weak fairness) for LLVM.
 - [3.3.1] Substantial improvements in tree compression.
@@ -72,8 +80,7 @@ DIVINE 3.3.x
 - [3.3.3] Fix broken counterexamples with --fair.
 - [3.3.3] Enable simulate with --fair for LLVM.
 
-DIVINE 3.2.x
-============
+## 3.2
 
 - [3.2.2] Fix bug #301 (assertion failure when -p not given).
 - [3.2.3] Support for storing boolean state properties in DESS.
@@ -84,8 +91,7 @@ DIVINE 3.2.x
 - [3.2.4] Multiple fixes to libc (pdclib) functionality.
 - [3.2.4] Fix backward compatibility with DESS files exported from divine < 3.2.3.
 
-DIVINE 3.2.1
-============
+## 3.2.1
 
 - LLVM: The `divine compile` subcommand no longer uses ld.gold.
 - LLVM: Add fine-grained options in `--property` specification.
@@ -100,8 +106,7 @@ DIVINE 3.2.1
 - Improved reporting of verification results.
 - Many, many bugfixes and internal code improvements.
 
-DIVINE 3.0.92 (3.1 beta 1; 6.1.2014)
-====================================
+## 3.0.92 (3.1 beta 1; 6.1.2014)
 
 - LLVM: Make "problem" reports more informative.
 - LLVM: Make std::thread work, albeit inefficiently.
@@ -120,8 +125,7 @@ DIVINE 3.0.92 (3.1 beta 1; 6.1.2014)
 - Significantly improved build efficiency (time and memory).
 - Various bugfixes and minor enhancements.
 
-DIVINE 3.0.91 (3.1 alpha 2; 27.10.2013)
-=======================================
+## DIVINE 3.0.91 (3.1 alpha 2; 27.10.2013)
 
 - Implement `--shared` support in OWCTY and MAP (liveness checking).
 - Support creation of persistent, explicit graph dumps (.dess).
@@ -139,8 +143,7 @@ DIVINE 3.0.91 (3.1 alpha 2; 27.10.2013)
 - Implement conditional instantiation in DVE.
 - The verification report can be now stored using SQL/ODBC.
 
-DiVinE 3.0.90 (3.1 alpha 1; 14.7.2013)
-======================================
+## 3.0.90 (3.1 alpha 1; 14.7.2013)
 
 - Improved shared-memory verification of safety properties.
 - Substantially improved memory efficiency.
@@ -150,8 +153,7 @@ DiVinE 3.0.90 (3.1 alpha 1; 14.7.2013)
 - Extensive internal code refactorings.
 - More efficient memory allocation code.
 
-DiVinE 3.0 (13.7.2013)
-======================
+## 3.0 (13.7.2013)
 
 - Fix a bug in loading LTL properties in the LLVM backend.
 - Fix handling of property processes in the DVE compiler.
@@ -159,8 +161,9 @@ DiVinE 3.0 (13.7.2013)
 - Fix a couple issues in `divine compile --llvm`.
 - Updates to the manual.
 
-DiVinE 2.97 (3.0 RC 2 ; 21.5.2013)
-==================================
+# DIVINE 2.x
+
+## 2.97 (3.0 RC 2 ; 21.5.2013)
 
 - Fix layout issues with LLVM bitcode files using a 64b pointer layout.
 - Fix a problem where unresolved symbols in LLVM bitcode would be silently
@@ -170,8 +173,7 @@ DiVinE 2.97 (3.0 RC 2 ; 21.5.2013)
   implementation, as well as a C++ ABI support library.
 - Let the LLVM interpreter detect & report double frees and divisions by zero.
 
-DiVinE 2.96 (3.0 RC 1 ; 17.4.2013)
-==================================
+## 2.96 (3.0 RC 1 ; 17.4.2013)
 
 - A bug in the parallel C3 proviso has been found and fixed.
 - Zeno-run elimination in timed automata (use `--fairness` to enable).
@@ -182,8 +184,7 @@ DiVinE 2.96 (3.0 RC 1 ; 17.4.2013)
 - Substantial improvements in `--shared` support (still experimental though).
 - Many bugfixes and minor improvements.
 
-DiVinE 2.95 (3.0 beta 2 ; 16.3.2013)
-====================================
+## 2.95 (3.0 beta 2 ; 16.3.2013)
 
 - Support pthread barriers in the LLVM runtime.
 - Improvements in the LTL support for `divine compile --cesmi`.
@@ -195,8 +196,7 @@ DiVinE 2.95 (3.0 beta 2 ; 16.3.2013)
 - Reduce startup overhead for LLVM & DVE and improve cache sharing.
 - Many bugfixes.
 
-DiVinE 2.94 (3.0 beta 1 ; 13.2.2013)
-====================================
+## 2.94 (3.0 beta 1 ; 13.2.2013)
 
 - Substantial updates to the CESMI interface (see manual).
 - Re-introduce the DVE->CESMI compiler (`divine compile file.dve`).
@@ -204,8 +204,7 @@ DiVinE 2.94 (3.0 beta 1 ; 13.2.2013)
 - Updates and improvements to timed automata support.
 - A number of bugfixes.
 
-DiVinE 2.93 (3.0 alpha 3 ; 28.1.2013)
-=====================================
+## 2.93 (3.0 alpha 3 ; 28.1.2013)
 
 - New implementation of resource limits (--max-memory, --max-time) which
   circumvents the previous 2G limit and also works on Windows.
@@ -213,8 +212,7 @@ DiVinE 2.93 (3.0 alpha 3 ; 28.1.2013)
 - Builds with LLVM 3.1 and 3.2.
 - Many bugfixes.
 
-DiVinE 2.92 (3.0 alpha 2 ; 21.1.2013)
-=====================================
+## 2.92 (3.0 alpha 2 ; 21.1.2013)
 
 - Implement detection of time deadlocks in timed automata verification.
 - An overhauled, more flexible CESMI interface & documentation.
@@ -225,8 +223,7 @@ DiVinE 2.92 (3.0 alpha 2 ; 21.1.2013)
 - Consistently support models with multiple initial states.
 - Many bugfixes.
 
-DiVinE 2.91 (3.0 alpha 1; 7.1.2013)
-===================================
+## 2.91 (3.0 alpha 1; 7.1.2013)
 
 - LLVM backend for model checking of C/C++ programs.
 - A new DVE language interpreter.
@@ -247,23 +244,20 @@ DiVinE 2.91 (3.0 alpha 1; 7.1.2013)
 - Improved Windows support.
 - Many bugfixes and minor improvements.
 
-DiVinE 2.5.2 (4.12.2011)
-========================
+## 2.5.2 (4.12.2011)
 
 - Fix compatibility with GCC 4.6.
 - Make compilation work also on openmpi installations without ompi/version.h.
 - Fix installation of the GUI.
 
-DiVinE 2.5.1 (5.4.2011)
-=======================
+## 2.5.1 (5.4.2011)
 
 - DVE compiler fixes: initial state in some models could be incorrect in
   compiled DVE. When the system was in deadlock and LTL property had been
   present, the resulting model could overwrite origin states, causing the model
   checker to misbehave. Both these problems are fixed in this release.
 
-DiVinE 2.5 (28.2.2011)
-======================
+## 2.5 (28.2.2011)
 
 - A faster hash table implementation.
 - A new tool, "divine draw", for state space visualisation (using graphviz).
@@ -275,8 +269,7 @@ DiVinE 2.5 (28.2.2011)
 - Add support for "divine combine" on Windows.
 - A new option, --gnuplot-statistics, for machine-readable queue size stats.
 
-DiVinE 2.4 (29.9.2010)
-======================
+## 2.4 (29.9.2010)
 
 - C3 check for parallel partial order reduction.
 - Partial order reduction for (interpreted) DVE (--por).
@@ -293,8 +286,7 @@ DiVinE 2.4 (29.9.2010)
 - Make "divine verify" work with non-DVE inputs correctly.
 - Fix BA translation of F((F a) U b) form formulae (J. Strejcek &c.)
 
-DiVinE 2.3 (8.8.2010)
-=====================
+## 2.3 (8.8.2010)
 
 - Basic support for Murphi model compilation and parallel verification.
 - Fix a bug in DVE compiler that made some models uncompilable.
@@ -317,8 +309,7 @@ caveats though:
   to symbols exported by the divine binary itself, which is not supported on
   win32.
 
-DiVinE 2.2 (17.2.2010)
-======================
+## 2.2 (17.2.2010)
 
 - Further optimisations in compiled DVE.
 - Improved overall performance of the verifier.
@@ -336,24 +327,21 @@ KNOWN ISSUES: Error state handling is not consistent between interpreted and
 compiled DVE. The profiled build (-DPROFILE=ON) is currently broken. (Both
 issues exist since version 2.1.)
 
-DiVinE 2.1.1 (26.1.2010)
-========================
+## 2.1.1 (26.1.2010)
 
 - Fixed a number of issues with compiled DVE models.
 - Bugfixes in the custom model loader.
 - Improved performance of compiled DVE.
 - Fixed Windows build.
 
-DiVinE 2.1 (17.1.2010)
-======================
+## 2.1 (17.1.2010)
 
 - A new DVE to C (to native binary) compiler available as `divine compile'.
 - Fixed handling of error states in interpreted DVE.
 - The GUI can now be compiled & used on Windows.
 - A number of GUI improvements and usability fixes.
 
-DiVinE 2.0 (19.11.2009)
-=======================
+## 2.0 (19.11.2009)
 
 - This version is a major rewrite of the parallel framework and algorithms.
 - MPI is now partially supported in addition to shared memory parallelism
@@ -365,8 +353,9 @@ DiVinE 2.0 (19.11.2009)
 - More data available in --report (including machine-readable counterexample).
 - The divine.combine binary has been removed, use "divine combine" instead.
 
-DiVinE Multi-Core 1.4 (23.4.2009)
-=================================
+# DiVinE Multi-Core
+
+## 1.4 (23.4.2009)
 
 - Unfortunately, an incorrect implementation of Nested DFS has slipped into the
   1.3 release. Version 1.4 fixes this problem.
@@ -374,8 +363,7 @@ DiVinE Multi-Core 1.4 (23.4.2009)
   self-loops are now detected on-the-fly, and early termination is now more
   efficient.
 
-DiVinE Multi-Core 1.3 (17.11.2008)
-==================================
+## 1.3 (17.11.2008)
 
 - Improved and newly included algorithms:
   - MAP: improved progress reports, early termination and counterexamples
@@ -388,16 +376,14 @@ DiVinE Multi-Core 1.3 (17.11.2008)
   This has been fixed.
 - A few other user experience fixes: improved warnings and overall robustness.
 
-DiVinE Multi-Core 1.2.1 (1.11.2008)
-===================================
+## 1.2.1 (1.11.2008)
 
 - Fix compilation with g++ 4.3.
 - Update the bundled version of HOARD to 3.7.1.
 - Include some updates to the bundled version of wibble (no major impact on
   DiVinE itself).
 
-DiVinE Multi-Core 1.2 (15.5.2008)
-=================================
+## 1.2 (15.5.2008)
 
 - A few minor bugfixes.
 - The divine-mc.combine utility can now handle .mdve and .mprobdve files.
@@ -405,8 +391,7 @@ DiVinE Multi-Core 1.2 (15.5.2008)
   added to the distribution, built as divine-mc.probabilistic.
 - NIPS interpreter updated to version 1.2.8
 
-DiVinE Multi-Core 1.1
-=====================
+## 1.1
 
 - The OWCTY algorithm now performs an on-the-fly heuristic to speed up
   discovery of counterexample.
@@ -424,7 +409,6 @@ DiVinE Multi-Core 1.1
   generation is implemented.
 - Developer documentation updates.
 
-DiVinE Multi-Core 1.0
-=====================
+## 1.0
 
 Initial release.
