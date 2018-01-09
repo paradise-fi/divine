@@ -1,5 +1,31 @@
 # DIVINE 4.0
 
+- In 4.0.22:
+    - Add an `info` command to `sim`.
+    - Make fast-forwarding in `sim` more configurable & useful.
+    - Improve compatibility of `libc` headers with `glibc`.
+- In 4.0.21:
+    - Fix a use-after-free and an out-of-bounds access in DiVM.
+    - Avoid crashes after failures in `dbg.call`.
+    - A number of improvements in the user interface.
+    - Make it possible to build real static binaries.
+- In 4.0.20:
+    - Preliminary support for SV-COMP 'built-in' functions (`__VERIFIER_*`).
+    - Fix a crash in `divine draw`.
+    - Make it possible to build DIVINE with g++.
+- In 4.0.19:
+    - Implement a synchronous scheduler in DiOS.
+    - Allow DIVINE to be built using a (C++17-compatible) system toolchain.
+    - Implement abstraction of global variables.
+    - Improve efficiency of the relaxed memory verification mode.
+    - Enforce permissions in access to the flags control register.
+- In 4.0.18:
+    - Improvements in handling of abstract (symbolic) structures.
+    - Allow abstraction of aggregate return types.
+- In 4.0.16:
+    - Recognize command prefixes (e.g. `ch` for `check`) in command parsers.
+    - Another batch of symbolic verification improvements.
+    - Add a `call` command to `sim`.
 - In 4.0.15: Further relax τ reduction.
 - In 4.0.14:
     - *Experimental* support for relaxed memory models (`--relaxed-memory`).
@@ -22,7 +48,9 @@
 - In 4.0.12:
     - Implement assorted process-related syscalls.
     - Add `pthread_atfork` to the threading library.
-- In 4.0.11: Add a `--trace` option to `divine run` to trace instructions.
+- In 4.0.11:
+    - Add a `--trace` option to `divine run` to trace instructions.
+    - Preliminary implementation of `divcc`, a drop-in compiler replacement.
 - In 4.0.10:
     - Preliminary support for syscall passthrough in `divine run`.
     - Initial implementation of the `fork` system call.
