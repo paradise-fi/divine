@@ -1,18 +1,26 @@
 # DIVINE 4.0
 
-- In 4.0.0:
-    - Improved compatibility of text output with YAML.
-    - `make prerequisites` installs dependencies on common distributions.
-- In 4.0.1:
-    - Support weak pointers that do not count towards state comparison.
-    - A new `__vm_syscall` hypercall for accessing the host OS.
-    - Make the objid hint a VM control register, `_VM_SC_ObjIdShuffle`.
-    - *Experimental* support for `verify --symbolic` (needs Z3).
-    - Extended memory use statistics when `--report yaml-long` is specified.
-    - *Experimental* support for `run -o syscall:passthrough`.
-    - A complete `libm` implementation is now bundled with `divine cc`.
-    - Support for `regex.h` has been added to `divine cc`.
-    - Preliminary support for user-provided program monitoring functions.
+- In 4.0.12:
+    - Implement assorted process-related syscalls.
+    - Add `pthread_atfork` to the threading library.
+- In 4.0.11: Add a `--trace` option to `divine run` to trace instructions.
+- In 4.0.10:
+    - Preliminary support for syscall passthrough in `divine run`.
+    - Initial implementation of the `fork` system call.
+- In 4.0.8:
+    - Improved precision of memory access tracking in τ reduction.
+    - Update the bundled `libc++abi` and `libc++` to version 4.0.0.
+- In 4.0.6:
+    - A rudimentary version of `verify --liveness`.
+    - The DiOS kernel has been separated into reusable components.
+- In 4.0.5: Make standard IO unbuffered by default to save memory.
+- In 4.0.4:
+    - Improved POSIX signal handling in DiOS.
+    -  Cleaner layout of runtime headers (libc/dios/divm).
+    -  Fix a build error when the system compiler is clang 4.
+- In 4.0.3:
+    - An improved and much faster implementation of C++ exceptions.
+    - Improved verification speed and smaller memory footprint.
 - In 4.0.2:
     - Improved bitcode linker, libraries as .a archives.
     - Detailed, SQL-based reporting and logging.
@@ -23,27 +31,19 @@
     - An important bugfix in treatment of memory access in tau reduction.
     - A more efficient runtime representation of the bitcode.
     - Intrinsic lowering is now handled in LART.
-- In 4.0.3:
-    - An improved and much faster implementation of C++ exceptions.
-    - Improved verification speed and smaller memory footprint.
-- In 4.0.4:
-    - Improved POSIX signal handling in DiOS.
-    -  Cleaner layout of runtime headers (libc/dios/divm).
-    -  Fix a build error when the system compiler is clang 4.
-- In 4.0.5: Make standard IO unbuffered by default to save memory.
-- In 4.0.6:
-    - A rudimentary version of `verify --liveness`.
-    - The DiOS kernel has been separated into reusable components.
-- In 4.0.8:
-    - Improved precision of memory access tracking in τ reduction.
-    - Update the bundled `libc++abi` and `libc++` to version 4.0.0.
-- In 4.0.10:
-    - Preliminary support for syscall passthrough in `divine run`.
-    - Initial implementation of the `fork` system call.
-- In 4.0.11: Add a `--trace` option to `divine run` to trace instructions.
-- In 4.0.12:
-    - Implement assorted process-related syscalls.
-    - Add `pthread_atfork` to the threading library.
+- In 4.0.1:
+    - Support weak pointers that do not count towards state comparison.
+    - A new `__vm_syscall` hypercall for accessing the host OS.
+    - Make the objid hint a VM control register, `_VM_SC_ObjIdShuffle`.
+    - *Experimental* support for `verify --symbolic` (needs Z3).
+    - Extended memory use statistics when `--report yaml-long` is specified.
+    - *Experimental* support for `run -o syscall:passthrough`.
+    - A complete `libm` implementation is now bundled with `divine cc`.
+    - Support for `regex.h` has been added to `divine cc`.
+    - Preliminary support for user-provided program monitoring functions.
+- In 4.0.0:
+    - Improved compatibility of text output with YAML.
+    - `make prerequisites` installs dependencies on common distributions.
 
 # DIVINE 3.90
 
