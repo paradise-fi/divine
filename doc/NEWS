@@ -1,5 +1,24 @@
 # DIVINE 4.0
 
+- In 4.0.15: Further relax τ reduction.
+- In 4.0.14:
+    - *Experimental* support for relaxed memory models (`--relaxed-memory`).
+    - Introduce a `divine check` subcommand (less strict than `verify`).
+    - Improve τ reduction substantially & fix a regression.
+    - Implement an init file to execute commands at `sim` startup.
+    - Allow `sim` to spawn auxilliary X terminals.
+    - Automatically write report files with detailed verification output.
+    - Use a much more robust counter-example format.
+    - Add a `dbg.call` instruction to improve VM efficiency.
+    - Make DiOS VFS work with multi-processes programs.
+    - Fix a possible infinite loop due to inadequate CFL interrupt tracking.
+    - Use human-friedly thread IDs in trace output.
+    - More improvements in symbolic verification.
+    - Implement `setup --pygmentize` for colourful `source` in `sim`.
+- In 4.0.13:
+    - A number of improvements in symbolic verification.
+    - Reduce memory requirements of `sim`.
+    - Make type names of DiOS components human-readable.
 - In 4.0.12:
     - Implement assorted process-related syscalls.
     - Add `pthread_atfork` to the threading library.
