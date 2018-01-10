@@ -58,8 +58,9 @@ fault. Please see the next section for configuration details.
 Consider the following simple C++ program:
 
 ```cpp
-int main() {
-    int *a = nullptr;
+int main()
+{
+    int *a = 0;
     *a = 42;
     return 0;
 }
@@ -67,100 +68,58 @@ int main() {
 ```
 
 This program does nothing interesting, it just triggers a fault. If we execute
-it using `./divine run -std=c++11 test.cpp`, we obtain the following output:
+it using `divine run test.cpp`, we obtain the following output:
 
-```
-T: FAULT: null pointer dereference: [const* 0 0 ddp]
-T: Fault in userspace: memory
-T: Backtrace:
-T:   1: main
-T:   2: _start
-```
+    FAULT: null pointer dereference: [global* 0 0 ddp]
+    [0] FATAL: memory error in userspace
 
-By inspecting the trace, we can see that a fault was triggered. When VM triggers
-a fault, it prints the reason -- here a null pointer dereference caused it. The
-encounter of an error caused a DiOS fault handler to be called. The fault handler
-first communicates whether the fault occurred in the DiOS kernel or in the user space --
-in the actual verified program. This is followed by a simple backtrace. Note that
-`_start` is a DiOS function, which is always at the bottom of a backtrace. It calls
-all global constructors, initializes the standard libraries and calls `main` with
-the right arguments.
+To make debugging the problem easier, DiOS can print a backtrace when a fault
+is encountered (this is disabled by default, since the `verify` command prints
+a more detailed backtrace without the help of DiOS -- see below):
 
-If we run `./divine verify -std=c++11 test.cpp`, we obtain a more detailed
-backtrace:
+    $ divine run -o debug:faultbt test.cpp
 
-```
-the error trace:
-  FAULT: null pointer dereference: [const* 0 0 ddp]
-  Fault in userspace: memory
-  Backtrace:
-    1: main
-    2: _start
+The output then is:
 
-backtrace #1 [active stack]:
-  @address: heap* 998dffb7 0+0
-  @pc: code* 956 50
-  @location: /divine/src/dios/fault.cpp:49
-  @symbol: __dios::Fault::sc_handler(__dios::Context&, int*, void*, __va_list_tag*)
+    FAULT: null pointer dereference: [global* 0 0 ddp]
+    [0] FATAL: memory error in userspace
+    [0] Backtrace:
+    [0]   1: main
+    [0]   2: _start
 
-  @address: heap* 118ab8d1 0+0
-  @pc: code* 95f 1
-  @location: /divine/src/dios/fault.cpp:272
-  @symbol: __sc::fault_handler(__dios::Context&, int*, void*, __va_list_tag*)
+By inspecting the trace, we can see that a fault was triggered. When the VM
+triggers a fault, it prints the reason -- here a null pointer dereference
+caused the problem. The error caused the DiOS fault handler to be called. The
+fault handler first communicates what the problem was and whether the fault
+occurred in the DiOS kernel or in userspace. This is followed by a simple
+backtrace. Note that `_start` is a DiOS function and is always at the bottom of
+a backtrace. It calls all global constructors, initialises the standard
+libraries and calls `main` with the right arguments.
 
-  @address: heap* e6dbccb9 0+0
-  @pc: code* b11 16
-  @location: /divine/include/dios/syscall.hpp:50
-  @symbol: __dios::Syscall::handle(__dios::Context*)
+As mentioned above, `divine verify` will give us more information about the problem:
 
-  @address: heap* 11 0+0
-  @pc: code* a75 26
-  @location: /divine/include/dios/scheduling.hpp:185
-  @symbol: void __dios::sched<false>()
+    $ divine verify test.cpp
 
-backtrace #2:
-  @address: heap* 9aeef2fc 0+0
-  @pc: code* a8c 17
-  @location: /divine/include/dios/syscall.hpp:43
-  @symbol: __dios::Syscall::trap(int, int*, void*, __va_list_tag (&) [1])
+produces the following:
 
-  @address: heap* c149bfb0 0+0
-  @pc: code* 982 b
-  @location: /divine/src/dios/syscall.cpp:16
-  @symbol: __dios_syscall
+    error found: yes
+    error trace: |
+      FAULT: null pointer dereference: [global* 0 0 ddp]
+      [0] FATAL: memory error in userspace
 
-  @address: heap* 12 0+0
-  @pc: code* 958 16
-  @location: /divine/src/dios/fault.cpp:76
-  @symbol: __dios::Fault::handler(_VM_Fault, _VM_Frame*, void (*)(), ...)
+    active stack:
+      - symbol: void {Fault}::handler<{Context} >(_VM_Fault, _VM_Frame*, void (*)(), ...)
+        location: /divine/include/dios/core/fault.hpp:184
+      - symbol: main
+        location: test.cpp:3
+      - symbol: _start
+        location: /divine/src/libc/functions/sys/start.cpp:76
+    a report was written to test.report
 
-  @address: heap* 32250330 0+0
-  @pc: code* c58 2
-  @location: drt_dev/test_error.cpp:3
-  @symbol: main
-
-  @address: heap* ea18a3ba 0+0
-  @pc: code* 96b 7
-  @location: /divine/src/dios/main.cpp:152
-  @symbol: _start
-
-```
-
-The first part of the output is the same as in the previous case, the rest are
-full DIVINE backtraces for all the active threads. In this concrete example, we
-see two backtraces even for a single threaded program. To see the reason for
-this, let us first examine backtrace #2. If we go through the backtrace from
-its end, we can see an invocation of `_start`, which called `main`. `main` was
-then interrupted on line 3 because of the fault. Next, we can see a call to the
-DiOS fault handler `__dios::Fault::handler`. As the handler is called from user
-space and, consequently, is isolated from the internal state of DiOS, it performs a
-syscall to jump into the kernel, as we can see from the first two entries of the
-backtrace.
-
-All DiOS kernel routines, including scheduling and syscalls, feature a separate
-call stack -- this is the reason why we observe two backtraces. Therefore,
-backtrace #1 contains a scheduler and syscall machinery after which fault
-handler is called in kernel mode and can do further inspection.
+The error trace is the same as in the previous case, the 'active stack' section
+contains backtraces for all the active threads. In this example, we only see
+one backtrace, since this is a single threaded program. In addition to the
+earlier output provided by DiOS, the fault handler is also visible.
 
 ## DiOS Configuration {#sec:dios.config}
 
