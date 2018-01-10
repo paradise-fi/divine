@@ -558,7 +558,15 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
     {
         if ( !valid( p ) )
             return false;
-        _l.exceptions[ p.object() ] = Internal();
+        auto ex = _l.exceptions.find( p.object() );
+        if ( ex == _l.exceptions.end() )
+            _l.exceptions.emplace( p.object(), Internal() );
+        else
+        {
+            _shadows.free( ex->second );
+            _objects.free( ex->second );
+            ex->second = Internal();
+        }
         if ( p.offset() )
             return false;
         return true;
