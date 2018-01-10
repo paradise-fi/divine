@@ -20,15 +20,15 @@ for ( @ARGV )
     }
 }
 
-$V{report} = `cat report.txt` if ( -e "report.txt" );
-my $template;
+my ( $template, $vopt );
 $template = "--template template.html" if ( -f "template.html" );
+$vopt .= "-V$_:$V{$_} " for ( keys %V );
+
+$V{report} = `cat report.txt` if ( -e "report.txt" );
 
 open(PD, "|pandoc -o - -s --smart" .
          " --email-obfuscation=javascript" .
-         " $template" .
-         " -V version:$V{version}" .
-         " $V{opts} @O" );
+         " $template $vopt @O" );
 
 for ( @F )
 {
