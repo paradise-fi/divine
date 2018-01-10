@@ -1,3 +1,17 @@
+html
+{
+    overflow-y: scroll;
+}
+
+#body
+{
+    margin-left: 16ch;
+    border-left: 1px dotted black;
+    margin-top: 20px;
+    margin-right: 1em;
+    padding-left: 1em;
+}
+
 body
 {
     font-family: 'Lato', sans;
@@ -5,35 +19,9 @@ body
     hyphens: auto;
     color: black;
     margin: auto;
-    margin-top: 20px;
-    max-width: 80ch;
+    max-width: 95ch;
     padding: 0;
     background: white;
-}
-
-@media ( max-width: 80ch ), ( max-device-width: 80ch )
-{
-    body
-    {
-        margin: 1ch;
-        max-width: none;
-    }
-}
-
-@media ( max-width: 750px ), ( max-device-width: 750px )
-{
-    pre#logo { transform: scaleX( 1 ) scaleY( 0.8 ) !important; }
-}
-
-@media ( max-width: 550px ), ( max-device-width: 550px )
-{
-    pre#logo
-    {
-        transform: scaleX( 0.6 ) scaleY( 0.6 ) !important;
-        left: calc( 50% - 33ch );
-        position: relative;
-    }
-    #logo-wrapper { height: 6ex; max-width: 50ch !important; margin: auto !important; }
 }
 
 pre, tt, code
@@ -55,68 +43,116 @@ pre#logo
     white-space: pre;
     font-size: 16px;
     font-weight: bold;
-    overflow: hidden;
-    transform-origin: 50% 0;
+    overflow: visible;
+    transform-origin: 0 0;
     transform: scaleX(1.2);
-    margin: auto;
+    margin-left: -3ch;
     display: block;
     width: 65ch;
 }
 
 h1, h2, h3 { font-family: 'Aleo', 'Lato', sans; }
+#linkbar-spacer { margin-top: 3.5ex; }
 
 #logo-wrapper
 {
     font-size: 16px;
     font-family: 'Ubuntu Mono';
     margin: 0;
-    text-align: center;
+    margin-bottom: .5ex;
+    text-align: left;
     width: 100%;
 }
 
 #toc ul     { list-style-type: none; }
 strong      { color: #200020; }
 p > .divine { color: #3A103A; font-weight: normal; }
+p           { margin-bottom: 1ex; margin-top: 1ex; }
 
 a:link, a:visited, a:active                   { text-decoration: none; color: darkred; }
 a:link:hover, a:visited:hover, a:active:hover { text-decoration: none; color: darkblue; }
 
+span.eye
+{
+    display: none;
+}
+
+#csslogo
+{
+    font-family: 'Ubuntu Mono';
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 5.2ch;
+    margin-bottom: 1.5ex;
+    display: block;
+    text-align: left;
+    width: 9ch;
+    color: darkred;
+}
+
+#csslogo:before
+{
+    content: "\A     ^      \A    ———    \A   —(o)—   \A  ———————  \A ————————— \A";
+}
+
 pre#linkbar
 {
     white-space: pre;
-    background: #202020;
-    margin-left: -1ch;
+    position: fixed;
+    float: left;
+    width: 15ch;
+    margin-left: -16ch;
     margin-right: -1ch;
-    text-align: center;
-    font-family: inherit; padding: 4px; margin-top: 2ex; font-size: 80%;
-    overflow: hidden;
+    margin-top: -12ex;
+    text-align: right;
+    font-family: inherit;
+    padding: 4px;
+    overflow: visible;
 }
 
-@media ( max-width: 70ch ), ( max-device-width: 70ch )
+pre#linkbar > a
 {
-    pre#linkbar { white-space: normal; }
-    #linkbar a { margin-left: .7em !important; margin-right: .6em !important; }
+    display: block;
+    margin-bottom: -2.5ex;
+    margin-right: 3ch;
+    padding: 1px;
+    padding-top: 2px;
+    padding-bottom: 3px;
+}
+
+@media ( min-width: 620px ), ( min-device-width: 620px )
+{
+    #linkbar a:hover
+    {
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding: 1px;
+        padding-bottom: 2px;
+    }
+}
+
+#content
+{
+    min-height: 25ex;
 }
 
 div#footer
 {
-    font-family: inherit; padding: 4px; margin-top: 2ex; font-size: 80%;
-    background: #202020;
-    text-align: center;
-    color: white;
-    margin-top: 16px;
+    font-family: inherit;
+    margin-top: -8.5ex;
     margin-bottom: 16px;
-    margin-left: -1ch;
-    margin-right: -1ch;
+    margin-left: -13.3ch;
+    padding-left: .2em;
+    text-align: right;
+    float: left;
+    position: absolute;
 }
 
 #footer .divider { margin-left: .5em; margin-right: .5em; }
 
-#linkbar a { margin-left: 1em; margin-right: 1em; }
-#linkbar a:link, #linkbar a:visited { color: white; }
-#linkbar a:link:hover, #linkbar a:visited:hover { color: pink; }
-#footer a:link, #footer a:visited { color: white; }
-#footer a:link:hover, #footer a:visited:hover { color: pink; }
+#linkbar a:link, #linkbar a:visited { color: black; }
+#footer a:link, #footer a:visited { color: black; }
+#footer a:link:hover, #footer a:visited:hover { color: darkblue; }
 
 h1
 {
@@ -135,9 +171,45 @@ h2, h3
     font-weight: normal;
 }
 
+@media ( max-width: 80ch ), ( max-device-width: 80ch )
+{
+    body
+    {
+        margin: 1ch;
+        max-width: none;
+    }
+}
+
+@media ( max-width: 750px ), ( max-device-width: 750px )
+{
+    pre#logo { transform: scaleX( 1 ) scaleY( 0.8 ); }
+}
+
+@media ( max-width: 620px ), ( max-device-width: 620px )
+{
+    pre#logo
+    {
+        transform: scaleX( 0.6 ) scaleY( 0.6 );
+        position: relative;
+        left: 50%;
+        margin-left: -19.2ch;
+    }
+    #logo-wrapper { height: 6ex; text-align: center; }
+    pre#linkbar { position: static; margin-left: 0;
+                  white-space: normal; margin-top: .5ex;
+                  font-size: 80%;
+                  float: none; width: 100%; text-align: center; }
+    pre#linkbar > a { display: inline; }
+    #body { margin: 1ch; padding: 0; border-left: none; }
+    #title { margin: 0; }
+    span.eye { display: inline; }
+    #csslogo:before { content: "" !important; }
+    #csslogo { margin: 0 !important; }
+}
+
 .invisible { display: none; }
 
-.anon { line-height: 13px; }
+.anon { line-height: 13px; display: block; }
 .slashx { transform: translate(-1px) rotate(-48deg) scaleY(1.6); display: inline-block; }
 .slash { transform: translateX(-1px) rotate(-51deg) scaleY(1.6); display: inline-block; }
 .fslash { transform: translateX(1px) rotate(48deg) scaleY(1.6); display: inline-block; }
@@ -220,13 +292,13 @@ span.test-passed  { color: green; }
 span.test-failed  { color: red; }
 span.test-skipped { color: gray; }
 td.test-long      { text-align: center; }
-td.test a         { color: white; padding: 4px; }
+td.test a         { padding: 4px; }
 
-td.test-passed, a.test-passed           { background-color: green; }
-td.test-failed, a.test-failed           { background-color: red; }
-td.test-skipped, a.test-skipped         { background-color: gray; }
-td.test-started, a.test-started         { background-color: black; }
-td.test-interrupted, a.test-interrupted { background-color: #999900; }
+td.test-passed, a.test-passed           { color: black; }
+td.test-failed, a.test-failed           { background-color: darkred; color: white; }
+td.test-skipped, a.test-skipped         { color: black; }
+td.test-started, a.test-started         { color: black; }
+td.test-interrupted, a.test-interrupted { background-color: #999900; color: white; }
 
 table.test-compact td.test-name
 {
@@ -238,6 +310,7 @@ table.test-full td.test { padding-right: 2em; }
 table.test-compact div  { border-bottom: 1px dotted black; }
 td.test-name div { border-top: 1px dotted black; border-bottom: none; }
 tr:nth-child(1) td.test-name div { border-top: none; border-bottom: none; }
+tr:last-of-type div { border-bottom: none; }
 
 td.test-compact a.test
 {
@@ -246,9 +319,6 @@ td.test-compact a.test
     height: 1em;
     text-align: center;
     padding: 0px 3px 5px 3px;
-    color: white;
-    border-top: 1px dotted black;
-    border-right: 1px dotted black;
 }
 
 td.test-compact a.test-failed
@@ -257,8 +327,11 @@ td.test-compact a.test-failed
     padding: 1px 3px 4px 3px;
 }
 
-td.test-compact a.test:hover { color: #AAAAAA; }
-
 td.test-compact div { margin-bottom: -1px; }
-td.test-compact     { background-color: #DDDDDD; }
-div.test-compact    { border-bottom: 1px solid black; border-top: 1px solid black; }
+
+/* webkit hacks :( */
+@media screen and (-webkit-min-device-pixel-ratio:0)
+{
+    #linkbar-spacer { margin-top: 3ex; }
+    div#footer { margin-top: -8ex; margin-left: -14ch; }
+}
