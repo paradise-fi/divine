@@ -169,59 +169,26 @@ DIVINE's operating system, and by runtime libraries (including C and C++
 standard libraries and `pthreads`). The behaviour of this runtime can be configured
 using the `-o` option. To get the list of options, run `divine info program.c`:
 
-```
-$ divine info program.c
-compiling program.c
+    $ divine info program.c
+    compiling program.c
 
-DIVINE 4.0.5
+    DIVINE 4.0.22
 
-Available options for program.c are:
-I: DiOS boot info:
-I:   help:
-I:     supported commands:
-I:       - "debug":
-I:           description: print debug information during boot
-I:           arguments:
-I:             - help - help and exit
-I:             - machineparams - specified by user, e.g. number of cpus
-I:             - mainargs - argv and envp
-I:             - faultcfg - fault and simfail configuration
-I:       - "{trace|notrace}":
-I:           description: report/not report item back to VM
-I:           arguments:
-I:             - threads - thread info during execution
-I:       - "[force-]{ignore|report|abort}":
-I:           description: configure fault, force disables program override
-I:           arguments:
-I:             - assert
-I:             - arithmetic
-I:             - memory
-I:             - control
-I:             - locking
-I:             - hypercall
-I:             - notimplemented
-I:             - diosassert
-I:       - "{nofail|simfail}":
-I:           description: enable/disable simulation of failure
-I:           arguments:
-I:             - malloc
-I:       - "ncpus":
-I:           description: specify number of cpu units (default 0)
-I:           arguments:
-I:             - <num>
-I:       - "{stdout|stderr}":
-I:           description: specify how to treat program output
-I:           arguments:
-I:             - notrace - ignore the stream
-I:             - unbuffered - trace each write
-I:             - trace - trace after each newline (default)
-I:       - "syscall":
-I:           description: specify how to treat standard syscalls
-I:           arguments:
-I:             - simulate - simulate syscalls, use virtual file system (can be used with verify and run)
-I:             - passthrough - use syscalls from the underlying host OS (cannot be used with verify)
-use -o {option}:{value} to pass these options to the program
-```
+    Available options for test/c/2.trivial.c are:
+    - [force-]{ignore|report|abort}: configure the fault handler
+      arguments:
+       - assert
+       - arithmetic
+       - memory
+    [...]
+    - config: run DiOS in a given configuration
+      arguments:
+       - default: async threads, processes, vfs
+       - passthrough: pass syscalls to the host OS
+       - replay: re-use a trace recorded in passthrough mode
+       - synchronous: for use with synchronous systems
+    [...]
+    use -o {option}:{value} to pass these options to the program
 
 It is often convenient to assume that malloc never fails: this can be achieved by
 passing the `-o nofail:malloc` option to DiOS. Other important options are those controlling
