@@ -1,2 +1,5 @@
-% DIVINE: The Parallel & Distributed Model Checker
-% Luboš Brim; Jiří Barnat; Tomáš Janoušek; Petr Ročkai
+---
+title: DIVINE 4
+author: [ Petr Ročkai, Vladimír Štill, Jan Mrázek, Henrich Lauko, Zuzana Baranová ]
+papersize: A4
+...
