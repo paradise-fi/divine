@@ -58,7 +58,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy ${INSTALL_VM_SH} install-vm.sh
   VERBATIM )
 
-page( whatsnew.html .. "--toc" NEWS )
+page( whatsnew.html .. "--toc --toc-depth 1" NEWS )
 page( roadmap.html .. "" ROADMAP )
 page( manual.html ../manual "${MANUAL_OPT}" ${MANUAL_SRC} )
 pages( . download.md index.md status.md previously.md )
