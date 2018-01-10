@@ -24,7 +24,7 @@ for ( @$bib )
     $book = "In *$book*, " if ( $book );
     $note = " $note" if ( $note );
 
-    $sorted{$year} .= "$authors: **$title**. $book$publisher$year$coll.$note\n\n";
+    $sorted{$year} .= "$authors: $title. $book$publisher$year$coll.$note\n\n";
 }
 
 my $biburl = $ARGV[0];
