@@ -24,22 +24,29 @@ however, that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have been
 discontinued and the 3.x branch of DIVINE is no longer actively maintained
 either.
 
+Linux Binaries
+--------------
+
+Since building DIVINE can be a time-consuming process, we provide
+pre-built [static binaries] [9] for Linux on `amd64` / `x86_64`. If you are not
+running Linux, you can instead try one of the VM images below.
+
 Virtual Machine Images
 ----------------------
 
-Since building DIVINE can be a time-consuming process, we provide pre-built VM
-images for quick evaluation. You can download the latest image, either in form
-of an [OVA Appliance] [7] (tested with VirtualBox), or [compressed VDI disk
-image] [8] (tested with QEMU and VirtualBox, has to be extracted first, for
-example using `unxz`). If you choose the VDI image, be sure to include serial
-port in the configuration of the VM (it need not be connected) as the VM will
-not start otherwise.
+In addition to static binaries, we provide pre-built VM images (again for
+`amd64`/`x86_46` processors). You can download the latest image in the form of
+an [OVA Appliance] [7] (tested with VirtualBox), or
+a [compressed VDI disk image] [8] (tested with QEMU and VirtualBox; has to be
+extracted first, for example using `unxz`). If you choose the VDI image, please
+make sure to include a serial port in the configuration of the VM (it need not
+be connected) as the VM will not boot otherwise.
 
-The easiest way to use the OVA Appliance is to import it to VirtualBox and add a
-VirtualBox shared folder (machine's settings → shared folders) named
+The easiest way to use the OVA Appliance is to import it to VirtualBox and add
+a VirtualBox shared folder (machine's settings → shared folders) named
 `divine-vbox` and then start the machine. It should then automatically mount
-this folder to `/mnt/divine-vbox` and you can run DIVINE on files in this folder
-(and edit them in your editor of choice outside of VirtualBox).
+this folder to `/mnt/divine-vbox` and you can run DIVINE on files in this
+folder (and edit them in your editor of choice outside of VirtualBox).
 
 Some [older VM images](download/images/) are also available.
 
@@ -51,3 +58,4 @@ Some [older VM images](download/images/) are also available.
 [6]: download/snapshots/
 [7]: download/images/divine-@version@.ova
 [8]: download/images/divine-@version@.vdi.xz
+[9]: download/static-amd64-linux/
