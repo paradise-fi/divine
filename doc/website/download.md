@@ -7,7 +7,7 @@ distribution for co­pyright and licensing details.
 Download
 ========
 
-The latest release of DIVINE is **4.0**, available as a source tarball:
+The latest release of DIVINE is **4.1**, available as a source tarball:
 [divine-@version@.tar.gz](download/divine-@version@.tar.gz). You can also download
 [nightly snapshots] [6] or fetch the source code from our version control
 repository (you may need to install [darcs] [3]):
