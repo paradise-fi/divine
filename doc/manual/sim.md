@@ -144,7 +144,7 @@ The `call` command works like this:
     > call print_hello
       hello world
 
-Finally, the `info` command serves as an universal information gathering alias
+Finally, the `info` command serves as a universal information gathering alias
 -- you can set up your own commands that then become available as `info`
 sub-commands:
 

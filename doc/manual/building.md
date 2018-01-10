@@ -13,8 +13,6 @@ virtual machine image with pre-built DIVINE.
 Prerequisites
 -------------
 
-### Automatic Installation
-
 If you use recent Ubuntu, Fedora or Arch Linux (or possibly another distribution
 which uses `apt-get`, `yum` or `pacman` as a package manager) the easiest way to
 get dependencies of DIVINE is to run `make prerequisites` in the directory with
@@ -24,15 +22,13 @@ the sources (you will need to have `make` installed):
     $ cd divine-@version@
     $ make prerequisites
 
-### Manual Installation
-
 Otherwise, to build DIVINE, you will need the following:
 
 * A POSIX-compatible operating system,
-* Make,
+* `make` (tested with BSD and GNU),
 * GNU C++ (4.9 or newer) or clang (3.2 or newer),
 * CMake \[[www.cmake.org](http://www.cmake.org)\] 3.2 or newer,
-* libedit \[[thrysoee.dk/editline](http://thrysoee.dk/editline/)\],
+* `libedit` \[[thrysoee.dk/editline](http://thrysoee.dk/editline/)\],
 * about 12GB of disk space and 4GB of RAM (18GB for both release and debug
   builds),
 

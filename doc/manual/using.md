@@ -101,7 +101,7 @@ identifier (in hexadecimal, assigned by the VM) is `295cbfc3`; the offset
 (again in hexadecimal) is `10` and the value is a defined pointer (`ddp`,
 i.e. it is not an uninitialised value).
 
-### Debugging Counterexamples with the Interactive Simulator
+## Debugging Counterexamples with the Interactive Simulator
 
 Now that we have found a bug in our program, it might be useful to inspect the
 error in more detail. For this, we can use DIVINE's simulator.
@@ -162,7 +162,7 @@ at `x[4]` is clearly out of bounds.
 More details about the simulator can be found in the section
 on [interactive debugging](#sim).
 
-### Controlling the Execution Environment
+## Controlling the Execution Environment
 
 Programs in DIVINE run in an environment provided by [DiOS](#dios),
 DIVINE's operating system, and by runtime libraries (including C and C++
@@ -201,28 +201,25 @@ program by appending them after the name of the source file (e.g. `divine verify
 program.c main-arg-1 main-arg-2`), and to add environment variables for the
 program using the `-DVAR=VALUE` option.
 
-
-### Compilation Options and Compilation of Multiple Files
+## Compilation Options and Compilation of Multiple Files
 
 Supposing you wish to verify something that is not just a simple C program,
 you may have to pass compilation options to DIVINE. In some cases, it is sufficient
 to pass the following options to `divine verify`:
 
-*   `-std=<version>`, (e.g. `-std=c++14`) option sets the standard of C/C++ to
-    be used and is directly forwarded to the compiler;
+ * `-std=<version>`, (e.g. `-std=c++14`) option sets the standard of C/C++ to
+   be used and is directly forwarded to the compiler;
 
-*   other options can be passed using the `-C` option, i.e. `-C,-O3` to enable
-    optimizations, or `-C,-I,include-path` to add `include-path` to the
-    directories in which compiler looks for header files.
+ * other options can be passed using the `-C` option, i.e. `-C,-O3` to enable
+   optimisation, or `-C,-I,include-path` to add `include-path` to the
+   directories in which compiler looks for header files.
 
 However, if you need to pass more options or if your program consists of more
 than one source file, it might be more practical to compile it to LLVM bitcode
 first and pass this bitcode to `divine verify`:
 
-```{,bash}
-$ divine cc -Iinclude-path -O1 -std=c++14 -DFOO=bar program.c other.c
-$ divine verify program.bc
-```
+    $ divine cc -Iinclude-path -O1 -std=c++14 -DFOO=bar program.c other.c
+    $ divine verify program.bc
 
 `divine cc` is a wrapper for the clang compiler and it is possible to pass most
 of clang's options to it directly.
