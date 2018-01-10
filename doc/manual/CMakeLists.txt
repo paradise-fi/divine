@@ -1,14 +1,17 @@
 set( SOURCES title.md ${MANUAL_SRC} )
+set( SRCDIR ${CMAKE_CURRENT_SOURCE_DIR} )
+set( BINDIR ${CMAKE_CURRENT_BINARY_DIR} )
 
-if( PDFLATEX AND BIBTEX )
+if( CONTEXT )
   add_custom_command(
     OUTPUT manual.pdf
-    DEPENDS ${SOURCES}
+    DEPENDS ${SOURCES} ${SRCDIR}/../panmd.pl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND pandoc --latex-engine=${PDFLATEX} --smart -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.pdf ${SOURCES}
+    COMMAND perl ${SRCDIR}/../panmd.pl version=${DIVINE_VERSION} ${MANUAL_OPT}
+            --to=context --output=${BINDIR}/manual.pdf ${SOURCES}
     VERBATIM
   )
-  #set( PDFMAN "manual.pdf" )
+  set( PDFMAN "manual.pdf" )
 endif()
 
 if( GUI AND QCOLLECTIONGENERATOR_EXECUTABLE )

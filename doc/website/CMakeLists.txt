@@ -11,10 +11,10 @@ macro( page to srcdir opts )
 
   add_custom_command(
     OUTPUT ${out}
-    DEPENDS ${sources} template.html ${SRCDIR}/../md2html.pl
+    DEPENDS ${sources} template.html ${SRCDIR}/../panmd.pl
     WORKING_DIRECTORY ${SRCDIR}
-    COMMAND perl ${SRCDIR}/../md2html.pl
-            version=${DIVINE_VERSION} opts=${opts} ${sources}
+    COMMAND perl ${SRCDIR}/../panmd.pl --to=html ${opts}
+            version=${DIVINE_VERSION} ${sources}
             | sed -e "s,:DIVINE:,<span class=\"divine\">DIVINE</span>,g" > ${out}
     VERBATIM
   )
@@ -60,7 +60,7 @@ add_custom_command(
 
 page( whatsnew.html .. "--toc" NEWS )
 page( roadmap.html .. "" ROADMAP )
-page( manual.html ../manual "--toc -N ${MANUAL_OPT}" ${MANUAL_SRC} )
+page( manual.html ../manual "${MANUAL_OPT}" ${MANUAL_SRC} )
 pages( . download.md index.md status.md previously.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html install.sh install-vm.sh )
