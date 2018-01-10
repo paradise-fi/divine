@@ -61,6 +61,6 @@ add_custom_command(
 page( whatsnew.html .. "--toc" NEWS )
 page( roadmap.html .. "" ROADMAP )
 page( manual.html ../manual "--toc -N ${MANUAL_OPT}" ${MANUAL_SRC} )
-pages( . download.md index.md status.md )
+pages( . download.md index.md status.md previously.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html install.sh install-vm.sh )
