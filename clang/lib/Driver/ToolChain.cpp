@@ -453,6 +453,7 @@ void ToolChain::AddCXXStdlibLibArgs(const ArgList &Args,
   case ToolChain::CST_Libcxx:
     CmdArgs.push_back("-lc++");
     CmdArgs.push_back("-lc++abi");
+    CmdArgs.push_back("-lpthread");
     break;
 
   case ToolChain::CST_Libstdcxx:
