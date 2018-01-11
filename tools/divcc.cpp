@@ -247,8 +247,9 @@ int main( int argc, char **argv )
             if ( srcFile.is< cc::File >() )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
-                std::string ofn = po.outputFile != "" ? po.outputFile
-                    : brick::fs::dropExtension( ifn ) + ".o";
+                std::string ofn = brick::fs::dropExtension( ifn );
+                if ( po.outputFile != "" ) ofn += ".temp";
+                ofn += ".o";
 
                 objFiles.emplace_back( ifn, ofn );
             }
@@ -279,7 +280,6 @@ int main( int argc, char **argv )
                     continue;
                 }
                 std::string ofn = file.second;
-                ofn.insert( ofn.length()-2, ".temp" );
                 auto mod = clang.compileModule( file.first, po.opts );
                 emitObjFile( *mod, ofn );
                 s += ofn + " ";
@@ -296,7 +296,6 @@ int main( int argc, char **argv )
             if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                 continue;
             std::string ofn = file.second;
-            ofn.insert( ofn.length()-2, ".temp" );
             unlink( ofn.c_str() );
         }
 
