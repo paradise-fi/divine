@@ -4,6 +4,7 @@
 
 DIVINE_RELAX_WARNINGS
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/BasicTTIImpl.h"
@@ -20,14 +21,17 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ELF.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm-c/Object.h"
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-fs>
@@ -128,7 +132,8 @@ bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
 
 int emitObjFile( Module &m, std::string filename )
 {
-    auto TargetTriple = sys::getDefaultTargetTriple();
+    //auto TargetTriple = sys::getDefaultTargetTriple();
+    auto TargetTriple = "x86_64-unknown-none-elf";
 
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargets();
@@ -195,6 +200,59 @@ bool isType( std::string file, cc::Compiler::FileType type )
 {
     return cc::Compiler::typeFromFile( file ) == type;
 }
+
+int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::Compiler& clang )
+{
+    using FileType = cc::Compiler::FileType;
+    using namespace brick::types;
+    std::vector< std::unique_ptr< llvm::Module > > llvm_modules;
+    std::unique_ptr< cc::Compile > compil = std::unique_ptr< cc::Compile >( new cc::Compile( clang.context() ) );
+    compil->setupFS( rt::each );
+
+    for ( auto file : files )
+    {
+        if ( !isType( file.second, FileType::Obj ) && !isType( file.second, FileType::Archive ) )
+            continue;
+        //TODO archives made of many objects
+
+        ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( file.second );
+        if ( !buf ) return 1;
+
+        ErrorOr< std::unique_ptr< llvm::object::ObjectFile > > fil =
+                object::ObjectFile::createObjectFile( (*buf.get()).getMemBufferRef() );
+        if ( !fil ) return 2;
+
+        for ( auto& sec : (fil.get())->sections() )
+        {
+            StringRef name, content;
+            sec.getName( name );
+            if ( name == bcsec )
+            {
+                sec.getContents( content );
+                llvm_modules.push_back( clang.materializeModule( content ) );
+                break;
+            }
+        }
+    }
+
+    ASSERT( !llvm_modules.empty() );
+
+    for ( auto& m : llvm_modules )
+    {
+       m->setTargetTriple( "x86_64-unknown-none-elf" );
+       verifyModule( *m );
+       compil->linkModule( std::move( m ) );
+    }
+
+    compil->linkEssentials();
+    compil->linkLibs( cc::Compile::defaultDIVINELibs );
+
+    auto m = compil->getLinked();
+    brick::llvm::writeModule( m, "linked.bc" );
+
+    return 0;
+}
+
 
 /* usage: same as gcc */
 int main( int argc, char **argv )
@@ -266,6 +324,8 @@ int main( int argc, char **argv )
                 auto mod = clang.compileModule( file.first, po.opts );
                 emitObjFile( *mod, file.second );
             }
+
+            llvmExtract( objFiles, clang );
             return 0;
         }
         else
@@ -290,6 +350,8 @@ int main( int argc, char **argv )
             s.append( " -static" );
             ret = WEXITSTATUS( system( s.c_str() ) );
         }
+
+        llvmExtract( objFiles, clang );
 
         for ( auto file : objFiles )
         {
