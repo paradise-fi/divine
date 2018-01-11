@@ -67,6 +67,7 @@ struct Compile
 
     void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );
     void linkLib( std::string lib, std::vector< std::string > searchPaths = {} );
+    void linkEntireArchive( std::string arch );
     void linkEssentials();
 
     static const std::vector< std::string > defaultDIVINELibs;

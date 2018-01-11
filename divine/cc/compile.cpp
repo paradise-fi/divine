@@ -271,13 +271,16 @@ void Compile::linkLib( std::string lib, std::vector< std::string > searchPaths )
     linker->linkArchive( archive );
 }
 
-void Compile::linkEssentials() {
-    for ( auto e : { "dios", "abstract" } ) {
-        auto archive = getLib( e );
+void Compile::linkEntireArchive( std::string arch ) {
+        auto archive = getLib( arch );
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             linker->link( it.take() );
-    }
+}
+
+void Compile::linkEssentials() {
+    for (auto arch : { "dios", "abstract" } )
+        linkEntireArchive( arch );
     // the _link_essentials modules are built from divine.link.always annotations
     for ( auto e : defaultDIVINELibs ) {
         auto archive = getLib( e );
