@@ -241,6 +241,10 @@ void Compile::linkLibs( std::vector< std::string > ls, std::vector< std::string 
         linkLib( lib, searchPaths );
 }
 
+void Compile::linkModule( ModulePtr mod ) {
+   linker->link( std::move( mod ) );
+}
+
 brick::llvm::ArchiveReader Compile::getLib( std::string lib, std::vector< std::string > searchPaths ) {
     using namespace brick::fs;
 
