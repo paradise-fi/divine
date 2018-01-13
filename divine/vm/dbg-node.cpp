@@ -312,9 +312,9 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _address.type() == PointerType::Marked )
     {
-        std::stringstream out, key;
-        std::unordered_set< int > inputs;
-        FormulaMap map( _ctx.heap(), "", inputs, out );
+        std::stringstream out;
+        std::unordered_set< int > indices;
+        SMTLibFormulaMap map( _ctx.heap(), indices, out );
         map.convert( _address );
         yield( "formula", out.str() );
     }

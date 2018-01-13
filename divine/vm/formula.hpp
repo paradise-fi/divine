@@ -28,19 +28,27 @@ namespace divine::vm
 
 namespace smt = brick::smt;
 
-struct FormulaMap
-{
-    sym::Formula *hp2form( HeapPointer ptr )
-    {
+struct FormulaMap {
+    FormulaMap( CowHeap &heap, std::string suff )
+       : heap( heap ), suff( suff )
+    {}
+
+    sym::Formula *hp2form( HeapPointer ptr ) {
         return reinterpret_cast< sym::Formula * >( heap.unsafe_bytes( ptr ).begin() );
     }
 
-    FormulaMap( CowHeap &heap, std::string suff, std::unordered_set< int > &inputs, std::ostream &out )
-        : heap( heap ), inputs( inputs ), suff( suff ), out( out )
-    { }
+    CowHeap &heap;
+    std::string suff;
+    std::unordered_set< HeapPointer > pcparts;
+};
 
-    static smt::Printer type( int bitwidth )
-    {
+struct SMTLibFormulaMap : FormulaMap {
+    SMTLibFormulaMap( CowHeap &heap, std::unordered_set< int > &indices,
+                      std::ostream &out, std::string suff = "" )
+        : FormulaMap( heap, suff ), indices( indices ), out( out )
+    {}
+
+    static smt::Printer type( int bitwidth ) {
         return bitwidth == 1 ? smt::type( "Bool" ) : smt::bitvecT( bitwidth );
     }
 
@@ -63,12 +71,9 @@ struct FormulaMap
             << std::endl;
     }
 
-    CowHeap &heap;
     std::unordered_map< HeapPointer, std::string > ptr2Sym;
-    std::unordered_set< HeapPointer > pcparts;
-    std::unordered_set< int > &inputs;
-    std::string suff;
     int valcount = 0;
+    std::unordered_set< int > &indices;
     std::ostream &out;
 };
 

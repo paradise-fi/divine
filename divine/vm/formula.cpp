@@ -24,7 +24,7 @@ namespace divine::vm
 
 using namespace std::literals;
 
-std::string_view FormulaMap::convert( HeapPointer ptr )
+std::string_view SMTLibFormulaMap::convert( HeapPointer ptr )
 {
     auto it = ptr2Sym.find( ptr );
     if ( it != ptr2Sym.end() )
@@ -38,7 +38,7 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
         case sym::Op::Variable:
         {
             it = ptr2Sym.emplace( ptr, "var_"s + std::to_string( formula->var.id ) ).first;
-            if ( inputs.insert( formula->var.id ).second )
+            if ( indices.insert( formula->var.id ).second )
                 out << smt::declareFun( it->second, {}, type( bw ) )
                     << " ";
             return it->second;

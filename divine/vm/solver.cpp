@@ -50,9 +50,10 @@ Result SMTLibSolver::query( const std::string & formula ) const
 
 Result SMTLibSolver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) const
 {
-    std::unordered_set< int > inputs;
+    using FormulaMap = SMTLibFormulaMap;
     std::stringstream formula;
-    FormulaMap m1( h1, "_1", inputs, formula ), m2( h2, "_2", inputs, formula );
+    std::unordered_set< int > indices;
+    FormulaMap m1( h1, indices, formula, "_1" ), m2( h2, indices, formula, "_2" );
 
     for ( auto p : sym_pairs ) {
         m1.convert( p.first );
@@ -103,9 +104,10 @@ Result SMTLibSolver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) cons
 
 Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
 {
-    std::unordered_set< int > inputs;
+    using FormulaMap = SMTLibFormulaMap;
     std::stringstream formula;
-    FormulaMap map( heap, "", inputs, formula );
+    std::unordered_set< int > indices;
+    FormulaMap map( heap, indices, formula );
 
     while ( !assumes.null() )
     {
