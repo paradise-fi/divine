@@ -201,7 +201,7 @@ struct Program
         if ( !valid( pc ) )
             return pc;
         auto op = instruction( pc ).opcode;
-        if ( valid( pc + 1 ) && op == lx::OpBB )
+        if ( valid( pc + 1 ) && ( op == lx::OpBB || op == lx::OpDbg ) )
             return nextpc( pc + 1 );
         return pc;
     }
