@@ -129,6 +129,7 @@ set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) 
 find_package( Perl )
 find_package( ODBC )
 find_package( PkgConfig )
+find_package( Z3 REQUIRED )
 
 if ( NOT CMAKE_BUILD_TYPE )
   set( CMAKE_BUILD_TYPE "Release"
