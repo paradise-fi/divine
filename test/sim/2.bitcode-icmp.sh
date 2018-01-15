@@ -12,7 +12,7 @@ sim file.cpp <<EOF
 - ^# executing
 + ^# executing main at
 > bitcode
-+ >>.*dbg.declare
-+ icmp\.sge.*\[i32 0 d]
++ .*dbg.declare
++ >>.*icmp\.sge.*\[i32 0 d]
 + ret
 EOF
