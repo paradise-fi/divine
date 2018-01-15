@@ -226,4 +226,28 @@ std::string_view SMTLibFormulaMap::convert( HeapPointer ptr )
     return ptr2Sym.emplace( ptr, name ).first->second;
 }
 
+using Formula = sym::Formula;
+
+namespace {
+    z3::expr toz3( const Formula &, z3::context & ) {
+        try {
+            // TODO
+            NOT_IMPLEMENTED();
+        }
+        catch ( const z3::exception &e ) {
+            std::cerr << "toz3: invalid formula " << std::endl;
+            throw e;
+        }
+    }
+} // anonymous namespace
+
+z3::expr Z3FormulaMap::convert( HeapPointer ptr ) {
+    auto it = ptr2Sym.find( ptr );
+    if ( it != ptr2Sym.end() )
+        return it->second;
+
+    auto formula = toz3( *hp2form( ptr ), context );
+    return ptr2Sym.emplace( ptr, formula ).first->second;
+}
+
 }

@@ -22,6 +22,7 @@
 #include <divine/vm/heap.hpp>
 #include <runtime/abstract/formula.h>
 #include <brick-smt>
+#include <z3++.h>
 
 namespace divine::vm
 {
@@ -75,6 +76,18 @@ struct SMTLibFormulaMap : FormulaMap {
     int valcount = 0;
     std::unordered_set< int > &indices;
     std::ostream &out;
+};
+
+
+struct Z3FormulaMap : FormulaMap {
+    Z3FormulaMap( CowHeap &heap, z3::context &c, std::string suff = "" )
+        : FormulaMap( heap, suff ), context( c )
+    {}
+
+    z3::expr convert( HeapPointer ptr );
+
+    std::unordered_map< HeapPointer, z3::expr > ptr2Sym;
+    z3::context &context;
 };
 
 }

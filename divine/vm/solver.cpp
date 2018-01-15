@@ -122,5 +122,15 @@ Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
     return query( formula.str() );
 }
 
+Result Z3Solver::equal( SymPairs &, CowHeap &, CowHeap & )
+{
+    return Result::Unknown;
+}
+
+Result Z3Solver::feasible( CowHeap &, HeapPointer )
+{
+    return Result::Unknown;
+}
+
 } // namespace vm
 } // namespace divine

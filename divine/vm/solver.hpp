@@ -22,6 +22,7 @@
 #include <divine/vm/formula.hpp>
 
 #include <vector>
+#include <z3++.h>
 
 namespace divine::vm
 {
@@ -74,6 +75,24 @@ struct Z3SMTLibSolver : SMTLibSolver
 struct BoolectorSMTLib : SMTLibSolver
 {
     BoolectorSMTLib() : SMTLibSolver( Config( { "boolector", "--smt2" } ) ) {}
+};
+
+
+struct Z3Solver : Solver {
+    using Solver::Solver;
+
+    Z3Solver( Config && cfg )
+        : Solver( std::move( cfg ) ), solver( ctx ), params( ctx )
+    {
+        solver.set( params );
+    }
+
+    Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 );
+    Result feasible( CowHeap & heap, HeapPointer assumes );
+private:
+    z3::context ctx;
+    z3::solver solver;
+    z3::params params;
 };
 
 struct SymbolicConfig
