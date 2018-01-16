@@ -105,6 +105,11 @@ struct YamlSink : TimedSink
              << "state count: " << stat.first << std::endl;
 
         if ( !_detailed )
+            _out << std::setprecision( 2 );
+
+        _out << "mips: " << timeavg( stat.second / 1000000.0, _time_search ) << std::endl;
+
+        if ( !_detailed )
             return;
 
         _out << std::endl << "version: " << version()
@@ -195,9 +200,10 @@ struct InteractiveSink : TimedSink
                       << std::flush;
         else
             std::cerr << "\rsearching: " << stat.first
-                      << " states found in " << interval_str( interval() )
-                      << ", averaging " << timeavg_str( stat.first, interval() )
-                      << "/s, queued: " << queued << "          ";
+                      << " states in " << interval_str( interval() )
+                      << ", avg " << timeavg_str( stat.first, interval() )
+                      << "/s @ " << timeavg_str( stat.second / 1000000.0, interval() )
+                      << " mips, queued: " << queued << "          ";
     }
 
     void loader( Phase p ) override
