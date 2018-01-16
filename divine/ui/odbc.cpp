@@ -174,15 +174,15 @@ struct ODBCSink : TimedSink
         _execution = odbc::add_execution( bp, _conn );
     }
 
-    void progress( int states, int queued, bool last ) override
+    void progress( std::pair< int64_t, int64_t > stat, int queued, bool last ) override
     {
-        TimedSink::progress( states, queued, last );
+        TimedSink::progress( stat, queued, last );
         ASSERT_LEQ( 0, _execution );
         Keys keys{ "seq", "execution", "states", "queued" };
-        Vals vals{ _prog_seq++, _execution, states, queued };
+        Vals vals{ _prog_seq++, _execution, stat.first, queued };
         auto ins = odbc::insert( _conn, "search_log", keys, vals );
         nanodbc::execute( ins );
-        _states = states;
+        _states = stat.first;
     }
 
     void log_pool( const brick::mem::Stats &st, int pid )

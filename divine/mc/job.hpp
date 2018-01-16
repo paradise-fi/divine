@@ -45,8 +45,8 @@ struct Job : ss::Job
 {
     std::shared_ptr< brick::shmem::ThreadBase > _monitor_loop;
     std::function< void( bool ) > _monitor;
-    std::function< int64_t() > statecount = []() { return 0; };
-    std::function< int64_t() > queuesize =  []() { return 0; };
+    std::function< std::pair< int64_t, int64_t >() > stats = []() { return std::make_pair( 0, 0 ); };
+    std::function< int64_t() > queuesize = []() { return 0; };
     std::shared_ptr< ss::Job > _search;
 
     template< typename Monitor >

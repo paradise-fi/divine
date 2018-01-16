@@ -35,7 +35,7 @@ struct CompositeSink : LogSink
             l( sink );
     }
 
-    void progress( int x, int y, bool l ) override
+    void progress( std::pair< int64_t, int64_t > x, int y, bool l ) override
     { each( [&]( auto s ) { s->progress( x, y, l ); } ); }
 
     void memory( const mc::Job::PoolStats &st, bool l ) override
@@ -94,15 +94,15 @@ struct YamlSink : TimedSink
 
     YamlSink( std::ostream &o, bool detailed ) : _detailed( detailed ), _out( o ) {}
 
-    void progress( int states, int q, bool last ) override
+    void progress( std::pair< int64_t, int64_t > stat, int q, bool last ) override
     {
-        TimedSink::progress( states, q, last );
+        TimedSink::progress( stat, q, last );
 
         if ( !last )
             return;
 
-        _out << "states per second: " << timeavg( states, _time_search ) << std::endl
-             << "state count: " << states << std::endl;
+        _out << "states per second: " << timeavg( stat.first, _time_search ) << std::endl
+             << "state count: " << stat.first << std::endl;
 
         if ( !_detailed )
             return;
@@ -186,17 +186,17 @@ struct YamlSink : TimedSink
 /* print progress updates to stderr */
 struct InteractiveSink : TimedSink
 {
-    virtual void progress( int states, int queued, bool last ) override
+    virtual void progress( std::pair< int64_t, int64_t > stat, int queued, bool last ) override
     {
-        TimedSink::progress( states, queued, last );
+        TimedSink::progress( stat, queued, last );
         if ( last )
             std::cerr << "\r                                     "
                       << "                                     \r"
                       << std::flush;
         else
-            std::cerr << "\rsearching: " << states
+            std::cerr << "\rsearching: " << stat.first
                       << " states found in " << interval_str( interval() )
-                      << ", averaging " << timeavg_str( states, interval() )
+                      << ", averaging " << timeavg_str( stat.first, interval() )
                       << "/s, queued: " << queued << "          ";
     }
 

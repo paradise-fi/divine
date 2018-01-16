@@ -30,7 +30,7 @@ using DbgContext = vm::dbg::Context< vm::CowHeap >;
 
 struct LogSink
 {
-    virtual void progress( int, int, bool ) {}
+    virtual void progress( std::pair< int64_t, int64_t >, int, bool ) {}
     virtual void memory( const mc::Job::PoolStats &, bool ) {}
     virtual void loader( Phase ) {}
     virtual void info( std::string, bool = false ) {}
@@ -83,7 +83,7 @@ struct TimedSink : LogSink
     void start() override { _time_boot = reset_interval(); }
     void result( mc::Result, const mc::Trace & ) override { _time_ce = reset_interval(); }
 
-    void progress( int, int, bool last ) override
+    void progress( std::pair< int64_t, int64_t >, int, bool last ) override
     {
         if ( last )
             _time_search = reset_interval();

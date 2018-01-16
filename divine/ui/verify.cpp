@@ -105,7 +105,7 @@ void Verify::safety()
 
     safety->start( _threads, [&]( bool last )
                    {
-                       _log->progress( safety->statecount(),
+                       _log->progress( safety->stats(),
                                        safety->queuesize(), last );
                        _log->memory( safety->poolstats(), last );
                        if ( !last )

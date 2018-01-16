@@ -82,13 +82,21 @@ struct Safety : Job
         using Search = decltype( make_search() );
         _search.reset( new Search( std::move( make_search() ) ) );
         Search *search = dynamic_cast< Search * >( _search.get() );
-        statecount = [=]()
+
+        stats = [=]()
         {
-            int64_t rv = _ex._states._s->used;
-            search->ws_each( [&]( auto &bld, auto & ) { rv += bld._states._l.inserts; } );
-            return rv;
+            int64_t st = _ex._states._s->used;
+            int64_t mip = _ex._total_instructions->load();
+            search->ws_each( [&]( auto &bld, auto & )
+            {
+                st += bld._states._l.inserts;
+                mip += bld._ctx._instruction_counter; /* might double-count */
+                mip += bld._instructions;
+            } );
+            return std::make_pair( st, mip );
         };
         queuesize = [=]() { return search->qsize(); };
+
         search->start( threads );
     }
 
@@ -113,7 +121,7 @@ struct Safety : Job
 
     Result result() override
     {
-        if ( !statecount() )
+        if ( !stats().first )
             return Result::BootError;
         return _error_found ? Result::Error : Result::Valid;
     }

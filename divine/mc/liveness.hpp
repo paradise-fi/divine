@@ -191,7 +191,7 @@ struct Liveness : Job
 
         _search.reset( new NDFS( _ex, found ) ); //Builder, Next
         NDFS *search = dynamic_cast< NDFS * >( _search.get() );
-        statecount = [=]() { return _ex._states._s->used.load(); };
+        stats = [=]() { return std::make_pair( _ex._states._s->used.load(), 0 ); };
         search->start( threads );
     }
 
@@ -199,7 +199,7 @@ struct Liveness : Job
 
     Result result() override
     {
-        if ( !statecount() )
+        if ( !stats().first )
             return Result::BootError;
         return _error_found ? Result::Error : Result::Valid;
     }
