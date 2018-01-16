@@ -225,25 +225,34 @@ struct Explore_
     };
 
     BC _bc;
-
     Context _ctx;
 
     using HT = hashset::Concurrent< Snapshot, Hasher >;
     HT _states;
     explore::State _initial;
     bool _overwrite = false;
+    int64_t _instructions = 0;
+    std::shared_ptr< std::atomic< int64_t > > _total_instructions;
 
     auto &program() { return _bc->program(); }
     auto &pool() { return _ctx.heap()._snapshots; }
 
     Explore_( BC bc )
-        : _bc( bc ), _ctx( _bc->program() ), _states( _ctx.heap(), 1024 )
-    {
-    }
+        : Explore_( bc, Context( bc->program() ) )
+    {}
 
-    Explore_( BC bc, Context ctx, HT states )
-        : _bc( bc ), _ctx( ctx ), _states( states )
+    Explore_( BC bc, const Context &ctx )
+        : Explore_( bc, ctx, HT( ctx.heap(), 1024 ) )
+    {}
+
+    Explore_( BC bc, const Context &ctx, HT states )
+        : _bc( bc ), _ctx( ctx ), _states( states ),
+          _total_instructions( new std::atomic< int64_t >( 0 ) )
+    {}
+
+    ~Explore_()
     {
+        *_total_instructions += _instructions;
     }
 
     auto store( Snapshot snap )
@@ -333,6 +342,7 @@ struct Explore_
             _ctx.load( from.snap );
             setup::scheduler( _ctx );
             eval.run();
+            _instructions += _ctx._instruction_counter;
             if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
             {
                 to_check.emplace_back();
@@ -380,6 +390,7 @@ struct Explore_
                 setup::scheduler( _ctx );
 
                 eval.run(); /* will not cancel since this is a prefix */
+                _instructions += _ctx._instruction_counter;
                 auto lbl = label();
                 do_yield( _ctx.heap().snapshot(), lbl );
 
