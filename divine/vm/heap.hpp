@@ -266,6 +266,8 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
         f.read( root, ptr, root_i );
         auto obj = ptr.cooked();
         obj.offset( 0 );
+        if ( obj.heap() )
+            ASSERT( ptr.pointer() );
         if ( ct == CloneType::SkipWeak && obj.type() == PointerType::Weak )
             cloned = obj;
         else if ( ct == CloneType::HeapOnly && obj.type() != PointerType::Heap )
@@ -498,7 +500,10 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
             else if ( pivot->first < obj )
                 begin = pivot + 1;
             else
+            {
+                ASSERT( _objects.valid( pivot->second ) );
                 return pivot;
+            }
         }
 
         return begin;
@@ -892,7 +897,11 @@ struct CowHeap : SimpleHeap< CowHeap >
 
         while ( snap != snap_end() )
             *si++ = *snap++;
-        ASSERT_EQ( si, _snapshots.template machinePointer< SnapItem >( s ) + count );
+
+        auto newsnap = _snapshots.template machinePointer< SnapItem >( s );
+        ASSERT_EQ( si, newsnap + count );
+        for ( auto s = newsnap; s < newsnap + count; ++s )
+            ASSERT( _objects.valid( s->second ) );
 
         _l.exceptions.clear();
         _ext.writable.clear();
