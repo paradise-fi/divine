@@ -43,7 +43,7 @@ add_library( divine-vm ${CPP_vm} )
 if ( OPT_SIM )
   stringify( doc ${divine_SOURCE_DIR}/doc manual/sim.md )
   add_library( divine-sim ${CPP_sim} ${doc_FILES} )
-  target_link_libraries( divine-sim edit divine-vm )
+  target_link_libraries( divine-sim ${LIBEDIT} ${LIBTINFO} divine-vm )
   target_link_libraries( divine-ui divine-sim )
 endif()
 
