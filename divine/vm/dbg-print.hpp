@@ -188,6 +188,14 @@ static std::string dbginst( llvm::Instruction *I, dbg::Info &dbg, Eval &eval )
         return DDV->getVariable()->getName().str() + " " +
                value( dbg, eval, DDV->getValue(), DisplayVal::Value );
 
+    if ( auto BI = llvm::dyn_cast< llvm::BitCastInst >( I ) )
+    {
+        std::string out;
+        llvm::raw_string_ostream ostr( out );
+        ostr << "to " << *(BI->getType());
+        return ostr.str();
+    }
+
     I->dump();
     UNREACHABLE( "dbginst called on a bad instruction type" );
 }
@@ -211,7 +219,11 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
 
     out << opcode( insn ) << " ";
     uint64_t skipMask = 0;
-    const int argc = insn.opcode == lx::OpDbg ? 0 : I->getNumOperands();
+
+    int argc = I->getNumOperands();
+    if ( insn.opcode == lx::OpDbg && insn.subcode != lx::DbgBitCast )
+        argc = 0;
+
     int argalign = out.str().size() + padding, argcols = 0;
 
     if ( insn.opcode == llvm::Instruction::Call || insn.opcode == llvm::Instruction::Invoke )
@@ -230,9 +242,6 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
             out << ( oname.empty() ? "?" : oname ) << " ";
         }
     }
-
-    if ( insn.opcode == lx::OpDbg )
-        out << dbginst( I, dbg, eval ) << " ";
 
     auto result = [&]( int col )
                   {
@@ -262,6 +271,13 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
         argcols += oname.size() + 1;
 
         out << ( oname.empty() ? "?" : oname ) << " ";
+    }
+
+    if ( insn.opcode == lx::OpDbg )
+    {
+        auto str = dbginst( I, dbg, eval );
+        argcols += str.size() + 1;
+        out << str << " ";
     }
 
     if ( printres )
