@@ -153,7 +153,19 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
         goto alloc;
 
     insn = dyn_cast< llvm::Instruction >( val );
-    if ( !insn || !insn->getMetadata( "lart.interference" ) )
+    if ( !insn )
+        goto alloc;
+
+    if ( insn->getOpcode() == llvm::Instruction::BitCast )
+    {
+        auto src = insert( fun, insn->getOperand( 0 ) );
+        ASSERT_EQ( src.width(), result.width() );
+        result.offset = src.offset;
+        result.location = src.location;
+        return;
+    }
+
+    if ( !insn->getMetadata( "lart.interference" ) )
         goto alloc;
 
     ASSERT( !f.instructions.empty() );
@@ -199,7 +211,8 @@ Program::Slot Program::insert( int function, llvm::Value *val, bool )
     auto val_i = valuemap.find( val );
     if ( val_i != valuemap.end() )
     {
-        ASSERT_EQ( val_i->second.location, sl );
+        if ( !isa< llvm::BitCastInst >( val ) )
+            ASSERT_EQ( val_i->second.location, sl );
         return val_i->second;
     }
 
@@ -305,6 +318,12 @@ Program::Position Program::insert( Position p )
 
     insn.opcode = p.I->getOpcode();
     insn.subcode = initSubcode( &*p.I );
+
+    if ( insn.opcode == llvm::Instruction::BitCast )
+    {
+        insn.opcode = lx::OpDbg;
+        insn.subcode = lx::DbgBitCast;
+    }
 
     if ( dyn_cast< llvm::CallInst >( p.I ) ||
          dyn_cast< llvm::InvokeInst >( p.I ) )
