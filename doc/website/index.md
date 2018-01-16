@@ -12,7 +12,7 @@ in the [roadmap] [rmap].
 version 4.0 was released a year ago, a large number of improvements has made
 its way into the tool -- however, there are only minor differences between the
 last 4.0 point release and the first version in the new 4.1 series. The changes
-that happened between the 4.0 release in January 2016 and 4.1 are summarised in
+that happened between the 4.0 release in January 2017 and 4.1 are summarised in
 our [release notes] [rnotes].
 
 Likewise, we plan to implement many improvements over the lifetime of the 4.1
