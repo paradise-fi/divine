@@ -930,8 +930,6 @@ struct Eval
                 return implement_stacksave();
             case Intrinsic::stackrestore:
                 return implement_stackrestore();
-            case Intrinsic::dbg_value: case Intrinsic::dbg_declare:
-                return; /* do nothing */
             default:
                 /* We lowered everything else in buildInfo. */
                 // instruction().op->dump();
@@ -1815,7 +1813,6 @@ struct Eval
                 }
                 return;
 
-            case lx::OpDbg: break;
             case OpCode::LandingPad: break; /* nothing to do, handled by the unwinder */
             case OpCode::Fence: break; /* noop until we have reordering simulation */
 
