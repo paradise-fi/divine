@@ -319,7 +319,11 @@ Program::Position Program::insert( Position p )
                         hypercall( p );
                     break;
                 case llvm::Intrinsic::dbg_declare:
+                    insn.subcode = lx::DbgDeclare;
+                    insn.opcode = lx::OpDbg;
+                    break;
                 case llvm::Intrinsic::dbg_value:
+                    insn.subcode = lx::DbgValue;
                     insn.opcode = lx::OpDbg;
                     break;
                 default: ;

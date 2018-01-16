@@ -148,8 +148,9 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
     if ( insn.opcode == lx::OpDbg )
         switch ( insn.subcode )
         {
-            case llvm::Intrinsic::dbg_value: op += ".value"; break;
-            case llvm::Intrinsic::dbg_declare: op += ".declare"; break;
+            case lx::DbgValue:   op += ".value"; break;
+            case lx::DbgDeclare: op += ".declare"; break;
+            case lx::DbgBitCast: op += ".bitcast"; break;
             default: UNREACHABLE( "unexpected debug opcode" ); break;
         }
     if ( insn.opcode == lx::OpHypercall )

@@ -53,4 +53,8 @@ enum Hypercall /* see divm.h for prototypes & documentation */
     HypercallObjSize
 };
 
+enum DbgSubcode
+{
+    DbgValue, DbgDeclare, DbgBitCast
+};
 }
