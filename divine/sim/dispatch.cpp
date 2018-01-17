@@ -187,7 +187,7 @@ void CLI::go( command::Call c )
         throw brick::except::Error( "the function must not take any arguments" );
 
     Context ctx( _ctx );
-    vm::Eval< Context, vm::value::Void > eval( ctx );
+    vm::Eval< Context > eval( ctx );
     ctx.ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode | _VM_CF_DebugMode;
     ctx.enter( pc, PointerV() );
     eval.run();

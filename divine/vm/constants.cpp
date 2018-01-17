@@ -25,7 +25,7 @@ using namespace divine::vm;
 using llvm::dyn_cast;
 using llvm::isa;
 
-using PEval = Eval< typename Program::Context, value::Void >;
+using PEval = Eval< typename Program::Context >;
 
 HeapPointer Program::s2hptr( Program::Slot v, int offset )
 {

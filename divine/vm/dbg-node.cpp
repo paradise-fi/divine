@@ -33,7 +33,7 @@ namespace divine::vm::dbg
 using namespace std::literals;
 
 template< typename Heap >
-using DNEval = Eval< DNContext< Heap >, value::Void >;
+using DNEval = Eval< DNContext< Heap > >;
 
 template< typename Prog, typename Heap >
 int Node< Prog, Heap >::size()

@@ -28,7 +28,7 @@ template< typename Context >
 void dbg_boot( Context &ctx )
 {
     boot( ctx );
-    vm::Eval< Context, vm::value::Void > eval( ctx );
+    vm::Eval< Context > eval( ctx );
     eval.run();
 }
 

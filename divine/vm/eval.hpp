@@ -158,7 +158,7 @@ template< typename > struct Any { static const bool value = true; };
  * instruction. The return value type must match that of the 'Result' template
  * parameter.
  */
-template < typename Context, typename Result >
+template < typename Context >
 struct Eval
 {
     Context &_context;
@@ -178,8 +178,6 @@ struct Eval
     using OpCode = llvm::Instruction;
 
     Instruction *_instruction;
-    Result _result;
-
     Instruction &instruction() { return *_instruction; }
 
     using PointerV = value::Pointer;
@@ -614,9 +612,33 @@ struct Eval
         switchBB( to );
     }
 
+    HeapPointer _final_frame;
+
+    template< typename R >
+    R retval()
+    {
+        R res;
+
+        ASSERT( context().ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode );
+        ASSERT( context().get( _VM_CR_Frame ).pointer.null() );
+        ASSERT( !_final_frame.null() );
+        ASSERT_EQ( instruction().opcode, OpCode::Ret );
+        context().set( _VM_CR_Frame, _final_frame );
+
+        if ( instruction().argcount() )
+            res = operand< R >( 0 );
+
+        freeobj( _final_frame );
+        context().set( _VM_CR_Frame, nullPointer() );
+        _final_frame = HeapPointer();
+
+        return res;
+    }
+
     void implement_ret()
     {
         PointerV fr( frame() );
+        HeapPointer frhp = fr.cooked();
         heap().skip( fr, sizeof( typename PointerV::Raw ) );
         PointerV parent, br;
         heap().read( fr.cooked(), parent );
@@ -632,7 +654,7 @@ struct Eval
             if ( context().ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
             {
                 if ( instruction().argcount() )
-                    _result = operand< Result >( 0 );
+                    _final_frame = frhp;
             }
             else
             {
@@ -641,7 +663,8 @@ struct Eval
                 usermode = true;
             }
             context().set( _VM_CR_Frame, nullPointer() );
-            freeobj( fr.cooked() );
+            if ( _final_frame != frhp )
+                freeobj( frhp );
             if ( usermode )
                 context().check_interrupt( *this );
             return;
@@ -1868,7 +1891,7 @@ struct Eval
     {
         TProgram p;
         TContext< TProgram > c( p );
-        vm::Eval< TContext< TProgram >, vm::value::Void > e( c );
+        vm::Eval< TContext< TProgram > > e( c );
     }
 
     template< typename... Args >
@@ -1878,12 +1901,12 @@ struct Eval
         auto data = p->exportHeap( c.heap() );
         c.set( _VM_CR_Constants, data.first );
         c.set( _VM_CR_Globals , data.second );
-        vm::Eval< TContext< vm::Program >, IntV > e( c );
+        vm::Eval< TContext< vm::Program > > e( c );
         auto pc = p->functionByName( "f" );
         c.enter( pc, vm::nullPointerV(), args... );
         c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask );
         e.run();
-        return e._result.cooked();
+        return e.retval< IntV >().cooked();
     }
 
     template< typename... Args >

@@ -203,7 +203,7 @@ template< typename Hasher, typename Context >
 struct Explore_
 {
     using PointerV = value::Pointer;
-    using Eval = vm::Eval< Context, value::Void >;
+    using Eval = vm::Eval< Context >;
 
     using BC = explore::BC;
     using Env = std::vector< std::string >;

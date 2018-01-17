@@ -34,7 +34,7 @@ std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int dist
     vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
     dbg.load( ex._ctx );
     vm::setup::boot( dbg );
-    vm::Eval< decltype( dbg ), vm::value::Void > dbg_eval( dbg );
+    vm::Eval< decltype( dbg ) > dbg_eval( dbg );
     dbg_eval.run();
 
     struct ext_data { int seq; int distance; };
