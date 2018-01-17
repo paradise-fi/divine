@@ -241,7 +241,11 @@ struct Float : Base
     }
     Float make_signed() { return *this; }
     Float arithmetic( Float o, Cooked r ) { return Float( r, defined() && o.defined() ); }
-    friend std::ostream & operator<<( std::ostream &o, Float v ) { return o << v.cooked(); }
+    friend std::ostream & operator<<( std::ostream &o, Float v )
+    {
+        return o << "[f" << sizeof( Cooked ) * 8 << " " << v.cooked() << " "
+                 << ( v.defined() ? 'd' : 'u' ) << "]";
+    }
 };
 
 struct Pointer : Base
