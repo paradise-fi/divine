@@ -38,11 +38,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <type_traits>
 #include <unordered_set>
 
-namespace llvm {
-template<typename T> class generic_gep_type_iterator;
-typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
-}
-
 namespace divine::vm
 {
 
