@@ -16,37 +16,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/run.hpp>
-#include <divine/vm/bitcode.hpp>
-#include <divine/vm/eval.hpp>
-#include <divine/vm/setup.hpp>
-
-#include <divine/vm/eval.tpp>
+#include <divine/vm/heap.hpp>
+#include <divine/vm/program.hpp>
+#include <divine/vm/context.hpp>
 #include <divine/vm/context.tpp>
 
 namespace divine::vm
 {
 
-void Run::run()
-{
-    using Eval = vm::Eval< RunContext >;
-    auto &program = _bc->program();
-    RunContext _ctx( program );
-    Eval eval( _ctx );
-
-    setup::boot( _ctx );
-    _ctx.enable_debug();
-    eval.run();
-    if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
-        ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );
-
-    while ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
-    {
-        setup::scheduler( _ctx );
-        eval.run();
-    }
-}
-
-template struct Eval< DbgRunContext >;
+template struct Context< Program, CowHeap >;
+template struct Context< Program, SmallHeap >;
+template struct Context< Program, MutableHeap >;
 
 }

@@ -24,8 +24,8 @@
 #include <divine/vm/program.hpp>
 #include <divine/vm/heap.hpp>
 
-namespace divine {
-namespace vm {
+namespace divine::vm
+{
 
 struct BitCode;
 
@@ -69,8 +69,8 @@ struct RunContext_ : Super
                                         * restored here */
 };
 
-using RunContext = RunContext_< vm::Context< Program, MutableHeap<> > >;
-using DbgRunContext = RunContext_< dbg::Context< MutableHeap<> > >;
+using RunContext = RunContext_< vm::Context< Program, MutableHeap > >;
+using DbgRunContext = RunContext_< dbg::Context< MutableHeap > >;
 
 struct Run
 {
@@ -81,5 +81,4 @@ struct Run
     void run();
 };
 
-}
 }

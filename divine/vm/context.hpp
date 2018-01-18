@@ -19,7 +19,6 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
-#include <divine/vm/heap.hpp>
 #include <divine/vm/divm.h>
 
 #include <brick-data>
@@ -29,8 +28,8 @@
 
 namespace llvm { class Value; }
 
-namespace divine {
-namespace vm {
+namespace divine::vm
+{
 
 struct Interrupt : brick::types::Ord
 {
@@ -86,6 +85,7 @@ struct Context
     using PointerV = value::Pointer;
     using HeapInternal = typename Heap::Internal;
     using Location = typename Program::Slot::Location;
+    using Snapshot = typename Heap::Snapshot;
 
     union Register
     {
@@ -105,7 +105,7 @@ struct Context
     int _debug_depth = 0;
     bool _debug_allowed = false;
     TraceDebugPersist _debug_persist;
-    typename Heap::Snapshot _debug_snap;
+    Snapshot _debug_snap;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
     std::vector< std::unordered_set< GenericPointer > > _cfl_visited;
@@ -153,7 +153,7 @@ struct Context
         _instruction_counter = 0;
     }
 
-    void load( typename Heap::Snapshot snap ) { _heap.restore( snap ); clear(); }
+    void load( Snapshot snap ) { _heap.restore( snap ); clear(); }
     void reset() { _heap.reset(); clear(); }
 
     template< typename I >
@@ -241,41 +241,8 @@ struct Context
         flush_ptr2i();
     }
 
-    bool enter_debug()
-    {
-        if ( !debug_allowed() )
-            -- _instruction_counter; /* dbg.call does not count */
-
-        if ( debug_allowed() && !debug_mode() )
-        {
-            -- _instruction_counter;
-            ASSERT( !_debug_depth );
-            std::copy( _reg, _reg + _VM_CR_Last, _debug_reg );
-            _reg[ _VM_CR_Flags ].integer |= _VM_CF_DebugMode;
-            with_snap( [&]( auto &h ) { _debug_snap = h.snapshot(); } );
-            return true;
-        }
-        else
-            return false;
-    }
-
-    void leave_debug()
-    {
-        ASSERT( debug_allowed() );
-        ASSERT( debug_mode() );
-        ASSERT( !_debug_depth );
-        std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
-        if ( _debug_persist.ptr.null() )
-            with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
-        else
-        {
-            Heap from = heap();
-            with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
-            vm::heap::clone( from, heap(), _debug_persist.ptr,
-                             vm::heap::CloneType::SkipWeak, true );
-            _debug_persist.ptr = nullPointer();
-        }
-    }
+    bool enter_debug();
+    void leave_debug();
 
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
@@ -476,5 +443,4 @@ struct ConstContext : Context< Program, _Heap >
     ConstContext( Program &p, const _Heap &h ) : Context< Program, _Heap >( p, h ) {}
 };
 
-}
 }

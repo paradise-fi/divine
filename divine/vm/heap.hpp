@@ -706,10 +706,16 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
     }
 
     bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
+
+    void restore( Snapshot ) { UNREACHABLE( "restore() is not available in SimpleHeap" ); }
+    Snapshot snapshot() { UNREACHABLE( "snapshot() is not available in SimpleHeap" ); }
 };
 
-template< int slab = 20 >
-struct MutableHeap : SimpleHeap< MutableHeap< slab >, PoolRep< slab > > {};
+template< int slab >
+struct MutableHeap_ : SimpleHeap< MutableHeap_< slab >, PoolRep< slab > > {};
+
+using MutableHeap = MutableHeap_< 20 >;
+using SmallHeap = MutableHeap_< 8 >;
 
 struct CowHeap : SimpleHeap< CowHeap >
 {
@@ -929,7 +935,7 @@ struct MutableHeap
 
     TEST(alloc)
     {
-        vm::MutableHeap<> heap;
+        vm::SmallHeap heap;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), IntV( 10 ) );
         IntV q;
@@ -939,7 +945,7 @@ struct MutableHeap
 
     TEST(conversion)
     {
-        vm::MutableHeap<> heap;
+        vm::SmallHeap heap;
         auto p = heap.make( 16 );
         ASSERT_EQ( vm::HeapPointer( p.cooked() ),
                    vm::HeapPointer( vm::GenericPointer( p.cooked() ) ) );
@@ -947,7 +953,7 @@ struct MutableHeap
 
     TEST(write_read)
     {
-        vm::MutableHeap<> heap;
+        vm::SmallHeap heap;
         PointerV p, q;
         p = heap.make( 16 );
         heap.write( p.cooked(), p );
@@ -957,7 +963,7 @@ struct MutableHeap
 
     TEST(resize)
     {
-        vm::MutableHeap<> heap;
+        vm::SmallHeap heap;
         PointerV p, q;
         p = heap.make( 16 );
         heap.write( p.cooked(), p );
@@ -969,7 +975,7 @@ struct MutableHeap
 
     TEST(pointers)
     {
-        vm::MutableHeap<> heap;
+        vm::SmallHeap heap;
         auto p = heap.make( 16 ), q = heap.make( 16 ), r = PointerV( vm::nullPointer() );
         heap.write( p.cooked(), q );
         heap.write( q.cooked(), r );
@@ -981,7 +987,7 @@ struct MutableHeap
 
     TEST(clone_int)
     {
-        vm::MutableHeap<> heap, cloned;
+        vm::SmallHeap heap, cloned;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), IntV( 33 ) );
         auto c = vm::heap::clone( heap, cloned, p.cooked() );
@@ -993,7 +999,7 @@ struct MutableHeap
 
     TEST(clone_ptr_chain)
     {
-        vm::MutableHeap<> heap, cloned;
+        vm::SmallHeap heap, cloned;
         auto p = heap.make( 16 ), q = heap.make( 16 ), r = PointerV( vm::nullPointer() );
         heap.write( p.cooked(), q );
         heap.write( q.cooked(), r );
@@ -1008,7 +1014,7 @@ struct MutableHeap
 
     TEST(clone_ptr_loop)
     {
-        vm::MutableHeap<> heap, cloned;
+        vm::SmallHeap heap, cloned;
         auto p = heap.make( 16 ), q = heap.make( 16 );
         heap.write( p.cooked(), q );
         heap.write( q.cooked(), p );
@@ -1022,7 +1028,7 @@ struct MutableHeap
 
     TEST(compare)
     {
-        vm::MutableHeap<> heap, cloned;
+        vm::SmallHeap heap, cloned;
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );
         heap.write( q, PointerV( p ) );
@@ -1035,7 +1041,7 @@ struct MutableHeap
 
     TEST(hash)
     {
-        vm::MutableHeap<> heap, cloned;
+        vm::SmallHeap heap, cloned;
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );
         heap.write( p + vm::PointerBytes, PointerV( p ) );

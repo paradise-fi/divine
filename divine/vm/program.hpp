@@ -141,7 +141,7 @@ struct Program
     std::map< const llvm::Value *, std::string > anonmap;
     std::set< const llvm::Function * > is_debug;
 
-    using Context = ConstContext< Program, MutableHeap< 8 > >;
+    using Context = ConstContext< Program, SmallHeap >;
     Context _ccontext;
 
     using LXTypes = lx::Types< typename Context::Heap >;

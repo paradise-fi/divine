@@ -21,6 +21,8 @@
 #include <divine/vm/dbg-print.hpp>
 #include <divine/vm/xg-code.hpp>
 #include <divine/vm/eval.hpp>
+#include <divine/vm/eval.tpp>
+
 #include <divine/vm/formula.hpp>
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CFG.h>
