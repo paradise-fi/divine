@@ -683,8 +683,8 @@ struct NonHeap
 
     NonHeap() : shadows( pool ) {}
 
-    Anchor &anchor( Ptr p ) { return *pool.template machinePointer< Anchor >( p ); }
-    Loc shloc( Ptr p, int off ) { return Loc( p, anchor( p ), off ); }
+    auto pointers( Ptr p, int sz ) { return shadows.pointers( shloc( p, 0 ), sz ); }
+    Loc shloc( Ptr p, int off ) { return Loc( p, off ); }
 
     Ptr make( int sz )
     {
