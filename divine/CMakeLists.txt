@@ -28,8 +28,7 @@ add_custom_command(
   COMMAND sh -c "echo \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">flags-generated.cpp"
 )
 
-include_directories( ${Z3_INCLUDE_DIRS} )
-include_directories( ${DIVINE_INCLUDES} ${CMAKE_BINARY_DIR} )
+include_directories( ${DIVINE_INCLUDES} ${CMAKE_BINARY_DIR} ${Z3_INCLUDE_DIRS} )
 include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
@@ -61,8 +60,7 @@ target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject clang clangBasic clangCodeGen )
 target_link_libraries( divine-vm liblart divine-rt divine-cc ) # FIXME divine-cc
-target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker )
-target_link_libraries( divine-vm ${Z3_LIBRARIES})
+target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker ${Z3_LIBRARIES} )
 target_link_libraries( divine-ui divine-rt divine-cc divine-vm )
 
 if ( OPT_SQL )

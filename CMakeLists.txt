@@ -129,7 +129,7 @@ set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) 
 find_package( Perl )
 find_package( ODBC )
 find_package( PkgConfig )
-find_package( Z3 REQUIRED )
+find_package( Z3 )
 
 if ( NOT CMAKE_BUILD_TYPE )
   set( CMAKE_BUILD_TYPE "Release"
@@ -163,6 +163,7 @@ opt( ALG_CSDR "" ON )
 opt( ALG_NDFS "" OFF )
 opt( ALG_METRICS "" ON )
 opt( OPT_SQL "enable ODBC-based database support" ${ODBC_FOUND} )
+opt( OPT_Z3 "link to Z3 for faster symbolic verification" ${Z3_FOUND} )
 
 if ( OPT_SIM AND NOT TOOLCHAIN )
   if ( STATIC_BUILD )
