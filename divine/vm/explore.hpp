@@ -51,6 +51,7 @@ struct Context : vm::Context< Program, CowHeap >
     std::string _info;
     std::vector< Choice > _stack;
     std::deque< Choice > _lock;
+    HeapPointer _assume;
 
     int _level;
 
@@ -91,119 +92,110 @@ struct Context : vm::Context< Program, CowHeap >
     }
     void trace( TraceTypeAlias ) {}
     void trace( TraceDebugPersist t ) { Super::trace( t ); }
+    void trace( TraceAlg ta )
+    {
+        _assume = ta.args[0];
+    }
 
     bool finished()
     {
         _level = 0;
         _trace.clear();
+        _assume = HeapPointer();
         while ( !_stack.empty() && _stack.back().taken + 1 == _stack.back().total )
             _stack.pop_back();
         return _stack.empty();
     }
 };
 
+using Snapshot = CowHeap::Snapshot;
+
 template< typename Solver >
-struct SymbolicContext : Context {
-    using Context::Context;
-    using SolverPtr = std::shared_ptr< Solver >;
-
-    SymbolicContext( Program &program, SolverPtr solver )
-        : Context( program ), _solver( solver )
-    {}
-
-    // note: for some reason compiler does not accept out-of-line definition of
-    // trace here, so defer it to extra, non-overloaded version
-    using Context::trace;
-    void trace( TraceAlg ta ) { return traceAlg( ta ); }
-    void traceAlg( TraceAlg ta )
-    {
-        ASSERT_EQ( ta.args.size(), 1 );
-
-        if ( _solver->feasible( heap(), ta.args[0] ) == Solver::Result::False )
-            set( _VM_CR_Flags, get( _VM_CR_Flags ).integer | _VM_CF_Cancel );
-    }
-
-    SolverPtr _solver;
-};
-
-struct Hasher
+struct Hasher_
 {
-    using Snapshot = CowHeap::Snapshot;
+    mutable CowHeap _h1, _h2;
+    HeapPointer _root;
+    Solver *_solver = nullptr;
 
-    mutable CowHeap h1, h2;
-    HeapPointer root;
-
-    Hasher( const CowHeap &heap )
-        : h1( heap ), h2( heap )
-    {}
-
-    bool equalFastpath( Snapshot a, Snapshot b ) const {
-        if ( h1._snapshots.size( a ) == h1._snapshots.size( b ) )
-            return std::equal( h1.snap_begin( a ), h1.snap_end( a ), h1.snap_begin( b ) );
-        return false;
+    void setup( const CowHeap &heap, Solver &solver )
+    {
+        _h1 = heap;
+        _h2 = heap;
+        _solver = &solver;
     }
 
-    bool equal( Snapshot a, Snapshot b ) const
+    bool equal_fastpath( Snapshot a, Snapshot b ) const
     {
-        if ( equalFastpath( a, b ) )
+        bool rv = false;
+        if ( _h1._snapshots.size( a ) == _h1._snapshots.size( b ) )
+            rv = std::equal( _h1.snap_begin( a ), _h1.snap_end( a ), _h1.snap_begin( b ) );
+        if ( !rv )
+            _h1.restore( a ), _h2.restore( b );
+        return rv;
+    }
+
+    bool equal_explicit( Snapshot a, Snapshot b ) const
+    {
+        if ( equal_fastpath( a, b ) )
             return true;
-        h1.restore( a );
-        h2.restore( b );
-        return heap::compare( h1, h2, root, root ) == 0;
+        else
+            return heap::compare( _h1, _h2, _root, _root ) == 0;
     }
 
-    brick::hash::hash128_t hash( Snapshot s ) const
+    bool equal_symbolic( Snapshot a, Snapshot b ) const
     {
-        h1.restore( s );
-        return heap::hash( h1, root );
-    }
-};
-
-template< typename Solver >
-struct SymbolicHasher : Hasher {
-    using SolverPtr = std::shared_ptr< Solver >;
-
-    SymbolicHasher( const CowHeap &heap, SolverPtr solver )
-        : Hasher( heap ), _solver( solver )
-    {
-    }
-
-    using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
-
-    bool equal( Snapshot a, Snapshot b ) const {
-        if ( equalFastpath( a, b ) )
+        if ( equal_fastpath( a, b ) )
             return true;
 
-        h1.restore( a );
-        h2.restore( b );
+        std::vector< std::pair< HeapPointer, HeapPointer > > sym_pairs;
 
-        SymPairs sym_pairs;
-        auto sym_pairs_extract = [&]( HeapPointer a, HeapPointer b ) {
+        auto extract = [&]( HeapPointer a, HeapPointer b )
+        {
             a.type( PointerType::Weak ); // unmark pointers so they are equal to their
             b.type( PointerType::Weak ); // weak equivalents inside the formula
             sym_pairs.emplace_back( a, b );
         };
-        if ( heap::compare( h1, h2, root, root, sym_pairs_extract ) != 0 )
+
+        if ( heap::compare( _h1, _h2, _root, _root, extract ) != 0 )
             return false;
 
         if ( sym_pairs.empty() )
             return true;
 
-        return _solver->equal( sym_pairs, h1, h2 ) == Solver::Result::True;
+        ASSERT( _solver );
+        return _solver->equal( sym_pairs, _h1, _h2 ) == Solver::Result::True;
     }
 
-    SolverPtr _solver;
+    brick::hash::hash128_t hash( Snapshot s ) const
+    {
+        _h1.restore( s );
+        return heap::hash( _h1, _root );
+    }
+};
+
+template< typename Solver >
+struct Hasher : Hasher_< Solver >
+{
+    bool equal( Snapshot a, Snapshot b ) const { return this->equal_symbolic( a, b ); }
+};
+
+template<>
+struct Hasher< NoSolver > : Hasher_< NoSolver >
+{
+    bool equal( Snapshot a, Snapshot b ) const { return this->equal_explicit( a, b ); }
 };
 
 using BC = std::shared_ptr< BitCode >;
 
 } // namespace explore
 
-template< typename Hasher, typename Context >
-struct Explore_
+template< typename Solver >
+struct Explore
 {
     using PointerV = value::Pointer;
+    using Context = explore::Context;
     using Eval = vm::Eval< Context >;
+    using Hasher = explore::Hasher< Solver >;
 
     using BC = explore::BC;
     using Env = std::vector< std::string >;
@@ -224,96 +216,124 @@ struct Explore_
         }
     };
 
-    BC _bc;
-    Context _ctx;
-
     using HT = hashset::Concurrent< Snapshot, Hasher >;
-    HT _states;
-    explore::State _initial;
-    bool _overwrite = false;
-    int64_t _instructions = 0;
-    std::shared_ptr< std::atomic< int64_t > > _total_instructions;
 
-    auto &program() { return _bc->program(); }
-    auto &pool() { return _ctx.heap()._snapshots; }
+    auto &program() { return _d.bc->program(); }
+    auto &pool() { return _d.ctx.heap()._snapshots; }
 
-    Explore_( BC bc )
-        : Explore_( bc, Context( bc->program() ) )
-    {}
-
-    Explore_( BC bc, const Context &ctx )
-        : Explore_( bc, ctx, HT( ctx.heap(), 1024 ) )
-    {}
-
-    Explore_( BC bc, const Context &ctx, HT states )
-        : _bc( bc ), _ctx( ctx ), _states( states ),
-          _total_instructions( new std::atomic< int64_t >( 0 ) )
-    {}
-
-    ~Explore_()
+    struct Data
     {
-        *_total_instructions += _instructions;
+        BC bc;
+        Context ctx;
+        HT states;
+        explore::State initial;
+        Solver solver;
+
+        bool overwrite = false;
+        int64_t instructions = 0;
+        std::shared_ptr< std::atomic< int64_t > > total_instructions;
+
+        Data( BC bc )
+            : Data( bc, Context( bc->program() ), HT( Hasher(), 1024 ) )
+        {}
+
+        Data( BC bc, const Context &ctx, HT states )
+            : bc( bc ), ctx( ctx ), states( states ),
+              total_instructions( new std::atomic< int64_t >( 0 ) )
+        {}
+
+        ~Data() { *total_instructions += instructions; }
+    } _d;
+
+    Context &context() { return _d.ctx; }
+    void enable_overwrite() { _d.overwrite = true; }
+
+    Explore( const Explore &e ) : _d( e._d )
+    {
+        _d.states.hasher.setup( context().heap(), _d.solver );
+    }
+
+    template< typename... Args >
+    Explore( BC bc, Args && ... args ) : _d( bc, args... )
+    {
+        _d.states.hasher.setup( context().heap(), _d.solver );
     }
 
     auto store( Snapshot snap )
     {
-        auto r = _states.insert( snap, _overwrite );
+        auto r = _d.states.insert( snap, _d.overwrite );
         if ( *r != snap )
         {
-            ASSERT( !_overwrite );
-            pool().free( snap ), _ctx.load( *r );
+            ASSERT( !_d.overwrite );
+            pool().free( snap ), context().load( *r );
         }
         else
-            _ctx.flush_ptr2i();
+            context().flush_ptr2i();
         return r;
     }
 
     void start()
     {
-        Eval eval( _ctx );
-        setup::boot( _ctx );
+        Eval eval( context() );
+        setup::boot( context() );
         eval.run();
-        _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        if ( setup::postboot_check( _ctx ) )
-            _initial.snap = *store( _ctx.snapshot() );
-        _states.updateUsage();
-        if ( !_ctx.finished() )
+        _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
+
+        if ( setup::postboot_check( context() ) )
+            _d.initial.snap = *store( context().snapshot() );
+        _d.states.updateUsage();
+        if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
     }
 
     template< typename Ctx >
     Snapshot start( const Ctx &ctx, Snapshot snap )
     {
-        _ctx.load( ctx ); /* copy over registers */
-        _states.hasher = Hasher( _ctx.heap() );
-        _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        if ( _ctx.heap().valid( _states.hasher.root ) )
-            _initial.snap = *store( snap );
-        _states.updateUsage();
-        if ( !_ctx.finished() )
+        context().load( ctx ); /* copy over registers */
+        _d.states.hasher.setup( context().heap(), _d.solver );
+        _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
+
+        if ( context().heap().valid( _d.states.hasher._root ) )
+            _d.initial.snap = *store( snap );
+        _d.states.updateUsage();
+        if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
-        return _initial.snap;
+        return _d.initial.snap;
     }
 
     Label label()
     {
         Label lbl;
-        lbl.trace = _ctx._trace;
-        lbl.stack = _ctx._stack;
-        lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
-        lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-        lbl.interrupts = _ctx._interrupts;
+        lbl.trace = context()._trace;
+        lbl.stack = context()._stack;
+        lbl.accepting = context().get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
+        lbl.error = context().get( _VM_CR_Flags ).integer & _VM_CF_Error;
+        lbl.interrupts = context()._interrupts;
         return lbl;
+    }
+
+    bool equal( Snapshot a, Snapshot b )
+    {
+        return _d.states.hasher.equal( a, b );
+    }
+
+    bool feasible()
+    {
+        if ( context().get( _VM_CR_Flags ).integer & _VM_CF_Cancel )
+            return false;
+        if ( context()._assume.null() )
+            return true;
+        return _d.solver.feasible( context().heap(), context()._assume ) == Solver::Result::True;
     }
 
     template< typename Y >
     void edges( explore::State from, Y yield )
     {
-        Eval eval( _ctx );
-        ASSERT_EQ( _ctx._level, 0 );
-        ASSERT( _ctx._stack.empty() );
-        ASSERT( _ctx._trace.empty() );
-        ASSERT( _ctx._lock.empty() );
+        Eval eval( context() );
+        ASSERT_EQ( context()._level, 0 );
+        ASSERT( context()._stack.empty() );
+        ASSERT( context()._trace.empty() );
+        ASSERT( context()._lock.empty() );
 
         struct Check
         {
@@ -326,8 +346,8 @@ struct Explore_
 
         std::vector< Check > to_check;
 
-        _ctx._crit_loads.clear();
-        _ctx._crit_stores.clear();
+        context()._crit_loads.clear();
+        context()._crit_stores.clear();
 
         auto do_yield = [&]( Snapshot snap, Label lbl )
         {
@@ -339,25 +359,25 @@ struct Explore_
         };
 
         do {
-            _ctx.load( from.snap );
-            setup::scheduler( _ctx );
+            context().load( from.snap );
+            setup::scheduler( context() );
             eval.run();
-            _instructions += _ctx._instruction_counter;
-            if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
+            _d.instructions += context()._instruction_counter;
+            if ( feasible() )
             {
                 to_check.emplace_back();
                 auto &tc = to_check.back();
-                tc.loads = _ctx._mem_loads;
-                tc.stores = _ctx._mem_stores;
+                tc.loads = context()._mem_loads;
+                tc.stores = context()._mem_stores;
 
-                for ( auto c : _ctx._stack )
+                for ( auto c : context()._stack )
                     tc.lock.push_back( c );
 
-                tc.snap = _ctx.heap().snapshot();
-                tc.free = !_ctx.heap().is_shared( tc.snap );
+                tc.snap = context().heap().snapshot();
+                tc.free = !context().heap().is_shared( tc.snap );
                 tc.lbl = label();
             }
-        } while ( !_ctx.finished() );
+        } while ( !context().finished() );
 
         for ( auto &tc : to_check )
         {
@@ -381,26 +401,26 @@ struct Explore_
             {
                 if ( tc.free )
                     pool().free( tc.snap );
-                _ctx._lock = tc.lock;
-                _ctx.load( from.snap );
-                ASSERT( _ctx._stack.empty() );
-                ASSERT_EQ( _ctx._level, 0 );
-                _ctx._crit_loads = l;
-                _ctx._crit_stores = s;
-                setup::scheduler( _ctx );
+                context()._lock = tc.lock;
+                context().load( from.snap );
+                ASSERT( context()._stack.empty() );
+                ASSERT_EQ( context()._level, 0 );
+                context()._crit_loads = l;
+                context()._crit_stores = s;
+                setup::scheduler( context() );
 
                 eval.run(); /* will not cancel since this is a prefix */
-                _instructions += _ctx._instruction_counter;
+                _d.instructions += context()._instruction_counter;
                 auto lbl = label();
-                do_yield( _ctx.heap().snapshot(), lbl );
+                do_yield( context().heap().snapshot(), lbl );
 
                 int i = 0;
                 for ( auto t : lbl.stack )
                     ASSERT( t == tc.lock[ i++ ] );
 
-                _ctx._stack.clear();
-                _ctx._lock.clear();
-                _ctx.finished();
+                context()._stack.clear();
+                context()._lock.clear();
+                context().finished();
             }
         }
     }
@@ -408,52 +428,14 @@ struct Explore_
     template< typename Y >
     void initials( Y yield )
     {
-        if ( _initial.snap.slab() ) /* fixme, better validity check */
-            yield( _initial );
+        if ( _d.initial.snap.slab() ) /* fixme, better validity check */
+            yield( _d.initial );
     }
 };
 
-template< typename Solver_,
-          template< typename > class Hasher_,
-          template< typename > class Context_ >
-struct SymbolicExplore_ : Explore_< Hasher_< Solver_ > , Context_< Solver_ > >
-{
-    using Solver = Solver_;
-    using Hasher = Hasher_< Solver >;
-    using Context = Context_< Solver >;
-    using Super = Explore_< Hasher, Context >;
-    using BC = explore::BC;
-    using Snapshot = CowHeap::Snapshot;
-    using HashTable = hashset::Concurrent< Snapshot, Hasher >;
-    using SolverPtr = std::shared_ptr< Solver >;
-
-    SymbolicExplore_( BC bc )
-        : SymbolicExplore_( bc, std::make_shared< Solver >() )
-    {
-    }
-
-private:
-    SymbolicExplore_( BC bc, Context ctx, SolverPtr solver )
-        : Super( bc, ctx, HashTable( Hasher( ctx.heap(), solver ), 1024 ) ),
-          _solver( solver )
-    {
-    }
-
-    SymbolicExplore_( BC bc, SolverPtr solver )
-        : SymbolicExplore_( bc, Context( bc->program(), solver ), solver )
-    {
-    }
-
-    SolverPtr _solver;
-};
-
-using Explore = Explore_< explore::Hasher, explore::Context >;
-
-template< typename Solver >
-using SymbolicExplore = SymbolicExplore_< Solver, explore::SymbolicHasher, explore::SymbolicContext >;
-
-using Z3Explore = SymbolicExplore< Z3SMTLibSolver >;
-using BoolectorExplore = SymbolicExplore< BoolectorSMTLib >;
+using ExplicitExplore = Explore< NoSolver >;
+using Z3Explore = Explore< Z3SMTLibSolver >;
+using BoolectorExplore = Explore< BoolectorSMTLib >;
 
 } // namespace vm
 
@@ -494,13 +476,13 @@ struct TestExplore
     TEST(instance)
     {
         auto bc = prog( "void __boot( void *e ) { __vm_control( 2, 7, 0b10000ull, 0b10000ull ); }" );
-        vm::Explore ex( bc );
+        vm::ExplicitExplore ex( bc );
     }
 
     TEST(simple)
     {
         auto bc = prog_int( "4", "*r - 1" );
-        vm::Explore ex( bc );
+        vm::ExplicitExplore ex( bc );
         bool found = false;
         ex.start();
         ex.initials( [&]( auto ) { found = true; } );
@@ -509,7 +491,7 @@ struct TestExplore
 
     void _search( std::shared_ptr< vm::BitCode > bc, int sc, int ec )
     {
-        vm::Explore ex( bc );
+        vm::ExplicitExplore ex( bc );
         int edgecount = 0, statecount = 0;
         ex.start();
         ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(

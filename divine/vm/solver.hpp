@@ -23,16 +23,17 @@
 
 #include <vector>
 
-namespace divine {
-namespace vm {
-
+namespace divine::vm
+{
 
 using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
 
-struct Solver {
+struct Solver
+{
     using Options = std::vector< std::string >;
 
-    struct Config {
+    struct Config
+    {
         Config( Options && opts ) : opts( std::move( opts ) ) {}
         Options opts;
     };
@@ -48,8 +49,15 @@ struct Solver {
     const Config _cfg;
 };
 
+struct NoSolver
+{
+    using Result = Solver::Result;
+    Result equal( SymPairs &, CowHeap &, CowHeap & ) const { UNREACHABLE( "no equality check" ); }
+    Result feasible( CowHeap &, HeapPointer ) const { return Result::True; }
+};
 
-struct SMTLibSolver : Solver {
+struct SMTLibSolver : Solver
+{
     using Solver::Solver;
 
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) const;
@@ -58,21 +66,20 @@ private:
     Result query( const std::string & formula ) const;
 };
 
-
-struct Z3SMTLibSolver : SMTLibSolver {
+struct Z3SMTLibSolver : SMTLibSolver
+{
     Z3SMTLibSolver() : SMTLibSolver( Config( { "z3", "-in", "-smt2" } ) ) {}
 };
 
-
-struct BoolectorSMTLib : SMTLibSolver {
+struct BoolectorSMTLib : SMTLibSolver
+{
     BoolectorSMTLib() : SMTLibSolver( Config( { "boolector", "--smt2" } ) ) {}
 };
 
-
-struct SymbolicConfig {
+struct SymbolicConfig
+{
     SymbolicConfig( std::string solver ) : solver( solver ) {}
     const std::string solver;
 };
 
-} // namespace vm
-} // namespace divine
+}
