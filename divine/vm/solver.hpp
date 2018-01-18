@@ -77,7 +77,7 @@ struct Z3Solver : Solver
     using Solver::Solver;
 
     Z3Solver() : solver( ctx ) {}
-    Z3Solver( const Z3Solver & other ) : ctx(), solver( ctx ) {}
+    Z3Solver( const Z3Solver & ) : ctx(), solver( ctx ) {}
 
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 );
     Result feasible( CowHeap & heap, HeapPointer assumes );
