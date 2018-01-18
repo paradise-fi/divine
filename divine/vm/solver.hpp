@@ -20,9 +20,11 @@
 
 #include <divine/vm/heap.hpp>
 #include <divine/vm/formula.hpp>
-
 #include <vector>
+
+#if OPT_Z3
 #include <z3++.h>
+#endif
 
 namespace divine::vm
 {
@@ -69,6 +71,7 @@ struct BoolectorSMTLib : SMTLibSolver
     BoolectorSMTLib() : SMTLibSolver( { "boolector", "--smt2" } ) {}
 };
 
+#if OPT_Z3
 struct Z3Solver : Solver
 {
     using Solver::Solver;
@@ -82,6 +85,9 @@ private:
     z3::context ctx;
     z3::solver solver;
 };
+#else
+using Z3Solver = Z3SMTLibSolver;
+#endif
 
 struct SymbolicConfig
 {

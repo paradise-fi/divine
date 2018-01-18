@@ -4,8 +4,8 @@
 #include <brick-proc>
 #include <brick-bitlevel>
 
-namespace divine {
-namespace vm {
+namespace divine::vm
+{
 
 namespace smt = brick::smt;
 namespace proc = brick::proc;
@@ -28,13 +28,17 @@ bool match( sym::Constant &a, sym::Constant &b )
     return a.type.bitwidth() == b.type.bitwidth() && (a.value & mask) == (b.value & mask);
 }
 
-static inline Result z3_solver_result( z3::check_result res ) {
-    switch ( res ) {
+#if OPT_Z3
+static inline Result z3_solver_result( z3::check_result res )
+{
+    switch ( res )
+    {
         case z3::check_result::unsat:   return Result::False;
         case z3::check_result::sat:     return Result::True;
         case z3::check_result::unknown: return Result::Unknown;
     }
 }
+#endif
 
 } // anonymous namespace
 
@@ -131,6 +135,7 @@ Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
     return query( formula.str() );
 }
 
+#if OPT_Z3
 Result Z3Solver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 )
 {
     using FormulaMap = Z3FormulaMap;
@@ -200,6 +205,6 @@ Result Z3Solver::feasible( CowHeap &heap, HeapPointer assumes )
         throw e;
     }
 }
+#endif
 
-} // namespace vm
-} // namespace divine
+}
