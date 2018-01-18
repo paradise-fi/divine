@@ -38,56 +38,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <type_traits>
 #include <unordered_set>
 
-namespace {
-
-long syscall_helper( int id, std::vector< long > args, std::vector< bool > argtypes )
-{
-    using A = std::vector< bool >;
-
-    if ( argtypes == A{} )
-        return syscall( id );
-    else if ( argtypes == A{0} )
-        return syscall( id, int( args[0] ) );
-    else if ( argtypes == A{1} )
-        return syscall( id, args[0] );
-    else if ( argtypes == A{0, 0} )
-        return syscall( id, int( args[0] ), int( args[1] ) );
-    else if ( argtypes == A{0, 1} )
-        return syscall( id, int( args[0] ), args[1] );
-    else if ( argtypes == A{1, 0} )
-        return syscall( id, args[0] , int( args[1] ));
-    else if ( argtypes == A{1, 1} )
-        return syscall( id, args[0], args[1] );
-    else if ( argtypes == A{0, 0, 0} )
-        return syscall( id, int( args[0] ), int( args[1] ), int( args[2] ) );
-    else if ( argtypes == A{0, 0, 1} )
-        return syscall( id, int( args[0] ), int( args[1] ), args[2] );
-    else if ( argtypes == A{0, 1, 0} )
-        return syscall( id, int( args[0] ), args[1], int( args[2] ) );
-    else if ( argtypes == A{0, 1, 1} )
-        return syscall( id, int( args[0] ), args[1], args[2] );
-    else if ( argtypes == A{1, 0, 0} )
-        return syscall( id, args[0], int( args[1] ), int( args[2] ) );
-    else if ( argtypes == A{1, 0, 1} )
-        return syscall( id, args[0], int( args[1] ), args[2] );
-    else if ( argtypes == A{1, 1, 0} )
-        return syscall( id, args[0], args[1], int( args[2] ) );
-    else if ( argtypes == A{1, 1, 1} )
-        return syscall( id, args[0], args[1], args[2] );
-    else if ( argtypes == A{0, 1, 1, 0, 1} )
-        return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4] );
-    else if ( argtypes == A{0, 1, 1, 0, 1, 1} )
-        return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], args[5] );
-    else if ( argtypes == A{0, 1, 1, 0, 1, 0} )
-        return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], int(args[5]) );
-    else {
-        std::cerr << brick::string::fmt(argtypes) << std::endl;
-        NOT_IMPLEMENTED();
-    }
-}
-
-}
-
 namespace llvm {
 template<typename T> class generic_gep_type_iterator;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
@@ -95,6 +45,8 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 
 namespace divine::vm
 {
+
+long syscall_helper( int id, std::vector< long > args, std::vector< bool > argtypes );
 
 using ::llvm::ICmpInst;
 using ::llvm::FCmpInst;
