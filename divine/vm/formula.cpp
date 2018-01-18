@@ -226,15 +226,17 @@ std::string_view SMTLibFormulaMap::convert( HeapPointer ptr )
     return ptr2Sym.emplace( ptr, name ).first->second;
 }
 
-
-z3::expr Z3FormulaMap::toz3( HeapPointer ptr ) {
+#if OPT_Z3
+z3::expr Z3FormulaMap::toz3( HeapPointer ptr )
+{
     auto it = ptr2Sym.find( ptr );
     if ( it != ptr2Sym.end() )
         return it->second;
     return toz3( hp2form( ptr ) );
 }
 
-z3::expr Z3FormulaMap::toz3( sym::Formula *formula ) {
+z3::expr Z3FormulaMap::toz3( sym::Formula *formula )
+{
     int bw = formula->type().bitwidth();
 
     try {
@@ -336,8 +338,10 @@ z3::expr Z3FormulaMap::toz3( sym::Formula *formula ) {
     }
 }
 
-z3::expr Z3FormulaMap::convert( HeapPointer ptr ) {
+z3::expr Z3FormulaMap::convert( HeapPointer ptr )
+{
     return ptr2Sym.emplace( ptr, toz3( ptr ) ).first->second;
 }
+#endif
 
 }

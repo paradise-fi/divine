@@ -22,7 +22,10 @@
 #include <divine/vm/heap.hpp>
 #include <runtime/abstract/formula.h>
 #include <brick-smt>
+
+#if OPT_Z3
 #include <z3++.h>
+#endif
 
 namespace divine::vm
 {
@@ -79,8 +82,9 @@ struct SMTLibFormulaMap : FormulaMap< std::string > {
     std::ostream &out;
 };
 
-
-struct Z3FormulaMap : FormulaMap< z3::expr > {
+#if OPT_Z3
+struct Z3FormulaMap : FormulaMap< z3::expr >
+{
     Z3FormulaMap( CowHeap &heap, z3::context &c, std::string suff = "" )
         : FormulaMap( heap, suff ), ctx( c )
     {}
@@ -101,5 +105,6 @@ private:
 
     z3::context &ctx;
 };
+#endif
 
 }
