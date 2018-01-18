@@ -29,14 +29,8 @@ namespace divine::vm
 
 using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
 
-struct Solver {
-    using Options = std::vector< std::string >;
-
-    struct Config {
-        Config( Options && opts ) : opts( std::move( opts ) ) {}
-        Options opts;
-    };
-
+struct Solver
+{
     enum class Result { False, True, Unknown };
 };
 
@@ -75,13 +69,12 @@ struct BoolectorSMTLib : SMTLibSolver
     BoolectorSMTLib() : SMTLibSolver( { "boolector", "--smt2" } ) {}
 };
 
-
-struct Z3Solver : Solver {
+struct Z3Solver : Solver
+{
     using Solver::Solver;
 
     Z3Solver() : solver( ctx ) {}
     Z3Solver( const Z3Solver & other ) : ctx(), solver( ctx ) {}
-
 
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 );
     Result feasible( CowHeap & heap, HeapPointer assumes );
