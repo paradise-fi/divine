@@ -18,7 +18,7 @@ while ( <> )
 
     unless ( $cat eq $lastcat )
     {
-        $table .= "</td></tr>" if ( $lastcat );
+        $table .= "</td></tr>\n" if ( $lastcat );
         $table .= qq(<tr><td class="test-name"><div>$cat</div></td>);
         $table .= qq(<td class="test test-compact"><div>);
     }
@@ -29,7 +29,7 @@ while ( <> )
 my @summary = map { qq(<span class="test-$_">$rescount{$_} $_</span>) } ( keys %rescount );
 my $summary = join ", ", @summary;
 
-print qq(<p>summary: $summary</p>);
 print qq(<div class="test-compact"><table class="test test-compact">);
 print $table;
-print qq(</table></div>);
+print qq(</table></div>\n);
+print qq(<p>summary: $summary</p>);
