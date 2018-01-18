@@ -29,25 +29,15 @@ namespace divine::vm
 
 using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
 
-struct Solver
-{
+struct Solver {
     using Options = std::vector< std::string >;
 
-    struct Config
-    {
+    struct Config {
         Config( Options && opts ) : opts( std::move( opts ) ) {}
         Options opts;
     };
 
     enum class Result { False, True, Unknown };
-
-    Solver( Config && cfg )
-        : _cfg( std::move( cfg ) )
-    {}
-
-    Options options() const { return _cfg.opts; }
-
-    const Config _cfg;
 };
 
 struct NoSolver
@@ -61,31 +51,37 @@ struct SMTLibSolver : Solver
 {
     using Solver::Solver;
 
+    using Options = std::vector< std::string >;
+
+    SMTLibSolver( Options && opts ) : _opts( std::move( opts ) ) {}
+
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) const;
     Result feasible( CowHeap & heap, HeapPointer assumes ) const;
 private:
     Result query( const std::string & formula ) const;
+
+    Options options() const { return _opts; }
+
+    const Options _opts;
 };
 
 struct Z3SMTLibSolver : SMTLibSolver
 {
-    Z3SMTLibSolver() : SMTLibSolver( Config( { "z3", "-in", "-smt2" } ) ) {}
+    Z3SMTLibSolver() : SMTLibSolver( { "z3", "-in", "-smt2" } ) {}
 };
 
 struct BoolectorSMTLib : SMTLibSolver
 {
-    BoolectorSMTLib() : SMTLibSolver( Config( { "boolector", "--smt2" } ) ) {}
+    BoolectorSMTLib() : SMTLibSolver( { "boolector", "--smt2" } ) {}
 };
 
 
 struct Z3Solver : Solver {
     using Solver::Solver;
 
-    Z3Solver( Config && cfg )
-        : Solver( std::move( cfg ) ), solver( ctx ), params( ctx )
-    {
-        solver.set( params );
-    }
+    Z3Solver() : solver( ctx ) {}
+    Z3Solver( const Z3Solver & other ) : ctx(), solver( ctx ) {}
+
 
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 );
     Result feasible( CowHeap & heap, HeapPointer assumes );
