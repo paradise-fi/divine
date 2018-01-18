@@ -74,5 +74,6 @@ long syscall_helper( int id, std::vector< long > args, std::vector< bool > argty
 template struct Eval< Context< Program, CowHeap > >;
 template struct Eval< Context< Program, MutableHeap > >;
 template struct Eval< Context< Program, SmallHeap > >;
+template struct Eval< t_vm::TContext< Program > >;
 
 }
