@@ -29,6 +29,7 @@ namespace divine::vm
 
 namespace smt = brick::smt;
 
+template< typename Formula >
 struct FormulaMap {
     FormulaMap( CowHeap &heap, std::string suff )
        : heap( heap ), suff( suff )
@@ -38,12 +39,20 @@ struct FormulaMap {
         return reinterpret_cast< sym::Formula * >( heap.unsafe_bytes( ptr ).begin() );
     }
 
+    const Formula& operator[]( HeapPointer p )
+    {
+        auto it = ptr2Sym.find( p );
+        ASSERT( it != ptr2Sym.end() );
+        return it->second;
+    }
+
     CowHeap &heap;
     std::string suff;
     std::unordered_set< HeapPointer > pcparts;
+    std::unordered_map< HeapPointer, Formula > ptr2Sym;
 };
 
-struct SMTLibFormulaMap : FormulaMap {
+struct SMTLibFormulaMap : FormulaMap< std::string > {
     SMTLibFormulaMap( CowHeap &heap, std::unordered_set< int > &indices,
                       std::ostream &out, std::string suff = "" )
         : FormulaMap( heap, suff ), indices( indices ), out( out )
@@ -55,13 +64,6 @@ struct SMTLibFormulaMap : FormulaMap {
 
     std::string_view convert( HeapPointer ptr );
 
-    std::string_view operator[]( HeapPointer p )
-    {
-        auto it = ptr2Sym.find( p );
-        ASSERT( it != ptr2Sym.end() );
-        return it->second;
-    }
-
     void pathcond()
     {
         smt::Vector args;
@@ -72,22 +74,32 @@ struct SMTLibFormulaMap : FormulaMap {
             << std::endl;
     }
 
-    std::unordered_map< HeapPointer, std::string > ptr2Sym;
     int valcount = 0;
     std::unordered_set< int > &indices;
     std::ostream &out;
 };
 
 
-struct Z3FormulaMap : FormulaMap {
+struct Z3FormulaMap : FormulaMap< z3::expr > {
     Z3FormulaMap( CowHeap &heap, z3::context &c, std::string suff = "" )
-        : FormulaMap( heap, suff ), context( c )
+        : FormulaMap( heap, suff ), ctx( c )
     {}
 
     z3::expr convert( HeapPointer ptr );
 
-    std::unordered_map< HeapPointer, z3::expr > ptr2Sym;
-    z3::context &context;
+    z3::expr pathcond()
+    {
+        z3::expr_vector args( ctx );
+        for ( const auto & ptr : pcparts )
+            args.push_back( (*this)[ ptr ] );
+        return z3::mk_and( args );
+    }
+
+private:
+    z3::expr toz3( HeapPointer ptr );
+    z3::expr toz3( sym::Formula *formula );
+
+    z3::context &ctx;
 };
 
 }

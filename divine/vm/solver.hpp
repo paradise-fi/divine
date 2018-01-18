@@ -88,7 +88,6 @@ struct Z3Solver : Solver {
 private:
     z3::context ctx;
     z3::solver solver;
-    z3::params params;
 };
 
 struct SymbolicConfig

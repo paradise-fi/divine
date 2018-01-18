@@ -226,28 +226,118 @@ std::string_view SMTLibFormulaMap::convert( HeapPointer ptr )
     return ptr2Sym.emplace( ptr, name ).first->second;
 }
 
-using Formula = sym::Formula;
 
-namespace {
-    z3::expr toz3( const Formula &, z3::context & ) {
-        try {
-            // TODO
-            NOT_IMPLEMENTED();
-        }
-        catch ( const z3::exception &e ) {
-            std::cerr << "toz3: invalid formula " << std::endl;
-            throw e;
-        }
-    }
-} // anonymous namespace
-
-z3::expr Z3FormulaMap::convert( HeapPointer ptr ) {
+z3::expr Z3FormulaMap::toz3( HeapPointer ptr ) {
     auto it = ptr2Sym.find( ptr );
     if ( it != ptr2Sym.end() )
         return it->second;
+    return toz3( hp2form( ptr ) );
+}
 
-    auto formula = toz3( *hp2form( ptr ), context );
-    return ptr2Sym.emplace( ptr, formula ).first->second;
+z3::expr Z3FormulaMap::toz3( sym::Formula *formula ) {
+    int bw = formula->type().bitwidth();
+
+    try {
+        switch ( formula->op() )
+        {
+            case sym::Op::Variable:
+                return ctx.bv_const( ( "var_"s + std::to_string( formula->var.id ) ).c_str(), bw );
+            case sym::Op::Constant:
+                return bw == 1 ? ctx.bool_val( formula->con.value )
+                               : ctx.bv_val( static_cast< __int64 >( formula->con.value ), bw );
+            case sym::Op::Assume:
+                ptr2Sym.emplace( formula->assume.constraint, toz3( formula->assume.constraint ) );
+                pcparts.emplace( formula->assume.constraint );
+                return toz3( formula->assume.value );
+            default:;
+        }
+
+        if ( sym::isUnary( formula->op() ) )
+        {
+            sym::Unary &unary = formula->unary;
+            auto arg = toz3( unary.child );
+            int childbw = hp2form( unary.child )->type().bitwidth();
+            switch ( unary.op ) {
+                case sym::Op::Trunc:
+                    ASSERT_LT( bw, childbw );
+                    return arg.extract( bw - 1, 0 );
+                case sym::Op::ZExt:
+                    ASSERT_LT( childbw, bw );
+                    return z3::zext( arg, bw - childbw );
+                case sym::Op::SExt:
+                    ASSERT_LT( childbw, bw );
+                    return z3::sext( arg, bw - childbw );
+                case sym::Op::BoolNot:
+                    ASSERT_EQ( childbw, bw );
+                    ASSERT_EQ( bw, 1 );
+                    return !arg;
+                case sym::Op::Extract:
+                    ASSERT_LT( bw, childbw );
+                    return arg.extract( unary.from, unary.to );
+                default:
+                    UNREACHABLE_F( "unknown unary operation %d", unary.op );
+            }
+        }
+        else
+        {
+            ASSERT( sym::isBinary( formula->op() ) );
+
+            sym::Binary &binary = formula->binary;
+            auto a = toz3( binary.left );
+            auto b = toz3( binary.right );
+            auto fa = hp2form( binary.left ), fb = hp2form( binary.right );
+            int abw = fa->type().bitwidth(), bbw = fb->type().bitwidth();
+            ASSERT_EQ( abw, bbw );
+
+            if ( abw > 1 ) {
+                switch ( binary.op ) {
+                    case sym::Op::Add:  return a + b;
+                    case sym::Op::Sub:  return a - b;
+                    case sym::Op::Mul:  return a * b;
+                    case sym::Op::SDiv: return a / b;
+                    case sym::Op::UDiv: return z3::udiv( a, b );
+                    case sym::Op::SRem: return z3::srem( a, b );
+                    case sym::Op::URem: return z3::urem( a, b );
+                    case sym::Op::Shl:  return z3::shl( a, b );
+                    case sym::Op::AShr: return z3::ashr( a, b );
+                    case sym::Op::LShr: return z3::lshr( a, b );
+                    case sym::Op::And:  return a & b;
+                    case sym::Op::Or:   return a | b;
+                    case sym::Op::Xor:  return a ^ b;
+
+                    case sym::Op::ULE:  return z3::ule( a, b );
+                    case sym::Op::ULT:  return z3::ult( a, b );
+                    case sym::Op::UGE:  return z3::uge( a, b );
+                    case sym::Op::UGT:  return z3::ugt( a, b );
+                    case sym::Op::SLE:  return a <= b;
+                    case sym::Op::SLT:  return a < b;
+                    case sym::Op::SGE:  return a >= b;
+                    case sym::Op::SGT:  return a > b;
+                    case sym::Op::EQ:   return a == b;
+                    case sym::Op::NE:   return a != b;
+                    case sym::Op::Concat: return z3::concat( a, b );
+                    default:
+                        UNREACHABLE_F( "unknown binary operation %d", binary.op );
+                }
+            } else {
+                ASSERT_EQ( abw, 1 );
+                switch ( binary.op ) {
+                    case sym::Op::And:  return a && b;
+                    case sym::Op::Or:   return a || b;
+                    default:
+                        UNREACHABLE_F( "unknown binary operation %d", binary.op );
+                }
+            }
+        }
+    }
+    catch ( const z3::exception &e ) {
+        std::cerr << "toz3: invalid formula " << std::endl;
+        throw e;
+    }
+}
+
+z3::expr Z3FormulaMap::convert( HeapPointer ptr ) {
+    return ptr2Sym.emplace( ptr, toz3( ptr ) ).first->second;
 }
 
 }

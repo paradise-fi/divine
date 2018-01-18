@@ -14,6 +14,7 @@ using Result = Solver::Result;
 
 namespace {
 
+template< typename FormulaMap >
 sym::Formula *stripAssumes( sym::Formula *f, FormulaMap &m )
 {
     while ( f->op() == sym::Op::Assume )
@@ -25,6 +26,14 @@ bool match( sym::Constant &a, sym::Constant &b )
 {
     const auto mask = brick::bitlevel::ones< uint64_t >( a.type.bitwidth() );
     return a.type.bitwidth() == b.type.bitwidth() && (a.value & mask) == (b.value & mask);
+}
+
+static inline Result z3_solver_result( z3::check_result res ) {
+    switch ( res ) {
+        case z3::check_result::unsat:   return Result::False;
+        case z3::check_result::sat:     return Result::True;
+        case z3::check_result::unknown: return Result::Unknown;
+    }
 }
 
 } // anonymous namespace
@@ -122,14 +131,74 @@ Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
     return query( formula.str() );
 }
 
-Result Z3Solver::equal( SymPairs &, CowHeap &, CowHeap & )
+Result Z3Solver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 )
 {
-    return Result::Unknown;
+    using FormulaMap = Z3FormulaMap;
+
+    FormulaMap m1( h1, ctx ), m2( h2, ctx );
+
+
+    for ( const auto & p : sym_pairs ) {
+        m1.convert( p.first );
+        m2.convert( p.second );
+    }
+
+    auto pc1 = m1.pathcond();
+    auto pc2 = m2.pathcond();
+
+    z3::expr_vector valeq( ctx );
+    for ( const auto& p : sym_pairs ) {
+        auto f1 = stripAssumes( m1.hp2form( p.first ), m1 );
+        auto f2 = stripAssumes( m2.hp2form( p.second ), m2 );
+
+        if ( f1->op() == sym::Op::Variable && f2->op() == sym::Op::Variable )
+        {
+            if ( f1->var.id != f2->var.id )
+                return Result::False;
+            else
+                continue;
+        }
+
+        if ( f1->op() == sym::Op::Constant && f2->op() == sym::Op::Constant )
+        {
+            if ( match( f1->con, f2->con ) )
+                continue;
+            else
+                return Result::False;
+        }
+
+        valeq.push_back( m1[ p.first ] == m2[ p.second ] );
+    }
+
+    solver.reset();
+    solver.add( !( ( pc1 == pc2 ) && z3::implies( pc1, z3::mk_and( valeq ) ) ) );
+    return z3_solver_result( solver.check() ) == Result::False ? Result::True : Result::False;
 }
 
-Result Z3Solver::feasible( CowHeap &, HeapPointer )
+Result Z3Solver::feasible( CowHeap &heap, HeapPointer assumes )
 {
-    return Result::Unknown;
+    using FormulaMap = Z3FormulaMap;
+    FormulaMap map( heap, ctx );
+
+    z3::expr pc = ctx.bool_val( true );
+
+    try {
+        while ( !assumes.null() ) {
+            value::Pointer constraint, next;
+            heap.read_shift( assumes, constraint );
+            heap.read( assumes, next );
+            pc = pc && map.convert( constraint.cooked() );
+            assumes = next.cooked();
+        }
+
+        solver.reset();
+        solver.add( pc );
+        return z3_solver_result( solver.check() );
+    }
+    catch ( const z3::exception &e ) {
+        std::cerr << "Cannot preform feasibility check: " << e.msg() << std::endl;
+        throw e;
+    }
 }
 
 } // namespace vm
