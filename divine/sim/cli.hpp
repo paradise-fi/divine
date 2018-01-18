@@ -81,7 +81,7 @@ struct CLI
     std::map< Snapshot, RefCnt > _state_refs;
     std::map< Snapshot, std::string > _state_names;
     std::map< Snapshot, vm::Step > _trace;
-    vm::Explore _explore;
+    vm::ExplicitExplore _explore;
 
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
