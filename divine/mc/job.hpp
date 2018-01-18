@@ -97,7 +97,7 @@ std::shared_ptr< Job > make_job( vm::explore::BC bc, Next next )
             return std::make_shared< Job_< Next, vm::BoolectorExplore > >( bc, next );
         UNREACHABLE( "Using unsupported solver." );
     }
-    return std::make_shared< Job_< Next, vm::Explore > >( bc, next );
+    return std::make_shared< Job_< Next, vm::ExplicitExplore > >( bc, next );
 }
 
 }

@@ -32,7 +32,7 @@ template< typename Explore >
 std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int distance, bool heap )
 {
     vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
-    dbg.load( ex._ctx );
+    dbg.load( ex.context() );
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ) > dbg_eval( dbg );
     dbg_eval.run();
@@ -86,7 +86,7 @@ std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int dist
                 init( st );
                 vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
                 dn._ref.get();
-                dn.address( vm::dbg::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
+                dn.address( vm::dbg::DNKind::Object, ex.context().get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
                 str << ext( st ).seq << " [ style=filled fillcolor=gray ]" << std::endl;
@@ -106,8 +106,8 @@ std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int dist
 std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap )
 {
     ASSERT( !bc->is_symbolic() );
-    vm::Explore ex( bc );
-    ex._ctx.enable_debug();
+    vm::ExplicitExplore ex( bc );
+    ex.context().enable_debug();
     ex.start();
     return draw_impl( ex, bc, distance, heap );
 }
@@ -118,7 +118,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
                   typename Explore::Snapshot *initial = nullptr )
 {
     Explore ex( bc );
-    ex._ctx.enable_debug();
+    ex.context().enable_debug();
     ASSERT( initial );
     ex.start( *ctx, *initial );
     return draw_impl( ex, bc, distance, heap );

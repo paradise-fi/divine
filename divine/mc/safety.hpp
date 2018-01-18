@@ -26,7 +26,7 @@
 namespace divine {
 namespace mc {
 
-template< typename Next, typename Explore = vm::Explore >
+template< typename Next, typename Explore = vm::ExplicitExplore >
 struct Safety : Job
 {
     using Builder = Explore;
@@ -85,13 +85,13 @@ struct Safety : Job
 
         stats = [=]()
         {
-            int64_t st = _ex._states._s->used;
-            int64_t mip = _ex._total_instructions->load();
+            int64_t st = _ex._d.states._s->used;
+            int64_t mip = _ex._d.total_instructions->load();
             search->ws_each( [&]( auto &bld, auto & )
             {
-                st += bld._states._l.inserts;
-                mip += bld._ctx._instruction_counter; /* might double-count */
-                mip += bld._instructions;
+                st += bld._d.states._l.inserts;
+                mip += bld.context()._instruction_counter; /* might double-count */
+                mip += bld._d.instructions;
             } );
             return std::make_pair( st, mip );
         };
@@ -108,16 +108,16 @@ struct Safety : Job
         StateTrace rv;
         rv.emplace_front( _error_to.snap, _error_label );
         auto i = _error.snap;
-        while ( i != _ex._initial.snap )
+        while ( i != _ex._d.initial.snap )
         {
             rv.emplace_front( i, std::nullopt );
             i = *_ext.machinePointer< vm::CowHeap::Snapshot >( i );
         }
-        rv.emplace_front( _ex._initial.snap, std::nullopt );
+        rv.emplace_front( _ex._d.initial.snap, std::nullopt );
         return mc::trace( _ex, rv );
     }
 
-    void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex._ctx ); }
+    void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex.context() ); }
 
     Result result() override
     {
@@ -128,8 +128,8 @@ struct Safety : Job
 
     virtual PoolStats poolstats() override
     {
-        return PoolStats{ { "snapshot memory", _ex._ctx.heap()._snapshots.stats() },
-                          { "fragment memory", _ex._ctx.heap()._objects.stats() } };
+        return PoolStats{ { "snapshot memory", _ex.context().heap()._snapshots.stats() },
+                          { "fragment memory", _ex.context().heap()._objects.stats() } };
     }
 };
 

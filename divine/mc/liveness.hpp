@@ -160,7 +160,7 @@ struct NestedDFS : ss::Job
     void stop() override { NOT_IMPLEMENTED(); }
 };
 
-template< typename Next, typename Explore = vm::Explore >
+template< typename Next, typename Explore = vm::ExplicitExplore >
 struct Liveness : Job
 {
     using Builder = Explore;
@@ -191,11 +191,11 @@ struct Liveness : Job
 
         _search.reset( new NDFS( _ex, found ) ); //Builder, Next
         NDFS *search = dynamic_cast< NDFS * >( _search.get() );
-        stats = [=]() { return std::make_pair( _ex._states._s->used.load(), 0 ); };
+        stats = [=]() { return std::make_pair( _ex._d.states._s->used.load(), 0 ); };
         search->start( threads );
     }
 
-    void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex._ctx ); }
+    void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex.context() ); }
 
     Result result() override
     {
@@ -206,8 +206,8 @@ struct Liveness : Job
 
     virtual PoolStats poolstats() override
     {
-        return PoolStats{ { "snapshot memory", _ex._ctx.heap()._snapshots.stats() },
-                          { "fragment memory", _ex._ctx.heap()._objects.stats() } };
+        return PoolStats{ { "snapshot memory", _ex.context().heap()._snapshots.stats() },
+                          { "fragment memory", _ex.context().heap()._objects.stats() } };
     }
 };
 

@@ -61,9 +61,8 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
 {
     Trace t;
     auto last = states.begin(), next = last + 1;
-    auto hasher = ex._states.hasher; /* fixme */
-    ex._ctx.enable_debug();
-    ex._overwrite = true;
+    ex.context().enable_debug();
+    ex.enable_overwrite();
 
     auto process =
         [&]( auto &label )
@@ -83,12 +82,12 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                     {
                         ASSERT( last != states.end() );
 
-                        if ( !hasher.equal( from.snap, last->first ) )
+                        if ( !ex.equal( from.snap, last->first ) )
                             return ss::Listen::Ignore;
 
                         if ( next == states.end() )
                             return ss::Listen::Terminate;
-                        if ( !hasher.equal( to.snap, next->first ) )
+                        if ( !ex.equal( to.snap, next->first ) )
                             return ss::Listen::Ignore;
                         if ( next->second.has_value() && label != next->second.value() )
                             return ss::Listen::Ignore;
