@@ -362,7 +362,7 @@ struct Explore
             Snapshot snap;
             bool free:1, feasible:1;
             GenericPointer tid;
-            Check() : free( false ), feasible( false ) {}
+            Check() : free( false ), feasible( true ) {}
         };
 
         std::vector< Check > to_check;
