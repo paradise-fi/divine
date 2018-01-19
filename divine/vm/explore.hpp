@@ -331,7 +331,10 @@ struct Explore
             return false;
         if ( context()._assume.null() )
             return true;
-        return _d.solver.feasible( context().heap(), context()._assume ) == Solver::Result::True;
+        bool rv = _d.solver.feasible( context().heap(), context()._assume ) == Solver::Result::True;
+        if ( rv ) /* "cache" positive answers */
+            context()._assume = HeapPointer();
+        return rv;
     }
 
     template< typename Y >
