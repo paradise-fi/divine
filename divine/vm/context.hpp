@@ -223,7 +223,7 @@ struct Context
 
     template< typename H, typename F >
     static auto with_snap( H &heap, F f, brick::types::Preferred )
-        -> decltype( heap.snapshot(), void( 0 ) )
+        -> decltype( heap.is_shared( heap.snapshot() ), void( 0 ) )
     {
         f( heap );
     }
