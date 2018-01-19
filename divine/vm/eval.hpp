@@ -533,6 +533,7 @@ struct Eval
     }
 
     void run();
+    bool run_seq( bool continued );
     void dispatch(); /* evaluate a single instruction */
 
     void advance()

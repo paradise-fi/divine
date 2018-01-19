@@ -1311,4 +1311,22 @@ void Eval< Ctx >::run()
     } while ( !context().frame().null() );
 }
 
+template< typename Ctx >
+bool Eval< Ctx >::run_seq( bool continued )
+{
+    if ( continued )
+        dispatch();
+    else
+        context().reset_interrupted();
+
+    do {
+        advance();
+        if ( instruction().opcode == lx::OpHypercall && instruction().subcode == lx::HypercallChoose )
+            return true;
+        dispatch();
+    } while ( !context().frame().null() );
+
+    return false;
+}
+
 }

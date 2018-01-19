@@ -105,6 +105,7 @@ struct Context : vm::Context< Program, CowHeap >
 
     bool finished()
     {
+        _stack.resize( _level, Choice( 0, -1 ) );
         _level = 0;
         _tid = GenericPointer();
         _trace.clear();
@@ -342,16 +343,27 @@ struct Explore
         ASSERT( context()._trace.empty() );
         ASSERT( context()._lock.empty() );
 
+        using MemMap = typename Context::MemMap;
+        using std::swap;
+
+        struct Critical
+        {
+            MemMap loads, stores;
+        };
+
         struct Check
         {
+            MemMap loads, stores;
             std::deque< Choice > lock;
-            typename Context::MemMap loads, stores;
             Label lbl;
             Snapshot snap;
-            bool free;
+            bool free:1, feasible:1;
+            GenericPointer tid;
+            Check() : free( false ), feasible( false ) {}
         };
 
         std::vector< Check > to_check;
+        std::map< GenericPointer, Critical > critical;
 
         context()._crit_loads.clear();
         context()._crit_stores.clear();
@@ -365,48 +377,67 @@ struct Explore
             yield( st, lbl, r.isnew() );
         };
 
+        auto do_eval = [&]( Check &tc )
+        {
+            bool cont = false;
+            while ( ( cont = eval.run_seq( cont ) ) && ( tc.feasible = feasible() ) );
+            if ( tc.feasible )
+                tc.feasible = feasible();
+        };
+
         do {
             context().load( from.snap );
             setup::scheduler( context() );
-            eval.run();
+            ASSERT_EQ( context()._level, 0 );
+
+            to_check.emplace_back();
+            auto &tc = to_check.back();
+
+            do_eval( tc );
+
             _d.instructions += context()._instruction_counter;
-            if ( feasible() )
+            swap( tc.loads, context()._mem_loads );
+            swap( tc.stores, context()._mem_stores );
+
+            auto &crit = critical[ context()._tid ];
+            for ( auto l : tc.loads ) crit.loads.insert( l );
+            for ( auto s : tc.stores ) crit.stores.insert( s );
+            for ( int i = 0; i < context()._level; ++i )
+                tc.lock.push_back( context()._stack[ i ] );
+
+            if ( tc.feasible )
             {
-                to_check.emplace_back();
-                auto &tc = to_check.back();
-                tc.loads = context()._mem_loads;
-                tc.stores = context()._mem_stores;
-
-                for ( auto c : context()._stack )
-                    tc.lock.push_back( c );
-
                 tc.snap = context().heap().snapshot();
                 tc.free = !context().heap().is_shared( tc.snap );
                 tc.lbl = label();
             }
+            tc.tid = context()._tid;
         } while ( !context().finished() );
 
         for ( auto &tc : to_check )
         {
             typename Context::MemMap l, s;
 
-            for ( auto &other : to_check )
+            for ( auto &c : critical )
             {
-                if ( &tc == &other )
+                if ( tc.tid == c.first )
                     continue;
-                for ( auto ol : other.loads )
+                for ( auto ol : c.second.loads )
                     if ( tc.stores.intersect( ol.first, ol.second ) )
                         s.insert( ol.first, ol.second );
-                for ( auto sl : other.stores )
+                for ( auto sl : c.second.stores )
                     if ( tc.loads.intersect( sl.first, sl.second ) )
                         l.insert( sl.first, sl.second );
             }
 
             if ( s.empty() && l.empty() )
-                do_yield( tc.snap, tc.lbl );
+            {
+                if ( tc.feasible )
+                    do_yield( tc.snap, tc.lbl );
+            }
             else
             {
-                if ( tc.free )
+                if ( tc.feasible && tc.free )
                     pool().free( tc.snap );
                 context()._lock = tc.lock;
                 context().load( from.snap );
@@ -416,14 +447,18 @@ struct Explore
                 context()._crit_stores = s;
                 setup::scheduler( context() );
 
-                eval.run(); /* will not cancel since this is a prefix */
+                do_eval( tc );
                 _d.instructions += context()._instruction_counter;
-                auto lbl = label();
-                do_yield( context().heap().snapshot(), lbl );
 
-                int i = 0;
-                for ( auto t : lbl.stack )
-                    ASSERT( t == tc.lock[ i++ ] );
+                if ( tc.feasible )
+                {
+                    auto lbl = label();
+                    do_yield( context().heap().snapshot(), lbl );
+
+                    int i = 0;
+                    for ( auto t : lbl.stack )
+                        ASSERT( t == tc.lock[ i++ ] );
+                }
 
                 context()._stack.clear();
                 context()._lock.clear();
