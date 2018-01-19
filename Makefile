@@ -24,6 +24,7 @@ RTSRC = $(PWD)/runtime
 
 LIBUNWIND_LDIR = $(RTBIN)/libunwind/src
 CXX_LDIR = $(TOOLDIR)/lib
+CXX_STATIC = $(TOOLDIR)/lib-static
 
 LDFLAGS_ = -L$(LIBUNWIND_LDIR) -Wl,-rpath,$(LIBUNWIND_LDIR) \
            -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR)
@@ -38,12 +39,13 @@ TOOLCHAIN_ = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 	     -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)"
 TOOLCHAIN  ?= $(TOOLCHAIN_) \
 	      -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
-TOOLSTAMP  ?= $(TOOLDIR)/stamp-v1
+TOOLSTAMP  ?= $(TOOLDIR)/stamp-v2
 
 CONFIG        += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
 static_FLAGS  += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) $(CONFIG) \
                  -DBUILD_SHARED_LIBS=OFF -DSTATIC_BUILD=ON
-bench_FLAGS   += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) -DBUILD_SHARED_LIBS=OFF
+bench_FLAGS   += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) -DBUILD_SHARED_LIBS=OFF \
+		 -DCMAKE_EXE_LINKER_FLAGS="-L$(CXX_STATIC) $(LDFLAGS_)"
 release_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
 semidbg_FLAGS += -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS   += -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
@@ -117,6 +119,8 @@ $(TOOLSTAMP):
 	$(CMAKE) --build $(OBJ)toolchain --target cxx_static -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target cxx -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target clang -- $(EXTRA)
+	mkdir -p $(CXX_STATIC)
+	ln -sf $(CXX_LDIR)/libc++{,abi}.a $(CXX_STATIC)/
 	touch $@
 
 CURSES = libncursesw.a libncurses.a libcurses.a
