@@ -9,5 +9,6 @@ int main( int argc, const char **argv )
     }
 
     auto script = brick::fs::readFile( argv[1] );
+    ::chdir( brick::string::dirname( argv[1] ).c_str() );
     divcheck::execute( script );
 }
