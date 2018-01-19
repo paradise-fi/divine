@@ -121,6 +121,6 @@ Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool assume
     if ( !assume )
         wconstraint = __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint );
     __sym_state.pcFragments = weaken( __new< PCFragment >( wconstraint, __sym_state.pcFragments ) );
-    __vm_trace( _VM_T_Alg, __sym_state.pcFragments );
+    __vm_trace( _VM_T_Assume, __sym_state.pcFragments );
     return mark( __newf< Assume >( weaken( value ), wconstraint ) );
 }
