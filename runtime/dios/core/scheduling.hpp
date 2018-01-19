@@ -496,6 +496,7 @@ struct Scheduler : public Next
 
         scheduler.traceTasks();
         Task *t = scheduler.chooseTask();
+        __vm_trace( _VM_T_TaskID, t );
 
         while ( t && t->_frame )
         {
