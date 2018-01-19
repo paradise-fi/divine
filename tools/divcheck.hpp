@@ -31,6 +31,39 @@ namespace divcheck
 
 using namespace divine;
 
+struct Unexpected : std::exception
+{
+    std::string _err;
+    Unexpected( std::string s ) : _err( "unexpected result from: " + s ) {}
+    const char *what() const noexcept { return _err.c_str(); }
+};
+
+struct Expect : ui::LogSink
+{
+    bool _ok, _setup = false, _armed = false;
+    mc::Result _result;
+    std::string _cmd;
+
+    void check()
+    {
+        if ( !_armed || !_setup ) return;
+
+        _setup = _armed = false;
+        if ( !_ok )
+            throw Unexpected( _cmd );
+    }
+
+    void arm( std::string cmd ) { _ok = false; _armed = true; _cmd = cmd; }
+    void setup( const Expect &src ) { *this = src; _setup = true; }
+
+    virtual void backtrace( ui::DbgContext &, int ) {}
+    virtual void result( mc::Result r, const mc::Trace & )
+    {
+        ASSERT( _armed );
+        _ok = r == _result;
+    }
+};
+
 std::vector< std::string > parse( std::string txt )
 {
     std::vector< std::string > script;
@@ -54,15 +87,34 @@ void execute( std::string script_txt, F... prepare )
     auto script = parse( script_txt );
     brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
 
+    std::shared_ptr< Expect > expect( new Expect );
+
     for ( auto cmdstr : script )
     {
         std::vector< std::string > tok;
         std::copy( split.begin( cmdstr ), split.end(), std::back_inserter( tok ) );
         ui::CLI cli( tok );
 
-        auto cmd = cli.parse( cli.commands() );
+        auto check_expect = [=]( auto &cmd )
+        {
+            std::vector< ui::SinkPtr > log{ expect, cmd._log };
+            cmd._log = ui::make_composite( log );
+            expect->arm( cmdstr );
+        };
+
+        auto o_expect = ui::cmd::make_option_set< Expect >( cli.validator() )
+            .option( "--result {result}", &Expect::_result, "verification result" );
+
+        auto parser = cli.commands().command< Expect >( o_expect );
+        auto cmd = cli.parse( parser );
+
         cmd.match( prepare..., [&]( ui::Command &c ) { c.setup(); } );
-        cmd.match( [&]( ui::Command &c ) { c.run(); } );
+        cmd.match( [&]( ui::Verify &v ) { check_expect( v ); },
+                   [&]( ui::Check &c )  { check_expect( c ); } );
+        cmd.match( [&]( ui::Command &c ) { c.run(); },
+                   [&]( Expect &e ) { expect->setup( e ); } );
+
+        expect->check();
     }
 }
 
