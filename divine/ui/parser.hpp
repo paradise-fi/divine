@@ -150,6 +150,14 @@ struct CLI : Interface
             return good( out );
         };
 
+        auto result = []( std::string s, auto good, auto bad )
+        {
+            if ( s == "valid" ) return good( mc::Result::Valid );
+            if ( s == "error" ) return good( mc::Result::Error );
+            if ( s == "boot-error" ) return good( mc::Result::BootError );
+            return bad( ui::cmd::BadContent, s + " is not a valid result specification" );
+        };
+
         return cmd::make_validator()->
             add( "file", file )->
             add( "vfsdir", vfsdir )->
@@ -158,6 +166,7 @@ struct CLI : Interface
             add( "label", label )->
             add( "tracepoints", tracepoints )->
             add( "paths", paths )->
+            add( "result", result )->
             add( "commasep", commasep );
     }
 
