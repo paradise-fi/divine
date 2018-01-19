@@ -683,7 +683,7 @@ struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, watch;
-    std::vector< std::regex > filter1, filter2, flavourFilter, exclude, sortHints;
+    std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout, jobs;
@@ -1035,13 +1035,11 @@ struct Main {
 
     void setup() {
         Listing l = listdir( options.testdir, true );
-        std::multimap< std::vector< std::string >, TestCase > casesSort;
-        // std::sort( l.begin(), l.end() );
+        std::sort( l.begin(), l.end() );
 
-        for ( Flavours::iterator flav = options.flavours.begin();
-              flav != options.flavours.end(); ++flav )
+        for ( auto &flavour : options.flavours )
         {
-            if ( skip( *flav, options.flavourFilter, false ) )
+            if ( skip( flavour, options.flavourFilter, false ) )
                 continue;
 
             for ( Listing::iterator i = l.begin(); i != l.end(); ++i ) {
@@ -1076,33 +1074,10 @@ struct Main {
 
                 TestCase tc( journal, progress, options, options.testdir + *i,
                              interpreter.empty() ? "" : options.testdir + interpreter,
-                             *i, *flav );
+                             *i, flavour );
 
-                // first hint search by explicit hints from user
-                std::vector< std::string > hints;
-                for ( auto &h : options.sortHints ) {
-                    std::smatch match;
-                    if ( std::regex_search( *i, match, h ) ) {
-                        if ( match[1].matched )
-                            hints.emplace_back( match[1] );
-                        else
-                            hints.emplace_back( match[0] );
-                    }
-                    else
-                        hints.emplace_back( "" );
-                }
-                // now try to sort respecting extended tests, such as test.c before test-special.c
-                auto dot = i->find( '.' );
-                auto withoutExts = i->substr( 0, dot );
-                for ( auto p : string::splitStringBy( withoutExts, "[-_ .]" ) )
-                    hints.emplace_back( p );
-                hints.emplace_back( *i );
-
-                casesSort.emplace( hints, tc );
+                cases.push_back( tc );
             }
-
-            for ( auto &p : casesSort )
-                cases.push_back( p.second );
         }
 
         running.resize( options.jobs );
@@ -1386,9 +1361,6 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         }
         opt.interpreters.push_back( std::make_pair( s[0], s[1] ) );
     }
-
-    for ( auto h : args.opts( "--sort-hint" ) )
-        opt.sortHints.emplace_back( mkRegex( h ) );
 
     if ( opt.testdir.empty() )
     {
