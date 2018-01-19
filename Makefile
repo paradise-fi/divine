@@ -43,6 +43,7 @@ TOOLSTAMP  ?= $(TOOLDIR)/stamp-v1
 CONFIG        += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
 static_FLAGS  += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) $(CONFIG) \
                  -DBUILD_SHARED_LIBS=OFF -DSTATIC_BUILD=ON
+bench_FLAGS   += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) -DBUILD_SHARED_LIBS=OFF
 release_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
 semidbg_FLAGS += -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS   += -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
@@ -56,7 +57,7 @@ toolchain_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 
 all: $(DEFAULT_FLAVOUR)
 
-FLAVOURS = debug asan release semidbg static
+FLAVOURS = debug asan release semidbg static bench
 TARGETS = divine unit functional website check llvm-utils clang test-divine \
           install lart runner divbench divcheck divcc
 DEFTARGETS = divine unit functional website check install lart divcheck divcc
@@ -68,8 +69,8 @@ ${FLAVOURS}:
 	$(MAKE) $@-divine
 
 divbench:
-	$(MAKE) static-divbench
-	@echo your binary is at $(OBJ)static/tools/divbench
+	$(MAKE) bench-divbench
+	@echo your binary is at $(OBJ)bench/tools/divbench
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
@@ -97,6 +98,10 @@ ${TARGETS:%=semidbg-%}:
 ${TARGETS:%=release-%}:
 	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
 	$(SETENV) $(CMAKE) --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
+
+${TARGETS:%=bench-%}:
+	$(MAKE) $(OBJ)bench/cmake.stamp $(GETCONFDEPS) FLAVOUR=bench
+	$(SETENV) $(CMAKE) --build $(OBJ)bench --target ${@:bench-%=%} -- $(EXTRA)
 
 ${TARGETS:%=asan-%}:
 	$(MAKE) $(OBJ)asan/cmake.stamp $(GETCONFDEPS) FLAVOUR=asan
