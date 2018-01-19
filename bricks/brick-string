@@ -299,6 +299,17 @@ inline std::string basename(const std::string& pathname)
         return pathname.substr(pos+1);
 }
 
+inline std::string dirname(const std::string& pathname)
+{
+    size_t pos = pathname.rfind( "/" );
+    if ( pos == std::string::npos )
+        return ".";
+    else if ( !pos && pathname[0] == '/' )
+        return "/";
+    else
+        return std::string( pathname, 0, pos );
+}
+
 struct SplitRange {
 
     using const_iterator = std::sregex_token_iterator;
@@ -373,10 +384,10 @@ struct Splitter {
 
 }
 
-namespace t_string {
+namespace t_string
+{
 
 using namespace brick::string;
-using std::string;
 
 struct TestRegexp {
 
@@ -413,6 +424,25 @@ struct TestRegexp {
             ++i;
         }
         ASSERT( i == matches.end() );
+    }
+};
+
+struct TestPaths
+{
+    TEST(dirname)
+    {
+        ASSERT_EQ( string::dirname( "foo" ), "." );
+        ASSERT_EQ( string::dirname( "/foo" ), "/" );
+        ASSERT_EQ( string::dirname( "/foo/foo" ), "/foo" );
+        ASSERT_EQ( string::dirname( "foo/bar" ), "foo" );
+    }
+
+    TEST(basename)
+    {
+        ASSERT_EQ( string::basename( "foo" ), "foo" );
+        ASSERT_EQ( string::basename( "/foo" ), "foo" );
+        ASSERT_EQ( string::basename( "/foo/foo" ), "foo" );
+        ASSERT_EQ( string::basename( "foo/bar" ), "bar" );
     }
 };
 
