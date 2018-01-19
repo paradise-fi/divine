@@ -71,6 +71,7 @@ using Fault = ::_VM_Fault;
 struct TraceText { GenericPointer text; };
 struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
+struct TraceTaskID { GenericPointer ptr; };
 struct TraceStateType { CodePointer pc; };
 struct TraceInfo { GenericPointer text; };
 struct TraceAssume { HeapPointer ptr; };
@@ -373,6 +374,7 @@ struct Context
     virtual void trace( TraceText tt ) { trace( heap().read_string( tt.text ) ); }
     virtual void trace( TraceSchedInfo ) {}
     virtual void trace( TraceSchedChoice ) {}
+    virtual void trace( TraceTaskID ) {}
     virtual void trace( TraceStateType ) {}
     virtual void trace( TraceTypeAlias ) {}
     virtual void trace( TraceInfo ) {}

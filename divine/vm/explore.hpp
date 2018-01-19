@@ -52,6 +52,7 @@ struct Context : vm::Context< Program, CowHeap >
     std::vector< Choice > _stack;
     std::deque< Choice > _lock;
     HeapPointer _assume;
+    GenericPointer _tid;
 
     int _level;
 
@@ -81,23 +82,31 @@ struct Context : vm::Context< Program, CowHeap >
     }
 
     using Super::trace;
-    void trace( std::string s ) { _trace.push_back( s ); }
 
     void trace( TraceSchedInfo ) {} /* noop */
     void trace( TraceSchedChoice ) {} /* noop */
     void trace( TraceStateType ) {}
+    void trace( TraceTypeAlias ) {}
+
+    void trace( std::string s ) { _trace.push_back( s ); }
+    void trace( TraceDebugPersist t ) { Super::trace( t ); }
     void trace( TraceAssume ta ) { _assume = ta.ptr; }
+
+    void trace( TraceTaskID tid )
+    {
+        ASSERT( _tid.null() );
+        _tid = tid.ptr;
+    }
 
     void trace( TraceInfo ti )
     {
         _info += heap().read_string( ti.text ) + "\n";
     }
-    void trace( TraceTypeAlias ) {}
-    void trace( TraceDebugPersist t ) { Super::trace( t ); }
 
     bool finished()
     {
         _level = 0;
+        _tid = GenericPointer();
         _trace.clear();
         _assume = HeapPointer();
         while ( !_stack.empty() && _stack.back().taken + 1 == _stack.back().total )

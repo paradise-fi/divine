@@ -61,7 +61,8 @@ struct RunContext_ : Super
         std::cout << this->heap().read_string( ti.text ) << std::endl;
     }
     void trace( vm::TraceAssume ) {}
-    void trace( TraceTypeAlias ) { }
+    void trace( TraceTypeAlias ) {}
+    void trace( TraceTaskID ) {}
     void trace( TraceDebugPersist ) {} /* noop, since snapshots are not
                                         * restored here */
 };

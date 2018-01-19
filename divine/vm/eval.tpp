@@ -629,6 +629,9 @@ void Eval< Ctx >::implement_hypercall()
                     context().trace( TraceSchedInfo{ operandCk< IntV >( 1 ).cooked(),
                                                         operandCk< IntV >( 2 ).cooked() } );
                     return;
+                case _VM_T_TaskID:
+                    context().trace( TraceTaskID{ operandCk< PointerV >( 1 ).cooked() } );
+                    return;
                 case _VM_T_Info:
                     context().trace( TraceInfo{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                     return;
@@ -636,9 +639,7 @@ void Eval< Ctx >::implement_hypercall()
                     context().trace( TraceAssume{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                     break;
                 case _VM_T_TypeAlias:
-                    context().trace( TraceTypeAlias{
-                        pc(), ptr2h( operandCk< PointerV >( 2 ) )
-                    } );
+                    context().trace( TraceTypeAlias{ pc(), ptr2h( operandCk< PointerV >( 2 ) ) } );
                     break;
                 case _VM_T_DebugPersist:
                     context().trace( TraceDebugPersist{ operandCk< PointerV >( 1 ).cooked() } );
