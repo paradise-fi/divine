@@ -86,16 +86,14 @@ struct Context : vm::Context< Program, CowHeap >
     void trace( TraceSchedInfo ) {} /* noop */
     void trace( TraceSchedChoice ) {} /* noop */
     void trace( TraceStateType ) {}
+    void trace( TraceAssume ta ) { _assume = ta.ptr; }
+
     void trace( TraceInfo ti )
     {
         _info += heap().read_string( ti.text ) + "\n";
     }
     void trace( TraceTypeAlias ) {}
     void trace( TraceDebugPersist t ) { Super::trace( t ); }
-    void trace( TraceAlg ta )
-    {
-        _assume = ta.args[0];
-    }
 
     bool finished()
     {

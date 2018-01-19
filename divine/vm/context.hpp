@@ -73,7 +73,7 @@ struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
 struct TraceStateType { CodePointer pc; };
 struct TraceInfo { GenericPointer text; };
-struct TraceAlg { brick::data::SmallVector< divine::vm::GenericPointer > args; };
+struct TraceAssume { HeapPointer ptr; };
 struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
 struct TraceDebugPersist { GenericPointer ptr; };
 
@@ -376,7 +376,7 @@ struct Context
     virtual void trace( TraceStateType ) {}
     virtual void trace( TraceTypeAlias ) {}
     virtual void trace( TraceInfo ) {}
-    virtual void trace( TraceAlg ) {}
+    virtual void trace( TraceAssume ) {}
     virtual void trace( std::string ) {}
 
     virtual void doublefault()

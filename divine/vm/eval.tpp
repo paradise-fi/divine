@@ -632,14 +632,9 @@ void Eval< Ctx >::implement_hypercall()
                 case _VM_T_Info:
                     context().trace( TraceInfo{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                     return;
-                case _VM_T_Alg: {
-                    brick::data::SmallVector< GenericPointer > args;
-                    int argc = instruction().argcount() - 1;
-                    for ( int i = 1; i < argc; ++i )
-                        args.emplace_back( ptr2h( operandCk< PointerV >( i ) ) );
-                    context().trace( TraceAlg{ args } );
+                case _VM_T_Assume:
+                    context().trace( TraceAssume{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                     break;
-                }
                 case _VM_T_TypeAlias:
                     context().trace( TraceTypeAlias{
                         pc(), ptr2h( operandCk< PointerV >( 2 ) )
