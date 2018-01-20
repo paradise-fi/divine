@@ -291,6 +291,13 @@ struct IntervalSet
     }
 };
 
+template< typename T >
+void swap( IntervalSet< T > &a, IntervalSet< T > &b )
+{
+    using std::swap;
+    swap( a._map, b._map );
+}
+
 namespace uninitialized {
     template< typename InputIt, typename ForwardIt >
     ForwardIt move( InputIt first, InputIt last, ForwardIt dst ) {
