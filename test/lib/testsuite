@@ -1,5 +1,11 @@
 #!/bin/sh
 
+TODO=,todo
+for arg in "$@"; do
+    if test -n "$tags" && echo $arg | grep -q todo; then TODO=; fi
+    if test "$arg" = "--tags"; then tags=1; else tags=; fi
+done
+
 ./runner \
     --total-timeout 28800 --timeout 600  \
     --interpreter cpp:lib/verify \
@@ -8,7 +14,7 @@
     --interpreter bt:lib/brick-test \
     --interpreter pdc:lib/pdclib-test \
     --skip "[.]pkg/,[.]helper[.]" \
-    --exclude-tags todo,attic \
+    --exclude-tags attic$TODO \
     --workdir . --outdir results \
     "$@"
 
