@@ -620,8 +620,6 @@ struct IO : Sink {
 
 };
 
-enum ProgressType { First, Update, Last };
-
 struct Progress
 {
     struct : std::streambuf {} buf;
@@ -646,28 +644,15 @@ struct Progress
         }
     }
 
-    std::ostream &stream( int slot, ProgressType p )
+    std::ostream &stream( int slot )
     {
         backlog.resize( std::max( size_t( slot + 1 ), backlog.size() ) );
+        flush();
 
-        if ( batch && p == First )
-        {
-            if ( slot )
-                return backlog[ slot ];
-            flush();
-            return std::cout;
-        }
-
-        if ( isatty( STDOUT_FILENO ) && !batch ) {
-            if ( p != First )
-                return std::cout << "\r";
-            return std::cout;
-        }
-
-        if ( p == Last )
-            return slot ? backlog[slot] : std::cout;
-
-        return null;
+        if ( batch )
+            return backlog[ slot ];
+        else
+            return std::cerr;
     }
 
     ~Progress() { flush(); }
@@ -745,7 +730,8 @@ struct TestProcess
     {}
 };
 
-struct TestCase {
+struct TestCase
+{
     TestProcess child;
     std::string name, flavour;
     IO io;
@@ -753,7 +739,7 @@ struct TestCase {
 
     struct rusage usage;
     int status, slot;
-    bool timeout;
+    bool timeout, tty;
     pid_t pid;
 
     time_t start, end, silent_start, last_update, last_heartbeat;
@@ -772,9 +758,9 @@ struct TestCase {
         return flavour + ":" + name;
     }
 
-    std::ostream &progress( ProgressType p = Last )
+    std::ostream &progress()
     {
-        return _progress->stream( slot, p );
+        return _progress->stream( slot );
     }
 
     void pipe() {
@@ -795,7 +781,8 @@ struct TestCase {
         child.interactive = options.interactive;
     }
 
-    bool monitor( int wait_msec ) {
+    bool monitor( int wait_msec )
+    {
         end = time( 0 );
 
         /* heartbeat */
@@ -834,14 +821,6 @@ struct TestCase {
         int nfds = io.fd_set( &set );
         wait.tv_sec = 0;
         wait.tv_usec = wait_msec * 1000;
-
-        if ( !options.verbose && !options.interactive && !options.batch ) {
-            if ( end - last_update >= 1 ) {
-                progress( Update ) << tag( "running" ) << pretty() << " "
-                                   << end - start << std::flush;
-                last_update = end;
-            }
-        }
 
         if ( select( nfds, &set, NULL, NULL, &wait ) > 0 )
             silent_start = end; /* something happened */
@@ -895,7 +874,7 @@ struct TestCase {
     {
         std::stringstream rv;
 
-        if ( isatty( STDOUT_FILENO ) )
+        if ( tty )
         {
             rv << "\033[";
 
@@ -910,7 +889,7 @@ struct TestCase {
         }
 
         rv << r;
-        if ( isatty( STDOUT_FILENO ) )
+        if ( tty )
             rv << "\033[0m";
         return rv.str();
     }
@@ -923,7 +902,7 @@ struct TestCase {
         journal->started( id() );
         silent_start = start = time( 0 );
 
-        progress( First ) << tag( "running" ) << pretty() << std::flush;
+        progress() << tag( "running" ) << pretty() << std::flush;
         if ( options.verbose || options.interactive )
             progress() << std::endl;
     }
@@ -964,14 +943,15 @@ struct TestCase {
 
         journal->done( id(), r );
 
-        if ( options.batch ) {
+        if ( options.batch )
+        {
             int spaces = std::max( 64 - int(pretty().length()), 0 );
-            progress( Last ) << " " << std::string( spaces, '.' ) << " "
-                             << colour( r ) << std::endl;
+            progress() << " " << std::string( spaces, '.' ) << " "
+                       << colour( r ) << std::endl;
             if ( r == Journal::PASSED )
-                progress( Last ) << "   " << rusage() << std::endl;
+                progress() << "   " << rusage() << std::endl;
         } else
-            progress( Last ) << tag( r ) << pretty() << std::endl;
+            progress() << tag( r ) << pretty() << std::endl;
 
         io.clear();
         return true;
@@ -1025,8 +1005,9 @@ struct TestCase {
     }
 };
 
-struct Main {
-    bool die;
+struct Main
+{
+    bool die, tty;
     time_t start;
 
     typedef std::vector< TestCase > Cases;
@@ -1083,16 +1064,19 @@ struct Main {
         return options.tagsets.empty();
     }
 
-    void setup() {
+    void setup()
+    {
         Listing l = listdir( options.testdir, true );
         std::sort( l.begin(), l.end() );
+        tty = isatty( STDERR_FILENO );
 
         for ( auto &flavour : options.flavours )
         {
             if ( skip( flavour, options.flavourFilter, false ) )
                 continue;
 
-            for ( Listing::iterator i = l.begin(); i != l.end(); ++i ) {
+            for ( Listing::iterator i = l.begin(); i != l.end(); ++i )
+            {
                 bool runnable = false;
                 std::string interpreter;
 
@@ -1126,6 +1110,7 @@ struct Main {
                              interpreter.empty() ? "" : options.testdir + interpreter,
                              *i, flavour );
 
+                tc.tty = tty;
                 cases.push_back( tc );
             }
         }
@@ -1149,6 +1134,32 @@ struct Main {
                 tc = nullptr, --running_count;
             msec = 0;
         }
+
+        if ( tty )
+        {
+            int extra = running_count;
+            std::stringstream status;
+            for ( auto &tc : running )
+            {
+                if ( !tc ) continue;
+                std::string name = tc->name;
+                auto start = name.rfind('/'), end = name.rfind('.');
+                start = start == std::string::npos ? 0 : start + 1;
+                end = end == std::string::npos ? name.size() : end;
+                name = std::string( name, start, end - start );
+                if ( status.str().size() + name.size() >= 60 )
+                    continue;
+                -- extra;
+                status << "[" << name << " " << tc->end - tc->start << "] ";
+                if ( status.str().size() >= 60 ) break;
+            }
+            if ( extra )
+                status << "+ " << extra << " more";
+            std::cerr << status.str();
+            for ( int i = status.str().size(); i < 75; ++i )
+                std::cerr << " ";
+            std::cerr << "\r" << std::flush;
+        }
     }
 
     int list()
@@ -1156,7 +1167,7 @@ struct Main {
         setup();
         std::cerr << "would run " << cases.size() << " tests" << std::endl;
         for ( auto &c : cases )
-            std::cerr << c.name << std::endl;
+            std::cout << c.name << std::endl;
         return 0;
     }
 
@@ -1193,7 +1204,8 @@ struct Main {
             }
 
             if ( time(0) - start > options.total_timeout ) {
-                std::cerr << "total timeout (" << options.total_timeout << "s) passed, giving up..." << std::endl;
+                std::cerr << "total timeout (" << options.total_timeout
+                          << "s) passed, giving up..." << std::endl;
                 die = 1;
             }
 
@@ -1206,8 +1218,10 @@ struct Main {
 
         progress.flush();
         journal.banner();
+        options.batch = false; /* changes the behaviour of tag()... FIXME, too */
 
-        for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i ) {
+        for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i )
+        {
             if ( !journal.done( i->id() ) )
                 continue;
             auto st = journal.status[ i->id() ];
