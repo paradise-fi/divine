@@ -47,13 +47,16 @@ struct Context : vm::Context< Program, CowHeap >
 {
     using Super = vm::Context< Program, CowHeap >;
     using Program = Program;
+    using MemMap = Super::MemMap;
+    struct Critical { MemMap loads, stores; };
+
     std::vector< std::string > _trace;
     std::string _info;
     std::vector< Choice > _stack;
     std::deque< Choice > _lock;
     HeapPointer _assume;
     GenericPointer _tid;
-
+    std::unordered_map< GenericPointer, Critical > _critical;
     int _level;
 
     Context( Program &p ) : Super( p ), _level( 0 ) {}
@@ -92,10 +95,21 @@ struct Context : vm::Context< Program, CowHeap >
     void trace( TraceDebugPersist t ) { Super::trace( t ); }
     void trace( TraceAssume ta ) { _assume = ta.ptr; }
 
+    void swap_critical()
+    {
+        if ( !this->_track_mem ) return;
+        ASSERT( !_tid.null() );
+        swap( _mem_loads, _critical[ _tid ].loads );
+        swap( _mem_stores, _critical[ _tid ].stores );
+    }
+
     void trace( TraceTaskID tid )
     {
         ASSERT( _tid.null() );
+        ASSERT( _mem_loads.empty() );
+        ASSERT( _mem_stores.empty() );
         _tid = tid.ptr;
+        swap_critical();
     }
 
     void trace( TraceInfo ti )
@@ -105,6 +119,8 @@ struct Context : vm::Context< Program, CowHeap >
 
     bool finished()
     {
+        if ( !_tid.null() )
+            swap_critical();
         _stack.resize( _level, Choice( 0, -1 ) );
         _level = 0;
         _tid = GenericPointer();
@@ -284,6 +300,7 @@ struct Explore
     {
         Eval eval( context() );
         setup::boot( context() );
+        context().track_memory( false );
         eval.run();
         _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
 
@@ -298,6 +315,7 @@ struct Explore
     Snapshot start( const Ctx &ctx, Snapshot snap )
     {
         context().load( ctx ); /* copy over registers */
+        context().track_memory( false );
         _d.states.hasher.setup( context().heap(), _d.solver );
         _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
 
@@ -345,18 +363,10 @@ struct Explore
         ASSERT( context()._stack.empty() );
         ASSERT( context()._trace.empty() );
         ASSERT( context()._lock.empty() );
-
-        using MemMap = typename Context::MemMap;
-        using std::swap;
-
-        struct Critical
-        {
-            MemMap loads, stores;
-        };
+        context()._critical.clear();
 
         struct Check
         {
-            MemMap loads, stores;
             std::deque< Choice > lock;
             Label lbl;
             Snapshot snap;
@@ -366,10 +376,6 @@ struct Explore
         };
 
         std::vector< Check > to_check;
-        std::map< GenericPointer, Critical > critical;
-
-        context()._crit_loads.clear();
-        context()._crit_stores.clear();
 
         auto do_yield = [&]( Snapshot snap, Label lbl )
         {
@@ -388,6 +394,8 @@ struct Explore
                 tc.feasible = feasible();
         };
 
+        context().track_memory( true );
+
         do {
             context().load( from.snap );
             setup::scheduler( context() );
@@ -397,14 +405,8 @@ struct Explore
             auto &tc = to_check.back();
 
             do_eval( tc );
-
             _d.instructions += context()._instruction_counter;
-            swap( tc.loads, context()._mem_loads );
-            swap( tc.stores, context()._mem_stores );
 
-            auto &crit = critical[ context()._tid ];
-            for ( auto l : tc.loads ) crit.loads.insert( l );
-            for ( auto s : tc.stores ) crit.stores.insert( s );
             for ( int i = 0; i < context()._level; ++i )
                 tc.lock.push_back( context()._stack[ i ] );
 
@@ -417,19 +419,23 @@ struct Explore
             tc.tid = context()._tid;
         } while ( !context().finished() );
 
+        context().track_memory( false );
+
         for ( auto &tc : to_check )
         {
             typename Context::MemMap l, s;
 
-            for ( auto &c : critical )
+            for ( auto &c : context()._critical )
             {
                 if ( tc.tid == c.first )
                     continue;
-                for ( auto ol : c.second.loads )
-                    if ( tc.stores.intersect( ol.first, ol.second ) )
+                auto &us = context()._critical[ tc.tid ];
+                auto &them = c.second;
+                for ( auto ol : them.loads )
+                    if ( us.stores.intersect( ol.first, ol.second ) )
                         s.insert( ol.first, ol.second );
-                for ( auto sl : c.second.stores )
-                    if ( tc.loads.intersect( sl.first, sl.second ) )
+                for ( auto sl : them.stores )
+                    if ( us.loads.intersect( sl.first, sl.second ) )
                         l.insert( sl.first, sl.second );
             }
 
@@ -451,6 +457,7 @@ struct Explore
                 setup::scheduler( context() );
 
                 do_eval( tc );
+                ASSERT_EQ( tc.tid, context()._tid );
                 _d.instructions += context()._instruction_counter;
 
                 if ( tc.feasible )

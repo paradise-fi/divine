@@ -104,7 +104,7 @@ struct Context
 
     uint32_t _instruction_counter;
     int _debug_depth = 0;
-    bool _debug_allowed = false;
+    bool _debug_allowed = false, _track_mem = false;
     TraceDebugPersist _debug_persist;
     Snapshot _debug_snap;
 
@@ -115,6 +115,7 @@ struct Context
     bool debug_allowed() { return _debug_allowed; }
     bool debug_mode() { return _reg[ _VM_CR_Flags ].integer & _VM_CF_DebugMode; }
     void enable_debug() { _debug_allowed = true; }
+    void track_memory( bool b ) { _track_mem = b; }
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -151,6 +152,8 @@ struct Context
         set( _VM_CR_ObjIdShuffle, 0 );
         _mem_loads.clear();
         _mem_stores.clear();
+        _crit_loads.clear();
+        _crit_stores.clear();
         _instruction_counter = 0;
     }
 
@@ -327,7 +330,7 @@ struct Context
         {
             if ( _crit_loads.intersect( start, end ) )
                 trigger_interrupted( Interrupt::Mem, pc );
-            else
+            else if ( _track_mem )
                 _mem_loads.insert( start, end );
         }
 
@@ -335,7 +338,7 @@ struct Context
         {
             if ( _crit_stores.intersect( start, end ) )
                 trigger_interrupted( Interrupt::Mem, pc );
-            else
+            else if ( _track_mem )
                 _mem_stores.insert( start, end );
         }
     }
