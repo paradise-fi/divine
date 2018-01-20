@@ -145,7 +145,7 @@ validate:
 	$(MAKE) semidbg-divine
 	$(MAKE) semidbg-test-divine
 	$(OBJ)semidbg/divine/test-divine
-	$(MAKE) semidbg-functional T=/[12][.][^/]+$
+	$(MAKE) semidbg-functional TAGS=min
 
 ${FLAVOURS:%=%-ext}:
 	$(MAKE) ${@:%-ext=%} ${@:%-ext=%}-runner
