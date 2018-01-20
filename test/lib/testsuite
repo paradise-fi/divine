@@ -1,10 +1,11 @@
 #!/bin/sh
 
-TODO=,todo
+todo=,todo
 for arg in "$@"; do
-    if test -n "$tags" && echo $arg | grep -q todo; then TODO=; fi
+    if test -n "$tags" && echo $arg | grep -q todo; then todo=; fi
     if test "$arg" = "--tags"; then tags=1; else tags=; fi
 done
+test -n "$TODO" && todo= && extra="--tags todo"
 
 ./runner \
     --total-timeout 28800 --timeout 600  \
@@ -14,9 +15,9 @@ done
     --interpreter bt:lib/brick-test \
     --interpreter pdc:lib/pdclib-test \
     --skip "[.]pkg/,[.]helper[.]" \
-    --exclude-tags attic$TODO \
+    --exclude-tags attic$todo \
     --workdir . --outdir results \
-    "$@"
+    $extra "$@"
 
 EXIT=$?
 test -n "$TESTHOOK" && $TESTHOOK
