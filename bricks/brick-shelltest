@@ -1051,24 +1051,27 @@ struct Main {
         return true;
     }
 
-    bool check_tags( const std::string name )
+    bool check_tags( std::string name, std::string file )
     {
-        if ( options.tagsets.empty() )
-            return true;
         std::string line;
-        std::ifstream ifs( name );
+        auto dirs_end = name.rfind( '/' );
+        std::string dirs( name, 0, dirs_end == std::string::npos ? 0 : dirs_end );
+        std::ifstream ifs( file );
         std::getline( ifs, line );
         if ( line.find( "TAGS:" ) == std::string::npos )
             std::getline( ifs, line );
         auto pos = line.find( "TAGS: " );
-        if ( pos == std::string::npos )
-            return false;
         std::set< std::string > tags;
-        split( std::string( line, pos + 5, std::string::npos ),
-               std::inserter( tags, tags.begin() ), id, ' ' );
+
+        if ( pos != std::string::npos )
+            split( std::string( line, pos + 5, std::string::npos ),
+                   std::inserter( tags, tags.begin() ), id, ' ' );
+        split( dirs, std::inserter( tags, tags.begin() ), id, '/' );
+
         for ( auto tag : options.exclude_tags )
             if ( tags.count( tag ) )
                 return false;
+
         for ( const auto &ts : options.tagsets )
         {
             bool match = true;
@@ -1076,7 +1079,8 @@ struct Main {
                 if ( !tags.count( tag ) ) match = false;
             if ( match ) return true;
         }
-        return false;
+
+        return options.tagsets.empty();
     }
 
     void setup() {
@@ -1115,7 +1119,7 @@ struct Main {
                 if ( !skip( *i, options.exclude, true ) )
                     runnable = false;
 
-                if ( !runnable || !check_tags( options.testdir + *i ) )
+                if ( !runnable || !check_tags( *i, options.testdir + *i ) )
                     continue;
 
                 TestCase tc( journal, progress, options, options.testdir + *i,
