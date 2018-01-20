@@ -674,6 +674,22 @@ struct Progress
 };
 
 namespace {
+
+struct Id {
+    template< typename T >
+    const T &operator()( const T &x ) { return x; }
+};
+
+constexpr Id id{};
+
+template< typename O, typename Transform = Id >
+void split( std::string s, O o, Transform transform = id, char sep = ',' ) {
+    std::stringstream ss( s );
+    std::string item;
+    while ( std::getline( ss, item, sep ) )
+        *o++ = transform( item );
+}
+
 pid_t kill_pid = 0;
 bool fatal_signal = false;
 int interrupt = 0;
@@ -684,6 +700,7 @@ struct Options {
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, watch;
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
+    std::vector< std::vector< std::string > > tagsets;
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout, jobs;
@@ -1033,6 +1050,31 @@ struct Main {
         return true;
     }
 
+    bool check_tags( const std::string name )
+    {
+        if ( options.tagsets.empty() )
+            return true;
+        std::string line;
+        std::ifstream ifs( name );
+        std::getline( ifs, line );
+        if ( line.find( "TAGS:" ) == std::string::npos )
+            std::getline( ifs, line );
+        auto pos = line.find( "TAGS: " );
+        if ( pos == std::string::npos )
+            return false;
+        std::set< std::string > tags;
+        split( std::string( line, pos + 5, std::string::npos ),
+               std::inserter( tags, tags.begin() ), id, ' ' );
+        for ( const auto &ts : options.tagsets )
+        {
+            bool match = true;
+            for ( auto tag : ts )
+                if ( !tags.count( tag ) ) match = false;
+            if ( match ) return true;
+        }
+        return false;
+    }
+
     void setup() {
         Listing l = listdir( options.testdir, true );
         std::sort( l.begin(), l.end() );
@@ -1069,7 +1111,7 @@ struct Main {
                 if ( !skip( *i, options.exclude, true ) )
                     runnable = false;
 
-                if ( !runnable )
+                if ( !runnable || !check_tags( options.testdir + *i ) )
                     continue;
 
                 TestCase tc( journal, progress, options, options.testdir + *i,
@@ -1256,23 +1298,8 @@ bool hasenv( const char *name ) {
     return true;
 }
 
-struct Id {
-    template< typename T >
-    const T &operator()( const T &x ) { return x; }
-};
-
-constexpr Id id{};
-
 std::regex mkRegex( const std::string &str ) {
     return std::regex( str, std::regex::extended );
-}
-
-template< typename C, typename Transform = Id >
-void split( std::string s, C &c, Transform transform = id, char sep = ',' ) {
-    std::stringstream ss( s );
-    std::string item;
-    while ( std::getline( ss, item, sep ) )
-        c.push_back( transform( item ) );
 }
 
 }
@@ -1288,14 +1315,26 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         opt.cont = true;
 
     if ( args.has( "--only" ) )
-        split( args.opt( "--only" ), opt.filter1, mkRegex );
+        split( args.opt( "--only" ), std::back_inserter( opt.filter1 ), mkRegex );
     if ( hasenv( "T" ) )
-        split( getenv( "T" ), opt.filter2, mkRegex );
+        split( getenv( "T" ), std::back_inserter( opt.filter2 ), mkRegex );
+
+    for ( auto t : args.opts( "--tags" ) )
+    {
+        opt.tagsets.emplace_back();
+        split( t, std::back_inserter( opt.tagsets.back() ) );
+    }
+
+    if ( hasenv( "TAGS" ) )
+    {
+        opt.tagsets.emplace_back();
+        split( getenv( "TAGS" ), std::back_inserter( opt.tagsets.back() ) );
+    }
 
     if ( args.has( "--skip" ) )
-        split( args.opt( "--skip" ), opt.exclude, mkRegex );
+        split( args.opt( "--skip" ), std::back_inserter( opt.exclude ), mkRegex );
     if ( hasenv( "S" ) )
-        split( getenv( "S" ), opt.exclude, mkRegex );
+        split( getenv( "S" ), std::back_inserter( opt.exclude ), mkRegex );
 
     if ( args.has( "--fatal-timeouts" ) )
         opt.fatal_timeouts = true;
@@ -1320,14 +1359,14 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     }
 
     if ( args.has( "--flavours" ) )
-        split( args.opt( "--flavours" ), opt.flavours );
+        split( args.opt( "--flavours" ), std::back_inserter( opt.flavours ) );
     else
         opt.flavours.push_back( "vanilla" );
     if ( hasenv( "F" ) )
-        split( getenv( "F" ), opt.flavourFilter, mkRegex );
+        split( getenv( "F" ), std::back_inserter( opt.flavourFilter ), mkRegex );
 
     if ( args.has( "--watch" ) )
-        split( args.opt( "--watch" ), opt.watch );
+        split( args.opt( "--watch" ), std::back_inserter( opt.watch ) );
 
     if ( args.has( "--timeout" ) )
         opt.timeout = atoi( args.opt( "--timeout" ).c_str() );
@@ -1353,7 +1392,7 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     for ( auto i : args.opts( "--interpreter" ) )
     {
         std::vector< std::string > s;
-        split( i, s, id, ':' );
+        split( i, std::back_inserter( s ), id, ':' );
         if ( s.size() != 2 )
         {
             std::cerr << "FATAL: the --interpreter option must contain exactly one ':'" << std::endl;
