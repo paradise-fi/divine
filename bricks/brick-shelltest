@@ -644,7 +644,7 @@ int interrupt = 0;
 }
 
 struct Options {
-    bool verbose, batch, interactive, cont, fatal_timeouts, kmsg, rusage;
+    bool verbose, terse, batch, interactive, cont, fatal_timeouts, kmsg, rusage;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, watch;
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
@@ -653,7 +653,7 @@ struct Options {
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout, jobs;
-    Options() : verbose( false ), batch( false ), interactive( false ),
+    Options() : verbose( false ), terse( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ), kmsg( false ), rusage( false ),
                 timeout( 60 ), total_timeout( 3 * 3600 ), jobs( 1 ) {}
 };
@@ -923,7 +923,7 @@ struct TestCase
         iobuf = 0;
         if ( options.verbose || options.interactive )
             io.sinks.push_back( new FdSink( 1 ) );
-        else if ( !options.batch )
+        else if ( !options.terse )
             io.sinks.push_back( iobuf = new BufSink() );
 
         std::string n = id();
@@ -1304,22 +1304,28 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     if ( args.has( "--heartbeat" ) )
         opt.heartbeat = args.opt( "--heartbeat" );
 
-    if ( args.has( "--batch" ) || hasenv( "BATCH" ) )
+    if ( args.has( "--batch" ) || hasenv( "BATCH" ) ) /* suppress TTY features */
     {
         opt.verbose = false;
         opt.batch = true;
     }
 
-    if ( args.has( "--verbose" ) || hasenv( "VERBOSE" ) )
+    if ( args.has( "--verbose" ) || hasenv( "VERBOSE" ) ) /* print all outputs */
     {
-        opt.batch = false;
+        opt.terse = false;
         opt.verbose = true;
+    }
+
+    if ( args.has( "--terse" ) || hasenv( "TERSE" ) ) /* suppress outputs */
+    {
+        opt.verbose = false;
+        opt.terse = true;
     }
 
     if ( args.has( "--interactive" ) || hasenv( "INTERACTIVE" ) )
     {
+        opt.terse = false;
         opt.verbose = false;
-        opt.batch = false;
         opt.interactive = true;
     }
 
