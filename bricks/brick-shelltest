@@ -1126,6 +1126,15 @@ struct Main {
         }
     }
 
+    int list()
+    {
+        setup();
+        std::cerr << "would run " << cases.size() << " tests" << std::endl;
+        for ( auto &c : cases )
+            std::cerr << c.name << std::endl;
+        return 0;
+    }
+
     int run()
     {
         setup();
@@ -1395,7 +1404,10 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     setup_handlers();
 
     Main main( opt );
-    return main.run();
+    if ( hasenv( "LIST" ) || args.has( "--list" ) )
+        return main.list();
+    else
+        return main.run();
 }
 
 }
