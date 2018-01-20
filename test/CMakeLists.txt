@@ -15,10 +15,10 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export SRC_ROOT='${CMAKE_SOURCE_DIR}'
  ${EXPORT_OPTIONS}" )
 
-set( ONLY --only "/[1-4][.][^/]+$" )
+set( ONLY "" )
 
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-    set( ONLY --only "/[1-3][.][^/]+$" )
+    set( ONLY "--exclude-tags ext" )
 endif()
 
 add_custom_target( functional
@@ -27,9 +27,8 @@ add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
   COMMAND env SRCDIR=${divine_SOURCE_DIR}
-              bash ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
-                   --testdir ${CMAKE_CURRENT_SOURCE_DIR} ${ONLY}
-                   ${ONLY}
+              sh ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
+                 --testdir ${CMAKE_CURRENT_SOURCE_DIR} ${ONLY}
   USES_TERMINAL
   DEPENDS runner
   VERBATIM

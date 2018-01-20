@@ -1,0 +1,2 @@
+# TAGS: c todo
+TESTCASE=posix/functions/_PDCLIB/_PDCLIB_Exit.c

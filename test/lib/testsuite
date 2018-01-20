@@ -7,9 +7,10 @@
     --interpreter pkg:lib/pkg \
     --interpreter bt:lib/brick-test \
     --interpreter pdc:lib/pdclib-test \
-    --skip "[.]pkg/" \
+    --skip "[.]pkg/,[.]helper[.]" \
+    --exclude-tags todo,attic \
     --workdir . --outdir results \
-    --sort-hint "/([0-9]*)[.][^/]+$" "$@"
+    "$@"
 
 EXIT=$?
 test -n "$TESTHOOK" && $TESTHOOK

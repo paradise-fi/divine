@@ -1,0 +1,2 @@
+# TAGS: c threads
+TESTCASE=functions/threads/tss_delete.c

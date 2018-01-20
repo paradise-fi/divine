@@ -1,0 +1,2 @@
+# TAGS: c
+TESTCASE=functions/string/strerror_r.c
