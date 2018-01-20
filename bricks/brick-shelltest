@@ -1333,8 +1333,8 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         split( t, std::back_inserter( opt.tagsets.back() ) );
     }
 
-    if ( args.has( "--exclude-tags" ) )
-        split( args.opt( "--exclude-tags" ), std::back_inserter( opt.exclude_tags ) );
+    for ( auto ts : args.opts( "--exclude-tags" ) )
+        split( ts, std::back_inserter( opt.exclude_tags ) );
 
     if ( hasenv( "TAGS" ) )
     {
