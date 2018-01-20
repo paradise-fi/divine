@@ -8,9 +8,9 @@ sim $SRC <<EOF
 > start
 + ^# executing main
 > step --over
-+ ^# executing main at $SRC:7
-> step --over
 + ^# executing main at $SRC:8
+> step --over
++ ^# executing main at $SRC:9
 EOF
 
 sim $SRC <<EOF
@@ -18,9 +18,9 @@ sim $SRC <<EOF
 > start
 + ^# executing main
 > step
-+ ^# executing main at $SRC:7
-> step
 + ^# executing main at $SRC:8
+> step
++ ^# executing main at $SRC:9
 EOF
 
 sim $SRC <<EOF
@@ -29,7 +29,7 @@ sim $SRC <<EOF
 > start
 + ^# executing main
 > step --over
-+ ^# executing main at $SRC:7
-> step --over
 + ^# executing main at $SRC:8
+> step --over
++ ^# executing main at $SRC:9
 EOF

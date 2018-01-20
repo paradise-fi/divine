@@ -6,7 +6,7 @@ sim $TESTS/lang-c/assert.c <<EOF
 > setup --sticky "source"
 > setup --sticky "backtrace"
 > start
-+ ^\s*3 int main\(\)
++ ^\s*4 int main\(\)
 +   main at
 +   _start at
 EOF

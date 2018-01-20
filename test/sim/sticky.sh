@@ -5,7 +5,7 @@ sim $TESTS/lang-c/assert.c <<EOF
 + ^# executing __boot at
 > setup --sticky "source"
 > start
-+ ^\s*3 int main\(\)
++ ^\s*4 int main\(\)
 EOF
 
 sim $TESTS/lang-c/assert.c <<EOF

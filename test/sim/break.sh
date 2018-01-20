@@ -18,20 +18,20 @@ EOF
 
 sim $SRC <<EOF
 + ^# executing __boot
-> break $SRC:5
+> break $SRC:6
 > break --list
-+ ^ 1: $SRC:5
++ ^ 1: $SRC:6
 > stepa --count 10
-+ ^# stopped at breakpoint $SRC:5
-+ ^# executing main at $SRC:5
++ ^# stopped at breakpoint $SRC:6
++ ^# executing main at $SRC:6
 EOF
 
 sim $SRC <<EOF
 + ^# executing __boot
-> break assert.c:5
+> break assert.c:6
 > break --list
-+ ^ 1: assert.c:5
++ ^ 1: assert.c:6
 > stepa --count 10
-+ ^# stopped at breakpoint assert.c:5
-+ ^# executing main at $SRC:5
++ ^# stopped at breakpoint assert.c:6
++ ^# executing main at $SRC:6
 EOF

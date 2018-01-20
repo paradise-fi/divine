@@ -1,7 +1,7 @@
 # TAGS: min
 . lib/testcase
 
-SRC=$TESTS/c/assert.c
+SRC=$TESTS/lang-c/assert.c
 
 divine verify --report-filename verify.out $SRC
 
