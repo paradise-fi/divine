@@ -14,6 +14,7 @@ PREFIX ?= /opt/divine
 
 MAKEFLAGS ?= --no-print-directory
 OBJ ?= $(PWD)/_build.
+BENCH_NAME ?= $(LOGNAME)
 EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d explain; fi; \
          if test -n "$(JOBS)"; then echo -j $(JOBS); fi
 
@@ -73,6 +74,11 @@ ${FLAVOURS}:
 divbench:
 	$(MAKE) bench-divbench
 	@echo your binary is at $(OBJ)bench/tools/divbench
+
+divbench-install:
+	test -d $(BENCH_DIR)
+	$(MAKE) bench-divbench
+	cp $(OBJ)bench/tools/divbench $(BENCH_DIR)/$(BENCH_NAME).`date +%Y-%m-%d.%H%m`
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
