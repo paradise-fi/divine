@@ -701,6 +701,7 @@ struct Options {
     std::vector< std::string > flavours, watch;
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
     std::vector< std::vector< std::string > > tagsets;
+    std::vector< std::string > exclude_tags;
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout, jobs;
@@ -1065,6 +1066,9 @@ struct Main {
         std::set< std::string > tags;
         split( std::string( line, pos + 5, std::string::npos ),
                std::inserter( tags, tags.begin() ), id, ' ' );
+        for ( auto tag : options.exclude_tags )
+            if ( tags.count( tag ) )
+                return false;
         for ( const auto &ts : options.tagsets )
         {
             bool match = true;
@@ -1324,6 +1328,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         opt.tagsets.emplace_back();
         split( t, std::back_inserter( opt.tagsets.back() ) );
     }
+
+    if ( args.has( "--exclude-tags" ) )
+        split( args.opt( "--exclude-tags" ), std::back_inserter( opt.exclude_tags ) );
 
     if ( hasenv( "TAGS" ) )
     {
