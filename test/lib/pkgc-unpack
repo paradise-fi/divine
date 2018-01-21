@@ -1,0 +1,41 @@
+#!/usr/bin/perl
+use strict;
+
+my $fn = $ARGV[0];
+my $dir = $fn;
+$dir =~ s,(^|/)([^/]*)$,,;
+my $basename = $2;
+
+# copy over any #include files
+my $extras = `cd $dir && gcc -MM -MT "" $basename`;
+$extras =~ s,^: [^ ]*,,; # chop off the file itself
+for my $name ( split /\s+/, $extras )
+{
+    next unless $name;
+    my $subdir = $name;
+    $subdir =~ s,(^|/)[^/]*$,,;
+    system( "mkdir -p $subdir" ) if $subdir;
+    system( "cp $dir/$name $name" );
+}
+
+# generate the variants
+my $file = `cat $fn`;
+my @var = grep { m#^// V: # } (split /\n/, $file);
+
+for ( @var )
+{
+    my %d;
+    for my $field ( "V", "CC_OPT", "V_OPT", "TAGS", "RESULT" )
+    {
+        m,$field: (.*?)( (V_OPT|CC_OPT|TAGS|RESULT):|$),;
+        $d{$field} = $1;
+    }
+    my $new = $file;
+    $new =~ s,TAGS: ,TAGS: $d{TAGS} ,; # only the first match
+    $new =~ s,VERIFY_OPTS: ,VERIFY_OPTS: $d{V_OPT} ,;
+    $new =~ s,CC_OPTS: ,CC_OPTS: $d{CC_OPT} ,;
+    $new =~ s,/\* ERROR \*/,, if $d{RESULT} eq "valid";
+    open F, ">$d{V}.c";
+    print F $new;
+    close F;
+}
