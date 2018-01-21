@@ -15,10 +15,10 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export SRC_ROOT='${CMAKE_SOURCE_DIR}'
  ${EXPORT_OPTIONS}" )
 
-set( ONLY "" )
+set( ONLY "--exclude-tags big" )
 
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-    set( ONLY "--exclude-tags ext" )
+    set( ONLY "--exclude-tags big,ext" )
 endif()
 
 add_custom_target( functional
