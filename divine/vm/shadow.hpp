@@ -584,6 +584,43 @@ struct PooledShadow
         return *_shared.template machinePointer< bool >( p );
     }
 
+    bool equal( Loc a, Loc b, int sz )
+    {
+        ASSERT_EQ( a.offset, 0 );
+        ASSERT_EQ( b.offset, 0 );
+
+        auto _ty_a = _type.template machinePointer< uint8_t >( a.object ),
+             _ty_b = _type.template machinePointer< uint8_t >( b.object );
+
+        if ( ::memcmp( _ty_a, _ty_b, sz / 16 ) )
+            return false;
+
+        for ( int off = sz - sz % 16; off < sz; off += 4 ) /* the tail */
+            if ( TypeProxy( _ty_a, off ) != TypeProxy( _ty_b, off ) )
+                return false;
+
+        auto _def_a = _defined.template machinePointer< uint8_t >( a.object ),
+             _def_b = _defined.template machinePointer< uint8_t >( b.object );
+
+        if ( ::memcmp( _def_a, _def_b, sz / 8 ) )
+            return false;
+
+        for ( int off = sz - sz % 8; off < sz; off ++ )
+            if ( typename DefinedC::proxy( nullptr, _def_a, nullptr, off ).raw() !=
+                 typename DefinedC::proxy( nullptr, _def_b, nullptr, off ).raw() )
+                return false;
+
+        auto t = type( a, sz ); /* identical to b's types, too */
+
+        for ( int off = 0; off < sz; off += 4 )
+            if ( t[ off ] == DataException )
+                for ( int i = off; i < std::min( sz, off + 4 ); ++i )
+                    if ( _exceptions->defined( a.object, i ) != _exceptions->defined( b.object, i ) )
+                        return false;
+
+        return true;
+    }
+
     template< typename V >
     void write( Loc l, V value )
     {

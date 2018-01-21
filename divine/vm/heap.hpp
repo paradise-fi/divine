@@ -770,13 +770,7 @@ struct CowHeap : SimpleHeap< CowHeap >
             if ( shadows().shared( a ) != shadows().shared( b ) )
                 return false;
             ShadowLoc a_shloc( a, 0 ), b_shloc( b, 0 );
-            auto a_def = shadows().defined( a_shloc, size ),
-                 b_def = shadows().defined( b_shloc, size );
-            if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin() ) )
-                return false;
-            auto a_type = shadows().type( a_shloc, size ),
-                 b_type = shadows().type( b_shloc, size );
-            if ( !std::equal( a_type.begin(), a_type.end(), b_type.begin() ) )
+            if ( !shadows().equal( a_shloc, b_shloc, size ) )
                 return false;
             return true;
         }
