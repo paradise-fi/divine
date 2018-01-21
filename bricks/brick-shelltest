@@ -67,6 +67,7 @@
 #include <regex>
 
 #include <brick-string>
+#include <brick-fs>
 
 #if defined( __unix__ ) || defined( __APPLE__ )
 #include <dirent.h>
@@ -650,7 +651,7 @@ struct Options {
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
     std::vector< std::vector< std::string > > tagsets;
     std::vector< std::string > exclude_tags;
-    std::vector< std::pair< std::string, std::string > > interpreters;
+    std::vector< std::pair< std::string, std::string > > interpreters, expand;
     std::string flavour_envvar;
     int timeout, total_timeout, jobs;
     Options() : verbose( false ), terse( false ), batch( false ), interactive( false ),
@@ -1004,11 +1005,52 @@ struct Main
         return options.tagsets.empty();
     }
 
+    bool check_interpreter( std::pair< std::string, std::string > i, std::string name )
+    {
+        return name.size() > i.first.size() &&
+               name.substr( name.length() - i.first.size() - 1, name.length() ) == "." + i.first;
+    }
+
+    void setup( std::string flavour, std::string dir, std::string name )
+    {
+        std::string interpreter;
+        bool runnable = false;
+
+        if ( name.length() > 3 && name.substr( name.length() - 3, name.length() ) == ".sh" )
+            runnable = true;
+
+        for ( auto i : options.interpreters )
+            if ( check_interpreter( i, name ) )
+            {
+                 runnable = true;
+                 interpreter = options.testdir + i.second;
+            }
+
+        if ( name.substr( 0, 4 ) == "lib/" || name.substr( 0, 5 ) == "data/" )
+            runnable = false;
+
+        if ( skip( name, options.filter1, false ) || skip( name, options.filter2, false ) )
+            runnable = false;
+
+        if ( !skip( name, options.exclude, true ) )
+            runnable = false;
+
+        if ( !runnable || !check_tags( name, options.testdir + name ) )
+            return;
+
+        TestCase tc( journal, options, dir + name, interpreter, name, flavour );
+
+        tc.tty = tty;
+        cases.push_back( tc );
+    }
+
     void setup()
     {
         Listing l = listdir( options.testdir, true );
         std::sort( l.begin(), l.end() );
         tty = !options.batch && isatty( STDERR_FILENO );
+        char cwd[ PATH_MAX ];
+        ::getcwd( cwd, PATH_MAX );
 
         for ( auto &flavour : options.flavours )
         {
@@ -1017,41 +1059,31 @@ struct Main
 
             for ( Listing::iterator i = l.begin(); i != l.end(); ++i )
             {
-                bool runnable = false;
-                std::string interpreter;
+                std::string expand;
 
-                if ( i->length() > 3 && i->substr( i->length() - 3, i->length() ) == ".sh" )
-                    runnable = true;
+                for ( auto exp : options.expand )
+                    if ( check_interpreter( exp, *i ) )
+                        expand = exp.second;
 
-                for ( auto interp : options.interpreters )
+                if ( expand.empty() )
+                    setup( flavour, options.testdir, *i );
+                else
                 {
-                    if ( i->size() > interp.first.size() &&
-                         i->substr( i->length() - interp.first.size() - 1, i->length() ) ==
-                         "." + interp.first )
-                    {
-                         runnable = true;
-                         interpreter = interp.second;
-                    }
+                    ::mkdir( "_expand", 0700 );
+                    std::string dir = "_expand/" + *i;
+                    std::string base = cwd;
+                    base += "/_expand/";
+                    std::string cmd = options.testdir + "/" + expand + " " + options.testdir + "/" + *i;
+                    fs::rmtree( dir );
+                    fs::mkpath( dir.c_str() );
+                    ::chdir( dir.c_str() ); /* eww */
+                    ::system( cmd.c_str() );
+                    ::chdir( cwd );
+                    Listing l = listdir( dir, true );
+                    for ( auto file : l )
+                        setup( flavour, base, *i + "/" + file );
                 }
 
-                if ( i->substr( 0, 4 ) == "lib/" || i->substr( 0, 5 ) == "data/" )
-                    runnable = false;
-
-                if ( skip( *i, options.filter1, false ) || skip( *i, options.filter2, false ) )
-                    runnable = false;
-
-                if ( !skip( *i, options.exclude, true ) )
-                    runnable = false;
-
-                if ( !runnable || !check_tags( *i, options.testdir + *i ) )
-                    continue;
-
-                TestCase tc( journal, options, options.testdir + *i,
-                             interpreter.empty() ? "" : options.testdir + interpreter,
-                             *i, flavour );
-
-                tc.tty = tty;
-                cases.push_back( tc );
             }
         }
 
@@ -1261,6 +1293,19 @@ std::regex mkRegex( const std::string &str ) {
     return std::regex( str, std::regex::extended );
 }
 
+template< typename C >
+void parse_interpreter( std::string str, C &out )
+{
+    std::vector< std::string > s;
+    split( str, std::back_inserter( s ), id, ':' );
+    if ( s.size() != 2 )
+    {
+        std::cerr << "FATAL: the --interpreter option must contain exactly one ':'" << std::endl;
+        exit( 1 );
+    }
+    out.push_back( std::make_pair( s[0], s[1] ) );
+}
+
 }
 
 int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
@@ -1359,17 +1404,12 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     opt.outdir = args.opt( "--outdir" );
     opt.testdir = args.opt( "--testdir" );
     opt.workdir = args.opt( "--workdir" );
+
     for ( auto i : args.opts( "--interpreter" ) )
-    {
-        std::vector< std::string > s;
-        split( i, std::back_inserter( s ), id, ':' );
-        if ( s.size() != 2 )
-        {
-            std::cerr << "FATAL: the --interpreter option must contain exactly one ':'" << std::endl;
-            exit( 1 );
-        }
-        opt.interpreters.push_back( std::make_pair( s[0], s[1] ) );
-    }
+        parse_interpreter( i, opt.interpreters );
+
+    for ( auto i : args.opts( "--expand" ) )
+        parse_interpreter( i, opt.expand );
 
     if ( opt.testdir.empty() )
     {
