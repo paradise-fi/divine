@@ -171,13 +171,28 @@ void Schedule::run()
     auto mod = find.execute();
     while ( mod.next() )
     {
+        nanodbc::transaction txn( _conn );
+        int mod_id = mod.get< int >( 0 );
+
+        if ( _once )
+        {
+            nanodbc::statement sel( _conn, "select count(*) from job where model = ? and instance = ?" );
+            sel.bind( 0, &mod_id );
+            sel.bind( 1, &inst );
+            auto res = sel.execute(); res.first();
+            if ( res.get< int >( 0 ) )
+                continue;
+        }
+
         nanodbc::statement ins( _conn, "insert into job ( model, instance, status ) "
                                        "values (?, ?, 'P')" );
-        int mod_id = mod.get< int >( 0 );
         ins.bind( 0, &mod_id );
         ins.bind( 1, &inst );
         ins.execute();
-        std::cerr << "scheduled " << mod.get< std::string >( 1 ) << std::endl;
+        try {
+            txn.commit();
+            std::cerr << "scheduled " << mod.get< std::string >( 1 ) << std::endl;
+        } catch ( nanodbc::database_error & ) {};
     }
 }
 
@@ -237,6 +252,9 @@ int main( int argc, const char **argv )
     auto opts_job = cmd::make_option_set< JobBase >( validator )
         .option( "[--tag {string}]", &JobBase::_tag, "only take models with a given tag" );
 
+    auto opts_sched = cmd::make_option_set< Schedule >( validator )
+        .option( "[--once]", &Schedule::_once, "only schedule unique jobs" );
+
     auto opts_run = cmd::make_option_set< Run >( validator )
         .option( "[--single]", &Run::_single, "run only single benchmark" );
 
@@ -245,7 +263,7 @@ int main( int argc, const char **argv )
 
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )
-        .command< Schedule >( opts_db, opts_job )
+        .command< Schedule >( opts_db, opts_job, opts_sched )
         .command< ScheduleExternal >( opts_db, opts_external, opts_job )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )

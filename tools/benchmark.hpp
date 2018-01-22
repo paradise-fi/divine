@@ -94,6 +94,7 @@ struct External : virtual odbc::BuildID
 
 struct Schedule : JobBase, virtual odbc::BuildID
 {
+    bool _once = false;
     void run() override;
 };
 
