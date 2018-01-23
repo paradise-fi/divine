@@ -1074,7 +1074,7 @@ struct Main
                     std::string base = cwd;
                     base += "/_expand/";
                     std::string cmd = options.testdir + "/" + expand + " " + options.testdir + "/" + *i;
-                    fs::rmtree( dir );
+                    try { fs::rmtree( dir ); } catch (...) {};
                     fs::mkpath( dir.c_str() );
                     ::chdir( dir.c_str() ); /* eww */
                     ::system( cmd.c_str() );
