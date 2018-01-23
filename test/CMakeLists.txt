@@ -15,10 +15,10 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export SRC_ROOT='${CMAKE_SOURCE_DIR}'
  ${EXPORT_OPTIONS}" )
 
-set( ONLY "--exclude-tags big" )
+set( EXCLUDE_TAGS big )
 
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-    set( ONLY "--exclude-tags big,ext" )
+    set( EXCLUDE_TAGS big,ext )
 endif()
 
 add_custom_target( functional
@@ -28,7 +28,8 @@ add_custom_target( functional
   COMMAND mkdir -p results
   COMMAND env SRCDIR=${divine_SOURCE_DIR}
               sh ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
-                 --testdir ${CMAKE_CURRENT_SOURCE_DIR} ${ONLY}
+                 --testdir ${CMAKE_CURRENT_SOURCE_DIR}
+                 --exclude-tags ${EXCLUDE_TAGS}
   USES_TERMINAL
   DEPENDS runner
   VERBATIM
