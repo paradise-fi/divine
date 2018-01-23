@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./environment
+
 todo=,todo
 for arg in "$@"; do
     if test -n "$tags" && echo $arg | grep -q todo; then todo=; fi
@@ -10,10 +12,10 @@ test -n "$TODO" && todo= && extra="--tags todo"
 ./runner \
     --total-timeout 28800 --timeout 600  \
     --expand pkg.c:lib/pkgc-unpack \
+    --expand bt:lib/brick-unpack \
     --interpreter cpp:lib/verify \
     --interpreter c:lib/verify \
     --interpreter pkg:lib/pkg \
-    --interpreter bt:lib/brick-test \
     --interpreter pdc:lib/pdclib-test \
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
