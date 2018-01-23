@@ -106,6 +106,7 @@ struct Substituter {
 
 private:
     void replaceLifts( llvm::Value * val ) {
+        std::vector< llvm::Instruction * > obsolete;
         for ( const auto & u : val->users() ) {
             if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) ) {
                 auto fn = call->getCalledFunction();
@@ -113,10 +114,13 @@ private:
                     assert( vmap.count( val ) );
                     auto call = llvm::cast< llvm::CallInst >( u );
                     call->replaceAllUsesWith( vmap[ val ] );
-                    call->eraseFromParent();
+                    obsolete.push_back( call );
                 }
             }
         }
+
+        for ( auto & call : obsolete )
+            call->eraseFromParent();
     }
 
     llvm::Value * lift( llvm::Instruction * val ) const {
