@@ -670,7 +670,8 @@ struct BitTupleTest {
         ASSERT( !get< 0 >( bt ).word() );
     }
 
-    TEST(assign) {
+    TEST(assign) /* TODO fails in DIVINE */
+    {
         bitlevel::BitTuple<
             BitField< bool, 1 >,
             BitField< int, 6 >,
