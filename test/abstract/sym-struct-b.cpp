@@ -1,4 +1,4 @@
-/* TAGS: todo min c++ */
+/* TAGS: sym todo min c++ */
 /* VERIFY_OPTS: --symbolic */
 #include <abstract/domains.h>
 #include <cassert>

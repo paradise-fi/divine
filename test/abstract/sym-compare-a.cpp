@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: sym min c++ */
 /* VERIFY_OPTS: --symbolic */
 #include <abstract/domains.h>
 

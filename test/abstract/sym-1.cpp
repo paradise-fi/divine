@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: sym min c++ */
 /* VERIFY_OPTS: -o nofail:malloc --symbolic  */
 #include <abstract/sym.h>
 #include <iostream>

@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: sym min c++ */
 #include <abstract/formula.h>
 #include <string.h>
 #include <assert.h>
