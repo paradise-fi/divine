@@ -27,7 +27,7 @@ for ( @var )
     my %d;
     for my $field ( "V", "CC_OPT", "V_OPT", "TAGS", "RESULT" )
     {
-        m,$field: (.*?)( (V_OPT|CC_OPT|TAGS|RESULT):|$),;
+        m,$field: (.*?)\s*(\s(V_OPT|CC_OPT|TAGS|RESULT):|$),;
         $d{$field} = $1;
     }
     my $new = $file;
