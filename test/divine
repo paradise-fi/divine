@@ -10,7 +10,11 @@ gdb()
 }
 
 memcheck() { exec valgrind --tool=memcheck "$@"; }
-callgrind() { exec valgrind --tool=callgrind "$@"; }
+
+callgrind()
+{
+    exec env LD_BIND_NOW=1 valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes "$@"
+}
 
 test -z "$B" && test "$DBG" = gdb && B=debug
 test -z "$B" && test "$DBG" = callgrind && B=release
