@@ -1035,7 +1035,7 @@ struct Main
         if ( !skip( name, options.exclude, true ) )
             runnable = false;
 
-        if ( !runnable || !check_tags( name, options.testdir + name ) )
+        if ( !runnable || !check_tags( name, dir + name ) )
             return;
 
         TestCase tc( journal, options, dir + name, interpreter, name, flavour );
