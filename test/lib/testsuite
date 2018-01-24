@@ -10,7 +10,7 @@ for arg in "$@"; do
 done
 test -n "$TODO" && todo= && extra="--tags todo"
 
-./runner \
+./runner "$@" \
     --total-timeout 28800 --timeout 600  \
     --expand pkg.c:lib/pkgc-unpack \
     --expand bt:lib/brick-unpack \
@@ -21,7 +21,7 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
     --workdir . --outdir results \
-    $extra "$@"
+    $extra
 
 EXIT=$?
 test -n "$TESTHOOK" && $TESTHOOK
