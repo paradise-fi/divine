@@ -1,6 +1,7 @@
 #!/bin/sh
 
 . ./environment
+chmod +x $TESTS/lib/*-unpack
 
 todo=,todo
 for arg in "$@"; do
