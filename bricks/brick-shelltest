@@ -255,13 +255,15 @@ struct Journal {
         sync();
     }
 
-    bool done( std::string n ) {
+    bool done( std::string n )
+    {
         if ( !status.count( n ) )
             return false;
         return status[ n ] != STARTED && status[ n ] != INTERRUPTED;
     }
 
-    int count( R r ) {
+    int count( R r )
+    {
         int c = 0;
         for ( Status::iterator i = status.begin(); i != status.end(); ++i )
             if ( i->second == r )
@@ -270,7 +272,7 @@ struct Journal {
     }
 
     void banner() {
-        std::cout << std::endl << "### " << status.size() << " tests: "
+        std::cout << "### " << status.size() << " tests: "
                   << count( PASSED ) << " passed, "
                   << count( SKIPPED ) << " skipped, "
                   << count( TIMEOUT ) + count( WARNED ) << " broken, "
@@ -711,7 +713,7 @@ struct TestCase
 
     Journal *journal;
 
-    std::string pretty() { return "[" + flavour + "] " + name; }
+    std::string pretty() { return flavour == "vanilla" ? name : "[" + flavour + "] " + name; }
     std::string id() { return flavour + ":" + name; }
     std::ostream &progress() { return std::cerr; }
 
@@ -808,17 +810,17 @@ struct TestCase
         return ss.str();
     }
 
-    std::string tag( std::string n, std::string print = "" )
+    std::string result( std::string n, std::string print = "" )
     {
         int pad = (12 - n.length());
         return "### " + std::string( pad, ' ' ) + ( print.empty() ? n : print ) + ": ";
     }
 
-    std::string tag( Journal::R r )
+    std::string result( Journal::R r )
     {
         std::stringstream s;
         s << r;
-        return tag( s.str(), colour( r ) );
+        return result( s.str(), colour( r ) );
     }
 
     std::string colour( Journal::R r )
@@ -890,8 +892,9 @@ struct TestCase
 
         journal->done( id(), r );
 
-        int spaces = std::max( 64 - int(pretty().length()), 0 );
-        progress() << pretty() << " " << std::string( spaces, '.' ) << " " << colour( r ) << std::endl;
+        int spaces = std::max( 69 - int( pretty().length() ), 0 );
+        progress() << pretty() << " " << std::string( spaces, '.' ) << " "
+                   << colour( r ) << std::endl;
         if ( r == Journal::PASSED && options.rusage )
             progress() << "   " << rusage() << std::endl;
 
@@ -960,7 +963,7 @@ struct Main
     Cases cases;
 
     std::vector< TestCase * > running;
-    int running_count;
+    int running_count, done_count;
 
     bool skip( const std::string &what, const std::vector< std::regex > &filter, bool empty )
     {
@@ -1102,7 +1105,7 @@ struct Main
         {
             if ( !tc ) continue;
             if ( tc->finished( msec ) )
-                tc = nullptr, --running_count;
+                tc = nullptr, --running_count, ++done_count;
             msec = 0;
         }
 
@@ -1110,24 +1113,35 @@ struct Main
         {
             int extra = running_count;
             std::stringstream status;
+            status << "[" << std::setw( 3 ) << 100 * done_count / cases.size() << "%] ";
+            int column = 7;
             for ( auto &tc : running )
             {
                 if ( !tc ) continue;
                 std::string name = tc->name;
+                int time = tc->end - tc->start;
+
                 auto start = name.rfind('/'), end = name.rfind('.');
                 start = start == std::string::npos ? 0 : start + 1;
                 end = end == std::string::npos ? name.size() : end;
-                name = std::string( name, start, end - start );
-                if ( status.str().size() + name.size() >= 60 )
-                    continue;
+
+                int tag_cnt = std::min( running_count > 4 ? 9ul : 12ul, end - start );
+                int blue_cnt = std::min( time / 60, tag_cnt ),
+                    green_cnt = std::min( ( time % 60 ) / 10, tag_cnt - blue_cnt );
+                std::string blue( name, start, blue_cnt ),
+                            green( name, start + blue_cnt, green_cnt ),
+                            gray( name, start + blue_cnt + green_cnt,
+                                  std::max( tag_cnt - blue_cnt - green_cnt, 0 ) );
+
+                if ( column + tag_cnt + 2 >= 70 /* 8 chars for + N more */ ) continue;
+                column += tag_cnt + 3;
+                status << "[" << "\033[34m" << blue << "\033[32m" << green << "\033[0m" << gray << "] ";
                 -- extra;
-                status << "[" << name << " " << tc->end - tc->start << "] ";
-                if ( status.str().size() >= 60 ) break;
             }
             if ( extra )
                 status << "+ " << extra << " more";
             std::cerr << status.str();
-            for ( int i = status.str().size(); i < 75; ++i )
+            for ( int i = status.str().size(); i < 78; ++i )
                 std::cerr << " ";
             std::cerr << "\r" << std::flush;
         }
@@ -1195,7 +1209,7 @@ struct Main
                 continue;
             auto st = journal.status[ i->id() ];
             if ( st != Journal::PASSED && st != Journal::SKIPPED )
-                std::cerr << i->tag( st ) << i->pretty() << std::endl;
+                std::cerr << i->result( st ) << i->pretty() << std::endl;
         }
 
         if ( die || fatal_signal )
@@ -1204,7 +1218,8 @@ struct Main
         return journal.count( Journal::FAILED ) ? 1 : 0;
     }
 
-    Main( Options o ) : die( false ), journal( o.outdir ), options( o ), running_count( 0 ) {}
+    Main( Options o ) : die( false ), journal( o.outdir ), options( o ),
+                        running_count( 0 ), done_count( 0 ) {}
 };
 
 namespace {
