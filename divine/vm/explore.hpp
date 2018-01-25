@@ -486,7 +486,7 @@ struct Explore
 };
 
 using ExplicitExplore = Explore< NoSolver >;
-using Z3Explore = Explore< Z3SMTLibSolver >;
+using Z3Explore = Explore< Z3Solver >;
 using BoolectorExplore = Explore< BoolectorSMTLib >;
 
 } // namespace vm
