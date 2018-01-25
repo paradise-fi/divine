@@ -658,7 +658,10 @@ struct Options {
     int timeout, total_timeout, jobs;
     Options() : verbose( false ), terse( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ), kmsg( false ), rusage( false ),
-                timeout( 60 ), total_timeout( 3 * 3600 ), jobs( 1 ) {}
+                timeout( 60 ), total_timeout( 3 * 3600 ), jobs( 1 )
+    {
+        exclude_tags.push_back( "skip" ); /* those are always excluded */
+    }
 };
 
 struct TestProcess
