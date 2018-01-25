@@ -1,5 +1,5 @@
-/* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym big c */
+/* VERIFY_OPTS: --symbolic --sequential -o ignore:control -o ignore:memory */
 #include <stdbool.h>
 #include <assert.h>
 /* print_CIL_Input is true */
@@ -614,7 +614,7 @@ int ssl3_connect(void)
   }
   __retres60 = ret;
   goto return_label;
-  ERROR: assert( 0 );
+  ERROR: assert( 0 ); /* ERROR */
   {
   }
   __retres60 = -1;
