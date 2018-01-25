@@ -1,0 +1,130 @@
+# DIVINE Testsuite
+
+This is the canonical copy of the DIVINE testsuite. All benchmark sets and
+related artefacts are derived from this copy, mostly automatically. Testcases
+come in a few different forms, but mostly as standalone C or C++ source files
+with a few special comments.
+
+## C and C++ Testcases
+
+There are 2 types of special comments allowed in testcases. First is the
+declaration that an error exists and is triggered by a specific line of code:
+
+    assert( 0 ); /* ERROR */
+
+The testsuite then looks at the output of DIVINE and checks that the comment
+and the actual finding is in agreement. Each testcase can only contain one
+error. The remaining comment types come in the header and are of these forms:
+
+    /* TAGS: c threads sym */
+
+This is simply a way to embed tags in the file (see also below).
+
+    /* CC_OPTS: -DVAR=1 -UOTHER_VAR */
+    /* VERIFY_OPTS: -o nofail:malloc */
+    /* PROGRAM_OPTS: this is passed to main */
+
+Options that ought to be passed to different phases of verification. The first
+are compiler options, the second are verifier options and the last is
+commandline arguments the program should receive. Multiple source files can be
+combined into a single verification task by using the following (TODO
+implementation of this is incomplete):
+
+    /* EXTRA_SRCS: another_file.c and_one_more.c */
+
+Since testcases are picked up based on file suffixes and `.c` and `.cpp` files
+are considered standalone testcases by default, you need to prevent this for
+extra source files. The easiest way to do that is to include `skip` as a tag
+in those files. Files tagged `skip` are never considered for execution as
+stand-alone testcases.
+
+Finally, one special-purpose tag is recognized:
+
+    /* SKIP_CC: 1 */
+
+This indicates that the test should not be compiled separately. This is only
+useful for testing the auto-compile mode of 'divine verify'.
+
+## Running Tests
+
+There are a few ways to run the testcases. One is via toplevel `make` targets
+`validate` and `functional`. The former only runs a subset of tests (tagged
+`min`, see below) while the latter will include all testcases not marked `big`
+(which would not finish within the default timeouts). A limited amount of test
+selection can be done by invoking the `functional` target as `make functional
+T=string` or `make functional TAGS=sym`, where the former matches on test
+names (paths) and the latter on tags. There is also a `TODO=1` mode which runs
+(only) testcases marked with the `todo` tag. You can additionally set the
+`JOBS` variable to a number which will run the given number of testcases in
+parallel.
+
+More detailed selection can be done by executing `./test/runner` which will
+first invoke `make` to ensure all requisite targets are up to date and then
+execute the test runner. Like `./test/divine`, the `runner` script uses the
+`B` environment variable to pick the build type to test, for instance:
+
+    $ env B=release ./test/runner --tags c,threads --jobs 4 --terse
+
+## Tags
+
+There is a number of tags that can be used for test selection. The tags are
+embedded in the test files and must come in a comment in the first two lines
+of the file. The commonly used tags are the following:
+
+ - `c`, `c++`: the test is written in this language
+ - `todo`: fails and can't be easily fixed
+ - `min`: small and important -- run as part of 'make validate'
+ - `ext`: probably won't finish within 10 minutes on a debug build
+ - `big`: won't finish in 10 minutes on a release build
+ - `threads`: uses threads (whether posix or c++)
+ - `sym`: the test uses verify --symbolic
+ - `inf`: the program has an 'infinite' state space (alloc while true)
+ - `fin`: the program only has finite behaviours
+
+In addition to the tags explicitly mentioned in the file header, each
+directory component is treated as a tag present on all the testcases within.
+For example, if the testcase test/pthread/div/cancel.c contains this as its
+first line:
+
+    /* TAGS: c min threads */
+
+The complete set of tags on the file is 'pthread div c min threads'. Test
+selection can be done in one of two modes. First as an inclusion criterion:
+only run tests that carry all from a given set, i.e. `--tags min,threads`
+which would include the above testcase. Multiple instances of `--tags` can be
+passed to the test runner and they act as an alternative: either the first or
+the second (or third, etc.) complete set of tags is present.
+
+Finally, it is possible to exclude testcases based on tags, using e.g.
+`--exclude-tags big` -- there is only one set of forbidden tags, and the test
+is excluded if any of the forbidden tags are present on it. Using
+`--exclude-tags` multiple times is equivalent to listing the tags separated by
+commas.
+
+## Test Expansion
+
+Some testcases have only one source file but many possible variants.
+Alternatively, some testcases are generated automatically from other parts of
+the source tree (`pdclib` and `bricks` tests, in particular). To support those
+scenarios, the test runner can call an external script to expand the testcases
+into the usual single-source format.
+
+## Benchmarks
+
+DIVINE contains a separate benchmarking tool (`divbench`) which stores
+testcases and all benchmarking results in a shared central database
+(Postgres). The database is seeded from this testsuite by an import script,
+reflecting the tags and so on. The script files required by `divbench` are
+generated from the metadata embedded in the testcases, as explained above. The
+import script also chases #include files -- those are automatically imported
+into the database along with the testcase.
+
+Multi-source benchmarks need to have a single “main” source file, but they can
+pull in additional sources via the `EXTRA_SRC` special comment (see above).
+
+## Other Test Types
+
+Besides C and C++ tests, it is possible to write shell scripts that are
+executed as part of the testsuite. Those are mainly useful for testing things
+other than verification tasks, like the interactive simulator or the `divcc`
+tool. Shell-based testcases cannot be imported as benchmarks.
