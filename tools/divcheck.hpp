@@ -38,11 +38,18 @@ struct Unexpected : std::exception
     const char *what() const noexcept { return _err.c_str(); }
 };
 
+struct Unmatched : std::exception
+{
+    std::string _err;
+    Unmatched( std::string s ) : _err( "the expected error does not match: " + s ) {}
+    const char *what() const noexcept { return _err.c_str(); }
+};
+
 struct Expect : ui::LogSink
 {
-    bool _ok, _setup = false, _armed = false;
+    bool _ok, _found, _setup = false, _armed = false;
     mc::Result _result;
-    std::string _cmd;
+    std::string _cmd, _location;
 
     void check()
     {
@@ -51,12 +58,30 @@ struct Expect : ui::LogSink
         _setup = _armed = false;
         if ( !_ok )
             throw Unexpected( _cmd );
+        if ( !_found )
+            throw Unmatched( _cmd );
     }
 
     void arm( std::string cmd ) { _ok = false; _armed = true; _cmd = cmd; }
     void setup( const Expect &src ) { *this = src; _setup = true; }
 
-    virtual void backtrace( ui::DbgContext &, int ) {}
+    virtual void backtrace( ui::DbgContext &ctx, int )
+    {
+        _found = false;
+        bool active = true;
+        auto bt = [&]( int ) { active = false; };
+        auto chk = [&]( auto dn )
+        {
+            if ( dn.attribute( "location" ) == _location )
+            {
+                if ( active ) _found = true;
+                if ( !_found && !active )
+                    std::cerr << "W: error location found, but in an inactive stack" << std::endl;
+            }
+        };
+        mc::backtrace( bt, chk, ctx, ctx.snapshot(), 10000 );
+    }
+
     virtual void result( mc::Result r, const mc::Trace & )
     {
         ASSERT( _armed );
@@ -103,7 +128,8 @@ void execute( std::string script_txt, F... prepare )
         };
 
         auto o_expect = ui::cmd::make_option_set< Expect >( cli.validator() )
-            .option( "--result {result}", &Expect::_result, "verification result" );
+            .option( "--result {result}", &Expect::_result, "verification result" )
+            .option( "--location {string}", &Expect::_location, "location of the expected error" );
 
         auto parser = cli.commands().command< Expect >( o_expect );
         auto cmd = cli.parse( parser );
