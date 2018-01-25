@@ -1,7 +1,20 @@
+#!/bin/sh
 # -*- sh -*-
 
-. lib/flavour vanilla
-SILENT=1 . lib/testcase
+if test "$1" = "--export"; then
+    EXPORT=1
+    shift
+else
+    . lib/flavour vanilla
+    SILENT=1 . lib/testcase
+    EXPORT= # unset
+fi
+export EXPORT
+
+function run()
+{
+    if test -n "$EXPORT"; then echo "$@"; else divine "$@"; fi
+}
 
 getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
 
@@ -11,34 +24,60 @@ echo "$1" | grep -q '.cpp$' && std="-std=c++14"
 opts=$(eval echo $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
 ccopt=$(eval echo $(getopt CC_OPTS $1))
+extrasrc=$(eval echo $(getopt EXTRA_SRCS $1))
 gtest=
 skipcc=$(getopt SKIP_CC $1)
-resources="--max-memory 4GiB --threads 1"
-extra="--report-filename verify.out"
+
+if test -z "$EXPORT"; then
+    resources="--max-memory 4GiB --threads 1"
+    extra="--report-filename verify.out"
+fi
 
 if test "$(eval echo $(getopt USE_GTEST $1))" = 1; then
     gtest="$TESTS/lib/gtest/src/gtest-all.cc $TESTS/lib/gtest/src/gtest_main.cc -I$TESTS/lib/gtest"
 fi
 
-if echo "$opts" | grep "symbolic"; then
+if test -z "$EXPORT" && echo "$opts" | grep "symbolic"; then
     z3 --version > /dev/null || skip
 fi
 
+if test -n "$EXPORT"; then
+    dir=$(dirname $1)
+    name=$(basename $1)
+    rtinc=$(readlink -f $(dirname $0)/../../runtime)
+    incs="-isystem $rtinc/libc/include -isystem $rtinc/libc/internals -isystem $rtinc/libcxx/include"
+    incs="$incs -isystem $rtinc/libm/include -isystem $rtinc -isystem $rtinc/../bricks"
+    for f in $name $extrasrc; do
+        deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | sed -e 's,^: [^ ]*,,' -e 's,\\$,,')
+        echo load $dir/$f $f
+        for dep in $deps; do
+            echo load $dir/$dep $dep
+        done
+    done
+    check=$(readlink -f $(dirname $0)/check)
+    (cd $dir ; $check verify $name)
+else
+    name="$1"
+fi
+
 if test "$skipcc" = 1; then
-    run=$1
+    run=$name
     opts="$std $opts"
 else
-    divine cc -o testcase.bc $std $ccopt "$1" $gtest
+    run cc -o testcase.bc $std $ccopt "$name" $gtest
     run=testcase.bc
 fi
 
-divine verify $resources $extra $opts $run $args
+run verify $resources $extra $opts $run $args
+
+if test -n "$EXPORT"; then exit 0; fi
 
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
     echo "backtrace" | \
         divine sim --batch --skip-init --load-report verify.out 2>&1 | tee sim.out
 fi
-check verify "$1"
+
+check verify "$name"
 
 # vim: syntax=sh

@@ -1,7 +1,9 @@
 #!/bin/sh
 
-set -e
-. util
+if test -z "$EXPORT"; then
+    set -e
+    . util
+fi
 
 complain() {
     echo "### $@" > complaint
@@ -158,6 +160,7 @@ debris() {
 verify() {
     if fgrep -q '/* ERRSPEC:' "$1"; then
         spec=$(fgrep '/* ERRSPEC:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
+        if test -n "$EXPORT"; then exit 1; fi
         echo spec: $spec
         if ! grep -q "^  [ -] [^ .][a-z]*:.*$spec" verify.out; then
             echo "# expected error to be found in $spec, but it was not"
@@ -165,6 +168,10 @@ verify() {
         fi
     elif fgrep -q '/* ERROR' "$1"; then
         location=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f1-2`
+        if test -n "$EXPORT"; then
+            echo "expect --result error --location $location";
+            exit 0
+        fi
         if ! grep -q "^    location: $location" verify.out; then
             nl -ba "$1"
             echo "# expected error to be found at $location, but it was not"
@@ -176,6 +183,7 @@ verify() {
             exit 1
         fi
     else
+        if test -n "$EXPORT"; then echo "expect --result valid"; exit 0; fi
         if ! grep -q "error found: no" verify.out &&
            ! grep -q "error found: boot" verify.out; then
             nl -ba "$1"
