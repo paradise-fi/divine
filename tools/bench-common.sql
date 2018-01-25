@@ -15,7 +15,8 @@ create table machine(id    serial primary key not null,
 
 -- model checker inputs
 create table source( id   serial  primary key not null,
-                     text blob    not null );
+                     sha  char(64) not null unique,
+                     text blob     not null );
 
 create table model( id       serial primary key not null,
                     name     varchar not null,

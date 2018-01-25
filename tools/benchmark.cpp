@@ -28,124 +28,203 @@
 #include <brick-string>
 #include <brick-types>
 #include <brick-cmd>
+#include <brick-yaml>
+#include <brick-proc>
+#include <brick-sha2>
 
 namespace benchmark
 {
 
-int Import::modrev()
+bool ImportModel::dedup()
 {
-    std::stringstream rev_q;
-    rev_q << "select max(revision) from model group by name, variant having name = ? and variant "
-          << (_variant.empty() ? "is null" : "= ?");
-    nanodbc::statement rev( _conn, rev_q.str() );
+    int candidate = _revision - 1;
+    std::stringstream q;
+    q << "select id, script from model where name = ? and revision = ? and variant";
+    if ( _variant.empty() )
+        q << " is null";
+    else
+        q << " = ?";
 
-    rev.bind( 0, _name.c_str() );
+    nanodbc::statement get_script( _conn, q.str() );
+    get_script.bind( 0, _name.c_str() );
+    get_script.bind( 1, &candidate );
     if ( !_variant.empty() )
-        rev.bind( 1, _variant.c_str() );
+        get_script.bind( 2, _variant.c_str() );
 
-    int next = 1;
-    try
+    auto scr_id = get_script.execute();
+
+    if ( !scr_id.first() )
+        return false;
+    if ( scr_id.get< int >( 1 ) != _script_id )
+        return false;
+    _id = scr_id.get< int >( 0 );
+
+    nanodbc::statement get_files( _conn, "select filename, source from model_srcs where model = ?" );
+    get_files.bind( 0, &_id );
+
+    auto file = get_files.execute();
+    int match = 0, indb = 0;
+    while ( file.next() )
     {
-        auto r = nanodbc::execute( rev );
-        r.first();
-        next = 1 + r.get< int >( 0 );
-    } catch (...) {}
+        auto k = std::make_pair( file.get< std::string >( 0 ), file.get< int >( 1 ) );
+        if ( _file_ids.count( k ) )
+            ++ match;
+        ++ indb;
+    }
 
-    return next;
+    if ( match == indb && match == int( _file_ids.size() ) )
+    {
+        std::cerr << "not imported: " << ident( false ) << " same as revision " << candidate << std::endl;
+        return true;
+    }
+
+    return false;
 }
 
-bool Import::files()
+std::string ImportModel::ident( bool rev )
 {
-    if ( _name.empty() )
-        _name = _files[0];
+    std::stringstream str;
+    str << _name;
+    if ( !_variant.empty() )
+        str << " " << _variant;
+    if ( rev )
+        str << ", revision " << _revision;
+    return str.str();
+}
 
-    auto str = fs::readFile( _script );
-    std::vector< uint8_t > data( str.begin(), str.end() );
-    int script_id = odbc::unique_id( _conn, "source", odbc::Keys{ "text" },
-                                     odbc::Vals{ data } );
+void ImportModel::import()
+{
+    if ( _interp.empty() )
+        return;
 
-    std::set< std::pair< std::string, int > > file_ids;
+    nanodbc::transaction txn( _conn );
+    get_revision();
 
-    for ( auto file : _files )
+    auto r = brick::proc::spawnAndWait( brick::proc::CaptureStdout, { _interp, "--export", _path } );
+    if ( !r )
     {
-        auto src = fs::readFile( file );
-        std::vector< uint8_t > data( src.begin(), src.end() );
-        int file_id = odbc::unique_id(
-                _conn, "source", odbc::Keys{ "text" },
-                                 odbc::Vals{ data } );
-        file_ids.emplace( file, file_id );
+        std::cerr << "failed to export " << ident() << std::endl;
+        return;
     }
 
-    auto next_rev = modrev();
+    std::istringstream istr( r.out() );
+    std::string script, line;
+    std::map< std::string, std::string > files;
 
-    for ( int rev = 1; rev < next_rev; ++rev )
+    while ( std::getline( istr, line ) )
     {
-        nanodbc::statement get_script( _conn,
-            "select script from model where name = ? and revision = ? and variant = ?" );
-        get_script.bind( 0, _name.c_str() );
-        get_script.bind( 1, &rev );
-        if ( _variant.empty() )
-            get_script.bind_null( 2 );
-        else
-            get_script.bind( 2, _variant.c_str() );
-        auto scr_id = get_script.execute();
-        if ( !scr_id.first() )
-            continue; /* does not exist */
-        if ( scr_id.get< int >( 0 ) != script_id )
-            continue; /* no match */
-
-        nanodbc::statement get_files( _conn,
-            "select model_srcs.filename, model_srcs.source from "
-            "model join model_srcs on model_srcs.model = model.id "
-            "where model.revision = ? and model.name = ? and model.variant = ?" );
-        get_files.bind( 0, &rev );
-        get_files.bind( 1, _name.c_str() );
-        if ( _variant.empty() )
-            get_files.bind_null( 2 );
-        else
-            get_files.bind( 2, _variant.c_str() );
-
-        auto file = get_files.execute();
-        int match = 0, indb = 0;
-        while ( file.next() )
+        if ( brick::string::startsWith( line, "load" ) )
         {
-            auto k = std::make_pair( file.get< std::string >( 0 ), file.get< int >( 1 ) );
-            if ( file_ids.count( k ) )
-                ++ match;
-            ++ indb;
+            int split = line.rfind( ' ' );
+            std::string path( line, 5, split - 5 ),
+                        name( line, split + 1, line.size() - split - 1 );
+            files.emplace( name, path );
         }
-        if ( match == indb && match == int( file_ids.size() ) )
-        {
-            std::cerr << "W: not imported, identical model present as revision " << rev << std::endl;
-            return false;
-        }
+        else script += line + "\n";
     }
 
+    _script_id = put_file( "", script );
+    for ( auto file : files )
+        put_file( file.first, brick::fs::readFile( file.second ) );
+
+    if ( dedup() )
+        return;
+
+    try {
+        do_import();
+        txn.commit();
+        std::cerr << "imported " << ident() << std::endl;
+    } catch ( database_error &err )
+    {
+        std::cerr << "import failed: " << ident() << std::endl;
+        std::cerr << err.what() << std::endl;
+    }
+}
+
+void ImportModel::do_import()
+{
     odbc::Keys keys_mod{ "name", "revision", "script" };
-    odbc::Vals vals_mod{ _name, next_rev, script_id };
+    odbc::Vals vals_mod{ _name, _revision, _script_id };
     if ( !_variant.empty() )
         keys_mod.push_back( "variant" ), vals_mod.push_back( _variant );
     _id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
 
-    for ( auto p : file_ids )
+    for ( auto p : _file_ids )
     {
         odbc::Keys keys_tie{ "model", "filename", "source" };
         odbc::Vals vals_tie{ _id, p.first, p.second };
         auto ins = odbc::insert( _conn, "model_srcs", keys_tie, vals_tie );
         nanodbc::execute( ins );
     };
-
-    return true;
 }
 
-void Import::tag()
+int ImportModel::put_file( std::string name, std::string src )
 {
+    auto sha = brick::sha2::to_hex( brick::sha2_256( src ) );
+    std::vector< uint8_t > data( src.begin(), src.end() );
+    int id = odbc::unique_id( _conn, "source", odbc::Keys{ "text", "sha" },
+                              odbc::Vals{ data, sha } );
+    if ( !name.empty() )
+        _file_ids.emplace( name, id );
+    return id;
+}
+
+void ImportModel::get_revision()
+{
+    std::stringstream rev_q;
+    rev_q << "select max(revision) from model group by name, variant having name = ? and variant "
+          << (_variant.empty() ? "is null" : "= ?");
+    nanodbc::statement rev( _conn, rev_q.str() );
+    rev.bind( 0, _name.c_str() );
+    if ( !_variant.empty() )
+        rev.bind( 1, _variant.c_str() );
+
+    _revision = 1;
+    try
+    {
+        auto r = nanodbc::execute( rev );
+        r.first();
+        _revision = 1 + r.get< int >( 0 );
+    } catch (...) {}
+}
+
+void ImportModel::tag()
+{
+    if ( !_id ) return; /* no can do */
+    nanodbc::transaction txn( _conn );
+    nanodbc::statement clear( _conn, "delete from model_tags where model = ?" );
+    clear.bind( 0, &_id );
+    clear.execute();
+
     for ( auto tag : _tags )
     {
         int tag_id = odbc::unique_id( _conn, "tag", odbc::Keys{ "name" }, odbc::Vals{ tag } );
         odbc::Vals vals{ _id, tag_id };
         auto ins = odbc::insert( _conn, "model_tags", odbc::Keys{ "model", "tag" }, vals );
         ins.execute();
+    }
+
+    txn.commit();
+}
+
+void Import::run()
+{
+    std::string yaml;
+    std::getline( std::cin, yaml, '\0' );
+    brick::yaml::Parser parsed( yaml );
+    std::vector< std::string > names;
+    names = parsed.getOr( { "*" }, names );
+
+    for ( auto name : names )
+    {
+        ImportModel im( _conn );
+        im._name = parsed.get< std::string >( { name, "name" } );
+        im._variant = parsed.get< std::string >( { name, "variant" } );
+        im._path = parsed.get< std::string >( { name, "path" } );
+        im._interp = parsed.get< std::string >( { name, "interpreter" } );
+        im._tags = parsed.get< std::vector< std::string > >( { name, "tags", "*" } );
+        im.import();
+        im.tag(); /* update tags, even if the import failed */
     }
 }
 
@@ -227,13 +306,6 @@ int main( int argc, const char **argv )
     auto opts_db = cmd::make_option_set< Cmd >( validator )
         .option( "[-d {string}]", &Cmd::_odbc, "ODBC connection string (default: $DIVBENCH_DB)" );
 
-    auto opts_import = cmd::make_option_set< Import >( validator )
-        .option( "[--name {string}]", &Import::_name, "model name (default: filename)" )
-        .option( "[--variant {string}]", &Import::_variant, "model variant (default: null)" )
-        .option( "[--tag {string}]", &Import::_tags, "tag(s) to assign to the model" )
-        .option( "[--file {string}]", &Import::_files, "a (source) file to import" )
-        .option( "[--script {string}]", &Import::_script, "a build/verify script" );
-
     auto opts_report_base = cmd::make_option_set< ReportBase >( validator )
         .option( "[--by-tag]",  &ReportBase::_by_tag, "group results by tags" )
         .option( "[--aggregate {string}]",  &ReportBase::_agg, "run aggregation (default: avg)" )
@@ -262,7 +334,7 @@ int main( int argc, const char **argv )
         .option( "--driver {string}", &External::_driver, "external divcheck driver" );
 
     auto cmds = cmd::make_parser( cmd::make_validator() )
-        .command< Import >( opts_db, opts_import )
+        .command< Import >( opts_db )
         .command< Schedule >( opts_db, opts_job, opts_sched )
         .command< ScheduleExternal >( opts_db, opts_external, opts_job )
         .command< Report >( opts_db, opts_report_base, opts_report )

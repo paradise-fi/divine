@@ -63,21 +63,28 @@ struct Help
     }
 };
 
+struct ImportModel
+{
+    connection &_conn;
+    ImportModel( connection &c ) : _conn( c ) {}
+
+    std::string _name, _variant, _path, _interp;
+    std::vector< std::string > _tags;
+    std::set< std::pair< std::string, int > > _file_ids;
+    int _id = 0, _revision, _script_id;
+
+    std::string ident( bool = true );
+    void import();
+    void do_import();
+    bool dedup();
+    void get_revision();
+    void tag();
+    int put_file( std::string name, std::string content );
+};
+
 struct Import : Cmd
 {
-    std::string _name, _script, _variant;
-    std::vector< std::string > _files, _tags;
-    int _id;
-
-    int modrev();
-    bool files();
-    void tag();
-
-    virtual void run()
-    {
-        if ( files() )
-            tag();
-    }
+    virtual void run();
 };
 
 struct JobBase : Cmd
