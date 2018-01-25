@@ -699,7 +699,7 @@ struct TestProcess
 struct TestCase
 {
     TestProcess child;
-    std::string name, flavour;
+    std::string name, variant, flavour;
     IO io;
     BufSink *iobuf;
 
@@ -713,8 +713,16 @@ struct TestCase
 
     Journal *journal;
 
-    std::string pretty() { return flavour == "vanilla" ? name : "[" + flavour + "] " + name; }
-    std::string id() { return flavour + ":" + name; }
+    std::string pretty()
+    {
+        std::stringstream str;
+        if ( flavour != "vanilla" ) str << "[" << flavour << "] ";
+        str << name;
+        if ( !variant.empty() ) str << " " << variant;
+        return str.str();
+    }
+
+    std::string id() { return flavour + ":" + name + ( variant.empty() ? "" : ":" + variant ); }
     std::ostream &progress() { return std::cerr; }
 
     void pipe() {
@@ -943,8 +951,9 @@ struct TestCase
     }
 
     TestCase( Journal &j, Options opt, std::string path, std::string interp,
-              std::string name, std::string flavour )
-        : child( path, interp ), name( name ), flavour( flavour ), timeout( false ),
+              std::string name, std::string flavour, std::set< std::string > tags, std::string variant )
+        : child( path, interp ), name( name ), variant( variant ), flavour( flavour ),
+          tags( tags ), timeout( false ),
           last_update( 0 ), last_heartbeat( 0 ), options( opt ), journal( &j )
     {
     }
@@ -1014,7 +1023,7 @@ struct Main
                name.substr( name.length() - i.first.size() - 1, name.length() ) == "." + i.first;
     }
 
-    void setup( std::string flavour, std::string dir, std::string name )
+    void setup( std::string flavour, std::string dir, std::string name, std::string variant )
     {
         std::string interpreter;
         bool runnable = false;
@@ -1041,7 +1050,9 @@ struct Main
         if ( !runnable || !check_tags( name, dir + name ) )
             return;
 
-        TestCase tc( journal, options, dir + name, interpreter, name, flavour );
+        std::string path = dir + name;
+        if ( !variant.empty() ) path += "/" + variant;
+        TestCase tc( journal, options, path, interpreter, name, flavour, tags, variant );
 
         tc.tty = tty;
         cases.push_back( tc );
@@ -1069,7 +1080,7 @@ struct Main
                         expand = exp.second;
 
                 if ( expand.empty() )
-                    setup( flavour, options.testdir, *i );
+                    setup( flavour, options.testdir, *i, "" );
                 else
                 {
                     ::mkdir( "_expand", 0700 );
@@ -1084,7 +1095,7 @@ struct Main
                     ::chdir( cwd );
                     Listing l = listdir( dir, true );
                     for ( auto file : l )
-                        setup( flavour, base, *i + "/" + file );
+                        setup( flavour, base, *i, file );
                 }
 
             }
