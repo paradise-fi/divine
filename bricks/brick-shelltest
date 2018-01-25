@@ -1055,12 +1055,12 @@ struct Main
             runnable = false;
 
         std::set< std::string > tags;
-
-        if ( !runnable || !check_tags( name, dir + name, tags ) )
-            return;
-
         std::string path = dir + name;
         if ( !variant.empty() ) path += "/" + variant;
+
+        if ( !runnable || !check_tags( name, path, tags ) )
+            return;
+
         TestCase tc( journal, options, path, interpreter, name, flavour, tags, variant );
 
         tc.tty = tty;
