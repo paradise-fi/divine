@@ -194,6 +194,9 @@ struct InteractiveSink : TimedSink
     virtual void progress( std::pair< int64_t, int64_t > stat, int queued, bool last ) override
     {
         TimedSink::progress( stat, queued, last );
+        double ips = timeavg( stat.second, interval() );
+        std::string ips_unit = ips > 500000 ? "mips" : "kips";
+        ips = ips > 500000 ? ips / 1000000 : ips / 1000;
         if ( last )
             std::cerr << "\r                                     "
                       << "                                     \r"
@@ -202,8 +205,8 @@ struct InteractiveSink : TimedSink
             std::cerr << "\rsearching: " << stat.first
                       << " states in " << interval_str( interval() )
                       << ", avg " << timeavg_str( stat.first, interval() )
-                      << "/s @ " << timeavg_str( stat.second / 1000000.0, interval() )
-                      << " mips, queued: " << queued << "          ";
+                      << "/s @ " << std::fixed << std::setprecision( 1 ) << ips
+                      << " " << ips_unit << ", queued: " << queued << "          ";
     }
 
     void loader( Phase p ) override
