@@ -996,12 +996,15 @@ struct Main
         if ( line.find( "TAGS:" ) == std::string::npos )
             std::getline( ifs, line );
         auto pos = line.find( "TAGS: " );
-        std::set< std::string > tags;
 
+        std::vector< std::string > raw;
         if ( pos != std::string::npos )
-            split( std::string( line, pos + 5, std::string::npos ),
-                   std::inserter( tags, tags.begin() ), id, ' ' );
-        split( dirs, std::inserter( tags, tags.begin() ), id, '/' );
+            split( std::string( line, pos + 5, std::string::npos ), std::back_inserter( raw ), id, ' ' );
+        split( dirs, std::back_inserter( raw ), id, '/' );
+
+        for ( auto t : raw )
+            if ( raw.size() && std::isalpha( t[0] ) )
+                tags.insert( t );
 
         for ( auto tag : options.exclude_tags )
             if ( tags.count( tag ) )
