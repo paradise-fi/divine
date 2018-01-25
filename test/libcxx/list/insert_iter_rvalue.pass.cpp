@@ -1,3 +1,5 @@
+/* TAGS: c++ */
+/* VERIFY_OPTS: -o nofail:malloc */
 //===----------------------------------------------------------------------===//
 //
 //                     The LLVM Compiler Infrastructure
