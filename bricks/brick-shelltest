@@ -700,6 +700,7 @@ struct TestCase
 {
     TestProcess child;
     std::string name, variant, flavour;
+    std::set< std::string > tags;
     IO io;
     BufSink *iobuf;
 
@@ -985,7 +986,7 @@ struct Main
         return true;
     }
 
-    bool check_tags( std::string name, std::string file )
+    bool check_tags( std::string name, std::string file, std::set< std::string > &tags )
     {
         std::string line;
         auto dirs_end = name.rfind( '/' );
@@ -1047,7 +1048,9 @@ struct Main
         if ( !skip( name, options.exclude, true ) )
             runnable = false;
 
-        if ( !runnable || !check_tags( name, dir + name ) )
+        std::set< std::string > tags;
+
+        if ( !runnable || !check_tags( name, dir + name, tags ) )
             return;
 
         std::string path = dir + name;
@@ -1164,6 +1167,26 @@ struct Main
         std::cerr << "would run " << cases.size() << " tests" << std::endl;
         for ( auto &c : cases )
             std::cout << c.name << std::endl;
+        return 0;
+    }
+
+    int do_export()
+    {
+        setup();
+
+        for ( auto &c : cases )
+        {
+            std::cout << "\"" << c.id() << "\":" << std::endl
+                      << "  name: " << c.name << std::endl
+                      << "  path: " << c.child.filename << std::endl
+                      << "  interpreter: \"" << c.child.interpreter << "\"" << std::endl
+                      << "  variant: \"" << c.variant << "\"" << std::endl
+                      << "  tags: [ ";
+            for ( auto i = c.tags.begin(); i != c.tags.end(); ++i )
+                std::cout << *i << ( ( std::next( i ) == c.tags.end() ) ? " " : ", " );
+            std::cout << "]" << std::endl << std::endl;
+        }
+
         return 0;
     }
 
@@ -1451,7 +1474,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     setup_handlers();
 
     Main main( opt );
-    if ( hasenv( "LIST" ) || args.has( "--list" ) )
+    if ( args.has( "--export" ) )
+        return main.do_export();
+    else if ( hasenv( "LIST" ) || args.has( "--list" ) )
         return main.list();
     else
         return main.run();
