@@ -265,7 +265,9 @@ z3::expr Z3FormulaMap::toz3( sym::Formula *formula )
                     return arg.extract( bw - 1, 0 );
                 case sym::Op::ZExt:
                     ASSERT_LT( childbw, bw );
-                    return z3::zext( arg, bw - childbw );
+                    return childbw > 1
+                    ? z3::zext( arg, bw - childbw )
+                    : z3::ite( arg, ctx.bv_val( 1, bw ), ctx.bv_val( 0, bw ) );
                 case sym::Op::SExt:
                     ASSERT_LT( childbw, bw );
                     return z3::sext( arg, bw - childbw );
