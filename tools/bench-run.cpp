@@ -73,8 +73,6 @@ void Run::execute( int job_id )
         if ( _done )
             throw brick::except::Error( "only one model checker run is allowed per model" );
         _done = true;
-        cmd._interactive = false;
-        cmd._report = ui::Report::None;
         cmd._log = _log;
         cmd.setup();
     };
