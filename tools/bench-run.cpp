@@ -136,9 +136,16 @@ void Run::run()
         if ( !res || res.affected_rows() != 1 )
             continue; /* somebody beat us to this one */
 
+        int correct = 1;
         try {
             prepare( job.get< int >( 1 ) );
             execute( job_id );
+        }
+        catch ( divcheck::Wrong )
+        {
+            std::cerr << "W: job " << job_id << " gave wrong result." << std::endl;
+            correct = 0;
+
         } catch ( std::exception &e )
         {
             std::cerr << "W: job " << job_id << " failed: " << e.what() << std::endl;
@@ -146,6 +153,13 @@ void Run::run()
             fail.bind( 0, &job_id );
             fail.execute();
         }
+
+        int exec_id = _log->log_id();
+        nanodbc::statement correct_q( _conn, "update execution set correct = ? where id = ?" );
+        correct_q.bind( 0, &correct );
+        correct_q.bind( 1, &exec_id );
+        correct_q.execute();
+
         if ( _single )
             break;
     }

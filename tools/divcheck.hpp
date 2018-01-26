@@ -31,18 +31,20 @@ namespace divcheck
 
 using namespace divine;
 
-struct Unexpected : std::exception
+struct Wrong : std::exception
 {
     std::string _err;
-    Unexpected( std::string s ) : _err( "unexpected result from: " + s ) {}
     const char *what() const noexcept { return _err.c_str(); }
 };
 
-struct Unmatched : std::exception
+struct Unexpected : Wrong
 {
-    std::string _err;
-    Unmatched( std::string s ) : _err( "the expected error does not match: " + s ) {}
-    const char *what() const noexcept { return _err.c_str(); }
+    Unexpected( std::string s ) { _err = "unexpected result from: " + s; }
+};
+
+struct Unmatched : Wrong
+{
+    Unmatched( std::string s ) { _err = "the expected error does not match: " + s; }
 };
 
 struct Expect : ui::LogSink

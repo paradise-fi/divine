@@ -62,7 +62,9 @@ create table execution( id       serial primary key not null,
                         time_smt    integer, -- milliseconds
                         time_ce     integer, -- milliseconds
                         states      integer,
-                        result   char(1) default 'U' not null ); -- V = valid, E = error, B = boot error, U = unknown
+                        correct     boolean,
+                        -- result: V = valid, E = error, B = boot error, U = unknown
+                        result      char(1) default 'U' not null );
 
 create table pool_log( id serial primary key,
                        seq integer not null,
