@@ -50,6 +50,7 @@
  * OPENBSD ORIGINAL: lib/libc/hash/sha2.c
  */
 
+#include <brick-assert>
 #include <string>
 #include <iomanip>
 #include <cstring>
@@ -957,20 +958,27 @@ std::string sha2_512( const std::string& s ) {
     return r;
 }
 
+namespace sha2
+{
+
+static std::string to_hex( std::string hash )
+{
+	std::ostringstream s;
+	s << std::hex;
+	for ( char x : hash )
+		s << std::setw( 2 ) << std::setfill( '0' ) << static_cast< unsigned int >( x & 0xff );
+	return s.str();
+}
+
+}
+
 namespace t_sha2 {
 
 using namespace ::brick;
+using namespace sha2;
 
 struct Sha2 {
     // http://www.di-mgt.com.au/sha_testvectors.html
-
-	static std::string to_hex( std::string hash ) {
-		std::ostringstream s;
-		s << std::hex << std::setw(2) << std::setfill('0');
-		for ( char x : hash )
-			s << static_cast< unsigned int >( x & 0xff );
-		return s.str();
-	}
 
     TEST(abc) {
         std::string input = "abc";
