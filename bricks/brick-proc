@@ -237,7 +237,8 @@ inline SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > arg
         }
 
         ::execvp( cargs[ 0 ], const_cast< char *const * >( cargs.data() ) );
-        std::terminate();
+        std::cerr << "exec failed: " << cargs[ 0 ] << std::endl;
+        ::_exit( 1 );
     } else if ( pid > 0 ) {
         if ( inp ) {
             inp->closeRead();
