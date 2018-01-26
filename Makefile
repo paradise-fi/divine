@@ -35,28 +35,25 @@ CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include
             -isystem $(RTSRC)/libunwind/include \
             -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument
 
-TOOLCHAIN_ = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
-	     -DCMAKE_CXX_COMPILER=$(CLANG)/bin/clang++ \
-	     -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)"
-TOOLCHAIN  ?= $(TOOLCHAIN_) \
-	      -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
+TOOLCHAIN_ = CMAKE_C_COMPILER=$(CLANG)/bin/clang;CMAKE_CXX_COMPILER=$(CLANG)/bin/clang++;\
+	     CMAKE_CXX_FLAGS=$(CXXFLAGS_)
+TOOLCHAIN  ?= $(TOOLCHAIN_);CMAKE_EXE_LINKER_FLAGS=$(LDFLAGS_);CMAKE_SHARED_LINKER_FLAGS=$(LDFLAGS_)
 TOOLSTAMP  ?= $(TOOLDIR)/stamp-v2
 
-CONFIG        += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
-static_FLAGS  += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) $(CONFIG) \
-                 -DBUILD_SHARED_LIBS=OFF -DSTATIC_BUILD=ON
-bench_FLAGS   += -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) -DBUILD_SHARED_LIBS=OFF \
-		 -DCMAKE_EXE_LINKER_FLAGS="-L$(CXX_STATIC) $(LDFLAGS_)"
-release_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
-semidbg_FLAGS += -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
-debug_FLAGS   += -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
+CONFIG        += CMAKE_INSTALL_PREFIX=${PREFIX};BUILD_SHARED_LIBS=ON
+static_FLAGS  += CMAKE_BUILD_TYPE=Release;$(TOOLCHAIN);$(CONFIG);BUILD_SHARED_LIBS=OFF;STATIC_BUILD=ON
+bench_FLAGS   += CMAKE_BUILD_TYPE=Release;BUILD_SHARED_LIBS=OFF;\
+		 CMAKE_EXE_LINKER_FLAGS=-L$(CXX_STATIC) $(LDFLAGS_);$(TOOLCHAIN)
+release_FLAGS += CMAKE_BUILD_TYPE=RelWithDebInfo;$(TOOLCHAIN);$(CONFIG)
+semidbg_FLAGS += CMAKE_BUILD_TYPE=SemiDbg;$(TOOLCHAIN);$(CONFIG)
+debug_FLAGS   += CMAKE_BUILD_TYPE=Debug;$(TOOLCHAIN);$(CONFIG)
 
 asan_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O1
-asan_FLAGS = $(debug_FLAGS) -DCMAKE_CXX_FLAGS_DEBUG="$(asan_CXXFLAGS)"
+asan_FLAGS = $(debug_FLAGS);CMAKE_CXX_FLAGS_DEBUG=$(asan_CXXFLAGS)
 
-toolchain_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
-		   -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
-		   -DCMAKE_INSTALL_PREFIX=${PREFIX}
+toolchain_FLAGS += CMAKE_BUILD_TYPE=RelWithDebInfo;TOOLCHAIN=ON; \
+		   CMAKE_CXX_COMPILER=$(CXX);CMAKE_C_COMPILER=$(CC); \
+		   CMAKE_INSTALL_PREFIX;${PREFIX}
 
 all: $(DEFAULT_FLAVOUR)
 
@@ -77,49 +74,46 @@ divbench:
 
 divbench-install:
 	test -d $(BENCH_DIR)
-	$(MAKE) bench-divbench
+	$(MAKE) divbench
 	cp $(OBJ)bench/tools/divbench $(BENCH_DIR)/$(BENCH_NAME).`date +%Y-%m-%d.%H%M`
 
-GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
-              CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
 SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)"
 
-${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(TOOLSTAMP)
-	chmod +x test/divine # darcs does not remember +x on files
-	mkdir -p $$(dirname $@)
+config:
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
-	cd $$(dirname $@) && $(CMAKE) $(PWD) $($(FLAVOUR)_FLAGS) $(CMAKE_EXTRA) -G "$(GENERATOR)"
-	touch $@
+	mkdir -p $(OBJ)$(FLAVOUR)
+	echo "$($(FLAVOUR)_FLAGS)" > $(OBJ)$(FLAVOUR)/config.tmp
+	$(CMAKE) -E copy_if_different $(OBJ)$(FLAVOUR)/config.tmp $(OBJ)$(FLAVOUR)/config.vars
+	if ! test -e $(OBJ)$(FLAVOUR)/config.done; then  \
+	  chmod +x test/divine; \
+	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(PWD) $(CMAKE_EXTRA) -G "$(GENERATOR)"; \
+	  touch $(OBJ)$(FLAVOUR)/config.done; fi
 
-${TARGETS:%=static-%}:
-	$(MAKE) $(OBJ)static/cmake.stamp $(GETCONFDEPS) FLAVOUR=static
-	$(SETENV) $(CMAKE) --build $(OBJ)static --target ${@:static-%=%} -- $(EXTRA)
+build: config
+	$(SETENV) $(CMAKE) --build $(OBJ)$(FLAVOUR) --target $(TARGET) -- $(EXTRA)
 
-${TARGETS:%=debug-%}:
-	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
-	$(SETENV) $(CMAKE) --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
+${TARGETS:%=static-%}: $(TOOLSTAMP)
+	$(MAKE) build FLAVOUR=static TARGET=${@:static-%=%}
 
-${TARGETS:%=semidbg-%}:
-	$(MAKE) $(OBJ)semidbg/cmake.stamp $(GETCONFDEPS) FLAVOUR=semidbg
-	$(SETENV) $(CMAKE) --build $(OBJ)semidbg --target ${@:semidbg-%=%} -- $(EXTRA)
+${TARGETS:%=debug-%}: $(TOOLSTAMP)
+	$(MAKE) build FLAVOUR=debug TARGET=${@:debug-%=%}
 
-${TARGETS:%=release-%}:
-	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
-	$(SETENV) $(CMAKE) --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
+${TARGETS:%=semidbg-%}: $(TOOLSTAMP)
+	$(MAKE) build FLAVOUR=semidbg TARGET=${@:semidbg-%=%}
 
-${TARGETS:%=bench-%}:
-	$(MAKE) $(OBJ)bench/cmake.stamp $(GETCONFDEPS) FLAVOUR=bench
-	$(SETENV) $(CMAKE) --build $(OBJ)bench --target ${@:bench-%=%} -- $(EXTRA)
+${TARGETS:%=release-%}: $(TOOLSTAMP)
+	$(MAKE) build FLAVOUR=release TARGET=${@:release-%=%}
+
+${TARGETS:%=bench-%}: $(TOOLSTAMP)
+	$(MAKE) build FLAVOUR=bench TARGET=${@:bench-%=%}
 
 ${TARGETS:%=asan-%}:
-	$(MAKE) $(OBJ)asan/cmake.stamp $(GETCONFDEPS) FLAVOUR=asan
-	$(SETENV) $(CMAKE) --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
+	$(MAKE) build FLAVOUR=asan TARGET=${@:asan-%=%}
 
 toolchain: $(TOOLSTAMP)
 
 $(TOOLSTAMP):
-	mkdir -p $(OBJ)toolchain
-	cd $(OBJ)toolchain && $(CMAKE) $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
+	$(MAKE) config FLAVOUR=toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target unwind_static -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target cxxabi_static -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target cxx_static -- $(EXTRA)
@@ -142,7 +136,10 @@ env : ${DEFAULT_FLAVOUR}-env
 show: # make show var=VAR
 	@echo $($(var))
 
-.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist env
+.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env}
+.PHONY: toolchain validate dist env build config
+.SILENT:
+.NOTPARALLEL: # ignore -j
 
 dist:
 	darcs dist -d divine-$$(cat releng/version).$$(cat releng/patchlevel)$(VERSION_APPEND)
