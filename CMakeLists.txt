@@ -124,11 +124,6 @@ endfunction()
 build_llvm()
 
 set( PACKAGE_VERSION 4.0 )
-
-mark_as_advanced( FORCE
-  CMAKE_CXX_FLAGS_RELWITHDEBUG CMAKE_C_FLAGS_RELWITHDEBUG
-  CMAKE_CXX_FLAGS_RELWITHASSERT CMAKE_C_FLAGS_RELWITHASSERT )
-
 project( divine )
 
 set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) \
@@ -165,8 +160,6 @@ endif()
 
 opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ${IS_NDEBUG} )
 opt( OPT_SIM "build the interactive debugger/simulator" ON )
-
-opt( OPT_ASSERT "enable assertions" ${IS_DEBUG} )
 opt( OPT_SQL "enable ODBC-based database support" ${ODBC_FOUND} )
 opt( OPT_Z3 "link to Z3 for faster symbolic verification" ${Z3_FOUND} )
 
