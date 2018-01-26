@@ -293,3 +293,16 @@ if ( NOT TOOLCHAIN )
   add_dependencies( unit unit_bricks )
 
 endif()
+
+# track extra dependencies for cmake
+
+configure_file( Makefile ${CMAKE_BINARY_DIR}/_make_stamp COPYONLY )
+
+if ( EXISTS ${CMAKE_SOURCE_DIR}/local.make )
+  configure_file( local.make  ${CMAKE_BINARY_DIR}/_local_make_stamp COPYONLY )
+endif()
+
+if ( EXISTS ${CMAKE_SOURCE_DIR}/_darcs )
+  configure_file( _darcs/hashed_inventory ${CMAKE_BINARY_DIR}/_darcs_inv COPYONLY )
+  configure_file( _darcs/patches/pending  ${CMAKE_BINARY_DIR}/_darcs_pending COPYONLY )
+endif()
