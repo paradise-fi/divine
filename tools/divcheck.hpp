@@ -58,7 +58,7 @@ struct Expect : ui::LogSink
         _setup = _armed = false;
         if ( !_ok )
             throw Unexpected( _cmd );
-        if ( !_found )
+        if ( _result == mc::Result::Error && !_found )
             throw Unmatched( _cmd );
     }
 
@@ -129,7 +129,7 @@ void execute( std::string script_txt, F... prepare )
 
         auto o_expect = ui::cmd::make_option_set< Expect >( cli.validator() )
             .option( "--result {result}", &Expect::_result, "verification result" )
-            .option( "--location {string}", &Expect::_location, "location of the expected error" );
+            .option( "[--location {string}]", &Expect::_location, "location of the expected error" );
 
         auto parser = cli.commands().command< Expect >( o_expect );
         auto cmd = cli.parse( parser );
