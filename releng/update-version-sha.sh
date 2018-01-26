@@ -49,5 +49,3 @@ if test "$old" != "$new" || ! test -f $where; then
     echo "const char *DIVINE_RELEASE_SHA = \"$relsha\";" >> $where
     echo $new > $where.cached
 fi
-
-echo $new
