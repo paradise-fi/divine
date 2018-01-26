@@ -92,7 +92,7 @@ config:
 
 build: config
 	$(SETENV) $(CMAKE) --build $(OBJ)$(FLAVOUR) --target $(TARGET) -- $(EXTRA)
-	if test $(USE_DIRENV) = 1; then \
+	if test "$(USE_DIRENV)" = 1; then \
 	  $(MAKE) llvm-utils FLAVOUR=$(FLAVOUR) USE_DIRENV=0 ; \
 	  echo 'export PATH=$(DIRENV_PATH):$$PATH' > .envrc ; \
 	  direnv allow . ; fi
