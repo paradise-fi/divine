@@ -207,12 +207,14 @@ void Report::results()
     q << "select instid, name, "
       << ( _by_tag ? "count( modid ), " : "coalesce(variant, ''), result, " )
       << ( _by_tag ? "sum( states )" : "states" ) << ", "
-      << ( _by_tag ? "sum(time_search), sum(time_ce)" : "time_search, time_ce" ) << " "
-      << "from (select instance.id as instid, "
+      << ( _by_tag ? "sum(time_search), sum(time_ce), " : "time_search, time_ce, " )
+      << ( _by_tag ? "(count( modid ) - sum(cast(correct as integer))) as wrong" : "correct" )
+      << " from (select instance.id as instid, "
       << ( _by_tag ? "tag.name" : "model.name" ) << " as name, "
       << _agg << "(states) as states, model.id as modid, variant, "
       << _agg << "(time_search) as time_search, "
-      << _agg << "(time_ce) as time_ce, min(result) as result "
+      << _agg << "(time_ce) as time_ce, min(result) as result, "
+      << "bool_and(correct) as correct "
       << "from execution join instance on execution.instance = instance.id "
       << "join job on job.execution = execution.id "
       << "join model on job.model = model.id ";
@@ -225,7 +227,8 @@ void Report::results()
         q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
     if ( _instance >= 0 )
         q << " and instance.id = " << _instance;
-    q << " group by instance.id, model.id" << (_by_tag ? ", tag.id" : "") << ") as l ";
+    q << " and correct is not null ";
+    q << " group by instance.id, model.id" << (_by_tag ? ", tag.id" : "") << " ) as l ";
     if ( _by_tag )
         q << " group by name, instid";
     q << " order by name";
@@ -235,9 +238,9 @@ void Report::results()
     Table res;
 
     if ( _by_tag )
-        res.cols( "instance", "tag", "models", "states", "search", "ce" );
+        res.cols( "instance", "tag", "models", "states", "search", "ce", "wrong" );
     else
-        res.cols( "instance", "model", "variant", "result", "states", "search", "ce" );
+        res.cols( "instance", "model", "variant", "result", "states", "search", "ce", "correct" );
 
     res.timecols( "search", "ce" );
     res.intcols( "models", "states" );
