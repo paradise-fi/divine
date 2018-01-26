@@ -69,7 +69,7 @@ ${FLAVOURS}:
 	$(MAKE) $@-divine
 
 divbench:
-	$(MAKE) bench-divbench
+	$(MAKE) bench-divbench USE_DIRENV=0
 	@echo your binary is at $(OBJ)bench/tools/divbench
 
 divbench-install:
@@ -78,6 +78,7 @@ divbench-install:
 	cp $(OBJ)bench/tools/divbench $(BENCH_DIR)/$(BENCH_NAME).`date +%Y-%m-%d.%H%M`
 
 SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)"
+DIRENV_PATH = $(OBJ)$(FLAVOUR)/tools:$(OBJ)$(FLAVOUR)/llvm/bin
 
 config:
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
@@ -91,6 +92,10 @@ config:
 
 build: config
 	$(SETENV) $(CMAKE) --build $(OBJ)$(FLAVOUR) --target $(TARGET) -- $(EXTRA)
+	if test $(USE_DIRENV) = 1; then \
+	  $(MAKE) llvm-utils FLAVOUR=$(FLAVOUR) USE_DIRENV=0 ; \
+	  echo 'export PATH=$(DIRENV_PATH):$$PATH' > .envrc ; \
+	  direnv allow . ; fi
 
 ${TARGETS:%=static-%}: $(TOOLSTAMP)
 	$(MAKE) build FLAVOUR=static TARGET=${@:static-%=%}
@@ -125,19 +130,11 @@ $(TOOLSTAMP):
 
 CURSES = libncursesw.a libncurses.a libcurses.a
 
-${FLAVOURS:%=%-env}:
-	$(MAKE) ${@:%-env=%} ${@:%-env=%}-llvm-utils
-	env PATH=$(OBJ)toolchain/clang/bin:$(OBJ)${@:%-env=%}/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
-		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" \
-		DIVINE_BUILD_ENV="${@:%-env=%}" $$SHELL
-
-env : ${DEFAULT_FLAVOUR}-env
-
 show: # make show var=VAR
 	@echo $($(var))
 
-.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env}
-.PHONY: toolchain validate dist env build config
+.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%}
+.PHONY: toolchain validate dist build config
 .SILENT:
 .NOTPARALLEL: # ignore -j
 
