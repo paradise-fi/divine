@@ -94,8 +94,15 @@ struct Z3FormulaMap : FormulaMap< z3::expr >
     z3::expr pathcond()
     {
         z3::expr_vector args( ctx );
-        for ( const auto & ptr : pcparts )
-            args.push_back( (*this)[ ptr ] );
+        for ( const auto & ptr : pcparts ) {
+            auto part = (*this)[ ptr ];
+            if ( part.is_bv() ) {
+                ASSERT_EQ( part.get_sort().bv_size(), 1 );
+                args.push_back( part == ctx.bv_val( 1, 1 ) );
+            } else {
+                args.push_back( part );
+            }
+        }
         return z3::mk_and( args );
     }
 

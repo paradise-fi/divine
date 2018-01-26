@@ -192,7 +192,15 @@ Result Z3Solver::feasible( CowHeap &heap, HeapPointer assumes )
             value::Pointer constraint, next;
             heap.read_shift( assumes, constraint );
             heap.read( assumes, next );
-            pc = pc && map.convert( constraint.cooked() );
+            auto c = map.convert( constraint.cooked() );
+
+            if ( c.is_bv() ) {
+                ASSERT_EQ( c.get_sort().bv_size(), 1 );
+                pc = pc && ( c == ctx.bv_val( 1, 1 ) );
+            } else {
+                pc = pc && c;
+            }
+
             assumes = next.cooked();
         }
 
