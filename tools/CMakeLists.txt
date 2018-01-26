@@ -40,10 +40,6 @@ if( NOT WIN32 )
   target_link_libraries( divcheck pthread )
 endif( NOT WIN32 )
 
-if( OPT_HOARD )
-  target_link_libraries( divine hoard )
-endif()
-
 if( OPT_TBBMALLOC )
   target_link_libraries( divine tbbmalloc )
 endif()
@@ -54,10 +50,6 @@ set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 if( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
     target_link_libraries( divine rt )
 endif()
-
-if( OPT_LTL2DSTAR )
-  target_link_libraries( divine ltl2dstar )
-endif( OPT_LTL2DSTAR )
 
 if( WIN32 )
   set( INSTALL_BIN_DEST ./ )

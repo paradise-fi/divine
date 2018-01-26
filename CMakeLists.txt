@@ -123,7 +123,6 @@ endfunction()
 
 build_llvm()
 
-set( PACKAGE_VERSION 4.0 )
 project( divine )
 
 set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) \
@@ -201,6 +200,7 @@ endif()
 include( bricks/support.cmake )
 bricks_check_dirent()
 set( BRICK_USED_LLVM_LIBS ${BRICK_LLVM_LIBS} )
+add_definitions( -DBRICKS_HAVE_LLVM )
 include_directories( bricks )
 
 pkg_check_modules( VALGRIND valgrind )
@@ -212,17 +212,7 @@ else()
   add_definitions( -DNVALGRIND )
 endif()
 
-add_definitions( -DBRICKS_HAVE_LLVM )
-
-# link_directories( ${LLVM_LIBRARY_DIRS} )
-# this is not very nice but it works and ncurses & zlib break builds under NixOS
-# list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
-# suppress warnings coming from LLVM headers
-# add_compile_options( "-isystem ${LLVM_INCLUDE_DIRS}" )
-
 set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
-
-# set( TEST_WRAPPER "${CMAKE_SOURCE_DIR}/nix/test-wrapper.sh" )
 set( TEST_WRAPPER "-c" )
 
 add_custom_target( check )
