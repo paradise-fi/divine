@@ -4,6 +4,18 @@ cmake_minimum_required( VERSION 3.2 )
 # the old policy is required
 cmake_policy( SET CMP0058 NEW )
 
+configure_file( ${CMAKE_BINARY_DIR}/config.vars ${CMAKE_BINARY_DIR}/config.vars.stamp COPYONLY )
+file( READ ${CMAKE_BINARY_DIR}/config.vars VARS )
+foreach( V ${VARS} )
+    string( REGEX REPLACE "[ \\t\\n]*([A-Z_]+)=(.*)" "\\1" VAR "${V}" )
+    string( REGEX REPLACE "[ \\t\\n]*([A-Z_]+)=(.*)" "\\2" VAL "${V}" )
+    if ( ${VAL} STREQUAL "ON" OR ${VAL} STREQUAL "OFF" )
+        set( ${VAR} ${VAL} CACHE BOOL "" )
+    else()
+        set( ${VAR} "${VAL}" CACHE STRING "" )
+    endif()
+endforeach()
+
 # this must be set BEFORE project
 set( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
 set( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
@@ -295,12 +307,6 @@ if ( NOT TOOLCHAIN )
 endif()
 
 # track extra dependencies for cmake
-
-configure_file( Makefile ${CMAKE_BINARY_DIR}/_make_stamp COPYONLY )
-
-if ( EXISTS ${CMAKE_SOURCE_DIR}/local.make )
-  configure_file( local.make  ${CMAKE_BINARY_DIR}/_local_make_stamp COPYONLY )
-endif()
 
 if ( EXISTS ${CMAKE_SOURCE_DIR}/_darcs )
   configure_file( _darcs/hashed_inventory ${CMAKE_BINARY_DIR}/_darcs_inv COPYONLY )
