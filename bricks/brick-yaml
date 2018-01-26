@@ -144,6 +144,12 @@ struct Parser
     template< typename Fail >
     void extractValue( std::string &str, lyaml::Node *node, Fail fail )
     {
+        if ( auto kvnode = dyn_cast< lyaml::KeyValueNode >( node ) )
+        {
+            extractValue( str, kvnode->getKey(), fail );
+            return;
+        }
+
         auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
         if ( !scalar )
             return fail( str, "YAML error: expected scalar", KeyList{}, KeyList{} );
@@ -239,6 +245,24 @@ struct TestParse
         ASSERT_EQ( vec.size(), 2 );
         ASSERT_EQ( vec[ 0 ], 1 );
         ASSERT_EQ( vec[ 1 ], 2 );
+    }
+
+    TEST(map_of_maps)
+    {
+        yaml::Parser y( "a:\n  item: 1\nb:\n  item: 2" );
+        auto vec = y.get< std::vector< int > >( { "*", "item" } );
+        ASSERT_EQ( vec.size(), 2 );
+        ASSERT_EQ( vec[ 0 ], 1 );
+        ASSERT_EQ( vec[ 1 ], 2 );
+    }
+
+    TEST(map_keys)
+    {
+        yaml::Parser y( "foo: a\nbar: b" );
+        auto vec = y.get< std::vector< std::string > >( { "*" } );
+        ASSERT_EQ( vec.size(), 2 );
+        ASSERT_EQ( vec[ 0 ], "foo" );
+        ASSERT_EQ( vec[ 1 ], "bar" );
     }
 
     TEST(list_of_maps_2)
