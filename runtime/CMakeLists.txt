@@ -28,6 +28,9 @@ file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/libc/include/sys/ )
+set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/libc/include/ )
+
+list( REMOVE_ITEM H_RUNTIME ${LIBCINC}sys/divm.h ${LIBCINC}sys/vmutil.h ${LIBCINC}sys/lart.h )
 
 macro( mkobjs var flags )
   foreach( f ${SRC_${var}} )

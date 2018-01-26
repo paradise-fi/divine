@@ -6,8 +6,8 @@ list( APPEND flags -D_LITTLE_ENDIAN=1234 )
 list( APPEND flags -D_BYTE_ORDER=1234 )
 
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/ ) # dios
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/libc/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/internals )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
