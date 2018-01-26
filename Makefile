@@ -91,7 +91,8 @@ config:
 	  touch $(OBJ)$(FLAVOUR)/config.done; fi
 
 build: config
-	$(SETENV) $(CMAKE) --build $(OBJ)$(FLAVOUR) --target $(TARGET) -- $(EXTRA)
+	if test "$(USE_FLOCK)" = 1; then flock="flock $(OBJ)$(FLAVOR)"; else flock=""; fi; \
+	$(SETENV) $$flock $(CMAKE) --build $(OBJ)$(FLAVOUR) --target $(TARGET) -- $(EXTRA)
 	if test "$(USE_DIRENV)" = 1; then \
 	  $(MAKE) llvm-utils FLAVOUR=$(FLAVOUR) USE_DIRENV=0 ; \
 	  echo 'export PATH=$(DIRENV_PATH):$$PATH' > .envrc ; \
