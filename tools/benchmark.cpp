@@ -35,6 +35,20 @@
 namespace benchmark
 {
 
+int get_instance( connection conn, int build )
+{
+    int mach = odbc::get_machine( conn );
+    if ( !build ) build = odbc::get_build( conn );
+    odbc::Keys keys{ "build", "machine" };
+    odbc::Vals vals{ build, mach };
+    return odbc::unique_id( conn, "instance", keys, vals );
+}
+
+int GetInstance::get_instance()
+{
+    return benchmark::get_instance( _conn );
+}
+
 bool ImportModel::dedup()
 {
     int candidate = _revision - 1;
@@ -230,7 +244,7 @@ void Import::run()
 
 void Schedule::run()
 {
-    int inst = odbc::get_instance( *this, _conn );
+    int inst = get_instance();
     std::cerr << "instance = " << inst << std::endl;
 
     std::stringstream q;
@@ -321,8 +335,8 @@ int main( int argc, const char **argv )
         .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" )
         .option( "[--instance {int}]",  &Compare::_instances, "compare given instances" );
 
-    auto opts_job = cmd::make_option_set< JobBase >( validator )
-        .option( "[--tag {string}]", &JobBase::_tag, "only take models with a given tag" );
+    auto opts_job = cmd::make_option_set< WithModel >( validator )
+        .option( "[--tag {string}]", &WithModel::_tag, "only take models with a given tag" );
 
     auto opts_sched = cmd::make_option_set< Schedule >( validator )
         .option( "[--once]", &Schedule::_once, "only schedule unique jobs" );

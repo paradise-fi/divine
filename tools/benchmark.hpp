@@ -36,6 +36,8 @@ using namespace std::literals;
 namespace fs   = brick::fs;
 namespace odbc = divine::ui::odbc;
 
+int get_instance( nanodbc::connection conn, int build = 0 );
+
 struct Cmd
 {
     std::string _odbc;
@@ -87,19 +89,25 @@ struct Import : Cmd
     virtual void run();
 };
 
-struct JobBase : Cmd
+struct WithModel : virtual Cmd
 {
     std::string _tag;
 };
 
-struct External : virtual odbc::BuildID
+struct GetInstance : virtual Cmd
+{
+    virtual int get_instance();
+};
+
+struct External : GetInstance
 {
     std::string _driver;
 
     int get_build();
+    int get_instance() override;
 };
 
-struct Schedule : JobBase, virtual odbc::BuildID
+struct Schedule : WithModel, GetInstance
 {
     bool _once = false;
     void run() override;
@@ -115,7 +123,7 @@ struct ReportBase : Cmd
     std::string _agg = "avg";
 };
 
-struct Report : ReportBase, odbc::BuildID
+struct Report : ReportBase
 {
     bool _list_instances = false;
     int _instance = -1;
@@ -139,7 +147,7 @@ struct Compare : ReportBase
     void run() override;
 };
 
-struct Run : JobBase, virtual odbc::BuildID
+struct Run : GetInstance, WithModel
 {
     std::vector< std::pair< std::string, std::string > > _files;
     std::string _script;
@@ -147,7 +155,6 @@ struct Run : JobBase, virtual odbc::BuildID
     ui::SinkPtr _log;
 
     void prepare( int model );
-    int get_instance();
 
     virtual void execute( int job );
     void log_start( int job, int exec );

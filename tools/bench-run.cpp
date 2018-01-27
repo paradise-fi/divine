@@ -61,7 +61,7 @@ void Run::prepare( int model )
     auto script = scr.execute();
     script.first();
     _script = script.get< std::string >( 0 );
-    _log = ui::make_odbc( *this, _odbc );
+    _log = ui::make_odbc( _odbc );
 }
 
 void Run::execute( int job_id )
@@ -98,10 +98,6 @@ void Run::log_done( int job_id )
     nanodbc::statement done( _conn, "update job set status = 'D' where id = ?" );
     done.bind( 0, &job_id );
     done.execute();
-}
-
-int Run::get_instance() {
-    return odbc::get_instance( *this, _conn );
 }
 
 void Run::run()

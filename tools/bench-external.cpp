@@ -64,6 +64,11 @@ int External::get_build()
     return odbc::get_external_build( _conn, info );
 }
 
+int External::get_instance()
+{
+    return benchmark::get_instance( _conn, get_build() );
+}
+
 void RunExternal::execute( int job_id )
 {
     fs::TempDir workdir( "_divbench_run_external.XXXXXX",
