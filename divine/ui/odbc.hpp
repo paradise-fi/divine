@@ -29,11 +29,8 @@ namespace odbc {
 using Keys = std::vector< std::string >;
 using Vals = std::vector< brick::types::Union< std::string, std::vector< uint8_t >, int > >;
 
-struct BuildID {
-    virtual int get_build( nanodbc::connection );
-};
-
-struct ExternalBuildInfo {
+struct ExternalBuildInfo
+{
     std::string driver;
     std::string driver_checksum;
     std::string checksum;
@@ -48,12 +45,11 @@ int unique_id( nanodbc::connection conn, std::string table, Keys keys, Vals vals
 int get_build( nanodbc::connection conn );
 int get_external_build( nanodbc::connection conn, ExternalBuildInfo & );
 int get_machine( nanodbc::connection conn );
-int get_instance( BuildID &, nanodbc::connection conn );
 int add_execution( nanodbc::connection conn );
 
 }
 
-SinkPtr make_odbc( odbc::BuildID &, std::string connstr );
+SinkPtr make_odbc( std::string connstr );
 
 }
 
