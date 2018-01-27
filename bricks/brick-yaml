@@ -80,9 +80,9 @@ struct Parser
             {
                 ::llvm::SmallVector< char, 128 > storage;
                 auto ref = skey->getValue( storage );
-                if ( key == "*" )
+                if ( key == "*" && todo.empty() )
                     extractValue( result, &pair, fail ), found = true;
-                else if ( ref == key )
+                else if ( ref == key || key == "*" )
                     getF( done, todo, fail, result, pair.getValue() ), found = true;
             }
         }
