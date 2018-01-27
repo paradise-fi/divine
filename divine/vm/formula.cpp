@@ -290,35 +290,54 @@ z3::expr Z3FormulaMap::toz3( sym::Formula *formula )
             sym::Binary &binary = formula->binary;
             auto a = toz3( binary.left );
             auto b = toz3( binary.right );
-            ASSERT( a.is_bv() && b.is_bv() );
-            switch ( binary.op ) {
-                case sym::Op::Add:  return a + b;
-                case sym::Op::Sub:  return a - b;
-                case sym::Op::Mul:  return a * b;
-                case sym::Op::SDiv: return a / b;
-                case sym::Op::UDiv: return z3::udiv( a, b );
-                case sym::Op::SRem: return z3::srem( a, b );
-                case sym::Op::URem: return z3::urem( a, b );
-                case sym::Op::Shl:  return z3::shl( a, b );
-                case sym::Op::AShr: return z3::ashr( a, b );
-                case sym::Op::LShr: return z3::lshr( a, b );
-                case sym::Op::And:  return a & b;
-                case sym::Op::Or:   return a | b;
-                case sym::Op::Xor:  return a ^ b;
 
-                case sym::Op::ULE:  return z3::ule( a, b );
-                case sym::Op::ULT:  return z3::ult( a, b );
-                case sym::Op::UGE:  return z3::uge( a, b );
-                case sym::Op::UGT:  return z3::ugt( a, b );
-                case sym::Op::SLE:  return a <= b;
-                case sym::Op::SLT:  return a < b;
-                case sym::Op::SGE:  return a >= b;
-                case sym::Op::SGT:  return a > b;
-                case sym::Op::EQ:   return a == b;
-                case sym::Op::NE:   return a != b;
-                case sym::Op::Concat: return z3::concat( a, b );
-                default:
-                    UNREACHABLE_F( "unknown binary operation %d", binary.op );
+            if ( a.is_bv() && b.is_bv() ) {
+                switch ( binary.op ) {
+                    case sym::Op::Add:  return a + b;
+                    case sym::Op::Sub:  return a - b;
+                    case sym::Op::Mul:  return a * b;
+                    case sym::Op::SDiv: return a / b;
+                    case sym::Op::UDiv: return z3::udiv( a, b );
+                    case sym::Op::SRem: return z3::srem( a, b );
+                    case sym::Op::URem: return z3::urem( a, b );
+                    case sym::Op::Shl:  return z3::shl( a, b );
+                    case sym::Op::AShr: return z3::ashr( a, b );
+                    case sym::Op::LShr: return z3::lshr( a, b );
+                    case sym::Op::And:  return a & b;
+                    case sym::Op::Or:   return a | b;
+                    case sym::Op::Xor:  return a ^ b;
+
+                    case sym::Op::ULE:  return z3::ule( a, b );
+                    case sym::Op::ULT:  return z3::ult( a, b );
+                    case sym::Op::UGE:  return z3::uge( a, b );
+                    case sym::Op::UGT:  return z3::ugt( a, b );
+                    case sym::Op::SLE:  return a <= b;
+                    case sym::Op::SLT:  return a < b;
+                    case sym::Op::SGE:  return a >= b;
+                    case sym::Op::SGT:  return a > b;
+                    case sym::Op::EQ:   return a == b;
+                    case sym::Op::NE:   return a != b;
+                    case sym::Op::Concat: return z3::concat( a, b );
+                    default:
+                        UNREACHABLE_F( "unknown binary operation %d", binary.op );
+                }
+            } else {
+                if ( a.is_bv() ) {
+                    ASSERT_EQ( a.get_sort().bv_size(), 1 );
+                    a = ( a == ctx.bv_val( 1, 1 ) );
+                }
+
+                if ( b.is_bv() ) {
+                    ASSERT_EQ( b.get_sort().bv_size(), 1 );
+                    b = ( b == ctx.bv_val( 1, 1 ) );
+                }
+
+                switch ( binary.op ) {
+                    case sym::Op::And:  return a && b;
+                    case sym::Op::Or:   return a || b;
+                    default:
+                        UNREACHABLE_F( "unknown binary operation %d", binary.op );
+                }
             }
         }
     }
