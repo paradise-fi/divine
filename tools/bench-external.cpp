@@ -39,11 +39,11 @@ namespace ui = divine::ui;
 namespace yaml = brick::yaml;
 using divine::mc::Result;
 
-char toResult( std::string val )
+const char *toResult( std::string val )
 {
-    if ( val == "yes" || val == "Yes" ) return 'E';
-    if ( val == "no" || val == "No" ) return 'V';
-    return 'U';
+    if ( val == "yes" || val == "Yes" ) return "E";
+    if ( val == "no" || val == "No" ) return "V";
+    return "U";
 }
 
 int External::get_build()
@@ -102,7 +102,7 @@ void RunExternal::execute( int job_id )
 
     auto timer = [&]( std::string n ) {  return yreport.getOr< double >( { "timers", n }, 0 ) * 1000; };
     auto states = yreport.getOr< long >( { "state count" }, 0 );
-    char result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ) );
+    auto result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ) );
 
     odbc::update_execution( _conn, exec_id, result, timer( "lart" ), timer( "load" ),
                             timer( "boot" ), timer( "search" ), timer( "ce" ), states );
