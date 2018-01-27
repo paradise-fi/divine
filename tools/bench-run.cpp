@@ -79,9 +79,9 @@ void Run::execute( int job_id )
 
     log_start( job_id, _log->log_id() );
     divcheck::execute( _script,
-                       [&]( ui::Cc &cc ) { cc._files = _files; },
-                       [&]( ui::Verify &v ) { prepare( v ); },
-                       [&]( ui::Check &c ) { prepare( c ); } );
+                       [&]( ui::Cc &cc ) { config( cc ); cc._files = _files; },
+                       [&]( ui::Verify &v ) { config( v ); prepare( v ); },
+                       [&]( ui::Check &c ) { config( c ); prepare( c ); } );
     log_done( job_id );
 }
 
@@ -98,6 +98,29 @@ void Run::log_done( int job_id )
     nanodbc::statement done( _conn, "update job set status = 'D' where id = ?" );
     done.bind( 0, &job_id );
     done.execute();
+}
+
+void Run::config( ui::Cc &cc )
+{
+    nanodbc::statement q( _conn, "select opt from cc_opt where config = ?" );
+    q.bind( 0, &_config_id );
+    auto r = q.execute();
+    while ( r.next() )
+        cc._flags.push_back( r.get< std::string >( 0 ) );
+}
+
+void Run::config( ui::Verify &v )
+{
+    nanodbc::statement q( _conn, "select solver, threads, max_mem, max_time from config where id = ?" );
+    q.bind( 0, &_config_id );
+    auto r = q.execute();
+    r.first();
+    auto solver = r.get< std::string >( 0 ); /* text fields and nulls don't go together */
+
+    if ( !solver.empty() ) v._solver   = solver;
+    if ( !r.is_null( 1 ) ) v._threads  = r.get< int >( 1 );
+    if ( !r.is_null( 2 ) ) v._max_mem  = r.get< int >( 2 );
+    if ( !r.is_null( 3 ) ) v._max_time = r.get< int >( 3 );
 }
 
 void Run::run()

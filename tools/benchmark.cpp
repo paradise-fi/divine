@@ -35,18 +35,18 @@
 namespace benchmark
 {
 
-int get_instance( connection conn, int build )
+int get_instance( connection conn, int config, int build )
 {
     int mach = odbc::get_machine( conn );
     if ( !build ) build = odbc::get_build( conn );
-    odbc::Keys keys{ "build", "machine" };
-    odbc::Vals vals{ build, mach };
+    odbc::Keys keys{ "build", "machine", "config" };
+    odbc::Vals vals{ build, mach, config };
     return odbc::unique_id( conn, "instance", keys, vals );
 }
 
 int GetInstance::get_instance()
 {
-    return benchmark::get_instance( _conn );
+    return benchmark::get_instance( _conn, _config_id );
 }
 
 bool ImportModel::dedup()
@@ -329,6 +329,9 @@ int main( int argc, const char **argv )
     auto opts_db = cmd::make_option_set< Cmd >( validator )
         .option( "[-d {string}]", &Cmd::_odbc, "ODBC connection string (default: $DIVBENCH_DB)" );
 
+    auto opts_inst = cmd::make_option_set< GetInstance >( validator )
+        .option( "[--config-id {int}]", &GetInstance::_config_id , "numeric config id" );
+
     auto opts_report_base = cmd::make_option_set< ReportBase >( validator )
         .option( "[--by-tag]",  &ReportBase::_by_tag, "group results by tags" )
         .option( "[--aggregate {string}]",  &ReportBase::_agg, "run aggregation (default: avg)" )
@@ -358,11 +361,11 @@ int main( int argc, const char **argv )
 
     auto cmds = cmd::make_parser( validator )
         .command< Import >( opts_db )
-        .command< Schedule >( opts_db, opts_job, opts_sched )
+        .command< Schedule >( opts_db, opts_job, opts_sched, opts_inst )
         .command< ScheduleExternal >( opts_db, opts_external, opts_job )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
-        .command< Run >( opts_db, opts_run, opts_job )
+        .command< Run >( opts_db, opts_run, opts_job, opts_inst )
         .command< Help >( helpopts )
         .command< RunExternal >( opts_db, opts_external, opts_run, opts_job );
     auto cmd = cmds.parse( args.begin(), args.end() );

@@ -36,7 +36,7 @@ using namespace std::literals;
 namespace fs   = brick::fs;
 namespace odbc = divine::ui::odbc;
 
-int get_instance( nanodbc::connection conn, int build = 0 );
+int get_instance( nanodbc::connection conn, int config, int build = 0 );
 
 struct Cmd
 {
@@ -96,6 +96,7 @@ struct WithModel : virtual Cmd
 
 struct GetInstance : virtual Cmd
 {
+    int _config_id = 1;
     virtual int get_instance();
 };
 
@@ -160,6 +161,9 @@ struct Run : GetInstance, WithModel
     virtual void execute( int job );
     void log_start( int job, int exec );
     void log_done( int job );
+
+    void config( ui::Cc &cc );
+    void config( ui::Verify &verify );
 
     virtual void run();
 };
