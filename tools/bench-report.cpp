@@ -157,6 +157,10 @@ struct Table
     }
 };
 
+void ReportBase::find_instances()
+{
+}
+
 void Report::list_instances()
 {
     std::stringstream q;
@@ -200,6 +204,12 @@ void Report::list_instances()
 
 void Report::results()
 {
+    find_instances();
+
+    if ( _instance_ids.size() != 1 )
+        throw brick::except::Error( "Need exactly one instance, but " +
+                                    brick::string::fmt( _instances.size() ) + " matched" );
+
     if ( _watch )
         std::cout << char( 27 ) << "[2J" << char( 27 ) << "[;H";
 
@@ -257,24 +267,26 @@ void Report::results()
 
 void Compare::run()
 {
+    find_instances();
+
     if ( _fields.empty() )
         _fields = { "time_search", "states" };
-    if ( _instances.empty() )
+    if ( _instance_ids.empty() )
         throw brick::except::Error( "At least one --instance must be specified." );
 
     std::stringstream q;
     if ( _by_tag )
-        q << "select tag.name, count(x" << _instances[ 0 ] << ".modid) ";
+        q << "select tag.name, count(x" << _instance_ids[ 0 ] << ".modid) ";
     else
-        q << "select x" << _instances[ 0 ] << ".modname, "
-          << "x" << _instances[ 0 ]<< ".modvar ";
+        q << "select x" << _instance_ids[ 0 ] << ".modname, "
+          << "x" << _instance_ids[ 0 ]<< ".modvar ";
 
     for ( auto f : _fields )
-        for ( auto i : _instances )
+        for ( auto i : _instance_ids )
             q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << "." << f << ") ";
     q << " from ";
 
-    for ( auto it = _instances.begin(); it != _instances.end(); ++it )
+    for ( auto it = _instance_ids.begin(); it != _instance_ids.end(); ++it )
     {
         q << "(select model.id as modid, coalesce(model.variant, '') as modvar, model.name as modname";
         for ( auto f : _fields )
@@ -285,13 +297,13 @@ void Compare::run()
         for ( size_t i = 0; i < _result.size(); ++i )
             q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
         q << " group by model.id) as x" << *it << " ";
-        if ( it != _instances.begin() )
+        if ( it != _instance_ids.begin() )
             q << " on x" << *std::prev( it ) << ".modid = x" << *it << ".modid ";
-        if ( std::next( it ) != _instances.end() )
+        if ( std::next( it ) != _instance_ids.end() )
             q << " join ";
     }
     if ( _by_tag )
-        q << " join model_tags on model_tags.model = x" << _instances[ 0 ] << ".modid"
+        q << " join model_tags on model_tags.model = x" << _instance_ids[ 0 ] << ".modid"
           << " join tag on model_tags.tag = tag.id group by tag.id";
 
     Table res;
@@ -301,7 +313,7 @@ void Compare::run()
         res.cols( "model", "variant" );
 
     for ( auto f : _fields )
-        for ( auto i : _instances )
+        for ( auto i : _instance_ids )
         {
             auto k = std::to_string( i ) + "/" + f;
             res.cols( k );
@@ -312,8 +324,8 @@ void Compare::run()
         }
 
     nanodbc::statement find( _conn, q.str() );
-    for ( int i = 0; i < int( _instances.size() ); ++i )
-        find.bind( i, &_instances[ i ] );
+    for ( int i = 0; i < int( _instance_ids.size() ); ++i )
+        find.bind( i, &_instance_ids[ i ] );
 
     res.fromSQL( find.execute() );
     res.sum();

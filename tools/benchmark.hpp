@@ -121,12 +121,14 @@ struct ReportBase : Cmd
     bool _by_tag = false, _watch = false;
     std::string _result = "VE";
     std::string _agg = "avg";
+    std::vector< std::vector< std::string > > _instances;
+    std::vector< int > _instance_ids;
+    void find_instances();
 };
 
 struct Report : ReportBase
 {
     bool _list_instances = false;
-    int _instance = -1;
 
     void list_instances();
     void results();
@@ -142,7 +144,6 @@ struct Report : ReportBase
 
 struct Compare : ReportBase
 {
-    std::vector< int > _instances;
     std::vector< std::string > _fields;
     void run() override;
 };

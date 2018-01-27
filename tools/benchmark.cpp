@@ -311,7 +311,16 @@ using namespace benchmark;
 
 int main( int argc, const char **argv )
 {
-    auto validator = cmd::make_validator();
+
+    auto list = []( std::string s, auto good, auto )
+    {
+        std::vector< std::string > out;
+        for ( auto x : brick::string::splitStringBy( s, "," ) )
+            out.emplace_back( x );
+        return good( out );
+    };
+
+    auto validator = cmd::make_validator()->add( "list", list );
     auto args = cmd::from_argv( argc, argv );
 
     auto helpopts = cmd::make_option_set< Help >( validator )
@@ -324,16 +333,16 @@ int main( int argc, const char **argv )
         .option( "[--by-tag]",  &ReportBase::_by_tag, "group results by tags" )
         .option( "[--aggregate {string}]",  &ReportBase::_agg, "run aggregation (default: avg)" )
         .option( "[--watch]",  &ReportBase::_watch, "refresh the results in a loop" )
+        .option( "[--instance {list}|--instances {list}]", &ReportBase::_instances, "instance tags" )
+        .option( "[--instance-id {int}]", &ReportBase::_instance_ids, "numeric instance id" )
         .option( "[--result {string}]", &ReportBase::_result,
                  "only include runs with one of given results (default: VE)" );
 
     auto opts_report = cmd::make_option_set< Report >( validator )
-        .option( "[--list-instances]",  &Report::_list_instances, "show available instances" )
-        .option( "[--instance {int}]",  &Report::_instance, "show results for a given instance" );
+        .option( "[--list-instances]",  &Report::_list_instances, "show available instances" );
 
     auto opts_compare = cmd::make_option_set< Compare >( validator )
-        .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" )
-        .option( "[--instance {int}]",  &Compare::_instances, "compare given instances" );
+        .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" );
 
     auto opts_job = cmd::make_option_set< WithModel >( validator )
         .option( "[--tag {string}]", &WithModel::_tag, "only take models with a given tag" );
@@ -347,7 +356,7 @@ int main( int argc, const char **argv )
     auto opts_external = cmd::make_option_set< External >( validator )
         .option( "--driver {string}", &External::_driver, "external divcheck driver" );
 
-    auto cmds = cmd::make_parser( cmd::make_validator() )
+    auto cmds = cmd::make_parser( validator )
         .command< Import >( opts_db )
         .command< Schedule >( opts_db, opts_job, opts_sched )
         .command< ScheduleExternal >( opts_db, opts_external, opts_job )
