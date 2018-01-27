@@ -39,15 +39,14 @@ namespace ui = divine::ui;
 namespace yaml = brick::yaml;
 using divine::mc::Result;
 
-Result toResult( std::string val, bool inverted ) {
-    if ( val == "yes" || val == "Yes" )
-        return inverted ? Result::Error : Result::Valid;
-    if ( val == "no" || val == "No" )
-        return inverted ? Result::Valid : Result::Error;
-    return Result::None;
+char toResult( std::string val )
+{
+    if ( val == "yes" || val == "Yes" ) return 'E';
+    if ( val == "no" || val == "No" ) return 'V';
+    return 'U';
 }
 
-int External::get_build( nanodbc::connection conn )
+int External::get_build()
 {
     auto r = proc::spawnAndWait( proc::CaptureStdout | proc::ShowCmd, _driver );
     if ( !r )
@@ -62,7 +61,7 @@ int External::get_build( nanodbc::connection conn )
     info.version = yinfo.getOr< std::string >( { "version" }, "0" );
     info.build_type = yinfo.getOr< std::string >( { "build type" }, "unknown" );
 
-    return odbc::get_external_build( conn, info );
+    return odbc::get_external_build( _conn, info );
 }
 
 void RunExternal::execute( int job_id )
@@ -83,10 +82,8 @@ void RunExternal::execute( int job_id )
         script << _script;
     }
 
-    log_start( job_id );
-
-    auto log = std::dynamic_pointer_cast< ui::TimedSink >( _log );
-    ASSERT( log );
+    int exec_id = odbc::add_execution( _conn );
+    log_start( job_id, exec_id );
 
     auto r = proc::spawnAndWait( proc::ShowCmd, _driver, "script" );
     if ( !r )
@@ -97,16 +94,13 @@ void RunExternal::execute( int job_id )
     std::cerr << "REPORT: " << std::endl << report << std::endl;
 
     yaml::Parser yreport( report );
-    for ( auto &&i : { "lart", "rr", "const", "load", "boot", "search", "ce" } ) {
-        try {
-            log->set_time( i, yreport.get< double >( { "timers", i } ) * 1000 );
-        } catch ( std::runtime_error & ) { }
-    }
 
+    auto timer = [&]( std::string n ) {  return yreport.getOr< double >( { "timers", n }, 0 ) * 1000; };
     auto states = yreport.getOr< long >( { "state count" }, 0 );
-    auto result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ), true );
-    log->set_result( result, states );
+    char result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ) );
 
+    odbc::update_execution( _conn, exec_id, result, timer( "lart" ), timer( "load" ),
+                            timer( "boot" ), timer( "search" ), timer( "ce" ), states );
     log_done( job_id );
 }
 

@@ -77,7 +77,7 @@ void Run::execute( int job_id )
         cmd.setup();
     };
 
-    log_start( job_id );
+    log_start( job_id, _log->log_id() );
     divcheck::execute( _script,
                        [&]( ui::Cc &cc ) { cc._files = _files; },
                        [&]( ui::Verify &v ) { prepare( v ); },
@@ -85,10 +85,8 @@ void Run::execute( int job_id )
     log_done( job_id );
 }
 
-void Run::log_start( int job_id )
+void Run::log_start( int job_id, int exec_id )
 {
-    int exec_id = _log->log_id();
-
     nanodbc::statement exec( _conn, "update job set execution = ? where id = ?" );
     exec.bind( 0, &exec_id );
     exec.bind( 1, &job_id );

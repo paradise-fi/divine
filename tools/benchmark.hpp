@@ -96,7 +96,7 @@ struct External : virtual odbc::BuildID
 {
     std::string _driver;
 
-    int get_build( nanodbc::connection ) override;
+    int get_build();
 };
 
 struct Schedule : JobBase, virtual odbc::BuildID
@@ -150,7 +150,7 @@ struct Run : JobBase, virtual odbc::BuildID
     int get_instance();
 
     virtual void execute( int job );
-    void log_start( int job );
+    void log_start( int job, int exec );
     void log_done( int job );
 
     virtual void run();
