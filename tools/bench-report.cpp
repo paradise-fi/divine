@@ -215,8 +215,9 @@ void Report::results()
       << _agg << "(time_search) as time_search, "
       << _agg << "(time_ce) as time_ce, min(result) as result, "
       << "bool_and(correct) as correct "
-      << "from execution join instance on execution.instance = instance.id "
+      << "from execution "
       << "join job on job.execution = execution.id "
+      << "join instance on job.instance = instance.id "
       << "join model on job.model = model.id ";
     if ( _by_tag )
       q << "join model_tags on model_tags.model = model.id "
@@ -225,8 +226,7 @@ void Report::results()
 
     for ( size_t i = 0; i < _result.size(); ++i )
         q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
-    if ( _instance >= 0 )
-        q << " and instance.id = " << _instance;
+    q << " and instance.id = " << _instance_ids[ 0 ];
     q << " and correct is not null ";
     q << " group by instance.id, model.id" << (_by_tag ? ", tag.id" : "") << " ) as l ";
     if ( _by_tag )
