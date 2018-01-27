@@ -187,35 +187,34 @@ private:
         }
     }
 
-    void doPhi( llvm::PHINode * phi ) {
+    void doPhi( llvm::PHINode * phi )
+    {
         auto niv = phi->getNumIncomingValues();
-
+        llvm::PHINode *node = nullptr;
         std::vector< std::pair< llvm::Value *, llvm::BasicBlock * > > incoming;
-        for ( size_t i = 0; i < niv; ++i ) {
+
+        for ( size_t i = 0; i < niv; ++i )
+        {
             auto val = llvm::cast< llvm::Value >( phi->getIncomingValue( i ) );
             auto parent = phi->getIncomingBlock( i );
             if ( vmap.count( val ) )
                 incoming.emplace_back( vmap[ val ], parent );
         }
 
-        if ( incoming.size() > 0 ) {
-            llvm::PHINode * node = nullptr;
+        if ( incoming.size() > 0 )
+        {
             if ( vmap.count( phi ) )
                 node = llvm::cast< llvm::PHINode >( vmap[ phi ] );
-            else {
+            else
+            {
                 auto type = incoming.begin()->first->getType();
-                node = IRB( phi ).CreatePHI( type, niv );
-                vmap[ phi ] = node;
-            }
-
-            for ( auto & in : incoming ) {
-                auto idx = node->getBasicBlockIndex( in.second );
-                if ( idx != -1 )
-                    node->setIncomingValue( idx, in.first );
-                else
-                    node->addIncoming( in.first, in.second );
+                vmap[ phi ] = node = IRB( phi ).CreatePHI( type, niv );
             }
         }
+
+        if ( incoming.size() == niv && !node->getNumIncomingValues() )
+            for ( auto & in : incoming )
+                node->addIncoming( in.first, in.second );
     }
 
     void doCast( llvm::CastInst * cast ) {
