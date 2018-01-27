@@ -364,13 +364,17 @@ Program::Position Program::insert( Position p )
         insn.values[0] = insert( p.pc.function(), &*p.I );
 
         if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
+        {
+            auto nPHI = dyn_cast< llvm::PHINode >( std::next( p.I ) );
             for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )
             {
+                if ( nPHI ) ASSERT_EQ( PHI->getIncomingBlock( idx ), nPHI->getIncomingBlock( idx ) );
                 auto from = _addr.terminator( PHI->getIncomingBlock( idx ) );
                 auto slot = allocateSlot( Slot( Slot::Const, Slot::PtrC ) );
                 _toinit.emplace_back( [=]{ initConstant( slot, value::Pointer( from ) ); } );
                 insn.values.push_back( slot );
             }
+        }
 
         if ( isa< llvm::ExtractValueInst >( p.I ) )
             insertIndices< llvm::ExtractValueInst >( p );
