@@ -144,13 +144,13 @@ int add_execution( connection conn )
     return rv.get< int >( 0 );
 }
 
-void update_execution( nanodbc::connection conn, int id, char result, int lart, int load, int boot,
-                       int search, int ce, int states )
+void update_execution( nanodbc::connection conn, int id, const char *result, int lart, int load,
+                       int boot, int search, int ce, int states )
 {
     nanodbc::statement update( conn, "update execution set result = ?, time_lart = ?, "
                                      "time_load = ?, time_boot = ?, time_search = ?, "
                                      "time_ce = ?, states = ? where id = ?" );
-    update.bind( 0, &result );
+    update.bind( 0, result );
     update.bind( 1, &lart );
     update.bind( 2, &load );
     update.bind( 3, &boot );
@@ -220,14 +220,14 @@ struct ODBCSink : TimedSink
     void save_result( mc::Result r )
     {
         using mc::Result;
-        char rchar;
+        const char *rchar;
 
         switch ( r )
         {
-            case Result::None:      rchar = 'U'; break;
-            case Result::Error:     rchar = 'E'; break;
-            case Result::BootError: rchar = 'B'; break;
-            case Result::Valid:     rchar = 'V'; break;
+            case Result::None:      rchar = "U"; break;
+            case Result::Error:     rchar = "E"; break;
+            case Result::BootError: rchar = "B"; break;
+            case Result::Valid:     rchar = "V"; break;
         }
 
         update_execution( _conn, _execution, rchar, _time_lart.count(),
