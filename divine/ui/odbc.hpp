@@ -46,6 +46,8 @@ int get_build( nanodbc::connection conn );
 int get_external_build( nanodbc::connection conn, ExternalBuildInfo & );
 int get_machine( nanodbc::connection conn );
 int add_execution( nanodbc::connection conn );
+void update_execution( nanodbc::connection conn, int id, char result, int lart, int load, int boot,
+                       int search, int ce, int states );
 
 }
 

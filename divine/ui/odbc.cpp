@@ -144,6 +144,23 @@ int add_execution( connection conn )
     return rv.get< int >( 0 );
 }
 
+void update_execution( nanodbc::connection conn, int id, char result, int lart, int load, int boot,
+                       int search, int ce, int states )
+{
+    nanodbc::statement update( conn, "update execution set result = ?, time_lart = ?, "
+                                     "time_load = ?, time_boot = ?, time_search = ?, "
+                                     "time_ce = ?, states = ? where id = ?" );
+    update.bind( 0, &result );
+    update.bind( 1, &lart );
+    update.bind( 2, &load );
+    update.bind( 3, &boot );
+    update.bind( 4, &search );
+    update.bind( 5, &ce );
+    update.bind( 6, &states );
+    update.bind( 7, &id );
+    update.execute();
+}
+
 }
 
 namespace divine::ui
@@ -203,30 +220,20 @@ struct ODBCSink : TimedSink
     void save_result( mc::Result r )
     {
         using mc::Result;
-        nanodbc::statement update( _conn,
-                "update execution set result = ?, time_lart = ?, "
-                "time_load = ?, time_boot = ?, time_search = ?, "
-                "time_ce = ?, states = ? where id = ?" );
+        char rchar;
+
         switch ( r )
         {
-            case Result::None:      update.bind( 0, "U" ); break;
-            case Result::Error:     update.bind( 0, "E" ); break;
-            case Result::BootError: update.bind( 0, "B" ); break;
-            case Result::Valid:     update.bind( 0, "V" ); break;
+            case Result::None:      rchar = 'U'; break;
+            case Result::Error:     rchar = 'E'; break;
+            case Result::BootError: rchar = 'B'; break;
+            case Result::Valid:     rchar = 'V'; break;
         }
-        int lart = _time_lart.count(),
-            load = _time_rr.count() + _time_const.count(),
-            boot = _time_boot.count(),
-            search = _time_search.count(),
-            ce = _time_ce.count();
-        update.bind( 1, &lart );
-        update.bind( 2, &load );
-        update.bind( 3, &boot );
-        update.bind( 4, &search );
-        update.bind( 5, &ce );
-        update.bind( 6, &_states );
-        update.bind( 7, &_execution );
-        update.execute();
+
+        update_execution( _conn, _execution, rchar, _time_lart.count(),
+                          _time_rr.count() + _time_const.count(),
+                          _time_boot.count(), _time_search.count(),
+                          _time_ce.count(), _states );
     }
 
     void set_result( mc::Result r, long states ) override

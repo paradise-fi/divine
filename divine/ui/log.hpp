@@ -100,24 +100,6 @@ struct TimedSink : LogSink
         }
     }
 
-    virtual void set_time( std::string key, long val ) {
-        MSecs value( val );
-        if ( key == "lart" )
-            _time_lart = value;
-        else if ( key == "load" )
-            _time_rr = value;
-        else if ( key == "rr" )
-            _time_rr = value;
-        else if ( key == "const" )
-            _time_const = value;
-        else if ( key == "boot" )
-            _time_boot = value;
-        else if ( key == "search" )
-            _time_search = value;
-        else if ( key == "ce" )
-            _time_ce = value;
-    }
-
     virtual void set_result( mc::Result, long ) { }
 };
 
