@@ -13,6 +13,7 @@ test -n "$TODO" && todo= && extra="--tags todo"
 ./runner "$@" \
     --total-timeout 28800 --timeout 600  \
     --expand pkg.c:lib/pkgc-unpack \
+    --expand pkg.cpp:lib/pkgc-unpack \
     --expand bt:lib/brick-unpack \
     --interpreter cpp:lib/verify \
     --interpreter c:lib/verify \

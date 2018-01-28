@@ -2,6 +2,8 @@
 use strict;
 
 my $fn = $ARGV[0];
+my $ext = "c";
+$ext = "cpp" if $fn =~ m,\.cpp$,;
 my $dir = $fn;
 $dir =~ s,(^|/)([^/]*)$,,;
 my $basename = $2;
@@ -35,7 +37,7 @@ for ( @var )
     $new =~ s,VERIFY_OPTS: ,VERIFY_OPTS: $d{V_OPT} ,;
     $new =~ s,CC_OPTS: ,CC_OPTS: $d{CC_OPT} ,;
     $new =~ s,/\* ERROR \*/,, if $d{RESULT} eq "valid";
-    open F, ">$d{V}.c";
+    open F, ">$d{V}.$ext";
     print F $new;
     close F;
 }
