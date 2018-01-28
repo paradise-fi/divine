@@ -74,18 +74,13 @@ statement select_id( connection conn, std::string table, Keys keys, Vals &vals )
     return s;
 }
 
+/* relies on unique constraints in the database */
 int unique_id( connection conn, std::string table, Keys keys, Vals vals )
 {
     ASSERT_EQ( keys.size(), vals.size() );
 
-    std::stringstream del_q;
-    del_q << "delete from " << table << " where "
-          << fmt_container( keys, "", "", " = ? AND " )
-          << " = ? AND id != ?";
-
     statement ins = insert( conn, table, keys, vals ),
-              sel = select_id( conn, table, keys, vals ),
-              del = nanodbc::statement( conn, del_q.str() );
+              sel = select_id( conn, table, keys, vals );
     int id;
 
     try { execute( ins ); }
@@ -94,12 +89,6 @@ int unique_id( connection conn, std::string table, Keys keys, Vals vals )
     auto rv = execute( sel );
     rv.first();
     id = rv.get< int >( 0 );
-
-    /* normally, there is a 'unique' constraint on the keyset, but if there
-     * isn't, we need to clean up the mess */
-    bind_vals( del, vals );
-    del.bind( vals.size(), &id );
-    del.execute();
 
     return id;
 }
