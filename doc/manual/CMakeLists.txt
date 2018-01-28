@@ -7,7 +7,7 @@ if( CONTEXT )
     OUTPUT manual.pdf
     DEPENDS ${SOURCES} ${SRCDIR}/../panmd.pl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND perl ${SRCDIR}/../panmd.pl version=${DIVINE_VERSION} ${MANUAL_OPT} ${PANDOC_SMART_OPT}
+    COMMAND perl ${SRCDIR}/../panmd.pl version=${DIVINE_VERSION} --pandoc=${PANDOC} ${MANUAL_OPT} ${PANDOC_SMART_OPT}
             --to=context --output=${BINDIR}/manual.pdf ${SOURCES}
     VERBATIM
   )
