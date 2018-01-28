@@ -74,6 +74,7 @@ void Run::execute( int job_id )
             throw brick::except::Error( "only one model checker run is allowed per model" );
         _done = true;
         cmd._log = _log;
+        cmd._poolstat_period = 60;
         cmd.setup();
     };
 
