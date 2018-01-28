@@ -1,5 +1,6 @@
-/* TAGS: min c++ */
+/* TAGS: min c++ tso */
 /* VERIFY_OPTS: -o nofail:malloc --relaxed-memory tso */
+
 #include <atomic>
 #include <pthread.h>
 #include <cassert>

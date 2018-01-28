@@ -1,8 +1,14 @@
-/* TAGS: min c++ */
-/* VERIFY_OPTS: --relaxed-memory pso */
+/* TAGS: min c++ tso */
+/* VERIFY_OPTS: --relaxed-memory tso */
+/* CC_OPTS: */
 
 #include <cassert>
 #include <atomic>
+
+// V: cas-fail-reachable CC_OPT: -DWRAP=id
+// V: cas-success-reachable CC_OPT: -DWRAP=not
+
+inline bool id( bool v ) { return v; }
 
 int main() {
     std::atomic< int > x{ 0 };
@@ -13,5 +19,5 @@ int main() {
     c = 1;
     r = x.compare_exchange_weak( c, 2 );
     assert( (r && x == 2) || (!r && x == 1) );
-    assert( r ); /* ERROR */
+    assert( WRAP( r ) ); /* ERROR */
 }

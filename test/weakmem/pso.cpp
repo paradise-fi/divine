@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: min c++ pso */
 /* VERIFY_OPTS: -o nofail:malloc --relaxed-memory pso:3 */
 #include <atomic>
 #include <pthread.h>

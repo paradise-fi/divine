@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: min c++ tso */
 /* VERIFY_OPTS: -o nofail:malloc --relaxed-memory tso:3 */
 /* this test has no property violation for store buffer of size 2, but it has
  * assertion violation for store size 3, therefore it is used as a test that
