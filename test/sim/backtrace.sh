@@ -1,7 +1,7 @@
 # TAGS:
 . lib/testcase
 
-sim $TESTS/pthread/mutex-good.c <<EOF
+sim $TESTS/pthread/div/mutex-good.c <<EOF
 + ^# executing __boot
 > setup --debug libc
 > start
