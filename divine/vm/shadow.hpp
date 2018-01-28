@@ -80,7 +80,8 @@ template< typename IP >
 using PointerLocation = brick::types::Union< InObject< IP >, InVoid, InValue >;
 
 /* Type of each 4-byte word */
-enum ShadowType
+namespace ShadowType {
+enum T
 {
     Data = 0,         /// Generic data or offset of a pointer
     Pointer,          /// Object ID (4 most significant bytes) of a pointer
@@ -88,14 +89,9 @@ enum ShadowType
     PointerException  /// Word containing parts of pointers, may contain bytes
                       /// of data (and these may be partially initialized).
 };
+}
 
-enum ExceptionType
-{
-    PointerExc = 0,
-    DataExc = 1
-};
-
-inline std::ostream &operator<<( std::ostream &o, ShadowType t )
+inline std::ostream &operator<<( std::ostream &o, ShadowType::T t )
 {
     switch ( t )
     {
@@ -107,32 +103,13 @@ inline std::ostream &operator<<( std::ostream &o, ShadowType t )
     }
 }
 
-inline std::ostream &operator<<( std::ostream &o, ExceptionType t )
+struct DataException
 {
-    switch ( t )
-    {
-        case ExceptionType::DataExc: return o << "data";
-        case ExceptionType::PointerExc: return o << "pointer";
-        default: return o << "?";
-    }
-}
-
-union ShadowException
-{
-    struct
-    {
-        uint32_t obj;              // Object ID of the original pointer
-        ExceptionType type    : 1; // Pointer Exception
-        uint8_t valid         : 1;
-        uint8_t byte_index    : 2; // Position of byte in the orig. pointer
+    union {
+        uint8_t bitmask[ 4 ];
+        uint32_t bitmask_word;
     };
-
-    struct
-    {
-        uint8_t bitmask[4];        // Definedness of the word
-        ExceptionType /*type*/: 1; // Data Exception
-        uint8_t /*valid*/     : 1;
-    };
+    uint8_t valid : 1;
 
     bool bitmask_is_trivial() const {
         for ( int i = 0; i < 4; ++i )
@@ -142,22 +119,17 @@ union ShadowException
     }
 };
 
-inline std::ostream &operator<<( std::ostream &o, const ShadowException &e )
+inline std::ostream &operator<<( std::ostream &o, const DataException &e )
 {
     if ( !e.valid )
     {
         o << "INVALID ";
     }
 
-    o << e.type << " exc.: ";
-    if ( e.type == ExceptionType::DataExc )
-    {
-        for ( int i = 0; i < 4; ++i )
-            o << std::hex << std::setw( 2 ) << std::internal
-                << std::setfill( '0' ) << int( e.bitmask[ i ] ) << std::dec;
-    } else {
-        o << "UNIMPLEMENTED";
-    }
+    o << " data exc.: ";
+    for ( int i = 0; i < 4; ++i )
+        o << std::hex << std::setw( 2 ) << std::internal
+            << std::setfill( '0' ) << int( e.bitmask[ i ] ) << std::dec;
 
     return o;
 }
@@ -215,7 +187,7 @@ struct PooledShadow
 
     struct Exceptions
     {
-        using ExcMap = std::multimap< Loc, ShadowException >;
+        using DataExcMap = std::map< Loc, DataException >;
         using Lock = std::lock_guard< std::mutex >;
 
         Exceptions &operator=( const Exceptions & o ) = delete;
@@ -223,7 +195,7 @@ struct PooledShadow
         void dump() const
         {
             std::cout << "exceptions: {\n";
-            for ( auto &e : _map )
+            for ( auto &e : _dataexc )
             {
                 std::cout << "  {" << e.first.object._raw << " + "
                    << e.first.offset << ": " << e.second << "}\n";
@@ -237,14 +209,10 @@ struct PooledShadow
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto range = _map.equal_range( Loc( obj, wpos ) );
-            while ( range.first != range.second )
+            auto it = _dataexc.find( Loc( obj, wpos ) );
+            if ( it != _dataexc.end() && it->second.valid )
             {
-                if ( range.first->second.valid && range.first->second.type == ExceptionType::DataExc )
-                {
-                    return range.first->second.bitmask[ pos % 4 ];
-                }
-                ++range.first;
+                return it->second.bitmask[ pos % 4 ];
             }
             return 0x00;
         }
@@ -257,33 +225,25 @@ struct PooledShadow
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto range = _map.equal_range( Loc( obj, wpos ) );
+            auto it = _dataexc.find( Loc( obj, wpos ) );
 
-            while ( range.first != range.second )
-            {
-                if ( range.first->second.type == ExceptionType::DataExc )
-                    break;
-                ++range.first;
-            }
-
-            bool exc_exists = range.first != range.second;
+            bool exc_exists = it != _dataexc.end();
             bool def_trivial = def == 0x00 || def == 0xff;
 
-            ASSERT( ( exc_exists && range.first->second.valid ) == exc_should_exist );
+            ASSERT( ( exc_exists && it->second.valid ) == exc_should_exist );
 
-            if ( def_trivial && (! exc_exists || ! range.first->second.valid) )
+            if ( def_trivial && (! exc_exists || ! it->second.valid) )
                 return false;
 
             if ( ! exc_exists )
             {
                 // Create new data exception
-                ShadowException e;
-                e.type = ExceptionType::DataExc;
+                DataException e;
                 e.valid = false;
-                range.first = _map.insert( range.second, std::make_pair( Loc( obj, wpos ), e ));
+                it = _dataexc.insert( std::make_pair( Loc( obj, wpos ), e )).first;
             }
 
-            auto & exc = range.first->second;
+            auto & exc = it->second;
 
             if ( ! exc.valid )
             {
@@ -305,8 +265,8 @@ struct PooledShadow
         {
             Lock lk( _mtx );
 
-            auto lb = _map.lower_bound( Loc( obj, 0 ) );
-            auto ub = _map.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
+            auto lb = _dataexc.lower_bound( Loc( obj, 0 ) );
+            auto ub = _dataexc.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
             while (lb != ub)
             {
                 lb->second.valid = false;
@@ -327,7 +287,7 @@ struct PooledShadow
             }
         }
 
-        ExcMap _map;
+        DataExcMap _dataexc;
         mutable std::mutex _mtx;
 
     };
@@ -340,17 +300,17 @@ struct PooledShadow
         int shift() const { return 2 * ( ( _pos % 16 ) / 4 ); }
         uint8_t mask() const { return uint8_t( 0b11 ) << shift(); }
         uint8_t &word() const { return *( _base + _pos / 16 ); }
-        TypeProxy &operator=( const TypeProxy &o ) { return *this = ShadowType( o ); }
-        TypeProxy &operator=( ShadowType st )
+        TypeProxy &operator=( const TypeProxy &o ) { return *this = ShadowType::T( o ); }
+        TypeProxy &operator=( ShadowType::T st )
         {
             set(st);
             return *this;
         }
-        ShadowType get() const
+        ShadowType::T get() const
         {
-            return ShadowType( ( word() & mask() ) >> shift() );
+            return ShadowType::T( ( word() & mask() ) >> shift() );
         }
-        void set( ShadowType st )
+        void set( ShadowType::T st )
         {
             word() &= ~mask();
             word() |= uint8_t( st ) << shift();
@@ -373,7 +333,7 @@ struct PooledShadow
             if ( tp == ShadowType::DataException )
                 set( ShadowType::Data );
         }
-        operator ShadowType() const { return get(); }
+        operator ShadowType::T() const { return get(); }
         bool operator==( const TypeProxy &o ) const { return get() == o.get(); }
         bool operator!=( const TypeProxy &o ) const { return get() != o.get(); }
         TypeProxy *operator->() { return this; }
@@ -613,7 +573,7 @@ struct PooledShadow
         auto t = type( a, sz ); /* identical to b's types, too */
 
         for ( int off = 0; off < sz; off += 4 )
-            if ( t[ off ] == DataException )
+            if ( t[ off ] == ShadowType::DataException )
                 for ( int i = off; i < std::min( sz, off + 4 ); ++i )
                     if ( _exceptions->defined( a.object, i ) != _exceptions->defined( b.object, i ) )
                         return false;
