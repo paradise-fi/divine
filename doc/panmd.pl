@@ -1,12 +1,17 @@
 use strict;
 
 my %V;
+my $pandoc = "pandoc";
 my @O;
 my @F;
 
 for ( @ARGV )
 {
-    if ( m,^-, )
+    if ( m,^--pandoc=(.*)$, )
+    {
+        $pandoc = $1
+    }
+    elsif ( m,^-, )
     {
         push @O, $_;
     }
@@ -26,7 +31,7 @@ $vopt .= "-V$_:$V{$_} " for ( keys %V );
 
 $V{report} = `cat report.txt` if ( -e "report.txt" );
 
-open(PD, "|pandoc -o - -s" .
+open(PD, "|$pandoc -o - -s" .
          " --email-obfuscation=javascript" .
          " $template $vopt @O" );
 
