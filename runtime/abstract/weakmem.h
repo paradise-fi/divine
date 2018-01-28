@@ -44,12 +44,12 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth, __lart
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order ord ) _WM_INTERFACE;
 
 void __lart_weakmem_fence( __lart_weakmem_order ord ) _WM_INTERFACE;
+void __lart_weakmem_kernel_fence() _WM_INTERFACE;
+
 CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
                            __lart_weakmem_order _ordSucc, __lart_weakmem_order _ordFail ) _WM_INTERFACE;
 void __lart_weakmem_cleanup( int32_t cnt, ... ) _WM_INTERFACE;
 void __lart_weakmem_resize( char *addr, uint32_t newsize ) _WM_INTERFACE;
-
-void __lart_weakmem_flusher_main( void * );
 
 void __lart_weakmem_dump() _WM_NOTHROW;
 #endif
