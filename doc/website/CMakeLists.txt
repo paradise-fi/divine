@@ -43,7 +43,7 @@ add_custom_command(
  OUTPUT papers.html
  DEPENDS ${SRCDIR}/../bib2md.pl template.html ${SRCDIR}/../papers.bib
  COMMAND perl ${SRCDIR}/../bib2md.pl ${SRCDIR}/../papers.bib |
-         pandoc -s --smart --template ${SRCDIR}/template.html > papers.html )
+         ${PANDOC} -s --smart --template ${SRCDIR}/template.html > papers.html )
 
 set( INSTALL_SH ${CMAKE_SOURCE_DIR}/releng/install.sh )
 set( INSTALL_VM_SH ${CMAKE_SOURCE_DIR}/releng/install-vm.sh )
