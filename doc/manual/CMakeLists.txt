@@ -7,7 +7,7 @@ if( CONTEXT )
     OUTPUT manual.pdf
     DEPENDS ${SOURCES} ${SRCDIR}/../panmd.pl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND perl ${SRCDIR}/../panmd.pl version=${DIVINE_VERSION} ${MANUAL_OPT}
+    COMMAND perl ${SRCDIR}/../panmd.pl version=${DIVINE_VERSION} ${MANUAL_OPT} ${PANDOC_SMART_OPT}
             --to=context --output=${BINDIR}/manual.pdf ${SOURCES}
     VERBATIM
   )
@@ -31,7 +31,7 @@ add_custom_command(
   OUTPUT manual.html
   DEPENDS ${SOURCES}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND ${PANDOC} --smart -s ${HTML_OPT} -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
+  COMMAND ${PANDOC} ${PANDOC_SMART_OPT} -s ${HTML_OPT} -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
   VERBATIM
 )
 
@@ -40,7 +40,7 @@ add_custom_command(
   DEPENDS commands.md
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMAND sed -e "/^# /d" -e "s,^##,#," < commands.md |
-          ${PANDOC} --smart -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1
+          ${PANDOC} ${PANDOC_SMART_OPT} -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1
   VERBATIM
 )
 
