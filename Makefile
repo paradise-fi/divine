@@ -92,7 +92,7 @@ config:
 	  touch $(OBJ)$(FLAVOUR)/config.done; fi
 
 build: config
-	if test "$(USE_FLOCK)" = 1; then flock="flock $(OBJ)$(FLAVOUR)"; else flock=""; fi; \
+	if test "$(USE_FLOCK)" = 1; then flock="flock --no-fork $(OBJ)$(FLAVOUR)"; else flock=""; fi; \
 	$(SETENV) $$flock $(CMAKE) --build $(OBJ)$(FLAVOUR) --target $(TARGET) -- $(EXTRA)
 	if test "$(USE_DIRENV)" = 1; then \
 	  $(MAKE) llvm-utils FLAVOUR=$(FLAVOUR) USE_DIRENV=0 ; \
