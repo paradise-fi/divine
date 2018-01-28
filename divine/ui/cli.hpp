@@ -131,6 +131,7 @@ struct Verify : WithBC
     int _max_time = 0;  // seconds
     int _threads = 0;
     int _num_callers = 10;
+    int _poolstat_period = 0;
     bool _no_counterexample = false;
     bool _interactive = true;
     bool _liveness = false;

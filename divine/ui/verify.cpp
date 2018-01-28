@@ -102,12 +102,14 @@ void Verify::safety()
     sysinfo.setMemoryLimitInBytes( _max_mem );
 
     _log->start();
+    int ps_ctr = 0;
 
     safety->start( _threads, [&]( bool last )
                    {
                        _log->progress( safety->stats(),
                                        safety->queuesize(), last );
-                       _log->memory( safety->poolstats(), last );
+                       if ( last || ( ++ps_ctr == 2 * _poolstat_period ) )
+                           ps_ctr = 0, _log->memory( safety->poolstats(), last );
                        if ( !last )
                            sysinfo.updateAndCheckTimeLimit( _max_time );
                    } );
