@@ -519,8 +519,6 @@ union BFH {
     lart::weakmem::Buffers storeBuffers;
 } __lart_weakmem;
 
-static bool direct( void * ) { return false; }
-
 /* weak here is to prevent optimizer from eliminating calls to these functions
  * -- they will be replaced by weakmem transformation */
 __attribute__((__weak__)) int __lart_weakmem_buffer_size() { return 2; }
@@ -551,7 +549,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
     // bypass store buffer if acquire-release is minimal ordering (and
     // therefore the memory model is at least TSO) and the memory location
     // is thread-private
-    if ( masked.kernelOrWM() || ( minIsAcqRel() && direct( addr ) ) ) {
+    if ( masked.kernelOrWM() ) {
         line.store();
         return;
     }
@@ -652,8 +650,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
     MemoryOrder ord = MemoryOrder( _ord );
 
     // first wait, SequentiallyConsistent loads have to synchronize with all SC stores
-    if ( masked.kernelOrWM()
-            || ( direct( addr ) && !subseteq( MemoryOrder::SeqCst, ord ) && !subseteq( MemoryOrder::AtomicOp, ord ) ) )
+    if ( masked.kernelOrWM() )
     { // private -> not in any store buffer
         return load( addr, bitwidth );
     }
@@ -663,10 +660,6 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
 
     __lart_weakmem.storeBuffers.read_barrier( addr, bitwidth, ord, tid );
 
-    // fastpath for SC loads (after synchrnonization)
-    if ( direct( addr ) ) { // private -> not in any store buffer
-        return load( addr, bitwidth );
-    }
     return doLoad( buf, addr, bitwidth );
 }
 
