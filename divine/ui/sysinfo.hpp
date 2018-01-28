@@ -22,7 +22,8 @@
 #include <functional>
 #include <divine/ui/withreport.hpp>
 
-#include <bricks/brick-shmem>
+#include <brick-shmem>
+#include <brick-string>
 
 #ifndef DIVINE_SYSINFO_H
 #define DIVINE_SYSINFO_H
@@ -59,8 +60,18 @@ struct SysInfo {
     std::unique_ptr< Data > _data;
 };
 
-struct ResourceLimit : std::runtime_error {
-    ResourceLimit( std::string x ) : std::runtime_error( "Resource exhausted: " + x ) {}
+struct ResourceLimit : std::runtime_error
+{
+    ResourceLimit( std::string x ) : std::runtime_error( "resource exhausted: " + x ) {}
+};
+
+struct TimeLimit : ResourceLimit
+{
+    TimeLimit( int took, int max )
+        : ResourceLimit( "time limit ("
+                         + brick::string::fmt( took ) + "s / "
+                         + brick::string::fmt( max ) + "s)" )
+    {}
 };
 
 }

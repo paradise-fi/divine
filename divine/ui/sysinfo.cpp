@@ -169,9 +169,7 @@ void SysInfo::updateAndCheckTimeLimit( uint64_t time )
     update();
 
     if ( time && wallTime() > time )
-        throw ResourceLimit( "Time limit exceeded: used "
-                             + brick::string::fmt( wallTime() ) + "s / "
-                             + brick::string::fmt( time ) + "s." );
+        throw TimeLimit( wallTime(), time );
 }
 
 #if defined( __linux )
