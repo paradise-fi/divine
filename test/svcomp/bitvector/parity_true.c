@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym c */
+/* TAGS: sym c big */
 #include <stdbool.h>
 extern void __VERIFIER_assert(int);/* see https://graphics.stanford.edu/~seander/bithacks.html#ParityNaive */
 
