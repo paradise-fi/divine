@@ -119,7 +119,7 @@ void Run::config( ui::Verify &v )
 
     if ( !solver.empty() ) v._solver   = solver;
     if ( !r.is_null( 1 ) ) v._threads  = r.get< int >( 1 );
-    if ( !r.is_null( 2 ) ) v._max_mem  = r.get< int >( 2 );
+    if ( !r.is_null( 2 ) ) v._max_mem  = r.get< int64_t >( 2 );
     if ( !r.is_null( 3 ) ) v._max_time = r.get< int >( 3 );
 }
 
