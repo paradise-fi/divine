@@ -333,7 +333,7 @@ struct Substitute {
         _memmove = get( "memmove" );
         _memcpy = get( "memcpy" );
         _memset = get( "memset" );
-        auto flusher = get( "__lart_weakmem_flusher_main" );
+        auto flusher = m.getFunction( "__lart_weakmem_flusher_main" );
         auto fsize = get( "__lart_weakmem_buffer_size" );
         auto ford = get( "__lart_weakmem_min_ordering" );
         auto dump = get( "__lart_weakmem_dump" );
@@ -344,7 +344,10 @@ struct Substitute {
 
         util::Map< llvm::Function *, llvm::Function * > cloneMap, debugCloneMap;
 
-        auto inteface = { _store, _load, _fence, _cas, _cleanup, _resize, flusher, fsize, ford, debug_fence };
+        std::vector< llvm::Function * > inteface = { _store, _load, _fence, _cas, _cleanup, _resize,
+                                                     fsize, ford, debug_fence };
+        if ( flusher )
+            inteface.push_back( flusher );
         for ( auto i : inteface ) {
             cloneMap.emplace( i, i );
         }
