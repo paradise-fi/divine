@@ -26,7 +26,7 @@ $vopt .= "-V$_:$V{$_} " for ( keys %V );
 
 $V{report} = `cat report.txt` if ( -e "report.txt" );
 
-open(PD, "|pandoc -o - -s --smart" .
+open(PD, "|pandoc -o - -s" .
          " --email-obfuscation=javascript" .
          " $template $vopt @O" );
 
