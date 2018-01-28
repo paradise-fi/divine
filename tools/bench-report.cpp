@@ -85,15 +85,15 @@ struct Table
         }
     }
 
-    std::string format( int c, Value v )
+    std::string format( int c, Value v, int w )
     {
         ASSERT_LT( c, _format.size() );
         if ( _format[ c ] )
             return _format[ c ]( v );
-        return format( v );
+        return format( v, w );
     }
 
-    std::string format( Value v )
+    std::string format( Value v, int w )
     {
         std::stringstream str;
         v.match( [&]( MSecs m ) { str << interval_str( m ); },
@@ -111,7 +111,7 @@ struct Table
                      else
                          str << i;
                  },
-                 [&]( std::string s ) { str << s; } );
+                 [&]( std::string s ) { str << s << ( w ? std::string( w - s.size(), ' ' ) : "" ); } );
         return str.str();
     }
 
@@ -127,7 +127,8 @@ struct Table
         o << "| ";
         for ( unsigned c = 0; c < _cols.size(); ++c )
         {
-            o << std::setw( _width[ c ] ) << ( use_fmt ? format( c, r[ c ] ) : format( r[c] ) );
+            auto w = _width[ c ];
+            o << std::setw( _width[ c ] ) << ( use_fmt ? format( c, r[ c ], w ) : format( r[c], w ) );
             if ( c + 1 != _cols.size() )
                 o << " | ";
         }
@@ -141,7 +142,7 @@ struct Table
                         []( std::string c ) { return c.size(); } );
         for ( unsigned c = 0; c < _cols.size(); ++c )
             for ( auto r : _rows )
-                _width[ c ] = std::max( _width[ c ], int( format( c, r[ c ] ).size() ) );
+                _width[ c ] = std::max( _width[ c ], int( format( c, r[ c ], 0 ).size() ) );
     }
 
     void format( std::ostream &o )
