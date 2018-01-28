@@ -155,6 +155,8 @@ void Run::run()
             continue; /* somebody beat us to this one */
 
         int correct = 1;
+        const char *status = nullptr;
+
         try {
             prepare( job.get< int >( 1 ) );
             execute( job_id );
@@ -163,8 +165,18 @@ void Run::run()
         {
             std::cerr << "W: job " << job_id << " gave wrong result." << std::endl;
             correct = 0;
-
-        } catch ( std::exception &e )
+        }
+        catch ( ui::TimeLimit &e )
+        {
+            std::cerr << "W: job " << job_id << ": " << e.what() << std::endl;
+            status = "T";
+        }
+        catch ( std::bad_alloc &e )
+        {
+            std::cerr << "W: job " << job_id << " out of memory: " << e.what() << std::endl;
+            status = "M";
+        }
+        catch ( std::exception &e )
         {
             std::cerr << "W: job " << job_id << " failed: " << e.what() << std::endl;
             nanodbc::statement fail( _conn, "update job set status = 'F' where id = ?" );
@@ -173,10 +185,16 @@ void Run::run()
         }
 
         int exec_id = _log->log_id();
-        nanodbc::statement correct_q( _conn, "update execution set correct = ? where id = ?" );
-        correct_q.bind( 0, &correct );
-        correct_q.bind( 1, &exec_id );
-        correct_q.execute();
+
+        q.str( "" );
+        q << "update execution set correct = ?";
+        q << ( status ? ", status = ?" : "" ) << " where id = ?";
+        nanodbc::statement update( _conn, q.str() );
+        update.bind( 0, &correct );
+        if ( status )
+            update.bind( 1, status );
+        update.bind( status ? 2 : 1, &exec_id );
+        update.execute();
 
         if ( _single )
             break;
