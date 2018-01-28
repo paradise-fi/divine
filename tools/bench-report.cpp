@@ -287,7 +287,7 @@ void Compare::run()
             q << ", " << _agg << "(" << f << ") as " << f << " ";
         q << " from model join job on model.id = job.model"
           << " join execution on job.execution = execution.id "
-          << " where job.instance = ? and job.status = 'D' and ( ";
+          << " where job.instance = ? and job.status = 'D' and execution.correct and ( ";
         for ( size_t i = 0; i < _result.size(); ++i )
             q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
         q << " group by model.id) as x" << *it << " ";
