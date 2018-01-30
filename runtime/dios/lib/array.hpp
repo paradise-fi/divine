@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
+//             (c) 2018 Vladimír Štill <xstill@fi.muni.cz>
 
 #ifndef __DIOS_ARRAY_HPP__
 #define __DIOS_ARRAY_HPP__
@@ -7,25 +8,42 @@
 #include <iterator>
 #include <cstring>
 #include <brick-types>
+#include <initializer_list>
+#include <memory>
 
 namespace __dios {
 
 template < typename T >
 struct Array : brick::types::Ord {
+
+    using size_type = int;
+    using value_type = T;
+    using iterator = T *;
+    using const_iterator = const T *;
+    using reverse_iterator = std::reverse_iterator< iterator >;
+    using const_reverse_iterator = std::reverse_iterator< const_iterator >;
+
     Array() : _data( nullptr ) {}
 
     ~Array() {
         erase( begin(), end() );
     }
 
-    Array( const Array& other ) : _data( nullptr ) {
-        _resize( other.size() );
-        for( int i = 0; i != other.size(); i++ ) {
-            new ( begin() + i ) T( other[ i ] );
-        }
-    };
+    Array( const Array& other ) :
+        Array( other.size(), other.begin(), other.end() )
+    { }
 
     Array( Array&& other ) : _data( nullptr ) { swap( other ); };
+
+    Array( std::initializer_list< T > ilist ) :
+        Array( ilist.size(), ilist.begin(), ilist.end() )
+    { }
+
+    template< typename It >
+    Array( size_type size, It b, It e ) : _data( nullptr ) {
+        _resize( size );
+        std::uninitialized_copy( b, e, begin() );
+    }
 
     Array& operator=( Array other ) {
         swap( other );
@@ -36,13 +54,6 @@ struct Array : brick::types::Ord {
         using std::swap;
         swap( _data, other._data );
     }
-
-    using size_type = int;
-    using value_type = T;
-    using iterator = T *;
-    using const_iterator = const T *;
-    using reverse_iterator = std::reverse_iterator< iterator >;
-    using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
     struct _Item {
         T _items[ 0 ];
