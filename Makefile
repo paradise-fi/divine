@@ -76,7 +76,8 @@ divbench:
 divbench-install:
 	test -d $(BENCH_DIR)
 	$(MAKE) divbench
-	cp $(OBJ)bench/tools/divbench $(BENCH_DIR)/$(BENCH_NAME).`date +%Y-%m-%d.%H%M`
+	sh releng/install-divbench.sh $(OBJ)bench/tools/divbench $(BENCH_DIR) $(BENCH_NAME) \
+	  $(SKIP_SCHEDULE)
 
 SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)"
 DIRENV_PATH = $(OBJ)$(FLAVOUR)/tools:$(OBJ)$(FLAVOUR)/llvm/bin
