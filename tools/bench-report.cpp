@@ -58,7 +58,8 @@ struct Table
 
     void sum()
     {
-        ASSERT_LT( 0, _rows.size() );
+        if ( !_rows.size() )
+            return;
         Row total = _rows[ 0 ];
         for ( int r = 1; r < int( _rows.size() ); ++ r )
             for ( unsigned c = 0; c < _rows[ r ].size(); ++c )
