@@ -349,10 +349,7 @@ struct Explore
             return false;
         if ( context()._assume.null() )
             return true;
-        bool rv = _d.solver.feasible( context().heap(), context()._assume ) == Solver::Result::True;
-        if ( rv ) /* "cache" positive answers */
-            context()._assume = HeapPointer();
-        return rv;
+        return _d.solver.feasible( context().heap(), context()._assume ) == Solver::Result::True;
     }
 
     template< typename Y >
@@ -395,6 +392,7 @@ struct Explore
         };
 
         context().track_memory( true );
+        _d.solver.reset();
 
         do {
             context().load( from.snap );
@@ -450,6 +448,7 @@ struct Explore
                     pool().free( tc.snap );
                 context()._lock = tc.lock;
                 context().load( from.snap );
+                _d.solver.reset();
                 ASSERT( context()._stack.empty() );
                 ASSERT_EQ( context()._level, 0 );
                 context()._crit_loads = l;

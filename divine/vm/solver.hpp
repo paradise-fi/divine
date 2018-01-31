@@ -41,6 +41,7 @@ struct NoSolver
     using Result = Solver::Result;
     Result equal( SymPairs &, CowHeap &, CowHeap & ) const { UNREACHABLE( "no equality check" ); }
     Result feasible( CowHeap &, HeapPointer ) const { return Result::True; }
+    void reset() {}
 };
 
 struct SMTLibSolver : Solver
@@ -53,6 +54,8 @@ struct SMTLibSolver : Solver
 
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) const;
     Result feasible( CowHeap & heap, HeapPointer assumes ) const;
+    void reset() {}
+
 private:
     Result query( const std::string & formula ) const;
 
@@ -76,14 +79,16 @@ struct Z3Solver : Solver
 {
     using Solver::Solver;
 
-    Z3Solver() : solver( ctx ) {}
-    Z3Solver( const Z3Solver & ) : ctx(), solver( ctx ) {}
+    Z3Solver() : solver( ctx ) { reset(); }
+    Z3Solver( const Z3Solver & ) : ctx(), solver( ctx ) { reset(); }
 
     Result equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 );
     Result feasible( CowHeap & heap, HeapPointer assumes );
+    void reset() { solver.reset(); _context.clear(); }
 private:
     z3::context ctx;
     z3::solver solver;
+    std::vector< HeapPointer > _context;
 };
 #else
 using Z3Solver = Z3SMTLibSolver;

@@ -175,9 +175,12 @@ Result Z3Solver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 )
         valeq.push_back( m1[ p.first ] == m2[ p.second ] );
     }
 
+    auto f = !( ( pc1 == pc2 ) && z3::implies( pc1, z3::mk_and( valeq ) ) );
     solver.reset();
-    solver.add( !( ( pc1 == pc2 ) && z3::implies( pc1, z3::mk_and( valeq ) ) ) );
-    return z3_solver_result( solver.check() ) == Result::False ? Result::True : Result::False;
+    solver.add( f );
+    auto result = z3_solver_result( solver.check() );
+    solver.reset();
+    return result == Result::False ? Result::True : Result::False;
 }
 
 Result Z3Solver::feasible( CowHeap &heap, HeapPointer assumes )
@@ -186,29 +189,55 @@ Result Z3Solver::feasible( CowHeap &heap, HeapPointer assumes )
     FormulaMap map( heap, ctx );
 
     z3::expr pc = ctx.bool_val( true );
+    HeapPointer head = assumes;
+
+    std::unordered_set< HeapPointer > in_context{ _context.begin(), _context.end() };
 
     try {
-        while ( !assumes.null() ) {
+        while ( !assumes.null() && !in_context.count( assumes ) )
+        {
             value::Pointer constraint, next;
             heap.read_shift( assumes, constraint );
             heap.read( assumes, next );
             auto c = map.convert( constraint.cooked() );
 
-            if ( c.is_bv() ) {
+            if ( c.is_bv() )
+            {
                 ASSERT_EQ( c.get_sort().bv_size(), 1 );
                 pc = pc && ( c == ctx.bv_val( 1, 1 ) );
-            } else {
-                pc = pc && c;
             }
+            else
+                pc = pc && c;
 
             assumes = next.cooked();
         }
 
-        solver.reset();
+        if ( head == assumes ) /* no new fragments */
+            return Result::True;
+
+        while ( !_context.empty() && _context.back() != assumes )
+        {
+            _context.pop_back();
+            solver.pop();
+            solver.pop();
+        }
+
+        solver.push();
         solver.add( pc );
-        return z3_solver_result( solver.check() );
+        auto result = z3_solver_result( solver.check() );
+
+        if ( result == Result::True )
+        {
+            solver.push();
+            _context.push_back( head );
+        }
+        else
+            solver.pop();
+
+        return result;
     }
-    catch ( const z3::exception &e ) {
+    catch ( const z3::exception &e )
+    {
         std::cerr << "Cannot preform feasibility check: " << e.msg() << std::endl;
         throw e;
     }
