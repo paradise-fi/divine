@@ -102,9 +102,17 @@ void RunExternal::execute( int job_id )
     auto timer = [&]( std::string n ) {  return yreport.getOr< double >( { "timers", n }, 0 ) * 1000; };
     auto states = yreport.getOr< long >( { "state count" }, 0 );
     auto result = toResult( yreport.getOr< std::string >( { "error found" }, "null" ) );
+    int correct = !yreport.getOr< int >( { "wrong" }, 0 );
+    if ( yreport.getOr< int >( { "timeout" }, 0 ) )
+        result = "T";
 
     odbc::update_execution( _conn, exec_id, result, timer( "lart" ), timer( "load" ),
                             timer( "boot" ), timer( "search" ), timer( "ce" ), states );
+
+    nanodbc::statement update_correct( _conn, "update execution set correct = ? where id = ?" );
+    update_correct.bind( 0, &correct );
+    update_correct.bind( 1, &exec_id );
+    update_correct.execute();
     log_done( job_id );
 }
 
