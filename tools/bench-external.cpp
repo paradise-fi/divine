@@ -90,15 +90,14 @@ void RunExternal::execute( int job_id )
     int exec_id = odbc::add_execution( _conn );
     log_start( job_id, exec_id );
 
-    auto r = proc::spawnAndWait( proc::ShowCmd, _driver, "script" );
+    auto r = proc::spawnAndWait( proc::ShowCmd | proc::CaptureStdout, _driver, "script" );
     if ( !r )
         throw brick::except::Error( "benchmark driver failed: exitcode " + std::to_string( r.exitcode() )
                                     + ", signal " + std::to_string( r.signal() ) );
 
-    std::string report = fs::readFile( "report.yaml" );
-    std::cerr << "REPORT: " << std::endl << report << std::endl;
+    std::cerr << "REPORT: " << std::endl << r.out() << std::endl;
 
-    yaml::Parser yreport( report );
+    yaml::Parser yreport( r.out() );
 
     auto timer = [&]( std::string n ) {  return yreport.getOr< double >( { "timers", n }, 0 ) * 1000; };
     auto states = yreport.getOr< long >( { "state count" }, 0 );
