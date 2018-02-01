@@ -362,12 +362,12 @@ int main( int argc, const char **argv )
     auto cmds = cmd::make_parser( validator )
         .command< Import >( opts_db )
         .command< Schedule >( opts_db, opts_job, opts_sched, opts_inst )
-        .command< ScheduleExternal >( opts_db, opts_external, opts_job )
+        .command< ScheduleExternal >( opts_db, opts_external, opts_job, opts_inst )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
         .command< Run >( opts_db, opts_run, opts_job, opts_inst )
         .command< Help >( helpopts )
-        .command< RunExternal >( opts_db, opts_external, opts_run, opts_job );
+        .command< RunExternal >( opts_db, opts_external, opts_run, opts_job, opts_inst );
     auto cmd = cmds.parse( args.begin(), args.end() );
 
     if ( cmd.empty()  )

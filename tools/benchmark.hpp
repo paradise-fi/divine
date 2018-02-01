@@ -100,7 +100,7 @@ struct GetInstance : virtual Cmd
     virtual int get_instance();
 };
 
-struct External : GetInstance
+struct External : virtual GetInstance
 {
     std::string _driver;
 
@@ -108,7 +108,7 @@ struct External : GetInstance
     int get_instance() override;
 };
 
-struct Schedule : WithModel, GetInstance
+struct Schedule : WithModel, virtual GetInstance
 {
     bool _once = false;
     void run() override;
@@ -150,7 +150,7 @@ struct Compare : ReportBase
     void run() override;
 };
 
-struct Run : GetInstance, WithModel
+struct Run : virtual GetInstance, WithModel
 {
     std::vector< std::pair< std::string, std::string > > _files;
     std::string _script;
