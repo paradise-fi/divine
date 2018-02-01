@@ -179,10 +179,9 @@ void Run::run()
         catch ( std::exception &e )
         {
             std::cerr << "W: job " << job_id << " failed: " << e.what() << std::endl;
-            nanodbc::statement fail( _conn, "update job set status = 'F' where id = ?" );
-            fail.bind( 0, &job_id );
-            fail.execute();
         }
+
+        log_done( job_id );
 
         int exec_id = _log->log_id();
 
