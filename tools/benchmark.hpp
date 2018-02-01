@@ -125,6 +125,7 @@ struct ReportBase : Cmd
     std::vector< std::vector< std::string > > _instances;
     std::vector< int > _instance_ids;
     void find_instances();
+    void find_instances( std::vector< std::string > );
 };
 
 struct Report : ReportBase
