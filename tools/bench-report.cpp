@@ -334,6 +334,8 @@ void Compare::run()
     if ( _by_tag )
         q << " join model_tags on model_tags.model = x" << _instance_ids[ 0 ] << ".modid"
           << " join tag on model_tags.tag = tag.id group by tag.id";
+    else
+        q << " order by x" << _instance_ids[ 0 ] << ".modname";
 
     Table res;
     if ( _by_tag )
