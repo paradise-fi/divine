@@ -938,7 +938,8 @@ SHA384_Final(u_int8_t digest[SHA384_DIGEST_LENGTH], SHA384_CTX *context)
 
 } // namespace detail
 
-std::string sha2_256( const std::string& s ) {
+static inline std::string sha2_256( const std::string& s )
+{
     using namespace detail;
     _SHA256_CTX ctx;
     SHA256_Init( &ctx );
@@ -948,7 +949,8 @@ std::string sha2_256( const std::string& s ) {
     return r;
 }
 
-std::string sha2_512( const std::string& s ) {
+static inline std::string sha2_512( const std::string& s )
+{
     using namespace detail;
     _SHA512_CTX ctx;
     SHA512_Init( &ctx );
