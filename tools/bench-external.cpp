@@ -66,7 +66,7 @@ int External::get_build()
 
 int External::get_instance()
 {
-    return benchmark::get_instance( _conn, get_build() );
+    return benchmark::get_instance( _conn, _config_id, get_build() );
 }
 
 void RunExternal::execute( int job_id )
