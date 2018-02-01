@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <tools/benchmark.hpp>
+#include <tools/divbench.hpp>
 
 #include <divine/ui/odbc.hpp>
 
