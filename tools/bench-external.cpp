@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <tools/divbench.hpp>
+#include <tools/extbench.hpp>
 
 #include <divine/ui/odbc.hpp>
 
@@ -30,7 +30,7 @@
 #include <brick-proc>
 #include <brick-yaml>
 
-namespace benchmark
+namespace extbench
 {
 
 namespace fs = brick::fs;
@@ -69,7 +69,7 @@ int External::get_instance()
     return benchmark::get_instance( _conn, _config_id, get_build() );
 }
 
-void RunExternal::execute( int job_id )
+void Run::execute( int job_id )
 {
     fs::TempDir workdir( "_divbench_run_external.XXXXXX",
                          fs::AutoDelete::Yes,
@@ -116,4 +116,4 @@ void RunExternal::execute( int job_id )
     log_done( job_id );
 }
 
-} // namespace benchmark
+}

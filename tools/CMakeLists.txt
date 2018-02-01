@@ -28,8 +28,11 @@ target_link_libraries( lart
 target_link_libraries( divine divine-ui divine-rt )
 
 if ( OPT_SQL )
-  add_executable( divbench divbench.cpp bench-report.cpp bench-run.cpp bench-external.cpp )
+  set( BENCH bench-common.cpp bench-report.cpp bench-run.cpp )
+  add_executable( divbench ${BENCH} divbench.cpp )
+  add_executable( extbench ${BENCH} bench-external.cpp extbench.cpp )
   target_link_libraries( divbench divine-ui divine-rt pthread )
+  target_link_libraries( extbench divine-ui pthread ) # FIXME divine-ui
 endif()
 
 add_executable( divcheck divcheck.cpp )

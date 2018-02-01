@@ -100,24 +100,13 @@ struct GetInstance : virtual Cmd
     virtual int get_instance();
 };
 
-struct External : virtual GetInstance
-{
-    std::string _driver;
-
-    int get_build();
-    int get_instance() override;
-};
-
 struct Schedule : WithModel, virtual GetInstance
 {
     bool _once = false;
     void run() override;
 };
 
-struct ScheduleExternal : Schedule, External
-{ };
-
-struct ReportBase : Cmd
+struct ReportBase : WithModel
 {
     bool _by_tag = false, _watch = false;
     std::string _result = "VE";
@@ -167,11 +156,6 @@ struct Run : virtual GetInstance, WithModel
     void config( ui::Verify &verify );
 
     virtual void run();
-};
-
-struct RunExternal : Run, External
-{
-    void execute( int job ) override;
 };
 
 }
