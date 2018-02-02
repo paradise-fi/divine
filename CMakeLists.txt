@@ -129,7 +129,7 @@ project( divine )
 set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) \
  _Pragma( \"GCC diagnostic ignored \\\"-Wold-style-cast\\\"\" ) \
  _Pragma( \"GCC diagnostic ignored \\\"-Wunused-parameter\\\"\" )"
- "-DDIVINE_UNRELAX_WARNINGS=_Pragma( \"GCC diagnostic pop\" )"
+ "-DDIVINE_UNRELAX_WARNINGS=_Pragma( \"GCC diagnostic pop\" )" -D__divm__
  -Wno-c99-extensions -Wno-vla-extension -Wno-gnu-conditional-omitted-operand
  -Wno-c++1z-extensions -Wno-gnu-anonymous-struct -Wno-zero-length-array )
 
