@@ -170,7 +170,7 @@ void ReportBase::find_instances( std::vector< std::string > tags )
     std::stringstream q;
     q << "select distinct instance.id from instance ";
 
-    for ( int i = 0; i < tags.size(); ++i )
+    for ( unsigned i = 0; i < tags.size(); ++i )
         q << "left join config_tags as c" << i << " on c" << i << ".config = instance.config "
           << "left join machine_tags as m" << i << " on m" << i << ".machine = instance.machine "
           << "left join build_tags as b" << i << " on b" << i << ".build = instance.build "
@@ -180,12 +180,12 @@ void ReportBase::find_instances( std::vector< std::string > tags )
 
     q << " where true ";
 
-    for ( int i = 0; i < tags.size(); ++i )
+    for ( unsigned i = 0; i < tags.size(); ++i )
         q << " and ( ct" << i << ".name = ? or mt" << i << ".name = ? or bt" << i << ".name = ? )";
 
     std::cerr << q.str() << std::endl;
     nanodbc::statement sel( _conn, q.str() );
-    for ( int i = 0; i < tags.size(); ++i )
+    for ( unsigned i = 0; i < tags.size(); ++i )
     {
         sel.bind( 3 * i + 0, tags[ i ].c_str() );
         sel.bind( 3 * i + 1, tags[ i ].c_str() );
