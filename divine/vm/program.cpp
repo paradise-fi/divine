@@ -561,13 +561,16 @@ void Program::pass()
 
             if ( ( pi_function.vararg = function.isVarArg() ) )
             {
-                Slot vaptr( Slot::Local );
-                vaptr.type = Slot::Ptr;
-                overlaySlot( pc.function(), vaptr, nullptr );
-                auto &vs = this->instruction( apc ).values;
-                makeFit( vs, 1 );
-                vs[ 0 ] = vaptr;
-                this->instruction( apc ).opcode = lx::OpArg;
+                if ( framealign == 4 )
+                {
+                    Slot vaptr( Slot::Local );
+                    vaptr.type = Slot::Ptr;
+                    overlaySlot( pc.function(), vaptr, nullptr );
+                    auto &vs = this->instruction( apc ).values;
+                    makeFit( vs, 1 );
+                    vs[ 0 ] = vaptr;
+                    this->instruction( apc ).opcode = lx::OpArg;
+                }
                 apc = apc + 1;
             }
 
