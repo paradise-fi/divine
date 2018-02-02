@@ -777,16 +777,6 @@ struct PooledShadow
         ASSERT( p2.pointer() );
     }
 
-    TEST( read_ptr_unaligned )
-    {
-        PointerV p1( vm::nullPointer() ), p2;
-        heap.write( obj, 0, p1 );
-        heap.write( obj, 4, p1 );
-        heap.read< PointerV >( obj, 1, p2 );
-        ASSERT( p2.defined() );
-        ASSERT( ! p2.pointer() );
-    }
-
     TEST( read_2_ptr )
     {
         PointerV p1( vm::nullPointer() ), p2;
@@ -823,43 +813,45 @@ struct PooledShadow
 
     TEST( read_partially_initialized )
     {
-        vm::value::Int< 16 > i1( 32, 0x0AFF, false ), i2, i3;
-        ASSERT( i1.defbits() == 0x0AFF );
+        const uint32_t mask = 0x0AFF;
+        vm::value::Int< 16 > i1( 32, mask, false ), i2, i3;
+        ASSERT_EQ( i1.defbits(), mask );
         heap.write( obj, 0, i1 );
         heap.read( obj, 0, i2 );
-        ASSERT( i2.defbits() == 0x0AFF );
+        ASSERT_EQ( i2.defbits(), mask );
 
-        heap.write( obj, 3, i1 );
-        heap.read( obj, 3, i3 );
-        ASSERT( i3.defbits() == 0x0AFF );
+        heap.write( obj, 2, i1 );
+        heap.read( obj, 2, i3 );
+        ASSERT_EQ( i3.defbits(), mask );
 
         heap.read( obj, 0, i2 );
-        ASSERT( i2.defbits() == 0x0AFF );
+        ASSERT_EQ( i2.defbits(), mask );
     }
 
     TEST( read_truly_partially_initialized )
     {
-        vm::value::Int< 16 > i1( 32, 0x0AFE, false ), i2, i3;
-        ASSERT( i1.defbits() == 0x0AFE );
+        const uint32_t mask = 0x0AFE;
+        vm::value::Int< 16 > i1( 32, mask, false ), i2, i3;
+        ASSERT_EQ( i1.defbits(), mask );
         heap.write( obj, 0, i1 );
         heap.read( obj, 0, i2 );
-        ASSERT( i2.defbits() == 0x0AFE );
+        ASSERT_EQ( i2.defbits(), mask );
 
-        heap.write( obj, 3, i1 );
-        heap.read( obj, 3, i3 );
-        ASSERT( i3.defbits() == 0x0AFE );
+        heap.write( obj, 2, i1 );
+        heap.read( obj, 2, i3 );
+        ASSERT_EQ( i3.defbits(), mask );
 
         heap.read( obj, 0, i2 );
-        ASSERT( i2.defbits() == 0x0AFE );
+        ASSERT_EQ( i2.defbits(), mask );
     }
 
     TEST( copy_partially_initialized )
     {
         vm::value::Int< 16 > i1( 32, 0x0AFF, false ), i2;
         heap.write( obj, 0, i1 );
-        heap.copy( obj, 0, obj, 3, 2 );
-        heap.read( obj, 3, i2 );
-        ASSERT( i2.defbits() == 0x0AFF );
+        heap.copy( obj, 0, obj, 2, 2 );
+        heap.read( obj, 2, i2 );
+        ASSERT_EQ( i2.defbits(), 0x0AFF );
     }
 
 
