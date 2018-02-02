@@ -429,6 +429,9 @@ void Program::computeRR()
     framealign = 4;
     pass();
 
+    framealign = 2;
+    pass();
+
     framealign = 1;
     pass();
 
