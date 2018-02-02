@@ -18,7 +18,7 @@ enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM
 #if !defined(__DIVM_H__) && !defined(__divm_const__)
 #define __DIVM_H__
 
-#if !defined(__divine__) /* #included in divine/vm */
+#ifdef __divm__ /* #included in divine/vm */
 #include <divine/vm/pointer.hpp>
 #endif
 
