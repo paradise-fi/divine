@@ -172,7 +172,7 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
         case PointerType::Marked: return o << "marked";
         case PointerType::Local: return o << "local";
     }
-    UNREACHABLE( "impossible pointer type" );
+    return o << "ptr" << int( p );
 }
 
 template< typename P,
