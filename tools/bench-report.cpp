@@ -76,12 +76,16 @@ struct Table
         {
             Row r;
             for ( unsigned c = 0; c < _cols.size(); ++c )
-                if ( _intcols.count( _cols[ c ] ) )
+            {
+                if ( res.is_null( c ) )
+                    r.emplace_back( "-" );
+                else if ( _intcols.count( _cols[ c ] ) )
                     r.emplace_back( res.get< int >( c ) );
                 else if (  _timecols.count( _cols[ c ] ) )
                     r.emplace_back( MSecs( res.get< int >( c ) ) );
                 else
                     r.emplace_back( res.get< std::string >( c ) );
+            }
             _rows.push_back( r );
         }
     }
@@ -128,7 +132,7 @@ struct Table
         o << "| ";
         for ( unsigned c = 0; c < _cols.size(); ++c )
         {
-            auto w = _width[ c ];
+            auto w = ( _intcols.count( _cols[ c ] ) || _timecols.count( _cols[ c ] ) ) ? 0 : _width[ c ];
             o << std::setw( _width[ c ] ) << ( use_fmt ? format( c, r[ c ], w ) : format( r[c], w ) );
             if ( c + 1 != _cols.size() )
                 o << " | ";
