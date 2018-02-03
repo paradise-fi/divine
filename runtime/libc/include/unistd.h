@@ -122,6 +122,17 @@ char *getcwd(char *buf, size_t size);
 
 pid_t fork( void );
 
+#ifndef _GETOPT_DEFINED_
+#define _GETOPT_DEFINED_
+int	 getopt(int, char * const *, const char *);
+
+extern   char *optarg;                  /* getopt(3) external variables */
+extern   int opterr;
+extern   int optind;
+extern   int optopt;
+extern   int optreset;
+#endif
+
 #ifdef __cplusplus
 } // extern C
 #endif
