@@ -89,7 +89,7 @@ config:
 	$(CMAKE) -E copy_if_different $(OBJ)$(FLAVOUR)/config.tmp $(OBJ)$(FLAVOUR)/config.vars
 	if ! test -e $(OBJ)$(FLAVOUR)/config.done; then  \
 	  chmod +x test/divine; \
-	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(PWD) $(CMAKE_EXTRA) -G "$(GENERATOR)"; \
+	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(PWD) $(CMAKE_EXTRA) -G "$(GENERATOR)" && \
 	  touch $(OBJ)$(FLAVOUR)/config.done; fi
 
 build: config
