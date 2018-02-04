@@ -342,6 +342,36 @@ struct PooledShadow
         {}
     };
 
+    struct BitProxy
+    {
+        uint8_t *_base; int _pos;
+        uint8_t mask() const { return uint8_t( 0x80 ) >> ( _pos % 8 ); }
+        uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
+        BitProxy &operator=( const BitProxy &o ) { return *this = bool( o ); }
+        BitProxy &operator=( bool b )
+        {
+            set( b );
+            return *this;
+        }
+        bool get() const
+        {
+            return word() & mask();
+        }
+        void set( bool b )
+        {
+            uint8_t m = b * 0xff;
+            word() &= ~mask();
+            word() |= ( mask() & m );
+        }
+        operator bool() const { return get(); }
+        bool operator==( const BitProxy &o ) const { return get() == o.get(); }
+        bool operator!=( const BitProxy &o ) const { return get() != o.get(); }
+        BitProxy *operator->() { return this; }
+        BitProxy( uint8_t *b, int p )
+            : _base( b ), _pos( p )
+        {}
+    };
+
     using TypeC = BitContainer< TypeProxy, Pool >;
 
     struct DefinedC
