@@ -203,6 +203,26 @@ struct PooledShadow
             std::cout << "}\n";
         }
 
+        DataException at( Internal obj, int wpos )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+
+            auto it = _dataexc.find( Loc( obj, wpos ) );
+            ASSERT( it != _dataexc.end() );
+            ASSERT( it->second.valid );
+            return it->second;
+        }
+
+        void set( Internal obj, int wpos, const DataException &exc )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+            _dataexc[ Loc( obj, wpos ) ] = exc;
+        }
+
         /** Which bits of 'pos'th byte in pool object 'obj' are initialized */
         uint8_t defined( Internal obj, int pos )
         {
@@ -261,6 +281,14 @@ struct PooledShadow
             return exc.valid;
         }
 
+        void invalidate( Internal obj, int wpos )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+            _dataexc[ Loc( obj, wpos ) ].valid = false;
+        }
+
         void free( Internal obj )
         {
             Lock lk( _mtx );
@@ -274,8 +302,7 @@ struct PooledShadow
             }
         }
 
-    private:
-        void set_word_definedness( uint8_t *mask, uint8_t shadow_content, int pos )
+        static void set_word_definedness( uint8_t *mask, uint8_t shadow_content, int pos )
         {
             if ( pos % 8 < 4 )
                 shadow_content >>= 4;
@@ -614,27 +641,98 @@ struct PooledShadow
     template< typename V >
     void write( Loc l, V value )
     {
-        const int size = sizeof( typename V::Raw );
-        auto t = type( l, size );
-        if ( value.pointer() && l.offset % 4 == 0 )
-        {
-            t[ 0 ] = ShadowType::Data;
-            t[ 4 ] = ShadowType::Pointer;
-        }
-        else
-        {
-            for ( int i = 0; i < size; i += 4 )
-                if ( !t[ i ].is_exception() )
-                    t[ i ] = ShadowType::Data;
-        }
+        const int sz = sizeof( typename V::Raw );
 
-        union {
-            typename V::Raw _def;
-            uint8_t _def_bytes[ size ];
+        if ( sz >= 4 )
+            ASSERT_EQ( l.offset % 4, 0 );
+        else if ( sz == 2 )
+            ASSERT_LT( l.offset % 4, 3 );
+        else
+            ASSERT_EQ( sz, 1 );
+
+        auto obj = l.object;
+
+        auto _ty = _type.template machinePointer< uint8_t >( obj );
+        auto _def = _defined.template machinePointer< uint8_t >( obj );
+
+        union
+        {
+            typename V::Raw _def_mask;
+            uint8_t _def_bytes[ sz ];
         };
 
-        _def = value.defbits();
-        std::copy( _def_bytes, _def_bytes + size, defined( l, size ).begin() );
+        _def_mask = value.defbits();
+
+
+        DataException current_exc;
+
+        int off = 0;
+
+        if ( sz >= 4 )
+        {
+            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
+            {
+                bool was_exc = TypeProxy( _ty, l.offset + off ).is_exception();
+
+                uint8_t shadow_word = BitProxy( _def, l.offset + off ).word();
+                uint8_t shadow_mask = BitProxy( _def, l.offset + off ).mask();
+                for ( int i = 0; i < 4; ++i )
+                {
+                    shadow_word &= ~shadow_mask;
+                    shadow_word |= ( _def_bytes[ off + i ] == 0xff ? shadow_mask : 0x00 );
+                    shadow_mask >>= 1;
+                }
+
+                BitProxy( _def, l.offset + off ).word() = shadow_word;
+                std::copy( _def_bytes + off, _def_bytes + off + 4, current_exc.bitmask );
+
+                current_exc.valid = ! current_exc.bitmask_is_trivial();
+                TypeProxy( _ty, l.offset + off ) = current_exc.valid ? ShadowType::DataException
+                                                                     : ShadowType::Data;
+                if ( current_exc.valid )
+                    _exceptions->set( obj, l.offset + off, current_exc );
+                else if ( was_exc )
+                    _exceptions->invalidate( obj, l.offset + off );
+            }
+        }
+
+        if ( sz % 4 )
+        {
+            auto tail_off = bitlevel::downalign( l.offset + off, 4 );
+            bool was_exc = TypeProxy( _ty, tail_off ).is_exception();
+            if ( was_exc )
+                current_exc = _exceptions->at( obj, tail_off );
+            else
+                Exceptions::set_word_definedness( current_exc.bitmask,
+                        BitProxy( _def, tail_off ).word(), l.offset + off );
+
+            std::copy( _def_bytes + off, _def_bytes + sz,
+                    current_exc.bitmask + ( ( l.offset + off ) % 4 ) );
+
+            uint8_t shadow_word = BitProxy( _def, tail_off ).word();
+            uint8_t shadow_mask = BitProxy( _def, l.offset + off ).mask();
+
+            for ( ; off < sz; ++off )
+            {
+                shadow_word &= ~shadow_mask;
+                shadow_word |= ( _def_bytes[ off ] == 0xff ? shadow_mask : 0x00 );
+                shadow_mask >>= 1;
+            }
+
+            BitProxy( _def, tail_off ).word() = shadow_word;
+
+            current_exc.valid = ! current_exc.bitmask_is_trivial();
+            TypeProxy( _ty, tail_off ) = current_exc.valid ? ShadowType::DataException
+                                                           : ShadowType::Data;
+            if ( current_exc.valid )
+                _exceptions->set( obj, tail_off, current_exc );
+            else if ( was_exc )
+                _exceptions->invalidate( obj, tail_off );
+        }
+
+        if ( sz == PointerBytes )
+            if ( value.pointer() && l.offset % 4 == 0 )
+                TypeProxy( _ty, l.offset + 4 ) = ShadowType::Pointer;
     }
 
     template< typename V >
