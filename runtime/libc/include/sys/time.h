@@ -5,9 +5,10 @@
 extern "C" {
 #endif
 
-struct timeval {
-	long tv_sec;		/* seconds */
-	long tv_usec;	/* microseconds */
+struct timeval
+{
+    long tv_sec;    /* seconds */
+    long tv_usec;   /* microseconds */
 };
 
 int gettimeofday( struct timeval *tp, void *tzp );
