@@ -819,7 +819,7 @@ struct PooledShadow
             auto _def_to = _defined.template machinePointer< uint8_t >( to.object );
 
             int off = 0;
-            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
+            for ( ; off < sz; off += 4 )
             {
                 auto st_from = TypeProxy( _ty_from, from.offset + off ).get();
                 bool was_exc = TypeProxy( _ty_to, to.offset + off ).is_exception();
