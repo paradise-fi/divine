@@ -710,21 +710,60 @@ struct PooledShadow
     template< typename FromSh >
     void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz )
     {
-        auto from_type = from_sh.type( from, sz );
-        auto to_type = type( to, sz );
-        auto from_type_it = from_type.begin();
-        auto to_type_it = to_type.begin();
-        while ( from_type_it < from_type.end() )
+        if ( sz >= 4 && sz % 4 == 0 && from.offset % 4 == to.offset % 4 )
         {
-            if ( ! to_type_it->is_exception() && ! from_type_it->is_exception() )
-                *to_type_it = *from_type_it;
-            to_type_it += 4;
-            from_type_it += 4;
-        }
+            ASSERT_EQ( from.offset % 4, 0 );
 
-        auto from_def = from_sh.defined( from, sz );
-        auto to_def = defined( to, sz );
-        std::copy( from_def.begin(), from_def.end(), to_def.begin() );
+            auto _ty_from = from_sh._type.template machinePointer< uint8_t >( from.object );
+            auto _def_from = from_sh._defined.template machinePointer< uint8_t >( from.object );
+
+            auto _ty_to = _type.template machinePointer< uint8_t >( to.object );
+            auto _def_to = _defined.template machinePointer< uint8_t >( to.object );
+
+            int off = 0;
+            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
+            {
+                auto st_from = TypeProxy( _ty_from, from.offset + off ).get();
+                bool was_exc = TypeProxy( _ty_to, to.offset + off ).is_exception();
+
+                uint8_t shadow_word_from = BitProxy( _def_from, from.offset + off ).word();
+                uint8_t shadow_shift_from = ( from.offset + off ) % 8;
+                uint8_t shadow_word_to = BitProxy( _def_to, to.offset + off ).word();
+                uint8_t shadow_shift_to = ( to.offset + off ) % 8;
+
+                shadow_word_to &= ( 0x0f << shadow_shift_to );
+                shadow_word_from <<= shadow_shift_from;
+                shadow_word_from &= 0xf0;
+                shadow_word_to |= ( shadow_word_from >> shadow_shift_to );
+                BitProxy( _def_to, to.offset + off ).word() = shadow_word_to;
+
+                if ( st_from == ShadowType::DataException )
+                    _exceptions->set( to.object, to.offset + off,
+                            from_sh._exceptions->at( from.object, from.offset + off ) );
+                else if ( was_exc )
+                    _exceptions->invalidate( to.object, to.offset + off );
+
+                TypeProxy( _ty_to, to.offset + off ).set( st_from );
+            }
+        }
+        else
+        {
+            auto from_type = from_sh.type( from, sz );
+            auto to_type = type( to, sz );
+            auto from_type_it = from_type.begin();
+            auto to_type_it = to_type.begin();
+            while ( from_type_it < from_type.end() )
+            {
+                if ( ! to_type_it->is_exception() && ! from_type_it->is_exception() )
+                    *to_type_it = *from_type_it;
+                to_type_it += 4;
+                from_type_it += 4;
+            }
+
+            auto from_def = from_sh.defined( from, sz );
+            auto to_def = defined( to, sz );
+            std::copy( from_def.begin(), from_def.end(), to_def.begin() );
+        }
     }
 
     void copy( Loc from, Loc to, int sz ) { return copy( *this, from, to, sz ); }
@@ -925,10 +964,16 @@ struct PooledShadow
     TEST( copy_partially_initialized )
     {
         vm::value::Int< 16 > i1( 32, 0x0AFF, false ), i2;
+        vm::value::Int< 64 > l1( 99, 0xDEADBEEF'0FF0FFFF, false ), l2;
         heap.write( obj, 0, i1 );
         heap.copy( obj, 0, obj, 2, 2 );
         heap.read( obj, 2, i2 );
         ASSERT_EQ( i2.defbits(), 0x0AFF );
+
+        heap.write( obj, 16, l1 );
+        heap.copy( obj, 16, obj, 32, 8 );
+        heap.read( obj, 32, l2 );
+        ASSERT_EQ( l2.defbits(), 0xDEADBEEF'0FF0FFFF );
     }
 
 
