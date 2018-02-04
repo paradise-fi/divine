@@ -640,24 +640,71 @@ struct PooledShadow
     template< typename V >
     void read( Loc l, V &value )
     {
-        const int size = sizeof( typename V::Raw );
+        constexpr int sz = sizeof( typename V::Raw );
 
-        union {
-            typename V::Raw _def;
-            uint8_t _def_bytes[ size ];
+        if ( sz >= 4 )
+            ASSERT_EQ( l.offset % 4, 0 );
+        else if ( sz == 2 )
+            ASSERT_LT( l.offset % 4, 3 );
+        else
+            ASSERT_EQ( sz, 1 );
+
+        auto obj = l.object;
+
+        auto _ty = _type.template machinePointer< uint8_t >( obj );
+        auto _def = _defined.template machinePointer< uint8_t >( obj );
+
+        union
+        {
+            typename V::Raw _def_mask;
+            uint8_t _def_bytes[ sz ];
         };
 
-        auto def = defined( l, size );
-        std::copy( def.begin(), def.end(), _def_bytes );
-        value.defbits( _def );
+        int off = 0;
 
-        if ( l.offset % 4 == 0 )
+        if ( sz >= 4 )
         {
-            auto t = type( l, size );
-            value.pointer( size == PointerBytes &&
-                           t[ 0 ] == ShadowType::Data &&
-                           t[ 4 ] == ShadowType::Pointer );
+            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
+            {
+                auto st = TypeProxy( _ty, l.offset + off ).get();
+                if ( st == ShadowType::DataException )
+                {
+                    auto exc = _exceptions->at( obj, l.offset + off );
+                    std::copy( exc.bitmask, exc.bitmask + 4, _def_bytes + off );
+                }
+                else if ( st == ShadowType::Pointer )
+                {
+                    for ( int i = 0; i < 4; ++i )
+                    {
+                        _def_bytes[ off + i ] = 0xff;
+                    }
+                }
+                else
+                {
+                    uint8_t shadow_word = BitProxy( _def, l.offset + off ).word();
+                    uint8_t shadow_mask = BitProxy( _def, l.offset + off ).mask();
+                    for ( int i = 0; i < 4; ++i )
+                    {
+                        _def_bytes[ off + i ] = ( shadow_word & shadow_mask ) ? 0xff : 0x00;
+                        shadow_mask >>= 1;
+                    }
+                }
+            }
         }
+
+        if ( sz % 4 )
+        {
+            bool is_exc = TypeProxy( _ty, l.offset ).is_exception();
+            for ( ; off < sz; ++off )
+                _def_bytes[ off ] = is_exc ? _exceptions->defined( obj, l.offset + off )
+                                           : BitProxy( _def, l.offset + off ).get() * 0xff;
+        }
+
+        value.defbits( _def_mask );
+
+        if ( sz == PointerBytes )
+            value.pointer( TypeProxy( _ty, l.offset + 4 ) == ShadowType::Pointer );
+
     }
 
     template< typename FromSh >
