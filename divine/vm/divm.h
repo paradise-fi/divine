@@ -1,6 +1,6 @@
 /* -*- C++ -*- but can be built as C too */
 
-#if !defined(__DIVM_H_CONST__) && ( defined(__divine__) || defined(__divm_const__) )
+#if !defined(__DIVM_H_CONST__) && ( !defined(__divm__) || defined(__divm_const__) )
 #define __DIVM_H_CONST__
 
 enum { _VM_PM_Off  = 0x000000001FFFFFFFull,
@@ -40,7 +40,7 @@ enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM
 
 #define NATIVE_VISIBLE
 
-#if defined(__divine__)
+#ifndef __divm__
 typedef void (*_VM_CodePointer)( void );
 typedef int (*_VM_Personality)( void *, void *, void * ); // ?
 typedef void *_VM_Pointer;
