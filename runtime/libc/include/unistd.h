@@ -90,6 +90,10 @@ int faccessat( int dirfd, const char *path, int mode, int flags );
 int chdir( const char *path );
 int fchdir( int dirfd );
 
+int chown( const char *path, uid_t owner, gid_t group );
+int fchownat( int fd, const char *path, uid_t owner, gid_t group, int flag );
+int fchown( int fildes, uid_t owner, gid_t group );
+
 void _exit( int status );
 pid_t getpid( void );
 pid_t getppid( void );
