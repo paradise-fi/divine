@@ -88,11 +88,14 @@ struct	rusage {
 #define	RLIMIT_STACK	3		/* stack size */
 #define	RLIMIT_CORE	4		/* core file size */
 #define	RLIMIT_RSS	5		/* resident set size */
+
+#if 0 /* different systems start to disagree here */
 #define	RLIMIT_MEMLOCK	6		/* locked-in-memory address space */
 #define	RLIMIT_NPROC	7		/* number of processes */
 #define	RLIMIT_NOFILE	8		/* number of open files */
+#endif
 
-#define	RLIM_NLIMITS	9		/* number of resource limits */
+#define	RLIM_NLIMITS	6		/* number of resource limits */
 
 #define	RLIM_INFINITY	(((rlim_t)1 << 63) - 1)
 #define	RLIM_SAVED_MAX	RLIM_INFINITY
