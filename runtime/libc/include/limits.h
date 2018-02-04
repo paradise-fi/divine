@@ -15,6 +15,7 @@
    http://lists.gnu.org/archive/html/bug-gnulib/2015-05/msg00001.html
 */
 #define MB_LEN_MAX 16
+#define PATH_MAX   1024
 
 #define LLONG_MIN  _PDCLIB_LLONG_MIN
 #define LLONG_MAX  _PDCLIB_LLONG_MAX
