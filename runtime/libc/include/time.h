@@ -46,6 +46,8 @@ struct tm
     int tm_wday;  /* 0-6 */
     int tm_yday;  /* 0-365 */
     int tm_isdst; /* >0 DST, 0 no DST, <0 information unavailable */
+    long tm_gmtoff; /* offset from UTC in seconds */
+    char *tm_zone;  /* abbreviation of timezone name */
 };
 
 /* Returns the number of "clocks" in processor time since the invocation
