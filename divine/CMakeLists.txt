@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D vm ss mc ui cc ltl sim )
+foreach( D vm ss mc ui cc ltl sim smt )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -38,6 +38,7 @@ add_library( divine-ltl ${CPP_ltl} )
 # add_library( divine-ss ${CPP_ss} )
 # add_library( divine-mc ${CPP_mc} )
 add_library( divine-ui ${CPP_ui} ${VERSION_FILE} ${VERSION_FILE}.check "flags-generated.cpp" )
+add_library( divine-smt ${CPP_smt} )
 add_library( divine-vm ${CPP_vm} )
 
 if ( OPT_SIM )
@@ -49,9 +50,9 @@ endif()
 
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 
-bricks_unittest( test-divine ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} )
+bricks_unittest( test-divine ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} ${HPP_smt} )
 
-foreach( D vm ui cc ltl )
+foreach( D vm ui cc ltl smt )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
   install( TARGETS divine-${D} DESTINATION lib )
 endforeach()
@@ -59,8 +60,9 @@ endforeach()
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject clang clangBasic clangCodeGen )
-target_link_libraries( divine-vm liblart divine-rt divine-cc ) # FIXME divine-cc
-target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker ${Z3_LIBRARIES} )
+target_link_libraries( divine-smt ${Z3_LIBRARIES} )
+target_link_libraries( divine-vm liblart divine-rt divine-cc divine-smt ) # FIXME divine-cc
+target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker )
 target_link_libraries( divine-ui divine-rt divine-cc divine-vm )
 
 if ( OPT_SQL )
