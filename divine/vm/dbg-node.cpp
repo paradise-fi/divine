@@ -23,7 +23,7 @@
 #include <divine/vm/eval.hpp>
 #include <divine/vm/eval.tpp>
 
-#include <divine/vm/formula.hpp>
+#include <divine/smt/builder.hpp>
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CFG.h>
 DIVINE_UNRELAX_WARNINGS
@@ -316,7 +316,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
     {
         std::stringstream out;
         std::unordered_set< int > indices;
-        SMTLibFormulaMap map( _ctx.heap(), indices, out );
+        smt::SMTLibFormulaMap map( _ctx.heap(), indices, out );
         map.convert( _address );
         yield( "formula", out.str() );
     }

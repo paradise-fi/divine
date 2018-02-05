@@ -27,53 +27,54 @@
 #include <z3++.h>
 #endif
 
-namespace divine::vm
+namespace divine::smt
 {
 
-namespace smt = brick::smt;
-
 template< typename Formula >
-struct FormulaMap {
-    FormulaMap( CowHeap &heap, std::string suff )
+struct FormulaMap
+{
+    FormulaMap( vm::CowHeap &heap, std::string suff )
        : heap( heap ), suff( suff )
     {}
 
-    sym::Formula *hp2form( HeapPointer ptr ) {
+    sym::Formula *hp2form( vm::HeapPointer ptr )
+    {
         return reinterpret_cast< sym::Formula * >( heap.unsafe_bytes( ptr ).begin() );
     }
 
-    const Formula& operator[]( HeapPointer p )
+    const Formula& operator[]( vm::HeapPointer p )
     {
         auto it = ptr2Sym.find( p );
         ASSERT( it != ptr2Sym.end() );
         return it->second;
     }
 
-    CowHeap &heap;
+    vm::CowHeap &heap;
     std::string suff;
-    std::unordered_set< HeapPointer > pcparts;
-    std::unordered_map< HeapPointer, Formula > ptr2Sym;
+    std::unordered_set< vm::HeapPointer > pcparts;
+    std::unordered_map< vm::HeapPointer, Formula > ptr2Sym;
 };
 
 struct SMTLibFormulaMap : FormulaMap< std::string > {
-    SMTLibFormulaMap( CowHeap &heap, std::unordered_set< int > &indices,
+    SMTLibFormulaMap( vm::CowHeap &heap, std::unordered_set< int > &indices,
                       std::ostream &out, std::string suff = "" )
         : FormulaMap( heap, suff ), indices( indices ), out( out )
     {}
 
-    static smt::Printer type( int bitwidth ) {
-        return bitwidth == 1 ? smt::type( "Bool" ) : smt::bitvecT( bitwidth );
+    static brick::smt::Printer type( int bitwidth ) {
+        return bitwidth == 1 ? brick::smt::type( "Bool" ) : brick::smt::bitvecT( bitwidth );
     }
 
-    std::string_view convert( HeapPointer ptr );
+    std::string_view convert( vm::HeapPointer ptr );
 
     void pathcond()
     {
-        smt::Vector args;
+        brick::smt::Vector args;
         for ( auto ptr : pcparts )
-            args.emplace_back( smt::symbol( (*this)[ ptr ] ) );
+            args.emplace_back( brick::smt::symbol( (*this)[ ptr ] ) );
 
-        out << smt::defineConst( "pathcond" + suff, smt::type( "Bool" ), smt::bigand( args ) )
+        out << brick::smt::defineConst( "pathcond" + suff, brick::smt::type( "Bool" ),
+                                        brick::smt::bigand( args ) )
             << std::endl;
     }
 
@@ -85,11 +86,11 @@ struct SMTLibFormulaMap : FormulaMap< std::string > {
 #if OPT_Z3
 struct Z3FormulaMap : FormulaMap< z3::expr >
 {
-    Z3FormulaMap( CowHeap &heap, z3::context &c, std::string suff = "" )
+    Z3FormulaMap( vm::CowHeap &heap, z3::context &c, std::string suff = "" )
         : FormulaMap( heap, suff ), ctx( c )
     {}
 
-    z3::expr convert( HeapPointer ptr );
+    z3::expr convert( vm::HeapPointer ptr );
 
     z3::expr pathcond()
     {
@@ -107,7 +108,7 @@ struct Z3FormulaMap : FormulaMap< z3::expr >
     }
 
 private:
-    z3::expr toz3( HeapPointer ptr );
+    z3::expr toz3( vm::HeapPointer ptr );
     z3::expr toz3( sym::Formula *formula );
 
     z3::context &ctx;

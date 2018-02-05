@@ -30,7 +30,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/clang.hpp>
 #include <divine/vm/dbg-info.hpp>
-#include <divine/vm/solver.hpp>
+#include <divine/smt/solver.hpp>
 
 namespace llvm {
 class LLVMContext;
@@ -62,7 +62,7 @@ struct BitCode {
     std::vector< std::string > _lart;
     std::string _relaxed;
 
-    std::optional< SymbolicConfig > _symbolic;
+    std::optional< smt::SymbolicConfig > _symbolic;
     bool is_symbolic() const { return _symbolic.has_value(); }
     std::string solver() const {
         ASSERT( is_symbolic() );
@@ -79,7 +79,7 @@ struct BitCode {
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
     void sequential( bool s ) { _sequential = s; }
-    void symbolic( SymbolicConfig cfg ) { _symbolic.emplace( cfg ); }
+    void symbolic( smt::SymbolicConfig cfg ) { _symbolic.emplace( cfg ); }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
     void relaxed( std::string r ) { _relaxed = r; }

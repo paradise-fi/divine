@@ -1,10 +1,11 @@
-#include <divine/vm/solver.hpp>
-#include <divine/vm/formula.hpp>
+#include <divine/smt/solver.hpp>
+#include <divine/smt/builder.hpp>
+
 #include <brick-smt>
 #include <brick-proc>
 #include <brick-bitlevel>
 
-namespace divine::vm
+namespace divine::smt
 {
 
 namespace smt = brick::smt;
@@ -42,7 +43,7 @@ static inline Result z3_solver_result( z3::check_result res )
 
 } // anonymous namespace
 
-Result SMTLibSolver::query( const std::string & formula ) const
+Result SMTLibSolver::query( const std::string & formula )
 {
     auto r = brick::proc::spawnAndWait( proc::StdinString( formula ) | proc::CaptureStdout |
                                         proc::CaptureStderr, options() );
@@ -61,7 +62,7 @@ Result SMTLibSolver::query( const std::string & formula ) const
     UNREACHABLE( "Invalid SMT reply" );
 }
 
-Result SMTLibSolver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) const
+Result SMTLibSolver::equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 )
 {
     using FormulaMap = SMTLibFormulaMap;
     std::stringstream formula;
@@ -115,7 +116,7 @@ Result SMTLibSolver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 ) cons
     return query( formula.str() ) == Result::False ? Result::True : Result::False;
 }
 
-Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
+Result SMTLibSolver::feasible( vm::CowHeap & heap, vm::HeapPointer assumes )
 {
     using FormulaMap = SMTLibFormulaMap;
     std::stringstream formula;
@@ -124,7 +125,7 @@ Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
 
     while ( !assumes.null() )
     {
-        value::Pointer constraint, next;
+        vm::value::Pointer constraint, next;
         heap.read_shift( assumes, constraint );
         heap.read( assumes, next );
 
@@ -136,7 +137,7 @@ Result SMTLibSolver::feasible( CowHeap & heap, HeapPointer assumes ) const
 }
 
 #if OPT_Z3
-Result Z3Solver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 )
+Result Z3Solver::equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 )
 {
     using FormulaMap = Z3FormulaMap;
 
@@ -183,20 +184,20 @@ Result Z3Solver::equal( SymPairs &sym_pairs, CowHeap &h1, CowHeap &h2 )
     return result == Result::False ? Result::True : Result::False;
 }
 
-Result Z3Solver::feasible( CowHeap &heap, HeapPointer assumes )
+Result Z3Solver::feasible( vm::CowHeap &heap, vm::HeapPointer assumes )
 {
     using FormulaMap = Z3FormulaMap;
     FormulaMap map( heap, ctx );
 
     z3::expr pc = ctx.bool_val( true );
-    HeapPointer head = assumes;
+    vm::HeapPointer head = assumes;
 
-    std::unordered_set< HeapPointer > in_context{ _context.begin(), _context.end() };
+    std::unordered_set< vm::HeapPointer > in_context{ _context.begin(), _context.end() };
 
     try {
         while ( !assumes.null() && !in_context.count( assumes ) )
         {
-            value::Pointer constraint, next;
+            vm::value::Pointer constraint, next;
             heap.read_shift( assumes, constraint );
             heap.read( assumes, next );
             auto c = map.convert( constraint.cooked() );

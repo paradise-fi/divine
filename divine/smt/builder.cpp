@@ -17,14 +17,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/formula.hpp>
+#include <divine/smt/builder.hpp>
 
-namespace divine::vm
+namespace divine::smt
 {
 
+namespace smt = brick::smt; /* not very nice */
 using namespace std::literals;
 
-std::string_view SMTLibFormulaMap::convert( HeapPointer ptr )
+std::string_view SMTLibFormulaMap::convert( vm::HeapPointer ptr )
 {
     auto it = ptr2Sym.find( ptr );
     if ( it != ptr2Sym.end() )
@@ -227,7 +228,7 @@ std::string_view SMTLibFormulaMap::convert( HeapPointer ptr )
 }
 
 #if OPT_Z3
-z3::expr Z3FormulaMap::toz3( HeapPointer ptr )
+z3::expr Z3FormulaMap::toz3( vm::HeapPointer ptr )
 {
     auto it = ptr2Sym.find( ptr );
     if ( it != ptr2Sym.end() )
@@ -347,7 +348,7 @@ z3::expr Z3FormulaMap::toz3( sym::Formula *formula )
     }
 }
 
-z3::expr Z3FormulaMap::convert( HeapPointer ptr )
+z3::expr Z3FormulaMap::convert( vm::HeapPointer ptr )
 {
     return ptr2Sym.emplace( ptr, toz3( ptr ) ).first->second;
 }

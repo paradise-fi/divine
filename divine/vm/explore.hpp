@@ -23,7 +23,7 @@
 #include <divine/vm/setup.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/bitcode.hpp>
-#include <divine/vm/solver.hpp>
+#include <divine/smt/solver.hpp>
 #include <divine/ss/search.hpp> /* unit tests */
 
 #include <set>
@@ -204,7 +204,7 @@ struct Hasher : Hasher_< Solver >
 };
 
 template<>
-struct Hasher< NoSolver > : Hasher_< NoSolver >
+struct Hasher< smt::NoSolver > : Hasher_< smt::NoSolver >
 {
     bool equal( Snapshot a, Snapshot b ) const { return this->equal_explicit( a, b ); }
 };
@@ -485,9 +485,9 @@ struct Explore
     }
 };
 
-using ExplicitExplore = Explore< NoSolver >;
-using Z3Explore = Explore< Z3Solver >;
-using BoolectorExplore = Explore< BoolectorSMTLib >;
+using ExplicitExplore = Explore< smt::NoSolver >;
+using Z3Explore = Explore< smt::Z3Solver >;
+using BoolectorExplore = Explore< smt::BoolectorSMTLib >;
 
 } // namespace vm
 
