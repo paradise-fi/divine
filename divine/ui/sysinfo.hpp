@@ -20,7 +20,6 @@
 #include <string>
 #include <stdexcept>
 #include <functional>
-#include <divine/ui/withreport.hpp>
 
 #include <brick-shmem>
 #include <brick-string>
