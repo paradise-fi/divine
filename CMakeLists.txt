@@ -214,6 +214,7 @@ else()
 endif()
 
 set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
+set( DIVINE_SYS_INCLUDES ${Z3_INCLUDE_DIRS} )
 set( TEST_WRAPPER "-c" )
 
 add_custom_target( check )

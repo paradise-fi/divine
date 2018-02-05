@@ -28,7 +28,7 @@ add_custom_command(
   COMMAND sh -c "echo \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">flags-generated.cpp"
 )
 
-include_directories( ${DIVINE_INCLUDES} ${CMAKE_BINARY_DIR} ${Z3_INCLUDE_DIRS} )
+include_directories( ${DIVINE_INCLUDES} ${CMAKE_BINARY_DIR} )
 include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
