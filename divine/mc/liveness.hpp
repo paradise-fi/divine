@@ -157,7 +157,7 @@ struct NestedDFS : ss::Job
         _thread.get();
     }
 
-    void stop() override { NOT_IMPLEMENTED(); }
+    void stop() override {}
 };
 
 template< typename Next, typename Explore = vm::ExplicitExplore >
