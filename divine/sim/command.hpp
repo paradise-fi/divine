@@ -18,7 +18,7 @@
 
 #pragma once
 #include <divine/sim/trace.hpp>
-#include <divine/vm/dbg-info.hpp>
+#include <divine/dbg/info.hpp>
 #include <string>
 
 namespace divine::sim::command
@@ -123,7 +123,7 @@ struct Setup : Teflon
     bool clear_sticky, pygmentize = false, debug_everything = false;
     std::string xterm;
     std::vector< std::string > sticky_commands;
-    std::vector< vm::dbg::Component > debug_components, ignore_components;
+    std::vector< dbg::Component > debug_components, ignore_components;
     Setup() : clear_sticky( false ) {}
 };
 

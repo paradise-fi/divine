@@ -16,9 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/dbg-info.hpp>
-#include <divine/vm/dbg-node.hpp>
-#include <divine/vm/dbg-print.hpp>
+#include <divine/dbg/info.hpp>
+#include <divine/dbg/node.hpp>
+#include <divine/dbg/print.hpp>
 #include <divine/vm/xg-code.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/eval.tpp>
@@ -29,13 +29,15 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 #include <queue>
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
+namespace xg = vm::xg;
+namespace lx = vm::lx;
 using namespace std::literals;
 
 template< typename Heap >
-using DNEval = Eval< DNContext< Heap > >;
+using DNEval = vm::Eval< DNContext< Heap > >;
 
 template< typename Prog, typename Heap >
 int Node< Prog, Heap >::size()
@@ -126,7 +128,7 @@ bool Node< Prog, Heap >::valid()
 {
     if ( _address.null() )
         return false;
-    if ( _address.type() == PointerType::Heap && !_ctx.heap().valid( _address ) )
+    if ( _address.type() == vm::PointerType::Heap && !_ctx.heap().valid( _address ) )
         return false;
 
     DNEval< Heap > eval( _ctx );
@@ -137,7 +139,7 @@ bool Node< Prog, Heap >::valid()
         return false;
 
     if ( _kind == DNKind::Frame )
-        if ( pc().type() != PointerType::Code || !_ctx.program().valid( pc() ) )
+        if ( pc().type() != vm::PointerType::Code || !_ctx.program().valid( pc() ) )
             return false;
     return true;
 }
@@ -149,7 +151,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
     PointerV loc( _address + _offset );
 
     if ( _type && _type->isIntegerTy() )
-        eval.template type_dispatch< IsIntegral >(
+        eval.template type_dispatch< vm::IsIntegral >(
             xg::type( _type ),
             [&]( auto v )
             {
@@ -158,8 +160,8 @@ void Node< Prog, Heap >::value( YieldAttr yield )
                 if ( bitoffset() || width() != size() * 8 )
                 {
                     yield( "raw_value", brick::string::fmt( raw ) );
-                    auto val = raw >> value::Int< 32 >( bitoffset() );
-                    val = val & V( bitlevel::ones< typename V::Raw >( width() ) );
+                    auto val = raw >> vm::value::Int< 32 >( bitoffset() );
+                    val = val & V( brick::bitlevel::ones< typename V::Raw >( width() ) );
                     ASSERT_LEQ( bitoffset() + width(), size() * 8 );
                     yield( "value", brick::string::fmt( val ) );
                 }
@@ -168,7 +170,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
             } );
 
     if ( _type && _type->isFloatingPointTy() )
-        eval.template type_dispatch< IsFloat >(
+        eval.template type_dispatch< vm::IsFloat >(
             xg::type( _type ),
             [&]( auto v )
             {
@@ -186,7 +188,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
     }
 
     if ( _type && _type->isPointerTy() )
-        eval.template type_dispatch< Any >(
+        eval.template type_dispatch< vm::Any >(
             xg::type( _type ),
             [&]( auto v ) { yield( "value", brick::string::fmt( v.get( loc ) ) ); } );
 
@@ -307,12 +309,12 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 
     yield( "raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
 
-    if ( _address.type() == PointerType::Global )
+    if ( _address.type() == vm::PointerType::Global )
         yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
-    else if ( _address.type() == PointerType::Heap )
+    else if ( _address.type() == vm::PointerType::Heap )
         yield( "shared", brick::string::fmt( _ctx.heap().shared( _address ) ) );
 
-    if ( _address.type() == PointerType::Marked )
+    if ( _address.type() == vm::PointerType::Marked )
     {
         std::stringstream out;
         std::unordered_set< int > indices;
@@ -331,10 +333,10 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
     if ( _kind == DNKind::Frame )
     {
         yield( "pc", brick::string::fmt( pc() ) );
-        if ( pc().null() || pc().type() != PointerType::Code )
+        if ( pc().null() || pc().type() != vm::PointerType::Code )
             return;
         auto *insn = &program.instruction( pc() );
-        ASSERT_EQ( eval.pc(), CodePointer( pc() ) );
+        ASSERT_EQ( eval.pc(), vm::CodePointer( pc() ) );
         if ( insn->opcode != lx::OpBB && insn->opcode != lx::OpArg )
         {
             eval._instruction = insn;
@@ -355,7 +357,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display bitcode, not a stack frame" );
     DNEval< Heap > eval( _ctx );
-    CodePointer iter = pc(), origpc = pc();
+    vm::CodePointer iter = pc(), origpc = pc();
     auto &prog = _ctx.program();
     for ( iter.instruction( 0 ); prog.valid( iter ); iter = iter + 1 )
     {
@@ -425,7 +427,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
     int hoff = hloc.offset();
 
     if ( _type && _di_type && _type->isPointerTy() &&
-         boundcheck( PointerV( hloc + _offset ), PointerBytes ) )
+         boundcheck( PointerV( hloc + _offset ), vm::PointerBytes ) )
     {
         PointerV addr;
         _ctx.heap().read( hloc + _offset, addr );
@@ -440,10 +442,10 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
         yield( "deref", rel );
     }
 
-    if ( _kind == DNKind::Frame && boundcheck( PointerV( _address ), 2 * PointerBytes ) )
+    if ( _kind == DNKind::Frame && boundcheck( PointerV( _address ), 2 * vm::PointerBytes ) )
     {
         PointerV fr( _address );
-        _ctx.heap().skip( fr, PointerBytes );
+        _ctx.heap().skip( fr, vm::PointerBytes );
         _ctx.heap().read( fr.cooked(), fr );
         if ( !fr.cooked().null() )
         {
@@ -464,7 +466,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
             continue;
         _ctx.heap().read( hloc, ptr );
         auto pp = ptr.cooked();
-        if ( pp.type() == PointerType::Code || pp.null() )
+        if ( pp.type() == vm::PointerType::Code || pp.null() )
             continue;
         if ( _related_ptrs.find( pp ) != _related_ptrs.end() )
             continue;
@@ -494,7 +496,7 @@ llvm::DIType *Node< Prog, Heap >::di_resolve( llvm::DIType *t )
 }
 
 template< typename Prog, typename Heap >
-void Node< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
+void Node< Prog, Heap >::struct_fields( vm::HeapPointer hloc, YieldDN yield )
 {
     auto CT = llvm::cast< llvm::DICompositeType >( di_resolve() );
     auto ST = llvm::cast< llvm::StructType >( _type );
@@ -511,7 +513,7 @@ void Node< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
                 idx ++, STE ++;
 
             int offset = SLO->getElementOffset( idx );
-            if ( (*STE)->isPointerTy() && boundcheck( PointerV( hloc + offset ), PointerBytes ) )
+            if ( (*STE)->isPointerTy() && boundcheck( PointerV( hloc + offset ), vm::PointerBytes ) )
             {
                 PointerV ptr;
                 _ctx.heap().read( hloc + offset, ptr );
@@ -602,7 +604,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
                _ctx.program().addr( var ) :
                eval.s2ptr( slot );
     PointerV deref;
-    if ( boundcheck( PointerV( ptr ), PointerBytes ) )
+    if ( boundcheck( PointerV( ptr ), vm::PointerBytes ) )
         _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
     if ( deref.pointer() )
         _related_ptrs.insert( deref.cooked() );
@@ -641,7 +643,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::Argument *arg )
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::framevars( YieldDN yield )
 {
-    if ( pc().type() != PointerType::Code )
+    if ( pc().type() != vm::PointerType::Code )
         return;
 
     std::queue< llvm::BasicBlock * > q;
@@ -696,7 +698,7 @@ void Node< Prog, Heap >::globalvars( YieldDN yield )
             continue;
 
         PointerV deref;
-        if ( boundcheck( PointerV( ptr ), PointerBytes ) )
+        if ( boundcheck( PointerV( ptr ), vm::PointerBytes ) )
             _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
         if ( deref.pointer() )
             _related_ptrs.insert( deref.cooked() );
@@ -822,6 +824,6 @@ Node< Prog, Heap > Node< Prog, Heap >::related( std::string key )
     return res;
 }
 
-template struct Node< Program, CowHeap >;
+template struct Node< vm::Program, vm::CowHeap >;
 
 }

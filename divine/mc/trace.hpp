@@ -20,8 +20,8 @@
 
 #include <divine/mc/builder.hpp>
 #include <divine/mc/bitcode.hpp>
-#include <divine/vm/dbg-node.hpp>
-#include <divine/vm/dbg-util.hpp>
+#include <divine/dbg/node.hpp>
+#include <divine/dbg/util.hpp>
 #include <divine/ss/search.hpp>
 
 #include <optional>
@@ -32,16 +32,16 @@ namespace mc {
 template< typename BT, typename Fmt, typename Dbg >
 void backtrace( BT bt, Fmt fmt, Dbg &dbg, builder::Snapshot snap, int maxdepth = 10 )
 {
-    vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
+    dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
     dn._ref.get();
-    dn.address( vm::dbg::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
+    dn.address( dbg::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
     dn.type( dbg._state_type );
     dn.di_type( dbg._state_di_type );
-    dn_top.address( vm::dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
-    vm::dbg::DNSet visited;
+    dn_top.address( dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
+    dbg::DNSet visited;
     int stacks = 1;
-    vm::dbg::backtrace( bt, fmt, dn_top, visited, stacks, maxdepth );
-    vm::dbg::backtrace( bt, fmt, dn, visited, stacks, maxdepth );
+    dbg::backtrace( bt, fmt, dn_top, visited, stacks, maxdepth );
+    dbg::backtrace( bt, fmt, dn, visited, stacks, maxdepth );
 }
 
 struct Trace

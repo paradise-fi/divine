@@ -22,9 +22,9 @@
 #include <divine/mc/builder.hpp>
 #include <divine/vm/heap.hpp>
 #include <divine/vm/program.hpp>
-#include <divine/vm/dbg-stepper.hpp>
-#include <divine/vm/dbg-context.hpp>
-#include <divine/vm/dbg-node.hpp>
+#include <divine/dbg/stepper.hpp>
+#include <divine/dbg/context.hpp>
+#include <divine/dbg/node.hpp>
 
 #include <brick-cmd>
 #include <brick-proc>
@@ -37,7 +37,6 @@ namespace divine::sim
 {
 
 namespace cmd = brick::cmd;
-namespace dbg = vm::dbg;
 
 using Context = dbg::Context< vm::CowHeap >;
 using DN = dbg::Node< vm::Program, vm::CowHeap >;
@@ -86,8 +85,8 @@ struct CLI
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
     bool _sched_random, _pygmentize = false;
-    using Comp = vm::dbg::Component;
-    using Components = vm::dbg::Components;
+    using Comp = dbg::Component;
+    using Components = dbg::Components;
     Components _ff_components = ~Components( Comp::Program );
 
     std::vector< cmd::Tokens > _sticky_commands;

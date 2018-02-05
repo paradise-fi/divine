@@ -17,9 +17,9 @@
  */
 
 #pragma once
-#include <divine/vm/dbg-node.hpp>
+#include <divine/dbg/node.hpp>
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
 using DNSet = std::set< DNKey >;
@@ -27,7 +27,7 @@ using DNSet = std::set< DNKey >;
 template< typename BT, typename Fmt, typename DN >
 void backtrace( BT bt, Fmt fmt, DN dn, DNSet &visited, int &stacks, int maxdepth )
 {
-    if ( visited.count( dn.sortkey() ) || dn.address().type() != PointerType::Heap )
+    if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
         return;
     visited.insert( dn.sortkey() );
 
@@ -41,7 +41,7 @@ void backtrace( BT bt, Fmt fmt, DN dn, DNSet &visited, int &stacks, int maxdepth
         [&]( std::string k, auto rel )
         {
             if ( rel.kind() == DNKind::Frame && k != "caller" &&
-                 rel.address().type() == PointerType::Heap && rel.valid() &&
+                 rel.address().type() == vm::PointerType::Heap && rel.valid() &&
                  !visited.count( rel.sortkey() ) && maxdepth > 1 )
                 bt( ++stacks );
             backtrace( bt, fmt, rel, visited, stacks, k == "caller" ? maxdepth - 1 : maxdepth );

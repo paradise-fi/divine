@@ -19,20 +19,20 @@
 #pragma once
 
 #include <divine/vm/context.hpp>
-#include <divine/vm/dbg-info.hpp>
+#include <divine/dbg/info.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/DebugInfo.h>
 #include <llvm/IR/IntrinsicInst.h>
 DIVINE_UNRELAX_WARNINGS
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
 template< typename Heap >
-struct DNContext : vm::Context< Program, Heap >
+struct DNContext : vm::Context< vm::Program, Heap >
 {
-    using Super = vm::Context< Program, Heap >;
+    using Super = vm::Context< vm::Program, Heap >;
     using Snapshot = typename Heap::Snapshot;
     using RefCnt = brick::mem::SlavePool< typename Heap::SnapPool >;
 
@@ -40,7 +40,7 @@ struct DNContext : vm::Context< Program, Heap >
     RefCnt _refcnt;
 
     Info &debug() { return *_debug; }
-    DNContext( Program &p, Info &i, const Heap &h )
+    DNContext( vm::Program &p, Info &i, const Heap &h )
         : Super( p, h ), _debug( &i ), _refcnt( this->heap()._snapshots ) {}
 
     template< typename Ctx >
@@ -60,15 +60,15 @@ struct Context : DNContext< Heap >
     std::vector< std::string > _trace;
     std::string _info;
 
-    Step _lock;
+    vm::Step _lock;
     enum { LockDisabled, LockScheduler, LockChoices, LockBoth } _lock_mode;
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
     llvm::Type   *_state_type;
 
-    Context( Program &p, dbg::Info &dbg ) : Context( p, dbg, Heap() ) {}
-    Context( Program &p, dbg::Info &dbg, const Heap &h )
+    Context( vm::Program &p, dbg::Info &dbg ) : Context( p, dbg, Heap() ) {}
+    Context( vm::Program &p, dbg::Info &dbg, const Heap &h )
         : DNContext< Heap >( p, dbg, h ), _lock_mode( LockDisabled ),
           _state_di_type( nullptr ), _state_type( nullptr )
     {
@@ -88,7 +88,7 @@ struct Context : DNContext< Heap >
         if ( this->debug_mode() )
         {
             trace( "FAULT: __vm_choose is not allowed in debug mode" );
-            this->fault( _VM_F_Hypercall, HeapPointer(), CodePointer() );
+            this->fault( _VM_F_Hypercall, vm::HeapPointer(), vm::CodePointer() );
             return -1;
         }
 
@@ -116,7 +116,7 @@ struct Context : DNContext< Heap >
     }
 
     template< typename Upcall, typename... Args >
-    void maybe_interrupt( Interrupt::Type t, CodePointer pc, Upcall up, Args... args )
+    void maybe_interrupt( vm::Interrupt::Type t, vm::CodePointer pc, Upcall up, Args... args )
     {
         if( this->in_kernel() )
             return;
@@ -146,14 +146,14 @@ struct Context : DNContext< Heap >
         }
     }
 
-    void mem_interrupt( CodePointer pc, GenericPointer ptr, int sz, int t )
+    void mem_interrupt( vm::CodePointer pc, vm::GenericPointer ptr, int sz, int t )
     {
-        maybe_interrupt( Interrupt::Mem, pc, &Super::mem_interrupt, ptr, sz, t );
+        maybe_interrupt( vm::Interrupt::Mem, pc, &Super::mem_interrupt, ptr, sz, t );
     }
 
-    void cfl_interrupt( CodePointer pc )
+    void cfl_interrupt( vm::CodePointer pc )
     {
-        maybe_interrupt( Interrupt::Cfl, pc, &Super::cfl_interrupt );
+        maybe_interrupt( vm::Interrupt::Cfl, pc, &Super::cfl_interrupt );
     }
 
     using Super::trace;
@@ -222,7 +222,7 @@ struct Context : DNContext< Heap >
         } );
     }
 
-    void trace( TraceTypeAlias a )
+    void trace( vm::TraceTypeAlias a )
     {
         auto ptr = this->debug().find( nullptr, a.pc ).first->getOperand( 1 );
         std::string alias = this->_heap.read_string( a.alias );

@@ -549,7 +549,7 @@ struct Eval
 }
 
 #include <divine/vm/heap.hpp>
-#include <divine/vm/dbg-node.hpp>
+#include <divine/dbg/node.hpp>
 
 namespace divine::t_vm
 {

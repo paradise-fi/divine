@@ -61,7 +61,7 @@ struct Stack
             return std::nullopt;
 
         DN other_top = _top;
-        other_top.address( vm::dbg::DNKind::Frame, int_frame );
+        other_top.address( dbg::DNKind::Frame, int_frame );
         return Stack( *_i, other_top );
     }
 

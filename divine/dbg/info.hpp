@@ -28,7 +28,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/DataLayout.h>
 DIVINE_UNRELAX_WARNINGS
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
 enum class Component
@@ -51,20 +51,20 @@ using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
 
 struct Info
 {
-    llvm::Function *function( CodePointer pc )
+    llvm::Function *function( vm::CodePointer pc )
     {
         return _funmap[ pc.function() ];
     }
 
-    std::pair< llvm::StringRef, int > fileline( CodePointer pc );
-    bool in_component( CodePointer pc, Components comp );
+    std::pair< llvm::StringRef, int > fileline( vm::CodePointer pc );
+    bool in_component( vm::CodePointer pc, Components comp );
 
-    auto find( llvm::Instruction *I, CodePointer pc )
-        -> std::pair< llvm::Instruction *, CodePointer >
+    auto find( llvm::Instruction *I, vm::CodePointer pc )
+        -> std::pair< llvm::Instruction *, vm::CodePointer >
     {
         llvm::Function *F = I ? I->getParent()->getParent() : function( pc );
 
-        CodePointer pcf = pc;
+        vm::CodePointer pcf = pc;
         if ( !pc.function() )
             pcf = _program._addr.code( F );
         pcf = _program.entry( pcf );
@@ -73,13 +73,13 @@ struct Info
         ASSERT( pcf.function() );
 
         /* no LLVM instruction corresponds to OpBB */
-        if ( pc.function() && ( _program.instruction( pc ).opcode == lx::OpBB ||
+        if ( pc.function() && ( _program.instruction( pc ).opcode == vm::lx::OpBB ||
                                 pc.instruction() < pcf.instruction() ) )
             return std::make_pair( nullptr, pc );
 
         for ( auto &BB : *F )
         {
-            ASSERT_EQ( _program.instruction( pcf ).opcode, lx::OpBB );
+            ASSERT_EQ( _program.instruction( pcf ).opcode, vm::lx::OpBB );
             pcf = pcf + 1;
             for ( auto it = BB.begin(); it != BB.end(); it = std::next( it ) )
             {
@@ -127,14 +127,14 @@ struct Info
     llvm::DITypeIdentifierMap _typemap;
     llvm::DataLayout _layout;
     llvm::Module *_module;
-    Program &_program;
+    vm::Program &_program;
     std::map< int, llvm::Function * > _funmap;
     std::map< llvm::DIType *, std::string > _typenamemap;
     std::map< std::string, std::string, StringLenCmp > _prettyNames;
 
-    Info( llvm::Module *m, Program &p ) : _layout( m ), _module( m ), _program( p )
+    Info( llvm::Module *m, vm::Program &p ) : _layout( m ), _module( m ), _program( p )
     {
-        CodePointer pc( 0, 0 );
+        vm::CodePointer pc( 0, 0 );
         for ( auto &f : *m )
         {
             if ( f.isDeclaration() )

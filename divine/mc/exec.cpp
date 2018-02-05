@@ -23,7 +23,7 @@
 
 #include <divine/vm/eval.tpp>
 #include <divine/vm/context.tpp>
-#include <divine/vm/dbg-stepper.tpp>
+#include <divine/dbg/stepper.tpp>
 
 namespace divine::mc
 {
@@ -50,5 +50,5 @@ void Run::run()
 
 }
 
-namespace divine::vm::dbg { template struct Stepper< mc::DbgRunContext >; }
+namespace divine::dbg { template struct Stepper< mc::DbgRunContext >; }
 namespace divine::vm      { template struct Eval<    mc::DbgRunContext >; }

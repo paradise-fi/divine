@@ -16,8 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/dbg-util.hpp>
-#include <divine/vm/dbg-dot.hpp>
+#include <divine/dbg/util.hpp>
+#include <divine/dbg/dot.hpp>
 #include <divine/sim/cli.hpp>
 #include <brick-proc>
 
@@ -316,7 +316,7 @@ void CLI::go( command::Setup set )
     for ( auto c : set.ignore_components )
         _ff_components |= c;
     if ( set.debug_everything )
-        _ff_components = vm::dbg::Components();
+        _ff_components = dbg::Components();
 }
 
 }

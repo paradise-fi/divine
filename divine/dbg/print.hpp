@@ -20,7 +20,7 @@
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/program.hpp>
-#include <divine/vm/dbg-info.hpp>
+#include <divine/dbg/info.hpp>
 #include <divine/rt/runtime.hpp>
 
 DIVINE_RELAX_WARNINGS
@@ -31,8 +31,10 @@ DIVINE_UNRELAX_WARNINGS
 #include <cxxabi.h>
 #include <brick-fs>
 
-namespace divine::vm::dbg::print
+namespace divine::dbg::print
 {
+
+namespace lx = vm::lx;
 
 std::string opcode( int );
 
@@ -76,14 +78,14 @@ static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
     {
         if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
         {
-            num2str << dbg.find( I, CodePointer() ).second.instruction();
+            num2str << dbg.find( I, vm::CodePointer() ).second.instruction();
             name = "%" + num2str.str();
         }
         else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
         {
             auto insn = B->begin();
             ASSERT( insn != B->end() );
-            num2str << dbg.find( &*insn, CodePointer() ).second.instruction() - 1;
+            num2str << dbg.find( &*insn, vm::CodePointer() ).second.instruction() - 1;
             name = B->getName().str();
             name = "label %" + ( name.empty() || name.size() > 20 ? num2str.str() : name );
         }
@@ -212,7 +214,7 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
 
     bool printres = true;
 
-    if ( insn.result().type != Program::Slot::Void )
+    if ( insn.result().type != lx::Slot::Void )
         out << value( dbg, eval, I, DisplayVal::Name ) << " = ";
     else
         printres = false;
@@ -287,7 +289,7 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
 }
 
 template< typename Heap >
-std::string raw( Heap &heap, HeapPointer hloc, int sz )
+std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
 {
     std::stringstream out;
 
@@ -327,7 +329,7 @@ static std::string demangle( std::string mangled )
 }
 
 template< typename Program, typename PP >
-static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &program, CodePointer pc,
+static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &program, vm::CodePointer pc,
                            PP postproc )
 {
     std::stringstream out;
@@ -343,7 +345,7 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
         ++ line, ++ lineno;
     unsigned endline = lineno;
 
-    CodePointer iter( pc.function(), 0 );
+    vm::CodePointer iter( pc.function(), 0 );
 
     /* figure out the source code span the function covers; painfully */
     for ( iter = program.nextpc( iter ); program.valid( iter ); iter = program.advance( iter ) )

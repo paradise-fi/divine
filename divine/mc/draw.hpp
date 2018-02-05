@@ -20,7 +20,7 @@
 
 #include <divine/mc/builder.hpp>
 #include <divine/vm/heap.hpp>
-#include <divine/vm/dbg-dot.hpp>
+#include <divine/dbg/dot.hpp>
 #include <brick-proc>
 
 namespace divine {
@@ -31,7 +31,7 @@ namespace {
 template< typename Builder >
 std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance, bool heap )
 {
-    vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
+    dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
     dbg.load( bld.context() );
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ) > dbg_eval( dbg );
@@ -84,9 +84,9 @@ std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance
             [&]( auto st )
             {
                 init( st );
-                vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
+                dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
                 dn._ref.get();
-                dn.address( vm::dbg::DNKind::Object, bld.context().get( _VM_CR_State ).pointer );
+                dn.address( dbg::DNKind::Object, bld.context().get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
                 str << ext( st ).seq << " [ style=filled fillcolor=gray ]" << std::endl;

@@ -19,7 +19,7 @@
 #include <divine/mc/liveness.hpp>
 #include <divine/mc/safety.hpp>
 #include <divine/mc/trace.hpp>
-#include <divine/vm/dbg-stepper.hpp>
+#include <divine/dbg/stepper.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/ui/sysinfo.hpp>
 
@@ -119,7 +119,7 @@ void Verify::safety()
     if ( safety->result() == mc::Result::Valid )
         return _log->result( safety->result(), mc::Trace() );
 
-    vm::dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
+    dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
     vm::setup::dbg_boot( dbg );
 
     _log->info( "\n" ); /* makes the output prettier */
@@ -138,10 +138,10 @@ void Verify::safety()
         dbg._lock = trace.steps.back();
         dbg._lock_mode = decltype( dbg )::LockBoth;
         vm::setup::scheduler( dbg );
-        using Stepper = vm::dbg::Stepper< decltype( dbg ) >;
+        using Stepper = dbg::Stepper< decltype( dbg ) >;
         Stepper step;
         step._stop_on_error = true;
-        step._ff_components = vm::dbg::Component::Kernel;
+        step._ff_components = dbg::Component::Kernel;
         step.run( dbg, Stepper::Quiet );
         _log->backtrace( dbg, _num_callers );
     }

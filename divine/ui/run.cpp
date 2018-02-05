@@ -19,7 +19,7 @@
 #include <divine/mc/exec.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/vm/setup.hpp>
-#include <divine/vm/dbg-stepper.hpp>
+#include <divine/dbg/stepper.hpp>
 
 namespace divine::ui
 {
@@ -34,9 +34,9 @@ void Run::run()
 
 void Run::trace()
 {
-    using Stepper = vm::dbg::Stepper< mc::DbgRunContext >;
+    using Stepper = dbg::Stepper< mc::DbgRunContext >;
     Stepper step;
-    step._ff_components = vm::dbg::Component::Kernel;
+    step._ff_components = dbg::Component::Kernel;
     step._booting = true;
 
     mc::DbgRunContext ctx( bitcode()->program(), bitcode()->debug() );

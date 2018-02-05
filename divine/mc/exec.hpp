@@ -20,7 +20,7 @@
 
 #include <random>
 #include <divine/vm/context.hpp>
-#include <divine/vm/dbg-context.hpp>
+#include <divine/dbg/context.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/heap.hpp>
 
@@ -68,7 +68,7 @@ struct RunContext_ : Super
 };
 
 using RunContext = RunContext_< vm::Context< vm::Program, vm::MutableHeap > >;
-using DbgRunContext = RunContext_< vm::dbg::Context< vm::MutableHeap > >;
+using DbgRunContext = RunContext_< dbg::Context< vm::MutableHeap > >;
 
 struct Run
 {

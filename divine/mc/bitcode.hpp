@@ -29,7 +29,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/clang.hpp>
-#include <divine/vm/dbg-info.hpp>
+#include <divine/dbg/info.hpp>
 #include <divine/smt/solver.hpp>
 
 namespace llvm { class Module; }
@@ -49,7 +49,7 @@ struct BitCode
     std::unique_ptr< llvm::Module > _module;   // _program depends on _module which depends on _ctx
     std::unique_ptr< vm::Program > _program;       // and they have to be destroyed in the right order
                                                // otherwise DIVINE will SEGV if exception is thrown
-    std::unique_ptr< vm::dbg::Info > _dbg;
+    std::unique_ptr< dbg::Info > _dbg;
 
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
@@ -67,7 +67,7 @@ struct BitCode
     }
 
     vm::Program &program() { ASSERT( _program.get() ); return *_program.get(); }
-    vm::dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
+    dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
 
     BitCode( std::string file );
     BitCode( std::unique_ptr< llvm::Module > m,

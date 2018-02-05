@@ -16,11 +16,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/dbg-print.hpp>
+#include <divine/dbg/print.hpp>
 
 using namespace std::literals;
 
-namespace divine::vm::dbg::print
+namespace divine::dbg::print
 {
 
 #define HANDLE_INST(num, opc, class) [num] = #opc ## s,

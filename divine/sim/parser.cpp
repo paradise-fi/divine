@@ -41,11 +41,11 @@ auto make_parser()
                 } )->
             add( "component", []( std::string s, auto good, auto bad )
                 {
-                    if ( s == "kernel" ) return good( vm::dbg::Component::Kernel );
-                    if ( s == "dios" ) return good( vm::dbg::Component::DiOS );
-                    if ( s == "libc" ) return good( vm::dbg::Component::LibC );
-                    if ( s == "libcxx" ) return good( vm::dbg::Component::LibCxx );
-                    if ( s == "libabstract" ) return good( vm::dbg::Component::LibAbstract );
+                    if ( s == "kernel" ) return good( dbg::Component::Kernel );
+                    if ( s == "dios" ) return good( dbg::Component::DiOS );
+                    if ( s == "libc" ) return good( dbg::Component::LibC );
+                    if ( s == "libcxx" ) return good( dbg::Component::LibCxx );
+                    if ( s == "libabstract" ) return good( dbg::Component::LibAbstract );
                     return bad( cmd::BadFormat, "unknown component" );
                 } );
 

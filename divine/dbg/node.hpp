@@ -23,15 +23,15 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IntrinsicInst.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <divine/vm/dbg-context.hpp>
-#include <divine/vm/dbg-print.hpp>
+#include <divine/dbg/context.hpp>
+#include <divine/dbg/print.hpp>
 #include <brick-string>
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
 enum class DNKind { Globals, Frame, Object };
-using DNKey = std::tuple< GenericPointer, int, DNKind, llvm::DIType * >;
+using DNKey = std::tuple< vm::GenericPointer, int, DNKind, llvm::DIType * >;
 
 static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 {
@@ -52,7 +52,7 @@ struct Node
 
     Context _ctx;
 
-    GenericPointer _address;
+    vm::GenericPointer _address;
     int _offset;
     Snapshot _snapshot;
     DNKind _kind;
@@ -60,7 +60,7 @@ struct Node
     brick::mem::RefCnt< typename Context::RefCnt > _ref;
 
     std::map< std::string, int > _related_count;
-    std::set< GenericPointer > _related_ptrs;
+    std::set< vm::GenericPointer > _related_ptrs;
 
     using YieldAttr = std::function< void( std::string, std::string ) >;
     using YieldDN   = std::function< void( std::string, Node< Program, Heap > ) >;
@@ -70,7 +70,7 @@ struct Node
     llvm::DIType *_di_type;
     llvm::DIVariable *_di_var;
 
-    using PointerV = value::Pointer;
+    using PointerV = vm::value::Pointer;
 
     void di_var( llvm::DIVariable *var )
     {
@@ -87,7 +87,7 @@ struct Node
     void type( llvm::Type *type ) { _type = type; }
 
     void offset( int off ) { _offset = off; }
-    void address( DNKind k, GenericPointer l, bool exec = false )
+    void address( DNKind k, vm::GenericPointer l, bool exec = false )
     {
         _address = l;
         _kind = k;
@@ -128,19 +128,19 @@ struct Node
     }
 
     DNKind kind() { return _kind; }
-    GenericPointer address() { return _address; }
+    vm::GenericPointer address() { return _address; }
     Snapshot snapshot() { return _snapshot; }
 
-    GenericPointer pc()
+    vm::GenericPointer pc()
     {
         ASSERT_EQ( kind(), DNKind::Frame );
         PointerV pc;
-        if ( boundcheck( PointerV( _address ), PointerBytes ) )
+        if ( boundcheck( PointerV( _address ), vm::PointerBytes ) )
             _ctx.heap().read( _address, pc );
         return pc.cooked();
     }
 
-    CodePointer active_pc()
+    vm::CodePointer active_pc()
     {
         if ( _executing )
             return _ctx.program().advance( pc() );
@@ -158,7 +158,7 @@ struct Node
     {
         auto addr = _address;
         if ( addr.heap() )
-            addr.type( PointerType::Heap );
+            addr.type( vm::PointerType::Heap );
         return std::make_tuple( addr, _offset, _kind,
                                 _kind == DNKind::Frame ? nullptr : _di_type );
     }
@@ -189,7 +189,7 @@ struct Node
     void components( YieldDN yield );
     void related( YieldDN yield, bool anon = true );
     Node related( std::string name );
-    void struct_fields( HeapPointer hloc, YieldDN yield );
+    void struct_fields( vm::HeapPointer hloc, YieldDN yield );
     void array_elements( YieldDN yield );
     void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
     void localvar( YieldDN yield, llvm::DbgValueInst *DDV );

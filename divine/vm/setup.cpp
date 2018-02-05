@@ -17,7 +17,7 @@
  */
 
 #include <divine/vm/setup.hpp>
-#include <divine/vm/dbg-context.hpp>
+#include <divine/dbg/context.hpp>
 #include <divine/vm/eval.hpp>
 
 namespace divine {

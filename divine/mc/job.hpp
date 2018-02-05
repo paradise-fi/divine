@@ -19,7 +19,7 @@
 #pragma once
 
 #include <divine/ss/search.hpp>
-#include <divine/vm/dbg-context.hpp>
+#include <divine/dbg/context.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/mc/trace.hpp>
 #include <brick-mem>
@@ -77,7 +77,7 @@ struct Job : ss::Job
     }
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;
-    using DbgCtx = vm::dbg::Context< vm::CowHeap >;
+    using DbgCtx = dbg::Context< vm::CowHeap >;
 
     virtual Trace ce_trace() { return Trace(); }
     virtual Result result() { return Result::None; }

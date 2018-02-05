@@ -16,9 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/dbg-info.hpp>
+#include <divine/dbg/info.hpp>
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
 std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
@@ -34,7 +34,7 @@ std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
     return std::make_pair( "", 0 );
 }
 
-std::pair< llvm::StringRef, int > Info::fileline( CodePointer pc )
+std::pair< llvm::StringRef, int > Info::fileline( vm::CodePointer pc )
 {
     auto npc = _program.nextpc( pc );
     auto op = find( nullptr, npc ).first;
@@ -53,7 +53,7 @@ std::string location( std::pair< llvm::StringRef, int > fl )
     return "(unknown location)";
 }
 
-bool Info::in_component( CodePointer pc, Components comp )
+bool Info::in_component( vm::CodePointer pc, Components comp )
 {
     auto file = fileline( pc ).first;
     using brick::string::startsWith;

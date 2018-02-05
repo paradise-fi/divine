@@ -19,14 +19,14 @@
 #pragma once
 
 #include <divine/vm/pointer.hpp>
-#include <divine/vm/dbg-info.hpp>
-#include <divine/vm/dbg-print.hpp>
+#include <divine/dbg/info.hpp>
+#include <divine/dbg/print.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/setup.hpp>
 #include <set>
 
-namespace divine::vm::dbg
+namespace divine::dbg
 {
 
 template< typename Context >
@@ -36,9 +36,9 @@ struct Stepper
     using Snapshot = typename Context::Heap::Snapshot;
     using YieldState = std::function< Snapshot( Snapshot ) >;
     using CallBack = std::function< bool() >;
-    using Breakpoint = std::function< bool( CodePointer, bool ) >;
+    using Breakpoint = std::function< bool( vm::CodePointer, bool ) >;
 
-    GenericPointer _frame, _frame_cur, _parent_cur;
+    vm::GenericPointer _frame, _frame_cur, _parent_cur;
     llvm::Instruction *_insn_last;
     Components _ff_components;
     bool _stop_on_fault, _stop_on_error, _booting, _break;
@@ -51,9 +51,9 @@ struct Stepper
     CallBack _callback;
 
     Stepper()
-        : _frame( nullPointer() ),
-          _frame_cur( nullPointer() ),
-          _parent_cur( nullPointer() ),
+        : _frame( vm::nullPointer() ),
+          _frame_cur( vm::nullPointer() ),
+          _parent_cur( vm::nullPointer() ),
           _insn_last( nullptr ),
           _stop_on_fault( false ), _stop_on_error( true ), _booting( false ),
           _sigint( false ),
@@ -66,7 +66,7 @@ struct Stepper
     void instructions( int i ) { _instructions.second = i; }
     void states( int s ) { _states.second = s; }
     void jumps( int j ) { _jumps.second = j; }
-    void frame( GenericPointer f ) { _frame = f; }
+    void frame( vm::GenericPointer f ) { _frame = f; }
     auto frame() { return _frame; }
 
     void add( std::pair< int, int > &p )
@@ -80,7 +80,7 @@ struct Stepper
         return p.second && p.first >= p.second;
     }
 
-    bool check_location( CodePointer pc, const llvm::Instruction *op )
+    bool check_location( vm::CodePointer pc, const llvm::Instruction *op )
     {
         bool dbg_changed = !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc();
 
@@ -98,7 +98,7 @@ struct Stepper
     }
 
     template< typename Eval >
-    bool check( Context &ctx, Eval &eval, CodePointer oldpc, bool moved )
+    bool check( Context &ctx, Eval &eval, vm::CodePointer oldpc, bool moved )
     {
         if ( moved && check_location( eval.pc(), ctx.debug().find( nullptr, oldpc ).first ) )
             return true;
@@ -119,13 +119,13 @@ struct Stepper
     void state() { add( _states ); }
 
     template< typename Heap >
-    void in_frame( GenericPointer next, Heap &heap )
+    void in_frame( vm::GenericPointer next, Heap &heap )
     {
-        GenericPointer last = _frame_cur, last_parent = _parent_cur;
-        value::Pointer next_parent;
+        vm::GenericPointer last = _frame_cur, last_parent = _parent_cur;
+        vm::value::Pointer next_parent;
 
         if ( !next.null() )
-            heap.read( next + PointerBytes, next_parent );
+            heap.read( next + vm::PointerBytes, next_parent );
 
         _frame_cur = next;
         _parent_cur = next_parent.cooked();
@@ -151,7 +151,7 @@ struct Stepper
         if ( _stop_on_error && ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error ) )
             return false; /* can't schedule if there is an error and we should stop */
 
-        if ( _booting && ctx.frame().null() && !setup::postboot_check( ctx ) )
+        if ( _booting && ctx.frame().null() && !vm::setup::postboot_check( ctx ) )
             return false; /* boot failed */
 
         if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )

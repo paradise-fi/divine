@@ -16,14 +16,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/eval.tpp>
-#include <divine/vm/dbg-context.hpp>
+#include <divine/dbg/stepper.tpp>
 
-namespace divine::vm
+namespace divine::dbg
 {
 
-template struct dbg::Context< MutableHeap >;
-template struct Eval< dbg::DNContext< CowHeap > >;
-template struct Eval< dbg::Context< CowHeap > >;
+template struct Stepper< dbg::Context< vm::CowHeap > >;
 
 }
