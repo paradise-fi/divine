@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/bitcode.hpp>
+#include <divine/mc/bitcode.hpp>
 #include <divine/vm/program.hpp>
 #include <lart/driver.h>
 #include <lart/support/util.h>
@@ -30,7 +30,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
 
-using namespace divine::vm;
+namespace divine::mc
+{
 
 BitCode::BitCode( std::string file )
 {
@@ -55,7 +56,7 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
     : _ctx( ctx ), _module( std::move( m ) )
 {
     ASSERT( _module.get() );
-    _program.reset( new Program( _module.get() ) );
+    _program.reset( new vm::Program( _module.get() ) );
 }
 
 
@@ -107,10 +108,10 @@ void BitCode::do_lart()
 void BitCode::do_rr()
 {
     auto mod = _module.get();
-    _program.reset( new Program( mod ) );
+    _program.reset( new vm::Program( mod ) );
     _program->setupRR();
     _program->computeRR();
-    _dbg.reset( new dbg::Info( _module.get(), *_program.get() ) );
+    _dbg.reset( new vm::dbg::Info( _module.get(), *_program.get() ) );
 }
 
 void BitCode::do_constants()
@@ -126,3 +127,5 @@ void BitCode::init()
 }
 
 BitCode::~BitCode() { }
+
+}

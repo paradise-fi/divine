@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <divine/vm/explore.hpp>
+#include <divine/mc/builder.hpp>
 #include <divine/vm/heap.hpp>
 #include <divine/vm/dbg-dot.hpp>
 #include <brick-proc>
@@ -28,17 +28,17 @@ namespace mc {
 
 namespace {
 
-template< typename Explore >
-std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int distance, bool heap )
+template< typename Builder >
+std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance, bool heap )
 {
     vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
-    dbg.load( ex.context() );
+    dbg.load( bld.context() );
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ) > dbg_eval( dbg );
     dbg_eval.run();
 
     struct ext_data { int seq; int distance; };
-    brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext_pool( ex.pool() );
+    brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext_pool( bld.pool() );
     int seq = 0;
 
     auto ext = [&]( auto st ) -> auto& { return *ext_pool.machinePointer< ext_data >( st.snap ); };
@@ -57,10 +57,10 @@ std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int dist
     std::stringstream str;
     str << "digraph { node [ fontname = Courier ] edge [ fontname = Courier ]\n";
 
-    ex.initials( [&]( auto st ) { init( st ); ext( st ).distance = 0; } );
+    bld.initials( [&]( auto st ) { init( st ); ext( st ).distance = 0; } );
 
     ss::search(
-        ss::Order::PseudoBFS, ex, 1, ss::listen(
+        ss::Order::PseudoBFS, bld, 1, ss::listen(
             [&]( auto f, auto t, auto l )
             {
                 init( f );
@@ -86,7 +86,7 @@ std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int dist
                 init( st );
                 vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
                 dn._ref.get();
-                dn.address( vm::dbg::DNKind::Object, ex.context().get( _VM_CR_State ).pointer );
+                dn.address( vm::dbg::DNKind::Object, bld.context().get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
                 str << ext( st ).seq << " [ style=filled fillcolor=gray ]" << std::endl;
@@ -103,25 +103,25 @@ std::string draw_impl( Explore & ex, std::shared_ptr< vm::BitCode > bc, int dist
 
 } // anonymous namespace
 
-std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap )
+std::string draw( std::shared_ptr< BitCode > bc, int distance, bool heap )
 {
     ASSERT( !bc->is_symbolic() );
-    vm::ExplicitExplore ex( bc );
-    ex.context().enable_debug();
-    ex.start();
-    return draw_impl( ex, bc, distance, heap );
+    ExplicitBuilder bld( bc );
+    bld.context().enable_debug();
+    bld.start();
+    return draw_impl( bld, bc, distance, heap );
 }
 
-template< typename Explore, template< typename > class SymbolicHasher >
-std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
-                  SymbolicHasher< typename Explore::Solver > *ctx = nullptr,
-                  typename Explore::Snapshot *initial = nullptr )
+template< typename Builder , template< typename > class SymbolicHasher >
+std::string draw( std::shared_ptr< BitCode > bc, int distance, bool heap,
+                  SymbolicHasher< typename Builder::Solver > *ctx = nullptr,
+                  typename Builder::Snapshot *initial = nullptr )
 {
-    Explore ex( bc );
-    ex.context().enable_debug();
+    Builder bld( bc );
+    bld.context().enable_debug();
     ASSERT( initial );
-    ex.start( *ctx, *initial );
-    return draw_impl( ex, bc, distance, heap );
+    bld.start( *ctx, *initial );
+    return draw_impl( bld, bc, distance, heap );
 }
 
 }

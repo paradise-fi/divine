@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <divine/vm/explore.hpp>
-#include <divine/vm/bitcode.hpp>
+#include <divine/mc/builder.hpp>
+#include <divine/mc/bitcode.hpp>
 #include <divine/vm/dbg-node.hpp>
 #include <divine/vm/dbg-util.hpp>
 #include <divine/ss/search.hpp>
@@ -30,7 +30,7 @@ namespace divine {
 namespace mc {
 
 template< typename BT, typename Fmt, typename Dbg >
-void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
+void backtrace( BT bt, Fmt fmt, Dbg &dbg, builder::Snapshot snap, int maxdepth = 10 )
 {
     vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
     dn._ref.get();

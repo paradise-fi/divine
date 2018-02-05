@@ -127,9 +127,9 @@ struct CLI : Interface
         auto tracepoints = []( std::string s, auto good, auto bad )
         {
             if ( s == "calls" )
-                return good( vm::AutoTrace::Calls );
+                return good( mc::AutoTrace::Calls );
             if ( s == "none" )
-                return good( vm::AutoTrace::Nothing );
+                return good( mc::AutoTrace::Nothing );
             return bad( cmd::BadContent, s + " is not a valid tracepoint specification" );
         };
 

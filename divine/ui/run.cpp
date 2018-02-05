@@ -16,29 +16,30 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/run.hpp>
+#include <divine/mc/exec.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/vm/setup.hpp>
 #include <divine/vm/dbg-stepper.hpp>
 
-namespace divine {
-namespace ui {
+namespace divine::ui
+{
 
-void Run::run() {
+void Run::run()
+{
     if ( _trace )
         trace();
     else
-        vm::Run( bitcode() ).run();
+        mc::Run( bitcode() ).run();
 }
 
 void Run::trace()
 {
-    using Stepper = vm::dbg::Stepper< vm::DbgRunContext >;
+    using Stepper = vm::dbg::Stepper< mc::DbgRunContext >;
     Stepper step;
     step._ff_components = vm::dbg::Component::Kernel;
     step._booting = true;
 
-    vm::DbgRunContext ctx( bitcode()->program(), bitcode()->debug() );
+    mc::DbgRunContext ctx( bitcode()->program(), bitcode()->debug() );
     vm::setup::boot( ctx );
 
     auto mainpc = bitcode()->program().functionByName( "main" );
@@ -55,5 +56,4 @@ void Run::trace()
     step.run(ctx, Stepper::Verbosity::Quiet);
 }
 
-}
 }

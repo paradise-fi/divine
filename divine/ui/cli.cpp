@@ -19,8 +19,8 @@
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/parser.hpp>
-#include <divine/vm/bitcode.hpp>
-#include <divine/vm/run.hpp>
+#include <divine/mc/bitcode.hpp>
+#include <divine/mc/exec.hpp>
 #include <divine/vm/vmutil.h>
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
@@ -114,7 +114,7 @@ std::string noPrefixChange( const std::string& s ) {
 
 template < typename MountPath, typename See, typename Seen, typename Count, typename Limit >
 bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
-    Limit limit, vm::BitCode::Env& env, const std::string& oPath )
+    Limit limit, mc::BitCode::Env& env, const std::string& oPath )
 {
     auto stat = brick::fs::lstat( oPath );
     auto cont = readContent( oPath, *stat );
@@ -266,7 +266,7 @@ void WithBC::setup()
     auto magicuc = reinterpret_cast< const unsigned char * >( magic.data() );
 
     if ( magic.size() == 4 && llvm::isBitcode( magicuc, magicuc + magic.size() ) )
-        _bc = std::make_shared< vm::BitCode >( _file );
+        _bc = std::make_shared< mc::BitCode >( _file );
     else if ( cc::Compiler::typeFromFile( _file ) != cc::Compiler::FileType::Unknown )
     {
         cc::Options ccopt;
@@ -274,7 +274,7 @@ void WithBC::setup()
 
         driver.setupFS( rt::each );
         driver.runCC( _ccopts_final );
-        _bc = std::make_shared< vm::BitCode >(
+        _bc = std::make_shared< mc::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
             driver.context() );
     } else

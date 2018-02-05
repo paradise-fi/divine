@@ -20,7 +20,7 @@
 #pragma once
 
 #include <divine/mc/job.hpp>
-#include <divine/vm/explore.hpp>
+#include <divine/mc/builder.hpp>
 #include <divine/mc/trace.hpp>
 
 namespace divine {
@@ -160,10 +160,10 @@ struct NestedDFS : ss::Job
     void stop() override {}
 };
 
-template< typename Next, typename Explore = vm::ExplicitExplore >
+template< typename Next, typename Builder_ = ExplicitBuilder >
 struct Liveness : Job
 {
-    using Builder = Explore;
+    using Builder = Builder_;
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
     using MasterPool = typename vm::CowHeap::SnapPool;
     using SlavePool = brick::mem::SlavePool< MasterPool >;
@@ -175,7 +175,7 @@ struct Liveness : Job
 
     bool _error_found;
 
-    Liveness( vm::explore::BC bc, Next next )
+    Liveness( builder::BC bc, Next next )
         : _ex( bc ),
           _ext( _ex.pool() ),
           _next( next ),
@@ -187,7 +187,7 @@ struct Liveness : Job
     void start( int threads ) override
     {
         auto found = [&]( auto ){ _error_found = true; };
-        using NDFS = NestedDFS< decltype( found ), Explore >;
+        using NDFS = NestedDFS< decltype( found ), Builder >;
 
         _search.reset( new NDFS( _ex, found ) ); //Builder, Next
         NDFS *search = dynamic_cast< NDFS * >( _search.get() );

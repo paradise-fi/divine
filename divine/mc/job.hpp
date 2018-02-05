@@ -87,17 +87,18 @@ struct Job : ss::Job
 };
 
 template< template< typename, typename > class Job_, typename Next >
-std::shared_ptr< Job > make_job( vm::explore::BC bc, Next next )
+std::shared_ptr< Job > make_job( builder::BC bc, Next next )
 {
-    if ( bc->is_symbolic() ) {
+    if ( bc->is_symbolic() )
+    {
         auto solver = bc->solver();
         if ( solver == "z3" )
-            return std::make_shared< Job_< Next, vm::Z3Explore > >( bc, next );
+            return std::make_shared< Job_< Next, mc::Z3Builder > >( bc, next );
         else if ( solver == "boolector" )
-            return std::make_shared< Job_< Next, vm::BoolectorExplore > >( bc, next );
-        UNREACHABLE( "Using unsupported solver." );
+            return std::make_shared< Job_< Next, mc::BoolectorBuilder > >( bc, next );
+        UNREACHABLE( "Unsupported solver." );
     }
-    return std::make_shared< Job_< Next, vm::ExplicitExplore > >( bc, next );
+    return std::make_shared< Job_< Next, mc::ExplicitBuilder > >( bc, next );
 }
 
 }

@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <divine/vm/bitcode.hpp>
+#include <divine/mc/bitcode.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/sim/trace.hpp>
 
@@ -69,7 +69,7 @@ struct WithBC : Command
     std::vector< std::vector< std::string > > _ccOpts;
     std::vector< VfsDir > _vfs;
     size_t _vfsSizeLimit;
-    vm::AutoTraceFlags _autotrace;
+    mc::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
     bool _symbolic = false, _sequential = false;
     std::string _solver = "z3";
@@ -77,7 +77,7 @@ struct WithBC : Command
     SinkPtr _log = nullsink();
     std::string _relaxed;
 
-    vm::BitCode::Env _bc_env;
+    mc::BitCode::Env _bc_env;
     std::vector< std::string > _ccopts_final;
 
     virtual void process_options();
@@ -85,7 +85,7 @@ struct WithBC : Command
     void setup();
     void init();
 
-    std::shared_ptr< vm::BitCode > bitcode()
+    std::shared_ptr< mc::BitCode > bitcode()
     {
         if ( !_init_done )
             init();
@@ -96,7 +96,7 @@ struct WithBC : Command
     WithBC() : _vfsSizeLimit( 16 * 1024 * 1024 ) {}
 
 private:
-    std::shared_ptr< vm::BitCode > _bc;
+    std::shared_ptr< mc::BitCode > _bc;
 };
 
 struct Help

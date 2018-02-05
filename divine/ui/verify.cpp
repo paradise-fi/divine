@@ -91,7 +91,7 @@ void Verify::run()
 
 void Verify::safety()
 {
-    vm::explore::State error;
+    mc::builder::State error;
 
     if ( !_threads )
         _threads = std::min( 4u, std::thread::hardware_concurrency() );

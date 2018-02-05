@@ -18,48 +18,46 @@
 
 #pragma once
 
+#include <divine/mc/bitcode.hpp>
+#include <divine/smt/solver.hpp>
+#include <divine/vm/value.hpp>
 #include <divine/vm/heap.hpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/setup.hpp>
 #include <divine/vm/eval.hpp>
-#include <divine/vm/bitcode.hpp>
-#include <divine/smt/solver.hpp>
 #include <divine/ss/search.hpp> /* unit tests */
 
 #include <set>
 #include <memory>
 
-namespace divine {
-namespace vm {
+namespace divine::mc::builder
+{
 
 using namespace std::literals;
-namespace hashset = brick::hashset;
-
-namespace explore {
+using Snapshot = vm::CowHeap::Snapshot;
 
 struct State
 {
-    CowHeap::Snapshot snap;
+    Snapshot snap;
     bool operator==( const State& o ) const { return snap.intptr() == o.snap.intptr(); }
 };
 
-struct Context : vm::Context< Program, CowHeap >
+struct Context : vm::Context< vm::Program, vm::CowHeap >
 {
-    using Super = vm::Context< Program, CowHeap >;
-    using Program = Program;
+    using Super = vm::Context< vm::Program, vm::CowHeap >;
     using MemMap = Super::MemMap;
     struct Critical { MemMap loads, stores; };
 
     std::vector< std::string > _trace;
     std::string _info;
-    std::vector< Choice > _stack;
-    std::deque< Choice > _lock;
-    HeapPointer _assume;
-    GenericPointer _tid;
-    std::unordered_map< GenericPointer, Critical > _critical;
+    std::vector< vm::Choice > _stack;
+    std::deque< vm::Choice > _lock;
+    vm::HeapPointer _assume;
+    vm::GenericPointer _tid;
+    std::unordered_map< vm::GenericPointer, Critical > _critical;
     int _level;
 
-    Context( Program &p ) : Super( p ), _level( 0 ) {}
+    Context( vm::Program &p ) : Super( p ), _level( 0 ) {}
 
     template< typename I >
     int choose( int count, I, I )
@@ -86,14 +84,14 @@ struct Context : vm::Context< Program, CowHeap >
 
     using Super::trace;
 
-    void trace( TraceSchedInfo ) {} /* noop */
-    void trace( TraceSchedChoice ) {} /* noop */
-    void trace( TraceStateType ) {}
-    void trace( TraceTypeAlias ) {}
+    void trace( vm::TraceSchedInfo ) {} /* noop */
+    void trace( vm::TraceSchedChoice ) {} /* noop */
+    void trace( vm::TraceStateType ) {}
+    void trace( vm::TraceTypeAlias ) {}
 
     void trace( std::string s ) { _trace.push_back( s ); }
-    void trace( TraceDebugPersist t ) { Super::trace( t ); }
-    void trace( TraceAssume ta ) { _assume = ta.ptr; }
+    void trace( vm::TraceDebugPersist t ) { Super::trace( t ); }
+    void trace( vm::TraceAssume ta ) { _assume = ta.ptr; }
 
     void swap_critical()
     {
@@ -103,7 +101,7 @@ struct Context : vm::Context< Program, CowHeap >
         swap( _mem_stores, _critical[ _tid ].stores );
     }
 
-    void trace( TraceTaskID tid )
+    void trace( vm::TraceTaskID tid )
     {
         ASSERT( _tid.null() );
         ASSERT( _mem_loads.empty() );
@@ -112,7 +110,7 @@ struct Context : vm::Context< Program, CowHeap >
         swap_critical();
     }
 
-    void trace( TraceInfo ti )
+    void trace( vm::TraceInfo ti )
     {
         _info += heap().read_string( ti.text ) + "\n";
     }
@@ -121,27 +119,25 @@ struct Context : vm::Context< Program, CowHeap >
     {
         if ( !_tid.null() )
             swap_critical();
-        _stack.resize( _level, Choice( 0, -1 ) );
+        _stack.resize( _level, vm::Choice( 0, -1 ) );
         _level = 0;
-        _tid = GenericPointer();
+        _tid = vm::GenericPointer();
         _trace.clear();
-        _assume = HeapPointer();
+        _assume = vm::HeapPointer();
         while ( !_stack.empty() && _stack.back().taken + 1 == _stack.back().total )
             _stack.pop_back();
         return _stack.empty();
     }
 };
 
-using Snapshot = CowHeap::Snapshot;
-
 template< typename Solver >
 struct Hasher_
 {
-    mutable CowHeap _h1, _h2;
-    HeapPointer _root;
+    mutable vm::CowHeap _h1, _h2;
+    vm::HeapPointer _root;
     Solver *_solver = nullptr;
 
-    void setup( const CowHeap &heap, Solver &solver )
+    void setup( const vm::CowHeap &heap, Solver &solver )
     {
         _h1 = heap;
         _h2 = heap;
@@ -163,7 +159,7 @@ struct Hasher_
         if ( equal_fastpath( a, b ) )
             return true;
         else
-            return heap::compare( _h1, _h2, _root, _root ) == 0;
+            return vm::heap::compare( _h1, _h2, _root, _root ) == 0;
     }
 
     bool equal_symbolic( Snapshot a, Snapshot b ) const
@@ -171,16 +167,16 @@ struct Hasher_
         if ( equal_fastpath( a, b ) )
             return true;
 
-        std::vector< std::pair< HeapPointer, HeapPointer > > sym_pairs;
+        std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > > sym_pairs;
 
-        auto extract = [&]( HeapPointer a, HeapPointer b )
+        auto extract = [&]( vm::HeapPointer a, vm::HeapPointer b )
         {
-            a.type( PointerType::Weak ); // unmark pointers so they are equal to their
-            b.type( PointerType::Weak ); // weak equivalents inside the formula
+            a.type( vm::PointerType::Weak ); // unmark pointers so they are equal to their
+            b.type( vm::PointerType::Weak ); // weak equivalents inside the formula
             sym_pairs.emplace_back( a, b );
         };
 
-        if ( heap::compare( _h1, _h2, _root, _root, extract ) != 0 )
+        if ( vm::heap::compare( _h1, _h2, _root, _root, extract ) != 0 )
             return false;
 
         if ( sym_pairs.empty() )
@@ -193,7 +189,7 @@ struct Hasher_
     brick::hash::hash128_t hash( Snapshot s ) const
     {
         _h1.restore( s );
-        return heap::hash( _h1, _root );
+        return vm::heap::hash( _h1, _root );
     }
 };
 
@@ -211,26 +207,31 @@ struct Hasher< smt::NoSolver > : Hasher_< smt::NoSolver >
 
 using BC = std::shared_ptr< BitCode >;
 
-} // namespace explore
+}
+
+namespace divine::mc
+{
+
+namespace hashset = brick::hashset;
 
 template< typename Solver >
-struct Explore
+struct Builder
 {
-    using PointerV = value::Pointer;
-    using Context = explore::Context;
+    using PointerV = vm::value::Pointer;
+    using Context = builder::Context;
     using Eval = vm::Eval< Context >;
-    using Hasher = explore::Hasher< Solver >;
+    using Hasher = builder::Hasher< Solver >;
 
-    using BC = explore::BC;
+    using BC = builder::BC;
     using Env = std::vector< std::string >;
-    using State = explore::State;
-    using Snapshot = CowHeap::Snapshot;
+    using State = builder::State;
+    using Snapshot = vm::CowHeap::Snapshot;
 
     struct Label : brick::types::Ord
     {
         std::vector< std::string > trace;
-        std::vector< Choice > stack;
-        std::vector< Interrupt > interrupts;
+        std::vector< vm::Choice > stack;
+        std::vector< vm::Interrupt > interrupts;
         bool accepting:1;
         bool error:1;
         auto as_tuple() const
@@ -250,7 +251,7 @@ struct Explore
         BC bc;
         Context ctx;
         HT states;
-        explore::State initial;
+        builder::State initial;
         Solver solver;
 
         bool overwrite = false;
@@ -272,13 +273,13 @@ struct Explore
     Context &context() { return _d.ctx; }
     void enable_overwrite() { _d.overwrite = true; }
 
-    Explore( const Explore &e ) : _d( e._d )
+    Builder( const Builder &e ) : _d( e._d )
     {
         _d.states.hasher.setup( context().heap(), _d.solver );
     }
 
     template< typename... Args >
-    Explore( BC bc, Args && ... args ) : _d( bc, args... )
+    Builder( BC bc, Args && ... args ) : _d( bc, args... )
     {
         _d.states.hasher.setup( context().heap(), _d.solver );
     }
@@ -299,12 +300,12 @@ struct Explore
     void start()
     {
         Eval eval( context() );
-        setup::boot( context() );
+        vm::setup::boot( context() );
         context().track_memory( false );
         eval.run();
         _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
 
-        if ( setup::postboot_check( context() ) )
+        if ( vm::setup::postboot_check( context() ) )
             _d.initial.snap = *store( context().snapshot() );
         _d.states.updateUsage();
         if ( !context().finished() )
@@ -353,7 +354,7 @@ struct Explore
     }
 
     template< typename Y >
-    void edges( explore::State from, Y yield )
+    void edges( builder::State from, Y yield )
     {
         Eval eval( context() );
         ASSERT_EQ( context()._level, 0 );
@@ -364,11 +365,11 @@ struct Explore
 
         struct Check
         {
-            std::deque< Choice > lock;
+            std::deque< vm::Choice > lock;
             Label lbl;
             Snapshot snap;
             bool free:1, feasible:1;
-            GenericPointer tid;
+            vm::GenericPointer tid;
             Check() : free( false ), feasible( true ) {}
         };
 
@@ -376,7 +377,7 @@ struct Explore
 
         auto do_yield = [&]( Snapshot snap, Label lbl )
         {
-            explore::State st;
+            builder::State st;
             auto r = store( snap );
             st.snap = *r;
 
@@ -397,7 +398,7 @@ struct Explore
 
         do {
             context().load( from.snap );
-            setup::scheduler( context() );
+            vm::setup::scheduler( context() );
             ASSERT_EQ( context()._level, 0 );
 
             to_check.emplace_back();
@@ -454,7 +455,7 @@ struct Explore
                 ASSERT_EQ( context()._level, 0 );
                 context()._crit_loads = l;
                 context()._crit_stores = s;
-                setup::scheduler( context() );
+                vm::setup::scheduler( context() );
 
                 do_eval( tc );
                 ASSERT_EQ( tc.tid, context()._tid );
@@ -485,13 +486,14 @@ struct Explore
     }
 };
 
-using ExplicitExplore = Explore< smt::NoSolver >;
-using Z3Explore = Explore< smt::Z3Solver >;
-using BoolectorExplore = Explore< smt::BoolectorSMTLib >;
+using ExplicitBuilder = Builder< smt::NoSolver >;
+using Z3Builder = Builder< smt::Z3Solver >;
+using BoolectorBuilder = Builder< smt::BoolectorSMTLib >;
 
-} // namespace vm
+}
 
-namespace t_vm {
+namespace divine::t_mc
+{
 
 using namespace std::literals;
 
@@ -499,7 +501,7 @@ namespace {
 
 auto prog( std::string p )
 {
-    return c2bc(
+    return t_vm::c2bc(
         "void *__vm_obj_make( int );"s +
         "void *__vm_control( int, ... );"s +
         "int __vm_choose( int, ... );"s +
@@ -523,27 +525,27 @@ auto prog_int( std::string first, std::string next )
 
 }
 
-struct TestExplore
+struct TestBuilder
 {
     TEST(instance)
     {
         auto bc = prog( "void __boot( void *e ) { __vm_control( 2, 7, 0b10000ull, 0b10000ull ); }" );
-        vm::ExplicitExplore ex( bc );
+        mc::ExplicitBuilder ex( bc );
     }
 
     TEST(simple)
     {
         auto bc = prog_int( "4", "*r - 1" );
-        vm::ExplicitExplore ex( bc );
+        mc::ExplicitBuilder ex( bc );
         bool found = false;
         ex.start();
         ex.initials( [&]( auto ) { found = true; } );
         ASSERT( found );
     }
 
-    void _search( std::shared_ptr< vm::BitCode > bc, int sc, int ec )
+    void _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
     {
-        vm::ExplicitExplore ex( bc );
+        mc::ExplicitBuilder ex( bc );
         int edgecount = 0, statecount = 0;
         ex.start();
         ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
@@ -567,7 +569,5 @@ struct TestExplore
         _search( prog_int( "0", "( *r + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 );
     }
 };
-
-}
 
 }

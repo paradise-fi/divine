@@ -20,22 +20,21 @@
 #pragma once
 
 #include <divine/mc/job.hpp>
-#include <divine/vm/explore.hpp>
+#include <divine/mc/builder.hpp>
 #include <divine/mc/trace.hpp>
 
 namespace divine {
 namespace mc {
 
-template< typename Next, typename Explore = vm::ExplicitExplore >
+template< typename Next, typename Builder = ExplicitBuilder >
 struct Safety : Job
 {
-    using Builder = Explore;
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
     using MasterPool = typename vm::CowHeap::SnapPool;
     using SlavePool = brick::mem::SlavePool< MasterPool >;
-    using StateTrace = mc::StateTrace< Explore >;
+    using StateTrace = mc::StateTrace< Builder >;
 
-    Explore _ex;
+    Builder _ex;
     SlavePool _ext;
     Next _next;
 
@@ -68,7 +67,7 @@ struct Safety : Job
                 [&]( auto st ) { return _next.state( st ); } ) );
     }
 
-    Safety( vm::explore::BC bc, Next next )
+    Safety( builder::BC bc, Next next )
         : _ex( bc ),
           _ext( _ex.pool() ),
           _next( next ),
@@ -141,7 +140,7 @@ struct TestSafety
 {
     TEST( simple )
     {
-        auto bc = t_vm::prog_int( "4", "*r - 1" );
+        auto bc = prog_int( "4", "*r - 1" );
         int edgecount = 0, statecount = 0;
         auto safe = mc::make_job< mc::Safety >(
             bc, ss::passive_listen(

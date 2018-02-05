@@ -24,7 +24,7 @@
 #include <divine/vm/program.hpp>
 #include <divine/vm/heap.hpp>
 
-namespace divine::vm
+namespace divine::mc
 {
 
 struct BitCode;
@@ -47,7 +47,7 @@ struct RunContext_ : Super
     void doublefault()
     {
         std::cerr << "E: Double fault, program terminated." << std::endl;
-        this->set( _VM_CR_Frame, nullPointer() );
+        this->set( _VM_CR_Frame, vm::nullPointer() );
         this->ref( _VM_CR_Flags ).integer |= _VM_CF_Cancel;
     }
 
@@ -61,14 +61,14 @@ struct RunContext_ : Super
         std::cout << this->heap().read_string( ti.text ) << std::endl;
     }
     void trace( vm::TraceAssume ) {}
-    void trace( TraceTypeAlias ) {}
-    void trace( TraceTaskID ) {}
-    void trace( TraceDebugPersist ) {} /* noop, since snapshots are not
-                                        * restored here */
+    void trace( vm::TraceTypeAlias ) {}
+    void trace( vm::TraceTaskID ) {}
+    void trace( vm::TraceDebugPersist ) {} /* noop, since snapshots are not
+                                            * restored here */
 };
 
-using RunContext = RunContext_< vm::Context< Program, MutableHeap > >;
-using DbgRunContext = RunContext_< dbg::Context< MutableHeap > >;
+using RunContext = RunContext_< vm::Context< vm::Program, vm::MutableHeap > >;
+using DbgRunContext = RunContext_< vm::dbg::Context< vm::MutableHeap > >;
 
 struct Run
 {

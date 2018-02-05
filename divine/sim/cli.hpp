@@ -18,10 +18,10 @@
 
 #include <divine/sim/command.hpp>
 
-#include <divine/vm/bitcode.hpp>
+#include <divine/mc/bitcode.hpp>
+#include <divine/mc/builder.hpp>
 #include <divine/vm/heap.hpp>
 #include <divine/vm/program.hpp>
-#include <divine/vm/explore.hpp>
 #include <divine/vm/dbg-stepper.hpp>
 #include <divine/vm/dbg-context.hpp>
 #include <divine/vm/dbg-node.hpp>
@@ -41,7 +41,7 @@ namespace dbg = vm::dbg;
 
 using Context = dbg::Context< vm::CowHeap >;
 using DN = dbg::Node< vm::Program, vm::CowHeap >;
-using BC = std::shared_ptr< vm::BitCode >;
+using BC = std::shared_ptr< mc::BitCode >;
 using PointerV = Context::PointerV;
 using Stepper = dbg::Stepper< Context >;
 using RefCnt = brick::mem::RefCnt< typename Context::RefCnt >;
@@ -81,7 +81,7 @@ struct CLI
     std::map< Snapshot, RefCnt > _state_refs;
     std::map< Snapshot, std::string > _state_names;
     std::map< Snapshot, vm::Step > _trace;
-    vm::ExplicitExplore _explore;
+    mc::ExplicitBuilder _explore;
 
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
