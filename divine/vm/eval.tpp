@@ -166,20 +166,20 @@ void Eval< Ctx >::switchBB( CodePointer target )
 
     each_phi( target, [&]( auto &i )
                 {
-                    size += i.result().size();
+                    size += brick::bitlevel::align( i.result().size(), 4 );
                     ++ count;
                 } );
     auto tmp = makeobj( size ), tgt = tmp;
     each_phi( target, [&]( auto &i )
                 {
                     heap().copy( s2ptr( i.operand( idx ) ), tgt.cooked(), i.result().size() );
-                    heap().skip( tgt, i.result().size() );
+                    heap().skip( tgt, brick::bitlevel::align( i.result().size(), 4 ) );
                 } );
     tgt = tmp;
     each_phi( target, [&]( auto &i )
                 {
                     slot_copy( tgt.cooked(), i.result(), i.result().size() );
-                    heap().skip( tgt, i.result().size() );
+                    heap().skip( tgt, brick::bitlevel::align( i.result().size(), 4 ) );
                 } );
 
     freeobj( tmp.cooked() );
