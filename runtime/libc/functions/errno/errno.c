@@ -1,20 +1,15 @@
-/* _PDCLIB_errno
-
-   This file is part of the Public Domain C Library (PDCLib).
-   Permission is granted to use, modify, and / or redistribute at will.
+/*
+ * The name '__errno_location' is for glibc compatibility.
 */
 
 #include <errno.h>
+#include <dios.h>
 #ifndef REGTEST
 #include <threads.h>
 
-/* Temporary */
-
-static int _PDCLIB_errno = 0;
-
-int * _PDCLIB_errno_func()
+void *__errno_location()
 {
-    return &_PDCLIB_errno;
+    return __dios_get_errno();
 }
 
 #endif
@@ -34,4 +29,3 @@ int main( void )
 }
 
 #endif
-

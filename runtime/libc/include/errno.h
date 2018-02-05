@@ -18,8 +18,8 @@
 #else
 
 _PDCLIB_EXTERN_C
-extern int * _PDCLIB_errno_func( void );
-#define errno (*_PDCLIB_errno_func())
+extern int *__errno_location (void) __attribute__ ((__const__));
+#define errno (*__errno_location ())
 _PDCLIB_EXTERN_END
 
 #endif

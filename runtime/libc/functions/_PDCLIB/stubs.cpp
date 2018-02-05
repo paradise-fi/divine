@@ -53,7 +53,6 @@ void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_
 int issetugid( void ) NOT_IMPLEMENTED;
 
 void *dlsym( void *, void * ) NOT_IMPLEMENTED;
-void *__errno_location() NOT_IMPLEMENTED;
 
 int mbtowc( wchar_t *, const char *s, size_t )
 {
