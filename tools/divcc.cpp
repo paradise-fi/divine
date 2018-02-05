@@ -305,6 +305,8 @@ int main( int argc, char **argv )
                 if ( po.outputFile != "" ) ofn += ".temp";
                 ofn += ".o";
 
+                if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
+                    ofn = ifn;
                 objFiles.emplace_back( ifn, ofn );
             }
         }
