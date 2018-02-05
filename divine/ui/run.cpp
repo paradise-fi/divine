@@ -29,17 +29,17 @@ void Run::run()
     if ( _trace )
         trace();
     else
-        mc::Run( bitcode() ).run();
+        mc::Exec( bitcode() ).run();
 }
 
 void Run::trace()
 {
-    using Stepper = dbg::Stepper< mc::DbgRunContext >;
+    using Stepper = dbg::Stepper< mc::TraceContext >;
     Stepper step;
     step._ff_components = dbg::Component::Kernel;
     step._booting = true;
 
-    mc::DbgRunContext ctx( bitcode()->program(), bitcode()->debug() );
+    mc::TraceContext ctx( bitcode()->program(), bitcode()->debug() );
     vm::setup::boot( ctx );
 
     auto mainpc = bitcode()->program().functionByName( "main" );

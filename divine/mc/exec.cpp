@@ -28,11 +28,11 @@
 namespace divine::mc
 {
 
-void Run::run()
+void Exec::run()
 {
-    using Eval = vm::Eval< RunContext >;
+    using Eval = vm::Eval< ExecContext >;
     auto &program = _bc->program();
-    RunContext _ctx( program );
+    ExecContext _ctx( program );
     Eval eval( _ctx );
 
     vm::setup::boot( _ctx );
@@ -50,5 +50,5 @@ void Run::run()
 
 }
 
-namespace divine::dbg { template struct Stepper< mc::DbgRunContext >; }
-namespace divine::vm      { template struct Eval<    mc::DbgRunContext >; }
+namespace divine::dbg { template struct Stepper< mc::TraceContext >; }
+namespace divine::vm  { template struct Eval<    mc::TraceContext >; }

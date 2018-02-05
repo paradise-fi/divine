@@ -30,7 +30,7 @@ namespace divine::mc
 struct BitCode;
 
 template< typename Super >
-struct RunContext_ : Super
+struct ExecContext_ : Super
 {
     std::mt19937 _rand;
     using Super::Super;
@@ -67,15 +67,15 @@ struct RunContext_ : Super
                                             * restored here */
 };
 
-using RunContext = RunContext_< vm::Context< vm::Program, vm::MutableHeap > >;
-using DbgRunContext = RunContext_< dbg::Context< vm::MutableHeap > >;
+using ExecContext = ExecContext_< vm::Context< vm::Program, vm::MutableHeap > >;
+using TraceContext = ExecContext_< dbg::Context< vm::MutableHeap > >;
 
-struct Run
+struct Exec
 {
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
     BC _bc;
-    Run( BC bc ) : _bc( bc ) {}
+    Exec( BC bc ) : _bc( bc ) {}
     void run();
 };
 
