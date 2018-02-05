@@ -203,25 +203,6 @@ struct Cc : Command
     void run();
 };
 
-struct DivineCc : Command
-{
-    void run() override;
-
-    std::string _output;
-    bool _dontLink = false, _splitCompilation = false;
-    std::vector< std::string > _flags;
-    std::vector< std::string > _libPaths;
-};
-
-struct DivineLd : Command
-{
-    void run() override;
-
-    std::string _output;
-    bool _incremental = false, _merge = false;
-    std::vector< std::string > _flags;
-};
-
 struct Info   : Run
 {
     Info() {
