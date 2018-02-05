@@ -21,6 +21,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Object/IRObjectFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -39,7 +40,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <iostream>
 #include <sys/wait.h>
 
-static const std::string bcsec = ".llvm_bc";
+static const std::string bcsec = ".llvmbc";
 
 using namespace divine;
 using namespace llvm;
@@ -218,21 +219,8 @@ int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc
         ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( file.second );
         if ( !buf ) return 1;
 
-        ErrorOr< std::unique_ptr< llvm::object::ObjectFile > > fil =
-                object::ObjectFile::createObjectFile( (*buf.get()).getMemBufferRef() );
-        if ( !fil ) return 2;
-
-        for ( auto& sec : (fil.get())->sections() )
-        {
-            StringRef name, content;
-            sec.getName( name );
-            if ( name == bcsec )
-            {
-                sec.getContents( content );
-                llvm_modules.push_back( clang.materializeModule( content ) );
-                break;
-            }
-        }
+        auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
+        llvm_modules.emplace_back( std::move( llvm::parseBitcodeFile( bc.get(), *clang.context().get()).get() ) );
     }
 
     ASSERT( !llvm_modules.empty() );
@@ -320,7 +308,7 @@ int main( int argc, char **argv )
             for ( auto file : objFiles )
             {
                 if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
-                    continue; // TODO: missing .llvm section
+                    continue;
                 auto mod = clang.compileModule( file.first, po.opts );
                 emitObjFile( *mod, file.second );
             }
@@ -336,7 +324,6 @@ int main( int argc, char **argv )
                 if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                 {
                     s += file.first + " ";
-                    // TODO: missing .llvm section
                     continue;
                 }
                 std::string ofn = file.second;
