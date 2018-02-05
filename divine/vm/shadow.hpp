@@ -767,21 +767,27 @@ struct PooledShadow
     template< typename FromSh >
     void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz )
     {
-        if ( sz >= 4 && sz % 4 == 0 && from.offset % 4 == to.offset % 4 )
+        if ( sz == 0 )
+            return;
+
+        ASSERT_LT( 0, sz );
+
+        auto _ty_from = from_sh._type.template machinePointer< uint8_t >( from.object );
+        auto _def_from = from_sh._defined.template machinePointer< uint8_t >( from.object );
+
+        auto _ty_to = _type.template machinePointer< uint8_t >( to.object );
+        auto _def_to = _defined.template machinePointer< uint8_t >( to.object );
+
+        int off = 0;
+
+        if ( sz >= 4 && from.offset % 4 == to.offset % 4 )
         {
             ASSERT_EQ( from.offset % 4, 0 );
 
-            auto _ty_from = from_sh._type.template machinePointer< uint8_t >( from.object );
-            auto _def_from = from_sh._defined.template machinePointer< uint8_t >( from.object );
-
-            auto _ty_to = _type.template machinePointer< uint8_t >( to.object );
-            auto _def_to = _defined.template machinePointer< uint8_t >( to.object );
-
-            int off = 0;
-            for ( ; off < sz; off += 4 )
+            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             {
                 auto st_from = TypeProxy( _ty_from, from.offset + off ).get();
-                bool was_exc = TypeProxy( _ty_to, to.offset + off ).is_exception();
+                auto st_to = TypeProxy( _ty_to, to.offset + off ).get();
 
                 uint8_t shadow_word_from = BitProxy( _def_from, from.offset + off ).word();
                 uint8_t shadow_shift_from = ( from.offset + off ) % 8;
@@ -797,29 +803,56 @@ struct PooledShadow
                 if ( st_from == ShadowType::DataException )
                     _exceptions->set( to.object, to.offset + off,
                             from_sh._exceptions->at( from.object, from.offset + off ) );
-                else if ( was_exc )
+                else if ( st_to == ShadowType::DataException )
                     _exceptions->invalidate( to.object, to.offset + off );
 
                 TypeProxy( _ty_to, to.offset + off ).set( st_from );
             }
         }
-        else
+
+        if ( off < sz ) // unaligned and tail of aligned copy
         {
-            auto from_type = from_sh.type( from, sz );
-            auto to_type = type( to, sz );
-            auto from_type_it = from_type.begin();
-            auto to_type_it = to_type.begin();
-            while ( from_type_it < from_type.end() )
+            uint8_t current_def_from[ 4 ];
+            uint8_t current_def_to[ 4 ];
+
+            int off_from = from.offset + off,
+                off_to = to.offset + off;
+            bool def_written = false;
+
+            if ( off_from % 4 )
+                from_sh._read_def( current_def_from, _def_from, _ty_from, from.object,
+                        bitlevel::downalign( off_from, 4 ) );
+            if ( off_to % 4 )
+                _read_def( current_def_to, _def_to, _ty_to, to.object,
+                        bitlevel::downalign( off_to, 4 ) );
+
+            while ( off < sz )
             {
-                if ( ! to_type_it->is_exception() && ! from_type_it->is_exception() )
-                    *to_type_it = *from_type_it;
-                to_type_it += 4;
-                from_type_it += 4;
+                if ( off_from % 4 == 0 )
+                    from_sh._read_def( current_def_from, _def_from, _ty_from, from.object, off_from );
+                if ( off_to % 4 == 0 )
+                {
+                    if ( sz - off < 4 )
+                        _read_def( current_def_to, _def_to, _ty_to, to.object, off_to );
+                    def_written = false;
+                }
+
+                current_def_to[ off_to % 4 ] = current_def_from[ off_from % 4 ];
+
+                ++off;
+                ++off_from;
+                ++off_to;
+
+                if ( off_to % 4 == 0 )
+                {
+                    _write_def( current_def_to, _def_to, _ty_to, to.object, off_to - 4 );
+                    def_written = true;
+                }
             }
 
-            auto from_def = from_sh.defined( from, sz );
-            auto to_def = defined( to, sz );
-            std::copy( from_def.begin(), from_def.end(), to_def.begin() );
+            if ( ! def_written )
+                _write_def( current_def_to, _def_to, _ty_to, to.object,
+                        bitlevel::downalign( off_to, 4 ) );
         }
     }
 
