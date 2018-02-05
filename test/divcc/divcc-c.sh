@@ -19,6 +19,6 @@ if [ -s a.out ] || ! [ -s a.o ] || ! [ -s b.o ];
     then false;
 fi
 
-if ! objdump -h a.o | grep .llvm_bc || ! objdump -h b.o | grep .llvm_bc;
+if ! objdump -h a.o | grep .llvmbc || ! objdump -h b.o | grep .llvmbc;
     then false;
 fi
