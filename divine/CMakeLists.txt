@@ -68,7 +68,7 @@ if ( OPT_SQL )
     target_link_libraries( divine-ui nanodbc )
 endif()
 
-target_link_libraries( test-divine divine-cc divine-vm divine-ltl )
+target_link_libraries( test-divine divine-cc divine-vm divine-ltl divine-dbg divine-mc )
 
 if( WIN32 )
   target_link_libraries( libdivine psapi )
