@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D vm ss mc ui cc ltl sim smt )
+foreach( D vm ss mc ui cc ltl sim smt dbg )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -33,18 +33,16 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-add_library( divine-cc ${CPP_cc} )
-add_library( divine-ltl ${CPP_ltl} )
 # add_library( divine-ss ${CPP_ss} )
-# add_library( divine-mc ${CPP_mc} )
 add_library( divine-ui ${CPP_ui} ${VERSION_FILE} ${VERSION_FILE}.check "flags-generated.cpp" )
-add_library( divine-smt ${CPP_smt} )
-add_library( divine-vm ${CPP_vm} )
+foreach( D cc ltl mc smt vm dbg )
+  add_library( divine-${D} ${CPP_${D}} )
+endforeach()
 
 if ( OPT_SIM )
   stringify( doc ${divine_SOURCE_DIR}/doc manual/sim.md )
   add_library( divine-sim ${CPP_sim} ${doc_FILES} )
-  target_link_libraries( divine-sim ${LIBEDIT} ${LIBTINFO} divine-vm )
+  target_link_libraries( divine-sim ${LIBEDIT} ${LIBTINFO} divine-dbg )
   target_link_libraries( divine-ui divine-sim )
 endif()
 
@@ -61,9 +59,10 @@ target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject clang clangBasic clangCodeGen )
 target_link_libraries( divine-smt ${Z3_LIBRARIES} )
-target_link_libraries( divine-vm liblart divine-rt divine-cc divine-smt ) # FIXME divine-cc
-target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker )
-target_link_libraries( divine-ui divine-rt divine-cc divine-vm )
+target_link_libraries( divine-dbg divine-vm )
+target_link_libraries( divine-mc divine-vm divine-dbg divine-smt divine-rt divine-cc # FIXME divine-cc
+                                 liblart LLVMBitReader LLVMBitWriter LLVMLinker )
+target_link_libraries( divine-ui divine-rt divine-cc divine-mc )
 
 if ( OPT_SQL )
     target_link_libraries( divine-ui nanodbc )
