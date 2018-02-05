@@ -20,7 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#include "src/GitSHA1.h"
+#include <cryptoms/GitSHA1.h>
+
 const char* get_version_sha1()
 {
     static const char myversion_sha1[] = "@GIT_SHA1@";
