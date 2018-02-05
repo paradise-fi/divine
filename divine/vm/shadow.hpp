@@ -112,8 +112,12 @@ struct DataException
     uint8_t valid : 1;
 
     bool bitmask_is_trivial() const {
+        return bitmask_is_trivial( bitmask );
+    }
+
+    static bool bitmask_is_trivial( const uint8_t *m ) {
         for ( int i = 0; i < 4; ++i )
-            if ( bitmask[ i ] != 0x00 && bitmask[ i ] != 0xff )
+            if ( m[ i ] != 0x00 && m[ i ] != 0xff )
                 return false;
         return true;
     }
@@ -223,6 +227,30 @@ struct PooledShadow
             _dataexc[ Loc( obj, wpos ) ] = exc;
         }
 
+        void set( Internal obj, int wpos, const uint8_t *mask )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+            auto & exc = _dataexc[ Loc( obj, wpos ) ];
+            std::copy( mask, mask + 4, exc.bitmask );
+            exc.valid = true;
+        }
+
+        void get( Internal obj, int wpos, uint8_t *mask_dst )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+
+            auto it = _dataexc.find( Loc( obj, wpos ) );
+
+            ASSERT( it != _dataexc.end() );
+            ASSERT( it->second.valid );
+
+            std::copy( it->second.bitmask, it->second.bitmask + 4, mask_dst );
+        }
+
         /** Which bits of 'pos'th byte in pool object 'obj' are initialized */
         uint8_t defined( Internal obj, int pos )
         {
@@ -286,7 +314,13 @@ struct PooledShadow
             ASSERT_EQ( wpos % 4, 0 );
 
             Lock lk( _mtx );
-            _dataexc[ Loc( obj, wpos ) ].valid = false;
+
+            auto it = _dataexc.find( Loc( obj, wpos ) );
+
+            ASSERT( it != _dataexc.end() );
+            ASSERT( it->second.valid );
+
+            it->second.valid = false;
         }
 
         void free( Internal obj )
@@ -663,71 +697,23 @@ struct PooledShadow
 
         _def_mask = value.defbits();
 
-
-        DataException current_exc;
-
         int off = 0;
 
         if ( sz >= 4 )
-        {
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
-            {
-                bool was_exc = TypeProxy( _ty, l.offset + off ).is_exception();
-
-                uint8_t shadow_word = BitProxy( _def, l.offset + off ).word();
-                uint8_t shadow_mask = BitProxy( _def, l.offset + off ).mask();
-                for ( int i = 0; i < 4; ++i )
-                {
-                    shadow_word &= ~shadow_mask;
-                    shadow_word |= ( _def_bytes[ off + i ] == 0xff ? shadow_mask : 0x00 );
-                    shadow_mask >>= 1;
-                }
-
-                BitProxy( _def, l.offset + off ).word() = shadow_word;
-                std::copy( _def_bytes + off, _def_bytes + off + 4, current_exc.bitmask );
-
-                current_exc.valid = ! current_exc.bitmask_is_trivial();
-                TypeProxy( _ty, l.offset + off ) = current_exc.valid ? ShadowType::DataException
-                                                                     : ShadowType::Data;
-                if ( current_exc.valid )
-                    _exceptions->set( obj, l.offset + off, current_exc );
-                else if ( was_exc )
-                    _exceptions->invalidate( obj, l.offset + off );
-            }
-        }
+                _write_def( _def_bytes + off, _def, _ty, obj, l.offset + off );
 
         if ( sz % 4 )
         {
+            uint8_t tail_def[4];
             auto tail_off = bitlevel::downalign( l.offset + off, 4 );
-            bool was_exc = TypeProxy( _ty, tail_off ).is_exception();
-            if ( was_exc )
-                current_exc = _exceptions->at( obj, tail_off );
-            else
-                Exceptions::set_word_definedness( current_exc.bitmask,
-                        BitProxy( _def, tail_off ).word(), l.offset + off );
+
+            _read_def( tail_def, _def, _ty, obj, tail_off );
 
             std::copy( _def_bytes + off, _def_bytes + sz,
-                    current_exc.bitmask + ( ( l.offset + off ) % 4 ) );
+                    tail_def + ( ( l.offset + off ) % 4 ) );
 
-            uint8_t shadow_word = BitProxy( _def, tail_off ).word();
-            uint8_t shadow_mask = BitProxy( _def, l.offset + off ).mask();
-
-            for ( ; off < sz; ++off )
-            {
-                shadow_word &= ~shadow_mask;
-                shadow_word |= ( _def_bytes[ off ] == 0xff ? shadow_mask : 0x00 );
-                shadow_mask >>= 1;
-            }
-
-            BitProxy( _def, tail_off ).word() = shadow_word;
-
-            current_exc.valid = ! current_exc.bitmask_is_trivial();
-            TypeProxy( _ty, tail_off ) = current_exc.valid ? ShadowType::DataException
-                                                           : ShadowType::Data;
-            if ( current_exc.valid )
-                _exceptions->set( obj, tail_off, current_exc );
-            else if ( was_exc )
-                _exceptions->invalidate( obj, tail_off );
+            _write_def( tail_def, _def, _ty, obj, tail_off );
         }
 
         if ( sz == PointerBytes )
@@ -761,34 +747,8 @@ struct PooledShadow
         int off = 0;
 
         if ( sz >= 4 )
-        {
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
-            {
-                auto st = TypeProxy( _ty, l.offset + off ).get();
-                if ( st == ShadowType::DataException )
-                {
-                    auto exc = _exceptions->at( obj, l.offset + off );
-                    std::copy( exc.bitmask, exc.bitmask + 4, _def_bytes + off );
-                }
-                else if ( st == ShadowType::Pointer )
-                {
-                    for ( int i = 0; i < 4; ++i )
-                    {
-                        _def_bytes[ off + i ] = 0xff;
-                    }
-                }
-                else
-                {
-                    uint8_t shadow_word = BitProxy( _def, l.offset + off ).word();
-                    uint8_t shadow_mask = BitProxy( _def, l.offset + off ).mask();
-                    for ( int i = 0; i < 4; ++i )
-                    {
-                        _def_bytes[ off + i ] = ( shadow_word & shadow_mask ) ? 0xff : 0x00;
-                        shadow_mask >>= 1;
-                    }
-                }
-            }
-        }
+                _read_def( _def_bytes + off, _def, _ty, obj, l.offset + off );
 
         if ( sz % 4 )
         {
@@ -802,7 +762,6 @@ struct PooledShadow
 
         if ( sz == PointerBytes )
             value.pointer( TypeProxy( _ty, l.offset + 4 ) == ShadowType::Pointer );
-
     }
 
     template< typename FromSh >
@@ -865,6 +824,61 @@ struct PooledShadow
     }
 
     void copy( Loc from, Loc to, int sz ) { return copy( *this, from, to, sz ); }
+
+    void _read_def( uint8_t *dst, uint8_t *_def, uint8_t *_ty, Internal obj, int off )
+    {
+        ASSERT_EQ( off % 4, 0 );
+
+        auto st = TypeProxy( _ty, off ).get();
+        if ( st == ShadowType::DataException )
+            _exceptions->get( obj, off, dst );
+        else if ( st == ShadowType::Pointer )
+        {
+            for ( int i = 0; i < 4; ++i )
+                dst[ i ] = 0xff;
+        }
+        else
+        {
+            uint8_t shadow_word = BitProxy( _def, off ).word();
+            uint8_t shadow_mask = BitProxy( _def, off ).mask();
+            ASSERT_EQ( shadow_mask & 0x77, 0x00 );
+            ASSERT( shadow_mask );
+
+            for ( int i = 0; i < 4; ++i )
+            {
+                dst[ i ] = ( shadow_word & shadow_mask ) ? 0xff : 0x00;
+                shadow_mask >>= 1;
+            }
+        }
+    }
+
+    void _write_def( uint8_t *src, uint8_t *_def, uint8_t *_ty, Internal obj, int off )
+    {
+        ASSERT_EQ( off % 4, 0 );
+
+        bool was_exc = TypeProxy( _ty, off ).is_exception();
+
+        uint8_t shadow_word = BitProxy( _def, off ).word();
+        uint8_t shadow_mask = BitProxy( _def, off ).mask();
+        ASSERT_EQ( shadow_mask & 0x77, 0x00 );
+        ASSERT( shadow_mask );
+
+        for ( int i = 0; i < 4; ++i )
+        {
+            shadow_word &= ~shadow_mask;
+            shadow_word |= ( src[ i ] == 0xff ? shadow_mask : 0x00 );
+            shadow_mask >>= 1;
+        }
+        BitProxy( _def, off ).word() = shadow_word;
+
+        bool is_exc = ! DataException::bitmask_is_trivial( src );
+        TypeProxy( _ty, off ) = is_exc ? ShadowType::DataException : ShadowType::Data;
+
+        if ( is_exc )
+            _exceptions->set( obj, off, src );
+        else if ( was_exc )
+            _exceptions->invalidate( obj, off );
+    }
 
     void dump( std::string what, Loc l, int sz )
     {
