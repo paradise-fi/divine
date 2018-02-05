@@ -1,6 +1,7 @@
 #include <divine/cc/clang.hpp>
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
+#include <divine/vm/xg-code.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include "llvm/Target/TargetMachine.h"
@@ -236,6 +237,13 @@ int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc
     compil->linkLibs( cc::Compile::defaultDIVINELibs );
 
     auto m = compil->getLinked();
+
+    for( auto& func : *m )
+        if( func.isDeclaration() && vm::xg::hypercall( &func ) == vm::lx::NotHypercall )
+        {
+            std::cerr << "symbol undefined: " << func.getName().str() << std::endl;
+            return 1;
+        }
     brick::llvm::writeModule( m, "linked.bc" );
 
     return 0;
@@ -313,7 +321,6 @@ int main( int argc, char **argv )
                 emitObjFile( *mod, file.second );
             }
 
-            llvmExtract( objFiles, clang );
             return 0;
         }
         else
@@ -338,7 +345,8 @@ int main( int argc, char **argv )
             ret = WEXITSTATUS( system( s.c_str() ) );
         }
 
-        llvmExtract( objFiles, clang );
+        if ( llvmExtract( objFiles, clang ) )
+            return 1;
 
         for ( auto file : objFiles )
         {
