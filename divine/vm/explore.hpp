@@ -386,9 +386,10 @@ struct Explore
         auto do_eval = [&]( Check &tc )
         {
             bool cont = false;
-            while ( ( cont = eval.run_seq( cont ) ) && ( tc.feasible = feasible() ) );
-            if ( tc.feasible )
+            do {
+                cont = eval.run_seq( cont );
                 tc.feasible = feasible();
+            } while ( cont && tc.feasible );
         };
 
         context().track_memory( true );
