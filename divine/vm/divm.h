@@ -129,15 +129,15 @@ enum _VM_Fault
 
 enum _VM_Trace
 {
-    _VM_T_Text,        /* takes one const char * parameter */
-    _VM_T_SchedChoice, /* takes one void * parameter */
-    _VM_T_SchedInfo,   /* takes two integer parameters */
-    _VM_T_TaskID,      /* takes one void * parameter */
-    _VM_T_StateType,   /* takes one pointer parameter */
-    _VM_T_Info,        /* takes one const char * parameter - a line of YAML */
-    _VM_T_Assume,      /* takes one weak pointer */
-    _VM_T_TypeAlias,   /* takes one pointer and one const char * parameter and creates a type alias */
-    _VM_T_DebugPersist /* takes two pointers, one void ** and one weak void * */
+    _VM_T_Text,        /* ( const char *text ) */
+    _VM_T_SchedChoice, /* ( void *info ) */
+    _VM_T_SchedInfo,   /* ( int pid, int tid ) */
+    _VM_T_TaskID,      /* ( void *id ) */
+    _VM_T_StateType,   /* ( void *state ) */
+    _VM_T_Info,        /* ( const char *yaml ) */
+    _VM_T_Assume,      /* ( weak void *path_condition ) */
+    _VM_T_TypeAlias,   /* ( void *, const char * ): create a type alias */
+    _VM_T_DebugPersist /* ( void **, weak void * ) */
 };
 
 enum _VM_ControlAction
