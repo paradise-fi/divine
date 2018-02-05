@@ -67,6 +67,7 @@ time_t time( time_t * timer ) _PDCLIB_nothrow;
 int timespec_get( struct timespec * ts, int base ) _PDCLIB_nothrow;
 
 char * asctime( const struct tm * timeptr ) _PDCLIB_nothrow;
+char * asctime_r( const struct tm *timeptr, char *buf ) _PDCLIB_nothrow;
 
 char * ctime( const time_t * timer ) _PDCLIB_nothrow;
 

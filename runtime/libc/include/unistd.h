@@ -103,6 +103,7 @@ pid_t getpgrp( void );
 pid_t setsid( void );
 int setpgrp( void );
 int setpgid( pid_t pid, pid_t pgid );
+int issetugid( void );
 
 int fsync( int fd );
 int fdatasync( int fd );
