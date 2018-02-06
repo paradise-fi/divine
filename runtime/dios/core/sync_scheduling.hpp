@@ -19,6 +19,7 @@ struct SyncScheduler : public Scheduler< Next >
         s.proc1->pid = 1;
 
         _yield = false;
+        _die = false;
 
         _setupTask.reset(
             new_object < Task >( s.pool->get(), s.pool->get(), _start_synchronous, 0, s.proc1 ) );
@@ -58,7 +59,7 @@ struct SyncScheduler : public Scheduler< Next >
     template < typename Context >
     __attribute__(( __always_inline__ )) static bool runTask( Context& ctx, Task& t ) noexcept {
         using Sys = Syscall< Context >;
-        while ( t._frame ) {
+        while ( !ctx._die && t._frame ) {
             __vm_control( _VM_CA_Set, _VM_CR_User2,
                 reinterpret_cast< int64_t >( t.getId() ) );
             auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
@@ -69,17 +70,19 @@ struct SyncScheduler : public Scheduler< Next >
             auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
             __vm_control( _VM_CA_Set, _VM_CR_User1, ctx.debug );
 
-            if ( syscall )
+            if ( syscall ) {
                  Sys::handle( ctx, *syscall );
-
-            if ( uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _DiOS_CF_Reschedule )
-            {
-                if ( !ctx._yield )
-                    continue;
-                __dios_assert_v( !ctx._setupTask, "Cannot yield in setup" );
-                ctx._yield = false;
-                return false;
+                 __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
             }
+
+            if ( ctx._die )
+                return true;
+            if ( !ctx._yield )
+                continue;
+
+            __dios_assert_v( !ctx._setupTask, "Cannot yield in setup" );
+            ctx._yield = false;
+            return false;
         }
         return true;
     }
@@ -91,18 +94,20 @@ struct SyncScheduler : public Scheduler< Next >
 
         __vm_control( _VM_CA_Set, _VM_CR_User1, scheduler.debug );
 
-        scheduler.traceTasks();
         if ( scheduler._setupTask ) {
             runTask( scheduler, *scheduler._setupTask );
             scheduler._setupTask.reset( nullptr );
             return;
         }
 
-        for ( auto& t : scheduler.tasks ) {
-            while ( true ) {
+        for ( int i = 0; !scheduler._die && i < scheduler.tasks.size(); i++ ) {
+            auto& t = scheduler.tasks[ i ];
+            scheduler._yield = false;
+            while ( !scheduler._die ) {
                 bool done = runTask( scheduler, *t );
-                if ( !done )
+                if ( !done || scheduler._die ) {
                     break;
+                }
                 t->setupFrame();
             }
         }
@@ -110,12 +115,20 @@ struct SyncScheduler : public Scheduler< Next >
         scheduler.runMonitors();
         if ( scheduler.tasks.empty() ) {
             scheduler.finalize();
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+            if ( !scheduler._die )
+                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
         }
+        if ( scheduler._die )
+            scheduler._die = false;
+    }
+
+    void die() noexcept {
+        _die = true;
+        Scheduler< Next >::die();
     }
 
     std::unique_ptr< Task > _setupTask;
-    bool _yield;
+    bool _yield, _die;
 };
 
 } // namespace __dios
