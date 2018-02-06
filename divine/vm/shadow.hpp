@@ -113,6 +113,9 @@ struct DataException
     bool valid() const { return bitmask_word != 0; }
     void invalidate() { bitmask_word = 0; }
 
+    bool operator==( const DataException &o ) const { return bitmask_word == o.bitmask_word; }
+    bool operator!=( const DataException &o ) const { return bitmask_word != o.bitmask_word; }
+
     bool bitmask_is_trivial() const {
         return bitmask_is_trivial( bitmask );
     }
@@ -654,17 +657,19 @@ struct PooledShadow
             return false;
 
         for ( int off = sz - sz % 8; off < sz; off ++ )
-            if ( typename DefinedC::proxy( nullptr, _def_a, nullptr, off ).raw() !=
-                 typename DefinedC::proxy( nullptr, _def_b, nullptr, off ).raw() )
+            if ( BitProxy( _def_a, off ) != BitProxy( _def_b, off ) )
                 return false;
 
-        auto t = type( a, sz ); /* identical to b's types, too */
+        int off = 0;
+        for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
+            if ( TypeProxy( _ty_a, off ) == ShadowType::DataException
+                    && _exceptions->at( a.object, off ) != _exceptions->at( b.object, off ) )
+                return false;
 
-        for ( int off = 0; off < sz; off += 4 )
-            if ( t[ off ] == ShadowType::DataException )
-                for ( int i = off; i < std::min( sz, off + 4 ); ++i )
-                    if ( _exceptions->defined( a.object, i ) != _exceptions->defined( b.object, i ) )
-                        return false;
+        if ( off < sz && TypeProxy( _ty_a, off ) == ShadowType::DataException )
+            for ( ; off < sz; ++off )
+                if ( _exceptions->defined( a.object, off ) != _exceptions->defined( b.object, off ) )
+                    return false;
 
         return true;
     }
