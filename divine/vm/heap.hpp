@@ -247,15 +247,8 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
         ASSERT_EQ( root.object(), result.object() );
     auto result_i = t.ptr2i( result );
     visited.emplace( root, result );
-    auto fb = f.unsafe_bytes( root, root_i ), tb = t.unsafe_bytes( result, result_i );
-    auto fd = f.defined( root );
-    auto td = t.defined( result );
 
-    for ( int i  = 0; i < f.size( root ); ++i ) /* TODO speed */
-    {
-        tb[ i ] = fb[ i ];
-        td[ i ] = fd[ i ];
-    }
+    t.copy( f, root, result, f.size( root ) );
 
     for ( auto pos : f.pointers( root ) )
     {
