@@ -109,7 +109,9 @@ struct DataException
         uint8_t bitmask[ 4 ];
         uint32_t bitmask_word;
     };
-    uint8_t valid : 1;
+
+    bool valid() const { return bitmask_word != 0; }
+    void invalidate() { bitmask_word = 0; }
 
     bool bitmask_is_trivial() const {
         return bitmask_is_trivial( bitmask );
@@ -125,7 +127,7 @@ struct DataException
 
 inline std::ostream &operator<<( std::ostream &o, const DataException &e )
 {
-    if ( !e.valid )
+    if ( ! e.valid() )
     {
         o << "INVALID ";
     }
@@ -215,7 +217,7 @@ struct PooledShadow
 
             auto it = _dataexc.find( Loc( obj, wpos ) );
             ASSERT( it != _dataexc.end() );
-            ASSERT( it->second.valid );
+            ASSERT( it->second.valid() );
             return it->second;
         }
 
@@ -234,7 +236,6 @@ struct PooledShadow
             Lock lk( _mtx );
             auto & exc = _dataexc[ Loc( obj, wpos ) ];
             std::copy( mask, mask + 4, exc.bitmask );
-            exc.valid = true;
         }
 
         void get( Internal obj, int wpos, uint8_t *mask_dst )
@@ -246,7 +247,7 @@ struct PooledShadow
             auto it = _dataexc.find( Loc( obj, wpos ) );
 
             ASSERT( it != _dataexc.end() );
-            ASSERT( it->second.valid );
+            ASSERT( it->second.valid() );
 
             std::copy( it->second.bitmask, it->second.bitmask + 4, mask_dst );
         }
@@ -258,7 +259,7 @@ struct PooledShadow
 
             int wpos = ( pos / 4 ) * 4;
             auto it = _dataexc.find( Loc( obj, wpos ) );
-            if ( it != _dataexc.end() && it->second.valid )
+            if ( it != _dataexc.end() && it->second.valid() )
             {
                 return it->second.bitmask[ pos % 4 ];
             }
@@ -278,35 +279,31 @@ struct PooledShadow
             bool exc_exists = it != _dataexc.end();
             bool def_trivial = def == 0x00 || def == 0xff;
 
-            ASSERT( ( exc_exists && it->second.valid ) == exc_should_exist );
+            ASSERT( ( exc_exists && it->second.valid() ) == exc_should_exist );
 
-            if ( def_trivial && (! exc_exists || ! it->second.valid) )
+            if ( def_trivial && (! exc_exists || ! it->second.valid()) )
                 return false;
 
             if ( ! exc_exists )
             {
                 // Create new data exception
                 DataException e;
-                e.valid = false;
+                e.invalidate();
                 it = _dataexc.insert( std::make_pair( Loc( obj, wpos ), e )).first;
             }
 
             auto & exc = it->second;
 
-            if ( ! exc.valid )
-            {
-                // Load current state
+            if ( ! exc.valid() )
                 set_word_definedness( exc.bitmask, shword, wpos );
-                exc.valid = true;
-            }
 
             exc.bitmask[ pos % 4 ] = def;
 
             // Check whether the exception is needed
             if ( def_trivial && exc_exists && exc.bitmask_is_trivial() )
-                exc.valid = false;
+                exc.invalidate();
 
-            return exc.valid;
+            return exc.valid();
         }
 
         void invalidate( Internal obj, int wpos )
@@ -318,9 +315,9 @@ struct PooledShadow
             auto it = _dataexc.find( Loc( obj, wpos ) );
 
             ASSERT( it != _dataexc.end() );
-            ASSERT( it->second.valid );
+            ASSERT( it->second.valid() );
 
-            it->second.valid = false;
+            it->second.invalidate();
         }
 
         void free( Internal obj )
@@ -331,7 +328,7 @@ struct PooledShadow
             auto ub = _dataexc.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
             while (lb != ub)
             {
-                lb->second.valid = false;
+                lb->second.invalidate();
                 ++lb;
             }
         }
