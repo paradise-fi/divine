@@ -20,21 +20,29 @@
 # error "Never include <bits/stat.h> directly; use <sys/stat.h> instead."
 #endif
 
+#include <stdint.h>
+#include <time.h>
+
 struct stat
-  {
-    dev_t st_dev;			/* Device.  */
-    ino_t st_ino;			/* File serial number.	*/
-    mode_t st_mode;			/* File mode.  */
-    nlink_t st_nlink;			/* Link count.  */
-    uid_t st_uid;			/* User ID of the file's owner.	*/
-    gid_t st_gid;			/* Group ID of the file's group.*/
-    dev_t st_rdev;			/* Device number, if device.  */
-    off_t st_size;			/* Size of file, in bytes.  */
-    blksize_t st_blksize;		/* Optimal block size for I/O.  */
-    blkcnt_t st_blocks;		/* Number 512-byte blocks allocated. */
-    int st_atime;
-    int st_mtime;
-    int st_ctime;
+{
+    dev_t st_dev;                   /* Device. */
+    ino_t st_ino;                   /* File serial number. */
+    nlink_t st_nlink;               /* Link count. */
+    mode_t st_mode;                 /* File mode. */
+    uid_t st_uid;                   /* User ID of the file's owner. */
+    gid_t st_gid;                   /* Group ID of the file's group. */
+    int __pad0;
+    dev_t st_rdev;                  /* Device number, if device. */
+    off_t st_size;                  /* Size of file, in bytes. */
+    blksize_t st_blksize;           /* Optimal block size for I/O. */
+    blkcnt_t st_blocks;             /* Number 512-byte blocks allocated. */
+    struct timespec st_atim;
+    struct timespec st_mtim;
+    struct timespec st_ctim;
+# define st_atime st_atim.tv_sec    /* Backward compatibility.  */
+# define st_mtime st_mtim.tv_sec
+# define st_ctime st_ctim.tv_sec
+    int64_t __glibc_reserved[3];
 };
 
 // ToDo: Implement statfs properly

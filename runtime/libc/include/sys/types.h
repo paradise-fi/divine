@@ -24,12 +24,12 @@ typedef __int64_t           off64_t;
 
 typedef __uint32_t          mode_t;
 
-typedef __uint32_t          dev_t;
-typedef __uint32_t          ino_t;
+typedef __uint64_t          dev_t;
+typedef __uint64_t          ino_t;
 
-typedef __uint32_t          nlink_t;
-typedef __uint32_t          blksize_t;
-typedef __uint32_t          blkcnt_t;
+typedef __uint64_t          nlink_t;
+typedef __uint64_t          blksize_t;
+typedef __uint64_t          blkcnt_t;
 
 /* Convenience types.  */
 typedef __u_char            u_char;
