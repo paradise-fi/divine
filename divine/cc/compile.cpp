@@ -275,6 +275,12 @@ void Compile::linkLib( std::string lib, std::vector< std::string > searchPaths )
     linker->linkArchive( archive );
 }
 
+void Compile::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context )
+{
+    auto archive = brick::llvm::ArchiveReader( std::move( buf ), context );
+    linker->linkArchive( archive );
+}
+
 void Compile::linkEntireArchive( std::string arch ) {
         auto archive = getLib( arch );
         auto modules = archive.modules();
