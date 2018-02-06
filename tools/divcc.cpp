@@ -207,7 +207,6 @@ int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc
 {
     using FileType = cc::Compiler::FileType;
     using namespace brick::types;
-    std::vector< std::unique_ptr< llvm::Module > > llvm_modules;
     std::unique_ptr< cc::Compile > compil = std::unique_ptr< cc::Compile >( new cc::Compile( clang.context() ) );
     compil->setupFS( rt::each );
 
@@ -215,22 +214,21 @@ int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc
     {
         if ( !isType( file.second, FileType::Obj ) && !isType( file.second, FileType::Archive ) )
             continue;
-        //TODO archives made of many objects
 
         ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( file.second );
         if ( !buf ) return 1;
 
+        if ( isType( file.second, FileType::Archive ) )
+        {
+            compil->linkArchive( std::move( buf.get() ) , clang.context() );
+            continue;
+        }
+
         auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
-        llvm_modules.emplace_back( std::move( llvm::parseBitcodeFile( bc.get(), *clang.context().get()).get() ) );
-    }
-
-    ASSERT( !llvm_modules.empty() );
-
-    for ( auto& m : llvm_modules )
-    {
-       m->setTargetTriple( "x86_64-unknown-none-elf" );
-       verifyModule( *m );
-       compil->linkModule( std::move( m ) );
+        std::unique_ptr< llvm::Module > m = std::move( llvm::parseBitcodeFile( bc.get(), *clang.context().get()).get() );
+        m->setTargetTriple( "x86_64-unknown-none-elf" );
+        verifyModule( *m );
+        compil->linkModule( std::move( m ) );
     }
 
     compil->linkEssentials();
