@@ -420,44 +420,61 @@ struct Buffers : ThreadMap< Buffer > {
         }
     }
 
-    using Todo = __dios::ArrayMap< Buffer *, Array< BufferLine * > >;
-
     void tso_load( char *addr, int bitwidth )
     {
-        Todo todo;
+        const int sz = size();
+        bool dirty = false;
+        int todo[sz];
+        int i = 0, choices = 1;
         for ( auto &p : *this ) {
+            todo[i] = 1;
             for ( auto &e : p.second ) {
                 // TODO: flusing ours can be avoided if we don't flush anyone else's too
-                if ( e.matches( addr, bitwidth / 8 ) )
-                    todo[ &p.second ].push_back( &e );
+                if ( e.matches( addr, bitwidth / 8 ) ) {
+                    todo[i]++;
+                    dirty = true;
+                }
             }
-        }
-        if ( todo.empty() )
-            return;
-
-        const int ntodo = todo.size();
-        int choices = 1;
-        for ( auto &p : todo )
-            choices *= p.second.size() + 1;
-        int c = __vm_choose( choices );
-        if ( c == 0 )
-            return;
-
-        int idxs[ ntodo ];
-
-        int i = 0, cnt = 0;
-        for ( auto &p : todo ) {
-            cnt += (idxs[i] = c % (p.second.size() + 1)) != 0;
-            c /= p.second.size();
+            choices *= todo[i];
             ++i;
         }
-        if ( cnt > 1 )
-            UNREACHABLE( "TODO" );
+        if ( !dirty )
+            return;
 
-        for ( int i = 0; i < ntodo; ++i ) {
-            if ( idxs[i] != 0 ) {
-                flush( *todo.begin()[i].first, todo.begin()[i].second[idxs[i] - 1] + 1 );
-                break;
+        int c = __vm_choose( choices );
+        if ( c == 0 ) // shortcut if we are not flushing anything
+            return;
+
+        int cnt = 0;
+        for ( int i = 0; i < sz; ++i ) {
+            const int m = todo[i];
+            cnt += (todo[i] = c % m) != 0;
+            c /= m;
+        }
+
+        for ( int i = 0; i < cnt; ++i ) {
+            int c = __vm_choose( cnt - i );
+            int j = 0;
+            for ( int k = 0; k < sz; ++k ) {
+                if ( todo[k] != 0 ) {
+                    if ( j == c ) {
+                        // flush this one now
+                        auto &buf = begin()[k].second;
+                        int l = 0;
+                        for ( auto it = buf.begin(); it != buf.end(); ++it ) {
+                            if ( it->matches( addr, bitwidth ) ) {
+                                ++l;
+                                if ( l == todo[k] ) {
+                                    flush( buf, std::next( it ) );
+                                    break;
+                                }
+                            }
+                        }
+                        todo[k] = 0; // this buffer is flushed, skip in next round
+                        continue;
+                    }
+                    ++j;
+                }
             }
         }
     }
