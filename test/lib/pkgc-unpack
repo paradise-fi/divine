@@ -27,9 +27,9 @@ my @var = grep { m#^// V: # } (split /\n/, $file);
 for ( @var )
 {
     my %d;
-    for my $field ( "V", "CC_OPT", "V_OPT", "TAGS", "RESULT" )
+    for my $field ( "V", "CC_OPT", "V_OPT", "TAGS", "RESULT", "ERR" )
     {
-        m,$field: (.*?)\s*(\s(V_OPT|CC_OPT|TAGS|RESULT):|$),;
+        m,$field: (.*?)\s*(\s(V_OPT|CC_OPT|TAGS|RESULT|ERR):|$),;
         $d{$field} = $1;
     }
     my $new = $file;
@@ -37,6 +37,7 @@ for ( @var )
     $new =~ s,VERIFY_OPTS: ,VERIFY_OPTS: $d{V_OPT} ,;
     $new =~ s,CC_OPTS: ,CC_OPTS: $d{CC_OPT} ,;
     $new =~ s,/\* ERROR \*/,, if $d{RESULT} eq "valid";
+    $new =~ s,/\* $d{ERR} \*/,/* ERROR */,;
     open F, ">$d{V}.$ext";
     print F $new;
     close F;
