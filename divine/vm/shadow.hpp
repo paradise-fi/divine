@@ -925,13 +925,22 @@ struct PooledShadow
 
     void dump( std::string what, Loc l, int sz )
     {
-        std::cerr << what << ", obj = " << l.object << ", off = " << l.offset << ": ";
-        for ( auto t : type( l, sz ) )
-            std::cerr << t;
-        std::cerr << " ... ";
-        for ( auto d : defined( l, sz ) )
-            std::cerr << +d << " ";
-        std::cerr << std::endl;
+        auto _ty = _type.template machinePointer< uint8_t >( l.object );
+        auto _def = _defined.template machinePointer< uint8_t >( l.object );
+
+        std::cerr << what << ", obj = " << l.object << ", off = " << l.offset << ", type: ";
+        for ( int i = 0; i < sz; ++i )
+            std::cerr << TypeProxy( _ty, l.offset + i ).get();
+        std::cerr << ", def:" << std::hex << std::fixed;
+        for ( int i = 0; i < sz; ++i )
+        {
+            uint8_t def = BitProxy( _def, l.offset + i ).get() * 0xff;
+            if ( def == 0x00 && TypeProxy( _ty, l.offset + i ).is_exception() )
+                def = _exceptions->defined( l.object, l.offset + i );
+            std::cerr << ' ' << +def;
+        }
+        std::cerr << std::dec << std::endl;
+
     }
 };
 
