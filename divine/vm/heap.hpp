@@ -84,43 +84,29 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
     int s1 = h1.size( r1, i1 ), s2 = h2.size( r2, i2 );
     if ( s1 - s2 )
         return s1 - s2;
+
+    int shadow_cmp = h2.shadows().compare( h1.shadows(), i1, i2, s1 );
+    if ( shadow_cmp )
+        return shadow_cmp;
+
     auto b1 = h1.unsafe_bytes( r1, i1 ), b2 = h2.unsafe_bytes( r2, i2 );
     auto p1 = h1.pointers( r1, i1 ), p2 = h2.pointers( r2, i2 );
-    auto d1 = h1.defined( r1, i1 ), d2 = h2.defined( r2, i2 );
     int offset = 0;
     auto p1i = p1.begin(), p2i = p2.begin();
     while ( true )
     {
-        if ( ( p1i == p1.end() ) ^ ( p2i == p2.end() ) )
-            return p1i == p1.end() ? -1 : 1;
-
-        if ( p1i != p1.end() )
-        {
-            if ( p1i->offset() != p2i->offset() )
-                return p1i->offset() - p2i->offset();
-            if ( p1i->size() != p2i->size() )
-                return p1i->size() - p2i->size();
-        }
-
         int end = p1i == p1.end() ? s1 : p1i->offset();
-        while ( offset < end ) /* TODO definedness! */
+        while ( offset < end )
         {
             if ( b1[ offset ] != b2[ offset ] )
                 return b1[ offset ] - b2[ offset ];
-            if ( d1[ offset ] != d2[ offset ] )
-                return int( d1[ offset ] ) - int( d2[ offset ] );
             ++ offset;
         }
 
         if ( p1i == p1.end() )
             return 0;
 
-        while ( offset < end + p1i->size() )
-        {
-            if ( d1[ offset ] != d2[ offset ] )
-                return int( d1[ offset ] ) - int( d2[ offset ] );
-            ++ offset;
-        }
+        offset += p1i->size();
 
         /* recurse */
         value::Pointer p1p, p2p;
@@ -750,8 +736,7 @@ struct CowHeap : SimpleHeap< CowHeap >
                 return false;
             if ( shadows().shared( a ) != shadows().shared( b ) )
                 return false;
-            ShadowLoc a_shloc( a, 0 ), b_shloc( b, 0 );
-            if ( !shadows().equal( a_shloc, b_shloc, size ) )
+            if ( !shadows().equal( a, b, size ) )
                 return false;
             return true;
         }

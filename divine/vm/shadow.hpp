@@ -115,6 +115,7 @@ struct DataException
 
     bool operator==( const DataException &o ) const { return bitmask_word == o.bitmask_word; }
     bool operator!=( const DataException &o ) const { return bitmask_word != o.bitmask_word; }
+    bool operator-( const DataException &o ) const { return bitmask_word - o.bitmask_word; }
 
     bool bitmask_is_trivial() const {
         return bitmask_is_trivial( bitmask );
@@ -635,43 +636,50 @@ struct PooledShadow
         return *_shared.template machinePointer< bool >( p );
     }
 
-    bool equal( Loc a, Loc b, int sz )
+    bool equal( Internal a, Internal b, int sz )
     {
-        ASSERT_EQ( a.offset, 0 );
-        ASSERT_EQ( b.offset, 0 );
+        return compare( *this, a, b, sz ) == 0;
+    }
 
-        auto _ty_a = _type.template machinePointer< uint8_t >( a.object ),
-             _ty_b = _type.template machinePointer< uint8_t >( b.object );
+    template< typename OtherSH >
+    int compare( OtherSH & a_sh, typename OtherSH::Internal a, Internal b, int sz )
+    {
+        auto _ty_a = a_sh._type.template machinePointer< uint8_t >( a ),
+             _ty_b = _type.template machinePointer< uint8_t >( b );
 
-        if ( ::memcmp( _ty_a, _ty_b, sz / 16 ) )
-            return false;
+        int cmp;
+
+        if ( ( cmp = ::memcmp( _ty_a, _ty_b, sz / 16 ) ) )
+            return cmp;
 
         for ( int off = sz - sz % 16; off < sz; off += 4 ) /* the tail */
-            if ( TypeProxy( _ty_a, off ) != TypeProxy( _ty_b, off ) )
-                return false;
+            if ( ( cmp = TypeProxy( _ty_a, off ) - TypeProxy( _ty_b, off ) ) )
+                return cmp;
 
-        auto _def_a = _defined.template machinePointer< uint8_t >( a.object ),
-             _def_b = _defined.template machinePointer< uint8_t >( b.object );
+        auto _def_a = a_sh._defined.template machinePointer< uint8_t >( a ),
+             _def_b = _defined.template machinePointer< uint8_t >( b );
 
-        if ( ::memcmp( _def_a, _def_b, sz / 8 ) )
-            return false;
+        if ( ( cmp = ::memcmp( _def_a, _def_b, sz / 8 ) ) )
+            return cmp;
 
         for ( int off = sz - sz % 8; off < sz; off ++ )
-            if ( BitProxy( _def_a, off ) != BitProxy( _def_b, off ) )
-                return false;
+            if ( ( cmp = int( BitProxy( _def_a, off ) ) - int( BitProxy( _def_b, off ) ) ) )
+                return cmp;
 
         int off = 0;
         for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             if ( TypeProxy( _ty_a, off ) == ShadowType::DataException
-                    && _exceptions->at( a.object, off ) != _exceptions->at( b.object, off ) )
-                return false;
+                    && ( cmp = a_sh._exceptions->at( a, off )
+                        - _exceptions->at( b, off ) ) )
+                return cmp;
 
         if ( off < sz && TypeProxy( _ty_a, off ) == ShadowType::DataException )
             for ( ; off < sz; ++off )
-                if ( _exceptions->defined( a.object, off ) != _exceptions->defined( b.object, off ) )
-                    return false;
+                if ( ( cmp = a_sh._exceptions->defined( a, off )
+                            - _exceptions->defined( b, off ) ) )
+                    return cmp;
 
-        return true;
+        return 0;
     }
 
     template< typename V >
