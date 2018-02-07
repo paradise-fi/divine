@@ -1,4 +1,4 @@
-/* TAGS: c++ weakmem pso */
+/* TAGS: c++ weakmem pso todo */
 /* CC_OPTS: */
 /* VERIFY_OPTS: -o nofail:malloc --relaxed-memory pso:5 */
 
