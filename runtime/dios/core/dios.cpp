@@ -13,6 +13,7 @@
 #include <dios/core/main.hpp>
 #include <dios/core/scheduling.hpp>
 #include <dios/core/sync_scheduling.hpp>
+#include <dios/core/fair_scheduling.hpp>
 #include <dios/core/syscall.hpp>
 #include <dios/core/trace.hpp>
 #include <dios/core/fault.hpp>
@@ -124,6 +125,9 @@ using ReplayConfiguration =
 using SynchronousConfiguration =
     fs::VFS< Fault< SyncScheduler< MachineParams< MonitorManager< BaseContext > > > > >;
 
+using FairConfiguration =
+    fs::VFS< ProcessManager< Fault< FairScheduler< MachineParams< MonitorManager< BaseContext > > > > > >;
+
 void init( const _VM_Env *env )
 {
     MemoryPool deterministicPool( 2 );
@@ -153,6 +157,9 @@ void init( const _VM_Env *env )
     }
     else if ( cfg == "synchronous" ) {
         boot< SynchronousConfiguration >( setup );
+    }
+    else if ( cfg == "fair" ) {
+        boot< FairConfiguration >( setup );
     }
     else {
         __dios_trace_f( "Unknown configaration: %s", cfg.c_str() );
