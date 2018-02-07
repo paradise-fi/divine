@@ -70,11 +70,13 @@ void BitCode::do_lart()
 
     // reduce before any instrumentation to avoid unnecessary instrumentation
     // and mark silent operations
-    if ( _reduce ) {
+    if ( _reduce )
+    {
         lart.setup( lart::reduction::paroptPass() );
         lart.setup( lart::reduction::staticTauMemPass() );
     }
-    if ( _symbolic )
+
+    if ( !_solver.empty() )
         lart.setup( lart::abstract::passes() );
 
     if ( _sequential )

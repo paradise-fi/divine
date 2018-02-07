@@ -30,7 +30,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/clang.hpp>
 #include <divine/dbg/info.hpp>
-#include <divine/smt/solver.hpp>
 
 namespace llvm { class Module; }
 namespace divine::vm { struct Program; }
@@ -58,13 +57,10 @@ struct BitCode
     Env _env;
     std::vector< std::string > _lart;
     std::string _relaxed;
+    std::string _solver;
 
-    std::optional< smt::SymbolicConfig > _symbolic;
-    bool is_symbolic() const { return _symbolic.has_value(); }
-    std::string solver() const {
-        ASSERT( is_symbolic() );
-        return _symbolic.value().solver;
-    }
+    bool is_symbolic() const { return !_solver.empty(); }
+    std::string solver() const { ASSERT( is_symbolic() ); return _solver; }
 
     vm::Program &program() { ASSERT( _program.get() ); return *_program.get(); }
     dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
@@ -76,10 +72,10 @@ struct BitCode
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
     void sequential( bool s ) { _sequential = s; }
-    void symbolic( smt::SymbolicConfig cfg ) { _symbolic.emplace( cfg ); }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
     void relaxed( std::string r ) { _relaxed = r; }
+    void solver( std::string s ) { _solver = s; }
 
     void do_lart();
     void do_rr();

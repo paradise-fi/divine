@@ -285,7 +285,7 @@ void WithBC::setup()
     _bc->reduce( !_disableStaticReduction );
     _bc->sequential( _sequential );
     if ( _symbolic )
-        _bc->symbolic( { _solver } );
+        _bc->solver( _solver );
     _bc->lart( _lartPasses );
     _bc->relaxed( _relaxed );
 }
