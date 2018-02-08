@@ -7,8 +7,8 @@
 #include <string.h>
 #include <assert.h>
 
-// V: valid               RESULT: valid
-// V: error CC_OPT: -DBUG RESULT: error
+// V: valid
+// V: error CC_OPT: -DBUG
 
 char *v;
 
@@ -40,7 +40,7 @@ int main()
 #endif
   pthread_join(t2, 0);
 
-  assert(v[0] == 'B'); /* ERROR */
+  assert(v[0] == 'B'); /* ERR_error */
 
   return 0;
 }

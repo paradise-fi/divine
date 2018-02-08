@@ -27,7 +27,7 @@ my @var = grep { m#^// V: # } (split /\n/, $file);
 for ( @var )
 {
     my %d;
-    for my $field ( "V", "CC_OPT", "V_OPT", "TAGS", "RESULT", "ERR" )
+    for my $field ( "V", "CC_OPT", "V_OPT", "TAGS" )
     {
         m,$field: (.*?)\s*(\s(V_OPT|CC_OPT|TAGS|RESULT|ERR):|$),;
         $d{$field} = $1;
@@ -36,8 +36,11 @@ for ( @var )
     $new =~ s,TAGS: ,TAGS: $d{TAGS} ,; # only the first match
     $new =~ s,VERIFY_OPTS: ,VERIFY_OPTS: $d{V_OPT} ,;
     $new =~ s,CC_OPTS: ,CC_OPTS: $d{CC_OPT} ,;
-    $new =~ s,/\* ERROR \*/,, if $d{RESULT} eq "valid";
-    $new =~ s,/\* $d{ERR} \*/,/* ERROR */,;
+    my @nameparts = split /\./, $d{V};
+    for my $i (0 .. $#nameparts) {
+        my $prefix = join ".", @nameparts[0..$i];
+        $new =~ s,/\* ERR_$prefix \*/,/* ERROR */,;
+    }
     open F, ">$d{V}.$ext";
     print F $new;
     close F;

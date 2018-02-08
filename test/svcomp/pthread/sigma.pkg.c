@@ -7,8 +7,8 @@
 #include <assert.h>
 
 /* 7 takes over 50G of RAM, svcomp uses i=16 */
-// V: i2 CC_OPT: -DSIGMA=2 RESULT: error
-// V: i5 CC_OPT: -DSIGMA=5 RESULT: error TAGS: big
+// V: i2 CC_OPT: -DSIGMA=2
+// V: i5 CC_OPT: -DSIGMA=5 TAGS: big
 
 int *array;
 int array_index=-1;

@@ -18,8 +18,8 @@ void __VERIFIER_assume(int);
 void __VERIFIER_atomic_begin(void);
 void __VERIFIER_atomic_end(void);
 
-// V: valid               RESULT: valid
-// V: error CC_OPT: -DBUG RESULT: error
+// V: valid
+// V: error CC_OPT: -DBUG
 
 int w=0, r=0, x, y;
 
@@ -41,7 +41,7 @@ void *reader(void *arg) { //reader
   __VERIFIER_atomic_end();
   l = x;
   y = l;
-  assert(y == x); /* ERROR */
+  assert(y == x); /* ERR_error */
 #ifdef BUG
   l = r-1;
   r = l;

@@ -7,8 +7,8 @@
 #include <pthread.h>
 
 // both instances are in svcomp
-// V: 2-2 CC_OPT: -DSET=2 -DCHECK=2 RESULT: error
-// V: 4-1 CC_OPT: -DSET=4 -DCHECK=1 RESULT: error
+// V: 2-2 CC_OPT: -DSET=2 -DCHECK=2
+// V: 4-1 CC_OPT: -DSET=4 -DCHECK=1
 
 static int a = 0;
 static int b = 0;

@@ -15,8 +15,8 @@
 #include <pthread.h>
 #include <assert.h>
 
-// V: valid                RESULT: valid
-// V: error CC_OPT: -DBUG3 RESULT: error
+// V: valid
+// V: error CC_OPT: -DBUG3
 
 #define STATICSIZE 16
 
@@ -337,7 +337,7 @@ int main(void) {
     }
 
     for (i = 0; i < nItems; i++) {
-        Check(&items[i]); /* ERROR */
+        Check(&items[i]); /* ERR_error */
     }
 
     return 0;

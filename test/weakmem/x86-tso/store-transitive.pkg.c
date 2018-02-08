@@ -14,12 +14,12 @@
 volatile int x, y;
 volatile int rax, rbx, ry;
 
-// V: rax0rbx0ry0 CC_OPT: -DCHECK=0 ERR: ERR_rax0rbx0ry0
-// V: rax0rbx0ry1 CC_OPT: -DCHECK=1 ERR: ERR_rax0rbx0ry1
-// V: rax0rbx1ry0 CC_OPT: -DCHECK=2 ERR: ERR_rax0rbx1ry0
-// V: rax0rbx1ry1 CC_OPT: -DCHECK=3 ERR: ERR_rax0rbx1ry1
-// V: rax1rbx0ry0 CC_OPT: -DCHECK=4 ERR: ERR_rax1rbx0ry0
-// V: rax1rbx1ry1 CC_OPT: -DCHECK=5 ERR: ERR_rax1rbx1ry1
+// V: rax0rbx0ry0 CC_OPT: -DCHECK=0
+// V: rax0rbx0ry1 CC_OPT: -DCHECK=1
+// V: rax0rbx1ry0 CC_OPT: -DCHECK=2
+// V: rax0rbx1ry1 CC_OPT: -DCHECK=3
+// V: rax1rbx0ry0 CC_OPT: -DCHECK=4
+// V: rax1rbx1ry1 CC_OPT: -DCHECK=5
 
 #ifndef CHECK
 #define CHECK 0

@@ -5,8 +5,8 @@
 #include <pthread.h>
 #include <assert.h>
 
-// V: valid               RESULT: valid
-// V: error CC_OPT: -DBUG RESULT: error
+// V: valid
+// V: error CC_OPT: -DBUG
 
 pthread_mutex_t  ma, mb;
 int data1, data2;
@@ -54,7 +54,7 @@ int main()
   pthread_join(t2, 0);
 
 #ifdef BUG
-  assert( data1 != 16 || data2 != 5 ); /* ERROR */
+  assert( data1 != 16 || data2 != 5 ); /* ERR_error */
 #else
   assert( data1 == 16 || data2 == 5 );
 #endif

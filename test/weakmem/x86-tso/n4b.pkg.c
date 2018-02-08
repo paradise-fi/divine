@@ -13,10 +13,10 @@
 volatile int x;
 volatile int rax, rbx;
 
-// V: rax0rbx0x1 CC_OPT: -DCHECK=0 ERR: ERR_rax0rbx0x1
-// V: rax0rbx0x2 CC_OPT: -DCHECK=1 ERR: ERR_rax0rbx0x2
-// V: rax2rbx0x1 CC_OPT: -DCHECK=2 ERR: ERR_rax2rbx0x1
-// V: rax0rbx1x2 CC_OPT: -DCHECK=3 ERR: ERR_rax0rbx1x2
+// V: rax0rbx0x1 CC_OPT: -DCHECK=0
+// V: rax0rbx0x2 CC_OPT: -DCHECK=1
+// V: rax2rbx0x1 CC_OPT: -DCHECK=2
+// V: rax0rbx1x2 CC_OPT: -DCHECK=3
 
 #ifndef CHECK
 #define CHECK 0

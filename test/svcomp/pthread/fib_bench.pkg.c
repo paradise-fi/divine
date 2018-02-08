@@ -4,12 +4,12 @@
 #include <pthread.h>
 #include <assert.h>
 
-// V: i2.error CC_OPT: -DBUG -DNUM=2 RESULT: error
-// V: i2.valid CC_OPT: -DNUM=2       RESULT: valid
-// V: i5.error CC_OPT: -DBUG -DNUM=5 RESULT: error TAGS: big
-// V: i5.valid CC_OPT: -DNUM=5       RESULT: valid TAGS: big
-// V: i7.error CC_OPT: -DBUG -DNUM=7 RESULT: error TAGS: big
-// V: i7.valid CC_OPT: -DNUM=7       RESULT: valid TAGS: big
+// V: error.i2 CC_OPT: -DBUG -DNUM=2
+// V: valid.i2 CC_OPT: -DNUM=2
+// V: error.i5 CC_OPT: -DBUG -DNUM=5 TAGS: big
+// V: valid.i5 CC_OPT: -DNUM=5       TAGS: big
+// V: error.i7 CC_OPT: -DBUG -DNUM=7 TAGS: big
+// V: valid.i7 CC_OPT: -DNUM=7       TAGS: big
 
 int i=1, j=1;
 int fib( int n ) { return n <= 1 ? 1 : fib( n - 1 ) + fib( n - 2 ); }
@@ -36,7 +36,7 @@ int main()
     pthread_create(&id1, NULL, t1, NULL);
     pthread_create(&id2, NULL, t2, NULL);
 #ifdef BUG
-    assert( i < max && j < max ); /* ERROR */
+    assert( i < max && j < max ); /* ERR_error */
 #else
     assert( i <= max && j <= max );
 #endif
