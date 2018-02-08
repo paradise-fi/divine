@@ -94,99 +94,101 @@ Values concat( Vs&&... vs ) {
 
 } // anonymous namespace
 
-void Substitution::run( llvm::Module & m ) {
-    { // begin RAII substitution builder
-    auto sb = make_sbuilder( data.tmap, fns, m );
-    auto functions = abstractFunctions( m, data.tmap );
-
-    for ( auto & fn : functions ) {
-        assert( fn->getName() != "main" );
-        fns[ fn ] = sb.prototype( fn );
-    }
-
+void Substitution::run( llvm::Module & m )
+{
     std::vector< llvm::GlobalVariable * > globals;
-    for ( auto & g : m.globals() ) {
-        if ( isAbstract( g.getType(), data.tmap ) ) {
-            sb.process( &g );
-            globals.push_back( &g );
+    {
+        // begin RAII substitution builder
+        auto sb = make_sbuilder( data.tmap, fns, m );
+        auto functions = abstractFunctions( m, data.tmap );
+
+        for ( auto & fn : functions ) {
+            assert( fn->getName() != "main" );
+            fns[ fn ] = sb.prototype( fn );
         }
-    }
 
-    auto intrs = intrinsics( &m );
+        for ( auto & g : m.globals() ) {
+            if ( isAbstract( g.getType(), data.tmap ) ) {
+                sb.process( &g );
+                globals.push_back( &g );
+            }
+        }
 
-    auto allocas = query::query( intrs ).filter( [] ( const auto & i ) {
-        return isAlloca( i );
-    } ).freeze();
+        auto intrs = intrinsics( &m );
 
-    auto lifts = query::query( intrs ).filter( [] ( const auto & i ) {
-        return isLift( i );
-    } ).freeze();
+        auto allocas = query::query( intrs ).filter( [] ( const auto & i ) {
+            return isAlloca( i );
+        } ).freeze();
 
-    auto btcsts = query::query( llvmFilter< llvm::BitCastInst >( &m ) )
-    .filter( [&] ( const auto & i ) {
-        return isAGEPCast( i, data.tmap );
-    } ).freeze();
+        auto lifts = query::query( intrs ).filter( [] ( const auto & i ) {
+            return isLift( i );
+        } ).freeze();
 
-    auto loads = query::query( intrs ).filter( [] ( const auto & i ) {
-        if ( isLoad( i ) ) {
-            if ( llvm::isa< llvm::GlobalVariable >( i->getOperand( 0 ) ) )
-                return true;
-            if ( auto bc = llvm::dyn_cast< llvm::BitCastOperator >( i->getOperand( 0 ) ) )
-                if ( llvm::isa< llvm::GlobalVariable >( bc->getOperand( 0 ) ) )
+        auto btcsts = query::query( llvmFilter< llvm::BitCastInst >( &m ) )
+        .filter( [&] ( const auto & i ) {
+            return isAGEPCast( i, data.tmap );
+        } ).freeze();
+
+        auto loads = query::query( intrs ).filter( [] ( const auto & i ) {
+            if ( isLoad( i ) ) {
+                if ( llvm::isa< llvm::GlobalVariable >( i->getOperand( 0 ) ) )
                     return true;
-            if ( llvm::isa< llvm::Argument >( i->getOperand( 0 ) ) )
-                return true;
+                if ( auto bc = llvm::dyn_cast< llvm::BitCastOperator >( i->getOperand( 0 ) ) )
+                    if ( llvm::isa< llvm::GlobalVariable >( bc->getOperand( 0 ) ) )
+                        return true;
+                if ( llvm::isa< llvm::Argument >( i->getOperand( 0 ) ) )
+                    return true;
+            }
+            return false;
+        } ).freeze();
+
+        auto calls = callSitesOf( functions );
+
+        auto abstract = concat( allocas, lifts, calls, btcsts, loads );
+
+        Map< llvm::Function *, Values > funToValMap;
+        for ( const auto &a : abstract )
+            funToValMap[ getFunction( a ) ].push_back( a );
+
+        auto succs = [&] ( llvm::Value * v ) -> Values {
+            if ( auto cs = llvm::CallSite( v ) ) {
+                auto fn = cs.getCalledFunction();
+                if ( !isAbstract( fn->getReturnType(), data.tmap ) && !isIntrinsic( fn ) )
+                    return {};
+            }
+            return { v->user_begin(), v->user_end() };
+        };
+
+        for ( auto & fn : m )
+            for ( auto & arg : fn.args() )
+                if ( isAbstract( arg.getType(), data.tmap ) )
+                    funToValMap[ &fn ].push_back( &arg );
+
+        for ( auto & fn : funToValMap ) {
+            if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
+                continue;
+            removeInvalidAttributes( fn.first, data.tmap );
+
+            auto deps = analysis::postorder( fn.second, succs );
+
+            for ( const auto & dep : lart::util::reverse( deps ) ) {
+                if( const auto & a = llvm::dyn_cast< llvm::Argument >( dep ) )
+                    sb.process( a );
+                if( const auto & i = llvm::dyn_cast< llvm::Instruction >( dep ) )
+                    sb.process( i );
+            }
+
+            for ( const auto & dep : deps )
+                if ( llvm::isa< llvm::PHINode >( dep ) )
+                    sb.process( dep );
         }
-        return false;
-    } ).freeze();
-
-    auto calls = callSitesOf( functions );
-
-    auto abstract = concat( allocas, lifts, calls, btcsts, loads );
-
-    Map< llvm::Function *, Values > funToValMap;
-    for ( const auto &a : abstract )
-        funToValMap[ getFunction( a ) ].push_back( a );
-
-    auto succs = [&] ( llvm::Value * v ) -> Values {
-        if ( auto cs = llvm::CallSite( v ) ) {
-            auto fn = cs.getCalledFunction();
-            if ( !isAbstract( fn->getReturnType(), data.tmap ) && !isIntrinsic( fn ) )
-                return {};
-        }
-        return { v->user_begin(), v->user_end() };
-    };
-
-    for ( auto & fn : m )
-        for ( auto & arg : fn.args() )
-            if ( isAbstract( arg.getType(), data.tmap ) )
-                funToValMap[ &fn ].push_back( &arg );
-
-    for ( auto & fn : funToValMap ) {
-        if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
-            continue;
-        removeInvalidAttributes( fn.first, data.tmap );
-
-        auto deps = analysis::postorder( fn.second, succs );
-
-        for ( const auto & dep : lart::util::reverse( deps ) ) {
-            if( const auto & a = llvm::dyn_cast< llvm::Argument >( dep ) )
-                sb.process( a );
-            if( const auto & i = llvm::dyn_cast< llvm::Instruction >( dep ) )
-                sb.process( i );
-        }
-
-        for ( const auto & dep : deps )
-            if ( llvm::isa< llvm::PHINode >( dep ) )
-                sb.process( dep );
     }
 
-    for ( const auto & g : globals ) {
+    for ( const auto & g : globals )
+    {
         g->replaceAllUsesWith( llvm::UndefValue::get( g->getType() ) );
         g->eraseFromParent();
     }
-
-    } // end RAII substitution builder
 
     auto remapArg = [&] ( llvm::Argument & a ) {
         if ( !a.use_empty() ) {
