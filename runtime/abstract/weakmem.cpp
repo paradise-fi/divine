@@ -420,7 +420,7 @@ struct Buffers : ThreadMap< Buffer > {
         }
     }
 
-    void tso_load( char *addr, int bitwidth )
+    void tso_load( char *addr, int bitwidth, _DiOS_TaskHandle tid )
     {
         const int sz = size();
         bool dirty = false;
@@ -428,11 +428,12 @@ struct Buffers : ThreadMap< Buffer > {
         int i = 0, choices = 1;
         for ( auto &p : *this ) {
             todo[i] = 1;
+            const bool nonloc = p.first != tid;
             for ( auto &e : p.second ) {
                 // TODO: flusing ours can be avoided if we don't flush anyone else's too
                 if ( e.matches( addr, bitwidth / 8 ) ) {
                     todo[i]++;
-                    dirty = true;
+                    dirty = dirty || nonloc;
                 }
             }
             choices *= todo[i];
@@ -631,7 +632,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
 
     if ( __lart_weakmem.storeBuffers.size() != 1
          || __lart_weakmem.storeBuffers.begin()->first != tid )
-        __lart_weakmem.storeBuffers.tso_load( addr, bitwidth );
+        __lart_weakmem.storeBuffers.tso_load( addr, bitwidth, tid );
 
     return doLoad( buf, addr, bitwidth );
 }
