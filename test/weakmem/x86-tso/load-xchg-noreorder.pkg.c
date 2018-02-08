@@ -1,4 +1,4 @@
-/* TAGS: c tso */
+/* TAGS: c tso min ext */
 /* VERIFY_OPTS: --relaxed-memory tso */
 /* CC_OPTS: */
 

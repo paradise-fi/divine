@@ -1,4 +1,4 @@
-/* TAGS: c tso min */
+/* TAGS: c tso min ext */
 /* VERIFY_OPTS: --relaxed-memory tso */
 
 /* this test is derived from the paper x86-TSO: A Rigorous and Usable

@@ -1,4 +1,4 @@
-/* TAGS: min c++ tso */
+/* TAGS: min c++ tso ext */
 /* VERIFY_OPTS: -o nofail:malloc --relaxed-memory tso */
 
 #include <atomic>
