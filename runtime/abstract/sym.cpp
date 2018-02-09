@@ -15,27 +15,21 @@ static Formula *__newf( Args &&...args ) {
     return static_cast< Formula * >( ptr );
 }
 
-struct PCFragment {
-    PCFragment( Formula *assume, PCFragment *next ) : assume( assume ), next( next ) { }
-
-    Formula *assume = nullptr;
-    PCFragment *next = nullptr;
-};
-
 struct State
 {
     int counter = 0;
-    PCFragment *pcFragments = nullptr;
+    Formula *constraints = nullptr;
 };
 
 State __sym_state;
 
 extern "C" void __sym_formula_dump()
 {
-    PCFragment * pcf = __sym_state.pcFragments;
-    while ( pcf != NULL ) {
-        __vm_trace( _VM_T_Text, sym::toString( pcf->assume ).c_str() );
-        pcf = pcf->next;
+    Formula *pcf = __sym_state.constraints;
+    while ( pcf != NULL )
+    {
+        __vm_trace( _VM_T_Text, sym::toString( pcf->binary.left ).c_str() );
+        pcf = pcf->binary.right;
     }
 }
 
@@ -130,8 +124,9 @@ Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool assume
 {
     Formula *wconstraint = weaken( constraint );
     if ( !assume )
-        wconstraint = __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint );
-    __sym_state.pcFragments = weaken( __new< PCFragment >( wconstraint, __sym_state.pcFragments ) );
-    __vm_trace( _VM_T_Assume, __sym_state.pcFragments );
-    return mark( __newf< Assume >( weaken( value ), wconstraint ) );
+        wconstraint = weaken( __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint ) );
+    __sym_state.constraints = mark( __newf< Binary >( Op::Constraint, wconstraint->type(), wconstraint,
+                                                      weaken( __sym_state.constraints ) ) );
+    __vm_trace( _VM_T_Assume, __sym_state.constraints );
+    return value;
 }

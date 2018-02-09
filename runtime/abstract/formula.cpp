@@ -39,9 +39,6 @@ std::string toString( const Formula *root )
     else if ( isBinary( root->op() ) )
         return toString( root->op() ) + "("s + toString( root->binary.left ) + ", "s
                 + toString( root->binary.right ) + ") : "s + toString( root->type() );
-    else if ( root->op() == Op::Assume )
-        return "assume("s + toString( root->assume.value ) + ", "s
-                + toString( root->assume.constraint ) + ")"s;
     else
         UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
 }
@@ -125,7 +122,7 @@ std::string toString( Op x )
         case Op::FcTrue: return "fctrue"; // no comparison: always returns true
 
         case Op::Concat: return "concat";
-        case Op::Assume: return "assume";
+        case Op::Constraint: return "constraint";
     }
     UNREACHABLE_F( "invalid operation %d in sym::toString", int( x ) );
 }

@@ -125,10 +125,9 @@ enum class Op : uint16_t
     FcUNE,   // unordered or not equal
     FcUNO,   // unordered (either nans)
     FcTrue,  // no comparison, always returns true
+    Constraint, // behaves as binary logical and
 
     Concat, LastBinary = Concat,
-
-    Assume
 };
 
 
@@ -235,29 +234,14 @@ struct Binary_ {
 
 static_assert( sizeof( Binary_< void * > ) == 24, "" );
 
-template< typename Formula >
-struct Assume_ {
-
-    Assume_( Formula value, Formula constraint ) :
-        op( Op::Assume ), type( value->type() ), value( value ), constraint( constraint )
-    { }
-
-    Op op;
-    Type type;
-    Formula value;
-    Formula constraint;
-};
-
 union Formula;
 
 #ifdef __divine__
 using Binary = Binary_< Formula * >;
 using Unary = Unary_< Formula * >;
-using Assume = Assume_< Formula * >;
 #else
 using Unary = Unary_< divine::vm::HeapPointer >;
 using Binary = Binary_< divine::vm::HeapPointer >;
-using Assume = Assume_< divine::vm::HeapPointer >;
 #endif
 
 union Formula
@@ -277,7 +261,6 @@ union Formula
     Constant con;
     Unary unary;
     Binary binary;
-    Assume assume;
 };
 
 std::string toString( const Formula *f );
