@@ -70,6 +70,7 @@ passed()
 passed_web()
 {
     echo "Tests passed, the above patches are now part of <http://divine.fi.muni.cz/current>."
+    echo
 }
 
 set -ve
