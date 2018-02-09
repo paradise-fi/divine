@@ -25,6 +25,7 @@
 
 #include <divine/vm/value.hpp>
 #include <divine/vm/shadow.hpp>
+#include <divine/vm/types.hpp>
 
 /*
  * Both MutableHeap and PersistentHeap implement the graph memory concept. That
@@ -397,14 +398,7 @@ struct HeapMixin
     }
 };
 
-template< int _slab_bits = 20 >
-struct PoolRep
-{
-    static const int slab_bits = _slab_bits, chunk_bits = 16, tag_bits = 28;
-    uint64_t slab:slab_bits, chunk:chunk_bits, tag:tag_bits;
-};
-
-template< typename Self, typename PR = PoolRep<> >
+template< typename Self, typename PR >
 struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
                                typename mem::Pool< PR >::Pointer >
 {
@@ -703,12 +697,6 @@ struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
     void restore( Snapshot ) { UNREACHABLE( "restore() is not available in SimpleHeap" ); }
     Snapshot snapshot() { UNREACHABLE( "snapshot() is not available in SimpleHeap" ); }
 };
-
-template< int slab >
-struct MutableHeap_ : SimpleHeap< MutableHeap_< slab >, PoolRep< slab > > {};
-
-using MutableHeap = MutableHeap_< 20 >;
-using SmallHeap = MutableHeap_< 8 >;
 
 struct CowHeap : SimpleHeap< CowHeap >
 {

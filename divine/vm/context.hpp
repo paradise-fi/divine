@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
+#include <divine/vm/types.hpp>
 #include <divine/vm/divm.h>
 
 #include <brick-data>
@@ -31,52 +32,7 @@ namespace llvm { class Value; }
 namespace divine::vm
 {
 
-struct Interrupt : brick::types::Ord
-{
-    enum Type { Mem, Cfl } type:1;
-    uint32_t ictr:31;
-    CodePointer pc;
-    auto as_tuple() const { return std::make_tuple( type, ictr, pc ); }
-    Interrupt( Type t = Mem, uint32_t ictr = 0, CodePointer pc = CodePointer() )
-        : type( t ), ictr( ictr ), pc( pc )
-    {}
-};
-
-static inline std::ostream &operator<<( std::ostream &o, Interrupt i )
-{
-    return o << ( i.type == Interrupt::Mem ? 'M' : 'C' ) << "/" << i.ictr
-             << "/" << i.pc.function() << ":" << i.pc.instruction();
-}
-
-struct Choice : brick::types::Ord
-{
-    int taken, total;
-    Choice( int taken, int total ) : taken( taken ), total( total ) {}
-    auto as_tuple() const { return std::make_tuple( taken, total ); }
-};
-
-static inline std::ostream &operator<<( std::ostream &o, Choice i )
-{
-    return o << i.taken << "/" << i.total;
-}
-
-struct Step
-{
-    std::deque< Interrupt > interrupts;
-    std::deque< Choice > choices;
-};
-
-using Fault = ::_VM_Fault;
-
-struct TraceText { GenericPointer text; };
 struct TraceSchedChoice { value::Pointer list; };
-struct TraceSchedInfo { int pid; int tid; };
-struct TraceTaskID { GenericPointer ptr; };
-struct TraceStateType { CodePointer pc; };
-struct TraceInfo { GenericPointer text; };
-struct TraceAssume { HeapPointer ptr; };
-struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
-struct TraceDebugPersist { GenericPointer ptr; };
 
 template< typename _Program, typename _Heap >
 struct Context
