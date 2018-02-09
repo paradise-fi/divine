@@ -22,52 +22,60 @@ struct PCFragment {
     PCFragment *next = nullptr;
 };
 
-struct State {
+struct State
+{
     int counter = 0;
     PCFragment *pcFragments = nullptr;
 };
 
 State __sym_state;
 
-extern "C" {
-void __sym_formula_dump() {
+extern "C" void __sym_formula_dump()
+{
     PCFragment * pcf = __sym_state.pcFragments;
     while ( pcf != NULL ) {
         __vm_trace( _VM_T_Text, sym::toString( pcf->assume ).c_str() );
         pcf = pcf->next;
     }
 }
+
+Formula **__abstract_sym_alloca( int bitwidth )
+{
+    return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth },
+                                                         __sym_state.counter++ ) ) );
 }
 
-Formula **__abstract_sym_alloca( int bitwidth ) {
-    return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth }, __sym_state.counter++ ) ) );
-}
-
-Formula *__abstract_sym_load( Formula **a, int bitwidth ) {
+Formula *__abstract_sym_load( Formula **a, int bitwidth )
+{
     if ( bitwidth > 64 )
         UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
     auto *val = *a;
-    if ( val->type().bitwidth() > bitwidth ) {
+
+    if ( val->type().bitwidth() > bitwidth )
         return __abstract_sym_trunc( val, bitwidth );
-    } else if ( val->type().bitwidth() < bitwidth ) {
+
+    if ( val->type().bitwidth() < bitwidth )
         UNREACHABLE_F( "Loading of %d bit value from %d bit abstract value is not supported (yet).",
                        bitwidth, val->type().bitwidth() );
-    }
+
     return mark( val );
 }
 
-void __abstract_sym_store( Formula *val, Formula **ptr ) {
+void __abstract_sym_store( Formula *val, Formula **ptr )
+{
     *ptr = weaken( val );
 }
 
-Formula *__abstract_sym_lift( int64_t val, int bitwidth ) {
+Formula *__abstract_sym_lift( int64_t val, int bitwidth )
+{
     if ( bitwidth > 64 )
         UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
     return mark( __newf< Constant >( Type{ Type::Int, bitwidth }, val ) );
 }
 
-#define BINARY( suff, op ) Formula *__abstract_sym_ ## suff( Formula *a, Formula *b ) { \
-    return mark( __newf< Binary >( Op::op, a->type(), weaken( a ), weaken( b ) ) ); \
+#define BINARY( suff, op ) Formula *__abstract_sym_ ## suff( Formula *a, Formula *b ) \
+{                                                                                     \
+    return mark( __newf< Binary >( Op::op, a->type(), weaken( a ), weaken( b ) ) );   \
 }
 
 BINARY( add, Add );
@@ -84,10 +92,11 @@ BINARY( shl, Shl );
 BINARY( lshr, LShr );
 BINARY( ashr, AShr );
 
-#define CAST( suff, op ) Formula *__abstract_sym_ ## suff( Formula *a, int bitwidth ) { \
-    Type t = a->type(); \
-    t.bitwidth( bitwidth ); \
-    return mark( __newf< Unary >( Op::op, t, weaken( a ) ) ); \
+#define CAST( suff, op ) Formula *__abstract_sym_ ## suff( Formula *a, int bitwidth ) \
+{                                                                                     \
+    Type t = a->type();                                                               \
+    t.bitwidth( bitwidth );                                                           \
+    return mark( __newf< Unary >( Op::op, t, weaken( a ) ) );                         \
 }
 
 CAST( trunc, Trunc );
@@ -111,12 +120,14 @@ ICMP( sge, SGE );
 ICMP( sle, SLE );
 ICMP( slt, SLT );
 
-Tristate *__abstract_sym_bool_to_tristate( Formula * ) {
+Tristate *__abstract_sym_bool_to_tristate( Formula * )
+{
     // TODO: pattern matching for trivial cases of True/False
     return __new< Tristate >( Tristate::Unknown );
 }
 
-Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool assume ) {
+Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool assume )
+{
     Formula *wconstraint = weaken( constraint );
     if ( !assume )
         wconstraint = __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint );

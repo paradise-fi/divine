@@ -49,7 +49,8 @@ namespace sym {
 
 using VarID = int32_t;
 
-enum class Op : uint16_t {
+enum class Op : uint16_t
+{
     Invalid,
 
     Variable,
@@ -131,18 +132,22 @@ enum class Op : uint16_t {
 };
 
 
-inline bool isUnary( Op x ) {
+inline bool isUnary( Op x )
+{
     return x >= Op::FirstUnary && x <= Op::LastUnary;
 }
 
-inline bool isBinary( Op x ) {
+inline bool isBinary( Op x )
+{
     return x >= Op::FirstBinary && x <= Op::LastBinary;
 }
 
 std::string toString( Op x );
 
-struct Type {
-    enum T : uint8_t {
+struct Type
+{
+    enum T : uint8_t
+    {
         Int,
         Float
     };
@@ -255,10 +260,12 @@ using Binary = Binary_< divine::vm::HeapPointer >;
 using Assume = Assume_< divine::vm::HeapPointer >;
 #endif
 
-union Formula {
+union Formula
+{
     Formula() : hdr{ Op::Invalid, Type() } { }
 
-    struct {
+    struct
+    {
         Op op;
         Type type;
     } hdr;
