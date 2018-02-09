@@ -190,8 +190,12 @@ struct IndexFunctions {
 
         // now build global variable metadata
         std::map< llvm::StringRef, GlobalMeta > gloMetaMap;
-        for ( auto &g : mod.globals() ) {
-            if ( g.hasName() ) {
+        for ( auto &g : mod.globals() )
+        {
+            using brick::string::startsWith;
+            if ( g.hasName() && ( startsWith( g.getName().str(), "llvm." ) ||
+                                  startsWith( g.getName().str(), "__dios_" ) ) )
+            {
                 auto r = gloMetaMap.emplace( g.getName(), GlobalMeta( g, *this ) );
                 ASSERT( r.second || (g.dump(), false) );
             }
