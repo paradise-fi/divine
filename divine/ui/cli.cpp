@@ -296,6 +296,10 @@ void WithBC::init()
 
     _log->loader( Phase::LART );
     _bc->do_lart();
+
+    if ( !_dump_bc.empty() )
+        brick::llvm::writeModule( _bc->_module.get(), _dump_bc );
+
     _log->loader( Phase::RR );
     _bc->do_rr();
     _log->loader( Phase::Constants );
