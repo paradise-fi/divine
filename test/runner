@@ -6,6 +6,6 @@ test -z "$td" && td="."
 cd $td/..
 test -z "$B" && B=$(make show var=DEFAULT_FLAVOUR)
 D=$(make show var=OBJ)$B
-cmake --build $D --target runner
+cmake --build $D --target runner >&2
 cd $D/test
 exec sh $td/lib/testsuite --testdir $td "$@"
