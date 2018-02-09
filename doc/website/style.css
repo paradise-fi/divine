@@ -136,7 +136,7 @@ pre#linkbar > a
     min-height: 25ex;
 }
 
-div#footer
+#footer
 {
     font-family: inherit;
     margin-top: -8.5ex;
@@ -148,7 +148,8 @@ div#footer
     position: absolute;
 }
 
-#footer .divider { margin-left: .5em; margin-right: .5em; }
+#footer .divider { display: none; }
+#footer a { display: block; }
 
 #linkbar a:link, #linkbar a:visited { color: black; }
 #footer a:link, #footer a:visited { color: black; }
@@ -333,5 +334,5 @@ td.test-compact div { margin-bottom: -1px; }
 @media screen and (-webkit-min-device-pixel-ratio:0)
 {
     #linkbar-spacer { margin-top: 3ex; }
-    div#footer { margin-top: -8ex; margin-left: -14ch; }
+    #footer { margin-top: -8ex; margin-left: -14ch; }
 }
