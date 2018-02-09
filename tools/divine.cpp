@@ -4,6 +4,10 @@
 #include <divine/ui/curses.hpp>
 #include <brick-fs>
 
+#if OPT_Z3
+#include <z3++.h>
+#endif
+
 #ifdef __unix__
 #include <signal.h>
 #endif
@@ -36,6 +40,13 @@ void panic()
         std::cerr << "E: " << e.what() << std::endl;
         std::abort();
     }
+#if OPT_Z3
+    catch ( z3::exception &e )
+    {
+        std::cerr << "E: " << e.msg() << std::endl;
+        std::abort();
+    }
+#endif
     catch ( ... ) {
         std::cerr << "E: unknown exception" << std::endl;
         std::abort();
