@@ -183,7 +183,7 @@ struct Hasher_
             return true;
 
         ASSERT( _solver );
-        return _solver->equal( sym_pairs, _h1, _h2 ) == Solver::Result::True;
+        return _solver->equal( sym_pairs, _h1, _h2 );
     }
 
     brick::hash::hash128_t hash( Snapshot s ) const
@@ -350,7 +350,7 @@ struct Builder
             return false;
         if ( context()._assume.null() )
             return true;
-        return _d.solver.feasible( context().heap(), context()._assume ) == Solver::Result::True;
+        return _d.solver.feasible( context().heap(), context()._assume );
     }
 
     template< typename Y >
