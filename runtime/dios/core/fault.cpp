@@ -3,4 +3,4 @@
 
 #include <cstdint>
 
-uint8_t _DiOS_SimFail_flags;
+uint8_t __dios_simfail_flags;

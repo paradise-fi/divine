@@ -34,7 +34,7 @@ enum _DiOS_FaultConfig
 
 _PDCLIB_EXTERN_C
 
-extern uint8_t _DiOS_SimFail_flags;
+extern uint8_t __dios_simfail_flags;
 
 /*
  * Configures given fault or symfail and returns original value. Possible
@@ -67,7 +67,7 @@ void __dios_fault( int f, const char *msg, ... ) _PDCLIB_nothrow __attribute__((
 
 static inline int __dios_sim_fail( enum _DiOS_SimFail x )
 {
-    return _DiOS_SimFail_flags & ( 1 << ( x - _DiOS_SF_First ) );
+    return __dios_simfail_flags & ( 1 << ( x - _DiOS_SF_First ) );
 }
 
 _PDCLIB_EXTERN_END

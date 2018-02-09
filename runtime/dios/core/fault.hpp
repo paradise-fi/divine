@@ -122,13 +122,14 @@ struct Fault: public Next {
         return static_cast< Process * >( task->_proc )->faultConfig;
     }
 
-    void updateSimFail( uint8_t *config = nullptr ) {
+    void updateSimFail( uint8_t *config = nullptr )
+    {
         config = config ? config : getCurrentConfig();
         uint8_t flags = 0;
         uint8_t bit = 1;
         for ( int x = _DiOS_SF_First; x != _DiOS_SF_Last; x++, bit <<= 1 )
             flags |= config[ x ] & FaultFlag::Enabled ? bit : 0;
-        auto *meta = __md_get_global_meta( "_DiOS_SimFail_flags" );
+        auto *meta = __md_get_global_meta( "__dios_simfail_flags" );
         if ( !meta )
             __dios_trace_t( "Warning: Cannot update SimFail" );
         else
