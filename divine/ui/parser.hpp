@@ -200,8 +200,6 @@ struct CLI : Interface
                      "use semi-symbolic data representation"s )
             .option( "[--dump-bc {string}]", &WithBC::_dump_bc,
                      "dump the final pre-processed bitcode"s )
-            .option( "[--solver {string}]", &WithBC::_solver,
-                     "solver command to be used by CEDS algorithms"s )
             .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
                      "link in a library, e.g. -lm for libm"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
@@ -224,6 +222,7 @@ struct CLI : Interface
             .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
             .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
             .option( "[--liveness]", &Verify::_liveness, "enables verification of liveness properties"s )
+            .option( "[--solver {string}]", &Verify::_solver, "the solver backend to use"s )
             .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report,
                      "print a report (yaml, yaml-long or none)"s )
             .option( "[--no-report-file]", &Verify::_no_report_file, "skip creation of a report file"s )

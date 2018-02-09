@@ -215,10 +215,9 @@ void WithBC::report_options()
             _log->info( "  - " + p + "\n", true );
     }
 
-    if ( _symbolic ) {
+    if ( _symbolic )
         _log->info( "symbolic: 1\n" );
-        _log->info( "smt solver: " + _solver + "\n", true );
-    }
+
     if ( _sequential )
         _log->info( "sequential: 1\n", true );
     if ( _disableStaticReduction )
@@ -284,8 +283,7 @@ void WithBC::setup()
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
     _bc->sequential( _sequential );
-    if ( _symbolic )
-        _bc->solver( _solver );
+    _bc->symbolic( _symbolic );
     _bc->lart( _lartPasses );
     _bc->relaxed( _relaxed );
 }

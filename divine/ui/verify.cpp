@@ -75,6 +75,9 @@ void Verify::setup()
     }
 
     WithBC::setup();
+
+    if ( _symbolic )
+        bitcode()->solver( _solver );
 }
 
 void Check::setup()
@@ -117,6 +120,7 @@ void Verify::safety()
                    } );
     safety->wait();
     report_options();
+    _log->info( "smt solver: " + _solver + "\n", true );
 
     if ( safety->result() == mc::Result::Valid )
         return _log->result( safety->result(), mc::Trace() );
