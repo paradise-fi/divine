@@ -28,10 +28,12 @@ namespace divine::mc
         if ( bc->is_symbolic() )
         {
             auto solver = bc->solver();
+#if OPT_Z3
             if ( solver == "z3" )
                 return std::make_shared< Job_< Next, mc::Z3Builder > >( bc, next );
-            if ( solver == "boolector" )
-                return std::make_shared< Job_< Next, mc::BoolectorBuilder > >( bc, next );
+#endif
+            if ( solver == "smtlib" )
+                return std::make_shared< Job_< Next, mc::SMTLibBuilder > >( bc, next );
             UNREACHABLE_F( "Unsupported solver: %s.", solver.c_str() );
         }
         return std::make_shared< Job_< Next, mc::ExplicitBuilder > >( bc, next );

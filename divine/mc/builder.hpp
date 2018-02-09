@@ -487,8 +487,11 @@ struct Builder
 };
 
 using ExplicitBuilder = Builder< smt::NoSolver >;
+using SMTLibBuilder = Builder< smt::SMTLibSolver >;
+
+#if OPT_Z3
 using Z3Builder = Builder< smt::Z3Solver >;
-using BoolectorBuilder = Builder< smt::BoolectorSMTLib >;
+#endif
 
 }
 
