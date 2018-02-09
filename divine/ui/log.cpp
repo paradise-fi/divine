@@ -20,6 +20,7 @@
 #include <divine/ui/version.hpp>
 #include <divine/ui/sysinfo.hpp>
 #include <divine/ui/util.hpp>
+#include <divine/mc/trace.hpp>
 
 namespace divine::ui
 {
@@ -38,7 +39,7 @@ struct CompositeSink : LogSink
     void progress( std::pair< int64_t, int64_t > x, int y, bool l ) override
     { each( [&]( auto s ) { s->progress( x, y, l ); } ); }
 
-    void memory( const mc::Job::PoolStats &st, bool l ) override
+    void memory( const mc::PoolStats &st, bool l ) override
     { each( [&]( auto s ) { s->memory( st, l ); } ); }
 
     void backtrace( DbgContext &c, int lim ) override
@@ -88,7 +89,7 @@ std::string fmt_list( const std::deque< T > &v )
 struct YamlSink : TimedSink
 {
     bool _detailed;
-    mc::Job::PoolStats latest;
+    mc::PoolStats latest;
     SysInfo _sysinfo;
     std::ostream &_out;
 
@@ -118,7 +119,7 @@ struct YamlSink : TimedSink
                          { _out << k << ": " << v << std::endl; } );
     }
 
-    void memory( const mc::Job::PoolStats &st, bool last ) override
+    void memory( const mc::PoolStats &st, bool last ) override
     {
         if ( !last || !_detailed )
             return;

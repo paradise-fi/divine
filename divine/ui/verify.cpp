@@ -18,6 +18,7 @@
 
 #include <divine/mc/liveness.hpp>
 #include <divine/mc/safety.hpp>
+#include <divine/mc/job.tpp>
 #include <divine/mc/trace.hpp>
 #include <divine/dbg/stepper.hpp>
 #include <divine/dbg/setup.hpp>
