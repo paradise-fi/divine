@@ -148,9 +148,6 @@ void init( const _VM_Env *env )
     if ( cfg == "default" )
         boot< DefaultConfiguration >( setup );
     else if ( cfg == "passthrough" ) {
-        if ( __dios_clear_file( "passthrough.out" ) == 0 )
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-
         boot< PassthruConfiguration >( setup );
     } else if ( cfg == "replay" ) {
         boot< ReplayConfiguration >( setup );
