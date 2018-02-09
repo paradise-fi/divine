@@ -214,18 +214,6 @@ struct Buffer : Array< BufferLine >
     BufferLine &newest() { return end()[ -1 ]; }
     BufferLine &oldest() { return *begin(); }
 
-    // TODO: flusing last entry might need other buffer's entry flushed
-    void _push( BufferLine &&l ) {
-        push_back( std::move( l ) );
-
-        // there can be fence as oldest entry, so we need while here
-        while ( storeCount() > __lart_weakmem_buffer_size() ) {
-            oldest().store();
-            erase( 0 );
-            cleanOldAndFlushed();
-        }
-    }
-
     void erase( const int i ) {
         erase( begin() + i );
     }
@@ -366,18 +354,29 @@ struct Buffers : ThreadMap< Buffer > {
             } );
     }
 
-    void push( Buffer &b, BufferLine &&line )
+    void push( _DiOS_TaskHandle tid, Buffer &b, BufferLine &&line )
     {
         if ( subseteq( MemoryOrder::AtomicOp, line.order ) )
             line.at_seq = get_next_at_seq( line.addr, line.bitwidth );
         if ( subseteq( MemoryOrder::SeqCst, line.order ) )
             line.sc_seq = get_next_sc_seq();
-        b._push( std::move( line ) );
+        push_tso( tid, b, std::move( line ) );
     }
 
-    void push_tso( Buffer &b, BufferLine &&line )
+    void push_tso( _DiOS_TaskHandle tid, Buffer &b, BufferLine &&line )
     {
-        b._push( std::move( line ) );
+        b.push_back( std::move( line ) );
+
+        // there can be fence as oldest entry, so we need while here
+        while ( b.storeCount() > __lart_weakmem_buffer_size() ) {
+            auto &oldest = b.oldest();
+            if ( oldest.isStore() ) {
+                tso_load< true >( oldest.addr, oldest.bitwidth, tid );
+                oldest.store();
+            }
+            b.erase( 0 );
+            b.cleanOldAndFlushed();
+        }
     }
 
     void dump()
@@ -401,10 +400,14 @@ struct Buffers : ThreadMap< Buffer > {
         }
     }
 
-    void flush( Buffer &buf )
+    void flush( _DiOS_TaskHandle tid, Buffer &buf )
     {
-        for ( auto &l : buf )
-            l.store();
+        for ( auto &l : buf ) {
+            if ( l.isStore() ) {
+                tso_load< true >( l.addr, l.bitwidth, tid );
+                l.store();
+            }
+        }
         buf.clear();
     }
 
@@ -420,6 +423,7 @@ struct Buffers : ThreadMap< Buffer > {
         }
     }
 
+    template< bool skip_local = false >
     void tso_load( char *addr, int bitwidth, _DiOS_TaskHandle tid )
     {
         const int sz = size();
@@ -429,6 +433,8 @@ struct Buffers : ThreadMap< Buffer > {
         for ( auto &p : *this ) {
             todo[i] = 1;
             const bool nonloc = p.first != tid;
+            if ( skip_local && !nonloc )
+                goto next;
             for ( auto &e : p.second ) {
                 // TODO: flusing ours can be avoided if we don't flush anyone else's too
                 if ( e.matches( addr, bitwidth / 8 ) ) {
@@ -437,6 +443,7 @@ struct Buffers : ThreadMap< Buffer > {
                 }
             }
             choices *= todo[i];
+          next:
             ++i;
         }
         if ( !dirty )
@@ -515,7 +522,9 @@ extern "C" void __lart_weakmem_debug_fence() noexcept __attribute__((__noinline_
     auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
     if ( !buf )
         return;
-    __lart_weakmem.storeBuffers.flush( *buf );
+    for ( auto &l : *buf )
+        l.store();
+    buf->clear();
 }
 
 using namespace lart::weakmem;
@@ -536,13 +545,14 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
         line.store();
         return;
     }
-    auto &buf = __lart_weakmem.storeBuffers.get();
+    auto tid = __dios_get_task_handle();
+    auto &buf = __lart_weakmem.storeBuffers.get( tid );
     if ( subseteq( MemoryOrder::SeqCst, ord ) ) {
-        __lart_weakmem.storeBuffers.flush( buf );
+        __lart_weakmem.storeBuffers.flush( tid, buf );
         line.store();
     }
     else
-        __lart_weakmem.storeBuffers.push_tso( buf, std::move( line ) );
+        __lart_weakmem.storeBuffers.push_tso( tid, buf, std::move( line ) );
 }
 
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
@@ -557,13 +567,14 @@ void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
     if ( masked.bypass() || masked.kernel() )
         return; // should not be called recursivelly
 
-    auto *buf = __lart_weakmem.storeBuffers.getIfExists();
+    auto tid = __dios_get_task_handle();
+    auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
     if ( !buf )
         return;
 
     MemoryOrder ord = MemoryOrder( _ord );
     if ( subseteq( MemoryOrder::SeqCst, ord ) )
-        __lart_weakmem.storeBuffers.flush( *buf );
+        __lart_weakmem.storeBuffers.flush( tid, *buf );
 }
 
 union I64b {
