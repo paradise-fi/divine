@@ -1,8 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2017 Petr Ročkai <code@fixp.eu>
- * (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
+ * (c) 2018 Petr Ročkai <code@fixp.eu>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,92 +26,55 @@
 #include <z3++.h>
 #endif
 
-namespace divine::smt
+namespace divine::smt::builder
 {
 
-template< typename Formula >
-struct FormulaMap
+struct SMTLib2
 {
-    FormulaMap( vm::CowHeap &heap, std::string suff )
-       : heap( heap ), suff( suff )
-    {}
+    using Node = brick::smt::Node;
+    SMTLib2( brick::smt::Context &ctx, std::string suff = "" ) : _ctx( ctx ), _suff( suff ) {}
 
-    sym::Formula *hp2form( vm::HeapPointer ptr )
-    {
-        return reinterpret_cast< sym::Formula * >( heap.unsafe_bytes( ptr ).begin() );
-    }
+    Node unary( sym::Unary un, Node n );
+    Node binary( sym::Binary bin, Node a, Node b );
+    Node constant( sym::Type t, uint64_t val );
+    Node constant( bool );
+    Node variable( sym::Type t, int32_t id );
+    Node define( Node def );
 
-    const Formula& operator[]( vm::HeapPointer p )
-    {
-        auto it = ptr2Sym.find( p );
-        ASSERT( it != ptr2Sym.end() );
-        return it->second;
-    }
-
-    vm::CowHeap &heap;
-    std::string suff;
-    std::unordered_set< vm::HeapPointer > pcparts;
-    std::unordered_map< vm::HeapPointer, Formula > ptr2Sym;
-};
-
-struct SMTLibFormulaMap : FormulaMap< std::string > {
-    SMTLibFormulaMap( vm::CowHeap &heap, std::unordered_set< int > &indices,
-                      std::ostream &out, std::string suff = "" )
-        : FormulaMap( heap, suff ), indices( indices ), out( out )
-    {}
-
-    static brick::smt::Printer type( int bitwidth ) {
-        return bitwidth == 1 ? brick::smt::type( "Bool" ) : brick::smt::bitvecT( bitwidth );
-    }
-
-    std::string_view convert( vm::HeapPointer ptr );
-
-    void pathcond()
-    {
-        brick::smt::Vector args;
-        for ( auto ptr : pcparts )
-            args.emplace_back( brick::smt::symbol( (*this)[ ptr ] ) );
-
-        out << brick::smt::defineConst( "pathcond" + suff, brick::smt::type( "Bool" ),
-                                        brick::smt::bigand( args ) )
-            << std::endl;
-    }
-
-    int valcount = 0;
-    std::unordered_set< int > &indices;
-    std::ostream &out;
+    brick::smt::Context &_ctx;
+    std::string _suff;
+    int _def_counter = 0;
 };
 
 #if OPT_Z3
-struct Z3FormulaMap : FormulaMap< z3::expr >
+struct Z3
 {
-    Z3FormulaMap( vm::CowHeap &heap, z3::context &c, std::string suff = "" )
-        : FormulaMap( heap, suff ), ctx( c )
-    {}
+    using Node = z3::expr;
+    Z3( z3::context &c ) : _ctx( c ) {}
 
-    z3::expr convert( vm::HeapPointer ptr );
+    Node unary( sym::Unary un, Node n );
+    Node binary( sym::Binary bin, Node a, Node b );
+    Node constant( sym::Type t, uint64_t val );
+    Node constant( bool );
+    Node variable( sym::Type t, int32_t id );
 
-    z3::expr pathcond()
-    {
-        z3::expr_vector args( ctx );
-        for ( const auto & ptr : pcparts ) {
-            auto part = (*this)[ ptr ];
-            if ( part.is_bv() ) {
-                ASSERT_EQ( part.get_sort().bv_size(), 1 );
-                args.push_back( part == ctx.bv_val( 1, 1 ) );
-            } else {
-                args.push_back( part );
-            }
-        }
-        return z3::mk_and( args );
-    }
-
-private:
-    z3::expr toz3( vm::HeapPointer ptr );
-    z3::expr toz3( sym::Formula *formula );
-
-    z3::context &ctx;
+    z3::context &_ctx;
 };
 #endif
 
+template< typename B >
+auto mk_bin( B &bld, sym::Op op, int bw, typename B::Node a, typename B::Node b )
+{
+    return bld.binary( sym::Binary( op, sym::Type( sym::Type::Int, bw ), vm::nullPointer(),
+                                    vm::nullPointer() ),
+                       a, b );
 }
+
+template< typename B >
+auto mk_un( B &bld, sym::Op op, int bw, typename B::Node a )
+{
+    return bld.unary( sym::Unary( op, sym::Type( sym::Type::Int, bw ), vm::nullPointer() ), a );
+}
+
+}
+

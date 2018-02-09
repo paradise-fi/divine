@@ -1,52 +1,34 @@
 #include <divine/smt/solver.hpp>
 #include <divine/smt/builder.hpp>
-
 #include <brick-smt>
 #include <brick-proc>
 #include <brick-bitlevel>
 
-namespace divine::smt
+namespace divine::smt::solver
 {
 
 namespace smt = brick::smt;
 namespace proc = brick::proc;
 
-using Result = Solver::Result;
-
-namespace {
-
-template< typename FormulaMap >
-sym::Formula *stripAssumes( sym::Formula *f, FormulaMap &m )
-{
-    while ( f->op() == sym::Op::Assume )
-        f = m.hp2form( f->assume.value );
-    return f;
-}
-
 bool match( sym::Constant &a, sym::Constant &b )
 {
     const auto mask = brick::bitlevel::ones< uint64_t >( a.type.bitwidth() );
-    return a.type.bitwidth() == b.type.bitwidth() && (a.value & mask) == (b.value & mask);
+    return a.type.bitwidth() == b.type.bitwidth() && ( a.value & mask ) == ( b.value & mask );
 }
 
-#if OPT_Z3
-static inline Result z3_solver_result( z3::check_result res )
+Result SMTLib::solve()
 {
-    switch ( res )
-    {
-        case z3::check_result::unsat:   return Result::False;
-        case z3::check_result::sat:     return Result::True;
-        case z3::check_result::unknown: return Result::Unknown;
-    }
-}
-#endif
+    auto b = builder( 'z' - 'a' );
+    auto q = b.constant( true );
 
-} // anonymous namespace
+    for ( auto clause : _asserts )
+        builder::mk_bin( b, sym::Op::And, 1, q, clause );
 
-Result SMTLibSolver::query( const std::string & formula )
-{
-    auto r = brick::proc::spawnAndWait( proc::StdinString( formula ) | proc::CaptureStdout |
-                                        proc::CaptureStderr, options() );
+    std::stringstream str;
+    str << "(assert " << _ctx.str( q ) << ")" << std::endl << "(check-sat)";
+
+    auto r = brick::proc::spawnAndWait( proc::StdinString( str.str() ) | proc::CaptureStdout |
+                                        proc::CaptureStderr, _opts );
 
     std::string_view result = r.out();
     if ( result.substr( 0, 5 ) == "unsat" )
@@ -58,191 +40,126 @@ Result SMTLibSolver::query( const std::string & formula )
 
     std::cerr << "E: The SMT solver produced an error: " << r.out() << std::endl
               << "E: The input formula was: " << std::endl
-              << formula << std::endl;
+              << str.str() << std::endl;
     UNREACHABLE( "Invalid SMT reply" );
 }
 
-Result SMTLibSolver::equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 )
+template< typename Extract >
+auto get_pc( Extract &e, vm::HeapPointer ptr )
 {
-    using FormulaMap = SMTLibFormulaMap;
-    std::stringstream formula;
-    std::unordered_set< int > indices;
-    FormulaMap m1( h1, indices, formula, "_1" ), m2( h2, indices, formula, "_2" );
+    auto query = e.constant( true );
 
-    for ( auto p : sym_pairs ) {
-        m1.convert( p.first );
-        m2.convert( p.second );
+    while ( !ptr.null() )
+    {
+        auto f = e.read( ptr );
+        auto clause = e.convert( f->binary.left );
+        query = builder::mk_bin( e, sym::Op::And, 1, query, clause );
+        ptr = f->binary.right;
     }
 
-    m1.pathcond();
-    m2.pathcond();
+    return query;
+}
 
-    smt::Vector valeq;
+template< typename Core >
+bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &h_2 )
+{
+    this->reset();
+    auto e_1 = this->extract( h_1, 1 ), e_2 = this->extract( h_2, 2 );
+    auto b = this->builder();
+
+    auto v_eq = b.constant( true );
+    auto c_1 = e_1.constant( true ), c_2 = e_2.constant( true );
+    bool constraints_found = false;
+
+    using namespace builder;
+
     for ( auto p : sym_pairs )
     {
-        // assumes are encoded in the path condition
-        auto f1 = stripAssumes( m1.hp2form( p.first ), m1 ),
-             f2 = stripAssumes( m2.hp2form( p.second ), m2 );
-
-        if ( f1->op() == sym::Op::Variable && f2->op() == sym::Op::Variable )
+        auto f_1 = e_1.read( p.first ), f_2 = e_2.read( p.second );
+        if ( f_1->op() == sym::Op::Constraint )
         {
-            if ( f1->var.id != f2->var.id )
-                return Result::False;
-            else
-                continue;
-        }
-
-        if ( f1->op() == sym::Op::Constant && f2->op() == sym::Op::Constant )
-        {
-            if ( match( f1->con, f2->con ) )
-                continue;
-            else
-                return Result::False;
-        }
-
-        valeq.emplace_back( smt::binop< smt::Op::Eq >( smt::symbol( m1[ p.first ] ),
-                                                       smt::symbol( m2[ p.second ] ) ) );
-    }
-
-    formula << smt::assume( smt::unop< smt::Op::Not >(
-                                   smt::binop< smt::Op::And >(
-                                       smt::binop< smt::Op::Eq >( smt::symbol( "pathcond_1" ),
-                                                                  smt::symbol( "pathcond_2" ) ),
-                                       smt::binop< smt::Op::Implies >( smt::symbol( "pathcond_1" ),
-                                                                       smt::bigand( valeq ) ) ) ) )
-               << std::endl;
-
-    formula << "(check-sat)" << std::endl;
-    return query( formula.str() ) == Result::False ? Result::True : Result::False;
-}
-
-Result SMTLibSolver::feasible( vm::CowHeap & heap, vm::HeapPointer assumes )
-{
-    using FormulaMap = SMTLibFormulaMap;
-    std::stringstream formula;
-    std::unordered_set< int > indices;
-    FormulaMap map( heap, indices, formula );
-
-    while ( !assumes.null() )
-    {
-        vm::value::Pointer constraint, next;
-        heap.read_shift( assumes, constraint );
-        heap.read( assumes, next );
-
-        formula << smt::assume( smt::symbol( map.convert( constraint.cooked() ) ) ) << std::endl;
-        assumes = next.cooked();
-    }
-    formula << "(check-sat)" << std::endl;
-    return query( formula.str() );
-}
-
-#if OPT_Z3
-Result Z3Solver::equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 )
-{
-    using FormulaMap = Z3FormulaMap;
-
-    FormulaMap m1( h1, ctx ), m2( h2, ctx );
-
-
-    for ( const auto & p : sym_pairs ) {
-        m1.convert( p.first );
-        m2.convert( p.second );
-    }
-
-    auto pc1 = m1.pathcond();
-    auto pc2 = m2.pathcond();
-
-    z3::expr_vector valeq( ctx );
-    for ( const auto& p : sym_pairs ) {
-        auto f1 = stripAssumes( m1.hp2form( p.first ), m1 );
-        auto f2 = stripAssumes( m2.hp2form( p.second ), m2 );
-
-        if ( f1->op() == sym::Op::Variable && f2->op() == sym::Op::Variable )
-        {
-            if ( f1->var.id != f2->var.id )
-                return Result::False;
-            else
-                continue;
-        }
-
-        if ( f1->op() == sym::Op::Constant && f2->op() == sym::Op::Constant )
-        {
-            if ( match( f1->con, f2->con ) )
-                continue;
-            else
-                return Result::False;
-        }
-
-        valeq.push_back( m1[ p.first ] == m2[ p.second ] );
-    }
-
-    auto f = !( ( pc1 == pc2 ) && z3::implies( pc1, z3::mk_and( valeq ) ) );
-    solver.reset();
-    solver.add( f );
-    auto result = z3_solver_result( solver.check() );
-    solver.reset();
-    return result == Result::False ? Result::True : Result::False;
-}
-
-Result Z3Solver::feasible( vm::CowHeap &heap, vm::HeapPointer assumes )
-{
-    using FormulaMap = Z3FormulaMap;
-    FormulaMap map( heap, ctx );
-
-    z3::expr pc = ctx.bool_val( true );
-    vm::HeapPointer head = assumes;
-
-    std::unordered_set< vm::HeapPointer > in_context{ _context.begin(), _context.end() };
-
-    try {
-        while ( !assumes.null() && !in_context.count( assumes ) )
-        {
-            vm::value::Pointer constraint, next;
-            heap.read_shift( assumes, constraint );
-            heap.read( assumes, next );
-            auto c = map.convert( constraint.cooked() );
-
-            if ( c.is_bv() )
-            {
-                ASSERT_EQ( c.get_sort().bv_size(), 1 );
-                pc = pc && ( c == ctx.bv_val( 1, 1 ) );
-            }
-            else
-                pc = pc && c;
-
-            assumes = next.cooked();
-        }
-
-        if ( head == assumes ) /* no new fragments */
-            return Result::True;
-
-        while ( !_context.empty() && _context.back() != assumes )
-        {
-            _context.pop_back();
-            solver.pop();
-            solver.pop();
-        }
-
-        solver.push();
-        solver.add( pc );
-        auto result = z3_solver_result( solver.check() );
-
-        if ( result == Result::True )
-        {
-            solver.push();
-            _context.push_back( head );
+            ASSERT( !constraints_found );
+            ASSERT_EQ( int( f_2->op() ), int( sym::Op::Constraint ) );
+            constraints_found = true;
+            c_1 = get_pc( e_1, p.first );
+            c_2 = get_pc( e_2, p.second );
         }
         else
-            solver.pop();
+        {
+            auto v_1 = e_1.convert( p.first ), v_2 = e_2.convert( p.second );
+            auto pair_eq = mk_bin( b, sym::Op::EQ, 1, v_1, v_2 );
+            v_eq = mk_bin( b, sym::Op::And, 1, v_eq, pair_eq );
+        }
+    }
 
-        return result;
-    }
-    catch ( const z3::exception &e )
-    {
-        std::cerr << "Cannot preform feasibility check: " << e.msg() << std::endl;
-        throw e;
-    }
+
+    /* we already know that both constraint sets are sat */
+    auto c_eq = mk_bin( b, sym::Op::EQ, 1, c_1, c_2 ),
+      pc_fail = mk_un( b, sym::Op::BoolNot, 1, c_1 ),
+       v_eq_c = mk_bin( b, sym::Op::Or, 1, pc_fail, v_eq ),
+           eq = mk_bin( b, sym::Op::And, 1, c_eq, v_eq_c );
+
+    this->add( mk_un( b, sym::Op::BoolNot, 1, eq ) );
+    auto r = this->solve();
+    this->reset();
+    return r == Result::False;
 }
+
+template< typename Core >
+bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
+{
+    this->reset();
+    auto e = this->extract( heap );
+    auto query = get_pc( e, ptr );
+    this->add( query );
+    return this->solve() != Result::False;
+}
+
+template< typename Core >
+bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
+{
+    auto e = this->extract( heap );
+    auto query = e.constant( true );
+    std::unordered_set< vm::HeapPointer > in_context{ _inc.begin(), _inc.end() };
+    auto head = ptr;
+
+    while ( !ptr.null() && !in_context.count( ptr ) )
+    {
+        auto f = e.read( ptr );
+        auto clause = e.convert( f->binary.left );
+        query = mk_bin( e, sym::Op::And, 1, query, clause );
+        ptr = f->binary.right;
+    }
+
+    if ( head == ptr ) /* no new fragments */
+        return true;
+
+    while ( !_inc.empty() && _inc.back() != ptr )
+    {
+        _inc.pop_back();
+        this->pop();
+        this->pop();
+    }
+
+    this->push();
+    this->add( query );
+    auto result = this->solve();
+
+    if ( result == Result::True )
+    {
+        this->push();
+        _inc.push_back( head );
+    }
+    else
+        this->pop();
+
+    return result != Result::False;
+}
+
+template struct Simple< SMTLib >;
+#if OPT_Z3
+template struct Simple< Z3 >;
+template struct Incremental< Z3 >;
 #endif
 
 }

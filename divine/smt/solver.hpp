@@ -2,6 +2,7 @@
 
 /*
  * (c) 2017 Henrich Lauko <xlauko@mail.muni.cz>
+ * (c) 2018 Petr Ročkai <code@fixp.eu>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,84 +21,108 @@
 
 #include <divine/vm/heap.hpp>
 #include <divine/smt/builder.hpp>
+#include <divine/smt/extract.hpp>
 #include <vector>
 
 #if OPT_Z3
 #include <z3++.h>
 #endif
 
-namespace divine::smt
+namespace divine::smt::solver
 {
+
+using namespace std::literals;
 
 using SymPairs = std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > >;
+enum class Result { False, True, Unknown };
 
-struct Solver
+struct None
 {
-    enum class Result { False, True, Unknown };
-};
-
-struct NoSolver
-{
-    using Result = Solver::Result;
-    Result equal( SymPairs &, vm::CowHeap &, vm::CowHeap & ) { UNREACHABLE( "no equality check" ); }
-    Result feasible( vm::CowHeap &, vm::HeapPointer ) { return Result::True; }
+    bool equal( SymPairs &, vm::CowHeap &, vm::CowHeap & ) { UNREACHABLE( "no equality check" ); }
+    bool feasible( vm::CowHeap &, vm::HeapPointer ) { return true; }
     void reset() {}
 };
 
-struct SMTLibSolver : Solver
+template< typename Core >
+struct Simple : Core
 {
-    using Solver::Solver;
+    bool equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
+    bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
+};
 
+template< typename Core >
+struct Incremental : Simple< Core >
+{
+    bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
+    std::vector< vm::HeapPointer > _inc;
+};
+
+struct SMTLib
+{
     using Options = std::vector< std::string >;
+    SMTLib() : _opts{ "z3", "-in", "-smt2" } {}
 
-    SMTLibSolver( Options && opts ) : _opts( std::move( opts ) ) {}
+    void reset() { _asserts.clear(); _ctx.clear(); }
+    void add( brick::smt::Node p ) { _asserts.push_back( p ); }
 
-    Result equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
-    Result feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
-    void reset() {}
+    Result solve();
 
-private:
-    Result query( const std::string & formula );
+    auto builder( int id = 0 )
+    {
+        return builder::SMTLib2( _ctx, "_"s + char( 'a' + id ) );
+    }
 
-    Options options() const { return _opts; }
+    auto extract( vm::CowHeap &h, int id = 0 )
+    {
+        return extract::SMTLib2( h, _ctx, "_"s + char( 'a' + id ) );
+    }
 
-    const Options _opts;
-};
-
-struct Z3SMTLibSolver : SMTLibSolver
-{
-    Z3SMTLibSolver() : SMTLibSolver( { "z3", "-in", "-smt2" } ) {}
-};
-
-struct BoolectorSMTLib : SMTLibSolver
-{
-    BoolectorSMTLib() : SMTLibSolver( { "boolector", "--smt2" } ) {}
+    std::vector< brick::smt::Node > _asserts;
+    brick::smt::Context _ctx;
+    Options _opts;
 };
 
 #if OPT_Z3
-struct Z3Solver : Solver
+
+struct Z3
 {
-    using Solver::Solver;
+    Z3() : _solver( _ctx ) { reset(); }
+    Z3( const Z3 & ) : Z3() {}
 
-    Z3Solver() : solver( ctx ) { reset(); }
-    Z3Solver( const Z3Solver & ) : ctx(), solver( ctx ) { reset(); }
+    builder::Z3 builder( int = 0 ) { return builder::Z3( _ctx ); }
+    extract::Z3 extract( vm::CowHeap &h, int = 0 ) { return extract::Z3( h, _ctx ); }
 
-    Result equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
-    Result feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
-    void reset() { solver.reset(); _context.clear(); }
+    Result solve()
+    {
+        switch ( _solver.check() )
+        {
+            case z3::check_result::unsat:   return Result::False;
+            case z3::check_result::sat:     return Result::True;
+            case z3::check_result::unknown: return Result::Unknown;
+        }
+    }
+
+    void add( z3::expr e ) { _solver.add( e ); }
+    void push()            { _solver.push();  }
+    void pop()             { _solver.pop();   }
+    void reset()           { _solver.reset(); }
 private:
-    z3::context ctx;
-    z3::solver solver;
-    std::vector< vm::HeapPointer > _context;
+    z3::context _ctx;
+    z3::solver _solver;
 };
-#else
-using Z3Solver = Z3SMTLibSolver;
+
 #endif
 
-struct SymbolicConfig
+}
+
+namespace divine::smt
 {
-    SymbolicConfig( std::string solver ) : solver( solver ) {}
-    const std::string solver;
-};
+
+using SMTLibSolver = solver::Simple< solver::SMTLib >;
+using NoSolver = solver::None;
+
+#if OPT_Z3
+using Z3Solver = solver::Simple< solver::Z3 >;
+#endif
 
 }
