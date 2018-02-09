@@ -76,7 +76,7 @@ void BitCode::do_lart()
         lart.setup( lart::reduction::staticTauMemPass() );
     }
 
-    if ( !_solver.empty() )
+    if ( _symbolic )
         lart.setup( lart::abstract::passes() );
 
     if ( _sequential )

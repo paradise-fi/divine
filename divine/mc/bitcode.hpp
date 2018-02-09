@@ -53,13 +53,13 @@ struct BitCode
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     AutoTraceFlags _autotrace;
-    bool _reduce = false, _sequential = false;
+    bool _reduce = false, _sequential = false, _symbolic = false;
     Env _env;
     std::vector< std::string > _lart;
     std::string _relaxed;
     std::string _solver;
 
-    bool is_symbolic() const { return !_solver.empty(); }
+    bool is_symbolic() const { return _symbolic; }
     std::string solver() const { ASSERT( is_symbolic() ); return _solver; }
 
     vm::Program &program() { ASSERT( _program.get() ); return *_program.get(); }
@@ -75,6 +75,7 @@ struct BitCode
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
     void relaxed( std::string r ) { _relaxed = r; }
+    void symbolic( bool s ) { _symbolic = s; }
     void solver( std::string s ) { _solver = s; }
 
     void do_lart();
