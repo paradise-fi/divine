@@ -30,12 +30,14 @@ create table model_srcs( model    integer references model( id ) not null,
                          filename varchar not null,
                          unique ( model, filename ) );
 
-create table tag( id serial primary key not null,
-                  name varchar unique not null );
+create table config( id serial primary key not null,
+                     solver   text not null default '',
+                     threads  integer,
+                     max_mem  bigint,    -- bytes
+                     max_time integer ); -- seconds
 
-create table model_tags( model integer references model( id ) not null,
-                         tag integer references tag( id ) not null,
-                         unique ( model, tag ) );
+create table cc_opt( config integer references config( id ) not null,
+                     opt    text not null );
 
 -- model checker versions
 create table build( id          serial primary key not null,
@@ -46,15 +48,34 @@ create table build( id          serial primary key not null,
                     is_release  boolean  not null,
                     unique( version, source_sha, runtime_sha, build_type ) );
 
+create table tag( id serial primary key not null,
+                  name varchar unique not null );
+
+create table model_tags( model integer references model( id ) not null,
+                         tag integer references tag( id ) not null,
+                         unique ( model, tag ) );
+
+create table build_tags( build integer references build( id ) not null,
+                         tag integer references tag( id ) not null,
+                         unique ( build, tag ) );
+
+create table config_tags( config integer references config( id ) not null,
+                          tag integer references tag( id ) not null,
+                          unique ( config, tag ) );
+
+create table machine_tags( machine integer references machine( id ) not null,
+                           tag integer references tag( id ) not null,
+                           unique ( machine, tag ) );
+
 -- ties the machine and the model checker version together
 create table instance( id      serial primary key not null,
                        build   integer references build( id ) not null,
                        machine integer references machine( id ) not null,
-                       unique( build, machine ) );
+                       config  integer references config( id ) not null,
+                       unique( build, machine, config ) );
 
-create table execution( id       serial primary key not null,
-                        instance integer references instance( id ) not null,
-                        started  timestamp default current_timestamp not null,
+create table execution( id          serial primary key not null,
+                        started     timestamp default current_timestamp not null,
                         time_lart   integer, -- milliseconds
                         time_load   integer, -- milliseconds
                         time_boot   integer, -- milliseconds
@@ -63,10 +84,11 @@ create table execution( id       serial primary key not null,
                         time_ce     integer, -- milliseconds
                         states      integer,
                         correct     boolean,
-                        -- result: V = valid, E = error, B = boot error, U = unknown
+                        -- result: V = valid, E = error, B = boot error,
+                        --         T = timeout, M = out of memory, U = unknown
                         result      char(1) default 'U' not null );
 
-create table pool_log( id serial primary key,
+create table pool_log( id serial primary key not null,
                        seq integer not null,
                        stamp timestamp default current_timestamp not null,
                        execution integer references execution( id ) not null,
@@ -75,7 +97,7 @@ create table pool_log( id serial primary key,
                        used integer not null,
                        held integer not null );
 
-create table search_log( id serial primary key,
+create table search_log( id serial primary key not null,
                          seq integer not null,
                          stamp timestamp default current_timestamp not null,
                          execution integer references execution( id ) not null,
@@ -90,6 +112,6 @@ create table job( id        serial primary key not null,
                   status    char(1) not null ); -- P = pending, R = running, D = done
 
 -- attach notes to a particular build
-create table build_notes( id serial primary key,
-                          build integer references build( id ),
-                          note varchar );
+create table build_notes( id serial primary key not null,
+                          build integer references build( id ) not null,
+                          note varchar not null);
