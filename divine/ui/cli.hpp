@@ -38,8 +38,8 @@
 
 #include <divine/vm/divm.h>
 
-namespace divine {
-namespace ui {
+namespace divine::ui
+{
 
 using namespace std::literals;
 namespace cmd = brick::cmd;
@@ -54,7 +54,8 @@ struct Command
 
 struct WithBC : Command
 {
-    struct VfsDir {
+    struct VfsDir
+    {
         std::string capture;
         std::string mount;
         bool followSymlink;
@@ -119,8 +120,8 @@ struct Help
     }
 };
 
-struct Version : Command {
-
+struct Version : Command
+{
     void run() override;
 };
 
@@ -204,9 +205,10 @@ struct Cc : Command
     void run();
 };
 
-struct Info   : Run
+struct Info : Run
 {
-    Info() {
+    Info()
+    {
         _systemopts.push_back( "help" );
     }
 
@@ -250,5 +252,4 @@ std::string outputName( std::string path, std::string ext )
 
 std::shared_ptr< Interface > make_cli( std::vector< std::string > args );
 
-}
 }
