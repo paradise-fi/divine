@@ -39,7 +39,7 @@ void backtrace( BT bt, Fmt fmt, Dbg &dbg, builder::Snapshot snap, int maxdepth =
     dn.di_type( dbg._state_di_type );
     dn_top.address( dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
     dbg::DNSet visited;
-    int stacks = 1;
+    int stacks = 0;
     dbg::backtrace( bt, fmt, dn_top, visited, stacks, maxdepth );
     dbg::backtrace( bt, fmt, dn, visited, stacks, maxdepth );
 }
