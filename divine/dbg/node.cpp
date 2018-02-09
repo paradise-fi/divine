@@ -22,8 +22,8 @@
 #include <divine/vm/xg-code.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/eval.tpp>
+#include <divine/smt/extract.hpp>
 
-#include <divine/smt/builder.hpp>
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CFG.h>
 DIVINE_UNRELAX_WARNINGS
@@ -316,11 +316,10 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _address.type() == vm::PointerType::Marked )
     {
-        std::stringstream out;
-        std::unordered_set< int > indices;
-        smt::SMTLibFormulaMap map( _ctx.heap(), indices, out );
-        map.convert( _address );
-        yield( "formula", out.str() );
+        brick::smt::Context smt_ctx;
+        smt::extract::SMTLib2 smt_value( _ctx.heap(), smt_ctx );
+        auto n = smt_value.convert( _address );
+        yield( "formula", smt_ctx.str( n ) );
     }
 
     if ( _di_var )
