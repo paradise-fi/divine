@@ -45,7 +45,6 @@ struct Compiler {
     explicit Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
     ~Compiler();
 
-    void mapVirtualFile( std::string path, llvm::StringRef contents );
     void mapVirtualFile( std::string path, std::string_view contents );
     void mapVirtualFile( std::string path, std::string contents );
 
