@@ -88,6 +88,20 @@ struct _VM_OperandExt
 #endif
 };
 
+struct _VM_Function
+{
+    /* where the code for the function lives, relative to start of the heap
+       object holding the RR */
+    uint32_t code_offset, code_size, frame_size;
+    uint32_t argcount:31;
+    uint32_t vararg:1;
+    struct _VM_Operand result;
+    struct _VM_OperandExt result_ext;
+    /* arguments are encoded as OpArg instructions at the start of the first
+     * basic block of the function */
+    _VM_Personality personality;
+    _VM_Pointer lsda;
+};
 
 struct _VM_Frame
 {
