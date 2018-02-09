@@ -16,8 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-
 #include <divine/mc/job.hpp>
+#include <divine/mc/builder.hpp>
 
 namespace divine::mc
 {

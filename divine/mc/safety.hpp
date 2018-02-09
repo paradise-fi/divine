@@ -20,13 +20,13 @@
 #pragma once
 
 #include <divine/mc/job.hpp>
-#include <divine/mc/builder.hpp>
 #include <divine/mc/trace.hpp>
+#include <divine/mc/bitcode.hpp>
 
-namespace divine {
-namespace mc {
+namespace divine::mc
+{
 
-template< typename Next, typename Builder = ExplicitBuilder >
+template< typename Next, typename Builder >
 struct Safety : Job
 {
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
@@ -67,7 +67,7 @@ struct Safety : Job
                 [&]( auto st ) { return _next.state( st ); } ) );
     }
 
-    Safety( builder::BC bc, Next next )
+    Safety( std::shared_ptr< BitCode > bc, Next next )
         : _ex( bc ),
           _ext( _ex.pool() ),
           _next( next ),
@@ -134,7 +134,12 @@ struct Safety : Job
 
 }
 
-namespace t_mc {
+#ifdef BRICK_UNITTEST_REG
+#include <divine/mc/job.tpp>
+#include <divine/mc/builder.hpp>
+
+namespace divine::t_mc
+{
 
 struct TestSafety
 {
@@ -155,4 +160,4 @@ struct TestSafety
 
 }
 
-}
+#endif
