@@ -18,19 +18,19 @@
 
 #pragma once
 
-#include <divine/mc/builder.hpp>
 #include <divine/mc/bitcode.hpp>
+#include <divine/mc/types.hpp>
 #include <divine/dbg/node.hpp>
 #include <divine/dbg/util.hpp>
 #include <divine/ss/search.hpp>
 
 #include <optional>
 
-namespace divine {
-namespace mc {
+namespace divine::mc
+{
 
 template< typename BT, typename Fmt, typename Dbg >
-void backtrace( BT bt, Fmt fmt, Dbg &dbg, builder::Snapshot snap, int maxdepth = 10 )
+void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowSnapshot snap, int maxdepth = 10 )
 {
     dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
     dn._ref.get();
@@ -43,18 +43,6 @@ void backtrace( BT bt, Fmt fmt, Dbg &dbg, builder::Snapshot snap, int maxdepth =
     dbg::backtrace( bt, fmt, dn_top, visited, stacks, maxdepth );
     dbg::backtrace( bt, fmt, dn, visited, stacks, maxdepth );
 }
-
-struct Trace
-{
-    std::vector< vm::Step > steps;
-    std::vector< std::string > labels;
-    std::string bootinfo;
-    vm::CowHeap::Snapshot final;
-};
-
-template< typename Ex >
-using StateTrace = std::deque< std::pair< vm::CowHeap::Snapshot,
-                                          std::optional< typename Ex::Label > > >;
 
 template< typename Explore >
 Trace trace( Explore &ex, StateTrace< Explore > states )
@@ -108,5 +96,4 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
     return t;
 }
 
-}
 }

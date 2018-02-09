@@ -22,24 +22,12 @@
 #include <divine/dbg/context.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/mc/trace.hpp>
+#include <divine/mc/types.hpp>
 #include <brick-mem>
 #include <brick-shmem>
 
-namespace divine {
-namespace mc {
-
-enum class Result { None, Valid, Error, BootError };
-
-static std::ostream &operator<<( std::ostream &o, Result r )
+namespace divine::mc
 {
-    switch ( r )
-    {
-        case Result::None: return o << "error found: unknown";
-        case Result::Valid: return o << "error found: no";
-        case Result::Error: return o << "error found: yes";
-        case Result::BootError: return o << "error found: boot";
-    }
-}
 
 struct Job : ss::Job
 {
@@ -76,7 +64,6 @@ struct Job : ss::Job
         _search->stop();
     }
 
-    using PoolStats = std::map< std::string, brick::mem::Stats >;
     using DbgCtx = dbg::Context< vm::CowHeap >;
 
     virtual Trace ce_trace() { return Trace(); }
@@ -87,19 +74,6 @@ struct Job : ss::Job
 };
 
 template< template< typename, typename > class Job_, typename Next >
-std::shared_ptr< Job > make_job( builder::BC bc, Next next )
-{
-    if ( bc->is_symbolic() )
-    {
-        auto solver = bc->solver();
-        if ( solver == "z3" )
-            return std::make_shared< Job_< Next, mc::Z3Builder > >( bc, next );
-        else if ( solver == "boolector" )
-            return std::make_shared< Job_< Next, mc::BoolectorBuilder > >( bc, next );
-        UNREACHABLE( "Unsupported solver." );
-    }
-    return std::make_shared< Job_< Next, mc::ExplicitBuilder > >( bc, next );
-}
+std::shared_ptr< Job > make_job( std::shared_ptr< BitCode > bc, Next next );
 
-}
 }
