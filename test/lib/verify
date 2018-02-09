@@ -3,6 +3,7 @@
 
 if test "$1" = "--export"; then
     EXPORT=1
+    SRC_ROOT=.
     shift
 else
     . lib/flavour vanilla
@@ -44,14 +45,16 @@ fi
 if test -n "$EXPORT"; then
     dir=$(dirname $1)
     name=$(basename $1)
-    rtinc=$(readlink -f $(dirname $0)/../../runtime)
+    srcroot=$(readlink -f $(dirname $0)/../../)
+    rtinc=$srcroot/runtime
     incs="-isystem $rtinc/libc/include -isystem $rtinc/libc/internals -isystem $rtinc/libcxx/include"
-    incs="$incs -isystem $rtinc/libm/include -isystem $rtinc -isystem $rtinc/../bricks"
+    incs="$incs -isystem $rtinc/libm/include -isystem $rtinc -I $srcroot/bricks"
     for f in $name $extrasrc; do
         deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | sed -e 's,^: [^ ]*,,' -e 's,\\$,,')
         echo load $dir/$f $f
         for dep in $deps; do
-            echo load $dir/$dep $dep
+            if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
+            echo load $dep $(echo $dep | sed -e s,$srcroot/*,,)
         done
     done
     check=$(readlink -f $(dirname $0)/check)
