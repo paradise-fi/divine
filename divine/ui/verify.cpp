@@ -20,6 +20,7 @@
 #include <divine/mc/safety.hpp>
 #include <divine/mc/trace.hpp>
 #include <divine/dbg/stepper.hpp>
+#include <divine/dbg/setup.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/ui/sysinfo.hpp>
 
@@ -120,7 +121,7 @@ void Verify::safety()
         return _log->result( safety->result(), mc::Trace() );
 
     dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
-    vm::setup::dbg_boot( dbg );
+    dbg::setup::boot( dbg );
 
     _log->info( "\n" ); /* makes the output prettier */
 

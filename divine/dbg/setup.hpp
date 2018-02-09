@@ -16,24 +16,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/setup.hpp>
-#include <divine/dbg/context.hpp>
-#include <divine/vm/eval.hpp>
+#pragma once
 
-namespace divine {
-namespace vm {
-namespace setup {
+#include <divine/vm/value.hpp>
+#include <divine/vm/divm.h>
+#include <brick-except>
 
-template< typename Context >
-void dbg_boot( Context &ctx )
+namespace divine::dbg::setup
 {
-    boot( ctx );
-    vm::Eval< Context > eval( ctx );
-    eval.run();
-}
 
-template void dbg_boot< dbg::Context< CowHeap > >( dbg::Context< CowHeap > & );
+    template< typename Context >
+    void boot( Context &ctx );
 
-}
-}
 }
