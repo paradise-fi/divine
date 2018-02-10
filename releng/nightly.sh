@@ -42,7 +42,7 @@ failed()
     if test -e $list; then
         echo "Some tests failed:"
         echo
-        grep failed $list | perl -pe 's,([a-z]+):(.*) (.*),    $3: [$1] $2,'
+        egrep 'failed|timeout' $list | perl -pe 's,([a-z]+):(.*) (.*),    $3: [$1] $2,'
         echo
         if egrep -q 'warnings|skipped' $list; then warnings; fi
         echo "Remaining $(grep -c passed $list) tests passed. Stopping here."
