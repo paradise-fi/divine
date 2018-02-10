@@ -1330,3 +1330,5 @@ bool Eval< Ctx >::run_seq( bool continued )
 }
 
 }
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

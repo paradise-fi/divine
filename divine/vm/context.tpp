@@ -62,3 +62,5 @@ void Context< P, H >::leave_debug()
 }
 
 }
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

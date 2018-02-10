@@ -126,3 +126,5 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
 }
 
 }
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
