@@ -58,7 +58,7 @@ endif()
 if( LLVM_ENABLE_ASSERTIONS )
   # MSVC doesn't like _DEBUG on release builds. See PR 4379.
   if( NOT MSVC )
-    add_definitions( -D_DEBUG )
+    #add_definitions( -D_DEBUG )
   endif()
   # On non-Debug builds cmake automatically defines NDEBUG, so we
   # explicitly undefine it:
