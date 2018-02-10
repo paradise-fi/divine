@@ -219,8 +219,12 @@ else()
   add_definitions( -DNVALGRIND )
 endif()
 
+set( STP_INCLUDES ${divine_SOURCE_DIR}/stp/include ${divine_BINARY_DIR}/stp/include
+                  ${divine_SOURCE_DIR}/stp/lib ${divine_SOURCE_DIR} ${divine_BINARY_DIR}/cryptoms )
+
 set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
-set( DIVINE_SYS_INCLUDES ${Z3_INCLUDE_DIRS} )
+set( DIVINE_SYS_INCLUDES ${Z3_INCLUDE_DIRS} ${STP_INCLUDES} )
+
 set( TEST_WRAPPER "-c" )
 
 add_custom_target( check )
@@ -255,7 +259,7 @@ if ( NOT TOOLCHAIN )
   include( releng/version.cmake )
 
   add_subdirectory( doc )
-  add_subdirectory( dios )
+  add_subdirectory( runtime )
   add_subdirectory( lart )
   add_subdirectory( divine )
   add_subdirectory( tools )
