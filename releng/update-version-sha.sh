@@ -13,10 +13,14 @@ boring='\.orig$|~$';
 if test -e releng/manifest; then
     manifest=`cat releng/manifest`;
 else
-    if ! test -d _darcs || ! darcs --version > /dev/null; then
+    manifest=
+    if test -d _darcs && darcs --version > /dev/null; then
+        # can fail (e.g. when rebasing)
+        manifest=`darcs show files` || manifest=
+    fi
+    if test -z "$manifest"; then
+        echo "darcs file list unavailable" >&2
         manifest=`find . -type f ! -path './_build*' ! -path './_darcs*'` # assume...
-    else
-        manifest=`darcs show files`
     fi
 fi
 
