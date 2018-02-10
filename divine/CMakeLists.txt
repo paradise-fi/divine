@@ -58,7 +58,7 @@ endforeach()
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject clang clangBasic clangCodeGen )
-target_link_libraries( divine-smt ${Z3_LIBRARIES} )
+target_link_libraries( divine-smt ${Z3_LIBRARIES} libstp )
 target_link_libraries( divine-dbg divine-vm )
 target_link_libraries( divine-mc divine-vm divine-dbg divine-smt divine-rt divine-cc # FIXME divine-cc
                                  liblart LLVMBitReader LLVMBitWriter LLVMLinker )
