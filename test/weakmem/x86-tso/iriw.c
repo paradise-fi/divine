@@ -1,4 +1,4 @@
-/* TAGS: ext c tso */
+/* TAGS: big c tso */
 /* VERIFY_OPTS: --relaxed-memory tso */
 
 /* this test is derived from the paper x86-TSO: A Rigorous and Usable
