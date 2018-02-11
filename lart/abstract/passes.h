@@ -1476,7 +1476,8 @@ struct Substitution {
         //TODO asserts
     }
 
-    TEST( call_propagate_ones ) {
+    TEST( call_propagate_ones )
+    {
         auto s = R"(int call() {
                         _SYM int x;
                         return x;
@@ -1486,7 +1487,7 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.80.81" );
+        auto abstract_call = m->getFunction( "_Z4callv.78.79" );
         ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
         ASSERT_EQ( abstract_call->getReturnType()
