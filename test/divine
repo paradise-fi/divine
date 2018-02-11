@@ -16,9 +16,13 @@ callgrind()
     exec env LD_BIND_NOW=1 valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes "$@"
 }
 
+td=$(readlink -f $(dirname $0))
+test -z "$td" && td="."
+td="$td/.."
+
 test -z "$B" && test "$DBG" = gdb && B=debug
 test -z "$B" && test "$DBG" = callgrind && B=release
-test -z "$B" && B=$(make show var=DEFAULT_FLAVOUR)
+test -z "$B" && B=$(cd $td && make show var=DEFAULT_FLAVOUR)
 test -z "$DBG" && DBG=exec
-make $B-divine 1>&2
-$DBG $(make show var=OBJ)$B/tools/divine "$@"
+make -C $td $B-divine 1>&2
+$DBG $(cd $td && make show var=OBJ)$B/tools/divine "$@"
