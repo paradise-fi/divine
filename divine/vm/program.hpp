@@ -146,20 +146,7 @@ struct Program
     auto &heap() { return _ccontext.heap(); }
 
     template< typename H >
-    auto exportHeap( H &target )
-    {
-        auto cp = value::Pointer(
-                heap::clone( _ccontext._heap, target, _ccontext.constants() ) );
-
-        if ( !_globals_size )
-            return std::make_pair( cp.cooked(), nullPointer() );
-
-        auto gp = target.make( _globals_size );
-        target.copy( _ccontext._heap, _ccontext.globals(),
-                     gp.cooked(), _globals_size );
-        target.shared( gp.cooked(), true );
-        return std::make_pair( cp.cooked(), gp.cooked() );
-    }
+    std::pair< HeapPointer, HeapPointer > exportHeap( H &target );
 
     template< typename Container >
     static void makeFit( Container &c, int index )
@@ -215,42 +202,7 @@ struct Program
         return pc.instruction() < function( pc ).instructions.size();
     }
 
-    Slot allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
-    {
-        switch ( slot.location )
-        {
-            case Slot::Const:
-                slot.offset = _constants_size;
-                _constants_size = mem::align( _constants_size + slot.size(), 4 );
-                if ( val && _addr.has_slot( val ) )
-                {
-                    int idx = _addr.addr( val ).object();
-                    makeFit( _globals, idx );
-                    _globals[ idx ] = slot;
-                }
-                return slot;
-            case Slot::Global:
-                slot.offset = _globals_size;
-                _globals_size = mem::align( _globals_size + slot.size(), 4 );
-                ASSERT( val && _addr.has_slot( val ) );
-                {
-                    int idx = _addr.addr( val ).object();
-                    makeFit( _globals, idx );
-                    _globals[ idx ] = slot;
-                }
-                return slot;
-            case Slot::Local:
-            {
-                ASSERT( function );
-                ASSERT( val );
-                overlaySlot( function, slot, val );
-                return slot;
-            }
-            default:
-                UNREACHABLE( "invalid slot location" );
-        }
-    }
-
+    Slot allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr );
     HeapPointer s2hptr( Slot s, int offset = 0 );
 
     using Coverage = std::vector< std::vector< llvm::Value * > >;
