@@ -20,6 +20,7 @@
 
 #include <divine/vm/program.hpp>
 #include <divine/vm/xg-code.hpp>
+#include <divine/vm/heap.tpp>
 #include <lart/divine/cppeh.h>
 
 DIVINE_RELAX_WARNINGS

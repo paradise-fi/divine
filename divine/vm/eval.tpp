@@ -18,7 +18,7 @@
  */
 
 #include <divine/vm/eval.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/heap.tpp>
 
 namespace divine::vm
 {

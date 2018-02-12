@@ -21,7 +21,7 @@
 #include <divine/mc/bitcode.hpp>
 #include <divine/smt/solver.hpp>
 #include <divine/vm/value.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/heap.tpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/setup.hpp>
 #include <divine/vm/eval.hpp>
