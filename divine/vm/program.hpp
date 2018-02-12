@@ -53,15 +53,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #undef alloca
 
-namespace divine {
-namespace vm {
-
-struct ChoiceOptions
+namespace divine::vm
 {
-    int options;
-    // might be empty or contain probability for each option
-    std::vector< int > p;
-};
 
 /*
  * A representation of the LLVM program that is suitable for execution.
@@ -326,9 +319,9 @@ struct Program
     }
 };
 
-}
-
-namespace t_vm {
+#ifdef BRICK_UNITTEST_REG
+namespace divine::t_vm
+{
 
 namespace {
 
@@ -386,5 +379,6 @@ struct Program
 };
 
 }
+#endif
 
 }

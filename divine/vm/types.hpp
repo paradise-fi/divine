@@ -51,6 +51,15 @@ namespace divine::vm
         auto as_tuple() const { return std::make_tuple( taken, total ); }
     };
 
+    struct ChoiceOptions
+    {
+        int options;
+        // might be empty or contain probability for each option
+        std::vector< int > p;
+    };
+
+    struct Program;
+
     static inline std::ostream &operator<<( std::ostream &o, Choice i )
     {
         return o << i.taken << "/" << i.total;
@@ -89,4 +98,8 @@ namespace divine::vm
     using SmallHeap = MutableHeap_< 8 >;
     struct CowHeap;
     using CowSnapshot = brick::mem::Pool< PoolRep<> >::Pointer;
+
+    template< typename _Program, typename _Heap > struct Context;
+    template< typename Context > struct Eval;
+
 }
