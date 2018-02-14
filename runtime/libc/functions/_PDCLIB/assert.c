@@ -7,23 +7,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #ifndef REGTEST
 
 #include "_PDCLIB_aux.h"
 
-void _PDCLIB_assert99( char const * const message1, char const * const function, char const * const message2 )
+void __assert_fail( const char *__assertion, const char *__file, unsigned int __line, const char *__function )
 {
-    fputs( message1, stderr );
-    fputs( function, stderr );
-    fputs( message2, stderr );
-    abort();
-}
-
-void _PDCLIB_assert89( char const * const message )
-{
-    fputs( message, stderr );
-    abort();
+    __dios_trace_f( "Assertion failed: %s, file %s, line %u.", __assertion, __file, __line );
+    __dios_fault( _VM_F_Assert, NULL );
 }
 
 #endif
