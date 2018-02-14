@@ -177,7 +177,7 @@ verify() {
             echo "# expected error to be found at $location, but it was not"
             exit 1
         fi
-        if ! grep -q "^  [{}a-zA-Z_].* at $location" sim.out; then
+        if [ -s sim.out ] && ! grep -q "^  [{}a-zA-Z_].* at $location" sim.out; then
             nl -ba "$1"
             echo "# expected error to be found in divine sim at $location, but it was not"
             exit 1
