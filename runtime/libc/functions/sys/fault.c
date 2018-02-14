@@ -17,7 +17,7 @@ int __dios_get_fault_config( int fault )
     return ret;
 }
 
-void __dios_fault( int f, const char *msg, ... )
+void __dios_fault( int f, const char *msg )
 {
     __dios_trace_f( "FAULT: %s", msg );
     __vm_fault_t fh = ( __vm_fault_t ) __vm_control( _VM_CA_Get, _VM_CR_FaultHandler );

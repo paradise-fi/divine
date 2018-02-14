@@ -58,12 +58,9 @@ int __dios_configure_fault( int fault, int cfg ) _PDCLIB_nothrow;
 int __dios_get_fault_config( int fault ) _PDCLIB_nothrow;
 
 /*
- * Cause program fault by calling fault handler. Remaining arguments are
- * ignored, but can be examined by the fault handler, since it is able to obtain
- * a pointer to the call instruction which invoked __vm_fault by reading the
- * program counter of its parent frame.
+ * Cause program fault by calling fault handler.
  */
-void __dios_fault( int f, const char *msg, ... ) _PDCLIB_nothrow __attribute__(( __noinline__ ));
+void __dios_fault( int f, const char *msg ) _PDCLIB_nothrow __attribute__(( __noinline__ ));
 
 static inline int __dios_sim_fail( enum _DiOS_SimFail x )
 {
