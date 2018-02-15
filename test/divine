@@ -17,7 +17,7 @@ memcheck() { exec valgrind --tool=memcheck "$@"; }
 
 callgrind()
 {
-    exec env LD_BIND_NOW=1 valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes "$@"
+    exec env LD_BIND_NOW=1 valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes --separate-threads=yes "$@"
 }
 
 td=$(readlink -f $(dirname $0))
