@@ -9,6 +9,10 @@ gdb()
     exit 1
 }
 
+cgdb() {
+    /usr/bin/cgdb --args "$@"
+}
+
 memcheck() { exec valgrind --tool=memcheck "$@"; }
 
 callgrind()
