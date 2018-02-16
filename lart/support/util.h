@@ -210,6 +210,50 @@ auto preds( X *x ) { return range( pred_begin( x ), pred_end( x ) ); }
 template< typename X >
 auto preds( X &x ) { return preds( &x ); }
 
+struct BBPreds
+{
+    BBPreds( llvm::BasicBlock &bb ) : bb( &bb ) { }
+
+    using bb_iterator = decltype( llvm::pred_begin( std::declval< llvm::BasicBlock * >() ) );
+    using phi_iterator = llvm::PHINode::const_block_iterator;
+
+    struct iterator
+    {
+        iterator( bb_iterator bit ) : bit( bit ) { }
+        iterator( phi_iterator pit ) : pit( pit ) { }
+
+        llvm::BasicBlock &operator*() { return bit ? **bit.value() : **pit.value(); }
+        llvm::BasicBlock *operator->() { return &**this; }
+
+        void operator++() {
+            if ( bit )
+                ++bit.value();
+            else
+                ++pit.value();
+        }
+
+        bool operator==( const iterator &o ) { return bit == o.bit && pit == o.pit; }
+        bool operator!=( const iterator &o ) { return !(*this == o); }
+
+        std::optional< bb_iterator > bit;
+        std::optional< phi_iterator > pit;
+    };
+
+    iterator begin() const { return has_phi() ? iterator( phi()->block_begin() ) : iterator( llvm::pred_begin( bb ) ); }
+    iterator end() const { return has_phi() ? iterator( phi()->block_end() ) : iterator( llvm::pred_end( bb ) ); }
+
+    // note: LART can temporarily create PHI nodes with no ingoing values, we must ignore them
+    bool has_phi() const { return !bb->empty() && bb->begin()->getOpcode() == llvm::Instruction::PHI
+                                  && phi()->getNumIncomingValues(); }
+    llvm::PHINode *phi() const { return llvm::cast< llvm::PHINode >( bb->begin() ); }
+
+  private:
+    llvm::BasicBlock *bb;
+};
+
+static inline BBPreds phiord_preds( llvm::BasicBlock &bb ) { return BBPreds( bb ); }
+static inline BBPreds phiord_preds( llvm::BasicBlock *bb ) { return BBPreds( *bb ); }
+
 struct Timer {
     explicit Timer( std::string msg ) : _msg( msg ), _begin( std::chrono::high_resolution_clock::now() ) { }
     ~Timer() {
