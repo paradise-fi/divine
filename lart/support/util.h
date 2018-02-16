@@ -915,7 +915,7 @@ inline void inlineIntoCallers( llvm::Function *fn ) {
     std::vector< llvm::Value * > users{ fn->user_begin(), fn->user_end() };
     for ( auto *u : users ) {
         llvm::CallSite cs{ u };
-        if ( !u )
+        if ( !cs )
             continue;
         llvm::InlineFunctionInfo ifi;
         llvm::InlineFunction( cs, ifi );
