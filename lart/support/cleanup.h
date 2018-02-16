@@ -111,15 +111,10 @@ template< typename AtExit >
 void atExits( llvm::Function &fn, AtExit &&atExit ) {
     using query::operator&&;
     using query::operator||;
-    auto *dunwind = fn.getParent()->getFunction( "__divine_unwind" ); // TODO
     auto exits = query::query( fn ).flatten()
             .map( query::refToPtr )
-            // exits are ret, resume and call to __divine_unwind
-            .filter( query::is< llvm::ReturnInst > || query::is< llvm::ResumeInst > ||
-                    ( ( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > ) && [&]( llvm::Instruction *i ) {
-                        llvm::CallSite cs( i );
-                        return dunwind && cs.getCalledFunction() == dunwind;
-                    } ) )
+            // exits are ret and resume
+            .filter( query::is< llvm::ReturnInst > || query::is< llvm::ResumeInst > )
             .freeze();
     for ( auto *exit : exits )
         atExit( exit );
