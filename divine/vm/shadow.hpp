@@ -169,7 +169,8 @@ struct PooledShadow
      */
 
     PooledShadow( const MasterPool &mp )
-        : _type( mp ), _defined( mp ), _shared( mp ), _exceptions( new Exceptions )
+        : _type( mp ), _defined( mp ), _shared( mp ),
+          _def_exceptions( new DataExceptions ), _ptr_exceptions( new PointerExceptions )
     {}
 
     struct Loc : public brick::types::Ord
@@ -195,17 +196,82 @@ struct PooledShadow
         }
     };
 
-    struct Exceptions
+    template< typename ExceptionType >
+    class ExceptionMap
     {
-        using DataExcMap = std::map< Loc, DataException >;
+    public:
+        using ExcMap = std::map< Loc, ExceptionType >;
         using Lock = std::lock_guard< std::mutex >;
 
-        Exceptions &operator=( const Exceptions & o ) = delete;
+        ExceptionMap &operator=( const ExceptionType & o ) = delete;
 
+        ExceptionType at( Internal obj, int wpos )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+
+            auto it = _exceptions.find( Loc( obj, wpos ) );
+            ASSERT( it != _exceptions.end() );
+            ASSERT( it->second.valid() );
+            return it->second;
+        }
+
+        void set( Internal obj, int wpos, const ExceptionType &exc )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+            _exceptions[ Loc( obj, wpos ) ] = exc;
+        }
+
+        void invalidate( Internal obj, int wpos )
+        {
+            ASSERT_EQ( wpos % 4, 0 );
+
+            Lock lk( _mtx );
+
+            auto it = _exceptions.find( Loc( obj, wpos ) );
+
+            ASSERT( it != _exceptions.end() );
+            ASSERT( it->second.valid() );
+
+            it->second.invalidate();
+        }
+
+        void free( Internal obj )
+        {
+            Lock lk( _mtx );
+
+            auto lb = _exceptions.lower_bound( Loc( obj, 0 ) );
+            auto ub = _exceptions.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
+            while (lb != ub)
+            {
+                lb->second.invalidate();
+                ++lb;
+            }
+        }
+
+    protected:
+        ExcMap _exceptions;
+        mutable std::mutex _mtx;
+    };
+
+    class DataExceptions : public ExceptionMap< DataException >
+    {
+    public:
+        using Base = ExceptionMap< DataException >;
+
+    private:
+        using Lock = typename Base::Lock;
+        using Base::_exceptions;
+        using Base::_mtx;
+
+    public:
         void dump() const
         {
             std::cout << "exceptions: {\n";
-            for ( auto &e : _dataexc )
+            for ( auto &e : _exceptions )
             {
                 std::cout << "  {" << e.first.object._raw << " + "
                    << e.first.offset << ": " << e.second << "}\n";
@@ -213,32 +279,14 @@ struct PooledShadow
             std::cout << "}\n";
         }
 
-        DataException at( Internal obj, int wpos )
-        {
-            ASSERT_EQ( wpos % 4, 0 );
-
-            Lock lk( _mtx );
-
-            auto it = _dataexc.find( Loc( obj, wpos ) );
-            ASSERT( it != _dataexc.end() );
-            ASSERT( it->second.valid() );
-            return it->second;
-        }
-
-        void set( Internal obj, int wpos, const DataException &exc )
-        {
-            ASSERT_EQ( wpos % 4, 0 );
-
-            Lock lk( _mtx );
-            _dataexc[ Loc( obj, wpos ) ] = exc;
-        }
+        using Base::set;
 
         void set( Internal obj, int wpos, const uint8_t *mask )
         {
             ASSERT_EQ( wpos % 4, 0 );
 
             Lock lk( _mtx );
-            auto & exc = _dataexc[ Loc( obj, wpos ) ];
+            auto & exc = _exceptions[ Loc( obj, wpos ) ];
             std::copy( mask, mask + 4, exc.bitmask );
         }
 
@@ -248,9 +296,9 @@ struct PooledShadow
 
             Lock lk( _mtx );
 
-            auto it = _dataexc.find( Loc( obj, wpos ) );
+            auto it = _exceptions.find( Loc( obj, wpos ) );
 
-            ASSERT( it != _dataexc.end() );
+            ASSERT( it != _exceptions.end() );
             ASSERT( it->second.valid() );
 
             std::copy( it->second.bitmask, it->second.bitmask + 4, mask_dst );
@@ -262,8 +310,8 @@ struct PooledShadow
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto it = _dataexc.find( Loc( obj, wpos ) );
-            if ( it != _dataexc.end() && it->second.valid() )
+            auto it = _exceptions.find( Loc( obj, wpos ) );
+            if ( it != _exceptions.end() && it->second.valid() )
             {
                 return it->second.bitmask[ pos % 4 ];
             }
@@ -278,9 +326,9 @@ struct PooledShadow
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto it = _dataexc.find( Loc( obj, wpos ) );
+            auto it = _exceptions.find( Loc( obj, wpos ) );
 
-            bool exc_exists = it != _dataexc.end();
+            bool exc_exists = it != _exceptions.end();
             bool def_trivial = def == 0x00 || def == 0xff;
 
             ASSERT( ( exc_exists && it->second.valid() ) == exc_should_exist );
@@ -293,7 +341,7 @@ struct PooledShadow
                 // Create new data exception
                 DataException e;
                 e.invalidate();
-                it = _dataexc.insert( std::make_pair( Loc( obj, wpos ), e )).first;
+                it = _exceptions.insert( std::make_pair( Loc( obj, wpos ), e )).first;
             }
 
             auto & exc = it->second;
@@ -310,33 +358,6 @@ struct PooledShadow
             return exc.valid();
         }
 
-        void invalidate( Internal obj, int wpos )
-        {
-            ASSERT_EQ( wpos % 4, 0 );
-
-            Lock lk( _mtx );
-
-            auto it = _dataexc.find( Loc( obj, wpos ) );
-
-            ASSERT( it != _dataexc.end() );
-            ASSERT( it->second.valid() );
-
-            it->second.invalidate();
-        }
-
-        void free( Internal obj )
-        {
-            Lock lk( _mtx );
-
-            auto lb = _dataexc.lower_bound( Loc( obj, 0 ) );
-            auto ub = _dataexc.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
-            while (lb != ub)
-            {
-                lb->second.invalidate();
-                ++lb;
-            }
-        }
-
         static void set_word_definedness( uint8_t *mask, uint8_t shadow_content, int pos )
         {
             if ( pos % 8 < 4 )
@@ -348,13 +369,33 @@ struct PooledShadow
                 shadow_content >>= 1;
             }
         }
-
-        DataExcMap _dataexc;
-        mutable std::mutex _mtx;
-
     };
 
-    std::shared_ptr< Exceptions > _exceptions;
+    class PointerExceptions : public ExceptionMap< PointerException >
+    {
+    public:
+        using Base = ExceptionMap< PointerException >;
+
+    private:
+        using Lock = typename Base::Lock;
+        using Base::_exceptions;
+        using Base::_mtx;
+
+    public:
+        void dump() const
+        {
+            std::cout << "pointer exceptions: {\n";
+            for ( auto &e : _exceptions )
+            {
+                std::cout << "  {" << e.first.object._raw << " + "
+                   << e.first.offset << ": " << e.second << "  }\n";
+            }
+            std::cout << "}\n";
+        }
+    };
+
+    std::shared_ptr< DataExceptions > _def_exceptions;
+    std::shared_ptr< PointerExceptions > _ptr_exceptions;
 
     struct TypeProxy
     {
@@ -444,7 +485,7 @@ struct PooledShadow
             uint8_t *_base;
             uint8_t *_type_base;
             int _pos;
-            Exceptions &exceptions() const { return _parent->_exceptions; }
+            DataExceptions &exceptions() const { return _parent->_exceptions; }
             uint8_t mask() const { return uint8_t( 0x80 ) >> ( _pos % 8 ); }
             uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
             proxy *operator->() { return this; }
@@ -530,11 +571,11 @@ struct PooledShadow
         Internal _base;
         Pool & _sh_defined;
         Pool & _sh_type;
-        Exceptions & _exceptions;
+        DataExceptions & _exceptions;
         int _from;
         int _to;
 
-        DefinedC(Pool &def, Pool &type, Exceptions &exc, Internal base, int from, int to)
+        DefinedC(Pool &def, Pool &type, DataExceptions &exc, Internal base, int from, int to)
             : _base(base), _sh_defined(def), _sh_type(type), _exceptions(exc), _from(from), _to(to)
         {}
         iterator begin() { return iterator( this, _sh_defined.template machinePointer< uint8_t >( _base ),
@@ -616,7 +657,7 @@ struct PooledShadow
 
     void free( Internal p )
     {
-        _exceptions->free( p );
+        _def_exceptions->free( p );
     }
 
     auto type( Loc l, int sz )
@@ -625,7 +666,7 @@ struct PooledShadow
     }
     auto defined( Loc l, int sz )
     {
-        return DefinedC( _defined, _type, *_exceptions, l.object, l.offset, l.offset + sz );
+        return DefinedC( _defined, _type, *_def_exceptions, l.object, l.offset, l.offset + sz );
     }
     auto pointers( Loc l, int sz )
     {
@@ -668,15 +709,15 @@ struct PooledShadow
 
         int off = 0;
         for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
-            if ( TypeProxy( _ty_a, off ) == ShadowType::DataException
-                    && ( cmp = a_sh._exceptions->at( a, off )
-                        - _exceptions->at( b, off ) ) )
+            if ( TypeProxy( _ty_a, off ) & ShadowType::DataException
+                    && ( cmp = a_sh._def_exceptions->at( a, off )
+                        - _def_exceptions->at( b, off ) ) )
                 return cmp;
 
-        if ( off < sz && TypeProxy( _ty_a, off ) == ShadowType::DataException )
+        if ( off < sz && TypeProxy( _ty_a, off ) & ShadowType::DataException )
             for ( ; off < sz; ++off )
-                if ( ( cmp = a_sh._exceptions->defined( a, off )
-                            - _exceptions->defined( b, off ) ) )
+                if ( ( cmp = a_sh._def_exceptions->defined( a, off )
+                            - _def_exceptions->defined( b, off ) ) )
                     return cmp;
 
         return 0;
@@ -764,7 +805,7 @@ struct PooledShadow
         {
             bool is_exc = TypeProxy( _ty, l.offset ).is_exception();
             for ( ; off < sz; ++off )
-                _def_bytes[ off ] = is_exc ? _exceptions->defined( obj, l.offset + off )
+                _def_bytes[ off ] = is_exc ? _def_exceptions->defined( obj, l.offset + off )
                                            : BitProxy( _def, l.offset + off ).get() * 0xff;
         }
 
@@ -810,11 +851,11 @@ struct PooledShadow
                 shadow_word_to |= ( shadow_word_from >> shadow_shift_to );
                 BitProxy( _def_to, to.offset + off ).word() = shadow_word_to;
 
-                if ( st_from == ShadowType::DataException )
-                    _exceptions->set( to.object, to.offset + off,
-                            from_sh._exceptions->at( from.object, from.offset + off ) );
-                else if ( st_to == ShadowType::DataException )
-                    _exceptions->invalidate( to.object, to.offset + off );
+                if ( st_from & ShadowType::DataException )
+                    _def_exceptions->set( to.object, to.offset + off,
+                            from_sh._def_exceptions->at( from.object, from.offset + off ) );
+                else if ( st_to & ShadowType::DataException )
+                    _def_exceptions->invalidate( to.object, to.offset + off );
 
                 TypeProxy( _ty_to, to.offset + off ).set( st_from );
             }
@@ -873,8 +914,8 @@ struct PooledShadow
         ASSERT_EQ( off % 4, 0 );
 
         auto st = TypeProxy( _ty, off ).get();
-        if ( st == ShadowType::DataException )
-            _exceptions->get( obj, off, dst );
+        if ( st & ShadowType::DataException )
+            _def_exceptions->get( obj, off, dst );
         else if ( st == ShadowType::Pointer )
         {
             for ( int i = 0; i < 4; ++i )
@@ -918,9 +959,9 @@ struct PooledShadow
         TypeProxy( _ty, off ) = is_exc ? ShadowType::DataException : ShadowType::Data;
 
         if ( is_exc )
-            _exceptions->set( obj, off, src );
+            _def_exceptions->set( obj, off, src );
         else if ( was_exc )
-            _exceptions->invalidate( obj, off );
+            _def_exceptions->invalidate( obj, off );
     }
 
     void dump( std::string what, Loc l, int sz )
@@ -936,7 +977,7 @@ struct PooledShadow
         {
             uint8_t def = BitProxy( _def, l.offset + i ).get() * 0xff;
             if ( def == 0x00 && TypeProxy( _ty, l.offset + i ).is_exception() )
-                def = _exceptions->defined( l.object, l.offset + i );
+                def = _def_exceptions->defined( l.object, l.offset + i );
             std::cerr << ' ' << +def;
         }
         std::cerr << std::dec << std::endl;
