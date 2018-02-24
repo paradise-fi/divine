@@ -18,42 +18,17 @@
 
 #include <divine/mc/exec.hpp>
 #include <divine/ui/cli.hpp>
-#include <divine/vm/setup.hpp>
-#include <divine/dbg/stepper.hpp>
 
 namespace divine::ui
 {
 
-void Run::run()
-{
-    if ( _trace )
-        trace();
-    else
-        mc::Exec( bitcode() ).run();
-}
-
-void Run::trace()
-{
-    using Stepper = dbg::Stepper< mc::TraceContext >;
-    Stepper step;
-    step._ff_components = dbg::Component::Kernel;
-    step._booting = true;
-
-    mc::TraceContext ctx( bitcode()->program(), bitcode()->debug() );
-    vm::setup::boot( ctx );
-
-    auto mainpc = bitcode()->program().functionByName( "main" );
-    auto startpc = bitcode()->program().functionByName( "_start" );
-
-    step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
-    step.run(ctx, Stepper::Verbosity::Quiet);
-    step._breakpoint = [startpc]( vm::CodePointer pc, bool )
-                       {
-                           return pc.function() == startpc.function();
-                       };
-    step.run(ctx, Stepper::Verbosity::TraceInstructions);
-    step._breakpoint = {};
-    step.run(ctx, Stepper::Verbosity::Quiet);
-}
+    void Run::run()
+    {
+        mc::Exec exec( bitcode() );
+        if ( _trace )
+            exec.trace();
+        else
+            exec.run();
+    }
 
 }

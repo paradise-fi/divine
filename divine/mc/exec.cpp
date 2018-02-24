@@ -28,25 +28,49 @@
 namespace divine::mc
 {
 
-void Exec::run()
-{
-    using Eval = vm::Eval< ExecContext >;
-    auto &program = _bc->program();
-    ExecContext _ctx( program );
-    Eval eval( _ctx );
-
-    vm::setup::boot( _ctx );
-    _ctx.enable_debug();
-    eval.run();
-    if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
-        ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );
-
-    while ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
+    void Exec::run()
     {
-        vm::setup::scheduler( _ctx );
+        using Eval = vm::Eval< ExecContext >;
+        auto &program = _bc->program();
+        ExecContext _ctx( program );
+        Eval eval( _ctx );
+
+        vm::setup::boot( _ctx );
+        _ctx.enable_debug();
         eval.run();
+        if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
+            ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );
+
+        while ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
+        {
+            vm::setup::scheduler( _ctx );
+            eval.run();
+        }
     }
-}
+
+    void Exec::trace()
+    {
+        using Stepper = dbg::Stepper< mc::TraceContext >;
+        Stepper step;
+        step._ff_components = dbg::Component::Kernel;
+        step._booting = true;
+
+        mc::TraceContext ctx( _bc->program(), _bc->debug() );
+        vm::setup::boot( ctx );
+
+        auto mainpc = _bc->program().functionByName( "main" );
+        auto startpc = _bc->program().functionByName( "_start" );
+
+        step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
+        step.run(ctx, Stepper::Verbosity::Quiet);
+        step._breakpoint = [startpc]( vm::CodePointer pc, bool )
+                        {
+                            return pc.function() == startpc.function();
+                        };
+        step.run(ctx, Stepper::Verbosity::TraceInstructions);
+        step._breakpoint = {};
+        step.run(ctx, Stepper::Verbosity::Quiet);
+    }
 
 }
 
