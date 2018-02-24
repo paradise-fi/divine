@@ -1,37 +1,38 @@
+#include <sys/hostabi.h>
+
 #ifndef MEM
 #define MEM const char *
 #endif
 
-SYSCALLSEP( get_process_tasks, CONTINUE, _DiOS_TaskHandle *, ( _DiOS_TaskHandle _1 ) )
-SYSCALLSEP( start_task, CONTINUE, _DiOS_TaskHandle, ( _DiOS_TaskRoutine _1, void *_2, int _3 ) )
-SYSCALLSEP( get_fault_config, CONTINUE, int, ( int _1 ) )
-SYSCALLSEP( exit_process, RESCHEDULE, void, ( int _1 ) )
-SYSCALLSEP( configure_fault, CONTINUE, int, ( int _1, int _2 ) )
-SYSCALLSEP( register_monitor, CONTINUE, void, ( __dios::Monitor *_1 ) )
-SYSCALLSEP( die, RESCHEDULE, void, () )
-SYSCALLSEP( kill_task, RESCHEDULE, void, ( _DiOS_TaskHandle _1 ) )
-SYSCALLSEP( kill_process, RESCHEDULE, void, ( int _1 ) )
-SYSCALLSEP( yield, RESCHEDULE, void, ( ) )
-SYSCALLSEP( fault_handler, CONTINUE,  void, ( int _1, _VM_Frame * _2, int _3 ) )
+SYSCALLSEP( get_process_tasks, CONTINUE,   _DiOS_TaskHandle *, ( _DiOS_TaskHandle _1 ) )
+SYSCALLSEP( start_task,        CONTINUE,   _DiOS_TaskHandle, ( _DiOS_TaskRoutine _1, void *_2, int _3 ) )
+SYSCALLSEP( get_fault_config,  CONTINUE,   int, ( int _1 ) )
+SYSCALLSEP( exit_process,      RESCHEDULE, void, ( int _1 ) )
+SYSCALLSEP( configure_fault,   CONTINUE,   int, ( int _1, int _2 ) )
+SYSCALLSEP( register_monitor,  CONTINUE,   void, ( __dios::Monitor *_1 ) )
+SYSCALLSEP( die,               RESCHEDULE, void, () )
+SYSCALLSEP( kill_task,         RESCHEDULE, void, ( _DiOS_TaskHandle _1 ) )
+SYSCALLSEP( kill_process,      RESCHEDULE, void, ( int _1 ) )
+SYSCALLSEP( yield,             RESCHEDULE, void, ( ) )
+SYSCALLSEP( fault_handler,     CONTINUE,   void, ( int _1, _VM_Frame * _2, int _3 ) )
+SYSCALLSEP( pipe,              CONTINUE,   int, ( OUT(int*) _1 ) )
+SYSCALLSEP( open,              CONTINUE,   int, ( MEM _1, int _2, mode_t _3 ) )
+SYSCALLSEP( fcntl,             CONTINUE,   int,     ( int _1, int _2, va_list *_3 ) )
+SYSCALLSEP( sysfork,           CONTINUE,   pid_t,   () )
+
+/* TODO: use sysctl for this */
 SYSCALLSEP( hardware_concurrency, CONTINUE, int, () )
-SYSCALLSEP( pipe, CONTINUE, int, ( OUT(int*) _1 ) )
-SYSCALLSEP( open, CONTINUE, int, ( MEM _1, int _2, mode_t _3 ) )
-SYSCALLSEP( fcntl,CONTINUE, int,     ( int _1, int _2, va_list *_3 ) )
-SYSCALLSEP( sysfork,     CONTINUE, pid_t,   () )
 
 SYSCALL( rename,      CONTINUE, int,     ( MEM _1, MEM _2 ) )
 SYSCALL( lseek,       CONTINUE, off_t,   ( int _1, off_t _2, int _3 ) )
-SYSCALL( syncfs,      CONTINUE, int,     ( int _1 ) )
 SYSCALL( accept4,     CONTINUE, int,     ( int _1, STRUCT(struct sockaddr *) _2,
                                            OUT(socklen_t *) _3, int _4 ) )
-SYSCALL( creat,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
 SYSCALL( linkat,      CONTINUE, int,     ( int _1, MEM _2, int _3, MEM _4, int _5 ) )
 SYSCALL( mkdir,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
 SYSCALL( sync,        CONTINUE, void,    () )
 
 SYSCALL( chmod,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
 SYSCALL( renameat,    CONTINUE, int,     ( int _1, MEM _2, int _3, MEM _4 ) )
-SYSCALL( uname,       CONTINUE, int,     ( STRUCT(struct utsname *) _1 ) )
 SYSCALL( mknod,       CONTINUE, int,     ( MEM _1, mode_t _2, dev_t _3 ) )
 SYSCALL( symlinkat,   CONTINUE, int,     ( MEM _1, int _2, MEM _3 ) )
 SYSCALL( kill,      RESCHEDULE, int,     ( pid_t _1, int _2 ) )
@@ -40,7 +41,6 @@ SYSCALL( getsockname, CONTINUE, int,     ( int _1, STRUCT(struct sockaddr *) _2,
 SYSCALL( close,       CONTINUE, int,     ( int _1 ) )
 SYSCALL( recvfrom,    CONTINUE, ssize_t, ( int _1, COUNT(void *) _2, size_t _3, int _4,
                                            STRUCT(struct sockaddr *) _5, OUT(socklen_t *) _6 ) )
-SYSCALL( fstatfs,     CONTINUE, int,     ( int _1, STRUCT(struct statfs *) _2 ) )
 SYSCALL( write,       CONTINUE, ssize_t, ( int _1, COUNT(const void *) _2, size_t _3 ) )
 SYSCALL( bind,        CONTINUE, int,     ( int _1, COUNT(const struct sockaddr *) _2, socklen_t _3 ) )
 SYSCALL( fchmodat,    CONTINUE, int,     ( int _1, MEM _2, mode_t _3, int _4 ) )
@@ -52,7 +52,6 @@ SYSCALL( fchmod,      CONTINUE, int,     ( int _1, mode_t _2 ) )
 SYSCALL( rmdir,       CONTINUE, int,     ( MEM _1 ) )
 SYSCALL( accept,      CONTINUE, int,     ( int _1, STRUCT(struct sockaddr *) _2, OUT(socklen_t *) _3 ) )
 SYSCALL( dup,         CONTINUE, int,     ( int _1 ) )
-SYSCALL( fdatasync,   CONTINUE, int,     ( int _1 ) )
 SYSCALL( fstat,       CONTINUE, int,     ( int _1, STRUCT(struct stat *) _2 ) )
 SYSCALL( getpid,      CONTINUE, pid_t,   () )
 SYSCALL( getppid,     CONTINUE, pid_t,   () )
@@ -62,7 +61,6 @@ SYSCALL( getpgrp,     CONTINUE, pid_t,   () )
 SYSCALL( setsid,      CONTINUE, pid_t,   () )
 SYSCALL( setpgid,     CONTINUE, int,     ( pid_t _1, pid_t _2 ) )
 SYSCALL( stat,        CONTINUE, int,     ( MEM _1, STRUCT(struct stat *) _2 ) )
-SYSCALL( getcwd,      CONTINUE, char*,   ( COUNT(char*) _1, size_t _2 ) )
 SYSCALL( truncate,    CONTINUE, int,     ( MEM _1, off_t _2 ) )
 SYSCALL( dup2,        CONTINUE, int,     ( int _1, int _2 ) )
 SYSCALL( read,        CONTINUE, ssize_t, ( int _1, COUNT(void *) _2, size_t _3 ) )
@@ -83,11 +81,23 @@ SYSCALL( readlinkat,  CONTINUE, ssize_t, ( int _1, MEM _2, COUNT(char *) _3, siz
 SYSCALL( chdir,       CONTINUE, int,     ( MEM _1 ) )
 SYSCALL( socket,      CONTINUE, int,     ( int _1, int _2, int _3 ) )
 SYSCALL( fsync,       CONTINUE, int,     ( int _1 ) )
-SYSCALL( statfs,      CONTINUE, int,     ( MEM _1, STRUCT(struct statfs *) _2 ) )
 SYSCALL( socketpair,  CONTINUE, int,     ( int _1, int _2, int _3, OUT(int *) _4 ) )
 SYSCALL( link,        CONTINUE, int,     ( MEM _1, MEM _2 ) )
 SYSCALL( listen,      CONTINUE, int,     ( int _1, int _2 ) )
 SYSCALL( mkdirat,     CONTINUE, int,     ( int _1, MEM _2, mode_t _3 ) )
 SYSCALL( wait4,       CONTINUE, pid_t,   ( pid_t _1, int *_2, int _3, STRUCT(struct rusage *) _4 ) )
+
+#if HOST_is_linux /* linux-specific syscalls */
+SYSCALL( creat,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
+SYSCALL( fdatasync,   CONTINUE, int,     ( int _1 ) )
+SYSCALL( syncfs,      CONTINUE, int,     ( int _1 ) )
+SYSCALL( uname,       CONTINUE, int,     ( STRUCT(struct utsname *) _1 ) )
+SYSCALL( getcwd,      CONTINUE, char*,   ( COUNT(char*) _1, size_t _2 ) )
+#endif
+
+#if 0 /* not implemented */
+SYSCALL( fstatfs,     CONTINUE, int,     ( int _1, STRUCT(struct statfs *) _2 ) )
+SYSCALL( statfs,      CONTINUE, int,     ( MEM _1, STRUCT(struct statfs *) _2 ) )
+#endif
 
 #undef MEM
