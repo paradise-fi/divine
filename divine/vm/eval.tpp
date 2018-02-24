@@ -453,7 +453,7 @@ void Eval< Ctx >::implement_hypercall_syscall()
 
     std::vector< long > args;
     std::vector< bool > argt;
-    std::vector< char * > bufs;
+    std::vector< std::unique_ptr< char[] > > bufs;
 
     std::vector< int >  actions;
 
@@ -480,8 +480,8 @@ void Eval< Ctx >::implement_hypercall_syscall()
         else if ( type( action ) == _VM_SC_Mem )
         {
             int size = operandCk< IntV >( idx ).cooked();
-            bufs.push_back( size ? new char[ size ] : nullptr );
-            args.push_back( long( bufs.back() ) );
+            bufs.emplace_back( size ? new char[ size ] : nullptr );
+            args.push_back( long( bufs.back().get() ) );
             auto ptr = operand< PointerV >( idx + 1 );
             CharV ch;
             if ( !ptr.cooked().null() && !boundcheck( ptr, size, out( action ) ) )
@@ -565,9 +565,6 @@ void Eval< Ctx >::implement_hypercall_syscall()
         process( actions[ i ], args[ i - 1 ] );
         next( actions[ i ] );
     }
-
-    for ( auto buf : bufs )
-        delete[] buf;
 }
 
 template< typename Ctx >
