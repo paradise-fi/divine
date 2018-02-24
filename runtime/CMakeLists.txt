@@ -29,6 +29,8 @@ file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/libc/include/sys/ )
 set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/libc/include/ )
+set( HOSTABI ${SYSINC}hostabi.h )
+set( VMINC ${SYSINC}divm.h ${SYSINC}lart.h ${SYSINC}vmutil.h )
 
 list( REMOVE_ITEM H_RUNTIME ${LIBCINC}sys/divm.h ${LIBCINC}sys/vmutil.h ${LIBCINC}sys/lart.h )
 
@@ -38,7 +40,7 @@ macro( mkobjs var flags )
     file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
     list( APPEND BC_${var} bc/${out} )
     add_custom_command(
-        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${SYSINC}/divm.h ${SYSINC}/lart.h ${SYSINC}/vmutil.h
+        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${HOSTABI} ${VMINC}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
         COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
@@ -68,6 +70,13 @@ foreach( hdr divm.h lart.h vmutil.h )
     VERBATIM
     COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/${hdr} ${SYSINC}/${hdr} )
 endforeach()
+
+add_custom_command(
+  OUTPUT ${HOSTABI}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hostabi.pl
+  VERBATIM
+  COMMAND perl ${CMAKE_CURRENT_SOURCE_DIR}/hostabi.pl ${CMAKE_C_COMPILER} > ${HOSTABI}
+)
 
 include( compile-rt.flags )
 
