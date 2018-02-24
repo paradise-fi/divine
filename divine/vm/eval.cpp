@@ -21,6 +21,11 @@
 #include <divine/vm/eval.tpp>
 #include <divine/vm/heap.hpp>
 
+#ifdef __OpenBSD__
+extern "C" long __syscall( long, ... );
+#define syscall __syscall
+#endif
+
 namespace divine::vm
 {
 
@@ -64,7 +69,8 @@ long syscall_helper( int id, std::vector< long > args, std::vector< bool > argty
         return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], args[5] );
     else if ( argtypes == A{0, 1, 1, 0, 1, 0} )
         return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], int(args[5]) );
-    else {
+    else
+    {
         std::cerr << brick::string::fmt(argtypes) << std::endl;
         NOT_IMPLEMENTED();
     }
