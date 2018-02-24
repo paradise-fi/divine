@@ -165,9 +165,9 @@ namespace fs {
                     case 8 : outType = _VM_SC_Int64 | _VM_SC_Out ; break;    \
                 }                                                            \
                 __dios_trace_out("SYSCALL:", 8); \
-                int sysnum = static_cast<int>(_VM_SC_ ## name);\
+                int sysnum = static_cast<int>(_HOST_SYS_ ## name);\
                 __dios_trace_out(reinterpret_cast<const char *>(&sysnum), sizeof(int)); \
-                auto input =  std::make_tuple(_VM_SC_ ## name, outType, rv.address()); \
+                auto input =  std::make_tuple(_HOST_SYS_ ## name, outType, rv.address()); \
                  *__dios_get_errno() = 0;\
                 *__dios_get_errno() =  parse(_out, input, _1, _2, _3, _4, _5, _6, _7); \
                 writeOut(rv);\
@@ -199,9 +199,9 @@ namespace fs {
                 mode = 0;
             }
             __dios_trace_out( "SYSCALL:", 8 );
-            int sysnum = static_cast<int>(_VM_SC_open);
+            int sysnum = static_cast<int>(_HOST_SYS_open);
             __dios_trace_out( reinterpret_cast<const char *>(&sysnum), sizeof( int ));
-            auto input = std::make_tuple( _VM_SC_open, outType, rv.address());
+            auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
             *__dios_get_errno() = 0;
             *__dios_get_errno() = parse( _out, input, Mem< const char * >( pathname ), flags, mode, _4 );
             writeOut( rv );
@@ -223,7 +223,7 @@ namespace fs {
                     break;
             }
             __dios_trace_out( "SYSCALL:", 8 );
-            int sysnum = static_cast<int>(_VM_SC_open);
+            int sysnum = static_cast<int>(_HOST_SYS_open);
             __dios_trace_out( reinterpret_cast<const char *>(&sysnum), sizeof( int ));
             *__dios_get_errno() = 0;
             switch ( cmd )
@@ -235,13 +235,13 @@ namespace fs {
                 {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
-                    auto input = std::make_tuple( _VM_SC_open, outType, rv.address());
+                    auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
                     *__dios_get_errno() = parse( _out, input, fd, cmd, flag, _4 );
                 }
                     break;
                 default:
                 {
-                    auto input = std::make_tuple( _VM_SC_open, outType, rv.address());
+                    auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
                     *__dios_get_errno() = parse( _out, input, fd, cmd, _3 );
                     va_end( *vl );
                 }
