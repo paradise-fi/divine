@@ -4,16 +4,17 @@
 #define _FCNTL_H_
 
 #include <sys/types.h>
+#include <sys/hostabi.h>
 
-#define O_RDONLY           00
-#define O_WRONLY           01
-#define O_RDWR             02
-#define O_CREAT          0100  /* not fcntl */
-#define O_EXCL           0200  /* not fcntl */
-#define O_NOCTTY         0400  /* not fcntl */
-#define O_TRUNC         01000  /* not fcntl */
-#define O_APPEND        02000
-#define O_NONBLOCK      04000
+#define O_RDONLY   _HOST_O_RDONLY
+#define O_WRONLY   _HOST_O_WRONLY
+#define O_RDWR     _HOST_O_RDWR
+#define O_CREAT    _HOST_O_CREAT
+#define O_EXCL     _HOST_O_EXCL
+#define O_NOCTTY   _HOST_O_NOCTTY
+#define O_TRUNC    _HOST_O_TRUNC
+#define O_APPEND   _HOST_O_APPEND
+#define O_NONBLOCK _HOST_O_NONBLOCK
 #define O_NDELAY   O_NONBLOCK
 
 #define O_DSYNC        010000  /* Synchronize data.  */
