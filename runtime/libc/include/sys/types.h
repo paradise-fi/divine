@@ -4,6 +4,7 @@
 #define _SYS_TYPES_H_
 
 #include <bits/types.h>
+#include <sys/hostabi.h>
 
 // size_t
 #include <stddef.h>
@@ -22,8 +23,6 @@ typedef __uint32_t          gid_t;
 typedef long long           off_t;
 typedef __int64_t           off64_t;
 
-typedef __uint32_t          mode_t;
-
 typedef __uint64_t          dev_t;
 typedef __uint64_t          ino_t;
 
@@ -41,5 +40,8 @@ typedef __uint32_t          u_int32_t;
 
 typedef	double __double_t;
 typedef	float  __float_t;
+
+typedef __uint32_t fixpt_t;
+typedef _HOST_mode_t mode_t;
 
 #endif // _SYS_TYPES_H_

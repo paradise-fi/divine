@@ -1,130 +1,191 @@
-/* Copyright (C) 1991,1992,1995-2004,2005,2006 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
-
-/*
- *	POSIX Standard: 5.6 File Characteristics	<sys/stat.h>
+/*-
+ * Copyright (c) 1982, 1986, 1989, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ * (c) UNIX System Laboratories, Inc.
+ * All or some portions of this file are derived from material licensed
+ * to the University of California by American Telephone and Telegraph
+ * Co. or Unix System Laboratories, Inc. and are reproduced herein with
+ * the permission of UNIX System Laboratories, Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *	@(#)stat.h	8.9 (Berkeley) 8/17/94
  */
 
-#ifndef	_SYS_STAT_H
-#define	_SYS_STAT_H	1
+#ifndef _SYS_STAT_H_
+#define	_SYS_STAT_H_
 
+#include <time.h>
+#include <sys/cdefs.h>
 #include <sys/types.h>
-#include <bits/stat.h>
 
-#ifdef __cplusplus
-extern "C" {
+#define _HOST_stat stat
+#include <sys/hostabi.h>
+#undef _HOST_stat
+
+#if __POSIX_VISIBLE >= 200809 || __BSD_VISIBLE
+#define	st_atime		st_atim.tv_sec
+#define	st_mtime		st_mtim.tv_sec
+#define	st_ctime		st_ctim.tv_sec
+#define	__st_birthtime		__st_birthtim.tv_sec
+#endif
+#if __BSD_VISIBLE
+#define	st_atimespec		st_atim
+#define	st_atimensec		st_atim.tv_nsec
+#define	st_mtimespec		st_mtim
+#define	st_mtimensec		st_mtim.tv_nsec
+#define	st_ctimespec		st_ctim
+#define	st_ctimensec		st_ctim.tv_nsec
+#define	__st_birthtimespec	__st_birthtim
+#define	__st_birthtimensec	__st_birthtim.tv_nsec
 #endif
 
-#define S_IFMT   __S_IFMT
-#define S_IFDIR  __S_IFDIR
-#define S_IFCHR  __S_IFCHR
-#define S_IFBLK  __S_IFBLK
-#define S_IFREG  __S_IFREG
-#define S_IFIFO  __S_IFIFO
-#define S_IFLNK  __S_IFLNK
-#define S_IFSOCK __S_IFSOCK
-
-/* Test macros for file types.	*/
-
-#define   __S_ISTYPE(mode, mask)	(((mode) & __S_IFMT) == (mask))
-
-#define   S_ISDIR(mode)  __S_ISTYPE((mode), __S_IFDIR)
-#define   S_ISCHR(mode)  __S_ISTYPE((mode), __S_IFCHR)
-#define   S_ISBLK(mode)  __S_ISTYPE((mode), __S_IFBLK)
-#define   S_ISREG(mode)  __S_ISTYPE((mode), __S_IFREG)
-#define   S_ISFIFO(mode) __S_ISTYPE((mode), __S_IFIFO)
-#define   S_ISLNK(mode)  __S_ISTYPE((mode), __S_IFLNK)
-#define   S_ISSOCK(mode) __S_ISTYPE((mode), __S_IFSOCK)
-
-/* These are from POSIX.1b.  If the objects are not implemented using separate
-   distinct file types, the macros always will evaluate to zero.  Unlike the
-   other S_* macros the following three take a pointer to a `struct stat'
-   object as the argument.  */
-#define S_TYPEISMQ(buf) __S_TYPEISMQ(buf)
-#define S_TYPEISSEM(buf) __S_TYPEISSEM(buf)
-#define S_TYPEISSHM(buf) __S_TYPEISSHM(buf)
-
-
-/* Protection bits.  */
-
-#define	S_ISUID    __S_ISUID	/* Set user ID on execution.  */
-#define	S_ISGID    __S_ISGID	/* Set group ID on execution.  */
-
-/* Save swapped text after use (sticky bit).  This is pretty well obsolete.  */
-#define S_ISVTX	__S_ISVTX
-
-#define	S_IRUSR	__S_IREAD	/* Read by owner.  */
-#define	S_IWUSR	__S_IWRITE	/* Write by owner.  */
-#define	S_IXUSR	__S_IEXEC	/* Execute by owner.  */
-/* Read, write, and execute by owner.  */
-#define	S_IRWXU	(__S_IREAD|__S_IWRITE|__S_IEXEC)
-
-#define S_IREAD	S_IRUSR
-#define S_IWRITE	S_IWUSR
-#define S_IEXEC	S_IXUSR
-
-#define	S_IRGRP	(S_IRUSR >> 3)	/* Read by group.  */
-#define	S_IWGRP	(S_IWUSR >> 3)	/* Write by group.  */
-#define	S_IXGRP	(S_IXUSR >> 3)	/* Execute by group.  */
-/* Read, write, and execute by group.  */
-#define	S_IRWXG	(S_IRWXU >> 3)
-
-#define	S_IROTH	(S_IRGRP >> 3)	/* Read by others.  */
-#define	S_IWOTH	(S_IWGRP >> 3)	/* Write by others.  */
-#define	S_IXOTH	(S_IXGRP >> 3)	/* Execute by others.  */
-/* Read, write, and execute by others.  */
-#define	S_IRWXO	(S_IRWXG >> 3)
-
-
-/* Macros for common mode bit masks.  */
-#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO) /* 0777 */
-#define ALLPERMS (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)/* 07777 */
-#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)/* 0666*/
-
-#define S_BLKSIZE	512	/* Block size for `st_blocks'.  */
-
-#define FS_NOINLINE __attribute__((noinline))
-
-FS_NOINLINE int fstat( int fd, struct stat *buf );
-FS_NOINLINE int stat( const char *path, struct stat *buf );
-FS_NOINLINE int lstat( const char *path, struct stat *buf );
-FS_NOINLINE int fstatat( int dirfd, const char *path, struct stat *buf, int flags );
-
-FS_NOINLINE int chmod( const char *path, mode_t mode );
-FS_NOINLINE int fchmod( int fd, mode_t mode );
-FS_NOINLINE int fchmodat( int dirfd, const char *path, mode_t mode, int flags );
-
-FS_NOINLINE mode_t umask( mode_t mask );
-
-FS_NOINLINE int mkdir( const char *path, mode_t mode );
-FS_NOINLINE int mkdirat( int dirfd, const char *path, mode_t mode );
-
-FS_NOINLINE int mkfifo( const char *path, mode_t mode );
-FS_NOINLINE int mkfifoat( int dirfd, const char *path, mode_t mode );
-
-FS_NOINLINE int mknod( const char *path, mode_t mode, dev_t dev );
-FS_NOINLINE int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev );
-
-#undef FS_NOINLINE
-
-#ifdef __cplusplus
-}// extern "C"
+#define	S_ISUID	0004000			/* set user id on execution */
+#define	S_ISGID	0002000			/* set group id on execution */
+#if __BSD_VISIBLE
+#define	S_ISTXT	0001000			/* sticky bit */
 #endif
 
+#define	S_IRWXU	0000700			/* RWX mask for owner */
+#define	S_IRUSR	0000400			/* R for owner */
+#define	S_IWUSR	0000200			/* W for owner */
+#define	S_IXUSR	0000100			/* X for owner */
+
+#if __BSD_VISIBLE
+#define	S_IREAD		S_IRUSR
+#define	S_IWRITE	S_IWUSR
+#define	S_IEXEC		S_IXUSR
 #endif
 
+#define	S_IRWXG	0000070			/* RWX mask for group */
+#define	S_IRGRP	0000040			/* R for group */
+#define	S_IWGRP	0000020			/* W for group */
+#define	S_IXGRP	0000010			/* X for group */
+
+#define	S_IRWXO	0000007			/* RWX mask for other */
+#define	S_IROTH	0000004			/* R for other */
+#define	S_IWOTH	0000002			/* W for other */
+#define	S_IXOTH	0000001			/* X for other */
+
+#if __XPG_VISIBLE || __BSD_VISIBLE
+#define	S_IFMT	 0170000		/* type of file mask */
+#define	S_IFIFO	 0010000		/* named pipe (fifo) */
+#define	S_IFCHR	 0020000		/* character special */
+#define	S_IFDIR	 0040000		/* directory */
+#define	S_IFBLK	 0060000		/* block special */
+#define	S_IFREG	 0100000		/* regular */
+#define	S_IFLNK	 0120000		/* symbolic link */
+#define	S_IFSOCK 0140000		/* socket */
+#define	S_ISVTX	 0001000		/* save swapped text even after use */
+#endif
+
+#define	S_ISDIR(m)	((m & 0170000) == 0040000)	/* directory */
+#define	S_ISCHR(m)	((m & 0170000) == 0020000)	/* char special */
+#define	S_ISBLK(m)	((m & 0170000) == 0060000)	/* block special */
+#define	S_ISREG(m)	((m & 0170000) == 0100000)	/* regular file */
+#define	S_ISFIFO(m)	((m & 0170000) == 0010000)	/* fifo */
+#if __POSIX_VISIBLE >= 200112 || __BSD_VISIBLE
+#define	S_ISLNK(m)	((m & 0170000) == 0120000)	/* symbolic link */
+#define	S_ISSOCK(m)	((m & 0170000) == 0140000)	/* socket */
+#endif
+
+#if __POSIX_VISIBLE >= 200809
+/* manadated to be present, but permitted to always return zero */
+#define	S_TYPEISMQ(m)	0
+#define	S_TYPEISSEM(m)	0
+#define	S_TYPEISSHM(m)	0
+#endif
+
+#if __BSD_VISIBLE
+#define	ACCESSPERMS	(S_IRWXU|S_IRWXG|S_IRWXO)	/* 00777 */
+							/* 07777 */
+#define	ALLPERMS	(S_ISUID|S_ISGID|S_ISTXT|S_IRWXU|S_IRWXG|S_IRWXO)
+							/* 00666 */
+#define	DEFFILEMODE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+
+#define	S_BLKSIZE	512		/* block size used in the stat struct */
+
+/*
+ * Definitions of flags stored in file flags word.
+ *
+ * Super-user and owner changeable flags.
+ */
+#define	UF_SETTABLE	0x0000ffff	/* mask of owner changeable flags */
+#define	UF_NODUMP	0x00000001	/* do not dump file */
+#define	UF_IMMUTABLE	0x00000002	/* file may not be changed */
+#define	UF_APPEND	0x00000004	/* writes to file may only append */
+#define	UF_OPAQUE	0x00000008	/* directory is opaque wrt. union */
+/*
+ * Super-user changeable flags.
+ */
+#define	SF_SETTABLE	0xffff0000	/* mask of superuser changeable flags */
+#define	SF_ARCHIVED	0x00010000	/* file is archived */
+#define	SF_IMMUTABLE	0x00020000	/* file may not be changed */
+#define	SF_APPEND	0x00040000	/* writes to file may only append */
+
+#ifdef _KERNEL
+/*
+ * Shorthand abbreviations of above.
+ */
+#define	OPAQUE		(UF_OPAQUE)
+#define	APPEND		(UF_APPEND | SF_APPEND)
+#define	IMMUTABLE	(UF_IMMUTABLE | SF_IMMUTABLE)
+#endif /* _KERNEL */
+#endif /* __BSD_VISIBLE */
+
+#if __POSIX_VISIBLE >= 200809
+#define	UTIME_NOW	-2L
+#define	UTIME_OMIT	-1L
+#endif /* __POSIX_VISIBLE */
+
+__BEGIN_DECLS
+int	chmod(const char *, mode_t);
+int	fstat(int, struct stat *);
+int	mknod(const char *, mode_t, dev_t);
+int	mkdir(const char *, mode_t);
+int	mkfifo(const char *, mode_t);
+int	stat(const char *, struct stat *);
+mode_t	umask(mode_t);
+#if __POSIX_VISIBLE >= 200112L || __XPG_VISIBLE >= 420 || __BSD_VISIBLE
+int	fchmod(int, mode_t);
+int	lstat(const char *, struct stat *);
+#endif
+#if __POSIX_VISIBLE >= 200809
+int	fchmodat(int, const char *, mode_t, int);
+int	fstatat(int, const char *, struct stat *, int);
+int	mkdirat(int, const char *, mode_t);
+int	mkfifoat(int, const char *, mode_t);
+int	mknodat(int, const char *, mode_t, dev_t);
+int	utimensat(int, const char *, const struct timespec [2], int);
+int	futimens(int, const struct timespec [2]);
+#endif
+#if __BSD_VISIBLE
+int	chflags(const char *, unsigned int);
+int	chflagsat(int, const char *, unsigned int, int);
+int	fchflags(int, unsigned int);
+int	isfdtype(int, int);
+#endif
+__END_DECLS
+#endif /* !_SYS_STAT_H_ */
