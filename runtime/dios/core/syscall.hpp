@@ -25,7 +25,6 @@
 #include <sys/resource.h>
 #include <sys/monitor.h>
 #include <signal.h>
-#include <dios/filesystem/passthru-table.h>
 
 namespace __dios {
 

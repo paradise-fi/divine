@@ -19,7 +19,6 @@
 #include <sys/syscall.h>
 #include <sys/resource.h>
 #include <dios/core/stdlibwrap.hpp>
-#include <dios/filesystem/passthru-table.h>
 #include <dios/filesystem/fs-passthru-types.h>
 #include <dios/filesystem/fs-replay-parse.h>
 
@@ -70,7 +69,7 @@ struct Replay : public Next {
         int fd = -1;
         const char *filename = name.c_str();
         __dios_trace_f( "Opening file: %s... \n", filename );
-        auto err = __vm_syscall( _VM_SC_open,
+        auto err = __vm_syscall( _HOST_SYS_open,
                                  _VM_SC_Out | _VM_SC_Int32, &fd,
                                  _VM_SC_In | _VM_SC_Mem, strlen( filename ) + 1, filename,
                                  _VM_SC_In | _VM_SC_Int32, O_RDONLY,
@@ -89,7 +88,7 @@ struct Replay : public Next {
         }
 
         int result;
-        err = __vm_syscall( _VM_SC_close,
+        err = __vm_syscall( _HOST_SYS_close,
                             _VM_SC_Out | _VM_SC_Int32, &result,
                             _VM_SC_In | _VM_SC_Int32, fd );
 
@@ -99,7 +98,7 @@ struct Replay : public Next {
 
     int readWrap( int fd, char *buffer, int length ) {
         int red, err;
-        err = __vm_syscall( _VM_SC_read,
+        err = __vm_syscall( _HOST_SYS_read,
                             _VM_SC_Out | _VM_SC_Int32, &red,
                             _VM_SC_In | _VM_SC_Int32, fd,
                             _VM_SC_Out | _VM_SC_Mem, length, buffer,
@@ -206,7 +205,7 @@ struct Replay : public Next {
     #define SYSCALL( name, schedule, ret, arg ) \
         ret name arg { \
             UnVoid< ret > rv; \
-            if(!isProcessible(_VM_SC_ ## name))  { \
+            if(!isProcessible(_HOST_SYS_ ## name))  { \
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel ); \
                 return rv.get(); }\
             int outType;                                                 \
@@ -214,7 +213,7 @@ struct Replay : public Next {
                 case 4 :  outType = _VM_SC_Int32 | _VM_SC_Out ; break;   \
                 case 8 : outType = _VM_SC_Int64 | _VM_SC_Out ; break;    \
             }                                                            \
-            if (!parse(_VM_SC_ ## name, rv, _1, _2, _3, _4, _5, _6, _7)) {\
+            if (!parse(_HOST_SYS_ ## name, rv, _1, _2, _3, _4, _5, _6, _7)) {\
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel ); \
                 return rv.get();\
             }\
@@ -266,7 +265,7 @@ struct Replay : public Next {
         int open( const char *pathname, int flags, mode_t mode )
         {
             UnVoid< int > rv;
-            if ( !isProcessible( _VM_SC_open ))
+            if ( !isProcessible( _HOST_SYS_open ))
             {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                 return rv.get();
@@ -285,7 +284,7 @@ struct Replay : public Next {
             {
                 mode = 0;
             }
-            if ( !parse( _VM_SC_open, rv, Mem< const char * >( pathname ), flags, mode, _5, _6, _7 ))
+            if ( !parse( _HOST_SYS_open, rv, Mem< const char * >( pathname ), flags, mode, _5, _6, _7 ))
             {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                 return rv.get();
@@ -297,7 +296,7 @@ struct Replay : public Next {
         int fcntl( int fd, int cmd, va_list *vl )
         {
             UnVoid< int > rv;
-            if ( !isProcessible( _VM_SC_open ))
+            if ( !isProcessible( _HOST_SYS_open ))
             {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                 return rv.get();
@@ -321,7 +320,7 @@ struct Replay : public Next {
                 {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
-                    if ( !parse( _VM_SC_open, rv, fd, cmd, flag, _5, _6, _7 ))
+                    if ( !parse( _HOST_SYS_open, rv, fd, cmd, flag, _5, _6, _7 ))
                     {
                         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                         return rv.get();
@@ -330,7 +329,7 @@ struct Replay : public Next {
                     break;
                 default: {
                     va_end( *vl );
-                    if ( !parse( _VM_SC_open, rv, fd, cmd, _3, _4, _5, _6, _7 ))
+                    if ( !parse( _HOST_SYS_open, rv, fd, cmd, _3, _4, _5, _6, _7 ))
                     {
                         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                         return rv.get();

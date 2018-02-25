@@ -24,7 +24,6 @@
 
 #include <dios/filesystem/fs-passthru-types.h>
 #include <dios/filesystem/fs-passthru-process.h>
-#include <dios/filesystem/passthru-table.h>
 
 /*
 * For work with memory
