@@ -271,6 +271,8 @@ struct Program
     }
 };
 
+}
+
 #ifdef BRICK_UNITTEST_REG
 namespace divine::t_vm
 {
@@ -332,5 +334,3 @@ struct Program
 
 }
 #endif
-
-}

@@ -652,3 +652,4 @@ std::pair< HeapPointer, HeapPointer > Program::exportHeap( H &target )
 
 template std::pair< HeapPointer, HeapPointer > Program::exportHeap< CowHeap >( CowHeap & );
 template std::pair< HeapPointer, HeapPointer > Program::exportHeap< MutableHeap >( MutableHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< SmallHeap >( SmallHeap & );
