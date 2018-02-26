@@ -7,6 +7,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domains/domains.h>
+#include <lart/abstract/value.h>
 
 #include <iostream>
 
@@ -25,8 +26,9 @@ private:
 
 
 struct CreateAbstractMetadata {
-    static void run( llvm::Module &m );
+    void run( llvm::Module &m );
 };
+
 
 struct MDValue {
     MDValue( llvm::Metadata * md )
@@ -34,11 +36,18 @@ struct MDValue {
     {}
 
     std::string name() const;
+    llvm::Value * value() const;
     std::vector< Domain > domains() const;
     Domain domain() const; // requires that value has single domain
+
+    AbstractValue abstract_value() const;
 private:
     llvm::ValueAsMetadata  *_md;
 };
+
+
+std::vector< MDValue > abstract_metadata( const llvm::Module &m );
+std::vector< MDValue > abstract_metadata( const llvm::Function &fn );
 
 void dump_abstract_metadata( const llvm::Module &m );
 

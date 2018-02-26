@@ -21,47 +21,12 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/lowerselect.h>
 #include <lart/abstract/value.h>
 #include <lart/abstract/util.h>
+#include <lart/abstract/metadata.h>
 
 namespace lart {
 namespace abstract {
 
 namespace {
-
-AbstractValue getValueFromAnnotation( const llvm::CallInst * call ) {
-    auto data = llvm::cast< llvm::GlobalVariable >(
-                call->getOperand( 1 )->stripPointerCasts() );
-    auto annotation = llvm::cast< llvm::ConstantDataArray >(
-                      data->getInitializer() )->getAsCString();
-    const std::string prefix = "lart.abstract.";
-    assert( annotation.startswith( prefix ) );
-    auto dom = DomainTable[ annotation.str().substr( prefix.size() ) ];
-    return AbstractValue( call->getOperand( 0 )->stripPointerCasts(), dom );
-}
-
-AbstractValues annotations( llvm::Module & m ) {
-    std::vector< std::string > prefixes = {
-        "llvm.var.annotation",
-        "llvm.ptr.annotation"
-    };
-
-    AbstractValues values;
-
-    for ( const auto & pref : prefixes ) {
-        auto annotated = query::query( m )
-            .map( query::refToPtr )
-            .filter( [&]( llvm::Function * fn ) {
-                return fn->getName().startswith( pref );
-            } ).freeze();
-
-        for ( auto a : annotated ) {
-            Values users = { a->user_begin(), a->user_end() };
-            for ( const auto & call : llvmFilter< llvm::CallInst >( users ) )
-                values.push_back( getValueFromAnnotation( call ) );
-        }
-    }
-
-    return values;
-}
 
 template< typename Fields >
 AbstractValues abstractArgs( const AbstractValues & reached,
@@ -164,10 +129,11 @@ void VPA::preprocess( llvm::Function * fn ) {
 }
 
 VPA::Roots VPA::run( llvm::Module & m ) {
-    for ( const auto & a : annotations( m ) ) {
-        auto fn = a.getFunction();
+    for ( const auto & mdv : abstract_metadata( m ) ) {
+        auto fn = getFunction( mdv.value() );
         record( fn );
-        dispach( PropagateDown( a, reached[ fn ].annotations(), nullptr ) );
+
+        dispach( PropagateDown( mdv.abstract_value(), reached[ fn ].annotations(), nullptr ) );
     }
 
     while ( !tasks.empty() ) {

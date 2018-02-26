@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/abstraction.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/abstract/metadata.h>
 
 namespace lart {
 namespace abstract {

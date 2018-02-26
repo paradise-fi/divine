@@ -17,7 +17,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 
-#include <lart/abstract/passes.h>
 #include <lart/abstract/intrinsic.h>
 
 #include <brick-llvm>
@@ -26,6 +25,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <fstream>
 #include <string>
 
+#include <lart/abstract/metadata.h>
 #include <lart/abstract/abstraction.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
@@ -59,7 +59,8 @@ namespace abstract {
 
         void run( llvm::Module & m ) {
             PassData data;
-            auto passes = make_pass_wrapper( Abstraction( data ),
+            auto passes = make_pass_wrapper( CreateAbstractMetadata(),
+                                             Abstraction( data ),
                                              AddAssumes(),
                                              BCP( data ),
                                              Substitution( data ) );
@@ -163,8 +164,10 @@ std::string load( const File & path ) {
 
 template< typename... Passes >
 auto test( Compile::ModulePtr m, Passes&&... passes ) {
+    using namespace abstract;
     lart::Driver drv;
-    drv.setup( std::forward< Passes >( passes )... );
+    drv.setup( CreateAbstractMetadata(),
+               std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
 }

@@ -25,6 +25,7 @@ Domain domain( CallInst *call ) {
     return DomainTable[ name ];
 }
 
+
 MDNode* MDBuilder::domain_node( Domain dom ) {
     auto name = MDString::get( ctx, DomainTable[ dom ] );
     return MDNode::get( ctx, name );
@@ -32,6 +33,10 @@ MDNode* MDBuilder::domain_node( Domain dom ) {
 
 std::string MDValue::name() const {
     return _md->getValue()->getName();
+}
+
+llvm::Value* MDValue::value() const {
+    return _md->getValue();
 }
 
 std::vector< Domain > MDValue::domains() const {
@@ -51,6 +56,10 @@ Domain MDValue::domain() const {
     auto doms = domains();
     ASSERT_EQ( doms.size(), 1 );
     return doms[ 0 ];
+}
+
+AbstractValue MDValue::abstract_value() const {
+    return AbstractValue( value(), domain() );
 }
 
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
@@ -79,12 +88,13 @@ void CreateAbstractMetadata::run( Module &m ) {
                 return fn->getName().startswith( pref );
             } ).freeze();
 
-        for ( const auto &a : annotated )
+        for ( const auto &a : annotated ) {
             for ( const auto &u : a->users() )
                 if ( auto call = dyn_cast< CallInst >( u ) ) {
                     auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
                     amap[ getFunction( inst ) ][ inst ].emplace( domain( call ) );
                 }
+        }
     }
 
     MDBuilder mdb( ctx );
@@ -110,14 +120,30 @@ void CreateAbstractMetadata::run( Module &m ) {
     }
 }
 
+std::vector< MDValue > abstract_metadata( const llvm::Module &m ) {
+    std::vector< MDValue > mds;
+    for ( auto &fn : m ) {
+        auto fnmd = abstract_metadata( fn );
+        mds.insert( mds.end(), fnmd.begin(), fnmd.end() );
+    }
+    return mds;
+}
+
+std::vector< MDValue > abstract_metadata( const llvm::Function &fn ) {
+    std::vector< MDValue > mds;
+    if ( auto vals = fn.getMetadata( "lart.abstract.values" ) )
+        for ( auto & val : vals->operands() )
+            mds.emplace_back( val.get() );
+    return mds;
+}
+
 void dump_abstract_metadata( const llvm::Module &m ) {
     for ( auto &fn : m ) {
-        if ( auto vals = fn.getMetadata( "lart.abstract.values" ) ) {
+        auto mds = abstract_metadata( fn );
+        if ( !mds.empty() ) {
             std::cerr << "\nfunction: " << fn.getName().str() << std::endl;
 
-            for ( auto & val : vals->operands() ) {
-                MDValue mdv( val.get() );
-
+            for ( auto & mdv : mds ) {
                 std::cerr << mdv.name() << " [";
                 bool first = true;
                 for ( auto dom : mdv.domains() ) {
