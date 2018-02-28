@@ -144,6 +144,65 @@ inline std::ostream &operator<<( std::ostream &o, const DataException &e )
     return o;
 }
 
+struct PointerException
+{
+    uint32_t objid[ 4 ]; // Object IDs of the original pointers
+    uint8_t index[ 4 ];  // Position of byte in the orig. pointers
+
+    bool redundant() const
+    {
+        const uint8_t redundant_sequence[] { 3, 2, 1, 0 };
+        return std::equal( index, index + 4, redundant_sequence )
+            && objid[ 0 ] == objid[ 1 ]
+            && objid[ 0 ] == objid[ 2 ]
+            && objid[ 0 ] == objid[ 3 ];
+    }
+
+    bool valid() const
+    {
+        for ( int i = 0; i < 4; ++i )
+            if ( objid[ i ] != 0 )
+                return true;
+        return false;
+    }
+
+    void invalidate()
+    {
+        std::fill( objid, objid + 4, 0 );
+    }
+
+    static PointerException null()
+    {
+        PointerException e;
+        e.invalidate();
+        return e;
+    }
+};
+
+inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
+{
+    if ( !e.valid() )
+    {
+        o << "INVALID ";
+    }
+
+    o << "pointer exc.: {\n";
+
+    for ( int i = 0; i < 4; ++i )
+    {
+        o << "    { " << i << ": ";
+        if ( e.objid[ i ] )
+            o << "byte " << e.index[ i ] << " of ptr. to " << e.objid[ i ];
+        else
+            o << "data";
+        o << " }\n";
+    }
+
+    o << "  }\n";
+
+    return o;
+}
+
 template< typename MasterPool >
 struct PooledShadow
 {
