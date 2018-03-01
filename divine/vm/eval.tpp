@@ -907,7 +907,6 @@ template< typename Ctx >
 void Eval< Ctx >::implement_ret()
 {
     PointerV fr( frame() );
-    HeapPointer frhp = fr.cooked();
     heap().skip( fr, sizeof( typename PointerV::Raw ) );
     PointerV parent, br;
     heap().read( fr.cooked(), parent );
@@ -919,23 +918,14 @@ void Eval< Ctx >::implement_ret()
 
     if ( parent.cooked().null() )
     {
-        bool usermode = false;
-        if ( context().ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
+        if ( context().flags_any( _VM_CF_AutoSuspend ) )
         {
-            if ( instruction().argcount() )
-                _final_frame = frhp;
+            context().flags_set( 0, _VM_CF_KeepFrame );
+            _final_frame = frame();
+            context().set( _VM_CR_Frame, parent.cooked() );
         }
         else
-        {
-            context().mask( false );
-            context().set_interrupted( true );
-            usermode = true;
-        }
-        context().set( _VM_CR_Frame, nullPointer() );
-        if ( _final_frame != frhp )
-            freeobj( frhp );
-        if ( usermode )
-            context().check_interrupt( *this );
+            fault( _VM_F_Control ) << "trying to return without a caller";
         return;
     }
 

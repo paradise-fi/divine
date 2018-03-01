@@ -193,6 +193,7 @@ static const uint64_t _VM_CF_Error       = 0b00001000;
 static const uint64_t _VM_CF_Cancel      = 0b00010000;
 static const uint64_t _VM_CF_KernelMode  = 0b00100000;
 static const uint64_t _VM_CF_DebugMode   = 0b01000000;
+static const uint64_t _VM_CF_AutoSuspend = 0b10000000;
 static const uint64_t _VM_CF_KeepFrame   = 0b100000000;
 static const uint64_t _VM_CF_Booting     = 0b1000000000;
 

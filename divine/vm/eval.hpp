@@ -655,7 +655,7 @@ struct Eval
         vm::Eval< TContext< vm::Program > > e( c );
         auto pc = p->functionByName( "f" );
         c.enter( pc, vm::nullPointerV(), args... );
-        c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask );
+        c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask | _VM_CF_AutoSuspend );
         e.run();
         return e.retval< IntV >().cooked();
     }
