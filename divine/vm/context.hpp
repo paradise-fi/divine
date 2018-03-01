@@ -388,6 +388,14 @@ struct Context
 
     bool mask() { return ref( _VM_CR_Flags ).integer & _VM_CF_Mask; }
     bool in_kernel() { return ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode; }
+
+    bool flags_any( uint64_t f ) { return ref( _VM_CR_Flags ).integer & f; }
+    bool flags_all( uint64_t f ) { return ( ref( _VM_CR_Flags ).integer & f ) == f; }
+    void flags_set( uint64_t clear, uint64_t set )
+    {
+        ref( _VM_CR_Flags ).integer &= ~clear;
+        ref( _VM_CR_Flags ).integer |=  set;
+    }
 };
 
 template< typename Program, typename _Heap >

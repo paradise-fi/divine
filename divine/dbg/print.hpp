@@ -165,6 +165,10 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case lx::HypercallInterruptCfl: op += ".interrupt.cfl"; break;
             case lx::HypercallInterruptMem: op += ".interrupt.mem"; break;
 
+            case lx::HypercallCtlSet: op += ".ctl.set"; break;
+            case lx::HypercallCtlGet: op += ".ctl.get"; break;
+            case lx::HypercallCtlFlag: op += ".ctl.flag"; break;
+
             case lx::HypercallTrace : op += ".trace"; break;
             case lx::HypercallSyscall: op += ".syscall"; break;
 
@@ -175,7 +179,7 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case lx::HypercallObjSize: op += ".obj.size"; break;
             case lx::HypercallObjClone: op += ".obj.clone"; break;
 
-            default: UNREACHABLE( "unexpected debug opcode" ); break;
+            default: UNREACHABLE( "unexpected hypercall opcode" ); break;
         }
     return op;
 }

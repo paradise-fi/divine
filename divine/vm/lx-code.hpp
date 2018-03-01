@@ -40,6 +40,10 @@ enum Hypercall /* see divm.h for prototypes & documentation */
     HypercallInterruptCfl,
     HypercallInterruptMem,
 
+    HypercallCtlSet,
+    HypercallCtlGet,
+    HypercallCtlFlag,
+
     /* feedback */
     HypercallTrace,
     HypercallSyscall,

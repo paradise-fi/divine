@@ -506,7 +506,10 @@ auto prog( std::string p )
 {
     return t_vm::c2bc(
         "void *__vm_obj_make( int );"s +
-        "void *__vm_control( int, ... );"s +
+        "void *__vm_ctl_get( int );"s +
+        "void __vm_ctl_set( int, void * );"s +
+        "long __vm_ctl_flag( long, long );"s +
+        "void __vm_trace( int, const char * );"s +
         "int __vm_choose( int, ... );"s +
         "void __boot( void * );"s + p );
 }
@@ -515,15 +518,16 @@ auto prog_int( std::string first, std::string next )
 {
     return prog(
         R"(void __sched() {
-            int *r = __vm_control( 1, 5 );
+            int *r = __vm_ctl_get( 5 ); __vm_trace( 0, "foo" );
             *r = )" + next + R"(;
-            if ( *r < 0 ) __vm_control( 2, 7, 0b10000ull, 0b10000ull );
+            if ( *r < 0 ) __vm_ctl_flag( 0, 0b10000 );
+            __vm_ctl_set( 2, 0 );
         }
         void __boot( void *environ ) {
-            __vm_control( 0, 4, __sched );
+            __vm_ctl_set( 4, __sched );
             void *e = __vm_obj_make( sizeof( int ) );
-            __vm_control( 0, 5, e );
-            int *r = e; *r = )" + first + "; }"s );
+            __vm_ctl_set( 5, e );
+            int *r = e; *r = )" + first + "; __vm_ctl_set( 2, 0 ); }"s );
 }
 
 }
@@ -532,7 +536,7 @@ struct TestBuilder
 {
     TEST(instance)
     {
-        auto bc = prog( "void __boot( void *e ) { __vm_control( 2, 7, 0b10000ull, 0b10000ull ); }" );
+        auto bc = prog( "void __boot( void *e ) { __vm_ctl_flag( 0, 0b10000 ); }" );
         mc::ExplicitBuilder ex( bc );
     }
 

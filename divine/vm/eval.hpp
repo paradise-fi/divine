@@ -542,6 +542,7 @@ struct Eval
     template< typename F >
     void each_phi( CodePointer first, F f );
     void switchBB( CodePointer target );
+    void switch_frame();
 
     template< typename Y >
     void collect_allocas( Y yield );
@@ -557,6 +558,11 @@ struct Eval
     void check( V v ) { if ( !v.defined() ) fault( _VM_F_Hypercall ); }
 
     void implement_intrinsic( int id );
+
+    void implement_ctl_set();
+    void implement_ctl_get();
+    void implement_ctl_flag();
+
     void implement_hypercall_control();
     void implement_hypercall_syscall();
     void implement_hypercall();
@@ -571,6 +577,15 @@ struct Eval
     void run();
     bool run_seq( bool continued );
     void dispatch(); /* evaluate a single instruction */
+
+    bool assert_flag( uint64_t flag, std::string str )
+    {
+        if ( context().flags_all( flag ) )
+            return true;
+
+        fault( _VM_F_Access ) << str;
+        return false;
+    }
 
     void advance()
     {

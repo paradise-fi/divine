@@ -137,6 +137,7 @@ enum _VM_Fault
     _VM_F_Control,
     _VM_F_Locking,
     _VM_F_Hypercall,
+    _VM_F_Access, /* access violation */
     _VM_F_NotImplemented,
     _VM_F_Last
 };
@@ -187,6 +188,8 @@ static const uint64_t _VM_CF_Error       = 0b00001000;
 static const uint64_t _VM_CF_Cancel      = 0b00010000;
 static const uint64_t _VM_CF_KernelMode  = 0b00100000;
 static const uint64_t _VM_CF_DebugMode   = 0b01000000;
+static const uint64_t _VM_CF_KeepFrame   = 0b100000000;
+static const uint64_t _VM_CF_Booting     = 0b1000000000;
 
 /*
  * Control flags are split up into 4 blocks of 16 bits, each reserved for a
@@ -305,6 +308,10 @@ typedef void (*__vm_sched_t)( void *state );
  * interrupts, or to also transfer control within the target frame).
  */
 void *__vm_control( enum _VM_ControlAction, ... ) NOTHROW NATIVE_VISIBLE;
+
+void     __vm_ctl_set( enum _VM_ControlRegister reg, void *val ) NOTHROW;
+void    *__vm_ctl_get( enum _VM_ControlRegister reg ) NOTHROW;
+uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set ) NOTHROW;
 
 /*
  * Non-deterministic choice: when __vm_choose is encountered, the "universe" of

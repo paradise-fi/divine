@@ -431,18 +431,22 @@ void Eval< Ctx >::implement_hypercall_control()
             return;
         }
         if ( action == _VM_CA_Set && reg == _VM_CR_Frame )
-        {
-            PointerV ptr;
-            if ( !frame().null() )
-            {
-                using brick::bitlevel::mixdown;
-                heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
-                context().set( _VM_CR_PC, ptr.cooked() );
-                context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
-                        heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
-                        context().get( _VM_CR_Frame ).pointer.object() );
-            }
-        }
+            switch_frame();
+    }
+}
+
+template< typename Ctx >
+void Eval< Ctx >::switch_frame()
+{
+    PointerV ptr;
+    if ( !frame().null() )
+    {
+        using brick::bitlevel::mixdown;
+        heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
+        context().set( _VM_CR_PC, ptr.cooked() );
+        context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
+                heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
+                context().get( _VM_CR_Frame ).pointer.object() );
     }
 }
 
@@ -588,6 +592,10 @@ void Eval< Ctx >::implement_hypercall()
             }
             return;
         }
+
+        case lx::HypercallCtlSet:  return implement_ctl_set();
+        case lx::HypercallCtlGet:  return implement_ctl_get();
+        case lx::HypercallCtlFlag: return implement_ctl_flag();
 
         case lx::HypercallControl:
             return implement_hypercall_control();
@@ -799,6 +807,100 @@ void Eval< Ctx >::implement_call( bool invoke )
     context().set( _VM_CR_Frame, frameptr.cooked() );
     context().set( _VM_CR_PC, target );
     context().entered( target );
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_ctl_set()
+{
+    auto reg = _VM_ControlRegister( operandCk< IntV >( 0 ).cooked() );
+
+    switch ( reg ) /* permission check */
+    {
+        case _VM_CR_Flags:
+        case _VM_CR_Globals:
+            if ( !assert_flag( _VM_CF_KernelMode, "cannot change register in user mode" ) )
+                return;
+            else break;
+        case _VM_CR_State:
+        case _VM_CR_Scheduler:
+        case _VM_CR_FaultHandler:
+            if ( !assert_flag( _VM_CF_Booting, "can only change register during boot" ) )
+                return;
+            else break;
+        case _VM_CR_Constants:
+        case _VM_CR_ObjIdShuffle:
+            fault( _VM_F_Access ) << "attempted to change (immutable) control register " << reg;
+            return;
+        default: break;
+    }
+
+    if ( reg == _VM_CR_Frame )
+    {
+        auto ptr = operandCk< PointerV >( 1 );
+        if ( !ptr.cooked().null() && !boundcheck_nop( ptr, 2 * PointerBytes, true ) )
+            fault( _VM_F_Hypercall ) << "invalid target frame in __vm_ctl_set";
+        if ( context().flags_all( _VM_CF_KeepFrame ) )
+            context().sync_pc();
+        else
+            freeobj( frame() );
+    }
+
+    if ( reg == _VM_CR_Flags )
+        context().set( reg, operandCk< PtrIntV >( 1 ).cooked() );
+    else
+        context().set( reg, operandCk< PointerV >( 1 ).cooked() );
+
+    if ( reg == _VM_CR_Frame )
+        switch_frame();
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_ctl_get()
+{
+    auto reg = _VM_ControlRegister( operandCk< IntV >( 0 ).cooked() );
+
+    switch ( reg ) /* permission check */
+    {
+        case _VM_CR_Flags:
+        case _VM_CR_Globals:
+        case _VM_CR_Constants:
+        case _VM_CR_State:
+        case _VM_CR_Scheduler:
+        case _VM_CR_FaultHandler:
+        case _VM_CR_ObjIdShuffle:
+            if ( !assert_flag( _VM_CF_KernelMode, "register only readable in kernel mode" ) )
+                return;
+            else break;
+        default: break;
+    }
+
+    /* TODO mask out privileged bits from _VM_CR_Flags? */
+    if ( reg == _VM_CR_Flags )
+        result( PtrIntV( context().get( reg ).integer ) );
+    else
+        result( PointerV( context().get( reg ).pointer ) );
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_ctl_flag()
+{
+    uint64_t clear = operandCk< IntV >( 0 ).cooked(),
+               set = operandCk< IntV >( 1 ).cooked(),
+            change = clear | set;
+
+    if ( set & _VM_CF_KernelMode )
+        if ( !program().traps( pc() ) )
+        {
+            fault( _VM_F_Access ) << "cannot enter kernel mode here";
+            return;
+        }
+
+    if ( change & _VM_CF_Error )
+        if ( !assert_flag( _VM_CF_KernelMode, "error flag can be only changen in kernel mode" ) )
+            return;
+
+    result( PtrIntV( context().get( _VM_CR_Flags ).integer ) );
+    context().flags_set( clear, set );
 }
 
 template< typename Ctx >
