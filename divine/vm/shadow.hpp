@@ -983,15 +983,33 @@ struct PooledShadow
         else
         {
             uint8_t shadow_word = BitProxy( _def, off ).word();
-            uint8_t shadow_mask = BitProxy( _def, off ).mask();
-            ASSERT_EQ( shadow_mask & 0x77, 0x00 );
-            ASSERT( shadow_mask );
 
-            for ( int i = 0; i < 4; ++i )
-            {
-                dst[ i ] = ( shadow_word & shadow_mask ) ? 0xff : 0x00;
-                shadow_mask >>= 1;
-            }
+            shadow_word >>= 4 - off % 8;
+            shadow_word &= 0x0f;
+
+            ASSERT_LT( shadow_word, 0x10 );
+
+            alignas( 4 ) const unsigned char mask_table[] = {
+                0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0xff,
+                0x00, 0x00, 0xff, 0x00,
+                0x00, 0x00, 0xff, 0xff,
+                0x00, 0xff, 0x00, 0x00,
+                0x00, 0xff, 0x00, 0xff,
+                0x00, 0xff, 0xff, 0x00,
+                0x00, 0xff, 0xff, 0xff,
+                0xff, 0x00, 0x00, 0x00,
+                0xff, 0x00, 0x00, 0xff,
+                0xff, 0x00, 0xff, 0x00,
+                0xff, 0x00, 0xff, 0xff,
+                0xff, 0xff, 0x00, 0x00,
+                0xff, 0xff, 0x00, 0xff,
+                0xff, 0xff, 0xff, 0x00,
+                0xff, 0xff, 0xff, 0xff,
+            };
+
+            auto mask = mask_table + 4 * shadow_word;
+            std::copy( mask, mask + 4, dst );
         }
     }
 
