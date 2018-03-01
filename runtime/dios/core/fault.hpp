@@ -181,8 +181,7 @@ struct Fault: public Next {
     }
 
     template < typename Context >
-    static void handler( _VM_Fault _what, _VM_Frame *cont_frame,
-                         void (*cont_pc)(), ... ) noexcept
+    static void handler( _VM_Fault _what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept
     {
         auto mask = reinterpret_cast< uintptr_t >(
             __vm_control( _VM_CA_Get, _VM_CR_Flags,

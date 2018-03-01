@@ -107,7 +107,8 @@ void temporaryScheduler() {
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
 }
 
-void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)(), ... ) {
+void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)() )
+{
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, nullptr );
     static_cast< _VM_Frame * >
