@@ -38,6 +38,11 @@ enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM
 #define NOTHROW __attribute__((__nothrow__))
 #endif
 
+#ifndef _VMUTIL_INLINE
+#define _VMUTIL_INLINE static inline
+#define _VMUTIL_INLINE_UNDEF
+#endif
+
 #define NATIVE_VISIBLE
 
 #ifndef __divm__
@@ -389,6 +394,22 @@ void *__vm_obj_clone( const void * ) NOTHROW NATIVE_VISIBLE;
 
 int __vm_syscall( int id, int retval_type, ... ) NOTHROW;
 
+_VMUTIL_INLINE void __vm_suspend( void ) NOTHROW
+{
+    __vm_ctl_set( _VM_CR_Frame, 0 );
+}
+
+_VMUTIL_INLINE void __vm_cancel( void ) NOTHROW
+{
+    __vm_ctl_flag( 0, _VM_CF_Cancel );
+    __vm_ctl_set( _VM_CR_Frame, 0 );
+}
+
+_VMUTIL_INLINE void __vm_trap( void ) NOTHROW
+{
+    __vm_ctl_flag( 0, _VM_CF_KernelMode );
+}
+
 EXTERN_END
 
 #endif // __divine__
@@ -397,5 +418,10 @@ EXTERN_END
 #undef EXTERN_END
 #undef NOTHROW
 #undef NATIVE_VISIBLE
+
+#ifdef _VMUTIL_INLINE_UNDEF
+#undef _VMUTIL_INLINE_UNDEF
+#undef _VMUTIL_INLINE
+#endif
 
 #endif // __DIVINE_H__
