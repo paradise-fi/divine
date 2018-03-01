@@ -330,15 +330,6 @@ uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set ) NOTHROW;
  */
 int __vm_choose( int n, ... ) NOTHROW NATIVE_VISIBLE;
 
-/*
- * Cause a fault. The first argument is passed on to the fault handler in the
- * program. All remaining arguments are ignored, but can be examined by the
- * fault handler, since it will be able to obtain a pointer to the call
- * instruction which invoked __vm_fault by reading the program counter of its
- * parent frame.
- */
-void __vm_fault( enum _VM_Fault t, ... ) NOTHROW NATIVE_VISIBLE;
-
 void __vm_interrupt_cfl( void ) NOTHROW NATIVE_VISIBLE;
 void __vm_interrupt_mem( void *, int size, _VM_MemAccessType ) NOTHROW NATIVE_VISIBLE;
 
