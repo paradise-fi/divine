@@ -146,6 +146,9 @@ void Eval< Ctx >::switchBB( CodePointer target )
     auto origin = pc();
     context().set( _VM_CR_PC, target );
 
+    if ( !target.function() || program().instruction( target ).opcode != lx::OpBB )
+        return;
+
     target.instruction( target.instruction() + 1 );
     auto &i0 = program().instruction( target );
     if ( i0.opcode != OpCode::PHI )
@@ -374,7 +377,7 @@ void Eval< Ctx >::implement_hypercall_control()
         {
             auto ptr = operandCk< PointerV >( idx++, o_inst, o_frame ).cooked();
             if ( ptr.type() == PointerType::Code )
-                switchBB( ptr );
+                long_jump( ptr );
             else
             {
                 fault( _VM_F_Hypercall ) << "invalid pointer type when setting _VM_CR_PC: " << ptr;
@@ -872,7 +875,7 @@ void Eval< Ctx >::implement_ret()
     {
         auto rv = s2ptr( caller.operand( -2 ), 0, parent.cooked() );
         heap().read( rv, br );
-        jumpTo( br );
+        local_jump( br );
     }
     freeobj( fr.cooked() );
     context().left( retpc );
@@ -882,7 +885,7 @@ template< typename Ctx >
 void Eval< Ctx >::implement_br()
 {
     if ( instruction().argcount() == 1 )
-        jumpTo( operandCk< PointerV >( 0 ) );
+        local_jump( operandCk< PointerV >( 0 ) );
     else
     {
         auto cond = operand< BoolV >( 0 );
@@ -891,7 +894,7 @@ void Eval< Ctx >::implement_br()
             fault( _VM_F_Control, frame(), target.cooked() )
                 << " conditional jump depends on an undefined value";
         else
-            jumpTo( target );
+            local_jump( target );
     }
 }
 
@@ -1135,7 +1138,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                             return;
                         }
                     }
-                    return this->jumpTo( target );
+                    return this->local_jump( target );
                 } );
 
         case lx::OpHypercall:

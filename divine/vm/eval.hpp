@@ -462,15 +462,51 @@ struct Eval
         slot_copy( s2ptr( operand( 1 ) ), result(), operand( 1 ).size(), off.cooked() );
     }
 
-    void jumpTo( PointerV _to )
+    void local_jump( PointerV _to )
     {
         CodePointer to( _to.cooked() );
-        if ( pc().function() != to.function() ) {
+
+        if ( pc().function() != to.function() )
+        {
             fault( _VM_F_Control ) << "illegal cross-function jump to " << _to;
             return;
         }
-        switchBB( to );
+        jump( to );
     }
+
+    bool long_jump( CodePointer to )
+    {
+        if ( jump( to ) )
+            if ( to.function() &&
+                 program().instruction( to ).opcode != lx::OpBB &&
+                 to.instruction() + 1 == program().function( to ).instructions.size() )
+            {
+                fault( _VM_F_Control, HeapPointer(), CodePointer() )
+                    << "illegal long jump to function end";
+                return false;
+            }
+        return true;
+    }
+
+
+    bool jump( CodePointer to )
+    {
+        if ( program().functions.size() <= to.function() )
+        {
+            fault( _VM_F_Control ) << "illegal jump to a non-existent function: " << to;
+            return false;
+        }
+
+        if ( to.function() && program().function( to ).instructions.size() <= to.instruction() )
+        {
+            fault( _VM_F_Control ) << "illegal jump beyond function end: " << to;
+            return false;
+        }
+
+        switchBB( to );
+        return true;
+    }
+
 
     HeapPointer _final_frame;
 
@@ -500,7 +536,7 @@ struct Eval
 
     void implement_indirectBr()
     {
-        jumpTo( operandCk< PointerV >( 0 ) );
+        local_jump( operandCk< PointerV >( 0 ) );
     }
 
     template< typename F >
