@@ -299,7 +299,7 @@ void __boot( const struct _VM_Env *env )
  */
 typedef void (*__vm_fault_t)( enum _VM_Fault type,
                               struct _VM_Frame *cont_frame,
-                              void (*cont_pc)(void), ... )
+                              void (*cont_pc)(void) )
     __attribute__((__noreturn__));
 
 typedef void (*__vm_sched_t)( void *state );
