@@ -97,9 +97,9 @@ private:
 };
 
 struct GlobMap : LiftMap< llvm::Value *, llvm::Value * > {
-    GlobMap( PassData & data, llvm::Module & m ) : data( data ), m( m ) {}
-
-    void populate( VPA::Globals & globals ) {
+    GlobMap( PassData & data, llvm::Module & m, VPA::Globals & globals )
+        : data( data ), m( m )
+    {
         for ( auto & av : globals ) {
             if ( !av.value->getType()->getPointerElementType()->isStructTy() ) {
                 auto glob = llvm::cast< llvm::GlobalVariable >( av.value );
@@ -114,6 +114,7 @@ struct GlobMap : LiftMap< llvm::Value *, llvm::Value * > {
             }
         }
     }
+
 private:
     PassData & data;
     llvm::Module & m;
@@ -240,8 +241,7 @@ void Abstraction::run( llvm::Module & m ) {
             fnodes.emplace_back( fn.first, rs );
     sortFunctionNodes( fnodes );
 
-    GlobMap globmap( data, m );
-    globmap.populate( globals );
+    GlobMap globmap( data, m, globals );
 
     for ( auto & fnode : fnodes )
         prototypes[ fnode ] = process( fnode, fields );
