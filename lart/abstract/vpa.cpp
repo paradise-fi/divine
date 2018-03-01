@@ -130,6 +130,14 @@ void VPA::preprocess( llvm::Function * fn ) {
 
 VPA::Roots VPA::run( llvm::Module & m ) {
     for ( const auto & mdv : abstract_metadata( m ) ) {
+        auto val = mdv.value();
+        if ( !( val->getType()->isIntegerTy() ) &&
+             !( val->getType()->isPointerTy() &&
+                val->getType()->getPointerElementType()->isIntegerTy() ) )
+        {
+            throw std::runtime_error( "only annotation of integer values is allowed" );
+        }
+
         auto fn = getFunction( mdv.value() );
         record( fn );
 
