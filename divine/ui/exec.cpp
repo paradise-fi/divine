@@ -22,7 +22,21 @@
 namespace divine::ui
 {
 
-    void Run::run()
+    void Exec::setup()
+    {
+        if ( _symbolic && !_virtual )
+        {
+            _virtual = true;
+            std::cerr << "W: --symbolic implies --virtual" << std::endl;
+        }
+
+        if ( !_virtual )
+            _systemopts.push_back( "config:passthrough" );
+
+        WithBC::setup();
+    }
+
+    void Exec::run()
     {
         mc::Exec exec( bitcode() );
         if ( _trace )

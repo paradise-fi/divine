@@ -348,7 +348,7 @@ void Info::run()
     std::cerr << std::endl
               << "DIVINE " << version() << std::endl << std::endl
               << "Available options for " << _file << " are:" << std::endl;
-    Run::run();
+    Exec::run();
     std::cerr << "use -o {option}:{value} to pass these options to the program" << std::endl;
 }
 

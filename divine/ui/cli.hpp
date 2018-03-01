@@ -158,11 +158,13 @@ struct Check : Verify
     void setup() override;
 };
 
-struct Run : WithBC {
+struct Exec : WithBC
+{
     bool _trace = false;
+    bool _virtual = false;
 
+    void setup();
     void run();
-    void trace();
 };
 
 struct Sim : WithBC
@@ -205,7 +207,7 @@ struct Cc : Command
     void run();
 };
 
-struct Info : Run
+struct Info : Exec
 {
     Info()
     {

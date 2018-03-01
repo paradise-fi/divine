@@ -237,8 +237,9 @@ struct CLI : Interface
             .option( "[--distance {int}|-d {int}]", &Draw::_distance, "maximum node distance"s )
             .option( "[--render {string}]", &Draw::_render, "the command to process the dot source"s );
 
-        auto runopts = cmd::make_option_set< Run >( v )
-            .option( "[--trace]", &Run::_trace, "trace instructions"s);
+        auto runopts = cmd::make_option_set< Exec >( v )
+            .option( "[--virtual]", &Exec::_virtual, "simulate system calls instead of executing them"s)
+            .option( "[--trace]", &Exec::_trace, "trace instructions"s);
 
         auto simopts = cmd::make_option_set< Sim >( v )
             .option( "[--batch]", &Sim::_batch, "execute in batch mode"s )
@@ -248,7 +249,7 @@ struct CLI : Interface
         auto parser = cmd::make_parser( v )
             .command< Verify >( &WithBC::_useropts, vrfyopts, bcopts )
             .command< Check >( &WithBC::_useropts, vrfyopts, bcopts )
-            .command< Run >( &WithBC::_useropts, bcopts, runopts )
+            .command< Exec >( &WithBC::_useropts, bcopts, runopts )
             .command< Sim >( &WithBC::_useropts, bcopts, simopts )
             .command< Draw >( drawopts, bcopts )
             .command< Info >( bcopts )
