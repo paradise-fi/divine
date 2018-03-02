@@ -417,6 +417,10 @@ void Program::computeRR()
                                             {
                                                 is_debug.insert( f );
                                             } );
+    brick::llvm::enumerateFunctionsForAnno( "divine.trapfn", *module, [this]( llvm::Function *f )
+                                            {
+                                                is_trap.insert( _addr.code( f ).function() );
+                                            } );
 
     framealign = 1;
 

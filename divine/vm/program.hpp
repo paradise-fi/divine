@@ -133,6 +133,7 @@ struct Program
     std::map< const llvm::Type *, int > typemap;
     std::map< const llvm::Value *, std::string > anonmap;
     std::set< const llvm::Function * > is_debug;
+    std::unordered_set< int > is_trap;
 
     using Context = ConstContext< Program, SmallHeap >;
     Context _ccontext;
@@ -201,6 +202,8 @@ struct Program
             return false;
         return pc.instruction() < function( pc ).instructions.size();
     }
+
+    bool traps( CodePointer pc ) { return is_trap.count( pc.function() ); }
 
     Slot allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr );
     HeapPointer s2hptr( Slot s, int offset = 0 );
