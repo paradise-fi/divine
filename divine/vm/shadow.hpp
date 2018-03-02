@@ -1089,14 +1089,24 @@ struct NonHeap
     }
 
     template< typename T >
-    void write( Ptr p, int off, T t ) { shadows.write( shloc( p, off ), t ); }
+    void write( Ptr p, int off, T t ) {
+        shadows.write( shloc( p, off ), t );
+        *pool.template machinePointer< typename T::Raw >( p, off ) = t.raw();
+    }
 
     template< typename T >
-    void read( Ptr p, int off, T &t ) { shadows.read( shloc( p, off ), t ); }
+    void read( Ptr p, int off, T &t ) {
+        t.raw( *pool.template machinePointer< typename T::Raw >( p, off ) );
+        shadows.read( shloc( p, off ), t );
+    }
 
     void copy( Ptr pf, int of, Ptr pt, int ot, int sz )
     {
-        shadows.copy( shloc( pf, of ), shloc( pt, ot ), sz );
+        auto data_from = pool.template machinePointer< uint8_t >( pf, of ),
+             data_to   = pool.template machinePointer< uint8_t >( pt, ot );
+        shadows.copy( shloc( pf, of ), shloc( pt, ot ), sz, [this]( auto i, auto o ){
+                return *pool.template machinePointer< uint32_t >( i, o ); } );
+        std::copy( data_from, data_from + sz, data_to );
     }
 };
 
