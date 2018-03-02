@@ -895,6 +895,12 @@ void Eval< Ctx >::implement_ctl_flag()
             return;
         }
 
+    if ( set & _VM_CF_Booting )
+    {
+        fault( _VM_F_Access ) << "the 'booting' flag cannot be changed";
+        return;
+    }
+
     if ( change & _VM_CF_Error )
         if ( !assert_flag( _VM_CF_KernelMode, "error flag can be only changen in kernel mode" ) )
             return;
