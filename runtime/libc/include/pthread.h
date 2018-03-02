@@ -86,7 +86,7 @@ enum {
 /* Data types */
 
 typedef int pthread_attr_t;
-typedef struct _DiOS_TLS *pthread_t;
+typedef struct __dios_tls *pthread_t;
 
 struct _PThread;
 

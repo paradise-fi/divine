@@ -167,10 +167,10 @@ namespace fs {
                 int sysnum = static_cast<int>(_HOST_SYS_ ## name);\
                 __dios_trace_out(reinterpret_cast<const char *>(&sysnum), sizeof(int)); \
                 auto input =  std::make_tuple(_HOST_SYS_ ## name, outType, rv.address()); \
-                 *__dios_get_errno() = 0;\
-                *__dios_get_errno() =  parse(_out, input, _1, _2, _3, _4, _5, _6, _7); \
+                 *__dios_errno() = 0;\
+                *__dios_errno() =  parse(_out, input, _1, _2, _3, _4, _5, _6, _7); \
                 writeOut(rv);\
-                __dios_trace_out(reinterpret_cast<const char *>(__dios_get_errno()), sizeof(*__dios_get_errno())); \
+                __dios_trace_out(reinterpret_cast<const char *>(__dios_errno()), sizeof(*__dios_errno())); \
                 return rv.get();\
             }
 
@@ -201,10 +201,10 @@ namespace fs {
             int sysnum = static_cast<int>(_HOST_SYS_open);
             __dios_trace_out( reinterpret_cast<const char *>(&sysnum), sizeof( int ));
             auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
-            *__dios_get_errno() = 0;
-            *__dios_get_errno() = parse( _out, input, Mem< const char * >( pathname ), flags, mode, _4 );
+            *__dios_errno() = 0;
+            *__dios_errno() = parse( _out, input, Mem< const char * >( pathname ), flags, mode, _4 );
             writeOut( rv );
-            __dios_trace_out( reinterpret_cast<const char *>(__dios_get_errno()), sizeof( *__dios_get_errno()));
+            __dios_trace_out( reinterpret_cast<const char *>(__dios_errno()), sizeof( *__dios_errno()));
             return rv.get();
         }
 
@@ -224,7 +224,7 @@ namespace fs {
             __dios_trace_out( "SYSCALL:", 8 );
             int sysnum = static_cast<int>(_HOST_SYS_open);
             __dios_trace_out( reinterpret_cast<const char *>(&sysnum), sizeof( int ));
-            *__dios_get_errno() = 0;
+            *__dios_errno() = 0;
             switch ( cmd )
             {
                 case F_DUPFD:
@@ -235,18 +235,18 @@ namespace fs {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
                     auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
-                    *__dios_get_errno() = parse( _out, input, fd, cmd, flag, _4 );
+                    *__dios_errno() = parse( _out, input, fd, cmd, flag, _4 );
                 }
                     break;
                 default:
                 {
                     auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
-                    *__dios_get_errno() = parse( _out, input, fd, cmd, _3 );
+                    *__dios_errno() = parse( _out, input, fd, cmd, _3 );
                     va_end( *vl );
                 }
             }
             writeOut( rv );
-            __dios_trace_out( reinterpret_cast<const char *>(__dios_get_errno()), sizeof( *__dios_get_errno()));
+            __dios_trace_out( reinterpret_cast<const char *>(__dios_errno()), sizeof( *__dios_errno()));
             return rv.get();
         }
 

@@ -41,7 +41,7 @@ struct Syscall
         {
             ( *( table[ s._syscode ] ) )( c, s._ret, s._args );
             s._syscode = SYS_NONE;
-            if ( !c.need_reschedule() && *__dios_get_errno() == EAGAIN2 )
+            if ( !c.need_reschedule() && *__dios_errno() == EAGAIN2 )
                 c.reschedule();
         }
     }

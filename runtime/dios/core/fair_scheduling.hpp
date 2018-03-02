@@ -51,7 +51,8 @@ struct FairScheduler : public Scheduler< Next > {
         return t;
     }
 
-    _DiOS_TaskHandle start_task( _DiOS_TaskRoutine routine, void * arg, int tls_size ) {
+    __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size )
+    {
         auto t = newTask( routine, tls_size, this->getCurrentTask()->_proc );
         this->setupTask( t, arg );
         __vm_obj_shared( t->getId() );
@@ -59,7 +60,7 @@ struct FairScheduler : public Scheduler< Next > {
         return t->getId();
     }
 
-    void killTask( TaskHandle tid ) noexcept {
+    void killTask( __dios_task tid ) noexcept {
         Scheduler< Next >::killTask( tid );
         auto it = std::find( _fairGroup.begin(), _fairGroup.end(), tid );
         int idx = it - _fairGroup.begin();
@@ -127,7 +128,7 @@ struct FairScheduler : public Scheduler< Next > {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 
-    __dios::Array< TaskHandle > _fairGroup;
+    __dios::Array< __dios_task > _fairGroup;
     int _workingGroup;
 };
 

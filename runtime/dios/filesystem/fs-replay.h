@@ -252,7 +252,7 @@ struct Replay : public Next {
                     if ( tryParse( copy, rv, args... )) {
                         if ( item->next )
                             _currents.insert( item->next );
-                        *__dios_get_errno() = item->_errno;
+                        *__dios_errno() = item->_errno;
                         _currents.erase( item );
                         // __vm_obj_free(item); //TODO delete this memory
                         return true;

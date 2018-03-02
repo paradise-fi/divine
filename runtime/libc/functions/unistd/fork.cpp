@@ -17,8 +17,8 @@ pid_t fork( void )
 
     if ( !is_parent )
     {
-        auto current_task = __dios_get_task_handle();
-        int cnt = __vm_obj_size( tasks ) / sizeof( _DiOS_TaskHandle );
+        auto current_task = __dios_this_task();
+        int cnt = __vm_obj_size( tasks ) / sizeof( __dios_task );
         for ( int i = 0; i < cnt; ++i )
             if ( tasks[ i ] != current_task )
                  __vm_obj_free( tasks[ i ] );

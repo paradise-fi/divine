@@ -21,8 +21,6 @@
 
 namespace __dios {
 
-using TaskHandle = _DiOS_TaskHandle;
-
 struct DiosMainFrame : _VM_Frame {
     int l;
     int argc;
@@ -69,7 +67,7 @@ struct TaskStorage: Array< std::unique_ptr< T > > {
 template < typename Process >
 struct Task {
     _VM_Frame *_frame;
-    struct _DiOS_TLS *_tls;
+    __dios_tls *_tls;
     Process *_proc;
     const _MD_Function *_fun;
 
@@ -80,9 +78,8 @@ struct Task {
           _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
         setupFrame();
-        _tls = reinterpret_cast< struct _DiOS_TLS * >
-            ( __vm_obj_make( sizeof( struct _DiOS_TLS ) + tls_size ) );
-        _tls->_errno = 0;
+        _tls = static_cast< __dios_tls * >( __vm_obj_make( sizeof( __dios_tls ) + tls_size ) );
+        _tls->__errno = 0;
     }
 
     template <class F>
@@ -92,9 +89,9 @@ struct Task {
           _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
         setupFrame( mainFrame );
-        _tls = reinterpret_cast< struct _DiOS_TLS * >( mainTls );
-        __vm_obj_resize( _tls, sizeof( struct _DiOS_TLS ) + tls_size );
-        _tls->_errno = 0;
+        _tls = static_cast< __dios_tls * >( mainTls );
+        __vm_obj_resize( _tls, sizeof( __dios_tls ) + tls_size );
+        _tls->__errno = 0;
     }
 
     Task( const Task& o ) noexcept = delete;
@@ -120,7 +117,7 @@ struct Task {
     }
 
     bool active() const noexcept { return _frame; }
-    TaskHandle getId() const noexcept { return _tls; }
+    __dios_task getId() const noexcept { return _tls; }
     uint32_t getUserId() const noexcept {
         auto tid = reinterpret_cast< uint64_t >( _tls ) >> 32;
         return static_cast< uint32_t >( tid );
@@ -297,8 +294,8 @@ struct Scheduler : public Next
         frame->arg = arg;
     }
 
-    void killTask( TaskHandle tid ) noexcept  {
-        if ( tid == __dios_get_task_handle() )
+    void killTask( __dios_task tid ) noexcept  {
+        if ( tid == __dios_this_task() )
             reschedule();
         bool res = tasks.remove( tid );
         __dios_assert_v( res, "Killing non-existing task" );
@@ -340,7 +337,7 @@ struct Scheduler : public Next
                                  {
                                      if ( t->_proc->pid != id )
                                          return true;
-                                     if ( t->_tls == __dios_get_task_handle() )
+                                     if ( t->_tls == __dios_this_task() )
                                          reschedule();
                                      return false;
                                  } );
@@ -353,7 +350,7 @@ struct Scheduler : public Next
         if ( sig <= 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
             || sig == SIGKILL || sig == SIGSTOP )
         {
-            *__dios_get_errno() = EINVAL;
+            *__dios_errno() = EINVAL;
             return -1 ;
         }
         if ( !sighandlers )
@@ -369,7 +366,7 @@ struct Scheduler : public Next
     }
 
     Task* getCurrentTask() {
-        auto tid = __dios_get_task_handle();
+        auto tid = __dios_this_task();
         return tasks.find( tid );
     }
 
@@ -377,7 +374,8 @@ struct Scheduler : public Next
         return getCurrentTask()->_proc->pid;
     }
 
-    _DiOS_TaskHandle start_task( _DiOS_TaskRoutine routine, void * arg, int tls_size ) {
+    __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size )
+    {
         auto t = newTask( routine, tls_size, getCurrentTask()->_proc );
         setupTask( t, arg );
         __vm_obj_shared( t->getId() );
@@ -390,11 +388,13 @@ struct Scheduler : public Next
         die();
     }
 
-    void kill_task( _DiOS_TaskHandle id ) {
+    void kill_task( __dios_task id )
+    {
         killTask( id );
     }
 
-    _DiOS_TaskHandle *get_process_tasks( _DiOS_TaskHandle tid ) {
+    __dios_task *get_process_tasks( __dios_task tid )
+    {
         Process *proc;
         for ( auto &t : tasks ) {
             if ( t->_tls == tid ) {
@@ -407,7 +407,7 @@ struct Scheduler : public Next
             if ( t->_proc == proc )
                 ++count;
         }
-        auto ret = static_cast< _DiOS_TaskHandle * >( __vm_obj_make( sizeof( _DiOS_TaskHandle ) * count ) );
+        auto ret = static_cast< __dios_task * >( __vm_obj_make( sizeof( __dios_task ) * count ) );
         int i = 0;
         for ( auto &t : tasks ) {
             if ( t->_proc == proc ) {
@@ -437,7 +437,7 @@ struct Scheduler : public Next
             }
         if ( !found )
         {
-            *__dios_get_errno() = ESRCH;
+            *__dios_errno() = ESRCH;
             return -1;
         }
         if ( sighandlers )

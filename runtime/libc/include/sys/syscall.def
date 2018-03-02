@@ -4,14 +4,14 @@
 #define MEM const char *
 #endif
 
-SYSCALLSEP( get_process_tasks, CONTINUE,   _DiOS_TaskHandle *, ( _DiOS_TaskHandle _1 ) )
-SYSCALLSEP( start_task,        CONTINUE,   _DiOS_TaskHandle, ( _DiOS_TaskRoutine _1, void *_2, int _3 ) )
+SYSCALLSEP( get_process_tasks, CONTINUE,   __dios_task*, ( __dios_task _1 ) )
+SYSCALLSEP( start_task,        CONTINUE,   __dios_task,  ( __dios_task_routine _1, void *_2, int _3 ) )
 SYSCALLSEP( get_fault_config,  CONTINUE,   int, ( int _1 ) )
 SYSCALLSEP( exit_process,      RESCHEDULE, void, ( int _1 ) )
 SYSCALLSEP( configure_fault,   CONTINUE,   int, ( int _1, int _2 ) )
 SYSCALLSEP( register_monitor,  CONTINUE,   void, ( __dios::Monitor *_1 ) )
 SYSCALLSEP( die,               RESCHEDULE, void, () )
-SYSCALLSEP( kill_task,         RESCHEDULE, void, ( _DiOS_TaskHandle _1 ) )
+SYSCALLSEP( kill_task,         RESCHEDULE, void, ( __dios_task _1 ) )
 SYSCALLSEP( kill_process,      RESCHEDULE, void, ( int _1 ) )
 SYSCALLSEP( yield,             RESCHEDULE, void, ( ) )
 SYSCALLSEP( fault_handler,     CONTINUE,   void, ( int _1, _VM_Frame * _2, int _3 ) )

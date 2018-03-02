@@ -39,9 +39,9 @@ bool useSyscallPassthrough( const SysOpts& o );
 
 struct Debug
 {
-    AutoIncMap< _DiOS_TaskHandle, int > hids;
-    ArrayMap< _DiOS_TaskHandle, short > trace_indent;
-    ArrayMap< _DiOS_TaskHandle, String > trace_buf;
+    AutoIncMap< __dios_task, int > hids;
+    ArrayMap< __dios_task, short > trace_indent;
+    ArrayMap< __dios_task, String > trace_buf;
     short kernel_indent = 0;
 };
 

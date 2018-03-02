@@ -7,9 +7,9 @@
 #ifndef REGTEST
 #include <threads.h>
 
-void *__errno_location()
+int *__errno_location()
 {
-    return __dios_get_errno();
+    return __dios_errno();
 }
 
 #endif

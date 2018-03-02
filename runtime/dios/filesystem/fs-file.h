@@ -212,7 +212,7 @@ struct VmBuffTraceFile : File
 
     __debugfn void do_write( const char *data, size_t &length ) noexcept
     {
-        auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_get_task_handle() ) ];
+        auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_this_task() ) ];
         buf.insert( buf.length(), data, length );
         auto nl = buf.find_last_of( "\n" );
         if ( nl != std::string::npos )

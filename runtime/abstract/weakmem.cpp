@@ -62,7 +62,7 @@ struct InterruptMask {
 };
 
 template< typename T >
-using ThreadMap = __dios::ArrayMap< _DiOS_TaskHandle, T >;
+using ThreadMap = __dios::ArrayMap< __dios_task, T >;
 
 template< typename T >
 using Array = __dios::Array< T >;
@@ -273,12 +273,12 @@ struct Buffers : ThreadMap< Buffer > {
 
     using Super = ThreadMap< Buffer >;
 
-    Buffer *getIfExists( _DiOS_TaskHandle h ) {
+    Buffer *getIfExists( __dios_task h ) {
         auto it = find( h );
         return it != end() ? &it->second : nullptr;
     }
 
-    Buffer &get( _DiOS_TaskHandle tid ) {
+    Buffer &get( __dios_task tid ) {
         Buffer *b = getIfExists( tid );
         if ( !b ) {
             b = &emplace( tid, Buffer{} ).first->second;
@@ -286,8 +286,8 @@ struct Buffers : ThreadMap< Buffer > {
         return *b;
     }
 
-    Buffer *getIfExists() { return getIfExists( __dios_get_task_handle() ); }
-    Buffer &get() { return get( __dios_get_task_handle() ); }
+    Buffer *getIfExists() { return getIfExists( __dios_this_task() ); }
+    Buffer &get() { return get( __dios_this_task() ); }
 
     template< typename T, T v >
     struct Const {
@@ -354,7 +354,7 @@ struct Buffers : ThreadMap< Buffer > {
             } );
     }
 
-    void push( _DiOS_TaskHandle tid, Buffer &b, BufferLine &&line )
+    void push( __dios_task tid, Buffer &b, BufferLine &&line )
     {
         if ( subseteq( MemoryOrder::AtomicOp, line.order ) )
             line.at_seq = get_next_at_seq( line.addr, line.bitwidth );
@@ -363,7 +363,7 @@ struct Buffers : ThreadMap< Buffer > {
         push_tso( tid, b, std::move( line ) );
     }
 
-    void push_tso( _DiOS_TaskHandle tid, Buffer &b, BufferLine &&line )
+    void push_tso( __dios_task tid, Buffer &b, BufferLine &&line )
     {
         b.push_back( std::move( line ) );
 
@@ -393,14 +393,14 @@ struct Buffers : ThreadMap< Buffer > {
                 char buffer[] = "thread 0xdeadbeafdeadbeaf*: ";
                 snprintf( buffer, sizeof( buffer ) - 1, "thread: %d%s ",
                                   nice_id,
-                                  p.first == __dios_get_task_handle() ? "*:" : ": " );
+                                  p.first == __dios_this_task() ? "*:" : ": " );
                 __vm_trace( _VM_T_Text, buffer );
                 p.second.dump();
             }
         }
     }
 
-    void flush( _DiOS_TaskHandle tid, Buffer &buf )
+    void flush( __dios_task tid, Buffer &buf )
     {
         for ( auto &l : buf ) {
             if ( l.isStore() ) {
@@ -424,7 +424,7 @@ struct Buffers : ThreadMap< Buffer > {
     }
 
     template< bool skip_local = false >
-    void tso_load( char *addr, int bitwidth, _DiOS_TaskHandle tid )
+    void tso_load( char *addr, int bitwidth, __dios_task tid )
     {
         const int sz = size();
         bool dirty = false;
@@ -516,7 +516,7 @@ extern "C" void __lart_weakmem_debug_fence() noexcept __attribute__((__noinline_
     // it does not need to keep store buffers consistent, debug functions will
     // not see them, it just needs to make all entries of this thread visible.
     // Also, it is uninterruptible by being part of *debugfn*
-    auto *tid = __dios_get_task_handle();
+    auto *tid = __dios_this_task();
     if ( !tid )
         return;
     auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
@@ -545,7 +545,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
         line.store();
         return;
     }
-    auto tid = __dios_get_task_handle();
+    auto tid = __dios_this_task();
     auto &buf = __lart_weakmem.storeBuffers.get( tid );
     if ( subseteq( MemoryOrder::SeqCst, ord ) ) {
         __lart_weakmem.storeBuffers.flush( tid, buf );
@@ -567,7 +567,7 @@ void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
     if ( masked.bypass() || masked.kernel() )
         return; // should not be called recursivelly
 
-    auto tid = __dios_get_task_handle();
+    auto tid = __dios_this_task();
     auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
     if ( !buf )
         return;
@@ -638,7 +638,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
     if ( masked.bypass() || masked.kernel()  )
         return load( addr, bitwidth );
 
-    auto tid = __dios_get_task_handle();
+    auto tid = __dios_this_task();
     Buffer *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
 
     if ( __lart_weakmem.storeBuffers.size() != 1

@@ -38,7 +38,7 @@ struct SyncScheduler : public Scheduler< Next >
     Task* getCurrentTask() {
         if ( _setupTask )
             return _setupTask.get();
-        auto tid = __dios_get_task_handle();
+        auto tid = __dios_this_task();
         return this->tasks.find( tid );
     }
 
@@ -46,7 +46,7 @@ struct SyncScheduler : public Scheduler< Next >
         _yield = true;
     }
 
-    _DiOS_TaskHandle start_task( _DiOS_TaskRoutine routine, void * arg, int tls_size ) {
+    __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size ) {
         if ( !_setupTask )
             __dios_fault( _VM_F_Control, "Cannot start task outside setup" );
         auto t = this->newTask( routine, tls_size, _setupTask->_proc );

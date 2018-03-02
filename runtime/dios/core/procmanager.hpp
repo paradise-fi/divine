@@ -54,7 +54,7 @@ struct ProcessManager : public Next
                                      { return proc(t.get())->pid == pid; } );
         if ( task == this->tasks.end() )
         {
-            *__dios_get_errno() = ESRCH;
+            *__dios_errno() = ESRCH;
             return nullptr;
         }
         return proc(task->get());
@@ -79,7 +79,7 @@ struct ProcessManager : public Next
         for( auto& t : this->tasks )
             if( proc(t.get())->sid == p->sid && proc(t.get())->pgid == p->pid )
             {
-                *__dios_get_errno() = EPERM;
+                *__dios_errno() = EPERM;
                 return -1;
             }
         p->sid = p->pid;
@@ -99,7 +99,7 @@ struct ProcessManager : public Next
     {
         if ( pgid < 0 )
         {
-            *__dios_get_errno() = EINVAL;
+            *__dios_errno() = EINVAL;
             return -1;
         }
 
@@ -114,7 +114,7 @@ struct ProcessManager : public Next
                 return -1;
             if ( !isChild( procToSet, currentProc ) && pid != currentProc->pid )
             {
-                *__dios_get_errno() = ESRCH;
+                *__dios_errno() = ESRCH;
                 return -1;
             }
         }
@@ -122,7 +122,7 @@ struct ProcessManager : public Next
         if ( procToSet->pgid == procToSet->pid ||
              ( isChild( procToSet, currentProc ) && procToSet->sid != currentProc->sid ) )
         {
-            *__dios_get_errno() = EPERM;
+            *__dios_errno() = EPERM;
             return -1;
         }
         if ( std::find_if( this->tasks.begin(), this->tasks.end(), [&]( auto& t )
@@ -130,13 +130,13 @@ struct ProcessManager : public Next
             == this->tasks.end() )
             if ( procToSet->pid != pgid && pgid != 0 )
             {
-                *__dios_get_errno() = EPERM;
+                *__dios_errno() = EPERM;
                 return -1;
             }
 
         if ( isChild( procToSet, currentProc ) && procToSet->calledExecve )
         {
-            *__dios_get_errno() = EACCES;
+            *__dios_errno() = EACCES;
             return -1;
         }
         if ( pgid == 0 )
@@ -159,7 +159,7 @@ struct ProcessManager : public Next
 
     pid_t sysfork( void )
     {
-        auto tid = __dios_get_task_handle();
+        auto tid = __dios_this_task();
         auto task = this->tasks.find( tid );
         Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
 
@@ -184,14 +184,14 @@ struct ProcessManager : public Next
     {
         if ( options & ~( WNOHANG | WUNTRACED | WCONTINUED ) )
         {
-            *__dios_get_errno() = EINVAL;
+            *__dios_errno() = EINVAL;
             return -1;
         }
 
         if ( rusage )
             memset( rusage, 0, sizeof( struct rusage ) );
 
-        Process* parent = proc( this->tasks.find( __dios_get_task_handle() ) );
+        Process* parent = proc( this->tasks.find( __dios_this_task() ) );
         pid_t childpid;
 
         auto pid_criteria_func = [&]( auto& pr )
@@ -216,7 +216,7 @@ struct ProcessManager : public Next
         {
             if ( options & WNOHANG )
             {
-                *__dios_get_errno() = ECHILD;
+                *__dios_errno() = ECHILD;
                 if ( std::count_if( this->tasks.begin(), this->tasks.end(), [&]( auto& pr ) {
                     return pid_criteria_func( pr->_proc );
                 } ) )
@@ -225,7 +225,7 @@ struct ProcessManager : public Next
                     return -1;
             }
             else
-                *__dios_get_errno() = EAGAIN2;
+                *__dios_errno() = EAGAIN2;
         }
         else
         {
@@ -247,7 +247,7 @@ struct ProcessManager : public Next
 
     void exit_process( int code )
     {
-        Process* p = proc( this->tasks.find( __dios_get_task_handle() ) );
+        Process* p = proc( this->tasks.find( __dios_this_task() ) );
         p->exitStatus = code << 8;
         Next::kill( p->pid, SIGKILL );
     }

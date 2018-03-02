@@ -20,7 +20,7 @@ static traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 
     int nice_id = -1;
     short *indent = nullptr;
-    auto tid = __dios_get_task_handle();
+    auto tid = __dios_this_task();
 
     if ( have_debug() )
     {

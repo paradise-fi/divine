@@ -163,11 +163,11 @@ struct _PthreadTLS {
     void *keys[0];
 
     void *raw() noexcept {
-        return reinterpret_cast< char * >( this ) - sizeof( _DiOS_TLS );
+        return reinterpret_cast< char * >( this ) - sizeof( __dios_tls );
     }
 
     static int size( int cnt ) noexcept {
-        return sizeof( struct _DiOS_TLS ) + sizeof( _PThread * ) + cnt * sizeof( void * );
+        return sizeof( __dios_tls ) + sizeof( _PThread * ) + cnt * sizeof( void * );
     }
 
     int keyCount() noexcept {
@@ -249,8 +249,9 @@ struct _PthreadTLS {
     TLSIter end() noexcept { return TLSIter( keyCount(), this ); }
 };
 
-static inline _PthreadTLS &tls( _DiOS_TaskHandle tid ) noexcept {
-    return *reinterpret_cast< _PthreadTLS * >( &( tid->data ) );
+static inline _PthreadTLS &tls( __dios_task tid ) noexcept
+{
+    return *reinterpret_cast< _PthreadTLS * >( &( tid->__data ) );
 }
 
 static inline _PThread &getThread( pthread_t tid ) noexcept {
@@ -258,13 +259,13 @@ static inline _PThread &getThread( pthread_t tid ) noexcept {
 }
 
 static inline _PThread &getThread() noexcept {
-    return getThread( __dios_get_task_handle() );
+    return getThread( __dios_this_task() );
 }
 
 template< typename Yield >
 static void iterateThreads( Yield yield ) noexcept {
     auto *threads = __dios_get_process_tasks();
-    int cnt = __vm_obj_size( threads ) / sizeof( _DiOS_TaskHandle );
+    int cnt = __vm_obj_size( threads ) / sizeof( __dios_task );
     for ( int i = 0; i < cnt; ++i )
         yield( threads[ i ] );
 }
@@ -303,7 +304,7 @@ void __run_atfork_handlers( ushort index ) noexcept {
 
 inline void* operator new ( size_t, void* p ) noexcept { return p; }
 
-static void __init_thread( const _DiOS_TaskHandle gtid, const pthread_attr_t attr ) noexcept {
+static void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept {
     __dios_assert( gtid );
 
     if ( __vm_obj_size( gtid ) < _PthreadTLS::size( 0 ) )
@@ -326,7 +327,7 @@ void __pthread_initialize() noexcept
     // initialize implicitly created main thread
     tlsDestructors.init();
     atForkHandlers.init();
-    __init_thread( __dios_get_task_handle(), PTHREAD_CREATE_DETACHED );
+    __init_thread( __dios_this_task(), PTHREAD_CREATE_DETACHED );
     getThread().is_main = true;
 }
 
@@ -346,10 +347,10 @@ static void _run_cleanup_handlers() noexcept {
     }
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_TaskHandle tid ) noexcept;
+static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept;
 
 static void _cancel( __dios::FencedInterruptMask &mask ) noexcept {
-    _DiOS_TaskHandle tid = __dios_get_task_handle();
+    __dios_task tid = __dios_this_task();
     _PThread &thread = getThread( tid );
     thread.sleeping = NotSleeping;
 
@@ -386,7 +387,7 @@ static void wait( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
     return _wait< false >( mask, cond );
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_TaskHandle tid ) noexcept
+static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept
 {
     _PThread &thread = getThread( tid );
     // An  optional  destructor  function may be associated with each key
@@ -432,7 +433,7 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
         // leak &thread so that metadata can be read for use by deadlock
         // tracking; &thread will be released by DIVINE when all pointers to it
         // are lost
-        __dios_kill_task( tid );
+        __dios_kill( tid );
     } else // wait until detach / join kills us
         wait( mask, [&] { return true; } );
 }
@@ -444,11 +445,12 @@ struct Entry {
 };
 
 // no nexcept here, avoid adding landingpads and filters
-extern "C" void __pthread_entry( void *_args ) {
+extern "C" void __pthread_entry( void *_args )
+{
     __dios::FencedInterruptMask mask;
 
     Entry *args = static_cast< Entry * >( _args );
-    auto tid = __dios_get_task_handle();
+    auto tid = __dios_this_task();
     _PThread &thread = getThread( tid );
 
     // copy arguments
@@ -492,7 +494,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) noexcept {
     _PThread &thread = getThread( gtid );
 
-    if ( gtid == __dios_get_task_handle() )
+    if ( gtid == __dios_this_task() )
         return EDEADLK;
 
     if ( thread.detached )
@@ -515,19 +517,19 @@ static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, voi
 
     // kill the thread so that it does not pollute state space by ending
     // nondeterministically, but leak it (see _clean_and_become_zombie)
-    __dios_kill_task( gtid );
+    __dios_kill( gtid );
     return 0;
 }
 
 void pthread_exit( void *result ) noexcept {
     __dios::FencedInterruptMask mask;
 
-    auto gtid = __dios_get_task_handle();
+    auto gtid = __dios_this_task();
     _PThread &thread = getThread( gtid );
     thread.result = result;
 
     if ( thread.is_main )
-        iterateThreads( [&]( _DiOS_TaskHandle tid ) {
+        iterateThreads( [&]( __dios_task tid ) {
                 _pthread_join( mask, tid, nullptr ); // joining self is detected and ignored
             } );
 
@@ -554,7 +556,7 @@ int pthread_detach( pthread_t gtid ) noexcept {
         // kill the thread so that it does not pollute state space by ending
         // nondeterministically, but leak the thread descritor (see
         // _clean_and_become_zombie)
-        __dios_kill_task( gtid );
+        __dios_kill( gtid );
     }
     return 0;
 }
@@ -683,7 +685,7 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) noexcept {
 /* Thread ID */
 pthread_t pthread_self( void ) noexcept {
     __dios::FencedInterruptMask mask;
-    return __dios_get_task_handle();
+    return __dios_this_task();
 }
 
 int pthread_equal( pthread_t t1, pthread_t t2 ) noexcept {
@@ -772,7 +774,7 @@ static bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
 
 static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept {
 
-    _DiOS_TaskHandle gtid = __dios_get_task_handle();
+    __dios_task gtid = __dios_this_task();
     _PThread &thr = getThread( gtid );
 
     if ( mutex == NULL || !mutex->__initialized ) {
@@ -1057,7 +1059,7 @@ int pthread_key_delete( pthread_key_t key ) noexcept {
     if ( key >= tlsDestructors.count() )
         return EINVAL;
 
-    iterateThreads( [&]( _DiOS_TaskHandle tid ) {
+    iterateThreads( [&]( __dios_task tid ) {
             tls( tid ).setKey( key, nullptr );
             tls( tid ).shrink();
         } );
@@ -1069,13 +1071,13 @@ int pthread_key_delete( pthread_key_t key ) noexcept {
 int pthread_setspecific( pthread_key_t key, const void *data ) noexcept {
     __dios::FencedInterruptMask mask;
 
-    tls( __dios_get_task_handle() ).setKey( key, data );
+    tls( __dios_this_task() ).setKey( key, data );
     return 0;
 }
 
 void *pthread_getspecific( pthread_key_t key ) noexcept {
     __dios::FencedInterruptMask mask;
-    return tls( __dios_get_task_handle() ).getKey( key );
+    return tls( __dios_this_task() ).getKey( key );
 }
 
 /* Conditional variables */
