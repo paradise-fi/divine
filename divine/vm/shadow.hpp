@@ -192,7 +192,7 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
     {
         o << "    { " << i << ": ";
         if ( e.objid[ i ] )
-            o << "byte " << e.index[ i ] << " of ptr. to " << e.objid[ i ];
+            o << "byte " << +e.index[ i ] << " of ptr. to " << e.objid[ i ];
         else
             o << "data";
         o << " }\n";
@@ -1046,9 +1046,16 @@ struct PooledShadow
         auto _ty = _type.template machinePointer< uint8_t >( l.object );
         auto _def = _defined.template machinePointer< uint8_t >( l.object );
 
+        std::vector< PointerException > pexcs;
+
         std::cerr << what << ", obj = " << l.object << ", off = " << l.offset << ", type: ";
         for ( int i = 0; i < sz; ++i )
-            std::cerr << TypeProxy( _ty, l.offset + i ).get();
+        {
+            auto t = TypeProxy( _ty, l.offset + i ).get();
+            std::cerr << t;
+            if ( (l.offset + i ) % 4 == 0 && t == ShadowType::PointerException )
+                pexcs.push_back( _ptr_exceptions->at( l.object, l.offset + i ) );
+        }
         std::cerr << ", def:" << std::hex << std::fixed;
         for ( int i = 0; i < sz; ++i )
         {
@@ -1057,8 +1064,9 @@ struct PooledShadow
                 def = _def_exceptions->defined( l.object, l.offset + i );
             std::cerr << ' ' << +def;
         }
+        for ( auto & pexc : pexcs )
+            std::cerr << pexc << std::endl;
         std::cerr << std::dec << std::endl;
-
     }
 };
 
