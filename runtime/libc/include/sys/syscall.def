@@ -91,6 +91,8 @@ SYSCALL( fdatasync,   CONTINUE, int,     ( int _1 ) )
 SYSCALL( syncfs,      CONTINUE, int,     ( int _1 ) )
 SYSCALL( uname,       CONTINUE, int,     ( STRUCT(struct utsname *) _1 ) )
 SYSCALL( getcwd,      CONTINUE, char*,   ( COUNT(char*) _1, size_t _2 ) )
+SYSCALL( rt_sigaction, CONTINUE, int,    ( int _1, const struct ::sigaction * _2,
+                                           struct ::sigaction * _3, size_t _4 ) )
 #endif
 
 #if _HOST_is_openbsd
