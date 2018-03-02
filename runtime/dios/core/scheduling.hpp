@@ -478,12 +478,12 @@ struct Scheduler : public Next
     __attribute__((__always_inline__))
     void run( Task &t )
     {
-        __vm_control( _VM_CA_Set, _VM_CR_Frame, t._frame,
-                      _VM_CA_Set, _VM_CR_Globals, t._proc->globals,
-                      _VM_CA_Set, _VM_CR_User2, reinterpret_cast< uint64_t >( t.getId() ),
-                      _VM_CA_Set, _VM_CR_User3, debug,
-                      _VM_CA_Bit, _VM_CR_Flags,
-                      uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
+        __vm_ctl_set( _VM_CR_Globals, t._proc->globals );
+        __vm_ctl_set( _VM_CR_User2, t.getId() );
+        __vm_ctl_set( _VM_CR_User3, debug );
+        __vm_ctl_flag( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode,  _VM_CF_KeepFrame );
+        __vm_ctl_set( _VM_CR_Frame, t._frame );
+        /* interrupts return here */
         t._frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
     }
 

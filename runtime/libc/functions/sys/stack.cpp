@@ -5,9 +5,8 @@
 
 _Noreturn void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
 {
-    bool m = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) ) & _VM_CF_Mask;
+    bool m = __vm_ctl_flag( 0, _VM_CF_Mask ) & _VM_CF_Mask;
+
     if ( restoreMaskTo != -1 )
         m = restoreMaskTo;
 
