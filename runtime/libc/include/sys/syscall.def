@@ -73,8 +73,6 @@ SYSCALL( fchdir,      CONTINUE, int,     ( int _1 ) )
 SYSCALL( ftruncate,   CONTINUE, int,     ( int _1, off_t _2 ) )
 SYSCALL( getpeername, CONTINUE, int,     ( int _1, STRUCT(struct sockaddr *) _2, OUT(socklen_t *) _3 ) )
 SYSCALL( unlink,      CONTINUE, int,     ( MEM _1 ) )
-SYSCALL( sigaction,   CONTINUE, int,     ( int _1, const struct ::sigaction * _2,
-                                           struct ::sigaction * _3 ) )
 SYSCALL( unlinkat,    CONTINUE, int,     ( int _1, MEM _2, int _3 ))
 SYSCALL( mknodat,     CONTINUE, int,     ( int _1, MEM _2, mode_t _3, dev_t _4 ) )
 SYSCALL( readlinkat,  CONTINUE, ssize_t, ( int _1, MEM _2, COUNT(char *) _3, size_t _4 ) )
@@ -93,6 +91,11 @@ SYSCALL( fdatasync,   CONTINUE, int,     ( int _1 ) )
 SYSCALL( syncfs,      CONTINUE, int,     ( int _1 ) )
 SYSCALL( uname,       CONTINUE, int,     ( STRUCT(struct utsname *) _1 ) )
 SYSCALL( getcwd,      CONTINUE, char*,   ( COUNT(char*) _1, size_t _2 ) )
+#endif
+
+#if HOST_is_openbsd
+SYSCALL( sigaction,   CONTINUE, int,     ( int _1, const struct ::sigaction * _2,
+                                           struct ::sigaction * _3 ) )
 #endif
 
 #if 0 /* not implemented */
