@@ -13,6 +13,8 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+using namespace detail;
+
 namespace {
 
 template< typename Vs >
@@ -61,40 +63,32 @@ bool isScalarOp( const AbstractValue & av ) {
     return false;
 }
 
-struct InitGlobals {
-    using Globals = VPA::Globals;
-    using FNode = Abstraction::FunctionNode;
+template< typename Globals >
+FNode init_globals( llvm::Module & m, Globals & gvars, Fields *fields ) {
+    auto fty = llvm::FunctionType::get(
+        llvm::Type::getVoidTy( m.getContext() ), false );
 
-    FNode run( llvm::Module & m, Globals & gvars ) {
-        auto fty = llvm::FunctionType::get(
-            llvm::Type::getVoidTy( m.getContext() ), false );
+    auto initFunction = llvm::cast< llvm::Function >(
+        m.getOrInsertFunction( "__lart_globals_initialize", fty ) );
 
-        auto initFunction = llvm::cast< llvm::Function >(
-            m.getOrInsertFunction( "__lart_globals_initialize", fty ) );
+    initFunction->deleteBody();
+    auto bb = llvm::BasicBlock::Create( m.getContext(), "entry", initFunction );
 
-        initFunction->deleteBody();
-        auto bb = llvm::BasicBlock::Create( m.getContext(), "entry", initFunction );
+    FNode fn = { initFunction, {}, fields };
+    auto irb = llvm::IRBuilder<>( bb );
 
-        initializer = { initFunction, {} };
-        auto irb = llvm::IRBuilder<>( bb );
-
-        for ( auto & g : gvars )
-            init( g, irb );
-
-        irb.CreateRetVoid();
-        return initializer;
-    }
-
-    void init( const AbstractValue & av, llvm::IRBuilder<> & irb ) {
-        auto gvar = av.get< llvm::GlobalVariable >();
+    for ( auto & g : gvars ) {
+        auto gvar = g.template get< llvm::GlobalVariable >();
         assert( gvar->getInitializer() );
         auto store = irb.CreateStore( gvar->getInitializer(), gvar );
-        initializer.roots().insert( { store, av.domain } );
+        fn.roots().insert( { store, g.domain } );
     }
 
-private:
-    FNode initializer;
-};
+    fn.init();
+
+    irb.CreateRetVoid();
+    return fn;
+}
 
 struct GlobMap : LiftMap< llvm::Value *, llvm::Value * > {
     GlobMap( PassData & data, llvm::Module & m, VPA::Globals & globals )
@@ -120,28 +114,112 @@ private:
     llvm::Module & m;
 };
 
-using FNode = Abstraction::FunctionNode;
-
-void sortFunctionNodes( std::vector< FNode > & fnodes ) {
-    std::sort( fnodes.begin(), fnodes.end(), [] ( FNode l, FNode r ) {
-        auto arghash = [] ( const FNode & fn ) -> size_t {
-            size_t sum = 0;
-            for ( auto & a : filterA< llvm::Argument >( fn.roots() ) )
-                sum += a.get< llvm::Argument >()->getArgNo();
-            return sum;
-        };
-
-        auto ln = l.first->getName().str();
-        auto rn = r.first->getName().str();
-
-        return ln == rn ? arghash( l ) < arghash( r ) : ln < rn;
-    } );
+void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
+    for ( auto & arg : fn->args() ) {
+        if ( data.tmap.isAbstract( arg.getType() ) ) {
+            for ( auto & lift : lifts( arg.users() ) ) {
+                lift->replaceAllUsesWith( &arg );
+                lift->eraseFromParent();
+            }
+        }
+    }
 }
 
-template< typename Abstracted, typename Fields >
-void cleanFNode( Abstracted & abstracted, Fields & fields ) {
+template< typename Functions >
+auto create_fnodes( Functions &fns, Fields *fields ) {
+    std::vector< FNode > fnodes;
+    for ( auto &fn : fns )
+        for ( const auto &roots : fn.second )
+            fnodes.emplace_back( fn.first, roots, fields );
+    std::sort( fnodes.begin(), fnodes.end() );
+    return fnodes;
+}
+
+} // anonymous namespace
+
+void FNode::init() {
+    auto filter = [&] ( const AbstractValue & av ) {
+        if ( auto icmp = Cmp( av ) )
+            return !isScalarType( icmp->getOperand( 0 )->getType() );
+        if ( !isScalarOp( av ) )
+            return false;
+        if ( auto load = Load( av ) )
+            return !_fields->has( load );
+        if ( auto store = Store( av ) )
+            return !_fields->has( store->getPointerOperand() );
+        if ( auto gep = GEP( av ) )
+            return !_fields->has( gep );
+        return false;
+    };
+
+    AbstractValues avroots;
+    for ( const auto & av : roots() ) {
+        Domain dom = av.domain;
+        if ( auto mdom = _fields->getDomain( av.value ) )
+            dom = mdom.value();
+        else if ( auto mdom = _fields->getDomain( { av.value, { LoadStep{} } } ) )
+            dom = mdom.value();
+        avroots.emplace_back( av.value, dom );
+    }
+
+    _ainsts = reachFrom( avroots, filter );
+    _change_sig = _need_change_signature();
+}
+
+std::optional< AbstractValue > FNode::ret() const {
+    auto rets = filterA< llvm::ReturnInst >( abstract_insts() );
+    return rets.empty() ? std::nullopt : std::make_optional( rets[ 0 ] );
+}
+
+AbstractValues FNode::args() const {
+    return filterA< llvm::Argument >( roots() );
+}
+
+bool FNode::_need_change_signature() const {
+    auto frty = _fn->getReturnType();
+    return ( ret() && isScalarType( frty ) ) || !args().empty();
+}
+
+Domain FNode::return_domain() const {
+    auto ret_v = ret();
+    return ret_v ? ret_v.value().domain : Domain::LLVM;
+}
+
+llvm::Type* FNode::return_type( TMap &tmap ) const {
+    auto dom = return_domain();
+    auto frty = _fn->getReturnType();
+    return !isScalarType( frty ) ? frty : liftType( _fn->getReturnType(), dom, tmap );
+}
+
+llvm::FunctionType* FNode::function_type( TMap &tmap ) const {
+    Map< unsigned, llvm::Type * > amap;
+    for ( const auto & a : args() ) {
+        auto ano = a.get< llvm::Argument >()->getArgNo();
+        amap[ ano ] = stripPtrs( a.value->getType() )->isStructTy()
+                    ? a.value->getType() : a.type( tmap );
+    }
+
+    auto as = remapFn( _fn->args(), [&] ( const auto & a ) {
+        return amap.count( a.getArgNo() ) ? amap[ a.getArgNo() ] : a.getType();
+    } );
+
+    return llvm::FunctionType::get( return_type( tmap ), as, _fn->getFunctionType()->isVarArg() );
+}
+
+template< typename Builder >
+void FNode::process( Builder & b ) {
+    auto ai = abstract_insts();
+    for ( auto & av : lart::util::reverse( ai ) ) {
+        if ( isScalarOp( av ) )
+            b.process( av );
+        else
+            b.processStructOp( av );
+    }
+}
+
+void FNode::clean() {
     std::set< llvm::Value * > deps;
-    for ( auto & av : abstracted )
+    for ( auto & av : abstract_insts() )
         if ( isScalarOp( av ) && !av.template isa< llvm::GetElementPtrInst >() ) {
             deps.insert( av.value );
         } else if ( auto cs = llvm::CallSite( av.value ) ) {
@@ -162,72 +240,15 @@ void cleanFNode( Abstracted & abstracted, Fields & fields ) {
         inst->removeFromParent();
     }
     for ( auto & inst : is )
-        fields.erase( inst );
+        _fields->erase( inst );
     for ( auto & inst : is )
         inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
     for ( auto & inst : is )
         delete inst;
 }
 
-template< typename Builder, typename Fields >
-void processFNode( FNode & fnode, Fields & fields, Builder & builder ) {
-    auto postorder = fnode.reached( fields );
-    for ( auto & av : lart::util::reverse( postorder ) ) {
-        if ( isScalarOp( av ) )
-            builder.process( av );
-        else
-            builder.processStructOp( av );
-    }
-
-    cleanFNode( postorder, fields );
-}
-
-void removeArgumentLifts( llvm::Function * fn, PassData & data ) {
-    for ( auto & arg : fn->args() ) {
-        if ( data.tmap.isAbstract( arg.getType() ) ) {
-            for ( auto & lift : lifts( arg.users() ) ) {
-                lift->replaceAllUsesWith( &arg );
-                lift->eraseFromParent();
-            }
-        }
-    }
-}
-
-} // anonymous namespace
-
-AbstractValues Abstraction::FunctionNode::reached( const Fields & fields ) const {
-    auto filter = [&] ( const AbstractValue & av ) {
-        if ( auto icmp = Cmp( av ) )
-            return !isScalarType( icmp->getOperand( 0 )->getType() );
-        if ( !isScalarOp( av ) )
-            return false;
-        if ( auto load = Load( av ) )
-            return !fields.has( load );
-        if ( auto store = Store( av ) )
-            return !fields.has( store->getPointerOperand() );
-        if ( auto gep = GEP( av ) )
-            return !fields.has( gep );
-        return false;
-    };
-
-    AbstractValues avroots;
-    for ( const auto & av : roots() ) {
-        Domain dom = av.domain;
-        if ( auto maybedom = fields.getDomain( av.value ) )
-            dom = maybedom.value();
-        if ( auto maybedom = fields.getDomain( { av.value, { LoadStep{} } } ) )
-            dom = maybedom.value();
-        avroots.emplace_back( av.value, dom );
-    }
-
-    return reachFrom( avroots, filter );
-}
 
 void Abstraction::run( llvm::Module & m ) {
-    // create function prototypes
-    Map< FNode, llvm::Function * > prototypes;
-    std::vector< FNode > fnodes;
-
     VPA::Globals globals;
     Reached functions;
     Fields fields;
@@ -235,16 +256,14 @@ void Abstraction::run( llvm::Module & m ) {
     // Value propagation analysis
     std::tie( functions, globals, fields ) = VPA().run( m );
 
-    fnodes.emplace_back( InitGlobals().run( m, globals ) );
-    for ( auto & fn : functions )
-        for ( const auto & rs : fn.second )
-            fnodes.emplace_back( fn.first, rs );
-    sortFunctionNodes( fnodes );
+    std::vector< std::pair< FNode, llvm::Function* > > prototypes;
+    for ( auto n : create_fnodes( functions, &fields ) )
+        prototypes.emplace_back( n, create_prototype( n ) );
+
+    auto ig = init_globals( m, globals, &fields );
+    prototypes.emplace_back( ig, create_prototype( ig ) );
 
     GlobMap globmap( data, m, globals );
-
-    for ( auto & fnode : fnodes )
-        prototypes[ fnode ] = process( fnode, fields );
 
     std::set< llvm::Function * > remove;
     for ( const auto & p : prototypes ) {
@@ -258,28 +277,32 @@ void Abstraction::run( llvm::Module & m ) {
         // If signature changes create a new function declaration
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
-        bool called = query::query( fnode.roots() ).any( [] ( const auto & n ) {
-            return n.template isa< llvm::Argument >();
-        } );
-        if ( called ) fnode = clone( fnode, fields );
+        bool has_annotation_roots = fnode.function()->getMetadata( "lart.abstract.values" );
+        if ( fnode.need_change_signature() && has_annotation_roots )
+            remove.insert( fnode.function() );
 
-        // Create abstract intrinsics in the function node
-        processFNode( fnode, fields, builder );
+        fnode = !fnode.args().empty() ? clone( fnode ) : fnode;
+
+        fnode.process( builder );
+        fnode.clean();
 
         // Copy function to declaration and handle function uses
-        auto fn = fnode.function();
-        auto & changed = p.second;
-        if ( changed != fn ) {
-            remove.insert( fn );
+        if ( fnode.need_change_signature() ) {
+            auto &changed = p.second;
+
+            remove.insert( fnode.function() );
+
             llvm::ValueToValueMapTy vtvmap;
-            cloneFunctionInto( changed, fn, vtvmap );
+            cloneFunctionInto( changed, fnode.function(), vtvmap );
             removeArgumentLifts( changed, data );
+
+            // force edge interrupt in recursive calls
             CallInterupt().run( changed );
         }
     }
+
     for ( auto & fn : lart::util::reverse( remove ) )
         fn->eraseFromParent();
-
     for ( const auto & g : globals )
         if ( !g.value->getType()->getPointerElementType()->isStructTy() )
             llvm::cast< llvm::GlobalVariable >( g.value )->eraseFromParent();
@@ -288,45 +311,26 @@ void Abstraction::run( llvm::Module & m ) {
     sdp->runOnModule( m );
 }
 
-llvm::Function * Abstraction::process( const FunctionNode & fnode, const Fields & fields ) {
-    auto rets = filterA< llvm::ReturnInst >( fnode.reached( fields ) );
-    auto args = filterA< llvm::Argument >( fnode.roots() );
 
-    auto fn = fnode.first;
-    auto frty = fn->getReturnType();
-    // Signature does not need to be changed
-    if ( ( rets.empty() || !isScalarType( frty ) ) && args.empty() )
-        return fnode.first;
+llvm::Function * Abstraction::create_prototype( const FNode & fnode ) {
+    auto fn = fnode.function();
+    if ( !fnode.need_change_signature() )
+        return fn;
 
-    auto dom = !rets.empty() ? rets[ 0 ].domain : Domain::LLVM;
-    auto rty = !isScalarType( frty ) ? frty : liftType( fn->getReturnType(), dom, data.tmap );
-
-    Map< unsigned, llvm::Type * > amap;
-    for ( const auto & a : args ) {
-        auto ano = a.get< llvm::Argument >()->getArgNo();
-        amap[ ano ] = stripPtrs( a.value->getType() )->isStructTy()
-                    ? a.value->getType() : a.type( data.tmap );
-    }
-
-    auto as = remapFn( fnode.first->args(), [&] ( const auto & a ) {
-        return amap.count( a.getArgNo() ) ? amap[ a.getArgNo() ] : a.getType();
-    } );
-
-    auto fty = llvm::FunctionType::get( rty, as, fn->getFunctionType()->isVarArg() );
+    auto fty = fnode.function_type( data.tmap );
     auto newfn = llvm::Function::Create( fty, fn->getLinkage(), fn->getName(), fn->getParent() );
-
-    fns.insert( fn, argIndices( args ), newfn );
+    fns.insert( fn, argIndices( fnode.args() ), newfn );
     return newfn;
 }
 
-Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node, Fields & fields ) {
+FNode Abstraction::clone( const FNode & node ) {
     llvm::ValueToValueMapTy vmap;
     auto clone = CloneFunction( node.function(), vmap, true, nullptr );
     node.function()->getParent()->getFunctionList().push_back( clone );
 
     for ( const auto & v : vmap ) {
-        if ( fields.has( v.first ) )
-            fields.alias( v.first, v.second );
+        if ( node.fields()->has( v.first ) )
+            node.fields()->alias( v.first, v.second );
     }
 
     std::set< AbstractValue > roots;
@@ -348,7 +352,7 @@ Abstraction::FunctionNode Abstraction::clone( const FunctionNode & node, Fields 
 
     if ( fns.count( node.function() ) )
         fns.assign( clone, node.function() );
-    return Abstraction::FunctionNode( clone, roots );
+    return { clone, roots, node.fields() };
 }
 
 } // abstract

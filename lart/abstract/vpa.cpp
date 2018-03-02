@@ -157,8 +157,13 @@ VPA::Roots VPA::run( llvm::Module & m ) {
         tasks.pop_front();
     }
 
-    // TODO cleanup - remove unnecessery prototypes
     fields.clean();
+
+    for ( auto & r : reached ) {
+        if ( !r.second.annotations()->empty() )
+            // TODO set roots as metadata for the function
+            r.first->setMetadata( "lart.abstract.values", {} );
+    }
 
     return std::make_tuple( std::move( reached ), globals, std::move( fields ) );
 }
