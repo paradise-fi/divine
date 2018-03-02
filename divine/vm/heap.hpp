@@ -43,99 +43,23 @@
 
 namespace divine::vm::heap
 {
-    r1.offset( 0 ); r2.offset( 0 );
+    template< typename H1, typename H2, typename MarkedComparer >
+    int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
+                std::unordered_map< HeapPointer, int > &v1,
+                std::unordered_map< HeapPointer, int > &v2, int &seq,
+                MarkedComparer &markedComparer );
 
-    auto v1r1 = v1.find( r1 );
-    auto v2r2 = v2.find( r2 );
+    template< typename Heap >
+    int hash( Heap &heap, HeapPointer root,
+            std::unordered_map< int, int > &visited,
+            brick::hash::jenkins::SpookyState &state, int depth );
 
-    if ( v1r1 != v1.end() && v2r2 != v2.end() )
-        return v1r1->second - v2r2->second;
-
-    if ( v1r1 != v1.end() )
-        return -1;
-    if ( v2r2 != v2.end() )
-        return 1;
-
-    v1[ r1 ] = seq;
-    v2[ r2 ] = seq;
-    ++ seq;
-
-    if ( h1.valid( r1 ) != h2.valid( r2 ) )
-        return h1.valid( r1 ) - h2.valid( r2 );
-
-    if ( !h1.valid( r1 ) )
-        return 0;
-
-    if ( h1.shared( r1 ) != h2.shared( r2 ) )
-        return h1.shared( r1 ) - h2.shared( r2 );
-
-    auto i1 = h1.ptr2i( r1 ), i2 = h2.ptr2i( r2 );
-    int s1 = h1.size( r1, i1 ), s2 = h2.size( r2, i2 );
-    if ( s1 - s2 )
-        return s1 - s2;
-    auto b1 = h1.unsafe_bytes( r1, i1 ), b2 = h2.unsafe_bytes( r2, i2 );
-    auto p1 = h1.pointers( r1, i1 ), p2 = h2.pointers( r2, i2 );
-    auto d1 = h1.defined( r1, i1 ), d2 = h2.defined( r2, i2 );
-    int offset = 0;
-    auto p1i = p1.begin(), p2i = p2.begin();
-    while ( true )
+    template< typename H1, typename H2, typename MarkedComparer >
+    int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2, MarkedComparer mc )
     {
-        if ( ( p1i == p1.end() ) ^ ( p2i == p2.end() ) )
-            return p1i == p1.end() ? -1 : 1;
-
-        if ( p1i != p1.end() )
-        {
-            if ( p1i->offset() != p2i->offset() )
-                return p1i->offset() - p2i->offset();
-            if ( p1i->size() != p2i->size() )
-                return p1i->size() - p2i->size();
-        }
-
-        int end = p1i == p1.end() ? s1 : p1i->offset();
-        while ( offset < end ) /* TODO definedness! */
-        {
-            if ( b1[ offset ] != b2[ offset ] )
-                return b1[ offset ] - b2[ offset ];
-            if ( d1[ offset ] != d2[ offset ] )
-                return int( d1[ offset ] ) - int( d2[ offset ] );
-            ++ offset;
-        }
-
-        if ( p1i == p1.end() )
-            return 0;
-
-        while ( offset < end + p1i->size() )
-        {
-            if ( d1[ offset ] != d2[ offset ] )
-                return int( d1[ offset ] ) - int( d2[ offset ] );
-            ++ offset;
-        }
-
-        /* recurse */
-        value::Pointer p1p, p2p;
-        ASSERT_EQ( p1i->offset(), p2i->offset() );
-        r1.offset( p1i->offset() );
-        r2.offset( p1i->offset() );
-        h1.unsafe_read( r1, p1p, i1 );
-        h2.unsafe_read( r2, p2p, i2 );
-        int pdiff = 0;
-        auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
-        if ( p1pp.type() == p2pp.type() )
-        {
-            if ( p1pp.offset() != p2pp.offset() )
-                return p1pp.offset() - p2pp.offset();
-            else if ( p1pp.type() == PointerType::Heap )
-                pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
-            else if ( p1pp.type() == PointerType::Marked )
-                markedComparer( p1pp, p2pp );
-            else if ( p1pp.heap() ); // Weak
-            else
-                pdiff = p1pp.object() - p2pp.object();
-        } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
-        if ( pdiff )
-            return pdiff;
-        ASSERT_EQ( p1i->size(), p2i->size() );
-        ++ p1i; ++ p2i;
+        std::unordered_map< HeapPointer, int > v1, v2;
+        int seq = 0;
+        return compare( h1, h2, r1, r2, v1, v2, seq, mc );
     }
 
     template< typename H1, typename H2 >
@@ -380,14 +304,7 @@ namespace divine::vm
         {
             if ( !p.object() )
                 return false;
-            if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
-                return false;
-            if ( shadows().shared( a ) != shadows().shared( b ) )
-                return false;
-            ShadowLoc a_shloc( a, 0 ), b_shloc( b, 0 );
-            if ( !shadows().equal( a_shloc, b_shloc, size ) )
-                return false;
-            return true;
+            return ptr2i( p ).slab();
         }
 
         bool shared( HeapPointer p ) const { return _shadows.shared( ptr2i( p ) ); }
