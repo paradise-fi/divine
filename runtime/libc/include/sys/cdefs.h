@@ -87,6 +87,9 @@
 #endif	/* !__GNUC__ */
 #endif	/* !(__STDC__ || __cplusplus) */
 
+#define __debugfn __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
+#define __trapfn  __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
+
 /*
  * GCC1 and some versions of GCC2 declare dead (non-returning) and
  * pure (no side effects) functions using "volatile" and "const";
