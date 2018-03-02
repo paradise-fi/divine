@@ -12,4 +12,4 @@ touch 1/foo.h
 divine cc test.c -I1
 divine cc test.c -I$PWD/1
 divine cc test.c -C,-I$PWD/1
-divine run -C,-I$PWD/1 test.c
+divine exec -C,-I$PWD/1 test.c

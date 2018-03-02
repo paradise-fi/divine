@@ -3,7 +3,7 @@
 
 check_help()
 {
-    divine run -o help -o config:$1 test.c > trace.out
+    divine exec -o help -o config:$1 test.c > trace.out
     if ! grep "config: run" trace.out; then
         echo "# unexpected help output for configuration $1:"
         cat trace.out
