@@ -87,6 +87,15 @@
 #endif	/* !__GNUC__ */
 #endif	/* !(__STDC__ || __cplusplus) */
 
+
+#if __cplusplus >= 201103L
+#define __nothrow noexcept
+#elif defined(__cplusplus)
+#define __nothrow throw()
+#else
+#define __nothrow __attribute__((__nothrow__))
+#endif
+
 #define __debugfn __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
 #define __trapfn  __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
 
@@ -241,9 +250,11 @@
 #if defined(__cplusplus)
 #define	__BEGIN_EXTERN_C	extern "C" {
 #define	__END_EXTERN_C		}
+#define __CAST( T, X ) reinterpret_cast< T >( X )
 #else
 #define	__BEGIN_EXTERN_C
 #define	__END_EXTERN_C
+#define __CAST( T, X ) ((T)(X))
 #endif
 
 #if __GNUC_PREREQ__(4, 0)
