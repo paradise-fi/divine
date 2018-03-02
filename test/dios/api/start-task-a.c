@@ -5,18 +5,22 @@
 
 volatile int start;
 
-void *getTls( _DiOS_TaskHandle id ) {
-    return &id->data;
+void *getTls( __dios_task id )
+{
+    return &id->__data;
 }
 
-void routine( void * x ){
+void routine( void * x )
+{
     while( !start );
-    int *tls = getTls( __dios_get_task_handle() );
+    int *tls = getTls( __dios_this_task() );
     *tls = 42;
+    __dios_suicide();
 }
 
 
-int main() {
+int main()
+{
     int *tls = getTls( __dios_start_task( routine, NULL, 2 * sizeof( int ) ) );
     *tls = 0;
     start = 1;

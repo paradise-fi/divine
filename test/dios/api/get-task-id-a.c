@@ -3,17 +3,19 @@
 #include <assert.h>
 
 volatile int start;
-volatile _DiOS_TaskHandle foreignId;
+volatile __dios_task foreignId;
 
-void routine( void * x ){
+void routine( void * x )
+{
     while( !start );
-    assert( __dios_get_task_handle() == foreignId );
+    assert( __dios_this_task() == foreignId );
+    __dios_suicide();
 }
 
 int main() {
-    _DiOS_TaskHandle myId1 = __dios_get_task_handle();
+    __dios_task myId1 = __dios_this_task();
     foreignId = __dios_start_task( routine, NULL, 0 );
-    _DiOS_TaskHandle myId2 = __dios_get_task_handle();
+    __dios_task myId2 = __dios_this_task();
     start = 1;
     assert( myId1 == myId2 );
     assert( myId1 != foreignId );

@@ -17,17 +17,17 @@ int main()
 
     pthread_create( &tid, NULL, thread, NULL );
 
-    struct _DiOS_TLS ** threads = __dios_get_process_tasks();
-    struct _DiOS_TLS * current_thread = __dios_get_task_handle();
-    int cnt = __vm_obj_size( threads ) / sizeof( struct _DiOS_TLS * );
+    struct __dios_tls **threads = __dios_get_process_tasks();
+    struct __dios_tls *current_thread = __dios_this_task();
+    int cnt = __vm_obj_size( threads ) / sizeof( struct __dios_tls * );
     pid_t pid = fork();
 
     if ( pid == 0 )
     {
         glob++;
         for ( int i = 0; i < cnt; ++i )
-           if ( threads[ i ] != current_thread )
-               threads[ i ]->_errno; /* ERROR */
+            if ( threads[ i ] != current_thread )
+                threads[ i ]->__errno; /* ERROR */
     }
     else
     {

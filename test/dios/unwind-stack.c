@@ -6,6 +6,7 @@
 
 void foo() {
     __dios_unwind( NULL, NULL, NULL );
+    __dios_suicide(); /* there's nowhere to return */
 }
 
 int main()
