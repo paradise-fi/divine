@@ -916,8 +916,8 @@ struct Abstraction {
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 3 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 2 ]->user_begin() );
+        ASSERT_EQ( gep.size(), 1 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
         ASSERT( bc );
         ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
@@ -964,8 +964,8 @@ struct Abstraction {
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 3 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 2 ]->user_begin() );
+        ASSERT_EQ( gep.size(), 1 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
         ASSERT( bc );
         ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
@@ -987,15 +987,15 @@ struct Abstraction {
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 5 );
-        auto bc1 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 2 ]->user_begin() );
-        auto bc2 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 3 ]->user_begin() );
+        ASSERT_EQ( gep.size(), 3 );
+        auto bc1 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
+        auto bc2 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 1 ]->user_begin() );
         ASSERT( bc1 );
         ASSERT( bc2 );
         ASSERT_EQ( alloca->getReturnType(), bc1->getDestTy() );
         ASSERT_EQ( alloca->getReturnType(), bc2->getDestTy() );
         ASSERT_EQ( llvm::Type::getInt32Ty( m->getContext() ),
-                   gep[4]->getResultElementType() );
+                   gep[2]->getResultElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -1013,8 +1013,8 @@ struct Abstraction {
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 4 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 3 ]->user_begin() );
+        ASSERT_EQ( gep.size(), 2 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 1 ]->user_begin() );
         ASSERT( bc );
         ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
@@ -1035,8 +1035,8 @@ struct Abstraction {
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 5 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 4 ]->user_begin() );
+        ASSERT_EQ( gep.size(), 3 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 2 ]->user_begin() );
         ASSERT( bc );
         ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );

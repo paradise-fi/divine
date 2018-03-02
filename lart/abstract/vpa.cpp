@@ -92,31 +92,10 @@ Path createFieldPath( llvm::GetElementPtrInst * gep ) {
     return { gep->getPointerOperand(), gep, gepIndices( gep ) };
 }
 
-struct LowerConstExpr {
-    static void run( llvm::Function * fn ) {
-        for ( auto & bb : *fn )
-            for ( auto & i : bb )
-                process( &i );
-    }
-
-    static void process( llvm::Instruction * i ) {
-        for ( auto & o : i->operands() ) {
-            if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( o ) ) {
-                auto io = ce->getAsInstruction();
-                io->insertBefore( i );
-                o->replaceAllUsesWith( io );
-            }
-        }
-    }
-};
-
-
 } // anonymous namespace
 
 
 void VPA::preprocess( llvm::Function * fn ) {
-    LowerConstExpr::run( fn );
-
     auto lowerSwitchInsts = std::unique_ptr< llvm::FunctionPass >(
                             llvm::createLowerSwitchPass() );
     lowerSwitchInsts.get()->runOnFunction( *fn );
