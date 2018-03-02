@@ -12,26 +12,26 @@ int main() {
     assert( errno == 0 );
     errno = 42;
     assert( errno == 42 );
-    assert( *__dios_get_errno() == 42 );
-    assert( &errno == __dios_get_errno() );
-    mainErrno = __dios_get_errno();
+    assert( *__dios_errno() == 42 );
+    assert( &errno == __dios_errno() );
+    mainErrno = __dios_errno();
 
     pthread_create( &tid, nullptr, []( void * ) -> void * {
             assert( errno == 0 );
             errno = 16;
             assert( errno == 16 );
-            assert( *__dios_get_errno() == 16 );
-            assert( &errno == __dios_get_errno() );
-            assert( __dios_get_errno() != mainErrno );
+            assert( *__dios_errno() == 16 );
+            assert( &errno == __dios_errno() );
+            assert( __dios_errno() != mainErrno );
             return nullptr;
         }, nullptr );
 
     assert( errno == 42 );
-    assert( &errno == __dios_get_errno() );
+    assert( &errno == __dios_errno() );
 
     pthread_join( tid, nullptr );
 
     assert( errno == 42 );
-    assert( &errno == __dios_get_errno() );
+    assert( &errno == __dios_errno() );
 }
 
