@@ -465,6 +465,7 @@ extern "C" void __pthread_entry( void *_args ) {
     assert( thread.sleeping == false );
 
     _clean_and_become_zombie( mask, tid );
+    __dios_kill( tid );
 }
 
 int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {

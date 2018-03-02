@@ -26,9 +26,13 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
     bool m = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) ) & _VM_CF_Mask;
-    if ( !stack ) {
-        stack = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) );
+    bool noret = false;
+    if ( !stack )
+    {
+        stack = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) );
         // we must leave our caller intact so we can return to it
+        if ( from == stack->parent )
+            noret = true; /* we cannot return */
         if ( !from )
             from = stack->parent->parent;
     } else if ( !from )
@@ -36,7 +40,8 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
 
     _VM_Frame *fakeParentUpdateLocation;
     _VM_Frame **parentUpdateLocation = &fakeParentUpdateLocation;
-    if ( stack != from ) {
+    if ( stack != from )
+    {
         auto *f = stack;
         for ( ; f && f->parent != from; f = f->parent ) { }
         __dios_assert_v( f, "__dios_unwind reached end of the stack and did not find 'from' frame" );
@@ -47,7 +52,8 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
     // note: it is not necessary to clean the frames, it is only to prevent
     // accidental use of their variables, therefore it is also OK to not clean
     // current frame (heap will garbage-colect it)
-    for ( auto *f = from; f != to; ) {
+    for ( auto *f = from; f != to; )
+    {
         auto *meta = __md_get_pc_meta( f->pc );
         auto *inst = meta->inst_table;
         auto base = reinterpret_cast< uint8_t * >( f );
@@ -60,6 +66,9 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
         __dios_assert_v( f || !to, "__dios_unwind did not find the target frame" );
         __vm_obj_free( old );
     }
+
+    if ( noret )
+        __dios_suicide();
 
     if ( !m )
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, 0ull );

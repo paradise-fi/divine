@@ -172,4 +172,5 @@ void init( const _VM_Env *env )
  */
 extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
     __dios::init( env );
+    __vm_suspend();
 }

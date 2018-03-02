@@ -97,7 +97,7 @@ struct SyncScheduler : public Scheduler< Next >
         if ( scheduler._setupTask ) {
             runTask( scheduler, *scheduler._setupTask );
             scheduler._setupTask.reset( nullptr );
-            return;
+            __vm_suspend();
         }
 
         for ( int i = 0; !scheduler._die && i < scheduler.tasks.size(); i++ ) {
@@ -120,6 +120,7 @@ struct SyncScheduler : public Scheduler< Next >
         }
         if ( scheduler._die )
             scheduler._die = false;
+        __vm_suspend();
     }
 
     void die() noexcept {

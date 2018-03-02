@@ -515,17 +515,17 @@ struct Scheduler : public Next
             {
                 if ( !t->_frame )
                     check_final( scheduler );
-                return;
+                __vm_suspend();
             }
 
             if ( scheduler.need_reschedule() )
-                return check_final( scheduler );
+                check_final( scheduler ), __vm_suspend();
 
             /* reset intframe to ourselves */
             auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
             __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
         }
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+        __vm_cancel();
     }
 
     Tasks tasks;
