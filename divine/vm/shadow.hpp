@@ -311,6 +311,13 @@ struct PooledShadow
             }
         }
 
+        bool empty()
+        {
+            Lock lk( _mtx );
+            return std::all_of( _exceptions.begin(), _exceptions.end(),
+                                []( const auto & e ) { return ! e.second.valid(); } );
+        }
+
     protected:
         ExcMap _exceptions;
         mutable std::mutex _mtx;
@@ -1276,6 +1283,117 @@ struct PooledShadow
         ASSERT_EQ( l2.defbits(), 0xDEADBEEF'0FF0FFFF );
     }
 
+    TEST( ptr_unaligned )
+    {
+        PointerV p1( vm::HeapPointer( 123, 456 ) );
+        PointerV p2;
+
+        heap.write( obj, 0, p1 );
+        heap.copy( obj, 0, obj, 21, 8 );
+        heap.copy( obj, 21, obj, 8, 8 );
+        heap.read( obj, 8, p2 );
+
+        ASSERT( p2.pointer() );
+        ASSERT_EQ( p2.cooked().object(), 123 );
+        ASSERT_EQ( p2.cooked().offset(), 456 );
+
+        heap.read( obj, 20, p2 );
+        ASSERT( ! p2.pointer() );
+
+        heap.read( obj, 24, p2 );
+        ASSERT( ! p2.pointer() );
+    }
+
+    TEST( ptr_break_and_restore )
+    {
+        PointerV p1( vm::HeapPointer( 123, 42 ) );
+        PointerV p2;
+        vm::value::Int< 8 > v1( 74 );
+
+        heap.write( obj, 0, p1 );
+        heap.copy( obj, 4, obj, 16, 1 );
+        heap.copy( obj, 5, obj, 23, 1 );
+        heap.copy( obj, 6, obj, 12, 1 );
+        heap.copy( obj, 7, obj, 20, 1 );
+        heap.write( obj, 0, v1 );
+        heap.copy( obj, 0, obj, 21, 2 );
+
+        heap.copy( obj, 0, obj, 5, 1 );
+        heap.copy( obj, 23, obj, 5, 1 );
+
+        heap.read( obj, 0, p2 );
+        ASSERT( p2.pointer() );
+        ASSERT_EQ( p2.cooked().object(), 123 );
+
+        heap.copy( obj, 16, obj, 4, 1 );
+        heap.copy( obj, 12, obj, 6, 1 );
+        heap.copy( obj, 20, obj, 7, 1 );
+
+        heap.read( obj, 0, p2 );
+        ASSERT( p2.pointer() );
+        ASSERT_EQ( p2.cooked().object(), 123 );
+        ASSERT_EQ( p2.cooked().offset(), 74 );
+
+        heap.read( obj, 16, p2 );
+        ASSERT( ! p2.pointer() );
+
+        heap.read( obj, 20, p2 );
+        ASSERT( ! p2.pointer() );
+    }
+
+    TEST( ptr_incorrect_restore )
+    {
+        PointerV p1( vm::HeapPointer( 123, 42 ) );
+        PointerV p2( vm::HeapPointer( 666, 42 ) );
+
+        heap.write( obj, 0, p1 );
+        heap.write( obj, 8, p2 );
+        /* dddd ABCD dddd KLMN uuuu uuuu uuuu uuuu */
+
+        heap.copy( obj, 5, obj, 17, 1 );
+        heap.copy( obj, 7, obj, 20, 1 );
+        /* dddd ABCD dddd KLMN uBuu Duuu uuuu uuuu */
+
+        heap.copy( obj, 13, obj, 5, 1 );
+        heap.copy( obj, 15, obj, 7, 1 );
+        /* dddd ALCN dddd KLMN uBuu Duuu uuuu uuuu */
+
+        heap.copy( obj, 17, obj, 13, 1 );
+        heap.copy( obj, 20, obj, 15, 1 );
+        /* dddd ALCN dddd KBMD uBuu Duuu uuuu uuuu */
+
+        heap.read( obj, 0, p1 );
+        heap.read( obj, 8, p2 );
+
+        ASSERT( ! p1.pointer() );
+        ASSERT( ! p2.pointer() );
+    }
+
+    TEST( ptr_copy_invalidate_exception )
+    {
+        PointerV p1( vm::HeapPointer( 123, 42 ) );
+        heap.write( obj, 0, p1 );
+        heap.copy( obj, 4, obj, 8, 4 );
+        heap.copy( obj, 0, obj, 6, 4 );
+        heap.copy( obj, 0, obj, 8, 4 );
+        heap.copy( obj, 8, obj, 2, 6 );
+        ASSERT( heap.shadows._ptr_exceptions->empty() );
+    }
+
+    TEST( ptr_write_invalidate_exception )
+    {
+        PointerV p1( vm::HeapPointer( 123, 42 ) );
+        vm::value::Int< 32 > v1( 666 );
+        heap.write( obj, 0, p1 );
+        heap.write( obj, 8, p1 );
+        heap.copy( obj, 0, obj, 4, 2 );
+        heap.copy( obj, 0, obj, 12, 2 );
+
+        heap.write( obj, 0, p1 );
+        heap.write( obj, 12, v1 );
+
+        ASSERT( heap.shadows._ptr_exceptions->empty() );
+    }
 
 #if 0
     TEST( copy_aligned_ptr )
