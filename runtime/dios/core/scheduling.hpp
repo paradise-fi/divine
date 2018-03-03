@@ -346,7 +346,8 @@ struct Scheduler : public Next
         tasks.erase( r, tasks.end() );
     }
 
-    int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact ) {
+    int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact )
+    {
         if ( sig <= 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
             || sig == SIGKILL || sig == SIGSTOP )
         {
@@ -363,6 +364,13 @@ struct Scheduler : public Next
         oldact->sa_handler = sighandlers[sig].f;
         sighandlers[sig].f = act->sa_handler;
         return 0;
+    }
+
+    int rt_sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact, size_t sz )
+    {
+        if ( sz == sizeof( sigset_t ) )
+            return sigaction( sig, act, oldact );
+        __dios_fault( _VM_F_NotImplemented, "rt_sigaction with size != sizeof( sigset_t )" );
     }
 
     Task* getCurrentTask() {
