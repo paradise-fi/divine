@@ -116,11 +116,8 @@ struct Context : DNContext< Heap >
     }
 
     template< typename Upcall, typename... Args >
-    void maybe_interrupt( vm::Interrupt::Type t, vm::CodePointer pc, Upcall up, Args... args )
+    bool maybe_interrupt( vm::Interrupt::Type t, vm::CodePointer pc, Upcall up, Args... args )
     {
-        if( this->in_kernel() )
-            return;
-
         if ( _lock_mode != LockBoth )
             return (this->*up)( pc, args... );
 
@@ -142,18 +139,24 @@ struct Context : DNContext< Heap >
             ASSERT_EQ( t, _lock.interrupts.front().type );
             ASSERT_EQ( pc, _lock.interrupts.front().pc );
             _lock.interrupts.pop_front();
-            this->set_interrupted( true );
+            return true;
         }
+
+        return false;
     }
 
-    void mem_interrupt( vm::CodePointer pc, vm::GenericPointer ptr, int sz, int t )
+    bool test_crit( vm::CodePointer pc, vm::GenericPointer ptr, int sz, int t )
     {
-        maybe_interrupt( vm::Interrupt::Mem, pc, &Super::mem_interrupt, ptr, sz, t );
+        if ( this->flags_all( _VM_CF_IgnoreCrit ) )
+            return false;
+        return maybe_interrupt( vm::Interrupt::Mem, pc, &Super::test_crit, ptr, sz, t );
     }
 
-    void cfl_interrupt( vm::CodePointer pc )
+    bool test_loop( vm::CodePointer pc, int counter )
     {
-        maybe_interrupt( vm::Interrupt::Cfl, pc, &Super::cfl_interrupt );
+        if ( this->flags_all( _VM_CF_IgnoreLoop ) )
+            return false;
+        return maybe_interrupt( vm::Interrupt::Cfl, pc, &Super::test_loop, counter );
     }
 
     using Super::trace;
