@@ -269,6 +269,11 @@ lx::Hypercall hypercall( llvm::Function *f )
     if ( name == "__vm_interrupt_mem" )
         return lx::HypercallInterruptMem;
 
+    if ( name == "__vm_test_crit" )
+        return lx::HypercallTestCrit;
+    if ( name == "__vm_test_loop" )
+        return lx::HypercallTestLoop;
+
     if ( name == "__vm_ctl_set" )
         return lx::HypercallCtlSet;
     if ( name == "__vm_ctl_get" )

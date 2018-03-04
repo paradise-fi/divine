@@ -38,7 +38,8 @@ namespace divine::vm::setup
             throw brick::except::Error( "__boot must take exactly 1 argument" );
         auto envptr = ctx.program().globalByName( "__sys_env" );
         ctx.enter( ipc, nullPointerV(), value::Pointer( envptr ) );
-        ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask | _VM_CF_Booting;
+        ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Booting |
+                                          _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit;
     }
 
     template< typename Context >
@@ -61,7 +62,7 @@ namespace divine::vm::setup
     {
         ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
         ctx.set( _VM_CR_IntFrame, ctx.frame() );
-        ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask;
+        ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit;
         ctx.flush_ptr2i();
     }
 

@@ -186,13 +186,13 @@ enum _VM_ControlAction
  */
 
 static const uint64_t _VM_CF_None        = 0;
-static const uint64_t _VM_CF_Mask        = 0b00000001;
-static const uint64_t _VM_CF_Interrupted = 0b00000010;
-static const uint64_t _VM_CF_Accepting   = 0b00000100;
-static const uint64_t _VM_CF_Error       = 0b00001000;
-static const uint64_t _VM_CF_Cancel      = 0b00010000;
-static const uint64_t _VM_CF_KernelMode  = 0b00100000;
-static const uint64_t _VM_CF_DebugMode   = 0b01000000;
+static const uint64_t _VM_CF_IgnoreLoop  = 0b1;
+static const uint64_t _VM_CF_IgnoreCrit  = 0b10;
+static const uint64_t _VM_CF_Accepting   = 0b100;
+static const uint64_t _VM_CF_Error       = 0b1000;
+static const uint64_t _VM_CF_Cancel      = 0b10000;
+static const uint64_t _VM_CF_KernelMode  = 0b100000;
+static const uint64_t _VM_CF_DebugMode   = 0b1000000;
 static const uint64_t _VM_CF_AutoSuspend = 0b10000000;
 static const uint64_t _VM_CF_KeepFrame   = 0b100000000;
 static const uint64_t _VM_CF_Booting     = 0b1000000000;
@@ -318,6 +318,9 @@ void *__vm_control( enum _VM_ControlAction, ... ) NOTHROW NATIVE_VISIBLE;
 void     __vm_ctl_set( enum _VM_ControlRegister reg, void *val ) NOTHROW;
 void    *__vm_ctl_get( enum _VM_ControlRegister reg ) NOTHROW;
 uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set ) NOTHROW;
+
+void __vm_test_crit( void *addr, int size, enum _VM_MemAccessType access, void (*yes)( void ) );
+void __vm_test_loop( int counter, void (*yes)( void ) );
 
 /*
  * Non-deterministic choice: when __vm_choose is encountered, the "universe" of

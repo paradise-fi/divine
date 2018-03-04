@@ -563,6 +563,9 @@ struct Eval
     void implement_ctl_get();
     void implement_ctl_flag();
 
+    void implement_test_loop();
+    void implement_test_crit();
+
     void implement_hypercall_control();
     void implement_hypercall_syscall();
     void implement_hypercall();
@@ -591,7 +594,6 @@ struct Eval
     {
         ASSERT_EQ( CodePointer( context().get( _VM_CR_PC ).pointer ), pc() );
         context().count_instruction();
-        context().check_interrupt( *this );
         context().set( _VM_CR_PC, program().nextpc( pc() + 1 ) );
         _instruction = &program().instruction( pc() );
     }
@@ -655,7 +657,7 @@ struct Eval
         vm::Eval< TContext< vm::Program > > e( c );
         auto pc = p->functionByName( "f" );
         c.enter( pc, vm::nullPointerV(), args... );
-        c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask | _VM_CF_AutoSuspend );
+        c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_AutoSuspend );
         e.run();
         return e.retval< IntV >().cooked();
     }

@@ -597,27 +597,14 @@ void Eval< Ctx >::implement_hypercall()
         case lx::HypercallCtlGet:  return implement_ctl_get();
         case lx::HypercallCtlFlag: return implement_ctl_flag();
 
+        case lx::HypercallTestLoop: return implement_test_loop();
+        case lx::HypercallTestCrit: return implement_test_crit();
+
         case lx::HypercallControl:
             return implement_hypercall_control();
         case lx::HypercallSyscall:
             return implement_hypercall_syscall();
 
-        case lx::HypercallInterruptCfl:
-            context().cfl_interrupt( pc() );
-            return;
-        case lx::HypercallInterruptMem:
-        {
-            auto ptr = operand< PointerV >( 0 );
-            if ( ptr.cooked().type() == PointerType::Global &&
-                    ptr2s( ptr.cooked() ).location == Slot::Const )
-                return;
-            /* TODO fault on failing pointers? */
-            auto size = operandCk< IntV >( 1 ).cooked();
-            if ( boundcheck( ptr, size, false ) )
-                context().mem_interrupt( pc(), ptr.cooked(), size,
-                                            operandCk< IntV >( 2 ).cooked() );
-            return;
-        }
         case lx::HypercallTrace:
         {
             _VM_Trace t = _VM_Trace( operandCk< IntV >( 0 ).cooked() );
@@ -917,6 +904,45 @@ void Eval< Ctx >::implement_ctl_flag()
 
     result( PtrIntV( context().get( _VM_CR_Flags ).integer ) );
     context().flags_set( clear, set );
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_test_loop()
+{
+    auto counter = operandCk< IntV >( 0 ).cooked();
+
+    if ( !context().test_loop( pc(), counter ) )
+        return;
+
+    context().sync_pc();
+    CodePointer h = operandCk< PointerV >( 1 ).cooked();
+    context().enter( h, PointerV( frame() ) );
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_test_crit()
+{
+    auto ptr = operand< PointerV >( 0 );
+
+    if ( ptr.cooked().type() == PointerType::Global && ptr2s( ptr.cooked() ).location == Slot::Const )
+        return;
+
+    auto size = operandCk< IntV >( 1 ).cooked();
+
+    if ( !boundcheck( ptr, size, false ) )
+    {
+        std::cerr << "W: boundcheck failed on vm.test.crit" << std::endl;
+        return; /* TODO fault on failing pointers? */
+    }
+
+    auto at = operandCk< IntV >( 2 ).cooked();
+
+    if ( !context().test_crit( pc(), ptr.cooked(), size, at ) )
+        return;
+
+    context().sync_pc();
+    CodePointer h = operandCk< PointerV >( 3 ).cooked();
+    context().enter( h, PointerV( frame() ) );
 }
 
 template< typename Ctx >

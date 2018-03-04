@@ -42,32 +42,6 @@ extern "C" {
 #define _VMUTIL_CAST( T, X ) ((T)(X))
 #endif
 
-#if defined( __divine__ )
-
-_VMUTIL_INLINE int __vmutil_mask( int set ) {
-    return ( _VMUTIL_CAST( uint64_t,
-                __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                              _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask,
-                                                        set ? _VM_CF_Mask : _VM_CF_None ) )
-              & _VM_CF_Mask) != 0;
-}
-
-/* Performs forceful interrupt (even if under mask) and resets interrupted
- * flag to 0.
- *  It should NOT be used to invoke syscall as the syscall is a visible action.
- */
-_VMUTIL_INLINE void __vmutil_interrupt()
-{
-    uint64_t fl = _VMUTIL_CAST( uint64_t,
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted,
-                  fl & ~_VM_CF_Interrupted );
-}
-
-#endif
-
 #define DIVM_REG_NAME( X )  case X: return #X + 7
 #define DIVM_FLAG_NAME( X ) case X: return #X;
 
@@ -99,8 +73,8 @@ static const char *__vmutil_flag_name( uint64_t val )
 {
     switch ( val )
     {
-        DIVM_FLAG_NAME( _VM_CF_Mask );
-        DIVM_FLAG_NAME( _VM_CF_Interrupted );
+        DIVM_FLAG_NAME( _VM_CF_IgnoreLoop );
+        DIVM_FLAG_NAME( _VM_CF_IgnoreCrit );
         DIVM_FLAG_NAME( _VM_CF_Accepting );
         DIVM_FLAG_NAME( _VM_CF_Error );
         DIVM_FLAG_NAME( _VM_CF_Cancel );

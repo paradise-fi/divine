@@ -65,7 +65,7 @@ struct Context
     Snapshot _debug_snap;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
-    std::vector< std::unordered_set< GenericPointer > > _cfl_visited;
+    std::vector< std::unordered_set< GenericPointer > > _loops;
     MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
 
     bool debug_allowed() { return _debug_allowed; }
@@ -91,9 +91,8 @@ struct Context
 
     void reset_interrupted()
     {
-        _cfl_visited.clear();
-        _cfl_visited.emplace_back();
-        set_interrupted( false );
+        _loops.clear();
+        _loops.emplace_back();
     }
 
     void clear()
@@ -217,24 +216,18 @@ struct Context
         entered( pc );
     }
 
-    bool set_interrupted( bool i )
+    bool test_loop( CodePointer pc, int /* TODO */ )
     {
-        auto &fl = ref( _VM_CR_Flags ).integer;
-        bool rv = fl & _VM_CF_Interrupted;
-        fl &= ~_VM_CF_Interrupted;
-        fl |= i ? _VM_CF_Interrupted : 0;
-        return rv;
-    }
+        if ( flags_all( _VM_CF_IgnoreLoop ) || debug_mode() )
+            return false;
 
-    void cfl_interrupt( CodePointer pc )
-    {
-        if( in_kernel() || debug_mode() )
-            return;
-
-        if ( _cfl_visited.back().count( pc ) )
-            trigger_interrupted( Interrupt::Cfl, pc );
+        /* TODO track the counter value too */
+        if ( _loops.back().count( pc ) )
+            return track_test( Interrupt::Cfl, pc );
         else
-            _cfl_visited.back().insert( pc );
+            _loops.back().insert( pc );
+
+        return false;
     }
 
     void entered( CodePointer )
@@ -242,7 +235,7 @@ struct Context
         if ( debug_mode() )
             ++ _debug_depth;
         else
-            _cfl_visited.emplace_back();
+            _loops.emplace_back();
     }
 
     void left( CodePointer )
@@ -256,25 +249,26 @@ struct Context
         }
         else
         {
-            _cfl_visited.pop_back();
-            if ( _cfl_visited.empty() ) /* more returns than calls could happen along an edge */
-                _cfl_visited.emplace_back();
+            _loops.pop_back();
+            if ( _loops.empty() ) /* more returns than calls could happen along an edge */
+                _loops.emplace_back();
         }
     }
 
-    void trigger_interrupted( Interrupt::Type t, CodePointer pc )
+    bool track_test( Interrupt::Type t, CodePointer pc )
     {
-        if ( !set_interrupted( true ) )
+        if ( _debug_allowed )
             _interrupts.push_back( Interrupt{ t, _instruction_counter, pc } );
+        return true;
     }
 
-    void mem_interrupt( CodePointer pc, GenericPointer ptr, int size, int type )
+    bool test_crit( CodePointer pc, GenericPointer ptr, int size, int type )
     {
-        if( in_kernel() || debug_mode() )
-            return;
+        if ( flags_all( _VM_CF_IgnoreCrit ) || debug_mode() )
+            return false;
 
         if ( ptr.heap() && !heap().shared( ptr ) )
-            return;
+            return false;
 
         auto start = ptr;
         if ( start.heap() )
@@ -285,7 +279,7 @@ struct Context
         if ( type == _VM_MAT_Load || type == _VM_MAT_Both )
         {
             if ( _crit_loads.intersect( start, end ) )
-                trigger_interrupted( Interrupt::Mem, pc );
+                return track_test( Interrupt::Mem, pc );
             else if ( _track_mem )
                 _mem_loads.insert( start, end );
         }
@@ -293,40 +287,18 @@ struct Context
         if ( type == _VM_MAT_Store || type == _VM_MAT_Both )
         {
             if ( _crit_stores.intersect( start, end ) )
-                trigger_interrupted( Interrupt::Mem, pc );
+                return track_test( Interrupt::Mem, pc );
             else if ( _track_mem )
                 _mem_stores.insert( start, end );
         }
+
+        return false;
     }
 
     void count_instruction()
     {
         if ( !debug_mode() )
             ++ _instruction_counter;
-    }
-
-    template< typename Eval >
-    bool check_interrupt( Eval &eval )
-    {
-        if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
-            return false;
-
-        if( in_kernel() || debug_mode() )
-        {
-            eval.fault( _VM_F_Control ) << "illegal interrupt in kernel or debug mode";
-            return false;
-        }
-
-        sync_pc();
-        auto interrupted = get( _VM_CR_Frame ).pointer;
-        set( _VM_CR_Frame, get( _VM_CR_IntFrame ).pointer );
-        set( _VM_CR_IntFrame, interrupted );
-        PointerV pc;
-        heap().read( frame(), pc );
-        set( _VM_CR_PC, pc.cooked() );
-        reset_interrupted();
-        ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
-        return true;
     }
 
     virtual void trace( TraceDebugPersist t ) { _debug_persist = t; }
@@ -367,15 +339,6 @@ struct Context
                    value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
     }
 
-    bool mask( bool n )
-    {
-        auto &fl = ref( _VM_CR_Flags ).integer;
-        bool rv = fl & _VM_CF_Mask;
-        fl &= ~_VM_CF_Mask;
-        fl |= n ? _VM_CF_Mask : 0;
-        return rv;
-    }
-
     void sync_pc()
     {
         auto frame = get( _VM_CR_Frame ).pointer;
@@ -386,7 +349,6 @@ struct Context
                heap().write( frame, PointerV( pc ), ptr2i( _VM_CR_Frame ) ) );
     }
 
-    bool mask() { return ref( _VM_CR_Flags ).integer & _VM_CF_Mask; }
     bool in_kernel() { return ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode; }
 
     bool flags_any( uint64_t f ) { return ref( _VM_CR_Flags ).integer & f; }
