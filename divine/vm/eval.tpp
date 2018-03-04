@@ -438,9 +438,9 @@ void Eval< Ctx >::implement_hypercall_control()
 template< typename Ctx >
 void Eval< Ctx >::switch_frame()
 {
-    PointerV ptr;
     if ( !frame().null() )
     {
+        PointerV ptr;
         using brick::bitlevel::mixdown;
         heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
         context().set( _VM_CR_PC, ptr.cooked() );
@@ -834,21 +834,32 @@ void Eval< Ctx >::implement_ctl_set()
         default: break;
     }
 
+    auto ptr = operandCk< PointerV >( 1 );
+
     if ( reg == _VM_CR_Frame )
     {
-        auto ptr = operandCk< PointerV >( 1 );
         if ( !ptr.cooked().null() && !boundcheck_nop( ptr, 2 * PointerBytes, true ) )
+        {
             fault( _VM_F_Hypercall ) << "invalid target frame in __vm_ctl_set";
+            return;
+        }
         if ( context().flags_all( _VM_CF_KeepFrame ) )
             context().sync_pc();
         else
-            freeobj( frame() );
+            if ( ptr.cooked() != GenericPointer( frame() ) )
+                freeobj( frame() );
+            else
+            {
+                fault( _VM_F_Control, GenericPointer(), CodePointer() )
+                    << " cannot target current frame without _VM_CF_KeepFrame";
+                return;
+            }
     }
 
     if ( reg == _VM_CR_Flags )
         context().set( reg, operandCk< PtrIntV >( 1 ).cooked() );
     else
-        context().set( reg, operandCk< PointerV >( 1 ).cooked() );
+        context().set( reg, ptr.cooked() );
 
     if ( reg == _VM_CR_Frame )
         switch_frame();
