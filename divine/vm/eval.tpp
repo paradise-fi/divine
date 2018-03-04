@@ -872,7 +872,6 @@ void Eval< Ctx >::implement_ctl_get()
 
     switch ( reg ) /* permission check */
     {
-        case _VM_CR_Flags:
         case _VM_CR_Globals:
         case _VM_CR_Constants:
         case _VM_CR_State:
