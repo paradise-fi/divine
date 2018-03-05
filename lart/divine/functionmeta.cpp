@@ -11,6 +11,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-string>
+#include <brick-llvm>
 #include <string>
 #include <iostream>
 
@@ -105,7 +106,7 @@ struct IndexFunctions {
         auto *funcMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
                             mdRoot->getType()->getElementType() )->getElementType() );
         ASSERT( funcMetaT && "The bitcode must define _MD_Function" );
-        ASSERT( funcMetaT->getNumElements() == 11 && "Incompatible _MD_Function" );
+        ASSERT( funcMetaT->getNumElements() == 12 && "Incompatible _MD_Function" );
 
         auto *instMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::PointerType >(
                             funcMetaT->getElementType( 7 ) )->getElementType() );
@@ -124,6 +125,10 @@ struct IndexFunctions {
 
         llvm::GlobalVariable *mdGlobalsCount = mod.getGlobalVariable( "__md_globals_count" );
         ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
+
+        std::set< llvm::Function * > traps;
+        brick::llvm::enumerateFunctionsForAnno( "divine.trapfn", mod,
+                                                [&]( llvm::Function *f ) { traps.insert( f ); } );
 
         std::vector< FunctionMeta > funMeta;
         for ( auto &fn : mod ) {
@@ -170,7 +175,8 @@ struct IndexFunctions {
                     llvm::ConstantPointerNull::get( llvm::PointerType::getUnqual( instMetaT ) ),
                     pers,
                     lsda,
-                    mkint( funcMetaT, 10, m.entryPoint->hasFnAttribute( llvm::Attribute::NoUnwind ) )
+                    mkint( funcMetaT, 10, m.entryPoint->hasFnAttribute( llvm::Attribute::NoUnwind ) ),
+                    mkint( funcMetaT, 11, traps.count( m.entryPoint ) )
                 } ) );
         }
 
