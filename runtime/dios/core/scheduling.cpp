@@ -50,4 +50,24 @@ const sighandler_t defhandlers[] =
     { sig_fault, 0 }   // SIGUNUSED/SIGSYS = 31
 };
 
+extern "C" __trapfn __invisible void __dios_interrupt()
+{
+    uint64_t flags = uint64_t( __vm_ctl_get( _VM_CR_Flags ) );
+
+    if ( flags & _VM_CF_KernelMode )
+        __dios_fault( _VM_F_Control, "oops, interrupted in kernel mode" );
+
+    if ( flags & _DiOS_CF_Mask )
+    {
+        __vm_ctl_flag( 0, _DiOS_CF_Deferred );
+        return;
+    }
+
+    __vm_ctl_flag( _DiOS_CF_Deferred, 0 );
+    void **f = static_cast< void ** >( __vm_ctl_get( _VM_CR_User1 ) );
+    auto self = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) );
+    *f = self->parent;
+    __vm_suspend();
+}
+
 } // namespace __dios
