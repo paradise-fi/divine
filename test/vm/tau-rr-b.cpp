@@ -13,9 +13,9 @@ int main() {
             a = 1;
         } );
     int r1 = a;
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
+    __dios_mask( 1 );
     int r2 = a;
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
+    __dios_mask( 0 );
     assert( r1 == r2 ); /* ERROR */
     t.join();
 }
