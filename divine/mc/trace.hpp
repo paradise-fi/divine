@@ -29,14 +29,24 @@
 namespace divine::mc
 {
 
+using DbgCtx = dbg::Context< vm::CowHeap >;
+using DbgNode = dbg::Node< vm::Program, vm::CowHeap >;
+
+static inline DbgNode root( DbgCtx &ctx, vm::CowHeap::Snapshot snap )
+{
+    DbgNode n( ctx, snap );
+    n.address( dbg::DNKind::Object, ctx.get( _VM_CR_State ).pointer );
+    n.type( ctx._state_type );
+    n.di_type( ctx._state_di_type );
+    n._ref.get();
+    return n;
+}
+
 template< typename BT, typename Fmt, typename Dbg >
 void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowSnapshot snap, int maxdepth = 10 )
 {
-    dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
-    dn._ref.get();
-    dn.address( dbg::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
-    dn.type( dbg._state_type );
-    dn.di_type( dbg._state_di_type );
+    auto dn = root( dbg, snap );
+    DbgNode dn_top( dbg, snap );
     dn_top.address( dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
     dbg::DNSet visited;
     int stacks = 0;
