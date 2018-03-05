@@ -40,10 +40,6 @@ namespace __dios
 using String = __dios::String;
 using brick::hlist::TypeList;
 
-struct Pad {
-};
-Pad _1, _2, _3, _4, _5, _6, _7;
-
 static size_t getPos( size_t num ) {
     return 7 - num + 1;
 }
