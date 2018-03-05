@@ -200,6 +200,7 @@ struct Fault: public Next {
 
         // Continue if we get the control back
         cont_frame->pc = cont_pc;
+        old |= uint64_t( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Fault;
         __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
         __vm_ctl_set( _VM_CR_Frame, cont_frame );
         __builtin_unreachable();
@@ -321,7 +322,7 @@ struct Fault: public Next {
         uint8_t cfg = config[ fault ];
         if ( fault < _DiOS_F_Last) // Fault
         {
-            switch ( cfg & ( FaultFlag::Enabled | FaultFlag::Continue ) )
+            switch ( cfg & ( FaultFlag::Enabled | FaultFlag::Continue | FaultFlag::Detect ) )
             {
                 case 0:
                     return _DiOS_FC_Ignore;
