@@ -58,4 +58,10 @@ static inline Debug &get_debug() noexcept
     return *static_cast< Debug * >( dbg );
 }
 
+template< typename Context >
+static inline Context &get_state()
+{
+    return *static_cast< Context * >( __vm_ctl_get( _VM_CR_State ) );
+}
+
 } // namespace __dios
