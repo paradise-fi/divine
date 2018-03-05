@@ -4,6 +4,11 @@
 #include <_PDCLIB_aux.h>
 #include <stdarg.h>
 
+/* argument types for dios syscalls */
+#include <sys/types.h>
+#include <sys/task.h>
+#include <sys/monitor.h>
+
 typedef enum
 {
     SYS_NONE = 0,
@@ -30,6 +35,14 @@ _PDCLIB_EXTERN_C
 
 void __dios_trap( int syscode, void* ret, va_list *args ) _PDCLIB_nothrow;
 void __dios_syscall( int syscode, void* ret, ... ) _PDCLIB_nothrow;
+
+#define SYSCALL(...)
+#define SYSCALL_DIOS( name, sched, ret, args ) ret __dios_ ## name args __nothrow;
+#include <dios/macro/no_memory_tags>
+#include <sys/syscall.def>
+#include <dios/macro/no_memory_tags.cleanup>
+#undef SYSCALL
+#undef SYSCALL_DIOS
 
 _PDCLIB_EXTERN_END
 /* #endif */
