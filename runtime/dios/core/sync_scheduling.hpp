@@ -58,7 +58,6 @@ struct SyncScheduler : public Scheduler< Next >
 
     template < typename Context >
     __attribute__(( __always_inline__ )) static bool runTask( Context& ctx, Task& t ) noexcept {
-        using Sys = Syscall< Context >;
         while ( !ctx._die && t._frame ) {
             __vm_control( _VM_CA_Set, _VM_CR_User2,
                 reinterpret_cast< int64_t >( t.getId() ) );
@@ -66,14 +65,6 @@ struct SyncScheduler : public Scheduler< Next >
             __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
             ctx.run( t );
             t._frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
-
-            auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-            __vm_control( _VM_CA_Set, _VM_CR_User1, ctx.debug );
-
-            if ( syscall ) {
-                 Sys::handle( ctx, *syscall );
-                 __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-            }
 
             if ( ctx._die )
                 return true;
