@@ -27,21 +27,32 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct CflInterrupt {
-
-    static PassMeta meta() {
-        return passMeta< CflInterrupt >( "CflInterrupt", "Instrument all control flow cycles "
-                                         "with __vm_interrupt_cfl intrinsic." );
+struct CflInterrupt
+{
+    static PassMeta meta()
+    {
+        return passMeta< CflInterrupt >( "CflInterrupt", "Annotate control flow cycles." );
     }
 
-    void annotateFn( llvm::Function &fn ) {
+    void insert( llvm::Value *v, llvm::IRBuilder<> &b ) { b.CreateCall( _hypercall, { v, _handler } ); }
+    void insert( llvm::Value *v, llvm::Instruction *where )
+    {
+        llvm::IRBuilder<> b( where );
+        insert( v, b );
+    }
 
-        for ( auto b : getBackEdges( fn ) ) {
+    void annotateFn( llvm::Function &fn )
+    {
+        for ( auto b : getBackEdges( fn ) )
+        {
             auto *src = b.from;
             auto idx = b.succIndex;
             auto *term = src->getTerminator();
             auto *dst = term->getSuccessor( idx );
             ASSERT_LEQ( 1, term->getNumSuccessors() );
+
+            auto i32_t = llvm::Type::getInt32Ty( fn.getParent()->getContext() );
+            auto ctr = llvm::ConstantInt::get( i32_t, 0 );
 
             // Try to be smart and avoid invoking unnecessary interrupts which
             // are not on back edges.
@@ -50,82 +61,94 @@ struct CflInterrupt {
             // successors are determined at runtime and therefore cannot be
             // rewritten -- so for IndirectBr we fallback to instrumenting
             // eagerly.
-            if ( term->getNumSuccessors() == 1
-                    || term->getOpcode() == llvm::Instruction::IndirectBr )
-            {
-                llvm::IRBuilder<>( term ).CreateCall( _cflInterrupt, { } );
-            }
+            if ( term->getNumSuccessors() == 1 ||
+                 term->getOpcode() == llvm::Instruction::IndirectBr )
+                insert( ctr, term );
             else if ( dst->getUniquePredecessor() )
-            {
-                llvm::IRBuilder<>( dst->getFirstInsertionPt() ).CreateCall( _cflInterrupt, { } );
-            }
+                insert( ctr, dst->getFirstInsertionPt() );
             else
             {
                 // neither of the blocks of the edge is used only by this path,
                 // insert backedge block for savepc and fix branch and PHI nodes
                 auto *back = llvm::BasicBlock::Create( fn.getParent()->getContext(), "backedge", &fn );
                 llvm::IRBuilder<> irb( back );
-                irb.CreateCall( _cflInterrupt, { } );
+                insert( ctr, irb );
                 irb.CreateBr( dst );
 
                 // re-wire terminator and phi nodes
                 term->setSuccessor( idx, back );
-                for ( auto &inst : *dst ) {
+                for ( auto &inst : *dst )
+                {
                     auto *phi = llvm::dyn_cast< llvm::PHINode >( &inst );
                     if ( !phi )
                         break;
-                    for ( unsigned i = 0, end = phi->getNumIncomingValues(); i < end; ++i ) {
+
+                    for ( unsigned i = 0, end = phi->getNumIncomingValues(); i < end; ++i )
                         if ( phi->getIncomingBlock( i ) == src )
                             phi->setIncomingBlock( i, back );
-                    }
                 }
             }
             ++_backedges;
         }
     }
 
-    void run( llvm::Module &m ) {
+    void run( llvm::Module &m )
+    {
         if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.cfl" ) )
             return;
 
-        auto *spcty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
-        _cflInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_interrupt_cfl", spcty ) );
-        ASSERT( _cflInterrupt );
-        _cflInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
+        auto void_t = llvm::Type::getVoidTy( m.getContext() );
+        auto i32_t = llvm::Type::getInt32Ty( m.getContext() );
+        auto handler_t = llvm::FunctionType::get( void_t, false );
+        auto hyper_t = llvm::FunctionType::get( void_t, { i32_t, handler_t->getPointerTo() }, false );
+
+        auto hyper = m.getOrInsertFunction( "__vm_test_loop", hyper_t );
+        auto handler = m.getOrInsertFunction( "__dios_interrupt", handler_t );
+
+        _hypercall = llvm::cast< llvm::Function >( hyper );
+        _handler = llvm::cast< llvm::Function >( handler );
+
+        ASSERT( _hypercall );
+        ASSERT( _handler );
+
+        _hypercall->addFnAttr( llvm::Attribute::NoUnwind );
+        _handler->addFnAttr( llvm::Attribute::NoUnwind );
 
         std::set< llvm::Function * > skip;
         brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.skipcfl", m,
                                                 [&]( llvm::Function *f ) { skip.insert( f ); } );
 
-        for ( auto &fn : m ) {
+        for ( auto &fn : m )
+        {
             if ( fn.empty() || skip.count( &fn ) )
                 continue;
             annotateFn( fn );
         }
-        // std::cout << "Found " << _backedges << " backedges" << std::endl;
     }
 
-    llvm::Function *_cflInterrupt;
+    llvm::Function *_hypercall, *_handler;
     long _backedges = 0;
 };
 
-struct MemInterrupt {
-
-    static PassMeta meta() {
-        return passMeta< MemInterrupt >( "MemInterrupt", "Instrument all memory accesses with "
-                                         "__vm_interrupt_mem intrinsic." );
+struct MemInterrupt
+{
+    static PassMeta meta()
+    {
+        return passMeta< MemInterrupt >( "MemInterrupt", "Annotate (visible) memory accesses." );
     }
 
-    void annotateFn( llvm::Function &fn, llvm::DataLayout &dl, unsigned silentID ) {
+    void annotateFn( llvm::Function &fn, llvm::DataLayout &dl, unsigned silentID )
+    {
         // avoid changing bb while we iterate over it
-        for ( auto inst : query::query( fn ).flatten().map( query::refToPtr ).freeze() ) {
+        for ( auto inst : query::query( fn ).flatten().map( query::refToPtr ).freeze() )
+        {
             auto op = inst->getOpcode();
-            if ( ( op == llvm::Instruction::Load || op == llvm::Instruction::Store
-                    || op == llvm::Instruction::AtomicRMW
-                    || op == llvm::Instruction::AtomicCmpXchg )
-                  && !reduction::isSilent( *inst, silentID ) )
+            if ( ( op == llvm::Instruction::Load || op == llvm::Instruction::Store ||
+                   op == llvm::Instruction::AtomicRMW ||
+                   op == llvm::Instruction::AtomicCmpXchg ) &&
+                 !reduction::isSilent( *inst, silentID ) )
             {
-                auto *type = _memInterrupt->getFunctionType();
+                auto *type = _hypercall->getFunctionType();
                 auto point = llvm::BasicBlock::iterator( inst );
                 llvm::IRBuilder<> irb{ point };
                 auto *origPtr = getPointerOperand( inst );
@@ -142,36 +165,52 @@ struct MemInterrupt {
                     default: intr_type = _VM_MAT_Both; break;
                 }
                 irb.SetInsertPoint( point );
-                irb.CreateCall( _memInterrupt, { ptr, si, irb.getInt32( intr_type ) } );
+                irb.CreateCall( _hypercall, { ptr, si, irb.getInt32( intr_type ), _handler } );
                 ++_mem;
             }
         }
     }
 
-    void run( llvm::Module &m ) {
+    void run( llvm::Module &m )
+    {
         if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.mem" ) )
             return;
 
-        llvm::DataLayout dl( &m );
-        auto &ctx = m.getContext();
-        auto *i32t = llvm::Type::getInt32Ty( ctx );
-        auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ),
-                            { llvm::Type::getInt8PtrTy( ctx ), i32t, i32t }, false );
-        _memInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_interrupt_mem", ty ) );
-        ASSERT( _memInterrupt );
-        _memInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
+        auto i32_t = llvm::Type::getInt32Ty( m.getContext() );
+        auto void_t = llvm::Type::getVoidTy( m.getContext() );
+        auto i8_p = llvm::Type::getInt8PtrTy( m.getContext() );
+        auto handler_t = llvm::FunctionType::get( void_t, false );
+        auto hptr_t = handler_t->getPointerTo();
+        auto hyper_t = llvm::FunctionType::get( void_t, { i8_p, i32_t, i32_t, hptr_t }, false );
+
+        auto hyper = m.getOrInsertFunction( "__vm_test_crit", hyper_t );
+        auto handler = m.getOrInsertFunction( "__dios_interrupt", handler_t );
+
+        _hypercall = llvm::cast< llvm::Function >( hyper );
+        _handler = llvm::cast< llvm::Function >( handler );
+
+        ASSERT( _hypercall );
+        ASSERT( _handler );
+
+        _hypercall->addFnAttr( llvm::Attribute::NoUnwind );
+        _handler->addFnAttr( llvm::Attribute::NoUnwind );
 
         auto silentID = m.getMDKindID( reduction::silentTag );
+        llvm::DataLayout dl( &m );
 
-        for ( auto &fn : m ) {
-            if ( fn.empty() )
+        std::set< llvm::Function * > skip;
+        brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.skipmem", m,
+                                                [&]( llvm::Function *f ) { skip.insert( f ); } );
+
+        for ( auto &fn : m )
+        {
+            if ( fn.empty() || skip.count( &fn ) )
                 continue;
             annotateFn( fn, dl, silentID );
         }
-        // std::cout << "Found " << _mem << " memory accesses" << std::endl;
     }
 
-    llvm::Function *_memInterrupt;
+    llvm::Function *_hypercall, *_handler;
     long _mem = 0;
 };
 
