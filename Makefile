@@ -89,7 +89,7 @@ config:
 	mkdir -p $(OBJ)$(FLAVOUR)
 	echo "$($(FLAVOUR)_FLAGS)" > $(OBJ)$(FLAVOUR)/config.tmp
 	$(CMAKE) -E copy_if_different $(OBJ)$(FLAVOUR)/config.tmp $(OBJ)$(FLAVOUR)/config.vars
-	if ! test -e $(OBJ)$(FLAVOUR)/config.done; then  \
+	if ! test -e $(OBJ)$(FLAVOUR)/config.done || test -n "$(FORCE_CMAKE)"; then \
 	  chmod +x test/divine; \
 	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(PWD) $(CMAKE_EXTRA) -G "$(GENERATOR)" && \
 	  touch $(OBJ)$(FLAVOUR)/config.done; fi
