@@ -96,8 +96,11 @@
 #define __nothrow __attribute__((__nothrow__))
 #endif
 
-#define __debugfn __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
-#define __trapfn  __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
+#define __debugfn      __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
+#define __trapfn       __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
+#define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), __noinline__ ))
+#define __invisible    __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), \
+                                       __annotate__( "lart.interrupt.skipmem" ), __noinline__ ))
 
 /*
  * GCC1 and some versions of GCC2 declare dead (non-returning) and
