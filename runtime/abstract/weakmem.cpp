@@ -55,10 +55,10 @@ struct InterruptMask {
 
   private:
     uint64_t restore;
-    static const uint64_t restoreFlags = _VM_CF_Mask | _VM_CF_Interrupted
+    static const uint64_t restoreFlags = _DiOS_CF_Mask | _DiOS_CF_Deferred
                                        | _VM_CF_KernelMode
                                        | _LART_CF_RelaxedMemRuntime;
-    static const uint64_t wmFlags = _VM_CF_Mask | _LART_CF_RelaxedMemRuntime;
+    static const uint64_t wmFlags = _DiOS_CF_Mask | _LART_CF_RelaxedMemRuntime;
 };
 
 template< typename T >
