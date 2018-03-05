@@ -264,7 +264,7 @@ static inline _PThread &getThread() noexcept {
 
 template< typename Yield >
 static void iterateThreads( Yield yield ) noexcept {
-    auto *threads = __dios_get_process_tasks();
+    auto *threads = __dios_this_process_tasks();
     int cnt = __vm_obj_size( threads ) / sizeof( __dios_task );
     for ( int i = 0; i < cnt; ++i )
         yield( threads[ i ] );
