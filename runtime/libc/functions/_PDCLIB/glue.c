@@ -84,7 +84,7 @@ void _exit( int rv )
     __dios_interrupt();
     __cxa_finalize( 0 );
     __dios_run_dtors();
-    __dios_syscall( SYS_exit_process, NULL, rv );
+    __dios_exit_process( rv );
     __builtin_unreachable();
 }
 
