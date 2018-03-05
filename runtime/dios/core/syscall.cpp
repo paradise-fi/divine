@@ -5,7 +5,8 @@
 
 #include <dios/core/syscall.hpp>
 
-namespace __dios {
+namespace __dios
+{
 
 #include <dios/macro/no_memory_tags>
 #define SYSCALL( name, schedule, ret, arg ) \
@@ -14,13 +15,9 @@ namespace __dios {
         __dios_fault( (_VM_Fault) _DiOS_F_Assert, "Syscall not implemented" ); \
         __builtin_unreachable(); \
     }
-#define SYSCALLSEP SYSCALL
-
 #include <sys/syscall.def>
-
 #include <dios/macro/no_memory_tags.cleanup>
 #undef SYSCALL
-#undef SYSCALLSEP
 
 } // namespace _dios
 

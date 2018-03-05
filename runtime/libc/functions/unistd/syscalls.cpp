@@ -4,36 +4,80 @@
 #include <sys/socket.h>
 #include <sys/monitor.h>
 #include <sys/resource.h>
+#include <sys/utsname.h>
+#include <sys/argpad.hpp>
 #include <signal.h>
 #include <dios.h>
 
+#include <brick-tuple>
+#include <brick-hlist>
 #include <dios/macro/no_memory_tags>
 
-static struct Pad {} _1, _2, _3, _4, _5, _6;
-template< typename T >
-struct UnVoid
+namespace __dios
 {
-    T t;
-    T *address() { return &t; }
-    T get() { return t; }
-};
 
-template<> struct UnVoid< void >
-{
-    void get() {}
-    void *address() { return nullptr; }
-};
-
-#define SYSCALL(name, schedule, ret, arg)                                     \
-    extern "C" ret name arg {                                                 \
-        UnVoid< ret > rv;                                                     \
-        __dios_syscall( SYS_ ## name, rv.address(), _1, _2, _3, _4, _5, _6 ); \
-        return rv.get();                                                      \
-    }
-
-#define SYSCALLSEP(...)
-
+#define VOID int
+#define SYSCALL( name, schedule, ret, arg )    ret (*name ## _ptr) arg;
 #include <sys/syscall.def>
-#include <dios/macro/no_memory_tags.cleanup>
+#undef VOID
 
 #undef SYSCALL
+
+#define SYSCALL_DIOS(...)
+#define SYSCALL( name, schedule, ret, arg )                                   \
+    extern "C" __trapfn ret name arg                                          \
+    {                                                                         \
+        return unpad( __dios::name ## _ptr, _1, _2, _3, _4, _5, _6 );         \
+    }
+#include <sys/syscall.def>
+
+#undef SYSCALL
+#undef SYSCALL_DIOS
+#define SYSCALL(...)
+#define SYSCALL_DIOS( name, schedule, ret, arg )                              \
+    extern "C" __trapfn ret __dios_ ## name arg                               \
+    {                                                                         \
+        return unpad( __dios::name ## _ptr, _1, _2, _3, _4, _5, _6 );         \
+    }
+#include <sys/syscall.def>
+#undef SYSCALL_DIOS
+#undef SYSCALL
+
+    template< typename Todo, typename Done, typename Ret, typename... Args >
+    __inline static auto unpack( Done done, Ret (*f)( Args... ), va_list vl,
+                                 typename Todo::Empty = typename Todo::Empty()  )
+    {
+        return brick::tuple::pass( [&]( auto... x ) { return f( x... ); }, done );
+    }
+
+    template< typename Todo, typename Done, typename Ret, typename... Args >
+    __inline static auto unpack( Done done, Ret (*f)( Args... ), va_list vl,
+                                 typename Todo::Head = typename Todo::Head()  )
+    {
+        auto next = std::tuple_cat( done, std::make_tuple( va_arg( vl, typename Todo::Head ) ) );
+        return unpack< typename Todo::Tail >( next, f, vl );
+    }
+
+    template< typename Ret, typename... Args >
+    __inline static auto unpack( Ret (*f)( Args... ), va_list vl )
+    {
+        return unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), f, vl );
+    }
+
+    extern "C" long syscall( int id, ... )
+    {
+	va_list ap;
+	va_start( ap, id );
+	switch ( id )
+	{
+#define SYSCALL_DIOS(...) /* FIXME */
+#define SYSCALL( name, schedule, ret, arg ) \
+            case SYS_ ## name: return long( unpack( name ## _ptr, ap ) );
+#include <sys/syscall.def>
+	}
+    }
+
+#include <dios/macro/no_memory_tags.cleanup>
+#undef SYSCALL
+
+}
