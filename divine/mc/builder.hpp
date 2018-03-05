@@ -244,6 +244,8 @@ struct Builder
     using HT = hashset::Concurrent< Snapshot, Hasher >;
 
     auto &program() { return _d.bc->program(); }
+    auto &debug() { return _d.bc->debug(); }
+    auto &heap() { return context().heap(); }
     auto &pool() { return _d.ctx.heap()._snapshots; }
 
     struct Data
