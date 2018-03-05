@@ -53,6 +53,7 @@ typedef struct {
     void (*ehPersonality)( void );
     void *ehLSDA; /* language-specific exception handling tables */
     int is_nounwind;
+    int is_trap;
 } _MD_Function;
 
 typedef struct {
