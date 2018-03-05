@@ -14,11 +14,8 @@ _Noreturn __invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int r
     __builtin_unreachable();
 }
 
-void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
+__invisible void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
 {
-    bool m = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) ) & _VM_CF_Mask;
     bool noret = false;
     if ( !stack )
     {
@@ -62,9 +59,6 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
 
     if ( noret )
         __dios_suicide();
-
-    if ( !m )
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, 0ull );
 }
 
 int __dios_set_register( _VM_Frame *frame, _VM_CodePointer pc, unsigned offset, char *data, unsigned lenght )
