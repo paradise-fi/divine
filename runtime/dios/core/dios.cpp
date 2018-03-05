@@ -67,7 +67,6 @@ void boot( SetupBase sb ) {
     auto *context = new_object< Configuration >();
     __vm_trace( _VM_T_StateType, context );
     traceAlias< Configuration >( "{Context}" );
-    traceAlias< Syscall< Configuration > >( "{Syscall}" );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
 
     if ( extractOpt( "debug", "help", sb.opts ) )

@@ -68,8 +68,6 @@ struct Trap
 
 struct BaseContext
 {
-    using SyscallInvoker = void (*)( void *, _DiOS_SC syscode, void *, va_list );
-
     struct Process
     {
         virtual ~Process() {}
