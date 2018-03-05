@@ -78,6 +78,11 @@ struct Show : WithVar, Teflon
     Show() : raw( false ), depth( 10 ), deref( 0 ) {}
 };
 
+struct Diff : WithVar, Teflon
+{
+    std::vector< std::string > vars;
+};
+
 struct Dot : WithVar, Teflon
 {
     std::string type = "none";

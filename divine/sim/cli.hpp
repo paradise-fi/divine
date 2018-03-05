@@ -207,6 +207,7 @@ struct CLI
     void go( command::Rewind re );
     void go( command::BackTrace bt );
     void go( command::Show cmd );
+    void go( command::Diff );
     void go( command::Dot cmd );
     void go( command::Inspect i );
     void go( command::Call c );

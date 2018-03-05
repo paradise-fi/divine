@@ -136,6 +136,13 @@ void CLI::go( command::Show cmd )
         dn.format( out(), cmd.depth, cmd.deref );
 }
 
+void CLI::go( command::Diff cmd )
+{
+    if ( cmd.vars.size() != 2 )
+        throw brick::except::Error( "Diff needs exactly 2 arguments." );
+    dbg::diff( std::cerr, get( cmd.vars[0] ), get( cmd.vars[1] ) );
+}
+
 void CLI::go( command::Info inf )
 {
     OneLineTokenizer tok;

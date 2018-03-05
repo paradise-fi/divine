@@ -105,6 +105,9 @@ auto make_parser()
         .option( "{string}", &command::Info::cmd, "what info to print" )
         .option( "[--setup {string}]", &command::Info::setup, "set up a new info source" );
 
+    auto o_diff = cmd::make_option_set< command::Diff >( v )
+        .option( "{string}", &command::Diff::vars, "what to diff" );
+
     auto dotopts = cmd::make_option_set< command::Dot >( v )
         .option( "[-T{string}|-T {string}]", &command::Dot::type,
                 "type of output (none,ps,svg,png…)"s )
@@ -128,6 +131,7 @@ auto make_parser()
         .command< command::Thread >( "control thread scheduling"s, threadopts )
         .command< command::Trace >( "load a counterexample trace"s, o_trace, o_trace_cmd )
         .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
+        .command< command::Diff >( "diff two objects"s, teflopts, o_diff )
         .command< command::Call >( "run a custom information-gathering function"s,
                                     teflopts, callopts )
         .command< command::Info >( "print information"s, o_info )
