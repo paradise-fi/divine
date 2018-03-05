@@ -24,14 +24,14 @@ int isPresent( __dios_task id, __dios_task *thr )
 int main()
 {
     __dios_task thr1 = __dios_start_task( routine, NULL, 0 );
-    __dios_task *t = __dios_get_process_tasks();
+    __dios_task *t = __dios_this_process_tasks();
     assert( count(t) == 2 );
     assert( isPresent( __dios_this_task(), t ) );
     assert( isPresent( thr1, t ) );
     __vm_obj_free( t );
 
     __dios_task thr2 = __dios_start_task( routine, NULL, 0 );
-    t = __dios_get_process_tasks();
+    t = __dios_this_process_tasks();
     assert( count( t ) == 3 );
     assert( isPresent( __dios_this_task(), t ) );
     assert( isPresent( thr1, t ) );
@@ -39,7 +39,7 @@ int main()
     __vm_obj_free( t );
 
     __dios_task thr3 = __dios_start_task( routine, NULL, 0 );
-    t = __dios_get_process_tasks();
+    t = __dios_this_process_tasks();
     assert( count( t ) == 4 );
     assert( isPresent( __dios_this_task(), t ) );
     assert( isPresent( thr1, t ) );
@@ -48,7 +48,7 @@ int main()
     __vm_obj_free( t );
 
     __dios_task thr4 = __dios_start_task( routine, NULL, 0 );
-    t = __dios_get_process_tasks();
+    t = __dios_this_process_tasks();
     assert( count( t ) == 5 );
     assert( isPresent( __dios_this_task(), t ) );
     assert( isPresent( thr1, t ) );
@@ -58,7 +58,7 @@ int main()
     __vm_obj_free( t );
 
     __dios_task thr5 = __dios_start_task( routine, NULL, 0 );
-    t = __dios_get_process_tasks();
+    t = __dios_this_process_tasks();
     assert( count( t ) == 6 );
     assert( isPresent( __dios_this_task(), t ) );
     assert( isPresent( thr1, t ) );
