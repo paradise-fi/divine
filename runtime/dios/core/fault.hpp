@@ -187,23 +187,15 @@ struct Fault: public Next {
     }
 
     template < typename Context >
-    static void handler( _VM_Fault _what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept
+    static __trapfn void handler( _VM_Fault _what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept
     {
-        auto mask = reinterpret_cast< uintptr_t >(
-            __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                          _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) ) & _VM_CF_Mask;
-        int kernel = reinterpret_cast< uintptr_t >(
-            __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
-        auto *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
+        uint64_t old = __vm_ctl_flag( 0, _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop );
 
-        if ( kernel ) {
-            void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
-            auto& fault = *static_cast< Context * >( ctx );
-            fault.fault_handler( kernel, frame, _what );
-        }
-        else {
-            __dios_syscall( SYS_fault_handler, nullptr, kernel, frame, _what  );
-        }
+        bool kernel = old & _VM_CF_KernelMode;
+        auto *frame = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) )->parent;
+
+        auto& fault = get_state< Context >();
+        fault.fault_handler( kernel, frame, _what );
 
         // Continue if we get the control back
         __vm_control( _VM_CA_Set, _VM_CR_Frame, cont_frame,
