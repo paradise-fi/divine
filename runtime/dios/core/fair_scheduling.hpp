@@ -80,7 +80,6 @@ struct FairScheduler : public Scheduler< Next > {
     {
         void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
         auto& scheduler = *static_cast< Context * >( ctx );
-        using Sys = Syscall< Context >;
 
         scheduler.traceTasks();
         Task *t = scheduler.chooseTask();
@@ -108,25 +107,9 @@ struct FairScheduler : public Scheduler< Next > {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Accepting, 0 );
             }
 
-            auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-            if ( syscall )
-            {
-                Sys::handle( scheduler, *syscall );
-                __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-            }
-            else
-            {
-                if ( !t->_frame )
-                    Scheduler< Next >::check_final( scheduler );
-                return;
-            }
-
-            if ( scheduler.need_reschedule() )
-                return Scheduler< Next >::check_final( scheduler );
-
-            /* reset intframe to ourselves */
-            auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
-            __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
+            if ( !t->_frame )
+                Scheduler< Next >::check_final( scheduler );
+            __vm_suspend();
         }
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
