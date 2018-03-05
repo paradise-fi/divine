@@ -298,10 +298,10 @@ struct Scheduler : public Next
 
     void killTask( __dios_task tid ) noexcept
     {
-        if ( tid == __dios_this_task() )
-            reschedule();
         bool res = tasks.remove( tid );
         __dios_assert_v( res, "Killing non-existing task" );
+        if ( tid == __dios_this_task() )
+            __vm_suspend();
     }
 
     template< typename I >
@@ -316,16 +316,6 @@ struct Scheduler : public Next
             delete_object( proc );
     }
 
-    void reschedule()
-    {
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _DiOS_CF_Reschedule, _DiOS_CF_Reschedule );
-    }
-
-    bool need_reschedule()
-    {
-        return uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _DiOS_CF_Reschedule;
-    }
-
     void killProcess( pid_t id ) noexcept
     {
         if ( !id )
@@ -333,21 +323,23 @@ struct Scheduler : public Next
             size_t c = tasks.size();
             eraseProcesses( tasks.begin() );
             tasks.erase( tasks.begin(), tasks.end() );
-            reschedule();
-            return;
+            __vm_suspend();
         }
 
+        bool resched = false;
         auto r = std::partition( tasks.begin(), tasks.end(), [&]( auto& t )
                                  {
                                      if ( t->_proc->pid != id )
                                          return true;
                                      if ( t->_tls == __dios_this_task() )
-                                         reschedule();
+                                         resched = true;
                                      return false;
                                  } );
 
         eraseProcesses( r );
         tasks.erase( r, tasks.end() );
+        if ( resched )
+            __vm_suspend();
     }
 
     int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact )
@@ -488,24 +480,20 @@ struct Scheduler : public Next
             ctx.finalize();
     }
 
-    __attribute__((__always_inline__))
-    void run( Task &t )
+    __inline void run( Task &t )
     {
         __vm_ctl_set( _VM_CR_Globals, t._proc->globals );
+        __vm_ctl_set( _VM_CR_User1, &t._frame );
         __vm_ctl_set( _VM_CR_User2, t.getId() );
         __vm_ctl_set( _VM_CR_User3, debug );
-        __vm_ctl_flag( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode,  _VM_CF_KeepFrame );
+        __vm_ctl_flag( _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop, 0 );
         __vm_ctl_set( _VM_CR_Frame, t._frame );
-        /* interrupts return here */
-        t._frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
     }
 
     template < typename Context >
     static void run_scheduler() noexcept
     {
-        void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
-        auto& scheduler = *static_cast< Context * >( ctx );
-        using Sys = Syscall< Context >;
+        auto& scheduler = get_state< Context >();
 
         scheduler.traceTasks();
         Task *t = scheduler.chooseTask();
@@ -513,30 +501,14 @@ struct Scheduler : public Next
         if ( t )
             __vm_trace( _VM_T_TaskID, t );
 
-        while ( t && t->_frame )
+        if ( t && t->_frame )
         {
             scheduler.run( *t );
             scheduler.runMonitors();
 
-            auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-            if ( syscall )
-            {
-                Sys::handle( scheduler, *syscall );
-                __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-            }
-            else
-            {
-                if ( !t->_frame )
-                    check_final( scheduler );
-                __vm_suspend();
-            }
-
-            if ( scheduler.need_reschedule() )
-                check_final( scheduler ), __vm_suspend();
-
-            /* reset intframe to ourselves */
-            auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
-            __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
+            if ( !t->_frame )
+                check_final( scheduler );
+            __vm_suspend();
         }
         __vm_cancel();
     }
