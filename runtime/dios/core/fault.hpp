@@ -315,11 +315,14 @@ struct Fault: public Next {
         updateSimFail( config );
     }
 
-    int _faultToStatus( int fault )  {
+    int _faultToStatus( int fault )
+    {
         auto config = getCurrentConfig();
         uint8_t cfg = config[ fault ];
-        if ( fault < _DiOS_F_Last) { // Fault
-            switch ( cfg & (FaultFlag::Enabled | FaultFlag::Continue) ) {
+        if ( fault < _DiOS_F_Last) // Fault
+        {
+            switch ( cfg & ( FaultFlag::Enabled | FaultFlag::Continue ) )
+            {
                 case 0:
                     return _DiOS_FC_Ignore;
                 case FaultFlag::Enabled:
@@ -332,7 +335,8 @@ struct Fault: public Next {
                     __builtin_unreachable();
             }
         }
-        else { // Simfail
+        else // Simfail
+        {
             if ( cfg | FaultFlag::Enabled )
                 return _DiOS_FC_SimFail;
             else
@@ -340,20 +344,21 @@ struct Fault: public Next {
         }
     }
 
-    int configure_fault( int fault, int cfg ) {
+    int configure_fault( int fault, int cfg )
+    {
         auto config = getCurrentConfig();
-        if ( fault >= fault_count ) {
+        if ( fault >= fault_count )
             return _DiOS_FC_EInvalidFault;
-        }
 
         uint8_t& fc = config[ fault ];
-        if ( !( fc & FaultFlag::AllowOverride ) ) {
+        if ( !( fc & FaultFlag::AllowOverride ) )
             return _DiOS_FC_ELocked;
-        }
 
         int lastCfg = _faultToStatus( fault );
-        if ( fault < _DiOS_F_Last) { // Fault
-            switch( cfg ) {
+        if ( fault < _DiOS_F_Last ) // Fault
+        {
+            switch( cfg )
+            {
                 case _DiOS_FC_Ignore:
                     fc = FaultFlag::AllowOverride;
                     break;
@@ -370,8 +375,10 @@ struct Fault: public Next {
                     return _DiOS_FC_EInvalidCfg;
             }
         }
-        else { // Simfail
-            switch( cfg ) {
+        else // Simfail
+        {
+            switch( cfg )
+            {
                 case _DiOS_FC_SimFail:
                     fc = FaultFlag::AllowOverride | FaultFlag::Enabled;
                     break;
@@ -386,7 +393,8 @@ struct Fault: public Next {
         return lastCfg;
     }
 
-    int get_fault_config( int fault ) {
+    int get_fault_config( int fault )
+    {
         if ( fault >= fault_count )
             return _DiOS_FC_EInvalidFault;
         return _faultToStatus( fault );
