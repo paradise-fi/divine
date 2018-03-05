@@ -3,20 +3,14 @@
 #include <sys/bitcode.h>
 #include <string.h>
 
-_Noreturn void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
+_Noreturn __invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
 {
-    bool m = __vm_ctl_flag( 0, _VM_CF_Mask ) & _VM_CF_Mask;
-
-    if ( restoreMaskTo != -1 )
-        m = restoreMaskTo;
-
-    if ( m )
-        __vm_control( _VM_CA_Set, _VM_CR_Frame, to,
-                      _VM_CA_Set, _VM_CR_PC, pc );
-    else
-        __vm_control( _VM_CA_Set, _VM_CR_Frame, to,
-                      _VM_CA_Set, _VM_CR_PC, pc,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, 0ull );
+    to->pc = pc;
+    if ( restoreMaskTo == 0 )
+        __vm_ctl_flag( _DiOS_CF_Mask, 0 );
+    if ( restoreMaskTo == 1 )
+        __vm_ctl_flag( 0, _DiOS_CF_Mask );
+    __vm_ctl_set( _VM_CR_Frame, to );
     __builtin_unreachable();
 }
 
