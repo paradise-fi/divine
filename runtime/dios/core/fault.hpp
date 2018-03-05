@@ -39,9 +39,9 @@ struct Fault: public Next {
 
     struct Process : Next::Process
     {
-        Process() {
-            std::fill_n( faultConfig, _DiOS_SF_Last,
-                FaultFlag::Enabled | FaultFlag::AllowOverride );
+        Process()
+        {
+            std::fill_n( faultConfig, _DiOS_SF_Last, FaultFlag::Enabled | FaultFlag::AllowOverride );
         }
 
         uint8_t faultConfig[ _DiOS_SF_Last ];
@@ -85,7 +85,8 @@ struct Fault: public Next {
         __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler< typename Setup::Context > );
         load_user_pref( s.proc1->faultConfig, s.opts );
 
-        if ( extractOpt( "debug", "faultcfg", s.opts ) ) {
+        if ( extractOpt( "debug", "faultcfg", s.opts ) )
+        {
             trace_config( 1 );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         }

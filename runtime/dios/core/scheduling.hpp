@@ -65,7 +65,8 @@ struct TaskStorage: Array< std::unique_ptr< T > > {
 };
 
 template < typename Process >
-struct Task {
+struct Task
+{
     _VM_Frame *_frame;
     __dios_tls *_tls;
     Process *_proc;
@@ -187,7 +188,8 @@ struct Scheduler : public Next
     }
 
     template< typename Setup >
-    void setup( Setup s ) {
+    void setup( Setup s )
+    {
         traceAlias< Scheduler >( "{Scheduler}" );
 
         s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
@@ -294,7 +296,8 @@ struct Scheduler : public Next
         frame->arg = arg;
     }
 
-    void killTask( __dios_task tid ) noexcept  {
+    void killTask( __dios_task tid ) noexcept
+    {
         if ( tid == __dios_this_task() )
             reschedule();
         bool res = tasks.remove( tid );
@@ -323,9 +326,10 @@ struct Scheduler : public Next
         return uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _DiOS_CF_Reschedule;
     }
 
-    void killProcess( pid_t id ) noexcept  {
-        if ( !id ) {
-
+    void killProcess( pid_t id ) noexcept
+    {
+        if ( !id )
+        {
             size_t c = tasks.size();
             eraseProcesses( tasks.begin() );
             tasks.erase( tasks.begin(), tasks.end() );
@@ -432,7 +436,8 @@ struct Scheduler : public Next
     }
 
     template < typename F >
-    int _kill( pid_t pid, int sig, F func ) {
+    int _kill( pid_t pid, int sig, F func )
+    {
         sighandler_t handler;
         bool found = false;
         Task *task;

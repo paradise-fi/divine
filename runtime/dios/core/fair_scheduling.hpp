@@ -95,10 +95,13 @@ struct FairScheduler : public Scheduler< Next > {
 
             // Fairness contraint
             bool accepting = uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Accepting;
-            if ( scheduler._workingGroup == 0 && accepting ) {
+
+            if ( scheduler._workingGroup == 0 && accepting )
+            {
                 scheduler.moveToNextGroup();
             }
-            else if ( scheduler._workingGroup != 0 ) {
+            else if ( scheduler._workingGroup != 0 )
+            {
                 if ( scheduler._fairGroup[ scheduler._workingGroup ] == t->getId() ) {
                     scheduler.moveToNextGroup();
                 }
