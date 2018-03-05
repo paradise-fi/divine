@@ -2,9 +2,25 @@
 #include <sys/divm.h>
 #include <sys/signal.h>
 
-void __dios_signal_trampoline ( struct _VM_Frame *interrupted, void ( *handler )( int ) )
+int __dios_signal_trampoline_ret( void *a, void * b, int ret )
 {
-    handler( 0 );
-    __dios_jump( interrupted, interrupted->pc, -1 );
+    void (*handler)( int ) = a;
+    int arg = (int) b;
+    handler( arg );
+    return ret;
+}
+
+int __dios_signal_trampoline_noret( void *a, void * b, int ret )
+{
+    void (*handler)( int ) = a;
+    int arg = (int) b;
+    handler( arg );
+    struct _VM_Frame *self = __vm_ctl_get( _VM_CR_Frame );
+    __vm_ctl_set( _VM_CR_Frame, self->parent );
     __builtin_unreachable();
+}
+
+int __dios_simple_trampoline( void *a, void * b, int ret )
+{
+    return ret;
 }

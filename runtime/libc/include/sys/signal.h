@@ -5,7 +5,9 @@
 
 _PDCLIB_EXTERN_C
 
-void __dios_signal_trampoline ( struct _VM_Frame *interrupted, void ( *handler )( int ) );
+int __dios_signal_trampoline_ret( void *, void *, int );
+int __dios_signal_trampoline_noret( void *, void *, int );
+int __dios_simple_trampoline( void *, void *, int );
 
 _PDCLIB_EXTERN_END
 
