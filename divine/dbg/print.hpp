@@ -162,9 +162,6 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case lx::HypercallChoose: op += ".choose"; break;
             case lx::HypercallFault: op += ".fault"; break;
 
-            case lx::HypercallInterruptCfl: op += ".interrupt.cfl"; break;
-            case lx::HypercallInterruptMem: op += ".interrupt.mem"; break;
-
             case lx::HypercallCtlSet: op += ".ctl.set"; break;
             case lx::HypercallCtlGet: op += ".ctl.get"; break;
             case lx::HypercallCtlFlag: op += ".ctl.flag"; break;

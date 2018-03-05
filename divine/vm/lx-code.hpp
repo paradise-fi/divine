@@ -37,8 +37,6 @@ enum Hypercall /* see divm.h for prototypes & documentation */
     HypercallControl,
     HypercallChoose,
     HypercallFault,
-    HypercallInterruptCfl,
-    HypercallInterruptMem,
 
     HypercallTestCrit,
     HypercallTestLoop,
