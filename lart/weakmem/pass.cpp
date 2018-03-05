@@ -338,7 +338,7 @@ struct Substitute {
         auto ford = get( "__lart_weakmem_min_ordering" );
         auto dump = get( "__lart_weakmem_dump" );
         auto debug_fence = get( "__lart_weakmem_debug_fence" );
-        _mask = get( "__vmutil_mask" );
+        _mask = get( "__dios_mask" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
