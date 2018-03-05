@@ -1,4 +1,4 @@
-/* TAGS: min threads c */
+/* TAGS: fork min threads c */
 #include <assert.h>
 #include <pthread.h>
 #include <unistd.h>

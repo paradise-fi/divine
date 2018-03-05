@@ -1,4 +1,4 @@
-/* TAGS: todo threads c */
+/* TAGS: fork todo threads c */
 /*
 * Copyright (c) 2005, Bull S.A..  All rights reserved.
 * Created by: Sebastien Decugis

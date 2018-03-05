@@ -1,4 +1,4 @@
-/* TAGS: min c */
+/* TAGS: fork min c */
 #include <unistd.h>
 #include <assert.h>
 

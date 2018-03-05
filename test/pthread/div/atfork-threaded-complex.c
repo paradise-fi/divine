@@ -1,4 +1,4 @@
-/* TAGS: threads c */
+/* TAGS: fork threads c */
 /*
 * Copyright (c) 2005, Bull S.A..  All rights reserved.
 * Created by: Sebastien Decugis

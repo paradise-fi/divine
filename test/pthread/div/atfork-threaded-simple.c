@@ -1,4 +1,4 @@
-/* TAGS: min threads c */
+/* TAGS: fork min threads c */
 /*
 * Copyright (c) 2005, Bull S.A..  All rights reserved.
 * Created by: Sebastien Decugis

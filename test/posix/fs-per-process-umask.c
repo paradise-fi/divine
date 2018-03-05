@@ -1,4 +1,4 @@
-/* TAGS: c */
+/* TAGS: fork c */
 #include <unistd.h>
 #include <assert.h>
 #include <sys/stat.h>

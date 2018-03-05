@@ -1,4 +1,4 @@
-/* TAGS: min c */
+/* TAGS: fork min c */
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <unistd.h>
