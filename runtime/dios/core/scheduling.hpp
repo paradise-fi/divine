@@ -113,8 +113,9 @@ struct Task
         return *this;
     }
 
-    ~Task() noexcept {
-        clearFrame();
+    ~Task() noexcept
+    {
+        // FIXME. clearFrame();
         __vm_obj_free( _tls );
     }
 
