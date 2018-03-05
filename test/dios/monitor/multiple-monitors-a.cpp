@@ -31,6 +31,6 @@ int main()
     for ( int i = 0; i != 2; i++ )
     {
         glob = glob ? 0 : 1;
-        __vmutil_interrupt();
+        __dios_interrupt();
     }
 }

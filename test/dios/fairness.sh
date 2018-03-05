@@ -6,7 +6,6 @@ tee fairness.cpp <<EOF
 #include <thread>
 #include <atomic>
 #include <sys/monitor.h>
-#include <sys/vmutil.h>
 
 bool checkX();
 
@@ -76,7 +75,7 @@ int main() {
         while ( true ) {
             __dios_trace_t( "Set 1" );
             x = 1;
-            __vmutil_interrupt();
+            __dios_interrupt();
         }
     } );
 
@@ -85,7 +84,7 @@ int main() {
     while ( true ) {
         __dios_trace_t( "Set 0" );
         x = 0;
-        __vmutil_interrupt();
+        __dios_interrupt();
     }
 }
 EOF
