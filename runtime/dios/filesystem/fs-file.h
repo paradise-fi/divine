@@ -322,7 +322,7 @@ struct Pipe : File {
 
         // progress or deadlock
         while ( ( length = _stream.pop( buffer, length ) ) == 0 )
-            throw Error( EAGAIN2 );
+            __vm_cancel();
 
         return true;
     }
@@ -335,7 +335,7 @@ struct Pipe : File {
 
         // progress or deadlock
         while ( ( length = _stream.push( buffer, length ) ) == 0 )
-            throw Error( EAGAIN2 );
+            __vm_cancel();
 
         return true;
     }
@@ -556,7 +556,7 @@ struct SocketStream : Socket {
 
         // progress or deadlock
         if ( _backlog.empty() ) {
-		throw Error( EAGAIN2 );
+		__vm_cancel();
 	}
 
         Node result( std::move( _backlog.front() ) );
@@ -635,12 +635,12 @@ struct SocketStream : Socket {
             throw Error( ENOTCONN );
 
         if ( _stream.empty()  ) {
-		throw Error( EAGAIN2 );
+		__vm_cancel();
 	}
 
          if ( fls.has( flags::Message::WaitAll ) ) {
              if ( _stream.size() < length ) {
-	     	throw Error( EAGAIN2 );
+	     	__vm_cancel();
 	     }
          }
 
@@ -746,7 +746,7 @@ struct SocketDatagram : Socket {
             throw Error( EAGAIN );
 
         if  ( _packets.empty() ) {
-		throw Error( EAGAIN2 );
+		__vm_cancel();
 	}
 
         length = _packets.front().read( buffer, length );

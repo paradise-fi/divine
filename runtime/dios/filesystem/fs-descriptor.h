@@ -158,18 +158,16 @@ struct PipeDescriptor : FileDescriptor {
         /// TODO: enable detection of deadlock
         if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
-        else if ( fl.has( flags::Open::Read ) ) {
-            if ( wait && !pipe->writer() && !readyWriter ) {
-                readyReader = true;
-               throw Error( EAGAIN2 );
-            }
+        else if ( fl.has( flags::Open::Read ) )
+        {
+            if ( wait && !pipe->writer() && !readyWriter )
+               __vm_cancel();
             pipe->assignReader();
         }
-        else if ( fl.has( flags::Open::Write ) ) {
-            if ( wait && !pipe->reader() && !readyReader  ) {
-                readyWriter = true;
-               throw Error( EAGAIN2 );
-            }
+        else if ( fl.has( flags::Open::Write ) )
+        {
+            if ( wait && !pipe->reader() && !readyReader  )
+               __vm_cancel();
             pipe->assignWriter();
         }
     }
