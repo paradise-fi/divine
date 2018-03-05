@@ -18,30 +18,21 @@
  * exploded over runtime/ which is even worse.
  */
 
-#define __vm_mask(x) ( ( (uintptr_t)                                    \
-                           __vm_control( _VM_CA_Get, _VM_CR_Flags,      \
-                                         _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, \
-                                         (x) ? _VM_CF_Mask : 0 ) ) & _VM_CF_Mask )
-
 /* Memory allocation */
-void * malloc( size_t size )
+__invisible void *malloc( size_t size )
 {
-    int masked = __vm_mask( 1 );
-    void *r;
     int ok = __dios_sim_fail( _DiOS_SF_Malloc ) ? __vm_choose( 2 ) : 1;
     if ( ok )
-        r = __vm_obj_make( size ); // success
+        return __vm_obj_make( size ); // success
     else
-        r = NULL; // failure
-    __vm_mask( masked );
-    return r;
+        return NULL; // failure
 }
 
 #define MIN( a, b )   ((a) < (b) ? (a) : (b))
 
 void *realloc( void *orig, size_t size )
 {
-    int masked = __vm_mask( 1 );
+    int masked = __dios_mask( 1 );
     int ok = __dios_sim_fail( _DiOS_SF_Malloc ) ? __vm_choose( 2 ) : 1;
     void *r;
     if ( !size ) {
@@ -57,13 +48,13 @@ void *realloc( void *orig, size_t size )
         r = n;
     } else
         r = NULL; // failure
-    __vm_mask( masked );
+    __dios_mask( masked );
     return r;
 }
 
 void *calloc( size_t n, size_t size )
 {
-    int masked = __vm_mask( 1 );
+    int masked = __dios_mask( 1 );
     void *r;
     int ok = __dios_sim_fail( _DiOS_SF_Malloc ) ? __vm_choose( 2 ) : 1;
     if ( ok ) {
@@ -72,7 +63,7 @@ void *calloc( size_t n, size_t size )
         r = mem;
     } else
         r = NULL; // failure
-    __vm_mask( masked );
+    __dios_mask( masked );
     return r;
 }
 
@@ -90,8 +81,7 @@ void _exit( int rv )
         __dios_trace_f( "Non-zero exit code: %d", rv );
         __dios_fault( _DiOS_F_ExitFault, "exit called with non-zero value" );
     }
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
+    __dios_interrupt();
     __cxa_finalize( 0 );
     __dios_run_dtors();
     __dios_syscall( SYS_exit_process, NULL, rv );
@@ -127,7 +117,7 @@ int raise( int sig )
     switch ( sig )
     {
         case SIGKILL:
-            __vmutil_interrupt();
+            __dios_interrupt();
         default:
             return kill( getpid(), sig );
     }
