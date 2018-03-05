@@ -25,11 +25,7 @@ struct _InterruptMask
     __attribute__((always_inline))
     _InterruptMask() _PDCLIB_nothrow
     {
-        _orig_state = uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                                               _VM_CA_Bit, _VM_CR_Flags,
-                                               uintptr_t( _VM_CF_Mask ),
-                                               uintptr_t( _VM_CF_Mask ) ) )
-                      & _VM_CF_Mask;
+        _orig_state = __vm_ctl_flag( 0, _DiOS_CF_Mask ) & _DiOS_CF_Mask;
         if ( fenced )
             __sync_synchronize();
     }
@@ -39,32 +35,44 @@ struct _InterruptMask
     {
         if ( fenced )
             __sync_synchronize();
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
-                      _orig_state ? uintptr_t( _VM_CF_Mask ) : 0ull );
+        if ( !_orig_state )
+        {
+            __vm_ctl_flag( _DiOS_CF_Mask, 0 );
+            if ( uintptr_t( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Deferred )
+                __dios_interrupt();
+        }
     }
 
   private:
-    struct Without {
-        Without( _InterruptMask &self ) _PDCLIB_nothrow : self( self ) {
-            if ( !self._orig_state ) {
+
+    struct Without
+    {
+        Without( _InterruptMask &self ) _PDCLIB_nothrow : self( self )
+        {
+            if ( !self._orig_state )
+            {
                 if ( fenced )
                     __sync_synchronize();
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ), 0ull );
+                __vm_ctl_flag( _DiOS_CF_Mask, 0 );
+                if ( uintptr_t( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Deferred )
+                    __dios_interrupt();
             }
         }
 
         // acquire mask if not masked already
-        ~Without() _PDCLIB_nothrow {
-            if ( !self._orig_state ) {
+        ~Without() _PDCLIB_nothrow
+        {
+            if ( !self._orig_state )
+            {
                 if ( fenced )
                     __sync_synchronize();
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags,
-                              uintptr_t( _VM_CF_Mask ), uintptr_t( _VM_CF_Mask ) );
+                __vm_ctl_flag( 0, _DiOS_CF_Mask );
             }
         }
 
         _InterruptMask &self;
     };
+
   public:
 
 #if __cplusplus >= 201103L
@@ -81,7 +89,8 @@ struct _InterruptMask
     // break mask (if it is held by this guard), call given function and then
     // return mask to original state
     template< typename Fun >
-    auto without( Fun &&f, bool mustBreakMask = false ) _PDCLIB_nothrow {
+    auto without( Fun &&f, bool mustBreakMask = false ) _PDCLIB_nothrow
+    {
         assert( ( !mustBreakMask || !_orig_state ) &&
                 "InterruptMask is required to own the mask in InterruptMask::without" );
         Without _( *this );
