@@ -157,11 +157,11 @@ struct ProcessManager : public Next
         return setpgid( 0, 0 );
     }
 
-    pid_t sysfork( void )
+    void sysfork( pid_t *child )
     {
         auto tid = __dios_this_task();
         auto task = this->tasks.find( tid );
-        Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
+        __dios_assert( task );
 
         pid_t maxPid = 0;
         for( auto& t : this->tasks )
@@ -170,6 +170,10 @@ struct ProcessManager : public Next
                 maxPid = (proc(t.get()))->pid;
         }
 
+        *child = maxPid + 1;
+
+        task->_frame = this->sysenter();
+        Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
         Process *newTaskProc = proc( newTask );
         Process *taskProc = proc( task );
         newTaskProc->pid = maxPid + 1;
@@ -177,7 +181,6 @@ struct ProcessManager : public Next
         newTaskProc->sid = taskProc->sid;
         newTaskProc->pgid = taskProc->pgid;
         this->tasks.emplace_back( newTask );
-        return newTaskProc->pid;
     }
 
     pid_t wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage)
@@ -249,7 +252,7 @@ struct ProcessManager : public Next
     {
         Process* p = proc( this->tasks.find( __dios_this_task() ) );
         p->exitStatus = code << 8;
-        Next::kill( p->pid, SIGKILL );
+        Next::killProcess( p->pid );
     }
 };
 

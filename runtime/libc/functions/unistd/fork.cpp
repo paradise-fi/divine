@@ -10,8 +10,8 @@ pid_t fork( void )
     __run_atfork_handlers( 0 );
     __dios::InterruptMask mask;
 
-    auto *tasks = __dios_get_process_tasks();
-    __dios_syscall( SYS_sysfork, &child_pid );
+    auto *tasks = __dios_this_process_tasks();
+    __dios_sysfork( &child_pid );
     pid_t new_pid = getpid();
     bool is_parent = old_pid == new_pid;
 

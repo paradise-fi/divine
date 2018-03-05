@@ -314,7 +314,7 @@ struct Scheduler : public Next
             p.insert( (*i)->_proc );
         for ( auto i = tasks.begin(); i != pivot; ++i )
             p.erase( (*i)->_proc );
-        for ( auto &proc : p )
+        for ( auto proc : p )
             delete_object( proc );
     }
 
