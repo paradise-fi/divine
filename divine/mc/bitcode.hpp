@@ -53,7 +53,7 @@ struct BitCode
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     AutoTraceFlags _autotrace;
-    bool _reduce = false, _sequential = false, _symbolic = false;
+    bool _reduce = false, _sequential = false, _symbolic = false, _interrupts = true;
     Env _env;
     std::vector< std::string > _lart;
     std::string _relaxed;
@@ -98,6 +98,7 @@ static auto c2bc( std::string s )
     divine::cc::Compiler c( ctx );
     c.mapVirtualFile( "main.c", s );
     auto rv = std::make_shared< mc::BitCode >( c.compileModule( "main.c" ), ctx );
+    rv->_interrupts = false;
     rv->init();
     return rv;
 }

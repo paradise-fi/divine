@@ -79,10 +79,13 @@ void BitCode::do_lart()
     if ( _symbolic )
         lart.setup( lart::abstract::passes() );
 
-    if ( _sequential )
-        lart.setup( lart::divine::cflInterruptPass() );
-    else
-        lart.setup( lart::divine::interruptPass() );
+    if ( _interrupts )
+    {
+        if ( _sequential )
+            lart.setup( lart::divine::cflInterruptPass() );
+        else
+            lart.setup( lart::divine::interruptPass() );
+    }
 
     if ( _autotrace )
         lart.setup( lart::divine::autotracePass() );
