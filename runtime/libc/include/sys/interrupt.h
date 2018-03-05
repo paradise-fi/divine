@@ -1,13 +1,23 @@
 #ifndef __SYS_INTERRUPT_H__
 #define __SYS_INTERRUPT_H__
 
+#include <sys/divm.h>
 #include <assert.h>
 
 #include <_PDCLIB_aux.h>
 
+static const uint64_t _DiOS_CF_Mask       = _VM_CFB_OS << 0;
+static const uint64_t _DiOS_CF_Deferred   = _VM_CFB_OS << 1;
+
+__BEGIN_DECLS
+void __dios_interrupt( void ) __nothrow;
+int __dios_mask( int ) __nothrow;
+__END_DECLS
+
 #ifdef __cplusplus
 
-namespace __dios {
+namespace __dios
+{
 
 template< bool fenced >
 struct _InterruptMask
