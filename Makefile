@@ -58,12 +58,13 @@ toolchain_FLAGS += CMAKE_BUILD_TYPE=RelWithDebInfo;TOOLCHAIN=ON; \
 all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release semidbg static bench
-TARGETS = divine unit functional website check llvm-utils clang test-divine \
-          install lart runner divbench divcheck divcc manual test-bricks
-DEFTARGETS = divine unit functional website check install lart divcheck divcc \
-             manual
+SPECIAL = divbench
+NORMAL = divine unit functional website check llvm-utils clang \
+         install lart runner divcheck divcc manual \
+         test-divine test-lart test-bricks
+TARGETS = $(NORMAL) $(SPECIAL)
 
-${DEFTARGETS}:
+${NORMAL}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
 
 ${FLAVOURS}:
