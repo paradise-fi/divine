@@ -34,6 +34,8 @@
 # define FS_FREE( x ) __dios::delete_object( x )
 #endif
 
+namespace __dios
+{
 
 using String = __dios::String;
 using brick::hlist::TypeList;
@@ -108,7 +110,6 @@ int parse( __dios::Vector <String>& _out, InputTuple tuple, Type process, Args .
     return parse( typename IsCout< Type >::type(), _out, tuple, process, args... );
 }
 
-namespace __dios {
 namespace fs {
 
     template< typename Next >

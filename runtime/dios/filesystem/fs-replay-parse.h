@@ -6,6 +6,9 @@
 #include <cstring>
 #include <type_traits>
 
+namespace __dios
+{
+
 struct SyscallSnapshot 
 {
     int number;
@@ -196,6 +199,8 @@ bool tryParse( String& _inputs, UnVoid <Out>& rv, Type process, Args ... args )
     if ( !getArg( _inputs, process ))
         return false;
     return tryParse( _inputs, rv, args... );
+}
+
 }
 
 #endif //_FS_REPLAY_PARSE_H_
