@@ -1,22 +1,23 @@
 /* TAGS: min c */
-#include <sys/vmutil.h>
+#include <sys/interrupt.h>
 #include <pthread.h>
 #include <assert.h>
 
 int x;
 
-void *thr( void *ignored ) {
-    int m = __vmutil_mask( 1 );
+void *thr( void *ignored )
+{
+    int m = __dios_mask( 1 );
     assert( m == 0 );
-    m = __vmutil_mask( 1 );
+    m = __dios_mask( 1 );
     assert( m == 1 );
 
     ++x;
     ++x;
 
-    m = __vmutil_mask( 0 );
+    m = __dios_mask( 0 );
     assert( m == 1 );
-    m = __vmutil_mask( 0 );
+    m = __dios_mask( 0 );
     assert( m == 0 );
     return NULL;
 }
