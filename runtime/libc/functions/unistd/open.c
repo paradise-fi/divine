@@ -13,8 +13,5 @@ int open( const char *path, int flags, ... )
         va_end(vl);
     }
 
-    int ret;
-    __dios_syscall( SYS_open, &ret, path, flags, mode );
-
-    return ret;
+    return __dios_open( path, flags, mode );
 }
