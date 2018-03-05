@@ -197,10 +197,9 @@ struct Replay : public Next {
 
     }
 
-    #define SYSCALLSEP( ... )
-
                 //TODO : line 205 + 199 - co urobit ak zle!
     #include <dios/macro/tags_to_class>
+    #define SYSCALL_DIOS(...)
 
     #define SYSCALL( name, schedule, ret, arg ) \
         ret name arg { \
@@ -222,7 +221,7 @@ struct Replay : public Next {
 
     #include <sys/syscall.def>
 
-    #undef SYSCALLSEP
+    #undef SYSCALL_DIOS
     #undef SYSCALL
 
     #include <dios/macro/tags_to_class.cleanup>

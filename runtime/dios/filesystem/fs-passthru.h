@@ -152,10 +152,10 @@ namespace fs {
             __dios_trace_out( reinterpret_cast<const char *>(output.address()), sizeof( *output.address()));
         }
 
-    #define SYSCALLSEP( ... )
 
     #include <dios/macro/tags_to_class>
 
+    #define SYSCALL_DIOS(...)
     #define SYSCALL( name, schedule, ret, arg ) \
             ret name arg { \
                 UnVoid< ret > rv; \
@@ -177,7 +177,7 @@ namespace fs {
 
     #include <sys/syscall.def>
 
-    #undef SYSCALLSEP
+    #undef SYSCALL_DIOS
     #undef SYSCALL
 
     #include <dios/macro/tags_to_class.cleanup>
