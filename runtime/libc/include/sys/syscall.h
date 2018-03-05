@@ -31,7 +31,6 @@ typedef struct
 #ifndef __dios_kernel__
 _PDCLIB_EXTERN_C
 
-void __dios_trap( int syscode, void* ret, va_list *args ) _PDCLIB_nothrow;
 void __dios_syscall( int syscode, void* ret, ... ) _PDCLIB_nothrow;
 
 #define SYSCALL(...)
