@@ -394,6 +394,9 @@ void Node< Prog, Heap >::source( std::ostream &out, std::function< std::string( 
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::components( YieldDN yield )
 {
+    if ( !valid() )
+        return;
+
     if ( _kind == DNKind::Frame )
         framevars( yield );
 
