@@ -6,6 +6,11 @@ list( APPEND flags -D_BSD_SOURCE )
 list( APPEND flags -D_LITTLE_ENDIAN=1234 )
 list( APPEND flags -D_BYTE_ORDER=1234 )
 
+# C++, also used in the implementation of libc
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
+
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/ ) # dios
 list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/ ) # dios generated
 list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/libc/include )
@@ -13,20 +18,17 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/internals )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
+list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
+
 
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
 mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR}" )
 mkobjs( libm "${flags}" )
 
 list( APPEND flags -std=c++1z )
-list( INSERT flags 0 -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include
-                     -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include
-                     -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
-
 mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
 mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI" )
 
-list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror)
 mkobjs( libdios "${flags};-D__dios_kernel__" )
