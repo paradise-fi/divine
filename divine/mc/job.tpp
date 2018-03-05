@@ -32,8 +32,17 @@ namespace divine::mc
             if ( solver == "z3" )
                 return std::make_shared< Job_< Next, mc::Z3Builder > >( bc, next );
 #endif
-            if ( solver == "smtlib" )
-                return std::make_shared< Job_< Next, mc::SMTLibBuilder > >( bc, next );
+            if ( brick::string::startsWith( solver, "smtlib" ) )
+            {
+                std::vector< std::string > cmd;
+                if ( solver == "smtlib" || solver == "smtlib:z3" )
+                    cmd = { "z3", "-in", "-smt2" };
+                else if ( solver == "smtlib:boolector" )
+                    cmd = { "boolector", "--smt2" };
+                else
+                    cmd = { std::string( solver, 7, std::string::npos ) };
+                return std::make_shared< Job_< Next, mc::SMTLibBuilder > >( bc, next, cmd );
+            }
             UNREACHABLE_F( "Unsupported solver: %s.", solver.c_str() );
         }
         return std::make_shared< Job_< Next, mc::ExplicitBuilder > >( bc, next );
