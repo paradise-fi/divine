@@ -82,13 +82,14 @@ struct Fault: public Next {
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< Fault >( "{Fault}" );
-        __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler< typename Setup::Context > );
+        __vm_ctl_set( _VM_CR_FaultHandler,
+                      reinterpret_cast< void * >( handler< typename Setup::Context > ) );
         load_user_pref( s.proc1->faultConfig, s.opts );
 
         if ( extractOpt( "debug", "faultcfg", s.opts ) )
         {
             trace_config( 1 );
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+            __vm_ctl_flag( 0, _VM_CF_Error );
         }
         _flags = Ready;
         if ( extractOpt( "debug", "faultbt", s.opts ) )
@@ -178,7 +179,7 @@ struct Fault: public Next {
         {
             __dios_trace_f( "FATAL: %s in %s", fault_to_str( what, true ).c_str(),
                             kernel ? "kernel" : "userspace" );
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+            __vm_ctl_flag( 0, _VM_CF_Error );
             backtrace( frame );
 
             if ( !( _flags & Ready ) || !( fault_cfg & FaultFlag::Continue ) )
@@ -198,10 +199,9 @@ struct Fault: public Next {
         fault.fault_handler( kernel, frame, _what );
 
         // Continue if we get the control back
-        __vm_control( _VM_CA_Set, _VM_CR_Frame, cont_frame,
-                      _VM_CA_Set, _VM_CR_PC, cont_pc,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, mask ? _VM_CF_Mask : 0,
-                      _VM_CA_DestroyFrame );
+        cont_frame->pc = cont_pc;
+        __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
+        __vm_ctl_set( _VM_CR_Frame, cont_frame );
         __builtin_unreachable();
     }
 
