@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <sys/interrupt.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wuninitialized"
@@ -29,18 +30,17 @@ extern "C"
     void __VERIFIER_assume( int expression )
     {
         if ( !expression )
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Interrupted | _VM_CF_Cancel | _VM_CF_Mask,
-                          _VM_CF_Interrupted | _VM_CF_Cancel );
+            __vm_cancel();
     }
 
     void __VERIFIER_atomic_begin()
     {
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
+        __dios_mask( 1 );
     }
 
     void __VERIFIER_atomic_end()
     {
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
+        __dios_mask( 0 );
     }
 
     void __VERIFIER_assert( int cond )
