@@ -4,6 +4,8 @@
 #include <sys/divm.h>
 #include <_PDCLIB_aux.h>
 
+static const uint64_t _DiOS_CF_Fault = _VM_CFB_OS << 2;
+
 enum _DiOS_Fault
 {
     _DiOS_F_Threading = _VM_F_Last,
@@ -27,6 +29,7 @@ enum _DiOS_FaultConfig
     _DiOS_FC_ELocked = -1,
     _DiOS_FC_Ignore = 0,
     _DiOS_FC_Report,
+    _DiOS_FC_Detect,
     _DiOS_FC_Abort,
     _DiOS_FC_NoFail,
     _DiOS_FC_SimFail,
@@ -76,20 +79,22 @@ namespace __dios {
 struct DetectFault
 {
     DetectFault( int fault ) _PDCLIB_nothrow :
-        _fault( fault ), _orig( __dios_configure_fault( fault, _DiOS_FC_Report ) )
+        _fault( fault ), _orig( __dios_configure_fault( fault, _DiOS_FC_Detect ) )
     { }
 
 #if __cplusplus >= 201103L
     DetectFault( const DetectFault & ) = delete;
 #endif
 
-    ~DetectFault() _PDCLIB_nothrow {
+    ~DetectFault() _PDCLIB_nothrow
+    {
         __dios_configure_fault( _fault, _orig );
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, uintptr_t( 0 ) );
+        __vm_ctl_flag( _DiOS_CF_Fault, 0 );
     }
 
-    static bool triggered() {
-        return uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Error;
+    static bool triggered()
+    {
+        return uintptr_t( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Fault;
     }
 
   private:
