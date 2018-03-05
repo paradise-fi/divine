@@ -52,14 +52,16 @@ extern "C" {
     __attribute__((noinline,weak)) void __lart_globals_initialize() {}
 }
 
-void __dios_run_ctors() {
+void __dios_run_ctors()
+{
     runCtorsDtors( "llvm.global_ctors",
-            []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
+                   []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
 }
 
-void __dios_run_dtors() {
+void __dios_run_dtors()
+{
     runCtorsDtors( "llvm.global_dtors",
-            []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
+                   []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
 }
 
 __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp )
@@ -96,14 +98,17 @@ __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char *
     return res;
 }
 
-void _start( int l, int argc, char **argv, char **envp ) {
+void _start( int l, int argc, char **argv, char **envp )
+{
     int res = __execute_main( l, argc, argv, envp );
     exit( res );
 }
 
-void _start_synchronous( int l, int argc, char **argv, char **envp ) {
+void _start_synchronous( int l, int argc, char **argv, char **envp )
+{
     int res = __execute_main( l, argc, argv, envp );
-    if ( res ) {
+    if ( res )
+    {
         __dios_trace_f( "Non-zero stup code: %d", res );
         __dios_fault( _DiOS_F_ExitFault, "setup ended with non-zero value" );
     }
