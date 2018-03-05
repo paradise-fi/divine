@@ -21,6 +21,7 @@
 #define __SYS_TASK_H__
 
 #include <sys/cdefs.h>
+#include <sys/divm.h>
 
 struct __dios_tls
 {
@@ -61,16 +62,26 @@ static inline int *__dios_errno() __nothrow
  */
 __dios_task __dios_start_task( __dios_task_routine r, void *arg, int tls_size ) __nothrow;
 
-void __dios_kill( __dios_task t ) __nothrow;
+void __dios_kill_task( __dios_task t ) __nothrow;
+
+static inline void __dios_kill( __dios_task t ) __nothrow
+{
+    __dios_kill_task( t );
+}
 
 static inline void __dios_suicide() __nothrow
 {
     __dios_kill( __dios_this_task() );
 }
 
-__dios_task *__dios_get_process_tasks() __nothrow;
+__dios_task *__dios_get_process_tasks( __dios_task id ) __nothrow;
 void __dios_exit_process( int code ) __nothrow;
 void __dios_yield() __nothrow;
+
+static inline __dios_task *__dios_this_process_tasks() __nothrow
+{
+    return __dios_get_process_tasks( __dios_this_task() );
+}
 
 __END_DECLS
 
