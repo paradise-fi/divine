@@ -299,7 +299,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
            brick::string::fmt( _offset ) );
 
     if ( _di_type )
-        yield( "type", di_name() );
+        yield( "type", dbgInfo.makePretty( di_name() ) );
 
     if ( !valid() )
         return;
