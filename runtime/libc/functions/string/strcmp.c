@@ -5,10 +5,11 @@
 */
 
 #include <string.h>
+#include <sys/cdefs.h>
 
 #ifndef REGTEST
 
-int strcmp( const char * s1, const char * s2 )
+__skipcfl int strcmp( const char * s1, const char * s2 )
 {
     while ( ( *s1 ) && ( *s1 == *s2 ) )
     {
