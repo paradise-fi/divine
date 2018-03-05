@@ -220,7 +220,7 @@ struct Context
         return bitvec( sizeof( Int ) * 8, data::SmallVector< uint64_t >{ uint64_t( i ) } );
     }
 
-    void print( std::ostream &o, Node n )
+    void print( std::ostream &o, Node n, bool exq = true )
     {
         auto bind = [&]( std::string type, auto &vec, auto next )
         {
@@ -231,13 +231,33 @@ struct Context
                 o << ")";
         };
 
-        bind( "exists", vars, [&]{ bind( "let", defs, [&]{ o << n; } ); } );
+        auto let = [&]{ bind( "let", defs, [&]{ o << n; } ); };
+        if ( exq )
+            bind( "exists", vars, let );
+        else
+            let();
     }
 
-    std::string str( Node n )
+    void query( std::ostream &o, Node n )
+    {
+        for ( auto v : vars )
+            o << "(declare-fun " << v.first << " () " << v.second << ")" << std::endl;
+        o << "(assert ";
+        print( o, n, false );
+        o << ")" << std::endl << "(check-sat)";
+    }
+
+    std::string print( Node n, bool exq = true )
     {
         std::stringstream s;
-        print( s, n );
+        print( s, n, exq );
+        return s.str();
+    }
+
+    std::string query( Node n )
+    {
+        std::stringstream s;
+        query( s, n );
         return s.str();
     }
 
