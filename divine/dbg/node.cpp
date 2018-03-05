@@ -319,7 +319,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
         brick::smt::Context smt_ctx;
         smt::extract::SMTLib2 smt_value( _ctx.heap(), smt_ctx );
         auto n = smt_value.convert( _address );
-        yield( "formula", smt_ctx.str( n ) );
+        yield( "formula", smt_ctx.print( n ) );
     }
 
     if ( _di_var )
