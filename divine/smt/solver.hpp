@@ -46,6 +46,7 @@ struct None
 template< typename Core >
 struct Simple : Core
 {
+    using Core::Core;
     bool equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
     bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
 };
@@ -53,6 +54,7 @@ struct Simple : Core
 template< typename Core >
 struct Incremental : Simple< Core >
 {
+    using Simple< Core >::Simple;
     bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
     std::vector< vm::HeapPointer > _inc;
 };
@@ -60,7 +62,7 @@ struct Incremental : Simple< Core >
 struct SMTLib
 {
     using Options = std::vector< std::string >;
-    SMTLib() : _opts{ "z3", "-in", "-smt2" } {}
+    SMTLib( const Options &opts ) : _opts{ opts } {}
 
     void reset() { _asserts.clear(); _ctx.clear(); }
     void add( brick::smt::Node p ) { _asserts.push_back( p ); }
