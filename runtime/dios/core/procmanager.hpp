@@ -228,7 +228,7 @@ struct ProcessManager : public Next
                     return -1;
             }
             else
-                *__dios_errno() = EAGAIN2;
+                __vm_cancel();
         }
         else
         {
