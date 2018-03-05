@@ -153,11 +153,6 @@ validate:
 	$(OBJ)semidbg/divine/test-divine
 	$(MAKE) semidbg-functional TAGS=min
 
-${FLAVOURS:%=%-ext}:
-	$(MAKE) ${@:%-ext=%} ${@:%-ext=%}-runner
-	cd $(OBJ)${@:%-ext=%}/test && \
-	   $(SETENV) SRCDIR=$(PWD) bash $(PWD)/test/lib/testsuite --testdir $(PWD)/test --only ext-
-
 toolchain-install: toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
 
