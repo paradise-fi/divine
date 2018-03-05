@@ -4,24 +4,35 @@
 #define MEM const char *
 #endif
 
-SYSCALLSEP( get_process_tasks, CONTINUE,   __dios_task*, ( __dios_task _1 ) )
-SYSCALLSEP( start_task,        CONTINUE,   __dios_task,  ( __dios_task_routine _1, void *_2, int _3 ) )
-SYSCALLSEP( get_fault_config,  CONTINUE,   int, ( int _1 ) )
-SYSCALLSEP( exit_process,      RESCHEDULE, void, ( int _1 ) )
-SYSCALLSEP( configure_fault,   CONTINUE,   int, ( int _1, int _2 ) )
-SYSCALLSEP( register_monitor,  CONTINUE,   void, ( __dios::Monitor *_1 ) )
-SYSCALLSEP( die,               RESCHEDULE, void, () )
-SYSCALLSEP( kill_task,         RESCHEDULE, void, ( __dios_task _1 ) )
-SYSCALLSEP( kill_process,      RESCHEDULE, void, ( int _1 ) )
-SYSCALLSEP( yield,             RESCHEDULE, void, ( ) )
-SYSCALLSEP( fault_handler,     CONTINUE,   void, ( int _1, _VM_Frame * _2, int _3 ) )
-SYSCALLSEP( pipe,              CONTINUE,   int, ( OUT(int*) _1 ) )
-SYSCALLSEP( open,              CONTINUE,   int, ( MEM _1, int _2, mode_t _3 ) )
-SYSCALLSEP( fcntl,             CONTINUE,   int,     ( int _1, int _2, va_list *_3 ) )
-SYSCALLSEP( sysfork,           CONTINUE,   pid_t,   () )
+#if defined(SYSCALL) && !defined(SYSCALL_DIOS)
+#define SYSCALL_DIOS(...) SYSCALL(__VA_ARGS__)
+#define SYSCALL_DIOS_UNDEF
+#endif
 
-/* TODO: use sysctl for this */
-SYSCALLSEP( hardware_concurrency, CONTINUE, int, () )
+#ifndef VOID
+#define VOID void
+#define VOID_UNDEF
+#endif
+
+SYSCALL_DIOS( get_process_tasks, CONTINUE,   __dios_task*, ( __dios_task _1 ) )
+SYSCALL_DIOS( start_task,        RESCHEDULE, __dios_task,  ( __dios_task_routine _1, void *_2, int _3 ) )
+SYSCALL_DIOS( get_fault_config,  CONTINUE,   int, ( int _1 ) )
+SYSCALL_DIOS( exit_process,      RESCHEDULE, void, ( int _1 ) )
+SYSCALL_DIOS( configure_fault,   CONTINUE,   int, ( int _1, int _2 ) )
+SYSCALL_DIOS( die,               RESCHEDULE, void, () )
+SYSCALL_DIOS( kill_task,         RESCHEDULE, void, ( __dios_task _1 ) )
+SYSCALL_DIOS( kill_process,      RESCHEDULE, void, ( int _1 ) )
+SYSCALL_DIOS( yield,             RESCHEDULE, void, ( ) )
+SYSCALL_DIOS( fault_handler,     CONTINUE,   void, ( int _1, struct _VM_Frame * _2, int _3 ) )
+SYSCALL_DIOS( pipe,              CONTINUE,   int, ( OUT(int*) _1 ) )
+SYSCALL_DIOS( open,              CONTINUE,   int, ( MEM _1, int _2, mode_t _3 ) )
+SYSCALL_DIOS( fcntl,             CONTINUE,   int,     ( int _1, int _2, va_list *_3 ) )
+SYSCALL_DIOS( sysfork,           CONTINUE,   void, ( pid_t *_1 ) )
+SYSCALL_DIOS( hardware_concurrency, CONTINUE, int, () ) /* TODO: use sysctl for this */
+
+#ifdef __cplusplus
+SYSCALL_DIOS( register_monitor,  CONTINUE,   void, ( __dios::Monitor *_1 ) )
+#endif
 
 SYSCALL( rename,      CONTINUE, int,     ( MEM _1, MEM _2 ) )
 SYSCALL( lseek,       CONTINUE, off_t,   ( int _1, off_t _2, int _3 ) )
@@ -29,13 +40,13 @@ SYSCALL( accept4,     CONTINUE, int,     ( int _1, STRUCT(struct sockaddr *) _2,
                                            OUT(socklen_t *) _3, int _4 ) )
 SYSCALL( linkat,      CONTINUE, int,     ( int _1, MEM _2, int _3, MEM _4, int _5 ) )
 SYSCALL( mkdir,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
-SYSCALL( sync,        CONTINUE, void,    () )
+SYSCALL( sync,        CONTINUE, VOID,    () )
 
 SYSCALL( chmod,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
 SYSCALL( renameat,    CONTINUE, int,     ( int _1, MEM _2, int _3, MEM _4 ) )
 SYSCALL( mknod,       CONTINUE, int,     ( MEM _1, mode_t _2, dev_t _3 ) )
 SYSCALL( symlinkat,   CONTINUE, int,     ( MEM _1, int _2, MEM _3 ) )
-SYSCALL( kill,      RESCHEDULE, int,     ( pid_t _1, int _2 ) )
+SYSCALL( kill,      TRAMPOLINE, int,     ( pid_t _1, int _2 ) )
 SYSCALL( connect,     CONTINUE, int,     ( int _1, COUNT(const struct sockaddr *) _2, socklen_t _3 ) )
 SYSCALL( getsockname, CONTINUE, int,     ( int _1, STRUCT(struct sockaddr *) _2, OUT(socklen_t *) _3 ) )
 SYSCALL( close,       CONTINUE, int,     ( int _1 ) )
@@ -64,7 +75,7 @@ SYSCALL( stat,        CONTINUE, int,     ( MEM _1, STRUCT(struct stat *) _2 ) )
 SYSCALL( truncate,    CONTINUE, int,     ( MEM _1, off_t _2 ) )
 SYSCALL( dup2,        CONTINUE, int,     ( int _1, int _2 ) )
 SYSCALL( read,        CONTINUE, ssize_t, ( int _1, COUNT(void *) _2, size_t _3 ) )
-SYSCALL( openat,      CONTINUE, int,     ( int _1, MEM _2, int, mode_t _3 ) )
+SYSCALL( openat,      CONTINUE, int,     ( int _1, MEM _2, int _3, mode_t _4 ) )
 SYSCALL( sendto,      CONTINUE, ssize_t, ( int _1, COUNT(const void *) _2, size_t _3, int _4,
                                            COUNT(const struct sockaddr *) _5, socklen_t _6 ) )
 SYSCALL( symlink,     CONTINUE, int,     ( MEM _1, MEM _2 ) )
@@ -106,3 +117,13 @@ SYSCALL( statfs,      CONTINUE, int,     ( MEM _1, STRUCT(struct statfs *) _2 ) 
 #endif
 
 #undef MEM
+
+#ifdef SYSCALL_DIOS_UNDEF
+#undef SYSCALL_DIOS_UNDEF
+#undef SYSCALL_DIOS
+#endif
+
+#ifdef VOID_UNDEF
+#undef VOID_UNDEF
+#undef VOID
+#endif
