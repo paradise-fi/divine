@@ -36,9 +36,10 @@ struct CleanupFrame : _VM_Frame {
     int reason;
 };
 
-struct TrampolineFrame : _VM_Frame {
-    _VM_Frame * interrupted;
-    void ( *handler )( int );
+struct TrampolineFrame : _VM_Frame
+{
+    void *arg1, *arg2;
+    int rv;
 };
 
 template < typename T >
@@ -422,6 +423,57 @@ struct Scheduler : public Next
         return ret;
     }
 
+    template< typename F >
+    _VM_Frame *mkframe( F f )
+    {
+        auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( f ) );
+        auto frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
+        frame->pc = reinterpret_cast< _VM_CodePointer >( f );
+        return frame;
+    }
+
+    _VM_Frame *sysenter()
+    {
+        _VM_Frame *f = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) );
+        while ( !__md_get_pc_meta( f->pc )->is_trap )
+            f = f->parent;
+        return f;
+    }
+
+    int trampoline_return( int rv )
+    {
+        auto ltf = static_cast< TrampolineFrame * >( mkframe( __dios_simple_trampoline ) );
+        ltf->rv = rv;
+        ltf->parent = sysenter()->parent;
+        sysenter()->parent = ltf;
+        return rv;
+    }
+
+    void trampoline_to( Task *task,
+                        int (*trampoline_ret)( void *, void *, int ),
+                        int (*trampoline_noret)( void *, void *, int ),
+                        int rv, void *arg1, void *arg2 )
+    {
+        if ( task->_tls == __dios_this_task() )
+        {
+            auto tf = static_cast< TrampolineFrame * >( mkframe( trampoline_ret ) );
+            tf->parent = sysenter()->parent;
+            tf->rv = rv;
+            tf->arg1 = arg1;
+            tf->arg2 = arg2;
+            sysenter()->parent = tf;
+        }
+        else
+        {
+            auto tf = static_cast< TrampolineFrame * >( mkframe( trampoline_noret ) );
+            tf->arg1 = arg1;
+            tf->arg2 = arg2;
+            tf->parent = task->_frame;
+            task->_frame = tf;
+            trampoline_return( rv );
+        }
+    }
+
     int kill( pid_t pid, int sig )
     {
         return _kill( pid, sig, []( auto ){} );
@@ -443,14 +495,14 @@ struct Scheduler : public Next
         if ( !found )
         {
             *__dios_errno() = ESRCH;
-            return -1;
+            return trampoline_return( -1 );
         }
         if ( sighandlers )
             handler = sighandlers[sig];
         else
             handler = defhandlers[sig];
         if ( handler.f == sig_ign )
-            return 0;
+            return trampoline_return( 0 );
         if ( handler.f == sig_die )
         {
             func( task->_proc );
@@ -460,15 +512,13 @@ struct Scheduler : public Next
             __dios_fault( _VM_F_Control, "Uncaught signal." );
         else
         {
-            auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline ) );
-            auto _frame = static_cast< __dios::TrampolineFrame * >( __vm_obj_make( fun->frame_size ) );
-            _frame->pc = reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline );
-            _frame->interrupted = task->_frame;
-            task->_frame = _frame;
-            _frame->parent = nullptr;
-            _frame->handler = handler.f;
+            trampoline_to( task, __dios_signal_trampoline_ret, __dios_signal_trampoline_noret, 0,
+                           reinterpret_cast< void * >( handler.f ),
+                           reinterpret_cast< void * >( sig ) );
+            return 0;
         }
-        return 0;
+
+        return trampoline_return( 0 );
     }
 
     void die() noexcept { killProcess( 0 ); }
