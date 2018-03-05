@@ -146,7 +146,6 @@
 #define ENOTSUP     134 /* Operation not supported (POSIX.1) */
 #define EOPNOTSUPP  135 /* Operation not supported on socket (POSIX.1) */
 
-#define EAGAIN2     221 /* like EAGAIN but restarts automatically */
-#define ELAST       EAGAIN2
+#define ELAST       EOPNOTSUPP
 
 #endif
