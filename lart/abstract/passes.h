@@ -238,8 +238,9 @@ bool liftingPointer( llvm::Module &m ) {
             } );
 }
 
-bool isVmInterupt( llvm::Function * fn ) {
-    return fn->hasName() && fn->getName() == "__vmutil_interrupt";
+bool isVmInterupt( llvm::Function * fn )
+{
+    return fn->hasName() && fn->getName() == "__dios_interrupt";
 }
 
 } //empty namespace

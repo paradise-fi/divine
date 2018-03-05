@@ -34,7 +34,7 @@ struct CallInterupt {
         auto fty = llvm::FunctionType::get(
             llvm::Type::getVoidTy( m->getContext() ), false );
         auto vmInterrupt = llvm::cast< llvm::Function >(
-            m->getOrInsertFunction( "__vmutil_interrupt", fty ) );
+            m->getOrInsertFunction( "__dios_interrupt", fty ) );
         ASSERT( vmInterrupt );
         vmInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
         return vmInterrupt;
