@@ -260,12 +260,14 @@ struct Builder
         int64_t instructions = 0;
         std::shared_ptr< std::atomic< int64_t > > total_instructions;
 
-        Data( BC bc )
-            : Data( bc, Context( bc->program() ), HT( Hasher(), 1024 ) )
+        template< typename... Args >
+        Data( BC bc, Args... solver_opts )
+            : Data( bc, Context( bc->program() ), HT( Hasher(), 1024 ), solver_opts... )
         {}
 
-        Data( BC bc, const Context &ctx, HT states )
-            : bc( bc ), ctx( ctx ), states( states ),
+        template< typename... Args >
+        Data( BC bc, const Context &ctx, HT states, Args... solver_opts )
+            : bc( bc ), ctx( ctx ), states( states ), solver( solver_opts... ),
               total_instructions( new std::atomic< int64_t >( 0 ) )
         {}
 

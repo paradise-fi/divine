@@ -175,8 +175,9 @@ struct Liveness : Job
 
     bool _error_found;
 
-    Liveness( builder::BC bc, Next next )
-        : _ex( bc ),
+    template< typename... Args >
+    Liveness( builder::BC bc, Next next, Args... builder_opts )
+        : _ex( bc, builder_opts... ),
           _ext( _ex.pool() ),
           _next( next ),
           _error_found( false )

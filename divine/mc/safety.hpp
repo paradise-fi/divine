@@ -67,8 +67,9 @@ struct Safety : Job
                 [&]( auto st ) { return _next.state( st ); } ) );
     }
 
-    Safety( std::shared_ptr< BitCode > bc, Next next )
-        : _ex( bc ),
+    template< typename... Args >
+    Safety( std::shared_ptr< BitCode > bc, Next next, Args... builder_opts )
+        : _ex( bc, builder_opts... ),
           _ext( _ex.pool() ),
           _next( next ),
           _error_found( false )
