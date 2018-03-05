@@ -22,12 +22,9 @@ Result SMTLib::solve()
     auto q = b.constant( true );
 
     for ( auto clause : _asserts )
-        builder::mk_bin( b, sym::Op::And, 1, q, clause );
+        q = builder::mk_bin( b, sym::Op::And, 1, q, clause );
 
-    std::stringstream str;
-    str << "(assert " << _ctx.str( q ) << ")" << std::endl << "(check-sat)";
-
-    auto r = brick::proc::spawnAndWait( proc::StdinString( str.str() ) | proc::CaptureStdout |
+    auto r = brick::proc::spawnAndWait( proc::StdinString( _ctx.query( q ) ) | proc::CaptureStdout |
                                         proc::CaptureStderr, _opts );
 
     std::string_view result = r.out();
@@ -40,7 +37,7 @@ Result SMTLib::solve()
 
     std::cerr << "E: The SMT solver produced an error: " << r.out() << std::endl
               << "E: The input formula was: " << std::endl
-              << str.str() << std::endl;
+              << _ctx.query( q ) << std::endl;
     UNREACHABLE( "Invalid SMT reply" );
 }
 
