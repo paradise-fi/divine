@@ -554,13 +554,10 @@ struct Scheduler : public Next
 
         if ( t && t->_frame )
         {
-            scheduler.run( *t );
             scheduler.runMonitors();
-
-            if ( !t->_frame )
-                check_final( scheduler );
-            __vm_suspend();
+            scheduler.run( *t ); /* does not return */
         }
+
         __vm_cancel();
     }
 
