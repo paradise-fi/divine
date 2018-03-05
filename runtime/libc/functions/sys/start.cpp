@@ -66,7 +66,6 @@ void __dios_run_dtors()
 
 __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp )
 {
-    __vm_ctl_flag( 0, _VM_CF_Mask );
     __lart_globals_initialize();
     __pthread_initialize(); // must run before constructors, constructors can
                             // use pthreads (such as pthread_once or thread
@@ -76,22 +75,18 @@ __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char *
     switch (l)
     {
         case 0:
-            __vm_ctl_flag( _VM_CF_Mask, 0 );
             res = main();
             break;
         case 2:
-            __vm_ctl_flag( _VM_CF_Mask, 0 );
             res = main( argc, argv );
             break;
         case 3:
-            __vm_ctl_flag( _VM_CF_Mask, 0 );
             res = main( argc, argv, envp );
             break;
         default:
             __dios_assert_v( false, "Unexpected prototype of main" );
             res = 256;
     }
-    __vm_ctl_flag( 0, _VM_CF_Mask );
 
     freeMainArgs( argv );
     freeMainArgs( envp );
