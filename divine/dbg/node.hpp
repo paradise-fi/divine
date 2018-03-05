@@ -201,4 +201,7 @@ struct Node
     void dot( std::ostream &o );
 };
 
+template< typename Program, typename Heap >
+void diff( std::ostream &out, Node< Program, Heap > a, Node< Program, Heap > b );
+
 }
