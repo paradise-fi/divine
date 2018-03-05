@@ -11,10 +11,8 @@
 
 #define DIOS_DBG( ... ) __dios_trace_f( __VA_ARGS__ )
 
-namespace __dios {
-
-// DiOS register constants
-static const uint64_t _DiOS_CF_Reschedule = 0b000001 << _VM_CFB_OS;
+namespace __dios
+{
 
 template < typename T >
 void __attribute__((__noinline__)) traceAlias( const char *name, T *type = nullptr ) {
