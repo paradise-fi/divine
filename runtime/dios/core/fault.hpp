@@ -29,7 +29,8 @@ enum FaultFlag
     Continue      = 0x02,
     UserSpec      = 0x04,
     AllowOverride = 0x08,
-    Artificial    = 0x10
+    Artificial    = 0x10,
+    Detect        = 0x20
 };
 
 template < typename Next >
@@ -168,6 +169,10 @@ struct Fault: public Next {
         auto *cfg = getCurrentConfig();
         // If no task exists, trigger the fault
         uint8_t fault_cfg = cfg ? cfg[ what ] : FaultFlag::Enabled;
+
+        if ( fault_cfg & FaultFlag::Detect )
+            __vm_ctl_flag( 0, _DiOS_CF_Fault );
+
         if ( !( _flags & Ready ) || fault_cfg & FaultFlag::Enabled )
         {
             __dios_trace_f( "FATAL: %s in %s", fault_to_str( what, true ).c_str(),
@@ -328,6 +333,8 @@ struct Fault: public Next {
                     return _DiOS_FC_Abort;
                 case FaultFlag::Enabled | FaultFlag::Continue:
                     return _DiOS_FC_Report;
+                case FaultFlag::Detect:
+                    return _DiOS_FC_Detect;
                 default:
                     __builtin_unreachable();
             }
@@ -356,6 +363,9 @@ struct Fault: public Next {
             switch( cfg ) {
                 case _DiOS_FC_Ignore:
                     fc = FaultFlag::AllowOverride;
+                    break;
+                case _DiOS_FC_Detect:
+                    fc = FaultFlag::AllowOverride | FaultFlag::Detect;
                     break;
                 case _DiOS_FC_Report:
                     fc = FaultFlag::AllowOverride | FaultFlag::Enabled | FaultFlag::Continue;
