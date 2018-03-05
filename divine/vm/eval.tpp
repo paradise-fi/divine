@@ -754,7 +754,8 @@ void Eval< Ctx >::implement_call( bool invoke )
         return;
     }
 
-    if ( argcount < function.argcount ) {
+    if ( argcount < function.argcount )
+    {
         fault( _VM_F_Control ) << "too few arguments given to a call: "
                                 << function.argcount << " expected but "
                                 << argcount << " given";
@@ -865,7 +866,8 @@ void Eval< Ctx >::implement_ctl_get()
         case _VM_CR_Scheduler:
         case _VM_CR_FaultHandler:
         case _VM_CR_ObjIdShuffle:
-            if ( !assert_flag( _VM_CF_KernelMode, "register only readable in kernel mode" ) )
+            if ( !assert_flag( _VM_CF_KernelMode, "register " + brick::string::fmt( reg ) +
+                               " only readable in kernel mode" ) )
                 return;
             else break;
         default: break;
@@ -899,7 +901,7 @@ void Eval< Ctx >::implement_ctl_flag()
     }
 
     if ( change & _VM_CF_Error )
-        if ( !assert_flag( _VM_CF_KernelMode, "error flag can be only changen in kernel mode" ) )
+        if ( !assert_flag( _VM_CF_KernelMode, "the error flag can be only changed in kernel mode" ) )
             return;
 
     result( PtrIntV( context().get( _VM_CR_Flags ).integer ) );
