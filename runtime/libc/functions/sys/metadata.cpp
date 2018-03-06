@@ -25,7 +25,8 @@ const _MD_Function *__md_get_function_meta( const char *name ) {
 }
 */
 
-const _MD_Function *__md_get_pc_meta( _VM_CodePointer pc ) {
+__invisible const _MD_Function *__md_get_pc_meta( _VM_CodePointer pc )
+{
     uintptr_t fun = (uintptr_t( pc ) & _VM_PM_Obj) >> (_VM_PB_Type + _VM_PB_Off);
     __dios_assert_v( int( fun ) < __md_functions_count, "invalid function index" );
     return __md_functions + fun - 1; // there is no function 0
@@ -44,7 +45,7 @@ _MD_RegInfo __md_get_register_info( _VM_Frame *frame, _VM_CodePointer pc, const 
     return { base + imeta.val_offset, imeta.val_width };
 }
 
-const _MD_Global *__md_get_global_meta( const char *name ) noexcept
+__invisible const _MD_Global *__md_get_global_meta( const char *name ) noexcept
 {
     const auto *b = __md_globals, *e = b + __md_globals_count;
     while ( b < e )

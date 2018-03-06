@@ -12,7 +12,8 @@ struct CtorDtorEntry {
 };
 
 template< typename It, typename Comp >
-void sort( It begin, It end, Comp cmp ) {
+__invisible void sort( It begin, It end, Comp cmp )
+{
     for ( It item = begin; item != end; ++item ) {
         for ( It j = item; j != begin; j-- ) {
             if ( cmp( *( j - 1), *j ) )
@@ -26,7 +27,8 @@ void sort( It begin, It end, Comp cmp ) {
 }
 
 template< typename Cmp >
-static void runCtorsDtors( const char *name, Cmp cmp ) {
+__invisible static void runCtorsDtors( const char *name, Cmp cmp )
+{
     auto *meta = __md_get_global_meta( name );
     if ( !meta )
         return;
