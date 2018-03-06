@@ -6,12 +6,16 @@
 __attribute__((__annotate__("divine.link.always")))
 int __dios_mask( int set )
 {
-    int old;
+    uint64_t old;
     if ( set )
-        old = __vm_ctl_flag( 0, _DiOS_CF_Mask ) & _DiOS_CF_Mask;
+        old = __vm_ctl_flag( 0, _DiOS_CF_Mask );
     else
-        old = __vm_ctl_flag( _DiOS_CF_Mask, 0 ) & _DiOS_CF_Mask;
-    return old ? 1 : 0;
+    {
+        old = __vm_ctl_flag( _DiOS_CF_Mask, 0 );
+        if ( old & _DiOS_CF_Deferred )
+            __dios_interrupt();
+    }
+    return ( old & _DiOS_CF_Mask ) ? 1 : 0;
 }
 
 #endif
