@@ -172,7 +172,7 @@ struct ProcessManager : public Next
 
         *child = maxPid + 1;
 
-        task->_frame = this->sysenter();
+        task->_frame = this->sysenter()->parent;
         Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
         Process *newTaskProc = proc( newTask );
         Process *taskProc = proc( task );
