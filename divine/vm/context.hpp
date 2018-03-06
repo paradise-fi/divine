@@ -257,7 +257,7 @@ struct Context
 
     bool track_test( Interrupt::Type t, CodePointer pc )
     {
-        if ( _debug_allowed )
+        // if ( _debug_allowed ) TODO
             _interrupts.push_back( Interrupt{ t, _instruction_counter, pc } );
         return true;
     }
