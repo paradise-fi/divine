@@ -398,6 +398,8 @@ struct Substitute {
             _bypass.emplace( p.second );
         }
 
+        _bypass.emplace( m.getFunction( "__dios_interrupt" ) );
+
         auto *free = m.getFunction( "__vm_obj_free" ) ?: m.getFunction( "free" );
         transformFree( free );
         if ( auto *resize = m.getFunction( "__vm_obj_resize" ) )
