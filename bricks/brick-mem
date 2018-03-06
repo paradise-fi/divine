@@ -759,16 +759,19 @@ struct RefCnt
     SlavePool _pool;
     Pointer _ptr;
 
-    short &count() /* TODO atomic? */
+    uint16_t &count() /* TODO atomic? */
     {
-        _pool.materialise( _ptr, sizeof( short ), false );
-        return *_pool.template machinePointer< short >( _ptr );
+        _pool.materialise( _ptr, sizeof( uint16_t ), false );
+        return *_pool.template machinePointer< uint16_t >( _ptr );
     }
 
     void get()
     {
         if ( _ptr.slab() )
+        {
+            ASSERT_LT( count(), 65535 );
             count() ++;
+        }
     }
 
     void put()
