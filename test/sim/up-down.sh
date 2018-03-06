@@ -12,21 +12,12 @@ sim $SRC <<EOF
 + ^# executing .*fault_handler
 > up
 > up
-> up
-+ ^#.*frame in .*run_scheduler
-> up
-> up
-> up
-> up
 + ^#.*frame in __dios_fault
+> up
 > up
 + ^#.*frame in main
 > show
 + symbol:.*main
-> down
-> down
-> down
-> down
 > down
 > down
 > down
