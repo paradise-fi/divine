@@ -534,12 +534,13 @@ struct Scheduler : public Next
 
     __inline void run( Task &t )
     {
+        auto f = t._frame;
         __vm_ctl_set( _VM_CR_Globals, t._proc->globals );
         __vm_ctl_set( _VM_CR_User1, &t._frame );
         __vm_ctl_set( _VM_CR_User2, t.getId() );
         __vm_ctl_set( _VM_CR_User3, debug );
         __vm_ctl_flag( _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop, 0 );
-        __vm_ctl_set( _VM_CR_Frame, t._frame );
+        __vm_ctl_set( _VM_CR_Frame, f );
     }
 
     template < typename Context >
