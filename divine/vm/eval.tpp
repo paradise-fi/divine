@@ -864,7 +864,6 @@ void Eval< Ctx >::implement_ctl_get()
         case _VM_CR_Constants:
         case _VM_CR_State:
         case _VM_CR_Scheduler:
-        case _VM_CR_FaultHandler:
         case _VM_CR_ObjIdShuffle:
             if ( !assert_flag( _VM_CF_KernelMode, "register " + brick::string::fmt( reg ) +
                                " only readable in kernel mode" ) )
