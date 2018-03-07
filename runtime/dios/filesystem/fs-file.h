@@ -227,11 +227,11 @@ struct VmBuffTraceFile : File
     {
         for ( auto &b : get_debug().trace_buf )
         {
-            auto buf = b.second.substr( 0, b.second.find_last_of( "\n" ) );
-            if ( !buf.empty() )
+            if ( !b.second.empty() )
                 __dios::traceInternal( 0, "%s", b.second.c_str() );
             b.second.clear();
         }
+        __vm_trace( _VM_T_DebugPersist, &get_debug() );
     }
 
     bool write( const char *data, size_t, size_t & length ) override
