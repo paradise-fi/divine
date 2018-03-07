@@ -537,6 +537,7 @@ struct Scheduler : public Next
         __vm_ctl_set( _VM_CR_User1, &t._frame );
         __vm_ctl_set( _VM_CR_User2, t.getId() );
         __vm_ctl_set( _VM_CR_User3, debug );
+        this->runMonitors(); /* hmm. */
         __vm_ctl_flag( _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop, 0 );
         __vm_ctl_set( _VM_CR_Frame, f );
     }
@@ -553,10 +554,7 @@ struct Scheduler : public Next
             __vm_trace( _VM_T_TaskID, t );
 
         if ( t && t->_frame )
-        {
-            scheduler.runMonitors();
             scheduler.run( *t ); /* does not return */
-        }
 
         __vm_cancel();
     }
