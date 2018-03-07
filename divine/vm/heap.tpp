@@ -215,6 +215,50 @@ namespace divine::vm::heap
         return result;
     }
 
+    using ObjSet = std::unordered_set< uint32_t >;
+
+    template< typename Heap >
+    void reachable( Heap &h, HeapPointer root, ObjSet &leakset, ObjSet &visited )
+    {
+        if ( !h.valid( root ) ) return; /* don't care */
+        if ( visited.count( root.object() ) ) return;
+        visited.insert( root.object() );
+        leakset.erase( root.object() );
+        auto root_i = h.ptr2i( root );
+
+        for ( auto pos : h.pointers( root ) )
+        {
+            value::Pointer ptr;
+            root.offset( pos.offset() );
+            h.read( root, ptr, root_i );
+            auto obj = ptr.cooked();
+            obj.offset( 0 );
+            if ( obj.heap() )
+                reachable( h, obj, leakset, visited );
+        }
+    }
+
+    template< typename Heap, typename F, typename... Roots >
+    void leaked( Heap &h, F leak, Roots... roots )
+    {
+        ObjSet leakset, visited;
+        auto check = [&]( auto s )
+        {
+            if ( h.valid( HeapPointer( s.first, 0 ) ) )
+                leakset.insert( s.first );
+        };
+
+        for ( auto s = h.snap_begin(); s != h.snap_end(); ++s )
+            check( *s );
+        for ( auto s : h._l.exceptions )
+            check( s );
+
+        for ( auto r : { roots... } )
+            reachable( h, r, leakset, visited );
+
+        for ( auto o : leakset )
+            leak( HeapPointer( o, 0 ) );
+    }
 }
 
 namespace divine::vm

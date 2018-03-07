@@ -92,6 +92,8 @@ namespace divine::vm::heap
         return clone( f, t, root, visited, ct, over );
     }
 
+    template< typename Heap, typename F, typename... Roots >
+    void leaked( Heap &h, F f, Roots... roots );
 }
 
 namespace divine::vm
