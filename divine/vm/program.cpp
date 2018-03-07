@@ -496,6 +496,7 @@ void Program::computeStatic()
     }
 
     auto instTableObj = _ccontext.heap().make( instTotal * TD.getTypeAllocSize( instTableT ) );
+    metadata_ptr.insert( instTableObj.cooked() );
     int instOffset = 0;
 
     for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )

@@ -17,7 +17,7 @@
  */
 
 #include <divine/vm/context.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/heap.tpp>
 #include <divine/vm/program.hpp>
 
 namespace divine::vm
@@ -59,6 +59,25 @@ void Context< P, H >::leave_debug()
                             vm::heap::CloneType::SkipWeak, true );
         _debug_persist.ptr = nullPointer();
     }
+}
+
+template< typename P, typename H >
+void Context< P, H >::trace( TraceLeakCheck )
+{
+    bool flagged = false;
+    auto leak = [&]( HeapPointer ptr )
+    {
+        if ( GenericPointer( ptr ) == get( _VM_CR_Constants ).pointer )
+            return;
+        if ( program().metadata_ptr.count( ptr ) )
+            return;
+        if ( !flagged )
+            fault( _VM_F_Leak, get( _VM_CR_Frame ).pointer, get( _VM_CR_PC ).pointer );
+        flagged = true;
+        trace( "LEAK: " + brick::string::fmt( ptr ) );
+    };
+
+    heap::leaked( heap(), leak, get( _VM_CR_State ).pointer, get( _VM_CR_Frame ).pointer );
 }
 
 }

@@ -139,6 +139,7 @@ enum _VM_Fault
     _VM_F_Assert,
     _VM_F_Arithmetic, /* division by zero */
     _VM_F_Memory,
+    _VM_F_Leak,
     _VM_F_Control,
     _VM_F_Locking,
     _VM_F_Hypercall,
@@ -156,6 +157,7 @@ enum _VM_Trace
     _VM_T_StateType,   /* ( void *state ) */
     _VM_T_Info,        /* ( const char *yaml ) */
     _VM_T_Assume,      /* ( weak void *path_condition ) */
+    _VM_T_LeakCheck,   /* () */
     _VM_T_TypeAlias,   /* ( void *, const char * ): create a type alias */
     _VM_T_DebugPersist /* ( void **, weak void * ) */
 };

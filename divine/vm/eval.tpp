@@ -632,10 +632,13 @@ void Eval< Ctx >::implement_hypercall()
                     return;
                 case _VM_T_Assume:
                     context().trace( TraceAssume{ ptr2h( operandCk< PointerV >( 1 ) ) } );
-                    break;
+                    return;
+                case _VM_T_LeakCheck:
+                    context().trace( TraceLeakCheck() );
+                    return;
                 case _VM_T_TypeAlias:
                     context().trace( TraceTypeAlias{ pc(), ptr2h( operandCk< PointerV >( 2 ) ) } );
-                    break;
+                    return;
                 case _VM_T_DebugPersist:
                     context().trace( TraceDebugPersist{ operandCk< PointerV >( 1 ).cooked() } );
                     return;

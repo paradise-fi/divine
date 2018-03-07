@@ -79,6 +79,7 @@ namespace divine::vm
     struct TraceStateType { CodePointer pc; };
     struct TraceInfo { GenericPointer text; };
     struct TraceAssume { HeapPointer ptr; };
+    struct TraceLeakCheck {};
     struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
     struct TraceDebugPersist { GenericPointer ptr; };
 
