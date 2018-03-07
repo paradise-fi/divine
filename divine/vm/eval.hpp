@@ -609,13 +609,6 @@ namespace divine::t_vm
 using vm::CodePointer;
 namespace Intrinsic = ::llvm::Intrinsic;
 
-struct TProgram
-{
-    struct Slot { enum Location { Invalid }; using Type = int; };
-    struct Function { int argcount = 0; };
-    struct Instruction {};
-};
-
 template< typename Prog >
 struct TContext : vm::Context< Prog, vm::SmallHeap >
 {
@@ -639,13 +632,6 @@ struct TContext : vm::Context< Prog, vm::SmallHeap >
 struct Eval
 {
     using IntV = vm::value::Int< 32 >;
-
-    TEST(instance)
-    {
-        TProgram p;
-        TContext< TProgram > c( p );
-        vm::Eval< TContext< TProgram > > e( c );
-    }
 
     template< typename... Args >
     int testP( std::shared_ptr< vm::Program > p, Args... args )
