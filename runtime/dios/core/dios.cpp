@@ -99,6 +99,13 @@ void boot( SetupBase sb ) {
     using Process = typename Configuration::Process;
     Setup< Configuration > s = sb;
     s.proc1 = new_object< Process >();
+    context->reschedule = [=]
+    {
+        if ( context->check_final() )
+            context->finalize();
+        else
+            __vm_suspend();
+    };
     context->setup( s );
 }
 

@@ -107,8 +107,6 @@ struct FairScheduler : public Scheduler< Next > {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Accepting, 0 );
             }
 
-            if ( !t->_frame )
-                Scheduler< Next >::check_final( scheduler );
             __vm_suspend();
         }
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );

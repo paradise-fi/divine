@@ -304,7 +304,7 @@ struct Scheduler : public Next
         bool res = tasks.remove( tid );
         __dios_assert_v( res, "Killing non-existing task" );
         if ( tid == __dios_this_task() )
-            __vm_suspend();
+            this->reschedule();
     }
 
     template< typename I >
@@ -326,7 +326,7 @@ struct Scheduler : public Next
             size_t c = tasks.size();
             eraseProcesses( tasks.begin() );
             tasks.erase( tasks.begin(), tasks.end() );
-            __vm_suspend();
+            this->reschedule();
         }
 
         bool resched = false;
@@ -342,7 +342,7 @@ struct Scheduler : public Next
         eraseProcesses( r );
         tasks.erase( r, tasks.end() );
         if ( resched )
-            __vm_suspend();
+            this->reschedule();
     }
 
     int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact )
@@ -525,11 +525,9 @@ struct Scheduler : public Next
 
     void die() noexcept { killProcess( 0 ); }
 
-    template< typename Context >
-    static void check_final( Context &ctx )
+    bool check_final()
     {
-        if ( ctx.tasks.empty() )
-            ctx.finalize();
+        return tasks.empty();
     }
 
     __inline void run( Task &t )
