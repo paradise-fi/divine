@@ -51,6 +51,7 @@ struct ExecContext_ : Super
         this->ref( _VM_CR_Flags ).integer |= _VM_CF_Cancel;
     }
 
+    using Super::trace;
     void trace( std::string s ) { std::cout << s << std::endl; }
     void trace( vm::TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
