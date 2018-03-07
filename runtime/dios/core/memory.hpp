@@ -31,7 +31,15 @@ struct MemoryPool {
     MemoryPool( const MemoryPool& ) = delete;
     MemoryPool& operator=( const MemoryPool& ) = delete;
 
-    void *get() noexcept {
+    ~MemoryPool()
+    {
+        for ( int i = _pos; i < __vm_obj_size( _pool ) / sizeof( void * ); ++i )
+            __vm_obj_free( _pool[ i ] );
+        __vm_obj_free( _pool );
+    }
+
+    void *get() noexcept
+    {
         if ( __vm_obj_size( _pool ) != sizeof( void * ) * _pos )
             return _pool[ _pos++ ];
         return nullptr;
