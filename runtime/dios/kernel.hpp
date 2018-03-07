@@ -43,14 +43,23 @@ struct Debug
     short kernel_indent = 0;
 };
 
+static inline bool debug_mode() noexcept
+{
+    return uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_DebugMode;
+}
+
 static inline bool have_debug() noexcept
 {
-    return __vm_control( _VM_CA_Get, _VM_CR_User3 ) &&
-           ( uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_DebugMode );
+    return debug_mode() && __vm_control( _VM_CA_Get, _VM_CR_User3 );
 }
 
 static inline Debug &get_debug() noexcept
 {
+    if ( debug_mode() && !have_debug() )
+    {
+        __vm_trace( _VM_T_Text, "have_debug() failed in debug mode" );
+        __vm_ctl_set( _VM_CR_Flags, 0 ); /* fault & force abandonment of the debug call */
+    }
     __dios_assert( have_debug() );
     void *dbg = __vm_control( _VM_CA_Get, _VM_CR_User3 );
     return *static_cast< Debug * >( dbg );
