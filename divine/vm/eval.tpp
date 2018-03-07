@@ -38,7 +38,7 @@ typename Eval< Ctx >::FaultStream Eval< Ctx >::fault( Fault f, HeapPointer frame
 {
     PointerV fr( frame );
     PointerV fpc;
-    while ( !fr.cooked().null() && heap().valid( fr.cooked() ) )
+    while ( !context().debug_mode() && !fr.cooked().null() && heap().valid( fr.cooked() ) )
     {
         heap().read_shift( fr, fpc );
         if ( fpc.cooked().object() == context().get( _VM_CR_FaultHandler ).pointer.object() )
@@ -845,7 +845,16 @@ void Eval< Ctx >::implement_ctl_set()
     }
 
     if ( reg == _VM_CR_Flags )
+    {
+        uint64_t want = operandCk< PtrIntV >( 1 ).cooked();
+        uint64_t change = context().get( reg ).integer ^ want;
+        if ( change & _VM_CF_DebugMode )
+        {
+            fault( _VM_F_Access ) << "debug mode cannot be changed";
+            return;
+        }
         context().set( reg, operandCk< PtrIntV >( 1 ).cooked() );
+    }
     else
         context().set( reg, ptr.cooked() );
 
@@ -896,6 +905,12 @@ void Eval< Ctx >::implement_ctl_flag()
     if ( set & _VM_CF_Booting )
     {
         fault( _VM_F_Access ) << "the 'booting' flag cannot be changed";
+        return;
+    }
+
+    if ( change & _VM_CF_DebugMode )
+    {
+        fault( _VM_F_Access ) << "the 'debug' flag cannot be changed";
         return;
     }
 

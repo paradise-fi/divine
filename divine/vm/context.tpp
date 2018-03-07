@@ -32,7 +32,7 @@ bool Context< P, H >::enter_debug()
     if ( debug_allowed() && !debug_mode() )
     {
         -- _instruction_counter;
-        ASSERT( !_debug_depth );
+        ASSERT_EQ( _debug_depth, 0 );
         std::copy( _reg, _reg + _VM_CR_Last, _debug_reg );
         _reg[ _VM_CR_Flags ].integer |= _VM_CF_DebugMode;
         with_snap( [&]( auto &h ) { _debug_snap = h.snapshot(); } );
