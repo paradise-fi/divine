@@ -72,6 +72,7 @@ struct BitCode
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
     void sequential( bool s ) { _sequential = s; }
+    void interrupts( bool s ) { _interrupts = s; }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
     void relaxed( std::string r ) { _relaxed = r; }

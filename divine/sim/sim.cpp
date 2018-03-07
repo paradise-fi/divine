@@ -165,6 +165,7 @@ void Sim::process_options()
     _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
     _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
     _sequential = parsed.getOr( { "sequential" }, _sequential );
+    _synchronous = parsed.getOr( { "synchronous" }, _synchronous );
     _disableStaticReduction = parsed.getOr( { "disable static reduction" }, _disableStaticReduction );
 
     if ( parsed.get< std::string >( { "error found" } ) == "yes" )

@@ -182,6 +182,7 @@ struct CLI : Interface
             .option( "[-C,{commasep}]", &WithBC::_ccOpts, "pass additional options to the compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
             .option( "[--sequential]", &WithBC::_sequential, "disable support for threading"s )
+            .option( "[--synchronous]", &WithBC::_synchronous, "enable synchronous mode"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
                      "disable static (transformation based) state space reductions"s )

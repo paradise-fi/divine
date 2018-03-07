@@ -162,6 +162,9 @@ void WithBC::process_options()
     using bstr = std::vector< uint8_t >;
     int i = 0;
 
+    if ( _synchronous )
+        _systemopts.emplace_back( "config:synchronous" );
+
     for ( auto s : _env )
         _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
     i = 0;
@@ -220,6 +223,8 @@ void WithBC::report_options()
 
     if ( _sequential )
         _log->info( "sequential: 1\n", true );
+    if ( _synchronous )
+        _log->info( "synchronous: 1\n", true );
     if ( _disableStaticReduction )
         _log->info( "disable static reduction: 1\n", true );
     if ( !_relaxed.empty() )
@@ -283,6 +288,7 @@ void WithBC::setup()
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
     _bc->sequential( _sequential );
+    _bc->interrupts( !_synchronous );
     _bc->symbolic( _symbolic );
     _bc->lart( _lartPasses );
     _bc->relaxed( _relaxed );

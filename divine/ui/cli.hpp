@@ -72,7 +72,7 @@ struct WithBC : Command
     size_t _vfsSizeLimit;
     mc::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
-    bool _symbolic = false, _sequential = false;
+    bool _symbolic = false, _sequential = false, _synchronous = false;
     bool _init_done = false;
     SinkPtr _log = nullsink();
     std::string _relaxed;
