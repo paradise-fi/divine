@@ -47,10 +47,12 @@ struct SyncScheduler : public Scheduler< Next >
         __vm_ctl_set( _VM_CR_Frame, sched ); /* jump back into the scheduler */
     }
 
-    __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size ) {
+    __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size )
+    {
         if ( !_setupTask )
             __dios_fault( _VM_F_Control, "Cannot start task outside setup" );
-        auto t = this->newTask( routine, tls_size, _setupTask->_proc );
+        auto t_obj = new_object< Task >( routine, tls_size, _setupTask->_proc );
+        auto t = this->tasks.emplace_back( t_obj ).get();
         this->setupTask( t, arg );
         __vm_obj_shared( t->getId() );
         __vm_obj_shared( arg );
