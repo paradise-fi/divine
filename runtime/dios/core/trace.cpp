@@ -29,12 +29,12 @@ static traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
         indent = tid ? &get_debug().trace_indent[ key ] : &get_debug().kernel_indent;
         auto nice_id_it = tid ? hids.find( key ): hids.end();
         nice_id = nice_id_it == hids.end() ? -2 : nice_id_it->second;
-    }
 
-    if ( indent && shift < 0 && *indent > 0 )
-    {
-        *indent += shift * 2;
-        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+        if ( indent && shift < 0 && *indent > 0 )
+        {
+            *indent += shift * 2;
+            __vm_trace( _VM_T_DebugPersist, &get_debug() );
+        }
     }
 
     if ( *fmt )
@@ -57,7 +57,7 @@ static traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
         __vm_trace( _VM_T_Text, buffer );
     }
 
-    if ( indent && shift > 0 && *indent < 32 )
+    if ( have_debug() && indent && shift > 0 && *indent < 32 )
     {
         *indent += shift * 2;
         __vm_trace( _VM_T_DebugPersist, &get_debug() );
