@@ -66,13 +66,6 @@
 #define	__const		const		/* define reserved names to standard */
 #define	__signed	signed
 #define	__volatile	volatile
-#if defined(__cplusplus) || defined(__PCC__)
-#define	__inline	inline		/* convert to C++ keyword */
-#else
-#if !defined(__GNUC__)
-#define	__inline			/* delete GCC keyword */
-#endif /* !__GNUC__ */
-#endif /* !__cplusplus */
 
 #else	/* !(__STDC__ || __cplusplus) */
 #define	__P(protos)	()		/* traditional C preprocessor */
@@ -81,7 +74,6 @@
 
 #if !defined(__GNUC__)
 #define	__const				/* delete pseudo-ANSI C keywords */
-#define	__inline
 #define	__signed
 #define	__volatile
 #endif	/* !__GNUC__ */
@@ -96,6 +88,7 @@
 #define __nothrow __attribute__((__nothrow__))
 #endif
 
+#define __inline       __attribute__(( __always_inline__ ))
 #define __debugfn      __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
 #define __trapfn       __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
 #define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), __noinline__ ))
