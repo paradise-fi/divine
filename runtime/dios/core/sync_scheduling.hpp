@@ -54,8 +54,6 @@ struct SyncScheduler : public Scheduler< Next >
         auto t_obj = new_object< Task >( routine, tls_size, _setupTask->_proc );
         auto t = this->tasks.emplace_back( t_obj ).get();
         this->setupTask( t, arg );
-        __vm_obj_shared( t->getId() );
-        __vm_obj_shared( arg );
         return t->getId();
     }
 
