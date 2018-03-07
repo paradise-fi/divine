@@ -77,6 +77,7 @@ static inline void __dios_suicide() __nothrow
 __dios_task *__dios_get_process_tasks( __dios_task id ) __nothrow;
 void __dios_exit_process( int code ) __nothrow;
 void __dios_yield() __nothrow;
+void __dios_sync_task( void (*entry)( void ) ) __nothrow;
 
 static inline __dios_task *__dios_this_process_tasks() __nothrow
 {
