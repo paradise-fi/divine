@@ -1,4 +1,5 @@
-# TAGS: min
+# TAGS: min todo
+
 . lib/testcase
 
 tee fairness.cpp <<EOF
