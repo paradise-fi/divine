@@ -7,28 +7,31 @@ tee simple.cpp <<EOF
 
 volatile int glob = 0;
 
-void routine( void * x ){
+void routine1()
+{
     glob = 1;
     __dios_trace_f( "A1: %d", glob );
     __dios_yield();
     __dios_trace_f( "A2: %d", glob );
 }
 
-void routine2( void * x ){
+void routine2()
+{
     glob = 2;
     __dios_trace_f( "B1: %d", glob );
     __dios_yield();
     __dios_trace_f( "B2: %d", glob );
 }
 
-int main() {
-    __dios_start_task( routine, nullptr, 0 );
-    __dios_start_task( routine2, nullptr, 0 );
+int main()
+{
+    __dios_sync_task( routine1 );
+    __dios_sync_task( routine2 );
     __dios_trace_t( "Setup done" );
 }
 EOF
 
-sim -oconfig:synchronous simple.cpp <<EOF
+sim --synchronous simple.cpp <<EOF
 > start
 > stepa
 + Setup done
@@ -37,12 +40,8 @@ sim -oconfig:synchronous simple.cpp <<EOF
 + T: (.*) B1: 2
 > stepa
 + T: (.*) A2: 2
-+ T: (.*) A1: 1
-+ T: (.*) B2: 1
-+ T: (.*) B1: 2
++ T: (.*) B2: 2
 > stepa
-+ T: (.*) A2: 2
 + T: (.*) A1: 1
-+ T: (.*) B2: 1
 + T: (.*) B1: 2
 EOF

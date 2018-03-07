@@ -1,4 +1,4 @@
-/* VERIFY_OPTS: -o config:synchronous */
+/* VERIFY_OPTS: --synchronous */
 /* TAGS: c++ */
 
 #include <dios.h>
@@ -7,7 +7,8 @@
 
 volatile int glob = 0;
 
-void routine( void * x ){
+void routine1()
+{
     glob = 1;
     __dios_trace_f( "A1: %d", glob );
     __dios_yield();
@@ -15,7 +16,8 @@ void routine( void * x ){
     __dios_trace_f( "A2: %d", glob );
 }
 
-void routine2( void * x ){
+void routine2()
+{
     glob = 2;
     __dios_trace_f( "B1: %d", glob );
     __dios_yield();
@@ -24,6 +26,6 @@ void routine2( void * x ){
 }
 
 int main() {
-    __dios_start_task( routine, nullptr, 0 );
-    __dios_start_task( routine2, nullptr, 0 );
+    __dios_sync_task( routine1 );
+    __dios_sync_task( routine2 );
 }
