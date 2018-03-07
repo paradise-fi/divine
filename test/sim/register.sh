@@ -21,7 +21,7 @@ sim file.c <<EOF
 > stepa
 + ^# executing \{Fault\}
 > info registers
-+ ^\s*Flags:.*Mask
++ ^\s*Flags:.*IgnoreCrit
 > info registers
 + ^\s*Flags:.*Error
 > info registers
