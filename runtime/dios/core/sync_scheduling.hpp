@@ -18,9 +18,6 @@ struct SyncScheduler : public Scheduler< Next >
         s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
         s.proc1->pid = 1;
 
-        _yield = false;
-        _die = false;
-
         _setupTask.reset(
             new_object < Task >( s.pool->get(), s.pool->get(), _start_synchronous, 0, s.proc1 ) );
         assert( _setupTask );
@@ -35,15 +32,19 @@ struct SyncScheduler : public Scheduler< Next >
         Next::setup( s );
     }
 
-    Task* getCurrentTask() {
+    Task* getCurrentTask()
+    {
         if ( _setupTask )
             return _setupTask.get();
         auto tid = __dios_this_task();
         return this->tasks.find( tid );
     }
 
-    void yield() {
-        _yield = true;
+    void yield()
+    {
+        void *sched = __vm_ctl_get( _VM_CR_User4 );
+        getCurrentTask()->_frame = this->sysenter();
+        __vm_ctl_set( _VM_CR_Frame, sched ); /* jump back into the scheduler */
     }
 
     __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size ) {
@@ -56,71 +57,43 @@ struct SyncScheduler : public Scheduler< Next >
         return t->getId();
     }
 
-    template < typename Context >
-    __attribute__(( __always_inline__ )) static bool runTask( Context& ctx, Task& t ) noexcept {
-        while ( !ctx._die && t._frame ) {
-            __vm_control( _VM_CA_Set, _VM_CR_User2,
-                reinterpret_cast< int64_t >( t.getId() ) );
-            auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
-            __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
-            ctx.run( t );
-            t._frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
+    __inline void run( Task& t ) noexcept
+    {
+        __vm_ctl_set( _VM_CR_User2, t.getId() );
 
-            if ( ctx._die )
-                return true;
-            if ( !ctx._yield )
-                continue;
-
-            __dios_assert_v( !ctx._setupTask, "Cannot yield in setup" );
-            ctx._yield = false;
-            return false;
-        }
-        return true;
+         // In synchronous mode, interrupts don't happen, but RESCHEDULE simply
+         // calls __dios_interrupt and we need to prevent that.
+        __vm_ctl_flag( _VM_CF_KernelMode, _VM_CF_KeepFrame | _DiOS_CF_Mask );
+        __vm_ctl_set( _VM_CR_Frame, t._frame );
     }
 
     template < typename Context >
-    static void runScheduler() noexcept {
-        void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
-        auto& scheduler = *static_cast< Context * >( ctx );
+    static void runScheduler() noexcept
+    {
+        auto &scheduler = get_state< Context >();
+        __vm_ctl_set( _VM_CR_User4, __dios_this_frame() );
+        __vm_ctl_set( _VM_CR_User3, scheduler.debug );
 
-        __vm_control( _VM_CA_Set, _VM_CR_User1, scheduler.debug );
-
-        if ( scheduler._setupTask ) {
-            runTask( scheduler, *scheduler._setupTask );
+        if ( scheduler._setupTask )
+        {
+            scheduler.run( *scheduler._setupTask );
             scheduler._setupTask.reset( nullptr );
             __vm_suspend();
         }
 
-        for ( int i = 0; !scheduler._die && i < scheduler.tasks.size(); i++ ) {
+        for ( int i = 0; i < scheduler.tasks.size(); i++ )
+        {
             auto& t = scheduler.tasks[ i ];
-            scheduler._yield = false;
-            while ( !scheduler._die ) {
-                bool done = runTask( scheduler, *t );
-                if ( !done || scheduler._die ) {
-                    break;
-                }
-                t->setupFrame();
-            }
+            scheduler.run( *t );
         }
 
         scheduler.runMonitors();
-        if ( scheduler.tasks.empty() ) {
+        if ( scheduler.tasks.empty() )
             scheduler.finalize();
-            if ( !scheduler._die )
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
-        }
-        if ( scheduler._die )
-            scheduler._die = false;
         __vm_suspend();
     }
 
-    void die() noexcept {
-        _die = true;
-        Scheduler< Next >::die();
-    }
-
     std::unique_ptr< Task > _setupTask;
-    bool _yield, _die;
 };
 
 } // namespace __dios
