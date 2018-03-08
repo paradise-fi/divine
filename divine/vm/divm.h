@@ -317,7 +317,7 @@ typedef void (*__vm_sched_t)( void *state );
  */
 void *__vm_control( enum _VM_ControlAction, ... ) NOTHROW NATIVE_VISIBLE;
 
-void     __vm_ctl_set( enum _VM_ControlRegister reg, void *val ) NOTHROW;
+void     __vm_ctl_set( enum _VM_ControlRegister reg, void *val, ... ) NOTHROW;
 void    *__vm_ctl_get( enum _VM_ControlRegister reg ) NOTHROW;
 uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set ) NOTHROW;
 
