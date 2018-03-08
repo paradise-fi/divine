@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015-2018 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <rst/weakmem.h>
 #include <algorithm> // reverse iterator
@@ -12,8 +12,6 @@
 #include <rst/common.h> // weaken
 #include <optional>
 
-#define forceinline __attribute__((always_inline))
-
 #define assume( x ) do { \
         if ( !(x) ) \
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, \
@@ -24,6 +22,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
 
+_WM_INLINE
 static char *baseptr( char *ptr ) {
     uintptr_t base = uintptr_t( ptr ) & ~_VM_PM_Off;
     uintptr_t type = (base & _VM_PM_Type) >> _VM_PB_Off;
@@ -45,10 +44,12 @@ struct InterruptMask {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, restoreFlags, restore );
     }
 
+    _WM_INLINE
     bool bypass() const {
         return restore & (_VM_CF_DebugMode | _LART_CF_RelaxedMemRuntime);
     }
 
+    _WM_INLINE
     bool kernel() const {
         return restore & _VM_CF_KernelMode;
     }
@@ -78,7 +79,10 @@ struct Range {
     Range( It begin, It end ) : _begin( begin ), _end( end ) { }
     Range( const Range & ) = default;
 
+    _WM_INLINE
     iterator begin() const { return _begin; }
+
+    _WM_INLINE
     iterator end() const { return _end; }
 
   private:
@@ -86,12 +90,15 @@ struct Range {
 };
 
 template< typename It >
+_WM_INLINE
 static Range< It > range( It begin, It end ) { return Range< It >( begin, end ); }
 
 template< typename T >
+_WM_INLINE
 static auto reversed( T &x ) { return range( x.rbegin(), x.rend() ); }
 
 template< typename T >
+_WM_INLINE
 static T *alloc( int n ) {
     return static_cast< T * >( __vm_obj_make( n * sizeof( T ) ) );
 }
@@ -101,6 +108,7 @@ ItOut uninitialized_move( ItIn first, ItIn last, ItOut out ) {
     return std::uninitialized_copy( std::make_move_iterator( first ), std::make_move_iterator( last ), out );
 }
 
+_WM_INLINE
 static const char *ordstr( MemoryOrder mo ) {
     if ( subseteq( MemoryOrder::SeqCst, mo ) )
         return "SC";
@@ -117,6 +125,7 @@ static const char *ordstr( MemoryOrder mo ) {
     return "N";
 }
 
+_WM_NOINLINE
 uint64_t load( char *addr, uint32_t bitwidth ) {
     switch ( bitwidth ) {
         case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
@@ -138,7 +147,10 @@ struct BufferLine : brick::types::Ord {
         assert( addr != abstract::weaken( addr ) );
     }
 
+    _WM_INLINE
     bool isFence() const { return !addr; }
+
+    _WM_INLINE
     bool isStore() const { return addr; }
 
     void store() {
@@ -153,18 +165,22 @@ struct BufferLine : brick::types::Ord {
     }
 
     template< typename T >
+    _WM_NOINLINE
     void store() {
         *reinterpret_cast< T * >( addr ) = T( value );
     }
 
+    _WM_INLINE
     bool matches( const char *const from, const char *const to ) const {
         return (from <= addr && addr < to) || (addr <= from && from < addr + bitwidth / 8);
     }
 
+    _WM_INLINE
     bool matches( const char *const mem, const uint32_t size ) const {
         return matches( mem, mem + size );
     }
 
+    _WM_INLINE
     bool matches( BufferLine &o ) {
         return matches( o.addr, o.bitwidth / 8 );
     }
@@ -182,12 +198,14 @@ struct BufferLine : brick::types::Ord {
     int16_t at_seq = 0; // same here
     Status status = Status::Keep;
 
+    _WM_INLINE
     auto as_tuple() const {
         // note: ignore status in comparison, take into account only part
         // relevant to memory behaviour
         return std::tie( addr, value, bitwidth, order, sc_seq, at_seq );
     }
 
+    _WM_INLINE
     void dump() const {
         char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 00 bit; WA SC;000;000]";
         snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %d bit; %c%c%s;%d;%d]",
@@ -207,27 +225,35 @@ struct Buffer : Array< BufferLine >
 {
     Buffer() = default;
 
+    _WM_INLINE
     int storeCount() {
         return std::count_if( begin(), end(), []( BufferLine &l ) { return l.isStore(); } );
     }
 
+    _WM_INLINE
     BufferLine &newest() { return end()[ -1 ]; }
+
+    _WM_INLINE
     BufferLine &oldest() { return *begin(); }
 
+    _WM_INLINE
     void erase( const int i ) {
         erase( begin() + i );
     }
 
+    _WM_INLINE
     void erase( iterator i ) {
         std::move( i + 1, end(), i );
         pop_back();
     }
 
+    _WM_INLINE
     void evict( char *const ptr ) {
         const auto id = baseptr( ptr );
         evict( [id]( BufferLine &l ) { return baseptr( l.addr ) != id; } );
     }
 
+    _WM_INLINE
     void evict( char *from, char *to ) {
         evict( [from, to]( BufferLine &l ) {
                 return !( l.addr >= from && l.addr + l.bitwidth / 8 <= to );
@@ -235,6 +261,7 @@ struct Buffer : Array< BufferLine >
     }
 
     template< typename Filter >
+    _WM_INLINE
     void evict( Filter filter ) {
         int cnt = std::count_if( begin(), end(), filter );
         if ( cnt == 0 )
@@ -253,16 +280,19 @@ struct Buffer : Array< BufferLine >
         _resize( cnt );
     }
 
+    _WM_INLINE
     void shrink( size_t n ) {
         std::destroy( begin() + n, end() );
         _resize( n );
     }
 
-    void cleanOldAndFlushed() __attribute__((__always_inline__, __flatten__)) {
+    _WM_INLINE
+    void cleanOldAndFlushed() {
         while ( size() > 0 && oldest().isFence() )
             erase( 0 );
     }
 
+    _WM_INLINE
     void dump() const {
         for ( auto &e : *this )
             e.dump();
@@ -273,11 +303,13 @@ struct Buffers : ThreadMap< Buffer > {
 
     using Super = ThreadMap< Buffer >;
 
+    _WM_INLINE
     Buffer *getIfExists( __dios_task h ) {
         auto it = find( h );
         return it != end() ? &it->second : nullptr;
     }
 
+    _WM_INLINE
     Buffer &get( __dios_task tid ) {
         Buffer *b = getIfExists( tid );
         if ( !b ) {
@@ -286,16 +318,21 @@ struct Buffers : ThreadMap< Buffer > {
         return *b;
     }
 
+    _WM_INLINE
     Buffer *getIfExists() { return getIfExists( __dios_this_task() ); }
+
+    _WM_INLINE
     Buffer &get() { return get( __dios_this_task() ); }
 
     template< typename T, T v >
     struct Const {
         template< typename... Args >
+        _WM_INLINE
         T operator()( Args &&... ) const { return v; }
     };
 
     template< typename Self, typename Yield, typename Filter >
+    _WM_INLINE
     static void _for_each( Self &self, Yield yield, Filter filt )
     {
         for ( auto &p : self ) {
@@ -306,12 +343,15 @@ struct Buffers : ThreadMap< Buffer > {
     }
 
     template< typename Yield, typename Filter = Const< bool, true > >
+    _WM_INLINE
     void for_each( Yield y, Filter filt = Filter() ) { _for_each( *this, y, filt ); }
 
     template< typename Yield, typename Filter = Const< bool, true > >
+    _WM_INLINE
     void for_each( Yield y, Filter filt = Filter() ) const { _for_each( *this, y, filt ); }
 
     template< typename Filter = Const< bool, true > >
+    _WM_INLINE
     int16_t get_next_sc_seq( Filter filt = Filter() ) const
     {
         int16_t max = 0;
@@ -320,6 +360,7 @@ struct Buffers : ThreadMap< Buffer > {
     }
 
     template< typename Filter = Const< bool, true > >
+    _WM_INLINE
     int16_t get_next_at_seq( char *addr, int bitwidth, Filter filt = Filter() ) const
     {
         int16_t max = 0;
@@ -336,6 +377,7 @@ struct Buffers : ThreadMap< Buffer > {
         return max + 1;
     }
 
+    _WM_INLINE
     void fix_at_seq( BufferLine &entry )
     {
         for_each( [&]( auto &, auto &, auto &l ) {
@@ -345,6 +387,7 @@ struct Buffers : ThreadMap< Buffer > {
             } );
     }
 
+    _WM_INLINE
     void fix_sc_seq( BufferLine &entry )
     {
         for_each( [&]( auto &, auto &, auto &l ) {
@@ -354,6 +397,7 @@ struct Buffers : ThreadMap< Buffer > {
             } );
     }
 
+    _WM_INLINE
     void push( __dios_task tid, Buffer &b, BufferLine &&line )
     {
         if ( subseteq( MemoryOrder::AtomicOp, line.order ) )
@@ -363,6 +407,7 @@ struct Buffers : ThreadMap< Buffer > {
         push_tso( tid, b, std::move( line ) );
     }
 
+    _WM_INLINE
     void push_tso( __dios_task tid, Buffer &b, BufferLine &&line )
     {
         b.push_back( std::move( line ) );
@@ -379,6 +424,7 @@ struct Buffers : ThreadMap< Buffer > {
         }
     }
 
+    _WM_INLINE
     void dump()
     {
         auto *hids = __dios::have_debug() ? &__dios::get_debug().hids : nullptr;
@@ -400,6 +446,7 @@ struct Buffers : ThreadMap< Buffer > {
         }
     }
 
+    _WM_INLINE
     void flush( __dios_task tid, Buffer &buf )
     {
         for ( auto &l : buf ) {
@@ -411,6 +458,7 @@ struct Buffers : ThreadMap< Buffer > {
         buf.clear();
     }
 
+    _WM_INLINE
     void flush( Buffer &buf, Buffer::iterator end ) {
         for ( auto it = buf.begin(); it != end; ++it )
             it->store();
@@ -424,6 +472,7 @@ struct Buffers : ThreadMap< Buffer > {
     }
 
     template< bool skip_local = false >
+    _WM_INLINE
     void tso_load( char *addr, int bitwidth, __dios_task tid )
     {
         const int sz = size();
@@ -501,16 +550,17 @@ union BFH {
 
 /* weak here is to prevent optimizer from eliminating calls to these functions
  * -- they will be replaced by weakmem transformation */
-__attribute__((__weak__)) int __lart_weakmem_buffer_size() { return 2; }
-__attribute__((__weak__)) int __lart_weakmem_min_ordering() { return 0; }
+_WM_NOINLINE_WEAK int __lart_weakmem_buffer_size() { return 2; }
+_WM_NOINLINE_WEAK int __lart_weakmem_min_ordering() { return 0; }
 
+_WM_NOINLINE_WEAK __attribute__((__annotate__("divine.debugfn")))
 void __lart_weakmem_dump() noexcept
-    __attribute__((__annotate__("divine.debugfn"),__noinline__,__weak__))
 {
     __lart_weakmem.storeBuffers.dump();
 }
 
-extern "C" void __lart_weakmem_debug_fence() noexcept __attribute__((__noinline__,__weak__))
+_WM_NOINLINE_WEAK
+extern "C" void __lart_weakmem_debug_fence() noexcept
 {
     // This fence is called only at the beginning of *debugfn* functions,
     // it does not need to keep store buffers consistent, debug functions will
@@ -529,9 +579,10 @@ extern "C" void __lart_weakmem_debug_fence() noexcept __attribute__((__noinline_
 
 using namespace lart::weakmem;
 
+_WM_INLINE
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
                            __lart_weakmem_order _ord, InterruptMask &masked )
-                           noexcept __attribute__((__always_inline__))
+                           noexcept
 {
     if ( !addr )
         __dios_fault( _VM_F_Memory, "weakmem.store: invalid address" );
@@ -582,6 +633,7 @@ union I64b {
     char b[8];
 };
 
+_WM_INLINE
 static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
 {
     I64b val = { .i64 = 0 };
@@ -626,9 +678,10 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
     return mval.i64;
 }
 
+_WM_INLINE
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order,
                               InterruptMask &masked )
-                              noexcept __attribute__((__always_inline__))
+                              noexcept
 {
     if ( !addr )
         __dios_fault( _VM_F_Memory, "weakmem.load: invalid address" );

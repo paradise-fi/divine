@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015-2018 Vladimír Štill <xstill@fi.muni.cz>
 
 #ifndef __LART_WEAKMEM_H_
 #define __LART_WEAKMEM_H_
@@ -17,7 +17,11 @@
 #else
 #define _WM_NOTHROW __attribute__((__nothrow__))
 #endif
-#define _WM_INTERFACE _WM_NOTHROW __attribute__((__noinline__, __flatten__))
+#define _WM_SKIP_MEM_INT __attribute__((__annotate__("lart.interrupt.skipmem"), __annotate__("lart.interrupt.skipcfl")))
+#define _WM_INLINE __attribute__((__always_inline__, __flatten__))
+#define _WM_NOINLINE __attribute__((__noinline__))
+#define _WM_NOINLINE_WEAK __attribute__((__noinline__, __weak__))
+#define _WM_INTERFACE _WM_NOTHROW __attribute__((__noinline__, __flatten__)) _WM_SKIP_MEM_INT
 
 #ifdef __cplusplus
 extern "C" {
