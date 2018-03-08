@@ -918,8 +918,9 @@ struct PooledShadow
             value.pointer( TypeProxy( _ty, l.offset + 4 ) == ShadowType::Pointer );
     }
 
-    template< typename FromSh >
-    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz )
+    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
+    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz,
+               FromHeapReader fhr, ToHeapReader thr )
     {
         if ( sz == 0 )
             return;
@@ -960,6 +961,12 @@ struct PooledShadow
                 else if ( st_to & ShadowType::DataException )
                     _def_exceptions->invalidate( to.object, to.offset + off );
 
+                if ( st_from == ShadowType::PointerException )
+                    _ptr_exceptions->set( to.object, to.offset + off,
+                            from_sh._ptr_exceptions->at( from.object, from.offset + off ) );
+                else if ( st_to == ShadowType::PointerException )
+                    _ptr_exceptions->invalidate( to.object, to.offset + off );
+
                 TypeProxy( _ty_to, to.offset + off ).set( st_from );
             }
         }
@@ -973,25 +980,42 @@ struct PooledShadow
                 off_to = to.offset + off;
             bool def_written = false;
 
+            PointerException current_ptr_from,
+                             current_ptr_to;
+
             if ( off_from % 4 )
-                from_sh._read_def( current_def_from, _def_from, _ty_from, from.object,
-                        bitlevel::downalign( off_from, 4 ) );
+            {
+                int aligned = bitlevel::downalign( off_from, 4 );
+                from_sh._read_def( current_def_from, _def_from, _ty_from, from.object, aligned );
+                current_ptr_from = from_sh._read_ptr( _ty_from, from.object, aligned, fhr );
+            }
             if ( off_to % 4 )
-                _read_def( current_def_to, _def_to, _ty_to, to.object,
-                        bitlevel::downalign( off_to, 4 ) );
+            {
+                int aligned = bitlevel::downalign( off_to, 4 );
+                _read_def( current_def_to, _def_to, _ty_to, to.object, aligned );
+                current_ptr_to = _read_ptr( _ty_to, to.object, aligned, thr );
+            }
 
             while ( off < sz )
             {
                 if ( off_from % 4 == 0 )
+                {
                     from_sh._read_def( current_def_from, _def_from, _ty_from, from.object, off_from );
+                    current_ptr_from = from_sh._read_ptr( _ty_from, from.object, off_from, fhr );
+                }
                 if ( off_to % 4 == 0 )
                 {
                     if ( sz - off < 4 )
+                    {
                         _read_def( current_def_to, _def_to, _ty_to, to.object, off_to );
+                        current_ptr_to = _read_ptr( _ty_to, to.object, off_to, thr );
+                    }
                     def_written = false;
                 }
 
                 current_def_to[ off_to % 4 ] = current_def_from[ off_from % 4 ];
+                current_ptr_to.objid[ off_to % 4 ] = current_ptr_from.objid[ off_from % 4 ];
+                current_ptr_to.index[ off_to % 4 ] = current_ptr_from.index[ off_from % 4 ];
 
                 ++off;
                 ++off_from;
@@ -999,18 +1023,25 @@ struct PooledShadow
 
                 if ( off_to % 4 == 0 )
                 {
-                    _write_def( current_def_to, _def_to, _ty_to, to.object, off_to - 4 );
+                    auto st = _write_ptr( current_ptr_to, to.object, off_to - 4 );
+                    _write_def( current_def_to, _def_to, _ty_to, to.object, off_to - 4, st );
                     def_written = true;
                 }
             }
 
             if ( ! def_written )
-                _write_def( current_def_to, _def_to, _ty_to, to.object,
-                        bitlevel::downalign( off_to, 4 ) );
+            {
+                int aligned = bitlevel::downalign( off_to, 4 );
+                auto st = _write_ptr( current_ptr_to, to.object, aligned );
+                _write_def( current_def_to, _def_to, _ty_to, to.object, aligned, st );
+            }
         }
     }
 
-    void copy( Loc from, Loc to, int sz ) { return copy( *this, from, to, sz ); }
+    template< typename HeapReader >
+    void copy( Loc from, Loc to, int sz, HeapReader hr ) {
+        return copy( *this, from, to, sz, hr, hr );
+    }
 
     void _read_def( uint8_t *dst, uint8_t *_def, uint8_t *_ty, Internal obj, int off )
     {
@@ -1057,11 +1088,12 @@ struct PooledShadow
         }
     }
 
-    void _write_def( uint8_t *src, uint8_t *_def, uint8_t *_ty, Internal obj, int off )
+    void _write_def( uint8_t *src, uint8_t *_def, uint8_t *_ty, Internal obj, int off,
+            ShadowType::T st = ShadowType::Data )
     {
         ASSERT_EQ( off % 4, 0 );
 
-        bool was_exc = TypeProxy( _ty, off ).is_exception();
+        auto old_type = TypeProxy( _ty, off ).get();
 
         uint8_t shadow_word = BitProxy( _def, off ).word();
         uint8_t shadow_mask = BitProxy( _def, off ).mask();
@@ -1076,13 +1108,51 @@ struct PooledShadow
         }
         BitProxy( _def, off ).word() = shadow_word;
 
-        bool is_exc = ! DataException::bitmask_is_trivial( src );
-        TypeProxy( _ty, off ) = is_exc ? ShadowType::DataException : ShadowType::Data;
+        if ( ! DataException::bitmask_is_trivial( src ) )
+            st = ShadowType::T( st | ShadowType::DataException );
+        TypeProxy( _ty, off ) = st;
 
-        if ( is_exc )
+        if ( st & ShadowType::DataException )
             _def_exceptions->set( obj, off, src );
-        else if ( was_exc )
+        else if ( old_type & ShadowType::DataException )
             _def_exceptions->invalidate( obj, off );
+
+        if ( old_type == ShadowType::PointerException && st != ShadowType::PointerException )
+            _ptr_exceptions->invalidate( obj, off );
+    }
+
+    template< typename HeapReader >
+    PointerException _read_ptr(uint8_t *_ty, Internal obj, int off, HeapReader hr )
+    {
+        ASSERT_EQ( off % 4, 0 );
+
+        auto st = TypeProxy( _ty, off );
+        if ( ! ( st & ShadowType::Pointer ) )
+            return PointerException::null();
+        if ( st == ShadowType::PointerException )
+            return _ptr_exceptions->at( obj, off );
+
+        PointerException e;
+        uint32_t objid = hr( obj, off );
+        std::fill( e.objid, e.objid + 4, objid );
+        const uint8_t redundant_sequence[] { 3, 2, 1, 0 };
+        std::copy( redundant_sequence, redundant_sequence + 4, e.index );
+        return e;
+    }
+
+    ShadowType::T _write_ptr( const PointerException &exc, Internal obj, int off)
+    {
+        ASSERT_EQ( off % 4, 0 );
+
+        if ( ! exc.valid() )
+            return ShadowType::Data;
+        if ( exc.redundant() )
+            return ShadowType::Pointer;
+        else
+        {
+            _ptr_exceptions->set( obj, off, exc );
+            return ShadowType::PointerException;
+        }
     }
 
     void dump( std::string what, Loc l, int sz )

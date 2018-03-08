@@ -449,7 +449,7 @@ namespace divine::vm
             return false;
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
         _shadows.copy( from_h.shadows(), from_h.shloc( _from, _from_i ),
-                    shloc( _to, _to_i ), bytes );
+                       shloc( _to, _to_i ), bytes, from_heap_reader, this_heap_reader );
 
         if ( _shadows.shared( _to_i ) )
             for ( auto pos : _shadows.pointers( shloc( _to, _to_i ), bytes ) )
@@ -527,7 +527,11 @@ namespace divine::vm
         _l.exceptions[ p.object() ] = obj;
         auto newloc = shloc( p, obj );
         auto newbytes = unsafe_bytes( p, obj, 0, sz );
-        _shadows.copy( _shadows, oldloc, newloc, sz );
+
+        auto heap_reader = [this]( Internal obj, int off ) -> uint32_t {
+            return *_objects.template machinePointer< uint32_t >( obj, off );
+        };
+        _shadows.copy( oldloc, newloc, sz, heap_reader );
         std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
         _shadows.shared( obj ) = _shadows.shared( i );
         return obj;
