@@ -721,6 +721,7 @@ struct PooledShadow
     void free( Internal p )
     {
         _def_exceptions->free( p );
+        _ptr_exceptions->free( p );
     }
 
     auto type( Loc l, int sz )
