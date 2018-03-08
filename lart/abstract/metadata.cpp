@@ -65,7 +65,7 @@ AbstractValue MDValue::abstract_value() const {
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
 //
 // As result of the pass, each function with annotated values has MDNode
-// with tuple of abstract values, of name: "lart.abstract.values".
+// with tuple of abstract values, of name: "lart.abstract.roots".
 //
 // Each of the abstract values contains an MDTuple of domains
 // named "lart.domains".
@@ -105,33 +105,29 @@ void CreateAbstractMetadata::run( Module &m ) {
         std::vector< Metadata * > vals;
         for ( const auto &av : vmap ) {
             auto &inst = av.first;
-            auto &doms = av.second;
-            std::vector< Metadata* > mddoms;
+            std::vector< Metadata* > doms;
 
-            std::transform( doms.begin(), doms.end(), std::back_inserter( mddoms ),
-                [&] ( auto dom ) { return mdb.domain_node( dom ); }
-            );
+            for ( auto dom : av.second )
+                doms.emplace_back( mdb.domain_node( dom ) );
 
-            inst->setMetadata( "lart.domains", MDTuple::get( ctx, mddoms ) );
+            inst->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
             vals.emplace_back( ValueAsMetadata::get( inst ) );
         }
 
-        fn->setMetadata( "lart.abstract.values", MDTuple::get( ctx, vals ) );
+        fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, vals ) );
     }
 }
 
 std::vector< MDValue > abstract_metadata( const llvm::Module &m ) {
-    std::vector< MDValue > mds;
-    for ( auto &fn : m ) {
-        auto fnmd = abstract_metadata( fn );
-        mds.insert( mds.end(), fnmd.begin(), fnmd.end() );
-    }
-    return mds;
+    return query::query( m )
+        .map( []( auto &fn ) { return abstract_metadata( fn ); } )
+        .flatten()
+        .freeze();
 }
 
 std::vector< MDValue > abstract_metadata( const llvm::Function &fn ) {
     std::vector< MDValue > mds;
-    if ( auto vals = fn.getMetadata( "lart.abstract.values" ) )
+    if ( auto vals = fn.getMetadata( "lart.abstract.roots" ) )
         for ( auto & val : vals->operands() )
             mds.emplace_back( val.get() );
     return mds;
