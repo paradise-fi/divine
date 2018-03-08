@@ -253,9 +253,6 @@ void Abstraction::run( llvm::Module & m ) {
     Reached functions;
     Fields fields;
 
-    // Value propagation analysis
-    std::tie( functions, globals, fields ) = VPA().run( m );
-
     std::vector< std::pair< FNode, llvm::Function* > > prototypes;
     for ( auto n : create_fnodes( functions, &fields ) )
         prototypes.emplace_back( n, create_prototype( n ) );

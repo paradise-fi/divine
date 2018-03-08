@@ -60,6 +60,7 @@ namespace abstract {
         void run( llvm::Module & m ) {
             PassData data;
             auto passes = make_pass_wrapper( CreateAbstractMetadata(),
+                                             VPA(),
                                              Abstraction( data ),
                                              AddAssumes(),
                                              BCP( data ),
@@ -166,7 +167,7 @@ template< typename... Passes >
 auto test( Compile::ModulePtr m, Passes&&... passes ) {
     using namespace abstract;
     lart::Driver drv;
-    drv.setup( CreateAbstractMetadata(),
+    drv.setup( CreateAbstractMetadata(), VPA(),
                std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
