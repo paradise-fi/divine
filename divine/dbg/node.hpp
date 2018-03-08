@@ -91,13 +91,13 @@ struct Node
     {
         _address = l;
         _kind = k;
-        if ( _kind == DNKind::Frame )
+        if ( _kind == DNKind::Frame && _address.heap() )
         {
             _ctx.set( _VM_CR_Frame, _address );
             _ctx.set( _VM_CR_PC, pc() );
             _executing = exec;
         }
-        if ( _kind == DNKind::Globals )
+        if ( _kind == DNKind::Globals && _address.heap() )
             _ctx.set( _VM_CR_Globals, _address );
     }
 
