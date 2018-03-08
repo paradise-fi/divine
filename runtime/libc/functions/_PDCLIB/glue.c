@@ -21,7 +21,10 @@
 /* Memory allocation */
 __invisible void *malloc( size_t size )
 {
-    int ok = __dios_sim_fail( _DiOS_SF_Malloc ) ? __vm_choose( 2 ) : 1;
+    int kernel = ( ( ( uint64_t ) __vm_ctl_get( _VM_CR_Flags ) ) & _VM_CF_KernelMode ) ? 1 : 0;
+    int simfail = __dios_sim_fail( _DiOS_SF_Malloc );
+    int ok = ( simfail && !kernel ) ? __vm_choose( 2 ) : 1;
+
     if ( ok )
         return __vm_obj_make( size ); // success
     else
