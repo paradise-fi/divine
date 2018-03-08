@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015-2018 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <type_traits>
 DIVINE_RELAX_WARNINGS
@@ -120,25 +120,87 @@ void atExits( llvm::Function &fn, AtExit &&atExit ) {
         atExit( exit );
 }
 
+using AllocaReprMap = util::Map< std::pair< llvm::AllocaInst *, llvm::BasicBlock * >, llvm::Instruction * >;
+using ExitMap = util::Map< llvm::Instruction *, std::vector< llvm::AllocaInst * > >;
+
+struct AllocaPropagator
+{
+    AllocaPropagator( AllocaReprMap &repr, llvm::AllocaInst *al ) : repr( repr ), al( al ) { }
+
+    void propagate( llvm::Instruction *inst, llvm::BasicBlock *from, llvm::BasicBlock *to )
+    {
+        auto i = repr.try_emplace( { al, to }, nullptr );
+        if ( !i.second )
+            return; // done
+
+        auto &repr_here = i.first->second;
+
+        if ( std::next( llvm::pred_begin( to ) ) == llvm::pred_end( to )
+                  && *llvm::pred_begin( to ) == from )
+            repr_here = inst;
+        else {
+            ASSERT( !repr_here );
+
+            int n = std::distance( llvm::pred_begin( to ), llvm::pred_end( to ) );
+            llvm::PHINode *phi;
+
+            // insert *after* existing PHI nodes so that phiord_preds can respect their
+            // argument order
+            repr_here = phi = llvm::PHINode::Create( al->getType(), n, "lart.alloca.phi",
+                                                     to->getFirstNonPHI() );
+            todo_phi.emplace_back( al, phi );
+        }
+        for ( auto &nxt : util::succs( to ) )
+            propagate( repr_here, to, &nxt );
+    }
+
+    void finalize() {
+        for ( auto p : todo_phi ) {
+            auto *al = p.first;
+            auto *const repr_here = p.second;
+            auto *bb = repr_here->getParent();
+
+            for ( auto &pred : util::phiord_preds( bb ) ) {
+                auto it = repr.find( { al, &pred } );
+                llvm::Value *val;
+                if ( it == repr.end() )
+                    val = llvm::ConstantPointerNull::get( llvm::cast< llvm::PointerType >(
+                                                                  repr_here->getType() ) );
+                else
+                    val = it->second;
+                repr_here->addIncoming( val, &pred );
+            }
+        }
+    }
+
+    AllocaReprMap &repr;
+    llvm::AllocaInst *al;
+    std::vector< std::pair< llvm::AllocaInst *, llvm::PHINode * > > todo_phi;
+};
+
+static AllocaReprMap propagateAllocas( const util::Set< llvm::AllocaInst * > &allocas )
+{
+    AllocaReprMap repr;
+
+    for ( auto *al : allocas ) {
+        AllocaPropagator prop( repr, al );
+
+        auto *start = al->getParent();
+        repr[ { al, start } ] = al;
+        for ( auto &nxt : util::succs( start ) )
+            prop.propagate( al, start, &nxt );
+
+        prop.finalize();
+    }
+
+    return repr;
+}
+
 template< typename ShouldClean, typename Cleanup >
-void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClean, Cleanup &&cleanup,
-        analysis::Reachability *reach = nullptr, llvm::DominatorTree *dt = nullptr )
+void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClean, Cleanup &&cleanup )
 {
     if ( fn.empty() )
         return;
-
-    llvm::Optional< analysis::BasicBlockSCC > localSCC;
-    llvm::Optional< analysis::Reachability > localReach;
-    if ( !reach ) {
-        localSCC.emplace( fn );
-        localReach.emplace( fn, localSCC.getPointer() );
-        reach = localReach.getPointer();
-    }
-    llvm::Optional< llvm::DominatorTree > localDT;
-    if ( !dt ) {
-        localDT.emplace( llvm::DominatorTreeAnalysis().run( fn ) );
-        dt = localDT.getPointer();
-    }
 
     std::vector< llvm::AllocaInst * > allocas = query::query( fn ).flatten()
         .map( query::llvmdyncast< llvm::AllocaInst > )
@@ -146,126 +208,57 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
     if ( allocas.empty() )
         return;
 
+    analysis::BasicBlockSCC scc( fn );
+    analysis::Reachability reach( fn, &scc );
     makeExceptionsVisible( ehi, fn, [&]( llvm::CallSite &cs ) {
         return !query::query( allocas )
-                    .filter( [&]( llvm::AllocaInst *al ) { return reach->reachable( al, cs.getInstruction() ); } )
+                    .filter( [&]( llvm::AllocaInst *al ) { return reach.reachable( al, cs.getInstruction() ); } )
                     .empty();
     } );
 
-    // phase 2: propagate all allocas which might reach bb into it using phi nodes
-    struct Local { };
-    using AllocaIdentity = brick::types::Either< Local, std::pair< util::Set< llvm::BasicBlock * >, llvm::PHINode * > >;
-    util::Map< std::pair< llvm::BasicBlock *, llvm::AllocaInst * >, AllocaIdentity > allocaMap;
-    util::Map< llvm::BasicBlock *, util::StableSet< llvm::AllocaInst * > > reachingAllocas;
-    std::vector< llvm::BasicBlock * > worklist;
-    worklist.push_back( &fn.getEntryBlock() );
+    // we need to take into account new basic blocks
+    scc = analysis::BasicBlockSCC( fn );
+    reach = analysis::Reachability( fn, &scc );
+    llvm::DominatorTree dt = llvm::DominatorTreeAnalysis().run( fn );
 
-    auto allocaReprInBB = [&]( llvm::AllocaInst *alloca, llvm::BasicBlock *bb ) -> llvm::Instruction * {
-        if ( alloca->getParent() == bb )
-            return alloca;
-        auto &id = allocaMap[ { bb, alloca } ].right();
-        if ( id.second )
-            return id.second;
-        return alloca;
-    };
+    ExitMap exits;
+    util::Set< llvm::AllocaInst * > nondominant;
+    llvm::Instruction *start = fn.getEntryBlock().begin();
 
-    while ( !worklist.empty() ) {
-        auto bb = worklist.back();
-        worklist.pop_back();
+    atExits( fn, [&]( auto *exit ) { exits[ exit ] = {}; } );
 
-        bool propagate = false;
-        auto &reachingHere = reachingAllocas[ bb ];
-
-        // union predecessors
-        for ( auto &pbb : util::preds( bb ) ) {
-            if ( &pbb == bb )
-                continue;
-            for ( auto alloca : reachingAllocas[ &pbb ] ) {
-                if ( reachingHere.insert( alloca ) )
-                    propagate = true;
-
-                bool addToPhi = false;
-                auto it = allocaMap.find( { bb, alloca } );
-                if ( it == allocaMap.end() ) {
-                    allocaMap[ { bb, alloca } ] = std::pair< util::Set< llvm::BasicBlock * >, llvm::PHINode * >{ { &pbb }, nullptr };
-                    addToPhi = true;
-                } else if ( it->second.isRight() ) {
-                    addToPhi = it->second.right().first.insert( &pbb ).second;
-                } else {
-                    ASSERT( alloca->getParent() == bb );
-                }
-
-                if ( addToPhi && !dt->dominates( alloca, bb ) ) {
-                    llvm::PHINode *&phi = allocaMap[ { bb, alloca } ].right().second;
-                    if ( !phi )
-                        phi = llvm::IRBuilder<>( bb, bb->begin() ).CreatePHI( alloca->getType(), 0 );
-                    phi->addIncoming( allocaReprInBB( alloca, &pbb ), &pbb );
-                }
-            }
-        }
-
-        // allocas here
-        for ( auto &inst : *bb ) {
-            if ( auto *alloca = llvm::dyn_cast< llvm::AllocaInst >( &inst ) ) {
-                if ( reachingHere.insert( alloca ) ) {
-                    propagate = true;
-                    allocaMap[ { bb, alloca } ] = Local();
-                }
-            }
-        }
-
-        if ( propagate )
-            std::copy( llvm::succ_begin( bb ), llvm::succ_end( bb ), std::back_inserter( worklist ) );
-    }
-
-    // predecessors from which alloca cannot be obtained must be represented by null
-    for ( auto &bb : fn ) {
-        for ( auto *alloca : reachingAllocas[ &bb ] ) {
-            auto &id = allocaMap[ { &bb, alloca } ];
-            if ( id.isRight() && id.right().second ) {
-                llvm::PHINode *phi = id.right().second;
-                for ( auto &pbb : util::preds( bb ) ) {
-                    if ( id.right().first.count( &pbb ) == 0 )
-                        phi->addIncoming( llvm::ConstantPointerNull::get( alloca->getType() ), &pbb );
-                }
-            }
-        }
-    }
-
-    // reorder all phi nodes to have same order of arguments
-    std::vector< std::pair< llvm::Value *, llvm::BasicBlock * > > saved;
-    for ( auto &bb : fn ) {
-        const auto *phi0 = llvm::dyn_cast< llvm::PHINode >( &*bb.begin() );
-        if ( !phi0 )
+    for ( auto &p : exits ) {
+        auto *exit = p.first;
+        if ( !reach.reachable( start, exit ) )
             continue;
-        int n = phi0->getNumIncomingValues();
 
-        llvm::PHINode *phi;
-        for ( auto it = std::next( bb.begin() );
-              ( phi = llvm::dyn_cast< llvm::PHINode >( &*it ) );
-              ++it )
-        {
-            saved.clear();
-            ASSERT_EQ( phi->getNumIncomingValues(), n );
-            for ( int i = 0; i < n; ++i ) {
-                saved.emplace_back( phi->getIncomingValue( i ), phi->getIncomingBlock( i ) );
-            }
-            for ( int i = 0; i < n; ++i ) {
-                auto refidx = phi0->getBasicBlockIndex( saved[ i ].second );
-                phi->setIncomingValue( refidx, saved[ i ].first );
-                phi->setIncomingBlock( refidx, saved[ i ].second );
+        for ( auto *al : allocas ) {
+            if ( reach.reachable( al, exit ) ) {
+                p.second.push_back( al );
+                if ( !dt.dominates( al, exit ) ) {
+                    nondominant.insert( al );
+                }
             }
         }
     }
 
-    // phase 3: clean all allocas that are visible at function exit point
-    atExits( fn, [&]( llvm::Instruction *exit ) {
-        auto exitbb = exit->getParent();
-        auto reaching = query::query( reachingAllocas[ exitbb ] )
-                  .map( [&]( llvm::AllocaInst *alloca ) { return allocaReprInBB( alloca, exitbb ); } )
+    AllocaReprMap repr;
+    if ( !nondominant.empty() )
+        repr = propagateAllocas( nondominant );
+
+    // clean all allocas that are visible at function exit point
+    for ( auto &exit : exits ) {
+        auto exitbb = exit.first->getParent();
+        auto reaching = query::query( exit.second )
+                  .map( [&]( auto *alloca ) {
+                      auto it = repr.find( { alloca, exitbb } );
+                      if ( it == repr.end() )
+                          return static_cast< llvm::Instruction * >( alloca );
+                      return it->second;
+                  } )
                   .freeze();
-        cleanup( exit, reaching );
-    } );
+        cleanup( exit.first, reaching );
+    }
 }
 
 }
