@@ -82,32 +82,60 @@ namespace divine::vm::heap
             if ( p1i == p1.end() )
                 return 0;
 
+            if ( p1i->size() != p2i->size() )
+                return p1i->size() - p2i->size();
+
             offset += p1i->size();
 
-            /* recurse */
-            value::Pointer p1p, p2p;
             ASSERT_EQ( p1i->offset(), p2i->offset() );
             r1.offset( p1i->offset() );
             r2.offset( p1i->offset() );
-            h1.unsafe_read( r1, p1p, i1 );
-            h2.unsafe_read( r2, p2p, i2 );
+
+            /* recurse */
             int pdiff = 0;
-            auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
-            if ( p1pp.type() == p2pp.type() )
+            if ( p1i->size() == 8 )
             {
-                if ( p1pp.offset() != p2pp.offset() )
-                    return p1pp.offset() - p2pp.offset();
-                else if ( p1pp.type() == PointerType::Heap )
-                    pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
-                else if ( p1pp.type() == PointerType::Marked )
-                    markedComparer( p1pp, p2pp );
-                else if ( p1pp.heap() ); // Weak
+                value::Pointer p1p, p2p;
+                h1.unsafe_read( r1, p1p, i1 );
+                h2.unsafe_read( r2, p2p, i2 );
+                auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
+                if ( p1pp.type() == p2pp.type() )
+                {
+                    if ( p1pp.offset() != p2pp.offset() )
+                        return p1pp.offset() - p2pp.offset();
+                    else if ( p1pp.type() == PointerType::Heap )
+                        pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
+                    else if ( p1pp.type() == PointerType::Marked )
+                        markedComparer( p1pp, p2pp );
+                    else if ( p1pp.heap() ); // Weak
+                    else
+                        pdiff = p1pp.object() - p2pp.object();
+                } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
+            }
+            else
+            {
+                GenericPointer p1pp( PointerType::Heap ),
+                               p2pp( PointerType::Heap );
+                if ( p1i->size() == 1 )
+                {
+                    p1pp.object( p1i->fragment() );
+                    p2pp.object( p2i->fragment() );
+                }
+                else if ( p1i->size() == 4 )
+                {
+                    uint32_t obj1 = *h1.template unsafe_deref< uint32_t >( r1, i1 ),
+                             obj2 = *h2.template unsafe_deref< uint32_t >( r2, i2 );
+                    p1pp.object( obj1 );
+                    p2pp.object( obj2 );
+                }
                 else
-                    pdiff = p1pp.object() - p2pp.object();
-            } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
+                    NOT_IMPLEMENTED();
+
+                pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
+            }
+
             if ( pdiff )
                 return pdiff;
-            ASSERT_EQ( p1i->size(), p2i->size() );
             ++ p1i; ++ p2i;
         }
 

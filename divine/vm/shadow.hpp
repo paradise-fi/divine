@@ -661,7 +661,7 @@ struct PooledShadow
             t_iterator _i;
             proxy( PointerC * p, t_iterator i ) : _parent( p ), _i( i )
             {
-                ASSERT( *(i + 4) == ShadowType::Pointer || *(i + 4) == ShadowType::PointerException );
+                ASSERT( *i & ShadowType::Pointer || *(i + 4) == ShadowType::Pointer );
             }
             proxy *operator->() { return this; }
             int offset() const { return _i._pos - _parent->types.begin()._pos; }
@@ -669,13 +669,21 @@ struct PooledShadow
             {
                 if ( *_i == ShadowType::Pointer )
                     return 4;
-                if ( *(_i + 4) == ShadowType::Pointer )
+                if ( ( *_i & ShadowType::Pointer ) == 0 && *(_i + 4) == ShadowType::Pointer )
                     return 8;
+                if ( *_i == ShadowType::PointerException )
+                    return 1;
                 NOT_IMPLEMENTED();
             }
             bool operator==( const proxy &o ) const
             {
                 return offset() == o.offset() && size() == o.size();
+            }
+            uint32_t fragment() const
+            {
+                ASSERT_EQ( *_i, ShadowType::PointerException );
+                return _parent->_exceptions.at( _parent->obj, bitlevel::downalign( _i._pos, 4 ) )
+                    .objid[ _i._pos % 4 ];
             }
         };
 
@@ -685,13 +693,42 @@ struct PooledShadow
             t_iterator _self;
             void seek()
             {
-                while ( _self + 4 < _parent->types.end() &&
-                        *(_self + 4) != ShadowType::Pointer &&
-                        *(_self + 4) != ShadowType::PointerException ) _self = _self + 4;
-                if ( ! ( _self + 4 < _parent->types.end() ) )
+                if ( _self == _parent->types.end() )
+                    return;
+
+                if ( *_self == ShadowType::PointerException )
+                {
+                    PointerException exc = _parent->_exceptions.at( _parent->obj,
+                            bitlevel::downalign( _self._pos, 4 ) );
+
+                    do {
+                        if ( exc.objid[ _self._pos % 4 ] )
+                            return;
+                        ++_self;
+                    } while ( _self._pos % 4 );
+                }
+
+                while ( _self < _parent->types.end() &&
+                        ( *_self & ShadowType::Pointer ) == 0 &&
+                        ( ! ( _self + 4 < _parent->types.end() ) ||
+                          *(_self + 4) != ShadowType::Pointer ) )
+                    _self = _self + 4;
+
+                if ( ! ( _self < _parent->types.end() ) )
+                {
                     _self = _parent->types.end();
+                    return;
+                }
+
+                if ( *_self == ShadowType::PointerException )
+                    seek();
             }
-            iterator &operator++() { _self = _self + 4; seek(); return *this; }
+            iterator &operator++()
+            {
+                _self = _self + (*this)->size();
+                seek();
+                return *this;
+            }
             proxy operator*() const { return proxy( _parent, _self ); }
             proxy operator->() const { return proxy( _parent, _self ); }
             bool operator!=( iterator o ) const { return _parent != o._parent || _self != o._self; }
@@ -702,11 +739,13 @@ struct PooledShadow
         };
 
         TypeC types;
+        Internal obj;
+        PointerExceptions & _exceptions;
         iterator begin() { auto b = iterator( this, types.begin() ); b.seek(); return b; }
         iterator end() { return iterator( this, types.end() ); }
         proxy atoffset( int i ) { return *iterator( types.begin() + i ); }
-        PointerC( Pool &p, Internal i, int f, int t )
-            : types( p, i, f, t )
+        PointerC( Pool &p, PointerExceptions &pexcs, Internal i, int f, int t )
+            : types( p, i, f, t ), obj( i ), _exceptions( pexcs )
         {}
     };
 
@@ -734,7 +773,7 @@ struct PooledShadow
     }
     auto pointers( Loc l, int sz )
     {
-        return PointerC( _type, l.object, l.offset, l.offset + sz );
+        return PointerC( _type, *_ptr_exceptions, l.object, l.offset, l.offset + sz );
     }
     bool &shared( Internal p )
     {
