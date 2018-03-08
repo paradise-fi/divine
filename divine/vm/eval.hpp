@@ -148,6 +148,11 @@ struct Eval
     PointerV makeobj( int size, int off = 0 )
     {
         using brick::bitlevel::mixdown;
+        if ( size >= 16 * 1024 * 1024 )
+        {
+            fault( _VM_F_Memory ) << "only allocations smaller than 16MiB are allowed";
+            return PointerV( nullPointer() );
+        }
         ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
         uint32_t hint = mixdown( context().get( _VM_CR_ObjIdShuffle ).integer,
                                  context().get( _VM_CR_Frame ).pointer.object() );
