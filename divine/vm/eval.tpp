@@ -832,18 +832,20 @@ void Eval< Ctx >::implement_ctl_set_frame()
         return context().set( _VM_CR_Frame, ptr.cooked() );
     }
 
+    PointerV oldpc;
+    heap().read( ptr.cooked(), oldpc );
+    context().set( _VM_CR_PC, oldpc.cooked() );
+
     if ( instruction().argcount() == 3 )
     {
-        if ( free ) freeobj( frame() );
         auto target = operandCk< PointerV >( 2 ).cooked();
+        if ( free ) freeobj( frame() );
         context().set( _VM_CR_Frame, ptr.cooked() );
         long_jump( target );
     }
     else if ( !ptr.cooked().null() )
     {
-        PointerV target;
-        heap().read( ptr.cooked(), target );
-        auto opcode = [&]( int off ) { return program().instruction( target.cooked() + off ).opcode; };
+        auto opcode = [&]( int off ) { return program().instruction( oldpc.cooked() + off ).opcode; };
 
         if ( opcode( 0 ) == OpCode::PHI )
         {
@@ -859,7 +861,6 @@ void Eval< Ctx >::implement_ctl_set_frame()
 
         if ( free ) freeobj( frame() );
         context().set( _VM_CR_Frame, ptr.cooked() );
-        context().set( _VM_CR_PC, target.cooked() );
     }
 
     update_shuffle();
