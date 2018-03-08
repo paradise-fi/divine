@@ -199,10 +199,9 @@ struct Fault: public Next {
         fault.fault_handler( kernel, frame, _what );
 
         // Continue if we get the control back
-        cont_frame->pc = cont_pc;
         old |= uint64_t( __vm_ctl_get( _VM_CR_Flags ) ) & ( _DiOS_CF_Fault | _VM_CF_Error );
         __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
-        __vm_ctl_set( _VM_CR_Frame, cont_frame );
+        __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
         __builtin_unreachable();
     }
 
