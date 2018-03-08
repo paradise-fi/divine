@@ -338,7 +338,8 @@ struct Substitute {
         auto ford = get( "__lart_weakmem_min_ordering" );
         auto dump = get( "__lart_weakmem_dump" );
         auto debug_fence = get( "__lart_weakmem_debug_fence" );
-        _mask = get( "__dios_mask" );
+        _mask = get( "__lart_weakmem_mask_enter" );
+        _unmask = get( "__lart_weakmem_mask_leave" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
@@ -541,6 +542,19 @@ struct Substitute {
         std::vector< llvm::AtomicRMWInst * > ats;
         std::set< llvm::Instruction * > atomicOps;
 
+        util::Map< llvm::Instruction *, llvm::Value * > masks;
+
+        auto getMask = [this, &masks]( llvm::Instruction *i, llvm::IRBuilder<> &irb ) -> llvm::Value * {
+            auto it = masks.find( i );
+            if ( it != masks.end() )
+                return it->second;
+            return irb.CreateCall( _mask, { } );
+        };
+
+        auto unmask = [this]( llvm::Value *mask, llvm::IRBuilder<> &irb ) {
+            irb.CreateCall( _unmask, { mask } );
+        };
+
         for ( auto &i : query::query( f ).flatten() ) {
             if ( reduction::isSilent( i, silentID ) )
                 continue;
@@ -579,12 +593,14 @@ struct Substitute {
             auto *rtbool = rt->getElementType( 1 );
 
             llvm::IRBuilder<> builder( cas );
+            auto mask = getMask( cas, builder );
             ASSERT_EQ( rtbool, builder.getInt1Ty() );
             auto *raw = builder.CreateCall( _cas, { addrCast( ptr, builder ),
                                                     i64Cast( cmp, builder ),
                                                     i64Cast( val, builder ),
                                                     bw( val ),
-                                                    mo( succord ), mo( failord ) } );
+                                                    mo( succord ), mo( failord ),
+                                                    mask } );
             auto *orig = builder.CreateExtractValue( raw, { 0 } );
             auto *req = builder.CreateExtractValue( raw, { 1 } );
             auto *eq = builder.CreateICmpNE( req, llvm::ConstantInt::get( req->getType(), 0 ) );
@@ -597,6 +613,7 @@ struct Substitute {
             auto *r0 = builder.CreateInsertValue( llvm::UndefValue::get( rt ), orig, { 0 } );
             auto *r = llvm::cast< llvm::Instruction >( builder.CreateInsertValue( r0, eq, { 1 } ) );
             r->removeFromParent();
+            unmask( mask, builder );
             llvm::ReplaceInstWithInst( cas, r );
         }
         for ( auto *at : ats ) {
@@ -606,8 +623,9 @@ struct Substitute {
             auto op = at->getOperation();
 
             llvm::IRBuilder<> irb( at );
-            auto *mask = irb.CreateCall( _mask, { irb.getInt32( 1 ) } );
+            auto *mask = irb.CreateCall( _mask, { } );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
+            masks[ orig ] = mask;
             orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord, InstType::Load ) );
             atomicOps.insert( orig );
 
@@ -649,10 +667,11 @@ struct Substitute {
             }
 
             auto *store = irb.CreateStore( val, ptr );
+            masks[ store ] = mask;
             store->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease
                         ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
             atomicOps.insert( store );
-            irb.CreateCall( _mask, { mask } );
+            unmask( mask, irb );
 
             at->replaceAllUsesWith( orig );
             at->eraseFromParent();
@@ -697,9 +716,11 @@ struct Substitute {
                 addr = builder.CreateBitCast( op, ty );
             }
             auto bitwidth = getBitwidth( ety, ctx, dl );
+            auto mask = getMask( load, builder );
             auto call = builder.CreateCall( _load, { addr, bitwidth,
-                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.load | castmemord( load->getOrdering() ), InstType::Load ) ) )
-                    } );
+                            llvm::ConstantInt::get( _moTy, uint64_t(
+                                usememord( _config.load | castmemord( load->getOrdering() ), InstType::Load ) ) ),
+                            mask } );
             llvm::Value *result = call;
 
             // weak load and final cast i64 -> target type
@@ -716,6 +737,7 @@ struct Substitute {
                 if ( !ety->isIntegerTy() )
                     result = builder.CreateCast( llvm::Instruction::BitCast, result, ety );
             }
+            unmask( mask, builder );
             load->replaceAllUsesWith( result );
             load->eraseFromParent();
         }
@@ -728,6 +750,7 @@ struct Substitute {
             auto aty = llvm::cast< llvm::PointerType >( addr->getType() );
 
             llvm::IRBuilder<> builder( store );
+            auto mask = getMask( store, builder );
 
             // void * is translated to i8*
             auto i8 = llvm::IntegerType::getInt8Ty( ctx );
@@ -752,8 +775,10 @@ struct Substitute {
 
             auto bitwidth = getBitwidth( vty, ctx, dl );
             auto storeCall = builder.CreateCall( _store, { addr, value, bitwidth,
-                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.store | castmemord( store->getOrdering() ), InstType::Store ) ) )
-                    } );
+                                llvm::ConstantInt::get( _moTy, uint64_t(
+                                    usememord( _config.store | castmemord( store->getOrdering() ), InstType::Store ) ) ),
+                                mask } );
+            unmask( mask, builder );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
         }
@@ -794,7 +819,7 @@ struct Substitute {
     llvm::Function *_memmove = nullptr, *_memcpy = nullptr, *_memset = nullptr;
     llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;
     llvm::Function *_cleanup = nullptr, *_resize = nullptr;
-    llvm::Function *_mask = nullptr;
+    llvm::Function *_mask = nullptr, *_unmask = nullptr;
     llvm::Type *_moTy = nullptr;
     MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
 };
