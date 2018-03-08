@@ -153,12 +153,13 @@ struct BufferLine : brick::types::Ord {
     _WM_INLINE
     bool isStore() const { return addr; }
 
+    _WM_INLINE
     void store() {
         switch ( bitwidth ) {
-            case 1: case 8: store< uint8_t >(); break;
-            case 16: store< uint16_t >(); break;
-            case 32: store< uint32_t >(); break;
-            case 64: store< uint64_t >(); break;
+            case 1: case 8: store< uint8_t >( addr, value ); break;
+            case 16: store< uint16_t >( addr, value ); break;
+            case 32: store< uint32_t >( addr, value ); break;
+            case 64: store< uint64_t >( addr, value ); break;
             case 0: break; // fence
             default: __dios_fault( _VM_F_Control, "Unhandled case" );
         }
@@ -166,8 +167,8 @@ struct BufferLine : brick::types::Ord {
 
     template< typename T >
     _WM_NOINLINE
-    void store() {
-        *reinterpret_cast< T * >( addr ) = T( value );
+    static void store( char *addr, T value ) {
+        *reinterpret_cast< T * >( addr ) = value;
     }
 
     _WM_INLINE
