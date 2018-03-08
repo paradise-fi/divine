@@ -12,8 +12,7 @@
 
 namespace __dios {
 
-void __attribute__((always_inline))
-static traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
+__inline static void traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 {
     bool kernel = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
@@ -107,14 +106,12 @@ void traceInFile( const char *file, const char *msg, size_t size ) noexcept
 
 } // namespace __dios
 
-__attribute__(( __annotate__( "divine.debugfn" ) ))
-void __dios_trace_t( const char *txt ) noexcept
+__debugfn void __dios_trace_t( const char *txt ) noexcept
 {
     __dios::traceInternal( 0, "%s", txt );
 }
 
-__attribute__(( __annotate__( "divine.debugfn" ) ))
-void __dios_trace_f( const char *fmt, ... ) noexcept
+__debugfn void __dios_trace_f( const char *fmt, ... ) noexcept
 {
     va_list ap;
     va_start( ap, fmt );
@@ -136,8 +133,7 @@ void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept
     va_end( ap );
 }
 
-__attribute__(( __annotate__( "divine.debugfn" ) ))
-void __dios_trace( int indent, const char *fmt, ... ) noexcept
+__debugfn void __dios_trace( int indent, const char *fmt, ... ) noexcept
 {
     va_list ap;
     va_start( ap, fmt );
@@ -145,8 +141,7 @@ void __dios_trace( int indent, const char *fmt, ... ) noexcept
     va_end( ap );
 }
 
-__attribute__(( __annotate__( "divine.debugfn" ) ))
-void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
+__debugfn void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
 {
     uintptr_t flags = reinterpret_cast< uintptr_t >( __vm_control( _VM_CA_Get, _VM_CR_Flags ) );
 

@@ -229,8 +229,7 @@ struct Scheduler : public Next
         return tasks[ __vm_choose( tasks.size() ) ].get();
     }
 
-    __attribute__(( noinline, __annotate__( "divine.debugfn" ) ))
-    void traceTasks() const noexcept
+    __debugfn void traceTasks() const noexcept
     {
         int c = tasks.size();
         if ( c == 0 )
