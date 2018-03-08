@@ -542,7 +542,7 @@ struct Eval
     template< typename F >
     void each_phi( CodePointer first, F f );
     void switchBB( CodePointer target );
-    void switch_frame();
+    void update_shuffle();
 
     template< typename Y >
     void collect_allocas( Y yield );
@@ -560,6 +560,7 @@ struct Eval
     void implement_intrinsic( int id );
 
     void implement_ctl_set();
+    void implement_ctl_set_frame();
     void implement_ctl_get();
     void implement_ctl_flag();
 

@@ -431,23 +431,17 @@ void Eval< Ctx >::implement_hypercall_control()
             return;
         }
         if ( action == _VM_CA_Set && reg == _VM_CR_Frame )
-            switch_frame();
+            NOT_IMPLEMENTED();
     }
 }
 
 template< typename Ctx >
-void Eval< Ctx >::switch_frame()
+void Eval< Ctx >::update_shuffle()
 {
-    if ( !frame().null() )
-    {
-        PointerV ptr;
-        using brick::bitlevel::mixdown;
-        heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
-        context().set( _VM_CR_PC, ptr.cooked() );
-        context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
-                heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
-                context().get( _VM_CR_Frame ).pointer.object() );
-    }
+    using brick::bitlevel::mixdown;
+    uint64_t next = mixdown( heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
+                             context().get( _VM_CR_Frame ).pointer.object() );
+    context().set( _VM_CR_ObjIdShuffle, next );
 }
 
 template< typename Ctx >
@@ -801,6 +795,77 @@ void Eval< Ctx >::implement_call( bool invoke )
 }
 
 template< typename Ctx >
+void Eval< Ctx >::implement_ctl_set_frame()
+{
+    if ( instruction().argcount() > 3 )
+    {
+        fault( _VM_F_Hypercall ) << "too many arguments to __vm_ctl_set";
+        return;
+    }
+
+    auto ptr = operandCk< PointerV >( 1 );
+
+    if ( !ptr.cooked().null() && !boundcheck_nop( ptr, 2 * PointerBytes, true ) )
+    {
+        fault( _VM_F_Hypercall ) << "invalid target frame in __vm_ctl_set";
+        return;
+    }
+
+    bool free = true;
+    context().sync_pc();
+
+    if ( context().flags_all( _VM_CF_KeepFrame ) )
+    {
+        context().ref( _VM_CR_Flags ).integer &= ~_VM_CF_KeepFrame;
+        free = false;
+    }
+    else if ( ptr.cooked() == GenericPointer( frame() ) )
+    {
+        fault( _VM_F_Hypercall, GenericPointer(), CodePointer() )
+            << " cannot target current frame without _VM_CF_KeepFrame";
+        return;
+    }
+
+    if ( ptr.cooked().null() )
+    {
+        if ( free ) freeobj( frame() );
+        return context().set( _VM_CR_Frame, ptr.cooked() );
+    }
+
+    if ( instruction().argcount() == 3 )
+    {
+        if ( free ) freeobj( frame() );
+        auto target = operandCk< PointerV >( 2 ).cooked();
+        context().set( _VM_CR_Frame, ptr.cooked() );
+        long_jump( target );
+    }
+    else if ( !ptr.cooked().null() )
+    {
+        PointerV target;
+        heap().read( ptr.cooked(), target );
+        auto opcode = [&]( int off ) { return program().instruction( target.cooked() + off ).opcode; };
+
+        if ( opcode( 0 ) == OpCode::PHI )
+        {
+            fault( _VM_F_Hypercall ) << "cannot transfer control into the middle of a phi block";
+            return;
+        }
+
+        if ( opcode( 0 ) == lx::OpBB && opcode( 1 ) == OpCode::PHI )
+        {
+            fault( _VM_F_Hypercall ) << "cannot transfer control directly to a basic block w/ phi nodes";
+            return;
+        }
+
+        if ( free ) freeobj( frame() );
+        context().set( _VM_CR_Frame, ptr.cooked() );
+        context().set( _VM_CR_PC, target.cooked() );
+    }
+
+    update_shuffle();
+}
+
+template< typename Ctx >
 void Eval< Ctx >::implement_ctl_set()
 {
     auto reg = _VM_ControlRegister( operandCk< IntV >( 0 ).cooked() );
@@ -825,26 +890,13 @@ void Eval< Ctx >::implement_ctl_set()
         default: break;
     }
 
-    auto ptr = operandCk< PointerV >( 1 );
-
     if ( reg == _VM_CR_Frame )
+        return implement_ctl_set_frame();
+
+    if ( instruction().argcount() > 2 )
     {
-        if ( !ptr.cooked().null() && !boundcheck_nop( ptr, 2 * PointerBytes, true ) )
-        {
-            fault( _VM_F_Hypercall ) << "invalid target frame in __vm_ctl_set";
-            return;
-        }
-        if ( context().flags_all( _VM_CF_KeepFrame ) )
-            context().sync_pc();
-        else
-            if ( ptr.cooked() != GenericPointer( frame() ) )
-                freeobj( frame() );
-            else
-            {
-                fault( _VM_F_Control, GenericPointer(), CodePointer() )
-                    << " cannot target current frame without _VM_CF_KeepFrame";
-                return;
-            }
+        fault( _VM_F_Hypercall ) << "too many arguments to __vm_ctl_set";
+        return;
     }
 
     if ( reg == _VM_CR_Flags )
@@ -859,10 +911,8 @@ void Eval< Ctx >::implement_ctl_set()
         context().set( reg, operandCk< PtrIntV >( 1 ).cooked() );
     }
     else
-        context().set( reg, ptr.cooked() );
+        context().set( reg, operandCk< PointerV >( 1 ).cooked() );
 
-    if ( reg == _VM_CR_Frame )
-        switch_frame();
 }
 
 template< typename Ctx >
