@@ -358,8 +358,9 @@ Program::Position Program::insert( Position p )
 
     if ( !codepointers )
     {
-        insn.values.resize( 1 + p.I->getNumOperands() );
-        for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
+        int operands = p.I->getNumOperands() - ( insn.opcode == lx::OpHypercall );
+        insn.values.resize( 1 + operands );
+        for ( int i = 0; i < operands; ++i )
             if ( !isa< llvm::MetadataAsValue >( p.I->getOperand( i ) ) )
                 insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) );
         insn.values[0] = insert( p.pc.function(), &*p.I );
