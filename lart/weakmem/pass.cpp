@@ -340,6 +340,7 @@ struct Substitute {
         auto debug_fence = get( "__lart_weakmem_debug_fence" );
         _mask = get( "__lart_weakmem_mask_enter" );
         _unmask = get( "__lart_weakmem_mask_leave" );
+        _vm_interrupt_mem = get( "__vm_test_crit" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
@@ -503,6 +504,23 @@ struct Substitute {
         }
     }
 
+    template< typename LazyT >
+    auto call_or_get( LazyT &&lt, brick::types::Preferred ) -> decltype( std::declval< LazyT >()() ) {
+        return lt();
+    }
+
+    template< typename T >
+    T call_or_get( T &&t ) { return std::forward< T >( t ); }
+
+    template< typename Map, typename K, typename LazyT,
+              typename T = decltype( std::declval< typename Map::value_type >().second ) >
+    T find_def( const Map &m, const K &k, LazyT &&lt ) {
+        auto it = m.find( k );
+        if ( it != m.end() )
+            return it->second;
+        return call_or_get( std::forward< LazyT >( lt ), brick::types::Preferred() );
+    }
+
     // for weak memory functions we have to:
     // *  transform all loads and stores to appropriate lart function
     // *  transform all memcpy/memmove (both calls and intrinsics) to call to lart memcpy/memmove
@@ -516,12 +534,18 @@ struct Substitute {
         auto *i64 = llvm::Type::getInt64Ty( ctx );
         auto *i32 = llvm::Type::getInt32Ty( ctx );
 
-        auto addrCast = [i8ptr]( llvm::Value *op, llvm::IRBuilder<> &builder )
+        auto addrCast = [i8ptr]( llvm::Value *op, llvm::IRBuilder<> &builder, llvm::Instruction *hint )
+                        -> llvm::Value *
         {
-            auto ety = llvm::cast< llvm::PointerType >( op->getType() )->getElementType();
-            if ( !ety->isIntegerTy() || ety->getPrimitiveSizeInBits() != 8 ) {
-                return builder.CreateBitCast( op, i8ptr );
+            // try to pick bitcast from __vm_interrupt_mem
+            llvm::BasicBlock::iterator hit( hint );
+            if ( hit != hit->getParent()->begin() ) {
+                --hit;
+                if ( hit->getType() == i8ptr && hit->stripPointerCasts() == op->stripPointerCasts() )
+                    return hit;
             }
+            if ( op->getType() != i8ptr )
+                return builder.CreateBitCast( op, i8ptr );
             return op;
         };
         auto i64Cast = [i64]( llvm::Value *op, llvm::IRBuilder<> &builder ) {
@@ -542,17 +566,22 @@ struct Substitute {
         std::vector< llvm::AtomicRMWInst * > ats;
         std::set< llvm::Instruction * > atomicOps;
 
-        util::Map< llvm::Instruction *, llvm::Value * > masks;
+        util::Map< llvm::Instruction *, llvm::Value * > masks, unmasks;
 
         auto getMask = [this, &masks]( llvm::Instruction *i, llvm::IRBuilder<> &irb ) -> llvm::Value * {
-            auto it = masks.find( i );
-            if ( it != masks.end() )
-                return it->second;
-            return irb.CreateCall( _mask, { } );
+            return find_def( masks, i, [this, &irb] { return irb.CreateCall( _mask, { } ); } );
         };
 
-        auto unmask = [this]( llvm::Value *mask, llvm::IRBuilder<> &irb ) {
-            irb.CreateCall( _unmask, { mask } );
+        auto unmask = [this, &unmasks]( llvm::Instruction *i, llvm::Value *mask, llvm::IRBuilder<> &irb ) {
+            return find_def( unmasks, i, [this, &irb, i, mask] {
+                    llvm::BasicBlock::iterator hit( i );
+                    ++hit;
+                    llvm::CallSite cs( hit );
+                    if ( cs && cs.getCalledValue() == _vm_interrupt_mem
+                             && cs.getArgument( 0 )->stripPointerCasts() == getPointerOperand( i )->stripPointerCasts() )
+                        irb.SetInsertPoint( std::next( hit ) );
+                    return irb.CreateCall( _unmask, { mask } );
+                } );
         };
 
         for ( auto &i : query::query( f ).flatten() ) {
@@ -593,9 +622,10 @@ struct Substitute {
             auto *rtbool = rt->getElementType( 1 );
 
             llvm::IRBuilder<> builder( cas );
+            auto addr = addrCast( ptr, builder, cas );
             auto mask = getMask( cas, builder );
             ASSERT_EQ( rtbool, builder.getInt1Ty() );
-            auto *raw = builder.CreateCall( _cas, { addrCast( ptr, builder ),
+            auto *raw = builder.CreateCall( _cas, { addr,
                                                     i64Cast( cmp, builder ),
                                                     i64Cast( val, builder ),
                                                     bw( val ),
@@ -613,7 +643,7 @@ struct Substitute {
             auto *r0 = builder.CreateInsertValue( llvm::UndefValue::get( rt ), orig, { 0 } );
             auto *r = llvm::cast< llvm::Instruction >( builder.CreateInsertValue( r0, eq, { 1 } ) );
             r->removeFromParent();
-            unmask( mask, builder );
+            unmask( cas, mask, builder );
             llvm::ReplaceInstWithInst( cas, r );
         }
         for ( auto *at : ats ) {
@@ -671,7 +701,7 @@ struct Substitute {
             store->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease
                         ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
             atomicOps.insert( store );
-            unmask( mask, irb );
+            unmasks[ orig ] = unmasks[ store ] = unmask( at, mask, irb );
 
             at->replaceAllUsesWith( orig );
             at->eraseFromParent();
@@ -702,19 +732,14 @@ struct Substitute {
 
         for ( auto load : loads ) {
 
-            auto op = load->getPointerOperand();
-            auto opty = llvm::cast< llvm::PointerType >( op->getType() );
-            auto ety = opty->getElementType();
+            auto ptr = load->getPointerOperand();
+            auto ptrty = llvm::cast< llvm::PointerType >( ptr->getType() );
+            auto ety = ptrty->getElementType();
             ASSERT( ety->isPointerTy() || ety->getPrimitiveSizeInBits() || (ety->dump(), false) );
 
             llvm::IRBuilder<> builder( load );
+            auto *addr = addrCast( ptr, builder, load );
 
-            // first cast address to i8*
-            llvm::Value *addr = op;
-            if ( !ety->isIntegerTy() || ety->getPrimitiveSizeInBits() != 8 ) {
-                auto ty = llvm::PointerType::get( llvm::IntegerType::getInt8Ty( ctx ), opty->getAddressSpace() );
-                addr = builder.CreateBitCast( op, ty );
-            }
             auto bitwidth = getBitwidth( ety, ctx, dl );
             auto mask = getMask( load, builder );
             auto call = builder.CreateCall( _load, { addr, bitwidth,
@@ -737,7 +762,7 @@ struct Substitute {
                 if ( !ety->isIntegerTy() )
                     result = builder.CreateCast( llvm::Instruction::BitCast, result, ety );
             }
-            unmask( mask, builder );
+            unmask( load, mask, builder );
             load->replaceAllUsesWith( result );
             load->eraseFromParent();
         }
@@ -745,18 +770,12 @@ struct Substitute {
         for ( auto store : stores ) {
 
             auto value = store->getValueOperand();
-            auto addr = store->getPointerOperand();
+            auto ptr = store->getPointerOperand();
             auto vty = value->getType();
-            auto aty = llvm::cast< llvm::PointerType >( addr->getType() );
 
             llvm::IRBuilder<> builder( store );
+            auto addr = addrCast( ptr, builder, store );
             auto mask = getMask( store, builder );
-
-            // void * is translated to i8*
-            auto i8 = llvm::IntegerType::getInt8Ty( ctx );
-            auto i8ptr = llvm::PointerType::get( i8, aty->getAddressSpace() );
-            if ( aty != i8ptr )
-                addr = builder.CreateBitCast( addr, i8ptr );
 
             auto i64 = llvm::IntegerType::getInt64Ty( ctx );
             if ( vty->isPointerTy() )
@@ -778,7 +797,7 @@ struct Substitute {
                                 llvm::ConstantInt::get( _moTy, uint64_t(
                                     usememord( _config.store | castmemord( store->getOrdering() ), InstType::Store ) ) ),
                                 mask } );
-            unmask( mask, builder );
+            unmask( store, mask, builder );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
         }
@@ -820,6 +839,7 @@ struct Substitute {
     llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;
     llvm::Function *_cleanup = nullptr, *_resize = nullptr;
     llvm::Function *_mask = nullptr, *_unmask = nullptr;
+    llvm::Function *_vm_interrupt_mem = nullptr;
     llvm::Type *_moTy = nullptr;
     MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
 };
