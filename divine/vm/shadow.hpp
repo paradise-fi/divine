@@ -31,11 +31,27 @@ namespace bitlevel = brick::bitlevel;
 namespace mem = brick::mem;
 
 template< typename InternalPtr >
-struct InObject
+struct InternalLoc : public brick::types::Ord
 {
     InternalPtr object;
-    int offset, size;
-    InObject( InternalPtr p, int o, int s ) : object( p ), offset( o ), size( s ) {}
+    int offset;
+    InternalLoc( InternalPtr o, int off = 0 )
+        : object( o ), offset( off )
+    {}
+    InternalLoc operator-( int i ) const { InternalLoc r = *this; r.offset -= i; return r; }
+    InternalLoc operator+( int i ) const { InternalLoc r = *this; r.offset += i; return r; }
+    bool operator==( const InternalLoc & o) const
+    {
+        return object == o.object && offset == o.offset;
+    }
+    bool operator<=(const InternalLoc & o) const
+    {
+        return object < o.object || (object == o.object && offset <= o.offset);
+    }
+    bool operator<(const InternalLoc & o) const
+    {
+        return object < o.object || (object == o.object && offset < o.offset);
+    }
 };
 
 struct InVoid {};
@@ -209,6 +225,7 @@ struct PooledShadow
     using InObj = InObject< typename MasterPool::Pointer >;
     using Pool = mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
+    using Loc = InternalLoc< Internal >;
 
     Pool _type,
          _defined,
@@ -231,29 +248,6 @@ struct PooledShadow
         : _type( mp ), _defined( mp ), _shared( mp ),
           _def_exceptions( new DataExceptions ), _ptr_exceptions( new PointerExceptions )
     {}
-
-    struct Loc : public brick::types::Ord
-    {
-        Internal object;
-        int offset;
-        Loc( Internal o, int off = 0 )
-            : object( o ), offset( off )
-        {}
-        Loc operator-( int i ) const { Loc r = *this; r.offset -= i; return r; }
-        Loc operator+( int i ) const { Loc r = *this; r.offset += i; return r; }
-        bool operator==( const Loc & o) const
-        {
-            return object == o.object && offset == o.offset;
-        }
-        bool operator<=(const Loc & o) const
-        {
-            return object < o.object || (object == o.object && offset <= o.offset);
-        }
-        bool operator<(const Loc & o) const
-        {
-            return object < o.object || (object == o.object && offset < o.offset);
-        }
-    };
 
     template< typename ExceptionType >
     class ExceptionMap
