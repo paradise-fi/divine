@@ -26,8 +26,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <string>
 
 #include <lart/abstract/metadata.h>
+#include <lart/abstract/vpa.h>
 #include <lart/abstract/taint.h>
-#include <lart/abstract/abstraction.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/substitution.h>
@@ -63,7 +63,6 @@ namespace abstract {
             auto passes = make_pass_wrapper( CreateAbstractMetadata(),
                                              VPA(),
                                              Tainting(),
-                                             Abstraction( data ),
                                              AddAssumes(),
                                              BCP( data ),
                                              Substitution( data ) );
@@ -183,25 +182,25 @@ auto test( TestCompile & c, const File & src, Passes&&... passes ) {
 auto test_abstraction( const File & src ) {
     using namespace abstract;
     PassData data;
-    return test( cmp, src, Abstraction( data ) );
+    return test( cmp, src );
 }
 
 auto test_assume( const File & src ) {
     using namespace abstract;
     PassData data;
-    return test( cmp, src, Abstraction( data ), AddAssumes() );
+    return test( cmp, src, AddAssumes() );
 }
 
 auto test_bcp( const File & src ) {
     using namespace abstract;
     PassData data;
-    return test( cmp, src, Abstraction( data ), AddAssumes(), BCP( data ) );
+    return test( cmp, src, AddAssumes(), BCP( data ) );
 }
 
 auto test_substitution( const File & src ) {
     using namespace abstract;
     PassData data;
-    return test( symcmp, src, Abstraction( data ), AddAssumes(), BCP( data ), Substitution( data ) );
+    return test( symcmp, src, AddAssumes(), BCP( data ), Substitution( data ) );
 }
 
 namespace {
