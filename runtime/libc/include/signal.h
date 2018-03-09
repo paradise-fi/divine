@@ -136,6 +136,7 @@ struct sigaction
 };
 
 int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact );
+int rt_sigaction( int signum, const struct sigaction *act, struct sigaction *oldact, size_t sigsetsize );
 
 #ifdef __cplusplus
 }
