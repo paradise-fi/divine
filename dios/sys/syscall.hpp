@@ -54,6 +54,7 @@ struct Trap
 
     __inline Trap( RM rm ) : retmode( rm )
     {
+        __sync_synchronize(); // for the sake of weakmem
         keepflags = __vm_ctl_flag( 0, kern ) & kern;
         if ( retmode == CONTINUE )
             return;
