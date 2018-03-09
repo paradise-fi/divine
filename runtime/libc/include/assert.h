@@ -24,6 +24,6 @@
 #define _ASSERT_H_
 __BEGIN_DECLS
 void __assert_fail( const char *__assertion, const char *__file, unsigned int __line, const char *__function )
-    _PDCLIB_nothrow __attribute__ ((__noreturn__));
+    _PDCLIB_nothrow;
 __END_DECLS
 #endif
