@@ -40,34 +40,9 @@ struct VFSProc
 
 struct Manager {
 
-    Manager() :
-        Manager( true )
-    {
-        _standardIO[ 0 ]->assign( new( __dios::nofail ) StandardInput() );
-    }
-
-    Manager( const char *in, size_t length ) :
-        Manager( true )
-    {
-        _standardIO[ 0 ]->assign( new( __dios::nofail ) StandardInput( in, length ) );
-    }
-
-    explicit Manager( std::initializer_list< SnapshotFS > items ) :
-        Manager()
-    {
-        for ( const auto &item : items )
-            _insertSnapshotItem( item );
-    }
-
-    Manager( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) :
-        Manager( in, length )
-    {
-        for ( const auto &item : items )
-            _insertSnapshotItem( item );
-    }
+    Manager() : Manager( true ) {}
 
     void setOutputFile(FileTrace trace);
-
     void setErrFile(FileTrace trace);
 
     Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
@@ -260,22 +235,8 @@ namespace conversion {
 
 template < typename Next >
 struct VFS: public Next {
-    VFS() {
-        // __divine_interrupt_mask();
-        _manager = new( __dios::nofail ) Manager{};
-    }
-    VFS( const char *in, size_t length ) {
-        // __divine_interrupt_mask();
-        _manager = new( __dios::nofail ) Manager{ in, length };
-    }
-    explicit VFS( std::initializer_list< SnapshotFS > items ) {
-        // __divine_interrupt_mask();
-        _manager = new( __dios::nofail ) Manager{ items };
-    }
-    VFS( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) {
-        // __divine_interrupt_mask();
-        _manager = new( __dios::nofail ) Manager{ in, length, items };
-    }
+
+    VFS() { _manager = new( __dios::nofail ) Manager{}; }
     VFS( const VFS& ) = delete;
     ~VFS() {
         if ( _manager )
@@ -297,15 +258,24 @@ struct VFS: public Next {
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< VFS >( "{VFS}" );
+
+        auto &sio = instance()._standardIO;
+
+        for ( auto env = s.env ; env->key; env++ )
+            if ( !strcmp( env->key, "vfs.stdin" ) )
+                sio[ 0 ]->assign( new( __dios::nofail ) StandardInput( env->value, env->size ) );
+
+        sio[ 0 ]->assign( new( __dios::nofail ) StandardInput() ); /* first assign wins */
+
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
         instance().initializeFromSnapshot( s.env );
 
         s.proc1->_openFD = __dios::Vector< std::shared_ptr< FileDescriptor > > ( {
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), instance()._standardIO[ 0 ], flags::Open::Read ),// stdin
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), instance()._standardIO[ 1 ], flags::Open::Write ),// stdout
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), instance()._standardIO[ 2 ], flags::Open::Write )// stderr
-    } );
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 0 ], flags::Open::Read ),
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 1 ], flags::Open::Write ),
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 2 ], flags::Open::Write )
+        } );
         s.proc1->_umask = Mode::WGROUP | Mode::WOTHER;
 
         Next::setup( s );
