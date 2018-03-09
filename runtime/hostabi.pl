@@ -17,6 +17,7 @@ my $prog =<<'EOF';
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/resource.h>
 
 int offset = 0;
 int padding = 0;
@@ -119,6 +120,18 @@ fmt( "O_TRUNC" );
 fmt( "O_APPEND" );
 fmt( "O_NONBLOCK" );
 fmt( "O_CREAT" );
+
+fmt( "RLIMIT_CPU" );
+fmt( "RLIMIT_FSIZE" );
+fmt( "RLIMIT_DATA" );
+fmt( "RLIMIT_STACK" );
+fmt( "RLIMIT_CORE" );
+fmt( "RLIMIT_RSS" );
+fmt( "RLIMIT_MEMLOCK" );
+fmt( "RLIMIT_NPROC" );
+fmt( "RLIMIT_NOFILE" );
+fmt( "RLIM_NLIMITS" );
+
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );
 

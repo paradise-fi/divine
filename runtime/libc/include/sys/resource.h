@@ -82,20 +82,17 @@ struct	rusage {
 /*
  * Resource limits
  */
-#define	RLIMIT_CPU	0		/* cpu time in milliseconds */
-#define	RLIMIT_FSIZE	1		/* maximum file size */
-#define	RLIMIT_DATA	2		/* data size */
-#define	RLIMIT_STACK	3		/* stack size */
-#define	RLIMIT_CORE	4		/* core file size */
-#define	RLIMIT_RSS	5		/* resident set size */
+#define RLIMIT_CPU      _HOST_RLIMIT_CPU      /* cpu time in milliseconds */
+#define RLIMIT_FSIZE    _HOST_RLIMIT_FSIZE    /* maximum file size */
+#define RLIMIT_DATA     _HOST_RLIMIT_DATA     /* data size */
+#define RLIMIT_STACK    _HOST_RLIMIT_STACK    /* stack size */
+#define RLIMIT_CORE     _HOST_RLIMIT_CORE     /* core file size */
+#define RLIMIT_RSS      _HOST_RLIMIT_RSS      /* resident set size */
+#define RLIMIT_MEMLOCK  _HOST_RLIMIT_MEMLOCK  /* locked-in-memory address space */
+#define RLIMIT_NPROC    _HOST_RLIMIT_NPROC    /* number of processes */
+#define RLIMIT_NOFILE   _HOST_RLIMIT_NOFILE   /* number of open files */
 
-#if 0 /* different systems start to disagree here */
-#define	RLIMIT_MEMLOCK	6		/* locked-in-memory address space */
-#define	RLIMIT_NPROC	7		/* number of processes */
-#define	RLIMIT_NOFILE	8		/* number of open files */
-#endif
-
-#define	RLIM_NLIMITS	6		/* number of resource limits */
+#define RLIM_NLIMITS    _HOST_RLIM_NLIMITS    /* number of resource limits */
 
 #define	RLIM_INFINITY	(((rlim_t)1 << 63) - 1)
 #define	RLIM_SAVED_MAX	RLIM_INFINITY
