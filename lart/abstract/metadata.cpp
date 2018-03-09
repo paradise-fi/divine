@@ -58,16 +58,12 @@ Domain MDValue::domain() const {
     return doms[ 0 ];
 }
 
-AbstractValue MDValue::abstract_value() const {
-    return AbstractValue( value(), domain() );
-}
-
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
 //
-// As result of the pass, each function with annotated values has MDNode
-// with tuple of abstract values, of name: "lart.abstract.roots".
+// As result of the pass, each function with annotated values has
+// annotation with name: "lart.abstract.roots".
 //
-// Each of the abstract values contains an MDTuple of domains
+// Where root instructions are marked with MDTuple of domains
 // named "lart.domains".
 //
 // Domain MDNode holds a string name of domain retrieved from annotation.
@@ -102,7 +98,6 @@ void CreateAbstractMetadata::run( Module &m ) {
         auto &fn = it.first;
         auto &vmap = it.second;
 
-        std::vector< Metadata * > vals;
         for ( const auto &av : vmap ) {
             auto &inst = av.first;
             std::vector< Metadata* > doms;
@@ -111,31 +106,35 @@ void CreateAbstractMetadata::run( Module &m ) {
                 doms.emplace_back( mdb.domain_node( dom ) );
 
             inst->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
-            vals.emplace_back( ValueAsMetadata::get( inst ) );
         }
 
-        fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, vals ) );
+        fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, {} ) );
     }
 }
 
-std::vector< MDValue > abstract_metadata( const llvm::Module &m ) {
+std::vector< MDValue > abstract_metadata( llvm::Module &m ) {
     return query::query( m )
-        .map( []( auto &fn ) { return abstract_metadata( fn ); } )
+        .map( []( auto &fn ) { return abstract_metadata( &fn ); } )
         .flatten()
         .freeze();
 }
 
-std::vector< MDValue > abstract_metadata( const llvm::Function &fn ) {
+std::vector< MDValue > abstract_metadata( llvm::Function *fn ) {
     std::vector< MDValue > mds;
-    if ( auto vals = fn.getMetadata( "lart.abstract.roots" ) )
-        for ( auto & val : vals->operands() )
-            mds.emplace_back( val.get() );
+    if ( fn->getMetadata( "lart.abstract.roots" ) ) {
+        auto abstract = query::query( *fn ).flatten()
+            .map( query::refToPtr )
+            .filter( [] ( auto i ) { return i->getMetadata( "lart.domains" ); } )
+            .freeze();
+        for ( auto i : abstract )
+            mds.emplace_back( i );
+    }
     return mds;
 }
 
-void dump_abstract_metadata( const llvm::Module &m ) {
+void dump_abstract_metadata( llvm::Module &m ) {
     for ( auto &fn : m ) {
-        auto mds = abstract_metadata( fn );
+        auto mds = abstract_metadata( &fn );
         if ( !mds.empty() ) {
             std::cerr << "\nfunction: " << fn.getName().str() << std::endl;
 
