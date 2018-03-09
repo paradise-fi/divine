@@ -24,8 +24,6 @@
    descriptors 0, 1, and 2 respectively.
 */
 /* TODO: This is proof-of-concept, requires finetuning. */
-static char _PDCLIB_sin_buffer[BUFSIZ];
-static char _PDCLIB_sout_buffer[BUFSIZ];
 static char _PDCLIB_serr_buffer[BUFSIZ];
 
 static unsigned char _PDCLIB_sin_ungetbuf[_PDCLIB_UNGETCBUFSIZE];
