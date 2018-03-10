@@ -6,23 +6,25 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <deque>
-#include <lart/abstract/value.h>
-#include <lart/abstract/util.h>
-#include <lart/abstract/fieldtrie.h>
+#include <set>
+#include <unordered_set>
+
+#include <lart/abstract/domains/domains.h>
+
 namespace lart {
 namespace abstract {
 
 struct VPA {
-    void run( llvm::Module & m );
+    void run( llvm::Module& );
 private:
-    void preprocess( llvm::Function * );
-    void propagate_root( llvm::Value* );
+    void preprocess( llvm::Function* );
+    void propagate_value( llvm::Value*, Domain );
 
     using Task = std::function< void() >;
     std::deque< Task > tasks;
 
-    std::set< llvm::Value * > seen_vals;
-    std::set< llvm::Function * > seen_funs;
+    std::set< std::pair< llvm::Value*, Domain > > seen_vals;
+    std::unordered_set< llvm::Function* > seen_funs;
 };
 
 

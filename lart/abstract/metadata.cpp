@@ -88,7 +88,7 @@ void CreateAbstractMetadata::run( Module &m ) {
             for ( const auto &u : a->users() )
                 if ( auto call = dyn_cast< CallInst >( u ) ) {
                     auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
-                    amap[ getFunction( inst ) ][ inst ].emplace( domain( call ) );
+                    amap[ get_function( inst ) ][ inst ].emplace( domain( call ) );
                 }
         }
     }
