@@ -16,6 +16,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 
 #include <lart/abstract/types.h>
+#include <lart/analysis/postorder.h>
 #include <lart/abstract/domains/domains.h>
 
 namespace lart {
@@ -55,10 +56,22 @@ template< typename T >
 using ConstifyPtr = std::add_pointer_t< std::add_const_t< std::remove_pointer_t< T > > >;
 
 template< typename Values >
-static inline Types typesOf( const Values & vs ) {
+static inline Types types_of( const Values & vs ) {
     return query::query( vs ).map( [] ( const auto & v ) {
         return v->getType();
     } ).freeze();
+}
+
+static inline std::string llvm_name( const llvm::Type * type ) {
+    std::string buffer;
+    llvm::raw_string_ostream rso( buffer );
+    type->print( rso );
+    return rso.str();
+}
+
+template< typename... Ts >
+inline bool is_one_of( llvm::Value *v ) {
+    return ( llvm::isa< Ts >( v ) || ... );
 }
 
 template< typename Range >
@@ -190,6 +203,24 @@ static inline llvm::Value * argAt( llvm::Function * fn, size_t idx ) {
     return std::next( fn->arg_begin(), idx );
 }
 
+static inline llvm::Function * get_function( llvm::Argument * a ) {
+    return a->getParent();
+}
+
+static inline llvm::Function * get_function( llvm::Instruction * i ) {
+    return i->getParent()->getParent();
+}
+
+static inline llvm::Function * get_function( llvm::Value * val ) {
+    if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+        return get_function( arg );
+    return get_function( llvm::cast< llvm::Instruction >( val ) );
+}
+
+static inline llvm::Module * get_module( llvm::Value * val ) {
+    return get_function( val )->getParent();
+}
+
 static inline llvm::Function * getFunction( llvm::Argument * a ) {
     return a->getParent();
 }
@@ -248,6 +279,18 @@ static inline bool operatesWithStructTy( llvm::Value * value ) {
             if ( isBaseStructTy( o->getType() ) )
                 return true;
     return false;
+}
+
+inline Values value_succs( llvm::Value *v ) { return { v->user_begin(), v->user_end() }; }
+
+inline Values reach_from( Values roots ) {
+    return lart::analysis::postorder( roots, value_succs );
+};
+
+inline Values reach_from( llvm::Value *root ) { return reach_from( Values{ root } ); }
+
+inline llvm::Type * void_type( llvm::LLVMContext &ctx ) {
+    return llvm::Type::getVoidTy( ctx );
 }
 
 } // namespace abstract
