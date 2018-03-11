@@ -342,7 +342,8 @@ int main( int argc, char **argv )
                 s += " -o " + po.outputFile;
             s.insert( 0, "gcc " );
             s.append( " -static" );
-            ret = WEXITSTATUS( system( s.c_str() ) );
+            int gccret = system( s.c_str() );
+            ret = WEXITSTATUS( gccret );
         }
 
         if ( llvmExtract( objFiles, clang ) )
