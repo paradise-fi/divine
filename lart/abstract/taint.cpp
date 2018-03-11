@@ -8,6 +8,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/metadata.h>
+#include <lart/abstract/intrinsics.h>
 #include <lart/abstract/util.h>
 
 #include <lart/support/util.h>
@@ -64,6 +65,11 @@ void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted 
     UNREACHABLE( "Instruction does not use tainted value." );
 }
 
+Function* intrinsic( Instruction *i ) {
+    auto d = MDValue( i ).domain();
+    return get_intrinsic( i, d );
+}
+
 Instruction* to_tristate( Instruction *i, Domain dom ) {
     auto i8 = Type::getInt8Ty( i->getContext() );
     assert( i->getType() == i8 );
@@ -102,7 +108,7 @@ void Tainting::taint( Instruction *i ) {
         return;
 
     Values args;
-    // TODO add abstract intrinsic to args
+    args.push_back( intrinsic( i ) );
     args.push_back( i ); // fallback value
     for ( auto & op : i->operands() )
         args.emplace_back( op.get() );
@@ -127,7 +133,7 @@ void TaintBranching::expand( Value *t, BranchInst *br ) {
     IRBuilder<> irb( br );
     auto &ctx = br->getContext();
 
-    auto orig = cast< User >( t )->getOperand( 0 ); // fallback value
+    auto orig = cast< User >( t )->getOperand( 1 ); // fallback value
     auto dom = MDValue( orig ).domain();
 
     auto i8 = irb.CreateZExt( t, Type::getInt8Ty( ctx ) );
@@ -136,7 +142,6 @@ void TaintBranching::expand( Value *t, BranchInst *br ) {
     auto i1 = irb.CreateTrunc( low, Type::getInt1Ty( ctx ) );
 
     br->setCondition( i1 );
-    getFunction( br )->dump();
 }
 
 } // namespace abstract
