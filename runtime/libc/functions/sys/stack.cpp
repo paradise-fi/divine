@@ -5,12 +5,11 @@
 
 _Noreturn __invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
 {
-    to->pc = pc;
     if ( restoreMaskTo == 0 )
         __vm_ctl_flag( _DiOS_CF_Mask, 0 );
     if ( restoreMaskTo == 1 )
         __vm_ctl_flag( 0, _DiOS_CF_Mask );
-    __vm_ctl_set( _VM_CR_Frame, to );
+    __vm_ctl_set( _VM_CR_Frame, to, pc );
     __builtin_unreachable();
 }
 
