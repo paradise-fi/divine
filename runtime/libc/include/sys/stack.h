@@ -16,6 +16,21 @@ static inline void __dios_set_frame( struct _VM_Frame *f ) __nothrow
     __vm_ctl_set( _VM_CR_Frame, f );
 }
 
+__inline static inline void __dios_sync_parent_frame() __nothrow
+{
+    void **f = __CAST( void **, __vm_ctl_get( _VM_CR_User1 ) );
+    if ( !f ) return;
+    struct _VM_Frame *self = __CAST( struct _VM_Frame *, __vm_ctl_get( _VM_CR_Frame ) );
+    *f = self->parent;
+}
+
+__inline static inline void __dios_sync_this_frame() __nothrow
+{
+    void **f = __CAST( void **, __vm_ctl_get( _VM_CR_User1 ) );
+    if ( f )
+        *f = __dios_this_frame();
+}
+
 // unwind and free frames on stack 'stack' from 'from' to 'to' so that 'to'
 // the frame which originally returned to 'from' now returns to 'to'
 // * 'stack' can be nullptr if unwinding on local stack

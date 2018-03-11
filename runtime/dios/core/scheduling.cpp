@@ -64,9 +64,7 @@ extern "C" __trapfn __invisible void __dios_interrupt()
     }
 
     __vm_ctl_flag( _DiOS_CF_Deferred, 0 );
-    void **f = static_cast< void ** >( __vm_ctl_get( _VM_CR_User1 ) );
-    auto self = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) );
-    *f = self->parent;
+    __dios_sync_parent_frame();
     __vm_suspend();
 }
 
