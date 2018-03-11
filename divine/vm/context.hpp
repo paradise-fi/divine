@@ -315,8 +315,6 @@ struct Context
 
     virtual void doublefault()
     {
-        _heap.rollback();
-        flush_ptr2i();
         ref( _VM_CR_Flags ).integer |= _VM_CF_Error;
         set( _VM_CR_Frame, nullPointer() );
     }
