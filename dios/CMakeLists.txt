@@ -3,8 +3,8 @@
 include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
-      *.h dios/*.hpp dios/core/*.hpp dios/core/*.def dios/lib/*.hpp
-      dios/macro/*
+      *.h sys/*.hpp sys/core/*.hpp sys/core/*.def sys/lib/*.hpp
+      sys/macro/*
       atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
       libc/include/*.h libc/internals/*.h
@@ -15,10 +15,9 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
       libcxx/include/support/xlocale/*.h libcxx/src/support/atomic_support.h
-      libunwind/include/* libunwind/include/mach-o/* dios/filesystem/*.h )
+      libunwind/include/* libunwind/include/mach-o/* sys/fs/*.h )
 
-file( GLOB SRC_libdios
-      dios/*.cpp dios/core/*.cpp dios/filesystem/*.cpp )
+file( GLOB SRC_dios sys/*.cpp sys/core/*.cpp sys/fs/*.cpp )
 
 file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
 file( GLOB SRC_libc libc/functions/*/*.c )
@@ -45,7 +44,7 @@ macro( mkobjs var flags )
         COMMAND mkdir -p bc
         COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
                            ${f} bc/${out} ${flags} )
-    stringify( "runtime" "." ${f} )
+    stringify( "dios" "." ${f} )
   endforeach()
 endmacro()
 
@@ -60,7 +59,7 @@ macro( mklib lib )
     COMMAND runtime-ld bc/${lib}.a ${BC_${lib}}
   )
 
-  stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
+  stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
 
 foreach( hdr divm.h lart.h vmutil.h )
@@ -78,11 +77,10 @@ add_custom_command(
   COMMAND perl ${CMAKE_CURRENT_SOURCE_DIR}/hostabi.pl ${CMAKE_C_COMPILER} > ${HOSTABI}
 )
 
-include( compile-rt.flags )
+include( compile-flags.cmake )
 
 include_directories( ${divine_SOURCE_DIR} )
 add_definitions( -Wno-overlength-strings ${DIVINE_DEFINES} )
-add_library( divine-rt ${divine_SOURCE_DIR}/divine/rt/runtime.cpp
-                       ${runtime_FILES} runtime_list.cpp )
+add_library( divine-rt ${divine_SOURCE_DIR}/divine/rt/runtime.cpp ${dios_FILES} dios_list.cpp )
 set_target_properties( divine-rt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 install( TARGETS divine-rt DESTINATION lib )

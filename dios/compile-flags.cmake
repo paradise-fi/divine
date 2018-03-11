@@ -29,9 +29,9 @@ list( APPEND flags -std=c++1z )
 mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
 mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI" )
 
-list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
+list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror)
-mkobjs( libdios "${flags};-D__dios_kernel__" )
+mkobjs( dios "${flags};-D__dios_kernel__" )
 mkobjs( libabstract "${flags}" )
 
 mklib( libc libc_cpp )
@@ -42,16 +42,16 @@ mklib( libdios )
 mklib( libabstract )
 
 foreach( f ${H_RUNTIME} )
-  stringify( "runtime" "." ${f} )
+  stringify( "dios" "." ${f} )
 endforeach()
 
 set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
 set( OPS_dest "divine/Instruction.def" )
 file( COPY ${OPS_src} DESTINATION "divine" )
-stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
+stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
 foreach( hdr divm.h lart.h vmutil.h hostabi.h )
-  stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/${hdr} )
+  stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/${hdr} )
 endforeach()
-stringlist( "runtime" runtime )
+stringlist( "dios" dios )
 
 # vim: ft=cmake
