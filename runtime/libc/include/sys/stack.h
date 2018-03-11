@@ -6,7 +6,7 @@
 
 _PDCLIB_EXTERN_C
 
-static inline struct _VM_Frame *__dios_this_frame() __nothrow
+__inline static inline struct _VM_Frame *__dios_this_frame() __nothrow
 {
     return __CAST( struct _VM_Frame *, __vm_ctl_get( _VM_CR_Frame ) );
 }
