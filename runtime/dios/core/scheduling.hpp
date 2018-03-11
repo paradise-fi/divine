@@ -79,7 +79,7 @@ struct Task
           _proc( proc ),
           _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
-        setupFrame();
+        setup_stack();
         _tls = static_cast< __dios_tls * >( __vm_obj_make( sizeof( __dios_tls ) + tls_size ) );
         _tls->__errno = 0;
     }
@@ -90,7 +90,7 @@ struct Task
           _proc( proc ),
           _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
-        setupFrame( mainFrame );
+        setup_stack( mainFrame );
         _tls = static_cast< __dios_tls * >( mainTls );
         __vm_obj_resize( _tls, sizeof( __dios_tls ) + tls_size );
         _tls->__errno = 0;
@@ -115,7 +115,7 @@ struct Task
 
     ~Task() noexcept
     {
-        // FIXME. clearFrame();
+        free_stack();
         __vm_obj_free( _tls );
     }
 
@@ -126,8 +126,9 @@ struct Task
         return static_cast< uint32_t >( tid );
     }
 
-    void setupFrame( void *frame = nullptr ) noexcept {
-        clearFrame();
+    void setup_stack( void *frame = nullptr ) noexcept
+    {
+        free_stack();
         if ( frame ) {
             _frame = static_cast< _VM_Frame * >( frame );
             __vm_obj_resize( _frame, _fun->frame_size );
@@ -140,12 +141,11 @@ struct Task
 
 private:
 
-    void clearFrame() noexcept {
-        while ( _frame ) {
-            _VM_Frame *f = _frame->parent;
-            __vm_obj_free( _frame );
-            _frame = f;
-        }
+    void free_stack() noexcept
+    {
+        if ( _frame )
+            __dios_unwind( _frame, _frame, nullptr );
+        _frame = nullptr;
     }
 };
 
