@@ -21,32 +21,31 @@ using namespace llvm;
 
 namespace {
 
-std::string taint_type_name( Type *rty, const Types &args ) { 
-    std::string res = "." + llvm_name( rty );
+std::string taint_suffix( const Types &args ) {
+    std::string res;
     for ( auto a : args )
         res += "." + llvm_name( a );
     return res;
 }
 
-Function * get_taint_fn( Instruction *i ) {
-    auto m = getModule( i );
-
-    std::string name = "vm.test.taint";
-
-    auto ret = i->getType();
-
-    Types args;
-    // TODO add abstract intrinsic to args
-    args.push_back( i->getType() ); // fallback type
-    for ( auto t : types_of( i->operands() ) )
-        args.push_back( t );
-
+Function* get_taint_fn( Module *m, Type *ret, const Types &args ) {
+    auto name = "vm.test.taint" + taint_suffix( args );
     auto fty = FunctionType::get( ret, args, false );
-
-    name += taint_type_name( ret, types_of( i->operands() ) );
-
     auto fn = m->getOrInsertFunction( name, fty );
     return cast< Function >( fn );
+}
+
+Instruction* create_taint( Instruction *i, const Values &args ) {
+    IRBuilder<> irb( i );
+
+    auto rty = i->getType();
+
+    auto fn = get_taint_fn( getModule( i ), rty, types_of( args ) );
+
+    auto call = irb.CreateCall( fn, args );
+    call->removeFromParent();
+    call->insertAfter( i );
+    return call;
 }
 
 bool is_taintable( Value *i ) {
@@ -65,6 +64,32 @@ void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted 
     UNREACHABLE( "Instruction does not use tainted value." );
 }
 
+Instruction* to_tristate( Instruction *i, Domain dom ) {
+    auto i8 = Type::getInt8Ty( i->getContext() );
+    assert( i->getType() == i8 );
+
+    auto m = getModule( i );
+
+    std::string name = "lart." + DomainTable[ dom ] + ".bool_to_tristate";
+    auto fty = FunctionType::get( i8, { i8 }, false );
+    auto fn = cast< Function >( m->getOrInsertFunction( name, fty ) );
+
+    return create_taint( i, { fn, i, i } );
+}
+
+Instruction* lower_tristate( Instruction *i ) {
+    auto i8 = Type::getInt8Ty( i->getContext() );
+    assert( i->getType() == i8 );
+
+    auto m = getModule( i );
+
+    std::string name = "lart.tristate.lower";
+    auto fty = FunctionType::get( i8, { i8 }, false );
+    auto fn = cast< Function >( m->getOrInsertFunction( name, fty ) );
+
+    return create_taint( i, { fn, i, i } );
+}
+
 } // anonymous namespace
 
 void Tainting::run( Module &m ) {
@@ -76,24 +101,42 @@ void Tainting::taint( Instruction *i ) {
     if ( !is_taintable( i ) )
         return;
 
-    IRBuilder<> irb( i );
-    auto fn = get_taint_fn( i );
-
     Values args;
     // TODO add abstract intrinsic to args
     args.push_back( i ); // fallback value
     for ( auto & op : i->operands() )
         args.emplace_back( op.get() );
 
-    auto call = irb.CreateCall( fn, args );
-    call->removeFromParent();
-    call->insertAfter( i );
+    auto call = create_taint( i, args );
 
     for ( const auto & u : i->users() )
         if ( u != call )
             use_tainted_value( cast< Instruction >( u ), i, call );
 
     tainted.insert( i );
+}
+
+void TaintBranching::run( Module &m ) {
+    for ( auto t : taints( m ) )
+        for ( auto u : t->users() )
+            if ( auto br = dyn_cast< BranchInst >( u ) )
+                expand( t, br );
+}
+
+void TaintBranching::expand( Value *t, BranchInst *br ) {
+    IRBuilder<> irb( br );
+    auto &ctx = br->getContext();
+
+    auto orig = cast< User >( t )->getOperand( 0 ); // fallback value
+    auto dom = MDValue( orig ).domain();
+
+    auto i8 = irb.CreateZExt( t, Type::getInt8Ty( ctx ) );
+    auto trs = to_tristate( cast< Instruction >( i8 ), dom );
+    auto low = lower_tristate( trs );
+    auto i1 = irb.CreateTrunc( low, Type::getInt1Ty( ctx ) );
+
+    br->setCondition( i1 );
+    getFunction( br )->dump();
 }
 
 } // namespace abstract
