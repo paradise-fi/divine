@@ -200,7 +200,7 @@ void Eval< Ctx >::collect_allocas( CodePointer pc, Y yield )
             PointerV ptr;
             slot_read( i.result(), ptr );
             if ( heap().valid( ptr.cooked() ) )
-                yield( ptr );
+                yield( ptr, i.result() );
         }
 }
 
@@ -208,7 +208,7 @@ template< typename Ctx >
 void Eval< Ctx >::implement_stacksave()
 {
     std::vector< PointerV > ptrs;
-    collect_allocas( pc(), [&]( PointerV p ) { ptrs.push_back ( p ); } );
+    collect_allocas( pc(), [&]( PointerV p, auto ) { ptrs.push_back( p ); } );
     auto r = makeobj( sizeof( IntV::Raw ) + ptrs.size() * PointerBytes );
     auto p = r;
     heap().write_shift( p, IntV( ptrs.size() ) );
@@ -231,7 +231,7 @@ void Eval< Ctx >::implement_stackrestore()
         fault( _VM_F_Hypercall ) << " stackrestore with undefined count";
     auto s = r;
 
-    collect_allocas( pc(), [&]( auto ptr )
+    collect_allocas( pc(), [&]( auto ptr, auto slot )
     {
         bool retain = false;
         r = s;
@@ -253,7 +253,10 @@ void Eval< Ctx >::implement_stackrestore()
             }
         }
         if ( !retain )
+        {
             freeobj( ptr.cooked() );
+            slot_write( slot, PointerV( nullPointer() ) );
+        }
     } );
 }
 
@@ -830,7 +833,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
     auto maybe_free = [&]
     {
         if ( !free ) return;
-        collect_allocas( caller_pc, [&]( auto ptr ) { freeobj( ptr.cooked() ); } );
+        collect_allocas( caller_pc, [&]( auto ptr, auto ) { freeobj( ptr.cooked() ); } );
         freeobj( frame() );
     };
 
@@ -1031,7 +1034,7 @@ void Eval< Ctx >::implement_ret()
     PointerV parent, br;
     heap().read( fr.cooked(), parent );
 
-    collect_allocas( pc(), [&]( auto ptr ) { freeobj( ptr.cooked() ); } );
+    collect_allocas( pc(), [&]( auto ptr, auto ) { freeobj( ptr.cooked() ); } );
 
     if ( parent.cooked().null() )
     {
