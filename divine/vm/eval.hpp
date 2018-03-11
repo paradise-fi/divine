@@ -550,7 +550,7 @@ struct Eval
     void update_shuffle();
 
     template< typename Y >
-    void collect_allocas( Y yield );
+    void collect_allocas( CodePointer pc, Y yield );
     void implement_stacksave();
     void implement_stackrestore();
 

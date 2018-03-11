@@ -191,9 +191,9 @@ void Eval< Ctx >::switchBB( CodePointer target )
 }
 
 template< typename Ctx > template< typename Y >
-void Eval< Ctx >::collect_allocas( Y yield )
+void Eval< Ctx >::collect_allocas( CodePointer pc, Y yield )
 {
-    auto &f = program().functions[ pc().function() ];
+    auto &f = program().functions[ pc.function() ];
     for ( auto &i : f.instructions )
         if ( i.opcode == OpCode::Alloca )
         {
@@ -208,7 +208,7 @@ template< typename Ctx >
 void Eval< Ctx >::implement_stacksave()
 {
     std::vector< PointerV > ptrs;
-    collect_allocas( [&]( PointerV p ) { ptrs.push_back ( p ); } );
+    collect_allocas( pc(), [&]( PointerV p ) { ptrs.push_back ( p ); } );
     auto r = makeobj( sizeof( IntV::Raw ) + ptrs.size() * PointerBytes );
     auto p = r;
     heap().write_shift( p, IntV( ptrs.size() ) );
@@ -231,7 +231,7 @@ void Eval< Ctx >::implement_stackrestore()
         fault( _VM_F_Hypercall ) << " stackrestore with undefined count";
     auto s = r;
 
-    collect_allocas( [&]( auto ptr )
+    collect_allocas( pc(), [&]( auto ptr )
     {
         bool retain = false;
         r = s;
@@ -826,9 +826,17 @@ void Eval< Ctx >::implement_ctl_set_frame()
         return;
     }
 
+    auto caller_pc = pc();
+    auto maybe_free = [&]
+    {
+        if ( !free ) return;
+        collect_allocas( caller_pc, [&]( auto ptr ) { freeobj( ptr.cooked() ); } );
+        freeobj( frame() );
+    };
+
     if ( ptr.cooked().null() )
     {
-        if ( free ) freeobj( frame() );
+        maybe_free();
         return context().set( _VM_CR_Frame, ptr.cooked() );
     }
 
@@ -839,7 +847,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
     if ( instruction().argcount() == 3 )
     {
         auto target = operandCk< PointerV >( 2 ).cooked();
-        if ( free ) freeobj( frame() );
+        maybe_free();
         context().set( _VM_CR_Frame, ptr.cooked() );
         long_jump( target );
     }
@@ -859,7 +867,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
             return;
         }
 
-        if ( free ) freeobj( frame() );
+        maybe_free();
         context().set( _VM_CR_Frame, ptr.cooked() );
     }
 
@@ -1023,10 +1031,7 @@ void Eval< Ctx >::implement_ret()
     PointerV parent, br;
     heap().read( fr.cooked(), parent );
 
-    collect_allocas( [&]( auto ptr )
-                        {
-                            freeobj( ptr.cooked() );
-                        } );
+    collect_allocas( pc(), [&]( auto ptr ) { freeobj( ptr.cooked() ); } );
 
     if ( parent.cooked().null() )
     {
