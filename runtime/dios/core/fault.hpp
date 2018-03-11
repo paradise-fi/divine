@@ -192,6 +192,8 @@ struct Fault: public Next {
     {
         uint64_t old = __vm_ctl_flag( 0, _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop );
 
+        __dios_sync_parent_frame();
+
         bool kernel = old & _VM_CF_KernelMode;
         auto *frame = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) )->parent;
 

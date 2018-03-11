@@ -54,6 +54,9 @@ struct Trap
     __inline Trap( RM rm ) : retmode( rm )
     {
         keepflags = __vm_ctl_flag( 0, kern ) & kern;
+        if ( retmode == CONTINUE )
+            return;
+        __dios_sync_this_frame();
     }
 
     __inline ~Trap()
