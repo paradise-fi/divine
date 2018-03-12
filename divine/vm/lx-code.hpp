@@ -40,6 +40,7 @@ enum Hypercall /* see divm.h for prototypes & documentation */
 
     HypercallTestCrit,
     HypercallTestLoop,
+    HypercallTestTaint,
 
     HypercallCtlSet,
     HypercallCtlGet,

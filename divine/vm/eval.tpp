@@ -596,6 +596,7 @@ void Eval< Ctx >::implement_hypercall()
 
         case lx::HypercallTestLoop: return implement_test_loop();
         case lx::HypercallTestCrit: return implement_test_crit();
+        case lx::HypercallTestTaint: return implement_test_taint();
 
         case lx::HypercallControl:
             return implement_hypercall_control();
@@ -1024,6 +1025,12 @@ void Eval< Ctx >::implement_test_crit()
     context().sync_pc();
     CodePointer h = operandCk< PointerV >( 3 ).cooked();
     context().enter( h, PointerV( frame() ) );
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_test_taint()
+{
+    NOT_IMPLEMENTED();
 }
 
 template< typename Ctx >

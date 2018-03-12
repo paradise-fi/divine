@@ -571,6 +571,7 @@ struct Eval
 
     void implement_test_loop();
     void implement_test_crit();
+    void implement_test_taint();
 
     void implement_hypercall_control();
     void implement_hypercall_syscall();

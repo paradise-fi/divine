@@ -19,6 +19,7 @@
 #pragma once
 
 #include <brick-bitlevel>
+#include <brick-string>
 #include <divine/vm/divm.h>
 
 DIVINE_RELAX_WARNINGS
@@ -268,6 +269,8 @@ lx::Hypercall hypercall( llvm::Function *f )
         return lx::HypercallTestCrit;
     if ( name == "__vm_test_loop" )
         return lx::HypercallTestLoop;
+    if ( brick::string::startsWith( name, "__vm_test_taint" ) )
+        return lx::HypercallTestTaint;
 
     if ( name == "__vm_ctl_set" )
         return lx::HypercallCtlSet;
