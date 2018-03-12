@@ -76,6 +76,7 @@ struct Int : Base
 
     Raw _m;
     bool _ispointer:1;
+    uint8_t _taints:5;
 
 
     void checkptr( Int o, Int &result )
@@ -89,6 +90,7 @@ struct Int : Base
     Int arithmetic( Int o, Raw r )
     {
         Int result( r, (_m & o._m) == full< Raw >() ? full< Raw >() : 0, false );
+        result.taints( taints() | o.taints() );
         checkptr( o, result );
         return result;
     }
@@ -96,6 +98,7 @@ struct Int : Base
     Int bitwise( Raw r, Raw m, Int o )
     {
         Int result( r, (_m & o._m) | m, false );
+        result.taints( taints() | o.taints() );
         checkptr( o, result );
         return result;
     }
@@ -104,6 +107,7 @@ struct Int : Base
     {
         Int< 1, false > res( v );
         res.defined( defined() && o.defined() );
+        res.taints( taints() | o.taints() );
         return res;
     }
 
@@ -117,10 +121,19 @@ struct Int : Base
     void raw( Raw r ) { _raw = r; }
     auto cooked() { return _cooked; }
 
-    Int() : _raw( 0 ), _m( 0 ), _ispointer( false ) {}
-    explicit Int( Cooked i ) : _cooked( i ), _m( full< Raw >() ), _ispointer( false ) {}
-    Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ), _ispointer( ptr ) {}
-    Int< width, true > make_signed() { return Int< width, true >( _raw, _m, _ispointer ); }
+    void taints( uint8_t set ) { _taints = set; }
+    uint8_t taints() { return _taints; }
+
+    Int() : _raw( 0 ), _m( 0 ), _ispointer( false ), _taints( 0 ) {}
+    explicit Int( Cooked i ) : _cooked( i ), _m( full< Raw >() ), _ispointer( false ), _taints( 0 ) {}
+    Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ), _ispointer( ptr ), _taints( 0 ) {}
+
+    Int< width, true > make_signed()
+    {
+        Int< width, true > result( _raw, _m, _ispointer );
+        result.taints( _taints );
+        return result;
+    }
 
     template< int w >
     typename std::enable_if< (width > w), Raw >::type signbit() { return Raw( 1 ) << ( w - 1 ); }
@@ -128,7 +141,7 @@ struct Int : Base
     typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
 
     template< int w > Int( Int< w, is_signed > i )
-        : _cooked( i._cooked ), _m( i._m ), _ispointer( i._ispointer )
+        : _cooked( i._cooked ), _m( i._m ), _ispointer( i._ispointer ), _taints( i._taints )
     {
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
@@ -139,7 +152,8 @@ struct Int : Base
     }
 
     template< typename T > Int( Float< T > f ) :
-        _cooked( f.cooked() ), _m( f.defined() ? full< Raw >() : 0 ), _ispointer( false )
+        _cooked( f.cooked() ), _m( f.defined() ? full< Raw >() : 0 ), _ispointer( false ),
+        _taints( f.taints() )
     {
         using FC = typename Float< T >::Cooked;
         if ( f.cooked() > FC( std::numeric_limits< Cooked >::max() )
@@ -153,30 +167,37 @@ struct Int : Base
     Int operator~() { Int r = *this; r._raw = ~_raw; return r; }
 
     template< int w >
-    Int operator<<( Int< w, false > sh ) {
+    Int operator<<( Int< w, false > sh )
+    {
+        Int result( 0, 0, false );
+        result.taints( _taints | sh.taints() );
         if ( !sh.defined() )
-            return Int( 0, 0, false );
-        return Int( raw() << sh.cooked(),
-                    _m << sh.cooked() | bitlevel::ones< Raw >( sh.cooked() ), false );
+            return result;
+        result._raw = raw() << sh.cooked();
+        result._m = _m << sh.cooked() | bitlevel::ones< Raw >( sh.cooked() );
+        return result;
     }
 
     template< int w >
     Int operator>>( Int< w, false > sh )
     {
+        Int result( 0, 0, false );
+        result.taints( _taints | sh.taints() );
         if ( !sh.defined() )
-            return Int( 0, 0, false );
+            return result;
 
         const int bits = 8 * sizeof( Raw );
-        Raw mask = _m >> sh._raw;
+        result._m = _m >> sh._raw;
         if ( !is_signed || _m >> ( bits - 1 ) ) // unsigned or defined sign bit
         {
             if ( sh._raw >= bits ) /* all original bits rotated away */
-                mask = bitlevel::ones< Raw >( bits );
+                result._m = bitlevel::ones< Raw >( bits );
             else /* only some of the bits are new */
-                mask |= ~bitlevel::ones< Raw >( bits - sh._raw );
+                result._m |= ~bitlevel::ones< Raw >( bits - sh._raw );
         }
 
-        return Int( cooked() >> sh.cooked(), mask, false );
+        result._cooked = cooked() >> sh.cooked();
+        return result;
     }
 
     friend std::ostream & operator<<( std::ostream &o, Int v )
@@ -206,15 +227,25 @@ struct Float : Base
         Cooked _cooked;
     };
 
-    bool _defined;
+    bool _defined:1;
+    uint8_t _taints:5;
 
     Float() : Float( 0, false ) {}
-    explicit Float( T t, bool def = true ) : _raw( 0 ), _defined( def ) { _cooked = t; }
+    explicit Float( T t, bool def = true ) : _raw( 0 ), _defined( def ), _taints( 0 ) { _cooked = t; }
+
     template< int w, bool sig > Float( Int< w, sig > i )
-        : _cooked( i.cooked() ), _defined( i.defined() ) {}
-    Float &operator=( const Float &o ) { _cooked = o._cooked; _defined = o._defined; }
+        : _cooked( i.cooked() ), _defined( i.defined() ), _taints( i.taints() ) {}
+
+    Float &operator=( const Float &o )
+    {
+        _cooked = o._cooked;
+        _defined = o._defined;
+        _taints = o._taints;
+        return *this;
+    }
+
     template< typename S > explicit Float( Float< S > o )
-        : _cooked( o._cooked ), _defined( o._defined )
+        : _cooked( o._cooked ), _defined( o._defined ), _taints( o._taints )
     {
         if ( sizeof( _cooked ) < sizeof( o._cooked ) &&
              std::isinf( _cooked ) && !std::isinf( o._cooked ) )
@@ -231,16 +262,27 @@ struct Float : Base
     bool pointer() { return false; }
     void pointer( bool ) {} /* ignore */
 
+    void taints( uint8_t set ) { _taints = set; }
+    uint8_t taints() { return _taints; }
+
     bool isnan() { return std::isnan( _cooked ); }
     T cooked() { return _cooked; }
     Int< 1, false > compare( Float o, bool v )
     {
         Int< 1, false > res( v );
         res.defined( defined() && o.defined() );
+        res.taints( taints() | o.taints() );
         return res;
     }
+
     Float make_signed() { return *this; }
-    Float arithmetic( Float o, Cooked r ) { return Float( r, defined() && o.defined() ); }
+    Float arithmetic( Float o, Cooked r )
+    {
+        Float result( r, defined() && o.defined() );
+        result.taints( taints() | o.taints() );
+        return result;
+    }
+
     friend std::ostream & operator<<( std::ostream &o, Float v )
     {
         return o << "[f" << sizeof( Cooked ) * 8 << " " << v.cooked() << " "
@@ -261,6 +303,7 @@ struct Pointer : Base
 
     bool _obj_defined:1, _off_defined:1;
     bool _ispointer:1;
+    uint8_t _taints:5;
 
     template< typename P >
     auto offset( GenericPointer p ) { return P( p ).offset(); }
@@ -289,7 +332,7 @@ struct Pointer : Base
 
     Pointer() : Pointer( nullPointer(), false, false ) {}
     explicit Pointer( Cooked x, bool d = true, bool isptr = true )
-        : _cooked( x ), _obj_defined( d ), _off_defined( d ), _ispointer( isptr ) {}
+        : _cooked( x ), _obj_defined( d ), _off_defined( d ), _ispointer( isptr ), _taints( 0 ) {}
 
     Pointer operator+( int off )
     {
@@ -303,6 +346,7 @@ struct Pointer : Base
         Pointer r = *this + off.cooked();
         if ( !off.defined() )
             r._off_defined = false;
+        r.taints( taints() | off.taints() );
         return r;
     }
 
@@ -315,26 +359,33 @@ struct Pointer : Base
     bool defined() { return _obj_defined && _off_defined; }
     void defined( bool d ) { _obj_defined = _off_defined = d; }
 
+    void taints( uint8_t set ) { _taints = set; }
+    uint8_t taints() { return _taints; }
+
     bool pointer() { return _ispointer; }
     void pointer( bool b ) { _ispointer = b; }
 
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }
+
     Int< 1, false > compare( Pointer o, bool v )
     {
         Int< 1, false > res( v );
         res.defined( defined() && o.defined() );
+        res.taints( taints() | o.taints() );
         return res;
     }
 
     template< int w, bool s > operator Int< w, s >()
     {
         using IntPtr = Int< _VM_PB_Full, false >;
-        return IntPtr( _cooked.raw(), defbits(), true );
+        IntPtr result( _cooked.raw(), defbits(), true );
+        result.taints( taints() );
+        return result;
     }
 
     template< int w, bool s > explicit Pointer( Int< w, s > i )
-        : _cooked( PointerType::Global )
+        : _cooked( PointerType::Global ), _taints( i.taints() )
     {
         if ( w >= PointerBytes )
         {
@@ -490,6 +541,137 @@ struct TestPtr
         ASSERT_EQ( p.cooked().offset(), 20 );
     }
 
+};
+
+struct TestTaint
+{
+    TEST( def )
+    {
+        vm::value::Pointer p( vm::nullPointer(), true );
+        vm::value::Int< 32 > i;
+        ASSERT_EQ( p.taints(), 0 );
+        ASSERT_EQ( i.taints(), 0 );
+    }
+
+    TEST( arith )
+    {
+        vm::value::Int< 32 > a( 7 ), b( 8 );
+        a.taints( 1 );
+        ASSERT_EQ( a.taints(), 1 );
+        ASSERT_EQ( b.taints(), 0 );
+        auto c = a + b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = c + c;
+        ASSERT_EQ( c.taints(), 1 );
+        c = b + b;
+        ASSERT_EQ( c.taints(), 0 );
+        c = a * a;
+        ASSERT_EQ( c.taints(), 1 );
+        c = a * b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = b * b;
+        ASSERT_EQ( c.taints(), 0 );
+    }
+
+    TEST( multiple )
+    {
+        vm::value::Int< 32 > a( 7 ), b( 8 );
+        a.taints( 1 );
+        b.taints( 2 );
+        ASSERT_EQ( a.taints(), 1 );
+        ASSERT_EQ( b.taints(), 2 );
+        auto c = a + b;
+        ASSERT_EQ( c.taints(), 3 );
+        c = c + c;
+        ASSERT_EQ( c.taints(), 3 );
+        c = a + a;
+        ASSERT_EQ( c.taints(), 1 );
+        c = a * a;
+        ASSERT_EQ( c.taints(), 1 );
+        c = b * b;
+        ASSERT_EQ( c.taints(), 2 );
+        c = a * b;
+        ASSERT_EQ( c.taints(), 3 );
+    }
+
+    TEST( bitwise )
+    {
+        vm::value::Int< 32 > a( 7 ), b( 8 );
+        a.taints( 1 );
+        ASSERT_EQ( a.taints(), 1 );
+        ASSERT_EQ( b.taints(), 0 );
+        auto c = a & b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = a | b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = a ^ b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = b;
+        ASSERT_EQ( c.taints(), 0 );
+    }
+
+    TEST( ptr )
+    {
+        vm::value::Pointer a, b;
+        a.taints( 1 );
+        ASSERT_EQ( a.taints(), 1 );
+        ASSERT_EQ( b.taints(), 0 );
+        a = b;
+        ASSERT_EQ( a.taints(), 0 );
+        a.taints( 3 );
+        ASSERT_EQ( a.taints(), 3 );
+        vm::value::Int< 64 > x = a;
+        ASSERT_EQ( x.taints(), 3 );
+        b = vm::value::Pointer( x );
+        ASSERT_EQ( b.taints(), 3 );
+    }
+
+    TEST( flt )
+    {
+        vm::value::Float< double > a, b;
+        a.taints( 1 );
+        ASSERT_EQ( a.taints(), 1 );
+        ASSERT_EQ( b.taints(), 0 );
+        auto c = a + b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = a * b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = c * c;
+        ASSERT_EQ( c.taints(), 1 );
+        c = c + a;
+        ASSERT_EQ( c.taints(), 1 );
+        c = c + b;
+        ASSERT_EQ( c.taints(), 1 );
+        c = b + b;
+        ASSERT_EQ( c.taints(), 0 );
+    }
+
+    TEST( conv_1 )
+    {
+        vm::value::Float< double > a;
+        a.taints( 1 );
+        auto b = vm::value::Int< 64 >( a );
+        ASSERT_EQ( b.taints(), 1 );
+        auto p = vm::value::Pointer( b );
+        ASSERT_EQ( p.taints(), 1 );
+        auto i = vm::value::Int< 64 >( p );
+        ASSERT_EQ( i.taints(), 1 );
+        auto f = vm::value::Float< double >( i );
+        ASSERT_EQ( f.taints(), 1 );
+    }
+
+    TEST( conv_0 )
+    {
+        vm::value::Float< double > a;
+        auto b = vm::value::Int< 64 >( a );
+        ASSERT_EQ( b.taints(), 0 );
+        auto p = vm::value::Pointer( b );
+        ASSERT_EQ( p.taints(), 0 );
+        auto i = vm::value::Int< 64 >( p );
+        ASSERT_EQ( i.taints(), 0 );
+        auto f = vm::value::Float< double >( i );
+        ASSERT_EQ( f.taints(), 0 );
+    }
 };
 
 }
