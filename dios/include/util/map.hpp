@@ -3,7 +3,7 @@
 #ifndef __DIOS_MAP_HPP__
 #define __DIOS_MAP_HPP__
 
-#include <dios/lib/array.hpp>
+#include <util/array.hpp>
 #include <brick-data>
 
 namespace __dios {
