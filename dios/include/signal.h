@@ -10,9 +10,9 @@
 #define _PDCLIB_SIGNAL_H _PDCLIB_SIGNAL_H
 #include <_PDCLIB/config.h>
 #include <_PDCLIB/glue.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
 
 /* Signals ------------------------------------------------------------------ */
 
@@ -109,9 +109,9 @@ void (*signal( int sig, void (*func)( int ) ) )( int );
    handler (i.e., a second signal before the signal handler re-registers itself
    or SIG_IGN will end the program).
    Returns zero if successful, nonzero otherwise. */
-int raise( int sig );
+int raise( int sig ) __nothrow;
 
-int kill(pid_t pid, int sig);
+int kill(pid_t pid, int sig) __nothrow;
 
 typedef _PDCLIB_uint64_t sigset_t;
 
@@ -135,11 +135,11 @@ struct sigaction
     void ( *sa_restorer )( void );
 };
 
-int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact );
-int rt_sigaction( int signum, const struct sigaction *act, struct sigaction *oldact, size_t sigsetsize );
+int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact ) __nothrow;
+int rt_sigaction( int signum, const struct sigaction *act, struct sigaction *oldact,
+                  size_t sigsetsize ) __nothrow;
 
-#ifdef __cplusplus
-}
-#endif
+__END_DECLS
+
 #endif
 

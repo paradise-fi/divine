@@ -161,31 +161,31 @@
 #endif /* __POSIX_VISIBLE */
 
 __BEGIN_DECLS
-int	chmod(const char *, mode_t);
-int	fstat(int, struct stat *);
-int	mknod(const char *, mode_t, dev_t);
-int	mkdir(const char *, mode_t);
-int	mkfifo(const char *, mode_t);
-int	stat(const char *, struct stat *);
-mode_t	umask(mode_t);
+int	chmod(const char *, mode_t) __nothrow;
+int	fstat(int, struct stat *) __nothrow;
+int	mknod(const char *, mode_t, dev_t) __nothrow;
+int	mkdir(const char *, mode_t) __nothrow;
+int	mkfifo(const char *, mode_t) __nothrow;
+int	stat(const char *, struct stat *) __nothrow;
+mode_t	umask(mode_t) __nothrow;
 #if __POSIX_VISIBLE >= 200112L || __XPG_VISIBLE >= 420 || __BSD_VISIBLE
-int	fchmod(int, mode_t);
-int	lstat(const char *, struct stat *);
+int	fchmod(int, mode_t) __nothrow;
+int	lstat(const char *, struct stat *) __nothrow;
 #endif
 #if __POSIX_VISIBLE >= 200809
-int	fchmodat(int, const char *, mode_t, int);
-int	fstatat(int, const char *, struct stat *, int);
-int	mkdirat(int, const char *, mode_t);
-int	mkfifoat(int, const char *, mode_t);
-int	mknodat(int, const char *, mode_t, dev_t);
-int	utimensat(int, const char *, const struct timespec [2], int);
-int	futimens(int, const struct timespec [2]);
+int	fchmodat(int, const char *, mode_t, int) __nothrow;
+int	fstatat(int, const char *, struct stat *, int) __nothrow;
+int	mkdirat(int, const char *, mode_t) __nothrow;
+int	mkfifoat(int, const char *, mode_t) __nothrow;
+int	mknodat(int, const char *, mode_t, dev_t) __nothrow;
+int	utimensat(int, const char *, const struct timespec [2], int) __nothrow;
+int	futimens(int, const struct timespec [2]) __nothrow;
 #endif
 #if __BSD_VISIBLE
-int	chflags(const char *, unsigned int);
-int	chflagsat(int, const char *, unsigned int, int);
-int	fchflags(int, unsigned int);
-int	isfdtype(int, int);
+int	chflags(const char *, unsigned int) __nothrow;
+int	chflagsat(int, const char *, unsigned int, int) __nothrow;
+int	fchflags(int, unsigned int) __nothrow;
+int	isfdtype(int, int) __nothrow;
 #endif
 __END_DECLS
 #endif /* !_SYS_STAT_H_ */

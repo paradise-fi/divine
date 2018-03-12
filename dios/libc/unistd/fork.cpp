@@ -4,7 +4,7 @@
 #include <sys/interrupt.h>
 #include <dios.h>
 
-pid_t fork( void )
+pid_t fork( void ) noexcept
 {
     pid_t old_pid = getpid(), child_pid;
     __run_atfork_handlers( 0 );

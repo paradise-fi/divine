@@ -24,7 +24,7 @@ namespace __dios
 {
 
 #include <dios/macro/no_memory_tags>
-#define SYSCALL( name, schedule, ret, arg )    extern ret (*name ## _ptr) arg;
+#define SYSCALL( name, schedule, ret, arg )    extern ret (*name ## _ptr) arg noexcept;
 #include <sys/syscall.def>
 #undef SYSCALL
 #include <dios/macro/no_memory_tags.cleanup>
@@ -83,14 +83,15 @@ struct BaseContext
         using Ctx = typename Setup::Context;
 
         #include <dios/macro/no_memory_tags>
-        #define SYSCALL( name, schedule, ret, arg ) name ## _ptr = [] arg __trapfn -> ret \
-        {                                                                                 \
-            Trap _trap( Trap::schedule );                                                 \
-            return unpad( []( auto... t ) __inline -> ret                                 \
-            {                                                                             \
-                auto ctx = reinterpret_cast< Ctx * >( __vm_ctl_get( _VM_CR_State ) );     \
-                return ctx->name( t... );                                                 \
-            }, _1, _2, _3, _4, _5, _6 );                                                  \
+        #define SYSCALL( name, schedule, ret, arg )                                   \
+        name ## _ptr = [] arg __trapfn noexcept -> ret                                \
+        {                                                                             \
+            Trap _trap( Trap::schedule );                                             \
+            return unpad( []( auto... t ) __inline noexcept -> ret                    \
+            {                                                                         \
+                auto ctx = reinterpret_cast< Ctx * >( __vm_ctl_get( _VM_CR_State ) ); \
+                return ctx->name( t... );                                             \
+            }, _1, _2, _3, _4, _5, _6 );                                              \
         };
 
         #include <sys/syscall.def>

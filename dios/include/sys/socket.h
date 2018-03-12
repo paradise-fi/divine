@@ -2,14 +2,11 @@
 #define _SYS_SOCKET_H  1
 
 #include <sys/uio.h>
+#include <sys/cdefs.h>
 #include <stddef.h>
 #include <unistd.h>     /* For ssize_t. */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define FS_NOINLINE __attribute__((noinline))
+__BEGIN_DECLS
 
 /* Types of sockets.  */
 enum __socket_type
@@ -281,74 +278,74 @@ struct mmsghdr {
 /* Create a new socket of type TYPE in domain DOMAIN, using
    protocol PROTOCOL.  If PROTOCOL is zero, one is chosen automatically.
    Returns a file descriptor for the new socket, or -1 for errors.  */
-FS_NOINLINE int socket( int domain, int type, int protocol );
+__noinline int socket( int domain, int type, int protocol ) __nothrow;
 
 /* Create two new sockets, of type TYPE in domain DOMAIN and using
    protocol PROTOCOL, which are connected to each other, and put file
    descriptors for them in FDS[0] and FDS[1].  If PROTOCOL is zero,
    one will be chosen automatically.  Returns 0 on success, -1 for errors.  */
-FS_NOINLINE int socketpair( int domain, int type, int protocol,
-                            int fds[2] );
+__noinline int socketpair( int domain, int type, int protocol,
+                            int fds[2] ) __nothrow;
 
 /* Put the local address of FD into *ADDR and its length in *LEN.  */
-FS_NOINLINE int getsockname ( int fd, struct sockaddr *addr, socklen_t *addrlen );
+__noinline int getsockname ( int fd, struct sockaddr *addr, socklen_t *addrlen ) __nothrow;
 
 /* Give the socket FD the local address ADDR (which is LEN bytes long).  */
-FS_NOINLINE int bind( int fd, const struct sockaddr *addr, socklen_t len );
+__noinline int bind( int fd, const struct sockaddr *addr, socklen_t len ) __nothrow;
 
 /* Open a connection on socket FD to peer at ADDR (which LEN bytes long).
    For connectionless socket types, just set the default address to send to
    and the only address from which to accept transmissions.
    Return 0 on success, -1 for errors.
 */
-FS_NOINLINE int connect( int fd, const struct sockaddr *addr, socklen_t len );
+__noinline int connect( int fd, const struct sockaddr *addr, socklen_t len ) __nothrow;
 
 /* Put the address of the peer connected to socket FD into *ADDR
    (which is *LEN bytes long), and its actual length into *LEN.  */
-FS_NOINLINE int getpeername( int fd, struct sockaddr *addr, socklen_t *len );
+__noinline int getpeername( int fd, struct sockaddr *addr, socklen_t *len ) __nothrow;
 
 /* Send N bytes of BUF to socket FD.  Returns the number sent or -1. */
-FS_NOINLINE ssize_t send( int fd, const void *buf, size_t n, int flags );
+__noinline ssize_t send( int fd, const void *buf, size_t n, int flags ) __nothrow;
 
 /* Send N bytes of BUF on socket FD to peer at address ADDR (which is
    ADDRLEN bytes long).  Returns the number sent, or -1 for errors.
 */
-FS_NOINLINE ssize_t sendto( int fd, const void *buf, size_t n, int flags,
-                            const struct sockaddr *addr, socklen_t addrlen );
+__noinline ssize_t sendto( int fd, const void *buf, size_t n, int flags,
+                            const struct sockaddr *addr, socklen_t addrlen ) __nothrow;
 
 /* Send a message described by MESSAGE on socket FD.
    Returns the number of bytes sent, or -1 for errors.
 */
 /*extern ssize_t sendmsg( int fd, const struct msghdr *message,
-                        int flags ) CVFS_NOINLINE;*/
+                        int flags ) CV__noinline;*/
 
 /* Send a VLEN messages as described by VMESSAGES to socket FD.
    Returns the number of datagrams successfully written or -1 for errors. */
 /*extern int sendmmsg( int fd, struct mmsghdr *vmessages, unsigned int vlen,
-                     int flags ) CVFS_NOINLINE;*/
+                     int flags ) CV__noinline;*/
 
 /* Read N bytes into BUF from socket FD.
    Returns the number read or -1 for errors.
 */
-FS_NOINLINE ssize_t recv( int fd, void *buf, size_t n, int flags );
+__noinline ssize_t recv( int fd, void *buf, size_t n, int flags ) __nothrow;
 
 /* Read N bytes into BUF through socket FD.
    If ADDR is not NULL, fill in *ADDRLEN bytes of it with tha address of
    the sender, and store the actual size of the address in *ADDR_LEN.
    Returns the number of bytes read or -1 for errors.
 */
-FS_NOINLINE ssize_t recvfrom( int fd, void *buf, size_t n, int flags,
-                         struct sockaddr *addr, socklen_t *addrlen );
+__noinline ssize_t recvfrom( int fd, void *buf, size_t n, int flags,
+                         struct sockaddr *addr, socklen_t *addrlen ) __nothrow;
 
 /* Receive a message as described by MESSAGE from socket FD.
    Returns the number of bytes read or -1 for errors.
 */
-/*extern ssize_t recvmsg( int fd, struct msghdr *message, int flags ) CVFS_NOINLINE;*/
+/*extern ssize_t recvmsg( int fd, struct msghdr *message, int flags ) CV__noinline;*/
 
 /* Receive up to VLEN messages as described by VMESSAGES from socket FD.
    Returns the number of bytes read or -1 for errors. */
 /*extern int recvmmsg( int fd, struct mmsghdr *vmessages, unsigned int vlen,
-                     int flags, const struct timespec *tmo ) CVFS_NOINLINE;*/
+                     int flags, const struct timespec *tmo ) CV__noinline;*/
 
 /* Put the current value for socket FD's option OPTNAME at protocol level LEVEL
    into OPTVAL (which is *OPTLEN bytes long), and set *OPTLEN to the value's
@@ -365,7 +362,7 @@ FS_NOINLINE ssize_t recvfrom( int fd, void *buf, size_t n, int flags,
 /* Prepare to accept connections on socket FD.
    N connection requests will be queued before further requests are refused.
    Returns 0 on success, -1 for errors.  */
-FS_NOINLINE int listen( int fd, int n );
+__noinline int listen( int fd, int n ) __nothrow;
 
 /* Await a connection on socket FD.
    When a connection arrives, open a new socket to communicate with it,
@@ -373,11 +370,11 @@ FS_NOINLINE int listen( int fd, int n );
    peer and *ADDR_LEN to the address's actual length, and return the
    new socket's descriptor, or -1 for errors.
 */
-FS_NOINLINE int accept( int fd, struct sockaddr * addr,  socklen_t * addr_len );
+__noinline int accept( int fd, struct sockaddr * addr,  socklen_t * addr_len ) __nothrow;
 
 /* Similar to 'accept' but takes an additional parameter to specify flags. */
-FS_NOINLINE int accept4( int fd, struct sockaddr *addr, socklen_t * addr_len,
-                         int flags );
+__noinline int accept4( int fd, struct sockaddr *addr, socklen_t * addr_len,
+                         int flags ) __nothrow;
 
 /* Shut down all or part of the connection open on socket FD.
    HOW determines what to shut down:
@@ -387,10 +384,6 @@ FS_NOINLINE int accept4( int fd, struct sockaddr *addr, socklen_t * addr_len,
    Returns 0 on success, -1 for errors.  */
 /*extern int shutdown( int fd, int how );*/
 
-#undef FS_NOINLINE
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
+__END_DECLS
 
 #endif /* sys/socket.h */

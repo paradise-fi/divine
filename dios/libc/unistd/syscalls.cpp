@@ -17,7 +17,7 @@ namespace __dios
 {
 
 #define VOID int
-#define SYSCALL( name, schedule, ret, arg )    ret (*name ## _ptr) arg;
+#define SYSCALL( name, schedule, ret, arg )    ret (*name ## _ptr) arg noexcept;
 #include <sys/syscall.def>
 #undef VOID
 
@@ -25,7 +25,7 @@ namespace __dios
 
 #define SYSCALL_DIOS(...)
 #define SYSCALL( name, schedule, ret, arg )                                   \
-    extern "C" __trapfn ret name arg                                          \
+    extern "C" __trapfn ret name arg noexcept                                 \
     {                                                                         \
         return unpad( __dios::name ## _ptr, _1, _2, _3, _4, _5, _6 );         \
     }
@@ -35,7 +35,7 @@ namespace __dios
 #undef SYSCALL_DIOS
 #define SYSCALL(...)
 #define SYSCALL_DIOS( name, schedule, ret, arg )                              \
-    extern "C" __trapfn ret __dios_ ## name arg                               \
+    extern "C" __trapfn ret __dios_ ## name arg noexcept                      \
     {                                                                         \
         return unpad( __dios::name ## _ptr, _1, _2, _3, _4, _5, _6 );         \
     }
@@ -64,7 +64,7 @@ namespace __dios
         return unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), f, vl );
     }
 
-    extern "C" long syscall( int id, ... )
+    extern "C" long syscall( int id, ... ) noexcept
     {
 	va_list ap;
 	va_start( ap, id );
