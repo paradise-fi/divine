@@ -14,40 +14,63 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 
+#include <lart/abstract/metadata.h>
 #include <lart/abstract/assume.h>
-#include <lart/abstract/intrinsic.h>
-#include <lart/support/query.h>
+#include <lart/abstract/taint.h>
+#include <lart/abstract/util.h>
 #include <lart/analysis/edge.h>
 
 namespace lart {
 namespace abstract {
 
+using namespace llvm;
+
 namespace {
     struct Assumption {
-        Assumption( llvm::Value * cond, llvm::Constant * val ) : cond( cond ), val( val ) {}
+        Assumption( Value *cond, Constant *val )
+            : cond( cond ), val( val )
+        {}
 
-        llvm::Value * cond;
-        llvm::Constant * val;
+        Value *cond;
+        Constant *val;
     };
 
     using BB = llvm::BasicBlock;
     using BBEdge = analysis::BBEdge;
     struct AssumeEdge : BBEdge {
-        AssumeEdge( BB * from, BB * to ) : BBEdge( from, to ) {}
+        AssumeEdge( BB *from, BB *to )
+            : BBEdge( from, to )
+        {}
 
-        void assume( Assumption assume ) {
+        Function* assume_fn( Module *m, Type *ty, Domain dom ) {
+            auto fty = FunctionType::get( ty, { ty, ty }, false );
+            std::string tag = "lart." + DomainTable[ dom ] + ".assume";
+
+            return cast< Function >( m->getOrInsertFunction( tag, fty ) );
+        }
+
+        void assume( Assumption ass ) {
             unsigned i = succ_idx( from, to );
-            llvm::SplitEdge( from, to );
-            auto edgeBB = from->getTerminator()->getSuccessor( i );
-            auto rty = VoidType( from->getContext() );
-            auto fty = llvm::FunctionType::get( rty,
-                                              { assume.cond->getType(), assume.val->getType()},
-                                                false );
-            std::string tag = "lart.tristate.assume";
-            auto call = from->getModule()->getOrInsertFunction( tag, fty );
+            SplitEdge( from, to );
 
-            llvm::IRBuilder<> irb( &edgeBB->front() );
-            irb.CreateCall( call, { assume.cond, assume.val } );
+            auto edge_bb = from->getTerminator()->getSuccessor( i );
+
+            auto taint = cast< Instruction >( ass.cond );
+            auto dom = MDValue( taint->getOperand( 1 ) ).domain();
+
+            auto m = getModule( ass.cond );
+            auto ty = ass.cond->getType();
+
+            Values args = { assume_fn( from->getModule(), ty, dom ),
+                            ass.cond,  // fallback value
+                            ass.cond,  // assumed condition
+                            ass.val }; // result of assumed condition
+
+            auto fn = get_taint_fn( m, ty, types_of( args ) );
+
+            llvm::IRBuilder<> irb( &edge_bb->front() );
+            irb.CreateCall( fn, args );
+            // TODO use assumed result
         }
 
         unsigned succ_idx( BB * from, BB * to ) {
@@ -59,41 +82,24 @@ namespace {
             UNREACHABLE( "BasicBlock 'to' is not a successor of BasicBlock 'from'." );
         }
     };
-
-    llvm::Value * getTristate( llvm::CallInst * lower ) {
-        ASSERT( lower->getCalledFunction()->getName().startswith( "lart.tristate.lower" ) );
-        return lower->getOperand( 0 );
-    }
 }
 
-    void AddAssumes::run( llvm::Module & m ) {
-        auto branches = query::query( m )
-					   .flatten().flatten()
-					   .map( query::refToPtr )
-					   .map( query::llvmdyncast< llvm::BranchInst > )
-					   .filter( query::notnull )
-					   .filter( []( llvm::BranchInst * br ) {
-							return br->isConditional();
-						} )
-					   .freeze();
-
-		for ( auto & br : branches )
-			process( br );
+    void AddAssumes::run( Module & m ) {
+        for ( auto t : taints( m ) )
+            for ( auto u : t->users() )
+                if ( auto br = dyn_cast< BranchInst >( u ) )
+                    process( br );
     }
 
-    void AddAssumes::process( llvm::Instruction * inst ) {
-        auto br = llvm::dyn_cast< llvm::BranchInst >( inst );
-        ASSERT( br && "Cannot assume about non-branch instruction.");
+    void AddAssumes::process( BranchInst *br ) {
+        auto cond = dyn_cast< CallInst >( br->getCondition() );
 
-        auto lower = llvm::dyn_cast< llvm::CallInst >( br->getCondition() );
-        if ( lower && isLower( lower ) ) {
-            auto tristate = getTristate( lower );
+        auto &ctx = br->getContext();
+        AssumeEdge true_br = { br->getParent(), br->getSuccessor( 0 ) };
+        true_br.assume( { cond, ConstantInt::getTrue( ctx ) } );
 
-            AssumeEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };
-            trueBr.assume( { tristate, llvm::ConstantInt::getTrue( inst->getContext() ) } );
-            AssumeEdge falseBr = { br->getParent(), br->getSuccessor( 1 ) };
-            falseBr.assume( { tristate, llvm::ConstantInt::getFalse( inst->getContext() ) } );
-        }
+        AssumeEdge false_br = { br->getParent(), br->getSuccessor( 1 ) };
+        false_br.assume( { cond, ConstantInt::getFalse( ctx ) } );
     }
 
 } /* namespace abstract */
