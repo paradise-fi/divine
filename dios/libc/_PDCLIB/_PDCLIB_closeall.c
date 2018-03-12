@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 #include <threads.h>
 extern _PDCLIB_file_t * _PDCLIB_filelist;
 extern mtx_t _PDCLIB_filelist_lock;

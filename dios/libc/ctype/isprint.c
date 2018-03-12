@@ -7,7 +7,7 @@
 #include <ctype.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 int isprint( int c )
 {

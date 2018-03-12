@@ -4,7 +4,7 @@
 #include <sys/divm.h>
 #include <assert.h>
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 static const uint64_t _DiOS_CF_Mask       = _VM_CFB_OS << 0;
 static const uint64_t _DiOS_CF_Deferred   = _VM_CFB_OS << 1;

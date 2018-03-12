@@ -10,7 +10,7 @@
 #include <limits.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 
 static size_t filecb(void *p, const char *buf, size_t size)
 {

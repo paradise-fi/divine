@@ -1,4 +1,4 @@
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 #ifndef _SYS_START_H
 #define _SYS_START_H

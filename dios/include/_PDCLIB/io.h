@@ -7,8 +7,8 @@
 #ifndef __PDCLIB_IO_H
 #define __PDCLIB_IO_H __PDCLIB_IO_H
 
-#include "_PDCLIB_int.h"
-#include "_PDCLIB_threadconfig.h"
+#include <_PDCLIB/int.h>
+#include <_PDCLIB/threadconfig.h>
 
 /* Flags for representing mode (see fopen()). Note these must fit the same
    status field as the _IO?BF flags in <stdio.h> and the internal flags below.

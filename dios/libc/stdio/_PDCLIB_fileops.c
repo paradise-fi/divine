@@ -8,7 +8,7 @@
 #define _FILE_OFFSET_BITS 64
 #include <stdio.h>
 #include <stdint.h>
-#include "_PDCLIB_glue.h"
+#include "_PDCLIB/glue.h"
 #include <errno.h>
 #include <unistd.h>
 typedef int64_t off_t;

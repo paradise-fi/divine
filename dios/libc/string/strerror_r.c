@@ -10,7 +10,7 @@
 
 #ifndef REGTEST
 
-#include <_PDCLIB_locale.h>
+#include <_PDCLIB/locale.h>
 
 #define MIN( a, b ) ( (a) < (b) ? (a) : (b) )
 

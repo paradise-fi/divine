@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 
 int _PDCLIB_ferror_unlocked( FILE * stream )
 {

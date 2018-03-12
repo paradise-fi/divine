@@ -14,7 +14,7 @@
 #include <limits.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 
 /* Using an integer's bits as flags for both the conversion flags and length
    modifiers.

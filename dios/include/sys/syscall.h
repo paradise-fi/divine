@@ -1,7 +1,7 @@
 #ifndef _SYS_SYSCALL_H
 #define _SYS_SYSCALL_H
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 #include <stdarg.h>
 
 /* argument types for dios syscalls */

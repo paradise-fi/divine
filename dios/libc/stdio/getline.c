@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include <_PDCLIB/io.h>
 #include <stdint.h>
 #include <stdlib.h>
 

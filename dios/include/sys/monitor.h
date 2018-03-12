@@ -1,7 +1,7 @@
 #ifndef _SYS_MONITOR_H_
 #define _SYS_MONITOR_H_
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 /* TODO: add a C-compatible interface (register only 'step', a plain C function */
 /* TODO: add helper functions for marking accepting transitions, ignoring/cancelling

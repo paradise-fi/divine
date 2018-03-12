@@ -6,8 +6,8 @@
 
 #include <wchar.h>
 #ifndef REGTEST
-#include "_PDCLIB_encoding.h"
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/encoding.h"
+#include "_PDCLIB/locale.h"
 
 static int _PDCLIB_mbsinit_l( const mbstate_t *ps, locale_t l )
 {

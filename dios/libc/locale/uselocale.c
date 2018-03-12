@@ -6,7 +6,7 @@
 
 #include <locale.h>
 #ifndef REGTEST
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 #ifdef _PDCLIB_LOCALE_METHOD
 locale_t uselocale( locale_t newloc )

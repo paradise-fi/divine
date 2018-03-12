@@ -19,7 +19,7 @@
 #ifndef _DIOS_SYS_UTSNAME_H
 #define _DIOS_SYS_UTSNAME_H
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 _PDCLIB_EXTERN_C
 

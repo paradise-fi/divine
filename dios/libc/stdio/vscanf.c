@@ -8,7 +8,7 @@
 #include <stdarg.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 
 int _PDCLIB_vscanf_unlocked( const char * _PDCLIB_restrict format,
                              _PDCLIB_va_list arg )

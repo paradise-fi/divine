@@ -8,7 +8,7 @@
 
 #ifndef REGTEST
 
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 int strcoll( const char * s1, const char * s2 )
 {

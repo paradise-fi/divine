@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 #include <sys/divm.h>
 #include <sys/syscall.h>
 #include <sys/start.h>

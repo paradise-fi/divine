@@ -6,7 +6,7 @@
 
 #include <wctype.h>
 #ifndef REGTEST
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 int iswlower( wint_t wc )
 {

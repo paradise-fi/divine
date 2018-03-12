@@ -35,7 +35,7 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 /*
  * Process priority specifications to get/setpriority.

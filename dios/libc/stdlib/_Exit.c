@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_glue.h"
+#include "_PDCLIB/glue.h"
 
 void _Exit( int status )
 {

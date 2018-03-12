@@ -6,8 +6,8 @@
 
 #ifndef _PDCLIB_STDIO_H
 #define _PDCLIB_STDIO_H _PDCLIB_STDIO_H
-#include "_PDCLIB_int.h"
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/int.h"
+#include "_PDCLIB/io.h"
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -90,7 +90,7 @@ int remove( const char * filename ) _PDCLIB_nothrow;
    This implementation does detect if the old filename corresponds to an open
    file, and fails the rename in this case.
    If there already is a file with the new filename, behaviour is defined by
-   the glue code (see functions/_PDCLIB/rename.c).
+   the glue code (see functions/<_PDCLIB/rename.c).
 */
 int rename( const char * old, const char * newn ) _PDCLIB_nothrow;
 

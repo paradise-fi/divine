@@ -8,7 +8,7 @@
 #include <errno.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_glue.h"
+#include "_PDCLIB/glue.h"
 
 int _PDCLIB_prepread( FILE * stream )
 {
@@ -18,7 +18,7 @@ int _PDCLIB_prepread( FILE * stream )
     {
         /* Function called on illegal (e.g. output) stream.
            See comments on implementation-defined errno values in
-           <_PDCLIB_config.h>.
+           <_PDCLIB/config.h>.
         */
         errno = EINVAL;
         stream->status |= _PDCLIB_ERRORFLAG;

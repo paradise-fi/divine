@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 #include <stdint.h>
 #include <sys/metadata.h>
 #include <sys/divm.h>

@@ -5,7 +5,7 @@
 */
 
 #ifndef REGTEST
-#include "_PDCLIB_int.h"
+#include "_PDCLIB/int.h"
 #endif
 
 const char _PDCLIB_digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";

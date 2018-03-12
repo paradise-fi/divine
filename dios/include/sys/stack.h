@@ -1,7 +1,7 @@
 #ifndef _SYS_STACK_H
 #define _SYS_STACK_H
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 #include <sys/cdefs.h>
 
 _PDCLIB_EXTERN_C

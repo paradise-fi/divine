@@ -5,7 +5,7 @@
 */
 
 #ifndef REGTEST
-#include "_PDCLIB_int.h"
+#include "_PDCLIB/int.h"
 #include <string.h>
 #include <ctype.h>
 

@@ -11,7 +11,7 @@
  *   http://www.unicode.org/copyright.html#Exhibit1
  */
  #ifndef REGTEST
- #include <_PDCLIB_locale.h>
+ #include <_PDCLIB/locale.h>
 
 const _PDCLIB_wcinfo_t _PDCLIB_wcinfo[] = {
 //   { value, 	length, 	flags,	lower,	upper	}, // name

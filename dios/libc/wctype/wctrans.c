@@ -7,7 +7,7 @@
 #include <wctype.h>
 #ifndef REGTEST
 #include <string.h>
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 wctrans_t wctrans( const char * property )
 {

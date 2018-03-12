@@ -1,7 +1,7 @@
 #ifndef __SYS_TRACE_H__
 #define __SYS_TRACE_H__
 
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 #include <stdlib.h>
 
 _PDCLIB_EXTERN_C

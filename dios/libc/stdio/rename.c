@@ -8,7 +8,7 @@
 
 #ifndef REGTEST
 #if !defined(__divine__) // rename is syscall in DIVINE (as well as Linux)
-#include "_PDCLIB_glue.h"
+#include "_PDCLIB/glue.h"
 #include <threads.h>
 
 #include <string.h>

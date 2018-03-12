@@ -5,8 +5,8 @@
    Permission is granted to use, modify, and / or redistribute at will.
 */
 #ifndef REGTEST
-#include "_PDCLIB_glue.h"
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/glue.h"
+#include "_PDCLIB/io.h"
 #include <fcntl.h>
 
 

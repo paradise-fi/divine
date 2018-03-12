@@ -2,7 +2,7 @@
 #define __SYS_FAULT_H__
 
 #include <sys/divm.h>
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 static const uint64_t _DiOS_CF_Fault = _VM_CFB_OS << 2;
 

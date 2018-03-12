@@ -8,8 +8,8 @@
 #include <string.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_glue.h"
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/glue.h"
+#include "_PDCLIB/io.h"
 
 
 static int flushsubbuffer( FILE * stream, size_t length )

@@ -11,7 +11,7 @@
 #ifndef REGTEST
 
 #include <stdint.h>
-#include <_PDCLIB_int.h>
+#include <_PDCLIB/int.h>
 
 // See _PDCLIB_io.h
 long int _DIVINE_strtol( const char *s, char **endptr ) {

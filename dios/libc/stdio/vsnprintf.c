@@ -8,7 +8,7 @@
 #include <stdarg.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 #include <string.h>
 
 struct state {

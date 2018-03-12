@@ -9,8 +9,8 @@
 #include <errno.h>
 #include <stdint.h>
 #include <assert.h>
-#include "_PDCLIB_encoding.h"
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/encoding.h"
+#include "_PDCLIB/locale.h"
 
 size_t mbrtoc32_l(
     char32_t    *restrict   pc32,

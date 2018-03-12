@@ -6,7 +6,7 @@
 
 #include <locale.h>
 #ifndef REGTEST
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 char * setlocale( int category, const char * locale )
 {

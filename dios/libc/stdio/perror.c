@@ -8,7 +8,7 @@
 
 #ifndef REGTEST
 #include <errno.h>
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 /* TODO: Doing this via a static array is not the way to do it. */
 void perror( const char * s )

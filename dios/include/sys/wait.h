@@ -38,7 +38,7 @@
 #include <sys/cdefs.h>
 #include <sys/resource.h>
 #include <sys/types.h>
-#include <_PDCLIB_aux.h>
+#include <_PDCLIB/cdefs.h>
 
 #ifdef __cplusplus
 extern "C" {

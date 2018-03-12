@@ -1,6 +1,6 @@
 #ifndef _PDCLIB_STRINGS_H
 #define _PDCLIB_STRINGS_H _PDCLIB_STRINGS_H
-#include <_PDCLIB_int.h>
+#include <_PDCLIB/int.h>
 
 /* We don't need and should not read this file if <string.h> was already read. */
 #ifndef _PDCLIB_STRING_H

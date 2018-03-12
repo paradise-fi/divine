@@ -7,8 +7,8 @@
 #ifndef __PDCLIB_GLUE_H
 #define __PDCLIB_GLUE_H __PDCLIB_GLUE_H
 
-#include "_PDCLIB_int.h"
-#include "_PDCLIB_io.h"
+#include <_PDCLIB/int.h>
+#include <_PDCLIB/io.h>
 
 #include <stdbool.h>
 #include <stddef.h>

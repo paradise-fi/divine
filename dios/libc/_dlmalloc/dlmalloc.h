@@ -1,4 +1,4 @@
-#include "_PDCLIB_glue.h"
+#include "_PDCLIB/glue.h"
 #include <threads.h>
 
 typedef mtx_t MLOCK_T;

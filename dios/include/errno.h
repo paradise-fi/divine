@@ -7,8 +7,8 @@
 #ifndef _PDCLIB_ERRNO_H
 #define _PDCLIB_ERRNO_H _PDCLIB_ERRNO_H
 
-#include "_PDCLIB_aux.h"
-#include <_PDCLIB_errno.h>
+#include <_PDCLIB/cdefs.h>
+#include <_PDCLIB/errno.h>
 
 _PDCLIB_EXTERN_C
 extern int *__errno_location (void) __attribute__ ((__const__));

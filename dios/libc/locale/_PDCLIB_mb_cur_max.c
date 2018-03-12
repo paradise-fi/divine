@@ -6,8 +6,8 @@
 
 #include <locale.h>
 #ifndef REGTEST
-#include "_PDCLIB_locale.h"
-#include "_PDCLIB_encoding.h"
+#include "_PDCLIB/locale.h"
+#include "_PDCLIB/encoding.h"
 
 size_t _PDCLIB_mb_cur_max( void )
 {

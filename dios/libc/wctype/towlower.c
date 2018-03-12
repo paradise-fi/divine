@@ -6,7 +6,7 @@
 
 #include <wctype.h>
 #ifndef REGTEST
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/locale.h"
 
 wint_t _PDCLIB_towlower_l( wint_t wc, locale_t l )
 {

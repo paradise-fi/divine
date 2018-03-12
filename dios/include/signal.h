@@ -8,8 +8,8 @@
 
 #ifndef _PDCLIB_SIGNAL_H
 #define _PDCLIB_SIGNAL_H _PDCLIB_SIGNAL_H
-#include <_PDCLIB_config.h>
-#include <_PDCLIB_glue.h>
+#include <_PDCLIB/config.h>
+#include <_PDCLIB/glue.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

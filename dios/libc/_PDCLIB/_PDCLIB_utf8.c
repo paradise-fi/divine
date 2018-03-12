@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <uchar.h>
 #include <assert.h>
-#include "_PDCLIB_encoding.h"
+#include "_PDCLIB/encoding.h"
 
 /* Use of the mbstate:
  *

@@ -9,7 +9,7 @@
 #include <string.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 
 int _PDCLIB_fputs_unlocked( const char * _PDCLIB_restrict s, 
                     FILE * _PDCLIB_restrict stream )

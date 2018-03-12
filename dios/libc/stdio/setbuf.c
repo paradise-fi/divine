@@ -26,7 +26,7 @@ void setbuf( FILE * _PDCLIB_restrict stream, char * _PDCLIB_restrict buf )
 #include "_PDCLIB_test.h"
 #include <stdlib.h>
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 #endif
 
 int main( void )

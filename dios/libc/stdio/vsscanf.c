@@ -9,7 +9,7 @@
 
 #ifndef REGTEST
 #include <ctype.h>
-#include "_PDCLIB_io.h"
+#include "_PDCLIB/io.h"
 
 int vsscanf( const char * _PDCLIB_restrict s, 
              const char * _PDCLIB_restrict format, 

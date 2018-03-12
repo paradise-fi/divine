@@ -10,8 +10,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
-#include "_PDCLIB_encoding.h"
-#include "_PDCLIB_locale.h"
+#include "_PDCLIB/encoding.h"
+#include "_PDCLIB/locale.h"
 
 #if 0
 /*

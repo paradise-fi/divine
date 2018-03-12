@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_glue.h"
+#include "_PDCLIB/glue.h"
 
 extern void _exit( int status ) _PDCLIB_noreturn;
 

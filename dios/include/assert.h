@@ -4,8 +4,8 @@
    Permission is granted to use, modify, and / or redistribute at will.
 */
 
-#include "_PDCLIB_aux.h"
-#include "_PDCLIB_config.h"
+#include "_PDCLIB/cdefs.h"
+#include "_PDCLIB/config.h"
 
 #include <sys/cdefs.h>
 

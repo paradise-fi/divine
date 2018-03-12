@@ -14,10 +14,10 @@
 #include <limits.h>
 
 #ifndef REGTEST
-#include "_PDCLIB_io.h"
-#include "_PDCLIB_locale.h"
-#include "_PDCLIB_clocale.h"
-#include "_PDCLIB_unicodedata.h"
+#include "_PDCLIB/io.h"
+#include "_PDCLIB/locale.h"
+#include "_PDCLIB/clocale.h"
+#include "_PDCLIB/unicodedata.h"
 #include <threads.h>
 
 /* In a POSIX system, stdin / stdout / stderr are equivalent to the (int) file
