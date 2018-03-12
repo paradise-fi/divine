@@ -37,7 +37,7 @@ enum class Component
     DiOS        = 0b000010, /* non-kernel dios components */
     LibC        = 0b000100,
     LibCxx      = 0b001000,
-    LibAbstract = 0b010000,
+    LibRst      = 0b010000,
     Program     = 0b100000
 };
 

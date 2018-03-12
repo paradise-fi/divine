@@ -45,7 +45,7 @@ auto make_parser()
                     if ( s == "dios" ) return good( dbg::Component::DiOS );
                     if ( s == "libc" ) return good( dbg::Component::LibC );
                     if ( s == "libcxx" ) return good( dbg::Component::LibCxx );
-                    if ( s == "libabstract" ) return good( dbg::Component::LibAbstract );
+                    if ( s == "librst" ) return good( dbg::Component::LibRst );
                     return bad( cmd::BadFormat, "unknown component" );
                 } );
 

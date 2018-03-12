@@ -59,28 +59,31 @@ bool Info::in_component( vm::CodePointer pc, Components comp )
     using brick::string::startsWith;
 
     if ( comp & Component::LibC )
-        if ( startsWith( file, "/divine/src/libc/" ) ||
-             startsWith( file, "/divine/src/divine/" ) ||
-             startsWith( file, "/divine/include/libc/" ) ||
-             startsWith( file, "/divine/include/divine/" ) )
+    {
+        if ( startsWith( file, "/dios/src/libc/" ) )
             return true;
+        if ( startsWith( file, "/dios/include/sys/" ) )
+            return true;
+        if ( startsWith( file, "/dios/include/" ) && file.substr( 14 ).find( '/' ) == std::string::npos )
+            return true;
+    }
 
     if ( comp & Component::LibCxx )
-        if ( startsWith( file, "/divine/src/libcxx" ) ||
-             startsWith( file, "/divine/include/libcxx" ) )
+        if ( startsWith( file, "/dios/src/libcxx" ) ||
+             startsWith( file, "/dios/include/libcxx" ) )
             return true;
 
-    if ( comp & Component::LibAbstract )
-        if ( startsWith( file, "/divine/src/abstract/" ) ||
-             startsWith( file, "/divine/include/abstract/" ) )
+    if ( comp & Component::LibRst )
+        if ( startsWith( file, "/dios/src/rst/" ) ||
+             startsWith( file, "/dios/include/rst/" ) )
             return true;
 
     if ( comp & Component::DiOS )
-        if ( startsWith( file, "/divine/src/dios/" ) ||
-             startsWith( file, "/divine/include/dios/" ) )
+        if ( startsWith( file, "/dios/src/dios/" ) ||
+             startsWith( file, "/dios/include/dios/" ) )
             return true;
 
-    if ( comp & Component::Program && !startsWith( file, "/divine/" ) )
+    if ( comp & Component::Program && !startsWith( file, "/dios/" ) )
         return true;
 
     return false;
