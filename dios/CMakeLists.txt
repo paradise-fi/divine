@@ -3,33 +3,29 @@
 include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
-      *.h sys/*.hpp sys/core/*.hpp sys/core/*.def sys/lib/*.hpp
-      sys/macro/*
-      atomic sys/*.h bits/*.h
-      abstract/*.hpp abstract/*.h
-      libc/include/*.h libc/internals/*.h
-      libc/include/sys/*.h libc/include/sys/*.def libc/include/bits/*.h
-      libm/include/*.h libm/include/machine/*.h
+      sys/*.hpp vfs/*.h macro/*
+      include/*.h include/_PDCLIB/*.h include/util/*.hpp include/rst/*.h
+      include/sys/*.h include/sys/*.def include/bits/*.h include/machine/*.h
       libcxxabi/include/*
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
       libcxx/include/support/xlocale/*.h libcxx/src/support/atomic_support.h
-      libunwind/include/* libunwind/include/mach-o/* sys/fs/*.h )
+      libunwind/include/* libunwind/include/mach-o/* )
 
-file( GLOB SRC_dios sys/*.cpp sys/core/*.cpp sys/fs/*.cpp )
+file( GLOB SRC_dios sys/*.cpp vfs/*.cpp )
 
-file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
-file( GLOB SRC_libc libc/functions/*/*.c )
-file( GLOB SRC_libc_cpp libc/functions/*/*.cpp )
-file( GLOB SRC_libm libm/src/*.c )
+file( GLOB SRC_librst rst/*.cpp )
+file( GLOB SRC_libc libc/*/*.c )
+file( GLOB SRC_libc_cpp libc/*/*.cpp )
+file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
-set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/libc/include/sys/ )
-set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/libc/include/ )
+set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/include/sys/ )
+set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
 set( HOSTABI ${SYSINC}hostabi.h )
-set( VMINC ${SYSINC}divm.h ${SYSINC}lart.h ${SYSINC}vmutil.h )
+set( VMINC ${SYSINC}divm.h ${SYSINC}lart.h )
 
 list( REMOVE_ITEM H_RUNTIME ${LIBCINC}sys/divm.h ${LIBCINC}sys/vmutil.h ${LIBCINC}sys/lart.h )
 
@@ -62,13 +58,16 @@ macro( mklib lib )
   stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
 
-foreach( hdr divm.h lart.h vmutil.h )
+macro( copyhdr srcdir hdr )
   add_custom_command(
     OUTPUT ${SYSINC}/${hdr}
-    DEPENDS ${divine_SOURCE_DIR}/divine/vm/${hdr}
+    DEPENDS ${divine_SOURCE_DIR}/${srcdir}/${hdr}
     VERBATIM
-    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/${hdr} ${SYSINC}/${hdr} )
-endforeach()
+    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/${srcdir}/${hdr} ${SYSINC}/${hdr} )
+endmacro()
+
+copyhdr( divine/vm divm.h )
+copyhdr( lart lart.h )
 
 add_custom_command(
   OUTPUT ${HOSTABI}

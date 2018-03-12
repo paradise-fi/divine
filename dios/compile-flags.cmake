@@ -11,15 +11,11 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
 
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/ ) # dios
-list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/ ) # dios generated
-list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/libc/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/internals )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
-list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
-
+list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/include ) # dios generated
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/include ) # dios
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/ld80 )
+list( APPEND flags -isystem${divine_SOURCE_DIR}/ ) # for #includes starting with dios/
+list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
 mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR}" )
@@ -32,14 +28,14 @@ mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXA
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror)
 mkobjs( dios "${flags};-D__dios_kernel__" )
-mkobjs( libabstract "${flags}" )
+mkobjs( librst "${flags}" )
 
 mklib( libc libc_cpp )
 mklib( libm )
 mklib( libcxxabi )
 mklib( libcxx)
-mklib( libdios )
-mklib( libabstract )
+mklib( dios )
+mklib( librst )
 
 foreach( f ${H_RUNTIME} )
   stringify( "dios" "." ${f} )
@@ -50,7 +46,7 @@ set( OPS_dest "divine/Instruction.def" )
 file( COPY ${OPS_src} DESTINATION "divine" )
 stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
 foreach( hdr divm.h lart.h vmutil.h hostabi.h )
-  stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/${hdr} )
+  stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} include/sys/${hdr} )
 endforeach()
 stringlist( "dios" dios )
 
