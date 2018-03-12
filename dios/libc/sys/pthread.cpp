@@ -445,7 +445,7 @@ struct Entry {
 };
 
 // no nexcept here, avoid adding landingpads and filters
-extern "C" void __pthread_entry( void *_args )
+__noinline void __pthread_start( void *_args )
 {
     __dios::FencedInterruptMask mask;
 
@@ -467,7 +467,12 @@ extern "C" void __pthread_entry( void *_args )
     assert( thread.sleeping == false );
 
     _clean_and_become_zombie( mask, tid );
-    __dios_kill( tid );
+}
+
+extern "C" void __pthread_entry( void *_args )
+{
+    __pthread_start( _args );
+    __dios_suicide();
 }
 
 int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
