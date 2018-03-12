@@ -19,7 +19,7 @@
 #pragma once
 
 #include <divine/smt/builder.hpp>
-#include <runtime/abstract/formula.h>
+#include <lart/lart.h>
 
 namespace divine::smt
 {
@@ -34,9 +34,9 @@ struct Extract : Builder
         : Builder( std::forward< Args >( args )... ), _heap( heap )
     {}
 
-    sym::Formula *read( vm::HeapPointer ptr )
+    lart::sym::Formula *read( vm::HeapPointer ptr )
     {
-        return reinterpret_cast< sym::Formula * >( _heap.unsafe_bytes( ptr ).begin() );
+        return reinterpret_cast< lart::sym::Formula * >( _heap.unsafe_bytes( ptr ).begin() );
     }
 
     Node build( vm::HeapPointer p );

@@ -19,13 +19,14 @@
 #pragma once
 
 #include <divine/vm/heap.hpp>
-#include <runtime/abstract/formula.h>
+#include <lart/lart.h>
 #include <brick-smt>
 
 #if OPT_Z3
 #include <z3++.h>
 #endif
 
+namespace divine::smt { namespace sym = lart::sym; }
 namespace divine::smt::builder
 {
 
