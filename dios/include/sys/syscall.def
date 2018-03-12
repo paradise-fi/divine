@@ -32,6 +32,8 @@ SYSCALL_DIOS( hardware_concurrency, CONTINUE, int, () ) /* TODO: use sysctl for 
 
 #ifdef __cplusplus
 SYSCALL_DIOS( register_monitor,  CONTINUE,   VOID, ( __dios::Monitor *_1 ) )
+#else
+SYSCALL_DIOS( register_monitor,  CONTINUE,   VOID, ( void *_1 ) )
 #endif
 
 SYSCALL( rename,      CONTINUE, int,     ( MEM _1, MEM _2 ) )
