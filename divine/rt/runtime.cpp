@@ -22,7 +22,7 @@ namespace divine::str
 {
 
 struct stringtable { std::string n; std::string_view c; };
-extern stringtable runtime_list[];
+extern stringtable dios_list[];
 
 }
 
@@ -31,7 +31,7 @@ namespace divine::rt
 
 void each( std::function< void( std::string, std::string_view ) > yield )
 {
-    for ( auto src = str::runtime_list; !src->n.empty(); ++src )
+    for ( auto src = str::dios_list; !src->n.empty(); ++src )
         yield( brick::fs::joinPath( cc::directory( src->n ), src->n ), src->c );
 }
 
