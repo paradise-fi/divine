@@ -2,7 +2,7 @@
 . lib/testcase
 
 cat > file.cpp <<EOF
-#include <dios/kernel.hpp>
+#include <dios/sys/kernel.hpp>
 
 extern "C" void use_debug()
 {
