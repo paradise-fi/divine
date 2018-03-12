@@ -17,21 +17,21 @@
 SYSCALL_DIOS( get_process_tasks, CONTINUE,   __dios_task*, ( __dios_task _1 ) )
 SYSCALL_DIOS( start_task,        RESCHEDULE, __dios_task,  ( __dios_task_routine _1, void *_2, int _3 ) )
 SYSCALL_DIOS( get_fault_config,  CONTINUE,   int, ( int _1 ) )
-SYSCALL_DIOS( exit_process,      RESCHEDULE, void, ( int _1 ) )
+SYSCALL_DIOS( exit_process,      RESCHEDULE, VOID, ( int _1 ) )
 SYSCALL_DIOS( configure_fault,   CONTINUE,   int, ( int _1, int _2 ) )
-SYSCALL_DIOS( die,               RESCHEDULE, void, () )
-SYSCALL_DIOS( kill_task,         RESCHEDULE, void, ( __dios_task _1 ) )
-SYSCALL_DIOS( kill_process,      RESCHEDULE, void, ( int _1 ) )
-SYSCALL_DIOS( yield,             RESCHEDULE, void, ( ) )
-SYSCALL_DIOS( fault_handler,     CONTINUE,   void, ( int _1, struct _VM_Frame * _2, int _3 ) )
+SYSCALL_DIOS( die,               RESCHEDULE, VOID, () )
+SYSCALL_DIOS( kill_task,         RESCHEDULE, VOID, ( __dios_task _1 ) )
+SYSCALL_DIOS( kill_process,      RESCHEDULE, VOID, ( int _1 ) )
+SYSCALL_DIOS( yield,             RESCHEDULE, VOID, ( ) )
+SYSCALL_DIOS( fault_handler,     CONTINUE,   VOID, ( int _1, struct _VM_Frame * _2, int _3 ) )
 SYSCALL_DIOS( pipe,              CONTINUE,   int, ( OUT(int*) _1 ) )
 SYSCALL_DIOS( open,              CONTINUE,   int, ( MEM _1, int _2, mode_t _3 ) )
 SYSCALL_DIOS( fcntl,             CONTINUE,   int,     ( int _1, int _2, va_list *_3 ) )
-SYSCALL_DIOS( sysfork,           CONTINUE,   void, ( pid_t *_1 ) )
+SYSCALL_DIOS( sysfork,           CONTINUE,   VOID, ( pid_t *_1 ) )
 SYSCALL_DIOS( hardware_concurrency, CONTINUE, int, () ) /* TODO: use sysctl for this */
 
 #ifdef __cplusplus
-SYSCALL_DIOS( register_monitor,  CONTINUE,   void, ( __dios::Monitor *_1 ) )
+SYSCALL_DIOS( register_monitor,  CONTINUE,   VOID, ( __dios::Monitor *_1 ) )
 #endif
 
 SYSCALL( rename,      CONTINUE, int,     ( MEM _1, MEM _2 ) )
