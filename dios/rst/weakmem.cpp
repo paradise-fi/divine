@@ -4,11 +4,11 @@
 #include <algorithm> // reverse iterator
 #include <cstdarg>
 #include <dios.h>
-#include <dios/lib/map.hpp>
+#include <util/map.hpp>
 #include <sys/interrupt.h>
 #include <sys/lart.h>
 #include <sys/vmutil.h>
-#include <dios/kernel.hpp> // get_debug
+#include <dios/sys/kernel.hpp> // get_debug
 #include <rst/common.h> // weaken
 #include <optional>
 
