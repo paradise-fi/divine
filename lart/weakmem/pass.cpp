@@ -26,7 +26,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/cleanup.h>
 #include <lart/support/error.h>
 #include <lart/reduction/passes.h>
-#include <runtime/abstract/weakmem.h>
+#include <lart/lart.h>
 
 namespace lart {
 namespace weakmem {
