@@ -15,15 +15,15 @@
 #include <sys/un.h>
 #include <sys/divm.h>
 #include <dios.h>
-#include <dios/core/syscall.hpp>
+#include <dios/sys/syscall.hpp>
 #include <brick-tuple>
 #include <brick-hlist>
 #include <sys/syscall.h>
-#include <dios/core/stdlibwrap.hpp>
+#include <dios/sys/stdlibwrap.hpp>
 #include <sys/resource.h>
 
-#include <dios/filesystem/fs-passthru-types.h>
-#include <dios/filesystem/fs-passthru-process.h>
+#include <dios/vfs/fs-passthru-types.h>
+#include <dios/vfs/fs-passthru-process.h>
 
 /*
 * For work with memory

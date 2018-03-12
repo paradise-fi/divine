@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <signal.h>
 #include <dios.h>
-#include <dios/core/memory.hpp>
-#include <dios/core/trace.hpp>
+#include <dios/sys/memory.hpp>
+#include <dios/sys/trace.hpp>
 #include <abstract/common.h>
 #include <sys/fault.h>
 #include <sys/trace.h>

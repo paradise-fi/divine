@@ -6,7 +6,7 @@
 #include <utility>
 
 #include <dios.h>
-#include <dios/kernel.hpp>
+#include <dios/sys/kernel.hpp>
 
 namespace __dios {
 

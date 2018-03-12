@@ -13,14 +13,14 @@
 #include <sys/un.h>
 #include <sys/divm.h>
 #include <dios.h>
-#include <dios/core/syscall.hpp>
+#include <dios/sys/syscall.hpp>
 #include <brick-tuple>
 #include <brick-hlist>
 #include <sys/syscall.h>
 #include <sys/resource.h>
-#include <dios/core/stdlibwrap.hpp>
-#include <dios/filesystem/fs-passthru-types.h>
-#include <dios/filesystem/fs-replay-parse.h>
+#include <dios/sys/stdlibwrap.hpp>
+#include <dios/vfs/fs-passthru-types.h>
+#include <dios/vfs/fs-replay-parse.h>
 
 
 using String = __dios::String;

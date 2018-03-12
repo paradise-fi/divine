@@ -14,9 +14,9 @@
 
 #ifdef __divine__
 #include <sys/divm.h>
-#include <dios/core/stdlibwrap.hpp>
-#include <dios/core/syscall.hpp>
-#include <dios/kernel.hpp>
+#include <dios/sys/stdlibwrap.hpp>
+#include <dios/sys/syscall.hpp>
+#include <dios/sys/kernel.hpp>
 
 #define __FS_assert( x ) do { \
         if ( !(x) ) { \

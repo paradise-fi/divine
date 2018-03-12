@@ -3,7 +3,7 @@
 #ifndef __DIOS_FAIR_SCHEDULING_H__
 #define __DIOS_FAIR_SCHEDULING_H__
 
-#include <dios/core/scheduling.hpp>
+#include <dios/sys/scheduling.hpp>
 
 namespace __dios {
 

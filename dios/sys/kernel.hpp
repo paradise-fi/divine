@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <cstdarg>
 
-#include <dios/core/stdlibwrap.hpp>
-#include <dios/lib/map.hpp>
+#include <dios/sys/stdlibwrap.hpp>
+#include <util/map.hpp>
 #include <dios.h>
 
 #define DIOS_DBG( ... ) __dios_trace_f( __VA_ARGS__ )

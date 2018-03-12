@@ -7,7 +7,7 @@
 #include <pthread.h>
 
 #include <sys/metadata.h>
-#include <dios/core/main.hpp>
+#include <dios/sys/main.hpp>
 
 namespace __dios {
 

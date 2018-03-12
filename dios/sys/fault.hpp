@@ -17,9 +17,9 @@
 #include <sys/metadata.h>
 #include <sys/trace.h>
 
-#include <dios/core/main.hpp>
-#include <dios/core/trace.hpp>
-#include <dios/core/syscall.hpp>
+#include <dios/sys/main.hpp>
+#include <dios/sys/trace.hpp>
+#include <dios/sys/syscall.hpp>
 
 namespace __dios {
 

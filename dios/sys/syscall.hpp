@@ -7,7 +7,7 @@
 #include <new>
 #include <dios.h>
 #include <errno.h>
-#include <dios/kernel.hpp>
+#include <dios/sys/kernel.hpp>
 #include <sys/syscall.h>
 
 // Syscall argument types

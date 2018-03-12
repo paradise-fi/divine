@@ -2,9 +2,9 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 
 #include <cstdio>
-#include <dios/core/trace.hpp>
-#include <dios/core/syscall.hpp>
-#include <dios/filesystem/fs-utils.h>
+#include <dios/sys/trace.hpp>
+#include <dios/sys/syscall.hpp>
+#include <dios/vfs/fs-utils.h>
 #include <abstract/common.h> // for weaken
 #include <fcntl.h>
 #include <dios.h>

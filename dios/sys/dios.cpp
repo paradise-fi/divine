@@ -10,20 +10,21 @@
 #include <sys/metadata.h>
 
 #include <dios.h>
-#include <dios/core/main.hpp>
-#include <dios/core/scheduling.hpp>
-#include <dios/core/sync_scheduling.hpp>
-#include <dios/core/fair_scheduling.hpp>
-#include <dios/core/syscall.hpp>
-#include <dios/core/trace.hpp>
-#include <dios/core/fault.hpp>
-#include <dios/core/monitor.hpp>
-#include <dios/core/machineparams.hpp>
-#include <dios/core/procmanager.hpp>
-#include <dios/filesystem/fs-manager.h>
-#include <dios/filesystem/fs-passthru.h>
-#include <dios/filesystem/fs-replay.h>
-#include <dios/filesystem/fs-constants.h>
+#include <dios/sys/main.hpp>
+#include <dios/sys/scheduling.hpp>
+#include <dios/sys/sync_scheduling.hpp>
+#include <dios/sys/fair_scheduling.hpp>
+#include <dios/sys/syscall.hpp>
+#include <dios/sys/trace.hpp>
+#include <dios/sys/fault.hpp>
+#include <dios/sys/monitor.hpp>
+#include <dios/sys/machineparams.hpp>
+#include <dios/sys/procmanager.hpp>
+
+#include <dios/vfs/fs-manager.h>
+#include <dios/vfs/fs-passthru.h>
+#include <dios/vfs/fs-replay.h>
+#include <dios/vfs/fs-constants.h>
 
 extern "C" { char **environ; }
 

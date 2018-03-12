@@ -11,7 +11,7 @@
 #include <list>
 #include <map>
 
-#include <dios/core/memory.hpp>
+#include <dios/sys/memory.hpp>
 
 namespace __dios {
 

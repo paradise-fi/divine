@@ -1,7 +1,7 @@
 #ifndef _FS_REPLAY_PARSE_H_
 #define _FS_REPLAY_PARSE_H_
 
-#include <dios/core/stdlibwrap.hpp>
+#include <dios/sys/stdlibwrap.hpp>
 #include <tuple>
 #include <cstring>
 #include <type_traits>

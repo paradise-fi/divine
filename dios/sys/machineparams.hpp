@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <dios/core/main.hpp>
+#include <dios/sys/main.hpp>
 
 namespace __dios {
 

@@ -1,7 +1,7 @@
 #ifndef _FS_PASSTHRU_PROCESS_H_
 #define _FS_PASSTHRU_PROCESS_H_
 
-#include <dios/core/stdlibwrap.hpp>
+#include <dios/sys/stdlibwrap.hpp>
 #include <tuple>
 
 /*

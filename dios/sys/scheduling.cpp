@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <errno.h>
 
-#include <dios/core/scheduling.hpp>
+#include <dios/sys/scheduling.hpp>
 
 namespace __dios {
 

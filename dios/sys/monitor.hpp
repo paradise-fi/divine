@@ -2,7 +2,7 @@
 #define _DIVINE_MONITOR_HPP_
 
 #include <sys/monitor.h>
-#include <dios/core/memory.hpp>
+#include <dios/sys/memory.hpp>
 
 namespace __dios {
 

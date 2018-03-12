@@ -13,9 +13,9 @@
 #include <sys/metadata.h>
 #include <dios.h>
 
-#include <dios/core/main.hpp>
-#include <dios/core/syscall.hpp>
-#include <dios/lib/map.hpp>
+#include <dios/sys/main.hpp>
+#include <dios/sys/syscall.hpp>
+#include <util/map.hpp>
 
 #include <abstract/common.h>
 

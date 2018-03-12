@@ -3,7 +3,7 @@
 #include <signal.h>
 #include <cerrno>
 
-#include <dios/core/syscall.hpp>
+#include <dios/sys/syscall.hpp>
 
 namespace __dios
 {

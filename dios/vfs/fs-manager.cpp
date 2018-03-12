@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include "fs-manager.h"
-#include <dios/core/memory.hpp>
+#include <dios/sys/memory.hpp>
 
 #define REMEMBER_DIRECTORY( dirfd, name )                               \
     WeakNode savedDir = _currentDirectory;                               \
