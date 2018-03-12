@@ -9,7 +9,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/intrinsics.h>
-#include <lart/abstract/util.h>
 
 #include <lart/support/util.h>
 
@@ -27,30 +26,6 @@ std::string taint_suffix( const Types &args ) {
     for ( auto a : args )
         res += "." + llvm_name( a );
     return res;
-}
-
-Function* get_taint_fn( Module *m, Type *ret, const Types &args ) {
-    auto name = "vm.test.taint" + taint_suffix( args );
-    auto fty = FunctionType::get( ret, args, false );
-    auto fn = m->getOrInsertFunction( name, fty );
-    return cast< Function >( fn );
-}
-
-Instruction* create_taint( Instruction *i, const Values &args ) {
-    IRBuilder<> irb( i );
-
-    auto rty = i->getType();
-
-    auto fn = get_taint_fn( getModule( i ), rty, types_of( args ) );
-
-    auto call = irb.CreateCall( fn, args );
-    call->removeFromParent();
-    call->insertAfter( i );
-    return call;
-}
-
-bool is_taintable( Value *i ) {
-    return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( i );
 }
 
 void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted ) {
@@ -97,6 +72,30 @@ Instruction* lower_tristate( Instruction *i ) {
 }
 
 } // anonymous namespace
+
+Function* get_taint_fn( Module *m, Type *ret, const Types &args ) {
+    auto name = "vm.test.taint" + taint_suffix( args );
+    auto fty = FunctionType::get( ret, args, false );
+    auto fn = m->getOrInsertFunction( name, fty );
+    return cast< Function >( fn );
+}
+
+Instruction* create_taint( Instruction *i, const Values &args ) {
+    IRBuilder<> irb( i );
+
+    auto rty = i->getType();
+
+    auto fn = get_taint_fn( getModule( i ), rty, types_of( args ) );
+
+    auto call = irb.CreateCall( fn, args );
+    call->removeFromParent();
+    call->insertAfter( i );
+    return call;
+}
+
+bool is_taintable( Value *i ) {
+    return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( i );
+}
 
 void Tainting::run( Module &m ) {
     for ( const auto & mdv : abstract_metadata( m ) )

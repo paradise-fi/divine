@@ -6,6 +6,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/abstract/util.h>
+
 #include <unordered_set>
 
 namespace lart {
@@ -23,6 +25,21 @@ struct TaintBranching {
     void run( llvm::Module& );
     void expand( llvm::Value*, llvm::BranchInst* );
 };
+
+// Creates function intrinsic with given return type and argument types.
+llvm::Function* get_taint_fn( llvm::Module*, llvm::Type *ret, const Types &args );
+
+// Creates call to 'vm.test.taint' function.
+//
+// Checks whether given instruction is tainted.
+//
+// If function does not exist, it is created using 'get_taint_fn'.
+llvm::Instruction* create_taint( llvm::Instruction*, const Values &args );
+
+// Checks whether value is taintable.
+// We consider taintable only binary operations, cmp instructions,
+// trunc, zext and sext instruction.
+bool is_taintable( llvm::Value * );
 
 } // namespace abstract
 } // namespace lart
