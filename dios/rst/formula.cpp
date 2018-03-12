@@ -1,13 +1,10 @@
-#ifdef __divine__
+#include <rst/common.h>
 #include <sys/lart.h>
 #include <cstdint>
 #include <cstdarg>
 #include <sys/divm.h>
 #include <new>
 #include <string>
-
-#include <brick-assert>
-#include <brick-string>
 
 using namespace std::literals;
 using namespace lart::sym;
@@ -112,7 +109,7 @@ std::string toString( Op x )
         case Op::Concat: return "concat";
         case Op::Constraint: return "constraint";
     }
-    UNREACHABLE_F( "invalid operation %d in sym::toString", int( x ) );
+    _UNREACHABLE_F( "invalid operation %d in sym::toString", int( x ) );
 }
 
 std::string toString( const Formula *root )
@@ -128,7 +125,7 @@ std::string toString( const Formula *root )
         return toString( root->op() ) + "("s + toString( root->binary.left ) + ", "s
                 + toString( root->binary.right ) + ") : "s + toString( root->type() );
     else
-        UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
+        _UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
 }
 
 inline std::string toString( const Formula &f )
@@ -197,6 +194,4 @@ void *__sym_mk_op( int _op, int type, int bitwidth ... ) {
 
     UNREACHABLE_F( "Unknown op in __sym_mk_op: %d", _op );
 }
-#endif
-
 #endif

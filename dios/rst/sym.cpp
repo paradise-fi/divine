@@ -1,8 +1,6 @@
 #include <rst/sym.h>
 #include <rst/common.h>
 #include <dios.h>
-#include <brick-string>
-#include <brick-assert>
 
 using namespace lart::sym;
 using abstract::Tristate;
@@ -44,15 +42,15 @@ Formula **__abstract_sym_alloca( int bitwidth )
 Formula *__abstract_sym_load( Formula **a, int bitwidth )
 {
     if ( bitwidth > 64 )
-        UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
+        _UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
     auto *val = *a;
 
     if ( val->type().bitwidth() > bitwidth )
         return __abstract_sym_trunc( val, bitwidth );
 
     if ( val->type().bitwidth() < bitwidth )
-        UNREACHABLE_F( "Loading of %d bit value from %d bit abstract value is not supported (yet).",
-                       bitwidth, val->type().bitwidth() );
+        _UNREACHABLE_F( "Loading of %d bit value from %d bit abstract value is not supported (yet).",
+                        bitwidth, val->type().bitwidth() );
 
     return mark( val );
 }
@@ -65,7 +63,7 @@ void __abstract_sym_store( Formula *val, Formula **ptr )
 Formula *__abstract_sym_lift( int64_t val, int bitwidth )
 {
     if ( bitwidth > 64 )
-        UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
+        _UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
     return mark( __newf< Constant >( Type{ Type::Int, bitwidth }, val ) );
 }
 

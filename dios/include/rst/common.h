@@ -11,6 +11,12 @@
 #define _NOTHROW __attribute__((__nothrow__))
 #define _ROOT __attribute__((__annotate__("divine.link.always")))
 
+#define _UNREACHABLE_F(...) do { \
+        __dios_trace_f( __VA_ARGS__ ); \
+        __dios_fault( _VM_F_Assert, "unreachable called" ); \
+        __builtin_unreachable(); \
+    } while ( false )
+
 namespace abstract {
 
 template< typename T, typename ... Args >
