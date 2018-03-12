@@ -1,7 +1,7 @@
 /* TAGS: min c++ */
 /* CC_OPTS: -std=c++14 -I$SRC_ROOT/bricks */
 #include <dios.h>
-#include <dios/lib/map.hpp>
+#include <util/map.hpp>
 #include <cassert>
 
 using namespace __dios;

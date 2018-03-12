@@ -1,6 +1,6 @@
 /* TAGS: sym min c++ todo */
 /* VERIFY_OPTS: --symbolic */
-#include <abstract/domains.h>
+#include <rst/domains.h>
 #include <cassert>
 #include <cstdint>
 

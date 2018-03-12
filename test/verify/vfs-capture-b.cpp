@@ -1,20 +1,20 @@
 /* TAGS: min c++ */
-// VERIFY_OPTS: --capture `dirname $1`/medium:follow:/t
+// VERIFY_OPTS: --capture `dirname $1`/medium:follow:/t -o nofail:malloc
 
 #include <dios.h>
 #include <cstring>
 #include <cassert>
 #include <regex>
-#include <dios/core/stdlibwrap.hpp>
+#include <dios/sys/stdlibwrap.hpp>
 #include <sys/trace.h>
 
 #include "vfs-capture-assert.h"
 
-extern "C" void __boot( const _VM_Env *env ) {
-    __dios::Set< __dios::String > expected({ "/t", "/t/symlinkB", "/t/a", "/t/b", "/t/c",
-        "/t/printing.cpp" });
+extern "C" void __boot( const _VM_Env *env )
+{
+    std::set< std::string > expected({ "/t", "/t/symlinkB", "/t/a", "/t/b", "/t/c", "/t/printing.cpp" });
 
-    auto context = __dios::new_object< Context >();
+    auto context = new Context();
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, passSched );

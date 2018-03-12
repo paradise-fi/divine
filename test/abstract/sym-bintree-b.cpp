@@ -1,6 +1,6 @@
 /* TAGS: sym min c++ */
 /* VERIFY_OPTS: --symbolic */
-#include <abstract/domains.h>
+#include <rst/domains.h>
 #include <cstdint>
 #include <limits>
 #include <array>

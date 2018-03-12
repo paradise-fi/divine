@@ -1,6 +1,6 @@
 /* TAGS: sym todo min c++ */
 /* VERIFY_OPTS: --symbolic */
-#include <abstract/domains.h>
+#include <rst/domains.h>
 #include <cassert>
 
 int main() {

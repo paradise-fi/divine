@@ -1,8 +1,10 @@
 /* TAGS: sym min c++ */
 /* VERIFY_OPTS: -o nofail:malloc --symbolic  */
-#include <abstract/sym.h>
+#include <rst/sym.h>
 #include <iostream>
 #include <dios.h>
+
+using namespace lart;
 
 void foo( __dios::InterruptMask &m, sym::Formula *input, sym::Formula *input2  ) {
     auto *c0l = __abstract_sym_lift( 0, 64 );

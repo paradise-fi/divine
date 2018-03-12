@@ -1,7 +1,9 @@
 /* TAGS: sym min c++ */
 /* VERIFY_OPTS: -o nofail:malloc --symbolic  */
-#include <abstract/sym.h>
+#include <rst/sym.h>
 #include <iostream>
+
+using namespace lart;
 
 int main() {
     auto **inputa = __abstract_sym_alloca( 64 );

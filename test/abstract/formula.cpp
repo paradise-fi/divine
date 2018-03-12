@@ -1,5 +1,5 @@
 /* TAGS: sym min c++ */
-#include <abstract/formula.h>
+#include <rst/formula.h>
 #include <string.h>
 #include <assert.h>
 #include <cstdio>
@@ -13,7 +13,7 @@ __attribute__((constructor)) static void disbaleMallocFail() {
 }
 #endif
 
-using namespace sym;
+using namespace lart::sym;
 
 void assert_str_eq( const std::string &a, const std::string &b ) {
     if ( a == b )

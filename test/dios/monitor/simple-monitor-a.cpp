@@ -1,6 +1,8 @@
 /* TAGS: min c++ */
+/* VERIFY_OPTS: -o nofail:malloc */
 #include <sys/monitor.h>
-#include <dios/core/stdlibwrap.hpp>
+#include <sys/interrupt.h>
+#include <sys/fault.h>
 
 volatile int glob;
 
@@ -20,7 +22,7 @@ int main()
     for ( int i = 0; i != 2; i++ )
         glob = glob ? 0 : 1;
 
-    __dios::register_monitor( __dios::new_object< GlobMon >() );
+    __dios::register_monitor( new GlobMon() );
 
     for ( int i = 0; i != 2; i++ )
     {

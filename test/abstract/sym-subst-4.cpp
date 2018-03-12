@@ -1,6 +1,6 @@
 /* TAGS: sym c++ */
 /* VERIFY_OPTS: --symbolic */
-#include <abstract/domains.h>
+#include <rst/domains.h>
 #include <assert.h>
 
 int main() {

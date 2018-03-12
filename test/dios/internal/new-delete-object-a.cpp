@@ -1,6 +1,6 @@
 /* TAGS: min c++ */
 /* CC_OPTS: -std=c++11 */
-#include <dios/core/stdlibwrap.hpp>
+#include <dios/sys/stdlibwrap.hpp>
 #include <cassert>
 
 volatile int done;

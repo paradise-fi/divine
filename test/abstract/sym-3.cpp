@@ -1,6 +1,6 @@
 /* TAGS: sym min c++ */
 /* VERIFY_OPTS: -o nofail:malloc --symbolic  */
-#include <abstract/sym.h>
+#include <rst/sym.h>
 #include <iostream>
 
 int main() {
