@@ -20,8 +20,8 @@ EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d
 
 TOOLDIR = $(OBJ)toolchain
 CLANG = $(TOOLDIR)/clang/
-RTBIN = $(TOOLDIR)/runtime
-RTSRC = $(PWD)/runtime
+RTBIN = $(TOOLDIR)/dios
+RTSRC = $(PWD)/dios
 
 LIBUNWIND_LDIR = $(RTBIN)/libunwind/src
 CXX_LDIR = $(TOOLDIR)/lib
@@ -38,7 +38,7 @@ CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include
 TOOLCHAIN_ = CMAKE_C_COMPILER=$(CLANG)/bin/clang;CMAKE_CXX_COMPILER=$(CLANG)/bin/clang++;\
 	     CMAKE_CXX_FLAGS=$(CXXFLAGS_)
 TOOLCHAIN  ?= $(TOOLCHAIN_);CMAKE_EXE_LINKER_FLAGS=$(LDFLAGS_);CMAKE_SHARED_LINKER_FLAGS=$(LDFLAGS_)
-TOOLSTAMP  ?= $(TOOLDIR)/stamp-v2
+TOOLSTAMP  ?= $(TOOLDIR)/stamp-v3
 
 CONFIG        += CMAKE_INSTALL_PREFIX=${PREFIX}
 static_FLAGS  += CMAKE_BUILD_TYPE=Release;$(TOOLCHAIN);$(CONFIG);BUILD_SHARED_LIBS=OFF;STATIC_BUILD=ON
