@@ -295,6 +295,7 @@ struct Eval
         T get( Slot s ) { T result; ev->slot_read( s, result ); return result; }
         T get( int v ) { return get( ev->instruction().value( v ) ); }
         T get( PointerV p ) { T r; ev->heap().read( ev->ptr2h( p ), r ); return r; }
+        T arg( int v ) { return get( v + 1 ); }
 
         void set( int v, T t )
         {
@@ -641,7 +642,7 @@ struct Eval
     using IntV = vm::value::Int< 32 >;
 
     template< typename... Args >
-    int testP( std::shared_ptr< vm::Program > p, Args... args )
+    auto testP( std::shared_ptr< vm::Program > p, Args... args )
     {
         TContext< vm::Program > c( *p );
         auto data = p->exportHeap( c.heap() );
@@ -652,19 +653,19 @@ struct Eval
         c.enter( pc, vm::nullPointerV(), args... );
         c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_AutoSuspend );
         e.run();
-        return e.retval< IntV >().cooked();
+        return e.retval< IntV >();
     }
 
     template< typename... Args >
     int testF( std::string s, Args... args )
     {
-        return testP( c2prog( s ), args... );
+        return testP( c2prog( s ), args... ).cooked();
     }
 
     template< typename Build, typename... Args >
     int testLLVM( Build build, llvm::FunctionType *ft = nullptr, Args... args )
     {
-        return testP( ir2prog( build, "f", ft ), args... );
+        return testP( ir2prog( build, "f", ft ), args... ).cooked();
     }
 
     TEST(simple)
@@ -1103,6 +1104,68 @@ struct Eval
         testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 0, i32min * 2 );
         testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 1, 1 );
     }
+
+    TEST(taint_0)
+    {
+        auto t = IntV( 10 );
+        auto x = testP( c2prog( "int f( int a ) { return a; }" ), t );
+        ASSERT_EQ( x.taints(), 0 );
+    }
+
+#if 0 /* TODO */
+    TEST(taint_1)
+    {
+        auto t = IntV( 10 );
+        t.taints( 1 );
+        auto x = testP( c2prog( "int f( int a ) { return a; }" ), t );
+        ASSERT_EQ( x.taints(), 1 );
+    }
+
+    TEST(taint_add)
+    {
+        auto t = IntV( 10 );
+        t.taints( 1 );
+        auto x = testP( c2prog( "int f( int a ) { return a + 5; }" ), t );
+        ASSERT_EQ( x.taints(), 1 );
+    }
+
+    TEST(taint_add_vars)
+    {
+        auto t1 = IntV( 10 ), t2 = IntV( 4 );
+        t1.taints( 1 );
+        auto x = testP( c2prog( "int f( int a, int b ) { return a + b; }" ), t1, t2 );
+        ASSERT_EQ( x.taints(), 1 );
+    }
+#endif
+
+    TEST(taint_test_0)
+    {
+        auto x = testP( c2prog( "int __vm_test_taint_xi( int (*f)( char, int ), int, int ); "
+                                "int x; int g( char t, int x ) { return 7; }"
+                                "int f() { return __vm_test_taint_xi( g, 3, 7 ); }" ) );
+        ASSERT_EQ( x.cooked(), 3 );
+    }
+
+    TEST(taint_test_1)
+    {
+        auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
+                                "int x; int g( char t, int x ) { return 7; } "
+                                "int h( int x ) { return 42; } "
+                                "int f() { return __vm_test_taint_ii( g, h, 7 ); }" ) );
+        ASSERT_EQ( x.cooked(), 42 );
+    }
+
+    TEST(taint_test_arg)
+    {
+        auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
+                                "int x; int g( char t, int x ) { return 7; } "
+                                "int h( int x ) { return 42 + x; } "
+                                "int f() { return __vm_test_taint_ii( g, h, 7 ); }" ) );
+        ASSERT_EQ( x.cooked(), 49 );
+    }
+
+    /* TODO: __vm_test_taint with actually tainted values */
+
 };
 #endif
 

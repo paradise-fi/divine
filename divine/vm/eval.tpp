@@ -1030,7 +1030,40 @@ void Eval< Ctx >::implement_test_crit()
 template< typename Ctx >
 void Eval< Ctx >::implement_test_taint()
 {
-    NOT_IMPLEMENTED();
+    CodePointer tf = operandCk< PointerV >( 0 ).cooked();
+    CodePointer nf;
+
+    if ( operand( 1 ).type == Slot::PtrC )
+        nf = operandCk< PointerV >( 1 ).cooked();
+
+    uint8_t taints = 0;
+    for ( int i = 2; i < instruction().argcount(); ++i )
+        op< Any >( i, [&]( auto v ) { taints |= v.arg( i ).taints(); } );
+
+    context().sync_pc();
+    context()._incremental_enter = true;
+
+    if ( taints )
+        context().enter( tf, PointerV( frame() ) );
+    else if ( nf.function() ) /* what to call for non-tainted */
+        context().enter( nf, PointerV( frame() ) );
+    else
+    {
+        slot_copy( s2ptr( operand( 1 ) ), result(), result().size() );
+        return;
+    }
+
+    auto &ff = program().function( taints ? tf : nf );
+
+    for ( int i = 2; i < instruction().argcount(); ++i )
+        op< Any >( i, [&]( auto v )
+        {
+            auto taint_v = value::Int< 8 >( v.arg( i ).taints() );
+            if ( taints )
+                context().push( ff, (i - 2) * 2, frame(), taint_v, v.arg( i ) );
+            else
+                context().push( ff, (i - 2), frame(), v.arg( i ) );
+        } );
 }
 
 template< typename Ctx >
