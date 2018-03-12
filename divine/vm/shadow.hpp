@@ -54,9 +54,6 @@ struct InternalLoc : public brick::types::Ord
     }
 };
 
-struct InVoid {};
-struct InValue {};
-
 template< typename Proxy, typename Pool >
 struct BitContainer
 {
@@ -255,7 +252,6 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
 template< typename MasterPool >
 struct PooledShadow
 {
-    using InObj = InObject< typename MasterPool::Pointer >;
     using Pool = mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
     using Loc = InternalLoc< Internal >;
@@ -410,58 +406,6 @@ struct PooledShadow
             }
             return 0x00;
         }
-
-        /** Change definedness mask of 'pos'th byte in pool object 'obj' to 'def'
-         * @return true, if there is an exception in definedness */
-        bool definedness_changed( Internal obj, int pos, uint8_t def,
-                uint8_t shword, bool exc_should_exist )
-        {
-            Lock lk( _mtx );
-
-            int wpos = ( pos / 4 ) * 4;
-            auto it = _exceptions.find( Loc( obj, wpos ) );
-
-            bool exc_exists = it != _exceptions.end();
-            bool def_trivial = def == 0x00 || def == 0xff;
-
-            ASSERT( ( exc_exists && it->second.valid() ) == exc_should_exist );
-
-            if ( def_trivial && (! exc_exists || ! it->second.valid()) )
-                return false;
-
-            if ( ! exc_exists )
-            {
-                // Create new data exception
-                DataException e;
-                e.invalidate();
-                it = _exceptions.insert( std::make_pair( Loc( obj, wpos ), e )).first;
-            }
-
-            auto & exc = it->second;
-
-            if ( ! exc.valid() )
-                set_word_definedness( exc.bitmask, shword, wpos );
-
-            exc.bitmask[ pos % 4 ] = def;
-
-            // Check whether the exception is needed
-            if ( def_trivial && exc_exists && exc.bitmask_is_trivial() )
-                exc.invalidate();
-
-            return exc.valid();
-        }
-
-        static void set_word_definedness( uint8_t *mask, uint8_t shadow_content, int pos )
-        {
-            if ( pos % 8 < 4 )
-                shadow_content >>= 4;
-            for ( int i = 0; i < 4; ++i )
-            {
-                bool shbit = shadow_content & 0x01;
-                mask[ 3 - i ] = shbit ? 0xff : 0x00;
-                shadow_content >>= 1;
-            }
-        }
     };
 
     class PointerExceptions : public ExceptionMap< PointerException >
@@ -515,20 +459,6 @@ struct PooledShadow
         {
             return get() == ShadowType::PointerException || get() == ShadowType::DataException;
         }
-        void exceptionise_data()
-        {
-            auto tp = get();
-            if ( tp == ShadowType::Data )
-                set( ShadowType::DataException );
-            else if ( tp == ShadowType::Pointer )
-                set( ShadowType::PointerException );
-        }
-        void unexceptionise_data()
-        {
-            auto tp = get();
-            if ( tp == ShadowType::DataException )
-                set( ShadowType::Data );
-        }
         operator ShadowType::T() const { return get(); }
         bool operator==( const TypeProxy &o ) const { return get() == o.get(); }
         bool operator!=( const TypeProxy &o ) const { return get() != o.get(); }
@@ -552,40 +482,6 @@ struct PooledShadow
             uint8_t mask() const { return uint8_t( 0x80 ) >> ( _pos % 8 ); }
             uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
             proxy *operator->() { return this; }
-            proxy &operator=( const proxy &o ) { return *this = uint8_t( o ); }
-            proxy &operator=( uint8_t b )
-            {
-                auto tp = TypeProxy(_type_base, _pos);
-                bool is_exc = tp.is_exception();
-                if ( b == 0xff && ! ( word() & mask() ) )
-                {
-                    word() |= mask();
-                    if ( is_exc )
-                    {
-                        if ( ! exceptions().definedness_changed( _parent->_base, _pos, b, word(), is_exc ) )
-                        {
-                            tp.unexceptionise_data();
-                            // TODO: unexceptionise pointer exceptions
-                        }
-                    }
-                }
-                else if ( b != 0xff )
-                {
-                    word() &= ~mask();
-                    if ( b != 0x00 || is_exc )
-                    {
-                        if ( exceptions().definedness_changed(_parent->_base, _pos, b, word(), is_exc) )
-                        {
-                            tp.exceptionise_data();
-                        }
-                        else
-                        {
-                            tp.unexceptionise_data();
-                        }
-                    }
-                }
-                return *this;
-            }
             operator uint8_t() const
             {
                 if ( word() & mask() )
