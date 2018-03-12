@@ -1,8 +1,10 @@
 #include <rst/sym.h>
 #include <rst/common.h>
 #include <dios.h>
+#include <brick-string>
+#include <brick-assert>
 
-using namespace sym;
+using namespace lart::sym;
 using abstract::Tristate;
 using abstract::__new;
 using abstract::mark;
@@ -28,7 +30,7 @@ extern "C" void __sym_formula_dump()
     Formula *pcf = __sym_state.constraints;
     while ( pcf != NULL )
     {
-        __vm_trace( _VM_T_Text, sym::toString( pcf->binary.left ).c_str() );
+        __vm_trace( _VM_T_Text, lart::sym::toString( pcf->binary.left ).c_str() );
         pcf = pcf->binary.right;
     }
 }

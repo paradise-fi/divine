@@ -1,12 +1,16 @@
 #ifdef __divine__
-#include "formula.h"
+#include <sys/lart.h>
 #include <cstdint>
 #include <cstdarg>
 #include <sys/divm.h>
 #include <new>
+#include <string>
+
+#include <brick-assert>
+#include <brick-string>
 
 using namespace std::literals;
-using namespace sym;
+using namespace lart::sym;
 
 template< typename T, typename ... Args >
 static T *__new( Args &&...args ) {
@@ -15,7 +19,7 @@ static T *__new( Args &&...args ) {
     return static_cast< T * >( ptr );
 }
 
-namespace sym {
+namespace lart::sym {
 
 std::string toString( Type t ) {
     std::string str;
@@ -25,22 +29,6 @@ std::string toString( Type t ) {
         str = "fp";
     str += std::to_string( t.bitwidth() );
     return str;
-}
-
-std::string toString( const Formula *root )
-{
-    if ( root->op() == Op::Variable )
-        return "[v "s + std::to_string( root->var.id ) + ":"s + toString( root->type() ) + "]"s;
-    else if ( root->op() == Op::Constant )
-        return "[c "s + std::to_string( root->con.value ) + ":"s + toString( root->type() ) + "]"s;
-    else if ( isUnary( root->op() ) )
-        return toString( root->op() ) + "("s + toString( root->unary.child ) + ") :"s
-                + toString( root->type() );
-    else if ( isBinary( root->op() ) )
-        return toString( root->op() ) + "("s + toString( root->binary.left ) + ", "s
-                + toString( root->binary.right ) + ") : "s + toString( root->type() );
-    else
-        UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
 }
 
 std::string toString( Op x )
@@ -125,6 +113,27 @@ std::string toString( Op x )
         case Op::Constraint: return "constraint";
     }
     UNREACHABLE_F( "invalid operation %d in sym::toString", int( x ) );
+}
+
+std::string toString( const Formula *root )
+{
+    if ( root->op() == Op::Variable )
+        return "[v "s + std::to_string( root->var.id ) + ":"s + toString( root->type() ) + "]"s;
+    else if ( root->op() == Op::Constant )
+        return "[c "s + std::to_string( root->con.value ) + ":"s + toString( root->type() ) + "]"s;
+    else if ( isUnary( root->op() ) )
+        return toString( root->op() ) + "("s + toString( root->unary.child ) + ") :"s
+                + toString( root->type() );
+    else if ( isBinary( root->op() ) )
+        return toString( root->op() ) + "("s + toString( root->binary.left ) + ", "s
+                + toString( root->binary.right ) + ") : "s + toString( root->type() );
+    else
+        UNREACHABLE_F( "unknown operation in sym::toString: %d", int( root->op() ) );
+}
+
+inline std::string toString( const Formula &f )
+{
+    return toString( &f );
 }
 
 }
