@@ -1,5 +1,5 @@
-/* TAGS: todo min c++ */
-/* VERIFY_OPTS: --stdin `dirname $1`/stdin.txt */
+/* TAGS: min c++ */
+/* VERIFY_OPTS: --stdin `dirname $1`/stdin.txt -o nofail:malloc */
 
 #include <iostream>
 #include <cassert>
