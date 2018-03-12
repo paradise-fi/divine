@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswprint.c
+TESTCASE=wctype/iswprint.c

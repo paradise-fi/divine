@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strspn.c
+TESTCASE=string/strspn.c

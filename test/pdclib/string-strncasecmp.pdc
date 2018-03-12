@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strncasecmp.c
+TESTCASE=string/strncasecmp.c

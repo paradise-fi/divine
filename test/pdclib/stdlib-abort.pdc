@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/abort.c
+TESTCASE=stdlib/abort.c

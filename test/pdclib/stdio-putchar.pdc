@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/putchar.c
+TESTCASE=stdio/putchar.c

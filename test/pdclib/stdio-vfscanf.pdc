@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/vfscanf.c
+TESTCASE=stdio/vfscanf.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/uchar/_PDCLIB_c16slen.c
+TESTCASE=uchar/_PDCLIB_c16slen.c

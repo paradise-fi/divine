@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/towlower.c
+TESTCASE=wctype/towlower.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/freopen.c
+TESTCASE=stdio/freopen.c

@@ -1,2 +1,2 @@
 # TAGS: c threads
-TESTCASE=functions/threads/tss_get.c
+TESTCASE=threads/tss_get.c

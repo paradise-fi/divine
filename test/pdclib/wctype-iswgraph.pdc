@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswgraph.c
+TESTCASE=wctype/iswgraph.c

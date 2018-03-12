@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strerror.c
+TESTCASE=string/strerror.c

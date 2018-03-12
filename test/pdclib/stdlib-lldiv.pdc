@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/lldiv.c
+TESTCASE=stdlib/lldiv.c

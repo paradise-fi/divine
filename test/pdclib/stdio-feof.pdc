@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/feof.c
+TESTCASE=stdio/feof.c

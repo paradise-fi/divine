@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/fflush.c
+TESTCASE=stdio/fflush.c

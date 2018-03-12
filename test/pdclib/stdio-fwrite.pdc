@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/fwrite.c
+TESTCASE=stdio/fwrite.c

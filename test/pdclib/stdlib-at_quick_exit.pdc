@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/at_quick_exit.c
+TESTCASE=stdlib/at_quick_exit.c

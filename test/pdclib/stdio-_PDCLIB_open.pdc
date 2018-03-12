@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/_PDCLIB_open.c
+TESTCASE=stdio/_PDCLIB_open.c

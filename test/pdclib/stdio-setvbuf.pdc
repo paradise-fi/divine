@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/setvbuf.c
+TESTCASE=stdio/setvbuf.c

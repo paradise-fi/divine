@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/stdio/fprintf.c
+TESTCASE=stdio/fprintf.c

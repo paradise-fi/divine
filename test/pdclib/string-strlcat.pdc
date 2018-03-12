@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/string/strlcat.c
+TESTCASE=string/strlcat.c

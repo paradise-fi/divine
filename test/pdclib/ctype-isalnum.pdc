@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isalnum.c
+TESTCASE=ctype/isalnum.c

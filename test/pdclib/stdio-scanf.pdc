@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/scanf.c
+TESTCASE=stdio/scanf.c

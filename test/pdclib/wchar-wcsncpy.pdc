@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wchar/wcsncpy.c
+TESTCASE=wchar/wcsncpy.c

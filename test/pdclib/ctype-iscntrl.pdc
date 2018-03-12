@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/iscntrl.c
+TESTCASE=ctype/iscntrl.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/tmpfile.c
+TESTCASE=stdio/tmpfile.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/stpcpy.c
+TESTCASE=string/stpcpy.c

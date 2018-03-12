@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswalnum.c
+TESTCASE=wctype/iswalnum.c

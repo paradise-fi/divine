@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strchr.c
+TESTCASE=string/strchr.c

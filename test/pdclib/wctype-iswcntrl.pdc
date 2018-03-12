@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswcntrl.c
+TESTCASE=wctype/iswcntrl.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/inttypes/strtoumax.c
+TESTCASE=inttypes/strtoumax.c

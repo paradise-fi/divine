@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswpunct.c
+TESTCASE=wctype/iswpunct.c

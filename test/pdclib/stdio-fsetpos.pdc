@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/fsetpos.c
+TESTCASE=stdio/fsetpos.c

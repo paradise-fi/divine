@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/inttypes/imaxabs.c
+TESTCASE=inttypes/imaxabs.c

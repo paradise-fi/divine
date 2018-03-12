@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswspace.c
+TESTCASE=wctype/iswspace.c

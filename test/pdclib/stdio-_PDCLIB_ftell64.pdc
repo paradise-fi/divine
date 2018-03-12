@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/_PDCLIB_ftell64.c
+TESTCASE=stdio/_PDCLIB_ftell64.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isblank.c
+TESTCASE=ctype/isblank.c

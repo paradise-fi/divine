@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/fputc.c
+TESTCASE=stdio/fputc.c

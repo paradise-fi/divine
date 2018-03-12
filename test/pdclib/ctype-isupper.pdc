@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isupper.c
+TESTCASE=ctype/isupper.c

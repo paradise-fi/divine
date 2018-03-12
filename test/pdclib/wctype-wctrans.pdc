@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/wctrans.c
+TESTCASE=wctype/wctrans.c

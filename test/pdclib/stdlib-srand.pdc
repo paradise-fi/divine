@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/srand.c
+TESTCASE=stdlib/srand.c

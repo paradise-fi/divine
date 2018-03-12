@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strcat.c
+TESTCASE=string/strcat.c

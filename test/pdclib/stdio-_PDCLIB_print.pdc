@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/stdio/_PDCLIB_print.c
+TESTCASE=stdio/_PDCLIB_print.c

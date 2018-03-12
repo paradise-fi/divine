@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=posix/functions/stdlib/system.c
+TESTCASE=posix/stdlib/system.c

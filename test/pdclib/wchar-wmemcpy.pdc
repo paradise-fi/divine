@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wchar/wmemcpy.c
+TESTCASE=wchar/wmemcpy.c

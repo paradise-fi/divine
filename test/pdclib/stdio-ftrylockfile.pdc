@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/ftrylockfile.c
+TESTCASE=stdio/ftrylockfile.c

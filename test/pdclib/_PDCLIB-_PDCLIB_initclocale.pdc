@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/_PDCLIB/_PDCLIB_initclocale.c
+TESTCASE=_PDCLIB/_PDCLIB_initclocale.c

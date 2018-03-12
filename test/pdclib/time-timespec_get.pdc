@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/time/timespec_get.c
+TESTCASE=time/timespec_get.c

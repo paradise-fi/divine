@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/memcmp.c
+TESTCASE=string/memcmp.c

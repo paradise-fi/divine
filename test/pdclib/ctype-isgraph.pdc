@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isgraph.c
+TESTCASE=ctype/isgraph.c

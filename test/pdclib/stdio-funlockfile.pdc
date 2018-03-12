@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/funlockfile.c
+TESTCASE=stdio/funlockfile.c

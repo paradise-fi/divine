@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/fgets.c
+TESTCASE=stdio/fgets.c

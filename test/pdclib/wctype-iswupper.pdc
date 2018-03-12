@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswupper.c
+TESTCASE=wctype/iswupper.c

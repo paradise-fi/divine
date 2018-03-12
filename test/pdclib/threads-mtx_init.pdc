@@ -1,2 +1,2 @@
 # TAGS: c threads
-TESTCASE=functions/threads/mtx_init.c
+TESTCASE=threads/mtx_init.c

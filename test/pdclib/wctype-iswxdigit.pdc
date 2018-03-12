@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wctype/iswxdigit.c
+TESTCASE=wctype/iswxdigit.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strlen.c
+TESTCASE=string/strlen.c

@@ -6,14 +6,14 @@ FLAGS=
 . $1
 
 test -n $TESTCASE
-FILE=$SRC_ROOT/runtime/libc/$TESTCASE
+FILE=$SRC_ROOT/dios/libc/$TESTCASE
 test -f $FILE
 
 grep -w NO_TESTDRIVER $FILE && skip
 
 # _PDCLIB_BUILD is needed so that headers export declarations of internal
 # functions
-divine cc -D_PDCLIB_BUILD -DTEST -I$SRC_ROOT/runtime/libc/testing $FLAGS \
+divine cc -D_PDCLIB_BUILD -DTEST -I$SRC_ROOT/dios/libc/testing $FLAGS \
           $EXTRA_FILES $SRC_ROOT/test/pdclib/testenv.helper.c $FILE -o unittest.bc
 llvm-nm unittest.bc | grep -w 'T main' || skip
 

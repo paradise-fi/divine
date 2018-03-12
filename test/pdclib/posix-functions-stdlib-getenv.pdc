@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=posix/functions/stdlib/getenv.c
+TESTCASE=posix/stdlib/getenv.c

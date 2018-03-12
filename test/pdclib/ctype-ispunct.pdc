@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/ispunct.c
+TESTCASE=ctype/ispunct.c

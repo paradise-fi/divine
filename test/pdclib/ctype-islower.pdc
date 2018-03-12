@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/islower.c
+TESTCASE=ctype/islower.c

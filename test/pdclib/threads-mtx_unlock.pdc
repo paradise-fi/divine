@@ -1,2 +1,2 @@
 # TAGS: c threads
-TESTCASE=functions/threads/mtx_unlock.c
+TESTCASE=threads/mtx_unlock.c

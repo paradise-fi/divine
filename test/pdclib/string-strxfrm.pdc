@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strxfrm.c
+TESTCASE=string/strxfrm.c

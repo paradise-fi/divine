@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wchar/wcspbrk.c
+TESTCASE=wchar/wcspbrk.c

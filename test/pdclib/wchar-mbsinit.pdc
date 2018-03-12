@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/wchar/mbsinit.c
+TESTCASE=wchar/mbsinit.c

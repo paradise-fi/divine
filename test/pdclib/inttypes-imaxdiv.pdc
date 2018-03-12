@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/inttypes/imaxdiv.c
+TESTCASE=inttypes/imaxdiv.c

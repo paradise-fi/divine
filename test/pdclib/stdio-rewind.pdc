@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/rewind.c
+TESTCASE=stdio/rewind.c

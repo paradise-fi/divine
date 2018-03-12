@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/bsearch.c
+TESTCASE=stdlib/bsearch.c

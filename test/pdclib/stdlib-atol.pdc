@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/atol.c
+TESTCASE=stdlib/atol.c

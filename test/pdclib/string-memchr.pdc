@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/memchr.c
+TESTCASE=string/memchr.c

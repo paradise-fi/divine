@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/fread.c
+TESTCASE=stdio/fread.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/strtoull.c
+TESTCASE=stdlib/strtoull.c

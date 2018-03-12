@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/memset.c
+TESTCASE=string/memset.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/abs.c
+TESTCASE=stdlib/abs.c

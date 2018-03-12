@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isascii.c
+TESTCASE=ctype/isascii.c

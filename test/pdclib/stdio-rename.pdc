@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/stdio/rename.c
+TESTCASE=stdio/rename.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/_PDCLIB/stdarg.c
+TESTCASE=_PDCLIB/stdarg.c

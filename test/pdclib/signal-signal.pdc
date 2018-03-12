@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/signal/signal.c
+TESTCASE=signal/signal.c

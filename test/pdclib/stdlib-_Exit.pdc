@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/_Exit.c
+TESTCASE=stdlib/_Exit.c

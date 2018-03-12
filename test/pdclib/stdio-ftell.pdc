@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/ftell.c
+TESTCASE=stdio/ftell.c

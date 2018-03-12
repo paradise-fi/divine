@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isalpha.c
+TESTCASE=ctype/isalpha.c

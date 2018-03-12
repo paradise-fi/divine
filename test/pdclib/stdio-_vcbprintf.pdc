@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/stdio/_vcbprintf.c
+TESTCASE=stdio/_vcbprintf.c

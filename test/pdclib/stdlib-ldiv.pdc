@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdlib/ldiv.c
+TESTCASE=stdlib/ldiv.c

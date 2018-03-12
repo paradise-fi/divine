@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/stdio/snprintf.c
+TESTCASE=stdio/snprintf.c

@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/string/strlcpy.c
+TESTCASE=string/strlcpy.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/stdio/getchar.c
+TESTCASE=stdio/getchar.c

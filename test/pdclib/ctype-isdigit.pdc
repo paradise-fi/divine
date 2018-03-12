@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/ctype/isdigit.c
+TESTCASE=ctype/isdigit.c

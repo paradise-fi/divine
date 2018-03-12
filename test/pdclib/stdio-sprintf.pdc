@@ -1,2 +1,2 @@
 # TAGS: c todo
-TESTCASE=functions/stdio/sprintf.c
+TESTCASE=stdio/sprintf.c

@@ -1,2 +1,2 @@
 # TAGS: c
-TESTCASE=functions/string/strtok.c
+TESTCASE=string/strtok.c
