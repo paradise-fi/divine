@@ -21,7 +21,7 @@
 #include <sys/lart.h>
 #else
 #include <divine/vm/divm.h>
-#include <divine/vm/lart.h>
+#include <lart/lart.h>
 #endif
 
 #include <stdint.h>
