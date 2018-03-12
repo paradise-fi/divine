@@ -60,7 +60,7 @@ struct Context
 
     uint32_t _instruction_counter;
     int _debug_depth = 0;
-    bool _debug_allowed = false, _track_mem = false;
+    bool _debug_allowed = false, _track_mem = false, _incremental_enter = false;
     TraceDebugPersist _debug_persist;
     Snapshot _debug_snap;
 
@@ -170,7 +170,13 @@ struct Context
 
     void push( typename Program::Function &f, int i, HeapPointer )
     {
-        ASSERT_EQ( f.argcount + f.vararg , i );
+        if ( _incremental_enter )
+        {
+            if ( i == f.argcount + f.vararg )
+                _incremental_enter = false;
+        }
+        else
+            ASSERT_EQ( f.argcount + f.vararg , i );
     }
 
     template< typename X, typename... Args >
@@ -340,6 +346,7 @@ struct Context
 
     void sync_pc()
     {
+        ASSERT( !_incremental_enter ); /* as good a place as any... */
         auto frame = get( _VM_CR_Frame ).pointer;
         if ( frame.null() )
             return;
