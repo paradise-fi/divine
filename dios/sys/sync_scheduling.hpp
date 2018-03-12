@@ -43,7 +43,7 @@ struct SyncScheduler : public Scheduler< Next >
     void yield()
     {
         void *sched = __vm_ctl_get( _VM_CR_User4 );
-        getCurrentTask()->_frame = this->sysenter();
+        getCurrentTask()->_frame = this->sysenter( false );
         __vm_ctl_set( _VM_CR_Frame, sched ); /* jump back into the scheduler */
     }
 

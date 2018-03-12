@@ -16,6 +16,10 @@
 namespace __dios
 {
 
+/* NB. The extern declaration of this on the kernel side has real void return
+ * types.  This is a bit of a dirty trick. We fiddle around with long jumps to
+ * avoid void returns into non-void callsites. */
+
 #define VOID int
 #define SYSCALL( name, schedule, ret, arg )    ret (*name ## _ptr) arg noexcept;
 #include <sys/syscall.def>
@@ -70,10 +74,11 @@ namespace __dios
 	va_start( ap, id );
 	switch ( id )
 	{
-#define SYSCALL_DIOS(...) /* FIXME */
+#define VOID int
 #define SYSCALL( name, schedule, ret, arg ) \
             case SYS_ ## name: return long( unpack( name ## _ptr, ap ) );
 #include <sys/syscall.def>
+#undef VOID
 	}
     }
 

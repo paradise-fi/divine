@@ -433,12 +433,13 @@ struct Scheduler : public Next
         return frame;
     }
 
-    _VM_Frame *sysenter()
+    _VM_Frame *sysenter( bool skip_invoke = true )
     {
         _VM_Frame *f = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) );
         while ( !__md_get_pc_meta( f->pc )->is_trap )
             f = f->parent;
-        return f;
+        /* sysenter goes through a function pointer to a lambda, i.e. __invoke */
+        return skip_invoke ? f->parent : f;
     }
 
     int trampoline_return( int rv )
