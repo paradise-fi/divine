@@ -447,9 +447,17 @@ namespace divine::vm
         int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
-        std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
+
+        auto from_heap_reader = [&from_h]( typename FromH::Internal obj, int off ) -> uint32_t {
+            return *from_h._objects.template machinePointer< uint32_t >( obj, off );
+        };
+        auto this_heap_reader = [this]( Internal obj, int off ) -> uint32_t {
+            return *_objects.template machinePointer< uint32_t >( obj, off );
+        };
         _shadows.copy( from_h.shadows(), from_h.shloc( _from, _from_i ),
                        shloc( _to, _to_i ), bytes, from_heap_reader, this_heap_reader );
+
+        std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
 
         if ( _shadows.shared( _to_i ) )
             for ( auto pos : _shadows.pointers( shloc( _to, _to_i ), bytes ) )
