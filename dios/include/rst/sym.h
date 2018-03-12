@@ -1,6 +1,6 @@
-#include <abstract/tristate.h>
-#include <abstract/common.h>
-#include <abstract/formula.h>
+#include <rst/tristate.h>
+#include <rst/common.h>
+#include <rst/formula.h>
 
 extern "C" {
 

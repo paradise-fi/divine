@@ -1,5 +1,5 @@
-#include <abstract/sym.h>
-#include <abstract/common.h>
+#include <rst/sym.h>
+#include <rst/common.h>
 #include <dios.h>
 
 using namespace sym;

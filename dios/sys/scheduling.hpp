@@ -17,7 +17,7 @@
 #include <dios/sys/syscall.hpp>
 #include <util/map.hpp>
 
-#include <abstract/common.h>
+#include <rst/common.h>
 
 namespace __dios {
 

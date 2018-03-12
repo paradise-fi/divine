@@ -1,5 +1,5 @@
-#include <abstract/tristate.h>
-#include <abstract/common.h>
+#include <rst/tristate.h>
+#include <rst/common.h>
 
 #ifdef __divine__
 #include <sys/divm.h>

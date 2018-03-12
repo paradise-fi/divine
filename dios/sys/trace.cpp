@@ -5,7 +5,7 @@
 #include <dios/sys/trace.hpp>
 #include <dios/sys/syscall.hpp>
 #include <dios/vfs/fs-utils.h>
-#include <abstract/common.h> // for weaken
+#include <rst/common.h> // for weaken
 #include <fcntl.h>
 #include <dios.h>
 #include <string.h>

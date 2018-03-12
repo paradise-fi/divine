@@ -5,7 +5,7 @@
 #include <dios.h>
 #include <dios/sys/memory.hpp>
 #include <dios/sys/trace.hpp>
-#include <abstract/common.h>
+#include <rst/common.h>
 #include <sys/fault.h>
 #include <sys/trace.h>
 

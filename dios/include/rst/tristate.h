@@ -1,4 +1,4 @@
-#include <abstract/common.h>
+#include <rst/common.h>
 
 #ifndef __ABSTRACT_TRISTATE_H_
 #define __ABSTRACT_TRISTATE_H_

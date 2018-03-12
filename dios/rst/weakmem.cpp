@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <abstract/weakmem.h>
+#include <rst/weakmem.h>
 #include <algorithm> // reverse iterator
 #include <cstdarg>
 #include <dios.h>
@@ -9,7 +9,7 @@
 #include <sys/lart.h>
 #include <sys/vmutil.h>
 #include <dios/kernel.hpp> // get_debug
-#include <abstract/common.h> // weaken
+#include <rst/common.h> // weaken
 #include <optional>
 
 #define forceinline __attribute__((always_inline))
