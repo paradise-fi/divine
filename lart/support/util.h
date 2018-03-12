@@ -31,6 +31,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <set>
 #include <map>
 #include <iostream>
+#include <optional>
 
 #ifndef LART_SUPPORT_UTIL_H
 #define LART_SUPPORT_UTIL_H
