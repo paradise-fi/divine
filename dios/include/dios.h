@@ -15,7 +15,6 @@
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
 #define CPP_END }
-#define CAST( T, X ) reinterpret_cast< T >( X )
 #if __cplusplus >= 201103L
 #define NOTHROW noexcept
 #else
@@ -25,7 +24,6 @@
 #define EXTERN_C
 #define CPP_END
 #define NOTHROW __attribute__((__nothrow__))
-#define CAST( T, X ) ((T)(X))
 #endif
 
 EXTERN_C
@@ -82,4 +80,3 @@ CPP_END
 #undef EXTERN_C
 #undef CPP_END
 #undef NOTHROW
-#undef CAST
