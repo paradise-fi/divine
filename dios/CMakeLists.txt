@@ -25,7 +25,7 @@ file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/include/sys/ )
 set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
 set( HOSTABI ${SYSINC}hostabi.h )
-set( VMINC ${SYSINC}divm.h ${SYSINC}lart.h )
+set( VMINC ${SYSINC}divm.h ${SYSINC}vmutil.h ${SYSINC}lart.h )
 
 list( REMOVE_ITEM H_RUNTIME ${LIBCINC}sys/divm.h ${LIBCINC}sys/vmutil.h ${LIBCINC}sys/lart.h )
 
@@ -67,6 +67,7 @@ macro( copyhdr srcdir hdr )
 endmacro()
 
 copyhdr( divine/vm divm.h )
+copyhdr( divine/vm vmutil.h )
 copyhdr( lart lart.h )
 
 add_custom_command(
