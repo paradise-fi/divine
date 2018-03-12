@@ -53,13 +53,10 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     opts( opts ), compiler( ctx ), linker( new brick::llvm::Linker() )
 {
     commonFlags = { "-D__divine__=4"
-                  , "-isystem", includeDir
                   , "-isystem", joinPath( includeDir, "libcxx/include" )
                   , "-isystem", joinPath( includeDir, "libcxxabi/include" )
                   , "-isystem", joinPath( includeDir, "libunwind/include" )
-                  , "-isystem", joinPath( includeDir, "libc/include" )
-                  , "-isystem", joinPath( includeDir, "libc/internals" )
-                  , "-isystem", joinPath( includeDir, "libm/include" )
+                  , "-isystem", includeDir
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
@@ -249,16 +246,18 @@ brick::llvm::ArchiveReader Compile::getLib( std::string lib, std::vector< std::s
     using namespace brick::fs;
 
     std::string name;
-    searchPaths.push_back( "/lib" );
-    for ( auto p : searchPaths ) {
-        for ( auto suf : { "a", "bc" } ) {
-            auto n = joinPath( p, "lib" + lib + "."s + suf );
-            if ( compiler.fileExists( n ) ) {
-                name = n;
-                break;
+    searchPaths.push_back( "/dios/lib" );
+    for ( auto p : searchPaths )
+        for ( auto suf : { "a", "bc" } )
+            for ( auto pref : { "lib", "" } )
+            {
+                auto n = joinPath( p, pref + lib + "."s + suf );
+                if ( compiler.fileExists( n ) )
+                {
+                    name = n;
+                    break;
+                }
             }
-        }
-    }
 
     if ( name.empty() )
         throw std::runtime_error( "Library not found: " + lib );
@@ -281,18 +280,21 @@ void Compile::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::share
     linker->linkArchive( archive );
 }
 
-void Compile::linkEntireArchive( std::string arch ) {
+void Compile::linkEntireArchive( std::string arch )
+{
         auto archive = getLib( arch );
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             linker->link( it.take() );
 }
 
-void Compile::linkEssentials() {
-    for (auto arch : { "dios", "abstract" } )
+void Compile::linkEssentials()
+{
+    for (auto arch : { "dios", "rst" } )
         linkEntireArchive( arch );
     // the _link_essentials modules are built from divine.link.always annotations
-    for ( auto e : defaultDIVINELibs ) {
+    for ( auto e : defaultDIVINELibs )
+    {
         auto archive = getLib( e );
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )

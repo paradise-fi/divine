@@ -23,18 +23,24 @@
 namespace divine::cc
 {
 
-const std::string includeDir = "/divine/include";
-const std::string srcDir = "/divine/src";
+const std::string includeDir = "/dios/include";
+const std::string srcDir = "/dios/src";
 
 static std::string directory( std::string name )
 {
     using brick::fs::joinPath;
     using brick::string::endsWith;
+    using brick::string::startsWith;
+
+    if ( startsWith( name, "include/" ) )
+        return "/dios";
     for ( auto suffix : { ".c", ".cpp", ".cc" } )
         if ( endsWith( name, suffix ) )
             return srcDir;
     if ( endsWith( name, ".bc" ) || endsWith( name, ".a" ) )
-        return "/lib";
+        return "/dios/lib";
+    if ( startsWith( name, "sys/" ) || startsWith( name, "macro/" ) )
+        return includeDir + "/dios";
     return includeDir;
 }
 
