@@ -1391,7 +1391,7 @@ struct Substitution {
         auto m = test_substitution( annotation + s );
         auto icmp = m->getFunction( "__abstract_sym_icmp_sgt" );
         ASSERT_EQ( icmp->getReturnType(),
-                   m->getTypeByName( "union.sym::Formula" )->getPointerTo() );
+                   m->getTypeByName( "union.lart::sym::Formula" )->getPointerTo() );
         auto to_tristate = m->getFunction( "__abstract_sym_bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
         auto lower = llvm::cast< llvm::Instruction >(
