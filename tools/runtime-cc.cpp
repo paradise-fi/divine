@@ -37,7 +37,7 @@ int main( int argc, const char **argv )
         }
         auto mod = clang.compileModule( argv[3], opts );
 
-        auto runtimeBase = fs::joinPath( srcDir, "runtime" );
+        auto runtimeBase = fs::joinPath( srcDir, "dios" );
         if ( !fs::exists( runtimeBase ) )
                 runtimeBase = srcDir;
         lart::divine::rewriteDebugPaths( *mod, [=]( auto p ) {
