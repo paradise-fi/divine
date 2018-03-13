@@ -74,6 +74,15 @@ inline bool is_one_of( llvm::Value *v ) {
     return ( llvm::isa< Ts >( v ) || ... );
 }
 
+inline Values taints( llvm::Module &m ) {
+    Values res;
+    for ( auto &fn : m )
+        if ( fn.getName().startswith( "__vm_test_taint" ) )
+            for ( auto u : fn.users() )
+                res.push_back( u );
+    return res;
+}
+
 template< typename Range >
 static inline bool equal( const Range & a, const Range & b ) {
     return std::equal( a.begin(), a.end(), b.begin(), b.end() );

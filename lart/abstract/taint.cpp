@@ -73,8 +73,12 @@ Instruction* lower_tristate( Instruction *i ) {
 
 } // anonymous namespace
 
-Function* get_taint_fn( Module *m, Type *ret, const Types &args ) {
-    auto name = "vm.test.taint" + taint_suffix( args );
+Function* get_taint_fn( Module *m, Type *ret, Types args ) {
+    auto taint_fn = args.front();
+    args.erase( args.begin() );
+    auto name = "__vm_test_taint" + taint_suffix( args );
+    args.insert( args.begin(), taint_fn );
+
     auto fty = FunctionType::get( ret, args, false );
     auto fn = m->getOrInsertFunction( name, fty );
     return cast< Function >( fn );

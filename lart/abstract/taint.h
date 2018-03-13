@@ -27,7 +27,7 @@ struct TaintBranching {
 };
 
 // Creates function intrinsic with given return type and argument types.
-llvm::Function* get_taint_fn( llvm::Module*, llvm::Type *ret, const Types &args );
+llvm::Function* get_taint_fn( llvm::Module*, llvm::Type *ret, Types args );
 
 // Creates call to 'vm.test.taint' function.
 //
