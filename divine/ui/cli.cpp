@@ -266,23 +266,33 @@ void WithBC::setup()
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    auto magic = brick::fs::readFile( _file, 4 );
-    auto magicuc = reinterpret_cast< const unsigned char * >( magic.data() );
+    using namespace llvm::sys::fs;
 
-    if ( magic.size() == 4 && llvm::isBitcode( magicuc, magicuc + magic.size() ) )
-        _bc = std::make_shared< mc::BitCode >( _file );
-    else if ( cc::Compiler::typeFromFile( _file ) != cc::Compiler::FileType::Unknown )
+    auto magic_data = brick::fs::readFile( _file, 18 );
+    auto magic = identify_magic( magic_data );
+
+    switch ( magic )
     {
-        cc::Options ccopt;
-        cc::Compile driver( ccopt );
+        case file_magic::bitcode:
+        case file_magic::elf_relocatable:
+        case file_magic::elf_executable:
+            _bc = std::make_shared< mc::BitCode >( _file );
+            break;
 
-        driver.setupFS( rt::each );
-        driver.runCC( _ccopts_final );
-        _bc = std::make_shared< mc::BitCode >(
-            std::unique_ptr< llvm::Module >( driver.getLinked() ),
-            driver.context() );
-    } else
-        throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
+        default:
+        {
+            if ( cc::Compiler::typeFromFile( _file ) == cc::Compiler::FileType::Unknown )
+                throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
+            cc::Options ccopt;
+            cc::Compile driver( ccopt );
+
+            driver.setupFS( rt::each );
+            driver.runCC( _ccopts_final );
+            _bc = std::make_shared< mc::BitCode >(
+                std::unique_ptr< llvm::Module >( driver.getLinked() ),
+                driver.context() );
+        }
+    }
 
     _bc->environment( _bc_env );
     _bc->autotrace( _autotrace );
