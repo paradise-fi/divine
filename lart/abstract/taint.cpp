@@ -53,11 +53,18 @@ Instruction* branch_intrinsic( Instruction *i, std::string name ) {
 }
 
 Instruction* to_tristate( Instruction *i, Domain dom ) {
-    return branch_intrinsic( i, "lart.gen." + DomainTable[ dom ] + ".bool_to_tristate" );
+    auto &ctx = i->getContext();
+    MDBuilder mdb( ctx );
+    auto trs_dom = mdb.domain_node( Domain::Tristate );
+    auto b2t = branch_intrinsic( i, "lart.gen." + DomainTable[ dom ] + ".bool_to_tristate" );
+    b2t->setMetadata( "lart.domains", MDTuple::get( ctx, trs_dom ) );
+    return b2t;
 }
 
 Instruction* lower_tristate( Instruction *i ) {
-    return branch_intrinsic( i, "lart.gen.tristate.lower" );
+    auto lt = branch_intrinsic( i, "lart.gen.tristate.lower" );
+    lt->setMetadata( "lart.domains", nullptr );
+    return lt;
 }
 
 } // anonymous namespace
@@ -129,7 +136,10 @@ void TaintBranching::expand( Value *t, BranchInst *br ) {
     auto orig = cast< User >( t )->getOperand( 1 ); // fallback value
     auto dom = MDValue( orig ).domain();
 
-    auto i8 = irb.CreateZExt( t, Type::getInt8Ty( ctx ) );
+    auto ti = cast< Instruction >( t );
+    auto i8 = cast< Instruction >( irb.CreateZExt( ti, Type::getInt8Ty( ctx ) ) );
+    i8->setMetadata( "lart.domains", ti->getMetadata( "lart.domains" ) );
+
     auto trs = to_tristate( cast< Instruction >( i8 ), dom );
     auto low = lower_tristate( trs );
     auto i1 = irb.CreateTrunc( low, Type::getInt1Ty( ctx ) );
