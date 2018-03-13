@@ -5,6 +5,7 @@
 #include <sys/signal.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/lart.h>
 
 #include <dios/sys/scheduling.hpp>
 
@@ -50,7 +51,7 @@ const sighandler_t defhandlers[] =
     { sig_fault, 0 }   // SIGUNUSED/SIGSYS = 31
 };
 
-extern "C" __trapfn __invisible void __dios_interrupt()
+extern "C" __trapfn __invisible __weakmem_direct void __dios_interrupt()
 {
     uint64_t flags = uint64_t( __vm_ctl_get( _VM_CR_Flags ) );
 
