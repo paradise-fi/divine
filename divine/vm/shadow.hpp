@@ -1080,6 +1080,103 @@ struct PooledShadow
     }
 };
 
+template< template < typename > class SlaveShadow, typename MasterPool,
+          uint8_t TaintBit = 0, uint8_t PerBytes = 1 >
+struct PooledTaintShadow : public SlaveShadow< MasterPool >
+{
+    static_assert( PerBytes > 0 && PerBytes < 8, "unsupported width of PooledTaintShadow" );
+    static constexpr uint8_t PerBits = 8 * PerBytes;
+    static constexpr uint8_t TaintMask = ( 1 << TaintBit );
+
+    using NextShadow = SlaveShadow< MasterPool >;
+    using Pool = mem::SlavePool< MasterPool >;
+    using Internal = typename Pool::Pointer;
+    using Loc = InternalLoc< Internal >;
+
+    Pool _taints;
+
+    PooledTaintShadow( const MasterPool &mp )
+        : NextShadow( mp )
+        , _taints( mp ) {}
+
+    void make( Internal p, int size )
+    {
+        _taints.materialise( p, ( size / PerBits )  + ( size % PerBits  ? 1 : 0 ));
+        NextShadow::make( p, size );
+    }
+
+    using NextShadow::free;
+
+    using TaintC = BitContainer< _BitProxy< PerBits >, Pool >;
+
+    auto taints( Loc l, int sz )
+    {
+        return TaintC( _taints, l.object, l.offset, l.offset + sz );
+    }
+
+    bool equal( Internal a, Internal b, int sz )
+    {
+        return compare( *this, a, b, sz ) == 0;
+    }
+
+    template< typename OtherSH >
+    int compare( OtherSH & a_sh, typename OtherSH::Internal a, Internal b, int sz )
+    {
+        int cmp;
+        auto a_ts = a_sh.taints( a, sz );
+        auto b_t = taints( b, sz ).begin();
+        for ( auto a_t : a_ts )
+            if ( ( cmp = int( a_t.get() ) - b_t.get() ) )
+                return cmp;
+
+        return NextShadow::compare( a_sh, a, b, sz );
+    }
+
+    template< typename V >
+    void write( Loc l, V value )
+    {
+        const int sz = sizeof( typename V::Raw );
+        for ( auto t : taints( l, sz ) )
+            t.set( value.taints() & TaintMask );
+
+        NextShadow::write( l, value );
+    }
+
+    template< typename V >
+    void read( Loc l, V &value )
+    {
+        constexpr int sz = sizeof( typename V::Raw );
+        for ( auto t : taints( l, sz ) )
+            if ( t.get() )
+                value.taints( value.taints() | TaintMask );
+            else
+                value.taints( value.taints() & ~TaintMask );
+
+        NextShadow::read( l, value );
+    }
+
+    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
+    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz,
+               FromHeapReader fhr, ToHeapReader thr )
+    {
+        if ( sz == 0 )
+            return;
+
+        ASSERT_LT( 0, sz );
+
+        auto from_ts = from_sh.taints( from, sz );
+        std::copy( from_ts.begin(), from_ts.end(), taints( to, sz ).begin() );
+
+        NextShadow::copy( from_sh, from, to, sz, fhr, thr );
+    }
+
+    template< typename HeapReader >
+    void copy( Loc from, Loc to, int sz, HeapReader hr ) {
+        copy( *this, from, to, sz, hr, hr );
+    }
+
+};
+
 }
 
 namespace t_vm {
