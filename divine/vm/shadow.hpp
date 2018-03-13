@@ -1194,6 +1194,7 @@ struct NonHeap
     NonHeap() : shadows( pool ) {}
 
     auto pointers( Ptr p, int sz ) { return shadows.pointers( shloc( p, 0 ), sz ); }
+    auto taints( Ptr p, int sz ) { return shadows.taints( shloc( p, 0 ), sz ); }
     Loc shloc( Ptr p, int off ) { return Loc( p, off ); }
 
     Ptr make( int sz )
@@ -1676,6 +1677,84 @@ struct PooledShadow
         check_pointer( 3 );
     }
 #endif
+};
+
+struct PooledTaintShadow
+{
+    template< uint8_t S >
+    using Int = vm::value::Int< S >;
+    template< typename MasterPool >
+    using Sh = vm::PooledTaintShadow< vm::PooledShadow, MasterPool, 0, 1 >;
+    using H = NonHeap< Sh >;
+    H heap;
+    H::Ptr obj;
+
+    PooledTaintShadow() { obj = heap.make( 100 ); }
+
+    TEST( read_write )
+    {
+        Int< 16 > i1( 42, 0xFFFF, false ),
+                  i2;
+        heap.write( obj, 0, i1 );
+        heap.read( obj, 0, i2 );
+        ASSERT_EQ( i2.taints(), 0x00 );
+
+        i1.taints( 0x1 );
+        heap.write( obj, 2, i1 );
+        heap.read( obj, 2, i2 );
+        ASSERT_EQ( i2.taints(), 0x01 );
+    }
+
+    TEST( ignore_other_taints )
+    {
+        Int< 16 > i1( 42, 0xFFFF, false ),
+                  i2;
+        i1.taints( 0x7 );
+        heap.write( obj, 2, i1 );
+        heap.read( obj, 2, i2 );
+        ASSERT_EQ( i2.taints(), 0x01 );
+    }
+
+    TEST( read_heterogeneous )
+    {
+        Int< 16 > i1( 42, 0xFFFF, false );
+        Int< 32 > i2;
+        heap.write( obj, 0, i1 );
+        i1.taints( 0x1 );
+        heap.write( obj, 2, i1 );
+        heap.read( obj, 0, i2 );
+        ASSERT_EQ( i2.taints(), 0x01 );
+    }
+
+    TEST( copy )
+    {
+        Int< 16 > i1( 42, 0xFFFF, false ),
+                  i2;
+        heap.write( obj, 0, i1 );
+        i1.taints( 0x1 );
+        heap.write( obj, 2, i1 );
+        heap.copy( obj, 0, obj, 4, 4 );
+        heap.read( obj, 0, i2 );
+        ASSERT_EQ( i2.taints(), 0x00 );
+        heap.read( obj, 2, i2 );
+        ASSERT_EQ( i2.taints(), 0x01 );
+    }
+
+    TEST( iterators )
+    {
+        Int< 16 > i1( 42, 0xFFFF, false );
+        heap.write( obj, 0, i1 );
+        i1.taints( 0x1 );
+        heap.write( obj, 2, i1 );
+        int i = 0;
+        for ( auto t : heap.taints( obj, 6 ) )
+        {
+            uint8_t expected = ( i % 4 < 2) ? 0x00 : 0x01;
+            ASSERT_EQ( t, expected );
+            ++i;
+        }
+    }
+
 };
 
 }
