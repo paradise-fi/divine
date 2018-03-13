@@ -265,13 +265,11 @@ int main( int argc, char **argv )
         using brick::fs::joinPath;
         using divine::cc::includeDir;
 
-        po.opts.insert( po.opts.end(), {  "-isystem", includeDir
-                      , "-isystem", joinPath( includeDir, "libcxx/include" )
+        po.opts.insert( po.opts.end(), {
+                        "-isystem", joinPath( includeDir, "libcxx/include" )
                       , "-isystem", joinPath( includeDir, "libcxxabi/include" )
                       , "-isystem", joinPath( includeDir, "libunwind/include" )
-                      , "-isystem", joinPath( includeDir, "libc/include" )
-                      , "-isystem", joinPath( includeDir, "libc/internals" )
-                      , "-isystem", joinPath( includeDir, "libm/include" ) } );
+                      , "-isystem", includeDir } );
 
         if ( po.files.size() > 1 && po.outputFile != ""
              && ( po.preprocessOnly || po.toObjectOnly ) )
