@@ -19,7 +19,7 @@ using namespace llvm;
 namespace {
 
 inline std::string intrinsic_prefix( Instruction *i, Domain d ) {
-    return "lart." + DomainTable[ d ] + "." + i->getOpcodeName();
+    return "lart.gen." + DomainTable[ d ] + "." + i->getOpcodeName();
 }
 
 using Predicate = CmpInst::Predicate;
@@ -61,11 +61,21 @@ bool is_lower( Value * ) { NOT_IMPLEMENTED(); }
 
 bool is_assume( Value * ) { NOT_IMPLEMENTED(); }
 
-Function* get_intrinsic( Instruction *i, Domain d ) {
-    auto m = getModule( i );
-    auto fty = FunctionType::get( i->getType(), types_of( i->operands() ), false );
-    auto name = intrinsic_name( i, d );
+Function* get_intrinsic( Module *m, std::string name, Type *rty, const Types &args ) {
+    auto& ctx = rty->getContext();
+
+    Types arg_types;
+    for ( auto &a : args ) {
+        arg_types.push_back( Type::getInt1Ty( ctx ) );
+        arg_types.push_back( a );
+    }
+
+    auto fty = FunctionType::get( rty, arg_types, false );
     return cast< Function >( m->getOrInsertFunction( name, fty ) );
+}
+
+Function* get_intrinsic( Instruction *i, Domain d ) {
+    return get_intrinsic( getModule( i ), intrinsic_name( i, d ), i->getType(), types_of( i->operands() ) );
 }
 
 } // namespace abstract

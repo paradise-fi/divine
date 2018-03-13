@@ -44,7 +44,7 @@ namespace {
 
         Function* assume_fn( Module *m, Type *ty, Domain dom ) {
             auto fty = FunctionType::get( ty, { ty, ty }, false );
-            std::string tag = "lart." + DomainTable[ dom ] + ".assume";
+            std::string tag = "lart.gen." + DomainTable[ dom ] + ".assume";
 
             return cast< Function >( m->getOrInsertFunction( tag, fty ) );
         }

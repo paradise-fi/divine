@@ -45,30 +45,19 @@ Function* intrinsic( Instruction *i ) {
     return get_intrinsic( i, d );
 }
 
-Instruction* to_tristate( Instruction *i, Domain dom ) {
+Instruction* branch_intrinsic( Instruction *i, std::string name ) {
     auto i8 = Type::getInt8Ty( i->getContext() );
     assert( i->getType() == i8 );
-
-    auto m = getModule( i );
-
-    std::string name = "lart." + DomainTable[ dom ] + ".bool_to_tristate";
-    auto fty = FunctionType::get( i8, { i8 }, false );
-    auto fn = cast< Function >( m->getOrInsertFunction( name, fty ) );
-
+    auto fn = get_intrinsic( getModule( i ), name, i8, { i8 } );
     return create_taint( i, { fn, i, i } );
 }
 
+Instruction* to_tristate( Instruction *i, Domain dom ) {
+    return branch_intrinsic( i, "lart.gen." + DomainTable[ dom ] + ".bool_to_tristate" );
+}
+
 Instruction* lower_tristate( Instruction *i ) {
-    auto i8 = Type::getInt8Ty( i->getContext() );
-    assert( i->getType() == i8 );
-
-    auto m = getModule( i );
-
-    std::string name = "lart.tristate.lower";
-    auto fty = FunctionType::get( i8, { i8 }, false );
-    auto fn = cast< Function >( m->getOrInsertFunction( name, fty ) );
-
-    return create_taint( i, { fn, i, i } );
+    return branch_intrinsic( i, "lart.gen.tristate.lower" );
 }
 
 } // anonymous namespace
