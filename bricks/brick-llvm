@@ -107,7 +107,6 @@ struct Annotation : brick::types::Eq {
     }
     template< typename It >
     Annotation( It begin, It end ) : _parts( begin, end ) { }
-    Annotation( std::initializer_list< std::string > parts ) : _parts( parts ) { }
 
     std::string name() { return _parts.back(); }
     Annotation ns() { return Annotation( _parts.begin(), _parts.end() - 1); }
