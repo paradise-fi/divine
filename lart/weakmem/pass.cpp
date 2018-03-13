@@ -376,8 +376,12 @@ struct Substitute {
          * insert fence at their start, this is OK, as any changes to memory
          * performed by them are not persisted.
          */
-        brick::llvm::enumerateFunctionsForAnno( "divine.debugfn", m, [&]( llvm::Function *fn )
+        brick::llvm::Annotation debuganno( "divine.debugfn" ),
+                                directanno( "lart.weakmem.direct" );
+        brick::llvm::enumerateFunctionAnnos( m, [&]( llvm::Function *fn, const auto &anno )
             {
+                if ( anno != debuganno && anno != directanno )
+                    return;
                 // NOTE: clone map must not be shared, as we can clone
                 // functions behind function pointers here
                 cloneCalleesRecursively( fn, debugCloneMap,
@@ -385,7 +389,7 @@ struct Substitute {
                                          []( auto & ) { return nullptr; },
                                          true );
                 _bypass.emplace( fn );
-                if ( fn != dump ) {
+                if ( anno == debuganno && fn != dump ) {
                     llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
                     irb.CreateCall( debug_fence, { } );
                 }
