@@ -1,3 +1,4 @@
+#include <divine/cc/elf.hpp>
 #include <divine/cc/clang.hpp>
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
@@ -356,6 +357,12 @@ int main( int argc, char **argv )
             std::string ofn = file.second;
             unlink( ofn.c_str() );
         }
+
+        ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( "linked.bc" );
+        if ( !buf ) return 1;
+        std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
+
+        divine::cc::elf::addSection( file_out, ".llvmbc", (*buf)->getBuffer() );
 
         return ret;
 
