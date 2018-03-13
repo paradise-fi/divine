@@ -279,6 +279,7 @@ ErrorOr<MemoryBufferRef> IRObjectFile::findBitcodeInMemBuffer(MemoryBufferRef Ob
   case sys::fs::file_magic::bitcode:
     return Object;
   case sys::fs::file_magic::elf_relocatable:
+  case sys::fs::file_magic::elf_executable:
   case sys::fs::file_magic::macho_object:
   case sys::fs::file_magic::coff_object: {
     ErrorOr<std::unique_ptr<ObjectFile>> ObjFile =
