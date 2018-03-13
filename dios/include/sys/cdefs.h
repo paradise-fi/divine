@@ -95,6 +95,7 @@
 #define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), __noinline__ ))
 #define __invisible    __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), \
                                        __annotate__( "lart.interrupt.skipmem" ), __noinline__ ))
+#define __weakmem_direct __attribute__(( __annotate__( "lart.weakmem.direct" ), __noinline__ ))
 
 /*
  * GCC1 and some versions of GCC2 declare dead (non-returning) and
