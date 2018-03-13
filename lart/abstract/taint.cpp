@@ -83,6 +83,7 @@ Instruction* create_taint( Instruction *i, const Values &args ) {
     auto call = irb.CreateCall( fn, args );
     call->removeFromParent();
     call->insertAfter( i );
+    call->setMetadata( "lart.domains", i->getMetadata( "lart.domains" ) );
     return call;
 }
 
