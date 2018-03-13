@@ -69,7 +69,8 @@ namespace {
             auto fn = get_taint_fn( m, ty, types_of( args ) );
 
             llvm::IRBuilder<> irb( &edge_bb->front() );
-            irb.CreateCall( fn, args );
+            auto tass = irb.CreateCall( fn, args );
+            tass->setMetadata( "lart.domains", taint->getMetadata( "lart.domains" ) );
             // TODO use assumed result
         }
 
