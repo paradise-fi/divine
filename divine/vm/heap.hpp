@@ -214,7 +214,7 @@ namespace divine::vm
     };
 
     template< typename Self, typename PR >
-    struct SimpleHeap : HeapMixin< Self, PooledShadow< mem::Pool< PR > >,
+    struct SimpleHeap : HeapMixin< Self, PooledTaintShadow< PooledShadow, mem::Pool< PR > >,
                                 typename mem::Pool< PR >::Pointer >
     {
         Self &self() { return *static_cast< Self * >( this ); }
