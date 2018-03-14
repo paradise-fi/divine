@@ -463,7 +463,7 @@ std::string  Compiler::preprocessModule( std::string filename,
 std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
                             FileType type, std::vector< std::string > args )
 {
-    // EmitLLVMOnlyAction emits module in memory, does not write it info a file
+    // EmitLLVMOnlyAction emits module in memory, does not write it into a file
     auto emit = cc1< clang::EmitLLVMOnlyAction >( filename, type, args );
     auto mod = emit->takeModule();
     lart::divine::VaArgInstr().run( *mod );

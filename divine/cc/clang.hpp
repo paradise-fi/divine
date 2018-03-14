@@ -24,7 +24,7 @@ struct CompileError : brick::except::Error
 struct DivineVFS;
 
 /*
- A compiler, cabaple of compiling single file into LLVM module
+ A compiler, capable of compiling a single file into LLVM module
 
  The compiler is not thread safe, and all modules are bound to its context (so
  they will not be usable when the compiler is destructed. However, as each

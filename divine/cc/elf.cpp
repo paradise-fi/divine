@@ -28,7 +28,7 @@ using StringVec = std::vector< std::string >;
 using Section = brick::elf::Section;
 
 static StringVec defaultLibPath() {
-    return { }; // TODO: detect from executbale path
+    return { }; // TODO: detect from executable path
 }
 
 void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )

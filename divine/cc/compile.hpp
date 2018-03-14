@@ -15,7 +15,7 @@ namespace brick { namespace llvm { struct Linker; struct ArchiveReader; } } // a
 namespace divine {
 namespace cc {
 
-// get generate source which defines symbol with name 'name' in namespaces 'ns'
+// get generated source which defines symbol with name 'name' in namespaces 'ns'
 // which contains char array literal 'value'
 std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value );
 
