@@ -76,6 +76,7 @@ struct Compile
 
     ModulePtr compile( std::string path, std::vector< std::string > flags = { } );
     ModulePtr compile( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
+    ModulePtr takeModule();
 
     // Run the compiler based on invocation arguments (including files). The
     // arguments should not contain -o or linker arguments.

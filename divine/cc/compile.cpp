@@ -242,6 +242,10 @@ void Compile::linkModule( ModulePtr mod ) {
    linker->link( std::move( mod ) );
 }
 
+std::unique_ptr< llvm::Module > Compile::takeModule() {
+    return linker->take();
+}
+
 brick::llvm::ArchiveReader Compile::getLib( std::string lib, std::vector< std::string > searchPaths ) {
     using namespace brick::fs;
 
