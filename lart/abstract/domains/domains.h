@@ -10,7 +10,6 @@ using brick::data::Bimap;
 
 enum class Domain {
     LLVM,
-    Undefined,
     Tristate,
     Symbolic,
     Zero
@@ -18,7 +17,6 @@ enum class Domain {
 
 const Bimap< Domain, std::string > DomainTable = {
      { Domain::LLVM, "llvm" }
-    ,{ Domain::Undefined, "undefined" }
     ,{ Domain::Tristate, "tristate" }
     ,{ Domain::Symbolic, "sym" }
     ,{ Domain::Zero, "zero" }
