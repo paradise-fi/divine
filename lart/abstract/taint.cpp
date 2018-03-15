@@ -67,6 +67,148 @@ Instruction* lower_tristate( Instruction *i ) {
     return lt;
 }
 
+Type* abstract_type( Type *t, Domain dom ) {
+    std::string name;
+    if ( dom == Domain::Tristate )
+        name = "lart." + DomainTable[ dom ];
+    else
+		name = "lart." + DomainTable[ dom ] + "." + llvm_name( t );
+
+    if ( auto aty = t->getContext().pImpl->NamedStructTypes.lookup( name ) )
+        return aty;
+    return StructType::create( { t }, name );
+
+}
+
+std::string lift_name( Type *t, Domain dom ) {
+    if ( dom == Domain::Tristate )
+        return "lart." + DomainTable[ dom ] + ".lift" ;
+    else
+		return "lart." + DomainTable[ dom ] + ".lift." + llvm_name( t );
+}
+
+Function* lift( Value *val, Domain dom ) {
+    auto m = getModule( val );
+    auto ty = val->getType();
+    auto aty = abstract_type( ty, dom );
+    auto name = lift_name( ty, dom );
+    auto fty = FunctionType::get( aty, { ty }, false );
+    return cast< Function >( m->getOrInsertFunction( name, fty ) );
+}
+
+Function* rep( Value *val, Domain dom ) {
+    auto m = getModule( val );
+	auto ty = val->getType();
+	auto aty = abstract_type( ty, dom );
+	auto fty = FunctionType::get( aty, { aty }, false );
+	auto name = "lart." + DomainTable[ dom ] + ".rep." + llvm_name( ty );
+    return cast< Function >( m->getOrInsertFunction( name, fty ) );
+}
+
+Function* unrep( Value *val, Domain dom, Type *to ) {
+    auto m = getModule( val );
+	auto ty = val->getType();
+	auto fty = FunctionType::get( to, { ty }, false );
+	auto name = "lart." + DomainTable[ dom ] + ".unrep." + llvm_name( to );
+    return cast< Function >( m->getOrInsertFunction( name, fty ) );
+}
+
+BasicBlock* make_bb( Function *fn, std::string name ) {
+	auto &ctx = fn->getContext();
+	return BasicBlock::Create( ctx, name, fn );
+}
+
+BasicBlock* entry_bb( Value *tflag, size_t idx ) {
+	auto &ctx = tflag->getContext();
+
+    std::string name = "arg." + std::to_string( idx ) + ".entry";
+	auto bb = make_bb( getFunction( tflag ), name );
+
+    IRBuilder<> irb( bb );
+    irb.CreateICmpEQ( tflag, ConstantInt::getTrue( ctx ) );
+	return bb;
+}
+
+BasicBlock* tainted_bb( Value *arg, size_t idx, Domain dom ) {
+    std::string name = "arg." + std::to_string( idx ) + ".tainted";
+	auto bb = make_bb( getFunction( arg ), name );
+
+    auto aty = abstract_type( arg->getType(), dom );
+	auto cs = Constant::getNullValue( aty );
+
+	IRBuilder<> irb( bb );
+	auto iv = irb.CreateInsertValue( cs, arg, { 0 } );
+	irb.CreateCall( rep( arg, dom ), { iv } );
+	return bb;
+}
+
+BasicBlock* untainted_bb( Value *arg, size_t idx, Domain dom ) {
+    std::string name = "arg." + std::to_string( idx ) + ".untainted";
+	auto bb = make_bb( getFunction( arg ), name );
+    IRBuilder<>( bb ).CreateCall( lift( arg, dom ), { arg } );
+	return bb;
+}
+
+BasicBlock* merge_bb( Value *arg, size_t idx ) {
+    std::string name = "arg." + std::to_string( idx ) + ".merge";
+	auto bb = make_bb( getFunction( arg ), name );
+	return bb;
+}
+
+void join_bbs( BasicBlock *ebb, BasicBlock *tbb, BasicBlock *ubb,
+			   BasicBlock *mbb, BasicBlock *exbb )
+{
+	IRBuilder<> irb( ebb );
+    irb.CreateCondBr( &ebb->back(), tbb, ubb );
+
+	irb.SetInsertPoint( mbb );
+	auto tv = &tbb->back();
+	auto uv = &ubb->back();
+	assert( tv->getType() == uv->getType() );
+	auto phi = irb.CreatePHI( tv->getType(), 2 );
+	phi->addIncoming( tv, tbb );
+	phi->addIncoming( uv, ubb );
+    exbb->moveAfter( mbb );
+	irb.CreateBr( exbb );
+
+    irb.SetInsertPoint( tbb );
+    irb.CreateBr( mbb );
+
+	irb.SetInsertPoint( ubb );
+    irb.CreateBr( mbb );
+}
+
+Function* make_abstract_op( CallInst *taint, Types args ) {
+    auto fn = cast< Function >( taint->getOperand( 0 ) );
+    auto m = getModule( taint );
+
+	std::string prefix = "lart.gen.";
+	auto name = "lart." + fn->getName().drop_front( prefix.size() );
+
+	auto rty = ( taint->getMetadata( "lart.domains" ) )
+		     ? abstract_type( taint->getType(), MDValue( taint ).domain() )
+		     : taint->getType();
+
+    auto fty = FunctionType::get( rty, args, false );
+	return cast< Function >( m->getOrInsertFunction( name.str(), fty ) );
+}
+
+void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
+    auto fn = cast< Function >( taint->getOperand( 0 ) );
+	auto dom = MDValue( taint->getOperand( 1 ) ).domain();
+
+	IRBuilder<> irb( exbb );
+	auto aop = make_abstract_op( taint, types_of( args ) );
+	auto call = irb.CreateCall( aop, args );
+	if ( call->getType() != fn->getReturnType() ) {
+		auto to = fn->getReturnType();
+		auto ur = irb.CreateCall( unrep( call, dom, to ), { call } );
+		irb.CreateRet( ur );
+	} else {
+		irb.CreateRet( call );
+	}
+}
+
 } // anonymous namespace
 
 Function* get_taint_fn( Module *m, Type *ret, Types args ) {
@@ -145,6 +287,49 @@ void TaintBranching::expand( Value *t, BranchInst *br ) {
     auto i1 = irb.CreateTrunc( low, Type::getInt1Ty( ctx ) );
 
     br->setCondition( i1 );
+}
+
+void LifterSyntetize::run( Module &m ) {
+    for ( auto t : taints( m ) )
+        process( cast< CallInst >( t ) );
+}
+
+void LifterSyntetize::process( CallInst *taint ) {
+    auto fn = cast< Function >( taint->getOperand( 0 ) );
+    if ( fn->empty() ) {
+		using LifterArg = std::pair< Value*, Value* >; // tainted flag + value
+
+		std::vector< LifterArg > args;
+		for ( auto it = fn->arg_begin(); it != fn->arg_end(); std::advance( it, 2 ) )
+			args.emplace_back( it, std::next( it ) );
+
+		auto dom = MDValue( taint->getOperand( 1 ) ).domain();
+
+		auto exbb = make_bb( fn, "exit" );
+
+		size_t idx = 0;
+		BasicBlock *prev = nullptr;
+
+		Values lifted;
+		for ( const auto &arg : args ) {
+			auto ebb = entry_bb( arg.first, idx );
+			auto tbb = tainted_bb( arg.second, idx, dom );
+			auto ubb = untainted_bb( arg.second, idx, dom );
+			auto mbb = merge_bb( arg.second, idx );
+
+			join_bbs( ebb, tbb, ubb, mbb, exbb );
+			lifted.push_back( mbb->begin() );
+
+			if ( prev ) {
+				prev->getTerminator()->setSuccessor( 0, ebb );
+			}
+
+			prev = mbb;
+			idx++;
+		}
+
+		exit_lifter( exbb, taint, lifted );
+    }
 }
 
 } // namespace abstract
