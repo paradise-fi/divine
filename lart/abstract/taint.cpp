@@ -195,9 +195,14 @@ Function* make_abstract_op( CallInst *taint, Types args ) {
 
 void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
     auto fn = cast< Function >( taint->getOperand( 0 ) );
-	auto dom = MDValue( taint->getOperand( 1 ) ).domain();
 
-	IRBuilder<> irb( exbb );
+    Domain dom;
+    if ( taint->getMetadata( "lart.domains" ) )
+        dom = MDValue( taint ).domain();
+    else
+        dom = MDValue( taint->getOperand( 1 ) ).domain();
+
+    IRBuilder<> irb( exbb );
 	auto aop = make_abstract_op( taint, types_of( args ) );
 	auto call = irb.CreateCall( aop, args );
 	if ( call->getType() != fn->getReturnType() ) {
