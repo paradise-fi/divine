@@ -58,7 +58,7 @@ namespace {
             auto taint = cast< Instruction >( ass.cond );
             auto dom = MDValue( taint->getOperand( 1 ) ).domain();
 
-            auto m = getModule( ass.cond );
+            auto m = get_module( ass.cond );
             auto ty = ass.cond->getType();
 
             Values args = { assume_fn( from->getModule(), ty, dom ),

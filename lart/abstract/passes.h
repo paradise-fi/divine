@@ -17,8 +17,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 
-#include <lart/abstract/intrinsics.h>
-
 #include <brick-llvm>
 #include <brick-string>
 

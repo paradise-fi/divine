@@ -12,6 +12,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/util.h>
 
+#include <lart/analysis/postorder.h>
+
 namespace lart {
 namespace abstract {
 
@@ -28,7 +30,7 @@ bool valid_root_metadata( const MDValue &mdv ) {
 void add_abstract_metadata( Instruction *i, Domain dom ) {
     auto& ctx = i->getContext();
 
-    auto fn = getFunction( i );
+    auto fn = get_function( i );
     fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, {} ) );
 
     MDBuilder mdb( ctx );
@@ -39,6 +41,14 @@ void add_abstract_metadata( Instruction *i, Domain dom ) {
 
     i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
 }
+
+Values value_succs( llvm::Value *v ) { return { v->user_begin(), v->user_end() }; }
+
+Values reach_from( Values roots ) {
+    return lart::analysis::postorder( roots, value_succs );
+};
+
+Values reach_from( llvm::Value *root ) { return reach_from( Values{ root } ); }
 
 } // anonymous namespace
 

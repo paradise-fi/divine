@@ -3,13 +3,13 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Argument.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/lib/IR/LLVMContextImpl.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/metadata.h>
-#include <lart/abstract/intrinsics.h>
-
 #include <lart/support/util.h>
 
 #include <algorithm>
@@ -40,6 +40,59 @@ void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted 
     UNREACHABLE( "Instruction does not use tainted value." );
 }
 
+inline std::string intrinsic_prefix( Instruction *i, Domain d ) {
+    return "lart.gen." + DomainTable[ d ] + "." + i->getOpcodeName();
+}
+
+using Predicate = CmpInst::Predicate;
+const std::unordered_map< Predicate, std::string > predicate = {
+    { Predicate::ICMP_EQ, "eq" },
+    { Predicate::ICMP_NE, "ne" },
+    { Predicate::ICMP_UGT, "ugt" },
+    { Predicate::ICMP_UGE, "uge" },
+    { Predicate::ICMP_ULT, "ult" },
+    { Predicate::ICMP_ULE, "ule" },
+    { Predicate::ICMP_SGT, "sgt" },
+    { Predicate::ICMP_SGE, "sge" },
+    { Predicate::ICMP_SLT, "slt" },
+    { Predicate::ICMP_SLE, "sle" }
+};
+
+std::string intrinsic_name( Instruction *i, Domain d ) {
+    auto pref = intrinsic_prefix( i, d );
+
+    if ( auto icmp = dyn_cast< ICmpInst >( i ) )
+        return pref + "_" + predicate.at( icmp->getPredicate() )
+                    + "." + llvm_name( icmp->getOperand( 0 )->getType() );
+
+    if ( isa< BinaryOperator >( i ) )
+        return pref + "." + llvm_name( i->getType() );
+
+    if ( auto ci = dyn_cast< CastInst >( i ) )
+        return pref + "." + llvm_name( ci->getSrcTy() )
+                    + "." + llvm_name( ci->getDestTy() );
+
+    UNREACHABLE( "Unhandled intrinsic." );
+}
+
+Function* get_intrinsic( Module *m, std::string name, Type *rty, const Types &args ) {
+    auto &ctx = rty->getContext();
+
+    Types arg_types;
+    for ( auto &a : args ) {
+        arg_types.push_back( Type::getInt1Ty( ctx ) );
+        arg_types.push_back( a );
+    }
+
+    auto fty = FunctionType::get( rty, arg_types, false );
+    return cast< Function >( m->getOrInsertFunction( name, fty ) );
+}
+
+Function* get_intrinsic( Instruction *i, Domain d ) {
+    return get_intrinsic( get_module( i ), intrinsic_name( i, d ),
+                          i->getType(), types_of( i->operands() ) );
+}
+
 Function* intrinsic( Instruction *i ) {
     auto d = MDValue( i ).domain();
     return get_intrinsic( i, d );
@@ -48,7 +101,7 @@ Function* intrinsic( Instruction *i ) {
 Instruction* branch_intrinsic( Instruction *i, std::string name ) {
     auto i8 = Type::getInt8Ty( i->getContext() );
     assert( i->getType() == i8 );
-    auto fn = get_intrinsic( getModule( i ), name, i8, { i8 } );
+    auto fn = get_intrinsic( get_module( i ), name, i8, { i8 } );
     return create_taint( i, { fn, i, i } );
 }
 
@@ -88,7 +141,7 @@ std::string lift_name( Type *t, Domain dom ) {
 }
 
 Function* lift( Value *val, Domain dom ) {
-    auto m = getModule( val );
+    auto m = get_module( val );
     auto ty = val->getType();
     auto aty = abstract_type( ty, dom );
     auto name = lift_name( ty, dom );
@@ -97,7 +150,7 @@ Function* lift( Value *val, Domain dom ) {
 }
 
 Function* rep( Value *val, Domain dom ) {
-    auto m = getModule( val );
+    auto m = get_module( val );
 	auto ty = val->getType();
 	auto aty = abstract_type( ty, dom );
 	auto fty = FunctionType::get( aty, { aty }, false );
@@ -106,7 +159,7 @@ Function* rep( Value *val, Domain dom ) {
 }
 
 Function* unrep( Value *val, Domain dom, Type *to ) {
-    auto m = getModule( val );
+    auto m = get_module( val );
 	auto ty = val->getType();
 	auto fty = FunctionType::get( ty, { ty }, false );
 	auto name = "lart." + DomainTable[ dom ] + ".unrep." + llvm_name( to );
@@ -122,7 +175,7 @@ BasicBlock* entry_bb( Value *tflag, size_t idx ) {
 	auto &ctx = tflag->getContext();
 
     std::string name = "arg." + std::to_string( idx ) + ".entry";
-	auto bb = make_bb( getFunction( tflag ), name );
+	auto bb = make_bb( get_function( tflag ), name );
 
     IRBuilder<> irb( bb );
     irb.CreateICmpEQ( tflag, ConstantInt::getTrue( ctx ) );
@@ -131,7 +184,7 @@ BasicBlock* entry_bb( Value *tflag, size_t idx ) {
 
 BasicBlock* tainted_bb( Value *arg, size_t idx, Domain dom ) {
     std::string name = "arg." + std::to_string( idx ) + ".tainted";
-	auto bb = make_bb( getFunction( arg ), name );
+	auto bb = make_bb( get_function( arg ), name );
 
     auto aty = abstract_type( arg->getType(), dom );
 	auto cs = Constant::getNullValue( aty );
@@ -144,14 +197,14 @@ BasicBlock* tainted_bb( Value *arg, size_t idx, Domain dom ) {
 
 BasicBlock* untainted_bb( Value *arg, size_t idx, Domain dom ) {
     std::string name = "arg." + std::to_string( idx ) + ".untainted";
-	auto bb = make_bb( getFunction( arg ), name );
+	auto bb = make_bb( get_function( arg ), name );
     IRBuilder<>( bb ).CreateCall( lift( arg, dom ), { arg } );
 	return bb;
 }
 
 BasicBlock* merge_bb( Value *arg, size_t idx ) {
     std::string name = "arg." + std::to_string( idx ) + ".merge";
-	auto bb = make_bb( getFunction( arg ), name );
+	auto bb = make_bb( get_function( arg ), name );
 	return bb;
 }
 
@@ -180,7 +233,7 @@ void join_bbs( BasicBlock *ebb, BasicBlock *tbb, BasicBlock *ubb,
 
 Function* make_abstract_op( CallInst *taint, Types args ) {
     auto fn = cast< Function >( taint->getOperand( 0 ) );
-    auto m = getModule( taint );
+    auto m = get_module( taint );
 
 	std::string prefix = "lart.gen.";
 	auto name = "lart." + fn->getName().drop_front( prefix.size() );
@@ -233,7 +286,7 @@ Instruction* create_taint( Instruction *i, const Values &args ) {
 
     auto rty = i->getType();
 
-    auto fn = get_taint_fn( getModule( i ), rty, types_of( args ) );
+    auto fn = get_taint_fn( get_module( i ), rty, types_of( args ) );
 
     auto call = irb.CreateCall( fn, args );
     call->removeFromParent();
