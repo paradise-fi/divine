@@ -1,4 +1,4 @@
-/* TAGS: c tso ext */
+/* TAGS: c tso ext big */
 /* VERIFY_OPTS: --relaxed-memory tso */
 /* CC_OPTS: */
 
