@@ -120,6 +120,7 @@ fmt( "O_TRUNC" );
 fmt( "O_APPEND" );
 fmt( "O_NONBLOCK" );
 fmt( "O_CREAT" );
+fmt( "O_NOCTTY" );
 
 fmt( "RLIMIT_CPU" );
 fmt( "RLIMIT_FSIZE" );
