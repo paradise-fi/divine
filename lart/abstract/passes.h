@@ -64,7 +64,7 @@ namespace abstract {
                                              Tainting(),
                                              AddAssumes(),
                                              BCP( data ),
-                                             Substitution( data ) );
+                                             Substitution() );
             passes.run( m );
         }
 
