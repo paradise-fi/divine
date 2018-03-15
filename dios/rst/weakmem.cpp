@@ -10,14 +10,6 @@
 #include <sys/vmutil.h>
 #include <dios/sys/kernel.hpp> // get_debug
 #include <rst/common.h> // weaken
-#include <optional>
-
-#define assume( x ) do { \
-        if ( !(x) ) \
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, \
-                          _VM_CF_Interrupted | _VM_CF_Cancel | _VM_CF_Mask, \
-                          _VM_CF_Interrupted | _VM_CF_Cancel ); \
-    } while ( false )
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
@@ -96,17 +88,6 @@ static Range< It > range( It begin, It end ) { return Range< It >( begin, end );
 template< typename T >
 _WM_INLINE
 static auto reversed( T &x ) { return range( x.rbegin(), x.rend() ); }
-
-template< typename T >
-_WM_INLINE
-static T *alloc( int n ) {
-    return static_cast< T * >( __vm_obj_make( n * sizeof( T ) ) );
-}
-
-template< typename ItIn, typename ItOut >
-ItOut uninitialized_move( ItIn first, ItIn last, ItOut out ) {
-    return std::uninitialized_copy( std::make_move_iterator( first ), std::make_move_iterator( last ), out );
-}
 
 _WM_INLINE
 static const char *ordstr( MemoryOrder mo ) {
