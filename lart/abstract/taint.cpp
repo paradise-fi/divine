@@ -108,7 +108,7 @@ Function* rep( Value *val, Domain dom ) {
 Function* unrep( Value *val, Domain dom, Type *to ) {
     auto m = getModule( val );
 	auto ty = val->getType();
-	auto fty = FunctionType::get( to, { ty }, false );
+	auto fty = FunctionType::get( ty, { ty }, false );
 	auto name = "lart." + DomainTable[ dom ] + ".unrep." + llvm_name( to );
     return cast< Function >( m->getOrInsertFunction( name, fty ) );
 }
@@ -206,9 +206,10 @@ void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
 	auto aop = make_abstract_op( taint, types_of( args ) );
 	auto call = irb.CreateCall( aop, args );
 	if ( call->getType() != fn->getReturnType() ) {
-		auto to = fn->getReturnType();
-		auto ur = irb.CreateCall( unrep( call, dom, to ), { call } );
-		irb.CreateRet( ur );
+        auto to = fn->getReturnType();
+		auto ur = create_call( irb, unrep( call, dom, to ), { call }, dom );
+        auto ev = irb.CreateExtractValue( ur, 0 );
+		irb.CreateRet( ev );
 	} else {
 		irb.CreateRet( call );
 	}
