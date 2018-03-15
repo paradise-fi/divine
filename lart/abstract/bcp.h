@@ -8,7 +8,6 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/util.h>
-#include <lart/abstract/data.h>
 
 /*
  * Backward Constraint Propagation
@@ -48,12 +47,8 @@ namespace lart {
 namespace abstract {
 
 struct BCP {
-	BCP( PassData & data ) : data( data ) {}
-
     void run( llvm::Module & m );
     void process( llvm::Instruction * inst );
-
-    PassData & data;
 };
 
 } // namespace abstract

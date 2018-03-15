@@ -59,7 +59,6 @@ namespace abstract {
         }
 
         void run( llvm::Module & m ) {
-            PassData data;
             auto passes = make_pass_wrapper( CreateAbstractMetadata(),
                                              VPA(),
                                              Tainting(),
