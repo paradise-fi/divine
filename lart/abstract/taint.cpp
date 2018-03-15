@@ -40,6 +40,19 @@ void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted 
     UNREACHABLE( "Instruction does not use tainted value." );
 }
 
+CallInst *create_call( IRBuilder<> &irb, Function *fn, const Values &args, Domain dom ) {
+    auto call = irb.CreateCall( fn, args );
+
+    auto &ctx = fn->getContext();
+
+    MDBuilder mdb( ctx );
+    auto dn = mdb.domain_node( dom );
+    call->setMetadata( "lart.domains", MDTuple::get( ctx, dn ) );
+
+    return call;
+}
+
+
 inline std::string intrinsic_prefix( Instruction *i, Domain d ) {
     return "lart.gen." + DomainTable[ d ] + "." + i->getOpcodeName();
 }
@@ -108,9 +121,9 @@ Instruction* branch_intrinsic( Instruction *i, std::string name ) {
 Instruction* to_tristate( Instruction *i, Domain dom ) {
     auto &ctx = i->getContext();
     MDBuilder mdb( ctx );
-    auto trs_dom = mdb.domain_node( Domain::Tristate );
+    auto dn = mdb.domain_node( Domain::Tristate );
     auto b2t = branch_intrinsic( i, "lart.gen." + DomainTable[ dom ] + ".bool_to_tristate" );
-    b2t->setMetadata( "lart.domains", MDTuple::get( ctx, trs_dom ) );
+    b2t->setMetadata( "lart.domains", MDTuple::get( ctx, { dn } ) );
     return b2t;
 }
 
@@ -190,15 +203,18 @@ BasicBlock* tainted_bb( Value *arg, size_t idx, Domain dom ) {
 	auto cs = Constant::getNullValue( aty );
 
 	IRBuilder<> irb( bb );
-	auto iv = irb.CreateInsertValue( cs, arg, { 0 } );
-	irb.CreateCall( rep( arg, dom ), { iv } );
+	auto iv = cast< Instruction >( irb.CreateInsertValue( cs, arg, 0 ) );
+	auto call = create_call( irb, rep( arg, dom ), { iv }, dom );
+    iv->setMetadata( "lart.domains", call->getMetadata( "lart.domains" ) );
+
 	return bb;
 }
 
 BasicBlock* untainted_bb( Value *arg, size_t idx, Domain dom ) {
     std::string name = "arg." + std::to_string( idx ) + ".untainted";
 	auto bb = make_bb( get_function( arg ), name );
-    IRBuilder<>( bb ).CreateCall( lift( arg, dom ), { arg } );
+    IRBuilder<> irb( bb );
+    create_call( irb, lift( arg, dom ), { arg }, dom );
 	return bb;
 }
 
@@ -221,6 +237,8 @@ void join_bbs( BasicBlock *ebb, BasicBlock *tbb, BasicBlock *ubb,
 	auto phi = irb.CreatePHI( tv->getType(), 2 );
 	phi->addIncoming( tv, tbb );
 	phi->addIncoming( uv, ubb );
+    phi->setMetadata( "lart.domains", tv->getMetadata( "lart.domains" ) );
+
     exbb->moveAfter( mbb );
 	irb.CreateBr( exbb );
 
@@ -257,7 +275,7 @@ void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
 
     IRBuilder<> irb( exbb );
 	auto aop = make_abstract_op( taint, types_of( args ) );
-	auto call = irb.CreateCall( aop, args );
+	auto call = create_call( irb, aop, args, dom );
 	if ( call->getType() != fn->getReturnType() ) {
         auto to = fn->getReturnType();
 		auto ur = create_call( irb, unrep( call, dom, to ), { call }, dom );
