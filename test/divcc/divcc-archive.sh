@@ -33,9 +33,13 @@ fi
 
 divcc prog.o f.a        # fully compile
 
-if ! [ -s linked.bc ];  # should spawn linked.bc
+if [ -s linked.bc ];    # should NOT spawn linked.bc
     then false;
 fi
 
-divine verify linked.bc | tee verify.out
+if ! [ -s a.out ] || ! objdump -h a.out | grep .llvmbc;  # spawns executable w/ bitcode
+    then false;
+fi
+
+divine verify a.out | tee verify.out
 check verify prog.c
