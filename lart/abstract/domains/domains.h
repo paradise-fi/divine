@@ -9,15 +9,13 @@ namespace abstract {
 using brick::data::Bimap;
 
 enum class Domain {
-    LLVM,
     Tristate,
     Symbolic,
     Zero
 };
 
 const Bimap< Domain, std::string > DomainTable = {
-     { Domain::LLVM, "llvm" }
-    ,{ Domain::Tristate, "tristate" }
+    { Domain::Tristate, "tristate" }
     ,{ Domain::Symbolic, "sym" }
     ,{ Domain::Zero, "zero" }
 };
