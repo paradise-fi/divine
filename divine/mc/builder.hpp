@@ -439,8 +439,12 @@ struct Builder
                     if ( us.stores.intersect( ol.first, ol.second ) )
                         s.insert( ol.first, ol.second );
                 for ( auto sl : them.stores )
+                {
                     if ( us.loads.intersect( sl.first, sl.second ) )
                         l.insert( sl.first, sl.second );
+                    if ( us.stores.intersect( sl.first, sl.second ) )
+                        s.insert( sl.first, sl.second );
+                }
             }
 
             if ( s.empty() && l.empty() )
