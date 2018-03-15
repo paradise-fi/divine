@@ -215,7 +215,7 @@ namespace divine::vm
 
     template< typename Self, typename PR >
     struct SimpleHeap : HeapMixin< Self, PooledTaintShadow< PooledShadow, mem::Pool< PR > >,
-                                typename mem::Pool< PR >::Pointer >
+                                   typename mem::Pool< PR >::Pointer >
     {
         Self &self() { return *static_cast< Self * >( this ); }
 
@@ -225,7 +225,7 @@ namespace divine::vm
         using Internal = typename ObjPool::Pointer;
         using Snapshot = typename SnapPool::Pointer;
 
-        using Shadows = PooledShadow< ObjPool >;
+        using Shadows = PooledTaintShadow< PooledShadow, ObjPool >;
         using PointerV = value::Pointer;
         using ShadowLoc = typename Shadows::Loc;
 

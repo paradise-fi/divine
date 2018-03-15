@@ -1126,7 +1126,7 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
         auto a_ts = a_sh.taints( a, sz );
         auto b_t = taints( b, sz ).begin();
         for ( auto a_t : a_ts )
-            if ( ( cmp = int( a_t.get() ) - b_t.get() ) )
+            if ( ( cmp = int( a_t.get() ) - b_t->get() ) )
                 return cmp;
 
         return NextShadow::compare( a_sh, a, b, sz );

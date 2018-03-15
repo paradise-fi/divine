@@ -1112,7 +1112,6 @@ struct Eval
         ASSERT_EQ( x.taints(), 0 );
     }
 
-#if 0 /* TODO */
     TEST(taint_1)
     {
         auto t = IntV( 10 );
@@ -1136,7 +1135,6 @@ struct Eval
         auto x = testP( c2prog( "int f( int a, int b ) { return a + b; }" ), t1, t2 );
         ASSERT_EQ( x.taints(), 1 );
     }
-#endif
 
     TEST(taint_test_0)
     {
