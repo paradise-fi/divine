@@ -7,20 +7,15 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/domains/domains.h>
 #include <lart/abstract/util.h>
-#include <lart/abstract/data.h>
-#include <set>
 
 #define UNSUPPORTED_BY_DOMAIN \
-        UNREACHABLE( "This function is not supported by this domain");
+        UNREACHABLE( "This function is not supported by this domain.");
 
 namespace lart {
 namespace abstract {
 
 struct Common {
-    Common( TMap & tmap ) : tmap( tmap ) { }
-
     virtual ~Common() { }
 
     /*
@@ -29,7 +24,7 @@ struct Common {
      * abstract( x ) for all x. The result must either be "t" itself, or it
      * must be an abstract type (see isAbstract).
      */
-    virtual llvm::Type *abstract( llvm::Type *t ) = 0;
+    // virtual llvm::Type *abstract( llvm::Type *t ) = 0;
 
     /*
      * This particular abstraction deals with types "%lart.domain.*" --
@@ -44,17 +39,6 @@ struct Common {
      * Returns resulting value of abstracted instruction.
      */
     virtual llvm::Value *process( llvm::CallInst * i, Values & args ) = 0;
-
-    /* Decides whether a type is corresponding to this abstraction. */
-    virtual bool is( llvm::Type * ) = 0;
-
-    virtual llvm::Type *abstract( llvm::Value *v ) {
-        return abstract( v->getType() );
-    }
-
-    /* Lowers abstract type to original type */
-    llvm::Type * origin( llvm::Type * t ) { return tmap.origin( t ).first; }
-    TMap & tmap;
 };
 
 }
