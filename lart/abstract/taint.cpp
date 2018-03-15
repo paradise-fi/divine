@@ -366,12 +366,12 @@ void TaintBranching::expand( Value *t, BranchInst *br ) {
     br->setCondition( i1 );
 }
 
-void LifterSyntetize::run( Module &m ) {
+void LifterSynthesize::run( Module &m ) {
     for ( auto t : taints( m ) )
         process( cast< CallInst >( t ) );
 }
 
-void LifterSyntetize::process( CallInst *taint ) {
+void LifterSynthesize::process( CallInst *taint ) {
     auto fn = cast< Function >( taint->getOperand( 0 ) );
     if ( fn->empty() ) {
 		using LifterArg = std::pair< Value*, Value* >; // tainted flag + value

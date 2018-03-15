@@ -26,7 +26,7 @@ struct TaintBranching {
     void expand( llvm::Value*, llvm::BranchInst* );
 };
 
-struct LifterSyntetize {
+struct LifterSynthesize {
     void run( llvm::Module& );
     void process( llvm::CallInst* );
 };

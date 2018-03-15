@@ -61,7 +61,8 @@ namespace abstract {
                                              VPA(),
                                              Tainting(),
                                              AddAssumes(),
-                                             BCP( data ),
+                                             TaintBranching(),
+                                             LifterSynthesize(),
                                              Substitution() );
             passes.run( m );
         }
@@ -198,7 +199,7 @@ auto test_substitution( const File & src ) {
     return test_assume( src
                       , SubstitutionDuplicator()
                       , Substitution()
-                      , Syntetize() );
+                      , Synthesize() );
 }
 
 static const std::string annotation =
