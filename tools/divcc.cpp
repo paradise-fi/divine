@@ -204,7 +204,7 @@ bool isType( std::string file, cc::Compiler::FileType type )
     return cc::Compiler::typeFromFile( file ) == type;
 }
 
-int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::Compiler& clang )
+std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::Compiler& clang )
 {
     using FileType = cc::Compiler::FileType;
     using namespace brick::types;
@@ -217,7 +217,7 @@ int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc
             continue;
 
         ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( file.second );
-        if ( !buf ) return 1;
+        if ( !buf ) throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
 
         if ( isType( file.second, FileType::Archive ) )
         {
@@ -239,13 +239,10 @@ int llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc
 
     for( auto& func : *m )
         if( func.isDeclaration() && vm::xg::hypercall( &func ) == vm::lx::NotHypercall )
-        {
-            std::cerr << "symbol undefined: " << func.getName().str() << std::endl;
-            return 1;
-        }
-    brick::llvm::writeModule( m, "linked.bc" );
+            throw cc::CompileError( "Symbol undefined: " + func.getName().str() );
 
-    return 0;
+    verifyModule( *m );
+    return compil->takeModule();
 }
 
 
@@ -345,8 +342,10 @@ int main( int argc, char **argv )
             ret = WEXITSTATUS( gccret );
         }
 
-        if ( llvmExtract( objFiles, clang ) )
-            return 1;
+        std::unique_ptr< llvm::Module > mod = llvmExtract( objFiles, clang );
+        std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
+
+        divine::cc::elf::addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
 
         for ( auto file : objFiles )
         {
@@ -355,12 +354,6 @@ int main( int argc, char **argv )
             std::string ofn = file.second;
             unlink( ofn.c_str() );
         }
-
-        ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( "linked.bc" );
-        if ( !buf ) return 1;
-        std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
-
-        divine::cc::elf::addSection( file_out, ".llvmbc", (*buf)->getBuffer() );
 
         return ret;
 
