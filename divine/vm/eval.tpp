@@ -664,8 +664,11 @@ void Eval< Ctx >::implement_hypercall()
         }
         case lx::HypercallObjFree:
         {
-            auto ptr = operandCk< PointerV >( 0 ).cooked();
-            if ( !ptr.heap() )
+            auto op = operand< PointerV >( 0 );
+            auto ptr = op.cooked();
+            if ( !op.defined() )
+                fault( _VM_F_Memory ) << "undefined pointer passed to __vm_obj_free";
+            else if ( !ptr.heap() )
                 fault( _VM_F_Memory ) << "non-heap pointer passed to __vm_obj_free";
             else if ( !freeobj( ptr ) )
                 fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
