@@ -430,6 +430,9 @@ namespace divine::vm
         }
     };
 
+    extern template struct SimpleHeap< CowHeap >;
+    extern template struct SimpleHeap<SmallHeap, PoolRep< 8 > >;
+    extern template struct SimpleHeap< MutableHeap >;
 }
 
 #ifdef BRICK_UNITTEST_REG

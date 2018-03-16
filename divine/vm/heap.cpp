@@ -23,19 +23,31 @@ namespace divine::vm
 {
 
 using Int64 = value::Int< 64, false >;
+using Int32 = value::Int< 32, false >;
 using Int16 = value::Int< 16, false >;
-using Float = value::Float< long double >;
+using Int8 = value::Int< 8, false >;
+using Int1 = value::Int< 1, false >;
+using Float80 = value::Float< long double >;
+using Float64 = value::Float< double >;
+using Float32 = value::Float< float >;
 using Pointer = value::Pointer;
 
 template < int i > using PoolPtr = brick::mem::PoolPointer< PoolRep< i > >;
 
+template struct SimpleHeap< CowHeap >;
+template struct SimpleHeap< SmallHeap, PoolRep< 8 > >;
+template struct SimpleHeap< MutableHeap >;
+
 template void SimpleHeap< CowHeap >::read<Int64>( HeapPointer, Int64&, PoolPtr<20> ) const;
+template void SimpleHeap< CowHeap >::read<Int32>( HeapPointer, Int32&, PoolPtr<20> ) const;
 template void SimpleHeap< CowHeap >::read<Int16>( HeapPointer, Int16&, PoolPtr<20> ) const;
-template void SimpleHeap< CowHeap >::read<Float>( HeapPointer, Float&, PoolPtr<20> ) const;
+template void SimpleHeap< CowHeap >::read<Int8>( HeapPointer, Int8&, PoolPtr<20> ) const;
+template void SimpleHeap< CowHeap >::read<Int1>( HeapPointer, Int1&, PoolPtr<20> ) const;
+template void SimpleHeap< CowHeap >::read<Float80>( HeapPointer, Float80&, PoolPtr<20> ) const;
+template void SimpleHeap< CowHeap >::read<Float64>( HeapPointer, Float64&, PoolPtr<20> ) const;
+template void SimpleHeap< CowHeap >::read<Float32>( HeapPointer, Float32&, PoolPtr<20> ) const;
 template void SimpleHeap< CowHeap >::read<Pointer>( HeapPointer, Pointer&, PoolPtr<20> ) const;
 
-template CowHeap::SnapItem *SimpleHeap<CowHeap >::snap_find( uint32_t ) const;
-template SmallHeap::SnapItem *SimpleHeap<SmallHeap, PoolRep< 8 > >::snap_find( uint32_t ) const;
-template MutableHeap::SnapItem *SimpleHeap<MutableHeap >::snap_find( uint32_t ) const;
+template void SimpleHeap< SmallHeap, PoolRep<8> >::read<Int8>( HeapPointer, Int8&, PoolPtr<8> ) const;
 
 }

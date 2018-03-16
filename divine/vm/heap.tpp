@@ -613,3 +613,5 @@ namespace divine::vm
     }
 
 }
+
+// vim: ft=cpp
