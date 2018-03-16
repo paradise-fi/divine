@@ -14,8 +14,7 @@ namespace __dios {
 
 __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 {
-    bool kernel = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
+    bool kernel = __vm_ctl_flag( 0, 0 ) & _VM_CF_KernelMode;
 
     int nice_id = -1;
     short *indent = nullptr;
@@ -143,7 +142,7 @@ __debugfn void __dios_trace( int indent, const char *fmt, ... ) noexcept
 
 __debugfn void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
 {
-    uintptr_t flags = reinterpret_cast< uintptr_t >( __vm_control( _VM_CA_Get, _VM_CR_Flags ) );
+    uintptr_t flags = __vm_ctl_flag( 0, 0 );
 
     if ( flags & _VM_CF_KernelMode )
         return;

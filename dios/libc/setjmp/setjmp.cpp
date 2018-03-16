@@ -7,7 +7,7 @@
 
 int setjmp( jmp_buf env )
 {
-    _VM_Frame *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
+    _VM_Frame *frame = __dios_this_frame()->parent;
     env->__jumpFrame = frame;
     const _VM_CodePointer pc = frame->pc;
     auto *meta = __md_get_pc_meta( frame->pc );

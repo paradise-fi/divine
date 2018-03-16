@@ -195,8 +195,7 @@ struct Fault: public Next {
         __dios_sync_parent_frame();
 
         bool kernel = old & _VM_CF_KernelMode;
-        auto *frame = static_cast< _VM_Frame * >( __vm_ctl_get( _VM_CR_Frame ) )->parent;
-
+        auto *frame = __dios_this_frame()->parent;
         auto& fault = get_state< Context >();
         fault.fault_handler( kernel, frame, _what );
 

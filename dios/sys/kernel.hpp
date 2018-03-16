@@ -45,12 +45,12 @@ struct Debug
 
 static inline bool debug_mode() noexcept
 {
-    return uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_DebugMode;
+    return __vm_ctl_flag( 0, 0 ) & _VM_CF_DebugMode;
 }
 
 static inline bool have_debug() noexcept
 {
-    return debug_mode() && __vm_control( _VM_CA_Get, _VM_CR_User3 );
+    return debug_mode() && __vm_ctl_get( _VM_CR_User3 );
 }
 
 static inline Debug &get_debug() noexcept
@@ -61,7 +61,7 @@ static inline Debug &get_debug() noexcept
         __vm_ctl_set( _VM_CR_Flags, 0 ); /* fault & force abandonment of the debug call */
     }
     __dios_assert( have_debug() );
-    void *dbg = __vm_control( _VM_CA_Get, _VM_CR_User3 );
+    void *dbg = __vm_ctl_get( _VM_CR_User3 );
     return *static_cast< Debug * >( dbg );
 }
 

@@ -68,7 +68,7 @@ void boot( SetupBase sb ) {
     auto *context = new_object< Configuration >();
     __vm_trace( _VM_T_StateType, context );
     traceAlias< Configuration >( "{Context}" );
-    __vm_control( _VM_CA_Set, _VM_CR_State, context );
+    __vm_ctl_set( _VM_CR_State, context );
 
     if ( extractOpt( "debug", "help", sb.opts ) )
     {
@@ -88,7 +88,7 @@ void boot( SetupBase sb ) {
         };
         context->getHelp( help );
         traceHelp( 0, help );
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+        __vm_cancel();
         return;
     }
 
@@ -110,16 +110,16 @@ void boot( SetupBase sb ) {
     context->setup( s );
 }
 
-void temporaryScheduler() {
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+void temporaryScheduler()
+{
+    __vm_cancel();
 }
 
 void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)() )
 {
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, nullptr );
-    static_cast< _VM_Frame * >
-            ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
+    __vm_ctl_flag( 0, _VM_CF_Error );
+    __vm_ctl_set( _VM_CR_Scheduler, nullptr );
+    __dios_this_frame()->parent = nullptr;
 }
 
 using DefaultConfiguration =
@@ -140,14 +140,14 @@ void init( const _VM_Env *env )
 {
     MemoryPool deterministicPool( 2 );
 
-    __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-    __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, temporaryFaultHandler );
-    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, temporaryScheduler );
-
+    __vm_ctl_set( _VM_CR_User1, nullptr );
+    __vm_ctl_set( _VM_CR_FaultHandler, reinterpret_cast< void * >( temporaryFaultHandler ) );
+    __vm_ctl_set( _VM_CR_Scheduler, reinterpret_cast< void * >( temporaryScheduler ) );
 
     SysOpts sysOpts;
-    if ( !getSysOpts( env, sysOpts ) ) {
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+    if ( !getSysOpts( env, sysOpts ) )
+    {
+        __vm_ctl_flag( 0, _VM_CF_Error );
         return;
     }
 
@@ -166,9 +166,10 @@ void init( const _VM_Env *env )
     else if ( cfg == "fair" ) {
         boot< FairConfiguration >( setup );
     }
-    else {
+    else
+    {
         __dios_trace_f( "Unknown configaration: %s", cfg.c_str() );
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        __vm_ctl_flag( 0, _VM_CF_Error );
     }
 }
 
