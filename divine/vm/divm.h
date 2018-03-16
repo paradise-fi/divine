@@ -321,8 +321,8 @@ void     __vm_ctl_set( enum _VM_ControlRegister reg, void *val, ... ) NOTHROW;
 void    *__vm_ctl_get( enum _VM_ControlRegister reg ) NOTHROW;
 uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set ) NOTHROW;
 
-void __vm_test_crit( void *addr, int size, enum _VM_MemAccessType access, void (*yes)( void ) );
-void __vm_test_loop( int counter, void (*yes)( void ) );
+void __vm_test_crit( void *addr, int size, enum _VM_MemAccessType access, void (*yes)( void ) ) NOTHROW;
+void __vm_test_loop( int counter, void (*yes)( void ) ) NOTHROW;
 
 /*
  * Non-deterministic choice: when __vm_choose is encountered, the "universe" of
