@@ -4,7 +4,8 @@
 #include <sys/divm.h>
 #include <_PDCLIB/cdefs.h>
 
-static const uint64_t _DiOS_CF_Fault = _VM_CFB_OS << 2;
+static const uint64_t _DiOS_CF_Fault       = _VM_CFB_OS << 2;
+static const uint64_t _DiOS_CF_IgnoreFault = _VM_CFB_OS << 3;
 
 enum _DiOS_Fault
 {

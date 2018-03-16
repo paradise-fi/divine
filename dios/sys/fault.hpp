@@ -192,6 +192,12 @@ struct Fault: public Next {
     {
         uint64_t old = __vm_ctl_flag( 0, _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop );
 
+        if ( old & _DiOS_CF_IgnoreFault )
+        {
+            __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
+            __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
+        }
+
         __dios_sync_parent_frame();
 
         bool kernel = old & _VM_CF_KernelMode;
