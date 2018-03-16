@@ -168,7 +168,7 @@ struct BufferLine : brick::types::Ord {
     }
 
     enum class Status : int8_t {
-        Keep, MaybeFlush, MustFlush
+        Normal, Committed
     };
 
     char *addr = nullptr;
@@ -178,7 +178,7 @@ struct BufferLine : brick::types::Ord {
     MemoryOrder order = MemoryOrder::NotAtomic;
     int16_t sc_seq = 0; // note: we can go negative in the flushing process
     int16_t at_seq = 0; // same here
-    Status status = Status::Keep;
+    Status status = Status::Normal;
 
     _WM_INLINE
     auto as_tuple() const {
@@ -189,9 +189,10 @@ struct BufferLine : brick::types::Ord {
 
     _WM_INLINE
     void dump() const {
-        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 00 bit; WA SC;000;000]";
-        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %d bit; %c%c%s;%d;%d]",
+        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 00 bit; CWA SC;000;000]";
+        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %d bit; %c%c%c%s;%d;%d]",
                   uint64_t( addr ), value, bitwidth,
+                  status == Status::Committed ? 'C' : ' ',
                   subseteq( MemoryOrder::WeakCAS, order ) ? 'W' : ' ',
                   subseteq( MemoryOrder::AtomicOp, order ) ? 'A' : ' ',
                   ordstr( order ), at_seq, sc_seq );
@@ -441,16 +442,33 @@ struct Buffers : ThreadMap< Buffer > {
     }
 
     _WM_INLINE
-    void flush( Buffer &buf, Buffer::iterator end ) {
-        for ( auto it = buf.begin(); it != end; ++it )
-            it->store();
-        if ( end == buf.end() )
-            buf.clear();
-        else {
-            auto sz = buf.end() - end;
-            std::move( end, buf.end(), buf.begin() );
-            buf.shrink( sz );
+    void flush( Buffer &buf, BufferLine *entry, char *addr, int bitwidth ) {
+        auto to_move = buf.begin();
+        int kept = 0;
+        auto move = [&to_move]( BufferLine &e ) {
+            if ( &e != to_move )
+                *to_move = e;
+            ++to_move;
+        };
+        for ( auto &e : buf )
+        {
+            if ( &e > entry ) {
+                move( e );
+                ++kept;
+                continue;
+            }
+            if ( e.matches( addr, bitwidth / 8 ) ) {
+                e.store();
+                continue;
+            }
+            e.status = Status::Committed;
+            ++kept;
+            move( e );
         }
+        if ( kept == 0 )
+            buf.clear();
+        else
+            buf.shrink( kept );
     }
 
     template< bool skip_local = false >
@@ -460,17 +478,25 @@ struct Buffers : ThreadMap< Buffer > {
         const int sz = size();
         bool dirty = false;
         int todo[sz];
+        bool has_committed[sz];
+        int needs_commit = 0;
         int i = 0, choices = 1;
         for ( auto &p : *this ) {
             todo[i] = 1;
+            has_committed[i] = false;
             const bool nonloc = p.first != tid;
             if ( skip_local && !nonloc )
                 goto next;
             for ( auto &e : p.second ) {
                 // TODO: flusing ours can be avoided if we don't flush anyone else's too
                 if ( e.matches( addr, bitwidth / 8 ) ) {
-                    todo[i]++;
                     dirty = dirty || nonloc;
+                    if ( !skip_local && e.status == Status::Committed ) {
+                        has_committed[i] = true;
+                        ++needs_commit;
+                    }
+                    else
+                        todo[i]++;
                 }
             }
             choices *= todo[i];
@@ -481,41 +507,52 @@ struct Buffers : ThreadMap< Buffer > {
             return;
 
         int c = __vm_choose( choices );
-        if ( c == 0 ) // shortcut if we are not flushing anything
+        if ( needs_commit == 0 && c == 0 ) // shortcut if we are not flushing anything
             return;
 
         int cnt = 0;
         for ( int i = 0; i < sz; ++i ) {
             const int m = todo[i];
-            cnt += (todo[i] = c % m) != 0;
+            cnt += (todo[i] = c % m) != 0 || has_committed[i];
             c /= m;
         }
 
-        for ( int i = 0; i < cnt; ++i ) {
-            int c = __vm_choose( cnt - i );
-            int j = 0;
-            for ( int k = 0; k < sz; ++k ) {
-                if ( todo[k] != 0 ) {
-                    if ( j == c ) {
-                        // flush this one now
-                        auto &buf = begin()[k].second;
-                        int l = 0;
-                        for ( auto it = buf.begin(); it != buf.end(); ++it ) {
-                            if ( it->matches( addr, bitwidth ) ) {
-                                ++l;
-                                if ( l == todo[k] ) {
-                                    flush( buf, std::next( it ) );
-                                    break;
-                                }
-                            }
-                        }
-                        todo[k] = 0; // this buffer is flushed, skip in next round
-                        continue;
-                    }
-                    ++j;
-                }
+        auto flush_buf = [&]( Buffer &buf, int last_flushed_idx ) {
+            int lineid = 0;
+            BufferLine *line = nullptr;
+            for ( auto it = buf.begin(); it != buf.end(); ++it, ++lineid ) {
+                if ( it->matches( addr, bitwidth / 8 ) )
+                    line = it;
+                else
+                    continue;
+                if ( it->status == Status::Committed )
+                    continue;
+                if ( lineid == last_flushed_idx )
+                    break;
             }
+            assert( line );
+            flush( buf, line, addr, bitwidth );
+        };
+
+        // TODO: partial stores
+        int last_id = __vm_choose( cnt );
+        Buffer *last = nullptr;
+        int last_flushed_idx_of_last = 0;
+
+        for ( int i = 0, id = 0; i < sz; ++i ) {
+            if ( todo[i] == 0 && !has_committed[i] )
+                continue;
+            auto &buf = begin()[i].second;
+            if ( last_id == id ) {
+                last = &buf;
+                last_flushed_idx_of_last = todo[i];
+                continue;
+            }
+            flush_buf( buf, todo[i] );
+            ++id;
         }
+        assert( last );
+        flush_buf( *last, last_flushed_idx_of_last );
     }
 };
 
