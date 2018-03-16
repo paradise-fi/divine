@@ -71,6 +71,13 @@ static inline int __dios_sim_fail( enum _DiOS_SimFail x )
     return __dios_simfail_flags & ( 1 << ( x - _DiOS_SF_First ) );
 }
 
+static inline void __dios_safe_free( void * v )
+{
+    __vm_ctl_flag( 0, _DiOS_CF_IgnoreFault );
+    __vm_obj_free( v );
+    __vm_ctl_flag( _DiOS_CF_IgnoreFault, 0 );
+}
+
 _PDCLIB_EXTERN_END
 
 #ifdef __cplusplus

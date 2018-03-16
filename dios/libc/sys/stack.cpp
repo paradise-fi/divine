@@ -48,10 +48,7 @@ __invisible void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to
         auto base = reinterpret_cast< uint8_t * >( f );
         for ( int i = 0; i < meta->inst_table_size; ++i, ++inst )
             if ( inst->opcode == OpCode::Alloca )
-            {
-                void *val = *reinterpret_cast< void ** >( base + inst->val_offset );
-                if ( val ) __vm_obj_free( val );
-            }
+                __dios_safe_free( *reinterpret_cast< void ** >( base + inst->val_offset ) );
         auto *old = f;
         f = f->parent;
         *parentUpdateLocation = f;
