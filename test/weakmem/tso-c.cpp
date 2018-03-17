@@ -1,4 +1,4 @@
-/* TAGS: c++ tso ext */
+/* TAGS: c++ tso */
 /* VERIFY_OPTS: -o nofail:malloc --relaxed-memory tso */
 #include <atomic>
 #include <thread>

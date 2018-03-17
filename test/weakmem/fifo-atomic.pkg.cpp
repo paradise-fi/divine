@@ -1,4 +1,4 @@
-/* TAGS: cpp big fifo */
+/* TAGS: cpp ext big fifo */
 /* VERIFY_OPTS: -o nofail:malloc */
 #include <pthread.h>
 #include <stdlib.h>
@@ -10,11 +10,11 @@
 
 // V: SC
 // V: TSO:4 V_OPT: --relaxed-memory tso:4     TAGS: tso
-// V: TSO:8 V_OPT: --relaxed-memory tso:8     TAGS: tso
-// V: TSO:16 V_OPT: --relaxed-memory tso:16   TAGS: tso
-// V: TSO:32 V_OPT: --relaxed-memory tso:32   TAGS: tso
-// V: TSO:64 V_OPT: --relaxed-memory tso:64   TAGS: tso
-// V: TSO:128 V_OPT: --relaxed-memory tso:128 TAGS: tso
+// V: TSO:8 V_OPT: --relaxed-memory tso:8     TAGS: tso big
+// V: TSO:16 V_OPT: --relaxed-memory tso:16   TAGS: tso big
+// V: TSO:32 V_OPT: --relaxed-memory tso:32   TAGS: tso big
+// V: TSO:64 V_OPT: --relaxed-memory tso:64   TAGS: tso big
+// V: TSO:128 V_OPT: --relaxed-memory tso:128 TAGS: tso big
 
 __attribute__((constructor)) static void disbaleMallocFail() {
     __dios_configure_fault( _DiOS_SF_Malloc, _DiOS_FC_NoFail );

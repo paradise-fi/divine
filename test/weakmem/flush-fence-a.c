@@ -1,4 +1,4 @@
-/* TAGS: min c tso ext */
+/* TAGS: min c tso */
 /* VERIFY_OPTS: --relaxed-memory tso:2 */
 
 /* this is a regression test demonstrating error in an early version of lazy
