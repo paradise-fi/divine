@@ -1,6 +1,5 @@
 // -*- C++ -*- (c) 2015-2018 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <rst/weakmem.h>
 #include <algorithm> // reverse iterator
 #include <cstdarg>
 #include <dios.h>
@@ -11,8 +10,18 @@
 #include <dios/sys/kernel.hpp> // get_debug
 #include <rst/common.h> // weaken
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wgcc-compat"
+#define _WM_SKIP_MEM_INT __attribute__((__annotate__("lart.interrupt.skipmem"), __annotate__("lart.interrupt.skipcfl")))
+#define _WM_INLINE __attribute__((__always_inline__, __flatten__))
+#define _WM_NOINLINE __attribute__((__noinline__))
+#define _WM_NOINLINE_WEAK __attribute__((__noinline__, __weak__))
+#define _WM_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) _WM_SKIP_MEM_INT extern "C"
+
+namespace __lart::weakmem {
+
+struct CasRes { uint64_t value; bool success; };
+
+_WM_INTERFACE int __lart_weakmem_buffer_size();
+_WM_INTERFACE int __lart_weakmem_min_ordering();
 
 _WM_INLINE
 static char *baseptr( char *ptr ) {
@@ -22,8 +31,6 @@ static char *baseptr( char *ptr ) {
         base = (base & ~_VM_PM_Type) | (_VM_PT_Heap << _VM_PB_Off);
     return reinterpret_cast< char * >( base );
 }
-
-namespace lart::weakmem {
 
 struct InterruptMask {
     InterruptMask() {
@@ -59,8 +66,6 @@ using ThreadMap = __dios::ArrayMap< __dios_task, T >;
 
 template< typename T >
 using Array = __dios::Array< T >;
-
-namespace {
 
 template< typename It >
 struct Range {
@@ -556,26 +561,23 @@ struct Buffers : ThreadMap< Buffer > {
     }
 };
 
-}
-}
-
 // avoid global ctors/dtors for Buffers
 union BFH {
     BFH() : raw() { }
     ~BFH() { }
     void *raw;
-    lart::weakmem::Buffers storeBuffers;
-} __lart_weakmem;
+    Buffers b;
+} storeBuffers;
 
 /* weak here is to prevent optimizer from eliminating calls to these functions
  * -- they will be replaced by weakmem transformation */
-_WM_NOINLINE_WEAK int __lart_weakmem_buffer_size() { return 2; }
-_WM_NOINLINE_WEAK int __lart_weakmem_min_ordering() { return 0; }
+_WM_NOINLINE_WEAK extern "C" int __lart_weakmem_buffer_size() { return 2; }
+_WM_NOINLINE_WEAK extern "C" int __lart_weakmem_min_ordering() { return 0; }
 
 _WM_NOINLINE_WEAK __attribute__((__annotate__("divine.debugfn")))
-void __lart_weakmem_dump() noexcept
+extern "C" void __lart_weakmem_dump() noexcept
 {
-    __lart_weakmem.storeBuffers.dump();
+    storeBuffers.b.dump();
 }
 
 _WM_NOINLINE_WEAK
@@ -588,7 +590,7 @@ extern "C" void __lart_weakmem_debug_fence() noexcept
     auto *tid = __dios_this_task();
     if ( !tid )
         return;
-    auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
+    auto *buf = storeBuffers.b.getIfExists( tid );
     if ( !buf )
         return;
     for ( auto &l : *buf )
@@ -596,11 +598,9 @@ extern "C" void __lart_weakmem_debug_fence() noexcept
     buf->clear();
 }
 
-using namespace lart::weakmem;
-
 _WM_INLINE
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           __lart_weakmem_order _ord, InterruptMask &masked )
+                           MemoryOrder ord, InterruptMask &masked )
                            noexcept
 {
     if ( !addr )
@@ -608,7 +608,6 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
     if ( bitwidth <= 0 || bitwidth > 64 )
         __dios_fault( _VM_F_Memory, "weakmem.store: invalid bitwidth" );
 
-    MemoryOrder ord = MemoryOrder( _ord );
     BufferLine line{ addr, value, bitwidth, ord };
 
     if ( masked.bypass() || masked.kernel() ) {
@@ -616,35 +615,36 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
         return;
     }
     auto tid = __dios_this_task();
-    auto &buf = __lart_weakmem.storeBuffers.get( tid );
+    auto &buf = storeBuffers.b.get( tid );
     if ( subseteq( MemoryOrder::SeqCst, ord ) ) {
-        __lart_weakmem.storeBuffers.flush( tid, buf );
+        storeBuffers.b.flush( tid, buf );
         line.store();
     }
     else
-        __lart_weakmem.storeBuffers.push_tso( tid, buf, std::move( line ) );
+        storeBuffers.b.push_tso( tid, buf, std::move( line ) );
 }
 
+_WM_INTERFACE
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           __lart_weakmem_order _ord ) noexcept
+                           MemoryOrder ord ) noexcept
 {
     InterruptMask masked;
-    __lart_weakmem_store( addr, value, bitwidth, _ord, masked );
+    __lart_weakmem_store( addr, value, bitwidth, ord, masked );
 }
 
-void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
+_WM_INTERFACE
+void __lart_weakmem_fence( MemoryOrder ord ) noexcept {
     InterruptMask masked;
     if ( masked.bypass() || masked.kernel() )
         return; // should not be called recursivelly
 
     auto tid = __dios_this_task();
-    auto *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
+    auto *buf = storeBuffers.b.getIfExists( tid );
     if ( !buf )
         return;
 
-    MemoryOrder ord = MemoryOrder( _ord );
     if ( subseteq( MemoryOrder::SeqCst, ord ) )
-        __lart_weakmem.storeBuffers.flush( tid, *buf );
+        storeBuffers.b.flush( tid, *buf );
 }
 
 union I64b {
@@ -698,7 +698,7 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
 }
 
 _WM_INLINE
-uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order,
+uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
                               InterruptMask &masked )
                               noexcept
 {
@@ -711,37 +711,40 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
         return load( addr, bitwidth );
 
     auto tid = __dios_this_task();
-    Buffer *buf = __lart_weakmem.storeBuffers.getIfExists( tid );
+    Buffer *buf = storeBuffers.b.getIfExists( tid );
 
-    if ( __lart_weakmem.storeBuffers.size() != 1
-         || __lart_weakmem.storeBuffers.begin()->first != tid )
-        __lart_weakmem.storeBuffers.tso_load( addr, bitwidth, tid );
+    if ( storeBuffers.b.size() != 1
+         || storeBuffers.b.begin()->first != tid )
+        storeBuffers.b.tso_load( addr, bitwidth, tid );
 
     return doLoad( buf, addr, bitwidth );
 }
 
-uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord ) noexcept {
+_WM_INTERFACE
+uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder ord ) noexcept {
     InterruptMask masked;
-    return __lart_weakmem_load( addr, bitwidth, _ord, masked );
+    return __lart_weakmem_load( addr, bitwidth, ord, masked );
 }
 
+_WM_INTERFACE
 CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
-                           __lart_weakmem_order _ordSucc, __lart_weakmem_order _ordFail ) noexcept
+                           MemoryOrder ordSucc, MemoryOrder ordFail ) noexcept
 {
     InterruptMask masked;
 
-    auto loaded = __lart_weakmem_load( addr, bitwidth, _ordFail, masked );
+    auto loaded = __lart_weakmem_load( addr, bitwidth, ordFail, masked );
 
     if ( loaded != expected
-            || ( subseteq( MemoryOrder::WeakCAS, MemoryOrder( _ordFail ) ) && __vm_choose( 2 ) ) )
+            || ( subseteq( MemoryOrder::WeakCAS, ordFail ) && __vm_choose( 2 ) ) )
         return { loaded, false };
 
     // TODO: when implementing NSW, make sure we order properly with _ordSucc
 
-    __lart_weakmem_store( addr, value, bitwidth, _ordSucc );
+    __lart_weakmem_store( addr, value, bitwidth, ordSucc );
     return { value, true };
 }
 
+_WM_INTERFACE
 void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
     InterruptMask masked;
     if ( masked.bypass() || masked.kernel() )
@@ -753,7 +756,7 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
     va_list ptrs;
     va_start( ptrs, cnt );
 
-    Buffer *buf = __lart_weakmem.storeBuffers.getIfExists();
+    Buffer *buf = storeBuffers.b.getIfExists();
     if ( !buf )
         return;
 
@@ -766,6 +769,7 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
     va_end( ptrs );
 }
 
+_WM_INTERFACE
 void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
     InterruptMask masked;
     if ( masked.bypass() || masked.kernel() )
@@ -774,11 +778,11 @@ void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
     if ( orig <= newsize )
         return;
 
-    Buffer *buf = __lart_weakmem.storeBuffers.getIfExists();
+    Buffer *buf = storeBuffers.b.getIfExists();
     if ( !buf )
         return;
     auto base = baseptr( ptr );
     buf->evict( base + newsize, base + orig );
 }
 
-#pragma GCC diagnostic pop
+} // namespace __lart::weakmem
