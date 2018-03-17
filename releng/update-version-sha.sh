@@ -32,7 +32,7 @@ test -z "$old" && old=`cat $where.cached 2> /dev/null`
 testsha=`echo | $sha1sum 2> /dev/null`
 if test -n "$testsha" ; then
     test -z "$new" && \
-        new="`sha divine` `sha runtime`"
+        new="`sha divine` `sha dios`"
 else
     old="na"
     new=$empty
