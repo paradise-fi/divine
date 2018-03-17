@@ -7,14 +7,14 @@
 #include <sys/interrupt.h>
 #include <sys/lart.h>
 #include <sys/vmutil.h>
+#include <sys/cdefs.h>
 #include <dios/sys/kernel.hpp> // get_debug
 #include <rst/common.h> // weaken
 
-#define _WM_SKIP_MEM_INT __attribute__((__annotate__("lart.interrupt.skipmem"), __annotate__("lart.interrupt.skipcfl")))
 #define _WM_INLINE __attribute__((__always_inline__, __flatten__))
 #define _WM_NOINLINE __attribute__((__noinline__))
 #define _WM_NOINLINE_WEAK __attribute__((__noinline__, __weak__))
-#define _WM_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) _WM_SKIP_MEM_INT extern "C"
+#define _WM_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) __invisible extern "C"
 
 namespace __lart::weakmem {
 
@@ -32,33 +32,50 @@ static char *baseptr( char *ptr ) {
     return reinterpret_cast< char * >( base );
 }
 
-struct InterruptMask {
-    InterruptMask() {
-        restore = uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                                          _VM_CA_Bit, _VM_CR_Flags, wmFlags, wmFlags )
-                          );
-    }
+using MaskFlags = uint64_t;
 
-    ~InterruptMask() {
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, restoreFlags, restore );
-    }
+static const MaskFlags setFlags = _DiOS_CF_Mask
+                                | _LART_CF_RelaxedMemRuntime
+                                | _VM_CF_IgnoreLoop
+                                | _VM_CF_IgnoreCrit;
+static const MaskFlags restoreFlags = setFlags | _DiOS_CF_Deferred;
 
-    _WM_INLINE
-    bool bypass() const {
-        return restore & (_VM_CF_DebugMode | _LART_CF_RelaxedMemRuntime);
-    }
 
-    _WM_INLINE
-    bool kernel() const {
-        return restore & _VM_CF_KernelMode;
-    }
+_WM_INTERFACE MaskFlags __lart_weakmem_mask_enter() noexcept {
+    MaskFlags restore = MaskFlags( __vm_ctl_get( _VM_CR_Flags ) );
+    __vm_ctl_flag( /* clear: */ _DiOS_CF_Deferred, setFlags );
+    return restore;
+}
 
-  private:
-    uint64_t restore;
-    static const uint64_t restoreFlags = _DiOS_CF_Mask | _DiOS_CF_Deferred
-                                       | _VM_CF_KernelMode
-                                       | _LART_CF_RelaxedMemRuntime;
-    static const uint64_t wmFlags = _DiOS_CF_Mask | _LART_CF_RelaxedMemRuntime;
+_WM_INTERFACE void __lart_weakmem_mask_leave( MaskFlags restore ) {
+    restore |= MaskFlags( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Deferred; // keep deferred if set now
+    __vm_ctl_flag( /* clear: */ ((~restore) & restoreFlags),
+                   /* set: */ (restore & restoreFlags) );
+    // if we are unmasking now, and there is deferred interrupt, perform it
+    if ( (restore & _DiOS_CF_Mask) == 0 && (restore & _DiOS_CF_Deferred) != 0 )
+        __dios_interrupt();
+}
+
+_WM_INLINE bool bypass( MaskFlags restore ) {
+    return restore & (_VM_CF_DebugMode | _LART_CF_RelaxedMemRuntime);
+}
+
+_WM_INLINE bool kernel( MaskFlags restore ) {
+    return restore & _VM_CF_KernelMode;
+}
+
+struct WMMask {
+    _WM_INLINE WMMask() : restore( __lart_weakmem_mask_enter() ) { }
+    _WM_INLINE ~WMMask() { __lart_weakmem_mask_leave( restore ); }
+    _WM_INLINE bool bypass() const { return weakmem::bypass( restore ); }
+    _WM_INLINE bool kernel() const { return weakmem::kernel( restore ); }
+
+    MaskFlags restore;
+};
+
+struct WMUnlockCrit {
+    _WM_INLINE WMUnlockCrit() { __vm_ctl_flag( _VM_CF_IgnoreCrit, 0 ); }
+    _WM_INLINE ~WMUnlockCrit() { __vm_ctl_flag( 0, _VM_CF_IgnoreCrit ); }
 };
 
 template< typename T >
@@ -111,8 +128,9 @@ static const char *ordstr( MemoryOrder mo ) {
     return "N";
 }
 
-_WM_NOINLINE
+_WM_NOINLINE_WEAK
 uint64_t load( char *addr, uint32_t bitwidth ) {
+    WMUnlockCrit _;
     switch ( bitwidth ) {
         case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
         case 16: return *reinterpret_cast< uint16_t * >( addr );
@@ -152,8 +170,9 @@ struct BufferLine : brick::types::Ord {
     }
 
     template< typename T >
-    _WM_NOINLINE
+    _WM_NOINLINE_WEAK
     static void store( char *addr, T value ) {
+        WMUnlockCrit _;
         *reinterpret_cast< T * >( addr ) = value;
     }
 
@@ -598,9 +617,9 @@ extern "C" void __lart_weakmem_debug_fence() noexcept
     buf->clear();
 }
 
-_WM_INLINE
+_WM_INTERFACE
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ord, InterruptMask &masked )
+                           MemoryOrder ord, MaskFlags mask )
                            noexcept
 {
     if ( !addr )
@@ -610,7 +629,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
 
     BufferLine line{ addr, value, bitwidth, ord };
 
-    if ( masked.bypass() || masked.kernel() ) {
+    if ( bypass( mask ) || kernel( mask ) ) {
         line.store();
         return;
     }
@@ -625,17 +644,9 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
 }
 
 _WM_INTERFACE
-void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ord ) noexcept
-{
-    InterruptMask masked;
-    __lart_weakmem_store( addr, value, bitwidth, ord, masked );
-}
-
-_WM_INTERFACE
 void __lart_weakmem_fence( MemoryOrder ord ) noexcept {
-    InterruptMask masked;
-    if ( masked.bypass() || masked.kernel() )
+    WMMask mask;
+    if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
 
     auto tid = __dios_this_task();
@@ -656,7 +667,9 @@ _WM_INLINE
 static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
 {
     I64b val = { .i64 = 0 };
-    I64b mval = { .i64 = load( addr, bitwidth ) }; // always attempt load from memory to check for invalidated memory
+    // always attempt load from memory to check for invalidated memory and idicate
+    // load to tau reduction
+    I64b mval = { .i64 = load( addr, bitwidth ) };
     bool bmask[8] = { false };
     bool any = false;
     if ( buf ) {
@@ -697,9 +710,9 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
     return mval.i64;
 }
 
-_WM_INLINE
+_WM_INTERFACE
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
-                              InterruptMask &masked )
+                              MaskFlags mask )
                               noexcept
 {
     if ( !addr )
@@ -707,7 +720,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
     if ( bitwidth <= 0 || bitwidth > 64 )
         __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
 
-    if ( masked.bypass() || masked.kernel()  )
+    if ( bypass( mask ) || kernel( mask )  )
         return load( addr, bitwidth );
 
     auto tid = __dios_this_task();
@@ -721,18 +734,10 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
 }
 
 _WM_INTERFACE
-uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder ord ) noexcept {
-    InterruptMask masked;
-    return __lart_weakmem_load( addr, bitwidth, ord, masked );
-}
-
-_WM_INTERFACE
 CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ordSucc, MemoryOrder ordFail ) noexcept
+                           MemoryOrder ordSucc, MemoryOrder ordFail, MaskFlags mask ) noexcept
 {
-    InterruptMask masked;
-
-    auto loaded = __lart_weakmem_load( addr, bitwidth, ordFail, masked );
+    auto loaded = __lart_weakmem_load( addr, bitwidth, ordFail, mask );
 
     if ( loaded != expected
             || ( subseteq( MemoryOrder::WeakCAS, ordFail ) && __vm_choose( 2 ) ) )
@@ -740,14 +745,14 @@ CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32
 
     // TODO: when implementing NSW, make sure we order properly with _ordSucc
 
-    __lart_weakmem_store( addr, value, bitwidth, ordSucc );
+    __lart_weakmem_store( addr, value, bitwidth, ordSucc, mask );
     return { value, true };
 }
 
 _WM_INTERFACE
 void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
-    InterruptMask masked;
-    if ( masked.bypass() || masked.kernel() )
+    WMMask mask;
+    if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
 
     if ( cnt <= 0 )
@@ -771,8 +776,8 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
 
 _WM_INTERFACE
 void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
-    InterruptMask masked;
-    if ( masked.bypass() || masked.kernel() )
+    WMMask mask;
+    if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
     uint32_t orig = __vm_obj_size( ptr );
     if ( orig <= newsize )
