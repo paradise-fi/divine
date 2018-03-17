@@ -56,26 +56,40 @@ _WM_INTERFACE void __lart_weakmem_mask_leave( MaskFlags restore ) {
         __dios_interrupt();
 }
 
-_WM_INLINE bool bypass( MaskFlags restore ) {
+_WM_INLINE bool _bypass( MaskFlags restore ) {
     return restore & (_VM_CF_DebugMode | _LART_CF_RelaxedMemRuntime);
 }
 
-_WM_INLINE bool kernel( MaskFlags restore ) {
+_WM_INLINE bool _kernel( MaskFlags restore ) {
     return restore & _VM_CF_KernelMode;
 }
 
-struct WMMask {
-    _WM_INLINE WMMask() : restore( __lart_weakmem_mask_enter() ) { }
-    _WM_INLINE ~WMMask() { __lart_weakmem_mask_leave( restore ); }
-    _WM_INLINE bool bypass() const { return weakmem::bypass( restore ); }
-    _WM_INLINE bool kernel() const { return weakmem::kernel( restore ); }
+struct FullMask {
+    _WM_INLINE FullMask() : restore( __lart_weakmem_mask_enter() ) { }
+    _WM_INLINE ~FullMask() { __lart_weakmem_mask_leave( restore ); }
+    _WM_INLINE bool bypass() const { return _bypass( restore ); }
+    _WM_INLINE bool kernel() const { return _kernel( restore ); }
 
+  private:
     MaskFlags restore;
 };
 
-struct WMUnlockCrit {
-    _WM_INLINE WMUnlockCrit() { __vm_ctl_flag( _VM_CF_IgnoreCrit, 0 ); }
-    _WM_INLINE ~WMUnlockCrit() { __vm_ctl_flag( 0, _VM_CF_IgnoreCrit ); }
+struct ExternalMask {
+    _WM_INLINE ExternalMask( MaskFlags restore ) : restore( restore ) { }
+    _WM_INLINE ~ExternalMask() {
+        // allow the __vm_test_crit after the op to fire
+        __vm_ctl_flag( (~restore) & _VM_CF_IgnoreCrit, 0 );
+    }
+    _WM_INLINE bool bypass() const { return _bypass( restore ); }
+    _WM_INLINE bool kernel() const { return _kernel( restore ); }
+
+  private:
+    MaskFlags restore;
+};
+
+struct UnlockCrit {
+    _WM_INLINE UnlockCrit() { __vm_ctl_flag( _VM_CF_IgnoreCrit, 0 ); }
+    _WM_INLINE ~UnlockCrit() { __vm_ctl_flag( 0, _VM_CF_IgnoreCrit ); }
 };
 
 template< typename T >
@@ -130,7 +144,7 @@ static const char *ordstr( MemoryOrder mo ) {
 
 __weakmem_direct _WM_NOINLINE_WEAK
 uint64_t _load( char *addr, uint32_t bitwidth ) noexcept {
-    WMUnlockCrit _;
+    UnlockCrit _;
     switch ( bitwidth ) {
         case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
         case 16: return *reinterpret_cast< uint16_t * >( addr );
@@ -143,7 +157,7 @@ uint64_t _load( char *addr, uint32_t bitwidth ) noexcept {
 
 __weakmem_direct _WM_NOINLINE_WEAK
 void _store( char *addr, uint64_t value, int bitwidth ) noexcept {
-    WMUnlockCrit _;
+    UnlockCrit _;
     switch ( bitwidth ) {
         case 1: case 8: *reinterpret_cast< uint8_t * >( addr ) = value; break;
         case 16:       *reinterpret_cast< uint16_t * >( addr ) = value; break;
@@ -614,9 +628,9 @@ extern "C" void __lart_weakmem_debug_fence() noexcept
     buf->clear();
 }
 
-_WM_INTERFACE
+_WM_INLINE
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ord, MaskFlags mask )
+                           MemoryOrder ord, const ExternalMask &mask )
                            noexcept
 {
     if ( !addr )
@@ -626,7 +640,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
 
     BufferLine line{ addr, value, bitwidth, ord };
 
-    if ( bypass( mask ) || kernel( mask ) ) {
+    if ( mask.bypass() || mask.kernel() ) {
         line.store();
         return;
     }
@@ -641,8 +655,16 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
 }
 
 _WM_INTERFACE
+void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
+                           MemoryOrder ord, MaskFlags mask )
+                           noexcept
+{
+    __lart_weakmem_store( addr, value, bitwidth, ord, ExternalMask( mask ) );
+}
+
+_WM_INTERFACE
 void __lart_weakmem_fence( MemoryOrder ord ) noexcept {
-    WMMask mask;
+    FullMask mask;
     if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
 
@@ -707,9 +729,9 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
     return mval.i64;
 }
 
-_WM_INTERFACE
+_WM_INLINE
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
-                              MaskFlags mask )
+                              const ExternalMask &mask )
                               noexcept
 {
     if ( !addr )
@@ -717,7 +739,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
     if ( bitwidth <= 0 || bitwidth > 64 )
         __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
 
-    if ( bypass( mask ) || kernel( mask )  )
+    if ( mask.bypass() || mask.kernel()  )
         return _load( addr, bitwidth );
 
     auto tid = __dios_this_task();
@@ -731,9 +753,18 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
 }
 
 _WM_INTERFACE
-CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ordSucc, MemoryOrder ordFail, MaskFlags mask ) noexcept
+uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder mo,
+                              MaskFlags mask )
+                              noexcept
 {
+    return __lart_weakmem_load( addr, bitwidth, mo, ExternalMask( mask ) );
+}
+
+_WM_INTERFACE
+CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
+                           MemoryOrder ordSucc, MemoryOrder ordFail, MaskFlags _mask ) noexcept
+{
+    ExternalMask mask( _mask );
     auto loaded = __lart_weakmem_load( addr, bitwidth, ordFail, mask );
 
     if ( loaded != expected
@@ -748,7 +779,7 @@ CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32
 
 _WM_INTERFACE
 void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
-    WMMask mask;
+    FullMask mask;
     if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
 
@@ -773,7 +804,7 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
 
 _WM_INTERFACE
 void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
-    WMMask mask;
+    FullMask mask;
     if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
     uint32_t orig = __vm_obj_size( ptr );
