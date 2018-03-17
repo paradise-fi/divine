@@ -16,7 +16,7 @@
 #define _WM_NOINLINE_WEAK __attribute__((__noinline__, __weak__))
 #define _WM_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) __invisible extern "C"
 
-namespace __lart::weakmem {
+namespace lart::weakmem {
 
 struct CasRes { uint64_t value; bool success; };
 
