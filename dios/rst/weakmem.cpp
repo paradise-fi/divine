@@ -128,8 +128,8 @@ static const char *ordstr( MemoryOrder mo ) {
     return "N";
 }
 
-_WM_NOINLINE_WEAK
-uint64_t load( char *addr, uint32_t bitwidth ) {
+__weakmem_direct _WM_NOINLINE_WEAK
+uint64_t _load( char *addr, uint32_t bitwidth ) noexcept {
     WMUnlockCrit _;
     switch ( bitwidth ) {
         case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
@@ -139,6 +139,19 @@ uint64_t load( char *addr, uint32_t bitwidth ) {
         default: __dios_fault( _VM_F_Control, "Unhandled case" );
     }
     return 0;
+}
+
+__weakmem_direct _WM_NOINLINE_WEAK
+void _store( char *addr, uint64_t value, int bitwidth ) noexcept {
+    WMUnlockCrit _;
+    switch ( bitwidth ) {
+        case 1: case 8: *reinterpret_cast< uint8_t * >( addr ) = value; break;
+        case 16:       *reinterpret_cast< uint16_t * >( addr ) = value; break;
+        case 32:       *reinterpret_cast< uint32_t * >( addr ) = value; break;
+        case 64:       *reinterpret_cast< uint64_t * >( addr ) = value; break;
+        case 0: break; // fence
+        default: __dios_fault( _VM_F_Control, "Unhandled case" );
+    }
 }
 
 struct BufferLine : brick::types::Ord {
@@ -158,23 +171,7 @@ struct BufferLine : brick::types::Ord {
     bool isStore() const { return addr; }
 
     _WM_INLINE
-    void store() {
-        switch ( bitwidth ) {
-            case 1: case 8: store< uint8_t >( addr, value ); break;
-            case 16: store< uint16_t >( addr, value ); break;
-            case 32: store< uint32_t >( addr, value ); break;
-            case 64: store< uint64_t >( addr, value ); break;
-            case 0: break; // fence
-            default: __dios_fault( _VM_F_Control, "Unhandled case" );
-        }
-    }
-
-    template< typename T >
-    _WM_NOINLINE_WEAK
-    static void store( char *addr, T value ) {
-        WMUnlockCrit _;
-        *reinterpret_cast< T * >( addr ) = value;
-    }
+    void store() { _store( addr, value, bitwidth ); }
 
     _WM_INLINE
     bool matches( const char *const from, const char *const to ) const {
@@ -669,7 +666,7 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth )
     I64b val = { .i64 = 0 };
     // always attempt load from memory to check for invalidated memory and idicate
     // load to tau reduction
-    I64b mval = { .i64 = load( addr, bitwidth ) };
+    I64b mval = { .i64 = _load( addr, bitwidth ) };
     bool bmask[8] = { false };
     bool any = false;
     if ( buf ) {
@@ -721,7 +718,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
         __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
 
     if ( bypass( mask ) || kernel( mask )  )
-        return load( addr, bitwidth );
+        return _load( addr, bitwidth );
 
     auto tid = __dios_this_task();
     Buffer *buf = storeBuffers.b.getIfExists( tid );
