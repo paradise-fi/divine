@@ -68,19 +68,25 @@ namespace __dios
         return unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), f, vl );
     }
 
+#define VOID int
+
     extern "C" long syscall( int id, ... ) noexcept
     {
-	va_list ap;
-	va_start( ap, id );
-	switch ( id )
-	{
-#define VOID int
+        va_list ap;
+        va_start( ap, id );
+        switch ( id )
+        {
 #define SYSCALL( name, schedule, ret, arg ) \
             case SYS_ ## name: return long( unpack( name ## _ptr, ap ) );
 #include <sys/syscall.def>
-#undef VOID
-	}
+            default:
+                __dios_fault( _DiOS_F_Syscall, "bad syscall number" );
+                errno = ENOSYS;
+                return -1;
+        }
     }
+
+#undef VOID
 
 #include <dios/macro/no_memory_tags.cleanup>
 #undef SYSCALL
