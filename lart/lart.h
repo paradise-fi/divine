@@ -29,19 +29,6 @@
 #include <divine/vm/divm.h>
 #endif
 
-enum __lart_weakmem_order
-{
-    __lart_wmo_not_atomic = 0,
-    __lart_wmo_unordered  = (1 << 0),
-    __lart_wmo_monotonic  = (1 << 1) | __lart_wmo_unordered,
-    __lart_wmo_acquire    = (1 << 2) | __lart_wmo_monotonic,
-    __lart_wmo_release    = (1 << 3) | __lart_wmo_monotonic,
-    __lart_wmo_acq_rel    = __lart_wmo_acquire | __lart_wmo_release,
-    __lart_wmo_seq_cst    = (1 << 4) | __lart_wmo_acq_rel,
-    __lart_wmo_atomic_op  = (1 << 5),
-    __lart_wmo_weak_cas   = (1 << 6),
-};
-
 #if __cplusplus >= 201402L
 #include <type_traits>
 
@@ -50,15 +37,15 @@ namespace lart::weakmem
 
     enum class MemoryOrder : uint8_t
     {
-        NotAtomic = __lart_wmo_not_atomic,
-        Unordered = __lart_wmo_unordered,
-        Monotonic = __lart_wmo_monotonic,
-        Acquire = __lart_wmo_acquire,
-        Release = __lart_wmo_release,
-        AcqRel = __lart_wmo_acq_rel,
-        SeqCst = __lart_wmo_seq_cst,
-        AtomicOp = __lart_wmo_atomic_op,
-        WeakCAS = __lart_wmo_weak_cas,
+        NotAtomic = 0,
+        Unordered  = (1 << 0),
+        Monotonic  = (1 << 1) | Unordered,
+        Acquire    = (1 << 2) | Monotonic,
+        Release    = (1 << 3) | Monotonic,
+        AcqRel     = Acquire | Release,
+        SeqCst     = (1 << 4) | AcqRel,
+        AtomicOp   = (1 << 5),
+        WeakCAS    = (1 << 6),
     };
 
     inline MemoryOrder operator|( MemoryOrder a, MemoryOrder b )
