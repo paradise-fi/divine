@@ -194,7 +194,7 @@ struct Fault: public Next {
 
         if ( old & _DiOS_CF_IgnoreFault )
         {
-            __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
+            __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old & ~_DiOS_CF_IgnoreFault ) );
             __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
         }
 
