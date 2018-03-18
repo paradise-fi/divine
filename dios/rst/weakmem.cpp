@@ -125,12 +125,12 @@ static const char *ordstr( MemoryOrder mo ) {
 }
 
 _WM_INLINE
-uint64_t _load( char *addr, uint32_t bitwidth ) noexcept {
-    switch ( bitwidth ) {
-        case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
-        case 16: return *reinterpret_cast< uint16_t * >( addr );
-        case 32: return *reinterpret_cast< uint32_t * >( addr );
-        case 64: return *reinterpret_cast< uint64_t * >( addr );
+uint64_t _load( char *addr, uint32_t size ) noexcept {
+    switch ( size ) {
+        case 1: return *reinterpret_cast< uint8_t * >( addr );
+        case 2: return *reinterpret_cast< uint16_t * >( addr );
+        case 4: return *reinterpret_cast< uint32_t * >( addr );
+        case 8: return *reinterpret_cast< uint64_t * >( addr );
         default: __dios_fault( _VM_F_Control, "Unhandled case" );
     }
     return 0;
@@ -140,8 +140,8 @@ struct BufferLine : brick::types::Ord {
 
     BufferLine() noexcept = default;
     BufferLine( MemoryOrder order ) noexcept : order( order ) { } // fence
-    BufferLine( char *addr, uint64_t value, uint32_t bitwidth, MemoryOrder order ) noexcept :
-        addr( addr ), value( value ), bitwidth( bitwidth ), order( order )
+    BufferLine( char *addr, uint64_t value, uint32_t size, MemoryOrder order ) noexcept :
+        addr( addr ), value( value ), size( size ), order( order )
     {
         assert( addr != abstract::weaken( addr ) );
     }
@@ -154,20 +154,20 @@ struct BufferLine : brick::types::Ord {
 
     _WM_INLINE
     void store() noexcept {
-        switch ( bitwidth ) {
-            case 1: case 8: *reinterpret_cast< uint8_t * >( addr ) = value; break;
-            case 16:       *reinterpret_cast< uint16_t * >( addr ) = value; break;
-            case 32:       *reinterpret_cast< uint32_t * >( addr ) = value; break;
-            case 64:       *reinterpret_cast< uint64_t * >( addr ) = value; break;
+        switch ( size ) {
+            case 1: *reinterpret_cast< uint8_t * >( addr ) = value; break;
+            case 2: *reinterpret_cast< uint16_t * >( addr ) = value; break;
+            case 4: *reinterpret_cast< uint32_t * >( addr ) = value; break;
+            case 8: *reinterpret_cast< uint64_t * >( addr ) = value; break;
             case 0: break; // fence
             default: __dios_fault( _VM_F_Control, "Unhandled case" );
         }
-        __vm_test_crit( addr,  bitwidth / 8, _VM_MAT_Store, &crit_seen );
+        __vm_test_crit( addr, size, _VM_MAT_Store, &crit_seen );
     }
 
     _WM_INLINE
     bool matches( const char *const from, const char *const to ) const noexcept {
-        return (from <= addr && addr < to) || (addr <= from && from < addr + bitwidth / 8);
+        return (from <= addr && addr < to) || (addr <= from && from < addr + size);
     }
 
     _WM_INLINE
@@ -177,7 +177,7 @@ struct BufferLine : brick::types::Ord {
 
     _WM_INLINE
     bool matches( BufferLine &o ) noexcept {
-        return matches( o.addr, o.bitwidth / 8 );
+        return matches( o.addr, o.size );
     }
 
     enum class Status : int8_t {
@@ -187,7 +187,7 @@ struct BufferLine : brick::types::Ord {
     char *addr = nullptr;
     uint64_t value = 0;
 
-    uint8_t bitwidth = 0;
+    uint8_t size = 0;
     MemoryOrder order = MemoryOrder::NotAtomic;
     int16_t sc_seq = 0; // note: we can go negative in the flushing process
     int16_t at_seq = 0; // same here
@@ -197,14 +197,14 @@ struct BufferLine : brick::types::Ord {
     auto as_tuple() const noexcept {
         // note: ignore status in comparison, take into account only part
         // relevant to memory behaviour
-        return std::tie( addr, value, bitwidth, order, sc_seq, at_seq );
+        return std::tie( addr, value, size, order, sc_seq, at_seq );
     }
 
     _WM_INLINE
     void dump() const noexcept {
-        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 00 bit; CWA SC;000;000]";
-        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %d bit; %c%c%c%s;%d;%d]",
-                  uint64_t( addr ), value, bitwidth,
+        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 0B; CWA SC;000;000]";
+        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %dB; %c%c%c%s;%d;%d]",
+                  uint64_t( addr ), value, size,
                   status == Status::Committed ? 'C' : ' ',
                   subseteq( MemoryOrder::WeakCAS, order ) ? 'W' : ' ',
                   subseteq( MemoryOrder::AtomicOp, order ) ? 'A' : ' ',
@@ -252,7 +252,7 @@ struct Buffer : Array< BufferLine >
     _WM_INLINE
     void evict( char *from, char *to ) noexcept {
         evict( [from, to]( BufferLine &l ) noexcept {
-                return !( l.addr >= from && l.addr + l.bitwidth / 8 <= to );
+                return !( l.addr >= from && l.addr + l.size <= to );
             } );
     }
 
@@ -363,15 +363,15 @@ struct Buffers : ThreadMap< Buffer > {
 
     template< typename Filter = Const< bool, true > >
     _WM_INLINE
-    int16_t get_next_at_seq( char *addr, int bitwidth, Filter filt = Filter() ) const noexcept
+    int16_t get_next_at_seq( char *addr, int size, Filter filt = Filter() ) const noexcept
     {
         int16_t max = 0;
         for_each( [&]( auto &, auto &, auto &l ) noexcept {
-                if ( l.addr == addr && l.bitwidth == bitwidth ) {
+                if ( l.addr == addr && l.size == size ) {
                     if ( l.at_seq > max ) {
                         max = l.at_seq;
                     }
-                } else if ( l.matches( addr, bitwidth / 8 ) ) {
+                } else if ( l.matches( addr, size ) ) {
                     __dios_fault( _VM_F_Memory, "Atomic operations over overlapping, "
                             "but not same memory locations are not allowed" );
                 }
@@ -383,7 +383,7 @@ struct Buffers : ThreadMap< Buffer > {
     void fix_at_seq( BufferLine &entry ) noexcept
     {
         for_each( [&]( auto &, auto &, auto &l ) noexcept {
-                if ( l.addr == entry.addr && l.bitwidth == entry.bitwidth && l.at_seq ) {
+                if ( l.addr == entry.addr && l.size == entry.size && l.at_seq ) {
                     l.at_seq -= entry.at_seq;
                 }
             } );
@@ -403,7 +403,7 @@ struct Buffers : ThreadMap< Buffer > {
     void push( __dios_task tid, Buffer &b, BufferLine &&line ) noexcept
     {
         if ( subseteq( MemoryOrder::AtomicOp, line.order ) )
-            line.at_seq = get_next_at_seq( line.addr, line.bitwidth );
+            line.at_seq = get_next_at_seq( line.addr, line.size );
         if ( subseteq( MemoryOrder::SeqCst, line.order ) )
             line.sc_seq = get_next_sc_seq();
         push_tso( tid, b, std::move( line ) );
@@ -418,7 +418,7 @@ struct Buffers : ThreadMap< Buffer > {
         while ( b.storeCount() > __lart_weakmem_buffer_size() ) {
             auto &oldest = b.oldest();
             if ( oldest.isStore() ) {
-                tso_load< true >( oldest.addr, oldest.bitwidth, tid );
+                tso_load< true >( oldest.addr, oldest.size, tid );
                 oldest.store();
             }
             b.erase( 0 );
@@ -453,7 +453,7 @@ struct Buffers : ThreadMap< Buffer > {
     {
         for ( auto &l : buf ) {
             if ( l.isStore() ) {
-                tso_load< true >( l.addr, l.bitwidth, tid );
+                tso_load< true >( l.addr, l.size, tid );
                 l.store();
             }
         }
@@ -461,7 +461,7 @@ struct Buffers : ThreadMap< Buffer > {
     }
 
     _WM_INLINE
-    void flush( Buffer &buf, BufferLine *entry, char *addr, int bitwidth ) noexcept {
+    void flush( Buffer &buf, BufferLine *entry, char *addr, int size ) noexcept {
         auto to_move = buf.begin();
         int kept = 0;
         auto move = [&to_move]( BufferLine &e ) {
@@ -476,7 +476,7 @@ struct Buffers : ThreadMap< Buffer > {
                 ++kept;
                 continue;
             }
-            if ( e.matches( addr, bitwidth / 8 ) ) {
+            if ( e.matches( addr, size ) ) {
                 e.store();
                 continue;
             }
@@ -492,9 +492,9 @@ struct Buffers : ThreadMap< Buffer > {
 
     template< bool skip_local = false >
     _WM_INLINE
-    void tso_load( char *addr, int bitwidth, __dios_task tid ) noexcept
+    void tso_load( char *addr, int size, __dios_task tid ) noexcept
     {
-        const int sz = size();
+        const int sz = this->size();
         bool dirty = false;
         int todo[sz];
         bool has_committed[sz];
@@ -507,7 +507,7 @@ struct Buffers : ThreadMap< Buffer > {
             if ( skip_local && !nonloc )
                 goto next;
             for ( auto &e : p.second ) {
-                if ( e.matches( addr, bitwidth / 8 ) ) {
+                if ( e.matches( addr, size ) ) {
                     dirty = dirty || nonloc;
                     if ( !skip_local && e.status == Status::Committed ) {
                         has_committed[i] = true;
@@ -539,7 +539,7 @@ struct Buffers : ThreadMap< Buffer > {
             int lineid = 0;
             BufferLine *line = nullptr;
             for ( auto it = buf.begin(); it != buf.end(); ++it, ++lineid ) {
-                if ( it->matches( addr, bitwidth / 8 ) )
+                if ( it->matches( addr, size ) )
                     line = it;
                 else
                     continue;
@@ -549,7 +549,7 @@ struct Buffers : ThreadMap< Buffer > {
                     break;
             }
             assert( line );
-            flush( buf, line, addr, bitwidth );
+            flush( buf, line, addr, size );
         };
 
         // TODO: partial stores
@@ -612,16 +612,16 @@ void __lart_weakmem_debug_fence() noexcept
 }
 
 _WM_INTERFACE
-void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
+void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
                            MemoryOrder ord, MaskFlags mask )
                            noexcept
 {
     if ( !addr )
         __dios_fault( _VM_F_Memory, "weakmem.store: invalid address" );
-    if ( bitwidth <= 0 || bitwidth > 64 )
-        __dios_fault( _VM_F_Memory, "weakmem.store: invalid bitwidth" );
+    if ( size <= 0 || size > 8 )
+        __dios_fault( _VM_F_Memory, "weakmem.store: invalid size" );
 
-    BufferLine line{ addr, value, bitwidth, ord };
+    BufferLine line{ addr, value, size, ord };
 
     if ( bypass( mask ) || kernel( mask ) ) {
         line.store();
@@ -631,7 +631,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
     // we are running without memory interrupt instrumentation and the other
     // threads have to see we have written something to our buffer (for the
     // sake of lazy loads)
-    __vm_test_crit( addr, bitwidth / 8, _VM_MAT_Store, &crit_seen );
+    __vm_test_crit( addr, size, _VM_MAT_Store, &crit_seen );
 
     auto tid = __dios_this_task();
     auto &buf = storeBuffers.b.get( tid );
@@ -664,34 +664,34 @@ union I64b {
 };
 
 _WM_INLINE
-static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth ) noexcept
+static uint64_t doLoad( Buffer *buf, char *addr, uint32_t size ) noexcept
 {
     I64b val = { .i64 = 0 };
     // always attempt load from memory to check for invalidated memory and idicate
     // load to tau reduction
-    I64b mval = { .i64 = _load( addr, bitwidth ) };
+    I64b mval = { .i64 = _load( addr, size ) };
     bool bmask[8] = { false };
     bool any = false;
     if ( buf ) {
 
         for ( const auto &it : reversed( *buf ) ) { // go from newest entry
 
-            if ( !any && it.addr == addr && it.bitwidth >= bitwidth ) {
-
-                return it.value & (uint64_t(-1) >> (64 - bitwidth));
+            if ( !any && it.addr == addr && it.size >= size )
+            {
+                return it.value & (uint64_t(-1) >> (64 - (size * 8)));
             }
-            if ( it.matches( addr, bitwidth / 8 ) ) {
+            if ( it.matches( addr, size ) ) {
                 I64b bval = { .i64 = it.value };
                 const int shift = intptr_t( it.addr ) - intptr_t( addr );
                 if ( shift >= 0 ) {
-                    for ( unsigned i = shift, j = 0; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
+                    for ( unsigned i = shift, j = 0; i < size && j < it.size; ++i, ++j )
                         if ( !bmask[ i ] ) {
                             val.b[ i ] = bval.b[ j ];
                             bmask[ i ] = true;
                             any = true;
                         }
                 } else {
-                    for ( unsigned i = 0, j = -shift; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
+                    for ( unsigned i = 0, j = -shift; i < size && j < it.size; ++i, ++j )
                         if ( !bmask[ i ] ) {
                             val.b[ i ] = bval.b[ j ];
                             bmask[ i ] = true;
@@ -702,7 +702,7 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth ) noexcept
         }
     }
     if ( any ) {
-        for ( unsigned i = 0; i < bitwidth / 8; ++i )
+        for ( unsigned i = 0; i < size; ++i )
             if ( !bmask[ i ] )
                 val.b[ i ] = mval.b[ i ];
         return val.i64;
@@ -711,36 +711,36 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth ) noexcept
 }
 
 _WM_INTERFACE
-uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
+uint64_t __lart_weakmem_load( char *addr, uint32_t size, MemoryOrder,
                               MaskFlags mask )
                               noexcept
 {
     if ( !addr )
         __dios_fault( _VM_F_Memory, "weakmem.load: invalid address" );
-    if ( bitwidth <= 0 || bitwidth > 64 )
-        __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
+    if ( size <= 0 || size > 8 )
+        __dios_fault( _VM_F_Control, "weakmem.load: invalid size" );
 
     if ( bypass( mask ) || kernel( mask )  )
-        return _load( addr, bitwidth );
+        return _load( addr, size );
 
     // other threads need to see we are loading somethig
-    __vm_test_crit( addr, bitwidth / 8, _VM_MAT_Load, &crit_seen );
+    __vm_test_crit( addr, size, _VM_MAT_Load, &crit_seen );
 
     auto tid = __dios_this_task();
     Buffer *buf = storeBuffers.b.getIfExists( tid );
 
     if ( storeBuffers.b.size() != 1
          || storeBuffers.b.begin()->first != tid )
-        storeBuffers.b.tso_load( addr, bitwidth, tid );
+        storeBuffers.b.tso_load( addr, size, tid );
 
-    return doLoad( buf, addr, bitwidth );
+    return doLoad( buf, addr, size );
 }
 
 _WM_INTERFACE
-CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
+CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t size,
                            MemoryOrder ordSucc, MemoryOrder ordFail, MaskFlags mask ) noexcept
 {
-    auto loaded = __lart_weakmem_load( addr, bitwidth, ordFail, mask );
+    auto loaded = __lart_weakmem_load( addr, size, ordFail, mask );
 
     if ( loaded != expected
             || ( subseteq( MemoryOrder::WeakCAS, ordFail ) && __vm_choose( 2 ) ) )
@@ -748,7 +748,7 @@ CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32
 
     // TODO: when implementing NSW, make sure we order properly with _ordSucc
 
-    __lart_weakmem_store( addr, value, bitwidth, ordSucc, mask );
+    __lart_weakmem_store( addr, value, size, ordSucc, mask );
     return { value, true };
 }
 
