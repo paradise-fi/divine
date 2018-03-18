@@ -61,7 +61,7 @@ struct Context
     uint32_t _instruction_counter;
     int _debug_depth = 0;
     bool _debug_allowed = false, _track_mem = false, _incremental_enter = false;
-    TraceDebugPersist _debug_persist;
+    std::vector< HeapPointer > _debug_persist;
     Snapshot _debug_snap;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
@@ -307,7 +307,7 @@ struct Context
             ++ _instruction_counter;
     }
 
-    virtual void trace( TraceDebugPersist t ) { _debug_persist = t; }
+    virtual void trace( TraceDebugPersist t ) { _debug_persist.push_back( t.ptr ); }
     virtual void trace( TraceText tt ) { trace( heap().read_string( tt.text ) ); }
     virtual void trace( TraceSchedInfo ) {}
     virtual void trace( TraceSchedChoice ) {}

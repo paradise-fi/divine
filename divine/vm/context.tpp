@@ -49,15 +49,21 @@ void Context< P, H >::leave_debug()
     ASSERT( debug_mode() );
     ASSERT( !_debug_depth );
     std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
-    if ( _debug_persist.ptr.null() )
+    if ( _debug_persist.empty() )
         with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
     else
     {
         Heap from = heap();
         with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
-        vm::heap::clone( from, heap(), _debug_persist.ptr,
-                            vm::heap::CloneType::SkipWeak, true );
-        _debug_persist.ptr = nullPointer();
+        for ( auto ptr : _debug_persist )
+        {
+            if ( !from.valid( ptr ) ) continue;
+            heap().free( ptr );
+            auto res = heap().make( from.size( ptr ), ptr.object(), true ).cooked();
+            ASSERT_EQ( res.object(), ptr.object() );
+            heap().copy( from, ptr, ptr, from.size( ptr ) );
+        }
+        _debug_persist.clear();
     }
 }
 
