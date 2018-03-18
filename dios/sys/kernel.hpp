@@ -41,6 +41,7 @@ struct Debug
     ArrayMap< __dios_task, short > trace_indent;
     ArrayMap< __dios_task, String > trace_buf;
     short kernel_indent = 0;
+    void persist();
 };
 
 static inline bool debug_mode() noexcept

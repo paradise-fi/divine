@@ -248,7 +248,7 @@ struct Scheduler : public Next
             else
             {
                 pi_it->tid = debug->hids.push( tid );
-                __vm_trace( _VM_T_DebugPersist, debug );
+                debug->persist();
             }
             pi_it->choice = i;
             ++pi_it;

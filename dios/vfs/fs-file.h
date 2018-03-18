@@ -220,7 +220,7 @@ struct VmBuffTraceFile : File
             __dios::traceInternal( 0, "%s", buf.substr( 0, nl ).c_str() );
             buf.erase( 0, nl + 1 );
         }
-        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+        get_debug().persist();
     }
 
     __debugfn void do_flush() noexcept
@@ -231,7 +231,7 @@ struct VmBuffTraceFile : File
                 __dios::traceInternal( 0, "%s", b.second.c_str() );
             b.second.clear();
         }
-        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+        get_debug().persist();
     }
 
     bool write( const char *data, size_t, size_t & length ) override

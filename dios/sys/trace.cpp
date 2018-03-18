@@ -12,6 +12,14 @@
 
 namespace __dios {
 
+void Debug::persist()
+{
+    __vm_trace( _VM_T_DebugPersist, this );
+    __vm_trace( _VM_T_DebugPersist, hids.begin() );
+    __vm_trace( _VM_T_DebugPersist, trace_indent.begin() );
+    __vm_trace( _VM_T_DebugPersist, trace_buf.begin() );
+}
+
 __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 {
     bool kernel = __vm_ctl_flag( 0, 0 ) & _VM_CF_KernelMode;
@@ -31,7 +39,7 @@ __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) no
         if ( indent && shift < 0 && *indent > 0 )
         {
             *indent += shift * 2;
-            __vm_trace( _VM_T_DebugPersist, &get_debug() );
+            get_debug().persist();
         }
     }
 
@@ -58,7 +66,7 @@ __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) no
     if ( have_debug() && indent && shift > 0 && *indent < 32 )
     {
         *indent += shift * 2;
-        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+        get_debug().persist();
     }
 }
 
