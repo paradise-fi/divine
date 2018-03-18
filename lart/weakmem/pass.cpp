@@ -340,7 +340,6 @@ struct Substitute {
         auto debug_fence = get( "__lart_weakmem_debug_fence" );
         _mask = get( "__lart_weakmem_mask_enter" );
         _unmask = get( "__lart_weakmem_mask_leave" );
-        _vm_interrupt_mem = get( "__vm_test_crit" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
@@ -574,12 +573,6 @@ struct Substitute {
 
         auto unmask = [this, &unmasks]( llvm::Instruction *i, llvm::Value *mask, llvm::IRBuilder<> &irb ) {
             return find_def( unmasks, i, [this, &irb, i, mask] {
-                    llvm::BasicBlock::iterator hit( i );
-                    ++hit;
-                    llvm::CallSite cs( hit );
-                    if ( cs && cs.getCalledValue() == _vm_interrupt_mem
-                             && cs.getArgument( 0 )->stripPointerCasts() == getPointerOperand( i )->stripPointerCasts() )
-                        irb.SetInsertPoint( std::next( hit ) );
                     return irb.CreateCall( _unmask, { mask } );
                 } );
         };
@@ -839,7 +832,6 @@ struct Substitute {
     llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;
     llvm::Function *_cleanup = nullptr, *_resize = nullptr;
     llvm::Function *_mask = nullptr, *_unmask = nullptr;
-    llvm::Function *_vm_interrupt_mem = nullptr;
     llvm::Type *_moTy = nullptr;
     MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
 };
