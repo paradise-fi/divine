@@ -960,8 +960,8 @@ void Eval< Ctx >::implement_ctl_get()
 template< typename Ctx >
 void Eval< Ctx >::implement_ctl_flag()
 {
-    uint64_t clear = operandCk< IntV >( 0 ).cooked(),
-               set = operandCk< IntV >( 1 ).cooked(),
+    uint64_t clear = operandCk< PtrIntV >( 0 ).cooked(),
+               set = operandCk< PtrIntV >( 1 ).cooked(),
             change = clear | set;
 
     if ( set & _VM_CF_KernelMode )
