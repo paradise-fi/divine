@@ -34,62 +34,44 @@ static char *baseptr( char *ptr ) noexcept {
 
 using MaskFlags = uint64_t;
 
-static const MaskFlags setFlags = _DiOS_CF_Mask
-                                | _LART_CF_RelaxedMemRuntime
-                                | _VM_CF_IgnoreLoop
-                                | _VM_CF_IgnoreCrit;
-static const MaskFlags restoreFlags = setFlags | _DiOS_CF_Deferred;
-
+static const MaskFlags setFlags = _LART_CF_RelaxedMemRuntime
+                                | _VM_CF_IgnoreLoop;
 
 _WM_INTERFACE MaskFlags __lart_weakmem_mask_enter() noexcept {
     MaskFlags restore = MaskFlags( __vm_ctl_get( _VM_CR_Flags ) );
-    __vm_ctl_flag( /* clear: */ _DiOS_CF_Deferred, setFlags );
+    __vm_ctl_flag( 0, setFlags );
     return restore;
 }
 
 _WM_INTERFACE void __lart_weakmem_mask_leave( MaskFlags restore ) noexcept {
-    restore |= MaskFlags( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Deferred; // keep deferred if set now
-    __vm_ctl_flag( /* clear: */ ((~restore) & restoreFlags),
-                   /* set: */ (restore & restoreFlags) );
-    // if we are unmasking now, and there is deferred interrupt, perform it
-    if ( (restore & _DiOS_CF_Mask) == 0 && (restore & _DiOS_CF_Deferred) != 0 )
+    bool do_interrupt = MaskFlags( __vm_ctl_get( _VM_CR_Flags ) ) & _LART_CF_RelaxedMemCritSeen;
+    __vm_ctl_flag( /* clear: */ ((~restore) & setFlags) | _LART_CF_RelaxedMemCritSeen,
+                   /* set: */ (restore & setFlags) );
+
+    if ( do_interrupt )
         __dios_interrupt();
 }
 
-_WM_INLINE bool _bypass( MaskFlags restore ) noexcept {
+void crit_seen() noexcept {
+    __vm_ctl_flag( 0, _LART_CF_RelaxedMemCritSeen );
+}
+
+_WM_INLINE bool bypass( MaskFlags restore ) noexcept {
     return restore & (_VM_CF_DebugMode | _LART_CF_RelaxedMemRuntime);
 }
 
-_WM_INLINE bool _kernel( MaskFlags restore ) noexcept {
+_WM_INLINE bool kernel( MaskFlags restore ) noexcept {
     return restore & _VM_CF_KernelMode;
 }
 
 struct FullMask {
     _WM_INLINE FullMask() noexcept : restore( __lart_weakmem_mask_enter() ) { }
     _WM_INLINE ~FullMask() noexcept { __lart_weakmem_mask_leave( restore ); }
-    _WM_INLINE bool bypass() const noexcept { return _bypass( restore ); }
-    _WM_INLINE bool kernel() const noexcept { return _kernel( restore ); }
+    _WM_INLINE bool bypass() const noexcept { return weakmem::bypass( restore ); }
+    _WM_INLINE bool kernel() const noexcept { return weakmem::kernel( restore ); }
 
   private:
     MaskFlags restore;
-};
-
-struct ExternalMask {
-    _WM_INLINE ExternalMask( MaskFlags restore ) noexcept : restore( restore ) { }
-    _WM_INLINE ~ExternalMask() noexcept {
-        // allow the __vm_test_crit after the op to fire
-        __vm_ctl_flag( (~restore) & _VM_CF_IgnoreCrit, 0 );
-    }
-    _WM_INLINE bool bypass() const noexcept { return _bypass( restore ); }
-    _WM_INLINE bool kernel() const noexcept { return _kernel( restore ); }
-
-  private:
-    MaskFlags restore;
-};
-
-struct UnlockCrit {
-    _WM_INLINE UnlockCrit() noexcept { __vm_ctl_flag( _VM_CF_IgnoreCrit, 0 ); }
-    _WM_INLINE ~UnlockCrit() noexcept { __vm_ctl_flag( 0, _VM_CF_IgnoreCrit ); }
 };
 
 template< typename T >
@@ -142,9 +124,8 @@ static const char *ordstr( MemoryOrder mo ) {
     return "N";
 }
 
-__weakmem_direct _WM_NOINLINE_WEAK
+_WM_INLINE
 uint64_t _load( char *addr, uint32_t bitwidth ) noexcept {
-    UnlockCrit _;
     switch ( bitwidth ) {
         case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
         case 16: return *reinterpret_cast< uint16_t * >( addr );
@@ -153,19 +134,6 @@ uint64_t _load( char *addr, uint32_t bitwidth ) noexcept {
         default: __dios_fault( _VM_F_Control, "Unhandled case" );
     }
     return 0;
-}
-
-__weakmem_direct _WM_NOINLINE_WEAK
-void _store( char *addr, uint64_t value, int bitwidth ) noexcept {
-    UnlockCrit _;
-    switch ( bitwidth ) {
-        case 1: case 8: *reinterpret_cast< uint8_t * >( addr ) = value; break;
-        case 16:       *reinterpret_cast< uint16_t * >( addr ) = value; break;
-        case 32:       *reinterpret_cast< uint32_t * >( addr ) = value; break;
-        case 64:       *reinterpret_cast< uint64_t * >( addr ) = value; break;
-        case 0: break; // fence
-        default: __dios_fault( _VM_F_Control, "Unhandled case" );
-    }
 }
 
 struct BufferLine : brick::types::Ord {
@@ -185,7 +153,17 @@ struct BufferLine : brick::types::Ord {
     bool isStore() const noexcept { return addr; }
 
     _WM_INLINE
-    void store() noexcept { _store( addr, value, bitwidth ); }
+    void store() noexcept {
+        switch ( bitwidth ) {
+            case 1: case 8: *reinterpret_cast< uint8_t * >( addr ) = value; break;
+            case 16:       *reinterpret_cast< uint16_t * >( addr ) = value; break;
+            case 32:       *reinterpret_cast< uint32_t * >( addr ) = value; break;
+            case 64:       *reinterpret_cast< uint64_t * >( addr ) = value; break;
+            case 0: break; // fence
+            default: __dios_fault( _VM_F_Control, "Unhandled case" );
+        }
+        __vm_test_crit( addr,  bitwidth / 8, _VM_MAT_Store, &crit_seen );
+    }
 
     _WM_INLINE
     bool matches( const char *const from, const char *const to ) const noexcept {
@@ -529,7 +507,6 @@ struct Buffers : ThreadMap< Buffer > {
             if ( skip_local && !nonloc )
                 goto next;
             for ( auto &e : p.second ) {
-                // TODO: flusing ours can be avoided if we don't flush anyone else's too
                 if ( e.matches( addr, bitwidth / 8 ) ) {
                     dirty = dirty || nonloc;
                     if ( !skip_local && e.status == Status::Committed ) {
@@ -616,8 +593,8 @@ extern "C" void __lart_weakmem_dump() noexcept
     storeBuffers.b.dump();
 }
 
-_WM_NOINLINE_WEAK
-extern "C" void __lart_weakmem_debug_fence() noexcept
+_WM_INTERFACE
+void __lart_weakmem_debug_fence() noexcept
 {
     // This fence is called only at the beginning of *debugfn* functions,
     // it does not need to keep store buffers consistent, debug functions will
@@ -634,9 +611,9 @@ extern "C" void __lart_weakmem_debug_fence() noexcept
     buf->clear();
 }
 
-_WM_INLINE
+_WM_INTERFACE
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ord, const ExternalMask &mask )
+                           MemoryOrder ord, MaskFlags mask )
                            noexcept
 {
     if ( !addr )
@@ -646,10 +623,16 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
 
     BufferLine line{ addr, value, bitwidth, ord };
 
-    if ( mask.bypass() || mask.kernel() ) {
+    if ( bypass( mask ) || kernel( mask ) ) {
         line.store();
         return;
     }
+
+    // we are running without memory interrupt instrumentation and the other
+    // threads have to see we have written something to our buffer (for the
+    // sake of lazy loads)
+    __vm_test_crit( addr, bitwidth / 8, _VM_MAT_Store, &crit_seen );
+
     auto tid = __dios_this_task();
     auto &buf = storeBuffers.b.get( tid );
     if ( subseteq( MemoryOrder::SeqCst, ord ) ) {
@@ -658,14 +641,6 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
     }
     else
         storeBuffers.b.push_tso( tid, buf, std::move( line ) );
-}
-
-_WM_INTERFACE
-void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ord, MaskFlags mask )
-                           noexcept
-{
-    __lart_weakmem_store( addr, value, bitwidth, ord, ExternalMask( mask ) );
 }
 
 _WM_INTERFACE
@@ -735,9 +710,9 @@ static uint64_t doLoad( Buffer *buf, char *addr, uint32_t bitwidth ) noexcept
     return mval.i64;
 }
 
-_WM_INLINE
+_WM_INTERFACE
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
-                              const ExternalMask &mask )
+                              MaskFlags mask )
                               noexcept
 {
     if ( !addr )
@@ -745,8 +720,11 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
     if ( bitwidth <= 0 || bitwidth > 64 )
         __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
 
-    if ( mask.bypass() || mask.kernel()  )
+    if ( bypass( mask ) || kernel( mask )  )
         return _load( addr, bitwidth );
+
+    // other threads need to see we are loading somethig
+    __vm_test_crit( addr, bitwidth / 8, _VM_MAT_Load, &crit_seen );
 
     auto tid = __dios_this_task();
     Buffer *buf = storeBuffers.b.getIfExists( tid );
@@ -759,18 +737,9 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder,
 }
 
 _WM_INTERFACE
-uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, MemoryOrder mo,
-                              MaskFlags mask )
-                              noexcept
-{
-    return __lart_weakmem_load( addr, bitwidth, mo, ExternalMask( mask ) );
-}
-
-_WM_INTERFACE
 CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
-                           MemoryOrder ordSucc, MemoryOrder ordFail, MaskFlags _mask ) noexcept
+                           MemoryOrder ordSucc, MemoryOrder ordFail, MaskFlags mask ) noexcept
 {
-    ExternalMask mask( _mask );
     auto loaded = __lart_weakmem_load( addr, bitwidth, ordFail, mask );
 
     if ( loaded != expected
