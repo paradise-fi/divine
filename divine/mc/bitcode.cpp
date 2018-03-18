@@ -89,7 +89,8 @@ void BitCode::do_lart()
 
     if ( _interrupts )
     {
-        if ( _sequential )
+        // note: weakmem also puts memory interrupts in
+        if ( _sequential || !_relaxed.empty() )
             lart.setup( lart::divine::cflInterruptPass() );
         else
             lart.setup( lart::divine::interruptPass() );
