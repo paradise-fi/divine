@@ -291,7 +291,8 @@ extern "C" {
 #endif
 
 // there are 16 flags reserved for transformations, see <sys/divm.h>
-static const uint64_t _LART_CF_RelaxedMemRuntime = _VM_CFB_Transform << 0;
+static const uint64_t _LART_CF_RelaxedMemRuntime  = _VM_CFB_Transform << 0;
+static const uint64_t _LART_CF_RelaxedMemCritSeen = _VM_CFB_Transform << 1;
 
 #ifdef __cplusplus
 }
