@@ -440,15 +440,15 @@ struct Substitute {
     }
 
     llvm::Type *intTypeOfSize( int size, llvm::LLVMContext &ctx ) {
-        ASSERT_LEQ( size, 64 );
-        return llvm::IntegerType::get( ctx, size );
+        ASSERT_LEQ( size, 8 );
+        return llvm::IntegerType::get( ctx, size * 8 );
     }
 
-    llvm::Value *getBitwidth( llvm::Type *type, llvm::LLVMContext &ctx, llvm::DataLayout &dl ) {
+    llvm::Value *getSize( llvm::Type *type, llvm::LLVMContext &ctx, llvm::DataLayout &dl ) {
         return llvm::ConstantInt::get( llvm::IntegerType::getInt32Ty( ctx ),
-                                        type->isPointerTy()
-                                            ? dl.getPointerSize() * 8
-                                            : type->getPrimitiveSizeInBits() );
+                    type->isPointerTy()
+                        ? dl.getPointerSize()
+                        : std::max< int >( 1, type->getPrimitiveSizeInBits() / 8 ) );
     }
 
     // in bypass functions we replace all memory transfer intrinsics with clones
@@ -551,8 +551,8 @@ struct Substitute {
             return builder.CreateIntCast( op, i64, false );
         };
 
-        auto bw = [&, i32]( llvm::Value *op ) {
-            return getBitwidth( op->getType(), ctx, dl );
+        auto sz = [&, i32]( llvm::Value *op ) {
+            return getSize( op->getType(), ctx, dl );
         };
 
         auto mo = [this]( MemoryOrder mo ) {
@@ -601,7 +601,7 @@ struct Substitute {
              *
              * into:
              *    something
-             *    %orig = call wm_cas(%ptr, %cmp, %val, bw, succord, failord)
+             *    %orig = call wm_cas(%ptr, %cmp, %val, sz, succord, failord)
              *    %eq = icmp eq %orig, %cmp
              *    %r0 = insertvalue undef, %orig, 0
              *    %valsucc = insertvalue %0, %eq, 1
@@ -621,7 +621,7 @@ struct Substitute {
             auto *raw = builder.CreateCall( _cas, { addr,
                                                     i64Cast( cmp, builder ),
                                                     i64Cast( val, builder ),
-                                                    bw( val ),
+                                                    sz( val ),
                                                     mo( succord ), mo( failord ),
                                                     mask } );
             auto *orig = builder.CreateExtractValue( raw, { 0 } );
@@ -733,9 +733,9 @@ struct Substitute {
             llvm::IRBuilder<> builder( load );
             auto *addr = addrCast( ptr, builder, load );
 
-            auto bitwidth = getBitwidth( ety, ctx, dl );
+            auto size = getSize( ety, ctx, dl );
             auto mask = getMask( load, builder );
-            auto call = builder.CreateCall( _load, { addr, bitwidth,
+            auto call = builder.CreateCall( _load, { addr, size,
                             llvm::ConstantInt::get( _moTy, uint64_t(
                                 usememord( _config.load | castmemord( load->getOrdering() ), InstType::Load ) ) ),
                             mask } );
@@ -745,12 +745,11 @@ struct Substitute {
             if ( ety->isPointerTy() )
                 result = builder.CreateCast( llvm::Instruction::IntToPtr, result, ety );
             else {
-                auto size = ety->getPrimitiveSizeInBits();
-                if ( size > 64 ) // TODO
+                auto size = std::max< int >( ety->getPrimitiveSizeInBits() / 8, 1 );
+                if ( size > 8 ) // TODO
                     continue;
-                ASSERT_LEQ( 1u, size );
-                ASSERT_LEQ( size, 64u );
-                if ( size < 64 )
+                ASSERT_LEQ( size, 8 );
+                if ( size < 8 )
                     result = builder.CreateCast( llvm::Instruction::Trunc, result, intTypeOfSize( size, ctx ) );
                 if ( !ety->isIntegerTy() )
                     result = builder.CreateCast( llvm::Instruction::BitCast, result, ety );
@@ -775,18 +774,17 @@ struct Substitute {
                 value = builder.CreateCast( llvm::Instruction::PtrToInt, value, i64 );
             else {
                 auto size = vty->getPrimitiveSizeInBits();
-                // ASSERT( size > 0 );
                 if ( size == 0 || size > 64 )
                     continue; // TODO
-                ASSERT_LEQ( size, 64u );
+                size = std::max< int >( size / 8, 1 );
                 if ( !vty->isIntegerTy() )
                     value = builder.CreateCast( llvm::Instruction::BitCast, value, intTypeOfSize( size, ctx ) );
-                if ( size < 64 )
+                if ( size < 8 )
                     value = builder.CreateCast( castOpFrom( vty, i64 ), value, i64 );
             }
 
-            auto bitwidth = getBitwidth( vty, ctx, dl );
-            auto storeCall = builder.CreateCall( _store, { addr, value, bitwidth,
+            auto size = getSize( vty, ctx, dl );
+            auto storeCall = builder.CreateCall( _store, { addr, value, size,
                                 llvm::ConstantInt::get( _moTy, uint64_t(
                                     usememord( _config.store | castmemord( store->getOrdering() ), InstType::Store ) ) ),
                                 mask } );
