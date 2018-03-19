@@ -127,27 +127,8 @@ struct ScalarMemory
 
 struct Substitute {
 
-    struct OrderConfig {
-        MemoryOrder load = MemoryOrder::Unordered;
-        MemoryOrder store = MemoryOrder::Unordered;
-        MemoryOrder rmw = MemoryOrder::Monotonic;
-        MemoryOrder casFail = MemoryOrder::Monotonic;
-        MemoryOrder casOK = MemoryOrder::Monotonic;
-        MemoryOrder fence = MemoryOrder::Monotonic;
-
-        void setAll( MemoryOrder mo ) {
-            load = store = mo;
-            rmw = mo | MemoryOrder::Monotonic;
-            casFail = mo | MemoryOrder::Monotonic;
-            casOK = mo | MemoryOrder::Monotonic;
-            fence = mo | MemoryOrder::Monotonic;
-        }
-
-        void setCas( MemoryOrder mo ) { casFail = casOK = mo; }
-    };
-
-    Substitute( OrderConfig config, int bufferSize )
-        : _config( config ), _bufferSize( bufferSize )
+    Substitute( int bufferSize )
+        : _bufferSize( bufferSize )
     { }
 
     static llvm::AtomicOrdering castmemord( MemoryOrder mo ) {
@@ -181,28 +162,11 @@ struct Substitute {
 
     enum class InstType { Load, Store, Other };
 
-    MemoryOrder usememord( MemoryOrder x, InstType it = InstType::Other ) {
-        auto check = x;
-        if ( ( check == MemoryOrder::Release && it == InstType::Store )
-            || ( check == MemoryOrder::Acquire && it == InstType::Load ) )
-            check = MemoryOrder::AcqRel;
-        if ( subseteq( check, _minMemOrd ) )
-            _minMemOrd = check;
-        return x;
-    }
-
-    llvm::AtomicOrdering usememord( llvm::AtomicOrdering x, InstType it = InstType::Other ) {
-        usememord( castmemord( x ), it );
-        return x;
-    }
-
     static PassMeta meta() {
         return passMetaC( "Substitute",
                 "Substitute loads and stores (and other memory manipulations) with appropriate "
                 "weak memory model versions.",
                 []( PassVector &ps, std::string opt ) {
-                    OrderConfig config;
-
                     auto c = opt.find( ':' );
                     int bufferSize = -1;
                     if ( c != std::string::npos ) {
@@ -210,67 +174,9 @@ struct Substitute {
                         opt = opt.substr( 0, c );
                     }
 
-                    if ( opt == "sc" ) {
-                        config.setAll( MemoryOrder::SeqCst );
-                    } else if ( opt == "x86" ) {
-                        config.setAll( MemoryOrder::AcqRel );
-                        config.setCas( MemoryOrder::SeqCst );
-                        config.rmw = MemoryOrder::SeqCst;
-                    } else if ( opt == "tso" ) {
-                        config.setAll( MemoryOrder::AcqRel );
-                    } else if ( opt == "pso" ) {
-                        // no reconfiguration
-                    } else {
-                        while ( !opt.empty() ) {
-                            auto s = opt.find( ',' );
-                            auto sub = opt.substr( 0, s );
-                            opt = opt.substr( s + 1 );
-                            s = sub.find( '=' );
-                            auto type = sub.substr( 0, s );
-                            auto spec = sub.substr( s + 1 );
-                            if ( type.empty() )
-                                throw std::runtime_error( "empty atomic instruction type specification" );
-                            if ( spec.empty() )
-                                throw std::runtime_error( "empty atomic ordering specification" );
+                    ASSERT( opt == "tso" || opt == "x86" );
 
-                            MemoryOrder mo;
-                            if ( spec == "unordered" )
-                                mo = MemoryOrder::Unordered;
-                            else if ( spec == "relaxed" )
-                                mo = MemoryOrder::Monotonic;
-                            else if ( spec == "acquire" )
-                                mo = MemoryOrder::Acquire;
-                            else if ( spec == "release" )
-                                mo = MemoryOrder::Release;
-                            else if ( spec == "acq_rel" )
-                                mo = MemoryOrder::AcqRel;
-                            else if ( spec == "seq_cst" )
-                                mo = MemoryOrder::SeqCst;
-                            else
-                                throw std::runtime_error( "invalid atomic ordering specification: " + spec );
-
-                            if ( type == "all" )
-                                config.setAll( mo );
-                            else if ( type == "load" )
-                                config.load = mo;
-                            else if ( type == "store" )
-                                config.store = mo;
-                            else if ( type == "armw" )
-                                config.rmw = mo;
-                            else if ( type == "cas" )
-                                config.setCas( mo );
-                            else if ( type == "casfail" )
-                                config.casFail = mo;
-                            else if ( type == "casok" )
-                                config.casOK = mo;
-                            else if ( type == "fence" )
-                                config.fence = mo;
-                            else
-                                throw std::runtime_error( "invalid instruction type specification: " + type );
-                        }
-                    }
-
-                    ps.emplace_back< Substitute >( config, bufferSize );
+                    ps.emplace_back< Substitute >( bufferSize );
                 } );
     }
 
@@ -335,7 +241,6 @@ struct Substitute {
         _memset = get( "memset" );
         auto flusher = m.getFunction( "__lart_weakmem_flusher_main" );
         auto fsize = get( "__lart_weakmem_buffer_size" );
-        auto ford = get( "__lart_weakmem_min_ordering" );
         auto dump = get( "__lart_weakmem_dump" );
         auto debug_fence = get( "__lart_weakmem_debug_fence" );
         _mask = get( "__lart_weakmem_mask_enter" );
@@ -346,7 +251,7 @@ struct Substitute {
         util::Map< llvm::Function *, llvm::Function * > cloneMap, debugCloneMap;
 
         std::vector< llvm::Function * > inteface = { _store, _load, _fence, _cas, _cleanup, _resize,
-                                                     fsize, ford, debug_fence };
+                                                     fsize, debug_fence };
         if ( flusher )
             inteface.push_back( flusher );
         for ( auto i : inteface ) {
@@ -423,11 +328,6 @@ struct Substitute {
             makeReturnConstant( fsize, _bufferSize );
         }
         inlineIntoCallers( fsize );
-
-        if ( _minMemOrd != MemoryOrder::NotAtomic ) {
-            makeReturnConstant( ford, int( _minMemOrd ) );
-        }
-        inlineIntoCallers( ford );
     }
 
   private:
@@ -555,9 +455,13 @@ struct Substitute {
             return getSize( op->getType(), ctx, dl );
         };
 
-        auto mo = [this]( MemoryOrder mo ) {
-            return llvm::ConstantInt::get( _moTy, uint64_t( usememord( mo ) ) );
+        auto mo_ = [this]( MemoryOrder mo ) {
+            return llvm::ConstantInt::get( _moTy, uint64_t( mo ) );
         };
+        auto mo = brick::types::overloaded( mo_,
+                    [mo_]( llvm::AtomicOrdering mo ) {
+                        return mo_( castmemord( mo ) );
+                    } );
 
         // first translate atomics, so that if they are translated to
         // non-atomic equivalents under mask these are later converted to TSO
@@ -592,8 +496,8 @@ struct Substitute {
         for ( auto cas : cass ) {
             auto casord = (cas->isWeak() ? MemoryOrder::WeakCAS : MemoryOrder( 0 ))
                           | MemoryOrder::AtomicOp;
-            auto succord = castmemord( cas->getSuccessOrdering() ) | _config.casOK | casord;
-            auto failord = castmemord( cas->getFailureOrdering() ) | _config.casFail | casord;
+            auto succord = castmemord( cas->getSuccessOrdering() ) | casord;
+            auto failord = castmemord( cas->getFailureOrdering() ) | casord;
             /* transform:
              *    something
              *    %valsucc = cmpxchg %ptr, %cmp, %val succord failord
@@ -640,7 +544,7 @@ struct Substitute {
             llvm::ReplaceInstWithInst( cas, r );
         }
         for ( auto *at : ats ) {
-            auto aord = castmemord( castmemord( at->getOrdering() ) | _config.rmw );
+            auto aord = at->getOrdering();
             auto *ptr = at->getPointerOperand();
             auto *val = at->getValOperand();
             auto op = at->getOperation();
@@ -649,7 +553,9 @@ struct Substitute {
             auto *mask = irb.CreateCall( _mask, { } );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
             masks[ orig ] = mask;
-            orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord, InstType::Load ) );
+            orig->setAtomic( aord == llvm::AtomicOrdering::AcquireRelease
+                                ? llvm::AtomicOrdering::Acquire
+                                : aord );
             atomicOps.insert( orig );
 
             switch ( op ) {
@@ -691,8 +597,9 @@ struct Substitute {
 
             auto *store = irb.CreateStore( val, ptr );
             masks[ store ] = mask;
-            store->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease
-                        ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
+            store->setAtomic( aord == llvm::AtomicOrdering::AcquireRelease
+                                ? llvm::AtomicOrdering::Release
+                                : aord );
             atomicOps.insert( store );
             unmasks[ orig ] = unmasks[ store ] = unmask( at, mask, irb );
 
@@ -736,9 +643,7 @@ struct Substitute {
             auto size = getSize( ety, ctx, dl );
             auto mask = getMask( load, builder );
             auto call = builder.CreateCall( _load, { addr, size,
-                            llvm::ConstantInt::get( _moTy, uint64_t(
-                                usememord( _config.load | castmemord( load->getOrdering() ), InstType::Load ) ) ),
-                            mask } );
+                                  mo( load->getOrdering() ), mask } );
             llvm::Value *result = call;
 
             // weak load and final cast i64 -> target type
@@ -785,16 +690,14 @@ struct Substitute {
 
             auto size = getSize( vty, ctx, dl );
             auto storeCall = builder.CreateCall( _store, { addr, value, size,
-                                llvm::ConstantInt::get( _moTy, uint64_t(
-                                    usememord( _config.store | castmemord( store->getOrdering() ), InstType::Store ) ) ),
-                                mask } );
+                                mo( store->getOrdering() ), mask } );
             unmask( store, mask, builder );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
         }
         for ( auto fence : fences ) {
-            auto callFlush = llvm::CallInst::Create( _fence, { llvm::ConstantInt::get(
-                        _moTy, uint64_t( usememord( _config.fence | castmemord( fence->getOrdering() ) ) ) ) } );
+            auto callFlush = llvm::CallInst::Create( _fence, {
+                                      mo( fence->getOrdering() )  } );
             llvm::ReplaceInstWithInst( fence, callFlush );
         }
 
@@ -822,7 +725,6 @@ struct Substitute {
             ASSERT( bb.getTerminator() );
     }
 
-    OrderConfig _config;
     int _bufferSize;
     LLVMFunctionSet _bypass;
     llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_cas = nullptr;
@@ -831,41 +733,13 @@ struct Substitute {
     llvm::Function *_cleanup = nullptr, *_resize = nullptr;
     llvm::Function *_mask = nullptr, *_unmask = nullptr;
     llvm::Type *_moTy = nullptr;
-    MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
 };
 
 PassMeta meta() {
     return passMetaC< ScalarMemory, Substitute >( "weakmem",
             "Transform SC code to code with given weak memory order approximation\n"
             "\n"
-            "options: [ x86 | tso | std | SPEC ]:BUFFER_SIZE\n"
-            "\n"
-            "   SPEC: KIND=ORDER[,...]\n"
-            "         any number of specifiers of minimal memory ordering guarantee the latter can override earlier ones.\n"
-            "\n"
-            "   KIND: {all,load,store,cas,casfail,casok,armw,fence}\n"
-            "         all - ordering for all operations\n"
-            "               if any entry requires minimal ordering higher than set, it will be silently used\n"
-            "         load,load,fence - ordering for load, store instructions\n"
-            "         fence - ordering for fence instruction, ordering lower than acquire or release implies fence has no effect\n"
-            "         armw - ordering for atomic read-modify-write (atomicrmw), must be at least relaxed\n"
-            "         cas - ordering for compare-and-swap (cmpxchg) on both success and failure of comparison, must be at least relaxed\n"
-            "         casfail - ordering of cmpxchg on comparison failure, must be at least relaxed\n"
-            "         casok - ordering of cmpxchg on success, must be at least relaxed, must be at least as strong as casfail\n"
-            "\n"
-            "   ORDER: {unordered,relaxed,acquire,release,acq_rel,seq_cst}\n"
-            "         memory ordering see, C++11 standard of LLVM LangRef for explanation\n"
-            "         unordered - not atomicity guarantee\n"
-            "\n"
-            "   sc  - equivalent to all=seq_cst\n"
-            "   x86 - equivalent to all=acq_rel,armw=seq_cst,cas=seq_cst\n"
-            "         that is total store order + atomic compound operations are sequentially consistent\n"
-            "\n"
-            "   tso - equivalent to all=acq_rel\n"
-            "         total store order - orders are written to memory in order of execution\n"
-            "\n"
-            "   std - equivalent to all=unordered\n"
-            "         no ordering apart from the guarantees of C++11/LLVM standard\n",
+            "options: [ x86 | tso ]:BUFFER_SIZE\n",
 
             []( PassVector &mgr, std::string opt ) {
                 ScalarMemory::meta().create( mgr, "" );
