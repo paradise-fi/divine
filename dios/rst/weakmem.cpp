@@ -21,7 +21,6 @@ namespace lart::weakmem {
 struct CasRes { uint64_t value; bool success; };
 
 _WM_INTERFACE int __lart_weakmem_buffer_size() noexcept;
-_WM_INTERFACE int __lart_weakmem_min_ordering() noexcept;
 
 _WM_INLINE
 static char *baseptr( char *ptr ) noexcept {
@@ -585,7 +584,6 @@ union BFH {
 /* weak here is to prevent optimizer from eliminating calls to these functions
  * -- they will be replaced by weakmem transformation */
 _WM_NOINLINE_WEAK extern "C" int __lart_weakmem_buffer_size() noexcept { return 2; }
-_WM_NOINLINE_WEAK extern "C" int __lart_weakmem_min_ordering() noexcept { return 0; }
 
 _WM_NOINLINE_WEAK __attribute__((__annotate__("divine.debugfn")))
 extern "C" void __lart_weakmem_dump() noexcept
