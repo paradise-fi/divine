@@ -616,11 +616,6 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
                            MemoryOrder ord, MaskFlags mask )
                            noexcept
 {
-    if ( !addr )
-        __dios_fault( _VM_F_Memory, "weakmem.store: invalid address" );
-    if ( size <= 0 || size > 8 )
-        __dios_fault( _VM_F_Memory, "weakmem.store: invalid size" );
-
     BufferLine line{ addr, value, size, ord };
 
     if ( bypass( mask ) || kernel( mask ) ) {
@@ -715,11 +710,6 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t size, MemoryOrder,
                               MaskFlags mask )
                               noexcept
 {
-    if ( !addr )
-        __dios_fault( _VM_F_Memory, "weakmem.load: invalid address" );
-    if ( size <= 0 || size > 8 )
-        __dios_fault( _VM_F_Control, "weakmem.load: invalid size" );
-
     if ( bypass( mask ) || kernel( mask )  )
         return _load( addr, size );
 
@@ -757,9 +747,6 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
     FullMask mask;
     if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
-
-    if ( cnt <= 0 )
-        __dios_fault( _VM_F_Control, "invalid cleanup count" );
 
     va_list ptrs;
     va_start( ptrs, cnt );
