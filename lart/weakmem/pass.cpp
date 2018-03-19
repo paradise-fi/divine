@@ -286,20 +286,10 @@ struct Substitute {
                                 directanno( "lart.weakmem.direct" );
         brick::llvm::enumerateFunctionAnnos( m, [&]( llvm::Function *fn, const auto &anno )
             {
-                if ( anno == directanno ) {
-                    _bypass.emplace( fn );
+                if ( anno != directanno && anno != debuganno )
                     return;
-                }
-                if ( anno != debuganno )
-                    return;
-                // NOTE: clone map must not be shared, as we can clone
-                // functions behind function pointers here
-                cloneCalleesRecursively( fn, debugCloneMap,
-                                         [&]( auto &fn ) { return !isvm( fn ); },
-                                         []( auto & ) { return nullptr; },
-                                         true );
                 _bypass.emplace( fn );
-                if ( fn != dump ) {
+                if ( anno == debuganno && fn != dump ) {
                     llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
                     irb.CreateCall( debug_fence, { } );
                 }
