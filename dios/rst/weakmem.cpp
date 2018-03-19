@@ -730,7 +730,7 @@ CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32
     auto loaded = __lart_weakmem_load( addr, size, ordFail, mask );
 
     if ( loaded != expected
-            || ( subseteq( MemoryOrder::WeakCAS, ordFail ) && __vm_choose( 2 ) ) )
+            || ( !bypass( mask ) && subseteq( MemoryOrder::WeakCAS, ordFail ) && __vm_choose( 2 ) ) )
         return { loaded, false };
 
     // TODO: when implementing NSW, make sure we order properly with _ordSucc
