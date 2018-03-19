@@ -56,15 +56,16 @@ int main() {
     }
 
     std::set< int > seen;
-    for ( auto &c : hs._s->table[ hs._s->currentRow ] ) {
+    for ( auto &c : hs.current() ) {
         if ( c.empty() )
             continue;
         auto r = seen.insert( c.copy() );
         assert( r.second );
     }
     dump( seen );
-    assert( seen.size() == CNT * THRS + OVERLAP );
-    for ( int i = 1; i <= CNT * THRS; ++i ) {
+    auto total = CNT * THRS + OVERLAP;
+    assert( seen.size() == total );
+    for ( int i = 1; i <= total; ++i ) {
         assert( seen.find( i ) != seen.end() );
     }
 }
