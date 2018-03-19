@@ -35,6 +35,7 @@ using MaskFlags = uint64_t;
 
 static const MaskFlags setFlags = _LART_CF_RelaxedMemRuntime
                                 | _VM_CF_IgnoreLoop;
+static const MaskFlags restoreFlags = setFlags | _LART_CF_RelaxedMemCritSeen;
 
 _WM_INTERFACE MaskFlags __lart_weakmem_mask_enter() noexcept {
     MaskFlags restore = MaskFlags( __vm_ctl_get( _VM_CR_Flags ) );
@@ -43,9 +44,11 @@ _WM_INTERFACE MaskFlags __lart_weakmem_mask_enter() noexcept {
 }
 
 _WM_INTERFACE void __lart_weakmem_mask_leave( MaskFlags restore ) noexcept {
-    bool do_interrupt = MaskFlags( __vm_ctl_get( _VM_CR_Flags ) ) & _LART_CF_RelaxedMemCritSeen;
-    __vm_ctl_flag( /* clear: */ ((~restore) & setFlags) | _LART_CF_RelaxedMemCritSeen,
-                   /* set: */ (restore & setFlags) );
+    const MaskFlags flags = MaskFlags( __vm_ctl_get( _VM_CR_Flags ) );
+    const bool do_interrupt = (flags & _LART_CF_RelaxedMemCritSeen)
+                              && !(restore & _LART_CF_RelaxedMemRuntime);
+    __vm_ctl_flag( /* clear: */ ((~restore) & restoreFlags),
+                   /* set: */ (restore & restoreFlags) );
 
     if ( do_interrupt )
         __dios_interrupt();
