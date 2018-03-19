@@ -141,9 +141,7 @@ struct BufferLine : brick::types::Ord {
     BufferLine( MemoryOrder order ) noexcept : order( order ) { } // fence
     BufferLine( char *addr, uint64_t value, uint32_t size, MemoryOrder order ) noexcept :
         addr( addr ), value( value ), size( size ), order( order )
-    {
-        assert( addr != abstract::weaken( addr ) );
-    }
+    { }
 
     _WM_INLINE
     bool isFence() const noexcept { return !addr; }
@@ -621,6 +619,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
         return;
     }
 
+    assert( addr != abstract::weaken( addr ) );
     // we are running without memory interrupt instrumentation and the other
     // threads have to see we have written something to our buffer (for the
     // sake of lazy loads)
