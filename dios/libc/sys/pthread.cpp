@@ -347,7 +347,7 @@ static void _run_cleanup_handlers() noexcept {
     }
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept;
+_Noreturn static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept;
 
 static void _cancel( __dios::FencedInterruptMask &mask ) noexcept {
     __dios_task tid = __dios_this_task();
@@ -387,7 +387,7 @@ static void wait( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
     return _wait< false >( mask, cond );
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept
+_Noreturn static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept
 {
     _PThread &thread = getThread( tid );
     // An  optional  destructor  function may be associated with each key
@@ -436,6 +436,7 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_
         __dios_kill( tid );
     } else // wait until detach / join kills us
         wait( mask, [&] { return true; } );
+    __builtin_trap();
 }
 
 /* Internal data types */
