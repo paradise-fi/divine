@@ -38,7 +38,7 @@ struct Common {
      * abstract equivalent. Where 'args' are already abstracted arguments for instruction.
      * Returns resulting value of abstracted instruction.
      */
-    virtual llvm::Value *process( llvm::CallInst * i, Values & args ) = 0;
+    virtual llvm::Value *process( llvm::Instruction *i, Values &args  ) = 0;
 };
 
 }
