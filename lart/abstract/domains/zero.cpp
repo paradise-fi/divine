@@ -4,7 +4,7 @@
 namespace lart {
 namespace abstract {
 
-llvm::Value * Zero::process( llvm::CallInst *, Values & ) {
+llvm::Value * Zero::process( llvm::Instruction *, Values & ) {
     NOT_IMPLEMENTED();
 }
 

@@ -7,7 +7,7 @@ namespace lart {
 namespace abstract {
 
 struct Zero final : Common {
-    llvm::Value * process( llvm::CallInst *, Values & ) override;
+    llvm::Value * process( llvm::Instruction *i, Values &args ) override;
     Domain domain() const override { return Domain::Zero; }
 };
 
