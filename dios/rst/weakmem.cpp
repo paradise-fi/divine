@@ -584,7 +584,7 @@ union BFH {
 
 /* weak here is to prevent optimizer from eliminating calls to these functions
  * -- they will be replaced by weakmem transformation */
-_WM_NOINLINE_WEAK extern "C" int __lart_weakmem_buffer_size() noexcept { return 2; }
+_WM_NOINLINE_WEAK extern "C" int __lart_weakmem_buffer_size() noexcept { return 32; }
 
 _WM_NOINLINE_WEAK __attribute__((__annotate__("divine.debugfn")))
 extern "C" void __lart_weakmem_dump() noexcept
