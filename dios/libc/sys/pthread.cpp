@@ -1771,4 +1771,8 @@ int sched_yield( void ) noexcept {
     return 0;
 }
 
+int pthread_yield( void ) noexcept {
+    return 0;
+}
+
 #pragma GCC diagnostic pop

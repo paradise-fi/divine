@@ -173,6 +173,7 @@ int pthread_create( pthread_t *, const pthread_attr_t *, void *(*)(void *), void
 _PDCLIB_noreturn void pthread_exit( void * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 int pthread_join( pthread_t, void ** ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 int pthread_detach( pthread_t thread ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
+int pthread_yield(void) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 
 int pthread_attr_destroy( pthread_attr_t * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 int pthread_attr_init( pthread_attr_t * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
