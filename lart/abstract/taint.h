@@ -29,6 +29,7 @@ struct TaintBranching {
 struct LifterSynthesize {
     void run( llvm::Module& );
     void process( llvm::CallInst* );
+    void process_assume( llvm::CallInst* );
 };
 
 // Creates function intrinsic with given return type and argument types.

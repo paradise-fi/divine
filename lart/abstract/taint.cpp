@@ -366,47 +366,83 @@ void TaintBranching::expand( Value *t, BranchInst *br ) {
     br->setCondition( i1 );
 }
 
+bool is_assume_taint( CallInst *taint ) {
+    auto fn = taint->getOperand( 0 );
+    return fn->getName().count( ".assume" );
+}
+
 void LifterSynthesize::run( Module &m ) {
-    for ( auto t : taints( m ) )
-        process( cast< CallInst >( t ) );
+    for ( auto t : taints( m ) ) {
+        auto call = cast< CallInst >( t );
+        auto fn = cast< Function >( call->getOperand( 0 ) );
+        if ( fn->empty() ) {
+            if ( is_assume_taint( call ) )
+                process_assume( call );
+            else
+                process( call );
+        }
+    }
 }
 
 void LifterSynthesize::process( CallInst *taint ) {
     auto fn = cast< Function >( taint->getOperand( 0 ) );
-    if ( fn->empty() ) {
-		using LifterArg = std::pair< Value*, Value* >; // tainted flag + value
+    using LifterArg = std::pair< Value*, Value* >; // tainted flag + value
 
-		std::vector< LifterArg > args;
-		for ( auto it = fn->arg_begin(); it != fn->arg_end(); std::advance( it, 2 ) )
-			args.emplace_back( it, std::next( it ) );
+    std::vector< LifterArg > args;
+    for ( auto it = fn->arg_begin(); it != fn->arg_end(); std::advance( it, 2 ) )
+        args.emplace_back( it, std::next( it ) );
 
-		auto dom = MDValue( taint->getOperand( 1 ) ).domain();
+    auto dom = MDValue( taint->getOperand( 1 ) ).domain();
 
-		auto exbb = make_bb( fn, "exit" );
+    auto exbb = make_bb( fn, "exit" );
 
-		size_t idx = 0;
-		BasicBlock *prev = nullptr;
+    size_t idx = 0;
+    BasicBlock *prev = nullptr;
 
-		Values lifted;
-		for ( const auto &arg : args ) {
-			auto ebb = entry_bb( arg.first, idx );
-			auto tbb = tainted_bb( arg.second, idx, dom );
-			auto ubb = untainted_bb( arg.second, idx, dom );
-			auto mbb = merge_bb( arg.second, idx );
+    Values lifted;
+    for ( const auto &arg : args ) {
+        auto ebb = entry_bb( arg.first, idx );
+        auto tbb = tainted_bb( arg.second, idx, dom );
+        auto ubb = untainted_bb( arg.second, idx, dom );
+        auto mbb = merge_bb( arg.second, idx );
 
-			join_bbs( ebb, tbb, ubb, mbb, exbb );
-			lifted.push_back( mbb->begin() );
+        join_bbs( ebb, tbb, ubb, mbb, exbb );
+        lifted.push_back( mbb->begin() );
 
-			if ( prev ) {
-				prev->getTerminator()->setSuccessor( 0, ebb );
-			}
+        if ( prev ) {
+            prev->getTerminator()->setSuccessor( 0, ebb );
+        }
 
-			prev = mbb;
-			idx++;
-		}
-
-		exit_lifter( exbb, taint, lifted );
+        prev = mbb;
+        idx++;
     }
+
+    exit_lifter( exbb, taint, lifted );
+}
+
+void LifterSynthesize::process_assume( CallInst *taint ) {
+    auto fn = cast< Function >( taint->getOperand( 0 ) );
+    auto dom = MDValue( taint->getOperand( 1 ) ).domain();
+
+	auto arg = std::next( fn->arg_begin() );
+	auto ebb = make_bb( fn, "entry" );
+
+    auto aty = abstract_type( arg->getType(), dom );
+	auto cs = Constant::getNullValue( aty );
+
+	IRBuilder<> irb( ebb );
+	auto iv = cast< Instruction >( irb.CreateInsertValue( cs, arg, 0 ) );
+	auto ar = create_call( irb, rep( arg, dom ), { iv }, dom );
+    iv->setMetadata( "lart.domains", ar->getMetadata( "lart.domains" ) );
+
+    Values args = { ar, std::next( fn->arg_begin(), 3 ) };
+
+	auto aop = make_abstract_op( taint, types_of( args ) );
+	auto icall = create_call( irb, aop, args, dom );
+    auto to = fn->getReturnType();
+    auto ur = create_call( irb, unrep( icall, dom, to ), { icall }, dom );
+    auto ev = irb.CreateExtractValue( ur, 0 );
+    irb.CreateRet( ev );
 }
 
 } // namespace abstract
