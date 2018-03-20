@@ -30,6 +30,13 @@ bool is_one_of( llvm::Value *v ) {
     return ( llvm::isa< Ts >( v ) || ... );
 }
 
+bool is_intr( llvm::CallInst *intr, std::string name );
+bool is_lift( llvm::CallInst *intr );
+bool is_lower( llvm::CallInst *intr );
+bool is_assume( llvm::CallInst *intr );
+bool is_rep( llvm::CallInst *intr );
+bool is_unrep( llvm::CallInst *intr );
+
 std::string llvm_name( llvm::Type *type );
 
 Values taints( llvm::Module &m );

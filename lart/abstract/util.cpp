@@ -23,6 +23,17 @@ std::string llvm_name( Type *type ) {
     return rso.str();
 }
 
+bool is_intr( CallInst *intr, std::string name ) {
+    assert( intr->getCalledFunction()->getName().startswith( "lart." ) );
+    return intr->getCalledFunction()->getName().count( name );
+}
+
+bool is_lift( CallInst *intr ) { return is_intr( intr, ".lift" ); }
+bool is_lower( CallInst *intr ) { return is_intr( intr, ".lower" ); }
+bool is_assume( CallInst *intr ) { return is_intr( intr, ".assume" ); }
+bool is_rep( CallInst *intr ) { return is_intr( intr, ".rep" ); }
+bool is_unrep( CallInst *intr ) { return is_intr( intr, ".unrep" ); }
+
 Values taints( Module &m ) {
     Values res;
     for ( auto &fn : m )
