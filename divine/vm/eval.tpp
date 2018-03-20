@@ -1139,6 +1139,7 @@ void Eval< Ctx >::implement_test_taint()
     else
     {
         slot_copy( s2ptr( operand( 1 ) ), result(), result().size() );
+        context()._incremental_enter = false;
         return;
     }
 
