@@ -1,4 +1,3 @@
-
 #include <lart/support/pass.h>
 #include <iostream>
 #include <brick-assert>
@@ -100,6 +99,13 @@ PassMeta passMeta( std::string name, std::string description = "" ) {
 
     return passMetaC< Subs... >( name, description,
             []( PassVector &ps, std::string ) { return ps.emplace_back< Self >(); } );
+}
+
+template< typename Self >
+PassMeta passMetaO( std::string name, std::string description = "" )
+{
+    auto create = []( PassVector &ps, std::string opt ) { return ps.emplace_back< Self >( opt ); };
+    return PassMeta( name, description, create );
 }
 
 template< typename... Subs >
