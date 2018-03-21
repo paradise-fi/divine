@@ -41,7 +41,7 @@ struct Stepper
     vm::GenericPointer _frame, _frame_cur, _parent_cur;
     llvm::Instruction *_insn_last;
     Components _ff_components;
-    bool _stop_on_fault, _stop_on_error, _booting, _break;
+    bool _stop_on_fault, _stop_on_error, _stop_on_accept, _booting, _break;
     bool _sigint;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< llvm::StringRef, int > _line;
@@ -55,7 +55,7 @@ struct Stepper
           _frame_cur( vm::nullPointer() ),
           _parent_cur( vm::nullPointer() ),
           _insn_last( nullptr ),
-          _stop_on_fault( false ), _stop_on_error( true ), _booting( false ),
+          _stop_on_fault( false ), _stop_on_error( true ), _stop_on_accept( false ), _booting( false ),
           _sigint( false ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),

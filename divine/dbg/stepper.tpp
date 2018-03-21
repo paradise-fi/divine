@@ -48,6 +48,9 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             break;
         }
 
+        if ( _stop_on_accept && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting )
+            break;
+
         if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_components )
         {
             rewind_to_fault = true;
