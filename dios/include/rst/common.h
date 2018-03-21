@@ -1,5 +1,4 @@
-#ifndef __ABSTRACT_COMMON_H_
-#define __ABSTRACT_COMMON_H_
+#pragma once
 #include <dios.h>
 #include <utility>
 #include <new>
@@ -37,5 +36,3 @@ static T *weaken( T *ptr ) {
 }
 
 } // namespace abstract
-
-#endif //__ABSTRACT_COMMON_H_
