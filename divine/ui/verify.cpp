@@ -167,7 +167,7 @@ void Verify::liveness()
     liveness->start( 1 ); // threadcount
     liveness->wait();
     report_options();
-    _log->result( liveness->result(), mc::Trace() );
+    _log->result( liveness->result(), liveness->ce_trace() );
 }
 
 }
