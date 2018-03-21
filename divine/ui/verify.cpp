@@ -120,6 +120,7 @@ void Verify::print_ce( mc::Job &job )
         using Stepper = dbg::Stepper< decltype( dbg ) >;
         Stepper step;
         step._stop_on_error = true;
+        step._stop_on_accept = true;
         step._ff_components = dbg::Component::Kernel;
         step.run( dbg, Stepper::Quiet );
         _log->backtrace( dbg, _num_callers );
