@@ -221,6 +221,7 @@ struct VmBuffTraceFile : File
             buf.erase( 0, nl + 1 );
         }
         get_debug().persist();
+        get_debug().persist_buffers();
     }
 
     __debugfn void do_flush() noexcept
@@ -232,6 +233,7 @@ struct VmBuffTraceFile : File
             b.second.clear();
         }
         get_debug().persist();
+        get_debug().persist_buffers();
     }
 
     bool write( const char *data, size_t, size_t & length ) override

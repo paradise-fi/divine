@@ -20,6 +20,17 @@ void Debug::persist()
     __vm_trace( _VM_T_DebugPersist, trace_buf.begin() );
 }
 
+void Debug::persist_buffers()
+{
+    for ( auto &b : trace_buf )
+    {
+        /* skip 'inline' (short string opt) string data */
+        if ( b.second.data() - reinterpret_cast< char * >( &b ) <= 1024 )
+            continue;
+        __vm_trace( _VM_T_DebugPersist, b.second.data() );
+    }
+}
+
 __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 {
     bool kernel = __vm_ctl_flag( 0, 0 ) & _VM_CF_KernelMode;
