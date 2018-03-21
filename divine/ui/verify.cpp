@@ -94,6 +94,38 @@ void Verify::run()
         safety();
 }
 
+void Verify::print_ce( mc::Job &job )
+{
+    dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
+
+    _log->info( "\n" ); /* makes the output prettier */
+
+    auto trace = job.ce_trace();
+
+    if ( job.result() == mc::Result::BootError )
+    {
+        dbg::setup::boot( dbg );
+        trace.bootinfo = dbg._info, trace.labels = dbg._trace;
+    }
+
+    _log->result( job.result(), trace );
+
+    if ( job.result() == mc::Result::Error )
+    {
+        job.dbg_fill( dbg );
+        dbg.load( trace.final );
+        dbg._lock = trace.steps.back();
+        dbg._lock_mode = decltype( dbg )::LockBoth;
+        vm::setup::scheduler( dbg );
+        using Stepper = dbg::Stepper< decltype( dbg ) >;
+        Stepper step;
+        step._stop_on_error = true;
+        step._ff_components = dbg::Component::Kernel;
+        step.run( dbg, Stepper::Quiet );
+        _log->backtrace( dbg, _num_callers );
+    }
+}
+
 void Verify::safety()
 {
     mc::builder::State error;
@@ -125,32 +157,7 @@ void Verify::safety()
     if ( safety->result() == mc::Result::Valid )
         return _log->result( safety->result(), mc::Trace() );
 
-    dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
-    dbg::setup::boot( dbg );
-
-    _log->info( "\n" ); /* makes the output prettier */
-
-    auto trace = safety->ce_trace();
-
-    if ( safety->result() == mc::Result::BootError )
-        trace.bootinfo = dbg._info, trace.labels = dbg._trace;
-
-    _log->result( safety->result(), trace );
-
-    if ( safety->result() == mc::Result::Error )
-    {
-        safety->dbg_fill( dbg );
-        dbg.load( trace.final );
-        dbg._lock = trace.steps.back();
-        dbg._lock_mode = decltype( dbg )::LockBoth;
-        vm::setup::scheduler( dbg );
-        using Stepper = dbg::Stepper< decltype( dbg ) >;
-        Stepper step;
-        step._stop_on_error = true;
-        step._ff_components = dbg::Component::Kernel;
-        step.run( dbg, Stepper::Quiet );
-        _log->backtrace( dbg, _num_callers );
-    }
+    print_ce( *safety );
 }
 
 void Verify::cleanup()
@@ -166,8 +173,10 @@ void Verify::liveness()
     _log->start();
     liveness->start( 1 ); // threadcount
     liveness->wait();
+
     report_options();
-    _log->result( liveness->result(), liveness->ce_trace() );
+
+    print_ce( *liveness );
 }
 
 }

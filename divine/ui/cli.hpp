@@ -21,6 +21,7 @@
 #pragma once
 
 #include <divine/mc/bitcode.hpp>
+#include <divine/mc/job.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/sim/trace.hpp>
 
@@ -151,6 +152,7 @@ struct Verify : WithBC
 
     void safety();
     void liveness();
+    void print_ce( mc::Job &job );
 };
 
 struct Check : Verify
