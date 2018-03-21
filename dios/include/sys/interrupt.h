@@ -8,6 +8,7 @@
 
 static const uint64_t _DiOS_CF_Mask       = _VM_CFB_OS << 0;
 static const uint64_t _DiOS_CF_Deferred   = _VM_CFB_OS << 1;
+static const uint64_t _DiOS_CF_Fairness   = _VM_CFB_OS << 4;
 
 __BEGIN_DECLS
 void __dios_interrupt( void ) __nothrow;

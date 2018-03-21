@@ -23,7 +23,8 @@ struct FairScheduler : public Scheduler< Next > {
         s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
         s.proc1->pid = 1;
 
-        auto mainTask = newTaskMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
+        auto mainTask = this->newTaskMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
+        _fairGroup.push_back( mainTask->getId() );
         auto argv = construct_main_arg( "arg.", s.env, true );
         auto envp = construct_main_arg( "env.", s.env );
         this->setupMainTask( mainTask, argv.first, argv.second, envp.second );
@@ -35,32 +36,18 @@ struct FairScheduler : public Scheduler< Next > {
         Next::setup( s );
     }
 
-    template< typename... Args >
-    Task *newTaskMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
-    {
-        Task *t = Scheduler< Next >::newTaskMem( mainFrame, mainTls, routine, tls_size, proc );
-        _fairGroup.push_back( t->getId() );
-        return t;
-    }
-
-    template< typename... Args >
-    Task *newTask( void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
-    {
-        Task *t = Scheduler< Next >::newTask( routine, tls_size, proc );
-        _fairGroup.push_back( t->getId() );
-        return t;
-    }
-
     __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size )
     {
-        auto t = newTask( routine, tls_size, this->getCurrentTask()->_proc );
+        auto t = this->newTask( routine, tls_size, this->getCurrentTask()->_proc );
         this->setupTask( t, arg );
+        _fairGroup.push_back( t->getId() );
         __vm_obj_shared( t->getId() );
         __vm_obj_shared( arg );
         return t->getId();
     }
 
-    void killTask( __dios_task tid ) noexcept {
+    void killTask( __dios_task tid ) noexcept
+    {
         Scheduler< Next >::killTask( tid );
         auto it = std::find( _fairGroup.begin(), _fairGroup.end(), tid );
         int idx = it - _fairGroup.begin();
@@ -69,7 +56,8 @@ struct FairScheduler : public Scheduler< Next > {
         _fairGroup.erase( it );
     }
 
-    void moveToNextGroup() {
+    void moveToNextGroup()
+    {
         _workingGroup++;
         if ( _workingGroup == _fairGroup.size() )
             _workingGroup = 0;
@@ -78,8 +66,7 @@ struct FairScheduler : public Scheduler< Next > {
     template < typename Context >
     static void run_scheduler() noexcept
     {
-        void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
-        auto& scheduler = *static_cast< Context * >( ctx );
+        auto &scheduler = get_state< Context >();
 
         scheduler.traceTasks();
         Task *t = scheduler.chooseTask();
@@ -87,29 +74,26 @@ struct FairScheduler : public Scheduler< Next > {
         if ( t )
             __vm_trace( _VM_T_TaskID, t );
 
-        while ( t && t->_frame )
-        {
+        __vm_ctl_flag( 0, _DiOS_CF_Fairness );
+
+        if ( t && t->_frame )
             scheduler.run( *t );
-            scheduler.runMonitors();
 
-            // Fairness contraint
-            bool accepting = uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Accepting;
+        __vm_cancel();
+    }
 
-            if ( scheduler._workingGroup == 0 && accepting )
-            {
-                scheduler.moveToNextGroup();
-            }
-            else if ( scheduler._workingGroup != 0 )
-            {
-                if ( scheduler._fairGroup[ scheduler._workingGroup ] == t->getId() ) {
-                    scheduler.moveToNextGroup();
-                }
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Accepting, 0 );
-            }
+    void interrupt() /* figure out fairness constraints */
+    {
+        bool accepting = uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Accepting;
 
-            __vm_suspend();
+        if ( _workingGroup == 0 && accepting )
+            moveToNextGroup();
+        else if ( _workingGroup != 0 )
+        {
+            if ( _fairGroup[ _workingGroup ] == __dios_this_task() )
+                moveToNextGroup();
+            __vm_ctl_flag( /* clear */ _VM_CF_Accepting, 0 );
         }
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 
     __dios::Array< __dios_task > _fairGroup;
