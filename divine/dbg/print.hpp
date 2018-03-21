@@ -74,7 +74,7 @@ static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
 
     std::string name;
 
-    if ( disp != DisplayVal::Value )
+    if ( disp != DisplayVal::Value && val )
     {
         if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
         {
