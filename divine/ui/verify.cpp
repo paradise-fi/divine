@@ -153,6 +153,7 @@ void Verify::safety()
     safety->wait();
     report_options();
     _log->info( "smt solver: " + _solver + "\n", true );
+    _log->info( "property type: safety\n", true );
 
     if ( safety->result() == mc::Result::Valid )
         return _log->result( safety->result(), mc::Trace() );
@@ -175,6 +176,7 @@ void Verify::liveness()
     liveness->wait();
 
     report_options();
+    _log->info( "property type: liveness\n", true );
 
     print_ce( *liveness );
 }
