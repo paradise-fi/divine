@@ -163,8 +163,10 @@ void Verify::liveness()
 {
     auto liveness = mc::make_job< mc::Liveness >( bitcode(), ss::passive_listen() );
 
+    _log->start();
     liveness->start( 1 ); // threadcount
     liveness->wait();
+    report_options();
     _log->result( liveness->result(), mc::Trace() );
 }
 
