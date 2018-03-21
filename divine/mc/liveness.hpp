@@ -68,15 +68,16 @@ struct NestedDFS : ss::Job
         }
     };
 
+    std::stack< DFSItem > _inner, _outer;
+
     bool nested( Edge seed )
     {
-        std::stack< DFSItem > stack;
-        stack.emplace( DFSItem::Pre, seed, false );
+        _inner.emplace( DFSItem::Pre, seed, false );
         bool out = false;
 
-        while( !stack.empty() && !out )
+        while( !_inner.empty() && !out )
         {
-            auto item = stack.top(); stack.pop();
+            auto item = _inner.top(); _inner.pop();
             Edge from = item.edge;
             _builder.edges( from.second,
                 [&]( State to, Label, bool )
@@ -90,7 +91,7 @@ struct NestedDFS : ss::Job
                     ASSERT( _visited.count( next ) );
                     if( !_visited[next] )
                     {
-                        stack.emplace( DFSItem::Pre, next, false );
+                        _inner.emplace( DFSItem::Pre, next, false );
                         _visited[next] = true;
                     }
                 } );
@@ -101,13 +102,12 @@ struct NestedDFS : ss::Job
     bool dfs( Edge edge )
     {
         bool out = false;
-        std::stack< DFSItem > stack;
-        stack.emplace( DFSItem::Pre, edge, false );
+        _outer.emplace( DFSItem::Pre, edge, false );
         _visited.emplace( edge, false );
 
-        while( !stack.empty() )
+        while( !_outer.empty() )
         {
-            auto item = stack.top(); stack.pop();
+            auto item = _outer.top(); _outer.pop();
             ASSERT( _visited.count( item.edge ) );
             if( item.type == DFSItem::Post ) // Post -> backtracking -> run detect cycle
             {
@@ -117,13 +117,13 @@ struct NestedDFS : ss::Job
             else
             {
                 item.type = DFSItem::Post;
-                stack.push( item );
+                _outer.push( item );
                 _builder.edges( item.edge.second,
                     [&]( State to, Label label, bool )
                     {
                         auto kid = std::make_pair( item.edge.second, to );
                         if( !_visited.count( kid ) ) {
-                            stack.emplace( DFSItem::Pre, kid, bool( label.accepting ) );
+                            _outer.emplace( DFSItem::Pre, kid, bool( label.accepting ) );
                             _visited.emplace( kid, false );
                         }
                     } );
@@ -175,6 +175,9 @@ struct Liveness : Job
 
     bool _error_found;
 
+    using StateTrace = mc::StateTrace< Builder >;
+    std::function< StateTrace() > _get_trace;
+
     template< typename... Args >
     Liveness( builder::BC bc, Next next, Args... builder_opts )
         : _ex( bc, builder_opts... ),
@@ -193,6 +196,25 @@ struct Liveness : Job
         _search.reset( new NDFS( _ex, found ) ); //Builder, Next
         NDFS *search = dynamic_cast< NDFS * >( _search.get() );
         stats = [=]() { return std::make_pair( _ex._d.states._s->used.load(), 0 ); };
+
+        auto move = []( auto &stack, auto &trace )
+        {
+            while ( !stack.empty() )
+            {
+                if ( stack.top().type == NDFS::DFSItem::Post )
+                    trace.emplace_front( stack.top().edge.second.snap, std::nullopt );
+                stack.pop();
+            }
+        };
+
+        _get_trace = [=]() mutable
+        {
+            StateTrace trace;
+            move( search->_inner, trace );
+            move( search->_outer, trace );
+            return trace;
+        };
+
         search->start( threads );
     }
 
@@ -203,6 +225,11 @@ struct Liveness : Job
         if ( !stats().first )
             return Result::BootError;
         return _error_found ? Result::Error : Result::Valid;
+    }
+
+    Trace ce_trace() override
+    {
+        return _error_found ? mc::trace( _ex, _get_trace() ) : mc::Trace();
     }
 
     virtual PoolStats poolstats() override

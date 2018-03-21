@@ -102,7 +102,6 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
     ASSERT( next == states.end() );
-    ASSERT( t.final );
     return t;
 }
 
