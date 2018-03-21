@@ -29,10 +29,7 @@ namespace divine {
 
 struct CflInterrupt
 {
-    static PassMeta meta()
-    {
-        return passMeta< CflInterrupt >( "CflInterrupt", "Annotate control flow cycles." );
-    }
+    CflInterrupt( std::string n ) : _handler_name( n ) {}
 
     void insert( llvm::Value *v, llvm::IRBuilder<> &b ) { b.CreateCall( _hypercall, { v, _handler } ); }
     void insert( llvm::Value *v, llvm::Instruction *where )
@@ -103,7 +100,7 @@ struct CflInterrupt
         auto hyper_t = llvm::FunctionType::get( void_t, { i32_t, handler_t->getPointerTo() }, false );
 
         auto hyper = m.getOrInsertFunction( "__vm_test_loop", hyper_t );
-        auto handler = m.getOrInsertFunction( "__dios_interrupt", handler_t );
+        auto handler = m.getOrInsertFunction( _handler_name, handler_t );
 
         _hypercall = llvm::cast< llvm::Function >( hyper );
         _handler = llvm::cast< llvm::Function >( handler );
@@ -126,16 +123,14 @@ struct CflInterrupt
         }
     }
 
+    std::string _handler_name;
     llvm::Function *_hypercall, *_handler;
     long _backedges = 0;
 };
 
 struct MemInterrupt
 {
-    static PassMeta meta()
-    {
-        return passMeta< MemInterrupt >( "MemInterrupt", "Annotate (visible) memory accesses." );
-    }
+    MemInterrupt( std::string n ) : _handler_name( n ) {}
 
     void annotateFn( llvm::Function &fn, llvm::DataLayout &dl, unsigned silentID )
     {
@@ -184,7 +179,7 @@ struct MemInterrupt
         auto hyper_t = llvm::FunctionType::get( void_t, { i8_p, i32_t, i32_t, hptr_t }, false );
 
         auto hyper = m.getOrInsertFunction( "__vm_test_crit", hyper_t );
-        auto handler = m.getOrInsertFunction( "__dios_interrupt", handler_t );
+        auto handler = m.getOrInsertFunction( _handler_name, handler_t );
 
         _hypercall = llvm::cast< llvm::Function >( hyper );
         _handler = llvm::cast< llvm::Function >( handler );
@@ -210,22 +205,19 @@ struct MemInterrupt
         }
     }
 
+    std::string _handler_name;
     llvm::Function *_hypercall, *_handler;
     long _mem = 0;
 };
 
-PassMeta interruptPass()
+PassMeta memInterruptPass()
 {
-    return compositePassMeta< CflInterrupt, MemInterrupt >(
-        "interrupt",
-        "Instrument bitcode for DIVINE: add __vm_interrupt_mem and "
-        "__vm_interrupt_cfl calls to appropriate locations." );
+    return passMetaO< MemInterrupt >( "interrupt-mem", "Annotate (visible) memory accesses." );
 }
 
 PassMeta cflInterruptPass()
 {
-    return passMeta< CflInterrupt >(
-        "interrupt-cfl", "add __vm_interrupt_cfl calls to appropriate locations." );
+    return passMetaO< CflInterrupt >( "interrupt-cfl", "Annotate control flow cycles." );
 }
 
 }

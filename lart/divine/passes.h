@@ -9,7 +9,7 @@
 namespace lart {
     namespace divine {
 
-        PassMeta interruptPass();
+        PassMeta memInterruptPass();
         PassMeta cflInterruptPass();
         PassMeta functionMetaPass();
         PassMeta autotracePass();
@@ -20,7 +20,7 @@ namespace lart {
         PassMeta stubsPass();
 
         inline std::vector< PassMeta > passes() {
-            return { cflInterruptPass(), interruptPass(), functionMetaPass(), autotracePass(),
+            return { cflInterruptPass(), memInterruptPass(), functionMetaPass(), autotracePass(),
                      makeNativePass(), vaArgPass(), lowering(), stubsPass(), lsda() };
         }
     }
