@@ -1,6 +1,7 @@
 #include <rst/sym.h>
 #include <rst/common.h>
 #include <dios.h>
+#include <cstdarg>
 
 using namespace lart::sym;
 using abstract::Tristate;
@@ -33,31 +34,28 @@ extern "C" void __sym_formula_dump()
     }
 }
 
-Formula **__abstract_sym_alloca( int bitwidth )
-{
-    return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth },
-                                                         __sym_state.counter++ ) ) );
+template< typename T >
+T __sym_val_impl() {
+    return reinterpret_cast< T >( __sym_lift( sizeof( T ), 0 ) );
 }
 
-Formula *__abstract_sym_load( Formula **a, int bitwidth )
-{
+// uint8_t __sym_val_i8() { return __sym_val_impl< uint8_t >(); }
+// uint16_t __sym_val_i16() { return __sym_val_impl< uint16_t >(); }
+// uint32_t __sym_val_i32() { return __sym_val_impl< uint32_t >(); }
+extern "C" uint64_t __sym_val_i64() { return __sym_val_impl< uint64_t >(); }
+
+Formula *__sym_lift( int bitwidth, int argc, ... ) {
     if ( bitwidth > 64 )
         _UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
-    auto *val = *a;
+    if ( !argc ) {
+        return mark( __newf< Variable >( Type{ Type::Int, bitwidth }, __sym_state.counter++ ) );
+    }
+    if ( argc > 1 )
+        _UNREACHABLE_F( "Lifting of more values is not yet supported." );
 
-    if ( val->type().bitwidth() > bitwidth )
-        return __abstract_sym_trunc( val, bitwidth );
-
-    if ( val->type().bitwidth() < bitwidth )
-        _UNREACHABLE_F( "Loading of %d bit value from %d bit abstract value is not supported (yet).",
-                        bitwidth, val->type().bitwidth() );
-
-    return mark( val );
-}
-
-void __abstract_sym_store( Formula *val, Formula **ptr )
-{
-    *ptr = weaken( val );
+    va_list args;
+    va_start( args, argc );
+    return mark( __newf< Constant >( Type{ Type::Int, bitwidth }, va_arg( args, int64_t ) ) );
 }
 
 Formula *__abstract_sym_lift( int64_t val, int bitwidth )
