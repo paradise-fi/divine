@@ -1,5 +1,7 @@
 // // -*- C++ -*- (c) 2016 Katarina Kejstova
 
+#pragma once
+
 #include <cerrno>
 #include <cstdarg>
 #include <cstdlib>

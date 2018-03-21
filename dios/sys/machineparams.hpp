@@ -3,6 +3,7 @@
 #pragma once
 
 #include <dios/sys/main.hpp>
+#include <sys/utsname.h>
 
 namespace __dios {
 

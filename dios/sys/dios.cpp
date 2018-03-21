@@ -11,15 +11,8 @@
 
 #include <dios.h>
 #include <dios/sys/main.hpp>
-#include <dios/sys/scheduling.hpp>
-#include <dios/sys/sync_scheduling.hpp>
-#include <dios/sys/fair_scheduling.hpp>
-#include <dios/sys/syscall.hpp>
 #include <dios/sys/trace.hpp>
-#include <dios/sys/fault.hpp>
-#include <dios/sys/monitor.hpp>
-#include <dios/sys/machineparams.hpp>
-#include <dios/sys/procmanager.hpp>
+#include <dios/sys/config.hpp>
 
 #include <dios/vfs/fs-manager.h>
 #include <dios/vfs/fs-passthru.h>
@@ -28,7 +21,8 @@
 
 extern "C" { char **environ; }
 
-namespace __dios {
+namespace __dios
+{
 
 String extractDiosConfiguration( SysOpts& o ) {
     auto r = std::find_if( o.begin(), o.end(),
@@ -122,20 +116,6 @@ void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)() )
     __dios_this_frame()->parent = nullptr;
 }
 
-using DefaultConfiguration =
-    fs::VFS< ProcessManager< Fault< Scheduler< MachineParams< MonitorManager< BaseContext > > > > > >;
-using PassthruConfiguration =
-    Fault< Scheduler < fs::PassThrough < MachineParams < MonitorManager < BaseContext > > > > >;
-
-using ReplayConfiguration =
-    Fault< Scheduler < fs::Replay < MachineParams < MonitorManager < BaseContext > > > > >;
-
-using SynchronousConfiguration =
-    fs::VFS< Fault< SyncScheduler< MachineParams< MonitorManager< BaseContext > > > > >;
-
-using FairConfiguration =
-    fs::VFS< ProcessManager< Fault< FairScheduler< MachineParams< MonitorManager< BaseContext > > > > > >;
-
 void init( const _VM_Env *env )
 {
     MemoryPool deterministicPool( 2 );
@@ -153,27 +133,23 @@ void init( const _VM_Env *env )
 
     auto cfg = extractDiosConfiguration( sysOpts );
     SetupBase setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
+
     if ( cfg == "default" )
-        boot< DefaultConfiguration >( setup );
-    else if ( cfg == "passthrough" ) {
-        boot< PassthruConfiguration >( setup );
-    } else if ( cfg == "replay" ) {
-        boot< ReplayConfiguration >( setup );
-    }
-    else if ( cfg == "synchronous" ) {
-        boot< SynchronousConfiguration >( setup );
-    }
-    else if ( cfg == "fair" ) {
-        boot< FairConfiguration >( setup );
-    }
-    else
-    {
-        __dios_trace_f( "Unknown configaration: %s", cfg.c_str() );
-        __vm_ctl_flag( 0, _VM_CF_Error );
-    }
+        return boot< config::Default >( setup );
+    if ( cfg == "passthrough" )
+        return boot< config::Passthrough >( setup );
+    if ( cfg == "replay" )
+        return boot< config::Replay >( setup );
+    if ( cfg == "synchronous" )
+        return boot< config::Sync >( setup );
+    if ( cfg == "fair" )
+        return boot< config::Fair >( setup );
+
+    __dios_trace_f( "Unknown configaration: %s", cfg.c_str() );
+    __vm_ctl_flag( 0, _VM_CF_Error );
 }
 
-} // namespace __dios
+}
 
 /*
  * DiOS entry point. Defined weak to allow user to redefine it.
