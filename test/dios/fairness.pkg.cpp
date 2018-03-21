@@ -1,18 +1,16 @@
-# TAGS: min todo
+// TAGS: min
+// VERIFY_OPTS: --liveness -o nofail:malloc
 
-. lib/testcase
-
-tee fairness.cpp <<EOF
 #include <dios.h>
 #include <thread>
 #include <atomic>
 #include <sys/monitor.h>
 
-bool checkX();
+// V: unfair
+// V: fair   V_OPT: -o config:fair
 
+bool checkX();
 void __buchi_accept();
-void __buchi_cancel();
-unsigned __buchi_choose(unsigned);
 
 struct BuchiAutomaton : public __dios::Monitor
 {
@@ -22,7 +20,7 @@ struct BuchiAutomaton : public __dios::Monitor
     switch(state)
     {
       case 0: {
-        unsigned nd0 = __buchi_choose(2);
+        unsigned nd0 = __vm_choose(2);
         if ((nd0 == 0) && true)
         {
           state = 0;
@@ -36,12 +34,12 @@ struct BuchiAutomaton : public __dios::Monitor
       case 1: {
         if (!checkX())
         {
-          __buchi_accept();
+          __buchi_accept(); /* ERR_unfair */
           state = 1;
         }
         else
         {
-          __buchi_cancel();
+          __vm_cancel();
         }
         break;
       }
@@ -51,16 +49,9 @@ struct BuchiAutomaton : public __dios::Monitor
   unsigned state;
 };
 
-void __buchi_accept() {
+void __buchi_accept()
+{
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Accepting, _VM_CF_Accepting );
-}
-
-void __buchi_cancel() {
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
-}
-
-unsigned __buchi_choose( unsigned n ) {
-    return __vm_choose( n );
 }
 
 std::atomic_int x;
@@ -88,20 +79,3 @@ int main() {
         __dios_interrupt();
     }
 }
-EOF
-
-divine verify --liveness -std=c++1z -onofail:malloc fairness.cpp > trace1.out
-if ! grep "error found: yes" trace1.out; then
-    echo "No error was found, but one was expected"
-    cat trace1.out
-    result=1
-fi
-
-divine verify --liveness -std=c++1z -onofail:malloc -oconfig:fair fairness.cpp > trace2.out
-if ! grep "error found: no" trace2.out; then
-    echo "Error was found, but none was expected"
-    cat trace2.out
-    result=1
-fi
-
-exit $result
