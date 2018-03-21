@@ -75,6 +75,7 @@ void CLI::reach_user()
 void CLI::reach_error()
 {
     auto step = stepper();
+    step._stop_on_accept = true;
     run( step, false );
     set( "$_", frameDN().related( "caller" ) );
     update();
