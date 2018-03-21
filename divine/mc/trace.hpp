@@ -96,12 +96,16 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                             t.final = last->first;
                         }
 
+                        if ( label.accepting )
+                            t.final = last->first;
+
                         process( label );
                         ++last, ++next;
                         return ss::Listen::Process;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
     ASSERT( next == states.end() );
+    ASSERT( t.final );
     return t;
 }
 

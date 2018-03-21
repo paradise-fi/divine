@@ -114,9 +114,7 @@ struct Safety : Job
             i = *_ext.machinePointer< vm::CowHeap::Snapshot >( i );
         }
         rv.emplace_front( _ex._d.initial.snap, std::nullopt );
-        auto t = mc::trace( _ex, rv );
-        ASSERT( t.final );
-        return t;
+        return mc::trace( _ex, rv );
     }
 
     void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex.context() ); }
