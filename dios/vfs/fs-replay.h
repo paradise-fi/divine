@@ -48,10 +48,11 @@ struct Replay : public Next {
     void setup( Setup s )
     {
         traceAlias< Replay >( "{Replay}" );
-        if ( !init( "passthrough.out" )) {
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        if ( !init( "passthrough.out" ) )
+        {
+            __vm_ctl_flag( 0, _VM_CF_Error );
             return;
-        };
+        }
         Next::setup( s );
     }
 
@@ -207,7 +208,7 @@ struct Replay : public Next {
         ret name arg { \
             UnVoid< ret > rv; \
             if(!isProcessible(_HOST_SYS_ ## name))  { \
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel ); \
+                __vm_cancel(); \
                 return rv.get(); }\
             int outType;                                                 \
             switch (rv.size()) {                                       \
@@ -215,7 +216,7 @@ struct Replay : public Next {
                 case 8 : outType = _VM_SC_Int64 | _VM_SC_Out ; break;    \
             }                                                            \
             if (!parse(_HOST_SYS_ ## name, rv, _1, _2, _3, _4, _5, _6, _7)) {\
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel ); \
+                __vm_cancel(); \
                 return rv.get();\
             }\
             return rv.get();\
@@ -268,7 +269,7 @@ struct Replay : public Next {
             UnVoid< int > rv;
             if ( !isProcessible( _HOST_SYS_open ))
             {
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+                __vm_cancel();
                 return rv.get();
             }
             int outType;
@@ -287,7 +288,7 @@ struct Replay : public Next {
             }
             if ( !parse( _HOST_SYS_open, rv, Mem< const char * >( pathname ), flags, mode, _5, _6, _7 ))
             {
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+                __vm_cancel();
                 return rv.get();
             }
             return rv.get();
@@ -299,7 +300,7 @@ struct Replay : public Next {
             UnVoid< int > rv;
             if ( !isProcessible( _HOST_SYS_open ))
             {
-                __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+                __vm_cancel();
                 return rv.get();
             }
             int outType;
@@ -323,7 +324,7 @@ struct Replay : public Next {
                     va_end( *vl );
                     if ( !parse( _HOST_SYS_open, rv, fd, cmd, flag, _5, _6, _7 ))
                     {
-                        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+                        __vm_cancel();
                         return rv.get();
                     }
                 }
@@ -332,7 +333,7 @@ struct Replay : public Next {
                     va_end( *vl );
                     if ( !parse( _HOST_SYS_open, rv, fd, cmd, _3, _4, _5, _6, _7 ))
                     {
-                        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+                        __vm_cancel();
                         return rv.get();
                     }
                 }
