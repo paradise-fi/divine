@@ -356,89 +356,6 @@ void Eval< Ctx >::implement_intrinsic( int id )
 }
 
 template< typename Ctx >
-void Eval< Ctx >::implement_hypercall_control()
-{
-    int idx = 0;
-
-    auto o_frame = frame();
-    auto &o_inst = instruction();
-
-    while ( idx < instruction().argcount() - 1 )
-    {
-        int action = operandCk< IntV >( idx++, o_inst, o_frame ).cooked();
-        auto reg = _VM_ControlRegister( operandCk< IntV >( idx++, o_inst, o_frame ).cooked() );
-        if ( action == _VM_CA_Set && reg == _VM_CR_Flags )
-        {
-            auto val = operandCk< PointerV >( idx++, o_inst, o_frame ).cooked();
-            auto orig = context().get( reg ).integer;
-            if ( ( val.raw() & _VM_CF_KernelMode ) && !( orig & _VM_CF_KernelMode ) )
-                fault( _VM_F_Hypercall ) << "cannot set kernel mode outside of kernel";
-            else
-                context().set( reg, val );
-        }
-        else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
-        {
-            auto ptr = operandCk< PointerV >( idx++, o_inst, o_frame ).cooked();
-            if ( ptr.type() == PointerType::Code )
-                long_jump( ptr );
-            else
-            {
-                fault( _VM_F_Hypercall ) << "invalid pointer type when setting _VM_CR_PC: " << ptr;
-                return;
-            }
-        }
-        else if ( action == _VM_CA_Set )
-        {
-            context().sync_pc();
-            auto ptr = operandCk< PointerV >( idx++, o_inst, o_frame );
-            if ( reg == _VM_CR_Frame && !ptr.cooked().null() &&
-                    !boundcheck_nop( ptr, 2 * PointerBytes, true ) )
-                fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
-            else
-                context().set( reg, ptr.cooked() );
-        }
-        else if ( action == _VM_CA_Get && reg == _VM_CR_Flags )
-        {
-            if ( o_frame == frame() )
-                result( PtrIntV( context().get( reg ).integer ) );
-            else
-                fault( _VM_F_Hypercall ) << "invalid _VM_CA_Get after frame change";
-        }
-        else if ( action == _VM_CA_Get )
-        {
-            if ( o_frame == frame() )
-                result( PointerV( context().get( reg ).pointer ) );
-            else
-                fault( _VM_F_Hypercall ) << "invalid _VM_CA_Get after frame change";
-        }
-        else if ( action == _VM_CA_Bit && reg == _VM_CR_Flags )
-        {
-            auto &reg_r = context().ref( reg ).integer;
-            auto mask = operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
-            auto val = operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
-            if ( mask & _VM_CF_DebugMode )
-                fault( _VM_F_Hypercall ) << "cannot change debug mode";
-            else if ( !( reg_r & _VM_CF_KernelMode ) && ( val & mask & _VM_CF_KernelMode ) )
-                fault( _VM_F_Hypercall ) << "cannot set kernel mode outside of kernel";
-            else
-            {
-                reg_r &= ~mask;
-                reg_r |= val;
-            }
-        }
-        else if ( action == _VM_CA_DestroyFrame )
-            heap().free( o_frame );
-        else
-        {
-            fault( _VM_F_Hypercall ) << "invalid __vm_control sequence at index " << idx;
-            return;
-        }
-        if ( action == _VM_CA_Set && reg == _VM_CR_Frame )
-            NOT_IMPLEMENTED();
-    }
-}
-
-template< typename Ctx >
 void Eval< Ctx >::update_shuffle()
 {
     using brick::bitlevel::mixdown;
@@ -598,8 +515,6 @@ void Eval< Ctx >::implement_hypercall()
         case lx::HypercallTestCrit: return implement_test_crit();
         case lx::HypercallTestTaint: return implement_test_taint();
 
-        case lx::HypercallControl:
-            return implement_hypercall_control();
         case lx::HypercallSyscall:
             return implement_hypercall_syscall();
 

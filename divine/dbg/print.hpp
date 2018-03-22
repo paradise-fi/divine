@@ -160,7 +160,6 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
     if ( insn.opcode == lx::OpHypercall )
         switch ( insn.subcode )
         {
-            case lx::HypercallControl: op += ".control"; break;
             case lx::HypercallChoose: op += ".choose"; break;
             case lx::HypercallFault: op += ".fault"; break;
 

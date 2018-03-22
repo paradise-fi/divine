@@ -34,7 +34,6 @@ enum Hypercall /* see divm.h for prototypes & documentation */
     NotHypercall = 0,
     NotHypercallButIntrinsic = 1,
 
-    HypercallControl,
     HypercallChoose,
     HypercallFault,
 

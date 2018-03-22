@@ -258,8 +258,6 @@ lx::Hypercall hypercall( llvm::Function *f )
 {
     std::string name = f->getName().str();
 
-    if ( name == "__vm_control" )
-        return lx::HypercallControl;
     if ( name == "__vm_choose" )
         return lx::HypercallChoose;
     if ( name == "__vm_fault" )
