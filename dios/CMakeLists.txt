@@ -27,7 +27,11 @@ set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
 set( HOSTABI ${SYSINC}hostabi.h )
 set( VMINC ${SYSINC}divm.h ${SYSINC}vmutil.h ${SYSINC}lart.h )
 
-list( REMOVE_ITEM H_RUNTIME ${LIBCINC}sys/divm.h ${LIBCINC}sys/vmutil.h ${LIBCINC}sys/lart.h )
+set( CLANG_HDRS clang/lib/Headers/ )
+set( STDATOMIC ${CMAKE_CURRENT_BINARY_DIR}/include/stdatomic.h )
+
+list( REMOVE_ITEM H_RUNTIME ${LIBCINC}sys/divm.h ${LIBCINC}sys/vmutil.h ${LIBCINC}sys/lart.h
+                            ${LIBCINC}stdatomic.h )
 
 macro( mkobjs var flags )
   foreach( f ${SRC_${var}} )
@@ -35,7 +39,7 @@ macro( mkobjs var flags )
     file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
     list( APPEND BC_${var} bc/${out} )
     add_custom_command(
-        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${HOSTABI} ${VMINC}
+        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${HOSTABI} ${VMINC} ${STDATOMIC}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
         COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
@@ -58,17 +62,18 @@ macro( mklib lib )
   stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
 
-macro( copyhdr srcdir hdr )
+macro( copyhdr srcdir dstdir hdr )
   add_custom_command(
-    OUTPUT ${SYSINC}/${hdr}
+    OUTPUT ${dstdir}/${hdr}
     DEPENDS ${divine_SOURCE_DIR}/${srcdir}/${hdr}
     VERBATIM
-    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/${srcdir}/${hdr} ${SYSINC}/${hdr} )
+    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/${srcdir}/${hdr} ${dstdir}/${hdr} )
 endmacro()
 
-copyhdr( divine/vm divm.h )
-copyhdr( divine/vm vmutil.h )
-copyhdr( lart lart.h )
+copyhdr( divine/vm ${SYSINC} divm.h )
+copyhdr( divine/vm ${SYSINC} vmutil.h )
+copyhdr( lart ${SYSINC} lart.h )
+copyhdr( ${CLANG_HDRS} ${CMAKE_CURRENT_BINARY_DIR}/include stdatomic.h )
 
 add_custom_command(
   OUTPUT ${HOSTABI}

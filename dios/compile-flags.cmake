@@ -48,6 +48,7 @@ stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
 foreach( hdr divm.h lart.h vmutil.h hostabi.h )
   stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} include/sys/${hdr} )
 endforeach()
+stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} include/stdatomic.h )
 stringlist( "dios" dios )
 
 # vim: ft=cmake
