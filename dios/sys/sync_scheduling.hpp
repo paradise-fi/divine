@@ -15,7 +15,7 @@ struct SyncScheduler : public Scheduler< Next >
     template < typename Setup >
     void setup( Setup s ) {
         traceAlias< SyncScheduler >( "{Scheduler}" );
-        s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
+        s.proc1->globals = __vm_ctl_get( _VM_CR_Globals );
         s.proc1->pid = 1;
 
         _setupTask.reset(
@@ -25,7 +25,8 @@ struct SyncScheduler : public Scheduler< Next >
         auto envp = construct_main_arg( "env.", s.env );
         this->setupMainTask( _setupTask.get(), argv.first, argv.second, envp.second );
 
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, runScheduler< typename Setup::Context > );
+        __vm_ctl_set( _VM_CR_Scheduler,
+                      reinterpret_cast< void * >( runScheduler< typename Setup::Context > ) );
 
         this->setupDebug( s, argv, envp );
         environ = envp.second;

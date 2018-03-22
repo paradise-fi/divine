@@ -20,7 +20,7 @@ struct FairScheduler : public Scheduler< Next > {
     void setup( Setup s ) {
         traceAlias< FairScheduler >( "{Scheduler}" );
 
-        s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
+        s.proc1->globals = __vm_ctl_get( _VM_CR_Globals );
         s.proc1->pid = 1;
 
         auto mainTask = this->newTaskMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
@@ -29,7 +29,8 @@ struct FairScheduler : public Scheduler< Next > {
         auto envp = construct_main_arg( "env.", s.env );
         this->setupMainTask( mainTask, argv.first, argv.second, envp.second );
 
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context > );
+        __vm_ctl_set( _VM_CR_Scheduler,
+                      reinterpret_cast< void * >( run_scheduler< typename Setup::Context > ) );
         this->setupDebug( s, argv, envp );
         environ = envp.second;
 
@@ -84,7 +85,7 @@ struct FairScheduler : public Scheduler< Next > {
 
     void interrupt() /* figure out fairness constraints */
     {
-        bool accepting = uint64_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Accepting;
+        bool accepting = __vm_ctl_flag( 0, 0 ) & _VM_CF_Accepting;
 
         if ( _workingGroup == 0 && accepting )
             moveToNextGroup();
