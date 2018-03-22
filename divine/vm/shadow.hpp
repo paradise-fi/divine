@@ -470,84 +470,6 @@ struct PooledShadow
 
     using TypeC = BitContainer< TypeProxy, Pool >;
 
-    struct DefinedC
-    {
-        struct proxy
-        {
-            DefinedC *_parent;
-            uint8_t *_base;
-            uint8_t *_type_base;
-            int _pos;
-            DataExceptions &exceptions() const { return _parent->_exceptions; }
-            uint8_t mask() const { return uint8_t( 0x80 ) >> ( _pos % 8 ); }
-            uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
-            proxy *operator->() { return this; }
-            operator uint8_t() const
-            {
-                if ( word() & mask() )
-                    return 0xFF;
-
-                if ( TypeProxy( _type_base, _pos ).is_exception() )
-                    return exceptions().defined( _parent->_base, _pos );
-
-                return 0x00;
-            }
-            bool raw() const
-            {
-                return word() & mask();
-            }
-            bool operator==( const proxy &o ) const { return uint8_t( *this ) == uint8_t( o ); }
-            bool operator!=( const proxy &o ) const { return ! ( *this == o ); }
-            proxy( DefinedC *c, uint8_t *b, uint8_t *tb, int p )
-                : _parent( c ), _base( b ), _type_base( tb ), _pos( p )
-            {}
-        };
-
-        struct iterator : std::iterator< std::forward_iterator_tag, proxy >
-        {
-            DefinedC *_parent;
-            uint8_t *_base;
-            uint8_t *_type_base;
-            int _pos;
-
-            iterator &operator++() { ++_pos; return *this; }
-            iterator &operator+=( int off ) { _pos += off; return *this; }
-            proxy operator*() const { return proxy( _parent, _base, _type_base, _pos ); }
-            proxy operator->() const { return proxy( _parent, _base, _type_base, _pos ); }
-            bool operator==( iterator o ) const {
-                return _parent == o._parent
-                    && _base == o._base
-                    && _type_base == o._type_base
-                    && _pos == o._pos;
-            }
-            bool operator!=( iterator o ) const { return ! ( *this == o ); }
-            bool operator<( iterator o ) const { return _pos < o._pos; }
-            iterator( DefinedC *c, uint8_t *b, uint8_t *tb, int p )
-                : _parent( c ), _base( b ), _type_base( tb ), _pos( p )
-            {}
-        };
-
-        Internal _base;
-        Pool & _sh_defined;
-        Pool & _sh_type;
-        DataExceptions & _exceptions;
-        int _from;
-        int _to;
-
-        DefinedC(Pool &def, Pool &type, DataExceptions &exc, Internal base, int from, int to)
-            : _base(base), _sh_defined(def), _sh_type(type), _exceptions(exc), _from(from), _to(to)
-        {}
-        iterator begin() { return iterator( this, _sh_defined.template machinePointer< uint8_t >( _base ),
-                _sh_type.template machinePointer< uint8_t >( _base ), _from ); }
-        iterator end() { return iterator( this, _sh_defined.template machinePointer< uint8_t >( _base ),
-                _sh_type.template machinePointer< uint8_t >( _base ), _to ); }
-        proxy operator[]( int i )
-        {
-            return proxy( this, _sh_defined.template machinePointer< uint8_t >( _base ),
-                    _sh_type.template machinePointer< uint8_t >( _base ), _from + i );
-        }
-    };
-
     struct PointerC
     {
         using t_iterator = typename TypeC::iterator;
@@ -662,10 +584,6 @@ struct PooledShadow
     auto type( Loc l, int sz )
     {
         return TypeC( _type, l.object, l.offset, l.offset + sz );
-    }
-    auto defined( Loc l, int sz )
-    {
-        return DefinedC( _defined, _type, *_def_exceptions, l.object, l.offset, l.offset + sz );
     }
     auto pointers( Loc l, int sz )
     {

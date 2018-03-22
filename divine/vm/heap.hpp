@@ -141,21 +141,6 @@ namespace divine::vm
             return pointers( p, self().ptr2i( p ), from, sz );
         }
 
-        auto defined( HeapPointer p, int from = 0, int sz = 0 )
-        {
-            return defined( p, self().ptr2i( p ), from, sz );
-        }
-
-        auto defined( HeapPointer p, Internal i, int from = 0, int sz = 0 )
-        {
-            return with_shadow( &Shadows::defined, p, from, sz, i );
-        }
-
-        auto type( HeapPointer p, int from = 0, int sz = 0 )
-        {
-            return with_shadow( &Shadows::type, p, from, sz, self().ptr2i( p ) );
-        }
-
         template< typename T >
         void write_shift( PointerV &p, T t )
         {

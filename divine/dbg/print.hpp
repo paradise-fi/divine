@@ -300,8 +300,10 @@ std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
     std::stringstream out;
 
     auto bytes = heap.unsafe_bytes( hloc, hloc.offset(), sz );
+    /*
     auto types = heap.type( hloc, hloc.offset(), sz );
     auto defined = heap.defined( hloc, hloc.offset(), sz );
+    */
 
     for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
     {
@@ -309,12 +311,14 @@ std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::hexbyte( out, col, i, bytes[ i ] );
         print::pad( out, col, 30 ); out << "| ";
+        /*
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::hexbyte( out, col, i, defined[ i ] );
         print::pad( out, col, 60 ); out << "| ";
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::ascbyte( out, col, bytes[ i ] );
         print::pad( out, col, 72 ); out << " | ";
+        */
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::ascbyte( out, col, types[ i ] );
         print::pad( out, col, 84 );
