@@ -1149,11 +1149,11 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
     void read( Loc l, V &value )
     {
         constexpr int sz = sizeof( typename V::Raw );
+        value.taints( value.taints() & ~TaintMask );
+
         for ( auto t : taints( l, sz ) )
             if ( t.get() )
                 value.taints( value.taints() | TaintMask );
-            else
-                value.taints( value.taints() & ~TaintMask );
 
         NextShadow::read( l, value );
     }
