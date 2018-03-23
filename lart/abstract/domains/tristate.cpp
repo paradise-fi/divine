@@ -14,7 +14,7 @@ namespace lart {
 namespace abstract {
 
 Type* tristate_t( Module *m ) {
-    return m->getFunction( "__abstract_tristate_lower" )->arg_begin()->getType();
+    return m->getFunction( "__tristate_lower" )->arg_begin()->getType();
 }
 
 Value* impl_rep( CallInst *call ) {
@@ -38,14 +38,14 @@ Value* impl_unrep( CallInst *call, Values &args ) {
 Value* impl_lift( CallInst *call ) {
     IRBuilder<> irb( call );
     auto op = call->getOperand( 0 );
-    auto fn = get_module( call )->getFunction( "__abstract_tristate_lift" );
+    auto fn = get_module( call )->getFunction( "__tristate_lift" );
     auto tr = irb.CreateTrunc( op, fn->arg_begin()->getType() );
     return irb.CreateCall( fn, { tr } );
 }
 
 Value* impl_lower( CallInst *call, Values &args ) {
     IRBuilder<> irb( call );
-    auto fn = get_module( call )->getFunction( "__abstract_tristate_lower" );
+    auto fn = get_module( call )->getFunction( "__tristate_lower" );
     auto lower = irb.CreateCall( fn, args );
     auto zext = irb.CreateZExt( lower, get_function( call )->getReturnType() );
     call->replaceAllUsesWith( zext );
