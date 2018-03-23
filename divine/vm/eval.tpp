@@ -1062,11 +1062,11 @@ void Eval< Ctx >::implement_br()
     {
         auto cond = operand< BoolV >( 0 );
         auto target = operandCk< PointerV >( cond.cooked() ? 2 : 1 );
-        if ( !cond.defined() )
+        if ( cond.defbits() & 1 )
+            local_jump( target );
+        else
             fault( _VM_F_Control, frame(), target.cooked() )
                 << " conditional jump depends on an undefined value";
-        else
-            local_jump( target );
     }
 }
 
