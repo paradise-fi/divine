@@ -88,9 +88,23 @@ void VPA::run( Module &m ) {
 
         auto val = mdv.value();
         auto dom = mdv.domain();
-
         preprocess( get_function( val ) );
         tasks.push_back( [=]{ propagate_value( val, dom ); } );
+    }
+
+    for ( auto &fn : m ) {
+        if ( auto md = fn.getMetadata( "lart.abstract.return" ) ) {
+            auto &tup = cast< MDNode >( md )->getOperand( 0 );
+            auto &mdn = cast< MDNode >( tup )->getOperand( 0 );
+            auto dom_name = cast< MDString >( mdn )->getString().str();
+            auto dom = DomainTable[ dom_name ];
+
+            for ( auto u : fn.users() )
+                if ( auto call = dyn_cast< CallInst >( u ) ) {
+                    preprocess( get_function( call ) );
+                    tasks.push_back( [=]{ propagate_value( call, dom ); } );
+                }
+        }
     }
 
     while ( !tasks.empty() ) {
