@@ -9,8 +9,8 @@ int main() {}
 
 void __boot()
 {
-    __vm_control( _VM_CA_Set, _VM_CR_State, __vm_obj_make( 4 ) );
-    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __sched );
+    __vm_ctl_set( _VM_CR_State, __vm_obj_make( 4 ) );
+    __vm_ctl_set( _VM_CR_Scheduler, __sched );
     __vm_suspend();
 }
 EOF

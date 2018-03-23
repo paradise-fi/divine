@@ -3,21 +3,22 @@
 
 struct Context { const char *msg; };
 
-void passSched() {
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+void passSched()
+{
+    __vm_ctl_flag( 0, _VM_CF_Cancel );
 }
 
-void failSched() {
-    auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
+void failSched()
+{
+    auto ctx = static_cast< Context * >( __vm_ctl_get( _VM_CR_State ) );
     __dios_trace_f( "Failed: %s", ctx->msg );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+    __vm_ctl_flag( 0, _VM_CF_Error | _VM_CF_Cancel );
 }
 
 #define bAss( expr, ctx, message ) do { \
     if ( !(expr) ) { \
         ctx->msg = message; \
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, failSched ); \
+        __vm_ctl_set( _VM_CR_Scheduler, reinterpret_cast< void * >( failSched ) ); \
         return; \
     } \
 } while ( false )

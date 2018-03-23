@@ -16,8 +16,8 @@ extern "C" void __boot( const _VM_Env *env )
 
     auto context = new Context();
     __vm_trace( _VM_T_StateType, context );
-    __vm_control( _VM_CA_Set, _VM_CR_State, context );
-    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, passSched );
+    __vm_ctl_set( _VM_CR_State, reinterpret_cast< void * >( context ) );
+    __vm_ctl_set( _VM_CR_Scheduler, reinterpret_cast< void * >( passSched ) );
 
     auto names = collectVfsNames( env );
     bAss( names.second, context, "Multi-capture of an object" );

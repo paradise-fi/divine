@@ -16,10 +16,10 @@ volatile int bypass_sig;
 void *t1( void *_ ) {
     x = 1;
     y = 1;
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _LART_CF_RelaxedMemRuntime, _LART_CF_RelaxedMemRuntime );
+    __vm_ctl_flag( 0, _LART_CF_RelaxedMemRuntime );
     bypass_sig = 1;
     while ( bypass_sig != 2 ) { }
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _LART_CF_RelaxedMemRuntime, _VM_CF_None );
+    __vm_ctl_flag( _LART_CF_RelaxedMemRuntime, 0 );
     __sync_synchronize();
     return NULL;
 }
@@ -30,18 +30,18 @@ int main() {
     pthread_create( &t1t, NULL, &t1, NULL );
 
     /* wait for the other thread to put everything to SB */
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _LART_CF_RelaxedMemRuntime, _LART_CF_RelaxedMemRuntime );
+    __vm_ctl_flag( 0, _LART_CF_RelaxedMemRuntime );
     while ( bypass_sig != 1 ) { }
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _LART_CF_RelaxedMemRuntime, _VM_CF_None );
+    __vm_ctl_flag( _LART_CF_RelaxedMemRuntime, 0 );
 
     x = 2;
     y = 3;
     __sync_synchronize();
 
     /* let the other thread flush its SB */
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _LART_CF_RelaxedMemRuntime, _LART_CF_RelaxedMemRuntime );
+    __vm_ctl_flag( 0, _LART_CF_RelaxedMemRuntime );
     bypass_sig = 2;
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _LART_CF_RelaxedMemRuntime, _VM_CF_None );
+    __vm_ctl_flag( _LART_CF_RelaxedMemRuntime, 0 );
     pthread_join( t1t, NULL );
 
     REACH( y == 3 && x == 2 ); /* ERROR */
