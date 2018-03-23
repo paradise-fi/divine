@@ -211,7 +211,7 @@ struct Int : Base
             def << std::hex << std::setw( width / 4 ) << std::setfill( '0' )
                 << +( v._m & bitlevel::ones< Raw >( width ) );
         return o << "[i" << width << " " << brick::string::fmt( v.cooked() )
-                 << " " << def.str() << "]";
+                 << " " << def.str() << ( v.taints() ? "t" : "" ) << "]";
     }
 };
 
@@ -286,7 +286,7 @@ struct Float : Base
     friend std::ostream & operator<<( std::ostream &o, Float v )
     {
         return o << "[f" << sizeof( Cooked ) * 8 << " " << v.cooked() << " "
-                 << ( v.defined() ? 'd' : 'u' ) << "]";
+                 << ( v.defined() ? 'd' : 'u' ) << ( v.taints() ? "t" : "" ) << "]";
     }
 };
 
@@ -326,7 +326,8 @@ struct Pointer : Base
         if ( !v._obj_defined ) def[0] = 'u';
         if ( !v._off_defined ) def[1] = 'u';
         if ( !v._ispointer ) def[2] = 'n';
-        v.withType( [&]( auto p ) { o << "[" << p << " " << def << "]"; return p; } );
+        v.withType( [&]( auto p ) { o << "[" << p << " " << def << ( v.taints() ? "t" : "" )
+                                      << "]"; return p; } );
         return o;
     }
 
