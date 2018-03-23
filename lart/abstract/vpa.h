@@ -19,6 +19,7 @@ struct VPA {
 private:
     void preprocess( llvm::Function* );
     void propagate_value( llvm::Value*, Domain );
+    void step_out( llvm::Function*, Domain );
 
     using Task = std::function< void() >;
     std::deque< Task > tasks;

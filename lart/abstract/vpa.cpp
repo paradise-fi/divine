@@ -75,10 +75,20 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     for ( auto & dep : lart::util::reverse( deps ) ) {
         if ( auto i = dyn_cast< Instruction >( dep ) )
             add_abstract_metadata( i, dom );
+        if ( auto r = dyn_cast< ReturnInst >( dep ) )
+            step_out( get_function( r ), dom );
         // TODO propagate
     }
 
     seen_vals.emplace( val, dom );
+}
+
+void VPA::step_out( Function *fn, Domain dom ) {
+    for ( auto u : fn->users() )
+        if ( auto call = dyn_cast< CallInst >( u ) ) {
+            preprocess( get_function( call ) );
+            tasks.push_back( [=]{ propagate_value( call, dom ); } );
+        }
 }
 
 void VPA::run( Module &m ) {
