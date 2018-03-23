@@ -13,16 +13,20 @@ namespace abstract {
 
 using namespace llvm;
 
-Domain domain( CallInst *call ) {
-    auto data = cast< GlobalVariable >( call->getOperand( 1 )->stripPointerCasts() );
-    auto annotation = cast< ConstantDataArray >( data->getInitializer() )->getAsCString();
+Domain domain( StringRef &ann ) {
     const std::string prefix = "lart.abstract.";
-    ASSERT( annotation.startswith( prefix ) );
+    ASSERT( ann.startswith( prefix ) );
 
-    auto name = annotation.str().substr( prefix.size() );
+    auto name = ann.str().substr( prefix.size() );
     if ( !DomainTable.count( name ) )
         throw std::runtime_error( "Unknown domain annotation: " + name );
     return DomainTable[ name ];
+}
+
+Domain domain( CallInst *call ) {
+    auto data = cast< GlobalVariable >( call->getOperand( 1 )->stripPointerCasts() );
+    auto ann = cast< ConstantDataArray >( data->getInitializer() )->getAsCString();
+    return domain( ann );
 }
 
 
@@ -109,6 +113,25 @@ void CreateAbstractMetadata::run( Module &m ) {
         }
 
         fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, {} ) );
+    }
+
+    // process annotation of functions
+    for ( auto &g : m.globals() ) {
+        if ( g.getName() == "llvm.global.annotations" ) {
+            auto ca = cast< ConstantArray >( g.getOperand(0) );
+            for ( auto &op : ca->operands() ) {
+                auto cs = cast< ConstantStruct >( op );
+                auto fn = cast< Function >( cs->getOperand(0)->getOperand(0) );
+                auto anngl = cast< GlobalVariable >( cs->getOperand(1)->getOperand(0) );
+                auto ann = cast< ConstantDataArray >(
+                                  anngl->getInitializer())->getAsCString();
+                if ( ann.startswith( "lart.abstract" ) ) {
+                    auto dom = domain( ann );
+                    auto dn = mdb.domain_node( dom );
+                    fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
+                }
+            }
+        }
     }
 }
 
