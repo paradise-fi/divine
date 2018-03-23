@@ -1138,7 +1138,7 @@ struct Eval
     TEST(taint_test_0)
     {
         auto x = testP( c2prog( "int __vm_test_taint_xi( int (*f)( char, int ), int, int ); "
-                                "int x; int g( char t, int x ) { return 7; }"
+                                "int g( char t, int x ) { return 7; }"
                                 "int f() { return __vm_test_taint_xi( g, 3, 7 ); }" ) );
         ASSERT_EQ( x.cooked(), 3 );
     }
@@ -1146,7 +1146,7 @@ struct Eval
     TEST(taint_test_1)
     {
         auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
-                                "int x; int g( char t, int x ) { return 7; } "
+                                "int g( char t, int x ) { return 7; } "
                                 "int h( int x ) { return 42; } "
                                 "int f() { return __vm_test_taint_ii( g, h, 7 ); }" ) );
         ASSERT_EQ( x.cooked(), 42 );
@@ -1155,13 +1155,35 @@ struct Eval
     TEST(taint_test_arg)
     {
         auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
-                                "int x; int g( char t, int x ) { return 7; } "
+                                "int g( char t, int x ) { return 7; } "
                                 "int h( int x ) { return 42 + x; } "
                                 "int f() { return __vm_test_taint_ii( g, h, 7 ); }" ) );
         ASSERT_EQ( x.cooked(), 49 );
     }
 
-    /* TODO: __vm_test_taint with actually tainted values */
+    TEST(taint_test_tainted)
+    {
+        auto t = IntV( 10 );
+        t.taints( 1 );
+        std::cerr << "t = " << t << std::endl;
+        auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
+                                "int g( char t, int x ) { return 8; } "
+                                "int h( int x ) { return 42 + x; } "
+                                "int f( int t ) { return __vm_test_taint_ii( g, h, t ); }" ), t );
+        ASSERT_EQ( x.cooked(), 8 );
+    }
+
+    TEST(taint_test_val)
+    {
+        auto t = IntV( 10 );
+        t.taints( 1 );
+        std::cerr << "t = " << t << std::endl;
+        auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
+                                "int g( char t, int x ) { return 8 + x; } "
+                                "int h( int x ) { return 42 + x; } "
+                                "int f( int t ) { return __vm_test_taint_ii( g, h, t ); }" ), t );
+        ASSERT_EQ( x.cooked(), 18 );
+    }
 
 };
 #endif

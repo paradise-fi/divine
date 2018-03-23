@@ -956,9 +956,10 @@ void Eval< Ctx >::implement_test_taint()
 
     uint8_t taints = 0;
     for ( int i = 2; i < instruction().argcount(); ++i )
-        op< Any >( i, [&]( auto v ) { taints |= v.arg( i ).taints(); } );
+        op< Any >( i + 1, [&]( auto v ) { taints |= v.arg( i ).taints(); } );
 
     context().sync_pc();
+    auto oldframe = frame();
     context()._incremental_enter = true;
 
     if ( taints )
@@ -971,16 +972,20 @@ void Eval< Ctx >::implement_test_taint()
         return;
     }
 
+    auto newframe = frame();
     auto &ff = program().function( taints ? tf : nf );
 
     for ( int i = 2; i < instruction().argcount(); ++i )
-        op< Any >( i, [&]( auto v )
+        op< Any >( i + 1, [&]( auto v )
         {
-            auto taint_v = value::Int< 8 >( v.arg( i ).taints() );
+            context().set( _VM_CR_Frame, oldframe );
+            auto arg = v.arg( i );
+            context().set( _VM_CR_Frame, newframe );
+            auto taint_v = value::Int< 8 >( arg.taints() );
             if ( taints )
-                context().push( ff, (i - 2) * 2, frame(), taint_v, v.arg( i ) );
+                context().push( ff, (i - 2) * 2, frame(), taint_v, arg );
             else
-                context().push( ff, (i - 2), frame(), v.arg( i ) );
+                context().push( ff, (i - 2), frame(), arg );
         } );
 }
 
