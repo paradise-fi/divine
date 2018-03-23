@@ -4,7 +4,7 @@
 void fire()
 {
     if ( __vm_choose( 2 ) )
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        __vm_ctl_flag( 0, _VM_CF_Error );
 }
 
 int main()

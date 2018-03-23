@@ -5,7 +5,7 @@
 
 void f( void (*pc)( void ) )
 {
-    struct _VM_Frame *frame = __vm_control( _VM_CA_Get, _VM_CR_Frame );
+    struct _VM_Frame *frame = __vm_ctl_get( _VM_CR_Frame );
     __dios_jump( frame->parent, pc, -1 );
     assert( 0 );
 }

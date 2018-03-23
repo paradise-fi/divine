@@ -8,7 +8,7 @@ volatile int wait = 1, end = 0;
 volatile struct _VM_Frame *tframe = NULL;
 
 void foo() __attribute__((__noinline__)) {
-    tframe = __vm_control( _VM_CA_Get, _VM_CR_Frame );
+    tframe = __vm_ctl_get( _VM_CR_Frame );
     while ( wait ) { }
 }
 

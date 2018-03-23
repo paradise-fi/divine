@@ -51,7 +51,7 @@ struct BuchiAutomaton : public __dios::Monitor
 
 void __buchi_accept()
 {
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Accepting, _VM_CF_Accepting );
+    __vm_ctl_flag( 0, _VM_CF_Accepting );
 }
 
 std::atomic_int x;
