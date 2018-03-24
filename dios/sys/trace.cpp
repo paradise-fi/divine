@@ -178,11 +178,10 @@ void __dios_trace_out( const char *msg, size_t size) noexcept
     __dios::traceInFile("passthrough.out", msg, size);
 }
 
-int __dios_clear_file( const char *name ) {
-
+int __dios_clear_file( const char *name )
+{
     __vm_syscall( _HOST_SYS_unlink,
-            _VM_SC_In | _VM_SC_Mem, strlen( name ) + 1, name);
+                  _VM_SC_In | _VM_SC_Mem, strlen( name ) + 1, name );
 
     return 1;
-
 }
