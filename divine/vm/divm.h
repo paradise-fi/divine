@@ -39,7 +39,7 @@ enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM
 #endif
 
 #ifndef _VMUTIL_INLINE
-#define _VMUTIL_INLINE static inline
+#define _VMUTIL_INLINE static inline __attribute__((always_inline))
 #define _VMUTIL_INLINE_UNDEF
 #endif
 
