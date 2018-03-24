@@ -203,13 +203,14 @@ struct Int : Base
     friend std::ostream & operator<<( std::ostream &o, Int v )
     {
         std::stringstream def;
-        if ( v._m == bitlevel::ones< Raw >( width ) )
+        auto aw = brick::bitlevel::align( width, 8 );
+        if ( v._m == bitlevel::ones< Raw >( aw ) )
             def << "d";
         else if ( v._m == 0 )
             def << "u";
         else
-            def << std::hex << std::setw( width / 4 ) << std::setfill( '0' )
-                << +( v._m & bitlevel::ones< Raw >( width ) );
+            def << std::hex << std::setw( aw / 4 ) << std::setfill( '0' )
+                << +( v._m & bitlevel::ones< Raw >( aw ) );
         return o << "[i" << width << " " << brick::string::fmt( v.cooked() )
                  << " " << def.str() << ( v.taints() ? "t" : "" ) << "]";
     }
