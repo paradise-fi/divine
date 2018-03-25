@@ -463,8 +463,15 @@ namespace divine::vm
             for ( auto pos : _shadows.pointers( shloc( _to, _to_i ), bytes ) )
             {
                 value::Pointer ptr;
-                _to.offset( to_off + pos.offset() );
-                read( _to, ptr, _to_i );
+                if ( pos.size() == PointerBytes )
+                {
+                    _to.offset( to_off + pos.offset() );
+                    read( _to, ptr, _to_i );
+                }
+                else
+                {
+                    ptr.cooked().object( pos.fragment() );
+                }
                 shared( ptr.cooked(), true );
             }
 
