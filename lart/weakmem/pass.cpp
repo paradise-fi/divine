@@ -48,8 +48,10 @@ struct ScalarMemory
 
     static char ID;
     const unsigned _wordsize = 8;
+    unsigned _silentID;
 
     void run( llvm::Module &m ) {
+        _silentID = m.getMDKindID( reduction::silentTag );
         for ( auto &f : m )
             transform( f );
     }
@@ -60,6 +62,8 @@ struct ScalarMemory
 
         for ( auto &bb : f )
             for ( auto &i : bb ) {
+                if ( reduction::isSilent( i, _silentID ) )
+                    continue;
                 if ( auto load = llvm::dyn_cast< llvm::LoadInst >( &i ) )
                     loads.push_back( load );
                 if ( auto store = llvm::dyn_cast< llvm::StoreInst >( &i ) )
