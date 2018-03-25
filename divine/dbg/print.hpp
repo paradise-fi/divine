@@ -310,17 +310,17 @@ std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
         int col = 0;
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::hexbyte( out, col, i, bytes[ i ] );
-        print::pad( out, col, 30 ); out << "| ";
         /*
+        print::pad( out, col, 30 ); out << "| ";
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::hexbyte( out, col, i, defined[ i ] );
         print::pad( out, col, 60 ); out << "| ";
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::ascbyte( out, col, bytes[ i ] );
         print::pad( out, col, 72 ); out << " | ";
-        */
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
             print::ascbyte( out, col, types[ i ] );
+        */
         print::pad( out, col, 84 );
         if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
             out << std::endl;
