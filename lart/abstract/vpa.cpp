@@ -42,13 +42,23 @@ void add_abstract_metadata( Instruction *i, Domain dom ) {
     i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
 }
 
-Values value_succs( llvm::Value *v ) { return { v->user_begin(), v->user_end() }; }
+Values value_succs( Value *v ) { return { v->user_begin(), v->user_end() }; }
 
 Values reach_from( Values roots ) {
     return lart::analysis::postorder( roots, value_succs );
 };
 
-Values reach_from( llvm::Value *root ) { return reach_from( Values{ root } ); }
+Values reach_from( Value *root ) { return reach_from( Values{ root } ); }
+
+Value* get_source( Value *val ) {
+    while ( true ) {
+        if ( auto gep = dyn_cast< GetElementPtrInst >( val ) )
+            val = gep->getPointerOperand();
+        if ( isa< AllocaInst >( val ) )
+            return val;
+        UNREACHABLE( "Unknown parent instruction." );
+    }
+}
 
 } // anonymous namespace
 
@@ -75,6 +85,10 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     for ( auto & dep : lart::util::reverse( deps ) ) {
         if ( auto i = dyn_cast< Instruction >( dep ) )
             add_abstract_metadata( i, dom );
+        if ( auto s = dyn_cast< StoreInst >( dep ) ) {
+            auto src = get_source( s->getPointerOperand() );
+            tasks.push_back( [=]{ propagate_value( src, dom ); } );
+        }
         if ( auto r = dyn_cast< ReturnInst >( dep ) )
             step_out( get_function( r ), dom );
         // TODO propagate
