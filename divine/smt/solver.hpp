@@ -38,8 +38,11 @@ enum class Result { False, True, Unknown };
 
 struct None
 {
-    bool equal( SymPairs &, vm::CowHeap &, vm::CowHeap & ) { UNREACHABLE( "no equality check" ); }
-    bool feasible( vm::CowHeap &, vm::HeapPointer ) { return true; }
+    bool equal( SymPairs &, vm::mem::CowHeap &, vm::mem::CowHeap & )
+    {
+        UNREACHABLE( "no equality check" );
+    }
+    bool feasible( vm::mem::CowHeap &, vm::HeapPointer ) { return true; }
     void reset() {}
 };
 
@@ -47,15 +50,15 @@ template< typename Core >
 struct Simple : Core
 {
     using Core::Core;
-    bool equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
-    bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
+    bool equal( SymPairs &sym_pairs, vm::mem::CowHeap &h1, vm::mem::CowHeap &h2 );
+    bool feasible( vm::mem::CowHeap & heap, vm::HeapPointer assumes );
 };
 
 template< typename Core >
 struct Incremental : Simple< Core >
 {
     using Simple< Core >::Simple;
-    bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
+    bool feasible( vm::mem::CowHeap & heap, vm::HeapPointer assumes );
     std::vector< vm::HeapPointer > _inc;
 };
 
@@ -74,7 +77,7 @@ struct SMTLib
         return builder::SMTLib2( _ctx, "_"s + char( 'a' + id ) );
     }
 
-    auto extract( vm::CowHeap &h, int id = 0 )
+    auto extract( vm::mem::CowHeap &h, int id = 0 )
     {
         return extract::SMTLib2( h, _ctx, "_"s + char( 'a' + id ) );
     }
@@ -92,7 +95,7 @@ struct Z3
     Z3( const Z3 & ) : Z3() {}
 
     builder::Z3 builder( int = 0 ) { return builder::Z3( _ctx ); }
-    extract::Z3 extract( vm::CowHeap &h, int = 0 ) { return extract::Z3( h, _ctx ); }
+    extract::Z3 extract( vm::mem::CowHeap &h, int = 0 ) { return extract::Z3( h, _ctx ); }
 
     Result solve()
     {

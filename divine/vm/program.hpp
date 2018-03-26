@@ -136,7 +136,7 @@ struct Program
     std::unordered_set< int > is_trap;
     std::set< HeapPointer > metadata_ptr;
 
-    using Context = ConstContext< Program, SmallHeap >;
+    using Context = ConstContext< Program, mem::SmallHeap >;
     Context _ccontext;
 
     using LXTypes = lx::Types< typename Context::Heap >;

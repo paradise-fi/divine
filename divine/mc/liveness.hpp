@@ -164,10 +164,10 @@ template< typename Next, typename Builder_ = ExplicitBuilder >
 struct Liveness : Job
 {
     using Builder = Builder_;
-    using Parent = std::atomic< vm::CowHeap::Snapshot >;
-    using MasterPool = typename vm::CowHeap::SnapPool;
+    using Parent = std::atomic< vm::mem::CowHeap::Snapshot >;
+    using MasterPool = typename vm::mem::CowHeap::SnapPool;
     using SlavePool = brick::mem::SlavePool< MasterPool >;
-    using CEStates = std::deque< vm::CowHeap::Snapshot >;
+    using CEStates = std::deque< vm::mem::CowHeap::Snapshot >;
 
     Builder _ex; //state space
     SlavePool _ext;

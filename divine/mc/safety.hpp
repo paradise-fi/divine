@@ -29,8 +29,8 @@ namespace divine::mc
 template< typename Next, typename Builder >
 struct Safety : Job
 {
-    using Parent = std::atomic< vm::CowHeap::Snapshot >;
-    using MasterPool = typename vm::CowHeap::SnapPool;
+    using Parent = std::atomic< vm::mem::CowHeap::Snapshot >;
+    using MasterPool = typename vm::mem::CowHeap::SnapPool;
     using SlavePool = brick::mem::SlavePool< MasterPool >;
     using StateTrace = mc::StateTrace< Builder >;
 
@@ -111,7 +111,7 @@ struct Safety : Job
         while ( i != _ex._d.initial.snap )
         {
             rv.emplace_front( i, std::nullopt );
-            i = *_ext.machinePointer< vm::CowHeap::Snapshot >( i );
+            i = *_ext.machinePointer< vm::mem::CowHeap::Snapshot >( i );
         }
         rv.emplace_front( _ex._d.initial.snap, std::nullopt );
         return mc::trace( _ex, rv );

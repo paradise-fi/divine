@@ -64,7 +64,7 @@ struct Job : ss::Job
         _search->stop();
     }
 
-    using DbgCtx = dbg::Context< vm::CowHeap >;
+    using DbgCtx = dbg::Context< vm::mem::CowHeap >;
 
     virtual Trace ce_trace() { return Trace(); }
     virtual Result result() { return Result::None; }

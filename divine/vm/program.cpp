@@ -601,7 +601,7 @@ void Program::pass()
         }
     }
 
-    _globals_size = mem::align( _globals_size, 4 );
+    _globals_size = brick::mem::align( _globals_size, 4 );
 }
 
 lx::Slot Program::allocateSlot( Slot slot, int function, llvm::Value *val )
@@ -610,7 +610,7 @@ lx::Slot Program::allocateSlot( Slot slot, int function, llvm::Value *val )
     {
         case Slot::Const:
             slot.offset = _constants_size;
-            _constants_size = mem::align( _constants_size + slot.size(), 4 );
+            _constants_size = brick::mem::align( _constants_size + slot.size(), 4 );
             if ( val && _addr.has_slot( val ) )
             {
                 int idx = _addr.addr( val ).object();
@@ -620,7 +620,7 @@ lx::Slot Program::allocateSlot( Slot slot, int function, llvm::Value *val )
             return slot;
         case Slot::Global:
             slot.offset = _globals_size;
-            _globals_size = mem::align( _globals_size + slot.size(), 4 );
+            _globals_size = brick::mem::align( _globals_size + slot.size(), 4 );
             ASSERT( val && _addr.has_slot( val ) );
             {
                 int idx = _addr.addr( val ).object();
@@ -644,7 +644,7 @@ template< typename H >
 std::pair< HeapPointer, HeapPointer > Program::exportHeap( H &target )
 {
     auto cp = value::Pointer(
-            heap::clone( _ccontext._heap, target, _ccontext.constants() ) );
+            mem::heap::clone( _ccontext._heap, target, _ccontext.constants() ) );
 
     if ( !_globals_size )
         return std::make_pair( cp.cooked(), nullPointer() );
@@ -656,6 +656,6 @@ std::pair< HeapPointer, HeapPointer > Program::exportHeap( H &target )
     return std::make_pair( cp.cooked(), gp.cooked() );
 }
 
-template std::pair< HeapPointer, HeapPointer > Program::exportHeap< CowHeap >( CowHeap & );
-template std::pair< HeapPointer, HeapPointer > Program::exportHeap< MutableHeap >( MutableHeap & );
-template std::pair< HeapPointer, HeapPointer > Program::exportHeap< SmallHeap >( SmallHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< mem::CowHeap >( mem::CowHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< mem::MutableHeap >( mem::MutableHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< mem::SmallHeap >( mem::SmallHeap & );

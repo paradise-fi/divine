@@ -68,8 +68,8 @@ struct ExecContext_ : Super
                                             * restored here */
 };
 
-using ExecContext  = ExecContext_< vm::Context< vm::Program, vm::MutableHeap > >;
-using TraceContext = ExecContext_< dbg::Context< vm::MutableHeap > >;
+using ExecContext  = ExecContext_< vm::Context< vm::Program, vm::mem::MutableHeap > >;
+using TraceContext = ExecContext_< dbg::Context< vm::mem::MutableHeap > >;
 
 struct Exec
 {

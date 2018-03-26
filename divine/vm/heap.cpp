@@ -19,7 +19,7 @@
 #include <divine/vm/heap.hpp>
 #include <divine/vm/heap.tpp>
 
-namespace divine::vm
+namespace divine::vm::mem
 {
 
 using Int64 = value::Int< 64, false >;

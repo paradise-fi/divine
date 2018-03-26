@@ -41,7 +41,7 @@
  * pointers exactly (that is, pointers are tagged out-of-band).
  */
 
-namespace divine::vm::heap
+namespace divine::vm::mem::heap
 {
     template< typename H1, typename H2, typename MarkedComparer >
     int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
@@ -96,10 +96,8 @@ namespace divine::vm::heap
     void leaked( Heap &h, F f, Roots... roots );
 }
 
-namespace divine::vm
+namespace divine::vm::mem
 {
-
-    namespace mem = brick::mem;
 
     struct HeapBytes
     {
@@ -199,13 +197,13 @@ namespace divine::vm
     };
 
     template< typename Self, typename PR >
-    struct SimpleHeap : HeapMixin< Self, PooledTaintShadow< PooledShadow, mem::Pool< PR > >,
-                                   typename mem::Pool< PR >::Pointer >
+    struct SimpleHeap : HeapMixin< Self, PooledTaintShadow< PooledShadow, brick::mem::Pool< PR > >,
+                                   typename brick::mem::Pool< PR >::Pointer >
     {
         Self &self() { return *static_cast< Self * >( this ); }
 
-        using ObjPool = mem::Pool< PR >;
-        using SnapPool = mem::Pool< PR >;
+        using ObjPool = brick::mem::Pool< PR >;
+        using SnapPool = brick::mem::Pool< PR >;
 
         using Internal = typename ObjPool::Pointer;
         using Snapshot = typename SnapPool::Pointer;
@@ -431,7 +429,7 @@ namespace divine::t_vm
 
         TEST(alloc)
         {
-            vm::SmallHeap heap;
+            vm::mem::SmallHeap heap;
             auto p = heap.make( 16 );
             heap.write( p.cooked(), IntV( 10 ) );
             IntV q;
@@ -441,7 +439,7 @@ namespace divine::t_vm
 
         TEST(conversion)
         {
-            vm::SmallHeap heap;
+            vm::mem::SmallHeap heap;
             auto p = heap.make( 16 );
             ASSERT_EQ( vm::HeapPointer( p.cooked() ),
                     vm::HeapPointer( vm::GenericPointer( p.cooked() ) ) );
@@ -449,7 +447,7 @@ namespace divine::t_vm
 
         TEST(write_read)
         {
-            vm::SmallHeap heap;
+            vm::mem::SmallHeap heap;
             PointerV p, q;
             p = heap.make( 16 );
             heap.write( p.cooked(), p );
@@ -459,7 +457,7 @@ namespace divine::t_vm
 
         TEST(resize)
         {
-            vm::SmallHeap heap;
+            vm::mem::SmallHeap heap;
             PointerV p, q;
             p = heap.make( 16 );
             heap.write( p.cooked(), p );
@@ -471,7 +469,7 @@ namespace divine::t_vm
 
         TEST(pointers)
         {
-            vm::SmallHeap heap;
+            vm::mem::SmallHeap heap;
             auto p = heap.make( 16 ), q = heap.make( 16 ), r = PointerV( vm::nullPointer() );
             heap.write( p.cooked(), q );
             heap.write( q.cooked(), r );
@@ -483,10 +481,10 @@ namespace divine::t_vm
 
         TEST(clone_int)
         {
-            vm::SmallHeap heap, cloned;
+            vm::mem::SmallHeap heap, cloned;
             auto p = heap.make( 16 );
             heap.write( p.cooked(), IntV( 33 ) );
-            auto c = vm::heap::clone( heap, cloned, p.cooked() );
+            auto c = vm::mem::heap::clone( heap, cloned, p.cooked() );
             IntV i;
             cloned.read( c, i );
             ASSERT( ( i == IntV( 33 ) ).cooked() );
@@ -495,12 +493,12 @@ namespace divine::t_vm
 
         TEST(clone_ptr_chain)
         {
-            vm::SmallHeap heap, cloned;
+            vm::mem::SmallHeap heap, cloned;
             auto p = heap.make( 16 ), q = heap.make( 16 ), r = PointerV( vm::nullPointer() );
             heap.write( p.cooked(), q );
             heap.write( q.cooked(), r );
 
-            auto c_p = vm::heap::clone( heap, cloned, p.cooked() );
+            auto c_p = vm::mem::heap::clone( heap, cloned, p.cooked() );
             PointerV c_q, c_r;
             cloned.read( c_p, c_q );
             ASSERT( c_q.pointer() );
@@ -510,11 +508,11 @@ namespace divine::t_vm
 
         TEST(clone_ptr_loop)
         {
-            vm::SmallHeap heap, cloned;
+            vm::mem::SmallHeap heap, cloned;
             auto p = heap.make( 16 ), q = heap.make( 16 );
             heap.write( p.cooked(), q );
             heap.write( q.cooked(), p );
-            auto c_p1 = vm::heap::clone( heap, cloned, p.cooked() );
+            auto c_p1 = vm::mem::heap::clone( heap, cloned, p.cooked() );
             PointerV c_q, c_p2;
             cloned.read( c_p1, c_q );
             ASSERT( c_q.pointer() );
@@ -524,39 +522,39 @@ namespace divine::t_vm
 
         TEST(compare)
         {
-            vm::SmallHeap heap, cloned;
+            vm::mem::SmallHeap heap, cloned;
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
             heap.write( p, PointerV( q ) );
             heap.write( q, PointerV( p ) );
-            auto c_p = vm::heap::clone( heap, cloned, p );
-            ASSERT_EQ( vm::heap::compare( heap, cloned, p, c_p ), 0 );
+            auto c_p = vm::mem::heap::clone( heap, cloned, p );
+            ASSERT_EQ( vm::mem::heap::compare( heap, cloned, p, c_p ), 0 );
             p.offset( 8 );
             heap.write( p, vm::value::Int< 32 >( 1 ) );
-            ASSERT_LT( 0, vm::heap::compare( heap, cloned, p, c_p ) );
+            ASSERT_LT( 0, vm::mem::heap::compare( heap, cloned, p, c_p ) );
         }
 
         TEST(hash)
         {
-            vm::SmallHeap heap, cloned;
+            vm::mem::SmallHeap heap, cloned;
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, PointerV( p ) );
             heap.write( q, PointerV( p ) );
-            auto c_p = vm::heap::clone( heap, cloned, p );
-            ASSERT_EQ( vm::heap::hash( heap, p ).first,
-                    vm::heap::hash( cloned, c_p ).first );
+            auto c_p = vm::mem::heap::clone( heap, cloned, p );
+            ASSERT_EQ( vm::mem::heap::hash( heap, p ).first,
+                    vm::mem::heap::hash( cloned, c_p ).first );
         }
 
         TEST(cow_hash)
         {
-            vm::CowHeap heap;
+            vm::mem::CowHeap heap;
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
             heap.snapshot();
-            ASSERT( vm::heap::hash( heap, p ).first !=
-                    vm::heap::hash( heap, q ).first );
+            ASSERT( vm::mem::heap::hash( heap, p ).first !=
+                    vm::mem::heap::hash( heap, q ).first );
         }
 
     };
@@ -568,7 +566,7 @@ namespace divine::t_vm
 
         TEST(basic)
         {
-            vm::CowHeap heap;
+            vm::mem::CowHeap heap;
             auto p = heap.make( 16 ).cooked();
             heap.write( p, PointerV( p ) );
             auto snap = heap.snapshot();

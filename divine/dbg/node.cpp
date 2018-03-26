@@ -826,6 +826,6 @@ Node< Prog, Heap > Node< Prog, Heap >::related( std::string key )
     return res;
 }
 
-template struct Node< vm::Program, vm::CowHeap >;
+template struct Node< vm::Program, vm::mem::CowHeap >;
 
 }

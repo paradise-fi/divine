@@ -29,10 +29,10 @@
 namespace divine::mc
 {
 
-using DbgCtx = dbg::Context< vm::CowHeap >;
-using DbgNode = dbg::Node< vm::Program, vm::CowHeap >;
+using DbgCtx = dbg::Context< vm::mem::CowHeap >;
+using DbgNode = dbg::Node< vm::Program, vm::mem::CowHeap >;
 
-static inline DbgNode root( DbgCtx &ctx, vm::CowHeap::Snapshot snap )
+static inline DbgNode root( DbgCtx &ctx, vm::mem::CowHeap::Snapshot snap )
 {
     DbgNode n( ctx, snap );
     n.address( dbg::DNKind::Object, ctx.get( _VM_CR_State ).pointer );
@@ -43,7 +43,7 @@ static inline DbgNode root( DbgCtx &ctx, vm::CowHeap::Snapshot snap )
 }
 
 template< typename BT, typename Fmt, typename Dbg >
-void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowSnapshot snap, int maxdepth = 10 )
+void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::mem::CowSnapshot snap, int maxdepth = 10 )
 {
     auto dn = root( dbg, snap );
     DbgNode dn_top( dbg, snap );

@@ -21,6 +21,6 @@
 namespace divine::dbg
 {
 
-template struct Stepper< dbg::Context< vm::CowHeap > >;
+template struct Stepper< dbg::Context< vm::mem::CowHeap > >;
 
 }

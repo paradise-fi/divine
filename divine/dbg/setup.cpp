@@ -31,6 +31,6 @@ namespace divine::dbg::setup
         eval.run();
     }
 
-    template void boot< dbg::Context< vm::CowHeap > >( dbg::Context< vm::CowHeap > & );
+    template void boot< dbg::Context< vm::mem::CowHeap > >( dbg::Context< vm::mem::CowHeap > & );
 
 }

@@ -24,8 +24,8 @@
 namespace divine::vm
 {
 
-template struct Context< Program, CowHeap >;
-template struct Context< Program, SmallHeap >;
-template struct Context< Program, MutableHeap >;
+template struct Context< Program, mem::CowHeap >;
+template struct Context< Program, mem::SmallHeap >;
+template struct Context< Program, mem::MutableHeap >;
 
 }

@@ -43,11 +43,11 @@ namespace divine::mc
         std::vector< vm::Step > steps;
         std::vector< std::string > labels;
         std::string bootinfo;
-        vm::CowSnapshot final;
+        vm::mem::CowSnapshot final;
     };
 
     template< typename Ex >
-    using StateTrace = std::deque< std::pair< vm::CowSnapshot,
+    using StateTrace = std::deque< std::pair< vm::mem::CowSnapshot,
                                               std::optional< typename Ex::Label > > >;
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;

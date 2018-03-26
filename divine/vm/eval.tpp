@@ -616,7 +616,7 @@ void Eval< Ctx >::implement_hypercall()
             if ( !ptr.heap() || !heap().valid( ptr ) )
                 fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_clone";
             else
-                result( PointerV( heap::clone( heap(), heap(), ptr ) ) );
+                result( PointerV( mem::heap::clone( heap(), heap(), ptr ) ) );
             return;
         }
         default:

@@ -28,7 +28,7 @@ namespace divine::ui
 {
 
 enum class Phase { LART, RR, Constants, Done };
-using DbgContext = dbg::Context< vm::CowHeap >;
+using DbgContext = dbg::Context< vm::mem::CowHeap >;
 
 struct LogSink
 {

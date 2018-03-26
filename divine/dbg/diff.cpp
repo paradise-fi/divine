@@ -104,6 +104,6 @@ namespace divine::dbg
         diff( out, a, b, {}, visited );
     }
 
-    using DNode = Node< vm::Program, vm::CowHeap >;
-    template void diff< vm::Program, vm::CowHeap >( std::ostream &out, DNode a, DNode b );
+    using DNode = Node< vm::Program, vm::mem::CowHeap >;
+    template void diff< vm::Program, vm::mem::CowHeap >( std::ostream &out, DNode a, DNode b );
 }

@@ -58,7 +58,7 @@ auto get_pc( Extract &e, vm::HeapPointer ptr )
 }
 
 template< typename Core >
-bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &h_2 )
+bool Simple< Core >::equal( SymPairs &sym_pairs, vm::mem::CowHeap &h_1, vm::mem::CowHeap &h_2 )
 {
     this->reset();
     auto e_1 = this->extract( h_1, 1 ), e_2 = this->extract( h_2, 2 );
@@ -103,7 +103,7 @@ bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &
 }
 
 template< typename Core >
-bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
+bool Simple< Core >::feasible( vm::mem::CowHeap & heap, vm::HeapPointer ptr )
 {
     this->reset();
     auto e = this->extract( heap );
@@ -113,7 +113,7 @@ bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
 }
 
 template< typename Core >
-bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
+bool Incremental< Core >::feasible( vm::mem::CowHeap &heap, vm::HeapPointer ptr )
 {
     auto e = this->extract( heap );
     auto query = e.constant( true );

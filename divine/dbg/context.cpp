@@ -19,11 +19,11 @@
 #include <divine/vm/eval.tpp>
 #include <divine/dbg/context.hpp>
 
-namespace divine::dbg { template struct dbg::Context< vm::MutableHeap >; }
+namespace divine::dbg { template struct dbg::Context< vm::mem::MutableHeap >; }
 namespace divine::vm
 {
 
-template struct Eval< dbg::DNContext< CowHeap > >;
-template struct Eval< dbg::Context< CowHeap > >;
+template struct Eval< dbg::DNContext< mem::CowHeap > >;
+template struct Eval< dbg::Context< mem::CowHeap > >;
 
 }

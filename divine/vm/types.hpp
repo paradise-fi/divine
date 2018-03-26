@@ -90,15 +90,19 @@ namespace divine::vm
         uint64_t slab:slab_bits, chunk:chunk_bits, tag:tag_bits;
     };
 
+    namespace mem {
+
     template< typename Self, typename PR = PoolRep<> > struct SimpleHeap;
 
     template< int slab >
-    struct MutableHeap_ : SimpleHeap< MutableHeap_< slab >, PoolRep< slab > > {};
+        struct MutableHeap_ : SimpleHeap< MutableHeap_< slab >, PoolRep< slab > > {};
 
     using MutableHeap = MutableHeap_< 20 >;
     using SmallHeap = MutableHeap_< 8 >;
     struct CowHeap;
     using CowSnapshot = brick::mem::Pool< PoolRep<> >::Pointer;
+
+    }
 
     template< typename _Program, typename _Heap > struct Context;
     template< typename Context > struct Eval;

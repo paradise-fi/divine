@@ -96,7 +96,7 @@ void Verify::run()
 
 void Verify::print_ce( mc::Job &job )
 {
-    dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
+    dbg::Context< vm::mem::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
 
     _log->info( "\n" ); /* makes the output prettier */
 

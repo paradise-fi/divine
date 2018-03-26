@@ -28,7 +28,6 @@ namespace divine {
 namespace vm {
 
 namespace bitlevel = brick::bitlevel;
-namespace mem = brick::mem;
 
 template< typename InternalPtr >
 struct InternalLoc : public brick::types::Ord
@@ -252,7 +251,7 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
 template< typename MasterPool >
 struct PooledShadow
 {
-    using Pool = mem::SlavePool< MasterPool >;
+    using Pool = brick::mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
     using Loc = InternalLoc< Internal >;
 
@@ -1007,7 +1006,7 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
     static constexpr uint8_t TaintMask = ( 1 << TaintBit );
 
     using NextShadow = SlaveShadow< MasterPool >;
-    using Pool = mem::SlavePool< MasterPool >;
+    using Pool = brick::mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
     using Loc = InternalLoc< Internal >;
 

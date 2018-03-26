@@ -30,7 +30,7 @@ struct Extract : Builder
     using Node = typename Builder::Node;
 
     template< typename... Args >
-    Extract( vm::CowHeap &heap, Args && ... args )
+    Extract( vm::mem::CowHeap &heap, Args && ... args )
         : Builder( std::forward< Args >( args )... ), _heap( heap )
     {}
 
@@ -48,7 +48,7 @@ struct Extract : Builder
         return it->second;
     }
 
-    vm::CowHeap &_heap;
+    vm::mem::CowHeap &_heap;
     std::unordered_map< vm::HeapPointer, Node > _values;
 };
 

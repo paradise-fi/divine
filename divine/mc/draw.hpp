@@ -31,14 +31,14 @@ namespace {
 template< typename Builder >
 std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance, bool heap )
 {
-    dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
+    dbg::Context< vm::mem::CowHeap > dbg( bc->program(), bc->debug() );
     dbg.load( bld.context() );
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ) > dbg_eval( dbg );
     dbg_eval.run();
 
     struct ext_data { int seq; int distance; };
-    brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext_pool( bld.pool() );
+    brick::mem::SlavePool< typename vm::mem::CowHeap::SnapPool > ext_pool( bld.pool() );
     int seq = 0;
 
     auto ext = [&]( auto st ) -> auto& { return *ext_pool.machinePointer< ext_data >( st.snap ); };
@@ -84,7 +84,7 @@ std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance
             [&]( auto st )
             {
                 init( st );
-                dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
+                dbg::Node< vm::Program, vm::mem::CowHeap > dn( dbg, st.snap );
                 dn._ref.get();
                 dn.address( dbg::DNKind::Object, bld.context().get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );

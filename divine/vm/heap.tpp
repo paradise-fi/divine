@@ -20,7 +20,7 @@
 
 #include <divine/vm/heap.hpp>
 
-namespace divine::vm::heap
+namespace divine::vm::mem::heap
 {
 
     template< typename H1, typename H2, typename MarkedComparer >
@@ -289,7 +289,7 @@ namespace divine::vm::heap
     }
 }
 
-namespace divine::vm
+namespace divine::vm::mem
 {
 
     template< typename Self, typename PR >
