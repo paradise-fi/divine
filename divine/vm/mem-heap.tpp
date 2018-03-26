@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 
 namespace divine::vm::mem::heap
 {

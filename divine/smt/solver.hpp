@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <divine/smt/builder.hpp>
 #include <divine/smt/extract.hpp>
 #include <vector>

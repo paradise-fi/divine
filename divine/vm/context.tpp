@@ -17,7 +17,7 @@
  */
 
 #include <divine/vm/context.hpp>
-#include <divine/vm/heap.tpp>
+#include <divine/vm/mem-heap.tpp>
 #include <divine/vm/program.hpp>
 
 namespace divine::vm

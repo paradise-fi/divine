@@ -19,7 +19,7 @@
 #pragma once
 
 #include <divine/mc/builder.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <divine/dbg/dot.hpp>
 #include <brick-proc>
 

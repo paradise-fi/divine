@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/context.tpp>

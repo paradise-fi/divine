@@ -19,7 +19,7 @@
 
 #include <divine/vm/eval.hpp>
 #include <divine/vm/eval.tpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 
 #ifdef __OpenBSD__
 extern "C" long __syscall( long, ... );

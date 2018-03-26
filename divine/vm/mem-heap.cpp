@@ -16,8 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/heap.hpp>
-#include <divine/vm/heap.tpp>
+#include <divine/vm/mem-heap.hpp>
+#include <divine/vm/mem-heap.tpp>
 
 namespace divine::vm::mem
 {

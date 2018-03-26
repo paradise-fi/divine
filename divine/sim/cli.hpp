@@ -20,7 +20,7 @@
 
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/builder.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/dbg/stepper.hpp>
 #include <divine/dbg/context.hpp>

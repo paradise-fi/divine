@@ -608,7 +608,7 @@ struct Eval
 
 }
 
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 
 namespace divine::t_vm
 {

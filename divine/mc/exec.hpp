@@ -22,7 +22,7 @@
 #include <divine/vm/context.hpp>
 #include <divine/dbg/context.hpp>
 #include <divine/vm/program.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 
 namespace divine::mc
 {

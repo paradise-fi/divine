@@ -17,7 +17,7 @@
  */
 
 #pragma once
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/lx-type.hpp>
 
 DIVINE_RELAX_WARNINGS

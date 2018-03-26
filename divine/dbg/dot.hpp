@@ -19,7 +19,7 @@
 #pragma once
 
 #include <divine/dbg/node.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <brick-proc>
 
 namespace divine {

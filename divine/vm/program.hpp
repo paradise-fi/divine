@@ -36,7 +36,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
-#include <divine/vm/heap.hpp>
+#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/context.hpp>
 #include <divine/cc/clang.hpp>
 
