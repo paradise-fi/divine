@@ -485,16 +485,16 @@ namespace divine::vm::mem
 
         brick::hash::jenkins::SpookyState high( 0, 0 );
 
-        auto types = shadows().type( ShadowLoc( i, 0 ), size );
-        auto t = types.begin();
+        auto comp = shadows().compressed( ShadowLoc( i, 0 ), size / 4 );
+        auto c = comp.begin();
         int offset = 0;
 
         while ( offset + 4 <= size )
         {
-            if ( *t != ShadowType::Pointer ) /* NB. assumes little endian */
+            if ( ! Shadows::Descriptor::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
                 high.update( base + offset, 4 );
             offset += 4;
-            t += 4;
+            ++c;
         }
 
         high.update( base + offset, size - offset );

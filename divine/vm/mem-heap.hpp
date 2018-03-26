@@ -22,9 +22,10 @@
 #include <brick-hash>
 #include <brick-hashset>
 #include <unordered_set>
+#include <unordered_map>
 
 #include <divine/vm/value.hpp>
-#include <divine/vm/shadow.hpp>
+#include <divine/vm/mem-shadow.hpp>
 #include <divine/vm/types.hpp>
 
 /*
@@ -197,7 +198,7 @@ namespace divine::vm::mem
     };
 
     template< typename Self, typename PR >
-    struct SimpleHeap : HeapMixin< Self, PooledTaintShadow< PooledShadow, brick::mem::Pool< PR > >,
+    struct SimpleHeap : HeapMixin< Self, mem::CompoundShadow< brick::mem::Pool< PR > >,
                                    typename brick::mem::Pool< PR >::Pointer >
     {
         Self &self() { return *static_cast< Self * >( this ); }
@@ -208,7 +209,7 @@ namespace divine::vm::mem
         using Internal = typename ObjPool::Pointer;
         using Snapshot = typename SnapPool::Pointer;
 
-        using Shadows = PooledTaintShadow< PooledShadow, ObjPool >;
+        using Shadows = mem::CompoundShadow< ObjPool >;
         using PointerV = value::Pointer;
         using ShadowLoc = typename Shadows::Loc;
 
