@@ -639,9 +639,9 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
 }
 
 _WM_INTERFACE
-void __lart_weakmem_fence( MemoryOrder ord ) noexcept {
-    FullMask mask;
-    if ( mask.bypass() || mask.kernel() )
+void __lart_weakmem_fence( MemoryOrder ord, MaskFlags mask ) noexcept
+{
+    if ( bypass( mask ) || kernel( mask ) )
         return; // should not be called recursivelly
 
     auto tid = __dios_this_task();
@@ -743,7 +743,8 @@ CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32
 }
 
 _WM_INTERFACE
-void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
+void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept
+{
     FullMask mask;
     if ( mask.bypass() || mask.kernel() )
         return; // should not be called recursivelly
