@@ -54,7 +54,9 @@ Value* get_source( Value *val ) {
     while ( true ) {
         if ( auto gep = dyn_cast< GetElementPtrInst >( val ) )
             val = gep->getPointerOperand();
-        if ( isa< AllocaInst >( val ) )
+        else if ( auto load = dyn_cast< LoadInst >( val ) )
+            val = load->getPointerOperand();
+        else if ( isa< AllocaInst >( val ) )
             return val;
         else if ( isa< GlobalValue >( val ) )
             return val;
@@ -91,18 +93,49 @@ void VPA::propagate_value( Value *val, Domain dom ) {
 
     auto deps = reach_from( val );
     for ( auto & dep : lart::util::reverse( deps ) ) {
-        if ( auto i = dyn_cast< Instruction >( dep ) )
+        seen_vals.emplace( dep, dom );
+
+        if ( auto i = dyn_cast< Instruction >( dep ) ) {
             add_abstract_metadata( i, dom );
-        if ( auto s = dyn_cast< StoreInst >( dep ) ) {
-            auto src = get_source( s->getPointerOperand() );
-            tasks.push_back( [=]{ propagate_value( src, dom ); } );
         }
-        if ( auto r = dyn_cast< ReturnInst >( dep ) )
+
+        if ( auto s = dyn_cast< StoreInst >( dep ) ) {
+            if ( seen_vals.count( { s->getValueOperand(), dom } ) ) {
+                auto src = get_source( s->getPointerOperand() );
+                tasks.push_back( [=]{ propagate_value( src, dom ); } );
+            } else {
+                if ( auto arg = dyn_cast< Argument >( s->getValueOperand() ) )
+                    propagate_back( arg, dom );
+            }
+        }
+        else if ( auto call = dyn_cast< CallInst >( dep ) ) {
+            auto fn = call->getCalledFunction();
+            if ( !fn->isIntrinsic() ) {
+                for ( auto &op : call->arg_operands() ) {
+                    auto val = op.get();
+                    if ( seen_vals.count( { val, dom } ) ) {
+                        auto arg = fn->arg_begin();
+                        std::advance( arg, op.getOperandNo() );
+                        tasks.push_back( [=]{ propagate_value( arg, dom ); } );
+                    }
+                }
+            }
+        }
+        else if ( auto r = dyn_cast< ReturnInst >( dep ) ) {
             step_out( get_function( r ), dom );
-        // TODO propagate
+        }
     }
 
     seen_vals.emplace( val, dom );
+}
+
+void VPA::propagate_back( Argument *arg, Domain dom ) {
+    for ( auto u : get_function( arg )->users() ) {
+        if ( auto call = dyn_cast< CallInst >( u ) ) {
+            auto src = get_source( call->getOperand( arg->getArgNo() ) );
+            tasks.push_back( [=]{ propagate_value( src, dom ); } );
+        }
+    }
 }
 
 void VPA::step_out( Function *fn, Domain dom ) {

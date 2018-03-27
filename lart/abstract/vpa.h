@@ -19,6 +19,8 @@ struct VPA {
 private:
     void preprocess( llvm::Function* );
     void propagate_value( llvm::Value*, Domain );
+    void propagate_back( llvm::Argument*, Domain );
+
     void step_out( llvm::Function*, Domain );
 
     using Task = std::function< void() >;
