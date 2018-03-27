@@ -155,14 +155,17 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
     template< typename OtherSH >
     int compare( OtherSH & a_sh, typename OtherSH::Internal a, Internal b, int sz )
     {
-        int cmp;
+        int cmp = NextShadow::compare( a_sh, a, b, sz );
+        if ( cmp )
+            return cmp;
+
         auto a_ts = a_sh.taints( a, sz );
         auto b_it = taints( b, sz ).begin();
         for ( auto a_t : a_ts )
             if ( ( cmp = a_t - *b_it++ ) )
                 return cmp;
 
-        return NextShadow::compare( a_sh, a, b, sz );
+        return 0;
     }
 
     template< typename V >
