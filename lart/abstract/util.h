@@ -36,6 +36,7 @@ bool is_lower( llvm::CallInst *intr );
 bool is_assume( llvm::CallInst *intr );
 bool is_rep( llvm::CallInst *intr );
 bool is_unrep( llvm::CallInst *intr );
+bool is_cast( llvm::CallInst *intr );
 
 std::string llvm_name( llvm::Type *type );
 

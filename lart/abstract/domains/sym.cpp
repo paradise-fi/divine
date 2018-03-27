@@ -21,16 +21,19 @@ Type* formula_t( Module *m ) {
 
 ConstantInt* bitwidth( Value *v ) {
     auto &ctx = v->getContext();
-    auto bw = cast< IntegerType >( v->getType() )->getBitWidth();
+    auto base = v->getType();
+    auto ty = isa< IntegerType >( base )
+            ? base
+            : cast< StructType >( base )->getElementType( 0 );
+    auto bw = cast< IntegerType >( ty )->getBitWidth();
     return ConstantInt::get( IntegerType::get( ctx, 32 ), bw );
 }
 
 std::string intr_name( CallInst *call ) {
     auto intr = call->getCalledFunction()->getName();
     size_t pref = std::string( "lart.sym." ).length();
-    size_t suff = intr.drop_front( pref ).find_last_of( '.' );
-    auto tag = intr.substr( pref, suff );
-    return "__abstract_sym_" + tag.str();
+    auto tag = intr.substr( pref ).split( '.' ).first;
+    return Symbolic::name_pref + tag.str();
 }
 
 Value* impl_lift( CallInst *call ) {
@@ -74,6 +77,14 @@ Value* impl_op( CallInst *call, Values &args ) {
     return irb.CreateCall( fn, args );
 }
 
+Value* impl_cast( CallInst *call, Values &args ) {
+    IRBuilder<> irb( call );
+    auto name = intr_name( call );
+    auto op = call->getOperand( 0 );
+    auto fn = get_module( call )->getFunction( name );
+    return irb.CreateCall( fn, { args[ 0 ], bitwidth( op ) } );
+}
+
 } // anonymous namespace
 
 Value* Symbolic::process( Instruction *intr, Values &args ) {
@@ -83,6 +94,8 @@ Value* Symbolic::process( Instruction *intr, Values &args ) {
         return impl_lift( call );
     if ( is_rep( call ) )
         return impl_rep( call );
+    if ( is_cast( call ) )
+        return impl_cast( call, args );
     if ( is_unrep( call ) )
         return impl_unrep( call, args );
     if ( is_assume( call ) )

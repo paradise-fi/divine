@@ -33,6 +33,13 @@ bool is_lower( CallInst *intr ) { return is_intr( intr, ".lower" ); }
 bool is_assume( CallInst *intr ) { return is_intr( intr, ".assume" ); }
 bool is_rep( CallInst *intr ) { return is_intr( intr, ".rep" ); }
 bool is_unrep( CallInst *intr ) { return is_intr( intr, ".unrep" ); }
+bool is_cast( llvm::CallInst *intr ) {
+    return is_intr( intr, ".zext" ) ||
+           is_intr( intr, ".sext" ) ||
+           is_intr( intr, ".trunc" ) ||
+           is_intr( intr, ".bitcast" );
+
+}
 
 Values taints( Module &m ) {
     Values res;
