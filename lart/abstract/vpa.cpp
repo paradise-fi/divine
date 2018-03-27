@@ -56,7 +56,12 @@ Value* get_source( Value *val ) {
             val = gep->getPointerOperand();
         if ( isa< AllocaInst >( val ) )
             return val;
-        UNREACHABLE( "Unknown parent instruction." );
+        else if ( isa< GlobalValue >( val ) )
+            return val;
+        else {
+            val->dump();
+            UNREACHABLE( "Unknown parent instruction." );
+        }
     }
 }
 
@@ -78,8 +83,11 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     if ( seen_vals.count( { val, dom } ) )
         return;
 
-    if ( isa< GlobalValue >( val ) )
-        assert( false && "NOT IMPLEMENTED" );
+    if ( isa< GlobalValue >( val ) ) {
+        for ( auto u : val->users() )
+            tasks.push_back( [=]{ propagate_value( u, dom ); } );
+        return;
+    }
 
     auto deps = reach_from( val );
     for ( auto & dep : lart::util::reverse( deps ) ) {
