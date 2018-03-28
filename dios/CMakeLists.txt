@@ -4,7 +4,7 @@ include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
       sys/*.hpp vfs/*.h macro/*
-      include/*.h include/_PDCLIB/*.h include/util/*.hpp include/rst/*.h
+      include/*.h include/_PDCLIB/*.h include/util/*.hpp include/rst/*.h include/rst/*.def
       include/sys/*.h include/sys/*.def include/bits/*.h include/machine/*.h
       libcxxabi/include/*
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
