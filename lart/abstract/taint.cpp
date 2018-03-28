@@ -29,13 +29,19 @@ std::string taint_suffix( const Types &args ) {
 }
 
 void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted ) {
-    auto op = i->getOperandList();
-    while ( op ) {
-        if ( op->get() == orig ) {
-            op->set( tainted );
-            return;
+    if ( auto phi = dyn_cast< PHINode >( i ) ) {
+        for ( size_t op = 0; op < phi->getNumIncomingValues(); ++op )
+            if ( phi->getIncomingValue( op ) == orig ) {
+                phi->setIncomingValue( op, tainted );
+                return;
+            }
+    } else {
+        for ( size_t op = 0; op < i->getNumOperands(); ++op ) {
+            if ( i->getOperand( op ) == orig ) {
+                i->setOperand( op, tainted );
+                return;
+            }
         }
-        op = op->getNext();
     }
     UNREACHABLE( "Instruction does not use tainted value." );
 }
@@ -333,7 +339,6 @@ void Tainting::taint( Instruction *i ) {
         args.emplace_back( op.get() );
 
     auto call = create_taint( i, args );
-
     for ( const auto & u : i->users() )
         if ( u != call )
             use_tainted_value( cast< Instruction >( u ), i, call );
