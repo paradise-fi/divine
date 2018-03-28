@@ -152,9 +152,10 @@ private:
     Compile cmp;
 };
 
-static TestCompile cmp;
-static TestCompile symcmp( { "sym.cpp", "tristate.cpp", "formula.cpp" },
-                           { "sym.h", "tristate.h", "common.h", "formula.h" } );
+static TestCompile cmp( { "sym.cpp", "tristate.cpp", "formula.cpp" },
+                        { "domain.def", "sym.h", "tristate.h", "common.h", "formula.h" } );
+
+// static TestCompile cmp( {}, {} );
 
 std::string load( const File & path ) {
     std::ifstream file( path );
@@ -167,7 +168,7 @@ template< typename... Passes >
 auto test( Compile::ModulePtr m, Passes&&... passes ) {
     using namespace abstract;
     lart::Driver drv;
-    drv.setup( CreateAbstractMetadata(), VPA(), Tainting()
+    drv.setup( CreateAbstractMetadata(), VPA(), Tainting(),
                std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
@@ -178,78 +179,41 @@ auto test( TestCompile & c, const File & src, Passes&&... passes ) {
     return test( c.compile( src ), std::forward< Passes >( passes )... );
 }
 
-auto test_abstraction( const File & src ) {
+template< typename... Passes >
+auto test_abstraction( const File & src, Passes&&... passes ) {
     using namespace abstract;
-    PassData data;
-    return test( cmp, src );
+    return test( cmp, src, std::forward< Passes >( passes )... );
 }
 
-auto test_assume( const File & src ) {
+template< typename... Passes >
+auto test_assume( const File & src, Passes&&... passes ) {
     using namespace abstract;
-    PassData data;
-    return test( cmp, src, AddAssumes() );
+    return test_abstraction(src, AddAssumes(), TaintBranching(),
+                            std::forward< Passes >( passes )...);
 }
 
-auto test_bcp( const File & src ) {
+template< typename... Passes >
+auto test_lifter( const File & src, Passes&&... passes ) {
     using namespace abstract;
-    PassData data;
-    return test( cmp, src, AddAssumes(), BCP( data ) );
+    return test_assume( src, LifterSyntetize(), std::forward< Passes >( passes )... );
 }
 
 auto test_substitution( const File & src ) {
     using namespace abstract;
-    PassData data;
-    return test( symcmp, src, AddAssumes(), BCP( data ), Substitution( data ) );
+    return test_lifter( src, Substitution() );
 }
 
-namespace {
-const std::string annotation =
-                  "#define _SYM __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
-
-bool containsUndefValue( llvm::Function & f ) {
-    for ( auto & bb : f )
-        for ( auto & i : bb ) {
-            if ( llvm::isa< llvm::UndefValue >( i ) )
-                return true;
-            for ( auto & op : i.operands() )
-                if ( llvm::isa< llvm::UndefValue >( op ) )
-                    return true;
-        }
-    return false;
-}
-
-bool containsUndefValue( llvm::Module & m ) {
-    for ( auto & f : m )
-        if ( containsUndefValue( f ) )
-            return true;
-    return false;
-}
-
-bool liftingPointer( llvm::Module &m ) {
-    return query::query( m ).flatten().flatten()
-           .map( query::refToPtr )
-           .map( query::llvmdyncast< llvm::CallInst > )
-           .filter( query::notnull )
-           .filter( [&]( llvm::CallInst * call ) {
-                return abstract::isLift( call );
-            } )
-            .any( []( llvm::CallInst * call ) {
-                    return call->getOperand( 0 )->getType()
-                           ->isPointerTy();
-            } );
-}
+static const std::string annotation =
+    "#define _SYM __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
 
 bool isVmInterupt( llvm::Function * fn )
 {
     return fn->hasName() && fn->getName() == "__dios_suspend";
 }
 
-} //empty namespace
-
 using namespace abstract;
 
 struct Abstraction {
-
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_abstraction( annotation + s );
@@ -261,11 +225,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto f = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT( ! m->getFunction( "lart.sym.lift.i32" ) );
-        ASSERT( f->hasOneUse() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT_EQ( abstract_metadata( main ).size(), 3 );
     }
 
     TEST( types ) {
@@ -276,15 +238,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto f16 = m->getFunction( "lart.sym.alloca.i16" );
-        ASSERT( f16->hasOneUse() );
-        auto f32 = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT( f32->hasOneUse() );
-        auto f64 = m->getFunction( "lart.sym.alloca.i64" );
-        ASSERT( ! m->getFunction( "lart.sym.lift.i32" ) );
-        ASSERT( f64->hasOneUse() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT_EQ( abstract_metadata( main ).size(), 9 );
     }
 
     TEST( binary_ops ) {
@@ -295,8 +251,12 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.add.i32" ) );
+
+        auto taint = m->getFunction( "__vm_test_taint.i32.i32.i32" );
+        ASSERT( taint->hasNUses( 2 ) );
     }
 
     TEST( phi ) {
@@ -307,15 +267,10 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto nodes = query::query( *m ).flatten().flatten()
-                           .map( query::refToPtr )
-                           .map( query::llvmdyncast< llvm::PHINode > )
-                           .filter( query::notnull )
-                           .freeze();
-        ASSERT_EQ( nodes.size(), 1 );
-        ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_ne.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.zext.i1.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i32.i1" ) );
     }
 
     TEST( call_simple ) {
@@ -326,17 +281,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4calli.2" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4calli" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_twice ) {
@@ -348,17 +295,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4calli.2" );
-        ASSERT_EQ( call->getNumUses(), 2 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4calli" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_independent ) {
@@ -370,19 +309,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4calli.2" );
-        auto call_normal = m->getFunction( "_Z4calli" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call_normal->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4calli" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_two_args_mixed ) {
@@ -394,18 +323,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4callii.2" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4callii" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_two_args_abstract ) {
@@ -417,56 +337,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4callii.2" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
-                 , alloca->getReturnType()->getPointerElementType() );
-
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
-    }
-
-    TEST( call_preserve_original_function ) {
-        auto s = R"(int call( int a ) { return a; }
-                    int main() {
-                        _SYM int a;
-                        call( a );
-                        call( 0 );
-                        return 0;
-                    })";
-        auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4calli.2" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-
-        auto call2 = m->getFunction( "_Z4calli" );
-        ASSERT_EQ( call2->getNumUses(), 1 );
-        ASSERT_EQ( call2->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-
-        bool contains_abstract_calls = query::query( *call2 ).flatten()
-            .map( query::llvmdyncast< llvm::CallInst > )
-            .filter( query::notnull )
-            .any( []( llvm::CallInst * call ) {
-                return call->getCalledFunction()->getName().startswith( "lart.sym" );
-            } );
-        ASSERT( !contains_abstract_calls );
-
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4callii" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_two_args_multiple_times ) {
@@ -481,33 +354,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4callii.3" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        auto call2 = m->getFunction( "_Z4callii.2" );
-        ASSERT_EQ( call2->getNumUses(), 1 );
-        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 1 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        auto call3 = m->getFunction( "_Z4callii" );
-        ASSERT_EQ( call3->getNumUses(), 1 );
-        ASSERT_EQ( call3->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( call3->getFunctionType()->getParamType( 0 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( call3->getFunctionType()->getParamType( 1 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-
-        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4callii" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_two_times_from_different_source ) {
@@ -520,19 +369,12 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call1 = m->getFunction( "_Z5call1i.2" );
-        ASSERT_EQ( call1->getNumUses(), 2 );
-        ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call1->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        auto call2 = m->getFunction( "_Z5call2i.3" );
-        ASSERT_EQ( call2->getNumUses(), 1 );
-        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call1 = m->getFunction( "_Z5call1i" );
+        ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call2 = m->getFunction( "_Z5call2i" );
+        ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( propagate_from_call_not_returning_abstract ) {
@@ -544,21 +386,9 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto calla = m->getFunction( "_Z4calli.2" );
-        ASSERT_EQ( calla->getNumUses(), 1);
-        ASSERT_EQ( calla->getReturnType()
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( calla->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
         auto call = m->getFunction( "_Z4calli" );
-        ASSERT_EQ( call->getNumUses(), 1 );
-        ASSERT_EQ( call->getReturnType()
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( !call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_propagate_1 ) {
@@ -571,13 +401,11 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.2" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-
-        ASSERT_EQ( abstract_call->getReturnType()
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto call = m->getFunction( "_Z4callv" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_propagate_back_multiple_times ) {
@@ -597,23 +425,13 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto add = m->getFunction( "_Z3addv.2" );
-        ASSERT_EQ( add->getNumUses(), 2 );
-        for ( const auto & u : add->users() ) {
-            ASSERT_EQ( llvm::cast< llvm::CallInst >( u )->getParent()->getParent()
-                     , main );
-        }
-        ASSERT_EQ( add->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        auto nondet = m->getFunction( "_Z6nondetv.3" );
-        ASSERT_EQ( nondet->getNumUses(), 2 );
-        for ( const auto & u : nondet->users() ) {
-            ASSERT_EQ( llvm::cast< llvm::CallInst >( u )->getParent()->getParent()
-                     , add );
-        }
-        ASSERT_EQ( nondet->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto add = m->getFunction( "_Z3addv" );
+        ASSERT( add->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( add->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto nondet = m->getFunction( "_Z6nondetv" );
+        ASSERT( nondet->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( nondet->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_propagate_deeper_1 ) {
@@ -630,15 +448,14 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call1 = m->getFunction( "_Z5call1v.2" );
-        auto call2 = m->getFunction( "_Z5call2i.3" );
-        ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto call1 = m->getFunction( "_Z5call1v" );
+        ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call2 = m->getFunction( "_Z5call2i" );
+        ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_propagate_deeper_2 ) {
@@ -658,78 +475,20 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call1 = m->getFunction( "_Z5call1v.2" );
-        auto call2 = m->getFunction( "_Z5call2i.3" );
-        auto call3 = m->getFunction( "_Z5call3i.4" );
-        auto call4 = m->getFunction( "_Z5call4i.5" );
-        ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call3->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call3->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call4->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call4->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
-    }
-
-    TEST( tristate ) {
-        auto s = R"(int main() {
-                        _SYM int x;
-                        if ( x > 0 )
-                            return 42;
-                        else
-                            return 0;
-                    })";
-        auto m = test_abstraction( annotation + s );
-        auto sgt = m->getFunction( "lart.sym.icmp_sgt.i32" );
-        auto expected = liftType( BoolType( m->getContext() ), Domain::Symbolic );
-        ASSERT_EQ( expected, sgt->getReturnType() );
-        auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
-        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *sgt->user_begin() );
-        auto lower = m->getFunction( "lart.tristate.lower" );
-        ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *to_tristate->user_begin() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
-    }
-
-    TEST( double_icmp ) {
-        auto s = R"(int main() {
-                        _SYM int x;
-                        if ( x > 0 || x < 0 ) return 0;
-                        return 1;
-                    })";
-        auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "lart.sym.icmp_sgt.i32" ) );
-        ASSERT( m->getFunction( "lart.sym.icmp_slt.i32" ) );
-    }
-
-    TEST( lift ) {
-        auto s = R"(int main() {
-                        _SYM int x;
-                        return x + 42;
-                    })";
-        auto m = test_abstraction( annotation + s );
-        auto lift = m->getFunction( "lart.sym.lift.i32" )->user_begin();
-        auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
-        ASSERT( val->equalsInt( 42 ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
-    }
-
-    TEST( lift_replace ) {
-        auto s = R"(int main() {
-                        _SYM int x;
-                        _SYM int y;
-                        return x + y;
-                    })";
-        auto m = test_abstraction( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto call1 = m->getFunction( "_Z5call1v" );
+        ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call2 = m->getFunction( "_Z5call2i" );
+        ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call3 = m->getFunction( "_Z5call3i" );
+        ASSERT( call3->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call3->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call4 = m->getFunction( "_Z5call4i" );
+        ASSERT( call4->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call4->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( switch_test ) {
@@ -743,11 +502,15 @@ struct Abstraction {
                         }
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+
+        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
+        ASSERT( taint->hasNUses( 4 ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_slt.i32" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_eq.i32" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.sub.i32" ) );
     }
 
-    TEST( loop_test ) {
+    TEST( loop_test_1 ) {
         auto s = R"(int main() {
                         _SYM int x;
                         for ( int i = 0; i < x; ++i )
@@ -757,8 +520,7 @@ struct Abstraction {
                                 }
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_slt.i32" ) );
     }
 
     TEST( loop_test_2 ) {
@@ -779,8 +541,9 @@ struct Abstraction {
                       return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i64.i64.i64" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
     }
 
     TEST( recursion_direct ) {
@@ -797,30 +560,11 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4calli.2" );
-        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        auto call_in_main = query::query( *main ).flatten()
-            .map( query::llvmdyncast< llvm::CallInst > )
-            .filter( query::notnull )
-            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
-            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
-        ASSERT( call_in_main );
-        auto call_in_call = query::query( *call ).flatten()
-            .map( query::llvmdyncast< llvm::CallInst > )
-            .filter( query::notnull )
-            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
-            .filter( [] ( llvm::CallInst * i ) { return !isVmInterupt( i->getCalledFunction() ); } )
-            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
-        ASSERT( call_in_call );
-        ASSERT_EQ( call->getNumUses(), 2 );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4calli" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
     }
 
     TEST( recursion_multiple_times ) {
@@ -838,34 +582,11 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4callii.2" );
-        ASSERT_EQ( call->getNumUses(), 2 );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        auto call2 = m->getFunction( "_Z4callii.3" );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( call2->getFunctionType()->getParamType( 1 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        auto test_function = [&] ( llvm::Function * fn ) {
-            return query::query( *fn ).flatten()
-            .map( query::llvmdyncast< llvm::CallInst > )
-            .filter( query::notnull )
-            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
-            .filter( [] ( llvm::CallInst * i ) { return !isVmInterupt( i->getCalledFunction() ); } )
-            .any( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call ||
-                                                      i->getCalledFunction() == call2; } );
-        };
-        ASSERT( test_function( main ) );
-        ASSERT( test_function( call ) );
-        ASSERT( test_function( call2 ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4callii" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( !call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
     }
 
     TEST( recursion_without_abstract_return ) {
@@ -881,29 +602,11 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto call = m->getFunction( "_Z4callii.2" );
-        ASSERT_EQ( call->getNumUses(), 2 );
-        ASSERT_EQ( call->getReturnType()
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
-                 , llvm::Type::getInt32Ty( m->getContext() ) );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        auto test_function = [&] ( llvm::Function * fn ) {
-            return query::query( *fn ).flatten()
-            .map( query::llvmdyncast< llvm::CallInst > )
-            .filter( query::notnull )
-            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
-            .filter( [] ( llvm::CallInst * i ) { return !isVmInterupt( i->getCalledFunction() ); } )
-            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
-        };
-        ASSERT( test_function( main ) );
-        ASSERT( test_function( call ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto call = m->getFunction( "_Z4callii" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
     }
 
     TEST( struct_simple ) {
@@ -916,14 +619,7 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 1 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
-        ASSERT( bc );
-        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( struct_multiple_accesses ) {
@@ -940,18 +636,8 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto geps = llvmFilter< llvm::GetElementPtrInst >( main );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        for ( const auto & g : geps ) {
-            if ( !g->user_empty() ) {
-                if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( *g->user_begin() ) ) {
-                    ASSERT( bc );
-                    ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
-                }
-            }
-        }
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
     }
 
     TEST( struct_complex ) {
@@ -961,17 +647,12 @@ struct Abstraction {
                         _SYM int x;
                         S s;
                         s.y = x;
+                        return s.y;
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 1 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
-        ASSERT( bc );
-        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( struct_multiple_abstract_values ) {
@@ -984,22 +665,12 @@ struct Abstraction {
                         s.x = x;
                         s.y = y;
                         s.z = 42;
+                        return s.x;
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 3 );
-        auto bc1 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
-        auto bc2 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 1 ]->user_begin() );
-        ASSERT( bc1 );
-        ASSERT( bc2 );
-        ASSERT_EQ( alloca->getReturnType(), bc1->getDestTy() );
-        ASSERT_EQ( alloca->getReturnType(), bc2->getDestTy() );
-        ASSERT_EQ( llvm::Type::getInt32Ty( m->getContext() ),
-                   gep[2]->getResultElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( struct_nested_1 ) {
@@ -1010,17 +681,12 @@ struct Abstraction {
                         _SYM int x;
                         T t;
                         t.a.x = x;
+                        return t.a.x;
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 2 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 1 ]->user_begin() );
-        ASSERT( bc );
-        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( struct_nested_2 ) {
@@ -1032,17 +698,12 @@ struct Abstraction {
                         _SYM int x;
                         V v;
                         v.u.s.x = x;
+                        return v.u.s.x;
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
-        ASSERT_EQ( gep.size(), 3 );
-        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 2 ]->user_begin() );
-        ASSERT( bc );
-        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( output_int_arg_1 ) {
@@ -1053,15 +714,14 @@ struct Abstraction {
                     int main() {
                         int i;
                         init( &i );
+                        return i;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initPi.2" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto init = m->getFunction( "_Z4initPi" );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( output_int_arg_2 ) {
@@ -1072,17 +732,14 @@ struct Abstraction {
                         int i;
                         _SYM int v;
                         init( &i, v );
+                        return i;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initPii.2" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType() );
-        ASSERT_EQ( init->getFunctionType()->getParamType( 1 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto init = m->getFunction( "_Z4initPii" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( output_int_arg_3 ) {
@@ -1098,19 +755,17 @@ struct Abstraction {
                         int i;
                         init( &i );
                         int v = i;
+                        return v;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initPi.2" );
-        auto init_impl = m->getFunction( "_Z9init_implPi.3" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType() );
-        ASSERT_EQ( init_impl->getNumUses(), 1 );
-        ASSERT_EQ( init_impl->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto init = m->getFunction( "_Z4initPi" );
+        auto init_impl = m->getFunction( "_Z9init_implPi" );
+
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( init_impl->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( output_int_arg_4 ) {
@@ -1125,21 +780,16 @@ struct Abstraction {
                     int main() {
                         int i;
                         init( &i );
+                        return i;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initPi.2" );
-        auto init_impl = m->getFunction( "_Z9init_implPii.3" );
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT_EQ( init->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType() );
-        ASSERT_EQ( init_impl->getNumUses(), 1 );
-        ASSERT_EQ( init_impl->getFunctionType()->getParamType( 0 )
-                 , alloca->getReturnType() );
-        ASSERT_EQ( init_impl->getFunctionType()->getParamType( 1 )
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto init = m->getFunction( "_Z4initPi" );
+        auto init_impl = m->getFunction( "_Z9init_implPii" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( init_impl->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( output_struct_arg_1 ) {
@@ -1151,14 +801,14 @@ struct Abstraction {
                     int main() {
                         Widget w;
                         init( &w );
-
-                        if ( w.i == 0 ) return 42;
+                        return w.i;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initP6Widget.2" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto init = m->getFunction( "_Z4initP6Widget" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( output_struct_arg_2 ) {
@@ -1174,17 +824,17 @@ struct Abstraction {
                     int main() {
                         Widget w;
                         init( &w );
-                        check( &w );
+                        return check( &w );
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initP6Widget.2" );
-        auto check = m->getFunction( "_Z5checkP6Widget.3" );
-        auto sym_i1 = m->getFunction( "lart.sym.icmp_slt.i32" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT_EQ( check->getNumUses(), 1 );
-        ASSERT_EQ( check->getReturnType(), sym_i1->getReturnType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto init = m->getFunction( "_Z4initP6Widget" );
+        auto check = m->getFunction( "_Z5checkP6Widget" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( check->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( check->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( output_struct_arg_3 ) {
@@ -1203,14 +853,16 @@ struct Abstraction {
                         Widget w;
                         init( &w );
                         init( &store, &w  );
+                        return store.w->i;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto init = m->getFunction( "_Z4initP6Widget.3" );
-        auto check = m->getFunction( "_Z4initP5StoreP6Widget.2" );
-        ASSERT_EQ( init->getNumUses(), 1 );
-        ASSERT_EQ( check->getNumUses(), 1 );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto init = m->getFunction( "_Z4initP6Widget" );
+        auto init_store = m->getFunction( "_Z4initP5StoreP6Widget" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( init->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( init_store->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( global_1 ) {
@@ -1221,44 +873,19 @@ struct Abstraction {
                     int main() {
                         _SYM int v;
                         g = v;
-                        f();
+                        return f();
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "_Z1fv.2" ) );
-        ASSERT( m->getGlobalVariable( "g.sym" ) );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
+        auto main = m->getFunction( "main" );
+        auto f = m->getFunction( "_Z1fv" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( f->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( f->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 };
 
 struct Assume {
-    bool isTristateAssume( llvm::Instruction * inst ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
-            auto fn = call->getCalledFunction();
-            return fn->hasName() && fn->getName().startswith( "lart.tristate.assume" );
-        }
-        return false;
-    }
-
-    bool isTrueAssume( llvm::Instruction * inst ) {
-        return isTristateAssume( inst )
-            && ( llvm::cast< llvm::Constant >( inst->getOperand( 1 ) )->isOneValue() );
-    }
-
-    bool isFalseAssume( llvm::Instruction * inst ) {
-        return isTristateAssume( inst )
-            && ( llvm::cast< llvm::Constant >( inst->getOperand( 1 ) )->isZeroValue() );
-    }
-
-    void testBranching( llvm::Instruction * lower ) {
-        auto br = llvm::cast< llvm::BranchInst >( *lower->user_begin() );
-
-        auto trueBB = br->getSuccessor( 0 );
-        ASSERT( isTrueAssume( trueBB->begin() ) );
-        auto falseBB = br->getSuccessor( 1 );
-        ASSERT( isFalseAssume( falseBB->begin() ) );
-    }
-
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_assume( annotation + s );
@@ -1273,16 +900,25 @@ struct Assume {
                             return 0;
                     })";
         auto m = test_assume( annotation + s );
-        auto icmp = m->getFunction( "lart.sym.icmp_sgt.i32" );
-        auto expected = liftType( BoolType( m->getContext() ), Domain::Symbolic );
-        ASSERT_EQ( expected, icmp->getReturnType() );
-        auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
-        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
-        auto lower = llvm::cast< llvm::Instruction >(
-                     *m->getFunction( "lart.tristate.lower" )->user_begin() );
-        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
 
-        testBranching( lower );
+        auto icmp = m->getFunction( "lart.gen.sym.icmp_sgt.i32" );
+        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
+
+        auto taint_call = taint->user_begin();
+        ASSERT_EQ( taint_call->getOperand( 0 ), icmp );
+
+        ASSERT( m->getFunction( "lart.gen.sym.bool_to_tristate" ) );
+        ASSERT( m->getFunction( "lart.gen.tristate.lower" ) );
+
+        auto assume = m->getFunction( "lart.gen.sym.assume" );
+        auto assume_taint = m->getFunction( "__vm_test_taint.i1.i1.i1" );
+        auto assume_false_call = assume_taint->user_begin();
+        ASSERT_EQ( assume_false_call->getOperand( 0 ), assume );
+        ASSERT( llvm::cast< llvm::Constant >( assume_false_call->getOperand( 3 ) )->isZeroValue() );
+
+        auto assume_true_call = std::next( assume_taint->user_begin() );
+        ASSERT_EQ( assume_true_call->getOperand( 0 ), assume );
+        ASSERT( llvm::cast< llvm::Constant >( assume_true_call->getOperand( 3 ) )->isOneValue() );
     }
 
     TEST( loop ) {
@@ -1295,44 +931,28 @@ struct Assume {
                     })";
         auto m = test_assume( annotation + s );
 
-        auto icmp = m->getFunction( "lart.sym.icmp_ne.i32" );
-        auto expected = liftType( BoolType( m->getContext() ), Domain::Symbolic );
-        ASSERT_EQ( expected, icmp->getReturnType() );
-        auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
-        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
-        auto lower = llvm::cast< llvm::Instruction >(
-                     *m->getFunction( "lart.tristate.lower" )->user_begin() );
-        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
+        auto icmp = m->getFunction( "lart.gen.sym.icmp_ne.i32" );
+        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
 
-        testBranching( lower );
-    }
-};
+        auto taint_call = taint->user_begin();
+        ASSERT_EQ( taint_call->getOperand( 0 ), icmp );
 
-struct BCP {
-    TEST( tristate ) {
-        auto s = R"(int call() {
-                        _SYM int x;
-                        _SYM int y;
-                        if ( x == 0 ) {
-                            y = x;
-                        }
-                        while ( y < x )
-                            y++;
-                        return y;
-                    }
-                    int main() {
-                        call();
-                        return 0;
-                    })";
-        test_bcp( annotation + s );
+        ASSERT( m->getFunction( "lart.gen.sym.bool_to_tristate" ) );
+        ASSERT( m->getFunction( "lart.gen.tristate.lower" ) );
+
+        auto assume = m->getFunction( "lart.gen.sym.assume" );
+        auto assume_taint = m->getFunction( "__vm_test_taint.i1.i1.i1" );
+        auto assume_false_call = assume_taint->user_begin();
+        ASSERT_EQ( assume_false_call->getOperand( 0 ), assume );
+        ASSERT( llvm::cast< llvm::Constant >( assume_false_call->getOperand( 3 ) )->isZeroValue() );
+
+        auto assume_true_call = std::next( assume_taint->user_begin() );
+        ASSERT_EQ( assume_true_call->getOperand( 0 ), assume );
+        ASSERT( llvm::cast< llvm::Constant >( assume_true_call->getOperand( 3 ) )->isOneValue() );
     }
 };
 
 struct Substitution {
-    uint64_t allocaArg( llvm::User * u ) {
-        return llvm::cast< llvm::ConstantInt >( u->getOperand( 0 ) )->getZExtValue();
-    }
-
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_substitution( annotation + s );
@@ -1341,12 +961,12 @@ struct Substitution {
     TEST( create ) {
         auto s = R"(int main() {
                         _SYM int abs;
-                        return 0;
+                        return abs;
                     })";
         auto m = test_substitution( annotation + s );
-        auto f = m->getFunction( "__abstract_sym_alloca" );
-        ASSERT( f->hasNUses( 2 ) );
-        ASSERT_EQ( allocaArg( *f->user_begin() ), 32 );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( types ) {
@@ -1357,12 +977,8 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto alloca = m->getFunction( "__abstract_sym_alloca" );
-        ASSERT( alloca->hasNUses( 4 ) );
-        auto a = alloca->user_begin();
-        ASSERT_EQ( allocaArg( *a ), 64 );
-        ASSERT_EQ( allocaArg( *std::next( a ) ), 32 );
-        ASSERT_EQ( allocaArg( *std::next( a, 2 ) ), 16 );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
     }
 
     TEST( binary_ops ) {
@@ -1373,12 +989,10 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto add = m->getFunction( "__abstract_sym_add" );
-        ASSERT( add->hasNUses( 3 ) );
-
-        auto lift = m->getFunction( "__abstract_sym_lift" )->user_begin();
-        ASSERT( llvm::isa< llvm::ConstantInt >( lift->getOperand( 0 ) ) );
-        ASSERT_EQ( add->user_begin()->getOperand( 1 ), *lift );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( m->getFunction( "__sym_lift" ) );
+        ASSERT( m->getFunction( "__sym_add" ) );
     }
 
     TEST( tristate ) {
@@ -1390,14 +1004,11 @@ struct Substitution {
                             return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto icmp = m->getFunction( "__abstract_sym_icmp_sgt" );
-        ASSERT_EQ( icmp->getReturnType(),
-                   m->getTypeByName( "union.lart::sym::Formula" )->getPointerTo() );
-        auto to_tristate = m->getFunction( "__abstract_sym_bool_to_tristate" );
-        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
-        auto lower = llvm::cast< llvm::Instruction >(
-                     *m->getFunction( "__abstract_tristate_lower" )->user_begin() );
-        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_sgt.i32" ) );
+        ASSERT( m->getFunction( "__sym_lift" ) );
+        ASSERT( m->getFunction( "__sym_icmp_sgt" ) );
     }
 
     TEST( phi ) {
@@ -1405,18 +1016,12 @@ struct Substitution {
                         _SYM int x = 0;
                         _SYM int y = 42;
                         int z = x || y;
-                        return 0;
+                        return z;
                     })";
         auto m = test_substitution( annotation + s );
         auto main = m->getFunction( "main" );
-        auto nodes = query::query( *main ).flatten()
-                           .map( query::refToPtr )
-                           .map( query::llvmdyncast< llvm::PHINode > )
-                           .filter( query::notnull )
-                           .freeze();
-
-        ASSERT_EQ( nodes.size(), 1 );
-        ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( switch_test ) {
@@ -1430,31 +1035,12 @@ struct Substitution {
                         }
                     })";
         auto m = test_substitution( annotation + s );
-        //TODO asserts
+        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
+        ASSERT( taint->hasNUses( 4 ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_slt.i32" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.icmp_eq.i32" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.sub.i32" ) );
     }
-
-    TEST( lift_1 ) {
-        auto s = R"(int main() {
-                        _SYM int x;
-                        x += 42;
-                    })";
-        auto m = test_substitution( annotation + s );
-        auto lift = m->getFunction( "__abstract_sym_lift" )->user_begin();
-        auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
-        ASSERT( val->equalsInt( 42 ) );
-    }
-
-    TEST( lift_2 ) {
-		auto s = R"(
-					int main() {
-						_SYM int x;
-						x %= 5;
-						while( true )
-							x = (x + 1) % 5;
-					})";
-		test_substitution( annotation + s );
-        //TODO asserts
-	}
 
     TEST( loop_1 ) {
         auto s = R"(
@@ -1465,7 +1051,8 @@ struct Substitution {
 						} while(val % 6 != 0);
                     })";
         auto m = test_substitution( annotation + s );
-        //TODO asserts
+        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
 	}
 
     TEST( loop_2 ) {
@@ -1478,7 +1065,7 @@ struct Substitution {
                                 }
                     })";
         auto m = test_substitution( annotation + s );
-        //TODO asserts
+        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
     }
 
     TEST( call_propagate_ones )
@@ -1492,28 +1079,35 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.78.79" );
-        ASSERT( abstract_call );
-        auto alloca = m->getFunction( "__abstract_sym_alloca" );
-        ASSERT_EQ( abstract_call->getReturnType()
-                 , alloca->getReturnType()->getPointerElementType() );
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto call = m->getFunction( "_Z4callv" );
+        ASSERT( call->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_propagate_deeper_1 ) {
         auto s = R"(int call2( int x ) {
                         return x * x;
                     }
-                    int call() {
+                    int call1() {
                         _SYM int x;
                         return x;
                     }
                     int main() {
-                        int ret = call();
+                        int ret = call1();
                         call2( ret );
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        //TODO asserts
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto call1 = m->getFunction( "_Z5call1v" );
+        ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call2 = m->getFunction( "_Z5call2i" );
+        ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 
     TEST( call_propagate_deeper_2 ) {
@@ -1523,17 +1117,30 @@ struct Substitution {
                     int call2( int x ) {
                         return call3( x ) * call4( x );
                     }
-                    int call() {
+                    int call1() {
                         _SYM int x;
                         return x;
                     }
                     int main() {
-                        int ret = call();
+                        int ret = call1();
                         call2( ret );
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        //TODO asserts
+        auto main = m->getFunction( "main" );
+        ASSERT( main->getMetadata( "lart.abstract.roots" ) );
+        auto call1 = m->getFunction( "_Z5call1v" );
+        ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call2 = m->getFunction( "_Z5call2i" );
+        ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call3 = m->getFunction( "_Z5call3i" );
+        ASSERT( call3->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call3->back().getTerminator()->getMetadata( "lart.domains" ) );
+        auto call4 = m->getFunction( "_Z5call4i" );
+        ASSERT( call4->getMetadata( "lart.abstract.roots" ) );
+        ASSERT( call4->back().getTerminator()->getMetadata( "lart.domains" ) );
     }
 };
 
