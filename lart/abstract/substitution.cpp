@@ -80,7 +80,6 @@ void Substitution::run( Module &m ) {
         for ( auto &i : lart::util::reverse( ainsts ) )
             i->eraseFromParent();
     }
-
 }
 
 

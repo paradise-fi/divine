@@ -13,10 +13,12 @@ namespace abstract {
 
 using namespace llvm;
 
+const std::string Symbolic::name_pref = "__sym_";
+
 namespace {
 
 Type* formula_t( Module *m ) {
-    return m->getFunction( "__abstract_sym_lift" )->getReturnType();
+    return m->getFunction( Symbolic::name_pref + "lift" )->getReturnType();
 }
 
 ConstantInt* bitwidth( Value *v ) {
@@ -40,7 +42,7 @@ Value* impl_lift( CallInst *call ) {
     IRBuilder<> irb( call );
     auto &ctx = call->getContext();
     auto op = call->getOperand( 0 );
-    auto fn = get_module( call )->getFunction( "__abstract_sym_lift" );
+    auto fn = get_module( call )->getFunction( Symbolic::name_pref + "lift" );
     auto val = irb.CreateSExt( op, IntegerType::get( ctx, 64 ) );
     auto argc = ConstantInt::get( IntegerType::get( ctx, 32 ), 1 );
     return irb.CreateCall( fn, { bitwidth( op ), argc, val } );
@@ -48,7 +50,7 @@ Value* impl_lift( CallInst *call ) {
 
 Value* impl_assume( CallInst *call, Values &args ) {
     IRBuilder<> irb( call );
-    auto fn = get_module( call )->getFunction( "__abstract_sym_assume" );
+    auto fn = get_module( call )->getFunction( Symbolic::name_pref + "assume" );
     return irb.CreateCall( fn, { args[ 0 ], args [ 0 ], args[ 1 ] } );
 }
 

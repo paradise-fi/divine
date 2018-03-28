@@ -9,6 +9,8 @@ namespace abstract {
 struct Symbolic final : Common {
     llvm::Value * process( llvm::Instruction *i, Values &args ) override;
     Domain domain() const override { return Domain::Symbolic; }
+
+    static const std::string name_pref;
 };
 
 } // namespace abstract
