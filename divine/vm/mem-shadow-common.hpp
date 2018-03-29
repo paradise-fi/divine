@@ -60,6 +60,7 @@ struct BitsetContainer
     using Type = bitlevel::bitvec< BitsPerSet >;
     using Ptr = typename Pool::Pointer;
     using Loc = InternalLoc< Ptr >;
+    using Mask = std::integral_constant< Type, bitlevel::ones< Type >( BitsPerSet ) >;
 
     struct proxy
     {
@@ -72,7 +73,7 @@ struct BitsetContainer
             constexpr unsigned SetsInType = ( 8 * sizeof( Type ) ) / BitsPerSet;
             return BitsPerSet * ( SetsInType - 1 - _pos % SetsInType );
         }
-        constexpr Type mask() const { return bitlevel::ones< Type >( BitsPerSet ); }
+        constexpr Type mask() const { return Mask::value; }
         proxy &operator=( const proxy &o ) { return *this = Type( o ); }
         proxy &operator=( Type b ) { set( b ); return *this; }
         Type get() const { return ( word() >> shift() ) & mask(); }
