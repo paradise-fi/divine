@@ -153,43 +153,24 @@ struct DefinednessLayer : public NextLayer
     template< typename OtherSh >
     int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
     {
-        if ( exp_a.data_exception )
-        {
-            ASSERT( exp_b.data_exception );
+        // This function assumes that it is called only if there is a data exception, which
+        // currently holds. Should it cease to, it will be necessary to rewrite this code.
+        ASSERT( exp_a.data_exception );
+        ASSERT( exp_b.data_exception );
 
-            union {
-                uint8_t def_bytes[ 4 ];
-                uint32_t def_word;
-            } da, db;
+        union {
+            uint8_t def_bytes[ 4 ];
+            uint32_t def_word;
+        } da, db;
 
-            a_sh._layers._read_def( da.def_bytes, a.object, a.offset, exp_a );
-            _read_def( db.def_bytes, b.object, b.offset, exp_b );
-            int cmp = da.def_word - db.def_word;
-            if ( cmp )
-                return cmp;
-        }
+        a_sh._layers._def_exceptions->get( a.object, a.offset, da.def_bytes );
+        _def_exceptions->get( b.object, b.offset, db.def_bytes );
+
+        int cmp = da.def_word - db.def_word;
+        if ( cmp )
+            return cmp;
 
         return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b );
-    }
-
-    template< typename OtherSh >
-    int compare_byte( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
-    {
-        if ( exp_a.data_exception )
-        {
-            ASSERT( exp_b.data_exception );
-
-            uint8_t da[ 4 ];
-            uint8_t db[ 4 ];
-
-            a_sh._layers._read_def( da, a.object, bitlevel::downalign( a.offset, 4 ), exp_a );
-            _read_def( db, b.object, bitlevel::downalign( b.offset, 4 ), exp_b );
-            int cmp = da[ a.offset % 4 ] - db[ b.offset % 4 ];
-            if ( cmp )
-                return cmp;
-        }
-
-        return NextLayer::compare_byte( a_sh, a, exp_a, b, exp_b );
     }
 
     void free( Internal p )

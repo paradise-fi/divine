@@ -101,32 +101,20 @@ struct SandwichShadow
 
         int off = 0;
 
-        if ( sz >= 4 )
+        // This assumes that whole objects are being compared, i.e. that there are no actual data
+        // after 'sz' bytes.
+        for ( ; off < bitlevel::align( sz, 4 ); off += 4 )
         {
-            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
-            {
-                Compressed c_a = *i_a++;
-                Compressed c_b = *i_b++;
-                if ( ( cmp = c_a - c_b ) )
-                    return cmp;
-                Expanded exp_a = Descriptor::expand( c_a );
-                Expanded exp_b = Descriptor::expand( c_b );
-                if ( ( cmp = _layers.compare_word( a_sh, a + off, exp_a, b + off, exp_b ) ) )
-                    return cmp;
-            }
-        }
-
-        if ( off < sz )
-        {
-            Compressed c_a = *i_a;
-            Compressed c_b = *i_b;
+            Compressed c_a = *i_a++;
+            Compressed c_b = *i_b++;
             if ( ( cmp = c_a - c_b ) )
                 return cmp;
+            if ( Descriptor::is_trivial( c_a ) )
+                continue;
             Expanded exp_a = Descriptor::expand( c_a );
             Expanded exp_b = Descriptor::expand( c_b );
-            for ( ; off < sz; ++off )
-                if ( ( cmp = _layers.compare_byte( a_sh, a + off, exp_a, b + off, exp_b ) ) )
-                    return cmp;
+            if ( ( cmp = _layers.compare_word( a_sh, a + off, exp_a, b + off, exp_b ) ) )
+                return cmp;
         }
 
         return 0;

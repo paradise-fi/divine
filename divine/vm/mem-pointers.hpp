@@ -140,15 +140,35 @@ struct PointerLayer : public NextLayer
     template< typename OtherSh >
     int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
     {
-        // TODO (?)
-        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b );
-    }
+        ASSERT_EQ( exp_a.pointer_exception, exp_b.pointer_exception );
+        // This function correctly assumes that is is called only when there is an exception and the
+        // exception types match. However, it also assumes that the only other type of exception is
+        // data exception, so that there is either a pointer exception or data exception (and
+        // therefore it cannot be a pointer). This is true at the moment, but should it cease to
+        // hold, this assert will fire and it will be necessary to rewrite this code.
+        ASSERT( ! exp_a.pointer && ! exp_b.pointer );
 
-    template< typename OtherSh >
-    int compare_byte( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
-    {
-        // TODO (?)
-        return NextLayer::compare_byte( a_sh, a, exp_a, b, exp_b );
+        if ( exp_a.pointer_exception )
+        {
+            auto pe_a = a_sh._layers.pointer_exception( a.object, a.offset );
+            auto pe_b = pointer_exception( b.object, b.offset );
+            for ( int i = 0; i < 4 ; ++i )
+            {
+                if ( pe_a.objid[ i ] == 0 && pe_b.objid[ i ] == 0 )
+                    continue;
+                if ( pe_a.objid[ i ] == 0 )
+                    return -1;
+                if ( pe_b.objid[ i ] == 0 )
+                    return 1;
+                int cmp = pe_a.type( i ) - pe_b.type( i );
+                if ( cmp )
+                    return cmp;
+                if ( ( cmp = pe_a.index( i ) - pe_b.index( i ) ) )
+                    return cmp;
+            }
+        }
+
+        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b );
     }
 
     void free( Internal p )

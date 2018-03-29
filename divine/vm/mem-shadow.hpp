@@ -116,6 +116,12 @@ struct CompoundShadowDescriptor
         return ( def << 12 ) | taint;
     }
 
+    // Shall be true if 'c' encodes all metadata (i.e. is not an exception)
+    constexpr static bool is_trivial( Compressed c )
+    {
+        return ( c & 0x60 ) != 0x60;
+    }
+
     // These predicates exist in order to avoid expanding compressed data when searching for
     // pointers.
     constexpr static bool is_pointer( Compressed c )

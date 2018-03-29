@@ -40,14 +40,14 @@ struct TaintLayer : public NextLayer
     using Expanded = typename NextLayer::Expanded;
 
     template< typename OtherSh >
-    int compare_byte( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
+    int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
     {
-        int8_t a_tainted = ( exp_a.taint >> a.offset % 4 ) & 0x1;
-        int8_t b_tainted = ( exp_b.taint >> b.offset % 4 ) & 0x1;
-        if ( a_tainted != b_tainted )
-            return a_tainted - b_tainted;
+        // Due to the nature of compressed metadata comparison, the expanded forms never differ in
+        // taint bits. While efficient, it is, however, implementation-dependent, hence this assert,
+        // which will fire if the assumption ever ceases to hold.
+        ASSERT_EQ( exp_a.taint, exp_b.taint );
 
-        return NextLayer::compare_byte( a_sh, a, exp_a, b, exp_b );
+        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b );
     }
 
     template< typename V >
