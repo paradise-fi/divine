@@ -21,6 +21,8 @@ using namespace llvm;
 
 namespace {
 
+using LifterArg = std::pair< Value*, Value* >; // tainted flag + value
+
 std::string taint_suffix( const Types &args ) {
     std::string res;
     for ( auto a : args )
@@ -201,17 +203,21 @@ BasicBlock* entry_bb( Value *tflag, size_t idx ) {
 	return bb;
 }
 
+Value* create_rep_call( IRBuilder<> irb, Value *val, Domain dom ) {
+    auto aty = abstract_type( val->getType(), dom );
+	auto cs = Constant::getNullValue( aty );
+	auto iv = cast< Instruction >( irb.CreateInsertValue( cs, val, 0 ) );
+	auto call = create_call( irb, rep( val, dom ), { iv }, dom );
+    iv->setMetadata( "lart.domains", call->getMetadata( "lart.domains" ) );
+    return call;
+}
+
 BasicBlock* tainted_bb( Value *arg, size_t idx, Domain dom ) {
     std::string name = "arg." + std::to_string( idx ) + ".tainted";
 	auto bb = make_bb( get_function( arg ), name );
-
-    auto aty = abstract_type( arg->getType(), dom );
-	auto cs = Constant::getNullValue( aty );
-
 	IRBuilder<> irb( bb );
-	auto iv = cast< Instruction >( irb.CreateInsertValue( cs, arg, 0 ) );
-	auto call = create_call( irb, rep( arg, dom ), { iv }, dom );
-    iv->setMetadata( "lart.domains", call->getMetadata( "lart.domains" ) );
+
+    create_rep_call( irb, arg, dom );
 
 	return bb;
 }
@@ -270,26 +276,82 @@ Function* make_abstract_op( CallInst *taint, Types args ) {
 	return cast< Function >( m->getOrInsertFunction( name.str(), fty ) );
 }
 
-void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
-    auto fn = cast< Function >( taint->getOperand( 0 ) );
+Domain taint_in_domain( CallInst *taint ) {
+    return MDValue( taint->getOperand( 1 ) ).domain();
+}
 
-    Domain dom;
-    if ( taint->getMetadata( "lart.domains" ) )
-        dom = MDValue( taint ).domain();
-    else
-        dom = MDValue( taint->getOperand( 1 ) ).domain();
+Domain taint_out_domain( CallInst *taint ) {
+    return MDValue( taint ).domain();
+}
+
+void return_from_lifter( IRBuilder<> irb, Value *val, CallInst *taint ) {
+	auto fn = get_function( val );
+    if ( val->getType() != fn->getReturnType() ) {
+        auto dom = taint_out_domain( taint );
+        auto to = fn->getReturnType();
+		auto ur = create_call( irb, unrep( val, dom, to ), { val }, dom );
+        auto ev = irb.CreateExtractValue( ur, 0 );
+		irb.CreateRet( ev );
+	} else {
+		irb.CreateRet( val );
+	}
+}
+
+void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
+    Domain dom = taint_in_domain( taint );
 
     IRBuilder<> irb( exbb );
 	auto aop = make_abstract_op( taint, types_of( args ) );
 	auto call = create_call( irb, aop, args, dom );
-	if ( call->getType() != fn->getReturnType() ) {
-        auto to = fn->getReturnType();
-		auto ur = create_call( irb, unrep( call, dom, to ), { call }, dom );
-        auto ev = irb.CreateExtractValue( ur, 0 );
-		irb.CreateRet( ev );
-	} else {
-		irb.CreateRet( call );
-	}
+
+    return_from_lifter( irb, call, taint );
+}
+
+void generate_nary_lifter( CallInst * taint, Function *fn, std::vector< LifterArg > args ) {
+    Domain dom = taint_in_domain( taint );
+
+    auto exbb = make_bb( fn, "exit" );
+
+    size_t idx = 0;
+    BasicBlock *prev = nullptr;
+
+    Values lifted;
+    for ( const auto &arg : args ) {
+        auto ebb = entry_bb( arg.first, idx );
+        auto tbb = tainted_bb( arg.second, idx, dom );
+        auto ubb = untainted_bb( arg.second, idx, dom );
+        auto mbb = merge_bb( arg.second, idx );
+
+        join_bbs( ebb, tbb, ubb, mbb, exbb );
+        lifted.push_back( mbb->begin() );
+
+        if ( prev ) {
+            prev->getTerminator()->setSuccessor( 0, ebb );
+        }
+
+        prev = mbb;
+        idx++;
+    }
+
+    exit_lifter( exbb, taint, lifted );
+}
+
+void generate_unary_lifter( CallInst *taint, Function *fn, Value *arg ) {
+    Domain dom = taint_in_domain( taint );
+
+    auto ebb = make_bb( fn, "entry" );
+    IRBuilder<> irb( ebb );
+
+    auto rep = create_rep_call( irb, arg, dom );
+	auto aop = make_abstract_op( taint, { rep->getType() } );
+
+    Value *call;
+	if ( taint->getMetadata( "lart.domains" ) )
+        call = create_call( irb, aop, { rep }, taint_out_domain( taint ) );
+    else
+        call = irb.CreateCall( aop, { rep } );
+
+    return_from_lifter( irb, call, taint );
 }
 
 } // anonymous namespace
@@ -305,6 +367,7 @@ Function* get_taint_fn( Module *m, Type *ret, Types args ) {
     return cast< Function >( fn );
 }
 
+
 Instruction* create_taint( Instruction *i, const Values &args ) {
     IRBuilder<> irb( i );
 
@@ -318,6 +381,7 @@ Instruction* create_taint( Instruction *i, const Values &args ) {
     call->setMetadata( "lart.domains", i->getMetadata( "lart.domains" ) );
     return call;
 }
+
 
 bool is_taintable( Value *i ) {
     return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( i );
@@ -391,38 +455,15 @@ void LifterSynthesize::run( Module &m ) {
 
 void LifterSynthesize::process( CallInst *taint ) {
     auto fn = cast< Function >( taint->getOperand( 0 ) );
-    using LifterArg = std::pair< Value*, Value* >; // tainted flag + value
 
     std::vector< LifterArg > args;
     for ( auto it = fn->arg_begin(); it != fn->arg_end(); std::advance( it, 2 ) )
         args.emplace_back( it, std::next( it ) );
 
-    auto dom = MDValue( taint->getOperand( 1 ) ).domain();
-
-    auto exbb = make_bb( fn, "exit" );
-
-    size_t idx = 0;
-    BasicBlock *prev = nullptr;
-
-    Values lifted;
-    for ( const auto &arg : args ) {
-        auto ebb = entry_bb( arg.first, idx );
-        auto tbb = tainted_bb( arg.second, idx, dom );
-        auto ubb = untainted_bb( arg.second, idx, dom );
-        auto mbb = merge_bb( arg.second, idx );
-
-        join_bbs( ebb, tbb, ubb, mbb, exbb );
-        lifted.push_back( mbb->begin() );
-
-        if ( prev ) {
-            prev->getTerminator()->setSuccessor( 0, ebb );
-        }
-
-        prev = mbb;
-        idx++;
-    }
-
-    exit_lifter( exbb, taint, lifted );
+    if ( args.size() == 1 )
+        generate_unary_lifter( taint, fn, args[ 0 ].second );
+    else
+        generate_nary_lifter( taint, fn, args );
 }
 
 void LifterSynthesize::process_assume( CallInst *taint ) {
