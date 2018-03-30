@@ -51,7 +51,7 @@ struct Unmatched : Wrong
 
 struct Expect : ui::LogSink
 {
-    bool _ok, _found, _setup = false, _armed = false;
+    bool _ok, _found = true, _setup = false, _armed = false;
     mc::Result _result;
     std::string _cmd, _location;
 
@@ -71,6 +71,9 @@ struct Expect : ui::LogSink
 
     virtual void backtrace( ui::DbgContext &ctx, int )
     {
+        if ( _location.empty() )
+            return;
+
         _found = false;
         bool active = true;
         auto bt = [&]( int ) { active = false; };
