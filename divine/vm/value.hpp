@@ -147,10 +147,19 @@ struct Int : Base
     {
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
-        if ( width < _VM_PB_Full )
-            _ispointer = false;
+
         if ( is_signed && w == 1 ) /* TODO cover other bitwidths? */
             _cooked = i._cooked ? -1 : 0;
+
+        if ( _ispointer )
+        {
+            Int< width, is_signed > test;
+            test._pointer = i._pointer;
+            if ( test.cooked() == cooked() )
+                _pointer = i._pointer; /* keep pointer bits */
+            else
+                _ispointer = false;
+        }
     }
 
     template< typename T > Int( Float< T > f ) :
