@@ -121,6 +121,8 @@ struct Int : Base
     void raw( Raw r ) { _raw = r; }
     auto cooked() { return _cooked; }
 
+    GenericPointer as_pointer() { ASSERT( _ispointer ); return _pointer; }
+
     void taints( uint8_t set ) { _taints = set; }
     uint8_t taints() { return _taints; }
 
@@ -263,6 +265,8 @@ struct Float : Base
     bool pointer() { return false; }
     void pointer( bool ) {} /* ignore */
 
+    GenericPointer as_pointer() { UNREACHABLE( "floats are never pointers" ); }
+
     void taints( uint8_t set ) { _taints = set; }
     uint8_t taints() { return _taints; }
 
@@ -369,6 +373,8 @@ struct Pointer : Base
 
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }
+
+    GenericPointer as_pointer() { return cooked(); }
 
     Int< 1, false > compare( Pointer o, bool v )
     {
