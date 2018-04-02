@@ -226,6 +226,8 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
         }
 
         auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
+        if ( !bc ) std::cerr << "No .llvmbc section found in file " << file.second << "." << std::endl;
+
         std::unique_ptr< llvm::Module > m = std::move( llvm::parseBitcodeFile( bc.get(), *clang.context().get()).get() );
         m->setTargetTriple( "x86_64-unknown-none-elf" );
         verifyModule( *m );
@@ -260,6 +262,7 @@ int main( int argc, char **argv )
         auto po = cc::parseOpts( opts );
 
         using brick::fs::joinPath;
+        using brick::fs::absolutePrefix;
         using divine::cc::includeDir;
 
         po.opts.insert( po.opts.end(), {
@@ -296,8 +299,16 @@ int main( int argc, char **argv )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
                 std::string ofn = brick::fs::dropExtension( ifn );
-                if ( po.outputFile != "" ) ofn += ".temp";
-                ofn += ".o";
+                auto abs = absolutePrefix( ofn );
+                ofn = abs.second;
+                if ( po.outputFile != "" && po.toObjectOnly )
+                    ofn = po.outputFile;
+                else
+                {
+                    if ( po.outputFile != "" )
+                        ofn += ".temp";
+                    ofn += ".o";
+                }
 
                 if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
                     ofn = ifn;
