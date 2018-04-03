@@ -147,8 +147,7 @@ std::string Binary::string() const
     }
 }
 
-
-LTLPtr Atom::normalForm()
+int Unary::countAndLabelU( int seed /* = 0 */ )
 {
     assert( subExp && "formula should have been already complete" );
     return subExp->countAndLabelU( seed );
@@ -167,6 +166,18 @@ int Binary::countAndLabelU( int seed  /* = 0 */ )
     untilIndex = r;
     return r + 1;
 }
+
+LTLPtr Boolean::normalForm() { return LTL::make( value ); } // returns shared pointer to a NEW COPY of the Bool
+
+LTLPtr Boolean::normalForm( bool neg )
+{
+    if ( neg )
+        return LTL::make( !value );
+    return normalForm();
+}
+
+LTLPtr Atom::normalForm() { return LTL::make( label ); } // returns shared pointer to a NEW COPY of the Atom
+
 LTLPtr Atom::normalForm( bool neg )
 {
     if ( neg )
@@ -186,7 +197,7 @@ LTLPtr Unary::normalForm( bool neg )
             case Unary::Future:
                 return LTL::make(
                         Binary::Release,
-                        LTL::make( "false" ),
+                        LTL::make( false ),
                         subExp -> normalForm( true ) );
             // !G(a) = !(!F(!a)) = F(!a)
             case Unary::Global:
@@ -212,13 +223,13 @@ LTLPtr Unary::normalForm( bool neg )
             case Unary::Future:
                 return LTL::make(
                         Binary::Until,
-                        LTL::make( "true" ),
+                        LTL::make( true ),
                         subExp-> normalForm( false ) );
             // G(a) = false R a
             case Unary::Global:
                 return LTL::make(
                         Binary::Release,
-                        LTL::make( "false" ),
+                        LTL::make( false ),
                         subExp-> normalForm( false ) );
             // X(a) = X(a)
             case Unary::Next:
@@ -395,9 +406,11 @@ Tokens tokenizer( const std::string& formula )
             {
                 auto search = stringsToOperators.find( std::string(1, *it) );
                 if ( search != stringsToOperators.end() )
+                {
                     search->second.match(
                         [&]( Unary::Operator op ) { tokens.push_back( LTL::make( op ) ); },
                         [&]( Binary::Operator op ) { tokens.push_back( LTL::make( op ) ); } );
+                }
                 else
                     throw std::invalid_argument( std::string( "invalid LTL formula, cannot resolve symbol " ) + *it );
             }

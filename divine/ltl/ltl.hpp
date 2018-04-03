@@ -29,6 +29,8 @@ namespace ltl {
 struct LTL;
 
 using LTLPtr = std::shared_ptr< LTL >;
+using LTLWeak = std::weak_ptr< LTL >;
+
 struct LTLComparator
 {
     // @return true iff ltlA < ltlB lexicographically on strings or if equal strings but smaller U parents
@@ -81,6 +83,16 @@ struct Unary
     LTLPtr subExp;
 
     std::string string() const;
+    int priority() const {
+        switch( op ) {
+            case Neg : return 10;
+            case Global : return 9;
+            case Future : return 8;
+            case Next : return 7;
+        }
+    }
+
+    int countAndLabelU( int seed = 0 ); //returns the number of new discovered U formulas in subtree
     LTLPtr normalForm( bool );
     LTLPtr normalForm() { return normalForm( false ); }
 
@@ -141,7 +153,10 @@ struct LTL : Exp
         assert( isComplete() );
         if( is< Binary >() )
         {
-            return ltlA->string() == ltlB->string();
+            if( isType( Binary::Until ) )
+                get< Binary >().right->UParents.push_back( shared_from_this() );
+            get< Binary >().right->computeUParents();
+            get< Binary >().left->computeUParents();
         }
         else if( is< Unary >() )
             get< Unary >().subExp->computeUParents();
