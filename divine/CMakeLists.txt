@@ -62,7 +62,8 @@ target_link_libraries( divine-smt ${Z3_LIBRARIES} ${STP_LIBRARIES} )
 target_link_libraries( divine-dbg divine-vm )
 target_link_libraries( divine-mc divine-vm divine-dbg divine-smt divine-rt divine-cc # FIXME divine-cc
                                  liblart LLVMBitReader LLVMBitWriter LLVMLinker )
-target_link_libraries( divine-ui divine-rt divine-cc divine-mc )
+target_link_libraries( divine-ui divine-rt divine-cc divine-mc divine-ltl )
+
 
 if ( OPT_SQL )
     target_link_libraries( divine-ui nanodbc )
