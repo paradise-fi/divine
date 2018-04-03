@@ -28,16 +28,7 @@ State::State( Node* node )
     std::set< LTLPtr, LTLComparator2 > label;
     for( auto l : node->old )
         label.insert( l );
-/*    std::cout << "label contains these elements: ";
-    for( auto l : label )
-        std::cout << l->string() << ", ";
-    std::cout << std::endl;*/
-    //std::cout << "Now print the edges:" << std::endl;
     addEdge( node->incomingList, label, acc );
-//    edgesIn.emplace_back( node->incomingList, label, acc );
-    //for( auto& e : edgesIn )
-      //  for( auto l : e.label )
-        //    std::cout << l->string() << std::endl;
 }
 
 void State::merge( Node* node ) {
@@ -108,7 +99,6 @@ void fillSets( Node* node, LTLPtr form,
     else if( form->is< Unary >() ) {
         auto o = form->get< Unary >().op;
         LTLPtr subExp = form->get< Unary >().subExp;
-        //Neg, Global, Future, Next
         switch( o ) {
             case Unary::Neg:
                 inject( node, new1, form );
@@ -151,9 +141,7 @@ StatePtr Node::findTwin( const std::set< StatePtr, State::Comparator >& states )
 
 //returns the new node that has been splitted from this
 NodePtr Node::split( LTLPtr form ) {
-//    std::cout << "Splitting NODE " << id << std::endl;
     NodePtr node2 = std::make_shared< Node >( *this );
-//    resetUntils();
     resetRightOfUntils();
     node2->resetUntils();
     node2->resetRightOfUntils();
@@ -168,9 +156,6 @@ NodePtr Node::split( LTLPtr form ) {
     toBeDone.insert( new1.begin(), new1.end() );
     next.insert( next1.begin(), next1.end() );
 
-//    print();
-//    node2->print();
-//    std::cout << "        returns node " << node2->id << std::endl;
     return node2;
 }
 
@@ -220,22 +205,16 @@ bool Node::isinSI( LTLPtr phi, const std::set< LTLPtr, LTLComparator >& A, const
 
 //true if neg(phi) in SI(node.old, node.next)
 bool Node::contradics( LTLPtr phi ) {
-    //std::cout << "  contradics(" << phi->string() << ") called: ";
     LTLPtr negation = LTL::make( Unary::Neg, phi )->normalForm();
     bool result = isinSI( negation, old, next );
-    //std::cout << "   result is " << result << std::endl;
     return result;
 }
 
 bool Node::isRedundant( LTLPtr phi ) {
-    //std::cout << "  isRedundant(" << phi->string() << ") called: ";
     if( phi->is< Binary >() && phi->get< Binary >().op == Binary::Until ) // phi is Until formula
         if ( !isinSI( phi->get< Binary >().right, old, next ) ) // additionally, phi.right is not in SI
             return false;
     bool result = isinSI( phi, old, next );
-    //printSet( old );
-    //printSet( next );
-    //std::cout << "  result is " << result << std::endl;
     return result;
 }
 
@@ -262,28 +241,16 @@ void Node::print( ) const {
 size_t Node::depthOfRecursion = 0;
 
 std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State::Comparator >& states ) {
-//    std::cout << std::endl << localDepthOfRecursion++ << ". expand called on node " << id << std::endl;
-//    print();
-//    for( auto s : states )
-//        std::cout << *s;
     if ( toBeDone.empty() )
     {
-//        std::cout << "  toBeDone empty, " << std::endl;
         StatePtr twin = findTwin( states );
         if ( twin ) // nodeR is node with same old and next as currentNode
         {
-//            std::cout << "    TWIN found, before merge:" << std::endl;
-//            std::cout << *twin << std::endl;
             twin->merge( this );
-//            std::cout << "                after merge:" << std::endl;
-//            std::cout << *twin << std::endl;
             return states;
         }
         else // there is no twin
         {
-//            std::cout << "    no twin" << std::endl;
-//            states.emplace( std::make_shared< State >( this ) );
-//            std::cout << "    so producing state from node:" << std::endl;
             states.insert( std::make_shared< State >( State( this ) ) );
 
             NodePtr newNode = std::make_shared< Node >();
@@ -294,14 +261,10 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
     }
     else
     {
-//        std::cout << "  toBeDone nonempty, " << std::endl;
-
         auto nfIterator = toBeDone.begin();
         LTLPtr nf = *nfIterator; //next formula
-//        std::cout << "Node: " << id << " formula: " << nf->string() << std::endl;
         toBeDone.erase( nfIterator );
 
-        //poznam primo z LTL formule
         auto indexes = nf->indexesOfUParents();
         for( auto i : indexes )
             rightOfUntils[i] = true;
@@ -310,10 +273,8 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
         if( isRedundant( nf ) ) // formula is redundant so no need to process it
             return expand( states );
         if( nf->isType( Binary::Until ) ) {
-//            std::cout << "untilIndex=" << nf->get< Binary >().untilIndex << ", uCount=" << uCount << std::endl;
             assert( nf->get<Binary>().untilIndex < static_cast<int>( uCount ) );
             untils[nf->get<Binary>().untilIndex] = true;
-//            print();
         }
         // no contradictions && formula is not redundant
         if( !nf->isAtomOrBooleanOrNeg() ) {
@@ -329,7 +290,6 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
                         toBeDone.insert( nf->get< Binary >().left );
                     if( old.count( nf->get< Binary >().right ) == 0 )
                         toBeDone.insert( nf->get< Binary >().right );
-//                    std::cout << "#4" << std::endl;
                     return expand( states );
                 }
                 assert( false && "formula should have been in normal form!");
@@ -345,7 +305,6 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
                 return states;
             }
             old.insert( nf );
-//            std::cout << "#8" << std::endl;
             return expand( states );
         }
     }

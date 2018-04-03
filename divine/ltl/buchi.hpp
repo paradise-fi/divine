@@ -105,13 +105,11 @@ struct State
     std::set< LTLPtr, LTLComparator > next; //TODO use second comparator?
 
     State() = delete;
-    //TODO: delete this
     State( const State& other )
         : id( other.id )
         , edgesIn( other.edgesIn )
         , next( other.next )
     {
-//        std::cout << "Copy constructor of State called" << std::endl;
     }
     State( Node* node );
 
@@ -133,7 +131,6 @@ struct State
 
 struct Node
 {
-	//compare two nodes: (true iff IDs identical)
     struct Comparator
     {
         bool operator()( NodePtr nodeA, NodePtr nodeB ) const
@@ -155,7 +152,6 @@ struct Node
 
     void print() const;
 
-    //All constructors assign new id to node using newNodeId()
     Node()
         : id( newNodeId() )
     {
@@ -165,7 +161,6 @@ struct Node
         resetRightOfUntils();
     }
 
-    //copy constructor copies whole node except id
     Node( const Node& o )
         : id( newNodeId() )
         , incomingList( o.incomingList )
@@ -216,10 +211,6 @@ NodePtr findTwin( NodePtr nodeP, const std::set< NodePtr, Node::Comparator >& li
     return nullptr;
 }
 
-
-
-
-
 struct TGBA1 {
     LTLPtr formula;
     std::vector< StatePtr > states;
@@ -234,7 +225,6 @@ struct TGBA1 {
         std::set< LTLPtr, LTLComparator2 > allLiteralsSet;
         acceptingSets.resize( uCount );
 
-        // prepare renaming states:
         std::vector< size_t > ids;
         for( auto state : states )
             ids.push_back( state->id );
@@ -245,11 +235,9 @@ struct TGBA1 {
 
         for( auto state : states )
         {
-            //rename state
             state->id = idsMap.at( state->id );
             for( State::Edge & edge : state->edgesIn )
             {
-                // rename incoming states - replace the set 'sources' by new set
                 std::set< size_t > newSources;
                 for( size_t s : edge.sources )
                     newSources.insert( idsMap.at( s ) );
@@ -258,7 +246,6 @@ struct TGBA1 {
                     if( edge.accepting[i] )
                         acceptingSets[i].push_back( edge );
                 for( auto l : edge.label ) {
-//                    std::cout << "Found label " << l->string() << " on edge." << std::endl;
                     if( !l->is< Boolean >() ) {
                         allLiteralsSet.insert( l );
                         if( l->isType( Unary::Neg ) )
@@ -267,9 +254,7 @@ struct TGBA1 {
                 }
             }
         }
-//        std::cout << "    Starting to copy literals:" << std::endl;
         for( auto l : allLiteralsSet ) {
-//            std::cout << l->string() << ", ";
             allLiterals.emplace_back( l );
             if( !l->isType( Unary::Neg ) )
                 allTrivialLiterals.emplace_back( l );
@@ -277,13 +262,6 @@ struct TGBA1 {
         for( size_t i = 0; i < states.size(); ++i )
             assert( i == states.at( i )->id );
         assert( allLiterals.size() == allLiteralsSet.size() );
-
-//        std::cout << "    All trivial literals:" << std::endl;
-//        for( auto literal : allTrivialLiterals )
-//            std::cout << " \"" << literal->string() << "\"";
-//        std::cout << "    All literals:" << std::endl;
-//        for( auto literal : allLiterals )
-//            std::cout << " \"" << literal->string() << "\"";
     }
     void print() const
     {
@@ -461,12 +439,6 @@ struct TGBA2 {
             }
         }
         computeAccSCC();
-/*        for( size_t i = 0; i < accSCC.size(); ++i )
-        {
-            const auto& scc = accSCC.at( i );
-            if( scc.has_value() )
-                std::cout << "State " << i << " belongs to the acc component " << scc.value() << std::endl;
-        }*/
     }
     friend std::ostream& operator<<( std::ostream & os, const TGBA2& tgba2 )
     {
@@ -549,12 +521,7 @@ struct TGBA2 {
         {
             if( visited[state->id] == 0 ) //state was not visited yet -> start from it
                 DFSUtil1( state, visited, leaved, leavedStack, counter );
-        }/*
-        std::cout << "Printing the visited / leaved sets:" << std::endl;
-        for( size_t i = 0; i < visited.size(); ++i  )
-            std::cout << i << "[" << visited[i] << "/" << leaved[i] << "]" << ", ";
-        std::cout << std::endl;
-*/
+        }
         // second round
         leaved = std::vector< size_t >( states.size(), 0 );
         visited = std::vector< size_t >( states.size(), 0 );
