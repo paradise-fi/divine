@@ -8,6 +8,14 @@
  *       transitions, non-determinism and so on */
 /* TODO: how should this works vis-a-vis processes? */
 
+_PDCLIB_EXTERN_C
+
+void monitor_accept();
+int monitor_choose(int);
+void monitor_cancel();
+
+_PDCLIB_EXTERN_END
+
 #ifdef __cplusplus
 namespace __dios {
 
