@@ -16,11 +16,94 @@
 
 #include "ltl.hpp"
 #include <map>
-#include <vector>
 #include <list>
+#include <cassert>
 
 namespace divine {
 namespace ltl {
+
+int LTL::idCounter = 0;
+
+bool helper( LTLPtr ltlA, LTLPtr ltlB )
+{
+    if( !ltlA || !ltlB ) {
+        if( ltlB ) // if A is nullptr but B is defined.
+            return true;
+        return false;
+    }
+
+    if( ltlA->id == ltlB->id )
+        return false;
+    if( ltlA->priority() < ltlB->priority() )
+        return true;
+    if( ltlB->priority() < ltlA->priority() )
+        return false;
+    // ltlA and ltlB are the same type and have the same op
+    if( ltlA->is< Boolean >() ) {
+        if( ltlA->get< Boolean >().value == ltlB->get< Boolean >().value )
+            return ltlA->indexesOfUParents() < ltlB->indexesOfUParents();
+        return ltlA->get< Boolean >().value < ltlB->get< Boolean >().value;
+    }
+    else if( ltlA->is< Atom >() ){
+        if( ltlA->string() == ltlB->string() )
+            return ltlA->indexesOfUParents() < ltlB->indexesOfUParents();
+        return ltlA->string() < ltlB->string();
+    }
+    if( ltlA->is< Unary >() ) {
+        if( helper( ltlA->get< Unary >().subExp, ltlB->get< Unary >().subExp ) )
+            return true;
+        if( helper( ltlB->get< Unary >().subExp, ltlA->get< Unary >().subExp ) )
+            return false;
+        return ltlA->indexesOfUParents() < ltlB->indexesOfUParents();
+    }
+    else { // ltlA->is< Binary >() )
+        if( helper( ltlA->get< Binary >().right, ltlB->get< Binary >().right ) )
+            return true;
+        if( helper( ltlB->get< Binary >().right, ltlA->get< Binary >().right ) )
+            return false;
+        if( helper( ltlA->get< Binary >().left, ltlB->get< Binary >().left ) )
+            return true;
+        if( helper( ltlB->get< Binary >().left, ltlA->get< Binary >().left ) )
+            return false;
+        return ltlA->indexesOfUParents() < ltlB->indexesOfUParents();
+    }
+}
+
+bool LTLComparator::operator()( LTLPtr ltlA, LTLPtr ltlB ) const
+{
+    return helper( ltlA, ltlB );
+}
+
+bool LTLComparator2::operator()( LTLPtr ltlA, LTLPtr ltlB ) const // without comparing the sets of Until parents
+{
+    if( !ltlA || !ltlB ) {
+        if( ltlB ) // if A is nullptr but B is defined.
+            return true;
+        return false;
+    }
+    if( ltlA->id == ltlB->id )
+        return false;
+    if( ltlA->priority() < ltlB->priority() )
+        return true;
+    if( ltlB->priority() < ltlA->priority() )
+        return false;
+    if( ltlA->is< Boolean >() )
+        return ltlA->get< Boolean >().value < ltlB->get< Boolean >().value;
+    if( ltlA->is< Atom >() )
+        return ltlA->string() < ltlB->string();
+    if( ltlA->is< Unary >() ) {
+        if( operator()( ltlA->get< Unary >().subExp, ltlB->get< Unary >().subExp ) )
+            return true;
+        return false;
+    }
+    if( operator()( ltlA->get< Binary >().right, ltlB->get< Binary >().right ) )
+        return true;
+    if( operator()( ltlB->get< Binary >().right, ltlA->get< Binary >().right ) )
+        return false;
+    if( operator()( ltlA->get< Binary >().left, ltlB->get< Binary >().left ) )
+        return true;
+    return false;
+}
 
 std::string Unary::string() const
 {

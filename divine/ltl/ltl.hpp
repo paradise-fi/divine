@@ -16,6 +16,9 @@
 
 #include <iostream>
 #include <brick-types>
+#include <cassert>
+#include <set>
+#include <vector>
 
 #ifndef LTL2C_LTL_H
 #define LTL2C_LTL_H
@@ -26,6 +29,18 @@ namespace ltl {
 struct LTL;
 
 using LTLPtr = std::shared_ptr< LTL >;
+struct LTLComparator
+{
+    // @return true iff ltlA < ltlB lexicographically on strings or if equal strings but smaller U parents
+    bool operator()( LTLPtr ltlA, LTLPtr ltlB ) const;
+};
+
+struct LTLComparator2
+{
+    // @return true iff ltlA < ltlB lexicographically on strings
+    bool operator()( LTLPtr ltlA, LTLPtr ltlB ) const;
+};
+
 
 struct Atom
 {
@@ -51,7 +66,7 @@ struct Unary
 
 struct Binary
 {
-    enum Operator { And, Or, Impl, Equiv, Until, Release }  op;
+    enum Operator { And, Or, Impl, Equiv, Until, Release } op;
     LTLPtr left, right;
 
     std::string string() const;
@@ -93,7 +108,7 @@ struct LTL : Exp
 
     LTLPtr normalForm( bool neg )
     {
-        return apply( [=] ( auto e ) -> LTLPtr { return e.normalForm( neg ); } ).value();
+        return apply( [=]( auto e ) -> LTLPtr { return e.normalForm( neg ); } ).value();
     }
 
     static LTLPtr make( Binary::Operator op, LTLPtr left = nullptr, LTLPtr right = nullptr )
@@ -113,7 +128,7 @@ struct LTL : Exp
         return std::make_shared< LTL >( unary );
     }
 
-    static LTLPtr make( std::string label )
+    static LTLPtr make( const std::string & label )
     {
         Atom atom;
         atom.label = label;
@@ -126,13 +141,13 @@ struct LTL : Exp
     }
 };
 
-}
+} // end of namespace ltl
 
 namespace t_ltl {
 
 using namespace ltl;
 
-void check(LTLPtr f, std::string exp)
+static void check(LTLPtr f, std::string exp)
 {
     ASSERT_EQ( f->string(), exp );
     ASSERT_EQ( LTL::parse( exp )->string(), exp );
