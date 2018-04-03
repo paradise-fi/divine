@@ -370,11 +370,11 @@ std::vector< std::pair< Operator, bool > > operatorOrder = {
 
 std::map< std::string, Operator > stringsToOperators = {
     { "!", Unary::Neg    },
-    { "G", Unary::Global }, { "F", Unary::Future  }, { "X", Unary::Next },
-    { "&", Binary::And   }, { "|", Binary::Or     },
-    { "=", Binary::Equiv },
+    { "G", Unary::Global }, { "[]", Unary::Global }, { "F", Unary::Future  }, { "<>", Unary::Future  }, { "X", Unary::Next },
+    { "&&", Binary::And   }, { "/\\", Binary::And   }, { "\\/", Binary::Or     }, { "||", Binary::Or     },
+    { "=", Binary::Equiv }, { "<->", Binary::Equiv },
     { "->", Binary::Impl },
-    { "U", Binary::Until }, { "R", Binary::Release }
+    { "U", Binary::Until }, { "V", Binary::Release }, { "R", Binary::Release }
 };
 
 Tokens tokenizer( const std::string& formula )
@@ -384,7 +384,7 @@ Tokens tokenizer( const std::string& formula )
     for ( auto it = formula.begin(); it < formula.end(); ++it )
     {
         std::string proposition;
-        while ( it != formula.end() && *it >= 'a' && *it <= 'z' )
+        while ( it != formula.end() && ( ( *it >= 'a' && *it <= 'z' ) || *it == '_' || ( *it >= '0' && *it <= '9' ) ) )
             proposition.push_back( *it++ );
         if ( !proposition.empty() )
             tokens.push_back( LTL::make(proposition) );
@@ -392,11 +392,13 @@ Tokens tokenizer( const std::string& formula )
         {
             if( *it == ' ' )
                 continue;
-            else if( *it == '-' )
+            else if( *it == '<' )
             {
-                if( it + 1 != formula.end() && *(it + 1) == '>' )
-                    tokens.push_back( LTL::make( Binary::Impl ) ), ++it;
-                else throw std::invalid_argument( "invalid LTL formula, cannot resolve symbol '-' unless '>' follows" );
+                if( it + 1 != formula.end() && *( it + 1 ) == '-' && it + 2 != formula.end() && *(it + 2) == '>' )
+                    tokens.push_back( LTL::make( Binary::Equiv ) ), it = it + 2;
+                else if( it + 1 != formula.end() && *(it + 1) == '>' )
+                    tokens.push_back( LTL::make( Unary::Future ) ), ++it;
+                else throw std::invalid_argument( "invalid LTL formula, cannot resolve symbol '<' unless '->' follows" );
             }
             else if ( *it == '(' )
                 tokens.push_back( BracketOpen() );
@@ -412,7 +414,17 @@ Tokens tokenizer( const std::string& formula )
                         [&]( Binary::Operator op ) { tokens.push_back( LTL::make( op ) ); } );
                 }
                 else
-                    throw std::invalid_argument( std::string( "invalid LTL formula, cannot resolve symbol " ) + *it );
+                {
+                    std::string tmp = std::string(1, *it);
+                    tmp += *( ++it );
+                    search = stringsToOperators.find( tmp );
+                    if( search != stringsToOperators.end() )
+                        search->second.match(
+                            [&]( Unary::Operator op ) { tokens.push_back( LTL::make( op ) ); },
+                            [&]( Binary::Operator op ) { tokens.push_back( LTL::make( op ) ); } );
+                    else
+                        throw std::invalid_argument("invalid LTL formula");
+                }
             }
         }
     }
