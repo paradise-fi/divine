@@ -127,6 +127,12 @@ struct Version : Command
 
 enum class Report { None, Yaml, YamlLong };
 
+struct Ltlc : Command
+{
+    std::string _formula, _output, _system;
+    void run() override;
+};
+
 struct Verify : WithBC
 {
     int64_t _max_mem = 0; // bytes
@@ -251,7 +257,6 @@ std::string outputName( std::string path, std::string ext )
 {
     return brick::fs::replaceExtension( brick::fs::basename( path ), ext );
 }
-
 }
 
 std::shared_ptr< Interface > make_cli( std::vector< std::string > args );

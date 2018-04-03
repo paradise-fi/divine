@@ -212,6 +212,11 @@ struct CLI : Interface
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
             .option( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s );
 
+        auto ltlcopts = cmd::make_option_set< Ltlc >( v )
+            .option( "[--formula {string}|-f {string}]", &Ltlc::_formula, "formula LTL"s )
+            .option( "[--output {string}|-o {string}]", &Ltlc::_output, "name of the file"s )
+            .option( "[--system {string}|-s {string}]", &Ltlc::_system, "system to be verified"s );
+
         auto ccopts = cmd::make_option_set< Cc >( v )
             .options( ccdrvopts, &Cc::_drv )
             .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
@@ -258,7 +263,8 @@ struct CLI : Interface
             .command< Info >( bcopts )
             .command< Cc >( ccopts )
             .command< Version >()
-            .command< Help >( helpopts );
+            .command< Help >( helpopts )
+            .command< Ltlc >( ltlcopts );
         return parser;
     }
 
