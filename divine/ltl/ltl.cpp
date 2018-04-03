@@ -137,7 +137,7 @@ std::string Binary::string() const
         case Impl:
             return "( " + l + " -> " + r + " )";
         case Equiv:
-            return "( " + l + " = " + r + " )";
+            return "( " + l + " <-> " + r + " )";
         case Until:
             return "( " + l + " U " + r + " )";
         case Release:
@@ -150,9 +150,23 @@ std::string Binary::string() const
 
 LTLPtr Atom::normalForm()
 {
-    return std::make_shared< LTL >( *this );
+    assert( subExp && "formula should have been already complete" );
+    return subExp->countAndLabelU( seed );
 }
 
+//returns the count of different visited U, postorder
+int Binary::countAndLabelU( int seed  /* = 0 */ )
+{
+    assert( left && right && "formula should have been already complete" );
+    int l = left->countAndLabelU( seed );
+    assert( l >= seed );
+    int r = right->countAndLabelU( l );
+    assert( r >= l );
+    if( op != Until || untilIndex != -1 )
+        return r;
+    untilIndex = r;
+    return r + 1;
+}
 LTLPtr Atom::normalForm( bool neg )
 {
     if ( neg )
@@ -521,13 +535,13 @@ LTLPtr collapse( TokensPtr root )
     if ( !root )
         throw std::runtime_error( "Called collapse on nullptr root" );
     for ( auto& child : *root )
-        child.apply( [&](TokensPtr n) { child = collapse(n); } );
+        child.apply( [&]( TokensPtr n ) { child = collapse( n ); } );
     return reduce( root );
 }
 
-LTLPtr LTL::parse(const std::string& str )
+LTLPtr LTL::parse( const std::string& str )
 {
-    return collapse( solveBrackets(str) );
+    return collapse( solveBrackets( str ) );
 }
 
 }

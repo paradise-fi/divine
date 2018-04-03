@@ -42,10 +42,33 @@ struct LTLComparator2
 };
 
 
+/**
+ * ****************************************
+ * ************** OPERATORS ***************
+ * ******* nullary, unary and binary ******
+ * ****************************************
+ * */
+
+struct Boolean
+{
+    bool value;
+    std::string string() const { return value ? "true" : "false"; }
+    int priority() const { return 21; }
+
+    int countAndLabelU( int seed ) { return seed; }
+    LTLPtr normalForm( bool );
+    LTLPtr normalForm();
+
+    bool isComplete() const { return true; }
+};
+
 struct Atom
 {
     std::string label;
     std::string string() const { return label; }
+    int priority() const { return 20; }
+
+    int countAndLabelU( int seed ) { return seed; }
     LTLPtr normalForm( bool );
     LTLPtr normalForm();
 
@@ -54,7 +77,7 @@ struct Atom
 
 struct Unary
 {
-    enum Operator { Neg, Global, Future, Next  }  op;
+    enum Operator { Neg, Global, Future, Next } op; // !, G, F, X
     LTLPtr subExp;
 
     std::string string() const;
@@ -69,7 +92,20 @@ struct Binary
     enum Operator { And, Or, Impl, Equiv, Until, Release } op;
     LTLPtr left, right;
 
+    int untilIndex = -1;
     std::string string() const;
+    int priority() const {
+        switch( op ) {
+            case And : return 6;
+            case Or : return 5;
+            case Equiv : return 4;
+            case Impl : return 3;
+            case Until : return 2;
+            case Release : return 1;
+        }
+    }
+
+    int countAndLabelU( int seed = 0 );
     LTLPtr normalForm( bool );
     LTLPtr normalForm() { return normalForm( false ); }
 
@@ -80,18 +116,60 @@ using Exp = brick::types::Union< Atom, Unary, Binary >;
 struct LTL : Exp
 {
     using Exp::Union;
+    static int idCounter;
+    int id;
+    std::vector< LTLWeak > UParents;
 
-    struct Comparator
-    {
-        bool operator()( LTLPtr ltlA, LTLPtr ltlB ) const
-        {
-            return ltlA->string() == ltlB->string();
-        }
-    };
+    LTL() = delete;
+    LTL( const LTL& other ) = delete;
 
     std::string string()
     {
-        return apply( [] ( auto e ) -> std::string { return e.string(); } ).value();
+        std::stringstream output;
+        output << apply( [] ( auto e ) -> std::string { return e.string(); } ).value();
+        return output.str();
+    }
+    int priority() {
+        return apply( [] ( auto e ) -> int { return e.priority(); } ).value();
+    }
+    int countAndLabelU( int seed = 0 )
+    {
+        return apply( [seed] ( auto& e ) -> int { return e.countAndLabelU( seed ); } ).value();
+    }
+    void computeUParents()
+    {
+        assert( isComplete() );
+        if( is< Binary >() )
+        {
+            return ltlA->string() == ltlB->string();
+        }
+        else if( is< Unary >() )
+            get< Unary >().subExp->computeUParents();
+    }
+
+    std::vector< size_t > indexesOfUParents()
+    {
+        std::vector< size_t > indexes;
+        for( LTLWeak p : UParents ) {
+            assert( !p.expired() && "no U parent should be expired");
+            indexes.push_back( static_cast< size_t >( p.lock()->get<Binary>().untilIndex ) );
+        }
+        return indexes;
+    }
+
+    bool isType( Binary::Operator o ) const
+    {
+        return is< Binary >() && get< Binary >().op == o;
+    }
+    bool isType( Unary::Operator o ) const
+    {
+        return is< Unary >() && get< Unary >().op == o;
+    }
+    bool isAtomOrBooleanOrNeg() const
+    {
+        if( isType( Unary::Neg ) )
+            return get< Unary >().subExp->isAtomOrBooleanOrNeg();
+        return is< Atom >() || is< Boolean >();
     }
 
     static LTLPtr parse( const std::string& str );
@@ -117,7 +195,9 @@ struct LTL : Exp
         binary.op = op;
         binary.left = left;
         binary.right = right;
-        return std::make_shared< LTL >( binary );
+        LTLPtr newForm = std::make_shared< LTL >( binary );
+        newForm->id = ++idCounter;
+        return newForm;
     }
 
     static LTLPtr make( Unary::Operator op, LTLPtr subExp = nullptr )
@@ -125,19 +205,27 @@ struct LTL : Exp
         Unary unary;
         unary.op = op;
         unary.subExp = subExp;
-        return std::make_shared< LTL >( unary );
+        LTLPtr newForm = std::make_shared< LTL >( unary );
+        newForm->id = ++idCounter;
+        return newForm;
     }
 
     static LTLPtr make( const std::string & label )
     {
         Atom atom;
         atom.label = label;
-        return std::make_shared< LTL >( atom );
+        LTLPtr newForm = std::make_shared< LTL >( atom );
+        newForm->id = ++idCounter;
+        return newForm;
     }
 
-    static LTLPtr make( LTL ltl )
+    static LTLPtr make( bool value )
     {
-        return std::make_shared< LTL >( ltl );
+        Boolean boolean;
+        boolean.value = value;
+        LTLPtr newForm = std::make_shared< LTL >( boolean );
+        newForm->id = ++idCounter;
+        return newForm;
     }
 };
 
