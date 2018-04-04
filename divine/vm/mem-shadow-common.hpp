@@ -22,8 +22,8 @@
 
 #include <divine/vm/value.hpp>
 
-namespace divine {
-namespace vm::mem {
+namespace divine::vm::mem
+{
 
 namespace bitlevel = brick::bitlevel;
 
@@ -118,75 +118,6 @@ struct BitsetContainer
     }
 };
 
-template< typename ExceptionType, typename Internal >
-class ExceptionMap
-{
-public:
-    using Loc = InternalLoc< Internal >;
-    using ExcMap = std::map< Loc, ExceptionType >;
-    using Lock = std::lock_guard< std::mutex >;
-
-    ExceptionMap &operator=( const ExceptionType & o ) = delete;
-
-    ExceptionType at( Internal obj, int wpos )
-    {
-        ASSERT_EQ( wpos % 4, 0 );
-
-        Lock lk( _mtx );
-
-        auto it = _exceptions.find( Loc( obj, wpos ) );
-        ASSERT( it != _exceptions.end() );
-        ASSERT( it->second.valid() );
-        return it->second;
-    }
-
-    void set( Internal obj, int wpos, const ExceptionType &exc )
-    {
-        ASSERT_EQ( wpos % 4, 0 );
-
-        Lock lk( _mtx );
-        _exceptions[ Loc( obj, wpos ) ] = exc;
-    }
-
-    void invalidate( Internal obj, int wpos )
-    {
-        ASSERT_EQ( wpos % 4, 0 );
-
-        Lock lk( _mtx );
-
-        auto it = _exceptions.find( Loc( obj, wpos ) );
-
-        ASSERT( it != _exceptions.end() );
-        ASSERT( it->second.valid() );
-
-        it->second.invalidate();
-    }
-
-    void free( Internal obj )
-    {
-        Lock lk( _mtx );
-
-        auto lb = _exceptions.lower_bound( Loc( obj, 0 ) );
-        auto ub = _exceptions.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
-        while (lb != ub)
-        {
-            lb->second.invalidate();
-            ++lb;
-        }
-    }
-
-    bool empty()
-    {
-        Lock lk( _mtx );
-        return std::all_of( _exceptions.begin(), _exceptions.end(),
-                            []( const auto & e ) { return ! e.second.valid(); } );
-    }
-
-protected:
-    ExcMap _exceptions;
-    mutable std::mutex _mtx;
-};
-
 // No-op shadow layer
 template< typename _Internal, typename _Expanded >
 struct ShadowBottom {
@@ -239,7 +170,10 @@ struct ShadowBottom {
 
 }
 
-namespace t_vm {
+#include <divine/vm/mem-exceptions.hpp>
+
+namespace divine::t_vm
+{
 
 struct BitsetContainer {
     using Pool = brick::mem::Pool<>;
@@ -396,7 +330,5 @@ struct BitsetContainer {
         }
     }
 };
-
-}
 
 }
