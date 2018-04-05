@@ -118,7 +118,13 @@ struct Context
     template< typename I >
     int choose( int, I, I ) { return 0; }
 
-    void set( _VM_ControlRegister r, uint64_t v ) { _reg[ r ].integer = v; }
+    void set( _VM_ControlRegister r, uint64_t v )
+    {
+        _reg[ r ].integer = v;
+        if ( r == _VM_CR_Flags && _debug_depth )
+            ASSERT( debug_mode() );
+    }
+
     void set( _VM_ControlRegister r, GenericPointer v )
     {
         _reg[ r ].pointer = v;
