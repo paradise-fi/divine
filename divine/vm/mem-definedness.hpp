@@ -257,7 +257,7 @@ struct DefinednessLayer : public NextLayer
             _def_exceptions->set( to.object, to.offset,
                                   from_sh._def_exceptions->at( from.object, from.offset ) );
         else if ( exp_dst.data_exception )
-            _def_exceptions->invalidate( to.object, to.offset );
+            _def_exceptions->at( to.object, to.offset ).invalidate();
 
         NextLayer::copy_word( from_sh, from, exp_src, to, exp_dst );
     }
@@ -354,7 +354,7 @@ struct DefinednessLayer : public NextLayer
         if ( exp.data_exception )
             _def_exceptions->set( obj, off, src );
         else if ( was_exc )
-            _def_exceptions->invalidate( obj, off );
+            _def_exceptions->at( obj, off ).invalidate();
     }
 
 

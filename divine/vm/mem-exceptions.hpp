@@ -33,7 +33,7 @@ public:
 
     ExceptionMap &operator=( const ExceptionType & o ) = delete;
 
-    ExceptionType at( Internal obj, int wpos )
+    ExceptionType &at( Internal obj, int wpos )
     {
         ASSERT_EQ( wpos % 4, 0 );
 
@@ -51,20 +51,6 @@ public:
 
         Lock lk( _mtx );
         _exceptions[ Loc( obj, wpos ) ] = exc;
-    }
-
-    void invalidate( Internal obj, int wpos )
-    {
-        ASSERT_EQ( wpos % 4, 0 );
-
-        Lock lk( _mtx );
-
-        auto it = _exceptions.find( Loc( obj, wpos ) );
-
-        ASSERT( it != _exceptions.end() );
-        ASSERT( it->second.valid() );
-
-        it->second.invalidate();
     }
 
     void free( Internal obj )

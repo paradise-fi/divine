@@ -189,7 +189,7 @@ struct PointerLayer : public NextLayer
         for ( int w = 0; w < words; ++w )
         {
             if ( exp[ w ].pointer_exception )
-                _ptr_exceptions->invalidate( l.object, bitlevel::downalign( l.offset, 4 ) + 4 * w );
+                _ptr_exceptions->at( l.object, bitlevel::downalign( l.offset, 4 ) + 4 * w ).invalidate();
         }
 
         if ( sz == PointerBytes && value.pointer() )
@@ -254,7 +254,7 @@ struct PointerLayer : public NextLayer
             _ptr_exceptions->set( to.object, to.offset, from_sh._ptr_exceptions->at(
                             from.object, from.offset ) );
         else if ( exp_dst.pointer_exception )
-            _ptr_exceptions->invalidate( to.object, to.offset );
+            _ptr_exceptions->at( to.object, to.offset ).invalidate();
 
         NextLayer::copy_word( from_sh, from, exp_src, to, exp_dst );
     }
@@ -311,7 +311,7 @@ struct PointerLayer : public NextLayer
         }
 
         if ( was_ptr_exc && ! exp.pointer_exception )
-            _ptr_exceptions->invalidate( obj, off );
+            _ptr_exceptions->at( obj, off ).invalidate();
     }
 
     PointerException pointer_exception( Internal obj, int off )
