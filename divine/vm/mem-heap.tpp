@@ -209,6 +209,7 @@ namespace divine::vm::mem::heap
         auto root_i = f.ptr2i( root );
         if ( overwrite )
             t.free( root );
+        /* FIXME make the result weak if root is */
         auto result = t.make( f.size( root ), root.object(), true ).cooked();
         if ( overwrite )
             ASSERT_EQ( root.object(), result.object() );

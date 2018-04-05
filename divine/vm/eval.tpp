@@ -1014,6 +1014,14 @@ void Eval< Ctx >::implement_ret()
     PointerV caller_pc;
     heap().read( parent.cooked(), caller_pc );
     const auto &caller = program().instruction( caller_pc.cooked() );
+/* TODO
+    if ( caller.opcode != OpCode::Invoke && caller.opcode != OpCode::Call )
+    {
+        fault( _VM_F_Control, parent.cooked(), caller_pc.cooked() )
+            << "Illegal return to a non-call location.";
+        return;
+    }
+*/
     if ( instruction().argcount() ) /* return value */
     {
         if ( !caller.has_result() ) {
