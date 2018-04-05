@@ -163,7 +163,7 @@ struct DefinednessLayer : public NextLayer
             uint32_t def_word;
         } da, db;
 
-        a_sh._layers._def_exceptions->get( a.object, a.offset, da.def_bytes );
+        a_sh._def_exceptions->get( a.object, a.offset, da.def_bytes );
         _def_exceptions->get( b.object, b.offset, db.def_bytes );
 
         int cmp = da.def_word - db.def_word;
@@ -255,7 +255,7 @@ struct DefinednessLayer : public NextLayer
     {
         if ( exp_src.data_exception )
             _def_exceptions->set( to.object, to.offset,
-                                  from_sh._layers._def_exceptions->at( from.object, from.offset ) );
+                                  from_sh._def_exceptions->at( from.object, from.offset ) );
         else if ( exp_dst.data_exception )
             _def_exceptions->invalidate( to.object, to.offset );
 
@@ -269,7 +269,7 @@ struct DefinednessLayer : public NextLayer
     {
         NextLayer::copy_init_src( from_sh, obj, off, exp, fhr );
 
-        from_sh._layers._read_def( current_def_from, obj, off, exp );
+        from_sh._read_def( current_def_from, obj, off, exp );
     }
 
     template< typename ToHeapReader >

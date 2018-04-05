@@ -150,7 +150,7 @@ struct PointerLayer : public NextLayer
 
         if ( exp_a.pointer_exception )
         {
-            auto pe_a = a_sh._layers.pointer_exception( a.object, a.offset );
+            auto pe_a = a_sh.pointer_exception( a.object, a.offset );
             auto pe_b = pointer_exception( b.object, b.offset );
             for ( int i = 0; i < 4 ; ++i )
             {
@@ -251,7 +251,7 @@ struct PointerLayer : public NextLayer
                     Loc to, Expanded exp_dst )
     {
         if ( exp_src.pointer_exception )
-            _ptr_exceptions->set( to.object, to.offset, from_sh._layers._ptr_exceptions->at(
+            _ptr_exceptions->set( to.object, to.offset, from_sh._ptr_exceptions->at(
                             from.object, from.offset ) );
         else if ( exp_dst.pointer_exception )
             _ptr_exceptions->invalidate( to.object, to.offset );
@@ -266,7 +266,7 @@ struct PointerLayer : public NextLayer
     {
         NextLayer::copy_init_src( from_sh, obj, off, exp, fhr );
 
-        current_ptr_from = from_sh._layers._read_ptr( obj, off, exp, fhr );
+        current_ptr_from = from_sh._read_ptr( obj, off, exp, fhr );
     }
 
     template< typename ToHeapReader >

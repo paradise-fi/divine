@@ -113,7 +113,7 @@ struct SandwichShadow
                 continue;
             Expanded exp_a = Descriptor::expand( c_a );
             Expanded exp_b = Descriptor::expand( c_b );
-            if ( ( cmp = _layers.compare_word( a_sh, a + off, exp_a, b + off, exp_b ) ) )
+            if ( ( cmp = _layers.compare_word( a_sh._layers, a + off, exp_a, b + off, exp_b ) ) )
                 return cmp;
         }
 
@@ -195,7 +195,7 @@ struct SandwichShadow
             {
                 Expanded exp_src = Descriptor::expand( *i_from );
                 Expanded exp_dst = Descriptor::expand( *i_to );
-                _layers.copy_word( from_sh, from + off, exp_src, to + off, exp_dst );
+                _layers.copy_word( from_sh._layers, from + off, exp_src, to + off, exp_dst );
                 *i_to++ = *i_from++;
             }
         }
@@ -215,7 +215,7 @@ struct SandwichShadow
             {
                 exp_src = Descriptor::expand( *i_from++ );
                 int aligned = bitlevel::downalign( off_from, 4 );
-                _layers.copy_init_src( from_sh, from.object, aligned, exp_src, fhr );
+                _layers.copy_init_src( from_sh._layers, from.object, aligned, exp_src, fhr );
             }
             if ( off_to % 4 )
             {
@@ -229,7 +229,7 @@ struct SandwichShadow
                 if ( off_from % 4 == 0 )
                 {
                     exp_src = Descriptor::expand( *i_from++ );
-                    _layers.copy_init_src( from_sh, from.object, off_from, exp_src, fhr );
+                    _layers.copy_init_src( from_sh._layers, from.object, off_from, exp_src, fhr );
                 }
                 if ( off_to % 4 == 0 )
                 {
@@ -239,7 +239,7 @@ struct SandwichShadow
                     written = false;
                 }
 
-                _layers.copy_byte( from_sh, from + off, exp_src, fhr, to + off, exp_dst, thr );
+                _layers.copy_byte( from_sh._layers, from + off, exp_src, fhr, to + off, exp_dst, thr );
 
                 ++off;
                 ++off_from;
