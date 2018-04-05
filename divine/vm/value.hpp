@@ -331,7 +331,7 @@ struct Pointer : Base
             return GenericPointer( l( HeapPointer( _cooked ) ) );
         if ( _cooked.type() == PointerType::Code )
             return GenericPointer( l( CodePointer( _cooked ) ) );
-        UNREACHABLE( "impossible pointer type" );
+        return l( _cooked );
     }
 
     friend std::ostream &operator<<( std::ostream &o, Pointer v )
