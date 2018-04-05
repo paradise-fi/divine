@@ -27,8 +27,7 @@ template< typename Ctx >
 typename Eval< Ctx >::FaultStream Eval< Ctx >::fault( Fault f )
 {
     if ( frame().null() || !heap().valid( frame() ) )
-        return fault( f, nullPointer( PointerType::Heap ),
-                      nullPointer( PointerType::Code ) );
+        return fault( f, nullPointer( PointerType::Heap ), nullPointer( PointerType::Code ) );
     else
         return fault( f, frame(), pc() );
 }
