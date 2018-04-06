@@ -117,6 +117,7 @@ struct TaintLayer : public NextLayer
     }
 };
 
+#if 0
 /* Additional layer of taint bits. Not sandwichable. */
 template< template < typename > class SlaveShadow, typename MasterPool,
           uint8_t TaintBits = 1, uint8_t LSB = 0 >
@@ -216,9 +217,11 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
     }
 
 };
+#endif
 
 }
 
+#if 0
 namespace t_vm {
 
 using Pool = brick::mem::Pool<>;
@@ -450,3 +453,4 @@ struct PooledTaintShadow4bit
 }
 }
 
+#endif
