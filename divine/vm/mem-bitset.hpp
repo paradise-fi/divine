@@ -27,30 +27,6 @@ namespace divine::vm::mem
 
 namespace bitlevel = brick::bitlevel;
 
-template< typename InternalPtr >
-struct InternalLoc : public brick::types::Ord
-{
-    InternalPtr object;
-    int offset;
-    InternalLoc( InternalPtr o, int off = 0 )
-        : object( o ), offset( off )
-    {}
-    InternalLoc operator-( int i ) const { InternalLoc r = *this; r.offset -= i; return r; }
-    InternalLoc operator+( int i ) const { InternalLoc r = *this; r.offset += i; return r; }
-    bool operator==( const InternalLoc & o) const
-    {
-        return object == o.object && offset == o.offset;
-    }
-    bool operator<=(const InternalLoc & o) const
-    {
-        return object < o.object || (object == o.object && offset <= o.offset);
-    }
-    bool operator<(const InternalLoc & o) const
-    {
-        return object < o.object || (object == o.object && offset < o.offset);
-    }
-};
-
 template< unsigned BitsPerSet, typename Pool >
 struct BitsetContainer
 {
@@ -59,7 +35,6 @@ struct BitsetContainer
 
     using Type = bitlevel::bitvec< BitsPerSet >;
     using Ptr = typename Pool::Pointer;
-    using Loc = InternalLoc< Ptr >;
     using Mask = std::integral_constant< Type, bitlevel::ones< Type >( BitsPerSet ) >;
 
     struct proxy
@@ -87,6 +62,7 @@ struct BitsetContainer
         bool operator!=( const proxy &o ) const { return get() != o.get(); }
         proxy *operator->() { return this; }
     };
+
     struct iterator : std::iterator< std::forward_iterator_tag, proxy >
     {
         Type *_base; int _pos;
@@ -118,56 +94,6 @@ struct BitsetContainer
     }
 };
 
-// No-op shadow layer
-template< typename _Internal, typename _Expanded >
-struct ShadowBottom {
-    using Internal = _Internal;
-    using Expanded = _Expanded;
-    using Loc = InternalLoc< Internal >;
-
-    template< typename V >
-    void write( Loc, V, Expanded * ) {}
-    template< typename V >
-    void read( Loc, V &, Expanded * ) {}
-    template< typename FromSh >
-    void copy_word( FromSh &, typename FromSh::Loc, Expanded, Loc, Expanded ) {}
-    template< typename FromSh, typename FromHeapReader >
-    void copy_init_src( FromSh &, typename FromSh::Internal, int off, const Expanded &,
-                        FromHeapReader )
-    {
-        ASSERT_EQ( off % 4, 0 );
-    }
-    template< typename ToHeapReader >
-    void copy_init_dst( Internal, int off, const Expanded &, ToHeapReader )
-    {
-        ASSERT_EQ( off % 4, 0 );
-    }
-
-    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
-    void copy_byte( FromSh &, typename FromSh::Loc, const Expanded &, FromHeapReader,
-                    Loc, Expanded &, ToHeapReader ) {}
-    void copy_done( Internal, int off, Expanded & )
-    {
-        ASSERT_EQ( off % 4, 0 );
-    }
-    template< typename OtherSh >
-    int compare_word( OtherSh &, typename OtherSh::Loc a, Expanded, Loc b, Expanded )
-    {
-            ASSERT_EQ( a.offset % 4, 0 );
-            ASSERT_EQ( b.offset % 4, 0 );
-            return 0;
-    }
-    template< typename OtherSh >
-    int compare_byte( OtherSh &, typename OtherSh::Loc a, Expanded, Loc b, Expanded )
-    {
-        ASSERT_EQ( a.offset % 4, b.offset % 4 );
-        return 0;
-    }
-
-    void make( Internal, int ) {}
-    void free( Internal ) {}
-};
-
 }
 
 #include <divine/vm/mem-exceptions.hpp>
@@ -175,7 +101,8 @@ struct ShadowBottom {
 namespace divine::t_vm
 {
 
-struct BitsetContainer {
+struct BitsetContainer
+{
     using Pool = brick::mem::Pool<>;
     Pool::Pointer obj;
     Pool pool;

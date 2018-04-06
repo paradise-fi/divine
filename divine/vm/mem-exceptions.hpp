@@ -19,15 +19,15 @@
 #pragma once
 
 #include <brick-types>
+#include <divine/vm/divm.h>
 
 namespace divine::vm::mem
 {
 
-template< typename ExceptionType, typename Internal >
-class ExceptionMap
+template< typename ExceptionType, typename Loc >
+struct ExceptionMap
 {
-public:
-    using Loc = InternalLoc< Internal >;
+    using Internal = typename Loc::Internal;
     using ExcMap = std::map< Loc, ExceptionType >;
     using Lock = std::lock_guard< std::mutex >;
 

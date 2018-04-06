@@ -17,11 +17,11 @@
  */
 
 #pragma once
+#include <divine/vm/mem-exceptions.hpp>
+#include <brick-bitlevel>
 
-#include <divine/vm/mem-shadow-common.hpp>
-
-namespace divine {
-namespace vm::mem {
+namespace divine::vm::mem
+{
 
 namespace bitlevel = brick::bitlevel;
 
@@ -82,10 +82,10 @@ struct DefinednessLayer : public NextLayer
     using Loc = typename NextLayer::Loc;
     using Expanded = typename NextLayer::Expanded;
 
-    class DataExceptions : public ExceptionMap< DataException, Internal >
+    class DataExceptions : public ExceptionMap< DataException, Loc >
     {
     public:
-        using Base = ExceptionMap< DataException, Internal >;
+        using Base = ExceptionMap< DataException, Loc >;
 
     private:
         using Lock = typename Base::Lock;
@@ -360,6 +360,5 @@ struct DefinednessLayer : public NextLayer
 
 };
 
-}
 }
 

@@ -19,11 +19,10 @@
 #pragma once
 
 #include <brick-types>
+#include <divine/vm/mem-bitset.hpp>
 
-#include <divine/vm/mem-shadow-common.hpp>
-
-namespace divine {
-namespace vm::mem {
+namespace divine::vm::mem
+{
 
 namespace bitlevel = brick::bitlevel;
 
@@ -43,9 +42,9 @@ struct SandwichShadow
 {
     using Pool = brick::mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
-    using Loc = InternalLoc< Internal >;
     using Descriptor = SandwichDescriptor;
-    using Layers = typename Descriptor::template Layers< Internal >;
+    using Layers = typename Descriptor::template Layers< MasterPool >;
+    using Loc = typename Layers::Loc;
     using Compressed = typename Descriptor::Compressed;
     using Expanded = typename Descriptor::Expanded;
     static constexpr unsigned BPW = Descriptor::BitsPerWord;
@@ -393,5 +392,3 @@ struct SandwichShadow
 };
 
 }
-}
-

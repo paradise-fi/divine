@@ -22,7 +22,7 @@
 #include <brick-types>
 
 #include <divine/vm/value.hpp>
-#include <divine/vm/mem-shadow-common.hpp>
+#include <divine/vm/mem-base.hpp>
 #include <divine/vm/mem-sandwich.hpp>
 #include <divine/vm/mem-pointers.hpp>
 #include <divine/vm/mem-definedness.hpp>
@@ -138,11 +138,12 @@ struct CompoundShadowDescriptor
     }
 
     // Actual layers of the shadow
-    template< typename Internal >
+    template< typename Pool >
     using Layers = TaintLayer<
                    DefinednessLayer<
                    PointerLayer<
-                   ShadowBottom< Internal, Expanded > > > >;
+                   ShadowBase< Expanded,
+                   Base< Pool > > > > >;
 };
 
 template< typename MasterPool >

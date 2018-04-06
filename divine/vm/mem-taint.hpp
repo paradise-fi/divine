@@ -17,14 +17,12 @@
  */
 
 #pragma once
+#include <brick-bitlevel>
 
-#include <divine/vm/mem-shadow-common.hpp>
-
-namespace divine {
-namespace vm::mem {
+namespace divine::vm::mem
+{
 
 namespace bitlevel = brick::bitlevel;
-
 
 /*
  * Shadow layer for tracking a taint bit (the least significant taint bit in vm::Value).
@@ -451,6 +449,4 @@ struct PooledTaintShadow4bit
 };
 
 }
-}
-
 #endif
