@@ -52,9 +52,6 @@ namespace divine::vm::mem::heap
         if ( !h1.valid( r1 ) )
             return 0;
 
-        if ( h1.shared( r1 ) != h2.shared( r2 ) )
-            return h1.shared( r1 ) - h2.shared( r2 );
-
         auto i1 = h1.ptr2i( r1 ), i2 = h2.ptr2i( r2 );
         int s1 = h1.size( r1, i1 ), s2 = h2.size( r2, i2 );
         if ( s1 - s2 )
@@ -378,36 +375,6 @@ namespace divine::vm::mem
         return true;
     }
 
-    template< typename Self, typename PR >
-    bool SimpleHeap< Self, PR >::shared( GenericPointer gp, bool sh )
-    {
-        if ( !gp.heap() || !valid( gp ) )
-            return false;
-
-        HeapPointer p = gp;
-        auto i = ptr2i( p );
-
-        if ( _shadows.shared( i ) == sh )
-            return false; /* nothing to be done */
-
-        auto detached = self().detach( p, i );
-        _shadows.shared( detached ) = sh;
-        bool rv = i != detached;
-
-        if ( !sh )
-            return rv;
-
-        for ( auto pos : this->pointers( p, detached ) ) /* flood */
-        {
-            value::Pointer ptr;
-            p.offset( pos.offset() );
-            read( p, ptr, detached );
-            rv = shared( ptr.cooked(), true ) || rv;
-        }
-
-        return rv;
-    }
-
     template< typename Self, typename PR > template< typename T >
     auto SimpleHeap< Self, PR >::write( HeapPointer p, T t, Internal i ) -> Internal
     {
@@ -417,9 +384,6 @@ namespace divine::vm::mem
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
         _shadows.write( shloc( p, i ), t );
         *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
-        if ( t.pointer() && shared( p ) )
-            if ( shared( value::Pointer( t ).cooked(), true ) )
-                return Internal();
         return i;
     }
 
@@ -459,22 +423,6 @@ namespace divine::vm::mem
                        shloc( _to, _to_i ), bytes, from_heap_reader, this_heap_reader );
 
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
-
-        if ( _shadows.shared( _to_i ) )
-            for ( auto pos : _shadows.pointers( shloc( _to, _to_i ), bytes ) )
-            {
-                value::Pointer ptr;
-                if ( pos.size() == PointerBytes )
-                {
-                    _to.offset( to_off + pos.offset() );
-                    read( _to, ptr, _to_i );
-                }
-                else
-                {
-                    ptr.cooked().object( pos.fragment() );
-                }
-                shared( ptr.cooked(), true );
-            }
 
         return true;
     }
@@ -519,8 +467,6 @@ namespace divine::vm::mem
             return false;
         if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
             return false;
-        if ( shadows().shared( a ) != shadows().shared( b ) )
-            return false;
         if ( !shadows().equal( a, b, size ) )
             return false;
         return true;
@@ -549,7 +495,6 @@ namespace divine::vm::mem
         };
         _shadows.copy( oldloc, newloc, sz, heap_reader );
         std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
-        _shadows.shared( obj ) = _shadows.shared( i );
         return obj;
     }
 

@@ -588,9 +588,6 @@ void Eval< Ctx >::implement_hypercall()
                 fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
             return;
         }
-        case lx::HypercallObjShared:
-            heap().shared( operandCk< PointerV >( 0 ).cooked(), true );
-            return;
         case lx::HypercallObjResize:
         {
             auto ptr = operandCk< PointerV >( 0 ).cooked();

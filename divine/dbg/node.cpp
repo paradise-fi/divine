@@ -311,8 +311,6 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _address.type() == vm::PointerType::Global )
         yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
-    else if ( _address.type() == vm::PointerType::Heap )
-        yield( "shared", brick::string::fmt( _ctx.heap().shared( _address ) ) );
 
     if ( _address.type() == vm::PointerType::Marked )
     {

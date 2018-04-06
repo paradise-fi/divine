@@ -293,8 +293,6 @@ namespace divine::vm::mem
             return ptr2i( p ).slab();
         }
 
-        bool shared( HeapPointer p ) const { return _shadows.shared( ptr2i( p ) ); }
-        bool shared( GenericPointer gp, bool sh );
         int size( HeapPointer, Internal i ) const { return _objects.size( i ); }
         int size( HeapPointer p ) const { return size( p, ptr2i( p ) ); }
 

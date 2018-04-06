@@ -279,9 +279,6 @@ struct Context
         if ( flags_all( _VM_CF_IgnoreCrit ) || debug_mode() )
             return false;
 
-        if ( ptr.heap() && !heap().shared( ptr ) )
-            return false;
-
         auto start = ptr;
         if ( start.heap() )
             start.type( PointerType::Heap );
