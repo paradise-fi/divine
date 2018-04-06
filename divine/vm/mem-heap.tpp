@@ -492,7 +492,7 @@ namespace divine::vm::mem
 
         while ( offset + 4 <= size )
         {
-            if ( ! Shadows::Descriptor::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
+            if ( ! Shadows::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
                 high.update( base + offset, 4 );
             offset += 4;
             ++c;

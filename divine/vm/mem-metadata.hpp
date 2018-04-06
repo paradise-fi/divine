@@ -37,41 +37,38 @@ namespace bitlevel = brick::bitlevel;
  * It is called a sandwich because (a) it has different configurable layers with the storage and
  * (de)compression layer being the bread on either end, and (b) it's cute and I refuse to rename it.
  */
-template< typename MasterPool, typename Layers >
-struct SandwichShadow
+template< typename Next >
+struct Metadata : Next
 {
-    using Pool = brick::mem::SlavePool< MasterPool >;
-    using Internal = typename Pool::Pointer;
-    using Loc = typename Layers::Loc;
-    using Compressed = typename Layers::Compressed;
-    using Expanded = typename Layers::Expanded;
-    using Descriptor = Layers;
-    static constexpr unsigned BPW = Layers::BitsPerWord;
+    using typename Next::Pool;
+    using MetaPool = brick::mem::SlavePool< Pool >;
+    using typename Next::Internal;
+    using typename Next::Loc;
+    using typename Next::Compressed;
+    using typename Next::Expanded;
+    static constexpr unsigned BPW = Next::BitsPerWord;
 
     static_assert( BPW && ( ( BPW & ( BPW - 1 ) ) == 0 ),
-                   "Layers::BitsPerWord must be a power of two" );
+                   "Next::BitsPerWord must be a power of two" );
     static_assert( sizeof( Compressed ) * 8 >= BPW,
-                   "Layers::Compressed does not contain all bits per word" );
+                   "Next::Compressed does not contain all bits per word" );
 
-    Pool _shadow,
-         _shared;
+    MetaPool _meta, _shared;
 
-    Layers _layers;
-
-    SandwichShadow( const MasterPool &mp )
-        : _shadow( mp ), _shared( mp ) {}
+    Metadata( const Pool &mp )
+        : _meta( mp ), _shared( mp ) {}
 
     void make( Internal p, int size )
     {
         constexpr unsigned divisor = 32 / BPW;
-        _shadow.materialise( p, ( size / divisor ) + ( size % divisor ? 1 : 0 ) );
+        _meta.materialise( p, ( size / divisor ) + ( size % divisor ? 1 : 0 ) );
         _shared.materialise( p, 1 );
-        _layers.make( p, size );
+        Next::make( p, size );
     }
 
     void free( Internal p )
     {
-        _layers.free( p );
+        Next::free( p );
     }
 
     bool &shared( Internal p )
@@ -107,21 +104,21 @@ struct SandwichShadow
             Compressed c_b = *i_b++;
             if ( ( cmp = c_a - c_b ) )
                 return cmp;
-            if ( Layers::is_trivial( c_a ) )
+            if ( Next::is_trivial( c_a ) )
                 continue;
-            Expanded exp_a = Layers::expand( c_a );
-            Expanded exp_b = Layers::expand( c_b );
-            if ( ( cmp = _layers.compare_word( a_sh._layers, a + off, exp_a, b + off, exp_b ) ) )
+            Expanded exp_a = Next::expand( c_a );
+            Expanded exp_b = Next::expand( c_b );
+            if ( ( cmp = Next::compare_word( a_sh, a + off, exp_a, b + off, exp_b ) ) )
                 return cmp;
         }
 
         return 0;
     }
 
-    using CompressedC = BitsetContainer< BPW, Pool >;
+    using CompressedC = BitsetContainer< BPW, MetaPool >;
     CompressedC compressed( Loc l, unsigned words )
     {
-        return CompressedC( _shadow, l.object, l.offset / 4, words + l.offset / 4 );
+        return CompressedC( _meta, l.object, l.offset / 4, words + l.offset / 4 );
     }
 
     template< typename V >
@@ -140,9 +137,9 @@ struct SandwichShadow
         auto sh = compressed( l, words );
         Expanded exp[ words ];
 
-        std::transform( sh.begin(), sh.end(), exp, Layers::expand );
-        _layers.write( l, value, exp );
-        std::transform( exp, exp + words, sh.begin(), Layers::compress );
+        std::transform( sh.begin(), sh.end(), exp, Next::expand );
+        Next::write( l, value, exp );
+        std::transform( exp, exp + words, sh.begin(), Next::compress );
     }
 
     template< typename V >
@@ -161,8 +158,8 @@ struct SandwichShadow
         auto sh = compressed( l, words );
         Expanded exp[ words ];
 
-        std::transform( sh.begin(), sh.end(), exp, Layers::expand );
-        _layers.read( l, value, exp );
+        std::transform( sh.begin(), sh.end(), exp, Next::expand );
+        Next::read( l, value, exp );
     }
 
     template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
@@ -191,9 +188,9 @@ struct SandwichShadow
 
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             {
-                Expanded exp_src = Layers::expand( *i_from );
-                Expanded exp_dst = Layers::expand( *i_to );
-                _layers.copy_word( from_sh._layers, from + off, exp_src, to + off, exp_dst );
+                Expanded exp_src = Next::expand( *i_from );
+                Expanded exp_dst = Next::expand( *i_to );
+                Next::copy_word( from_sh, from + off, exp_src, to + off, exp_dst );
                 *i_to++ = *i_from++;
             }
         }
@@ -211,33 +208,33 @@ struct SandwichShadow
 
             if ( off_from % 4 )
             {
-                exp_src = Layers::expand( *i_from++ );
+                exp_src = Next::expand( *i_from++ );
                 int aligned = bitlevel::downalign( off_from, 4 );
-                _layers.copy_init_src( from_sh._layers, from.object, aligned, exp_src, fhr );
+                Next::copy_init_src( from_sh, from.object, aligned, exp_src, fhr );
             }
             if ( off_to % 4 )
             {
-                exp_dst = Layers::expand( *i_to );
+                exp_dst = Next::expand( *i_to );
                 int aligned = bitlevel::downalign( off_to, 4 );
-                _layers.copy_init_dst( to.object, aligned, exp_dst, thr );
+                Next::copy_init_dst( to.object, aligned, exp_dst, thr );
             }
 
             while ( off < sz )
             {
                 if ( off_from % 4 == 0 )
                 {
-                    exp_src = Layers::expand( *i_from++ );
-                    _layers.copy_init_src( from_sh._layers, from.object, off_from, exp_src, fhr );
+                    exp_src = Next::expand( *i_from++ );
+                    Next::copy_init_src( from_sh, from.object, off_from, exp_src, fhr );
                 }
                 if ( off_to % 4 == 0 )
                 {
-                    exp_dst = Layers::expand( *i_to );
+                    exp_dst = Next::expand( *i_to );
                     if ( sz - off < 4 )
-                        _layers.copy_init_dst( to.object, off_to, exp_dst, thr );
+                        Next::copy_init_dst( to.object, off_to, exp_dst, thr );
                     written = false;
                 }
 
-                _layers.copy_byte( from_sh._layers, from + off, exp_src, fhr, to + off, exp_dst, thr );
+                Next::copy_byte( from_sh, from + off, exp_src, fhr, to + off, exp_dst, thr );
 
                 ++off;
                 ++off_from;
@@ -245,8 +242,8 @@ struct SandwichShadow
 
                 if ( off_to % 4 == 0 )
                 {
-                    _layers.copy_done( to.object, off_to - 4, exp_dst );
-                    *i_to++ = Layers::compress( exp_dst );
+                    Next::copy_done( to.object, off_to - 4, exp_dst );
+                    *i_to++ = Next::compress( exp_dst );
                     written = true;
                 }
             }
@@ -254,8 +251,8 @@ struct SandwichShadow
             if ( ! written )
             {
                 int aligned = bitlevel::downalign( off_to, 4 );
-                _layers.copy_done( to.object, aligned, exp_dst );
-                *i_to = Layers::compress( exp_dst );
+                Next::copy_done( to.object, aligned, exp_dst );
+                *i_to = Next::compress( exp_dst );
             }
         }
     }
@@ -276,8 +273,8 @@ struct SandwichShadow
             proxy( PointerC &p, int o )
                 : p( p ), off( o )
             {
-                ASSERT( Layers::is_pointer_or_exception( c_now() ) ||
-                        ( off + 4 < p.to && Layers::is_pointer( c_next() ) ) );
+                ASSERT( Next::is_pointer_or_exception( c_now() ) ||
+                        ( off + 4 < p.to && Next::is_pointer( c_next() ) ) );
             }
             c_proxy c_now() const { return p.compressed[ off / 4 ]; }
             c_proxy c_next() const { return p.compressed[ off / 4 + 1 ]; }
@@ -286,13 +283,13 @@ struct SandwichShadow
             int offset() const { return off - p.from; }
             int size() const
             {
-                if ( Layers::is_pointer( c_now() ) )
+                if ( Next::is_pointer( c_now() ) )
                     return 4;
-                if ( ! Layers::is_pointer_or_exception( c_now() ) &&
+                if ( ! Next::is_pointer_or_exception( c_now() ) &&
                      off + 4 < p.to &&
-                     Layers::is_pointer( c_next() ) )
+                     Next::is_pointer( c_next() ) )
                     return 8;
-                if ( Layers::is_pointer_exception( c_now() ) )
+                if ( Next::is_pointer_exception( c_now() ) )
                     return 1;
                 NOT_IMPLEMENTED();
             }
@@ -302,7 +299,7 @@ struct SandwichShadow
             }
             uint32_t fragment() const
             {
-                ASSERT( Layers::is_pointer_exception( c_now() ) );
+                ASSERT( Next::is_pointer_exception( c_now() ) );
                 return p.layers.pointer_exception( p.obj, bitlevel::downalign( off, 4 ) )
                     .objid[ off % 4 ];
             }
@@ -324,9 +321,9 @@ struct SandwichShadow
                     return;
 
                 if ( off % 4 )
-                    ASSERT( Layers::is_pointer_exception( c_now() ) );
+                    ASSERT( Next::is_pointer_exception( c_now() ) );
 
-                if ( Layers::is_pointer_exception( c_now() ) )
+                if ( Next::is_pointer_exception( c_now() ) )
                 {
                     auto exc = p.layers.pointer_exception( p.obj, bitlevel::downalign( off, 4 ) );
 
@@ -338,9 +335,9 @@ struct SandwichShadow
                 }
 
                 while ( off < p.to &&
-                        ! Layers::is_pointer_or_exception( c_now() ) &&
+                        ! Next::is_pointer_or_exception( c_now() ) &&
                         ( ! ( off + 4 < p.to ) ||
-                          ! Layers::is_pointer( c_next() ) ) )
+                          ! Next::is_pointer( c_next() ) ) )
                     off += 4;
 
                 if ( off >= p.to )
@@ -349,7 +346,7 @@ struct SandwichShadow
                     return;
                 }
 
-                if ( Layers::is_pointer_exception( c_now() ) )
+                if ( Next::is_pointer_exception( c_now() ) )
                     seek();
             }
             iterator &operator++()
@@ -368,25 +365,25 @@ struct SandwichShadow
 
         CompressedC compressed;
         Internal obj;
-        Layers &layers;
+        Next &layers;
         int from;
         int to;
         iterator begin() {
             auto b = iterator( *this, from );
-            if ( b.off % 4 && ! Layers::is_pointer_exception( b.c_now() ) )
+            if ( b.off % 4 && ! Next::is_pointer_exception( b.c_now() ) )
                 b.off = std::min( bitlevel::align( b.off, 4 ), to );
             b.seek();
             return b;
         }
         iterator end() { return iterator( *this, to ); }
-        PointerC( Pool &p, Layers &l, Internal i, int f, int t )
+        PointerC( MetaPool &p, Next &l, Internal i, int f, int t )
             : compressed( p, i, 0, ( t + 3 ) / 4 ), obj( i ), layers( l ), from( f ), to( t )
         {}
     };
 
     auto pointers( Loc l, int sz )
     {
-        return PointerC( _shadow, _layers, l.object, l.offset, l.offset + sz );
+        return PointerC( _meta, *this, l.object, l.offset, l.offset + sz );
     }
 };
 

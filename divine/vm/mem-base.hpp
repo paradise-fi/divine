@@ -28,9 +28,10 @@ namespace divine::vm::mem
 
 namespace bitlevel = brick::bitlevel;
 
-template< typename Pool >
+template< typename Pool_ >
 struct Base
 {
+    using Pool = Pool_;
     using Internal = typename Pool::Pointer;
 
     struct Loc : public brick::types::Ord

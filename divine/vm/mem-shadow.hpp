@@ -23,7 +23,7 @@
 
 #include <divine/vm/value.hpp>
 #include <divine/vm/mem-base.hpp>
-#include <divine/vm/mem-sandwich.hpp>
+#include <divine/vm/mem-metadata.hpp>
 #include <divine/vm/mem-pointers.hpp>
 #include <divine/vm/mem-definedness.hpp>
 #include <divine/vm/mem-taint.hpp>
@@ -152,7 +152,7 @@ using Layers = TaintLayer<
                Base< Pool > > > > > >;
 
 template< typename MasterPool >
-using CompoundShadow = SandwichShadow< MasterPool, Layers< MasterPool > >;
+using CompoundShadow = Metadata< Layers< MasterPool > >;
 
 }
 
@@ -552,7 +552,7 @@ struct CompoundShadow
         heap.copy( obj, 0, obj, 6, 4 );
         heap.copy( obj, 0, obj, 8, 4 );
         heap.copy( obj, 8, obj, 2, 6 );
-        ASSERT( heap.shadows._layers._ptr_exceptions->empty() );
+        ASSERT( heap.shadows._ptr_exceptions->empty() );
     }
 
     TEST( ptr_write_invalidate_exception )
@@ -567,7 +567,7 @@ struct CompoundShadow
         heap.write( obj, 0, p1 );
         heap.write( obj, 12, v1 );
 
-        ASSERT( heap.shadows._layers._ptr_exceptions->empty() );
+        ASSERT( heap.shadows._ptr_exceptions->empty() );
     }
 
     TEST( read_write_taint_short )
