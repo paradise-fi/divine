@@ -42,8 +42,6 @@ struct FairScheduler : public Scheduler< Next > {
         auto t = this->newTask( routine, tls_size, this->getCurrentTask()->_proc );
         this->setupTask( t, arg );
         _fairGroup.push_back( t->getId() );
-        __vm_obj_shared( t->getId() );
-        __vm_obj_shared( arg );
         return t->getId();
     }
 

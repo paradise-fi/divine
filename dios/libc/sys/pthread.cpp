@@ -458,7 +458,6 @@ __noinline void __pthread_start( void *_args )
     void *arg = args->arg;
     auto entry = args->entry;
     __vm_obj_free( _args );
-    __vm_obj_shared( arg );
 
     // call entry function
     mask.without( [&] {
