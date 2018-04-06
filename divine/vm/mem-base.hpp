@@ -60,10 +60,10 @@ struct Base
 
 };
 
-template< typename _Expanded, typename Next >
+template< typename Next >
 struct ShadowBase : Next
 {
-    using Expanded = _Expanded;
+    using typename Next::Expanded;
     using typename Next::Loc;
     using typename Next::Internal;
 

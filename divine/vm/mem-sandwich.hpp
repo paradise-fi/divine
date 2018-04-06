@@ -37,22 +37,21 @@ namespace bitlevel = brick::bitlevel;
  * It is called a sandwich because (a) it has different configurable layers with the storage and
  * (de)compression layer being the bread on either end, and (b) it's cute and I refuse to rename it.
  */
-template< typename MasterPool, typename SandwichDescriptor >
+template< typename MasterPool, typename Layers >
 struct SandwichShadow
 {
     using Pool = brick::mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
-    using Descriptor = SandwichDescriptor;
-    using Layers = typename Descriptor::template Layers< MasterPool >;
     using Loc = typename Layers::Loc;
-    using Compressed = typename Descriptor::Compressed;
-    using Expanded = typename Descriptor::Expanded;
-    static constexpr unsigned BPW = Descriptor::BitsPerWord;
+    using Compressed = typename Layers::Compressed;
+    using Expanded = typename Layers::Expanded;
+    using Descriptor = Layers;
+    static constexpr unsigned BPW = Layers::BitsPerWord;
 
     static_assert( BPW && ( ( BPW & ( BPW - 1 ) ) == 0 ),
-                   "Descriptor::BitsPerWord must be a power of two" );
+                   "Layers::BitsPerWord must be a power of two" );
     static_assert( sizeof( Compressed ) * 8 >= BPW,
-                   "Descriptor::Compressed does not contain all bits per word" );
+                   "Layers::Compressed does not contain all bits per word" );
 
     Pool _shadow,
          _shared;
@@ -108,10 +107,10 @@ struct SandwichShadow
             Compressed c_b = *i_b++;
             if ( ( cmp = c_a - c_b ) )
                 return cmp;
-            if ( Descriptor::is_trivial( c_a ) )
+            if ( Layers::is_trivial( c_a ) )
                 continue;
-            Expanded exp_a = Descriptor::expand( c_a );
-            Expanded exp_b = Descriptor::expand( c_b );
+            Expanded exp_a = Layers::expand( c_a );
+            Expanded exp_b = Layers::expand( c_b );
             if ( ( cmp = _layers.compare_word( a_sh._layers, a + off, exp_a, b + off, exp_b ) ) )
                 return cmp;
         }
@@ -141,9 +140,9 @@ struct SandwichShadow
         auto sh = compressed( l, words );
         Expanded exp[ words ];
 
-        std::transform( sh.begin(), sh.end(), exp, Descriptor::expand );
+        std::transform( sh.begin(), sh.end(), exp, Layers::expand );
         _layers.write( l, value, exp );
-        std::transform( exp, exp + words, sh.begin(), Descriptor::compress );
+        std::transform( exp, exp + words, sh.begin(), Layers::compress );
     }
 
     template< typename V >
@@ -162,7 +161,7 @@ struct SandwichShadow
         auto sh = compressed( l, words );
         Expanded exp[ words ];
 
-        std::transform( sh.begin(), sh.end(), exp, Descriptor::expand );
+        std::transform( sh.begin(), sh.end(), exp, Layers::expand );
         _layers.read( l, value, exp );
     }
 
@@ -192,8 +191,8 @@ struct SandwichShadow
 
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             {
-                Expanded exp_src = Descriptor::expand( *i_from );
-                Expanded exp_dst = Descriptor::expand( *i_to );
+                Expanded exp_src = Layers::expand( *i_from );
+                Expanded exp_dst = Layers::expand( *i_to );
                 _layers.copy_word( from_sh._layers, from + off, exp_src, to + off, exp_dst );
                 *i_to++ = *i_from++;
             }
@@ -212,13 +211,13 @@ struct SandwichShadow
 
             if ( off_from % 4 )
             {
-                exp_src = Descriptor::expand( *i_from++ );
+                exp_src = Layers::expand( *i_from++ );
                 int aligned = bitlevel::downalign( off_from, 4 );
                 _layers.copy_init_src( from_sh._layers, from.object, aligned, exp_src, fhr );
             }
             if ( off_to % 4 )
             {
-                exp_dst = Descriptor::expand( *i_to );
+                exp_dst = Layers::expand( *i_to );
                 int aligned = bitlevel::downalign( off_to, 4 );
                 _layers.copy_init_dst( to.object, aligned, exp_dst, thr );
             }
@@ -227,12 +226,12 @@ struct SandwichShadow
             {
                 if ( off_from % 4 == 0 )
                 {
-                    exp_src = Descriptor::expand( *i_from++ );
+                    exp_src = Layers::expand( *i_from++ );
                     _layers.copy_init_src( from_sh._layers, from.object, off_from, exp_src, fhr );
                 }
                 if ( off_to % 4 == 0 )
                 {
-                    exp_dst = Descriptor::expand( *i_to );
+                    exp_dst = Layers::expand( *i_to );
                     if ( sz - off < 4 )
                         _layers.copy_init_dst( to.object, off_to, exp_dst, thr );
                     written = false;
@@ -247,7 +246,7 @@ struct SandwichShadow
                 if ( off_to % 4 == 0 )
                 {
                     _layers.copy_done( to.object, off_to - 4, exp_dst );
-                    *i_to++ = Descriptor::compress( exp_dst );
+                    *i_to++ = Layers::compress( exp_dst );
                     written = true;
                 }
             }
@@ -256,7 +255,7 @@ struct SandwichShadow
             {
                 int aligned = bitlevel::downalign( off_to, 4 );
                 _layers.copy_done( to.object, aligned, exp_dst );
-                *i_to = Descriptor::compress( exp_dst );
+                *i_to = Layers::compress( exp_dst );
             }
         }
     }
@@ -277,8 +276,8 @@ struct SandwichShadow
             proxy( PointerC &p, int o )
                 : p( p ), off( o )
             {
-                ASSERT( Descriptor::is_pointer_or_exception( c_now() ) ||
-                        ( off + 4 < p.to && Descriptor::is_pointer( c_next() ) ) );
+                ASSERT( Layers::is_pointer_or_exception( c_now() ) ||
+                        ( off + 4 < p.to && Layers::is_pointer( c_next() ) ) );
             }
             c_proxy c_now() const { return p.compressed[ off / 4 ]; }
             c_proxy c_next() const { return p.compressed[ off / 4 + 1 ]; }
@@ -287,13 +286,13 @@ struct SandwichShadow
             int offset() const { return off - p.from; }
             int size() const
             {
-                if ( Descriptor::is_pointer( c_now() ) )
+                if ( Layers::is_pointer( c_now() ) )
                     return 4;
-                if ( ! Descriptor::is_pointer_or_exception( c_now() ) &&
+                if ( ! Layers::is_pointer_or_exception( c_now() ) &&
                      off + 4 < p.to &&
-                     Descriptor::is_pointer( c_next() ) )
+                     Layers::is_pointer( c_next() ) )
                     return 8;
-                if ( Descriptor::is_pointer_exception( c_now() ) )
+                if ( Layers::is_pointer_exception( c_now() ) )
                     return 1;
                 NOT_IMPLEMENTED();
             }
@@ -303,7 +302,7 @@ struct SandwichShadow
             }
             uint32_t fragment() const
             {
-                ASSERT( Descriptor::is_pointer_exception( c_now() ) );
+                ASSERT( Layers::is_pointer_exception( c_now() ) );
                 return p.layers.pointer_exception( p.obj, bitlevel::downalign( off, 4 ) )
                     .objid[ off % 4 ];
             }
@@ -325,9 +324,9 @@ struct SandwichShadow
                     return;
 
                 if ( off % 4 )
-                    ASSERT( Descriptor::is_pointer_exception( c_now() ) );
+                    ASSERT( Layers::is_pointer_exception( c_now() ) );
 
-                if ( Descriptor::is_pointer_exception( c_now() ) )
+                if ( Layers::is_pointer_exception( c_now() ) )
                 {
                     auto exc = p.layers.pointer_exception( p.obj, bitlevel::downalign( off, 4 ) );
 
@@ -339,9 +338,9 @@ struct SandwichShadow
                 }
 
                 while ( off < p.to &&
-                        ! Descriptor::is_pointer_or_exception( c_now() ) &&
+                        ! Layers::is_pointer_or_exception( c_now() ) &&
                         ( ! ( off + 4 < p.to ) ||
-                          ! Descriptor::is_pointer( c_next() ) ) )
+                          ! Layers::is_pointer( c_next() ) ) )
                     off += 4;
 
                 if ( off >= p.to )
@@ -350,7 +349,7 @@ struct SandwichShadow
                     return;
                 }
 
-                if ( Descriptor::is_pointer_exception( c_now() ) )
+                if ( Layers::is_pointer_exception( c_now() ) )
                     seek();
             }
             iterator &operator++()
@@ -374,7 +373,7 @@ struct SandwichShadow
         int to;
         iterator begin() {
             auto b = iterator( *this, from );
-            if ( b.off % 4 && ! Descriptor::is_pointer_exception( b.c_now() ) )
+            if ( b.off % 4 && ! Layers::is_pointer_exception( b.c_now() ) )
                 b.off = std::min( bitlevel::align( b.off, 4 ), to );
             b.seek();
             return b;

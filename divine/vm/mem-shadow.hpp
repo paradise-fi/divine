@@ -33,8 +33,27 @@ namespace vm::mem {
 
 namespace bitlevel = brick::bitlevel;
 
+union ExpandedMeta // Representation the shadow layers operate on
+{
+    struct
+    {
+        uint16_t taint : 4,
+                 pointer_type : 3,
+                 pointer : 1,
+                 pointer_exception : 1,
+                 data_exception : 1,
+                 _free_ : 2,
+                 defined : 4;
+    };
+    uint16_t _raw;
+    constexpr ExpandedMeta() : _raw( 0 ) {}
+    constexpr ExpandedMeta( uint16_t raw ) : _raw( raw ) {}
+    operator uint16_t() const { return _raw; }
+};
+
 /* Descriptor of sandwich shadow with a pointer layer, a definedness layer and a taint layer. */
-struct CompoundShadowDescriptor
+template< typename Next >
+struct Compress : Next
 {
     // 16 bits:  | _ , _ , _ , _ : _ , _ , _ , _ | _ , _ , _ , _ : _ , _ , _ , _ |
     // Expanded: | [definedness] : _ , _ , DE, PE| P , [ ptype ] : [ t a i n t ] |
@@ -51,21 +70,7 @@ struct CompoundShadowDescriptor
     static constexpr unsigned BitsPerWord = 8;
 
     using Compressed = uint8_t; // Representation stored in the pool
-    union Expanded { // Representation the shadow layers operate on
-        struct {
-            uint16_t taint : 4,
-                     pointer_type : 3,
-                     pointer : 1,
-                     pointer_exception : 1,
-                     data_exception : 1,
-                     _free_ : 2,
-                     defined : 4;
-        };
-        uint16_t _raw;
-        constexpr Expanded() : _raw( 0 ) {}
-        constexpr Expanded( uint16_t raw ) : _raw( raw ) {}
-        operator uint16_t() const { return _raw; }
-    };
+    using Expanded = mem::ExpandedMeta;
 
     constexpr static Compressed compress( Expanded exp )
     {
@@ -136,25 +141,27 @@ struct CompoundShadowDescriptor
     {
         return ( c & 0xF0 ) == 0x70;
     }
-
-    // Actual layers of the shadow
-    template< typename Pool >
-    using Layers = TaintLayer<
-                   DefinednessLayer<
-                   PointerLayer<
-                   ShadowBase< Expanded,
-                   Base< Pool > > > > >;
 };
 
+template< typename Pool >
+using Layers = TaintLayer<
+               DefinednessLayer<
+               PointerLayer<
+               ShadowBase<
+               Compress<
+               Base< Pool > > > > > >;
+
 template< typename MasterPool >
-using CompoundShadow = SandwichShadow< MasterPool, CompoundShadowDescriptor >;
+using CompoundShadow = SandwichShadow< MasterPool, Layers< MasterPool > >;
 
 }
 
 namespace t_vm {
 
-struct CompoundShadowDescriptor {
-    using ShDesc = vm::mem::CompoundShadowDescriptor;
+struct CompoundShadowDescriptor
+{
+    struct Empty {};
+    using ShDesc = vm::mem::Compress< Empty >;
 
     TEST( reasonable_zero )
     {
