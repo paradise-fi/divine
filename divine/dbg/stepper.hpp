@@ -160,7 +160,10 @@ struct Stepper
         _booting = false;
         if ( _yield_state )
             ctx.load( _yield_state( ctx.snapshot() ) );
-        vm::setup::scheduler( ctx );
+        if ( ctx.get( _VM_CR_Scheduler ).pointer.type() == vm::PointerType::Code )
+            vm::setup::scheduler( ctx );
+        else
+            return false;
         return true;
     }
 
