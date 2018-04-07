@@ -176,6 +176,7 @@ struct Int : Base
     Int operator&( Int o ) { return bitwise( _raw & o._raw, (_m & ~_raw) | (o._m & ~o._raw), o ); }
     Int operator^( Int o ) { return bitwise( _raw ^ o._raw, 0, o ); }
     Int operator~() { Int r = *this; r._raw = ~_raw; return r; }
+    bool operator!() const { return !_raw; }
 
     template< int w >
     Int operator<<( Int< w, false > sh )
