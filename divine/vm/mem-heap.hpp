@@ -426,32 +426,102 @@ namespace divine::t_vm
         using IntV = vm::value::Int< 32, true >;
         using PointerV = vm::value::Pointer;
 
+        vm::mem::SmallHeap heap;
+        PointerV p;
+
+        MutableHeap() { p = heap.make( 16 ); }
+
         TEST(alloc)
         {
-            vm::mem::SmallHeap heap;
-            auto p = heap.make( 16 );
-            heap.write( p.cooked(), IntV( 10 ) );
             IntV q;
+            heap.write( p.cooked(), IntV( 10 ) );
             heap.read( p.cooked(), q );
             ASSERT_EQ( q.cooked(), 10 );
         }
 
         TEST(conversion)
         {
-            vm::mem::SmallHeap heap;
-            auto p = heap.make( 16 );
             ASSERT_EQ( vm::HeapPointer( p.cooked() ),
-                    vm::HeapPointer( vm::GenericPointer( p.cooked() ) ) );
+                       vm::HeapPointer( vm::GenericPointer( p.cooked() ) ) );
         }
 
         TEST(write_read)
         {
-            vm::mem::SmallHeap heap;
-            PointerV p, q;
-            p = heap.make( 16 );
+            PointerV q;
             heap.write( p.cooked(), p );
             heap.read( p.cooked(), q );
             ASSERT( p.cooked() == q.cooked() );
+        }
+
+        TEST(write_undef)
+        {
+            IntV i( 0, 0xFF, false ), j;
+            heap.write( p.cooked(), i );
+            heap.read( p.cooked(), j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xFF );
+        }
+
+        TEST(write_semidef)
+        {
+            IntV i( 0, 0xF0, false ), j;
+            heap.write( p.cooked(), i );
+            heap.read( p.cooked(), j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xF0 );
+        }
+
+        TEST(write_shift_undef)
+        {
+            IntV i( 0, 0xFF, false ), j;
+            auto q = p;
+            heap.write_shift( p, i );
+            heap.read( q.cooked(), j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xFF );
+        }
+
+        TEST(clone_semidef)
+        {
+            IntV i( 0, 0xF0, false ), j;
+            heap.write( p.cooked(), i );
+            auto q = vm::mem::heap::clone( heap, heap, p.cooked() );
+            heap.read( q, j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xF0 );
+        }
+
+        TEST(clone_interheap_semidef)
+        {
+            IntV i( 0, 0xF0, false ), j;
+            heap.write( p.cooked(), i );
+            decltype( heap ) heap2;
+            auto q = vm::mem::heap::clone( heap, heap2, p.cooked() );
+            heap2.read( q, j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xF0 );
+        }
+
+        TEST(clone_intertype_semidef)
+        {
+            IntV i( 0, 0xF0, false ), j;
+            heap.write( p.cooked(), i );
+            vm::mem::MutableHeap heap2;
+            auto q = vm::mem::heap::clone( heap, heap2, p.cooked() );
+            heap2.read( q, j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xF0 );
+        }
+
+        TEST(clone_cow_semidef)
+        {
+            IntV i( 0, 0xF0, false ), j;
+            heap.write( p.cooked(), i );
+            vm::mem::CowHeap heap2;
+            auto q = vm::mem::heap::clone( heap, heap2, p.cooked() );
+            heap2.read( q, j );
+            ASSERT_EQ( i, j );
+            ASSERT_EQ( j.defbits(), 0xF0 );
         }
 
         TEST(resize)
@@ -566,14 +636,30 @@ namespace divine::t_vm
         TEST(basic)
         {
             vm::mem::CowHeap heap;
+            PointerV check;
+
             auto p = heap.make( 16 ).cooked();
             heap.write( p, PointerV( p ) );
             auto snap = heap.snapshot();
-            heap.write( p, PointerV( vm::nullPointer() ) );
-            PointerV check;
-            heap.restore( snap );
+
             heap.read( p, check );
             ASSERT_EQ( check.cooked(), p );
+
+            heap.write( p, PointerV( vm::nullPointer() ) );
+            heap.restore( snap );
+
+            check = PointerV( vm::nullPointer() );
+            heap.read( p, check );
+            ASSERT_EQ( check.cooked(), p );
+        }
+
+        TEST(copy)
+        {
+            vm::mem::CowHeap heap;
+            auto copy = heap;
+            auto p = heap.make( 16 ).cooked();
+            copy.restore( heap.snapshot() );
+            ASSERT( copy.valid( p ) );
         }
     };
 
