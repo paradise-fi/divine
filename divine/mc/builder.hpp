@@ -557,6 +557,65 @@ struct TestBuilder
         ASSERT( found );
     }
 
+    TEST(hasher)
+    {
+        auto bc = prog_int( "4", "*r - 1" );
+        mc::ExplicitBuilder ex( bc );
+        ex.start();
+        ex.initials( [&]( auto s )
+        {
+            ASSERT( ex.hasher()._h1._snapshots.size( s.snap ) );
+        } );
+    }
+
+    TEST(hasher_copy)
+    {
+        auto bc = prog_int( "4", "*r - 1" );
+        mc::ExplicitBuilder ex_( bc ), ex( ex_ );
+        ex.start();
+        ex.initials( [&]( auto s )
+        {
+            ASSERT( ex.hasher()._h1._snapshots.size( s.snap ) );
+            ASSERT( ex_.hasher()._h1._snapshots.size( s.snap ) );
+        } );
+    }
+
+    TEST(start_twice)
+    {
+        auto bc = prog_int( "4", "*r - 1" );
+        mc::ExplicitBuilder ex( bc );
+        mc::builder::State i1, i2;
+        ex.start();
+        ex.initials( [&]( auto s ) { i1 = s; } );
+        ex.start();
+        ex.initials( [&]( auto s ) { i2 = s; } );
+        ASSERT( ex.equal( i1.snap, i2.snap ) );
+    }
+
+    TEST(copy)
+    {
+        auto bc = prog_int( "4", "*r - 1" );
+        mc::ExplicitBuilder ex1( bc ), ex2( ex1 );
+        mc::builder::State i1, i2;
+        ex1.start();
+        ex2.start();
+        ex1.initials( [&]( auto i ) { i1 = i; } );
+        ex2.initials( [&]( auto i ) { i2 = i; } );
+        ASSERT( ex1.equal( i1.snap, i2.snap ) );
+        ASSERT( ex2.equal( i1.snap, i2.snap ) );
+    }
+
+    TEST(succ)
+    {
+        auto bc = prog_int( "4", "*r - 1" );
+        mc::ExplicitBuilder ex( bc );
+        ex.start();
+        mc::builder::State s1, s2;
+        ex.initials( [&]( auto s ) { s1 = s; } );
+        ex.edges( s1, [&]( auto s, auto, bool ) { s2 = s; } );
+        ASSERT( !ex.equal( s1.snap, s2.snap ) );
+    }
+
     void _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
     {
         mc::ExplicitBuilder ex( bc );
