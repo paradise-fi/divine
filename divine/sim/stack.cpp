@@ -49,9 +49,9 @@ struct Stack
 
     bool is_kernel()
     {
-        vm::CodePointer sched_pc = _i->_ctx.get( _VM_CR_Scheduler ).pointer;
-        vm::CodePointer bottom_pc = bottom().pc();
-        return sched_pc.function() == bottom_pc.function();
+        auto sched_pc = _i->_ctx.get( _VM_CR_Scheduler ).pointer;
+        auto bottom_pc = bottom().pc();
+        return sched_pc.object() == bottom_pc.object();
     }
 
     std::optional< Stack > get_userspace_stack()
