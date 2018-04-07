@@ -277,15 +277,17 @@ struct Builder
     Context &context() { return _d.ctx; }
     void enable_overwrite() { _d.overwrite = true; }
 
+    auto &hasher() { return _d.states.hasher; }
+
     Builder( const Builder &e ) : _d( e._d )
     {
-        _d.states.hasher.setup( context().heap(), _d.solver );
+        hasher().setup( context().heap(), _d.solver );
     }
 
     template< typename... Args >
     Builder( BC bc, Args && ... args ) : _d( bc, args... )
     {
-        _d.states.hasher.setup( context().heap(), _d.solver );
+        hasher().setup( context().heap(), _d.solver );
     }
 
     auto store( Snapshot snap )
@@ -307,7 +309,7 @@ struct Builder
         vm::setup::boot( context() );
         context().track_memory( false );
         eval.run();
-        _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
+        hasher()._root = context().get( _VM_CR_State ).pointer;
 
         if ( vm::setup::postboot_check( context() ) )
             _d.initial.snap = *store( context().snapshot() );
@@ -321,10 +323,10 @@ struct Builder
     {
         context().load( ctx ); /* copy over registers */
         context().track_memory( false );
-        _d.states.hasher.setup( context().heap(), _d.solver );
-        _d.states.hasher._root = context().get( _VM_CR_State ).pointer;
+        hasher().setup( context().heap(), _d.solver );
+        hasher()._root = context().get( _VM_CR_State ).pointer;
 
-        if ( context().heap().valid( _d.states.hasher._root ) )
+        if ( context().heap().valid( hasher()._root ) )
             _d.initial.snap = *store( snap );
         _d.states.updateUsage();
         if ( !context().finished() )
@@ -343,10 +345,7 @@ struct Builder
         return lbl;
     }
 
-    bool equal( Snapshot a, Snapshot b )
-    {
-        return _d.states.hasher.equal( a, b );
-    }
+    bool equal( Snapshot a, Snapshot b ) { return hasher().equal( a, b ); }
 
     bool feasible()
     {
