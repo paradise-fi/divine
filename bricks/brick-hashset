@@ -229,12 +229,7 @@ struct AtomicCell : CellBase< T, Hasher >
         return AtomicCell( value.exchange( v ) );
     }
 
-    Tagged< T > &deatomize() {
-        value.load(); // fence
-        return *reinterpret_cast< Tagged< T > * >( &value );
-    }
-
-    T &fetch() { return deatomize().t; }
+    T fetch() { return value.load().t; }
     T copy() { Tagged< T > v = value; v.tag( 0 ); return v.t; }
     bool wait() { return !invalid(); }
 
@@ -306,13 +301,25 @@ struct HashSetBase
 
     Hasher hasher;
 
-    struct iterator {
+    struct proxy
+    {
+        value_type v;
+        value_type *operator->() { return &v; }
+    };
+
+    struct iterator
+    {
         Cell *_cell;
+        value_type _value;
         bool _new;
-        iterator( Cell *c = nullptr, bool n = false ) : _cell( c ), _new( n ) {}
-        value_type *operator->() { return &(_cell->fetch()); }
-        value_type &operator*() { return _cell->fetch(); }
+
+        iterator( Cell *c = nullptr, bool n = false )
+            : _cell( c ), _value( c ? c->fetch() : value_type() ), _new( n )
+        {}
+        proxy operator->() { return proxy( _value ); }
+        value_type operator*() { return _value; }
         value_type copy() { return _cell->copy(); }
+        void update( value_type v ) { _cell->store( v ); }
         bool valid() { return _cell; }
         bool isnew() { return _new; }
     };
