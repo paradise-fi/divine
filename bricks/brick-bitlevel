@@ -54,6 +54,28 @@ constexpr inline T1 downalign( T1 v, T2 a ) {
     return v - (v % T1(a));
 }
 
+template< typename F, typename T >
+void maybe_bitcast( F f, T &t )
+{
+    ASSERT( sizeof( T ) == sizeof( F ) );
+    memcpy( &t, &f, sizeof( T ) );
+}
+
+template< typename F, typename T >
+void bitcast( F f, T &t )
+{
+    static_assert( sizeof( F ) == sizeof( T ) );
+    maybe_bitcast( f, t );
+}
+
+template< typename T, typename F >
+T bitcast( F f )
+{
+    T t;
+    bitcast( f, t );
+    return t;
+}
+
 namespace compiletime {
 
 template< typename T >
