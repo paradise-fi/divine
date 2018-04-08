@@ -123,11 +123,7 @@ struct PoolPointer : brick::types::Comparable
     using TagT   = decltype( Rep::tag );
 
     static const int tag_bits = Rep::tag_bits;
-
-    union {
-        Rep _rep;
-        Raw _raw;
-    };
+    Rep _rep;
 
     auto slab() const { return _rep.slab; }
     auto chunk() const { return _rep.chunk; }
@@ -144,8 +140,8 @@ struct PoolPointer : brick::types::Comparable
         _rep.tag = 0;
     }
 
-    Raw raw() const { return _raw; }
-    void raw( Raw r ) { _raw = r; }
+    Raw raw() const { return bitlevel::bitcast< Raw >( _rep ); }
+    void raw( Raw r ) { bitlevel::bitcast( r, _rep ); }
 
     explicit operator bool() const { return slab(); }
     bool operator!() const { return !slab(); }
