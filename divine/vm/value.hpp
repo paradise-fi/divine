@@ -226,8 +226,9 @@ struct Int : Base
         else
             def << std::hex << std::setw( aw / 4 ) << std::setfill( '0' )
                 << +( v._m & bitlevel::ones< Raw >( aw ) );
-        return o << "[i" << width << " " << brick::string::fmt( v.cooked() )
-                 << " " << def.str() << ( v.taints() ? "t" : "" ) << "]";
+        if ( v.pointer() ) def << "p";
+        if ( v.taints() ) def << "t";
+        return o << "[i" << width << " " << brick::string::fmt( v.cooked() ) << " " << def.str() << "]";
     }
 };
 
