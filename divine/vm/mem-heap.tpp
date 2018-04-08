@@ -166,6 +166,7 @@ namespace divine::vm::mem::heap
             root.offset( pos.offset() );
             heap.unsafe_read( root, ptr, i );
             auto obj = ptr.cooked();
+            ptr_data[0] = 0;
             ptr_data[1] = obj.offset();
             if ( obj.type() == PointerType::Heap )
             {
@@ -175,8 +176,7 @@ namespace divine::vm::mem::heap
                     obj.offset( 0 );
                     if ( heap.valid( obj ) )
                         ptr_data[0] = hash( heap, obj, visited, state, depth + 1 );
-                    else
-                        ptr_data[0] = 0; /* freed object, ignore */
+                    /* else freed object, ignore */
                 }
                 else
                     ptr_data[0] = vis->second;
