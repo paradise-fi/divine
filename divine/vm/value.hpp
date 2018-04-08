@@ -30,6 +30,7 @@ namespace divine::vm::value
 {
 
 namespace bitlevel = brick::bitlevel;
+using bitlevel::bitcast;
 
 struct Base { static const bool IsValue = true; static const bool IsPointer = false; };
 template< int, bool > struct Int;
@@ -68,24 +69,28 @@ struct Int : Base
     using Raw = brick::bitlevel::bitvec< width >;
     using Cooked = Choose< is_signed, typename _signed< width >::T, Raw >;
 
-    union {
-        Raw _raw;
-        Cooked _cooked;
-        GenericPointer _pointer;
-    };
-
-    Raw _m;
+    Raw _raw, _m;
     bool _ispointer:1;
     uint8_t _taints:5;
 
-
-    void checkptr( Int o, Int &result )
+    template< int w > /* TODO what about w > PointerBytes */
+    auto checkptr( Int< w, is_signed > o, Int< w, is_signed > &result )
+        -> std::enable_if_t< ( w == 8 * PointerBytes ) >
     {
-        if ( _ispointer && !o._ispointer && result._pointer.object() == _pointer.object() )
+        GenericPointer tptr, optr, rptr;
+        bitcast( _raw, tptr );
+        bitcast( o._raw, optr );
+        bitcast( result._raw, rptr );
+        if ( _ispointer && !o._ispointer && rptr.object() == tptr.object() )
             result._ispointer = true;
-        if ( !_ispointer && o._ispointer && result._pointer.object() == o._pointer.object() )
+        if ( !_ispointer && o._ispointer && rptr.object() == optr.object() )
             result._ispointer = true;
     }
+
+    template< int w >
+    auto checkptr( Int< w, is_signed >, Int< w, is_signed > & )
+        -> std::enable_if_t< ( w != 8 * PointerBytes ) >
+    {}
 
     Int arithmetic( Int o, Raw r )
     {
@@ -119,15 +124,22 @@ struct Int : Base
     void pointer( bool p ) { _ispointer = p; }
     auto raw() { return _raw; }
     void raw( Raw r ) { _raw = r; }
-    auto cooked() { return _cooked; }
+    auto cooked() { return bitcast< Cooked >( _raw ); }
 
-    GenericPointer as_pointer() { ASSERT( _ispointer ); return _pointer; }
+    GenericPointer as_pointer()
+    {
+        ASSERT( _ispointer );
+        GenericPointer rv;
+        bitlevel::maybe_bitcast( _raw, rv );
+        return rv;
+    }
 
     void taints( uint8_t set ) { _taints = set; }
     uint8_t taints() { return _taints; }
 
     Int() : _raw( 0 ), _m( 0 ), _ispointer( false ), _taints( 0 ) {}
-    explicit Int( Cooked i ) : _cooked( i ), _m( full< Raw >() ), _ispointer( false ), _taints( 0 ) {}
+    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( full< Raw >() ),
+                               _ispointer( false ), _taints( 0 ) {}
     Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ), _ispointer( ptr ), _taints( 0 ) {}
 
     Int< width, true > make_signed()
@@ -143,27 +155,18 @@ struct Int : Base
     typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
 
     template< int w > Int( Int< w, is_signed > i )
-        : _cooked( i._cooked ), _m( i._m ), _ispointer( i._ispointer ), _taints( i._taints )
+        : _raw( i._raw ), _m( i._m ), _ispointer( i._ispointer ), _taints( i._taints )
     {
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
 
         if ( is_signed && w == 1 ) /* TODO cover other bitwidths? */
             _cooked = i._cooked ? -1 : 0;
-
-        if ( _ispointer )
-        {
-            Int< width, is_signed > test;
-            test._pointer = i._pointer;
-            if ( test.cooked() == cooked() )
-                _pointer = i._pointer; /* keep pointer bits */
-            else
-                _ispointer = false;
-        }
     }
 
-    template< typename T > Int( Float< T > f ) :
-        _cooked( f.cooked() ), _m( f.defined() ? full< Raw >() : 0 ), _ispointer( false ),
+    template< typename T > Int( Float< T > f )
+      : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ),
+        _m( f.defined() ? full< Raw >() : 0 ), _ispointer( false ),
         _taints( f.taints() )
     {
         using FC = typename Float< T >::Cooked;
@@ -208,7 +211,7 @@ struct Int : Base
                 result._m |= ~bitlevel::ones< Raw >( bits - sh._raw );
         }
 
-        result._cooked = cooked() >> sh.cooked();
+        bitcast( Cooked( cooked() >> sh.cooked() ), result._raw );
         return result;
     }
 
@@ -311,11 +314,7 @@ struct Pointer : Base
     using Cooked = GenericPointer;
     using Raw = brick::bitlevel::bitvec< sizeof( Cooked ) * 8 >;
 
-    union {
-        Raw _raw;
-        Cooked _cooked;
-    };
-
+    Cooked _cooked;
     bool _obj_defined:1, _off_defined:1;
     bool _ispointer:1;
     uint8_t _taints:5;
@@ -369,8 +368,8 @@ struct Pointer : Base
     Raw defbits() { return defined() ? full< Raw >() : 0; } /* FIXME */
     void defbits( Raw r ) { _obj_defined = _off_defined = ( r == full< Raw >() ); }
 
-    Raw raw() { return _raw; }
-    void raw( Raw r ) { _raw = r; }
+    Raw raw() { return bitcast< Raw >( _cooked ); }
+    void raw( Raw r ) { bitcast( r, _cooked ); }
 
     bool defined() { return _obj_defined && _off_defined; }
     void defined( bool d ) { _obj_defined = _off_defined = d; }
@@ -484,7 +483,7 @@ struct TestInt
     {
         Int16 a( 0 ), b( 0 );
         vm::value::Bool x = ( a + b == a );
-        ASSERT( x._raw == 1 );
+        ASSERT( x.raw() == 1 );
         ASSERT( x._m == 255 );
         a = Int16( 4 );
         ASSERT( ( a != b ).cooked() );
