@@ -147,7 +147,7 @@ struct Hasher_
     bool equal_fastpath( Snapshot a, Snapshot b ) const
     {
         bool rv = false;
-        if ( _h1._snapshots.size( a ) == _h1._snapshots.size( b ) )
+        if ( _h1.snapshots().size( a ) == _h1.snapshots().size( b ) )
             rv = std::equal( _h1.snap_begin( a ), _h1.snap_end( a ), _h1.snap_begin( b ) );
         if ( !rv )
             _h1.restore( a ), _h2.restore( b );
@@ -246,7 +246,7 @@ struct Builder
     auto &program() { return _d.bc->program(); }
     auto &debug() { return _d.bc->debug(); }
     auto &heap() { return context().heap(); }
-    auto &pool() { return _d.ctx.heap()._snapshots; }
+    auto &pool() { return _d.ctx.heap().snapshots(); }
 
     struct Data
     {
@@ -564,7 +564,7 @@ struct TestBuilder
         ex.start();
         ex.initials( [&]( auto s )
         {
-            ASSERT( ex.hasher()._h1._snapshots.size( s.snap ) );
+            ASSERT( ex.hasher()._h1.snapshots().size( s.snap ) );
         } );
     }
 
@@ -575,8 +575,8 @@ struct TestBuilder
         ex.start();
         ex.initials( [&]( auto s )
         {
-            ASSERT( ex.hasher()._h1._snapshots.size( s.snap ) );
-            ASSERT( ex_.hasher()._h1._snapshots.size( s.snap ) );
+            ASSERT( ex.hasher()._h1.snapshots().size( s.snap ) );
+            ASSERT( ex_.hasher()._h1.snapshots().size( s.snap ) );
         } );
     }
 
