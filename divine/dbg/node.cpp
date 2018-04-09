@@ -459,7 +459,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
     if ( !anon )
         return;
 
-    for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
+    for ( auto ptroff : _ctx.heap().pointers( hloc, _offset, size() ) )
     {
         hloc.offset( hoff + _offset + ptroff->offset() );
         if ( ptroff->offset() + ptroff->size() > size() )

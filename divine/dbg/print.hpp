@@ -299,7 +299,7 @@ std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
 {
     std::stringstream out;
 
-    auto bytes = heap.unsafe_bytes( hloc, hloc.offset(), sz );
+    auto bytes = heap.unsafe_bytes( hloc, sz );
     /*
     auto types = heap.type( hloc, hloc.offset(), sz );
     auto defined = heap.defined( hloc, hloc.offset(), sz );

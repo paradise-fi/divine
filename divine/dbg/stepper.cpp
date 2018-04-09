@@ -17,6 +17,7 @@
  */
 
 #include <divine/dbg/stepper.tpp>
+#include <divine/vm/mem-heap.tpp>
 
 namespace divine::dbg
 {
