@@ -58,6 +58,7 @@ struct PointerException
     void invalidate()
     {
         std::fill( objid, objid + 4, 0 );
+        std::fill( metadata, metadata + 4, 0 );
     }
 
     static PointerException null()
