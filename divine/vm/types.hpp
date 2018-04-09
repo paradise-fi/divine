@@ -90,18 +90,39 @@ namespace divine::vm
         uint64_t slab:slab_bits, chunk:chunk_bits, tag:tag_bits;
     };
 
-    namespace mem {
+    namespace mem
+    {
+        template< typename Next > struct Frontend;
+        template< typename Next > struct Storage;
+        template< typename Next > struct Cow;
+        template< typename Next > struct Base;
 
-    template< typename Self, typename PR = PoolRep<> > struct SimpleHeap;
+        template< typename Next > struct Metadata;
+        template< typename Next > struct TaintLayer;
+        template< typename Next > struct DefinednessLayer;
+        template< typename Next > struct PointerLayer;
+        template< typename Next > struct ShadowBase;
+        template< typename Next > struct Compress;
 
-    template< int slab >
-        struct MutableHeap_ : SimpleHeap< MutableHeap_< slab >, PoolRep< slab > > {};
+        template< typename Base >
+        using ShadowLayers = Metadata<
+                             TaintLayer<
+                             DefinednessLayer<
+                             PointerLayer<
+                             ShadowBase<
+                             Compress< Base > > > > > >;
 
-    using MutableHeap = MutableHeap_< 20 >;
-    using SmallHeap = MutableHeap_< 8 >;
-    struct CowHeap;
-    using CowSnapshot = brick::mem::Pool< PoolRep<> >::Pointer;
+        template< int slab >
+        using Pool = brick::mem::Pool< PoolRep< slab > >;
 
+        template< int slab >
+        using MutableHeap_ = Frontend< Storage< ShadowLayers< Base< Pool< slab > > > > >;
+
+        using MutableHeap = MutableHeap_< 20 >;
+        using SmallHeap = MutableHeap_< 8 >;
+
+        using CowHeap = Frontend< Cow< Storage < ShadowLayers < Base< Pool< 20 > > > > > >;
+        using CowSnapshot = brick::mem::Pool< PoolRep<> >::Pointer;
     }
 
     template< typename _Program, typename _Heap > struct Context;

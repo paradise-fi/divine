@@ -230,7 +230,7 @@ struct PointerLayer : public NextLayer
     }
 
     template< typename V >
-    void read( Loc l, V &value, Expanded *exp )
+    void read( Loc l, V &value, Expanded *exp ) const
     {
         constexpr int sz = sizeof( typename V::Raw );
 
@@ -247,72 +247,71 @@ struct PointerLayer : public NextLayer
     }
 
     // Fast copy
-    template< typename FromSh >
-    void copy_word( FromSh &from_sh, typename FromSh::Loc from, Expanded exp_src,
-                    Loc to, Expanded exp_dst )
+    template< typename FromH, typename ToH >
+    static void copy_word( FromH &from_h, ToH &to_h, typename FromH::Loc from, Expanded exp_src,
+                           Loc to, Expanded exp_dst )
     {
         if ( exp_src.pointer_exception )
-            _ptr_exceptions->set( to.object, to.offset, from_sh._ptr_exceptions->at(
+            to_h._ptr_exceptions->set( to.object, to.offset, from_h._ptr_exceptions->at(
                             from.object, from.offset ) );
         else if ( exp_dst.pointer_exception )
-            _ptr_exceptions->at( to.object, to.offset ).invalidate();
+            to_h._ptr_exceptions->at( to.object, to.offset ).invalidate();
 
-        NextLayer::copy_word( from_sh, from, exp_src, to, exp_dst );
+        NextLayer::copy_word( from_h, to_h, from, exp_src, to, exp_dst );
     }
 
     // Slow copy
-    template< typename FromSh, typename FromHeapReader >
-    void copy_init_src( FromSh &from_sh, typename FromSh::Internal obj, int off,
-                        const Expanded &exp, FromHeapReader fhr )
+    template< typename FromH, typename ToH >
+    static void copy_init_src( FromH &from_h, ToH &to_h,
+                               typename FromH::Internal obj, int off, const Expanded &exp )
     {
-        NextLayer::copy_init_src( from_sh, obj, off, exp, fhr );
-
-        current_ptr_from = from_sh._read_ptr( obj, off, exp, fhr );
+        NextLayer::copy_init_src( from_h, to_h, obj, off, exp );
+        to_h.current_ptr_from = FromH::_read_ptr( from_h, obj, off, exp );
     }
 
-    template< typename ToHeapReader >
-    void copy_init_dst( Internal obj, int off, const Expanded &exp, ToHeapReader thr )
+    template< typename ToH >
+    static void copy_init_dst( ToH &to_h, Internal obj, int off, const Expanded &exp )
     {
-        NextLayer::copy_init_dst( obj, off, exp, thr );
-
-        current_ptr_to = _read_ptr( obj, off, exp, thr );
+        NextLayer::copy_init_dst( to_h, obj, off, exp );
+        to_h.current_ptr_to = _read_ptr( to_h, obj, off, exp );
     }
 
-    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
-    void copy_byte( FromSh &from_sh, typename FromSh::Loc from, const Expanded &exp_src,
-                    FromHeapReader fhr, Loc to, Expanded &exp_dst, ToHeapReader thr )
+    template< typename FromH, typename ToH >
+    static void copy_byte( FromH &from_h, ToH &to_h, typename FromH::Loc from, const Expanded &exp_src,
+                           Loc to, Expanded &exp_dst )
     {
-        NextLayer::copy_byte( from_sh, from, exp_src, fhr, to, exp_dst, thr );
+        NextLayer::copy_byte( from_h, to_h, from, exp_src, to, exp_dst );
 
-        current_ptr_to.objid[ to.offset % 4 ] = current_ptr_from.objid[ from.offset % 4 ];
-        current_ptr_to.metadata[ to.offset % 4 ] = current_ptr_from.metadata[ from.offset % 4 ];
+        to_h.current_ptr_to.objid[ to.offset % 4 ] = to_h.current_ptr_from.objid[ from.offset % 4 ];
+        to_h.current_ptr_to.metadata[ to.offset % 4 ] = to_h.current_ptr_from.metadata[ from.offset % 4 ];
     }
 
-    void copy_done( Internal obj, int off, Expanded &exp )
+    template< typename ToH >
+    static void copy_done( ToH &to_h, Internal obj, int off, Expanded &exp )
     {
-        NextLayer::copy_done( obj, off, exp );
+        NextLayer::copy_done( to_h, obj, off, exp );
 
         bool was_ptr_exc = exp.pointer_exception;
 
-        if ( ! current_ptr_to.valid() )
+        if ( ! to_h.current_ptr_to.valid() )
         {
             exp.pointer = false;
             exp.pointer_exception = false;
         }
-        else if ( current_ptr_to.redundant() )
+        else if ( to_h.current_ptr_to.redundant() )
         {
             exp.pointer = true;
             exp.pointer_exception = false;
         }
         else
         {
-            _ptr_exceptions->set( obj, off, current_ptr_to );
+            to_h._ptr_exceptions->set( obj, off, to_h.current_ptr_to );
             exp.pointer = false;
             exp.pointer_exception = true;
         }
 
         if ( was_ptr_exc && ! exp.pointer_exception )
-            _ptr_exceptions->at( obj, off ).invalidate();
+            to_h._ptr_exceptions->at( obj, off ).invalidate();
     }
 
     PointerException pointer_exception( Internal obj, int off )
@@ -321,16 +320,16 @@ struct PointerLayer : public NextLayer
         return _ptr_exceptions->at( obj, off );
     }
 
-    template< typename HeapReader >
-    PointerException _read_ptr( Internal obj, int off, const Expanded &exp, HeapReader hr )
+    template< typename Heap >
+    static PointerException _read_ptr( Heap &h, Internal obj, int off, const Expanded &exp )
     {
         if ( exp.pointer_exception )
-            return pointer_exception( obj, off );
+            return h.pointer_exception( obj, off );
         if ( ! exp.pointer )
             return PointerException::null();
 
         PointerException e;
-        uint32_t objid = hr( obj, off );
+        uint32_t objid = *reinterpret_cast< uint32_t * >( h.unsafe_ptr2mem( obj ) + off );
         std::fill( e.objid, e.objid + 4, objid );
         for ( int i = 0; i < 4; ++i )
         {

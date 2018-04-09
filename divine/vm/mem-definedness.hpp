@@ -111,7 +111,7 @@ struct DefinednessLayer : public NextLayer
             ASSERT_EQ( wpos % 4, 0 );
 
             Lock lk( _mtx );
-            auto & exc = _exceptions[ Loc( obj, wpos ) ];
+            auto & exc = _exceptions[ Loc( obj, 0, wpos ) ];
             std::copy( mask, mask + 4, exc.bitmask );
         }
 
@@ -121,7 +121,7 @@ struct DefinednessLayer : public NextLayer
 
             Lock lk( _mtx );
 
-            auto it = _exceptions.find( Loc( obj, wpos ) );
+            auto it = _exceptions.find( Loc( obj, 0, wpos ) );
 
             ASSERT( it != _exceptions.end() );
             ASSERT( it->second.valid() );
@@ -135,7 +135,7 @@ struct DefinednessLayer : public NextLayer
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto it = _exceptions.find( Loc( obj, wpos ) );
+            auto it = _exceptions.find( Loc( obj, 0, wpos ) );
             if ( it != _exceptions.end() && it->second.valid() )
             {
                 return it->second.bitmask[ pos % 4 ];
@@ -145,8 +145,8 @@ struct DefinednessLayer : public NextLayer
     };
 
     std::shared_ptr< DataExceptions > _def_exceptions;
-    uint8_t current_def_from[ 4 ];
-    uint8_t current_def_to[ 4 ];
+    mutable uint8_t current_def_from[ 4 ];
+    mutable uint8_t current_def_to[ 4 ];
 
     DefinednessLayer() : _def_exceptions( new DataExceptions ) {}
 
@@ -215,7 +215,7 @@ struct DefinednessLayer : public NextLayer
     }
 
     template< typename V >
-    void read( Loc l, V &value, Expanded *exp )
+    void read( Loc l, V &value, Expanded *exp ) const
     {
         constexpr int sz = sizeof( typename V::Raw );
 
@@ -249,53 +249,53 @@ struct DefinednessLayer : public NextLayer
     }
 
     // Fast copy
-    template< typename FromSh >
-    void copy_word( FromSh &from_sh, typename FromSh::Loc from, Expanded exp_src,
-                    Loc to, Expanded exp_dst )
+    template< typename FromH, typename ToH >
+    static void copy_word( FromH &from_h, ToH &to_h, typename FromH::Loc from, Expanded exp_src,
+                           Loc to, Expanded exp_dst )
     {
         if ( exp_src.data_exception )
-            _def_exceptions->set( to.object, to.offset,
-                                  from_sh._def_exceptions->at( from.object, from.offset ) );
+        {
+            auto exc = from_h._def_exceptions->at( from.object, from.offset );
+            to_h._def_exceptions->set( to.object, to.offset, exc );
+        }
         else if ( exp_dst.data_exception )
-            _def_exceptions->at( to.object, to.offset ).invalidate();
+            to_h._def_exceptions->at( to.object, to.offset ).invalidate();
 
-        NextLayer::copy_word( from_sh, from, exp_src, to, exp_dst );
+        NextLayer::copy_word( from_h, to_h, from, exp_src, to, exp_dst );
     }
 
     // Slow copy
-    template< typename FromSh, typename FromHeapReader >
-    void copy_init_src( FromSh &from_sh, typename FromSh::Internal obj, int off,
-                        const Expanded &exp, FromHeapReader fhr )
+    template< typename ToH, typename FromH >
+    static void copy_init_src( FromH &from_h, ToH &to_h, typename FromH::Internal obj, int off,
+                               const Expanded &exp )
     {
-        NextLayer::copy_init_src( from_sh, obj, off, exp, fhr );
-
-        from_sh._read_def( current_def_from, obj, off, exp );
+        NextLayer::copy_init_src( from_h, to_h, obj, off, exp );
+        from_h._read_def( to_h.current_def_from, obj, off, exp );
     }
 
-    template< typename ToHeapReader >
-    void copy_init_dst( Internal obj, int off, const Expanded &exp, ToHeapReader thr )
+    template< typename ToH >
+    static void copy_init_dst( ToH &to_h, Internal obj, int off, const Expanded &exp )
     {
-        NextLayer::copy_init_dst( obj, off, exp, thr );
-
-        _read_def( current_def_to, obj, off, exp );
+        NextLayer::copy_init_dst( to_h, obj, off, exp );
+        to_h._read_def( to_h.current_def_to, obj, off, exp );
     }
 
-    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
-    void copy_byte( FromSh &from_sh, typename FromSh::Loc from, const Expanded &exp_src,
-                    FromHeapReader fhr, Loc to, Expanded &exp_dst, ToHeapReader thr )
+    template< typename FromH, typename ToH >
+    static void copy_byte( FromH &from_h, ToH &to_h, typename FromH::Loc from, const Expanded &exp_src,
+                           Loc to, Expanded &exp_dst )
     {
-        NextLayer::copy_byte( from_sh, from, exp_src, fhr, to, exp_dst, thr );
-
-        current_def_to[ to.offset % 4 ] = current_def_from[ from.offset % 4 ];
+        NextLayer::copy_byte( from_h, to_h, from, exp_src, to, exp_dst );
+        to_h.current_def_to[ to.offset % 4 ] = to_h.current_def_from[ from.offset % 4 ];
     }
 
-    void copy_done( Internal obj, int off, Expanded &exp )
+    template< typename ToH >
+    static void copy_done( ToH &to_h, Internal obj, int off, Expanded &exp )
     {
-        NextLayer::copy_done( obj, off, exp );
-        _write_def( current_def_to, obj, off, exp );
+        NextLayer::copy_done( to_h, obj, off, exp );
+        to_h._write_def( to_h.current_def_to, obj, off, exp );
     }
 
-    void _read_def( uint8_t *dst, Internal obj, int off, const Expanded &exp )
+    void _read_def( uint8_t *dst, Internal obj, int off, const Expanded &exp ) const
     {
         ASSERT_EQ( off % 4, 0 );
 

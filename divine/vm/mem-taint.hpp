@@ -77,7 +77,7 @@ struct TaintLayer : public NextLayer
     }
 
     template< typename V >
-    void read( Loc l, V &value, Expanded *exp )
+    void read( Loc l, V &value, Expanded *exp ) const
     {
         constexpr int sz = sizeof( typename V::Raw );
 
@@ -103,11 +103,11 @@ struct TaintLayer : public NextLayer
         NextLayer::read( l, value, exp );
     }
 
-    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
-    void copy_byte( FromSh &from_sh, typename FromSh::Loc from, const Expanded &exp_src,
-                    FromHeapReader fhr, Loc to, Expanded &exp_dst, ToHeapReader thr )
+    template< typename FromH, typename ToH >
+    static void copy_byte( FromH &from_h, ToH &to_h, typename FromH::Loc from, const Expanded &exp_src,
+                           Loc to, Expanded &exp_dst )
     {
-        NextLayer::copy_byte( from_sh, from, exp_src, fhr, to, exp_dst, thr );
+        NextLayer::copy_byte( from_h, to_h, from, exp_src, to, exp_dst );
 
         uint8_t src_tainted = ( exp_src.taint >> from.offset % 4 ) & 0x1;
         exp_dst.taint &= ~( 0x1 << to.offset % 4 );

@@ -53,16 +53,17 @@ namespace divine::vm::mem::heap
             return 0;
 
         auto i1 = h1.ptr2i( r1 ), i2 = h2.ptr2i( r2 );
-        int s1 = h1.size( r1, i1 ), s2 = h2.size( r2, i2 );
+        int s1 = h1.size( i1 ), s2 = h2.size( i2 );
         if ( s1 - s2 )
             return s1 - s2;
 
-        int shadow_cmp = h2.shadows().compare( h1.shadows(), i1, i2, s1 );
+        int shadow_cmp = h2.compare( h1, i1, i2, s1 );
         if ( shadow_cmp )
             return shadow_cmp;
 
-        auto b1 = h1.unsafe_bytes( r1, i1 ), b2 = h2.unsafe_bytes( r2, i2 );
-        auto p1 = h1.pointers( r1, i1 ), p2 = h2.pointers( r2, i2 );
+        auto l1 = h1.loc( r1, i1 ), l2 = h2.loc( r2, i2 );
+        auto b1 = h1.unsafe_bytes( l1 ), b2 = h2.unsafe_bytes( l2 );
+        auto p1 = h1.pointers( l1, s1 ), p2 = h2.pointers( l2, s2 );
         int offset = 0;
         auto p1i = p1.begin(), p2i = p2.begin();
 
@@ -145,7 +146,7 @@ namespace divine::vm::mem::heap
             brick::hash::jenkins::SpookyState &state, int depth )
     {
         auto i = heap.ptr2i( root );
-        int size = heap.size( root, i );
+        int size = heap.size( i );
         uint32_t content_hash = i.tag();
 
         visited.emplace( root.object(), content_hash );
@@ -157,8 +158,7 @@ namespace divine::vm::mem::heap
             return content_hash; /* skip following pointers in objects over 16k, not worth it */
 
         int ptr_data[2];
-        auto pointers = heap.shadows().pointers(
-                typename Heap::Shadows::Loc( i, 0 ), size );
+        auto pointers = heap.pointers( heap.loc( root, i ), size );
         for ( auto pos : pointers )
         {
             value::Pointer ptr;
@@ -203,14 +203,14 @@ namespace divine::vm::mem::heap
         if ( seen != visited.end() )
             return seen->second;
 
-        auto root_i = f.ptr2i( root );
+        auto root_i = f.loc( root );
         if ( overwrite )
             t.free( root );
         /* FIXME make the result weak if root is */
         auto result = t.make( f.size( root ), root.object(), true ).cooked();
         if ( overwrite )
             ASSERT_EQ( root.object(), result.object() );
-        auto result_i = t.ptr2i( result );
+        auto result_i = t.loc( result );
         visited.emplace( root, result );
 
         t.copy( f, root, result, f.size( root ) );
@@ -219,9 +219,10 @@ namespace divine::vm::mem::heap
         {
             value::Pointer ptr, ptr_c;
             GenericPointer cloned;
-            root.offset( pos.offset() );
-            result.offset( pos.offset() );
-            f.read( root, ptr, root_i );
+            root_i.offset = pos.offset();
+            result_i.offset = pos.offset();
+
+            f.read( root_i, ptr );
             auto obj = ptr.cooked();
             obj.offset( 0 );
             if ( obj.heap() )
@@ -235,7 +236,7 @@ namespace divine::vm::mem::heap
             else
                 cloned = obj;
             cloned.offset( ptr.cooked().offset() );
-            t.write( result, value::Pointer( cloned ), result_i );
+            t.write( result_i, value::Pointer( cloned ) );
         }
         result.offset( 0 );
         return result;
@@ -250,13 +251,13 @@ namespace divine::vm::mem::heap
         if ( visited.count( root.object() ) ) return;
         visited.insert( root.object() );
         leakset.erase( root.object() );
-        auto root_i = h.ptr2i( root );
+        auto root_i = h.loc( root );
 
         for ( auto pos : h.pointers( root ) )
         {
             value::Pointer ptr;
-            root.offset( pos.offset() );
-            h.read( root, ptr, root_i );
+            root_i.offset = pos.offset();
+            h.read( root_i, ptr );
             auto obj = ptr.cooked();
             obj.offset( 0 );
             if ( obj.heap() )
@@ -290,8 +291,8 @@ namespace divine::vm::mem::heap
 namespace divine::vm::mem
 {
 
-    template< typename Self, typename PR >
-    auto SimpleHeap< Self, PR >::snap_find( uint32_t obj ) const -> SnapItem *
+    template< typename Next >
+    auto Storage< Next >::snap_find( uint32_t obj ) const -> SnapItem *
     {
         auto begin = snap_begin(), end = snap_end();
         if ( !begin )
@@ -306,7 +307,7 @@ namespace divine::vm::mem
                 begin = pivot + 1;
             else
             {
-                ASSERT( _objects.valid( pivot->second ) );
+                ASSERT( valid( pivot->second ) );
                 return pivot;
             }
         }
@@ -314,10 +315,9 @@ namespace divine::vm::mem
         return begin;
     }
 
-    template< typename Self, typename PR >
-    PointerV SimpleHeap< Self, PR >::make( int size, uint32_t hint, bool overwrite )
+    template< typename Next >
+    typename Storage< Next >::Loc Storage< Next >::make( int size, uint32_t hint, bool overwrite )
     {
-        HeapPointer p;
         SnapItem *search = snap_find( hint );
         bool found = false;
         while ( !found )
@@ -332,32 +332,29 @@ namespace divine::vm::mem
             if ( !found )
                 ++ hint;
         }
-        p.object( hint );
-        p.offset( 0 );
-        ASSERT( !ptr2i( p ).slab() );
-        auto obj = _l.exceptions[ p.object() ] = _objects.allocate( size );
-        _shadows.make( obj, size );
-        self().made( p );
-        return PointerV( p );
+        ASSERT( !ptr2i( hint ).slab() );
+        auto obj = _l.exceptions[ hint ] = objects().allocate( size );
+        Next::materialise( obj, size );
+        return Loc( obj, hint, 0 );
     }
 
-    template< typename Self, typename PR >
-    bool SimpleHeap< Self, PR >::resize( HeapPointer p, int sz_new )
+    template< typename Next >
+    bool Storage< Next >::resize( HeapPointer p, int sz_new )
     {
         if ( p.offset() || !valid( p ) )
             return false;
-        int sz_old = size( p );
         auto obj_old = ptr2i( p );
-        auto obj_new = _objects.allocate( sz_new );
-        _shadows.make( obj_new, sz_new );
-        copy( *this, p, obj_old, p, obj_new, std::min( sz_new, sz_old ) );
+        int sz_old = size( obj_old );
+        auto obj_new = objects().allocate( sz_new );
+
+        Next::materialise( obj_new, sz_new );
+        copy( *this, loc( p, obj_old ), *this, loc( p, obj_new ), std::min( sz_new, sz_old ) );
         _l.exceptions[ p.object() ] = obj_new;
-        self().made( p ); /* fixme? */
         return true;
     }
 
-    template< typename Self, typename PR >
-    bool SimpleHeap< Self, PR >::free( HeapPointer p )
+    template< typename Next >
+    bool Storage< Next >::free( HeapPointer p )
     {
         if ( !valid( p ) )
             return false;
@@ -366,8 +363,8 @@ namespace divine::vm::mem
             _l.exceptions.emplace( p.object(), Internal() );
         else
         {
-            _shadows.free( ex->second );
-            _objects.free( ex->second );
+            Next::free( ex->second );
+            objects().free( ex->second );
             ex->second = Internal();
         }
         if ( p.offset() )
@@ -375,72 +372,58 @@ namespace divine::vm::mem
         return true;
     }
 
-    template< typename Self, typename PR > template< typename T >
-    auto SimpleHeap< Self, PR >::write( HeapPointer p, T t, Internal i ) -> Internal
-    {
-        i = self().detach( p, i );
-        using Raw = typename T::Raw;
-        ASSERT( valid( p ), p );
-        ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
-        _shadows.write( shloc( p, i ), t );
-        *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
-        return i;
-    }
-
-    template< typename Self, typename PR > template< typename T >
-    void SimpleHeap< Self, PR >::read( HeapPointer p, T &t, Internal i ) const
+    template< typename Next > template< typename T >
+    void Storage< Next >::write( Loc l, T t )
     {
         using Raw = typename T::Raw;
-        ASSERT( valid( p ), p );
-        ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
-
-        t.raw( *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) );
-        _shadows.read( shloc( p, i ), t );
+        ASSERT_LEQ( sizeof( Raw ), size( l.object ) - l.offset );
+        Next::write( l, t );
+        *objects().template machinePointer< Raw >( l.object, l.offset ) = t.raw();
     }
 
-    template< typename Self, typename PR > template< typename FromH >
-    bool SimpleHeap< Self, PR >::copy( FromH &from_h, HeapPointer _from,
-                                       typename FromH::Internal _from_i,
-                                       HeapPointer _to, Internal &_to_i, int bytes )
+    template< typename Next > template< typename T >
+    void Storage< Next >::read( Loc l, T &t ) const
     {
-        if ( _from.null() || _to.null() )
-            return false;
-        _to_i = self().detach( _to, _to_i );
-        int from_s( from_h.size( _from, _from_i ) ), to_s( size( _to, _to_i ) );
-        auto from = from_h.unsafe_bytes( _from, _from_i, 0, from_s ),
-            to = self().unsafe_bytes( _to, _to_i, 0, to_s );
-        int from_off( _from.offset() ), to_off( _to.offset() );
-        if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
+        using Raw = typename T::Raw;
+        ASSERT_LEQ( sizeof( Raw ), size( l.object ) - l.offset );
+        t.raw( *objects().template machinePointer< Raw >( l.object, l.offset ) );
+        Next::read( l, t );
+    }
+
+    template< typename Next > template< typename FromH, typename ToH >
+    bool Storage< Next >::copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes )
+    {
+        int  from_s = from_h.size( from.object ),
+             to_s   = to_h.size( to.object );
+        auto from_b = from_h.unsafe_ptr2mem( from.object ),
+             to_b   =   to_h.unsafe_ptr2mem( to.object );
+        int  from_off = from.offset,
+             to_off   = to.offset;
+
+        if ( !from_b || !to_b || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
 
-        auto from_heap_reader = [&from_h]( typename FromH::Internal obj, int off ) -> uint32_t {
-            return *from_h._objects.template machinePointer< uint32_t >( obj, off );
-        };
-        auto this_heap_reader = [this]( Internal obj, int off ) -> uint32_t {
-            return *_objects.template machinePointer< uint32_t >( obj, off );
-        };
-        _shadows.copy( from_h.shadows(), from_h.shloc( _from, _from_i ),
-                       shloc( _to, _to_i ), bytes, from_heap_reader, this_heap_reader );
-
-        std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
+        Next::copy( from_h, from, to_h, to, bytes );
+        std::copy( from_b + from_off, from_b + from_off + bytes, to_b + to_off );
 
         return true;
     }
 
-    inline brick::hash::hash64_t CowHeap::ObjHasher::content_only( Internal i )
+    template< typename Next>
+    hash64_t Cow< Next >::ObjHasher::content_only( Internal i )
     {
         auto size = objects().size( i );
         auto base = objects().dereference( i );
 
         brick::hash::jenkins::SpookyState high( 0, 0 );
 
-        auto comp = shadows().compressed( ShadowLoc( i, 0 ), size / 4 );
+        auto comp = heap().compressed( Loc( i, 0, 0 ), size / 4 );
         auto c = comp.begin();
         int offset = 0;
 
         while ( offset + 4 <= size )
         {
-            if ( ! Shadows::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
+            if ( ! Next::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
                 high.update( base + offset, 4 );
             offset += 4;
             ++c;
@@ -452,7 +435,8 @@ namespace divine::vm::mem
         return high.finalize().first;
     }
 
-    inline brick::hash::hash128_t CowHeap::ObjHasher::hash( Internal i )
+    template< typename Next >
+    hash128_t Cow< Next >::ObjHasher::hash( Internal i )
     {
         /* TODO also hash some shadow data into low for better precision? */
         auto low = brick::hash::spooky( objects().dereference( i ), objects().size( i ) );
@@ -460,103 +444,99 @@ namespace divine::vm::mem
                             ( low.first & 0x0000000FFFFFFFF ), low.second );
     }
 
-    inline bool CowHeap::ObjHasher::equal( Internal a, Internal b )
+    template< typename Next >
+    bool Cow< Next >::ObjHasher::equal( Internal a, Internal b )
     {
         int size = objects().size( a );
         if ( objects().size( b ) != size )
             return false;
         if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
             return false;
-        if ( !shadows().equal( a, b, size ) )
+        if ( !heap().equal( a, b, size ) )
             return false;
         return true;
     }
 
-    inline auto CowHeap::detach( HeapPointer p, Internal i ) -> Internal
+    template< typename Next >
+    auto Cow< Next >::detach( Loc loc ) -> Internal
     {
-        if ( _ext.writable.count( p.object() ) )
-            return i;
-        ASSERT_EQ( _l.exceptions.count( p.object() ), 0 );
-        _ext.writable.insert( p.object() );
-        p.offset( 0 );
-        int sz = size( p, i );
-        auto oldloc = shloc( p, i );
-        auto oldbytes = unsafe_bytes( p, i, 0, sz );
+        if ( _ext.writable.count( loc.objid ) )
+            return loc.object;
+        ASSERT_EQ( _l.exceptions.count( loc.objid ), 0 );
+        _ext.writable.insert( loc.objid );
 
-        auto obj = _objects.allocate( sz );
-        _shadows.make( obj, sz );
+        int sz = this->size( loc.object );
+        auto newobj = this->objects().allocate( sz ); /* FIXME layering violation? */
 
-        _l.exceptions[ p.object() ] = obj;
-        auto newloc = shloc( p, obj );
-        auto newbytes = unsafe_bytes( p, obj, 0, sz );
+        _l.exceptions[ loc.objid ] = newobj;
+        Next::materialise( newobj, sz );
 
-        auto heap_reader = [this]( Internal obj, int off ) -> uint32_t {
-            return *_objects.template machinePointer< uint32_t >( obj, off );
-        };
-        _shadows.copy( oldloc, newloc, sz, heap_reader );
-        std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
-        return obj;
+        loc.offset = 0;
+        auto res = this->copy( *this, loc, *this, Loc( newobj, loc.objid, 0 ), sz );
+        ASSERT( res );
+        return newobj;
     }
 
-    inline auto CowHeap::dedup( SnapItem si ) const -> SnapItem
+    template< typename Next >
+    auto Cow< Next >::dedup( SnapItem si ) const -> SnapItem
     {
         auto r = _ext.objects.insert( si.second );
         if ( !r.isnew() )
         {
             ASSERT_NEQ( *r, si.second );
-            _shadows.free( si.second );
-            _objects.free( si.second );
+            this->free( si.second );
         }
         si.second = *r;
         return si;
     }
 
-    inline auto CowHeap::snapshot() const -> Snapshot
+    template< typename Next >
+    auto Cow< Next >::snapshot() const -> Snapshot
     {
         int count = 0;
 
         if ( _l.exceptions.empty() )
             return _l.snapshot;
 
-        auto snap = snap_begin();
+        auto snap = this->snap_begin();
 
         for ( auto &except : _l.exceptions )
         {
-            while ( snap != snap_end() && snap->first < except.first )
+            while ( snap != this->snap_end() && snap->first < except.first )
                 ++ snap, ++ count;
-            if ( snap != snap_end() && snap->first == except.first )
+            if ( snap != this->snap_end() && snap->first == except.first )
                 snap++;
-            if ( _objects.valid( except.second ) )
+            if ( this->valid( except.second ) )
                 ++ count;
         }
 
-        while ( snap != snap_end() )
+        while ( snap != this->snap_end() )
             ++ snap, ++ count;
 
         if ( !count )
             return Snapshot();
 
-        auto s = _snapshots.allocate( count * sizeof( SnapItem ) );
-        auto si = _snapshots.template machinePointer< SnapItem >( s );
-        snap = snap_begin();
+        auto s = this->snapshots().allocate( count * sizeof( SnapItem ) );
+        auto si = this->snapshots().template machinePointer< SnapItem >( s );
+        snap = this->snap_begin();
 
         for ( auto &except : _l.exceptions )
         {
-            while ( snap != snap_end() && snap->first < except.first )
+            while ( snap != this->snap_end() && snap->first < except.first )
                 *si++ = *snap++;
-            if ( snap != snap_end() && snap->first == except.first )
+            if ( snap != this->snap_end() && snap->first == except.first )
                 snap++;
-            if ( _objects.valid( except.second ) )
+            if ( this->valid( except.second ) )
                 *si++ = dedup( except );
         }
 
-        while ( snap != snap_end() )
+        while ( snap != this->snap_end() )
             *si++ = *snap++;
 
-        auto newsnap = _snapshots.template machinePointer< SnapItem >( s );
+        auto newsnap = this->snapshots().template machinePointer< SnapItem >( s );
         ASSERT_EQ( si, newsnap + count );
         for ( auto s = newsnap; s < newsnap + count; ++s )
-            ASSERT( _objects.valid( s->second ) );
+            ASSERT( this->valid( s->second ) );
 
         _l.exceptions.clear();
         _ext.writable.clear();

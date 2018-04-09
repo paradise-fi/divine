@@ -355,7 +355,7 @@ struct Context
             return;
         auto pc = get( _VM_CR_PC ).pointer;
         ptr2i( _VM_CR_Frame,
-               heap().write( frame, PointerV( pc ), ptr2i( _VM_CR_Frame ) ) );
+               heap().write( heap().loc( frame, ptr2i( _VM_CR_Frame ) ), PointerV( pc ) ) );
     }
 
     bool in_kernel() { return ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode; }

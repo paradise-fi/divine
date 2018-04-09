@@ -22,14 +22,15 @@
 #include <brick-types>
 
 #include <divine/vm/value.hpp>
+#include <divine/vm/types.hpp>
 #include <divine/vm/mem-base.hpp>
 #include <divine/vm/mem-metadata.hpp>
 #include <divine/vm/mem-pointers.hpp>
 #include <divine/vm/mem-definedness.hpp>
 #include <divine/vm/mem-taint.hpp>
 
-namespace divine {
-namespace vm::mem {
+namespace divine::vm::mem
+{
 
 namespace bitlevel = brick::bitlevel;
 
@@ -143,22 +144,12 @@ struct Compress : Next
     }
 };
 
-template< typename Pool >
-using Layers = TaintLayer<
-               DefinednessLayer<
-               PointerLayer<
-               ShadowBase<
-               Compress<
-               Base< Pool > > > > > >;
-
-template< typename MasterPool >
-using CompoundShadow = Metadata< Layers< MasterPool > >;
-
 }
 
-namespace t_vm {
+namespace divine::t_vm
+{
 
-struct CompoundShadowDescriptor
+struct Compress
 {
     struct Empty {};
     using ShDesc = vm::mem::Compress< Empty >;
@@ -228,44 +219,47 @@ struct CompoundShadowDescriptor
 
 using Pool = brick::mem::Pool<>;
 
-template< template< typename > class Shadow >
-struct TestHeap
+template< typename Next >
+struct TestHeap : Next
 {
+    using typename Next::Loc;
     using Ptr = Pool::Pointer;
-    Pool pool;
-    Shadow< Pool > shadows;
-    using Loc = typename Shadow< Pool >::Loc;
+    using Next::_objects;
 
-    TestHeap() : shadows( pool ) {}
-
-    auto pointers( Ptr p, int sz ) { return shadows.pointers( shloc( p, 0 ), sz ); }
-    Loc shloc( Ptr p, int off ) { return Loc( p, off ); }
+    auto pointers( Ptr p, int sz ) { return Next::pointers( loc( p, 0 ), sz ); }
+    Loc loc( Ptr p, int off ) { return Loc( p, 0, off ); }
 
     Ptr make( int sz )
     {
-        auto r = pool.allocate( sz );
-        shadows.make( r, sz );
+        auto r = _objects.allocate( sz );
+        Next::materialise( r, sz );
         return r;
     }
 
     template< typename T >
-    void write( Ptr p, int off, T t ) {
-        shadows.write( shloc( p, off ), t );
-        *pool.template machinePointer< typename T::Raw >( p, off ) = t.raw();
+    void write( Ptr p, int off, T t )
+    {
+        Next::write( loc( p, off ), t );
+        *_objects.template machinePointer< typename T::Raw >( p, off ) = t.raw();
     }
 
     template< typename T >
-    void read( Ptr p, int off, T &t ) {
-        t.raw( *pool.template machinePointer< typename T::Raw >( p, off ) );
-        shadows.read( shloc( p, off ), t );
+    void read( Ptr p, int off, T &t )
+    {
+        t.raw( *_objects.template machinePointer< typename T::Raw >( p, off ) );
+        Next::read( loc( p, off ), t );
+    }
+
+    uint8_t *unsafe_ptr2mem( Ptr i ) const
+    {
+        return _objects.template machinePointer< uint8_t >( i );
     }
 
     void copy( Ptr pf, int of, Ptr pt, int ot, int sz )
     {
-        auto data_from = pool.template machinePointer< uint8_t >( pf, of ),
-             data_to   = pool.template machinePointer< uint8_t >( pt, ot );
-        shadows.copy( shloc( pf, of ), shloc( pt, ot ), sz, [this]( auto i, auto o ){
-                return *pool.template machinePointer< uint32_t >( i, o ); } );
+        auto data_from = _objects.template machinePointer< uint8_t >( pf, of ),
+             data_to   = _objects.template machinePointer< uint8_t >( pt, ot );
+        Next::copy( *this, loc( pf, of ), *this, loc( pt, ot ), sz  );
         std::copy( data_from, data_from + sz, data_to );
     }
 };
@@ -273,7 +267,7 @@ struct TestHeap
 struct CompoundShadow
 {
     using PointerV = vm::value::Pointer;
-    using H = TestHeap< vm::mem::CompoundShadow >;
+    using H = TestHeap< vm::mem::ShadowLayers< vm::mem::Base< Pool > > >;
     H heap;
     H::Ptr obj;
 
@@ -552,7 +546,7 @@ struct CompoundShadow
         heap.copy( obj, 0, obj, 6, 4 );
         heap.copy( obj, 0, obj, 8, 4 );
         heap.copy( obj, 8, obj, 2, 6 );
-        ASSERT( heap.shadows._ptr_exceptions->empty() );
+        ASSERT( heap._ptr_exceptions->empty() );
     }
 
     TEST( ptr_write_invalidate_exception )
@@ -567,7 +561,7 @@ struct CompoundShadow
         heap.write( obj, 0, p1 );
         heap.write( obj, 12, v1 );
 
-        ASSERT( heap.shadows._ptr_exceptions->empty() );
+        ASSERT( heap._ptr_exceptions->empty() );
     }
 
     TEST( read_write_taint_short )
@@ -637,7 +631,6 @@ struct CompoundShadow
         heap.read( obj, 0, i2 );
         ASSERT_EQ( i2.taints(), 0x00 );
     }
-
 
 #if 0
     TEST( copy_aligned_ptr )
@@ -821,7 +814,5 @@ struct CompoundShadow
     }
 #endif
 };
-
-}
 
 }

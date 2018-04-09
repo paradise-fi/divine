@@ -53,27 +53,13 @@ struct Metadata : Next
     static_assert( sizeof( Compressed ) * 8 >= BPW,
                    "Next::Compressed does not contain all bits per word" );
 
-    MetaPool _meta, _shared;
+    mutable MetaPool _meta;
+    Metadata() : _meta( Next::_objects ) {}
 
-    Metadata( const Pool &mp )
-        : _meta( mp ), _shared( mp ) {}
-
-    void make( Internal p, int size )
+    void materialise( Internal i, int size )
     {
         constexpr unsigned divisor = 32 / BPW;
-        _meta.materialise( p, ( size / divisor ) + ( size % divisor ? 1 : 0 ) );
-        _shared.materialise( p, 1 );
-        Next::make( p, size );
-    }
-
-    void free( Internal p )
-    {
-        Next::free( p );
-    }
-
-    bool &shared( Internal p )
-    {
-        return *_shared.template machinePointer< bool >( p );
+        _meta.materialise( i, ( size / divisor ) + ( size % divisor ? 1 : 0 ) );
     }
 
     bool equal( Internal a, Internal b, int sz )
@@ -87,8 +73,8 @@ struct Metadata : Next
         int cmp;
         const int words = ( sz + 3 ) / 4;
 
-        auto a = Loc( a_obj, 0 );
-        auto b = Loc( b_obj, 0 );
+        auto a = Loc( a_obj, 0, 0 );
+        auto b = Loc( b_obj, 0, 0 );
         auto sh_a = a_sh.compressed( a, words );
         auto sh_b = compressed( b, words );
         auto i_a = sh_a.begin();
@@ -116,7 +102,7 @@ struct Metadata : Next
     }
 
     using CompressedC = BitsetContainer< BPW, MetaPool >;
-    CompressedC compressed( Loc l, unsigned words )
+    CompressedC compressed( Loc l, unsigned words ) const
     {
         return CompressedC( _meta, l.object, l.offset / 4, words + l.offset / 4 );
     }
@@ -143,7 +129,7 @@ struct Metadata : Next
     }
 
     template< typename V >
-    void read( Loc l, V &value )
+    void read( Loc l, V &value ) const
     {
         constexpr int sz = sizeof( typename V::Raw );
         constexpr int words = ( sz + 3 ) / 4;
@@ -162,9 +148,8 @@ struct Metadata : Next
         Next::read( l, value, exp );
     }
 
-    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
-    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz,
-               FromHeapReader fhr, ToHeapReader thr )
+    template< typename FromH, typename ToH >
+    static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz )
     {
         if ( sz == 0 )
             return;
@@ -172,8 +157,8 @@ struct Metadata : Next
         ASSERT_LT( 0, sz );
         const int words = ( sz + 3 ) / 4;
 
-        auto sh_from = from_sh.compressed( from, words );
-        auto sh_to = compressed( to, words );
+        auto sh_from = from_h.compressed( from, words );
+        auto sh_to = to_h.compressed( to, words );
         auto i_from = sh_from.begin();
         auto i_to = sh_to.begin();
 
@@ -190,7 +175,7 @@ struct Metadata : Next
             {
                 Expanded exp_src = Next::expand( *i_from );
                 Expanded exp_dst = Next::expand( *i_to );
-                Next::copy_word( from_sh, from + off, exp_src, to + off, exp_dst );
+                Next::copy_word( from_h, to_h, from + off, exp_src, to + off, exp_dst );
                 *i_to++ = *i_from++;
             }
         }
@@ -210,13 +195,13 @@ struct Metadata : Next
             {
                 exp_src = Next::expand( *i_from++ );
                 int aligned = bitlevel::downalign( off_from, 4 );
-                Next::copy_init_src( from_sh, from.object, aligned, exp_src, fhr );
+                Next::copy_init_src( from_h, to_h, from.object, aligned, exp_src );
             }
             if ( off_to % 4 )
             {
                 exp_dst = Next::expand( *i_to );
                 int aligned = bitlevel::downalign( off_to, 4 );
-                Next::copy_init_dst( to.object, aligned, exp_dst, thr );
+                Next::copy_init_dst( to_h, to.object, aligned, exp_dst );
             }
 
             while ( off < sz )
@@ -224,17 +209,17 @@ struct Metadata : Next
                 if ( off_from % 4 == 0 )
                 {
                     exp_src = Next::expand( *i_from++ );
-                    Next::copy_init_src( from_sh, from.object, off_from, exp_src, fhr );
+                    Next::copy_init_src( from_h, to_h, from.object, off_from, exp_src );
                 }
                 if ( off_to % 4 == 0 )
                 {
                     exp_dst = Next::expand( *i_to );
                     if ( sz - off < 4 )
-                        Next::copy_init_dst( to.object, off_to, exp_dst, thr );
+                        Next::copy_init_dst( to_h, to.object, off_to, exp_dst );
                     written = false;
                 }
 
-                Next::copy_byte( from_sh, from + off, exp_src, fhr, to + off, exp_dst, thr );
+                Next::copy_byte( from_h, to_h, from + off, exp_src, to + off, exp_dst );
 
                 ++off;
                 ++off_from;
@@ -242,7 +227,7 @@ struct Metadata : Next
 
                 if ( off_to % 4 == 0 )
                 {
-                    Next::copy_done( to.object, off_to - 4, exp_dst );
+                    Next::copy_done( to_h, to.object, off_to - 4, exp_dst );
                     *i_to++ = Next::compress( exp_dst );
                     written = true;
                 }
@@ -251,7 +236,7 @@ struct Metadata : Next
             if ( ! written )
             {
                 int aligned = bitlevel::downalign( off_to, 4 );
-                Next::copy_done( to.object, aligned, exp_dst );
+                Next::copy_done( to_h, to.object, aligned, exp_dst );
                 *i_to = Next::compress( exp_dst );
             }
         }

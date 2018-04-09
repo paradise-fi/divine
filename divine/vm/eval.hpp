@@ -178,24 +178,29 @@ struct Eval
         return s2ptr( v, off );
     }
 
+    typename Context::Heap::Loc s2loc( Slot v, int off = 0 )
+    {
+        auto gp = s2ptr( v, off );
+        return typename Context::Heap::Loc( context().ptr2i( v.location ), gp.object(), gp.offset() );
+    }
+
     template< typename V >
     void slot_write( Slot s, V v, int off = 0 )
     {
-        context().ptr2i( s.location,
-                         heap().write( s2ptr( s, off ), v, context().ptr2i( s.location ) ) );
+        context().ptr2i( s.location, heap().write( s2loc( s, off ), v ) );
     }
 
     void slot_copy( HeapPointer from, Slot to, int size, int offset = 0 )
     {
-        auto to_i = context().ptr2i( to.location );
-        heap().copy( heap(), from, heap().ptr2i( from ), s2ptr( to, offset ), to_i, size );
-        context().ptr2i( to.location, to_i );
+        auto to_l = s2loc( to, offset );
+        heap().copy( heap(), heap().loc( from ), to_l, size );
+        context().ptr2i( to.location, to_l.object );
     }
 
     template< typename V >
     void slot_read( Slot s, V &v )
     {
-        heap().read( s2ptr( s ), v, context().ptr2i( s.location ) );
+        heap().read( s2loc( s ), v );
     }
 
     template< typename V >
@@ -369,8 +374,8 @@ struct Eval
             return;
         auto slot = operand( 0 );
         auto mem = ptr2h( to );
-        auto mem_i = heap().ptr2i( mem ), old_i = mem_i;
-        heap().copy( heap(), s2ptr( slot ), context().ptr2i( slot.location ), mem, mem_i, sz );
+        auto mem_i = heap().loc( mem ), old_i = mem_i;
+        heap().copy( heap(), s2loc( slot ), mem_i, sz );
         if ( mem_i != old_i )
             context().flush_ptr2i(); /* might have affected register-held objects */
     }

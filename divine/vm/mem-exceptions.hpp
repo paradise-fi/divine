@@ -39,7 +39,7 @@ struct ExceptionMap
 
         Lock lk( _mtx );
 
-        auto it = _exceptions.find( Loc( obj, wpos ) );
+        auto it = _exceptions.find( Loc( obj, 0, wpos ) );
         ASSERT( it != _exceptions.end() );
         ASSERT( it->second.valid() );
         return it->second;
@@ -50,15 +50,15 @@ struct ExceptionMap
         ASSERT_EQ( wpos % 4, 0 );
 
         Lock lk( _mtx );
-        _exceptions[ Loc( obj, wpos ) ] = exc;
+        _exceptions[ Loc( obj, 0, wpos ) ] = exc;
     }
 
     void free( Internal obj )
     {
         Lock lk( _mtx );
 
-        auto lb = _exceptions.lower_bound( Loc( obj, 0 ) );
-        auto ub = _exceptions.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
+        auto lb = _exceptions.lower_bound( Loc( obj, 0, 0 ) );
+        auto ub = _exceptions.upper_bound( Loc( obj, 0, (1 << _VM_PB_Off) - 1 ) );
         while (lb != ub)
         {
             lb->second.invalidate();

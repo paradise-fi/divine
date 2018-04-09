@@ -34,14 +34,16 @@ struct Base
     using Pool = Pool_;
     using Internal = typename Pool::Pointer;
 
+    mutable Pool _objects, _snapshots;
+
     struct Loc : public brick::types::Ord
     {
         using Internal = typename Pool::Pointer;
         Internal object;
-        int offset;
+        uint32_t objid, offset;
 
-        Loc( Internal o, int off = 0 )
-            : object( o ), offset( off )
+        Loc( Internal o, int objid, int off )
+            : object( o ), objid( objid ), offset( off )
         {}
 
         Loc operator-( int i ) const { Loc r = *this; r.offset -= i; return r; }
@@ -59,6 +61,10 @@ struct Base
         }
     };
 
+    Loc loc( HeapPointer p, Internal i ) const
+    {
+	return Loc( i, p.object(), p.offset() );
+    }
 };
 
 template< typename Next >
@@ -71,28 +77,32 @@ struct ShadowBase : Next
     template< typename V >
     void write( Loc, V, Expanded * ) {}
     template< typename V >
-    void read( Loc, V &, Expanded * ) {}
-    template< typename FromSh >
-    void copy_word( FromSh &, typename FromSh::Loc, Expanded, Loc, Expanded ) {}
-    template< typename FromSh, typename FromHeapReader >
-    void copy_init_src( FromSh &, typename FromSh::Internal, int off, const Expanded &,
-                        FromHeapReader )
-    {
-        ASSERT_EQ( off % 4, 0 );
-    }
-    template< typename ToHeapReader >
-    void copy_init_dst( Internal, int off, const Expanded &, ToHeapReader )
+    void read( Loc, V &, Expanded * ) const {}
+
+    template< typename FromH, typename ToH >
+    static void copy_word( FromH &, ToH &, typename FromH::Loc, Expanded, Loc, Expanded ) {}
+
+    template< typename FromH, typename ToH >
+    static void copy_init_src( FromH &, ToH &, typename FromH::Internal, int off, const Expanded & )
     {
         ASSERT_EQ( off % 4, 0 );
     }
 
-    template< typename FromSh, typename FromHeapReader, typename ToHeapReader >
-    void copy_byte( FromSh &, typename FromSh::Loc, const Expanded &, FromHeapReader,
-                    Loc, Expanded &, ToHeapReader ) {}
-    void copy_done( Internal, int off, Expanded & )
+    template< typename ToH >
+    static void copy_init_dst( ToH &, Internal, int off, const Expanded & )
     {
         ASSERT_EQ( off % 4, 0 );
     }
+
+    template< typename FromH, typename ToH >
+    static void copy_byte( FromH &, ToH &, typename FromH::Loc, const Expanded &, Loc, Expanded & ) {}
+
+    template< typename ToH >
+    static void copy_done( ToH &, Internal, int off, Expanded & )
+    {
+        ASSERT_EQ( off % 4, 0 );
+    }
+
     template< typename OtherSh >
     int compare_word( OtherSh &, typename OtherSh::Loc a, Expanded, Loc b, Expanded )
     {
@@ -100,6 +110,7 @@ struct ShadowBase : Next
             ASSERT_EQ( b.offset % 4, 0 );
             return 0;
     }
+
     template< typename OtherSh >
     int compare_byte( OtherSh &, typename OtherSh::Loc a, Expanded, Loc b, Expanded )
     {

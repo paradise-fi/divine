@@ -100,6 +100,9 @@ namespace divine::vm::mem::heap
 namespace divine::vm::mem
 {
 
+    using brick::hash::hash64_t;
+    using brick::hash::hash128_t;
+
     struct HeapBytes
     {
         uint8_t *_start, *_end;
@@ -110,54 +113,37 @@ namespace divine::vm::mem
         uint8_t &operator[]( int i ) { return *( _start + i ); }
     };
 
-    template< typename Self, typename Shadows, typename Internal >
-    struct HeapMixin
+    template< typename Next >
+    struct Frontend : Next
     {
+        using typename Next::Loc;
         using PointerV = value::Pointer;
 
-        Self &self() { return *static_cast< Self * >( this ); }
-        const Self &self() const { return *static_cast< const Self * >( this ); }
-
-        auto &shadows() { return self()._shadows; }
-        const auto &shadows() const { return self()._shadows; }
-
-        template< typename F >
-        auto with_shadow( F f, HeapPointer p, int from, int sz, Internal i )
-        {
-            sz = sz ? sz : self().size( p, i ) - from;
-            p.offset( from );
-            auto shl = self().shloc( p, i );
-            return (shadows().*f)( shl, sz );
-        }
-
-        auto pointers( HeapPointer p, Internal i, int from = 0, int sz = 0 )
-        {
-            return with_shadow( &Shadows::pointers, p, from, sz, i );
-        }
-
+        using Next::pointers;
         auto pointers( HeapPointer p, int from = 0, int sz = 0 )
         {
-            return pointers( p, self().ptr2i( p ), from, sz );
+            auto l = this->loc( p + from );
+            return Next::pointers( l, sz ? sz : Next::size( l.object ) );
         }
 
         template< typename T >
         void write_shift( PointerV &p, T t )
         {
-            self().write( p.cooked(), t );
+            write( p.cooked(), t );
             skip( p, sizeof( typename T::Raw ) );
         }
 
         template< typename T >
         void read_shift( PointerV &p, T &t ) const
         {
-            self().read( p.cooked(), t );
+            read( p.cooked(), t );
             skip( p, sizeof( typename T::Raw ) );
         }
 
         template< typename T >
         void read_shift( HeapPointer &p, T &t ) const
         {
-            self().read( p, t );
+            read( p, t );
             p = p + sizeof( typename T::Raw );
         }
 
@@ -165,7 +151,7 @@ namespace divine::vm::mem
         {
             std::string str;
             value::Int< 8, false > c;
-            unsigned sz = self().size( ptr );
+            unsigned sz = size( ptr );
             do {
                 if ( ptr.offset() >= sz )
                     return "<out of bounds>";
@@ -183,35 +169,94 @@ namespace divine::vm::mem
             p.v( pv );
         }
 
-        HeapBytes unsafe_bytes( HeapPointer p, Internal i, int off = 0, int sz = 0 ) const
+        HeapBytes unsafe_bytes( Loc l, int sz = 0 ) const
         {
-            sz = sz ? sz : self().size( p, i ) - off;
-            ASSERT_LEQ( off + sz, self().size( p, i ) );
-            auto start = self().unsafe_ptr2mem( p, i );
-            return HeapBytes( start + off, start + off + sz );
+            sz = sz ? sz : Next::size( l.object ) - l.offset;
+            ASSERT_LEQ( l.offset + sz, Next::size( l.object ) );
+            auto start = Next::unsafe_ptr2mem( l.object );
+            return HeapBytes( start + l.offset, start + l.offset + sz );
         }
 
         HeapBytes unsafe_bytes( HeapPointer p, int off = 0, int sz = 0 ) const
         {
-            return unsafe_bytes( p, self().ptr2i( p ), off, sz );
+            return unsafe_bytes( this->loc( p + off ), sz );
         }
+
+        int size( HeapPointer p ) const { return Next::size( this->ptr2i( p ) ); }
+        using Next::size;
+
+        PointerV make( int size, uint32_t hint = 1, bool over = false )
+        {
+            auto l = Next::make( size, hint, over );
+            return PointerV( HeapPointer( l.objid ) );
+        }
+
+        template< typename T >
+        void read( Loc l, T &t ) const
+        {
+            ASSERT_EQ( l.object, this->ptr2i( l.objid ) );
+            Next::read( l, t );
+        }
+
+        template< typename T >
+        void read( HeapPointer p, T &t ) const
+        {
+            ASSERT( this->valid( p ), p );
+            Next::read( this->loc( p ), t );
+        }
+
+        template< typename T >
+        auto write( HeapPointer p, T t )
+        {
+            ASSERT( this->valid( p ), p );
+            return write( this->loc( p ), t );
+        }
+
+        template< typename T >
+        auto write( Loc l, T t )
+        {
+            ASSERT_EQ( l.object, this->ptr2i( l.objid ) );
+            l.object = this->detach( l );
+            Next::write( l, t );
+            return l.object;
+        }
+
+        template< typename FromH >
+        bool copy( FromH &from_h, HeapPointer from, HeapPointer to, int bytes )
+        {
+            if ( from.null() || to.null() )
+                return false;
+
+            auto to_l = this->loc( to );
+            return copy( from_h, from_h.loc( from ), to_l, bytes );
+        }
+
+        template< typename FromH >
+        bool copy( FromH &from_h, typename FromH::Loc from, Loc &to, int bytes )
+        {
+            ASSERT_EQ( from.object, from_h.ptr2i( from.objid ) );
+            ASSERT_EQ( to.object, this->ptr2i( to.objid ) );
+            to.object = Next::detach( to );
+            return Next::copy( from_h, from, *this, to, bytes );
+        }
+
+        bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
     };
 
-    template< typename Self, typename PR >
-    struct SimpleHeap : HeapMixin< Self, mem::CompoundShadow< brick::mem::Pool< PR > >,
-                                   typename brick::mem::Pool< PR >::Pointer >
+    template< typename Next >
+    struct Storage : Next
     {
-        Self &self() { return *static_cast< Self * >( this ); }
+        /* TODO do we want to be able to use distinct pool types here? */
+        using typename Next::Pool;
+        using typename Next::Loc;
+        using typename Next::Internal;
 
-        using ObjPool = brick::mem::Pool< PR >;
-        using SnapPool = brick::mem::Pool< PR >;
-
-        using Internal = typename ObjPool::Pointer;
-        using Snapshot = typename SnapPool::Pointer;
-
-        using Shadows = mem::CompoundShadow< ObjPool >;
+        using SnapPool = Pool;
+        using Snapshot = typename Pool::Pointer;
         using PointerV = value::Pointer;
-        using ShadowLoc = typename Shadows::Loc;
+
+        Pool &objects() const { return this->_objects; }
+        Pool &snapshots() const { return this->_snapshots; }
 
         struct SnapItem
         {
@@ -222,12 +267,6 @@ namespace divine::vm::mem
             bool operator==( SnapItem si ) const { return si.first == first && si.second == second; }
         } __attribute__((packed));
 
-        mutable ObjPool _objects;
-        mutable SnapPool _snapshots;
-        mutable Shadows _shadows;
-
-        SimpleHeap() : _shadows( _objects ) {}
-
         mutable struct Local
         {
             std::map< uint32_t, Internal > exceptions;
@@ -235,46 +274,46 @@ namespace divine::vm::mem
         } _l;
 
         uint64_t objhash( Internal ) { return 0; }
-        Internal detach( HeapPointer, Internal i ) { return i; }
-        void made( HeapPointer ) {}
+        Internal detach( Loc l ) { return l.object; }
 
         void reset() { _l.exceptions.clear(); _l.snapshot = Snapshot(); }
         void rollback() { _l.exceptions.clear(); } /* fixme leak */
 
-        ShadowLoc shloc( HeapPointer p, Internal i ) const
-        {
-            return ShadowLoc( i, p.offset() );
-        }
+        using Next::loc;
+        Loc loc( HeapPointer p ) const { return loc( p, ptr2i( p ) ); }
 
-        ShadowLoc shloc( HeapPointer p ) const { return shloc( p, ptr2i( p ) ); }
-
-        uint8_t *unsafe_ptr2mem( HeapPointer, Internal i ) const
+        uint8_t *unsafe_ptr2mem( Internal i ) const
         {
-            return _objects.template machinePointer< uint8_t >( i );
+            return objects().template machinePointer< uint8_t >( i );
         }
 
         Internal ptr2i( HeapPointer p ) const
         {
-            auto hp = _l.exceptions.find( p.object() );
+            return ptr2i( p.object() );
+        }
+
+        Internal ptr2i( uint32_t object ) const
+        {
+            auto hp = _l.exceptions.find( object );
             if ( hp != _l.exceptions.end() )
                 return hp->second;
 
-            auto si = snap_find( p.object() );
-            return si && si != snap_end() && si->first == p.object() ? si->second : Internal();
+            auto si = snap_find( object );
+            return si && si != snap_end() && si->first == object ? si->second : Internal();
         }
 
         int snap_size( Snapshot s ) const
         {
-            if ( !_snapshots.valid( s ) )
+            if ( !snapshots().valid( s ) )
                 return 0;
-            return _snapshots.size( s ) / sizeof( SnapItem );
+            return snapshots().size( s ) / sizeof( SnapItem );
         }
 
         SnapItem *snap_begin( Snapshot s ) const
         {
-            if ( !_snapshots.valid( s ) )
+            if ( !snapshots().valid( s ) )
                 return nullptr;
-            return _snapshots.template machinePointer< SnapItem >( s );
+            return snapshots().template machinePointer< SnapItem >( s );
         }
 
         SnapItem *snap_begin() const { return snap_begin( _l.snapshot ); }
@@ -282,7 +321,7 @@ namespace divine::vm::mem
         SnapItem *snap_end() const { return snap_end( _l.snapshot ); }
         SnapItem *snap_find( uint32_t obj ) const;
 
-        PointerV make( int size, uint32_t hint = 1, bool overwrite = false );
+        Loc make( int size, uint32_t hint = 1, bool overwrite = false );
         bool resize( HeapPointer p, int sz_new );
         bool free( HeapPointer p );
 
@@ -293,21 +332,23 @@ namespace divine::vm::mem
             return ptr2i( p ).slab();
         }
 
-        int size( HeapPointer, Internal i ) const { return _objects.size( i ); }
-        int size( HeapPointer p ) const { return size( p, ptr2i( p ) ); }
+        bool valid( Internal i ) const { return objects().valid( i ); }
+        int size( Internal i ) const { return objects().size( i ); }
+        void free( Internal i ) const { objects().free( i ); }
 
-        void write( HeapPointer, value::Void ) {}
-        void write( HeapPointer, value::Void, Internal ) {}
-        void read( HeapPointer, value::Void& ) const {}
-        void read( HeapPointer, value::Void&, Internal ) const {}
+        void write( Loc, value::Void ) {}
+        void read( Loc, value::Void& ) const {}
 
-        template< typename T >
-        void read( HeapPointer p, T &t, Internal i ) const;
+        template< typename T > void read( Loc p, T &t ) const;
+        template< typename T > void write( Loc p, T t );
+
+        template< typename FromH, typename ToH >
+        static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes );
 
         template< typename T >
         T *unsafe_deref( HeapPointer p, Internal i ) const
         {
-            return _objects.template machinePointer< T >( i, p.offset() );
+            return objects().template machinePointer< T >( i, p.offset() );
         }
 
         template< typename T >
@@ -316,43 +357,27 @@ namespace divine::vm::mem
             t.raw( *unsafe_deref< typename T::Raw >( p, i ) );
         }
 
-        template< typename T >
-        void read( HeapPointer p, T &t ) const { read( p, t, ptr2i( p ) ); }
-
-        template< typename T > Internal write( HeapPointer p, T t, Internal i );
-
-        template< typename T >
-        void write( HeapPointer p, T t ) { write( p, t, ptr2i( p ) ); }
-
-        template< typename FromH >
-        bool copy( FromH &from_h, HeapPointer _from, typename FromH::Internal _from_i,
-                   HeapPointer _to, Internal &_to_i, int bytes );
-
-        template< typename FromH >
-        bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
-        {
-            auto _to_i = ptr2i( _to );
-            return copy( from_h, _from, from_h.ptr2i( _from ), _to, _to_i, bytes );
-        }
-
-        bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
-
-        void restore( Snapshot ) { UNREACHABLE( "restore() is not available in SimpleHeap" ); }
-        Snapshot snapshot() { UNREACHABLE( "snapshot() is not available in SimpleHeap" ); }
+        void restore( Snapshot ) { UNREACHABLE( "restore() is not available" ); }
+        Snapshot snapshot() { UNREACHABLE( "snapshot() is not available" ); }
     };
 
-    struct CowHeap : SimpleHeap< CowHeap >
+    template< typename Next >
+    struct Cow : Next
     {
-        using Super = SimpleHeap< CowHeap >;
+        using typename Next::Internal;
+        using typename Next::SnapItem;
+        using typename Next::Snapshot;
+        using typename Next::Loc;
+        using Next::_l; /* FIXME */
 
         struct ObjHasher
         {
-            CowHeap *_heap;
+            Cow< Next > *_heap;
+            auto &heap() { return *_heap; }
             auto &objects() { return _heap->_objects; }
-            auto &shadows() { return _heap->_shadows; }
 
-            brick::hash::hash64_t content_only( Internal i );
-            brick::hash::hash128_t hash( Internal i );
+            hash64_t content_only( Internal i );
+            hash128_t hash( Internal i );
             bool equal( Internal a, Internal b );
         };
 
@@ -366,42 +391,65 @@ namespace divine::vm::mem
 
         void setupHT() { _ext.objects.hasher._heap = this; }
 
-        CowHeap() { setupHT(); }
-        CowHeap( const CowHeap &o ) : Super( o ), _ext( o._ext )
+        Cow() { setupHT(); }
+        Cow( const Cow &o ) : Next( o ), _ext( o._ext )
         {
             setupHT();
             restore( o.snapshot() );
         }
 
-        CowHeap &operator=( const CowHeap &o )
+        Cow &operator=( const Cow &o )
         {
-            Super::operator=( o );
+            Next::operator=( o );
             _ext = o._ext;
             setupHT();
             restore( o.snapshot() );
             return *this;
         }
 
-        void made( HeapPointer p )
+        Loc make( int size, uint32_t hint, bool over )
         {
-            _ext.writable.insert( p.object() );
+            auto l = Next::make( size, hint, over );
+            _ext.writable.insert( l.objid );
+            return l;
         }
 
         void reset()
         {
-            Super::reset();
+            Next::reset();
             _ext.writable.clear();
         }
 
         void rollback()
         {
-            Super::rollback();
+            Next::rollback();
             _ext.writable.clear();
         }
 
-        Internal detach( HeapPointer p, Internal i );
+        template< typename T >
+        auto write( Loc l, T t )
+        {
+            ASSERT( _ext.writable.count( l.objid ) );
+            return Next::write( l, t );
+        }
+
+        template< typename FromH, typename ToH >
+        static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes )
+        {
+            ASSERT( to_h._ext.writable.count( to.objid ) );
+            return Next::copy( from_h, from, to_h, to, bytes );
+        }
+
+        Internal detach( Loc l );
         SnapItem dedup( SnapItem si ) const;
         Snapshot snapshot() const;
+
+        bool resize( HeapPointer p, int sz_new )
+        {
+            auto rv = Next::resize( p, sz_new );
+            _ext.writable.insert( p.object() );
+            return rv;
+        }
 
         bool is_shared( Snapshot s ) const { return s == _l.snapshot; }
         void restore( Snapshot s )
@@ -411,8 +459,4 @@ namespace divine::vm::mem
             _l.snapshot = s;
         }
     };
-
-    extern template struct SimpleHeap< CowHeap >;
-    extern template struct SimpleHeap<SmallHeap, PoolRep< 8 > >;
-    extern template struct SimpleHeap< MutableHeap >;
 }
