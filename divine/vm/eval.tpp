@@ -569,9 +569,10 @@ void Eval< Ctx >::implement_hypercall()
             int64_t size = operandCk< IntV >( 0 ).cooked();
             if ( size >= ( 2ll << _VM_PB_Off ) || size < 1 )
             {
+                result( nullPointerV() );
                 fault( _VM_F_Hypercall ) << "invalid size " << size
                                             << " passed to __vm_obj_make";
-                size = 0;
+                return;
             }
             result( size ? makeobj( size ) : nullPointerV() );
             return;
