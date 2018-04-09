@@ -17,12 +17,14 @@
  */
 
 #include <tools/extbench.hpp>
+#include <tools/bench-config.hpp>
 
 #include <divine/ui/odbc.hpp>
 
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cstdlib>
 #include <brick-string>
 #include <brick-types>
 #include <brick-fs>
@@ -69,6 +71,27 @@ int External::get_instance()
     return benchmark::get_instance( _conn, _config_id, get_build() );
 }
 
+void setup_env( const benchmark::Config &c )
+{
+    auto to_str = brick::types::overloaded(
+                  []( std::string val ) { return val; },
+                  []( int64_t val ) { return std::to_string( val ); } );
+    auto set_env = [&]( const char *var, auto val )
+        {
+            if ( val ) {
+                auto str = to_str( *val );
+                ::setenv( var, str.c_str(), true );
+            }
+            else
+                ::unsetenv( var );
+        };
+
+    set_env( "DIVBENCH_SOLVER", c.solver );
+    set_env( "DIVBENCH_THREADS", c.threads );
+    set_env( "DIVBENCH_MAX_TIME", c.max_time );
+    set_env( "DIVBENCH_MAX_MEM", c.max_mem );
+}
+
 void Run::execute( int job_id )
 {
     fs::TempDir workdir( "_divbench_run_external.XXXXXX",
@@ -89,6 +112,9 @@ void Run::execute( int job_id )
 
     int exec_id = odbc::add_execution( _conn );
     log_start( job_id, exec_id );
+
+    auto config = benchmark::get_config( _conn, _config_id );
+    setup_env( config );
 
     auto r = proc::spawnAndWait( proc::ShowCmd | proc::CaptureStdout, _driver, "script" );
     if ( !r )

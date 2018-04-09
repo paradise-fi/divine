@@ -22,6 +22,7 @@
 #include <divine/ui/log.hpp>
 #include <divine/ui/odbc.hpp>
 #include <tools/divcheck.hpp>
+#include <tools/bench-config.hpp>
 
 #include <iostream>
 #include <vector>
@@ -112,16 +113,12 @@ void Run::config( ui::Cc &cc )
 
 void Run::config( ui::Verify &v )
 {
-    nanodbc::statement q( _conn, "select solver, threads, max_mem, max_time from config where id = ?" );
-    q.bind( 0, &_config_id );
-    auto r = q.execute();
-    r.first();
-    auto solver = r.get< std::string >( 0 ); /* text fields and nulls don't go together */
+    auto c = get_config( _conn, _config_id );
 
-    if ( !solver.empty() ) v._solver   = solver;
-    if ( !r.is_null( 1 ) ) v._threads  = r.get< int >( 1 );
-    if ( !r.is_null( 2 ) ) v._max_mem  = r.get< int64_t >( 2 );
-    if ( !r.is_null( 3 ) ) v._max_time = r.get< int >( 3 );
+    if ( c.solver )   v._solver   = *c.solver;
+    if ( c.threads )  v._threads  = *c.threads;
+    if ( c.max_mem )  v._max_mem  = *c.max_mem;
+    if ( c.max_time ) v._max_time = *c.max_mem;
 }
 
 void Run::run()
