@@ -24,9 +24,10 @@
 namespace divine::vm::mem
 {
 
-template< typename ExceptionType, typename Loc >
+template< typename ExceptionType, typename Loc_ >
 struct ExceptionMap
 {
+    using Loc = Loc_;
     using Internal = typename Loc::Internal;
     using ExcMap = std::map< Loc, ExceptionType >;
     using Lock = std::lock_guard< std::mutex >;
@@ -61,6 +62,24 @@ struct ExceptionMap
         _exceptions.erase( lb, ub );
     }
 
+    template< typename OM >
+    void copy( OM &from_m, typename OM::Loc from, Loc to, int sz )
+    {
+        Lock lk( _mtx );
+        typename OM::Loc from_p( from.object, from.objid, from.offset + sz );
+
+        int delta = to.offset - from.offset;
+
+        auto lb = from_m._exceptions.lower_bound( from );
+        auto ub = from_m._exceptions.upper_bound( from_p );
+        std::transform( lb, ub, std::inserter( _exceptions, _exceptions.begin() ), [&]( auto x )
+        {
+            auto fl = x.first;
+            Loc l( to.object, fl.objid, fl.offset + delta );
+            return std::make_pair( l, x.second );
+        } );
+    }
+
     bool empty()
     {
         Lock lk( _mtx );
@@ -68,7 +87,6 @@ struct ExceptionMap
                             []( const auto & e ) { return ! e.second.valid(); } );
     }
 
-protected:
     ExcMap _exceptions;
     mutable std::mutex _mtx;
 };
