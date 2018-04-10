@@ -59,11 +59,7 @@ struct ExceptionMap
 
         auto lb = _exceptions.lower_bound( Loc( obj, 0, 0 ) );
         auto ub = _exceptions.upper_bound( Loc( obj, 0, (1 << _VM_PB_Off) - 1 ) );
-        while (lb != ub)
-        {
-            lb->second.invalidate();
-            ++lb;
-        }
+        _exceptions.erase( lb, ub );
     }
 
     bool empty()
