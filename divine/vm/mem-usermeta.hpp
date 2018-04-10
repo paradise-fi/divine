@@ -1,0 +1,79 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2018 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+
+#include <divine/vm/mem-exceptions.hpp>
+#include <divine/vm/value.hpp>
+
+namespace divine::vm::mem
+{
+
+template< typename Next >
+struct UserMeta : Next
+{
+    using Internal = typename Next::Internal;
+    using Loc = typename Next::Loc;
+    using Value = value::Int< 32, false >;
+
+    struct Map : ExceptionMap< uint32_t, Loc >
+    {
+        Map() = default;
+        Map( Map && ) = default;
+        enum { Pointers, Scalars, Unknown } _type = Unknown;
+    };
+
+    using Maps = std::array< Map, 4 >; /* TODO make this a vector? */
+    std::shared_ptr< Maps > _maps;
+
+    UserMeta() : _maps( new Maps ) {}
+
+    void free( Internal p )
+    {
+        for ( auto &e : *_maps )
+            e.free( p );
+        Next::free( p );
+    }
+
+    Value peek( Loc l, int key )
+    {
+        auto &map = _maps->at( key );
+        return Value( map.at( l.object, l.offset ), -1, map._type == Map::Pointers );
+    }
+
+    void poke( Loc l, int key, Value v )
+    {
+        auto &map = _maps->at( key );
+        if ( map._type == Map::Unknown )
+            map._type = v.pointer() ? Map::Pointers : Map::Scalars;
+
+        ASSERT_EQ( map._type == Map::Pointers, v.pointer() );
+        map.set( l.object, l.offset, v.cooked() );
+    }
+
+    template< typename FromH, typename ToH >
+    static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz )
+    {
+        for ( unsigned i = 0; i < to_h._maps->size(); ++ i )
+            to_h._maps->at( i ).copy( from_h._maps->at( i ), from, to, sz );
+        Next::copy( from_h, from, to_h, to, sz );
+    }
+};
+
+}
+
