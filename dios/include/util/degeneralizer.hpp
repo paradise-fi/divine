@@ -101,7 +101,6 @@ struct Monitor : public __dios::Monitor {
     TGBA tgba;
     Degeneralizer2 deg;
 
-    //TODO: move the tgba
     Monitor( TGBA&& _tgba )
         : tgba( _tgba )
         , deg( _tgba.numberAcc )
@@ -114,7 +113,8 @@ struct Monitor : public __dios::Monitor {
         std::optional< size_t > scc1;
         std::optional< size_t > scc2;
         size_t dest;
-        if( !tgba.step( acc, scc1, scc2, dest ) ) { //step was not succesful
+        if( !tgba.step( acc, scc1, scc2, dest ) ) //step was not succesful
+        {
             monitor_cancel();
             return;
         }
