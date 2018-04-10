@@ -41,7 +41,6 @@ struct ExceptionMap
 
         auto it = _exceptions.find( Loc( obj, 0, wpos ) );
         ASSERT( it != _exceptions.end() );
-        ASSERT( it->second.valid() );
         return it->second;
     }
 
