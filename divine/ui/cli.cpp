@@ -221,6 +221,9 @@ void WithBC::report_options()
     if ( _symbolic )
         _log->info( "symbolic: 1\n" );
 
+    if ( _svcomp )
+        _log->info( "svcomp: 1\n" );
+
     if ( _sequential )
         _log->info( "sequential: 1\n", true );
     if ( _synchronous )
@@ -300,6 +303,7 @@ void WithBC::setup()
     _bc->sequential( _sequential );
     _bc->interrupts( !_synchronous );
     _bc->symbolic( _symbolic );
+    _bc->svcomp( _svcomp );
     _bc->lart( _lartPasses );
     _bc->relaxed( _relaxed );
 }

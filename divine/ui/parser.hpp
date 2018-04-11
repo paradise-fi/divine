@@ -199,6 +199,8 @@ struct CLI : Interface
                      "capture file and pass it to OS as stdin for verified program" )
             .option( "[--symbolic]", &WithBC::_symbolic,
                      "use semi-symbolic data representation"s )
+            .option( "[--svcomp]", &WithBC::_svcomp,
+                     "run SV-COMP specific program transformations"s )
             .option( "[--dump-bc {string}]", &WithBC::_dump_bc,
                      "dump the final pre-processed bitcode"s )
             .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
