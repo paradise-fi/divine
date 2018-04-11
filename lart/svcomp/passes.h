@@ -10,11 +10,10 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
     namespace svcomp {
 
-        PassMeta intrinsicPass();
-        PassMeta volatilizePass();
+        PassMeta svcompPass();
 
         inline std::vector< PassMeta > passes() {
-            return { volatilizePass(), intrinsicPass() };
+            return { svcompPass() };
         }
     }
 }
