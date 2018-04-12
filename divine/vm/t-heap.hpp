@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <divine/vm/mem-heap.hpp>
-#include <divine/vm/mem-heap.tpp>
+#include <divine/vm/memory.hpp>
+#include <divine/vm/memory.tpp>
 
 namespace divine::t_vm
 {
@@ -89,7 +89,7 @@ namespace divine::t_vm
         {
             IntV i( 0, 0xF0, false ), j;
             heap.write( p.cooked(), i );
-            auto q = vm::mem::heap::clone( heap, heap, p.cooked() );
+            auto q = mem::clone( heap, heap, p.cooked() );
             heap.read( q, j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xF0 );
@@ -100,7 +100,7 @@ namespace divine::t_vm
             IntV i( 0, 0xF0, false ), j;
             heap.write( p.cooked(), i );
             decltype( heap ) heap2;
-            auto q = vm::mem::heap::clone( heap, heap2, p.cooked() );
+            auto q = mem::clone( heap, heap2, p.cooked() );
             heap2.read( q, j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xF0 );
@@ -110,8 +110,8 @@ namespace divine::t_vm
         {
             IntV i( 0, 0xF0, false ), j;
             heap.write( p.cooked(), i );
-            vm::mem::MutableHeap heap2;
-            auto q = vm::mem::heap::clone( heap, heap2, p.cooked() );
+            vm::MutableHeap heap2;
+            auto q = mem::clone( heap, heap2, p.cooked() );
             heap2.read( q, j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xF0 );
@@ -121,8 +121,8 @@ namespace divine::t_vm
         {
             IntV i( 0, 0xF0, false ), j;
             heap.write( p.cooked(), i );
-            vm::mem::CowHeap heap2;
-            auto q = vm::mem::heap::clone( heap, heap2, p.cooked() );
+            vm::CowHeap heap2;
+            auto q = mem::clone( heap, heap2, p.cooked() );
             heap2.read( q, j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xF0 );
@@ -155,7 +155,7 @@ namespace divine::t_vm
             decltype( heap ) cloned;
             auto p = heap.make( 16 );
             heap.write( p.cooked(), IntV( 33 ) );
-            auto c = vm::mem::heap::clone( heap, cloned, p.cooked() );
+            auto c = mem::clone( heap, cloned, p.cooked() );
             IntV i;
             cloned.read( c, i );
             ASSERT( ( i == IntV( 33 ) ).cooked() );
@@ -169,7 +169,7 @@ namespace divine::t_vm
             heap.write( p.cooked(), q );
             heap.write( q.cooked(), r );
 
-            auto c_p = vm::mem::heap::clone( heap, cloned, p.cooked() );
+            auto c_p = mem::clone( heap, cloned, p.cooked() );
             PointerV c_q, c_r;
             cloned.read( c_p, c_q );
             ASSERT( c_q.pointer() );
@@ -183,7 +183,7 @@ namespace divine::t_vm
             auto p = heap.make( 16 ), q = heap.make( 16 );
             heap.write( p.cooked(), q );
             heap.write( q.cooked(), p );
-            auto c_p1 = vm::mem::heap::clone( heap, cloned, p.cooked() );
+            auto c_p1 = mem::clone( heap, cloned, p.cooked() );
             PointerV c_q, c_p2;
             cloned.read( c_p1, c_q );
             ASSERT( c_q.pointer() );
@@ -197,11 +197,11 @@ namespace divine::t_vm
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
             heap.write( p, PointerV( q ) );
             heap.write( q, PointerV( p ) );
-            auto c_p = vm::mem::heap::clone( heap, cloned, p );
-            ASSERT_EQ( vm::mem::heap::compare( heap, cloned, p, c_p ), 0 );
+            auto c_p = mem::clone( heap, cloned, p );
+            ASSERT_EQ( mem::compare( heap, cloned, p, c_p ), 0 );
             p.offset( 8 );
             heap.write( p, vm::value::Int< 32 >( 1 ) );
-            ASSERT_LT( 0, vm::mem::heap::compare( heap, cloned, p, c_p ) );
+            ASSERT_LT( 0, mem::compare( heap, cloned, p, c_p ) );
         }
 
         TEST(hash)
@@ -211,14 +211,14 @@ namespace divine::t_vm
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, PointerV( p ) );
             heap.write( q, PointerV( p ) );
-            auto c_p = vm::mem::heap::clone( heap, cloned, p );
-            ASSERT_EQ( vm::mem::heap::hash( heap, p ).first,
-                    vm::mem::heap::hash( cloned, c_p ).first );
+            auto c_p = mem::clone( heap, cloned, p );
+            ASSERT_EQ( mem::hash( heap, p ).first,
+                    mem::hash( cloned, c_p ).first );
         }
     };
 
-    struct Mutable : vm::mem::SmallHeap {};
-    struct Cow : vm::mem::CowHeap {};
+    struct Mutable : vm::SmallHeap {};
+    struct Cow : vm::CowHeap {};
 
     template struct Heap< Mutable >;
     template struct Heap< Cow >;
@@ -228,7 +228,7 @@ namespace divine::t_vm
         using IntV = vm::value::Int< 32, true >;
         using PointerV = vm::value::Pointer;
 
-        vm::mem::CowHeap heap;
+        vm::CowHeap heap;
         PointerV p;
         CowHeap() { p = heap.make( 16 ); }
 
@@ -253,7 +253,7 @@ namespace divine::t_vm
 
         TEST(copy)
         {
-            vm::mem::CowHeap heap;
+            vm::CowHeap heap;
             auto copy = heap;
             auto p = heap.make( 16 ).cooked();
             copy.restore( heap.snapshot() );
@@ -299,8 +299,7 @@ namespace divine::t_vm
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
             heap.snapshot();
-            ASSERT( vm::mem::heap::hash( heap, p ).first !=
-                    vm::mem::heap::hash( heap, q ).first );
+            ASSERT( mem::hash( heap, p ).first != mem::hash( heap, q ).first );
         }
 
         TEST(copy_content)

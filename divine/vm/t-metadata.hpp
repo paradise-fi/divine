@@ -23,13 +23,9 @@
 
 #include <divine/vm/value.hpp>
 #include <divine/vm/types.hpp>
-#include <divine/vm/mem-base.hpp>
-#include <divine/vm/mem-metadata.hpp>
-#include <divine/vm/mem-pointers.hpp>
-#include <divine/vm/mem-definedness.hpp>
-#include <divine/vm/mem-taint.hpp>
+#include <divine/vm/memory.hpp>
 
-namespace divine::vm::mem
+namespace divine::vm
 {
 
 namespace bitlevel = brick::bitlevel;
@@ -152,7 +148,7 @@ namespace divine::t_vm
 struct Compress
 {
     struct Empty {};
-    using ShDesc = vm::mem::Compress< Empty >;
+    using ShDesc = mem::Compress< Empty >;
 
     TEST( reasonable_zero )
     {
@@ -223,7 +219,7 @@ template< typename Next >
 struct TestHeap : Next
 {
     using typename Next::Loc;
-    using Ptr = Pool::Pointer;
+    using Ptr = typename Next::Internal;
     using Next::_objects;
 
     auto pointers( Ptr p, int sz ) { return Next::pointers( loc( p, 0 ), sz ); }
@@ -267,7 +263,7 @@ struct TestHeap : Next
 struct CompoundShadow
 {
     using PointerV = vm::value::Pointer;
-    using H = TestHeap< vm::mem::ShadowLayers< vm::mem::Base< Pool > > >;
+    using H = TestHeap< mem::ShadowLayers< vm::HeapBase< 8 > > >;
     H heap;
     H::Ptr obj;
 
