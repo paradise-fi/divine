@@ -56,6 +56,7 @@ struct GenericPointer : brick::types::Comparable
 
     using ObjT = bitlevel::bitvec< ObjBits >;
     using OffT = bitlevel::bitvec< OffBits >;
+    using Type = PointerType;
 
     union Rep { /* note: type punning is OK in clang */
         PointerRaw raw;
@@ -68,7 +69,7 @@ struct GenericPointer : brick::types::Comparable
 
     static_assert( sizeof( Rep ) == PointerBytes );
 
-    explicit GenericPointer( PointerType t, ObjT obj = 0, OffT off = 0 )
+    explicit GenericPointer( Type t, ObjT obj = 0, OffT off = 0 )
     {
         _rep.obj = obj;
         _rep.off = off;
@@ -91,10 +92,10 @@ struct GenericPointer : brick::types::Comparable
     }
 
     auto type() { return _rep.type; }
-    void type( PointerType t ) { _rep.type = t; }
-    bool heap() { return type() == PointerType::Heap ||
-                         type() == PointerType::Weak ||
-                         type() == PointerType::Marked; }
+    void type( Type t ) { _rep.type = t; }
+    bool heap() { return type() == Type::Heap ||
+                         type() == Type::Weak ||
+                         type() == Type::Marked; }
 
     GenericPointer operator+( int o ) { return GenericPointer( type(), object(), offset() + o ); }
 };
