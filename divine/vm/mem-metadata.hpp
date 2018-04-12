@@ -282,12 +282,15 @@ struct Metadata : Next
             {
                 return offset() == o.offset() && size() == o.size();
             }
-            uint32_t fragment() const
+
+            auto exception() const
             {
                 ASSERT( Next::is_pointer_exception( c_now() ) );
-                return p.layers.pointer_exception( p.obj, bitlevel::downalign( off, 4 ) )
-                    .objid[ off % 4 ];
+                return p.layers.pointer_exception( p.obj, bitlevel::downalign( off, 4 ) );
             }
+
+            uint32_t fragment() const { return exception().objid[ off % 4 ]; }
+            PointerType type() const  { return PointerType( exception().type( off % 4 ) ); }
         };
 
         struct iterator : std::iterator< std::forward_iterator_tag, proxy >
