@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <divine/vm/mem-heap.hpp>
 #include <lart/lart.h>
 #include <brick-smt>
 

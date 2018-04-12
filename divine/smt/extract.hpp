@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <divine/vm/memory.hpp>
 #include <divine/smt/builder.hpp>
 #include <lart/lart.h>
 
@@ -30,7 +31,7 @@ struct Extract : Builder
     using Node = typename Builder::Node;
 
     template< typename... Args >
-    Extract( vm::mem::CowHeap &heap, Args && ... args )
+    Extract( vm::CowHeap &heap, Args && ... args )
         : Builder( std::forward< Args >( args )... ), _heap( heap )
     {}
 
@@ -48,7 +49,7 @@ struct Extract : Builder
         return it->second;
     }
 
-    vm::mem::CowHeap &_heap;
+    vm::CowHeap &_heap;
     std::unordered_map< vm::HeapPointer, Node > _values;
 };
 
