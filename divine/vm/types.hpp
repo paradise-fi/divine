@@ -27,6 +27,12 @@
 namespace divine::vm
 {
 
+    namespace value
+    {
+        struct Pointer;
+        template< int, bool > struct Int;
+    }
+
     struct Interrupt : brick::types::Ord
     {
         enum Type { Mem, Cfl } type:1;
