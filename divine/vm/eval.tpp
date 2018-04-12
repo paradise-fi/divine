@@ -990,6 +990,44 @@ void Eval< Ctx >::implement_test_taint()
 }
 
 template< typename Ctx >
+void Eval< Ctx >::implement_peek()
+{
+    auto ptr = operandCk< PointerV >( 0 );
+    int key = operandCk< IntV >( 1 ).cooked();
+    auto loc = heap().loc( ptr2h( ptr ) );
+    switch ( key )
+    {
+        case _VM_ML_Pointers:
+        {
+            auto ptrs = heap().pointers( loc, 1 );
+            GenericPointer::ObjT obj = 0;
+
+            for ( auto p : ptrs ) /* there's at most 1 */
+                switch ( p.size() )
+                {
+                    case 1: obj = p.fragment(); break;
+                    default: NOT_IMPLEMENTED();
+                }
+            return result( IntV( obj ) );
+        }
+        default:
+            result( heap().peek( loc, key - _VM_ML_User ) );
+    }
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_poke()
+{
+    HeapPointer where = ptr2h( operandCk< PointerV >( 0 ) );
+    int layer = operandCk< IntV >( 1 ).cooked();
+    auto value = operandCk< value::Int< 32, false > >( 2 );
+
+    auto loc = heap().loc( where );
+    ASSERT( layer >= _VM_ML_User );
+    heap().poke( loc, layer - _VM_ML_User, value );
+}
+
+template< typename Ctx >
 void Eval< Ctx >::implement_ret()
 {
     PointerV fr( frame() );
