@@ -159,7 +159,7 @@ namespace divine::mem
             ASSERT_EQ( from.object, from_h.ptr2i( from.objid ) );
             ASSERT_EQ( to.object, this->ptr2i( to.objid ) );
             to.object = Next::detach( to );
-            return Next::copy( from_h, from, *this, to, bytes );
+            return Next::copy( from_h, from, *this, to, bytes, false );
         }
 
         bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }

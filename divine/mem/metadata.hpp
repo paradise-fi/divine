@@ -259,7 +259,7 @@ struct Metadata : Next
     }
 
     template< typename FromH, typename ToH >
-    static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz )
+    static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz, bool internal )
     {
         if ( sz == 0 )
             return;
@@ -350,11 +350,8 @@ struct Metadata : Next
                 *i_to = Next::compress( exp_dst );
             }
         }
-    }
 
-    template< typename HeapReader >
-    void copy( Loc from, Loc to, int sz, HeapReader hr ) {
-        copy( *this, from, to, sz, hr, hr );
+        Next::copy( from_h, from, to_h, to, sz, internal );
     }
 
     struct PointerC

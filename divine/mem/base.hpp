@@ -66,6 +66,11 @@ struct Base
     {
 	return Loc( i, p.object(), p.offset() );
     }
+
+    template< typename FromH, typename ToH >
+    static void copy( FromH &, typename FromH::Loc, ToH &, Loc, int, bool )
+    {}
+
 };
 
 template< typename Next >

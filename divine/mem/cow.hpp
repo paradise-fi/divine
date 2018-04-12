@@ -103,10 +103,11 @@ namespace divine::mem
         }
 
         template< typename FromH, typename ToH >
-        static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes )
+        static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to,
+                          int bytes, bool internal )
         {
             ASSERT( to_h._ext.writable.count( to.objid ) );
-            return Next::copy( from_h, from, to_h, to, bytes );
+            return Next::copy( from_h, from, to_h, to, bytes, internal );
         }
 
         Internal detach( Loc l );

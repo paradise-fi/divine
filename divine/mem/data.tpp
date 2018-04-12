@@ -80,7 +80,7 @@ namespace divine::mem
         auto obj_new = objects().allocate( sz_new );
 
         Next::materialise( obj_new, sz_new );
-        copy( *this, loc( p, obj_old ), *this, loc( p, obj_new ), std::min( sz_new, sz_old ) );
+        copy( *this, loc( p, obj_old ), *this, loc( p, obj_new ), std::min( sz_new, sz_old ), true );
         _l.exceptions[ p.object() ] = obj_new;
         return true;
     }
@@ -123,7 +123,8 @@ namespace divine::mem
     }
 
     template< typename Next > template< typename FromH, typename ToH >
-    bool Data< Next >::copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes )
+    bool Data< Next >::copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to,
+                             int bytes, bool internal )
     {
         int  from_s = from_h.size( from.object ),
              to_s   = to_h.size( to.object );
@@ -135,7 +136,7 @@ namespace divine::mem
         if ( !from_b || !to_b || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
 
-        Next::copy( from_h, from, to_h, to, bytes );
+        Next::copy( from_h, from, to_h, to, bytes, internal );
         std::copy( from_b + from_off, from_b + from_off + bytes, to_b + to_off );
 
         return true;

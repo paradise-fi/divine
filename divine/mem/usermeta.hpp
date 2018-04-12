@@ -68,12 +68,12 @@ struct UserMeta : Next
     }
 
     template< typename FromH, typename ToH >
-    static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz )
+    static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz, bool internal )
     {
-        if ( from.objid == to.objid )
+        if ( internal )
             for ( unsigned i = 0; i < to_h._maps->size(); ++ i )
                 to_h._maps->at( i ).copy( from_h._maps->at( i ), from, to, sz );
-        Next::copy( from_h, from, to_h, to, sz );
+        Next::copy( from_h, from, to_h, to, sz, internal );
     }
 };
 

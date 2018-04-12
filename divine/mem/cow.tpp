@@ -86,7 +86,7 @@ namespace divine::mem
         Next::materialise( newobj, sz );
 
         loc.offset = 0;
-        auto res = this->copy( *this, loc, *this, Loc( newobj, loc.objid, 0 ), sz );
+        auto res = this->copy( *this, loc, *this, Loc( newobj, loc.objid, 0 ), sz, true );
         ASSERT( res );
         return newobj;
     }

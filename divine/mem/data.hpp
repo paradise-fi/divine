@@ -127,7 +127,7 @@ namespace divine::mem
         template< typename T > void write( Loc p, T t );
 
         template< typename FromH, typename ToH >
-        static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes );
+        static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int bytes, bool );
 
         template< typename T >
         T *unsafe_deref( Pointer p, Internal i ) const
