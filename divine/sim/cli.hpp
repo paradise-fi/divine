@@ -20,7 +20,7 @@
 
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/builder.hpp>
-#include <divine/vm/mem-heap.hpp>
+#include <divine/vm/memory.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/dbg/stepper.hpp>
 #include <divine/dbg/context.hpp>
@@ -38,13 +38,13 @@ namespace divine::sim
 
 namespace cmd = brick::cmd;
 
-using Context = dbg::Context< vm::mem::CowHeap >;
-using DN = dbg::Node< vm::Program, vm::mem::CowHeap >;
+using Context = dbg::Context< vm::CowHeap >;
+using DN = dbg::Node< vm::Program, vm::CowHeap >;
 using BC = std::shared_ptr< mc::BitCode >;
 using PointerV = Context::PointerV;
 using Stepper = dbg::Stepper< Context >;
 using RefCnt = brick::mem::RefCnt< typename Context::RefCnt >;
-using Snapshot = vm::mem::CowHeap::Snapshot;
+using Snapshot = vm::CowHeap::Snapshot;
 
 struct OneLineTokenizer
 {
@@ -173,7 +173,7 @@ struct CLI
         update();
     }
 
-    bool update_lock( vm::mem::CowHeap::Snapshot snap );
+    bool update_lock( vm::CowHeap::Snapshot snap );
     void sched_policy();
     bool check_bp( RefLocation initial, vm::CodePointer pc, bool ch );
     Snapshot newstate( Snapshot snap, bool update_choices = true, bool terse = false );

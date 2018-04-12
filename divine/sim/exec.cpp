@@ -256,7 +256,7 @@ bool CLI::check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
 
 void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
 {
-    std::set< vm::mem::CowHeap::Snapshot > visited;
+    std::set< vm::CowHeap::Snapshot > visited;
 
     auto step = stepper();
     if ( ( step._booting = boot ) )
@@ -266,7 +266,7 @@ void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
     _ctx._lock_mode = simple ? Context::LockChoices : Context::LockBoth;
     brick::types::Defer _( [&](){ _ctx._lock_mode = old_mode; } );
 
-    auto update_lock = [&]( vm::mem::CowHeap::Snapshot snap )
+    auto update_lock = [&]( vm::CowHeap::Snapshot snap )
     {
         ASSERT( !tr.steps.empty() );
         _trace[ snap ] = _ctx._lock = tr.steps.front();
