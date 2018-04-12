@@ -270,6 +270,11 @@ lx::Hypercall hypercall( llvm::Function *f )
     if ( brick::string::startsWith( name, "__vm_test_taint" ) )
         return lx::HypercallTestTaint;
 
+    if ( name == "__vm_peek" )
+        return lx::HypercallPeek;
+    if ( name == "__vm_poke" )
+        return lx::HypercallPoke;
+
     if ( name == "__vm_ctl_set" )
         return lx::HypercallCtlSet;
     if ( name == "__vm_ctl_get" )

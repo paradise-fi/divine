@@ -13,6 +13,8 @@ enum { _VM_PB_Full = 64,
 enum _VM_PointerType { _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked,
                        _VM_PT_Local };
 
+enum _VM_MemLayer { _VM_ML_Pointers, _VM_ML_Definedness, _VM_ML_Taints, _VM_ML_User };
+
 #endif
 
 #if !defined(__DIVM_H__) && !defined(__divm_const__)
@@ -360,6 +362,17 @@ void  __vm_obj_resize( void *ptr, int size ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_free( void *ptr ) NOTHROW NATIVE_VISIBLE;
 int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;
 void *__vm_obj_clone( const void * ) NOTHROW NATIVE_VISIBLE;
+
+/*
+ * Read and write additional metadata, keyed by an address and a key. The
+ * metadata is only valid as long as the corresponding address is. There are a
+ * few reserved keys that allow access to metadata automatically tracked by the
+ * VM. Generic metadata (i.e. attached to a non-reserved key) does not
+ * propagate automatically.
+ */
+
+uint32_t __vm_peek( void *addr, int key ) NOTHROW;
+void     __vm_poke( void *addr, int key, uint32_t value ) NOTHROW;
 
 /*
  * Pass a syscall through the VM to the host system. The parameters must

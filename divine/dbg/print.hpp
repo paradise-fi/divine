@@ -171,6 +171,9 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case lx::HypercallTestLoop: op += ".test.loop"; break;
             case lx::HypercallTestTaint: op += ".test.taint"; break;
 
+            case lx::HypercallPeek: op += ".peek"; break;
+            case lx::HypercallPoke: op += ".poke"; break;
+
             case lx::HypercallTrace : op += ".trace"; break;
             case lx::HypercallSyscall: op += ".syscall"; break;
 

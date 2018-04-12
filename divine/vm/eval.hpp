@@ -579,6 +579,9 @@ struct Eval
     void implement_test_crit();
     void implement_test_taint();
 
+    void implement_peek();
+    void implement_poke();
+
     void implement_hypercall_syscall();
     void implement_hypercall();
     void implement_call( bool invoke );

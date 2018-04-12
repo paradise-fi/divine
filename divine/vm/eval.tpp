@@ -514,6 +514,9 @@ void Eval< Ctx >::implement_hypercall()
         case lx::HypercallTestCrit: return implement_test_crit();
         case lx::HypercallTestTaint: return implement_test_taint();
 
+        case lx::HypercallPeek: return implement_peek();
+        case lx::HypercallPoke: return implement_poke();
+
         case lx::HypercallSyscall:
             return implement_hypercall_syscall();
 
