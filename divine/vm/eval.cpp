@@ -20,6 +20,7 @@
 #include <divine/vm/eval.hpp>
 #include <divine/vm/eval.tpp>
 #include <divine/vm/mem-heap.hpp>
+#include <divine/vm/t-eval.hpp> /* for t_vm::TContext */
 
 #ifdef __OpenBSD__
 extern "C" long __syscall( long, ... );
