@@ -16,7 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/context.tpp>
@@ -24,8 +23,8 @@
 namespace divine::vm
 {
 
-template struct Context< Program, mem::CowHeap >;
-template struct Context< Program, mem::SmallHeap >;
-template struct Context< Program, mem::MutableHeap >;
+template struct Context< Program, CowHeap >;
+template struct Context< Program, SmallHeap >;
+template struct Context< Program, MutableHeap >;
 
 }

@@ -19,6 +19,7 @@
 #include <divine/vm/eval.hpp>
 #include <divine/vm/eval.tpp>
 #include <divine/vm/program.hpp>
+
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
 

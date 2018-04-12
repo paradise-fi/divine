@@ -20,7 +20,7 @@
 
 #include <divine/vm/program.hpp>
 #include <divine/vm/xg-code.hpp>
-#include <divine/vm/mem-heap.tpp>
+#include <divine/vm/memory.tpp>
 #include <lart/divine/cppeh.h>
 
 DIVINE_RELAX_WARNINGS
@@ -644,7 +644,7 @@ template< typename H >
 std::pair< HeapPointer, HeapPointer > Program::exportHeap( H &target )
 {
     auto cp = value::Pointer(
-            mem::heap::clone( _ccontext._heap, target, _ccontext.constants() ) );
+            mem::clone( _ccontext._heap, target, _ccontext.constants() ) );
 
     if ( !_globals_size )
         return std::make_pair( cp.cooked(), nullPointer() );
@@ -655,6 +655,6 @@ std::pair< HeapPointer, HeapPointer > Program::exportHeap( H &target )
     return std::make_pair( cp.cooked(), gp.cooked() );
 }
 
-template std::pair< HeapPointer, HeapPointer > Program::exportHeap< mem::CowHeap >( mem::CowHeap & );
-template std::pair< HeapPointer, HeapPointer > Program::exportHeap< mem::MutableHeap >( mem::MutableHeap & );
-template std::pair< HeapPointer, HeapPointer > Program::exportHeap< mem::SmallHeap >( mem::SmallHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< CowHeap >( CowHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< MutableHeap >( MutableHeap & );
+template std::pair< HeapPointer, HeapPointer > Program::exportHeap< SmallHeap >( SmallHeap & );

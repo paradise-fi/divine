@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
+#include <divine/vm/memory.hpp>
 #include <divine/vm/types.hpp>
 #include <divine/vm/divm.h>
 

@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/lx-type.hpp>
+#include <divine/vm/value.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>

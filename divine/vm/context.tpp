@@ -17,7 +17,7 @@
  */
 
 #include <divine/vm/context.hpp>
-#include <divine/vm/mem-heap.tpp>
+#include <divine/vm/memory.tpp>
 #include <divine/vm/program.hpp>
 
 namespace divine::vm
@@ -83,7 +83,7 @@ void Context< P, H >::trace( TraceLeakCheck )
         trace( "LEAK: " + brick::string::fmt( ptr ) );
     };
 
-    mem::heap::leaked( heap(), leak, get( _VM_CR_State ).pointer, get( _VM_CR_Frame ).pointer );
+    mem::leaked( heap(), leak, get( _VM_CR_State ).pointer, get( _VM_CR_Frame ).pointer );
 }
 
 }

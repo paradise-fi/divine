@@ -36,7 +36,6 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
-#include <divine/vm/mem-heap.hpp>
 #include <divine/vm/context.hpp>
 #include <divine/cc/clang.hpp>
 
@@ -136,7 +135,7 @@ struct Program
     std::unordered_set< int > is_trap;
     std::set< HeapPointer > metadata_ptr;
 
-    using Context = ConstContext< Program, mem::SmallHeap >;
+    using Context = ConstContext< Program, SmallHeap >;
     Context _ccontext;
 
     using LXTypes = lx::Types< typename Context::Heap >;

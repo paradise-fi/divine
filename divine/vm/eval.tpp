@@ -18,7 +18,7 @@
  */
 
 #include <divine/vm/eval.hpp>
-#include <divine/vm/mem-heap.tpp>
+#include <divine/vm/memory.tpp>
 
 namespace divine::vm
 {
@@ -613,7 +613,7 @@ void Eval< Ctx >::implement_hypercall()
             if ( !ptr.heap() || !heap().valid( ptr ) )
                 fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_clone";
             else
-                result( PointerV( mem::heap::clone( heap(), heap(), ptr ) ) );
+                result( PointerV( mem::clone( heap(), heap(), ptr ) ) );
             return;
         }
         default:

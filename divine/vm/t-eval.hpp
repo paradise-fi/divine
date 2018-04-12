@@ -20,7 +20,7 @@
 #pragma once
 
 #include <divine/vm/eval.hpp>
-#include <divine/vm/mem-heap.hpp>
+#include <divine/vm/memory.hpp>
 
 namespace divine::t_vm
 {
@@ -29,9 +29,9 @@ using vm::CodePointer;
 namespace Intrinsic = ::llvm::Intrinsic;
 
 template< typename Prog >
-struct TContext : vm::Context< Prog, vm::mem::SmallHeap >
+struct TContext : vm::Context< Prog, vm::SmallHeap >
 {
-    using Super = vm::Context< Prog, vm::mem::SmallHeap >;
+    using Super = vm::Context< Prog, vm::SmallHeap >;
     vm::Fault _fault;
 
     void fault( vm::Fault f, vm::HeapPointer, CodePointer )
@@ -44,7 +44,7 @@ struct TContext : vm::Context< Prog, vm::mem::SmallHeap >
     void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
     void trace( vm::TraceDebugPersist ) { UNREACHABLE( "debug persist not allowed in unit tests" ); }
 
-    TContext( Prog &p ) : vm::Context< Prog, vm::mem::SmallHeap >( p ), _fault( _VM_F_NoFault ) {}
+    TContext( Prog &p ) : vm::Context< Prog, vm::SmallHeap >( p ), _fault( _VM_F_NoFault ) {}
 };
 
 #ifdef BRICK_UNITTEST_REG
