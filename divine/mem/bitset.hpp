@@ -19,10 +19,9 @@
 #pragma once
 
 #include <brick-types>
+#include <brick-bitlevel>
 
-#include <divine/vm/value.hpp>
-
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 namespace bitlevel = brick::bitlevel;
@@ -96,7 +95,7 @@ struct BitsetContainer
 
 }
 
-#include <divine/vm/mem-exceptions.hpp>
+#include <divine/mem/exceptions.hpp>
 
 namespace divine::t_vm
 {
@@ -110,7 +109,7 @@ struct BitsetContainer
 
     TEST( _8bit )
     {
-        using UC8 = vm::mem::BitsetContainer< 8, Pool >;
+        using UC8 = mem::BitsetContainer< 8, Pool >;
         UC8 uc( pool, obj, 0, 100 );
         static_assert( sizeof( UC8::Type ) == 1, "" );
 
@@ -135,7 +134,7 @@ struct BitsetContainer
 
     TEST( _4bit )
     {
-        using UC4 = vm::mem::BitsetContainer< 4, Pool >;
+        using UC4 = mem::BitsetContainer< 4, Pool >;
         UC4 uc( pool, obj, 0, 200 );
         static_assert( sizeof( UC4::Type ) == 1, "" );
 
@@ -160,7 +159,7 @@ struct BitsetContainer
 
     TEST( _2bit )
     {
-        using UC2 = vm::mem::BitsetContainer< 2, Pool >;
+        using UC2 = mem::BitsetContainer< 2, Pool >;
         UC2 uc( pool, obj, 0, 400 );
         static_assert( sizeof( UC2::Type ) == 1, "" );
 
@@ -185,7 +184,7 @@ struct BitsetContainer
 
     TEST( _1bit )
     {
-        using UC1 = vm::mem::BitsetContainer< 1, Pool >;
+        using UC1 = mem::BitsetContainer< 1, Pool >;
         UC1 uc( pool, obj, 0, 800 );
         static_assert( sizeof( UC1::Type ) == 1, "" );
 
@@ -211,7 +210,7 @@ struct BitsetContainer
 
     TEST( _16bit )
     {
-        using UC16 = vm::mem::BitsetContainer< 16, Pool >;
+        using UC16 = mem::BitsetContainer< 16, Pool >;
         UC16 uc( pool, obj, 0, 50 );
         static_assert( sizeof( UC16::Type ) == 2, "" );
 
@@ -236,7 +235,7 @@ struct BitsetContainer
 
     TEST( copy )
     {
-        using UC8 = vm::mem::BitsetContainer< 8, Pool >;
+        using UC8 = mem::BitsetContainer< 8, Pool >;
         UC8 uc( pool, obj, 0, 100 );
 
         auto a = uc.begin();

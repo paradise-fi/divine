@@ -17,10 +17,10 @@
  */
 
 #pragma once
-#include <divine/vm/mem-exceptions.hpp>
+#include <divine/mem/exceptions.hpp>
 #include <brick-bitlevel>
 
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 namespace bitlevel = brick::bitlevel;
@@ -83,7 +83,7 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
         o << "    { " << i << ": ";
         if ( e.objid[ i ] )
             o << "byte " << +e.index( i ) << " of "
-              << PointerType( e.type( i ) ) << " ptr. to " << e.objid[ i ];
+              << e.type( i ) << " ptr. to " << e.objid[ i ];
         else
             o << "data";
         o << " }\n";
@@ -108,6 +108,7 @@ struct PointerLayer : public NextLayer
     using Internal = typename NextLayer::Internal;
     using Loc = typename NextLayer::Loc;
     using Expanded = typename NextLayer::Expanded;
+    using typename NextLayer::PointerV;
 
     class PointerExceptions : public ExceptionMap< PointerException, Loc >
     {
@@ -193,7 +194,7 @@ struct PointerLayer : public NextLayer
                 _ptr_exceptions->at( l.object, bitlevel::downalign( l.offset, 4 ) + 4 * w ).invalidate();
         }
 
-        if ( sz == PointerBytes && value.pointer() )
+        if ( sz == sizeof( typename PointerV::Raw ) && value.pointer() )
         {
             exp[ 0 ].pointer = false;
             exp[ 0 ].pointer_exception = false;
@@ -234,7 +235,7 @@ struct PointerLayer : public NextLayer
     {
         constexpr int sz = sizeof( typename V::Raw );
 
-        if ( sz == PointerBytes && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
+        if ( sz == sizeof( typename PointerV::Raw ) && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
         {
             value.pointer( true );
             /* TODO! */
@@ -348,7 +349,7 @@ namespace divine::t_vm
 
 struct PointerException
 {
-    using PtrExc = vm::mem::PointerException;
+    using PtrExc = mem::PointerException;
 
     TEST( null )
     {

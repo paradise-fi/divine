@@ -18,18 +18,19 @@
 
 #pragma once
 
-#include <divine/vm/mem-exceptions.hpp>
+#include <divine/mem/exceptions.hpp>
 #include <divine/vm/value.hpp>
+#include <array>
 
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 template< typename Next >
 struct UserMeta : Next
 {
-    using Internal = typename Next::Internal;
-    using Loc = typename Next::Loc;
-    using Value = value::Int< 32, false >;
+    using typename Next::Internal;
+    using typename Next::Loc;
+    using Value = typename Next::UIntV;
 
     struct Map : ExceptionMap< uint32_t, Loc >
     {
@@ -69,8 +70,9 @@ struct UserMeta : Next
     template< typename FromH, typename ToH >
     static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz )
     {
-        for ( unsigned i = 0; i < to_h._maps->size(); ++ i )
-            to_h._maps->at( i ).copy( from_h._maps->at( i ), from, to, sz );
+        if ( from.objid == to.objid )
+            for ( unsigned i = 0; i < to_h._maps->size(); ++ i )
+                to_h._maps->at( i ).copy( from_h._maps->at( i ), from, to, sz );
         Next::copy( from_h, from, to_h, to, sz );
     }
 };

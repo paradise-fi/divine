@@ -20,6 +20,7 @@
 
 #include <divine/vm/divm.h>
 #include <divine/vm/pointer.hpp>
+#include <divine/mem/types.hpp>
 
 #include <deque>
 #include <tuple>
@@ -89,49 +90,16 @@ namespace divine::vm
     struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
     struct TraceDebugPersist { GenericPointer ptr; };
 
-    template< int _slab_bits = 20 >
-    struct PoolRep
-    {
-        static const int slab_bits = _slab_bits, chunk_bits = 16, tag_bits = 28;
-        uint64_t slab:slab_bits, chunk:chunk_bits, tag:tag_bits;
-    };
-
-    namespace mem
-    {
-        template< typename Next > struct Frontend;
-        template< typename Next > struct Storage;
-        template< typename Next > struct Cow;
-        template< typename Next > struct Base;
-
-        template< typename Next > struct Metadata;
-        template< typename Next > struct TaintLayer;
-        template< typename Next > struct DefinednessLayer;
-        template< typename Next > struct PointerLayer;
-        template< typename Next > struct ShadowBase;
-        template< typename Next > struct Compress;
-
-        template< typename Base >
-        using ShadowLayers = Metadata<
-                             TaintLayer<
-                             DefinednessLayer<
-                             PointerLayer<
-                             ShadowBase<
-                             Compress< Base > > > > > >;
-
-        template< int slab >
-        using Pool = brick::mem::Pool< PoolRep< slab > >;
-
-        template< int slab >
-        using MutableHeap_ = Frontend< Storage< ShadowLayers< Base< Pool< slab > > > > >;
-
-        using MutableHeap = MutableHeap_< 20 >;
-        using SmallHeap = MutableHeap_< 8 >;
-
-        using CowHeap = Frontend< Cow< Storage < ShadowLayers < Base< Pool< 20 > > > > > >;
-        using CowSnapshot = brick::mem::Pool< PoolRep<> >::Pointer;
-    }
-
     template< typename _Program, typename _Heap > struct Context;
     template< typename Context > struct Eval;
+
+    template< int slab >
+    using HeapBase = mem::Base< HeapPointer, value::Pointer, value::Int, mem::Pool< slab > >;
+
+    using MutableHeap = mem::MutableHeap< HeapBase< 20 > >;
+    using SmallHeap = mem::MutableHeap< HeapBase< 8 > >;
+
+    using CowHeap = mem::Frontend< mem::Cow< mem::HeapBase< HeapBase< 20 > > > >;
+    using CowSnapshot = brick::mem::Pool< mem::PoolRep<> >::Pointer;
 
 }

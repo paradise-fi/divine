@@ -21,7 +21,7 @@
 #include <brick-types>
 #include <divine/vm/divm.h>
 
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 template< typename ExceptionType, typename Loc_ >

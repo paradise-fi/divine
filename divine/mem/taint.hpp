@@ -19,7 +19,7 @@
 #pragma once
 #include <brick-bitlevel>
 
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 namespace bitlevel = brick::bitlevel;
@@ -265,7 +265,7 @@ template< typename MasterPool >
 struct NonShadow
 {
     using Internal = typename Pool::Pointer;
-    using Loc = vm::mem::InternalLoc< Internal >;
+    using Loc = mem::InternalLoc< Internal >;
 
     NonShadow( const MasterPool & ) {}
     void make( Internal, int ) {}
@@ -285,7 +285,7 @@ struct PooledTaintShadow
     template< uint8_t S >
     using Int = vm::value::Int< S >;
     template< typename MasterPool >
-    using Sh = vm::mem::PooledTaintShadow< NonShadow, MasterPool, 1, 1 >;
+    using Sh = mem::PooledTaintShadow< NonShadow, MasterPool, 1, 1 >;
     using H = NonHeap< Sh >;
     H heap;
     H::Ptr obj;
@@ -363,7 +363,7 @@ struct PooledTaintShadow4bit
     template< uint8_t S >
     using Int = vm::value::Int< S >;
     template< typename MasterPool >
-    using Sh = vm::mem::PooledTaintShadow< NonShadow, MasterPool, 4, 1 >;
+    using Sh = mem::PooledTaintShadow< NonShadow, MasterPool, 4, 1 >;
     using H = NonHeap< Sh >;
     H heap;
     H::Ptr obj;

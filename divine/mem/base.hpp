@@ -21,18 +21,19 @@
 
 #include <brick-types>
 
-#include <divine/vm/value.hpp>
-
-namespace divine::vm::mem
+namespace divine::mem
 {
 
-namespace bitlevel = brick::bitlevel;
-
-template< typename Pool_ >
+template< typename HP, typename PV, template< int, bool > class IV, typename Pool_ >
 struct Base
 {
     using Pool = Pool_;
     using Internal = typename Pool::Pointer;
+    using Pointer = HP;
+    using PointerV = PV;
+    using ByteV = IV< 8, false >;
+    using UIntV  = IV< 32, false >;
+    using IntV = IV< 32, true >;
 
     mutable Pool _objects, _snapshots;
 
@@ -61,7 +62,7 @@ struct Base
         }
     };
 
-    Loc loc( HeapPointer p, Internal i ) const
+    Loc loc( Pointer p, Internal i ) const
     {
 	return Loc( i, p.object(), p.offset() );
     }

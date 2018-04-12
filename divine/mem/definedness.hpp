@@ -17,10 +17,10 @@
  */
 
 #pragma once
-#include <divine/vm/mem-exceptions.hpp>
+#include <divine/mem/exceptions.hpp>
 #include <brick-bitlevel>
 
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 namespace bitlevel = brick::bitlevel;

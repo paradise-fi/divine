@@ -1,6 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
+ * (c) 2016-2018 Petr Ročkai <code@fixp.eu>
  * (c) 2018 Adam Matoušek <xmatous3@fi.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -19,24 +20,133 @@
 #pragma once
 
 #include <brick-types>
-#include <divine/vm/mem-bitset.hpp>
+#include <divine/mem/bitset.hpp>
 
-namespace divine::vm::mem
+namespace divine::mem
 {
 
 namespace bitlevel = brick::bitlevel;
 
+union ExpandedMeta // Representation the shadow layers operate on
+{
+    struct
+    {
+        uint16_t taint : 4,
+                 pointer_type : 3,
+                 pointer : 1,
+                 pointer_exception : 1,
+                 data_exception : 1,
+                 _free_ : 2,
+                 defined : 4;
+    };
+    uint16_t _raw;
+    constexpr ExpandedMeta() : _raw( 0 ) {}
+    constexpr ExpandedMeta( uint16_t raw ) : _raw( raw ) {}
+    operator uint16_t() const { return _raw; }
+};
+
+/* Descriptor of sandwich shadow with a pointer layer, a definedness layer and a taint layer. */
+template< typename Next >
+struct Compress : Next
+{
+    // 16 bits:  | _ , _ , _ , _ : _ , _ , _ , _ | _ , _ , _ , _ : _ , _ , _ , _ |
+    // Expanded: | [definedness] : _ , _ , DE, PE| P , [ ptype ] : [ t a i n t ] |
+
+    // 8 bits : | _ , _ , _ , _ : _ , _ , _ , _ |
+    // Pointer: | 1 , [ ptype ] : [ t a i n t ] |
+    // Data:    | 0 , [   0000000 - 1010000   ] | 81 values for definedness + taint
+    // Def exc: | 0 , 1 , 1 , 0 : [ t a i n t ] |
+    // Ptr exc: | 0 , 1 , 1 , 1 : [ t a i n t ] |
+    // (free):  | 0 , 1 , 0 , 1 : [0001 - 1111] | 15 available codes (currently ignored)
+
+    // In [definedness] and [taint], less significant bits correspond to bytes on lower addresses.
+
+    static constexpr unsigned BitsPerWord = 8;
+
+    using Compressed = uint8_t; // Representation stored in the pool
+    using Expanded = mem::ExpandedMeta;
+
+    constexpr static Compressed compress( Expanded exp )
+    {
+        if ( exp.pointer )
+            return exp._raw;
+
+        if ( exp.data_exception )
+            return ( ( exp._raw & 0x0300 ) >> 4) | 0x40 | exp.taint;
+
+        uint8_t def = exp.defined,
+                taint = exp.taint,
+                dt = 0;
+        for ( int i = 0; i < 4; ++i ) {
+
+            dt *= 3;
+            dt += ( def & 0x1 ) + ( taint & def & 0x1 );
+            def >>= 1;
+            taint >>= 1;
+        }
+
+        return dt;
+    }
+
+    constexpr static Expanded expand( Compressed c )
+    {
+        Expanded ec;
+        ec._raw = c;
+
+        if ( c & 0x80 ) // pointer
+            return ec._raw | 0xF000;
+
+        if ( ( c & 0x60 ) == 0x60 ) // pointer or definedness exception
+            return ( ec._raw | ( ec._raw << 4 ) ) & 0x030F;
+
+        // Data (undef - def - tainted)
+        uint8_t def = 0,
+                taint = 0;
+        for ( int i = 0; i < 4; ++i ) {
+            def <<= 1;
+            taint <<= 1;
+            uint8_t dt = c % 3;
+            def |= dt & 0x1;
+            taint |= dt >> 1;
+            c /= 3;
+        }
+        def |= taint;
+
+        return ( def << 12 ) | taint;
+    }
+
+    // Shall be true if 'c' encodes all metadata (i.e. is not an exception)
+    constexpr static bool is_trivial( Compressed c )
+    {
+        return ( c & 0x60 ) != 0x60;
+    }
+
+    // These predicates exist in order to avoid expanding compressed data when searching for
+    // pointers.
+    constexpr static bool is_pointer( Compressed c )
+    {
+        return c & 0x80;
+    }
+    constexpr static bool is_pointer_or_exception( Compressed c )
+    {
+        return is_pointer( c ) || is_pointer_exception( c );
+    }
+    constexpr static bool is_pointer_exception( Compressed c )
+    {
+        return ( c & 0xF0 ) == 0x70;
+    }
+};
+
 /*
- * Extensible shadow for storing metadata.
- * This class is parametrised by a descriptor, that defines compressed and expanded format of the
- * metadata, provides compression and expansion functions and describes which shadow layers shall
- * be used.
- * This class itself is an interface between a heap and the metadata. It takes care of storing the
- * metadata in compressed format and provides their expanded form to the shadow layers when needed.
- * Almost all actual operations with the metadata are performed by the underlaying shadow layers.
- * It is called a sandwich because (a) it has different configurable layers with the storage and
- * (de)compression layer being the bread on either end, and (b) it's cute and I refuse to rename it.
+ * Extensible metadata storage.
+ *
+ * This class itself is an interface between upper layers (interface and data
+ * storage) of the heap and the metadata storage portion. It takes care of
+ * storing the metadata in a compressed format and provides their expanded form
+ * to the individual metadata layers as needed.  Almost all actual operations
+ * with the metadata are performed by the layers below.
  */
+
 template< typename Next >
 struct Metadata : Next
 {
@@ -290,7 +400,7 @@ struct Metadata : Next
             }
 
             uint32_t fragment() const { return exception().objid[ off % 4 ]; }
-            PointerType type() const  { return PointerType( exception().type( off % 4 ) ); }
+            uint8_t type() const  { return exception().type( off % 4 ); }
         };
 
         struct iterator : std::iterator< std::forward_iterator_tag, proxy >
