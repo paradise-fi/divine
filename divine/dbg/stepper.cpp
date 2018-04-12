@@ -17,11 +17,11 @@
  */
 
 #include <divine/dbg/stepper.tpp>
-#include <divine/vm/mem-heap.tpp>
+#include <divine/vm/memory.tpp>
 
 namespace divine::dbg
 {
 
-template struct Stepper< dbg::Context< vm::mem::CowHeap > >;
+template struct Stepper< dbg::Context< vm::CowHeap > >;
 
 }
