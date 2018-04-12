@@ -22,7 +22,7 @@
 #include <divine/vm/context.hpp>
 #include <divine/dbg/context.hpp>
 #include <divine/vm/program.hpp>
-#include <divine/vm/mem-heap.hpp>
+#include <divine/vm/memory.hpp>
 
 namespace divine::mc
 {
@@ -68,8 +68,8 @@ struct ExecContext_ : Super
                                             * restored here */
 };
 
-using ExecContext  = ExecContext_< vm::Context< vm::Program, vm::mem::MutableHeap > >;
-using TraceContext = ExecContext_< dbg::Context< vm::mem::MutableHeap > >;
+using ExecContext  = ExecContext_< vm::Context< vm::Program, vm::MutableHeap > >;
+using TraceContext = ExecContext_< dbg::Context< vm::MutableHeap > >;
 
 struct Exec
 {

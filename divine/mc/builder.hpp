@@ -21,7 +21,7 @@
 #include <divine/mc/bitcode.hpp>
 #include <divine/smt/solver.hpp>
 #include <divine/vm/value.hpp>
-#include <divine/vm/mem-heap.tpp>
+#include <divine/vm/memory.tpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/setup.hpp>
 #include <divine/vm/eval.hpp>
@@ -34,7 +34,7 @@ namespace divine::mc::builder
 {
 
 using namespace std::literals;
-using Snapshot = vm::mem::CowHeap::Snapshot;
+using Snapshot = vm::CowHeap::Snapshot;
 
 struct State
 {
@@ -42,9 +42,9 @@ struct State
     bool operator==( const State& o ) const { return snap.intptr() == o.snap.intptr(); }
 };
 
-struct Context : vm::Context< vm::Program, vm::mem::CowHeap >
+struct Context : vm::Context< vm::Program, vm::CowHeap >
 {
-    using Super = vm::Context< vm::Program, vm::mem::CowHeap >;
+    using Super = vm::Context< vm::Program, vm::CowHeap >;
     using MemMap = Super::MemMap;
     struct Critical { MemMap loads, stores; };
 
@@ -133,11 +133,11 @@ struct Context : vm::Context< vm::Program, vm::mem::CowHeap >
 template< typename Solver >
 struct Hasher_
 {
-    mutable vm::mem::CowHeap _h1, _h2;
+    mutable vm::CowHeap _h1, _h2;
     vm::HeapPointer _root;
     Solver *_solver = nullptr;
 
-    void setup( const vm::mem::CowHeap &heap, Solver &solver )
+    void setup( const vm::CowHeap &heap, Solver &solver )
     {
         _h1 = heap;
         _h2 = heap;
@@ -159,7 +159,7 @@ struct Hasher_
         if ( equal_fastpath( a, b ) )
             return true;
         else
-            return vm::mem::heap::compare( _h1, _h2, _root, _root ) == 0;
+            return mem::compare( _h1, _h2, _root, _root ) == 0;
     }
 
     bool equal_symbolic( Snapshot a, Snapshot b ) const
@@ -176,7 +176,7 @@ struct Hasher_
             sym_pairs.emplace_back( a, b );
         };
 
-        if ( vm::mem::heap::compare( _h1, _h2, _root, _root, extract ) != 0 )
+        if ( mem::compare( _h1, _h2, _root, _root, extract ) != 0 )
             return false;
 
         if ( sym_pairs.empty() )
@@ -189,7 +189,7 @@ struct Hasher_
     brick::hash::hash128_t hash( Snapshot s ) const
     {
         _h1.restore( s );
-        return vm::mem::heap::hash( _h1, _root );
+        return mem::hash( _h1, _root );
     }
 };
 
@@ -225,7 +225,7 @@ struct Builder
     using BC = builder::BC;
     using Env = std::vector< std::string >;
     using State = builder::State;
-    using Snapshot = vm::mem::CowHeap::Snapshot;
+    using Snapshot = vm::CowHeap::Snapshot;
 
     struct Label : brick::types::Ord
     {
