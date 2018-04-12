@@ -255,7 +255,7 @@ struct TestHeap : Next
     {
         auto data_from = _objects.template machinePointer< uint8_t >( pf, of ),
              data_to   = _objects.template machinePointer< uint8_t >( pt, ot );
-        Next::copy( *this, loc( pf, of ), *this, loc( pt, ot ), sz  );
+        Next::copy( *this, loc( pf, of ), *this, loc( pt, ot ), sz, false );
         std::copy( data_from, data_from + sz, data_to );
     }
 };
