@@ -17,6 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
 #include <divine/vm/eval.hpp>
 #include <divine/vm/memory.tpp>
 
