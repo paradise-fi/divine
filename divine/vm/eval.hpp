@@ -105,9 +105,10 @@ template< typename > struct Any { static const bool value = true; };
  * instruction. The return value type must match that of the 'Result' template
  * parameter.
  */
-template < typename Context >
+template < typename Context_ >
 struct Eval
 {
+    using Context = Context_;
     Context &_context;
 
     using Slot = typename Program::Slot;
