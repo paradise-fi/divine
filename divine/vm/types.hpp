@@ -96,10 +96,10 @@ namespace divine::vm
     template< int slab >
     using HeapBase = mem::Base< HeapPointer, value::Pointer, value::Int, mem::Pool< slab > >;
 
-    using MutableHeap = mem::MutableHeap< HeapBase< 20 > >;
-    using SmallHeap = mem::MutableHeap< HeapBase< 8 > >;
+    struct MutableHeap;
+    struct SmallHeap;
+    struct CowHeap;
 
-    using CowHeap = mem::Frontend< mem::Cow< mem::HeapBase< HeapBase< 20 > > > >;
     using CowSnapshot = brick::mem::Pool< mem::PoolRep<> >::Pointer;
 
 }

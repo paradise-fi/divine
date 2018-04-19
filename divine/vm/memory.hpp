@@ -32,3 +32,10 @@
 #include <divine/mem/base.hpp>
 
 #include <divine/vm/types.hpp>
+
+namespace divine::vm
+{
+    struct MutableHeap : mem::MutableHeap< HeapBase< 20 > > {};
+    struct SmallHeap : mem::MutableHeap< HeapBase< 8 > > {};
+    struct CowHeap : mem::Frontend< mem::Cow< mem::HeapBase< HeapBase< 20 > > > > {};
+}
