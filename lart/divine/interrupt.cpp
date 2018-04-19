@@ -67,23 +67,10 @@ struct CflInterrupt
             {
                 // neither of the blocks of the edge is used only by this path,
                 // insert backedge block for savepc and fix branch and PHI nodes
-                auto *back = llvm::BasicBlock::Create( fn.getParent()->getContext(), "backedge", &fn );
-                llvm::IRBuilder<> irb( back );
+                llvm::SplitEdge( src, dst );
+                auto back = term->getSuccessor( idx );
+                llvm::IRBuilder<> irb( &back->front() );
                 insert( ctr, irb );
-                irb.CreateBr( dst );
-
-                // re-wire terminator and phi nodes
-                term->setSuccessor( idx, back );
-                for ( auto &inst : *dst )
-                {
-                    auto *phi = llvm::dyn_cast< llvm::PHINode >( &inst );
-                    if ( !phi )
-                        break;
-
-                    for ( unsigned i = 0, end = phi->getNumIncomingValues(); i < end; ++i )
-                        if ( phi->getIncomingBlock( i ) == src )
-                            phi->setIncomingBlock( i, back );
-                }
             }
             ++_backedges;
         }
