@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D vm ss mc ui cc ltl sim smt dbg )
+foreach( D mem vm ss mc ui cc ltl sim smt dbg )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -48,7 +48,7 @@ endif()
 
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 
-bricks_unittest( test-divine ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} ${HPP_smt} )
+bricks_unittest( test-divine ${HPP_ss} ${HPP_mem} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} ${HPP_smt} )
 
 foreach( D vm ui cc ltl smt )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
