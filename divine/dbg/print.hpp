@@ -20,6 +20,7 @@
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/program.hpp>
+#include <divine/vm/eval.hpp>
 #include <divine/dbg/info.hpp>
 #include <divine/rt/runtime.hpp>
 
@@ -65,272 +66,26 @@ void ascbyte( std::ostream &o, int &col, B byte )
 
 enum class DisplayVal { Name, Value, PreferName };
 
-template< typename Eval >
-static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
-                          DisplayVal disp = DisplayVal::PreferName )
-{
-    std::stringstream num2str;
-    num2str << std::setw( 2 ) << std::setfill( '0' ) << std::hex;
-
-    std::string name;
-
-    if ( disp != DisplayVal::Value && val )
-    {
-        if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
-        {
-            num2str << dbg.find( I, vm::CodePointer() ).second.instruction();
-            name = "%" + num2str.str();
-        }
-        else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
-        {
-            auto insn = B->begin();
-            ASSERT( insn != B->end() );
-            num2str << dbg.find( &*insn, vm::CodePointer() ).second.instruction() - 1;
-            name = B->getName().str();
-            name = "label %" + ( name.empty() || name.size() > 20 ? num2str.str() : name );
-        }
-    }
-
-    if ( name.empty() && disp != DisplayVal::Name )
-    {
-        auto slot = eval.program().valuemap[ val ];
-        if ( auto F = val ? llvm::dyn_cast< llvm::Function >( val ) : nullptr )
-            name = F->getName().str();
-        else if ( slot.type == Eval::Slot::Agg )
-            name = "<aggregate>";
-        else
-            eval.template type_dispatch<>(
-                slot.type,
-                [&]( auto v ) { name = brick::string::fmt( v.get( slot ) ); } );
-    }
-
-    return name;
-}
-
 template< typename I >
-decltype( I::opcode, std::string() ) opcode( I &insn )
+decltype( I::opcode, std::string() ) opcode( I &insn );
+
+template< typename Ctx >
+struct Print
 {
-    std::string op = opcode( insn.opcode );
-    if ( insn.opcode == llvm::Instruction::ICmp )
-        switch ( insn.subcode )
-        {
-            case llvm::ICmpInst::ICMP_EQ: op += ".eq"; break;
-            case llvm::ICmpInst::ICMP_NE: op += ".ne"; break;
-            case llvm::ICmpInst::ICMP_ULT: op += ".ult"; break;
-            case llvm::ICmpInst::ICMP_UGE: op += ".uge"; break;
-            case llvm::ICmpInst::ICMP_UGT: op += ".ugt"; break;
-            case llvm::ICmpInst::ICMP_ULE: op += ".ule"; break;
-            case llvm::ICmpInst::ICMP_SLT: op += ".slt"; break;
-            case llvm::ICmpInst::ICMP_SGT: op += ".sgt"; break;
-            case llvm::ICmpInst::ICMP_SLE: op += ".sle"; break;
-            case llvm::ICmpInst::ICMP_SGE: op += ".sge"; break;
-            default: UNREACHABLE( "unexpected icmp predicate" ); break;
-        }
-    if ( insn.opcode == llvm::Instruction::FCmp )
-        switch ( insn.subcode )
-        {
-            case llvm::FCmpInst::FCMP_OEQ: op += ".oeq"; break;
-            case llvm::FCmpInst::FCMP_ONE: op += ".one"; break;
-            case llvm::FCmpInst::FCMP_OLE: op += ".ole"; break;
-            case llvm::FCmpInst::FCMP_OLT: op += ".olt"; break;
-            case llvm::FCmpInst::FCMP_OGE: op += ".oge"; break;
-            case llvm::FCmpInst::FCMP_OGT: op += ".ogt"; break;
+    using Eval = vm::Eval< Ctx >;
 
-            case llvm::FCmpInst::FCMP_UEQ: op += ".ueq"; break;
-            case llvm::FCmpInst::FCMP_UNE: op += ".une"; break;
-            case llvm::FCmpInst::FCMP_ULE: op += ".ule"; break;
-            case llvm::FCmpInst::FCMP_ULT: op += ".ult"; break;
-            case llvm::FCmpInst::FCMP_UGE: op += ".uge"; break;
-            case llvm::FCmpInst::FCMP_UGT: op += ".ugt"; break;
+    Eval &eval;
+    Info &dbg;
 
-            case llvm::FCmpInst::FCMP_FALSE: op += ".false"; break;
-            case llvm::FCmpInst::FCMP_TRUE: op += ".true"; break;
-            case llvm::FCmpInst::FCMP_ORD: op += ".ord"; break;
-            case llvm::FCmpInst::FCMP_UNO: op += ".uno"; break;
-            default: UNREACHABLE( "unexpected fcmp predicate" ); break;
-        }
-    if ( insn.opcode == lx::OpDbg )
-        switch ( insn.subcode )
-        {
-            case lx::DbgValue:   op += ".value"; break;
-            case lx::DbgDeclare: op += ".declare"; break;
-            case lx::DbgBitCast: op += ".bitcast"; break;
-            default: UNREACHABLE( "unexpected debug opcode" ); break;
-        }
-    if ( insn.opcode == lx::OpHypercall )
-        switch ( insn.subcode )
-        {
-            case lx::HypercallChoose: op += ".choose"; break;
-            case lx::HypercallFault: op += ".fault"; break;
+    Print( Info &i, Eval &e ) : eval( e ), dbg( i ) {}
 
-            case lx::HypercallCtlSet: op += ".ctl.set"; break;
-            case lx::HypercallCtlGet: op += ".ctl.get"; break;
-            case lx::HypercallCtlFlag: op += ".ctl.flag"; break;
-
-            case lx::HypercallTestCrit: op += ".test.crit"; break;
-            case lx::HypercallTestLoop: op += ".test.loop"; break;
-            case lx::HypercallTestTaint: op += ".test.taint"; break;
-
-            case lx::HypercallPeek: op += ".peek"; break;
-            case lx::HypercallPoke: op += ".poke"; break;
-
-            case lx::HypercallTrace : op += ".trace"; break;
-            case lx::HypercallSyscall: op += ".syscall"; break;
-
-            case lx::HypercallObjMake: op += ".obj.make"; break;
-            case lx::HypercallObjFree: op += ".obj.free"; break;
-            case lx::HypercallObjShared: op += ".obj.shared"; break;
-            case lx::HypercallObjResize: op += ".obj.resize"; break;
-            case lx::HypercallObjSize: op += ".obj.size"; break;
-            case lx::HypercallObjClone: op += ".obj.clone"; break;
-
-            default: UNREACHABLE( "unexpected hypercall opcode" ); break;
-        }
-    return op;
-}
-
-template< typename Eval >
-static std::string dbginst( llvm::Instruction *I, dbg::Info &dbg, Eval &eval )
-{
-    if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( I ) )
-        return DDI->getVariable()->getName().str();
-
-    if ( auto DDV = llvm::dyn_cast< llvm::DbgValueInst >( I ) )
-        return DDV->getVariable()->getName().str() + " " +
-               value( dbg, eval, DDV->getValue(), DisplayVal::Value );
-
-    if ( auto BI = llvm::dyn_cast< llvm::BitCastInst >( I ) )
-    {
-        std::string out;
-        llvm::raw_string_ostream ostr( out );
-        ostr << "to " << *(BI->getType());
-        return ostr.str();
-    }
-
-    I->dump();
-    UNREACHABLE( "dbginst called on a bad instruction type" );
-}
-
-template< typename Eval >
-static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int colmax = 80 )
-{
-    std::stringstream out;
-    auto &insn = eval.instruction();
-
-    auto I = dbg.find( nullptr, eval.pc() ).first;
-    if ( !I )
-        return opcode( insn );
-
-    bool printres = true;
-
-    if ( insn.result().type != lx::Slot::Void )
-        out << value( dbg, eval, I, DisplayVal::Name ) << " = ";
-    else
-        printres = false;
-
-    out << opcode( insn ) << " ";
-    uint64_t skipMask = 0;
-
-    int argc = I->getNumOperands();
-    if ( insn.opcode == lx::OpDbg && insn.subcode != lx::DbgBitCast )
-        argc = 0;
-
-    int argalign = out.str().size() + padding, argcols = 0;
-
-    if ( insn.opcode == llvm::Instruction::Call || insn.opcode == llvm::Instruction::Invoke )
-    {
-        llvm::CallSite cs( I );
-
-        skipMask |= uint64_t( 1 ) << (argc - (cs.isCall() ? 1 : 3));
-        if ( auto *target = cs.getCalledFunction() ) {
-            auto tgt = target->getName().str();
-            argcols = tgt.size() + 2;
-            out << "@" << tgt << " ";
-        } else {
-            auto *val = cs.getCalledValue();
-            auto oname = value( dbg, eval, val, DisplayVal::PreferName );
-            argcols = oname.size() + 1;
-            out << ( oname.empty() ? "?" : oname ) << " ";
-        }
-    }
-
-    auto result = [&]( int col )
-                  {
-                      while ( col < 60 )
-                          col ++, out << " ";
-                      out << "# " << value( dbg, eval, dbg.find( nullptr, eval.pc() ).first,
-                                            DisplayVal::Value );
-                  };
-
-    for ( int i = 0; i < argc; ++i )
-    {
-        if ( ( (uint64_t( 1 ) << i) & skipMask ) != 0 )
-            continue;
-
-        auto val = I->getOperand( i );
-        auto oname = value( dbg, eval, val, DisplayVal::PreferName );
-
-        int cols = argalign + argcols + oname.size() + 1;
-        if ( ( printres && cols >= colmax - 20 ) || cols >= colmax )
-        {
-            if ( printres )
-                printres = false, result( argalign + argcols );
-            out << std::endl;
-            for ( int i = 0; i < argalign; ++i ) out << " ";
-            argcols = 0;
-        }
-        argcols += oname.size() + 1;
-
-        out << ( oname.empty() ? "?" : oname ) << " ";
-    }
-
-    if ( insn.opcode == lx::OpDbg )
-    {
-        auto str = dbginst( I, dbg, eval );
-        argcols += str.size() + 1;
-        out << str << " ";
-    }
-
-    if ( printres )
-        result( argalign + argcols );
-
-    return out.str();
-}
+    std::string value( llvm::Value *val, DisplayVal disp = DisplayVal::PreferName );
+    std::string dbginst( llvm::Instruction *I );
+    std::string instruction( int padding = 0, int colmax = 80 );
+};
 
 template< typename Heap >
-std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
-{
-    std::stringstream out;
-
-    auto bytes = heap.unsafe_bytes( hloc, sz );
-    /*
-    auto types = heap.type( hloc, hloc.offset(), sz );
-    auto defined = heap.defined( hloc, hloc.offset(), sz );
-    */
-
-    for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
-    {
-        int col = 0;
-        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-            print::hexbyte( out, col, i, bytes[ i ] );
-        /*
-        print::pad( out, col, 30 ); out << "| ";
-        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-            print::hexbyte( out, col, i, defined[ i ] );
-        print::pad( out, col, 60 ); out << "| ";
-        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-            print::ascbyte( out, col, bytes[ i ] );
-        print::pad( out, col, 72 ); out << " | ";
-        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-            print::ascbyte( out, col, types[ i ] );
-        */
-        print::pad( out, col, 84 );
-        if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
-            out << std::endl;
-    }
-
-    return out.str();
-}
+std::string raw( Heap &heap, vm::HeapPointer hloc, int sz );
 
 static std::string demangle( std::string mangled )
 {
@@ -402,5 +157,16 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
 
     return out.str();
 }
+
+}
+
+namespace divine::dbg
+{
+
+    template< typename Eval >
+    using Print = print::Print< typename Eval::Context >;
+
+    template< typename Eval >
+    auto printer( Info &i, Eval &e ) { return Print< Eval >( i, e ); }
 
 }

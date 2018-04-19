@@ -85,7 +85,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
 
         if ( ( verb == PrintInstructions || verb == TraceInstructions ) && !ff )
         {
-            std::string output = print::instruction( ctx.debug(), eval, 2 );
+            std::string output = printer( ctx.debug(), eval ).instruction( 2 );
             std::string indent = ( verb == PrintInstructions ) ? "  " : "";
             eval.dispatch();
             if ( ctx.heap().valid( frame ) )
@@ -94,7 +94,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
                 auto newpc = ctx.get( _VM_CR_PC ).pointer;
                 ctx.set( _VM_CR_Frame, frame ); /* :-( */
                 ctx.set( _VM_CR_PC, oldpc );
-                output = print::instruction( ctx.debug(), eval, 2 );
+                output = printer( ctx.debug(), eval ).instruction( 2 );
                 ctx.set( _VM_CR_Frame, newframe );
                 ctx.set( _VM_CR_PC, newpc );
             }

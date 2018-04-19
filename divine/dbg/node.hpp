@@ -101,6 +101,9 @@ struct Node
             _ctx.set( _VM_CR_Globals, _address );
     }
 
+    template< typename E >
+    auto print( E &eval ) { return printer( _ctx.debug(), eval ); }
+
     Node( const DNContext< Heap > &ctx, Snapshot s )
         : _ctx( ctx ), _snapshot( s ), _ref( _ctx._refcnt, s )
     {

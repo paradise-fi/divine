@@ -338,7 +338,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
         if ( insn->opcode != lx::OpBB && insn->opcode != lx::OpArg )
         {
             eval._instruction = insn;
-            yield( "insn", print::instruction( _ctx.debug(), eval, 0, 1000 ) );
+            yield( "insn", print( eval ).instruction( 0, 1000 ) );
         }
 
         auto op = _ctx.debug().find( nullptr, active_pc() ).first;
@@ -369,10 +369,10 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
         if ( i.opcode == lx::OpBB )
         {
             auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
-            out << print::value( _ctx.debug(), eval, iop->getParent() ) << ":" << std::endl;
+            out << print( eval ).value( iop->getParent() ) << ":" << std::endl;
         }
         else
-            out << "  " << print::instruction( _ctx.debug(), eval, 4 ) << std::endl;
+            out << "  " << print( eval ).instruction( 4 ) << std::endl;
     }
     _ctx.set( _VM_CR_PC, origpc );
 }
