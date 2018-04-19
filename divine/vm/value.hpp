@@ -160,8 +160,11 @@ struct Int : Base
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
 
-        if ( is_signed && w == 1 ) /* TODO cover other bitwidths? */
-            _cooked = i._cooked ? -1 : 0;
+        if ( width < _VM_PB_Full )
+            _ispointer = false;
+
+        if ( is_signed )
+            bitcast( Cooked( ( w == 1 && i.cooked() ) ? -1 : i.cooked() ), _raw );
     }
 
     template< typename T > Int( Float< T > f )
