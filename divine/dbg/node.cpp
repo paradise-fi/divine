@@ -305,6 +305,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
         return;
 
     auto hloc = eval.ptr2h( PointerV( _address ) );
+    yield( "size", brick::string::fmt( size() ) );
     value( yield );
 
     yield( "raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
