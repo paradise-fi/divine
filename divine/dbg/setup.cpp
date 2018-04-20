@@ -18,7 +18,7 @@
 
 #include <divine/vm/setup.hpp>
 #include <divine/dbg/context.hpp>
-#include <divine/vm/eval.hpp>
+#include <divine/vm/eval.tpp>
 
 namespace divine::dbg::setup
 {

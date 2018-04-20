@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/vm/context.hpp>
+#include <divine/vm/memory.tpp>
 #include <divine/dbg/info.hpp>
 
 DIVINE_RELAX_WARNINGS
