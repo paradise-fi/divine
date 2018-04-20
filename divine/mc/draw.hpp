@@ -20,6 +20,7 @@
 
 #include <divine/mc/builder.hpp>
 #include <divine/vm/memory.hpp>
+#include <divine/vm/eval.tpp>
 #include <divine/dbg/dot.hpp>
 #include <brick-proc>
 

@@ -17,6 +17,7 @@
  */
 
 #include <divine/mc/bitcode.hpp>
+#include <divine/vm/memory.tpp>
 #include <divine/vm/program.hpp>
 #include <lart/driver.h>
 #include <lart/support/util.h>

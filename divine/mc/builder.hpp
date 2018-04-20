@@ -24,7 +24,7 @@
 #include <divine/vm/memory.tpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/setup.hpp>
-#include <divine/vm/eval.hpp>
+#include <divine/vm/eval.tpp>
 #include <divine/ss/search.hpp> /* unit tests */
 
 #include <set>

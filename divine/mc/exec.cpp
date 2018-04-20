@@ -75,6 +75,5 @@ namespace divine::mc
 
 }
 
-namespace divine::dbg { template struct Stepper< mc::TraceContext >; }
-namespace divine::vm  { template struct Eval<    mc::TraceContext >; }
-namespace divine::dbg::print { template struct Print< mc::TraceContext >; }
+namespace divine::dbg        { template struct Stepper< mc::TraceContext >; }
+namespace divine::dbg::print { template struct Print< mc::TraceContext >;   }
