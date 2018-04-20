@@ -24,6 +24,120 @@
 namespace divine::vm
 {
 
+template< typename Ctx, typename _T >
+struct V
+{
+    using T = _T;
+    Eval< Ctx > *ev;
+    V( Eval< Ctx > *ev ) : ev( ev ) {}
+
+    T get() { UNREACHABLE( "may only be used in decltype()" ); }
+
+    T get( lx::Slot s ) { T result; ev->slot_read( s, result ); return result; }
+    T get( PointerV p ) { T r; ev->heap().read( ev->ptr2h( p ), r ); return r; }
+    T get( int v ) { return get( ev->instruction().value( v ) ); }
+    T arg( int v ) { return get( v + 1 ); }
+
+    void set( int v, T t )
+    {
+        ev->slot_write( ev->instruction().value( v ), t );
+    }
+};
+
+template< typename Ctx > template< template< typename > class Guard, typename T, typename Op >
+auto Eval< Ctx >::op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type
+{
+    // std::cerr << "op called on type " << typeid( T ).name() << std::endl;
+    // std::cerr << instruction() << std::endl;
+    _op( V< Ctx, T >( this ) );
+}
+
+template< typename Ctx > template< template< typename > class Guard, typename T >
+void Eval< Ctx >::op( NoOp )
+{
+    // instruction().op->dump();
+    UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
+}
+
+template< typename Ctx > template< template< typename > class Guard, typename Op >
+void Eval< Ctx >::op( int off1, int off2, Op _op )
+{
+    op< Any >( off1, [&]( auto v1 ) {
+            return this->op< Guard< decltype( v1.get() ) >::template Guard >(
+                off2, [&]( auto v2 ) { return _op( v1, v2 ); } );
+        } );
+}
+
+template< typename Ctx > template< template< typename > class Guard, typename Op >
+void Eval< Ctx >::op( int off, Op _op )
+{
+    auto v = instruction().value( off );
+    return type_dispatch< Guard >( v.type, _op );
+}
+
+template< typename Ctx > template< template< typename > class Guard, typename Op >
+void Eval< Ctx >::type_dispatch( typename Slot::Type type, Op _op )
+{
+    switch ( type )
+    {
+        case Slot::I1: return op< Guard, value::Int<  1 > >( _op );
+        case Slot::I8: return op< Guard, value::Int<  8 > >( _op );
+        case Slot::I16: return op< Guard, value::Int< 16 > >( _op );
+        case Slot::I32: return op< Guard, value::Int< 32 > >( _op );
+        case Slot::I64: return op< Guard, value::Int< 64 > >( _op );
+        case Slot::Ptr: case Slot::PtrA: case Slot::PtrC:
+            return op< Guard, PointerV >( _op );
+        case Slot::F32:
+            return op< Guard, value::Float< float > >( _op );
+        case Slot::F64:
+            return op< Guard, value::Float< double > >( _op );
+        case Slot::F80:
+            return op< Guard, value::Float< long double > >( _op );
+        case Slot::Void:
+            return;
+        default:
+            // instruction().op->dump();
+            UNREACHABLE_F( "an unexpected dispatch type %d", type );
+    }
+}
+
+template< typename Ctx > template< typename V_ >
+void Eval< Ctx >::slot_read( Slot s, V_ &v )
+{
+    heap().read( s2loc( s ), v );
+}
+
+template< typename Ctx > template< typename V_ >
+void Eval< Ctx >::slot_read( Slot s, HeapPointer fr, V_ &v )
+{
+    heap().read( s2ptr( s, 0, fr ), v );
+}
+
+template< typename Ctx > template< typename T >
+T Eval< Ctx >::operand( int i ) { return V< Ctx, T >( this ).get( i >= 0 ? i + 1 : i ); }
+
+template< typename Ctx > template< typename T >
+void Eval< Ctx >::result( T t ) { V< Ctx, T >( this ).set( 0, t ); }
+
+template< typename Ctx > template< typename T >
+auto Eval< Ctx >::operandCk( int i )
+{
+    auto op = operand< T >( i );
+    if ( !op.defined() )
+        fault( _VM_F_Hypercall ) << "operand " << i << " has undefined value: " << op;
+    return op;
+}
+
+template< typename Ctx > template< typename T >
+auto Eval< Ctx >::operandCk( int idx, Instruction &insn, HeapPointer fr )
+{
+    T val;
+    slot_read( insn.operand( idx ), fr, val );
+    if ( !val.defined() )
+        fault( _VM_F_Hypercall ) << "operand " << idx << " has undefined value: "  << val;
+    return val;
+}
+
 template< typename Ctx >
 typename Eval< Ctx >::FaultStream Eval< Ctx >::fault( Fault f )
 {
@@ -202,6 +316,12 @@ void Eval< Ctx >::collect_allocas( CodePointer pc, Y yield )
             if ( heap().valid( ptr.cooked() ) )
                 yield( ptr, i.result() );
         }
+}
+
+template< typename Ctx >
+void Eval< Ctx >::implement_indirectBr()
+{
+    local_jump( operandCk< PointerV >( 0 ) );
 }
 
 template< typename Ctx >
@@ -1122,19 +1242,21 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
 {
     /* operation templates */
 
-    auto _icmp = [this] ( auto impl ) -> void {
-        this->op< IntegerComparable >( 1, [&]( auto v ) {
-                result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
+    auto _icmp = [this] ( auto impl ) -> void
+    {
+        op< IntegerComparable >( 1, [&]( auto v ) { result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
     };
 
-    auto _icmp_signed = [this] ( auto impl ) -> void {
-        this->op< IsIntegral >( 1, [&]( auto v ) {
+    auto _icmp_signed = [this] ( auto impl ) -> void
+    {
+        op< IsIntegral >( 1, [&]( auto v ) {
                 this->result( impl( v.get( 1 ).make_signed(),
                                     v.get( 2 ).make_signed() ) ); } );
     };
 
-    auto _div = [this] ( auto impl ) -> void {
-        this->op< IsArithmetic >( 0, [&]( auto v )
+    auto _div = [this] ( auto impl ) -> void
+    {
+        op< IsArithmetic >( 0, [&]( auto v )
             {
                 if ( !v.get( 2 ).defined() || !v.get( 2 ).cooked() )
                 {
@@ -1145,18 +1267,21 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
             } );
     };
 
-    auto _arith = [this] ( auto impl ) -> void {
-        this->op< IsArithmetic >( 0, [&]( auto v ) {
+    auto _arith = [this] ( auto impl ) -> void
+    {
+        op< IsArithmetic >( 0, [&]( auto v ) {
                 this->result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
     };
 
-    auto _bitwise = [this] ( auto impl ) -> void {
-        this->op< IsIntegral >( 0, [&]( auto v ) {
+    auto _bitwise = [this] ( auto impl ) -> void
+    {
+        op< IsIntegral >( 0, [&]( auto v ) {
                 this->result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
     };
 
-    auto _atomicrmw = [this] ( auto impl ) -> void {
-        this->op< IsIntegral >( 0, [&]( auto v ) {
+    auto _atomicrmw = [this] ( auto impl ) -> void
+    {
+        op< IsIntegral >( 0, [&]( auto v ) {
                 decltype( v.get() ) edit;
                 auto loc = operand< PointerV >( 0 );
                 if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ), true ) )
@@ -1167,8 +1292,9 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
             } );
     };
 
-    auto _fcmp = [&]( auto impl ) -> void {
-        this->op< IsFloat >( 1, [&]( auto v ) {
+    auto _fcmp = [&]( auto impl ) -> void
+    {
+        op< IsFloat >( 1, [&]( auto v ) {
                 this->result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
     };
 
@@ -1234,11 +1360,11 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
         {
             bool nan, defined;
 
-            this->op< IsFloat >( 1, [&]( auto v )
-                    {
-                        nan = v.get( 1 ).isnan() || v.get( 2 ).isnan();
-                        defined = v.get( 1 ).defined() && v.get( 2 ).defined();
-                    } );
+            op< IsFloat >( 1, [&]( auto v )
+            {
+                nan = v.get( 1 ).isnan() || v.get( 2 ).isnan();
+                defined = v.get( 1 ).defined() && v.get( 2 ).defined();
+            } );
 
             switch ( instruction().subcode )
             {

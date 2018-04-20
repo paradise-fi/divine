@@ -198,17 +198,8 @@ struct Eval
         context().ptr2i( to.location, to_l.object );
     }
 
-    template< typename V >
-    void slot_read( Slot s, V &v )
-    {
-        heap().read( s2loc( s ), v );
-    }
-
-    template< typename V >
-    void slot_read( Slot s, HeapPointer fr, V &v )
-    {
-        heap().read( s2ptr( s, 0, fr ), v );
-    }
+    template< typename V > void slot_read( Slot s, V &v );
+    template< typename V > void slot_read( Slot s, HeapPointer fr, V &v );
 
     Slot ptr2s( GenericPointer p )
     {
@@ -289,47 +280,13 @@ struct Eval
     FaultStream fault( Fault f );
     FaultStream fault( Fault f, HeapPointer frame, CodePointer c );
 
-    template< typename _T >
-    struct V
-    {
-        using T = _T;
-        Eval *ev;
-        V( Eval *ev ) : ev( ev ) {}
-
-        T get() { UNREACHABLE( "may only be used in decltype()" ); }
-
-        T get( Slot s ) { T result; ev->slot_read( s, result ); return result; }
-        T get( int v ) { return get( ev->instruction().value( v ) ); }
-        T get( PointerV p ) { T r; ev->heap().read( ev->ptr2h( p ), r ); return r; }
-        T arg( int v ) { return get( v + 1 ); }
-
-        void set( int v, T t )
-        {
-            ev->slot_write( ev->instruction().value( v ), t );
-        }
-    };
-
-    template< typename T > T operand( int i ) { return V< T >( this ).get( i >= 0 ? i + 1 : i ); }
-    template< typename T > void result( T t ) { V< T >( this ).set( 0, t ); }
+    template< typename T > T operand( int i );
+    template< typename T > void result( T t );
     auto operand( int i ) { return instruction().operand( i ); }
     auto result() { return instruction().result(); }
 
-    template< typename T > auto operandCk( int i )
-    {
-        auto op = operand< T >( i );
-        if ( !op.defined() )
-            fault( _VM_F_Hypercall ) << "operand " << i << " has undefined value: " << op;
-        return op;
-    }
-
-    template< typename T > auto operandCk( int idx, Instruction &insn, HeapPointer fr )
-    {
-        T val;
-        slot_read( insn.operand( idx ), fr, val );
-        if ( !val.defined() )
-            fault( _VM_F_Hypercall ) << "operand " << idx << " has undefined value: "  << val;
-        return val;
-    }
+    template< typename T > auto operandCk( int i );
+    template< typename T > auto operandCk( int idx, Instruction &insn, HeapPointer fr );
 
     PointerV operandPtr( int i )
     {
@@ -390,63 +347,23 @@ struct Eval
         slot_copy( ptr2h( from ), result(), sz );
     }
 
+    template< template< typename > class Guard = Any, typename Op >
+    void type_dispatch( typename Slot::Type type, Op _op );
+
+private:
     template< template< typename > class Guard = Any, typename T, typename Op >
-    auto op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type
-    {
-        // std::cerr << "op called on type " << typeid( T ).name() << std::endl;
-        // std::cerr << instruction() << std::endl;
-        _op( V< T >( this ) );
-    }
+    auto op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type;
 
     template< template< typename > class Guard = Any, typename T >
-    void op( NoOp )
-    {
-        // instruction().op->dump();
-        UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
-    }
+    void op( NoOp );
 
     template< template< typename > class Guard = Any, typename Op >
-    void op( int off, Op _op )
-    {
-        auto v = instruction().value( off );
-        return type_dispatch< Guard >( v.type, _op );
-    }
+    void op( int off, Op _op );
 
     template< template< typename > class Guard = Any, typename Op >
-    void type_dispatch( typename Slot::Type type, Op _op )
-    {
-        switch ( type )
-        {
-            case Slot::I1: return op< Guard, value::Int<  1 > >( _op );
-            case Slot::I8: return op< Guard, value::Int<  8 > >( _op );
-            case Slot::I16: return op< Guard, value::Int< 16 > >( _op );
-            case Slot::I32: return op< Guard, value::Int< 32 > >( _op );
-            case Slot::I64: return op< Guard, value::Int< 64 > >( _op );
-            case Slot::Ptr: case Slot::PtrA: case Slot::PtrC:
-                return op< Guard, PointerV >( _op );
-            case Slot::F32:
-                return op< Guard, value::Float< float > >( _op );
-            case Slot::F64:
-                return op< Guard, value::Float< double > >( _op );
-            case Slot::F80:
-                return op< Guard, value::Float< long double > >( _op );
-            case Slot::Void:
-                return;
-            default:
-                // instruction().op->dump();
-                UNREACHABLE_F( "an unexpected dispatch type %d", type );
-        }
-    }
+    void op( int off1, int off2, Op _op );
 
-    template< template< typename > class Guard = Any, typename Op >
-    void op( int off1, int off2, Op _op )
-    {
-        op< Any >( off1, [&]( auto v1 ) {
-                return this->op< Guard< decltype( v1.get() ) >::template Guard >(
-                    off2, [&]( auto v2 ) { return _op( v1, v2 ); } );
-            } );
-    }
-
+public:
     void implement_alloca()
     {
         int count = operandCk< IntV >( 0 ).cooked();
@@ -545,11 +462,7 @@ struct Eval
 
     void implement_ret();
     void implement_br();
-
-    void implement_indirectBr()
-    {
-        local_jump( operandCk< PointerV >( 0 ) );
-    }
+    void implement_indirectBr();
 
     template< typename F >
     void each_phi( CodePointer first, F f );
