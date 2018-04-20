@@ -119,29 +119,7 @@ struct Stepper
     void state() { add( _states ); }
 
     template< typename Heap >
-    void in_frame( vm::GenericPointer next, Heap &heap )
-    {
-        vm::GenericPointer last = _frame_cur, last_parent = _parent_cur;
-        vm::value::Pointer next_parent;
-
-        if ( !next.null() )
-            heap.read( next + vm::PointerBytes, next_parent );
-
-        _frame_cur = next;
-        _parent_cur = next_parent.cooked();
-
-        if ( last == next )
-            return; /* no change */
-        if ( last.null() || next.null() )
-            return; /* entry or exit */
-
-        if ( next == last_parent )
-            return; /* return from last into next */
-        if ( next_parent.cooked() == last )
-            return; /* call from last into next */
-
-        ++ _jumps.first;
-    }
+    void in_frame( vm::GenericPointer next, Heap &heap );
 
     bool schedule( Context &ctx )
     {

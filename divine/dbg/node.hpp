@@ -134,15 +134,7 @@ struct Node
     vm::GenericPointer address() { return _address; }
     Snapshot snapshot() { return _snapshot; }
 
-    vm::GenericPointer pc()
-    {
-        ASSERT_EQ( kind(), DNKind::Frame );
-        PointerV pc;
-        if ( boundcheck( PointerV( _address ), vm::PointerBytes ) )
-            _ctx.heap().read( _address, pc );
-        return pc.cooked();
-    }
-
+    vm::GenericPointer pc();
     vm::CodePointer active_pc()
     {
         if ( _executing )

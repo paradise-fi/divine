@@ -19,10 +19,36 @@
 #include <divine/dbg/stepper.hpp>
 #include <divine/dbg/context.hpp>
 #include <divine/dbg/print.hpp>
+#include <divine/vm/memory.tpp>
 #include <divine/vm/eval.hpp>
 
 namespace divine::dbg
 {
+
+template< typename Context > template< typename Heap >
+void Stepper< Context >::in_frame( vm::GenericPointer next, Heap &heap )
+{
+    vm::GenericPointer last = _frame_cur, last_parent = _parent_cur;
+    vm::value::Pointer next_parent;
+
+    if ( !next.null() )
+        heap.read( next + vm::PointerBytes, next_parent );
+
+    _frame_cur = next;
+    _parent_cur = next_parent.cooked();
+
+    if ( last == next )
+        return; /* no change */
+    if ( last.null() || next.null() )
+        return; /* entry or exit */
+
+    if ( next == last_parent )
+        return; /* return from last into next */
+    if ( next_parent.cooked() == last )
+        return; /* call from last into next */
+
+    ++ _jumps.first;
+}
 
 template< typename Context >
 void Stepper< Context >::run( Context &ctx, Verbosity verb )

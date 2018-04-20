@@ -40,6 +40,16 @@ template< typename Heap >
 using DNEval = vm::Eval< DNContext< Heap > >;
 
 template< typename Prog, typename Heap >
+vm::GenericPointer Node< Prog, Heap >::pc()
+{
+    ASSERT_EQ( kind(), DNKind::Frame );
+    PointerV pc;
+    if ( boundcheck( PointerV( _address ), vm::PointerBytes ) )
+        _ctx.heap().read( _address, pc );
+    return pc.cooked();
+}
+
+template< typename Prog, typename Heap >
 int Node< Prog, Heap >::size()
 {
     int sz = INT_MAX;
