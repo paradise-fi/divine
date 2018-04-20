@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <divine/vm/eval.hpp>
+#include <divine/vm/eval.tpp>
 #include <divine/vm/memory.hpp>
 
 namespace divine::t_vm
