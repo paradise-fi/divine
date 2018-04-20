@@ -65,14 +65,14 @@ namespace divine::mem
     template< typename FromH, typename ToH >
     auto clone( FromH &f, ToH &t, typename FromH::Pointer root,
                 std::map< typename FromH::Pointer, typename FromH::Pointer > &visited,
-                CloneType ct, bool overwrite ) -> typename FromH::Pointer;
+                CloneType ct ) -> typename FromH::Pointer;
 
     template< typename FromH, typename ToH >
-    auto clone( FromH &f, ToH &t, typename FromH::Pointer root, CloneType ct = CloneType::All,
-                bool over = false ) -> typename FromH::Pointer
+    auto clone( FromH &f, ToH &t, typename FromH::Pointer root,
+                CloneType ct = CloneType::All ) -> typename FromH::Pointer
     {
         std::map< typename FromH::Pointer, typename FromH::Pointer > visited;
-        return clone( f, t, root, visited, ct, over );
+        return clone( f, t, root, visited, ct );
     }
 
     template< typename Heap, typename F, typename... Roots >

@@ -198,7 +198,7 @@ namespace divine::mem
     template< typename FromH, typename ToH >
     auto clone( FromH &f, ToH &t, typename FromH::Pointer root,
                 std::map< typename FromH::Pointer, typename FromH::Pointer > &visited,
-                CloneType ct, bool overwrite ) -> typename FromH::Pointer
+                CloneType ct ) -> typename FromH::Pointer
     {
         using PointerV = typename FromH::PointerV;
         using Pointer = typename FromH::Pointer;
@@ -212,12 +212,8 @@ namespace divine::mem
             return seen->second;
 
         auto root_i = f.loc( root );
-        if ( overwrite )
-            t.free( root );
         /* FIXME make the result weak if root is */
         auto result = t.make( f.size( root ), root.object(), true ).cooked();
-        if ( overwrite )
-            ASSERT_EQ( root.object(), result.object() );
         auto result_i = t.loc( result );
         visited.emplace( root, result );
 
@@ -240,7 +236,7 @@ namespace divine::mem
             else if ( ct == CloneType::HeapOnly && obj.type() != Pointer::Type::Heap )
                 cloned = obj;
             else if ( obj.heap() )
-                cloned = clone( f, t, obj, visited, ct, overwrite );
+                cloned = clone( f, t, obj, visited, ct );
             else
                 cloned = obj;
             cloned.offset( ptr.cooked().offset() );
