@@ -27,6 +27,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IntrinsicInst.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <random>
+
 namespace divine::dbg
 {
 
@@ -60,9 +62,10 @@ struct Context : DNContext< Heap >
     using Super = DNContext< Heap >;
     std::vector< std::string > _trace;
     std::string _info;
+    std::mt19937 _rand;
 
     vm::Step _lock;
-    enum { LockDisabled, LockScheduler, LockChoices, LockBoth } _lock_mode;
+    enum { LockDisabled, LockScheduler, LockChoices, LockBoth, Random } _lock_mode;
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
@@ -70,8 +73,8 @@ struct Context : DNContext< Heap >
 
     Context( vm::Program &p, dbg::Info &dbg ) : Context( p, dbg, Heap() ) {}
     Context( vm::Program &p, dbg::Info &dbg, const Heap &h )
-        : DNContext< Heap >( p, dbg, h ), _lock_mode( LockDisabled ),
-          _state_di_type( nullptr ), _state_type( nullptr )
+        : DNContext< Heap >( p, dbg, h ), _rand( std::random_device()() ),
+          _lock_mode( LockDisabled ), _state_di_type( nullptr ), _state_type( nullptr )
     {
         this->enable_debug();
     }
@@ -99,6 +102,12 @@ struct Context : DNContext< Heap >
                 if ( _lock.choices.empty() )
                     _lock.choices.emplace_back( 0, count );
                 break;
+            case Random:
+            {
+                std::uniform_int_distribution< int > dist( 0, count - 1 );
+                if ( _lock.choices.empty() )
+                    _lock.choices.emplace_back( dist( _rand ), count );
+            }
             default:
                 ASSERT( !_lock.choices.empty() );
         }
