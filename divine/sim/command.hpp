@@ -51,8 +51,8 @@ struct WithSteps : WithFrame
 
 struct Start : CastIron
 {
-    bool verbose;
-    Start() : verbose( false ) {}
+    bool verbose = false;
+    bool noboot = false;
 };
 
 struct Break : Teflon

@@ -32,6 +32,9 @@ void CLI::go( command::Exit )
 void CLI::go( command::Start s )
 {
     vm::setup::boot( _ctx );
+    if ( s.noboot )
+        return set( "$_", frameDN() );
+
     auto step = stepper();
     step._booting = true;
     auto mainpc = _bc->program().functionByName( "main" );

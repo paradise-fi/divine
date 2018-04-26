@@ -74,7 +74,8 @@ auto make_parser()
         .option( "[--count {int}]", &command::WithSteps::count,
                     "execute {int} steps (default = 1)"s );
     auto startopts = cmd::make_option_set< command::Start >( v )
-        .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s );
+        .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s )
+        .option( "[--no-boot]", &command::Start::noboot, "stop before booting"s );
     auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
         .option( "[--out]", &command::WithSteps::out,
                     "execute until the current function returns"s );
