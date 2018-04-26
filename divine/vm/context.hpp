@@ -35,6 +35,15 @@ namespace divine::vm
 
 struct TraceSchedChoice { value::Pointer list; };
 
+union ControlRegister
+{
+    GenericPointer pointer;
+    uint64_t integer;
+    ControlRegister() : integer( 0 ) {}
+};
+
+using ControlRegisters = std::array< ControlRegister, _VM_CR_Last >;
+
 template< typename _Program, typename _Heap >
 struct Context
 {
@@ -45,12 +54,7 @@ struct Context
     using Location = typename Program::Slot::Location;
     using Snapshot = typename Heap::Snapshot;
 
-    union Register
-    {
-        GenericPointer pointer;
-        uint64_t integer;
-        Register() : integer( 0 ) {}
-    } _reg[ _VM_CR_Last ], _debug_reg[ _VM_CR_Last ];
+    ControlRegisters _reg, _debug_reg;
 
     /* indexed by _VM_ControlRegister */
     HeapInternal _ptr2i[ _VM_CR_Frame + 1 ];
@@ -133,9 +137,9 @@ struct Context
             _ptr2i[ r ] = v.null() ? HeapInternal() : _heap.ptr2i( v );
     }
 
-    Register get( _VM_ControlRegister r ) const { return _reg[ r ]; }
-    Register get( Location l ) const { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
-    Register &ref( _VM_ControlRegister r ) { return _reg[ r ]; }
+    ControlRegister get( _VM_ControlRegister r ) const { return _reg[ r ]; }
+    ControlRegister get( Location l ) const { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
+    ControlRegister &ref( _VM_ControlRegister r ) { return _reg[ r ]; }
 
     HeapInternal ptr2i( Location l )
     {

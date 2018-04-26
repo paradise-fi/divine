@@ -33,7 +33,7 @@ bool Context< P, H >::enter_debug()
     {
         -- _instruction_counter;
         ASSERT_EQ( _debug_depth, 0 );
-        std::copy( _reg, _reg + _VM_CR_Last, _debug_reg );
+        _debug_reg = _reg;
         _reg[ _VM_CR_Flags ].integer |= _VM_CF_DebugMode;
         with_snap( [&]( auto &h ) { _debug_snap = h.snapshot(); } );
         return true;
@@ -48,7 +48,7 @@ void Context< P, H >::leave_debug()
     ASSERT( debug_allowed() );
     ASSERT( debug_mode() );
     ASSERT( !_debug_depth );
-    std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
+    _reg = _debug_reg;
     if ( _debug_persist.empty() )
         with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
     else
