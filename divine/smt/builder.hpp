@@ -25,6 +25,10 @@
 #include <z3++.h>
 #endif
 
+#if OPT_STP
+#include <stp/STPManager/STPManager.h>
+#endif
+
 namespace divine::smt { namespace sym = lart::sym; }
 namespace divine::smt::builder
 {
@@ -45,6 +49,24 @@ struct SMTLib2
     std::string _suff;
     int _def_counter = 0;
 };
+
+#if OPT_STP
+struct STP
+{
+    using Node = stp::ASTNode;
+
+    Node unary( sym::Unary un, Node n );
+    Node binary( sym::Binary bin, Node a, Node b );
+    Node constant( sym::Type t, uint64_t val );
+    Node constant( int w, uint64_t val );
+    Node constant( int val );
+    Node constant( bool );
+    Node variable( sym::Type t, int32_t id );
+
+    STP( stp::STPMgr &stp ) : _stp( stp ) {}
+    stp::STPMgr &_stp;
+};
+#endif
 
 #if OPT_Z3
 struct Z3

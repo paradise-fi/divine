@@ -63,4 +63,8 @@ using SMTLib2 = Extract< builder::SMTLib2 >;
 using Z3      = Extract< builder::Z3 >;
 #endif
 
+#if OPT_STP
+using STP     = Extract< builder::STP >;
+#endif
+
 }

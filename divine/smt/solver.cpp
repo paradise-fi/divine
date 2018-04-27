@@ -154,10 +154,61 @@ bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
     return result != Result::False;
 }
 
+#if OPT_STP
+
+void STP::pop()
+{
+    _mgr.Pop();
+    clear();
+}
+
+void STP::push()
+{
+    _mgr.Push();
+}
+
+void STP::reset()
+{
+    while ( _mgr.getAssertLevel() )
+        _mgr.Pop();
+    clear();
+}
+
+Result STP::solve()
+{
+    stp::ASTNode top;
+    auto vec = _mgr.GetAsserts();
+    switch ( vec.size() )
+    {
+        case 0: top = _mgr.ASTTrue; break;
+        case 1: top = vec[ 0 ]; break;
+        default: top = _mgr.CreateNode( stp::AND, vec ); break;
+    }
+    switch ( _stp.TopLevelSTP( top, _mgr.ASTFalse ) )
+    {
+        case stp::SOLVER_UNSATISFIABLE: return Result::False;
+        case stp::SOLVER_SATISFIABLE: return Result::True;
+        default: return Result::Unknown;
+    }
+}
+
+void STP::clear()
+{
+    _mgr.ClearAllTables();
+    _stp.ClearAllTables();
+}
+
+#endif
+
 template struct Simple< SMTLib >;
 #if OPT_Z3
 template struct Simple< Z3 >;
 template struct Incremental< Z3 >;
+#endif
+
+#if OPT_STP
+template struct Simple< STP >;
+template struct Incremental< STP >;
 #endif
 
 }

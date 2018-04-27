@@ -47,8 +47,13 @@ typename Builder::Node Extract< Builder >::build( vm::HeapPointer p )
 }
 
 template struct Extract< builder::SMTLib2 >;
+
 #if OPT_Z3
 template struct Extract< builder::Z3 >;
+#endif
+
+#if OPT_STP
+template struct Extract< builder::STP >;
 #endif
 
 }

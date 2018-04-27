@@ -24,6 +24,12 @@
 #include <divine/smt/extract.hpp>
 #include <vector>
 
+#if OPT_STP
+#include <stp/STPManager/STPManager.h>
+#include <stp/STPManager/STP.h>
+#include <stp/ToSat/AIG/ToSATAIG.h>
+#endif
+
 #if OPT_Z3
 #include <z3++.h>
 #endif
@@ -87,6 +93,39 @@ struct SMTLib
     Options _opts;
 };
 
+#if OPT_STP
+
+struct STP
+{
+    STP() : _simp( &_mgr ), _at( &_mgr, &_simp ),
+            _ts( &_mgr, &_at ), _ce( &_mgr, &_simp, &_at ),
+            _stp( &_mgr, &_simp, &_at, &_ts, &_ce )
+    {
+        reset();
+    }
+
+    STP( const STP & ) : STP () {}
+
+    void reset();
+    void clear();
+    void push();
+    void pop();
+    void add( stp::ASTNode n ) { _mgr.AddAssert( n ); }
+
+    Result solve();
+    builder::STP builder( int = 0 ) { return builder::STP( _mgr ); }
+    extract::STP extract( vm::CowHeap &h, int = 0 ) { return extract::STP( h, _mgr ); }
+
+    stp::STPMgr _mgr;
+    stp::Simplifier _simp;
+    stp::ArrayTransformer _at;
+    stp::ToSATAIG _ts; /* how about AIG? */
+    stp::AbsRefine_CounterExample _ce;
+    stp::STP _stp;
+};
+
+#endif
+
 #if OPT_Z3
 
 struct Z3
@@ -128,6 +167,10 @@ using NoSolver = solver::None;
 
 #if OPT_Z3
 using Z3Solver = solver::Simple< solver::Z3 >;
+#endif
+
+#if OPT_STP
+using STPSolver = solver::Simple< solver::STP >; // TODO incremental
 #endif
 
 }
