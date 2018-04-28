@@ -634,7 +634,8 @@ struct Id {
 constexpr Id id{};
 
 template< typename O, typename Transform = Id >
-void split( std::string s, O o, Transform transform = id, char sep = ',' ) {
+void split( std::string s, O o, Transform transform = id, char sep = ',' )
+{
     std::stringstream ss( s );
     std::string item;
     while ( std::getline( ss, item, sep ) )
@@ -646,12 +647,14 @@ bool fatal_signal = false;
 int interrupt = 0;
 }
 
+using TagFilter = std::vector< std::vector< std::string > >;
+
 struct Options {
     bool verbose, terse, batch, interactive, cont, fatal_timeouts, kmsg, rusage;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, watch;
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
-    std::vector< std::vector< std::string > > tagsets;
+    TagFilter tagsets;
     std::vector< std::string > exclude_tags;
     std::vector< std::pair< std::string, std::string > > interpreters, expand;
     std::string flavour_envvar;
@@ -989,6 +992,24 @@ struct Main
         return true;
     }
 
+    using Tags = std::set< std::string >;
+
+    bool match_tags( const Tags &tags, const TagFilter &filter )
+    {
+        for ( const auto &ts : filter )
+        {
+            bool match = true;
+            for ( auto tag : ts )
+            {
+                if ( tag[0] == '!' && tags.count( std::string( tag, 1, tag.size() ) ) ) match = false;
+                if ( tag[0] != '!' && !tags.count( tag ) ) match = false;
+            }
+            if ( match ) return true;
+        }
+
+        return filter.empty();
+    }
+
     bool check_tags( std::string name, std::string file, std::set< std::string > &tags )
     {
         std::string line;
@@ -1013,15 +1034,8 @@ struct Main
             if ( tags.count( tag ) )
                 return false;
 
-        for ( const auto &ts : options.tagsets )
-        {
-            bool match = true;
-            for ( auto tag : ts )
-                if ( !tags.count( tag ) ) match = false;
-            if ( match ) return true;
-        }
+        return match_tags( tags, options.tagsets );
 
-        return options.tagsets.empty();
     }
 
     bool check_interpreter( std::pair< std::string, std::string > i, std::string name )
