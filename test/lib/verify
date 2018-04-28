@@ -6,7 +6,6 @@ if test "$1" = "--export"; then
     SRC_ROOT=.
     shift
 else
-    . lib/flavour vanilla
     SILENT=1 . lib/testcase
     EXPORT= # unset
 fi
