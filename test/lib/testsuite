@@ -19,6 +19,9 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --interpreter c:lib/verify \
     --interpreter pkg:lib/pkg \
     --interpreter pdc:lib/pdclib-test \
+    --flavour z3:sym \
+    --flavour smtlib:sym \
+    --flavour vanilla:!sym \
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
     --workdir . --outdir results \
