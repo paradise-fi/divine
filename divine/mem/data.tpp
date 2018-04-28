@@ -24,30 +24,6 @@ namespace divine::mem
 {
 
     template< typename Next >
-    auto Data< Next >::snap_find( uint32_t obj ) const -> SnapItem *
-    {
-        auto begin = snap_begin(), end = snap_end();
-        if ( !begin )
-            return nullptr;
-
-        while ( begin < end )
-        {
-            auto pivot = begin + (end - begin) / 2;
-            if ( pivot->first > obj )
-                end = pivot;
-            else if ( pivot->first < obj )
-                begin = pivot + 1;
-            else
-            {
-                ASSERT( valid( pivot->second ) );
-                return pivot;
-            }
-        }
-
-        return begin;
-    }
-
-    template< typename Next >
     typename Data< Next >::Loc Data< Next >::make( int size, uint32_t hint, bool overwrite )
     {
         SnapItem *search = snap_find( hint );

@@ -106,7 +106,29 @@ namespace divine::mem
         SnapItem *snap_begin() const { return snap_begin( _l.snapshot ); }
         SnapItem *snap_end( Snapshot s ) const { return snap_begin( s ) + snap_size( s ); }
         SnapItem *snap_end() const { return snap_end( _l.snapshot ); }
-        SnapItem *snap_find( uint32_t obj ) const;
+
+        SnapItem *snap_find( uint32_t obj ) const
+        {
+            auto begin = snap_begin(), end = snap_end();
+            if ( !begin )
+                return nullptr;
+
+            while ( begin < end )
+            {
+                auto pivot = begin + (end - begin) / 2;
+                if ( pivot->first > obj )
+                    end = pivot;
+                else if ( pivot->first < obj )
+                    begin = pivot + 1;
+                else
+                {
+                    ASSERT( valid( pivot->second ) );
+                    return pivot;
+                }
+            }
+
+            return begin;
+        }
 
         Loc make( int size, uint32_t hint = 1, bool overwrite = false );
         bool resize( Pointer p, int sz_new );
