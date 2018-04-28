@@ -40,6 +40,7 @@ fi
 if test -z "$EXPORT" && echo "$opts" | grep "symbolic"; then
     solver=$TEST_FLAVOUR
     if test $solver = z3 && test $OPT_Z3 = OFF; then skip; fi
+    if test $solver = stp && test $OPT_STP = OFF; then skip; fi
     if test $solver = smtlib; then solver=$solver:z3; z3 --version > /dev/null || skip; fi
     extra="$extra --solver $TEST_FLAVOUR"
 fi
