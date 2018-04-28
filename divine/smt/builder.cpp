@@ -353,27 +353,28 @@ stp::ASTNode STP::unary( sym::Unary un, Node arg )
         case sym::Op::Trunc:
             ASSERT_LT( bw, childbw );
             ASSERT( is_bv( arg ) );
-            return _stp.CreateNode( stp::BVEXTRACT, constant( bw - 1 ), constant( 0 ) );
+            return _stp.CreateTerm( stp::BVEXTRACT, bw, arg, constant( bw - 1 ), constant( 0 ) );
         case sym::Op::ZExt:
             ASSERT_LT( childbw, bw );
             return is_bv( arg )
-                ? _stp.CreateNode( stp::BVCONCAT, constant( bw - childbw, 0 ), arg )
-                : _stp.CreateNode( stp::ITE, arg, constant( bw, 1 ), constant( bw, 0 ) );
+                ? _stp.CreateTerm( stp::BVCONCAT, bw, constant( bw - childbw, 0 ), arg )
+                : _stp.CreateTerm( stp::ITE, bw, arg, constant( bw, 1 ), constant( bw, 0 ) );
         case sym::Op::SExt:
             ASSERT_LT( childbw, bw );
             return is_bv( arg )
-                ? _stp.CreateNode( stp::BVSX, arg, constant( bw ) )
-                : _stp.CreateNode( stp::ITE, arg,
+                ? _stp.CreateTerm( stp::BVSX, bw, arg, constant( bw ) )
+                : _stp.CreateTerm( stp::ITE, bw, arg,
                                    constant( bw, brick::bitlevel::ones< uint64_t >( bw )  ),
                                    constant( bw, 0 ) );
         case sym::Op::BoolNot:
             ASSERT_EQ( childbw, bw );
             ASSERT_EQ( bw, 1 );
-            return is_bv( arg ) ? _stp.CreateNode( stp::BVNOT, arg ) : _stp.CreateNode( stp::NOT, arg );
+            return is_bv( arg ) ? _stp.CreateTerm( stp::BVNOT, childbw, arg )
+                                : _stp.CreateNode( stp::NOT, arg );
         case sym::Op::Extract:
             ASSERT_LT( bw, childbw );
             ASSERT( is_bv( arg ) );
-            return _stp.CreateNode( stp::BVEXTRACT, constant( un.from ), constant( un.to ) );
+            return _stp.CreateTerm( stp::BVEXTRACT, bw, arg, constant( un.from ), constant( un.to ) );
         default:
             UNREACHABLE_F( "unknown unary operation %d", un.op );
     }
@@ -382,36 +383,38 @@ stp::ASTNode STP::unary( sym::Unary un, Node arg )
 stp::ASTNode STP::binary( sym::Binary bin, Node a, Node b )
 {
     ASSERT( sym::isBinary( bin.op ) );
+    int bw = bin.type.bitwidth();
 
     if ( is_bv( a ) && is_bv( b ) )
     {
         switch ( bin.op )
         {
-            case sym::Op::Add:  return _stp.CreateNode( stp::BVPLUS, a, b );
-            case sym::Op::Sub:  return _stp.CreateNode( stp::BVSUB, a, b );
-            case sym::Op::Mul:  return _stp.CreateNode( stp::BVMULT, a, b );
-            case sym::Op::SDiv: return _stp.CreateNode( stp::SBVDIV, a, b );
-            case sym::Op::UDiv: return _stp.CreateNode( stp::BVDIV, a, b );
-            case sym::Op::SRem: return _stp.CreateNode( stp::SBVREM, a, b );
-            case sym::Op::URem: return _stp.CreateNode( stp::BVMOD, a, b );
-            case sym::Op::Shl:  return _stp.CreateNode( stp::BVLEFTSHIFT, a, b );
-            case sym::Op::AShr: return _stp.CreateNode( stp::BVSRSHIFT, a, b );
-            case sym::Op::LShr: return _stp.CreateNode( stp::BVRIGHTSHIFT, a, b );
-            case sym::Op::And:  return _stp.CreateNode( stp::BVAND, a, b );
-            case sym::Op::Or:   return _stp.CreateNode( stp::BVOR, a, b );
-            case sym::Op::Xor:  return _stp.CreateNode( stp::BVXOR, a, b );
+            case sym::Op::Add:    return _stp.CreateTerm( stp::BVPLUS,       bw, a, b );
+            case sym::Op::Sub:    return _stp.CreateTerm( stp::BVSUB,        bw, a, b );
+            case sym::Op::Mul:    return _stp.CreateTerm( stp::BVMULT,       bw, a, b );
+            case sym::Op::SDiv:   return _stp.CreateTerm( stp::SBVDIV,       bw, a, b );
+            case sym::Op::UDiv:   return _stp.CreateTerm( stp::BVDIV,        bw, a, b );
+            case sym::Op::SRem:   return _stp.CreateTerm( stp::SBVREM,       bw, a, b );
+            case sym::Op::URem:   return _stp.CreateTerm( stp::BVMOD,        bw, a, b );
+            case sym::Op::Shl:    return _stp.CreateTerm( stp::BVLEFTSHIFT,  bw, a, b );
+            case sym::Op::AShr:   return _stp.CreateTerm( stp::BVSRSHIFT,    bw, a, b );
+            case sym::Op::LShr:   return _stp.CreateTerm( stp::BVRIGHTSHIFT, bw, a, b );
+            case sym::Op::And:    return _stp.CreateTerm( stp::BVAND,        bw, a, b );
+            case sym::Op::Or:     return _stp.CreateTerm( stp::BVOR,         bw, a, b );
+            case sym::Op::Xor:    return _stp.CreateTerm( stp::BVXOR,        bw, a, b );
+            case sym::Op::Concat: return _stp.CreateTerm( stp::BVCONCAT, bw, a, b );
 
-            case sym::Op::ULE:  return _stp.CreateNode( stp::BVLE, a, b );
-            case sym::Op::ULT:  return _stp.CreateNode( stp::BVLT, a, b );
-            case sym::Op::UGE:  return _stp.CreateNode( stp::BVGE, a, b );
-            case sym::Op::UGT:  return _stp.CreateNode( stp::BVGT, a, b );
+            case sym::Op::ULE:  return _stp.CreateNode( stp::BVLE,  a, b );
+            case sym::Op::ULT:  return _stp.CreateNode( stp::BVLT,  a, b );
+            case sym::Op::UGE:  return _stp.CreateNode( stp::BVGE,  a, b );
+            case sym::Op::UGT:  return _stp.CreateNode( stp::BVGT,  a, b );
             case sym::Op::SLE:  return _stp.CreateNode( stp::BVSLE, a, b );
             case sym::Op::SLT:  return _stp.CreateNode( stp::BVSLT, a, b );
             case sym::Op::SGE:  return _stp.CreateNode( stp::BVSGE, a, b );
             case sym::Op::SGT:  return _stp.CreateNode( stp::BVSGT, a, b );
-            case sym::Op::EQ:   return _stp.CreateNode( stp::EQ, a, b );
+            case sym::Op::EQ:   return _stp.CreateNode( stp::EQ,    a, b );
             case sym::Op::NE:   return _stp.CreateNode( stp::NOT, _stp.CreateNode( stp::EQ, a, b ) );
-            case sym::Op::Concat: return _stp.CreateNode( stp::BVCONCAT, a, b );
+
             default:
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
@@ -436,7 +439,7 @@ stp::ASTNode STP::binary( sym::Binary bin, Node a, Node b )
             case sym::Op::Or:   return _stp.CreateNode( stp::OR, a, b );
             case sym::Op::EQ:   return _stp.CreateNode( stp::IFF, a, b );
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
         }
     }
 }
