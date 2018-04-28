@@ -63,30 +63,50 @@ namespace CONSTANTBV {
 
 #define BIT_VECTOR_HIDDEN_WORDS 3
 
+  static const unsigned BITS = sizeof( unsigned int ) * 8;
+  static const unsigned LSB = 1;
+
+  constexpr unsigned logbits()
+  {
+      unsigned sample = BITS;
+      unsigned count = 0;
+      unsigned lsb = (sample & LSB);
+      while ((sample >>= 1) && (! lsb))
+      {
+        count ++;
+        lsb = (sample & LSB);
+      }
+      return count;
+  }
+
+  constexpr unsigned power10( unsigned x )
+  {
+    unsigned int y = 1;
+    while (x-- > 0) y *= 10;
+    return y;
+  }
+
   /*****************************************************************/
   /* global machine-dependent constants (set by "BitVector_Boot"): */
   /*****************************************************************/
 
-  /* FIXME: use a thread-safe Singleton pattern instead */
+  static const unsigned LONGBITS = sizeof( unsigned long ) * 8;
+  static const unsigned LOGBITS = logbits();
+  static const unsigned MODMASK = BITS - 1;
+  static const unsigned FACTOR = LOGBITS - 3;
+  static const unsigned MSB = LSB << MODMASK;
+  static const unsigned LOG10 = MODMASK * 0.30103; /* = logarithm to base 10 of BITS - 1 */
+  static const unsigned EXP10 = power10( LOG10 ); /* = largest possible power of 10 in signed int */
 
-  static THREAD_LOCAL unsigned int BITS; /* = # of bits in machine word (must be power of 2) */
-  static THREAD_LOCAL unsigned int MODMASK; /* = BITS - 1 (mask for calculating modulo BITS) */
-  static THREAD_LOCAL unsigned int LOGBITS; /* = ld(BITS) (logarithmus dualis) */
-  static THREAD_LOCAL unsigned int FACTOR; /* = ld(BITS / 8) (ld of # of bytes) */
-
-  static THREAD_LOCAL unsigned int LSB = 1; /* = mask for least significant bit */
-  static THREAD_LOCAL unsigned int MSB; /* = mask for most significant bit */
-
-  static THREAD_LOCAL unsigned int LONGBITS; /* = # of bits in unsigned long */
-
-  static THREAD_LOCAL unsigned int LOG10; /* = logarithm to base 10 of BITS - 1 */
-  static THREAD_LOCAL unsigned int EXP10; /* = largest possible power of 10 in signed int */
+  static_assert( BITS <= LONGBITS );
+  static_assert( BITS == (LSB << LOGBITS) );
+  static_assert( sizeof(unsigned int) <= sizeof(size_t) );
 
   /********************************************************************/
   /* global bit mask table for fast access (set by "BitVector_Boot"): */
   /********************************************************************/
 
-  static THREAD_LOCAL unsigned int BITMASKTAB[sizeof(unsigned int) << 3];
+  static unsigned int BITMASKTAB[sizeof(unsigned int) << 3];
 
   /*****************************/
   /* global macro definitions: */
@@ -128,13 +148,6 @@ namespace CONSTANTBV {
   /*********************************************************/
   /* private low-level functions (potentially dangerous!): */
   /*********************************************************/
-
-  static unsigned int power10(unsigned int x) {
-    unsigned int y = 1;
-
-    while (x-- > 0) y *= 10;
-    return(y);
-  }
 
   static void BIT_VECTOR_zro_words(unsigned int *  addr, unsigned int count) {
     BIT_VECTOR_ZERO_WORDS(addr,count)
@@ -272,49 +285,14 @@ namespace CONSTANTBV {
   /*                                                     */
   /*******************************************************/
 
-  ErrCode BitVector_Boot(void) {
-    unsigned long longsample = 1L;
+  /* replaced with BitVector_Ctor below and constexpr stuff above */
+  ErrCode BitVector_Boot(void) { return ErrCode_Ok; }
+
+  __attribute__((constructor)) void BitVector_Ctor(void)
+  {
     unsigned int sample = LSB;
-    unsigned int lsb;
-
-    if (sizeof(unsigned int) > sizeof(size_t)) return(ErrCode_Type);
-
-    BITS = 1;
-    while (sample <<= 1) BITS++;    /* determine # of bits in a machine word */
-
-    if (BITS != (sizeof(unsigned int) << 3)) return(ErrCode_Bits);
-
-    if (BITS < 16) return(ErrCode_Word);
-
-    LONGBITS = 1;
-    while (longsample <<= 1) LONGBITS++;  /* = # of bits in an unsigned long */
-
-    if (BITS > LONGBITS) return(ErrCode_Long);
-
-    LOGBITS = 0;
-    sample = BITS;
-    lsb = (sample & LSB);
-    while ((sample >>= 1) && (! lsb)) {
-      LOGBITS++;
-      lsb = (sample & LSB);
-    }
-
-    if (sample) return(ErrCode_Powr);      /* # of bits is not a power of 2! */
-
-    if (BITS != (LSB << LOGBITS)) return(ErrCode_Loga);
-
-    MODMASK = BITS - 1;
-    FACTOR = LOGBITS - 3;  /* ld(BITS / 8) = ld(BITS) - ld(8) = ld(BITS) - 3 */
-    MSB = (LSB << MODMASK);
-
-    for ( sample = 0; sample < BITS; sample++ ) {
+    for ( sample = 0; sample < BITS; sample++ )
       BITMASKTAB[sample] = (LSB << sample);
-    }
-
-    LOG10 = (unsigned int) (MODMASK * 0.30103); /* = (BITS - 1) * ( ln 2 / ln 10 ) */
-    EXP10 = power10(LOG10);
-
-    return(ErrCode_Ok);
   }
 
   unsigned int BitVector_Size(unsigned int bits) {          /* bit vector size (# of words)  */
