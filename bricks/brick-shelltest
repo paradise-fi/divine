@@ -645,14 +645,35 @@ void split( std::string s, O o, Transform transform = id, char sep = ',' )
 pid_t kill_pid = 0;
 bool fatal_signal = false;
 int interrupt = 0;
+
 }
 
 using TagFilter = std::vector< std::vector< std::string > >;
 
+struct Flavour
+{
+    std::string name;
+    TagFilter filter;
+
+    Flavour( std::string str )
+    {
+        std::vector< std::string > s;
+        split( str, std::back_inserter( s ), id, ':' );
+        name = s[0];
+
+        for ( unsigned i = 1; i < s.size(); ++i )
+        {
+            filter.emplace_back();
+            split( s[i], std::back_inserter( filter.back() ) );
+        }
+    }
+};
+
 struct Options {
     bool verbose, terse, batch, interactive, cont, fatal_timeouts, kmsg, rusage;
     std::string testdir, outdir, workdir, heartbeat;
-    std::vector< std::string > flavours, watch;
+    std::vector< Flavour > flavours;
+    std::vector< std::string > watch;
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
     TagFilter tagsets;
     std::vector< std::string > exclude_tags;
@@ -1044,7 +1065,7 @@ struct Main
                name.substr( name.length() - i.first.size() - 1, name.length() ) == "." + i.first;
     }
 
-    void setup( std::string flavour, std::string dir, std::string name, std::string variant )
+    void setup( Flavour flavour, std::string dir, std::string name, std::string variant )
     {
         std::string interpreter;
         bool runnable = false;
@@ -1072,10 +1093,10 @@ struct Main
         std::string path = dir + name;
         if ( !variant.empty() ) path += "/" + variant;
 
-        if ( !runnable || !check_tags( name, path, tags ) )
+        if ( !runnable || !check_tags( name, path, tags ) || !match_tags( tags, flavour.filter ) )
             return;
 
-        TestCase tc( journal, options, path, interpreter, name, flavour, tags, variant );
+        TestCase tc( journal, options, path, interpreter, name, flavour.name, tags, variant );
 
         tc.tty = tty;
         cases.push_back( tc );
@@ -1091,7 +1112,7 @@ struct Main
 
         for ( auto &flavour : options.flavours )
         {
-            if ( skip( flavour, options.flavourFilter, false ) )
+            if ( skip( flavour.name, options.flavourFilter, false ) )
                 continue;
 
             for ( Listing::iterator i = l.begin(); i != l.end(); ++i )
@@ -1445,10 +1466,12 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
     if ( args.has( "--print-rusage" ) ) opt.rusage = true;
 
-    if ( args.has( "--flavours" ) )
-        split( args.opt( "--flavours" ), std::back_inserter( opt.flavours ) );
-    else
-        opt.flavours.push_back( "vanilla" );
+    for ( auto f : args.opts( "--flavour" ) )
+        opt.flavours.emplace_back( f );
+
+    if ( opt.flavours.empty() )
+        opt.flavours.emplace_back( "vanilla" );
+
     if ( hasenv( "F" ) )
         split( getenv( "F" ), std::back_inserter( opt.flavourFilter ), mkRegex );
 
