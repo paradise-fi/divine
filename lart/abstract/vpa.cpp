@@ -60,6 +60,8 @@ Value* get_source( Value *val ) {
             return val;
         else if ( isa< GlobalValue >( val ) )
             return val;
+        else if ( isa< Argument >( val ) )
+            return val;
         else {
             val->dump();
             UNREACHABLE( "Unknown parent instruction." );
@@ -103,9 +105,11 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             if ( seen_vals.count( { s->getValueOperand(), dom } ) ) {
                 auto src = get_source( s->getPointerOperand() );
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
+                if ( auto a = dyn_cast< Argument >( s->getPointerOperand() ) )
+                    propagate_back( a, dom );
             } else {
-                if ( auto arg = dyn_cast< Argument >( s->getValueOperand() ) )
-                    propagate_back( arg, dom );
+                if ( auto a = dyn_cast< Argument >( s->getValueOperand() ) )
+                    propagate_back( a, dom );
             }
         }
         else if ( auto call = dyn_cast< CallInst >( dep ) ) {
@@ -114,8 +118,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                 for ( auto &op : call->arg_operands() ) {
                     auto val = op.get();
                     if ( seen_vals.count( { val, dom } ) ) {
-                        auto arg = fn->arg_begin();
-                        std::advance( arg, op.getOperandNo() );
+                        auto arg = std::next( fn->arg_begin(), op.getOperandNo() );
                         tasks.push_back( [=]{ propagate_value( arg, dom ); } );
                     }
                 }
@@ -124,12 +127,17 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         else if ( auto r = dyn_cast< ReturnInst >( dep ) ) {
             step_out( get_function( r ), dom );
         }
+        else if ( auto a = dyn_cast< Argument >( dep ) ) {
+            propagate_back( a, dom );
+        }
     }
 
     seen_vals.emplace( val, dom );
 }
 
 void VPA::propagate_back( Argument *arg, Domain dom ) {
+    if ( !arg->getType()->isPointerTy() )
+        return;
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
             auto src = get_source( call->getOperand( arg->getArgNo() ) );
