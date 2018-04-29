@@ -1,8 +1,11 @@
 #include <rst/sym.h>
 #include <rst/domains.h>
 #include <rst/common.h>
+#include <rst/lart.h>
 #include <dios.h>
+#include <sys/divm.h>
 #include <cstdarg>
+#include <type_traits>
 
 using namespace lart::sym;
 using abstract::Tristate;
@@ -10,11 +13,19 @@ using abstract::__new;
 using abstract::mark;
 using abstract::weaken;
 
+extern "C" uint64_t __vm_taint_i64();
+
+template< typename T >
+T __taint() {
+    static_assert( std::is_integral< T >::value, "Cannot taint non integral value." );
+    return static_cast< T >( __vm_taint_i64() );
+}
+
 template< typename T, typename ... Args >
 static Formula *__newf( Args &&...args ) {
     void *ptr = __vm_obj_make( sizeof( T ) );
     new ( ptr ) T( std::forward< Args >( args )... );
-    return static_cast< Formula * >( ptr );
+    return static_cast< Formula* >( ptr );
 }
 
 struct State
@@ -35,19 +46,18 @@ extern "C" void __sym_formula_dump()
     }
 }
 
-extern "C" uint64_t __vm_taint_i64();
-
-template< typename T, typename = std::enable_if_t< sizeof( T ) == sizeof( T* ) > >
-_SYM T __sym_val_impl() {
-    auto val = reinterpret_cast< T >( __sym_lift( sizeof( T ), 0 ) );
-    return val + __vm_taint_i64();
+template< typename T >
+T __sym_val_impl() {
+    auto val = __sym_lift( sizeof( T ) * 8, 0 );
+    __lart_stash( reinterpret_cast< uintptr_t >( val ) );
+    return __taint< T >();
 }
 
 extern "C" {
-// uint8_t __sym_val_i8() { return __sym_val_impl< uint8_t >(); }
-// uint16_t __sym_val_i16() { return __sym_val_impl< uint16_t >(); }
-// uint32_t __sym_val_i32() { return __sym_val_impl< uint32_t >(); }
-uint64_t __sym_val_i64() { return __sym_val_impl< uint64_t >(); }
+    _SYM uint8_t __sym_val_i8() { return __sym_val_impl< uint8_t >(); }
+    _SYM uint16_t __sym_val_i16() { return __sym_val_impl< uint16_t >(); }
+    _SYM uint32_t __sym_val_i32() { return __sym_val_impl< uint32_t >(); }
+    _SYM uint64_t __sym_val_i64() { return __sym_val_impl< uint64_t >(); }
 }
 
 Formula *__sym_lift( int bitwidth, int argc, ... ) {

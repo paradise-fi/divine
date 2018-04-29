@@ -1,6 +1,7 @@
 #pragma once
 #include <rst/formula.h>
 
+
 typedef lart::sym::Formula __sym_formula;
 
 #define DOMAIN_NAME sym
