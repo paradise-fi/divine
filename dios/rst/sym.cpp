@@ -137,3 +137,20 @@ Formula *__sym_assume( Formula *value, Formula *constraint, bool assume )
     __vm_trace( _VM_T_Assume, __sym_state.constraints );
     return value;
 }
+
+void __sym_poke_formula( Formula *f, void *addr ) {
+    struct { uint32_t off, obj; } ptr;
+    memcpy( &ptr, &f, sizeof( Formula* ) );
+    __vm_poke( addr, _VM_ML_User, ptr.obj );
+}
+
+Formula* __sym_peek_formula( void *addr ) {
+    struct { uint32_t off, obj; } ptr;
+
+    ptr.off = 0;
+    ptr.obj = __vm_peek( addr, _VM_ML_User );
+
+    Formula *ret;
+    memcpy( &ret, &ptr, sizeof( Formula* ) );
+    return ret;
+}

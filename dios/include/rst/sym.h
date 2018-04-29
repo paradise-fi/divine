@@ -10,4 +10,9 @@ typedef lart::sym::Formula __sym_formula;
 #undef DOMAIN_NAME
 #undef DOMAIN_TYPE
 
-extern "C" void __sym_formula_dump();
+extern "C" {
+void __sym_formula_dump();
+
+void __sym_poke_formula( __sym_formula *f, void *addr );
+__sym_formula* __sym_peek_formula( void *addr );
+}

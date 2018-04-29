@@ -16,7 +16,8 @@ static T *__new( Args &&...args ) {
     return static_cast< T * >( ptr );
 }
 
-namespace lart::sym {
+namespace lart {
+namespace sym {
 
 std::string toString( Type t ) {
     std::string str;
@@ -133,6 +134,7 @@ inline std::string toString( const Formula &f )
     return toString( &f );
 }
 
+}
 }
 
 #if 0
