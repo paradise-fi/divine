@@ -46,6 +46,11 @@ private:
     llvm::ValueAsMetadata  *_md;
 };
 
+void add_domain_metadata( llvm::Instruction *i, Domain dom );
+
+void make_duals( llvm::Instruction *a, llvm::Instruction *b );
+bool has_dual( llvm::Instruction *inst );
+llvm::Value* get_dual( llvm::Instruction *i );
 
 std::vector< MDValue > abstract_metadata( llvm::Module &m );
 std::vector< MDValue > abstract_metadata( llvm::Function *fn );

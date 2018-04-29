@@ -135,6 +135,31 @@ void CreateAbstractMetadata::run( Module &m ) {
     }
 }
 
+// TODO refactore rest of additions of metadata
+void add_domain_metadata( Instruction *i, Domain dom ) {
+    auto &ctx = i->getContext();
+    MDBuilder mdb( ctx );
+    std::vector< Metadata* > doms = { mdb.domain_node( dom ) };
+    i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
+}
+
+
+void make_duals( Instruction *a, Instruction *b ) {
+    auto &ctx = a->getContext();
+    a->setMetadata( "lart.dual", MDTuple::get( ctx, { ValueAsMetadata::get( b ) } ) );
+    b->setMetadata( "lart.dual", MDTuple::get( ctx, { ValueAsMetadata::get( a ) } ) );
+}
+
+bool has_dual( Instruction *inst ) {
+    return inst->getMetadata( "lart.dual" );
+}
+
+Value* get_dual( Instruction *inst ) {
+    auto &dual = inst->getMetadata( "lart.dual" )->getOperand( 0 );
+    auto md = cast< ValueAsMetadata >( dual.get() );
+    return md->getValue();
+}
+
 std::vector< MDValue > abstract_metadata( llvm::Module &m ) {
     return query::query( m )
         .map( []( auto &fn ) { return abstract_metadata( &fn ); } )
