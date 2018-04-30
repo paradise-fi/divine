@@ -36,6 +36,7 @@ bool is_lower( llvm::CallInst *intr );
 bool is_assume( llvm::CallInst *intr );
 bool is_rep( llvm::CallInst *intr );
 bool is_unrep( llvm::CallInst *intr );
+bool is_tobool( llvm::CallInst *intr );
 bool is_cast( llvm::CallInst *intr );
 
 std::string llvm_name( llvm::Type *type );
@@ -46,7 +47,15 @@ llvm::Function* get_function( llvm::Argument *a );
 llvm::Function* get_function( llvm::Instruction *i );
 llvm::Function* get_function( llvm::Value *v );
 
-llvm::Module * get_module( llvm::Value * val );
+llvm::Function* get_or_insert_function( llvm::Module*, llvm::FunctionType*, llvm::StringRef );
+
+llvm::Module* get_module( llvm::Value *val );
+
+llvm::Type* abstract_type( llvm::Type *orig, Domain dom );
+
+llvm::Value* placeholder( llvm::Value *val );
+
+bool is_base_type( llvm::Type *type );
 
 } // namespace abstract
 } // namespace lart
