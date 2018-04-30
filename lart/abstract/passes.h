@@ -153,8 +153,6 @@ private:
 static TestCompile cmp( { "sym.cpp", "tristate.cpp", "formula.cpp" },
                         { "domain.def", "sym.h", "tristate.h", "common.h", "formula.h" } );
 
-// static TestCompile cmp( {}, {} );
-
 std::string load( const File & path ) {
     std::ifstream file( path );
     std::stringstream buffer;
@@ -166,8 +164,14 @@ template< typename... Passes >
 auto test( Compile::ModulePtr m, Passes&&... passes ) {
     using namespace abstract;
     lart::Driver drv;
-    drv.setup( CreateAbstractMetadata(), VPA(), Tainting(),
-               std::forward< Passes >( passes )... );
+    drv.setup( CreateAbstractMetadata()
+             , VPA()
+             , Unstash()
+             , Duplicator()
+             , Stash()
+             , Tainting()
+             , TaintBranching()
+             , std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
 }
@@ -186,19 +190,15 @@ auto test_abstraction( const File & src, Passes&&... passes ) {
 template< typename... Passes >
 auto test_assume( const File & src, Passes&&... passes ) {
     using namespace abstract;
-    return test_abstraction(src, AddAssumes(), TaintBranching(),
-                            std::forward< Passes >( passes )...);
-}
-
-template< typename... Passes >
-auto test_lifter( const File & src, Passes&&... passes ) {
-    using namespace abstract;
-    return test_assume( src, LifterSyntetize(), std::forward< Passes >( passes )... );
+    return test_abstraction(src, AddAssumes(), std::forward< Passes >( passes )...);
 }
 
 auto test_substitution( const File & src ) {
     using namespace abstract;
-    return test_lifter( src, Substitution() );
+    return test_assume( src
+                      , SubstitutionDuplicator()
+                      , Substitution()
+                      , Syntetize() );
 }
 
 static const std::string annotation =
@@ -253,7 +253,7 @@ struct Abstraction {
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         ASSERT( m->getFunction( "lart.gen.sym.add.i32" ) );
 
-        auto taint = m->getFunction( "__vm_test_taint.i32.i32.i32" );
+        auto taint = m->getFunction( "__vm_test_taint.lart.sym.i32.i32.i32" );
         ASSERT( taint->hasNUses( 2 ) );
     }
 
@@ -266,9 +266,9 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         ASSERT( m->getFunction( "lart.gen.sym.icmp_ne.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" ) );
         ASSERT( m->getFunction( "lart.gen.sym.zext.i1.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i32.i1" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i32.i1" ) );
     }
 
     TEST( call_simple ) {
@@ -500,8 +500,7 @@ struct Abstraction {
                         }
                     })";
         auto m = test_abstraction( annotation + s );
-
-        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
+        auto taint = m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" );
         ASSERT( taint->hasNUses( 4 ) );
         ASSERT( m->getFunction( "lart.gen.sym.icmp_slt.i32" ) );
         ASSERT( m->getFunction( "lart.gen.sym.icmp_eq.i32" ) );
@@ -539,9 +538,9 @@ struct Abstraction {
                       return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "__vm_test_taint.i64.i64.i64" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i64.i64.i64" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" ) );
     }
 
     TEST( recursion_direct ) {
@@ -561,8 +560,8 @@ struct Abstraction {
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
         ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" ) );
     }
 
     TEST( recursion_multiple_times ) {
@@ -583,8 +582,8 @@ struct Abstraction {
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
         ASSERT( !call->back().getTerminator()->getMetadata( "lart.domains" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" ) );
     }
 
     TEST( recursion_without_abstract_return ) {
@@ -603,8 +602,8 @@ struct Abstraction {
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
         ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i32.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" ) );
     }
 
     TEST( struct_simple ) {
@@ -635,7 +634,7 @@ struct Abstraction {
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" ) );
     }
 
     TEST( struct_complex ) {
@@ -898,25 +897,23 @@ struct Assume {
                             return 0;
                     })";
         auto m = test_assume( annotation + s );
-
         auto icmp = m->getFunction( "lart.gen.sym.icmp_sgt.i32" );
-        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
+        auto taint = m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" );
 
         auto taint_call = taint->user_begin();
         ASSERT_EQ( taint_call->getOperand( 0 ), icmp );
 
-        ASSERT( m->getFunction( "lart.gen.sym.bool_to_tristate" ) );
-        ASSERT( m->getFunction( "lart.gen.tristate.lower" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.to_i1" ) );
 
         auto assume = m->getFunction( "lart.gen.sym.assume" );
-        auto assume_taint = m->getFunction( "__vm_test_taint.i1.i1.i1" );
+        auto assume_taint = m->getFunction( "__vm_test_taint.lart.sym.i1.i1.i1" );
         auto assume_false_call = assume_taint->user_begin();
         ASSERT_EQ( assume_false_call->getOperand( 0 ), assume );
-        ASSERT( llvm::cast< llvm::Constant >( assume_false_call->getOperand( 3 ) )->isZeroValue() );
+        ASSERT( llvm::cast< llvm::Constant >( assume_false_call->getOperand( 4 ) )->isZeroValue() );
 
         auto assume_true_call = std::next( assume_taint->user_begin() );
         ASSERT_EQ( assume_true_call->getOperand( 0 ), assume );
-        ASSERT( llvm::cast< llvm::Constant >( assume_true_call->getOperand( 3 ) )->isOneValue() );
+        ASSERT( llvm::cast< llvm::Constant >( assume_true_call->getOperand( 4 ) )->isOneValue() );
     }
 
     TEST( loop ) {
@@ -930,23 +927,22 @@ struct Assume {
         auto m = test_assume( annotation + s );
 
         auto icmp = m->getFunction( "lart.gen.sym.icmp_ne.i32" );
-        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
+        auto taint = m->getFunction( "__vm_test_taint.lart.sym.i1.i32.i32" );
 
         auto taint_call = taint->user_begin();
         ASSERT_EQ( taint_call->getOperand( 0 ), icmp );
 
-        ASSERT( m->getFunction( "lart.gen.sym.bool_to_tristate" ) );
-        ASSERT( m->getFunction( "lart.gen.tristate.lower" ) );
+        ASSERT( m->getFunction( "lart.gen.sym.to_i1" ) );
 
         auto assume = m->getFunction( "lart.gen.sym.assume" );
-        auto assume_taint = m->getFunction( "__vm_test_taint.i1.i1.i1" );
+        auto assume_taint = m->getFunction( "__vm_test_taint.lart.sym.i1.i1.i1" );
         auto assume_false_call = assume_taint->user_begin();
         ASSERT_EQ( assume_false_call->getOperand( 0 ), assume );
-        ASSERT( llvm::cast< llvm::Constant >( assume_false_call->getOperand( 3 ) )->isZeroValue() );
+        ASSERT( llvm::cast< llvm::Constant >( assume_false_call->getOperand( 4 ) )->isZeroValue() );
 
         auto assume_true_call = std::next( assume_taint->user_begin() );
         ASSERT_EQ( assume_true_call->getOperand( 0 ), assume );
-        ASSERT( llvm::cast< llvm::Constant >( assume_true_call->getOperand( 3 ) )->isOneValue() );
+        ASSERT( llvm::cast< llvm::Constant >( assume_true_call->getOperand( 4 ) )->isOneValue() );
     }
 };
 
@@ -1033,11 +1029,10 @@ struct Substitution {
                         }
                     })";
         auto m = test_substitution( annotation + s );
-        auto taint = m->getFunction( "__vm_test_taint.i1.i32.i32" );
-        ASSERT( taint->hasNUses( 4 ) );
-        ASSERT( m->getFunction( "lart.gen.sym.icmp_slt.i32" ) );
-        ASSERT( m->getFunction( "lart.gen.sym.icmp_eq.i32" ) );
-        ASSERT( m->getFunction( "lart.gen.sym.sub.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.icmp_slt.i32" ) );
+        ASSERT( m->getFunction( "lart.sym.icmp_slt.i32" ) );
+        ASSERT( m->getFunction( "lart.sym.icmp_eq.i32" ) );
+        ASSERT( m->getFunction( "lart.sym.sub.i32" ) );
     }
 
     TEST( loop_1 ) {
@@ -1049,8 +1044,9 @@ struct Substitution {
 						} while(val % 6 != 0);
                     })";
         auto m = test_substitution( annotation + s );
-        ASSERT( m->getFunction( "__vm_test_taint.i32.i32.i32" ) );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.icmp_ne.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.add.i32" ) );
+        ASSERT( m->getFunction( "__sym_add" ) );
 	}
 
     TEST( loop_2 ) {
@@ -1063,7 +1059,7 @@ struct Substitution {
                                 }
                     })";
         auto m = test_substitution( annotation + s );
-        ASSERT( m->getFunction( "__vm_test_taint.i1.i32.i32" ) );
+        ASSERT( m->getFunction( "__vm_test_taint.lart.sym.icmp_slt.i32" ) );
     }
 
     TEST( call_propagate_ones )
