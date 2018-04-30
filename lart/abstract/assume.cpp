@@ -42,9 +42,9 @@ namespace {
             : BBEdge( from, to )
         {}
 
-        Function* assume_fn( Module *m, Type *ty, Domain dom ) {
-            auto bool_t = IntegerType::get( m->getContext(), 1 );
-            auto fty = FunctionType::get( ty, { ty, ty, bool_t, bool_t }, false );
+        Function* assume_fn( Module *m, Type *concrete, Type *abstract, Domain dom ) {
+            auto i1 = Type::getInt1Ty( m->getContext() );
+            auto fty = FunctionType::get( abstract, { i1, concrete, i1, abstract, i1, i1 }, false );
             std::string tag = "lart.gen." + DomainTable[ dom ] + ".assume";
 
             return cast< Function >( m->getOrInsertFunction( tag, fty ) );
@@ -57,21 +57,25 @@ namespace {
             auto edge_bb = from->getTerminator()->getSuccessor( i );
 
             auto taint = cast< Instruction >( ass.cond );
-            auto dom = MDValue( taint->getOperand( 1 ) ).domain();
+            auto dom = MDValue( get_dual( taint ) ).domain();
 
             auto m = get_module( ass.cond );
-            auto ty = ass.cond->getType();
+            auto abstract = ass.cond;
+            auto concrete = get_dual( cast< Instruction >( abstract ) );
 
-            Values args = { assume_fn( from->getModule(), ty, dom ),
-                            ass.cond,  // fallback value
-                            ass.cond,  // assumed condition
+            Values args = { assume_fn( from->getModule(), concrete->getType(), abstract->getType(), dom ),
+                            abstract,  // fallback value
+                            concrete,
+                            abstract,  // assumed condition
                             ass.val }; // result of assumed condition
 
-            auto fn = get_taint_fn( m, ty, types_of( args ) );
+            auto fn = get_taint_fn( m, abstract->getType(), types_of( args ) );
 
             llvm::IRBuilder<> irb( &edge_bb->front() );
             auto tass = irb.CreateCall( fn, args );
-            tass->setMetadata( "lart.domains", taint->getMetadata( "lart.domains" ) );
+
+            auto dual = cast< Instruction >( get_dual( taint ) );
+            tass->setMetadata( "lart.domains", dual->getMetadata( "lart.domains" ) );
             // TODO use assumed result
         }
 
@@ -94,7 +98,8 @@ namespace {
     }
 
     void AddAssumes::process( BranchInst *br ) {
-        auto cond = dyn_cast< CallInst >( br->getCondition() );
+        auto to_i1 = cast< CallInst >( br->getCondition() );
+        auto cond = get_dual( cast< Instruction >( to_i1->getOperand( 1 ) ) );
 
         auto &ctx = br->getContext();
         AssumeEdge true_br = { br->getParent(), br->getSuccessor( 0 ) };
