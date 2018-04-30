@@ -57,13 +57,19 @@ namespace abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_pass_wrapper( CreateAbstractMetadata(),
-                                             VPA(),
-                                             Tainting(),
-                                             AddAssumes(),
-                                             TaintBranching(),
-                                             LifterSynthesize(),
-                                             Substitution() );
+            auto passes = make_pass_wrapper( CreateAbstractMetadata()
+                                           , VPA()
+                                           , Unstash()
+                                           , Duplicator()
+                                           , Stash()
+                                           , Tainting()
+                                           , TaintBranching()
+                                           , AddAssumes()
+                                           , SubstitutionDuplicator()
+                                           , UnrepStores()
+                                           , Substitution()
+                                           , Synthesize()
+										   );
             passes.run( m );
         }
 
