@@ -21,12 +21,18 @@ using namespace llvm;
 
 namespace {
 
-using LifterArg = std::pair< Value*, Value* >; // tainted flag + value
-
-std::string taint_suffix( const Types &args ) {
+std::string taint_suffix( Type * ret, const Types &args ) {
     std::string res;
+
+    ASSERT( !ret->isVoidTy() );
+    if ( auto s = dyn_cast< StructType >( ret ) )
+        res += "." + s->getName().str();
+    else
+        res += "." + llvm_name( ret );
+
     for ( auto a : args )
-        res += "." + llvm_name( a );
+        if ( a->isIntegerTy() )
+            res += "." + llvm_name( a );
     return res;
 }
 
@@ -47,19 +53,6 @@ void use_tainted_value( Instruction *i, Instruction *orig, Instruction *tainted 
     }
     UNREACHABLE( "Instruction does not use tainted value." );
 }
-
-CallInst *create_call( IRBuilder<> &irb, Function *fn, const Values &args, Domain dom ) {
-    auto call = irb.CreateCall( fn, args );
-
-    auto &ctx = fn->getContext();
-
-    MDBuilder mdb( ctx );
-    auto dn = mdb.domain_node( dom );
-    call->setMetadata( "lart.domains", MDTuple::get( ctx, dn ) );
-
-    return call;
-}
-
 
 inline std::string intrinsic_prefix( Instruction *i, Domain d ) {
     return "lart.gen." + DomainTable[ d ] + "." + i->getOpcodeName();
@@ -96,283 +89,188 @@ std::string intrinsic_name( Instruction *i, Domain d ) {
     UNREACHABLE( "Unhandled intrinsic." );
 }
 
-Function* get_intrinsic( Module *m, std::string name, Type *rty, const Types &args ) {
-    auto &ctx = rty->getContext();
+using AbstractInstBase = std::pair< Instruction*, Domain >;
 
-    Types arg_types;
-    for ( auto &a : args ) {
-        arg_types.push_back( Type::getInt1Ty( ctx ) );
-        arg_types.push_back( a );
+struct AbstractInst : AbstractInstBase {
+    using AbstractInstBase::AbstractInstBase;
+
+    std::string name() {
+        return intrinsic_name( instruction(), domain() );
     }
 
-    auto fty = FunctionType::get( rty, arg_types, false );
-    return cast< Function >( m->getOrInsertFunction( name, fty ) );
-}
+    Types arg_types() {
+        auto &ctx = instruction()->getContext();
 
-Function* get_intrinsic( Instruction *i, Domain d ) {
-    return get_intrinsic( get_module( i ), intrinsic_name( i, d ),
-                          i->getType(), types_of( i->operands() ) );
-}
-
-Function* intrinsic( Instruction *i ) {
-    auto d = MDValue( i ).domain();
-    return get_intrinsic( i, d );
-}
-
-Instruction* branch_intrinsic( Instruction *i, std::string name ) {
-    auto i8 = Type::getInt8Ty( i->getContext() );
-    assert( i->getType() == i8 );
-    auto fn = get_intrinsic( get_module( i ), name, i8, { i8 } );
-    return create_taint( i, { fn, i, i } );
-}
-
-Instruction* to_tristate( Instruction *i, Domain dom ) {
-    auto &ctx = i->getContext();
-    MDBuilder mdb( ctx );
-    auto dn = mdb.domain_node( Domain::Tristate );
-    auto b2t = branch_intrinsic( i, "lart.gen." + DomainTable[ dom ] + ".bool_to_tristate" );
-    b2t->setMetadata( "lart.domains", MDTuple::get( ctx, { dn } ) );
-    return b2t;
-}
-
-Instruction* lower_tristate( Instruction *i ) {
-    auto lt = branch_intrinsic( i, "lart.gen.tristate.lower" );
-    lt->setMetadata( "lart.domains", nullptr );
-    return lt;
-}
-
-Type* abstract_type( Type *t, Domain dom ) {
-    std::string name;
-    if ( dom == Domain::Tristate )
-        name = "lart." + DomainTable[ dom ];
-    else
-		name = "lart." + DomainTable[ dom ] + "." + llvm_name( t );
-
-    if ( auto aty = t->getContext().pImpl->NamedStructTypes.lookup( name ) )
-        return aty;
-    return StructType::create( { t }, name );
-
-}
-
-std::string lift_name( Type *t, Domain dom ) {
-    if ( dom == Domain::Tristate )
-        return "lart." + DomainTable[ dom ] + ".lift" ;
-    else
-		return "lart." + DomainTable[ dom ] + ".lift." + llvm_name( t );
-}
-
-Function* lift( Value *val, Domain dom ) {
-    auto m = get_module( val );
-    auto ty = val->getType();
-    auto aty = abstract_type( ty, dom );
-    auto name = lift_name( ty, dom );
-    auto fty = FunctionType::get( aty, { ty }, false );
-    return cast< Function >( m->getOrInsertFunction( name, fty ) );
-}
-
-Function* rep( Value *val, Domain dom ) {
-    auto m = get_module( val );
-	auto ty = val->getType();
-	auto aty = abstract_type( ty, dom );
-	auto fty = FunctionType::get( aty, { aty }, false );
-	auto name = "lart." + DomainTable[ dom ] + ".rep." + llvm_name( ty );
-    return cast< Function >( m->getOrInsertFunction( name, fty ) );
-}
-
-Function* unrep( Value *val, Domain dom, Type *to ) {
-    auto m = get_module( val );
-	auto ty = val->getType();
-	auto fty = FunctionType::get( ty, { ty }, false );
-	auto name = "lart." + DomainTable[ dom ] + ".unrep." + llvm_name( to );
-    return cast< Function >( m->getOrInsertFunction( name, fty ) );
-}
-
-BasicBlock* make_bb( Function *fn, std::string name ) {
-	auto &ctx = fn->getContext();
-	return BasicBlock::Create( ctx, name, fn );
-}
-
-BasicBlock* entry_bb( Value *tflag, size_t idx ) {
-	auto &ctx = tflag->getContext();
-
-    std::string name = "arg." + std::to_string( idx ) + ".entry";
-	auto bb = make_bb( get_function( tflag ), name );
-
-    IRBuilder<> irb( bb );
-    irb.CreateICmpEQ( tflag, ConstantInt::getTrue( ctx ) );
-	return bb;
-}
-
-Value* create_rep_call( IRBuilder<> irb, Value *val, Domain dom ) {
-    auto aty = abstract_type( val->getType(), dom );
-	auto cs = Constant::getNullValue( aty );
-	auto iv = cast< Instruction >( irb.CreateInsertValue( cs, val, 0 ) );
-	auto call = create_call( irb, rep( val, dom ), { iv }, dom );
-    iv->setMetadata( "lart.domains", call->getMetadata( "lart.domains" ) );
-    return call;
-}
-
-BasicBlock* tainted_bb( Value *arg, size_t idx, Domain dom ) {
-    std::string name = "arg." + std::to_string( idx ) + ".tainted";
-	auto bb = make_bb( get_function( arg ), name );
-	IRBuilder<> irb( bb );
-
-    create_rep_call( irb, arg, dom );
-
-	return bb;
-}
-
-BasicBlock* untainted_bb( Value *arg, size_t idx, Domain dom ) {
-    std::string name = "arg." + std::to_string( idx ) + ".untainted";
-	auto bb = make_bb( get_function( arg ), name );
-    IRBuilder<> irb( bb );
-    create_call( irb, lift( arg, dom ), { arg }, dom );
-	return bb;
-}
-
-BasicBlock* merge_bb( Value *arg, size_t idx ) {
-    std::string name = "arg." + std::to_string( idx ) + ".merge";
-	auto bb = make_bb( get_function( arg ), name );
-	return bb;
-}
-
-void join_bbs( BasicBlock *ebb, BasicBlock *tbb, BasicBlock *ubb,
-			   BasicBlock *mbb, BasicBlock *exbb )
-{
-	IRBuilder<> irb( ebb );
-    irb.CreateCondBr( &ebb->back(), tbb, ubb );
-
-	irb.SetInsertPoint( mbb );
-	auto tv = &tbb->back();
-	auto uv = &ubb->back();
-	assert( tv->getType() == uv->getType() );
-	auto phi = irb.CreatePHI( tv->getType(), 2 );
-	phi->addIncoming( tv, tbb );
-	phi->addIncoming( uv, ubb );
-    phi->setMetadata( "lart.domains", tv->getMetadata( "lart.domains" ) );
-
-    exbb->moveAfter( mbb );
-	irb.CreateBr( exbb );
-
-    irb.SetInsertPoint( tbb );
-    irb.CreateBr( mbb );
-
-	irb.SetInsertPoint( ubb );
-    irb.CreateBr( mbb );
-}
-
-Function* make_abstract_op( CallInst *taint, Types args ) {
-    auto fn = cast< Function >( taint->getOperand( 0 ) );
-    auto m = get_module( taint );
-
-	std::string prefix = "lart.gen.";
-	auto name = "lart." + fn->getName().drop_front( prefix.size() );
-
-	auto rty = ( taint->getMetadata( "lart.domains" ) )
-		     ? abstract_type( taint->getType(), MDValue( taint ).domain() )
-		     : taint->getType();
-
-    auto fty = FunctionType::get( rty, args, false );
-	return cast< Function >( m->getOrInsertFunction( name.str(), fty ) );
-}
-
-Domain taint_in_domain( CallInst *taint ) {
-    return MDValue( taint->getOperand( 1 ) ).domain();
-}
-
-Domain taint_out_domain( CallInst *taint ) {
-    return MDValue( taint ).domain();
-}
-
-void return_from_lifter( IRBuilder<> irb, Value *val, CallInst *taint ) {
-	auto fn = get_function( val );
-    if ( val->getType() != fn->getReturnType() ) {
-        auto dom = taint_out_domain( taint );
-        auto to = fn->getReturnType();
-		auto ur = create_call( irb, unrep( val, dom, to ), { val }, dom );
-        auto ev = irb.CreateExtractValue( ur, 0 );
-		irb.CreateRet( ev );
-	} else {
-		irb.CreateRet( val );
-	}
-}
-
-void exit_lifter( BasicBlock *exbb, CallInst *taint, Values &args ) {
-    Domain dom = taint_in_domain( taint );
-
-    IRBuilder<> irb( exbb );
-	auto aop = make_abstract_op( taint, types_of( args ) );
-	auto call = create_call( irb, aop, args, dom );
-
-    return_from_lifter( irb, call, taint );
-}
-
-void generate_nary_lifter( CallInst * taint, Function *fn, std::vector< LifterArg > args ) {
-    Domain dom = taint_in_domain( taint );
-
-    auto exbb = make_bb( fn, "exit" );
-
-    size_t idx = 0;
-    BasicBlock *prev = nullptr;
-
-    Values lifted;
-    for ( const auto &arg : args ) {
-        auto ebb = entry_bb( arg.first, idx );
-        auto tbb = tainted_bb( arg.second, idx, dom );
-        auto ubb = untainted_bb( arg.second, idx, dom );
-        auto mbb = merge_bb( arg.second, idx );
-
-        join_bbs( ebb, tbb, ubb, mbb, exbb );
-        lifted.push_back( mbb->begin() );
-
-        if ( prev ) {
-            prev->getTerminator()->setSuccessor( 0, ebb );
+        Types types;
+        for ( auto &a : types_of( instruction()->operands() ) ) {
+            types.push_back( Type::getInt1Ty( ctx ) );
+            types.push_back( a );
+            types.push_back( Type::getInt1Ty( ctx ) );
+            types.push_back( abstract_type( a, domain() ) );
         }
 
-        prev = mbb;
-        idx++;
+        return types;
     }
 
-    exit_lifter( exbb, taint, lifted );
+    Type* type() { return abstract_type( instruction()->getType(), domain() ); }
+
+    Function* get() {
+        auto m = get_module( instruction() );
+        auto fty = FunctionType::get( type(), arg_types(), false );
+        return cast< Function >( m->getOrInsertFunction( name(), fty ) );
+    }
+
+    Instruction* instruction() { return first; }
+    Domain domain() { return second; }
+};
+
+Function* intrinsic( Instruction *i ) {
+    auto dom = MDValue( i ).domain();
+    return AbstractInst( i, dom ).get();
 }
 
-void generate_unary_lifter( CallInst *taint, Function *fn, Value *arg ) {
-    Domain dom = taint_in_domain( taint );
-
-    auto ebb = make_bb( fn, "entry" );
-    IRBuilder<> irb( ebb );
-
-    auto rep = create_rep_call( irb, arg, dom );
-	auto aop = make_abstract_op( taint, { rep->getType() } );
-
-    Value *call;
-	if ( taint->getMetadata( "lart.domains" ) )
-        call = create_call( irb, aop, { rep }, taint_out_domain( taint ) );
-    else
-        call = irb.CreateCall( aop, { rep } );
-
-    return_from_lifter( irb, call, taint );
+bool is_taintable( Value *v ) {
+    return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( v );
 }
+
+template< typename Args >
+Instruction* generate_taint( IRBuilder<> irb, Function *fn, Value *def, const Args &args ) {
+    Values targs;
+
+    targs.emplace_back( fn );
+    targs.emplace_back( def );
+    targs.insert( targs.end(), args.begin(), args.end() );
+
+    auto rty = targs[ 1 ]->getType();
+    auto m = fn->getParent();
+    auto taint_fn = get_taint_fn( m, rty, types_of( targs ) );
+
+    return cast< Instruction >( irb.CreateCall( taint_fn, targs ) );
+}
+
+struct TaintBase {
+    virtual Function* intrinsic() = 0;
+    virtual Value* default_val() = 0;
+    virtual Values args() = 0;
+};
+
+struct Taint : TaintBase {
+    Taint( Instruction *v )
+        : value( v ), dual( cast< Instruction >( get_dual( v ) ) ), irb( dual )
+    {}
+
+    Instruction* generate() {
+        return generate_taint( irb, intrinsic(), default_val(), args() );
+    }
+
+    Function* intrinsic() override {
+        using ::lart::abstract::intrinsic;
+        return intrinsic( value );
+    }
+
+    Value* default_val() override {
+        return UndefValue::get( rty() );
+    }
+
+    Instruction* placeholder( Argument *arg ) {
+        for ( auto u : arg->users() )
+            if ( auto call = dyn_cast< CallInst >( u ) )
+                if ( call->getCalledFunction()->getName().startswith( "lart.placeholder" ) )
+                    return call;
+        return nullptr;
+    }
+
+    Values args() override {
+        Values vals;
+        auto dom = MDValue( value ).domain();
+
+        for ( auto & a : value->operands() ) {
+            vals.push_back( a );
+            auto inst = dyn_cast< Instruction >( a );
+            if ( inst && has_dual( inst ) ) {
+                vals.push_back( get_dual( inst ) );
+            } else {
+                if ( auto arg = dyn_cast< Argument >( a ) ) {
+                    if ( auto ph = placeholder( arg ) ) {
+                        vals.push_back( ph );
+                        continue;
+                    }
+                }
+
+                auto ty = abstract_type( a->getType(), dom );
+                vals.push_back( UndefValue::get( ty ) );
+            }
+        }
+
+        return vals;
+    }
+
+
+protected:
+    virtual Type* rty() { return dual->getType(); }
+
+    Instruction *value;
+    Instruction *dual;
+    IRBuilder<> irb;
+};
+
+struct RepTaint : Taint {
+    using Taint::Taint;
+
+    Function* intrinsic() final {
+        auto m = get_module( value );
+        auto i1 = Type::getInt1Ty( value->getContext() );
+        auto ty = value->getType();
+        auto dom = MDValue( value ).domain();
+        auto aty = abstract_type( ty, dom );
+        auto addr = cast< LoadInst >( value )->getPointerOperand();
+
+        auto fty = FunctionType::get( aty, { i1, ty, i1, addr->getType() }, false );
+        auto name = "lart.gen." + DomainTable[ dom ] + ".rep." + llvm_name( ty );
+        return get_or_insert_function( m, fty, name );
+    }
+
+    Values args() final {
+        auto load = cast< LoadInst >( value );
+        return { value, load->getPointerOperand() };
+    }
+};
+
+struct ToBoolTaint : Taint {
+    using Taint::Taint;
+
+    Function* intrinsic() final {
+        auto m = get_module( value );
+        auto i1 = Type::getInt1Ty( value->getContext() );
+        auto dom = MDValue( value ).domain();
+        auto ty = value->getType();
+        auto aty = dual->getType();
+
+        auto fty = FunctionType::get( i1, { i1, ty, i1, aty }, false );
+        auto name = "lart.gen." + DomainTable[ dom ] + ".to_i1";
+        return get_or_insert_function( m, fty, name );
+    }
+
+    Value* default_val() final { return value; }
+
+    Values args() final { return { value, dual }; }
+
+    Type* rty() override { return value->getType(); }
+};
 
 } // anonymous namespace
 
 Function* get_taint_fn( Module *m, Type *ret, Types args ) {
-    auto taint_fn = args.front();
-    args.erase( args.begin() );
-    auto name = "__vm_test_taint" + taint_suffix( args );
-    args.insert( args.begin(), taint_fn );
+    auto name = "__vm_test_taint" + taint_suffix( ret, args );
 
     auto fty = FunctionType::get( ret, args, false );
     auto fn = m->getOrInsertFunction( name, fty );
     return cast< Function >( fn );
 }
 
-
 Instruction* create_taint( Instruction *i, const Values &args ) {
     IRBuilder<> irb( i );
-
-    auto rty = i->getType();
-
+	auto rty = args[ 1 ]->getType();
     auto fn = get_taint_fn( get_module( i ), rty, types_of( args ) );
 
     auto call = irb.CreateCall( fn, args );
@@ -382,56 +280,64 @@ Instruction* create_taint( Instruction *i, const Values &args ) {
     return call;
 }
 
-
-bool is_taintable( Value *i ) {
-    return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( i );
-}
-
 void Tainting::run( Module &m ) {
-    for ( const auto & mdv : abstract_metadata( m ) )
-    	taint( cast< Instruction >( mdv.value() ) );
+    auto abstract = abstract_metadata( m );
+    for ( const auto & mdv : abstract )
+    	if ( mdv.value()->getType()->isIntegerTy() )
+    	    taint( cast< Instruction >( mdv.value() ) );
 }
 
 void Tainting::taint( Instruction *i ) {
-    if ( !is_taintable( i ) )
-        return;
+    if ( has_dual( i ) ) {
+        auto taint = [i] () -> Instruction* {
+            if ( isa< LoadInst >( i ) )
+                return RepTaint( i ).generate();
+            if ( isa< PHINode >( i ) )
+                return nullptr; // do not taint phinodes
+            if ( isa< CallInst >( i ) )
+                return nullptr; // skip, calls have been already processed
+            if ( is_taintable( i ) )
+                return Taint( i ).generate();
 
-    Values args;
-    args.push_back( intrinsic( i ) );
-    args.push_back( i ); // fallback value
-    for ( auto & op : i->operands() )
-        args.emplace_back( op.get() );
+            i->dump();
+            UNREACHABLE( "Unknown dual instruction" );
+        } ();
 
-    auto call = create_taint( i, args );
-    for ( const auto & u : i->users() )
-        if ( u != call )
-            use_tainted_value( cast< Instruction >( u ), i, call );
+        if ( auto phi = dyn_cast< PHINode >( i ) ) {
+            auto dphi = cast< PHINode >( get_dual( phi ) );
+            for ( size_t op = 0; op < phi->getNumIncomingValues(); ++op ) {
+                auto in = phi->getIncomingValue( op );
+                Value* val = UndefValue::get( dphi->getType() );
+                if ( auto iin = dyn_cast< Instruction >( in ) )
+                    if ( has_dual( iin ) )
+                        val = get_dual( iin );
+                dphi->addIncoming( val, phi->getIncomingBlock( op ) );
+            }
+        }
 
-    tainted.insert( i );
+        if ( taint ) {
+            auto dual = cast< Instruction >( get_dual( i ) );
+            dual->replaceAllUsesWith( taint );
+            dual->eraseFromParent();
+            make_duals( i, taint );
+        }
+    }
 }
 
 void TaintBranching::run( Module &m ) {
-    for ( auto t : taints( m ) )
-        for ( auto u : t->users() )
+    for ( auto t : taints( m ) ) {
+        auto call = cast< CallInst >( t );
+        for ( auto u : get_dual( call )->users() ) {
             if ( auto br = dyn_cast< BranchInst >( u ) )
-                expand( t, br );
+                expand( call, br );
+        }
+    }
 }
 
-void TaintBranching::expand( Value *t, BranchInst *br ) {
-    IRBuilder<> irb( br );
-    auto &ctx = br->getContext();
-
-    auto orig = cast< User >( t )->getOperand( 1 ); // fallback value
-    auto dom = MDValue( orig ).domain();
-
-    auto ti = cast< Instruction >( t );
-    auto i8 = cast< Instruction >( irb.CreateZExt( ti, Type::getInt8Ty( ctx ) ) );
-    i8->setMetadata( "lart.domains", ti->getMetadata( "lart.domains" ) );
-
-    auto trs = to_tristate( cast< Instruction >( i8 ), dom );
-    auto low = lower_tristate( trs );
-    auto i1 = irb.CreateTrunc( low, Type::getInt1Ty( ctx ) );
-
+void TaintBranching::expand( CallInst *taint, BranchInst *br ) {
+    auto i1 = ToBoolTaint( cast< Instruction >( get_dual( taint ) ) ).generate();
+    i1->removeFromParent();
+    i1->insertAfter( taint );
     br->setCondition( i1 );
 }
 

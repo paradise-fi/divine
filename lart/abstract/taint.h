@@ -23,7 +23,7 @@ private:
 
 struct TaintBranching {
     void run( llvm::Module& );
-    void expand( llvm::Value*, llvm::BranchInst* );
+    void expand( llvm::CallInst*, llvm::BranchInst* );
 };
 
 struct LifterSynthesize {
@@ -41,11 +41,6 @@ llvm::Function* get_taint_fn( llvm::Module*, llvm::Type *ret, Types args );
 //
 // If function does not exist, it is created using 'get_taint_fn'.
 llvm::Instruction* create_taint( llvm::Instruction*, const Values &args );
-
-// Checks whether value is taintable.
-// We consider taintable only binary operations, cmp instructions,
-// trunc, zext and sext instruction.
-bool is_taintable( llvm::Value * );
 
 } // namespace abstract
 } // namespace lart
