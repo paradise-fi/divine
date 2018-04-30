@@ -11,7 +11,7 @@ struct V { S s; U u; };
 
 int main() {
     V a, b;
-    _SYM int x;
+    int x = __sym_val_i32();
     a.s.val = x;
     b.u.t.val = a.s.val;
     assert( a.s.val == b.u.t.val );

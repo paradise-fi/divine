@@ -4,7 +4,7 @@
 #include <assert.h>
 
 int main() {
-    _SYM int x;
+    int x = __sym_val_i32();
     long y = x;
     assert( y + 1 > y );
 }

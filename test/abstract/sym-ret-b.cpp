@@ -4,8 +4,7 @@
 #include <cassert>
 
 int nondet() {
-    _SYM int x;
-    return x;
+    return __sym_val_i32();
 }
 
 int foo( int b ) {

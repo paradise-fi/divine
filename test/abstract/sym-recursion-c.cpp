@@ -40,7 +40,7 @@ int main() {
     auto ns = std::array< Node, 3 >( { 1, 2, 3 } );
     auto list = List< decltype( ns ) >( ns );
 
-    _SYM unsigned int i;
+    unsigned int i = __sym_val_i32();
     auto res = list.at( i );
     if ( i > 2 )
         assert( res == nullptr );

@@ -5,7 +5,7 @@
 #include <dios.h>
 
 int main() {
-    _SYM long x;
+    int x = __sym_val_i32();
     x %= 8;
     while ( true ) {
         x = (x + 1) % 8;

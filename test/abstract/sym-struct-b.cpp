@@ -11,7 +11,7 @@ struct S {
 
 int main() {
     S a, b;
-    _SYM int y;
+    int y = __sym_val_i32();
     a.y = y;
     b = a;
     assert( a.x == b.x && a.y == b.y );

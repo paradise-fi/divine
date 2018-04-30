@@ -10,7 +10,7 @@ int get() { return x; }
 int main() {
     assert( x == 7 );
 
-    _SYM int val;
+    int val = __sym_val_i32();
     x = x + val;
     assert( val + 7 == x );
 }

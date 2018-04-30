@@ -5,7 +5,7 @@
 #include <cstdint>
 
 int main() {
-    _SYM int x;
+    int x = __sym_val_i32();
     x = x % 32;
 
     int sum = 0;

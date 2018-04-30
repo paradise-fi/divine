@@ -13,7 +13,7 @@ int zero( int a ) {
 }
 
 int main() {
-    _SYM int a;
+    int a = __sym_val_i32();
     assert( zero( a ) == 42 );
     return 0;
 }

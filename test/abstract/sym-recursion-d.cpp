@@ -19,7 +19,7 @@ unsigned sum( unsigned a , unsigned b ) {
 
 
 int main() {
-    _SYM int b;
+    int b = __sym_val_i32();
     int s = sum( 4, b );
     assert( s == 4 + b );
     return 0;

@@ -6,7 +6,6 @@
 int y = 0;
 
 int main() {
-    _SYM int x;
-    // loaded value should be lifted
+    uint64_t x = __sym_val_i64();
     assert( x != y ); /* ERROR */
 }

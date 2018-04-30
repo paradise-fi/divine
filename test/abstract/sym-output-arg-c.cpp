@@ -8,7 +8,7 @@ void init_impl( int * i, int v ) {
 }
 
 void init( int * i ) {
-    _SYM int v;
+    int v = __sym_val_i32();
     init_impl( i, v );
 }
 

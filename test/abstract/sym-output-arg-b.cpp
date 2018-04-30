@@ -9,7 +9,7 @@ void init( int * i, int v ) {
 
 int main() {
     int i;
-    _SYM int v;
+    int v = __sym_val_i32();
     init( &i, v );
     assert( i < 10 );
 }

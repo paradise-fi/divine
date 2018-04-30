@@ -4,7 +4,7 @@
 #include <cassert>
 
 void init( int * i ) {
-    _SYM int v;
+    int v = __sym_val_i32();
     *i = v % 10;
 }
 

@@ -39,7 +39,7 @@ struct List {
 };
 
 void init_node( Node * node ) {
-    _SYM int x;
+    int x = __sym_val_i32();
     node->val = x;
 }
 

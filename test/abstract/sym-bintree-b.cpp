@@ -7,7 +7,7 @@
 #include <cassert>
 
 struct BinTree {
-    using value_type = int64_t;
+    using value_type = int32_t;
 
     struct Node {
         Node( value_type v = 0 ) : val( v ) {}
@@ -116,7 +116,7 @@ struct BinTree {
 };
 
 BinTree::Node make_abstract_node() {
-    _SYM int x;
+    int x = static_cast< int >( __sym_val_i32() );
     return x;
 }
 

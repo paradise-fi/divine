@@ -5,10 +5,10 @@
 #include <cstdint>
 
 int main() {
-    _SYM uint16_t x;
+    uint16_t x = __sym_val_i16();
     uint32_t y = x;
 
-    _SYM int mod;
+    int mod = __sym_val_i32();
     for ( int j = mod; j % 8 != 0; ++j )
         y++;
 

@@ -8,7 +8,7 @@ int x;
 int get() { return x; }
 
 int main() {
-    _SYM int val;
+    int val = __sym_val_i32();
     x = val;
 
     int y = get();

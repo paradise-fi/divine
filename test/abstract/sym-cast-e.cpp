@@ -5,10 +5,13 @@
 #include <limits>
 
 int main() {
-    _SYM union {
+    union {
         int x;
         short y;
     };
+
+    y = static_cast< int >( __sym_val_i32() );
+
     if ( short( x ) < 0 )
         return 0;
     ++y;

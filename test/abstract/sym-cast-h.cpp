@@ -5,8 +5,7 @@
 #include <limits>
 
 int nondet() {
-    _SYM int x;
-    return x;
+    return static_cast< int >( __sym_val_i32() );
 }
 
 int main() {

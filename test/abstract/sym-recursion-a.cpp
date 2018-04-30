@@ -12,7 +12,7 @@ int sum( int a, int b ) {
 }
 
 int main() {
-    _SYM int b;
+    int b = __sym_val_i32();
     int s = sum( 10, b );
     assert( s == 10 + b );
     return 0;

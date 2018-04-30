@@ -11,7 +11,7 @@ struct Widget {
 Widget w;
 
 int main() {
-    _SYM int val;
+    int val = __sym_val_i32();
     w.value = val % 10;
     assert( w.value < 10 );
 }

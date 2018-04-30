@@ -5,8 +5,11 @@
 #include <cassert>
 
 int main() {
-    _SYM int x;
-    _SYM int y = 0;
+    uint64_t x = __sym_val_i64();
+    uint64_t y = __sym_val_i64();
+
+    y = 0;
+
     assert( y == 0 );
     assert( x != y ); /* ERROR */
 }

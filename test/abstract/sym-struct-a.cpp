@@ -8,7 +8,7 @@ struct S {
 };
 
 int main() {
-    _SYM int x;
+    int x = __sym_val_i32();
     S s;
     s.x = x;
     assert( s.x != 0 ); /* ERROR */

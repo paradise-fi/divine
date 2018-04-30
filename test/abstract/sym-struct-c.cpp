@@ -16,7 +16,7 @@ struct S {
 
 int main() {
     S s; T t;
-    _SYM int val;
+    int val = __sym_val_i32();
     s.val = val;
     t.val = s.val;
     assert( s.val == t.val );

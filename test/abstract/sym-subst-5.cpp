@@ -5,7 +5,7 @@
 #include <assert.h>
 
 int main() {
-    _SYM short x;
+    int x = __sym_val_i16();
     x %= 5;
     while ( true )
         x = (x + 1) % 5;

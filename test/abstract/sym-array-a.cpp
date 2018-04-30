@@ -1,13 +1,15 @@
 /* TAGS: sym todo min c++ */
 /* VERIFY_OPTS: --symbolic */
 #include <rst/domains.h>
+
+#include <cstdint>
 #include <cassert>
 
 int main() {
-    _SYM int array[ 4 ];
-    if ( array[ 0 ] < array[ 3 ] ) {
-        assert( array[ 3 ] - array[ 0 ] > 0 );
-    } else {
+    uint64_t array[ 4 ] = { 1, 2, 3, 4 };
+    array[ 0 ] = __sym_val_i64();
+
+    if ( array[ 0 ] > array[ 3 ] ) {
         assert( array[ 0 ] - array[ 3 ] > 0 );
     }
 }

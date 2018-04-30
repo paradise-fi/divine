@@ -14,7 +14,7 @@ struct Store{
 };
 
 void init( Widget * w ) {
-    _SYM int v;
+    int v = __sym_val_i32();
     w->i = v % 10;
 }
 
