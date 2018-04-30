@@ -35,10 +35,14 @@ struct Common {
 
     /* The outside interface of abstraction passes.
      * Translate an abstract intrinsic call to a code block computing the effect of the
-     * abstract equivalent. Where 'args' are already abstracted arguments for instruction.
+     * abstract equivalent.
      * Returns resulting value of abstracted instruction.
      */
-    virtual llvm::Value *process( llvm::Instruction *i, Values &args  ) = 0;
+    virtual llvm::Value* process( llvm::Instruction *i, Values &args  ) = 0;
+
+    virtual llvm::Value* lift( llvm::Value *v ) = 0;
+
+    virtual llvm::Type *type( llvm::Module *m, llvm::Type *type ) const = 0;
 };
 
 }

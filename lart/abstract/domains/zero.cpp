@@ -8,5 +8,13 @@ llvm::Value * Zero::process( llvm::Instruction *, Values & ) {
     NOT_IMPLEMENTED();
 }
 
+llvm::Value* Zero::lift( llvm::Value * ) {
+    NOT_IMPLEMENTED();
+}
+
+llvm::Type* Zero::type( llvm::Module *, llvm::Type * ) const {
+    NOT_IMPLEMENTED();
+}
+
 } // namespace abstract
 } // namespace lart

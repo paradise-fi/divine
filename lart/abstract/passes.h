@@ -25,6 +25,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/vpa.h>
+#include <lart/abstract/duplicator.h>
+#include <lart/abstract/stash.h>
 #include <lart/abstract/taint.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
