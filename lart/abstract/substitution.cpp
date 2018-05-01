@@ -9,7 +9,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/abstract/stash.h>
-#include <lart/abstract/taint.h>
 #include <lart/abstract/metadata.h>
 
 #include <iostream>

@@ -16,7 +16,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/assume.h>
-#include <lart/abstract/taint.h>
 #include <lart/abstract/util.h>
 #include <lart/analysis/edge.h>
 
