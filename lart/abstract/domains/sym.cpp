@@ -37,7 +37,7 @@ ConstantInt* cast_bitwidth( Function *fn ) {
 
 std::string intr_name( CallInst *call ) {
     auto intr = call->getCalledFunction()->getName();
-    size_t pref = std::string( "__vm_test_taint.lart.sym." ).length();
+    size_t pref = std::string( "__vm_test_taint.sym." ).length();
     auto tag = intr.substr( pref ).split( '.' ).first;
     return Symbolic::name_pref + tag.str();
 }
