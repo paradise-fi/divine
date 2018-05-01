@@ -25,7 +25,7 @@ std::string llvm_name( Type *type ) {
 }
 
 bool is_intr( CallInst *intr, std::string name ) {
-    assert( intr->getCalledFunction()->getName().startswith( "__vm_test_taint.lart." ) );
+    assert( intr->getCalledFunction()->getName().startswith( "__vm_test_taint." ) );
     return intr->getCalledFunction()->getName().count( name );
 }
 
@@ -86,12 +86,70 @@ Type* abstract_type( Type *orig, Domain dom ) {
     return StructType::create( { orig }, name );
 }
 
-llvm::Value* placeholder( llvm::Value *val ) {
+Instruction* find_placeholder( Value *val, std::string name ) {
     for ( auto u : val->users() )
-        if ( auto call = dyn_cast< CallInst >( u ) )
-            if ( call->getCalledFunction()->getName().startswith( "lart.placeholder" ) )
+        if ( auto call = dyn_cast< CallInst >( u ) ) {
+            auto fn = call->getCalledFunction();
+            if ( fn && fn->hasName() && fn->getName().startswith( name ) )
                 return call;
-    UNREACHABLE( "Argument does not have placeholder!" );
+        }
+    return nullptr;
+}
+
+Instruction* get_placeholder_impl( Value *val, const std::string &name ) {
+    if ( auto ph = find_placeholder( val, name ) ) {
+        return ph;
+    } else {
+        val->dump();
+        UNREACHABLE( "Value does not have " + name );
+    }
+}
+
+Instruction* get_placeholder( Value *val ) {
+    return get_placeholder_impl( val, "lart.placeholder" );
+}
+
+Instruction* get_unstash_placeholder( Value *val ) {
+    return get_placeholder_impl( val, "lart.unstash.placeholder" );
+}
+
+Instruction* get_placeholder_in_domain( Value *val, Domain dom ) {
+    auto name = "lart." + DomainTable[ dom ] + ".placeholder";
+    return get_placeholder_impl( val, name );
+}
+
+bool has_placeholder( llvm::Value *val, const std::string &name ) {
+    return find_placeholder( val, name );
+}
+
+bool has_placeholder( Value *val ) {
+    return has_placeholder( val, "lart.placeholder" );
+}
+
+bool has_placeholder_in_domain( Value *val, Domain dom ) {
+    auto name = "lart." + DomainTable[ dom ] + ".placeholder";
+    return find_placeholder( val, name );
+}
+
+bool is_placeholder( Instruction* inst ) {
+    if ( auto call = dyn_cast< CallInst >( inst ) ) {
+        auto fn = call->getCalledFunction();
+        if ( fn && fn->hasName() ) {
+            auto name = fn->getName();
+            return name.count( "lart." ) && name.count( ".placeholder" );
+        }
+    }
+
+    return false;
+}
+
+std::vector< Instruction* > placeholders( Module &m ) {
+    return query::query( m ).flatten().flatten()
+        .map( query::refToPtr )
+        .filter( query::llvmdyncast< CallInst > )
+        .filter( query::notnull )
+        .filter( is_placeholder )
+        .freeze();
 }
 
 

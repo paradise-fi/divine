@@ -5,10 +5,12 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/query.h>
 
+#include <lart/abstract/metadata.h>
 #include <lart/abstract/domains/domains.h>
 
 namespace lart {
@@ -17,6 +19,12 @@ namespace abstract {
 using Types = std::vector< llvm::Type * >;
 using Values = std::vector< llvm::Value * >;
 using Functions = std::vector< llvm::Function * >;
+
+template< typename T >
+struct CRTP {
+    T& self() { return static_cast< T& >( *this ); }
+    T const& self() const { return static_cast< T const& >( *this ); }
+};
 
 template< typename Values >
 Types types_of( const Values & vs ) {
@@ -29,6 +37,19 @@ template< typename... Ts >
 bool is_one_of( llvm::Value *v ) {
     return ( llvm::isa< Ts >( v ) || ... );
 }
+
+template< typename Fn >
+void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
+    for ( auto &mdv : abstract_metadata( m ) ) {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( mdv.value() ) ) {
+            auto fn = call->getCalledFunction();
+            if ( !fn->isIntrinsic() && !fn->empty() ) {
+                functor( call );
+            }
+        }
+    }
+}
+
 
 bool is_intr( llvm::CallInst *intr, std::string name );
 bool is_lift( llvm::CallInst *intr );
@@ -53,7 +74,18 @@ llvm::Module* get_module( llvm::Value *val );
 
 llvm::Type* abstract_type( llvm::Type *orig, Domain dom );
 
-llvm::Value* placeholder( llvm::Value *val );
+llvm::Instruction* get_placeholder( llvm::Value *val );
+llvm::Instruction* get_unstash_placeholder( llvm::Value *val );
+llvm::Instruction* get_placeholder_in_domain( llvm::Value *val, Domain dom );
+
+bool has_placeholder( llvm::Value *val );
+bool has_placeholder( llvm::Value *val, const std::string &name );
+
+bool has_placeholder_in_domain( llvm::Value *val, Domain dom );
+
+bool is_placeholder( llvm::Instruction* );
+
+std::vector< llvm::Instruction* > placeholders( llvm::Module & );
 
 bool is_base_type( llvm::Type *type );
 

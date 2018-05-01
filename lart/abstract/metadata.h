@@ -48,6 +48,8 @@ private:
 
 void add_domain_metadata( llvm::Instruction *i, Domain dom );
 
+bool has_domain( llvm::Instruction* );
+
 void make_duals( llvm::Instruction *a, llvm::Instruction *b );
 bool has_dual( llvm::Instruction *inst );
 llvm::Value* get_dual( llvm::Instruction *i );

@@ -156,6 +156,147 @@ size_t taint_args_size( CallInst *taint ) {
     return taint_function( taint )->arg_size() / 4;
 }
 
+Type* base_type( Type* abstract ) {
+    return abstract->getContainedType( 0 );
+}
+
+std::string abstract_type_name( Type *ty ) {
+    return cast< StructType >( ty )->getName().str();
+}
+
+Types args_with_taints( const Values &args ) {
+    auto i1 = Type::getInt1Ty( args[ 0 ]->getContext() );
+
+    Types res;
+    for ( auto arg : args ) {
+        res.push_back( i1 );
+        res.push_back( arg->getType() );
+    }
+
+    return res;
+}
+
+bool is_taintable( Value *v ) {
+    return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( v );
+}
+
+
+namespace placeholder {
+
+Domain domain( Instruction *inst ) {
+    auto ty = inst->getType();
+    if ( ty->isVoidTy() || !inst->getType()->isStructTy() )
+        return get_domain( inst->getOperand( 0 )->getType() );
+    else
+        return get_domain( ty );
+}
+
+Type* return_type( Instruction *inst, DomainsHolder &domains ) {
+    auto ty = inst->getType();
+    if ( ty->isVoidTy() )
+        return ty;
+
+    auto dom = get_domain( ty );
+    return domains.type( base_type( ty ), dom );
+}
+
+bool is_placeholder_of_name( Instruction *inst, std::string name ) {
+    return cast< CallInst >( inst )->getCalledFunction()->getName().count( name );
+}
+
+bool is_stash( Instruction *inst ) {
+    return is_placeholder_of_name( inst, ".stash." );
+}
+
+bool is_unstash( Instruction *inst ) {
+    return is_placeholder_of_name( inst, ".unstash." );
+}
+
+bool is_to_i1( Instruction *inst ) {
+    return is_placeholder_of_name( inst, ".to_i1." );
+}
+
+Value* argument( Instruction *inst ) {
+    if ( is_stash( inst ) ) {
+        auto dom = domain( inst );
+        auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
+        return get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom );
+    } else if ( is_to_i1( inst ) ) {
+        auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
+        auto dom = domain( abstract_placeholder );
+        return get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom );
+    } else {
+        return inst->getOperand( 0 );
+    }
+}
+
+std::string name( Instruction *inst, Value *arg, Domain dom ) {
+    auto name = "lart." + DomainTable[ dom ] + ".placeholder.";
+    if ( is_stash( inst ) )
+        name += "stash.";
+    if ( is_unstash( inst ) )
+        name += "unstash.";
+    if ( is_to_i1( inst ) )
+        name += "to_i1.";
+
+    auto ty = inst->getType();
+    name += ty->isVoidTy() || !ty->isStructTy()
+          ? llvm_name( base_type( arg->getType() ) )
+          : llvm_name( base_type( ty ) );
+    return name;
+}
+
+Function* get( Instruction *inst, DomainsHolder &domains ) {
+    auto rty = inst->getType()->isStructTy() ? return_type( inst, domains ) : inst->getType();
+    auto arg = argument( inst );
+
+    auto dom = domain( inst );
+    auto phname = name( inst, arg, dom );
+
+    auto fty = arg ? FunctionType::get( rty, { arg->getType() }, false )
+                   : FunctionType::get( rty, {}, false );
+   	return get_or_insert_function( get_module( inst ), fty, phname );
+}
+
+} // namespace placeholder
+
+namespace lifter {
+    inline std::string prefix( Instruction *i, Domain d ) {
+        return DomainTable[ d ] + "." + i->getOpcodeName();
+    }
+
+    using Predicate = CmpInst::Predicate;
+    const std::unordered_map< Predicate, std::string > predicate = {
+        { Predicate::ICMP_EQ, "eq" },
+        { Predicate::ICMP_NE, "ne" },
+        { Predicate::ICMP_UGT, "ugt" },
+        { Predicate::ICMP_UGE, "uge" },
+        { Predicate::ICMP_ULT, "ult" },
+        { Predicate::ICMP_ULE, "ule" },
+        { Predicate::ICMP_SGT, "sgt" },
+        { Predicate::ICMP_SGE, "sge" },
+        { Predicate::ICMP_SLT, "slt" },
+        { Predicate::ICMP_SLE, "sle" }
+    };
+
+    std::string name( Instruction *i, Domain d ) {
+        auto pref = prefix( i, d );
+
+        if ( auto icmp = dyn_cast< ICmpInst >( i ) )
+            return pref + "_" + predicate.at( icmp->getPredicate() )
+                        + "." + llvm_name( icmp->getOperand( 0 )->getType() );
+
+        if ( isa< BinaryOperator >( i ) )
+            return pref + "." + llvm_name( i->getType() );
+
+        if ( auto ci = dyn_cast< CastInst >( i ) )
+            return pref + "." + llvm_name( ci->getSrcTy() )
+                        + "." + llvm_name( ci->getDestTy() );
+
+        UNREACHABLE( "Unhandled lifter." );
+    }
+} // namespace taint
+
 struct BaseLifter {
     BaseLifter( DomainsHolder& domains, CallInst *taint )
         : taint( taint ), domains( domains )
@@ -375,6 +516,18 @@ struct BinaryLifter : Lifter {
     }
 };
 
+struct GetLifter : Lifter {
+    using Lifter::Lifter;
+
+    void syntetize() final {
+        auto entry = make_bb( function(), "entry" );
+
+        IRBuilder<> irb( entry );
+
+        auto abstract = std::next( function()->arg_begin(), 3 );
+        irb.CreateRet( abstract );
+    }
+};
 
 } // anonymous namespace
 
@@ -382,302 +535,357 @@ void DomainsHolder::add_domain( std::shared_ptr< Common > dom ) {
     domains[ dom->domain() ] = dom;
 }
 
-void Substitution::run( Module &m ) {
-    domains.init( &m );
-    auto insts = abstract_insts( m );
-    for ( auto &i : insts ) {
-        if ( auto call = dyn_cast< CallInst >( i ) ) {
-                auto fn = call->getCalledFunction();
-                if ( !fn->getName().startswith( "lart.placeholder" ) )
-                    process( call );
-        } else {
-            auto phi = cast< PHINode >( i );
-            auto dual = get_dual( phi );
-            auto dom = MDValue( dual ).domain();
-            auto dphi = cast< PHINode >( get_dual_in_domain( phi, dom ) );
-            for ( size_t op = 0; op < phi->getNumIncomingValues(); ++op ) {
-                auto in = phi->getIncomingValue( op );
-                Value* val = UndefValue::get( dphi->getType() );
-                if ( auto iin = dyn_cast< Instruction >( in ) )
-                    if ( has_dual_in_domain( iin, dom ) )
-                        val = get_dual_in_domain( iin, dom );
-                dphi->addIncoming( val, phi->getIncomingBlock( op ) );
-            }
-        }
-    }
+// --------------------------- Duplication ---------------------------
 
-    for ( auto i : insts ) {
-        if ( i->getParent() ) {
-            i->replaceAllUsesWith( UndefValue::get( i->getType() ) );
-            i->eraseFromParent();
-        }
+void InDomainDuplicate::_run( Module &m ) {
+
+    auto phs = placeholders( m );
+
+    for ( auto ph : phs )
+        if ( !placeholder::is_stash( ph ) )
+            process( ph );
+
+    // process stash placeholders separatelly in this order!
+    for ( auto ph : phs )
+        if ( placeholder::is_stash( ph ) )
+            process( ph );
+
+    // TODO abstract phi nodes
+
+    // clean abstract placeholders
+    for ( auto ph : phs ) {
+        ph->replaceAllUsesWith( UndefValue::get( ph->getType() ) );
+        ph->eraseFromParent();
     }
 }
 
-Type * Substitution::abstract_type( Instruction *i ) {
-    auto dom = MDValue( i ).domain();
-    return domains.type( i->getType(), dom );
+void InDomainDuplicate::process( Instruction *inst ) {
+    IRBuilder<> irb( inst );
+    auto ph = placeholder::get( inst, domains );
+    auto arg = placeholder::argument( inst );
+    auto call = irb.CreateCall( ph, { arg } );
+
+    if ( placeholder::is_to_i1( call ) )
+        inst->replaceAllUsesWith( call );
 }
 
-inline bool is_cast_call( CallInst *call ) {
-    return call->getCalledFunction()->getName().startswith( "__lart_cast" );
+// ---------------------------- Tainting ---------------------------
+
+Function* get_taint_fn( Module *m, Type *ret, Types args, std::string name ) {
+    auto taint = "__vm_test_taint." + name;
+    auto fty = FunctionType::get( ret, args, false );
+    return get_or_insert_function( m, fty, taint );
 }
 
-inline bool is_taint_call( CallInst *call ) {
-    return call->getCalledFunction()->getName().startswith( "__vm_test_taint" );
-}
-
-void Substitution::process( CallInst *call ) {
-    if ( is_cast_call( call ) )
-        process_cast( call );
-    else if ( is_taint_call( call ) )
-        process_taint( call );
-    else
-        UNREACHABLE( "Unknown abstract instruction" );
-}
-
-void Substitution::process_cast( CallInst *call ) {
-    IRBuilder<> irb( call );
-    // TODO move to sym domain
-    if ( call->getType()->isIntegerTy() ) { // to i64 cast
-        auto op = call->getOperand( 0 );
-        if ( auto inst = dyn_cast< Instruction >( op ) ) {
-            auto dom = get_domain( inst->getType() );
-            auto dual = get_dual_in_domain( inst, dom );
-            auto cst = cast< Instruction >( irb.CreatePtrToInt( dual, call->getType() ) );
-            call->replaceAllUsesWith( cst );
-        } else {
-            ASSERT( isa< UndefValue >( op ) );
-            call->replaceAllUsesWith( UndefValue::get( call->getType() ) );
-        }
-    } else { // to abstract cast
-        auto dom = MDValue( get_dual( call ) ).domain();
-        auto dual = get_dual_in_domain( call, dom ); // placeholder
-        auto rty = dual->getType();
-        auto cst = cast< Instruction >( irb.CreateIntToPtr( call->getOperand( 0 ), rty ) );
-        change_dual_in_domain_with( call, cst, dom );
-    }
-}
-
-void Substitution::process_taint( CallInst *call ) {
-    IRBuilder<> irb( call );
-
-    auto rty = return_type_of_intr( call );
-
-    auto intr = cast< Function >( call->getOperand( 0 ) );
-    auto name = "lart." + intr->getName().drop_front( std::string( "lart.gen." ).size() ).str();
-
-    auto apply = [] ( auto values, auto fn ) {
-        return query::query( values ).map( fn ).freeze();
-    };
-
-    auto to_domain = [&] ( auto type ) {
-        return domains.type( type, get_domain( type ) );
-    };
-
-    auto types_to_domain = [&] ( auto types ) {
-        return apply( types, [&] ( auto ty ) {
-            return ty->isStructTy() ? to_domain( ty ) : ty;
-        } );
-    };
-
-    auto arg_types = apply( intr->args(), [] ( auto &a ) { return a.getType(); } );
-    auto fty = FunctionType::get( rty, types_to_domain( arg_types ), false );
-    auto intrinsic = get_or_insert_function( get_module( call ), fty, name );
-
-    auto taint_types = apply( call->arg_operands(), [] ( const auto &o ) {
-        return o->getType();
-    } );
-
-    taint_types = types_to_domain( taint_types );
-    taint_types[ 0 ] = intrinsic->getType();
-
-    auto taint_fty = FunctionType::get( rty, taint_types, false );
-    auto m = get_module( call );
-    auto tname = "__vm_test_taint." + name;
-    auto taint = get_or_insert_function( m, taint_fty, tname );
-
-    Values args = { intrinsic };
-    for ( size_t i = 1; i < taint_fty->getNumParams(); ++i ) {
-        auto op = call->getArgOperand( i );
-        if ( isa< UndefValue >( op ) ) {
-            args.push_back( UndefValue::get( taint_fty->getParamType( i ) ) );
-        } else if ( op->getType()->isStructTy() ) {
-            auto inst = cast< Instruction >( op );
-            auto dom = get_domain_of_intr( inst );
-            args.push_back( get_dual_in_domain( inst, dom ) );
-        } else if ( op->getType()->isIntegerTy() ) {
-            args.push_back( op );
-        } else if ( op->getType()->isPointerTy() ) {
-            args.push_back( op );
-        } else {
-            UNREACHABLE( "Unknown argument type" );
-        }
-    }
-
-    auto subs = irb.CreateCall( taint, args );
-
-    if ( call->getType()->isStructTy() ) {
-        auto dom = get_domain_of_intr( call );
-        if ( has_dual_in_domain( call, dom ) )
-            change_dual_in_domain_with( call, subs, dom );
-        else
-            make_duals_in_domain( call, subs, dom );
-    }
-
-    if ( call->getType()->isIntegerTy() )
-        call->replaceAllUsesWith( subs );
-}
-
-struct ArgWrapper {
-    ArgWrapper( Function *fn, DomainsHolder &doms )
-        : fn( fn ), domains( doms )
+template< typename Derived >
+struct TaintBase : CRTP< Derived > {
+    TaintBase( Instruction *placeholder )
+        : placeholder( placeholder )
     {}
 
-    void unwrap() {
-        IRBuilder<> irb( fn->getEntryBlock().begin() );
+    Instruction* generate() {
+        IRBuilder<> irb( placeholder );
 
-        auto ty = type();
+        Values args;
+        args.emplace_back( function() );
+        args.emplace_back( default_value() );
 
-        auto unfn = unstash_function( fn->getParent() );
-        auto unstash = irb.CreateCall( unfn );
-        auto wrapped = irb.CreateIntToPtr( unstash, ty->getPointerTo() );
+        auto sargs = this->self().arguments();
+        args.insert( args.end(), sargs.begin(), sargs.end() );
 
-        auto loaded = irb.CreateLoad( wrapped );
+        auto rty = default_value()->getType();
 
-        for ( unsigned int i = 0; i < ty->getNumElements(); ++i ) {
-            auto arg = std::next( fn->arg_begin(), i );
-            if ( arg->getType()->isIntegerTy() ) {
-                auto ev = cast< Instruction >( irb.CreateExtractValue( loaded, { i } ) );
-                auto ph = cast< Instruction >( placeholder( arg ) );
-                make_duals_in_domain( ph, ev, get_domain( ph->getType() ) );
-            }
+        auto m = get_module( placeholder );
+        auto taint = get_taint_fn( m, rty, types_of( args ), this->self().name() );
+        return cast< Instruction >( irb.CreateCall( taint, args ) );
+    }
+
+    Type* return_type() const {
+        return placeholder->getType();
+    }
+
+    Value* default_value() const {
+        if ( placeholder::is_to_i1( placeholder ) )
+            return concrete();
+        return UndefValue::get( placeholder->getType() );
+    }
+
+    Value* concrete() const {
+        if ( placeholder::is_to_i1( placeholder ) )
+            return cast< Instruction >( placeholder->getOperand( 0 ) )->getOperand( 0 );
+        return placeholder->getOperand( 0 );
+    }
+
+    Domain domain() const {
+        return MDValue( concrete() ).domain();
+    }
+
+    Function *function() {
+        auto m = get_module( placeholder );
+        auto args = args_with_taints( this->self().arguments() );
+        auto fty = FunctionType::get( return_type(), args, false );
+        auto fname = "lart." + this->self().name();
+        return get_or_insert_function( m, fty, fname );
+    }
+
+protected:
+    Instruction *placeholder;
+};
+
+struct Taint : TaintBase< Taint > {
+
+    Taint( Instruction *placeholder, DomainsHolder& domains )
+        : TaintBase( placeholder ), domains( domains )
+    {}
+
+    Values arguments() {
+        auto dom = domain();
+        auto inst = cast< Instruction >( concrete() );
+
+        Values res;
+        for ( auto & op : inst->operands() ) {
+            res.push_back( op );
+            if ( has_placeholder_in_domain( op, dom ) )
+                res.push_back( get_placeholder_in_domain( op, dom ) );
+            else
+                res.push_back( UndefValue::get( domains.type( op->getType(), dom ) ) );
         }
+
+        return res;
     }
 
-    void wrap( CallInst *call ) {
-        IRBuilder<> irb( call );
-
-        auto ty = type();
-        auto wrapped = irb.CreateAlloca( ty );
-
-        auto args = query::query( call->arg_operands() )
-            .map( [] ( auto &op ) -> Value* {
-                auto arg = dyn_cast< Instruction >( op );
-                if ( arg && has_dual( arg ) ) {
-                    auto dom = MDValue( arg ).domain();
-                    return get_dual_in_domain( cast< Instruction >( get_dual( arg ) ), dom );
-                } else {
-                    return nullptr;
-                }
-            } )
-            .freeze();
-
-        Value *val = UndefValue::get( ty );
-        for ( unsigned int i = 0; i < ty->getNumElements(); ++i ) {
-            if ( args[ i ] ) {
-                val = irb.CreateInsertValue( val, args[ i ], { i } );
-            } else {
-                auto undef = UndefValue::get( ty->getElementType( i ) );
-                val = irb.CreateInsertValue( val, undef, { i } );
-            }
-        }
-
-        irb.CreateStore( val, wrapped );
-
-        auto i64 = IntegerType::get( call->getContext(), 64 );
-        auto i = irb.CreatePtrToInt( wrapped, i64 );
-        auto sfn = stash_function( get_module( call ) );
-        irb.CreateCall( sfn, { i } );
+    std::string name() const {
+        auto inst = cast< Instruction >( concrete() );
+        return lifter::name( inst, domain() );
     }
 
-    StructType* type() {
-        auto tys = types();
-        auto &ctx = tys.at( 0 )->getContext();
-        return StructType::get( ctx, tys );
-    }
 private:
-    Values placeholders() const {
-        return query::query( fn->args() )
-            .map( [&] ( auto &arg ) {
-                return arg.getType()->isIntegerTy() ? placeholder( &arg ) : &arg;
-            } )
-            .freeze();
-    }
-
-    Types types() const {
-        return query::query( placeholders() )
-            .map( [&] ( auto &val ) {
-                if ( isa< Argument >( val ) ) {
-                    return val->getType();
-                } else {
-                    auto inst = cast< CallInst >( val );
-                    auto dom = MDValue( inst ).domain();
-                    return domains.type( inst->getOperand( 0 )->getType(), dom );
-                }
-            } )
-            .freeze();
-    }
-
-    Function *fn;
     DomainsHolder &domains;
 };
 
-Functions abstract_functions( Module &m ) {
-    return query::query( m )
-        .map( query::refToPtr )
-        .filter( [] ( auto &fn ) {
-            return fn->getMetadata( "lart.abstract.roots" );
-        } )
-        .filter( [] ( auto fn ) {
-            return fn->getFunctionType()->getNumParams() != 0;
+struct RepTaint : TaintBase< RepTaint > {
+    using TaintBase< RepTaint >::TaintBase;
+
+    LoadInst* loaded() const {
+        return cast< LoadInst >( placeholder->getOperand( 0 ) );
+    }
+
+    Values arguments() {
+        auto load = loaded();
+        return { load, load->getPointerOperand() };
+    }
+
+    std::string name() const {
+        return DomainTable[ domain() ] + ".rep." + llvm_name( loaded()->getType() );
+    }
+};
+
+struct GetTaint : TaintBase< GetTaint > {
+    using TaintBase< GetTaint >::TaintBase;
+
+    Value* stash() {
+        ASSERT( placeholder->hasNUses( 1 ) );
+        return placeholder->user_back();
+    }
+
+    Values arguments() {
+        return { concrete(), placeholder };
+    }
+
+    std::string name() const {
+        return DomainTable[ domain() ] + ".get." + llvm_name( concrete()->getType() );
+    }
+};
+
+struct ToBoolTaint : TaintBase< ToBoolTaint > {
+    using TaintBase< ToBoolTaint >::TaintBase;
+
+    Values arguments() {
+        auto abstract = cast< Instruction >( placeholder->getOperand( 0 ) );
+        auto concrete = abstract->getOperand( 0 );
+        return { concrete, abstract };
+    }
+
+    // TODO set default in base class
+    Value* default_value() const {
+        return UndefValue::get( placeholder->getType() );
+    }
+
+    std::string name() const {
+        return DomainTable[ domain() ] + ".to_i1";
+    }
+};
+
+namespace bundle {
+
+auto operand_placeholders( CallInst *call ) {
+    return query::query( call->arg_operands() )
+        .map ( [] ( auto &arg ) {
+            auto dom = MDValue( arg ).domain();
+            return get_placeholder_in_domain( arg, dom );
         } )
         .freeze();
 }
 
-void SubstitutionDuplicator::run( Module &m ) {
-    domains.init( &m );
+auto argument_placeholders( CallInst *call ) {
+    auto fn = call->getCalledFunction();
 
-    auto insts = query::query( m )
-        .filter( [] ( auto &fn ) { return fn.getMetadata( "lart.abstract.roots" ); } )
-        .flatten()
-        .flatten()
-        .map( query::refToPtr )
-        .filter( [] ( auto i ) { return is_abstract( i->getType() ); } )
-        .filter( [] ( auto i ) { return has_dual( i ) && !isa< Argument >( get_dual( i ) ); } );
-
-    for ( auto i : insts )
-        process( i );
-
-    for ( auto fn : abstract_functions( m ) )
-        ArgWrapper( fn, domains ).unwrap();
-
-    for ( auto fn : abstract_functions( m ) )
-        for ( auto u : fn->users() )
-            if ( auto call = dyn_cast< CallInst >( u ) )
-                ArgWrapper( call->getCalledFunction(), domains ).wrap( call );
+    unsigned int idx = 0;
+    return query::query( call->arg_operands() )
+        .map( [&] ( auto &op ) {
+            auto dom = MDValue( op ).domain();
+            auto arg = std::next( fn->arg_begin(), idx++ );
+            return get_placeholder_in_domain( arg, dom );
+        } )
+        .freeze();
 }
 
-void SubstitutionDuplicator::process( Instruction *i ) {
-    auto m = get_module( i );
-    auto ty = i->getType();
-    auto dom = get_domain( ty );
-    auto out = domains.type( ty, dom );
-	auto fn = dup_function( m, ty, out );
-
-	IRBuilder<> irb( i );
-
-    auto dup = [&] () -> Instruction* {
-        if ( auto phi = dyn_cast< PHINode >( i ) )
-            return irb.CreatePHI( out, phi->getNumIncomingValues() );
-        return irb.CreateCall( fn, { i } );
-    } ();
-
-	dup->removeFromParent();
-	dup->insertAfter( i );
-
-    make_duals_in_domain( i, dup, dom );
+Type* packed_type( CallInst *call ) {
+    auto phs = operand_placeholders( call );
+    return StructType::get( call->getContext(), types_of( phs ) );
 }
+
+void stash_arguments( CallInst *call ) {
+    auto fn = call->getCalledFunction();
+    if ( fn->getMetadata( "lart.abstract.return" ) )
+        return; // skip internal lart functions
+
+    auto pack_ty = packed_type( call );
+
+    IRBuilder<> irb( call );
+    auto pack = irb.CreateAlloca( pack_ty );
+
+    unsigned int idx = 0;
+    Value *val = UndefValue::get( pack_ty );
+    for ( auto ph : operand_placeholders( call ) ) {
+        auto arg = GetTaint( ph ).generate();
+        val = irb.CreateInsertValue( val, arg, { idx } );
+    }
+
+    irb.CreateStore( val, pack );
+
+    auto i64 = IntegerType::get( call->getContext(), 64 );
+    auto i = irb.CreatePtrToInt( pack, i64 );
+    auto sfn = stash_function( get_module( call ) );
+    irb.CreateCall( sfn, { i } );
+}
+
+Values unstash_arguments( CallInst *call ) {
+    auto fn = call->getCalledFunction();
+    if ( fn->getMetadata( "lart.abstract.return" ) )
+        return {}; // skip internal lart functions
+
+    IRBuilder<> irb( fn->getEntryBlock().begin() );
+
+    auto pack_ty = cast< StructType >( packed_type( call ) );
+
+    auto unfn = unstash_function( get_module( call ) );
+    auto unstash = irb.CreateCall( unfn );
+    auto packed = irb.CreateIntToPtr( unstash, pack_ty->getPointerTo() );
+
+    auto loaded = irb.CreateLoad( packed );
+
+    Values unpacked;
+    for ( unsigned int i = 0; i < pack_ty->getNumElements(); ++i )
+        unpacked.push_back( irb.CreateExtractValue( loaded, { i } ) );
+    return unpacked;
+}
+
+void stash_return_value( CallInst *call ) {
+    auto fn = call->getCalledFunction();
+    if ( fn->getMetadata( "lart.abstract.return" ) )
+        return; // skip internal lart functions
+
+    auto ret = dyn_cast< ReturnInst >( fn->back().getTerminator() );
+    auto val = ret->getReturnValue();
+
+    auto dom = MDValue( call ).domain();
+    ASSERT( has_placeholder( call, "lart." + DomainTable[ dom ] + ".placeholder.unstash" ) );
+    auto get = GetTaint( get_placeholder_in_domain( val, dom ) ).generate();
+
+    IRBuilder<> irb( ret );
+    auto i64 = IntegerType::get( call->getContext(), 64 );
+    auto i = irb.CreatePtrToInt( get, i64 );
+    auto sfn = stash_function( get_module( call ) );
+    irb.CreateCall( sfn, { i } );
+}
+
+Value* unstash_return_value( CallInst *call ) {
+    IRBuilder<> irb( call );
+
+    auto unfn = unstash_function( get_module( call ) );
+    auto unstash = irb.CreateCall( unfn );
+
+    auto dom = MDValue( call ).domain();
+    auto ph = get_placeholder_in_domain( call, dom );
+
+    auto ret = irb.CreateIntToPtr( unstash, ph->getType() );
+
+    call->removeFromParent();
+    call->insertBefore( unstash );
+
+    return ret;
+}
+
+} // namespace bundle
+
+void Tainting::_run( Module &m ) {
+    std::unordered_map< Value*, Value* > substitutes;
+
+    auto phs = placeholders( m );
+
+    for ( auto ph : phs )
+        if ( !placeholder::is_stash( ph ) && !placeholder::is_unstash( ph ) )
+            substitutes[ ph ] = process( ph );
+
+    std::set< Function* > processed;
+    run_on_abstract_calls( [&] ( auto call ) {
+        auto fn = call->getCalledFunction();
+        if ( call->getNumArgOperands() ) {
+            bundle::stash_arguments( call );
+            if ( !processed.count( fn ) ) {
+                auto vals = bundle::unstash_arguments( call );
+
+                unsigned int idx = 0;
+                for ( auto ph : bundle::argument_placeholders( call ) ) {
+                    substitutes[ ph ] = vals[ idx++ ];
+                }
+            }
+        }
+
+        if ( !call->getType()->isVoidTy() ) {
+            if ( !processed.count( fn ) ) {
+                bundle::stash_return_value( call );
+            }
+
+            auto dom = MDValue( call ).domain();
+            auto ph = get_placeholder_in_domain( call, dom );
+            substitutes[ ph ] = bundle::unstash_return_value( call );
+        }
+
+        processed.insert( fn );
+    }, m );
+
+    for ( auto &sub : substitutes )
+        sub.first->replaceAllUsesWith( sub.second );
+
+    for ( auto &ph : phs )
+        ph->eraseFromParent();
+}
+
+Value* Tainting::process( Instruction *placeholder ) {
+    auto op = placeholder->getOperand( 0 );
+    if ( isa< LoadInst >( op ) )
+        return RepTaint( placeholder ).generate();
+    if ( is_taintable( op ) )
+        return Taint( placeholder, domains ).generate();
+    if ( placeholder::is_to_i1( placeholder ) )
+        return ToBoolTaint( placeholder ).generate();
+    placeholder->dump();
+    UNREACHABLE( "Unknown placeholder" );
+}
+
+// ---------------------------- UnrepStores ---------------------------
 
 void UnrepStores::run( Module &m ) {
     domains.init( &m );
@@ -697,7 +905,7 @@ void UnrepStores::run( Module &m ) {
         process( cast< StoreInst >( s ) );
 
     for ( auto s : stores )
-	s->eraseFromParent();
+	    s->eraseFromParent();
 }
 
 void UnrepStores::process( StoreInst *store ) {
@@ -728,7 +936,7 @@ void UnrepStores::process( StoreInst *store ) {
         }
 
         if ( auto arg = dyn_cast< Argument >( val ) ) {
-            auto ph = cast< Instruction >( placeholder( arg ) );
+            auto ph = cast< Instruction >( get_placeholder( arg ) );
             return get_dual_in_domain( ph, dom );
         }
 
@@ -747,32 +955,35 @@ void UnrepStores::process( StoreInst *store ) {
     irb.CreateStore( taint, ptr );
 }
 
+// ---------------------------- Synthesize ---------------------------
 
-void Synthesize::run( Module &m ) {
-    domains.init( &m );
-    for ( auto t : taints( m ) )
+void Synthesize::_run( Module &m ) {
+    for ( auto &t : taints( m ) )
         process( cast< CallInst >( t ) );
 }
 
 void Synthesize::process( CallInst *taint ) {
     auto fn = cast< Function >( taint->getOperand( 0 ) );
-    if ( fn->empty() ) {
-        if ( is_taint_of_type( fn, ".rep" ) ) {
-            RepLifter( domains, taint ).syntetize();
-	} else if ( is_taint_of_type( fn, ".unrep" ) ) {
-            UnrepLifter( domains, taint ).syntetize();
-        } else if ( is_taint_of_type( fn, ".to_i1" ) ) {
-            ToBoolLifter( domains, taint ).syntetize();
-        } else if ( is_taint_of_type( fn, ".assume" ) ) {
-            AssumeLifter( domains, taint ).syntetize();
-        } else if ( taint_args_size( taint ) == 1 ) {
-            UnaryLifter( domains, taint ).syntetize();
-        } else if ( taint_args_size( taint ) == 2 ) {
-            BinaryLifter( domains, taint ).syntetize();
-        } else {
-            taint->dump();
-            UNREACHABLE( "Unknown taint function." );
-        }
+    if ( !fn->empty() )
+        return;
+
+    if ( is_taint_of_type( fn, ".rep" ) ) {
+        RepLifter( domains, taint ).syntetize();
+    } else if ( is_taint_of_type( fn, ".unrep" ) ) {
+        UnrepLifter( domains, taint ).syntetize();
+    } else if ( is_taint_of_type( fn, ".to_i1" ) ) {
+        ToBoolLifter( domains, taint ).syntetize();
+    } else if ( is_taint_of_type( fn, ".assume" ) ) {
+        AssumeLifter( domains, taint ).syntetize();
+    } else if ( is_taint_of_type( fn, ".get" ) ) {
+        GetLifter( domains, taint ).syntetize();
+    } else if ( taint_args_size( taint ) == 1 ) {
+        UnaryLifter( domains, taint ).syntetize();
+    } else if ( taint_args_size( taint ) == 2 ) {
+        BinaryLifter( domains, taint ).syntetize();
+    } else {
+        taint->dump();
+        UNREACHABLE( "Unknown taint function." );
     }
 }
 

@@ -41,24 +41,32 @@ private:
     std::unordered_map< Domain, Abstraction > domains;
 };
 
-struct Substitution {
-    void run( llvm::Module& );
-    void process( llvm::CallInst * );
-private:
-    void process_cast( llvm::CallInst * );
-    void process_taint( llvm::CallInst * );
+template< typename Pass >
+struct PassWithDomains : CRTP< Pass > {
 
-    llvm::Type * abstract_type( llvm::Instruction* );
+    void run( llvm::Module &m ) {
+        domains.init( &m );
+        this->self()._run( m );
+    }
 
+protected:
     DomainsHolder domains;
 };
 
-struct SubstitutionDuplicator {
-    void run( llvm::Module& );
+
+struct InDomainDuplicate : PassWithDomains< InDomainDuplicate > {
+    void _run( llvm::Module& );
+private:
     void process( llvm::Instruction* );
-private:
-    DomainsHolder domains;
 };
+
+
+struct Tainting : PassWithDomains< Tainting > {
+    void _run( llvm::Module& );
+private:
+    llvm::Value* process( llvm::Instruction* );
+};
+
 
 struct UnrepStores {
     void run( llvm::Module& );
@@ -67,18 +75,9 @@ private:
     DomainsHolder domains;
 };
 
-/*struct RepLoads {
-    void run( llvm::Module& );
-    void process( llvm::Instruction* );
-private:
-    DomainsHolder domains;
-};*/
-
-struct Synthesize {
-    void run( llvm::Module& );
+struct Synthesize : PassWithDomains< Synthesize > {
+    void _run( llvm::Module& );
     void process( llvm::CallInst* );
-private:
-    DomainsHolder domains;
 };
 
 } // namespace abstract

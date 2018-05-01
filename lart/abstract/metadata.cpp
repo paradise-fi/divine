@@ -143,6 +143,9 @@ void add_domain_metadata( Instruction *i, Domain dom ) {
     i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
 }
 
+bool has_domain( Instruction *inst ) {
+    return inst->getMetadata( "lart.domains" );
+}
 
 void make_duals( Instruction *a, Instruction *b ) {
     auto &ctx = a->getContext();

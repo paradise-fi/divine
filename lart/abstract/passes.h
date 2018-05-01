@@ -26,6 +26,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/vpa.h>
 #include <lart/abstract/duplicator.h>
+#include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
@@ -60,15 +61,13 @@ namespace abstract {
         void run( llvm::Module & m ) {
             auto passes = make_pass_wrapper( CreateAbstractMetadata()
                                            , VPA()
-                                           , Unstash()
                                            , Duplicator()
                                            , Stash()
-                                           , Tainting()
-                                           , TaintBranching()
+                                           , ExpandBranching()
                                            , AddAssumes()
-                                           , SubstitutionDuplicator()
-                                           , UnrepStores()
-                                           , Substitution()
+                                           , InDomainDuplicate()
+                                           , Tainting()
+//                                           , UnrepStores()
                                            , Synthesize()
 										   );
             passes.run( m );
@@ -174,11 +173,9 @@ auto test( Compile::ModulePtr m, Passes&&... passes ) {
     lart::Driver drv;
     drv.setup( CreateAbstractMetadata()
              , VPA()
-             , Unstash()
              , Duplicator()
              , Stash()
-             , Tainting()
-             , TaintBranching()
+             , ExpandBranching()
              , std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
@@ -204,8 +201,9 @@ auto test_assume( const File & src, Passes&&... passes ) {
 auto test_substitution( const File & src ) {
     using namespace abstract;
     return test_assume( src
-                      , SubstitutionDuplicator()
-                      , Substitution()
+                      , InDomainDuplicate()
+                      , Tainting()
+//                      , UnrepStores()
                       , Synthesize() );
 }
 
@@ -1143,6 +1141,16 @@ struct Substitution {
         auto call4 = m->getFunction( "_Z5call4i" );
         ASSERT( call4->getMetadata( "lart.abstract.roots" ) );
         ASSERT( call4->back().getTerminator()->getMetadata( "lart.domains" ) );
+    }
+
+    TEST( call_undef_return ) {
+        auto s = R"(
+                    bool is_zero( int v ) { return v == 0; }
+                    int main() {
+                        _SYM int input;
+                        return is_zero( input );
+                    })";
+        test_substitution( annotation + s );
     }
 };
 
