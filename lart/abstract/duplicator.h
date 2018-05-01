@@ -14,7 +14,6 @@ namespace abstract {
 struct Duplicator {
     void run( llvm::Module& );
     void process( llvm::Instruction* );
-    void process_call( llvm::CallInst* );
 private:
     std::unordered_set< llvm::Function* > seen;
 	std::map< llvm::Value*, llvm::Value* > dups;
