@@ -720,7 +720,9 @@ namespace bundle {
 
 auto operand_placeholders( CallInst *call ) {
     return query::query( call->arg_operands() )
-        .map ( [] ( auto &arg ) {
+        .map ( [] ( auto &arg ) -> Value* {
+            if ( isa< Constant >( arg ) )
+                return arg.get();
             auto dom = MDValue( arg ).domain();
             return get_placeholder_in_domain( arg, dom );
         } )
@@ -732,9 +734,13 @@ auto argument_placeholders( CallInst *call ) {
 
     unsigned int idx = 0;
     return query::query( call->arg_operands() )
-        .map( [&] ( auto &op ) {
-            auto dom = MDValue( op ).domain();
+        .map( [&] ( auto &op ) -> Value* {
             auto arg = std::next( fn->arg_begin(), idx++ );
+
+            if ( isa< Constant >( op ) )
+                return arg;
+
+            auto dom = MDValue( op ).domain();
             return get_placeholder_in_domain( arg, dom );
         } )
         .freeze();
@@ -758,8 +764,14 @@ void stash_arguments( CallInst *call ) {
     unsigned int idx = 0;
     Value *val = UndefValue::get( pack_ty );
     for ( auto ph : operand_placeholders( call ) ) {
-        auto arg = GetTaint( ph ).generate();
-        val = irb.CreateInsertValue( val, arg, { idx } );
+        auto arg = [&] () -> Value* {
+            if ( isa< Constant >( ph ) )
+                return UndefValue::get( ph->getType() );
+            else
+                return GetTaint( cast< Instruction >( ph ) ).generate();
+        } ();
+
+        val = irb.CreateInsertValue( val, arg, { idx++ } );
     }
 
     irb.CreateStore( val, pack );
@@ -848,7 +860,8 @@ void Tainting::_run( Module &m ) {
 
                 unsigned int idx = 0;
                 for ( auto ph : bundle::argument_placeholders( call ) ) {
-                    substitutes[ ph ] = vals[ idx++ ];
+                    if ( !isa< Constant >( ph ) )
+                        substitutes[ ph ] = vals[ idx++ ];
                 }
             }
         }
