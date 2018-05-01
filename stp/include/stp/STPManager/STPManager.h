@@ -203,6 +203,7 @@ public:
 
   // count is used in the creation of new variables
   unsigned int _symbol_count;
+  uint64_t _node_uid_cntr = 0;
 
   // The value to append to the filename when saving the CNF.
   unsigned int CNFFileNameCounter;

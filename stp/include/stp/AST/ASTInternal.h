@@ -74,7 +74,7 @@ protected:
   // the are NOTs of.
   //
   uint64_t node_uid;
-  static THREAD_LOCAL uint64_t node_uid_cntr;
+  uint64_t &node_uid_cntr();
 
   // reference counting for garbage collection
   uint32_t _ref_count;
@@ -136,7 +136,7 @@ protected:
 public:
   // Constructor (kind only, empty children, int nodenum)
   ASTInternal(STPMgr* mgr, Kind kind)
-      : nodeManager(mgr), node_uid(node_uid_cntr += 2), _ref_count(0),
+      : nodeManager(mgr), node_uid(node_uid_cntr() += 2), _ref_count(0),
         _kind(kind), iteration(0)
   {
   }
