@@ -111,23 +111,6 @@ struct AddressMap
         return _global[ v ];
     }
 
-    LocalPointer local( llvm::Instruction *i )
-    {
-        return LocalPointer( code( i ).instruction(), 0 );
-    }
-
-    LocalPointer local( llvm::Argument *a )
-    {
-        auto f = a->getParent();
-        int seqno = 0;
-        for ( auto &b : f->args() )
-            if ( &b == a )
-                return LocalPointer( seqno, 0 );
-            else
-                ++ seqno;
-        UNREACHABLE( "argument not found" );
-    }
-
     /*
      * Obtain an address corresponding to an llvm::Value. The input llvm::Value
      * must be either a code pointer, a global variable or a register / local
@@ -141,10 +124,6 @@ struct AddressMap
         if ( is_codeptr( v ) )
             return code( v );
 
-        if ( auto I = llvm::dyn_cast< llvm::Instruction >( v ) )
-            return local( I );
-        if ( auto A = llvm::dyn_cast< llvm::Argument >( v ) )
-            return local( A );
         if ( auto G = llvm::dyn_cast< llvm::GlobalVariable >( v ) )
             return global( G );
 

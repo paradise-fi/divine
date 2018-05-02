@@ -35,7 +35,7 @@ enum class PointerType : unsigned { Global = _VM_PT_Global,
                                     Heap = _VM_PT_Heap,
                                     Weak = _VM_PT_Weak,
                                     Marked = _VM_PT_Marked,
-                                    Local = _VM_PT_Local };
+                                  };
 
 static const int PointerBytes = _VM_PB_Full / 8;
 using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
@@ -148,7 +148,6 @@ struct SlotPointer : GenericPointer
  * counting from the start of the slot.
  */
 using GlobalPointer = SlotPointer< PointerType::Global >;
-using LocalPointer = SlotPointer< PointerType::Local >;
 
 struct HeapPointer : GenericPointer
 {
@@ -171,7 +170,6 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
         case PointerType::Heap: return o << "heap";
         case PointerType::Weak: return o << "weak";
         case PointerType::Marked: return o << "marked";
-        case PointerType::Local: return o << "local";
     }
     return o << "ptr" << int( p );
 }
