@@ -944,24 +944,11 @@ void UnrepStores::process( StoreInst *store ) {
         return get_or_insert_function( m, fty, name );
     } ();
 
-    auto abstract = [&] () -> Value* {
-        if ( auto inst = dyn_cast< Instruction >( val ) ) {
-            if ( has_dual( inst ) ) {
-                auto dual = cast< Instruction >( get_dual( inst ) );
-                return get_dual_in_domain( dual, dom );
-            } else {
-                return UndefValue::get( aty );
-            }
-        }
-
-        if ( auto arg = dyn_cast< Argument >( val ) ) {
-            auto ph = cast< Instruction >( get_placeholder( arg ) );
-            return get_dual_in_domain( ph, dom );
-        }
-
-        val->dump();
-        UNREACHABLE( "Can not obtaint dual in domain." );
-    } ();
+    Value *abstract;
+    if ( has_placeholder_in_domain( val, dom ) )
+        abstract = get_placeholder_in_domain( val, dom );
+    else
+        abstract = UndefValue::get( aty );
 
     Values args = { unrep, val, val, abstract, ptr };
 
