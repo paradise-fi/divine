@@ -54,12 +54,6 @@ Values in_domain_args( CallInst *intr, std::map< Value*, Value* > &smap ) {
         .freeze();
 }
 
-Domain get_domain( Type *type ) {
-    auto st = cast< StructType >( type );
-    auto name = st->getName().split('.').second.split('.').first;
-    return DomainTable[ name.str() ];
-}
-
 void make_duals_in_domain( Instruction *a, Instruction *b, Domain dom ) {
     auto &ctx = a->getContext();
     auto tag = "lart.dual." + DomainTable[ dom ];

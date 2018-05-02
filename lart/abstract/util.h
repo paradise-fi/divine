@@ -50,6 +50,7 @@ void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
     }
 }
 
+Domain get_domain( llvm::Type *type );
 
 bool is_intr( llvm::CallInst *intr, std::string name );
 bool is_lift( llvm::CallInst *intr );

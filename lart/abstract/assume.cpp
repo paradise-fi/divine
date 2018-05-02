@@ -34,6 +34,12 @@ namespace {
         Constant *val;
     };
 
+    Function* assume_placeholder( Instruction *cond ) {
+        auto i1 = Type::getInt1Ty( cond->getContext() );
+        auto fty = llvm::FunctionType::get( i1, { i1, i1 }, false );
+        return get_or_insert_function( get_module( cond ), fty, "lart.assume.placeholder" );
+    }
+
     using BB = llvm::BasicBlock;
     using BBEdge = analysis::BBEdge;
     struct AssumeEdge : BBEdge {
@@ -41,41 +47,16 @@ namespace {
             : BBEdge( from, to )
         {}
 
-        Function* assume_fn( Module *m, Type *concrete, Type *abstract, Domain dom ) {
-            auto i1 = Type::getInt1Ty( m->getContext() );
-            auto fty = FunctionType::get( abstract, { i1, concrete, i1, abstract, i1, i1 }, false );
-            std::string tag = "lart.gen." + DomainTable[ dom ] + ".assume";
-
-            return cast< Function >( m->getOrInsertFunction( tag, fty ) );
-        }
-
         void assume( Assumption ass ) {
             unsigned i = succ_idx( from, to );
             SplitEdge( from, to );
 
             auto edge_bb = from->getTerminator()->getSuccessor( i );
 
-            auto taint = cast< Instruction >( ass.cond );
-            auto dom = MDValue( get_dual( taint ) ).domain();
-
-            auto m = get_module( ass.cond );
-            auto abstract = ass.cond;
-            auto concrete = get_dual( cast< Instruction >( abstract ) );
-
-            Values args = { assume_fn( from->getModule(), concrete->getType(), abstract->getType(), dom ),
-                            abstract,  // fallback value
-                            concrete,
-                            abstract,  // assumed condition
-                            ass.val }; // result of assumed condition
-
-            auto fn = get_taint_fn( m, abstract->getType(), types_of( args ) );
+            auto to_i1 = cast< Instruction >( ass.cond );
 
             llvm::IRBuilder<> irb( &edge_bb->front() );
-            auto tass = irb.CreateCall( fn, args );
-
-            auto dual = cast< Instruction >( get_dual( taint ) );
-            tass->setMetadata( "lart.domains", dual->getMetadata( "lart.domains" ) );
-            // TODO use assumed result
+            irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
         }
 
         unsigned succ_idx( BB * from, BB * to ) {
@@ -90,22 +71,22 @@ namespace {
 }
 
     void AddAssumes::run( Module & m ) {
-        for ( auto t : taints( m ) )
-            for ( auto u : t->users() )
+        for ( auto ph : placeholders( m ) )
+            for ( auto u : ph->users() )
                 if ( auto br = dyn_cast< BranchInst >( u ) )
                     process( br );
     }
 
     void AddAssumes::process( BranchInst *br ) {
         auto to_i1 = cast< CallInst >( br->getCondition() );
-        auto cond = get_dual( cast< Instruction >( to_i1->getOperand( 1 ) ) );
 
         auto &ctx = br->getContext();
+
         AssumeEdge true_br = { br->getParent(), br->getSuccessor( 0 ) };
-        true_br.assume( { cond, ConstantInt::getTrue( ctx ) } );
+        true_br.assume( { to_i1, ConstantInt::getTrue( ctx ) } );
 
         AssumeEdge false_br = { br->getParent(), br->getSuccessor( 1 ) };
-        false_br.assume( { cond, ConstantInt::getFalse( ctx ) } );
+        false_br.assume( { to_i1, ConstantInt::getFalse( ctx ) } );
     }
 
 } /* namespace abstract */

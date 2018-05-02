@@ -24,6 +24,12 @@ std::string llvm_name( Type *type ) {
     return rso.str();
 }
 
+Domain get_domain( Type *type ) {
+    auto st = cast< StructType >( type );
+    auto name = st->getName().split('.').second.split('.').first;
+    return DomainTable[ name.str() ];
+}
+
 bool is_intr( CallInst *intr, std::string name ) {
     assert( intr->getCalledFunction()->getName().startswith( "__vm_test_taint." ) );
     return intr->getCalledFunction()->getName().count( name );
