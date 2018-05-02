@@ -158,8 +158,8 @@ std::string abstract_type_name( Type *ty ) {
     return cast< StructType >( ty )->getName().str();
 }
 
-Types args_with_taints( const Values &args ) {
-    auto i1 = Type::getInt1Ty( args[ 0 ]->getContext() );
+Types args_with_taints( Value* val, const Values &args ) {
+    auto i1 = Type::getInt1Ty( val->getContext() );
 
     Types res;
     for ( auto arg : args ) {
@@ -194,7 +194,7 @@ bool is_to_i1( Instruction *inst ) {
 }
 
 bool is_assume( Instruction *inst ) {
-    return is_placeholder_of_name( inst, ".assume." );
+    return is_placeholder_of_name( inst, ".assume" );
 }
 
 Domain domain( Instruction *inst ) {
@@ -227,7 +227,8 @@ Values arguments( Instruction *inst ) {
         auto dom = domain( abstract_placeholder );
         return { get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom ) };
     } else {
-        return { inst->op_begin(), inst->op_end() };
+        auto call = cast< CallInst >( inst );
+        return { call->arg_operands().begin(), call->arg_operands().end() };
     }
 }
 
@@ -475,7 +476,9 @@ struct AssumeLifter : Lifter {
         Values args = { concrete, abstract, assumed };
         auto call = domains.get( domain() )->process( taint, args );
         irb.Insert( cast< Instruction >( call ) );
-        irb.CreateRet( call );
+
+        // TODO fix return value for other domains
+        irb.CreateRet( UndefValue::get( Type::getInt1Ty( call->getContext() ) ) );
     }
 };
 
@@ -625,6 +628,12 @@ struct TaintBase : CRTP< Derived > {
     Value* concrete() const {
         if ( placeholder::is_to_i1( placeholder ) )
             return cast< Instruction >( placeholder->getOperand( 0 ) )->getOperand( 0 );
+        if ( placeholder::is_assume( placeholder ) )
+            return cast< Instruction >(
+                       cast< Instruction >(
+                           placeholder->getOperand( 0 )
+                       )->getOperand( 0 )
+                   )->getOperand( 0 );
         return placeholder->getOperand( 0 );
     }
 
@@ -634,7 +643,7 @@ struct TaintBase : CRTP< Derived > {
 
     Function *function() {
         auto m = get_module( placeholder );
-        auto args = args_with_taints( this->self().arguments() );
+        auto args = args_with_taints( placeholder, this->self().arguments() );
         auto fty = FunctionType::get( return_type(), args, false );
         auto fname = "lart." + this->self().name();
         return get_or_insert_function( m, fty, fname );
@@ -718,13 +727,23 @@ struct ToBoolTaint : TaintBase< ToBoolTaint > {
         return { concrete, abstract };
     }
 
-    // TODO set default in base class
-    Value* default_value() const {
-        return UndefValue::get( placeholder->getType() );
+    std::string name() const {
+        return DomainTable[ domain() ] + ".to_i1";
+    }
+};
+
+struct AssumeTaint : TaintBase< AssumeTaint > {
+    using TaintBase< AssumeTaint >::TaintBase;
+
+    Values arguments() {
+        auto cond = cast< Instruction >( placeholder->getOperand( 0 ) )->getOperand( 0 );
+        auto concrete = cast< Instruction >( cond )->getOperand( 0 );
+        auto assume = placeholder->getOperand( 0 );
+        return { concrete, cond, assume };
     }
 
     std::string name() const {
-        return DomainTable[ domain() ] + ".to_i1";
+        return DomainTable[ domain() ] + ".assume";
     }
 };
 
@@ -810,8 +829,10 @@ Values unstash_arguments( CallInst *call ) {
     auto loaded = irb.CreateLoad( packed );
 
     Values unpacked;
-    for ( unsigned int i = 0; i < pack_ty->getNumElements(); ++i )
+    for ( unsigned int i = 0; i < pack_ty->getNumElements(); ++i ) {
+        // TODO do not need to unpack consts
         unpacked.push_back( irb.CreateExtractValue( loaded, { i } ) );
+    }
     return unpacked;
 }
 
@@ -872,7 +893,7 @@ void Tainting::_run( Module &m ) {
 
                 unsigned int idx = 0;
                 for ( auto ph : bundle::argument_placeholders( call ) ) {
-                    if ( !isa< Constant >( ph ) )
+                    if ( !isa< Constant >( call->getOperand( idx ) ) )
                         substitutes[ ph ] = vals[ idx++ ];
                 }
             }
@@ -906,6 +927,8 @@ Value* Tainting::process( Instruction *placeholder ) {
         return Taint( placeholder, domains ).generate();
     if ( placeholder::is_to_i1( placeholder ) )
         return ToBoolTaint( placeholder ).generate();
+    if ( placeholder::is_assume( placeholder ) )
+        return AssumeTaint( placeholder ).generate();
     placeholder->dump();
     UNREACHABLE( "Unknown placeholder" );
 }
