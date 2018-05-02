@@ -5,10 +5,11 @@
 */
 
 #include <string.h>
+#include <sys/cdefs.h>
 
 #ifndef REGTEST
 
-size_t strlen( const char * s )
+__skipcfl size_t strlen( const char * s )
 {
     size_t rc = 0;
     while ( s[rc] )
