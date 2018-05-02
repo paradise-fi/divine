@@ -34,7 +34,7 @@ template< typename T > IsClosure< T > is;
 template< typename T > IsNotClosure< T > isnot;
 
 template< typename F >
-static inline bool negate( F f ) { return [=]( auto x ) { return !f( x ); }; }
+static inline auto negate( F f ) { return [=]( auto x ) { return !f( x ); }; }
 
 static inline bool notnull( void *ptr ) { return ptr != nullptr; }
 
