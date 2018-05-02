@@ -26,6 +26,7 @@
 #include <brick-string>
 #include <brick-types>
 #include <brick-cmd>
+#include <brick-fs>
 
 namespace divcheck
 {
@@ -92,6 +93,11 @@ struct Expect : ui::LogSink
     }
 };
 
+struct Load
+{
+    std::vector< std::string > args;
+};
+
 std::vector< std::string > parse( std::string txt )
 {
     std::vector< std::string > script;
@@ -116,6 +122,7 @@ void execute( std::string script_txt, F... prepare )
     brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
 
     std::shared_ptr< Expect > expect( new Expect );
+    std::vector< std::pair< std::string, std::string > > files;
 
     for ( auto cmdstr : script )
     {
@@ -133,11 +140,16 @@ void execute( std::string script_txt, F... prepare )
         auto o_expect = ui::cmd::make_option_set< Expect >( cli.validator() )
             .option( "--result {result}", &Expect::_result, "verification result" )
             .option( "[--location {string}]", &Expect::_location, "location of the expected error" );
+        auto o_load = ui::cmd::make_option_set< Load >( cli.validator() )
+            .option( "{string}+", &Load::args, "file path, file name" );
 
-        auto parser = cli.commands().command< Expect >( o_expect );
+        auto parser = cli.commands().command< Expect >( o_expect ).command< Load >( o_load );
         auto cmd = cli.parse( parser );
 
-        cmd.match( prepare..., [&]( ui::Command &c ) { c.setup(); } );
+        cmd.match( prepare...,
+                   [&]( Load &l ) { files.emplace_back( l.args[1] , brick::fs::readFile( l.args[0] ) ); },
+                   [&]( ui::Cc &cc ) { cc._files = files; },
+                   [&]( ui::Command &c ) { c.setup(); } );
         cmd.match( [&]( ui::Verify &v ) { check_expect( v ); },
                    [&]( ui::Check &c )  { check_expect( c ); } );
         cmd.match( [&]( ui::Command &c ) { c.run(); },
