@@ -367,10 +367,15 @@ template < bool cancelPoint, typename Cond >
 static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
-    while ( cond() && ( !cancelPoint || !_canceled() ) )
-        mask.without( [] { __dios_suspend(); }, true ); // break mask to allow control flow interrupt
     if ( cancelPoint && _canceled() )
         _cancel( mask );
+    else
+    {
+        if ( cond() )
+            mask.without( []{ __dios_reschedule(); } );
+        if ( cond() )
+            __vm_cancel();
+    }
 }
 
 template < typename Cond >
@@ -748,29 +753,35 @@ static int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) noexcept {
     return 0;
 }
 
-static void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept {
+static bool _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept
+{
     // note: the cycle is detected first time it occurs, therefore it must go
     // through this mutex, for this reason, we don't need to keep closed set of
     // visited threads and mutexes.
     // Furthermore, if the cycle is re-detected it is already marked in
     // 'deadlocked' attribute of Thread struct.
 
-    while ( mutex && mutex->__owner ) {
+    while ( mutex && mutex->__owner )
+    {
         _PThread *owner = mutex->__owner;
-        if ( owner == &tid ) {
-            tid.deadlocked = owner->deadlocked = true;
-            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex cycle closed, circular waiting" );
+        if ( owner == &tid )
+        {
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex cycle closed, circular waiting" );
+            return tid.deadlocked = owner->deadlocked = true;
         }
-        if ( owner->deadlocked ) {
-            tid.deadlocked = true;
-            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: waiting for a deadlocked thread" );
+        if ( owner->deadlocked )
+        {
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: waiting for a deadlocked thread" );
+            return tid.deadlocked = true;
         }
-        if ( !owner->running ) {
-            tid.deadlocked = true;
-            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex locked by a dead thread" );
+        if ( !owner->running )
+        {
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex locked by a dead thread" );
+            return tid.deadlocked = true;
         }
         mutex = owner->waiting_mutex;
     }
+    return false;
 }
 
 static bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
@@ -808,10 +819,19 @@ static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mute
     // (cycle in try-lock is not deadlock, although it might be livelock)
     // so it must be here after return EBUSY
     thr.waiting_mutex = mutex;
-    while ( !_mutex_can_lock( mutex, thr ) ) {
-        _check_deadlock( mutex, thr );
-        mask.without( [] { __dios_suspend(); }, true ); // break mask to allow control flow interrupt
+    bool can_lock = _mutex_can_lock( mutex, thr );
+
+    if ( !can_lock )
+        mask.without( [] { __dios_reschedule(); } );
+
+    if ( !_mutex_can_lock( mutex, thr ) )
+    {
+        if ( _check_deadlock( mutex, thr ) )
+            __dios_suspend();
+        else
+            __vm_cancel();
     }
+
     thr.waiting_mutex = NULL;
 
     // try to increment lock counter
