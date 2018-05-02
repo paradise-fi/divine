@@ -752,7 +752,7 @@ namespace bundle {
 auto operand_placeholders( CallInst *call ) {
     return query::query( call->arg_operands() )
         .map ( [] ( auto &arg ) -> Value* {
-            if ( isa< Constant >( arg ) )
+            if ( isa< Constant >( arg ) || arg->getType()->isPointerTy() )
                 return arg.get();
             auto dom = MDValue( arg ).domain();
             return get_placeholder_in_domain( arg, dom );
@@ -768,7 +768,7 @@ auto argument_placeholders( CallInst *call ) {
         .map( [&] ( auto &op ) -> Value* {
             auto arg = std::next( fn->arg_begin(), idx++ );
 
-            if ( isa< Constant >( op ) )
+            if ( isa< Constant >( arg ) || arg->getType()->isPointerTy() )
                 return arg;
 
             auto dom = MDValue( op ).domain();
@@ -795,13 +795,13 @@ void stash_arguments( CallInst *call ) {
     unsigned int idx = 0;
     Value *val = UndefValue::get( pack_ty );
     for ( auto ph : operand_placeholders( call ) ) {
-        auto arg = [&] () -> Value* {
-            if ( isa< Constant >( ph ) )
-                return UndefValue::get( ph->getType() );
-            else
-                return GetTaint( cast< Instruction >( ph ) ).generate();
-        } ();
+        auto op = call->getOperand( idx );
 
+        Value *arg = nullptr;
+        if ( isa< Constant >( op ) || op->getType()->isPointerTy() )
+            arg = UndefValue::get( ph->getType() );
+        else
+            arg = GetTaint( cast< Instruction >( ph ) ).generate();
         val = irb.CreateInsertValue( val, arg, { idx++ } );
     }
 
@@ -893,8 +893,12 @@ void Tainting::_run( Module &m ) {
 
                 unsigned int idx = 0;
                 for ( auto ph : bundle::argument_placeholders( call ) ) {
-                    if ( !isa< Constant >( call->getOperand( idx ) ) )
-                        substitutes[ ph ] = vals[ idx++ ];
+                    auto op = call->getOperand( idx );
+                    // TODO controling of constants from call does not make sense, we can call
+                    // function with different arguments!!!
+                    if ( !isa< Constant >( op ) && !op->getType()->isPointerTy() )
+                        substitutes[ ph ] = vals[ idx ];
+                    idx++;
                 }
             }
         }

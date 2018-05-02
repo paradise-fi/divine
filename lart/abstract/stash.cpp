@@ -63,7 +63,7 @@ void Stash::arg_unstash( CallInst *call ) {
         auto op = call->getArgOperand( arg.getArgNo() );
         // TODO what if op is not instruction?
         if ( auto inst = dyn_cast< Instruction >( op ) ) {
-            if ( has_domain( inst ) ) {
+            if ( has_domain( inst ) && !inst->getType()->isPointerTy() ) {
                 auto dom = MDValue( op ).domain();
                 auto aty = abstract_type( op->getType(), dom );
                 auto unstash_fn = unstash_placeholder( inst, aty );
@@ -78,10 +78,10 @@ void Stash::arg_stash( CallInst *call ) {
         return; // skip internal lart functions
 
     IRBuilder<> irb( call );
-    for ( auto &arg : call->operands() ) {
+    for ( auto &arg : call->arg_operands() ) {
         // TODO what if op is not instruction?
         if ( auto inst = dyn_cast< Instruction >( arg ) ) {
-            if ( has_domain( inst ) ) {
+            if ( has_domain( inst ) && !inst->getType()->isPointerTy() ) {
                 auto dom = MDValue( inst ).domain();
                 auto aty = abstract_type( inst->getType(), dom );
                 auto stash_fn = stash_placeholder( inst, aty );
