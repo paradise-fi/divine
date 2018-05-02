@@ -183,23 +183,6 @@ bool is_taintable( Value *v ) {
 
 namespace placeholder {
 
-Domain domain( Instruction *inst ) {
-    auto ty = inst->getType();
-    if ( ty->isVoidTy() || !inst->getType()->isStructTy() )
-        return get_domain( inst->getOperand( 0 )->getType() );
-    else
-        return get_domain( ty );
-}
-
-Type* return_type( Instruction *inst, DomainsHolder &domains ) {
-    auto ty = inst->getType();
-    if ( ty->isVoidTy() )
-        return ty;
-
-    auto dom = get_domain( ty );
-    return domains.type( base_type( ty ), dom );
-}
-
 bool is_placeholder_of_name( Instruction *inst, std::string name ) {
     return cast< CallInst >( inst )->getCalledFunction()->getName().count( name );
 }
@@ -216,17 +199,41 @@ bool is_to_i1( Instruction *inst ) {
     return is_placeholder_of_name( inst, ".to_i1." );
 }
 
-Value* argument( Instruction *inst ) {
+bool is_assume( Instruction *inst ) {
+    return is_placeholder_of_name( inst, ".assume." );
+}
+
+Domain domain( Instruction *inst ) {
+    auto ty = inst->getType();
+    if ( is_assume( inst ) )
+        return get_domain( cast< Instruction >( inst->getOperand( 0 ) )->getOperand( 0 )->getType() );
+    if ( ty->isVoidTy() || !inst->getType()->isStructTy() )
+        return get_domain( inst->getOperand( 0 )->getType() );
+    else
+        return get_domain( ty );
+}
+
+Type* return_type( Instruction *inst, DomainsHolder &domains ) {
+    auto ty = inst->getType();
+    if ( ty->isVoidTy() )
+        return ty;
+
+    auto dom = get_domain( ty );
+    return domains.type( base_type( ty ), dom );
+}
+
+
+Values arguments( Instruction *inst ) {
     if ( is_stash( inst ) ) {
         auto dom = domain( inst );
         auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
-        return get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom );
+        return { get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom ) };
     } else if ( is_to_i1( inst ) ) {
         auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
         auto dom = domain( abstract_placeholder );
-        return get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom );
+        return { get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom ) };
     } else {
-        return inst->getOperand( 0 );
+        return { inst->op_begin(), inst->op_end() };
     }
 }
 
@@ -238,23 +245,26 @@ std::string name( Instruction *inst, Value *arg, Domain dom ) {
         name += "unstash.";
     if ( is_to_i1( inst ) )
         name += "to_i1.";
-
-    auto ty = inst->getType();
-    name += ty->isVoidTy() || !ty->isStructTy()
-          ? llvm_name( base_type( arg->getType() ) )
-          : llvm_name( base_type( ty ) );
+    if ( is_assume( inst ) ) {
+        name += "assume";
+    } else {
+        // add suffix for all except assume placeholder
+        auto ty = inst->getType();
+        name += ty->isVoidTy() || !ty->isStructTy()
+              ? llvm_name( base_type( arg->getType() ) )
+              : llvm_name( base_type( ty ) );
+    }
     return name;
 }
 
 Function* get( Instruction *inst, DomainsHolder &domains ) {
     auto rty = inst->getType()->isStructTy() ? return_type( inst, domains ) : inst->getType();
-    auto arg = argument( inst );
+    auto args = arguments( inst );
 
     auto dom = domain( inst );
-    auto phname = name( inst, arg, dom );
+    auto phname = name( inst, args[ 0 ], dom );
 
-    auto fty = arg ? FunctionType::get( rty, { arg->getType() }, false )
-                   : FunctionType::get( rty, {}, false );
+    auto fty = FunctionType::get( rty, types_of( args ), false );
    	return get_or_insert_function( get_module( inst ), fty, phname );
 }
 
@@ -544,17 +554,19 @@ void DomainsHolder::add_domain( std::shared_ptr< Common > dom ) {
 // --------------------------- Duplication ---------------------------
 
 void InDomainDuplicate::_run( Module &m ) {
-
     auto phs = placeholders( m );
 
-    for ( auto ph : phs )
-        if ( !placeholder::is_stash( ph ) )
-            process( ph );
+    auto assumes = query::query( phs ).filter( placeholder::is_assume );
+    std::for_each( assumes.begin(), assumes.end(), [&] ( auto ass ) { process( ass ); } );
+
+    auto rest = query::query( phs )
+        .filter( query::negate( placeholder::is_assume ) )
+        .filter( query::negate( placeholder::is_stash ) );
+    std::for_each( rest.begin(), rest.end(), [&] ( auto ph ) { process( ph ); } );
 
     // process stash placeholders separatelly in this order!
-    for ( auto ph : phs )
-        if ( placeholder::is_stash( ph ) )
-            process( ph );
+    auto stashes = query::query( phs ).filter( placeholder::is_stash );
+    std::for_each( stashes.begin(), stashes.end(), [&] ( auto st ) { process( st ); } );
 
     // TODO abstract phi nodes
 
@@ -568,8 +580,8 @@ void InDomainDuplicate::_run( Module &m ) {
 void InDomainDuplicate::process( Instruction *inst ) {
     IRBuilder<> irb( inst );
     auto ph = placeholder::get( inst, domains );
-    auto arg = placeholder::argument( inst );
-    auto call = irb.CreateCall( ph, { arg } );
+    auto args = placeholder::arguments( inst );
+    auto call = irb.CreateCall( ph, args );
 
     if ( placeholder::is_to_i1( call ) )
         inst->replaceAllUsesWith( call );
