@@ -738,7 +738,7 @@ struct AssumeTaint : TaintBase< AssumeTaint > {
     Values arguments() {
         auto cond = cast< Instruction >( placeholder->getOperand( 0 ) )->getOperand( 0 );
         auto concrete = cast< Instruction >( cond )->getOperand( 0 );
-        auto assume = placeholder->getOperand( 0 );
+        auto assume = placeholder->getOperand( 1 );
         return { concrete, cond, assume };
     }
 
@@ -749,56 +749,69 @@ struct AssumeTaint : TaintBase< AssumeTaint > {
 
 namespace bundle {
 
-auto operand_placeholders( CallInst *call ) {
-    return query::query( call->arg_operands() )
-        .map ( [] ( auto &arg ) -> Value* {
-            if ( isa< Constant >( arg ) || arg->getType()->isPointerTy() )
-                return arg.get();
-            auto dom = MDValue( arg ).domain();
-            return get_placeholder_in_domain( arg, dom );
-        } )
-        .freeze();
+bool ignore_value( Value* val ) {
+    auto dom = Domain::Symbolic; // TODO generalize for any domain
+    return isa< Constant >( val )
+        || val->getType()->isPointerTy()
+        || !has_placeholder_in_domain( val, dom );
 }
 
-auto argument_placeholders( CallInst *call ) {
+Values operand_placeholders( CallInst *call, DomainsHolder &domains ) {
+    Values ops;
+    auto dom = Domain::Symbolic; // TODO generalize for any domain
+    for ( auto &op : call->arg_operands() ) {
+        if ( ignore_value( op ) ) {
+            auto ty = domains.type( op->getType(), dom );
+            ops.push_back( UndefValue::get( ty ) );
+        } else {
+            ops.push_back( get_placeholder_in_domain( op, dom ) );
+        }
+    }
+
+    return ops;
+}
+
+Values argument_placeholders( CallInst *call, DomainsHolder &domains ) {
     auto fn = call->getCalledFunction();
 
-    unsigned int idx = 0;
-    return query::query( call->arg_operands() )
-        .map( [&] ( auto &op ) -> Value* {
-            auto arg = std::next( fn->arg_begin(), idx++ );
+    Values placeholders;
+    for ( unsigned int i = 0; i < call->getNumArgOperands(); ++i ) {
+        auto arg = std::next( fn->arg_begin(), i );
+        auto dom = Domain::Symbolic; // TODO generalize for any domain
 
-            if ( isa< Constant >( arg ) || arg->getType()->isPointerTy() )
-                return arg;
+        if ( ignore_value( arg ) ) {
+            auto ty = domains.type( arg->getType(), dom );
+            placeholders.push_back( UndefValue::get( ty ) );
+        } else {
+            placeholders.push_back( get_placeholder_in_domain( arg, dom ) );
+        }
+    }
 
-            auto dom = MDValue( op ).domain();
-            return get_placeholder_in_domain( arg, dom );
-        } )
-        .freeze();
+    return placeholders;
 }
 
-Type* packed_type( CallInst *call ) {
-    auto phs = operand_placeholders( call );
+Type* packed_type( CallInst *call, DomainsHolder &domains ) {
+    auto phs = operand_placeholders( call, domains );
     return StructType::get( call->getContext(), types_of( phs ) );
 }
 
-void stash_arguments( CallInst *call ) {
+void stash_arguments( CallInst *call, DomainsHolder &domains ) {
     auto fn = call->getCalledFunction();
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return; // skip internal lart functions
 
-    auto pack_ty = packed_type( call );
+    auto pack_ty = packed_type( call, domains );
 
     IRBuilder<> irb( call );
     auto pack = irb.CreateAlloca( pack_ty );
 
     unsigned int idx = 0;
     Value *val = UndefValue::get( pack_ty );
-    for ( auto ph : operand_placeholders( call ) ) {
+    for ( auto ph : operand_placeholders( call, domains ) ) {
         auto op = call->getOperand( idx );
 
         Value *arg = nullptr;
-        if ( isa< Constant >( op ) || op->getType()->isPointerTy() )
+        if ( ignore_value( op ) )
             arg = UndefValue::get( ph->getType() );
         else
             arg = GetTaint( cast< Instruction >( ph ) ).generate();
@@ -813,14 +826,14 @@ void stash_arguments( CallInst *call ) {
     irb.CreateCall( sfn, { i } );
 }
 
-Values unstash_arguments( CallInst *call ) {
+Values unstash_arguments( CallInst *call, DomainsHolder &domains ) {
     auto fn = call->getCalledFunction();
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return {}; // skip internal lart functions
 
     IRBuilder<> irb( fn->getEntryBlock().begin() );
 
-    auto pack_ty = cast< StructType >( packed_type( call ) );
+    auto pack_ty = cast< StructType >( packed_type( call, domains ) );
 
     auto unfn = unstash_function( get_module( call ) );
     auto unstash = irb.CreateCall( unfn );
@@ -876,7 +889,6 @@ Value* unstash_return_value( CallInst *call ) {
 
 void Tainting::_run( Module &m ) {
     std::unordered_map< Value*, Value* > substitutes;
-
     auto phs = placeholders( m );
 
     for ( auto ph : phs )
@@ -887,12 +899,12 @@ void Tainting::_run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
         auto fn = call->getCalledFunction();
         if ( call->getNumArgOperands() ) {
-            bundle::stash_arguments( call );
+            bundle::stash_arguments( call, domains );
             if ( !processed.count( fn ) ) {
-                auto vals = bundle::unstash_arguments( call );
+                auto vals = bundle::unstash_arguments( call, domains );
 
                 unsigned int idx = 0;
-                for ( auto ph : bundle::argument_placeholders( call ) ) {
+                for ( auto ph : bundle::argument_placeholders( call, domains ) ) {
                     auto op = call->getOperand( idx );
                     // TODO controling of constants from call does not make sense, we can call
                     // function with different arguments!!!

@@ -86,7 +86,7 @@ void Stash::arg_stash( CallInst *call ) {
             auto stash_fn = stash_placeholder( get_module( call ), aty );
             if ( isa< CallInst >( op ) || isa< Argument >( op ) )
                 irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
-            else
+            else if ( has_placeholder( op ) )
                 irb.CreateCall( stash_fn, { get_placeholder( op ) } );
         }
     }
