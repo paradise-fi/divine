@@ -240,7 +240,7 @@ bool liftingPointer( llvm::Module &m ) {
 
 bool isVmInterupt( llvm::Function * fn )
 {
-    return fn->hasName() && fn->getName() == "__dios_interrupt";
+    return fn->hasName() && fn->getName() == "__dios_suspend";
 }
 
 } //empty namespace
