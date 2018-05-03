@@ -283,9 +283,12 @@ struct Metadata : Next
 
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             {
-                Expanded exp_src = Next::expand( *i_from );
-                Expanded exp_dst = Next::expand( *i_to );
-                Next::copy_word( from_h, to_h, from + off, exp_src, to + off, exp_dst );
+                if ( ! Next::is_trivial( *i_from ) || ! Next::is_trivial( *i_to ) )
+                {
+                    Expanded exp_src = Next::expand( *i_from );
+                    Expanded exp_dst = Next::expand( *i_to );
+                    Next::copy_word( from_h, to_h, from + off, exp_src, to + off, exp_dst );
+                }
                 *i_to++ = *i_from++;
             }
         }
