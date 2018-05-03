@@ -85,6 +85,8 @@ struct Int : Base
         return ( _raw >> offset ) & brick::bitlevel::ones< Raw >( _VM_PB_Obj );
     }
 
+    int objid_offset() { return _pointer; }
+
     template< int w >
     auto checkptr( Int< w, is_signed > o, Int< w, is_signed > &result, int shift = 0 )
         -> std::enable_if_t< ( w >= _VM_PB_Obj ) >
@@ -297,7 +299,8 @@ struct Float : Base
     bool pointer() { return false; }
     void pointer( bool ) {} /* ignore */
 
-    GenericPointer as_pointer() { UNREACHABLE( "floats are never pointers" ); }
+    uint32_t objid() { return 0; }
+    int objid_offset() { return 0; }
 
     void taints( uint8_t set ) { _taints = set; }
     uint8_t taints() { return _taints; }
@@ -402,7 +405,8 @@ struct Pointer : Base
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }
 
-    GenericPointer as_pointer() { return cooked(); }
+    uint32_t objid() { return cooked().object(); }
+    int objid_offset() { return 32; }
 
     Int< 1, false > compare( Pointer o, bool v )
     {
