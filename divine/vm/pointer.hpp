@@ -97,14 +97,9 @@ struct GenericPointer : brick::types::Comparable
         return _rep.raw < o._rep.raw;
     }
 
-    auto mark() const
-    {
-        return _rep.mark;
-    }
-    void mark( Mark m )
-    {
-        _rep.mark = m;
-    }
+    auto mark() const { return _rep.mark; }
+    void mark( Mark m ) { _rep.mark = m; }
+
     auto type() const
     {
         if ( object() < _VM_PL_Global )
@@ -113,6 +108,7 @@ struct GenericPointer : brick::types::Comparable
             return Type::Code;
         return Type( unsigned( mark() ) );
     }
+
     void type( Type t )
     {
         // TODO: obliterate
