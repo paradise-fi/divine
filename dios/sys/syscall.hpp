@@ -65,7 +65,7 @@ struct Trap
     {
         __vm_ctl_flag( kern & ~keepflags, 0 );
         if ( retmode == RESCHEDULE )
-            __dios_interrupt();
+            __dios_reschedule();
         if ( retmode == TRAMPOLINE || std::is_same< Ret, void >::value )
             /* our parent is the __invoke of the sysenter lambda */
             __dios_set_frame( __dios_this_frame()->parent->parent );

@@ -13,7 +13,7 @@ int __dios_mask( int set )
     {
         old = __vm_ctl_flag( _DiOS_CF_Mask, 0 );
         if ( old & _DiOS_CF_Deferred )
-            __dios_interrupt();
+            __dios_reschedule();
     }
     return ( old & _DiOS_CF_Mask ) ? 1 : 0;
 }

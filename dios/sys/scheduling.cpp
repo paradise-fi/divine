@@ -53,35 +53,39 @@ const sighandler_t defhandlers[] =
 };
 
 #define INTR                                                                                     \
-    if ( flags & _DiOS_CF_Mask )                                                                 \
+    if ( flags & _VM_CF_KernelMode )                                                             \
+        __dios_fault( _VM_F_Control, "oops, interrupted in kernel mode" );                       \
+                                                                                                 \
+    if ( flags & _DiOS_CF_Fairness )                                                             \
     {                                                                                            \
-        __vm_ctl_flag( 0, _DiOS_CF_Deferred );                                                   \
-        return;                                                                                  \
+        __vm_ctl_flag( 0, _VM_CF_KernelMode );                                                   \
+        get_state< config::Fair >().interrupt();                                                 \
+        __vm_ctl_flag( _VM_CF_KernelMode, 0 );                                                   \
     }                                                                                            \
                                                                                                  \
     __vm_ctl_flag( _DiOS_CF_Deferred, 0 );                                                       \
     *reinterpret_cast< void ** >( __vm_ctl_get( _VM_CR_User1 ) ) = __dios_this_frame()->parent;  \
     __vm_suspend();
 
-extern "C" __invisible __weakmem_direct void __dios_interrupt_light()
+extern "C" __trapfn __invisible __weakmem_direct void __dios_reschedule()
 {
     uint64_t flags = uint64_t( __vm_ctl_get( _VM_CR_Flags ) );
+
+    if ( flags & _DiOS_CF_Mask )
+    {
+        __vm_ctl_flag( 0, _DiOS_CF_Deferred );
+        return;
+    }
+
     INTR
 }
 
-extern "C" __trapfn __invisible __weakmem_direct void __dios_interrupt()
+extern "C" __trapfn __invisible __weakmem_direct void __dios_suspend()
 {
     uint64_t flags = uint64_t( __vm_ctl_get( _VM_CR_Flags ) );
 
-    if ( flags & _VM_CF_KernelMode )
-        __dios_fault( _VM_F_Control, "oops, interrupted in kernel mode" );
-
-    if ( flags & _DiOS_CF_Fairness )
-    {
-        __vm_ctl_flag( 0, _VM_CF_KernelMode );
-        get_state< config::Fair >().interrupt();
-        __vm_ctl_flag( _VM_CF_KernelMode, 0 );
-    }
+    if ( flags & _DiOS_CF_Mask )
+        return;
 
     INTR
 }

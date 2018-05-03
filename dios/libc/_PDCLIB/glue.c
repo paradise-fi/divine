@@ -84,7 +84,7 @@ void _exit( int rv )
         __dios_trace_f( "Non-zero exit code: %d", rv );
         __dios_fault( _DiOS_F_ExitFault, "exit called with non-zero value" );
     }
-    __dios_interrupt();
+    __dios_reschedule();
     __cxa_finalize( 0 );
     __dios_run_dtors();
     __dios_exit_process( rv );
@@ -120,7 +120,7 @@ int raise( int sig )
     switch ( sig )
     {
         case SIGKILL:
-            __dios_interrupt();
+            __dios_reschedule();
         default:
             return kill( getpid(), sig );
     }

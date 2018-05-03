@@ -11,7 +11,8 @@ static const uint64_t _DiOS_CF_Deferred   = _VM_CFB_OS << 1;
 static const uint64_t _DiOS_CF_Fairness   = _VM_CFB_OS << 4;
 
 __BEGIN_DECLS
-void __dios_interrupt( void ) __nothrow;
+void __dios_suspend( void ) __nothrow;
+void __dios_reschedule( void ) __nothrow;
 int __dios_mask( int ) __nothrow;
 __END_DECLS
 
@@ -40,7 +41,7 @@ struct _InterruptMask
         {
             __vm_ctl_flag( _DiOS_CF_Mask, 0 );
             if ( uintptr_t( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Deferred )
-                __dios_interrupt();
+                __dios_reschedule();
         }
     }
 
@@ -56,7 +57,7 @@ struct _InterruptMask
                     __sync_synchronize();
                 __vm_ctl_flag( _DiOS_CF_Mask, 0 );
                 if ( uintptr_t( __vm_ctl_get( _VM_CR_Flags ) ) & _DiOS_CF_Deferred )
-                    __dios_interrupt();
+                    __dios_reschedule();
             }
         }
 

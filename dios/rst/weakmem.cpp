@@ -51,7 +51,7 @@ _WM_INTERFACE void __lart_weakmem_mask_leave( MaskFlags restore ) noexcept {
                    /* set: */ (restore & restoreFlags) );
 
     if ( do_interrupt )
-        __dios_interrupt();
+        __dios_reschedule();
 }
 
 void crit_seen() noexcept {
