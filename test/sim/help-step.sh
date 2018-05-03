@@ -1,7 +1,7 @@
 # TAGS: min
 . lib/testcase
 
-SRC=$TESTS/lang-c/pointer-arith.c
+SRC=$TESTS/lang-c/ptr-arith.c
 
 sim $SRC <<EOF
 + ^# executing __boot
