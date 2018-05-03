@@ -25,6 +25,8 @@ namespace divine::t_vm
 struct TestInt
 {
     using Int16 = vm::value::Int< 16 >;
+    using Int32 = vm::value::Int< 32 >;
+    using Int64 = vm::value::Int< 64 >;
 
     TEST( size )
     {
@@ -74,6 +76,63 @@ struct TestInt
 
         Int16 e( 1, 0xFEFF, false );
         ASSERT( !( c >> e ).defined() );
+    }
+
+    TEST( isptr32 )
+    {
+        Int32 a( 33, 0xFFFFFFFFu, true );
+        ASSERT( a.pointer() );
+        a = a + Int32( 3 );
+        ASSERT( !a.pointer() );
+    }
+
+    TEST( isptr64 )
+    {
+        Int64 a( 33, 0xFFFFFFFFFFFFFFFFul, true );
+        ASSERT( a.pointer() );
+        a = a + Int64( 3 );
+        ASSERT( !a.pointer() );
+    }
+
+    TEST( isptr_bw )
+    {
+        Int64 a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+        ASSERT( a.pointer() );
+        a = a | Int64( 5 );
+        ASSERT( a.pointer() );
+        a = a & Int64( 0x0000FFFF00000000ul );
+        ASSERT( a.pointer() );
+    }
+
+    TEST( isptr_shift )
+    {
+        vm::value::Int< 64 > a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+        ASSERT( a.pointer() );
+        a = a >> Int64( 5 );
+        ASSERT( !a.pointer() );
+        a = a << Int64( 5 );
+        ASSERT( a.pointer() );
+    }
+
+    TEST( isptr_shift_destroy )
+    {
+        vm::value::Int< 64 > a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+        ASSERT( a.pointer() );
+        a = a << Int64( 5 );
+        ASSERT( !a.pointer() );
+        a = a >> Int64( 5 );
+        ASSERT( !a.pointer() );
+    }
+
+    TEST( isptr_trunc )
+    {
+        vm::value::Int< 64 > a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+        ASSERT( a.pointer() );
+        a = a >> Int64( 32 );
+        ASSERT( !a.pointer() );
+        ASSERT_EQ( a._pointer, 0 );
+        Int32 b = a;
+        ASSERT( b.pointer() );
     }
 };
 
