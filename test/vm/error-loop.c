@@ -11,7 +11,7 @@ int main()
 {
     while ( 1 )
     {
-        __dios_interrupt();
+        __dios_suspend();
         __vm_trace( _VM_T_Text, "in cycle" );
         fire(); /* ERROR */
     }

@@ -12,7 +12,7 @@ int main()
         assert( f.triggered() );
     }
     // avoid having two errors in one state (for the sake of sim)
-    __dios_interrupt();
+    __dios_suspend();
     assert( !__dios::DetectFault::triggered() );
     assert( __dios_get_fault_config( _VM_F_Memory ) == _DiOS_FC_Abort );
     int x = *a; /* ERROR */

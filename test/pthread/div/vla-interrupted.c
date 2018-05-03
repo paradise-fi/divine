@@ -9,7 +9,7 @@ void *thread( void *zzz )
     int *x = &y;
     {
         int vla[1 + (int) zzz];
-        __dios_interrupt();
+        __dios_reschedule();
     }
     *x = 1;
     return 1;

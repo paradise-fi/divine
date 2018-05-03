@@ -67,7 +67,7 @@ int main() {
         while ( true ) {
             __dios_trace_t( "Set 1" );
             x = 1;
-            __dios_interrupt();
+            __dios_suspend();
         }
     } );
 
@@ -76,6 +76,6 @@ int main() {
     while ( true ) {
         __dios_trace_t( "Set 0" );
         x = 0;
-        __dios_interrupt();
+        __dios_suspend();
     }
 }
