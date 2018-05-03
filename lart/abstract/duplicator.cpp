@@ -61,17 +61,11 @@ void Duplicator::process( llvm::Instruction *i ) {
     auto type = abstract_type( i->getType(), dom );
 
     IRBuilder<> irb( i );
-    auto place = [&] () -> Instruction* {
-        if ( auto phi = dyn_cast< PHINode >( i ) ) {
-            return irb.CreatePHI( type, phi->getNumIncomingValues() );
-        } else {
-            auto fn = placeholder( get_module( i ), i->getType(), type );
-            return irb.CreateCall( fn, { i } );
-        }
-    } ();
+    auto fn = placeholder( get_module( i ), i->getType(), type );
+    auto ph = irb.CreateCall( fn, { i } );
 
-    place->removeFromParent();
-    place->insertAfter( i );
+    ph->removeFromParent();
+    ph->insertAfter( i );
 
-    make_duals( i, place );
+    make_duals( i, ph );
 }

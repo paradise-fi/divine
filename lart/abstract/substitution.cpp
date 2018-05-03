@@ -566,6 +566,18 @@ void InDomainDuplicate::_run( Module &m ) {
     std::for_each( stashes.begin(), stashes.end(), [&] ( auto st ) { process( st ); } );
 
     // TODO abstract phi nodes
+    auto phis = query::query( m ).flatten().flatten()
+        .map( query::refToPtr )
+        .filter( query::llvmdyncast< PHINode > )
+        .filter( query::notnull )
+        .filter( has_dual )
+        .filter( []( auto phi ) {
+            auto ty = phi->getType();
+            if ( auto sty = dyn_cast< StructType >( ty ) )
+                return !( sty->hasName() && sty->getName().startswith( "lart." ) );
+            return true;
+        } )
+        .freeze();
 
     // clean abstract placeholders
     for ( auto ph : phs ) {
@@ -935,10 +947,35 @@ void Tainting::_run( Module &m ) {
         ph->eraseFromParent();
 }
 
+Value* create_in_domain_phi( Instruction *placeholder ) {
+    auto phi = cast< PHINode >( placeholder->getOperand( 0 ) );
+    auto ty =placeholder->getType();
+
+    IRBuilder<> irb( placeholder );
+    auto abstract = irb.CreatePHI( ty, phi->getNumIncomingValues() );
+
+    auto dom = MDValue( phi ).domain();
+
+    for ( unsigned int i = 0; i < phi->getNumIncomingValues(); ++i ) {
+        auto in = phi->getIncomingValue( i );
+        auto bb = phi->getIncomingBlock( i );
+        if ( !isa< Constant >( in ) && has_placeholder_in_domain( in, dom ) ) {
+            auto val = get_placeholder_in_domain( in , dom );
+            abstract->addIncoming( val, bb );
+        } else {
+            abstract->addIncoming( UndefValue::get( ty ), bb );
+        }
+    }
+
+    return abstract;
+}
+
 Value* Tainting::process( Instruction *placeholder ) {
     auto op = placeholder->getOperand( 0 );
     if ( isa< LoadInst >( op ) )
         return RepTaint( placeholder ).generate();
+    if ( isa< PHINode >( op ) )
+        return create_in_domain_phi( placeholder );
     if ( is_taintable( op ) )
         return Taint( placeholder, domains ).generate();
     if ( placeholder::is_to_i1( placeholder ) )
