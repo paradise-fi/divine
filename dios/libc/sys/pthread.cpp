@@ -368,7 +368,7 @@ static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
     while ( cond() && ( !cancelPoint || !_canceled() ) )
-        mask.without( [] { }, true ); // break mask to allow control flow interrupt
+        mask.without( [] { __dios_suspend(); }, true ); // break mask to allow control flow interrupt
     if ( cancelPoint && _canceled() )
         _cancel( mask );
 }
@@ -810,7 +810,7 @@ static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mute
     thr.waiting_mutex = mutex;
     while ( !_mutex_can_lock( mutex, thr ) ) {
         _check_deadlock( mutex, thr );
-        mask.without( [] { }, true ); // break mask to allow control flow interrupt
+        mask.without( [] { __dios_suspend(); }, true ); // break mask to allow control flow interrupt
     }
     thr.waiting_mutex = NULL;
 
