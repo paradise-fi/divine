@@ -54,7 +54,7 @@ template< typename Context >
 void Stepper< Context >::run( Context &ctx, Verbosity verb )
 {
     vm::Eval< Context > eval( ctx );
-    auto fault_handler = ctx.get( _VM_CR_FaultHandler ).pointer.object();
+    auto fault_handler = vm::CodePointer( ctx.get( _VM_CR_FaultHandler ).pointer ).function();
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
     bool moved = false, in_fault, rewind_to_fault = false;
     Context _backup( ctx.program(), ctx.debug() );

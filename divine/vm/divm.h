@@ -3,17 +3,20 @@
 #if !defined(__DIVM_H_CONST__) && ( !defined(__divm__) || defined(__divm_const__) )
 #define __DIVM_H_CONST__
 
-enum { _VM_PM_Off  = 0x000000001FFFFFFFull,
-       _VM_PM_Type = 0x00000000E0000000ull,
+enum { _VM_PM_Off  = 0x000000003FFFFFFFull,
+       _VM_PM_Type = 0x00000000C0000000ull,
        _VM_PM_Obj  = 0xFFFFFFFF00000000ull };
 enum { _VM_PB_Full = 64,
        _VM_PB_Obj = 32,
-       _VM_PB_Type = 3,
+       _VM_PB_Type = 2,
        _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
 enum _VM_PointerType { _VM_PT_Heap = 0, _VM_PT_Weak = 1, _VM_PT_Marked = 2, _VM_PT_Reserved = 3,
                        _VM_PT_Global, _VM_PT_Code };
 
 enum _VM_MemLayer { _VM_ML_Pointers, _VM_ML_Definedness, _VM_ML_Taints, _VM_ML_User };
+
+enum { _VM_PL_Global = 0x00080000,
+       _VM_PL_Code   = 0x00100000 };
 
 #endif
 

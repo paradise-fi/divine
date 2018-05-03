@@ -157,7 +157,9 @@ struct Eval
         ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
         uint32_t hint = mixdown( context().get( _VM_CR_ObjIdShuffle ).integer,
                                  context().get( _VM_CR_Frame ).pointer.object() );
-        return heap().make( size, hint + off );
+        auto p = heap().make( size, hint + off );
+        ASSERT( p.cooked().type() == PointerType::Heap );
+        return p;
     }
 
     bool freeobj( HeapPointer p )

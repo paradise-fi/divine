@@ -115,8 +115,8 @@ namespace divine::mem
             }
             else
             {
-                typename H1::PointerV::Cooked p1pp( Pointer::Type::Heap ),
-                                              p2pp( Pointer::Type::Heap );
+                typename H1::PointerV::Cooked p1pp,
+                                              p2pp;
                 if ( p1i->size() == 1 )
                 {
                     p1pp.object( p1i->fragment() );

@@ -421,7 +421,7 @@ struct Pointer : Base
     }
 
     template< int w, bool s > explicit Pointer( Int< w, s > i )
-        : _cooked( PointerType::Global ), _taints( i.taints() )
+        : _taints( i.taints() )
     {
         if ( w >= PointerBytes )
         {

@@ -26,6 +26,9 @@ namespace divine::mem
     template< typename Next >
     typename Data< Next >::Loc Data< Next >::make( int size, uint32_t hint, bool overwrite )
     {
+        if ( hint < _VM_PL_Code )
+            hint += _VM_PL_Code;
+
         SnapItem *search = snap_find( hint );
         bool found = false;
         while ( !found )

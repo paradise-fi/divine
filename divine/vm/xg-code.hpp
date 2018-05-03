@@ -154,17 +154,21 @@ struct AddressMap
         ASSERT( _code.empty() );
 
         for ( auto var = m->global_begin(); var != m->global_end(); ++ var )
+        {
             _global[ &*var ] = next_global();
+            if ( _global.size() >= _VM_PL_Global )
+                throw std::logic_error( "Capacity exceeded: too many global objects." );
+        }
 
         CodePointer pc( 0, 0 );
         for ( auto &f : *m )
         {
             if ( f.isDeclaration() )
                 continue;
-            pc.function( pc.function() + 1 );
+            pc.object( pc.object() + 1 );
             pc.instruction( brick::bitlevel::align( f.arg_size() + f.isVarArg(), 4 ) );
 
-            if ( !pc.function() )
+            if ( pc.object() >= _VM_PL_Code )
                 throw std::logic_error( "Capacity exceeded: too many functions." );
 
             for ( auto &b : f )

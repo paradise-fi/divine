@@ -756,7 +756,7 @@ void Eval< Ctx >::implement_call( bool invoke )
         return;
     }
 
-    if ( targetV.cooked().type() != PointerType::Code )
+    if ( ! targetV.cooked().null() && targetV.cooked().type() != PointerType::Code )
     {
         fault( _VM_F_Control ) << "invalid call on a pointer which does not point to code: "
                                 << targetV;
