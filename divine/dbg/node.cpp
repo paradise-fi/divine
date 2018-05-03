@@ -615,7 +615,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
                _ctx.program().addr( var ) :
                eval.s2ptr( slot );
     PointerV deref;
-    if ( boundcheck( PointerV( ptr ), vm::PointerBytes ) )
+    if ( slot.size() >= vm::PointerBytes )
         _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
     if ( deref.pointer() )
         _related_ptrs.insert( deref.cooked() );
