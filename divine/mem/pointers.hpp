@@ -194,39 +194,10 @@ struct PointerLayer : public NextLayer
                 _ptr_exceptions->at( l.object, bitlevel::downalign( l.offset, 4 ) + 4 * w ).invalidate();
         }
 
-        if ( sz == sizeof( typename PointerV::Raw ) && value.pointer() )
+        for ( int w = 0; w < words; ++w )
         {
-            exp[ 0 ].pointer = false;
-            exp[ 0 ].pointer_exception = false;
-            exp[ 1 ].pointer = true;
-            exp[ 1 ].pointer_exception = false;
-            /* TODO! */
-            //exp[ 1 ].pointer_type = value.cooked().type();
-            exp[ 1 ].pointer_type = 0;
-        }
-        else if ( sz <= 4 && value.pointer() && value.as_pointer().object() )
-        {
-            PointerException exc;
-            if ( exp[ 0 ].pointer_exception )
-                exc = _ptr_exceptions->at( l.object, l.offset );
-            else
-                exc.invalidate();
-            for ( int i = 0; i < sz; ++i )
-            {
-                exc.objid[ i ] = value.as_pointer().object();
-                exc.type( i, uint8_t( value.as_pointer().type() ) );
-                exc.index( i, 0 ); /* TODO */
-            }
-            exp[ 0 ].pointer_exception = true;
-            _ptr_exceptions->set( l.object, l.offset, exc );
-        }
-        else
-        {
-            for ( int w = 0; w < words; ++w )
-            {
-                exp[ w ].pointer = false;
-                exp[ w ].pointer_exception = false;
-            }
+            exp[ w ].pointer = value.objid() && value.objid_offset() == w * 32;
+            exp[ w ].pointer_exception = false;
         }
     }
 
