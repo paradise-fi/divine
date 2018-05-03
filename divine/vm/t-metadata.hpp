@@ -347,7 +347,7 @@ struct CompoundShadow
 
     TEST( read_ptr )
     {
-        PointerV p1( vm::nullPointer() ), p2;
+        PointerV p1( vm::CodePointer( 3, 0 ) ), p2;
         heap.write( obj, 0, p1 );
         heap.read< PointerV >( obj, 0, p2 );
         ASSERT( p2.defined() );
@@ -356,7 +356,7 @@ struct CompoundShadow
 
     TEST( read_2_ptr )
     {
-        PointerV p1( vm::nullPointer() ), p2;
+        PointerV p1( vm::CodePointer( 3, 0 ) ), p2;
         heap.write( obj, 0, p1 );
         heap.write( obj, 8, p1 );
         heap.read< PointerV >( obj, 0, p2 );
@@ -369,7 +369,7 @@ struct CompoundShadow
 
     TEST( copy_ptr )
     {
-        PointerV p1( vm::nullPointer() ), p2;
+        PointerV p1( vm::CodePointer( 3, 0 ) ), p2;
         ASSERT( p1.pointer() );
         heap.write( obj, 0, p1 );
         heap.copy( obj, 0, obj, 8, 8 );
