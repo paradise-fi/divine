@@ -32,6 +32,10 @@ namespace divine::mc
             if ( solver == "z3" )
                 return std::make_shared< Job_< Next, mc::Z3Builder > >( bc, next );
 #endif
+#if OPT_STP
+            if ( solver == "stp" )
+                return std::make_shared< Job_< Next, mc::STPBuilder > >( bc, next );
+#endif
             if ( brick::string::startsWith( solver, "smtlib" ) )
             {
                 std::vector< std::string > cmd;

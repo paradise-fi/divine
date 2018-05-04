@@ -500,6 +500,10 @@ using SMTLibBuilder = Builder< smt::SMTLibSolver >;
 using Z3Builder = Builder< smt::Z3Solver >;
 #endif
 
+#if OPT_STP
+using STPBuilder = Builder< smt::STPSolver >;
+#endif
+
 }
 
 namespace divine::t_mc
