@@ -31,6 +31,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/substitution.h>
+#include <lart/abstract/interrupt.h>
 
 namespace lart {
 namespace abstract {
@@ -69,6 +70,7 @@ namespace abstract {
                                            , Tainting()
 //                                           , UnrepStores()
                                            , Synthesize()
+                                           , CallInterrupt()
 										   );
             passes.run( m );
         }
@@ -204,7 +206,8 @@ auto test_substitution( const File & src ) {
                       , InDomainDuplicate()
                       , Tainting()
 //                      , UnrepStores()
-                      , Synthesize() );
+                      , Synthesize()
+                      , CallInterrupt() );
 }
 
 static const std::string annotation =
