@@ -140,7 +140,7 @@ struct Verify : WithBC
     bool _no_report_file = false;
     bool _report_unique = false;
     Report _report = Report::Yaml;
-    std::string _solver = "z3";
+    std::string _solver = "stp";
 
     std::shared_ptr< std::ostream > _report_file;
     std::string _report_filename;
