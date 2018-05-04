@@ -167,7 +167,8 @@ endif()
 opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ${IS_NDEBUG} )
 opt( OPT_SIM "build the interactive debugger/simulator" ON )
 opt( OPT_SQL "enable ODBC-based database support" ${ODBC_FOUND} )
-opt( OPT_Z3 "link to Z3 for faster symbolic verification" ${Z3_FOUND} )
+opt( OPT_Z3 "enable the Z3 solver backend (needs a Z3 installation)" ${Z3_FOUND} )
+opt( OPT_STP "enable the STP solver backend" ON )
 
 if ( OPT_SIM AND NOT TOOLCHAIN )
   if ( STATIC_BUILD )
@@ -219,8 +220,14 @@ else()
   add_definitions( -DNVALGRIND )
 endif()
 
-set( STP_INCLUDES ${divine_SOURCE_DIR}/stp/include ${divine_BINARY_DIR}/stp/include
-                  ${divine_SOURCE_DIR}/stp/lib ${divine_SOURCE_DIR} ${divine_BINARY_DIR}/cryptoms )
+if ( OPT_STP )
+  set( STP_INCLUDES ${divine_SOURCE_DIR}/stp/include ${divine_BINARY_DIR}/stp/include
+                    ${divine_SOURCE_DIR}/stp/lib ${divine_SOURCE_DIR} ${divine_BINARY_DIR}/cryptoms )
+  set( STP_LIBRARIES libstp )
+else()
+  set( STP_INCLUDES "" )
+  set( STP_LIBRARIES "" )
+endif()
 
 set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
 set( DIVINE_SYS_INCLUDES ${Z3_INCLUDE_DIRS} ${STP_INCLUDES} )
