@@ -92,6 +92,7 @@ add_library(libcryptominisat5 STATIC
     cryptominisat.cpp
 )
 
+set_target_properties( libcryptominisat5 PROPERTIES POSITION_INDEPENDENT_CODE ON )
 # indicate that we depend on pthread, and compile in the actual library
 target_link_libraries(libcryptominisat5
     LINK_PUBLIC ${cryptoms_lib_link_libs}
