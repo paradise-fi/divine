@@ -4,6 +4,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
 DIVINE_UNRELAX_WARNINGS
@@ -54,8 +55,12 @@ Value* get_source( Value *val ) {
     while ( true ) {
         if ( auto gep = dyn_cast< GetElementPtrInst >( val ) )
             val = gep->getPointerOperand();
-        else if ( auto load = dyn_cast< LoadInst >( val ) )
+        else if ( auto ce = dyn_cast< ConstantExpr >( val ) ) {
+            val = ce->getOperand( 0 );
+        } else if ( auto load = dyn_cast< LoadInst >( val ) )
             val = load->getPointerOperand();
+        else if ( auto btcst = dyn_cast< BitCastInst >( val ) )
+            val = btcst->getOperand( 0 );
         else if ( isa< AllocaInst >( val ) )
             return val;
         else if ( isa< GlobalValue >( val ) )
