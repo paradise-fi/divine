@@ -201,38 +201,81 @@ void ReportBase::find_instances( std::vector< std::string > tags )
         _instance_ids.push_back( r.get< int >( 0 ) );
 }
 
+std::string list_tags( nanodbc::connection &conn, std::string table, int id )
+{
+    std::stringstream q, out;
+    q << "select name from tag join " << table << "_tags as x on x.tag = id where x."
+      << table << " = " << id;
+    nanodbc::statement list( conn, q.str() );
+
+    bool first = true;
+    auto r = list.execute();
+
+    while ( r.next() )
+    {
+        out << ( first ? "[ " : ", " ) << r.get< std::string >( 0 );
+        first = false;
+    }
+    out << ( first ? "[]" : " ]" );
+    return out.str();
+}
+
 void Report::list_instances()
 {
     std::stringstream q;
-    q << "select "
-      << "  instance.id, build.version, substr( build.source_sha, 0, 7 ), "
-      << "  substr( build.runtime_sha, 0, 7 ), build.build_type, "
-      << "  cpu.model, machine.cores, "
-      << "  machine.mem / (1024 * 1024), "
-      << "  (select count(*) from job where job.instance = instance.id and job.status = 'D') "
-      << "from instance "
-      << "join build   on instance.build = build.id "
-      << "join machine on instance.machine = machine.id "
-      << "join cpu     on machine.cpu = cpu.id ";
+    q << "select id, version from build";
+    if ( _tag.size() )
+        q << " where ( select count(*) from build_tags as bt join tag on bt.tag = tag.id "
+          << "         where tag.name = ? and bt.build = build.id ) > 0";
+
     nanodbc::statement find( _conn, q.str() );
-    Table res;
-    res.cols( "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" );
-    res.intcols( "instance" );
-    res.set_format( "cpu", [=]( Table::Value v )
-                    {
-                        auto s = v.get< std::string >();
-                        std::regex tidy( "Intel\\(R\\) (Xeon)\\(R\\) CPU *"
-                                         "|Intel\\(R\\) (Core)\\(TM\\) " );
-                        return std::regex_replace( s, tidy, "$1 " );
-                    } );
-    res.set_format( "build", []( Table::Value v )
-                    {
-                        auto s = v.get< std::string >();
-                        if ( s == "RelWithDebInfo" ) return std::string( "RWDI" );
-                        return s;
-                    } );
-    res.fromSQL( find.execute() );
-    res.format( std::cout );
+    if ( _tag.size() )
+        find.bind( 0, _tag[ 0 ].c_str() );
+
+    auto r = find.execute();
+    while ( r.next() )
+    {
+        int id = r.get< int >( 0 );
+        bool printed = false;
+        auto header = [&]{
+            if ( printed ) return;
+            printed = true;
+            std::cout << "- build id: " << id << std::endl
+                      << "  version: " << r.get< std::string >( 1 ) << std::endl
+                      << "  tags: " << list_tags( _conn, "build", id ) << std::endl
+                      << "  instances:" << std::endl;
+        };
+        q.str( "" );
+        q << "select instance.id, instance.machine, "
+          << "config.solver, config.threads, config.max_mem, config.max_time, "
+          << "(select count(*) from job where job.instance = instance.id and job.status = 'D') "
+          << "from instance join config on instance.config = config.id where instance.build = ?";
+        nanodbc::statement instances( _conn, q.str() );
+        instances.bind( 0, &id );
+        auto i = instances.execute();
+        while ( i.next() )
+        {
+            if ( !i.get< int >( 6 ) )
+                continue;
+            header();
+            std::cout  << "    - instance id: " << i.get< int >( 0 ) << std::endl
+                       << "      solver: " << i.get< std::string >( 2 ) << std::endl
+                       << "      resources: {";
+            bool comma = false;
+            if ( !i.is_null( 3 ) )
+                std::cout << " threads: " << i.get< int >( 3 ), comma = true;
+            if ( !i.is_null( 4 ) )
+                std::cout << ( comma ? ", " : " " )
+                          << "mem: " << i.get< int64_t >( 4 ), comma = true;
+            if ( !i.is_null( 5 ) )
+                std::cout << ( comma ? ", " : " " )
+                          << "time: " << i.get< int64_t >( 5 );
+            std::cout << ( comma ? " " : "" ) << "}" << std::endl
+                      << "      jobs: " << i.get< int >( 6 ) << std::endl
+                      << "      machine tags: " << list_tags( _conn, "machine", i.get< int >( 1 ) )
+                      << std::endl;
+        }
+    }
 }
 
 void Report::results()
