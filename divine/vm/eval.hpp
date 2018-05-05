@@ -298,32 +298,33 @@ struct Eval
         return op;
     }
 
-    using AtOffset = std::pair< IntV, int >;
-
-    AtOffset compositeOffset( int t )
+    IntV gep( int type, int idx, int end ) // getelementptr
     {
-        return std::make_pair( IntV( 0 ), t );
-    }
-
-    template< typename... Args >
-    AtOffset compositeOffset( int t, IntV index, Args... indices )
-    {
-        auto st = types().subtype( t, index.cooked() );
-        IntV offset( st.first );
-        offset.defined( index.defined() );
-        auto r = compositeOffset( st.second, indices... );
-        return std::make_pair( r.first + offset, r.second );
-    }
-
-    IntV compositeOffsetFromInsn( int t, int current, int end )
-    {
-        if ( current == end )
+        if ( idx == end )
             return IntV( 0 );
 
-        auto index = operand< IntV >( current );
-        auto r = compositeOffset( t, index );
+        int64_t min = std::numeric_limits< int >::min(),
+                max = std::numeric_limits< int >::max();
 
-        return r.first + compositeOffsetFromInsn( r.second, current + 1, end );
+        value::Int< 64, true > offset;
+        auto fetch = [&]( auto v ) { offset = v.get( idx + 1 ).make_signed(); };
+        type_dispatch< IsIntegral >( operand( idx ).type, fetch );
+
+        if ( offset.cooked() < min || offset.cooked() > max )
+            return IntV( 0, 0, false );
+
+        auto subtype = types().subtype( type, offset.cooked() );
+        auto offset_sub = gep( subtype.second, idx + 1, end );
+        int64_t a = offset_sub.cooked(), b = subtype.first;
+
+        if ( a > 0 && b > 0 && ( b > max - a || a + b > max ) ||
+             a < 0 && b < 0 && ( b < min - a || a + b < min ) )
+            return IntV( 0, 0, false ); /* undefined */
+
+        IntV offset_bytes( subtype.first );
+        offset_bytes.defined( offset.defined() );
+
+        return IntV( offset_bytes ) + offset_sub;
     }
 
     void implement_store()
@@ -378,7 +379,7 @@ public:
 
     void implement_extractvalue()
     {
-        auto off = compositeOffsetFromInsn( instruction().subcode, 1, instruction().argcount() );
+        auto off = gep( instruction().subcode, 1, instruction().argcount() );
         ASSERT( off.defined() );
         slot_copy( s2ptr( operand( 0 ), off.cooked() ), result(), result().size() );
     }
@@ -387,7 +388,7 @@ public:
     {
         /* first copy the original */
         slot_copy( s2ptr( operand( 0 ) ), result(), result().size() );
-        auto off = compositeOffsetFromInsn( instruction().subcode, 2, instruction().argcount() );
+        auto off = gep( instruction().subcode, 2, instruction().argcount() );
         ASSERT( off.defined() );
         /* write the new value over the selected field */
         slot_copy( s2ptr( operand( 1 ) ), result(), operand( 1 ).size(), off.cooked() );

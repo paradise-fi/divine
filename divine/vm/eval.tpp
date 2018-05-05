@@ -1310,8 +1310,8 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
     switch ( instruction().opcode )
     {
         case OpCode::GetElementPtr:
-            result( operand< PointerV >( 0 ) + compositeOffsetFromInsn(
-                        instruction().subcode, 1, instruction().argcount() ) );
+            result( operand< PointerV >( 0 ) +
+                    gep( instruction().subcode, 1, instruction().argcount() ) );
             return;
 
         case OpCode::Select:
