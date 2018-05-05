@@ -109,6 +109,7 @@ struct Schedule : WithModel, virtual GetInstance
 struct ReportBase : WithModel
 {
     bool _by_tag = false, _watch = false;
+    std::vector< std::string > _tag;
     std::string _result = "VE";
     std::string _agg = "avg";
     std::vector< std::vector< std::string > > _instances;

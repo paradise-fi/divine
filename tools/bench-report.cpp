@@ -271,12 +271,20 @@ void Report::results()
         q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
     q << " and instance.id = " << _instance_ids[ 0 ];
     q << " and correct is not null ";
+    for ( auto t : _tag )
+    {
+        q << " and ( select count(*) from model_tags as mt join tag on mt.tag = tag.id"
+          << "       where tag.name = ? and mt.model = model.id) > 0 ";
+    }
     q << " group by instance.id, model.id" << (_by_tag ? ", tag.id" : "") << " ) as l ";
     if ( _by_tag )
         q << " group by name, instid";
     q << " order by name";
 
     nanodbc::statement find( _conn, q.str() );
+
+    for ( unsigned i = 0; i < _tag.size(); ++i )
+        find.bind( i, _tag[ i ].c_str() );
 
     Table res;
 
@@ -308,11 +316,12 @@ void Compare::run()
         throw brick::except::Error( "At least one --instance must be specified." );
 
     std::stringstream q;
+    std::string x0 = "x" + std::to_string( _instance_ids[ 0 ] );
+
     if ( _by_tag )
-        q << "select tag.name, count(x" << _instance_ids[ 0 ] << ".modid) ";
+        q << "select tag.name, count(" << x0 << ".modid) ";
     else
-        q << "select x" << _instance_ids[ 0 ] << ".modname, "
-          << "x" << _instance_ids[ 0 ]<< ".modvar ";
+        q << "select " << x0 << ".modname, " << x0 << ".modvar ";
 
     for ( auto f : _fields )
         for ( auto i : _instance_ids )
@@ -336,10 +345,18 @@ void Compare::run()
             q << " join ";
     }
     if ( _by_tag )
-        q << " join model_tags on model_tags.model = x" << _instance_ids[ 0 ] << ".modid"
-          << " join tag on model_tags.tag = tag.id group by tag.id";
+        q << " join model_tags on model_tags.model = " << x0 << ".modid"
+          << " join tag on model_tags.tag = tag.id";
+    for ( auto t : _tag )
+        q << " where ( select count(*) from model_tags as mt join tag on mt.tag = tag.id "
+          << " where mt.model = " << x0 << ".modid and tag.name = ? ) > 0";
+
+    if ( _by_tag )
+        q << " group by tag.id";
     else
-        q << " order by x" << _instance_ids[ 0 ] << ".modname";
+        q << " order by " << x0 << ".modname";
+
+    std::cerr << q.str() << std::endl;
 
     Table res;
     if ( _by_tag )
@@ -361,6 +378,8 @@ void Compare::run()
     nanodbc::statement find( _conn, q.str() );
     for ( int i = 0; i < int( _instance_ids.size() ); ++i )
         find.bind( i, &_instance_ids[ i ] );
+    for ( unsigned i = 0; i < _tag.size(); ++i )
+        find.bind( _instance_ids.size() + i, _tag[ i ].c_str() );
 
     res.fromSQL( find.execute() );
     res.sum();
