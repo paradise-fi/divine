@@ -355,19 +355,20 @@ public:
 
     void local_jump( PointerV _to )
     {
-        CodePointer to( _to.cooked() );
-
-        if ( pc().function() != to.function() )
+        if ( _to.cooked().type() == PointerType::Code && pc().object() != _to.cooked().object() )
         {
             fault( _VM_F_Control ) << "illegal cross-function jump to " << _to;
             return;
         }
-        jump( to );
+
+        jump( _to );
     }
 
-    bool long_jump( CodePointer to )
+    bool long_jump( PointerV _to )
     {
-        if ( jump( to ) )
+        if ( jump( _to ) )
+        {
+            CodePointer to( _to.cooked() );
             if ( to.function() &&
                  program().instruction( to ).opcode != lx::OpBB &&
                  to.instruction() + 1 == program().function( to ).instructions.size() )
@@ -376,12 +377,21 @@ public:
                     << "illegal long jump to function end";
                 return false;
             }
+        }
         return true;
     }
 
 
-    bool jump( CodePointer to )
+    bool jump( PointerV _to )
     {
+        if ( _to.cooked().type() != PointerType::Code )
+        {
+            fault( _VM_F_Control ) << "illegal jump to a non-code pointer: " << _to;
+            return false;
+        }
+
+        CodePointer to( _to.cooked() );
+
         if ( program().functions.size() <= to.function() )
         {
             fault( _VM_F_Control ) << "illegal jump to a non-existent function: " << to;

@@ -938,7 +938,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
 
     if ( instruction().argcount() == 3 )
     {
-        auto target = operandCk< PointerV >( 2 ).cooked();
+        auto target = operandCk< PointerV >( 2 );
         maybe_free();
         context().set( _VM_CR_Frame, ptr.cooked() );
         long_jump( target );
