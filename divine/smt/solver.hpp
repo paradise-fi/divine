@@ -66,6 +66,7 @@ struct Incremental : Simple< Core >
     using Simple< Core >::Simple;
     bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
     std::vector< vm::HeapPointer > _inc;
+    void reset() { _inc.clear(); Simple< Core >::reset(); }
 };
 
 struct SMTLib
