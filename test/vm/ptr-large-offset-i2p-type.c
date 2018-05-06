@@ -5,7 +5,9 @@
 
 char array[20];
 
-int main() {
+// TODO: our current clang does not generate line information for an indirect goto
+int main()
+{   /* ERROR */
     array[0] = 'a';
     array[10] = 'b';
 
@@ -15,5 +17,5 @@ int main() {
     void *achar = (void *)aint;
     void *labref = &&lab;
   lab:
-    goto *achar; /* ERROR */
+    goto *achar;
 }
