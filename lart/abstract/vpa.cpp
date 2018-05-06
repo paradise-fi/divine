@@ -51,24 +51,26 @@ Values reach_from( Values roots ) {
 
 Values reach_from( Value *root ) { return reach_from( Values{ root } ); }
 
-Value* get_source( Value *val ) {
+Values get_sources( Value *val ) {
     while ( true ) {
         if ( auto gep = dyn_cast< GetElementPtrInst >( val ) )
             val = gep->getPointerOperand();
-        else if ( auto ce = dyn_cast< ConstantExpr >( val ) ) {
+        else if ( auto ce = dyn_cast< ConstantExpr >( val ) )
             val = ce->getOperand( 0 );
-        } else if ( auto load = dyn_cast< LoadInst >( val ) )
+        else if ( auto load = dyn_cast< LoadInst >( val ) )
             val = load->getPointerOperand();
         else if ( auto btcst = dyn_cast< BitCastInst >( val ) )
             val = btcst->getOperand( 0 );
+        else if ( auto itptr = dyn_cast< IntToPtrInst >( val ) )
+            val = itptr->getOperand( 0 );
         else if ( isa< AllocaInst >( val ) )
-            return val;
+            return { val };
         else if ( isa< GlobalValue >( val ) )
-            return val;
+            return { val };
         else if ( isa< Argument >( val ) )
-            return val;
+            return { val };
         else if ( isa< CallInst >( val ) )
-            return val; // TODO if pointer do we need to propagate through return?
+            return { val }; // TODO if pointer do we need to propagate through return?
         else {
             val->dump();
             UNREACHABLE( "Unknown parent instruction." );
@@ -110,8 +112,8 @@ void VPA::propagate_value( Value *val, Domain dom ) {
 
         if ( auto s = dyn_cast< StoreInst >( dep ) ) {
             if ( seen_vals.count( { s->getValueOperand(), dom } ) ) {
-                auto src = get_source( s->getPointerOperand() );
-                tasks.push_back( [=]{ propagate_value( src, dom ); } );
+                for ( auto src : get_sources( s->getPointerOperand() ) )
+                    tasks.push_back( [=]{ propagate_value( src, dom ); } );
                 if ( auto a = dyn_cast< Argument >( s->getPointerOperand() ) )
                     if ( !entry_args.count( { a, dom } ) )
                         propagate_back( a, dom );
@@ -151,8 +153,8 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
         return;
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
-            auto src = get_source( call->getOperand( arg->getArgNo() ) );
-            tasks.push_back( [=]{ propagate_value( src, dom ); } );
+            for ( auto src : get_sources( call->getOperand( arg->getArgNo() ) ) )
+                tasks.push_back( [=]{ propagate_value( src, dom ); } );
         }
     }
 }
