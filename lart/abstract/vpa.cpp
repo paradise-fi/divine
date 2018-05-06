@@ -62,6 +62,8 @@ Value* get_source( Value *val ) {
             return val;
         else if ( isa< Argument >( val ) )
             return val;
+        else if ( isa< CallInst >( val ) )
+            return val; // TODO if pointer do we need to propagate through return?
         else {
             val->dump();
             UNREACHABLE( "Unknown parent instruction." );
