@@ -132,6 +132,10 @@ struct Report : ReportBase
 {
     bool _list_instances = false;
 
+    void list_build( nanodbc::result );
+
+    template< typename F >
+    void list_instance( F header, nanodbc::result i );
     void list_instances();
     void results();
 

@@ -220,6 +220,76 @@ std::string list_tags( nanodbc::connection &conn, std::string table, int id )
     return out.str();
 }
 
+template< typename F >
+void Report::list_instance( F header, nanodbc::result i )
+{
+    if ( !i.get< int >( 6 ) )
+        return;
+    header();
+
+    std::cout  << "    - instance id: " << i.get< int >( 0 ) << std::endl
+               << "      solver: " << i.get< std::string >( 2 ) << std::endl
+               << "      resources: {";
+    bool comma = false;
+    if ( !i.is_null( 3 ) )
+        std::cout << " threads: " << i.get< int >( 3 ), comma = true;
+    if ( !i.is_null( 4 ) )
+        std::cout << ( comma ? ", " : " " )
+                  << "mem: " << i.get< int64_t >( 4 ), comma = true;
+    if ( !i.is_null( 5 ) )
+        std::cout << ( comma ? ", " : " " )
+                  << "time: " << i.get< int64_t >( 5 );
+    std::cout << ( comma ? " " : "" ) << "}" << std::endl
+              << "      jobs: " << i.get< int >( 6 ) << std::endl
+              << "      machine tags: " << list_tags( _conn, "machine", i.get< int >( 1 ) )
+              << std::endl;
+}
+
+void Report::list_build( nanodbc::result r )
+{
+    int id = r.get< int >( 0 );
+
+    std::stringstream q;
+    q << "select note from build_notes where build = " << id;
+    nanodbc::statement q_notes( _conn, q.str() );
+    auto notes = q_notes.execute();
+
+    bool printed = false;
+    auto header = [&]
+    {
+        if ( printed ) return;
+        printed = true;
+
+        std::cout << "- build id: " << id << std::endl
+                  << "  version: " << r.get< std::string >( 1 ) << std::endl
+                  << "  tags: " << list_tags( _conn, "build", id ) << std::endl;
+
+        if ( notes.next() )
+        {
+            std::cout << "  note:";
+            bool multi = notes.next();
+            if ( multi ) std::cout << std::endl;
+            notes.first();
+            do
+                std::cout << ( multi ? "    - " : " " ) << notes.get< std::string >( 0 ) <<std::endl;
+            while ( notes.next() );
+        }
+
+        std::cout << "  instances:" << std::endl;
+    };
+
+    q.str( "" );
+    q << "select instance.id, instance.machine, "
+      << "config.solver, config.threads, config.max_mem, config.max_time, "
+      << "(select count(*) from job where job.instance = instance.id and job.status = 'D') "
+      << "from instance join config on instance.config = config.id where instance.build = ?";
+    nanodbc::statement instances( _conn, q.str() );
+    instances.bind( 0, &id );
+    auto i = instances.execute();
+    while ( i.next() )
+        list_instance( header, i );
+}
+
 void Report::list_instances()
 {
     std::stringstream q;
@@ -234,48 +304,7 @@ void Report::list_instances()
 
     auto r = find.execute();
     while ( r.next() )
-    {
-        int id = r.get< int >( 0 );
-        bool printed = false;
-        auto header = [&]{
-            if ( printed ) return;
-            printed = true;
-            std::cout << "- build id: " << id << std::endl
-                      << "  version: " << r.get< std::string >( 1 ) << std::endl
-                      << "  tags: " << list_tags( _conn, "build", id ) << std::endl
-                      << "  instances:" << std::endl;
-        };
-        q.str( "" );
-        q << "select instance.id, instance.machine, "
-          << "config.solver, config.threads, config.max_mem, config.max_time, "
-          << "(select count(*) from job where job.instance = instance.id and job.status = 'D') "
-          << "from instance join config on instance.config = config.id where instance.build = ?";
-        nanodbc::statement instances( _conn, q.str() );
-        instances.bind( 0, &id );
-        auto i = instances.execute();
-        while ( i.next() )
-        {
-            if ( !i.get< int >( 6 ) )
-                continue;
-            header();
-            std::cout  << "    - instance id: " << i.get< int >( 0 ) << std::endl
-                       << "      solver: " << i.get< std::string >( 2 ) << std::endl
-                       << "      resources: {";
-            bool comma = false;
-            if ( !i.is_null( 3 ) )
-                std::cout << " threads: " << i.get< int >( 3 ), comma = true;
-            if ( !i.is_null( 4 ) )
-                std::cout << ( comma ? ", " : " " )
-                          << "mem: " << i.get< int64_t >( 4 ), comma = true;
-            if ( !i.is_null( 5 ) )
-                std::cout << ( comma ? ", " : " " )
-                          << "time: " << i.get< int64_t >( 5 );
-            std::cout << ( comma ? " " : "" ) << "}" << std::endl
-                      << "      jobs: " << i.get< int >( 6 ) << std::endl
-                      << "      machine tags: " << list_tags( _conn, "machine", i.get< int >( 1 ) )
-                      << std::endl;
-        }
-    }
+        list_build( r );
 }
 
 void Report::results()
