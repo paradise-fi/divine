@@ -14,5 +14,5 @@ extern "C" {
 void __sym_formula_dump();
 
 void __sym_poke_formula( __sym_formula *f, void *addr );
-__sym_formula* __sym_peek_formula( void *addr );
+__sym_formula* __sym_peek_formula( void *addr, int bw );
 }

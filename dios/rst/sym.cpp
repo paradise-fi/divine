@@ -155,7 +155,7 @@ void __sym_poke_formula( Formula *f, void *addr ) {
     __vm_poke( addr, _VM_ML_User, ptr.obj );
 }
 
-Formula* __sym_peek_formula( void *addr ) {
+Formula* __sym_peek_formula( void *addr, int bw ) {
     struct { uint32_t off, obj; } ptr;
 
     ptr.off = 0;
@@ -163,5 +163,11 @@ Formula* __sym_peek_formula( void *addr ) {
 
     Formula *ret;
     memcpy( &ret, &ptr, sizeof( Formula* ) );
-    return ret;
+
+    if ( ret->type().bitwidth() < bw )
+        return __sym_zext( ret, bw );
+    else if ( ret->type().bitwidth() > bw )
+        return __sym_trunc( ret, bw );
+    else
+        return ret;
 }
