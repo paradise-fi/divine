@@ -43,6 +43,14 @@ int get_instance( connection conn, int config, int build )
     return odbc::unique_id( conn, "instance", keys, vals );
 }
 
+void WithConnection::add_tag( std::string table, int id, std::string tag )
+{
+    int tag_id = odbc::unique_id( _conn, "tag", odbc::Keys{ "name" }, odbc::Vals{ tag } );
+    odbc::Vals vals{ id, tag_id };
+    auto ins = odbc::insert( _conn, table + "_tags", odbc::Keys{ table, "tag" }, vals );
+    ins.execute();
+}
+
 int GetInstance::get_instance()
 {
     return benchmark::get_instance( _conn, _config_id );
@@ -210,12 +218,7 @@ void ImportModel::tag()
     clear.execute();
 
     for ( auto tag : _tags )
-    {
-        int tag_id = odbc::unique_id( _conn, "tag", odbc::Keys{ "name" }, odbc::Vals{ tag } );
-        odbc::Vals vals{ _id, tag_id };
-        auto ins = odbc::insert( _conn, "model_tags", odbc::Keys{ "model", "tag" }, vals );
-        ins.execute();
-    }
+        add_tag( "model", _id, tag );
 
     txn.commit();
 }

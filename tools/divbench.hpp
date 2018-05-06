@@ -38,10 +38,15 @@ namespace odbc = divine::ui::odbc;
 
 int get_instance( nanodbc::connection conn, int config, int build = 0 );
 
-struct Cmd
+struct WithConnection
+{
+    connection _conn;
+    void add_tag( std::string table, int id, std::string tag );
+};
+
+struct Cmd : WithConnection
 {
     std::string _odbc;
-    connection  _conn;
     void setup();
     virtual void run() = 0;
 };
@@ -65,10 +70,9 @@ struct Help
     }
 };
 
-struct ImportModel
+struct ImportModel : WithConnection
 {
-    connection &_conn;
-    ImportModel( connection &c ) : _conn( c ) {}
+    ImportModel( const connection &c ) { _conn = c; }
 
     std::string _name, _variant, _path, _interp;
     std::vector< std::string > _tags;
