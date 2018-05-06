@@ -251,6 +251,13 @@ void Setup::run()
     std::cerr << "build " << build << ", instance " << inst << std::endl;
     if ( !_tag.empty() )
         add_tag( "build", build, _tag );
+    if ( !_note.empty() )
+    {
+        odbc::Keys keys{ "build", "note" };
+        odbc::Vals vals{ build, _note };
+        auto ins = odbc::insert( _conn, "build_notes", keys, vals );
+        ins.execute();
+    }
 }
 
 void Schedule::run()

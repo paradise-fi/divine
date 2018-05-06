@@ -64,6 +64,7 @@ int main( int argc, const char **argv )
         .option( "[--tag {string}]", &WithModel::_tag, "only take models with a given tag" );
 
     auto opts_setup = cmd::make_option_set< Setup >( validator )
+        .option( "[--note {string}]", &Setup::_note, "attach a note to this build" )
         .option( "[--tag {string}]", &Setup::_tag, "attach a tag to this build" );
 
     auto opts_sched = cmd::make_option_set< Schedule >( validator )

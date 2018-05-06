@@ -107,6 +107,7 @@ struct GetInstance : virtual Cmd
 struct Setup : GetInstance
 {
     std::string _tag;
+    std::string _note;
     void run() override;
 };
 
