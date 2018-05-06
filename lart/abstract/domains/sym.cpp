@@ -118,5 +118,9 @@ Type* Symbolic::type( Module *m, Type * ) const {
     return fn->getReturnType();
 }
 
+Value *Symbolic::default_value( Type *type ) const {
+    return ConstantPointerNull::get( cast< PointerType >( type ) );
+}
+
 } // namespace abstract
 } // namespace lart

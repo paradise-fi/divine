@@ -16,5 +16,9 @@ llvm::Type* Zero::type( llvm::Module *, llvm::Type * ) const {
     NOT_IMPLEMENTED();
 }
 
+llvm::Value *Zero::default_value( llvm::Type * ) const {
+    NOT_IMPLEMENTED();
+}
+
 } // namespace abstract
 } // namespace lart

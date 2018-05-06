@@ -60,6 +60,7 @@ void Stash::run( Module &m ) {
             arg_stash( call );
         stashed.insert( fn );
     }, m );
+
 }
 
 void Stash::arg_unstash( CallInst *call ) {

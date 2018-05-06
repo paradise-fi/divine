@@ -38,5 +38,9 @@ Type* Tristate::type( Module *, Type * ) const {
     NOT_IMPLEMENTED();
 }
 
+Value *Tristate::default_value( Type * ) const {
+    NOT_IMPLEMENTED();
+}
+
 } // namespace abstract
 } // namespace lart

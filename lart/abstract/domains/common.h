@@ -43,6 +43,9 @@ struct Common {
     virtual llvm::Value* lift( llvm::Value *v ) = 0;
 
     virtual llvm::Type *type( llvm::Module *m, llvm::Type *type ) const = 0;
+
+    /* Takes type in the domain and returns default value of it. */
+    virtual llvm::Value *default_value( llvm::Type *type ) const = 0;
 };
 
 }
