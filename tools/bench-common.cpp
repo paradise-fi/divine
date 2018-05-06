@@ -244,6 +244,15 @@ void Import::run()
     }
 }
 
+void Setup::run()
+{
+    int build = odbc::get_build( _conn );
+    int inst = get_instance();
+    std::cerr << "build " << build << ", instance " << inst << std::endl;
+    if ( !_tag.empty() )
+        add_tag( "build", build, _tag );
+}
+
 void Schedule::run()
 {
     int inst = get_instance();

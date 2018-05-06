@@ -104,6 +104,12 @@ struct GetInstance : virtual Cmd
     virtual int get_instance();
 };
 
+struct Setup : GetInstance
+{
+    std::string _tag;
+    void run() override;
+};
+
 struct Schedule : WithModel, virtual GetInstance
 {
     bool _once = false;

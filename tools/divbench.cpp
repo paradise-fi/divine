@@ -63,6 +63,9 @@ int main( int argc, const char **argv )
     auto opts_job = cmd::make_option_set< WithModel >( validator )
         .option( "[--tag {string}]", &WithModel::_tag, "only take models with a given tag" );
 
+    auto opts_setup = cmd::make_option_set< Setup >( validator )
+        .option( "[--tag {string}]", &Setup::_tag, "attach a tag to this build" );
+
     auto opts_sched = cmd::make_option_set< Schedule >( validator )
         .option( "[--once]", &Schedule::_once, "only schedule unique jobs" );
 
@@ -71,6 +74,7 @@ int main( int argc, const char **argv )
 
     auto cmds = cmd::make_parser( validator )
         .command< Import >( opts_db )
+        .command< Setup >( opts_db, opts_setup )
         .command< Schedule >( opts_db, opts_job, opts_sched, opts_inst )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
