@@ -394,13 +394,19 @@ struct RepLifter : BaseLifter {
         ASSERT( function()->empty() );
         IRBuilder<> irb( make_bb( function(), "entry" ) );
 
+        auto &ctx = taint->getContext();
+
         auto begin = function()->arg_begin();
         Value *addr = std::next( begin, 3 );
         // TODO move to symbolic domain
-        if ( !addr->getType()->getPointerElementType()->isIntegerTy( 8 ) )
-            addr = irb.CreateBitCast( addr, Type::getInt8PtrTy( addr->getContext() ) );
+        auto ty = cast< IntegerType >( addr->getType()->getPointerElementType() );
+        if ( !ty->isIntegerTy( 8 ) )
+            addr = irb.CreateBitCast( addr, Type::getInt8PtrTy( ctx ) );
 
-        Values args = { addr };
+        auto i32 = Type::getInt32Ty( ctx );
+        auto bitwidth = ConstantInt::get( i32, ty->getBitWidth() );
+
+        Values args = { addr, bitwidth };
         auto rep = domains.get( domain() )->process( taint, args );
         irb.Insert( cast< Instruction >( rep ) );
         irb.CreateRet( rep );
