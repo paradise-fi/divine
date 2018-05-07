@@ -93,7 +93,7 @@ void Stash::arg_stash( CallInst *call ) {
 }
 
 void Stash::ret_stash( CallInst *call ) {
-    if ( call->getType()->isVoidTy() )
+    if ( call->getType()->isVoidTy() || call->getType()->isPointerTy() )
         return; // no return value to stash
 
     auto fn = call->getCalledFunction();
@@ -120,7 +120,7 @@ void Stash::ret_stash( CallInst *call ) {
 }
 
 void Stash::ret_unstash( CallInst *call ) {
-    if ( call->getType()->isVoidTy() )
+    if ( call->getType()->isVoidTy() || call->getType()->isPointerTy() )
         return; // no return value to stash
 
     auto dom = MDValue( call ).domain();

@@ -915,7 +915,7 @@ void Tainting::_run( Module &m ) {
             }
         }
 
-        if ( !call->getType()->isVoidTy() ) {
+        if ( !call->getType()->isVoidTy() && !call->getType()->isPointerTy() ) {
             if ( !processed.count( fn ) ) {
                 bundle::stash_return_value( call );
             }
