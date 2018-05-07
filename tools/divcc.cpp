@@ -262,7 +262,7 @@ int main( int argc, char **argv )
         auto po = cc::parseOpts( opts );
 
         using brick::fs::joinPath;
-        using brick::fs::absolutePrefix;
+        using brick::fs::splitFileName;
         using divine::cc::includeDir;
 
         po.opts.insert( po.opts.end(), {
@@ -299,8 +299,7 @@ int main( int argc, char **argv )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
                 std::string ofn = brick::fs::dropExtension( ifn );
-                auto abs = absolutePrefix( ofn );
-                ofn = abs.second;
+                ofn = splitFileName( ofn ).second;
                 if ( po.outputFile != "" && po.toObjectOnly )
                     ofn = po.outputFile;
                 else
