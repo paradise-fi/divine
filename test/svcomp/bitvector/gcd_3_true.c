@@ -1,6 +1,6 @@
 /* VERIFY_OPTS: --symbolic --sequential */
 /* TAGS: sym c big */
-#include <stdbool.h>
+
 extern void __VERIFIER_assert(int);
 extern char __VERIFIER_nondet_char(void);
 

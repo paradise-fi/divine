@@ -1,6 +1,6 @@
 /* VERIFY_OPTS: --symbolic --sequential */
 /* TAGS: sym c */
-#include <stdbool.h>
+
 extern void __VERIFIER_assert(int);/* https://graphics.stanford.edu/~seander/bithacks.html#InterleaveTableObvious */
 
 extern int __VERIFIER_nondet_int(void);
