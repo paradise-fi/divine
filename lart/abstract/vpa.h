@@ -27,6 +27,7 @@ private:
     std::deque< Task > tasks;
 
     std::set< std::pair< llvm::Value*, Domain > > seen_vals;
+    std::set< std::pair< llvm::Value*, Domain > > entry_args;
     std::unordered_set< llvm::Function* > seen_funs;
 };
 

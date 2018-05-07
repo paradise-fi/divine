@@ -112,7 +112,7 @@ void Stash::ret_stash( CallInst *call ) {
     if ( has_placeholder( val ) )
         tostash = get_placeholder( val );
     else if ( isa< Argument >( val ) || isa< CallInst >( val ) )
-        tostash = get_unstash_placeholder( val );
+            tostash = get_unstash_placeholder( val );
     else
         tostash = UndefValue::get( aty );
 

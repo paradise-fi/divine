@@ -106,10 +106,12 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                 auto src = get_source( s->getPointerOperand() );
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
                 if ( auto a = dyn_cast< Argument >( s->getPointerOperand() ) )
-                    propagate_back( a, dom );
+                    if ( !entry_args.count( { a, dom } ) )
+                        propagate_back( a, dom );
             } else {
                 if ( auto a = dyn_cast< Argument >( s->getValueOperand() ) )
-                    propagate_back( a, dom );
+                    if ( !entry_args.count( { a, dom } ) )
+                        propagate_back( a, dom );
             }
         }
         else if ( auto call = dyn_cast< CallInst >( dep ) ) {
@@ -120,6 +122,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                     if ( seen_vals.count( { val, dom } ) ) {
                         auto arg = std::next( fn->arg_begin(), op.getOperandNo() );
                         tasks.push_back( [=]{ propagate_value( arg, dom ); } );
+                        entry_args.emplace( arg, dom );
                     }
                 }
             }
@@ -128,7 +131,8 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             step_out( get_function( r ), dom );
         }
         else if ( auto a = dyn_cast< Argument >( dep ) ) {
-            propagate_back( a, dom );
+            if ( !entry_args.count( { a, dom } ) )
+                propagate_back( a, dom );
         }
     }
 
