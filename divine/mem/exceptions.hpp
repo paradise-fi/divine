@@ -38,7 +38,7 @@ struct ExceptionMap
     {
         Lock lk( _mtx );
 
-        auto it = _exceptions.find( Loc( obj, 0, wpos ) );
+        auto it = _exceptions.find( Loc( obj, wpos ) );
         ASSERT( it != _exceptions.end() );
         return it->second;
     }
@@ -54,15 +54,15 @@ struct ExceptionMap
     void set( Internal obj, int wpos, const ExceptionType &exc )
     {
         Lock lk( _mtx );
-        _exceptions[ Loc( obj, 0, wpos ) ] = exc;
+        _exceptions[ Loc( obj, wpos ) ] = exc;
     }
 
     void free( Internal obj )
     {
         Lock lk( _mtx );
 
-        auto lb = _exceptions.lower_bound( Loc( obj, 0, 0 ) );
-        auto ub = _exceptions.upper_bound( Loc( obj, 0, (1 << _VM_PB_Off) - 1 ) );
+        auto lb = _exceptions.lower_bound( Loc( obj, 0 ) );
+        auto ub = _exceptions.upper_bound( Loc( obj, (1 << _VM_PB_Off) - 1 ) );
         _exceptions.erase( lb, ub );
     }
 
@@ -92,7 +92,7 @@ struct ExceptionMap
     void copy( OM &from_m, typename OM::Loc from, Loc to, int sz )
     {
         Lock lk( _mtx );
-        typename OM::Loc from_p( from.object, from.objid, from.offset + sz );
+        typename OM::Loc from_p( from.object, from.offset + sz );
 
         int delta = to.offset - from.offset;
 
@@ -101,7 +101,7 @@ struct ExceptionMap
         std::transform( lb, ub, std::inserter( _exceptions, _exceptions.begin() ), [&]( auto x )
         {
             auto fl = x.first;
-            Loc l( to.object, fl.objid, fl.offset + delta );
+            Loc l( to.object, fl.offset + delta );
             return std::make_pair( l, x.second );
         } );
     }

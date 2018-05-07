@@ -37,29 +37,52 @@ struct Base
 
     mutable Pool _objects, _snapshots;
 
-    struct Loc : public brick::types::Ord
+    template< typename Self >
+    struct LocMixin : public brick::types::Ord
     {
         using Internal = typename Pool::Pointer;
         Internal object;
-        uint32_t objid, offset;
+        uint32_t offset;
 
-        Loc( Internal o, int objid, int off )
-            : object( o ), objid( objid ), offset( off )
+        LocMixin( Internal o, int off )
+            : object( o ), offset( off )
         {}
 
-        Loc operator-( int i ) const { Loc r = *this; r.offset -= i; return r; }
-        Loc operator+( int i ) const { Loc r = *this; r.offset += i; return r; }
-        bool operator==( const Loc & o) const { return object == o.object && offset == o.offset; }
+        Self self() const { return *static_cast< const Self * >( this ); }
 
-        bool operator<=(const Loc & o) const
+        Self operator-( int i ) const { Self r = self(); r.offset -= i; return r; }
+        Self operator+( int i ) const { Self r = self(); r.offset += i; return r; }
+        bool operator==( const Self & o) const { return object == o.object && offset == o.offset; }
+
+        bool operator<=(const Self & o) const
         {
             return object < o.object || (object == o.object && offset <= o.offset);
         }
 
-        bool operator<(const Loc & o) const
+        bool operator<(const Self & o) const
         {
             return object < o.object || (object == o.object && offset < o.offset);
         }
+    };
+
+    struct Loc;
+
+    struct LocBase : public LocMixin< LocBase >
+    {
+        using LocMixin< LocBase >::LocMixin;
+        LocBase( const Loc &o ) : LocBase( o.object, o.offset ) {}
+    };
+
+    struct Loc : public LocMixin< Loc >
+    {
+        using Internal = typename Pool::Pointer;
+        using IntAddr = LocBase;
+
+        uint32_t objid;
+
+        Loc( Internal o, int objid, int off )
+            : LocMixin< Loc >( o, off ), objid( objid )
+        {}
     };
 
     Loc loc( Pointer p, Internal i ) const

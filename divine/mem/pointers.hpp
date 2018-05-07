@@ -106,10 +106,10 @@ struct PointerLayer : public NextLayer
     using Expanded = typename NextLayer::Expanded;
     using typename NextLayer::PointerV;
 
-    class PointerExceptions : public ExceptionMap< PointerException, Loc >
+    class PointerExceptions : public ExceptionMap< PointerException, typename Loc::IntAddr >
     {
     public:
-        using Base = ExceptionMap< PointerException, Loc >;
+        using Base = ExceptionMap< PointerException, typename Loc::IntAddr >;
 
     private:
         using Lock = typename Base::Lock;

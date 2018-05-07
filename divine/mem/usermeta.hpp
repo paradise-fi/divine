@@ -32,7 +32,7 @@ struct UserMeta : Next
     using typename Next::Loc;
     using Value = typename Next::UIntV;
 
-    struct Map : ExceptionMap< uint32_t, Loc >
+    struct Map : ExceptionMap< uint32_t, typename Loc::IntAddr >
     {
         Map() = default;
         Map( Map && ) = default;

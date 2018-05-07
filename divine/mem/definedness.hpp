@@ -82,13 +82,14 @@ struct DefinednessLayer : public NextLayer
     using Loc = typename NextLayer::Loc;
     using Expanded = typename NextLayer::Expanded;
 
-    class DataExceptions : public ExceptionMap< DataException, Loc >
+    class DataExceptions : public ExceptionMap< DataException, typename Loc::IntAddr >
     {
     public:
-        using Base = ExceptionMap< DataException, Loc >;
+        using Base = ExceptionMap< DataException, typename Loc::IntAddr >;
 
     private:
         using Lock = typename Base::Lock;
+        using IntAddr = typename Loc::IntAddr;
         using Base::_exceptions;
         using Base::_mtx;
 
@@ -111,7 +112,7 @@ struct DefinednessLayer : public NextLayer
             ASSERT_EQ( wpos % 4, 0 );
 
             Lock lk( _mtx );
-            auto & exc = _exceptions[ Loc( obj, 0, wpos ) ];
+            auto & exc = _exceptions[ IntAddr( obj, wpos ) ];
             std::copy( mask, mask + 4, exc.bitmask );
         }
 
@@ -121,7 +122,7 @@ struct DefinednessLayer : public NextLayer
 
             Lock lk( _mtx );
 
-            auto it = _exceptions.find( Loc( obj, 0, wpos ) );
+            auto it = _exceptions.find( IntAddr( obj, wpos ) );
 
             ASSERT( it != _exceptions.end() );
             ASSERT( it->second.valid() );
@@ -135,7 +136,7 @@ struct DefinednessLayer : public NextLayer
             Lock lk( _mtx );
 
             int wpos = ( pos / 4 ) * 4;
-            auto it = _exceptions.find( Loc( obj, 0, wpos ) );
+            auto it = _exceptions.find( IntAddr( obj, wpos ) );
             if ( it != _exceptions.end() && it->second.valid() )
             {
                 return it->second.bitmask[ pos % 4 ];
