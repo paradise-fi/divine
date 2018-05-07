@@ -45,6 +45,15 @@ struct ExceptionMap
         return it->second;
     }
 
+    bool has( Internal obj, int wpos )
+    {
+        ASSERT_EQ( wpos % 4, 0 );
+        Lock lk( _mtx );
+
+        auto it = _exceptions.find( Loc( obj, 0, wpos ) );
+        return it != _exceptions.end();
+    }
+
     void set( Internal obj, int wpos, const ExceptionType &exc )
     {
         ASSERT_EQ( wpos % 4, 0 );

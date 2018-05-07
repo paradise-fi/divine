@@ -54,7 +54,10 @@ struct UserMeta : Next
     Value peek( Loc l, int key )
     {
         auto &map = _maps->at( key );
-        return Value( map.at( l.object, l.offset ), -1, map._type == Map::Pointers );
+        if ( map.has( l.object, l.offset ) )
+            return Value( map.at( l.object, l.offset ), -1, map._type == Map::Pointers );
+        else
+            return Value( 0, 0, map._type == Map::Pointers );
     }
 
     void poke( Loc l, int key, Value v )
