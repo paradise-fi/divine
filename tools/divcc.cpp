@@ -352,10 +352,13 @@ int main( int argc, char **argv )
             ret = WEXITSTATUS( gccret );
         }
 
-        std::unique_ptr< llvm::Module > mod = llvmExtract( objFiles, clang );
-        std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
+        if ( !ret )
+        {
+            std::unique_ptr< llvm::Module > mod = llvmExtract( objFiles, clang );
+            std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
-        divine::cc::elf::addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
+            divine::cc::elf::addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
+        }
 
         for ( auto file : objFiles )
         {
