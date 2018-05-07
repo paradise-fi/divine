@@ -35,7 +35,7 @@ union ExpandedMeta // Representation the shadow layers operate on
     struct
     {
         uint16_t taint : 4,
-                 pointer_type : 3,
+                 _free1_ : 3,
                  pointer : 1,
                  pointer_exception : 1,
                  data_exception : 1,
@@ -53,14 +53,13 @@ template< typename Next >
 struct Compress : Next
 {
     // 16 bits:  | _ , _ , _ , _ : _ , _ , _ , _ | _ , _ , _ , _ : _ , _ , _ , _ |
-    // Expanded: | [definedness] : _ , _ , DE, PE| P , [ ptype ] : [ t a i n t ] |
+    // Expanded: | [definedness] : _ , _ , DE, PE| P , _ , _ , _ : [ t a i n t ] |
 
     // 8 bits : | _ , _ , _ , _ : _ , _ , _ , _ |
-    // Pointer: | 1 , [ ptype ] : [ t a i n t ] |
+    // Pointer: | 1 , 0 , 0 , 0 : [ t a i n t ] |
     // Data:    | 0 , [   0000000 - 1010000   ] | 81 values for definedness + taint
     // Def exc: | 0 , 1 , 1 , 0 : [ t a i n t ] |
     // Ptr exc: | 0 , 1 , 1 , 1 : [ t a i n t ] |
-    // (free):  | 0 , 1 , 0 , 1 : [0001 - 1111] | 15 available codes (currently ignored)
 
     // In [definedness] and [taint], less significant bits correspond to bytes on lower addresses.
 
@@ -163,16 +162,14 @@ struct Compress
         ASSERT_EQ( exp, 0x0000 );
         exp.pointer = true;
         ASSERT_EQ( exp, 0x0080 );
-        exp.pointer_type = 1;
-        ASSERT_EQ( exp, 0x0090 );
         exp.taint = 3;
-        ASSERT_EQ( exp, 0x0093 );
+        ASSERT_EQ( exp, 0x0083 );
         exp.defined = 0xC;
-        ASSERT_EQ( exp, 0xC093 );
+        ASSERT_EQ( exp, 0xC083 );
         exp.data_exception = true;
-        ASSERT_EQ( exp, 0xC293 );
+        ASSERT_EQ( exp, 0xC283 );
         exp.pointer_exception = true;
-        ASSERT_EQ( exp, 0xC393 );
+        ASSERT_EQ( exp, 0xC383 );
     }
 
     TEST( compress_expand )
@@ -188,22 +185,20 @@ struct Compress
                 exp.taint &= exp.defined;
                 ASSERT_EQ( exp._raw, reexp._raw );
             }
-            for ( uint8_t ptype = 0; ptype < 8; ++ptype )
-            {
-                ShDesc::Expanded exp;
-                exp.taint = taint;
-                exp.defined = 0xF;
-                exp.pointer = true;
-                exp.pointer_type = ptype;
-                auto reexp = ShDesc::expand( ShDesc::compress( exp ) );
-                ASSERT_EQ( exp._raw, reexp._raw );
-            }
 
             ShDesc::Expanded exp;
             exp.taint = taint;
 
-            exp.data_exception = true;
+            exp.defined = 0xF;
+            exp.pointer = true;
             auto reexp = ShDesc::expand( ShDesc::compress( exp ) );
+            ASSERT_EQ( exp._raw, reexp._raw );
+
+            exp.defined = 0;
+            exp.pointer = false;
+
+            exp.data_exception = true;
+            reexp = ShDesc::expand( ShDesc::compress( exp ) );
             ASSERT_EQ( exp._raw, reexp._raw );
 
             exp.pointer_exception = true;

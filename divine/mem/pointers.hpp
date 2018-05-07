@@ -28,18 +28,15 @@ namespace bitlevel = brick::bitlevel;
 struct PointerException
 {
     uint32_t objid[ 4 ];   // Object IDs of the original pointers
-    uint8_t metadata[ 4 ]; // Position of byte in the orig. pointers, type of pointer
+    uint8_t metadata[ 4 ]; // Position of byte in the orig. pointers
 
     uint8_t index( uint8_t p ) const { return metadata[ p ] & 0x07; }
     void index( uint8_t p, uint8_t i ) { metadata[ p ] &= ~0x07; metadata[ p ] |= i & 0x07; }
 
-    uint8_t type( uint8_t p ) const { return metadata[ p ] >> 4 & 0x07; }
-    void type( uint8_t p, uint8_t t ) { metadata[ p ] &= ~0x70; metadata[ p ] |= t << 4; }
-
     bool redundant() const
     {
         for ( int i = 0; i < 4; ++i)
-            if ( index( i ) != i || type( i ) != type( 0 ) )
+            if ( index( i ) != i )
                 return false;
 
         return objid[ 0 ] == objid[ 1 ]
@@ -83,7 +80,7 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
         o << "    { " << i << ": ";
         if ( e.objid[ i ] )
             o << "byte " << +e.index( i ) << " of "
-              << e.type( i ) << " ptr. to " << e.objid[ i ];
+              << " ptr. to " << e.objid[ i ];
         else
             o << "data";
         o << " }\n";
@@ -98,7 +95,6 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
  * Shadow layer for tracking pointers and their types, including fragmented pointers.
  * Required fields in Expanded:
  *      pointer : 1
- *      pointer_type : 3
  *      pointer_exception : 1
  */
 
@@ -162,10 +158,8 @@ struct PointerLayer : public NextLayer
                     return -1;
                 if ( pe_b.objid[ i ] == 0 )
                     return 1;
-                int cmp = pe_a.type( i ) - pe_b.type( i );
+                int cmp = pe_a.index( i ) - pe_b.index( i );
                 if ( cmp )
-                    return cmp;
-                if ( ( cmp = pe_a.index( i ) - pe_b.index( i ) ) )
                     return cmp;
             }
         }
@@ -196,22 +190,48 @@ struct PointerLayer : public NextLayer
 
         for ( int w = 0; w < words; ++w )
         {
-            exp[ w ].pointer = value.objid() && value.objid_offset() == w * 32;
-            exp[ w ].pointer_exception = false;
+            exp[ 0 ].pointer = false;
+            exp[ 0 ].pointer_exception = false;
+            exp[ 1 ].pointer = true;
+            exp[ 1 ].pointer_exception = false;
+            /* TODO! */
+            //exp[ 1 ].pointer_type = value.cooked().type();
+            exp[ 1 ].pointer_type = 0;
+        }
+        else if ( sz <= 4 && value.pointer() && value.as_pointer().object() )
+        {
+            PointerException exc;
+            if ( exp[ 0 ].pointer_exception )
+                exc = _ptr_exceptions->at( l.object, l.offset );
+            else
+                exc.invalidate();
+            for ( int i = 0; i < sz; ++i )
+            {
+                exc.objid[ i ] = value.as_pointer().object();
+                exc.type( i, uint8_t( value.as_pointer().type() ) );
+                exc.index( i, 0 ); /* TODO */
+            }
+            exp[ 0 ].pointer_exception = true;
+            _ptr_exceptions->set( l.object, l.offset, exc );
+        }
+        else
+        {
+            for ( int w = 0; w < words; ++w )
+            {
+                exp[ w ].pointer = false;
+                exp[ w ].pointer_exception = false;
+            }
         }
     }
 
     template< typename V >
     void read( Loc l, V &value, Expanded *exp ) const
     {
-        const int sz = value.size();
+        constexpr int sz = sizeof( typename V::Raw );
 
-        if ( sz == vm::PointerBytes && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
+        if ( sz == sizeof( typename PointerV::Raw ) && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
         {
             value.pointer( true );
-            /* TODO! */
-            //value.cooked().type( exp[ 1 ].pointer_type );
-        }
         else
             value.pointer( false );
 
@@ -304,10 +324,7 @@ struct PointerLayer : public NextLayer
         uint32_t objid = *reinterpret_cast< uint32_t * >( h.unsafe_ptr2mem( obj ) + off );
         std::fill( e.objid, e.objid + 4, objid );
         for ( int i = 0; i < 4; ++i )
-        {
             e.index( i, i );
-            e.type( i, exp.pointer_type );
-        }
 
         return e;
     }
@@ -351,7 +368,6 @@ struct PointerException
         {
             e.objid[ i ] = 0xABCD;
             e.index( i, i );
-            e.type( i, 0x3 );
         }
         ASSERT( e.valid() );
         ASSERT( e.redundant() );
@@ -364,7 +380,6 @@ struct PointerException
         {
             e.objid[ i ] = 0xABCD + i;
             e.index( i, i );
-            e.type( i, 0x3 );
         }
         ASSERT( e.valid() );
         ASSERT( ! e.redundant() );
@@ -377,20 +392,6 @@ struct PointerException
         {
             e.objid[ i ] = 0xABCD;
             e.index( i, 3 - i );
-            e.type( i, 0x3 );
-        }
-        ASSERT( e.valid() );
-        ASSERT( ! e.redundant() );
-    }
-
-    TEST( not_redundant_type )
-    {
-        PtrExc e;
-        for ( int i = 0; i < 4; ++i )
-        {
-            e.objid[ i ] = 0xABCD;
-            e.index( i, i );
-            e.type( i, i );
         }
         ASSERT( e.valid() );
         ASSERT( ! e.redundant() );

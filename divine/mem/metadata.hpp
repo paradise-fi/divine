@@ -32,11 +32,11 @@ union ExpandedMeta // Representation the shadow layers operate on
     struct
     {
         uint16_t taint : 4,
-                 pointer_type : 3,
+                 _free1_ : 3,
                  pointer : 1,
                  pointer_exception : 1,
                  data_exception : 1,
-                 _free_ : 2,
+                 _free2_ : 2,
                  defined : 4;
     };
     uint16_t _raw;
@@ -50,14 +50,13 @@ template< typename Next >
 struct Compress : Next
 {
     // 16 bits:  | _ , _ , _ , _ : _ , _ , _ , _ | _ , _ , _ , _ : _ , _ , _ , _ |
-    // Expanded: | [definedness] : _ , _ , DE, PE| P , [ ptype ] : [ t a i n t ] |
+    // Expanded: | [definedness] : _ , _ , DE, PE| P , _ , _ , _ : [ t a i n t ] |
 
     // 8 bits : | _ , _ , _ , _ : _ , _ , _ , _ |
-    // Pointer: | 1 , [ ptype ] : [ t a i n t ] |
+    // Pointer: | 1 , 0 , 0 , 0 : [ t a i n t ] |
     // Data:    | 0 , [   0000000 - 1010000   ] | 81 values for definedness + taint
     // Def exc: | 0 , 1 , 1 , 0 : [ t a i n t ] |
     // Ptr exc: | 0 , 1 , 1 , 1 : [ t a i n t ] |
-    // (free):  | 0 , 1 , 0 , 1 : [0001 - 1111] | 15 available codes (currently ignored)
 
     // In [definedness] and [taint], less significant bits correspond to bytes on lower addresses.
 
@@ -400,7 +399,6 @@ struct Metadata : Next
             }
 
             uint32_t fragment() const { return exception().objid[ off % 4 ]; }
-            uint8_t type() const  { return exception().type( off % 4 ); }
         };
 
         struct iterator : std::iterator< std::forward_iterator_tag, proxy >
