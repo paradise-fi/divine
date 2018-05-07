@@ -1163,6 +1163,8 @@ template< typename Ctx >
 void Eval< Ctx >::implement_peek()
 {
     auto ptr = operandCk< PointerV >( 0 );
+    if ( !boundcheck( ptr, 1, false ) )
+        return;
     int key = operandCk< IntV >( 1 ).cooked();
     auto loc = heap().loc( ptr2h( ptr ) );
     switch ( key )
@@ -1188,7 +1190,10 @@ void Eval< Ctx >::implement_peek()
 template< typename Ctx >
 void Eval< Ctx >::implement_poke()
 {
-    HeapPointer where = ptr2h( operandCk< PointerV >( 0 ) );
+    auto ptr = operandCk< PointerV >( 0 );
+    if ( !boundcheck( ptr, 1, true ) )
+        return;
+    HeapPointer where = ptr2h( ptr );
     int layer = operandCk< IntV >( 1 ).cooked();
     auto value = operandCk< value::Int< 32, false > >( 2 );
 
