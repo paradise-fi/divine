@@ -1,4 +1,4 @@
-/* TAGS: sym todo min c++ */
+/* TAGS: sym min c++ */
 /* VERIFY_OPTS: --symbolic */
 #include <rst/domains.h>
 

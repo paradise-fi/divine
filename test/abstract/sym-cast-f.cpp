@@ -1,11 +1,11 @@
-/* TAGS: sym todo min c++ */
+/* TAGS: sym min c++ */
 /* VERIFY_OPTS: --symbolic */
 #include <rst/domains.h>
 #include <cassert>
 #include <limits>
 
 int nondet() {
-    return static_cast< int >( __sym_val_i32() );
+    return __sym_val_i32();
 }
 
 int main() {

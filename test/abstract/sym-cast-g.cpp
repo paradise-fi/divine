@@ -9,8 +9,7 @@ int nondet() {
 }
 
 int main() {
-    int x;
-    x = nondet();
+    int x = nondet();
     if ( short( x ) < 0 )
         return 0;
     short &y = *reinterpret_cast< short * >( &x );
