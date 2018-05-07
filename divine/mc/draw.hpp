@@ -104,24 +104,22 @@ std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance
 
 } // anonymous namespace
 
-std::string draw( std::shared_ptr< BitCode > bc, int distance, bool heap )
-{
-    ASSERT( !bc->is_symbolic() );
-    ExplicitBuilder bld( bc );
-    bld.context().enable_debug();
-    bld.start();
-    return draw_impl( bld, bc, distance, heap );
-}
+#if OPT_STP
+using DrawBuilder = STPBuilder;
+#else
+using DrawBuilder = ExplicitBuilder;
+#endif
 
-template< typename Builder , template< typename > class SymbolicHasher >
+template< typename Builder = DrawBuilder, typename Ctx = builder::Context >
 std::string draw( std::shared_ptr< BitCode > bc, int distance, bool heap,
-                  SymbolicHasher< typename Builder::Solver > *ctx = nullptr,
-                  typename Builder::Snapshot *initial = nullptr )
+                  Ctx *ctx = nullptr, typename Builder::Snapshot *initial = nullptr )
 {
     Builder bld( bc );
     bld.context().enable_debug();
-    ASSERT( initial );
-    bld.start( *ctx, *initial );
+    if ( ctx && initial )
+        bld.start( *ctx, *initial );
+    else
+        bld.start();
     return draw_impl( bld, bc, distance, heap );
 }
 
