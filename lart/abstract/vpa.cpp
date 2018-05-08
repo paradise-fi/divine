@@ -5,6 +5,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
 DIVINE_UNRELAX_WARNINGS
@@ -133,6 +134,12 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                         tasks.push_back( [=]{ propagate_value( arg, dom ); } );
                         entry_args.emplace( arg, dom );
                     }
+                }
+            }
+            else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
+                if ( seen_vals.count( { mem->getSource(), dom } ) ) {
+                    for ( auto src : get_sources( mem->getDest() ) )
+                        tasks.push_back( [=]{ propagate_value( src, dom ); } );
                 }
             }
         }
