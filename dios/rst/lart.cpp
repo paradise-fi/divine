@@ -1,12 +1,16 @@
 #include <rst/lart.h>
+#include <sys/task.h>
 #include <sys/divm.h>
 
-extern "C" {
-    uintptr_t __lart_unstash() {
-        return reinterpret_cast< uintptr_t >( __vm_ctl_get( _VM_CR_User5 ) );
+extern "C"
+{
+    uintptr_t __lart_unstash()
+    {
+        return __dios_this_task()->__rst_stash;
     }
 
-    void __lart_stash( uintptr_t val ) {
-        __vm_ctl_set( _VM_CR_User5, reinterpret_cast< void* >( val ) );
+    void __lart_stash( uintptr_t val )
+    {
+        __dios_this_task()->__rst_stash = val;
     }
 }
