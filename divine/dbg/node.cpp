@@ -611,9 +611,12 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
         return;
 
     auto slot = _ctx.program().valuemap[ var ];
-    auto ptr = _ctx.program()._addr.has_addr( var ) && slot.location != Prog::Slot::Local ?
-               _ctx.program().addr( var ) :
-               eval.s2ptr( slot );
+    vm::GenericPointer ptr;
+    if ( _ctx.program()._addr.has_addr( var ) && slot.location != Prog::Slot::Local )
+        ptr = _ctx.program().addr( var );
+    else if ( slot.location != Prog::Slot::Invalid )
+        ptr = eval.s2ptr( slot );
+
     PointerV deref;
     if ( slot.size() >= vm::PointerBytes && boundcheck( PointerV( ptr ), vm::PointerBytes ) )
         _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
