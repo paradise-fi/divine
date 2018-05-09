@@ -37,7 +37,7 @@ __BEGIN_DECLS
 
 /*
  * The resulting _DiOS_TaskHandle points to the beginning of TLS. Userspace
- * code is allowed to use it from offset _DiOS_TLS_Reserved.
+ * code is allowed to use __data, but not other fields.
  */
 static inline __dios_task __dios_this_task() __nothrow
 {
@@ -55,11 +55,7 @@ static inline int *__dios_errno() __nothrow
 
 /*
  * Start a new task and obtain its identifier. Task starts executing routine
- * with arg.
- * - tls_size is the total size of TLS, _DiOS_TLS_Reserved must be included in this,
- *   if tls_size is less then _DiOS_TLS_Reserved at least _DiOS_TLS_Reserved is allocated
- * - the resulting _DiOS_TaskHandle points to the beginning of TLS. Userspace is
- *   allowed to use it from offset _DiOS_TLS_Reserved
+ * with arg, tls_size is the size of __data in __dios_tls.
  */
 __dios_task __dios_start_task( __dios_task_routine r, void *arg, int tls_size ) __nothrow;
 
