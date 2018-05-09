@@ -114,6 +114,16 @@ bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
 }
 
 template< typename Core >
+bool Caching< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
+{
+    if ( _sat.count( ptr ) )
+        return _hits[ ptr ] ++, _sat[ ptr ];
+
+    auto rv = Simple< Core >::feasible( heap, ptr );
+    return _sat[ ptr ] = rv;
+}
+
+template< typename Core >
 bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
 {
     auto e = this->extract( heap );
@@ -204,11 +214,13 @@ template struct Simple< SMTLib >;
 #if OPT_Z3
 template struct Simple< Z3 >;
 template struct Incremental< Z3 >;
+template struct Caching< Z3 >;
 #endif
 
 #if OPT_STP
 template struct Simple< STP >;
 template struct Incremental< STP >;
+template struct Caching< STP >;
 #endif
 
 }

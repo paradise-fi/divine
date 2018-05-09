@@ -69,6 +69,15 @@ struct Incremental : Simple< Core >
     void reset() { _inc.clear(); Simple< Core >::reset(); }
 };
 
+template< typename Core >
+struct Caching : Simple< Core >
+{
+    using Simple< Core >::Simple;
+    bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
+    std::unordered_map< vm::HeapPointer, bool > _sat;
+    std::unordered_map< vm::HeapPointer, int > _hits;
+};
+
 struct SMTLib
 {
     using Options = std::vector< std::string >;
