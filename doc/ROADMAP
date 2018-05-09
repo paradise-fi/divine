@@ -5,23 +5,22 @@ The roadmap was last updated in January 2018.
 This section documents specific short-term development goals, approximately a
 quarter into the future.
 
-First, the following goal(s) were punted from the previous quarter:
+First, the following goal(s) were punted from the previous quarter(s):
 
- * Update LLVM to a current version. [P. Ročkai]
+ * Update LLVM to a current version (was blocked by a rewrite of the lart
+   abstraction engine). [P. Ročkai]
 
 The priorities for the current quarter are:
 
- * Optimise the code responsible for tracking which values in memory are
-   defined and which are pointers. [A. Matoušek, P. Ročkai]
- * Prototype implementation of fragmented pointer tracking. [A. Matoušek]
- * A version of `divcc` that can link executables which include a bitcode
-   section (using an external linker for native code). [Z. Baranová]
- * Make it possible to store abstract values in heap variables (i.e. in memory
-   whose lifetime exceeds that of the function which allocated it). [H. Lauko]
- * Implement enough glue to allow bitcode lifted by McSema to execute in DIVINE
-   and to call a function (with no arguments) from `libc`. [L. Korenčík]
- * Write regression tests for the passthrough mode and fix any discovered
-   shortcomings or bugs. [K. Kejstová]
+ * Improve coverage of `libc` to a level where GNU `coreutils` can be built
+   with `divcc`. [Z. Baranová & P. Ročkai]
+ * Implement lazy loading of DiOS so that it does not need to be linked into
+   binaries. [Z. Baranová & P. Ročkai]
+ * Use stateless exploration for thread interleaving but store states when
+   needed for loop detection. [P. Ročkai]
+ * Make benchmark results available online. [P. Ročkai]
+ * Remove locks from auxiliary data structures used in shadow memory. [A.
+   Matoušek]
 
 # Medium-Term Goals: 2018
 
@@ -93,10 +92,10 @@ is a long-term goal.
  * DIVINE can replay recorded system call traces in the exact order they
    happened during the recorded run. We want to relax this ordering and explore
    behaviours in which the system calls are executed in a different, but
-   compatible, order. [K. Kejestová & P. Ročkai]
- * There is a number of limitations in `divine run` and in the implementation
+   compatible, order. [K. Kejstová & P. Ročkai]
+ * There is a number of limitations in `divine exec` and in the implementation
    of the passthrough mode in DiOS. Our goal is to lift those limitations and
-   make `divine run` a practically useful tool. [K. Kejstová & P. Ročkai]
+   make `divine exec` a practically useful tool. [not assigned]
 
 ## Relaxed Memory
 
@@ -143,7 +142,7 @@ automated reasoning procedure, and can greatly benefit from abstraction. The
 goal of this sub-project is, therefore, to design program transformations that
 remove unnecessary detail from programs before using the model checker.
 
-## Runtime Verification [K. Kejstová]
+## Runtime Verification [not assigned]
 
 When executing (as opposed to model checking) programs, DIVINE can currently
 record system call traces. During model checking, then, it can load these
@@ -242,3 +241,15 @@ are available in [release notes] [1].
    toolchain). [Z. Baranová]
  * Demonstrate the viability of symbolic model checking in DIVINE using a
    realistic example (a C implementation of an AVL tree). [H. Lauko]
+
+## Q1 2018
+
+ * Optimise the code responsible for tracking which values in memory are
+   defined and which are pointers. [A. Matoušek, P. Ročkai]
+ * Prototype implementation of fragmented pointer tracking. [A. Matoušek]
+ * A version of `divcc` that can link executables which include a bitcode
+   section (using an external linker for native code). [Z. Baranová]
+ * Make it possible to store abstract values in heap variables (i.e. in memory
+   whose lifetime exceeds that of the function which allocated it). [H. Lauko]
+ * Implement enough glue to allow bitcode lifted by McSema to execute in DIVINE
+   and to call a function (with no arguments) from `libc`. [L. Korenčík]
