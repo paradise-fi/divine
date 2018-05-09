@@ -49,6 +49,7 @@ struct Search : Job
     std::shared_ptr< Vector > _workset;
     std::vector< std::future< void > > _threads;
     std::shared_ptr< std::atomic< bool > > _terminate;
+    struct Terminate {};
 
     using Worker = std::function< void() >;
 
@@ -95,7 +96,7 @@ struct Search : Job
     {
         auto b = l.state( x );
         if ( b == L::Terminate )
-            _terminate->store( true );
+            _terminate->store( true ), throw Terminate();
         if ( b == L::Process || ( b == L::AsNeeded && isnew ) )
             act( isnew );
     }
@@ -108,7 +109,7 @@ struct Search : Job
              {
                  auto a = l.edge( v, x, label, isnew );
                  if ( a == L::Terminate )
-                     _terminate->store( true );
+                     _terminate->store( true ), throw Terminate();
                  if ( a == L::Process || ( a == L::AsNeeded && isnew ) )
                      succ( x, label, isnew );
             } );
@@ -135,23 +136,26 @@ struct Search : Job
             start.waitForAll( _thread_count );
             brick::types::Defer _( [&]() { _terminate->store( true ); } );
 
-            while ( work && !_terminate->load() )
-            {
-                if ( queue.empty() )
+            try {
+                while ( work && !_terminate->load() )
                 {
-                    queue.flush();
-                    work.sync();
-                    continue;
+                    if ( queue.empty() )
+                    {
+                        queue.flush();
+                        work.sync();
+                        continue;
+                    }
+                    auto v = queue.pop();
+                    _succs( listener, builder, v,
+                            [&]( auto s, auto, bool isnew )
+                            {
+                                _state( listener, s, isnew,
+                                        [&]( bool ) { queue.push( s ), ++ work; } );
+                            } );
+                    -- work;
                 }
-                auto v = queue.pop();
-                _succs( listener, builder, v,
-                        [&]( auto s, auto, bool isnew )
-                        {
-                            _state( listener, s, isnew,
-                                    [&]( bool ) { queue.push( s ), ++ work; } );
-                        } );
-                -- work;
-            }
+            } catch ( Terminate ) {}
+
             ASSERT( _terminate->load() || queue.empty() );
         };
     }
