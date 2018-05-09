@@ -1197,10 +1197,22 @@ void Eval< Ctx >::implement_poke()
     HeapPointer where = ptr2h( ptr );
     int layer = operandCk< IntV >( 1 ).cooked();
     auto value = operandCk< value::Int< 32, false > >( 2 );
-
     auto loc = heap().loc( where );
-    ASSERT( layer >= _VM_ML_User );
-    heap().poke( loc, layer - _VM_ML_User, value );
+
+    switch ( layer )
+    {
+        case _VM_ML_Taints:
+        {
+            IntV data;
+            heap().read( where, data );
+            data.taints( value.cooked() );
+            heap().write( where, data );
+            break;
+        }
+        default:
+            ASSERT( layer >= _VM_ML_User );
+            heap().poke( loc, layer - _VM_ML_User, value );
+    }
 }
 
 template< typename Ctx >
