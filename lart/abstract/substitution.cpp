@@ -431,7 +431,7 @@ struct UnrepLifter : BaseLifter {
         irb.Insert( cast< Instruction >( rep ) );
 
         // TODO insert to symbolic domain
-        auto taint_zero = get_module( taint )->getFunction( "__vm_taint_i64" );
+        auto taint_zero = get_module( taint )->getFunction( "__rst_taint_i64" );
 
         Value *ret = irb.CreateCall( taint_zero );
         if ( !function()->getReturnType()->isIntegerTy( 64 ) )
