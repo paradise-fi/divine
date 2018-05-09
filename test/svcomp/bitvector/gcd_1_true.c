@@ -1,5 +1,10 @@
-/* VERIFY_OPTS: --symbolic --sequential */
+/* VERIFY_OPTS: --symbolic --sequential -o ignore:arithmetic */
 /* TAGS: sym c */
+
+/* NB. The ignore:arithmetic is a workaround for --symbolic also running a
+ * concrete computation (which does not follow path constraints), in which the
+ * divisor happens to be zero... */
+
 #include <stdbool.h>
 extern void __VERIFIER_assert(int);
 signed char gcd_test(signed char a, signed char b)
