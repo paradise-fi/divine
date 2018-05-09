@@ -92,6 +92,63 @@ struct CompressPDT
     }
 };
 
+struct CompressPD
+{
+    struct Empty {};
+    using ShDesc = mem::CompressPD< Empty >;
+
+    TEST( reasonable_zero )
+    {
+        ShDesc::Compressed c = 0;
+        ShDesc::Expanded exp = ShDesc::expand( c );
+        ASSERT_EQ( exp, 0x0000 );
+    }
+
+    TEST( bitlevel )
+    {
+        ShDesc::Expanded exp;
+        ASSERT_EQ( exp, 0x00 );
+        exp.pointer = true;
+        ASSERT_EQ( exp, 0x10 );
+        exp.defined = 0xC;
+        ASSERT_EQ( exp, 0x1C );
+        exp.data_exception = true;
+        ASSERT_EQ( exp, 0x5C );
+        exp.pointer_exception = true;
+        ASSERT_EQ( exp, 0x7C );
+    }
+
+    TEST( compress_expand )
+    {
+        // This is actually trivial, since compression and expansion are no-op
+        for ( uint8_t def = 0; def < 16; ++def )
+        {
+            ShDesc::Expanded exp;
+            exp.defined = def;
+            auto reexp = ShDesc::expand( ShDesc::compress( exp ) );
+            ASSERT_EQ( exp._raw, reexp._raw );
+        }
+
+        ShDesc::Expanded exp;
+
+        exp.defined = 0xF;
+        exp.pointer = true;
+        auto reexp = ShDesc::expand( ShDesc::compress( exp ) );
+        ASSERT_EQ( exp._raw, reexp._raw );
+
+        exp.defined = 0;
+        exp.pointer = false;
+
+        exp.data_exception = true;
+        reexp = ShDesc::expand( ShDesc::compress( exp ) );
+        ASSERT_EQ( exp._raw, reexp._raw );
+
+        exp.pointer_exception = true;
+        reexp = ShDesc::expand( ShDesc::compress( exp ) );
+        ASSERT_EQ( exp._raw, reexp._raw );
+    }
+};
+
 using Pool = brick::mem::Pool<>;
 
 template< typename Next >

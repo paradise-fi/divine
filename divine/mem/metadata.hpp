@@ -136,6 +136,69 @@ struct CompressPDT : Next
     }
 };
 
+union ExpandedMetaPD // Representation the shadow layers operate on
+{
+    struct
+    {
+        uint8_t defined : 4,
+                pointer : 1,
+                pointer_exception : 1,
+                data_exception : 1,
+                _free_ : 1;
+    };
+    uint8_t _raw;
+    constexpr ExpandedMetaPD() : _raw( 0 ) {}
+    constexpr ExpandedMetaPD( uint8_t raw ) : _raw( raw ) {}
+    operator uint8_t() const { return _raw; }
+};
+/* Descriptor of sandwich shadow with a pointer layer and a definedness layer.
+ * Not very memory-efficient, as we do not allow 5bit compressed forms, but expanded and compressed
+ * forms are the same. */
+template< typename Next >
+struct CompressPD : Next
+{
+    // 8 bits :                | _ , _ , _ , _ : _ , _ , _ , _ |
+    // Compressed = Expanded : | _ , DE, PE, P : [definedness] |
+
+    // In [definedness] less significant bits correspond to bytes on lower addresses.
+
+    static constexpr unsigned BitsPerWord = 8;
+
+    using Compressed = uint8_t; // Representation stored in the pool
+    using Expanded = mem::ExpandedMetaPD;
+
+    constexpr static Compressed compress( Expanded exp )
+    {
+        return exp._raw;
+    }
+
+    constexpr static Expanded expand( Compressed c )
+    {
+        return c;
+    }
+
+    // Shall be true if 'c' encodes all metadata (i.e. is not an exception)
+    constexpr static bool is_trivial( Compressed c )
+    {
+        return ( c & 0x60 ) == 0;
+    }
+
+    // These predicates exist in order to avoid expanding compressed data when searching for
+    // pointers.
+    constexpr static bool is_pointer( Compressed c )
+    {
+        return c & 0x10;
+    }
+    constexpr static bool is_pointer_or_exception( Compressed c )
+    {
+        return c & 0x30;
+    }
+    constexpr static bool is_pointer_exception( Compressed c )
+    {
+        return c & 0x20;
+    }
+};
+
 /*
  * Extensible metadata storage.
  *
