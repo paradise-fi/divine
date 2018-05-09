@@ -43,7 +43,7 @@ namespace divine::mem
     template< typename Next > struct DefinednessLayer;
     template< typename Next > struct PointerLayer;
     template< typename Next > struct ShadowBase;
-    template< typename Next > struct Compress;
+    template< typename Next > struct CompressPDT;
 
     template< typename HeapPtr, typename PointerV, template< int, bool > class IntV, typename Pool >
     struct Base;
@@ -54,7 +54,7 @@ namespace divine::mem
                          DefinednessLayer<
                          PointerLayer<
                          ShadowBase<
-                         Compress< B > > > > > >;
+                         CompressPDT< B > > > > > >;
 
     template< int slab >
     using Pool = brick::mem::Pool< PoolRep< slab > >;

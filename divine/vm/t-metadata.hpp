@@ -28,10 +28,10 @@
 namespace divine::t_vm
 {
 
-struct Compress
+struct CompressPDT
 {
     struct Empty {};
-    using ShDesc = mem::Compress< Empty >;
+    using ShDesc = mem::CompressPDT< Empty >;
 
     TEST( reasonable_zero )
     {

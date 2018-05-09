@@ -27,7 +27,7 @@ namespace divine::mem
 
 namespace bitlevel = brick::bitlevel;
 
-union ExpandedMeta // Representation the shadow layers operate on
+union ExpandedMetaPDT // Representation the shadow layers operate on
 {
     struct
     {
@@ -40,14 +40,14 @@ union ExpandedMeta // Representation the shadow layers operate on
                  defined : 4;
     };
     uint16_t _raw;
-    constexpr ExpandedMeta() : _raw( 0 ) {}
-    constexpr ExpandedMeta( uint16_t raw ) : _raw( raw ) {}
+    constexpr ExpandedMetaPDT() : _raw( 0 ) {}
+    constexpr ExpandedMetaPDT( uint16_t raw ) : _raw( raw ) {}
     operator uint16_t() const { return _raw; }
 };
 
 /* Descriptor of sandwich shadow with a pointer layer, a definedness layer and a taint layer. */
 template< typename Next >
-struct Compress : Next
+struct CompressPDT : Next
 {
     // 16 bits:  | _ , _ , _ , _ : _ , _ , _ , _ | _ , _ , _ , _ : _ , _ , _ , _ |
     // Expanded: | [definedness] : _ , _ , DE, PE| P , _ , _ , _ : [ t a i n t ] |
@@ -63,7 +63,7 @@ struct Compress : Next
     static constexpr unsigned BitsPerWord = 8;
 
     using Compressed = uint8_t; // Representation stored in the pool
-    using Expanded = mem::ExpandedMeta;
+    using Expanded = mem::ExpandedMetaPDT;
 
     constexpr static Compressed compress( Expanded exp )
     {
