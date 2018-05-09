@@ -143,6 +143,14 @@ namespace divine::mem
             return l.object;
         }
 
+        template< typename T >
+        auto poke( Loc l, int key, T v )
+        {
+            l.object = this->detach( l );
+            Next::poke( l, key, v );
+            return l.object;
+        }
+
         template< typename FromH >
         bool copy( FromH &from_h, Pointer from, Pointer to, int bytes )
         {
