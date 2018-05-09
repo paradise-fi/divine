@@ -73,7 +73,9 @@ Function* get_function( Value *v ) {
 }
 
 Function* get_or_insert_function( Module *m, FunctionType *fty, StringRef name ) {
-    return cast< Function >( m->getOrInsertFunction( name, fty ) );
+    auto fn = cast< Function >( m->getOrInsertFunction( name, fty ) );
+    fn->addFnAttr( llvm::Attribute::NoUnwind );
+    return fn;
 }
 
 Module* get_module( llvm::Value *v ) {
