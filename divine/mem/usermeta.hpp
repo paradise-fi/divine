@@ -51,6 +51,14 @@ struct UserMeta : Next
         Next::free( p );
     }
 
+    bool equal( Internal a, Internal b, int sz )
+    {
+        for ( unsigned i = 0; i < _maps->size(); ++ i )
+            if ( !_maps->at( i ).equal( a, b, sz ) )
+                return false;
+        return Next::equal( a, b, sz );
+    }
+
     Value peek( Loc l, int key )
     {
         auto &map = _maps->at( key );

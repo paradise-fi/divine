@@ -71,6 +71,28 @@ struct ExceptionMap
         _exceptions.erase( lb, ub );
     }
 
+    bool equal( Internal a, Internal b, int sz )
+    {
+        Lock lk( _mtx );
+
+        auto lb_a = _exceptions.lower_bound( Loc( a, 0, 0 ) ),
+             lb_b = _exceptions.lower_bound( Loc( b, 0, 0 ) );
+        auto ub_a = _exceptions.upper_bound( Loc( a, 0, sz ) ),
+             ub_b = _exceptions.upper_bound( Loc( b, 0, sz ) );
+
+        auto i_b = lb_b;
+        for ( auto i_a = lb_a; i_a != ub_a; ++i_a, ++i_b )
+        {
+            if ( i_b == ub_b ) return false;
+            if ( i_a->first.offset != i_b->first.offset ) return false;
+            if ( i_a->second != i_b->second ) return false;
+        }
+
+        if ( i_b != ub_b ) return false;
+
+        return true;
+    }
+
     template< typename OM >
     void copy( OM &from_m, typename OM::Loc from, Loc to, int sz )
     {
