@@ -166,18 +166,19 @@ struct _PthreadTLS {
         return reinterpret_cast< char * >( this ) - sizeof( __dios_tls );
     }
 
-    static int size( int cnt ) noexcept {
+    static int raw_size( int cnt ) noexcept {
         return sizeof( __dios_tls ) + sizeof( _PThread * ) + cnt * sizeof( void * );
     }
 
     int keyCount() noexcept {
-        return (__vm_obj_size( raw() ) - size( 0 )) / sizeof( void * );
+        return ( __vm_obj_size( raw() ) - raw_size( 0 ) ) / sizeof( void * );
     }
 
     void makeFit( int count ) noexcept {
         int now = keyCount();
-        if ( count > now ) {
-            __vm_obj_resize( raw(), size( count ) );
+        if ( count > now )
+        {
+            __vm_obj_resize( raw(), raw_size( count ) );
             for ( int i = now; i < count; ++i )
                 keys[ i ] = nullptr;
         }
@@ -192,7 +193,7 @@ struct _PthreadTLS {
             else
                 break;
         if ( toDrop )
-            __vm_obj_resize( raw(), size( count - toDrop ) );
+            __vm_obj_resize( raw(), raw_size( count - toDrop ) );
     }
 
     void *getKey( int key ) noexcept {
@@ -307,8 +308,8 @@ inline void* operator new ( size_t, void* p ) noexcept { return p; }
 static void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept {
     __dios_assert( gtid );
 
-    if ( __vm_obj_size( gtid ) < _PthreadTLS::size( 0 ) )
-        __vm_obj_resize( gtid, _PthreadTLS::size( 0 ) );
+    if ( __vm_obj_size( gtid ) < _PthreadTLS::raw_size( 0 ) )
+        __vm_obj_resize( gtid, _PthreadTLS::raw_size( 0 ) );
     auto *thread = static_cast< _PThread * >( __vm_obj_make( sizeof( _PThread ) ) );
     new ( thread ) _PThread();
     tls( gtid ).thread = thread;
@@ -492,8 +493,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
     args->entry = entry;
     args->arg = arg;
-    auto tid = __dios_start_task( __pthread_entry, static_cast< void * >( args ),
-                                    _PthreadTLS::size( 0 ) );
+    auto tid = __dios_start_task( __pthread_entry, static_cast< void * >( args ), 0 );
     // init thread here, before it has first chance to run
     __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
     *ptid = tid;
