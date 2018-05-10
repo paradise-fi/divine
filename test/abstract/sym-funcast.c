@@ -1,4 +1,4 @@
-/* TAGS: sym todo c */
+/* TAGS: sym c */
 /* VERIFY_OPTS: --symbolic */
 
 #include <assert.h>
