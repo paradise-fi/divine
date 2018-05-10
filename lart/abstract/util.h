@@ -16,6 +16,8 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+llvm::Function* get_called_function( llvm::CallInst* call );
+
 using Types = std::vector< llvm::Type * >;
 using Values = std::vector< llvm::Value * >;
 using Functions = std::vector< llvm::Function * >;
@@ -42,7 +44,7 @@ template< typename Fn >
 void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
     for ( auto &mdv : abstract_metadata( m ) ) {
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( mdv.value() ) ) {
-            auto fn = call->getCalledFunction();
+            auto fn = get_called_function( call );
             if ( !fn->isIntrinsic() && !fn->empty() ) {
                 functor( call );
             }

@@ -42,7 +42,7 @@ Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
 void Stash::run( Module &m ) {
     // unstash
     run_on_abstract_calls( [&] ( auto call ) {
-        auto fn = call->getCalledFunction();
+        auto fn = get_called_function( call );
         if ( !fn->getMetadata( "lart.abstract.return" ) )
             if ( !stashed.count( fn ) )
                 arg_unstash( call );
@@ -53,7 +53,7 @@ void Stash::run( Module &m ) {
     stashed.clear();
     // stash need unstashed values
     run_on_abstract_calls( [&] ( auto call ) {
-        auto fn = call->getCalledFunction();
+        auto fn = get_called_function( call );
         if ( !fn->getMetadata( "lart.abstract.return" ) )
             if ( !stashed.count( fn ) )
                 ret_stash( call );
@@ -64,7 +64,7 @@ void Stash::run( Module &m ) {
 }
 
 void Stash::arg_unstash( CallInst *call ) {
-    auto fn = call->getCalledFunction();
+    auto fn = get_called_function( call );
     IRBuilder<> irb( fn->getEntryBlock().begin() );
 
     for ( auto &arg : fn->args() ) {
@@ -97,7 +97,7 @@ void Stash::ret_stash( CallInst *call ) {
     if ( call->getType()->isVoidTy() || call->getType()->isPointerTy() )
         return; // no return value to stash
 
-    auto fn = call->getCalledFunction();
+    auto fn = get_called_function( call );
     auto ret = dyn_cast< ReturnInst >( fn->back().getTerminator() );
     ASSERT( ret && "Return instruction not found in the last basic block." );
 

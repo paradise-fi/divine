@@ -125,7 +125,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             }
         }
         else if ( auto call = dyn_cast< CallInst >( dep ) ) {
-            auto fn = call->getCalledFunction();
+            auto fn = get_called_function( call );
             if ( !fn->isIntrinsic() ) {
                 for ( auto &op : call->arg_operands() ) {
                     auto val = op.get();
@@ -167,11 +167,20 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
 }
 
 void VPA::step_out( Function *fn, Domain dom ) {
-    for ( auto u : fn->users() )
-        if ( auto call = dyn_cast< CallInst >( u ) ) {
-            preprocess( get_function( call ) );
-            tasks.push_back( [=]{ propagate_value( call, dom ); } );
+    auto process_call = [&] ( auto call ) {
+        preprocess( get_function( call ) );
+        tasks.push_back( [=]{ propagate_value( call, dom ); } );
+    };
+
+    for ( auto u : fn->users() ) {
+        if ( isa< CallInst >( u ) ) {
+            process_call( u );
+        } else if ( isa< ConstantExpr >( u ) ) {
+            for ( auto ceu : u->users() )
+                if ( isa< CallInst >( ceu ) )
+                    process_call( ceu );
         }
+    }
 }
 
 void VPA::run( Module &m ) {

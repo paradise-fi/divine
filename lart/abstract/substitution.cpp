@@ -97,12 +97,13 @@ Function* dup_function( Module *m, Type *in, Type *out ) {
 Domain get_domain_of_intr( Instruction *inst ) {
     assert( inst->getType()->isStructTy() );
     if ( auto call = dyn_cast< CallInst >( inst ) ) {
-        if ( call->getCalledFunction()->getName().startswith( "__lart_cast" ) ) {
+        auto fn = get_called_function( call );
+        if ( fn->getName().startswith( "__lart_cast" ) ) {
             auto dual = get_dual( call );
             return MDValue( dual ).domain();
         }
 
-        if ( call->getCalledFunction()->getName().startswith( "lart.placeholder" ) ) {
+        if ( fn->getName().startswith( "lart.placeholder" ) ) {
             ASSERT( isa<Argument >( get_dual( call ) ) );
             return get_domain( call->getType() );
         }
@@ -178,7 +179,8 @@ bool is_taintable( Value *v ) {
 namespace placeholder {
 
 bool is_placeholder_of_name( Instruction *inst, std::string name ) {
-    return cast< CallInst >( inst )->getCalledFunction()->getName().count( name );
+    auto fn = get_called_function( cast< CallInst >( inst ) );
+    return fn->getName().count( name );
 }
 
 bool is_stash( Instruction *inst ) {
@@ -789,7 +791,7 @@ Values operand_placeholders( CallInst *call, DomainsHolder &domains ) {
 }
 
 Values argument_placeholders( CallInst *call, DomainsHolder &domains ) {
-    auto fn = call->getCalledFunction();
+    auto fn = get_called_function( call );
 
     Values placeholders;
     for ( unsigned int i = 0; i < call->getNumArgOperands(); ++i ) {
@@ -813,7 +815,7 @@ Type* packed_type( CallInst *call, DomainsHolder &domains ) {
 }
 
 void stash_arguments( CallInst *call, DomainsHolder &domains ) {
-    auto fn = call->getCalledFunction();
+    auto fn = get_called_function( call );
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return; // skip internal lart functions
 
@@ -845,7 +847,7 @@ void stash_arguments( CallInst *call, DomainsHolder &domains ) {
 }
 
 Values unstash_arguments( CallInst *call, DomainsHolder &domains ) {
-    auto fn = call->getCalledFunction();
+    auto fn = get_called_function( call );
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return {}; // skip internal lart functions
 
@@ -868,8 +870,7 @@ Values unstash_arguments( CallInst *call, DomainsHolder &domains ) {
 }
 
 void stash_return_value( CallInst *call, DomainsHolder &domains ) {
-
-    auto fn = call->getCalledFunction();
+    auto fn = get_called_function( call );
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return; // skip internal lart functions
 
@@ -921,7 +922,7 @@ void Tainting::_run( Module &m ) {
 
     std::set< Function* > processed;
     run_on_abstract_calls( [&] ( auto call ) {
-        auto fn = call->getCalledFunction();
+        auto fn = get_called_function( call );
         if ( call->getNumArgOperands() ) {
             bundle::stash_arguments( call, domains );
             if ( !processed.count( fn ) ) {

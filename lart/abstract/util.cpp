@@ -165,5 +165,14 @@ bool is_base_type( Type *type ) {
     return type->isIntegerTy();
 }
 
+Function* get_called_function( llvm::CallInst* call ) {
+    auto val = call->getCalledValue();
+    if ( auto fn = dyn_cast< Function >( val ) )
+        return fn;
+    else if ( auto ce = dyn_cast< ConstantExpr >( val ) )
+        return cast< Function >( ce->getOperand( 0 ) );
+    UNREACHABLE( "Unknown callable value" );
+}
+
 } // namespace abstract
 } // namespace lart
