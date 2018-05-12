@@ -1,5 +1,5 @@
-/* TAGS: c todo sym */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* TAGS: c todo */
+/* VERIFY_OPTS: --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 extern void __VERIFIER_assert(int);
 
@@ -13,7 +13,7 @@ int main(void) {
   int tmp;
 
   for (i = 0; i < SZ; i++) {
-    tmp = A[i];
+    tmp = A[i]; // A[i] is undefined
     B[i] = tmp;
   }
 
