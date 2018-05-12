@@ -6,7 +6,7 @@
 
 int main( int argc, char *argv[] )
 {
-    __dios_configure_fault( _DiOS_F_ExitFault, _DiOS_FC_Ignore );
+    __dios_configure_fault( _DiOS_F_Exit, _DiOS_FC_Ignore );
     int wstatus;
 
     pid_t ret = waitpid( 0, &wstatus, -2 );
