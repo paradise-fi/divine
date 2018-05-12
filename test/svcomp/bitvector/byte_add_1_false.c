@@ -74,7 +74,7 @@ unsigned int mp_add(unsigned int a, unsigned int b)
             if (i == (unsigned char)2) { partial_sum = partial_sum + b2; }
             if (i == (unsigned char)3) { partial_sum = partial_sum + b3; }
         }
-        if (partial_sum > ((unsigned char)254)) {
+        if (partial_sum > ((unsigned char)255)) {
             partial_sum = partial_sum & ((unsigned char)255);
             carry = (unsigned short)1;
         }
@@ -109,8 +109,9 @@ int main()
 {
     unsigned int a, b, r;
 
-    a = __VERIFIER_nondet_uint();
     b = __VERIFIER_nondet_uint();
+
+    a = 234770789;
 
     r = mp_add(a, b);
 
