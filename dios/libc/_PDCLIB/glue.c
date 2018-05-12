@@ -82,7 +82,7 @@ void _exit( int rv )
     if ( rv )
     {
         __dios_trace_f( "Non-zero exit code: %d", rv );
-        __dios_fault( _DiOS_F_ExitFault, "exit called with non-zero value" );
+        __dios_fault( _DiOS_F_Exit, "exit called with non-zero value" );
     }
     __dios_reschedule();
     __cxa_finalize( 0 );

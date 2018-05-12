@@ -228,6 +228,8 @@ struct Fault: public Next {
             return _VM_F_Hypercall;
         if ( fault == "notimplemented" )
             return _VM_F_NotImplemented;
+        if ( fault == "exit" )
+            return static_cast< _VM_Fault >( _DiOS_F_Exit );
         if ( fault == "diosassert" )
             return static_cast< _VM_Fault >( _DiOS_F_Assert );
         if ( fault == "diosconfig" )

@@ -12,7 +12,7 @@ enum _DiOS_Fault
     _DiOS_F_Threading = _VM_F_Last,
     _DiOS_F_Assert,
     _DiOS_F_Config,
-    _DiOS_F_ExitFault,
+    _DiOS_F_Exit,
     _DiOS_F_Syscall,
     _DiOS_F_Last
 };
