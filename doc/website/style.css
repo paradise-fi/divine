@@ -336,3 +336,47 @@ td.test-compact div { margin-bottom: -1px; }
     #linkbar-spacer { margin-top: 3ex; }
     #footer { margin-top: -8ex; margin-left: -14ch; }
 }
+
+/* trac hacks */
+
+.pad-bottom { padding-bottom: 1ex; }
+
+#metanav { display: inline; }
+#metanav div { display: inline; }
+form div { display: inline; }
+div.buttons { display: inline; }
+.timeline form#prefs { display: none; }
+.report h1 { display: none; }
+div#help { display: none; }
+
+table.tickets
+{
+    margin: 5px;
+    margin-top: 1ex;
+    border-spacing: 0px;
+    width: 100%;
+}
+
+table.tickets thead { background: lightgray; }
+
+form { display: inline; margin: 0; padding: 0; }
+
+#metanav form.trac-logout button
+{
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: 100%;
+    color: #b00;
+    border-bottom: 1px dotted #bbb;
+    cursor: pointer;
+}
+
+#metanav form.trac-logout button::-moz-focus-inner { border: 0; padding: 0 }
+#metanav form.trac-logout button:hover { background-color: #eee; color: #555 }
+#metanav form.trac-logout button:active { position: static }
+#metanav .last:after { content: '.'; }
+#metanav .first:after { content: ': '; }
