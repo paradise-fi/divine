@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -8,8 +8,8 @@ extern int __VERIFIER_nondet_int();
 
 
 
-void error(void) 
-{ 
+void error(void)
+{
 
   {
   ERROR: __VERIFIER_error();
@@ -51,7 +51,7 @@ int d  ;
 int data  ;
 int processed  ;
 static int t_b  ;
-void write_loop(void) 
+void write_loop(void)
 { int t ;
 
   {
@@ -68,13 +68,13 @@ void write_loop(void)
       }
     }
   }
-  WL_ENTRY_LOC: 
+  WL_ENTRY_LOC:
   wl_st = 2;
   wl_pc = 1;
   e_wl = 0;
 
   goto return_label;
-  WL_WAIT_1_LOC: 
+  WL_WAIT_1_LOC:
   {
   while (1) {
     while_0_continue: /* CIL Label */ ;
@@ -106,7 +106,7 @@ void write_loop(void)
     t_b = t;
 
     goto return_label;
-    WL_WAIT_2_LOC: 
+    WL_WAIT_2_LOC:
     t = t_b;
     if (d == t + 1) {
 
@@ -122,12 +122,12 @@ void write_loop(void)
   }
   while_0_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
-void compute1(void) 
-{ 
+void compute1(void)
+{
 
   {
   if ((int )c1_pc == 0) {
@@ -139,7 +139,7 @@ void compute1(void)
 
     }
   }
-  C1_ENTRY_LOC: 
+  C1_ENTRY_LOC:
   {
   while (1) {
     while_1_continue: /* CIL Label */ ;
@@ -147,7 +147,7 @@ void compute1(void)
     c1_pc = 1;
 
     goto return_label;
-    C1_WAIT_LOC: 
+    C1_WAIT_LOC:
     if (! processed) {
       data += 1;
       e_g = 1;
@@ -167,12 +167,12 @@ void compute1(void)
   }
   while_1_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
-void compute2(void) 
-{ 
+void compute2(void)
+{
 
   {
   if ((int )c2_pc == 0) {
@@ -184,7 +184,7 @@ void compute2(void)
 
     }
   }
-  C2_ENTRY_LOC: 
+  C2_ENTRY_LOC:
   {
   while (1) {
     while_2_continue: /* CIL Label */ ;
@@ -192,7 +192,7 @@ void compute2(void)
     c2_pc = 1;
 
     goto return_label;
-    C2_WAIT_LOC: 
+    C2_WAIT_LOC:
     if (! processed) {
       data += 1;
       e_g = 1;
@@ -212,12 +212,12 @@ void compute2(void)
   }
   while_2_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
-void write_back(void) 
-{ 
+void write_back(void)
+{
 
   {
   if ((int )wb_pc == 0) {
@@ -229,7 +229,7 @@ void write_back(void)
 
     }
   }
-  WB_ENTRY_LOC: 
+  WB_ENTRY_LOC:
   {
   while (1) {
     while_3_continue: /* CIL Label */ ;
@@ -237,19 +237,19 @@ void write_back(void)
     wb_pc = 1;
 
     goto return_label;
-    WB_WAIT_LOC: 
+    WB_WAIT_LOC:
     c_t = data;
     c_req_up = 1;
     processed = 1;
   }
   while_3_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
-void read(void) 
-{ 
+void read(void)
+{
 
   {
   d = c;
@@ -261,7 +261,7 @@ void read(void)
       goto _L;
     }
   } else {
-    _L: /* CIL Label */ 
+    _L: /* CIL Label */
     if ((int )wl_pc == 2) {
       if ((int )e_e == 1) {
         wl_st = 0;
@@ -278,7 +278,7 @@ void read(void)
   return;
 }
 }
-void eval(void) 
+void eval(void)
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -312,7 +312,7 @@ void eval(void)
     }
     if ((int )wl_st == 0) {
       {
-	tmp =  __VERIFIER_nondet_int(); 
+	tmp =  __VERIFIER_nondet_int();
       }
       if (tmp) {
         {
@@ -327,7 +327,7 @@ void eval(void)
     }
     if ((int )c1_st == 0) {
       {
-	tmp___0 =  __VERIFIER_nondet_int(); 
+	tmp___0 =  __VERIFIER_nondet_int();
       }
       if (tmp___0) {
         {
@@ -342,7 +342,7 @@ void eval(void)
     }
     if ((int )c2_st == 0) {
       {
-	tmp___1 =  __VERIFIER_nondet_int(); 
+	tmp___1 =  __VERIFIER_nondet_int();
       }
       if (tmp___1) {
         {
@@ -357,7 +357,7 @@ void eval(void)
     }
     if ((int )wb_st == 0) {
       {
-	tmp___2 =  __VERIFIER_nondet_int(); 
+	tmp___2 =  __VERIFIER_nondet_int();
       }
       if (tmp___2) {
         {
@@ -392,7 +392,7 @@ void eval(void)
   return;
 }
 }
-void start_simulation(void) 
+void start_simulation(void)
 { int kernel_st ;
 
   {
@@ -465,7 +465,7 @@ void start_simulation(void)
       goto _L;
     }
   } else {
-    _L: /* CIL Label */ 
+    _L: /* CIL Label */
     if ((int )wl_pc == 2) {
       if ((int )e_e == 1) {
         wl_st = 0;
@@ -585,7 +585,7 @@ void start_simulation(void)
         goto _L___0;
       }
     } else {
-      _L___0: /* CIL Label */ 
+      _L___0: /* CIL Label */
       if ((int )wl_pc == 2) {
         if ((int )e_e == 1) {
           wl_st = 0;
@@ -681,7 +681,7 @@ void start_simulation(void)
   return;
 }
 }
-int main(void) 
+int main(void)
 { int __retres1 ;
 
   {

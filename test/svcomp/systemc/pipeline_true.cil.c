@@ -1,11 +1,11 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 extern int __VERIFIER_nondet_int();
 
-void error(void) 
-{ 
+void error(void)
+{
 
   {
   ERROR: __VERIFIER_error();
@@ -57,7 +57,7 @@ int S3_zero_i  ;
 int D_z  ;
 int D_print_st  ;
 int D_print_i  ;
-void N_generate(void) 
+void N_generate(void)
 { int a ;
   int b ;
 
@@ -70,7 +70,7 @@ void N_generate(void)
   return;
 }
 }
-void S1_addsub(void) 
+void S1_addsub(void)
 { int a ;
   int b ;
 
@@ -85,7 +85,7 @@ void S1_addsub(void)
   return;
 }
 }
-void S2_presdbl(void) 
+void S2_presdbl(void)
 { int a ;
   int b ;
   int c ;
@@ -104,7 +104,7 @@ void S2_presdbl(void)
   return;
 }
 }
-void S3_zero(void) 
+void S3_zero(void)
 { int a ;
   int b ;
 
@@ -117,8 +117,8 @@ void S3_zero(void)
   return;
 }
 }
-void D_print(void) 
-{ 
+void D_print(void)
+{
 
   {
   D_z = main_zero_val;
@@ -126,7 +126,7 @@ void D_print(void)
   return;
 }
 }
-void eval(void) 
+void eval(void)
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -240,7 +240,7 @@ void eval(void)
   return;
 }
 }
-void start_simulation(void) 
+void start_simulation(void)
 { int kernel_st ;
 
   {
@@ -747,7 +747,7 @@ void start_simulation(void)
   return;
 }
 }
-int main(void) 
+int main(void)
 { int count ;
   int __retres2 ;
 

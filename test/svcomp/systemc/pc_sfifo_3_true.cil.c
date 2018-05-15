@@ -1,11 +1,11 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 extern int __VERIFIER_nondet_int();
 
-void error(void) 
-{ 
+void error(void)
+{
 
   {
   ERROR: __VERIFIER_error();
@@ -21,8 +21,8 @@ int q_read_ev  ;
 int q_write_ev  ;
 int q_req_up  ;
 int q_ev  ;
-void update_fifo_q(void) 
-{ 
+void update_fifo_q(void)
+{
 
   {
   if ((int )q_free == 0) {
@@ -51,7 +51,7 @@ int c_last_read  ;
 int c_dr_st  ;
 int c_dr_pc  ;
 int c_dr_i  ;
-int is_do_write_p_triggered(void) 
+int is_do_write_p_triggered(void)
 { int __retres1 ;
 
   {
@@ -76,11 +76,11 @@ int is_do_write_p_triggered(void)
 
   }
   __retres1 = 0;
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return (__retres1);
 }
 }
-int is_do_read_c_triggered(void) 
+int is_do_read_c_triggered(void)
 { int __retres1 ;
 
   {
@@ -105,11 +105,11 @@ int is_do_read_c_triggered(void)
 
   }
   __retres1 = 0;
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return (__retres1);
 }
 }
-void immediate_notify_threads(void) 
+void immediate_notify_threads(void)
 { int tmp ;
   int tmp___0 ;
 
@@ -134,8 +134,8 @@ void immediate_notify_threads(void)
   return;
 }
 }
-void do_write_p(void) 
-{ 
+void do_write_p(void)
+{
 
   {
   if ((int )p_dw_pc == 0) {
@@ -151,7 +151,7 @@ void do_write_p(void)
       }
     }
   }
-  DW_ENTRY: 
+  DW_ENTRY:
   {
   while (1) {
     while_0_continue: /* CIL Label */ ;
@@ -159,7 +159,7 @@ void do_write_p(void)
     p_dw_pc = 1;
 
     goto return_label;
-    DW_WAIT: 
+    DW_WAIT:
     if ((int )q_free == 0) {
       p_dw_st = 2;
       p_dw_pc = 2;
@@ -179,12 +179,12 @@ void do_write_p(void)
   }
   while_0_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
 static int a_t  ;
-void do_read_c(void) 
+void do_read_c(void)
 { int a ;
 
   {
@@ -197,7 +197,7 @@ void do_read_c(void)
 
     }
   }
-  DR_ENTRY: 
+  DR_ENTRY:
   {
   while (1) {
     while_1_continue: /* CIL Label */ ;
@@ -213,7 +213,7 @@ void do_read_c(void)
       a_t = a;
 
       goto return_label;
-      DR_WAIT_WRITE: 
+      DR_WAIT_WRITE:
       a = a_t;
     } else {
 
@@ -239,12 +239,12 @@ void do_read_c(void)
   }
   while_1_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
-void update_channels(void) 
-{ 
+void update_channels(void)
+{
 
   {
   if ((int )q_req_up == 1) {
@@ -258,8 +258,8 @@ void update_channels(void)
   return;
 }
 }
-void init_threads(void) 
-{ 
+void init_threads(void)
+{
 
   {
   if ((int )p_dw_i == 1) {
@@ -276,7 +276,7 @@ void init_threads(void)
   return;
 }
 }
-int exists_runnable_thread(void) 
+int exists_runnable_thread(void)
 { int __retres1 ;
 
   {
@@ -292,12 +292,12 @@ int exists_runnable_thread(void)
     }
   }
   __retres1 = 0;
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return (__retres1);
 }
 }
-void fire_delta_events(void) 
-{ 
+void fire_delta_events(void)
+{
 
   {
   if ((int )q_read_ev == 0) {
@@ -314,8 +314,8 @@ void fire_delta_events(void)
   return;
 }
 }
-void reset_delta_events(void) 
-{ 
+void reset_delta_events(void)
+{
 
   {
   if ((int )q_read_ev == 1) {
@@ -334,8 +334,8 @@ void reset_delta_events(void)
 }
 void fire_time_events(void) ;
 static int t  =    0;
-void fire_time_events(void) 
-{ 
+void fire_time_events(void)
+{
 
   {
   if (t < 1) {
@@ -350,8 +350,8 @@ void fire_time_events(void)
   return;
 }
 }
-void reset_time_events(void) 
-{ 
+void reset_time_events(void)
+{
 
   {
   if ((int )fast_clk_edge == 1) {
@@ -368,7 +368,7 @@ void reset_time_events(void)
   return;
 }
 }
-void activate_threads(void) 
+void activate_threads(void)
 { int tmp ;
   int tmp___0 ;
 
@@ -393,7 +393,7 @@ void activate_threads(void)
   return;
 }
 }
-void eval(void) 
+void eval(void)
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -446,7 +446,7 @@ void eval(void)
   return;
 }
 }
-int stop_simulation(void) 
+int stop_simulation(void)
 { int tmp ;
   int __retres2 ;
 
@@ -461,11 +461,11 @@ int stop_simulation(void)
 
   }
   __retres2 = 1;
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return (__retres2);
 }
 }
-void start_simulation(void) 
+void start_simulation(void)
 { int kernel_st ;
   int tmp ;
   int tmp___0 ;
@@ -524,8 +524,8 @@ void start_simulation(void)
   return;
 }
 }
-void init_model(void) 
-{ 
+void init_model(void)
+{
 
   {
   fast_clk_edge = 2;
@@ -543,7 +543,7 @@ void init_model(void)
   return;
 }
 }
-int main(void) 
+int main(void)
 { int __retres1 ;
 
   {

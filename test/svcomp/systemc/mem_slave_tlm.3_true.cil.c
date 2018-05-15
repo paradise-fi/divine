@@ -1,12 +1,12 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 extern int __VERIFIER_nondet_int();
 
 
-void error(void) 
-{ 
+void error(void)
+{
 
   {
   ERROR: __VERIFIER_error();
@@ -84,7 +84,7 @@ void s_memory_write(int i, int v)
 }
 
 
-void m_run(void) 
+void m_run(void)
 { int d ;
   int a ;
   int req_type ;
@@ -130,7 +130,7 @@ void m_run(void)
       }
     }
   }
-  L_MASTER_RUN_ENTRY: 
+  L_MASTER_RUN_ENTRY:
   a = 0;
   {
   while (1) {
@@ -163,7 +163,7 @@ void m_run(void)
       a_t = a;
 
       goto return_label;
-      L_MASTER_RUN_MUTEX: 
+      L_MASTER_RUN_MUTEX:
       req_type = req_t_type;
       req_a = req_t_a;
       req_d = req_t_d;
@@ -196,7 +196,7 @@ void m_run(void)
       a_t = a;
 
       goto return_label;
-      L_MASTER_RUN_PUT: 
+      L_MASTER_RUN_PUT:
       req_type = req_t_type;
       req_a = req_t_a;
       req_d = req_t_d;
@@ -220,7 +220,7 @@ void m_run(void)
         goto _L___3;
       }
     } else {
-      _L___3: /* CIL Label */ 
+      _L___3: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -228,7 +228,7 @@ void m_run(void)
           goto _L___2;
         }
       } else {
-        _L___2: /* CIL Label */ 
+        _L___2: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -236,7 +236,7 @@ void m_run(void)
             goto _L___1;
           }
         } else {
-          _L___1: /* CIL Label */ 
+          _L___1: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -244,7 +244,7 @@ void m_run(void)
               goto _L___0;
             }
           } else {
-            _L___0: /* CIL Label */ 
+            _L___0: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -252,7 +252,7 @@ void m_run(void)
                 goto _L;
               }
             } else {
-              _L: /* CIL Label */ 
+              _L: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -274,7 +274,7 @@ void m_run(void)
         goto _L___4;
       }
     } else {
-      _L___4: /* CIL Label */ 
+      _L___4: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -306,7 +306,7 @@ void m_run(void)
       a_t = a;
 
       goto return_label;
-      L_MASTER_RUN_GET: 
+      L_MASTER_RUN_GET:
       req_type = req_t_type;
       req_a = req_t_a;
       req_d = req_t_d;
@@ -330,7 +330,7 @@ void m_run(void)
         goto _L___9;
       }
     } else {
-      _L___9: /* CIL Label */ 
+      _L___9: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -338,7 +338,7 @@ void m_run(void)
           goto _L___8;
         }
       } else {
-        _L___8: /* CIL Label */ 
+        _L___8: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -346,7 +346,7 @@ void m_run(void)
             goto _L___7;
           }
         } else {
-          _L___7: /* CIL Label */ 
+          _L___7: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -354,7 +354,7 @@ void m_run(void)
               goto _L___6;
             }
           } else {
-            _L___6: /* CIL Label */ 
+            _L___6: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -362,7 +362,7 @@ void m_run(void)
                 goto _L___5;
               }
             } else {
-              _L___5: /* CIL Label */ 
+              _L___5: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -384,7 +384,7 @@ void m_run(void)
         goto _L___10;
       }
     } else {
-      _L___10: /* CIL Label */ 
+      _L___10: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -412,7 +412,7 @@ void m_run(void)
         goto _L___15;
       }
     } else {
-      _L___15: /* CIL Label */ 
+      _L___15: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -420,7 +420,7 @@ void m_run(void)
           goto _L___14;
         }
       } else {
-        _L___14: /* CIL Label */ 
+        _L___14: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -428,7 +428,7 @@ void m_run(void)
             goto _L___13;
           }
         } else {
-          _L___13: /* CIL Label */ 
+          _L___13: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -436,7 +436,7 @@ void m_run(void)
               goto _L___12;
             }
           } else {
-            _L___12: /* CIL Label */ 
+            _L___12: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -444,7 +444,7 @@ void m_run(void)
                 goto _L___11;
               }
             } else {
-              _L___11: /* CIL Label */ 
+              _L___11: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -466,7 +466,7 @@ void m_run(void)
         goto _L___16;
       }
     } else {
-      _L___16: /* CIL Label */ 
+      _L___16: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -513,7 +513,7 @@ void m_run(void)
       a_t = a;
 
       goto return_label;
-      L_MASTER_RUN_MUTEX2: 
+      L_MASTER_RUN_MUTEX2:
       req_type___0 = req_tt_type;
       req_a___0 = req_tt_a;
       req_d___0 = req_tt_d;
@@ -546,7 +546,7 @@ void m_run(void)
       a_t = a;
 
       goto return_label;
-      L_MASTER_RUN_PUT2: 
+      L_MASTER_RUN_PUT2:
       req_type___0 = req_tt_type;
       req_a___0 = req_tt_a;
       req_d___0 = req_tt_d;
@@ -570,7 +570,7 @@ void m_run(void)
         goto _L___21;
       }
     } else {
-      _L___21: /* CIL Label */ 
+      _L___21: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -578,7 +578,7 @@ void m_run(void)
           goto _L___20;
         }
       } else {
-        _L___20: /* CIL Label */ 
+        _L___20: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -586,7 +586,7 @@ void m_run(void)
             goto _L___19;
           }
         } else {
-          _L___19: /* CIL Label */ 
+          _L___19: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -594,7 +594,7 @@ void m_run(void)
               goto _L___18;
             }
           } else {
-            _L___18: /* CIL Label */ 
+            _L___18: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -602,7 +602,7 @@ void m_run(void)
                 goto _L___17;
               }
             } else {
-              _L___17: /* CIL Label */ 
+              _L___17: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -624,7 +624,7 @@ void m_run(void)
         goto _L___22;
       }
     } else {
-      _L___22: /* CIL Label */ 
+      _L___22: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -656,7 +656,7 @@ void m_run(void)
       a_t = a;
 
       goto return_label;
-      L_MASTER_RUN_GET2: 
+      L_MASTER_RUN_GET2:
       req_type___0 = req_tt_type;
       req_a___0 = req_tt_a;
       req_d___0 = req_tt_d;
@@ -680,7 +680,7 @@ void m_run(void)
         goto _L___27;
       }
     } else {
-      _L___27: /* CIL Label */ 
+      _L___27: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -688,7 +688,7 @@ void m_run(void)
           goto _L___26;
         }
       } else {
-        _L___26: /* CIL Label */ 
+        _L___26: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -696,7 +696,7 @@ void m_run(void)
             goto _L___25;
           }
         } else {
-          _L___25: /* CIL Label */ 
+          _L___25: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -704,7 +704,7 @@ void m_run(void)
               goto _L___24;
             }
           } else {
-            _L___24: /* CIL Label */ 
+            _L___24: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -712,7 +712,7 @@ void m_run(void)
                 goto _L___23;
               }
             } else {
-              _L___23: /* CIL Label */ 
+              _L___23: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -734,7 +734,7 @@ void m_run(void)
         goto _L___28;
       }
     } else {
-      _L___28: /* CIL Label */ 
+      _L___28: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -762,7 +762,7 @@ void m_run(void)
         goto _L___33;
       }
     } else {
-      _L___33: /* CIL Label */ 
+      _L___33: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -770,7 +770,7 @@ void m_run(void)
           goto _L___32;
         }
       } else {
-        _L___32: /* CIL Label */ 
+        _L___32: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -778,7 +778,7 @@ void m_run(void)
             goto _L___31;
           }
         } else {
-          _L___31: /* CIL Label */ 
+          _L___31: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -786,7 +786,7 @@ void m_run(void)
               goto _L___30;
             }
           } else {
-            _L___30: /* CIL Label */ 
+            _L___30: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -794,7 +794,7 @@ void m_run(void)
                 goto _L___29;
               }
             } else {
-              _L___29: /* CIL Label */ 
+              _L___29: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -816,7 +816,7 @@ void m_run(void)
         goto _L___34;
       }
     } else {
-      _L___34: /* CIL Label */ 
+      _L___34: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -840,7 +840,7 @@ void m_run(void)
   while_4_break: /* CIL Label */ ;
   }
 
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
@@ -850,7 +850,7 @@ static int req_t_d___0  ;
 static int rsp_t_type___0  ;
 static int rsp_t_status___0  ;
 static int rsp_t_d___0  ;
-void s_run(void) 
+void s_run(void)
 { int req_type ;
   int req_a ;
   int req_d ;
@@ -873,7 +873,7 @@ void s_run(void)
       }
     }
   }
-  L_SLAVE_RUN_ENTRY: 
+  L_SLAVE_RUN_ENTRY:
   {
   while (1) {
     while_8_continue: /* CIL Label */ ;
@@ -895,7 +895,7 @@ void s_run(void)
       rsp_t_d___0 = rsp_d;
 
       goto return_label;
-      L_SLAVE_RUN_GET: 
+      L_SLAVE_RUN_GET:
       req_type = req_t_type___0;
       req_a = req_t_a___0;
       req_d = req_t_d___0;
@@ -917,7 +917,7 @@ void s_run(void)
         goto _L___3;
       }
     } else {
-      _L___3: /* CIL Label */ 
+      _L___3: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -925,7 +925,7 @@ void s_run(void)
           goto _L___2;
         }
       } else {
-        _L___2: /* CIL Label */ 
+        _L___2: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -933,7 +933,7 @@ void s_run(void)
             goto _L___1;
           }
         } else {
-          _L___1: /* CIL Label */ 
+          _L___1: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -941,7 +941,7 @@ void s_run(void)
               goto _L___0;
             }
           } else {
-            _L___0: /* CIL Label */ 
+            _L___0: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -949,7 +949,7 @@ void s_run(void)
                 goto _L;
               }
             } else {
-              _L: /* CIL Label */ 
+              _L: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -971,7 +971,7 @@ void s_run(void)
         goto _L___4;
       }
     } else {
-      _L___4: /* CIL Label */ 
+      _L___4: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -1017,7 +1017,7 @@ void s_run(void)
       rsp_t_d___0 = rsp_d;
 
       goto return_label;
-      L_SLAVE_RUN_PUT: 
+      L_SLAVE_RUN_PUT:
       req_type = req_t_type___0;
       req_a = req_t_a___0;
       req_d = req_t_d___0;
@@ -1039,7 +1039,7 @@ void s_run(void)
         goto _L___9;
       }
     } else {
-      _L___9: /* CIL Label */ 
+      _L___9: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -1047,7 +1047,7 @@ void s_run(void)
           goto _L___8;
         }
       } else {
-        _L___8: /* CIL Label */ 
+        _L___8: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -1055,7 +1055,7 @@ void s_run(void)
             goto _L___7;
           }
         } else {
-          _L___7: /* CIL Label */ 
+          _L___7: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -1063,7 +1063,7 @@ void s_run(void)
               goto _L___6;
             }
           } else {
-            _L___6: /* CIL Label */ 
+            _L___6: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -1071,7 +1071,7 @@ void s_run(void)
                 goto _L___5;
               }
             } else {
-              _L___5: /* CIL Label */ 
+              _L___5: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -1093,7 +1093,7 @@ void s_run(void)
         goto _L___10;
       }
     } else {
-      _L___10: /* CIL Label */ 
+      _L___10: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -1108,11 +1108,11 @@ void s_run(void)
   }
   while_8_break: /* CIL Label */ ;
   }
-  return_label: /* CIL Label */ 
+  return_label: /* CIL Label */
   return;
 }
 }
-void eval(void) 
+void eval(void)
 { int tmp ;
   int tmp___0 ;
 
@@ -1166,7 +1166,7 @@ void eval(void)
   return;
 }
 }
-void start_simulation(void) 
+void start_simulation(void)
 { int kernel_st ;
 
   {
@@ -1188,7 +1188,7 @@ void start_simulation(void)
       goto _L___3;
     }
   } else {
-    _L___3: /* CIL Label */ 
+    _L___3: /* CIL Label */
     if ((int )m_run_pc == 2) {
       if ((int )c_read_req_ev == 1) {
         m_run_st = 0;
@@ -1196,7 +1196,7 @@ void start_simulation(void)
         goto _L___2;
       }
     } else {
-      _L___2: /* CIL Label */ 
+      _L___2: /* CIL Label */
       if ((int )m_run_pc == 3) {
         if ((int )c_write_rsp_ev == 1) {
           m_run_st = 0;
@@ -1204,7 +1204,7 @@ void start_simulation(void)
           goto _L___1;
         }
       } else {
-        _L___1: /* CIL Label */ 
+        _L___1: /* CIL Label */
         if ((int )m_run_pc == 4) {
           if ((int )c_m_ev == 1) {
             m_run_st = 0;
@@ -1212,7 +1212,7 @@ void start_simulation(void)
             goto _L___0;
           }
         } else {
-          _L___0: /* CIL Label */ 
+          _L___0: /* CIL Label */
           if ((int )m_run_pc == 5) {
             if ((int )c_read_req_ev == 1) {
               m_run_st = 0;
@@ -1220,7 +1220,7 @@ void start_simulation(void)
               goto _L;
             }
           } else {
-            _L: /* CIL Label */ 
+            _L: /* CIL Label */
             if ((int )m_run_pc == 6) {
               if ((int )c_write_rsp_ev == 1) {
                 m_run_st = 0;
@@ -1242,7 +1242,7 @@ void start_simulation(void)
       goto _L___4;
     }
   } else {
-    _L___4: /* CIL Label */ 
+    _L___4: /* CIL Label */
     if ((int )s_run_pc == 1) {
       if ((int )c_read_rsp_ev == 1) {
         s_run_st = 0;
@@ -1269,7 +1269,7 @@ void start_simulation(void)
         goto _L___9;
       }
     } else {
-      _L___9: /* CIL Label */ 
+      _L___9: /* CIL Label */
       if ((int )m_run_pc == 2) {
         if ((int )c_read_req_ev == 1) {
           m_run_st = 0;
@@ -1277,7 +1277,7 @@ void start_simulation(void)
           goto _L___8;
         }
       } else {
-        _L___8: /* CIL Label */ 
+        _L___8: /* CIL Label */
         if ((int )m_run_pc == 3) {
           if ((int )c_write_rsp_ev == 1) {
             m_run_st = 0;
@@ -1285,7 +1285,7 @@ void start_simulation(void)
             goto _L___7;
           }
         } else {
-          _L___7: /* CIL Label */ 
+          _L___7: /* CIL Label */
           if ((int )m_run_pc == 4) {
             if ((int )c_m_ev == 1) {
               m_run_st = 0;
@@ -1293,7 +1293,7 @@ void start_simulation(void)
               goto _L___6;
             }
           } else {
-            _L___6: /* CIL Label */ 
+            _L___6: /* CIL Label */
             if ((int )m_run_pc == 5) {
               if ((int )c_read_req_ev == 1) {
                 m_run_st = 0;
@@ -1301,7 +1301,7 @@ void start_simulation(void)
                 goto _L___5;
               }
             } else {
-              _L___5: /* CIL Label */ 
+              _L___5: /* CIL Label */
               if ((int )m_run_pc == 6) {
                 if ((int )c_write_rsp_ev == 1) {
                   m_run_st = 0;
@@ -1323,7 +1323,7 @@ void start_simulation(void)
         goto _L___10;
       }
     } else {
-      _L___10: /* CIL Label */ 
+      _L___10: /* CIL Label */
       if ((int )s_run_pc == 1) {
         if ((int )c_read_rsp_ev == 1) {
           s_run_st = 0;
@@ -1350,7 +1350,7 @@ void start_simulation(void)
   return;
 }
 }
-int main(void) 
+int main(void)
 { int __retres1 ;
 
   {
