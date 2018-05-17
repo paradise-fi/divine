@@ -703,6 +703,11 @@ int getc( FILE * stream ) _PDCLIB_nothrow;
 /* Equivalent to fgetc( stdin ). */
 int getchar( void ) _PDCLIB_nothrow;
 
+
+#if __BSD_VISIBLE
+char *fgetln(FILE *, size_t *);
+#endif
+
 #if _PDCLIB_C_MAX(1999)
 /* Read characters from given stream into the array s, stopping at \n or EOF.
    The string read is terminated with \0. Returns s if successful. If EOF is
