@@ -85,6 +85,9 @@ void BitCode::do_lart()
         lart.setup( lart::reduction::staticTauMemPass() );
     }
 
+    if ( _svcomp )
+        lart.setup( lart::svcomp::svcompPass() );
+
     if ( _symbolic )
         lart.setup( lart::abstract::passes() );
 
