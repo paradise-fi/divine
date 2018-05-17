@@ -23,17 +23,24 @@ typedef _PDCLIB_size_t size_t;
 #define NULL _PDCLIB_NULL
 #endif
 
+#ifndef _TIME_T_DEFINED_
+#define _TIME_T_DEFINED_ 1
 typedef _PDCLIB_time_t  time_t;
+#endif
+
 typedef _PDCLIB_clock_t clock_t;
 
 #define CLOCKS_PER_SEC _PDCLIB_CLOCKS_PER_SEC
 #define TIME_UTC _PDCLIB_TIME_UTC
 
+#ifndef _TIMESPEC_DECLARED
+#define _TIMESPEC_DECLARED
 struct timespec
 {
     time_t tv_sec;
     long tv_nsec;
 };
+#endif
 
 struct tm
 {
