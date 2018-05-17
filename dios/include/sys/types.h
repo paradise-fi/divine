@@ -35,8 +35,10 @@ typedef __u_char            u_char;
 typedef __u_short           u_short;
 typedef __u_int             u_int;
 typedef __u_long            u_long;
+typedef __uint8_t           u_int8_t;
 typedef __uint16_t          u_int16_t;
 typedef __uint32_t          u_int32_t;
+typedef __int8_t            int8_t;
 
 typedef	double __double_t;
 typedef	float  __float_t;
