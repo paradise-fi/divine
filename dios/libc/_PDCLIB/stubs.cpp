@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <wchar.h>
+#include <grp.h>
 #include <signal.h>
 
 #include <sys/divm.h>
@@ -50,6 +51,8 @@ int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 
 int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;
 
+struct group *getgrnam(const char *name) NOT_IMPLEMENTED;
+struct group *getgrgid(gid_t gid) NOT_IMPLEMENTED;
 void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_F_NotImplemented, "utime" ); };
 int issetugid( void ) NOT_IMPLEMENTED;
 
