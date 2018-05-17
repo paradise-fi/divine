@@ -94,10 +94,11 @@ void Stash::arg_stash( CallInst *call ) {
 }
 
 void Stash::ret_stash( CallInst *call ) {
-    if ( call->getType()->isVoidTy() || call->getType()->isPointerTy() )
+    auto fn = get_called_function( call );
+    auto retty = fn->getReturnType();
+    if ( retty->isVoidTy() || retty->isPointerTy() )
         return; // no return value to stash
 
-    auto fn = get_called_function( call );
     auto ret = dyn_cast< ReturnInst >( fn->back().getTerminator() );
     ASSERT( ret && "Return instruction not found in the last basic block." );
 
@@ -121,7 +122,9 @@ void Stash::ret_stash( CallInst *call ) {
 }
 
 void Stash::ret_unstash( CallInst *call ) {
-    if ( call->getType()->isVoidTy() || call->getType()->isPointerTy() )
+    auto fn = get_called_function( call );
+    auto retty = fn->getReturnType();
+    if ( retty->isVoidTy() || retty->isPointerTy() )
         return; // no return value to stash
 
     auto dom = MDValue( call ).domain();
