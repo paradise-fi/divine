@@ -139,6 +139,8 @@ int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact
 int rt_sigaction( int signum, const struct sigaction *act, struct sigaction *oldact,
                   size_t sigsetsize ) __nothrow;
 
+int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+
 __END_DECLS
 
 #endif
