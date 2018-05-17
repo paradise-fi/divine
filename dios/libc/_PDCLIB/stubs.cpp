@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <grp.h>
 #include <signal.h>
+#include <netinet/in.h>
 
 #include <sys/divm.h>
 #include <sys/fault.h>
@@ -55,6 +56,7 @@ int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTE
 
 int getgroups(int gidsetsize, gid_t grouplist[]) NOT_IMPLEMENTED;
 struct hostent* gethostbyname(const char *) NOT_IMPLEMENTED;
+char *inet_ntop(int, const void *, char *, socklen_t) NOT_IMPLEMENTED;
 uid_t geteuid( void ) NOT_IMPLEMENTED;
 gid_t getegid( void ) NOT_IMPLEMENTED;
 gid_t getgid( void ) NOT_IMPLEMENTED;
