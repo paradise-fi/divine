@@ -14,7 +14,7 @@
 
 static size_t filecb(void *p, const char *buf, size_t size)
 {
-    return _PDCLIB_fwrite_unlocked( buf, 1, size, (FILE*) p );
+    return fwrite_unlocked( buf, 1, size, (FILE*) p );
 }
 
 int _PDCLIB_vfprintf_unlocked( FILE * _PDCLIB_restrict stream,

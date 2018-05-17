@@ -51,7 +51,7 @@ int _PDCLIB_vfscanf_unlocked( FILE * _PDCLIB_restrict stream,
             else
             {
                 /* Non-whitespace char in format string: Match verbatim */
-                if ( ( ( c = _PDCLIB_getc_unlocked( stream ) ) != *format ) || feof( stream ) )
+                if ( ( ( c = getc_unlocked( stream ) ) != *format ) || feof( stream ) )
                 {
                     /* Matching error */
                     if ( ! feof( stream ) && ! ferror( stream ) )

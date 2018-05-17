@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-size_t _PDCLIB_fread_unlocked( 
+size_t fread_unlocked( 
     void * _PDCLIB_restrict ptr, 
     size_t size, size_t nmemb, 
     FILE * _PDCLIB_restrict stream 
@@ -39,7 +39,7 @@ size_t fread( void * _PDCLIB_restrict ptr,
               FILE * _PDCLIB_restrict stream )
 {
     _PDCLIB_flockfile( stream );
-    size_t r = _PDCLIB_fread_unlocked( ptr, size, nmemb, stream );
+    size_t r = fread_unlocked( ptr, size, nmemb, stream );
     _PDCLIB_funlockfile( stream );
     return r;
 }

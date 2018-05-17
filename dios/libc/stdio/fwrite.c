@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-size_t _PDCLIB_fwrite_unlocked( const void *restrict vptr,
+size_t fwrite_unlocked( const void *restrict vptr,
                size_t size, size_t nmemb,
                FILE * _PDCLIB_restrict stream )
 {
@@ -74,7 +74,7 @@ size_t fwrite( const void * _PDCLIB_restrict ptr,
                FILE * _PDCLIB_restrict stream )
 {
     _PDCLIB_flockfile( stream );
-    size_t r = _PDCLIB_fwrite_unlocked( ptr, size, nmemb, stream );
+    size_t r = fwrite_unlocked( ptr, size, nmemb, stream );
     _PDCLIB_funlockfile( stream );
     return r;
 }

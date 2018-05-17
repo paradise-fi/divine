@@ -14,7 +14,7 @@
    Returns c if successful, EOF otherwise.
    If a write error occurs, the error indicator of the stream is set.
 */
-int _PDCLIB_fputc_unlocked( int c, FILE * stream )
+int fputc_unlocked( int c, FILE * stream )
 {
     if ( _PDCLIB_prepwrite( stream ) == EOF )
     {
@@ -51,7 +51,7 @@ int _PDCLIB_fputc_unlocked( int c, FILE * stream )
 int fputc( int c, FILE * stream )
 {
     _PDCLIB_flockfile( stream );
-    int r = _PDCLIB_fputc_unlocked( c, stream );
+    int r = fputc_unlocked( c, stream );
     _PDCLIB_funlockfile( stream );
     return r;
 }

@@ -11,7 +11,7 @@
 
 int _PDCLIB_getchar_unlocked( void )
 {
-    return _PDCLIB_fgetc_unlocked( stdin );
+    return fgetc_unlocked( stdin );
 }
 
 

@@ -13,7 +13,7 @@
 extern FILE * _PDCLIB_filelist;
 extern mtx_t _PDCLIB_filelist_lock;
 
-int _PDCLIB_fflush_unlocked( FILE * stream )
+int fflush_unlocked( FILE * stream )
 {
     if ( stream == NULL )
     {
@@ -45,7 +45,7 @@ int fflush( FILE * stream )
 {
     if ( stream )
         _PDCLIB_flockfile( stream );
-    int res = _PDCLIB_fflush_unlocked(stream);
+    int res = fflush_unlocked(stream);
     if ( stream )
         _PDCLIB_funlockfile( stream );
     return res;

@@ -9,7 +9,7 @@
 #ifndef REGTEST
 #include "_PDCLIB/io.h"
 
-char * _PDCLIB_fgets_unlocked( char * _PDCLIB_restrict s, int size, FILE * _PDCLIB_restrict stream )
+char * fgets_unlocked( char * _PDCLIB_restrict s, int size, FILE * _PDCLIB_restrict stream )
 {
     if ( size == 0 )
     {
@@ -36,7 +36,7 @@ char * fgets( char * _PDCLIB_restrict s, int size,
               FILE * _PDCLIB_restrict stream )
 {
     _PDCLIB_flockfile( stream );
-    char* r = _PDCLIB_fgets_unlocked( s, size, stream );
+    char* r = fgets_unlocked( s, size, stream );
     _PDCLIB_funlockfile( stream );
     return r;
 }

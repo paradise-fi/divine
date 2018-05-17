@@ -9,7 +9,7 @@
 #ifndef REGTEST
 #include "_PDCLIB/io.h"
 
-int _PDCLIB_ferror_unlocked( FILE * stream )
+int ferror_unlocked( FILE * stream )
 {
     return stream->status & _PDCLIB_ERRORFLAG;
 }
@@ -17,7 +17,7 @@ int _PDCLIB_ferror_unlocked( FILE * stream )
 int ferror( FILE * stream )
 {
     _PDCLIB_flockfile( stream );
-    int error = _PDCLIB_ferror_unlocked( stream );
+    int error = ferror_unlocked( stream );
     _PDCLIB_funlockfile( stream );
     return error;
 }

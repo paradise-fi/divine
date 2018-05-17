@@ -9,9 +9,9 @@
 #ifndef REGTEST
 #include "_PDCLIB/io.h"
 
-int _PDCLIB_putchar_unlocked( int c )
+int putchar_unlocked( int c )
 {
-    return _PDCLIB_fputc_unlocked( c, stdout );
+    return fputc_unlocked( c, stdout );
 }
 
 int putchar( int c )
