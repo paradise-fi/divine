@@ -102,9 +102,14 @@ pid_t getsid( pid_t pid ) __nothrow;
 pid_t getpgid( pid_t pid ) __nothrow;
 pid_t getpgrp( void ) __nothrow;
 pid_t setsid( void ) __nothrow;
+uid_t geteuid( void ) __nothrow;
+gid_t getegid( void ) __nothrow;
 int setpgrp( void ) __nothrow;
 int setpgid( pid_t pid, pid_t pgid ) __nothrow;
 int issetugid( void ) __nothrow;
+int getgroups( int gidsetsize, gid_t grouplist[] ) __nothrow;
+gid_t getgid( void );
+uid_t getuid( void );
 
 int fsync( int fd ) __nothrow;
 int fdatasync( int fd ) __nothrow;
