@@ -18,6 +18,7 @@ my $prog =<<'EOF';
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/resource.h>
+#include <signal.h>
 
 int offset = 0;
 int padding = 0;
@@ -132,6 +133,24 @@ fmt( "RLIMIT_MEMLOCK" );
 fmt( "RLIMIT_NPROC" );
 fmt( "RLIMIT_NOFILE" );
 fmt( "RLIM_NLIMITS" );
+
+fmt( "SIGABRT" );
+fmt( "SIGFPE" );
+fmt( "SIGILL" );
+fmt( "SIGINT" );
+fmt( "SIGSEGV" );
+fmt( "SIGPIPE" );
+fmt( "SIGTERM" );
+fmt( "SIGQUIT" );
+fmt( "SIGBUS" );
+fmt( "SIGSYS" );
+fmt( "SIGTRAP" );
+fmt( "SIGXCPU" );
+fmt( "SIGXFSZ" );
+fmt( "SIGKILL" );
+fmt( "SIGSTOP" );
+fmt( "SIGALRM" );
+fmt( "SIGHUP" );
 
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );

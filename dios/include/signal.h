@@ -37,40 +37,44 @@ __BEGIN_DECLS
 /* These are the values used by Linux. */
 
 /* Abnormal termination / abort() */
-#define SIGABRT 6
+#define SIGABRT _HOST_SIGABRT
 /* Arithmetic exception / division by zero / overflow */
-#define SIGFPE  8
+#define SIGFPE  _HOST_SIGFPE
 /* Illegal instruction */
-#define SIGILL  4
+#define SIGILL  _HOST_SIGILL
 /* Interactive attention signal */
-#define SIGINT  2
+#define SIGINT  _HOST_SIGINT
 /* Invalid memory access */
-#define SIGSEGV 11
+#define SIGSEGV _HOST_SIGSEGV
 /* Invalid pipe usage */
-#define SIGPIPE 13
+#define SIGPIPE _HOST_SIGPIPE
 /* Termination request */
-#define SIGTERM 15
+#define SIGTERM _HOST_SIGTERM
 
 /* Quit from keyboard */
-#define SIGQUIT 3
+#define SIGQUIT _HOST_SIGQUIT
 /* Bus error (bad memory access) */
-#define SIGBUS 7
+#define SIGBUS _HOST_SIGBUS
 /* Bad argument to routine */
-#define SIGSYS 31
+#define SIGSYS _HOST_SIGSYS
 /* Trace/breakpoint trap */
-#define SIGTRAP 5
+#define SIGTRAP _HOST_SIGTRAP
 /* CPU time limit exceeded */
-#define SIGXCPU 24
+#define SIGXCPU _HOST_SIGXCPU
 /* File size limit exceeded */
-#define SIGXFSZ 25
+#define SIGXFSZ _HOST_SIGXFSZ
 /* IOT trap. A synonym for SIGABRT */
 #define SIGIOT SIGABRT
 /* Synonymous with SIGSYS */
 #define SIGUNUSED SIGSYS
 /* Kill signal */
-#define SIGKILL 9
+#define SIGKILL _HOST_SIGKILL
 /* Stop process */
-#define SIGSTOP 19
+#define SIGSTOP _HOST_SIGSTOP
+/* Timer expired */
+#define SIGALRM _HOST_SIGALRM
+/* Signal hang up */
+#define SIGHUP _HOST_SIGHUP
 
 /* The following should be defined to pointer values that could NEVER point to
    a valid signal handler function. (They are used as special arguments to
