@@ -705,6 +705,473 @@ int isTopFloor(int floorID )
   return (retValue_acc);
 }
 }
+#pragma merger(0,"libacc.i","")
+extern  __attribute__((__nothrow__, __noreturn__)) void __assert_fail(char const   *__assertion ,
+                                                                      char const   *__file ,
+                                                                      unsigned int __line ,
+                                                                      char const   *__function ) ;
+extern  __attribute__((__nothrow__)) void *malloc(size_t __size )  __attribute__((__malloc__)) ;
+extern  __attribute__((__nothrow__)) void free(void *__ptr ) ;
+void __utac__exception__cf_handler_set(void *exception , int (*cflow_func)(int  ,
+                                                                           int  ) ,
+                                       int val ) 
+{ struct __UTAC__EXCEPTION *excep ;
+  struct __UTAC__CFLOW_FUNC *cf ;
+  void *tmp ;
+  unsigned long __cil_tmp7 ;
+  unsigned long __cil_tmp8 ;
+  unsigned long __cil_tmp9 ;
+  unsigned long __cil_tmp10 ;
+  unsigned long __cil_tmp11 ;
+  unsigned long __cil_tmp12 ;
+  unsigned long __cil_tmp13 ;
+  unsigned long __cil_tmp14 ;
+  int (**mem_15)(int  , int  ) ;
+  int *mem_16 ;
+  struct __UTAC__CFLOW_FUNC **mem_17 ;
+  struct __UTAC__CFLOW_FUNC **mem_18 ;
+  struct __UTAC__CFLOW_FUNC **mem_19 ;
+
+  {
+  {
+  excep = (struct __UTAC__EXCEPTION *)exception;
+  tmp = malloc(24UL);
+  cf = (struct __UTAC__CFLOW_FUNC *)tmp;
+  mem_15 = (int (**)(int  , int  ))cf;
+  *mem_15 = cflow_func;
+  __cil_tmp7 = (unsigned long )cf;
+  __cil_tmp8 = __cil_tmp7 + 8;
+  mem_16 = (int *)__cil_tmp8;
+  *mem_16 = val;
+  __cil_tmp9 = (unsigned long )cf;
+  __cil_tmp10 = __cil_tmp9 + 16;
+  __cil_tmp11 = (unsigned long )excep;
+  __cil_tmp12 = __cil_tmp11 + 24;
+  mem_17 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp10;
+  mem_18 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp12;
+  *mem_17 = *mem_18;
+  __cil_tmp13 = (unsigned long )excep;
+  __cil_tmp14 = __cil_tmp13 + 24;
+  mem_19 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp14;
+  *mem_19 = cf;
+  }
+  return;
+}
+}
+void __utac__exception__cf_handler_free(void *exception ) 
+{ struct __UTAC__EXCEPTION *excep ;
+  struct __UTAC__CFLOW_FUNC *cf ;
+  struct __UTAC__CFLOW_FUNC *tmp ;
+  unsigned long __cil_tmp5 ;
+  unsigned long __cil_tmp6 ;
+  struct __UTAC__CFLOW_FUNC *__cil_tmp7 ;
+  unsigned long __cil_tmp8 ;
+  unsigned long __cil_tmp9 ;
+  unsigned long __cil_tmp10 ;
+  unsigned long __cil_tmp11 ;
+  void *__cil_tmp12 ;
+  unsigned long __cil_tmp13 ;
+  unsigned long __cil_tmp14 ;
+  struct __UTAC__CFLOW_FUNC **mem_15 ;
+  struct __UTAC__CFLOW_FUNC **mem_16 ;
+  struct __UTAC__CFLOW_FUNC **mem_17 ;
+
+  {
+  excep = (struct __UTAC__EXCEPTION *)exception;
+  __cil_tmp5 = (unsigned long )excep;
+  __cil_tmp6 = __cil_tmp5 + 24;
+  mem_15 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp6;
+  cf = *mem_15;
+  {
+  while (1) {
+    while_0_continue: /* CIL Label */ ;
+    {
+    __cil_tmp7 = (struct __UTAC__CFLOW_FUNC *)0;
+    __cil_tmp8 = (unsigned long )__cil_tmp7;
+    __cil_tmp9 = (unsigned long )cf;
+    if (__cil_tmp9 != __cil_tmp8) {
+
+    } else {
+      goto while_0_break;
+    }
+    }
+    {
+    tmp = cf;
+    __cil_tmp10 = (unsigned long )cf;
+    __cil_tmp11 = __cil_tmp10 + 16;
+    mem_16 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp11;
+    cf = *mem_16;
+    __cil_tmp12 = (void *)tmp;
+    free(__cil_tmp12);
+    }
+  }
+  while_0_break: /* CIL Label */ ;
+  }
+  __cil_tmp13 = (unsigned long )excep;
+  __cil_tmp14 = __cil_tmp13 + 24;
+  mem_17 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp14;
+  *mem_17 = (struct __UTAC__CFLOW_FUNC *)0;
+  return;
+}
+}
+void __utac__exception__cf_handler_reset(void *exception ) 
+{ struct __UTAC__EXCEPTION *excep ;
+  struct __UTAC__CFLOW_FUNC *cf ;
+  unsigned long __cil_tmp5 ;
+  unsigned long __cil_tmp6 ;
+  struct __UTAC__CFLOW_FUNC *__cil_tmp7 ;
+  unsigned long __cil_tmp8 ;
+  unsigned long __cil_tmp9 ;
+  int (*__cil_tmp10)(int  , int  ) ;
+  unsigned long __cil_tmp11 ;
+  unsigned long __cil_tmp12 ;
+  int __cil_tmp13 ;
+  unsigned long __cil_tmp14 ;
+  unsigned long __cil_tmp15 ;
+  struct __UTAC__CFLOW_FUNC **mem_16 ;
+  int (**mem_17)(int  , int  ) ;
+  int *mem_18 ;
+  struct __UTAC__CFLOW_FUNC **mem_19 ;
+
+  {
+  excep = (struct __UTAC__EXCEPTION *)exception;
+  __cil_tmp5 = (unsigned long )excep;
+  __cil_tmp6 = __cil_tmp5 + 24;
+  mem_16 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp6;
+  cf = *mem_16;
+  {
+  while (1) {
+    while_1_continue: /* CIL Label */ ;
+    {
+    __cil_tmp7 = (struct __UTAC__CFLOW_FUNC *)0;
+    __cil_tmp8 = (unsigned long )__cil_tmp7;
+    __cil_tmp9 = (unsigned long )cf;
+    if (__cil_tmp9 != __cil_tmp8) {
+
+    } else {
+      goto while_1_break;
+    }
+    }
+    {
+    mem_17 = (int (**)(int  , int  ))cf;
+    __cil_tmp10 = *mem_17;
+    __cil_tmp11 = (unsigned long )cf;
+    __cil_tmp12 = __cil_tmp11 + 8;
+    mem_18 = (int *)__cil_tmp12;
+    __cil_tmp13 = *mem_18;
+    (*__cil_tmp10)(4, __cil_tmp13);
+    __cil_tmp14 = (unsigned long )cf;
+    __cil_tmp15 = __cil_tmp14 + 16;
+    mem_19 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp15;
+    cf = *mem_19;
+    }
+  }
+  while_1_break: /* CIL Label */ ;
+  }
+  {
+  __utac__exception__cf_handler_free(exception);
+  }
+  return;
+}
+}
+void *__utac__error_stack_mgt(void *env , int mode , int count ) ;
+static struct __ACC__ERR *head  =    (struct __ACC__ERR *)0;
+void *__utac__error_stack_mgt(void *env , int mode , int count ) 
+{ void *retValue_acc ;
+  struct __ACC__ERR *new ;
+  void *tmp ;
+  struct __ACC__ERR *temp ;
+  struct __ACC__ERR *next ;
+  void *excep ;
+  unsigned long __cil_tmp10 ;
+  unsigned long __cil_tmp11 ;
+  unsigned long __cil_tmp12 ;
+  unsigned long __cil_tmp13 ;
+  void *__cil_tmp14 ;
+  unsigned long __cil_tmp15 ;
+  unsigned long __cil_tmp16 ;
+  void *__cil_tmp17 ;
+  void **mem_18 ;
+  struct __ACC__ERR **mem_19 ;
+  struct __ACC__ERR **mem_20 ;
+  void **mem_21 ;
+  struct __ACC__ERR **mem_22 ;
+  void **mem_23 ;
+  void **mem_24 ;
+
+  {
+  if (count == 0) {
+    return (retValue_acc);
+  } else {
+
+  }
+  if (mode == 0) {
+    {
+    tmp = malloc(16UL);
+    new = (struct __ACC__ERR *)tmp;
+    mem_18 = (void **)new;
+    *mem_18 = env;
+    __cil_tmp10 = (unsigned long )new;
+    __cil_tmp11 = __cil_tmp10 + 8;
+    mem_19 = (struct __ACC__ERR **)__cil_tmp11;
+    *mem_19 = head;
+    head = new;
+    retValue_acc = (void *)new;
+    }
+    return (retValue_acc);
+  } else {
+
+  }
+  if (mode == 1) {
+    temp = head;
+    {
+    while (1) {
+      while_2_continue: /* CIL Label */ ;
+      if (count > 1) {
+
+      } else {
+        goto while_2_break;
+      }
+      {
+      __cil_tmp12 = (unsigned long )temp;
+      __cil_tmp13 = __cil_tmp12 + 8;
+      mem_20 = (struct __ACC__ERR **)__cil_tmp13;
+      next = *mem_20;
+      mem_21 = (void **)temp;
+      excep = *mem_21;
+      __cil_tmp14 = (void *)temp;
+      free(__cil_tmp14);
+      __utac__exception__cf_handler_reset(excep);
+      temp = next;
+      count = count - 1;
+      }
+    }
+    while_2_break: /* CIL Label */ ;
+    }
+    {
+    __cil_tmp15 = (unsigned long )temp;
+    __cil_tmp16 = __cil_tmp15 + 8;
+    mem_22 = (struct __ACC__ERR **)__cil_tmp16;
+    head = *mem_22;
+    mem_23 = (void **)temp;
+    excep = *mem_23;
+    __cil_tmp17 = (void *)temp;
+    free(__cil_tmp17);
+    __utac__exception__cf_handler_reset(excep);
+    retValue_acc = excep;
+    }
+    return (retValue_acc);
+  } else {
+
+  }
+  if (mode == 2) {
+    if (head) {
+      mem_24 = (void **)head;
+      retValue_acc = *mem_24;
+      return (retValue_acc);
+    } else {
+      retValue_acc = (void *)0;
+      return (retValue_acc);
+    }
+  } else {
+
+  }
+  return (retValue_acc);
+}
+}
+void *__utac__get_this_arg(int i , struct JoinPoint *this ) 
+{ void *retValue_acc ;
+  unsigned long __cil_tmp4 ;
+  unsigned long __cil_tmp5 ;
+  int __cil_tmp6 ;
+  int __cil_tmp7 ;
+  unsigned long __cil_tmp8 ;
+  unsigned long __cil_tmp9 ;
+  void **__cil_tmp10 ;
+  void **__cil_tmp11 ;
+  int *mem_12 ;
+  void ***mem_13 ;
+
+  {
+  if (i > 0) {
+    {
+    __cil_tmp4 = (unsigned long )this;
+    __cil_tmp5 = __cil_tmp4 + 16;
+    mem_12 = (int *)__cil_tmp5;
+    __cil_tmp6 = *mem_12;
+    if (i <= __cil_tmp6) {
+
+    } else {
+      {
+      __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
+                    123U, "__utac__get_this_arg");
+      }
+    }
+    }
+  } else {
+    {
+    __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
+                  123U, "__utac__get_this_arg");
+    }
+  }
+  __cil_tmp7 = i - 1;
+  __cil_tmp8 = (unsigned long )this;
+  __cil_tmp9 = __cil_tmp8 + 8;
+  mem_13 = (void ***)__cil_tmp9;
+  __cil_tmp10 = *mem_13;
+  __cil_tmp11 = __cil_tmp10 + __cil_tmp7;
+  retValue_acc = *__cil_tmp11;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+char const   *__utac__get_this_argtype(int i , struct JoinPoint *this ) 
+{ char const   *retValue_acc ;
+  unsigned long __cil_tmp4 ;
+  unsigned long __cil_tmp5 ;
+  int __cil_tmp6 ;
+  int __cil_tmp7 ;
+  unsigned long __cil_tmp8 ;
+  unsigned long __cil_tmp9 ;
+  char const   **__cil_tmp10 ;
+  char const   **__cil_tmp11 ;
+  int *mem_12 ;
+  char const   ***mem_13 ;
+
+  {
+  if (i > 0) {
+    {
+    __cil_tmp4 = (unsigned long )this;
+    __cil_tmp5 = __cil_tmp4 + 16;
+    mem_12 = (int *)__cil_tmp5;
+    __cil_tmp6 = *mem_12;
+    if (i <= __cil_tmp6) {
+
+    } else {
+      {
+      __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
+                    131U, "__utac__get_this_argtype");
+      }
+    }
+    }
+  } else {
+    {
+    __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
+                  131U, "__utac__get_this_argtype");
+    }
+  }
+  __cil_tmp7 = i - 1;
+  __cil_tmp8 = (unsigned long )this;
+  __cil_tmp9 = __cil_tmp8 + 24;
+  mem_13 = (char const   ***)__cil_tmp9;
+  __cil_tmp10 = *mem_13;
+  __cil_tmp11 = __cil_tmp10 + __cil_tmp7;
+  retValue_acc = *__cil_tmp11;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+#pragma merger(0,"UnitTests.i","")
+int getOrigin(int person ) ;
+void timeShift(void) ;
+int isBlocked(void) ;
+void printState(void) ;
+void initTopDown(void) ;
+void initBottomUp(void) ;
+int weight  =    0;
+int maximumWeight  =    100;
+int executiveFloor  =    4;
+int cleanupTimeShifts  =    12;
+void spec1(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int i ;
+  int tmp___1 ;
+
+  {
+  {
+  initBottomUp();
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  printState();
+  tmp___0 = getOrigin(2);
+  initPersonOnFloor(2, tmp___0);
+  printState();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_3_continue: /* CIL Label */ ;
+    if (i < cleanupTimeShifts) {
+      {
+      tmp___1 = isBlocked();
+      }
+      if (tmp___1 != 1) {
+
+      } else {
+        goto while_3_break;
+      }
+    } else {
+      goto while_3_break;
+    }
+    {
+    timeShift();
+    printState();
+    i = i + 1;
+    }
+  }
+  while_3_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+void spec14(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int i ;
+  int tmp___1 ;
+
+  {
+  {
+  initTopDown();
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  printState();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  tmp___0 = getOrigin(0);
+  initPersonOnFloor(0, tmp___0);
+  printState();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_4_continue: /* CIL Label */ ;
+    if (i < cleanupTimeShifts) {
+      {
+      tmp___1 = isBlocked();
+      }
+      if (tmp___1 != 1) {
+
+      } else {
+        goto while_4_break;
+      }
+    } else {
+      goto while_4_break;
+    }
+    {
+    timeShift();
+    printState();
+    i = i + 1;
+    }
+  }
+  while_4_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
 #pragma merger(0,"featureselect.i","")
 int select_one(void) ;
 void select_features(void) ;
@@ -745,7 +1212,6 @@ int valid_product(void)
 }
 #pragma merger(0,"Person.i","")
 int getWeight(int person ) ;
-int getOrigin(int person ) ;
 int getDestination(int person ) ;
 int getWeight(int person ) 
 { int retValue_acc ;
@@ -864,372 +1330,17 @@ int getDestination(int person )
   return (retValue_acc);
 }
 }
-#pragma merger(0,"Test.i","")
-extern  __attribute__((__nothrow__, __noreturn__)) void exit(int __status ) ;
-int cleanupTimeShifts  =    12;
-int get_nondetMinMax07(void) 
-{ int retValue_acc ;
-  int nd ;
-  nd = __VERIFIER_nondet_int();
-
-  {
-  if (nd == 0) {
-    retValue_acc = 0;
-    return (retValue_acc);
-  } else {
-    if (nd == 1) {
-      retValue_acc = 1;
-      return (retValue_acc);
-    } else {
-      if (nd == 2) {
-        retValue_acc = 2;
-        return (retValue_acc);
-      } else {
-        if (nd == 3) {
-          retValue_acc = 3;
-          return (retValue_acc);
-        } else {
-          if (nd == 4) {
-            retValue_acc = 4;
-            return (retValue_acc);
-          } else {
-            if (nd == 5) {
-              retValue_acc = 5;
-              return (retValue_acc);
-            } else {
-              if (nd == 6) {
-                retValue_acc = 6;
-                return (retValue_acc);
-              } else {
-                if (nd == 7) {
-                  retValue_acc = 7;
-                  return (retValue_acc);
-                } else {
-                  {
-                  exit(0);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
-void bobCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(0);
-  initPersonOnFloor(0, tmp);
-  }
-  return;
-}
-}
-void aliceCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(1);
-  initPersonOnFloor(1, tmp);
-  }
-  return;
-}
-}
-void angelinaCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(2);
-  initPersonOnFloor(2, tmp);
-  }
-  return;
-}
-}
-void chuckCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(3);
-  initPersonOnFloor(3, tmp);
-  }
-  return;
-}
-}
-void monicaCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(4);
-  initPersonOnFloor(4, tmp);
-  }
-  return;
-}
-}
-void bigMacCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  }
-  return;
-}
-}
-void timeShift(void) ;
-void threeTS(void) 
-{ 
-
-  {
-  {
-  timeShift();
-  timeShift();
-  timeShift();
-  }
-  return;
-}
-}
-int isIdle(void) ;
-int isBlocked(void) ;
-void cleanup(void) 
-{ int i ;
-  int tmp ;
-  int tmp___0 ;
-  int __cil_tmp4 ;
-
-  {
-  {
-  timeShift();
-  i = 0;
-  }
-  {
-  while (1) {
-    while_0_continue: /* CIL Label */ ;
-    {
-    __cil_tmp4 = cleanupTimeShifts - 1;
-    if (i < __cil_tmp4) {
-      {
-      tmp___0 = isBlocked();
-      }
-      if (tmp___0 != 1) {
-
-      } else {
-        goto while_0_break;
-      }
-    } else {
-      goto while_0_break;
-    }
-    }
-    {
-    tmp = isIdle();
-    }
-    if (tmp) {
-      return;
-    } else {
-      {
-      timeShift();
-      }
-    }
-    i = i + 1;
-  }
-  while_0_break: /* CIL Label */ ;
-  }
-  return;
-}
-}
-void initTopDown(void) ;
-void initBottomUp(void) ;
-void randomSequenceOfActions(void) 
-{ int maxLength ;
-  int tmp ;
-  int counter ;
-  int action ;
-  int tmp___0 ;
-  int origin ;
-  int tmp___1 ;
-  int tmp___2 ;
-
-  {
-  {
-  maxLength = 4;
-  tmp = __VERIFIER_nondet_int();
-  }
-  if (tmp) {
-    {
-    initTopDown();
-    }
-  } else {
-    {
-    initBottomUp();
-    }
-  }
-  counter = 0;
-  {
-  while (1) {
-    while_1_continue: /* CIL Label */ ;
-    if (counter < maxLength) {
-
-    } else {
-      goto while_1_break;
-    }
-    {
-    counter = counter + 1;
-    tmp___0 = get_nondetMinMax07();
-    action = tmp___0;
-    }
-    if (action < 6) {
-      {
-      tmp___1 = getOrigin(action);
-      origin = tmp___1;
-      initPersonOnFloor(action, origin);
-      }
-    } else {
-      if (action == 6) {
-        {
-        timeShift();
-        }
-      } else {
-        if (action == 7) {
-          {
-          timeShift();
-          timeShift();
-          timeShift();
-          }
-        } else {
-
-        }
-      }
-    }
-    {
-    tmp___2 = isBlocked();
-    }
-    if (tmp___2) {
-      return;
-    } else {
-
-    }
-  }
-  while_1_break: /* CIL Label */ ;
-  }
-  {
-  cleanup();
-  }
-  return;
-}
-}
-void runTest_Simple(void) 
-{ 
-
-  {
-  {
-  bigMacCall();
-  angelinaCall();
-  cleanup();
-  }
-  return;
-}
-}
-void Specification1(void) 
-{ 
-
-  {
-  {
-  bigMacCall();
-  angelinaCall();
-  cleanup();
-  }
-  return;
-}
-}
-void Specification2(void) 
-{ 
-
-  {
-  {
-  bigMacCall();
-  cleanup();
-  }
-  return;
-}
-}
-void Specification3(void) 
-{ 
-
-  {
-  {
-  bobCall();
-  timeShift();
-  timeShift();
-  timeShift();
-  timeShift();
-  timeShift();
-  bobCall();
-  cleanup();
-  }
-  return;
-}
-}
-void setup(void) 
-{ 
-
-  {
-  return;
-}
-}
-void test(void) ;
-void runTest(void) 
-{ 
-
-  {
-  {
-  test();
-  }
-  return;
-}
-}
-int main(void) 
-{ int retValue_acc ;
-  int tmp ;
-
-  {
-  {
-  select_helpers();
-  select_features();
-  tmp = valid_product();
-  }
-  if (tmp) {
-    {
-    setup();
-    runTest();
-    }
-  } else {
-
-  }
-  retValue_acc = 0;
-  return (retValue_acc);
-  return (retValue_acc);
-}
-}
 #pragma merger(0,"Elevator.i","")
 extern int printf(char const   * __restrict  __format  , ...) ;
 void enterElevator(int p ) ;
-void printState(void) ;
 int isEmpty(void) ;
 int isAnyLiftButtonPressed(void) ;
 int buttonForFloorIsPressed(int floorID ) ;
 int areDoorsOpen(void) ;
 int getCurrentFloorID(void) ;
-int weight  =    0;
-int maximumWeight  =    100;
+int isIdle(void) ;
+int isExecutiveFloorCalling(void) ;
+int isExecutiveFloor(int floorID ) ;
 int currentHeading  =    1;
 int currentFloorID  =    0;
 int persons_0  ;
@@ -1375,7 +1486,7 @@ void leaveElevator__wrappee__base(int p )
   return;
 }
 }
-void leaveElevator(int p ) 
+void leaveElevator__wrappee__weight(int p ) 
 { int tmp ;
 
   {
@@ -1383,6 +1494,26 @@ void leaveElevator(int p )
   leaveElevator__wrappee__base(p);
   tmp = getWeight(p);
   weight = weight - tmp;
+  }
+  return;
+}
+}
+void leaveElevator(int p ) 
+{ int tmp ;
+
+  {
+  {
+  leaveElevator__wrappee__weight(p);
+  tmp = isEmpty();
+  }
+  if (tmp) {
+    floorButtons_0 = 0;
+    floorButtons_1 = 0;
+    floorButtons_2 = 0;
+    floorButtons_3 = 0;
+    floorButtons_4 = 0;
+  } else {
+
   }
   return;
 }
@@ -1637,7 +1768,7 @@ int isIdle(void)
   return (retValue_acc);
 }
 }
-int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+int stopRequestedInDirection__wrappee__empty(int dir , int respectFloorCalls , int respectInLiftCalls ) 
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -1989,7 +2120,8 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
   return (retValue_acc);
 }
 }
-int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+int stopRequestedInDirection__wrappee__twothirdsfull(int dir , int respectFloorCalls ,
+                                                     int respectInLiftCalls ) 
 { int retValue_acc ;
   int overload ;
   int buttonPressed ;
@@ -2008,20 +2140,49 @@ int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLift
   if (overload) {
     if (buttonPressed) {
       {
-      retValue_acc = stopRequestedInDirection__wrappee__weight(dir, 0, respectInLiftCalls);
+      retValue_acc = stopRequestedInDirection__wrappee__empty(dir, 0, respectInLiftCalls);
       }
       return (retValue_acc);
     } else {
       {
-      retValue_acc = stopRequestedInDirection__wrappee__weight(dir, respectFloorCalls,
-                                                               respectInLiftCalls);
+      retValue_acc = stopRequestedInDirection__wrappee__empty(dir, respectFloorCalls,
+                                                              respectInLiftCalls);
       }
       return (retValue_acc);
     }
   } else {
     {
-    retValue_acc = stopRequestedInDirection__wrappee__weight(dir, respectFloorCalls,
-                                                             respectInLiftCalls);
+    retValue_acc = stopRequestedInDirection__wrappee__empty(dir, respectFloorCalls,
+                                                            respectInLiftCalls);
+    }
+    return (retValue_acc);
+  }
+  return (retValue_acc);
+}
+}
+int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+{ int retValue_acc ;
+  int tmp ;
+  int tmp___0 ;
+  int __cil_tmp7 ;
+  int __cil_tmp8 ;
+
+  {
+  {
+  tmp___0 = isExecutiveFloorCalling();
+  }
+  if (tmp___0) {
+    {
+    tmp = getCurrentFloorID();
+    __cil_tmp7 = dir == 1;
+    __cil_tmp8 = tmp < executiveFloor;
+    retValue_acc = __cil_tmp8 == __cil_tmp7;
+    }
+    return (retValue_acc);
+  } else {
+    {
+    retValue_acc = stopRequestedInDirection__wrappee__twothirdsfull(dir, respectFloorCalls,
+                                                                    respectInLiftCalls);
     }
     return (retValue_acc);
   }
@@ -2091,7 +2252,7 @@ void continueInDirection(int dir )
   return;
 }
 }
-int stopRequestedAtCurrentFloor__wrappee__weight(void) 
+int stopRequestedAtCurrentFloor__wrappee__empty(void) 
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -2118,7 +2279,7 @@ int stopRequestedAtCurrentFloor__wrappee__weight(void)
   return (retValue_acc);
 }
 }
-int stopRequestedAtCurrentFloor(void) 
+int stopRequestedAtCurrentFloor__wrappee__twothirdsfull(void) 
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -2138,10 +2299,41 @@ int stopRequestedAtCurrentFloor(void)
     return (retValue_acc);
   } else {
     {
-    retValue_acc = stopRequestedAtCurrentFloor__wrappee__weight();
+    retValue_acc = stopRequestedAtCurrentFloor__wrappee__empty();
     }
     return (retValue_acc);
   }
+  }
+  return (retValue_acc);
+}
+}
+int stopRequestedAtCurrentFloor(void) 
+{ int retValue_acc ;
+  int tmp ;
+  int tmp___0 ;
+
+  {
+  {
+  tmp = isExecutiveFloorCalling();
+  }
+  if (tmp) {
+    {
+    tmp___0 = getCurrentFloorID();
+    }
+    if (executiveFloor == tmp___0) {
+      {
+      retValue_acc = stopRequestedAtCurrentFloor__wrappee__twothirdsfull();
+      }
+      return (retValue_acc);
+    } else {
+      retValue_acc = 0;
+      return (retValue_acc);
+    }
+  } else {
+    {
+    retValue_acc = stopRequestedAtCurrentFloor__wrappee__twothirdsfull();
+    }
+    return (retValue_acc);
   }
   return (retValue_acc);
 }
@@ -2259,8 +2451,7 @@ void processWaitingOnFloor(int floorID )
   return;
 }
 }
-void __utac_acc__Specification13_spec__1(void) ;
-void __utac_acc__Specification13_spec__2(void) ;
+void __utac_acc__Specification14_spec__1(void) ;
 void timeShift(void) 
 { int tmp ;
   int tmp___0 ;
@@ -2276,7 +2467,6 @@ void timeShift(void)
 
   {
   {
-  __utac_acc__Specification13_spec__1();
   tmp___9 = stopRequestedAtCurrentFloor();
   }
   if (tmp___9) {
@@ -2400,7 +2590,7 @@ void timeShift(void)
     }
   }
   {
-  __utac_acc__Specification13_spec__2();
+  __utac_acc__Specification14_spec__1();
   }
   return;
 }
@@ -2587,11 +2777,11 @@ int existInLiftCallsInDirection(int d )
     i = currentFloorID + 1;
     {
     while (1) {
-      while_2_continue: /* CIL Label */ ;
+      while_5_continue: /* CIL Label */ ;
       if (i < 5) {
 
       } else {
-        goto while_2_break;
+        goto while_5_break;
       }
       if (i == 0) {
         if (floorButtons_0) {
@@ -2645,7 +2835,7 @@ int existInLiftCallsInDirection(int d )
       }
       i = i + 1;
     }
-    while_2_break: /* CIL Label */ ;
+    while_5_break: /* CIL Label */ ;
     }
   } else {
     if (d == 0) {
@@ -2653,20 +2843,20 @@ int existInLiftCallsInDirection(int d )
       i___0 = currentFloorID - 1;
       {
       while (1) {
-        while_3_continue: /* CIL Label */ ;
+        while_6_continue: /* CIL Label */ ;
         if (i___0 >= 0) {
 
         } else {
-          goto while_3_break;
+          goto while_6_break;
         }
         i___0 = currentFloorID + 1;
         {
         while (1) {
-          while_4_continue: /* CIL Label */ ;
+          while_7_continue: /* CIL Label */ ;
           if (i___0 < 5) {
 
           } else {
-            goto while_4_break;
+            goto while_7_break;
           }
           if (i___0 == 0) {
             if (floorButtons_0) {
@@ -2720,11 +2910,11 @@ int existInLiftCallsInDirection(int d )
           }
           i___0 = i___0 + 1;
         }
-        while_4_break: /* CIL Label */ ;
+        while_7_break: /* CIL Label */ ;
         }
         i___0 = i___0 - 1;
       }
-      while_3_break: /* CIL Label */ ;
+      while_6_break: /* CIL Label */ ;
       }
     } else {
 
@@ -2735,93 +2925,408 @@ int existInLiftCallsInDirection(int d )
   return (retValue_acc);
 }
 }
-#pragma merger(0,"UnitTests.i","")
-void spec1(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int i ;
-  int tmp___1 ;
+int isExecutiveFloorCalling(void) 
+{ int retValue_acc ;
 
   {
   {
-  initBottomUp();
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  printState();
-  tmp___0 = getOrigin(2);
-  initPersonOnFloor(2, tmp___0);
-  printState();
-  i = 0;
+  retValue_acc = isFloorCalling(executiveFloor);
   }
-  {
-  while (1) {
-    while_5_continue: /* CIL Label */ ;
-    if (i < cleanupTimeShifts) {
-      {
-      tmp___1 = isBlocked();
-      }
-      if (tmp___1 != 1) {
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+int isExecutiveFloor(int floorID ) 
+{ int retValue_acc ;
 
-      } else {
-        goto while_5_break;
-      }
+  {
+  retValue_acc = executiveFloor == floorID;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+#pragma merger(0,"Test.i","")
+extern  __attribute__((__nothrow__, __noreturn__)) void exit(int __status ) ;
+int get_nondetMinMax07(void) 
+{ int retValue_acc ;
+  int nd ;
+  nd = __VERIFIER_nondet_int();
+
+  {
+  if (nd == 0) {
+    retValue_acc = 0;
+    return (retValue_acc);
+  } else {
+    if (nd == 1) {
+      retValue_acc = 1;
+      return (retValue_acc);
     } else {
-      goto while_5_break;
-    }
-    {
-    timeShift();
-    printState();
-    i = i + 1;
+      if (nd == 2) {
+        retValue_acc = 2;
+        return (retValue_acc);
+      } else {
+        if (nd == 3) {
+          retValue_acc = 3;
+          return (retValue_acc);
+        } else {
+          if (nd == 4) {
+            retValue_acc = 4;
+            return (retValue_acc);
+          } else {
+            if (nd == 5) {
+              retValue_acc = 5;
+              return (retValue_acc);
+            } else {
+              if (nd == 6) {
+                retValue_acc = 6;
+                return (retValue_acc);
+              } else {
+                if (nd == 7) {
+                  retValue_acc = 7;
+                  return (retValue_acc);
+                } else {
+                  {
+                  exit(0);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
-  while_5_break: /* CIL Label */ ;
+  return (retValue_acc);
+}
+}
+void bobCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(0);
+  initPersonOnFloor(0, tmp);
   }
   return;
 }
 }
-void spec14(void) 
+void aliceCall(void) 
 { int tmp ;
-  int tmp___0 ;
-  int i ;
-  int tmp___1 ;
 
   {
   {
-  initTopDown();
+  tmp = getOrigin(1);
+  initPersonOnFloor(1, tmp);
+  }
+  return;
+}
+}
+void angelinaCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(2);
+  initPersonOnFloor(2, tmp);
+  }
+  return;
+}
+}
+void chuckCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(3);
+  initPersonOnFloor(3, tmp);
+  }
+  return;
+}
+}
+void monicaCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(4);
+  initPersonOnFloor(4, tmp);
+  }
+  return;
+}
+}
+void bigMacCall(void) 
+{ int tmp ;
+
+  {
+  {
   tmp = getOrigin(5);
   initPersonOnFloor(5, tmp);
-  printState();
+  }
+  return;
+}
+}
+void threeTS(void) 
+{ 
+
+  {
+  {
   timeShift();
   timeShift();
   timeShift();
+  }
+  return;
+}
+}
+void cleanup(void) 
+{ int i ;
+  int tmp ;
+  int tmp___0 ;
+  int __cil_tmp4 ;
+
+  {
+  {
   timeShift();
-  tmp___0 = getOrigin(0);
-  initPersonOnFloor(0, tmp___0);
-  printState();
   i = 0;
   }
   {
   while (1) {
-    while_6_continue: /* CIL Label */ ;
-    if (i < cleanupTimeShifts) {
+    while_8_continue: /* CIL Label */ ;
+    {
+    __cil_tmp4 = cleanupTimeShifts - 1;
+    if (i < __cil_tmp4) {
       {
-      tmp___1 = isBlocked();
+      tmp___0 = isBlocked();
       }
-      if (tmp___1 != 1) {
+      if (tmp___0 != 1) {
 
       } else {
-        goto while_6_break;
+        goto while_8_break;
       }
     } else {
-      goto while_6_break;
+      goto while_8_break;
+    }
     }
     {
-    timeShift();
-    printState();
+    tmp = isIdle();
+    }
+    if (tmp) {
+      return;
+    } else {
+      {
+      timeShift();
+      }
+    }
     i = i + 1;
+  }
+  while_8_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+void randomSequenceOfActions(void) 
+{ int maxLength ;
+  int tmp ;
+  int counter ;
+  int action ;
+  int tmp___0 ;
+  int origin ;
+  int tmp___1 ;
+  int tmp___2 ;
+
+  {
+  {
+  maxLength = 4;
+  tmp = __VERIFIER_nondet_int();
+  }
+  if (tmp) {
+    {
+    initTopDown();
+    }
+  } else {
+    {
+    initBottomUp();
     }
   }
-  while_6_break: /* CIL Label */ ;
+  counter = 0;
+  {
+  while (1) {
+    while_9_continue: /* CIL Label */ ;
+    if (counter < maxLength) {
+
+    } else {
+      goto while_9_break;
+    }
+    {
+    counter = counter + 1;
+    tmp___0 = get_nondetMinMax07();
+    action = tmp___0;
+    }
+    if (action < 6) {
+      {
+      tmp___1 = getOrigin(action);
+      origin = tmp___1;
+      initPersonOnFloor(action, origin);
+      }
+    } else {
+      if (action == 6) {
+        {
+        timeShift();
+        }
+      } else {
+        if (action == 7) {
+          {
+          timeShift();
+          timeShift();
+          timeShift();
+          }
+        } else {
+
+        }
+      }
+    }
+    {
+    tmp___2 = isBlocked();
+    }
+    if (tmp___2) {
+      return;
+    } else {
+
+    }
+  }
+  while_9_break: /* CIL Label */ ;
+  }
+  {
+  cleanup();
+  }
+  return;
+}
+}
+void runTest_Simple(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  angelinaCall();
+  cleanup();
+  }
+  return;
+}
+}
+void Specification1(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  angelinaCall();
+  cleanup();
+  }
+  return;
+}
+}
+void Specification2(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  cleanup();
+  }
+  return;
+}
+}
+void Specification3(void) 
+{ 
+
+  {
+  {
+  bobCall();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  bobCall();
+  cleanup();
+  }
+  return;
+}
+}
+void setup(void) 
+{ 
+
+  {
+  return;
+}
+}
+void test(void) ;
+void runTest(void) 
+{ 
+
+  {
+  {
+  test();
+  }
+  return;
+}
+}
+int main(void) 
+{ int retValue_acc ;
+  int tmp ;
+
+  {
+  {
+  select_helpers();
+  select_features();
+  tmp = valid_product();
+  }
+  if (tmp) {
+    {
+    setup();
+    runTest();
+    }
+  } else {
+
+  }
+  retValue_acc = 0;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+#pragma merger(0,"Specification14_spec.i","")
+void __automaton_fail(void) ;
+void __utac_acc__Specification14_spec__1(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int tmp___1 ;
+  int tmp___2 ;
+
+  {
+  {
+  tmp___2 = isExecutiveFloorCalling();
+  }
+  if (tmp___2) {
+    {
+    tmp = getCurrentFloorID();
+    tmp___0 = isExecutiveFloor(tmp);
+    }
+    if (tmp___0) {
+
+    } else {
+      {
+      tmp___1 = areDoorsOpen();
+      }
+      if (tmp___1) {
+        {
+        __automaton_fail();
+        }
+      } else {
+
+      }
+    }
+  } else {
+
   }
   return;
 }
@@ -2841,467 +3346,11 @@ void test(void)
 
   {
   {
-  aliceCall();
-  angelinaCall();
+  bigMacCall();
   threeTS();
   bobCall();
   cleanup();
   }
   return;
-}
-}
-#pragma merger(0,"Specification13_spec.i","")
-int prevDir  =    0;
-void __utac_acc__Specification13_spec__1(void) 
-{ 
-
-  {
-  {
-  prevDir = getCurrentHeading();
-  }
-  return;
-}
-}
-void __utac_acc__Specification13_spec__2(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int tmp___1 ;
-  int tmp___2 ;
-  int tmp___3 ;
-  int tmp___4 ;
-  int __cil_tmp7 ;
-  int __cil_tmp8 ;
-
-  {
-  {
-  __cil_tmp7 = maximumWeight * 2;
-  __cil_tmp8 = __cil_tmp7 / 3;
-  if (weight > __cil_tmp8) {
-    if (prevDir == 1) {
-      {
-      tmp___0 = existInLiftCallsInDirection(0);
-      }
-      if (tmp___0) {
-        {
-        tmp___1 = existInLiftCallsInDirection(1);
-        }
-        if (tmp___1) {
-
-        } else {
-          {
-          tmp = getCurrentHeading();
-          }
-          if (tmp == 1) {
-            {
-            __automaton_fail();
-            }
-          } else {
-
-          }
-        }
-      } else {
-
-      }
-    } else {
-      if (prevDir == 0) {
-        {
-        tmp___3 = existInLiftCallsInDirection(1);
-        }
-        if (tmp___3) {
-          {
-          tmp___4 = existInLiftCallsInDirection(0);
-          }
-          if (tmp___4) {
-
-          } else {
-            {
-            tmp___2 = getCurrentHeading();
-            }
-            if (tmp___2 == 0) {
-              {
-              __automaton_fail();
-              }
-            } else {
-
-            }
-          }
-        } else {
-
-        }
-      } else {
-
-      }
-    }
-  } else {
-
-  }
-  }
-  return;
-}
-}
-#pragma merger(0,"libacc.i","")
-extern  __attribute__((__nothrow__, __noreturn__)) void __assert_fail(char const   *__assertion ,
-                                                                      char const   *__file ,
-                                                                      unsigned int __line ,
-                                                                      char const   *__function ) ;
-extern  __attribute__((__nothrow__)) void *malloc(size_t __size )  __attribute__((__malloc__)) ;
-extern  __attribute__((__nothrow__)) void free(void *__ptr ) ;
-void __utac__exception__cf_handler_set(void *exception , int (*cflow_func)(int  ,
-                                                                           int  ) ,
-                                       int val ) 
-{ struct __UTAC__EXCEPTION *excep ;
-  struct __UTAC__CFLOW_FUNC *cf ;
-  void *tmp ;
-  unsigned long __cil_tmp7 ;
-  unsigned long __cil_tmp8 ;
-  unsigned long __cil_tmp9 ;
-  unsigned long __cil_tmp10 ;
-  unsigned long __cil_tmp11 ;
-  unsigned long __cil_tmp12 ;
-  unsigned long __cil_tmp13 ;
-  unsigned long __cil_tmp14 ;
-  int (**mem_15)(int  , int  ) ;
-  int *mem_16 ;
-  struct __UTAC__CFLOW_FUNC **mem_17 ;
-  struct __UTAC__CFLOW_FUNC **mem_18 ;
-  struct __UTAC__CFLOW_FUNC **mem_19 ;
-
-  {
-  {
-  excep = (struct __UTAC__EXCEPTION *)exception;
-  tmp = malloc(24UL);
-  cf = (struct __UTAC__CFLOW_FUNC *)tmp;
-  mem_15 = (int (**)(int  , int  ))cf;
-  *mem_15 = cflow_func;
-  __cil_tmp7 = (unsigned long )cf;
-  __cil_tmp8 = __cil_tmp7 + 8;
-  mem_16 = (int *)__cil_tmp8;
-  *mem_16 = val;
-  __cil_tmp9 = (unsigned long )cf;
-  __cil_tmp10 = __cil_tmp9 + 16;
-  __cil_tmp11 = (unsigned long )excep;
-  __cil_tmp12 = __cil_tmp11 + 24;
-  mem_17 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp10;
-  mem_18 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp12;
-  *mem_17 = *mem_18;
-  __cil_tmp13 = (unsigned long )excep;
-  __cil_tmp14 = __cil_tmp13 + 24;
-  mem_19 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp14;
-  *mem_19 = cf;
-  }
-  return;
-}
-}
-void __utac__exception__cf_handler_free(void *exception ) 
-{ struct __UTAC__EXCEPTION *excep ;
-  struct __UTAC__CFLOW_FUNC *cf ;
-  struct __UTAC__CFLOW_FUNC *tmp ;
-  unsigned long __cil_tmp5 ;
-  unsigned long __cil_tmp6 ;
-  struct __UTAC__CFLOW_FUNC *__cil_tmp7 ;
-  unsigned long __cil_tmp8 ;
-  unsigned long __cil_tmp9 ;
-  unsigned long __cil_tmp10 ;
-  unsigned long __cil_tmp11 ;
-  void *__cil_tmp12 ;
-  unsigned long __cil_tmp13 ;
-  unsigned long __cil_tmp14 ;
-  struct __UTAC__CFLOW_FUNC **mem_15 ;
-  struct __UTAC__CFLOW_FUNC **mem_16 ;
-  struct __UTAC__CFLOW_FUNC **mem_17 ;
-
-  {
-  excep = (struct __UTAC__EXCEPTION *)exception;
-  __cil_tmp5 = (unsigned long )excep;
-  __cil_tmp6 = __cil_tmp5 + 24;
-  mem_15 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp6;
-  cf = *mem_15;
-  {
-  while (1) {
-    while_7_continue: /* CIL Label */ ;
-    {
-    __cil_tmp7 = (struct __UTAC__CFLOW_FUNC *)0;
-    __cil_tmp8 = (unsigned long )__cil_tmp7;
-    __cil_tmp9 = (unsigned long )cf;
-    if (__cil_tmp9 != __cil_tmp8) {
-
-    } else {
-      goto while_7_break;
-    }
-    }
-    {
-    tmp = cf;
-    __cil_tmp10 = (unsigned long )cf;
-    __cil_tmp11 = __cil_tmp10 + 16;
-    mem_16 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp11;
-    cf = *mem_16;
-    __cil_tmp12 = (void *)tmp;
-    free(__cil_tmp12);
-    }
-  }
-  while_7_break: /* CIL Label */ ;
-  }
-  __cil_tmp13 = (unsigned long )excep;
-  __cil_tmp14 = __cil_tmp13 + 24;
-  mem_17 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp14;
-  *mem_17 = (struct __UTAC__CFLOW_FUNC *)0;
-  return;
-}
-}
-void __utac__exception__cf_handler_reset(void *exception ) 
-{ struct __UTAC__EXCEPTION *excep ;
-  struct __UTAC__CFLOW_FUNC *cf ;
-  unsigned long __cil_tmp5 ;
-  unsigned long __cil_tmp6 ;
-  struct __UTAC__CFLOW_FUNC *__cil_tmp7 ;
-  unsigned long __cil_tmp8 ;
-  unsigned long __cil_tmp9 ;
-  int (*__cil_tmp10)(int  , int  ) ;
-  unsigned long __cil_tmp11 ;
-  unsigned long __cil_tmp12 ;
-  int __cil_tmp13 ;
-  unsigned long __cil_tmp14 ;
-  unsigned long __cil_tmp15 ;
-  struct __UTAC__CFLOW_FUNC **mem_16 ;
-  int (**mem_17)(int  , int  ) ;
-  int *mem_18 ;
-  struct __UTAC__CFLOW_FUNC **mem_19 ;
-
-  {
-  excep = (struct __UTAC__EXCEPTION *)exception;
-  __cil_tmp5 = (unsigned long )excep;
-  __cil_tmp6 = __cil_tmp5 + 24;
-  mem_16 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp6;
-  cf = *mem_16;
-  {
-  while (1) {
-    while_8_continue: /* CIL Label */ ;
-    {
-    __cil_tmp7 = (struct __UTAC__CFLOW_FUNC *)0;
-    __cil_tmp8 = (unsigned long )__cil_tmp7;
-    __cil_tmp9 = (unsigned long )cf;
-    if (__cil_tmp9 != __cil_tmp8) {
-
-    } else {
-      goto while_8_break;
-    }
-    }
-    {
-    mem_17 = (int (**)(int  , int  ))cf;
-    __cil_tmp10 = *mem_17;
-    __cil_tmp11 = (unsigned long )cf;
-    __cil_tmp12 = __cil_tmp11 + 8;
-    mem_18 = (int *)__cil_tmp12;
-    __cil_tmp13 = *mem_18;
-    (*__cil_tmp10)(4, __cil_tmp13);
-    __cil_tmp14 = (unsigned long )cf;
-    __cil_tmp15 = __cil_tmp14 + 16;
-    mem_19 = (struct __UTAC__CFLOW_FUNC **)__cil_tmp15;
-    cf = *mem_19;
-    }
-  }
-  while_8_break: /* CIL Label */ ;
-  }
-  {
-  __utac__exception__cf_handler_free(exception);
-  }
-  return;
-}
-}
-void *__utac__error_stack_mgt(void *env , int mode , int count ) ;
-static struct __ACC__ERR *head  =    (struct __ACC__ERR *)0;
-void *__utac__error_stack_mgt(void *env , int mode , int count ) 
-{ void *retValue_acc ;
-  struct __ACC__ERR *new ;
-  void *tmp ;
-  struct __ACC__ERR *temp ;
-  struct __ACC__ERR *next ;
-  void *excep ;
-  unsigned long __cil_tmp10 ;
-  unsigned long __cil_tmp11 ;
-  unsigned long __cil_tmp12 ;
-  unsigned long __cil_tmp13 ;
-  void *__cil_tmp14 ;
-  unsigned long __cil_tmp15 ;
-  unsigned long __cil_tmp16 ;
-  void *__cil_tmp17 ;
-  void **mem_18 ;
-  struct __ACC__ERR **mem_19 ;
-  struct __ACC__ERR **mem_20 ;
-  void **mem_21 ;
-  struct __ACC__ERR **mem_22 ;
-  void **mem_23 ;
-  void **mem_24 ;
-
-  {
-  if (count == 0) {
-    return (retValue_acc);
-  } else {
-
-  }
-  if (mode == 0) {
-    {
-    tmp = malloc(16UL);
-    new = (struct __ACC__ERR *)tmp;
-    mem_18 = (void **)new;
-    *mem_18 = env;
-    __cil_tmp10 = (unsigned long )new;
-    __cil_tmp11 = __cil_tmp10 + 8;
-    mem_19 = (struct __ACC__ERR **)__cil_tmp11;
-    *mem_19 = head;
-    head = new;
-    retValue_acc = (void *)new;
-    }
-    return (retValue_acc);
-  } else {
-
-  }
-  if (mode == 1) {
-    temp = head;
-    {
-    while (1) {
-      while_9_continue: /* CIL Label */ ;
-      if (count > 1) {
-
-      } else {
-        goto while_9_break;
-      }
-      {
-      __cil_tmp12 = (unsigned long )temp;
-      __cil_tmp13 = __cil_tmp12 + 8;
-      mem_20 = (struct __ACC__ERR **)__cil_tmp13;
-      next = *mem_20;
-      mem_21 = (void **)temp;
-      excep = *mem_21;
-      __cil_tmp14 = (void *)temp;
-      free(__cil_tmp14);
-      __utac__exception__cf_handler_reset(excep);
-      temp = next;
-      count = count - 1;
-      }
-    }
-    while_9_break: /* CIL Label */ ;
-    }
-    {
-    __cil_tmp15 = (unsigned long )temp;
-    __cil_tmp16 = __cil_tmp15 + 8;
-    mem_22 = (struct __ACC__ERR **)__cil_tmp16;
-    head = *mem_22;
-    mem_23 = (void **)temp;
-    excep = *mem_23;
-    __cil_tmp17 = (void *)temp;
-    free(__cil_tmp17);
-    __utac__exception__cf_handler_reset(excep);
-    retValue_acc = excep;
-    }
-    return (retValue_acc);
-  } else {
-
-  }
-  if (mode == 2) {
-    if (head) {
-      mem_24 = (void **)head;
-      retValue_acc = *mem_24;
-      return (retValue_acc);
-    } else {
-      retValue_acc = (void *)0;
-      return (retValue_acc);
-    }
-  } else {
-
-  }
-  return (retValue_acc);
-}
-}
-void *__utac__get_this_arg(int i , struct JoinPoint *this ) 
-{ void *retValue_acc ;
-  unsigned long __cil_tmp4 ;
-  unsigned long __cil_tmp5 ;
-  int __cil_tmp6 ;
-  int __cil_tmp7 ;
-  unsigned long __cil_tmp8 ;
-  unsigned long __cil_tmp9 ;
-  void **__cil_tmp10 ;
-  void **__cil_tmp11 ;
-  int *mem_12 ;
-  void ***mem_13 ;
-
-  {
-  if (i > 0) {
-    {
-    __cil_tmp4 = (unsigned long )this;
-    __cil_tmp5 = __cil_tmp4 + 16;
-    mem_12 = (int *)__cil_tmp5;
-    __cil_tmp6 = *mem_12;
-    if (i <= __cil_tmp6) {
-
-    } else {
-      {
-      __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
-                    123U, "__utac__get_this_arg");
-      }
-    }
-    }
-  } else {
-    {
-    __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
-                  123U, "__utac__get_this_arg");
-    }
-  }
-  __cil_tmp7 = i - 1;
-  __cil_tmp8 = (unsigned long )this;
-  __cil_tmp9 = __cil_tmp8 + 8;
-  mem_13 = (void ***)__cil_tmp9;
-  __cil_tmp10 = *mem_13;
-  __cil_tmp11 = __cil_tmp10 + __cil_tmp7;
-  retValue_acc = *__cil_tmp11;
-  return (retValue_acc);
-  return (retValue_acc);
-}
-}
-char const   *__utac__get_this_argtype(int i , struct JoinPoint *this ) 
-{ char const   *retValue_acc ;
-  unsigned long __cil_tmp4 ;
-  unsigned long __cil_tmp5 ;
-  int __cil_tmp6 ;
-  int __cil_tmp7 ;
-  unsigned long __cil_tmp8 ;
-  unsigned long __cil_tmp9 ;
-  char const   **__cil_tmp10 ;
-  char const   **__cil_tmp11 ;
-  int *mem_12 ;
-  char const   ***mem_13 ;
-
-  {
-  if (i > 0) {
-    {
-    __cil_tmp4 = (unsigned long )this;
-    __cil_tmp5 = __cil_tmp4 + 16;
-    mem_12 = (int *)__cil_tmp5;
-    __cil_tmp6 = *mem_12;
-    if (i <= __cil_tmp6) {
-
-    } else {
-      {
-      __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
-                    131U, "__utac__get_this_argtype");
-      }
-    }
-    }
-  } else {
-    {
-    __assert_fail("i > 0 && i <= this->argsCount", "libacc.c",
-                  131U, "__utac__get_this_argtype");
-    }
-  }
-  __cil_tmp7 = i - 1;
-  __cil_tmp8 = (unsigned long )this;
-  __cil_tmp9 = __cil_tmp8 + 24;
-  mem_13 = (char const   ***)__cil_tmp9;
-  __cil_tmp10 = *mem_13;
-  __cil_tmp11 = __cil_tmp10 + __cil_tmp7;
-  retValue_acc = *__cil_tmp11;
-  return (retValue_acc);
-  return (retValue_acc);
 }
 }

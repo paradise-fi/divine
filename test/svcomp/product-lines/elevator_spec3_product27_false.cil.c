@@ -37,212 +37,10 @@ struct __ACC__ERR {
    void *v ;
    struct __ACC__ERR *next ;
 };
-#pragma merger(0,"featureselect.i","")
-int select_one(void) ;
-void select_features(void) ;
-void select_helpers(void) ;
-int valid_product(void) ;
-int select_one(void) 
-{ int retValue_acc ;
-  int choice = __VERIFIER_nondet_int();
-
-  {
-  retValue_acc = choice;
-  return (retValue_acc);
-  return (retValue_acc);
-}
-}
-void select_features(void) 
-{ 
-
-  {
-  return;
-}
-}
-void select_helpers(void) 
-{ 
-
-  {
-  return;
-}
-}
-int valid_product(void) 
-{ int retValue_acc ;
-
-  {
-  retValue_acc = 1;
-  return (retValue_acc);
-  return (retValue_acc);
-}
-}
-#pragma merger(0,"Specification14_spec.i","")
-void __automaton_fail(void) ;
-int areDoorsOpen(void) ;
-int getCurrentFloorID(void) ;
-int weight  =    0;
-int maximumWeight  =    100;
-int executiveFloor  =    4;
-int isExecutiveFloorCalling(void) ;
-int isExecutiveFloor(int floorID ) ;
-int blocked  =    0;
-__inline void __utac_acc__Specification14_spec__1(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int tmp___1 ;
-  int tmp___2 ;
-
-  {
-  {
-  tmp___2 = isExecutiveFloorCalling();
-  }
-  if (tmp___2) {
-    {
-    tmp = getCurrentFloorID();
-    tmp___0 = isExecutiveFloor(tmp);
-    }
-    if (tmp___0) {
-
-    } else {
-      {
-      tmp___1 = areDoorsOpen();
-      }
-      if (tmp___1) {
-        {
-        __automaton_fail();
-        }
-      } else {
-
-      }
-    }
-  } else {
-
-  }
-  return;
-}
-}
-#pragma merger(0,"Person.i","")
-int getWeight(int person ) ;
-int getOrigin(int person ) ;
-int getDestination(int person ) ;
-int getWeight(int person ) 
-{ int retValue_acc ;
-
-  {
-  if (person == 0) {
-    retValue_acc = 40;
-    return (retValue_acc);
-  } else {
-    if (person == 1) {
-      retValue_acc = 40;
-      return (retValue_acc);
-    } else {
-      if (person == 2) {
-        retValue_acc = 40;
-        return (retValue_acc);
-      } else {
-        if (person == 3) {
-          retValue_acc = 40;
-          return (retValue_acc);
-        } else {
-          if (person == 4) {
-            retValue_acc = 30;
-            return (retValue_acc);
-          } else {
-            if (person == 5) {
-              retValue_acc = 150;
-              return (retValue_acc);
-            } else {
-              retValue_acc = 0;
-              return (retValue_acc);
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
-int getOrigin(int person ) 
-{ int retValue_acc ;
-
-  {
-  if (person == 0) {
-    retValue_acc = 4;
-    return (retValue_acc);
-  } else {
-    if (person == 1) {
-      retValue_acc = 3;
-      return (retValue_acc);
-    } else {
-      if (person == 2) {
-        retValue_acc = 2;
-        return (retValue_acc);
-      } else {
-        if (person == 3) {
-          retValue_acc = 1;
-          return (retValue_acc);
-        } else {
-          if (person == 4) {
-            retValue_acc = 0;
-            return (retValue_acc);
-          } else {
-            if (person == 5) {
-              retValue_acc = 1;
-              return (retValue_acc);
-            } else {
-              retValue_acc = 0;
-              return (retValue_acc);
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
-int getDestination(int person ) 
-{ int retValue_acc ;
-
-  {
-  if (person == 0) {
-    retValue_acc = 0;
-    return (retValue_acc);
-  } else {
-    if (person == 1) {
-      retValue_acc = 0;
-      return (retValue_acc);
-    } else {
-      if (person == 2) {
-        retValue_acc = 1;
-        return (retValue_acc);
-      } else {
-        if (person == 3) {
-          retValue_acc = 3;
-          return (retValue_acc);
-        } else {
-          if (person == 4) {
-            retValue_acc = 1;
-            return (retValue_acc);
-          } else {
-            if (person == 5) {
-              retValue_acc = 3;
-              return (retValue_acc);
-            } else {
-              retValue_acc = 0;
-              return (retValue_acc);
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
 #pragma merger(0,"Elevator.i","")
 extern int printf(char const   * __restrict  __format  , ...) ;
+int getWeight(int person ) ;
+int getDestination(int person ) ;
 void enterElevator(int p ) ;
 int isFloorCalling(int floorID ) ;
 void resetCallOnFloor(int floorID ) ;
@@ -258,7 +56,14 @@ int isAnyLiftButtonPressed(void) ;
 int buttonForFloorIsPressed(int floorID ) ;
 void initTopDown(void) ;
 void initBottomUp(void) ;
+int areDoorsOpen(void) ;
+int getCurrentFloorID(void) ;
 int isIdle(void) ;
+int weight  =    0;
+int maximumWeight  =    100;
+int executiveFloor  =    4;
+int isExecutiveFloorCalling(void) ;
+int isExecutiveFloor(int floorID ) ;
 int currentHeading  =    1;
 int currentFloorID  =    0;
 int persons_0  ;
@@ -323,7 +128,7 @@ int isBlocked(void)
 { int retValue_acc ;
 
   {
-  retValue_acc = blocked;
+  retValue_acc = 0;
   return (retValue_acc);
   return (retValue_acc);
 }
@@ -1301,7 +1106,9 @@ void processWaitingOnFloor(int floorID )
   return;
 }
 }
-void timeShift__wrappee__executivefloor(void) 
+void __utac_acc__Specification3_spec__1(void) ;
+void __utac_acc__Specification3_spec__2(void) ;
+void timeShift(void) 
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -1316,6 +1123,7 @@ void timeShift__wrappee__executivefloor(void)
 
   {
   {
+  __utac_acc__Specification3_spec__1();
   tmp___9 = stopRequestedAtCurrentFloor();
   }
   if (tmp___9) {
@@ -1438,38 +1246,13 @@ void timeShift__wrappee__executivefloor(void)
       }
     }
   }
-  return;
-}
-}
-void timeShift(void) 
-{ int tmp ;
-
   {
-  {
-  tmp = areDoorsOpen();
-  }
-  if (tmp) {
-    if (weight > maximumWeight) {
-      blocked = 1;
-    } else {
-      {
-      blocked = 0;
-      timeShift__wrappee__executivefloor();
-      }
-    }
-  } else {
-    {
-    blocked = 0;
-    timeShift__wrappee__executivefloor();
-    }
-  }
-  {
-  __utac_acc__Specification14_spec__1();
+  __utac_acc__Specification3_spec__2();
   }
   return;
 }
 }
-void printState__wrappee__executivefloor(void) 
+void printState(void) 
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -1636,28 +1419,6 @@ void printState__wrappee__executivefloor(void)
   {
   __cil_tmp26 = (char const   * __restrict  )"\n";
   printf(__cil_tmp26);
-  }
-  return;
-}
-}
-void printState(void) 
-{ int tmp ;
-  char const   * __restrict  __cil_tmp2 ;
-
-  {
-  {
-  tmp = isBlocked();
-  }
-  if (tmp) {
-    {
-    __cil_tmp2 = (char const   * __restrict  )"Blocked ";
-    printf(__cil_tmp2);
-    }
-  } else {
-
-  }
-  {
-  printState__wrappee__executivefloor();
   }
   return;
 }
@@ -1841,17 +1602,416 @@ int isExecutiveFloor(int floorID )
   return (retValue_acc);
 }
 }
+#pragma merger(0,"UnitTests.i","")
+int getOrigin(int person ) ;
+void initPersonOnFloor(int person , int floor ) ;
+int cleanupTimeShifts  =    12;
+void spec1(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int i ;
+  int tmp___1 ;
+
+  {
+  {
+  initBottomUp();
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  printState();
+  tmp___0 = getOrigin(2);
+  initPersonOnFloor(2, tmp___0);
+  printState();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_3_continue: /* CIL Label */ ;
+    if (i < cleanupTimeShifts) {
+      {
+      tmp___1 = isBlocked();
+      }
+      if (tmp___1 != 1) {
+
+      } else {
+        goto while_3_break;
+      }
+    } else {
+      goto while_3_break;
+    }
+    {
+    timeShift();
+    printState();
+    i = i + 1;
+    }
+  }
+  while_3_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+void spec14(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int i ;
+  int tmp___1 ;
+
+  {
+  {
+  initTopDown();
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  printState();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  tmp___0 = getOrigin(0);
+  initPersonOnFloor(0, tmp___0);
+  printState();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_4_continue: /* CIL Label */ ;
+    if (i < cleanupTimeShifts) {
+      {
+      tmp___1 = isBlocked();
+      }
+      if (tmp___1 != 1) {
+
+      } else {
+        goto while_4_break;
+      }
+    } else {
+      goto while_4_break;
+    }
+    {
+    timeShift();
+    printState();
+    i = i + 1;
+    }
+  }
+  while_4_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+#pragma merger(0,"Person.i","")
+int getWeight(int person ) 
+{ int retValue_acc ;
+
+  {
+  if (person == 0) {
+    retValue_acc = 40;
+    return (retValue_acc);
+  } else {
+    if (person == 1) {
+      retValue_acc = 40;
+      return (retValue_acc);
+    } else {
+      if (person == 2) {
+        retValue_acc = 40;
+        return (retValue_acc);
+      } else {
+        if (person == 3) {
+          retValue_acc = 40;
+          return (retValue_acc);
+        } else {
+          if (person == 4) {
+            retValue_acc = 30;
+            return (retValue_acc);
+          } else {
+            if (person == 5) {
+              retValue_acc = 150;
+              return (retValue_acc);
+            } else {
+              retValue_acc = 0;
+              return (retValue_acc);
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+int getOrigin(int person ) 
+{ int retValue_acc ;
+
+  {
+  if (person == 0) {
+    retValue_acc = 4;
+    return (retValue_acc);
+  } else {
+    if (person == 1) {
+      retValue_acc = 3;
+      return (retValue_acc);
+    } else {
+      if (person == 2) {
+        retValue_acc = 2;
+        return (retValue_acc);
+      } else {
+        if (person == 3) {
+          retValue_acc = 1;
+          return (retValue_acc);
+        } else {
+          if (person == 4) {
+            retValue_acc = 0;
+            return (retValue_acc);
+          } else {
+            if (person == 5) {
+              retValue_acc = 1;
+              return (retValue_acc);
+            } else {
+              retValue_acc = 0;
+              return (retValue_acc);
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+int getDestination(int person ) 
+{ int retValue_acc ;
+
+  {
+  if (person == 0) {
+    retValue_acc = 0;
+    return (retValue_acc);
+  } else {
+    if (person == 1) {
+      retValue_acc = 0;
+      return (retValue_acc);
+    } else {
+      if (person == 2) {
+        retValue_acc = 1;
+        return (retValue_acc);
+      } else {
+        if (person == 3) {
+          retValue_acc = 3;
+          return (retValue_acc);
+        } else {
+          if (person == 4) {
+            retValue_acc = 1;
+            return (retValue_acc);
+          } else {
+            if (person == 5) {
+              retValue_acc = 3;
+              return (retValue_acc);
+            } else {
+              retValue_acc = 0;
+              return (retValue_acc);
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+#pragma merger(0,"Specification3_spec.i","")
+void __automaton_fail(void) ;
+int expectedDirection  =    0;
+void __utac_acc__Specification3_spec__1(void) 
+{ int currentFloorID___0 ;
+  int tmp ;
+  int tmp___0 ;
+  int tmp___1 ;
+  int tmp___2 ;
+  int tmp___3 ;
+  int tmp___4 ;
+  int tmp___5 ;
+  int tmp___6 ;
+  int tmp___7 ;
+  int tmp___8 ;
+  int tmp___9 ;
+  int tmp___10 ;
+
+  {
+  {
+  expectedDirection = 0;
+  tmp = getCurrentFloorID();
+  currentFloorID___0 = tmp;
+  tmp___10 = getCurrentHeading();
+  }
+  if (tmp___10 == 1) {
+    if (currentFloorID___0 < 0) {
+      {
+      tmp___4 = buttonForFloorIsPressed(0);
+      }
+      if (tmp___4) {
+        expectedDirection = 1;
+      } else {
+        goto _L___2;
+      }
+    } else {
+      _L___2: /* CIL Label */ 
+      if (currentFloorID___0 < 1) {
+        {
+        tmp___3 = buttonForFloorIsPressed(1);
+        }
+        if (tmp___3) {
+          expectedDirection = 1;
+        } else {
+          goto _L___1;
+        }
+      } else {
+        _L___1: /* CIL Label */ 
+        if (currentFloorID___0 < 2) {
+          {
+          tmp___2 = buttonForFloorIsPressed(2);
+          }
+          if (tmp___2) {
+            expectedDirection = 1;
+          } else {
+            goto _L___0;
+          }
+        } else {
+          _L___0: /* CIL Label */ 
+          if (currentFloorID___0 < 3) {
+            {
+            tmp___1 = buttonForFloorIsPressed(3);
+            }
+            if (tmp___1) {
+              expectedDirection = 1;
+            } else {
+              goto _L;
+            }
+          } else {
+            _L: /* CIL Label */ 
+            if (currentFloorID___0 < 4) {
+              {
+              tmp___0 = buttonForFloorIsPressed(4);
+              }
+              if (tmp___0) {
+                expectedDirection = 1;
+              } else {
+
+              }
+            } else {
+
+            }
+          }
+        }
+      }
+    }
+  } else {
+    if (currentFloorID___0 > 0) {
+      {
+      tmp___9 = buttonForFloorIsPressed(0);
+      }
+      if (tmp___9) {
+        expectedDirection = -1;
+      } else {
+        goto _L___6;
+      }
+    } else {
+      _L___6: /* CIL Label */ 
+      if (currentFloorID___0 > 1) {
+        {
+        tmp___8 = buttonForFloorIsPressed(1);
+        }
+        if (tmp___8) {
+          expectedDirection = -1;
+        } else {
+          goto _L___5;
+        }
+      } else {
+        _L___5: /* CIL Label */ 
+        if (currentFloorID___0 > 2) {
+          {
+          tmp___7 = buttonForFloorIsPressed(2);
+          }
+          if (tmp___7) {
+            expectedDirection = -1;
+          } else {
+            goto _L___4;
+          }
+        } else {
+          _L___4: /* CIL Label */ 
+          if (currentFloorID___0 > 3) {
+            {
+            tmp___6 = buttonForFloorIsPressed(3);
+            }
+            if (tmp___6) {
+              expectedDirection = -1;
+            } else {
+              goto _L___3;
+            }
+          } else {
+            _L___3: /* CIL Label */ 
+            if (currentFloorID___0 > 4) {
+              {
+              tmp___5 = buttonForFloorIsPressed(4);
+              }
+              if (tmp___5) {
+                expectedDirection = -1;
+              } else {
+
+              }
+            } else {
+
+            }
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+}
+void __utac_acc__Specification3_spec__2(void) 
+{ int tmp ;
+  int tmp___0 ;
+
+  {
+  if (expectedDirection == -1) {
+    {
+    tmp___0 = getCurrentHeading();
+    }
+    if (tmp___0 == 1) {
+      {
+      __automaton_fail();
+      }
+    } else {
+      goto _L;
+    }
+  } else {
+    _L: /* CIL Label */ 
+    if (expectedDirection == 1) {
+      {
+      tmp = getCurrentHeading();
+      }
+      if (tmp == 0) {
+        {
+        __automaton_fail();
+        }
+      } else {
+
+      }
+    } else {
+
+    }
+  }
+  return;
+}
+}
 #pragma merger(0,"scenario.i","")
-void bigMacCall(void) ;
-void threeTS(void) ;
 void bobCall(void) ;
+void threeTS(void) ;
 void cleanup(void) ;
 void test(void) 
 { 
 
   {
   {
-  bigMacCall();
+  initTopDown();
+  bobCall();
   threeTS();
   bobCall();
   cleanup();
@@ -1861,7 +2021,6 @@ void test(void)
 }
 #pragma merger(0,"Test.i","")
 extern  __attribute__((__nothrow__, __noreturn__)) void exit(int __status ) ;
-int cleanupTimeShifts  =    12;
 int get_nondetMinMax07(void) 
 { int retValue_acc ;
   int nd ;
@@ -1914,7 +2073,6 @@ int get_nondetMinMax07(void)
   return (retValue_acc);
 }
 }
-void initPersonOnFloor(int person , int floor ) ;
 void bobCall(void) 
 { int tmp ;
 
@@ -2006,7 +2164,7 @@ void cleanup(void)
   }
   {
   while (1) {
-    while_3_continue: /* CIL Label */ ;
+    while_5_continue: /* CIL Label */ ;
     {
     __cil_tmp4 = cleanupTimeShifts - 1;
     if (i < __cil_tmp4) {
@@ -2016,10 +2174,10 @@ void cleanup(void)
       if (tmp___0 != 1) {
 
       } else {
-        goto while_3_break;
+        goto while_5_break;
       }
     } else {
-      goto while_3_break;
+      goto while_5_break;
     }
     }
     {
@@ -2034,7 +2192,7 @@ void cleanup(void)
     }
     i = i + 1;
   }
-  while_3_break: /* CIL Label */ ;
+  while_5_break: /* CIL Label */ ;
   }
   return;
 }
@@ -2066,11 +2224,11 @@ void randomSequenceOfActions(void)
   counter = 0;
   {
   while (1) {
-    while_4_continue: /* CIL Label */ ;
+    while_6_continue: /* CIL Label */ ;
     if (counter < maxLength) {
 
     } else {
-      goto while_4_break;
+      goto while_6_break;
     }
     {
     counter = counter + 1;
@@ -2109,7 +2267,7 @@ void randomSequenceOfActions(void)
 
     }
   }
-  while_4_break: /* CIL Label */ ;
+  while_6_break: /* CIL Label */ ;
   }
   {
   cleanup();
@@ -2186,6 +2344,9 @@ void runTest(void)
   return;
 }
 }
+void select_helpers(void) ;
+void select_features(void) ;
+int valid_product(void) ;
 int main(void) 
 { int retValue_acc ;
   int tmp ;
@@ -2207,106 +2368,6 @@ int main(void)
   retValue_acc = 0;
   return (retValue_acc);
   return (retValue_acc);
-}
-}
-#pragma merger(0,"wsllib_check.i","")
-void __automaton_fail(void) 
-{ 
-
-  {
-  ERROR: __VERIFIER_error(); /* ERROR */
-  return;
-}
-}
-#pragma merger(0,"UnitTests.i","")
-void spec1(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int i ;
-  int tmp___1 ;
-
-  {
-  {
-  initBottomUp();
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  printState();
-  tmp___0 = getOrigin(2);
-  initPersonOnFloor(2, tmp___0);
-  printState();
-  i = 0;
-  }
-  {
-  while (1) {
-    while_5_continue: /* CIL Label */ ;
-    if (i < cleanupTimeShifts) {
-      {
-      tmp___1 = isBlocked();
-      }
-      if (tmp___1 != 1) {
-
-      } else {
-        goto while_5_break;
-      }
-    } else {
-      goto while_5_break;
-    }
-    {
-    timeShift();
-    printState();
-    i = i + 1;
-    }
-  }
-  while_5_break: /* CIL Label */ ;
-  }
-  return;
-}
-}
-void spec14(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int i ;
-  int tmp___1 ;
-
-  {
-  {
-  initTopDown();
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  printState();
-  timeShift();
-  timeShift();
-  timeShift();
-  timeShift();
-  tmp___0 = getOrigin(0);
-  initPersonOnFloor(0, tmp___0);
-  printState();
-  i = 0;
-  }
-  {
-  while (1) {
-    while_6_continue: /* CIL Label */ ;
-    if (i < cleanupTimeShifts) {
-      {
-      tmp___1 = isBlocked();
-      }
-      if (tmp___1 != 1) {
-
-      } else {
-        goto while_6_break;
-      }
-    } else {
-      goto while_6_break;
-    }
-    {
-    timeShift();
-    printState();
-    i = i + 1;
-    }
-  }
-  while_6_break: /* CIL Label */ ;
-  }
-  return;
 }
 }
 #pragma merger(0,"Floor.i","")
@@ -2970,6 +3031,41 @@ int isTopFloor(int floorID )
   return (retValue_acc);
 }
 }
+#pragma merger(0,"featureselect.i","")
+int select_one(void) ;
+int select_one(void) 
+{ int retValue_acc ;
+  int choice = __VERIFIER_nondet_int();
+
+  {
+  retValue_acc = choice;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+void select_features(void) 
+{ 
+
+  {
+  return;
+}
+}
+void select_helpers(void) 
+{ 
+
+  {
+  return;
+}
+}
+int valid_product(void) 
+{ int retValue_acc ;
+
+  {
+  retValue_acc = 1;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
 #pragma merger(0,"libacc.i","")
 extern  __attribute__((__nothrow__, __noreturn__)) void __assert_fail(char const   *__assertion ,
                                                                       char const   *__file ,
@@ -3334,5 +3430,14 @@ char const   *__utac__get_this_argtype(int i , struct JoinPoint *this )
   retValue_acc = *__cil_tmp11;
   return (retValue_acc);
   return (retValue_acc);
+}
+}
+#pragma merger(0,"wsllib_check.i","")
+void __automaton_fail(void) 
+{ 
+
+  {
+  ERROR: __VERIFIER_error(); /* ERROR */
+  return;
 }
 }

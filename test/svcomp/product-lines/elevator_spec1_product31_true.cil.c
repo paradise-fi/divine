@@ -37,35 +37,6 @@ struct __ACC__ERR {
    void *v ;
    struct __ACC__ERR *next ;
 };
-#pragma merger(0,"scenario.i","")
-void aliceCall(void) ;
-void angelinaCall(void) ;
-void threeTS(void) ;
-void bobCall(void) ;
-void cleanup(void) ;
-void test(void) 
-{ 
-
-  {
-  {
-  aliceCall();
-  angelinaCall();
-  threeTS();
-  bobCall();
-  cleanup();
-  }
-  return;
-}
-}
-#pragma merger(0,"wsllib_check.i","")
-void __automaton_fail(void) 
-{ 
-
-  {
-  ERROR: __VERIFIER_error();
-  return;
-}
-}
 #pragma merger(0,"libacc.i","")
 extern  __attribute__((__nothrow__, __noreturn__)) void __assert_fail(char const   *__assertion ,
                                                                       char const   *__file ,
@@ -432,6 +403,15 @@ char const   *__utac__get_this_argtype(int i , struct JoinPoint *this )
   return (retValue_acc);
 }
 }
+#pragma merger(0,"wsllib_check.i","")
+void __automaton_fail(void) 
+{ 
+
+  {
+  ERROR: __VERIFIER_error();
+  return;
+}
+}
 #pragma merger(0,"Elevator.i","")
 extern int printf(char const   * __restrict  __format  , ...) ;
 int getWeight(int person ) ;
@@ -456,7 +436,9 @@ int getCurrentFloorID(void) ;
 int isIdle(void) ;
 int weight  =    0;
 int maximumWeight  =    100;
-int blocked  =    0;
+int executiveFloor  =    4;
+int isExecutiveFloorCalling(void) ;
+int isExecutiveFloor(int floorID ) ;
 int currentHeading  =    1;
 int currentFloorID  =    0;
 int persons_0  ;
@@ -521,7 +503,7 @@ int isBlocked(void)
 { int retValue_acc ;
 
   {
-  retValue_acc = blocked;
+  retValue_acc = 0;
   return (retValue_acc);
   return (retValue_acc);
 }
@@ -602,7 +584,7 @@ void leaveElevator__wrappee__base(int p )
   return;
 }
 }
-void leaveElevator(int p ) 
+void leaveElevator__wrappee__weight(int p ) 
 { int tmp ;
 
   {
@@ -610,6 +592,26 @@ void leaveElevator(int p )
   leaveElevator__wrappee__base(p);
   tmp = getWeight(p);
   weight = weight - tmp;
+  }
+  return;
+}
+}
+void leaveElevator(int p ) 
+{ int tmp ;
+
+  {
+  {
+  leaveElevator__wrappee__weight(p);
+  tmp = isEmpty();
+  }
+  if (tmp) {
+    floorButtons_0 = 0;
+    floorButtons_1 = 0;
+    floorButtons_2 = 0;
+    floorButtons_3 = 0;
+    floorButtons_4 = 0;
+  } else {
+
   }
   return;
 }
@@ -864,7 +866,7 @@ int isIdle(void)
   return (retValue_acc);
 }
 }
-int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+int stopRequestedInDirection__wrappee__empty(int dir , int respectFloorCalls , int respectInLiftCalls ) 
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -1216,7 +1218,8 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
   return (retValue_acc);
 }
 }
-int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+int stopRequestedInDirection__wrappee__twothirdsfull(int dir , int respectFloorCalls ,
+                                                     int respectInLiftCalls ) 
 { int retValue_acc ;
   int overload ;
   int buttonPressed ;
@@ -1235,20 +1238,49 @@ int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLift
   if (overload) {
     if (buttonPressed) {
       {
-      retValue_acc = stopRequestedInDirection__wrappee__weight(dir, 0, respectInLiftCalls);
+      retValue_acc = stopRequestedInDirection__wrappee__empty(dir, 0, respectInLiftCalls);
       }
       return (retValue_acc);
     } else {
       {
-      retValue_acc = stopRequestedInDirection__wrappee__weight(dir, respectFloorCalls,
-                                                               respectInLiftCalls);
+      retValue_acc = stopRequestedInDirection__wrappee__empty(dir, respectFloorCalls,
+                                                              respectInLiftCalls);
       }
       return (retValue_acc);
     }
   } else {
     {
-    retValue_acc = stopRequestedInDirection__wrappee__weight(dir, respectFloorCalls,
-                                                             respectInLiftCalls);
+    retValue_acc = stopRequestedInDirection__wrappee__empty(dir, respectFloorCalls,
+                                                            respectInLiftCalls);
+    }
+    return (retValue_acc);
+  }
+  return (retValue_acc);
+}
+}
+int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+{ int retValue_acc ;
+  int tmp ;
+  int tmp___0 ;
+  int __cil_tmp7 ;
+  int __cil_tmp8 ;
+
+  {
+  {
+  tmp___0 = isExecutiveFloorCalling();
+  }
+  if (tmp___0) {
+    {
+    tmp = getCurrentFloorID();
+    __cil_tmp7 = dir == 1;
+    __cil_tmp8 = tmp < executiveFloor;
+    retValue_acc = __cil_tmp8 == __cil_tmp7;
+    }
+    return (retValue_acc);
+  } else {
+    {
+    retValue_acc = stopRequestedInDirection__wrappee__twothirdsfull(dir, respectFloorCalls,
+                                                                    respectInLiftCalls);
     }
     return (retValue_acc);
   }
@@ -1318,7 +1350,7 @@ void continueInDirection(int dir )
   return;
 }
 }
-int stopRequestedAtCurrentFloor__wrappee__weight(void) 
+int stopRequestedAtCurrentFloor__wrappee__empty(void) 
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -1345,7 +1377,7 @@ int stopRequestedAtCurrentFloor__wrappee__weight(void)
   return (retValue_acc);
 }
 }
-int stopRequestedAtCurrentFloor(void) 
+int stopRequestedAtCurrentFloor__wrappee__twothirdsfull(void) 
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -1365,10 +1397,41 @@ int stopRequestedAtCurrentFloor(void)
     return (retValue_acc);
   } else {
     {
-    retValue_acc = stopRequestedAtCurrentFloor__wrappee__weight();
+    retValue_acc = stopRequestedAtCurrentFloor__wrappee__empty();
     }
     return (retValue_acc);
   }
+  }
+  return (retValue_acc);
+}
+}
+int stopRequestedAtCurrentFloor(void) 
+{ int retValue_acc ;
+  int tmp ;
+  int tmp___0 ;
+
+  {
+  {
+  tmp = isExecutiveFloorCalling();
+  }
+  if (tmp) {
+    {
+    tmp___0 = getCurrentFloorID();
+    }
+    if (executiveFloor == tmp___0) {
+      {
+      retValue_acc = stopRequestedAtCurrentFloor__wrappee__twothirdsfull();
+      }
+      return (retValue_acc);
+    } else {
+      retValue_acc = 0;
+      return (retValue_acc);
+    }
+  } else {
+    {
+    retValue_acc = stopRequestedAtCurrentFloor__wrappee__twothirdsfull();
+    }
+    return (retValue_acc);
   }
   return (retValue_acc);
 }
@@ -1486,7 +1549,8 @@ void processWaitingOnFloor(int floorID )
   return;
 }
 }
-void timeShift__wrappee__twothirdsfull(void) 
+void __utac_acc__Specification1_spec__3(void) ;
+void timeShift(void) 
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -1623,41 +1687,13 @@ void timeShift__wrappee__twothirdsfull(void)
       }
     }
   }
-  return;
-}
-}
-void __utac_acc__Specification13_spec__1(void) ;
-void __utac_acc__Specification13_spec__2(void) ;
-void timeShift(void) 
-{ int tmp ;
-
   {
-  {
-  __utac_acc__Specification13_spec__1();
-  tmp = areDoorsOpen();
-  }
-  if (tmp) {
-    if (weight > maximumWeight) {
-      blocked = 1;
-    } else {
-      {
-      blocked = 0;
-      timeShift__wrappee__twothirdsfull();
-      }
-    }
-  } else {
-    {
-    blocked = 0;
-    timeShift__wrappee__twothirdsfull();
-    }
-  }
-  {
-  __utac_acc__Specification13_spec__2();
+  __utac_acc__Specification1_spec__3();
   }
   return;
 }
 }
-void printState__wrappee__twothirdsfull(void) 
+void printState(void) 
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -1828,28 +1864,6 @@ void printState__wrappee__twothirdsfull(void)
   return;
 }
 }
-void printState(void) 
-{ int tmp ;
-  char const   * __restrict  __cil_tmp2 ;
-
-  {
-  {
-  tmp = isBlocked();
-  }
-  if (tmp) {
-    {
-    __cil_tmp2 = (char const   * __restrict  )"Blocked ";
-    printf(__cil_tmp2);
-    }
-  } else {
-
-  }
-  {
-  printState__wrappee__twothirdsfull();
-  }
-  return;
-}
-}
 int existInLiftCallsInDirection(int d ) 
 { int retValue_acc ;
   int i ;
@@ -2009,9 +2023,790 @@ int existInLiftCallsInDirection(int d )
   return (retValue_acc);
 }
 }
+int isExecutiveFloorCalling(void) 
+{ int retValue_acc ;
+
+  {
+  {
+  retValue_acc = isFloorCalling(executiveFloor);
+  }
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+int isExecutiveFloor(int floorID ) 
+{ int retValue_acc ;
+
+  {
+  retValue_acc = executiveFloor == floorID;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
+#pragma merger(0,"UnitTests.i","")
+int getOrigin(int person ) ;
+void initPersonOnFloor(int person , int floor ) ;
+int cleanupTimeShifts  =    12;
+void spec1(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int i ;
+  int tmp___1 ;
+
+  {
+  {
+  initBottomUp();
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  printState();
+  tmp___0 = getOrigin(2);
+  initPersonOnFloor(2, tmp___0);
+  printState();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_6_continue: /* CIL Label */ ;
+    if (i < cleanupTimeShifts) {
+      {
+      tmp___1 = isBlocked();
+      }
+      if (tmp___1 != 1) {
+
+      } else {
+        goto while_6_break;
+      }
+    } else {
+      goto while_6_break;
+    }
+    {
+    timeShift();
+    printState();
+    i = i + 1;
+    }
+  }
+  while_6_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+void spec14(void) 
+{ int tmp ;
+  int tmp___0 ;
+  int i ;
+  int tmp___1 ;
+
+  {
+  {
+  initTopDown();
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  printState();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  tmp___0 = getOrigin(0);
+  initPersonOnFloor(0, tmp___0);
+  printState();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_7_continue: /* CIL Label */ ;
+    if (i < cleanupTimeShifts) {
+      {
+      tmp___1 = isBlocked();
+      }
+      if (tmp___1 != 1) {
+
+      } else {
+        goto while_7_break;
+      }
+    } else {
+      goto while_7_break;
+    }
+    {
+    timeShift();
+    printState();
+    i = i + 1;
+    }
+  }
+  while_7_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+#pragma merger(0,"scenario.i","")
+void bigMacCall(void) ;
+void angelinaCall(void) ;
+void cleanup(void) ;
+void test(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  angelinaCall();
+  cleanup();
+  }
+  return;
+}
+}
+#pragma merger(0,"Person.i","")
+int getWeight(int person ) 
+{ int retValue_acc ;
+
+  {
+  if (person == 0) {
+    retValue_acc = 40;
+    return (retValue_acc);
+  } else {
+    if (person == 1) {
+      retValue_acc = 40;
+      return (retValue_acc);
+    } else {
+      if (person == 2) {
+        retValue_acc = 40;
+        return (retValue_acc);
+      } else {
+        if (person == 3) {
+          retValue_acc = 40;
+          return (retValue_acc);
+        } else {
+          if (person == 4) {
+            retValue_acc = 30;
+            return (retValue_acc);
+          } else {
+            if (person == 5) {
+              retValue_acc = 150;
+              return (retValue_acc);
+            } else {
+              retValue_acc = 0;
+              return (retValue_acc);
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+int getOrigin(int person ) 
+{ int retValue_acc ;
+
+  {
+  if (person == 0) {
+    retValue_acc = 4;
+    return (retValue_acc);
+  } else {
+    if (person == 1) {
+      retValue_acc = 3;
+      return (retValue_acc);
+    } else {
+      if (person == 2) {
+        retValue_acc = 2;
+        return (retValue_acc);
+      } else {
+        if (person == 3) {
+          retValue_acc = 1;
+          return (retValue_acc);
+        } else {
+          if (person == 4) {
+            retValue_acc = 0;
+            return (retValue_acc);
+          } else {
+            if (person == 5) {
+              retValue_acc = 1;
+              return (retValue_acc);
+            } else {
+              retValue_acc = 0;
+              return (retValue_acc);
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+int getDestination(int person ) 
+{ int retValue_acc ;
+
+  {
+  if (person == 0) {
+    retValue_acc = 0;
+    return (retValue_acc);
+  } else {
+    if (person == 1) {
+      retValue_acc = 0;
+      return (retValue_acc);
+    } else {
+      if (person == 2) {
+        retValue_acc = 1;
+        return (retValue_acc);
+      } else {
+        if (person == 3) {
+          retValue_acc = 3;
+          return (retValue_acc);
+        } else {
+          if (person == 4) {
+            retValue_acc = 1;
+            return (retValue_acc);
+          } else {
+            if (person == 5) {
+              retValue_acc = 3;
+              return (retValue_acc);
+            } else {
+              retValue_acc = 0;
+              return (retValue_acc);
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+#pragma merger(0,"Specification1_spec.i","")
+int landingButtons_spc1_0  ;
+int landingButtons_spc1_1  ;
+int landingButtons_spc1_2  ;
+int landingButtons_spc1_3  ;
+int landingButtons_spc1_4  ;
+__inline void __utac_acc__Specification1_spec__1(void) 
+{ 
+
+  {
+  landingButtons_spc1_0 = 0;
+  landingButtons_spc1_1 = 0;
+  landingButtons_spc1_2 = 0;
+  landingButtons_spc1_3 = 0;
+  landingButtons_spc1_4 = 0;
+  return;
+}
+}
+__inline void __utac_acc__Specification1_spec__2(int floor ) 
+{ 
+
+  {
+  if (floor == 0) {
+    landingButtons_spc1_0 = 1;
+  } else {
+    if (floor == 1) {
+      landingButtons_spc1_1 = 1;
+    } else {
+      if (floor == 2) {
+        landingButtons_spc1_2 = 1;
+      } else {
+        if (floor == 3) {
+          landingButtons_spc1_3 = 1;
+        } else {
+          if (floor == 4) {
+            landingButtons_spc1_4 = 1;
+          } else {
+
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+}
+void __utac_acc__Specification1_spec__3(void) 
+{ int floor ;
+  int tmp ;
+  int tmp___0 ;
+  int tmp___1 ;
+  int tmp___2 ;
+  int tmp___3 ;
+  int tmp___4 ;
+
+  {
+  {
+  tmp = getCurrentFloorID();
+  floor = tmp;
+  }
+  if (floor == 0) {
+    if (landingButtons_spc1_0) {
+      {
+      tmp___4 = areDoorsOpen();
+      }
+      if (tmp___4) {
+        landingButtons_spc1_0 = 0;
+      } else {
+        goto _L___6;
+      }
+    } else {
+      goto _L___6;
+    }
+  } else {
+    _L___6: /* CIL Label */ 
+    if (floor == 1) {
+      if (landingButtons_spc1_1) {
+        {
+        tmp___3 = areDoorsOpen();
+        }
+        if (tmp___3) {
+          landingButtons_spc1_1 = 0;
+        } else {
+          goto _L___4;
+        }
+      } else {
+        goto _L___4;
+      }
+    } else {
+      _L___4: /* CIL Label */ 
+      if (floor == 2) {
+        if (landingButtons_spc1_2) {
+          {
+          tmp___2 = areDoorsOpen();
+          }
+          if (tmp___2) {
+            landingButtons_spc1_2 = 0;
+          } else {
+            goto _L___2;
+          }
+        } else {
+          goto _L___2;
+        }
+      } else {
+        _L___2: /* CIL Label */ 
+        if (floor == 3) {
+          if (landingButtons_spc1_3) {
+            {
+            tmp___1 = areDoorsOpen();
+            }
+            if (tmp___1) {
+              landingButtons_spc1_3 = 0;
+            } else {
+              goto _L___0;
+            }
+          } else {
+            goto _L___0;
+          }
+        } else {
+          _L___0: /* CIL Label */ 
+          if (floor == 4) {
+            if (landingButtons_spc1_4) {
+              {
+              tmp___0 = areDoorsOpen();
+              }
+              if (tmp___0) {
+                landingButtons_spc1_4 = 0;
+              } else {
+
+              }
+            } else {
+
+            }
+          } else {
+
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+}
+__inline void __utac_acc__Specification1_spec__4(void) 
+{ 
+
+  {
+  if (landingButtons_spc1_0) {
+    {
+    __automaton_fail();
+    }
+  } else {
+    if (landingButtons_spc1_1) {
+      {
+      __automaton_fail();
+      }
+    } else {
+      if (landingButtons_spc1_2) {
+        {
+        __automaton_fail();
+        }
+      } else {
+        if (landingButtons_spc1_3) {
+          {
+          __automaton_fail();
+          }
+        } else {
+          if (landingButtons_spc1_4) {
+            {
+            __automaton_fail();
+            }
+          } else {
+
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+}
+#pragma merger(0,"Test.i","")
+extern  __attribute__((__nothrow__, __noreturn__)) void exit(int __status ) ;
+int get_nondetMinMax07(void) 
+{ int retValue_acc ;
+  int nd ;
+  nd = __VERIFIER_nondet_int();
+
+  {
+  if (nd == 0) {
+    retValue_acc = 0;
+    return (retValue_acc);
+  } else {
+    if (nd == 1) {
+      retValue_acc = 1;
+      return (retValue_acc);
+    } else {
+      if (nd == 2) {
+        retValue_acc = 2;
+        return (retValue_acc);
+      } else {
+        if (nd == 3) {
+          retValue_acc = 3;
+          return (retValue_acc);
+        } else {
+          if (nd == 4) {
+            retValue_acc = 4;
+            return (retValue_acc);
+          } else {
+            if (nd == 5) {
+              retValue_acc = 5;
+              return (retValue_acc);
+            } else {
+              if (nd == 6) {
+                retValue_acc = 6;
+                return (retValue_acc);
+              } else {
+                if (nd == 7) {
+                  retValue_acc = 7;
+                  return (retValue_acc);
+                } else {
+                  {
+                  exit(0);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return (retValue_acc);
+}
+}
+void bobCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(0);
+  initPersonOnFloor(0, tmp);
+  }
+  return;
+}
+}
+void aliceCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(1);
+  initPersonOnFloor(1, tmp);
+  }
+  return;
+}
+}
+void angelinaCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(2);
+  initPersonOnFloor(2, tmp);
+  }
+  return;
+}
+}
+void chuckCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(3);
+  initPersonOnFloor(3, tmp);
+  }
+  return;
+}
+}
+void monicaCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(4);
+  initPersonOnFloor(4, tmp);
+  }
+  return;
+}
+}
+void bigMacCall(void) 
+{ int tmp ;
+
+  {
+  {
+  tmp = getOrigin(5);
+  initPersonOnFloor(5, tmp);
+  }
+  return;
+}
+}
+void threeTS(void) 
+{ 
+
+  {
+  {
+  timeShift();
+  timeShift();
+  timeShift();
+  }
+  return;
+}
+}
+void cleanup(void) 
+{ int i ;
+  int tmp ;
+  int tmp___0 ;
+  int __cil_tmp4 ;
+
+  {
+  {
+  timeShift();
+  i = 0;
+  }
+  {
+  while (1) {
+    while_8_continue: /* CIL Label */ ;
+    {
+    __cil_tmp4 = cleanupTimeShifts - 1;
+    if (i < __cil_tmp4) {
+      {
+      tmp___0 = isBlocked();
+      }
+      if (tmp___0 != 1) {
+
+      } else {
+        goto while_8_break;
+      }
+    } else {
+      goto while_8_break;
+    }
+    }
+    {
+    tmp = isIdle();
+    }
+    if (tmp) {
+      return;
+    } else {
+      {
+      timeShift();
+      }
+    }
+    i = i + 1;
+  }
+  while_8_break: /* CIL Label */ ;
+  }
+  return;
+}
+}
+void randomSequenceOfActions(void) 
+{ int maxLength ;
+  int tmp ;
+  int counter ;
+  int action ;
+  int tmp___0 ;
+  int origin ;
+  int tmp___1 ;
+  int tmp___2 ;
+
+  {
+  {
+  maxLength = 4;
+  tmp = __VERIFIER_nondet_int();
+  }
+  if (tmp) {
+    {
+    initTopDown();
+    }
+  } else {
+    {
+    initBottomUp();
+    }
+  }
+  counter = 0;
+  {
+  while (1) {
+    while_9_continue: /* CIL Label */ ;
+    if (counter < maxLength) {
+
+    } else {
+      goto while_9_break;
+    }
+    {
+    counter = counter + 1;
+    tmp___0 = get_nondetMinMax07();
+    action = tmp___0;
+    }
+    if (action < 6) {
+      {
+      tmp___1 = getOrigin(action);
+      origin = tmp___1;
+      initPersonOnFloor(action, origin);
+      }
+    } else {
+      if (action == 6) {
+        {
+        timeShift();
+        }
+      } else {
+        if (action == 7) {
+          {
+          timeShift();
+          timeShift();
+          timeShift();
+          }
+        } else {
+
+        }
+      }
+    }
+    {
+    tmp___2 = isBlocked();
+    }
+    if (tmp___2) {
+      return;
+    } else {
+
+    }
+  }
+  while_9_break: /* CIL Label */ ;
+  }
+  {
+  cleanup();
+  }
+  return;
+}
+}
+void runTest_Simple(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  angelinaCall();
+  cleanup();
+  }
+  return;
+}
+}
+void Specification1(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  angelinaCall();
+  cleanup();
+  }
+  return;
+}
+}
+void Specification2(void) 
+{ 
+
+  {
+  {
+  bigMacCall();
+  cleanup();
+  }
+  return;
+}
+}
+void Specification3(void) 
+{ 
+
+  {
+  {
+  bobCall();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  timeShift();
+  bobCall();
+  cleanup();
+  }
+  return;
+}
+}
+void setup(void) 
+{ 
+
+  {
+  return;
+}
+}
+void runTest(void) 
+{ 
+
+  {
+  {
+  __utac_acc__Specification1_spec__1();
+  test();
+  __utac_acc__Specification1_spec__4();
+  }
+  return;
+}
+}
+void select_helpers(void) ;
+void select_features(void) ;
+int valid_product(void) ;
+int main(void) 
+{ int retValue_acc ;
+  int tmp ;
+
+  {
+  {
+  select_helpers();
+  select_features();
+  tmp = valid_product();
+  }
+  if (tmp) {
+    {
+    setup();
+    runTest();
+    }
+  } else {
+
+  }
+  retValue_acc = 0;
+  return (retValue_acc);
+  return (retValue_acc);
+}
+}
 #pragma merger(0,"Floor.i","")
 void callOnFloor(int floorID ) ;
-void initPersonOnFloor(int person , int floor ) ;
 int calls_0  ;
 int calls_1  ;
 int calls_2  ;
@@ -2153,9 +2948,13 @@ void resetCallOnFloor(int floorID )
 }
 }
 void callOnFloor(int floorID ) 
-{ 
+{ int __utac__ad__arg1 ;
 
   {
+  {
+  __utac__ad__arg1 = floorID;
+  __utac_acc__Specification1_spec__2(__utac__ad__arg1);
+  }
   if (floorID == 0) {
     calls_0 = 1;
   } else {
@@ -2671,222 +3470,8 @@ int isTopFloor(int floorID )
   return (retValue_acc);
 }
 }
-#pragma merger(0,"UnitTests.i","")
-int getOrigin(int person ) ;
-int cleanupTimeShifts  =    12;
-void spec1(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int i ;
-  int tmp___1 ;
-
-  {
-  {
-  initBottomUp();
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  printState();
-  tmp___0 = getOrigin(2);
-  initPersonOnFloor(2, tmp___0);
-  printState();
-  i = 0;
-  }
-  {
-  while (1) {
-    while_6_continue: /* CIL Label */ ;
-    if (i < cleanupTimeShifts) {
-      {
-      tmp___1 = isBlocked();
-      }
-      if (tmp___1 != 1) {
-
-      } else {
-        goto while_6_break;
-      }
-    } else {
-      goto while_6_break;
-    }
-    {
-    timeShift();
-    printState();
-    i = i + 1;
-    }
-  }
-  while_6_break: /* CIL Label */ ;
-  }
-  return;
-}
-}
-void spec14(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int i ;
-  int tmp___1 ;
-
-  {
-  {
-  initTopDown();
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  printState();
-  timeShift();
-  timeShift();
-  timeShift();
-  timeShift();
-  tmp___0 = getOrigin(0);
-  initPersonOnFloor(0, tmp___0);
-  printState();
-  i = 0;
-  }
-  {
-  while (1) {
-    while_7_continue: /* CIL Label */ ;
-    if (i < cleanupTimeShifts) {
-      {
-      tmp___1 = isBlocked();
-      }
-      if (tmp___1 != 1) {
-
-      } else {
-        goto while_7_break;
-      }
-    } else {
-      goto while_7_break;
-    }
-    {
-    timeShift();
-    printState();
-    i = i + 1;
-    }
-  }
-  while_7_break: /* CIL Label */ ;
-  }
-  return;
-}
-}
-#pragma merger(0,"Person.i","")
-int getWeight(int person ) 
-{ int retValue_acc ;
-
-  {
-  if (person == 0) {
-    retValue_acc = 40;
-    return (retValue_acc);
-  } else {
-    if (person == 1) {
-      retValue_acc = 40;
-      return (retValue_acc);
-    } else {
-      if (person == 2) {
-        retValue_acc = 40;
-        return (retValue_acc);
-      } else {
-        if (person == 3) {
-          retValue_acc = 40;
-          return (retValue_acc);
-        } else {
-          if (person == 4) {
-            retValue_acc = 30;
-            return (retValue_acc);
-          } else {
-            if (person == 5) {
-              retValue_acc = 150;
-              return (retValue_acc);
-            } else {
-              retValue_acc = 0;
-              return (retValue_acc);
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
-int getOrigin(int person ) 
-{ int retValue_acc ;
-
-  {
-  if (person == 0) {
-    retValue_acc = 4;
-    return (retValue_acc);
-  } else {
-    if (person == 1) {
-      retValue_acc = 3;
-      return (retValue_acc);
-    } else {
-      if (person == 2) {
-        retValue_acc = 2;
-        return (retValue_acc);
-      } else {
-        if (person == 3) {
-          retValue_acc = 1;
-          return (retValue_acc);
-        } else {
-          if (person == 4) {
-            retValue_acc = 0;
-            return (retValue_acc);
-          } else {
-            if (person == 5) {
-              retValue_acc = 1;
-              return (retValue_acc);
-            } else {
-              retValue_acc = 0;
-              return (retValue_acc);
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
-int getDestination(int person ) 
-{ int retValue_acc ;
-
-  {
-  if (person == 0) {
-    retValue_acc = 0;
-    return (retValue_acc);
-  } else {
-    if (person == 1) {
-      retValue_acc = 0;
-      return (retValue_acc);
-    } else {
-      if (person == 2) {
-        retValue_acc = 1;
-        return (retValue_acc);
-      } else {
-        if (person == 3) {
-          retValue_acc = 3;
-          return (retValue_acc);
-        } else {
-          if (person == 4) {
-            retValue_acc = 1;
-            return (retValue_acc);
-          } else {
-            if (person == 5) {
-              retValue_acc = 3;
-              return (retValue_acc);
-            } else {
-              retValue_acc = 0;
-              return (retValue_acc);
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
 #pragma merger(0,"featureselect.i","")
 int select_one(void) ;
-void select_features(void) ;
-void select_helpers(void) ;
-int valid_product(void) ;
 int select_one(void) 
 { int retValue_acc ;
   int choice = __VERIFIER_nondet_int();
@@ -2918,442 +3503,5 @@ int valid_product(void)
   retValue_acc = 1;
   return (retValue_acc);
   return (retValue_acc);
-}
-}
-#pragma merger(0,"Test.i","")
-extern  __attribute__((__nothrow__, __noreturn__)) void exit(int __status ) ;
-int get_nondetMinMax07(void) 
-{ int retValue_acc ;
-  int nd ;
-  nd = __VERIFIER_nondet_int();
-
-  {
-  if (nd == 0) {
-    retValue_acc = 0;
-    return (retValue_acc);
-  } else {
-    if (nd == 1) {
-      retValue_acc = 1;
-      return (retValue_acc);
-    } else {
-      if (nd == 2) {
-        retValue_acc = 2;
-        return (retValue_acc);
-      } else {
-        if (nd == 3) {
-          retValue_acc = 3;
-          return (retValue_acc);
-        } else {
-          if (nd == 4) {
-            retValue_acc = 4;
-            return (retValue_acc);
-          } else {
-            if (nd == 5) {
-              retValue_acc = 5;
-              return (retValue_acc);
-            } else {
-              if (nd == 6) {
-                retValue_acc = 6;
-                return (retValue_acc);
-              } else {
-                if (nd == 7) {
-                  retValue_acc = 7;
-                  return (retValue_acc);
-                } else {
-                  {
-                  exit(0);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return (retValue_acc);
-}
-}
-void bobCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(0);
-  initPersonOnFloor(0, tmp);
-  }
-  return;
-}
-}
-void aliceCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(1);
-  initPersonOnFloor(1, tmp);
-  }
-  return;
-}
-}
-void angelinaCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(2);
-  initPersonOnFloor(2, tmp);
-  }
-  return;
-}
-}
-void chuckCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(3);
-  initPersonOnFloor(3, tmp);
-  }
-  return;
-}
-}
-void monicaCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(4);
-  initPersonOnFloor(4, tmp);
-  }
-  return;
-}
-}
-void bigMacCall(void) 
-{ int tmp ;
-
-  {
-  {
-  tmp = getOrigin(5);
-  initPersonOnFloor(5, tmp);
-  }
-  return;
-}
-}
-void threeTS(void) 
-{ 
-
-  {
-  {
-  timeShift();
-  timeShift();
-  timeShift();
-  }
-  return;
-}
-}
-void cleanup(void) 
-{ int i ;
-  int tmp ;
-  int tmp___0 ;
-  int __cil_tmp4 ;
-
-  {
-  {
-  timeShift();
-  i = 0;
-  }
-  {
-  while (1) {
-    while_8_continue: /* CIL Label */ ;
-    {
-    __cil_tmp4 = cleanupTimeShifts - 1;
-    if (i < __cil_tmp4) {
-      {
-      tmp___0 = isBlocked();
-      }
-      if (tmp___0 != 1) {
-
-      } else {
-        goto while_8_break;
-      }
-    } else {
-      goto while_8_break;
-    }
-    }
-    {
-    tmp = isIdle();
-    }
-    if (tmp) {
-      return;
-    } else {
-      {
-      timeShift();
-      }
-    }
-    i = i + 1;
-  }
-  while_8_break: /* CIL Label */ ;
-  }
-  return;
-}
-}
-void randomSequenceOfActions(void) 
-{ int maxLength ;
-  int tmp ;
-  int counter ;
-  int action ;
-  int tmp___0 ;
-  int origin ;
-  int tmp___1 ;
-  int tmp___2 ;
-
-  {
-  {
-  maxLength = 4;
-  tmp = __VERIFIER_nondet_int();
-  }
-  if (tmp) {
-    {
-    initTopDown();
-    }
-  } else {
-    {
-    initBottomUp();
-    }
-  }
-  counter = 0;
-  {
-  while (1) {
-    while_9_continue: /* CIL Label */ ;
-    if (counter < maxLength) {
-
-    } else {
-      goto while_9_break;
-    }
-    {
-    counter = counter + 1;
-    tmp___0 = get_nondetMinMax07();
-    action = tmp___0;
-    }
-    if (action < 6) {
-      {
-      tmp___1 = getOrigin(action);
-      origin = tmp___1;
-      initPersonOnFloor(action, origin);
-      }
-    } else {
-      if (action == 6) {
-        {
-        timeShift();
-        }
-      } else {
-        if (action == 7) {
-          {
-          timeShift();
-          timeShift();
-          timeShift();
-          }
-        } else {
-
-        }
-      }
-    }
-    {
-    tmp___2 = isBlocked();
-    }
-    if (tmp___2) {
-      return;
-    } else {
-
-    }
-  }
-  while_9_break: /* CIL Label */ ;
-  }
-  {
-  cleanup();
-  }
-  return;
-}
-}
-void runTest_Simple(void) 
-{ 
-
-  {
-  {
-  bigMacCall();
-  angelinaCall();
-  cleanup();
-  }
-  return;
-}
-}
-void Specification1(void) 
-{ 
-
-  {
-  {
-  bigMacCall();
-  angelinaCall();
-  cleanup();
-  }
-  return;
-}
-}
-void Specification2(void) 
-{ 
-
-  {
-  {
-  bigMacCall();
-  cleanup();
-  }
-  return;
-}
-}
-void Specification3(void) 
-{ 
-
-  {
-  {
-  bobCall();
-  timeShift();
-  timeShift();
-  timeShift();
-  timeShift();
-  timeShift();
-  bobCall();
-  cleanup();
-  }
-  return;
-}
-}
-void setup(void) 
-{ 
-
-  {
-  return;
-}
-}
-void runTest(void) 
-{ 
-
-  {
-  {
-  test();
-  }
-  return;
-}
-}
-int main(void) 
-{ int retValue_acc ;
-  int tmp ;
-
-  {
-  {
-  select_helpers();
-  select_features();
-  tmp = valid_product();
-  }
-  if (tmp) {
-    {
-    setup();
-    runTest();
-    }
-  } else {
-
-  }
-  retValue_acc = 0;
-  return (retValue_acc);
-  return (retValue_acc);
-}
-}
-#pragma merger(0,"Specification13_spec.i","")
-int prevDir  =    0;
-void __utac_acc__Specification13_spec__1(void) 
-{ 
-
-  {
-  {
-  prevDir = getCurrentHeading();
-  }
-  return;
-}
-}
-void __utac_acc__Specification13_spec__2(void) 
-{ int tmp ;
-  int tmp___0 ;
-  int tmp___1 ;
-  int tmp___2 ;
-  int tmp___3 ;
-  int tmp___4 ;
-  int __cil_tmp7 ;
-  int __cil_tmp8 ;
-
-  {
-  {
-  __cil_tmp7 = maximumWeight * 2;
-  __cil_tmp8 = __cil_tmp7 / 3;
-  if (weight > __cil_tmp8) {
-    if (prevDir == 1) {
-      {
-      tmp___0 = existInLiftCallsInDirection(0);
-      }
-      if (tmp___0) {
-        {
-        tmp___1 = existInLiftCallsInDirection(1);
-        }
-        if (tmp___1) {
-
-        } else {
-          {
-          tmp = getCurrentHeading();
-          }
-          if (tmp == 1) {
-            {
-            __automaton_fail();
-            }
-          } else {
-
-          }
-        }
-      } else {
-
-      }
-    } else {
-      if (prevDir == 0) {
-        {
-        tmp___3 = existInLiftCallsInDirection(1);
-        }
-        if (tmp___3) {
-          {
-          tmp___4 = existInLiftCallsInDirection(0);
-          }
-          if (tmp___4) {
-
-          } else {
-            {
-            tmp___2 = getCurrentHeading();
-            }
-            if (tmp___2 == 0) {
-              {
-              __automaton_fail();
-              }
-            } else {
-
-            }
-          }
-        } else {
-
-        }
-      } else {
-
-      }
-    }
-  } else {
-
-  }
-  }
-  return;
 }
 }
