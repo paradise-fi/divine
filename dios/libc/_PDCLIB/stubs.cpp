@@ -5,6 +5,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <netdb.h>
+#include <pwd.h>
 #include <unistd.h>
 #include <grp.h>
 #include <signal.h>
@@ -57,12 +58,15 @@ int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTE
 int getgroups(int gidsetsize, gid_t grouplist[]) NOT_IMPLEMENTED;
 struct hostent* gethostbyname(const char *) NOT_IMPLEMENTED;
 char *inet_ntop(int, const void *, char *, socklen_t) NOT_IMPLEMENTED;
+struct passwd* getpwnam(const char *) NOT_IMPLEMENTED;
 uid_t geteuid( void ) NOT_IMPLEMENTED;
 gid_t getegid( void ) NOT_IMPLEMENTED;
 gid_t getgid( void ) NOT_IMPLEMENTED;
 uid_t getuid( void ) NOT_IMPLEMENTED;
 struct group *getgrnam(const char *name) NOT_IMPLEMENTED;
 struct group *getgrgid(gid_t gid) NOT_IMPLEMENTED;
+struct passwd* getpwuid(uid_t) NOT_IMPLEMENTED;
+
 void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_F_NotImplemented, "utime" ); };
 int issetugid( void ) NOT_IMPLEMENTED;
 
