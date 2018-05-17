@@ -36,6 +36,16 @@ enum __socket_type
 #define _SOCK_TYPE_BMASK    0xF
 #define _SOCK_FLAGS_BMASK   (~_SOCK_TYPE_BMASK)
 
+#ifndef	_SOCKLEN_T_DEFINED_
+#define	_SOCKLEN_T_DEFINED_
+typedef	__socklen_t	socklen_t;	/* length type for network syscalls */
+#endif
+
+#ifndef	_SA_FAMILY_T_DEFINED_
+#define	_SA_FAMILY_T_DEFINED_
+typedef	__sa_family_t	sa_family_t;	/* sockaddr address family type */
+#endif
+
 /* Protocol families.  */
 #define PF_UNSPEC     0   /* Unspecified.  */
 #define PF_LOCAL      1   /* Local to host (pipes and file-domain).  */
@@ -139,12 +149,9 @@ enum __socket_type
 /* Maximum queue length specifiable by listen.  */
 #define SOMAXCONN  128
 
-/* Get the definition of the macro to define the common sockaddr members.  */
-#include <bits/sockaddr.h>
-
 /* Structure describing a generic socket address.  */
 struct sockaddr {
-    __SOCKADDR_COMMON (sa_);  /* Common data: address family and length.  */
+    __sa_family_t sa_family;  /* Common data: address family and length.  */
     char sa_data[14];         /* Address data.  */
 };
 
@@ -155,7 +162,7 @@ struct sockaddr {
 #define _SS_PADSIZE  (_SS_SIZE - (2 * sizeof (__ss_aligntype)))
 
 struct sockaddr_storage  {
-    __SOCKADDR_COMMON (ss_);    /* Address family, etc.  */
+    __sa_family_t ss_family;    /* Address family, etc.  */
     __ss_aligntype __ss_align;  /* Force desired alignment.  */
     char __ss_padding[_SS_PADSIZE];
 };
