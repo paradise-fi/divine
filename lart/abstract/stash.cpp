@@ -60,7 +60,6 @@ void Stash::run( Module &m ) {
             arg_stash( call );
         stashed.insert( fn );
     }, m );
-
 }
 
 void Stash::arg_unstash( CallInst *call ) {
@@ -89,6 +88,10 @@ void Stash::arg_stash( CallInst *call ) {
                 irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
             else if ( has_placeholder( op ) )
                 irb.CreateCall( stash_fn, { get_placeholder( op ) } );
+            else {
+                auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
+                irb.CreateCall( stash_fn, { undef } );
+            }
         }
     }
 }

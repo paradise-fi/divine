@@ -95,6 +95,9 @@ Type* abstract_type( Type *orig, Domain dom ) {
 }
 
 Instruction* find_placeholder( Value *val, std::string name ) {
+    if ( isa< Constant >( val ) )
+        return nullptr;
+
     for ( auto u : val->users() )
         if ( auto call = dyn_cast< CallInst >( u ) ) {
             auto fn = call->getCalledFunction();

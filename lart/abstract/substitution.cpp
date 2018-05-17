@@ -926,6 +926,11 @@ void Tainting::_run( Module &m ) {
         if ( call->getNumArgOperands() ) {
             bundle::stash_arguments( call, domains );
             if ( !processed.count( fn ) ) {
+                for ( auto concrete : fn->users() )
+                    if ( auto cc = dyn_cast< CallInst >( concrete ) )
+                        if ( !cc->getMetadata( "lart.domains" ) )
+                            bundle::stash_arguments( cc, domains );
+
                 auto vals = bundle::unstash_arguments( call, domains );
 
                 unsigned int idx = 0;
