@@ -46,6 +46,9 @@ typedef	float  __float_t;
 typedef __uint32_t fixpt_t;
 typedef _HOST_mode_t mode_t;
 
+#define __gid_t_defined 1
+#define __uid_t_defined 1
+
 typedef __int64_t __blkcnt_t;      /* blocks allocated for file */
 typedef __int32_t __blksize_t;     /* optimal blocksize for I/O */
 typedef __int64_t __clock_t;       /* ticks in CLOCKS_PER_SEC */
