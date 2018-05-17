@@ -5,11 +5,14 @@
 extern "C" {
 #endif
 
+#ifndef _TIMEVAL_DECLARED
+#define _TIMEVAL_DECLARED
 struct timeval
 {
     long tv_sec;    /* seconds */
     long tv_usec;   /* microseconds */
 };
+#endif
 
 int gettimeofday( struct timeval *tp, void *tzp );
 
