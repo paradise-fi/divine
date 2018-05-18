@@ -1,4 +1,4 @@
-/* TAGS: c todo */
+/* TAGS: c */
 /* VERIFY_OPTS: --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 

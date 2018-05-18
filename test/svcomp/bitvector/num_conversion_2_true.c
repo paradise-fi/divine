@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -9,7 +9,6 @@ void __VERIFIER_assert(int cond) {
   }
   return;
 }
-//#include <assert.h>
 
 int main()
 {

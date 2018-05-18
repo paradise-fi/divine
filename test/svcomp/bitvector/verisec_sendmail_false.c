@@ -1,12 +1,12 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* TAGS: c sym big */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:control */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 extern char __VERIFIER_nondet_char();
 
 void __VERIFIER_assert(int cond) {
   if (!(cond)) {
-    ERROR: __VERIFIER_error();
+    ERROR: __VERIFIER_error(); /* ERROR */
   }
   return;
 }
@@ -18,13 +18,16 @@ int main (void)
   unsigned char c;
   int i, j;
   int idx_in;
+
   for (i = 0; i < 11; i++)
     in[i] = __VERIFIER_nondet_char();
+
   in[10] = 0;
   idx_in = 0;
   s = in;
   i = 0;
   c = in[idx_in];
+
   while (('0' <= c) && (c <= '9'))
   {
     j = c - '0';
@@ -32,8 +35,8 @@ int main (void)
     idx_in++;
     c = in[idx_in];
   }
-  /* BAD */
-  __VERIFIER_assert (i >= 0); /* ERROR */
+
+  __VERIFIER_assert (i >= 0);
   return 0;
 }
 

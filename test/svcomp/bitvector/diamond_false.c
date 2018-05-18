@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 extern unsigned int __VERIFIER_nondet_uint(void);

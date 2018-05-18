@@ -1,5 +1,5 @@
 /* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:arithmetic */
 extern void __VERIFIER_assume(int);
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -11,7 +11,6 @@ void __VERIFIER_assert(int cond) {
   return;
 }
 /* https://graphics.stanford.edu/~seander/bithacks.html#ModulusDivisionEasy */
-#include <assert.h>
 
 int main()
 {
@@ -39,7 +38,7 @@ int main()
             m = 0;
         }
 
-        __VERIFIER_assert(m == n % d); /* ERROR */
+        __VERIFIER_assert(m == n % d);
     }
 
     return 0;
