@@ -11,8 +11,8 @@ email()
 
 finished()
 {
-    test -e doc/website/report.txt || cp report.txt doc/website/
-    perl releng/tests2html.pl < $list >> doc/website/report.txt
+    if ! test -e doc/website/report.txt; then cp report.txt doc/website/; fi
+    if test -e $list; then perl releng/tests2html.pl < $list >> doc/website/report.txt; fi
     touch doc/website/template.html # force a rebuild
     make ${buildtype}-website
     rm -rf "$objdir/doc/website/test"
