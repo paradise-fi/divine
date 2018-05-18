@@ -117,7 +117,10 @@ int raise( int sig ) __nothrow;
 
 int kill(pid_t pid, int sig) __nothrow;
 
+#ifndef _SIGSET_T_DEFINED_
+#define _SIGSET_T_DEFINED_
 typedef _PDCLIB_uint64_t sigset_t;
+#endif
 
 typedef union sigval
 {
