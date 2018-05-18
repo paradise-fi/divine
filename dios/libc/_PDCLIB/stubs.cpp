@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <grp.h>
 #include <signal.h>
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 
 #include <sys/divm.h>
@@ -63,6 +64,7 @@ uid_t geteuid( void ) NOT_IMPLEMENTED;
 gid_t getegid( void ) NOT_IMPLEMENTED;
 gid_t getgid( void ) NOT_IMPLEMENTED;
 uid_t getuid( void ) NOT_IMPLEMENTED;
+int	ioctl(int, unsigned long, ...) NOT_IMPLEMENTED;
 struct group *getgrnam(const char *name) NOT_IMPLEMENTED;
 struct group *getgrgid(gid_t gid) NOT_IMPLEMENTED;
 struct passwd* getpwuid(uid_t) NOT_IMPLEMENTED;
