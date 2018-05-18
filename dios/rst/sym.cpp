@@ -138,7 +138,7 @@ Tristate __sym_bool_to_tristate( Formula * )
     return Tristate::Value::Unknown;
 }
 
-Formula *__sym_assume( Formula *value, Formula *constraint, bool assume )
+__invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool assume )
 {
     Formula *wconstraint = weaken( constraint );
     if ( !assume )
