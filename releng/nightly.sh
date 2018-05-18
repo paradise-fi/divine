@@ -49,7 +49,7 @@ failed()
     else
         echo "Make check failed:"
         echo
-        make ${buildtype}-check 2>&1 || true
+        make ${buildtype}-check 2>&1 | sed -e 's,^,    ,'
     fi
 }
 
