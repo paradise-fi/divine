@@ -14,6 +14,7 @@ extern "C" {
 
     _SVC_NONDET(bool, bool, 8)
     _SVC_NONDET(char, char, 8)
+    _SVC_NONDET(unsigned char, uchar, 8)
     _SVC_NONDET(int, int, 32)
     _SVC_NONDET(short, short, 16)
     _SVC_NONDET(long, long, 64)
