@@ -26,7 +26,10 @@ typedef _PDCLIB_size_t size_t;
 
 /* The following are platform-dependant, and defined in _PDCLIB_config.h. */
 typedef _PDCLIB_fpos_t fpos_t;
+#ifndef __FILE_defined
+#define __FILE_defined 1
 typedef _PDCLIB_file_t FILE;
+#endif
 #define BUFSIZ _PDCLIB_BUFSIZ
 #define FOPEN_MAX _PDCLIB_FOPEN_MAX
 #define FILENAME_MAX _PDCLIB_FILENAME_MAX
