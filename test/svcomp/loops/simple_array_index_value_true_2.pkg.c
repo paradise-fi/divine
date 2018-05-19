@@ -1,9 +1,14 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 /* Benchmark used to verify Chimdyalwar, Bharti, et al. "VeriAbs: Verification by abstraction (competition contribution)."
 International Conference on Tools and Algorithms for the Construction and Analysis of Systems. Springer, Berlin, Heidelberg, 2017.*/
 
-#define SIZE 10000
+// V: small.10 CC_OPT: -DSIZE=10
+// V: small.100 CC_OPT: -DSIZE=100
+// V: big.1000 CC_OPT: -DSIZE=1000 TAGS: big
+// V: big.10000 CC_OPT: -DSIZE=10000 TAGS: big
+// V: big.100000 CC_OPT: -DSIZE=100000 TAGS: big
+
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 extern void __VERIFIER_assume(int);
 void __VERIFIER_assert(int cond)

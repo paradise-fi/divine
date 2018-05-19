@@ -1,5 +1,5 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* TAGS: c sym inf big */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:control */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 // Category: Loops

@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: todo inf sym c */
+/* TAGS: big inf sym c */
 #define a (2)
 #include <assert.h>
 #include <stdbool.h>

@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic */
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);

@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym inf big c todo */
 #include <stdbool.h>
 extern void __VERIFIER_assert(int);
 extern bool __VERIFIER_nondet_bool(void);

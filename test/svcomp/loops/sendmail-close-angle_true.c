@@ -1,8 +1,8 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
-/*
- * Variant: This one just blindly copies the input into buffer and writes '>''\0' at the end.
- */
+/* TAGS: c sym todo big inf */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+
+/* Variant: This one just blindly copies the input into buffer and writes '>''\0' at the end. */
+
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
 void __VERIFIER_assert(int cond) {

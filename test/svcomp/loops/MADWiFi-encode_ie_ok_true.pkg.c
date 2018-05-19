@@ -1,5 +1,12 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic */
+
+// V: small.10 CC_OPT: -DNUM=10
+// V: small.100 CC_OPT: -DNUM=100
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: ext
+// V: big.10000 CC_OPT: -DNUM=10000 TAGS: big
+// V: big.100000 CC_OPT: -DNUM=100000 TAGS: big
+
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
 void __VERIFIER_assert(int cond) {
@@ -9,7 +16,6 @@ void __VERIFIER_assert(int cond) {
   return;
 }
 int __VERIFIER_nondet_int();
-#define LARGE_INT 1000000
 
 int main()
 {
@@ -25,9 +31,9 @@ int main()
   leader_len = __VERIFIER_nondet_int();
   bufsize = __VERIFIER_nondet_int();
   ielen = __VERIFIER_nondet_int();
-  if (!(leader_len < LARGE_INT)) return 0;
-  if (!(bufsize < LARGE_INT)) return 0;
-  if (!(ielen < LARGE_INT)) return 0;
+  if (!(leader_len < NUM)) return 0;
+  if (!(bufsize < NUM)) return 0;
+  if (!(ielen < NUM)) return 0;
 
   // copy the contents of leader into buf
   if(leader_len >0); else goto END;

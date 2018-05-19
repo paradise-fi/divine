@@ -1,5 +1,5 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
 void __VERIFIER_assert(int cond) {
@@ -8,8 +8,13 @@ void __VERIFIER_assert(int cond) {
   }
   return;
 }
-int __VERIFIER_nondet_int();
-#define LARGE_INT 1000000
+extern int __VERIFIER_nondet_int(void);
+
+// V: small.10 CC_OPT: -DNUM=10
+// V: small.100 CC_OPT: -DNUM=100
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.10000 CC_OPT: -DNUM=10000 TAGS: big
+// V: big.100000 CC_OPT: -DNUM=100000 TAGS: big
 
 int main(void) {
   int i, j;
@@ -17,14 +22,14 @@ int main(void) {
  L0:
   i = 0;
  L1:
-  while( __VERIFIER_nondet_int() && i < LARGE_INT){
+  while( __VERIFIER_nondet_int() && i < NUM){
 
     i++;
   }
   if(i >= 100) STUCK: goto STUCK; //  assume( i < 100 );
   j = 0;
  L2:
-  while( __VERIFIER_nondet_int() && i < LARGE_INT ){
+  while( __VERIFIER_nondet_int() && i < NUM ){
     i++;
     j++;
   }

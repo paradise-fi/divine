@@ -1,5 +1,5 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 // Source: Credited to Anubhav Gupta
 // appears in Ranjit Jhala, Ken McMillan: "A Practical and Complete Approach
 // to Predicate Refinement", TACAS 2006
@@ -11,14 +11,20 @@ void __VERIFIER_assert(int cond) {
   }
   return;
 }
-int __VERIFIER_nondet_int();
-#define LARGE_INT 1000000
+extern int __VERIFIER_nondet_int(void);
+
+// V: small.10 CC_OPT: -DNUM=10
+// V: small.100 CC_OPT: -DNUM=100
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.10000 CC_OPT: -DNUM=10000 TAGS: big
+// V: big.100000 CC_OPT: -DNUM=100000 TAGS: big
 
 int main() {
     int i, j;
     i = __VERIFIER_nondet_int();
     j = __VERIFIER_nondet_int();
     if (!(i >= 0 && j >= 0)) return 0;
+    if (i >= NUM || j >= NUM) return 0;
     int x = i;
     int y = j;
     while(x != 0) {

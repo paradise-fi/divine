@@ -1,5 +1,5 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c sym big */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
 void __VERIFIER_assert(int cond) {

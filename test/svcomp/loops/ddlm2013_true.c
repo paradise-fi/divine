@@ -1,7 +1,8 @@
-/* TAGS: c sym todo inf */
+/* TAGS: c sym big inf */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 // Source: Isil Dillig, Thomas Dillig, Boyang Li, Ken McMillan: "Inductive
 // Invariant Generation via Abductive Inference", OOPSLA 2013.
+
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
 void __VERIFIER_assert(int cond) {
@@ -10,7 +11,7 @@ void __VERIFIER_assert(int cond) {
   }
   return;
 }
-int __VERIFIER_nondet_int();
+extern int __VERIFIER_nondet_int(void);
 #define LARGE_INT 1000000
 
 int main() {

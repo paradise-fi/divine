@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic */
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
@@ -8,8 +8,12 @@ void __VERIFIER_assert(int cond) {
   }
   return;
 }
-int __VERIFIER_nondet_int();
-#define LARGE_INT 1000000
+extern int __VERIFIER_nondet_int(void);
+// V: small.10 CC_OPT: -DNUM=10
+// V: small.100 CC_OPT: -DNUM=100
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.10000 CC_OPT: -DNUM=10000 TAGS: big
+// V: big.100000 CC_OPT: -DNUM=100000 TAGS: big
 
 int main(){
   int i,pvlen ;
@@ -21,7 +25,7 @@ int main(){
   pvlen = __VERIFIER_nondet_int();
 
   //  pkt = pktq->tqh_first;
-  while ( __VERIFIER_nondet_int() && i <= LARGE_INT) {
+  while ( __VERIFIER_nondet_int() && i <= NUM) {
     i = i + 1;
   }
 
@@ -31,7 +35,7 @@ int main(){
   }
   i = 0;
 
-  while ( __VERIFIER_nondet_int() && i <= LARGE_INT) {
+  while ( __VERIFIER_nondet_int() && i <= NUM) {
     tmp___1 = i;
     i = i + 1;
     k = k + 1;

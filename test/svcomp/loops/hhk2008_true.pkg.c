@@ -1,5 +1,5 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 // Source: Thomas A. Henzinger, Thibaud Hottelier, Laura Kovacs: "Valigator:
 // A verification Tool with Bound and Invariant Generation", LPAR 2008
 extern void __VERIFIER_error(void);
@@ -10,15 +10,20 @@ void __VERIFIER_assert(int cond) {
   }
   return;
 }
-int __VERIFIER_nondet_int();
-#define LARGE_INT 1000000
+extern int __VERIFIER_nondet_int(void);
+
+// V: small.10 CC_OPT: -DNUM=10
+// V: small.100 CC_OPT: -DNUM=100
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.10000 CC_OPT: -DNUM=10000 TAGS: big
+// V: big.100000 CC_OPT: -DNUM=100000 TAGS: big
 
 int main() {
     int a = __VERIFIER_nondet_int();
     int b = __VERIFIER_nondet_int();
     int res, cnt;
-    if (!(a <= 1000000)) return 0;
-    if (!(0 <= b && b <= 1000000)) return 0;
+    if (!(a <= NUM)) return 0;
+    if (!(0 <= b && b <= NUM)) return 0;
     res = a;
     cnt = b;
     while (cnt > 0) {

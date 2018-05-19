@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic */
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
@@ -9,7 +9,6 @@ void __VERIFIER_assert(int cond) {
   return;
 }
 int __VERIFIER_nondet_int();
-#define LARGE_INT 1000000
 
 int main()
 {
