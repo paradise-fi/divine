@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym big c */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_error(void);
 

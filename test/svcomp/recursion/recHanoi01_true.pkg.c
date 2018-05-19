@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym c */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*
@@ -8,6 +8,9 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
  *  Created on: 17.07.2013
  *      Author: Stefan Wissert
  */
+
+// V: small.5 CC_OPT: -DNUM=5
+// V: big.31 CC_OPT: -DNUM=31 TAGS: ext
 
 extern int __VERIFIER_nondet_int(void);
 
@@ -40,7 +43,7 @@ void applyHanoi(int n, int from, int to, int via)
 
 int main() {
     int n = __VERIFIER_nondet_int();
-    if (n < 1 || n > 31) {
+    if (n < 1 || n > NUM) {
     	return 0;
     }
     counter = 0;

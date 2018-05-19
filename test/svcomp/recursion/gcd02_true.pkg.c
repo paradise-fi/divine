@@ -1,15 +1,21 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*
  * Recursive implementation of the greatest common denominator
  * using Euclid's algorithm
- * 
+ *
  * Author: Jan Leike
  * Date: 2013-07-17
- * 
+ *
  */
+
+// V: small.5 CC_OPT: -DNUM=5
+// V: big.10 CC_OPT: -DNUM=10 TAGS: ext
+// V: big.100 CC_OPT: -DNUM=100 TAGS: big
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.2147483647 CC_OPT: -DNUM=2147483647 TAGS: big
 
 extern int __VERIFIER_nondet_int(void);
 
@@ -41,11 +47,11 @@ int divides(int n, int m) {
 
 int main() {
     int m = __VERIFIER_nondet_int();
-    if (m <= 0 || m > 2147483647) {
+    if (m <= 0 || m > NUM) {
         return 0;
     }
     int n = __VERIFIER_nondet_int();
-    if (n <= 0 || n > 2147483647) {
+    if (n <= 0 || n > NUM) {
         return 0;
     }
     if (m > 0 && n > 0) {

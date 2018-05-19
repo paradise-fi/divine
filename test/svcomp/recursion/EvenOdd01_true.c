@@ -1,13 +1,13 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym big c */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*
  * Recursive implementation integer addition.
- * 
+ *
  * Author: Matthias Heizmann
  * Date: 2013-07-13
- * 
+ *
  */
 
 extern int __VERIFIER_nondet_int(void);

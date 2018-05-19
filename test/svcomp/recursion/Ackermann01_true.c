@@ -1,14 +1,14 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym big c */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*
  * Implementation the Ackermann function.
  * http://en.wikipedia.org/wiki/Ackermann_function
- * 
+ *
  * Author: Matthias Heizmann
  * Date: 2013-07-13
- * 
+ *
  * Copied from termination-numeric/Ackermann01_true-termination.c
  */
 
@@ -28,15 +28,15 @@ int ackermann(int m, int n) {
 int main() {
     int m = __VERIFIER_nondet_int();
     if (m < 0 || m > 3) {
-        // additional branch to avoid undefined behavior 
+        // additional branch to avoid undefined behavior
         // (because of signed integer overflow)
         return 0;
     }
     int n = __VERIFIER_nondet_int();
     if (n < 0 || n > 23) {
-        // additional branch to avoid undefined behavior 
+        // additional branch to avoid undefined behavior
         // (because of signed integer overflow)
-        // 
+        //
         return 0;
     }
     int result = ackermann(m,n);

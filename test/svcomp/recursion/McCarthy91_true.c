@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym big c */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*

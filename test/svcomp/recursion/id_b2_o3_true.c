@@ -1,5 +1,5 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym big c */
 extern unsigned int __VERIFIER_nondet_uint(void);
 extern void __VERIFIER_error(void);
 

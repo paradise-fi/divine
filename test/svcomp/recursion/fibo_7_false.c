@@ -1,5 +1,5 @@
-/* TAGS: c sym */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c */
+/* VERIFY_OPTS: */
 extern int __VERIFIER_nondet_int();
 extern void __VERIFIER_error(void);
 
@@ -16,7 +16,7 @@ int fibo(int n) {
 
 // fibo 1-30
 // 1, 1, 2, 3, 5,
-// 8, 13, 21, 34, 55, 
+// 8, 13, 21, 34, 55,
 // 89, 144, 233, 377, 610,
 // 987, 1597, 2584, 4181, 6765,
 // 10946, 17711, 28657, 46368, 75025,

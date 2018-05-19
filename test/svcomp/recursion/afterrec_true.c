@@ -1,5 +1,5 @@
-/* TAGS: c sym */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c */
+/* VERIFY_OPTS: */
 extern void __VERIFIER_error(void);
 
 void f(int n) {

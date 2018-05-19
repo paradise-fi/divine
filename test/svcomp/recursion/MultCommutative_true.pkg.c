@@ -1,15 +1,20 @@
 /* VERIFY_OPTS: --symbolic --sequential */
-/* TAGS: sym todo c */
+/* TAGS: sym c */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*
  * Recursive implementation multiplication by repeated addition
  * Check that this multiplication is commutative
- * 
+ *
  * Author: Jan Leike
  * Date: 2013-07-17
- * 
+ *
  */
+
+// V: small.5 CC_OPT: -DNUM=5
+// V: big.100 CC_OPT: -DNUM=100 TAGS: big
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.46340 CC_OPT: -DNUM=46340 TAGS: big
 
 extern int __VERIFIER_nondet_int(void);
 
@@ -26,11 +31,11 @@ int mult(int n, int m) {
 
 int main() {
     int m = __VERIFIER_nondet_int();
-    if (m < 0 || m > 46340) {
+    if (m < 0 || m > NUM) {
         return 0;
     }
     int n = __VERIFIER_nondet_int();
-    if (n < 0 || n > 46340) {
+    if (n < 0 || n > NUM) {
         return 0;
     }
     int res1 = mult(m, n);

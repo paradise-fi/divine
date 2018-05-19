@@ -1,15 +1,20 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*
  * Recursive implementation of prime number test
  * (Sieve of Eratosthenes)
- * 
+ *
  * Author: Jan Leike
  * Date: 2013-07-17
- * 
+ *
  */
+
+// V: small.5 CC_OPT: -DNUM=5
+// V: big.100 CC_OPT: -DNUM=100 TAGS: big
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
+// V: big.46340 CC_OPT: -DNUM=46340 TAGS: big
 
 extern int __VERIFIER_nondet_int(void);
 
@@ -75,21 +80,21 @@ int is_prime_(int n, int m) {
 
 int main() {
     int n = __VERIFIER_nondet_int();
-    if (n < 1 || n > 46340) {
-        // additional branch to avoid undefined behavior 
+    if (n < 1 || n > NUM) {
+        // additional branch to avoid undefined behavior
         // (because of signed integer overflow)
         return 0;
     }
     int result = is_prime(n);
     int f1 = __VERIFIER_nondet_int();
-    if (f1 < 1 || f1 > 46340) {
-        // additional branch to avoid undefined behavior 
+    if (f1 < 1 || f1 > NUM) {
+        // additional branch to avoid undefined behavior
         // (because of signed integer overflow)
         return 0;
     }
     int f2 = __VERIFIER_nondet_int();
-    if (f2 < 1 || f2 > 46340) {
-        // additional branch to avoid undefined behavior 
+    if (f2 < 1 || f2 > NUM) {
+        // additional branch to avoid undefined behavior
         // (because of signed integer overflow)
         return 0;
     }
