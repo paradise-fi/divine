@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -64,7 +64,7 @@ int weight  =    0;
 int maximumWeight  =    100;
 int expectedDirection  =    0;
 int getCurrentHeading(void) ;
-__inline void __utac_acc__Specification3_spec__1(void) 
+static __inline void __utac_acc__Specification3_spec__1(void) 
 { int currentFloorID___0 ;
   int tmp ;
   int tmp___0 ;
@@ -212,7 +212,7 @@ __inline void __utac_acc__Specification3_spec__1(void)
   return;
 }
 }
-__inline void __utac_acc__Specification3_spec__2(void) 
+static __inline void __utac_acc__Specification3_spec__2(void) 
 { int tmp ;
   int tmp___0 ;
 

@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -52,7 +52,7 @@ int __SELECTED_FEATURE_Decrypt  ;
 int __GUIDSL_ROOT_PRODUCTION  ;
 int __GUIDSL_NON_TERMINAL_main  ;
 int isReadable(int msg ) ;
-__inline void __utac_acc__DecryptAutoResponder_spec__1(int client , int msg ) 
+static __inline void __utac_acc__DecryptAutoResponder_spec__1(int client , int msg ) 
 { int tmp ;
 
   {
@@ -2702,7 +2702,7 @@ void setup(void)
 }
 }
 int main(void) 
-{ int retValue_acc = __VERIFIER_nondet_int();
+{ int retValue_acc = 0;
   int tmp ;
 
   {

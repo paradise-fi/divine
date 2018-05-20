@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -53,7 +53,7 @@ int __GUIDSL_ROOT_PRODUCTION  ;
 int __GUIDSL_NON_TERMINAL_main  ;
 int isSigned(int handle ) ;
 int getClientPrivateKey(int handle ) ;
-__inline void __utac_acc__SignForward_spec__1(int client , int msg ) 
+static __inline void __utac_acc__SignForward_spec__1(int client , int msg ) 
 { int tmp ;
   int tmp___0 ;
 

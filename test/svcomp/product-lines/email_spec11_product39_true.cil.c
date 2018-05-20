@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -214,7 +214,7 @@ void setup(void)
 }
 }
 int main(void) 
-{ int retValue_acc = __VERIFIER_nondet_int();
+{ int retValue_acc = 0;
   int tmp ;
 
   {
@@ -407,7 +407,7 @@ int valid_product(void)
 #pragma merger(0,"DecryptAutoResponder_spec.i","")
 void __automaton_fail(void) ;
 int isReadable(int msg ) ;
-__inline void __utac_acc__DecryptAutoResponder_spec__1(int client , int msg ) 
+static __inline void __utac_acc__DecryptAutoResponder_spec__1(int client , int msg ) 
 { int tmp ;
 
   {

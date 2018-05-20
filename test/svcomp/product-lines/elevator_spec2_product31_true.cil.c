@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -838,7 +838,7 @@ int floorButtons_spc2_1  ;
 int floorButtons_spc2_2  ;
 int floorButtons_spc2_3  ;
 int floorButtons_spc2_4  ;
-__inline void __utac_acc__Specification2_spec__1(void) 
+static __inline void __utac_acc__Specification2_spec__1(void) 
 { 
 
   {
@@ -850,7 +850,7 @@ __inline void __utac_acc__Specification2_spec__1(void)
   return;
 }
 }
-__inline void __utac_acc__Specification2_spec__2(int floor ) 
+static __inline void __utac_acc__Specification2_spec__2(int floor ) 
 { 
 
   {
@@ -878,7 +878,7 @@ __inline void __utac_acc__Specification2_spec__2(int floor )
   return;
 }
 }
-__inline void __utac_acc__Specification2_spec__3(void) 
+static __inline void __utac_acc__Specification2_spec__3(void) 
 { int floor ;
   int tmp ;
   int tmp___0 ;
@@ -975,7 +975,7 @@ __inline void __utac_acc__Specification2_spec__3(void)
   return;
 }
 }
-__inline void __utac_acc__Specification2_spec__4(void) 
+static __inline void __utac_acc__Specification2_spec__4(void) 
 { 
 
   {

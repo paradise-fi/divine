@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -309,7 +309,7 @@ int areDoorsOpen(void) ;
 int getCurrentFloorID(void) ;
 int isExecutiveFloorCalling(void) ;
 int isExecutiveFloor(int floorID ) ;
-__inline void __utac_acc__Specification14_spec__1(void) 
+static __inline void __utac_acc__Specification14_spec__1(void) 
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;

@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -1783,7 +1783,7 @@ int valid_product(void)
 void __automaton_fail(void) ;
 extern int puts(char const   *__s ) ;
 int isReadable(int msg ) ;
-__inline void __utac_acc__DecryptAutoResponder_spec__1(int client , int msg ) 
+static __inline void __utac_acc__DecryptAutoResponder_spec__1(int client , int msg ) 
 { int tmp ;
 
   {
@@ -2361,7 +2361,7 @@ void setup(void)
 }
 }
 int main(void) 
-{ int retValue_acc = __VERIFIER_nondet_int();
+{ int retValue_acc = 0;
   int tmp ;
 
   {

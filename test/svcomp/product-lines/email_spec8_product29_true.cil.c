@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -641,7 +641,7 @@ int createEmail(int from , int to )
 void __automaton_fail(void) ;
 extern int puts(char const   *__s ) ;
 int in_encrypted  =    0;
-__inline void __utac_acc__EncryptAutoResponder_spec__1(int msg ) 
+static __inline void __utac_acc__EncryptAutoResponder_spec__1(int msg ) 
 { char const   * __restrict  __cil_tmp2 ;
 
   {
@@ -654,7 +654,7 @@ __inline void __utac_acc__EncryptAutoResponder_spec__1(int msg )
   return;
 }
 }
-__inline void __utac_acc__EncryptAutoResponder_spec__2(int msg ) 
+static __inline void __utac_acc__EncryptAutoResponder_spec__2(int msg ) 
 { int tmp ;
   char const   * __restrict  __cil_tmp3 ;
 
@@ -1819,7 +1819,7 @@ void setup(void)
 }
 }
 int main(void) 
-{ int retValue_acc = __VERIFIER_nondet_int();
+{ int retValue_acc = 0;
   int tmp ;
 
   {

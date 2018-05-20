@@ -1,6 +1,6 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym  */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
-extern void __VERIFIER_error() __attribute__ ((__noreturn__)); /* ERROR */
+extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 extern int __VERIFIER_nondet_int(void);
 extern int printf (__const char *__restrict __format, ...);

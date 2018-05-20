@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym  */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -81,8 +81,8 @@ int personOnFloor_5_1  ;
 int personOnFloor_5_2  ;
 int personOnFloor_5_3  ;
 int personOnFloor_5_4  ;
-void initFloors(void) 
-{ 
+void initFloors(void)
+{
 
   {
   calls_0 = 0;
@@ -123,7 +123,7 @@ void initFloors(void)
   return;
 }
 }
-int isFloorCalling(int floorID ) 
+int isFloorCalling(int floorID )
 { int retValue_acc ;
 
   {
@@ -158,8 +158,8 @@ int isFloorCalling(int floorID )
   return (retValue_acc);
 }
 }
-void resetCallOnFloor(int floorID ) 
-{ 
+void resetCallOnFloor(int floorID )
+{
 
   {
   if (floorID == 0) {
@@ -186,8 +186,8 @@ void resetCallOnFloor(int floorID )
   return;
 }
 }
-void callOnFloor(int floorID ) 
-{ 
+void callOnFloor(int floorID )
+{
 
   {
   if (floorID == 0) {
@@ -214,7 +214,7 @@ void callOnFloor(int floorID )
   return;
 }
 }
-int isPersonOnFloor(int person , int floor ) 
+int isPersonOnFloor(int person , int floor )
 { int retValue_acc ;
 
   {
@@ -394,8 +394,8 @@ int isPersonOnFloor(int person , int floor )
   return (retValue_acc);
 }
 }
-void initPersonOnFloor(int person , int floor ) 
-{ 
+void initPersonOnFloor(int person , int floor )
+{
 
   {
   if (floor == 0) {
@@ -545,8 +545,8 @@ void initPersonOnFloor(int person , int floor )
   return;
 }
 }
-void removePersonFromFloor(int person , int floor ) 
-{ 
+void removePersonFromFloor(int person , int floor )
+{
 
   {
   if (floor == 0) {
@@ -696,7 +696,7 @@ void removePersonFromFloor(int person , int floor )
   return;
 }
 }
-int isTopFloor(int floorID ) 
+int isTopFloor(int floorID )
 { int retValue_acc ;
 
   {
@@ -710,7 +710,7 @@ int select_one(void) ;
 void select_features(void) ;
 void select_helpers(void) ;
 int valid_product(void) ;
-int select_one(void) 
+int select_one(void)
 { int retValue_acc ;
   int choice = __VERIFIER_nondet_int();
 
@@ -720,21 +720,21 @@ int select_one(void)
   return (retValue_acc);
 }
 }
-void select_features(void) 
-{ 
+void select_features(void)
+{
 
   {
   return;
 }
 }
-void select_helpers(void) 
-{ 
+void select_helpers(void)
+{
 
   {
   return;
 }
 }
-int valid_product(void) 
+int valid_product(void)
 { int retValue_acc ;
 
   {
@@ -747,7 +747,7 @@ int valid_product(void)
 int getWeight(int person ) ;
 int getOrigin(int person ) ;
 int getDestination(int person ) ;
-int getWeight(int person ) 
+int getWeight(int person )
 { int retValue_acc ;
 
   {
@@ -786,7 +786,7 @@ int getWeight(int person )
   return (retValue_acc);
 }
 }
-int getOrigin(int person ) 
+int getOrigin(int person )
 { int retValue_acc ;
 
   {
@@ -825,7 +825,7 @@ int getOrigin(int person )
   return (retValue_acc);
 }
 }
-int getDestination(int person ) 
+int getDestination(int person )
 { int retValue_acc ;
 
   {
@@ -867,7 +867,7 @@ int getDestination(int person )
 #pragma merger(0,"Test.i","")
 extern  __attribute__((__nothrow__, __noreturn__)) void exit(int __status ) ;
 int cleanupTimeShifts  =    12;
-int get_nondetMinMax07(void) 
+int get_nondetMinMax07(void)
 { int retValue_acc ;
   int nd ;
   nd = __VERIFIER_nondet_int();
@@ -919,7 +919,7 @@ int get_nondetMinMax07(void)
   return (retValue_acc);
 }
 }
-void bobCall(void) 
+void bobCall(void)
 { int tmp ;
 
   {
@@ -930,7 +930,7 @@ void bobCall(void)
   return;
 }
 }
-void aliceCall(void) 
+void aliceCall(void)
 { int tmp ;
 
   {
@@ -941,7 +941,7 @@ void aliceCall(void)
   return;
 }
 }
-void angelinaCall(void) 
+void angelinaCall(void)
 { int tmp ;
 
   {
@@ -952,7 +952,7 @@ void angelinaCall(void)
   return;
 }
 }
-void chuckCall(void) 
+void chuckCall(void)
 { int tmp ;
 
   {
@@ -963,7 +963,7 @@ void chuckCall(void)
   return;
 }
 }
-void monicaCall(void) 
+void monicaCall(void)
 { int tmp ;
 
   {
@@ -974,7 +974,7 @@ void monicaCall(void)
   return;
 }
 }
-void bigMacCall(void) 
+void bigMacCall(void)
 { int tmp ;
 
   {
@@ -986,8 +986,8 @@ void bigMacCall(void)
 }
 }
 void timeShift(void) ;
-void threeTS(void) 
-{ 
+void threeTS(void)
+{
 
   {
   {
@@ -1000,7 +1000,7 @@ void threeTS(void)
 }
 int isIdle(void) ;
 int isBlocked(void) ;
-void cleanup(void) 
+void cleanup(void)
 { int i ;
   int tmp ;
   int tmp___0 ;
@@ -1048,7 +1048,7 @@ void cleanup(void)
 }
 void initTopDown(void) ;
 void initBottomUp(void) ;
-void randomSequenceOfActions(void) 
+void randomSequenceOfActions(void)
 { int maxLength ;
   int tmp ;
   int counter ;
@@ -1126,8 +1126,8 @@ void randomSequenceOfActions(void)
   return;
 }
 }
-void runTest_Simple(void) 
-{ 
+void runTest_Simple(void)
+{
 
   {
   {
@@ -1138,8 +1138,8 @@ void runTest_Simple(void)
   return;
 }
 }
-void Specification1(void) 
-{ 
+void Specification1(void)
+{
 
   {
   {
@@ -1150,8 +1150,8 @@ void Specification1(void)
   return;
 }
 }
-void Specification2(void) 
-{ 
+void Specification2(void)
+{
 
   {
   {
@@ -1161,8 +1161,8 @@ void Specification2(void)
   return;
 }
 }
-void Specification3(void) 
-{ 
+void Specification3(void)
+{
 
   {
   {
@@ -1178,16 +1178,16 @@ void Specification3(void)
   return;
 }
 }
-void setup(void) 
-{ 
+void setup(void)
+{
 
   {
   return;
 }
 }
 void test(void) ;
-void runTest(void) 
-{ 
+void runTest(void)
+{
 
   {
   {
@@ -1196,7 +1196,7 @@ void runTest(void)
   return;
 }
 }
-int main(void) 
+int main(void)
 { int retValue_acc ;
   int tmp ;
 
@@ -1244,8 +1244,8 @@ int floorButtons_1  ;
 int floorButtons_2  ;
 int floorButtons_3  ;
 int floorButtons_4  ;
-void initTopDown(void) 
-{ 
+void initTopDown(void)
+{
 
   {
   {
@@ -1267,8 +1267,8 @@ void initTopDown(void)
   return;
 }
 }
-void initBottomUp(void) 
-{ 
+void initBottomUp(void)
+{
 
   {
   {
@@ -1290,7 +1290,7 @@ void initBottomUp(void)
   return;
 }
 }
-int isBlocked(void) 
+int isBlocked(void)
 { int retValue_acc ;
 
   {
@@ -1299,8 +1299,8 @@ int isBlocked(void)
   return (retValue_acc);
 }
 }
-void enterElevator__wrappee__base(int p ) 
-{ 
+void enterElevator__wrappee__base(int p )
+{
 
   {
   if (p == 0) {
@@ -1331,7 +1331,7 @@ void enterElevator__wrappee__base(int p )
   return;
 }
 }
-void enterElevator(int p ) 
+void enterElevator(int p )
 { int tmp ;
 
   {
@@ -1343,8 +1343,8 @@ void enterElevator(int p )
   return;
 }
 }
-void leaveElevator__wrappee__base(int p ) 
-{ 
+void leaveElevator__wrappee__base(int p )
+{
 
   {
   if (p == 0) {
@@ -1375,7 +1375,7 @@ void leaveElevator__wrappee__base(int p )
   return;
 }
 }
-void leaveElevator(int p ) 
+void leaveElevator(int p )
 { int tmp ;
 
   {
@@ -1387,8 +1387,8 @@ void leaveElevator(int p )
   return;
 }
 }
-void pressInLiftFloorButton(int floorID ) 
-{ 
+void pressInLiftFloorButton(int floorID )
+{
 
   {
   if (floorID == 0) {
@@ -1415,8 +1415,8 @@ void pressInLiftFloorButton(int floorID )
   return;
 }
 }
-void resetFloorButton(int floorID ) 
-{ 
+void resetFloorButton(int floorID )
+{
 
   {
   if (floorID == 0) {
@@ -1443,7 +1443,7 @@ void resetFloorButton(int floorID )
   return;
 }
 }
-int getCurrentFloorID(void) 
+int getCurrentFloorID(void)
 { int retValue_acc ;
 
   {
@@ -1452,7 +1452,7 @@ int getCurrentFloorID(void)
   return (retValue_acc);
 }
 }
-int areDoorsOpen(void) 
+int areDoorsOpen(void)
 { int retValue_acc ;
 
   {
@@ -1461,7 +1461,7 @@ int areDoorsOpen(void)
   return (retValue_acc);
 }
 }
-int buttonForFloorIsPressed(int floorID ) 
+int buttonForFloorIsPressed(int floorID )
 { int retValue_acc ;
 
   {
@@ -1495,7 +1495,7 @@ int buttonForFloorIsPressed(int floorID )
   return (retValue_acc);
 }
 }
-int getCurrentHeading(void) 
+int getCurrentHeading(void)
 { int retValue_acc ;
 
   {
@@ -1504,7 +1504,7 @@ int getCurrentHeading(void)
   return (retValue_acc);
 }
 }
-int isEmpty(void) 
+int isEmpty(void)
 { int retValue_acc ;
 
   {
@@ -1544,7 +1544,7 @@ int isEmpty(void)
   return (retValue_acc);
 }
 }
-int anyStopRequested(void) 
+int anyStopRequested(void)
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -1624,7 +1624,7 @@ int anyStopRequested(void)
   return (retValue_acc);
 }
 }
-int isIdle(void) 
+int isIdle(void)
 { int retValue_acc ;
   int tmp ;
 
@@ -1637,7 +1637,7 @@ int isIdle(void)
   return (retValue_acc);
 }
 }
-int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , int respectInLiftCalls )
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -1677,7 +1677,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
         goto _L___16;
       }
     } else {
-      _L___16: /* CIL Label */ 
+      _L___16: /* CIL Label */
       if (currentFloorID < 0) {
         if (respectInLiftCalls) {
           if (floorButtons_0) {
@@ -1690,7 +1690,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
           goto _L___14;
         }
       } else {
-        _L___14: /* CIL Label */ 
+        _L___14: /* CIL Label */
         if (currentFloorID < 1) {
           if (respectFloorCalls) {
             {
@@ -1706,7 +1706,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
             goto _L___12;
           }
         } else {
-          _L___12: /* CIL Label */ 
+          _L___12: /* CIL Label */
           if (currentFloorID < 1) {
             if (respectInLiftCalls) {
               if (floorButtons_1) {
@@ -1719,7 +1719,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
               goto _L___10;
             }
           } else {
-            _L___10: /* CIL Label */ 
+            _L___10: /* CIL Label */
             if (currentFloorID < 2) {
               if (respectFloorCalls) {
                 {
@@ -1735,7 +1735,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                 goto _L___8;
               }
             } else {
-              _L___8: /* CIL Label */ 
+              _L___8: /* CIL Label */
               if (currentFloorID < 2) {
                 if (respectInLiftCalls) {
                   if (floorButtons_2) {
@@ -1748,7 +1748,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                   goto _L___6;
                 }
               } else {
-                _L___6: /* CIL Label */ 
+                _L___6: /* CIL Label */
                 if (currentFloorID < 3) {
                   if (respectFloorCalls) {
                     {
@@ -1764,7 +1764,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                     goto _L___4;
                   }
                 } else {
-                  _L___4: /* CIL Label */ 
+                  _L___4: /* CIL Label */
                   if (currentFloorID < 3) {
                     if (respectInLiftCalls) {
                       if (floorButtons_3) {
@@ -1777,7 +1777,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                       goto _L___2;
                     }
                   } else {
-                    _L___2: /* CIL Label */ 
+                    _L___2: /* CIL Label */
                     if (currentFloorID < 4) {
                       if (respectFloorCalls) {
                         {
@@ -1793,7 +1793,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                         goto _L___0;
                       }
                     } else {
-                      _L___0: /* CIL Label */ 
+                      _L___0: /* CIL Label */
                       if (currentFloorID < 4) {
                         if (respectInLiftCalls) {
                           if (floorButtons_4) {
@@ -1842,7 +1842,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
         goto _L___34;
       }
     } else {
-      _L___34: /* CIL Label */ 
+      _L___34: /* CIL Label */
       if (currentFloorID > 0) {
         if (respectInLiftCalls) {
           if (floorButtons_0) {
@@ -1855,7 +1855,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
           goto _L___32;
         }
       } else {
-        _L___32: /* CIL Label */ 
+        _L___32: /* CIL Label */
         if (currentFloorID > 1) {
           if (respectFloorCalls) {
             {
@@ -1871,7 +1871,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
             goto _L___30;
           }
         } else {
-          _L___30: /* CIL Label */ 
+          _L___30: /* CIL Label */
           if (currentFloorID > 1) {
             if (respectInLiftCalls) {
               if (floorButtons_1) {
@@ -1884,7 +1884,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
               goto _L___28;
             }
           } else {
-            _L___28: /* CIL Label */ 
+            _L___28: /* CIL Label */
             if (currentFloorID > 2) {
               if (respectFloorCalls) {
                 {
@@ -1900,7 +1900,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                 goto _L___26;
               }
             } else {
-              _L___26: /* CIL Label */ 
+              _L___26: /* CIL Label */
               if (currentFloorID > 2) {
                 if (respectInLiftCalls) {
                   if (floorButtons_2) {
@@ -1913,7 +1913,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                   goto _L___24;
                 }
               } else {
-                _L___24: /* CIL Label */ 
+                _L___24: /* CIL Label */
                 if (currentFloorID > 3) {
                   if (respectFloorCalls) {
                     {
@@ -1929,7 +1929,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                     goto _L___22;
                   }
                 } else {
-                  _L___22: /* CIL Label */ 
+                  _L___22: /* CIL Label */
                   if (currentFloorID > 3) {
                     if (respectInLiftCalls) {
                       if (floorButtons_3) {
@@ -1942,7 +1942,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                       goto _L___20;
                     }
                   } else {
-                    _L___20: /* CIL Label */ 
+                    _L___20: /* CIL Label */
                     if (currentFloorID > 4) {
                       if (respectFloorCalls) {
                         {
@@ -1958,7 +1958,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
                         goto _L___18;
                       }
                     } else {
-                      _L___18: /* CIL Label */ 
+                      _L___18: /* CIL Label */
                       if (currentFloorID > 4) {
                         if (respectInLiftCalls) {
                           if (floorButtons_4) {
@@ -1989,7 +1989,7 @@ int stopRequestedInDirection__wrappee__weight(int dir , int respectFloorCalls , 
   return (retValue_acc);
 }
 }
-int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLiftCalls ) 
+int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLiftCalls )
 { int retValue_acc ;
   int overload ;
   int buttonPressed ;
@@ -2028,7 +2028,7 @@ int stopRequestedInDirection(int dir , int respectFloorCalls , int respectInLift
   return (retValue_acc);
 }
 }
-int isAnyLiftButtonPressed(void) 
+int isAnyLiftButtonPressed(void)
 { int retValue_acc ;
 
   {
@@ -2062,7 +2062,7 @@ int isAnyLiftButtonPressed(void)
   return (retValue_acc);
 }
 }
-void continueInDirection(int dir ) 
+void continueInDirection(int dir )
 { int tmp ;
 
   {
@@ -2091,7 +2091,7 @@ void continueInDirection(int dir )
   return;
 }
 }
-int stopRequestedAtCurrentFloor__wrappee__weight(void) 
+int stopRequestedAtCurrentFloor__wrappee__weight(void)
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -2118,7 +2118,7 @@ int stopRequestedAtCurrentFloor__wrappee__weight(void)
   return (retValue_acc);
 }
 }
-int stopRequestedAtCurrentFloor(void) 
+int stopRequestedAtCurrentFloor(void)
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -2146,7 +2146,7 @@ int stopRequestedAtCurrentFloor(void)
   return (retValue_acc);
 }
 }
-int getReverseHeading(int ofHeading ) 
+int getReverseHeading(int ofHeading )
 { int retValue_acc ;
 
   {
@@ -2160,7 +2160,7 @@ int getReverseHeading(int ofHeading )
   return (retValue_acc);
 }
 }
-void processWaitingOnFloor(int floorID ) 
+void processWaitingOnFloor(int floorID )
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -2261,7 +2261,7 @@ void processWaitingOnFloor(int floorID )
 }
 void __utac_acc__Specification13_spec__1(void) ;
 void __utac_acc__Specification13_spec__2(void) ;
-void timeShift(void) 
+void timeShift(void)
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -2405,7 +2405,7 @@ void timeShift(void)
   return;
 }
 }
-void printState(void) 
+void printState(void)
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -2576,7 +2576,7 @@ void printState(void)
   return;
 }
 }
-int existInLiftCallsInDirection(int d ) 
+int existInLiftCallsInDirection(int d )
 { int retValue_acc ;
   int i ;
   int i___0 ;
@@ -2601,7 +2601,7 @@ int existInLiftCallsInDirection(int d )
           goto _L___2;
         }
       } else {
-        _L___2: /* CIL Label */ 
+        _L___2: /* CIL Label */
         if (i == 1) {
           if (floorButtons_1) {
             retValue_acc = 1;
@@ -2610,7 +2610,7 @@ int existInLiftCallsInDirection(int d )
             goto _L___1;
           }
         } else {
-          _L___1: /* CIL Label */ 
+          _L___1: /* CIL Label */
           if (i == 2) {
             if (floorButtons_2) {
               retValue_acc = 1;
@@ -2619,7 +2619,7 @@ int existInLiftCallsInDirection(int d )
               goto _L___0;
             }
           } else {
-            _L___0: /* CIL Label */ 
+            _L___0: /* CIL Label */
             if (i == 3) {
               if (floorButtons_3) {
                 retValue_acc = 1;
@@ -2628,7 +2628,7 @@ int existInLiftCallsInDirection(int d )
                 goto _L;
               }
             } else {
-              _L: /* CIL Label */ 
+              _L: /* CIL Label */
               if (i == 4) {
                 if (floorButtons_4) {
                   retValue_acc = 1;
@@ -2676,7 +2676,7 @@ int existInLiftCallsInDirection(int d )
               goto _L___6;
             }
           } else {
-            _L___6: /* CIL Label */ 
+            _L___6: /* CIL Label */
             if (i___0 == 1) {
               if (floorButtons_1) {
                 retValue_acc = 1;
@@ -2685,7 +2685,7 @@ int existInLiftCallsInDirection(int d )
                 goto _L___5;
               }
             } else {
-              _L___5: /* CIL Label */ 
+              _L___5: /* CIL Label */
               if (i___0 == 2) {
                 if (floorButtons_2) {
                   retValue_acc = 1;
@@ -2694,7 +2694,7 @@ int existInLiftCallsInDirection(int d )
                   goto _L___4;
                 }
               } else {
-                _L___4: /* CIL Label */ 
+                _L___4: /* CIL Label */
                 if (i___0 == 3) {
                   if (floorButtons_3) {
                     retValue_acc = 1;
@@ -2703,7 +2703,7 @@ int existInLiftCallsInDirection(int d )
                     goto _L___3;
                   }
                 } else {
-                  _L___3: /* CIL Label */ 
+                  _L___3: /* CIL Label */
                   if (i___0 == 4) {
                     if (floorButtons_4) {
                       retValue_acc = 1;
@@ -2736,7 +2736,7 @@ int existInLiftCallsInDirection(int d )
 }
 }
 #pragma merger(0,"UnitTests.i","")
-void spec1(void) 
+void spec1(void)
 { int tmp ;
   int tmp___0 ;
   int i ;
@@ -2779,7 +2779,7 @@ void spec1(void)
   return;
 }
 }
-void spec14(void) 
+void spec14(void)
 { int tmp ;
   int tmp___0 ;
   int i ;
@@ -2827,8 +2827,8 @@ void spec14(void)
 }
 }
 #pragma merger(0,"wsllib_check.i","")
-void __automaton_fail(void) 
-{ 
+void __automaton_fail(void)
+{
 
   {
   ERROR: __VERIFIER_error();
@@ -2836,8 +2836,8 @@ void __automaton_fail(void)
 }
 }
 #pragma merger(0,"scenario.i","")
-void test(void) 
-{ 
+void test(void)
+{
 
   {
   {
@@ -2852,8 +2852,8 @@ void test(void)
 }
 #pragma merger(0,"Specification13_spec.i","")
 int prevDir  =    0;
-void __utac_acc__Specification13_spec__1(void) 
-{ 
+void __utac_acc__Specification13_spec__1(void)
+{
 
   {
   {
@@ -2862,7 +2862,7 @@ void __utac_acc__Specification13_spec__1(void)
   return;
 }
 }
-void __utac_acc__Specification13_spec__2(void) 
+void __utac_acc__Specification13_spec__2(void)
 { int tmp ;
   int tmp___0 ;
   int tmp___1 ;
@@ -2948,7 +2948,7 @@ extern  __attribute__((__nothrow__)) void *malloc(size_t __size )  __attribute__
 extern  __attribute__((__nothrow__)) void free(void *__ptr ) ;
 void __utac__exception__cf_handler_set(void *exception , int (*cflow_func)(int  ,
                                                                            int  ) ,
-                                       int val ) 
+                                       int val )
 { struct __UTAC__EXCEPTION *excep ;
   struct __UTAC__CFLOW_FUNC *cf ;
   void *tmp ;
@@ -2992,7 +2992,7 @@ void __utac__exception__cf_handler_set(void *exception , int (*cflow_func)(int  
   return;
 }
 }
-void __utac__exception__cf_handler_free(void *exception ) 
+void __utac__exception__cf_handler_free(void *exception )
 { struct __UTAC__EXCEPTION *excep ;
   struct __UTAC__CFLOW_FUNC *cf ;
   struct __UTAC__CFLOW_FUNC *tmp ;
@@ -3048,7 +3048,7 @@ void __utac__exception__cf_handler_free(void *exception )
   return;
 }
 }
-void __utac__exception__cf_handler_reset(void *exception ) 
+void __utac__exception__cf_handler_reset(void *exception )
 { struct __UTAC__EXCEPTION *excep ;
   struct __UTAC__CFLOW_FUNC *cf ;
   unsigned long __cil_tmp5 ;
@@ -3110,7 +3110,7 @@ void __utac__exception__cf_handler_reset(void *exception )
 }
 void *__utac__error_stack_mgt(void *env , int mode , int count ) ;
 static struct __ACC__ERR *head  =    (struct __ACC__ERR *)0;
-void *__utac__error_stack_mgt(void *env , int mode , int count ) 
+void *__utac__error_stack_mgt(void *env , int mode , int count )
 { void *retValue_acc ;
   struct __ACC__ERR *new ;
   void *tmp ;
@@ -3213,7 +3213,7 @@ void *__utac__error_stack_mgt(void *env , int mode , int count )
   return (retValue_acc);
 }
 }
-void *__utac__get_this_arg(int i , struct JoinPoint *this ) 
+void *__utac__get_this_arg(int i , struct JoinPoint *this )
 { void *retValue_acc ;
   unsigned long __cil_tmp4 ;
   unsigned long __cil_tmp5 ;
@@ -3259,7 +3259,7 @@ void *__utac__get_this_arg(int i , struct JoinPoint *this )
   return (retValue_acc);
 }
 }
-char const   *__utac__get_this_argtype(int i , struct JoinPoint *this ) 
+char const   *__utac__get_this_argtype(int i , struct JoinPoint *this )
 { char const   *retValue_acc ;
   unsigned long __cil_tmp4 ;
   unsigned long __cil_tmp5 ;

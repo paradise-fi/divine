@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -54,7 +54,7 @@ int __GUIDSL_NON_TERMINAL_main  ;
 int getEmailFrom(int handle ) ;
 int isVerified(int handle ) ;
 int findPublicKey(int handle , int userid ) ;
-__inline void __utac_acc__VerifyForward_spec__1(int client , int msg ) 
+static __inline void __utac_acc__VerifyForward_spec__1(int client , int msg ) 
 { int pubkey ;
   int tmp ;
   int tmp___0 ;
@@ -243,7 +243,7 @@ void setup(void)
 }
 }
 int main(void) 
-{ int retValue_acc = __VERIFIER_nondet_int();
+{ int retValue_acc = 0;
   int tmp ;
 
   {

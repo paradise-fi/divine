@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -43,16 +43,16 @@ void __automaton_fail(void) ;
 int isPumpRunning(void) ;
 int getWaterLevel(void) ;
 int switchedOnBeforeTS  ;
-inline static void __utac_acc__Specification5_spec__1(void) 
-{ 
+inline static void __utac_acc__Specification5_spec__1(void)
+{
 
   {
   switchedOnBeforeTS = 0;
   return;
 }
 }
-inline static void __utac_acc__Specification5_spec__2(void) 
-{ 
+inline static void __utac_acc__Specification5_spec__2(void)
+{
 
   {
   {
@@ -61,7 +61,7 @@ inline static void __utac_acc__Specification5_spec__2(void)
   return;
 }
 }
-inline static void __utac_acc__Specification5_spec__3(void) 
+inline static void __utac_acc__Specification5_spec__3(void)
 { int tmp ;
   int tmp___0 ;
 
@@ -95,7 +95,7 @@ int select_one(void) ;
 void select_features(void) ;
 void select_helpers(void) ;
 int valid_product(void) ;
-int select_one(void) 
+int select_one(void)
 { int retValue_acc ;
   int choice = __VERIFIER_nondet_int();
 
@@ -105,21 +105,21 @@ int select_one(void)
   return (retValue_acc);
 }
 }
-void select_features(void) 
-{ 
+void select_features(void)
+{
 
   {
   return;
 }
 }
-void select_helpers(void) 
-{ 
+void select_helpers(void)
+{
 
   {
   return;
 }
 }
-int valid_product(void) 
+int valid_product(void)
 { int retValue_acc ;
 
   {
@@ -129,8 +129,8 @@ int valid_product(void)
 }
 }
 #pragma merger(0,"wsllib_check.i","")
-void __automaton_fail(void) 
-{ 
+void __automaton_fail(void)
+{
 
   {
   ERROR: __VERIFIER_error();
@@ -143,7 +143,7 @@ void changeMethaneLevel(void) ;
 void stopSystem(void) ;
 void timeShift(void) ;
 void cleanup(void) ;
-void test(void) 
+void test(void)
 { int splverifierCounter ;
   int tmp ;
   int tmp___0 ;
@@ -211,7 +211,7 @@ void test(void)
 }
 #pragma merger(0,"Test.i","")
 int cleanupTimeShifts  =    4;
-void cleanup(void) 
+void cleanup(void)
 { int i ;
   int __cil_tmp2 ;
 
@@ -242,8 +242,8 @@ void cleanup(void)
 }
 }
 void printPump(void) ;
-void Specification2(void) 
-{ 
+void Specification2(void)
+{
 
   {
   {
@@ -266,15 +266,15 @@ void Specification2(void)
   return;
 }
 }
-void setup(void) 
-{ 
+void setup(void)
+{
 
   {
   return;
 }
 }
-void runTest(void) 
-{ 
+void runTest(void)
+{
 
   {
   {
@@ -284,7 +284,7 @@ void runTest(void)
   return;
 }
 }
-int main(void) 
+int main(void)
 { int retValue_acc ;
   int tmp ;
 
@@ -318,8 +318,8 @@ void deactivatePump(void) ;
 int pumpRunning  =    0;
 int systemActive  =    1;
 void processEnvironment(void) ;
-void timeShift(void) 
-{ 
+void timeShift(void)
+{
 
   {
   {
@@ -345,15 +345,15 @@ void timeShift(void)
   return;
 }
 }
-void processEnvironment__wrappee__base(void) 
-{ 
+void processEnvironment__wrappee__base(void)
+{
 
   {
   return;
 }
 }
 int isHighWaterLevel(void) ;
-void processEnvironment__wrappee__highWaterSensor(void) 
+void processEnvironment__wrappee__highWaterSensor(void)
 { int tmp ;
 
   {
@@ -379,7 +379,7 @@ void processEnvironment__wrappee__highWaterSensor(void)
 }
 }
 int isLowWaterLevel(void) ;
-void processEnvironment__wrappee__methaneQuery(void) 
+void processEnvironment__wrappee__methaneQuery(void)
 { int tmp ;
 
   {
@@ -405,7 +405,7 @@ void processEnvironment__wrappee__methaneQuery(void)
 }
 }
 int isMethaneAlarm(void) ;
-void processEnvironment(void) 
+void processEnvironment(void)
 { int tmp ;
 
   {
@@ -430,15 +430,15 @@ void processEnvironment(void)
   return;
 }
 }
-void activatePump__wrappee__lowWaterSensor(void) 
-{ 
+void activatePump__wrappee__lowWaterSensor(void)
+{
 
   {
   pumpRunning = 1;
   return;
 }
 }
-void activatePump(void) 
+void activatePump(void)
 { int tmp ;
 
   {
@@ -455,15 +455,15 @@ void activatePump(void)
   return;
 }
 }
-void deactivatePump(void) 
-{ 
+void deactivatePump(void)
+{
 
   {
   pumpRunning = 0;
   return;
 }
 }
-int isMethaneAlarm(void) 
+int isMethaneAlarm(void)
 { int retValue_acc ;
 
   {
@@ -474,7 +474,7 @@ int isMethaneAlarm(void)
   return (retValue_acc);
 }
 }
-int isPumpRunning(void) 
+int isPumpRunning(void)
 { int retValue_acc ;
 
   {
@@ -483,8 +483,8 @@ int isPumpRunning(void)
   return (retValue_acc);
 }
 }
-void printPump(void) 
-{ 
+void printPump(void)
+{
 
   {
   {
@@ -519,7 +519,7 @@ void printPump(void)
   return;
 }
 }
-int isHighWaterLevel(void) 
+int isHighWaterLevel(void)
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -538,7 +538,7 @@ int isHighWaterLevel(void)
   return (retValue_acc);
 }
 }
-int isLowWaterLevel(void) 
+int isLowWaterLevel(void)
 { int retValue_acc ;
   int tmp ;
   int tmp___0 ;
@@ -557,8 +557,8 @@ int isLowWaterLevel(void)
   return (retValue_acc);
 }
 }
-void stopSystem(void) 
-{ 
+void stopSystem(void)
+{
 
   {
   if (pumpRunning) {
@@ -575,8 +575,8 @@ void stopSystem(void)
 #pragma merger(0,"Environment.i","")
 int waterLevel  =    1;
 int methaneLevelCritical  =    0;
-void lowerWaterLevel(void) 
-{ 
+void lowerWaterLevel(void)
+{
 
   {
   if (waterLevel > 0) {
@@ -587,8 +587,8 @@ void lowerWaterLevel(void)
   return;
 }
 }
-void waterRise(void) 
-{ 
+void waterRise(void)
+{
 
   {
   if (waterLevel < 2) {
@@ -599,8 +599,8 @@ void waterRise(void)
   return;
 }
 }
-void changeMethaneLevel(void) 
-{ 
+void changeMethaneLevel(void)
+{
 
   {
   if (methaneLevelCritical) {
@@ -611,7 +611,7 @@ void changeMethaneLevel(void)
   return;
 }
 }
-int isMethaneLevelCritical(void) 
+int isMethaneLevelCritical(void)
 { int retValue_acc ;
 
   {
@@ -620,8 +620,8 @@ int isMethaneLevelCritical(void)
   return (retValue_acc);
 }
 }
-void printEnvironment(void) 
-{ 
+void printEnvironment(void)
+{
 
   {
   {
@@ -643,7 +643,7 @@ void printEnvironment(void)
   return;
 }
 }
-int getWaterLevel(void) 
+int getWaterLevel(void)
 { int retValue_acc ;
 
   {
@@ -652,7 +652,7 @@ int getWaterLevel(void)
   return (retValue_acc);
 }
 }
-int isHighWaterSensorDry(void) 
+int isHighWaterSensorDry(void)
 { int retValue_acc ;
 
   {
@@ -666,7 +666,7 @@ int isHighWaterSensorDry(void)
   return (retValue_acc);
 }
 }
-int isLowWaterSensorDry(void) 
+int isLowWaterSensorDry(void)
 { int retValue_acc ;
 
   {
@@ -684,7 +684,7 @@ extern  __attribute__((__nothrow__)) void *malloc(size_t __size )  __attribute__
 extern  __attribute__((__nothrow__)) void free(void *__ptr ) ;
 void __utac__exception__cf_handler_set(void *exception , int (*cflow_func)(int  ,
                                                                            int  ) ,
-                                       int val ) 
+                                       int val )
 { struct __UTAC__EXCEPTION *excep ;
   struct __UTAC__CFLOW_FUNC *cf ;
   void *tmp ;
@@ -728,7 +728,7 @@ void __utac__exception__cf_handler_set(void *exception , int (*cflow_func)(int  
   return;
 }
 }
-void __utac__exception__cf_handler_free(void *exception ) 
+void __utac__exception__cf_handler_free(void *exception )
 { struct __UTAC__EXCEPTION *excep ;
   struct __UTAC__CFLOW_FUNC *cf ;
   struct __UTAC__CFLOW_FUNC *tmp ;
@@ -784,7 +784,7 @@ void __utac__exception__cf_handler_free(void *exception )
   return;
 }
 }
-void __utac__exception__cf_handler_reset(void *exception ) 
+void __utac__exception__cf_handler_reset(void *exception )
 { struct __UTAC__EXCEPTION *excep ;
   struct __UTAC__CFLOW_FUNC *cf ;
   unsigned long __cil_tmp5 ;
@@ -846,7 +846,7 @@ void __utac__exception__cf_handler_reset(void *exception )
 }
 void *__utac__error_stack_mgt(void *env , int mode , int count ) ;
 static struct __ACC__ERR *head  =    (struct __ACC__ERR *)0;
-void *__utac__error_stack_mgt(void *env , int mode , int count ) 
+void *__utac__error_stack_mgt(void *env , int mode , int count )
 { void *retValue_acc ;
   struct __ACC__ERR *new ;
   void *tmp ;
@@ -949,7 +949,7 @@ void *__utac__error_stack_mgt(void *env , int mode , int count )
   return (retValue_acc);
 }
 }
-void *__utac__get_this_arg(int i , struct JoinPoint *this ) 
+void *__utac__get_this_arg(int i , struct JoinPoint *this )
 { void *retValue_acc ;
   unsigned long __cil_tmp4 ;
   unsigned long __cil_tmp5 ;
@@ -995,7 +995,7 @@ void *__utac__get_this_arg(int i , struct JoinPoint *this )
   return (retValue_acc);
 }
 }
-char const   *__utac__get_this_argtype(int i , struct JoinPoint *this ) 
+char const   *__utac__get_this_argtype(int i , struct JoinPoint *this )
 { char const   *retValue_acc ;
   unsigned long __cil_tmp4 ;
   unsigned long __cil_tmp5 ;
