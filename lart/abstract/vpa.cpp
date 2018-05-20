@@ -72,6 +72,8 @@ Values get_sources( Value *val ) {
             return { val };
         else if ( isa< CallInst >( val ) )
             return { val }; // TODO if pointer do we need to propagate through return?
+        else if ( isa< ExtractValueInst >( val ) )
+            return { val };
         else if ( isa< Constant >( val ) ) {
             ASSERT( !isa< ConstantExpr >( val ) );
             return {};
