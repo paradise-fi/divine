@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym threads todo */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 // Source: Alejandro Sanchez, Sriram Sankaranarayanan, Cesar Sanchez, Bor-Yuh
 // Evan Chang: "Invariant Generation for Paramterized Systems using

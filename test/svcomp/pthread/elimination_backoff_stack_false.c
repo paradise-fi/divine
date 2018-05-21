@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym threads todo */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 #include <stdio.h>
 #include <stdlib.h>

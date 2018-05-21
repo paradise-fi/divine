@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym threads todo */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern void __VERIFIER_error(void) __attribute__ ((__noreturn__));
 extern void __VERIFIER_assume(int);

@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym threads todo */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 // Source: Azadeh Farzan, Zachary Kincaid, Andreas Podelski: "Proofs That
 // Count", POPL 2014
