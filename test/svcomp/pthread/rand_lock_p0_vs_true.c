@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big inf */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern void __VERIFIER_assume(int);
 extern int __VERIFIER_nondet_int(void);
@@ -28,14 +28,14 @@ void __VERIFIER_atomic_release()
 
 #define min(x,y) ((y>=x)?(x):(y))
 
-static inline int calculateNext(int s2){ 
+static inline int calculateNext(int s2){
 	int cnex;
 	do cnex = __VERIFIER_nondet_int();
 	while(cnex == s2 || cnex == 0);
 	return cnex;
 }
 
-int seed = 1; 
+int seed = 1;
 
 #define NUM 10
 

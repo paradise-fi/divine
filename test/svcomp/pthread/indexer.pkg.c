@@ -23,8 +23,8 @@ int cas(int * tab, int h, int val, int new_val)
 {
   int ret_val = 0;
   pthread_mutex_lock(&cas_mutex[h]);
-  
- 
+
+
   if ( tab[h] == val ) {
     tab[h] = new_val;
     ret_val = 1;
@@ -32,9 +32,9 @@ int cas(int * tab, int h, int val, int new_val)
 
   pthread_mutex_unlock(&cas_mutex[h]);
 
-  
+
   return ret_val;
-} 
+}
 
 
 
@@ -43,7 +43,7 @@ void * thread_routine(void * arg)
   int tid;
   int m = 0, w, h;
   tid = *((int *)arg);
-  
+
   while(1){
     if ( m < MAX ){
       w = (++m) * 11 + tid;
@@ -51,7 +51,7 @@ void * thread_routine(void * arg)
     else{
       pthread_exit(NULL);
     }
-    
+
     h = (w * 7) % SIZE;
     assert( h >= 0 );
 

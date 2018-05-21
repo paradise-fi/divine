@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big inf */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_assume(int);
@@ -72,7 +72,7 @@ static inline int push(int d) {
 		__VERIFIER_atomic_acquire(&m);
 		oldTop = top;
 		INDIR(newTop,1) = oldTop;
-		top = newTop; 
+		top = newTop;
 		__VERIFIER_atomic_release(&m);
 		return 1;
 	}
@@ -103,13 +103,13 @@ void* thr1(void* arg)
 	__VERIFIER_atomic_acquire(&m2);
 	switch(state)
 	{
-	case 0: 
+	case 0:
 		EBStack_init();
 		state = 1;
 		//fall-through
-	case 1: 
+	case 1:
 		__VERIFIER_atomic_release(&m2);
-		
+
 		push_loop();
 		break;
 	}

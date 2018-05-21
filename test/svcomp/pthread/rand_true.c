@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big inf todo */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_assume(int);
@@ -26,7 +26,7 @@ void __VERIFIER_atomic_release()
 	m = 0;
 }
 
-volatile int seed; 
+volatile int seed;
 
 static inline int PseudoRandomUsingAtomic_nextInt(int n) {
 	int read, nexts, nextInt_return;
@@ -40,7 +40,7 @@ static inline int PseudoRandomUsingAtomic_nextInt(int n) {
 	}
 	while(nexts == read || nexts == 0);
 
-	assert(nexts != read); 
+	assert(nexts != read);
 	seed = nexts;
 	__VERIFIER_atomic_release();
 	nextInt_return = nexts % n;
@@ -61,7 +61,7 @@ static inline void PseudoRandomUsingAtomic_constructor(int init){
 	seed = init;
 }
 
-static inline void PseudoRandomUsingAtomic__threadmain(){ 
+static inline void PseudoRandomUsingAtomic__threadmain(){
 	int myrand;
 
 	myrand = PseudoRandomUsingAtomic_nextInt(10);
@@ -77,16 +77,16 @@ void* thr1(void* arg)
 	__VERIFIER_atomic_acquire();
 	switch(state)
 	{
-	case STATE_UNINITIALIZED: 
+	case STATE_UNINITIALIZED:
 		PseudoRandomUsingAtomic_constructor(1);
 		state = STATE_INITIALIZED;
 		__VERIFIER_atomic_release();
-		
+
 		PseudoRandomUsingAtomic_monitor(); //never returns
 		break;
-	case STATE_INITIALIZED: 
+	case STATE_INITIALIZED:
 		__VERIFIER_atomic_release();
-		
+
 		PseudoRandomUsingAtomic__threadmain();
 		break;
 	}

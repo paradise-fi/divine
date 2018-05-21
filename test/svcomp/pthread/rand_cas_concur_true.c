@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
@@ -10,7 +10,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 #define assert(e) { if(!(e)) { ERROR: __VERIFIER_error();(void)0; } }
 
-static inline int nC(int s2){ 
+static inline int nC(int s2){
 	int nC_return;
 	do
 	{

@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 /***********************************************************************************
                          C-DAC Tech Workshop : hyPACK-2013

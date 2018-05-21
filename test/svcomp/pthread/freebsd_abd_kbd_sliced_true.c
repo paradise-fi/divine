@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_assume(int);
@@ -48,11 +48,11 @@ static inline static int adb_kbd_receive_packet(){
 	mtx_unlock(MTX);
 	cv_broadcast(COND);
 	return 0; }
-	
+
 static inline static void akbd_repeat() {
 	mtx_lock(MTX);
 	mtx_unlock(MTX); }
-	
+
 static inline static void akbd_read_char(int wait) {
 	mtx_lock(MTX);
 	if (!buf && wait){
@@ -62,7 +62,7 @@ static inline static void akbd_read_char(int wait) {
 		mtx_unlock(MTX);
 		return; 	}
 	mtx_unlock(MTX); }
-	
+
 static inline static void akbd_clear_state(){
 	mtx_lock(MTX);
 	buf = 0;

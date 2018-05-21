@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_assume(int);
@@ -7,7 +7,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 #include <pthread.h>
 
 #define assume(e) __VERIFIER_assume(e)
-#define assert(e) { if(!(e)) { ERROR: __VERIFIER_error(); /* ERROR */ (void)0; } }
+#define assert(e) { if(!(e)) { ERROR: __VERIFIER_error(); (void)0; } }
 
 #define MONITOR_EQ(x,y) \
 { \
@@ -51,7 +51,7 @@ void* thr3(void* arg)
   if(lock)
   {
     x=1;
-    assert(g0==1 && g1==1);
+    assert(g0==1 && g1==1); /* ERROR */
   }
   __VERIFIER_atomic_release();
 

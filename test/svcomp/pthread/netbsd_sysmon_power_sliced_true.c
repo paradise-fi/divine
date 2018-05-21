@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big inf */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern int __VERIFIER_nondet_int(void);
 extern void __VERIFIER_assume(int);
@@ -59,7 +59,7 @@ static inline int sysmon_queue_power_event(){
 static inline int sysmon_get_power_event(){
 	KASSERT(is_locked(MTX));
   assert(1);
-	if (__VERIFIER_nondet_int())	
+	if (__VERIFIER_nondet_int())
 		return 0;
 	return 1; }
 
@@ -85,7 +85,7 @@ static inline int sysmon_power_daemon_task(){
 	sysmon_queue_power_event();
 	if (__VERIFIER_nondet_int()) {
 		mutex_exit(MTX);
-		goto out;} 
+		goto out;}
 	else {
 		cv_broadcast(COND);
 		mutex_exit(MTX);}

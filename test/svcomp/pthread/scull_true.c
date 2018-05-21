@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
@@ -11,7 +11,7 @@ extern int __VERIFIER_nondet_int();
 
 #define inode int // the lock
 #define file int
-#define scull_dev int 
+#define scull_dev int
 #define scull_qset_type int
 #define loff_t int
 #define ssize_t int
@@ -21,7 +21,7 @@ extern int __VERIFIER_nondet_int();
 #define char int
 #define void_ptr int
 
-#define tid1 1 
+#define tid1 1
 #define tid2 2
 
 #define FILE_WITH_LOCK_UNLOCKED 0
@@ -121,7 +121,7 @@ static inline int __get_user(int size, void_ptr ptr)
 static inline int __put_user(int size, void_ptr ptr)
 {
     return __VERIFIER_nondet_int();
-} 
+}
 
 
 /* =====================================================
@@ -149,8 +149,8 @@ int scull_qset = SCULL_QSET;
 int dev_data;
 int dev_quantum;
 int dev_qset;
-unsigned_long dev_size; 
-int __X__; //variable to test mutual exclusion 
+unsigned_long dev_size;
+int __X__; //variable to test mutual exclusion
 
 /*
  * Empty out the scull device; must be called with the device
@@ -172,7 +172,7 @@ int scull_trim(scull_dev dev)
  * Open and close
  */
 
-static inline int scull_open(int tid, inode i, file filp) 
+static inline int scull_open(int tid, inode i, file filp)
 {
   scull_dev dev;
 
@@ -202,8 +202,8 @@ static inline scull_qset_type scull_follow(scull_dev dev, int n) {
  * Data management: read and write
  */
 
-static inline ssize_t scull_read(int tid, file filp, char buf, size_t count, 
-			  loff_t f_pos) 
+static inline ssize_t scull_read(int tid, file filp, char buf, size_t count,
+			  loff_t f_pos)
 {
   scull_dev dev = filp;
   scull_qset_type dptr; /* the first listitem */
@@ -217,23 +217,23 @@ static inline ssize_t scull_read(int tid, file filp, char buf, size_t count,
 
   __X__ = 0;          /* check mutual exclusion */
 
-  if (f_pos >= dev_size) 
+  if (f_pos >= dev_size)
     goto out;
   if (f_pos+count >= dev_size)
     count = dev_size - f_pos;
 
   /* find listitem, qset index, and offset in the quantum */
-  item = f_pos / itemsize; 
-  rest = f_pos; 
+  item = f_pos / itemsize;
+  rest = f_pos;
    s_pos = rest / quantum; q_pos = rest;
 
    /* follow the list up to the right position (defined elsewhere) */
    dptr = scull_follow(dev, item);
 
-   /* read only up to the end of this quantum */ 
-   if (count > quantum - q_pos) 
-     count = quantum - q_pos; 
-  
+   /* read only up to the end of this quantum */
+   if (count > quantum - q_pos)
+     count = quantum - q_pos;
+
   if (copy_to_user(buf, dev_data + s_pos + q_pos, count)) {
     retval = -EFAULT;
     goto out;
@@ -248,8 +248,8 @@ static inline ssize_t scull_read(int tid, file filp, char buf, size_t count,
   return retval;
 }
 
-static inline ssize_t scull_write(int tid, file filp, char buf, size_t count, 
-			   loff_t f_pos) 
+static inline ssize_t scull_write(int tid, file filp, char buf, size_t count,
+			   loff_t f_pos)
 {
   scull_dev dev = filp;
   scull_qset_type dptr;
@@ -260,7 +260,7 @@ static inline ssize_t scull_write(int tid, file filp, char buf, size_t count,
 
   if (down_interruptible())
     return -ERESTARTSYS;
-  
+
   /* find listitem, qset index and offset in the quantum */
   item = f_pos / itemsize;
   rest = f_pos;
@@ -305,14 +305,14 @@ static inline int scull_ioctl(inode i, file filp,
 
 	int err = 0, tmp;
 	int retval = 0;
-    
+
 	switch(cmd) {
 
 	  case SCULL_IOCRESET:
 		scull_quantum = SCULL_QUANTUM;
 		scull_qset = SCULL_QSET;
 		break;
-        
+
 	  case SCULL_IOCSQUANTUM: /* Set: arg points to the value */
 		retval = __get_user(scull_quantum, arg);
 		break;
@@ -339,7 +339,7 @@ static inline int scull_ioctl(inode i, file filp,
 		tmp = scull_quantum;
 		scull_quantum = arg;
 		return tmp;
-        
+
 	  case SCULL_IOCSQSET:
 		retval = __get_user(scull_qset, arg);
 		break;
@@ -415,14 +415,14 @@ static inline loff_t scull_llseek(file filp, loff_t off, int whence, loff_t f_po
  * Thefore, it must be careful to work correctly even if some of the items
  * have not been initialized
  */
-static inline void scull_cleanup_module(void) 
+static inline void scull_cleanup_module(void)
 {
   scull_dev dev=__VERIFIER_nondet_int();
   scull_trim(dev);
 
 }
 
-static inline int scull_init_module() 
+static inline int scull_init_module()
 {
   int result = 0;
   return 0;

@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 // Source: Azadeh Farzan, Zachary Kincaid, Andreas Podelski: "Inductive Data
 // Flow Graphs", POPL 2013

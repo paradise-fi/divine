@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern void __VERIFIER_assume(int);
 extern int __VERIFIER_nondet_int(void);
@@ -98,7 +98,7 @@ void* thr1(void* arg){
     case 1: queue_req(); break;
     case 2: process_req(); break;
     case 3: rdma_resolve_ip(); break;
-    case 4: rdma_addr_cancel(); break; 
+    case 4: rdma_addr_cancel(); break;
   }
 
   return 0;

@@ -1,4 +1,4 @@
-/* TAGS: c sym threads todo */
+/* TAGS: c sym threads big */
 /* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 extern void __VERIFIER_assume(int);
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
@@ -34,7 +34,7 @@ static inline void findMax(int offset)
 
 	for(i = offset; i < offset+WORKPERTHREAD; i++) {
 		e = storage[i];
-		
+
 		__VERIFIER_atomic_acquire();
 		{
 			if(e > max) {
