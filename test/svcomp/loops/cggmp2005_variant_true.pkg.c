@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 // Source: A. Costan, S. Gaubert, E. Goubault, M. Martel, S. Putot: "A Policy
 // Iteration Algorithm for Computing Fixed Points in Static Analysis of
 // Programs", CAV 2005

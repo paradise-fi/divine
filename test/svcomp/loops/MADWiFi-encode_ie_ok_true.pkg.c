@@ -1,5 +1,6 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic */
+/* CC_OPTS: */
 
 // V: small.10 CC_OPT: -DNUM=10
 // V: small.100 CC_OPT: -DNUM=100

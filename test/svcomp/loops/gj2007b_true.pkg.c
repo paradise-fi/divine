@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic -sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 // Source: Sumit Gulwani, Nebosja Jojic: "Program Verification as
 // Probabilistic Inference", POPL 2007.
 extern void __VERIFIER_error(void);

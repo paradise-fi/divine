@@ -1,5 +1,7 @@
 /* TAGS: c sym todo */
 /* VERIFY_OPTS: --symbolic */
+/* CC_OPTS: */
+
 // Source: Dirk Beyer, Thomas A. Henzinger, Rupak Majumdar, Andrey
 // Rybalchenko: "Path Invariants", PLDI 2007.
 extern void __VERIFIER_error(void);

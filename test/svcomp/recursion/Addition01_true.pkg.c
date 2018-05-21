@@ -1,5 +1,7 @@
 /* VERIFY_OPTS: --symbolic --sequential */
 /* TAGS: sym c */
+/* CC_OPTS: */
+
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 /*

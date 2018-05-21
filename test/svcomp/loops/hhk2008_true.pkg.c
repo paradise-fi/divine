@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 // Source: Thomas A. Henzinger, Thibaud Hottelier, Laura Kovacs: "Valigator:
 // A verification Tool with Bound and Invariant Generation", LPAR 2008
 extern void __VERIFIER_error(void);

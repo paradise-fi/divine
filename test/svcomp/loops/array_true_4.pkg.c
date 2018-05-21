@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 extern void __VERIFIER_assert(int);
 extern int __VERIFIER_nondet_int(void);

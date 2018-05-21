@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 // Source: Credited to Anubhav Gupta
 // appears in Ranjit Jhala, Ken McMillan: "A Practical and Complete Approach
 // to Predicate Refinement", TACAS 2006

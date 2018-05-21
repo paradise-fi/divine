@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 // from FreePastry source, file Id.java
   /**
    * Constructor, which takes the output of a toStringFull() and converts it back
