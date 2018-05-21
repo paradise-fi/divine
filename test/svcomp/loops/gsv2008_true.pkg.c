@@ -1,5 +1,7 @@
 /* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* CC_OPTS: */
+
 // Source: Sumit Gulwani, Saurabh Srivastava, Ramarathnam Venkatesan: "Program
 // Analysis as Constraint Solving", PLDI 2008.
 extern void __VERIFIER_error(void);
