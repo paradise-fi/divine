@@ -874,7 +874,13 @@ void stash_return_value( CallInst *call, DomainsHolder &domains ) {
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return; // skip internal lart functions
 
-    auto ret = dyn_cast< ReturnInst >( fn->back().getTerminator() );
+    auto rets = query::query( *fn ).flatten()
+        .map( query::refToPtr )
+        .filter( query::llvmdyncast< ReturnInst > )
+        .freeze();
+
+    ASSERT( rets.size() == 1 && "No single return instruction found." );
+    auto ret = cast< ReturnInst >( rets[ 0 ] );
     auto val = ret->getReturnValue();
 
     IRBuilder<> irb( ret );

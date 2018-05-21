@@ -102,8 +102,13 @@ void Stash::ret_stash( CallInst *call ) {
     if ( retty->isVoidTy() || retty->isPointerTy() )
         return; // no return value to stash
 
-    auto ret = dyn_cast< ReturnInst >( fn->back().getTerminator() );
-    ASSERT( ret && "Return instruction not found in the last basic block." );
+    auto rets = query::query( *fn ).flatten()
+        .map( query::refToPtr )
+        .filter( query::llvmdyncast< ReturnInst > )
+        .freeze();
+
+    ASSERT( rets.size() == 1 && "No single return instruction found." );
+    auto ret = cast< ReturnInst >( rets[ 0 ] );
 
     auto val = ret->getReturnValue();
     auto dom = MDValue( call ).domain();
