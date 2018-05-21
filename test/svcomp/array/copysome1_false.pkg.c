@@ -39,10 +39,9 @@ int main( ) {
   }
 
   int x;
-  z = 150001;
   for ( x = 0 ; x < SIZE ; x++ ) {
       if (x != z)
-    __VERIFIER_assert(  a1[x] == a2[x]  );
+    __VERIFIER_assert(  a1[x] == a2[x]  ); /* ERROR */
   }
   return 0;
 }

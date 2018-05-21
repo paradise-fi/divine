@@ -47,7 +47,7 @@ int main( ) {
 
   int x;
   for ( x = 0 ; x < SIZE ; x++ ) {
-    __VERIFIER_assert(  a2[x] == a3[x]  );
+    __VERIFIER_assert(  a2[x] == a3[x]  ); /* ERROR */
   }
   return 0;
 }

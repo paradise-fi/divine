@@ -42,13 +42,13 @@ int main()
 		}
 	}
 
-	a[15000] = 1;
+	a[SIZE/2] = 1;
 
 	for (i = 0; i < SIZE; i++)
 	{
-		if(i==15000)
+		if(i==SIZE/2)
 		{
-			__VERIFIER_assert(a[i] != 1);
+			__VERIFIER_assert(a[i] != 1); /* ERROR */
 		}
 	}
 	return 0;

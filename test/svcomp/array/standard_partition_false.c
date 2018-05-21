@@ -1,7 +1,7 @@
 /* TAGS: c todo */
 /* VERIFY_OPTS: --sequential -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
-void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: __VERIFIER_error(); } }
+void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: __VERIFIER_error(); /* ERROR */ } }
 
 #define N 100000
 
