@@ -1,5 +1,5 @@
 /* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 // Source: Azadeh Farzan, Zachary Kincaid, Andreas Podelski: "Proofs That
 // Count", POPL 2014
 

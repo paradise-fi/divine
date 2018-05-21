@@ -1,5 +1,5 @@
 /* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>

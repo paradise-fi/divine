@@ -1,5 +1,5 @@
 /* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --svcomp -o nofail:malloc */
 // Source: Alejandro Sanchez, Sriram Sankaranarayanan, Cesar Sanchez, Bor-Yuh
 // Evan Chang: "Invariant Generation for Paramterized Systems using
 // Self-Reflection", SAS 2012
