@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:arithmetic */
 extern void __VERIFIER_assume(int);
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
@@ -6,7 +6,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 extern unsigned int __VERIFIER_nondet_uint(void);
 void __VERIFIER_assert(int cond) {
   if (!(cond)) {
-    ERROR: __VERIFIER_error();
+    ERROR: __VERIFIER_error(); /* ERROR */
   }
   return;
 }
