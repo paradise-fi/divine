@@ -243,22 +243,12 @@ struct Buffer : Array< BufferLine >
         pop_back();
     }
 
+    template< typename Drop >
     _WM_INLINE
-    void evict( char *const ptr ) noexcept {
-        const auto id = baseptr( ptr );
-        evict( [id]( BufferLine &l ) noexcept { return baseptr( l.addr ) != id; } );
-    }
-
-    _WM_INLINE
-    void evict( char *from, char *to ) noexcept {
-        evict( [from, to]( BufferLine &l ) noexcept {
-                return !( l.addr >= from && l.addr + l.size <= to );
-            } );
-    }
-
-    template< typename Filter >
-    _WM_INLINE
-    void evict( Filter filter ) noexcept {
+    void evict( bool flushed_only, Drop drop ) noexcept {
+        auto filter = [=]( BufferLine &l ) {
+            return !(drop( l ) && (!flushed_only || l.status == Status::Committed));
+        };
         int cnt = std::count_if( begin(), end(), filter );
         if ( cnt == 0 )
             clear();
@@ -572,6 +562,12 @@ struct Buffers : ThreadMap< Buffer > {
         assert( last );
         flush_buf( *last, last_flushed_idx_of_last );
     }
+
+    template< typename... Args >
+    void evict( Buffer *local, Args... args ) {
+        for ( auto &p : *this )
+            p.second.evict( &p.second != local, args... );
+    }
 };
 
 // avoid global ctors/dtors for Buffers
@@ -753,14 +749,16 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept
     va_start( ptrs, cnt );
 
     Buffer *buf = storeBuffers.b.getIfExists();
-    if ( !buf )
-        return;
 
     for ( int i = 0; i < cnt; ++i ) {
         char *ptr = va_arg( ptrs, char * );
         if ( !ptr )
             continue;
-        buf->evict( ptr );
+
+        const auto id = baseptr( ptr );
+        storeBuffers.b.evict( buf, [id]( BufferLine &l ) noexcept {
+                            return baseptr( l.addr ) == id;
+                        } );
     }
     va_end( ptrs );
 }
@@ -775,10 +773,10 @@ void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
         return;
 
     Buffer *buf = storeBuffers.b.getIfExists();
-    if ( !buf )
-        return;
-    auto base = baseptr( ptr );
-    buf->evict( base + newsize, base + orig );
+    auto from = baseptr( ptr ) + newsize;
+    storeBuffers.b.evict( buf, [from]( BufferLine &l ) noexcept {
+                        return l.addr >= from;
+                    } );
 }
 
 } // namespace __lart::weakmem
