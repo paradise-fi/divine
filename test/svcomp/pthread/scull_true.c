@@ -91,34 +91,34 @@ pthread_mutex_t lock;
 /* =====================================================
    Model for the Linux kernel API
    ===================================================== */
-inline int down_interruptible() {
+static inline int down_interruptible() {
   pthread_mutex_lock(&lock);
   return 0; // lock is held
 }
 
-inline void up() {
+static inline void up() {
   pthread_mutex_unlock(&lock);
   return;
 }
 
 #define container_of(dev) dev
 
-inline unsigned_long copy_to_user(char to, char from, unsigned_long n) {
+static inline unsigned_long copy_to_user(char to, char from, unsigned_long n) {
   to = from;
   return __VERIFIER_nondet_int();
 }
 
-inline unsigned_long copy_from_user(char to, char from, unsigned_long n) {
+static inline unsigned_long copy_from_user(char to, char from, unsigned_long n) {
   to = from;
   return __VERIFIER_nondet_int();
 }
 
-inline int __get_user(int size, void_ptr ptr)
+static inline int __get_user(int size, void_ptr ptr)
 {
   return __VERIFIER_nondet_int();
 }
 
-inline int __put_user(int size, void_ptr ptr)
+static inline int __put_user(int size, void_ptr ptr)
 {
     return __VERIFIER_nondet_int();
 } 
@@ -172,7 +172,7 @@ int scull_trim(scull_dev dev)
  * Open and close
  */
 
-inline int scull_open(int tid, inode i, file filp) 
+static inline int scull_open(int tid, inode i, file filp) 
 {
   scull_dev dev;
 
@@ -194,7 +194,7 @@ inline int scull_open(int tid, inode i, file filp)
 /*
  * Follow the list
  */
-inline scull_qset_type scull_follow(scull_dev dev, int n) {
+static inline scull_qset_type scull_follow(scull_dev dev, int n) {
   return __VERIFIER_nondet_int();
 }
 
@@ -202,7 +202,7 @@ inline scull_qset_type scull_follow(scull_dev dev, int n) {
  * Data management: read and write
  */
 
-inline ssize_t scull_read(int tid, file filp, char buf, size_t count, 
+static inline ssize_t scull_read(int tid, file filp, char buf, size_t count, 
 			  loff_t f_pos) 
 {
   scull_dev dev = filp;
@@ -248,7 +248,7 @@ inline ssize_t scull_read(int tid, file filp, char buf, size_t count,
   return retval;
 }
 
-inline ssize_t scull_write(int tid, file filp, char buf, size_t count, 
+static inline ssize_t scull_write(int tid, file filp, char buf, size_t count, 
 			   loff_t f_pos) 
 {
   scull_dev dev = filp;
@@ -299,7 +299,7 @@ inline ssize_t scull_write(int tid, file filp, char buf, size_t count,
  * The ioctl() implementation
  */
 
-inline int scull_ioctl(inode i, file filp,
+static inline int scull_ioctl(inode i, file filp,
                  unsigned_int cmd, unsigned_long arg)
 {
 
@@ -380,7 +380,7 @@ inline int scull_ioctl(inode i, file filp,
  * The "extended" operations -- only seek
  */
 
-inline loff_t scull_llseek(file filp, loff_t off, int whence, loff_t f_pos)
+static inline loff_t scull_llseek(file filp, loff_t off, int whence, loff_t f_pos)
 {
   scull_dev dev = filp;
   loff_t newpos;
@@ -415,14 +415,14 @@ inline loff_t scull_llseek(file filp, loff_t off, int whence, loff_t f_pos)
  * Thefore, it must be careful to work correctly even if some of the items
  * have not been initialized
  */
-inline void scull_cleanup_module(void) 
+static inline void scull_cleanup_module(void) 
 {
   scull_dev dev=__VERIFIER_nondet_int();
   scull_trim(dev);
 
 }
 
-inline int scull_init_module() 
+static inline int scull_init_module() 
 {
   int result = 0;
   return 0;

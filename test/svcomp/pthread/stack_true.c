@@ -33,7 +33,7 @@ int next_alloc_idx = 1;
 int m = 0;
 int top;
 
-inline int index_malloc(){
+static inline int index_malloc(){
 	int curr_alloc_idx = -1;
 
 	__VERIFIER_atomic_acquire(&m);
@@ -49,18 +49,18 @@ inline int index_malloc(){
 	return curr_alloc_idx;
 }
 
-inline void EBStack_init(){
+static inline void EBStack_init(){
 	top = 0;
 }
 
-inline int isEmpty() {
+static inline int isEmpty() {
 	if(top == 0)
 		return 1;
 	else
 		return 0;
 }
 
-inline int push(int d) {
+static inline int push(int d) {
 	int oldTop = -1, newTop = -1;
 
 	newTop = index_malloc();
@@ -78,7 +78,7 @@ inline int push(int d) {
 	}
 }
 
-inline void init(){
+static inline void init(){
 	EBStack_init();
 }
 
@@ -87,7 +87,7 @@ void __VERIFIER_atomic_assert(int r)
 		assert(!r || !isEmpty());
 }
 
-inline void push_loop(){
+static inline void push_loop(){
 	int r = -1;
 	int arg = __VERIFIER_nondet_int();
 	while(1){

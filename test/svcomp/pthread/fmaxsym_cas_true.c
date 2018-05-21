@@ -31,7 +31,7 @@ void __VERIFIER_atomic_CAS(
 	}
 }
 
-inline void findMax(int offset){
+static inline void findMax(int offset){
 	int i;
 	int e;
 	int c; 

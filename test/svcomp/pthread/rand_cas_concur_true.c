@@ -10,7 +10,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 #define assert(e) { if(!(e)) { ERROR: __VERIFIER_error();(void)0; } }
 
-inline int nC(int s2){ 
+static inline int nC(int s2){ 
 	int nC_return;
 	do
 	{
@@ -42,7 +42,7 @@ void __VERIFIER_atomic_CAS(
 
 #define NUM 10
 
-inline int PseudoRandomUsingAtomic_nex()
+static inline int PseudoRandomUsingAtomic_nex()
 {
 	int nex, nexts, casret, nex_return;
 	while(1) {

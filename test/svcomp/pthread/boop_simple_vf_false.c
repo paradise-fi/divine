@@ -26,14 +26,14 @@ void* thr2 (void* arg) //dummy_open
   return 0;
 }
 
-inline void dummy_release ()
+static inline void dummy_release ()
 {
   usecount = usecount - 1;
   locked = 0;
   return;
 }
 
-inline void unregister_chrdev ()
+static inline void unregister_chrdev ()
 {
   if (usecount != 0)
     {

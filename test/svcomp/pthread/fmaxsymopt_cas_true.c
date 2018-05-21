@@ -32,7 +32,7 @@ volatile int max = 0x80000000;
 
 int storage[WORKPERTHREAD*THREADSMAX];
 
-inline void findMax(int offset){
+static inline void findMax(int offset){
 	int i;
 	int e;
 	int my_max = 0x80000000;

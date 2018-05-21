@@ -28,7 +28,7 @@ void __VERIFIER_atomic_release()
 
 volatile int seed; 
 
-inline int PseudoRandomUsingAtomic_nextInt(int n) {
+static inline int PseudoRandomUsingAtomic_nextInt(int n) {
 	int read, nexts, nextInt_return;
 
 	__VERIFIER_atomic_acquire();
@@ -50,18 +50,18 @@ inline int PseudoRandomUsingAtomic_nextInt(int n) {
 	return nextInt_return;
 }
 
-inline void PseudoRandomUsingAtomic_monitor(){
+static inline void PseudoRandomUsingAtomic_monitor(){
 	while(1)
 	{
 		assert(seed != 0);
 	}
 }
 
-inline void PseudoRandomUsingAtomic_constructor(int init){
+static inline void PseudoRandomUsingAtomic_constructor(int init){
 	seed = init;
 }
 
-inline void PseudoRandomUsingAtomic__threadmain(){ 
+static inline void PseudoRandomUsingAtomic__threadmain(){ 
 	int myrand;
 
 	myrand = PseudoRandomUsingAtomic_nextInt(10);

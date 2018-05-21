@@ -44,7 +44,7 @@ void __VERIFIER_atomic_release()
 
 volatile unsigned int refctr = 0;
 
-inline static void put_client(int client){
+static inline static void put_client(int client){
 	mtx_lock(MTX);
 	--refctr;
 	if (refctr == 0) {
@@ -53,7 +53,7 @@ inline static void put_client(int client){
   assert(1);
 }
 
-inline void rdma_addr_unregister_client(int client){
+static inline void rdma_addr_unregister_client(int client){
 	put_client(client);
 	mtx_lock(MTX);
 	if (refctr) {
@@ -62,19 +62,19 @@ inline void rdma_addr_unregister_client(int client){
   assert(1);
 }
 
-inline static void queue_req(/*struct addr_req *req*/){
+static inline static void queue_req(/*struct addr_req *req*/){
 	mtx_lock(MTX);
 	mtx_unlock(MTX);
   assert(1);
 }
 
-inline static void process_req(/*void *ctx, int pending*/){
+static inline static void process_req(/*void *ctx, int pending*/){
 	mtx_lock(MTX);
 	mtx_unlock(MTX);
   assert(1);
 }
 
-inline void rdma_resolve_ip(/*struct rdma_addr_client *client,struct sockaddr *src_addr, struct sockaddr *dst_addr,struct rdma_dev_addr *addr, int timeout_ms,void (*callback)(int status, struct sockaddr *src_addr,struct rdma_dev_addr *addr, void *context),void *context*/){
+static inline void rdma_resolve_ip(/*struct rdma_addr_client *client,struct sockaddr *src_addr, struct sockaddr *dst_addr,struct rdma_dev_addr *addr, int timeout_ms,void (*callback)(int status, struct sockaddr *src_addr,struct rdma_dev_addr *addr, void *context),void *context*/){
 	mtx_lock(MTX);
 	refctr++;
 	mtx_unlock(MTX);
@@ -85,7 +85,7 @@ inline void rdma_resolve_ip(/*struct rdma_addr_client *client,struct sockaddr *s
   assert(1);
 }
 
-inline void rdma_addr_cancel(/*struct rdma_dev_addr *addr*/){
+static inline void rdma_addr_cancel(/*struct rdma_dev_addr *addr*/){
 	mtx_lock(MTX);
 	mtx_unlock(MTX);
   assert(1);

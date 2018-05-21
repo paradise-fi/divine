@@ -28,7 +28,7 @@ void __VERIFIER_atomic_release()
 
 int storage[WORKPERTHREAD*THREADSMAX];
 
-inline void findMax(int offset){
+static inline void findMax(int offset){
 
 	int i;
 	int e;

@@ -38,7 +38,7 @@ void __VERIFIER_atomic_assert1(unsigned inc__v)
 	assert(dec_flag || value > inc__v);
 }
 
-inline unsigned inc() {
+static inline unsigned inc() {
 	unsigned inc__v, inc__vn, inc__casret;
 
 	do {
@@ -64,7 +64,7 @@ void __VERIFIER_atomic_assert2(unsigned dec__v)
   assert(inc_flag || value < dec__v);
 }
 
-inline unsigned dec() {
+static inline unsigned dec() {
 	unsigned dec__v, dec__vn, dec__casret;
 
 	do {

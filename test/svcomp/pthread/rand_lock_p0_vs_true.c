@@ -28,7 +28,7 @@ void __VERIFIER_atomic_release()
 
 #define min(x,y) ((y>=x)?(x):(y))
 
-inline int calculateNext(int s2){ 
+static inline int calculateNext(int s2){ 
 	int cnex;
 	do cnex = __VERIFIER_nondet_int();
 	while(cnex == s2 || cnex == 0);
@@ -39,7 +39,7 @@ int seed = 1;
 
 #define NUM 10
 
-inline int PseudoRandomUsingAtomic_nextInt() {
+static inline int PseudoRandomUsingAtomic_nextInt() {
 	int read, nexts, nextInt_return;
 
 	assert(seed != 0);

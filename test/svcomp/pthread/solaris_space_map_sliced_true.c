@@ -51,17 +51,17 @@ void __VERIFIER_atomic_release()
 _Bool LOADED = 0;
 _Bool LOADING = 0;
 
-inline void space_map_contains(){
+static inline void space_map_contains(){
 	ASSERT(MUTEX_HELD(MTX));
   assert(1);
 }
 
-inline void space_map_walk(){
+static inline void space_map_walk(){
 	ASSERT(MUTEX_HELD(MTX));
   assert(1);
 }
 
-inline void space_map_load_wait(){
+static inline void space_map_load_wait(){
 	ASSERT(MUTEX_HELD(MTX));
 	while (LOADING) {
 		ASSERT(!LOADED);
@@ -71,7 +71,7 @@ inline void space_map_load_wait(){
   assert(1);
 }
 
-inline void space_map_load(){
+static inline void space_map_load(){
 	ASSERT(MUTEX_HELD(MTX));
 	ASSERT(!LOADED);
 	ASSERT(!LOADING);
@@ -90,21 +90,21 @@ inline void space_map_load(){
   assert(1);
 }
 
-inline void space_map_unload(){
+static inline void space_map_unload(){
 	ASSERT(MUTEX_HELD(MTX));
 	LOADED = B_FALSE;
 	ASSERT(MUTEX_HELD(MTX));
   assert(1);
 }
 
-inline int space_map_alloc(){
+static inline int space_map_alloc(){
 	if (__VERIFIER_nondet_int())
 		ASSERT(MUTEX_HELD(MTX));
   assert(1);
 	return __VERIFIER_nondet_int();
 }
 
-inline void space_map_sync(){
+static inline void space_map_sync(){
 	ASSERT(MUTEX_HELD(MTX));
 	if (__VERIFIER_nondet_int())
 		return;
@@ -119,7 +119,7 @@ inline void space_map_sync(){
   assert(1);
 }
 
-inline void space_map_ref_generate_map(){
+static inline void space_map_ref_generate_map(){
 	ASSERT(MUTEX_HELD(MTX));
   assert(1);
 }

@@ -26,12 +26,12 @@ void __VERIFIER_atomic_release()
 
 typedef int (*FuncType)(int, int);
 
-inline int f1(int a, int b)
+static inline int f1(int a, int b)
 {
   return a+b+1;
 }
 
-inline int f2(int x, int y)
+static inline int f2(int x, int y)
 {
   return x-y+2;
 }

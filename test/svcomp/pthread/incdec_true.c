@@ -32,7 +32,7 @@ void __VERIFIER_atomic_release()
 volatile unsigned inc_flag = 0;
 volatile unsigned dec_flag = 0;
 
-inline unsigned inc() {
+static inline unsigned inc() {
 	unsigned inc_v = 0;
 
 	__VERIFIER_atomic_acquire();
@@ -50,7 +50,7 @@ inline unsigned inc() {
 	}
 }
 
-inline unsigned dec() {
+static inline unsigned dec() {
 	unsigned dec_v;
 
 	__VERIFIER_atomic_acquire();

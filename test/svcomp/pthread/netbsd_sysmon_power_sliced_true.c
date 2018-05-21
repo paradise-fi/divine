@@ -49,21 +49,21 @@ void __VERIFIER_atomic_release()
 #define KASSERT(e) assert_nl(e)
 #define is_locked(m) (m==LOCKED)
 
-inline int sysmon_queue_power_event(){
+static inline int sysmon_queue_power_event(){
 	KASSERT(is_locked(MTX));
   assert(1);
 	if (__VERIFIER_nondet_int())
 		return 0;
 	return 1; }
 
-inline int sysmon_get_power_event(){
+static inline int sysmon_get_power_event(){
 	KASSERT(is_locked(MTX));
   assert(1);
 	if (__VERIFIER_nondet_int())	
 		return 0;
 	return 1; }
 
-inline int sysmon_power_daemon_task(){
+static inline int sysmon_power_daemon_task(){
 	if (__VERIFIER_nondet_int()) return __VERIFIER_nondet_int();
 	mutex_enter(MTX);
 	switch (__VERIFIER_nondet_int()) {
@@ -93,7 +93,7 @@ inline int sysmon_power_daemon_task(){
   assert(1);
 	return __VERIFIER_nondet_int(); }
 
-inline void sysmonopen_power(){
+static inline void sysmonopen_power(){
 	mutex_enter(MTX);
 	if (__VERIFIER_nondet_int())
 		KASSERT(is_locked(MTX));
@@ -101,14 +101,14 @@ inline void sysmonopen_power(){
   assert(1);
 }
 
-inline void sysmonclose_power(){
+static inline void sysmonclose_power(){
 	mutex_enter(MTX);
 	KASSERT(is_locked(MTX));
 	mutex_exit(MTX);
   assert(1);
 }
 
-inline void sysmonread_power(){
+static inline void sysmonread_power(){
 	if (__VERIFIER_nondet_int()){
 		mutex_enter(MTX);
 		for (;;) {
@@ -122,32 +122,32 @@ inline void sysmonread_power(){
   assert(1);
 }
 
-inline void sysmonpoll_power(){
+static inline void sysmonpoll_power(){
 	if(__VERIFIER_nondet_int()){
 		mutex_enter(MTX);
 		mutex_exit(MTX); }
   assert(1);
 }
 
-inline void filt_sysmon_power_rdetach(){
+static inline void filt_sysmon_power_rdetach(){
 	mutex_enter(MTX);
 	mutex_exit(MTX);
   assert(1);
 }
 
-inline void filt_sysmon_power_read(){
+static inline void filt_sysmon_power_read(){
 	mutex_enter(MTX);
 	mutex_exit(MTX);
   assert(1);
 }
 
-inline void sysmonkqfilter_power(){
+static inline void sysmonkqfilter_power(){
 	mutex_enter(MTX);
 	mutex_exit(MTX);
   assert(1);
 }
 
-inline void sysmonioctl_power(){
+static inline void sysmonioctl_power(){
 	switch (__VERIFIER_nondet_int()) {
 	case POWER_EVENT_RECVDICT:
 		mutex_enter(MTX);

@@ -43,17 +43,17 @@ void __VERIFIER_atomic_release()
 	MTX = 0;
 }
 
-inline static int adb_kbd_receive_packet(){
+static inline static int adb_kbd_receive_packet(){
 	mtx_lock(MTX);
 	mtx_unlock(MTX);
 	cv_broadcast(COND);
 	return 0; }
 	
-inline static void akbd_repeat() {
+static inline static void akbd_repeat() {
 	mtx_lock(MTX);
 	mtx_unlock(MTX); }
 	
-inline static void akbd_read_char(int wait) {
+static inline static void akbd_read_char(int wait) {
 	mtx_lock(MTX);
 	if (!buf && wait){
 		cv_wait(COND,MTX);
@@ -63,7 +63,7 @@ inline static void akbd_read_char(int wait) {
 		return; 	}
 	mtx_unlock(MTX); }
 	
-inline static void akbd_clear_state(){
+static inline static void akbd_clear_state(){
 	mtx_lock(MTX);
 	buf = 0;
 	mtx_unlock(MTX); }

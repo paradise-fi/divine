@@ -12,7 +12,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 #define assume(e) __VERIFIER_assume(e)
 #define assert(e) { if(!(e)) { ERROR: __VERIFIER_error();(void)0; } }
 
-inline int calculateNext(int s2){ 
+static inline int calculateNext(int s2){ 
 	int calculateNext_return;
 	do
 	{
@@ -53,7 +53,7 @@ void __VERIFIER_atomic_CAS(
 	}
 }
 
-inline int PseudoRandomUsingAtomic_nextInt(int n)
+static inline int PseudoRandomUsingAtomic_nextInt(int n)
 {
 	int read, nexts, casret, nextInt_return;
 
@@ -74,7 +74,7 @@ inline int PseudoRandomUsingAtomic_nextInt(int n)
 	return nextInt_return;
 }
 
-inline void PseudoRandomUsingAtomic_monitor()
+static inline void PseudoRandomUsingAtomic_monitor()
 {
 	while(1)
 	{
@@ -82,12 +82,12 @@ inline void PseudoRandomUsingAtomic_monitor()
 	}
 }
 
-inline void PseudoRandomUsingAtomic_constructor(int init)
+static inline void PseudoRandomUsingAtomic_constructor(int init)
 {
 	seed = init;
 }
 
-inline void PseudoRandomUsingAtomic__threadmain()
+static inline void PseudoRandomUsingAtomic__threadmain()
 { 
 	int myrand;
 

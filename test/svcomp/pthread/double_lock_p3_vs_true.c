@@ -26,7 +26,7 @@ void __VERIFIER_atomic_release(int * m)
 
 int mutexa = 0;
 int mutexb = 0;
-inline void my_thread1()
+static inline void my_thread1()
 {
   __VERIFIER_atomic_acquire(&mutexa);
   count++;
