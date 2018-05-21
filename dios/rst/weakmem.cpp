@@ -404,6 +404,9 @@ struct Buffers : ThreadMap< Buffer > {
     {
         b.push_back( std::move( line ) );
 
+        if ( __lart_weakmem_buffer_size() == 0 )
+            return; // not bounded
+
         // there can be fence as oldest entry, so we need while here
         while ( b.storeCount() > __lart_weakmem_buffer_size() ) {
             auto &oldest = b.oldest();
