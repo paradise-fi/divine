@@ -1327,8 +1327,10 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
             {
                 if ( !v.get( 2 ).defined() || !v.get( 2 ).cooked() )
                 {
-                    result( decltype( v.get() )( 0 ) );
-                    this->fault( _VM_F_Arithmetic ) << "division by zero or an undefined number";
+                    auto rv = v.get( 2 );
+                    rv.taints( rv.taints() | v.get( 1 ).taints() );
+                    result( rv );
+                    this->fault( _VM_F_Arithmetic ) << "division by " << v.get( 2 );
                 } else
                     this->result( impl( v.get( 1 ), v.get( 2 ) ) );
             } );
