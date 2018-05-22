@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <endian.h>
 
 void
 setservent_r(int f, struct servent_data *sd)
