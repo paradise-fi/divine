@@ -34,6 +34,12 @@ __BEGIN_DECLS
       the signal handler returns (optional for SIGILL)
 */
 
+#define _NSIG _HOST__NSIG
+
+#if __BSD_VISIBLE
+#define NSIG _NSIG
+#endif
+
 /* These are the values used by Linux. */
 
 /* Abnormal termination / abort() */

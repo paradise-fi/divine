@@ -158,6 +158,8 @@ fmt( "SIGUSR2" );
 fmt( "SIG_BLOCK" );
 fmt( "SIG_UNBLOCK" );
 fmt( "SIG_SETMASK" );
+fmt( "_NSIG" );
+
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );
 
