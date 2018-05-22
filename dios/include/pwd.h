@@ -42,6 +42,7 @@
 #define	_PWD_H_
 
 #include <sys/types.h>
+#include <sys/cdefs.h>
 #include <time.h>
 
 #if __BSD_VISIBLE
