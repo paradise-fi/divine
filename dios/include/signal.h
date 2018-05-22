@@ -80,6 +80,15 @@ __BEGIN_DECLS
 #define SIGUSR1 _HOST_SIGUSR1
 #define SIGUSR2 _HOST_SIGUSR2
 
+#if __POSIX_VISIBLE || __XPG_VISIBLE
+/*
+ * Flags for sigprocmask:
+ */
+#define SIG_BLOCK   _HOST_SIG_BLOCK /* block specified signal set */
+#define SIG_UNBLOCK _HOST_SIG_UNBLOCK /* unblock specified signal set */
+#define SIG_SETMASK _HOST_SIG_SETMASK /* set specified signal set */
+#endif /* __POSIX_VISIBLE || __XPG_VISIBLE */
+
 /* The following should be defined to pointer values that could NEVER point to
    a valid signal handler function. (They are used as special arguments to
    signal().) Again, these are the values used by Linux.
