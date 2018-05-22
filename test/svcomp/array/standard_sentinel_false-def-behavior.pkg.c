@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 /* CC_OPTS: */
 
@@ -13,6 +13,10 @@ extern int __VERIFIER_nondet_int();
 
 int main ( ) {
   int a[SIZE];
+
+  for ( int i = 0; i < SIZE; ++i )
+      a[i] = __VERIFIER_nondet_int();
+
   int marker = __VERIFIER_nondet_int();
   int pos = __VERIFIER_nondet_int();
   if ( pos >= 0 && pos < SIZE ) {

@@ -1,5 +1,5 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:control */
 /* CC_OPTS: */
 
 // V: v.10 CC_OPT: -DSIZE=10

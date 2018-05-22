@@ -1,10 +1,10 @@
-/* TAGS: c sym todo */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* TAGS: c sym */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:control */
 /* CC_OPTS: */
 
 // V: v.10 CC_OPT: -DSIZE=10
-// V: v.100 CC_OPT: -DSIZE=100
-// V: v.1000 CC_OPT: -DSIZE=1000
+// V: v.100 CC_OPT: -DSIZE=100 TAGS: ext
+// V: v.1000 CC_OPT: -DSIZE=1000 TAGS: big
 // V: v.10000 CC_OPT: -DSIZE=10000 TAGS: big
 // V: v.100000 CC_OPT: -DSIZE=100000 TAGS: big
 
