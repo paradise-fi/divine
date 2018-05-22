@@ -2,11 +2,11 @@
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 /* CC_OPTS: */
 
-// V: small.10 CC_OPT: -DSIZE=10
-// V: small.100 CC_OPT: -DSIZE=100
-// V: small.1000 CC_OPT: -DSIZE=1000
-// V: big.10000 CC_OPT: -DSIZE=10000 TAGS: big
-// V: big.100000 CC_OPT: -DSIZE=100000 TAGS: big
+// V: v.10 CC_OPT: -DSIZE=10
+// V: v.100 CC_OPT: -DSIZE=100 TAGS: ext
+// V: v.1000 CC_OPT: -DSIZE=1000 TAGS: big
+// V: v.10000 CC_OPT: -DSIZE=10000 TAGS: big
+// V: v.100000 CC_OPT: -DSIZE=100000 TAGS: big
 
 typedef unsigned int size_t;
 extern void *malloc (size_t __size) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) ;
