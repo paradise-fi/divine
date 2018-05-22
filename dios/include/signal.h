@@ -75,6 +75,10 @@ __BEGIN_DECLS
 #define SIGALRM _HOST_SIGALRM
 /* Signal hang up */
 #define SIGHUP _HOST_SIGHUP
+#define SIGTSTP _HOST_SIGTSTP
+
+#define SIGUSR1 _HOST_SIGUSR1
+#define SIGUSR2 _HOST_SIGUSR2
 
 /* The following should be defined to pointer values that could NEVER point to
    a valid signal handler function. (They are used as special arguments to

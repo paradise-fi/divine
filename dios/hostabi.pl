@@ -151,6 +151,9 @@ fmt( "SIGKILL" );
 fmt( "SIGSTOP" );
 fmt( "SIGALRM" );
 fmt( "SIGHUP" );
+fmt( "SIGTSTP" );
+fmt( "SIGUSR1" );
+fmt( "SIGUSR2" );
 
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );
