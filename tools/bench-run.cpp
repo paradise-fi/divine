@@ -187,7 +187,7 @@ void Run::run()
 
         q.str( "" );
         q << "update execution set correct = ?";
-        q << ( status ? ", status = ?" : "" ) << " where id = ?";
+        q << ( status ? ", result = ?" : "" ) << " where id = ?";
         nanodbc::statement update( _conn, q.str() );
         update.bind( 0, &correct );
         if ( status )
