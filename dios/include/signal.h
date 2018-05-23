@@ -165,7 +165,12 @@ int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact
 int rt_sigaction( int signum, const struct sigaction *act, struct sigaction *oldact,
                   size_t sigsetsize ) __nothrow;
 
-int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+int sigprocmask( int how, const sigset_t *set, sigset_t *oldset );
+int sigemptyset( sigset_t * );
+int sigfillset( sigset_t * );
+int sigaddset( sigset_t *, int );
+int sigdelset( sigset_t *, int );
+int sigismember( const sigset_t *, int );
 
 __END_DECLS
 

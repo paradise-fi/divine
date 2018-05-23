@@ -126,11 +126,6 @@ int raise( int sig )
     }
 }
 
-void sigemptyset( sigset_t * sig )
-{
-    *sig = 0;
-}
-
 typedef void ( *SignalHandler )( int );
 
 SignalHandler signal( int sig, SignalHandler handler )
