@@ -14,7 +14,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
 // V: small.10 CC_OPT: -DNUM=10
 // V: small.100 CC_OPT: -DNUM=100
-// V: small.1000 CC_OPT: -DNUM=1000 TAGS: ext
+// V: small.1000 CC_OPT: -DNUM=1000 TAGS: big
 // V: big.1073741823 CC_OPT: -DNUM=1073741823 TAGS: big
 
 extern int __VERIFIER_nondet_int(void);

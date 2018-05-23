@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:control */
 /* CC_OPTS: */
 
@@ -8,7 +8,7 @@
 // V: v.10000 CC_OPT: -DSIZE=10000 TAGS: big
 // V: v.100000 CC_OPT: -DSIZE=100000 TAGS: big
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
-void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: __VERIFIER_error(); /* ERROR */ } }
+void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: __VERIFIER_error(); } }
 extern int __VERIFIER_nondet_int(void);
 
 /*
@@ -35,7 +35,7 @@ int main()
     //printf("Even numbers in the array are - ");
     for (i = 0; i < num; i++) // use of uninitialized num
     {
-        if (array[i] % 2 == 0)
+        if (array[i] % 2 == 0) /* ERROR */
         {
             printEven( array[i] );
         }

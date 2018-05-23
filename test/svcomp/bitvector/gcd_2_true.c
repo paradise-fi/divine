@@ -1,4 +1,4 @@
-/* VERIFY_OPTS: --symbolic --sequential */
+/* VERIFY_OPTS: --symbolic --sequential -o ignore:arithmetic */
 /* TAGS: sym c big */
 
 extern void __VERIFIER_assert(int);

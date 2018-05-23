@@ -13,7 +13,7 @@ extern void __VERIFIER_error() __attribute__ ((__noreturn__));
  *
  */
 
-// V: small.5 CC_OPT: -DNUM=5
+// V: small.5 CC_OPT: -DNUM=5 TAGS: big
 // V: big.100 CC_OPT: -DNUM=100 TAGS: big
 // V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
 // V: big.46340 CC_OPT: -DNUM=46340 TAGS: big

@@ -1,5 +1,5 @@
 /* TAGS: c sym */
-/* VERIFY_OPTS: --symbolic -sequential -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 /* CC_OPTS: */
 
 // Source: Sumit Gulwani, Nebosja Jojic: "Program Verification as

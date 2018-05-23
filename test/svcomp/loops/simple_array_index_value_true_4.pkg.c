@@ -1,5 +1,5 @@
 /* TAGS: c sym */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:control */
 /* CC_OPTS: */
 
 /* Benchmark used to verify Chimdyalwar, Bharti, et al. "VeriAbs: Verification by abstraction (competition contribution)."
