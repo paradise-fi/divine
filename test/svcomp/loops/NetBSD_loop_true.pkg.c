@@ -4,7 +4,7 @@
 
 // V: small.10 CC_OPT: -DNUM=10
 // V: small.100 CC_OPT: -DNUM=100
-// V: big.1000 CC_OPT: -DNUM=1000 TAGS: ext
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
 // V: big.10000 CC_OPT: -DNUM=10000 TAGS: big
 // V: big CC_OPT: -DNUM=2147483647 TAGS: big
 

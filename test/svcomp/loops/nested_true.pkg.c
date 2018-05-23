@@ -13,7 +13,7 @@ void __VERIFIER_assert(int cond) {
 extern int __VERIFIER_nondet_int(void);
 
 // V: small.10 CC_OPT: -DNUM=11
-// V: big.100 CC_OPT: -DNUM=101 TAGS: ext
+// V: big.100 CC_OPT: -DNUM=101 TAGS: big
 // V: big.1000 CC_OPT: -DNUM=1001 TAGS: big
 // V: big.10000 CC_OPT: -DNUM=10001 TAGS: big
 // V: big.100000 CC_OPT: -DNUM=100001 TAGS: big

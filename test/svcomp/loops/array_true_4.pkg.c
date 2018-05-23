@@ -7,7 +7,7 @@ extern void __VERIFIER_assert(int);
 extern int __VERIFIER_nondet_int(void);
 
 // V: small.100 CC_OPT: -DNUM=100
-// V: big.1000 CC_OPT: -DNUM=1000 TAGS: ext
+// V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
 
 int main(void) {
   int A[NUM];
