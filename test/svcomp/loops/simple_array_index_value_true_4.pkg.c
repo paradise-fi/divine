@@ -6,7 +6,7 @@
 International Conference on Tools and Algorithms for the Construction and Analysis of Systems. Springer, Berlin, Heidelberg, 2017.*/
 
 // V: small.10 CC_OPT: -DSIZE=10
-// V: small.100 CC_OPT: -DSIZE=100
+// V: small.100 CC_OPT: -DSIZE=100 TAGS: big
 // V: big.1000 CC_OPT: -DSIZE=1000 TAGS: big
 // V: big.10000 CC_OPT: -DSIZE=10000 TAGS: big
 // V: big.100000 CC_OPT: -DSIZE=100000 TAGS: big
