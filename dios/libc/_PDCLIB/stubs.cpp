@@ -68,6 +68,7 @@ int	ioctl(int, unsigned long, ...) NOT_IMPLEMENTED;
 struct group *getgrnam(const char *name) NOT_IMPLEMENTED;
 struct group *getgrgid(gid_t gid) NOT_IMPLEMENTED;
 struct passwd* getpwuid(uid_t) NOT_IMPLEMENTED;
+int fchown( int fildes, uid_t owner, gid_t group ) NOT_IMPLEMENTED;
 
 void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_F_NotImplemented, "utime" ); };
 int issetugid( void ) NOT_IMPLEMENTED;
