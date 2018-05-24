@@ -278,7 +278,6 @@ int _PDCLIB_ftrylockfile(struct _PDCLIB_file *file) _PDCLIB_nothrow;
 void _PDCLIB_funlockfile(struct _PDCLIB_file *file) _PDCLIB_nothrow;
 
 int _PDCLIB_getchar_unlocked(void) _PDCLIB_nothrow;
-void _PDCLIB_clearerr_unlocked(struct _PDCLIB_file *stream) _PDCLIB_nothrow;
 int _PDCLIB_fgetpos_unlocked( struct _PDCLIB_file * _PDCLIB_restrict stream, _PDCLIB_fpos_t * _PDCLIB_restrict pos ) _PDCLIB_nothrow;
 int _PDCLIB_fsetpos_unlocked( struct _PDCLIB_file * stream, const _PDCLIB_fpos_t * pos ) _PDCLIB_nothrow;
 long int _PDCLIB_ftell_unlocked( struct _PDCLIB_file * stream ) _PDCLIB_nothrow;

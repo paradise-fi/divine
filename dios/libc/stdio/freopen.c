@@ -41,7 +41,7 @@ FILE * freopen(
        It does not matter with the current implementation of clearerr(),
        but it might start to matter if someone replaced that implementation.
     */
-    _PDCLIB_clearerr_unlocked( stream );
+    clearerr_unlocked( stream );
     /* The new filename might not fit the old buffer */
     if ( filename == NULL )
     {
