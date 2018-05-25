@@ -581,6 +581,27 @@ struct CompoundShadow
         ASSERT_EQ( i2.taints(), 0x00 );
     }
 
+    TEST( taint_everywhere )
+    {
+        vm::value::Int< 32 > i1( 42, 0xFFFFFFFF, false );
+        vm::value::Int< 8 > i2;
+        i1.taints( 0x1 );
+
+        heap.write( obj, 0, i1 );
+        heap.copy( obj, 0, obj, 6, 4 );
+
+        for ( unsigned i = 0; i < 4; ++i )
+        {
+            i2.taints( 0x0 );
+            heap.read( obj, i, i2 );
+            ASSERT_EQ( i2.taints(), 0x1 );
+
+            i2.taints( 0x0 );
+            heap.read( obj, 6 + i, i2 );
+            ASSERT_EQ( i2.taints(), 0x1 );
+        }
+    }
+
 #if 0
     TEST( copy_aligned_ptr )
     {
