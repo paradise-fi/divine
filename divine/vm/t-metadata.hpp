@@ -159,6 +159,7 @@ struct TestHeap : Next
     using Next::_objects;
 
     auto pointers( Ptr p, int sz ) { return Next::pointers( loc( p, 0 ), sz ); }
+    auto pointers( Ptr p, int from, int sz ) { return Next::pointers( loc( p, from ), sz ); }
     Loc loc( Ptr p, int off ) { return Loc( p, 0, off ); }
 
     Ptr make( int sz )
@@ -319,7 +320,7 @@ struct CompoundShadow
         PointerV p1( vm::HeapPointer( 10, 0 ) );
         heap.write( obj, 16, p1 );
         heap.write( obj, 64, p1 );
-        heap.write( obj, 92, p1 );
+        heap.write( obj, 80, p1 );
         int count = 0;
         for ( auto x : heap.pointers( obj, 100 ) )
         {
@@ -330,6 +331,22 @@ struct CompoundShadow
             ASSERT( p.pointer() );
         }
         ASSERT_EQ( count, 3 );
+    }
+
+    TEST( pointers_fragment )
+    {
+        PointerV p1( vm::HeapPointer( 10, 0 ) );
+        heap.write( obj, 0, p1 );
+        heap.copy( obj, 0, obj, 11, 8 );
+        int count = 0;
+        for ( auto x : heap.pointers( obj, 100 ) )
+        {
+            if ( x.size() != 1 )
+                continue;
+            ++count;
+            ASSERT_EQ( x.fragment(), 10 );
+        }
+        ASSERT_EQ( count, 4 );
     }
 
     TEST( read_partially_initialized )
