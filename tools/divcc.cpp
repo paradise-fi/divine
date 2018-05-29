@@ -39,6 +39,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-fs>
 #include <brick-llvm>
+#include <brick-string>
 #include <iostream>
 #include <sys/wait.h>
 
@@ -241,7 +242,12 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 
     for( auto& func : *m )
         if( func.isDeclaration() && vm::xg::hypercall( &func ) == vm::lx::NotHypercall )
-            throw cc::CompileError( "Symbol undefined: " + func.getName().str() );
+            throw cc::CompileError( "Symbol undefined (function): " + func.getName().str() );
+
+    for ( auto& val : m->globals() )
+        if( auto G = dyn_cast< llvm::GlobalVariable >( &val ) )
+            if( !G->hasInitializer() && !brick::string::startsWith( val.getName(), "__md_" ) )
+                throw cc::CompileError( "Symbol undefined (global variable): " + val.getName().str() );
 
     verifyModule( *m );
     return compil->takeModule();
