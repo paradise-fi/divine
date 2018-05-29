@@ -31,14 +31,13 @@ typedef _PDCLIB_wchar_t wchar_t;
 
 #endif
 
-#ifndef _PDCLIB_MB_CUR_MAX_DEFINED
-#define _PDCLIB_MB_CUR_MAX_DEFINED
-#define MB_CUR_MAX (_PDCLIB_mb_cur_max())
-#endif
-
 #if __BSD_VISIBLE
 void *reallocarray( void *optr, size_t nmemb, size_t size );
 #endif
+
+/* Maximum length of a multibyte character in the current locale. */
+#define	MB_CUR_MAX	(__ctype_get_mb_cur_max ())     // 1 on most systems
+extern size_t __ctype_get_mb_cur_max (void); //__THROW;
 
 /* Numeric conversion functions */
 

@@ -370,7 +370,7 @@ typedef struct _PDCLIB_mbstate {
 typedef struct _PDCLIB_locale    *_PDCLIB_locale_t;
 typedef struct lconv              _PDCLIB_lconv_t;
 
-_PDCLIB_size_t _PDCLIB_mb_cur_max( void );
+_PDCLIB_size_t __ctype_get_mb_cur_max ( void );
 
 /* wide-character EOF */
 #define _PDCLIB_WEOF ((wint_t) -1)

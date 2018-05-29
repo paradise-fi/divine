@@ -9,7 +9,7 @@
 #include "_PDCLIB/locale.h"
 #include "_PDCLIB/encoding.h"
 
-size_t _PDCLIB_mb_cur_max( void )
+size_t __ctype_get_mb_cur_max ( void )
 {
     return _PDCLIB_threadlocale()->_Codec->__mb_max;
 }
