@@ -36,6 +36,10 @@ typedef _PDCLIB_wchar_t wchar_t;
 #define MB_CUR_MAX (_PDCLIB_mb_cur_max())
 #endif
 
+#if __BSD_VISIBLE
+void *reallocarray( void *optr, size_t nmemb, size_t size );
+#endif
+
 /* Numeric conversion functions */
 
 /* TODO: atof(), strtof(), strtod(), strtold() */
