@@ -1,5 +1,5 @@
 /* TAGS: sym inf c big */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:contol */
 #include <stdbool.h>
 extern unsigned int __VERIFIER_nondet_uint(void);
 extern bool __VERIFIER_nondet_bool(void);
