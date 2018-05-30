@@ -1,8 +1,6 @@
 #--------------------------------------------------------------------------------------------------
 # Dependencies:
 
-find_package(ZLIB)
-include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${divine_SOURCE_DIR})
 
 #--------------------------------------------------------------------------------------------------
@@ -21,7 +19,6 @@ set(MINISAT_LIB_SOURCES
     simp/SimpSolver.cc)
 
 add_library(libminisat STATIC ${MINISAT_LIB_SOURCES})
-target_link_libraries(libminisat ${ZLIB_LIBRARY})
 
 set_target_properties(libminisat PROPERTIES OUTPUT_NAME "minisat"
                                             POSITION_INDEPENDENT_CODE ON )
