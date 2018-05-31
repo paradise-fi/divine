@@ -75,7 +75,7 @@ void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall 
                 llvm::IRBuilder<>( cleanupBB ).CreateResume( lp );
 
                 // note: split invalidated iterator
-                llvm::IRBuilder<> irb( unwindBB->getFirstInsertionPt() );
+                llvm::IRBuilder<> irb( &*unwindBB->getFirstInsertionPt() );
                 auto *sel = irb.CreateExtractValue( lp, ehi.selectorIndices, "lart.cleanup.lb.sel" );
                 auto *cmp = irb.CreateICmpNE( sel, llvm::ConstantInt::get(
                             llvm::cast< llvm::IntegerType >( sel->getType() ), ehi.cleanupSelector ) );
@@ -219,11 +219,12 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
     // we need to take into account new basic blocks
     scc = analysis::BasicBlockSCC( fn );
     reach = analysis::Reachability( fn, &scc );
-    llvm::DominatorTree dt = llvm::DominatorTreeAnalysis().run( fn );
+    llvm::AnalysisManager< llvm::Function > am;
+    llvm::DominatorTree dt = llvm::DominatorTreeAnalysis().run( fn, am );
 
     ExitMap exits;
     util::Set< llvm::AllocaInst * > nondominant;
-    llvm::Instruction *start = fn.getEntryBlock().begin();
+    llvm::Instruction *start = &*fn.getEntryBlock().begin();
 
     atExits( fn, [&]( auto *exit ) { exits[ exit ] = {}; } );
 
