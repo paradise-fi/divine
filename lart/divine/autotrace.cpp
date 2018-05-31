@@ -50,7 +50,7 @@ struct Autotrace {
             if ( fn.empty() || &fn == trace || &fn == suspend )
                 continue;
 
-            llvm::IRBuilder<> irb( fn.front().getFirstInsertionPt() );
+            llvm::IRBuilder<> irb( &*fn.front().getFirstInsertionPt() );
             irb.CreateCall( trace, callArgs( fn, irb ) );
             ++entry;
 

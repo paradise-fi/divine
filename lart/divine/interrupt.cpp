@@ -62,7 +62,7 @@ struct CflInterrupt
                  term->getOpcode() == llvm::Instruction::IndirectBr )
                 insert( ctr, term );
             else if ( dst->getUniquePredecessor() )
-                insert( ctr, dst->getFirstInsertionPt() );
+                insert( ctr, &*dst->getFirstInsertionPt() );
             else
             {
                 // neither of the blocks of the edge is used only by this path,
@@ -131,14 +131,12 @@ struct MemInterrupt
                  !reduction::isSilent( *inst, silentID ) )
             {
                 auto *type = _hypercall->getFunctionType();
-                auto point = llvm::BasicBlock::iterator( inst );
-                llvm::IRBuilder<> irb{ point };
+                llvm::IRBuilder<> irb{ inst };
                 auto *origPtr = getPointerOperand( inst );
                 auto *origT = llvm::cast< llvm::PointerType >( origPtr->getType() )
                                   ->getElementType();
                 auto *ptr = irb.CreateBitCast( origPtr, type->getParamType( 0 ) );
                 auto *si = irb.getInt32( std::max( uint64_t( 1 ), dl.getTypeSizeInBits( origT ) / 8 ) );
-                point ++;
                 int intr_type;
                 switch ( op )
                 {
@@ -146,7 +144,8 @@ struct MemInterrupt
                     case llvm::Instruction::Store: intr_type = _VM_MAT_Store; break;
                     default: intr_type = _VM_MAT_Both; break;
                 }
-                irb.SetInsertPoint( point );
+                auto point = std::next( llvm::BasicBlock::iterator( inst ) );
+                irb.SetInsertPoint( &*point );
                 irb.CreateCall( _hypercall, { ptr, si, irb.getInt32( intr_type ), _handler } );
                 ++_mem;
             }
