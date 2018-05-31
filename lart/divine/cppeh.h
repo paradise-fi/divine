@@ -57,7 +57,7 @@ struct CppEhTab
     auto block_addr( llvm::BasicBlock *bb )
     {
         auto *intptrT = _dl.getIntPtrType( _ctx );
-        if ( bb == bb->getParent()->begin() )
+        if ( bb == &*bb->getParent()->begin() )
             return llvm::ConstantExpr::getPtrToInt( bb->getParent(), intptrT );
         return llvm::ConstantExpr::getPtrToInt( llvm::BlockAddress::get( bb ), intptrT );
     }
@@ -65,7 +65,7 @@ struct CppEhTab
     explicit CppEhTab( llvm::Function &fn ) :
         _ctx( fn.getParent()->getContext() ),
         _dl( fn.getParent() ),
-        _startaddr( fn.isDeclaration() ? nullptr : block_addr( fn.begin() ) )
+        _startaddr( fn.isDeclaration() ? nullptr : block_addr( &*fn.begin() ) )
     {
         build( fn );
     }
@@ -125,8 +125,7 @@ struct CppEhTab
         if ( _callSites.empty() )
             return nullptr;
 
-        auto i8 = llvm::Type::getInt8Ty( _ctx ), i32 = llvm::Type::getInt32Ty( _ctx ),
-            i64 = llvm::Type::getInt64Ty( _ctx );
+        auto i8 = llvm::Type::getInt8Ty( _ctx ), i32 = llvm::Type::getInt32Ty( _ctx );
 
         brick::data::RMap< llvm::Constant *, int > typeIndex;
         brick::data::RMap< const Actions *, int > actionIndex;
@@ -203,8 +202,8 @@ struct CppEhTab
         auto offset = [&]( int idx1, int idx2 ) -> int
         {
             auto t = lsda( 0, 0 )->getType();
-            ValueVec idx{ const_int( i64, 0 ), const_int( i32, idx1 ), const_int( i32, idx2 ) };
-            return _dl.getIndexedOffset( llvm::PointerType::get( t, 0 ), idx );
+            ValueVec idx{ const_int( i32, 0 ), const_int( i32, idx1 ), const_int( i32, idx2 ) };
+            return _dl.getIndexedOffsetInType( t, idx );
         };
 
         int hdr_size = offset( 1, 0 );

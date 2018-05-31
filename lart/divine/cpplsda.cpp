@@ -8,6 +8,10 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 #include <lart/divine/cppeh.h>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/Analysis/EHPersonalities.h>
+DIVINE_UNRELAX_WARNINGS
+
 namespace lart {
 namespace divine {
 
