@@ -3,6 +3,7 @@
 #include <sys/start.h>
 #include <sys/metadata.h>
 
+char** environ;
 namespace {
 
 struct CtorDtorEntry {
@@ -74,6 +75,7 @@ __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char *
                             // local storage)
     __dios_run_ctors();
     int res;
+    environ = envp;
     switch (l)
     {
         case 0:

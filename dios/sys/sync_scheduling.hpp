@@ -29,7 +29,6 @@ struct SyncScheduler : public Scheduler< Next >
                       reinterpret_cast< void * >( runScheduler< typename Setup::Context > ) );
 
         this->setupDebug( s, argv, envp );
-        environ = envp.second;
         Next::setup( s );
     }
 

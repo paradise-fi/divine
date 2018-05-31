@@ -32,7 +32,6 @@ struct FairScheduler : public Scheduler< Next > {
         __vm_ctl_set( _VM_CR_Scheduler,
                       reinterpret_cast< void * >( run_scheduler< typename Setup::Context > ) );
         this->setupDebug( s, argv, envp );
-        environ = envp.second;
 
         Next::setup( s );
     }

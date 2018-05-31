@@ -19,8 +19,6 @@
 #include <dios/vfs/fs-replay.h>
 #include <dios/vfs/fs-constants.h>
 
-extern "C" { char **environ; }
-
 namespace __dios
 {
 
