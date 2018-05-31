@@ -64,7 +64,7 @@ void Stash::run( Module &m ) {
 
 void Stash::arg_unstash( CallInst *call ) {
     auto fn = get_called_function( call );
-    IRBuilder<> irb( fn->getEntryBlock().begin() );
+    IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
     for ( auto &arg : fn->args() ) {
         auto op = call->getArgOperand( arg.getArgNo() );

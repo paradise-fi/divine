@@ -157,8 +157,8 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                     auto val = op.get();
                     if ( seen_vals.count( { val, dom } ) ) {
                         auto arg = std::next( fn->arg_begin(), op.getOperandNo() );
-                        tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                        entry_args.emplace( arg, dom );
+                        tasks.push_back( [=]{ propagate_value( &*arg, dom ); } );
+                        entry_args.emplace( &*arg, dom );
                     }
                 }
             }

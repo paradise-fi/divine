@@ -73,11 +73,13 @@ struct RecursiveCalls {
 
 } // anonymous namespace
 
-void CallInterrupt::run( llvm::Module &m ) {
+void CallInterrupt::run( llvm::Module &m )
+{
     auto interrupt = interrupt_function( m );
-    for ( auto &fn : RecursiveCalls().get( m ) ) {
+    for ( auto &fn : RecursiveCalls().get( m ) )
+    {
         auto entry = fn->getEntryBlock().getFirstInsertionPt();
-        IRBuilder<>( entry ).CreateCall( interrupt );
+        IRBuilder<>( &*entry ).CreateCall( interrupt );
     }
 }
 

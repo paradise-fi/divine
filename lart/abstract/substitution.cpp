@@ -348,8 +348,8 @@ struct Lifter : BaseLifter {
         assert( fn->arg_size() % 4 == 0 );
         while ( it != fn->arg_end() ) {
             ArgPair pair;
-            pair.concrete = { it, ++it }; // flag, value
-            pair.abstract = { ++it, ++it };
+            pair.concrete = { &*it, &*++it }; // flag, value
+            pair.abstract = { &*++it, &*++it };
             res.emplace_back( pair );
             it++;
         }
@@ -408,7 +408,7 @@ struct RepLifter : BaseLifter {
         auto &ctx = taint->getContext();
 
         auto begin = function()->arg_begin();
-        Value *addr = std::next( begin, 3 );
+        Value *addr = &*std::next( begin, 3 );
         // TODO move to symbolic domain
         auto ty = cast< IntegerType >( addr->getType()->getPointerElementType() );
         if ( !ty->isIntegerTy( 8 ) )
@@ -435,9 +435,9 @@ struct UnrepLifter : BaseLifter {
         auto formula = std::next( begin, 3 );
         auto addr = std::next( begin, 5 );
 
-        auto bcst = irb.CreateBitCast( addr, Type::getInt8PtrTy( addr->getContext() ) );
+        auto bcst = irb.CreateBitCast( &*addr, Type::getInt8PtrTy( addr->getContext() ) );
 
-        Values args = { formula, bcst };
+        Values args = { &*formula, &*bcst };
         auto rep = domains.get( domain() )->process( taint, args );
         irb.Insert( cast< Instruction >( rep ) );
 
@@ -479,7 +479,7 @@ struct AssumeLifter : Lifter {
         auto assumed = std::next( args_begin, 5 );
 
         IRBuilder<> irb( make_bb( function(), "entry" ) );
-        Values args = { concrete, abstract, assumed };
+        Values args = { &*concrete, &*abstract, &*assumed };
         auto call = domains.get( domain() )->process( taint, args );
         irb.Insert( cast< Instruction >( call ) );
 
@@ -544,7 +544,7 @@ struct GetLifter : Lifter {
         IRBuilder<> irb( entry );
 
         auto abstract = std::next( function()->arg_begin(), 3 );
-        irb.CreateRet( abstract );
+        irb.CreateRet( &*abstract );
     }
 };
 
@@ -798,11 +798,11 @@ Values argument_placeholders( CallInst *call, DomainsHolder &domains ) {
         auto arg = std::next( fn->arg_begin(), i );
         auto dom = Domain::Symbolic; // TODO generalize for any domain
 
-        if ( ignore_value( arg ) ) {
+        if ( ignore_value( &*arg ) ) {
             auto aty = domains.type( arg->getType(), dom );
             placeholders.push_back( domains.get( dom )->default_value( aty ) );
         } else {
-            placeholders.push_back( get_placeholder_in_domain( arg, dom ) );
+            placeholders.push_back( get_placeholder_in_domain( &*arg, dom ) );
         }
     }
 
@@ -851,7 +851,7 @@ Values unstash_arguments( CallInst *call, DomainsHolder &domains ) {
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return {}; // skip internal lart functions
 
-    IRBuilder<> irb( fn->getEntryBlock().begin() );
+    IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
     auto pack_ty = cast< StructType >( packed_type( call, domains ) );
 
