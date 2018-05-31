@@ -113,7 +113,7 @@ void _start_synchronous( int l, int argc, char **argv, char **envp )
     int res = __execute_main( l, argc, argv, envp );
     if ( res )
     {
-        __dios_trace_f( "Non-zero stup code: %d", res );
+        __dios_trace_f( "Non-zero return from setup: %d", res );
         __dios_fault( _DiOS_F_Exit, "setup ended with non-zero value" );
     }
     __dios_yield();
