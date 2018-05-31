@@ -6,6 +6,8 @@
 char** environ;
 char* __progname;
 
+extern char* program_invocation_short_name __attribute__((alias ("__progname")));
+
 namespace {
 
 struct CtorDtorEntry {
