@@ -46,8 +46,8 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     auto ptr = value::Pointer( eval.s2ptr( v ) );
     auto C = dyn_cast< llvm::Constant >( V );
 
-    if ( auto GA = dyn_cast< llvm::GlobalAlias >( V ) ) 
-        C = GA->getBaseObject();
+    if ( auto GA = dyn_cast< llvm::GlobalAlias >( V ) )
+        _doneinit.insert( V ), V = C = GA->getBaseObject();
 
     if ( !valuemap.count( V ) )
     {
