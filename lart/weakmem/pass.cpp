@@ -274,7 +274,7 @@ struct Substitute {
                     return;
                 _bypass.emplace( fn );
                 if ( anno == debuganno && fn != dump ) {
-                    llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
+                    llvm::IRBuilder<> irb( &*fn->begin()->getFirstInsertionPt() );
                     irb.CreateCall( debug_fence, { } );
                 }
             } );
@@ -409,10 +409,10 @@ struct Substitute {
                   mask:
                     {
                         llvm::BasicBlock::iterator instr_it( i );
-                        llvm::IRBuilder<> irb( instr_it );
+                        llvm::IRBuilder<> irb( &*instr_it );
                         auto m = masks[ i ] = irb.CreateCall( _mask, { } );
                         ++instr_it;
-                        irb.SetInsertPoint( instr_it );
+                        irb.SetInsertPoint( &*instr_it );
                         irb.CreateCall( _unmask, { m } );
                         break;
                     }
