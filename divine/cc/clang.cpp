@@ -439,13 +439,13 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
                                             "-fcolor-diagnostics",
                                             // "-o", "test.o",
                                             };
-    add( cc1args, args );
-    add( cc1args, argsOfType( type ) );
-    cc1args.push_back( filename );
+    add( args, cc1args );
+    add( args, argsOfType( type ) );
+    args.push_back( filename );
 
 
     std::vector< const char * > cc1a;
-    std::transform( cc1args.begin(), cc1args.end(),
+    std::transform( args.begin(), args.end(),
                     std::back_inserter( cc1a ),
                     []( std::string &str ) { return str.c_str(); } );
 
