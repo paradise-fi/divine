@@ -328,8 +328,8 @@ auto c2prog( std::string s )
 
 struct Program
 {
-    llvm::LLVMContext &ctx;
-    Program() : ctx( llvm::getGlobalContext() ) {}
+    llvm::LLVMContext ctx;
+    Program() {}
 
     TEST( empty )
     {
