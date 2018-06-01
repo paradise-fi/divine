@@ -222,8 +222,8 @@ struct Context : DNContext< Heap >
     void state_type( llvm::DIVariable *di )
     {
         auto ptrtype = llvm::cast< llvm::DIDerivedType >(
-            di->getType().resolve( this->debug().typemap() ) );
-        _state_di_type = ptrtype->getBaseType().resolve( this->debug().typemap() );
+            di->getType().resolve() );
+        _state_di_type = ptrtype->getBaseType().resolve();
     }
 
     void trace( vm::TraceStateType s )
@@ -241,8 +241,8 @@ struct Context : DNContext< Heap >
         std::string alias = this->_heap.read_string( a.alias );
         find_dbg_inst( ptr, [&]( llvm::DIVariable *di ) {
             auto ptrtype = llvm::cast< llvm::DIDerivedType >(
-                di->getType().resolve( this->debug().typemap() ) );
-            auto type = ptrtype->getBaseType().resolve( this->debug().typemap() );
+                di->getType().resolve() );
+            auto type = ptrtype->getBaseType().resolve();
             this->debug()._typenamemap.insert( { type, alias } );
         } );
     }

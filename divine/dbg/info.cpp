@@ -27,7 +27,7 @@ std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
     if ( loc && loc->getNumOperands() )
         return std::make_pair( loc->getFilename(),
                                loc->getLine() );
-    auto prog = llvm::getDISubprogram( insn.getParent()->getParent() );
+    auto prog = insn.getParent()->getParent()->getSubprogram();
     if ( prog )
         return std::make_pair( prog->getFilename(),
                                prog->getScopeLine() );

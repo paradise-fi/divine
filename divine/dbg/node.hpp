@@ -75,7 +75,7 @@ struct Node
     void di_var( llvm::DIVariable *var )
     {
         _di_var = var;
-        _di_type = var->getType().resolve( _ctx.debug().typemap() );
+        _di_type = var->getType().resolve();
     }
 
     void di_type( llvm::DIType *type )
@@ -148,7 +148,7 @@ struct Node
     llvm::DISubprogram *subprogram()
     {
         ASSERT_EQ( kind(), DNKind::Frame );
-        return llvm::getDISubprogram( _ctx.debug().function( pc() ) );
+        return _ctx.debug().function( pc() )->getSubprogram();
     }
 
     DNKey sortkey() const

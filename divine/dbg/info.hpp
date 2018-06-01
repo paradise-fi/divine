@@ -122,9 +122,7 @@ struct Info
     };
 
     llvm::DataLayout &layout() { return _layout; }
-    llvm::DITypeIdentifierMap &typemap() { return _typemap; }
 
-    llvm::DITypeIdentifierMap _typemap;
     llvm::DataLayout _layout;
     llvm::Module *_module;
     vm::Program &_program;
@@ -142,10 +140,6 @@ struct Info
             pc.function( pc.function() + 1 );
             _funmap[ pc.function() ] = &f;
         }
-
-        auto dbg_cu = m->getNamedMetadata( "llvm.dbg.cu" );
-        if ( dbg_cu )
-            _typemap = llvm::generateDITypeIdentifierMap( dbg_cu );
     }
 };
 

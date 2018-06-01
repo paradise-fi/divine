@@ -93,9 +93,9 @@ llvm::DIType *Node< Prog, Heap >::di_base( llvm::DIType *t )
     if ( !t )
         return nullptr;
     if ( auto deriv = llvm::dyn_cast< llvm::DIDerivedType >( t ) )
-        return deriv->getBaseType().resolve( _ctx.debug().typemap() );
+        return deriv->getBaseType().resolve();
     if ( auto comp = llvm::dyn_cast< llvm::DICompositeType >( t ) )
-        return comp->getBaseType().resolve(  _ctx.debug().typemap() );
+        return comp->getBaseType().resolve();
     return nullptr;
 }
 
@@ -222,7 +222,7 @@ std::string Node< Prog, Heap >::di_scopename( llvm::DIScope *scope )
     if ( !scope )
         scope = _di_var->getScope();
 
-    auto parent = scope->getScope().resolve( _ctx.debug().typemap() );
+    auto parent = scope->getScope().resolve();
 
     if ( parent && llvm::isa< llvm::DINamespace >( parent ) )
         n = di_scopename( parent ) + "::";
@@ -245,18 +245,17 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias, bool pr
     if ( di_member( t ) )
         return di_name( di_base( t ) );
 
-    auto &ditmap = _ctx.debug().typemap();
     if ( auto subr = llvm::dyn_cast< llvm::DISubroutineType >( t ) )
     {
         auto types = subr->getTypeArray();
         std::stringstream fmt;
-        if ( auto rvt = types[0].resolve( ditmap ) )
+        if ( auto rvt = types[0].resolve() )
             fmt << di_name( rvt ) << "(";
         else
             fmt << "void" << "(";
         for ( unsigned i = 1; i < types.size(); ++i )
         {
-            auto subt = types[i].resolve( ditmap ); // null means ellipsis here
+            auto subt = types[i].resolve(); // null means ellipsis here
             fmt << ( subt ? di_name( subt ) : "..." ) << ( i + 1 < types.size() ? ", " : "" );
         }
         fmt << ")";
@@ -518,7 +517,7 @@ llvm::DIType *Node< Prog, Heap >::di_resolve( llvm::DIType *t )
                DT->getTag() == llvm::dwarf::DW_TAG_restrict_type ||
                DT->getTag() == llvm::dwarf::DW_TAG_volatile_type ||
                DT->getTag() == llvm::dwarf::DW_TAG_const_type ) )
-            base = DT->getBaseType().resolve( _ctx.debug().typemap() );
+            base = DT->getBaseType().resolve();
         else return base;
     return t;
 }
@@ -592,7 +591,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
     DNEval< Heap > eval( _ctx );
 
     auto divar = DDI->getVariable();
-    auto ditype = divar->getType().resolve( _ctx.debug().typemap() );
+    auto ditype = divar->getType().resolve();
     auto var = DDI->getAddress();
     auto &vmap = _ctx.program().valuemap;
     if ( vmap.find( var ) == vmap.end() )
