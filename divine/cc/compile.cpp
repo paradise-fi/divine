@@ -205,9 +205,10 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
     }
 }
 
-llvm::Module *Compile::getLinked() {
+std::unique_ptr< llvm::Module > Compile::takeLinked()
+{
     brick::llvm::verifyModule( linker->get() );
-    return linker->get();
+    return linker->take();
 }
 
 void Compile::writeToFile( std::string filename ) {
@@ -220,7 +221,7 @@ void Compile::writeToFile( std::string filename, llvm::Module *mod )
 }
 
 std::string Compile::serialize() {
-    return compiler.serializeModule( *getLinked() );
+    return compiler.serializeModule( *linker->get() );
 }
 
 void Compile::addDirectory( std::string path ) {
@@ -303,7 +304,7 @@ void Compile::linkEssentials()
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             if ( it->getModuleIdentifier() == "_link_essentials.ll"s )
-                linker->link( it.take() );
+                linker->link_decls( it.take() );
     }
 }
 

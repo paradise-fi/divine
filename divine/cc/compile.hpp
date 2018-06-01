@@ -86,14 +86,14 @@ struct Compile
     // was created.
     //
     // If the callback returns a module, this module is linked to the
-    // composite, which can be later obtained using getLinked(). Otherwise, the
+    // composite, which can be later obtained using takeLinked(). Otherwise, the
     // module is skipped and the callback can transfer its ownership, or delete
     // it. Normally, the implementation would handle non-liking modules and
     // return without modification modules which should be linked.
     void runCC( std::vector< std::string > rawCCOpts,
                 std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback = nullptr );
 
-    llvm::Module *getLinked();
+    std::unique_ptr< llvm::Module > takeLinked();
     void writeToFile( std::string filename );
     void writeToFile( std::string filename, llvm::Module *module );
     std::string serialize();
