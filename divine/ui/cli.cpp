@@ -291,9 +291,7 @@ void WithBC::setup()
 
             driver.setupFS( rt::each );
             driver.runCC( _ccopts_final );
-            _bc = std::make_shared< mc::BitCode >(
-                std::unique_ptr< llvm::Module >( driver.getLinked() ),
-                driver.context() );
+            _bc = std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
         }
     }
 
