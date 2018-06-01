@@ -109,16 +109,20 @@ namespace std {
 namespace divine {
 namespace cc {
 
-struct DivineVFS : clang::vfs::FileSystem {
+struct DivineVFS : clang::vfs::FileSystem
+{
+
+    using Status = clang::vfs::Status;
+
   private:
 
     // adapt file map to the expectations of LLVM's VFS
     struct File : clang::vfs::File {
-        File( llvm::StringRef content, clang::vfs::Status stat ) :
+        File( llvm::StringRef content, Status stat ) :
             content( content ), stat( stat )
         { }
 
-        llvm::ErrorOr< clang::vfs::Status > status() override { return stat; }
+        llvm::ErrorOr< Status > status() override { return stat; }
 
         auto getBuffer( const llvm::Twine &/* path */, int64_t /* fileSize */ = -1,
                         bool /* requiresNullTerminator */ = true,
@@ -128,33 +132,53 @@ struct DivineVFS : clang::vfs::FileSystem {
             return { llvm::MemoryBuffer::getMemBuffer( content ) };
         }
 
-        void setName( llvm::StringRef ) override { }
-
         std::error_code close() override { return std::error_code(); }
 
       private:
         llvm::StringRef content;
-        clang::vfs::Status stat;
+        Status stat;
     };
 
-    static auto doesNotExits() { // forward to real FS
+    std::error_code setCurrentWorkingDirectory( const llvm::Twine &path ) override
+    {
+        _cwd = brick::fs::isAbsolute( path.str() ) ? path.str() : brick::fs::joinPath( _cwd, path.str() );
+        return std::error_code();
+    }
+
+    llvm::ErrorOr< std::string > getCurrentWorkingDirectory() const override
+    {
+        return _cwd;
+    }
+
+    static auto doesNotExits() // forward to the real FS
+    {
         return std::error_code( llvm::errc::no_such_file_or_directory );
     }
-    static auto blockAccess( const llvm::Twine & ) {
+
+    static auto blockAccess( const llvm::Twine & )
+    {
         return std::error_code( DivineVFSError::InvalidIncludePath );
     };
 
-    clang::vfs::Status statpath( const std::string &path, clang::vfs::Status stat ) {
-        stat.setName( path );
-        return stat;
+    Status statpath( const std::string &path, clang::vfs::Status stat )
+    {
+        return Status::copyWithNewName( stat, path );
     }
 
   public:
 
+    DivineVFS() : _cwd( brick::fs::getcwd() ) {}
+
+    std::string normal( std::string p )
+    {
+        auto abs = brick::fs::isAbsolute( p ) ? p : brick::fs::joinPath( _cwd, p );
+        return brick::fs::normalize( abs);
+    }
+
     auto status( const llvm::Twine &_path ) ->
         llvm::ErrorOr< clang::vfs::Status > override
     {
-        auto path = brick::fs::normalize( _path.str() );
+        auto path = normal( _path.str() );
         auto it = filemap.find( path );
         if ( it != filemap.end() )
             return statpath( path, it->second.second );
@@ -166,7 +190,7 @@ struct DivineVFS : clang::vfs::FileSystem {
     auto openFileForRead( const llvm::Twine &_path ) ->
         llvm::ErrorOr< std::unique_ptr< clang::vfs::File > > override
     {
-        auto path = brick::fs::normalize( _path.str() );
+        auto path = normal( _path.str() );
 
         auto it = filemap.find( path );
         if ( it != filemap.end() )
@@ -179,13 +203,12 @@ struct DivineVFS : clang::vfs::FileSystem {
     auto dir_begin( const llvm::Twine &_path, std::error_code & ) ->
         clang::vfs::directory_iterator override
     {
-        auto path = brick::fs::normalize( _path.str() );
-        std::cerr << "DVFS:dir_begin " << path << std::endl;
+        std::cerr << "DVFS:dir_begin " << normal( _path.str() ) << std::endl;
         NOT_IMPLEMENTED();
     }
 
     void allowPath( std::string path ) {
-        path = brick::fs::normalize( path );
+        path = normal( path );
         allowedPrefixes.insert( path );
         auto parts = brick::fs::splitPath( path );
         addDir( parts.begin(), parts.end() );
@@ -201,7 +224,7 @@ struct DivineVFS : clang::vfs::FileSystem {
         auto &ref = filemap[ path ];
         ref.first = contents;
         auto name = llvm::sys::path::filename( path );
-        ref.second = clang::vfs::Status( name, name,
+        ref.second = clang::vfs::Status( name,
                         clang::vfs::getNextVirtualUniqueID(),
                         llvm::sys::TimeValue(), 0, 0, contents.size(),
                         llvm::sys::fs::file_type::regular_file,
@@ -215,7 +238,7 @@ struct DivineVFS : clang::vfs::FileSystem {
     void addDir( It begin, It end ) {
         for ( auto it = begin; it < end; ++it ) {
             auto path = brick::fs::joinPath( begin, std::next( it ) );
-            filemap[ path ] = { "", clang::vfs::Status( *it, *it,
+            filemap[ path ] = { "", clang::vfs::Status( *it,
                     clang::vfs::getNextVirtualUniqueID(),
                     llvm::sys::TimeValue(), 0, 0, 0,
                     llvm::sys::fs::file_type::directory_file,
@@ -257,6 +280,7 @@ struct DivineVFS : clang::vfs::FileSystem {
     std::map< std::string, std::pair< llvm::StringRef, clang::vfs::Status > > filemap;
     std::vector< std::string > storage;
     std::set< std::string > allowedPrefixes;
+    std::string _cwd;
 };
 
 Compiler::FileType Compiler::typeFromFile( std::string name ) {
