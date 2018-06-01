@@ -274,7 +274,7 @@ Program::Slot Program::insert( int function, llvm::Value *val, bool )
 void Program::hypercall( Position p )
 {
     Program::Instruction &insn = instruction( p.pc );
-    llvm::CallSite CS( p.I );
+    llvm::CallSite CS( &*p.I );
     llvm::Function *F = CS.getCalledFunction();
     if ( insn.opcode != llvm::Instruction::Call )
         throw std::logic_error(
@@ -324,7 +324,7 @@ Program::Position Program::insert( Position p )
     if ( dyn_cast< llvm::CallInst >( p.I ) ||
          dyn_cast< llvm::InvokeInst >( p.I ) )
     {
-        llvm::CallSite CS( p.I );
+        llvm::CallSite CS( &*p.I );
         llvm::Function *F = CS.getCalledFunction();
         if ( F ) // you can actually invoke a label
             switch ( F->getIntrinsicID() )
@@ -461,10 +461,10 @@ void Program::computeStatic()
     {
         if ( !var->getInitializer() || var->isConstant() )
             continue;
-        ASSERT( globalmap.find( var ) != globalmap.end() );
+        ASSERT( globalmap.find( &*var ) != globalmap.end() );
         ASSERT( valuemap.find( var->getInitializer() ) != valuemap.end() );
         auto location = valuemap[ var->getInitializer() ];
-        auto target = globalmap[ var ];
+        auto target = globalmap[ &*var ];
         _ccontext.heap().copy( s2hptr( location ), s2hptr( target ), location.size() );
     }
 
