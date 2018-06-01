@@ -44,17 +44,9 @@ BitCode::BitCode( std::string file )
     input = std::move( llvm::MemoryBuffer::getFile( file ).get() );
     auto bc = IRObjectFile::findBitcodeInMemBuffer( input->getMemBufferRef() );
 
-    auto error = []( auto &info ) {
-        std::string err;
-        llvm::raw_string_ostream ostr( err );
-        llvm::DiagnosticPrinterRawOStream print( ostr );
-        info.print( print );
-        throw BCParseError( ostr.str() );
-    };
-
     if ( !bc )
         std::cerr << bc.getError() << std::endl;
-    auto parsed = llvm::parseBitcodeFile( bc.get(), *_ctx, error );
+    auto parsed = llvm::parseBitcodeFile( bc.get(), *_ctx );
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
     _module = std::move( parsed.get() );
