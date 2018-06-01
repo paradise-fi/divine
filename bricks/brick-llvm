@@ -186,8 +186,14 @@ inline void verifyModule( ::llvm::Module *module ) {
     }
 }
 
-static void _throwLLVMError( std::error_code ec ) {
+static void _throwLLVMError( std::error_code ec )
+{
     throw std::runtime_error( "LLVM Error: " + ec.message() );
+}
+
+static void _throwLLVMError( ::llvm::Error &e )
+{
+    throw std::runtime_error( "LLVM Error: " + toString( std::move( e ) ) );
 }
 
 inline void writeModule( ::llvm::Module *m, std::string out ) {
@@ -218,7 +224,7 @@ inline void writeArchive( It begin, It end, std::string out )
     fs::TempDir dir( ".brick-llvm-archive-XXXXXX", fs::AutoDelete::Yes, fs::UseSystemTemp::Yes );
     std::vector< std::string > names;
     std::set< std::string > shortnames;
-    std::vector< ::llvm::NewArchiveIterator > its;
+    std::vector< ::llvm::NewArchiveMember > its;
 
     for ( auto &mod : ::llvm::iterator_range< It >( begin, end ) )
     {
@@ -228,18 +234,21 @@ inline void writeArchive( It begin, It end, std::string out )
             throw std::runtime_error( "doubly defined member of archive: " + names.back()
                                        + " (" + mod->getModuleIdentifier() + ")" );
         writeModule( &*mod, names.back() );
-        its.emplace_back( names.back(), *i.first );
+        auto f = ::llvm::NewArchiveMember::getFile( names.back(), true );
+        if ( f )
+            its.emplace_back( std::move( f.get() ) );
     }
 
     fs::mkFilePath( out );
-    auto res = ::llvm::writeArchive( out, its, true, object::Archive::K_GNU, true ).second;
+    auto res = ::llvm::writeArchive( out, its, true, object::Archive::K_GNU, true, false ).second;
     if ( res )
         _throwLLVMError( res );
 }
 
+using Archive = ::llvm::object::Archive;
+
 struct ArchiveReader
 {
-    using Archive = ::llvm::object::Archive;
     using Ctx = ::llvm::LLVMContext;
 
     explicit ArchiveReader( std::shared_ptr< Ctx > ctx ) : _ctx( ctx ) {
@@ -252,7 +261,7 @@ struct ArchiveReader
     {
         _data = mmap::MMap( filename, mmap::ProtectMode::Read | mmap::ProtectMode::Private );
 
-        std::error_code ec;
+        ::llvm::Error ec;
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef(
                         ::llvm::StringRef( _data.left().data(), _data.left().size() ), filename ), ec );
         if ( ec )
@@ -262,7 +271,7 @@ struct ArchiveReader
     explicit ArchiveReader( std::string filename, std::string_view contents, std::shared_ptr< Ctx > ctx = nullptr ) :
         ArchiveReader( ctx )
     {
-        std::error_code ec;
+        ::llvm::Error ec;
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef(
                         ::llvm::StringRef( contents.data(), contents.size() ), filename ), ec );
         if ( ec )
@@ -273,7 +282,7 @@ struct ArchiveReader
         ArchiveReader( ctx )
     {
         _data = std::move( contents );
-        std::error_code ec;
+        ::llvm::Error ec;
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef( _data.right(), filename ), ec );
         if ( ec )
             _throwLLVMError( ec );
@@ -283,7 +292,7 @@ struct ArchiveReader
         ArchiveReader( ctx )
     {
         _buffer = std::move( buffer );
-        std::error_code ec;
+        ::llvm::Error ec;
         _archive = std::make_unique< Archive >( _buffer->getMemBufferRef(), ec );
         if ( ec )
             _throwLLVMError( ec );
@@ -291,7 +300,7 @@ struct ArchiveReader
 
     struct BitcodeIterator : types::Eq
     {
-        using Underlying = ::llvm::object::Archive::child_iterator;
+        using Underlying = Archive::child_iterator;
 
         BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx, bool bump = true ) :
             _it( beg ), _end( end ), _ctx( ctx )
@@ -341,7 +350,10 @@ struct ArchiveReader
             if ( !_iro ) {
                 auto b = _it->getAsBinary( _ctx.get() );
                 if ( !b && errorIsFatal )
-                    _throwLLVMError( b.getError() );
+                {
+                    auto err = b.takeError();
+                    _throwLLVMError( err );
+                }
                 if ( !b )
                     return false;
                 _iro.reset( ::llvm::cast< IRObjectFile >( b.get().release() ) );
@@ -373,8 +385,18 @@ struct ArchiveReader
         return { modules_begin(), modules_end() };
     }
 
-    BitcodeIterator modules_begin() { return BitcodeIterator( _archive->child_begin(), _archive->child_end(), _ctx ); }
-    BitcodeIterator modules_end() { return BitcodeIterator( _archive->child_end(), _archive->child_end(), _ctx ); }
+    BitcodeIterator modules_begin()
+    {
+        ::llvm::Error err;
+        auto res = BitcodeIterator( _archive->child_begin( err ), _archive->child_end(), _ctx );
+        if ( err ) _throwLLVMError( err );
+        return res;
+    }
+
+    BitcodeIterator modules_end()
+    {
+        return BitcodeIterator( _archive->child_end(), _archive->child_end(), _ctx );
+    }
 
     BitcodeIterator iterator( ::llvm::object::Archive::child_iterator raw ) {
         return BitcodeIterator( raw, _archive->child_end(), _ctx, false );
@@ -397,14 +419,29 @@ struct Linker {
         return link( std::unique_ptr< Module >( ::llvm::CloneModule( &src ) ) );
     }
 
-    void link( std::unique_ptr< Module > src ) {
+    void link_decls( std::unique_ptr< Module > src )
+    {
+        ASSERT( _link.get() );
+        for ( auto &f : *src )
+            if ( f.isDeclaration() )
+                _module->getOrInsertFunction( f.getName(),
+                                              f.getFunctionType(),
+                                              f.getAttributes() );
+        _updateUndefined();
+    }
+
+    void link( std::unique_ptr< Module > src )
+    {
         ASSERT( src != nullptr );
-        src->materializeAllPermanently();
-        if ( !_link ) {
-            _link.reset( new ::llvm::Linker( src.release(),
-                            [this]( const ::llvm::DiagnosticInfo &i ) { this->_error( i ); } ) );
-        } else {
-            auto r = _link->linkInModule( src.get() );
+        src->materializeAll();
+        if ( !_link )
+        {
+            _module = std::move( src );
+            _link.reset( new ::llvm::Linker( *_module.get() ) );
+        }
+        else
+        {
+            auto r = _link->linkInModule( std::move( src ) );
             if ( r ) {
                 std::cerr << "ERROR: while linking '"
                           << src->getModuleIdentifier() << "'" << std::endl;
@@ -449,7 +486,8 @@ struct Linker {
                 auto m = s.getMember();
                 if ( !m )
                     _throwLLVMError( m.getError() );
-                this->emplace( s.getName(), r.iterator( m.get() ) );
+                Archive::child_iterator iter( m.get(), nullptr );
+                this->emplace( s.getName(), r.iterator( iter ) );
             }
         }
     };
@@ -480,13 +518,13 @@ struct Linker {
             linkArchive( r.modules_begin(), r.modules_end() );
     }
 
-    Module *get() { return _link->getModule(); }
-    const Module *get() const { return _link->getModule(); }
+    Module *get() { return _module.get(); }
+    const Module *get() const { return _module.get(); }
 
-    std::unique_ptr< Module > take() {
-        std::unique_ptr< Module > m( get() );
-        _link.release();
-        return m;
+    std::unique_ptr< Module > take()
+    {
+        _link.reset( nullptr );
+        return std::move( _module );
     }
 
     bool hasModule() { return _link != nullptr; }
@@ -537,6 +575,7 @@ struct Linker {
     friend brick::t_llvm::LinkerTest;
 
     std::unique_ptr< ::llvm::Linker > _link;
+    std::unique_ptr< ::llvm::Module > _module;
     std::vector< StringRef > _undefined;
 };
 }
@@ -594,8 +633,10 @@ struct LinkerTest {
         declareFun( *m, "fun" );
 
         auto m2 = std::make_unique< ::llvm::Module >( "test2.ll", ctx );
-        defineFun( *m2, "fun" );
-        declareFun( *m2, "foo" );
+        auto fun = defineFun( *m2, "fun" );
+        auto foo = declareFun( *m2, "foo" );
+        ::llvm::IRBuilder<> irb( &*fun->begin() );
+        irb.CreateCall( foo );
 
         Linker link;
         link.link( std::move( m ) );
