@@ -313,7 +313,7 @@ _VM_Operand::Type type( llvm::Type *t )
             case 16: return _VM_Operand::I16;
             case 32: return _VM_Operand::I32;
             case 64: return _VM_Operand::I64;
-            default: return _VM_Operand::Other;
+            default: return _VM_Operand::IX;
         }
 
     if ( t->isFloatingPointTy() )

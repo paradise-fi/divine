@@ -38,7 +38,8 @@ struct Slot : _VM_Operand, _VM_OperandExt
 {
     bool pointer() { return type == Ptr || type == PtrA; }
     bool alloca() { return type == PtrA; }
-    bool integer() { return type == I1 || type == I8 || type == I16 || type == I32 || type == I64; }
+    bool integer() { return type == I1 || type == I8 || type == I16 || type == I32 || type == I64 ||
+                            type == IX; }
     bool isfloat() { return type == F32 || type == F64 || type == F80; }
     bool aggregate() { return type == Agg; }
     bool codePointer() { return type == PtrC; }
