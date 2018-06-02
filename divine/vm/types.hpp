@@ -31,7 +31,9 @@ namespace divine::vm
     namespace value
     {
         struct Pointer;
-        template< int, bool > struct Int;
+        template< int, bool, bool > struct GenInt;
+        template< int w, bool s = false > using Int = GenInt< w, s, false >;
+        template< bool s > using DynInt = GenInt< 64, s, true >;
     }
 
     struct Interrupt : brick::types::Ord

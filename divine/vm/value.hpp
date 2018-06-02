@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <divine/vm/types.hpp>
 #include <divine/vm/pointer.hpp>
 
 #include <brick-mem>
@@ -62,7 +63,7 @@ struct Void : Base
     void raw( Raw ) {}
 };
 
-template< int _width, bool is_signed = false >
+template< int _width, bool is_signed = false, bool is_dynamic = false >
 struct Int : Base
 {
     static const int width = _width;
@@ -74,10 +75,17 @@ struct Int : Base
     static const uint8_t _isptr = _width > _VM_PB_Obj ? _width - _VM_PB_Obj : 0;
     static const uint8_t _notptr = _isptr + 1;
 
-    uint8_t _pointer:( 1 + bitlevel::compiletime::MSB( _isptr ) );
-    uint8_t _taints:5;
+    struct FixInt {};
+    struct DynInt { uint8_t width; };
 
-    uint32_t objid() { return objid( _pointer ); }
+    struct Meta : Choose< is_dynamic, DynInt, FixInt >
+    {
+        uint8_t pointer:( 1 + bitlevel::compiletime::MSB( _isptr ) );
+        uint8_t taints:5;
+        Meta() : pointer( _notptr ), taints( 0 ) {}
+    } _meta;
+
+    uint32_t objid() { return objid( _meta.pointer ); }
     uint32_t objid( int offset )
     {
         if ( offset > _isptr )
@@ -85,17 +93,18 @@ struct Int : Base
         return ( _raw >> offset ) & brick::bitlevel::ones< Raw >( _VM_PB_Obj );
     }
 
-    int objid_offset() { return _pointer; }
+    int objid_offset() { return _meta.pointer; }
 
     template< int w >
     auto checkptr( Int< w, is_signed > o, Int< w, is_signed > &result, int shift = 0 )
         -> std::enable_if_t< ( w >= _VM_PB_Obj ) >
     {
-        if ( objid() && result.objid( _pointer + shift ) && result.objid( _pointer + shift ) == objid() )
-            result._pointer = _pointer + shift;
-        if ( o.objid() && result.objid( o._pointer + shift )
-                       && result.objid( o._pointer + shift ) == o.objid() )
-            result._pointer = o._pointer + shift;
+        if ( objid() && result.objid( _meta.pointer + shift ) &&
+             result.objid( _meta.pointer + shift ) == objid() )
+            result._meta.pointer = _meta.pointer + shift;
+        if ( o.objid() && result.objid( o._meta.pointer + shift )
+                       && result.objid( o._meta.pointer + shift ) == o.objid() )
+            result._meta.pointer = o._meta.pointer + shift;
     }
 
     template< int w >
@@ -131,8 +140,8 @@ struct Int : Base
     void defbits( Raw b ) { _m = b; }
     bool defined() { return defbits() == full< Raw >(); }
     void defined( bool d ) { defbits( d ? full< Raw >() : 0 ); }
-    bool pointer() { return _pointer == _isptr; }
-    void pointer( bool p ) { _pointer = p ? _isptr : _notptr; }
+    bool pointer() { return _meta.pointer == _isptr; }
+    void pointer( bool p ) { _meta.pointer = p ? _isptr : _notptr; }
     auto raw() { return _raw; }
     void raw( Raw r ) { _raw = r; }
     auto cooked() { return bitcast< Cooked >( _raw ); }
@@ -145,20 +154,21 @@ struct Int : Base
         return rv;
     }
 
-    void taints( uint8_t set ) { _taints = set; }
-    uint8_t taints() { return _taints; }
+    void taints( uint8_t set ) { _meta.taints = set; }
+    uint8_t taints() { return _meta.taints; }
 
-    Int() : _raw( 0 ), _m( 0 ), _pointer( _notptr ), _taints( 0 ) {}
-    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( full< Raw >() ),
-                               _pointer( _notptr ), _taints( 0 ) {}
-    Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ),
-                                    _pointer( ptr ? _isptr : _notptr ), _taints( 0 ) {}
-
-    Int< width, true > make_signed()
+    Int() : _raw( 0 ), _m( 0 ) {}
+    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( full< Raw >() ) {}
+    Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m )
     {
-        Int< width, true > result( _raw, _m, false );
-        result._pointer = _pointer;
-        result.taints( _taints );
+        if ( ptr ) _meta.pointer = _isptr;
+    }
+
+    Int< width, true, is_dynamic > make_signed()
+    {
+        Int< width, true, is_dynamic > result( _raw, _m, false );
+        result._meta.pointer = _meta.pointer;
+        result.taints( _meta.taints );
         return result;
     }
 
@@ -168,25 +178,26 @@ struct Int : Base
     typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
 
     template< int w > Int( Int< w, is_signed > i )
-        : _raw( i._raw ), _m( i._m ), _taints( i._taints )
+        : _raw( i._raw ), _m( i._m )
     {
+        _meta.taints = i._meta.taints;
+
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
 
-        if ( i._pointer > width - _VM_PB_Obj )
-            _pointer = _notptr;
+        if ( i._meta.pointer > width - _VM_PB_Obj )
+            _meta.pointer = _notptr;
         else
-            _pointer = i._pointer;
+            _meta.pointer = i._meta.pointer;
 
         if ( is_signed )
             bitcast( Cooked( ( w == 1 && i.cooked() ) ? -1 : i.cooked() ), _raw );
     }
 
     template< typename T > Int( Float< T > f )
-      : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ),
-        _m( f.defined() ? full< Raw >() : 0 ), _pointer( _notptr ),
-        _taints( f.taints() )
+      : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ), _m( f.defined() ? full< Raw >() : 0 )
     {
+        taints( f.taints() );
         using FC = typename Float< T >::Cooked;
         if ( f.cooked() > FC( std::numeric_limits< Cooked >::max() )
             || f.cooked() < FC( std::numeric_limits< Cooked >::min() ) )
@@ -203,7 +214,7 @@ struct Int : Base
     Int operator<<( Int< w, false > sh )
     {
         Int result( 0, 0, false );
-        result.taints( _taints | sh.taints() );
+        result.taints( taints() | sh.taints() );
         if ( !sh.defined() )
             return result;
         result._raw = raw() << sh.cooked();
@@ -216,7 +227,7 @@ struct Int : Base
     Int operator>>( Int< w, false > sh )
     {
         Int result( 0, 0, false );
-        result.taints( _taints | sh.taints() );
+        result.taints( taints() | sh.taints() );
         if ( !sh.defined() )
             return result;
 
