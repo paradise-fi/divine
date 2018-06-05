@@ -205,7 +205,16 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
 
 z3::expr Z3::constant( sym::Type t, uint64_t v )
 {
-    return _ctx.bv_val( static_cast< __int64 >( v ), t.bitwidth() );
+    // Sadly, Z3 changed API: bv_val used to take __int64 or __uint64 which was
+    // a define for (unsigned) long long, now it takes (u)int_64_t, which is
+    // (unsinged) long on Linux. Using the wrong type causes ambiguous overload
+    // in the other version, so we need this hack.
+#ifdef __int64
+    using ValT = __int64;
+#else
+    using ValT = int64_t;
+#endif
+    return _ctx.bv_val( static_cast< ValT >( v ), t.bitwidth() );
 }
 
 z3::expr Z3::constant( bool v )
