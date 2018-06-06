@@ -20,21 +20,40 @@
 #pragma once
 #include <divine/vm/eval.hpp>
 #include <divine/vm/memory.tpp>
+#include <brick-tuple>
 
 namespace divine::vm
 {
 
-template< typename Ctx, typename _T >
+using brick::tuple::pass;
+
+template< typename Ctx, typename _T, typename... Args >
 struct V
 {
     using T = _T;
     Eval< Ctx > *ev;
-    V( Eval< Ctx > *ev ) : ev( ev ) {}
+    std::tuple< Args... > args;
+
+    V( Eval< Ctx > *ev, Args... args ) : ev( ev ), args( args... ) {}
 
     T get() { UNREACHABLE( "may only be used in decltype()" ); }
 
-    T get( lx::Slot s ) { T result; ev->slot_read( s, result ); return result; }
-    T get( PointerV p ) { T r; ev->heap().read( ev->ptr2h( p ), r ); return r; }
+    T get( lx::Slot s )
+    {
+        T result;
+        pass( result, &T::setup, args );
+        ev->slot_read( s, result );
+        return result;
+    }
+
+    T get( PointerV p )
+    {
+        T result;
+        pass( result, &T::setup, args );
+        ev->heap().read( ev->ptr2h( p ), result );
+        return result;
+    }
+
     T get( int v ) { return get( ev->instruction().value( v ) ); }
     T arg( int v ) { return get( v + 1 ); }
 
@@ -44,12 +63,13 @@ struct V
     }
 };
 
-template< typename Ctx > template< template< typename > class Guard, typename T, typename Op >
-auto Eval< Ctx >::op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type
+template< typename Ctx > template< template< typename > class Guard, typename T, typename Op,
+          typename... Args >
+auto Eval< Ctx >::op( Op _op, Args... args ) -> typename std::enable_if< Guard< T >::value >::type
 {
     // std::cerr << "op called on type " << typeid( T ).name() << std::endl;
     // std::cerr << instruction() << std::endl;
-    _op( V< Ctx, T >( this ) );
+    _op( V< Ctx, T >( this, args... ) );
 }
 
 template< typename Ctx > template< template< typename > class Guard, typename T >

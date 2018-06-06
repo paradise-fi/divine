@@ -327,8 +327,8 @@ struct Eval
     void type_dispatch( typename Slot::Type type, Op _op );
 
 private:
-    template< template< typename > class Guard = Any, typename T, typename Op >
-    auto op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type;
+    template< template< typename > class Guard = Any, typename T, typename Op, typename... Args >
+    auto op( Op _op, Args... args ) -> typename std::enable_if< Guard< T >::value >::type;
 
     template< template< typename > class Guard = Any, typename T >
     void op( NoOp );
