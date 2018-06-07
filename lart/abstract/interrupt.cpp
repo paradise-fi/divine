@@ -6,9 +6,12 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/util.h>
 #include <lart/abstract/util.h>
+#include <lart/support/query.h>
 
 using namespace lart::abstract;
+using namespace lart;
 using namespace llvm;
 
 namespace {
@@ -21,15 +24,60 @@ Function * interrupt_function( Module &m ) {
     return interrupt;
 }
 
+struct RecursiveCalls {
+    std::vector< Function* > get( Module &m ) {
+        std::set< Function* > recursive;
+
+        for ( auto &fn : m )
+            if ( fn.getMetadata( "lart.abstract.roots" ) )
+                if ( is_recursive( &fn ) )
+                    recursive.insert( &fn );
+
+        return { recursive.begin(), recursive.end() };
+    }
+
+    bool is_recursive( Function *fn ) {
+        std::set< Function* > seen;
+        std::vector< Function* > stack;
+
+        stack.push_back( fn );
+
+        while ( !stack.empty() ) {
+            auto curr = stack.back();
+            stack.pop_back();
+
+            auto calls = query::query( *curr ).flatten()
+                .map( query::refToPtr )
+                .map( query::llvmdyncast< CallInst > )
+                .filter( query::notnull )
+                .freeze();
+
+            for ( auto call : calls ) {
+                auto called_fn = get_called_function( call );
+                if ( called_fn->empty() )
+                    continue;
+                if ( called_fn == fn )
+                    return true;
+                if ( !seen.count( called_fn ) ) {
+                    seen.insert( called_fn );
+                    if ( called_fn->getMetadata( "lart.abstract.roots" ) )
+                        stack.push_back( called_fn );
+                }
+            }
+
+        }
+
+        return false;
+    }
+};
+
 } // anonymous namespace
 
-void CallInterrupt::run( llvm::Module& m ) {
+void CallInterrupt::run( llvm::Module &m ) {
     auto interrupt = interrupt_function( m );
-    for ( auto &fn : m ) {
-        if ( fn.getMetadata( "lart.abstract.roots" ) ) {
-            auto entry = fn.getEntryBlock().getFirstInsertionPt();
-            IRBuilder<>( entry ).CreateCall( interrupt );
-        }
+    for ( auto &fn : RecursiveCalls().get( m ) ) {
+        auto entry = fn->getEntryBlock().getFirstInsertionPt();
+        IRBuilder<>( entry ).CreateCall( interrupt );
     }
 }
 
