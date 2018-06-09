@@ -32,8 +32,9 @@ namespace divine::vm
     {
         struct Pointer;
         template< int, bool, bool > struct GenInt;
-        template< int w, bool s = false > using Int = GenInt< w, s, false >;
-        template< bool s > using DynInt = GenInt< 64, s, true >;
+        template< int w, bool s = false, bool dyn = false > struct Int;
+        template< int w, bool s > using FixInt = Int< w, s, false >;
+        template< bool s = false > struct DynInt;
     }
 
     struct Interrupt : brick::types::Ord
@@ -96,7 +97,7 @@ namespace divine::vm
     template< typename Context > struct Eval;
 
     template< int slab >
-    using HeapBase = mem::Base< HeapPointer, value::Pointer, value::Int, mem::Pool< slab > >;
+    using HeapBase = mem::Base< HeapPointer, value::Pointer, value::FixInt, mem::Pool< slab > >;
 
     struct MutableHeap;
     struct SmallHeap;

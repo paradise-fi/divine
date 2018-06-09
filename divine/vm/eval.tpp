@@ -75,11 +75,11 @@ auto Eval< Ctx >::op( Op _op, Args... args ) -> typename std::enable_if< Guard< 
 {
     // std::cerr << "op called on type " << typeid( T ).name() << std::endl;
     // std::cerr << instruction() << std::endl;
-    _op( V< Ctx, T >( this, args... ) );
+    _op( V< Ctx, T, Args... >( this, args... ) );
 }
 
-template< typename Ctx > template< template< typename > class Guard, typename T >
-void Eval< Ctx >::op( NoOp )
+template< typename Ctx > template< template< typename > class Guard, typename T, typename... Args >
+void Eval< Ctx >::op( NoOp, Args... )
 {
     // instruction().op->dump();
     UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
@@ -111,6 +111,7 @@ void Eval< Ctx >::type_dispatch( typename Slot::Type type, Op _op )
         case Slot::I16: return op< Guard, value::Int< 16 > >( _op );
         case Slot::I32: return op< Guard, value::Int< 32 > >( _op );
         case Slot::I64: return op< Guard, value::Int< 64 > >( _op );
+        case Slot::IX: return op< Guard, value::DynInt<> >( _op, 100 );
         case Slot::Ptr: case Slot::PtrA: case Slot::PtrC:
             return op< Guard, PointerV >( _op );
         case Slot::F32:

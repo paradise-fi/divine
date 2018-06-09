@@ -33,8 +33,14 @@ namespace divine::vm::value
 namespace bitlevel = brick::bitlevel;
 using bitlevel::bitcast;
 
-struct Base { static const bool IsValue = true; static const bool IsPointer = false; };
-template< int, bool > struct Int;
+struct Base
+{
+    static const bool IsValue = true;
+    static const bool IsPointer = false;
+    static const bool IsFix = true;
+    void setup() {}
+};
+
 using Bool = Int< 1, false >;
 
 template< int i > struct _signed { using T = typename _signed< i + 1 >::T; };
@@ -63,10 +69,12 @@ struct Void : Base
     void raw( Raw ) {}
 };
 
-template< int _width, bool is_signed = false, bool is_dynamic = false >
+template< int _width, bool is_signed, bool is_dynamic >
 struct Int : Base
 {
     static const int width = _width;
+    template< int w > using Alike = Int< w, is_signed, is_dynamic >;
+
     using Raw = brick::bitlevel::bitvec< width >;
     using Cooked = Choose< is_signed, typename _signed< width >::T, Raw >;
 
@@ -104,7 +112,7 @@ struct Int : Base
     int objid_offset() { return _meta.pointer; }
 
     template< int w >
-    auto checkptr( Int< w, is_signed > o, Int< w, is_signed > &result, int shift = 0 )
+    auto checkptr( Alike< w > o, Alike< w > &result, int shift = 0 )
         -> std::enable_if_t< ( w >= _VM_PB_Obj ) >
     {
         if ( objid() && result.objid( _meta.pointer + shift ) &&
@@ -116,8 +124,7 @@ struct Int : Base
     }
 
     template< int w >
-    auto checkptr( Int< w, is_signed >, Int< w, is_signed > &, int = 0 )
-        -> std::enable_if_t< ( w < _VM_PB_Obj ) >
+    auto checkptr( Alike< w >, Alike< w > &, int = 0 ) -> std::enable_if_t< ( w < _VM_PB_Obj ) >
     {}
 
     Int arithmetic( Int o, Raw r )
@@ -204,13 +211,14 @@ struct Int : Base
     }
 
     template< int w >
-    typename std::enable_if< (width > w), Raw >::type signbit() { return Raw( 1 ) << ( w - 1 ); }
+    typename std::enable_if< (width >= w), Raw >::type signbit() { return Raw( 1 ) << ( w - 1 ); }
     template< int w >
     typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
 
-    template< int w > Int( Int< w, is_signed > i )
+    template< int w, bool dyn > Int( Int< w, is_signed, dyn > i )
         : _raw( i._raw ), _m( i._m )
     {
+        ASSERT( !dyn ); /* FIXME */
         _meta.taints = i._meta.taints;
 
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
@@ -241,9 +249,10 @@ struct Int : Base
     Int operator~() { Int r = *this; r._raw = ~_raw; return r; }
     bool operator!() const { return !_raw; }
 
-    template< int w >
-    Int operator<<( Int< w, false > sh )
+    template< int w, bool dyn >
+    Int operator<<( Int< w, false, dyn > sh )
     {
+        ASSERT( !dyn ); /* FIXME */
         Int result( 0, 0, false );
         result.taints( taints() | sh.taints() );
         if ( !sh.defined() )
@@ -254,9 +263,10 @@ struct Int : Base
         return result;
     }
 
-    template< int w >
-    Int operator>>( Int< w, false > sh )
+    template< int w, bool dyn >
+    Int operator>>( Int< w, false, dyn > sh )
     {
+        ASSERT( !dyn ); /* FIXME */
         Int result( 0, 0, false );
         result.taints( taints() | sh.taints() );
         if ( !sh.defined() )
@@ -291,6 +301,17 @@ struct Int : Base
         if ( v.pointer() ) def << "p";
         if ( v.taints() ) def << "t";
         return o << "[i" << width << " " << brick::string::fmt( v.cooked() ) << " " << def.str() << "]";
+    }
+};
+
+template< bool s >
+struct DynInt : Int< 64, s, true >
+{
+    static const bool IsFix = false;
+    using Int< 64, s, true >::Int;
+    void setup( int bw )
+    {
+        ASSERT_LEQ( bw, 64 );
     }
 };
 

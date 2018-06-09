@@ -330,8 +330,8 @@ private:
     template< template< typename > class Guard = Any, typename T, typename Op, typename... Args >
     auto op( Op _op, Args... args ) -> typename std::enable_if< Guard< T >::value >::type;
 
-    template< template< typename > class Guard = Any, typename T >
-    void op( NoOp );
+    template< template< typename > class Guard = Any, typename T, typename... Args >
+    void op( NoOp, Args... args );
 
     template< template< typename > class Guard = Any, typename Op >
     void op( int off, Op _op );
