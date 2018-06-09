@@ -126,7 +126,7 @@ struct PointerLayer : public NextLayer
             std::cout << "pointer exceptions: {\n";
             for ( auto &e : _exceptions )
             {
-                std::cout << "  {" << e.first.object._raw << " + "
+                std::cout << "  {" << e.first.object << " + "
                    << e.first.offset << ": " << e.second << "  }\n";
             }
             std::cout << "}\n";

@@ -87,17 +87,27 @@ namespace divine::mem
     void Data< Next >::write( Loc l, T t )
     {
         using Raw = typename T::Raw;
-        ASSERT_LEQ( sizeof( Raw ), size( l.object ) - l.offset );
         Next::write( l, t );
-        *objects().template machinePointer< Raw >( l.object, l.offset ) = t.raw();
+
+        if constexpr ( T::IsFix )
+        {
+            ASSERT_LEQ( sizeof( Raw ), size( l.object ) - l.offset );
+            *objects().template machinePointer< Raw >( l.object, l.offset ) = t.raw();
+        }
+        else
+            NOT_IMPLEMENTED();
     }
 
     template< typename Next > template< typename T >
     void Data< Next >::read( Loc l, T &t ) const
     {
         using Raw = typename T::Raw;
-        ASSERT_LEQ( sizeof( Raw ), size( l.object ) - l.offset );
-        t.raw( *objects().template machinePointer< Raw >( l.object, l.offset ) );
+        if constexpr ( T::IsFix )
+        {
+            ASSERT_LEQ( sizeof( Raw ), size( l.object ) - l.offset );
+            t.raw( *objects().template machinePointer< Raw >( l.object, l.offset ) );
+        } else
+            NOT_IMPLEMENTED();
         Next::read( l, t );
     }
 
