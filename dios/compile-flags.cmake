@@ -1,5 +1,5 @@
 list( APPEND flags -Oz )
-list( APPEND flags -g )
+list( APPEND flags -debug-info-kind=standalone )
 list( APPEND flags -D__divine__ )
 list( APPEND flags -D_POSIX_C_SOURCE=2008098L )
 list( APPEND flags -D_BSD_SOURCE )
