@@ -190,6 +190,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
     for ( auto &f : po.files )
         f.match(
             [&]( const File &f ) {
+                compiler.allowIncludePath( brick::string::dirname( f.name ) );
                 if ( f.type == FT::Unknown )
                     throw std::runtime_error( "cannot detect file format for file '" + f.name + "', please supply -x option for it" );
                 auto m = moduleCallback( compile( f.name, f.type, po.opts ), f.name );
