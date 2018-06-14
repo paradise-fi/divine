@@ -91,7 +91,18 @@ struct Context : vm::Context< vm::Program, vm::CowHeap >
 
     void trace( std::string s ) { _trace.push_back( s ); }
     void trace( vm::TraceDebugPersist t ) { Super::trace( t ); }
-    void trace( vm::TraceAssume ta ) { _assume = ta.ptr; }
+    void trace( vm::TraceAssume ta )
+    {
+        _assume = ta.ptr;
+        if ( debug_allowed() )
+        {
+            brick::smt::Context ctx;
+            smt::extract::SMTLib2 extract( heap(), ctx, "", false );
+            auto assume = extract.read( ta.ptr );
+            auto n = extract.convert( assume->binary.left );
+            trace( "ASSUME " + to_string( n ) );
+        }
+    }
 
     void swap_critical()
     {
