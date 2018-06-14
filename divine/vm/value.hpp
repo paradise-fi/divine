@@ -85,6 +85,14 @@ struct Int : Base
         Meta() : pointer( _notptr ), taints( 0 ) {}
     } _meta;
 
+    int size()
+    {
+        if constexpr ( is_dynamic )
+            return brick::bitlevel::align( _meta.width, 8 ) / 8;
+        else
+            return sizeof( Raw );
+    }
+
     uint32_t objid() { return objid( _meta.pointer ); }
     uint32_t objid( int offset )
     {
@@ -300,6 +308,8 @@ struct Float : Base
             _defined = false;
     }
 
+    int size() { return sizeof( Raw ); }
+
     Raw defbits() { return _defined ? full< Raw >() : 0; }
     void defbits( Raw r ) { _defined = ( r == full< Raw >() ); }
     Raw raw() { return _raw; }
@@ -351,6 +361,8 @@ struct Pointer : Base
     bool _obj_defined:1, _off_defined:1;
     bool _ispointer:1;
     uint8_t _taints:5;
+
+    int size() { return sizeof( Raw ); }
 
     template< typename P >
     auto offset( GenericPointer p ) { return P( p ).offset(); }
