@@ -446,7 +446,10 @@ struct Metadata : Next
 
                 if ( Next::is_pointer_exception( c_now() ) )
                     seek();
+                else if ( p.to - off < 4 )
+                    off = p.to;
             }
+
             iterator &operator++()
             {
                 off += (*this)->size();
