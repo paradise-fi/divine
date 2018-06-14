@@ -52,21 +52,21 @@ namespace divine::mem
         void write_shift( PointerV &p, T t )
         {
             write( p.cooked(), t );
-            skip( p, sizeof( typename T::Raw ) );
+            skip( p, t.size() );
         }
 
         template< typename T >
         void read_shift( PointerV &p, T &t ) const
         {
             read( p.cooked(), t );
-            skip( p, sizeof( typename T::Raw ) );
+            skip( p, t.size() );
         }
 
         template< typename T >
         void read_shift( Pointer &p, T &t ) const
         {
             read( p, t );
-            p = p + sizeof( typename T::Raw );
+            p = p + t.size();
         }
 
         std::string read_string( Pointer ptr ) const

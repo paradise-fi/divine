@@ -185,8 +185,8 @@ struct PointerLayer : public NextLayer
     {
         NextLayer::write( l, value, exp );
 
-        constexpr int sz = sizeof( typename V::Raw );
-        constexpr int words = ( sz + 3 ) / 4;
+        const int sz = value.size();
+        const int words = ( sz + 3 ) / 4;
 
         for ( int w = 0; w < words; ++w )
         {
@@ -204,9 +204,9 @@ struct PointerLayer : public NextLayer
     template< typename V >
     void read( Loc l, V &value, Expanded *exp ) const
     {
-        constexpr int sz = sizeof( typename V::Raw );
+        const int sz = value.size();
 
-        if ( sz == sizeof( typename PointerV::Raw ) && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
+        if ( sz == vm::PointerBytes && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
         {
             value.pointer( true );
             /* TODO! */

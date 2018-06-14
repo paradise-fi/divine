@@ -53,8 +53,7 @@ struct TaintLayer : public NextLayer
     {
         NextLayer::write( l, value, exp );
 
-        const int sz = sizeof( typename V::Raw );
-
+        const int sz = value.size();
         int off = 0;
         int w = 0;
 
@@ -79,7 +78,7 @@ struct TaintLayer : public NextLayer
     template< typename V >
     void read( Loc l, V &value, Expanded *exp ) const
     {
-        constexpr int sz = sizeof( typename V::Raw );
+        const int sz = value.size();
 
         int off = 0;
         int w = 0;
@@ -170,7 +169,7 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
     template< typename V >
     void write( Loc l, V value )
     {
-        const int sz = sizeof( typename V::Raw );
+        const int sz = value.size();
         for ( auto t : taints( l, sz ) )
             t.set( ( value.taints() >> LSB ) & Mask );
 
@@ -180,7 +179,7 @@ struct PooledTaintShadow : public SlaveShadow< MasterPool >
     template< typename V >
     void read( Loc l, V &value )
     {
-        constexpr int sz = sizeof( typename V::Raw );
+        const int sz = value.size();
         using VT = decltype( value.taints() );
         VT newtaints = 0;
         for ( auto t : taints( l, sz ) )

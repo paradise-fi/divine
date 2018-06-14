@@ -185,14 +185,13 @@ struct DefinednessLayer : public NextLayer
     {
         NextLayer::write( l, value, exp );
 
-        constexpr int sz = sizeof( typename V::Raw );
-
+        const int sz = value.size();
         auto obj = l.object;
 
         union
         {
             typename V::Raw _def_mask;
-            uint8_t _def_bytes[ sz ];
+            uint8_t _def_bytes[ sizeof( typename V::Raw ) ];
         };
 
         _def_mask = value.defbits();
@@ -217,14 +216,13 @@ struct DefinednessLayer : public NextLayer
     template< typename V >
     void read( Loc l, V &value, Expanded *exp ) const
     {
-        constexpr int sz = sizeof( typename V::Raw );
-
+        const int sz = value.size();
         auto obj = l.object;
 
         union
         {
             typename V::Raw _def_mask;
-            uint8_t _def_bytes[ sz ];
+            uint8_t _def_bytes[ sizeof( typename V::Raw ) ];
         };
 
         int off = 0,

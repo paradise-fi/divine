@@ -220,8 +220,8 @@ struct Metadata : Next
     template< typename V >
     void write( Loc l, V value )
     {
-        constexpr int sz = sizeof( typename V::Raw );
-        constexpr int words = ( sz + 3 ) / 4;
+        int sz = value.size();
+        int words = ( sz + 3 ) / 4;
 
         if ( sz >= 4 )
             ASSERT_EQ( l.offset % 4, 0 );
@@ -241,8 +241,8 @@ struct Metadata : Next
     template< typename V >
     void read( Loc l, V &value ) const
     {
-        constexpr int sz = sizeof( typename V::Raw );
-        constexpr int words = ( sz + 3 ) / 4;
+        int sz = value.size();
+        int words = ( sz + 3 ) / 4;
 
         if ( sz >= 4 )
             ASSERT_EQ( l.offset % 4, 0 );
