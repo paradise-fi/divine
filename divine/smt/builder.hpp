@@ -36,7 +36,8 @@ namespace divine::smt::builder
 struct SMTLib2
 {
     using Node = brick::smt::Node;
-    SMTLib2( brick::smt::Context &ctx, std::string suff = "" ) : _ctx( ctx ), _suff( suff ) {}
+    SMTLib2( brick::smt::Context &ctx, std::string suff = "", bool defs = true )
+        : _ctx( ctx ), _suff( suff ), _use_defs( defs ) {}
 
     Node unary( sym::Unary un, Node n );
     Node binary( sym::Binary bin, Node a, Node b );
@@ -47,6 +48,7 @@ struct SMTLib2
 
     brick::smt::Context &_ctx;
     std::string _suff;
+    bool _use_defs = true;
     int _def_counter = 0;
 };
 

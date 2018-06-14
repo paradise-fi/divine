@@ -27,6 +27,8 @@ namespace smt = brick::smt;
 
 SMTLib2::Node SMTLib2::define( Node def )
 {
+    if ( !_use_defs )
+        return def;
     auto name = "def_"s + std::to_string( _def_counter ++ ) + _suff;
     return _ctx.define( name, def );
 }
