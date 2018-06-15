@@ -72,10 +72,8 @@ struct Void : Base
 template< int _width, bool is_signed, bool is_dynamic >
 struct Int : Base
 {
-    static const int width = _width;
-
-    using Raw = brick::bitlevel::bitvec< width >;
-    using Cooked = Choose< is_signed, typename _signed< width >::T, Raw >;
+    using Raw = brick::bitlevel::bitvec< _width >;
+    using Cooked = Choose< is_signed, typename _signed< _width >::T, Raw >;
 
     Raw _raw, _m;
 
@@ -91,6 +89,17 @@ struct Int : Base
         uint8_t taints:5;
         Meta() : pointer( _notptr ), taints( 0 ) {}
     } _meta;
+
+    int width()
+    {
+        if constexpr ( is_dynamic )
+        {
+            ASSERT_LT( 0, _meta.width );
+            return _meta.width;
+        }
+        else
+            return _width;
+    }
 
     int size()
     {
@@ -112,7 +121,7 @@ struct Int : Base
 
     void checkptr( Int o, Int &result, int shift = 0 )
     {
-        if constexpr ( width < _VM_PB_Obj )
+        if constexpr ( _width < _VM_PB_Obj )
             return;
 
         if ( objid() && result.objid( _meta.pointer + shift ) &&
@@ -198,9 +207,9 @@ struct Int : Base
         if ( ptr ) _meta.pointer = _isptr;
     }
 
-    Int< width, true, is_dynamic > make_signed()
+    Int< _width, true, is_dynamic > make_signed()
     {
-        Int< width, true, is_dynamic > result( _raw, _m, false );
+        Int< _width, true, is_dynamic > result( _raw, _m, false );
         result._meta.pointer = _meta.pointer;
         result.taints( _meta.taints );
         return result;
@@ -217,10 +226,10 @@ struct Int : Base
         ASSERT( !dyn ); /* FIXME */
         _meta.taints = i._meta.taints;
 
-        if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
-            _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
+        if ( _width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
+            _m |= ( bitlevel::ones< Raw >( _width ) & ~bitlevel::ones< Raw >( w ) );
 
-        if ( i._meta.pointer > width - _VM_PB_Obj )
+        if ( i._meta.pointer > _width - _VM_PB_Obj )
             _meta.pointer = _notptr;
         else
             _meta.pointer = i._meta.pointer;
@@ -286,7 +295,7 @@ struct Int : Base
     friend std::ostream & operator<<( std::ostream &o, Int v )
     {
         std::stringstream def;
-        auto aw = brick::bitlevel::align( width, 8 );
+        auto aw = brick::bitlevel::align( _width, 8 );
         if ( v._m == bitlevel::ones< Raw >( aw ) )
             def << "d";
         else if ( v._m == 0 )
@@ -296,7 +305,9 @@ struct Int : Base
                 << +( v._m & bitlevel::ones< Raw >( aw ) );
         if ( v.pointer() ) def << "p";
         if ( v.taints() ) def << "t";
-        return o << "[i" << width << " " << brick::string::fmt( v.cooked() ) << " " << def.str() << "]";
+
+        return o << "[i" << v.width() << " " << brick::string::fmt( v.cooked() )
+                 << " " << def.str() << "]";
     }
 };
 
