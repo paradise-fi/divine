@@ -53,7 +53,7 @@ struct Node
     Context _ctx;
 
     vm::GenericPointer _address;
-    int _offset;
+    int _offset, _bound;
     Snapshot _snapshot;
     DNKind _kind;
     bool _executing;
@@ -86,7 +86,7 @@ struct Node
 
     void type( llvm::Type *type ) { _type = type; }
 
-    void offset( int off ) { _offset = off; }
+    void bounds( int off, int bound = 0 ) { _offset = off; _bound = bound; }
     void address( DNKind k, vm::GenericPointer l, bool exec = false )
     {
         _address = l;
@@ -112,6 +112,7 @@ struct Node
         _di_var = nullptr;
         _kind = DNKind::Object;
         _offset = 0;
+        _bound = 0;
 
         _ctx.debug().initPretty( [&]( llvm::DIType *di ) {
             static const int offset = strlen( "typeinfo name for " );
@@ -160,6 +161,7 @@ struct Node
 
     bool valid();
     bool boundcheck( PointerV ptr, int size );
+    bool boundcheck( int off, int size );
 
     void value( YieldAttr yield );
     void attributes( YieldAttr yield );

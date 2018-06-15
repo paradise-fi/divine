@@ -43,8 +43,9 @@ template< typename Prog, typename Heap >
 vm::GenericPointer Node< Prog, Heap >::pc()
 {
     ASSERT_EQ( kind(), DNKind::Frame );
+    ASSERT_EQ( _offset, 0 );
     PointerV pc;
-    if ( boundcheck( PointerV( _address ), vm::PointerBytes ) )
+    if ( boundcheck( 0, vm::PointerBytes ) )
         _ctx.heap().read( _address, pc );
     return pc.cooked();
 }
@@ -131,6 +132,14 @@ bool Node< Prog, Heap >::boundcheck( PointerV ptr, int size )
 {
     DNEval< Heap > eval( _ctx );
     return eval.boundcheck( []( auto ) { return std::stringstream(); }, ptr, size, false );
+}
+
+template< typename Prog, typename Heap >
+bool Node< Prog, Heap >::boundcheck( int off, int size )
+{
+    if ( _bound && off + size >= _bound )
+        return false;
+    return boundcheck( PointerV( _address ) + _offset + off, size );
 }
 
 template< typename Prog, typename Heap >
@@ -453,7 +462,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
         yield( "deref", rel );
     }
 
-    if ( _kind == DNKind::Frame && boundcheck( PointerV( _address ), 2 * vm::PointerBytes ) )
+    if ( _kind == DNKind::Frame && boundcheck( 0, 2 * vm::PointerBytes ) )
     {
         PointerV fr( _address );
         _ctx.heap().skip( fr, vm::PointerBytes );
@@ -533,7 +542,7 @@ void Node< Prog, Heap >::struct_fields( vm::HeapPointer hloc, YieldDN yield )
 
             Node field( _ctx, _snapshot );
             field.address( DNKind::Object, _address );
-            field.offset( _offset + offset );
+            field.bounds( _offset + offset ); /* TODO bound? */
             field.type( *STE );
             field.di_type( CTE );
             std::string name = CTE->getName().str();
@@ -557,13 +566,12 @@ void Node< Prog, Heap >::array_elements( YieldDN yield )
     if ( llvm::isa< llvm::SequentialType >( type ) )
         type = _type->getSequentialElementType();
     int size = _ctx.program().TD.getTypeAllocSize( type );
-    PointerV addr( _address + _offset );
 
-    for ( int idx = 0; boundcheck( addr + idx * size, size ); ++ idx )
+    for ( int idx = 0; boundcheck( idx * size, size ); ++ idx )
     {
         Node elem( _ctx, _snapshot );
         elem.address( DNKind::Object, _address );
-        elem.offset( _offset + idx * size );
+        elem.bounds( _offset + idx * size, size );
         elem.type( type );
         elem.di_type( di_base() );
         yield( "[" + std::to_string( idx ) + "]", elem );
@@ -611,13 +619,16 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
         return;
 
     auto slot = _ctx.program().valuemap[ var ];
+    int bound = 0;
+
     vm::GenericPointer ptr;
     if ( _ctx.program()._addr.has_addr( var ) && slot.location != Prog::Slot::Local )
         ptr = _ctx.program().addr( var );
     else if ( slot.location != Prog::Slot::Invalid )
-        ptr = eval.s2ptr( slot );
+        ptr = eval.s2ptr( slot ), bound = slot.size();
 
     PointerV deref;
+
     if ( slot.size() >= vm::PointerBytes && boundcheck( PointerV( ptr ), vm::PointerBytes ) )
         _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
     if ( deref.pointer() )
@@ -631,6 +642,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
 
     Node lvar( _ctx, _snapshot );
     lvar.address( DNKind::Object, ptr );
+    lvar.bounds( 0, bound );
     lvar.type( type );
     lvar.di_var( divar );
     yield( name, lvar );
