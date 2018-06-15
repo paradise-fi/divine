@@ -60,12 +60,16 @@ void Duplicator::process( llvm::Instruction *i ) {
     auto dom = MDValue( i ).domain();
     auto type = abstract_type( i->getType(), dom );
 
-    IRBuilder<> irb( i );
+    auto place = isa< PHINode >( i ) ? i->getParent()->getFirstNonPHI() : i;
+
+    IRBuilder<> irb( place );
     auto fn = placeholder( get_module( i ), i->getType(), type );
     auto ph = irb.CreateCall( fn, { i } );
 
-    ph->removeFromParent();
-    ph->insertAfter( i );
+    if ( !isa< PHINode >( i ) ) {
+        ph->removeFromParent();
+        ph->insertAfter( place );
+    }
 
     make_duals( i, ph );
 }
