@@ -144,6 +144,29 @@ struct Int : Base
         return res;
     }
 
+    void write( Raw *r )
+    {
+        if constexpr ( is_dynamic )
+        {
+            _raw = 0;
+            char *rr = reinterpret_cast< char * >( &_raw );
+            std::copy( rr, rr + size(), reinterpret_cast< char * >( r ) );
+        }
+        else
+            *r = _raw;
+    }
+
+    void read( Raw *r )
+    {
+        if constexpr ( is_dynamic )
+        {
+            char *rr = reinterpret_cast< char * >( r );
+            std::copy( rr, rr + size(), reinterpret_cast< char * >( &_raw ) );
+        }
+        else
+            _raw = *r;
+    }
+
     Raw defbits() { return _m; }
     void defbits( Raw b ) { _m = b; }
     bool defined() { return defbits() == full< Raw >(); }
@@ -309,6 +332,8 @@ struct Float : Base
     }
 
     int size() { return sizeof( Raw ); }
+    void read( Raw *r ) { _raw = *r; }
+    void write( Raw *r ) { *r = _raw; }
 
     Raw defbits() { return _defined ? full< Raw >() : 0; }
     void defbits( Raw r ) { _defined = ( r == full< Raw >() ); }
@@ -363,6 +388,8 @@ struct Pointer : Base
     uint8_t _taints:5;
 
     int size() { return sizeof( Raw ); }
+    void read( Raw *r ) { _cooked = bitcast< Cooked >( *r ); }
+    void write( Raw *r ) { *r = bitcast< Raw >( _cooked ); }
 
     template< typename P >
     auto offset( GenericPointer p ) { return P( p ).offset(); }
