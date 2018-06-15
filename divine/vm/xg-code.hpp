@@ -297,6 +297,21 @@ lx::Hypercall hypercall( llvm::Function *f )
     return lx::NotHypercall;
 }
 
+int width( const llvm::DataLayout &layout, llvm::Type *t )
+{
+    if ( t->isVoidTy() )
+        return 0;
+    if ( t->isPointerTy() )
+        return 8 * PointerBytes;
+    if ( t->isIntegerTy() || t->isFloatingPointTy() )
+        return t->getPrimitiveSizeInBits();
+
+    if ( t->isSized() )
+        return layout.getTypeAllocSize( t ) * 8;
+    else
+        return 0;
+}
+
 _VM_Operand::Type type( llvm::Type *t )
 {
     if ( t->isVoidTy() )
