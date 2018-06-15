@@ -52,37 +52,58 @@ Values reach_from( Values roots ) {
 
 Values reach_from( Value *root ) { return reach_from( Values{ root } ); }
 
-Values get_sources( Value *val ) {
-    while ( true ) {
-        if ( auto gep = dyn_cast< GetElementPtrInst >( val ) )
-            val = gep->getPointerOperand();
-        else if ( auto ce = dyn_cast< ConstantExpr >( val ) )
-            val = ce->getOperand( 0 );
-        else if ( auto load = dyn_cast< LoadInst >( val ) )
-            val = load->getPointerOperand();
-        else if ( auto btcst = dyn_cast< BitCastInst >( val ) )
-            val = btcst->getOperand( 0 );
-        else if ( auto itptr = dyn_cast< IntToPtrInst >( val ) )
-            val = itptr->getOperand( 0 );
-        else if ( isa< AllocaInst >( val ) )
-            return { val };
-        else if ( isa< GlobalValue >( val ) )
-            return { val };
-        else if ( isa< Argument >( val ) )
-            return { val };
-        else if ( isa< CallInst >( val ) )
-            return { val }; // TODO if pointer do we need to propagate through return?
-        else if ( isa< ExtractValueInst >( val ) )
-            return { val };
-        else if ( isa< Constant >( val ) ) {
-            ASSERT( !isa< ConstantExpr >( val ) );
-            return {};
-        } else {
-            val->dump();
-            UNREACHABLE( "Unknown parent instruction." );
-        }
+struct AbstractionSources {
+
+    explicit AbstractionSources( Value *from ) : from( from ) {}
+
+    Values get() {
+        auto values = get_impl( from );
+
+        Values res;
+        std::unique_copy( values.begin(), values.end(), std::back_inserter( res ) );
+        return res;
     }
-}
+
+private:
+    Values get_impl( Value *val ) {
+        Values res;
+
+        llvmcase( val,
+            [&] ( GetElementPtrInst *inst ) { res = get_impl( inst->getPointerOperand() ); },
+            [&] ( LoadInst *inst )          { res = get_impl( inst->getPointerOperand() ); },
+            [&] ( BitCastInst *inst )       { res = get_impl( inst->getOperand( 0 ) ); },
+            [&] ( ConstantExpr *inst )      { res = get_impl( inst->getOperand( 0 ) ); },
+            [&] ( IntToPtrInst *inst )      { res = get_impl( inst->getOperand( 0 ) ); },
+            [&] ( AllocaInst * )            { res = { val }; },
+            [&] ( Argument * )              { res = { val }; },
+            [&] ( CallInst * )              { res = { val }; },
+            [&] ( GlobalValue * )           { res = { val }; },
+            [&] ( ExtractValueInst * )      { res = { val }; },
+            [&] ( Constant * ) {
+                res = {};
+                ASSERT( !isa< ConstantExpr >( val ) );
+            },
+            [&] ( PHINode *inst ) {
+                if ( !seen_phi_nodes.count( inst ) ) {
+                    seen_phi_nodes.insert( inst );
+                    for ( auto &in : inst->incoming_values() ) {
+                        auto values = get_impl( in.get() );
+                        std::move( values.begin(), values.end(), std::back_inserter( res ) );
+                    }
+                }
+            },
+            [&] ( Value * ) {
+                val->dump();
+                UNREACHABLE( "Unknown parent instruction." );
+            }
+        );
+
+        return res;
+    }
+
+    Value * from;
+    std::set< Value * > seen_phi_nodes;
+};
 
 } // anonymous namespace
 
@@ -118,7 +139,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
 
         if ( auto s = dyn_cast< StoreInst >( dep ) ) {
             if ( seen_vals.count( { s->getValueOperand(), dom } ) ) {
-                for ( auto src : get_sources( s->getPointerOperand() ) )
+                for ( auto src : AbstractionSources( s->getPointerOperand() ).get() )
                     tasks.push_back( [=]{ propagate_value( src, dom ); } );
                 if ( auto a = dyn_cast< Argument >( s->getPointerOperand() ) )
                     if ( !entry_args.count( { a, dom } ) )
@@ -143,7 +164,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             }
             else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
                 if ( seen_vals.count( { mem->getSource(), dom } ) ) {
-                    for ( auto src : get_sources( mem->getDest() ) )
+                    for ( auto src : AbstractionSources( mem->getDest() ).get() )
                         tasks.push_back( [=]{ propagate_value( src, dom ); } );
                 }
             }
@@ -165,7 +186,7 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
         return;
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
-            for ( auto src : get_sources( call->getOperand( arg->getArgNo() ) ) )
+            for ( auto src : AbstractionSources( call->getOperand( arg->getArgNo() ) ).get() )
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
         }
     }
