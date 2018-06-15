@@ -55,7 +55,7 @@ namespace {
 
             auto to_i1 = cast< Instruction >( ass.cond );
 
-            llvm::IRBuilder<> irb( &edge_bb->front() );
+            llvm::IRBuilder<> irb( edge_bb->getFirstInsertionPt() );
             irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
         }
 
