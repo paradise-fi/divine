@@ -73,7 +73,6 @@ template< int _width, bool is_signed, bool is_dynamic >
 struct Int : Base
 {
     static const int width = _width;
-    template< int w > using Alike = Int< w, is_signed, is_dynamic >;
 
     using Raw = brick::bitlevel::bitvec< width >;
     using Cooked = Choose< is_signed, typename _signed< width >::T, Raw >;
@@ -111,10 +110,11 @@ struct Int : Base
 
     int objid_offset() { return _meta.pointer; }
 
-    template< int w >
-    auto checkptr( Alike< w > o, Alike< w > &result, int shift = 0 )
-        -> std::enable_if_t< ( w >= _VM_PB_Obj ) >
+    void checkptr( Int o, Int &result, int shift = 0 )
     {
+        if constexpr ( width < _VM_PB_Obj )
+            return;
+
         if ( objid() && result.objid( _meta.pointer + shift ) &&
              result.objid( _meta.pointer + shift ) == objid() )
             result._meta.pointer = _meta.pointer + shift;
@@ -122,10 +122,6 @@ struct Int : Base
                        && result.objid( o._meta.pointer + shift ) == o.objid() )
             result._meta.pointer = o._meta.pointer + shift;
     }
-
-    template< int w >
-    auto checkptr( Alike< w >, Alike< w > &, int = 0 ) -> std::enable_if_t< ( w < _VM_PB_Obj ) >
-    {}
 
     Int arithmetic( Int o, Raw r )
     {
