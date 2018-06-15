@@ -40,6 +40,16 @@ namespace {
         return get_or_insert_function( get_module( cond ), fty, "lart.assume.placeholder" );
     }
 
+    void replace_phis_incoming_bbs( BasicBlock *bb, BasicBlock *oldbb, BasicBlock *newbb ) {
+        for ( auto& inst : *bb ) {
+            if ( auto phi = dyn_cast< PHINode >( &inst ) ) {
+                int bbidx = phi->getBasicBlockIndex( oldbb );
+                if ( bbidx >= 0 )
+                    phi->setIncomingBlock( bbidx, newbb );
+            }
+        }
+    }
+
     using BB = llvm::BasicBlock;
     using BBEdge = analysis::BBEdge;
     struct AssumeEdge : BBEdge {
@@ -51,12 +61,15 @@ namespace {
             unsigned i = succ_idx( from, to );
             SplitEdge( from, to );
 
-            auto edge_bb = from->getTerminator()->getSuccessor( i );
-
+            auto edgebb = from->getTerminator()->getSuccessor( i );
+            to = edgebb->getSingleSuccessor();
             auto to_i1 = cast< Instruction >( ass.cond );
 
-            llvm::IRBuilder<> irb( edge_bb->getFirstInsertionPt() );
+            llvm::IRBuilder<> irb( edgebb->getFirstInsertionPt() );
             irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
+
+            // Correct phis after edge splitting
+            replace_phis_incoming_bbs( to, from, edgebb );
         }
 
         unsigned succ_idx( BB * from, BB * to ) {
