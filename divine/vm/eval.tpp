@@ -36,8 +36,6 @@ struct V
 
     V( Eval< Ctx > *ev, Args... args ) : ev( ev ), args( args... ) {}
 
-    T get() { UNREACHABLE( "may only be used in decltype()" ); }
-
     T get( lx::Slot s )
     {
         T result;
@@ -56,6 +54,14 @@ struct V
 
     T get( int v ) { return get( ev->instruction().value( v ) ); }
     T arg( int v ) { return get( v + 1 ); }
+
+    template< typename R = T, typename... CArgs > R construct( CArgs &&... cargs )
+    {
+        using namespace brick::tuple;
+        R result( std::forward< CArgs... >( cargs )... );
+        pass( result, &R::setup, args );
+        return result;
+    }
 
     void set( int v, T t )
     {
@@ -83,7 +89,7 @@ template< typename Ctx > template< template< typename > class Guard, typename Op
 void Eval< Ctx >::op( int off1, int off2, Op _op )
 {
     op< Any >( off1, [&]( auto v1 ) {
-            return this->op< Guard< decltype( v1.get() ) >::template Guard >(
+            return this->op< Guard< decltype( v1.construct() ) >::template Guard >(
                 off2, [&]( auto v2 ) { return _op( v1, v2 ); } );
         } );
 }
@@ -1404,9 +1410,9 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
     auto _atomicrmw = [this] ( auto impl ) -> void
     {
         op< IsIntegral >( 0, [&]( auto v ) {
-                decltype( v.get() ) edit;
+                auto edit = v.construct();
                 auto loc = operand< PointerV >( 0 );
-                if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ), true ) )
+                if ( !boundcheck( loc, sizeof( typename decltype( v.construct() )::Raw ), true ) )
                     return; // TODO: destroy pre-existing register value
                 heap().read( ptr2h( loc ), edit );
                 this->result( edit );
@@ -1561,7 +1567,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
 
             return op< Convertible >( 0, 1, [this]( auto v0, auto v1 )
                         {
-                            result( decltype( v0.get() )( v1.get( 1 ) ) );
+                            result( v0.construct( v1.get( 1 ) ) );
                         } );
 
         case OpCode::SExt:
@@ -1570,8 +1576,8 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
 
             return op< SignedConvertible >( 0, 1, [this]( auto v0, auto v1 )
                         {
-                            result( decltype( v0.get().make_signed() )(
-                                        v1.get( 1 ).make_signed() ) );
+                            using Signed = decltype( v0.construct().make_signed() );
+                            result( v0.template construct< Signed >( v1.get( 1 ).make_signed() ) );
                         } );
 
         case OpCode::Br:
@@ -1632,7 +1638,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
 
         case OpCode::AtomicCmpXchg: // { old, changed } = cmpxchg ptr, expected, new
             return op< Any >( 2, [&]( auto v ) {
-                    using T = decltype( v.get() );
+                    using T = decltype( v.construct() );
                     auto ptr = operand< PointerV >( 0 );
                     auto expected = v.get( 2 );
                     auto newval = v.get( 3 );
