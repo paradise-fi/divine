@@ -324,6 +324,7 @@ struct DynInt : Int< 64, s, true >
     void setup( int bw )
     {
         ASSERT_LEQ( bw, 64 );
+        this->_meta.width = bw;
     }
 };
 
