@@ -99,8 +99,8 @@ static auto c2bc( std::string s )
 {
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     divine::cc::Compiler c( ctx );
-    c.mapVirtualFile( "main.c", s );
-    auto rv = std::make_shared< mc::BitCode >( c.compileModule( "main.c" ), ctx );
+    c.mapVirtualFile( "/main.c", s );
+    auto rv = std::make_shared< mc::BitCode >( c.compileModule( "/main.c" ), ctx );
     rv->_interrupts = false;
     rv->init();
     return rv;
