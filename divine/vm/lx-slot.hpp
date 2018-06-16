@@ -74,6 +74,10 @@ struct Slot : _VM_Operand, _VM_OperandExt
         type = t;
         location = l;
         _VM_OperandExt::width = w;
+        if ( w )
+            ASSERT_EQ( w, width() );
+        if ( w == 1 || w == 8 || w == 16 || w == 32 || w == 64 )
+            ASSERT_NEQ( type, IX );
     }
 
     explicit Slot( _VM_Operand op, _VM_OperandExt ext = _VM_OperandExt() )

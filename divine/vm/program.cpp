@@ -94,8 +94,7 @@ CodePointer Program::getCodePointer( llvm::Value *val )
 Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
 {
     auto t = val->getType();
-    Slot result( loc, xg::type( t ),
-                 t->isSized() ? 8 * TD.getTypeAllocSize( t ) : 0 );
+    Slot result( loc, xg::type( t ), xg::width( TD, t ) );
 
     if ( isCodePointer( val ) )
         result.type = Slot::PtrC;
