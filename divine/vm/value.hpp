@@ -132,9 +132,11 @@ struct Int : Base
             result._meta.pointer = o._meta.pointer + shift;
     }
 
+    Raw full() { return brick::bitlevel::ones< Raw >( width() ); }
+
     Int arithmetic( Int o, Raw r )
     {
-        Int result( r, (_m & o._m) == full< Raw >() ? full< Raw >() : 0, false );
+        Int result( r, ( _m & o._m & full() ) == full() ? full() : 0, false );
         result.taints( taints() | o.taints() );
         checkptr( o, result );
         return result;
@@ -179,10 +181,10 @@ struct Int : Base
             _raw = *r;
     }
 
-    Raw defbits() { return _m; }
+    Raw defbits() { return _m & full(); }
     void defbits( Raw b ) { _m = b; }
-    bool defined() { return defbits() == full< Raw >(); }
-    void defined( bool d ) { defbits( d ? full< Raw >() : 0 ); }
+    bool defined() { return defbits() == full(); }
+    void defined( bool d ) { defbits( d ? full() : 0 ); }
     bool pointer() { return _meta.pointer == _isptr; }
     void pointer( bool p ) { _meta.pointer = p ? _isptr : _notptr; }
     auto raw() { return _raw; }
@@ -201,7 +203,7 @@ struct Int : Base
     uint8_t taints() { return _meta.taints; }
 
     Int() : _raw( 0 ), _m( 0 ) {}
-    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( full< Raw >() ) {}
+    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( value::full< Raw >() ) {}
     Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m )
     {
         if ( ptr ) _meta.pointer = _isptr;
@@ -239,7 +241,7 @@ struct Int : Base
     }
 
     template< typename T > Int( Float< T > f )
-      : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ), _m( f.defined() ? full< Raw >() : 0 )
+        : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ), _m( f.defined() ? value::full< Raw >() : 0 )
     {
         taints( f.taints() );
         using FC = typename Float< T >::Cooked;
