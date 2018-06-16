@@ -1,3 +1,4 @@
+#if 0
 #include <divine/cc/elf.hpp>
 #include <divine/cc/clang.hpp>
 #include <divine/cc/compile.hpp>
@@ -381,3 +382,6 @@ int main( int argc, char **argv )
         return 1;
     }
 }
+#endif
+
+int main() { return 1; }
