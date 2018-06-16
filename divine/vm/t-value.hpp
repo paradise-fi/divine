@@ -42,7 +42,7 @@ struct TestInt
         Int16 a( 0 ), b( 0 );
         vm::value::Bool x = ( a + b == a );
         ASSERT( x.raw() == 1 );
-        ASSERT( x._m == 255 );
+        ASSERT_EQ( x.defbits(), 1 );
         a = Int16( 4 );
         ASSERT( ( a != b ).cooked() );
         b = a;
@@ -130,7 +130,6 @@ struct TestInt
         ASSERT( a.pointer() );
         a = a >> Int64( 32 );
         ASSERT( !a.pointer() );
-        ASSERT_EQ( a._pointer, 0 );
         Int32 b = a;
         ASSERT( b.pointer() );
     }
