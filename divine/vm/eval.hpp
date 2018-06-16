@@ -324,7 +324,7 @@ struct Eval
     }
 
     template< template< typename > class Guard = Any, typename Op >
-    void type_dispatch( typename Slot::Type type, Op _op );
+    void type_dispatch( typename Slot::Type type, Op _op, Slot s = Slot() );
 
 private:
     template< template< typename > class Guard = Any, typename T, typename Op, typename... Args >

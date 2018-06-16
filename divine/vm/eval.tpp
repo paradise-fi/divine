@@ -98,11 +98,11 @@ template< typename Ctx > template< template< typename > class Guard, typename Op
 void Eval< Ctx >::op( int off, Op _op )
 {
     auto v = instruction().value( off );
-    return type_dispatch< Guard >( v.type, _op );
+    return type_dispatch< Guard >( v.type, _op, v );
 }
 
 template< typename Ctx > template< template< typename > class Guard, typename Op >
-void Eval< Ctx >::type_dispatch( typename Slot::Type type, Op _op )
+void Eval< Ctx >::type_dispatch( typename Slot::Type type, Op _op, Slot slot )
 {
     switch ( type )
     {
@@ -111,7 +111,9 @@ void Eval< Ctx >::type_dispatch( typename Slot::Type type, Op _op )
         case Slot::I16: return op< Guard, value::Int< 16 > >( _op );
         case Slot::I32: return op< Guard, value::Int< 32 > >( _op );
         case Slot::I64: return op< Guard, value::Int< 64 > >( _op );
-        case Slot::IX: return op< Guard, value::DynInt<> >( _op, 100 );
+        case Slot::IX:
+            ASSERT( slot.width() );
+            return op< Guard, value::DynInt<> >( _op, slot.width() );
         case Slot::Ptr: case Slot::PtrA: case Slot::PtrC:
             return op< Guard, PointerV >( _op );
         case Slot::F32:
@@ -270,7 +272,7 @@ auto Eval< Ctx >::gep( int type, int idx, int end ) -> IntV // getelementptr
 
     value::Int< 64, true > offset;
     auto fetch = [&]( auto v ) { offset = v.get( idx + 1 ).make_signed(); };
-    type_dispatch< IsIntegral >( operand( idx ).type, fetch );
+    type_dispatch< IsIntegral >( operand( idx ).type, fetch, operand( idx ) );
 
     if ( offset.cooked() < min || offset.cooked() > max )
         return IntV( 0, 0, false );
