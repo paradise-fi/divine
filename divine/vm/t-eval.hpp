@@ -584,7 +584,6 @@ struct Eval
     {
         auto t = IntV( 10 );
         t.taints( 1 );
-        std::cerr << "t = " << t << std::endl;
         auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
                                 "int g( char t, int x ) { return 8; } "
                                 "int h( int x ) { return 42 + x; } "
@@ -596,7 +595,6 @@ struct Eval
     {
         auto t = IntV( 10 );
         t.taints( 1 );
-        std::cerr << "t = " << t << std::endl;
         auto x = testP( c2prog( "int __vm_test_taint_ii( int (*f)( char, int ), int (*g)( int ), int ); "
                                 "int g( char t, int x ) { return 8 + x; } "
                                 "int h( int x ) { return 42 + x; } "
