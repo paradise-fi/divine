@@ -220,6 +220,8 @@ struct Fault: public Next {
             return _VM_F_Arithmetic;
         if ( fault == "memory" )
             return _VM_F_Memory;
+        if ( fault == "leak" )
+            return _VM_F_Leak;
         if ( fault == "control" )
             return _VM_F_Control;
         if ( fault == "locking" )
@@ -245,6 +247,7 @@ struct Fault: public Next {
             case _VM_F_Assert: return ext ? "assertion failure" : "assert";
             case _VM_F_Arithmetic: return ext ? "arithmetic error" : "arithmetic";
             case _VM_F_Memory: return ext ? "memory error" : "memory";
+            case _VM_F_Leak: return ext ? "memory leak" : "leak";
             case _VM_F_Control: return ext ? "control error" : "control";
             case _VM_F_Locking: return ext ? "locking error" : "locking";
             case _VM_F_Hypercall: return ext ? "bad hypercall" : "hypercall";
