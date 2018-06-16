@@ -83,7 +83,7 @@ divbench-install:
 
 SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)"
 OF = $(OBJ)$(FLAVOUR)/
-DIRENV_PATH = $(OF)/tools:$(OF)/llvm/bin:$(OBJ)bench/tools:$(OF)/divine:$(OF)/lart
+DIRENV_PATH = $(OF)/tools:$(OF)/llvm/bin:$(OBJ)bench/tools:$(OF)/divine:$(OF)/lart:$(OF)
 
 config:
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
