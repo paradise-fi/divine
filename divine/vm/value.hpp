@@ -321,10 +321,16 @@ struct DynInt : Int< 64, s, true >
 {
     static const bool IsFix = false;
     using Int< 64, s, true >::Int;
+
     void setup( int bw )
     {
         ASSERT_LEQ( bw, 64 );
         this->_meta.width = bw;
+    }
+
+    DynInt< true > make_signed()
+    {
+        return Int< 64, s, true >::make_signed();
     }
 };
 
