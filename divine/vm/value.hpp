@@ -217,10 +217,13 @@ struct Int : Base
         return result;
     }
 
-    template< int w >
-    typename std::enable_if< (width >= w), Raw >::type signbit() { return Raw( 1 ) << ( w - 1 ); }
-    template< int w >
-    typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
+    template< int w > Raw signbit()
+    {
+        if constexpr ( _width >= w )
+            return Raw( 1 ) << ( w - 1 );
+        else
+            return 0;
+    }
 
     template< int w, bool dyn > Int( Int< w, is_signed, dyn > i )
         : _raw( i._raw ), _m( i._m )
