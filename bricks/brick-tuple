@@ -211,6 +211,24 @@ auto passIx( Args &&...args )
     return pass< Args..., Indices< ix... > >( std::forward< Args >( args )... );
 }
 
+template< int i, typename T >
+void print( std::ostream &o, const T &t )
+{
+    if constexpr ( i < std::tuple_size_v< T > )
+    {
+        o << std::get< i >( t ) << ( ( i < std::tuple_size_v< T > - 1 ) ? " " : "" );
+        print< i + 1 >( o, t );
+    }
+}
+
+template< typename... Args >
+std::ostream &operator<<( std::ostream &o, const std::tuple< Args... > &t )
+{
+    o << "[";
+    print< 0 >( o, t );
+    return o << "]";
+}
+
 }
 
 namespace t_tuple {
@@ -362,6 +380,34 @@ struct Tuple {
         pass( CheckConst(), std::tuple< const int & >( x ) );
     }
 };
+
+struct Print
+{
+    TEST(print_0)
+    {
+        std::tuple<> t;
+        std::stringstream s;
+        s << t;
+        ASSERT_EQ( s.str(), "[]" );
+    }
+
+    TEST(print_1)
+    {
+        std::tuple< int > t( 1 );
+        std::stringstream s;
+        s << t;
+        ASSERT_EQ( s.str(), "[1]" );
+    }
+
+    TEST(print_2)
+    {
+        std::tuple< int, char > t( 1, 'c' );
+        std::stringstream s;
+        s << t;
+        ASSERT_EQ( s.str(), "[1 c]" );
+    }
+};
+
 }
 }
 
