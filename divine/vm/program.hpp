@@ -320,8 +320,8 @@ auto ir2prog( Build build, std::string funcname, llvm::FunctionType *ft = nullpt
 auto c2prog( std::string s )
 {
     divine::cc::Compiler c( testContext() );
-    c.mapVirtualFile( "main.c", s );
-    return mod2prog( c.compileModule( "main.c" ) );
+    c.mapVirtualFile( "/main.c", s );
+    return mod2prog( c.compileModule( "/main.c" ) );
 }
 
 }
