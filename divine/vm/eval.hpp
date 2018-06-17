@@ -443,6 +443,8 @@ public:
 
     template< typename Y >
     void collect_allocas( CodePointer pc, Y yield );
+    template< typename Y >
+    void collect_frame_locals( CodePointer pc, Y yield );
     void implement_stacksave();
     void implement_stackrestore();
 

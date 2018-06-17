@@ -353,18 +353,49 @@ void Eval< Ctx >::switchBB( CodePointer target )
     context().set( _VM_CR_PC, target );
 }
 
+template< typename Eval, typename F, typename Y >
+static void collect_results( Eval &eval, Program::Function &f, F filter, Y yield )
+{
+    for ( auto &i : f.instructions )
+        if ( filter( i ) )
+        {
+            PointerV ptr;
+            eval.slot_read( i.result(), ptr );
+            if ( eval.heap().valid( ptr.cooked() ) )
+                yield( ptr, i.result() );
+        }
+}
+
+template< typename Eval, typename F, typename Y >
+static void collect_results( Eval &eval, CodePointer pc, F filter, Y yield )
+{
+    auto &f = eval.program().functions[ pc.function() ];
+    collect_results( eval, f, filter, yield );
+}
+
 template< typename Ctx > template< typename Y >
 void Eval< Ctx >::collect_allocas( CodePointer pc, Y yield )
 {
+    collect_results( *this, pc, []( auto &i ) { return i.opcode == OpCode::Alloca; }, yield );
+}
+
+template< typename Ctx > template< typename Y >
+void Eval< Ctx >::collect_frame_locals( CodePointer pc, Y yield )
+{
     auto &f = program().functions[ pc.function() ];
-    for ( auto &i : f.instructions )
-        if ( i.opcode == OpCode::Alloca )
+    if ( f.vararg )
+    {
+        auto vaptr_loc = f.instructions[ f.argcount ].result();
+        PointerV ptr;
+        slot_read( vaptr_loc, ptr );
+        if ( !ptr.cooked().null() )
+            yield( ptr, vaptr_loc );
+    }
+    collect_results( *this, f, []( auto &i )
         {
-            PointerV ptr;
-            slot_read( i.result(), ptr );
-            if ( heap().valid( ptr.cooked() ) )
-                yield( ptr, i.result() );
-        }
+            return i.opcode == OpCode::Alloca
+                || (i.opcode == OpCode::Call && i.subcode == Intrinsic::stacksave );
+        }, yield );
 }
 
 template< typename Ctx >
@@ -813,6 +844,8 @@ void Eval< Ctx >::implement_call( bool invoke )
     }
     CodePointer target = targetV.cooked();
 
+    ASSERT( !(!invoke && target.function()) || instruction().subcode == Intrinsic::not_intrinsic );
+
     if ( !target.function() )
     {
         if ( instruction().subcode != Intrinsic::not_intrinsic )
@@ -922,7 +955,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
     auto maybe_free = [&]
     {
         if ( !free ) return;
-        collect_allocas( caller_pc, [&]( auto ptr, auto ) { freeobj( ptr.cooked() ); } );
+        collect_frame_locals( caller_pc, [&]( auto ptr, auto ) { freeobj( ptr.cooked() ); } );
         freeobj( frame() );
     };
 
@@ -1223,7 +1256,7 @@ void Eval< Ctx >::implement_ret()
     PointerV parent, br;
     heap().read( fr.cooked(), parent );
 
-    collect_allocas( pc(), [&]( auto ptr, auto ) { freeobj( ptr.cooked() ); } );
+    collect_frame_locals( pc(), [&]( auto ptr, auto ) { freeobj( ptr.cooked() ); } );
 
     if ( parent.cooked().null() )
     {
