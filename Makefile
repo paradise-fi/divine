@@ -152,7 +152,7 @@ validate:
 	$(MAKE) semidbg-divine
 	$(MAKE) semidbg-test-divine
 	$(OBJ)semidbg/divine/test-divine
-	$(MAKE) semidbg-functional TAGS=min
+	$(MAKE) semidbg-functional TAGS=min F=vanilla,stp
 
 toolchain-install: toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
