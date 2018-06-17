@@ -91,6 +91,7 @@ void fillSets( Node* node, LTLPtr form,
                 inject( node, new2, phi );
                 inject( node, new2, psi );
                 break;
+            case Binary::WeakUntil:
             case Binary::Impl:
             case Binary::Equiv:
                 assert(false);

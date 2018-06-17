@@ -101,7 +101,7 @@ struct Unary
 
 struct Binary
 {
-    enum Operator { And, Or, Impl, Equiv, Until, Release } op;
+    enum Operator { And, Or, Impl, Equiv, Until, WeakUntil, Release } op;
     LTLPtr left, right;
 
     int untilIndex = -1;
@@ -113,7 +113,8 @@ struct Binary
             case Equiv : return 4;
             case Impl : return 3;
             case Until : return 2;
-            case Release : return 1;
+            case WeakUntil : return 1;
+            case Release : return 0;
         }
     }
 

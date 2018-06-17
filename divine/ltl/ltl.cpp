@@ -289,6 +289,18 @@ LTLPtr Binary::normalForm( bool neg )
                         Binary::Until,
                         left -> normalForm( neg ),
                         right -> normalForm( neg ) );
+            //!(a W b) = !b U ( !a && !b )
+            case Binary::WeakUntil:
+            {
+                auto arg = LTL::make(
+                        Binary::And,
+                        left -> normalForm( neg ),
+                        right -> normalForm( neg ) );
+                return LTL::make(
+                        Binary::Until,
+                        right -> normalForm( neg ),
+                        arg );
+            }
             default:
                 return left;
         }
@@ -338,6 +350,18 @@ LTLPtr Binary::normalForm( bool neg )
                         Binary::Release,
                         left -> normalForm( neg ),
                         right -> normalForm( neg ) );
+            // (a W b) = b R (a || b)
+            case Binary::WeakUntil:
+            {
+                auto arg = LTL::make(
+                        Binary::Or,
+                        left->normalForm( neg ),
+                        right->normalForm( neg ) );
+                return LTL::make(
+                        Binary::Release,
+                        right->normalForm( neg ),
+                        arg );
+            }
             default:
                 return left;
         }
@@ -365,7 +389,7 @@ std::vector< std::pair< Operator, bool > > operatorOrder = {
     { Binary::And,   false }, {Binary::Or,      false},
     { Binary::Equiv, false },
     { Binary::Impl,  false },
-    { Binary::Until, true },  {Binary::Release, false}
+    { Binary::Until, true }, { Binary::WeakUntil, false },  {Binary::Release, false}
 };
 
 std::map< std::string, Operator > stringsToOperators = {
@@ -374,7 +398,7 @@ std::map< std::string, Operator > stringsToOperators = {
     { "&&", Binary::And   }, { "/\\", Binary::And   }, { "\\/", Binary::Or     }, { "||", Binary::Or     },
     { "=", Binary::Equiv }, { "<->", Binary::Equiv },
     { "->", Binary::Impl },
-    { "U", Binary::Until }, { "V", Binary::Release }, { "R", Binary::Release }
+    { "U", Binary::Until }, { "W", Binary::WeakUntil }, { "V", Binary::Release }, { "R", Binary::Release }
 };
 
 Tokens tokenizer( const std::string& formula )
