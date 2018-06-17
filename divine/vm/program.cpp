@@ -53,15 +53,6 @@ CodePointer Program::functionByName( std::string s )
     return pc;
 }
 
-GenericPointer Program::globalByName( std::string s )
-{
-    llvm::GlobalVariable *g = module->getGlobalVariable( s );
-    if ( g )
-        return addr( g );
-    else
-        return nullPointer();
-}
-
 bool Program::isCodePointerConst( llvm::Value *val )
 {
     return ( isa< llvm::Function >( val ) ||
@@ -434,7 +425,14 @@ void Program::computeRR()
     codepointers = false;
 
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
+    {
         insert( 0, &*var );
+        if ( var->getName() == "__sys_env" )
+        {
+            ASSERT( _envptr.null() );
+            _envptr = addr( var );
+        }
+    }
 
     framealign = 4;
     pass();

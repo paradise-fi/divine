@@ -143,7 +143,9 @@ struct Program
     std::unique_ptr< LXTypes > _types;
     xg::Types _types_gen;
     xg::AddressMap _addr;
+
     CodePointer _bootpoint;
+    GlobalPointer _envptr;
 
     auto &heap() { return _ccontext.heap(); }
 
@@ -219,13 +221,12 @@ struct Program
     std::set< llvm::Value * > _doneinit;
 
     CodePointer bootpoint() { return _bootpoint; }
+    GlobalPointer envptr() { return _envptr; }
 
     /* Inefficient (iterates over all functions), and only works if the named
      * function is unique (i.e. only one module defines a function by this
      * name). Only use this in special circumstances. */
     CodePointer functionByName( std::string s );
-
-    GenericPointer globalByName( std::string s );
 
     bool isCodePointer( llvm::Value *val );
     bool isCodePointerConst( llvm::Value *val );

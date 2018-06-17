@@ -36,8 +36,7 @@ namespace divine::vm::setup
         auto &fun = ctx.program().function( ipc );
         if ( fun.argcount != 1 )
             throw brick::except::Error( "__boot must take exactly 1 argument" );
-        auto envptr = ctx.program().globalByName( "__sys_env" );
-        ctx.enter( ipc, nullPointerV(), value::Pointer( envptr ) );
+        ctx.enter( ipc, nullPointerV(), value::Pointer( ctx.program().envptr() ) );
         ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Booting |
                                           _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit;
     }
