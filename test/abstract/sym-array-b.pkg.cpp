@@ -1,8 +1,8 @@
-/* TAGS: sym min c++ */
+/* TAGS: sym c++ */
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
-// V: v.O0 CC_OPT: -O0
+// V: v.O0 CC_OPT: -O0 TAGS: min
 #include <rst/domains.h>
 
 #include <cstdint>
