@@ -19,37 +19,8 @@
 #include<dios.h>
 #include<sys/monitor.h>
 
-struct Degeneralizer1
-{
-    size_t current, last;
-
-    Degeneralizer1() = delete;
-    Degeneralizer1( size_t _numberOfAcceptingSets )
-        : current( _numberOfAcceptingSets )
-        , last( _numberOfAcceptingSets )
-    {
-    }
-
-    // @accepts ids of accepting sets, that current transition belongs to
-    // @returns true iff we get in accepting state
-    bool step( const std::set< size_t >& acc_sets, std::optional< size_t > scc1, std::optional< size_t > scc2, size_t dest )
-    {
-        (void) scc1;
-        (void) scc2;
-        (void) dest;
-        if( current == last )
-            current = 0;
-        auto it = acc_sets.begin();
-        if( current != 0 )
-            it = acc_sets.find( current );
-        for( ; it != acc_sets.end(); ++it, ++current )
-            if( *it != current )
-                break;
-        return current == last;
-    }
-};
-
-//Degeneralizer with level reset and level caching
+//Degeneralizer with level reset and level caching, based on:
+//"Compositional Approach to Suspension and Other Improvements to LTL Translation"
 struct Degeneralizer2
 {
     size_t current, last;
@@ -106,8 +77,7 @@ struct Monitor : public __dios::Monitor {
         , deg( _tgba.numberAcc )
     {
     }
-    // @returns false if tgba could not step
-    // preformes step on tgba, if succesful then stepMe() also.
+    // preformes step on tgba, if succesful then degeneralizer.step() too.
     void step() override {
         std::set< size_t > acc;
         std::optional< size_t > scc1;
