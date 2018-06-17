@@ -187,6 +187,8 @@ LTLPtr Atom::normalForm( bool neg )
 
 LTLPtr Unary::normalForm( bool neg )
 {
+    if( !subExp )
+        throw std::invalid_argument("invalid LTL formula: unary operation has no argument");
     if ( neg )
     {
         switch ( op )
@@ -224,16 +226,16 @@ LTLPtr Unary::normalForm( bool neg )
                 return LTL::make(
                         Binary::Until,
                         LTL::make( true ),
-                        subExp-> normalForm( false ) );
+                        subExp->normalForm( false ) );
             // G(a) = false R a
             case Unary::Global:
                 return LTL::make(
                         Binary::Release,
                         LTL::make( false ),
-                        subExp-> normalForm( false ) );
+                        subExp->normalForm( false ) );
             // X(a) = X(a)
             case Unary::Next:
-                return LTL::make( Unary::Next, subExp -> normalForm( false ) );
+                return LTL::make( Unary::Next, subExp->normalForm( false ) );
             default:
                 return subExp;
         }
@@ -242,6 +244,10 @@ LTLPtr Unary::normalForm( bool neg )
 
 LTLPtr Binary::normalForm( bool neg )
 {
+    if( !left )
+        throw std::invalid_argument("invalid LTL formula: binary operation has no left argument");
+    if( !right )
+        throw std::invalid_argument("invalid LTL formula: binary operation has no right argument");
     if ( neg )
     {
         switch ( op )
@@ -422,12 +428,26 @@ Tokens tokenizer( const std::string& formula )
                     tokens.push_back( LTL::make( Binary::Equiv ) ), it = it + 2;
                 else if( it + 1 != formula.end() && *(it + 1) == '>' )
                     tokens.push_back( LTL::make( Unary::Future ) ), ++it;
-                else throw std::invalid_argument( "invalid LTL formula, cannot resolve symbol '<' unless '->' follows" );
+                else throw std::invalid_argument( "invalid LTL formula, cannot resolve symbol '<' unless '>' or '->' follows" );
             }
             else if ( *it == '(' )
                 tokens.push_back( BracketOpen() );
             else if ( *it == ')' )
                 tokens.push_back( BracketClose() );
+            else if( *it == '&' ) {
+                if( it + 1 == formula.end() )
+                    throw std::invalid_argument("invalid LTL formula: symbol missing after &" );
+                tokens.push_back( LTL::make( Binary::And ) );
+                if( *(it + 1) == '&' )
+                    ++it;
+            }
+            else if( *it == '|' ) {
+                if( it + 1 == formula.end() )
+                    throw std::invalid_argument("invalid LTL formula: symbol missing after |" );
+                tokens.push_back( LTL::make( Binary::Or ) );
+                if( *(it + 1) == '|' )
+                    ++it;
+            }
             else
             {
                 auto search = stringsToOperators.find( std::string(1, *it) );
@@ -440,7 +460,9 @@ Tokens tokenizer( const std::string& formula )
                 else
                 {
                     std::string tmp = std::string(1, *it);
-                    tmp += *( ++it );
+                    if( ++it == formula.end() )
+                        throw std::invalid_argument("invalid LTL formula: some symbol missing at the end");
+                    tmp += *( it );
                     search = stringsToOperators.find( tmp );
                     if( search != stringsToOperators.end() )
                         search->second.match(
