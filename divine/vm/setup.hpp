@@ -32,7 +32,7 @@ namespace divine::vm::setup
         auto data = ctx.program().exportHeap( ctx.heap() );
         ctx.set( _VM_CR_Constants, data.first );
         ctx.set( _VM_CR_Globals, data.second );
-        auto ipc = ctx.program().functionByName( "__boot" );
+        auto ipc = ctx.program().bootpoint();
         auto &fun = ctx.program().function( ipc );
         if ( fun.argcount != 1 )
             throw brick::except::Error( "__boot must take exactly 1 argument" );

@@ -550,6 +550,12 @@ void Program::pass()
         makeFit( this->functions, pc.function() );
         makeFit( this->function( pc ).instructions, pc.instruction() );
 
+        if ( codepointers && function.getName() == "__boot" )
+        {
+            ASSERT( _bootpoint.null() );
+            _bootpoint = pc;
+        }
+
         if ( !codepointers )
         {
             CodePointer apc( pc.function(), 0 );

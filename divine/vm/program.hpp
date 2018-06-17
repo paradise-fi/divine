@@ -143,6 +143,7 @@ struct Program
     std::unique_ptr< LXTypes > _types;
     xg::Types _types_gen;
     xg::AddressMap _addr;
+    CodePointer _bootpoint;
 
     auto &heap() { return _ccontext.heap(); }
 
@@ -217,6 +218,7 @@ struct Program
     std::deque< std::function< void() > > _toinit;
     std::set< llvm::Value * > _doneinit;
 
+    CodePointer bootpoint() { return _bootpoint; }
     CodePointer functionByName( std::string s );
     GenericPointer globalByName( std::string s );
 
