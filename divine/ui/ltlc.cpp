@@ -115,7 +115,9 @@ namespace ui {
                 << "        switch( current ) {" << std::endl;
         for( size_t current = 0; current < tgba2.states.size(); ++current ) {
             o   << "            case " << current << ":" << std::endl;
-            for( const auto& trans : tgba2.states.at( current ) ) {
+            for( const auto& trans : tgba2.states.at( current ) )
+            if( !trans.accepting.empty() )
+            {
             o   << "                if( newState == " << trans.target << " )" << std::endl
                 << "                    acceptingSets.insert( { ";
                 for( auto it = trans.accepting.begin(); it != trans.accepting.end(); )
