@@ -60,7 +60,6 @@ namespace divine::vm
  */
 struct Program
 {
-    llvm::Module *module;
     llvm::DataLayout TD;
     using Slot = lx::Slot;
 
@@ -263,11 +262,11 @@ struct Program
     Slot insert( int function, llvm::Value *val, bool noinit = false );
     int insert( llvm::Type *t );
 
-    void pass(); /* internal */
+    void pass( llvm::Module * ); /* internal */
 
-    void setupRR();
-    void computeRR(); /* RR = runtime representation */
-    void computeStatic();
+    void setupRR( llvm::Module * );
+    void computeRR( llvm::Module * ); /* RR = runtime representation */
+    void computeStatic( llvm::Module * );
 
     /* the construction sequence is this:
        1) constructor
@@ -275,7 +274,7 @@ struct Program
        3a) (optional) set up additional constant/global data
        3b) computeRR
        4) computeStatic */
-    Program( llvm::Module *m ) : module( m ), TD( m ), _ccontext( *this ), _types_gen( m )
+    Program( llvm::DataLayout l ) : TD( l ), _ccontext( *this ), _types_gen( l )
     {
         _constants_size = 0;
         _globals_size = 0;

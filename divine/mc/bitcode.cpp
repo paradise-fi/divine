@@ -58,7 +58,7 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
     : _ctx( ctx ), _module( std::move( m ) )
 {
     ASSERT( _module.get() );
-    _program.reset( new vm::Program( _module.get() ) );
+    _program.reset( new vm::Program( llvm::DataLayout( _module.get() ) ) );
 }
 
 
@@ -120,15 +120,15 @@ void BitCode::do_lart()
 void BitCode::do_rr()
 {
     auto mod = _module.get();
-    _program.reset( new vm::Program( mod ) );
-    _program->setupRR();
-    _program->computeRR();
+    _program.reset( new vm::Program( llvm::DataLayout( mod ) ) );
+    _program->setupRR( mod );
+    _program->computeRR( mod );
     _dbg.reset( new dbg::Info( *_program.get() ) );
 }
 
 void BitCode::do_constants()
 {
-    _program->computeStatic();
+    _program->computeStatic( _module.get() );
 }
 
 void BitCode::init()

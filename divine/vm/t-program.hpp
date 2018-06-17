@@ -33,10 +33,10 @@ auto testContext() {
 
 auto mod2prog( std::unique_ptr< llvm::Module > m )
 {
-    auto p = std::make_shared< vm::Program >( m.release() );
-    p->setupRR();
-    p->computeRR();
-    p->computeStatic();
+    auto p = std::make_shared< vm::Program >( llvm::DataLayout( m.get() ) );
+    p->setupRR( m.get() );
+    p->computeRR( m.get() );
+    p->computeStatic( m.release() );
     return p;
 }
 
@@ -70,7 +70,7 @@ struct Program
     TEST( empty )
     {
         auto m = std::make_unique< llvm::Module >( "test", ctx );
-        vm::Program p( m.get() );
+        vm::Program p( llvm::DataLayout( m.get() ) );
     }
 
     TEST( simple )

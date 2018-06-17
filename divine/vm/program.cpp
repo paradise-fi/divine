@@ -394,19 +394,19 @@ Program::Position Program::insert( Position p )
     return p;
 }
 
-void Program::setupRR()
+void Program::setupRR( llvm::Module *m )
 {
     /* null pointers are heap = 0, segment = 0, where segment is an index into
      * the "globals" vector */
     Slot nullpage( Slot::Global );
     _globals.push_back( nullpage );
 
-    for ( auto &f : *module )
+    for ( auto &f : *m )
         if ( f.getName() == "memset" || f.getName() == "memmove" || f.getName() == "memcpy" )
             f.setLinkage( llvm::GlobalValue::ExternalLinkage );
 }
 
-void Program::computeRR()
+void Program::computeRR( llvm::Module *module )
 {
     _addr.build( module );
     brick::llvm::enumerateFunctionsForAnno( "divine.debugfn", *module, [this]( llvm::Function *f )
@@ -421,7 +421,7 @@ void Program::computeRR()
     framealign = 1;
 
     codepointers = true;
-    pass();
+    pass( module );
     codepointers = false;
 
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
@@ -435,19 +435,19 @@ void Program::computeRR()
     }
 
     framealign = 4;
-    pass();
+    pass( module );
 
     framealign = 2;
-    pass();
+    pass( module );
 
     framealign = 1;
-    pass();
+    pass( module );
 
     _types.reset( new LXTypes( _ccontext._heap, _types_gen.emit( _ccontext._heap ) ) );
     coverage.clear();
 }
 
-void Program::computeStatic()
+void Program::computeStatic( llvm::Module *module )
 {
     _ccontext.setup( _globals_size, _constants_size );
 
@@ -541,7 +541,7 @@ void Program::computeStatic()
     }
 }
 
-void Program::pass()
+void Program::pass( llvm::Module *module )
 {
     for ( auto &function : *module )
     {

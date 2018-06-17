@@ -101,7 +101,7 @@ struct Types
         return rv.cooked();
     }
 
-    Types( llvm::Module *m ) : TD( m ) {}
+    Types( llvm::DataLayout l ) : TD( l ) {}
 };
 
 }
