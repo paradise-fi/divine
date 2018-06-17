@@ -46,12 +46,20 @@ struct AddressMap
 {
     std::map< llvm::BasicBlock *, CodePointer > _code, _terminator;
     std::map< llvm::GlobalVariable *, GlobalPointer > _global;
+
     GlobalPointer _next_global = GlobalPointer( 0, 0 );
+    CodePointer _next_code = CodePointer( 0, 0 );
 
     GlobalPointer next_global()
     {
         _next_global.object( _next_global.object() + 1 );
         return _next_global;
+    }
+
+    CodePointer next_code()
+    {
+        _next_code.object( _next_code.object() + 1 );
+        return _next_code;
     }
 
     bool is_codeptr( llvm::Value *val )
@@ -160,12 +168,12 @@ struct AddressMap
                 throw std::logic_error( "Capacity exceeded: too many global objects." );
         }
 
-        CodePointer pc( 0, 0 );
         for ( auto &f : *m )
         {
             if ( f.isDeclaration() )
                 continue;
-            pc.object( pc.object() + 1 );
+
+            auto pc = next_code();
             pc.instruction( brick::bitlevel::align( f.arg_size() + f.isVarArg(), 4 ) );
 
             if ( pc.object() >= _VM_PL_Code )
