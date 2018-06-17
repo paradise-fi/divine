@@ -67,8 +67,15 @@ struct Trap
         if ( retmode == RESCHEDULE )
             __dios_reschedule();
         if ( retmode == TRAMPOLINE || std::is_same< Ret, void >::value )
+        {
             /* our parent is the __invoke of the sysenter lambda */
-            __dios_set_frame( __dios_this_frame()->parent->parent );
+            auto frame = __dios_this_frame();
+            auto parent = frame->parent;
+            auto target = parent->parent;
+            /* free the in-between frame */
+            __dios_unwind( frame, parent, target );
+            __dios_set_frame( target );
+        }
     }
 };
 
