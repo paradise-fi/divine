@@ -7,6 +7,7 @@ void vararg(int i, ...) {
     va_start( ap, i );
     for ( int j = 0; j < i; ++j )
         assert( va_arg( ap, int ) == j );
+    va_end( ap );
 }
 
 int main() {

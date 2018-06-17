@@ -45,4 +45,6 @@ int main() {
 
     assert( *ptr == &x );
     assert( **ptr == 42 );
+
+    __vm_obj_free( array );
 }

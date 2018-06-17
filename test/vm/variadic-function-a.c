@@ -10,6 +10,7 @@ int sum( int count, ... ) {
         int x = va_arg( args, int );
         acc += x;
     }
+    va_end( args );
     return acc;
 }
 

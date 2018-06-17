@@ -10,6 +10,7 @@ pthread_mutex_t mutex;
 void *thread( void *x )
 {
      ++shared;
+     return NULL;
 }
 
 int main()
