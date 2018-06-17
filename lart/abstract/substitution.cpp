@@ -20,47 +20,6 @@ using namespace llvm;
 
 namespace {
 
-Type * strip_pointers( Type *t ) {
-    return t->isPointerTy() ? t->getPointerElementType() : t;
-}
-
-bool is_abstract( Type *t ) {
-    t = strip_pointers( t );
-    if ( auto s = dyn_cast< StructType >( t ) )
-        if ( s->hasName() )
-            return s->getName().startswith( "lart." );
-    return false;
-}
-
-auto abstract_insts( Module &m ) {
-    return query::query( m )
-        .filter( [] ( auto &fn ) { return fn.getMetadata( "lart.abstract.roots" ); } )
-        .flatten()
-        .flatten()
-        .map( query::refToPtr )
-        .filter( [] ( auto i ) {
-            if ( is_abstract( i->getType() ) )
-                return true;
-            return query::query( types_of( i->operands() ) )
-                  .any( [] ( auto t ) { return is_abstract( t ); } );
-        } )
-        .freeze();
-}
-
-Values in_domain_args( CallInst *intr, std::map< Value*, Value* > &smap ) {
-    return query::query( intr->arg_operands() )
-        .map( [&] ( auto &arg ) { return arg.get(); } )
-        .map( [&] ( auto arg ) { return smap.count( arg ) ? smap[ arg ] : arg; } )
-        .freeze();
-}
-
-void make_duals_in_domain( Instruction *a, Instruction *b, Domain dom ) {
-    auto &ctx = a->getContext();
-    auto tag = "lart.dual." + DomainTable[ dom ];
-    a->setMetadata( tag, MDTuple::get( ctx, { ValueAsMetadata::get( b ) } ) );
-    b->setMetadata( tag, MDTuple::get( ctx, { ValueAsMetadata::get( a ) } ) );
-}
-
 bool has_dual_in_domain( Instruction *inst, Domain dom ) {
     return inst->getMetadata( "lart.dual." + DomainTable[ dom ] );
 }
@@ -69,29 +28,6 @@ Instruction* get_dual_in_domain( Instruction *inst, Domain dom ) {
     auto &dual = inst->getMetadata( "lart.dual." + DomainTable[ dom ] )->getOperand( 0 );
     auto md = cast< ValueAsMetadata >( dual.get() );
     return cast< Instruction >( md->getValue() );
-}
-
-void change_dual_in_domain_with( Instruction *a, Instruction *b, Domain dom ) {
-    auto dual = get_dual_in_domain( a, dom );
-    dual->replaceAllUsesWith( b );
-    make_duals_in_domain( a, b, dom );
-}
-
-Function* dup_function( Module *m, Type *in, Type *out ) {
-	auto fty = llvm::FunctionType::get( out, { in }, false );
-    std::string name = "lart.placeholder.";
-    if ( auto s = dyn_cast< StructType >( out ) )
-        name += s->getName();
-    else
-        name += llvm_name( out );
-
-    name += ".";
-
-    if ( auto s = dyn_cast< StructType >( in ) )
-        name += s->getName();
-    else
-        name += llvm_name( in );
-   	return get_or_insert_function( m, fty, name );
 }
 
 Domain get_domain_of_intr( Instruction *inst ) {
