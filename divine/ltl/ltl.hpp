@@ -196,7 +196,7 @@ struct LTL : Exp, std::enable_shared_from_this< LTL >
         return is< Atom >() || is< Boolean >();
     }
 
-    static LTLPtr parse( const std::string& str );
+    static LTLPtr parse( const std::string& str, bool typeRERS = false );
 
     bool isComplete()
     {

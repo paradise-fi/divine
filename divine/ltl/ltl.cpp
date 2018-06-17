@@ -407,10 +407,84 @@ std::map< std::string, Operator > stringsToOperators = {
     { "U", Binary::Until }, { "W", Binary::WeakUntil }, { "V", Binary::Release }, { "R", Binary::Release }
 };
 
-Tokens tokenizer( const std::string& formula )
+
+Tokens tokenizerRERS( const std::string& formula )
 {
     Tokens tokens;
 
+    for ( auto it = formula.begin(); it < formula.end(); ++it )
+    {
+        std::string proposition;
+        if( it != formula.end() && !( *it == 'G' || *it == 'F' || *it == 'X' || *it == 'W' || *it == 'U' || *it == 'V' || *it == 'R' ) )
+            while ( it != formula.end() && ( ( *it >= 'A' && *it <= 'Z' ) || ( *it >= 'a' && *it <= 'z' ) || *it == '_' || ( *it >= '0' && *it <= '9' ) ) )
+                proposition.push_back( *it++ );
+        if ( !proposition.empty() )
+            tokens.push_back( LTL::make(proposition) );
+        if ( it != formula.end() )
+        {
+            if( *it == ' ' )
+                continue;
+            else if( *it == '<' )
+            {
+                if( it + 1 != formula.end() && *( it + 1 ) == '-' && it + 2 != formula.end() && *(it + 2) == '>' )
+                    tokens.push_back( LTL::make( Binary::Equiv ) ), it = it + 2;
+                else if( it + 1 != formula.end() && *(it + 1) == '>' )
+                    tokens.push_back( LTL::make( Unary::Future ) ), ++it;
+                else throw std::invalid_argument( "invalid LTL formula: cannot resolve symbol '<' unless '>' or '->' follows" );
+            }
+            else if ( *it == '(' )
+                tokens.push_back( BracketOpen() );
+            else if ( *it == ')' )
+                tokens.push_back( BracketClose() );
+            else if( *it == '&' ) {
+                if( it + 1 == formula.end() )
+                    throw std::invalid_argument("invalid LTL formula: symbol missing after &" );
+                tokens.push_back( LTL::make( Binary::And ) );
+                if( *(it + 1) == '&' )
+                    ++it;
+            }
+            else if( *it == '|' ) {
+                if( it + 1 == formula.end() )
+                    throw std::invalid_argument("invalid LTL formula: symbol missing after |" );
+                tokens.push_back( LTL::make( Binary::Or ) );
+                if( *(it + 1) == '|' )
+                    ++it;
+            }
+            else
+            {
+                auto search = stringsToOperators.find( std::string(1, *it) ); //looking for 1 character
+                if ( search != stringsToOperators.end() )
+                {
+                    search->second.match(
+                        [&]( Unary::Operator op ) { tokens.push_back( LTL::make( op ) ); },
+                        [&]( Binary::Operator op ) { tokens.push_back( LTL::make( op ) ); } );
+                }
+                else
+                {
+                    std::string tmp = std::string(1, *it);
+                    if( ++it == formula.end() )
+                        throw std::invalid_argument("invalid LTL formula: some symbol missing at the end");
+                    tmp += *it;
+                    search = stringsToOperators.find( tmp );
+                    if( search != stringsToOperators.end() )
+                        search->second.match(
+                            [&]( Unary::Operator op ) { tokens.push_back( LTL::make( op ) ); },
+                            [&]( Binary::Operator op ) { tokens.push_back( LTL::make( op ) ); } );
+                    else
+                        throw std::invalid_argument("invalid LTL formula");
+                }
+            }
+        }
+    }
+    return tokens;
+}
+
+// propositions must be in lowercase, with numbers
+Tokens tokenizer( const std::string& formula, bool typeRERS /*= false*/ )
+{
+    if( typeRERS )
+        return tokenizerRERS( formula );
+    Tokens tokens;
     for ( auto it = formula.begin(); it < formula.end(); ++it )
     {
         std::string proposition;
@@ -503,9 +577,9 @@ Tokens::iterator brackets( TokensPtr root, Tokens::iterator it, Tokens::iterator
     return it;
 }
 
-TokensPtr solveBrackets( const std::string& formula )
+TokensPtr solveBrackets( const std::string& formula, bool typeRERS )
 {
-    auto formulaNode = std::make_shared< Tokens >( tokenizer( formula ) );
+    auto formulaNode = std::make_shared< Tokens >( tokenizer( formula, typeRERS /*= false*/ ) );
     auto newTree = std::make_shared< Tokens >();
     if ( brackets( newTree, formulaNode->begin(), formulaNode->end() ) != formulaNode->end() )
         throw std::invalid_argument( "Formula syntax error - too many brackets ')'" );
@@ -610,9 +684,9 @@ LTLPtr collapse( TokensPtr root )
     return reduce( root );
 }
 
-LTLPtr LTL::parse( const std::string& str )
+LTLPtr LTL::parse( const std::string& str, bool typeRERS /*= false*/ )
 {
-    return collapse( solveBrackets( str ) );
+    return collapse( solveBrackets( str, typeRERS ) );
 }
 
 }
