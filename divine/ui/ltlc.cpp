@@ -36,9 +36,9 @@ namespace ui {
     {
         //TODO: Parser can fail when given formula without spaces between symbols (problem with preference)
         //TODO:  Just write it to the description for users
-        LTLPtr parsedF = LTL::parse( _formula );
+        LTLPtr parsedF = LTL::parse( _formula, true );
 
-        TGBA1 tgba1 = ltlToTGBA1( parsedF );
+        TGBA1 tgba1 = ltlToTGBA1( parsedF, _negate );
         TGBA2 tgba2( std::move( tgba1 ) );
         std::cout << tgba2;
 

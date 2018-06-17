@@ -552,9 +552,9 @@ struct TGBA2 {
 
 
 
-TGBA1 ltlToTGBA1( LTLPtr _formula )
+TGBA1 ltlToTGBA1( LTLPtr _formula, bool negate )
 {
-    LTLPtr formula = _formula->normalForm();
+    LTLPtr formula = _formula->normalForm( negate );
     uCount = formula->countAndLabelU();
     formula->computeUParents();
 
@@ -574,7 +574,7 @@ struct LTL2TGBA /* normal forms */
     {
         std::string str( " a U b " );
         LTLPtr ltl = LTL::parse( str );
-        auto tgba1 = ltlToTGBA1( ltl );
+        auto tgba1 = ltlToTGBA1( ltl, false );
     }
 };
 

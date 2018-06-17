@@ -130,6 +130,7 @@ enum class Report { None, Yaml, YamlLong };
 struct Ltlc : Command
 {
     std::string _formula, _output, _system;
+    bool _negate = false;
     void run() override;
 };
 

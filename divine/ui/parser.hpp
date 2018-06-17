@@ -214,6 +214,7 @@ struct CLI : Interface
 
         auto ltlcopts = cmd::make_option_set< Ltlc >( v )
             .option( "[--formula {string}|-f {string}]", &Ltlc::_formula, "formula LTL"s )
+            .option( "[--negate]", &Ltlc::_negate, "automaton of negation of f"s )
             .option( "[--output {string}|-o {string}]", &Ltlc::_output, "name of the file"s )
             .option( "[--system {string}|-s {string}]", &Ltlc::_system, "system to be verified"s );
 
