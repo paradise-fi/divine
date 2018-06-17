@@ -41,12 +41,16 @@ using llvm::cast;
 
 CodePointer Program::functionByName( std::string s )
 {
-    llvm::Function *f = module->getFunction( s );
-    if ( !f )
-        return CodePointer();
-    if ( xg::hypercall( f ) )
-        return CodePointer();
-    return _addr.code( f );
+    CodePointer pc;
+
+    for ( auto p : _addr._code )
+        if ( p.first->getParent()->getName() == s )
+        {
+            ASSERT( pc.function() == p.second.function() || pc.null() );
+            pc = addr( p.first->getParent() );
+        }
+
+    return pc;
 }
 
 GenericPointer Program::globalByName( std::string s )

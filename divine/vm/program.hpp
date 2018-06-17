@@ -219,7 +219,12 @@ struct Program
     std::set< llvm::Value * > _doneinit;
 
     CodePointer bootpoint() { return _bootpoint; }
+
+    /* Inefficient (iterates over all functions), and only works if the named
+     * function is unique (i.e. only one module defines a function by this
+     * name). Only use this in special circumstances. */
     CodePointer functionByName( std::string s );
+
     GenericPointer globalByName( std::string s );
 
     bool isCodePointer( llvm::Value *val );
