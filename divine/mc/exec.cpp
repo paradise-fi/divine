@@ -58,19 +58,7 @@ namespace divine::mc
 
         mc::TraceContext ctx( _bc->program(), _bc->debug() );
         vm::setup::boot( ctx );
-
-        auto mainpc = _bc->program().functionByName( "main" );
-        auto startpc = _bc->program().functionByName( "_start" );
-
-        step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
-        step.run(ctx, Stepper::Verbosity::Quiet);
-        step._breakpoint = [startpc]( vm::CodePointer pc, bool )
-                        {
-                            return pc.function() == startpc.function();
-                        };
-        step.run(ctx, Stepper::Verbosity::TraceInstructions);
-        step._breakpoint = {};
-        step.run(ctx, Stepper::Verbosity::Quiet);
+        step.run( ctx, Stepper::Verbosity::TraceInstructions );
     }
 
 }
