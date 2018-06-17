@@ -13,3 +13,9 @@ endif()
 if(WIN32 OR CYGWIN)
   set(LLVM_LINK_COMPONENTS Core)
 endif()
+
+add_llvm_loadable_module( BugpointPasses
+  TestPasses.cpp
+  )
+
+add_dependencies(BugpointPasses bugpoint)
