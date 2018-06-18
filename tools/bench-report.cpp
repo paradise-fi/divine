@@ -187,7 +187,6 @@ void ReportBase::find_instances( std::vector< std::string > tags )
     for ( unsigned i = 0; i < tags.size(); ++i )
         q << " and ( ct" << i << ".name = ? or mt" << i << ".name = ? or bt" << i << ".name = ? )";
 
-    std::cerr << q.str() << std::endl;
     nanodbc::statement sel( _conn, q.str() );
     for ( unsigned i = 0; i < tags.size(); ++i )
     {
@@ -427,8 +426,6 @@ void Compare::run()
         q << " group by tag.id";
     else
         q << " order by " << x0 << ".modname";
-
-    std::cerr << q.str() << std::endl;
 
     Table res;
     if ( _by_tag )
