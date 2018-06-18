@@ -234,6 +234,11 @@ struct LTL : Exp, std::enable_shared_from_this< LTL >
         return newForm;
     }
 
+    static LTLPtr make( const char* label )
+    {
+        return make( std::string( label ) );
+    }
+
     static LTLPtr make( const std::string & label )
     {
         if( label == "true" || label == "tt" || label == "1" )
