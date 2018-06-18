@@ -184,6 +184,10 @@ void VPA::propagate_value( Value *val, Domain dom ) {
 void VPA::propagate_back( Argument *arg, Domain dom ) {
     if ( !arg->getType()->isPointerTy() )
         return;
+
+    FunctionMetadata fmd{ get_function( arg ) };
+    fmd.set_arg_domain( arg->getArgNo(), dom );
+
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
             for ( auto src : AbstractionSources( call->getOperand( arg->getArgNo() ) ).get() )
