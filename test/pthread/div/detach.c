@@ -4,7 +4,7 @@
 
 void *thread( void *x )
 {
-     return 1;
+     return (void *)1;
 }
 
 int main()
@@ -20,7 +20,7 @@ int main()
     pthread_detach( detached[ 1 ] );
     void *i = 0;
     pthread_join( tid, &i );
-    assert( i == 1 );
+    assert( (int)i == 1 );
     pthread_attr_destroy( &startDetach );
     return 0;
 }
