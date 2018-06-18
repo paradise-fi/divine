@@ -3,6 +3,7 @@
 
 #include <_PDCLIB/cdefs.h>
 #include <sys/cdefs.h>
+#include <sys/interrupt.h>
 
 _PDCLIB_EXTERN_C
 
@@ -45,8 +46,24 @@ void __dios_unwind( struct _VM_Frame *stack, struct _VM_Frame *from, struct _VM_
 
 // transfer control to given frame and program counter, if restoreMaskTo is -1
 // it does not change mask
+// NOTE: no noteturn here as the purpose of non-frame-killing jump is to be able
+// to return.
 void __dios_jump( struct _VM_Frame *to, void (*pc)( void ), int restoreMaskTo )
     _PDCLIB_nothrow __attribute__((__noinline__));
+
+// like __dios_jump, but also destroys the caller frame
+_PDCLIB_noreturn inline void __dios_jump_and_kill_frame( struct _VM_Frame *to,
+                                                         void (*pc)( void ),
+                                                         int restoreMaskTo )
+    _PDCLIB_nothrow __attribute__((__always_inline__))
+{
+    if ( restoreMaskTo == 0 )
+        __vm_ctl_flag( _DiOS_CF_Mask, 0 );
+    if ( restoreMaskTo == 1 )
+        __vm_ctl_flag( 0, _DiOS_CF_Mask );
+    __vm_ctl_set( _VM_CR_Frame, to, pc );
+    __builtin_unreachable();
+}
 
 // set value of register of instruction identified by 'pc' in frame identified
 // by 'frame' 'lenght' bytes of 'value' will be written to offset 'offset' of

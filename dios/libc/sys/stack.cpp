@@ -3,14 +3,9 @@
 #include <sys/bitcode.h>
 #include <string.h>
 
-_Noreturn __invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
+__invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
 {
-    if ( restoreMaskTo == 0 )
-        __vm_ctl_flag( _DiOS_CF_Mask, 0 );
-    if ( restoreMaskTo == 1 )
-        __vm_ctl_flag( 0, _DiOS_CF_Mask );
-    __vm_ctl_set( _VM_CR_Frame, to, pc );
-    __builtin_unreachable();
+    __dios_jump_and_kill_frame( to, pc, restoreMaskTo );
 }
 
 /* NOTE: any write directly to a stack frame should bypass weakmem as registers
