@@ -295,7 +295,7 @@ struct LTLToString
         auto atomic_b = LTL::make( "b" );
         auto and_ab = LTL::make( Binary::And, atomic_a, atomic_b );
 
-        check( and_ab, "( a && b )" );
+        check( and_ab, "( a & b )" );
     }
 
     TEST(or_bool)
@@ -314,7 +314,7 @@ struct LTLToString
         auto and_ab = LTL::make( Binary::And, atomic_a, atomic_b );
         auto impl_ab = LTL::make( Binary::Impl, and_ab, atomic_b );
 
-        check( impl_ab, "( ( a && b ) -> b )" );
+        check( impl_ab, "( ( a & b ) -> b )" );
     }
 
     TEST(equiv_bool)
@@ -325,7 +325,7 @@ struct LTLToString
         auto or_ba = LTL::make( Binary::Or, atomic_b, atomic_a );
         auto equiv_ab_ba = LTL::make( Binary::Equiv, and_ab, or_ba );
 
-        check( equiv_ab_ba, "( ( a && b ) = ( b | a ) )" );
+        check( equiv_ab_ba, "( ( a & b ) <-> ( b | a ) )" );
     }
 
     /*
@@ -395,7 +395,7 @@ struct LTLToString
 
         auto atomic_l = LTL::make( Binary::Until, atomic_a, and_ab );
 
-        check( atomic_l, "( a U ( a && b ) )" );
+        check( atomic_l, "( a U ( a & b ) )" );
     }
 
     TEST(global_or_LTL)
@@ -415,14 +415,14 @@ struct LTLToString
     {
         std::string str( "G!F( aa && bb | cc) U ( a U b ) R c" );
         LTLPtr ltl = LTL::parse( str );
-        ASSERT_EQ( ltl->string(), "( ( G!F( ( aa && bb ) | cc ) U ( a U b ) ) R c )" );
+        ASSERT_EQ( ltl->string(), "( ( G!F( ( aa & bb ) | cc ) U ( a U b ) ) R c )" );
     }
 
     TEST(asociativity_AND)
     {
         std::string str( "a && b && c" );
         LTLPtr ltl = LTL::parse( str );
-        ASSERT_EQ( ltl->string(), "( ( a && b ) && c )" );
+        ASSERT_EQ( ltl->string(), "( ( a & b ) & c )" );
     }
 
     TEST(asociativity_Until)
@@ -449,7 +449,7 @@ struct LTLNF /* normal forms */
         auto and_ab = LTL::make( Binary::And, atomic_a, atomic_b );
         auto neg_and_ab = LTL::make( Unary::Neg, and_ab );
 
-        check( neg_and_ab, "!( a && b )" );
+        check( neg_and_ab, "!( a & b )" );
         check( neg_and_ab->normalForm(), "( !a | !b )" );
         check( and_ab->normalForm(true), "( !a | !b )" );
     }
@@ -497,7 +497,7 @@ struct LTLNF /* normal forms */
         auto until_l = LTL::make( Binary::Until, atomic_a, and_ab );
         auto neg_l = LTL::make( Unary::Neg, until_l );
 
-        check( neg_l, "!( a U ( a && b ) )" );
+        check( neg_l, "!( a U ( a & b ) )" );
         check( neg_l->normalForm(false), "( !a R ( !a | !b ) )" );
     }
 
