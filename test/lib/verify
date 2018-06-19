@@ -49,9 +49,9 @@ if test -n "$EXPORT"; then
     dir=$(dirname $1)
     name=$(basename $1)
     srcroot=$(readlink -f $(dirname $0)/../../)
-    rtinc=$srcroot/runtime
-    incs="-isystem $rtinc/libc/include -isystem $rtinc/libc/internals -isystem $rtinc/libcxx/include"
-    incs="$incs -isystem $rtinc/libm/include -isystem $rtinc -I $srcroot/bricks"
+    dios=$srcroot/dios
+    incs="-isystem $dios/include -isystem $dios/libcxx/include"
+    incs="$incs -I $srcroot/bricks"
     for f in $name $extrasrc; do
         deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | sed -e 's,^: [^ ]*,,' -e 's,\\$,,')
         echo load $dir/$f $f
