@@ -15,6 +15,8 @@ DIVINE_UNRELAX_WARNINGS
 using namespace divine;
 using namespace brick;
 
+#define VERSION "1" /* bump this to force rebuilds despite .fp matches */
+
 /* usage: runtime-cc srcdir bindir source.c output.bc [flags] */
 int main( int argc, const char **argv )
 {
@@ -30,7 +32,7 @@ int main( int argc, const char **argv )
         auto prec = clang.preprocessModule( argv[3], opts );
         std::string fpFilename = std::string( argv[ 4 ] ) + ".fp";
         std::string oldFp = fs::readFileOr( fpFilename, {} );
-        std::string newFp = sha2_512( prec );
+        std::string newFp = VERSION ":" + sha2_512( prec );
         if ( oldFp == newFp && fs::exists( argv[ 4 ] ) ) {
             fs::touch( argv[ 4 ] );
             return 0;
