@@ -35,6 +35,8 @@ struct Autotrace {
         if ( !trace )
             return;
 
+        auto *suspend = m.getFunction( "__dios_suspend" );
+
         if ( !tagModuleWithMetadata( m, "lart.divine.autotrace" ) )
             return;
 
@@ -45,7 +47,7 @@ struct Autotrace {
         auto ehInfo = cleanup::EhInfo::cpp( m );
 
         for ( auto &fn : m ) {
-            if ( fn.empty() || &fn == trace )
+            if ( fn.empty() || &fn == trace || &fn == suspend )
                 continue;
 
             llvm::IRBuilder<> irb( fn.front().getFirstInsertionPt() );
