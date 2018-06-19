@@ -714,8 +714,10 @@ void Node< Prog, Heap >::framevars( YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
-void Node< Prog, Heap >::globalvars( YieldDN yield )
+void Node< Prog, Heap >::globalvars( YieldDN /*yield*/ )
 {
+    NOT_IMPLEMENTED();
+#if 0 /* needs rewrite for 4.0 */
     DNEval< Heap > eval( _ctx );
     llvm::DebugInfoFinder finder;
     finder.processModule( *_ctx.program().module );
@@ -749,6 +751,7 @@ void Node< Prog, Heap >::globalvars( YieldDN yield )
             disamb[ name ] = 1;
         yield( name, dn );
     }
+#endif
 }
 
 static std::string rightpad( std::string s, int i )
