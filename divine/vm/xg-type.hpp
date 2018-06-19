@@ -45,13 +45,7 @@ struct Types
         t.size = T->isSized() ? TD.getTypeAllocSize( T ) : 0;
         int items = 0;
 
-        if ( T->isStructTy() )
-        {
-            t.type = _VM_Type::Struct;
-            items = t.items = T->getStructNumElements();
-            _types.resize( _types.size() + items );
-        }
-        else if ( auto ST = llvm::dyn_cast< llvm::SequentialType >( T ) )
+        auto seqt = [&]( auto ST )
         {
             t.type = _VM_Type::Array;
             t.items = T->isArrayTy() ? T->getArrayNumElements() : 0;
@@ -60,7 +54,18 @@ struct Types
             int tid = add( ST->getElementType() );
             _types[ ar_id ].item.offset = 0;
             _types[ ar_id ].item.type_id = tid;
+        };
+
+        if ( T->isStructTy() )
+        {
+            t.type = _VM_Type::Struct;
+            items = t.items = T->getStructNumElements();
+            _types.resize( _types.size() + items );
         }
+        else if ( auto ST = llvm::dyn_cast< llvm::SequentialType >( T ) )
+            seqt( ST );
+        else if ( auto PT = llvm::dyn_cast< llvm::PointerType >( T ) )
+            seqt( PT );
         else
             t.type = _VM_Type::Scalar;
 
