@@ -430,7 +430,7 @@ void Program::computeRR()
         if ( var->getName() == "__sys_env" )
         {
             ASSERT( _envptr.null() );
-            _envptr = addr( var );
+            _envptr = addr( &*var );
         }
     }
 
