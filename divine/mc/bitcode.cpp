@@ -120,7 +120,7 @@ void BitCode::do_rr()
     _program.reset( new vm::Program( mod ) );
     _program->setupRR();
     _program->computeRR();
-    _dbg.reset( new dbg::Info( _module.get(), *_program.get() ) );
+    _dbg.reset( new dbg::Info( *_program.get() ) );
 }
 
 void BitCode::do_constants()

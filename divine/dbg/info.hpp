@@ -124,22 +124,15 @@ struct Info
     llvm::DataLayout &layout() { return _layout; }
 
     llvm::DataLayout _layout;
-    llvm::Module *_module;
     vm::Program &_program;
     std::map< int, llvm::Function * > _funmap;
     std::map< llvm::DIType *, std::string > _typenamemap;
     std::map< std::string, std::string, StringLenCmp > _prettyNames;
 
-    Info( llvm::Module *m, vm::Program &p ) : _layout( m ), _module( m ), _program( p )
+    Info( vm::Program &p ) : _layout( p.TD ), _program( p )
     {
-        vm::CodePointer pc( 0, 0 );
-        for ( auto &f : *m )
-        {
-            if ( f.isDeclaration() )
-                continue;
-            pc.function( pc.function() + 1 );
-            _funmap[ pc.function() ] = &f;
-        }
+        for ( auto p : _program._addr._code )
+            _funmap[ p.second.function() ] = p.first->getParent();
     }
 };
 
