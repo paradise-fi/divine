@@ -244,7 +244,7 @@ struct Metadata : Next
         int sz = value.size();
         int words = ( sz + 3 ) / 4;
 
-        if ( sz >= 4 )
+        if ( sz >= 3 )
             ASSERT_EQ( l.offset % 4, 0 );
         else if ( sz == 2 )
             ASSERT_LT( l.offset % 4, 3 );
