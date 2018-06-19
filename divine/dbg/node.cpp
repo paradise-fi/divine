@@ -166,10 +166,13 @@ bool Node< Prog, Heap >::valid()
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::value( YieldAttr yield )
 {
+    if ( !_type )
+        return;
+
     DNEval< Heap > eval( _ctx );
     PointerV loc( _address + _offset );
 
-    if ( _type && _type->isIntegerTy() )
+    if ( _type->isIntegerTy() )
         eval.template type_dispatch< vm::IsIntegral >(
             xg::type( _type ),
             [&]( auto v )
@@ -188,7 +191,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
                     yield( "value", brick::string::fmt( raw ) );
             } );
 
-    if ( _type && _type->isFloatingPointTy() )
+    if ( _type->isFloatingPointTy() )
         eval.template type_dispatch< vm::IsFloat >(
             xg::type( _type ),
             [&]( auto v )
@@ -196,7 +199,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
                 yield( "value", brick::string::fmt( v.get( loc ) ) );
             } );
 
-    if ( _type && _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
+    if ( _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
     {
         PointerV str_v;
         auto hloc = eval.ptr2h( PointerV( _address ) ) + _offset;
@@ -206,11 +209,10 @@ void Node< Prog, Heap >::value( YieldAttr yield )
                 yield( "string", "\"" + _ctx.heap().read_string( str ) + "\"" ); /* TODO escape */
     }
 
-    if ( _type && _type->isPointerTy() )
+    if ( _type->isPointerTy() )
         eval.template type_dispatch< vm::Any >(
             xg::type( _type ),
             [&]( auto v ) { yield( "value", brick::string::fmt( v.get( loc ) ) ); } );
-
 }
 
 template< typename Prog, typename Heap >
