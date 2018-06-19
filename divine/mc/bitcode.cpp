@@ -24,7 +24,7 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DiagnosticPrinter.h>
 DIVINE_UNRELAX_WARNINGS
