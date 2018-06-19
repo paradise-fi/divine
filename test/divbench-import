@@ -7,3 +7,5 @@ fi
 divbench=$(make show var=OBJ)bench/tools/divbench
 make divbench
 ./test/runner --export | $divbench import
+
+echo "delete from model_tags where (select count(*) from tag where name like 'pthread_%' and model_tags.tag = tag.id) > 0;" | psql -h anna divbench
