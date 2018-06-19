@@ -105,7 +105,7 @@ function(build_llvm)
   include( HandleLLVMOptions )
 
   # set( PACKAGE_VERSION "${LLVM_PACKAGE_VERSION}" )
-  set( PACKAGE_VERSION "3.9.0" )
+  set( PACKAGE_VERSION "4.0.0" )
   add_subdirectory( llvm )
   include_directories( llvm/include ${CMAKE_CURRENT_BINARY_DIR}/llvm/include )
   add_subdirectory( clang )
