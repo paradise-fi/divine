@@ -104,7 +104,7 @@ struct Int : Base
     int size()
     {
         if constexpr ( is_dynamic )
-            return brick::bitlevel::align( _meta.width, 8 ) / 8;
+            return brick::bitlevel::align( width(), 8 ) / 8;
         else
             return sizeof( Raw );
     }
