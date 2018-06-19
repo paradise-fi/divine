@@ -15,8 +15,10 @@ int link_a( int argc, const char **argv )
     for ( int i = 2; i < argc; ++i )
     {
         auto input = std::move( llvm::MemoryBuffer::getFile( argv[i] ).get() );
-        modules.emplace_back( std::move(
-                    llvm::parseBitcodeFile( input->getMemBufferRef(), ctx ).get() ) );
+        auto mod = llvm::parseBitcodeFile( input->getMemBufferRef(), ctx );
+        if ( !mod )
+            return 1;
+        modules.emplace_back( std::move( mod.get() ) );
         llvm::Module &m = *modules.back();
         essentials.setDataLayout( m.getDataLayoutStr() );
         brick::llvm::enumerateFunctionsForAnno( "divine.link.always", m,

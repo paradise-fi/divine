@@ -2,7 +2,7 @@
 #include <divine/cc/paths.hpp>
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/divine/debugpaths.hpp>
