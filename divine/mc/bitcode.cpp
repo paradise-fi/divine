@@ -111,7 +111,7 @@ void BitCode::do_lart()
         lart::util::replaceGlobalArray( *mod, "__sys_env", _env );
     lart.process( mod );
 
-    brick::llvm::verifyModule( mod );
+    // TODO brick::llvm::verifyModule( mod );
 }
 
 void BitCode::do_rr()
