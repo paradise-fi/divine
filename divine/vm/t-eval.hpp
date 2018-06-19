@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <divine/vm/t-program.hpp>
 #include <divine/vm/eval.tpp>
 #include <divine/vm/memory.hpp>
 
