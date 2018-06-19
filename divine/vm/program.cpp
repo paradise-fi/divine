@@ -187,7 +187,7 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
     }
 alloc:
     result.offset = f.framesize;
-    f.framesize += result.size();
+    f.framesize += brick::bitlevel::align( result.size(), framealign );
     c.resize( f.framesize );
 out:
     c[ result.offset ].push_back( val );
@@ -226,7 +226,8 @@ Program::Slot Program::insert( int function, llvm::Value *val, bool )
 
     auto slot_i = initSlot( val, sl );
 
-    if ( slot_i.size() % framealign )
+    /* NB. Slots of size 3 are 4-aligned. */
+    if ( slot_i.size() != 3 && slot_i.size() % framealign )
         return Slot(); /* ignore for now, later pass will assign this one */
 
     Slot slot;
