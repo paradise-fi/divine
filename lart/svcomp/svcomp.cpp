@@ -52,7 +52,7 @@ struct Atomic
             if ( &f != vbegin && &f != vend && !f.empty()
                 && f.getName().startswith( atomicPrefix ) )
             {
-                llvm::IRBuilder<> irb( f.getEntryBlock().getFirstInsertionPt() );
+                llvm::IRBuilder<> irb( &*f.getEntryBlock().getFirstInsertionPt() );
                 irb.CreateCall( dios_mask, { irb.getInt32( 1 ) } );
                 irb.CreateFence( llvm::AtomicOrdering::SequentiallyConsistent );
                 cleanup::atExits( f, [dios_mask]( llvm::Instruction *exit ) {
