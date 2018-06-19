@@ -562,8 +562,8 @@ if(CMAKE_HOST_APPLE AND APPLE)
 endif()
 
 # Keep the version requirements in sync with bindings/ocaml/README.txt.
-include(FindOCaml)
-include(AddOCaml)
+#include(FindOCaml)
+#include(AddOCaml)
 if(WIN32)
   message(STATUS "OCaml bindings disabled.")
 elseif(NOT LLVM_DISABLE_BINDINGS)
