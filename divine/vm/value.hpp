@@ -148,7 +148,6 @@ struct Int : Base
     {
         if constexpr ( is_dynamic )
         {
-            _raw = 0;
             char *rr = reinterpret_cast< char * >( &_raw );
             std::copy( rr, rr + size(), reinterpret_cast< char * >( r ) );
         }
@@ -160,6 +159,7 @@ struct Int : Base
     {
         if constexpr ( is_dynamic )
         {
+            _raw = 0;
             char *rr = reinterpret_cast< char * >( r );
             std::copy( rr, rr + size(), reinterpret_cast< char * >( &_raw ) );
         }
