@@ -135,7 +135,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
             {
                 bool lossy;
                 llvm::APFloat x = FP->getValueAPF();
-                x.convert( llvm::APFloat::IEEEdouble, llvm::APFloat::rmNearestTiesToEven, &lossy );
+                x.convert( llvm::APFloat::IEEEdouble(), llvm::APFloat::rmNearestTiesToEven, &lossy );
                 /* FIXME? */
                 heap.write_shift( ptr, value::Float< long double >( x.convertToDouble() ) );
                 break;
