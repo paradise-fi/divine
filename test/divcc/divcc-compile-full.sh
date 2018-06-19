@@ -1,4 +1,4 @@
-# TAGS: min
+# TAGS: min todo
 . lib/testcase
 
 cat > prog.c <<EOF

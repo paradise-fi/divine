@@ -1,4 +1,4 @@
-# TAGS:
+# TAGS: todo
 . lib/testcase
 
 cat > f.c <<EOF
