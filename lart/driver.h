@@ -15,7 +15,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
 
-#include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Support/raw_os_ostream.h>
 
 #include <llvm/IR/Verifier.h>
