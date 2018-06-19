@@ -165,6 +165,7 @@ struct Node
     bool boundcheck( int off, int size );
 
     void value( YieldAttr yield );
+    std::string formula( bool peek, int offset = 0 );
     void attributes( YieldAttr yield );
     std::string attribute( std::string key );
     int size();

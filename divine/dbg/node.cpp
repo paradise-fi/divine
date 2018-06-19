@@ -316,6 +316,26 @@ vm::HeapPointer Node< Prog, Heap >::heap_address()
 }
 
 template< typename Prog, typename Heap >
+std::string Node< Prog, Heap >::formula( bool peek, int offset )
+{
+    brick::smt::Context smt_ctx;
+    smt::extract::SMTLib2 smt_value( _ctx.heap(), smt_ctx );
+    vm::GenericPointer addr;
+    if ( peek )
+    {
+        auto p = _ctx.heap().peek( heap_address() + _offset + offset, _VM_ML_User );
+        if ( p.defined() )
+            addr.object( p.cooked() );
+    }
+    else
+        addr = _address;
+    if ( !addr.object() )
+        return "not available";
+    auto n = smt_value.convert( addr );
+    return smt_ctx.print( n );
+}
+
+template< typename Prog, typename Heap >
 void Node< Prog, Heap >::attributes( YieldAttr yield )
 {
     DNEval< Heap > eval( _ctx );
@@ -340,13 +360,22 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
     if ( _address.type() == vm::PointerType::Global )
         yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
 
+
+    std::stringstream formulas;
+
     if ( _address.type() == vm::PointerType::Marked )
+        formulas << "[ptr] " << formula( false ) << " ";
+
+    for ( int i = 0; i < size(); ++i )
     {
-        brick::smt::Context smt_ctx;
-        smt::extract::SMTLib2 smt_value( _ctx.heap(), smt_ctx );
-        auto n = smt_value.convert( _address );
-        yield( "formula", smt_ctx.print( n ) );
+        vm::CharV tainted;
+        _ctx.heap().read( hloc + _offset, tainted );
+        if ( tainted.taints() )
+            formulas << "[" << i << "] " << formula( true, i ) << " ";
     }
+
+    if ( !formulas.str().empty() )
+        yield( "formula", formulas.str() );
 
     if ( _di_var )
     {
