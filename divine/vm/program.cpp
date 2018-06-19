@@ -651,7 +651,6 @@ lx::Slot Program::allocateSlot( Slot slot, int function, llvm::Value *val )
 template< typename H >
 std::pair< HeapPointer, HeapPointer > Program::exportHeap( H &target )
 {
-    _ccontext._heap._ptr_exceptions->dump();
     auto cp = value::Pointer(
             mem::clone( _ccontext._heap, target, _ccontext.constants() ) );
 
