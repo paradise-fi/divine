@@ -320,7 +320,10 @@ template< bool s >
 struct DynInt : Int< 64, s, true >
 {
     static const bool IsFix = false;
-    using Int< 64, s, true >::Int;
+    using Super = Int< 64, s, true >;
+    using Super::Super;
+
+    DynInt( const Super &i ) : Super( i ) {}
 
     void setup( int bw )
     {
@@ -330,7 +333,7 @@ struct DynInt : Int< 64, s, true >
 
     DynInt< true > make_signed()
     {
-        return Int< 64, s, true >::make_signed();
+        return Super::make_signed();
     }
 };
 
