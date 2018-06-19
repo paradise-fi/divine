@@ -301,6 +301,14 @@ struct ArchiveReader
             _throwLLVMError( ec );
     }
 
+    ArchiveReader( ArchiveReader && ) = default;
+
+    ~ArchiveReader()
+    {
+        if ( _err )
+            _throwLLVMError( _err );
+    }
+
     struct BitcodeIterator : types::Eq
     {
         using Underlying = Archive::child_iterator;
