@@ -133,6 +133,7 @@ struct Node
 
     DNKind kind() { return _kind; }
     vm::GenericPointer address() { return _address; }
+    vm::HeapPointer heap_address();
     Snapshot snapshot() { return _snapshot; }
 
     vm::GenericPointer pc();

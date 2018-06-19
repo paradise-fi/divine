@@ -202,7 +202,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
     if ( _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
     {
         PointerV str_v;
-        auto hloc = eval.ptr2h( PointerV( _address ) ) + _offset;
+        auto hloc = heap_address() + _offset;
         _ctx.heap().read( hloc, str_v );
         auto str = eval.ptr2h( str_v );
         if ( _ctx.heap().valid( str ) )
@@ -310,6 +310,13 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias, bool pr
 }
 
 template< typename Prog, typename Heap >
+vm::HeapPointer Node< Prog, Heap >::heap_address()
+{
+    DNEval< Heap > eval( _ctx );
+    return eval.ptr2h( PointerV( _address ) );
+}
+
+template< typename Prog, typename Heap >
 void Node< Prog, Heap >::attributes( YieldAttr yield )
 {
     DNEval< Heap > eval( _ctx );
@@ -325,7 +332,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
     if ( !valid() )
         return;
 
-    auto hloc = eval.ptr2h( PointerV( _address ) );
+    auto hloc = heap_address();
     yield( "size", brick::string::fmt( size() ) );
     value( yield );
 
@@ -424,13 +431,12 @@ void Node< Prog, Heap >::components( YieldDN yield )
         globalvars( yield );
 
     DNEval< Heap > eval( _ctx );
-    auto hloc = eval.ptr2h( PointerV( _address ) );
 
     if ( _type && _di_type &&
          ( di_composite( llvm::dwarf::DW_TAG_structure_type ) ||
            di_composite( llvm::dwarf::DW_TAG_class_type ) ) &&
          _type->isStructTy() )
-        struct_fields( hloc, yield );
+        struct_fields( heap_address(), yield );
 
     if ( _type && _di_type && di_composite( llvm::dwarf::DW_TAG_array_type ) )
         array_elements( yield );
@@ -445,7 +451,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
     DNEval< Heap > eval( _ctx );
 
     PointerV ptr;
-    auto hloc = eval.ptr2h( PointerV( _address ) );
+    auto hloc = heap_address();
     int hoff = hloc.offset();
 
     if ( _type && _di_type && _type->isPointerTy() &&
