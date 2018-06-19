@@ -1,4 +1,4 @@
-/* TAGS: sym c */
+/* TAGS: sym c big */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
