@@ -344,7 +344,8 @@ td.test-compact div { margin-bottom: -1px; }
 #metanav { display: inline; }
 #metanav div { display: inline; }
 form div { display: inline; }
-div.buttons { display: inline; }
+.report div.buttons { display: none; }
+.report #prefs, .ticket #prefs { display: none; }
 .timeline form#prefs { display: none; }
 .report h1 { display: none; }
 div#help { display: none; }
@@ -380,3 +381,24 @@ form { display: inline; margin: 0; padding: 0; }
 #metanav form.trac-logout button:active { position: static }
 #metanav .last:after { content: '.'; }
 #metanav .first:after { content: ': '; }
+
+.fullrow input { width: 100%; border: 1px solid gray; }
+.fullrow textarea { width: 100%; border: 1px solid gray; }
+#field-description-help {  display: none; }
+fieldset { border: none; padding: 0; margin: 0; }
+textarea { padding: 0; }
+th.trac-textarea { vertical-align: top; }
+select { width: calc( 100% + 4px ); }
+.col1 input, .col2 input { width: 100%; border 1px solid gray; }
+table.properties th, table.trac-properties th { padding-left: 1em; padding-right: .5em; }
+table.properties td, table.trac-properties td  { padding-right: 2em; }
+.trac-properties table { border-spacing: 2px; }
+fieldset#action { display: none; }
+#properties legend { display: none; }
+#ticket h2 { display: none; }
+.trac-topnav { display: none; }
+#trac-add-comment label { display: none; }
+#trac-add-comment textarea { width: calc( 100% - 3.4em ); margin-left: 1em; margin-bottom: 1ex; }
+.description input { display: none; }
+.description p { padding-left: 1em; }
+div.attachments { padding-left: 1em; }
