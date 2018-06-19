@@ -143,6 +143,12 @@ namespace divine::mem
             return l.object;
         }
 
+        using Next::peek;
+        typename Next::UIntV peek( Pointer p, int key )
+        {
+            return Next::peek( this->loc( p ), key );
+        }
+
         template< typename T >
         auto poke( Loc l, int key, T v )
         {
