@@ -13,7 +13,9 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <clang/Frontend/Utils.h>
 #include <llvm/Support/Errc.h> // for VFS
-#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Support/Path.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Support/TargetSelect.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -226,7 +228,7 @@ struct DivineVFS : clang::vfs::FileSystem
         auto name = llvm::sys::path::filename( path );
         ref.second = clang::vfs::Status( name,
                         clang::vfs::getNextVirtualUniqueID(),
-                        llvm::sys::TimeValue(), 0, 0, contents.size(),
+                        llvm::sys::TimePoint<>(), 0, 0, contents.size(),
                         llvm::sys::fs::file_type::regular_file,
                         llvm::sys::fs::perms::all_all );
         auto parts = brick::fs::splitPath( path );
@@ -240,7 +242,7 @@ struct DivineVFS : clang::vfs::FileSystem
             auto path = brick::fs::joinPath( begin, std::next( it ) );
             filemap[ path ] = { "", clang::vfs::Status( *it,
                     clang::vfs::getNextVirtualUniqueID(),
-                    llvm::sys::TimeValue(), 0, 0, 0,
+                    llvm::sys::TimePoint<>(), 0, 0, 0,
                     llvm::sys::fs::file_type::directory_file,
                     llvm::sys::fs::perms::all_all ) };
         }
@@ -406,7 +408,7 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
         vfs = overlayFS;
 
     // Build an invocation
-    auto invocation = std::make_unique< clang::CompilerInvocation >();
+    auto invocation = std::make_shared< clang::CompilerInvocation >();
     std::vector< std::string > cc1args = { "-cc1",
                                             "-triple", "x86_64-unknown-none-elf",
                                             "-emit-obj",
@@ -463,7 +465,7 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
     clang::CompilerInstance compiler( std::make_shared< clang::PCHContainerOperations>() );
     auto fmgr = std::make_unique< clang::FileManager >( clang::FileSystemOptions(), vfs );
     compiler.setFileManager( fmgr.get() );
-    compiler.setInvocation( invocation.release() );
+    compiler.setInvocation( invocation );
     ASSERT( compiler.hasInvocation() );
     compiler.createDiagnostics( &diagprinter, false );
     ASSERT( compiler.hasDiagnostics() );
@@ -528,9 +530,12 @@ std::string Compiler::serializeModule( llvm::Module &m ) {
     return str;
 }
 
-std::unique_ptr< llvm::Module > Compiler::materializeModule( llvm::StringRef str ) {
-    return std::move( llvm::parseBitcodeFile(
-                llvm::MemoryBufferRef( str, "module.bc" ), *ctx ).get() );
+std::unique_ptr< llvm::Module > Compiler::materializeModule( llvm::StringRef str )
+{
+    auto parsed = llvm::parseBitcodeFile( llvm::MemoryBufferRef( str, "module.bc" ), *ctx );
+    if ( !parsed )
+        return nullptr;
+    return std::move( parsed.get() );
 }
 
 bool Compiler::fileExists( llvm::StringRef file )
