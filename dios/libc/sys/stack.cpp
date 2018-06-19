@@ -13,7 +13,9 @@ _Noreturn __invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int r
     __builtin_unreachable();
 }
 
-__invisible void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
+/* NOTE: any write directly to a stack frame should bypass weakmem as registers
+ * and parent pointers are read by the VM */
+__invisible __weakmem_direct void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
 {
     bool noret = false;
     if ( !stack )
@@ -60,24 +62,29 @@ __invisible void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to
         __dios_suicide();
 }
 
-int __dios_set_register( _VM_Frame *frame, _VM_CodePointer pc, unsigned offset, char *data, unsigned lenght )
+/* writing to frame must bypass weakmem to make effects visible to VM */
+__weakmem_direct void __dios_set_register( _VM_Frame *frame, _VM_CodePointer pc,
+                                           unsigned offset, uint64_t value, unsigned lenght )
 {
+    assert( lenght <= sizeof( uint64_t ) );
     auto *meta = __md_get_pc_meta( pc );
     auto info = __md_get_register_info( frame, pc, meta );
-    if ( unsigned( info.width ) < offset + lenght )
-        return 0;
+    assert( unsigned( info.width ) >= offset + lenght );
 
-    memcpy( reinterpret_cast< char * >( info.start ) + offset, data, lenght );
-    return 1;
+    memcpy( reinterpret_cast< char * >( info.start ) + offset, &value, lenght );
 }
 
-int __dios_get_register( _VM_Frame *frame, _VM_CodePointer pc, unsigned offset, char *data, unsigned lenght )
+/* no need to bypass weakmem for reading, reading always tries memory */
+uint64_t __dios_get_register( _VM_Frame *frame, _VM_CodePointer pc, unsigned offset,
+                              unsigned lenght )
 {
+    assert( lenght <= sizeof( uint64_t ) );
     auto *meta = __md_get_pc_meta( pc );
     auto info = __md_get_register_info( frame, pc, meta );
-    if ( unsigned( info.width ) < offset + lenght )
-        return 0;
+    assert( unsigned( info.width ) >= offset + lenght );
 
-    memcpy( data, reinterpret_cast< char * >( info.start ) + offset, lenght );
-    return 1;
+    uint64_t value = 0;
+    memcpy( reinterpret_cast< char * >( value ),
+            reinterpret_cast< char * >( info.start ) + offset, lenght );
+    return value;
 }

@@ -49,15 +49,17 @@ void __dios_jump( struct _VM_Frame *to, void (*pc)( void ), int restoreMaskTo )
     _PDCLIB_nothrow __attribute__((__noinline__));
 
 // set value of register of instruction identified by 'pc' in frame identified
-// by 'frame' 'lenght' bytes from 'data' will be written to offset 'offset' of
+// by 'frame' 'lenght' bytes of 'value' will be written to offset 'offset' of
 // the register
-// function returns 1 if register was successfuly written and 0 otherwise
-int __dios_set_register( struct _VM_Frame *frame, _VM_CodePointer pc,
-                         unsigned offset, char *data, unsigned lenght );
+// triggers an assert if it was not able to write the register
+void __dios_set_register( struct _VM_Frame *frame, _VM_CodePointer pc,
+                         unsigned offset, uint64_t value, unsigned lenght )
+                         __attribute__((__noinline__));
 
 // similar to __dios_set_register except it reads from given (part) of register
-int __dios_get_register( struct _VM_Frame *frame, _VM_CodePointer pc,
-                         unsigned offset, char *data, unsigned lenght );
+// and returns the read value
+uint64_t __dios_get_register( struct _VM_Frame *frame, _VM_CodePointer pc,
+                         unsigned offset, unsigned lenght );
 
 _PDCLIB_EXTERN_END
 

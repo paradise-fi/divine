@@ -57,14 +57,11 @@ void _Unwind_SetGR( _Unwind_Context *ctx, int index, uintptr_t value ) {
     auto lp = getLandingPad( ctx->pc() );
 
     if ( index == 0 )
-        __dios_set_register( ctx->frame, lp, 0,
-                             reinterpret_cast< char * >( &value ), sizeof( uintptr_t ) );
+        __dios_set_register( ctx->frame, lp, 0, value, sizeof( uintptr_t ) );
     else if ( index == 1 ) {
         __dios_assert_v( intptr_t( value ) >= intptr_t( INT_MIN ), "Overflow in exception type index" );
         __dios_assert_v( intptr_t( value ) <= intptr_t( INT_MAX ), "Underflow in exception type index" );
-        int val = value;
-        __dios_set_register( ctx->frame, lp, sizeof( uintptr_t ),
-                             reinterpret_cast< char * >( &val ), sizeof( int ) );
+        __dios_set_register( ctx->frame, lp, sizeof( uintptr_t ), int( value ), sizeof( int ) );
     }
 }
 
@@ -98,19 +95,10 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
     // landingpad { i8*, i32 }
 
     auto lp = getLandingPad( ctx->pc() );
-    uintptr_t ptrval;
-    int ival;
 
-    if ( index == 0 ) {
-        __dios_get_register( ctx->frame, lp, 0,
-                             reinterpret_cast< char * >( &ptrval ), sizeof( uintptr_t ) );
-        return ptrval;
-    }
-    else if ( index == 1 ) {
-        __dios_get_register( ctx->frame, lp, sizeof( uintptr_t ),
-                             reinterpret_cast< char * >( &ival ), sizeof( int ) );
-        return ival;
-    }
+    if ( index >= 0 && index <= 1 )
+        return __dios_get_register( ctx->frame, lp, index == 0 ? 0 : sizeof( uintptr_t ),
+                                    index == 0 ? sizeof( uintptr_t ) : sizeof( int ) );
     __dios_fault( _VM_F_NotImplemented, "invalid register" );
     __builtin_unreachable();
 }
