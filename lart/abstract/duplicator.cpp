@@ -12,13 +12,13 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/metadata.h>
 
 using namespace llvm;
-using namespace lart::abstract;
 
-namespace {
+namespace lart::abstract
+{
 
 bool is_duplicable( Value *v ) {
-    return is_one_of< BinaryOperator, CmpInst, TruncInst,
-                      SExtInst, ZExtInst, LoadInst, PHINode >( v );
+    return abstract::is_one_of< BinaryOperator, CmpInst, TruncInst,
+                                SExtInst, ZExtInst, LoadInst, PHINode >( v );
 }
 
 Function* placeholder( Module *m, Type *in, Type *out ) {
@@ -30,8 +30,6 @@ Function* placeholder( Module *m, Type *in, Type *out ) {
         name += llvm_name( out );
    	return get_or_insert_function( m, fty, name );
 }
-
-} // anonymous namespace
 
 void Duplicator::run( llvm::Module &m ) {
 	auto abstract = query::query( abstract_metadata( m ) )
@@ -72,4 +70,6 @@ void Duplicator::process( llvm::Instruction *i ) {
     }
 
     make_duals( i, ph );
+}
+
 }
