@@ -31,7 +31,8 @@ DIVINE_RELAX_WARNINGS
 #endif
 
 #include <llvm/Linker/Linker.h>
-#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
@@ -251,7 +252,9 @@ struct ArchiveReader
 {
     using Ctx = ::llvm::LLVMContext;
 
-    explicit ArchiveReader( std::shared_ptr< Ctx > ctx ) : _ctx( ctx ) {
+    explicit ArchiveReader( std::shared_ptr< Ctx > ctx )
+        : _ctx( ctx ), _err( ::llvm::Error::success() )
+    {
         if ( !_ctx )
             _ctx.reset( new ::llvm::LLVMContext() );
     }
@@ -261,7 +264,7 @@ struct ArchiveReader
     {
         _data = mmap::MMap( filename, mmap::ProtectMode::Read | mmap::ProtectMode::Private );
 
-        ::llvm::Error ec;
+        auto ec = ::llvm::Error::success();
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef(
                         ::llvm::StringRef( _data.left().data(), _data.left().size() ), filename ), ec );
         if ( ec )
@@ -271,7 +274,7 @@ struct ArchiveReader
     explicit ArchiveReader( std::string filename, std::string_view contents, std::shared_ptr< Ctx > ctx = nullptr ) :
         ArchiveReader( ctx )
     {
-        ::llvm::Error ec;
+        auto ec = ::llvm::Error::success();
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef(
                         ::llvm::StringRef( contents.data(), contents.size() ), filename ), ec );
         if ( ec )
@@ -282,7 +285,7 @@ struct ArchiveReader
         ArchiveReader( ctx )
     {
         _data = std::move( contents );
-        ::llvm::Error ec;
+        auto ec = ::llvm::Error::success();
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef( _data.right(), filename ), ec );
         if ( ec )
             _throwLLVMError( ec );
@@ -292,7 +295,7 @@ struct ArchiveReader
         ArchiveReader( ctx )
     {
         _buffer = std::move( buffer );
-        ::llvm::Error ec;
+        auto ec = ::llvm::Error::success();
         _archive = std::make_unique< Archive >( _buffer->getMemBufferRef(), ec );
         if ( ec )
             _throwLLVMError( ec );
@@ -302,8 +305,9 @@ struct ArchiveReader
     {
         using Underlying = Archive::child_iterator;
 
-        BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx, bool bump = true ) :
-            _it( beg ), _end( end ), _ctx( ctx )
+        BitcodeIterator( Underlying beg, Underlying end, ArchiveReader *parent,
+                         bool bump = true )
+            : _it( beg ), _end( end ), _parent( parent )
         {
             if ( bump )
                 _bump();
@@ -311,22 +315,22 @@ struct ArchiveReader
 
         BitcodeIterator( BitcodeIterator && ) = default;
         BitcodeIterator( const BitcodeIterator &o ) :
-            _it( o._it ), _end( o._end ), _ctx( o._ctx ), _iro( nullptr )
+            _it( o._it ), _end( o._end ), _parent( o._parent ), _bc( nullptr )
         { }
 
-        ::llvm::Module &operator*() {
+        ::llvm::Module &get()
+        {
             _load( true );
-            return _iro->getModule();
+            return *_bc.get();
         }
 
-        ::llvm::Module *operator->() {
-            _load( true );
-            return &_iro->getModule();
-        }
+        ::llvm::Module &operator*()  { return get(); }
+        ::llvm::Module *operator->() { return &get(); }
 
-        std::unique_ptr< ::llvm::Module > take() {
+        std::unique_ptr< ::llvm::Module > take()
+        {
             _load( true );
-            return _iro->takeModule();
+            return std::move( _bc );
         }
 
         bool operator==( const BitcodeIterator &o ) const { return _it == o._it;  }
@@ -338,7 +342,7 @@ struct ArchiveReader
         }
 
         BitcodeIterator operator++( int ) {
-            BitcodeIterator copy( _it, _end, _ctx, std::move( _iro ) );
+            BitcodeIterator copy( _it, _end, _parent, std::move( _bc ) );
             ++(*this);
             return copy;
         }
@@ -346,39 +350,56 @@ struct ArchiveReader
       private:
         using IRObjectFile = ::llvm::object::IRObjectFile;
 
-        bool _load( bool errorIsFatal  ) {
-            if ( !_iro ) {
-                auto b = _it->getAsBinary( _ctx.get() );
-                if ( !b && errorIsFatal )
+        bool _load( bool errorIsFatal )
+        {
+            if ( !_bc )
+            {
+                auto buf = _it->getAsBinary( _parent->_ctx.get() );
+                if ( !buf && errorIsFatal )
                 {
-                    auto err = b.takeError();
+                    auto err = buf.takeError();
                     _throwLLVMError( err );
                 }
-                if ( !b )
+                if ( !buf )
                     return false;
-                _iro.reset( ::llvm::cast< IRObjectFile >( b.get().release() ) );
+
+                auto bc_buf = IRObjectFile::findBitcodeInMemBuffer( buf.get()->getMemoryBufferRef() );
+
+                if ( !bc_buf )
+                    _throwLLVMError( bc_buf.getError() );
+
+                auto parsed = ::llvm::parseBitcodeFile( bc_buf.get(), *_parent->_ctx.get() );
+                if ( !parsed )
+                    return false;
+                _bc = std::move( parsed.get() );
             }
             return true;
         }
 
-        void _bump() {
-            _iro = nullptr;
-            while ( _it != _end ) {
+        void _bump()
+        {
+            if ( _parent->_err )
+                _throwLLVMError( _parent->_err );
+            _bc.reset();
+            while ( _it != _end )
+            {
                 if ( _load( false ) )
                     break;
                 ++_it;
+                if ( _parent->_err )
+                    _throwLLVMError( _parent->_err );
             }
         }
 
-        BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx,
-                         std::unique_ptr< IRObjectFile > iro ) :
-            _it( beg ), _end( end ), _ctx( ctx ), _iro( std::move( iro ) )
+        BitcodeIterator( Underlying beg, Underlying end, ArchiveReader *parent,
+                         std::unique_ptr< ::llvm::Module > bc ) :
+            _it( beg ), _end( end ), _parent( parent ), _bc( std::move( bc ) )
         { }
 
         Underlying _it;
         Underlying _end;
-        std::shared_ptr< Ctx > _ctx;
-        std::unique_ptr< IRObjectFile > _iro;
+        ArchiveReader *_parent;
+        std::unique_ptr< ::llvm::Module > _bc;
     };
 
     ::llvm::iterator_range< BitcodeIterator > modules() {
@@ -387,19 +408,18 @@ struct ArchiveReader
 
     BitcodeIterator modules_begin()
     {
-        ::llvm::Error err;
-        auto res = BitcodeIterator( _archive->child_begin( err ), _archive->child_end(), _ctx );
-        if ( err ) _throwLLVMError( err );
+        auto res = BitcodeIterator( _archive->child_begin( _err ), _archive->child_end(), this );
+        if ( _err ) _throwLLVMError( _err );
         return res;
     }
 
     BitcodeIterator modules_end()
     {
-        return BitcodeIterator( _archive->child_end(), _archive->child_end(), _ctx );
+        return BitcodeIterator( _archive->child_end(), _archive->child_end(), this );
     }
 
     BitcodeIterator iterator( ::llvm::object::Archive::child_iterator raw ) {
-        return BitcodeIterator( raw, _archive->child_end(), _ctx, false );
+        return BitcodeIterator( raw, _archive->child_end(), this, false );
     }
 
     const Archive &archive() const { return *_archive; }
@@ -409,6 +429,7 @@ struct ArchiveReader
     std::unique_ptr< Archive > _archive;
     std::unique_ptr< ::llvm::MemoryBuffer > _buffer;
     std::shared_ptr< Ctx > _ctx;
+    ::llvm::Error _err;
 };
 
 struct Linker {
@@ -433,7 +454,10 @@ struct Linker {
     void link( std::unique_ptr< Module > src )
     {
         ASSERT( src != nullptr );
-        src->materializeAll();
+
+        if ( auto err = src->materializeAll() )
+            _throwLLVMError( err );
+
         if ( !_link )
         {
             _module = std::move( src );
@@ -485,7 +509,10 @@ struct Linker {
             for ( auto s : r.archive().symbols() ) {
                 auto m = s.getMember();
                 if ( !m )
-                    _throwLLVMError( m.getError() );
+                {
+                    auto e = m.takeError();
+                    _throwLLVMError( e );
+                }
                 Archive::child_iterator iter( m.get(), nullptr );
                 this->emplace( s.getName(), r.iterator( iter ) );
             }
