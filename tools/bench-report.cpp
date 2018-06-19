@@ -226,9 +226,22 @@ void Report::list_instance( F header, nanodbc::result i )
         return;
     header();
 
-    std::cout  << "    - instance id: " << i.get< int >( 0 ) << std::endl
-               << "      solver: " << i.get< std::string >( 2 ) << std::endl
-               << "      resources: {";
+    std::cout << "    - instance id: " << i.get< int >( 0 ) << std::endl
+              << "      solver: " << i.get< std::string >( 2 ) << std::endl
+              << "      cc opts: ";
+
+    std::stringstream q;
+    q << "select opt from cc_opt where config = ?";
+    nanodbc::statement ccopt( _conn, q.str() );
+    int config = i.get< int >( 7 );
+    ccopt.bind( 0, &config );
+    auto r = ccopt.execute();
+    int count = 0;
+    while ( r.next() )
+        std::cout << ( count++ ? ", " : "[ " ) << r.get< std::string >( 0 );
+    std::cout << ( count ? " ]" : "[]" ) << std::endl;
+
+    std::cout << "      resources: {";
     bool comma = false;
     if ( !i.is_null( 3 ) )
         std::cout << " threads: " << i.get< int >( 3 ), comma = true;
@@ -240,8 +253,7 @@ void Report::list_instance( F header, nanodbc::result i )
                   << "time: " << i.get< int64_t >( 5 );
     std::cout << ( comma ? " " : "" ) << "}" << std::endl
               << "      jobs: " << i.get< int >( 6 ) << std::endl
-              << "      machine tags: " << list_tags( _conn, "machine", i.get< int >( 1 ) )
-              << std::endl;
+              << "      machine tags: " << list_tags( _conn, "machine", i.get< int >( 1 ) ) << std::endl;
 }
 
 void Report::list_build( nanodbc::result r )
@@ -280,7 +292,7 @@ void Report::list_build( nanodbc::result r )
     q.str( "" );
     q << "select instance.id, instance.machine, "
       << "config.solver, config.threads, config.max_mem, config.max_time, "
-      << "(select count(*) from job where job.instance = instance.id and job.status = 'D') "
+      << "(select count(*) from job where job.instance = instance.id and job.status = 'D'), config.id "
       << "from instance join config on instance.config = config.id where instance.build = ?";
     nanodbc::statement instances( _conn, q.str() );
     instances.bind( 0, &id );
