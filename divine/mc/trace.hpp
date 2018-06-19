@@ -104,8 +104,8 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                         return ss::Listen::Process;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
-    ASSERT( next == states.end() );
-    ASSERT( t.final );
+    if ( next != states.end() || !t.final )
+        std::cerr << "E: incomplete trace! this is a bug." << std::endl;
     return t;
 }
 
