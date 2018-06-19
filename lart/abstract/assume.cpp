@@ -65,7 +65,7 @@ namespace {
             to = edgebb->getSingleSuccessor();
             auto to_i1 = cast< Instruction >( ass.cond );
 
-            llvm::IRBuilder<> irb( edgebb->getFirstInsertionPt() );
+            llvm::IRBuilder<> irb( &*edgebb->getFirstInsertionPt() );
             irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
 
             // Correct phis after edge splitting
