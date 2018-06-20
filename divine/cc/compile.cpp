@@ -95,6 +95,7 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
         std::cerr << "compiling " << path << std::endl;
     if ( path[0] == '/' )
         compiler.allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
+    compiler.allowIncludePath( "." ); /* clang 4.0 requires that cwd is always accessible */
     auto mod = compiler.compileModule( path, type, allFlags );
 
     return mod;
