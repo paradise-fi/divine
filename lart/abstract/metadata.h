@@ -46,6 +46,33 @@ private:
     llvm::ValueAsMetadata  *_md;
 };
 
+
+struct ArgMetadata {
+    ArgMetadata( llvm::Metadata *data )
+        : data( llvm::cast< llvm::MDNode >( data ) )
+    {}
+
+    Domain domain() const;
+private:
+    llvm::MDNode *data;
+};
+
+
+struct FunctionMetadata {
+    FunctionMetadata( llvm::Function * fn )
+        : fn( fn )
+    {}
+
+    void set_arg_domain( unsigned i, Domain dom );
+    Domain get_arg_domain( unsigned i );
+
+private:
+
+    static constexpr char tag[] = "lart.function.domains";
+
+    llvm::Function *fn;
+};
+
 void add_domain_metadata( llvm::Instruction *i, Domain dom );
 
 bool has_domain( llvm::Instruction* );

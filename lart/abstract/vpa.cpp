@@ -202,12 +202,16 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 
 void VPA::propagate( CallInst *call, Domain dom ) {
     auto fn = get_called_function( call );
+    FunctionMetadata fmd{ fn };
+
     if ( !fn->isIntrinsic() ) {
         for ( auto &op : call->arg_operands() ) {
             auto val = op.get();
             if ( seen_vals.count( { val, dom } ) ) {
-                auto arg = get_argument( fn, op.getOperandNo() );
+                unsigned idx = op.getOperandNo();
+                auto arg = get_argument( fn, idx );
                 tasks.push_back( [=]{ propagate_value( arg, dom ); } );
+                fmd.set_arg_domain( idx, dom );
                 entry_args.emplace( arg, dom );
             }
         }

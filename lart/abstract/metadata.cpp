@@ -13,6 +13,21 @@ namespace abstract {
 
 using namespace llvm;
 
+inline MDTuple* empty_mdtuple( LLVMContext &ctx ) {
+    return MDTuple::get( ctx, {} );
+}
+
+inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
+    std::vector< Metadata* > doms;
+    doms.reserve( size );
+
+    MDBuilder mdb( ctx );
+    std::generate_n( std::back_inserter( doms ), size,
+                     [&]{ return mdb.domain_node( Domain::Concrete ); } );
+
+    return MDTuple::get( ctx, doms );
+}
+
 Domain domain( StringRef &ann ) {
     const std::string prefix = "lart.abstract.";
     ASSERT( ann.startswith( prefix ) );
@@ -60,6 +75,36 @@ Domain MDValue::domain() const {
     auto doms = domains();
     ASSERT_EQ( doms.size(), 1 );
     return doms[ 0 ];
+}
+
+Domain ArgMetadata::domain() const {
+    auto mdstr = cast< MDString >( data->getOperand( 0 ) );
+    return DomainTable[ mdstr->getString().str() ];
+}
+
+constexpr char FunctionMetadata::tag[];
+
+void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
+    auto &ctx = fn->getContext();
+    auto size = fn->arg_size();
+
+    if ( !fn->getMetadata( tag ) )
+        fn->setMetadata( tag, make_mdtuple( ctx, size ) );
+
+    auto md = fn->getMetadata( tag );
+
+    auto curr = get_arg_domain( idx );
+    ASSERT( curr == Domain::Concrete || curr == dom ); // multiple domains are not supported yet
+
+    if ( curr != dom ) {
+        MDBuilder mdb( ctx );
+        md->replaceOperandWith( idx, mdb.domain_node( dom ) );
+    }
+}
+
+Domain FunctionMetadata::get_arg_domain( unsigned idx ) {
+    auto md = fn->getMetadata( tag );
+    return ArgMetadata( md->getOperand( idx ).get() ).domain();
 }
 
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
@@ -112,7 +157,7 @@ void CreateAbstractMetadata::run( Module &m ) {
             inst->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
         }
 
-        fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, {} ) );
+        fn->setMetadata( "lart.abstract.roots", empty_mdtuple( ctx ) );
     }
 
     // process annotation of functions
