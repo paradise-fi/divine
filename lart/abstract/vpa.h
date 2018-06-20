@@ -3,6 +3,7 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <deque>
@@ -19,6 +20,11 @@ struct VPA {
 private:
     void preprocess( llvm::Function* );
     void propagate_value( llvm::Value*, Domain );
+
+    void propagate( llvm::StoreInst*, Domain );
+    void propagate( llvm::CallInst*, Domain );
+    void propagate( llvm::ReturnInst*, Domain );
+
     void propagate_back( llvm::Argument*, Domain );
 
     void step_out( llvm::Function*, Domain );

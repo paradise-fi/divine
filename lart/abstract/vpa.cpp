@@ -44,6 +44,10 @@ void add_abstract_metadata( Instruction *i, Domain dom ) {
     i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
 }
 
+inline Argument* get_argument( Function *fn, unsigned idx ) {
+    return std::next( fn->arg_begin(), idx );
+}
+
 Values value_succs( Value *v ) { return { v->user_begin(), v->user_end() }; }
 
 Values reach_from( Values roots ) {
@@ -157,8 +161,8 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                     auto val = op.get();
                     if ( seen_vals.count( { val, dom } ) ) {
                         auto arg = std::next( fn->arg_begin(), op.getOperandNo() );
-                        tasks.push_back( [=]{ propagate_value( &*arg, dom ); } );
-                        entry_args.emplace( &*arg, dom );
+                        tasks.push_back( [=]{ propagate_value( arg, dom ); } );
+                        entry_args.emplace( arg, dom );
                     }
                 }
             }
@@ -181,7 +185,48 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     seen_vals.emplace( val, dom );
 }
 
+void VPA::propagate( StoreInst *store, Domain dom ) {
+    auto ptr = store->getPointerOperand();
+    auto val = store->getValueOperand();
+
+    if ( seen_vals.count( { val, dom } ) ) {
+        for ( auto src : AbstractionSources( ptr ).get() )
+            tasks.push_back( [=]{ propagate_value( src, dom ); } );
+        if ( auto arg = dyn_cast< Argument >( ptr ) )
+            propagate_back( arg, dom );
+    } else {
+        if ( auto arg = dyn_cast< Argument >( val ) )
+            propagate_back( arg, dom );
+    }
+}
+
+void VPA::propagate( CallInst *call, Domain dom ) {
+    auto fn = get_called_function( call );
+    if ( !fn->isIntrinsic() ) {
+        for ( auto &op : call->arg_operands() ) {
+            auto val = op.get();
+            if ( seen_vals.count( { val, dom } ) ) {
+                auto arg = get_argument( fn, op.getOperandNo() );
+                tasks.push_back( [=]{ propagate_value( arg, dom ); } );
+                entry_args.emplace( arg, dom );
+            }
+        }
+    }
+    else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
+        if ( seen_vals.count( { mem->getSource(), dom } ) ) {
+            for ( auto src : AbstractionSources( mem->getDest() ).get() )
+                tasks.push_back( [=]{ propagate_value( src, dom ); } );
+        }
+    }
+}
+
+void VPA::propagate( ReturnInst *ret, Domain dom ) {
+    step_out( get_function( ret ), dom );
+}
+
 void VPA::propagate_back( Argument *arg, Domain dom ) {
+    if ( entry_args.count( { arg, dom } ) )
+        return;
     if ( !arg->getType()->isPointerTy() )
         return;
 
@@ -190,7 +235,8 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
 
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
-            for ( auto src : AbstractionSources( call->getOperand( arg->getArgNo() ) ).get() )
+            auto op = call->getOperand( arg->getArgNo() );
+            for ( auto src : AbstractionSources( op ).get() )
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
         }
     }
