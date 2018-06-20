@@ -580,9 +580,7 @@ struct TaintBase : CRTP< Derived > {
     }
 
     Domain domain() const {
-        return Domain::Symbolic;
-        // TODO generalize
-        // return MDValue( concrete() ).domain();
+        return get_domain( concrete() );
     }
 
     Function *function() {

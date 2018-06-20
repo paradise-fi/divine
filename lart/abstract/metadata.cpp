@@ -62,6 +62,9 @@ std::vector< Domain > MDValue::domains() const {
     auto inst = cast< Instruction >( _md->getValue() );
     std::vector< Domain > doms;
 
+    if ( !inst->getMetadata( "lart.domains" ) )
+        return { Domain::Concrete };
+
     for ( auto & dom : inst->getMetadata( "lart.domains" )->operands() ) {
         auto &n = cast< MDNode >( dom.get() )->getOperand( 0 );
         auto dom_name = cast< MDString >( n )->getString().str();

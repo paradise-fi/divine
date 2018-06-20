@@ -92,30 +92,31 @@ std::vector< llvm::Instruction* > placeholders( llvm::Module & );
 
 bool is_base_type( llvm::Type *type );
 
+inline Domain get_domain( llvm::Argument *arg ) {
+    auto fmd = FunctionMetadata( get_function( arg ) );
+    return fmd.get_arg_domain( arg->getArgNo() );
+}
+
+inline Domain get_domain( llvm::Instruction *inst ) {
+    return MDValue( inst ).domain();
+}
+
+inline Domain get_domain( llvm::Value *val ) {
+    if ( llvm::isa< llvm::Constant >( val ) )
+        return Domain::Concrete;
+    else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+        return get_domain( arg );
+    else
+        return get_domain( llvm::cast< llvm::Instruction >( val ) );
+}
+
 inline bool is_concrete( Domain dom ) {
     return dom == Domain::Concrete;
 }
 
-inline bool is_concrete( llvm::Argument *arg ) {
-    auto fmd = FunctionMetadata( get_function( arg ) );
-    return is_concrete( fmd.get_arg_domain( arg->getArgNo() ) );
-}
-
-inline bool is_concrete( llvm::Instruction *inst ) {
-    if ( !has_domain( inst ) )
-        return true;
-    return is_concrete( MDValue( inst ).domain() );
-}
-
 inline bool is_concrete( llvm::Value *val ) {
-    if ( llvm::isa< llvm::Constant >( val ) )
-        return true;
-    else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-        return is_concrete( arg );
-    else
-        return is_concrete( llvm::cast< llvm::Instruction >( val ) );
+    return get_domain( val ) == Domain::Concrete;
 }
-
 
 } // namespace abstract
 } // namespace lart
