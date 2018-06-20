@@ -231,7 +231,7 @@ void _Unwind_Resume( _Unwind_Exception *exception ) {
     auto *unwinder = reinterpret_cast< _VM_Frame * >( exception->private_2 );
     // transfer information about current mask state to _Unwind_RaiseException
     exception->private_2 = mask._origState();
-    __dios_jump( unwinder, unwinder->pc, -1 );
+    __dios_jump_and_kill_frame( unwinder, unwinder->pc, -1 );
     __builtin_unreachable();
 }
 
