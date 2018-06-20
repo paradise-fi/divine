@@ -507,20 +507,6 @@ void InDomainDuplicate::_run( Module &m ) {
     auto stashes = query::query( phs ).filter( placeholder::is_stash );
     std::for_each( stashes.begin(), stashes.end(), [&] ( auto st ) { process( st ); } );
 
-    // TODO abstract phi nodes
-    auto phis = query::query( m ).flatten().flatten()
-        .map( query::refToPtr )
-        .filter( query::llvmdyncast< PHINode > )
-        .filter( query::notnull )
-        .filter( has_dual )
-        .filter( []( auto phi ) {
-            auto ty = phi->getType();
-            if ( auto sty = dyn_cast< StructType >( ty ) )
-                return !( sty->hasName() && sty->getName().startswith( "lart." ) );
-            return true;
-        } )
-        .freeze();
-
     // clean abstract placeholders
     for ( auto ph : phs ) {
         ph->replaceAllUsesWith( UndefValue::get( ph->getType() ) );
@@ -704,29 +690,11 @@ struct AssumeTaint : TaintBase< AssumeTaint > {
 
 namespace bundle {
 
-bool ignore_value( Value* val ) {
-    auto dom = Domain::Symbolic; // TODO generalize for any domain
-    return isa< Constant >( val )
-        || val->getType()->isPointerTy()
-        || !has_placeholder_in_domain( val, dom );
+bool is_base_type( Value* val ) {
+    return val->getType()->isIntegerTy(); // TODO move to domain
 }
 
-Values operand_placeholders( CallInst *call, DomainsHolder &domains ) {
-    Values ops;
-    auto dom = Domain::Symbolic; // TODO generalize for any domain
-    for ( auto &op : call->arg_operands() ) {
-        if ( ignore_value( op ) ) {
-            auto aty = domains.type( op->getType(), dom );
-            ops.push_back( domains.get( dom )->default_value( aty ) );
-        } else {
-            ops.push_back( get_placeholder_in_domain( op, dom ) );
-        }
-    }
-
-    return ops;
-}
-
-Values argument_placeholders( CallInst *call, DomainsHolder &domains ) {
+Values argument_placeholders( CallInst *call ) {
     auto fn = get_called_function( call );
 
     Values placeholders;
@@ -734,19 +702,20 @@ Values argument_placeholders( CallInst *call, DomainsHolder &domains ) {
         auto arg = std::next( fn->arg_begin(), i );
         auto dom = Domain::Symbolic; // TODO generalize for any domain
 
-        if ( ignore_value( &*arg ) ) {
+        if ( ignore_value( arg ) ) {
             auto aty = domains.type( arg->getType(), dom );
             placeholders.push_back( domains.get( dom )->default_value( aty ) );
         } else {
-            placeholders.push_back( get_placeholder_in_domain( &*arg, dom ) );
+            placeholders.push_back( get_placeholder_in_domain( arg, dom ) );
         }
     }
 
     return placeholders;
 }
 
-Type* packed_type( CallInst *call, DomainsHolder &domains ) {
-    auto phs = operand_placeholders( call, domains );
+
+StructType* packed_type( CallInst *call ) {
+    auto phs = argument_placeholders( call );
     return StructType::get( call->getContext(), types_of( phs ) );
 }
 
@@ -755,23 +724,34 @@ void stash_arguments( CallInst *call, DomainsHolder &domains ) {
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return; // skip internal lart functions
 
-    auto pack_ty = packed_type( call, domains );
+    auto pack_ty = packed_type( call );
 
     IRBuilder<> irb( call );
     auto pack = irb.CreateAlloca( pack_ty );
 
-    unsigned int idx = 0;
-    Value *val = UndefValue::get( pack_ty );
-    for ( auto ph : operand_placeholders( call, domains ) ) {
-        auto op = call->getOperand( idx );
+    FunctionMetadata fmd{ fn };
 
-        Value *arg = nullptr;
-        if ( ignore_value( op ) )
-            // TODO deal with other domains
-            arg = domains.get( Domain::Symbolic )->default_value( ph->getType() );
-        else
-            arg = GetTaint( cast< Instruction >( ph ), domains ).generate();
-        val = irb.CreateInsertValue( val, arg, { idx++ } );
+    Value *val = UndefValue::get( pack_ty );
+
+    unsigned pack_pos = 0;
+
+    for ( auto &arg : fn->args() ) {
+        auto idx = arg.getArgNo();
+        auto op = call->getArgOperand( idx );
+        auto dom = fmd.get_arg_domain( idx );
+
+        Value *abstract_arg = nullptr;
+        if ( is_concrete( dom ) || !is_base_type( op ) ) {
+            continue; // skip concrete arguments
+        } else if ( is_concrete( op ) && !is_concrete( dom ) ) {
+            const auto &domain = domains.get( dom );
+            auto aty = domain->type( get_module( call ), op->getType() );
+            abstract_arg = domain->default_value( aty );
+        } else {
+            auto ph = get_placeholder_in_domain( op, dom );
+            abstract_arg = GetTaint( ph, domains ).generate();
+        }
+        val = irb.CreateInsertValue( val, abstract_arg, { pack_pos++ } );
     }
 
     irb.CreateStore( val, pack );
@@ -782,26 +762,24 @@ void stash_arguments( CallInst *call, DomainsHolder &domains ) {
     irb.CreateCall( sfn, { i } );
 }
 
-Values unstash_arguments( CallInst *call, DomainsHolder &domains ) {
+Values unstash_arguments( CallInst *call ) {
     auto fn = get_called_function( call );
     if ( fn->getMetadata( "lart.abstract.return" ) )
         return {}; // skip internal lart functions
 
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
-    auto pack_ty = cast< StructType >( packed_type( call, domains ) );
+    auto pack_ty = packed_type( call );
 
     auto unfn = unstash_function( get_module( call ) );
     auto unstash = irb.CreateCall( unfn );
     auto packed = irb.CreateIntToPtr( unstash, pack_ty->getPointerTo() );
-
     auto loaded = irb.CreateLoad( packed );
 
     Values unpacked;
-    for ( unsigned int i = 0; i < pack_ty->getNumElements(); ++i ) {
-        // TODO do not need to unpack consts
+    for ( unsigned int i = 0; i < pack_ty->getNumElements(); ++i )
         unpacked.push_back( irb.CreateExtractValue( loaded, { i } ) );
-    }
+
     return unpacked;
 }
 
@@ -868,22 +846,17 @@ void Tainting::_run( Module &m ) {
         if ( call->getNumArgOperands() ) {
             bundle::stash_arguments( call, domains );
             if ( !processed.count( fn ) ) {
+                // stash default arguments for non-abstract calls
                 for ( auto concrete : fn->users() )
                     if ( auto cc = dyn_cast< CallInst >( concrete ) )
                         if ( !cc->getMetadata( "lart.domains" ) )
                             bundle::stash_arguments( cc, domains );
 
-                auto vals = bundle::unstash_arguments( call, domains );
+                auto vals = bundle::unstash_arguments( call );
 
-                unsigned int idx = 0;
-                for ( auto ph : bundle::argument_placeholders( call, domains ) ) {
-                    auto op = call->getOperand( idx );
-                    // TODO controling of constants from call does not make sense, we can call
-                    // function with different arguments!!!
-                    if ( !op->getType()->isPointerTy() )
-                        substitutes[ ph ] = vals[ idx ];
-                    idx++;
-                }
+                unsigned idx = 0;
+                for ( auto ph : bundle::argument_placeholders( call ) )
+                    substitutes[ ph ] = vals[ idx++ ];
             }
         }
 
@@ -900,13 +873,11 @@ void Tainting::_run( Module &m ) {
         processed.insert( fn );
     }, m );
 
-    for ( auto &sub : substitutes ) {
+    for ( auto &sub : substitutes )
         sub.first->replaceAllUsesWith( sub.second );
-    }
 
-    for ( auto &ph : phs ) {
+    for ( auto &ph : phs )
         ph->eraseFromParent();
-    }
 }
 
 Value* create_in_domain_phi( Instruction *placeholder ) {

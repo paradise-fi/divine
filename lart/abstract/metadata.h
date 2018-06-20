@@ -66,6 +66,7 @@ struct FunctionMetadata {
     void set_arg_domain( unsigned i, Domain dom );
     Domain get_arg_domain( unsigned i );
 
+    void clear();
 private:
 
     static constexpr char tag[] = "lart.function.domains";

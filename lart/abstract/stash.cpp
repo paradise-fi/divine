@@ -37,10 +37,10 @@ Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
    	return get_or_insert_function( m, fty, name );
 }
 
+
 } // anonymous namespace
 
 void Stash::run( Module &m ) {
-    // unstash
     run_on_abstract_calls( [&] ( auto call ) {
         auto fn = get_called_function( call );
         if ( !fn->getMetadata( "lart.abstract.return" ) )
@@ -51,7 +51,7 @@ void Stash::run( Module &m ) {
     }, m );
 
     stashed.clear();
-    // stash need unstashed values
+
     run_on_abstract_calls( [&] ( auto call ) {
         auto fn = get_called_function( call );
         if ( !fn->getMetadata( "lart.abstract.return" ) )
@@ -66,31 +66,48 @@ void Stash::arg_unstash( CallInst *call ) {
     auto fn = get_called_function( call );
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
+    FunctionMetadata fmd{ fn };
+
     for ( auto &arg : fn->args() ) {
-        auto op = call->getArgOperand( arg.getArgNo() );
-        if ( !op->getType()->isPointerTy() ) {
-            auto dom = Domain::Symbolic; // TODO rework to be domain independent
-            auto aty = abstract_type( op->getType(), dom );
-            auto unstash_fn = unstash_placeholder( get_module( call ), op, aty );
-            irb.CreateCall( unstash_fn, { &arg } );
+        auto idx = arg.getArgNo();
+        auto op = call->getArgOperand( idx );
+        auto ty = op->getType();
+
+        if ( !ty->isPointerTy() ) { // TODO is base_type
+            auto dom = fmd.get_arg_domain( idx );
+            if ( !is_concrete( dom ) ) {
+                auto aty = abstract_type( ty, dom );
+                auto unstash_fn = unstash_placeholder( get_module( call ), op, aty );
+                irb.CreateCall( unstash_fn, { &arg } );
+            }
         }
     }
 }
 
 void Stash::arg_stash( CallInst *call ) {
+    auto fn = get_called_function( call );
     IRBuilder<> irb( call );
-    for ( auto &op : call->arg_operands() ) {
-        if ( !op->getType()->isPointerTy() && !isa< Constant >( op ) ) {
-            auto dom = Domain::Symbolic; // TODO rework to be domain independent
-            auto aty = abstract_type( op->getType(), dom );
-            auto stash_fn = stash_placeholder( get_module( call ), aty );
-            if ( isa< CallInst >( op ) || isa< Argument >( op ) )
-                irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
-            else if ( has_placeholder( op ) )
-                irb.CreateCall( stash_fn, { get_placeholder( op ) } );
-            else {
-                auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
-                irb.CreateCall( stash_fn, { undef } );
+
+    FunctionMetadata fmd{ fn };
+
+    for ( unsigned idx = 0; idx < call->getNumArgOperands(); ++idx ) {
+        auto op = call->getArgOperand( idx );
+        auto ty = op->getType();
+
+        if ( !ty->isPointerTy() && !isa< Constant >( op ) ) { // TODO is_base_type
+            auto dom = fmd.get_arg_domain( idx );
+
+            if ( !is_concrete( dom ) && !is_concrete( op ) ) {
+                auto aty = abstract_type( ty, dom );
+                auto stash_fn = stash_placeholder( get_module( call ), aty );
+                if ( isa< CallInst >( op ) || isa< Argument >( op ) )
+                    irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
+                else if ( has_placeholder( op ) )
+                    irb.CreateCall( stash_fn, { get_placeholder( op ) } );
+                else {
+                    auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
+                    irb.CreateCall( stash_fn, { undef } );
+                }
             }
         }
     }

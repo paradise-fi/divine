@@ -103,8 +103,14 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
 }
 
 Domain FunctionMetadata::get_arg_domain( unsigned idx ) {
-    auto md = fn->getMetadata( tag );
-    return ArgMetadata( md->getOperand( idx ).get() ).domain();
+    if ( auto md = fn->getMetadata( tag ) )
+        return ArgMetadata( md->getOperand( idx ).get() ).domain();
+    return Domain::Concrete;
+}
+
+void FunctionMetadata::clear() {
+    if ( fn->getMetadata( tag ) )
+        fn->setMetadata( tag, nullptr );
 }
 
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
