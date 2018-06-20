@@ -1554,7 +1554,6 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
       "x86_64-redhat-linux",    "x86_64-suse-linux",
       "x86_64-manbo-linux-gnu", "x86_64-linux-gnu",
       "x86_64-slackware-linux", "x86_64-linux-android",
-      "x86_64-alpine-linux-musl",
       "x86_64-unknown-linux"};
   static const char *const X32LibDirs[] = {"/libx32"};
   static const char *const X86LibDirs[] = {"/lib32", "/lib"};
