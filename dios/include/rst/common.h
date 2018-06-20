@@ -16,6 +16,8 @@
         __builtin_unreachable(); \
     } while ( false )
 
+extern uint32_t __tainted;
+
 namespace abstract {
 
 template< typename T, typename ... Args >
@@ -34,5 +36,13 @@ template< typename T >
 static T *weaken( T *ptr ) {
     return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Weak ) );
 }
+
+template< typename T >
+static T __taint()
+{
+    static_assert( std::is_integral< T >::value, "Cannot taint a non-integral value." );
+    return static_cast< T >( __tainted );
+}
+
 
 } // namespace abstract

@@ -13,23 +13,9 @@ using abstract::__new;
 using abstract::mark;
 using abstract::weaken;
 
-static uint32_t __tainted = 0;
-
-__attribute__((constructor)) void __tainted_init()
-{
-    __vm_poke( &__tainted, _VM_ML_Taints, 0xF );
-}
-
 extern "C" uint64_t __rst_taint_i64()
 {
     return __tainted;
-}
-
-template< typename T >
-T __taint()
-{
-    static_assert( std::is_integral< T >::value, "Cannot taint a non-integral value." );
-    return static_cast< T >( __tainted );
 }
 
 template< typename T, typename ... Args >
@@ -61,7 +47,7 @@ template< typename T >
 T __sym_val_impl() {
     auto val = __sym_lift( sizeof( T ) * 8, 0 );
     __lart_stash( reinterpret_cast< uintptr_t >( val ) );
-    return __taint< T >();
+    return abstract::__taint< T >();
 }
 
 extern "C" {
