@@ -96,8 +96,11 @@ void boot( SetupBase sb ) {
     {
         if ( context->check_final() )
             context->finalize();
-        else
+        else {
+            /* destroy the stack to avoid memory leaks */
+            __dios_unwind( nullptr, nullptr, nullptr );
             __vm_suspend();
+        }
     };
     context->setup( s );
 }

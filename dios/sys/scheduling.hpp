@@ -144,7 +144,12 @@ private:
     void free_stack() noexcept
     {
         if ( _frame )
-            __dios_unwind( _frame, _frame, nullptr );
+            /* if the destructed part of stack is usperspace end of this stack,
+             * we need to pass the actual top of this stack as the first
+             * argument to make sure the stack does not end with a dangling
+             * pointer */
+            __dios_unwind( _tls == __dios_this_task() ? __dios_this_frame() : _frame,
+                           _frame, nullptr );
         _frame = nullptr;
     }
 };
