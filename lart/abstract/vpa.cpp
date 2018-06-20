@@ -45,7 +45,8 @@ void add_abstract_metadata( Instruction *i, Domain dom ) {
 }
 
 inline Argument* get_argument( Function *fn, unsigned idx ) {
-    return std::next( fn->arg_begin(), idx );
+    ASSERT_LT( idx, fn->arg_size() );
+    return &*std::next( fn->arg_begin(), idx );
 }
 
 Values value_succs( Value *v ) { return { v->user_begin(), v->user_end() }; }
