@@ -211,7 +211,8 @@ void VPA::propagate( CallInst *call, Domain dom ) {
                 unsigned idx = op.getOperandNo();
                 auto arg = get_argument( fn, idx );
                 tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                fmd.set_arg_domain( idx, dom );
+                if ( arg->getType()->isIntegerTy() ) // TODO domain basetype
+                    fmd.set_arg_domain( idx, dom );
                 entry_args.emplace( arg, dom );
             }
         }
@@ -233,9 +234,6 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
         return;
     if ( !arg->getType()->isPointerTy() )
         return;
-
-    FunctionMetadata fmd{ get_function( arg ) };
-    fmd.set_arg_domain( arg->getArgNo(), dom );
 
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
