@@ -141,45 +141,12 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             add_abstract_metadata( i, dom );
         }
 
-        if ( auto s = dyn_cast< StoreInst >( dep ) ) {
-            if ( seen_vals.count( { s->getValueOperand(), dom } ) ) {
-                for ( auto src : AbstractionSources( s->getPointerOperand() ).get() )
-                    tasks.push_back( [=]{ propagate_value( src, dom ); } );
-                if ( auto a = dyn_cast< Argument >( s->getPointerOperand() ) )
-                    if ( !entry_args.count( { a, dom } ) )
-                        propagate_back( a, dom );
-            } else {
-                if ( auto a = dyn_cast< Argument >( s->getValueOperand() ) )
-                    if ( !entry_args.count( { a, dom } ) )
-                        propagate_back( a, dom );
-            }
-        }
-        else if ( auto call = dyn_cast< CallInst >( dep ) ) {
-            auto fn = get_called_function( call );
-            if ( !fn->isIntrinsic() ) {
-                for ( auto &op : call->arg_operands() ) {
-                    auto val = op.get();
-                    if ( seen_vals.count( { val, dom } ) ) {
-                        auto arg = std::next( fn->arg_begin(), op.getOperandNo() );
-                        tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                        entry_args.emplace( arg, dom );
-                    }
-                }
-            }
-            else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
-                if ( seen_vals.count( { mem->getSource(), dom } ) ) {
-                    for ( auto src : AbstractionSources( mem->getDest() ).get() )
-                        tasks.push_back( [=]{ propagate_value( src, dom ); } );
-                }
-            }
-        }
-        else if ( auto r = dyn_cast< ReturnInst >( dep ) ) {
-            step_out( get_function( r ), dom );
-        }
-        else if ( auto a = dyn_cast< Argument >( dep ) ) {
-            if ( !entry_args.count( { a, dom } ) )
-                propagate_back( a, dom );
-        }
+        llvmcase( dep,
+            [&] ( StoreInst *store ) { propagate( store, dom ); },
+            [&] ( CallInst *call )   { propagate( call, dom ); },
+            [&] ( ReturnInst *ret )  { propagate( ret, dom ); },
+            [&] ( Argument *arg )    { propagate_back( arg, dom ); }
+        );
     }
 
     seen_vals.emplace( val, dom );

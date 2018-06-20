@@ -694,21 +694,19 @@ bool is_base_type( Value* val ) {
 
 Values argument_placeholders( CallInst *call ) {
     auto fn = get_called_function( call );
+    FunctionMetadata fmd{ fn };
 
-    Values placeholders;
-    for ( unsigned int i = 0; i < call->getNumArgOperands(); ++i ) {
-        auto arg = std::next( fn->arg_begin(), i );
-        auto dom = Domain::Symbolic; // TODO generalize for any domain
-
-        if ( ignore_value( arg ) ) {
-            auto aty = domains.type( arg->getType(), dom );
-            placeholders.push_back( domains.get( dom )->default_value( aty ) );
-        } else {
-            placeholders.push_back( get_placeholder_in_domain( arg, dom ) );
-        }
-    }
-
-    return placeholders;
+    return query::query( fn->args() )
+        .map( query::refToPtr )
+        .filter( [&] ( auto arg ) {
+            return !is_concrete( arg );
+        } )
+        .filter( is_base_type )
+        .map( [&] ( auto arg ) -> Value* {
+            auto idx = arg->getArgNo();
+            auto dom = fmd.get_arg_domain( idx );
+            return get_placeholder_in_domain( arg, dom );
+        } ).freeze();
 }
 
 
