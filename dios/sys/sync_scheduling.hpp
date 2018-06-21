@@ -77,6 +77,9 @@ struct SyncScheduler : public Scheduler< Next >
         if ( scheduler._setupTask )
         {
             scheduler.run( *scheduler._setupTask );
+            /* make sure task destructor can see we are not reusing
+             * _setupTask's stack */
+            __vm_ctl_set( _VM_CR_User2, nullptr );
             scheduler._setupTask.reset( nullptr );
             __vm_suspend();
         }
