@@ -915,9 +915,9 @@ Value* Tainting::process( Instruction *placeholder ) {
     UNREACHABLE( "Unknown placeholder" );
 }
 
-// ---------------------------- UnrepStores ---------------------------
+// ---------------------------- FreezeStores ---------------------------
 
-void UnrepStores::run( Module &m ) {
+void FreezeStores::run( Module &m ) {
     domains.init( &m );
 
     auto stores = query::query( m )
@@ -938,7 +938,7 @@ void UnrepStores::run( Module &m ) {
 	    s->eraseFromParent();
 }
 
-void UnrepStores::process( StoreInst *store ) {
+void FreezeStores::process( StoreInst *store ) {
     auto dom = MDValue( store ).domain();
     auto m = get_module( store );
 

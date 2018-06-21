@@ -68,12 +68,13 @@ private:
 };
 
 
-struct UnrepStores {
+struct FreezeStores {
     void run( llvm::Module& );
     void process( llvm::StoreInst* );
 private:
     DomainsHolder domains;
 };
+
 
 struct Synthesize : PassWithDomains< Synthesize > {
     void _run( llvm::Module& );

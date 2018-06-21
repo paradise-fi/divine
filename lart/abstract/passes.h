@@ -67,7 +67,7 @@ namespace abstract {
                                            , ExpandBranching()
                                            , AddAssumes()
                                            , InDomainDuplicate()
-                                           , UnrepStores()
+                                           , FreezeStores()
                                            , Tainting()
                                            , Synthesize()
                                            , CallInterrupt()
@@ -205,7 +205,7 @@ auto test_substitution( const File & src ) {
     return test_assume( src
                       , InDomainDuplicate()
                       , Tainting()
-                      , UnrepStores()
+                      , FreezeStores()
                       , Synthesize()
                       , CallInterrupt() );
 }
