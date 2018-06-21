@@ -42,18 +42,18 @@ std::string intr_name( CallInst *call ) {
     return Symbolic::name_pref + tag.str();
 }
 
-Value* impl_rep( CallInst *call, Values &args  ) {
+Value* impl_thaw( CallInst *call, Values &args  ) {
     IRBuilder<> irb( call->getContext() );
-    auto name = "__sym_peek_formula";
-    auto peek = get_module( call )->getFunction( name );
-    return irb.CreateCall( peek, args );
+    auto name = "__sym_thaw_formula";
+    auto thaw = get_module( call )->getFunction( name );
+    return irb.CreateCall( thaw, args );
 }
 
-Value* impl_unrep( CallInst *call, Values &args  ) {
+Value* impl_freeze( CallInst *call, Values &args  ) {
     IRBuilder<> irb( call->getContext() );
-    auto name = "__sym_poke_formula";
-    auto poke = get_module( call )->getFunction( name );
-    return irb.CreateCall( poke, args );
+    auto name = "__sym_freeze_formula";
+    auto freeze = get_module( call )->getFunction( name );
+    return irb.CreateCall( freeze, args );
 }
 
 Value* impl_assume( CallInst *call, Values &args ) {
@@ -91,10 +91,10 @@ Value* impl_op( CallInst *call, Values &args ) {
 Value* Symbolic::process( Instruction *intr, Values &args ) {
     auto call = cast< CallInst >( intr );
 
-    if ( is_rep( call ) )
-        return impl_rep( call, args );
-    if ( is_unrep( call ) )
-        return impl_unrep( call, args );
+    if ( is_thaw( call ) )
+        return impl_thaw( call, args );
+    if ( is_freeze( call ) )
+        return impl_freeze( call, args );
     if ( is_cast( call ) )
         return impl_cast( call, args );
     if ( is_assume( call ) )

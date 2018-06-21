@@ -38,10 +38,10 @@ bool is_intr( CallInst *intr, std::string name ) {
 bool is_lift( CallInst *intr ) { return is_intr( intr, ".lift" ); }
 bool is_lower( CallInst *intr ) { return is_intr( intr, ".lower" ); }
 bool is_assume( CallInst *intr ) { return is_intr( intr, ".assume" ); }
-bool is_rep( CallInst *intr ) { return is_intr( intr, ".rep" ); }
-bool is_unrep( CallInst *intr ) { return is_intr( intr, ".unrep" ); }
+bool is_thaw( CallInst *intr ) { return is_intr( intr, ".rep" ); }
+bool is_freeze( CallInst *intr ) { return is_intr( intr, ".unrep" ); }
 bool is_tobool( CallInst *intr ) { return is_intr( intr, ".to_i1" ); }
-bool is_cast( llvm::CallInst *intr ) {
+bool is_cast( CallInst *intr ) {
     return is_intr( intr, ".zext" ) ||
            is_intr( intr, ".sext" ) ||
            is_intr( intr, ".trunc" ) ||

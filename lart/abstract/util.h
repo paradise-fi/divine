@@ -58,8 +58,8 @@ bool is_intr( llvm::CallInst *intr, std::string name );
 bool is_lift( llvm::CallInst *intr );
 bool is_lower( llvm::CallInst *intr );
 bool is_assume( llvm::CallInst *intr );
-bool is_rep( llvm::CallInst *intr );
-bool is_unrep( llvm::CallInst *intr );
+bool is_thaw( llvm::CallInst *intr );
+bool is_freeze( llvm::CallInst *intr );
 bool is_tobool( llvm::CallInst *intr );
 bool is_cast( llvm::CallInst *intr );
 
