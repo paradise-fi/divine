@@ -334,7 +334,7 @@ struct Lifter : BaseLifter {
     }
 };
 
-struct RepLifter : BaseLifter {
+struct ThawLifter : BaseLifter {
     using BaseLifter::BaseLifter;
 
     void syntetize() final {
@@ -354,13 +354,13 @@ struct RepLifter : BaseLifter {
         auto bitwidth = ConstantInt::get( i32, ty->getBitWidth() );
 
         Values args = { addr, bitwidth };
-        auto rep = domains.get( domain() )->process( taint, args );
-        irb.Insert( cast< Instruction >( rep ) );
-        irb.CreateRet( rep );
+        auto thaw = domains.get( domain() )->process( taint, args );
+        irb.Insert( cast< Instruction >( thaw ) );
+        irb.CreateRet( thaw );
     }
 };
 
-struct UnrepLifter : BaseLifter {
+struct FreezeLifter : BaseLifter {
     using BaseLifter::BaseLifter;
 
     void syntetize() final {
@@ -374,8 +374,8 @@ struct UnrepLifter : BaseLifter {
         auto bcst = irb.CreateBitCast( &*addr, Type::getInt8PtrTy( addr->getContext() ) );
 
         Values args = { &*formula, &*bcst };
-        auto rep = domains.get( domain() )->process( taint, args );
-        irb.Insert( cast< Instruction >( rep ) );
+        auto freeze = domains.get( domain() )->process( taint, args );
+        irb.Insert( cast< Instruction >( freeze ) );
 
         // TODO insert to symbolic domain
         auto taint_zero = get_module( taint )->getFunction( "__rst_taint_i64" );
@@ -623,8 +623,8 @@ struct Taint : TaintBase< Taint > {
     }
 };
 
-struct RepTaint : TaintBase< RepTaint > {
-    using TaintBase< RepTaint >::TaintBase;
+struct ThawTaint : TaintBase< ThawTaint > {
+    using TaintBase< ThawTaint >::TaintBase;
 
     LoadInst* loaded() const {
         return cast< LoadInst >( placeholder->getOperand( 0 ) );
@@ -636,7 +636,7 @@ struct RepTaint : TaintBase< RepTaint > {
     }
 
     std::string name() const {
-        return DomainTable[ domain() ] + ".rep." + llvm_name( loaded()->getType() );
+        return DomainTable[ domain() ] + ".thaw." + llvm_name( loaded()->getType() );
     }
 };
 
@@ -902,7 +902,7 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
 Value* Tainting::process( Instruction *placeholder ) {
     auto op = placeholder->getOperand( 0 );
     if ( isa< LoadInst >( op ) )
-        return RepTaint( placeholder, domains ).generate();
+        return ThawTaint( placeholder, domains ).generate();
     if ( isa< PHINode >( op ) )
         return create_in_domain_phi( placeholder );
     if ( is_taintable( op ) )
@@ -948,10 +948,10 @@ void FreezeStores::process( StoreInst *store ) {
     auto ty = store->getValueOperand()->getType();
     auto aty = domains.type( ty, dom );
 
-    auto unrep = [&] () {
+    auto freeze = [&] () {
         auto flag = Type::getInt1Ty( store->getContext() );
         auto fty = FunctionType::get( ty, { flag, ty, flag, aty, flag, ptr->getType() }, false );
-        auto name = "lart." + DomainTable[ dom ] + ".unrep." + llvm_name( ty );
+        auto name = "lart." + DomainTable[ dom ] + ".freeze." + llvm_name( ty );
         return get_or_insert_function( m, fty, name );
     } ();
 
@@ -961,10 +961,10 @@ void FreezeStores::process( StoreInst *store ) {
     else
         abstract = domains.get( dom )->default_value( aty );
 
-    Values args = { unrep, val, val, abstract, ptr };
+    Values args = { freeze, val, val, abstract, ptr };
 
     auto fty = FunctionType::get( ty, types_of( args ), false );
-    auto tname = "__vm_test_taint." + unrep->getName().str();
+    auto tname = "__vm_test_taint." + freeze->getName().str();
     auto tfn = get_or_insert_function( m, fty, tname );
 
     IRBuilder<> irb( store );
@@ -984,10 +984,10 @@ void Synthesize::process( CallInst *taint ) {
     if ( !fn->empty() )
         return;
 
-    if ( is_taint_of_type( fn, ".rep" ) ) {
-        RepLifter( domains, taint ).syntetize();
-    } else if ( is_taint_of_type( fn, ".unrep" ) ) {
-        UnrepLifter( domains, taint ).syntetize();
+    if ( is_taint_of_type( fn, ".thaw" ) ) {
+        ThawLifter( domains, taint ).syntetize();
+    } else if ( is_taint_of_type( fn, ".freeze" ) ) {
+        FreezeLifter( domains, taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".to_i1" ) ) {
         ToBoolLifter( domains, taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".assume" ) ) {
