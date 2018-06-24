@@ -140,3 +140,8 @@ SignalHandler signal( int sig, SignalHandler handler )
     else
         return res.sa_handler;
 }
+
+int issetugid( void )
+{
+    return 0;
+}

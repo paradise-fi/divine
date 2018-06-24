@@ -71,7 +71,6 @@ struct passwd* getpwuid(uid_t) NOT_IMPLEMENTED;
 int fchown( int fildes, uid_t owner, gid_t group ) NOT_IMPLEMENTED;
 
 void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_F_NotImplemented, "utime" ); };
-int issetugid( void ) NOT_IMPLEMENTED;
 
 void *dlsym( void *, void * ) NOT_IMPLEMENTED;
 
