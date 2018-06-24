@@ -34,6 +34,9 @@ typedef _PDCLIB_wchar_t wchar_t;
 
 #if __BSD_VISIBLE
 void *reallocarray( void *optr, size_t nmemb, size_t size );
+
+const char *getprogname( void );
+void setprogname( const char *name );
 #endif
 
 /* Maximum length of a multibyte character in the current locale. */
