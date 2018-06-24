@@ -4,6 +4,8 @@
    Permission is granted to use, modify, and / or redistribute at will.
 */
 
+#include <sys/cdefs.h>
+
 #ifndef _PDCLIB_TIME_H
 #define _PDCLIB_TIME_H _PDCLIB_TIME_H
 #include "_PDCLIB/cdefs.h"
@@ -57,6 +59,7 @@ struct tm
     char *tm_zone;  /* abbreviation of timezone name */
 };
 
+__BEGIN_DECLS
 /* Returns the number of "clocks" in processor time since the invocation
    of the program. Divide by CLOCKS_PER_SEC to get the value in seconds.
    Returns -1 if the value cannot be represented in the return type or is
@@ -100,6 +103,7 @@ typedef unsigned int clockid_t;
 int nanosleep(const struct timespec *req, struct timespec *rem);
 int clock_gettime(clockid_t clk_id, struct timespec *tp);
 
+__END_DECLS
 #ifdef __cplusplus
 }
 #endif
