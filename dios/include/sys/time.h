@@ -16,6 +16,11 @@ struct timeval
 
 int gettimeofday( struct timeval *tp, void *tzp );
 
+struct timezone {
+    int tz_minuteswest; /* minutes west of Greenwich */
+    int tz_dsttime; /* type of dst correction */
+};
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
