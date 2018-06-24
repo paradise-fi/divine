@@ -84,6 +84,11 @@ struct tm * localtime( const time_t * timer ) _PDCLIB_nothrow;
 
 size_t strftime( char * _PDCLIB_restrict s, size_t maxsize, const char * _PDCLIB_restrict format, const struct tm * _PDCLIB_restrict timeptr );
 
+#if __POSIX_VISIBLE
+extern char *tzname[2];
+void tzset( void );
+#endif
+
 #define CLOCK_REALTIME              1
 #define CLOCK_MONOTONIC             2
 #define CLOCK_PROCESS_CPUTIME_ID    3
