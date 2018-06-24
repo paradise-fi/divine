@@ -80,4 +80,6 @@ typedef __uint32_t __uid_t;        /* user id */
 typedef __uint32_t __useconds_t;   /* microseconds */
 typedef __suseconds_t suseconds_t; /* microseconds (signed) */
 
+typedef char * caddr_t; /* core address */
+
 #endif // _SYS_TYPES_H_
