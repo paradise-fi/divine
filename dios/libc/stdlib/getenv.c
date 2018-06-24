@@ -32,6 +32,26 @@ char * getenv( const char * name )
     return NULL;
 }
 
+char * __findenv( const char *name, int len, int *offset )
+{
+	int i;
+	const char *np;
+	char **p, *cp;
+
+	if (name == NULL || environ == NULL)
+		return (NULL);
+	for (p = environ + *offset; (cp = *p) != NULL; ++p) {
+		for (np = name, i = len; i && *cp; i--)
+			if (*cp++ != *np++)
+				break;
+		if (i == 0 && *cp++ == '=') {
+			*offset = p - environ;
+			return (cp);
+		}
+	}
+	return (NULL);
+}
+
 #endif
 
 #ifdef TEST
