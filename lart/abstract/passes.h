@@ -90,87 +90,11 @@ namespace t_abstract {
 using File = std::string;
 using Files = std::vector< File >;
 
-using Compile = divine::cc::Compile;
-
-void mapVirtualFile( Compile & c, const File & path, const File & src ) {
-    c.setupFS( [&]( std::function< void( std::string, const std::string & ) > yield ) {
-        yield( path, src );
-    } );
-}
-
 namespace rt = divine::rt;
 
-std::string source( const File & name ) {
-    std::string res;
-    rt::each( [&]( auto path, auto src ) {
-        if ( brick::string::endsWith( path, name ) )
-            res = std::string( src );
-    } );
-    return res;
-}
-
-void setupFS( Compile & c ) {
-	auto each = [&]( auto filter ) {
-        return [&filter]( std::function< void( std::string, std::string_view ) > yield ) {
-            rt::each( filter( yield ) );
-        };
-    };
-
-    c.setupFS( each( [&]( std::function< void( std::string, std::string_view ) > yield ) {
-        return [&]( auto path, auto src ) {
-			if ( !brick::string::endsWith( path, ".bc" ) )
-				yield( path, src );
-		};
-	} ) );
-}
-
-struct TestCompile {
-    static const bool dont_link = false;
-    static const bool verbose = false;
-    const std::vector< std::string > flags = { "-std=c++14" };
-
-    using Linker = brick::llvm::Linker;
-
-    TestCompile() : cmp( { dont_link, verbose }, std::make_shared< llvm::LLVMContext >() )
-    {
-        setupFS( cmp );
-    }
-
-    TestCompile( const Files & link, const Files & hdrs ) : TestCompile() {
-        for ( const auto & f : link )
-            mapVirtualFile( cmp, f, source( f ) );
-        for ( const auto & f : hdrs )
-            mapVirtualFile( cmp, f, source( f ) );
-        for ( const auto & f : link )
-            linker.link( cmp.compile( f, flags ) );
-    }
-
-    auto compile( const File & src ) {
-        mapVirtualFile( cmp, "main.cpp", src );
-        Linker l;
-        if ( linker.hasModule() )
-            l.link( (*linker.get()) );
-        l.link( cmp.compile( "main.cpp", flags ) );
-        return l.take();
-    }
-
-private:
-    Linker linker;
-    Compile cmp;
-};
-
-static TestCompile cmp( { "sym.cpp", "tristate.cpp", "formula.cpp" },
-                        { "domain.def", "sym.h", "tristate.h", "common.h", "formula.h" } );
-
-std::string load( const File & path ) {
-    std::ifstream file( path );
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
 template< typename... Passes >
-auto test( Compile::ModulePtr m, Passes&&... passes ) {
+auto test( std::unique_ptr< llvm::Module > m, Passes&&... passes )
+{
     using namespace abstract;
     lart::Driver drv;
     drv.setup( CreateAbstractMetadata()
@@ -183,44 +107,66 @@ auto test( Compile::ModulePtr m, Passes&&... passes ) {
     return m;
 }
 
-template< typename... Passes >
-auto test( TestCompile & c, const File & src, Passes&&... passes ) {
-    return test( c.compile( src ), std::forward< Passes >( passes )... );
-}
-
-template< typename... Passes >
-auto test_abstraction( const File & src, Passes&&... passes ) {
-    using namespace abstract;
-    return test( cmp, src, std::forward< Passes >( passes )... );
-}
-
-template< typename... Passes >
-auto test_assume( const File & src, Passes&&... passes ) {
-    using namespace abstract;
-    return test_abstraction(src, AddAssumes(), std::forward< Passes >( passes )...);
-}
-
-auto test_substitution( const File & src ) {
-    using namespace abstract;
-    return test_assume( src
-                      , InDomainDuplicate()
-                      , Tainting()
-                      , FreezeStores()
-                      , Synthesize()
-                      , CallInterrupt() );
-}
-
-static const std::string annotation =
-    "#define _SYM __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
-
-bool isVmInterupt( llvm::Function * fn )
-{
-    return fn->hasName() && fn->getName() == "__dios_suspend";
-}
-
 using namespace abstract;
 
-struct Abstraction {
+struct TestBase
+{
+    static const bool dont_link = false;
+    static const bool verbose = false;
+    const std::vector< std::string > flags = { "-std=c++14" };
+    std::shared_ptr< llvm::LLVMContext > _ctx;
+
+    TestBase() : _ctx( new llvm::LLVMContext ) {}
+
+    auto compile( const File & src )
+    {
+        divine::cc::Compile c( { dont_link, verbose }, _ctx );
+        c.setupFS( rt::each );
+        c.setupFS( [&]( auto yield ) { yield( "/main.cpp", src ); } );
+        c.compileAndLink( "/main.cpp", flags );
+        c.linkEntireArchive( "rst" );
+        return c.takeModule();
+    }
+
+    template< typename... Passes >
+    auto test( const File & src, Passes&&... passes )
+    {
+        return t_abstract::test( compile( src ), std::forward< Passes >( passes )... );
+    }
+
+    template< typename... Passes >
+    auto test_abstraction( const File & src, Passes&&... passes )
+    {
+        return test( src, std::forward< Passes >( passes )... );
+    }
+
+    template< typename... Passes >
+    auto test_assume( const File & src, Passes&&... passes )
+    {
+        return test_abstraction( src, AddAssumes(), std::forward< Passes >( passes )... );
+    }
+
+    auto test_substitution( const File & src )
+    {
+        return test_assume( src
+                          , InDomainDuplicate()
+                          , Tainting()
+                          , FreezeStores()
+                          , Synthesize()
+                          , CallInterrupt() );
+    }
+
+    bool isVmInterupt( llvm::Function * fn )
+    {
+        return fn->hasName() && fn->getName() == "__dios_suspend";
+    }
+
+    const std::string annotation =
+        "#define _SYM __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
+};
+
+struct Abstraction : TestBase
+{
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_abstraction( annotation + s );
@@ -876,7 +822,8 @@ struct Abstraction {
     }
 };
 
-struct Assume {
+struct Assume : TestBase
+{
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_assume( annotation + s );
@@ -905,7 +852,8 @@ struct Assume {
     }
 };
 
-struct Substitution {
+struct Substitution : TestBase
+{
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_substitution( annotation + s );
