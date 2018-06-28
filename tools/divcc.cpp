@@ -1,4 +1,3 @@
-#if 0
 #include <divine/cc/elf.hpp>
 #include <divine/cc/clang.hpp>
 #include <divine/cc/compile.hpp>
@@ -11,9 +10,9 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/Analysis/Passes.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/BasicTTIImpl.h"
-#include "llvm/CodeGen/MachineFunctionAnalysis.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
@@ -36,6 +35,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm-c/Object.h"
+#include "llvm-c/Target.h"
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-fs>
@@ -49,6 +49,7 @@ static const std::string bcsec = ".llvmbc";
 using namespace divine;
 using namespace llvm;
 
+
 /// addPassesToX helper drives creation and initialization of TargetPassConfig.
 static llvm::MCContext *
 addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM, bool DisableVerify )
@@ -59,7 +60,7 @@ addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM, bool Disabl
     // Targets may override createPassConfig to provide a target-specific
     // subclass.
     TargetPassConfig *PassConfig = TM->createPassConfig( PM );
-    PassConfig->setStartStopPasses( nullptr, nullptr, nullptr );
+    PassConfig->setStartStopPasses( nullptr, nullptr, nullptr, nullptr );
 
     // Set PassConfig options provided by TargetMachine.
     PassConfig->setDisableVerify( DisableVerify );
@@ -73,13 +74,11 @@ addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM, bool Disabl
 
     // Install a MachineModuleInfo class, which is an immutable pass that holds
     // all the per-module stuff we're generating, including MCContext.
-    MachineModuleInfo *MMI = new MachineModuleInfo( *TM->getMCAsmInfo(),
-                                                    *TM->getMCRegisterInfo(),
-                                                     TM->getObjFileLowering() );
+    MachineModuleInfo *MMI = new MachineModuleInfo( TM );
     PM.add( MMI );
 
     // Set up a MachineFunction for the rest of CodeGen to work on.
-    PM.add( new MachineFunctionAnalysis( *TM, nullptr ) );
+    //PM.add( new MachineFunctionAnalysis( *TM, nullptr ) );
 
     // Ask the target for an isel.
     if ( PassConfig->addInstSelector() )
@@ -90,6 +89,7 @@ addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM, bool Disabl
 
     return &MMI->getContext();
 }
+
 
 bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
                              LLVMTargetMachine *target, MCStreamer** RawAsmStreamer )
@@ -110,7 +110,7 @@ bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
     // emission fails.
     MCCodeEmitter *MCE = target->getTarget().createMCCodeEmitter( MII, MRI, *Context );
     MCAsmBackend *MAB = target->getTarget().createMCAsmBackend( MRI, target->getTargetTriple().str(),
-                                                                target->getTargetCPU() );
+                                                                target->getTargetCPU(), target->Options.MCOptions );
     if ( !MCE || !MAB )
       return true;
 
@@ -121,6 +121,7 @@ bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
     *RawAsmStreamer = target->getTarget().createMCObjectStreamer( T, *Context, *MAB,
                                                                   Out, MCE, STI,
                                                                   target->Options.MCOptions.MCRelaxAll,
+																  target->Options.MCOptions.MCIncrementalLinkerCompatible,
                                                                   /*DWARFMustBeAtTheEnd*/ true );
 
     // Create the AsmPrinter, which takes ownership of AsmStreamer if successful.
@@ -131,6 +132,7 @@ bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
         return true;
 
     PM.add( Printer );
+	PM.add( createFreeMachineFunctionPass() );
 
     return false;
 }
@@ -239,7 +241,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
     compil->linkEssentials();
     compil->linkLibs( cc::Compile::defaultDIVINELibs );
 
-    auto m = compil->getLinked();
+    auto m = compil->takeLinked();
 
     for( auto& func : *m )
         if( func.isDeclaration() && vm::xg::hypercall( &func ) == vm::lx::NotHypercall )
@@ -251,7 +253,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
                 throw cc::CompileError( "Symbol undefined (global variable): " + val.getName().str() );
 
     verifyModule( *m );
-    return compil->takeModule();
+    return m;
 }
 
 
@@ -382,6 +384,3 @@ int main( int argc, char **argv )
         return 1;
     }
 }
-#endif
-
-int main() { return 1; }
