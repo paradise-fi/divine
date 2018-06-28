@@ -50,92 +50,18 @@ using namespace divine;
 using namespace llvm;
 
 
-/// addPassesToX helper drives creation and initialization of TargetPassConfig.
-static llvm::MCContext *
-addPassesToGenerateCode( LLVMTargetMachine *TM, PassManagerBase &PM, bool DisableVerify )
+struct PM_BC : legacy::PassManager
 {
-    // Add internal analysis passes from the target machine.
-    PM.add( createTargetTransformInfoWrapperPass( TM->getTargetIRAnalysis() ) );
+	MCStreamer* mc = nullptr;
+	
+	void add( Pass *P ) override
+	{
+		legacy::PassManager::add( P );
 
-    // Targets may override createPassConfig to provide a target-specific
-    // subclass.
-    TargetPassConfig *PassConfig = TM->createPassConfig( PM );
-    PassConfig->setStartStopPasses( nullptr, nullptr, nullptr, nullptr );
-
-    // Set PassConfig options provided by TargetMachine.
-    PassConfig->setDisableVerify( DisableVerify );
-
-    PM.add( PassConfig );
-
-    PassConfig->addIRPasses();
-    PassConfig->addCodeGenPrepare();
-    PassConfig->addPassesToHandleExceptions();
-    PassConfig->addISelPrepare();
-
-    // Install a MachineModuleInfo class, which is an immutable pass that holds
-    // all the per-module stuff we're generating, including MCContext.
-    MachineModuleInfo *MMI = new MachineModuleInfo( TM );
-    PM.add( MMI );
-
-    // Set up a MachineFunction for the rest of CodeGen to work on.
-    //PM.add( new MachineFunctionAnalysis( *TM, nullptr ) );
-
-    // Ask the target for an isel.
-    if ( PassConfig->addInstSelector() )
-        return nullptr;
-
-    PassConfig->addMachinePasses();
-    PassConfig->setInitialized();
-
-    return &MMI->getContext();
-}
-
-
-bool addPassesToEmitObjFile( PassManagerBase &PM, raw_pwrite_stream &Out,
-                             LLVMTargetMachine *target, MCStreamer** RawAsmStreamer )
-{
-    // Add common CodeGen passes.
-    MCContext *Context = addPassesToGenerateCode( target, PM, true );
-    if ( !Context )
-        return true;
-
-    if ( target->Options.MCOptions.MCSaveTempLabels )
-        Context->setAllowTemporaryLabels( false );
-
-    const MCSubtargetInfo &STI = *( target->getMCSubtargetInfo() );
-    const MCRegisterInfo &MRI = *( target->getMCRegisterInfo() );
-    const MCInstrInfo &MII = *( target->getMCInstrInfo() );
-
-    // Create the code emitter for the target if it exists.  If not, .o file
-    // emission fails.
-    MCCodeEmitter *MCE = target->getTarget().createMCCodeEmitter( MII, MRI, *Context );
-    MCAsmBackend *MAB = target->getTarget().createMCAsmBackend( MRI, target->getTargetTriple().str(),
-                                                                target->getTargetCPU(), target->Options.MCOptions );
-    if ( !MCE || !MAB )
-      return true;
-
-    // Don't waste memory on names of temp labels.
-    Context->setUseNamesOnTempLabels( false );
-
-    Triple T( target->getTargetTriple().str() );
-    *RawAsmStreamer = target->getTarget().createMCObjectStreamer( T, *Context, *MAB,
-                                                                  Out, MCE, STI,
-                                                                  target->Options.MCOptions.MCRelaxAll,
-																  target->Options.MCOptions.MCIncrementalLinkerCompatible,
-                                                                  /*DWARFMustBeAtTheEnd*/ true );
-
-    // Create the AsmPrinter, which takes ownership of AsmStreamer if successful.
-    FunctionPass *Printer =
-            target->getTarget().createAsmPrinter( *target,
-                                                  std::unique_ptr< MCStreamer >( *RawAsmStreamer ) );
-    if ( !Printer )
-        return true;
-
-    PM.add( Printer );
-	PM.add( createFreeMachineFunctionPass() );
-
-    return false;
-}
+		if( auto printer = dynamic_cast< AsmPrinter* >( P ) )
+			mc = printer->OutStreamer.get();
+	}
+};
 
 int emitObjFile( Module &m, std::string filename )
 {
@@ -179,25 +105,22 @@ int emitObjFile( Module &m, std::string filename )
         return 1;
     }
 
-    legacy::PassManager pass;
+    PM_BC PM;
 
-    MCStreamer *AsmStreamer;
-
-    if ( addPassesToEmitObjFile( pass, dest, dynamic_cast< LLVMTargetMachine* >( TargetMachine ), &AsmStreamer ) )
-    {
-        errs() << "TargetMachine can't emit a file of this type";
+    if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false /*DisableVerify*/,
+									    nullptr, nullptr, nullptr, nullptr, nullptr ) )
+	{
+		errs() << "TargetMachine can't emit a file of this type\n";
         return 1;
-    }
+	}
 
-    // AsmStreamer now contains valid MCStreamer till pass destruction
-
+	MCStreamer *AsmStreamer = PM.mc;
     // write bitcode into section .bc
     AsmStreamer->SwitchSection( AsmStreamer->getContext().getELFSection( bcsec, ELF::SHT_NOTE, 0 ) );
     std::string bytes = brick::llvm::getModuleBytes( &m );
     AsmStreamer->EmitBytes( bytes );
 
-    pass.run( m );
-
+    PM.run( m );
     dest.flush();
 
     return 0;
