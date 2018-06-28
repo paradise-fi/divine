@@ -17,14 +17,14 @@
 long int _DIVINE_strtol( const char *s, char **endptr ) {
     const char *p = s;
     long int res = 0;
-    int digit = -1;
     const char *x;
+
     while ( ( x = memchr( _PDCLIB_digits, *p, 10 ) ) != NULL ) {
         res = res * 10 + ( x - _PDCLIB_digits );
         ++p;
     }
     if ( endptr != NULL )
-        *endptr = ( digit != -1 ) ? (char *) p : (char *) s;
+        *endptr = (char *) p;
 
     return res;
 }
