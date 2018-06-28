@@ -10,7 +10,7 @@ add_executable( divcc divcc.cpp )
 target_link_libraries( runtime-cc divine-cc )
 target_link_libraries( runtime-ld divine-cc )
 target_link_libraries( divcc divine-cc divine-rt )
-target_link_libraries( divcc LLVMTarget )
+target_link_libraries( divcc LLVMTarget LLVMAsmPrinter )
 
 add_executable( divine divine.cpp )
 set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
