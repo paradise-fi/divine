@@ -7,6 +7,7 @@
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
 #include <lart/divine/passes.h>
+#include <lart/support/fixphi.h>
 
 #include <iostream>
 
