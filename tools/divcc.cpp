@@ -6,43 +6,20 @@
 
 DIVINE_RELAX_WARNINGS
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Analysis/Passes.h"
 #include "llvm/CodeGen/AsmPrinter.h"
-#include "llvm/CodeGen/BasicTTIImpl.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
-#include "llvm/CodeGen/Passes.h"
-#include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
-#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
-#include "llvm/MC/MCSubtargetInfo.h"
-#include "llvm/Object/IRObjectFile.h"
-#include "llvm/Object/ObjectFile.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ELF.h"
-#include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm-c/Object.h"
 #include "llvm-c/Target.h"
 DIVINE_UNRELAX_WARNINGS
 
-#include <brick-fs>
 #include <brick-llvm>
 #include <brick-string>
-#include <iostream>
-#include <sys/wait.h>
 
 static const std::string bcsec = ".llvmbc";
 
