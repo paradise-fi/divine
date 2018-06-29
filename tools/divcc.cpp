@@ -14,6 +14,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ELF.h"
+#include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm-c/Target.h"
 DIVINE_UNRELAX_WARNINGS
@@ -84,8 +85,8 @@ int emitObjFile( Module &m, std::string filename )
 
     PM_BC PM;
 
-    if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false /*DisableVerify*/,
-                                             nullptr, nullptr, nullptr, nullptr, nullptr ) )
+    if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false,
+                                             nullptr, nullptr, nullptr, nullptr ) )
     {
         errs() << "TargetMachine can't emit a file of this type\n";
         return 1;
