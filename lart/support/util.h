@@ -342,9 +342,8 @@ inline void replaceGlobalArray( llvm::GlobalVariable *glo, llvm::Constant *init 
                 inst->dump();
                 UNREACHABLE_F( "Unsupported ocode in replaceGlobalArray: %d", inst->getOpcode() );
         }
-
         if ( constant )
-            delete inst;
+            inst->deleteValue();
     }
     auto name = glo->getName().str();
     glo->eraseFromParent();

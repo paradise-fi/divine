@@ -25,7 +25,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
-#include <llvm/Support/Dwarf.h>
+#include <llvm/BinaryFormat/Dwarf.h>
 DIVINE_UNRELAX_WARNINGS
 #include <brick-types>
 #include <brick-query>

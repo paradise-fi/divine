@@ -69,8 +69,7 @@ struct ReadOnlyGlobals {
         auto *fn = llvm::dyn_cast< llvm::Function >( cs.getCalledValue()->stripPointerCasts() );
         if ( !fn ) // indirect call, need pointer analysis :-/
             return false;
-        auto &arglist = fn->getArgumentList();
-        auto ait = arglist.begin(), aend = arglist.end();
+        auto ait = fn->arg_begin(), aend = fn->arg_end();
 
         bool all = true;
         // must iterate through all actual parameters, if no formal param is there

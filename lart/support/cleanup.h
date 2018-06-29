@@ -35,7 +35,8 @@ struct EhInfo {
         auto &ctx = m.getContext();
         return EhInfo(
             m.getFunction( "__gxx_personality_v0" ),
-            llvm::StructType::get( llvm::Type::getInt8PtrTy( ctx ), llvm::Type::getInt32Ty( ctx ), nullptr ),
+            llvm::StructType::get( ctx, { llvm::Type::getInt8PtrTy( ctx ),
+                                          llvm::Type::getInt32Ty( ctx ) } ),
             { 1 }, 0 );
     }
 
