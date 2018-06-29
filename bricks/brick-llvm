@@ -222,26 +222,28 @@ inline void writeArchive( It begin, It end, std::string out )
 {
     namespace object = ::llvm::object;
 
-    fs::TempDir dir( ".brick-llvm-archive-XXXXXX", fs::AutoDelete::Yes, fs::UseSystemTemp::Yes );
-    std::vector< std::string > names;
-    std::set< std::string > shortnames;
-    std::vector< ::llvm::NewArchiveMember > its;
+    std::set< std::string > names;
+    std::vector< std::pair< std::string, std::string > > data;
+    data.reserve( end - begin );
+    std::vector< ::llvm::NewArchiveMember > members;
 
     for ( auto &mod : ::llvm::iterator_range< It >( begin, end ) )
     {
-        names.emplace_back( fs::joinPath( dir, fs::basename( mod->getModuleIdentifier() ) ) );
-        auto i = shortnames.emplace( fs::basename( names.back() ) );
-        if ( !i.second )
-            throw std::runtime_error( "doubly defined member of archive: " + names.back()
-                                       + " (" + mod->getModuleIdentifier() + ")" );
-        writeModule( &*mod, names.back() );
-        auto f = ::llvm::NewArchiveMember::getFile( names.back(), true );
-        if ( f )
-            its.emplace_back( std::move( f.get() ) );
+        auto &bc = data.emplace_back( "", fs::basename( mod->getModuleIdentifier() ) );
+
+        if ( !names.emplace( bc.second ).second )
+            throw std::runtime_error( "member " + bc.second + " multiply defined creating " + out );
+
+        ::llvm::raw_string_ostream stream( bc.first );
+        ::llvm::WriteBitcodeToFile( mod.get(), stream );
+        stream.flush();
+
+        members.emplace_back( ::llvm::MemoryBufferRef( bc.first, bc.second ) );
+        members.back().IsNew = true;
     }
 
     fs::mkFilePath( out );
-    auto res = ::llvm::writeArchive( out, its, true, object::Archive::K_GNU, true, false ).second;
+    auto res = ::llvm::writeArchive( out, members, true, object::Archive::K_GNU, true, false ).second;
     if ( res )
         _throwLLVMError( res );
 }
