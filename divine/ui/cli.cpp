@@ -269,16 +269,14 @@ void WithBC::setup()
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    using namespace llvm::sys::fs;
-
     auto magic_data = brick::fs::readFile( _file, 18 );
-    auto magic = identify_magic( magic_data );
+    auto magic = llvm::identify_magic( magic_data );
 
     switch ( magic )
     {
-        case file_magic::bitcode:
-        case file_magic::elf_relocatable:
-        case file_magic::elf_executable:
+        case llvm::file_magic::bitcode:
+        case llvm::file_magic::elf_relocatable:
+        case llvm::file_magic::elf_executable:
             _bc = std::make_shared< mc::BitCode >( _file );
             break;
 
