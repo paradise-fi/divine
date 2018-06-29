@@ -29,15 +29,15 @@ using namespace llvm;
 
 struct PM_BC : legacy::PassManager
 {
-	MCStreamer* mc = nullptr;
-	
-	void add( Pass *P ) override
-	{
-		legacy::PassManager::add( P );
+    MCStreamer* mc = nullptr;
 
-		if( auto printer = dynamic_cast< AsmPrinter* >( P ) )
-			mc = printer->OutStreamer.get();
-	}
+    void add( Pass *P ) override
+    {
+        legacy::PassManager::add( P );
+
+        if( auto printer = dynamic_cast< AsmPrinter* >( P ) )
+            mc = printer->OutStreamer.get();
+    }
 };
 
 int emitObjFile( Module &m, std::string filename )
@@ -85,13 +85,13 @@ int emitObjFile( Module &m, std::string filename )
     PM_BC PM;
 
     if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false /*DisableVerify*/,
-									    nullptr, nullptr, nullptr, nullptr, nullptr ) )
-	{
-		errs() << "TargetMachine can't emit a file of this type\n";
+                                             nullptr, nullptr, nullptr, nullptr, nullptr ) )
+    {
+        errs() << "TargetMachine can't emit a file of this type\n";
         return 1;
-	}
+    }
 
-	MCStreamer *AsmStreamer = PM.mc;
+    MCStreamer *AsmStreamer = PM.mc;
     // write bitcode into section .bc
     AsmStreamer->SwitchSection( AsmStreamer->getContext().getELFSection( bcsec, ELF::SHT_NOTE, 0 ) );
     std::string bytes = brick::llvm::getModuleBytes( &m );
