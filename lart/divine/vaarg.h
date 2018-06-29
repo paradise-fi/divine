@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+#pragma once
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>

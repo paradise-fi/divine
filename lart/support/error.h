@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+#pragma once
 
 #include <stdexcept>
 #include <utility>
