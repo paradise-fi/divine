@@ -65,6 +65,8 @@ void BitCode::do_lart()
 {
     lart::Driver lart;
 
+    lart.setup( lart::FixPHI::meta() );
+
     // User defined passes are run first so they don't break instrumentation
     for ( auto p : _lart )
         lart.setup( p );
