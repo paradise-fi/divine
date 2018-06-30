@@ -91,7 +91,7 @@ struct Compiler {
                                 FileType type, std::vector< std::string > args,
                                 llvm::IntrusiveRefCntPtr< clang::vfs::FileSystem > vfs = nullptr );
 
-    llvm::IntrusiveRefCntPtr< DivineVFS > divineVFS;
+    llvm::IntrusiveRefCntPtr< VFS > divineVFS;
     llvm::IntrusiveRefCntPtr< clang::vfs::OverlayFileSystem > overlayFS;
     std::shared_ptr< llvm::LLVMContext > ctx;
 };

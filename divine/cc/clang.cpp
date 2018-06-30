@@ -76,7 +76,7 @@ void dump( const Contailer *c ) {
 }
 
 Compiler::Compiler( std::shared_ptr< llvm::LLVMContext > ctx ) :
-    divineVFS( new DivineVFS() ),
+    divineVFS( new VFS() ),
     overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) ),
     ctx( ctx )
 {
@@ -222,7 +222,7 @@ void Compiler::emitObjFile( llvm::Module &m, std::string filename, std::vector< 
 
     std::string modulepath = "/divine/module.bc";
 
-    llvm::IntrusiveRefCntPtr< DivineVFS > modulefs( new DivineVFS() );
+    llvm::IntrusiveRefCntPtr< VFS > modulefs( new VFS() );
     modulefs->addFile( modulepath, serializeModule( m ) );
 
     initTargets();

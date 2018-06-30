@@ -17,22 +17,22 @@ namespace cc {
 	
 struct Compiler;
 
-enum class DivineVFSError {
+enum class VFSError {
     InvalidIncludePath = 1000 // avoid clash with LLVM's error codes, they don't check category
 };
 
-struct DivineVFSErrorCategory : std::error_category {
+struct VFSErrorCategory : std::error_category {
     const char *name() const noexcept override { return "DIVINE VFS error"; }
     std::string message( int condition ) const override {
-        switch ( DivineVFSError( condition ) ) {
-            case DivineVFSError::InvalidIncludePath:
+        switch ( VFSError( condition ) ) {
+            case VFSError::InvalidIncludePath:
                 return "Invalid include path, not accessible in DIVINE";
         }
     }
 };
 
-static std::error_code make_error_code( DivineVFSError derr ) {
-    return std::error_code( int( derr ), DivineVFSErrorCategory() );
+static std::error_code make_error_code( VFSError derr ) {
+    return std::error_code( int( derr ), VFSErrorCategory() );
 }
 
 
@@ -42,14 +42,14 @@ static std::error_code make_error_code( DivineVFSError derr ) {
 
 namespace std {
     template<>
-    struct is_error_code_enum< divine::cc::DivineVFSError > : std::true_type { };
+    struct is_error_code_enum< divine::cc::VFSError > : std::true_type { };
 }
 
 
 namespace divine {
 namespace cc {
 
-struct DivineVFS : clang::vfs::FileSystem
+struct VFS : clang::vfs::FileSystem
 {
 
     using Status = clang::vfs::Status;
@@ -97,7 +97,7 @@ struct DivineVFS : clang::vfs::FileSystem
 
     static auto blockAccess( const llvm::Twine & )
     {
-        return std::error_code( DivineVFSError::InvalidIncludePath );
+        return std::error_code( VFSError::InvalidIncludePath );
     };
 
     Status statpath( const std::string &path, clang::vfs::Status stat )
@@ -107,7 +107,7 @@ struct DivineVFS : clang::vfs::FileSystem
 
   public:
 
-    DivineVFS() : _cwd( brick::fs::getcwd() ) {}
+    VFS() : _cwd( brick::fs::getcwd() ) {}
 
     std::string normal( std::string p )
     {
