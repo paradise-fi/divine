@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 #pragma once
 
+#include <divine/cc/vfs.hpp>
 #include <divine/cc/filetype.hpp>
 
 DIVINE_RELAX_WARNINGS
