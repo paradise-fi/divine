@@ -15,7 +15,7 @@ DIVINE_UNRELAX_WARNINGS
 using namespace divine;
 using namespace brick;
 
-#define VERSION "1" /* bump this to force rebuilds despite .fp matches */
+#define VERSION "2" /* bump this to force rebuilds despite .fp matches */
 
 /* usage: runtime-cc srcdir bindir source.c output.bc [flags] */
 int main( int argc, const char **argv )
