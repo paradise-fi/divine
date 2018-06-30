@@ -103,14 +103,14 @@ int emitObjFile( Module &m, std::string filename )
     return 0;
 }
 
-bool isType( std::string file, cc::Compiler::FileType type )
+bool isType( std::string file, cc::FileType type )
 {
-    return cc::Compiler::typeFromFile( file ) == type;
+    return cc::typeFromFile( file ) == type;
 }
 
 std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::Compiler& clang )
 {
-    using FileType = cc::Compiler::FileType;
+    using FileType = cc::FileType;
     using namespace brick::types;
     std::unique_ptr< cc::Compile > compil = std::unique_ptr< cc::Compile >( new cc::Compile( clang.context() ) );
     compil->setupFS( rt::each );
@@ -187,7 +187,7 @@ int main( int argc, char **argv )
             return 1;
         }
 
-        using FileType = cc::Compiler::FileType;
+        using FileType = cc::FileType;
         using namespace brick::types;
 
         if ( po.preprocessOnly )
