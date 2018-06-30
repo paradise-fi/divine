@@ -12,20 +12,20 @@ using namespace llvm;
 
 // This pass converts SelectInst instructions into conditional branch and PHI
 // instructions.
-bool lart::LowerSelect::runOnFunction( Function &fn ) {
-    bool changed = false;
+bool lart::LowerSelect::runOnFunction( Function &fn, bool changed )
+{
     for ( auto & bb : fn )
-        for ( auto & i : bb ) {
-            if ( auto si = dyn_cast<SelectInst>( &i ) ) {
+        for ( auto & i : bb )
+            if ( auto si = dyn_cast<SelectInst>( &i ) )
+            {
                 lower( si );
-                changed = true;
-                break; // This block is done with.
+                return runOnFunction( fn, true );
             }
-        }
     return changed;
 }
 
-void lart::LowerSelect::lower( SelectInst *si ) {
+void lart::LowerSelect::lower( SelectInst *si )
+{
     BasicBlock * bb = si->getParent();
     // Split this basic block in half right before the select instruction.
     BasicBlock * newCont = bb->splitBasicBlock( si, bb->getName()+".selectcont" );
