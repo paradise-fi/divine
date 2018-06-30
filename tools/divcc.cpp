@@ -13,8 +13,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/ELF.h"
-#include "llvm/Target/TargetLoweringObjectFile.h"
+#include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm-c/Target.h"
 DIVINE_UNRELAX_WARNINGS
