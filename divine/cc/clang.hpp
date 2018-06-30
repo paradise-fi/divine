@@ -11,9 +11,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <brick-assert>
 #include <brick-except>
-
 #include <string_view>
 
 namespace divine {

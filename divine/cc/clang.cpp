@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/Support/Signals.h>
-#include <clang/Tooling/Tooling.h> // ClangTool
 #include <clang/CodeGen/CodeGenAction.h> // EmitLLVMAction
 #include <clang/Frontend/FrontendActions.h>
 #include <clang/Basic/DiagnosticOptions.h>
@@ -12,17 +10,12 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/CompilerInstance.h> // CompilerInvocation
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <clang/Frontend/Utils.h>
-#include <llvm/Support/Path.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Support/TargetSelect.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <brick-fs>
 #include <brick-assert>
-#include <brick-query>
-#include <brick-except>
-
 #include <iostream>
 #include <mutex> // call_once
 
