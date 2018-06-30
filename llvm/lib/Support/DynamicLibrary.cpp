@@ -195,42 +195,8 @@ void *DynamicLibrary::SearchForAddressOfSymbol(const char *SymbolName) {
         return Ptr;
     }
   }
-#endif
 
-  if (void *Result = llvm::SearchForAddressOfSpecialSymbol(symbolName))
-    return Result;
-
-// This macro returns the address of a well-known, explicit symbol
-#define EXPLICIT_SYMBOL(SYM) \
-   if (!strcmp(symbolName, #SYM)) return &SYM
-
-// On linux we have a weird situation. The stderr/out/in symbols are both
-// macros and global variables because of standards requirements. So, we
-// boldly use the EXPLICIT_SYMBOL macro without checking for a #define first.
-#if defined(__linux__) and !defined(__ANDROID__)
-  {
-    EXPLICIT_SYMBOL(stderr);
-    EXPLICIT_SYMBOL(stdout);
-    EXPLICIT_SYMBOL(stdin);
-  }
-#else
-  // For everything else, we want to check to make sure the symbol isn't defined
-  // as a macro before using EXPLICIT_SYMBOL.
-  {
-#ifndef stdin
-    EXPLICIT_SYMBOL(stdin);
-#endif
-#ifndef stdout
-    EXPLICIT_SYMBOL(stdout);
-#endif
-#ifndef stderr
-    EXPLICIT_SYMBOL(stderr);
-#endif
-  }
-#endif
-#undef EXPLICIT_SYMBOL
-
-  return nullptr;
+  return llvm::SearchForAddressOfSpecialSymbol(SymbolName);
 }
 
 //===----------------------------------------------------------------------===//
