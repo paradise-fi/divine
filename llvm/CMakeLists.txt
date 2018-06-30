@@ -373,8 +373,6 @@ set(LLVM_TARGETS_TO_BUILD
    ${LLVM_EXPERIMENTAL_TARGETS_TO_BUILD})
 list(REMOVE_DUPLICATES LLVM_TARGETS_TO_BUILD)
 
-include(AddLLVMDefinitions)
-
 option(LLVM_ENABLE_PIC "Build Position-Independent Code" ON)
 option(LLVM_ENABLE_WARNINGS "Enable compiler warnings." ON)
 option(LLVM_ENABLE_MODULES "Compile with C++ modules enabled." OFF)
@@ -886,7 +884,9 @@ if( LLVM_INCLUDE_TOOLS )
   add_subdirectory(tools)
 endif()
 
-add_subdirectory(runtimes)
+if( LLVM_INCLUDE_RUNTIMES )
+  add_subdirectory(runtimes)
+endif()
 
 if( LLVM_INCLUDE_EXAMPLES )
   add_subdirectory(examples)
