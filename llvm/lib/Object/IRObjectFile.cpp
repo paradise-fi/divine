@@ -100,9 +100,10 @@ ErrorOr<MemoryBufferRef> IRObjectFile::findBitcodeInMemBuffer(MemoryBufferRef Ob
   switch (Type) {
   case file_magic::bitcode:
     return Object;
-  case sys::fs::file_magic::elf_relocatable:
-  case sys::fs::file_magic::macho_object:
-  case sys::fs::file_magic::coff_object: {
+  case file_magic::elf_relocatable:
+  case file_magic::elf_executable:
+  case file_magic::macho_object:
+  case file_magic::coff_object: {
     Expected<std::unique_ptr<ObjectFile>> ObjFile =
         ObjectFile::createObjectFile(Object, Type);
     if (!ObjFile)
