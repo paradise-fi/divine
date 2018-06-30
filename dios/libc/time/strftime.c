@@ -45,21 +45,6 @@
  * January 1996
  */
 
-#ifdef __divine__
-#include <sys/divm.h>
-#include <string.h>
-
-#include <dios.h>
-
-struct tm;
-size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
-{
-    __dios_fault( _VM_F_NotImplemented, "strftime" );
-    return 0;
-}
-
-#else
-
 #ifndef GAWK
 #include <stdio.h>
 #include <ctype.h>
@@ -253,6 +238,7 @@ iso8601wknum(const struct tm *timeptr)
 #endif
 
 /* strftime --- produce formatted time */
+void tzset( void );
 
 size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
 {
@@ -674,5 +660,3 @@ out:
         } else
                 return 0;
 }
-
-#endif
