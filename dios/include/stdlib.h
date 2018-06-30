@@ -39,6 +39,8 @@ const char *getprogname( void );
 void setprogname( const char *name );
 #endif
 
+int putenv( char * );
+
 /* Maximum length of a multibyte character in the current locale. */
 #define	MB_CUR_MAX	(__ctype_get_mb_cur_max ())     // 1 on most systems
 extern size_t __ctype_get_mb_cur_max (void); //__THROW;
