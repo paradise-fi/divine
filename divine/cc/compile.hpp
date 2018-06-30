@@ -31,12 +31,12 @@ struct File {
     using InPlace = brick::types::InPlace< File >;
 
     File() = default;
-    explicit File( std::string name, Compiler::FileType type = Compiler::FileType::Unknown ) :
+    explicit File( std::string name, FileType type = FileType::Unknown ) :
         name( std::move( name ) ), type( type )
     { }
 
     std::string name;
-    Compiler::FileType type = Compiler::FileType::Unknown;
+    FileType type = FileType::Unknown;
 };
 
 using FileEntry = brick::types::Union< File, Lib >;
@@ -63,7 +63,7 @@ struct Compile
     ~Compile();
 
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
-    void compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
+    void compileAndLink( std::string path, FileType type, std::vector< std::string > flags = {} );
 
     void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );
     void linkLib( std::string lib, std::vector< std::string > searchPaths = {} );
@@ -75,7 +75,7 @@ struct Compile
     static const std::vector< std::string > defaultDIVINELibs;
 
     ModulePtr compile( std::string path, std::vector< std::string > flags = { } );
-    ModulePtr compile( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
+    ModulePtr compile( std::string path, FileType type, std::vector< std::string > flags = {} );
 
     // Run the compiler based on invocation arguments (including files). The
     // arguments should not contain -o or linker arguments.

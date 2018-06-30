@@ -73,7 +73,7 @@ void Compile::compileAndLink( std::string path, std::vector< std::string > flags
     linker->link( compile( path, flags ) );
 }
 
-void Compile::compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags )
+void Compile::compileAndLink( std::string path, FileType type, std::vector< std::string > flags )
 {
     linker->link( compile( path, type, flags ) );
 }
@@ -81,12 +81,11 @@ void Compile::compileAndLink( std::string path, Compiler::FileType type, std::ve
 std::unique_ptr< llvm::Module > Compile::compile( std::string path,
                                     std::vector< std::string > flags )
 {
-    return compile( path, Compiler::typeFromFile( path ), flags );
+    return compile( path, typeFromFile( path ), flags );
 }
 
 std::unique_ptr< llvm::Module > Compile::compile( std::string path,
-                                    Compiler::FileType type,
-                                    std::vector< std::string > flags )
+                                    FileType type, std::vector< std::string > flags )
 {
     std::vector< std::string > allFlags;
     std::copy( commonFlags.begin(), commonFlags.end(), std::back_inserter( allFlags ) );
@@ -102,7 +101,7 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
 }
 
 ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
-    using FT = Compiler::FileType;
+    using FT = FileType;
     FT xType = FT::Unknown;
     ParsedOpts po;
 
@@ -138,7 +137,7 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
             if ( val == "none" )
                 xType = FT::Unknown;
             else {
-                xType = Compiler::typeFromXOpt( val );
+                xType = typeFromXOpt( val );
                 if ( xType == FT::Unknown )
                     throw std::runtime_error( "-x value not recognized: " + val );
             }
@@ -162,7 +161,7 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
             po.outputFile = val;
         }
         else if ( !brick::string::startsWith( *it, "-" ) )
-            po.files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
+            po.files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? typeFromFile( *it ) : xType );
         else if ( *it == "-c" )
             po.toObjectOnly = true;
         else if ( *it == "-E" )
@@ -177,7 +176,7 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
 void Compile::runCC( std::vector< std::string > rawCCOpts,
                      std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
 {
-    using FT = Compiler::FileType;
+    using FT = FileType;
     auto po = parseOpts( rawCCOpts );
 
     for ( auto path : po.allowedPaths )

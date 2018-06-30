@@ -177,7 +177,7 @@ void WithBC::process_options()
 
     _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
 
-    if ( cc::Compiler::typeFromFile( _file ) != cc::Compiler::FileType::Unknown )
+    if ( cc::typeFromFile( _file ) != cc::FileType::Unknown )
     {
         if ( !_std.empty() )
             _ccopts_final.push_back( { "-std=" + _std } );
@@ -282,7 +282,7 @@ void WithBC::setup()
 
         default:
         {
-            if ( cc::Compiler::typeFromFile( _file ) == cc::Compiler::FileType::Unknown )
+            if ( cc::typeFromFile( _file ) == cc::FileType::Unknown )
                 throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
             cc::Options ccopt;
             cc::Compile driver( ccopt );
