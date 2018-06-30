@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 #pragma once
 
+#include <divine/cc/filetype.hpp>
+
 DIVINE_RELAX_WARNINGS
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <clang/Tooling/Tooling.h> // ClangTool
@@ -32,15 +34,6 @@ struct DivineVFS;
  work
  */
 struct Compiler {
-
-    enum class FileType {
-        Unknown,
-        C, Cpp, CPrepocessed, CppPreprocessed, IR, BC, Asm, Obj, Archive
-    };
-
-    static FileType typeFromFile( std::string name );
-    static FileType typeFromXOpt( std::string selector );
-    static std::vector< std::string > argsOfType( FileType t );
 
     explicit Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
     ~Compiler();
