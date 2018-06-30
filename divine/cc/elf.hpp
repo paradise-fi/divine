@@ -21,8 +21,6 @@ struct ElfError : brick::except::Error
     using brick::except::Error::Error;
 };
 
-void addSection( std::string filepath, std::string sectionName, const std::string &sectionData );
-
 std::vector< std::string > getSections( std::string filepath, std::string sectionName );
 
 void linkObjects( std::string output, std::vector< std::string > args );

@@ -1,4 +1,3 @@
-#include <divine/cc/elf.hpp>
 #include <divine/cc/clang.hpp>
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
@@ -20,12 +19,32 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
 #include <brick-string>
+#include <brick-proc>
 
 static const std::string bcsec = ".llvmbc";
 
 using namespace divine;
 using namespace llvm;
 
+
+void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )
+{
+    brick::fs::TempDir workdir( ".divine.addSection.XXXXXX", brick::fs::AutoDelete::Yes,
+                                brick::fs::UseSystemTemp::Yes );
+    auto secpath = brick::fs::joinPath( workdir, "sec" );
+    std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
+    secf << sectionData;
+    secf.close();
+
+    auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, "objcopy",
+                                  "--remove-section", sectionName, // objcopy can't override section
+                                  "--add-section", sectionName + "=" +  secpath,
+                                  "--set-section-flags", sectionName + "=noload,readonly",
+                                  filepath );
+    if ( !r )
+        throw cc::CompileError( "could not add section " + sectionName + " to " + filepath
+                        + ", objcopy exited with " + to_string( r ) );
+}
 
 struct PM_BC : legacy::PassManager
 {
@@ -266,7 +285,7 @@ int main( int argc, char **argv )
             std::unique_ptr< llvm::Module > mod = llvmExtract( objFiles, clang );
             std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
-            divine::cc::elf::addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
+            addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
         }
 
         for ( auto file : objFiles )

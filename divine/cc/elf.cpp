@@ -31,25 +31,6 @@ static StringVec defaultLibPath() {
     return { }; // TODO: detect from executable path
 }
 
-void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )
-{
-    brick::fs::TempDir workdir( ".divine.addSection.XXXXXX", brick::fs::AutoDelete::Yes,
-                                brick::fs::UseSystemTemp::Yes );
-    auto secpath = brick::fs::joinPath( workdir, "sec" );
-    std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
-    secf << sectionData;
-    secf.close();
-
-    auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, "objcopy",
-                                  "--remove-section", sectionName, // objcopy can't override section
-                                  "--add-section", sectionName + "=" +  secpath,
-                                  "--set-section-flags", sectionName + "=noload,readonly",
-                                  filepath );
-    if ( !r )
-        throw ElfError( "could not add section " + sectionName + " to " + filepath
-                        + ", objcopy exited with " + to_string( r ) );
-}
-
 std::vector< std::string > getSections( std::string filepath, std::string sectionName ) {
     brick::elf::ElfObject elf( filepath );
     auto secs = elf.sectionsByName( sectionName );
@@ -151,13 +132,13 @@ void linkObjects( std::string output, StringVec args )
     for ( auto &m : brick::query::reversed( extractModules( output, ctx ) ) )
         bcl.link( std::move( m ) );
 
-    addSection( output, bcsec, Compiler::serializeModule( *bcl.get() ) );
+    //addSection( output, bcsec, Compiler::serializeModule( *bcl.get() ) );
 }
 
 void compile( Compiler &cc, std::string path, std::string output, StringVec args ) {
     auto m = cc.compileModule( path, args );
     cc.emitObjFile( *m, output, args );
-    addSection( output, bcsec, Compiler::serializeModule( *m ) );
+    //addSection( output, bcsec, Compiler::serializeModule( *m ) );
 }
 
 struct SysPaths {
