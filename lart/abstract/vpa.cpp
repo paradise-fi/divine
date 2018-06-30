@@ -158,6 +158,7 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
     auto val = store->getValueOperand();
 
     if ( seen_vals.count( { val, dom } ) ) {
+        ASSERT( seen_funs.count( store->getParent()->getParent() ) );
         for ( auto src : AbstractionSources( ptr ).get() )
             tasks.push_back( [=]{ propagate_value( src, dom ); } );
         if ( auto arg = dyn_cast< Argument >( ptr ) )
@@ -173,6 +174,7 @@ void VPA::propagate( CallInst *call, Domain dom ) {
     FunctionMetadata fmd{ fn };
 
     if ( !fn->isIntrinsic() ) {
+        preprocess( fn );
         for ( auto &op : call->arg_operands() ) {
             auto val = op.get();
             if ( seen_vals.count( { val, dom } ) ) {
@@ -187,6 +189,7 @@ void VPA::propagate( CallInst *call, Domain dom ) {
     }
     else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
         if ( seen_vals.count( { mem->getSource(), dom } ) ) {
+            ASSERT( seen_funs.count( call->getParent()->getParent() ) );
             for ( auto src : AbstractionSources( mem->getDest() ).get() )
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
         }
@@ -206,6 +209,7 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
             auto op = call->getOperand( arg->getArgNo() );
+            ASSERT( seen_funs.count( get_function( arg ) ) );
             for ( auto src : AbstractionSources( op ).get() )
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
         }
