@@ -158,7 +158,7 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
     auto val = store->getValueOperand();
 
     if ( seen_vals.count( { val, dom } ) ) {
-        ASSERT( seen_funs.count( store->getParent()->getParent() ) );
+        preprocess( store->getParent()->getParent() );
         for ( auto src : AbstractionSources( ptr ).get() )
             tasks.push_back( [=]{ propagate_value( src, dom ); } );
         if ( auto arg = dyn_cast< Argument >( ptr ) )
@@ -205,6 +205,8 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
         return;
     if ( !arg->getType()->isPointerTy() )
         return;
+
+    preprocess( get_function( arg ) );
 
     for ( auto u : get_function( arg )->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
