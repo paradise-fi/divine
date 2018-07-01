@@ -1,6 +1,6 @@
 # DIVINE 4.1
 
-- In 4.1.1:
+- In 4.1.1 (2018-03-12):
     - Display an instructions-per-second figure when running interactively.
     - Use a more compact frame representation / make bitcast a noop.
     - Support linking to Z3.
@@ -22,41 +22,41 @@
     - New command for comparing objects in the simulator (`diff`).
     - The `verify`, `check` &c. commands now recognize a `--synchronous` flag.
     - Low-level support for memory leak detection.
-- In 4.1.0:
+- In 4.1.0 (2018-01-15):
     - Do not leak transient objects.
     - Improved support for building static Linux binaries.
     - Track per-bit value definedness.
 
 # DIVINE 4.0
 
-- In 4.0.22:
+- In 4.0.22 (2018-01-01):
     - Add an `info` command to `sim`.
     - Make fast-forwarding in `sim` more configurable & useful.
     - Improve compatibility of `libc` headers with `glibc`.
-- In 4.0.21:
+- In 4.0.21 (2017-12-15):
     - Fix a use-after-free and an out-of-bounds access in DiVM.
     - Avoid crashes after failures in `dbg.call`.
     - A number of improvements in the user interface.
     - Make it possible to build real static binaries.
-- In 4.0.20:
+- In 4.0.20 (2017-12-01):
     - Preliminary support for SV-COMP 'built-in' functions (`__VERIFIER_*`).
     - Fix a crash in `divine draw`.
     - Make it possible to build DIVINE with g++.
-- In 4.0.19:
+- In 4.0.19 (2017-11-15):
     - Implement a synchronous scheduler in DiOS.
     - Allow DIVINE to be built using a (C++17-compatible) system toolchain.
     - Implement abstraction of global variables.
     - Improve efficiency of the relaxed memory verification mode.
     - Enforce permissions in access to the flags control register.
-- In 4.0.18:
+- In 4.0.18 (2017-11-01):
     - Improvements in handling of abstract (symbolic) structures.
     - Allow abstraction of aggregate return types.
-- In 4.0.16:
+- In 4.0.16 (2017-10-01):
     - Recognize command prefixes (e.g. `ch` for `check`) in command parsers.
     - Another batch of symbolic verification improvements.
     - Add a `call` command to `sim`.
-- In 4.0.15: Further relax τ reduction.
-- In 4.0.14:
+- In 4.0.15 (2017-09-15): Further relax τ reduction.
+- In 4.0.14 (2017-09-01):
     - *Experimental* support for relaxed memory models (`--relaxed-memory`).
     - Introduce a `divine check` subcommand (less strict than `verify`).
     - Improve τ reduction substantially & fix a regression.
@@ -70,34 +70,34 @@
     - Use human-friedly thread IDs in trace output.
     - More improvements in symbolic verification.
     - Implement `setup --pygmentize` for colourful `source` in `sim`.
-- In 4.0.13:
+- In 4.0.13 (2017-08-15):
     - A number of improvements in symbolic verification.
     - Reduce memory requirements of `sim`.
     - Make type names of DiOS components human-readable.
-- In 4.0.12:
+- In 4.0.12 (2017-07-15):
     - Implement assorted process-related syscalls.
     - Add `pthread_atfork` to the threading library.
-- In 4.0.11:
+- In 4.0.11 (2017-07-01):
     - Add a `--trace` option to `divine run` to trace instructions.
     - Preliminary implementation of `divcc`, a drop-in compiler replacement.
-- In 4.0.10:
+- In 4.0.10 (2017-06-15):
     - Preliminary support for syscall passthrough in `divine run`.
     - Initial implementation of the `fork` system call.
-- In 4.0.8:
+- In 4.0.8 (2017-05-15):
     - Improved precision of memory access tracking in τ reduction.
     - Update the bundled `libc++abi` and `libc++` to version 4.0.0.
-- In 4.0.6:
+- In 4.0.6 (2017-04-15):
     - A rudimentary version of `verify --liveness`.
     - The DiOS kernel has been separated into reusable components.
-- In 4.0.5: Make standard IO unbuffered by default to save memory.
-- In 4.0.4:
+- In 4.0.5 (2017-04-01): Make standard IO unbuffered by default to save memory.
+- In 4.0.4 (2017-03-15):
     - Improved POSIX signal handling in DiOS.
     -  Cleaner layout of runtime headers (libc/dios/divm).
     -  Fix a build error when the system compiler is clang 4.
-- In 4.0.3:
+- In 4.0.3 (2017-03-01):
     - An improved and much faster implementation of C++ exceptions.
     - Improved verification speed and smaller memory footprint.
-- In 4.0.2:
+- In 4.0.2 (2017-02-15):
     - Improved bitcode linker, libraries as .a archives.
     - Detailed, SQL-based reporting and logging.
     - Inclusion of a (semi-)automated benchmarking tool, 'divbench'.
@@ -107,7 +107,7 @@
     - An important bugfix in treatment of memory access in tau reduction.
     - A more efficient runtime representation of the bitcode.
     - Intrinsic lowering is now handled in LART.
-- In 4.0.1:
+- In 4.0.1 (2017-01-15):
     - Support weak pointers that do not count towards state comparison.
     - A new `__vm_syscall` hypercall for accessing the host OS.
     - Make the objid hint a VM control register, `_VM_SC_ObjIdShuffle`.
@@ -117,7 +117,7 @@
     - A complete `libm` implementation is now bundled with `divine cc`.
     - Support for `regex.h` has been added to `divine cc`.
     - Preliminary support for user-provided program monitoring functions.
-- In 4.0.0:
+- In 4.0.0 (2017-01-09):
     - Improved compatibility of text output with YAML.
     - `make prerequisites` installs dependencies on common distributions.
 
