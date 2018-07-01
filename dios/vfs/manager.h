@@ -394,42 +394,7 @@ struct VFS: public Next {
 
     int open( const char *path, int flags, mode_t mode )
     {
-        using namespace __dios::fs::flags;
-        __dios::fs::Flags <Open> f = Open::NoFlags;
-        if (( flags & 3 ) == 3 )
-            f |= Open::NoAccess;
-        if ( flags & O_RDWR ) {
-            f |= Open::Read;
-            f |= Open::Write;
-        }
-        else if ( flags & O_WRONLY )
-            f |= Open::Write;
-        else
-            f |= Open::Read;
-
-        if ( flags & O_CREAT )
-            f |= __dios::fs::flags::Open::Create;
-
-        if ( flags & O_EXCL )
-            f |= __dios::fs::flags::Open::Excl;
-        if ( flags & O_TRUNC )
-            f |= __dios::fs::flags::Open::Truncate;
-        if ( flags & O_APPEND )
-            f |= __dios::fs::flags::Open::Append;
-        if ( flags & O_NOFOLLOW )
-            f |= __dios::fs::flags::Open::SymNofollow;
-        if ( flags & O_NONBLOCK )
-            f |= __dios::fs::flags::Open::NonBlock;
-        if ( flags & O_DIRECTORY )
-            f |= __dios::fs::flags::Open::Directory;
-
-
-        try {
-            return instance( ).openFileAt( AT_FDCWD, path, f, mode );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return openat( AT_FDCWD, path, flags, mode );
     }
 
     int openat( int dirfd, const char *path, int flags, mode_t mode )
@@ -639,24 +604,12 @@ struct VFS: public Next {
 
     int unlink( const char *path )
     {
-        try {
-            instance( ).removeFile( path );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return unlinkat( AT_FDCWD, path, 0 );
     }
 
     int rmdir( const char *path )
     {
-        try {
-            instance( ).removeDirectory( path );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return unlinkat( AT_FDCWD, path, AT_REMOVEDIR );
     }
 
     int unlinkat( int dirfd, const char *path, int flags )
@@ -705,12 +658,7 @@ struct VFS: public Next {
 
     int link( const char *target, const char *linkpath )
     {
-        try {
-            return _linkat(AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return linkat( AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
     }
 
     int symlinkat( const char *target, int dirfd, const char *linkpath )
@@ -726,13 +674,7 @@ struct VFS: public Next {
 
     int symlink( const char *target, const char *linkpath )
     {
-        try {
-            instance( ).createSymLinkAt( AT_FDCWD, linkpath, target );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return symlinkat( target, AT_FDCWD, linkpath );
     }
 
     ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count )
@@ -747,12 +689,7 @@ struct VFS: public Next {
 
     ssize_t readlink( const char *path, char *buf, size_t count )
     {
-        try {
-            return instance( ).readLinkAt( AT_FDCWD, path, buf, count );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return readlinkat( AT_FDCWD, path, buf, count );
     }
 
     bool check_access( int mode )
@@ -782,18 +719,7 @@ struct VFS: public Next {
 
     int access( const char *path, int mode )
     {
-        if ( !check_access( mode ) )
-            return error_negative( EINVAL );
-
-        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
-
-        try {
-            instance( ).accessAt( AT_FDCWD, path, mode, fl );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return faccessat( AT_FDCWD, path, mode, 0 );
     }
 
     int chdir( const char *path )
@@ -922,15 +848,7 @@ struct VFS: public Next {
 
     int chmod( const char *path, mode_t mode )
     {
-        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
-
-        try {
-            instance( ).chmodAt( AT_FDCWD, path, mode, fl );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return fchmodat( AT_FDCWD, path, mode, 0 );
     }
 
     int fchmod( int fd, mode_t mode )
@@ -957,13 +875,7 @@ struct VFS: public Next {
 
     int mkdir( const char *path, mode_t mode )
     {
-        try {
-            instance( ).createNodeAt( AT_FDCWD, path, ( ACCESSPERMS & mode ) | S_IFDIR );
-            return  0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return  -1;
-        }
+        return mkdirat( AT_FDCWD, path, mode );
     }
 
     int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev )
@@ -978,17 +890,7 @@ struct VFS: public Next {
 
     int mknod( const char *path, mode_t mode, dev_t dev )
     {
-         try {
-            if ( dev != 0 )
-                throw Error( EINVAL );
-            if ( !S_ISCHR( mode ) && !S_ISBLK( mode ) && !S_ISREG( mode ) && !S_ISFIFO( mode ) && !S_ISSOCK( mode ))
-                throw Error( EINVAL );
-            instance( ).createNodeAt( AT_FDCWD, path, mode );
-            return  0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return  -1;
-        }
+        return mknodat( AT_FDCWD, path, mode, dev );
     }
 
     mode_t umask( mode_t mask )
@@ -1303,12 +1205,7 @@ struct VFS: public Next {
 
     int rename( const char *oldpath, const char *newpath )
     {
-        try {
-            return _renameitemat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return renameat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
     }
 
     //char *getcwd(char *buf, size_t size);
