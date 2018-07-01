@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <cerrno>
+#include <dirent.h>
 
 #include "inode.h"
 #include "utils.h"
@@ -128,6 +129,35 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         auto position = _findItem( name );
         if ( position != _items.end() && name == position->name() )
             _items.erase( position );
+    }
+
+    bool read( char *buf, size_t offset, size_t &length ) override
+    {
+        if ( length != sizeof( struct dirent ) )
+            throw Error( EINVAL );
+
+        int idx = offset / sizeof( struct dirent );
+
+        auto do_read = [&]( const String &name, int inode )
+        {
+            struct dirent *dst = reinterpret_cast< struct dirent *>( buf );
+            dst->d_ino = inode;
+            char *x = std::copy( name.begin(), name.end(), dst->d_name );
+            *x = '\0';
+            return true;
+        };
+
+        if ( idx == 0 )
+            return do_read( ".", ino() );
+        if ( idx == 1 )
+            return do_read( "..", _parent.expired() ? ino() : _parent.lock()->ino() );
+        if ( idx - 2 == int( _items.size() ) )
+            return length = 0, true;
+
+        __dios_assert( idx - 2 < int( _items.size() ) );
+
+        auto &item = _items[ idx - 2 ];
+        return do_read( item.name(), item.inode()->ino() );
     }
 
     Items::iterator begin() {

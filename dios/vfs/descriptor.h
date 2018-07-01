@@ -180,57 +180,12 @@ struct PipeDescriptor : FileDescriptor {
 
 struct DirectoryDescriptor : FileDescriptor
 {
-
-    DirectoryDescriptor( Node inode, Flags< flags::Open > fl, size_t offset = 0 ) : FileDescriptor(inode, fl, offset) {
+    DirectoryDescriptor( Node inode, Flags< flags::Open > fl, size_t offset = 0 )
+        : FileDescriptor(inode, fl, offset)
+    {
         if ( !inode->mode().isDirectory() )
             throw Error( ENOTDIR );
-
-        Directory *dir = inode->as< Directory >();
-
-        _items.reserve( dir->size() );
-        for ( const auto &item : *dir ) {
-            _items.emplace_back( item );
-        }
-        rewind();
     }
-
-    void rewind() {
-        _position = _items.begin();
-    }
-
-    virtual size_t offset() const {
-        return long( _position - _items.begin() );
-    }
-
-    virtual void offset( size_t off ) {
-       rewind();
-        _position += off;
-    }
-
-    virtual long long read( void *buf, size_t length ) {
-        if ( !_inode )
-            throw Error( EBADF );
-        if ( !_flags.has( flags::Open::Read ) )
-            throw Error( EBADF );
-        if ( length != sizeof( struct dirent ) )
-            throw Error( EBADF );
-
-        if ( _position == _items.end() )
-            return 0;
-
-        auto ent = &*_position;
-        struct dirent *dst = reinterpret_cast< struct dirent *>( buf );
-
-        dst->d_ino = ent->ino();
-        char *x = std::copy( ent->name().begin(), ent->name().end(), dst->d_name );
-        *x = '\0';
-        ++_position;
-        return length;
-    }
-
-private:
-    __dios::Vector< DirectoryItemLabel > _items;
-    __dios::Vector< DirectoryItemLabel >::const_iterator _position;
 };
 
 struct SocketDescriptor : FileDescriptor {
