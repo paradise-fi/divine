@@ -57,6 +57,9 @@ struct FileDescriptor {
         if ( !_flags.has( flags::Open::Read ) )
             throw Error( EBADF );
 
+        if ( length == 0 )
+            return 0;
+
         if ( _flags.has( flags::Open::NonBlock ) && !_inode->canRead() )
             throw Error( EAGAIN );
 
@@ -64,7 +67,7 @@ struct FileDescriptor {
         if ( !_inode->read( dst, _offset, length ) )
             throw Error( EBADF );
 
-        _setOffset( _offset + length );
+        _offset += length;
         return length;
     }
 
@@ -84,7 +87,7 @@ struct FileDescriptor {
         if ( !_inode->write( src, _offset, length ) )
             throw Error( EBADF );
 
-        _setOffset( _offset + length );
+        _offset += length;
         return length;
     }
 
@@ -125,10 +128,6 @@ struct FileDescriptor {
     }
 
 protected:
-    virtual void _setOffset( size_t off ) {
-        _offset = off;
-    }
-
     Node _inode;
     Flags< flags::Open > _flags;
     size_t _offset;
@@ -166,7 +165,6 @@ struct PipeDescriptor : FileDescriptor {
     PipeDescriptor( PipeDescriptor && ) = default;
     PipeDescriptor &operator=( const PipeDescriptor & ) = default;
 
-
     ~PipeDescriptor() {
         if ( _inode && _flags.has( flags::Open::Read ) ) {
             Pipe *pipe = _inode->as< Pipe >();
@@ -174,30 +172,9 @@ struct PipeDescriptor : FileDescriptor {
         }
     }
 
-    long long read( void *buf, size_t length ) override {
-        __vm_trace( _VM_T_Text,"PipeDescriptor read issued!" );
-        if ( !_inode )
-            throw Error( EBADF );
-        if ( !_flags.has( flags::Open::Read ) )
-            throw Error( EBADF );
-
-        if ( length == 0 )
-            return 0;
-
-        char *dst = reinterpret_cast< char * >( buf );
-        if ( !_inode->read( dst, _offset, length ) )
-            throw Error( EBADF );
-
-        __vm_trace( _VM_T_Text,"Readed length!" );
-        _offset += length;
-        return length;
-    }
-
-    void offset( size_t /*off*/ ) override {
+    void offset( size_t ) override
+    {
         throw Error( EPIPE );
-    }
-protected:
-    void _setOffset( size_t ) override {
     }
 };
 
