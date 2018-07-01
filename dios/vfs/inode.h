@@ -130,10 +130,16 @@ private:
     mode_t _mode;
 };
 
-struct DataItem {
-    virtual ~DataItem() {}
+struct INode
+{
+    INode() :
+        _mode( 0 ),
+        _ino( getIno() ),
+        _uid( 0 ),
+        _gid( 0 )
+    {}
 
-    virtual size_t size() const = 0;
+    virtual ~INode() {}
 
     template< typename T >
     T *as() {
@@ -144,70 +150,29 @@ struct DataItem {
     const T *as() const {
         return dynamic_cast< const T * >( this );
     }
-};
 
-using Handle = std::unique_ptr< DataItem >;
-using Ptr = DataItem *;
-using ConstPtr = const DataItem *;
+    virtual size_t size() const { return 0; }
+    virtual bool read( char *, size_t, size_t & ) { return false; }
+    virtual bool write( const char *, size_t, size_t & ) { return false; }
+    virtual bool canRead() const { return false; }
+    virtual bool canWrite() const { return false; }
+    virtual void clear() {}
 
-struct INode {
+    Mode mode() const { return _mode; }
+    void mode( mode_t mode ) { _mode = mode; }
 
-    INode( mode_t mode, Ptr data = nullptr ) :
-        _mode( mode ),
-        _ino( getIno() ),
-        _uid( 0 ),
-        _gid( 0 ),
-        _data( data )
-    {}
-
-    bool assign( Ptr item ) {
-        if ( _data )
-            return false;
-        _data.reset( item );
-        return true;
-    }
-
-    unsigned ino() const {
-        return _ino;
-    }
-
-    size_t size() const {
-        return _data ? _data->size() : 0;
-    }
-
-    Mode mode() const {
-        return _mode;
-    }
-    Mode &mode() {
-        return _mode;
-    }
-
-    unsigned uid() const {
-        return _uid;
-    }
-    unsigned gid() const {
-        return _gid;
-    }
-
-    Ptr data() {
-        return _data.get();
-    }
-    ConstPtr data() const {
-        return _data.get();
-    }
-
-    explicit operator bool() const {
-        return bool( _data );
-    }
+    unsigned ino() const { return _ino; }
+    unsigned uid() const { return _uid; }
+    unsigned gid() const { return _gid; }
 
 private:
     Mode _mode;
     unsigned _ino;
     unsigned _uid;
     unsigned _gid;
-    Handle _data;
 
-    static unsigned getIno() {
+    static unsigned getIno()
+    {
         static unsigned ino = 0;
         return ++ino;
     }

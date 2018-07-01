@@ -80,7 +80,7 @@ struct Manager {
         if ( !current || !current->mode().isDirectory() )
             return;
         if ( pre( root ) ) {
-            for ( auto &i : *current->data()->as< Directory >() ) {
+            for ( auto &i : *current->as< Directory >() ) {
 
                 if ( i.name() == "." || i.name() == ".." )
                     continue;
@@ -262,9 +262,10 @@ struct VFS: public Next {
 
         for ( auto env = s.env ; env->key; env++ )
             if ( !strcmp( env->key, "vfs.stdin" ) )
-                sio[ 0 ]->assign( new( __dios::nofail ) StandardInput( env->value, env->size ) );
+                sio[ 0 ].reset( new( __dios::nofail ) StandardInput( env->value, env->size ) );
 
-        sio[ 0 ]->assign( new( __dios::nofail ) StandardInput() ); /* first assign wins */
+        for ( int i = 0; i < 2; ++i )
+            sio[ i ]->mode( Mode::FILE | Mode::RUSER );
 
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );

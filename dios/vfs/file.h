@@ -21,39 +21,24 @@
 namespace __dios {
 namespace fs {
 
-struct Link : DataItem {
-
-    Link( __dios::String target ) :
+struct SymLink : INode
+{
+    SymLink( __dios::String target ) :
         _target( std::move( target ) )
     {
         if ( _target.size() > PATH_LIMIT )
             throw Error( ENAMETOOLONG );
     }
 
-    size_t size() const override {
-        return _target.size();
-    }
-
-    const __dios::String &target() const {
-        return _target;
-    }
+    size_t size() const override { return _target.size(); }
+    const __dios::String &target() const { return _target; }
 
 private:
     __dios::String _target;
 };
 
-struct File : DataItem {
-
-    virtual bool read( char *, size_t, size_t & ) = 0;
-    virtual bool write( const char *, size_t, size_t & ) = 0;
-
-    virtual void clear() = 0;
-    virtual bool canRead() const = 0;
-    virtual bool canWrite() const = 0;
-};
-
-struct RegularFile : File {
-
+struct RegularFile : INode
+{
     RegularFile( const char *content, size_t size ) :
         _snapshot( bool( content ) ),
         _size( content ? size : 0 ),
@@ -70,18 +55,12 @@ struct RegularFile : File {
     RegularFile( RegularFile &&other ) = default;
     RegularFile &operator=( RegularFile ) = delete;
 
-    size_t size() const override {
-        return _size;
-    }
+    size_t size() const override { return _size; }
+    bool canRead() const override { return true; }
+    bool canWrite() const override { return true; }
 
-    bool canRead() const override {
-        return true;
-    }
-    bool canWrite() const override {
-        return true;
-    }
-
-    bool read( char *buffer, size_t offset, size_t &length ) override {
+    bool read( char *buffer, size_t offset, size_t &length ) override
+    {
         if ( offset >= _size ) {
             length = 0;
             return true;
@@ -95,7 +74,8 @@ struct RegularFile : File {
         return true;
     }
 
-    bool write( const char *buffer, size_t offset, size_t &length ) override {
+    bool write( const char *buffer, size_t offset, size_t &length ) override
+    {
         if ( _isSnapshot() )
             _copyOnWrite();
 
@@ -106,7 +86,8 @@ struct RegularFile : File {
         return true;
     }
 
-    void clear() override {
+    void clear() override
+    {
         if ( !_size )
             return;
 
@@ -114,7 +95,8 @@ struct RegularFile : File {
         resize( 0 );
     }
 
-    void resize( size_t length ) {
+    void resize( size_t length )
+    {
         _content.resize( length );
         _size = _content.size();
     }
@@ -139,41 +121,9 @@ private:
     __dios::Vector< char > _content;
 };
 
-struct WriteOnlyFile : File {
-
-    size_t size() const override {
-        return 0;
-    }
-    bool canRead() const override {
-        return false;
-    }
-    bool canWrite() const override {
-        return true;
-    }
-    bool read( char *, size_t, size_t & ) override {
-        return false;
-    }
-    bool write( const char*, size_t, size_t & ) override {
-        return true;
-    }
-    void clear() override {
-    }
-};
-
-struct VmTraceFile : File {
-
-    size_t size() const override {
-        return 0;
-    }
-    bool canRead() const override {
-        return false;
-    }
-    bool canWrite() const override {
-        return true;
-    }
-    bool read( char *, size_t, size_t & ) override {
-        return false;
-    }
+struct VmTraceFile : INode
+{
+    bool canWrite() const override { return true; }
 
     __attribute__(( __annotate__( "divine.debugfn" ) ))
     bool write( const char *buffer, size_t, size_t &length ) override
@@ -189,26 +139,11 @@ struct VmTraceFile : File {
         }
         return true;
     }
-    void clear() override {
-    }
 };
 
-
-struct VmBuffTraceFile : File
+struct VmBuffTraceFile : INode
 {
-
-    size_t size() const override {
-        return 0;
-    }
-    bool canRead() const override {
-        return false;
-    }
-    bool canWrite() const override {
-        return true;
-    }
-    bool read( char *, size_t, size_t & ) override {
-        return false;
-    }
+    bool canWrite() const override { return true; }
 
     __debugfn void do_write( const char *data, size_t &length ) noexcept
     {
@@ -242,12 +177,11 @@ struct VmBuffTraceFile : File
         return true;
     }
 
-    void clear() override {}
     ~VmBuffTraceFile() { do_flush(); }
-
 };
 
-struct StandardInput : File {
+struct StandardInput : INode
+{
     StandardInput() :
         _content( nullptr ),
         _size( 0 )
@@ -258,20 +192,18 @@ struct StandardInput : File {
         _size( size )
     {}
 
-    size_t size() const override {
-        return _size;
-    }
+    size_t size() const override { return _size; }
 
-    bool canRead() const override {
+    bool canRead() const override
+    {
         // simulate user drinking coffee
         if ( _size )
             return FS_CHOICE( 2 ) == FS_CHOICE_GOAL;
         return false;
     }
-    bool canWrite() const override {
-        return false;
-    }
-    bool read( char *buffer, size_t offset, size_t &length ) override {
+
+    bool read( char *buffer, size_t offset, size_t &length ) override
+    {
         if ( offset >= _size ) {
             length = 0;
             return true;
@@ -282,19 +214,14 @@ struct StandardInput : File {
         std::copy( source, source + length, buffer );
         return true;
     }
-    bool write( const char *, size_t, size_t & ) override {
-        return false;
-    }
-    void clear() override {
-    }
 
 private:
     const char *_content;
     size_t _size;
 };
 
-struct Pipe : File {
-
+struct Pipe : INode
+{
     Pipe() :
         _stream( PIPE_SIZE_LIMIT ),
         _reader( false ),
@@ -307,18 +234,12 @@ struct Pipe : File {
         _writer( w )
     {}
 
-    size_t size() const override {
-        return _stream.size();
-    }
+    size_t size() const override { return _stream.size(); }
+    bool canRead() const override { return size() > 0; }
+    bool canWrite() const override { return size() < PIPE_SIZE_LIMIT; }
 
-    bool canRead() const override {
-        return size() > 0;
-    }
-    bool canWrite() const override {
-        return size() < PIPE_SIZE_LIMIT;
-    }
-
-    bool read( char *buffer, size_t, size_t &length ) override {
+    bool read( char *buffer, size_t, size_t &length ) override
+    {
         if ( length == 0 )
             return true;
 
@@ -329,7 +250,8 @@ struct Pipe : File {
         return true;
     }
 
-    bool write( const char *buffer, size_t, size_t &length ) override {
+    bool write( const char *buffer, size_t, size_t &length ) override
+    {
         if ( !_reader ) {
             raise( SIGPIPE );
             throw Error( EPIPE );
@@ -342,28 +264,20 @@ struct Pipe : File {
         return true;
     }
 
-    void clear() override {
-        throw Error( EINVAL );
-    }
+    void clear() override { throw Error( EINVAL ); }
+    void releaseReader() { _reader = false; }
+    bool reader() const { return _reader; }
+    bool writer() const { return _writer; }
 
-    void releaseReader() {
-        _reader = false;
-    }
-
-    bool reader() const {
-        return _reader;
-    }
-    bool writer() const {
-        return _writer;
-    }
-
-    void assignReader() {
+    void assignReader()
+    {
         if ( _reader )
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened for reading again." );
         _reader = true;
     }
 
-    void assignWriter() {
+    void assignWriter()
+    {
         if ( _writer )
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened for writing again." );
         _writer = true;
@@ -375,10 +289,10 @@ private:
     bool _writer;
 };
 
-struct Socket : File {
-
-    struct Address {
-
+struct Socket : INode
+{
+    struct Address
+    {
         Address() :
             _anonymous( true ),
             _valid( false )
@@ -443,31 +357,23 @@ struct Socket : File {
     };
 
 
-    void clear() override {
-    }
-
-    size_t size() const override {
-        return 0;
-    }
-
-    bool read( char *buffer, size_t, size_t &length ) override {
+    bool read( char *buffer, size_t, size_t &length ) override
+    {
         Address dummy;
         receive( buffer, length, flags::Message::NoFlags, dummy );
         return true;
     }
-    bool write( const char *buffer, size_t, size_t &length ) override {
+
+    bool write( const char *buffer, size_t, size_t &length ) override
+    {
         send( buffer, length, flags::Message::NoFlags );
         return true;
     }
 
-    const Address &address() const {
-        return _address;
-    }
-    void address( Address addr ) {
-        _address.swap( addr );
-    }
+    const Address &address() const { return _address; }
+    void address( Address addr ) { _address.swap( addr ); }
 
-    virtual Socket &peer() = 0;
+    virtual Socket &peer() const = 0;
 
     virtual bool canReceive( size_t ) const = 0;
     virtual bool canConnect() const = 0;
@@ -530,65 +436,61 @@ struct SocketStream : Socket {
     {}
 
     SocketStream( Node partner ) :
-        _peerHandle( std::move( partner ) ),
-        _peer( _peerHandle->data()->as< SocketStream >() ),
+        _peer( std::move( partner ) ),
         _stream( 1024 ),
         _passive( true ),
         _limit( 0 )
     {}
 
-    Socket &peer() override {
+    Socket &peer() const override
+    {
         if ( !_peer )
             throw Error( ENOTCONN );
-        return *_peer;
+        return *_peer->as< Socket >();
     }
 
-    void abort() override {
-        _peerHandle.reset();
-        _peer = nullptr;
-    }
+    void abort() override { _peer.reset(); }
 
-    void listen( int limit ) override {
+    void listen( int limit ) override
+    {
         _passive = true;
         _limit = limit;
     }
-    Node accept() override {
+
+    Node accept() override
+    {
         if ( !_passive )
             throw Error( EINVAL );
 
         // progress or deadlock
-        if ( _backlog.empty() ) {
-		__vm_cancel();
-	}
+        if ( _backlog.empty() )
+            __vm_cancel();
 
         Node result( std::move( _backlog.front() ) );
         _backlog.pop();
         return result;
     }
 
-    void connected( Node self, Node model, bool allocateNew ) {
+    void connected( Node self, Node model, bool allocateNew )
+    {
         if ( _peer )
             throw Error( EISCONN );
 
-        SocketStream *m = model->data()->as< SocketStream >();
+        SocketStream *m = model->as< SocketStream >();
 
-        if ( allocateNew ) {
+        if ( allocateNew )
+        {
             if ( !m->canConnect() )
                 throw Error( ECONNREFUSED );
 
-            _peerHandle = std::allocate_shared< INode >(
-                __dios::AllocatorPure(),
-                Mode::GRANTS,
-                _peer = new( __dios::nofail ) SocketStream( self )
-            );
-
-            m->addBacklog( _peerHandle );
+            _peer.reset( new( __dios::nofail ) SocketStream( self ) );
+            _peer->mode( Mode::GRANTS );
+            m->addBacklog( _peer );
         }
-        else {
-            _peerHandle = std::move( model );
-            _peer = m;
-            _peer->_peerHandle = std::move( self );
-            _peer->_peer = this;
+        else
+        {
+            _peer = std::move( model );
+            m->_peer = std::move( self );
         }
     }
 
@@ -606,7 +508,7 @@ struct SocketStream : Socket {
         return !_stream.empty();
     }
     bool canWrite() const override {
-        return _peer && _peer->canReceive( 1 );
+        return _peer && peer().canReceive( 1 );
     }
     bool canReceive( size_t amount ) const override {
         return _stream.size() + amount <= _stream.capacity();
@@ -615,17 +517,18 @@ struct SocketStream : Socket {
         return _passive && !closed();
     }
 
-    void send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override {
+    void send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override
+    {
         if ( !_peer )
             throw Error( ENOTCONN );
 
-        if ( !_peerHandle->mode().userWrite() )
+        if ( !_peer->mode().userWrite() )
             throw Error( EACCES );
 
-        if ( fls.has( flags::Message::DontWait ) && !_peer->canReceive( length ) )
+        if ( fls.has( flags::Message::DontWait ) && !peer().canReceive( length ) )
             throw Error( EAGAIN );
 
-        _peer->fillBuffer( buffer, length );
+        peer().fillBuffer( buffer, length );
     }
 
     void sendTo( const char *buffer, size_t &length, Flags< flags::Message > fls, Node ) override {
@@ -651,7 +554,7 @@ struct SocketStream : Socket {
         else
             length = _stream.pop( buffer, length );
 
-        address = _peer->address();
+        address = peer().address();
     }
 
 
@@ -669,8 +572,7 @@ struct SocketStream : Socket {
 
 
 private:
-    Node _peerHandle;
-    SocketStream *_peer;
+    Node _peer;
     storage::Stream _stream;
     bool _passive;
     __dios::Queue< Node > _backlog;
@@ -682,11 +584,12 @@ struct SocketDatagram : Socket {
     SocketDatagram()
     {}
 
-    Socket &peer() override {
+    Socket &peer() const override
+    {
         if ( auto dr = _defaultRecipient.lock() ) {
-            SocketDatagram *defRec = dr->data()->as< SocketDatagram >();
+            SocketDatagram *defRec = dr->as< SocketDatagram >();
             if ( auto self = defRec->_defaultRecipient.lock() ) {
-                if ( self->data() == this )
+                if ( self.get() == this )
                     return *defRec;
             }
         }
@@ -699,7 +602,7 @@ struct SocketDatagram : Socket {
 
     bool canWrite() const override {
         if ( auto dr = _defaultRecipient.lock() ) {
-            return !dr->data()->as< Socket >()->canReceive( 0 );
+            return !dr->as< Socket >()->canReceive( 0 );
         }
         return true;
     }
@@ -738,7 +641,7 @@ struct SocketDatagram : Socket {
         if ( !target->mode().userWrite() )
             throw Error( EACCES );
 
-        Socket *socket = target->data()->as< Socket >();
+        Socket *socket = target->as< Socket >();
         socket->fillBuffer( address(), buffer, length );
     }
 

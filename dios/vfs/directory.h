@@ -55,12 +55,12 @@ private:
     unsigned _ino;
 };
 
-struct Directory : DataItem
+struct Directory : INode, std::enable_shared_from_this< Directory >
 {
     using Items = __dios::Vector< DirectoryEntry >;
 
-    Directory( const __dios::String& name, WeakNode self, WeakNode parent = WeakNode{} )
-        : _items{}, _self( self ), _parent( parent ), _name( name )
+    Directory( const __dios::String& name, WeakNode parent = WeakNode{} )
+        : _items{}, _parent( parent ), _name( name )
     {}
 
     size_t size() const override { return _items.size() + 2; }
@@ -77,7 +77,7 @@ struct Directory : DataItem
 
     Node find( const __dios::String &name ) {
         if ( name == "." )
-            return _self.lock();
+            return shared_from_this();
         if ( name == ".." )
             return _parent.lock();
 
@@ -99,7 +99,7 @@ struct Directory : DataItem
         Node node = find( name );
         if ( !node )
             return nullptr;
-        return node->data()->as< T >();
+        return node->as< T >();
     }
 
     void remove( const __dios::String &name ) {
@@ -168,7 +168,7 @@ private:
     }
 
     Items _items;
-    WeakNode _self, _parent;
+    WeakNode _parent;
      __dios::String _name;
 };
 

@@ -34,41 +34,34 @@ struct FileDescriptor {
 
     virtual ~FileDescriptor() = default;
 
-    bool canRead() const {
+    bool canRead() const
+    {
         if ( !_inode )
             throw Error( EBADF );
 
-        File *file = _inode->data()->as< File >();
-        if ( !file )
-            throw Error( EBADF );
-
-        return file->canRead();
+        return _inode->canRead();
     }
-    bool canWrite() const {
+
+    bool canWrite() const
+    {
         if ( !_inode )
             throw Error( EBADF );
 
-        File *file = _inode->data()->as< File >();
-        if ( !file )
-            throw Error( EBADF );
-
-        return file->canWrite();
+        return _inode->canWrite();
     }
 
-    virtual long long read( void *buf, size_t length ) {
+    virtual long long read( void *buf, size_t length )
+    {
         if ( !_inode )
             throw Error( EBADF );
         if ( !_flags.has( flags::Open::Read ) )
             throw Error( EBADF );
 
-        File *file = _inode->data()->as< File >();
-        if ( !file )
-            throw Error( EBADF );
-        if ( _flags.has( flags::Open::NonBlock ) && !file->canRead() )
+        if ( _flags.has( flags::Open::NonBlock ) && !_inode->canRead() )
             throw Error( EAGAIN );
 
         char *dst = reinterpret_cast< char * >( buf );
-        if ( !file->read( dst, _offset, length ) )
+        if ( !_inode->read( dst, _offset, length ) )
             throw Error( EBADF );
 
         _setOffset( _offset + length );
@@ -81,17 +74,14 @@ struct FileDescriptor {
         if ( !_flags.has( flags::Open::Write ) )
             throw Error( EBADF );
 
-        File *file = _inode->data()->as< File >();
-        if ( !file )
-            throw Error( EBADF );
-        if ( _flags.has( flags::Open::NonBlock ) && !file->canWrite() )
+        if ( _flags.has( flags::Open::NonBlock ) && !_inode->canWrite() )
             throw Error( EAGAIN );
 
         if ( _flags.has( flags::Open::Append ) )
-            _offset = file->size();
+            _offset = _inode->size();
 
         const char *src = reinterpret_cast< const char * >( buf );
-        if ( !file->write( src, _offset, length ) )
+        if ( !_inode->write( src, _offset, length ) )
             throw Error( EBADF );
 
         _setOffset( _offset + length );
@@ -153,7 +143,7 @@ struct PipeDescriptor : FileDescriptor {
     PipeDescriptor( Node inode, Flags< flags::Open > fl, bool wait = false ) :
         FileDescriptor( inode, fl ), readyReader(!wait), readyWriter(!wait)
     {
-        Pipe *pipe = inode->data()->as< Pipe >();
+        Pipe *pipe = inode->as< Pipe >();
 
         /// TODO: enable detection of deadlock
         if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
@@ -179,7 +169,7 @@ struct PipeDescriptor : FileDescriptor {
 
     ~PipeDescriptor() {
         if ( _inode && _flags.has( flags::Open::Read ) ) {
-            Pipe *pipe = _inode->data()->as< Pipe >();
+            Pipe *pipe = _inode->as< Pipe >();
             pipe->releaseReader();
         }
     }
@@ -191,15 +181,11 @@ struct PipeDescriptor : FileDescriptor {
         if ( !_flags.has( flags::Open::Read ) )
             throw Error( EBADF );
 
-        File *file = _inode->data()->as< File >();
-        if ( !file )
-            throw Error( EBADF );
-
         if ( length == 0 )
             return 0;
 
         char *dst = reinterpret_cast< char * >( buf );
-        if ( !file->read( dst, _offset, length ) )
+        if ( !_inode->read( dst, _offset, length ) )
             throw Error( EBADF );
 
         __vm_trace( _VM_T_Text,"Readed length!" );
@@ -224,7 +210,7 @@ struct DirectoryDescriptor : FileDescriptor
         if ( !inode->mode().isDirectory() )
             throw Error( ENOTDIR );
 
-        Directory *dir = inode->data()->as< Directory >();
+        Directory *dir = inode->as< Directory >();
 
         _items.reserve( dir->size() );
         for ( const auto &item : *dir ) {
@@ -276,7 +262,7 @@ struct SocketDescriptor : FileDescriptor {
 
     SocketDescriptor( Node inode, Flags< flags::Open > fl ) :
         FileDescriptor( std::move( inode ), fl | flags::Open::Read | flags::Open::Write ),
-        _socket( _inode->data()->as< Socket >() )
+        _socket( _inode->as< Socket >() )
     {}
 
     ~SocketDescriptor() {
