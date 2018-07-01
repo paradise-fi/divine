@@ -13,105 +13,20 @@
 namespace __dios {
 namespace fs {
 
-struct DirectoryEntry {
-
+struct DirectoryEntry
+{
     DirectoryEntry( __dios::String name, Node inode ) :
         _name( std::move( name ) ),
-        _inode( std::move( inode ) ),
-        _weak( false )
+        _inode( std::move( inode ) )
     {}
 
-    DirectoryEntry( __dios::String name, WeakNode inode ) :
-        _name( std::move( name ) ),
-        _inode( std::move( inode ) ),
-        _weak( true )
-    {}
-
-    DirectoryEntry( const DirectoryEntry &other ) :
-        _name( other.name() ),
-        _weak( other._weak )
-    {
-        if ( _weak )
-            new (&_inode.weak) WeakNode( other._inode.weak );
-        else
-            new (&_inode.strong) Node( other._inode.strong );
-    }
-
-    DirectoryEntry( DirectoryEntry &&other ) :
-        _name( std::move( other._name ) ),
-        _weak( other._weak )
-    {
-        if ( _weak )
-            new (&_inode.weak) WeakNode( std::move( other._inode.weak ) );
-        else
-            new (&_inode.strong) Node( std::move( other._inode.strong ) );
-    }
-
-    ~DirectoryEntry() {
-        if ( _weak )
-            _inode.weak.~WeakNode();
-        else
-            _inode.strong.~Node();
-    }
-
-    DirectoryEntry &operator=( DirectoryEntry other ) {
-        swap( other );
-        return *this;
-    }
-
-    __dios::String &name() {
-        return _name;
-    }
-    const __dios::String &name() const {
-        return _name;
-    }
-
-    Node inode() {
-        return _weak ? _inode.weak.lock() : _inode.strong;
-    }
-    const Node inode() const {
-        return _weak ? _inode.weak.lock() : _inode.strong;
-    }
-
-    void swap( DirectoryEntry &other ) {
-        using std::swap;
-        swap( _name, other._name );
-
-        if ( _weak && other._weak )
-            _inode.weak.swap( other._inode.weak );
-        else if ( !_weak && !other._weak )
-            _inode.strong.swap( other._inode.strong );
-        else if ( _weak ) {
-            WeakNode tmp( std::move( _inode.weak ) );
-            new (&_inode.strong) Node( std::move( other._inode.strong ) );
-            new (&other._inode.weak) WeakNode( std::move( tmp ) );
-        }
-        else {
-            WeakNode tmp( std::move( other._inode.weak ) );
-            new (&other._inode.strong) Node( std::move( _inode.strong ) );
-            new (&_inode.weak) WeakNode( std::move( tmp ) );
-        }
-        swap( _weak, other._weak );
-    }
+    __dios::String &name() { return _name; }
+    const __dios::String &name() const { return _name; }
+    Node inode() const { return _inode; }
 
 private:
     __dios::String _name;
-    union _U {
-        Node strong;
-        WeakNode weak;
-        _U() {}
-        _U( Node &&node ) :
-            strong( std::move( node ) )
-        {}
-        _U( WeakNode &&node ) :
-            weak( std::move( node ) )
-        {}
-        _U( const _U & ) {}
-        _U( _U && ) {}
-        ~_U() {}
-    } _inode;
-    bool _weak;
-
+    Node _inode;
 };
 
 struct DirectoryItemLabel {
@@ -140,32 +55,32 @@ private:
     unsigned _ino;
 };
 
-struct Directory : DataItem {
+struct Directory : DataItem
+{
     using Items = __dios::Vector< DirectoryEntry >;
 
-    Directory( const __dios::String& name, WeakNode self, WeakNode parent = WeakNode{} ) :
-        _items{
-            DirectoryEntry{ ".", self },
-            DirectoryEntry{ "..", !parent.expired() ? parent : self }
-        },
-        _name( name )
+    Directory( const __dios::String& name, WeakNode self, WeakNode parent = WeakNode{} )
+        : _items{}, _self( self ), _parent( parent ), _name( name )
     {}
 
-    size_t size() const override {
-        return _items.size();
-    }
-
-    const __dios::String& name( ) {
-        return _name;
-    }
+    size_t size() const override { return _items.size() + 2; }
+    const __dios::String& name() { return _name; }
+    bool special_name( String name ) const { return name == "." || name == ".."; }
 
     void create( __dios::String name, Node inode ) {
         if ( name.size() > FILE_NAME_LIMIT )
             throw Error( ENAMETOOLONG );
+        if ( special_name( name ) )
+            throw Error( EEXIST );
         _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
     }
 
     Node find( const __dios::String &name ) {
+        if ( name == "." )
+            return _self.lock();
+        if ( name == ".." )
+            return _parent.lock();
+
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             return Node();
@@ -253,6 +168,7 @@ private:
     }
 
     Items _items;
+    WeakNode _self, _parent;
      __dios::String _name;
 };
 
