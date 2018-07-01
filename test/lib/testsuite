@@ -21,7 +21,7 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --interpreter pdc:lib/pdclib-test \
     --flavour z3:sym \
     --flavour stp:sym \
-    --flavour smtlib:sym \
+    --flavour smtlib:sym,min \
     --flavour vanilla:!sym \
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
