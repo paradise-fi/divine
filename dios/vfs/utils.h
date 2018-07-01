@@ -143,6 +143,17 @@ private:
     int _code;
 };
 
+static inline void error( int e )
+{
+    *__dios_errno() = e;
+}
+
+static inline int error_negative( int e )
+{
+    error( e );
+    return -1;
+}
+
 } // namespace fs
 } // namespace __dios
 
