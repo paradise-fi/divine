@@ -14,10 +14,10 @@
 #include <dios/sys/trace.hpp>
 #include <dios/sys/config.hpp>
 
-#include <dios/vfs/fs-manager.h>
-#include <dios/vfs/fs-passthru.h>
-#include <dios/vfs/fs-replay.h>
-#include <dios/vfs/fs-constants.h>
+#include <dios/vfs/manager.h>
+#include <dios/vfs/passthru.h>
+#include <dios/vfs/replay.h>
+#include <dios/vfs/constants.h>
 
 namespace __dios
 {

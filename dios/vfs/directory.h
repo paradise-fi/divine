@@ -3,9 +3,9 @@
 #include <memory>
 #include <cerrno>
 
-#include "fs-inode.h"
-#include "fs-utils.h"
-#include "fs-constants.h"
+#include "inode.h"
+#include "utils.h"
+#include "constants.h"
 
 #ifndef _FS_DIRECTORY_H_
 #define _FS_DIRECTORY_H_

@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
-#include "fs-utils.h"
-#include "fs-storage.h"
+#include "utils.h"
+#include "storage.h"
 
 #ifndef _FS_CONSTANTS_H_
 #define _FS_CONSTANTS_H_

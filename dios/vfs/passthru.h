@@ -24,8 +24,8 @@
 #include <dios/sys/stdlibwrap.hpp>
 #include <sys/resource.h>
 
-#include <dios/vfs/fs-passthru-types.h>
-#include <dios/vfs/fs-passthru-process.h>
+#include <dios/vfs/passthru-types.h>
+#include <dios/vfs/passthru-process.h>
 
 /*
 * For work with memory

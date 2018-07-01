@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
-#include "fs-manager.h"
+#include "manager.h"
 #include <dios/sys/memory.hpp>
 
 #define REMEMBER_DIRECTORY( dirfd, name )                               \

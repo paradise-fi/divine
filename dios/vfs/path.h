@@ -4,7 +4,7 @@
  *  This file contains couple of (sometimes a little bit modified)
  *  functions from bricks/brick-fs.h.
  */
-#include "fs-utils.h"
+#include "utils.h"
 
 #ifndef _FS_PATH_H_
 #define _FS_PATH_H_

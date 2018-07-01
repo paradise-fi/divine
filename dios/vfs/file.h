@@ -9,9 +9,9 @@
 #include <sys/fault.h>
 #include <sys/trace.h>
 
-#include "fs-utils.h"
-#include "fs-inode.h"
-#include "fs-storage.h"
+#include "utils.h"
+#include "inode.h"
+#include "storage.h"
 
 #define FS_CHOICE_GOAL          0
 

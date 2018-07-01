@@ -3,10 +3,10 @@
 #include <memory>
 #include <dirent.h>
 
-#include "fs-utils.h"
-#include "fs-file.h"
-#include "fs-constants.h"
-#include "fs-directory.h"
+#include "utils.h"
+#include "file.h"
+#include "constants.h"
+#include "directory.h"
 
 #ifndef _FS_DESCRIPTOR_H_
 #define _FS_DESCRIPTOR_H_

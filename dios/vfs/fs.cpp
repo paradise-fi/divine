@@ -14,7 +14,7 @@
 #include <sys/un.h>
 #include <dios.h>
 
-#include "fs-manager.h"
+#include "manager.h"
 
 struct DirWrapper {
     int fd;

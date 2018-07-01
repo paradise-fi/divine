@@ -17,14 +17,14 @@
 #include <sys/vmutil.h>
 
 
-#include "fs-utils.h"
-#include "fs-inode.h"
-#include "fs-constants.h"
-#include "fs-file.h"
-#include "fs-directory.h"
-#include "fs-snapshot.h"
-#include "fs-descriptor.h"
-#include "fs-path.h"
+#include "utils.h"
+#include "inode.h"
+#include "constants.h"
+#include "file.h"
+#include "directory.h"
+#include "snapshot.h"
+#include "descriptor.h"
+#include "path.h"
 
 #ifndef _FS_MANAGER_H_
 #define _FS_MANAGER_H_

@@ -9,9 +9,9 @@
 #include <dios/sys/machineparams.hpp>
 #include <dios/sys/procmanager.hpp>
 
-#include <dios/vfs/fs-manager.h>
-#include <dios/vfs/fs-passthru.h>
-#include <dios/vfs/fs-replay.h>
+#include <dios/vfs/manager.h>
+#include <dios/vfs/passthru.h>
+#include <dios/vfs/replay.h>
 
 namespace __dios::config
 {
