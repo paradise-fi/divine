@@ -432,7 +432,6 @@ struct Substitute {
         auto &ctx = f.getContext();
         auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
         auto *i64 = llvm::Type::getInt64Ty( ctx );
-        auto *i32 = llvm::Type::getInt32Ty( ctx );
 
         auto addr_cast = [i8ptr]( llvm::Value *op, llvm::IRBuilder<> &builder )
                         -> llvm::Value *
@@ -462,7 +461,7 @@ struct Substitute {
             return builder.CreateBitOrPointerCast( orig, dstt );
         };
 
-        auto sz = [&, i32]( llvm::Value *op ) {
+        auto sz = [&]( llvm::Value *op ) {
             return getSize( op->getType(), ctx, dl );
         };
 
