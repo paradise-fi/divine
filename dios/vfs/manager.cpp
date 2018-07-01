@@ -82,7 +82,7 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&
             node.reset( utils::constructIfPossible< RegularFile >( std::forward< Args >( args )... ) );
             break;
         case Mode::DIR:
-            node.reset( utils::constructIfPossible< Directory >( name, node, current ) );
+            node.reset( utils::constructIfPossible< Directory >( name, current ) );
             break;
         case Mode::FIFO:
             node.reset( utils::constructIfPossible< Pipe >( std::forward< Args >( args )... ) );

@@ -79,7 +79,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         if ( name == "." )
             return shared_from_this();
         if ( name == ".." )
-            return _parent.lock();
+            return _parent.expired() ? shared_from_this() : _parent.lock();
 
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
