@@ -1,3 +1,32 @@
+# DIVINE 4.1
+
+- In 4.1.1:
+    - Display an instructions-per-second figure when running interactively.
+    - Use a more compact frame representation / make bitcast a noop.
+    - Support linking to Z3.
+    - Much more efficient exploration strategy in symbolic mode.
+    - Better interaction of data non-determinism with tau reduction.
+    - Revamped and extended functional test suite.
+    - Improved performance of shadow memory.
+    - Improved coverage of POSIX APIs in DiOS.
+    - Better binary compatibility of DiOS libc with glibc.
+    - Many improvements in divbench.
+    - Build system improvements.
+    - Replace `divine run` with `exec` & use syscall passthrough by default.
+    - A fair scheduler is now available in DiOS.
+    - Better support for x86-TSO, removed support for other memory models.
+    - Portable (i.e. not Linux-specific) syscall passthrough.
+    - Replace the `__vm_control` hypercall with a simpler `__vm_ctl_*` set.
+    - Replace the `__vm_interrupt_*` hypercalls with `__vm_test_*`.
+    - A reworked, simpler syscall mechanism in DiOS.
+    - New command for comparing objects in the simulator (`diff`).
+    - The `verify`, `check` &c. commands now recognize a `--synchronous` flag.
+    - Low-level support for memory leak detection.
+- In 4.1.0:
+    - Do not leak transient objects.
+    - Improved support for building static Linux binaries.
+    - Track per-bit value definedness.
+
 # DIVINE 4.0
 
 - In 4.0.22:
