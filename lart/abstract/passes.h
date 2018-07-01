@@ -125,7 +125,7 @@ struct TestBase
         c.setupFS( [&]( auto yield ) { yield( "/main.cpp", src ); } );
         c.compileAndLink( "/main.cpp", flags );
         c.linkEntireArchive( "rst" );
-        return c.takeModule();
+        return c.takeLinked();
     }
 
     template< typename... Passes >
