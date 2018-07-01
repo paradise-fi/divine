@@ -154,6 +154,12 @@ static inline int error_negative( int e )
     return -1;
 }
 
+template< typename T, typename... Args >
+auto make_shared( Args&&... args )
+{
+    return std::allocate_shared< T >( AllocatorPure(), std::forward< Args >( args )... );
+}
+
 } // namespace fs
 } // namespace __dios
 
