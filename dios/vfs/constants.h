@@ -51,14 +51,6 @@ enum class Open {
     Invalid     = 4096,
 };
 
-enum class Access {
-    OK          = 0,
-    Execute     = 1,
-    Write       = 2,
-    Read        = 4,
-    Invalid     = 8,
-};
-
 enum class At {
     NoFlags     =  0,
     Invalid     =  1,

@@ -164,12 +164,12 @@ ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t c
     return realLength;
 }
 
-void Manager::accessAt( int dirfd, __dios::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
+void Manager::accessAt( int dirfd, __dios::String name, int mode, Flags< flags::At > fl )
+{
     if ( name.empty() )
         throw Error( ENOENT );
 
-    if ( mode.has( flags::Access::Invalid ) ||
-        fl.has( flags::At::Invalid ) )
+    if ( fl.has( flags::At::Invalid ) )
         throw Error( EINVAL );
 
     REMEMBER_DIRECTORY( dirfd, name );
@@ -178,9 +178,9 @@ void Manager::accessAt( int dirfd, __dios::String name, Flags< flags::Access > m
     if ( !item )
         throw Error( ENOENT );
 
-    if ( ( mode.has( flags::Access::Read ) && !item->mode().userRead() ) ||
-         ( mode.has( flags::Access::Write ) && !item->mode().userWrite() ) ||
-         ( mode.has( flags::Access::Execute ) && !item->mode().userExecute() ) )
+    if ( ( ( mode & R_OK ) && !item->mode().userRead() ) ||
+         ( ( mode & W_OK ) && !item->mode().userWrite() ) ||
+         ( ( mode & X_OK ) && !item->mode().userExecute() ) )
         throw Error( EACCES );
 }
 

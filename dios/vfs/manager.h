@@ -55,7 +55,7 @@ struct Manager {
 
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
-    void accessAt( int dirfd, __dios::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
+    void accessAt( int dirfd, __dios::String name, int mode, Flags< flags::At > fl );
     int openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
@@ -755,14 +755,15 @@ struct VFS: public Next {
         }
     }
 
+    bool check_access( int mode )
+    {
+        return ( mode | R_OK | W_OK | X_OK ) == ( R_OK | W_OK | X_OK );
+    }
+
     int faccessat( int dirfd, const char *path, int mode, int flags )
     {
-        __dios::fs::Flags <__dios::fs::flags::Access> m = __dios::fs::flags::Access::OK;
-        if ( mode & R_OK ) m |= __dios::fs::flags::Access::Read;
-        if ( mode & W_OK ) m |= __dios::fs::flags::Access::Write;
-        if ( mode & X_OK ) m |= __dios::fs::flags::Access::Execute;
-        if (( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ))
-            m |= __dios::fs::flags::Access::Invalid;
+        if ( !check_access( mode ) )
+            return error_negative( EINVAL );
 
         __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
         if ( flags & AT_EACCESS ) fl |= __dios::fs::flags::At::EffectiveID;
@@ -771,7 +772,7 @@ struct VFS: public Next {
             fl |= __dios::fs::flags::At::Invalid;
 
         try {
-            instance( ).accessAt( dirfd, path, m, fl );
+            instance( ).accessAt( dirfd, path, mode, fl );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
@@ -781,17 +782,13 @@ struct VFS: public Next {
 
     int access( const char *path, int mode )
     {
-        __dios::fs::Flags <__dios::fs::flags::Access> m = __dios::fs::flags::Access::OK;
-        if ( mode & R_OK ) m |= __dios::fs::flags::Access::Read;
-        if ( mode & W_OK ) m |= __dios::fs::flags::Access::Write;
-        if ( mode & X_OK ) m |= __dios::fs::flags::Access::Execute;
-        if (( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ))
-            m |= __dios::fs::flags::Access::Invalid;
+        if ( !check_access( mode ) )
+            return error_negative( EINVAL );
 
         __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
 
         try {
-            instance( ).accessAt( AT_FDCWD, path, m, fl );
+            instance( ).accessAt( AT_FDCWD, path, mode, fl );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
