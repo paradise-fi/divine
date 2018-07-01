@@ -55,7 +55,7 @@ int Node< Prog, Heap >::size()
 {
     int sz = INT_MAX;
     DNEval< Heap > eval( _ctx );
-    if ( _type )
+    if ( _type && _type->isSized() )
         sz = _ctx.program().TD.getTypeAllocSize( _type );
     if ( !_address.null() )
         sz = std::min( sz, eval.ptr2sz( PointerV( _address ) ) - _offset );
