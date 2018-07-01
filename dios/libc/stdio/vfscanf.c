@@ -39,11 +39,11 @@ int _PDCLIB_vfscanf_unlocked( FILE * _PDCLIB_restrict stream,
             {
                 /* Whitespace char in format string: Skip all whitespaces */
                 /* No whitespaces in input does not result in matching error */
-                while ( isspace( c = getc( stream ) ) )
+                while ( isspace( c = getc_unlocked( stream ) ) )
                 {
                     ++status.i;
                 }
-                if ( ! feof( stream ) )
+                if ( ! feof_unlocked( stream ) )
                 {
                     _PDCLIB_ungetc_unlocked( c, stream );
                 }
@@ -51,10 +51,10 @@ int _PDCLIB_vfscanf_unlocked( FILE * _PDCLIB_restrict stream,
             else
             {
                 /* Non-whitespace char in format string: Match verbatim */
-                if ( ( ( c = getc_unlocked( stream ) ) != *format ) || feof( stream ) )
+                if ( ( ( c = getc_unlocked( stream ) ) != *format ) || feof_unlocked( stream ) )
                 {
                     /* Matching error */
-                    if ( ! feof( stream ) && ! ferror( stream ) )
+                    if ( ! feof_unlocked( stream ) && ! ferror_unlocked( stream ) )
                     {
                         _PDCLIB_ungetc_unlocked( c, stream );
                     }

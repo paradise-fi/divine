@@ -44,7 +44,7 @@ static int GET( struct _PDCLIB_status_t * status )
     int rc = EOF;
     if ( status->stream != NULL )
     {
-        rc = getc( status->stream );
+        rc = getc_unlocked( status->stream );
     }
     else
     {
@@ -66,7 +66,7 @@ static void UNGET( int c, struct _PDCLIB_status_t * status )
 {
     if ( status->stream != NULL )
     {
-        ungetc( c, status->stream ); /* TODO: Error? */
+        _PDCLIB_ungetc_unlocked( c, status->stream ); /* TODO: Error? */
     }
     else
     {
