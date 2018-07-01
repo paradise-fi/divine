@@ -137,11 +137,11 @@ protected:
 struct PipeDescriptor : FileDescriptor {
 
     PipeDescriptor() :
-        FileDescriptor(), readyReader(false), readyWriter(false)
+        FileDescriptor()
     {}
 
     PipeDescriptor( Node inode, Flags< flags::Open > fl, bool wait = false ) :
-        FileDescriptor( inode, fl ), readyReader(!wait), readyWriter(!wait)
+        FileDescriptor( inode, fl )
     {
         Pipe *pipe = inode->as< Pipe >();
 
@@ -150,13 +150,13 @@ struct PipeDescriptor : FileDescriptor {
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
         else if ( fl.has( flags::Open::Read ) )
         {
-            if ( wait && !pipe->writer() && !readyWriter )
+            if ( wait && !pipe->writer() )
                __vm_cancel();
             pipe->assignReader();
         }
         else if ( fl.has( flags::Open::Write ) )
         {
-            if ( wait && !pipe->reader() && !readyReader  )
+            if ( wait && !pipe->reader() )
                __vm_cancel();
             pipe->assignWriter();
         }
@@ -199,8 +199,6 @@ struct PipeDescriptor : FileDescriptor {
 protected:
     void _setOffset( size_t ) override {
     }
-    bool readyReader;
-    bool readyWriter;
 };
 
 struct DirectoryDescriptor : FileDescriptor
