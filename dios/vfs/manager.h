@@ -48,14 +48,14 @@ struct Manager {
     Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
     void initializeFromSnapshot(const _VM_Env *env);
 
-    void createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, Flags< flags::At > fl );
+    void createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, bool follow );
     void createSymLinkAt( int dirfd, __dios::String name, __dios::String target );
     template< typename... Args >
     Node createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&... args );
 
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
-    void accessAt( int dirfd, __dios::String name, int mode, Flags< flags::At > fl );
+    void accessAt( int dirfd, __dios::String name, int mode, bool follow );
     int openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
@@ -65,9 +65,8 @@ struct Manager {
 
     std::pair< int, int > pipe();
 
-    void removeFile( __dios::String name );
-    void removeDirectory( __dios::String name );
-    void removeAt( int dirfd, __dios::String name, flags::At fl );
+    void removeFile( int dirfd, __dios::String name );
+    void removeDirectory( int dirfd, __dios::String name );
 
     void renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath );
 
@@ -106,7 +105,7 @@ struct Manager {
     void changeDirectory( __dios::String pathname );
     void changeDirectory( int dirfd );
 
-    void chmodAt( int dirfd, __dios::String name, mode_t mode, Flags< flags::At > fl );
+    void chmodAt( int dirfd, __dios::String name, mode_t mode, bool follow );
     void chmod( int fd, mode_t mode );
 
     mode_t umask() const {
@@ -614,20 +613,13 @@ struct VFS: public Next {
 
     int unlinkat( int dirfd, const char *path, int flags )
     {
-        __dios::fs::flags::At f;
-        switch ( flags ) {
-            case 0:
-                f = __dios::fs::flags::At::NoFlags;
-                break;
-            case AT_REMOVEDIR:
-                f = __dios::fs::flags::At::RemoveDir;
-                break;
-            default:
-                f = __dios::fs::flags::At::Invalid;
-                break;
-        }
         try {
-            instance( ).removeAt( dirfd, path, f );
+            if ( flags == 0 )
+                instance().removeFile( dirfd, path );
+            else if ( flags == AT_REMOVEDIR )
+                instance().removeDirectory( dirfd, path );
+            else
+                return error_negative( EINVAL );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
@@ -635,21 +627,14 @@ struct VFS: public Next {
         }
     }
 
-    int _linkat(int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags )
-    {
-
-        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
-        if ( flags & AT_SYMLINK_FOLLOW ) fl |= __dios::fs::flags::At::SymFollow;
-        if (( flags | AT_SYMLINK_FOLLOW ) != AT_SYMLINK_FOLLOW )
-            fl |= __dios::fs::flags::At::Invalid;
-            instance( ).createHardLinkAt( newdirfd, linkpath, olddirfd, target, fl );
-            return 0;
-    }
-
     int linkat( int olddirfd, const char *target, int newdirfd, const char * linkpath, int flags )
     {
+        if ( ( flags | AT_SYMLINK_FOLLOW ) != AT_SYMLINK_FOLLOW )
+            return error_negative( EINVAL );
         try {
-            return _linkat( olddirfd, target, newdirfd, linkpath, flags );
+            instance().createHardLinkAt( newdirfd, linkpath, olddirfd, target,
+                                         flags & AT_SYMLINK_FOLLOW );
+            return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
@@ -702,14 +687,12 @@ struct VFS: public Next {
         if ( !check_access( mode ) )
             return error_negative( EINVAL );
 
-        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
-        if ( flags & AT_EACCESS ) fl |= __dios::fs::flags::At::EffectiveID;
-        if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= __dios::fs::flags::At::SymNofollow;
-        if (( flags | AT_EACCESS | AT_SYMLINK_NOFOLLOW ) != ( AT_EACCESS | AT_SYMLINK_NOFOLLOW ))
-            fl |= __dios::fs::flags::At::Invalid;
+        if ( ( flags | AT_EACCESS | AT_SYMLINK_NOFOLLOW ) != ( AT_EACCESS | AT_SYMLINK_NOFOLLOW ) )
+            return error_negative( EINVAL );
 
         try {
-            instance( ).accessAt( dirfd, path, mode, fl );
+            /* FIXME handle AT_EACCESS */
+            instance( ).accessAt( dirfd, path, mode, !( flags & AT_SYMLINK_NOFOLLOW ) );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
@@ -832,13 +815,11 @@ struct VFS: public Next {
 
     int fchmodat( int dirfd, const char *path, mode_t mode, int flags )
     {
-        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
-        if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= __dios::fs::flags::At::SymNofollow;
-        if (( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
-            fl |= __dios::fs::flags::At::Invalid;
+        if ( ( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
+            return error_negative( EINVAL );
 
         try {
-            instance( ).chmodAt( dirfd, path, mode, fl );
+            instance( ).chmodAt( dirfd, path, mode, !( flags & AT_SYMLINK_NOFOLLOW ) );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();

@@ -105,12 +105,10 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&
     return node;
 }
 
-void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, Flags< flags::At > fl ) {
+void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, bool follow )
+{
     if ( name.empty() || target.empty() )
         throw Error( ENOENT );
-
-    if ( fl.has( flags::At::Invalid ) )
-        throw Error( EINVAL );
 
     Node current;
     {
@@ -124,8 +122,9 @@ void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd,
     Node targetNode;
     {
         REMEMBER_DIRECTORY( olddirfd, target );
-        targetNode = findDirectoryItem( target, fl.has( flags::At::SymFollow ) );
+        targetNode = findDirectoryItem( target, follow );
     }
+
     if ( !targetNode )
         throw Error( ENOENT );
 
@@ -164,17 +163,14 @@ ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t c
     return realLength;
 }
 
-void Manager::accessAt( int dirfd, __dios::String name, int mode, Flags< flags::At > fl )
+void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
 {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    if ( fl.has( flags::At::Invalid ) )
-        throw Error( EINVAL );
-
     REMEMBER_DIRECTORY( dirfd, name );
 
-    Node item = findDirectoryItem( name, !fl.has( flags::At::SymNofollow ) );
+    Node item = findDirectoryItem( name, follow );
     if ( !item )
         throw Error( ENOENT );
 
@@ -274,9 +270,11 @@ std::pair< int, int > Manager::pipe() {
     return { fd1, fd2 };
 }
 
-void Manager::removeFile( __dios::String name ) {
+void Manager::removeFile( int dirfd, __dios::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
+
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
@@ -287,9 +285,11 @@ void Manager::removeFile( __dios::String name ) {
     dir->remove( name );
 }
 
-void Manager::removeDirectory( __dios::String name ) {
+void Manager::removeDirectory( int dirfd, __dios::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
+
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
@@ -299,21 +299,6 @@ void Manager::removeDirectory( __dios::String name ) {
     Directory *dir = current->data()->as< Directory >();
 
     dir->removeDirectory( name );
-}
-
-void Manager::removeAt( int dirfd, __dios::String name, flags::At fl ) {
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    switch( fl ) {
-    case flags::At::NoFlags:
-        removeFile( name );
-        break;
-    case flags::At::RemoveDir:
-        removeDirectory( name );
-        break;
-    default:
-        throw Error( EINVAL );
-    }
 }
 
 void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath ) {
@@ -464,13 +449,11 @@ void Manager::changeDirectory( int dirfd ) {
     _currentDirectory = item;
 }
 
-void Manager::chmodAt( int dirfd, __dios::String name, mode_t mode, Flags< flags::At > fl ) {
-    if ( fl.has( flags::At::Invalid ) )
-        throw Error( EINVAL );
-
+void Manager::chmodAt( int dirfd, __dios::String name, mode_t mode, bool follow )
+{
     REMEMBER_DIRECTORY( dirfd, name );
 
-    Node inode = findDirectoryItem( std::move( name ), !fl.has( flags::At::SymNofollow ) );
+    Node inode = findDirectoryItem( std::move( name ), follow );
     _chmod( inode, mode );
 }
 
@@ -734,7 +717,7 @@ void Manager::initializeFromSnapshot( const _VM_Env *env ) {
             auto inMap = inodeMap.find( statInfo->st_ino );
             if ( inMap != inodeMap.end( ) ) {
                 // detect hard links
-                createHardLinkAt( CURRENT_DIRECTORY, name, CURRENT_DIRECTORY, inMap->second.c_str( ), flags::At::NoFlags );
+                createHardLinkAt( CURRENT_DIRECTORY, name, CURRENT_DIRECTORY, inMap->second.c_str(), 0 );
                 continue;
             }
             inodeMap.insert( std::pair<uint64_t, __dios::String>( statInfo->st_ino, __dios::String( name ) ) );

@@ -51,15 +51,6 @@ enum class Open {
     Invalid     = 4096,
 };
 
-enum class At {
-    NoFlags     =  0,
-    Invalid     =  1,
-    RemoveDir   =  2,
-    EffectiveID =  4,
-    SymFollow   =  8,
-    SymNofollow = 16,
-};
-
 enum class Message {
     NoFlags = 0,
     DontWait = 1,
