@@ -264,12 +264,12 @@ struct VFS: public Next {
             if ( !strcmp( env->key, "vfs.stdin" ) )
                 sio[ 0 ].reset( new( __dios::nofail ) StandardInput( env->value, env->size ) );
 
-        for ( int i = 0; i < 2; ++i )
-            sio[ i ]->mode( Mode::FILE | Mode::RUSER );
-
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
         instance().initializeFromSnapshot( s.env );
+
+        for ( int i = 0; i < 2; ++i )
+            sio[ i ]->mode( Mode::FILE | Mode::RUSER );
 
         s.proc1->_openFD = __dios::Vector< std::shared_ptr< FileDescriptor > > ( {
         std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 0 ], flags::Open::Read ),
