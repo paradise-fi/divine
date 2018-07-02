@@ -220,8 +220,10 @@ int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl
     return _getFileDescriptor( file, fl | flags::Open::FifoWait );
 }
 
-void Manager::closeFile( int fd ) {
-    getFile( fd ).reset();
+void Manager::closeFile( int fd )
+{
+    __dios_assert( fd >= 0 && fd < int( _proc->_openFD.size() ) );
+    _proc->_openFD[ fd ].reset();
 }
 
 int Manager::duplicate( int oldfd, int lowEdge ) {
