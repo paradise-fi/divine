@@ -15,7 +15,7 @@
 #include <sys/un.h>
 #include <dios.h>
 #include <sys/vmutil.h>
-
+#include <string_view>
 
 #include "utils.h"
 #include "inode.h"
@@ -111,8 +111,6 @@ struct Manager {
         _error = code;
     }
 
-private:
-
     template< typename U > friend struct VFS;
     Node _root;
     int _error;
@@ -202,6 +200,7 @@ struct VFS: public Next {
         } );
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
+        _root = instance()._root;
         Next::setup( s );
     }
 
@@ -283,6 +282,8 @@ struct VFS: public Next {
 
 private: /* helper methods */
 
+    Node _root;
+
     FileDescriptor *check_fd( int fd_, int acc )
     {
         auto fd = instance().getFile( fd_ );
@@ -303,6 +304,58 @@ private: /* helper methods */
                 return error( EISDIR ), nullptr;
 
         return fd.get();
+    }
+
+    std::pair< std::string_view, std::string_view > split( std::string_view p, char d )
+    {
+        auto npos = std::string::npos;
+        auto s = p.find( d );
+        return std::make_pair( p.substr( 0, s ),
+                               s == npos ? std::string_view() : p.substr( s + 1, npos ) );
+    }
+
+    Node search( Node dir, std::string_view path, bool follow )
+    {
+        if ( path.empty() )
+            return dir;
+
+        if ( !dir->mode().is_dir() )
+            return error( ENOTDIR ), nullptr;
+
+        auto [name, tail] = split( path, '/' );
+        if ( name.size() > FILE_NAME_LIMIT )
+            return error( ENAMETOOLONG ), nullptr;
+
+        if ( auto next = dir->template as< Directory >()->find( name ) )
+        {
+            if ( auto link = next->template as< SymLink >(); link && follow )
+                return search( lookup( dir, link->target(), follow ), tail, follow );
+
+            return search( next, tail, follow );
+        }
+        else
+            return error( ENOENT ), nullptr;
+    }
+
+    Node lookup( Node dir, std::string_view path, bool follow )
+    {
+        auto npos = std::string::npos;
+
+        if ( path.size() > PATH_LIMIT )
+            return error( ENAMETOOLONG ), nullptr;
+
+        if ( path[0] == '/' )
+            return lookup( _root, path.substr( 1, npos ), follow );
+        else
+            return search( dir, path, follow );
+    }
+
+    Node getcwd( int fd = AT_FDCWD )
+    {
+        if ( fd == AT_FDCWD )
+            return instance().currentDirectory();
+        else
+            return instance().getFile( fd )->inode();
     }
 
 public: /* system call implementation */
