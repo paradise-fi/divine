@@ -34,7 +34,7 @@ namespace fs {
 
 struct VFSProc
 {
-    unsigned short _umask;
+    Mode _umask;
     __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
 };
 
@@ -51,12 +51,12 @@ struct Manager {
     void createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, bool follow );
     void createSymLinkAt( int dirfd, __dios::String name, __dios::String target );
     template< typename... Args >
-    Node createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&... args );
+    Node createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&... args );
 
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
     void accessAt( int dirfd, __dios::String name, int mode, bool follow );
-    int openFileAt( int dirfd, __dios::String name, OFlags fl, mode_t mode );
+    int openFileAt( int dirfd, __dios::String name, OFlags fl, Mode mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -83,14 +83,14 @@ struct Manager {
     void changeDirectory( __dios::String pathname );
     void changeDirectory( int dirfd );
 
-    void chmodAt( int dirfd, __dios::String name, mode_t mode, bool follow );
-    void chmod( int fd, mode_t mode );
+    void chmodAt( int dirfd, __dios::String name, Mode mode, bool follow );
+    void chmod( int fd, Mode mode );
 
-    mode_t umask() const {
+    Mode umask() const {
         return _proc->_umask;
     }
-    void umask( mode_t mask ) {
-        _proc->_umask = Mode::GRANTS & mask;
+    void umask( Mode mask ) {
+        _proc->_umask = ACCESSPERMS & mask;
     }
 
     int socket( SocketType type, OFlags fl );
@@ -132,9 +132,9 @@ private:
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
     void _insertSnapshotItem( const SnapshotFS &item );
 
-    void _checkGrants( Node inode, unsigned grant ) const;
+    void _checkGrants( Node inode, Mode grant ) const;
 
-    void _chmod( Node inode, mode_t mode );
+    void _chmod( Node inode, Mode mode );
 
 };
 
@@ -193,14 +193,14 @@ struct VFS: public Next {
         instance().initializeFromSnapshot( s.env );
 
         for ( int i = 0; i < 2; ++i )
-            sio[ i ]->mode( Mode::FILE | Mode::RUSER );
+            sio[ i ]->mode( S_IFREG | S_IRUSR );
 
         s.proc1->_openFD = __dios::Vector< std::shared_ptr< FileDescriptor > > ( {
         std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 0 ], O_RDONLY ),
         std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 1 ], O_WRONLY ),
         std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 2 ], O_WRONLY )
         } );
-        s.proc1->_umask = Mode::WGROUP | Mode::WOTHER;
+        s.proc1->_umask = S_IWGRP | S_IWOTH;
 
         Next::setup( s );
     }
@@ -271,7 +271,7 @@ struct VFS: public Next {
             return -1;
         _initStat( buf );
         buf->st_ino = item->ino( );
-        buf->st_mode = item->mode( );
+        buf->st_mode = item->mode().to_i();
         buf->st_nlink = item.use_count( );
         buf->st_size = item->size( );
         buf->st_uid = item->uid( );
@@ -298,7 +298,7 @@ private: /* helper methods */
         if ( ( acc & R_OK ) && !fd->flags().read() )
             return error( EBADF ), nullptr;
 
-        if ( fd->inode()->mode().isDirectory() )
+        if ( fd->inode()->mode().is_dir() )
             if ( ( acc & R_OK ) && !fd->flags().has( O_DIRECTORY ) )
                 return error( EISDIR ), nullptr;
 
@@ -307,17 +307,17 @@ private: /* helper methods */
 
 public: /* system call implementation */
 
-    int creat( const char *path, mode_t mode  )
+    int creat( const char *path, Mode mode )
     {
         return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
     }
 
-    int open( const char *path, int flags, mode_t mode )
+    int open( const char *path, int flags, Mode mode )
     {
         return openat( AT_FDCWD, path, flags, mode );
     }
 
-    int openat( int dirfd, const char *path, OFlags flags, mode_t mode )
+    int openat( int dirfd, const char *path, OFlags flags, Mode mode )
     {
         try {
             return instance().openFileAt( dirfd, path, flags, mode );
@@ -676,7 +676,7 @@ public: /* system call implementation */
         return -1;
     }
 
-    int fchmodat( int dirfd, const char *path, mode_t mode, int flags )
+    int fchmodat( int dirfd, const char *path, Mode mode, int flags )
     {
         if ( ( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
             return error_negative( EINVAL );
@@ -690,12 +690,12 @@ public: /* system call implementation */
         }
     }
 
-    int chmod( const char *path, mode_t mode )
+    int chmod( const char *path, Mode mode )
     {
         return fchmodat( AT_FDCWD, path, mode, 0 );
     }
 
-    int fchmod( int fd, mode_t mode )
+    int fchmod( int fd, Mode mode )
     {
         try {
             instance( ).chmod( fd, mode );
@@ -706,7 +706,7 @@ public: /* system call implementation */
         }
     }
 
-    int mkdirat( int dirfd, const char *path, mode_t mode )
+    int mkdirat( int dirfd, const char *path, Mode mode )
     {
         try {
             instance( ).createNodeAt( dirfd, path, ( ACCESSPERMS & mode ) | S_IFDIR );
@@ -717,17 +717,17 @@ public: /* system call implementation */
         }
     }
 
-    int mkdir( const char *path, mode_t mode )
+    int mkdir( const char *path, Mode mode )
     {
         return mkdirat( AT_FDCWD, path, mode );
     }
 
-    int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev )
+    int mknodat( int dirfd, const char *path, Mode mode, dev_t dev )
     {
         if ( dev != 0 )
             return error( EINVAL ), -1;
-        if ( !S_ISCHR( mode ) && !S_ISBLK( mode ) && !S_ISREG( mode ) && !S_ISFIFO( mode ) &&
-             !S_ISSOCK( mode ) )
+        if ( !mode.is_char() && !mode.is_block() && !mode.is_file() && !mode.is_fifo() &&
+             !mode.is_socket() )
             return error( EINVAL ), -1;
 
         try {
@@ -739,16 +739,16 @@ public: /* system call implementation */
         }
     }
 
-    int mknod( const char *path, mode_t mode, dev_t dev )
+    int mknod( const char *path, Mode mode, dev_t dev )
     {
         return mknodat( AT_FDCWD, path, mode, dev );
     }
 
-    mode_t umask( mode_t mask )
+    int umask( Mode mask )
     {
-        mode_t result = instance( ).umask( );
-        instance( ).umask( mask & 0777 );
-        return result;
+        Mode result = instance().umask();
+        instance( ).umask( mask & ACCESSPERMS );
+        return result.to_i();
     }
 
     int socket( int domain, int t, int protocol )

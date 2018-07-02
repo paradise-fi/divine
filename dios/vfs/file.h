@@ -518,7 +518,7 @@ struct SocketStream : Socket {
                 throw Error( ECONNREFUSED );
 
             _peer.reset( new( __dios::nofail ) SocketStream( self ) );
-            _peer->mode( Mode::GRANTS );
+            _peer->mode( ACCESSPERMS );
             m->addBacklog( _peer );
         }
         else
@@ -556,7 +556,7 @@ struct SocketStream : Socket {
         if ( !peer() )
             return error( ENOTCONN ), false;
 
-        if ( !peer()->mode().userWrite() )
+        if ( !peer()->mode().user_write() )
             return error( EACCES ), false;
 
         if ( fls.has( flags::Message::DontWait ) && !peer()->canReceive( length ) )
@@ -677,7 +677,7 @@ struct SocketDatagram : Socket {
         if ( !target )
             return error( EDESTADDRREQ ), false;
 
-        if ( !target->mode().userWrite() )
+        if ( !target->mode().user_write() )
             return error( EACCES ), false;
 
         Socket *socket = target->as< Socket >();

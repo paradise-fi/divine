@@ -16,7 +16,6 @@
 #include <dios.h>
 
 #include <dios/sys/memory.hpp>
-#include <dios/vfs/inode.h>
 
 struct DirWrapper
 {
@@ -38,15 +37,16 @@ extern "C" {
 
     DIR *fdopendir( int fd )
     {
-        using __dios::fs::Mode;
         struct stat fdStat;
 
         int result = fstat( fd, &fdStat );
         if ( result == -1 )
             return nullptr;
 
-        Mode fdMode( fdStat.st_mode );
-        if( !fdMode.isDirectory( ) ) {
+        mode_t fdMode( fdStat.st_mode );
+
+        if( ( fdMode & S_IFMT ) != S_IFDIR )
+        {
             errno = ENOTDIR;
             return nullptr;
         }
@@ -237,7 +237,6 @@ extern "C" {
 
     char *ttyname(int fd)
     {
-        using __dios::fs::Mode;
         struct stat fdStat;
 
         //just to set errno if fd is not valid file descriptor
@@ -247,7 +246,6 @@ extern "C" {
 
     int ttyname_r(int fd, char *, size_t )
     {
-        using __dios::fs::Mode;
         struct stat fdStat;
 
         //just to set errno if fd is not valid file descriptor
@@ -257,7 +255,6 @@ extern "C" {
 
     int isatty(int fd)
     {
-        using __dios::fs::Mode;
         struct stat fdStat;
 
         //just to set errno if fd is not valid file descriptor

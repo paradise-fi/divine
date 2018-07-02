@@ -107,7 +107,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             throw Error( ENOENT );
-        if ( position->inode()->mode().isDirectory() )
+        if ( position->inode()->mode().is_dir() )
             throw Error( EISDIR );
         _items.erase( position );
     }
@@ -116,7 +116,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             throw Error( ENOENT );
-        if ( !position->inode()->mode().isDirectory() )
+        if ( !position->inode()->mode().is_dir() )
             throw Error( ENOTDIR );
 
         if ( position->inode()->size() != 2 )

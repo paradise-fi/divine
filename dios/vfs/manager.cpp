@@ -20,7 +20,7 @@ Manager::Manager( bool ) :
     _currentDirectory( _root ),
     _standardIO{ { make_shared< StandardInput >(), nullptr, nullptr } }
 {
-    _root->mode( Mode::DIR | Mode::GRANTS );
+    _root->mode( S_IFDIR | ACCESSPERMS );
 }
 
 void Manager::setOutputFile( FileTrace trace )
@@ -52,7 +52,7 @@ void Manager::setErrFile(FileTrace trace) {
 
 
 template< typename... Args >
-Node Manager::createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&... args ) {
+Node Manager::createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&... args ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -61,38 +61,32 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
 
-    _checkGrants( current, Mode::WUSER );
+    _checkGrants( current, S_IWUSR );
     Directory *dir = current->as< Directory >();
 
-    mode &= ~umask() & ( Mode::TMASK | Mode::GRANTS );
-    if ( Mode( mode ).isDirectory() )
-        mode |= Mode::GUID;
+    mode &= ~umask() & ( S_IFMT | ACCESSPERMS );
+    if ( Mode( mode ).is_dir() )
+        mode |= S_ISGID;
 
     Node node;
 
-    switch( mode & Mode::TMASK )
-    {
-        case Mode::SOCKET:
-            node.reset( utils::constructIfPossible< SocketDatagram >( std::forward< Args >( args )... ) );
-            break;
-        case Mode::LINK:
-            node.reset( utils::constructIfPossible< SymLink >( std::forward< Args >( args )... ) );
-            break;
-        case Mode::FILE:
-            node.reset( utils::constructIfPossible< RegularFile >( std::forward< Args >( args )... ) );
-            break;
-        case Mode::DIR:
-            node.reset( utils::constructIfPossible< Directory >( name, current ) );
-            break;
-        case Mode::FIFO:
-            node.reset( utils::constructIfPossible< Pipe >( std::forward< Args >( args )... ) );
-            break;
-        case Mode::BLOCKD:
-        case Mode::CHARD:
-            throw Error( EPERM );
-        default:
-            throw Error( EINVAL );
-    }
+    if ( mode.is_socket() )
+        node.reset( utils::constructIfPossible< SocketDatagram >( std::forward< Args >( args )... ) );
+
+    if ( mode.is_link() )
+        node.reset( utils::constructIfPossible< SymLink >( std::forward< Args >( args )... ) );
+
+    if ( mode.is_file() )
+        node.reset( utils::constructIfPossible< RegularFile >( std::forward< Args >( args )... ) );
+
+    if ( mode.is_dir() )
+        node.reset( utils::constructIfPossible< Directory >( name, current ) );
+
+    if ( mode.is_fifo() )
+        node.reset( utils::constructIfPossible< Pipe >( std::forward< Args >( args )... ) );
+
+    if ( mode.is_block() || mode.is_char() )
+        throw Error( EPERM );
 
     if ( !node )
         throw Error( EINVAL );
@@ -114,7 +108,7 @@ void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd,
         std::tie( current, name )= _findDirectoryOfFile( name );
     }
 
-    _checkGrants( current, Mode::WUSER );
+    _checkGrants( current, S_IWUSR );
     Directory *dir = current->as< Directory >();
 
     Node targetNode;
@@ -126,7 +120,7 @@ void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd,
     if ( !targetNode )
         throw Error( ENOENT );
 
-    if ( targetNode->mode().isDirectory() )
+    if ( targetNode->mode().is_dir() )
         throw Error( EPERM );
 
     dir->create( std::move( name ), targetNode );
@@ -138,11 +132,7 @@ void Manager::createSymLinkAt( int dirfd, __dios::String name, __dios::String ta
     if ( target.size() > PATH_LIMIT )
         throw Error( ENAMETOOLONG );
 
-    mode_t mode = 0;
-    mode |= Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER;
-    mode |= Mode::LINK;
-
-    createNodeAt( dirfd, std::move( name ), mode, std::move( target ) );
+    createNodeAt( dirfd, std::move( name ), ACCESSPERMS | S_IFLNK, std::move( target ) );
 }
 
 ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t count ) {
@@ -151,7 +141,7 @@ ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t c
     Node inode = findDirectoryItem( std::move( name ), false );
     if ( !inode )
         throw Error( ENOENT );
-    if ( !inode->mode().isLink() )
+    if ( !inode->mode().is_link() )
         throw Error( EINVAL );
 
     SymLink *sl = inode->as< SymLink >();
@@ -172,13 +162,13 @@ void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
     if ( !item )
         throw Error( ENOENT );
 
-    if ( ( ( mode & R_OK ) && !item->mode().userRead() ) ||
-         ( ( mode & W_OK ) && !item->mode().userWrite() ) ||
-         ( ( mode & X_OK ) && !item->mode().userExecute() ) )
+    if ( ( ( mode & R_OK ) && !item->mode().user_read() ) ||
+         ( ( mode & W_OK ) && !item->mode().user_write() ) ||
+         ( ( mode & X_OK ) && !item->mode().user_exec() ) )
         throw Error( EACCES );
 }
 
-int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, mode_t mode )
+int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, Mode mode )
 {
     REMEMBER_DIRECTORY( dirfd, name );
 
@@ -192,19 +182,19 @@ int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, mode_t mode 
                 throw Error( EEXIST );
         }
         else {
-            file = createNodeAt( CURRENT_DIRECTORY, std::move( name ), mode | Mode::FILE );
+            file = createNodeAt( CURRENT_DIRECTORY, std::move( name ), mode | S_IFREG );
         }
     } else if ( !file ) {
         throw Error( ENOENT );
     }
 
     if ( fl.read() || fl.noaccess() )
-        _checkGrants( file, Mode::RUSER );
+        _checkGrants( file, S_IRUSR );
 
     if ( fl.write() || fl.noaccess() )
     {
-        _checkGrants( file, Mode::WUSER );
-        if ( file->mode().isDirectory() )
+        _checkGrants( file, S_IWUSR );
+        if ( file->mode().is_dir() )
             throw Error( EISDIR );
         if ( fl.has( O_TRUNC ) )
             file->clear();
@@ -212,9 +202,9 @@ int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, mode_t mode 
 
     if ( fl.has( O_DIRECTORY ) )
     {
-        if ( !file->mode().isDirectory() )
+        if ( !file->mode().is_dir() )
             throw Error( ENOTDIR );
-        _checkGrants( file, Mode::RUSER | Mode::XUSER );
+        _checkGrants( file, S_IRUSR | S_IXUSR );
     }
 
     return _getFileDescriptor( file, fl | O_FIFO_WAIT );
@@ -258,10 +248,8 @@ std::shared_ptr< Socket > Manager::getSocket( int sockfd ) {
 
 std::pair< int, int > Manager::pipe()
 {
-    mode_t mode = Mode::RWXUSER | Mode::FIFO;
-
     Node node( new ( nofail ) Pipe() );
-    node->mode( mode );
+    node->mode( S_IRWXU | S_IFIFO );
     auto fd1 = _getFileDescriptor( node, O_RDONLY );
     auto fd2 =  _getFileDescriptor( node, O_WRONLY );
     return { fd1, fd2 };
@@ -276,7 +264,7 @@ void Manager::removeFile( int dirfd, __dios::String name ) {
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
 
-    _checkGrants( current, Mode::WUSER );
+    _checkGrants( current, S_IWUSR );
     Directory *dir = current->as< Directory >();
 
     dir->remove( name );
@@ -292,7 +280,7 @@ void Manager::removeDirectory( int dirfd, __dios::String name ) {
     std::tie( current, name ) = _findDirectoryOfFile( name );
 
 
-    _checkGrants( current, Mode::WUSER );
+    _checkGrants( current, S_IWUSR );
     Directory *dir = current->as< Directory >();
 
     dir->removeDirectory( name );
@@ -311,7 +299,7 @@ void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __di
         REMEMBER_DIRECTORY( olddirfd, oldpath );
 
         std::tie( oldNode, oldName ) = _findDirectoryOfFile( oldpath );
-        _checkGrants( oldNode, Mode::WUSER );
+        _checkGrants( oldNode, S_IWUSR );
         oldNodeDirectory = oldNode->as< Directory >();
     }
     oldNode = oldNodeDirectory->find( oldName );
@@ -329,19 +317,19 @@ void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __di
 
     if ( !newNode ) {
         std::tie( newNode, newName ) = _findDirectoryOfFile( newpath );
-        _checkGrants( newNode, Mode::WUSER );
+        _checkGrants( newNode, S_IWUSR );
 
         newNodeDirectory = newNode->as< Directory >();
         newNodeDirectory->create( std::move( newName ), oldNode );
     }
     else {
-        if ( oldNode->mode().isDirectory() ) {
-            if ( !newNode->mode().isDirectory() )
+        if ( oldNode->mode().is_dir() ) {
+            if ( !newNode->mode().is_dir() )
                 throw Error( ENOTDIR );
             if ( newNode->size() > 2 )
                 throw Error( ENOTEMPTY );
         }
-        else if ( newNode->mode().isDirectory() )
+        else if ( newNode->mode().is_dir() )
             throw Error( EISDIR );
 
         newNodeDirectory = newNode->as< Directory >();
@@ -352,7 +340,7 @@ void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __di
 
 off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
     auto f = getFile( fd );
-    if ( f->inode()->mode().isFifo() )
+    if ( f->inode()->mode().is_fifo() )
         throw Error( ESPIPE );
 
     switch( whence ) {
@@ -386,12 +374,12 @@ void Manager::truncate( Node inode, off_t length ) {
         throw Error( ENOENT );
     if ( length < 0 )
         throw Error( EINVAL );
-    if ( inode->mode().isDirectory() )
+    if ( inode->mode().is_dir() )
         throw Error( EISDIR );
-    if ( !inode->mode().isFile() )
+    if ( !inode->mode().is_file() )
         throw Error( EINVAL );
 
-    _checkGrants( inode, Mode::WUSER );
+    _checkGrants( inode, S_IWUSR );
 
     RegularFile *f = inode->as< RegularFile >();
     f->resize( length );
@@ -428,9 +416,9 @@ void Manager::changeDirectory( __dios::String pathname ) {
     Node item = findDirectoryItem( pathname );
     if ( !item )
         throw Error( ENOENT );
-    if ( !item->mode().isDirectory() )
+    if ( !item->mode().is_dir() )
         throw Error( ENOTDIR );
-    _checkGrants( item, Mode::XUSER );
+    _checkGrants( item, S_IXUSR );
 
     _currentDirectory = item;
 }
@@ -442,14 +430,14 @@ void Manager::changeDirectory( int dirfd ) {
     Node item = fd->inode();
     if ( !item )
         throw Error( ENOENT );
-    if ( !item->mode().isDirectory() )
+    if ( !item->mode().is_dir() )
         throw Error( ENOTDIR );
-    _checkGrants( item, Mode::XUSER );
+    _checkGrants( item, S_IXUSR );
 
     _currentDirectory = item;
 }
 
-void Manager::chmodAt( int dirfd, __dios::String name, mode_t mode, bool follow )
+void Manager::chmodAt( int dirfd, __dios::String name, Mode mode, bool follow )
 {
     REMEMBER_DIRECTORY( dirfd, name );
 
@@ -457,7 +445,8 @@ void Manager::chmodAt( int dirfd, __dios::String name, mode_t mode, bool follow 
     _chmod( inode, mode );
 }
 
-void Manager::chmod( int fd, mode_t mode ) {
+void Manager::chmod( int fd, Mode mode )
+{
     _chmod( getFile( fd )->inode(), mode );
 }
 
@@ -476,7 +465,7 @@ int Manager::socket( SocketType type, OFlags fl )
     }
 
     Node socket( s );
-    socket->mode( Mode::GRANTS | Mode::SOCKET );
+    socket->mode( ACCESSPERMS | S_IFSOCK );
 
     return _getFileDescriptor( socket, fl );
 }
@@ -488,10 +477,10 @@ std::pair< int, int > Manager::socketpair( SocketType type, OFlags fl )
 
     SocketStream *cl = new( __dios::nofail ) SocketStream;
     Node client( cl );
-    client->mode( Mode::GRANTS | Mode::SOCKET );
+    client->mode( ACCESSPERMS | S_IFSOCK );
 
     Node server( new( __dios::nofail ) SocketStream );
-    server->mode( Mode::GRANTS | Mode::SOCKET );
+    server->mode( ACCESSPERMS | S_IFSOCK );
 
     cl->connected( client, server );
 
@@ -540,9 +529,9 @@ Node Manager::resolveAddress( const Socket::Address &address ) {
 
     if ( !item )
         throw Error( ENOENT );
-    if ( !item->mode().isSocket() )
+    if ( !item->mode().is_socket() )
         throw Error( ECONNREFUSED );
-    _checkGrants( item, Mode::WUSER );
+    _checkGrants( item, S_IWUSR );
     return item;
 }
 
@@ -562,10 +551,10 @@ Node Manager::_findDirectoryItem( __dios::String name, bool followSymLinks, I it
     __dios::Queue< __dios::String > q( path::splitPath< __dios::Deque< __dios::String > >( name ) );
     __dios::Set< SymLink * > loopDetector;
     while ( !q.empty() ) {
-        if ( !current->mode().isDirectory() )
+        if ( !current->mode().is_dir() )
             throw Error( ENOTDIR );
 
-        _checkGrants( current, Mode::XUSER );
+        _checkGrants( current, S_IXUSR );
 
         Directory *dir = current->as< Directory >();
 
@@ -587,9 +576,9 @@ Node Manager::_findDirectoryItem( __dios::String name, bool followSymLinks, I it
 
         itemChecker( item );
 
-        if ( item->mode().isDirectory() )
+        if ( item->mode().is_dir() )
             current = item;
-        else if ( item->mode().isLink() && ( followSymLinks || !q.empty() ) ) {
+        else if ( item->mode().is_link() && ( followSymLinks || !q.empty() ) ) {
             SymLink *sl = item->as< SymLink >();
 
             if ( !loopDetector.insert( sl ).second )
@@ -629,9 +618,9 @@ std::pair< Node, __dios::String > Manager::_findDirectoryOfFile( __dios::String 
     if ( !item )
         throw Error( ENOENT );
 
-    if ( !item->mode().isDirectory() )
+    if ( !item->mode().is_dir() )
         throw Error( ENOTDIR );
-    _checkGrants( item, Mode::XUSER );
+    _checkGrants( item, S_IXUSR );
     return { item, name };
 }
 
@@ -711,11 +700,11 @@ void Manager::initializeFromSnapshot( const _VM_Env *env ) {
 
             ++env; //value
             Mode mode( statInfo->st_mode );
-            if( mode.isFile( ) ) {
+            if( mode.is_file( ) ) {
                 createNodeAt( CURRENT_DIRECTORY, name, statInfo->st_mode, env->value, env->size );
-            } else if( mode.isDirectory( ) ) {
+            } else if( mode.is_dir( ) ) {
                 createNodeAt( CURRENT_DIRECTORY, name, statInfo->st_mode );
-            } else if( mode.isLink( ) ) {
+            } else if( mode.is_link( ) ) {
                 char value[env->size + 1];
                 std::copy( env->value, env->value + env->size, value );
                 value[env->size] = 0;
@@ -725,15 +714,17 @@ void Manager::initializeFromSnapshot( const _VM_Env *env ) {
      }
 }
 
-void Manager::_checkGrants( Node inode, mode_t grant ) const {
+void Manager::_checkGrants( Node inode, Mode grant ) const
+{
     if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );
 }
 
-void Manager::_chmod( Node inode, mode_t mode ) {
+void Manager::_chmod( Node inode, Mode mode )
+{
     inode->mode() =
-        ( inode->mode() & ~Mode::CHMOD ) |
-        ( mode & Mode::CHMOD );
+        ( inode->mode() & ~ALLPERMS ) |
+        ( mode & ALLPERMS );
 }
 
 } // namespace fs
