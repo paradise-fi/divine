@@ -341,6 +341,10 @@ private: /* helper methods */
         if ( ( acc & R_OK ) && !fd->flags().has( flags::Open::Read ) )
             return error( EBADF ), nullptr;
 
+        if ( fd->inode()->mode().isDirectory() )
+            if ( ( acc & R_OK ) && !fd->flags().has( flags::Open::Directory ) )
+                return error( EISDIR ), nullptr;
+
         return fd.get();
     }
 
