@@ -182,6 +182,13 @@ verify() {
             echo "# expected error to be found in divine sim at $location, but it was not"
             exit 1
         fi
+    elif fgrep -q '/* BOOT ERROR */' "$1"; then
+        if test -n "$EXPORT"; then echo "expect --result boot-error"; exit 0; fi
+        if ! grep -q "error found: boot" verify.out; then
+            nl -ba "$1"
+            echo "# boot error was expected but was not found"
+            exit 1
+        fi
     else
         if test -n "$EXPORT"; then echo "expect --result valid"; exit 0; fi
         if ! grep -q "error found: no" verify.out; then
