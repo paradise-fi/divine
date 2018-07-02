@@ -184,8 +184,7 @@ verify() {
         fi
     else
         if test -n "$EXPORT"; then echo "expect --result valid"; exit 0; fi
-        if ! grep -q "error found: no" verify.out &&
-           ! grep -q "error found: boot" verify.out; then
+        if ! grep -q "error found: no" verify.out; then
             nl -ba "$1"
             grep '^    location' verify.out || true
             echo "# no errors were expected but one was found anyway"
