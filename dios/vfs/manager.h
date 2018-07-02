@@ -83,9 +83,6 @@ struct Manager {
     void changeDirectory( __dios::String pathname );
     void changeDirectory( int dirfd );
 
-    void chmodAt( int dirfd, __dios::String name, Mode mode, bool follow );
-    void chmod( int fd, Mode mode );
-
     Mode umask() const {
         return _proc->_umask;
     }
@@ -131,9 +128,6 @@ struct Manager {
     void _insertSnapshotItem( const SnapshotFS &item );
 
     void _checkGrants( Node inode, Mode grant ) const;
-
-    void _chmod( Node inode, Mode mode );
-
 };
 
 namespace conversion {
@@ -729,34 +723,33 @@ public: /* system call implementation */
         return -1;
     }
 
+    void _chmod( Node ino, Mode mode )
+    {
+        ino->mode() = ( ino->mode() & ~ALLPERMS ) | ( mode & ALLPERMS );
+    }
+
     int fchmodat( int dirfd, const char *path, Mode mode, int flags )
     {
         if ( ( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
-            return error_negative( EINVAL );
+            return error( EINVAL ), -1;
 
-        try {
-            instance( ).chmodAt( dirfd, path, mode, !( flags & AT_SYMLINK_NOFOLLOW ) );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( auto ino = lookup( getcwd( dirfd ), path, !( flags & AT_SYMLINK_NOFOLLOW ) ) )
+            return _chmod( ino, mode ), 0;
+        else
             return -1;
-        }
+    }
+
+    int fchmod( int fd_, Mode mode )
+    {
+        if ( auto fd = check_fd( fd_, W_OK ) )
+            return _chmod( fd->inode(), mode ), 0;
+        else
+            return -1;
     }
 
     int chmod( const char *path, Mode mode )
     {
         return fchmodat( AT_FDCWD, path, mode, 0 );
-    }
-
-    int fchmod( int fd, Mode mode )
-    {
-        try {
-            instance( ).chmod( fd, mode );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
     }
 
     int mkdirat( int dirfd, const char *path, Mode mode )

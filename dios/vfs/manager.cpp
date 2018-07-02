@@ -437,19 +437,6 @@ void Manager::changeDirectory( int dirfd ) {
     _currentDirectory = item;
 }
 
-void Manager::chmodAt( int dirfd, __dios::String name, Mode mode, bool follow )
-{
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    Node inode = findDirectoryItem( std::move( name ), follow );
-    _chmod( inode, mode );
-}
-
-void Manager::chmod( int fd, Mode mode )
-{
-    _chmod( getFile( fd )->inode(), mode );
-}
-
 int Manager::socket( SocketType type, OFlags fl )
 {
     Socket *s = nullptr;
@@ -718,13 +705,6 @@ void Manager::_checkGrants( Node inode, Mode grant ) const
 {
     if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );
-}
-
-void Manager::_chmod( Node inode, Mode mode )
-{
-    inode->mode() =
-        ( inode->mode() & ~ALLPERMS ) |
-        ( mode & ALLPERMS );
 }
 
 } // namespace fs
