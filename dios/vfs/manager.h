@@ -323,17 +323,6 @@ struct VFS: public Next {
         return 0;
     }
 
-    int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev )
-    {
-            if ( dev != 0 )
-                throw Error( EINVAL );
-            if ( !S_ISCHR( mode ) && !S_ISBLK( mode ) && !S_ISREG( mode ) && !S_ISFIFO( mode ) && !S_ISSOCK( mode ))
-                throw Error( EINVAL );
-            instance().createNodeAt( dirfd, path, mode );
-            return  0;
-    }
-
-
 private: /* helper methods */
 
     FileDescriptor *check_fd( int fd_, int acc )
@@ -358,12 +347,7 @@ public: /* system call implementation */
 
     int creat( const char *path, mode_t mode  )
     {
-        try {
-            return _mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
-        }catch( Error &e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
     }
 
     int open( const char *path, int flags, mode_t mode )
@@ -808,8 +792,15 @@ public: /* system call implementation */
 
     int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev )
     {
+        if ( dev != 0 )
+            return error( EINVAL ), -1;
+        if ( !S_ISCHR( mode ) && !S_ISBLK( mode ) && !S_ISREG( mode ) && !S_ISFIFO( mode ) &&
+             !S_ISSOCK( mode ) )
+            return error( EINVAL ), -1;
+
         try {
-            return _mknodat( dirfd, path, mode, dev );
+            instance().createNodeAt( dirfd, path, mode );
+            return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return  -1;
