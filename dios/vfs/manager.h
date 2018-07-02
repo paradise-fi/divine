@@ -56,7 +56,7 @@ struct Manager {
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
     void accessAt( int dirfd, __dios::String name, int mode, bool follow );
-    int openFileAt( int dirfd, __dios::String name, LegacyFlags< flags::Open > fl, mode_t mode );
+    int openFileAt( int dirfd, __dios::String name, OFlags fl, mode_t mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -93,8 +93,8 @@ struct Manager {
         _proc->_umask = Mode::GRANTS & mask;
     }
 
-    int socket( SocketType type, LegacyFlags< flags::Open > fl );
-    std::pair< int, int > socketpair( SocketType type, LegacyFlags< flags::Open > fl );
+    int socket( SocketType type, OFlags fl );
+    std::pair< int, int > socketpair( SocketType type, OFlags fl );
     void bind( int sockfd, Socket::Address address );
     void connect( int sockfd, const Socket::Address &address );
     int accept( int sockfd, Socket::Address &address );
@@ -128,7 +128,7 @@ private:
     template< typename I >
     Node _findDirectoryItem( __dios::String name, bool followSymLinks, I itemChecker );
 
-    int _getFileDescriptor( Node node, LegacyFlags< flags::Open > flags, int lowEdge = 0 );
+    int _getFileDescriptor( Node node, OFlags flags, int lowEdge = 0 );
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
     void _insertSnapshotItem( const SnapshotFS &item );
 
@@ -141,52 +141,6 @@ private:
 namespace conversion {
 
     using namespace __dios::fs::flags;
-
-    static inline LegacyFlags< Open > open( OFlags fls )
-    {
-        LegacyFlags< Open > f = Open::NoFlags;
-        // special behaviour - check for access rights but do not grant them
-        if ( ( fls & ( O_RDWR | O_WRONLY ) ) == ( O_RDWR | O_WRONLY )  )
-            f |= Open::NoAccess;
-        if ( fls & O_RDWR ) {
-            f |= Open::Read;
-            f |= Open::Write;
-        }
-        else if ( fls & O_WRONLY )
-            f |= Open::Write;
-        else
-            f |= Open::Read;
-
-        if ( fls & O_CREAT ) f |= Open::Create;
-        if ( fls & O_EXCL ) f |= Open::Excl;
-        if ( fls & O_TRUNC ) f |= Open::Truncate;
-        if ( fls & O_APPEND ) f |= Open::Append;
-        if ( fls & O_NOFOLLOW ) f |= Open::SymNofollow;
-        if ( fls & O_NONBLOCK ) f |= Open::NonBlock;
-        if ( fls & O_DIRECTORY ) f |= Open::Directory;
-        return f;
-    }
-
-    static inline OFlags open( LegacyFlags< Open > fls )
-    {
-        OFlags f;
-        if ( fls.has( Open::NoAccess ))
-            f = ( O_RDWR | O_WRONLY );
-        else if ( fls.has( Open::Read ) && fls.has( Open::Write ))
-            f = O_RDWR;
-        else if ( fls.has( Open::Write ))
-            f = O_WRONLY;
-        else
-            f = O_RDONLY;
-
-        if ( fls.has( Open::Create )) f |= O_CREAT;
-        if ( fls.has( Open::Excl )) f |= O_EXCL;
-        if ( fls.has( Open::Truncate )) f |= O_TRUNC;
-        if ( fls.has( Open::Append )) f |= O_APPEND;
-        if ( fls.has( Open::SymNofollow )) f |= O_NOFOLLOW;
-        if ( fls.has( Open::NonBlock )) f |= O_NONBLOCK;
-        return f;
-    }
 
     static inline LegacyFlags< Message > message( int fls )
     {
@@ -242,9 +196,9 @@ struct VFS: public Next {
             sio[ i ]->mode( Mode::FILE | Mode::RUSER );
 
         s.proc1->_openFD = __dios::Vector< std::shared_ptr< FileDescriptor > > ( {
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 0 ], flags::Open::Read ),
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 1 ], flags::Open::Write ),
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 2 ], flags::Open::Write )
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 0 ], O_RDONLY ),
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 1 ], O_WRONLY ),
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 2 ], O_WRONLY )
         } );
         s.proc1->_umask = Mode::WGROUP | Mode::WOTHER;
 
@@ -339,13 +293,13 @@ private: /* helper methods */
         if ( !ino )
             return error( EBADF ), nullptr;
 
-        if ( ( acc & W_OK ) && !fd->flags().has( flags::Open::Write ) )
+        if ( ( acc & W_OK ) && !fd->flags().write() )
             return error( EBADF ), nullptr;
-        if ( ( acc & R_OK ) && !fd->flags().has( flags::Open::Read ) )
+        if ( ( acc & R_OK ) && !fd->flags().read() )
             return error( EBADF ), nullptr;
 
         if ( fd->inode()->mode().isDirectory() )
-            if ( ( acc & R_OK ) && !fd->flags().has( flags::Open::Directory ) )
+            if ( ( acc & R_OK ) && !fd->flags().has( O_DIRECTORY ) )
                 return error( EISDIR ), nullptr;
 
         return fd.get();
@@ -365,10 +319,8 @@ public: /* system call implementation */
 
     int openat( int dirfd, const char *path, OFlags flags, mode_t mode )
     {
-        LegacyFlags< flags::Open > f = conversion::open( flags );
-
         try {
-            return instance( ).openFileAt( dirfd, path, f, mode );
+            return instance().openFileAt( dirfd, path, flags, mode );
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
@@ -395,20 +347,18 @@ public: /* system call implementation */
                 }
                 case F_GETFL:
                     va_end( *vl );
-                    return conversion::open( f->flags() ).to_i();
+                    return f->flags().to_i();
                 case F_SETFL:
                 {
-                    OFlags mode = va_arg(  *vl, int );
+                    OFlags mode = va_arg( *vl, int );
 
-                    if ( mode & O_APPEND )
-                        f->flags( ) |= __dios::fs::flags::Open::Append;
-                    else if ( f->flags( ).has( __dios::fs::flags::Open::Append ))
-                        throw Error( EPERM );
+                    if ( mode & ~( O_APPEND | O_NONBLOCK ) )
+                        return error( EINVAL ), -1;
+                    if ( !( mode & O_APPEND ) && ( f->flags() & O_APPEND ) )
+                        return error( EPERM ), -1;
 
-                    if ( mode & O_NONBLOCK )
-                        f->flags( ) |= __dios::fs::flags::Open::NonBlock;
-                    else
-                        f->flags( ).clear( __dios::fs::flags::Open::NonBlock );
+                    f->flags() &= ~( O_APPEND | O_NONBLOCK );
+                    f->flags() |= mode;
 
                     va_end( *vl );
                     return 0;
@@ -823,7 +773,7 @@ public: /* system call implementation */
             if ( protocol )
                 throw Error( EPROTONOSUPPORT );
 
-            return instance( ).socket( type, t & SOCK_NONBLOCK ? Open::NonBlock : Open::NoFlags );
+            return instance().socket( type, t & SOCK_NONBLOCK ? O_NONBLOCK : 0 );
 
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
@@ -853,8 +803,8 @@ public: /* system call implementation */
             if ( protocol )
                 throw Error( EPROTONOSUPPORT );
 
-            std::tie( fds[ 0 ], fds[ 1 ] ) = instance( ).socketpair( type, t & SOCK_NONBLOCK ? Open::NonBlock
-                                                                                                 : Open::NoFlags );
+            std::tie( fds[ 0 ], fds[ 1 ] ) =
+                instance().socketpair( type, t & SOCK_NONBLOCK ? O_NONBLOCK : 0 );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
@@ -965,10 +915,10 @@ public: /* system call implementation */
     size_t _send( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
                   LegacyFlags< flags::Message > fls )
     {
-        if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canWrite() )
+        if ( fd.flags().nonblock() && !socket.canWrite() )
             throw Error( EAGAIN );
 
-        if ( fd.flags().has( flags::Open::NonBlock ) )
+        if ( fd.flags().nonblock() )
             fls |= flags::Message::DontWait;
 
         socket.send( buffer, length, fls );
@@ -978,10 +928,10 @@ public: /* system call implementation */
     size_t _sendto( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
                     LegacyFlags< flags::Message > fls, Node node )
     {
-        if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canWrite() )
+        if ( fd.flags().nonblock() && !socket.canWrite() )
             throw Error( EAGAIN );
 
-        if ( fd.flags().has( flags::Open::NonBlock ) )
+        if ( fd.flags().nonblock() )
             fls |= flags::Message::DontWait;
 
         socket.sendTo( buffer, length, fls, node );
@@ -1023,10 +973,10 @@ public: /* system call implementation */
     size_t _receive( FileDescriptor &fd, Socket &socket, char *buffer, size_t length,
                      LegacyFlags< flags::Message > fls, Socket::Address &address )
     {
-        if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canRead() )
+        if ( fd.flags().nonblock() && !socket.canRead() )
             throw Error( EAGAIN );
 
-        if ( fd.flags().has( flags::Open::NonBlock ) )
+        if ( fd.flags().nonblock() )
             fls |= flags::Message::DontWait;
 
         socket.receive( buffer, length, fls, address );
@@ -1107,7 +1057,7 @@ public: /* system call implementation */
             *len = address.size( ) + 1 + sizeof( target->sun_family );
         }
         if ( flags & SOCK_NONBLOCK )
-            instance( ).getFile( newSocket )->flags( ) |= __dios::fs::flags::Open::NonBlock;
+            instance().getFile( newSocket )->flags() |= O_NONBLOCK;
 
         return newSocket;
     }

@@ -243,19 +243,19 @@ struct Pipe : INode
     {
         __dios_assert( fd.inode().get() == this );
 
-        if ( fd.flags().has( flags::Open::Read ) && fd.flags().has( flags::Open::Write ) )
+        if ( fd.flags().read() && fd.flags().write() )
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
 
-        if ( fd.flags().has( flags::Open::Read ) )
+        if ( fd.flags().read() )
         {
-            if ( fd.flags().has( flags::Open::FifoWait ) && !writer() )
+            if ( fd.flags().has( O_FIFO_WAIT ) && !writer() )
                __vm_cancel();
             assignReader();
         }
 
-        if ( fd.flags().has( flags::Open::Write ) )
+        if ( fd.flags().write() )
         {
-            if ( fd.flags().has( flags::Open::FifoWait ) && !reader() )
+            if ( fd.flags().has( O_FIFO_WAIT ) && !reader() )
                __vm_cancel();
             assignWriter();
         }
@@ -264,7 +264,7 @@ struct Pipe : INode
     void close( FileDescriptor &fd ) override
     {
         __dios_assert( fd.inode().get() == this );
-        if ( fd.flags().has( flags::Open::Read ) )
+        if ( fd.flags().read() )
             releaseReader();
     }
 
@@ -388,7 +388,8 @@ struct Socket : INode
 
     void open( FileDescriptor &fd ) override
     {
-        fd.flags() |= flags::Open::Read | flags::Open::Write; // who knows why
+        fd.flags().clear( O_RDONLY | O_WRONLY );
+        fd.flags().set( O_RDWR );
     }
 
     bool read( char *buffer, size_t, size_t &length ) override

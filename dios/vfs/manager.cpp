@@ -178,15 +178,17 @@ void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
         throw Error( EACCES );
 }
 
-int Manager::openFileAt( int dirfd, __dios::String name, LegacyFlags< flags::Open > fl, mode_t mode )
+int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, mode_t mode )
 {
     REMEMBER_DIRECTORY( dirfd, name );
 
-    Node file = findDirectoryItem( name, !fl.has( flags::Open::SymNofollow ) );
+    Node file = findDirectoryItem( name, fl.follow() );
 
-    if ( fl.has( flags::Open::Create ) ) {
-        if ( file ) {
-            if ( fl.has( flags::Open::Excl ) )
+    if ( fl.has( O_CREAT ) )
+    {
+        if ( file )
+        {
+            if ( fl.has( O_EXCL ) )
                 throw Error( EEXIST );
         }
         else {
@@ -196,28 +198,26 @@ int Manager::openFileAt( int dirfd, __dios::String name, LegacyFlags< flags::Ope
         throw Error( ENOENT );
     }
 
-    if ( fl.has( flags::Open::Read ) )
+    if ( fl.read() || fl.noaccess() )
         _checkGrants( file, Mode::RUSER );
-    if ( fl.has( flags::Open::Write ) ) {
+
+    if ( fl.write() || fl.noaccess() )
+    {
         _checkGrants( file, Mode::WUSER );
         if ( file->mode().isDirectory() )
             throw Error( EISDIR );
-        if ( fl.has( flags::Open::Truncate ) )
+        if ( fl.has( O_TRUNC ) )
             file->clear();
     }
 
-    if ( fl.has( flags::Open::NoAccess ) ) {
-        fl.clear( flags::Open::Read );
-        fl.clear( flags::Open::Write );
-    }
-
-    if ( fl.has( flags::Open::Directory ) ) {
-        if (!file->mode().isDirectory())
+    if ( fl.has( O_DIRECTORY ) )
+    {
+        if ( !file->mode().isDirectory() )
             throw Error( ENOTDIR );
         _checkGrants( file, Mode::RUSER | Mode::XUSER );
     }
 
-    return _getFileDescriptor( file, fl | flags::Open::FifoWait );
+    return _getFileDescriptor( file, fl | O_FIFO_WAIT );
 }
 
 void Manager::closeFile( int fd )
@@ -262,8 +262,8 @@ std::pair< int, int > Manager::pipe()
 
     Node node( new ( nofail ) Pipe() );
     node->mode( mode );
-    auto fd1 = _getFileDescriptor( node, flags::Open::Read );
-    auto fd2 =  _getFileDescriptor( node, flags::Open::Write );
+    auto fd1 = _getFileDescriptor( node, O_RDONLY );
+    auto fd2 =  _getFileDescriptor( node, O_WRONLY );
     return { fd1, fd2 };
 }
 
@@ -461,7 +461,7 @@ void Manager::chmod( int fd, mode_t mode ) {
     _chmod( getFile( fd )->inode(), mode );
 }
 
-int Manager::socket( SocketType type, LegacyFlags< flags::Open > fl )
+int Manager::socket( SocketType type, OFlags fl )
 {
     Socket *s = nullptr;
     switch ( type ) {
@@ -481,7 +481,8 @@ int Manager::socket( SocketType type, LegacyFlags< flags::Open > fl )
     return _getFileDescriptor( socket, fl );
 }
 
-std::pair< int, int > Manager::socketpair( SocketType type, LegacyFlags< flags::Open > fl ) {
+std::pair< int, int > Manager::socketpair( SocketType type, OFlags fl )
+{
     if ( type != SocketType::Stream )
         throw Error( EOPNOTSUPP );
 
@@ -531,7 +532,7 @@ int Manager::accept( int sockfd, Socket::Address &address )
     Node partner = getSocket( sockfd )->accept();
     address = partner->as< Socket >()->address();
 
-    return _getFileDescriptor( partner, flags::Open::NoFlags );
+    return _getFileDescriptor( partner, 0 );
 }
 
 Node Manager::resolveAddress( const Socket::Address &address ) {
@@ -634,7 +635,7 @@ std::pair< Node, __dios::String > Manager::_findDirectoryOfFile( __dios::String 
     return { item, name };
 }
 
-int Manager::_getFileDescriptor( Node node, LegacyFlags< flags::Open > flags, int lowEdge )
+int Manager::_getFileDescriptor( Node node, OFlags flags, int lowEdge )
 {
     return _getFileDescriptor( fs::make_shared< FileDescriptor >( node, flags ), lowEdge );
 }

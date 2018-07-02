@@ -64,6 +64,7 @@ constexpr OFlags O_NONBLOCK  = _HOST_O_NONBLOCK;
 constexpr OFlags O_DIRECTORY = _HOST_O_DIRECTORY;
 constexpr OFlags O_NOFOLLOW  = _HOST_O_NOFOLLOW;
 constexpr OFlags O_NDELAY    = O_NONBLOCK;
+constexpr OFlags O_FIFO_WAIT = 0x10000000; /* FIXME *could* conflict with _HOST_* */
 
 template< typename F >
 std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator &( F a, F b )
@@ -128,23 +129,6 @@ const int FILE_DESCRIPTOR_LIMIT = 1024;
 const int PIPE_SIZE_LIMIT = 1024;
 
 namespace flags {
-
-enum class Open {
-    NoFlags     =    0,
-    Read        =    1,
-    Write       =    2,
-    Create      =    4,
-    Excl        =    8,
-//    TmpFile     =   16,
-    Truncate    =   32,
-    NoAccess    =   64,
-    Append      =  128,
-    SymNofollow =  256,
-    NonBlock    =  512,
-    Directory   = 1024,
-    FifoWait    = 2048,
-    Invalid     = 4096,
-};
 
 enum class Message {
     NoFlags = 0,
