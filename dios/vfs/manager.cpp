@@ -250,8 +250,8 @@ std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
     throw Error( EBADF );
 }
 
-std::shared_ptr< SocketDescriptor > Manager::getSocket( int sockfd ) {
-    auto f = std::dynamic_pointer_cast< SocketDescriptor >( getFile( sockfd ) );
+std::shared_ptr< Socket > Manager::getSocket( int sockfd ) {
+    auto f = std::dynamic_pointer_cast< Socket >( getFile( sockfd )->inode() );
     if ( !f )
         throw Error( ENOTSOCK );
     return f;
@@ -525,7 +525,7 @@ void Manager::bind( int sockfd, Socket::Address address ) {
     if ( sd->address() )
         throw Error( EINVAL );
 
-    dir->create( std::move( name ), sd->inode() );
+    dir->create( std::move( name ), sd );
     sd->address( std::move( address ) );
 }
 
@@ -534,7 +534,7 @@ void Manager::connect( int sockfd, const Socket::Address &address ) {
 
     Node model = resolveAddress( address );
 
-    sd->connected( model );
+    sd->connected( sd, model );
 }
 
 int Manager::accept( int sockfd, Socket::Address &address ) {

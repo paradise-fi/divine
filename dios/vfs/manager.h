@@ -61,7 +61,7 @@ struct Manager {
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
     std::shared_ptr< FileDescriptor > &getFile( int fd );
-    std::shared_ptr< SocketDescriptor > getSocket( int sockfd );
+    std::shared_ptr< Socket > getSocket( int sockfd );
 
     std::pair< int, int > pipe();
 
@@ -1041,14 +1041,42 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t sendto( int sockfd, const void *buf, size_t n, int flags, const struct sockaddr * addr, socklen_t )
+    size_t _send( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
+                  Flags< flags::Message > fls )
+    {
+        if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canWrite() )
+            throw Error( EAGAIN );
+
+        if ( fd.flags().has( flags::Open::NonBlock ) )
+            fls |= flags::Message::DontWait;
+
+        socket.send( buffer, length, fls );
+        return length;
+    }
+
+    size_t _sendto( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
+                    Flags< flags::Message > fls, Node node )
+    {
+        if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canWrite() )
+            throw Error( EAGAIN );
+
+        if ( fd.flags().has( flags::Open::NonBlock ) )
+            fls |= flags::Message::DontWait;
+
+        socket.sendTo( buffer, length, fls, node );
+        return length;
+    }
+
+    ssize_t sendto( int sockfd, const void *buf, size_t n, int flags, const struct sockaddr * addr,
+                    socklen_t )
     {
         using Address = __dios::fs::Socket::Address;
 
         if ( !addr ) {
             try {
                 auto s = instance( ).getSocket( sockfd );
-                return s->send( static_cast< const char * >( buf ), n, conversion::message( flags ));
+                return _send( *instance().getFile( sockfd ), *s, static_cast< const char * >( buf ),
+                              n, conversion::message( flags ));
             } catch ( Error & e ) {
                 *__dios_errno() = e.code();
                 return -1;
@@ -1063,12 +1091,25 @@ struct VFS: public Next {
             const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
             Address address( target ? target->sun_path : __dios::String( ));
 
-            return s->sendTo( static_cast< const char * >( buf ), n, conversion::message( flags ),
-                              instance( ).resolveAddress( address ));
+            return _sendto( *instance().getFile( sockfd ), *s, static_cast< const char * >( buf ), n,
+                            conversion::message( flags ), instance( ).resolveAddress( address ) );
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
         }
+    }
+
+    size_t _receive( FileDescriptor &fd, Socket &socket, char *buffer, size_t length,
+                     Flags< flags::Message > fls, Socket::Address &address )
+    {
+        if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canRead() )
+            throw Error( EAGAIN );
+
+        if ( fd.flags().has( flags::Open::NonBlock ) )
+            fls |= flags::Message::DontWait;
+
+        socket.receive( buffer, length, fls, address );
+        return length;
     }
 
     ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len )
@@ -1080,7 +1121,8 @@ struct VFS: public Next {
             throw Error( EFAULT );
 
         auto s = instance( ).getSocket( sockfd );
-        n = s->receive( static_cast< char * >( buf ), n, conversion::message( flags ), address );
+        n = _receive( *instance().getFile( sockfd ), *s, static_cast< char * >( buf ), n,
+                      conversion::message( flags ), address );
 
         if ( target ) {
             target->sun_family = AF_UNIX;
@@ -1144,7 +1186,7 @@ struct VFS: public Next {
             *len = address.size( ) + 1 + sizeof( target->sun_family );
         }
         if ( flags & SOCK_NONBLOCK )
-            instance( ).getSocket( newSocket )->flags( ) |= __dios::fs::flags::Open::NonBlock;
+            instance( ).getFile( newSocket )->flags( ) |= __dios::fs::flags::Open::NonBlock;
 
         return newSocket;
     }

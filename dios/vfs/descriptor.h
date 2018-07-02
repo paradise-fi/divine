@@ -199,62 +199,6 @@ struct SocketDescriptor : FileDescriptor {
         _socket->close();
     }
 
-    void listen( int backlog ) {
-        _socket->listen( backlog );
-    }
-
-    void connected( Node partner ) {
-        _socket->connected( _inode, std::move( partner ) );
-    }
-
-    Node accept() {
-        return _socket->accept();
-    }
-
-    void address( const Socket::Address &addr ) {
-        _socket->address( addr );
-    }
-
-    Socket &peer() {
-        return _socket->peer();
-    }
-
-    const Socket::Address &address() const {
-        return _socket->address();
-    }
-
-    size_t send( const char *buffer, size_t length, Flags< flags::Message > fls ) {
-        if ( _flags.has( flags::Open::NonBlock ) && !_socket->canWrite() )
-            throw Error( EAGAIN );
-
-        if ( this->flags().has( flags::Open::NonBlock ) )
-            fls |= flags::Message::DontWait;
-
-        _socket->send( buffer, length, fls );
-        return length;
-    }
-
-    size_t sendTo( const char *buffer, size_t length, Flags< flags::Message > fls, Node node ) {
-        if ( _flags.has( flags::Open::NonBlock ) && !_socket->canWrite() )
-            throw Error( EAGAIN );
-
-        if ( this->flags().has( flags::Open::NonBlock ) )
-            fls |= flags::Message::DontWait;
-
-        _socket->sendTo( buffer, length, fls, node );
-        return length;
-    }
-
-    size_t receive( char *buffer, size_t length, Flags< flags::Message > fls, Socket::Address &address ) {
-        if ( _flags.has( flags::Open::NonBlock ) && !_socket->canRead() )
-            throw Error( EAGAIN );
-
-        if ( this->flags().has( flags::Open::NonBlock ) )
-            fls |= flags::Message::DontWait;
-
-        _socket->receive( buffer, length, fls, address );
-        return length;
-    }
 
 
 private:
