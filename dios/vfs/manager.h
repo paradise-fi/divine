@@ -60,7 +60,7 @@ struct Manager {
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
-    std::shared_ptr< FileDescriptor > &getFile( int fd );
+    std::shared_ptr< FileDescriptor > getFile( int fd );
     std::shared_ptr< Socket > getSocket( int sockfd );
 
     std::pair< int, int > pipe();
@@ -333,6 +333,29 @@ struct VFS: public Next {
             return  0;
     }
 
+
+private: /* helper methods */
+
+    FileDescriptor *check_fd( int fd_, int acc )
+    {
+        auto fd = instance().getFile( fd_ );
+        if ( !fd )
+            return error( EBADF ), nullptr;
+
+        auto ino = fd->inode();
+        if ( !ino )
+            return error( EBADF ), nullptr;
+
+        if ( ( acc & W_OK ) && !fd->flags().has( flags::Open::Write ) )
+            return error( EBADF ), nullptr;
+        if ( ( acc & R_OK ) && !fd->flags().has( flags::Open::Read ) )
+            return error( EBADF ), nullptr;
+
+        return fd.get();
+    }
+
+public: /* system call implementation */
+
     int creat( const char *path, mode_t mode  )
     {
         try {
@@ -397,6 +420,7 @@ struct VFS: public Next {
                 case F_GETFD:
                     return 0;
                 case F_DUPFD_CLOEXEC: // for now let assume we cannot handle O_CLOEXEC
+                    return -1;
                 case F_DUPFD:
                 {
                     int lowEdge = va_arg(  *vl, int );
@@ -438,35 +462,26 @@ struct VFS: public Next {
 
     int close( int fd )
     {
-        try {
-            instance().closeFile( fd );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( check_fd( fd, F_OK ) )
+            return instance().closeFile( fd ), 0;
+        else
             return -1;
-        }
     }
 
-    ssize_t write( int fd, const void *buf, size_t count )
+    ssize_t write( int fd_, const void *buf, size_t count )
     {
-        try {
-            auto f = instance( ).getFile( fd );
-            return f->write( buf, count );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( auto fd = check_fd( fd_, W_OK ) )
+            return fd->write( buf, count );
+        else
             return -1;
-        }
     }
 
-    ssize_t read( int fd, void* buf, size_t count )
+    ssize_t read( int fd_, void* buf, size_t count )
     {
-        try {
-            auto f = instance( ).getFile( fd );
-            return f->read( buf, count );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( auto fd = check_fd( fd_, R_OK ) )
+            return fd->read( buf, count );
+        else
             return -1;
-        }
     }
 
     int pipe( int *pipefd )
@@ -482,6 +497,8 @@ struct VFS: public Next {
 
     off_t lseek( int fd, off_t offset, int whence )
     {
+        if ( !check_fd( fd, F_OK ) )
+            return -1;
         try {
             __dios::fs::Seek w = __dios::fs::Seek::Undefined;
             switch ( whence ) {
@@ -522,18 +539,16 @@ struct VFS: public Next {
         }
     }
 
-    int ftruncate( int fd, off_t length )
+    int ftruncate( int fd_, off_t length )
     {
-        try {
-            auto item = instance( ).getFile( fd );
-            if ( !item->flags( ).has( __dios::fs::flags::Open::Write ))
-                throw Error( EINVAL );
-            instance( ).truncate( item->inode( ), length );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( auto fd = check_fd( fd_, W_OK ) )
+            if ( auto file = fd->inode()->template as< RegularFile >() )
+                return file->resize( length ), 0;
+
+        if ( !check_fd( fd_, F_OK ) )
             return -1;
-        }
+
+        return error( EINVAL ), -1; /* also override EBADF from check_fd */
     }
 
     int truncate( const char *path, off_t length )
@@ -676,35 +691,23 @@ struct VFS: public Next {
 
     int fdatasync( int fd  )
     {
-        try {
-            instance( ).getFile( fd );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
+        return fsync( fd ); /* same thing for us */
     }
 
     int fsync( int fd )
     {
-        try {
-            instance( ).getFile( fd );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( !check_fd( fd, F_OK ) )
             return -1;
-        }
+        else
+            return 0;
     }
 
     int syncfs( int fd )
     {
-        try {
-            instance( ).getFile( fd );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( !check_fd( fd, F_OK ) )
             return -1;
-        }
+        else
+            return 0;
     }
 
     void sync()
@@ -737,15 +740,12 @@ struct VFS: public Next {
         }
     }
 
-    int fstat( int fd, struct stat *buf )
+    int fstat( int fd_, struct stat *buf )
     {
-        try {
-            auto item = instance( ).getFile( fd );
-            return _fillStat( item->inode( ), buf );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
+        if ( auto fd = check_fd( fd_, F_OK ) )
+            return _fillStat( fd->inode(), buf );
+        else
             return -1;
-        }
     }
 
     int fstatfs( int, struct statfs* )
@@ -969,7 +969,9 @@ struct VFS: public Next {
             auto s = instance( ).getSocket( sockfd );
             struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
 
-            auto &address = s->peer( ).address( );
+            if ( !s->peer() )
+                return error( ENOTCONN ), -1;
+            auto &address = s->peer()->address( );
 
             if ( address.size( ) >= *len )
                 throw Error( ENOBUFS );

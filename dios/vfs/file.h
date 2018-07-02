@@ -400,14 +400,13 @@ struct Socket : INode
 
     bool write( const char *buffer, size_t, size_t &length ) override
     {
-        send( buffer, length, flags::Message::NoFlags );
-        return true;
+        return send( buffer, length, flags::Message::NoFlags );
     }
 
     const Address &address() const { return _address; }
     void address( Address addr ) { _address.swap( addr ); }
 
-    virtual Socket &peer() const = 0;
+    virtual Socket *peer() const = 0;
 
     virtual bool canReceive( size_t ) const = 0;
     virtual bool canConnect() const = 0;
@@ -417,13 +416,13 @@ struct Socket : INode
     virtual void addBacklog( Node ) = 0;
     virtual void connected( Node, Node ) = 0;
 
-    virtual void send( const char *, size_t &, Flags< flags::Message > ) = 0;
-    virtual void sendTo( const char *, size_t &, Flags< flags::Message >, Node ) = 0;
+    virtual bool send( const char *, size_t &, Flags< flags::Message > ) = 0;
+    virtual bool sendTo( const char *, size_t &, Flags< flags::Message >, Node ) = 0;
 
-    virtual void receive( char *, size_t &, Flags< flags::Message >, Address & ) = 0;
+    virtual bool receive( char *, size_t &, Flags< flags::Message >, Address & ) = 0;
 
-    virtual void fillBuffer( const char*, size_t & ) = 0;
-    virtual void fillBuffer( const Address &, const char *, size_t & ) = 0;
+    virtual bool fillBuffer( const char*, size_t & ) = 0;
+    virtual bool fillBuffer( const Address &, const char *, size_t & ) = 0;
 
     bool closed() const {
         return _closed;
@@ -478,11 +477,9 @@ struct SocketStream : Socket {
         _limit( 0 )
     {}
 
-    Socket &peer() const override
+    Socket *peer() const override
     {
-        if ( !_peer )
-            throw Error( ENOTCONN );
-        return *_peer->as< Socket >();
+        return _peer ? _peer->as< Socket >() : nullptr;
     }
 
     void abort() override { _peer.reset(); }
@@ -544,7 +541,7 @@ struct SocketStream : Socket {
         return !_stream.empty();
     }
     bool canWrite() const override {
-        return _peer && peer().canReceive( 1 );
+        return peer() && peer()->canReceive( 1 );
     }
     bool canReceive( size_t amount ) const override {
         return _stream.size() + amount <= _stream.capacity();
@@ -553,59 +550,62 @@ struct SocketStream : Socket {
         return _passive && !closed();
     }
 
-    void send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override
+    bool send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override
     {
-        if ( !_peer )
-            throw Error( ENOTCONN );
+        if ( !peer() )
+            return error( ENOTCONN ), false;
 
-        if ( !_peer->mode().userWrite() )
-            throw Error( EACCES );
+        if ( !peer()->mode().userWrite() )
+            return error( EACCES ), false;
 
-        if ( fls.has( flags::Message::DontWait ) && !peer().canReceive( length ) )
-            throw Error( EAGAIN );
+        if ( fls.has( flags::Message::DontWait ) && !peer()->canReceive( length ) )
+            return error( EAGAIN ), false;
 
-        peer().fillBuffer( buffer, length );
+        return peer()->fillBuffer( buffer, length );
     }
 
-    void sendTo( const char *buffer, size_t &length, Flags< flags::Message > fls, Node ) override {
-        send( buffer, length, fls );
+    bool sendTo( const char *buffer, size_t &length, Flags< flags::Message > fls, Node ) override
+    {
+        return send( buffer, length, fls );
     }
 
-    void receive( char *buffer, size_t &length, Flags< flags::Message > fls, Address &address ) override {
-        if ( !_peer && !closed() )
-            throw Error( ENOTCONN );
+    bool receive( char *buffer, size_t &length, Flags< flags::Message > fls, Address &address ) override
+    {
+        if ( !peer() && !closed() )
+            return error( ENOTCONN ), false;
 
-        if ( _stream.empty()  ) {
-		__vm_cancel();
-	}
+        if ( _stream.empty() )
+            __vm_cancel();
 
-         if ( fls.has( flags::Message::WaitAll ) ) {
-             if ( _stream.size() < length ) {
-	     	__vm_cancel();
-	     }
-         }
+        if ( fls.has( flags::Message::WaitAll ) && _stream.size() < length )
+            __vm_cancel();
 
         if ( fls.has( flags::Message::Peek ) )
             length = _stream.peek( buffer, length );
         else
             length = _stream.pop( buffer, length );
 
-        address = peer().address();
+        address = peer()->address();
+
+        return true;
     }
 
-
-    void fillBuffer( const Address &, const char *, size_t & ) override {
-        throw Error( EPROTOTYPE );
+    bool fillBuffer( const Address &, const char *, size_t & ) override
+    {
+        return error( EPROTOTYPE ), false;
     }
-    void fillBuffer( const char *buffer, size_t &length ) override {
-        if ( closed() ) {
+
+    bool fillBuffer( const char *buffer, size_t &length ) override
+    {
+        if ( closed() )
+        {
             abort();
-            throw Error( ECONNRESET );
+            return error( ECONNRESET ), false;
         }
 
         length = _stream.push( buffer, length );
+        return true;
     }
-
 
 private:
     Node _peer;
@@ -620,16 +620,16 @@ struct SocketDatagram : Socket {
     SocketDatagram()
     {}
 
-    Socket &peer() const override
+    Socket *peer() const override
     {
-        if ( auto dr = _defaultRecipient.lock() ) {
+        if ( auto dr = _defaultRecipient.lock() )
+        {
             SocketDatagram *defRec = dr->as< SocketDatagram >();
-            if ( auto self = defRec->_defaultRecipient.lock() ) {
+            if ( auto self = defRec->_defaultRecipient.lock() )
                 if ( self.get() == this )
-                    return *defRec;
-            }
+                    return defRec;
         }
-        throw Error( ENOTCONN );
+        return nullptr;
     }
 
     bool canRead() const override {
@@ -666,44 +666,50 @@ struct SocketDatagram : Socket {
         _defaultRecipient = defaultRecipient;
     }
 
-    void send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override {
-        SocketDatagram::sendTo( buffer, length, fls, _defaultRecipient.lock() );
+    bool send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override
+    {
+        return SocketDatagram::sendTo( buffer, length, fls, _defaultRecipient.lock() );
     }
 
-    void sendTo( const char *buffer, size_t &length, Flags< flags::Message >, Node target ) override {
+    bool sendTo( const char *buffer, size_t &length, Flags< flags::Message >, Node target ) override
+    {
         if ( !target )
-            throw Error( EDESTADDRREQ );
+            return error( EDESTADDRREQ ), false;
 
         if ( !target->mode().userWrite() )
-            throw Error( EACCES );
+            return error( EACCES ), false;
 
         Socket *socket = target->as< Socket >();
-        socket->fillBuffer( address(), buffer, length );
+        return socket->fillBuffer( address(), buffer, length );
     }
 
-    void receive( char *buffer, size_t &length, Flags< flags::Message > fls, Address &address ) override {
+    bool receive( char *buffer, size_t &length, Flags< flags::Message > fls, Address &address ) override {
 
         if ( fls.has( flags::Message::DontWait ) && _packets.empty() )
-            throw Error( EAGAIN );
+            return error( EAGAIN ), false;
 
-        if  ( _packets.empty() ) {
-		__vm_cancel();
-	}
+        if  ( _packets.empty() )
+            __vm_cancel();
 
         length = _packets.front().read( buffer, length );
         address = _packets.front().from();
         if ( !fls.has( flags::Message::Peek ) )
             _packets.pop();
 
+        return true;
     }
 
-    void fillBuffer( const char */*buffer*/, size_t &/*length*/ ) override {
-        throw Error( EPROTOTYPE );
+    bool fillBuffer( const char */*buffer*/, size_t &/*length*/ ) override
+    {
+        return error( EPROTOTYPE ), false;
     }
-    void fillBuffer( const Address &sender, const char *buffer, size_t &length ) override {
+
+    bool fillBuffer( const Address &sender, const char *buffer, size_t &length ) override
+    {
         if ( closed() )
-            throw Error( ECONNREFUSED );
+            return error( ECONNREFUSED ), false;
         _packets.emplace( sender, buffer, length );
+        return true;
     }
 
     void abort() override {

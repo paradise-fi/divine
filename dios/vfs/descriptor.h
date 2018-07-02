@@ -33,40 +33,31 @@ struct FileDescriptor
 
     long long read( void *buf, size_t length )
     {
-        if ( !_inode )
-            throw Error( EBADF );
-        if ( !_flags.has( flags::Open::Read ) )
-            throw Error( EBADF );
-
         if ( length == 0 )
             return 0;
 
         if ( _flags.has( flags::Open::NonBlock ) && !_inode->canRead() )
-            throw Error( EAGAIN );
+            return error( EAGAIN ), -1;
 
         char *dst = reinterpret_cast< char * >( buf );
         if ( !_inode->read( dst, _offset, length ) )
-            throw Error( EBADF );
+            return error( EBADF ), -1;
 
         _offset += length;
         return length;
     }
 
-    long long write( const void *buf, size_t length ) {
-        if ( !_inode )
-            throw Error( EBADF );
-        if ( !_flags.has( flags::Open::Write ) )
-            throw Error( EBADF );
-
+    long long write( const void *buf, size_t length )
+    {
         if ( _flags.has( flags::Open::NonBlock ) && !_inode->canWrite() )
-            throw Error( EAGAIN );
+            return error( EAGAIN ), -1;
 
         if ( _flags.has( flags::Open::Append ) )
             _offset = _inode->size();
 
         const char *src = reinterpret_cast< const char * >( buf );
         if ( !_inode->write( src, _offset, length ) )
-            throw Error( EBADF );
+            return error( EBADF ), -1;
 
         _offset += length;
         return length;

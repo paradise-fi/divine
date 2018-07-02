@@ -240,10 +240,11 @@ int Manager::duplicate2( int oldfd, int newfd ) {
     return newfd;
 }
 
-std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
+std::shared_ptr< FileDescriptor > Manager::getFile( int fd )
+{
     if ( fd >= 0 && fd < int( _proc->_openFD.size() ) && _proc->_openFD[ fd ] )
         return _proc->_openFD[ fd ];
-    throw Error( EBADF );
+    return nullptr;
 }
 
 std::shared_ptr< Socket > Manager::getSocket( int sockfd ) {
@@ -433,7 +434,10 @@ void Manager::changeDirectory( __dios::String pathname ) {
 }
 
 void Manager::changeDirectory( int dirfd ) {
-    Node item = getFile( dirfd )->inode();
+    auto fd = getFile( dirfd );
+    if ( !fd )
+        throw Error( EBADF );
+    Node item = fd->inode();
     if ( !item )
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )
