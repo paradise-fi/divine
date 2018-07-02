@@ -10,6 +10,7 @@ for ( split /\n/, $preproc )
 
 my $prog =<<'EOF';
 #define _POSIX_C_SOURCE 200809
+#define _DEFAULT_SOURCE 1
 
 #include <stdio.h>
 #include <assert.h>
@@ -124,6 +125,34 @@ fmt( "O_CREAT" );
 fmt( "O_NOCTTY" );
 fmt( "O_DIRECTORY" );
 fmt( "O_NOFOLLOW" );
+
+fmt( "S_ISUID" );
+fmt( "S_ISGID" );
+
+fmt( "S_IRWXU" );
+fmt( "S_IRUSR" );
+fmt( "S_IWUSR" );
+fmt( "S_IXUSR" );
+
+fmt( "S_IRWXG" );
+fmt( "S_IRGRP" );
+fmt( "S_IWGRP" );
+fmt( "S_IXGRP" );
+
+fmt( "S_IRWXO" );
+fmt( "S_IROTH" );
+fmt( "S_IWOTH" );
+fmt( "S_IXOTH" );
+
+fmt( "S_IFMT" );
+fmt( "S_IFIFO" );
+fmt( "S_IFCHR" );
+fmt( "S_IFDIR" );
+fmt( "S_IFBLK" );
+fmt( "S_IFREG" );
+fmt( "S_IFLNK" );
+fmt( "S_IFSOCK" );
+fmt( "S_ISVTX" );
 
 fmt( "RLIMIT_CPU" );
 fmt( "RLIMIT_FSIZE" );
