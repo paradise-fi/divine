@@ -138,19 +138,6 @@ private:
 
 };
 
-#ifdef __divine__
-
-# define FS_MALLOC( x ) __vm_obj_make( x )
-# define FS_PROBLEM( msg ) __dios_fault( _VM_Fault::_VM_F_Assert, msg )
-# define FS_FREE( x ) __dios::delete_object( x )
-
-#else
-# define FS_MALLOC( x ) std::malloc( x )
-# define FS_PROBLEM( msg )
-# define FS_FREE( x ) std::free( x )
-
-#endif
-
 namespace conversion {
 
     using namespace __dios::fs::flags;

@@ -52,7 +52,7 @@ extern "C" {
 
         int newFD = dup( fd );
         if ( newFD > 0 ) {
-            DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( FS_MALLOC( sizeof( struct DirWrapper ) ) );
+            DirWrapper *wrapper = new ( __dios::nofail ) DirWrapper;
             wrapper->fd = newFD;
             return wrapper;
         }else {
@@ -66,7 +66,7 @@ extern "C" {
     {
         int fd = open( name, O_DIRECTORY );
         if ( fd > 0 ) {
-            DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( FS_MALLOC( sizeof( struct DirWrapper ) ) );
+            DirWrapper *wrapper = new ( __dios::nofail ) DirWrapper;
             wrapper->fd = fd;
             return wrapper;
         }else {
@@ -84,7 +84,7 @@ extern "C" {
 
         DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( dirp );
         int fd = wrapper->fd;
-        FS_FREE( wrapper );
+        delete wrapper;
         return close( fd );
     }
 
@@ -101,7 +101,7 @@ extern "C" {
             return nullptr;
         }
 
-        struct dirent* retval = reinterpret_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent )));
+        struct dirent* retval = new ( __dios::nofail ) struct dirent;
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
         char *dirInfo = reinterpret_cast< char * >( retval );
 
@@ -139,7 +139,7 @@ extern "C" {
         }
 
         struct dirent **entries = nullptr;
-        struct dirent *workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
+        struct dirent *workingEntry = new ( __dios::nofail ) struct dirent;
 
         while ( true ) {
             struct dirent* ent = readdir( dirp );
@@ -152,17 +152,17 @@ extern "C" {
             if ( filter && !filter( workingEntry ) )
                 continue;
 
-            struct dirent **newEntries = static_cast< struct dirent ** >( FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) ) );
+            struct dirent **newEntries = new ( __dios::nofail ) struct dirent *[ length + 1 ];
             if ( length )
                 std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
             std::swap( entries, newEntries );
             if ( newEntries )
-                FS_FREE( newEntries );
+                delete[] newEntries;
             entries[ length ] = workingEntry;
-            workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
+            workingEntry = new ( __dios::nofail ) struct dirent;
             ++length;
         }
-        FS_FREE( workingEntry );
+        delete workingEntry;
         closedir( dirp );
 
         typedef int( *cmp )( const void *, const void * );
