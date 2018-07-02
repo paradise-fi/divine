@@ -72,44 +72,26 @@ struct FileDescriptor
         return length;
     }
 
-    size_t offset() const {
+    size_t offset() const
+    {
         if ( _inode->mode().isFifo() )
             throw Error( EPIPE );
         return _offset;
     }
 
-    void offset( size_t off ) {
-        _offset = off;
-    }
+    void offset( size_t off ) { _offset = off; }
+    size_t size() { return _inode ? _inode->size() : 0; }
+    Node inode() const { return _inode; }
+    Flags< flags::Open > flags() const { return _flags; }
+    Flags< flags::Open > &flags() { return _flags; }
+    explicit operator bool() const { return bool( _inode );}
 
-    size_t size() {
-        return _inode ? _inode->size() : 0;
-    }
-
-    explicit operator bool() const {
-        return bool( _inode );
-    }
-
-    Node inode() {
-        return _inode;
-    }
-
-    const Node inode() const {
-        return _inode;
-    }
-
-    void close() {
+    void close()
+    {
         _inode->close( *this );
         _inode.reset();
         _flags = flags::Open::NoFlags;
         _offset = 0;
-    }
-
-    Flags< flags::Open > flags() const {
-        return _flags;
-    }
-    Flags< flags::Open > &flags() {
-        return _flags;
     }
 
 protected:
