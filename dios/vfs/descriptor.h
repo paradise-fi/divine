@@ -72,13 +72,7 @@ struct FileDescriptor
         return length;
     }
 
-    size_t offset() const
-    {
-        if ( _inode->mode().isFifo() )
-            throw Error( EPIPE );
-        return _offset;
-    }
-
+    size_t offset() const { return _offset; }
     void offset( size_t off ) { _offset = off; }
     size_t size() { return _inode ? _inode->size() : 0; }
     Node inode() const { return _inode; }
