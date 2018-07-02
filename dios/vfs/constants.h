@@ -18,12 +18,25 @@ struct Flags
     constexpr int to_i() const { return _value; }
 };
 
-struct OFlags : Flags
+template< typename Self >
+struct FlagOps : Flags
 {
     using Flags::Flags;
-    constexpr bool read() const      { return !( _value & O_WRONLY ); }
-    constexpr bool write() const     { return _value & ( O_WRONLY | O_RDWR ); }
-    constexpr bool directory() const { return _value & O_DIRECTORY; }
+    constexpr bool has( Self s ) const { return _value & s._value; }
+    constexpr void clear( Self s ) { _value &= ~s._value; }
+    constexpr void set( Self s ) { _value |= s._value; }
+};
+
+struct OFlags : FlagOps< OFlags >
+{
+    using FlagOps< OFlags >::FlagOps;
+    static constexpr int NOACC = O_WRONLY | O_RDWR;
+
+    constexpr bool read() const     { return !( _value & O_WRONLY ); }
+    constexpr bool write() const    { return _value & ( O_WRONLY | O_RDWR ); }
+    constexpr bool noaccess() const { return ( _value & NOACC ) == NOACC; }
+    constexpr bool nonblock() const { return _value & O_NONBLOCK; }
+    constexpr bool follow() const   { return !( _value & O_NOFOLLOW ); }
 };
 
 #undef O_RDONLY
@@ -74,6 +87,13 @@ template< typename F >
 std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator |= ( F &a, F b )
 {
     a._value |= b._value;
+    return a;
+}
+
+template< typename F >
+std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator &= ( F &a, F b )
+{
+    a._value &= b._value;
     return a;
 }
 
