@@ -180,7 +180,7 @@ namespace fs {
 
     #include <dios/macro/tags_to_class.cleanup>
 
-        int open( const char *pathname, int flags, mode_t mode )
+        int open( const char *pathname, OFlags flags, mode_t mode )
         {
             UnVoid< int > rv;
             int outType;

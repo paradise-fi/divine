@@ -264,7 +264,7 @@ struct Replay : public Next {
             return false;
         }
 
-        int open( const char *pathname, int flags, mode_t mode )
+        int open( const char *pathname, OFlags flags, mode_t mode )
         {
             UnVoid< int > rv;
             if ( !isProcessible( _HOST_SYS_open ))

@@ -416,10 +416,10 @@ struct Socket : INode
     virtual void addBacklog( Node ) = 0;
     virtual void connected( Node, Node ) = 0;
 
-    virtual bool send( const char *, size_t &, Flags< flags::Message > ) = 0;
-    virtual bool sendTo( const char *, size_t &, Flags< flags::Message >, Node ) = 0;
+    virtual bool send( const char *, size_t &, LegacyFlags< flags::Message > ) = 0;
+    virtual bool sendTo( const char *, size_t &, LegacyFlags< flags::Message >, Node ) = 0;
 
-    virtual bool receive( char *, size_t &, Flags< flags::Message >, Address & ) = 0;
+    virtual bool receive( char *, size_t &, LegacyFlags< flags::Message >, Address & ) = 0;
 
     virtual bool fillBuffer( const char*, size_t & ) = 0;
     virtual bool fillBuffer( const Address &, const char *, size_t & ) = 0;
@@ -550,7 +550,7 @@ struct SocketStream : Socket {
         return _passive && !closed();
     }
 
-    bool send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override
+    bool send( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls ) override
     {
         if ( !peer() )
             return error( ENOTCONN ), false;
@@ -564,12 +564,12 @@ struct SocketStream : Socket {
         return peer()->fillBuffer( buffer, length );
     }
 
-    bool sendTo( const char *buffer, size_t &length, Flags< flags::Message > fls, Node ) override
+    bool sendTo( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Node ) override
     {
         return send( buffer, length, fls );
     }
 
-    bool receive( char *buffer, size_t &length, Flags< flags::Message > fls, Address &address ) override
+    bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override
     {
         if ( !peer() && !closed() )
             return error( ENOTCONN ), false;
@@ -666,12 +666,12 @@ struct SocketDatagram : Socket {
         _defaultRecipient = defaultRecipient;
     }
 
-    bool send( const char *buffer, size_t &length, Flags< flags::Message > fls ) override
+    bool send( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls ) override
     {
         return SocketDatagram::sendTo( buffer, length, fls, _defaultRecipient.lock() );
     }
 
-    bool sendTo( const char *buffer, size_t &length, Flags< flags::Message >, Node target ) override
+    bool sendTo( const char *buffer, size_t &length, LegacyFlags< flags::Message >, Node target ) override
     {
         if ( !target )
             return error( EDESTADDRREQ ), false;
@@ -683,7 +683,7 @@ struct SocketDatagram : Socket {
         return socket->fillBuffer( address(), buffer, length );
     }
 
-    bool receive( char *buffer, size_t &length, Flags< flags::Message > fls, Address &address ) override {
+    bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override {
 
         if ( fls.has( flags::Message::DontWait ) && _packets.empty() )
             return error( EAGAIN ), false;

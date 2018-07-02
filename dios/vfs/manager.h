@@ -56,7 +56,7 @@ struct Manager {
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
     void accessAt( int dirfd, __dios::String name, int mode, bool follow );
-    int openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode );
+    int openFileAt( int dirfd, __dios::String name, LegacyFlags< flags::Open > fl, mode_t mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -93,8 +93,8 @@ struct Manager {
         _proc->_umask = Mode::GRANTS & mask;
     }
 
-    int socket( SocketType type, Flags< flags::Open > fl );
-    std::pair< int, int > socketpair( SocketType type, Flags< flags::Open > fl );
+    int socket( SocketType type, LegacyFlags< flags::Open > fl );
+    std::pair< int, int > socketpair( SocketType type, LegacyFlags< flags::Open > fl );
     void bind( int sockfd, Socket::Address address );
     void connect( int sockfd, const Socket::Address &address );
     int accept( int sockfd, Socket::Address &address );
@@ -128,7 +128,7 @@ private:
     template< typename I >
     Node _findDirectoryItem( __dios::String name, bool followSymLinks, I itemChecker );
 
-    int _getFileDescriptor( Node node, Flags< flags::Open > flags, int lowEdge = 0 );
+    int _getFileDescriptor( Node node, LegacyFlags< flags::Open > flags, int lowEdge = 0 );
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
     void _insertSnapshotItem( const SnapshotFS &item );
 
@@ -142,10 +142,11 @@ namespace conversion {
 
     using namespace __dios::fs::flags;
 
-    static inline __dios::fs::Flags <Open> open( int fls ) {
-        __dios::fs::Flags <Open> f = Open::NoFlags;
+    static inline LegacyFlags< Open > open( OFlags fls )
+    {
+        LegacyFlags< Open > f = Open::NoFlags;
         // special behaviour - check for access rights but do not grant them
-        if (( fls & 3 ) == 3 )
+        if ( ( fls & ( O_RDWR | O_WRONLY ) ) == ( O_RDWR | O_WRONLY )  )
             f |= Open::NoAccess;
         if ( fls & O_RDWR ) {
             f |= Open::Read;
@@ -166,10 +167,11 @@ namespace conversion {
         return f;
     }
 
-    static inline int open( __dios::fs::Flags <Open> fls ) {
-        int f;
+    static inline OFlags open( LegacyFlags< Open > fls )
+    {
+        OFlags f;
         if ( fls.has( Open::NoAccess ))
-            f = 3;
+            f = ( O_RDWR | O_WRONLY );
         else if ( fls.has( Open::Read ) && fls.has( Open::Write ))
             f = O_RDWR;
         else if ( fls.has( Open::Write ))
@@ -186,8 +188,9 @@ namespace conversion {
         return f;
     }
 
-    static inline __dios::fs::Flags <Message> message( int fls ) {
-        __dios::fs::Flags <Message> f = Message::NoFlags;
+    static inline LegacyFlags< Message > message( int fls )
+    {
+        LegacyFlags< Message > f = Message::NoFlags;
 
         if ( fls & MSG_DONTWAIT ) f |= Message::DontWait;
         if ( fls & MSG_PEEK ) f |= Message::Peek;
@@ -360,9 +363,9 @@ public: /* system call implementation */
         return openat( AT_FDCWD, path, flags, mode );
     }
 
-    int openat( int dirfd, const char *path, int flags, mode_t mode )
+    int openat( int dirfd, const char *path, OFlags flags, mode_t mode )
     {
-        Flags< flags::Open > f = conversion::open( flags );
+        LegacyFlags< flags::Open > f = conversion::open( flags );
 
         try {
             return instance( ).openFileAt( dirfd, path, f, mode );
@@ -392,10 +395,10 @@ public: /* system call implementation */
                 }
                 case F_GETFL:
                     va_end( *vl );
-                    return conversion::open( f->flags( ));
+                    return conversion::open( f->flags() ).to_i();
                 case F_SETFL:
                 {
-                    int mode = va_arg(  *vl, int );
+                    OFlags mode = va_arg(  *vl, int );
 
                     if ( mode & O_APPEND )
                         f->flags( ) |= __dios::fs::flags::Open::Append;
@@ -960,7 +963,7 @@ public: /* system call implementation */
     }
 
     size_t _send( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
-                  Flags< flags::Message > fls )
+                  LegacyFlags< flags::Message > fls )
     {
         if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canWrite() )
             throw Error( EAGAIN );
@@ -973,7 +976,7 @@ public: /* system call implementation */
     }
 
     size_t _sendto( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
-                    Flags< flags::Message > fls, Node node )
+                    LegacyFlags< flags::Message > fls, Node node )
     {
         if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canWrite() )
             throw Error( EAGAIN );
@@ -1018,7 +1021,7 @@ public: /* system call implementation */
     }
 
     size_t _receive( FileDescriptor &fd, Socket &socket, char *buffer, size_t length,
-                     Flags< flags::Message > fls, Socket::Address &address )
+                     LegacyFlags< flags::Message > fls, Socket::Address &address )
     {
         if ( fd.flags().has( flags::Open::NonBlock ) && !socket.canRead() )
             throw Error( EAGAIN );

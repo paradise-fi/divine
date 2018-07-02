@@ -178,7 +178,7 @@ void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
         throw Error( EACCES );
 }
 
-int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode )
+int Manager::openFileAt( int dirfd, __dios::String name, LegacyFlags< flags::Open > fl, mode_t mode )
 {
     REMEMBER_DIRECTORY( dirfd, name );
 
@@ -461,7 +461,7 @@ void Manager::chmod( int fd, mode_t mode ) {
     _chmod( getFile( fd )->inode(), mode );
 }
 
-int Manager::socket( SocketType type, Flags< flags::Open > fl )
+int Manager::socket( SocketType type, LegacyFlags< flags::Open > fl )
 {
     Socket *s = nullptr;
     switch ( type ) {
@@ -481,7 +481,7 @@ int Manager::socket( SocketType type, Flags< flags::Open > fl )
     return _getFileDescriptor( socket, fl );
 }
 
-std::pair< int, int > Manager::socketpair( SocketType type, Flags< flags::Open > fl ) {
+std::pair< int, int > Manager::socketpair( SocketType type, LegacyFlags< flags::Open > fl ) {
     if ( type != SocketType::Stream )
         throw Error( EOPNOTSUPP );
 
@@ -634,7 +634,7 @@ std::pair< Node, __dios::String > Manager::_findDirectoryOfFile( __dios::String 
     return { item, name };
 }
 
-int Manager::_getFileDescriptor( Node node, Flags< flags::Open > flags, int lowEdge )
+int Manager::_getFileDescriptor( Node node, LegacyFlags< flags::Open > flags, int lowEdge )
 {
     return _getFileDescriptor( fs::make_shared< FileDescriptor >( node, flags ), lowEdge );
 }

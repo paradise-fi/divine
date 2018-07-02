@@ -9,6 +9,80 @@
 namespace __dios {
 namespace fs {
 
+struct Flags
+{
+    int _value = 0;
+    constexpr Flags() = default;
+    constexpr Flags( int o ) : _value( o ) {} /* implicit */
+    explicit constexpr operator bool() const { return _value; }
+    constexpr int to_i() const { return _value; }
+};
+
+struct OFlags : Flags
+{
+    using Flags::Flags;
+    constexpr bool read() const      { return !( _value & O_WRONLY ); }
+    constexpr bool write() const     { return _value & ( O_WRONLY | O_RDWR ); }
+    constexpr bool directory() const { return _value & O_DIRECTORY; }
+};
+
+#undef O_RDONLY
+#undef O_WRONLY
+#undef O_RDWR
+#undef O_CREAT
+#undef O_EXCL
+#undef O_NOCTTY
+#undef O_TRUNC
+#undef O_APPEND
+#undef O_NONBLOCK
+#undef O_NDELAY
+#undef O_DIRECTORY
+#undef O_NOFOLLOW
+
+constexpr OFlags O_RDONLY    = _HOST_O_RDONLY;
+constexpr OFlags O_WRONLY    = _HOST_O_WRONLY;
+constexpr OFlags O_RDWR      = _HOST_O_RDWR;
+constexpr OFlags O_CREAT     = _HOST_O_CREAT;
+constexpr OFlags O_EXCL      = _HOST_O_EXCL;
+constexpr OFlags O_NOCTTY    = _HOST_O_NOCTTY;
+constexpr OFlags O_TRUNC     = _HOST_O_TRUNC;
+constexpr OFlags O_APPEND    = _HOST_O_APPEND;
+constexpr OFlags O_NONBLOCK  = _HOST_O_NONBLOCK;
+constexpr OFlags O_DIRECTORY = _HOST_O_DIRECTORY;
+constexpr OFlags O_NOFOLLOW  = _HOST_O_NOFOLLOW;
+constexpr OFlags O_NDELAY    = O_NONBLOCK;
+
+template< typename F >
+std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator &( F a, F b )
+{
+    return F( a._value & b._value );
+}
+
+template< typename F >
+std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator |( F a, F b )
+{
+    return F( a._value | b._value );
+}
+
+template< typename F >
+std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator ~( F a )
+{
+    return F( ~a._value );
+}
+
+template< typename F >
+std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator |= ( F &a, F b )
+{
+    a._value |= b._value;
+    return a;
+}
+
+template< typename F >
+std::enable_if_t< std::is_base_of_v< Flags, F >, bool > operator == ( F a, F b )
+{
+    return a._value == b._value;
+}
+
 enum class FileTrace {
     NOTRACE,     /* ignore write in file */
     UNBUFFERED,  /* trace whenever possible */
@@ -64,7 +138,7 @@ enum class Message {
 
 using storage::operator|;
 template< typename T >
-using Flags = storage::StrongEnumFlags< T >;
+using LegacyFlags = storage::StrongEnumFlags< T >;
 
 } // namespace fs
 } // namespace __dios

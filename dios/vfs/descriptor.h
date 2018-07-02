@@ -15,7 +15,7 @@ namespace fs {
 
 struct FileDescriptor
 {
-    FileDescriptor( Node inode, Flags< flags::Open > fl, size_t offset = 0 ) :
+    FileDescriptor( Node inode, LegacyFlags< flags::Open > fl, size_t offset = 0 ) :
         _inode( inode ),
         _flags( fl ),
         _offset( offset )
@@ -67,8 +67,8 @@ struct FileDescriptor
     void offset( size_t off ) { _offset = off; }
     size_t size() { return _inode ? _inode->size() : 0; }
     Node inode() const { return _inode; }
-    Flags< flags::Open > flags() const { return _flags; }
-    Flags< flags::Open > &flags() { return _flags; }
+    LegacyFlags< flags::Open > flags() const { return _flags; }
+    LegacyFlags< flags::Open > &flags() { return _flags; }
     explicit operator bool() const { return bool( _inode );}
 
     void close()
@@ -81,7 +81,7 @@ struct FileDescriptor
 
 protected:
     Node _inode;
-    Flags< flags::Open > _flags;
+    LegacyFlags< flags::Open > _flags;
     size_t _offset;
 };
 
