@@ -357,33 +357,7 @@ public: /* system call implementation */
 
     int openat( int dirfd, const char *path, int flags, mode_t mode )
     {
-        using namespace __dios::fs::flags;
-        __dios::fs::Flags <Open> f = Open::NoFlags;
-        // special behaviour - check for access rights but do not grant them
-        if (( flags & 3 ) == 3 )
-            f |= Open::NoAccess;
-        if ( flags & O_RDWR ) {
-            f |= Open::Read;
-            f |= Open::Write;
-        }
-        else if ( flags & O_WRONLY )
-            f |= Open::Write;
-        else
-            f |= Open::Read;
-
-        if ( flags & O_CREAT )
-            f |= __dios::fs::flags::Open::Create;
-
-        if ( flags & O_EXCL )
-            f |= __dios::fs::flags::Open::Excl;
-        if ( flags & O_TRUNC )
-            f |= __dios::fs::flags::Open::Truncate;
-        if ( flags & O_APPEND )
-            f |= __dios::fs::flags::Open::Append;
-        if ( flags & O_NOFOLLOW )
-            f |= __dios::fs::flags::Open::SymNofollow;
-        if ( flags & O_NONBLOCK )
-            f |= __dios::fs::flags::Open::NonBlock;
+        Flags< flags::Open > f = conversion::open( flags );
 
         try {
             return instance( ).openFileAt( dirfd, path, f, mode );
