@@ -311,21 +311,6 @@ struct VFS: public Next {
         __builtin_unreachable();
     }
 
-    /*int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev );
-    int _linkat(int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags );
-    static void _initStat( struct stat *buf );
-    static int _fillStat( const __dios::fs::Node item, struct stat *buf );
-    ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len );
-    int _accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags );
-    int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );*/
-
-
-    /*#define GENERATE_VFS
-    #include <dios/macro/syscall_component_header>
-        #include <sys/syscall.def>
-    #include <dios/macro/syscall_component_header.cleanup>
-    #undef GENERATE_VFS*/
-
     static void _initStat( struct stat *buf )
     {
         buf->st_dev = 0;
@@ -420,17 +405,13 @@ struct VFS: public Next {
             auto f = instance( ).getFile( fd );
 
             switch ( cmd ) {
-                case F_SETFD: {
-                    if ( !vl )
-                            FS_PROBLEM( "command F_SETFD requires additional argument" );
+                case F_SETFD:
                     va_end( *vl );
-                }
                 case F_GETFD:
                     return 0;
                 case F_DUPFD_CLOEXEC: // for now let assume we cannot handle O_CLOEXEC
-                case F_DUPFD: {
-                    if ( !vl )
-                            FS_PROBLEM( "command F_DUPFD requires additional argument" );
+                case F_DUPFD:
+                {
                     int lowEdge = va_arg(  *vl, int );
                     va_end( *vl );
                     return instance( ).duplicate( fd, lowEdge );
@@ -438,9 +419,8 @@ struct VFS: public Next {
                 case F_GETFL:
                     va_end( *vl );
                     return conversion::open( f->flags( ));
-                case F_SETFL: {
-                    if ( !vl )
-                            FS_PROBLEM( "command F_SETFL requires additional argument" );
+                case F_SETFL:
+                {
                     int mode = va_arg(  *vl, int );
 
                     if ( mode & O_APPEND )
@@ -457,9 +437,9 @@ struct VFS: public Next {
                     return 0;
                 }
                 default:
-                    FS_PROBLEM( "the requested command is not implemented" );
+                    __dios_trace_f( "the fcntl command %d is not implemented", cmd );
                     va_end( *vl );
-                    return 0;
+                    return -1;
             }
 
         } catch ( Error & e ) {
@@ -783,13 +763,13 @@ struct VFS: public Next {
 
     int fstatfs( int, struct statfs* )
     {
-        FS_PROBLEM("Fstatfs not implemented");
+        __dios_trace_t( "fstatfs() is not implemented" );
         return -1;
     }
 
     int statfs( const char *, struct statfs * )
     {
-        FS_PROBLEM("statfs not implemented");
+        __dios_trace_t( "statfs() is not implemented" );
         return -1;
     }
 
