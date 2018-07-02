@@ -31,22 +31,6 @@ struct FileDescriptor
     FileDescriptor( FileDescriptor && ) noexcept = default;
     FileDescriptor &operator=( FileDescriptor && ) noexcept = default;
 
-    bool canRead() const
-    {
-        if ( !_inode )
-            throw Error( EBADF );
-
-        return _inode->canRead();
-    }
-
-    bool canWrite() const
-    {
-        if ( !_inode )
-            throw Error( EBADF );
-
-        return _inode->canWrite();
-    }
-
     long long read( void *buf, size_t length )
     {
         if ( !_inode )
