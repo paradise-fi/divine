@@ -122,6 +122,8 @@ fmt( "O_APPEND" );
 fmt( "O_NONBLOCK" );
 fmt( "O_CREAT" );
 fmt( "O_NOCTTY" );
+fmt( "O_DIRECTORY" );
+fmt( "O_NOFOLLOW" );
 
 fmt( "RLIMIT_CPU" );
 fmt( "RLIMIT_FSIZE" );
