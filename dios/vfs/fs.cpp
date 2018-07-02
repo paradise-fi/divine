@@ -9,18 +9,19 @@
 #include <bits/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <dios.h>
 
-#include "manager.h"
+#include <dios/sys/memory.hpp>
+#include <dios/vfs/inode.h>
 
-struct DirWrapper {
+struct DirWrapper
+{
     int fd;
 };
-
-using __dios::fs::Error;
 
 extern "C" {
 
@@ -130,7 +131,6 @@ extern "C" {
               int ( *compare )( const struct dirent **, const struct dirent ** ) )
     {
 
-        using namespace __dios::fs::flags;
         int length = 0;
         DIR *dirp = opendir( path );
 
