@@ -11,6 +11,7 @@
 
 #include "utils.h"
 #include "inode.h"
+#include "descriptor.h"
 #include "storage.h"
 
 #define FS_CHOICE_GOAL          0
@@ -238,6 +239,35 @@ struct Pipe : INode
     bool canRead() const override { return size() > 0; }
     bool canWrite() const override { return size() < PIPE_SIZE_LIMIT; }
 
+    void open( FileDescriptor &fd ) override
+    {
+        __dios_assert( fd.inode().get() == this );
+
+        if ( fd.flags().has( flags::Open::Read ) && fd.flags().has( flags::Open::Write ) )
+            __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
+
+        if ( fd.flags().has( flags::Open::Read ) )
+        {
+            if ( fd.flags().has( flags::Open::FifoWait ) && !writer() )
+               __vm_cancel();
+            assignReader();
+        }
+
+        if ( fd.flags().has( flags::Open::Write ) )
+        {
+            if ( fd.flags().has( flags::Open::FifoWait ) && !reader() )
+               __vm_cancel();
+            assignWriter();
+        }
+    }
+
+    void close( FileDescriptor &fd ) override
+    {
+        __dios_assert( fd.inode().get() == this );
+        if ( fd.flags().has( flags::Open::Read ) )
+            releaseReader();
+    }
+
     bool read( char *buffer, size_t, size_t &length ) override
     {
         if ( length == 0 )
@@ -356,6 +386,10 @@ struct Socket : INode
         bool _valid;
     };
 
+    void open( FileDescriptor &fd ) override
+    {
+        fd.flags() |= flags::Open::Read | flags::Open::Write; // who knows why
+    }
 
     bool read( char *buffer, size_t, size_t &length ) override
     {
@@ -394,7 +428,9 @@ struct Socket : INode
     bool closed() const {
         return _closed;
     }
-    void close() {
+
+    void close( FileDescriptor & ) override
+    {
         _closed = true;
         abort();
     }

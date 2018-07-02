@@ -4,9 +4,8 @@
 #include <dirent.h>
 
 #include "utils.h"
-#include "file.h"
 #include "constants.h"
-#include "directory.h"
+#include "inode.h"
 
 #ifndef _FS_DESCRIPTOR_H_
 #define _FS_DESCRIPTOR_H_
@@ -14,25 +13,23 @@
 namespace __dios {
 namespace fs {
 
-struct FileDescriptor {
-
-    FileDescriptor() :
-        _inode( nullptr ),
-        _flags( flags::Open::NoFlags ),
-        _offset( 0 )
-    {}
-
+struct FileDescriptor
+{
     FileDescriptor( Node inode, Flags< flags::Open > fl, size_t offset = 0 ) :
         _inode( inode ),
         _flags( fl ),
         _offset( offset )
-    {}
+    {
+        inode->open( *this );
+    }
 
-    FileDescriptor( const FileDescriptor & ) = default;
-    FileDescriptor( FileDescriptor && ) = default;
-    FileDescriptor &operator=( const FileDescriptor & ) = default;
+    ~FileDescriptor()
+    {
+        _inode->close( *this );
+    }
 
-    virtual ~FileDescriptor() = default;
+    FileDescriptor( FileDescriptor && ) noexcept = default;
+    FileDescriptor &operator=( FileDescriptor && ) noexcept = default;
 
     bool canRead() const
     {
@@ -50,7 +47,7 @@ struct FileDescriptor {
         return _inode->canWrite();
     }
 
-    virtual long long read( void *buf, size_t length )
+    long long read( void *buf, size_t length )
     {
         if ( !_inode )
             throw Error( EBADF );
@@ -71,7 +68,7 @@ struct FileDescriptor {
         return length;
     }
 
-    virtual long long write( const void *buf, size_t length ) {
+    long long write( const void *buf, size_t length ) {
         if ( !_inode )
             throw Error( EBADF );
         if ( !_flags.has( flags::Open::Write ) )
@@ -91,10 +88,13 @@ struct FileDescriptor {
         return length;
     }
 
-    virtual size_t offset() const {
+    size_t offset() const {
+        if ( _inode->mode().isFifo() )
+            throw Error( EPIPE );
         return _offset;
     }
-    virtual void offset( size_t off ) {
+
+    void offset( size_t off ) {
         _offset = off;
     }
 
@@ -115,6 +115,7 @@ struct FileDescriptor {
     }
 
     void close() {
+        _inode->close( *this );
         _inode.reset();
         _flags = flags::Open::NoFlags;
         _offset = 0;
@@ -131,78 +132,6 @@ protected:
     Node _inode;
     Flags< flags::Open > _flags;
     size_t _offset;
-};
-
-struct PipeDescriptor : FileDescriptor {
-
-    PipeDescriptor() :
-        FileDescriptor()
-    {}
-
-    PipeDescriptor( Node inode, Flags< flags::Open > fl, bool wait = false ) :
-        FileDescriptor( inode, fl )
-    {
-        Pipe *pipe = inode->as< Pipe >();
-
-        /// TODO: enable detection of deadlock
-        if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
-            __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
-        else if ( fl.has( flags::Open::Read ) )
-        {
-            if ( wait && !pipe->writer() )
-               __vm_cancel();
-            pipe->assignReader();
-        }
-        else if ( fl.has( flags::Open::Write ) )
-        {
-            if ( wait && !pipe->reader() )
-               __vm_cancel();
-            pipe->assignWriter();
-        }
-    }
-
-    PipeDescriptor( const PipeDescriptor & ) = default;
-    PipeDescriptor( PipeDescriptor && ) = default;
-    PipeDescriptor &operator=( const PipeDescriptor & ) = default;
-
-    ~PipeDescriptor() {
-        if ( _inode && _flags.has( flags::Open::Read ) ) {
-            Pipe *pipe = _inode->as< Pipe >();
-            pipe->releaseReader();
-        }
-    }
-
-    void offset( size_t ) override
-    {
-        throw Error( EPIPE );
-    }
-};
-
-struct DirectoryDescriptor : FileDescriptor
-{
-    DirectoryDescriptor( Node inode, Flags< flags::Open > fl, size_t offset = 0 )
-        : FileDescriptor(inode, fl, offset)
-    {
-        if ( !inode->mode().isDirectory() )
-            throw Error( ENOTDIR );
-    }
-};
-
-struct SocketDescriptor : FileDescriptor {
-
-    SocketDescriptor( Node inode, Flags< flags::Open > fl ) :
-        FileDescriptor( std::move( inode ), fl | flags::Open::Read | flags::Open::Write ),
-        _socket( _inode->as< Socket >() )
-    {}
-
-    ~SocketDescriptor() {
-        _socket->close();
-    }
-
-
-
-private:
-    Socket *_socket;
 };
 
 } // namespace fs

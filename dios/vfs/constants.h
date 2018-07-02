@@ -48,6 +48,7 @@ enum class Open {
     SymNofollow =  256,
     NonBlock    =  512,
     Directory   = 1024,
+    FifoWait    = 2048,
     Invalid     = 4096,
 };
 

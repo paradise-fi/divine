@@ -178,7 +178,8 @@ void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
         throw Error( EACCES );
 }
 
-int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode ) {
+int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode )
+{
     REMEMBER_DIRECTORY( dirfd, name );
 
     Node file = findDirectoryItem( name, !fl.has( flags::Open::SymNofollow ) );
@@ -210,18 +211,13 @@ int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl
         fl.clear( flags::Open::Write );
     }
 
-    if ( fl.has(flags::Open::Directory)) {
+    if ( fl.has( flags::Open::Directory ) ) {
         if (!file->mode().isDirectory())
             throw Error( ENOTDIR );
         _checkGrants( file, Mode::RUSER | Mode::XUSER );
-
     }
 
-    if ( file->mode().isFifo() )
-        return _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), file, fl, true ) );
-    else if ( file->mode().isDirectory() )
-        return _getFileDescriptor( std::allocate_shared< DirectoryDescriptor >( __dios::AllocatorPure(), file, fl ) );
-    return _getFileDescriptor( std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), file, fl ) );
+    return _getFileDescriptor( file, fl | flags::Open::FifoWait );
 }
 
 void Manager::closeFile( int fd ) {
@@ -263,8 +259,8 @@ std::pair< int, int > Manager::pipe()
 
     Node node( new ( nofail ) Pipe() );
     node->mode( mode );
-    auto fd1 = _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), node, flags::Open::Read ) );
-    auto fd2 =  _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), node, flags::Open::Write ));
+    auto fd1 = _getFileDescriptor( node, flags::Open::Read );
+    auto fd2 =  _getFileDescriptor( node, flags::Open::Write );
     return { fd1, fd2 };
 }
 
@@ -476,8 +472,7 @@ int Manager::socket( SocketType type, Flags< flags::Open > fl )
     Node socket( s );
     socket->mode( Mode::GRANTS | Mode::SOCKET );
 
-    auto sd = std::allocate_shared< SocketDescriptor >( __dios::AllocatorPure(), socket, fl );
-    return _getFileDescriptor( std::move( sd ) );
+    return _getFileDescriptor( socket, fl );
 }
 
 std::pair< int, int > Manager::socketpair( SocketType type, Flags< flags::Open > fl ) {
@@ -494,20 +489,8 @@ std::pair< int, int > Manager::socketpair( SocketType type, Flags< flags::Open >
     cl->connected( client, server );
 
     return {
-        _getFileDescriptor(
-            std::allocate_shared< SocketDescriptor >(
-                __dios::AllocatorPure(),
-                server,
-                fl
-            )
-        ),
-        _getFileDescriptor(
-            std::allocate_shared< SocketDescriptor >(
-                __dios::AllocatorPure(),
-                client,
-                fl
-            )
-        )
+        _getFileDescriptor( server, fl ),
+        _getFileDescriptor( client, fl )
     };
 }
 
@@ -537,17 +520,12 @@ void Manager::connect( int sockfd, const Socket::Address &address ) {
     sd->connected( sd, model );
 }
 
-int Manager::accept( int sockfd, Socket::Address &address ) {
+int Manager::accept( int sockfd, Socket::Address &address )
+{
     Node partner = getSocket( sockfd )->accept();
     address = partner->as< Socket >()->address();
 
-    return _getFileDescriptor(
-        std::allocate_shared< SocketDescriptor >(
-            __dios::AllocatorPure(),
-            std::move( partner ),
-            flags::Open::NoFlags
-        )
-    );
+    return _getFileDescriptor( partner, flags::Open::NoFlags );
 }
 
 Node Manager::resolveAddress( const Socket::Address &address ) {
@@ -650,7 +628,13 @@ std::pair< Node, __dios::String > Manager::_findDirectoryOfFile( __dios::String 
     return { item, name };
 }
 
-int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge /* = 0*/ ) {
+int Manager::_getFileDescriptor( Node node, Flags< flags::Open > flags, int lowEdge )
+{
+    return _getFileDescriptor( fs::make_shared< FileDescriptor >( node, flags ), lowEdge );
+}
+
+int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge /* = 0*/ )
+{
     int i = 0;
 
     if ( lowEdge < 0 || lowEdge >= FILE_DESCRIPTOR_LIMIT )
@@ -659,17 +643,20 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdg
     if ( lowEdge >= int( _proc->_openFD.size() ) )
         _proc->_openFD.resize( lowEdge + 1 );
 
-    for ( auto &fd : utils::withOffset( _proc->_openFD, lowEdge ) ) {
-        if ( !fd ) {
+    for ( auto &fd : utils::withOffset( _proc->_openFD, lowEdge ) )
+    {
+        if ( !fd )
+        {
             fd = f;
             return i;
         }
         ++i;
     }
+
     if ( _proc->_openFD.size() >= FILE_DESCRIPTOR_LIMIT )
         throw Error( ENFILE );
 
-   _proc->_openFD.push_back( f );
+    _proc->_openFD.push_back( f );
     return i;
 }
 

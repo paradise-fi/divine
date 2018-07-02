@@ -150,7 +150,8 @@ private:
     template< typename I >
     Node _findDirectoryItem( __dios::String name, bool followSymLinks, I itemChecker );
 
-    int _getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge = 0 );
+    int _getFileDescriptor( Node node, Flags< flags::Open > flags, int lowEdge = 0 );
+    int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
     void _insertSnapshotItem( const SnapshotFS &item );
 
     void _checkGrants( Node inode, unsigned grant ) const;

@@ -130,6 +130,8 @@ private:
     mode_t _mode;
 };
 
+struct FileDescriptor;
+
 struct INode
 {
     INode() :
@@ -157,6 +159,9 @@ struct INode
     virtual bool canRead() const { return false; }
     virtual bool canWrite() const { return false; }
     virtual void clear() {}
+
+    virtual void open( FileDescriptor & ) {}
+    virtual void close( FileDescriptor & ) {}
 
     Mode mode() const { return _mode; }
     void mode( mode_t mode ) { _mode = mode; }
