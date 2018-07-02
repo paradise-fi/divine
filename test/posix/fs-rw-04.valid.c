@@ -11,7 +11,7 @@ int main() {
     int fd = open( "dir", O_RDONLY );
     assert( fd >= 0 );
     assert( read( fd, buf, 7 ) == -1 );
-    assert( errno == EBADF );
+    assert( errno == EISDIR );
     assert( close( fd ) == 0 );
     return 0;
 }
