@@ -67,41 +67,47 @@ constexpr OFlags O_NDELAY    = O_NONBLOCK;
 constexpr OFlags O_FIFO_WAIT = 0x10000000; /* FIXME *could* conflict with _HOST_* */
 
 template< typename F >
-std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator &( F a, F b )
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator &( F a, F b )
 {
     return F( a._value & b._value );
 }
 
 template< typename F >
-std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator |( F a, F b )
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator |( F a, F b )
 {
     return F( a._value | b._value );
 }
 
 template< typename F >
-std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator ~( F a )
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator ~( F a )
 {
     return F( ~a._value );
 }
 
 template< typename F >
-std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator |= ( F &a, F b )
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator |= ( F &a, F b )
 {
     a._value |= b._value;
     return a;
 }
 
 template< typename F >
-std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator &= ( F &a, F b )
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > &operator &= ( F &a, F b )
 {
     a._value &= b._value;
     return a;
 }
 
 template< typename F >
-std::enable_if_t< std::is_base_of_v< Flags, F >, bool > operator == ( F a, F b )
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, bool > operator == ( F a, F b )
 {
     return a._value == b._value;
+}
+
+template< typename F >
+constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, bool > operator != ( F a, F b )
+{
+    return a._value != b._value;
 }
 
 enum class FileTrace {
