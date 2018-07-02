@@ -3,6 +3,7 @@
 #include <memory>
 #include <cerrno>
 #include <dirent.h>
+#include <string_view>
 
 #include "inode.h"
 #include "utils.h"
@@ -76,7 +77,8 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
     }
 
-    Node find( const __dios::String &name ) {
+    Node find( std::string_view name )
+    {
         if ( name == "." )
             return shared_from_this();
         if ( name == ".." )
@@ -175,12 +177,13 @@ private:
         throw Error( EEXIST );
     }
 
-    Items::iterator _findItem( const __dios::String &name ) {
+    Items::iterator _findItem( std::string_view name )
+    {
         return std::lower_bound(
             _items.begin(),
             _items.end(),
             name,
-            []( const DirectoryEntry &entry, const __dios::String &name ) {
+            []( const DirectoryEntry &entry, std::string_view name ) {
                 return entry.name() < name;
             } );
     }
