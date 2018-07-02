@@ -9,7 +9,8 @@
 
 #include "vfs-capture-assert.h"
 
-extern "C" void __boot( const _VM_Env *env ) {
+extern "C" void __boot( const _VM_Env *env )
+{
     std::set< std::string > expected({ "/", "/a" });
 
     auto context = new Context();
@@ -23,4 +24,5 @@ extern "C" void __boot( const _VM_Env *env ) {
         __dios_trace_f( "E: %s", item.c_str() );
 
     bAss( names.first == expected, context, "Different files captures" );
+    __vm_suspend();
 }

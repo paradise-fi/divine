@@ -18,8 +18,8 @@ void failSched()
 #define bAss( expr, ctx, message ) do { \
     if ( !(expr) ) { \
         ctx->msg = message; \
-        __vm_ctl_set( _VM_CR_Scheduler, reinterpret_cast< void * >( failSched ) ); \
-        return; \
+        __vm_ctl_flag( 0, _VM_CF_Error ); \
+        __vm_suspend(); \
     } \
 } while ( false )
 

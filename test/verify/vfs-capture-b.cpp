@@ -1,5 +1,8 @@
-/* TAGS: min c++ */
+/* TAGS: min c++ todo */
 // VERIFY_OPTS: --capture `dirname $1`/medium:follow:/t -o nofail:malloc
+
+/* TODO: the symlink is not actually in the repository/tarballs/... and we need
+ * to figure a way to create it for testing purposes */
 
 #include <dios.h>
 #include <cstring>
@@ -25,4 +28,5 @@ extern "C" void __boot( const _VM_Env *env )
         __dios_trace_f( "E: %s", item.c_str() );
 
     bAss( names.first == expected, context, "Different files captures" );
+    __vm_suspend();
 }
