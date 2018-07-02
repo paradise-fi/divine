@@ -162,6 +162,7 @@ namespace conversion {
         if ( fls & O_APPEND ) f |= Open::Append;
         if ( fls & O_NOFOLLOW ) f |= Open::SymNofollow;
         if ( fls & O_NONBLOCK ) f |= Open::NonBlock;
+        if ( fls & O_DIRECTORY ) f |= Open::Directory;
         return f;
     }
 
