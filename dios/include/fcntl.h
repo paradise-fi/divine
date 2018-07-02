@@ -25,8 +25,8 @@
 #define O_RSYNC        O_SYNC  /* Synchronize read operations.   */
 
 #define O_DIRECT       040000  /* Direct disk access.  */
-#define O_DIRECTORY   0200000  /* Must be a directory.   */
-#define O_NOFOLLOW    0400000  /* Do not follow links.   */
+#define O_DIRECTORY _HOST_O_DIRECTORY /* Must be a directory.   */
+#define O_NOFOLLOW  _HOST_O_NOFOLLOW    /* Do not follow links.   */
 #define O_NOATIME    01000000  /* Do not set atime.  */
 #define O_CLOEXEC    02000000  /* Set close_on_exec.  */
 #define O_PATH      010000000  /* Resolve pathname but do not open file.  */

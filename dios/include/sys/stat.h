@@ -62,16 +62,16 @@
 #define	__st_birthtimensec	__st_birthtim.tv_nsec
 #endif
 
-#define	S_ISUID	0004000			/* set user id on execution */
-#define	S_ISGID	0002000			/* set group id on execution */
+#define	S_ISUID _HOST_S_ISUID			/* set user id on execution */
+#define	S_ISGID _HOST_S_ISGID			/* set group id on execution */
 #if __BSD_VISIBLE
-#define	S_ISTXT	0001000			/* sticky bit */
+#define	S_ISTXT	S_ISVTX		        /* sticky bit */
 #endif
 
-#define	S_IRWXU	0000700			/* RWX mask for owner */
-#define	S_IRUSR	0000400			/* R for owner */
-#define	S_IWUSR	0000200			/* W for owner */
-#define	S_IXUSR	0000100			/* X for owner */
+#define	S_IRWXU _HOST_S_IRWXU			/* RWX mask for owner */
+#define	S_IRUSR _HOST_S_IRUSR			/* R for owner */
+#define	S_IWUSR _HOST_S_IWUSR			/* W for owner */
+#define	S_IXUSR _HOST_S_IXUSR			/* X for owner */
 
 #if __BSD_VISIBLE
 #define	S_IREAD		S_IRUSR
@@ -79,26 +79,26 @@
 #define	S_IEXEC		S_IXUSR
 #endif
 
-#define	S_IRWXG	0000070			/* RWX mask for group */
-#define	S_IRGRP	0000040			/* R for group */
-#define	S_IWGRP	0000020			/* W for group */
-#define	S_IXGRP	0000010			/* X for group */
+#define	S_IRWXG _HOST_S_IRWXG			/* RWX mask for group */
+#define	S_IRGRP _HOST_S_IRGRP			/* R for group */
+#define	S_IWGRP _HOST_S_IWGRP			/* W for group */
+#define	S_IXGRP _HOST_S_IXGRP			/* X for group */
 
-#define	S_IRWXO	0000007			/* RWX mask for other */
-#define	S_IROTH	0000004			/* R for other */
-#define	S_IWOTH	0000002			/* W for other */
-#define	S_IXOTH	0000001			/* X for other */
+#define	S_IRWXO _HOST_S_IRWXO			/* RWX mask for other */
+#define	S_IROTH _HOST_S_IROTH			/* R for other */
+#define	S_IWOTH _HOST_S_IWOTH			/* W for other */
+#define	S_IXOTH _HOST_S_IXOTH			/* X for other */
 
 #if __XPG_VISIBLE || __BSD_VISIBLE
-#define	S_IFMT	 0170000		/* type of file mask */
-#define	S_IFIFO	 0010000		/* named pipe (fifo) */
-#define	S_IFCHR	 0020000		/* character special */
-#define	S_IFDIR	 0040000		/* directory */
-#define	S_IFBLK	 0060000		/* block special */
-#define	S_IFREG	 0100000		/* regular */
-#define	S_IFLNK	 0120000		/* symbolic link */
-#define	S_IFSOCK 0140000		/* socket */
-#define	S_ISVTX	 0001000		/* save swapped text even after use */
+#define	S_IFMT   _HOST_S_IFMT		/* type of file mask */
+#define	S_IFIFO  _HOST_S_IFIFO		/* named pipe (fifo) */
+#define	S_IFCHR  _HOST_S_IFCHR		/* character special */
+#define	S_IFDIR  _HOST_S_IFDIR		/* directory */
+#define	S_IFBLK  _HOST_S_IFBLK		/* block special */
+#define	S_IFREG  _HOST_S_IFREG		/* regular */
+#define	S_IFLNK  _HOST_S_IFLNK		/* symbolic link */
+#define	S_IFSOCK _HOST_S_IFSOCK		/* socket */
+#define	S_ISVTX  _HOST_S_ISVTX		/* save swapped text even after use */
 #endif
 
 #define	S_ISDIR(m)	((m & 0170000) == 0040000)	/* directory */
