@@ -160,18 +160,6 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         return do_read( item.name(), item.inode()->ino() );
     }
 
-    Items::iterator begin() {
-        return _items.begin();
-    }
-    Items::iterator end() {
-        return _items.end();
-    }
-    Items::const_iterator begin() const {
-        return _items.begin();
-    }
-    Items::const_iterator end() const {
-        return _items.end();
-    }
 private:
 
     void _insertItem( DirectoryEntry &&entry ) {

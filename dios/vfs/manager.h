@@ -74,28 +74,6 @@ struct Manager {
 
     off_t lseek( int fd, off_t offset, Seek whence );
 
-    template< typename DirPre, typename DirPost, typename File >
-    void traverseDirectoryTree( const __dios::String &root, DirPre pre, DirPost post, File file ) {
-        Node current = findDirectoryItem( root );
-        if ( !current || !current->mode().isDirectory() )
-            return;
-        if ( pre( root ) ) {
-            for ( auto &i : *current->as< Directory >() ) {
-
-                if ( i.name() == "." || i.name() == ".." )
-                    continue;
-
-                __dios::String pathname = path::joinPath( root, i.name() );
-                if ( i.inode()->mode().isDirectory() )
-                    traverseDirectoryTree( pathname, pre, post, file );
-                else
-                    file( pathname );
-            }
-
-            post( root );
-        }
-    }
-
     Node currentDirectory() {
         return _currentDirectory.lock();
     }
