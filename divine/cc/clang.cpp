@@ -55,19 +55,6 @@ auto buildAction( llvm::LLVMContext * )
     return std::make_unique< Action >();
 }
 
-template< typename Contailer >
-void dump( const Contailer &c ) {
-    std::copy( c.begin(), c.end(),
-               std::ostream_iterator< std::decay_t< decltype( *c.begin() ) > >( std::cerr, " " ) );
-}
-
-template< typename Contailer >
-void dump( const Contailer *c ) {
-    std::cerr << static_cast< const void * >( c ) << "= @( ";
-    dump( *c );
-    std::cerr << ")" << std::endl;
-}
-
 Compiler::Compiler( std::shared_ptr< llvm::LLVMContext > ctx ) :
     divineVFS( new VFS() ),
     overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) ),
