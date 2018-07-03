@@ -43,8 +43,24 @@
 #include <set>
 #include <stdexcept>
 #include <regex>
+#include <utility>
+#include <tuple>
 
 #include <brick-assert>
+
+#if __cplusplus > 201402L
+#include <string_view>
+
+#ifdef BRICKS_HAVE_LLVM
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_RELAX_WARNINGS
+#endif
+#include <llvm/Support/raw_ostream.h>
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_UNRELAX_WARNINGS
+#endif
+#endif // BRICKS_HAVE_LLVM
+#endif // C++17
 
 #ifndef BRICK_STRING_H
 #define BRICK_STRING_H
@@ -382,6 +398,133 @@ struct Splitter {
     std::regex re;
 };
 
+#if __cplusplus > 201402L
+namespace detail {
+
+    struct NotPreferred { };
+    struct Preferred : NotPreferred { };
+
+    template< typename R, typename ... Args >
+    using Eat = R;
+
+    template< typename T >
+    constexpr auto is_container( Preferred ) noexcept
+        -> Eat< bool, decltype( begin( std::declval< T & >() ) ),
+                      decltype( end( std::declval< T & >() ) ) >
+    { return true; }
+
+    template< typename T >
+    constexpr bool is_container( NotPreferred ) noexcept
+    { return false; }
+
+    template< typename T >
+    constexpr auto container_bracket( char, char set, Preferred ) noexcept
+        -> Eat< char, typename T::key_type >
+    { return set; }
+
+    template< typename T >
+    constexpr char container_bracket( char seq, char, NotPreferred ) noexcept
+    { return seq; }
+
+    template< typename T >
+    struct IsContainer {
+        static constexpr bool is_container =
+                detail::is_container< T >( detail::Preferred() );
+        static constexpr char left_bracket =
+                detail::container_bracket< T >( '[', '{', detail::Preferred() );
+        static constexpr char right_bracket =
+                detail::container_bracket< T >( ']', '}', detail::Preferred() );
+    };
+
+} // namespace detail
+
+struct Formatter
+{
+    std::string str() const { return ss.str(); }
+
+    template< typename T >
+    auto format( T &&v ) -> std::void_t< decltype( std::declval< std::stringstream & >() << v ) >
+    {
+        ss << v;
+    }
+
+    template< typename T1, typename T2 >
+    void format( const std::pair< T1, T2 > &pair )
+    {
+        ss << "(";
+        format( pair.first );
+        ss << ", ";
+        format( pair.second );
+        ss << ")";
+    }
+
+    template< typename... Ts >
+    void format( const std::tuple< Ts... > &tuple )
+    {
+        ss << "(";
+        auto fmtsep = [this, sep = ""]( auto &&arg ) mutable {
+            ss << sep;
+            format( arg );
+            sep = ", ";
+        };
+        std::apply( [&]( auto &&... args ) { (fmtsep( args ), ...); }, tuple );
+        ss << ")";
+    }
+
+    // since string is also container, we have to make sure this overload
+    // is not used for string-like thinks
+    template< typename T, typename Trait = detail::IsContainer< T > >
+    auto format( const T &container )
+        -> std::enable_if_t< Trait::is_container && !std::is_convertible< T, std::string_view >::value >
+    {
+        ss << Trait::left_bracket;
+        const char* sep = "";
+        for ( const auto &x : container ) {
+            ss << sep;
+            format( x );
+            sep = ", ";
+        }
+        ss << Trait::right_bracket;
+    }
+
+#ifdef BRICKS_HAVE_LLVM
+    template< typename T >
+    auto format( T &&llvmval ) -> decltype( llvmval.print( std::declval< ::llvm::raw_ostream & >() ) )
+    {
+        std::string s;
+        ::llvm::raw_string_ostream lstream( s );
+        llvmval.print( lstream );
+        ss << lstream.str();
+    }
+
+    template< typename T >
+    auto format( T *llvmval ) -> decltype( llvmval->print( std::declval< ::llvm::raw_ostream & >() ) )
+    {
+        if ( llvmval )
+            format( *llvmval );
+        else
+            format( "(nullptr)" );
+    }
+#endif // BRICKS_HAVE_LLVM
+
+  private:
+    std::stringstream ss;
+};
+
+// format arguments, space separating them
+template< typename... Args >
+std::string format( Args &&...args ) {
+    Formatter fmt;
+    auto fmtsep = [&fmt, sep = ""]( auto &&arg ) mutable {
+        fmt.format( sep );
+        fmt.format( arg );
+        sep = " ";
+    };
+    (fmtsep( args ), ...);
+    return fmt.str();
+}
+#endif // C++17
+
 }
 
 namespace t_string
@@ -445,6 +588,30 @@ struct TestPaths
         ASSERT_EQ( string::basename( "foo/bar" ), "bar" );
     }
 };
+
+#if __cplusplus > 201402L
+struct TestFormat
+{
+    TEST(basic) {
+        ASSERT_EQ( string::format( "hello" ), "hello" );
+        ASSERT_EQ( string::format( "hello", "world" ), "hello world" );
+        ASSERT_EQ( string::format( "hello", 42 ), "hello 42" );
+        ASSERT_EQ( string::format( '?', '*' ), "? *" );
+    }
+
+    TEST(tuple) {
+        ASSERT_EQ( string::format( std::make_pair( "hello", 42 ) ), "(hello, 42)" );
+        ASSERT_EQ( string::format( std::make_tuple( "hello", 42, '!' ) ), "(hello, 42, !)" );
+    }
+
+    TEST(container) {
+        ASSERT_EQ( string::format( std::vector< int >{ 1, 2, 3 } ), "[1, 2, 3]" );
+        ASSERT_EQ( string::format( std::set< int >{ 1, 2, 3 } ), "{1, 2, 3}" );
+        ASSERT_EQ( string::format( std::vector< std::pair< int, std::string > >{ { 1, "hello" }, { 2, "world" } }, 3 ),
+                   "[(1, hello), (2, world)] 3" );
+    }
+};
+#endif // C++17
 
 }
 }
