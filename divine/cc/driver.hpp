@@ -5,7 +5,6 @@
 #include <divine/cc/options.hpp>
 
 #include <brick-assert>
-#include <brick-string>
 #include <thread>
 #include <stdexcept>
 
@@ -17,18 +16,6 @@ namespace cc {
 // get generated source which defines symbol with name 'name' in namespaces 'ns'
 // which contains char array literal 'value'
 std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value );
-
-struct ParsedOpts {
-    std::vector< std::string > opts;
-    std::vector< std::string > libSearchPath;
-    std::vector< FileEntry > files;
-    std::string outputFile;
-    std::vector< std::string > allowedPaths;
-    bool toObjectOnly = false;
-    bool preprocessOnly = false;
-};
-
-ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );
 
 struct Driver
 {
