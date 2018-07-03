@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include <brick-types>
+
 namespace divine {
 namespace cc {
 
@@ -10,6 +12,28 @@ enum class FileType
 {
 	Unknown, C, Cpp, CPrepocessed, CppPreprocessed, IR, BC, Asm, Obj, Archive
 };
+
+struct File {
+    using InPlace = brick::types::InPlace< File >;
+
+    File() = default;
+    explicit File( std::string name, FileType type = FileType::Unknown ) :
+        name( std::move( name ) ), type( type )
+    { }
+
+    std::string name;
+    FileType type = FileType::Unknown;
+};
+
+struct Lib {
+    using InPlace = brick::types::InPlace< Lib >;
+
+    Lib() = default;
+    explicit Lib( std::string name ) : name( std::move( name ) ) { }
+    std::string name;
+};
+
+using FileEntry = brick::types::Union< File, Lib >;
 
 FileType typeFromFile( std::string name );
 FileType typeFromXOpt( std::string selector );

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <divine/cc/filetype.hpp>
+
 namespace divine {
 namespace cc {
 
