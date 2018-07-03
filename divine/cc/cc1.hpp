@@ -69,12 +69,6 @@ struct CC1 {
 
     static std::string serializeModule( llvm::Module &m );
 
-    template< typename ... Args >
-    std::string compileAndSerializeModule( Args &&... args ) {
-        auto mod = compileModule( std::forward< Args >( args )... );
-        return serializeModule( mod.get() );
-    }
-
     std::shared_ptr< llvm::LLVMContext > context() { return ctx; }
 
     bool fileExists( llvm::StringRef file );
