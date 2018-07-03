@@ -199,18 +199,6 @@ struct Node
     std::set< StatePtr, State::Comparator > expand( std::set< StatePtr, State::Comparator >& states );
 };
 
-/**
- * Finds (first) "node with same old and next" in given set of nodes
- * @return node with same old and next / nullptr iff not present
- * */
-static inline NodePtr findTwin( NodePtr nodeP, const std::set< NodePtr, Node::Comparator >& list )
-{
-    for ( auto nodeOther: list )
-        if ( ( nodeP->old == nodeOther->old ) && ( nodeP->next == nodeOther->next ) )
-            return nodeOther;
-    return nullptr;
-}
-
 struct TGBA1 {
     LTLPtr formula;
     std::vector< StatePtr > states;
