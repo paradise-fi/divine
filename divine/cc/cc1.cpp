@@ -19,7 +19,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <iostream>
 #include <mutex> // call_once
 
-#include <divine/cc/clang.hpp>
+#include <divine/cc/cc1.hpp>
 #include <lart/divine/vaarg.h>
 
 namespace divine {
@@ -55,7 +55,7 @@ auto buildAction( llvm::LLVMContext * )
     return std::make_unique< Action >();
 }
 
-Compiler::Compiler( std::shared_ptr< llvm::LLVMContext > ctx ) :
+CC1::CC1( std::shared_ptr< llvm::LLVMContext > ctx ) :
     divineVFS( new VFS() ),
     overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) ),
     ctx( ctx )
@@ -68,28 +68,28 @@ Compiler::Compiler( std::shared_ptr< llvm::LLVMContext > ctx ) :
         ctx.reset( new llvm::LLVMContext );
 }
 
-Compiler::~Compiler() { }
+CC1::~CC1() { }
 
-void Compiler::mapVirtualFile( std::string path, std::string contents )
+void CC1::mapVirtualFile( std::string path, std::string contents )
 {
     divineVFS->addFile( path, std::move( contents ) );
 }
 
-void Compiler::mapVirtualFile( std::string path, std::string_view contents )
+void CC1::mapVirtualFile( std::string path, std::string_view contents )
 {
     divineVFS->addFile( path, llvm::StringRef( contents.data(), contents.size() ) );
 }
 
-std::vector< std::string > Compiler::filesMappedUnder( std::string path ) {
+std::vector< std::string > CC1::filesMappedUnder( std::string path ) {
     return divineVFS->filesMappedUnder( path );
 }
 
-void Compiler::allowIncludePath( std::string path ) {
+void CC1::allowIncludePath( std::string path ) {
     divineVFS->allowPath( path );
 }
 
 template< typename CodeGenAction >
-std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
+std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
                             FileType type, std::vector< std::string > args,
                             llvm::IntrusiveRefCntPtr< clang::vfs::FileSystem > vfs )
 {
@@ -134,7 +134,6 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
     add( args, argsOfType( type ) );
     args.push_back( filename );
 
-
     std::vector< const char * > cc1a;
     std::transform( args.begin(), args.end(),
                     std::back_inserter( cc1a ),
@@ -168,14 +167,14 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
     return emit;
 }
 
-std::string  Compiler::preprocessModule( std::string filename,
+std::string  CC1::preprocessModule( std::string filename,
                             FileType type, std::vector< std::string > args )
 {
     auto prep = cc1< GetPreprocessedAction >( filename, type, args );
     return prep->output;
 }
 
-std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
+std::unique_ptr< llvm::Module > CC1::compileModule( std::string filename,
                             FileType type, std::vector< std::string > args )
 {
     // EmitLLVMOnlyAction emits module in memory, does not write it into a file
@@ -196,7 +195,7 @@ static void initTargets() {
         } );
 }
 
-std::string Compiler::serializeModule( llvm::Module &m ) {
+std::string CC1::serializeModule( llvm::Module &m ) {
     std::string str;
     {
         llvm::raw_string_ostream os( str );
@@ -206,14 +205,13 @@ std::string Compiler::serializeModule( llvm::Module &m ) {
     return str;
 }
 
-
-bool Compiler::fileExists( llvm::StringRef file )
+bool CC1::fileExists( llvm::StringRef file )
 {
     auto stat = overlayFS->status( file );
     return stat && stat->exists();
 }
 
-std::unique_ptr< llvm::MemoryBuffer > Compiler::getFileBuffer( llvm::StringRef file )
+std::unique_ptr< llvm::MemoryBuffer > CC1::getFileBuffer( llvm::StringRef file )
 {
     auto buf = overlayFS->getBufferForFile( file );
     return buf ? std::move( buf.get() ) : nullptr;

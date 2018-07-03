@@ -32,10 +32,10 @@ struct DivineVFS;
  compiler has its own context, multiple compilers in different threads will
  work
  */
-struct Compiler {
+struct CC1 {
 
-    explicit Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
-    ~Compiler();
+    explicit CC1( std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
+    ~CC1();
 
     void mapVirtualFile( std::string path, std::string_view contents );
     void mapVirtualFile( std::string path, std::string contents );
