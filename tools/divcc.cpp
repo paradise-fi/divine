@@ -216,7 +216,7 @@ int main( int argc, char **argv )
                 std::string ifn = srcFile.get< cc::File >().name;
                 if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
                     continue;
-                std::cout << clang.preprocessModule( ifn, po.opts );
+                std::cout << clang.preprocess( ifn, po.opts );
             }
             return 0;
         }
@@ -251,7 +251,7 @@ int main( int argc, char **argv )
             {
                 if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
                     continue;
-                auto mod = clang.compileModule( file.first, po.opts );
+                auto mod = clang.compile( file.first, po.opts );
                 emitObjFile( *mod, file.second );
             }
 
@@ -268,7 +268,7 @@ int main( int argc, char **argv )
                     continue;
                 }
                 std::string ofn = file.second;
-                auto mod = clang.compileModule( file.first, po.opts );
+                auto mod = clang.compile( file.first, po.opts );
                 emitObjFile( *mod, ofn );
                 s += ofn + " ";
             }

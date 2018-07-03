@@ -29,7 +29,7 @@ int main( int argc, const char **argv )
         std::copy( argv + 5, argv + argc, std::back_inserter( opts ) );
 
         /* Compile only if SHA-2 hash of preprocessed file differs */
-        auto prec = clang.preprocessModule( argv[3], opts );
+        auto prec = clang.preprocess( argv[3], opts );
         std::string fpFilename = std::string( argv[ 4 ] ) + ".fp";
         std::string oldFp = fs::readFileOr( fpFilename, {} );
         std::string newFp = VERSION ":" + sha2_512( prec );
@@ -37,7 +37,7 @@ int main( int argc, const char **argv )
             fs::touch( argv[ 4 ] );
             return 0;
         }
-        auto mod = clang.compileModule( argv[3], opts );
+        auto mod = clang.compile( argv[3], opts );
 
         auto runtimeBase = fs::joinPath( srcDir, "dios" );
         if ( !fs::exists( runtimeBase ) )
