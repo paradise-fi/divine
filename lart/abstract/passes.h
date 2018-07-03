@@ -9,7 +9,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/cc1.hpp>
-#include <divine/cc/compile.hpp>
+#include <divine/cc/driver.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/rt/runtime.hpp>
 
