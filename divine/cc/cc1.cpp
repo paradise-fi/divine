@@ -11,12 +11,10 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <clang/Frontend/Utils.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Support/TargetSelect.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-assert>
 #include <iostream>
-#include <mutex> // call_once
 
 #include <divine/cc/cc1.hpp>
 #include <lart/divine/vaarg.h>
@@ -181,17 +179,6 @@ std::unique_ptr< llvm::Module > CC1::compile( std::string filename,
     auto mod = emit->takeModule();
     lart::divine::VaArgInstr().run( *mod );
     return mod;
-}
-
-static std::once_flag initTargetsFlags;
-
-static void initTargets() {
-    std::call_once( initTargetsFlags, [] {
-            llvm::InitializeAllTargets();
-            llvm::InitializeAllTargetMCs();
-            llvm::InitializeAllAsmPrinters();
-            llvm::InitializeAllAsmParsers();
-        } );
 }
 
 std::string CC1::serializeModule( llvm::Module &m ) {

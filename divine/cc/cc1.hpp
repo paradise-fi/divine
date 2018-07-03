@@ -24,6 +24,8 @@ struct CompileError : brick::except::Error
 
 struct DivineVFS;
 
+void initTargets();
+
 /*
  A compiler, capable of compiling a single file into LLVM module
 
