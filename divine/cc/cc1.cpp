@@ -11,7 +11,6 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <clang/Frontend/Utils.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Support/TargetSelect.h>
 DIVINE_UNRELAX_WARNINGS
 
