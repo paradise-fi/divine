@@ -47,7 +47,7 @@ struct ExceptionMap
     {
         Lock lk( _mtx );
 
-        auto it = _exceptions.find( Loc( obj, 0, wpos ) );
+        auto it = _exceptions.find( Loc( obj, wpos ) );
         return it != _exceptions.end();
     }
 
@@ -70,10 +70,10 @@ struct ExceptionMap
     {
         Lock lk( _mtx );
 
-        auto lb_a = _exceptions.lower_bound( Loc( a, 0, 0 ) ),
-             lb_b = _exceptions.lower_bound( Loc( b, 0, 0 ) );
-        auto ub_a = _exceptions.upper_bound( Loc( a, 0, sz ) ),
-             ub_b = _exceptions.upper_bound( Loc( b, 0, sz ) );
+        auto lb_a = _exceptions.lower_bound( Loc( a, 0 ) ),
+             lb_b = _exceptions.lower_bound( Loc( b, 0 ) );
+        auto ub_a = _exceptions.upper_bound( Loc( a, sz ) ),
+             ub_b = _exceptions.upper_bound( Loc( b, sz ) );
 
         auto i_b = lb_b;
         for ( auto i_a = lb_a; i_a != ub_a; ++i_a, ++i_b )
