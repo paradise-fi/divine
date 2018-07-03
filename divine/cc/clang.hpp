@@ -52,8 +52,6 @@ struct Compiler {
     std::unique_ptr< llvm::Module > compileModule( std::string filename,
                                 FileType type, std::vector< std::string > args );
 
-    void emitObjFile( llvm::Module &m, std::string filename, std::vector< std::string > args );
-
     auto compileModule( std::string filename, std::vector< std::string > args = { } )
     {
         return compileModule( filename, typeFromFile( filename ), args );
@@ -74,9 +72,6 @@ struct Compiler {
         auto mod = compileModule( std::forward< Args >( args )... );
         return serializeModule( mod.get() );
     }
-
-    // parse module from string ref
-    std::unique_ptr< llvm::Module > materializeModule( llvm::StringRef str );
 
     std::shared_ptr< llvm::LLVMContext > context() { return ctx; }
 

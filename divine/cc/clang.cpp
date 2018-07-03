@@ -209,19 +209,6 @@ static void initTargets() {
         } );
 }
 
-void Compiler::emitObjFile( llvm::Module &m, std::string filename, std::vector< std::string > args ) {
-    args.push_back( "-o" );
-    args.push_back( filename );
-
-    std::string modulepath = "/divine/module.bc";
-
-    llvm::IntrusiveRefCntPtr< VFS > modulefs( new VFS() );
-    modulefs->addFile( modulepath, serializeModule( m ) );
-
-    initTargets();
-    cc1< clang::EmitObjAction >( modulepath, FileType::BC, args, modulefs );
-}
-
 std::string Compiler::serializeModule( llvm::Module &m ) {
     std::string str;
     {
@@ -232,13 +219,6 @@ std::string Compiler::serializeModule( llvm::Module &m ) {
     return str;
 }
 
-std::unique_ptr< llvm::Module > Compiler::materializeModule( llvm::StringRef str )
-{
-    auto parsed = llvm::parseBitcodeFile( llvm::MemoryBufferRef( str, "module.bc" ), *ctx );
-    if ( !parsed )
-        return nullptr;
-    return std::move( parsed.get() );
-}
 
 bool Compiler::fileExists( llvm::StringRef file )
 {
