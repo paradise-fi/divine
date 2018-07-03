@@ -1,4 +1,4 @@
-#include <divine/cc/clang.hpp>
+#include <divine/cc/cc1.hpp>
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
 #include <divine/vm/xg-code.hpp>
@@ -127,7 +127,7 @@ bool isType( std::string file, cc::FileType type )
     return cc::typeFromFile( file ) == type;
 }
 
-std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::Compiler& clang )
+std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::CC1& clang )
 {
     using FileType = cc::FileType;
     using namespace brick::types;
@@ -180,7 +180,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 int main( int argc, char **argv )
 {
     try {
-        cc::Compiler clang;
+        cc::CC1 clang;
         clang.allowIncludePath( "/" );
         divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
         std::vector< std::pair< std::string, std::string > > objFiles;

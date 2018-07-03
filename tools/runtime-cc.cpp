@@ -1,4 +1,4 @@
-#include <divine/cc/clang.hpp>
+#include <divine/cc/cc1.hpp>
 #include <divine/cc/paths.hpp>
 
 DIVINE_RELAX_WARNINGS
@@ -21,7 +21,7 @@ using namespace brick;
 int main( int argc, const char **argv )
 {
     try {
-        cc::Compiler clang;
+        cc::CC1 clang;
         std::string srcDir = argv[1], binDir = argv[2];
         clang.allowIncludePath( srcDir );
         clang.allowIncludePath( binDir );
