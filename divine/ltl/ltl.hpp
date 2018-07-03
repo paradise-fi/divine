@@ -533,6 +533,43 @@ struct LTLNF /* normal forms */
     }
 };
 
+struct typeDetection
+{
+    TEST(test_isType)
+    {
+        std::string u( " a U b " );
+        std::string r("a R b");
+        std::string x("X a");
+        LTLPtr until = LTL::parse( u );
+        LTLPtr release = LTL::parse( r );
+        LTLPtr next = LTL::parse( x );
+        assert( until->isType( Binary::Until ) );
+        assert( release->isType( Binary::Release ) );
+        assert( next->isType( Unary::Next ) );
+    }
+    TEST(test_isAtomOrBooleanOrNeg)
+    {
+        std::string a("a");
+        std::string neg_a("! a");
+        std::string neg_neg_a("! ! a");
+        std::string tru("true");
+        std::string neg_tru("! true");
+        std::string x("X a");
+        LTLPtr atom = LTL::parse( a );
+        LTLPtr neg_atom = LTL::parse( neg_a );
+        LTLPtr neg_neg_atom = LTL::parse( neg_neg_a );
+        LTLPtr b_tru = LTL::parse( tru );
+        LTLPtr b_neg_tru = LTL::parse( neg_tru );
+        LTLPtr next = LTL::parse( x );
+        assert( atom->isAtomOrBooleanOrNeg() );
+        assert( neg_atom->isAtomOrBooleanOrNeg() );
+        assert( neg_neg_atom->isAtomOrBooleanOrNeg() );
+        assert( b_tru->isAtomOrBooleanOrNeg() );
+        assert( b_neg_tru->isAtomOrBooleanOrNeg() );
+        assert( !next->isAtomOrBooleanOrNeg() );
+    }
+};
+
 }
 }
 
