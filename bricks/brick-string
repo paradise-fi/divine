@@ -527,6 +527,16 @@ std::string format( Args &&...args ) {
 
 }
 
+namespace _assert {
+
+template< typename... Args >
+std::string fmt( Args &&... args )
+{
+    return string::format( std::forward< Args >( args )... );
+}
+
+}
+
 namespace t_string
 {
 

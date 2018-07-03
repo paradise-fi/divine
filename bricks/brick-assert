@@ -58,11 +58,11 @@
 #define ASSERT_EQ_IDX(i, x, y) static_cast< decltype(i, x, y, void(0)) >(0)
 #endif
 
-/* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
+/* you must #include <brick-string> to use ASSERT_UNREACHABLE_F */
 #define UNREACHABLE_F(...) ::brick::_assert::assert_die_fn( \
         BRICK_LOCWRAP( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) ) )
-#define UNREACHABLE(x) ::brick::_assert::assert_die_fn( \
-        BRICK_LOCWRAP( BRICK_LOCATION( x ) ) )
+#define UNREACHABLE(...) ::brick::_assert::assert_die_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( ::brick::_assert::fmt( __VA_ARGS__ ) ) ) )
 #define UNREACHABLE_() ::brick::_assert::assert_die_fn( \
         BRICK_LOCWRAP( BRICK_LOCATION( "an unreachable location" ) ) )
 #define NOT_IMPLEMENTED() ::brick::_assert::assert_die_fn( \
@@ -220,6 +220,10 @@ void assert_neq_fn( Location l, X x, Y y )
       << x << " == " << y << "\n";
     throw f;
 }
+
+inline std::string fmt( const char *str ) { return str; }
+inline std::string fmt( std::string str ) { return str; }
+// another overload of fmt is exported by brick-string and it allows more complex formating
 
 }
 }
