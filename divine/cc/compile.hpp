@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 #pragma once
 
-#include <divine/cc/clang.hpp>
+#include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
 
 #include <brick-assert>
@@ -112,7 +112,7 @@ struct Compile
     brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
 
     Options opts;
-    Compiler compiler;
+    CC1 compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
     std::vector< std::string > commonFlags; // set in CPP
     std::string runtimeVersMeta = "divine.compile.runtime.version";
