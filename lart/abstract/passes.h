@@ -8,7 +8,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Casting.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <divine/cc/clang.hpp>
+#include <divine/cc/cc1.hpp>
 #include <divine/cc/compile.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/rt/runtime.hpp>
