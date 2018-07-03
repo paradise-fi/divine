@@ -14,8 +14,6 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 namespace cc {
-	
-struct Compiler;
 
 enum class VFSError {
     InvalidIncludePath = 1000 // avoid clash with LLVM's error codes, they don't check category
@@ -34,7 +32,6 @@ struct VFSErrorCategory : std::error_category {
 static std::error_code make_error_code( VFSError derr ) {
     return std::error_code( int( derr ), VFSErrorCategory() );
 }
-
 
 } // cc
 } // divine

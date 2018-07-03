@@ -53,14 +53,14 @@ struct ParsedOpts {
 
 ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );
 
-struct Compile
+struct Driver
 {
     using ModulePtr = std::unique_ptr< llvm::Module >;
 
-    explicit Compile( std::shared_ptr< llvm::LLVMContext > ctx ) : Compile( Options(), ctx ) {}
-    explicit Compile( Options opts = Options(),
+    explicit Driver( std::shared_ptr< llvm::LLVMContext > ctx ) : Driver( Options(), ctx ) {}
+    explicit Driver( Options opts = Options(),
                       std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
-    ~Compile();
+    ~Driver();
 
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
     void compileAndLink( std::string path, FileType type, std::vector< std::string > flags = {} );

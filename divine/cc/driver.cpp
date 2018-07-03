@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 
-#include <divine/cc/compile.hpp>
+#include <divine/cc/driver.hpp>
 #include <divine/cc/paths.hpp>
 
 DIVINE_RELAX_WARNINGS
@@ -49,7 +49,7 @@ static std::vector< std::string > mergeFlags( Xs &&... xs ) {
     return out;
 }
 
-Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
+Driver::Driver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     opts( opts ), compiler( ctx ), linker( new brick::llvm::Linker() )
 {
     commonFlags = { "-D__divine__=4"
@@ -66,25 +66,25 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
                   };
 }
 
-Compile::~Compile() { }
+Driver::~Driver() { }
 
-void Compile::compileAndLink( std::string path, std::vector< std::string > flags )
+void Driver::compileAndLink( std::string path, std::vector< std::string > flags )
 {
     linker->link( compile( path, flags ) );
 }
 
-void Compile::compileAndLink( std::string path, FileType type, std::vector< std::string > flags )
+void Driver::compileAndLink( std::string path, FileType type, std::vector< std::string > flags )
 {
     linker->link( compile( path, type, flags ) );
 }
 
-std::unique_ptr< llvm::Module > Compile::compile( std::string path,
+std::unique_ptr< llvm::Module > Driver::compile( std::string path,
                                     std::vector< std::string > flags )
 {
     return compile( path, typeFromFile( path ), flags );
 }
 
-std::unique_ptr< llvm::Module > Compile::compile( std::string path,
+std::unique_ptr< llvm::Module > Driver::compile( std::string path,
                                     FileType type, std::vector< std::string > flags )
 {
     std::vector< std::string > allFlags;
@@ -173,7 +173,7 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
     return po;
 }
 
-void Compile::runCC( std::vector< std::string > rawCCOpts,
+void Driver::runCC( std::vector< std::string > rawCCOpts,
                      std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
 {
     using FT = FileType;
@@ -206,45 +206,46 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
     }
 }
 
-std::unique_ptr< llvm::Module > Compile::takeLinked()
+std::unique_ptr< llvm::Module > Driver::takeLinked()
 {
     brick::llvm::verifyModule( linker->get() );
     return linker->take();
 }
 
-void Compile::writeToFile( std::string filename ) {
+void Driver::writeToFile( std::string filename ) {
     writeToFile( filename, linker->get() );
 }
 
-void Compile::writeToFile( std::string filename, llvm::Module *mod )
+void Driver::writeToFile( std::string filename, llvm::Module *mod )
 {
     brick::llvm::writeModule( mod, filename );
 }
 
-std::string Compile::serialize() {
+
+std::string Driver::serialize() {
     return compiler.serializeModule( *linker->get() );
 }
 
-void Compile::addDirectory( std::string path ) {
+void Driver::addDirectory( std::string path ) {
     compiler.allowIncludePath( path );
 }
 
-void Compile::addFlags( std::vector< std::string > flags ) {
+void Driver::addFlags( std::vector< std::string > flags ) {
     std::copy( flags.begin(), flags.end(), std::back_inserter( commonFlags ) );
 }
 
-std::shared_ptr< llvm::LLVMContext > Compile::context() { return compiler.context(); }
+std::shared_ptr< llvm::LLVMContext > Driver::context() { return compiler.context(); }
 
-void Compile::linkLibs( std::vector< std::string > ls, std::vector< std::string > searchPaths ) {
+void Driver::linkLibs( std::vector< std::string > ls, std::vector< std::string > searchPaths ) {
     for ( auto lib : ls )
         linkLib( lib, searchPaths );
 }
 
-void Compile::linkModule( ModulePtr mod ) {
+void Driver::linkModule( ModulePtr mod ) {
    linker->link( std::move( mod ) );
 }
 
-brick::llvm::ArchiveReader Compile::getLib( std::string lib, std::vector< std::string > searchPaths ) {
+brick::llvm::ArchiveReader Driver::getLib( std::string lib, std::vector< std::string > searchPaths ) {
     using namespace brick::fs;
 
     std::string name;
@@ -271,18 +272,18 @@ brick::llvm::ArchiveReader Compile::getLib( std::string lib, std::vector< std::s
     return brick::llvm::ArchiveReader( std::move( buf ), context() );
 }
 
-void Compile::linkLib( std::string lib, std::vector< std::string > searchPaths ) {
+void Driver::linkLib( std::string lib, std::vector< std::string > searchPaths ) {
     auto archive = getLib( lib, std::move( searchPaths ) );
     linker->linkArchive( archive );
 }
 
-void Compile::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context )
+void Driver::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context )
 {
     auto archive = brick::llvm::ArchiveReader( std::move( buf ), context );
     linker->linkArchive( archive );
 }
 
-void Compile::linkEntireArchive( std::string arch )
+void Driver::linkEntireArchive( std::string arch )
 {
         auto archive = getLib( arch );
         auto modules = archive.modules();
@@ -290,7 +291,7 @@ void Compile::linkEntireArchive( std::string arch )
             linker->link( it.take() );
 }
 
-void Compile::linkEssentials()
+void Driver::linkEssentials()
 {
     for (auto arch : { "dios", "rst" } )
         linkEntireArchive( arch );
@@ -305,7 +306,7 @@ void Compile::linkEssentials()
     }
 }
 
-const std::vector< std::string > Compile::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
+const std::vector< std::string > Driver::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
 
 }
 }
