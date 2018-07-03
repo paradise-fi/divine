@@ -49,20 +49,20 @@ struct CC1 {
     std::vector< std::string > filesMappedUnder( std::string path );
     void allowIncludePath( std::string path );
 
-    std::unique_ptr< llvm::Module > compileModule( std::string filename,
+    std::unique_ptr< llvm::Module > compile( std::string filename,
                                 FileType type, std::vector< std::string > args );
 
-    auto compileModule( std::string filename, std::vector< std::string > args = { } )
+    auto compile( std::string filename, std::vector< std::string > args = { } )
     {
-        return compileModule( filename, typeFromFile( filename ), args );
+        return compile( filename, typeFromFile( filename ), args );
     }
 
-    std::string preprocessModule( std::string filename,
+    std::string preprocess( std::string filename,
                             FileType type, std::vector< std::string > args );
 
-    std::string preprocessModule( std::string filename, std::vector< std::string > args = { } )
+    std::string preprocess( std::string filename, std::vector< std::string > args = { } )
     {
-        return preprocessModule( filename, typeFromFile( filename ), args );
+        return preprocess( filename, typeFromFile( filename ), args );
     }
 
     static std::string serializeModule( llvm::Module &m );

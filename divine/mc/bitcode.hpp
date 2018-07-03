@@ -100,7 +100,7 @@ static auto c2bc( std::string s )
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     divine::cc::CC1 c( ctx );
     c.mapVirtualFile( "/main.c", s );
-    auto rv = std::make_shared< mc::BitCode >( c.compileModule( "/main.c" ), ctx );
+    auto rv = std::make_shared< mc::BitCode >( c.compile( "/main.c" ), ctx );
     rv->_interrupts = false;
     rv->init();
     return rv;

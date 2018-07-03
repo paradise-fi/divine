@@ -57,7 +57,7 @@ auto c2prog( std::string s )
 {
     divine::cc::CC1 c( testContext() );
     c.mapVirtualFile( "/main.c", s );
-    return mod2prog( c.compileModule( "/main.c" ) );
+    return mod2prog( c.compile( "/main.c" ) );
 }
 
 }

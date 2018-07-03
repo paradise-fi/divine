@@ -167,14 +167,14 @@ std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
     return emit;
 }
 
-std::string  CC1::preprocessModule( std::string filename,
+std::string  CC1::preprocess( std::string filename,
                             FileType type, std::vector< std::string > args )
 {
     auto prep = cc1< GetPreprocessedAction >( filename, type, args );
     return prep->output;
 }
 
-std::unique_ptr< llvm::Module > CC1::compileModule( std::string filename,
+std::unique_ptr< llvm::Module > CC1::compile( std::string filename,
                             FileType type, std::vector< std::string > args )
 {
     // EmitLLVMOnlyAction emits module in memory, does not write it into a file
