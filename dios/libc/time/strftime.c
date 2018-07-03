@@ -1,662 +1,730 @@
+/*	$OpenBSD: strftime.c,v 1.30 2016/09/21 04:38:57 guenther Exp $ */
 /*
- * strftime.c
- *
- * Public-domain implementation of ANSI C library routine.
- *
- * It's written in old-style C for maximal portability.
- * However, since I'm used to prototypes, I've included them too.
- *
- * If you want stuff in the System V ascftime routine, add the SYSV_EXT define.
- * For extensions from SunOS, add SUNOS_EXT.
- * For stuff needed to implement the P1003.2 date command, add POSIX2_DATE.
- * For VMS dates, add VMS_EXT.
- * For a an RFC822 time format, add MAILHEADER_EXT.
- * For ISO week years, add ISO_DATE_EXT.
- * For complete POSIX semantics, add POSIX_SEMANTICS.
- *
- * The code for %c, %x, and %X now follows the 1003.2 specification for
- * the POSIX locale.
- * This version ignores LOCALE information.
- * It also doesn't worry about multi-byte characters.
- * So there.
- *
- * This file is also shipped with GAWK (GNU Awk), gawk specific bits of
- * code are included if GAWK is defined.
- *
- * Arnold Robbins
- * January, February, March, 1991
- * Updated March, April 1992
- * Updated April, 1993
- * Updated February, 1994
- * Updated May, 1994
- * Updated January, 1995
- * Updated September, 1995
- * Updated January, 1996
- *
- * Fixes from ado@elsie.nci.nih.gov
- * February 1991, May 1992
- * Fixes from Tor Lillqvist tml@tik.vtt.fi
- * May, 1993
- * Further fixes from ado@elsie.nci.nih.gov
- * February 1994
- * %z code from chip@chinacat.unicom.com
- * Applied September 1995
- * %V code fixed (again) and %G, %g added,
- * January 1996
- */
+** Copyright (c) 1989, 1993
+**	The Regents of the University of California.  All rights reserved.
+**
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions
+** are met:
+** 1. Redistributions of source code must retain the above copyright
+**    notice, this list of conditions and the following disclaimer.
+** 2. Redistributions in binary form must reproduce the above copyright
+**    notice, this list of conditions and the following disclaimer in the
+**    documentation and/or other materials provided with the distribution.
+** 3. Neither the name of the University nor the names of its contributors
+**    may be used to endorse or promote products derived from this software
+**    without specific prior written permission.
+**
+** THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+** ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+** ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+** FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+** DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+** OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+** HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+** LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+** OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+** SUCH DAMAGE.
+*/
 
-#ifndef GAWK
+#include <fcntl.h>
+#include <locale.h>
 #include <stdio.h>
-#include <ctype.h>
-#include <string.h>
 #include <time.h>
-#endif
-#if defined(TM_IN_SYS_TIME) || !defined(GAWK) && !defined(_WIN32_WCE)
-#include <sys/types.h>
-#include <sys/time.h>
-#endif
 
-/* defaults: season to taste */
-#define SYSV_EXT        1       /* stuff in System V ascftime routine */
-#define SUNOS_EXT       1       /* stuff in SunOS strftime routine */
-#define POSIX2_DATE     1       /* stuff in Posix 1003.2 date command */
-#define VMS_EXT         1       /* include %v for VMS date format */
-#undef  MAILHEADER_EXT          /* add %z for HHMM format */
-#define ISO_DATE_EXT    1       /* %G and %g for year of ISO week */
-#ifndef GAWK
-#define POSIX_SEMANTICS 1       /* call tzset() if TZ changes */
-#endif
+#include "private.h"
+#include "tzfile.h"
 
-#if defined(ISO_DATE_EXT)
-#if ! defined(POSIX2_DATE)
-#define POSIX2_DATE     1
-#endif
-#endif
+struct lc_time_T {
+	const char *	mon[MONSPERYEAR];
+	const char *	month[MONSPERYEAR];
+	const char *	wday[DAYSPERWEEK];
+	const char *	weekday[DAYSPERWEEK];
+	const char *	X_fmt;
+	const char *	x_fmt;
+	const char *	c_fmt;
+	const char *	am;
+	const char *	pm;
+	const char *	date_fmt;
+};
 
-#if defined(POSIX2_DATE)
-#if ! defined(SYSV_EXT)
-#define SYSV_EXT        1
-#endif
-#if ! defined(SUNOS_EXT)
-#define SUNOS_EXT       1
-#endif
-#endif
+#ifdef LOCALE_HOME
+#include "sys/stat.h"
+static struct lc_time_T		localebuf;
+static struct lc_time_T *	_loc(void);
+#define Locale	_loc()
+#endif /* defined LOCALE_HOME */
+#ifndef LOCALE_HOME
+#define Locale	(&C_time_locale)
+#endif /* !defined LOCALE_HOME */
 
-#if defined(POSIX2_DATE)
-#define adddecl(stuff)  stuff
-#else
-#define adddecl(stuff)
-#endif
+static const struct lc_time_T	C_time_locale = {
+	{
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+	}, {
+		"January", "February", "March", "April", "May", "June",
+		"July", "August", "September", "October", "November", "December"
+	}, {
+		"Sun", "Mon", "Tue", "Wed",
+		"Thu", "Fri", "Sat"
+	}, {
+		"Sunday", "Monday", "Tuesday", "Wednesday",
+		"Thursday", "Friday", "Saturday"
+	},
 
-#include <stdlib.h>
-#include <string.h>
+	/* X_fmt */
+	"%H:%M:%S",
 
-static inline int min(int a, int b) { return (a < b ? a : b); }
-static inline int max(int a, int b) { return (a > b ? a : b); }
+	/*
+	** x_fmt
+	** C99 requires this format.
+	** Using just numbers (as here) makes Quakers happier;
+	** it's also compatible with SVR4.
+	*/
+	"%m/%d/%y",
 
-#define range(low, item, hi)    max(low, min(item, hi))
+	/*
+	** c_fmt
+	** C99 requires this format.
+	** Previously this code used "%D %X", but we now conform to C99.
+	** Note that
+	**	"%a %b %d %H:%M:%S %Y"
+	** is used by Solaris 2.3.
+	*/
+	"%a %b %e %T %Y",
 
-/* isleap --- is a year a leap year? */
+	/* am */
+	"AM",
 
-static int
-isleap(long year)
+	/* pm */
+	"PM",
+
+	/* date_fmt */
+	"%a %b %e %H:%M:%S %Z %Y"
+};
+
+static char *	_add(const char *, char *, const char *);
+static char *	_conv(int, const char *, char *, const char *);
+static char *	_fmt(const char *, const struct tm *, char *, const char *,
+			int *);
+static char *	_yconv(int, int, int, int, char *, const char *);
+
+extern char *	tzname[];
+
+#define IN_NONE	0
+#define IN_SOME	1
+#define IN_THIS	2
+#define IN_ALL	3
+
+size_t
+strftime(char *s, size_t maxsize, const char *format, const struct tm *t)
 {
-        return ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0);
+	char *	p;
+	int	warn;
+
+	tzset();
+#ifdef LOCALE_HOME
+	localebuf.mon[0] = 0;
+#endif /* defined LOCALE_HOME */
+	warn = IN_NONE;
+	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn);
+	if (p == s + maxsize) {
+		if (maxsize > 0)
+			s[maxsize - 1] = '\0';
+		return 0;
+	}
+	*p = '\0';
+	return p - s;
+}
+//DEF_STRONG(strftime);
+
+static char *
+_fmt(const char *format, const struct tm *t, char *pt, const char *ptlim, int *warnp)
+{
+	for ( ; *format; ++format) {
+		if (*format == '%') {
+label:
+			switch (*++format) {
+			case '\0':
+				--format;
+				break;
+			case 'A':
+				pt = _add((t->tm_wday < 0 ||
+					t->tm_wday >= DAYSPERWEEK) ?
+					"?" : Locale->weekday[t->tm_wday],
+					pt, ptlim);
+				continue;
+			case 'a':
+				pt = _add((t->tm_wday < 0 ||
+					t->tm_wday >= DAYSPERWEEK) ?
+					"?" : Locale->wday[t->tm_wday],
+					pt, ptlim);
+				continue;
+			case 'B':
+				pt = _add((t->tm_mon < 0 ||
+					t->tm_mon >= MONSPERYEAR) ?
+					"?" : Locale->month[t->tm_mon],
+					pt, ptlim);
+				continue;
+			case 'b':
+			case 'h':
+				pt = _add((t->tm_mon < 0 ||
+					t->tm_mon >= MONSPERYEAR) ?
+					"?" : Locale->mon[t->tm_mon],
+					pt, ptlim);
+				continue;
+			case 'C':
+				/*
+				** %C used to do a...
+				**	_fmt("%a %b %e %X %Y", t);
+				** ...whereas now POSIX 1003.2 calls for
+				** something completely different.
+				** (ado, 1993-05-24)
+				*/
+				pt = _yconv(t->tm_year, TM_YEAR_BASE, 1, 0,
+					pt, ptlim);
+				continue;
+			case 'c':
+				{
+				int warn2 = IN_SOME;
+
+				pt = _fmt(Locale->c_fmt, t, pt, ptlim, &warn2);
+				if (warn2 == IN_ALL)
+					warn2 = IN_THIS;
+				if (warn2 > *warnp)
+					*warnp = warn2;
+				}
+				continue;
+			case 'D':
+				pt = _fmt("%m/%d/%y", t, pt, ptlim, warnp);
+				continue;
+			case 'd':
+				pt = _conv(t->tm_mday, "%02d", pt, ptlim);
+				continue;
+			case 'E':
+			case 'O':
+				/*
+				** C99 locale modifiers.
+				** The sequences
+				**	%Ec %EC %Ex %EX %Ey %EY
+				**	%Od %oe %OH %OI %Om %OM
+				**	%OS %Ou %OU %OV %Ow %OW %Oy
+				** are supposed to provide alternate
+				** representations.
+				*/
+				goto label;
+			case 'e':
+				pt = _conv(t->tm_mday, "%2d", pt, ptlim);
+				continue;
+			case 'F':
+				pt = _fmt("%Y-%m-%d", t, pt, ptlim, warnp);
+				continue;
+			case 'H':
+				pt = _conv(t->tm_hour, "%02d", pt, ptlim);
+				continue;
+			case 'I':
+				pt = _conv((t->tm_hour % 12) ?
+					(t->tm_hour % 12) : 12,
+					"%02d", pt, ptlim);
+				continue;
+			case 'j':
+				pt = _conv(t->tm_yday + 1, "%03d", pt, ptlim);
+				continue;
+			case 'k':
+				/*
+				** This used to be...
+				**	_conv(t->tm_hour % 12 ?
+				**		t->tm_hour % 12 : 12, 2, ' ');
+				** ...and has been changed to the below to
+				** match SunOS 4.1.1 and Arnold Robbins'
+				** strftime version 3.0. That is, "%k" and
+				** "%l" have been swapped.
+				** (ado, 1993-05-24)
+				*/
+				pt = _conv(t->tm_hour, "%2d", pt, ptlim);
+				continue;
+#ifdef KITCHEN_SINK
+			case 'K':
+				/*
+				** After all this time, still unclaimed!
+				*/
+				pt = _add("kitchen sink", pt, ptlim);
+				continue;
+#endif /* defined KITCHEN_SINK */
+			case 'l':
+				/*
+				** This used to be...
+				**	_conv(t->tm_hour, 2, ' ');
+				** ...and has been changed to the below to
+				** match SunOS 4.1.1 and Arnold Robbin's
+				** strftime version 3.0. That is, "%k" and
+				** "%l" have been swapped.
+				** (ado, 1993-05-24)
+				*/
+				pt = _conv((t->tm_hour % 12) ?
+					(t->tm_hour % 12) : 12,
+					"%2d", pt, ptlim);
+				continue;
+			case 'M':
+				pt = _conv(t->tm_min, "%02d", pt, ptlim);
+				continue;
+			case 'm':
+				pt = _conv(t->tm_mon + 1, "%02d", pt, ptlim);
+				continue;
+			case 'n':
+				pt = _add("\n", pt, ptlim);
+				continue;
+			case 'p':
+				pt = _add((t->tm_hour >= (HOURSPERDAY / 2)) ?
+					Locale->pm :
+					Locale->am,
+					pt, ptlim);
+				continue;
+			case 'R':
+				pt = _fmt("%H:%M", t, pt, ptlim, warnp);
+				continue;
+			case 'r':
+				pt = _fmt("%I:%M:%S %p", t, pt, ptlim, warnp);
+				continue;
+			case 'S':
+				pt = _conv(t->tm_sec, "%02d", pt, ptlim);
+				continue;
+			case 's':
+				{
+					struct tm	tm;
+					char		buf[INT_STRLEN_MAXIMUM(
+								time_t) + 1];
+					time_t		mkt;
+
+					tm = *t;
+					mkt = mktime(&tm);
+					(void) snprintf(buf, sizeof buf,
+					    "%ld", (long) mkt);
+					pt = _add(buf, pt, ptlim);
+				}
+				continue;
+			case 'T':
+				pt = _fmt("%H:%M:%S", t, pt, ptlim, warnp);
+				continue;
+			case 't':
+				pt = _add("\t", pt, ptlim);
+				continue;
+			case 'U':
+				pt = _conv((t->tm_yday + DAYSPERWEEK -
+					t->tm_wday) / DAYSPERWEEK,
+					"%02d", pt, ptlim);
+				continue;
+			case 'u':
+				/*
+				** From Arnold Robbins' strftime version 3.0:
+				** "ISO 8601: Weekday as a decimal number
+				** [1 (Monday) - 7]"
+				** (ado, 1993-05-24)
+				*/
+				pt = _conv((t->tm_wday == 0) ?
+					DAYSPERWEEK : t->tm_wday,
+					"%d", pt, ptlim);
+				continue;
+			case 'V':	/* ISO 8601 week number */
+			case 'G':	/* ISO 8601 year (four digits) */
+			case 'g':	/* ISO 8601 year (two digits) */
+/*
+** From Arnold Robbins' strftime version 3.0: "the week number of the
+** year (the first Monday as the first day of week 1) as a decimal number
+** (01-53)."
+** (ado, 1993-05-24)
+**
+** From "http://www.ft.uni-erlangen.de/~mskuhn/iso-time.html" by Markus Kuhn:
+** "Week 01 of a year is per definition the first week which has the
+** Thursday in this year, which is equivalent to the week which contains
+** the fourth day of January. In other words, the first week of a new year
+** is the week which has the majority of its days in the new year. Week 01
+** might also contain days from the previous year and the week before week
+** 01 of a year is the last week (52 or 53) of the previous year even if
+** it contains days from the new year. A week starts with Monday (day 1)
+** and ends with Sunday (day 7). For example, the first week of the year
+** 1997 lasts from 1996-12-30 to 1997-01-05..."
+** (ado, 1996-01-02)
+*/
+				{
+					int	year;
+					int	base;
+					int	yday;
+					int	wday;
+					int	w;
+
+					year = t->tm_year;
+					base = TM_YEAR_BASE;
+					yday = t->tm_yday;
+					wday = t->tm_wday;
+					for ( ; ; ) {
+						int	len;
+						int	bot;
+						int	top;
+
+						len = isleap_sum(year, base) ?
+							DAYSPERLYEAR :
+							DAYSPERNYEAR;
+						/*
+						** What yday (-3 ... 3) does
+						** the ISO year begin on?
+						*/
+						bot = ((yday + 11 - wday) %
+							DAYSPERWEEK) - 3;
+						/*
+						** What yday does the NEXT
+						** ISO year begin on?
+						*/
+						top = bot -
+							(len % DAYSPERWEEK);
+						if (top < -3)
+							top += DAYSPERWEEK;
+						top += len;
+						if (yday >= top) {
+							++base;
+							w = 1;
+							break;
+						}
+						if (yday >= bot) {
+							w = 1 + ((yday - bot) /
+								DAYSPERWEEK);
+							break;
+						}
+						--base;
+						yday += isleap_sum(year, base) ?
+							DAYSPERLYEAR :
+							DAYSPERNYEAR;
+					}
+#ifdef XPG4_1994_04_09
+					if ((w == 52 &&
+						t->tm_mon == TM_JANUARY) ||
+						(w == 1 &&
+						t->tm_mon == TM_DECEMBER))
+							w = 53;
+#endif /* defined XPG4_1994_04_09 */
+					if (*format == 'V')
+						pt = _conv(w, "%02d",
+							pt, ptlim);
+					else if (*format == 'g') {
+						*warnp = IN_ALL;
+						pt = _yconv(year, base, 0, 1,
+							pt, ptlim);
+					} else	pt = _yconv(year, base, 1, 1,
+							pt, ptlim);
+				}
+				continue;
+			case 'v':
+				/*
+				** From Arnold Robbins' strftime version 3.0:
+				** "date as dd-bbb-YYYY"
+				** (ado, 1993-05-24)
+				*/
+				pt = _fmt("%e-%b-%Y", t, pt, ptlim, warnp);
+				continue;
+			case 'W':
+				pt = _conv((t->tm_yday + DAYSPERWEEK -
+					(t->tm_wday ?
+					(t->tm_wday - 1) :
+					(DAYSPERWEEK - 1))) / DAYSPERWEEK,
+					"%02d", pt, ptlim);
+				continue;
+			case 'w':
+				pt = _conv(t->tm_wday, "%d", pt, ptlim);
+				continue;
+			case 'X':
+				pt = _fmt(Locale->X_fmt, t, pt, ptlim, warnp);
+				continue;
+			case 'x':
+				{
+				int	warn2 = IN_SOME;
+
+				pt = _fmt(Locale->x_fmt, t, pt, ptlim, &warn2);
+				if (warn2 == IN_ALL)
+					warn2 = IN_THIS;
+				if (warn2 > *warnp)
+					*warnp = warn2;
+				}
+				continue;
+			case 'y':
+				*warnp = IN_ALL;
+				pt = _yconv(t->tm_year, TM_YEAR_BASE, 0, 1,
+					pt, ptlim);
+				continue;
+			case 'Y':
+				pt = _yconv(t->tm_year, TM_YEAR_BASE, 1, 1,
+					pt, ptlim);
+				continue;
+			case 'Z':
+#ifdef TM_ZONE
+				if (t->TM_ZONE != NULL)
+					pt = _add(t->TM_ZONE, pt, ptlim);
+				else
+#endif /* defined TM_ZONE */
+				if (t->tm_isdst >= 0)
+					pt = _add(tzname[t->tm_isdst != 0],
+						pt, ptlim);
+				/*
+				** C99 says that %Z must be replaced by the
+				** empty string if the time zone is not
+				** determinable.
+				*/
+				continue;
+			case 'z':
+				{
+				int		diff;
+				char const *	sign;
+
+				if (t->tm_isdst < 0)
+					continue;
+#ifdef TM_GMTOFF
+				diff = t->TM_GMTOFF;
+#else /* !defined TM_GMTOFF */
+				/*
+				** C99 says that the UTC offset must
+				** be computed by looking only at
+				** tm_isdst. This requirement is
+				** incorrect, since it means the code
+				** must rely on magic (in this case
+				** altzone and timezone), and the
+				** magic might not have the correct
+				** offset. Doing things correctly is
+				** tricky and requires disobeying C99;
+				** see GNU C strftime for details.
+				** For now, punt and conform to the
+				** standard, even though it's incorrect.
+				**
+				** C99 says that %z must be replaced by the
+				** empty string if the time zone is not
+				** determinable, so output nothing if the
+				** appropriate variables are not available.
+				*/
+				if (t->tm_isdst == 0)
+#ifdef USG_COMPAT
+					diff = -timezone;
+#else /* !defined USG_COMPAT */
+					continue;
+#endif /* !defined USG_COMPAT */
+				else
+#ifdef ALTZONE
+					diff = -altzone;
+#else /* !defined ALTZONE */
+					continue;
+#endif /* !defined ALTZONE */
+#endif /* !defined TM_GMTOFF */
+				if (diff < 0) {
+					sign = "-";
+					diff = -diff;
+				} else	sign = "+";
+				pt = _add(sign, pt, ptlim);
+				diff /= SECSPERMIN;
+				diff = (diff / MINSPERHOUR) * 100 +
+					(diff % MINSPERHOUR);
+				pt = _conv(diff, "%04d", pt, ptlim);
+				}
+				continue;
+			case '+':
+				pt = _fmt(Locale->date_fmt, t, pt, ptlim,
+					warnp);
+				continue;
+			case '%':
+			/*
+			** X311J/88-090 (4.12.3.5): if conversion char is
+			** undefined, behavior is undefined. Print out the
+			** character itself as printf(3) also does.
+			*/
+			default:
+				break;
+			}
+		}
+		if (pt == ptlim)
+			break;
+		*pt++ = *format;
+	}
+	return pt;
 }
 
-/* weeknumber --- figure how many weeks into the year */
-
-/* With thanks and tip of the hatlo to ado@elsie.nci.nih.gov */
-
-static int
-weeknumber(const struct tm *timeptr, int firstweekday)
+static char *
+_conv(int n, const char *format, char *pt, const char *ptlim)
 {
-        int wday = timeptr->tm_wday;
-        int ret;
+	char	buf[INT_STRLEN_MAXIMUM(int) + 1];
 
-        if (firstweekday == 1) {
-                if (wday == 0)  /* sunday */
-                        wday = 6;
-                else
-                        wday--;
-        }
-        ret = ((timeptr->tm_yday + 7 - wday) / 7);
-        if (ret < 0)
-                ret = 0;
-        return ret;
+	(void) snprintf(buf, sizeof buf, format, n);
+	return _add(buf, pt, ptlim);
 }
 
-#ifdef POSIX2_DATE
-/* iso8601wknum --- compute week number according to ISO 8601 */
-
-static int
-iso8601wknum(const struct tm *timeptr)
+static char *
+_add(const char *str, char *pt, const char *ptlim)
 {
-        /*
-         * From 1003.2:
-         *      If the week (Monday to Sunday) containing January 1
-         *      has four or more days in the new year, then it is week 1;
-         *      otherwise it is the highest numbered week of the previous
-         *      year (52 or 53), and the next week is week 1.
-         *
-         * ADR: This means if Jan 1 was Monday through Thursday,
-         *      it was week 1, otherwise week 52 or 53.
-         *
-         * XPG4 erroneously included POSIX.2 rationale text in the
-         * main body of the standard. Thus it requires week 53.
-         */
-
-        int weeknum, jan1day, diff;
-
-        /* get week number, Monday as first day of the week */
-        weeknum = weeknumber(timeptr, 1);
-
-        /*
-         * With thanks and tip of the hatlo to tml@tik.vtt.fi
-         *
-         * What day of the week does January 1 fall on?
-         * We know that
-         *      (timeptr->tm_yday - jan1.tm_yday) MOD 7 ==
-         *              (timeptr->tm_wday - jan1.tm_wday) MOD 7
-         * and that
-         *      jan1.tm_yday == 0
-         * and that
-         *      timeptr->tm_wday MOD 7 == timeptr->tm_wday
-         * from which it follows that. . .
-         */
-        jan1day = timeptr->tm_wday - (timeptr->tm_yday % 7);
-        if (jan1day < 0)
-                jan1day += 7;
-
-        /*
-         * If Jan 1 was a Monday through Thursday, it was in
-         * week 1.  Otherwise it was last year's highest week, which is
-         * this year's week 0.
-         *
-         * What does that mean?
-         * If Jan 1 was Monday, the week number is exactly right, it can
-         *      never be 0.
-         * If it was Tuesday through Thursday, the weeknumber is one
-         *      less than it should be, so we add one.
-         * Otherwise, Friday, Saturday or Sunday, the week number is
-         * OK, but if it is 0, it needs to be 52 or 53.
-         */
-        switch (jan1day) {
-        case 1:         /* Monday */
-                break;
-        case 2:         /* Tuesday */
-        case 3:         /* Wednesday */
-        case 4:         /* Thursday */
-                weeknum++;
-                break;
-        case 5:         /* Friday */
-        case 6:         /* Saturday */
-        case 0:         /* Sunday */
-                if (weeknum == 0) {
-#ifdef USE_BROKEN_XPG4
-                        /* XPG4 (as of March 1994) says 53 unconditionally */
-                        weeknum = 53;
-#else
-                        /* get week number of last week of last year */
-                        struct tm dec31ly;      /* 12/31 last year */
-                        dec31ly = *timeptr;
-                        dec31ly.tm_year--;
-                        dec31ly.tm_mon = 11;
-                        dec31ly.tm_mday = 31;
-                        dec31ly.tm_wday = (jan1day == 0) ? 6 : jan1day - 1;
-                        dec31ly.tm_yday = 364 + isleap(dec31ly.tm_year + 1900L);
-                        weeknum = iso8601wknum(& dec31ly);
-#endif
-                }
-                break;
-        }
-
-        if (timeptr->tm_mon == 11) {
-                /*
-                 * The last week of the year
-                 * can be in week 1 of next year.
-                 * Sigh.
-                 *
-                 * This can only happen if
-                 *      M   T  W
-                 *      29  30 31
-                 *      30  31
-                 *      31
-                 */
-                int wday, mday;
-
-                wday = timeptr->tm_wday;
-                mday = timeptr->tm_mday;
-                if (   (wday == 1 && (mday >= 29 && mday <= 31))
-                    || (wday == 2 && (mday == 30 || mday == 31))
-                    || (wday == 3 &&  mday == 31))
-                        weeknum = 1;
-        }
-
-        return weeknum;
+	while (pt < ptlim && (*pt = *str++) != '\0')
+		++pt;
+	return pt;
 }
-#endif
 
-/* strftime --- produce formatted time */
-void tzset( void );
+/*
+** POSIX and the C Standard are unclear or inconsistent about
+** what %C and %y do if the year is negative or exceeds 9999.
+** Use the convention that %C concatenated with %y yields the
+** same output as %Y, and that %Y contains at least 4 bytes,
+** with more only if necessary.
+*/
 
-size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
+static char *
+_yconv(int a, int b, int convert_top, int convert_yy, char *pt, const char *ptlim)
 {
-        char *endp = s + maxsize;
-        char *start = s;
-        auto char tbuf[100];
-        long off;
-        int i, w;
-        long y;
-        static short first = 1;
-        struct timeval tv;
-        struct timezone zone;
-#ifdef POSIX_SEMANTICS
-        static char *savetz = NULL;
-        static int savetzlen = 0;
-        char *tz;
-#endif /* POSIX_SEMANTICS */
+	int	lead;
+	int	trail;
 
-        /* various tables, useful in North America */
-        static const char *days_a[] = {
-                "Sun", "Mon", "Tue", "Wed",
-                "Thu", "Fri", "Sat",
-        };
-        static const char *days_l[] = {
-                "Sunday", "Monday", "Tuesday", "Wednesday",
-                "Thursday", "Friday", "Saturday",
-        };
-        static const char *months_a[] = {
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-        };
-        static const char *months_l[] = {
-                "January", "February", "March", "April",
-                "May", "June", "July", "August", "September",
-                "October", "November", "December",
-        };
-        static const char *ampm[] = { "AM", "PM", };
-
-        if (s == NULL || format == NULL || timeptr == NULL || maxsize == 0)
-                return 0;
-
-        /* quick check if we even need to bother */
-        if (strchr(format, '%') == NULL && strlen(format) + 1 >= maxsize)
-                return 0;
-
-#ifndef POSIX_SEMANTICS
-        if (first) {
-                tzset();
-                first = 0;
-        }
-#else   /* POSIX_SEMANTICS */
-        tz = getenv("TZ");
-        if (first) {
-                if (tz != NULL) {
-                        int tzlen = strlen(tz);
-
-                        savetz = (char *) malloc(tzlen + 1);
-                        if (savetz != NULL) {
-                                savetzlen = tzlen + 1;
-                                strcpy(savetz, tz);
-                        }
-                }
-                tzset();
-                first = 0;
-        }
-        /* if we have a saved TZ, and it is different, recapture and reset */
-        if (tz && savetz && (tz[0] != savetz[0] || strcmp(tz, savetz) != 0)) {
-                i = strlen(tz) + 1;
-                if (i > savetzlen) {
-                        savetz = (char *) realloc(savetz, i);
-                        if (savetz) {
-                                savetzlen = i;
-                                strcpy(savetz, tz);
-                        }
-                } else
-                        strcpy(savetz, tz);
-                tzset();
-        }
-#endif  /* POSIX_SEMANTICS */
-
-        for (; *format && s < endp - 1; format++) {
-                tbuf[0] = '\0';
-                if (*format != '%') {
-                        *s++ = *format;
-                        continue;
-                }
-        again:
-                switch (*++format) {
-                case '\0':
-                        *s++ = '%';
-                        goto out;
-
-                case '%':
-                        *s++ = '%';
-                        continue;
-
-                case 'a':       /* abbreviated weekday name */
-                        if (timeptr->tm_wday < 0 || timeptr->tm_wday > 6)
-                                strcpy(tbuf, "?");
-                        else
-                                strcpy(tbuf, days_a[timeptr->tm_wday]);
-                        break;
-
-                case 'A':       /* full weekday name */
-                        if (timeptr->tm_wday < 0 || timeptr->tm_wday > 6)
-                                strcpy(tbuf, "?");
-                        else
-                                strcpy(tbuf, days_l[timeptr->tm_wday]);
-                        break;
-
-#ifdef SYSV_EXT
-                case 'h':       /* abbreviated month name */
-#endif
-                case 'b':       /* abbreviated month name */
-                        if (timeptr->tm_mon < 0 || timeptr->tm_mon > 11)
-                                strcpy(tbuf, "?");
-                        else
-                                strcpy(tbuf, months_a[timeptr->tm_mon]);
-                        break;
-
-                case 'B':       /* full month name */
-                        if (timeptr->tm_mon < 0 || timeptr->tm_mon > 11)
-                                strcpy(tbuf, "?");
-                        else
-                                strcpy(tbuf, months_l[timeptr->tm_mon]);
-                        break;
-
-                case 'c':       /* appropriate date and time representation */
-                        strftime(tbuf, sizeof tbuf, "%a %b %e %H:%M:%S %Y", timeptr);
-                        break;
-
-                case 'd':       /* day of the month, 01 - 31 */
-                        i = range(1, timeptr->tm_mday, 31);
-                        sprintf(tbuf, "%02d", i);
-                        break;
-
-                case 'H':       /* hour, 24-hour clock, 00 - 23 */
-                        i = range(0, timeptr->tm_hour, 23);
-                        sprintf(tbuf, "%02d", i);
-                        break;
-
-                case 'I':       /* hour, 12-hour clock, 01 - 12 */
-                        i = range(0, timeptr->tm_hour, 23);
-                        if (i == 0)
-                                i = 12;
-                        else if (i > 12)
-                                i -= 12;
-                        sprintf(tbuf, "%02d", i);
-                        break;
-
-                case 'j':       /* day of the year, 001 - 366 */
-                        sprintf(tbuf, "%03d", timeptr->tm_yday + 1);
-                        break;
-
-                case 'm':       /* month, 01 - 12 */
-                        i = range(0, timeptr->tm_mon, 11);
-                        sprintf(tbuf, "%02d", i + 1);
-                        break;
-
-                case 'M':       /* minute, 00 - 59 */
-                        i = range(0, timeptr->tm_min, 59);
-                        sprintf(tbuf, "%02d", i);
-                        break;
-
-                case 'p':       /* am or pm based on 12-hour clock */
-                        i = range(0, timeptr->tm_hour, 23);
-                        if (i < 12)
-                                strcpy(tbuf, ampm[0]);
-                        else
-                                strcpy(tbuf, ampm[1]);
-                        break;
-
-                case 'S':       /* second, 00 - 60 */
-                        i = range(0, timeptr->tm_sec, 60);
-                        sprintf(tbuf, "%02d", i);
-                        break;
-
-                case 'U':       /* week of year, Sunday is first day of week */
-                        sprintf(tbuf, "%02d", weeknumber(timeptr, 0));
-                        break;
-
-                case 'w':       /* weekday, Sunday == 0, 0 - 6 */
-                        i = range(0, timeptr->tm_wday, 6);
-                        sprintf(tbuf, "%d", i);
-                        break;
-
-                case 'W':       /* week of year, Monday is first day of week */
-                        sprintf(tbuf, "%02d", weeknumber(timeptr, 1));
-                        break;
-
-                case 'x':       /* appropriate date representation */
-                        strftime(tbuf, sizeof tbuf, "%m/%d/%y", timeptr);
-                        break;
-
-                case 'X':       /* appropriate time representation */
-                        strftime(tbuf, sizeof tbuf, "%H:%M:%S", timeptr);
-                        break;
-
-                case 'y':       /* year without a century, 00 - 99 */
-                        i = timeptr->tm_year % 100;
-                        sprintf(tbuf, "%02d", i);
-                        break;
-
-                case 'Y':       /* year with century */
-                        sprintf(tbuf, "%ld", 1900L + timeptr->tm_year);
-                        break;
-
-#ifdef MAILHEADER_EXT
-                /*
-                 * From: Chip Rosenthal <chip@chinacat.unicom.com>
-                 * Date: Sun, 19 Mar 1995 00:33:29 -0600 (CST)
-                 * 
-                 * Warning: the %z [code] is implemented by inspecting the
-                 * timezone name conditional compile settings, and
-                 * inferring a method to get timezone offsets. I've tried
-                 * this code on a couple of machines, but I don't doubt
-                 * there is some system out there that won't like it.
-                 * Maybe the easiest thing to do would be to bracket this
-                 * with an #ifdef that can turn it off. The %z feature
-                 * would be an admittedly obscure one that most folks can
-                 * live without, but it would be a great help to those of
-                 * us that muck around with various message processors.
-                 */
-                case 'z':       /* time zone offset east of GMT e.g. -0600 */
-#ifdef HAVE_TM_NAME
-                        /*
-                         * Systems with tm_name probably have tm_tzadj as
-                         * secs west of GMT.  Convert to mins east of GMT.
-                         */
-                        off = -timeptr->tm_tzadj / 60;
-#else /* !HAVE_TM_NAME */
-#ifdef HAVE_TM_ZONE
-                        /*
-                         * Systems with tm_zone probably have tm_gmtoff as
-                         * secs east of GMT.  Convert to mins east of GMT.
-                         */
-                        off = timeptr->tm_gmtoff / 60;
-#else /* !HAVE_TM_ZONE */
-#if HAVE_TZNAME
-                        /*
-                         * Systems with tzname[] probably have timezone as
-                         * secs west of GMT.  Convert to mins east of GMT.
-                         */
-#ifdef __hpux
-                        gettimeofday(&tv, &zone);
-                        off = -zone.tz_minuteswest;
-#else
-                        off = -(daylight ? timezone : altzone) / 60;
-#endif
-#else /* !HAVE_TZNAME */
-                        gettimeofday(&tv, &zone);
-                        off = -zone.tz_minuteswest;
-#endif /* !HAVE_TZNAME */
-#endif /* !HAVE_TM_ZONE */
-#endif /* !HAVE_TM_NAME */
-                        if (off < 0) {
-                                tbuf[0] = '-';
-                                off = -off;
-                        } else {
-                                tbuf[0] = '+';
-                        }
-                        sprintf(tbuf+1, "%02d%02d", off/60, off%60);
-                        break;
-#endif /* MAILHEADER_EXT */
-
-#ifndef __divine__ /* FIXME: a global variable timezone is missing... */
-                case 'Z':       /* time zone name or abbrevation */
-#ifdef HAVE_TZNAME
-                        i = (daylight && timeptr->tm_isdst > 0); /* 0 or 1 */
-                        strcpy(tbuf, tzname[i]);
-#else
-#ifdef HAVE_TM_ZONE
-                        strcpy(tbuf, timeptr->tm_zone);
-#else
-#ifdef HAVE_TM_NAME
-                        strcpy(tbuf, timeptr->tm_name);
-#else
-                        gettimeofday(& tv, & zone);
-#ifdef __CYGWIN__
-                        strcpy(tbuf, timezone());
-#else
-                        strcpy(tbuf, timezone(zone.tz_minuteswest,
-                                                timeptr->tm_isdst > 0));
-#endif
-#endif /* HAVE_TM_NAME */
-#endif /* HAVE_TM_ZONE */
-#endif /* HAVE_TZNAME */
-                        break;
-#endif
-
-#ifdef SYSV_EXT
-                case 'n':       /* same as \n */
-                        tbuf[0] = '\n';
-                        tbuf[1] = '\0';
-                        break;
-
-                case 't':       /* same as \t */
-                        tbuf[0] = '\t';
-                        tbuf[1] = '\0';
-                        break;
-
-                case 'D':       /* date as %m/%d/%y */
-                        strftime(tbuf, sizeof tbuf, "%m/%d/%y", timeptr);
-                        break;
-
-                case 'e':       /* day of month, blank padded */
-                        sprintf(tbuf, "%2d", range(1, timeptr->tm_mday, 31));
-                        break;
-
-                case 'r':       /* time as %I:%M:%S %p */
-                        strftime(tbuf, sizeof tbuf, "%I:%M:%S %p", timeptr);
-                        break;
-
-                case 'R':       /* time as %H:%M */
-                        strftime(tbuf, sizeof tbuf, "%H:%M", timeptr);
-                        break;
-
-                case 'T':       /* time as %H:%M:%S */
-                        strftime(tbuf, sizeof tbuf, "%H:%M:%S", timeptr);
-                        break;
-#endif
-
-#ifdef SUNOS_EXT
-                case 'k':       /* hour, 24-hour clock, blank pad */
-                        sprintf(tbuf, "%2d", range(0, timeptr->tm_hour, 23));
-                        break;
-
-                case 'l':       /* hour, 12-hour clock, 1 - 12, blank pad */
-                        i = range(0, timeptr->tm_hour, 23);
-                        if (i == 0)
-                                i = 12;
-                        else if (i > 12)
-                                i -= 12;
-                        sprintf(tbuf, "%2d", i);
-                        break;
-#endif
-
-
-#ifdef VMS_EXT
-                case 'v':       /* date as dd-bbb-YYYY */
-                        sprintf(tbuf, "%2d-%3.3s-%4ld",
-                                range(1, timeptr->tm_mday, 31),
-                                months_a[range(0, timeptr->tm_mon, 11)],
-                                timeptr->tm_year + 1900L);
-                        for (i = 3; i < 6; i++)
-                                if (islower(tbuf[i]))
-                                        tbuf[i] = toupper(tbuf[i]);
-                        break;
-#endif
-
-
-#ifdef POSIX2_DATE
-                case 'C':
-                        sprintf(tbuf, "%02ld", (timeptr->tm_year + 1900L) / 100);
-                        break;
-
-
-                case 'E':
-                case 'O':
-                        /* POSIX locale extensions, ignored for now */
-                        goto again;
-
-                case 'V':       /* week of year according ISO 8601 */
-                        sprintf(tbuf, "%02d", iso8601wknum(timeptr));
-                        break;
-
-                case 'u':
-                /* ISO 8601: Weekday as a decimal number [1 (Monday) - 7] */
-                        sprintf(tbuf, "%d", timeptr->tm_wday == 0 ? 7 :
-                                        timeptr->tm_wday);
-                        break;
-#endif  /* POSIX2_DATE */
-
-#ifdef ISO_DATE_EXT
-                case 'G':
-                case 'g':
-                        /*
-                         * Year of ISO week.
-                         *
-                         * If it's December but the ISO week number is one,
-                         * that week is in next year.
-                         * If it's January but the ISO week number is 52 or
-                         * 53, that week is in last year.
-                         * Otherwise, it's this year.
-                         */
-                        w = iso8601wknum(timeptr);
-                        if (timeptr->tm_mon == 11 && w == 1)
-                                y = 1900L + timeptr->tm_year + 1;
-                        else if (timeptr->tm_mon == 0 && w >= 52)
-                                y = 1900L + timeptr->tm_year - 1;
-                        else
-                                y = 1900L + timeptr->tm_year;
-
-                        if (*format == 'G')
-                                sprintf(tbuf, "%ld", y);
-                        else
-                                sprintf(tbuf, "%02ld", y % 100);
-                        break;
-#endif /* ISO_DATE_EXT */
-                default:
-                        tbuf[0] = '%';
-                        tbuf[1] = *format;
-                        tbuf[2] = '\0';
-                        break;
-                }
-                i = strlen(tbuf);
-                if (i) {
-                        if (s + i < endp - 1) {
-                                strcpy(s, tbuf);
-                                s += i;
-                        } else
-                                return 0;
-                }
-        }
-out:
-        if (s < endp && *format == '\0') {
-                *s = '\0';
-                return (s - start);
-        } else
-                return 0;
+#define DIVISOR	100
+	trail = a % DIVISOR + b % DIVISOR;
+	lead = a / DIVISOR + b / DIVISOR + trail / DIVISOR;
+	trail %= DIVISOR;
+	if (trail < 0 && lead > 0) {
+		trail += DIVISOR;
+		--lead;
+	} else if (lead < 0 && trail > 0) {
+		trail -= DIVISOR;
+		++lead;
+	}
+	if (convert_top) {
+		if (lead == 0 && trail < 0)
+			pt = _add("-0", pt, ptlim);
+		else	pt = _conv(lead, "%02d", pt, ptlim);
+	}
+	if (convert_yy)
+		pt = _conv(((trail < 0) ? -trail : trail), "%02d", pt, ptlim);
+	return pt;
 }
+
+#ifdef LOCALE_HOME
+static struct lc_time_T *
+_loc(void)
+{
+	static const char	locale_home[] = LOCALE_HOME;
+	static const char	lc_time[] = "LC_TIME";
+	static char *		locale_buf;
+
+	int			fd;
+	int			oldsun;	/* "...ain't got nothin' to do..." */
+	int			len;
+	char *			lbuf;
+	char *			nlbuf;
+	char *			name;
+	char *			p;
+	const char **		ap;
+	const char *		plim;
+	char			filename[PATH_MAX];
+	struct stat		st;
+	size_t			namesize;
+	size_t			bufsize;
+
+	/*
+	** Use localebuf.mon[0] to signal whether locale is already set up.
+	*/
+	if (localebuf.mon[0])
+		return &localebuf;
+	name = setlocale(LC_TIME, (char *) NULL);
+	if (name == NULL || *name == '\0')
+		goto no_locale;
+	/*
+	** If the locale name is the same as our cache, use the cache.
+	*/
+	lbuf = locale_buf;
+	if (lbuf != NULL && strcmp(name, lbuf) == 0) {
+		p = lbuf;
+		for (ap = (const char **) &localebuf;
+			ap < (const char **) (&localebuf + 1);
+				++ap)
+					*ap = p += strlen(p) + 1;
+		return &localebuf;
+	}
+	/*
+	** Slurp the locale file into the cache.
+	*/
+	namesize = strlen(name) + 1;
+	if (sizeof filename <
+		((sizeof locale_home) + namesize + (sizeof lc_time)))
+			goto no_locale;
+	oldsun = 0;
+	len = snprintf(filename, sizeof filename, "%s/%s/%s", locale_home,
+	    name, lc_time);
+	if (len < 0 || len >= sizeof filename)
+		goto no_locale;
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		/*
+		** Old Sun systems have a different naming and data convention.
+		*/
+		oldsun = 1;
+		len = snprintf(filename, sizeof filename, "%s/%s/%s",
+			locale_home, lc_time, name);
+		if (len < 0 || len >= sizeof filename)
+			goto no_locale;
+		fd = open(filename, O_RDONLY);
+		if (fd < 0)
+			goto no_locale;
+	}
+	if (fstat(fd, &st) != 0)
+		goto bad_locale;
+	if (st.st_size <= 0)
+		goto bad_locale;
+	bufsize = namesize + st.st_size;
+	locale_buf = NULL;
+	nlbuf = realloc(lbuf, bufsize);
+	if (nlbuf == NULL) {
+		free(lbuf);
+		lbuf = NULL;
+		goto bad_locale;
+	}
+	lbuf = nlbuf;
+	(void) strlcpy(lbuf, name, bufsize);
+	p = lbuf + namesize;
+	plim = p + st.st_size;
+	if (read(fd, p, st.st_size) != st.st_size)
+		goto bad_lbuf;
+	if (close(fd) != 0)
+		goto bad_lbuf;
+	/*
+	** Parse the locale file into localebuf.
+	*/
+	if (plim[-1] != '\n')
+		goto bad_lbuf;
+	for (ap = (const char **) &localebuf;
+		ap < (const char **) (&localebuf + 1);
+			++ap) {
+				if (p == plim)
+					goto bad_lbuf;
+				*ap = p;
+				while (*p != '\n')
+					++p;
+				*p++ = '\0';
+	}
+	if (oldsun) {
+		/*
+		** SunOS 4 used an obsolescent format; see localdtconv(3).
+		** c_fmt had the ``short format for dates and times together''
+		** (SunOS 4 date, "%a %b %e %T %Z %Y" in the C locale);
+		** date_fmt had the ``long format for dates''
+		** (SunOS 4 strftime %C, "%A, %B %e, %Y" in the C locale).
+		** Discard the latter in favor of the former.
+		*/
+		localebuf.date_fmt = localebuf.c_fmt;
+	}
+	/*
+	** Record the successful parse in the cache.
+	*/
+	locale_buf = lbuf;
+
+	return &localebuf;
+
+bad_lbuf:
+	free(lbuf);
+bad_locale:
+	(void) close(fd);
+no_locale:
+	localebuf = C_time_locale;
+	locale_buf = NULL;
+	return &localebuf;
+}
+#endif /* defined LOCALE_HOME */
