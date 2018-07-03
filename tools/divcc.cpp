@@ -1,5 +1,5 @@
 #include <divine/cc/cc1.hpp>
-#include <divine/cc/compile.hpp>
+#include <divine/cc/driver.hpp>
 #include <divine/rt/runtime.hpp>
 #include <divine/vm/xg-code.hpp>
 
@@ -127,7 +127,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 {
     using FileType = cc::FileType;
     using namespace brick::types;
-    std::unique_ptr< cc::Compile > compil = std::unique_ptr< cc::Compile >( new cc::Compile( clang.context() ) );
+    std::unique_ptr< cc::Driver > compil = std::unique_ptr< cc::Driver >( new cc::Driver( clang.context() ) );
     compil->setupFS( rt::each );
 
     for ( auto file : files )
@@ -154,7 +154,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
     }
 
     compil->linkEssentials();
-    compil->linkLibs( cc::Compile::defaultDIVINELibs );
+    compil->linkLibs( cc::Driver::defaultDIVINELibs );
 
     auto m = compil->takeLinked();
 
