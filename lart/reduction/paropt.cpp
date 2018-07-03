@@ -22,7 +22,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 #include <lart/support/pass.h>
 #include <lart/support/query.h>
-#include <lart/support/error.h>
 
 #include <brick-types>
 
@@ -217,8 +216,9 @@ struct ConstAllocaElimination {
             if ( dbgdec ) {
                 auto expr = dbgdec->getExpression();
                 if ( expr->getElements().size() ) {
-                    WARN_LLVM( false, "don't know what to do with this dbg.declare:",
-                               dbgdec, "for", var.first );
+                    std::cerr << brick::string::format(
+                                 "don't know what to do with this dbg.declare:",
+                                 dbgdec, "for", var.first );
                     dbgdec = nullptr;
                 }
             }

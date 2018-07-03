@@ -24,7 +24,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/cleanup.h>
-#include <lart/support/error.h>
 #include <lart/reduction/passes.h>
 #include <lart/lart.h>
 
@@ -213,7 +212,8 @@ struct Substitute {
 
         auto get = [&m]( const char *n ) {
             auto *f = m.getFunction( n );
-            ENSURE_LLVM( f, n, " is null" );
+            if ( !f )
+                UNREACHABLE( "could not find required function", n );
             return f;
         };
 

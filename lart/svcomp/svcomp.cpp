@@ -21,7 +21,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
-#include <lart/support/error.h>
 #include <lart/support/cleanup.h>
 
 namespace lart {
@@ -44,7 +43,8 @@ struct Atomic
              vend = m.getFunction( "__VERIFIER_atomic_end" ),
              dios_mask = m.getFunction( "__dios_mask" );
 
-        ENSURE_LLVM( dios_mask, "__dios_mask not found" );
+        if ( !dios_mask )
+            UNREACHABLE( "__dios_mask not found" );
 
         llvm::StringRef atomicPrefix( "__VERIFIER_atomic_" );
 

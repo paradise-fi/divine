@@ -16,7 +16,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/util.h>
-#include <lart/support/error.h>
 
 namespace lart {
 namespace divine {
@@ -31,10 +30,12 @@ struct VaArgInstr
         auto *vaargfn = m.getFunction( "__lart_llvm_va_arg" );
         if ( !vaargfn )
             return;
-        ENSURE_LLVM( !vaargfn->hasAddressTaken() );
+        if ( vaargfn->hasAddressTaken() )
+            UNREACHABLE( "__lart_llvm_va_arg has address taken" );
 
         for ( auto *v : vaargfn->users() )
-            ENSURE_LLVM( llvm::isa< llvm::CallInst >( v ), v );
+            if ( !llvm::isa< llvm::CallInst >( v ) )
+                UNREACHABLE( "all uses of __lart_llvm_va_arg have to be calls:", v );
 
         for ( auto *call : query::query( vaargfn->users() )
                             .map( query::llvmcast< llvm::CallInst > )
@@ -46,18 +47,20 @@ struct VaArgInstr
             }
 
             if ( call->hasNUsesOrMore( 2 ) )
-                throw UnexpectedLlvmIr( "call to __lart_llvm_va_arg must have at most one use", call );
+                UNREACHABLE( "call to __lart_llvm_va_arg must have at most one use:", call );
 
             brick::data::SmallVector< llvm::Instruction * > toDrop{ call };
             auto *valist = call->getArgOperand( 0 );
             auto *user = *call->user_begin();
             auto *load = llvm::dyn_cast< llvm::LoadInst >( user );
             if ( auto *bitcast = llvm::dyn_cast< llvm::BitCastInst >( user ) ) {
-                ENSURE_LLVM( bitcast->hasNUses( 1 ), "va_arg bitcast has too many uses", bitcast );
+                if ( !bitcast->hasNUses( 1 ) )
+                    UNREACHABLE( "va_arg bitcast has too many uses:", bitcast );
                 load = llvm::dyn_cast< llvm::LoadInst >( *bitcast->user_begin() );
                 toDrop.push_back( bitcast );
             }
-            ENSURE_LLVM( load, "could not find load corresponding to va_arg call", call );
+            if ( !load )
+                UNREACHABLE( "could not find load corresponding to va_arg call", call );
 
             for ( auto x : toDrop ) {
                 x->replaceAllUsesWith( llvm::UndefValue::get( x->getType() ) );
