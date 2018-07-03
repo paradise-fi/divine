@@ -64,11 +64,7 @@ int emitObjFile( Module &m, std::string filename )
     //auto TargetTriple = sys::getDefaultTargetTriple();
     auto TargetTriple = "x86_64-unknown-none-elf";
 
-    LLVMInitializeAllTargetInfos();
-    LLVMInitializeAllTargets();
-    LLVMInitializeAllTargetMCs();
-    LLVMInitializeAllAsmParsers();
-    LLVMInitializeAllAsmPrinters();
+    divine::cc::initTargets();
 
     std::string Error;
     auto Target = TargetRegistry::lookupTarget( TargetTriple, Error );
