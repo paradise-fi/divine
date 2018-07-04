@@ -14,6 +14,8 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Object/IRObjectFile.h"
 #include "llvm-c/Target.h"
 DIVINE_UNRELAX_WARNINGS
 
