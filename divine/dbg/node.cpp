@@ -27,6 +27,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CFG.h>
 DIVINE_UNRELAX_WARNINGS
+#include <brick-llvm>
 #include <queue>
 
 namespace divine::dbg
@@ -304,8 +305,7 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias, bool pr
         return "volatile " + di_name( di_base( t ) );
     if ( di_composite( llvm::dwarf::DW_TAG_array_type, t ) )
         return di_name( di_base( t ) ) + "[]";
-    t->dump();
-    UNREACHABLE( "unexpected debuginfo metadata" );
+    UNREACHABLE( "unexpected debuginfo metadata:", t );
 }
 
 template< typename Prog, typename Heap >

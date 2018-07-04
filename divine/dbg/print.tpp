@@ -18,6 +18,7 @@
 
 #include <divine/dbg/print.hpp>
 #include <divine/vm/eval.tpp>
+#include <brick-llvm>
 
 using namespace std::literals;
 
@@ -83,8 +84,7 @@ std::string Print< Ctx >::dbginst( llvm::Instruction *I )
         return ostr.str();
     }
 
-    I->dump();
-    UNREACHABLE( "dbginst called on a bad instruction type" );
+    UNREACHABLE( "dbginst called on a bad instruction type:", I );
 }
 
 template< typename Ctx >
