@@ -26,9 +26,10 @@
 #include <divine/rt/runtime.hpp>
 #include <brick-string>
 #include <brick-fs>
+#include <brick-llvm>
 
 DIVINE_RELAX_WARNINGS
-#include <brick-llvm>
+#include <llvm/BinaryFormat/Magic.h>
 DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
