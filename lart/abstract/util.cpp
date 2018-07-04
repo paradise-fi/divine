@@ -11,6 +11,8 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <unordered_map>
+#include <brick-llvm>
+#include <brick-string>
 
 namespace lart {
 namespace abstract {
@@ -110,10 +112,8 @@ Instruction* find_placeholder( Value *val, std::string name ) {
 Instruction* get_placeholder_impl( Value *val, const std::string &name ) {
     if ( auto ph = find_placeholder( val, name ) ) {
         return ph;
-    } else {
-        val->dump();
-        UNREACHABLE( "Value does not have " + name );
-    }
+    } else
+        UNREACHABLE( "Value does not have", name, "val =", val );
 }
 
 Instruction* get_placeholder( Value *val ) {

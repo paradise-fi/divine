@@ -16,6 +16,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/analysis/postorder.h>
 
+#include <brick-llvm>
+
 namespace lart {
 namespace abstract {
 
@@ -98,8 +100,7 @@ private:
                 }
             },
             [&] ( Value * ) {
-                val->dump();
-                UNREACHABLE( "Unknown parent instruction." );
+                UNREACHABLE( "Unknown parent instruction:", val );
             }
         );
 

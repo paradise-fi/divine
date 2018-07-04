@@ -196,7 +196,8 @@ struct IndexFunctions {
                                   startsWith( g.getName().str(), "__dios_" ) ) )
             {
                 auto r = gloMetaMap.emplace( g.getName(), GlobalMeta( g, *this ) );
-                ASSERT( r.second || (g.dump(), false) );
+                if ( !r.second )
+                    UNREACHABLE( "broken metadata map: global", g, "already present" );
             }
         }
 

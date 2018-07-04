@@ -23,6 +23,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <brick-assert>
 #include <brick-types>
+#include <brick-llvm>
 #include <brick-string>
 #include <chrono>
 #include <string>
@@ -338,9 +339,8 @@ inline void replaceGlobalArray( llvm::GlobalVariable *glo, llvm::Constant *init 
                     llvm::ReplaceInstWithInst( inst, new llvm::BitCastInst( newGlo, inst->getType() ) );
                 break;
             default:
-                u->dump();
-                inst->dump();
-                UNREACHABLE_F( "Unsupported ocode in replaceGlobalArray: %d", inst->getOpcode() );
+                UNREACHABLE( "Unsupported ocode in replaceGlobalArray:", inst->getOpcode(),
+                             "user:", u, "instruction:", inst );
         }
         if ( constant )
             inst->deleteValue();
@@ -810,8 +810,8 @@ inline llvm::Function * changeReturnType( llvm::Function *fn, llvm::Type *rty )
 
 namespace detail {
 inline llvm::Function *throwOnUnknown( llvm::CallSite &cs ) {
-    cs.getCalledValue()->dump();
-    throw std::runtime_error( "could not clone function: calling unknown value" );
+    throw std::runtime_error( brick::string::format( "could not clone function: calling unknown value:",
+                                                     cs.getCalledValue() ) );
 }
 
 inline bool cloneAll( llvm::Function & ) {  return true; }

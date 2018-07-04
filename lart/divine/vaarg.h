@@ -8,6 +8,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <brick-llvm>
 #include <brick-string>
 #include <brick-data>
 #include <string>

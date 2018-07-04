@@ -23,6 +23,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/query.h>
 
+#include <brick-llvm>
 #include <brick-types>
 
 #include <vector>
@@ -252,12 +253,8 @@ struct ConstAllocaElimination {
                         dib.insertDbgValueIntrinsic( val, 0, local, dbgdec->getExpression(), dbgloc, store );
                     },
                     [&]( llvm::Value *val ) {
-                        std::cerr << "in " << fn.getName().str() << std::endl;
-                        fn.dump();
-                        var.first->dump();
-                        var.second->dump();
-                        val->dump();
-                        UNREACHABLE( "unhandled case" );
+                        UNREACHABLE( "unhandled case in", fn.getName().str(), " var.first =", var.first,
+                                     "var.second =", var.second, "val =", val, "function:\n", fn );
                     } );
             for ( auto i : toDelete )
                 i->eraseFromParent();

@@ -9,6 +9,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/aa/andersen.h>
 #include <iostream>
 #include <brick-assert>
+#include <brick-llvm>
+#include <brick-string>
 
 namespace lart {
 namespace aa {
@@ -135,7 +137,7 @@ void Andersen::build( llvm::Instruction &i ) {
         constraint( Constraint::Store, i.getOperand( 1 ), i.getOperand( 0 ) );
 
     if ( llvm::isa< llvm::LoadInst >( i ) ) {
-        i.dump();
+        std::cerr << brick::string::format( i );
         constraint( Constraint::Deref, &i, i.getOperand( 0 ) );
         // std::cerr << _nodes[ &i ] << " <- " << _nodes[ i.getOperand( 0 ) ] << std::endl;
     }

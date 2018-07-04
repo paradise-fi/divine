@@ -31,6 +31,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-query>
 #include <brick-data>
 #include <brick-mem>
+#include <brick-llvm>
 #include <vector>
 #include <set>
 
@@ -262,10 +263,8 @@ struct CppEhTab
         {
             /* throw () */
         }
-        else {
-            clause->dump();
-            UNREACHABLE( "Unexpected landingpad clause type" );
-        }
+        else
+            UNREACHABLE( "Unexpected landingpad clause type", clause );
     }
 
     llvm::LLVMContext &_ctx;

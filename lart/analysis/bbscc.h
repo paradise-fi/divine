@@ -15,6 +15,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <unordered_map>
 
+#include <brick-string>
+
 #ifndef LART_ANALYSIS_BBSCC_H
 #define LART_ANALYSIS_BBSCC_H
 
@@ -126,7 +128,8 @@ struct BasicBlockSCC {
         for ( auto &bb : fn ) {
             if ( map[ &bb ].index == TJ::undef )
                 _tjscc( &bb, index, map, stack );
-            ASSERT( _sccMap.count( &bb ) || (bb.dump(), bb.getParent()->dump(), false) );
+            ASSERT( _sccMap.count( &bb ) ||
+                    (std::cerr << brick::string::format( "bb:", bb, "parent:", bb.getParent() ), false) );
         }
 
         for ( auto &scc : _sccs )

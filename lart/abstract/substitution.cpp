@@ -13,6 +13,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <iostream>
 
+#include <brick-llvm>
+
 namespace lart {
 namespace abstract {
 
@@ -911,8 +913,7 @@ Value* Tainting::process( Instruction *placeholder ) {
         return ToBoolTaint( placeholder, domains ).generate();
     if ( placeholder::is_assume( placeholder ) )
         return AssumeTaint( placeholder, domains ).generate();
-    placeholder->dump();
-    UNREACHABLE( "Unknown placeholder" );
+    UNREACHABLE( "Unknown placeholder", placeholder );
 }
 
 // ---------------------------- FreezeStores ---------------------------
@@ -999,8 +1000,7 @@ void Synthesize::process( CallInst *taint ) {
     } else if ( taint_args_size( taint ) == 2 ) {
         BinaryLifter( domains, taint ).syntetize();
     } else {
-        taint->dump();
-        UNREACHABLE( "Unknown taint function." );
+        UNREACHABLE( "Unknown taint function", taint );
     }
 }
 

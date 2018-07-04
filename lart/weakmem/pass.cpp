@@ -574,8 +574,7 @@ struct Substitute {
                     val = irb.CreateSelect( irb.CreateICmpULT( orig, val ), orig, val );
                     break;
                 case llvm::AtomicRMWInst::BAD_BINOP:
-                    at->dump();
-                    UNREACHABLE( "weakmem: bad binop in AtomicRMW" );
+                    UNREACHABLE( "weakmem: bad binop in AtomicRMW:", at );
             }
 
             auto *store = irb.CreateStore( val, ptr );

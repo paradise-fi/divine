@@ -228,7 +228,7 @@ struct DeadAllocaZeoring {
         auto isend = irb.CreateICmpEQ( sinext, llvm::ConstantInt::get( _mzeroSiT, 0 ) );
         irb.CreateCondBr( isend, end, body );
 
-        mzero->dump();
+        // mzero->dump();
         return mzero;
     }
 
