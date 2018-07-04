@@ -12,9 +12,18 @@
 #include <limits.h>
 #include <string.h>
 
-struct _Unwind_Context {
+struct _Unwind_Context
+{
+    _Unwind_Context() = default;
     _Unwind_Context( _VM_Frame *f ) : frame( f ) { }
-    _Unwind_Context() : frame( nullptr ) { }
+    _Unwind_Context( _Unwind_Exception *exc ) :
+        frame( reinterpret_cast< _VM_Frame * >( exc->private_1 ) ), jumpPC( exc->private_2 )
+    { }
+
+    void fill( _Unwind_Exception *exc ) {
+        exc->private_1 = uintptr_t( frame );
+        exc->private_2 = jumpPC;
+    }
 
     _VM_CodePointer pc() const { return frame->pc; }
 
@@ -26,7 +35,7 @@ struct _Unwind_Context {
     bool valid() const { return frame; }
     explicit operator bool() const { return valid(); }
 
-    _VM_Frame *frame;
+    _VM_Frame *frame = nullptr;
     uintptr_t jumpPC = 0; // PC to jump to when unwinding (landing block)
 };
 
@@ -100,7 +109,7 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
         return __dios_get_register( ctx->frame, lp, index == 0 ? 0 : sizeof( uintptr_t ),
                                     index == 0 ? sizeof( uintptr_t ) : sizeof( int ) );
     __dios_fault( _VM_F_NotImplemented, "invalid register" );
-    __builtin_unreachable();
+    __builtin_trap();
 }
 
 //  This function returns the 64-bit value of the instruction pointer (IP).
@@ -124,6 +133,42 @@ static inline bool shouldCallPersonality( _DiOS_FunAttrs &attrs, _Unwind_Context
 
 static const uint64_t cppExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
 static const uint64_t cppDependentExceptionClass = 0x434C4E47432B2B01; // CLNGC++\1
+
+// internal, used in _Unwind_RaiseException and _Unwind_Resume for the actual
+// stack unwinding
+static _Unwind_Reason_Code _Unwind_Phase2( _VM_Frame *topFrame, _Unwind_Context &foundCtx,
+                                   _Unwind_Exception *exception, __dios::InterruptMask &mask )
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
+{
+    for ( _Unwind_Context ctx( topFrame ); ctx; ctx.next() )
+    {
+        auto attrs = __dios_get_func_exception_attrs( ctx.pc() );
+        if ( !shouldCallPersonality( attrs, ctx ) )
+            continue;
+        auto pers = reinterpret_cast< __personality_routine >( attrs.personality );
+        int flags = _UA_CLEANUP_PHASE;
+        if ( ctx.frame == foundCtx.frame )
+            flags |= _UA_HANDLER_FRAME;
+        auto r = mask.without( [&] {
+            return pers( unwindVersion, _Unwind_Action( flags ), exception->exception_class, exception, &ctx );
+        } );
+        if ( (flags & _UA_HANDLER_FRAME) && r != _URC_INSTALL_CONTEXT ) {
+            __dios_trace( 0, "Unwinder Fatal Error: Frame which indicated handler in phase 1 refused in phase 2" );
+            return _URC_FATAL_PHASE2_ERROR;
+        }
+        if ( r == _URC_INSTALL_CONTEXT ) {
+            // save mask state before it is removed from the stack
+            auto maskState = mask._origState();
+            // kill the part of stack which will be jumped over
+            __dios_unwind( nullptr, nullptr, ctx.frame );
+            __dios_assert( ctx.jumpPC != 0 );
+            // unwinder has to put the mask to the same state as it was before throw/resume
+            __dios_jump_and_kill_frame( ctx.frame, reinterpret_cast< void (*)() >( ctx.jumpPC ),
+                                        maskState );
+        }
+    }
+    return _URC_END_OF_STACK;
+}
 
 //  Raise an exception, passing along the given exception object, which should
 //  have its exception_class and exception_cleanup fields set. The exception
@@ -152,20 +197,15 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
 {
     __dios::InterruptMask mask;
 
-    // TODO: report fault in nounwind function is encountered
-    // frame of _Unwind_RaiseException's caller
-    auto *selfFrame = __dios_this_frame();
-    exception->private_2 = uintptr_t( selfFrame );
-    auto *topFrame = selfFrame->parent->parent; // caller of __cxa_throw (or ther caller of _Unwind_RaiseException)
-    _Unwind_Context topCtx( topFrame );
+    auto *topFrame = __dios_this_frame()->parent;
     _Unwind_Context foundCtx;
-    __personality_routine pers;
 
-    for ( auto ctx = topCtx; ctx; ctx.next() ) {
+    for ( _Unwind_Context ctx( topFrame ); ctx; ctx.next() )
+    {
         auto attrs = __dios_get_func_exception_attrs( ctx.pc() );
         if ( shouldCallPersonality( attrs, ctx ) )
         {
-            pers = reinterpret_cast< __personality_routine >( attrs.personality );
+            auto pers = reinterpret_cast< __personality_routine >( attrs.personality );
             // personality in not part of the unwinder and therefore should be
             // allowed to interleave with other threads
             auto r = mask.without( [&] {
@@ -188,38 +228,18 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
         if ( !unwindAlsoIfNoHandlerFound )
             return _URC_END_OF_STACK;
     }
-    for ( auto ctx = topCtx; ctx; ctx.next() ) {
-        auto attrs = __dios_get_func_exception_attrs( ctx.pc() );
-        if ( !shouldCallPersonality( attrs, ctx ) )
-            continue;
-        pers = reinterpret_cast< __personality_routine >( attrs.personality );
-        int flags = _UA_CLEANUP_PHASE;
-        if ( ctx.frame == foundCtx.frame )
-            flags |= _UA_HANDLER_FRAME;
-        auto r = mask.without( [&] {
-            return pers( unwindVersion, _Unwind_Action( flags ), exception->exception_class, exception, &ctx );
-        } );
-        if ( (flags & _UA_HANDLER_FRAME) && r != _URC_INSTALL_CONTEXT ) {
-            __dios_trace( 0, "Unwinder Fatal Error: Frame which indicated handler in phase 1 refused in phase 2" );
-            return _URC_FATAL_PHASE2_ERROR;
-        }
-        if ( r == _URC_INSTALL_CONTEXT ) {
-            // kill the part of stack which fill be jumped over (free allocas)
-            __dios_unwind( nullptr, topFrame, ctx.frame );
-            topFrame = ctx.frame;
-            __dios_assert( ctx.jumpPC != 0 );
-            // unwinder has to have the mask in the same state as it was before throw/resume
-            __dios_jump( ctx.frame, reinterpret_cast< void (*)() >( ctx.jumpPC ), mask._origState() );
-            mask._setOrigState( exception->private_2 );
-            exception->private_2 = uintptr_t( selfFrame );
-        }
-    }
-    if ( unwindAlsoIfNoHandlerFound ) {
-        __dios_unwind( nullptr, topFrame, nullptr ); // kill rest of the stack below __cxa_throw
+
+    foundCtx.fill( exception );
+
+    _Unwind_Reason_Code r = _Unwind_Phase2( topFrame, foundCtx, exception, mask );
+
+    // Phase2 des not return unless there was an error
+    if ( r == _URC_END_OF_STACK && unwindAlsoIfNoHandlerFound ) {
+        __dios_unwind( nullptr, topFrame->parent, nullptr ); // kill rest of the stack below __cxa_throw
         return _URC_END_OF_STACK;
     }
     __dios_trace( 0, "Unwinder Fatal Error: handler not found in phase 2" );
-    return _URC_FATAL_PHASE2_ERROR;
+    return r;
 }
 
 //  Resume propagation of an existing exception e.g. after executing cleanup
@@ -228,11 +248,12 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
 //  execution. It causes unwinding to proceed further.
 void _Unwind_Resume( _Unwind_Exception *exception ) {
     __dios::InterruptMask mask;
-    auto *unwinder = reinterpret_cast< _VM_Frame * >( exception->private_2 );
-    // transfer information about current mask state to _Unwind_RaiseException
-    exception->private_2 = mask._origState();
-    __dios_jump_and_kill_frame( unwinder, unwinder->pc, -1 );
-    __builtin_unreachable();
+    auto topFrame = __dios_this_frame()->parent;
+    _Unwind_Context foundCtx( exception );
+    _Unwind_Phase2( topFrame, foundCtx, exception, mask );
+    __dios_fault( _VM_F_Control,
+                  "Unwinder Fatal Error: resume did not found any exception handler" );
+    __builtin_trap();
 }
 
 // Deletes the given exception object. If a given runtime resumes normal
