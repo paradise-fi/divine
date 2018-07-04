@@ -3,11 +3,6 @@
 #include <sys/bitcode.h>
 #include <string.h>
 
-__invisible void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
-{
-    __dios_jump_and_kill_frame( to, pc, restoreMaskTo );
-}
-
 /* NOTE: any write directly to a stack frame should bypass weakmem as registers
  * and parent pointers are read by the VM */
 __invisible __weakmem_direct void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept

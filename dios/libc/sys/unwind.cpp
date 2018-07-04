@@ -163,8 +163,7 @@ static _Unwind_Reason_Code _Unwind_Phase2( _VM_Frame *topFrame, _Unwind_Context 
             __dios_unwind( nullptr, nullptr, ctx.frame );
             __dios_assert( ctx.jumpPC != 0 );
             // unwinder has to put the mask to the same state as it was before throw/resume
-            __dios_jump_and_kill_frame( ctx.frame, reinterpret_cast< void (*)() >( ctx.jumpPC ),
-                                        maskState );
+            __dios_jump( ctx.frame, reinterpret_cast< void (*)() >( ctx.jumpPC ), maskState );
         }
     }
     return _URC_END_OF_STACK;

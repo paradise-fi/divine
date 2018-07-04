@@ -44,17 +44,10 @@ __inline static inline void __dios_sync_this_frame() __nothrow
 void __dios_unwind( struct _VM_Frame *stack, struct _VM_Frame *from, struct _VM_Frame *to )
     _PDCLIB_nothrow __attribute__((__noinline__));
 
-// transfer control to given frame and program counter, if restoreMaskTo is -1
-// it does not change mask
-// NOTE: no noteturn here as the purpose of non-frame-killing jump is to be able
-// to return.
-void __dios_jump( struct _VM_Frame *to, void (*pc)( void ), int restoreMaskTo )
-    _PDCLIB_nothrow __attribute__((__noinline__));
-
-// like __dios_jump, but also destroys the caller frame
-_PDCLIB_noreturn inline void __dios_jump_and_kill_frame( struct _VM_Frame *to,
-                                                         void (*pc)( void ),
-                                                         int restoreMaskTo )
+// destroy this frame and transfer control to given frame and program counter,
+// if restoreMaskTo is -1 it does not change mask
+_PDCLIB_noreturn inline void __dios_jump( struct _VM_Frame *to, void (*pc)( void ),
+                                          int restoreMaskTo )
     _PDCLIB_nothrow __attribute__((__always_inline__))
 {
     if ( restoreMaskTo == 0 )
