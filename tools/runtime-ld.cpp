@@ -1,7 +1,7 @@
 #include <brick-string>
 
 DIVINE_RELAX_WARNINGS
-#include <brick-llvm>
+#include <brick-llvm-link>
 DIVINE_UNRELAX_WARNINGS
 
 int link_a( int argc, const char **argv )
