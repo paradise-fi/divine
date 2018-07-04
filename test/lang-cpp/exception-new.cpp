@@ -11,5 +11,6 @@ int main()
         y = 2;
     }
     assert( ( x && y == 1 ) || ( !x && y == 2 ) );
+    delete x;
     return 0;
 }
