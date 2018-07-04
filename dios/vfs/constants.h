@@ -1,5 +1,8 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include "utils.h"
 #include "storage.h"
 

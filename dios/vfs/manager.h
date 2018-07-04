@@ -25,18 +25,13 @@
 #include "snapshot.h"
 #include "descriptor.h"
 #include "path.h"
+#include "syscall.hpp"
 
 #ifndef _FS_MANAGER_H_
 #define _FS_MANAGER_H_
 
 namespace __dios {
 namespace fs {
-
-struct VFSProc
-{
-    Mode _umask;
-    __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
-};
 
 struct Manager {
 
@@ -114,7 +109,7 @@ struct Manager {
     WeakNode _currentDirectory;
     std::array< Node, 3 > _standardIO;
 
-    VFSProc *_proc;
+    ProcessInfo *_proc;
 
     Manager( bool );// private default ctor
 
@@ -149,8 +144,8 @@ namespace conversion {
 }
 
 template < typename Next >
-struct VFS: public Next {
-
+struct VFS: Syscall, Next
+{
     VFS() { _manager = new( __dios::nofail ) Manager{}; }
     VFS( const VFS& ) = delete;
     ~VFS() {
@@ -167,8 +162,16 @@ struct VFS: public Next {
         return *_manager;
     }
 
-    struct Process : Next::Process, VFSProc
+    struct Process : Next::Process, fs::ProcessInfo
     {};
+
+    Node root() override { return _root; }
+    Node cwd() override { return instance().currentDirectory(); }
+    ProcessInfo &proc() override { return *static_cast< Process * >( this->getCurrentTask()->_proc ); }
+
+    using Syscall::chmod;
+    using Syscall::fchmod;
+    using Syscall::fchmodat;
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -277,80 +280,6 @@ struct VFS: public Next {
 private: /* helper methods */
 
     Node _root;
-
-    FileDescriptor *check_fd( int fd_, int acc )
-    {
-        auto fd = instance().getFile( fd_ );
-        if ( !fd )
-            return error( EBADF ), nullptr;
-
-        auto ino = fd->inode();
-        if ( !ino )
-            return error( EBADF ), nullptr;
-
-        if ( ( acc & W_OK ) && !fd->flags().write() )
-            return error( EBADF ), nullptr;
-        if ( ( acc & R_OK ) && !fd->flags().read() )
-            return error( EBADF ), nullptr;
-
-        if ( fd->inode()->mode().is_dir() )
-            if ( ( acc & R_OK ) && !fd->flags().has( O_DIRECTORY ) )
-                return error( EISDIR ), nullptr;
-
-        return fd.get();
-    }
-
-    std::pair< std::string_view, std::string_view > split( std::string_view p, char d )
-    {
-        auto npos = std::string::npos;
-        auto s = p.find( d );
-        return std::make_pair( p.substr( 0, s ),
-                               s == npos ? std::string_view() : p.substr( s + 1, npos ) );
-    }
-
-    Node search( Node dir, std::string_view path, bool follow )
-    {
-        if ( path.empty() )
-            return dir;
-
-        if ( !dir->mode().is_dir() )
-            return error( ENOTDIR ), nullptr;
-
-        auto [name, tail] = split( path, '/' );
-        if ( name.size() > FILE_NAME_LIMIT )
-            return error( ENAMETOOLONG ), nullptr;
-
-        if ( auto next = dir->template as< Directory >()->find( name ) )
-        {
-            if ( auto link = next->template as< SymLink >(); link && follow )
-                return search( lookup( dir, link->target(), follow ), tail, follow );
-
-            return search( next, tail, follow );
-        }
-        else
-            return error( ENOENT ), nullptr;
-    }
-
-    Node lookup( Node dir, std::string_view path, bool follow )
-    {
-        auto npos = std::string::npos;
-
-        if ( path.size() > PATH_LIMIT )
-            return error( ENAMETOOLONG ), nullptr;
-
-        if ( path[0] == '/' )
-            return lookup( _root, path.substr( 1, npos ), follow );
-        else
-            return search( dir, path, follow );
-    }
-
-    Node getcwd( int fd = AT_FDCWD )
-    {
-        if ( fd == AT_FDCWD )
-            return instance().currentDirectory();
-        else
-            return instance().getFile( fd )->inode();
-    }
 
 public: /* system call implementation */
 
@@ -527,7 +456,7 @@ public: /* system call implementation */
 
     int truncate( const char *path, off_t length )
     {
-        if ( auto ino = lookup( getcwd(), path, true ) )
+        if ( auto ino = lookup( get_dir(), path, true ) )
             return _truncate( ino, length );
         else
             return -1;
@@ -728,35 +657,6 @@ public: /* system call implementation */
     {
         __dios_trace_t( "statfs() is not implemented" );
         return -1;
-    }
-
-    void _chmod( Node ino, Mode mode )
-    {
-        ino->mode() = ( ino->mode() & ~ALLPERMS ) | ( mode & ALLPERMS );
-    }
-
-    int fchmodat( int dirfd, const char *path, Mode mode, int flags )
-    {
-        if ( ( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
-            return error( EINVAL ), -1;
-
-        if ( auto ino = lookup( getcwd( dirfd ), path, !( flags & AT_SYMLINK_NOFOLLOW ) ) )
-            return _chmod( ino, mode ), 0;
-        else
-            return -1;
-    }
-
-    int fchmod( int fd_, Mode mode )
-    {
-        if ( auto fd = check_fd( fd_, W_OK ) )
-            return _chmod( fd->inode(), mode ), 0;
-        else
-            return -1;
-    }
-
-    int chmod( const char *path, Mode mode )
-    {
-        return fchmodat( AT_FDCWD, path, mode, 0 );
     }
 
     int mkdirat( int dirfd, const char *path, Mode mode )
