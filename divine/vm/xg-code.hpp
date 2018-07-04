@@ -19,6 +19,7 @@
 #pragma once
 
 #include <brick-bitlevel>
+#include <brick-llvm>
 #include <brick-string>
 #include <divine/vm/divm.h>
 
@@ -135,8 +136,7 @@ struct AddressMap
         if ( auto G = llvm::dyn_cast< llvm::GlobalVariable >( v ) )
             return global( G );
 
-        v->dump();
-        UNREACHABLE( "impossible value in slot_addr()" );
+        UNREACHABLE( "impossible value in slot_addr():", v );
     }
 
     bool has_addr( llvm::Value *v )

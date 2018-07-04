@@ -23,6 +23,8 @@
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
 
+#include <brick-llvm>
+
 using namespace divine::vm;
 using llvm::dyn_cast;
 using llvm::isa;
@@ -51,8 +53,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
 
     if ( !valuemap.count( V ) )
     {
-        V->dump();
-        UNREACHABLE( "value not allocated during initialisation" );
+        UNREACHABLE( "value not allocated during initialisation:", V );
     }
 
     if ( _doneinit.count( V ) )
@@ -99,11 +100,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         for ( int i = 0; i < int( C->getNumOperands() ); ++i ) // now the operands
         {
             if ( !valuemap.count( C->getOperand( i ) ) )
-            {
-                C->dump();
-                C->getOperand( i )->dump();
-                UNREACHABLE( "oops" );
-            }
+                UNREACHABLE( "constant's operand not processed yet:", C, "operand:", C->getOperand( i ) );
             comp.values.push_back( valuemap[ C->getOperand( i ) ] );
         }
         eval._instruction = &comp;
@@ -195,11 +192,10 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     else if ( isa< llvm::GlobalVariable >( V ) );
     else
     {
-        V->dump();
         if ( V->getType()->isPointerTy() )
-            UNREACHABLE( "an unexpected non-zero constant pointer" );
+            UNREACHABLE( "an unexpected non-zero constant pointer:", V );
         else
-            UNREACHABLE( "unknown constant type" );
+            UNREACHABLE( "unknown constant type:", V );
     }
 
     ASSERT( done );
