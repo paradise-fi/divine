@@ -52,13 +52,7 @@
 #include <string_view>
 
 #ifdef BRICKS_HAVE_LLVM
-#ifdef DIVINE_RELAX_WARNINGS
-DIVINE_RELAX_WARNINGS
-#endif
-#include <llvm/Support/raw_ostream.h>
-#ifdef DIVINE_RELAX_WARNINGS
-DIVINE_UNRELAX_WARNINGS
-#endif
+namespace llvm { class raw_ostream; }
 #endif // BRICKS_HAVE_LLVM
 #endif // C++17
 
@@ -66,6 +60,13 @@ DIVINE_UNRELAX_WARNINGS
 #define BRICK_STRING_H
 
 namespace brick {
+
+// defined in brick-llvm
+// A bit of hacking around template instatiation goes around in using this to
+// make sure compiler errors are emitted properly if definition of formatter
+// is missing.
+namespace llvm { struct Format; }
+
 namespace string {
 
 #if _WIN32 || __xlC__
@@ -435,6 +436,13 @@ namespace detail {
         static constexpr char right_bracket =
                 detail::container_bracket< T >( ']', '}', detail::Preferred() );
     };
+    template< typename >
+    struct LFMT_ { using T = llvm::Format; };
+
+    // make llvm::Format bogusly dependent on the template argument so that compiler
+    // does not compain that it is incomplete if it is not used
+    template< typename T >
+    using LFMT = typename LFMT_< T >::T;
 
 } // namespace detail
 
@@ -491,17 +499,14 @@ struct Formatter
     template< typename T >
     auto format( T &&llvmval ) -> decltype( llvmval.print( std::declval< ::llvm::raw_ostream & >() ) )
     {
-        std::string s;
-        ::llvm::raw_string_ostream lstream( s );
-        llvmval.print( lstream );
-        ss << lstream.str();
+        ss << detail::LFMT< T >::format( llvmval );
     }
 
     template< typename T >
     auto format( T *llvmval ) -> decltype( llvmval->print( std::declval< ::llvm::raw_ostream & >() ) )
     {
         if ( llvmval )
-            format( *llvmval );
+            detail::LFMT< T >::format( *llvmval );
         else
             format( "(nullptr)" );
     }
