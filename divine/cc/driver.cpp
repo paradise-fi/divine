@@ -4,8 +4,7 @@
 #include <divine/cc/paths.hpp>
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/Support/raw_os_ostream.h>
-#include <brick-llvm>
+#include <brick-llvm-link>
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-fs>
