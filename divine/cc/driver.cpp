@@ -67,16 +67,6 @@ Driver::Driver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
 
 Driver::~Driver() { }
 
-void Driver::compileAndLink( std::string path, std::vector< std::string > flags )
-{
-    linker->link( compile( path, flags ) );
-}
-
-void Driver::compileAndLink( std::string path, FileType type, std::vector< std::string > flags )
-{
-    linker->link( compile( path, type, flags ) );
-}
-
 std::unique_ptr< llvm::Module > Driver::compile( std::string path,
                                     std::vector< std::string > flags )
 {

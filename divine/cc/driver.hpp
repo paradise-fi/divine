@@ -26,9 +26,6 @@ struct Driver
                       std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
     ~Driver();
 
-    void compileAndLink( std::string path, std::vector< std::string > flags = {} );
-    void compileAndLink( std::string path, FileType type, std::vector< std::string > flags = {} );
-
     void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );
     void linkLib( std::string lib, std::vector< std::string > searchPaths = {} );
     void linkModule( ModulePtr mod );
