@@ -13,9 +13,8 @@ void foo() {
     throw 4;
 }
 
-// this test and ....-unwind test, test that if no hanlder is found our
-// unwinder nondeterministically both unwinds and does not unwind the stack
-// (and run destructors)
+// In DIVINE (as on any platform using Itanium-ABI-based exception handling)
+// destructors are not called in case exception is not thrown.
 int main() {
     X _;
     std::set_terminate( [] {
