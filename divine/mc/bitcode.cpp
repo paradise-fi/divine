@@ -27,6 +27,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DiagnosticPrinter.h>
+#include <llvm/Object/IRObjectFile.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
