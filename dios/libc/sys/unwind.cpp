@@ -220,24 +220,14 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
             __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
     }
 
-    bool unwindAlsoIfNoHandlerFound = false;
-    if ( !foundCtx ) {
-        unwindAlsoIfNoHandlerFound = exception->exception_class == cppExceptionClass
-                                      || exception->exception_class == cppDependentExceptionClass
-                                    ? __vm_choose( 2 ) : false;
-        if ( !unwindAlsoIfNoHandlerFound )
-            return _URC_END_OF_STACK;
-    }
+    if ( !foundCtx )
+        return _URC_END_OF_STACK;
 
     foundCtx.fill( exception );
 
     _Unwind_Reason_Code r = _Unwind_Phase2( topFrame, foundCtx, exception, mask );
 
     // Phase2 des not return unless there was an error
-    if ( r == _URC_END_OF_STACK && unwindAlsoIfNoHandlerFound ) {
-        __dios_unwind( nullptr, topFrame->parent, nullptr ); // kill rest of the stack below __cxa_throw
-        return _URC_END_OF_STACK;
-    }
     __dios_trace( 0, "Unwinder Fatal Error: handler not found in phase 2" );
     return r;
 }
