@@ -79,7 +79,6 @@ struct Driver
     CC1 compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
     std::vector< std::string > commonFlags; // set in CPP
-    std::string runtimeVersMeta = "divine.compile.runtime.version";
 };
 
 }
