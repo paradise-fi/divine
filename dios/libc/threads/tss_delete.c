@@ -5,7 +5,8 @@
 
 void tss_delete(tss_t key)
 {
-    assert(pthread_key_delete(key) == 0);
+    int r = pthread_key_delete(key);
+    assert(r == 0);
 }
 #endif
 
