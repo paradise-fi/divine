@@ -129,7 +129,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 {
     using FileType = cc::FileType;
     using namespace brick::types;
-    std::unique_ptr< cc::Driver > compil = std::unique_ptr< cc::Driver >( new cc::Driver( clang.context() ) );
+    std::unique_ptr< cc::DiosDriver > compil = std::unique_ptr< cc::DiosDriver >( new cc::DiosDriver( clang.context() ) );
     compil->setupFS( rt::each );
 
     for ( auto file : files )
@@ -156,7 +156,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
     }
 
     compil->linkEssentials();
-    compil->linkLibs( cc::Driver::defaultDIVINELibs );
+    compil->linkLibs( cc::DiosDriver::defaultDIVINELibs );
 
     auto m = compil->takeLinked();
 
