@@ -23,7 +23,6 @@
 #include <divine/mc/exec.hpp>
 #include <divine/vm/vmutil.h>
 #include <divine/cc/driver.hpp>
-#include <divine/rt/runtime.hpp>
 #include <brick-string>
 #include <brick-fs>
 #include <brick-llvm>
@@ -287,8 +286,6 @@ void WithBC::setup()
                 throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
             cc::Options ccopt;
             cc::DiosDriver driver( ccopt );
-
-            driver.setupFS( rt::each );
             driver.runCC( _ccopts_final );
             _bc = std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
         }
@@ -325,7 +322,6 @@ void WithBC::init()
 void Cc::run()
 {
     cc::DiosDriver driver( _drv );
-    driver.setupFS( rt::each );
     driver.setupFS( [&]( auto yield )
                     {
                         for ( auto f : _files )

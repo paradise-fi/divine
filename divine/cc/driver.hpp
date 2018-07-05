@@ -4,6 +4,7 @@
 #include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/cc/paths.hpp>
+#include <divine/rt/runtime.hpp>
 
 #include <brick-assert>
 #include <brick-llvm-link>
@@ -83,7 +84,10 @@ struct DiosDriver : Driver
     // set in .cpp
     static const std::vector< std::string > defaultDIVINELibs;
 
-    using Driver::Driver;
+    explicit DiosDriver( std::shared_ptr< llvm::LLVMContext > ctx ) : Driver( Options(), ctx )
+    {
+        setupFS( rt::each );
+    }
     explicit DiosDriver( Options opts = Options(),
                          std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
 
