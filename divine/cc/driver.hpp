@@ -28,7 +28,7 @@ struct Driver
 
     void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );
     void linkLib( std::string lib, std::vector< std::string > searchPaths = {} );
-    void linkModule( ModulePtr mod );
+    void link( ModulePtr mod );
     void linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context );
     void linkEntireArchive( std::string arch );
     void linkEssentials();

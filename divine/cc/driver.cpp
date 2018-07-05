@@ -157,7 +157,7 @@ void Driver::linkLibs( std::vector< std::string > ls, std::vector< std::string >
         linkLib( lib, searchPaths );
 }
 
-void Driver::linkModule( ModulePtr mod ) {
+void Driver::link( ModulePtr mod ) {
    linker->link( std::move( mod ) );
 }
 
