@@ -195,21 +195,26 @@ struct Fault: public Next {
         if ( old & _DiOS_CF_IgnoreFault )
         {
             __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old & ~_DiOS_CF_IgnoreFault ) );
-            __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
+            goto ret;
         }
 
         __dios_sync_parent_frame();
 
-        bool kernel = old & _VM_CF_KernelMode;
-        auto *frame = __dios_this_frame()->parent;
-        auto& fault = get_state< Context >();
-        fault.fault_handler( kernel, frame, _what );
+        {
+            bool kernel = old & _VM_CF_KernelMode;
+            auto *frame = __dios_this_frame()->parent;
+            auto& fault = get_state< Context >();
+            fault.fault_handler( kernel, frame, _what );
+        }
 
         // Continue if we get the control back
         old |= uint64_t( __vm_ctl_get( _VM_CR_Flags ) ) & ( _DiOS_CF_Fault | _VM_CF_Error );
         __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
+      ret:
+        // clean possible intermediate frames to avoid memory leaks
+        __dios_unwind( nullptr, nullptr, cont_frame );
         __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
-        __builtin_unreachable();
+        __builtin_trap();
     }
 
     static int str_to_fault( String fault ) {
