@@ -129,8 +129,8 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 {
     using FileType = cc::FileType;
     using namespace brick::types;
-    std::unique_ptr< cc::DiosDriver > compil = std::unique_ptr< cc::DiosDriver >( new cc::DiosDriver( clang.context() ) );
-    compil->setupFS( rt::each );
+    std::unique_ptr< cc::DiosDriver > drv = std::unique_ptr< cc::DiosDriver >( new cc::DiosDriver( clang.context() ) );
+    drv->setupFS( rt::each );
 
     for ( auto file : files )
     {
@@ -142,7 +142,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 
         if ( isType( file.second, FileType::Archive ) )
         {
-            compil->linkArchive( std::move( buf.get() ) , clang.context() );
+            drv->linkArchive( std::move( buf.get() ) , clang.context() );
             continue;
         }
 
@@ -152,13 +152,13 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
         std::unique_ptr< llvm::Module > m = std::move( llvm::parseBitcodeFile( bc.get(), *clang.context().get()).get() );
         m->setTargetTriple( "x86_64-unknown-none-elf" );
         verifyModule( *m );
-        compil->linkModule( std::move( m ) );
+        drv->link( std::move( m ) );
     }
 
-    compil->linkEssentials();
-    compil->linkLibs( cc::DiosDriver::defaultDIVINELibs );
+    drv->linkEssentials();
+    drv->linkLibs( cc::DiosDriver::defaultDIVINELibs );
 
-    auto m = compil->takeLinked();
+    auto m = drv->takeLinked();
 
     for( auto& func : *m )
         if( func.isDeclaration() && vm::xg::hypercall( &func ) == vm::lx::NotHypercall )
