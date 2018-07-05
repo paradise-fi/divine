@@ -8,11 +8,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Casting.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <divine/cc/cc1.hpp>
-#include <divine/cc/driver.hpp>
-#include <divine/cc/options.hpp>
-#include <divine/rt/runtime.hpp>
-
 #include <lart/support/meta.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
@@ -81,16 +76,22 @@ namespace abstract {
         return { PassWrapper::meta() };
     }
 }
+}
 
 #ifdef BRICK_UNITTEST_REG
 #include <lart/driver.h>
+#include <divine/cc/cc1.hpp>
+#include <divine/cc/driver.hpp>
+#include <divine/cc/options.hpp>
+#include <divine/rt/runtime.hpp>
 
+namespace lart {
 namespace t_abstract {
 
 using File = std::string;
 using Files = std::vector< File >;
 
-namespace rt = divine::rt;
+namespace rt = ::divine::rt;
 
 template< typename... Passes >
 auto test( std::unique_ptr< llvm::Module > m, Passes&&... passes )
@@ -120,7 +121,7 @@ struct TestBase
 
     auto compile( const File & src )
     {
-        divine::cc::DiosDriver c( { dont_link, verbose }, _ctx );
+        ::divine::cc::DiosDriver c( { dont_link, verbose }, _ctx );
         c.setupFS( rt::each );
         c.setupFS( [&]( auto yield ) { yield( "/main.cpp", src ); } );
         c.link( c.compile( "/main.cpp", flags ) );
@@ -1051,5 +1052,5 @@ struct Substitution : TestBase
 };
 
 } // namespace t_abstract
-#endif
 } // namespace lart
+#endif
