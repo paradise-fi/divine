@@ -120,10 +120,10 @@ struct TestBase
 
     auto compile( const File & src )
     {
-        divine::cc::Compile c( { dont_link, verbose }, _ctx );
+        divine::cc::DiosDriver c( { dont_link, verbose }, _ctx );
         c.setupFS( rt::each );
         c.setupFS( [&]( auto yield ) { yield( "/main.cpp", src ); } );
-        c.compileAndLink( "/main.cpp", flags );
+        c.link( c.compile( "/main.cpp", flags ) );
         c.linkEntireArchive( "rst" );
         return c.takeLinked();
     }
