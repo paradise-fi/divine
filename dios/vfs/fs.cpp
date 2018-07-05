@@ -20,6 +20,8 @@
 struct DirWrapper
 {
     int fd;
+    struct dirent readdir_entry;
+    char *readdir_entry_raw() { return reinterpret_cast< char * >( &readdir_entry ); }
 };
 
 extern "C" {
@@ -102,12 +104,10 @@ extern "C" {
             return nullptr;
         }
 
-        struct dirent* retval = new ( __dios::nofail ) struct dirent;
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
-        char *dirInfo = reinterpret_cast< char * >( retval );
 
-        int res = read( wrapper->fd, dirInfo, sizeof( struct dirent ) );
-        return ( res > 0 ) ? retval : nullptr;
+        int res = read( wrapper->fd, wrapper->readdir_entry_raw(), sizeof( struct dirent ) );
+        return res > 0 ? &wrapper->readdir_entry : nullptr;
     }
 
     int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result )
