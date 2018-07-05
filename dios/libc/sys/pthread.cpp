@@ -269,6 +269,7 @@ static void iterateThreads( Yield yield ) noexcept {
     int cnt = __vm_obj_size( threads ) / sizeof( __dios_task );
     for ( int i = 0; i < cnt; ++i )
         yield( threads[ i ] );
+    __vm_obj_free( threads );
 }
 
 /* Process */
