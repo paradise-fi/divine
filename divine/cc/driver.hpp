@@ -3,8 +3,11 @@
 
 #include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
+#include <divine/cc/paths.hpp>
 
 #include <brick-assert>
+#include <brick-llvm-link>
+#include <brick-fs>
 #include <thread>
 #include <stdexcept>
 
@@ -24,16 +27,13 @@ struct Driver
     explicit Driver( std::shared_ptr< llvm::LLVMContext > ctx ) : Driver( Options(), ctx ) {}
     explicit Driver( Options opts = Options(),
                       std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
-    ~Driver();
+    virtual ~Driver();
 
     void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );
     void linkLib( std::string lib, std::vector< std::string > searchPaths = {} );
     void link( ModulePtr mod );
     void linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context );
     void linkEntireArchive( std::string arch );
-    void linkEssentials();
-
-    static const std::vector< std::string > defaultDIVINELibs;
 
     ModulePtr compile( std::string path, std::vector< std::string > flags = { } );
     ModulePtr compile( std::string path, FileType type, std::vector< std::string > flags = {} );
@@ -50,7 +50,7 @@ struct Driver
     // module is skipped and the callback can transfer its ownership, or delete
     // it. Normally, the implementation would handle non-liking modules and
     // return without modification modules which should be linked.
-    void runCC( std::vector< std::string > rawCCOpts,
+    virtual void runCC( std::vector< std::string > rawCCOpts,
                 std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback = nullptr );
 
     std::unique_ptr< llvm::Module > takeLinked();
@@ -69,13 +69,27 @@ struct Driver
         each( [&]( auto path, auto c ) { compiler.mapVirtualFile( path, c ); } );
     }
 
-  private:
+  protected:
     brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
 
     Options opts;
     CC1 compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
-    std::vector< std::string > commonFlags; // set in CPP
+    std::vector< std::string > commonFlags;
+};
+
+struct DiosDriver : Driver
+{
+    // set in .cpp
+    static const std::vector< std::string > defaultDIVINELibs;
+
+    using Driver::Driver;
+    explicit DiosDriver( Options opts = Options(),
+                         std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
+
+    void linkEssentials();
+    void runCC ( std::vector< std::string > rawCCOpts,
+                 std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback = nullptr ) override;
 };
 
 }

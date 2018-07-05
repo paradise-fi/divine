@@ -1,13 +1,7 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 
 #include <divine/cc/driver.hpp>
-#include <divine/cc/paths.hpp>
 
-DIVINE_RELAX_WARNINGS
-#include <brick-llvm-link>
-DIVINE_UNRELAX_WARNINGS
-
-#include <brick-fs>
 #include <brick-string>
 #include <brick-types>
 
@@ -50,20 +44,13 @@ static std::vector< std::string > mergeFlags( Xs &&... xs ) {
 
 Driver::Driver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     opts( opts ), compiler( ctx ), linker( new brick::llvm::Linker() )
-{
-    commonFlags = { "-D__divine__=4"
-                  , "-isystem", joinPath( includeDir, "libcxx/include" )
-                  , "-isystem", joinPath( includeDir, "libcxxabi/include" )
-                  , "-isystem", joinPath( includeDir, "libunwind/include" )
-                  , "-isystem", includeDir
-                  , "-D_POSIX_C_SOURCE=2008098L"
-                  , "-D_LITTLE_ENDIAN=1234"
-                  , "-D_BYTE_ORDER=1234"
-                  , "-debug-info-kind=standalone"
-                  , "-U__x86_64"
-                  , "-U__x86_64__"
-                  };
-}
+    {
+        commonFlags = { "-D__divine__=4"
+                      , "-debug-info-kind=standalone"
+                      , "-U__x86_64"
+                      , "-U__x86_64__"
+                      };
+    }
 
 Driver::~Driver() { }
 
@@ -116,10 +103,6 @@ void Driver::runCC( std::vector< std::string > rawCCOpts,
             [&]( const Lib &l ) {
                 linkLib( l.name, po.libSearchPath );
             } );
-    if ( linker->hasModule() ) {
-        linkEssentials();
-        linkLibs( defaultDIVINELibs );
-    }
 }
 
 std::unique_ptr< llvm::Module > Driver::takeLinked()
@@ -206,23 +189,6 @@ void Driver::linkEntireArchive( std::string arch )
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             linker->link( it.take() );
 }
-
-void Driver::linkEssentials()
-{
-    for (auto arch : { "dios", "rst" } )
-        linkEntireArchive( arch );
-    // the _link_essentials modules are built from divine.link.always annotations
-    for ( auto e : defaultDIVINELibs )
-    {
-        auto archive = getLib( e );
-        auto modules = archive.modules();
-        for ( auto it = modules.begin(); it != modules.end(); ++it )
-            if ( it->getModuleIdentifier() == "_link_essentials.ll"s )
-                linker->link_decls( it.take() );
-    }
-}
-
-const std::vector< std::string > Driver::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
 
 }
 }
