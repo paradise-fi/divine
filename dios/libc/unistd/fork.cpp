@@ -23,6 +23,7 @@ pid_t fork( void ) noexcept
             if ( tasks[ i ] != current_task )
                  __vm_obj_free( tasks[ i ] );
     }
+    __vm_obj_free( tasks );
 
     mask.without( [=]{ __run_atfork_handlers( is_parent? 1 : 2 ); } );
     return is_parent ? child_pid : 0;
