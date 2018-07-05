@@ -30,9 +30,6 @@ __invisible __weakmem_direct void __dios_unwind( _VM_Frame *stack, _VM_Frame *fr
     }
 
     // clean the frames, drop their allocas, jump
-    // note: it is not necessary to clean the frames, it is only to prevent
-    // accidental use of their variables, therefore it is also OK to not clean
-    // current frame (heap will garbage-colect it)
     for ( auto *f = from; f != to; )
     {
         auto *meta = __md_get_pc_meta( f->pc );
