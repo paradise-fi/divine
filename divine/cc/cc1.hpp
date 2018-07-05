@@ -22,8 +22,6 @@ struct CompileError : brick::except::Error
     using brick::except::Error::Error;
 };
 
-struct DivineVFS;
-
 void initTargets();
 
 /*
