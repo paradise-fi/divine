@@ -286,7 +286,7 @@ void WithBC::setup()
             if ( cc::typeFromFile( _file ) == cc::FileType::Unknown )
                 throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
             cc::Options ccopt;
-            cc::Driver driver( ccopt );
+            cc::DiosDriver driver( ccopt );
 
             driver.setupFS( rt::each );
             driver.runCC( _ccopts_final );
@@ -324,7 +324,7 @@ void WithBC::init()
 
 void Cc::run()
 {
-    cc::Driver driver( _drv );
+    cc::DiosDriver driver( _drv );
     driver.setupFS( rt::each );
     driver.setupFS( [&]( auto yield )
                     {
