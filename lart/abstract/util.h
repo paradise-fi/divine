@@ -118,5 +118,57 @@ inline bool is_concrete( llvm::Value *val ) {
     return get_domain( val ) == Domain::Concrete;
 }
 
+template< typename T >
+struct has_operand {
+
+    template< typename C >
+    static auto check() -> decltype( std::declval< C >().getOperand( 0 ), std::true_type() );
+
+    template< typename >
+    static std::false_type check( ... );
+
+    static const bool value = std::is_same< std::true_type, decltype( check< T >() ) >::value;
+};
+
+
+template< typename Value >
+struct LLVMTransformer {
+    using value_type = typename std::conditional< std::is_pointer_v< Value >, Value, Value * >::type;
+
+    constexpr LLVMTransformer( value_type val ) : state( val ) {}
+
+    template< typename F >
+    constexpr decltype(auto) apply( F f ) noexcept {
+        using R = decltype( f( state ) );
+        if ( state )
+            return LLVMTransformer< R >( f( state ) );
+        else
+            return LLVMTransformer< R >( nullptr );
+    }
+
+    constexpr decltype(auto) operand( size_t idx ) noexcept {
+        if constexpr ( has_operand< value_type >::value ) {
+            return apply( [idx] ( const auto& v ) { return v->getOperand( idx ); } );
+        } else {
+            return LLVMTransformer< value_type >( nullptr );
+        }
+    }
+
+    template< typename T >
+    constexpr decltype(auto) cast() noexcept {
+        return apply( [] ( const auto& v ) { return llvm::dyn_cast< T >( v ); } );
+    }
+
+    constexpr value_type get() noexcept { return state; }
+private:
+    value_type state;
+};
+
+template< typename T >
+decltype( auto ) make_transformer( T val ) {
+    return LLVMTransformer< T >( val );
+}
+
+
 } // namespace abstract
 } // namespace lart
