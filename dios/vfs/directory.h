@@ -61,13 +61,23 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
 {
     using Items = __dios::Vector< DirectoryEntry >;
 
-    Directory( const __dios::String& name, WeakNode parent = WeakNode{} )
-        : _items{}, _parent( parent ), _name( name )
+    Directory( WeakNode parent = WeakNode{} )
+        : _items{}, _parent( parent )
     {}
 
     size_t size() const override { return _items.size() + 2; }
-    const __dios::String& name() { return _name; }
-    bool special_name( String name ) const { return name == "." || name == ".."; }
+    bool special_name( std::string_view name ) const { return name == "." || name == ".."; }
+
+    std::string_view name()
+    {
+        auto parent = _parent.lock();
+        if ( parent.get() == this )
+            return "/";
+        for ( const auto &entry : parent->as< Directory >()->_items )
+            if ( entry.inode().get() == this )
+                return entry.name();
+        __builtin_unreachable();
+    }
 
     void create( __dios::String name, Node inode ) {
         if ( name.size() > FILE_NAME_LIMIT )
@@ -190,7 +200,6 @@ private:
 
     Items _items;
     WeakNode _parent;
-     __dios::String _name;
 };
 
 } // namespace fs

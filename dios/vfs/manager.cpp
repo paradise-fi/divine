@@ -15,7 +15,7 @@ namespace __dios {
 namespace fs {
 
 Manager::Manager( bool ) :
-    _root( new( __dios::nofail ) Directory( "/" ) ),
+    _root( new( __dios::nofail ) Directory() ),
     _error( 0 ),
     _currentDirectory( _root ),
     _standardIO{ { make_shared< StandardInput >(), nullptr, nullptr } }
@@ -80,7 +80,7 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&..
         node.reset( utils::constructIfPossible< RegularFile >( std::forward< Args >( args )... ) );
 
     if ( mode.is_dir() )
-        node.reset( utils::constructIfPossible< Directory >( name, current ) );
+        node.reset( utils::constructIfPossible< Directory >( current ) );
 
     if ( mode.is_fifo() )
         node.reset( utils::constructIfPossible< Pipe >( std::forward< Args >( args )... ) );
@@ -391,7 +391,6 @@ void Manager::getCurrentWorkingDir( char *buff, size_t size ) {
     if ( size == 0 )
         throw Error( EINVAL );
     __dios::String path = "";
-    __dios::String name;
     Node originalDirectory = currentDirectory( );
 
     Node current = originalDirectory;
@@ -399,8 +398,7 @@ void Manager::getCurrentWorkingDir( char *buff, size_t size ) {
         Directory *dir = current->as< Directory >( );
         if ( !dir )
             break;
-        name = "/" + dir->name( );
-        path = name + path;
+        path = "/" + String( dir->name() ) + path;
         current = dir->find( ".." );
     }
     if ( path.empty( ) )
