@@ -130,7 +130,6 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
     using FileType = cc::FileType;
     using namespace brick::types;
     std::unique_ptr< cc::DiosDriver > drv = std::unique_ptr< cc::DiosDriver >( new cc::DiosDriver( clang.context() ) );
-    drv->setupFS( rt::each );
 
     for ( auto file : files )
     {
