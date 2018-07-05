@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2013 Milan Lenco <lencomilan@gmail.com>
-//             (c) 2014-2016 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2014-2018 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2016 Henrich Lauko <xlauko@fi.muni.cz>
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
@@ -44,6 +44,7 @@ struct _PThread { // (user-space) information maintained for every (running)
     _PThread() noexcept
     {
         memset( this, 0, sizeof( _PThread ) );
+        ++refcnt;
     }
 
     // avoid accidental copies
@@ -67,7 +68,7 @@ struct _PThread { // (user-space) information maintained for every (running)
     bool cancel_type : 1;
     bool is_main : 1;
     bool deadlocked : 1;
-    unsigned sigmaxused : 5; // at most 32 signals
+    uint32_t refcnt;
 
     void setSleeping( pthread_cond_t *cond ) noexcept {
         sleeping = Condition;
@@ -79,6 +80,8 @@ struct _PThread { // (user-space) information maintained for every (running)
         barrier = bar;
     }
 };
+
+static_assert( sizeof( _PThread ) == 5 * sizeof( void * ) );
 
 template< typename Handler >
 struct _PthreadHandlers
@@ -263,6 +266,21 @@ static inline _PThread &getThread() noexcept {
     return getThread( __dios_this_task() );
 }
 
+static inline void acquireThread( _PThread &thread ) {
+    ++thread.refcnt;
+}
+
+static inline void releaseThread( _PThread &thread ) {
+    --thread.refcnt;
+    if ( thread.refcnt == 0 )
+        __vm_obj_free( &thread );
+}
+
+static inline void releaseAndKillThread( __dios_task tid ) {
+    releaseThread( getThread( tid ) );
+    __dios_kill( tid );
+}
+
 template< typename Yield >
 static void iterateThreads( Yield yield ) noexcept {
     auto *threads = __dios_this_process_tasks();
@@ -321,7 +339,6 @@ static void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) n
     thread->condition = nullptr;
     thread->cancel_state = PTHREAD_CANCEL_ENABLE;
     thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
-    thread->sigmaxused = 0;
 }
 
 void __pthread_initialize() noexcept
@@ -394,7 +411,8 @@ static void wait( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
     return _wait< false >( mask, cond );
 }
 
-_Noreturn static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept
+_Noreturn static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask,
+                                                __dios_task tid ) noexcept
 {
     _PThread &thread = getThread( tid );
     // An  optional  destructor  function may be associated with each key
@@ -436,12 +454,9 @@ _Noreturn static void _clean_and_become_zombie( __dios::FencedInterruptMask &mas
     if ( thread.is_main )
         exit( 0 );
 
-    if ( thread.detached ) {
-        // leak &thread so that metadata can be read for use by deadlock
-        // tracking; &thread will be released by DIVINE when all pointers to it
-        // are lost
-        __dios_kill( tid );
-    } else // wait until detach / join kills us
+    if ( thread.detached )
+        releaseAndKillThread( tid );
+    else // wait until detach / join kills us
         wait( mask, [&] { return true; } );
     __builtin_trap();
 }
@@ -527,8 +542,8 @@ static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, voi
     }
 
     // kill the thread so that it does not pollute state space by ending
-    // nondeterministically, but leak it (see _clean_and_become_zombie)
-    __dios_kill( gtid );
+    // nondeterministically
+    releaseAndKillThread( gtid );
     return 0;
 }
 
@@ -565,9 +580,8 @@ int pthread_detach( pthread_t gtid ) noexcept {
 
     if ( ended ) {
         // kill the thread so that it does not pollute state space by ending
-        // nondeterministically, but leak the thread descritor (see
-        // _clean_and_become_zombie)
-        __dios_kill( gtid );
+        // nondeterministically
+        releaseAndKillThread( gtid );
     }
     return 0;
 }
@@ -816,7 +830,7 @@ static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mute
     }
 
     // mark waiting now for wait cycle detection
-    // note: waiting should not ne set in case of unsuccessfull try-lock
+    // note: waiting should not be set in case of unsuccessfull try-lock
     // (cycle in try-lock is not deadlock, although it might be livelock)
     // so it must be here after return EBUSY
     thr.waiting_mutex = mutex;
@@ -841,6 +855,7 @@ static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mute
         return err;
 
     // lock the mutex
+    acquireThread( thr );
     mutex->__owner = &thr;
 
     return 0;
@@ -930,7 +945,9 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
     int r = _mutex_adjust_count( mutex, -1 );
     assert( r == 0 );
     if ( !mutex->__lockCounter ) {
+        releaseThread( *mutex->__owner );
         mutex->__owner = nullptr; // unlock if count == 0
+
     }
     return 0;
 }
@@ -1459,6 +1476,7 @@ static _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock
 
 static _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) noexcept {
     _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
+    acquireThread( tid );
     rlock->__owner = &tid;
     rlock->__count = 1;
     rlock->__next = rwlock->__rlocks;
@@ -1495,8 +1513,10 @@ static int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rw
     }
     wait( mask, [&] { return !_rwlock_can_lock( rwlock, writer ); } );
 
-    if ( writer )
+    if ( writer ) {
+        acquireThread( thr );
         rwlock->__wrowner = &thr;
+    }
     else {
         if ( !rlock )
             rlock = _create_rlock( rwlock, thr );
@@ -1587,6 +1607,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) noexcept {
     if ( rwlock->__wrowner == &thr ) {
         assert( !rlock );
         // release write lock
+        releaseThread( *rwlock->__wrowner );
         rwlock->__wrowner = nullptr;
     } else {
         // release read lock
@@ -1597,6 +1618,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) noexcept {
                 prev->__next = rlock->__next;
             else
                 rwlock->__rlocks = rlock->__next;
+            releaseThread( *rlock->__owner );
             __vm_obj_free( rlock );
         }
     }
