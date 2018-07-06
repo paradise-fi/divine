@@ -79,6 +79,9 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         __builtin_unreachable();
     }
 
+    void parent( WeakNode p ) { _parent = p; }
+    Node parent() const { return _parent.lock(); }
+
     bool create( std::string_view name, Node inode )
     {
         if ( name.size() > FILE_NAME_LIMIT )

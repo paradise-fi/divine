@@ -174,12 +174,10 @@ namespace __dios::fs
             auto [parent_path, name] = split( path, '/', true );
             auto parent = lookup( dir, parent_path, follow );
             if ( !parent || !parent->mode().is_dir() )
-            {
-                __dios_trace_t( "parent is not a dir" );
                 return false;
-            }
 
-            __dios_trace_t( "parent ok, calling create" );
+            if ( auto ndir = ino->as< Directory >() )
+                ndir->parent( parent );
             return parent->as< Directory >()->create( name, ino );
         }
 
