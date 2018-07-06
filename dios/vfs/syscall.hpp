@@ -34,6 +34,21 @@ namespace __dios::fs
         int fchmodat( int dirfd, const char *path, Mode mode, int flags );
         int fchmod( int fd_, Mode mode );
         int chmod( const char *path, Mode mode );
+
+        int _truncate( Node ino, off_t length )
+        {
+            if ( length < 0 )
+                return error( EINVAL ), -1;
+            if ( ino->mode().is_dir() )
+                return error( EISDIR ), -1;
+            if ( auto file = ino->template as< RegularFile >() )
+                return file->resize( length ), 0;
+            else
+                return error( EINVAL ), -1;
+        }
+
+        int ftruncate( int fd_, off_t length );
+        int truncate( const char *path, off_t length );
     };
 
 }

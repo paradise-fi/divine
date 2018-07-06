@@ -173,6 +173,9 @@ struct VFS: Syscall, Next
     using Syscall::fchmod;
     using Syscall::fchmodat;
 
+    using Syscall::truncate;
+    using Syscall::ftruncate;
+
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< VFS >( "{VFS}" );
@@ -429,37 +432,6 @@ public: /* system call implementation */
             *__dios_errno() = e.code();
             return -1;
         }
-    }
-
-    int _truncate( Node ino, off_t length )
-    {
-        if ( length < 0 )
-            return error( EINVAL ), -1;
-        if ( ino->mode().is_dir() )
-            return error( EISDIR ), -1;
-        if ( auto file = ino->template as< RegularFile >() )
-            return file->resize( length ), 0;
-        else
-            return error( EINVAL ), -1;
-    }
-
-    int ftruncate( int fd_, off_t length )
-    {
-        if ( auto fd = check_fd( fd_, W_OK ) )
-            return _truncate( fd->inode(), length );
-
-        if ( !check_fd( fd_, F_OK ) )
-            return -1;
-
-        return error( EINVAL ), -1; /* also override EBADF from check_fd */
-    }
-
-    int truncate( const char *path, off_t length )
-    {
-        if ( auto ino = lookup( get_dir(), path, true ) )
-            return _truncate( ino, length );
-        else
-            return -1;
     }
 
     int unlink( const char *path )

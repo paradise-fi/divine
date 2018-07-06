@@ -45,4 +45,22 @@ namespace __dios::fs
         return fchmodat( AT_FDCWD, path, mode, 0 );
     }
 
+    int Syscall::ftruncate( int fd_, off_t length )
+    {
+        if ( auto fd = check_fd( fd_, W_OK ) )
+            return _truncate( fd->inode(), length );
+
+        if ( !check_fd( fd_, F_OK ) )
+            return -1;
+
+        return error( EINVAL ), -1; /* also override EBADF from check_fd */
+    }
+
+    int Syscall::truncate( const char *path, off_t length )
+    {
+        if ( auto ino = lookup( get_dir(), path, true ) )
+            return _truncate( ino, length );
+        else
+            return -1;
+    }
 }
