@@ -16,7 +16,6 @@ namespace fs {
 
 Manager::Manager( bool ) :
     _root( new( __dios::nofail ) Directory() ),
-    _error( 0 ),
     _currentDirectory( _root ),
     _standardIO{ { make_shared< StandardInput >(), nullptr, nullptr } }
 {

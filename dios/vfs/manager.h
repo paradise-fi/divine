@@ -88,21 +88,9 @@ struct Manager {
     void connect( int sockfd, const Socket::Address &address );
     int accept( int sockfd, Socket::Address &address );
     Node resolveAddress( const Socket::Address &address );
-    bool wasError() const {
-        return _error == 0;
-    }
-
-    int getError() const {
-        return _error;
-    }
-
-    void setError(int code) {
-        _error = code;
-    }
 
     template< typename U > friend struct VFS;
     Node _root;
-    int _error;
     WeakNode _currentDirectory;
     std::array< Node, 3 > _standardIO;
 
