@@ -64,8 +64,6 @@ struct Manager {
 
     void renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath );
 
-    void truncate( Node inode, off_t length );
-
     off_t lseek( int fd, off_t offset, Seek whence );
 
     Node currentDirectory() {

@@ -333,22 +333,6 @@ off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
     return f->offset();
 }
 
-void Manager::truncate( Node inode, off_t length ) {
-    if ( !inode )
-        throw Error( ENOENT );
-    if ( length < 0 )
-        throw Error( EINVAL );
-    if ( inode->mode().is_dir() )
-        throw Error( EISDIR );
-    if ( !inode->mode().is_file() )
-        throw Error( EINVAL );
-
-    _checkGrants( inode, S_IWUSR );
-
-    RegularFile *f = inode->as< RegularFile >();
-    f->resize( length );
-}
-
 void Manager::getCurrentWorkingDir( char *buff, size_t size ) {
     if ( buff == nullptr )
         throw Error( EFAULT );
