@@ -1,9 +1,11 @@
-#include <divine/cc/driver.hpp>
+#include <divine/rt/dios-cc.hpp>
 
 namespace divine {
-namespace cc {
+namespace rt {
 
-void DiosDriver::linkEssentials()
+using namespace cc;
+
+void DiosCC::linkEssentials()
 {
     using namespace std::literals;
 
@@ -20,7 +22,7 @@ void DiosDriver::linkEssentials()
     }
 }
 
-DiosDriver::DiosDriver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
+DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     Driver( opts, ctx )
 {
     using brick::fs::joinPath;
@@ -36,7 +38,7 @@ DiosDriver::DiosDriver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx )
                  } );
 }
 
-void DiosDriver::runCC( std::vector< std::string > rawCCOpts,
+void DiosCC::runCC( std::vector< std::string > rawCCOpts,
                         std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
 {
     Driver::runCC( rawCCOpts, moduleCallback );
@@ -46,7 +48,7 @@ void DiosDriver::runCC( std::vector< std::string > rawCCOpts,
     }
 }
 
-const std::vector< std::string > DiosDriver::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
+const std::vector< std::string > DiosCC::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
 
 } // cc
 } // divine
