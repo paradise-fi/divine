@@ -42,25 +42,13 @@ int main( int argc, char **argv ) {
     assert( input );
 
     llvm::Module *module;
-#if LLVM_MAJOR == 3 && LLVM_MINOR <= 5
-    auto inputData = input.get();
-#else
     auto inputData = input->getMemBufferRef();
-#endif
     auto parsed = parseBitcodeFile( inputData, *ctx );
     if ( !parsed )
         throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
-#if LLVM_MAJOR == 3 && LLVM_MINOR < 7
-    module = parsed.get();
-#else
     module = parsed.get().get();
-#endif
 
-#if LLVM_MAJOR == 3 && LLVM_MINOR <= 5
-    std::string serr;
-#else
     std::error_code serr;
-#endif
     ::llvm::raw_fd_ostream outs( to, serr, ::llvm::sys::fs::F_None );
 
     for ( char **arg = argv + 3; *arg; ++arg )
