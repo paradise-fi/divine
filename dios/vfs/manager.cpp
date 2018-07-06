@@ -97,7 +97,8 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&..
         throw Error( EINVAL );
 
     node->mode( mode );
-    dir->create( std::move( name ), node );
+    if ( !dir->create( std::move( name ), node ) )
+        throw Error( *__dios_errno() );
 
     return node;
 }
@@ -128,7 +129,8 @@ void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd,
     if ( targetNode->mode().is_dir() )
         throw Error( EPERM );
 
-    dir->create( std::move( name ), targetNode );
+    if ( !dir->create( std::move( name ), targetNode ) )
+        throw Error( *__dios_errno() );
 }
 
 void Manager::createSymLinkAt( int dirfd, __dios::String name, __dios::String target ) {
@@ -283,7 +285,8 @@ void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __di
         _checkGrants( newNode, S_IWUSR );
 
         newNodeDirectory = newNode->as< Directory >();
-        newNodeDirectory->create( std::move( newName ), oldNode );
+        if ( !newNodeDirectory->create( std::move( newName ), oldNode ) )
+            throw Error( *__dios_errno() );
     }
     else {
         if ( oldNode->mode().is_dir() ) {
