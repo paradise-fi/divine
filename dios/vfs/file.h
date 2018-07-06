@@ -248,17 +248,19 @@ struct Pipe : INode
 
         if ( fd.flags().read() )
         {
-            if ( fd.flags().has( O_FIFO_WAIT ) && !writer() )
+            if ( !fd.flags().has( O_NONBLOCK ) && !writer() )
                __vm_cancel();
             assignReader();
         }
 
         if ( fd.flags().write() )
         {
-            if ( fd.flags().has( O_FIFO_WAIT ) && !reader() )
+            if ( !fd.flags().has( O_NONBLOCK ) && !reader() )
                __vm_cancel();
             assignWriter();
         }
+
+        fd.flags().clear( O_NONBLOCK );
     }
 
     void close( FileDescriptor &fd ) override

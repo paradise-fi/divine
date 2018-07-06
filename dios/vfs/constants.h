@@ -67,7 +67,6 @@ constexpr OFlags O_NONBLOCK  = _HOST_O_NONBLOCK;
 constexpr OFlags O_DIRECTORY = _HOST_O_DIRECTORY;
 constexpr OFlags O_NOFOLLOW  = _HOST_O_NOFOLLOW;
 constexpr OFlags O_NDELAY    = O_NONBLOCK;
-constexpr OFlags O_FIFO_WAIT = 0x10000000; /* FIXME *could* conflict with _HOST_* */
 
 template< typename F >
 constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator &( F a, F b )

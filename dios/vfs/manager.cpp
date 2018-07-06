@@ -213,7 +213,7 @@ int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, Mode mode )
         _checkGrants( file, S_IRUSR | S_IXUSR );
     }
 
-    return _getFileDescriptor( file, fl | O_FIFO_WAIT );
+    return _getFileDescriptor( file, fl );
 }
 
 void Manager::closeFile( int fd )
@@ -256,8 +256,8 @@ std::pair< int, int > Manager::pipe()
 {
     Node node( new ( nofail ) Pipe() );
     node->mode( S_IRWXU | S_IFIFO );
-    auto fd1 = _getFileDescriptor( node, O_RDONLY );
-    auto fd2 =  _getFileDescriptor( node, O_WRONLY );
+    auto fd1 = _getFileDescriptor( node, O_RDONLY | O_NONBLOCK );
+    auto fd2 =  _getFileDescriptor( node, O_WRONLY | O_NONBLOCK );
     return { fd1, fd2 };
 }
 
