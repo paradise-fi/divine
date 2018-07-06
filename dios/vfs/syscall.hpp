@@ -35,6 +35,9 @@ namespace __dios::fs
         int fchmod( int fd_, Mode mode );
         int chmod( const char *path, Mode mode );
 
+        ssize_t write( int fd_, const void *buf, size_t count );
+        ssize_t read( int fd_, void* buf, size_t count );
+
         int _truncate( Node ino, off_t length )
         {
             if ( length < 0 )

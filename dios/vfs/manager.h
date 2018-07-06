@@ -173,6 +173,9 @@ struct VFS: Syscall, Next
     using Syscall::fchmod;
     using Syscall::fchmodat;
 
+    using Syscall::read;
+    using Syscall::write;
+
     using Syscall::truncate;
     using Syscall::ftruncate;
 
@@ -359,22 +362,6 @@ public: /* system call implementation */
     {
         if ( check_fd( fd, F_OK ) )
             return instance().closeFile( fd ), 0;
-        else
-            return -1;
-    }
-
-    ssize_t write( int fd_, const void *buf, size_t count )
-    {
-        if ( auto fd = check_fd( fd_, W_OK ) )
-            return fd->write( buf, count );
-        else
-            return -1;
-    }
-
-    ssize_t read( int fd_, void* buf, size_t count )
-    {
-        if ( auto fd = check_fd( fd_, R_OK ) )
-            return fd->read( buf, count );
         else
             return -1;
     }

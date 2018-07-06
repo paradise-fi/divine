@@ -45,6 +45,22 @@ namespace __dios::fs
         return fchmodat( AT_FDCWD, path, mode, 0 );
     }
 
+    ssize_t Syscall::write( int fd_, const void *buf, size_t count )
+    {
+        if ( auto fd = check_fd( fd_, W_OK ) )
+            return fd->write( buf, count );
+        else
+            return -1;
+    }
+
+    ssize_t Syscall::read( int fd_, void* buf, size_t count )
+    {
+        if ( auto fd = check_fd( fd_, R_OK ) )
+            return fd->read( buf, count );
+        else
+            return -1;
+    }
+
     int Syscall::ftruncate( int fd_, off_t length )
     {
         if ( auto fd = check_fd( fd_, W_OK ) )
