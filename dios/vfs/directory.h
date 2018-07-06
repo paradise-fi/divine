@@ -88,6 +88,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
             return error( ENAMETOOLONG ), false;
         if ( special_name( name ) )
             return error( EEXIST ), false;
+        inode->link();
         return _insertItem( DirectoryEntry( String( name ), std::move( inode ) ) );
     }
 
@@ -110,7 +111,11 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         if ( position == _items.end() || name != position->name() )
             return error( ENOENT ), false;
         else
-            return _items.erase( position ), true;
+        {
+            position->inode()->unlink();
+            _items.erase( position );
+            return true;
+        }
     }
 
     bool empty() { return _items.empty(); }

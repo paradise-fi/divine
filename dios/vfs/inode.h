@@ -117,7 +117,8 @@ struct INode
         _mode( 0 ),
         _ino( getIno() ),
         _uid( 0 ),
-        _gid( 0 )
+        _gid( 0 ),
+        _nlink( 0 )
     {}
 
     virtual ~INode() {}
@@ -149,11 +150,32 @@ struct INode
     unsigned uid() const { return _uid; }
     unsigned gid() const { return _gid; }
 
+    void link() { ++ _nlink; }
+    void unlink() { -- _nlink; }
+
+    void stat( struct stat &buf )
+    {
+        buf.st_dev = 0;
+        buf.st_rdev = 0;
+        buf.st_atime = 0;
+        buf.st_mtime = 0;
+        buf.st_ctime = 0;
+        buf.st_ino = ino();
+        buf.st_mode = mode().to_i();
+        buf.st_nlink = _nlink;
+        buf.st_size = size();
+        buf.st_uid = uid();
+        buf.st_gid = gid();
+        buf.st_blksize = 512;
+        buf.st_blocks = ( buf.st_size + 1 ) / buf.st_blksize;
+    }
+
 private:
     Mode _mode;
     unsigned _ino;
-    unsigned _uid;
-    unsigned _gid;
+    uint16_t _uid;
+    uint16_t _gid;
+    uint16_t _nlink;
 
     static unsigned getIno()
     {
