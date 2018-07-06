@@ -19,7 +19,6 @@
 #pragma once
 
 #include <external/nanodbc/nanodbc.h>
-#include <divine/cc/compile.hpp>
 #include <divine/ui/odbc.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/ui/log.hpp>

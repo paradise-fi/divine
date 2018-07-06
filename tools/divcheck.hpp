@@ -18,7 +18,6 @@
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/parser.hpp>
-#include <divine/cc/compile.hpp>
 #include <divine/mc/trace.hpp>
 
 #include <iostream>
