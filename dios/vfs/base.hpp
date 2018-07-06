@@ -135,6 +135,9 @@ namespace __dios::fs
             if ( !dir->mode().is_dir() )
                 return error( ENOTDIR ), nullptr;
 
+            if ( !dir->mode().user_exec() )
+                return error( EACCES ), nullptr;
+
             auto [name, tail] = split( path, '/' );
             if ( name.size() > FILE_NAME_LIMIT )
                 return error( ENAMETOOLONG ), nullptr;
