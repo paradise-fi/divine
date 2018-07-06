@@ -168,13 +168,19 @@ namespace __dios::fs
 
         bool link_node( Node dir, std::string_view path, Node ino, bool follow )
         {
+            if ( path.size() > PATH_LIMIT )
+                return error( ENAMETOOLONG ), nullptr;
+
             if ( path[0] == '/' )
                 return link_node( root(), path.substr( 1, String::npos ), ino, follow );
 
             auto [parent_path, name] = split( path, '/', true );
             auto parent = lookup( dir, parent_path, follow );
-            if ( !parent || !parent->mode().is_dir() )
+
+            if ( !parent )
                 return false;
+            if ( !parent->mode().is_dir() )
+                return error( ENOTDIR ), false;
 
             if ( auto ndir = ino->as< Directory >() )
                 ndir->parent( parent );
