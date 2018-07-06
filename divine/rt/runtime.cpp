@@ -32,7 +32,7 @@ namespace divine::rt
 void each( std::function< void( std::string, std::string_view ) > yield )
 {
     for ( auto src = str::dios_list; !src->n.empty(); ++src )
-        yield( brick::fs::joinPath( cc::directory( src->n ), src->n ), src->c );
+        yield( brick::fs::joinPath( rt::directory( src->n ), src->n ), src->c );
 }
 
 }

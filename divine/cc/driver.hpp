@@ -3,8 +3,7 @@
 
 #include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
-#include <divine/cc/paths.hpp>
-#include <divine/rt/runtime.hpp>
+#include <divine/rt/paths.hpp>
 
 #include <brick-assert>
 #include <brick-llvm-link>

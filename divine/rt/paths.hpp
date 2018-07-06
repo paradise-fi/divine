@@ -20,7 +20,7 @@
 #include <brick-fs>
 #include <brick-string>
 
-namespace divine::cc
+namespace divine::rt
 {
 
 const std::string includeDir = "/dios/include";

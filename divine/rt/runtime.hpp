@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <divine/cc/paths.hpp>
+#include <divine/rt/paths.hpp>
 #include <string_view>
 
 namespace divine::rt
