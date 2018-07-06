@@ -172,6 +172,11 @@ struct VFS: Syscall, Next
     using Syscall::rmdir;
     using Syscall::unlinkat;
 
+    using Syscall::fstatat;
+    using Syscall::stat;
+    using Syscall::lstat;
+    using Syscall::fstat;
+
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< VFS >( "{VFS}" );
@@ -249,31 +254,6 @@ struct VFS: Syscall, Next
         __dios_trace_f( "Invalid configuration for file %s", stream.c_str() );
         __dios_fault( _DiOS_F_Config, "Invalid file tracing configuration" );
         __builtin_unreachable();
-    }
-
-    static void _initStat( struct stat *buf )
-    {
-        buf->st_dev = 0;
-        buf->st_rdev = 0;
-        buf->st_atime = 0;
-        buf->st_mtime = 0;
-        buf->st_ctime = 0;
-    }
-
-    static int _fillStat( const __dios::fs::Node item, struct stat *buf )
-    {
-        if ( !item )
-            return -1;
-        _initStat( buf );
-        buf->st_ino = item->ino( );
-        buf->st_mode = item->mode().to_i();
-        buf->st_nlink = item.use_count( );
-        buf->st_size = item->size( );
-        buf->st_uid = item->uid( );
-        buf->st_gid = item->gid( );
-        buf->st_blksize = 512;
-        buf->st_blocks = ( buf->st_size + 1 ) / buf->st_blksize;
-        return 0;
     }
 
 private: /* helper methods */
@@ -522,40 +502,6 @@ public: /* system call implementation */
 
     void sync()
     {
-    }
-
-    int stat( const char *path, struct stat *buf )
-    {
-        try {
-            auto item = instance( ).findDirectoryItem( path );
-            if ( !item )
-                throw Error( ENOENT );
-            return _fillStat( item, buf );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int lstat( const char *path, struct stat *buf  )
-    {
-        try {
-            auto item = instance( ).findDirectoryItem( path, false );
-            if ( !item )
-                throw Error( ENOENT );
-            return _fillStat( item, buf );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int fstat( int fd_, struct stat *buf )
-    {
-        if ( auto fd = check_fd( fd_, F_OK ) )
-            return _fillStat( fd->inode(), buf );
-        else
-            return -1;
     }
 
     int fstatfs( int, struct statfs* )

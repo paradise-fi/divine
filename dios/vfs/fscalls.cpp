@@ -184,4 +184,33 @@ namespace __dios::fs
         return dir->as< Directory >()->unlink( name ) ? 0 : -1;
     }
 
+    int Syscall::fstatat( int dirfd, const char *path, struct stat *buf, int flag )
+    {
+        auto [ dir, name ] = lookup_dir( get_dir( dirfd ), path, true );
+        if ( !dir )
+            return -1;
+        if ( auto ino = lookup( dir, name, !( flag & AT_SYMLINK_NOFOLLOW ) ) )
+            return ino->stat( *buf ), 0;
+        else
+            return -1;
+    }
+
+    int Syscall::stat( const char *path, struct stat *buf )
+    {
+        return fstatat( AT_FDCWD, path, buf, 0 );
+    }
+
+    int Syscall::lstat( const char *path, struct stat *buf  )
+    {
+        return fstatat( AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW );
+    }
+
+    int Syscall::fstat( int fd_, struct stat *buf )
+    {
+        if ( auto fd = check_fd( fd_, F_OK ) )
+            return fd->inode()->stat( *buf ), 0;
+        else
+            return -1;
+    }
+
 }

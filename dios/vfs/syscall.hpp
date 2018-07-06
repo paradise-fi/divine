@@ -64,6 +64,11 @@ namespace __dios::fs
         int unlink( const char *path );
         int rmdir( const char *path );
         int unlinkat( int dirfd, const char *path, int flags );
+
+        int stat( const char *path, struct stat *buf );
+        int lstat( const char *path, struct stat *buf  );
+        int fstat( int fd, struct stat *buf );
+        int fstatat( int dirfd, const char *path, struct stat *buf, int flag );
     };
 
 }
