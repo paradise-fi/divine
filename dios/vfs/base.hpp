@@ -45,6 +45,47 @@ namespace __dios::fs
             return nullptr;
         }
 
+        int new_fd( Node n, OFlags flags, int min = 0 )
+        {
+            auto &open = proc()._openFD;
+            int fd;
+
+            if ( min >= int( open.size() ) )
+                open.resize( min + 1 );
+
+            for ( fd = min; fd < int( open.size() ); ++ fd )
+                if ( !get_fd( fd ) )
+                    break;
+
+            if ( fd == int( open.size() ) )
+                open.emplace_back();
+
+            open[ fd ] = fs::make_shared< FileDescriptor >( n, flags );
+            return fd;
+        }
+
+        Node new_node( Mode mode )
+        {
+            Node r;
+
+            if ( mode.is_socket() )
+                r = make_shared< SocketDatagram >();
+
+            if ( mode.is_file() )
+                r = make_shared< RegularFile >();
+
+            if ( mode.is_dir() )
+                r = make_shared< Directory >();
+
+            if ( mode.is_fifo() )
+                r = make_shared< Pipe >();
+
+            if ( r )
+                r->mode( mode );
+
+            return r;
+        }
+
         FileDescriptor *check_fd( int fd_, int acc )
         {
             auto fd = get_fd( fd_ );
