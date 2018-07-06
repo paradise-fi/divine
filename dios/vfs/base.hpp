@@ -75,12 +75,15 @@ namespace __dios::fs
                 return get_fd( fd )->inode();
         }
 
-        std::pair< std::string_view, std::string_view > split( std::string_view p, char d )
+        using split_view = std::pair< std::string_view, std::string_view >;
+
+        split_view split( std::string_view p, char d, bool reverse = false )
         {
             auto npos = std::string::npos;
-            auto s = p.find( d );
-            return std::make_pair( p.substr( 0, s ),
-                                   s == npos ? std::string_view() : p.substr( s + 1, npos ) );
+            auto s = reverse ? p.rfind( d ) : p.find( d );
+            if ( s == npos )
+                return reverse ? split_view{ "", p } : split_view{ p, "" };
+            return { p.substr( 0, s ), p.substr( s + 1, npos ) };
         }
 
         Node search( Node dir, std::string_view path, bool follow )
@@ -117,6 +120,23 @@ namespace __dios::fs
                 return lookup( root(), path.substr( 1, npos ), follow );
             else
                 return search( dir, path, follow );
+        }
+
+        bool link_node( Node dir, std::string_view path, Node ino, bool follow )
+        {
+            if ( path[0] == '/' )
+                return link_node( root(), path.substr( 1, String::npos ), ino, follow );
+
+            auto [parent_path, name] = split( path, '/', true );
+            auto parent = lookup( dir, parent_path, follow );
+            if ( !parent || !parent->mode().is_dir() )
+            {
+                __dios_trace_t( "parent is not a dir" );
+                return false;
+            }
+
+            __dios_trace_t( "parent ok, calling create" );
+            return parent->as< Directory >()->create( name, ino );
         }
 
     };
