@@ -56,10 +56,16 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&..
     if ( name.empty() )
         throw Error( ENOENT );
 
+    if ( name.size() > PATH_LIMIT )
+        throw Error( ENAMETOOLONG );
+
     REMEMBER_DIRECTORY( dirfd, name );
 
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
+
+    if ( name.size() > FILE_NAME_LIMIT )
+        throw Error( ENAMETOOLONG );
 
     _checkGrants( current, S_IWUSR );
     Directory *dir = current->as< Directory >();

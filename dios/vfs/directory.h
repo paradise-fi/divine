@@ -79,12 +79,14 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         __builtin_unreachable();
     }
 
-    void create( __dios::String name, Node inode ) {
+    bool create( std::string_view name, Node inode )
+    {
         if ( name.size() > FILE_NAME_LIMIT )
-            throw Error( ENAMETOOLONG );
+            return error( ENAMETOOLONG ), false;
         if ( special_name( name ) )
-            throw Error( EEXIST );
-        _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
+            return error( EEXIST ), false;
+        _insertItem( DirectoryEntry( String( name ), std::move( inode ) ) );
+        return true;
     }
 
     Node find( std::string_view name )
