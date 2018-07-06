@@ -81,8 +81,8 @@ namespace abstract {
 #ifdef BRICK_UNITTEST_REG
 #include <lart/driver.h>
 #include <divine/cc/cc1.hpp>
-#include <divine/cc/driver.hpp>
 #include <divine/cc/options.hpp>
+#include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
 
 namespace lart {
@@ -121,8 +121,7 @@ struct TestBase
 
     auto compile( const File & src )
     {
-        ::divine::cc::DiosDriver c( { dont_link, verbose }, _ctx );
-        c.setupFS( rt::each );
+        ::divine::rt::DiosCC c( { dont_link, verbose }, _ctx );
         c.setupFS( [&]( auto yield ) { yield( "/main.cpp", src ); } );
         c.link( c.compile( "/main.cpp", flags ) );
         c.linkEntireArchive( "rst" );
