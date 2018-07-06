@@ -41,6 +41,11 @@ namespace __dios::fs
         ssize_t write( int fd_, const void *buf, size_t count );
         ssize_t read( int fd_, void* buf, size_t count );
 
+        int mkdirat( int dirfd, const char *path, Mode mode );
+        int mkdir( const char *path, Mode mode );
+        int mknodat( int dirfd, const char *path, Mode mode, dev_t dev );
+        int mknod( const char *path, Mode mode, dev_t dev );
+
         int _truncate( Node ino, off_t length )
         {
             if ( length < 0 )

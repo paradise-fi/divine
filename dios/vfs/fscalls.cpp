@@ -61,6 +61,38 @@ namespace __dios::fs
             return -1;
     }
 
+    int Syscall::mkdirat( int dirfd, const char *path, Mode mode )
+    {
+        if ( link_node( get_dir( dirfd ), path, new_node( mode | S_IFDIR ), true ) )
+            return 0;
+        else
+            return -1;
+    }
+
+    int Syscall::mkdir( const char *path, Mode mode )
+    {
+        return mkdirat( AT_FDCWD, path, mode );
+    }
+
+    int Syscall::mknodat( int dirfd, const char *path, Mode mode, dev_t dev )
+    {
+        if ( dev != 0 )
+            return error( EINVAL ), -1;
+        if ( !mode.is_char() && !mode.is_block() && !mode.is_file() && !mode.is_fifo() &&
+             !mode.is_socket() )
+            return error( EINVAL ), -1;
+
+        if ( link_node( get_dir( dirfd ), path, new_node( mode ), true ) )
+            return 0;
+        else
+            return -1;
+    }
+
+    int Syscall::mknod( const char *path, Mode mode, dev_t dev )
+    {
+        return mknodat( AT_FDCWD, path, mode, dev );
+    }
+
     int Syscall::ftruncate( int fd_, off_t length )
     {
         if ( auto fd = check_fd( fd_, W_OK ) )

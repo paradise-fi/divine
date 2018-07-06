@@ -163,6 +163,11 @@ struct VFS: Syscall, Next
     using Syscall::read;
     using Syscall::write;
 
+    using Syscall::mkdir;
+    using Syscall::mkdirat;
+    using Syscall::mknod;
+    using Syscall::mknodat;
+
     using Syscall::truncate;
     using Syscall::ftruncate;
 
@@ -588,44 +593,6 @@ public: /* system call implementation */
     {
         __dios_trace_t( "statfs() is not implemented" );
         return -1;
-    }
-
-    int mkdirat( int dirfd, const char *path, Mode mode )
-    {
-        try {
-            instance( ).createNodeAt( dirfd, path, ( ACCESSPERMS & mode ) | S_IFDIR );
-            return  0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return  -1;
-        }
-    }
-
-    int mkdir( const char *path, Mode mode )
-    {
-        return mkdirat( AT_FDCWD, path, mode );
-    }
-
-    int mknodat( int dirfd, const char *path, Mode mode, dev_t dev )
-    {
-        if ( dev != 0 )
-            return error( EINVAL ), -1;
-        if ( !mode.is_char() && !mode.is_block() && !mode.is_file() && !mode.is_fifo() &&
-             !mode.is_socket() )
-            return error( EINVAL ), -1;
-
-        try {
-            instance().createNodeAt( dirfd, path, mode );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return  -1;
-        }
-    }
-
-    int mknod( const char *path, Mode mode, dev_t dev )
-    {
-        return mknodat( AT_FDCWD, path, mode, dev );
     }
 
     int umask( Mode mask )
