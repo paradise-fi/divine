@@ -127,7 +127,7 @@ namespace __dios::fs
             return { p.substr( 0, s ), p.substr( s + 1, npos ) };
         }
 
-        Node search( Node dir, std::string_view path, bool follow )
+        Node lookup_relative( Node dir, std::string_view path, bool follow )
         {
             if ( path.empty() )
                 return dir;
@@ -138,16 +138,16 @@ namespace __dios::fs
             if ( !dir->mode().user_exec() )
                 return error( EACCES ), nullptr;
 
-            auto [name, tail] = split( path, '/' );
+            auto [ name, tail ] = split( path, '/' );
             if ( name.size() > FILE_NAME_LIMIT )
                 return error( ENAMETOOLONG ), nullptr;
 
             if ( auto next = dir->template as< Directory >()->find( name ) )
             {
                 if ( auto link = next->template as< SymLink >(); link && follow )
-                    return search( lookup( dir, link->target(), follow ), tail, follow );
+                    return lookup_relative( lookup( dir, link->target(), follow ), tail, follow );
 
-                return search( next, tail, follow );
+                return lookup_relative( next, tail, follow );
             }
             else
                 return error( ENOENT ), nullptr;
@@ -163,24 +163,36 @@ namespace __dios::fs
             if ( path[0] == '/' )
                 return lookup( root(), path.substr( 1, npos ), follow );
             else
-                return search( dir, path, follow );
+                return lookup_relative( dir, path, follow );
+        }
+
+        std::pair< Node, std::string_view > lookup_dir( Node dir, std::string_view path, bool follow )
+        {
+            auto null = std::make_pair( nullptr, "" );
+
+            if ( path.size() > PATH_LIMIT )
+                return error( ENAMETOOLONG ), null;
+
+            if ( path[0] == '/' )
+                return lookup_dir( root(), path.substr( 1, String::npos ), follow );
+
+            auto [ parent_path, name ] = split( path, '/', true );
+            auto parent = lookup( dir, parent_path, follow );
+
+            if ( !parent )
+                return null;
+            if ( !parent->mode().is_dir() )
+                return error( ENOTDIR ), null;
+
+            return { parent, name };
         }
 
         bool link_node( Node dir, std::string_view path, Node ino, bool follow )
         {
-            if ( path.size() > PATH_LIMIT )
-                return error( ENAMETOOLONG ), nullptr;
-
-            if ( path[0] == '/' )
-                return link_node( root(), path.substr( 1, String::npos ), ino, follow );
-
-            auto [parent_path, name] = split( path, '/', true );
-            auto parent = lookup( dir, parent_path, follow );
+            auto [ parent, name ] = lookup_dir( dir, path, follow );
 
             if ( !parent )
                 return false;
-            if ( !parent->mode().is_dir() )
-                return error( ENOTDIR ), false;
 
             if ( auto ndir = ino->as< Directory >() )
                 ndir->parent( parent );
