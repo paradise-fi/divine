@@ -1,5 +1,5 @@
 #include <divine/cc/cc1.hpp>
-#include <divine/cc/driver.hpp>
+#include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
 #include <divine/vm/xg-code.hpp>
 
@@ -129,7 +129,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
 {
     using FileType = cc::FileType;
     using namespace brick::types;
-    std::unique_ptr< cc::DiosDriver > drv = std::unique_ptr< cc::DiosDriver >( new cc::DiosDriver( clang.context() ) );
+    std::unique_ptr< rt::DiosCC > drv = std::unique_ptr< rt::DiosCC >( new rt::DiosCC( clang.context() ) );
 
     for ( auto file : files )
     {
@@ -155,7 +155,7 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
     }
 
     drv->linkEssentials();
-    drv->linkLibs( cc::DiosDriver::defaultDIVINELibs );
+    drv->linkLibs( rt::DiosCC::defaultDIVINELibs );
 
     auto m = drv->takeLinked();
 
@@ -188,7 +188,7 @@ int main( int argc, char **argv )
 
         using brick::fs::joinPath;
         using brick::fs::splitFileName;
-        using divine::cc::includeDir;
+        using divine::rt::includeDir;
 
         po.opts.insert( po.opts.end(), {
                         "-isystem", joinPath( includeDir, "libcxx/include" )
