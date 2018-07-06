@@ -79,4 +79,43 @@ namespace __dios::fs
         else
             return -1;
     }
+
+    int Syscall::open( const char *path, int flags, Mode mode )
+    {
+        return openat( AT_FDCWD, path, flags, mode );
+    }
+
+    int Syscall::openat( int dirfd, const char *path, OFlags flags, Mode mode )
+    {
+        auto ino = lookup( get_dir( dirfd ), path, flags.follow() );
+
+        if ( ino && flags.has( O_CREAT ) && flags.has( O_EXCL ) )
+            return error( EEXIST ), -1;
+
+        if ( !ino && flags.has( O_CREAT ) )
+            if ( !link_node( get_dir( dirfd ), path, ino = new_node( mode | S_IFREG ), flags.follow() ) )
+                return -1;
+
+        if ( !ino )
+            return -1;
+
+        /* FIXME check the uid &c. */
+
+        if ( ( flags.read() || flags.noaccess() ) && !ino->mode().user_read() )
+            return error( EACCES ), -1;
+
+        if ( flags.write() || flags.noaccess() )
+        {
+            if ( !ino->mode().user_write() )
+                return error( EACCES ), -1;
+            if ( ino->mode().is_dir())
+                return error( EISDIR ), -1;
+        }
+
+        if ( flags.has( O_DIRECTORY ) && !ino->mode().is_dir() )
+            return error( ENOTDIR ), -1;
+
+        return new_fd( ino, flags );
+    }
+
 }

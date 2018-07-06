@@ -51,7 +51,6 @@ struct Manager {
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
     void accessAt( int dirfd, __dios::String name, int mode, bool follow );
-    int openFileAt( int dirfd, __dios::String name, OFlags fl, Mode mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -168,6 +167,9 @@ struct VFS: Syscall, Next
     Node root() override { return _root; }
     Node cwd() override { return instance().currentDirectory(); }
     ProcessInfo &proc() override { return *static_cast< Process * >( this->getCurrentTask()->_proc ); }
+
+    using Syscall::open;
+    using Syscall::openat;
 
     using Syscall::chmod;
     using Syscall::fchmod;
@@ -292,21 +294,6 @@ public: /* system call implementation */
     int creat( const char *path, Mode mode )
     {
         return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
-    }
-
-    int open( const char *path, int flags, Mode mode )
-    {
-        return openat( AT_FDCWD, path, flags, mode );
-    }
-
-    int openat( int dirfd, const char *path, OFlags flags, Mode mode )
-    {
-        try {
-            return instance().openFileAt( dirfd, path, flags, mode );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
     }
 
     int fcntl( int fd, int cmd, va_list *vl )

@@ -174,48 +174,6 @@ void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
         throw Error( EACCES );
 }
 
-int Manager::openFileAt( int dirfd, __dios::String name, OFlags fl, Mode mode )
-{
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    Node file = findDirectoryItem( name, fl.follow() );
-
-    if ( fl.has( O_CREAT ) )
-    {
-        if ( file )
-        {
-            if ( fl.has( O_EXCL ) )
-                throw Error( EEXIST );
-        }
-        else {
-            file = createNodeAt( CURRENT_DIRECTORY, std::move( name ), mode | S_IFREG );
-        }
-    } else if ( !file ) {
-        throw Error( ENOENT );
-    }
-
-    if ( fl.read() || fl.noaccess() )
-        _checkGrants( file, S_IRUSR );
-
-    if ( fl.write() || fl.noaccess() )
-    {
-        _checkGrants( file, S_IWUSR );
-        if ( file->mode().is_dir() )
-            throw Error( EISDIR );
-        if ( fl.has( O_TRUNC ) )
-            file->clear();
-    }
-
-    if ( fl.has( O_DIRECTORY ) )
-    {
-        if ( !file->mode().is_dir() )
-            throw Error( ENOTDIR );
-        _checkGrants( file, S_IRUSR | S_IXUSR );
-    }
-
-    return _getFileDescriptor( file, fl );
-}
-
 void Manager::closeFile( int fd )
 {
     __dios_assert( fd >= 0 && fd < int( _proc->_openFD.size() ) );

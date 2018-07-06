@@ -26,6 +26,9 @@ namespace __dios::fs
     {
         using Base::Base;
 
+        int open( const char *path, int flags, Mode mode );
+        int openat( int dirfd, const char *path, OFlags flags, Mode mode );
+
         void _chmod( Node ino, Mode mode )
         {
             ino->mode() = ( ino->mode() & ~ALLPERMS ) | ( mode & ALLPERMS );
