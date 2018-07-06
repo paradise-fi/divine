@@ -8,7 +8,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
 
-#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Support/raw_os_ostream.h>
 
 #include <llvm/IR/LLVMContext.h>
