@@ -26,6 +26,7 @@ DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     Driver( opts, ctx )
 {
     using brick::fs::joinPath;
+    setupFS( rt::each );
 
     commonFlags.insert( commonFlags.end(),
                  { "-isystem", joinPath( includeDir, "libcxx/include" )
