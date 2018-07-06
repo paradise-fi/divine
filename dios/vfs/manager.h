@@ -105,7 +105,6 @@ struct Manager {
 
     int _getFileDescriptor( Node node, OFlags flags, int lowEdge = 0 );
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
-    void _insertSnapshotItem( const SnapshotFS &item );
 
     void _checkGrants( Node inode, Mode grant ) const;
 };

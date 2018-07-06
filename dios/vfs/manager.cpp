@@ -588,25 +588,6 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdg
     return i;
 }
 
-void Manager::_insertSnapshotItem( const SnapshotFS &item ) {
-
-    switch( item.type ) {
-    case Type::File:
-        createNodeAt( CURRENT_DIRECTORY, item.name, item.mode, item.content, item.length );
-        break;
-    case Type::Directory:
-    case Type::Pipe:
-    case Type::Socket:
-        createNodeAt( CURRENT_DIRECTORY, item.name, item.mode );
-        break;
-    case Type::SymLink:
-        createNodeAt( CURRENT_DIRECTORY, item.name, item.mode, item.content );
-        break;
-    default:
-        break;
-    }
-}
-
 void Manager::initializeFromSnapshot( const _VM_Env *env ) {
     __dios::Map<uint64_t,__dios::String> inodeMap;
 
