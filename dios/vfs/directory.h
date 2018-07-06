@@ -104,6 +104,17 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         return position->inode();
     }
 
+    bool unlink( std::string_view name )
+    {
+        auto position = _findItem( name );
+        if ( position == _items.end() || name != position->name() )
+            return error( ENOENT ), false;
+        else
+            return _items.erase( position ), true;
+    }
+
+    bool empty() { return _items.empty(); }
+
     void replaceEntry( const __dios::String &name, Node node ) {
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
