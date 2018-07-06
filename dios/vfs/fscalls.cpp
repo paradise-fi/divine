@@ -150,4 +150,38 @@ namespace __dios::fs
         return new_fd( ino, flags );
     }
 
+    int Syscall::unlink( const char *path )
+    {
+        return unlinkat( AT_FDCWD, path, 0 );
+    }
+
+    int Syscall::rmdir( const char *path )
+    {
+        return unlinkat( AT_FDCWD, path, AT_REMOVEDIR );
+    }
+
+    int Syscall::unlinkat( int dirfd, const char *path, int flags )
+    {
+        auto [ dir, name ] = lookup_dir( get_dir( dirfd ), path, true );
+        if ( !dir )
+            return -1;
+
+        auto ino = lookup( dir, name, false );
+        if ( !ino )
+            return -1;
+
+        if ( flags == AT_REMOVEDIR )
+        {
+            if ( !ino->mode().is_dir() )
+                return error( ENOTDIR ), -1;
+            if ( !ino->as< Directory >()->empty() )
+                return error( ENOTEMPTY ), -1;
+        }
+
+        if ( flags == 0 && ino->mode().is_dir() )
+            return error( EISDIR ), -1;
+
+        return dir->as< Directory >()->unlink( name ) ? 0 : -1;
+    }
+
 }

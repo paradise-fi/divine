@@ -220,37 +220,6 @@ std::pair< int, int > Manager::pipe()
     return { fd1, fd2 };
 }
 
-void Manager::removeFile( int dirfd, __dios::String name ) {
-    if ( name.empty() )
-        throw Error( ENOENT );
-
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    Node current;
-    std::tie( current, name ) = _findDirectoryOfFile( name );
-
-    _checkGrants( current, S_IWUSR );
-    Directory *dir = current->as< Directory >();
-
-    dir->remove( name );
-}
-
-void Manager::removeDirectory( int dirfd, __dios::String name ) {
-    if ( name.empty() )
-        throw Error( ENOENT );
-
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    Node current;
-    std::tie( current, name ) = _findDirectoryOfFile( name );
-
-
-    _checkGrants( current, S_IWUSR );
-    Directory *dir = current->as< Directory >();
-
-    dir->removeDirectory( name );
-}
-
 void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath ) {
     Node oldNode;
     Directory *oldNodeDirectory;

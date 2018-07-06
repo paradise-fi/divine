@@ -60,6 +60,10 @@ namespace __dios::fs
 
         int ftruncate( int fd_, off_t length );
         int truncate( const char *path, off_t length );
+
+        int unlink( const char *path );
+        int rmdir( const char *path );
+        int unlinkat( int dirfd, const char *path, int flags );
     };
 
 }

@@ -59,9 +59,6 @@ struct Manager {
 
     std::pair< int, int > pipe();
 
-    void removeFile( int dirfd, __dios::String name );
-    void removeDirectory( int dirfd, __dios::String name );
-
     void renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath );
 
     off_t lseek( int fd, off_t offset, Seek whence );
@@ -170,6 +167,10 @@ struct VFS: Syscall, Next
 
     using Syscall::truncate;
     using Syscall::ftruncate;
+
+    using Syscall::unlink;
+    using Syscall::rmdir;
+    using Syscall::unlinkat;
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -392,32 +393,6 @@ public: /* system call implementation */
     {
         try {
             return instance( ).duplicate2( oldfd, newfd );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int unlink( const char *path )
-    {
-        return unlinkat( AT_FDCWD, path, 0 );
-    }
-
-    int rmdir( const char *path )
-    {
-        return unlinkat( AT_FDCWD, path, AT_REMOVEDIR );
-    }
-
-    int unlinkat( int dirfd, const char *path, int flags )
-    {
-        try {
-            if ( flags == 0 )
-                instance().removeFile( dirfd, path );
-            else if ( flags == AT_REMOVEDIR )
-                instance().removeDirectory( dirfd, path );
-            else
-                return error_negative( EINVAL );
-            return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
