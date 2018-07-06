@@ -88,8 +88,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
             return error( ENAMETOOLONG ), false;
         if ( special_name( name ) )
             return error( EEXIST ), false;
-        _insertItem( DirectoryEntry( String( name ), std::move( inode ) ) );
-        return true;
+        return _insertItem( DirectoryEntry( String( name ), std::move( inode ) ) );
     }
 
     Node find( std::string_view name )
@@ -179,17 +178,20 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
 
 private:
 
-    void _insertItem( DirectoryEntry &&entry ) {
+    bool _insertItem( DirectoryEntry &&entry )
+    {
         auto position = _findItem( entry.name() );
-        if ( position == _items.end() ) {
+        if ( position == _items.end() )
+        {
             _items.emplace_back( std::move( entry ) );
-            return;
+            return true;
         }
-        if ( position->name() != entry.name() ) {
+        if ( position->name() != entry.name() )
+        {
             _items.insert( position, std::move( entry ) );
-            return;
+            return true;
         }
-        throw Error( EEXIST );
+        return error( EEXIST ), false;
     }
 
     Items::iterator _findItem( std::string_view name )
