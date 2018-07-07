@@ -207,7 +207,7 @@ struct Draw : WithBC
 
 struct Cc : Command
 {
-    cc::Options _drv;
+    cc::Options _opts;
     std::vector< std::string > _flags;
     std::vector< std::vector< std::string > > _passThroughFlags;
     std::string _output;

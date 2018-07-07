@@ -219,7 +219,7 @@ struct CLI : Interface
             .option( "[--system {string}|-s {string}]", &Ltlc::_system, "system to be verified"s );
 
         auto ccopts = cmd::make_option_set< Cc >( v )
-            .options( ccdrvopts, &Cc::_drv )
+            .options( ccdrvopts, &Cc::_opts )
             .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
             .option( "[-C,{commasep}]", &Cc::_passThroughFlags,
                      "pass additional options to the compiler"s )

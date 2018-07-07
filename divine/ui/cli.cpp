@@ -321,7 +321,7 @@ void WithBC::init()
 
 void Cc::run()
 {
-    rt::DiosCC driver( _drv );
+    rt::DiosCC driver( _opts );
 
     driver.setupFS( [&]( auto yield )
                     {
@@ -340,7 +340,7 @@ void Cc::run()
             if ( (first = firstFile.empty()) )
                 firstFile = name;
 
-            if ( _drv.dont_link ) {
+            if ( _opts.dont_link ) {
                 if ( !_output.empty() && !first )
                     die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
                 driver.writeToFile( _output.empty() ? outputName( name, "bc" ) : _output, m.get() );
@@ -352,7 +352,7 @@ void Cc::run()
     if ( firstFile.empty() )
         die( "CC: You must specify at least one source file." );
 
-    if ( !_drv.dont_link )
+    if ( !_opts.dont_link )
         driver.writeToFile( _output.empty() ? outputName( firstFile, "bc" ) : _output );
 }
 
