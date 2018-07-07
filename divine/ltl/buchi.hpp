@@ -30,7 +30,7 @@ namespace divine {
 namespace ltl {
 
 
-size_t uCount = 0; // number of Until subformulae  ==  number of possible classes of states
+extern size_t uCount; // number of Until subformulae  ==  number of possible classes of states
 
 size_t newNodeId();
 size_t newClassId();
@@ -203,7 +203,7 @@ struct Node
  * Finds (first) "node with same old and next" in given set of nodes
  * @return node with same old and next / nullptr iff not present
  * */
-NodePtr findTwin( NodePtr nodeP, const std::set< NodePtr, Node::Comparator >& list )
+static inline NodePtr findTwin( NodePtr nodeP, const std::set< NodePtr, Node::Comparator >& list )
 {
     for ( auto nodeOther: list )
         if ( ( nodeP->old == nodeOther->old ) && ( nodeP->next == nodeOther->next ) )
@@ -382,7 +382,7 @@ struct Transition{
     }
 };
 
-std::pair< bool, size_t > indexOfLiteral( LTLPtr literal, const std::vector< LTLPtr >& literals ) {
+static inline std::pair< bool, size_t > indexOfLiteral( LTLPtr literal, const std::vector< LTLPtr >& literals ) {
     auto wanted = literal->string();
     for( size_t i = 0; i < literals.size(); ++i ) {
         if( literals.at( i )->string() == wanted )
@@ -552,7 +552,7 @@ struct TGBA2 {
 
 
 
-TGBA1 ltlToTGBA1( LTLPtr _formula, bool negate )
+static inline TGBA1 ltlToTGBA1( LTLPtr _formula, bool negate )
 {
     LTLPtr formula = _formula->normalForm( negate );
     uCount = formula->countAndLabelU();

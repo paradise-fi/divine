@@ -3,6 +3,8 @@
 namespace divine {
 namespace ltl {
 
+size_t uCount = 0;
+
 size_t newNodeId()
 {
     static size_t nodeIdCount = 0;
