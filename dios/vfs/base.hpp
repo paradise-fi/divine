@@ -64,7 +64,7 @@ namespace __dios::fs
             return fd;
         }
 
-        Node new_node( Mode mode )
+        Node new_node( Mode mode, bool apply_umask = true )
         {
             Node r;
 
@@ -79,6 +79,9 @@ namespace __dios::fs
 
             if ( mode.is_fifo() )
                 r = make_shared< Pipe >();
+
+            if ( apply_umask )
+                mode &= ~proc()._umask;
 
             if ( r )
                 r->mode( mode );
