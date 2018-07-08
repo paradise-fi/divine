@@ -39,7 +39,7 @@ struct OFlags : FlagOps< OFlags >
     constexpr bool write() const    { return _value & ( O_WRONLY | O_RDWR ); }
     constexpr bool noaccess() const { return ( _value & NOACC ) == NOACC; }
     constexpr bool nonblock() const { return _value & O_NONBLOCK; }
-    constexpr bool follow() const   { return !( _value & O_NOFOLLOW ); }
+    constexpr bool follow() const   { return !( _value & O_NOFOLLOW ) && !( _value & O_EXCL ) ; }
 };
 
 #undef O_RDONLY
