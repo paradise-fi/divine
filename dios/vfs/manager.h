@@ -40,12 +40,6 @@ struct Manager {
     void setErrFile(FileTrace trace);
 
     Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
-    void initializeFromSnapshot(const _VM_Env *env);
-
-    void createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, bool follow );
-    void createSymLinkAt( int dirfd, __dios::String name, __dios::String target );
-    template< typename... Args >
-    Node createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&... args );
 
     ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
