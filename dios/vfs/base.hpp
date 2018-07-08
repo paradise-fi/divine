@@ -190,9 +190,9 @@ namespace __dios::fs
             return { parent, name };
         }
 
-        bool link_node( Node dir, std::string_view path, Node ino, bool follow )
+        bool link_node( Node dir, std::string_view path, Node ino )
         {
-            auto [ parent, name ] = lookup_dir( dir, path, follow );
+            auto [ parent, name ] = lookup_dir( dir, path, true );
 
             if ( !parent )
                 return false;

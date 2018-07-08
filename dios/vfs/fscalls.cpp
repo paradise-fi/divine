@@ -63,7 +63,7 @@ namespace __dios::fs
 
     int Syscall::mkdirat( int dirfd, const char *path, Mode mode )
     {
-        if ( link_node( get_dir( dirfd ), path, new_node( mode | S_IFDIR ), true ) )
+        if ( link_node( get_dir( dirfd ), path, new_node( mode | S_IFDIR ) ) )
             return 0;
         else
             return -1;
@@ -82,7 +82,7 @@ namespace __dios::fs
              !mode.is_socket() )
             return error( EINVAL ), -1;
 
-        if ( link_node( get_dir( dirfd ), path, new_node( mode ), true ) )
+        if ( link_node( get_dir( dirfd ), path, new_node( mode ) ) )
             return 0;
         else
             return -1;
@@ -125,7 +125,7 @@ namespace __dios::fs
             return error( EEXIST ), -1;
 
         if ( !ino && flags.has( O_CREAT ) )
-            if ( !link_node( get_dir( dirfd ), path, ino = new_node( mode | S_IFREG ), flags.follow() ) )
+            if ( !link_node( get_dir( dirfd ), path, ino = new_node( mode | S_IFREG ) ) )
                 return -1;
 
         if ( !ino )
