@@ -103,6 +103,12 @@ struct RegularFile : INode
         _size = _content.size();
     }
 
+    void content( std::string_view s )
+    {
+        _content.resize( s.size() );
+        std::copy( s.begin(), s.end(), _content.begin() );
+    }
+
 private:
 
     bool _isSnapshot() const {

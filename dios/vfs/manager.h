@@ -188,7 +188,6 @@ struct VFS: Syscall, Next
 
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
-        instance().initializeFromSnapshot( s.env );
 
         for ( int i = 0; i < 2; ++i )
             sio[ i ]->mode( S_IFREG | S_IRUSR );
@@ -201,6 +200,7 @@ struct VFS: Syscall, Next
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
         _root = instance()._root;
+        import( s.env );
         Next::setup( s );
     }
 

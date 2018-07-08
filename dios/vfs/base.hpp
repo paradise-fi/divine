@@ -80,6 +80,9 @@ namespace __dios::fs
             if ( mode.is_fifo() )
                 r = make_shared< Pipe >();
 
+            if ( mode.is_link() )
+                r = make_shared< SymLink >();
+
             if ( apply_umask )
                 mode &= ~proc()._umask;
 
@@ -202,5 +205,11 @@ namespace __dios::fs
             return parent->as< Directory >()->create( name, ino );
         }
 
+        bool import( const _VM_Env *env, Map< ino_t, Node > & );
+        bool import( const _VM_Env *env )
+        {
+            Map< ino_t, Node > map;
+            return import( env, map );
+        }
     };
 }
