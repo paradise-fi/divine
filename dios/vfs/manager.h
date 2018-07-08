@@ -22,7 +22,6 @@
 #include "constants.h"
 #include "file.h"
 #include "directory.h"
-#include "snapshot.h"
 #include "descriptor.h"
 #include "path.h"
 #include "syscall.hpp"
