@@ -176,6 +176,11 @@ struct VFS: Syscall, Next
     using Syscall::lstat;
     using Syscall::fstat;
 
+    using Syscall::linkat;
+    using Syscall::link;
+    using Syscall::symlinkat;
+    using Syscall::symlink;
+
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< VFS >( "{VFS}" );
@@ -376,41 +381,6 @@ public: /* system call implementation */
             *__dios_errno() = e.code();
             return -1;
         }
-    }
-
-    int linkat( int olddirfd, const char *target, int newdirfd, const char * linkpath, int flags )
-    {
-        if ( ( flags | AT_SYMLINK_FOLLOW ) != AT_SYMLINK_FOLLOW )
-            return error_negative( EINVAL );
-        try {
-            instance().createHardLinkAt( newdirfd, linkpath, olddirfd, target,
-                                         flags & AT_SYMLINK_FOLLOW );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int link( const char *target, const char *linkpath )
-    {
-        return linkat( AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
-    }
-
-    int symlinkat( const char *target, int dirfd, const char *linkpath )
-    {
-        try {
-            instance( ).createSymLinkAt( dirfd, linkpath, target );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int symlink( const char *target, const char *linkpath )
-    {
-        return symlinkat( target, AT_FDCWD, linkpath );
     }
 
     ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count )

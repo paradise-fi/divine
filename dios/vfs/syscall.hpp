@@ -69,6 +69,11 @@ namespace __dios::fs
         int lstat( const char *path, struct stat *buf  );
         int fstat( int fd, struct stat *buf );
         int fstatat( int dirfd, const char *path, struct stat *buf, int flag );
+
+        int linkat( int olddirfd, const char *target, int newdirfd, const char * linkpath, int flags );
+        int link( const char *target, const char *linkpath );
+        int symlinkat( const char *target, int dirfd, const char *linkpath );
+        int symlink( const char *target, const char *linkpath );
     };
 
 }

@@ -213,4 +213,40 @@ namespace __dios::fs
             return -1;
     }
 
+    int Syscall::linkat( int odirfd, const char *target, int ndirfd, const char *link, int flags )
+    {
+        if ( ( flags | AT_SYMLINK_FOLLOW ) != AT_SYMLINK_FOLLOW )
+            return error( EINVAL ), -1;
+
+        if ( auto ino = lookup( get_dir( odirfd ), target, flags & AT_SYMLINK_FOLLOW ) )
+        {
+            if ( ino->mode().is_dir() )
+                return error( EPERM ), -1;
+            if ( link_node( get_dir( ndirfd ), link, ino ) )
+                return 0;
+        }
+
+        return -1;
+    }
+
+    int Syscall::link( const char *target, const char *linkpath )
+    {
+        return linkat( AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
+    }
+
+    int Syscall::symlinkat( const char *target, int dirfd, const char *linkpath )
+    {
+        auto ino = fs::make_shared< SymLink >( target );
+        ino->mode( ACCESSPERMS | S_IFLNK );
+        if ( link_node( get_dir( dirfd ), linkpath, ino ) )
+            return 0;
+        else
+            return -1;
+    }
+
+    int Syscall::symlink( const char *target, const char *linkpath )
+    {
+        return symlinkat( target, AT_FDCWD, linkpath );
+    }
+
 }
