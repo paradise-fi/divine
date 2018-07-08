@@ -24,18 +24,19 @@ namespace fs {
 
 struct SymLink : INode
 {
-    SymLink( __dios::String target ) :
-        _target( std::move( target ) )
+    SymLink( std::string_view target = "" ) : _target( target )
     {
         if ( _target.size() > PATH_LIMIT )
             throw Error( ENAMETOOLONG );
     }
 
     size_t size() const override { return _target.size(); }
-    const __dios::String &target() const { return _target; }
+    std::string_view target() const { return _target; }
+    void target( String s ) { _target = std::move( s ); }
+    void target( std::string_view s ) { _target = String( s ); }
 
 private:
-    __dios::String _target;
+    String _target;
 };
 
 struct RegularFile : INode

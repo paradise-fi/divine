@@ -152,9 +152,9 @@ ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t c
         throw Error( EINVAL );
 
     SymLink *sl = inode->as< SymLink >();
-    const __dios::String &target = sl->target();
+    auto target = sl->target();
     auto realLength = std::min( target.size(), count );
-    std::copy( target.c_str(), target.c_str() + realLength, buf );
+    std::copy( target.begin(), target.begin() + realLength, buf );
     return realLength;
 }
 
@@ -488,13 +488,13 @@ Node Manager::_findDirectoryItem( __dios::String name, bool followSymLinks, I it
             if ( !loopDetector.insert( sl ).second )
                 throw Error( ELOOP );
 
-            __dios::Queue< __dios::String > _q( path::splitPath< __dios::Deque< __dios::String > >( sl->target() ) );
+            __dios::Queue< String > _q( path::splitPath< Deque< String > >( String( sl->target() ) ) );
             while ( !q.empty() ) {
                 _q.emplace( std::move( q.front() ) );
                 q.pop();
             }
             q.swap( _q );
-            if ( path::isAbsolute( sl->target() ) ) {
+            if ( path::isAbsolute( String( sl->target() ) ) ) {
                 current = _root;
                 item = _root;
             }
