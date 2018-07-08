@@ -147,7 +147,7 @@ namespace __dios::fs
 
             if ( auto next = dir->template as< Directory >()->find( name ) )
             {
-                if ( auto link = next->template as< SymLink >(); link && follow )
+                if ( auto link = next->template as< SymLink >(); link && ( follow || !tail.empty() ) )
                     return lookup_relative( lookup( dir, link->target(), follow ), tail, follow );
 
                 return lookup_relative( next, tail, follow );
