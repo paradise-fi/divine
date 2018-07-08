@@ -69,8 +69,10 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, Mode mode, Args &&..
     _checkGrants( current, S_IWUSR );
     Directory *dir = current->as< Directory >();
 
-    mode &= ~umask() & ( S_IFMT | ACCESSPERMS );
-    if ( Mode( mode ).is_dir() )
+    if ( !mode.is_link() )
+        mode &= ~umask() & ( S_IFMT | ACCESSPERMS );
+
+    if ( mode.is_dir() )
         mode |= S_ISGID;
 
     Node node;
