@@ -22,7 +22,6 @@
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/exec.hpp>
 #include <divine/vm/vmutil.h>
-#include <divine/rt/dios-cc.hpp>
 #include <brick-string>
 #include <brick-fs>
 #include <brick-llvm>
@@ -321,8 +320,7 @@ void WithBC::init()
 
 void Cc::run()
 {
-    rt::DiosCC driver( _opts );
-
+    _driver.setup( _opts );
     driver.setupFS( [&]( auto yield )
                     {
                         for ( auto f : _files )
@@ -333,7 +331,7 @@ void Cc::run()
         std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
 
     std::string firstFile;
-    driver.runCC( _flags, [&]( std::unique_ptr< llvm::Module > &&m, std::string name )
+    _driver.runCC( _flags, [&]( std::unique_ptr< llvm::Module > &&m, std::string name )
             -> std::unique_ptr< llvm::Module >
         {
             bool first;
@@ -343,7 +341,7 @@ void Cc::run()
             if ( _opts.dont_link ) {
                 if ( !_output.empty() && !first )
                     die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
-                driver.writeToFile( _output.empty() ? outputName( name, "bc" ) : _output, m.get() );
+                _driver.writeToFile( _output.empty() ? outputName( name, "bc" ) : _output, m.get() );
                 return nullptr;
             }
             return std::move( m );
@@ -353,7 +351,7 @@ void Cc::run()
         die( "CC: You must specify at least one source file." );
 
     if ( !_opts.dont_link )
-        driver.writeToFile( _output.empty() ? outputName( firstFile, "bc" ) : _output );
+        _driver.writeToFile( _output.empty() ? outputName( firstFile, "bc" ) : _output );
 }
 
 void Info::run()

@@ -23,6 +23,7 @@
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/job.hpp>
 #include <divine/cc/options.hpp>
+#include <divine/rt/dios-cc.hpp>
 #include <divine/sim/trace.hpp>
 
 #include <divine/ui/common.hpp>
@@ -212,6 +213,7 @@ struct Cc : Command
     std::vector< std::vector< std::string > > _passThroughFlags;
     std::string _output;
     std::vector< std::pair< std::string, std::string > > _files;
+    rt::DiosCC _driver;
 
     void run();
 };
