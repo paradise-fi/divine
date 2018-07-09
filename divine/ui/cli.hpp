@@ -208,6 +208,10 @@ struct Draw : WithBC
 
 struct Cc : Command
 {
+    Cc() = default;
+    Cc( Cc && ) = default;
+    Cc& operator=( Cc&& ) = default;
+
     cc::Options _opts;
     std::vector< std::string > _flags;
     std::vector< std::vector< std::string > > _passThroughFlags;
