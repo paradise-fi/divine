@@ -862,7 +862,7 @@ struct Parser
             auto x = rec.car.parse( t, b + 1, e );
             while ( x != e && rec.car.extra( t, *x ) )
                 ++ x;
-            res = t;
+            res = std::move( t );
             return x;
         }
         return rv;
