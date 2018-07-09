@@ -27,6 +27,8 @@ struct Driver
     explicit Driver( std::shared_ptr< llvm::LLVMContext > ctx ) : Driver( Options(), ctx ) {}
     explicit Driver( Options opts = Options(),
                       std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
+    Driver( Driver&& ) = default;
+    Driver& operator=( Driver&& ) = default;
     virtual ~Driver();
 
     void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );

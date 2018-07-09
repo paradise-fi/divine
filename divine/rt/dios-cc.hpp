@@ -19,6 +19,8 @@ struct DiosCC : cc::Driver
     }
     explicit DiosCC( Options opts = Options(),
                          std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
+    DiosCC( DiosCC&& ) = default;
+    DiosCC& operator=( DiosCC&& ) = default;
 
     void setup( Options opts ){ opts = opts; }
 
