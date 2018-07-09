@@ -69,6 +69,12 @@ struct Driver
         each( [&]( auto path, auto c ) { compiler.mapVirtualFile( path, c ); } );
     }
 
+    void setupFS( const std::vector< std::pair< std::string, std::string > > &files )
+    {
+        for( auto [f,c] : files )
+            compiler.mapVirtualFile( f, c );
+    }
+
   protected:
     brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
 
