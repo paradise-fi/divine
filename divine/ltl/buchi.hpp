@@ -556,14 +556,127 @@ static inline TGBA1 ltlToTGBA1( LTLPtr _formula, bool negate )
     return tbga;
 }
 
-struct LTL2TGBA /* normal forms */
+struct LTL2TGBA /* nodes, states, buchi */
 {
-    TEST(simpleFormulae)
+    TEST(node_construction)
     {
-        std::string str( " a U b " );
-        LTLPtr ltl = LTL::parse( str );
-        auto tgba1 = ltlToTGBA1( ltl, false );
+        Node node1;
+        Node node2;
+        assert( node1.id != node2.id );
+        Node node3 = Node( node2 );
+        assert( node2.id != node3.id );
+
+        std::string x("X a");
+        LTLPtr next = LTL::parse( x );
+        node1.toBeDone.insert( next );
+        node2 = node1;
+        node3 = Node( node1 );
+        assert( node1.next == node2.next );
+        assert( node1.next == node3.next );
     }
+    TEST(state_construction) /*a && Xb*/
+    {
+        std::string a("a");
+        LTLPtr atoma = LTL::parse( a );
+        std::string b("b");
+        LTLPtr atomb = LTL::parse( b );
+        Node node;
+        node.old.insert( atoma );
+        node.next.insert( atomb );
+        State state( &node );
+        auto it1 = state.next.find( atomb );
+        assert( it1 != state.next.end() );
+        assert( !state.edgesIn.empty() );
+        auto it2 = state.edgesIn.at(0).label.find( atoma );
+        assert( it2 != state.edgesIn.at(0).label.end() );
+    }
+    TEST(node_findTwin)
+    {
+        std::string a("a");
+        LTLPtr atoma = LTL::parse( a );
+        std::string b("b");
+        LTLPtr atomb = LTL::parse( b );
+        Node node;
+        node.old.insert( atoma );
+        node.next.insert( atomb );
+
+        StatePtr state = std::make_shared<State>( &node );
+
+        std::set< StatePtr, State::Comparator > states;
+        states.insert( state );
+        assert( node.findTwin( states ) );
+    }
+    TEST(node_contradics)
+    {
+        LTLPtr a = LTL::parse( "a" );
+        LTLPtr b = LTL::parse( "b" );
+        LTLPtr avb = LTL::parse( "a || b" );
+        LTLPtr bva = LTL::parse( "b || a" );
+        LTLPtr ab = LTL::parse( "a && b" );
+        LTLPtr aUb = LTL::parse( "a U b" );
+        LTLPtr tUa = LTL::parse( "true U a" );
+        Node node;
+        node.old.insert( a );
+        node.next.insert( b );
+        assert( node.isinSI( a, node.old, node.next ) );
+        assert( node.isinSI( avb, node.old, node.next ) );
+        assert( node.isinSI( bva, node.old, node.next ) );
+        assert( node.isinSI( tUa, node.old, node.next ) );
+        assert( !node.isinSI( ab, node.old, node.next ) );
+        assert( !node.isinSI( b, node.old, node.next ) );
+        assert( !node.isinSI( aUb, node.old, node.next ) );
+
+        assert( node.contradics( LTL::parse( "!a" ) ) );
+        assert( node.contradics( LTL::parse( "! ( a || b )" ) ) );
+        assert( node.contradics( LTL::make( Unary::Neg, bva ) ) );
+        assert( node.contradics( LTL::make( Unary::Neg, tUa ) ) );
+        assert( !node.contradics( LTL::make( Unary::Neg, ab ) ) );
+        assert( !node.contradics( LTL::make( Unary::Neg, b ) ) );
+        assert( !node.contradics( LTL::make( Unary::Neg, aUb ) ) );
+    }
+    TEST(node_isRedundant)
+    {
+        LTLPtr a = LTL::parse( "a" );
+        LTLPtr b = LTL::parse( "b" );
+        LTLPtr avb = LTL::parse( "a || b" );
+        LTLPtr bva = LTL::parse( "b || a" );
+        LTLPtr ab = LTL::parse( "a && b" );
+        LTLPtr aUb = LTL::parse( "a U b" );
+        LTLPtr tUa = LTL::parse( "true U a" );
+        Node node1, node2;
+        node1.old.insert( a );
+        node1.next.insert( b );
+        assert( node1.isRedundant( a ) );
+        assert( node1.isRedundant( avb ) );
+        assert( node1.isRedundant( bva ) );
+        assert( node1.isRedundant( tUa ) );
+        assert( node1.isRedundant( tUa ) );
+
+        node2.old.insert( a );
+        node2.next.insert( aUb );
+        assert( node2.isinSI( a, node2.old, node2.next ) );
+        assert( node2.isinSI( avb, node2.old, node2.next ) );
+        assert( node2.isinSI( bva, node2.old, node2.next ) );
+        assert( node2.isinSI( aUb, node2.old, node2.next ) );
+        assert( !node2.isinSI( b, node2.old, node2.next ) );
+
+        assert( node2.isRedundant( a ) );
+        assert( node2.isRedundant( avb ) );
+        assert( node2.isRedundant( bva ) );
+        assert( !node2.isRedundant( aUb ) );
+    }
+    TEST(ltlToTGBA1_simple)
+    {
+        std::string u( " a U b " );
+        std::string r("a R b");
+        std::string x("X a");
+        LTLPtr until = LTL::parse( u );
+        LTLPtr release = LTL::parse( r );
+        LTLPtr next = LTL::parse( x );
+        auto tgba1 = ltlToTGBA1( next, false );
+
+    }
+
 };
 
 }
