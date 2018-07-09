@@ -17,7 +17,7 @@ static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 
     return str->getString().str();
 }
 
-struct MergeFlags_ { // hide in clas so they can be mutually recursive
+struct MergeFlags_ { // hide in class so they can be mutually recursive
     void operator()( std::vector< std::string > & ) { }
 
     template< typename ... Xs >
@@ -184,10 +184,10 @@ void Driver::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared
 
 void Driver::linkEntireArchive( std::string arch )
 {
-        auto archive = getLib( arch );
-        auto modules = archive.modules();
-        for ( auto it = modules.begin(); it != modules.end(); ++it )
-            linker->link( it.take() );
+    auto archive = getLib( arch );
+    auto modules = archive.modules();
+    for ( auto it = modules.begin(); it != modules.end(); ++it )
+        linker->link( it.take() );
 }
 
 }
