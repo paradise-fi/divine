@@ -150,7 +150,7 @@ void execute( std::string script_txt, F... prepare )
 
         cmd.match( prepare...,
                    [&]( Load &l ) { files.emplace_back( l.args[1] , brick::fs::readFile( l.args[0] ) ); },
-                   [&]( ui::Cc &cc ) { cc._files = files; },
+                   [&]( ui::Cc &cc ) { cc._driver.setupFS( files ); },
                    [&]( ui::Command &c ) { c.setup(); } );
         cmd.match( [&]( ui::Verify &v ) { check_expect( v ); },
                    [&]( ui::Check &c )  { check_expect( c ); } );

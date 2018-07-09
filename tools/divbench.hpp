@@ -22,6 +22,7 @@
 #include <divine/ui/odbc.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/ui/log.hpp>
+#include <divine/rt/dios-cc.hpp>
 #include <brick-except>
 #include <brick-fs>
 
@@ -160,8 +161,10 @@ struct Run : virtual GetInstance, WithModel
     std::string _script;
     bool _done = false, _single = false;
     ui::SinkPtr _log;
+    int _model;
 
     void prepare( int model );
+    void prepare( rt::DiosCC &drv );
 
     virtual void execute( int job );
     void log_start( int job, int exec );

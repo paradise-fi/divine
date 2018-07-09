@@ -33,11 +33,9 @@
 namespace benchmark
 {
 
-void Run::prepare( int model )
+void Run::prepare( rt::DiosCC &drv )
 {
-    _files.clear();
-
-    std::cerr << "loading model " << model << std::endl;
+    std::cerr << "loading model " << _model << std::endl;
     std::stringstream q;
     q << "select filename, text, length(text) from model "
       << "left join model_srcs on model_srcs.model  = model.id "
@@ -45,16 +43,22 @@ void Run::prepare( int model )
       << " where model.id = ?";
 
     auto sel = nanodbc::statement( _conn, q.str() );
-    sel.bind( 0, &model );
+    sel.bind( 0, &_model );
     auto file = sel.execute();
 
-    while ( file.next() )
-    {
-        std::string text = file.get< std::string >( 1 );
-        _files.emplace_back( file.get< std::string >( 0 ),
-                             std::string( text, 0, file.get< int >( 2 ) ) );
-    }
+    drv.setupFS( [&]( auto yield ){
+        while ( file.next() )
+        {
+            std::string text = file.get< std::string >( 1 );
+            yield( file.get< std::string >( 0 ),
+                                 std::string( text, 0, file.get< int >( 2 ) ) );
+        }
 
+    } );
+}
+
+void Run::prepare( int model )
+{
     auto scr_q = "select text from model join source on model.script = source.id where model.id = ?";
     auto scr = nanodbc::statement( _conn, scr_q );
 
@@ -63,6 +67,7 @@ void Run::prepare( int model )
     script.first();
     _script = script.get< std::string >( 0 );
     _log = ui::make_odbc( _odbc );
+    _model = model;
 }
 
 void Run::execute( int job_id )
@@ -81,7 +86,7 @@ void Run::execute( int job_id )
 
     log_start( job_id, _log->log_id() );
     divcheck::execute( _script,
-                       [&]( ui::Cc &cc ) { config( cc ); cc._files = _files; },
+                       [&]( ui::Cc &cc ) { config( cc ); this->prepare( cc._driver ); },
                        [&]( ui::Verify &v ) { config( v ); prepare( v ); },
                        [&]( ui::Check &c ) { config( c ); prepare( c ); } );
     log_done( job_id );
