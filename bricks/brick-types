@@ -6,11 +6,13 @@
  * - Unit: single-valued type (empty structure)
  * - Union: discriminated (tagged) union
  * - StrongEnumFlags
+ * - type-traits: is_detected
  */
 
 /*
  * (c) 2006, 2014 Petr Ročkai <me@mornfall.net>
  * (c) 2013-2015 Vladimír Štill <xstill@fi.muni.cz>
+ * (c) 2018 Henrich Lauko <xlauko@mail.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -265,6 +267,42 @@ private:
     Maybe( bool nothing ) : _nothing( nothing ) {}
     bool _nothing;
 };
+
+#if __cplusplus >= 201403L
+
+namespace detail {
+
+template< class... >
+using void_t = void;
+
+template< class Default, class AlwaysVoid, template< class... > class Op, class... Args >
+struct Detector {
+    using value_t = std::false_type;
+    using type = Default;
+};
+
+template< class Default, template< class... > class Op, class... Args >
+struct Detector< Default, void_t< Op< Args... > >, Op, Args... > {
+    using value_t = std::true_type;
+    using type = Op< Args... >;
+};
+
+} // namespace detail
+
+struct NoneSuch {
+    NoneSuch() = delete;
+    ~NoneSuch() = delete;
+    NoneSuch( NoneSuch const& ) = delete;
+    void operator=( NoneSuch const& ) = delete;
+};
+
+template< template< class... > class Op, class... Args >
+using is_detected = typename detail::Detector< NoneSuch, void, Op, Args... >::value_t;
+
+template< template< class... > class Op, class... Args >
+constexpr bool is_detected_v = is_detected< Op, Args... >::value;
+
+#endif
 
 #if __cplusplus >= 201103L
 
