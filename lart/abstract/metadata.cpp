@@ -8,6 +8,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/util.h>
 #include <lart/support/query.h>
 
+#include <brick-llvm>
+
 namespace lart {
 namespace abstract {
 
@@ -116,26 +118,6 @@ void FunctionMetadata::clear() {
         fn->setMetadata( tag, nullptr );
 }
 
-Function* get_annotated_function( Value* val ) {
-    return make_transformer( val )
-        .cast< ConstantStruct >().operand( 0 ).operand( 0 )
-        .cast< Function >().get();
-}
-
-auto get_annotation( Function *fn ) {
-    return make_transformer( fn ).operand( 0 ).operand( 0 )
-        .cast< GlobalVariable >().operand( 1 ).operand( 0 )
-        .apply( [] ( const auto& v ) { return v->getInitializer(); } )
-        .cast< ConstantDataArray >().get();
-}
-
-auto get_annotation( Function *fn, const std::string& name ) -> decltype( get_annotation( fn ) ) {
-    auto ann = get_annotation( fn );
-    if ( ann && ann->getAsCString().startswith( name ) )
-        return ann;
-    return nullptr;
-}
-
 
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
 //
@@ -190,20 +172,12 @@ void CreateAbstractMetadata::run( Module &m ) {
         fn->setMetadata( "lart.abstract.roots", empty_mdtuple( ctx ) );
     }
 
-    // process annotation of functions
-    for ( auto &g : m.globals() ) {
-        if ( g.getName() == "llvm.global.annotations" ) {
-            auto ca = cast< ConstantArray >( g.getOperand(0) );
-            for ( auto &op : ca->operands() ) {
-                auto fn = get_annotated_function( op.get() );
-                if ( auto ann = get_annotation( fn, "lart.abstract" )  ) {
-                    auto dom = domain( ann->getAsCString() );
-                    auto dn = mdb.domain_node( dom );
-                    fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
-                }
-            }
-        }
-    }
+    brick::llvm::enumerateFunctionAnnosInNs( "lart.abstract", m, [&] ( auto fn, auto ann ) {
+        auto dom = DomainTable[ ann.toString() ];
+        auto dn = mdb.domain_node( dom );
+        fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
+    });
+
 }
 
 // TODO refactore rest of additions of metadata
