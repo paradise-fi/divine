@@ -1,4 +1,4 @@
-# TAGS: todo
+# TAGS:
 . lib/testcase
 
 cat > prog.c <<EOF
