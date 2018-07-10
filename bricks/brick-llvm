@@ -124,6 +124,11 @@ void enumerateFunctionAnnosInNs( Annotation ns, ::llvm::Module &m, Yield yield )
 }
 
 template< typename Yield >
+void enumerateFunctionAnnosInNs( std::string ns, ::llvm::Module &m, Yield yield ) {
+    enumerateFunctionAnnosInNs( Annotation( ns ), m, yield );
+}
+
+template< typename Yield >
 void enumerateFunctionsForAnno( Annotation anno, ::llvm::Module &m, Yield yield ) {
     enumerateFunctionAnnos( m, [&]( ::llvm::Function *fn, Annotation a ) {
             if ( a == anno )
