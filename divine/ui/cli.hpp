@@ -216,7 +216,6 @@ struct Cc : Command
     std::vector< std::string > _flags;
     std::vector< std::vector< std::string > > _passThroughFlags;
     std::string _output;
-    std::vector< std::pair< std::string, std::string > > _files;
     rt::DiosCC _driver;
 
     void run();

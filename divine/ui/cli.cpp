@@ -321,11 +321,6 @@ void WithBC::init()
 void Cc::run()
 {
     _driver.setup( _opts );
-    driver.setupFS( [&]( auto yield )
-                    {
-                        for ( auto f : _files )
-                            yield( f.first, f.second );
-                    } );
 
     for ( auto &x : _passThroughFlags )
         std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
