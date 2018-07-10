@@ -92,11 +92,13 @@ void boot( SetupBase sb ) {
     using Process = typename Configuration::Process;
     Setup< Configuration > s = sb;
     s.proc1 = new_object< Process >();
-    context->reschedule = [=]
+    context->reschedule = []( void * ctx_ )
     {
-        if ( context->check_final() )
-            context->finalize();
-        else {
+        Configuration *ctx = static_cast< Configuration * >( ctx_ );
+        if ( ctx->check_final() )
+            ctx->finalize();
+        else
+        {
             /* destroy the stack to avoid memory leaks */
             __dios_unwind( nullptr, nullptr, nullptr );
             __vm_suspend();

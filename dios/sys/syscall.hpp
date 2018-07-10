@@ -116,7 +116,7 @@ struct BaseContext
         __dios_fault( _DiOS_F_Config, "Unused options" );
     }
 
-    std::function< void() > reschedule;
+    void (*reschedule)( void * );
     void finalize() { __vm_suspend(); }
 
     void getHelp( Map< String, HelpOption >& ) {}
