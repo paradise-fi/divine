@@ -180,7 +180,7 @@ namespace __dios::fs
             if ( path.size() > PATH_LIMIT )
                 return error( ENAMETOOLONG ), null;
 
-            if ( path[0] == '/' )
+            if ( !path.empty() && path[0] == '/' )
                 return lookup_dir( root(), path.substr( 1, String::npos ), follow );
 
             auto [ parent_path, name ] = split( path, '/', true );
