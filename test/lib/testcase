@@ -25,7 +25,7 @@ else
     MPIEXEC=$(readlink -f `which $MPIEXEC`)
 fi
 
-chmod +x lib/check lib/run lib/sim lib/ordgrep
+chmod +x lib/check lib/run lib/sim lib/ordgrep lib/verify
 
 PATH="$PWD/lib:$TOOLS:$TOOLS/../llvm/bin:$PATH"
 extracheck=:
