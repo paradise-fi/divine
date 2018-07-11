@@ -27,7 +27,7 @@ namespace __dios::fs
         std::string_view key( env->key );
 
         if ( key.substr( 0, 4 ) != "vfs." )
-            return __dios_trace_f( "unexpected vfs key %s", env->key ), false;
+            return false;
 
         if ( key.find( suffix ) == npos )
             return __dios_trace_f( "unexpected vfs key %s", env->key ), false;
@@ -40,10 +40,8 @@ namespace __dios::fs
         if ( !env->key )
             return true;
 
-        std::string_view key( env->key );
-
         if ( !check_key( env, ".name" ) )
-            return false;
+            return import( env + 1, nodes );
 
         std::string_view name( env->value, env->size );
         ++ env;
