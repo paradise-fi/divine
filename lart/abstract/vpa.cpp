@@ -25,27 +25,6 @@ using namespace llvm;
 
 namespace {
 
-bool valid_root_metadata( const MDValue &mdv ) {
-    auto ty = mdv.value()->getType();
-    return ( ty->isIntegerTy() ) ||
-           ( ty->isPointerTy() && ty->getPointerElementType()->isIntegerTy() );
-}
-
-void add_abstract_metadata( Instruction *i, Domain dom ) {
-    auto& ctx = i->getContext();
-
-    auto fn = get_function( i );
-    fn->setMetadata( "lart.abstract.roots", MDTuple::get( ctx, {} ) );
-
-    MDBuilder mdb( ctx );
-    std::vector< Metadata* > doms;
-
-    doms.emplace_back( mdb.domain_node( dom ) );
-    // TODO extend domains if "lart.domains" metadata exists
-
-    i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
-}
-
 inline Argument* get_argument( Function *fn, unsigned idx ) {
     ASSERT_LT( idx, fn->arg_size() );
     return &*std::next( fn->arg_begin(), idx );
@@ -140,7 +119,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         seen_vals.emplace( dep, dom );
 
         if ( auto i = dyn_cast< Instruction >( dep ) ) {
-            add_abstract_metadata( i, dom );
+            add_abstract_metadata( i, DomainTable[ dom ] );
         }
 
         llvmcase( dep,
@@ -238,9 +217,6 @@ void VPA::step_out( Function *fn, Domain dom ) {
 
 void VPA::run( Module &m ) {
     for ( const auto & mdv : abstract_metadata( m ) ) {
-        if ( !valid_root_metadata( mdv ) )
-            throw std::runtime_error( "Only annotation of integer values is allowed" );
-
         auto val = mdv.value();
         auto dom = mdv.domain();
         preprocess( get_function( val ) );

@@ -15,9 +15,65 @@ namespace abstract {
 
 using namespace llvm;
 
-inline MDTuple* empty_mdtuple( LLVMContext &ctx ) {
-    return MDTuple::get( ctx, {} );
+namespace {
+
+inline auto empty_metadata_tuple( LLVMContext &ctx ) { return MDTuple::get( ctx, {} ); }
+
+inline auto annotation( CallInst *call ) -> brick::llvm::Annotation {
+   auto anno = brick::llvm::transformer( call ).operand( 1 )
+               .apply( [] ( auto val ) { return val->stripPointerCasts(); } )
+               .cast< GlobalVariable >()
+               .apply( [] ( auto val ) { return val->getInitializer(); } )
+               .cast< ConstantDataArray >()
+               .freeze();
+
+    ASSERT( anno && "Call does not have annotation." );
+    return brick::llvm::Annotation{ anno->getAsCString() };
 }
+
+decltype(auto) functions_with_prefix( Module &m, StringRef pref ) noexcept {
+    return query::query( m ).map( query::refToPtr )
+          .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
+}
+
+} // anonymous namespace
+
+void process( StringRef prefix, Module &m ) noexcept {
+    auto &ctx = m.getContext();
+    MDBuilder mdb( ctx );
+
+    for ( const auto &fn : functions_with_prefix( m, prefix ) ) {
+        for ( const auto &u : fn->users() ) {
+            if ( auto call = dyn_cast< CallInst >( u ) ) {
+                auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
+                add_abstract_metadata( inst, annotation( call ).name() );
+            }
+        }
+    }
+}
+
+// CreateAbstractMetadata pass transform annotations into llvm metadata.
+//
+// As result of the pass, each function with annotated values has
+// annotation with name: "lart.abstract.roots".
+//
+// Where root instructions are marked with MDTuple of domains
+// named "lart.domains".
+//
+// Domain MDNode holds a string name of domain retrieved from annotation.
+void CreateAbstractMetadata::run( Module &m ) {
+    process( "llvm.var.annotation", m );
+    process( "llvm.ptr.annotation", m );
+
+    auto &ctx = m.getContext();
+    MDBuilder mdb( ctx );
+
+    brick::llvm::enumerateFunctionAnnosInNs( "lart.abstract", m, [&] ( auto fn, auto anno ) {
+        auto dn = mdb.domain_node( anno.name() );
+        fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
+    });
+}
+
 
 inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
     std::vector< Metadata* > doms;
@@ -30,25 +86,14 @@ inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
     return MDTuple::get( ctx, doms );
 }
 
-Domain domain( const StringRef &ann ) {
-    const std::string prefix = "lart.abstract.";
-    ASSERT( ann.startswith( prefix ) );
-
-    auto name = ann.str().substr( prefix.size() );
-    if ( !DomainTable.count( name ) )
-        throw std::runtime_error( "Unknown domain annotation: " + name );
-    return DomainTable[ name ];
-}
-
-Domain domain( CallInst *call ) {
-    auto data = cast< GlobalVariable >( call->getOperand( 1 )->stripPointerCasts() );
-    auto ann = cast< ConstantDataArray >( data->getInitializer() )->getAsCString();
-    return domain( ann );
-}
-
 
 MDNode* MDBuilder::domain_node( Domain dom ) {
     auto name = MDString::get( ctx, DomainTable[ dom ] );
+    return MDNode::get( ctx, name );
+}
+
+MDNode* MDBuilder::domain_node( StringRef dom ) {
+    auto name = MDString::get( ctx, dom );
     return MDNode::get( ctx, name );
 }
 
@@ -118,88 +163,10 @@ void FunctionMetadata::clear() {
         fn->setMetadata( tag, nullptr );
 }
 
-
-// CreateAbstractMetadata pass transform annotations into llvm metadata.
-//
-// As result of the pass, each function with annotated values has
-// annotation with name: "lart.abstract.roots".
-//
-// Where root instructions are marked with MDTuple of domains
-// named "lart.domains".
-//
-// Domain MDNode holds a string name of domain retrieved from annotation.
-void CreateAbstractMetadata::run( Module &m ) {
-    std::vector< std::string > prefixes = {
-        "llvm.var.annotation",
-        "llvm.ptr.annotation"
-    };
-
-    auto &ctx = m.getContext();
-
-    std::map< Function*, std::map< Instruction*, std::set< Domain > > > amap;
-
-    for ( const auto &pref : prefixes ) {
-        auto annotated = query::query( m )
-            .map( query::refToPtr )
-            .filter( [&]( Function *fn ) {
-                return fn->getName().startswith( pref );
-            } ).freeze();
-
-        for ( const auto &a : annotated ) {
-            for ( const auto &u : a->users() )
-                if ( auto call = dyn_cast< CallInst >( u ) ) {
-                    auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
-                    amap[ get_function( inst ) ][ inst ].emplace( domain( call ) );
-                }
-        }
-    }
-
-    MDBuilder mdb( ctx );
-    for ( auto &it : amap ) {
-        auto &fn = it.first;
-        auto &vmap = it.second;
-
-        for ( const auto &av : vmap ) {
-            auto &inst = av.first;
-            std::vector< Metadata* > doms;
-
-            for ( auto dom : av.second )
-                doms.emplace_back( mdb.domain_node( dom ) );
-
-            inst->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
-        }
-
-        fn->setMetadata( "lart.abstract.roots", empty_mdtuple( ctx ) );
-    }
-
-    brick::llvm::enumerateFunctionAnnosInNs( "lart.abstract", m, [&] ( auto fn, auto ann ) {
-        auto dom = DomainTable[ ann.toString() ];
-        auto dn = mdb.domain_node( dom );
-        fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
-    });
-
-}
-
-// TODO refactore rest of additions of metadata
-void add_domain_metadata( Instruction *i, Domain dom ) {
-    auto &ctx = i->getContext();
-    MDBuilder mdb( ctx );
-    std::vector< Metadata* > doms = { mdb.domain_node( dom ) };
-    i->setMetadata( "lart.domains", MDTuple::get( ctx, doms ) );
-}
-
-bool has_domain( Instruction *inst ) {
-    return inst->getMetadata( "lart.domains" );
-}
-
 void make_duals( Instruction *a, Instruction *b ) {
     auto &ctx = a->getContext();
     a->setMetadata( "lart.dual", MDTuple::get( ctx, { ValueAsMetadata::get( b ) } ) );
     b->setMetadata( "lart.dual", MDTuple::get( ctx, { ValueAsMetadata::get( a ) } ) );
-}
-
-bool has_dual( Instruction *inst ) {
-    return inst->getMetadata( "lart.dual" );
 }
 
 Value* get_dual( Instruction *inst ) {
@@ -228,25 +195,14 @@ std::vector< MDValue > abstract_metadata( llvm::Function *fn ) {
     return mds;
 }
 
-void dump_abstract_metadata( llvm::Module &m ) {
-    for ( auto &fn : m ) {
-        auto mds = abstract_metadata( &fn );
-        if ( !mds.empty() ) {
-            std::cerr << "\nfunction: " << fn.getName().str() << std::endl;
 
-            for ( auto & mdv : mds ) {
-                std::cerr << mdv.name() << " [";
-                bool first = true;
-                for ( auto dom : mdv.domains() ) {
-                    if ( !first )
-                        std::cerr << ", ";
-                    std::cerr << DomainTable[ dom ];
-                    first = false;
-                }
-                std::cerr << ']' << std::endl;
-            }
-        }
-    }
+// TODO change string to Domain
+void add_abstract_metadata( llvm::Instruction *inst, std::string dom ) {
+    auto& ctx = inst->getContext();
+    get_function( inst )->setMetadata( "lart.abstract.roots", empty_metadata_tuple( ctx ) );
+    // TODO enable multiple domains per instruction
+    auto node = MDBuilder( ctx ).domain_node( dom );
+    inst->setMetadata( "lart.domains", MDTuple::get( ctx, node ) );
 }
 
 } // namespace abstract

@@ -6,9 +6,9 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/domains/domains.h>
-
 #include <iostream>
+
+#include <lart/abstract/domains/domains.h>
 
 namespace lart {
 namespace abstract {
@@ -18,6 +18,7 @@ struct MDBuilder {
         : ctx( ctx )
     {}
 
+    llvm::MDNode* domain_node( llvm::StringRef dom );
     llvm::MDNode* domain_node( Domain dom );
 private:
     llvm::LLVMContext &ctx;
@@ -74,18 +75,13 @@ private:
     llvm::Function *fn;
 };
 
-void add_domain_metadata( llvm::Instruction *i, Domain dom );
-
-bool has_domain( llvm::Instruction* );
-
 void make_duals( llvm::Instruction *a, llvm::Instruction *b );
-bool has_dual( llvm::Instruction *inst );
 llvm::Value* get_dual( llvm::Instruction *i );
 
 std::vector< MDValue > abstract_metadata( llvm::Module &m );
 std::vector< MDValue > abstract_metadata( llvm::Function *fn );
 
-void dump_abstract_metadata( llvm::Module &m );
+void add_abstract_metadata( llvm::Instruction *inst, std::string dom );
 
 } // namespace abstract
 } // namespace lart
