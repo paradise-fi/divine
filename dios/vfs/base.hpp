@@ -16,10 +16,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <dios/vfs/inode.h>
-#include <dios/vfs/descriptor.h>
-#include <dios/vfs/directory.h>
-#include <dios/vfs/file.h> /* for symlink */
+#include <dios/vfs/inode.hpp>
+#include <dios/vfs/fd.hpp>
+#include <dios/vfs/directory.hpp>
+#include <dios/vfs/file.hpp>
+#include <dios/vfs/socket.hpp>
 
 #pragma once
 

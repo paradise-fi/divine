@@ -17,7 +17,6 @@
 #include <dios/vfs/manager.h>
 #include <dios/vfs/passthru.h>
 #include <dios/vfs/replay.h>
-#include <dios/vfs/constants.h>
 
 namespace __dios
 {

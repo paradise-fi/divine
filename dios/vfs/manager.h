@@ -1,3 +1,4 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include <tuple>
@@ -18,11 +19,11 @@
 #include <string_view>
 
 #include "utils.h"
-#include "inode.h"
-#include "constants.h"
-#include "file.h"
-#include "directory.h"
-#include "descriptor.h"
+#include "inode.hpp"
+#include "flags.hpp"
+#include "file.hpp"
+#include "directory.hpp"
+#include "fd.hpp"
 #include "path.h"
 #include "syscall.hpp"
 
