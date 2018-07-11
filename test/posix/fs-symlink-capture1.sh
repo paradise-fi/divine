@@ -4,6 +4,7 @@
 mkdir -p capture
 
 cat > capture/fs-symlink-capture.c <<EOF
+/* VERIFY_OPTS: --capture capture/link:follow:/ */
 #include <unistd.h>
 #include <fcntl.h>
 #include <assert.h>
@@ -33,4 +34,4 @@ cd capture/link
 ln -s file symlinkFile
 cd ../..
 
-divine verify --threads 1 --capture capture/link:follow:/ capture/fs-symlink-capture.c
+verify capture/fs-symlink-capture.c

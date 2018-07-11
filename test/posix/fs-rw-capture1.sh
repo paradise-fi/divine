@@ -4,6 +4,7 @@
 mkdir -p capture
 
 cat > capture/fs-rw-capture.c <<EOF
+/* VERIFY_OPTS: --capture capture/link:follow:/ */
 #include <unistd.h>
 #include <fcntl.h>
 #include <assert.h>
@@ -43,4 +44,4 @@ mkdir capture/link/dir
 touch capture/link/file
 ln capture/link/file capture/link/hardlinkFile
 
-divine verify --threads 1 --capture capture/link:follow:/ capture/fs-rw-capture.c
+verify capture/fs-rw-capture.c

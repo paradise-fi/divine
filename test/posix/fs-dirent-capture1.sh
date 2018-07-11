@@ -4,6 +4,7 @@
 mkdir -p capture
 
 cat > capture/fs-dirent-capture.c <<EOF
+/* VERIFY_OPTS: --capture capture/dir:follow:/ */
 #include <assert.h>
 #include <string.h>
 #include <dirent.h>
@@ -54,6 +55,4 @@ EOF
 mkdir capture/dir
 mkdir capture/dir/emptyDir
 
-divine verify --threads 1 --capture capture/dir:follow:/ capture/fs-dirent-capture.c
-
-
+verify capture/fs-dirent-capture.c

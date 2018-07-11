@@ -4,7 +4,7 @@
 mkdir -p capture
 
 cat > capture/fs-grants-capture.c <<EOF
-
+/* VERIFY_OPTS: --capture capture/grants:follow:/ */
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
@@ -39,9 +39,7 @@ int main() {
     assert( fd == -1 );
     assert( errno == EACCES );
 
-    fd = unlink( "noAccess" );
-    assert( fd == -1 );
-    assert( errno == EACCES );
+    assert( unlink( "noAccess" ) == 0 );
     return 0;
 }
 EOF
@@ -54,5 +52,4 @@ chmod -rwx capture/grants/noAccess
 chmod -rx capture/grants/writeOnly
 chmod -wx capture/grants/readOnly
 
-divine verify --threads 1 --capture capture/grants:follow:/ capture/fs-grants-capture.c
-
+verify capture/fs-grants-capture.c

@@ -4,7 +4,7 @@
 mkdir -p capture
 
 cat > capture/fs-rmmkdir-capture.cpp <<EOF
-// VERIFY_OPTS: --capture `dirname $1`/files/link:follow:/
+/* VERIFY_OPTS: --capture capture/link:follow:/ */
 #include <unistd.h>
 #include <unistd.h>
 #include <assert.h>
@@ -93,4 +93,4 @@ mkdir capture/link/dir
 touch capture/link/file
 ln capture/link/file capture/link/hardlinkFile
 
-divine verify -std=c++14  --threads 1 --capture capture/link:follow:/ capture/fs-rmmkdir-capture.cpp
+verify capture/fs-rmmkdir-capture.cpp
