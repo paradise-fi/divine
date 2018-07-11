@@ -1,6 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
+ * (c) 2018 Henrich Lauko
  * (c) 2014-2018 Vladimír Štill
  * (c) 2014, 2015 Petr Ročkai
  *
@@ -52,6 +53,52 @@ DIVINE_UNRELAX_WARNINGS
 #define BRICK_LLVM_H
 
 namespace brick::llvm {
+
+#if __cplusplus >= 201703L
+
+template< typename T >
+using get_operand_t = decltype( std::declval<T&>().getOperand( std::declval< int >() ) );
+
+template< typename Value >
+struct LLVMTransformer {
+    using value_type = typename std::conditional< std::is_pointer_v< Value >, Value, Value * >::type;
+
+    constexpr LLVMTransformer( const value_type &val ) : state( val ) {}
+    constexpr LLVMTransformer( value_type &&val ) : state( std::move( val ) ) {}
+
+    template< typename F >
+    constexpr decltype(auto) apply( F f ) noexcept {
+        using R = decltype( f( state ) );
+        if ( state )
+            return LLVMTransformer< R >( f( state ) );
+        else
+            return LLVMTransformer< R >( nullptr );
+    }
+
+    constexpr decltype(auto) operand( size_t idx ) noexcept {
+        if constexpr ( brick::types::is_detected_v< get_operand_t, std::remove_pointer_t< Value > > ) {
+            return apply( [idx] ( const auto& v ) { return v->getOperand( idx ); } );
+        } else {
+            return LLVMTransformer< value_type >( nullptr );
+        }
+    }
+
+    template< typename T >
+    constexpr decltype(auto) cast() noexcept {
+        return apply( [] ( const auto& v ) { return ::llvm::dyn_cast< T >( v ); } );
+    }
+
+    constexpr value_type freeze() noexcept { return state; }
+private:
+    value_type state;
+};
+
+template< typename T >
+decltype( auto ) transformer( T val ) {
+    return LLVMTransformer< T >( val );
+}
+
+#endif // c++17
 
 struct Annotation : brick::types::Eq {
     Annotation() = default;
