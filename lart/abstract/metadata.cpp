@@ -46,7 +46,7 @@ void process( StringRef prefix, Module &m ) noexcept {
         for ( const auto &u : fn->users() ) {
             if ( auto call = dyn_cast< CallInst >( u ) ) {
                 auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
-                add_abstract_metadata( inst, annotation( call ).name() );
+                add_abstract_metadata( inst, Domain( annotation( call ).name() ) );
             }
         }
     }
@@ -69,7 +69,7 @@ void CreateAbstractMetadata::run( Module &m ) {
     MDBuilder mdb( ctx );
 
     brick::llvm::enumerateFunctionAnnosInNs( "lart.abstract", m, [&] ( auto fn, auto anno ) {
-        auto dn = mdb.domain_node( anno.name() );
+        auto dn = mdb.domain_node( Domain( anno.name() ) );
         fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
     });
 }
@@ -81,14 +81,14 @@ inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
 
     MDBuilder mdb( ctx );
     std::generate_n( std::back_inserter( doms ), size,
-                     [&]{ return mdb.domain_node( Domain::Concrete ); } );
+                     [&]{ return mdb.domain_node( Domain::Concrete() ); } );
 
     return MDTuple::get( ctx, doms );
 }
 
 
 MDNode* MDBuilder::domain_node( Domain dom ) {
-    auto name = MDString::get( ctx, DomainTable[ dom ] );
+    auto name = MDString::get( ctx, dom.name() );
     return MDNode::get( ctx, name );
 }
 
@@ -97,39 +97,25 @@ MDNode* MDBuilder::domain_node( StringRef dom ) {
     return MDNode::get( ctx, name );
 }
 
-std::string MDValue::name() const {
+std::string MDValue::name() const noexcept {
     return _md->getValue()->getName();
 }
 
-llvm::Value* MDValue::value() const {
+llvm::Value* MDValue::value() const noexcept {
     return _md->getValue();
 }
 
-std::vector< Domain > MDValue::domains() const {
-    auto inst = cast< Instruction >( _md->getValue() );
-    std::vector< Domain > doms;
-
+Domain MDValue::domain() const noexcept {
+    auto inst = cast< Instruction >( value() );
     if ( !inst->getMetadata( "lart.domains" ) )
-        return { Domain::Concrete };
-
-    for ( auto & dom : inst->getMetadata( "lart.domains" )->operands() ) {
-        auto &n = cast< MDNode >( dom.get() )->getOperand( 0 );
-        auto dom_name = cast< MDString >( n )->getString().str();
-        doms.push_back( DomainTable[ dom_name ] );
-    }
-
-    return doms;
-}
-
-Domain MDValue::domain() const {
-    auto doms = domains();
-    ASSERT_EQ( doms.size(), 1 );
-    return doms[ 0 ];
+        return Domain::Concrete();
+    auto &dom = cast< MDNode >( inst->getMetadata( "lart.domains" )->getOperand( 0 ) )->getOperand( 0 );
+    return Domain( cast< MDString >( dom )->getString().str() );
 }
 
 Domain ArgMetadata::domain() const {
     auto mdstr = cast< MDString >( data->getOperand( 0 ) );
-    return DomainTable[ mdstr->getString().str() ];
+    return Domain( mdstr->getString().str() );
 }
 
 constexpr char FunctionMetadata::tag[];
@@ -144,7 +130,7 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
     auto md = fn->getMetadata( tag );
 
     auto curr = get_arg_domain( idx );
-    ASSERT( curr == Domain::Concrete || curr == dom ); // multiple domains are not supported yet
+    ASSERT( curr == Domain::Concrete() || curr == dom ); // multiple domains are not supported yet
 
     if ( curr != dom ) {
         MDBuilder mdb( ctx );
@@ -155,7 +141,7 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
 Domain FunctionMetadata::get_arg_domain( unsigned idx ) {
     if ( auto md = fn->getMetadata( tag ) )
         return ArgMetadata( md->getOperand( idx ).get() ).domain();
-    return Domain::Concrete;
+    return Domain::Concrete();
 }
 
 void FunctionMetadata::clear() {
@@ -196,8 +182,7 @@ std::vector< MDValue > abstract_metadata( llvm::Function *fn ) {
 }
 
 
-// TODO change string to Domain
-void add_abstract_metadata( llvm::Instruction *inst, std::string dom ) {
+void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     auto& ctx = inst->getContext();
     get_function( inst )->setMetadata( "lart.abstract.roots", empty_metadata_tuple( ctx ) );
     // TODO enable multiple domains per instruction

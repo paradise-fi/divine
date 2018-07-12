@@ -7,12 +7,12 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domains/common.h>
-#include <lart/abstract/domains/domains.h>
 #include <lart/abstract/domains/tristate.h>
 #include <lart/abstract/domains/zero.h>
 #include <lart/abstract/domains/sym.h>
+#include <lart/abstract/domain.h>
 
-#include <unordered_map>
+#include <map>
 
 namespace lart {
 namespace abstract {
@@ -38,7 +38,7 @@ struct DomainsHolder {
     void add_domain( std::shared_ptr< Common > dom );
 private:
     llvm::Module *module = nullptr;
-    std::unordered_map< Domain, Abstraction > domains;
+    std::map< Domain, Abstraction > domains;
 };
 
 template< typename Pass >

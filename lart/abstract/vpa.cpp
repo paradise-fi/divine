@@ -119,7 +119,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         seen_vals.emplace( dep, dom );
 
         if ( auto i = dyn_cast< Instruction >( dep ) ) {
-            add_abstract_metadata( i, DomainTable[ dom ] );
+            add_abstract_metadata( i, dom );
         }
 
         llvmcase( dep,
@@ -227,8 +227,7 @@ void VPA::run( Module &m ) {
         if ( auto md = fn.getMetadata( "lart.abstract.return" ) ) {
             auto &tup = cast< MDNode >( md )->getOperand( 0 );
             auto &mdn = cast< MDNode >( tup )->getOperand( 0 );
-            auto dom_name = cast< MDString >( mdn )->getString().str();
-            auto dom = DomainTable[ dom_name ];
+            auto dom = Domain( cast< MDString >( mdn )->getString().str() );
 
             for ( auto u : fn.users() )
                 if ( auto call = dyn_cast< CallInst >( u ) ) {

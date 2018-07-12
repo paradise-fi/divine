@@ -29,7 +29,7 @@ std::string llvm_name( Type *type ) {
 Domain get_domain( Type *type ) {
     auto st = cast< StructType >( type );
     auto name = st->getName().split('.').second.split('.').first;
-    return DomainTable[ name.str() ];
+    return Domain( name.str() );
 }
 
 bool is_intr( CallInst *intr, std::string name ) {
@@ -86,10 +86,10 @@ Module* get_module( llvm::Value *v ) {
 
 Type* abstract_type( Type *orig, Domain dom ) {
     std::string name;
-    if ( dom == Domain::Tristate )
-        name = "lart." + DomainTable[ dom ];
+    if ( dom == Domain::Tristate() )
+        name = "lart." + dom.name();
     else
-		name = "lart." + DomainTable[ dom ] + "." + llvm_name( orig );
+		name = "lart." + dom.name() + "." + llvm_name( orig );
 
     if ( auto aty = orig->getContext().pImpl->NamedStructTypes.lookup( name ) )
         return aty;
@@ -125,7 +125,7 @@ Instruction* get_unstash_placeholder( Value *val ) {
 }
 
 Instruction* get_placeholder_in_domain( Value *val, Domain dom ) {
-    auto name = "lart." + DomainTable[ dom ] + ".placeholder";
+    auto name = "lart." + dom.name() + ".placeholder";
     return get_placeholder_impl( val, name );
 }
 
@@ -138,7 +138,7 @@ bool has_placeholder( Value *val ) {
 }
 
 bool has_placeholder_in_domain( Value *val, Domain dom ) {
-    auto name = "lart." + DomainTable[ dom ] + ".placeholder";
+    auto name = "lart." + dom.name() + ".placeholder";
     return find_placeholder( val, name );
 }
 

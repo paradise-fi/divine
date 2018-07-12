@@ -8,7 +8,7 @@ namespace abstract {
 
 struct Zero final : Common {
     llvm::Value* process( llvm::Instruction *i, Values &args ) override;
-    Domain domain() const override { return Domain::Zero; }
+    Domain domain() const override { return Domain( "zero" ); }
     llvm::Value* lift( llvm::Value *v ) override;
     llvm::Type* type( llvm::Module *m, llvm::Type *type ) const override;
     llvm::Value* default_value( llvm::Type *type ) const override;

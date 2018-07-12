@@ -11,7 +11,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 
 #include <lart/abstract/metadata.h>
-#include <lart/abstract/domains/domains.h>
+#include <lart/abstract/domain.h>
 
 namespace lart {
 namespace abstract {
@@ -103,7 +103,7 @@ inline Domain get_domain( llvm::Instruction *inst ) {
 
 inline Domain get_domain( llvm::Value *val ) {
     if ( llvm::isa< llvm::Constant >( val ) )
-        return Domain::Concrete;
+        return Domain::Concrete();
     else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
         return get_domain( arg );
     else
@@ -111,13 +111,12 @@ inline Domain get_domain( llvm::Value *val ) {
 }
 
 inline bool is_concrete( Domain dom ) {
-    return dom == Domain::Concrete;
+    return dom == Domain::Concrete();
 }
 
 inline bool is_concrete( llvm::Value *val ) {
-    return get_domain( val ) == Domain::Concrete;
+    return is_concrete( get_domain( val ) );
 }
-
 
 } // namespace abstract
 } // namespace lart

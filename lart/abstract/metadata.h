@@ -8,7 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <iostream>
 
-#include <lart/abstract/domains/domains.h>
+#include <lart/abstract/domain.h>
 
 namespace lart {
 namespace abstract {
@@ -39,10 +39,9 @@ struct MDValue {
         : _md( llvm::LocalAsMetadata::get( v ) )
     {}
 
-    std::string name() const;
-    llvm::Value * value() const;
-    std::vector< Domain > domains() const;
-    Domain domain() const; // requires that value has single domain
+    std::string name() const noexcept;
+    llvm::Value * value() const noexcept;
+    Domain domain() const noexcept;
 private:
     llvm::ValueAsMetadata  *_md;
 };
@@ -81,7 +80,7 @@ llvm::Value* get_dual( llvm::Instruction *i );
 std::vector< MDValue > abstract_metadata( llvm::Module &m );
 std::vector< MDValue > abstract_metadata( llvm::Function *fn );
 
-void add_abstract_metadata( llvm::Instruction *inst, std::string dom );
+void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
 
 } // namespace abstract
 } // namespace lart

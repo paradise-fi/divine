@@ -23,11 +23,11 @@ using namespace llvm;
 namespace {
 
 bool has_dual_in_domain( Instruction *inst, Domain dom ) {
-    return inst->getMetadata( "lart.dual." + DomainTable[ dom ] );
+    return inst->getMetadata( "lart.dual." + dom.name() );
 }
 
 Instruction* get_dual_in_domain( Instruction *inst, Domain dom ) {
-    auto &dual = inst->getMetadata( "lart.dual." + DomainTable[ dom ] )->getOperand( 0 );
+    auto &dual = inst->getMetadata( "lart.dual." + dom.name() )->getOperand( 0 );
     auto md = cast< ValueAsMetadata >( dual.get() );
     return cast< Instruction >( md->getValue() );
 }
@@ -177,7 +177,7 @@ Values arguments( Instruction *inst, DomainsHolder &domains ) {
 }
 
 std::string name( Instruction *inst, Value *arg, Domain dom ) {
-    auto name = "lart." + DomainTable[ dom ] + ".placeholder.";
+    auto name = "lart." + dom.name() + ".placeholder.";
     if ( is_stash( inst ) )
         name += "stash.";
     if ( is_unstash( inst ) )
@@ -210,8 +210,8 @@ Function* get( Instruction *inst, DomainsHolder &domains ) {
 } // namespace placeholder
 
 namespace lifter {
-    inline std::string prefix( Instruction *i, Domain d ) {
-        return DomainTable[ d ] + "." + i->getOpcodeName();
+    inline std::string prefix( Instruction *inst, Domain dom ) {
+        return dom.name() + "." + inst->getOpcodeName();
     }
 
     using Predicate = CmpInst::Predicate;
@@ -228,17 +228,17 @@ namespace lifter {
         { Predicate::ICMP_SLE, "sle" }
     };
 
-    std::string name( Instruction *i, Domain d ) {
-        auto pref = prefix( i, d );
+    std::string name( Instruction *inst, Domain dom ) {
+        auto pref = prefix( inst, dom );
 
-        if ( auto icmp = dyn_cast< ICmpInst >( i ) )
+        if ( auto icmp = dyn_cast< ICmpInst >( inst ) )
             return pref + "_" + predicate.at( icmp->getPredicate() )
                         + "." + llvm_name( icmp->getOperand( 0 )->getType() );
 
-        if ( isa< BinaryOperator >( i ) )
-            return pref + "." + llvm_name( i->getType() );
+        if ( isa< BinaryOperator >( inst ) )
+            return pref + "." + llvm_name( inst->getType() );
 
-        if ( auto ci = dyn_cast< CastInst >( i ) )
+        if ( auto ci = dyn_cast< CastInst >( inst ) )
             return pref + "." + llvm_name( ci->getSrcTy() )
                         + "." + llvm_name( ci->getDestTy() );
 
@@ -256,7 +256,7 @@ struct BaseLifter {
     Domain domain() const {
         auto name = cast< Function >( taint->getOperand( 0 ) )->getName()
                    .split('.').second.split('.').first.str();
-        return DomainTable[ name ];
+        return Domain( name );
     }
 
     Function * function() const { return taint_function( taint ); }
@@ -401,7 +401,7 @@ struct ToBoolLifter : Lifter {
         irb.Insert( cast< Instruction >( tristate ) );
 
         Values lower = { tristate };
-        auto ret = domains.get( Domain::Tristate )->process( taint, lower );
+        auto ret = domains.get( Domain::Tristate() )->process( taint, lower );
         irb.Insert( cast< Instruction >( ret ) );
         irb.CreateRet( ret );
     }
@@ -638,7 +638,7 @@ struct ThawTaint : TaintBase< ThawTaint > {
     }
 
     std::string name() const {
-        return DomainTable[ domain() ] + ".thaw." + llvm_name( loaded()->getType() );
+        return domain().name() + ".thaw." + llvm_name( loaded()->getType() );
     }
 };
 
@@ -655,7 +655,7 @@ struct GetTaint : TaintBase< GetTaint > {
     }
 
     std::string name() const {
-        return DomainTable[ domain() ] + ".get." + llvm_name( concrete()->getType() );
+        return domain().name() + ".get." + llvm_name( concrete()->getType() );
     }
 };
 
@@ -669,7 +669,7 @@ struct ToBoolTaint : TaintBase< ToBoolTaint > {
     }
 
     std::string name() const {
-        return DomainTable[ domain() ] + ".to_i1";
+        return domain().name() + ".to_i1";
     }
 };
 
@@ -684,7 +684,7 @@ struct AssumeTaint : TaintBase< AssumeTaint > {
     }
 
     std::string name() const {
-        return DomainTable[ domain() ] + ".assume";
+        return domain().name() + ".assume";
     }
 };
 
@@ -800,7 +800,7 @@ void stash_return_value( CallInst *call, DomainsHolder &domains ) {
 
     auto dom = MDValue( call ).domain();
     auto i64 = IntegerType::get( call->getContext(), 64 );
-    ASSERT( has_placeholder( call, "lart." + DomainTable[ dom ] + ".placeholder.unstash" ) );
+    ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
     // TODO get value from stash placeholder
     if ( !has_placeholder_in_domain( val, dom ) ) {
         irb.CreateCall( sfn, { ConstantInt::get( i64, 0 ) } );
@@ -952,7 +952,7 @@ void FreezeStores::process( StoreInst *store ) {
     auto freeze = [&] () {
         auto flag = Type::getInt1Ty( store->getContext() );
         auto fty = FunctionType::get( ty, { flag, ty, flag, aty, flag, ptr->getType() }, false );
-        auto name = "lart." + DomainTable[ dom ] + ".freeze." + llvm_name( ty );
+        auto name = "lart." + dom.name() + ".freeze." + llvm_name( ty );
         return get_or_insert_function( m, fty, name );
     } ();
 

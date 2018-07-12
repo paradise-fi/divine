@@ -10,7 +10,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <set>
 #include <unordered_set>
 
-#include <lart/abstract/domains/domains.h>
+#include <lart/abstract/domain.h>
 
 namespace lart {
 namespace abstract {
