@@ -91,7 +91,7 @@ void boot( SetupBase sb ) {
     using Process = typename Configuration::Process;
     Setup< Configuration > s = sb;
     s.proc1 = new_object< Process >();
-    context->reschedule = []( void * ctx_ )
+    context->reschedule = []( BaseContext * ctx_ )
     {
         Configuration *ctx = static_cast< Configuration * >( ctx_ );
         if ( ctx->check_final() )
