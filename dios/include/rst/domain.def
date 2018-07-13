@@ -1,3 +1,7 @@
+#define STR_VALUE(arg) #arg
+
+#define NAMESPACE_JOIN( a, b ) STR_VALUE(a.b)
+
 #define CAT(a, ...) PRIMITIVE_CAT(a, __VA_ARGS__)
 #define PRIMITIVE_CAT(a, ...) a ## __VA_ARGS__
 
@@ -36,10 +40,25 @@
 #define ASSUME_PROT() \
     PROT( assume, DOMAIN_TYPE val, DOMAIN_TYPE constraint, bool assume )
 
+#define LART_DOMAIN_TAG( _tag ) \
+    __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.tag, _tag) )))
+
+#define LART_DOMAIN_KIND( _kind ) \
+    __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.kind, _kind) )))
+
+#define LART_DOMAIN( tag, kind )        \
+    LART_DOMAIN_TAG( tag )              \
+    LART_DOMAIN_KIND( kind )            \
+struct CAT( __lart_domain_, tag )       \
+{} CAT( __lart_domain_, tag );
+
+
 #include <rst/tristate.h>
 typedef abstract::Tristate __tristate;
 
 extern "C" {
+
+LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
 
 VAL_PROT( 8 )
 VAL_PROT( 16 )
