@@ -1,16 +1,34 @@
 // -*- C++ -*- (c) 2018 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
+DIVINE_UNRELAX_WARNINGS
+
+#include <brick-data>
+
 namespace lart::abstract {
 
-namespace detail {
+namespace {
     using DomainData = std::tuple< std::string >;
-}
 
-struct Domain : detail::DomainData {
-    using detail::DomainData::DomainData;
+    using brick::data::Bimap;
+} // anonymous namespace
 
-    std::string name() const noexcept { return std::get< std::string >( *this ); }
+struct Domain : DomainData {
+    using DomainData::DomainData;
+
+    inline std::string name() const noexcept { return std::get< std::string >( *this ); }
+
+    enum class Kind : uint8_t {
+        scalar,
+        pointer,
+        string,
+        custom
+    };
+
+    Kind kind( llvm::Module & ) const noexcept;
 
     static Domain Concrete() { return Domain( "concrete" ); }
     static Domain Tristate() { return Domain( "tristate" ); }
