@@ -1,8 +1,8 @@
 #pragma once
 #include <rst/lart.h>
 
-#define _SYM __attribute__((__annotate__("lart.abstract.sym")))
-#define _ZERO __attribute__((__annotate__("lart.abstract.zero")))
+#define _SYM __attribute__((__annotate__("lart.abstract.return.sym")))
+#define _ZERO __attribute__((__annotate__("lart.abstract.return.zero")))
 
 #ifdef __cplusplus
 extern "C" {
