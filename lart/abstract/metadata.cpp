@@ -52,6 +52,17 @@ void process( StringRef prefix, Module &m ) noexcept {
     }
 }
 
+template< typename Value >
+void annotation_to_metadata( StringRef anno_namespace, Module &m ) {
+    auto &ctx = m.getContext();
+    MDBuilder mdb( ctx );
+
+    brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
+        auto dn = mdb.domain_node( Domain( anno.name() ) );
+        val->setMetadata( anno_namespace, MDTuple::get( ctx, { dn } ) );
+    });
+}
+
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
 //
 // As result of the pass, each function with annotated values has
@@ -65,13 +76,9 @@ void CreateAbstractMetadata::run( Module &m ) {
     process( "llvm.var.annotation", m );
     process( "llvm.ptr.annotation", m );
 
-    auto &ctx = m.getContext();
-    MDBuilder mdb( ctx );
-
-    brick::llvm::enumerateFunctionAnnosInNs( "lart.abstract", m, [&] ( auto fn, auto anno ) {
-        auto dn = mdb.domain_node( Domain( anno.name() ) );
-        fn->setMetadata( "lart.abstract.return", MDTuple::get( ctx, { dn } ) );
-    });
+    annotation_to_metadata< Function >( "lart.abstract", m );
+    annotation_to_metadata< GlobalVariable >( "lart.abstract.domain.tag", m );
+    annotation_to_metadata< GlobalVariable >( "lart.abstract.domain.kind", m );
 }
 
 
