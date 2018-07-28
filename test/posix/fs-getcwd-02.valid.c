@@ -10,10 +10,10 @@
 
 int main()
 {
-	mkdir("hajdeby", 0777);
-	mkdir("fixa", 0777);
-	chdir("hajdeby");
-	mkdir("fixa", 0777);
+	assert( mkdir("hajdeby", 0777) == 0 );
+	assert( mkdir("fixa", 0777) == 0 );
+	assert( chdir("hajdeby") == 0 );
+	assert( mkdir("fixa", 0777) == 0 );
 	char workingDir[100];
 	char *res;
 
