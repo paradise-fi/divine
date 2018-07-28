@@ -75,6 +75,13 @@ namespace __dios::fs
         int symlinkat( const char *target, int dirfd, const char *linkpath );
         int symlink( const char *target, const char *linkpath );
 
+        int umask( Mode mask )
+        {
+            auto old = proc()._umask;
+            proc()._umask = mask & ACCESSPERMS;
+            return old.to_i();
+        }
+
         int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
         int rename( const char *oldpath, const char *newpath )
         {

@@ -64,13 +64,6 @@ struct Manager {
     void changeDirectory( __dios::String pathname );
     void changeDirectory( int dirfd );
 
-    Mode umask() const {
-        return _proc->_umask;
-    }
-    void umask( Mode mask ) {
-        _proc->_umask = ACCESSPERMS & mask;
-    }
-
     int socket( SocketType type, OFlags fl );
     std::pair< int, int > socketpair( SocketType type, OFlags fl );
     void bind( int sockfd, Socket::Address address );
@@ -173,6 +166,8 @@ struct VFS: Syscall, Next
     using Syscall::link;
     using Syscall::symlinkat;
     using Syscall::symlink;
+
+    using Syscall::umask;
 
     using Syscall::renameat;
     using Syscall::rename;
@@ -479,13 +474,6 @@ public: /* system call implementation */
     {
         __dios_trace_t( "statfs() is not implemented" );
         return -1;
-    }
-
-    int umask( Mode mask )
-    {
-        Mode result = instance().umask();
-        instance( ).umask( mask & ACCESSPERMS );
-        return result.to_i();
     }
 
     int socket( int domain, int t, int protocol )
