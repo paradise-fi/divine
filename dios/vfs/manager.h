@@ -53,8 +53,6 @@ struct Manager {
 
     std::pair< int, int > pipe();
 
-    void renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath );
-
     off_t lseek( int fd, off_t offset, Seek whence );
 
     Node currentDirectory() {
@@ -175,6 +173,9 @@ struct VFS: Syscall, Next
     using Syscall::link;
     using Syscall::symlinkat;
     using Syscall::symlink;
+
+    using Syscall::renameat;
+    using Syscall::rename;
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -816,27 +817,6 @@ public: /* system call implementation */
             *__dios_errno() = e.code();
             return -1;
         }
-    }
-
-    int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath )
-    {
-        instance( ).renameAt( newdirfd, newpath, olddirfd, oldpath );
-        return 0;
-    }
-
-    int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath )
-    {
-        try {
-            return _renameitemat(olddirfd, oldpath, newdirfd, newpath );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int rename( const char *oldpath, const char *newpath )
-    {
-        return renameat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
     }
 
     //char *getcwd(char *buf, size_t size);

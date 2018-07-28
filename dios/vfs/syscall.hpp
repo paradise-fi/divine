@@ -74,6 +74,13 @@ namespace __dios::fs
         int link( const char *target, const char *linkpath );
         int symlinkat( const char *target, int dirfd, const char *linkpath );
         int symlink( const char *target, const char *linkpath );
+
+        int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
+        int rename( const char *oldpath, const char *newpath )
+        {
+            return renameat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
+        }
+
     };
 
 }

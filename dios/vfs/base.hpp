@@ -194,7 +194,7 @@ namespace __dios::fs
             return { parent, name };
         }
 
-        bool link_node( Node dir, std::string_view path, Node ino )
+        bool link_node( Node dir, std::string_view path, Node ino, bool overwrite = false )
         {
             auto [ parent, name ] = lookup_dir( dir, path, true );
 
@@ -203,7 +203,7 @@ namespace __dios::fs
 
             if ( auto ndir = ino->as< Directory >() )
                 ndir->parent( parent );
-            return parent->as< Directory >()->create( name, ino );
+            return parent->as< Directory >()->create( name, ino, overwrite );
         }
 
         bool import( const _VM_Env *env, Map< ino_t, Node > & );

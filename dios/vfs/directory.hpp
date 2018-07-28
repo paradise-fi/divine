@@ -98,14 +98,14 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
     void parent( WeakNode p ) { _parent = p; }
     Node parent() const { return _parent.lock(); }
 
-    bool create( std::string_view name, Node inode )
+    bool create( std::string_view name, Node inode, bool overwrite )
     {
         if ( name.size() > FILE_NAME_LIMIT )
             return error( ENAMETOOLONG ), false;
         if ( special_name( name ) )
             return error( EEXIST ), false;
         inode->link();
-        return _insertItem( DirectoryEntry( String( name ), std::move( inode ) ) );
+        return _insertItem( DirectoryEntry( String( name ), std::move( inode ) ), overwrite );
     }
 
     Node find( std::string_view name )
@@ -210,20 +210,18 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
 
 private:
 
-    bool _insertItem( DirectoryEntry &&entry )
+    bool _insertItem( DirectoryEntry &&entry, bool force )
     {
         auto position = _findItem( entry.name() );
         if ( position == _items.end() )
-        {
             _items.emplace_back( std::move( entry ) );
-            return true;
-        }
-        if ( position->name() != entry.name() )
-        {
+        else if ( position->name() != entry.name() )
             _items.insert( position, std::move( entry ) );
-            return true;
-        }
-        return error( EEXIST ), false;
+        else if ( force )
+            *position = std::move( entry );
+        else
+            return error( EEXIST ), false;
+        return true;
     }
 
     Items::iterator _findItem( std::string_view name )

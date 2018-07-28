@@ -128,59 +128,6 @@ std::pair< int, int > Manager::pipe()
     return { fd1, fd2 };
 }
 
-void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath ) {
-    Node oldNode;
-    Directory *oldNodeDirectory;
-    Node newNode;
-    Directory *newNodeDirectory;
-
-    __dios::String oldName;
-    __dios::String newName;
-
-    {
-        REMEMBER_DIRECTORY( olddirfd, oldpath );
-
-        std::tie( oldNode, oldName ) = _findDirectoryOfFile( oldpath );
-        _checkGrants( oldNode, S_IWUSR );
-        oldNodeDirectory = oldNode->as< Directory >();
-    }
-    oldNode = oldNodeDirectory->find( oldName );
-    if ( !oldNode )
-        throw Error( ENOENT );
-
-    {
-        REMEMBER_DIRECTORY( newdirfd, newpath );
-
-        newNode = _findDirectoryItem( newpath, false, [&]( Node n ) {
-                if ( n == oldNode )
-                    throw Error( EINVAL );
-            } );
-    }
-
-    if ( !newNode ) {
-        std::tie( newNode, newName ) = _findDirectoryOfFile( newpath );
-        _checkGrants( newNode, S_IWUSR );
-
-        newNodeDirectory = newNode->as< Directory >();
-        if ( !newNodeDirectory->create( std::move( newName ), oldNode ) )
-            throw Error( *__dios_errno() );
-    }
-    else {
-        if ( oldNode->mode().is_dir() ) {
-            if ( !newNode->mode().is_dir() )
-                throw Error( ENOTDIR );
-            if ( newNode->size() > 2 )
-                throw Error( ENOTEMPTY );
-        }
-        else if ( newNode->mode().is_dir() )
-            throw Error( EISDIR );
-
-        newNodeDirectory = newNode->as< Directory >();
-        newNodeDirectory->replaceEntry( newName, oldNode );
-    }
-    oldNodeDirectory->forceRemove( oldName );
-}
-
 off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
     auto f = getFile( fd );
     if ( f->inode()->mode().is_fifo() )
@@ -316,7 +263,7 @@ void Manager::bind( int sockfd, Socket::Address address ) {
     if ( sd->address() )
         throw Error( EINVAL );
 
-    dir->create( std::move( name ), sd );
+    dir->create( std::move( name ), sd, false );
     sd->address( std::move( address ) );
 }
 

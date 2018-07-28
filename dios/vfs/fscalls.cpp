@@ -249,4 +249,42 @@ namespace __dios::fs
         return symlinkat( target, AT_FDCWD, linkpath );
     }
 
+    int Syscall::renameat( int odirfd, const char *opath, int ndirfd, const char *npath )
+    {
+        auto [ odir, oname ] = lookup_dir( get_dir( odirfd ), opath, true );
+        auto [ ndir, nname ] = lookup_dir( get_dir( ndirfd ), npath, true );
+
+        if ( !odir || !ndir )
+            return error( ENOENT ), -1;
+
+        auto oino = lookup( odir, oname, false ), nino = lookup( ndir, nname, false );
+        if ( !oino )
+            return error( ENOENT ), -1;
+
+        if ( !odir->mode().user_write() || !ndir->mode().user_write() )
+            return error( EACCES ), -1;
+
+        if ( oino == nino )
+            return error( EINVAL ), -1;
+
+        if ( nino )
+        {
+            if ( oino->mode().is_dir() && !nino->mode().is_dir() )
+                return error( ENOTDIR ), -1;
+
+            if ( !oino->mode().is_dir() && nino->mode().is_dir() )
+                return error( EISDIR ), -1;
+
+            if ( nino->mode().is_dir() && nino->size() > 2 )
+                return error( ENOTEMPTY ), -1;
+        }
+
+        if ( !odir->as< Directory >()->unlink( oname ) )
+            __builtin_trap();
+
+        if ( !link_node( ndir, nname, oino, true ) )
+            __builtin_trap();
+
+        return 0;
+    }
 }
