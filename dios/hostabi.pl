@@ -1,6 +1,6 @@
 use POSIX;
 my $cc = $ARGV[0];
-my $preproc = `$cc -E -include /usr/include/sys/syscall.h -Wp,-dM - < /dev/null`;
+my $preproc = `echo '#include <sys/syscall.h>' | $cc -E -Wp,-dM -`;
 my @sc;
 
 for ( split /\n/, $preproc )
