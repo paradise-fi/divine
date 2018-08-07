@@ -11,7 +11,7 @@ else
 fi
 export EXPORT
 
-function run()
+run()
 {
     if test -n "$EXPORT"; then echo "$@"; else divine "$@"; fi
 }
