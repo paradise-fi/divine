@@ -83,8 +83,10 @@ struct Unary
     LTLPtr subExp;
 
     std::string string() const;
-    int priority() const {
-        switch( op ) {
+    int priority() const
+    {
+        switch( op )
+        {
             case Neg : return 10;
             case Global : return 9;
             case Future : return 8;
@@ -106,8 +108,10 @@ struct Binary
 
     int untilIndex = -1;
     std::string string() const;
-    int priority() const {
-        switch( op ) {
+    int priority() const
+    {
+        switch( op )
+        {
             case And : return 6;
             case Or : return 5;
             case Equiv : return 4;
@@ -150,7 +154,8 @@ struct LTL : Exp, std::enable_shared_from_this< LTL >
         output << apply( [] ( auto e ) -> std::string { return e.string(); } ).value();
         return output.str();
     }
-    int priority() {
+    int priority()
+    {
         return apply( [] ( auto e ) -> int { return e.priority(); } ).value();
     }
     int countAndLabelU( int seed = 0 )
@@ -174,7 +179,8 @@ struct LTL : Exp, std::enable_shared_from_this< LTL >
     std::vector< size_t > indexesOfUParents()
     {
         std::vector< size_t > indexes;
-        for( LTLWeak p : UParents ) {
+        for( LTLWeak p : UParents )
+        {
             assert( !p.expired() && "no U parent should be expired");
             indexes.push_back( static_cast< size_t >( p.lock()->get<Binary>().untilIndex ) );
         }

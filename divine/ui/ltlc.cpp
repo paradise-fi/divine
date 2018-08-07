@@ -85,7 +85,7 @@ namespace ui {
                 << "        std::vector< size_t > reachable;" << std::endl
                 << "        switch( current ) {" << std::endl;
         for( size_t state = 0; state < tgba2.states.size(); ++state ) {
-            o   << "            case " << state << ":" << std::endl; //zjistime ktere stavy jsou dosazitelne (v zavislosti na propozicich), dame je do mnoziny, z niz na konci pomoci vm choose vybereme
+            o   << "            case " << state << ":" << std::endl;
             for( const auto& trans : tgba2.states.at( state ) ) { //all the succesors of state
                 if( trans.label.empty() )
                 o   << "                reachable.push_back( " << trans.target << " );" << std::endl;
