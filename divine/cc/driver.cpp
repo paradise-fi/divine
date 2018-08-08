@@ -63,14 +63,21 @@ std::unique_ptr< llvm::Module > Driver::compile( std::string path,
 std::unique_ptr< llvm::Module > Driver::compile( std::string path,
                                     FileType type, std::vector< std::string > flags )
 {
+    using FT = FileType;
+    using brick::string::dirname;
+
+    if ( type == FT::Unknown )
+        throw std::runtime_error( "cannot detect file format for file '"
+                                  + path + "', please supply -x option for it" );
+
     std::vector< std::string > allFlags;
     std::copy( commonFlags.begin(), commonFlags.end(), std::back_inserter( allFlags ) );
     std::copy( flags.begin(), flags.end(), std::back_inserter( allFlags ) );
     if ( opts.verbose )
         std::cerr << "compiling " << path << std::endl;
-    if ( path[0] == '/' )
-        compiler.allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
+
     compiler.allowIncludePath( "." ); /* clang 4.0 requires that cwd is always accessible */
+    compiler.allowIncludePath( dirname( path ) );
     auto mod = compiler.compile( path, type, allFlags );
 
     return mod;
@@ -79,9 +86,6 @@ std::unique_ptr< llvm::Module > Driver::compile( std::string path,
 void Driver::runCC( std::vector< std::string > rawCCOpts,
                      std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
 {
-    using FT = FileType;
-    auto po = parseOpts( rawCCOpts );
-
     for ( auto path : po.allowedPaths )
         compiler.allowIncludePath( path );
 
@@ -93,9 +97,6 @@ void Driver::runCC( std::vector< std::string > rawCCOpts,
     for ( auto &f : po.files )
         f.match(
             [&]( const File &f ) {
-                compiler.allowIncludePath( brick::string::dirname( f.name ) );
-                if ( f.type == FT::Unknown )
-                    throw std::runtime_error( "cannot detect file format for file '" + f.name + "', please supply -x option for it" );
                 auto m = moduleCallback( compile( f.name, f.type, po.opts ), f.name );
                 if ( m )
                     linker->link( std::move( m ) );
