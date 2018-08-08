@@ -40,10 +40,6 @@ FileType typeFromXOpt( std::string selector ) {
         return FileType::CPrepocessed;
     if ( selector == "ir" )
         return FileType::IR;
-    if ( selector == "obj" )
-        return FileType::Obj;
-    if ( selector == "archive" )
-        return FileType::Archive;
     return FileType::Unknown;
 }
 
@@ -69,11 +65,8 @@ std::vector< std::string > argsOfType( FileType t ) {
         case FileType::Asm:
             add( out, { "assembler-with-cpp" } );
             break;
-        case FileType::Obj:
-            add( out, { "obj" } );
-        case FileType::Archive:
-            add( out, { "archive" } );
         case FileType::Unknown:
+        default:
             UNREACHABLE( "Unknown file type" );
     }
     switch ( t ) {
