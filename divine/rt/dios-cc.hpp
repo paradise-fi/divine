@@ -25,8 +25,7 @@ struct DiosCC : cc::Driver
     void setup( Options opts ){ opts = opts; }
 
     void linkEssentials();
-    void runCC ( std::vector< std::string > rawCCOpts,
-                 std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback = nullptr ) override;
+    void build( cc::ParsedOpts po );
 };
 
 } // rt

@@ -83,27 +83,22 @@ std::unique_ptr< llvm::Module > Driver::compile( std::string path,
     return mod;
 }
 
-void Driver::runCC( std::vector< std::string > rawCCOpts,
-                     std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
+void Driver::build( ParsedOpts po )
 {
     for ( auto path : po.allowedPaths )
         compiler.allowIncludePath( path );
 
-    if ( !moduleCallback )
-        moduleCallback = []( ModulePtr &&m, std::string ) -> ModulePtr {
-            return std::move( m );
-        };
-
     for ( auto &f : po.files )
+    {
         f.match(
             [&]( const File &f ) {
-                auto m = moduleCallback( compile( f.name, f.type, po.opts ), f.name );
-                if ( m )
-                    linker->link( std::move( m ) );
+                if( auto m = compile( f.name, f.type, po.opts ) )
+                linker->link( std::move( m ) );
             },
             [&]( const Lib &l ) {
                 linkLib( l.name, po.libSearchPath );
             } );
+    }
 }
 
 std::unique_ptr< llvm::Module > Driver::takeLinked()

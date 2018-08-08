@@ -37,23 +37,10 @@ struct Driver
     void linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context );
     void linkEntireArchive( std::string arch );
 
-    ModulePtr compile( std::string path, std::vector< std::string > flags = { } );
+    ModulePtr compile( std::string path, std::vector< std::string > flags = {} );
     ModulePtr compile( std::string path, FileType type, std::vector< std::string > flags = {} );
 
-    // Run the compiler based on invocation arguments (including files). The
-    // arguments should not contain -o or linker arguments.
-    //
-    // The callback (if present) is invoked for every compiled module, with
-    // pointer to the module, and the name of the file from which the module
-    // was created.
-    //
-    // If the callback returns a module, this module is linked to the
-    // composite, which can be later obtained using takeLinked(). Otherwise, the
-    // module is skipped and the callback can transfer its ownership, or delete
-    // it. Normally, the implementation would handle non-liking modules and
-    // return without modification modules which should be linked.
-    virtual void runCC( std::vector< std::string > rawCCOpts,
-                std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback = nullptr );
+    virtual void build( ParsedOpts po );
 
     std::unique_ptr< llvm::Module > takeLinked();
     void writeToFile( std::string filename );

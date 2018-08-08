@@ -9,7 +9,7 @@ void DiosCC::linkEssentials()
 {
     using namespace std::literals;
 
-    for (auto arch : { "dios", "rst" } )
+    for ( auto arch : { "dios", "rst" } )
         linkEntireArchive( arch );
     // the _link_essentials modules are built from divine.link.always annotations
     for ( auto e : defaultDIVINELibs )
@@ -39,10 +39,9 @@ DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
                  } );
 }
 
-void DiosCC::runCC( std::vector< std::string > rawCCOpts,
-                        std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
+void DiosCC::build( ParsedOpts po )
 {
-    Driver::runCC( rawCCOpts, moduleCallback );
+    Driver::build( po );
     if ( linker->hasModule() ) {
         linkEssentials();
         linkLibs( defaultDIVINELibs );
