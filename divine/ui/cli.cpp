@@ -285,7 +285,7 @@ void WithBC::setup()
                 throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
             cc::Options ccopt;
             rt::DiosCC driver( ccopt );
-            driver.runCC( _ccopts_final );
+            driver.build( cc::parseOpts( _ccopts_final ) );
             _bc = std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
         }
     }
@@ -320,33 +320,37 @@ void WithBC::init()
 
 void Cc::run()
 {
+    using namespace cc;
     _driver.setup( _opts );
 
     for ( auto &x : _passThroughFlags )
         std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
 
-    std::string firstFile;
-    _driver.runCC( _flags, [&]( std::unique_ptr< llvm::Module > &&m, std::string name )
-            -> std::unique_ptr< llvm::Module >
-        {
-            bool first;
-            if ( (first = firstFile.empty()) )
-                firstFile = name;
-
-            if ( _opts.dont_link ) {
-                if ( !_output.empty() && !first )
-                    die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
-                _driver.writeToFile( _output.empty() ? outputName( name, "bc" ) : _output, m.get() );
-                return nullptr;
-            }
-            return std::move( m );
-        } );
-
-    if ( firstFile.empty() )
+    ParsedOpts po = parseOpts( _flags );
+    if ( !po.files.empty() )
+    {
+        if ( po.files[0].is< cc::File >() )
+            po.outputFile  = _output.empty() ? outputName( (po.files[0]).get< cc::File >().name, ".bc" ) : _output;
+    } else
         die( "CC: You must specify at least one source file." );
 
-    if ( !_opts.dont_link )
-        _driver.writeToFile( _output.empty() ? outputName( firstFile, "bc" ) : _output );
+    po.toObjectOnly = _opts.dont_link;
+    if ( po.toObjectOnly && po.files.size() > 1 && !_output.empty() )
+        die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
+
+    if ( _opts.dont_link )
+        for( auto file : po.files ) {
+            if ( !file.is< cc::File >() )
+                continue;
+            auto f = file.get< cc::File >();
+            auto m = _driver.compile( f.name, f.type, po.opts );
+            _driver.writeToFile( outputName( f.name, "bc" ), m.get() );
+    }
+    else
+    {
+        _driver.build( po );
+        _driver.writeToFile( _output.empty() ? outputName( po.outputFile, "bc" ) : _output );
+    }
 }
 
 void Info::run()
