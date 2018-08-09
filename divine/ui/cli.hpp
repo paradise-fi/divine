@@ -104,7 +104,7 @@ private:
 
 struct Help
 {
-    std::string _cmd = std::string("");
+    std::string _cmd;
 
     template< typename P >
     void run( P cmds )
