@@ -20,6 +20,7 @@
 #include <map>
 #include <cassert>
 #include <stack>
+#include <fstream>
 
 #ifndef LTL2C_BUCHI_H
 #define LTL2C_BUCHI_H
@@ -103,12 +104,14 @@ struct State
     size_t id;
     std::vector< Edge > edgesIn;
     std::set< LTLPtr, LTLComparator > next; //TODO use second comparator?
+    std::set< LTLPtr, LTLComparator > old;
 
-    State() = delete;
+    State() = default;
     State( const State& other )
         : id( other.id )
         , edgesIn( other.edgesIn )
         , next( other.next )
+        , old( other.old )
     {
     }
     State( Node* node );
@@ -201,13 +204,16 @@ struct Node
 
 struct TGBA1 {
     LTLPtr formula;
+    std::string name;
     std::vector< StatePtr > states;
     std::vector< std::vector< State::Edge > > acceptingSets;
     std::vector< LTLPtr > allLiterals;
     std::vector< LTLPtr > allTrivialLiterals; //those which do not have negation
 
+    TGBA1() = default;
     TGBA1( LTLPtr _formula, std::set< StatePtr, State::Comparator >& _states )
         : formula( _formula )
+        , name( _formula->string() )
     {
         std::copy( _states.begin(), _states.end(), std::back_inserter( states ) );
         std::set< LTLPtr, LTLComparator2 > allLiteralsSet;
@@ -394,6 +400,7 @@ static inline std::pair< bool, size_t > indexOfLiteral( LTLPtr literal, const st
 */
 struct TGBA2 {
     TGBA1 tgba1;
+    std::string name;
     LTLPtr formula;
     size_t nStates;
     size_t start = 0;
@@ -403,8 +410,10 @@ struct TGBA2 {
     std::vector< std::vector< Transition > > states;
     std::vector< std::optional< size_t > > accSCC; //each state is assigned id of optional acc. SCC
 
+    TGBA2() = default;
     TGBA2( TGBA1&& _tgba )
         : tgba1( _tgba )
+        , name( tgba1.formula->string() )
         , formula( tgba1.formula )
         , nStates( tgba1.states.size() )
         , nAcceptingSets( tgba1.acceptingSets.size() )
@@ -431,7 +440,7 @@ struct TGBA2 {
     friend std::ostream& operator<<( std::ostream & os, const TGBA2& tgba2 )
     {
         os << "HOA: v1" << std::endl;
-        os << "name: \"" << tgba2.formula->string() << "\"" << std::endl;
+        os << "name: \"" << tgba2.name << "\"" << std::endl;
         os << "States: " << tgba2.nStates << std::endl;
         os << "Start: 0" << std::endl;
         os << "AP: " << tgba2.allTrivialLiterals.size();
