@@ -34,12 +34,18 @@ namespace ui {
 
     void Ltlc::run()
     {
-        //TODO: Parser can fail when given formula without spaces between symbols (problem with preference)
-        //TODO:  Just write it to the description for users
-        LTLPtr parsedF = LTL::parse( _formula, true );
-
-        TGBA1 tgba1 = ltlToTGBA1( parsedF, _negate );
-        TGBA2 tgba2( std::move( tgba1 ) );
+        TGBA2 tgba2;
+        if( !_automaton.empty() )
+            tgba2 = HOAParser( _automaton );
+        else if( !_formula.empty() ) {
+            LTLPtr parsedF = LTL::parse( _formula, true );
+            TGBA1 tgba1 = ltlToTGBA1( parsedF, _negate );
+            tgba2 = std::move( tgba1 );
+        }
+        else {
+            std::cerr << "Verified property description missing: --automaton or --formula required" << std::endl;
+            return;
+        }
         std::cout << tgba2;
 
         std::stringstream o;

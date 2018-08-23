@@ -233,8 +233,9 @@ struct CLI : Interface
             .option( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s );
 
         auto ltlcopts = cmd::make_option_set< Ltlc >( v )
-            .option( "[--formula {string}|-f {string}]", &Ltlc::_formula, "formula LTL"s )
-            .option( "[--negate]", &Ltlc::_negate, "automaton of negation of f"s )
+            .option( "[--automaton {string}|-a {string}]", &Ltlc::_automaton, "text file containing TGBA in HOA format"s )
+            .option( "[--formula {string}|-f {string}]", &Ltlc::_formula, "LTL formula"s )
+            .option( "[--negate]", &Ltlc::_negate, "compute automaton of negation of given formula"s )
             .option( "[--output {string}|-o {string}]", &Ltlc::_output, "name of the file"s )
             .option( "[--system {string}|-s {string}]", &Ltlc::_system, "system to be verified"s );
 
