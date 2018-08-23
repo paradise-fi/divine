@@ -697,11 +697,9 @@ static inline TGBA2 HOAParser( const std::string& filename )
             tgba2.states.at( stateId ).push_back( transition );
         }
     }
-    //TODO: pro kazdy State: a hrany na radcich pod nim vytvorit vektor instanci tridy Transition a tento vektor pridat do vektoru states. Dale bude nutne naplnit tgba1, accSCC, allLiterals bez uziti formula. Promyslet poradi!
-
+    tgba2.tgba1 = TGBA1( tgba2 );
+    tgba2.computeAccSCC();
     std::cout << tgba2 << std::endl;
-    //TODO use TGBA1 constructor with parameter this (for the embedded TGBA1 in this)
-    //TODO implement the constructor
     return tgba2;
 }
 
