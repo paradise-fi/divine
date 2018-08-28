@@ -1,5 +1,6 @@
 /*
- * (c) 2016 Viktória Vozárová <>
+ * (c) 2016 Viktória Vozárová <vikiv@mail.muni.cz>
+ * (c) 2017 Tadeáš Kučera <kucerat@mail.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
