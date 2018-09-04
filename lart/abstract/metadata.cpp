@@ -36,6 +36,11 @@ decltype(auto) functions_with_prefix( Module &m, StringRef pref ) noexcept {
           .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
 }
 
+Domain domain( MDNode * node ) {
+    auto &dom = cast< MDNode >( node->getOperand( 0 ) )->getOperand( 0 );
+    return Domain( cast< MDString >( dom )->getString().str() );
+}
+
 } // anonymous namespace
 
 void process( StringRef prefix, Module &m ) noexcept {
@@ -79,6 +84,13 @@ void CreateAbstractMetadata::run( Module &m ) {
     annotation_to_metadata< Function >( "lart.abstract", m );
     annotation_to_metadata< GlobalVariable >( "lart.abstract.domain.tag", m );
     annotation_to_metadata< GlobalVariable >( "lart.abstract.domain.kind", m );
+
+    for ( auto & fn : m ) {
+        if ( auto md = fn.getMetadata( "lart.abstract" ) )
+            for ( auto user : fn.users() )
+                if ( auto call = dyn_cast< CallInst >( user ) )
+                    add_abstract_metadata( call, domain( md ) );
+    }
 }
 
 
@@ -116,8 +128,8 @@ Domain MDValue::domain() const noexcept {
     auto inst = cast< Instruction >( value() );
     if ( !inst->getMetadata( "lart.domains" ) )
         return Domain::Concrete();
-    auto &dom = cast< MDNode >( inst->getMetadata( "lart.domains" )->getOperand( 0 ) )->getOperand( 0 );
-    return Domain( cast< MDString >( dom )->getString().str() );
+    auto md = cast< MDNode >( inst->getMetadata( "lart.domains" ) );
+    return ::lart::abstract::domain( md );
 }
 
 Domain ArgMetadata::domain() const {
