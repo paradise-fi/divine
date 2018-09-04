@@ -43,7 +43,7 @@ Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
 void Stash::run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
         auto fn = get_called_function( call );
-        if ( !fn->getMetadata( "lart.abstract.return" ) )
+        if ( !fn->getMetadata( "lart.abstract" ) )
             if ( !stashed.count( fn ) )
                 arg_unstash( call );
         ret_unstash( call );
@@ -54,7 +54,7 @@ void Stash::run( Module &m ) {
 
     run_on_abstract_calls( [&] ( auto call ) {
         auto fn = get_called_function( call );
-        if ( !fn->getMetadata( "lart.abstract.return" ) )
+        if ( !fn->getMetadata( "lart.abstract" ) )
             if ( !stashed.count( fn ) )
                 ret_stash( call );
             arg_stash( call );
