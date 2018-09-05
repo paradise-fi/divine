@@ -50,7 +50,9 @@
     LART_DOMAIN_TAG( tag )              \
     LART_DOMAIN_KIND( kind )            \
 struct CAT( __lart_domain_, tag )       \
-{} CAT( __lart_domain_, tag );
+{                                       \
+    DOMAIN_TYPE type;                   \
+} CAT( __lart_domain_, tag );
 
 
 #include <rst/tristate.h>
