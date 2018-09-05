@@ -113,6 +113,13 @@ bool is_taintable( Value *v ) {
     return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( v );
 }
 
+ConstantInt* bitwidth( Value *v ) {
+    auto &ctx = v->getContext();
+    auto ty = v->getType();
+    auto bw = cast< IntegerType >( ty )->getBitWidth();
+    return ConstantInt::get( IntegerType::get( ctx, 32 ), bw );
+}
+
 namespace placeholder {
 
 bool is_placeholder_of_name( Instruction *inst, std::string name ) {
@@ -240,11 +247,99 @@ namespace lifter {
 
         UNREACHABLE( "Unhandled lifter." );
     }
+
 } // namespace taint
 
+struct LifterBuilder {
+
+    LifterBuilder( Domain dom )
+        : domain( dom )
+    {}
+
+    std::string intr_name( CallInst *call ) {
+        auto intr = call->getCalledFunction()->getName();
+        size_t pref = std::string( "__vm_test_taint." + domain.name() + "." ).length();
+        auto tag = intr.substr( pref ).split( '.' ).first;
+        return "__" + domain.name() + "_" + tag.str();
+    }
+
+    Value* process_thaw( CallInst *call, Values &args ) {
+        IRBuilder<> irb( call->getContext() );
+        auto name = "__" + domain.name() + "_thaw";
+        auto thaw = get_module( call )->getFunction( name );
+        return irb.CreateCall( thaw, args );
+    }
+
+    Value* process_freeze( CallInst *call, Values &args  ) {
+        IRBuilder<> irb( call->getContext() );
+        auto name = "__" + domain.name() + "_freeze";
+        auto freeze = get_module( call )->getFunction( name );
+        return irb.CreateCall( freeze, args );
+    }
+
+    Value* process_assume( CallInst *call, Values &args ) {
+        IRBuilder<> irb( call->getContext() );
+        auto fn = get_module( call )->getFunction( "__" + domain.name() + "_assume" );
+        return irb.CreateCall( fn, { args[ 1 ], args[ 1 ], args[ 2 ] } );
+    }
+
+    Value* process_tobool( CallInst *call, Values &args ) {
+        IRBuilder<> irb( call->getContext() );
+        if ( domain == Domain::Tristate() ) {
+            auto fn = get_module( call )->getFunction( "__tristate_lower" );
+            return irb.CreateCall( fn, args );
+        } else {
+            IRBuilder<> irb( call->getContext() );
+            auto name = "__" + domain.name() + "_bool_to_tristate";
+            auto fn = get_module( call )->getFunction( name );
+            return irb.CreateCall( fn, args );
+        }
+    }
+
+    ConstantInt* cast_bitwidth( Function *fn ) {
+        auto &ctx = fn->getContext();
+        auto bw = fn->getName().rsplit('.').second.drop_front().str();
+        return ConstantInt::get( IntegerType::get( ctx, 32 ), std::stoi( bw ) );
+    }
+
+    Value* process_cast( CallInst *call, Values &args ) {
+        IRBuilder<> irb( call->getContext() );
+        auto name = intr_name( call );
+        auto op = cast< Function >( call->getOperand( 0 ) );
+
+        auto fn = get_module( call )->getFunction( name );
+        return irb.CreateCall( fn, { args[ 0 ], cast_bitwidth( op ) } );
+    }
+
+    Value* process_op( CallInst *call, Values &args ) {
+        IRBuilder<> irb( call->getContext() );
+        auto name = intr_name( call );
+        auto fn = get_module( call )->getFunction( name );
+        return irb.CreateCall( fn, args );
+    }
+
+    Value * process( Value * intr, Values & args ) {
+        auto call = cast< CallInst >( intr );
+
+        if ( is_thaw( call ) )
+            return process_thaw( call, args );
+        if ( is_freeze( call ) )
+            return process_freeze( call, args );
+        if ( is_cast( call ) )
+            return process_cast( call, args );
+        if ( is_assume( call ) )
+            return process_assume( call, args );
+        if ( is_tobool( call ) )
+            return process_tobool( call, args );
+        return process_op( call, args );
+    }
+private:
+    Domain domain;
+};
+
 struct BaseLifter {
-    BaseLifter( DomainsHolder& domains, CallInst *taint )
-        : taint( taint ), domains( domains )
+    BaseLifter( CallInst *taint )
+        : taint( taint )
     {}
 
     virtual void syntetize() = 0;
@@ -258,7 +353,6 @@ struct BaseLifter {
     Function * function() const { return taint_function( taint ); }
 protected:
     CallInst *taint;
-    DomainsHolder &domains;
 };
 
 struct Lifter : BaseLifter {
@@ -298,6 +392,15 @@ struct Lifter : BaseLifter {
         Value *value;
     };
 
+    CallInst * lift( Value * val ) {
+        auto &ctx = val->getContext();
+        IRBuilder<> irb( ctx );
+        auto fn = get_module( val )->getFunction( "__" + domain().name()  + "_lift" );
+        auto val64bit = irb.CreateSExt( val, IntegerType::get( ctx, 64 ) );
+        auto argc = ConstantInt::get( IntegerType::get( ctx, 32 ), 1 );
+        return irb.CreateCall( fn, { bitwidth( val ), argc, val64bit } );
+    }
+
     ArgBlock generate_arg_block( ArgPair arg, size_t idx ) {
         auto fn = function();
         std::string pref = "arg." + std::to_string( idx );
@@ -307,13 +410,12 @@ struct Lifter : BaseLifter {
         auto lbb = make_bb( fn, pref + ".lifter" );
         IRBuilder<> irb( lbb );
 
-        auto l = domains.get( domain() )->lift( arg.concrete.value );
-        auto lift = cast< Instruction >( l );
-        for ( auto &op : lift->operands() )
+        auto lifted = lift( arg.concrete.value );
+        for ( auto &op : lifted->operands() )
             if ( auto i = dyn_cast< Instruction >( op ) )
                 if( !i->getParent() )
                     irb.Insert( i );
-        irb.Insert( lift );
+        irb.Insert( lifted );
 
         // merging block
         auto mbb = make_bb( fn, pref + ".merge" );
@@ -322,7 +424,7 @@ struct Lifter : BaseLifter {
         auto type = arg.abstract.value->getType();
         auto phi = irb.CreatePHI( type, 2 );
         phi->addIncoming( arg.abstract.value, ebb );
-        phi->addIncoming( lift, lbb );
+        phi->addIncoming( lifted, lbb );
 
         irb.SetInsertPoint( ebb );
         irb.CreateCondBr( arg.concrete.taint, mbb, lbb );
@@ -352,7 +454,7 @@ struct ThawLifter : BaseLifter {
         auto bitwidth = ConstantInt::get( i32, ty->getBitWidth() );
 
         Values args = { addr, bitwidth };
-        auto thaw = domains.get( domain() )->process( taint, args );
+        auto thaw = LifterBuilder( domain() ).process( taint, args );
         irb.Insert( cast< Instruction >( thaw ) );
         irb.CreateRet( thaw );
     }
@@ -372,7 +474,7 @@ struct FreezeLifter : BaseLifter {
         auto bcst = irb.CreateBitCast( &*addr, Type::getInt8PtrTy( addr->getContext() ) );
 
         Values args = { &*formula, &*bcst };
-        auto freeze = domains.get( domain() )->process( taint, args );
+        auto freeze = LifterBuilder( domain() ).process( taint, args );
         irb.Insert( cast< Instruction >( freeze ) );
 
         // TODO insert to symbolic domain
@@ -393,11 +495,11 @@ struct ToBoolLifter : Lifter {
         auto arg = *args().begin();
 
         Values args = { arg.abstract.value };
-        auto tristate = domains.get( domain() )->process( taint, args );
+        auto tristate = LifterBuilder( domain() ).process( taint, args );
         irb.Insert( cast< Instruction >( tristate ) );
 
         Values lower = { tristate };
-        auto ret = domains.get( Domain::Tristate() )->process( taint, lower );
+        auto ret = LifterBuilder( Domain::Tristate() ).process( taint, lower );
         irb.Insert( cast< Instruction >( ret ) );
         irb.CreateRet( ret );
     }
@@ -414,7 +516,7 @@ struct AssumeLifter : Lifter {
 
         IRBuilder<> irb( make_bb( function(), "entry" ) );
         Values args = { &*concrete, &*abstract, &*assumed };
-        auto call = domains.get( domain() )->process( taint, args );
+        auto call = LifterBuilder( domain() ).process( taint, args );
         irb.Insert( cast< Instruction >( call ) );
 
         // TODO fix return value for other domains
@@ -429,7 +531,7 @@ struct UnaryLifter : Lifter {
     void syntetize() final {
         IRBuilder<> irb( make_bb( function(), "entry" ) );
         Values vals = { args().begin()->abstract.value };
-        auto rep = domains.get( domain() )->process( taint, vals );
+        auto rep = LifterBuilder( domain() ).process( taint, vals );
         irb.Insert( cast< Instruction >( rep ) );
         irb.CreateRet( rep );
     }
@@ -463,7 +565,7 @@ struct BinaryLifter : Lifter {
         auto abstract_args = query::query( blocks )
             .map( [] ( auto & block ) { return block.value; } )
             .freeze();
-        auto call = domains.get( domain() )->process( taint, abstract_args );
+        auto call = LifterBuilder( domain() ).process( taint, abstract_args );
         irb.Insert( cast< Instruction >( call ) );
         irb.CreateRet( call );
     }
@@ -483,10 +585,6 @@ struct GetLifter : Lifter {
 };
 
 } // anonymous namespace
-
-void DomainsHolder::add_domain( std::shared_ptr< Common > dom ) {
-    domains[ dom->domain() ] = dom;
-}
 
 // --------------------------- Duplication ---------------------------
 
@@ -734,12 +832,12 @@ void stash_arguments( CallInst *call ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
         auto dom = fmd.get_arg_domain( idx );
-        auto meta = domain_metadata( *get_module( call ), dom );
 
         Value *abstract_arg = nullptr;
         if ( is_concrete( dom ) || !is_base_type( op ) ) { // TODO check kind instead of base
             continue; // skip concrete arguments
         } else if ( is_concrete( op ) && !is_concrete( dom ) ) {
+            auto meta = domain_metadata( *get_module( call ), dom );
             abstract_arg = meta.default_value();
         } else {
             auto ph = get_placeholder_in_domain( op, dom );
@@ -968,7 +1066,7 @@ void FreezeStores::process( StoreInst *store ) {
 
 // ---------------------------- Synthesize ---------------------------
 
-void Synthesize::_run( Module &m ) {
+void Synthesize::run( Module &m ) {
     for ( auto &t : taints( m ) )
         process( cast< CallInst >( t ) );
 }
@@ -979,19 +1077,19 @@ void Synthesize::process( CallInst *taint ) {
         return;
 
     if ( is_taint_of_type( fn, ".thaw" ) ) {
-        ThawLifter( domains, taint ).syntetize();
+        ThawLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".freeze" ) ) {
-        FreezeLifter( domains, taint ).syntetize();
+        FreezeLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".to_i1" ) ) {
-        ToBoolLifter( domains, taint ).syntetize();
+        ToBoolLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".assume" ) ) {
-        AssumeLifter( domains, taint ).syntetize();
+        AssumeLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".get" ) ) {
-        GetLifter( domains, taint ).syntetize();
+        GetLifter( taint ).syntetize();
     } else if ( taint_args_size( taint ) == 1 ) {
-        UnaryLifter( domains, taint ).syntetize();
+        UnaryLifter( taint ).syntetize();
     } else if ( taint_args_size( taint ) == 2 ) {
-        BinaryLifter( domains, taint ).syntetize();
+        BinaryLifter( taint ).syntetize();
     } else {
         UNREACHABLE( "Unknown taint function", taint );
     }
