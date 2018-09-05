@@ -533,8 +533,8 @@ Function* get_taint_fn( Module *m, Type *ret, Types args, std::string name ) {
 
 template< typename Derived >
 struct TaintBase : CRTP< Derived > {
-    TaintBase( Instruction *placeholder, DomainsHolder& domains )
-        : placeholder( placeholder ), domains( domains )
+    TaintBase( Instruction *placeholder )
+        : placeholder( placeholder )
     {}
 
     Instruction* generate() {
@@ -563,7 +563,8 @@ struct TaintBase : CRTP< Derived > {
             return concrete();
         if ( placeholder::is_assume( placeholder ) )
             return concrete();
-        return domains.get( domain() )->default_value( placeholder->getType() );
+        auto meta = domain_metadata( *get_module( placeholder ), domain() );
+        return meta.default_value();
     }
 
     Value* concrete() const {
@@ -592,7 +593,6 @@ struct TaintBase : CRTP< Derived > {
 
 protected:
     Instruction *placeholder;
-    DomainsHolder &domains;
 };
 
 struct Taint : TaintBase< Taint > {
@@ -608,8 +608,8 @@ struct Taint : TaintBase< Taint > {
             if ( has_placeholder_in_domain( op, dom ) ) {
                 res.push_back( get_placeholder_in_domain( op, dom ) );
             } else {
-                auto aty = domains.type( op->getType(), dom );
-                res.push_back( domains.get( dom )->default_value( aty ) );
+                auto meta = domain_metadata( *get_module( placeholder ), domain() );
+                res.push_back( meta.default_value() );
             }
         }
 
@@ -714,7 +714,7 @@ StructType* packed_type( CallInst *call ) {
     return StructType::get( call->getContext(), types_of( phs ) );
 }
 
-void stash_arguments( CallInst *call, DomainsHolder &domains ) {
+void stash_arguments( CallInst *call ) {
     auto fn = get_called_function( call );
     if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
@@ -734,17 +734,16 @@ void stash_arguments( CallInst *call, DomainsHolder &domains ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
         auto dom = fmd.get_arg_domain( idx );
+        auto meta = domain_metadata( *get_module( call ), dom );
 
         Value *abstract_arg = nullptr;
-        if ( is_concrete( dom ) || !is_base_type( op ) ) {
+        if ( is_concrete( dom ) || !is_base_type( op ) ) { // TODO check kind instead of base
             continue; // skip concrete arguments
         } else if ( is_concrete( op ) && !is_concrete( dom ) ) {
-            const auto &domain = domains.get( dom );
-            auto aty = domain->type( get_module( call ), op->getType() );
-            abstract_arg = domain->default_value( aty );
+            abstract_arg = meta.default_value();
         } else {
             auto ph = get_placeholder_in_domain( op, dom );
-            abstract_arg = GetTaint( ph, domains ).generate();
+            abstract_arg = GetTaint( ph ).generate();
         }
         val = irb.CreateInsertValue( val, abstract_arg, { pack_pos++ } );
     }
@@ -778,7 +777,7 @@ Values unstash_arguments( CallInst *call ) {
     return unpacked;
 }
 
-void stash_return_value( CallInst *call, DomainsHolder &domains ) {
+void stash_return_value( CallInst *call ) {
     auto fn = get_called_function( call );
     if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
@@ -802,7 +801,7 @@ void stash_return_value( CallInst *call, DomainsHolder &domains ) {
     if ( !has_placeholder_in_domain( val, dom ) ) {
         irb.CreateCall( sfn, { ConstantInt::get( i64, 0 ) } );
     } else {
-        auto get = GetTaint( get_placeholder_in_domain( val, dom ), domains ).generate();
+        auto get = GetTaint( get_placeholder_in_domain( val, dom ) ).generate();
         auto i = irb.CreatePtrToInt( get, i64 );
         irb.CreateCall( sfn, { i } );
     }
@@ -827,7 +826,7 @@ Value* unstash_return_value( CallInst *call ) {
 
 } // namespace bundle
 
-void Tainting::_run( Module &m ) {
+void Tainting::run( Module &m ) {
     std::unordered_map< Value*, Value* > substitutes;
     auto phs = placeholders( m );
 
@@ -839,13 +838,13 @@ void Tainting::_run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
         auto fn = get_called_function( call );
         if ( call->getNumArgOperands() ) {
-            bundle::stash_arguments( call, domains );
+            bundle::stash_arguments( call );
             if ( !processed.count( fn ) ) {
                 // stash default arguments for non-abstract calls
                 for ( auto concrete : fn->users() )
                     if ( auto cc = dyn_cast< CallInst >( concrete ) )
                         if ( !cc->getMetadata( "lart.domains" ) )
-                            bundle::stash_arguments( cc, domains );
+                            bundle::stash_arguments( cc );
 
                 auto vals = bundle::unstash_arguments( call );
 
@@ -857,7 +856,7 @@ void Tainting::_run( Module &m ) {
 
         if ( !call->getType()->isVoidTy() && !call->getType()->isPointerTy() ) {
             if ( !processed.count( fn ) ) {
-                bundle::stash_return_value( call, domains );
+                bundle::stash_return_value( call );
             }
 
             auto dom = MDValue( call ).domain();
@@ -901,15 +900,15 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
 Value* Tainting::process( Instruction *placeholder ) {
     auto op = placeholder->getOperand( 0 );
     if ( isa< LoadInst >( op ) )
-        return ThawTaint( placeholder, domains ).generate();
+        return ThawTaint( placeholder ).generate();
     if ( isa< PHINode >( op ) )
         return create_in_domain_phi( placeholder );
     if ( is_taintable( op ) )
-        return Taint( placeholder, domains ).generate();
+        return Taint( placeholder ).generate();
     if ( placeholder::is_to_i1( placeholder ) )
-        return ToBoolTaint( placeholder, domains ).generate();
+        return ToBoolTaint( placeholder ).generate();
     if ( placeholder::is_assume( placeholder ) )
-        return AssumeTaint( placeholder, domains ).generate();
+        return AssumeTaint( placeholder ).generate();
     UNREACHABLE( "Unknown placeholder", placeholder );
 }
 

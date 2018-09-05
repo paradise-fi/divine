@@ -60,9 +60,8 @@ struct InDomainDuplicate {
 };
 
 
-struct Tainting : PassWithDomains< Tainting > {
-    void _run( llvm::Module& );
-private:
+struct Tainting {
+    void run( llvm::Module& );
     llvm::Value* process( llvm::Instruction* );
 };
 
