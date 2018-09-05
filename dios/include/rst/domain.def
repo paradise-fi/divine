@@ -40,6 +40,12 @@
 #define ASSUME_PROT() \
     PROT( assume, DOMAIN_TYPE val, DOMAIN_TYPE constraint, bool assume )
 
+#define FREEZE_PROT() \
+    RET_PROT( void, freeze, DOMAIN_TYPE val, void * addr )
+
+#define THAW_PROT() \
+    PROT( thaw, void * addr, int bw )
+
 #define LART_DOMAIN_TAG( _tag ) \
     __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.tag, _tag) )))
 
@@ -102,5 +108,8 @@ ICMP_PROT( sgt )
 ICMP_PROT( sge )
 ICMP_PROT( slt )
 ICMP_PROT( sle )
+
+FREEZE_PROT()
+THAW_PROT()
 
 }
