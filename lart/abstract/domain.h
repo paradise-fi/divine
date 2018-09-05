@@ -61,4 +61,6 @@ auto global_variable_walker( llvm::Module &m, Yield yield ) {
     brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( abstract_domain_tag, m, yield );
 }
 
+DomainMetadata domain_metadata( llvm::Module &m, Domain dom );
+
 } // namespace lart::abstract

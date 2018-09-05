@@ -56,7 +56,6 @@ protected:
 
 struct InDomainDuplicate {
     void run( llvm::Module& );
-private:
     void process( llvm::Instruction* );
 };
 
@@ -71,8 +70,6 @@ private:
 struct FreezeStores {
     void run( llvm::Module& );
     void process( llvm::StoreInst* );
-private:
-    DomainsHolder domains;
 };
 
 

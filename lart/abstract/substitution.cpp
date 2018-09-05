@@ -113,7 +113,6 @@ bool is_taintable( Value *v ) {
     return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( v );
 }
 
-
 namespace placeholder {
 
 bool is_placeholder_of_name( Instruction *inst, std::string name ) {
@@ -145,18 +144,6 @@ Domain domain( Instruction *inst ) {
         return get_domain( inst->getOperand( 0 )->getType() );
     else
         return get_domain( ty );
-}
-
-DomainMetadata domain_metadata( Module &m, Domain dom ) {
-    std::optional< DomainMetadata > meta;
-
-    global_variable_walker( m, [&] ( auto glob, auto anno ) {
-        if ( anno.name() == dom.name() )
-            meta = DomainMetadata( glob );
-    } );
-
-    ASSERT( meta && "Domain specification was not found." );
-    return meta.value();
 }
 
 Type* return_type( Instruction *inst ) {
@@ -929,8 +916,6 @@ Value* Tainting::process( Instruction *placeholder ) {
 // ---------------------------- FreezeStores ---------------------------
 
 void FreezeStores::run( Module &m ) {
-    domains.init( &m );
-
     auto stores = query::query( m )
         .filter( [] ( auto &fn ) { return fn.getMetadata( "lart.abstract.roots" ); } )
         .flatten().flatten()
@@ -950,27 +935,26 @@ void FreezeStores::run( Module &m ) {
 }
 
 void FreezeStores::process( StoreInst *store ) {
-    auto dom = MDValue( store ).domain();
     auto m = get_module( store );
+    auto meta = domain_metadata( *m, MDValue( store ).domain() );
+    auto dom = meta.domain();
 
     auto val = store->getValueOperand();
     auto ptr = store->getPointerOperand();
 
     auto ty = store->getValueOperand()->getType();
-    auto aty = domains.type( ty, dom );
+    auto aty = meta.base_type();
 
-    auto freeze = [&] () {
-        auto flag = Type::getInt1Ty( store->getContext() );
-        auto fty = FunctionType::get( ty, { flag, ty, flag, aty, flag, ptr->getType() }, false );
-        auto name = "lart." + dom.name() + ".freeze." + llvm_name( ty );
-        return get_or_insert_function( m, fty, name );
-    } ();
+    auto flag = Type::getInt1Ty( store->getContext() );
+    auto freeze_fty = FunctionType::get( ty, { flag, ty, flag, aty, flag, ptr->getType() }, false );
+    auto name = "lart." + dom.name() + ".freeze." + llvm_name( ty );
+    auto freeze = get_or_insert_function( m, freeze_fty, name );
 
     Value *abstract;
     if ( has_placeholder_in_domain( val, dom ) )
         abstract = get_placeholder_in_domain( val, dom );
     else
-        abstract = domains.get( dom )->default_value( aty );
+        abstract = meta.default_value();
 
     Values args = { freeze, val, val, abstract, ptr };
 

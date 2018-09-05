@@ -3,7 +3,9 @@
 #include <optional>
 #include <iostream>
 
-using namespace lart::abstract;
+namespace lart {
+namespace abstract {
+
 using namespace llvm;
 
 static const Bimap< DomainKind, std::string > KindTable = {
@@ -34,4 +36,20 @@ llvm::Value * DomainMetadata::default_value() const {
     ASSERT( type->isPointerTy() && "Non pointer base types are not yet supported." );
     return ConstantPointerNull::get( cast< PointerType >( type ) );
 }
+
+DomainMetadata domain_metadata( Module &m, Domain dom ) {
+    std::optional< DomainMetadata > meta;
+
+    global_variable_walker( m, [&] ( auto glob, auto anno ) {
+        if ( anno.name() == dom.name() )
+            meta = DomainMetadata( glob );
+    } );
+
+    ASSERT( meta && "Domain specification was not found." );
+    return meta.value();
+}
+
+} // namespace abstract
+} // namespace lart
+
 
