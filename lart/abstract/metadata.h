@@ -82,5 +82,6 @@ std::vector< MDValue > abstract_metadata( llvm::Function *fn );
 
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
 
+
 } // namespace abstract
 } // namespace lart

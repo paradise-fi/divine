@@ -1,42 +1,31 @@
 #include <lart/abstract/domain.h>
 
-#include <brick-llvm>
 #include <optional>
 #include <iostream>
 
 using namespace lart::abstract;
 using namespace llvm;
 
-static const Bimap< Domain::Kind, std::string > KindTable = {
-     { Domain::Kind::scalar , "scalar"  }
-    ,{ Domain::Kind::pointer, "pointer" }
-    ,{ Domain::Kind::string , "string"  }
-    ,{ Domain::Kind::custom , "custom"  }
+static const Bimap< DomainKind, std::string > KindTable = {
+     { DomainKind::scalar , "scalar"  }
+    ,{ DomainKind::pointer, "pointer" }
+    ,{ DomainKind::string , "string"  }
+    ,{ DomainKind::custom , "custom"  }
 };
 
-template< typename Yield >
-auto global_variable_walker( Module &m, Yield yield ) {
-    brick::llvm::enumerateAnnosInNs< GlobalVariable >( "lart.abstract.domain.tag", m, yield );
+Domain DomainMetadata::domain() const {
+    auto meta = glob->getMetadata( abstract_domain_tag );
+    auto &tag = cast< MDNode >( meta->getOperand( 0 ) )->getOperand( 0 );
+    return Domain( cast< MDString >( tag )->getString().str() );
 }
 
-StringRef get_kind_name( GlobalVariable *val ) {
-    auto meta = val->getMetadata( "lart.abstract.domain.kind" );
+DomainKind DomainMetadata::kind() const {
+    auto meta = glob->getMetadata( abstract_domain_kind );
     auto data = cast< MDTuple >( meta->getOperand( 0 ) );
-    return cast< MDString >( data->getOperand( 0 ) )->getString();
+    return KindTable[ cast< MDString >( data->getOperand( 0 ) )->getString().str() ];
 }
 
-Domain::Kind Domain::kind( Module &m ) const noexcept {
-    const auto &tag = name();
-
-    std::optional< Domain::Kind > result;
-
-    global_variable_walker( m, [tag, &result] ( auto val, auto anno ) {
-        if ( anno.name() == tag )
-            result = KindTable[ get_kind_name( val ) ];
-    });
-
-    ASSERT( result.has_value() && "Domain specification was not found." );
-    return result.value();
+Type * DomainMetadata::base_type() const {
+    return glob->getType()->getPointerElementType()->getStructElementType( base_type_offset );
 }
-
 

@@ -81,12 +81,12 @@ void CreateAbstractMetadata::run( Module &m ) {
     process( "llvm.var.annotation", m );
     process( "llvm.ptr.annotation", m );
 
-    annotation_to_metadata< Function >( "lart.abstract", m );
-    annotation_to_metadata< GlobalVariable >( "lart.abstract.domain.tag", m );
-    annotation_to_metadata< GlobalVariable >( "lart.abstract.domain.kind", m );
+    annotation_to_metadata< Function >( abstract_tag, m );
+    annotation_to_metadata< GlobalVariable >( abstract_domain_tag, m );
+    annotation_to_metadata< GlobalVariable >( abstract_domain_kind, m );
 
     for ( auto & fn : m ) {
-        if ( auto md = fn.getMetadata( "lart.abstract" ) )
+        if ( auto md = fn.getMetadata( abstract_tag ) )
             for ( auto user : fn.users() )
                 if ( auto call = dyn_cast< CallInst >( user ) )
                     add_abstract_metadata( call, domain( md ) );
