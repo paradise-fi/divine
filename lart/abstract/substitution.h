@@ -54,8 +54,8 @@ protected:
 };
 
 
-struct InDomainDuplicate : PassWithDomains< InDomainDuplicate > {
-    void _run( llvm::Module& );
+struct InDomainDuplicate {
+    void run( llvm::Module& );
 private:
     void process( llvm::Instruction* );
 };

@@ -29,3 +29,9 @@ Type * DomainMetadata::base_type() const {
     return glob->getType()->getPointerElementType()->getStructElementType( base_type_offset );
 }
 
+llvm::Value * DomainMetadata::default_value() const {
+    auto type = base_type();
+    ASSERT( type->isPointerTy() && "Non pointer base types are not yet supported." );
+    return ConstantPointerNull::get( cast< PointerType >( type ) );
+}
+

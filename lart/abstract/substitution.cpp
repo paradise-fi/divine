@@ -147,23 +147,33 @@ Domain domain( Instruction *inst ) {
         return get_domain( ty );
 }
 
-Type* return_type( Instruction *inst, DomainsHolder &domains ) {
+DomainMetadata domain_metadata( Module &m, Domain dom ) {
+    std::optional< DomainMetadata > meta;
+
+    global_variable_walker( m, [&] ( auto glob, auto anno ) {
+        if ( anno.name() == dom.name() )
+            meta = DomainMetadata( glob );
+    } );
+
+    ASSERT( meta && "Domain specification was not found." );
+    return meta.value();
+}
+
+Type* return_type( Instruction *inst ) {
     auto ty = inst->getType();
     if ( ty->isVoidTy() )
         return ty;
 
     auto dom = get_domain( ty );
-    return domains.type( base_type( ty ), dom );
+    return domain_metadata( *inst->getModule(), dom ).base_type();
 }
 
-
-Values arguments( Instruction *inst, DomainsHolder &domains ) {
+Values arguments( Instruction *inst ) {
     if ( is_stash( inst ) ) {
         auto dom = domain( inst );
-        if ( auto uv = dyn_cast< UndefValue >( inst->getOperand( 0 ) ) ) {
-            auto aty = domains.type( uv->getType(), dom );
-            return { domains.get( dom )->default_value( aty ) };
-        }
+        auto meta = domain_metadata( *inst->getModule(), dom );
+        if ( auto uv = dyn_cast< UndefValue >( inst->getOperand( 0 ) ) )
+            return { meta.default_value() };
         auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
         return { get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom ) };
     } else if ( is_to_i1( inst ) ) {
@@ -196,13 +206,12 @@ std::string name( Instruction *inst, Value *arg, Domain dom ) {
     return name;
 }
 
-Function* get( Instruction *inst, DomainsHolder &domains ) {
-    auto rty = inst->getType()->isStructTy() ? return_type( inst, domains ) : inst->getType();
-    auto args = arguments( inst, domains );
+Function* get( Instruction *inst ) {
+    auto rty = inst->getType()->isStructTy() ? return_type( inst ) : inst->getType();
+    auto args = arguments( inst );
 
     auto dom = domain( inst );
     auto phname = name( inst, args[ 0 ], dom );
-
     auto fty = FunctionType::get( rty, types_of( args ), false );
    	return get_or_insert_function( get_module( inst ), fty, phname );
 }
@@ -494,7 +503,7 @@ void DomainsHolder::add_domain( std::shared_ptr< Common > dom ) {
 
 // --------------------------- Duplication ---------------------------
 
-void InDomainDuplicate::_run( Module &m ) {
+void InDomainDuplicate::run( Module &m ) {
     auto phs = placeholders( m );
 
     auto assumes = query::query( phs ).filter( placeholder::is_assume );
@@ -518,8 +527,9 @@ void InDomainDuplicate::_run( Module &m ) {
 
 void InDomainDuplicate::process( Instruction *inst ) {
     IRBuilder<> irb( inst );
-    auto ph = placeholder::get( inst, domains );
-    auto args = placeholder::arguments( inst, domains );
+
+    auto ph = placeholder::get( inst );
+    auto args = placeholder::arguments( inst );
     auto call = irb.CreateCall( ph, args );
 
     if ( placeholder::is_to_i1( call ) )
@@ -719,7 +729,7 @@ StructType* packed_type( CallInst *call ) {
 
 void stash_arguments( CallInst *call, DomainsHolder &domains ) {
     auto fn = get_called_function( call );
-    if ( fn->getMetadata( "lart.abstract.return" ) )
+    if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
 
     auto pack_ty = packed_type( call );
@@ -762,7 +772,7 @@ void stash_arguments( CallInst *call, DomainsHolder &domains ) {
 
 Values unstash_arguments( CallInst *call ) {
     auto fn = get_called_function( call );
-    if ( fn->getMetadata( "lart.abstract.return" ) )
+    if ( fn->getMetadata( abstract_tag ) )
         return {}; // skip internal lart functions
 
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
@@ -783,7 +793,7 @@ Values unstash_arguments( CallInst *call ) {
 
 void stash_return_value( CallInst *call, DomainsHolder &domains ) {
     auto fn = get_called_function( call );
-    if ( fn->getMetadata( "lart.abstract.return" ) )
+    if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
 
     auto rets = query::query( *fn ).flatten()

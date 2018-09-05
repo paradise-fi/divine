@@ -48,6 +48,7 @@ struct DomainMetadata {
     Domain domain() const;
     DomainKind kind() const;
     llvm::Type * base_type() const;
+    llvm::Value * default_value() const;
 
 private:
     static constexpr size_t base_type_offset = 0;

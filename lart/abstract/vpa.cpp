@@ -224,7 +224,8 @@ void VPA::run( Module &m ) {
     }
 
     for ( auto &fn : m ) {
-        if ( auto md = fn.getMetadata( "lart.abstract.return" ) ) {
+        if ( auto md = fn.getMetadata( abstract_tag ) ) {
+            // TODO use domain interface
             auto &tup = cast< MDNode >( md )->getOperand( 0 );
             auto &mdn = cast< MDNode >( tup )->getOperand( 0 );
             auto dom = Domain( cast< MDString >( mdn )->getString().str() );
