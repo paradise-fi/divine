@@ -135,13 +135,13 @@ __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool ass
     return value;
 }
 
-void __sym_freeze_formula( Formula *f, void *addr ) {
+void __sym_freeze( Formula *f, void *addr ) {
     struct { uint32_t off, obj; } ptr;
     memcpy( &ptr, &f, sizeof( Formula* ) );
     __vm_poke( addr, _VM_ML_User, ptr.obj );
 }
 
-Formula* __sym_thaw_formula( void *addr, int bw ) {
+Formula* __sym_thaw( void *addr, int bw ) {
     struct { uint32_t off, obj; } ptr;
 
     ptr.off = 0;

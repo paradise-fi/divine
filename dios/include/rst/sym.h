@@ -12,8 +12,5 @@ typedef lart::sym::Formula __sym_formula;
 #undef DOMAIN_KIND
 
 extern "C" {
-void __sym_formula_dump();
-
-void __sym_freeze_formula( __sym_formula *f, void *addr );
-__sym_formula* __sym_thaw_formula( void *addr, int bw );
+    void __sym_formula_dump();
 }
