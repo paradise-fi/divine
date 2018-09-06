@@ -184,14 +184,15 @@ std::string name( Instruction *inst, Value *arg, Domain dom ) {
     auto name = "lart." + dom.name() + ".placeholder.";
     if ( is_stash( inst ) )
         name += "stash.";
-    if ( is_unstash( inst ) )
+    else if ( is_unstash( inst ) )
         name += "unstash.";
-    if ( is_to_i1( inst ) )
+    else if ( is_to_i1( inst ) )
         name += "to_i1.";
-    if ( is_assume( inst ) ) {
+    else if ( is_assume( inst ) ) {
         name += "assume";
-    } else {
-        // add suffix for all except assume placeholder
+    }
+
+    if ( !is_assume( inst ) ) {
         auto ty = inst->getType();
         name += ty->isVoidTy() || !ty->isStructTy()
               ? llvm_name( base_type( arg->getType() ) )
@@ -205,7 +206,7 @@ Function* get( Instruction *inst ) {
     auto args = arguments( inst );
 
     auto dom = domain( inst );
-    auto phname = name( inst, args[ 0 ], dom );
+    auto phname = name( inst, inst->getOperand( 0 ), dom );
     auto fty = FunctionType::get( rty, types_of( args ), false );
    	return get_or_insert_function( get_module( inst ), fty, phname );
 }
