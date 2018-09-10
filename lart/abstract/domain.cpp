@@ -33,8 +33,11 @@ Type * DomainMetadata::base_type() const {
 
 llvm::Value * DomainMetadata::default_value() const {
     auto type = base_type();
-    ASSERT( type->isPointerTy() && "Non pointer base types are not yet supported." );
-    return ConstantPointerNull::get( cast< PointerType >( type ) );
+    if ( type->isPointerTy() )
+        return ConstantPointerNull::get( cast< PointerType >( type ) );
+    if ( type->isIntegerTy() )
+        return ConstantInt::get( type, 0 );
+    UNREACHABLE( "Unsupported base type." );
 }
 
 DomainMetadata domain_metadata( Module &m, Domain dom ) {
