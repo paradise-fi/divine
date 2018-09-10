@@ -913,9 +913,16 @@ Value* unstash_return_value( CallInst *call ) {
     auto unstash = irb.CreateCall( unfn );
 
     auto dom = MDValue( call ).domain();
-    auto ph = get_placeholder_in_domain( call, dom );
 
-    auto ret = irb.CreateIntToPtr( unstash, ph->getType() );
+    auto meta = domain_metadata( *get_module( call ), dom );
+    auto base = meta.base_type();
+
+    Value * ret = nullptr;
+    if ( base->isPointerTy() ) {
+        ret = irb.CreateIntToPtr( unstash, base );
+    } else if ( base->isIntegerTy() ) {
+        ret = irb.CreateIntCast( unstash, base, false );
+    }
 
     call->removeFromParent();
     call->insertBefore( unstash );
