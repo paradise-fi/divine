@@ -808,7 +808,7 @@ static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mute
     __dios_task gtid = __dios_this_task();
     _PThread &thr = getThread( gtid );
 
-    if ( mutex == NULL || !mutex->__initialized ) {
+    if ( mutex == NULL ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
@@ -884,14 +884,6 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
     if ( mutex == NULL )
         return EINVAL;
 
-    {
-        __dios::DetectFault f( _VM_F_Control );
-        if ( mutex->__initialized && !f.triggered() ) {
-            __dios_trace_t( "WARN: re-initializing mutex" );
-            return EBUSY;
-        }
-    }
-
     /* bitfield initializers can be only used as such, that is, initializers,
      * *not* as a right-hand side of an assignment to uninitialised memory */
     memset( mutex, 0, sizeof( pthread_mutex_t ) );
@@ -919,7 +911,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
     _PThread &thr = getThread();
 
-    if ( mutex == NULL || !mutex->__initialized ) {
+    if ( mutex == NULL ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
@@ -1147,7 +1139,7 @@ template < typename CondOrBarrier > int _cond_adjust_count( CondOrBarrier *cond,
 
 template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier *cond ) noexcept {
 
-    if ( cond == NULL || !cond->__initialized )
+    if ( cond == NULL )
         return EINVAL;
 
     // make sure that no thread is waiting on this condition
@@ -1174,15 +1166,7 @@ int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO:
     if ( cond == NULL )
         return EINVAL;
 
-    {
-        __dios::DetectFault f( _VM_F_Control );
-        if ( cond->__initialized && !f.triggered() ) {
-            __dios_trace_t( "WARN: re-initializing conditional variable" );
-            return EBUSY;
-        }
-    }
-
-    *cond = ( pthread_cond_t ){.__mutex = NULL, .__initialized = 1, .__counter = 0 };
+    *cond = ( pthread_cond_t )PTHREAD_COND_INITIALIZER;
     return 0;
 }
 
@@ -1204,7 +1188,7 @@ static inline bool _eqSleepTrait( _PThread &t, pthread_barrier_t *bar ) noexcept
 
 template< bool broadcast, typename CondOrBarrier >
 static int _cond_signal( CondOrBarrier *cond ) noexcept {
-    if ( cond == NULL || !cond->__initialized )
+    if ( cond == NULL )
         return EINVAL;
 
     int count = cond->__counter;
@@ -1259,10 +1243,10 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) noexcept {
 
     _PThread &thread = getThread();
 
-    if ( cond == NULL || !cond->__initialized )
+    if ( cond == NULL )
         return EINVAL;
 
-    if ( mutex == NULL || !mutex->__initialized ) {
+    if ( mutex == NULL ) {
         return EINVAL;
     }
 
@@ -1491,7 +1475,7 @@ static bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) noexcept {
 static int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) noexcept {
     _PThread &thr = getThread();
 
-    if ( rwlock == nullptr || !rwlock->__initialized ) {
+    if ( rwlock == nullptr ) {
         return EINVAL; // rwlock does not refer to an initialized rwlock object
     }
 
@@ -1549,17 +1533,7 @@ int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
     if ( rwlock == NULL )
         return EINVAL;
 
-
-    {
-        __dios::DetectFault f( _VM_F_Control );
-        if ( rwlock->__initialized && !f.triggered() ) {
-            __dios_trace_t( "WARN: re-initializing rwlock" );
-            return EBUSY;
-        }
-    }
-
     rwlock->__processShared = attr && bool( *attr & _RWLOCK_ATTR_SHARING_MASK );
-    rwlock->__initialized = true;
     rwlock->__wrowner = nullptr;
     rwlock->__rlocks = nullptr;
     return 0;
@@ -1590,7 +1564,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) noexcept {
 
     _PThread &thr = getThread();
 
-    if ( rwlock == NULL || !rwlock->__initialized ) {
+    if ( rwlock == NULL ) {
         return EINVAL; // rwlock does not refer to an initialized rwlock object
     }
 
@@ -1707,24 +1681,16 @@ int pthread_barrier_init(
     if ( count == 0 || barrier == NULL )
         return EINVAL;
 
-    {
-        __dios::DetectFault f( _VM_F_Control );
-        if ( barrier->__initialized && !f.triggered() ) {
-            __dios_trace_t( "WARN: re-initializing barrier" );
-            return EBUSY;
-        }
-    }
-
     // Set the number of threads that must call pthread_barrier_wait() before
     // any of them successfully return from the call.
-    *barrier = ( pthread_barrier_t ){ .__nthreads = ushort( count ), .__initialized = 1, .__counter = 0 };
+    *barrier = ( pthread_barrier_t ){ .__nthreads = ushort( count ), .__counter = 0 };
     return 0;
 }
 
 int pthread_barrier_wait( pthread_barrier_t *barrier ) noexcept {
     __dios::FencedInterruptMask mask;
 
-    if ( barrier == NULL || !barrier->__initialized )
+    if ( barrier == NULL )
         return EINVAL;
 
     int ret = 0;

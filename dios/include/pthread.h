@@ -48,7 +48,7 @@ enum {
 
 #define PTHREAD_MUTEX_INITIALIZER      { .__owner = NULL, .__bitflags = 0x1 }
 
-#define PTHREAD_COND_INITIALIZER       { .__mutex = NULL, .__counter = 0, .__initialized = 1 }
+#define PTHREAD_COND_INITIALIZER       { .__mutex = NULL, .__counter = 0 }
 
 #define PTHREAD_ONCE_INIT              { .__mtx = { .__bitflags = 0x3 } }
 
@@ -63,7 +63,7 @@ enum {
 #define PTHREAD_PROCESS_PRIVATE        0
 #define PTHREAD_PROCESS_SHARED         1
 
-#define PTHREAD_RWLOCK_INITIALIZER     { .__wrowner = 0, .__initialized = 1, .__processShared = 0, .__rlocks = NULL }
+#define PTHREAD_RWLOCK_INITIALIZER     { .__wrowner = 0, .__processShared = 0, .__rlocks = NULL }
 #define PTHREAD_RWLOCK_WRITER_NONRECURSIVE_INITIALIZER_NP   PTHREAD_RWLOCK_INITIALIZER
 
 #define PTHREAD_BARRIER_SERIAL_THREAD  1
@@ -94,7 +94,6 @@ typedef struct {
     struct _PThread *__owner;
     union {
         struct {
-            unsigned short __initialized:1;
             unsigned short __once:1;
             unsigned short __type:2;
             unsigned int __lockCounter:28; // change _mutex_adjust_count if bitfield size changes
@@ -112,7 +111,6 @@ typedef pthread_mutex_t pthread_spinlock_t;
 typedef struct {
     pthread_mutex_t *__mutex;
     unsigned short __counter;
-    unsigned short __initialized;
 } pthread_cond_t;
 
 typedef int pthread_condattr_t;
@@ -131,19 +129,12 @@ typedef struct {
     _ReadLock* __rlocks;
     // not bitfield, struct is padded anyway
     char __processShared;
-    char __initialized;
 } pthread_rwlock_t;
 typedef int pthread_rwlockattr_t;
 
 typedef struct {
     unsigned short __counter;
-    union {
-        struct {
-            unsigned short __initialized:1;
-            unsigned short __nthreads:15;
-        };
-        short __bitflags;
-    };
+    unsigned short __nthreads;
 } pthread_barrier_t;
 
 typedef int pthread_barrierattr_t;
