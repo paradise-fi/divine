@@ -6,7 +6,8 @@ typedef lart::sym::Formula __sym_formula;
 #define DOMAIN_NAME sym
 #define DOMAIN_KIND scalar
 #define DOMAIN_TYPE __sym_formula*
-    #include <rst/domain.def>
+    #include <rst/integer-domain.def>
+    #include <rst/float-domain.def>
 #undef DOMAIN_NAME
 #undef DOMAIN_TYPE
 #undef DOMAIN_KIND

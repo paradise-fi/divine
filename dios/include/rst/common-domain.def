@@ -28,12 +28,6 @@
 #define CAST_PROT( name ) \
     PROT( name, DOMAIN_TYPE, int bitwidth )
 
-#define ICMP_PROT( name ) \
-    PROT( icmp_ ## name, DOMAIN_TYPE, DOMAIN_TYPE )
-
-#define LIFT_PROT() \
-    PROT( lift, int bitwidth, int argc, ... )
-
 #define VAL_PROT( bitwidth ) \
     RET_PROT( uint ##bitwidth ## _t, val ## _i ## bitwidth, )
 
@@ -60,54 +54,15 @@ struct CAT( __lart_domain_, tag )       \
     DOMAIN_TYPE type;                   \
 } CAT( __lart_domain_, tag );
 
-
 #include <rst/tristate.h>
 typedef abstract::Tristate __tristate;
 
+
 extern "C" {
-
-LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
-
-VAL_PROT( 8 )
-VAL_PROT( 16 )
-VAL_PROT( 32 )
-VAL_PROT( 64 )
-
-LIFT_PROT()
 
 RET_PROT( __tristate , bool_to_tristate, DOMAIN_TYPE )
 
 ASSUME_PROT()
-
-BINARY_PROT( add )
-BINARY_PROT( sub )
-BINARY_PROT( mul )
-BINARY_PROT( sdiv )
-BINARY_PROT( udiv )
-BINARY_PROT( urem )
-BINARY_PROT( srem )
-BINARY_PROT( and )
-BINARY_PROT( or )
-BINARY_PROT( xor )
-BINARY_PROT( shl )
-BINARY_PROT( lshr )
-BINARY_PROT( ashr )
-
-CAST_PROT( trunc )
-CAST_PROT( zext )
-CAST_PROT( sext )
-UNARY_PROT( bitcast )
-
-ICMP_PROT( eq )
-ICMP_PROT( ne )
-ICMP_PROT( ugt )
-ICMP_PROT( uge )
-ICMP_PROT( ult )
-ICMP_PROT( ule )
-ICMP_PROT( sgt )
-ICMP_PROT( sge )
-ICMP_PROT( slt )
-ICMP_PROT( sle )
 
 FREEZE_PROT()
 THAW_PROT()

@@ -17,7 +17,7 @@ typedef abstract::star::Unit __unit;
 #define DOMAIN_NAME star
 #define DOMAIN_KIND scalar
 #define DOMAIN_TYPE __unit
-    #include <rst/domain.def>
+    #include <rst/integer-domain.def>
 #undef DOMAIN_NAME
 #undef DOMAIN_TYPE
 #undef DOMAIN_KIND

@@ -16,7 +16,7 @@ typedef abstract::Zero __zero;
 #define DOMAIN_NAME zero
 #define DOMAIN_KIND scalar
 #define DOMAIN_TYPE __zero
-    #include <rst/domain.def>
+    #include <rst/integer-domain.def>
 #undef DOMAIN_NAME
 #undef DOMAIN_TYPE
 #undef DOMAIN_KIND
