@@ -6,10 +6,10 @@
 pthread_barrier_t barrier;
 
 int main() {
-    int r = pthread_barrier_init( &barrier, NULL, 2 );
+    int r = pthread_barrier_init( &barrier, NULL, 1 );
     assert( r == 0 );
-    r = pthread_barrier_init( &barrier, NULL, 2 );
-    assert( r == EBUSY );
+    r = pthread_barrier_wait( &barrier );
+    assert( r == PTHREAD_BARRIER_SERIAL_THREAD );
     r = pthread_barrier_destroy( &barrier );
     assert( r == 0 );
     r = pthread_barrier_init( &barrier, NULL, 2 );
