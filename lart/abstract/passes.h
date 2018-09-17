@@ -55,7 +55,8 @@ namespace abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_pass_wrapper( CreateAbstractMetadata()
+            auto passes = make_pass_wrapper( AnnotateInternalFunctions()
+                                           , CreateAbstractMetadata()
                                            , VPA()
                                            , Duplicator()
                                            , Stash()

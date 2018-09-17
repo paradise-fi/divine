@@ -24,8 +24,15 @@ private:
     llvm::LLVMContext &ctx;
 };
 
+struct FunctionTag {
+    static constexpr char ignore[] = "lart.abstract.ignore";
+};
 
 struct CreateAbstractMetadata {
+    void run( llvm::Module &m );
+};
+
+struct AnnotateInternalFunctions {
     void run( llvm::Module &m );
 };
 

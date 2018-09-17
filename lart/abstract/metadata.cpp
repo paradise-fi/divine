@@ -105,6 +105,22 @@ inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
     return MDTuple::get( ctx, doms );
 }
 
+void AnnotateInternalFunctions::run( llvm::Module &m ) {
+    auto empty_metadata = empty_metadata_tuple( m.getContext() );
+    auto internal = { "malloc", "free" };
+
+    auto is_internal = [&] ( const auto & fn ) {
+        return query::query( internal ).any( [&] ( const auto name ) {
+            return name == fn.getName();
+        } );
+    };
+
+    for ( auto & fn : m ) {
+        if ( is_internal( fn ) ) {
+            fn.setMetadata( FunctionTag::ignore, empty_metadata );
+        }
+    }
+}
 
 MDNode* MDBuilder::domain_node( Domain dom ) {
     auto name = MDString::get( ctx, dom.name() );

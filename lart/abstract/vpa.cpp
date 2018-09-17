@@ -118,6 +118,10 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     for ( auto & dep : lart::util::reverse( deps ) ) {
         seen_vals.emplace( dep, dom );
 
+        if ( auto call = dyn_cast< CallInst >( dep ) )
+            if ( call->getCalledFunction()->getMetadata( FunctionTag::ignore ) )
+                continue;
+
         if ( auto i = dyn_cast< Instruction >( dep ) ) {
             add_abstract_metadata( i, dom );
         }
@@ -192,8 +196,9 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
             auto op = call->getOperand( arg->getArgNo() );
             ASSERT( seen_funs.count( get_function( arg ) ) );
-            for ( auto src : AbstractionSources( op ).get() )
+            for ( auto src : AbstractionSources( op ).get() ) {
                 tasks.push_back( [=]{ propagate_value( src, dom ); } );
+            }
         }
     }
 }
