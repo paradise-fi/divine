@@ -446,9 +446,41 @@ stp::ASTNode STP::binary( sym::Binary bin, Node a, Node b )
 
         switch ( bin.op )
         {
-            case sym::Op::And:  return _stp.CreateNode( stp::AND, a,  b );
-            case sym::Op::Or:   return _stp.CreateNode( stp::OR, a, b );
-            case sym::Op::EQ:   return _stp.CreateNode( stp::IFF, a, b );
+            case sym::Op::Xor:
+            case sym::Op::Sub:
+                return _stp.CreateNode( stp::XOR , a, b );
+            case sym::Op::Add:
+                return _stp.CreateNode( stp::AND, a,  b );
+            case sym::Op::UDiv:
+            case sym::Op::SDiv:
+                return a; // ?
+            case sym::Op::URem:
+            case sym::Op::SRem:
+            case sym::Op::Shl:
+            case sym::Op::LShr:
+                return constant( false );
+            case sym::Op::AShr:
+                return a;
+            case sym::Op::Or:
+                return _stp.CreateNode( stp::OR, a, b );
+            case sym::Op::And:
+                return _stp.CreateNode( stp::AND, a,  b );
+            case sym::Op::UGE:
+            case sym::Op::SLE:
+                return _stp.CreateNode( stp::OR, a, _stp.CreateNode( stp::NOT, b ) );
+            case sym::Op::ULE:
+            case sym::Op::SGE:
+                return _stp.CreateNode( stp::OR, b, _stp.CreateNode( stp::NOT, a ) );
+            case sym::Op::UGT:
+            case sym::Op::SLT:
+                return _stp.CreateNode( stp::AND, a, _stp.CreateNode( stp::NOT, b ) );
+            case sym::Op::ULT:
+            case sym::Op::SGT:
+                return _stp.CreateNode( stp::AND, b, _stp.CreateNode( stp::NOT, a ) );
+            case sym::Op::EQ:
+                return _stp.CreateNode( stp::IFF, a, b );
+            case sym::Op::NE:
+                return _stp.CreateNode( stp::NAND, a, b );
             default:
                 UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
         }
