@@ -53,18 +53,18 @@ struct RecursiveCalls {
                 .freeze();
 
             for ( auto call : calls ) {
-                auto called_fn = get_called_function( call );
-                if ( called_fn->empty() )
-                    continue;
-                if ( called_fn == fn )
-                    return true;
-                if ( !seen.count( called_fn ) ) {
-                    seen.insert( called_fn );
-                    if ( called_fn->getMetadata( "lart.abstract.roots" ) )
-                        stack.push_back( called_fn );
+                for ( auto called_fn : get_potentialy_called_functions( call ) ) {
+                    if ( called_fn->empty() )
+                        continue;
+                    if ( called_fn == fn )
+                        return true;
+                    if ( !seen.count( called_fn ) ) {
+                        seen.insert( called_fn );
+                        if ( called_fn->getMetadata( "lart.abstract.roots" ) )
+                            stack.push_back( called_fn );
+                    }
                 }
             }
-
         }
 
         return false;

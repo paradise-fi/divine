@@ -168,13 +168,26 @@ bool is_base_type( Type *type ) {
     return type->isIntegerTy();
 }
 
-Function* get_called_function( llvm::CallInst* call ) {
+
+std::vector< Function* > get_potentialy_called_functions( llvm::CallInst* call ) {
     auto val = call->getCalledValue();
     if ( auto fn = dyn_cast< Function >( val ) )
-        return fn;
+        return { fn };
     else if ( auto ce = dyn_cast< ConstantExpr >( val ) )
-        return cast< Function >( ce->getOperand( 0 ) );
-    UNREACHABLE( "Unknown callable value" );
+        return { cast< Function >( ce->stripPointerCasts() ) };
+
+    auto m = get_module( call );
+    auto type = call->getCalledValue()->getType();
+
+    return query::query( m->functions() )
+        .filter( [type] ( auto & fn ) { return fn.getType() == type; } )
+        .filter( [] ( auto & fn ) { return fn.hasAddressTaken(); } )
+        .map( query::refToPtr )
+        .freeze();
+}
+
+llvm::Function * get_some_called_function( llvm::CallInst * call ) {
+    return get_potentialy_called_functions( call ).front();
 }
 
 } // namespace abstract

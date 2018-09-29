@@ -42,28 +42,32 @@ Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
 
 void Stash::run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
-        auto fn = get_called_function( call );
-        if ( !fn->getMetadata( "lart.abstract" ) )
-            if ( !stashed.count( fn ) )
-                arg_unstash( call );
+        run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+            if ( !fn->getMetadata( "lart.abstract" ) )
+                if ( !stashed.count( fn ) )
+                    arg_unstash( call, fn );
+            stashed.insert( fn );
+        } );
+
         ret_unstash( call );
-        stashed.insert( fn );
     }, m );
 
     stashed.clear();
 
     run_on_abstract_calls( [&] ( auto call ) {
-        auto fn = get_called_function( call );
-        if ( !fn->getMetadata( "lart.abstract" ) )
-            if ( !stashed.count( fn ) )
-                ret_stash( call );
-            arg_stash( call );
-        stashed.insert( fn );
+        arg_stash( call );
+
+        run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+            if ( !fn->getMetadata( "lart.abstract" ) )
+                if ( !stashed.count( fn ) )
+                    ret_stash( call, fn );
+            stashed.insert( fn );
+        } );
     }, m );
+
 }
 
-void Stash::arg_unstash( CallInst *call ) {
-    auto fn = get_called_function( call );
+void Stash::arg_unstash( CallInst *call, Function * fn ) {
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
     FunctionMetadata fmd{ fn };
@@ -85,17 +89,14 @@ void Stash::arg_unstash( CallInst *call ) {
 }
 
 void Stash::arg_stash( CallInst *call ) {
-    auto fn = get_called_function( call );
     IRBuilder<> irb( call );
-
-    FunctionMetadata fmd{ fn };
 
     for ( unsigned idx = 0; idx < call->getNumArgOperands(); ++idx ) {
         auto op = call->getArgOperand( idx );
         auto ty = op->getType();
 
         if ( !ty->isPointerTy() && !isa< Constant >( op ) ) { // TODO is_base_type
-            auto dom = fmd.get_arg_domain( idx );
+            auto dom = get_domain( op );
 
             if ( !is_concrete( dom ) && !is_concrete( op ) ) {
                 auto aty = abstract_type( ty, dom );
@@ -113,8 +114,7 @@ void Stash::arg_stash( CallInst *call ) {
     }
 }
 
-void Stash::ret_stash( CallInst *call ) {
-    auto fn = get_called_function( call );
+void Stash::ret_stash( CallInst *call, Function * fn ) {
     auto retty = fn->getReturnType();
     if ( retty->isVoidTy() || retty->isPointerTy() )
         return; // no return value to stash
@@ -147,8 +147,7 @@ void Stash::ret_stash( CallInst *call ) {
 }
 
 void Stash::ret_unstash( CallInst *call ) {
-    auto fn = get_called_function( call );
-    auto retty = fn->getReturnType();
+    auto retty = call->getType();
     if ( retty->isVoidTy() || retty->isPointerTy() )
         return; // no return value to stash
 

@@ -90,6 +90,10 @@ private:
     std::set< Value * > seen_phi_nodes;
 };
 
+bool is_indirect_call( CallInst * call ) {
+    return call->getCalledFunction() == nullptr;
+}
+
 } // anonymous namespace
 
 void VPA::preprocess( Function * fn ) {
@@ -118,9 +122,14 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     for ( auto & dep : lart::util::reverse( deps ) ) {
         seen_vals.emplace( dep, dom );
 
-        if ( auto call = dyn_cast< CallInst >( dep ) )
-            if ( call->getCalledFunction()->getMetadata( FunctionTag::ignore ) )
+        auto ignore_function = [] ( Function * fn ) {
+            return fn->getMetadata( FunctionTag::ignore );
+        };
+        if ( auto call = dyn_cast< CallInst >( dep ) ) {
+            auto fns = get_potentialy_called_functions( call );
+            if ( query::query( fns ).any( ignore_function ) )
                 continue;
+        }
 
         if ( auto i = dyn_cast< Instruction >( dep ) ) {
             add_abstract_metadata( i, dom );
@@ -154,30 +163,31 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 }
 
 void VPA::propagate( CallInst *call, Domain dom ) {
-    auto fn = get_called_function( call );
-    FunctionMetadata fmd{ fn };
+    run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+        FunctionMetadata fmd{ fn };
 
-    if ( !fn->isIntrinsic() ) {
-        preprocess( fn );
-        for ( auto &op : call->arg_operands() ) {
-            auto val = op.get();
-            if ( seen_vals.count( { val, dom } ) ) {
-                unsigned idx = op.getOperandNo();
-                auto arg = get_argument( fn, idx );
-                tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                if ( arg->getType()->isIntegerTy() ) // TODO domain basetype
-                    fmd.set_arg_domain( idx, dom );
-                entry_args.emplace( arg, dom );
+        if ( !fn->isIntrinsic() ) {
+            preprocess( fn );
+            for ( auto &op : call->arg_operands() ) {
+                auto val = op.get();
+                if ( seen_vals.count( { val, dom } ) ) {
+                    unsigned idx = op.getOperandNo();
+                    auto arg = get_argument( fn, idx );
+                    tasks.push_back( [=]{ propagate_value( arg, dom ); } );
+                    if ( is_base_type( arg->getType() ) ) // TODO domain basetype
+                        fmd.set_arg_domain( idx, dom );
+                    entry_args.emplace( arg, dom );
+                }
             }
         }
-    }
-    else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
-        if ( seen_vals.count( { mem->getSource(), dom } ) ) {
-            ASSERT( seen_funs.count( call->getParent()->getParent() ) );
-            for ( auto src : AbstractionSources( mem->getDest() ).get() )
-                tasks.push_back( [=]{ propagate_value( src, dom ); } );
+        else if ( auto mem = dyn_cast< MemTransferInst >( call ) ) {
+            if ( seen_vals.count( { mem->getSource(), dom } ) ) {
+                ASSERT( seen_funs.count( call->getParent()->getParent() ) );
+                for ( auto src : AbstractionSources( mem->getDest() ).get() )
+                    tasks.push_back( [=]{ propagate_value( src, dom ); } );
+            }
         }
-    }
+    } );
 }
 
 void VPA::propagate( ReturnInst *ret, Domain dom ) {
