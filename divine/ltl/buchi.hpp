@@ -103,8 +103,7 @@ struct State
 
     size_t id;
     std::vector< Edge > edgesIn;
-    std::set< LTLPtr, LTLComparator > next; //TODO use second comparator?
-    std::set< LTLPtr, LTLComparator > old;
+    std::set< LTLPtr, LTLComparator > next;
 
     State() = default;
     State( size_t _id )
@@ -115,7 +114,6 @@ struct State
         : id( other.id )
         , edgesIn( other.edgesIn )
         , next( other.next )
-        , old( other.old )
     {
     }
     State( Node* node );
