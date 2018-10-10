@@ -261,7 +261,7 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
     if ( toBeDone.empty() )
     {
         StatePtr twin = findTwin( states );
-        if ( twin ) // nodeR is node with same old and next as currentNode
+        if ( twin )
         {
             twin->merge( this );
             return states;
@@ -272,7 +272,7 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
 
             NodePtr newNode = std::make_shared< Node >();
             newNode->incomingList.insert( id );
-            newNode->toBeDone.insert( next.begin(), next.end() ); //toBeDone
+            newNode->toBeDone.insert( next.begin(), next.end() );
             return newNode->expand( states );
         }
     }
@@ -285,7 +285,7 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
         auto indexes = nf->indexesOfUParents();
         for( auto i : indexes )
             rightOfUntils[i] = true;
-        if( contradics( nf ) ) // node contains contradictions, it gets discarded
+        if( contradics( nf ) ) // contradicting node gets discarded
             return states;
         if( isRedundant( nf ) ) // formula is redundant so no need to process it
             return expand( states );
@@ -317,7 +317,7 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
             assert( false && "formula should have been in normal form!");
             return states;
         } else { //next formula is literal
-            if( nf->is< Boolean >() && !nf->get< Boolean >().value ) {
+            if( nf->is< Boolean >() && !nf->get< Boolean >().value ) { //nf=False
                 return states;
             }
             old.insert( nf );

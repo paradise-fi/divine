@@ -56,8 +56,8 @@ struct State
     };
     struct Edge
     {
-        std::set< size_t > sources; // ids of states
-        std::set< LTLPtr, LTLComparator2 > label; // set of literals that must hold if choosing this edge
+        std::set< size_t > sources;
+        std::set< LTLPtr, LTLComparator2 > label;
         std::vector< bool > accepting; // says to which accepting sets this edge belongs
         Edge( const std::set< size_t >& _sources, const std::set< LTLPtr, LTLComparator2 >& _label, const std::vector< bool >& _accepting )
             : sources( _sources )
@@ -146,9 +146,9 @@ struct Node
 
     size_t id; // unique identifier for the node
     std::set< size_t > incomingList; // the list of predecessor nodes
-    std::set< LTLPtr, LTLComparator > old; // LITERAL subformulas of Phi already processed - must hold in corresponding state
+    std::set< LTLPtr, LTLComparator > old; // atoms that must hold in corresponding state
     std::set< LTLPtr, LTLComparator > toBeDone; // subformulas of Phi yet to be processed
-    std::set< LTLPtr, LTLComparator > next; // subformulas of Phi that must hold in immediate successors of states that satisfy all properties in Old
+    std::set< LTLPtr, LTLComparator > next; // subformulas that must hold in immediate successors
     std::vector< bool > untils;
     std::vector< bool > rightOfUntils;
 
