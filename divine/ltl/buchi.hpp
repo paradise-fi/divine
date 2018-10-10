@@ -540,11 +540,8 @@ struct TGBA2 {
                 DFSUtil2( state, component, visited, leaved, counter );
                 if( isAccepting( component ) ) {
                     ++componentCounter;
-                    //std::cout << "Accepting component:" ;
-                    for( size_t s : component ) {
-                        //std::cout << ", " << s;
+                    for( size_t s : component )
                         accSCC.at( s ) = componentCounter;
-                    }
                 }
             }
         }
@@ -554,7 +551,6 @@ struct TGBA2 {
 
 static inline TGBA2 HOAParser( const std::string& filename )
 {
-    //std::cout << "HOAParser called on " << filename << std::endl;
     std::ifstream source( filename );
     TGBA2 tgba2;
     std::string line;
@@ -596,16 +592,13 @@ static inline TGBA2 HOAParser( const std::string& filename )
         {
             ssLine.ignore(std::numeric_limits<std::streamsize>::max(), ' ');
             std::getline( ssLine, data, ' ' );
-            //std::cout << "data " << "'" << data << "'" << std::endl;
             size_t apCount;
             apCount = std::stoll( data );
             while( std::getline( ssLine, data, ' ' ) )
             {
                 std::string atom = data.substr(1, data.length() - 2);
-                //std::cout << "'" << atom << "'" << std::endl;
                 tgba2.allTrivialLiterals.push_back( LTL::make( atom ) );
             }
-            //std::cout << apCount << " vs " << tgba2.allTrivialLiterals.size() << std::endl;
             if( apCount != tgba2.allTrivialLiterals.size() )
                 throw std::invalid_argument( "Invalid HOA format: unexpected number of atomic propositions." );
 
@@ -628,12 +621,10 @@ static inline TGBA2 HOAParser( const std::string& filename )
         if( line.substr( 0, 6 ) == "State:" ) //finished actual state and starting new one
         {
             stateId = std::stoll( line.substr( 6 ) );
-            //std::cout << "'State' token with id " << stateId << std::endl;
             continue;
         }
         else
         {
-            //std::cout << "'[' token" << std::endl;
             std::stringstream ssLine( line );
             std::string label, tmpLetter;
 
@@ -653,11 +644,9 @@ static inline TGBA2 HOAParser( const std::string& filename )
             {
                 std::string tmpSubLetter;
                 std::pair< bool, size_t > parsedLabel;
-                //std::cout << "  Letter '" << tmpLetter << "'" << std::endl;
                 std::stringstream ssLetter( tmpLetter );
                 while( tmpSubLetter.empty() && std::getline( ssLetter, tmpSubLetter, ' ' ) )
                 {}
-                //std::cout << "  tmpSubLetter '" << tmpSubLetter << "'" << std::endl;
                 if( !tmpSubLetter.empty() )
                 {
                     parsedLabel.first = true;
@@ -672,7 +661,6 @@ static inline TGBA2 HOAParser( const std::string& filename )
                         continue;
                     parsedLabel.second = std::stoll( tmpSubLetter.substr( i ) );
                 }
-                //std::cout << "  parsedLabel: " << parsedLabel.first << ", " << parsedLabel.second << std::endl;
                 parsedLabels.insert( parsedLabel );
             }
             //PARSING target
@@ -687,17 +675,13 @@ static inline TGBA2 HOAParser( const std::string& filename )
             std::getline( ssLine, acceptance, '}' );
             std::stringstream ssAcceptance( acceptance );
             while( std::getline( ssAcceptance, tmpAcceptance, ' ' ) )
-            {
                 accepting.insert( std::stoll( tmpAcceptance ) );
-            }
             Transition transition( target, parsedLabels, accepting);
-            //std::cout << "Transition: " << transition << std::endl << std::endl;
             tgba2.states.at( stateId ).push_back( transition );
         }
     }
     tgba2.tgba1 = TGBA1( tgba2 );
     tgba2.computeAccSCC();
-    std::cout << tgba2 << std::endl;
     return tgba2;
 }
 

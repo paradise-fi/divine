@@ -24,7 +24,6 @@ size_t uCount = 0;
 size_t newNodeId()
 {
     static size_t nodeIdCount = 0;
-//    std::cout << " >>> New id generated: " << nodeIdCount << std::endl;
     return nodeIdCount++;
 }
 
@@ -174,7 +173,6 @@ NodePtr Node::split( LTLPtr form ) {
     node2->toBeDone.insert( new2.begin(), new2.end() );
     toBeDone.insert( new1.begin(), new1.end() );
     next.insert( next1.begin(), next1.end() );
-
     return node2;
 }
 
@@ -301,7 +299,6 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
                 if( nf->isType( Binary::Until ) || nf->isType( Binary::Or ) || nf->isType( Binary::Release ) ) {
                     NodePtr node2 = split( nf );
                     auto tmp = expand( states );
-//                    std::cout << "#3" << std::endl;
                     return node2->expand( tmp );
                 }
                 if( nf->isType( Binary::And ) ) {
