@@ -146,7 +146,7 @@ void fillSets( Node* node, LTLPtr form,
 }
 
 bool ltlEquals( LTLPtr f1, LTLPtr f2 ) {
-    LTLComparator2 c;
+    LTLComparator c;
     return !c(f1, f2) && !c(f2, f1);
 }
 
