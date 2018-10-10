@@ -578,10 +578,6 @@ static inline TGBA2 HOAParser( const std::string& filename )
             std::stringstream ssData( data );
             ssData >> tgba2.nStates;
             tgba2.states.resize( tgba2.nStates );
-            /*for( size_t i = 0; i < tgba2.nStates; ++i )
-            {
-                tgba2.states.emplace_back(  )
-            }*/
         }
         else if( feature == "start" || feature == "Start" )
         {
