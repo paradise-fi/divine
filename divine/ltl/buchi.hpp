@@ -732,10 +732,10 @@ struct LTL2TGBA /* nodes, states, buchi */
         node.old.insert( atoma );
         node.next.insert( atomb );
         State state( &node );
-        auto it1 = state.next.find( atomb );
+        [[maybe_unused]] auto it1 = state.next.find( atomb );
         assert( it1 != state.next.end() );
         assert( !state.edgesIn.empty() );
-        auto it2 = state.edgesIn.at(0).label.find( atoma );
+        [[maybe_unused]] auto it2 = state.edgesIn.at(0).label.find( atoma );
         assert( it2 != state.edgesIn.at(0).label.end() );
     }
     TEST(node_findTwin)
