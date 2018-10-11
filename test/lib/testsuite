@@ -20,7 +20,7 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --interpreter pkg:lib/pkg \
     --interpreter pdc:lib/pdclib-test \
     --flavour z3:sym \
-    --flavour stp:sym \
+    --flavour stp:sym,!float \
     --flavour smtlib:sym,min \
     --flavour vanilla:!sym \
     --skip "[.]pkg/,[.]helper[.]" \
