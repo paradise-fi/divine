@@ -45,3 +45,5 @@ ICMP_PROT( slt )
 ICMP_PROT( sle )
 
 }
+
+#undef ICMP_PROT

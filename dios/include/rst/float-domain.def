@@ -1,0 +1,45 @@
+#include <rst/common-domain.def>
+
+#define FCMP_PROT( name ) \
+    PROT( fcmp_ ## name, DOMAIN_TYPE, DOMAIN_TYPE )
+
+#define FLOAT_VAL_PROT( type, bitwidth ) \
+    RET_PROT( type, val ## float ## bitwidth, )
+
+extern "C" {
+
+FLOAT_VAL_PROT( float , 32 )
+FLOAT_VAL_PROT( double, 64 )
+
+PROT( lift_float, int bitwidth, int argc, ... )
+
+FCMP_PROT( false )
+FCMP_PROT( oeq )
+FCMP_PROT( ogt )
+FCMP_PROT( oge )
+FCMP_PROT( olt )
+FCMP_PROT( ole )
+FCMP_PROT( one )
+FCMP_PROT( ord )
+FCMP_PROT( uno )
+FCMP_PROT( ueq )
+FCMP_PROT( ugt )
+FCMP_PROT( uge )
+FCMP_PROT( ult )
+FCMP_PROT( ule )
+FCMP_PROT( une )
+FCMP_PROT( true )
+
+BINARY_PROT( fadd )
+BINARY_PROT( fsub )
+BINARY_PROT( fmul )
+BINARY_PROT( fdiv )
+BINARY_PROT( frem )
+
+CAST_PROT( fptrunc )
+CAST_PROT( fpext )
+
+}
+
+#undef FLOAT_VAL_PROT
+#undef FCMP_PROT

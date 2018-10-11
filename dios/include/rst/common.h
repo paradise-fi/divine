@@ -40,7 +40,7 @@ static T *weaken( T *ptr ) {
 template< typename T >
 static T __taint()
 {
-    static_assert( std::is_integral< T >::value, "Cannot taint a non-integral value." );
+    static_assert( std::is_arithmetic_v< T >, "Cannot taint a non-arithmetic value." );
     return static_cast< T >( __tainted );
 }
 

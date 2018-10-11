@@ -13,6 +13,9 @@ extern "C" {
     uint16_t __sym_val_i16();
     uint8_t __sym_val_i8();
 
+    float __sym_val_float32();
+    double __sym_val_float64();
+
     uint64_t __star_val_i64();
     uint32_t __star_val_i32();
     uint16_t __star_val_i16();
