@@ -106,11 +106,11 @@ namespace lart::sym
 	URem,
 	SRem,
 
-	FAdd,
-	FSub,
-	FMul,
-	FDiv,
-	FRem,
+	FpAdd,
+	FpSub,
+	FpMul,
+	FpDiv,
+	FpRem,
 
 	Shl,
 	LShr,
@@ -132,22 +132,22 @@ namespace lart::sym
 	SLE,
 
 	// Fcmp
-	FcFalse, // no comparison, always returns false
-	FcOEQ,   // ordered and equal
-	FcOGT,   // ordered and greater than
-	FcOGE,   // ordered and greater than or equal
-	FcOLT,   // ordered and less than
-	FcOLE,   // ordered and less than or equal
-	FcONE,   // ordered and not equal
-	FcORD,   // ordered (no nans)
-	FcUEQ,   // unordered or equal
-	FcUGT,   // unordered or greater than
-	FcUGE,   // unordered or greater than or equal
-	FcULT,   // unordered or less than
-	FcULE,   // unordered or less than or equal
-	FcUNE,   // unordered or not equal
-	FcUNO,   // unordered (either nans)
-	FcTrue,  // no comparison, always returns true
+	FpFalse, // no comparison, always returns false
+	FpOEQ,   // ordered and equal
+	FpOGT,   // ordered and greater than
+	FpOGE,   // ordered and greater than or equal
+	FpOLT,   // ordered and less than
+	FpOLE,   // ordered and less than or equal
+	FpONE,   // ordered and not equal
+	FpORD,   // ordered (no nans)
+	FpUEQ,   // unordered or equal
+	FpUGT,   // unordered or greater than
+	FpUGE,   // unordered or greater than or equal
+	FpULT,   // unordered or less than
+	FpULE,   // unordered or less than or equal
+	FpUNE,   // unordered or not equal
+	FpUNO,   // unordered (either nans)
+	FpTrue,  // no comparison, always returns true
 	Constraint, // behaves as binary logical and
 
 	Concat, LastBinary = Concat,
