@@ -64,11 +64,11 @@ std::string toString( Op x )
         case Op::URem: return "%u";
         case Op::SRem: return "%s";
 
-        case Op::FAdd: return "+f";
-        case Op::FSub: return "-f";
-        case Op::FMul: return "*f";
-        case Op::FDiv: return "/f";
-        case Op::FRem: return "%f";
+        case Op::FpAdd: return "+f";
+        case Op::FpSub: return "-f";
+        case Op::FpMul: return "*f";
+        case Op::FpDiv: return "/f";
+        case Op::FpRem: return "%f";
 
         case Op::Shl: return "<<";
         case Op::LShr: return ">>l";
@@ -90,22 +90,22 @@ std::string toString( Op x )
         case Op::SLE: return "<=s";
 
         // case Op::Fcmp
-        case Op::FcFalse: return "fcfalse"; // no comparison: always returns false
-        case Op::FcOEQ: return "==fo"; // ordered and equal
-        case Op::FcOGT: return ">fo"; // ordered and greater than
-        case Op::FcOGE: return ">=fo"; // ordered and greater than or equal
-        case Op::FcOLT: return "<fo"; // ordered and less than
-        case Op::FcOLE: return "<=fo"; // ordered and less than or equal
-        case Op::FcONE: return "!=fo"; // ordered and not equal
-        case Op::FcORD: return "ford"; // ordered (no nans)
-        case Op::FcUEQ: return "==fu"; // unordered or equal
-        case Op::FcUGT: return ">fu"; // unordered or greater than
-        case Op::FcUGE: return ">=fu"; // unordered or greater than or equal
-        case Op::FcULT: return "<fu"; // unordered or less than
-        case Op::FcULE: return "<=fu"; // unordered or less than or equal
-        case Op::FcUNE: return "!=fu"; // unordered or not equal
-        case Op::FcUNO: return "funo"; // unordered (either nans)
-        case Op::FcTrue: return "fctrue"; // no comparison: always returns true
+        case Op::FpFalse: return "fcfalse"; // no comparison: always returns false
+        case Op::FpOEQ: return "==fo"; // ordered and equal
+        case Op::FpOGT: return ">fo"; // ordered and greater than
+        case Op::FpOGE: return ">=fo"; // ordered and greater than or equal
+        case Op::FpOLT: return "<fo"; // ordered and less than
+        case Op::FpOLE: return "<=fo"; // ordered and less than or equal
+        case Op::FpONE: return "!=fo"; // ordered and not equal
+        case Op::FpORD: return "ford"; // ordered (no nans)
+        case Op::FpUEQ: return "==fu"; // unordered or equal
+        case Op::FpUGT: return ">fu"; // unordered or greater than
+        case Op::FpUGE: return ">=fu"; // unordered or greater than or equal
+        case Op::FpULT: return "<fu"; // unordered or less than
+        case Op::FpULE: return "<=fu"; // unordered or less than or equal
+        case Op::FpUNE: return "!=fu"; // unordered or not equal
+        case Op::FpUNO: return "funo"; // unordered (either nans)
+        case Op::FpTrue: return "fctrue"; // no comparison: always returns true
 
         case Op::Concat: return "concat";
         case Op::Constraint: return "constraint";

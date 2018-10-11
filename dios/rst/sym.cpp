@@ -7,6 +7,8 @@
 #include <cstdarg>
 #include <type_traits>
 
+#include <iostream>
+
 using namespace lart::sym;
 using abstract::Tristate;
 using abstract::__new;
@@ -43,23 +45,36 @@ extern "C" void __sym_formula_dump()
     }
 }
 
-template< typename T >
-T __sym_val_impl() {
-    auto val = __sym_lift( sizeof( T ) * 8, 0 );
+template< typename T, typename Lift >
+T __sym_val_impl( Lift lift ) {
+    auto val = lift( sizeof( T ) * 8, 0 );
     __lart_stash( reinterpret_cast< uintptr_t >( val ) );
     return abstract::__taint< T >();
 }
 
+template< typename T >
+T __sym_val_int_impl() {
+    return __sym_val_impl< T, decltype( __sym_lift ) >( __sym_lift );
+}
+
+template< typename T >
+T __sym_val_float_impl() {
+    return __sym_val_impl< T, decltype( __sym_lift_float ) >( __sym_lift_float );
+}
+
 extern "C" {
-    _SYM uint8_t __sym_val_i8() { return __sym_val_impl< uint8_t >(); }
-    _SYM uint16_t __sym_val_i16() { return __sym_val_impl< uint16_t >(); }
-    _SYM uint32_t __sym_val_i32() { return __sym_val_impl< uint32_t >(); }
-    _SYM uint64_t __sym_val_i64() { return __sym_val_impl< uint64_t >(); }
+    _SYM uint8_t __sym_val_i8() { return __sym_val_int_impl< uint8_t >(); }
+    _SYM uint16_t __sym_val_i16() { return __sym_val_int_impl< uint16_t >(); }
+    _SYM uint32_t __sym_val_i32() { return __sym_val_int_impl< uint32_t >(); }
+    _SYM uint64_t __sym_val_i64() { return __sym_val_int_impl< uint64_t >(); }
+
+    _SYM float __sym_val_float32() { return __sym_val_float_impl< float >(); }
+    _SYM double __sym_val_float64() { return __sym_val_float_impl< double >(); }
 }
 
 Formula *__sym_lift( int bitwidth, int argc, ... ) {
     if ( bitwidth > 64 )
-        _UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
+        _UNREACHABLE_F( "Type too long: %d bits", bitwidth );
     if ( !argc ) {
         return mark( __newf< Variable >( Type{ Type::Int, bitwidth }, __sym_state.counter++ ) );
     }
@@ -69,6 +84,21 @@ Formula *__sym_lift( int bitwidth, int argc, ... ) {
     va_list args;
     va_start( args, argc );
     return mark( __newf< Constant >( Type{ Type::Int, bitwidth }, va_arg( args, int64_t ) ) );
+}
+
+Formula *__sym_lift_float( int bitwidth, int argc, ... ) {
+    if ( bitwidth > 64 )
+        _UNREACHABLE_F( "Type too long: %d bits", bitwidth );
+    if ( !argc ) {
+        return mark( __newf< Variable >( Type{ Type::Float, bitwidth }, __sym_state.counter++ ) );
+    }
+    if ( argc > 1 )
+        _UNREACHABLE_F( "Lifting of more values is not yet supported." );
+
+    va_list args;
+    va_start( args, argc );
+    return mark( __newf< Constant >( Type{ Type::Float, bitwidth }, va_arg( args, float ) ) );
+
 }
 
 #define BINARY( suff, op ) Formula *__sym_ ## suff( Formula *a, Formula *b ) \
@@ -90,6 +120,12 @@ BINARY( shl, Shl );
 BINARY( lshr, LShr );
 BINARY( ashr, AShr );
 
+BINARY( fadd, FpAdd )
+BINARY( fsub, FpSub )
+BINARY( fmul, FpMul )
+BINARY( fdiv, FpDiv )
+BINARY( frem, FpRem )
+
 #define CAST( suff, op ) Formula *__sym_ ## suff( Formula *a, int bitwidth ) \
 {                                                                                     \
     Type t = a->type();                                                               \
@@ -101,6 +137,9 @@ CAST( trunc, Trunc );
 CAST( zext, ZExt );
 CAST( sext, SExt );
 CAST( bitcast, BitCast );
+
+CAST( fptrunc, FPTrunc )
+CAST( fpext, FPExt )
 
 #define ICMP( suff, op ) Formula *__sym_icmp_ ## suff( Formula *a, Formula *b ) { \
     Type i1( Type::Int, 1 ); \
@@ -117,6 +156,28 @@ ICMP( sgt, SGT );
 ICMP( sge, SGE );
 ICMP( sle, SLE );
 ICMP( slt, SLT );
+
+#define FCMP( suff, op ) Formula *__sym_fcmp_ ## suff( Formula *a, Formula *b ) { \
+    Type i1( Type::Int, 1 ); \
+    return mark( __newf< Binary >( Op::op, i1, weaken( a ), weaken( b ) ) ); \
+}
+
+FCMP( fcfalse, FpFalse );
+FCMP( oeq, FpOEQ );
+FCMP( ogt, FpOGT );
+FCMP( oge, FpOGE );
+FCMP( olt, FpOLT );
+FCMP( ole, FpOLE );
+FCMP( one, FpONE );
+FCMP( ord, FpORD );
+FCMP( uno, FpUNO );
+FCMP( ueq, FpUEQ );
+FCMP( ugt, FpUGT );
+FCMP( uge, FpUGE );
+FCMP( ult, FpULT );
+FCMP( ule, FpULE );
+FCMP( une, FpUNE );
+FCMP( fctrue, FpTrue );
 
 Tristate __sym_bool_to_tristate( Formula * )
 {
@@ -150,6 +211,7 @@ Formula* __sym_thaw( void *addr, int bw ) {
     Formula *ret;
     memcpy( &ret, &ptr, sizeof( Formula* ) );
 
+    // TODO deal with floats
     if ( ret->type().bitwidth() < bw )
         return __sym_zext( ret, bw );
     else if ( ret->type().bitwidth() > bw )
