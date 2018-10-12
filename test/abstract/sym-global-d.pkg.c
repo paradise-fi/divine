@@ -1,4 +1,4 @@
-/* TAGS: sym c */
+/* TAGS: sym c todo */
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
@@ -14,20 +14,18 @@ unsigned int val;
 
 pthread_mutex_t m;
 
-void set() { val = __VERIFIER_nondet_uint(); }
-
-unsigned int get() { return val; }
-
 void *t1( void * arg ) {
     pthread_mutex_lock(&m);
-    set();
+    val = __VERIFIER_nondet_uint();
     pthread_mutex_unlock(&m);
+    return NULL;
 }
 
 void *t2( void * arg ) {
     pthread_mutex_lock(&m);
-    get();
+    unsigned int x = val;
     pthread_mutex_unlock(&m);
+    return NULL;
 }
 
 
