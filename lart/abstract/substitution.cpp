@@ -488,8 +488,20 @@ struct FreezeLifter : BaseLifter {
         auto taint_zero = get_module( taint )->getFunction( "__rst_taint_i64" );
 
         Value *ret = irb.CreateCall( taint_zero );
-        if ( !function()->getReturnType()->isIntegerTy( 64 ) )
-            ret = irb.CreateTrunc( ret, function()->getReturnType() );
+        auto rty = function()->getReturnType();
+
+        if ( rty->isFloatingPointTy() )
+            ret = irb.CreateBitCast( ret, Type::getDoubleTy( ctx() ) );
+
+        if ( rty->getPrimitiveSizeInBits() != 64 ) {
+            if ( rty->isIntegerTy() )
+                ret = irb.CreateTrunc( ret, rty );
+            else if ( rty->isFloatingPointTy() )
+                ret = irb.CreateFPTrunc( ret, function()->getReturnType() );
+            else
+                UNREACHABLE( "Unsupported type for freezing." );
+        }
+
         irb.CreateRet( ret );
     }
 };
@@ -1037,7 +1049,11 @@ void FreezeStores::run( Module &m ) {
         .filter( query::llvmdyncast< StoreInst > )
         .filter( query::notnull )
         .filter( [] ( auto store ) { return store->getMetadata( "lart.domains" ); } )
-        .filter( [] ( auto store ) { return store->getOperand( 0 )->getType()->isIntegerTy(); } )
+        .filter( [] ( auto store ) {
+                // TODO is base type
+                return store->getOperand( 0 )->getType()->isIntegerTy()
+                    || store->getOperand( 0 )->getType()->isFloatingPointTy();
+        } )
         .filter( [] ( auto store ) { return !isa< Constant >( store->getOperand( 0 ) ); } )
         .freeze();
 
