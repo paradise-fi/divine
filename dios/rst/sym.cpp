@@ -211,11 +211,19 @@ Formula* __sym_thaw( void *addr, int bw ) {
     Formula *ret;
     memcpy( &ret, &ptr, sizeof( Formula* ) );
 
-    // TODO deal with floats
-    if ( ret->type().bitwidth() < bw )
-        return __sym_zext( ret, bw );
-    else if ( ret->type().bitwidth() > bw )
-        return __sym_trunc( ret, bw );
-    else
+    if ( ret->type().bitwidth() < bw ) {
+        if ( ret->type().type() == Type::Int )
+            return __sym_zext( ret, bw );
+        else if ( ret->type().type() == Type::Float )
+            return __sym_fpext( ret, bw );
+        _UNREACHABLE_F( "Unsupported type for thawing." );
+    } else if ( ret->type().bitwidth() > bw ) {
+        if ( ret->type().type() == Type::Int )
+            return __sym_trunc( ret, bw );
+        else if ( ret->type().type() == Type::Float )
+            return __sym_fptrunc( ret, bw );
+        _UNREACHABLE_F( "Unsupported type for thawing." );
+    } else {
         return ret;
+    }
 }
