@@ -78,7 +78,7 @@ then
     exit 0
 fi
 
-uid=`cat /proc/$$/status | grep 'Uid' | sed 's/Uid:[\t ]*\([0-9]*\).*/\1/'`
+uid=`id -u`
 
 if test -z "$pmgr"; then
     echo "could not detect package manager, please install dependencies manually" 2>&1
@@ -103,9 +103,12 @@ if test $uid -eq 0; then
 else
     echo "$0 not running as root, will try to use sudo or su" 1>&2
     echo "trying sudo, please enter your password if prompted" 1>&2
-    exec sudo $cmd
+    sudo $cmd && exit 0
     echo "sudo failed, trying su, please enter root password when asked" 1>&2
-    exec su -c $cmd
-    echo "could not gain root, plase run $0 as root manually" 1>&2
+    su -c $cmd && exit 0
+    echo
+    echo "could not gain root access, plase run $0 or the following command as root manually:" 1>&2
+    echo "$cmd" 1>&2
+    exit 1
 fi
 
