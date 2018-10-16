@@ -54,13 +54,13 @@ if [ -z $CXX ]; then
 fi
 
 if [ $pmgr = "apt-get" ]; then
-    pkgs="perl make cmake ninja-build python2.7 g++ libedit-dev libncurses5-dev"
+    pkgs="perl make cmake ninja-build python2.7 g++ libedit-dev libncurses5-dev zlib1g-dev"
 elif [ $pmgr = "yum" ]; then
-    pkgs="perl make cmake $ninja python2 gcc-c++ libedit-devel ncurses-devel"
+    pkgs="perl make cmake $ninja python2 gcc-c++ libedit-devel ncurses-devel zlib-devel"
 elif [ $pmgr = "pacman" ]; then
-    pkgs="perl make cmake ninja python2 gcc libedit ncurses"
+    pkgs="perl make cmake ninja python2 gcc libedit ncurses zlib"
 elif [ $pmgr = apk ]; then
-    pkgs="perl make cmake ninja python2 g++ libedit-dev ncurses-dev ncurses-static"
+    pkgs="perl make cmake ninja python2 g++ libedit-dev ncurses-dev ncurses-static zlib"
 fi
 
 if [ -n $1 ] && [ "$1" = "get" ]; then
@@ -72,7 +72,7 @@ fi
 if make --version 2>&1 > /dev/null \
     && cmake --version 2>&1 > /dev/null \
     && $testninja --version 2>&1 > /dev/null \
-    && echo 'int main() { }' | $CXX -x c - -o /dev/null -lcurses -ledit 2>&1 > /dev/null
+    && printf '#include <zlib.h>\nint main() { }\n' | $CXX -x c - -o /dev/null -lcurses -ledit -lz 2>&1 > /dev/null
 then
     echo "everything seems to be present and working"
     exit 0
