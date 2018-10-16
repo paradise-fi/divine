@@ -9,7 +9,9 @@ $dir =~ s,(^|/)([^/]*)$,,;
 my $basename = $2;
 
 # copy over any #include files
-my $extras = `cd $dir && gcc -MM -MT "" $basename`;
+my $cc = "gcc";
+$cc = "g++ -std=c++14" if $ext eq "cpp";
+my $extras = `cd $dir && $cc -MM -MT "" $basename`;
 $extras =~ s,^: [^ ]*,,; # chop off the file itself
 for my $name ( split /\s+/, $extras )
 {
