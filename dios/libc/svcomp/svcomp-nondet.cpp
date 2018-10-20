@@ -21,6 +21,7 @@ extern "C" {
     _SVC_NONDET(unsigned int, uint, 32)
     _SVC_NONDET(unsigned long, ulong, 64)
     _SVC_NONDET(unsigned, unsigned, 32)
+    _SVC_NONDET(uint64_t, pointer, 64)
 
 }
 
