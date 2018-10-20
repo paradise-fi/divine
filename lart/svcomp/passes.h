@@ -12,9 +12,10 @@ namespace lart {
 
         PassMeta svcompPass();
         PassMeta svcFixGlobalsPass();
+        PassMeta svcUndefNondetPass();
 
         inline std::vector< PassMeta > passes() {
-            return { svcompPass(), svcFixGlobalsPass() };
+            return { svcompPass(), svcFixGlobalsPass(), svcUndefNondetPass() };
         }
     }
 }
