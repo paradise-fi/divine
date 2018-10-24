@@ -25,7 +25,7 @@ __invisible void *malloc( size_t size )
     int simfail = __dios_sim_fail( _DiOS_SF_Malloc );
     int ok = ( simfail && !kernel ) ? __vm_choose( 2 ) : 1;
 
-    if ( ok )
+    if ( ok && size > 0 )
         return __vm_obj_make( size ); // success
     else
         return NULL; // failure
