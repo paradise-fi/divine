@@ -221,8 +221,10 @@ struct Fault: public Next {
         std::transform( fault.begin(), fault.end(), fault.begin(), ::tolower );
         if ( fault == "assert" )
             return _VM_F_Assert;
-        if ( fault == "arithmetic" )
-            return _VM_F_Arithmetic;
+        if ( fault == "integer" )
+            return _VM_F_Integer;
+        if ( fault == "float" )
+            return _VM_F_Float;
         if ( fault == "memory" )
             return _VM_F_Memory;
         if ( fault == "leak" )
@@ -250,7 +252,8 @@ struct Fault: public Next {
         switch( f )
         {
             case _VM_F_Assert: return ext ? "assertion failure" : "assert";
-            case _VM_F_Arithmetic: return ext ? "arithmetic error" : "arithmetic";
+            case _VM_F_Integer: return ext ? "integer arithmetic error" : "integer";
+            case _VM_F_Float: return ext ? "floating-point arithmetic error" : "float";
             case _VM_F_Memory: return ext ? "memory error" : "memory";
             case _VM_F_Leak: return ext ? "memory leak" : "leak";
             case _VM_F_Control: return ext ? "control error" : "control";
