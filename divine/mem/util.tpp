@@ -122,22 +122,22 @@ namespace divine::mem
                 NOT_IMPLEMENTED();
 
 
+            /* offsets and types must always match */
             if ( int d = int( p1pp.type() ) - int( p2pp.type() ) )
+                return cb.pointer( r1, r2, offset ), d;
+            if ( int d = p1pp.offset() - p2pp.offset() )
                 return cb.pointer( r1, r2, offset ), d;
 
             if ( p1pp.type() == Pointer::Type::Marked )
                 cb.marked( p1pp, p2pp );
-            else
-            {
-                if ( int d = p1pp.offset() - p2pp.offset() )
+
+            if ( p1pp.type() == Pointer::Type::Heap )
+                if ( int d = compare( h1, h2, p1pp, p2pp, v1, v2, seq, cb ) )
+                    return d;
+
+            if ( !p1pp.heap() )
+                if ( int d = p1pp.object() - p2pp.object() )
                     return cb.pointer( r1, r2, offset ), d;
-                if ( p1pp.type() == Pointer::Type::Heap )
-                    if ( int d = compare( h1, h2, p1pp, p2pp, v1, v2, seq, cb ) )
-                        return d;
-                if ( p1pp.type() != Pointer::Type::Weak )
-                    if ( int d = p1pp.object() - p2pp.object() )
-                        return cb.pointer( r1, r2, offset ), d;
-            }
 
             ++ p1i; ++ p2i;
         }
