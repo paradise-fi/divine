@@ -178,23 +178,27 @@ struct Hasher_
         if ( equal_fastpath( a, b ) )
             return true;
 
-        std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > > sym_pairs;
 
-        auto extract = [&]( vm::HeapPointer a, vm::HeapPointer b )
+        struct Cmp : mem::NoopCmp< vm::HeapPointer >
         {
-            a.type( vm::PointerType::Weak ); // unmark pointers so they are equal to their
-            b.type( vm::PointerType::Weak ); // weak equivalents inside the formula
-            sym_pairs.emplace_back( a, b );
-        };
+            std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > > pairs;
+
+            void marked( vm::HeapPointer a, vm::HeapPointer b )
+            {
+                a.type( vm::PointerType::Weak ); // unmark pointers so they are equal to their
+                b.type( vm::PointerType::Weak ); // weak equivalents inside the formula
+                pairs.emplace_back( a, b );
+            };
+        } extract;
 
         if ( mem::compare( _h1, _h2, _root, _root, extract ) != 0 )
             return false;
 
-        if ( sym_pairs.empty() )
+        if ( extract.pairs.empty() )
             return true;
 
         ASSERT( _solver );
-        return _solver->equal( sym_pairs, _h1, _h2 );
+        return _solver->equal( extract.pairs, _h1, _h2 );
     }
 
     brick::hash::hash128_t hash( Snapshot s ) const

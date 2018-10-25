@@ -24,29 +24,40 @@
 
 namespace divine::mem
 {
-    template< typename H1, typename H2, typename MarkedComparer >
+    template< typename Pointer >
+    struct NoopCmp
+    {
+        void pointer( Pointer, Pointer, int ) {}
+        void shadow( Pointer, Pointer ) {}
+        void bytes( Pointer, Pointer, int ) {}
+        void marked( Pointer, Pointer ) {}
+        void size( Pointer, Pointer, int, int ) {}
+        void structure( Pointer, Pointer, int, int ) {}
+    };
+
+    template< typename H1, typename H2, typename CB >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2,
-                std::unordered_map< typename H1::Pointer, int > &v1,
-                std::unordered_map< typename H1::Pointer, int > &v2, int &seq,
-                MarkedComparer &markedComparer );
+                std::unordered_map< int, int > &v1, std::unordered_map< int, int > &v2, int &seq,
+                CB &callback );
 
     template< typename Heap >
     int hash( Heap &heap, typename Heap::Pointer root,
               std::unordered_map< int, int > &visited,
               brick::hash::jenkins::SpookyState &state, int depth );
 
-    template< typename H1, typename H2, typename MarkedComparer >
-    int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2, MarkedComparer mc )
+    template< typename H1, typename H2, typename CB >
+    int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2, CB &callback )
     {
         std::unordered_map< typename H1::Pointer, int > v1, v2;
-        int seq = 0;
-        return compare( h1, h2, r1, r2, v1, v2, seq, mc );
+        int seq = 1;
+        return compare( h1, h2, r1, r2, v1, v2, seq, callback );
     }
 
     template< typename H1, typename H2 >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2 )
     {
-        return compare( h1, h2, r1, r2, []( typename H1::Pointer, typename H1::Pointer ) { } );
+        NoopCmp< typename H1::Pointer > callback;
+        return compare( h1, h2, r1, r2, callback );
     }
 
     using brick::hash::hash128_t;

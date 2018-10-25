@@ -24,11 +24,10 @@
 namespace divine::mem
 {
 
-    template< typename H1, typename H2, typename MarkedComparer >
+    template< typename H1, typename H2, typename CB >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2,
                  std::unordered_map< typename H1::Pointer, int > &v1,
-                 std::unordered_map< typename H1::Pointer, int > &v2, int &seq,
-                 MarkedComparer &markedComparer )
+                 std::unordered_map< typename H1::Pointer, int > &v2, int &seq, CB &cb )
     {
         using Pointer = typename H1::Pointer;
 
@@ -38,31 +37,36 @@ namespace divine::mem
         auto v2r2 = v2.find( r2 );
 
         if ( v1r1 != v1.end() && v2r2 != v2.end() )
-            return v1r1->second - v2r2->second;
+        {
+            auto d = v1r1->second - v2r2->second;
+            if ( d )
+                cb.structure( r1, r2, v1r1->second, v2r2->second );
+            return d;
+        }
 
         if ( v1r1 != v1.end() )
-            return -1;
+            return cb.structure( r1, r2, v1r1->second, 0 ), -1;
         if ( v2r2 != v2.end() )
-            return 1;
+            return cb.structure( r1, r2, 0, v2r2->second ), 1;
 
         v1[ r1 ] = seq;
         v2[ r2 ] = seq;
         ++ seq;
 
-        if ( h1.valid( r1 ) != h2.valid( r2 ) )
-            return h1.valid( r1 ) - h2.valid( r2 );
+        if ( int d = h1.valid( r1 ) - h2.valid( r2 ) )
+            return cb.structure( r1, r2, -h1.valid( r1 ), -h2.valid( r2 ) ), d;
 
         if ( !h1.valid( r1 ) )
             return 0;
 
         auto i1 = h1.ptr2i( r1 ), i2 = h2.ptr2i( r2 );
         int s1 = h1.size( i1 ), s2 = h2.size( i2 );
-        if ( s1 - s2 )
-            return s1 - s2;
 
-        int shadow_cmp = h2.compare( h1, i1, i2, s1 );
-        if ( shadow_cmp )
-            return shadow_cmp;
+        if ( auto d = s1 - s2 )
+            return cb.size( r1, r2, s1, s2 ), d;
+
+        if ( int d = h2.compare( h1, i1, i2, s1 ) )
+            return cb.shadow( r1, r2 ), d;
 
         auto l1 = h1.loc( r1, i1 ), l2 = h2.loc( r2, i2 );
         auto b1 = h1.unsafe_bytes( l1 ), b2 = h2.unsafe_bytes( l2 );
@@ -75,16 +79,16 @@ namespace divine::mem
             int end = p1i == p1.end() ? s1 : p1i->offset();
             while ( offset < end )
             {
-                if ( b1[ offset ] != b2[ offset ] )
-                    return b1[ offset ] - b2[ offset ];
+                if ( int d = b1[ offset ] - b2[ offset ] )
+                    return cb.bytes( r1, r2, offset ), d;
                 ++ offset;
             }
 
             if ( p1i == p1.end() )
                 return 0;
 
-            if ( p1i->size() != p2i->size() )
-                return p1i->size() - p2i->size();
+            if ( int d = p1i->size() - p2i->size() )
+                return cb.pointer( r1, r2, offset ), d;
 
             offset += p1i->size();
 
@@ -93,50 +97,48 @@ namespace divine::mem
             r2.offset( p1i->offset() );
 
             /* recurse */
-            int pdiff = 0;
+            typename H1::PointerV::Cooked p1pp, p2pp;
+
             if ( p1i->size() == 8 )
             {
                 typename H1::PointerV p1p, p2p;
                 h1.unsafe_read( r1, p1p, i1 );
                 h2.unsafe_read( r2, p2p, i2 );
-                auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
-                if ( p1pp.type() == p2pp.type() )
-                {
-                    if ( p1pp.offset() != p2pp.offset() )
-                        return p1pp.offset() - p2pp.offset();
-                    else if ( p1pp.type() == Pointer::Type::Heap )
-                        pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
-                    else if ( p1pp.type() == Pointer::Type::Marked )
-                        markedComparer( p1pp, p2pp );
-                    else if ( p1pp.heap() ); // Weak
-                    else
-                        pdiff = p1pp.object() - p2pp.object();
-                } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
+                p1pp = p1p.cooked();
+                p2pp = p2p.cooked();
+            } else if ( p1i->size() == 1 )
+            {
+                p1pp.object( p1i->fragment() );
+                p2pp.object( p2i->fragment() );
+            }
+            else if ( p1i->size() == 4 )
+            {
+                uint32_t obj1 = *h1.template unsafe_deref< uint32_t >( r1, i1 ),
+                         obj2 = *h2.template unsafe_deref< uint32_t >( r2, i2 );
+                p1pp.object( obj1 );
+                p2pp.object( obj2 );
             }
             else
-            {
-                typename H1::PointerV::Cooked p1pp,
-                                              p2pp;
-                if ( p1i->size() == 1 )
-                {
-                    p1pp.object( p1i->fragment() );
-                    p2pp.object( p2i->fragment() );
-                }
-                else if ( p1i->size() == 4 )
-                {
-                    uint32_t obj1 = *h1.template unsafe_deref< uint32_t >( r1, i1 ),
-                             obj2 = *h2.template unsafe_deref< uint32_t >( r2, i2 );
-                    p1pp.object( obj1 );
-                    p2pp.object( obj2 );
-                }
-                else
-                    NOT_IMPLEMENTED();
+                NOT_IMPLEMENTED();
 
-                pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
+
+            if ( int d = int( p1pp.type() ) - int( p2pp.type() ) )
+                return cb.pointer( r1, r2, offset ), d;
+
+            if ( p1pp.type() == Pointer::Type::Marked )
+                cb.marked( p1pp, p2pp );
+            else
+            {
+                if ( int d = p1pp.offset() - p2pp.offset() )
+                    return cb.pointer( r1, r2, offset ), d;
+                if ( p1pp.type() == Pointer::Type::Heap )
+                    if ( int d = compare( h1, h2, p1pp, p2pp, v1, v2, seq, cb ) )
+                        return d;
+                if ( p1pp.type() != Pointer::Type::Weak )
+                    if ( int d = p1pp.object() - p2pp.object() )
+                        return cb.pointer( r1, r2, offset ), d;
             }
 
-            if ( pdiff )
-                return pdiff;
             ++ p1i; ++ p2i;
         }
 
