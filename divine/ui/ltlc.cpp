@@ -37,12 +37,14 @@ namespace ui {
         TGBA2 tgba2;
         if( !_automaton.empty() )
             tgba2 = HOAParser( _automaton );
-        else if( !_formula.empty() ) {
+        else if( !_formula.empty() )
+        {
             LTLPtr parsedF = LTL::parse( _formula, true );
             TGBA1 tgba1 = ltlToTGBA1( parsedF, _negate );
             tgba2 = std::move( tgba1 );
         }
-        else {
+        else
+        {
             std::cerr << "Verified property description missing: --automaton or --formula required" << std::endl;
             return;
         }
@@ -50,40 +52,40 @@ namespace ui {
 
         std::stringstream o;
             o   << "// Created by /home/x423907/divine/divine/ui/ltlc.cpp" << std::endl
-                << std::endl
-                << "#include <algorithm>" << std::endl
-                << "#include <dios.h>" << std::endl
-                << "#include <optional>" << std::endl
-                << "#include <iostream>" << std::endl
-                << "#include <set>" << std::endl
-                << "#include <vector>" << std::endl
-                << std::endl
-                << "#include \"" << _system << "\"" << std::endl
-                << std::endl
-                << "/*" << std::endl
-                << "* *******************************************************************" << std::endl
-                << "* This file contains monitor generated from LTL formula " << _formula << std::endl
-                << "* *******************************************************************" << std::endl
-                << "* */" << std::endl
-                << std::endl
-                << std::endl
-                << "struct TGBA" << std::endl
-                << "{" << std::endl
-                << "    size_t current = " << tgba2.start << ";" << std::endl
-                << "    size_t nStates = " << tgba2.nStates << ";" << std::endl
-                << "    size_t numberAcc = " << tgba2.nAcceptingSets << ";" << std::endl
-                << std::endl
-                << "    std::optional< size_t > acceptingSCC( size_t state )" << std::endl
-                << "    {" << std::endl
-                << "        std::optional< size_t > out;" << std::endl
-                << "        switch( state ) {" << std::endl;
+                 << std::endl
+                 << "#include <algorithm>" << std::endl
+                 << "#include <dios.h>" << std::endl
+                 << "#include <optional>" << std::endl
+                 << "#include <iostream>" << std::endl
+                 << "#include <set>" << std::endl
+                 << "#include <vector>" << std::endl
+                 << std::endl
+                 << "#include \"" << _system << "\"" << std::endl
+                 << std::endl
+                 << "/*" << std::endl
+                 << "* *******************************************************************" << std::endl
+                 << "* This file contains monitor generated from LTL formula " << _formula << std::endl
+                 << "* *******************************************************************" << std::endl
+                 << "* */" << std::endl
+                 << std::endl
+                 << std::endl
+                 << "struct TGBA" << std::endl
+                 << "{" << std::endl
+                 << "    size_t current = " << tgba2.start << ";" << std::endl
+                 << "    size_t nStates = " << tgba2.nStates << ";" << std::endl
+                 << "    size_t numberAcc = " << tgba2.nAcceptingSets << ";" << std::endl
+                 << std::endl
+                 << "    std::optional< size_t > acceptingSCC( size_t state )" << std::endl
+                 << "    {" << std::endl
+                 << "        std::optional< size_t > out;" << std::endl
+                 << "        switch( state ) {" << std::endl;
         for( size_t state = 0; state < tgba2.nStates; ++state )
             if( tgba2.accSCC.at( state ).has_value() )
             {
                 o   << "            case " << state << ":" << std::endl
-                    << "                out = " << tgba2.accSCC.at( state ).value() << ";" << std::endl;
+                     << "                out = " << tgba2.accSCC.at( state ).value() << ";" << std::endl;
             }
-            o   << "        }" << std::endl
+        o      << "        }" << std::endl
                 << "        return out;" << std::endl
                 << "    }" << std::endl
                 << "    bool step( std::set< size_t >& acceptingSets, std::optional< size_t >& scc1, std::optional< size_t >& scc2, size_t& dest )" << std::endl
@@ -94,58 +96,60 @@ namespace ui {
             o   << "            case " << state << ":" << std::endl;
             for( const auto& trans : tgba2.states.at( state ) ) { //all the succesors of state
                 if( trans.label.empty() )
-                o   << "                reachable.push_back( " << trans.target << " );" << std::endl;
-                else {
-                o   << "                if( ";
-                for( auto l = trans.label.begin(); l != trans.label.end(); ) {
-                    if( !l->first )
-                        o   << "!";
-                    o   << "prop_" << tgba2.allTrivialLiterals.at( l->second )->string() << "()";
-                    ++l;
-                    if( l != trans.label.end() )
-                        o   << " && ";
-                }
-            o   <<                                    " )" << std::endl
-                << "                    reachable.push_back( " << trans.target << " );" << std::endl;
-                }
+                    o   << "                reachable.push_back( " << trans.target << " );" << std::endl;
+                    else
+                    {
+                        o   << "                if( ";
+                        for( auto l = trans.label.begin(); l != trans.label.end(); ) {
+                            if( !l->first )
+                                o   << "!";
+                            o   << "prop_" << tgba2.allTrivialLiterals.at( l->second )->string() << "()";
+                            ++l;
+                            if( l != trans.label.end() )
+                                o   << " && ";
+                        }
+                        o   <<                                    " )" << std::endl
+                             << "                    reachable.push_back( " << trans.target << " );" << std::endl;
+                    }
             }
             o   << "                break;" << std::endl;
         }
-            o   << "            default:" << std::endl
-                << "                assert( false && \"state does not exist\" );" << std::endl
-                << "        }" << std::endl
-                << "        size_t newState = -1;" << std::endl
-                << "        if( reachable.empty() )" << std::endl
-                << "            return false;" << std::endl
-                << "        newState = reachable.at( monitor_choose( reachable.size() ) );" << std::endl
-                << "        switch( current ) {" << std::endl;
-        for( size_t current = 0; current < tgba2.states.size(); ++current ) {
+        o   << "            default:" << std::endl
+             << "                assert( false && \"state does not exist\" );" << std::endl
+             << "        }" << std::endl
+             << "        size_t newState = -1;" << std::endl
+             << "        if( reachable.empty() )" << std::endl
+             << "            return false;" << std::endl
+             << "        newState = reachable.at( monitor_choose( reachable.size() ) );" << std::endl
+             << "        switch( current ) {" << std::endl;
+        for( size_t current = 0; current < tgba2.states.size(); ++current )
+        {
             o   << "            case " << current << ":" << std::endl;
             for( const auto& trans : tgba2.states.at( current ) )
-            if( !trans.accepting.empty() )
-            {
-            o   << "                if( newState == " << trans.target << " )" << std::endl
-                << "                    acceptingSets.insert( { ";
-                for( auto it = trans.accepting.begin(); it != trans.accepting.end(); )
+                if( !trans.accepting.empty() )
                 {
-                    o << *it;
-                    if( ++it != trans.accepting.end() )
-                        o << ", ";
+                    o   << "                if( newState == " << trans.target << " )" << std::endl
+                         << "                    acceptingSets.insert( { ";
+                    for( auto it = trans.accepting.begin(); it != trans.accepting.end(); )
+                    {
+                        o << *it;
+                        if( ++it != trans.accepting.end() )
+                            o << ", ";
+                    }
+                    o   <<                                            " } );" << std::endl;
                 }
-            o   <<                                            " } );" << std::endl;
-            }
             o   << "                break;" << std::endl;
         }
-            o   << "            default:" << std::endl
-                << "                assert( false && \" state does not exist \" );" << std::endl
-                << "        }" << std::endl
-                << "        scc1 = acceptingSCC( current );" << std::endl
-                << "        scc2 = acceptingSCC( newState );" << std::endl
-                << "        dest = newState;" << std::endl
-                << "        current = newState;" << std::endl
-                << "        return true;" << std::endl
-                << "    }" << std::endl
-                << "};" << std::endl << std::endl;
+        o   << "            default:" << std::endl
+             << "                assert( false && \" state does not exist \" );" << std::endl
+             << "        }" << std::endl
+             << "        scc1 = acceptingSCC( current );" << std::endl
+             << "        scc2 = acceptingSCC( newState );" << std::endl
+             << "        dest = newState;" << std::endl
+             << "        current = newState;" << std::endl
+             << "        return true;" << std::endl
+             << "    }" << std::endl
+             << "};" << std::endl << std::endl;
         std::ofstream outputFile;
         outputFile.open( _output );
         outputFile << o.str();
