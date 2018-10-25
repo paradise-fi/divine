@@ -25,7 +25,7 @@ namespace divine::mc
     template< template< typename, typename > class Job_, typename Next >
     std::shared_ptr< Job > make_job( builder::BC bc, Next next )
     {
-        if ( bc->is_symbolic() )
+        if ( bc->is_symbolic() && bc->solver() != "none" )
         {
             auto solver = bc->solver();
 #if OPT_Z3
