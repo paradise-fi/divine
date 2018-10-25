@@ -48,7 +48,7 @@ namespace divine::mem
     template< typename H1, typename H2, typename CB >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2, CB &callback )
     {
-        std::unordered_map< typename H1::Pointer, int > v1, v2;
+        std::unordered_map< int, int > v1, v2;
         int seq = 1;
         return compare( h1, h2, r1, r2, v1, v2, seq, callback );
     }

@@ -26,15 +26,15 @@ namespace divine::mem
 
     template< typename H1, typename H2, typename CB >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2,
-                 std::unordered_map< typename H1::Pointer, int > &v1,
-                 std::unordered_map< typename H1::Pointer, int > &v2, int &seq, CB &cb )
+                 std::unordered_map< int, int > &v1,
+                 std::unordered_map< int, int > &v2, int &seq, CB &cb )
     {
         using Pointer = typename H1::Pointer;
 
         r1.offset( 0 ); r2.offset( 0 );
 
-        auto v1r1 = v1.find( r1 );
-        auto v2r2 = v2.find( r2 );
+        auto v1r1 = v1.find( r1.object() );
+        auto v2r2 = v2.find( r2.object() );
 
         if ( v1r1 != v1.end() && v2r2 != v2.end() )
         {
@@ -49,8 +49,8 @@ namespace divine::mem
         if ( v2r2 != v2.end() )
             return cb.structure( r1, r2, 0, v2r2->second ), 1;
 
-        v1[ r1 ] = seq;
-        v2[ r2 ] = seq;
+        v1[ r1.object() ] = seq;
+        v2[ r2.object() ] = seq;
         ++ seq;
 
         if ( int d = h1.valid( r1 ) - h2.valid( r2 ) )
