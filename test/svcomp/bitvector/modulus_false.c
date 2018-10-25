@@ -1,5 +1,5 @@
 /* TAGS: c sym big */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:arithmetic */
+/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc -o ignore:integer */
 extern void __VERIFIER_assume(int);
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 

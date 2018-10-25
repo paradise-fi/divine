@@ -1,7 +1,7 @@
-/* VERIFY_OPTS: --symbolic --sequential -o ignore:arithmetic */
+/* VERIFY_OPTS: --symbolic --sequential -o ignore:integer */
 /* TAGS: sym c */
 
-/* NB. The ignore:arithmetic is a workaround for --symbolic also running a
+/* NB. The ignore:integer is a workaround for --symbolic also running a
  * concrete computation (which does not follow path constraints), in which the
  * divisor happens to be zero... */
 
