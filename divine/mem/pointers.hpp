@@ -167,7 +167,7 @@ struct PointerLayer : public NextLayer
         return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b );
     }
 
-    void free( Internal p )
+    void free( Internal p ) const
     {
         _ptr_exceptions->free( p );
 

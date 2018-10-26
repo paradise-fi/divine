@@ -44,7 +44,7 @@ struct UserMeta : Next
 
     UserMeta() : _maps( new Maps ) {}
 
-    void free( Internal p )
+    void free( Internal p ) const
     {
         for ( auto &e : *_maps )
             e.free( p );

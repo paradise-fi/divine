@@ -143,7 +143,7 @@ namespace divine::mem
 
         bool valid( Internal i ) const { return objects().valid( i ); }
         int size( Internal i ) const { return objects().size( i ); }
-        void free( Internal i ) const { objects().free( i ); }
+        void free( Internal i ) const { objects().free( i ); Next::free( i ); }
 
         template< typename T > void read( Loc p, T &t ) const;
         template< typename T > void write( Loc p, T t );

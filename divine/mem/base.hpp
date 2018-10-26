@@ -148,7 +148,7 @@ struct ShadowBase : Next
     }
 
     void make( Internal, int ) {}
-    void free( Internal ) {}
+    void free( Internal ) const {}
 };
 
 }
