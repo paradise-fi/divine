@@ -65,7 +65,7 @@ namespace divine::mem
         if ( auto d = s1 - s2 )
             return cb.size( r1, r2, s1, s2 ), d;
 
-        if ( int d = h2.compare( h1, i1, i2, s1 ) )
+        if ( int d = h2.compare( h1, i1, i2, s1, true ) )
             return cb.shadow( r1, r2 ), d;
 
         auto l1 = h1.loc( r1, i1 ), l2 = h2.loc( r2, i2 );

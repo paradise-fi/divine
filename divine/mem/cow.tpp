@@ -66,7 +66,7 @@ namespace divine::mem
             return false;
         if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
             return false;
-        if ( !heap().equal( a, b, size ) )
+        if ( heap().compare( heap(), a, b, size, false ) )
             return false;
         return true;
     }

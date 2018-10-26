@@ -177,6 +177,11 @@ namespace divine::mem
         }
 
         bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }
+
+        bool equal( typename Next::Internal a, typename Next::Internal b, int sz, bool skip_objids )
+        {
+            return Next::compare( *this, a, b, sz, skip_objids ) == 0;
+        }
     };
 
 }

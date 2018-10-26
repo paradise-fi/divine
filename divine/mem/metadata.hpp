@@ -234,13 +234,9 @@ struct Metadata : Next
         _meta.materialise( i, ( size / divisor ) + ( size % divisor ? 1 : 0 ) );
     }
 
-    bool equal( Internal a, Internal b, int sz )
-    {
-        return compare( *this, a, b, sz ) == 0;
-    }
-
     template< typename OtherSH >
-    int compare( OtherSH &a_sh, typename OtherSH::Internal a_obj, Internal b_obj, int sz )
+    int compare( OtherSH &a_sh, typename OtherSH::Internal a_obj, Internal b_obj, int sz,
+                 bool skip_objids )
     {
         int cmp;
         const int words = ( sz + 3 ) / 4;
@@ -266,11 +262,11 @@ struct Metadata : Next
                 continue;
             Expanded exp_a = Next::expand( c_a );
             Expanded exp_b = Next::expand( c_b );
-            if ( ( cmp = Next::compare_word( a_sh, a + off, exp_a, b + off, exp_b ) ) )
+            if ( ( cmp = Next::compare_word( a_sh, a + off, exp_a, b + off, exp_b, skip_objids ) ) )
                 return cmp;
         }
 
-        return 0;
+        return Next::compare( a_sh, a_obj, b_obj, sz, skip_objids );
     }
 
     using CompressedC = BitsetContainer< BPW, MetaPool >;

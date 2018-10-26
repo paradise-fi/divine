@@ -136,7 +136,8 @@ struct PointerLayer : public NextLayer
     PointerLayer() : _ptr_exceptions( new PointerExceptions ) {}
 
     template< typename OtherSh >
-    int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b )
+    int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b,
+                      bool skip_objids )
     {
         ASSERT_EQ( exp_a.pointer_exception, exp_b.pointer_exception );
         // This function correctly assumes that is is called only when there is an exception and the
@@ -152,7 +153,7 @@ struct PointerLayer : public NextLayer
             auto pe_b = pointer_exception( b.object, b.offset );
             for ( int i = 0; i < 4 ; ++i )
             {
-                if ( pe_a.objid[ i ] == 0 && pe_b.objid[ i ] == 0 )
+                if ( skip_objids || ( pe_a.objid[ i ] == 0 && pe_b.objid[ i ] == 0 ) )
                     continue;
                 if ( pe_a.objid[ i ] == 0 )
                     return -1;
@@ -164,7 +165,7 @@ struct PointerLayer : public NextLayer
             }
         }
 
-        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b );
+        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b, skip_objids );
     }
 
     void free( Internal p ) const

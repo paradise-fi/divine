@@ -66,7 +66,7 @@ struct ExceptionMap
         _exceptions.erase( lb, ub );
     }
 
-    bool equal( Internal a, Internal b, int sz )
+    int compare( Internal a, Internal b, int sz, bool ignore_values )
     {
         Lock lk( _mtx );
 
@@ -78,14 +78,19 @@ struct ExceptionMap
         auto i_b = lb_b;
         for ( auto i_a = lb_a; i_a != ub_a; ++i_a, ++i_b )
         {
-            if ( i_b == ub_b ) return false;
-            if ( i_a->first.offset != i_b->first.offset ) return false;
-            if ( i_a->second != i_b->second ) return false;
+            if ( i_b == ub_b )
+                return -1;
+            if ( int diff = i_a->first.offset - i_b->first.offset )
+                return diff;
+            if ( !ignore_values )
+                if ( int diff = i_a->second - i_b->second )
+                    return diff;
         }
 
-        if ( i_b != ub_b ) return false;
+        if ( i_b != ub_b )
+            return 1;
 
-        return true;
+        return 0;
     }
 
     template< typename OM >

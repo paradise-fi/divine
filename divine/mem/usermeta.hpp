@@ -51,14 +51,6 @@ struct UserMeta : Next
         Next::free( p );
     }
 
-    bool equal( Internal a, Internal b, int sz )
-    {
-        for ( unsigned i = 0; i < _maps->size(); ++ i )
-            if ( !_maps->at( i ).equal( a, b, sz ) )
-                return false;
-        return Next::equal( a, b, sz );
-    }
-
     Value peek( Loc l, int key )
     {
         auto &map = _maps->at( key );
@@ -85,6 +77,16 @@ struct UserMeta : Next
             for ( unsigned i = 0; i < to_h._maps->size(); ++ i )
                 to_h._maps->at( i ).copy( from_h._maps->at( i ), from, to, sz );
         Next::copy( from_h, from, to_h, to, sz, internal );
+    }
+
+    template< typename OtherSH >
+    int compare( OtherSH &o, typename OtherSH::Internal a, Internal b, int sz, bool skip_objids )
+    {
+        ASSERT_EQ( o._maps, _maps ); /* no support for inter-heap comparison, sorry */
+        for ( auto &map : *_maps )
+            if ( int diff = map.compare( a, b, sz, map._type == Map::Pointers && skip_objids ) )
+                return diff;
+        return Next::compare( o, a, b, sz, skip_objids );
     }
 };
 
