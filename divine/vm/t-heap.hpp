@@ -193,7 +193,7 @@ namespace divine::t_vm
 
         TEST(compare)
         {
-            decltype( heap ) cloned;
+            decltype( heap ) cloned( heap );
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
             heap.write( p, PointerV( q ) );
             heap.write( q, PointerV( p ) );
