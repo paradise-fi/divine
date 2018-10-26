@@ -373,7 +373,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
     for ( int i = 0; i < size(); ++i )
     {
         vm::CharV tainted;
-        _ctx.heap().read( hloc + _offset, tainted );
+        _ctx.heap().read( hloc + _offset + i, tainted );
         if ( tainted.taints() )
             formulas << formula( true, i );
     }
