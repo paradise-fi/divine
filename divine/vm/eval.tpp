@@ -1389,10 +1389,20 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
             {
                 if ( !v.get( 2 ).defined() || !v.get( 2 ).cooked() )
                 {
-                    auto rv = v.get( 2 );
-                    rv.taints( rv.taints() | v.get( 1 ).taints() );
-                    result( rv );
-                    this->fault( _VM_F_Arithmetic ) << "division by " << v.get( 2 );
+                    constexpr bool is_float = std::is_floating_point<
+                                                decltype( v.get( 2 ).cooked() ) >::value;
+                    if constexpr ( is_float )
+                        // for floats, the errors can be ignored, as they do
+                        // not raise signals normally, so calculate the value
+                        this->result( impl( v.get( 1 ), v.get( 2 ) ) );
+                    else
+                    {
+                        auto rv = v.get( 2 );
+                        rv.taints( rv.taints() | v.get( 1 ).taints() );
+                        result( rv );
+                    }
+                    this->fault( is_float ? _VM_F_Float : _VM_F_Integer )
+                          << "division by " << v.get( 2 );
                 } else
                     this->result( impl( v.get( 1 ), v.get( 2 ) ) );
             } );
