@@ -20,6 +20,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/vpa.h>
+#include <lart/abstract/decast.h>
 #include <lart/abstract/duplicator.h>
 #include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
@@ -58,6 +59,7 @@ namespace abstract {
             auto passes = make_pass_wrapper( AnnotateInternalFunctions()
                                            , CreateAbstractMetadata()
                                            , VPA()
+                                           , Decast()
                                            , Duplicator()
                                            , Stash()
                                            , ExpandBranching()

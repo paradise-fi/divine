@@ -87,6 +87,10 @@ llvm::Value* get_dual( llvm::Instruction *i );
 std::vector< MDValue > abstract_metadata( llvm::Module &m );
 std::vector< MDValue > abstract_metadata( llvm::Function *fn );
 
+bool has_abstract_metadata( llvm::Instruction *inst );
+
+llvm::MDNode * get_abstract_metadata( llvm::Instruction *inst );
+
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
 
 

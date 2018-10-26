@@ -142,9 +142,9 @@ llvm::Value* MDValue::value() const noexcept {
 
 Domain MDValue::domain() const noexcept {
     auto inst = cast< Instruction >( value() );
-    if ( !inst->getMetadata( "lart.domains" ) )
+    if ( !has_abstract_metadata( inst ) )
         return Domain::Concrete();
-    auto md = cast< MDNode >( inst->getMetadata( "lart.domains" ) );
+    auto md = get_abstract_metadata( inst );
     return ::lart::abstract::domain( md );
 }
 
@@ -208,7 +208,7 @@ std::vector< MDValue > abstract_metadata( llvm::Function *fn ) {
     if ( fn->getMetadata( "lart.abstract.roots" ) ) {
         auto abstract = query::query( *fn ).flatten()
             .map( query::refToPtr )
-            .filter( [] ( auto i ) { return i->getMetadata( "lart.domains" ); } )
+            .filter( has_abstract_metadata )
             .freeze();
         for ( auto i : abstract )
             mds.emplace_back( i );
@@ -216,6 +216,14 @@ std::vector< MDValue > abstract_metadata( llvm::Function *fn ) {
     return mds;
 }
 
+bool has_abstract_metadata( llvm::Instruction *inst ) {
+    return inst->getMetadata( "lart.domains" );
+}
+
+MDNode * get_abstract_metadata( llvm::Instruction *inst ) {
+    ASSERT( has_abstract_metadata( inst ) );
+    return cast< MDNode >( inst->getMetadata( "lart.domains" ) );
+}
 
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     auto& ctx = inst->getContext();
