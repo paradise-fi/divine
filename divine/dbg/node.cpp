@@ -323,7 +323,7 @@ std::string Node< Prog, Heap >::formula( bool peek, int offset )
     vm::GenericPointer addr;
     if ( peek )
     {
-        auto p = _ctx.heap().peek( heap_address() + _offset + offset, _VM_ML_User );
+        auto p = _ctx.heap().peek( heap_address() + _offset + offset, 0 );
         if ( p.defined() )
             addr.object( p.cooked() );
     }
