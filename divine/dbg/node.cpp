@@ -330,9 +330,13 @@ std::string Node< Prog, Heap >::formula( bool peek, int offset )
     else
         addr = _address;
     if ( !addr.object() )
-        return "not available";
+        return "";
     auto n = smt_value.convert( addr );
-    return smt_ctx.print( n );
+    auto str = smt_ctx.print( n ) + " ";
+    if ( offset )
+        return "[+" + std::to_string( offset ) + "] " + str;
+    else
+        return str;
 }
 
 template< typename Prog, typename Heap >
@@ -371,7 +375,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
         vm::CharV tainted;
         _ctx.heap().read( hloc + _offset, tainted );
         if ( tainted.taints() )
-            formulas << "[" << i << "] " << formula( true, i ) << " ";
+            formulas << formula( true, i );
     }
 
     if ( !formulas.str().empty() )
