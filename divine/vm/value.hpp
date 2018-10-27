@@ -118,6 +118,7 @@ struct Int : Base
     }
 
     int objid_offset() { return _meta.pointer; }
+    void objid_offset( int v ) { _meta.pointer = v; }
 
     void checkptr( Int o, Int &result, int shift = 0 )
     {
@@ -390,6 +391,7 @@ struct Float : Base
 
     uint32_t objid() { return 0; }
     int objid_offset() { return 0; }
+    void objid_offset( int ) {}
 
     void taints( uint8_t set ) { _taints = set; }
     uint8_t taints() { return _taints; }
@@ -500,6 +502,7 @@ struct Pointer : Base
 
     uint32_t objid() { return cooked().object(); }
     int objid_offset() { return 32; }
+    void objid_offset( int ) {}
 
     Int< 1, false > compare( Pointer o, bool v )
     {
