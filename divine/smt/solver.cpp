@@ -90,7 +90,7 @@ bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &
             if constexpr ( std::is_same_v< Core, STP > )
                 op = sym::Op::EQ;
             else
-                op = v_1.is_bv() ? sym::Op::EQ : sym::Op::FpOEQ;
+                op = v_1.is_bv() || v_1.is_bool() ? sym::Op::EQ : sym::Op::FpOEQ;
 
             auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
             v_eq = mk_bin( b, sym::Op::And, 1, v_eq, pair_eq );
