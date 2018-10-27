@@ -66,8 +66,17 @@ enum class Op
     BvNegate,
     LastUnary = BvNegate,
 
-    FirstBinary,
-    Eq = FirstBinary,
+    FirstCast,
+	FPExt = FirstCast,
+	FPTrunc,
+	FPToSInt,
+	FPToUInt,
+	SIntToFP,
+	UIntToFP,
+    LastCast = UIntToFP,
+
+    FirstBvBinary,
+    Eq = FirstBvBinary,
     And,
     Or,
     Xor,
@@ -89,7 +98,9 @@ enum class Op
     BvLShr,
     BvAShr,
 
-    BvULE,
+    // Icmp
+    FirstICMP,
+    BvULE = FirstICMP,
     BvULT,
     BvUGE,
     BvUGT,
@@ -97,7 +108,36 @@ enum class Op
     BvSLT,
     BvSGE,
     BvSGT,
-    LastBinary = BvSGT,
+    LastICMP = BvSGT,
+    LastBvBinary = LastICMP,
+
+    FirstFpBinary,
+    FpAdd = FirstFpBinary,
+    FpSub,
+    FpMul,
+    FpDiv,
+    FpRem,
+
+	// Fcmp
+	FirstFCMP,
+	FpFalse = FirstFCMP, // no comparison, always returns false
+	FpOEQ,   // ordered and equal
+	FpOGT,   // ordered and greater than
+	FpOGE,   // ordered and greater than or equal
+	FpOLT,   // ordered and less than
+	FpOLE,   // ordered and less than or equal
+	FpONE,   // ordered and not equal
+	FpORD,   // ordered (no nans)
+	FpUEQ,   // unordered or equal
+	FpUGT,   // unordered or greater than
+	FpUGE,   // unordered or greater than or equal
+	FpULT,   // unordered or less than
+	FpULE,   // unordered or less than or equal
+	FpUNE,   // unordered or not equal
+	FpUNO,   // unordered (either nans)
+	FpTrue,  // no comparison, always returns true
+	LastFCMP = FpTrue,
+	LastFpBinary = LastFCMP,
 
     Extract,
 };
@@ -132,6 +172,12 @@ inline std::string_view name( Op op )
         case Op::BvAShr: return "bvashr";
         case Op::BvLShr: return "bvlshr";
 
+        case Op::FpAdd:  return "fp.add";
+        case Op::FpSub:  return "fp.sub";
+        case Op::FpMul:  return "fp.mul";
+        case Op::FpDiv:  return "fp.div";
+        case Op::FpRem:  return "fp.rem";
+
         case Op::BvULE: return "bvule";
         case Op::BvULT: return "bvult";
         case Op::BvUGE: return "bvuge";
@@ -141,18 +187,55 @@ inline std::string_view name( Op op )
         case Op::BvSGE: return "bvsge";
         case Op::BvSGT: return "bvsgt";
 
+        case Op::FpFalse:
+            UNREACHABLE_F( "Unsupported operation" );
+        case Op::FpOEQ: return "fp.eq";
+        case Op::FpOGT: return "fp.gt";
+        case Op::FpOGE: return "fp.geq";
+        case Op::FpOLT: return "fp.lt";
+        case Op::FpOLE: return "fp.leq";
+        case Op::FpONE: return "distinct"; // TODO neq
+        case Op::FpORD:
+            UNREACHABLE_F( "Unsupported operation" );
+        case Op::FpUEQ: return "fp.eq";
+        case Op::FpUGT: return "fp.gt";
+        case Op::FpUGE: return "fp.geq";
+        case Op::FpULT: return "fp.lt";
+        case Op::FpULE: return "fp.leq";
+        case Op::FpUNE: return "distinct"; // TODO neq
+        case Op::FpUNO:
+            UNREACHABLE_F( "Unsupported operation" );
+        case Op::FpTrue:
+            UNREACHABLE_F( "Unsupported operation" );
+
         case Op::Extract: return "extract";
-//        default: UNREACHABLE_F( "unknown operation %d", int( op ) );
+        default: UNREACHABLE_F( "unknown operation %d", int( op ) );
     }
 }
 
 struct Node
 {
+    enum class Type {
+        Bool,
+        Int,
+        Float
+    };
+
     Format _fmt;
     int bw = 0;
+    Type type;
 
-    Node( int bw, Format &&fmt ) : _fmt( std::move( fmt ) ), bw( bw ) {}
-    Node( int bw, std::string str ) : _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ) {}
+    Node( int bw, Type type, Format &&fmt ) :
+        _fmt( std::move( fmt ) ), bw( bw ), type( type )
+    {}
+
+    Node( int bw, Type type, std::string str ) :
+        _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ), type( type )
+    {}
+
+    inline bool is_bool() { return type == Type::Bool; }
+    inline bool is_bv() { return type == Type::Int; }
+    inline bool is_float() { return type == Type::Float; }
 };
 
 static inline std::ostream &operator<<( std::ostream &o, const Node &n )
@@ -168,6 +251,56 @@ inline std::string to_string( const Node &p )
     return ss.str();
 }
 
+enum class RoundingMode {
+	RNE,	// round nearest ties to even
+	RNA,	// round nearest ties to away
+	RTP,	// round toward positive
+	RTN,	// round toward negative
+	RTZ	    // round toward zero
+};
+
+inline std::string to_string( RoundingMode mode )
+{
+	switch ( mode ) {
+		case RoundingMode::RNE: return "RNE";
+		case RoundingMode::RNA: return "RNA";
+		case RoundingMode::RTP: return "RTP";
+		case RoundingMode::RTN: return "RTN";
+		case RoundingMode::RTZ: return "RTZ";
+		default: UNREACHABLE_F( "Unknown rounding mode." );
+	};
+}
+
+static inline std::ostream &operator<<( std::ostream &o, RoundingMode mode )
+{
+	o << to_string( mode );
+	return o;
+}
+
+template< size_t bitwidth >
+std::string to_fp();
+
+template<>
+inline std::string to_fp< 16 >() { return "(_ to_fp 5 11)"; }
+
+template<>
+inline std::string to_fp< 32 >() { return "(_ to_fp 8 24)"; }
+
+template<>
+inline std::string to_fp< 64 >() { return "(_ to_fp 11 53)"; }
+
+inline std::string to_fp( size_t bw )
+{
+    switch ( bw )
+    {
+        case 16: return to_fp< 16 >();
+        case 32: return to_fp< 32 >();
+        case 64: return to_fp< 64 >();
+        default: UNREACHABLE( "Unsupported bitwidth." );
+    }
+}
+
+
 struct Context
 {
     std::unordered_set< std::string > def_set;
@@ -182,30 +315,34 @@ struct Context
         ASSERT( !def_set.count( name ) );
         def_set.insert( name );
         defs.emplace_back( name, def );
-        return Node( def.bw, name );
+        return Node( def.bw, def.type, name );
     }
 
-    Node variable( int bw, std::string name )
-    {
-        return variable( bitvecT( bw ), name );
-    }
-
-    Node variable( Node type, std::string name )
+    Node variable( Node node, std::string name )
     {
         if ( vars.count( name ) )
-            ASSERT_EQ( to_string( type ), to_string( vars.find( name )->second ) );
+            ASSERT_EQ( to_string( node ), to_string( vars.find( name )->second ) );
         else
-            vars.emplace( name, type );
-        return Node( type.bw, name );
+            vars.emplace( name, node );
+        return Node( node.bw, node.type, name );
     }
 
-    Node symbol( int bw, std::string name ) { return Node( bw, name ); }
+    Node symbol( int bw, Node::Type type, std::string name ) {
+        return Node( bw, type, name );
+    }
+
     Node bitvec( int, data::SmallVector< uint64_t > data );
-    Node boolT() { return Node( 1, "Bool" ); }
+    Node boolT() { return Node( 1, Node::Type::Bool, "Bool" ); }
     Node bitvecT( int bitwidth )
     {
         ASSERT_LEQ( 0, bitwidth );
-        return Node( bitwidth, "(_ BitVec " + std::to_string( bitwidth ) + ")" );
+        return Node( bitwidth, Node::Type::Int, "(_ BitVec " + std::to_string( bitwidth ) + ")" );
+    }
+
+    Node floatT( int bitwidth )
+    {
+        ASSERT_LEQ( 0, bitwidth );
+        return Node( bitwidth, Node::Type::Float, "(Float" + std::to_string( bitwidth ) + ")" );
     }
 
     Node bitvec( int bw, uint64_t val )
@@ -219,6 +356,8 @@ struct Context
     {
         return bitvec( sizeof( Int ) * 8, data::SmallVector< uint64_t >{ uint64_t( i ) } );
     }
+
+    Node floatv( int bw, double val, RoundingMode mode = RoundingMode::RNE );
 
     void print( std::ostream &o, Node n, bool exq = true )
     {
@@ -263,17 +402,42 @@ struct Context
 
     using Vector = brick::data::SmallVector< Node, 2 >;
 
-    Node expr( int bw, Op op, const Vector &args )
+    bool is_cmp( Op op )
+    {
+        return ( op >= Op::FirstICMP && op <= Op::LastICMP ) ||
+               ( op >= Op::FirstFCMP && op <= Op::LastFCMP );
+    }
+
+    bool is_rounding_mode_required( Op op )
+    {
+        return op == Op::FpAdd || op == Op::FpSub || op == Op::FpMul || op == Op::FpDiv;
+    }
+
+    Node expr( int bw, Op op, const Vector &args, std::optional< RoundingMode > mode )
     {
         auto fmt = [=]( std::ostream &o )
         {
             o << "(" << name( op );
+
+            if ( is_rounding_mode_required( op ) )
+            {
+                ASSERT( mode.has_value() );
+                o << " " << to_string( mode.value() );
+            }
+
             for ( auto &a : args )
                 o << " " << a;
             o << ")";
         };
-        return Node( bw, fmt );
+        auto type = is_cmp( op ) ? Node::Type::Bool : args[ 0 ].type;
+        return Node( bw, type, fmt );
     }
+
+    Node expr( int bw, Op op, const Vector &args )
+    {
+        return expr( bw, op, args, std::nullopt );
+    }
+
 
     template< Op op >
     Node unop( int bw, Node arg )
@@ -285,8 +449,19 @@ struct Context
     template< Op op >
     Node binop( int bw, Node a, Node b )
     {
-        static_assert( op >= Op::FirstBinary && op <= Op::LastBinary, "op is not a binary operation" );
+        static_assert( op >= Op::FirstBvBinary && op <= Op::LastBvBinary,
+                       "op is not a bitvector binary operation" );
+        ASSERT( a.type == b.type );
         return expr( bw, op, { a, b } );
+    }
+
+    template< Op op >
+    Node fpbinop( int bw, Node a, Node b )
+    {
+        static_assert( op >= Op::FirstFpBinary && op <= Op::LastFpBinary,
+                       "op is not a floating point binary operation" );
+        ASSERT( a.type == b.type );
+        return expr( bw, op, { a, b }, RoundingMode::RNE );
     }
 
     Node extract( int highest, int lowest, Node arg )
@@ -296,16 +471,69 @@ struct Context
         {
             o << "((_ extract " << std::dec << highest << " " << lowest << ") " << arg << ")";
         };
-        return Node( 1 + highest - lowest, f );
+        return Node( 1 + highest - lowest, Node::Type::Int, f );
     };
 
     Node ite( Node cond, Node t, Node f )
     {
         ASSERT_EQ( t.bw, f.bw );
+        ASSERT( t.type == f.type );
         auto fmt = [=]( std::ostream &o ) { o << "(ite " << cond << " " << t << " " << f << ")"; };
-        return Node( t.bw, fmt );
+        return Node( t.bw, t.type, fmt );
     }
+
+    template< Op op > Node cast( int bw, const Node & arg );
 };
+
+namespace {
+
+inline Node fp_to_fp_cast( int bw, const Node & arg )
+{
+    const RoundingMode mode = RoundingMode::RNE;
+    auto fmt = [=]( std::ostream &o )
+    {
+        o << "(" << to_fp( bw ) << " " << to_string( mode ) << " " << arg << " )";
+    };
+    return Node( bw, Node::Type::Float, fmt );
+}
+
+} // anonymous namespace
+
+template<>
+inline Node Context::cast< Op::FPExt >( int bw, const Node & arg )
+{
+    return fp_to_fp_cast( bw, arg );
+}
+
+template<>
+inline Node Context::cast< Op::FPTrunc >( int bw, const Node & arg )
+{
+    return fp_to_fp_cast( bw, arg );
+}
+
+template<>
+inline Node Context::cast< Op::FPToSInt >( int, const Node & )
+{
+    NOT_IMPLEMENTED();
+}
+
+template<>
+inline Node Context::cast< Op::FPToUInt >( int, const Node & )
+{
+    NOT_IMPLEMENTED();
+}
+
+template<>
+inline Node Context::cast< Op::SIntToFP >( int, const Node & )
+{
+    NOT_IMPLEMENTED();
+}
+
+template<>
+inline Node Context::cast< Op::UIntToFP >( int, const Node & )
+{
+    NOT_IMPLEMENTED();
+}
 
 inline static uint64_t u64mask( int bitwidth )
 {
@@ -314,8 +542,9 @@ inline static uint64_t u64mask( int bitwidth )
     return (uint64_t( 1 ) << bitwidth) - 1;
 }
 
-inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
-{
+namespace {
+
+inline std::stringstream to_bitvecor( int bitwidth, brick::data::SmallVector< uint64_t > data ) {
     int bw = bitwidth;
     int i = 0;
 
@@ -352,7 +581,23 @@ inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > 
         }
     }
 
-    return Node( bitwidth, o.str() );
+    return o;
+}
+
+} // anonymous namespace
+
+inline Node Context::floatv( int bitwidth, double val, RoundingMode mode )
+{
+	static_assert( sizeof( double ) == sizeof( uint64_t ) );
+    return Node( bitwidth, Node::Type::Float,
+        "(" + to_fp( bitwidth ) + " " + to_string( mode ) + " " + std::to_string( val ) + " )"
+    );
+}
+
+inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
+{
+    auto o = to_bitvecor( bitwidth, data );
+    return Node( bitwidth, Node::Type::Int, o.str() );
 }
 
 } // namespace smt
@@ -445,11 +690,12 @@ struct CombinationTest
 
         ASSERT_EQ( to_string( ctx.binop< Op::BvAdd >( 32, ctx.bitvec( 42 ), ctx.bitvec( 32 ) ) ),
                    "(bvadd #x0000002a #x00000020)" );
-        ASSERT_EQ( to_string( ctx.binop< Op::BvAnd >( 32, ctx.symbol( 32, "a" ), ctx.bitvec( 3, 5 ) ) ),
+        ASSERT_EQ( to_string( ctx.binop< Op::BvAnd >( 32, ctx.symbol( 32, Node::Type::Int, "a" )
+                                                                        , ctx.bitvec( 3, 5 ) ) ),
                    "(bvand a #b101)" );
         ASSERT_EQ( to_string(
                        ctx.binop< Op::BvSLE >(
-                           16, ctx.extract( 32, 16, ctx.symbol( 32, "a" ) ),
+                           16, ctx.extract( 32, 16, ctx.symbol( 32, Node::Type::Int, "a" ) ),
                            ctx.unop< Op::BvNegate >( 16, ctx.bitvec( short( 42 ) ) ) ) ),
                    "(bvsle ((_ extract 32 16) a) (bvneg #x002a))" );
     }
