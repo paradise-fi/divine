@@ -36,18 +36,31 @@ SMTLib2::Node SMTLib2::define( Node def )
 SMTLib2::Node SMTLib2::variable( sym::Type t, int32_t id )
 {
     auto name = "var_" + std::to_string( id );
-    return t.bitwidth() == 1 ? _ctx.variable( _ctx.boolT(), name )
-                             : _ctx.variable( t.bitwidth(), name );
+    switch ( t.type() ) {
+        case sym::Type::Int:
+            return _ctx.variable( _ctx.bitvecT( t.bitwidth() ), name );
+        case sym::Type::Float:
+            ASSERT( t.bitwidth() > 1 );
+            return _ctx.variable( _ctx.floatT( t.bitwidth() ), name );
+    }
+    UNREACHABLE_F( "unknown type" );
 }
 
 SMTLib2::Node SMTLib2::constant( sym::Type t, uint64_t val )
 {
-    return t.bitwidth() == 1 ? constant( bool( val ) ) : _ctx.bitvec( t.bitwidth(), val );
+    switch ( t.type() ) {
+        case sym::Type::Int:
+            return _ctx.bitvec( t.bitwidth(), val );
+        case sym::Type::Float:
+            ASSERT( t.bitwidth() > 1 );
+            return _ctx.floatv( t.bitwidth(), val );
+    }
+    ASSERT_EQ( t.type(), sym::Type::Int );
 }
 
 SMTLib2::Node SMTLib2::constant( bool v )
 {
-    return v ? _ctx.symbol( 1, "true" ) : _ctx.symbol( 1, "false" );
+    return v ? _ctx.symbol( 1, Node::Type::Bool, "true" ) : _ctx.symbol( 1, Node::Type::Bool, "false" );
 }
 
 SMTLib2::Node SMTLib2::unary( sym::Unary unary, smt::Node arg )
@@ -87,6 +100,24 @@ SMTLib2::Node SMTLib2::unary( sym::Unary unary, smt::Node arg )
                                                           _ctx.extract( arg.bw - 1, arg.bw - 1, arg ) );
                 return define( _ctx.binop< Op::Concat >( bw, _ctx.ite( sign, one_ext, z_ext ), arg ) );
             }
+        case sym::Op::FPExt:
+            ASSERT_LT( arg.bw, bw );
+            return _ctx.cast< Op::FPExt >( bw, arg );
+        case sym::Op::FPTrunc:
+            ASSERT_LT( bw, arg.bw );
+            return _ctx.cast< Op::FPTrunc >( bw, arg );
+        case sym::Op::FPToSInt:
+            ASSERT_EQ( arg.bw, bw );
+            return _ctx.cast< Op::FPToSInt >( bw, arg );
+        case sym::Op::FPToUInt:
+            ASSERT_EQ( arg.bw, bw );
+            return _ctx.cast< Op::FPToUInt >( bw, arg );
+        case sym::Op::SIntToFP:
+            ASSERT_EQ( arg.bw, bw );
+            return _ctx.cast< Op::SIntToFP >( bw, arg );
+        case sym::Op::UIntToFP:
+            ASSERT_EQ( arg.bw, bw );
+            return _ctx.cast< Op::UIntToFP >( bw, arg );
         case sym::Op::BoolNot:
             ASSERT_EQ( arg.bw, bw );
             ASSERT_EQ( bw, 1 );
@@ -101,12 +132,12 @@ SMTLib2::Node SMTLib2::unary( sym::Unary unary, smt::Node arg )
 
 SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
 {
+
     using smt::Op;
     int bw = bin.type.bitwidth();
-    ASSERT_EQ( a.bw, b.bw );
-
-    if ( a.bw > 1 )
+    if ( a.is_bv() && b.is_bv() )
     {
+        ASSERT_EQ( a.bw, b.bw );
         switch ( bin.op )
         {
 #define MAP_OP_ARITH( OP ) case sym::Op::OP:                            \
@@ -152,49 +183,70 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
     }
-    else
+    else if ( a.is_float() && b.is_float() )
     {
-        ASSERT_EQ( a.bw, 1 );
+        smt::Node node = a;
         switch ( bin.op )
         {
-            case sym::Op::Xor:
-            case sym::Op::Add:
-            case sym::Op::Sub:
-                return define( _ctx.binop< Op::Xor >( 1, a, b ) );
+#define MAP_OP_FLOAT_ARITH( OP ) case sym::Op::OP:                      \
+            ASSERT_EQ( bw, a.bw );                                      \
+            return define( _ctx.fpbinop< Op:: OP >( bw, a, b ) );
+            MAP_OP_FLOAT_ARITH( FpAdd );
+            MAP_OP_FLOAT_ARITH( FpSub );
+            MAP_OP_FLOAT_ARITH( FpMul );
+            MAP_OP_FLOAT_ARITH( FpDiv );
+            MAP_OP_FLOAT_ARITH( FpRem );
+#undef MAP_OP_FLOAT_ARITH
+
+#define MAP_OP_FCMP( OP ) case sym::Op::OP:                             \
+            ASSERT_EQ( bw, 1 );                                         \
+            return define( _ctx.fpbinop< Op:: OP >( bw, a, b ) );
+            MAP_OP_FCMP( FpFalse );
+            MAP_OP_FCMP( FpOEQ );
+            MAP_OP_FCMP( FpOGT );
+            MAP_OP_FCMP( FpOGE );
+            MAP_OP_FCMP( FpOLT );
+            MAP_OP_FCMP( FpOLE );
+            MAP_OP_FCMP( FpONE );
+            MAP_OP_FCMP( FpORD );
+            MAP_OP_FCMP( FpUEQ );
+            MAP_OP_FCMP( FpUGT );
+            MAP_OP_FCMP( FpUGE );
+            MAP_OP_FCMP( FpULT );
+            MAP_OP_FCMP( FpULE );
+            MAP_OP_FCMP( FpUNE );
+            MAP_OP_FCMP( FpUNO );
+            MAP_OP_FCMP( FpTrue );
+#undef MAP_OP_FCMP
+            default:
+                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+        }
+    }
+    else
+    {
+        ASSERT( !a.is_float() );
+        ASSERT( !b.is_float() );
+
+        if ( a.is_bv() )
+        {
+            ASSERT_EQ( a.bw, 1 );
+            a = define( _ctx.binop< Op::Eq >( 1, a, _ctx.bitvec( 1, 1 ) ) );
+        }
+
+        if ( b.is_bv() )
+        {
+            ASSERT_EQ( b.bw, 1 );
+            b = define( _ctx.binop< Op::Eq >( 1, b, _ctx.bitvec( 1, 1 ) ) );
+        }
+
+        switch ( bin.op )
+        {
             case sym::Op::And:
-            case sym::Op::Mul:
                 return define( _ctx.binop< Op::And >( 1, a, b ) );
-            case sym::Op::UDiv:
-            case sym::Op::SDiv:
-                return a; // ?
-            case sym::Op::URem:
-            case sym::Op::SRem:
-            case sym::Op::Shl:
-            case sym::Op::LShr:
-                return _ctx.symbol( 1, "false" );
-            case sym::Op::AShr:
-                return a;
             case sym::Op::Or:
                 return define( _ctx.binop< Op::Or >( 1, a, b ) );
-
-            case sym::Op::UGE:
-            case sym::Op::SLE:
-                return define( _ctx.binop< Op::Or >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
-            case sym::Op::ULE:
-            case sym::Op::SGE:
-                return define( _ctx.binop< Op::Or >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
-
-            case sym::Op::UGT:
-            case sym::Op::SLT:
-                return define( _ctx.binop< Op::And >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
-            case sym::Op::ULT:
-            case sym::Op::SGT:
-                return define( _ctx.binop< Op::And >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
-
             case sym::Op::EQ:
                 return define( _ctx.binop< Op::Eq >( 1, a, b ) );
-            case sym::Op::NE:
-                return define( _ctx.unop< Op::Not >( 1, _ctx.binop< Op::Eq >( 1, a, b ) ) );
             default:
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
@@ -214,7 +266,14 @@ z3::expr Z3::constant( sym::Type t, uint64_t v )
 #else
     using ValT = int64_t;
 #endif
-    return _ctx.bv_val( static_cast< ValT >( v ), t.bitwidth() );
+    switch ( t.type() ) {
+        case sym::Type::Int:
+            return _ctx.bv_val( static_cast< ValT >( v ), t.bitwidth() );
+        case sym::Type::Float:
+            UNREACHABLE_F( "Floatigpoint is not yet supported with z3 solver." );
+    }
+
+    UNREACHABLE_F( "unknown type" );
 }
 
 z3::expr Z3::constant( bool v )
@@ -224,7 +283,14 @@ z3::expr Z3::constant( bool v )
 
 z3::expr Z3::variable( sym::Type t, int32_t id )
 {
-    return _ctx.bv_const( ( "var_"s + std::to_string( id ) ).c_str(), t.bitwidth() );
+    switch ( t.type() ) {
+        case sym::Type::Int:
+            return _ctx.bv_const( ( "var_"s + std::to_string( id ) ).c_str(), t.bitwidth() );
+        case sym::Type::Float:
+            UNREACHABLE_F( "Floatigpoint is not yet supported with z3 solver." );
+    }
+
+    UNREACHABLE_F( "unknown type" );
 }
 
 z3::expr Z3::unary( sym::Unary un, Node arg )
@@ -248,6 +314,25 @@ z3::expr Z3::unary( sym::Unary un, Node arg )
             return arg.is_bv()
                 ? z3::sext( arg, bw - childbw )
                 : z3::ite( arg, ~_ctx.bv_val( 0, bw ), _ctx.bv_val( 0, bw ) );
+        /*case sym::Op::FPExt:
+            ASSERT_LT( childbw, bw );
+            // Z3_mk_fpa_to_fp_float( arg.ctx() ); // TODO
+            UNREACHABLE_F( "Unsupported operation." );
+        case sym::Op::FPTrunc:
+            ASSERT_LT( bw, childbw );
+            UNREACHABLE_F( "Unsupported operation." ); // TODO
+        case sym::Op::FPToSInt:
+            UNREACHABLE_F( "Unsupported operation." ); // TODO
+            ASSERT_EQ( childbw, bw );
+        case sym::Op::FPToUInt:
+            ASSERT_EQ( childbw, bw );
+            UNREACHABLE_F( "Unsupported operation." ); // TODO
+        case sym::Op::SIntToFP:
+            ASSERT_EQ( childbw, bw );
+            UNREACHABLE_F( "Unsupported operation." ); // TODO
+        case sym::Op::UIntToFP:
+            ASSERT_EQ( childbw, bw );
+            UNREACHABLE_F( "Unsupported operation." ); // TODO*/
         case sym::Op::BoolNot:
             ASSERT_EQ( childbw, bw );
             ASSERT_EQ( bw, 1 );
@@ -298,6 +383,40 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
     }
+    /*else if ( a.is_real() && b.is_real() )
+    {
+        switch ( bin.op )
+        {
+            case sym::Op::FpAdd: return a + b;
+            case sym::Op::FpSub: return a - b;
+            case sym::Op::FpMul: return a * b;
+            case sym::Op::FpDiv: return a / b;
+            case sym::Op::FpRem:
+                UNREACHABLE_F( "unsupported operation FpFrem" );
+            case sym::Op::FpFalse:
+                UNREACHABLE_F( "unsupported operation FpFalse" );
+            case sym::Op::FpOEQ: return a == b;
+            case sym::Op::FpOGT: return a > b;
+            case sym::Op::FpOGE: return a >= b;
+            case sym::Op::FpOLT: return a < b;
+            case sym::Op::FpOLE: return a <= b;
+            case sym::Op::FpONE: return a != b;
+            case sym::Op::FpORD:
+                UNREACHABLE_F( "unsupported operation FpORD" );
+            case sym::Op::FpUEQ: return a == b;
+            case sym::Op::FpUGT: return a > b;
+            case sym::Op::FpUGE: return a >= b;
+            case sym::Op::FpULT: return a < b;
+            case sym::Op::FpULE: return a <= b;
+            case sym::Op::FpUNE: return a != b;
+            case sym::Op::FpUNO:
+                UNREACHABLE_F( "unknown binary operation FpUNO" );
+            case sym::Op::FpTrue:
+                UNREACHABLE_F( "unknown binary operation FpTrue" );
+            default:
+                UNREACHABLE_F( "unknown binary operation %d %d", bin.op, int( sym::Op::EQ ) );
+        }
+    }*/
     else
     {
         if ( a.is_bv() )
@@ -329,6 +448,7 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
 
 stp::ASTNode STP::constant( sym::Type t, uint64_t v )
 {
+    ASSERT_NEQ( t.type(), sym::Type::Float );
     return constant( t.bitwidth(), v );
 }
 
@@ -349,6 +469,7 @@ stp::ASTNode STP::constant( bool v )
 
 stp::ASTNode STP::variable( sym::Type t, int32_t id )
 {
+    ASSERT_NEQ( t.type(), sym::Type::Float );
     return _stp.CreateSymbol( ( "var_"s + std::to_string( id ) ).c_str(), 0, t.bitwidth() );
 }
 

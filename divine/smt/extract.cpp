@@ -40,8 +40,15 @@ typename Builder::Node Extract< Builder >::build( vm::HeapPointer p )
 
     switch ( f->op() )
     {
-        case sym::Op::Variable: return this->variable( f->var.type, f->var.id );
-        case sym::Op::Constant: return this->constant( f->con.type, f->con.value );
+        case sym::Op::Variable:
+            return this->variable( f->var.type, f->var.id );
+        case sym::Op::Constant:
+            switch ( f->con.type.type() ) {
+                case sym::Type::Int:
+                    return this->constant( f->con.type, f->con.value );
+                case sym::Type::Float:
+                    return this->constant( f->con.type, static_cast< double >( f->con.value ) );
+            }
         default: UNREACHABLE_F( "unexpected operation %d", f->op() );
     }
 }

@@ -85,7 +85,14 @@ bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &
         else
         {
             auto v_1 = e_1.convert( p.first ), v_2 = e_2.convert( p.second );
-            auto pair_eq = mk_bin( b, sym::Op::EQ, 1, v_1, v_2 );
+
+            sym::Op op;
+            if constexpr ( std::is_same_v< Core, STP > )
+                op = sym::Op::EQ;
+            else
+                op = v_1.is_bv() ? sym::Op::EQ : sym::Op::FpOEQ;
+
+            auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
             v_eq = mk_bin( b, sym::Op::And, 1, v_eq, pair_eq );
         }
     }
