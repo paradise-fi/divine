@@ -133,6 +133,16 @@ struct TestInt
         Int32 b = a;
         ASSERT( b.pointer() );
     }
+
+    TEST( notptr_trunc )
+    {
+        vm::value::Int< 64 > a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+        ASSERT( a.pointer() );
+        a = a >> Int64( 30 );
+        ASSERT( !a.pointer() );
+        Int32 b = a;
+        ASSERT( !b.pointer() );
+    }
 };
 
 struct TestPtr

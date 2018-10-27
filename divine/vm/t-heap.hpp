@@ -85,6 +85,35 @@ namespace divine::t_vm
             ASSERT_EQ( j.defbits(), 0xFF );
         }
 
+        TEST(write_shift_ptr_64_32)
+        {
+            using Int64 = vm::value::Int< 64 >;
+            Int64 a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+            ASSERT( a.pointer() );
+            a = a >> Int64( 32 );
+            ASSERT( !a.pointer() );
+            heap.write( p.cooked(), a );
+            IntV b;
+            heap.read( p.cooked(), b );
+            ASSERT( b.pointer() );
+        }
+
+        TEST(write_shift_ptr_64_64)
+        {
+            using Int64 = vm::value::Int< 64 >;
+            Int64 a( 33ul << 32, 0xFFFFFFFFFFFFFFFFul, true );
+            ASSERT( a.pointer() );
+            a = a >> Int64( 32 );
+            ASSERT( !a.pointer() );
+            heap.write( p.cooked(), a );
+            a = a << Int64( 32 );
+            ASSERT( a.pointer() );
+            heap.read( p.cooked(), a );
+            ASSERT( !a.pointer() );
+            a = a << Int64( 32 );
+            ASSERT( a.pointer() );
+        }
+
         TEST(clone_semidef)
         {
             IntV i( 0, 0xF0, false ), j;
