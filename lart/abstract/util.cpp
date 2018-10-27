@@ -47,8 +47,9 @@ bool is_cast( CallInst *intr ) {
     return is_intr( intr, ".zext" ) ||
            is_intr( intr, ".sext" ) ||
            is_intr( intr, ".trunc" ) ||
+           is_intr( intr, ".fpext" ) ||
+           is_intr( intr, ".fptrunc" ) ||
            is_intr( intr, ".bitcast" );
-
 }
 
 Values taints( Module &m ) {
@@ -165,7 +166,8 @@ std::vector< Instruction* > placeholders( Module &m ) {
 
 
 bool is_base_type( Type *type ) {
-    return type->isIntegerTy();
+    // TODO determine from domain metadata what is base type
+    return type->isIntegerTy() || type->isFloatingPointTy();
 }
 
 

@@ -116,13 +116,12 @@ Types args_with_taints( Value* val, const Values &args ) {
 }
 
 bool is_taintable( Value *v ) {
-    return is_one_of< BinaryOperator, CmpInst, TruncInst, SExtInst, ZExtInst >( v );
+    return is_one_of< BinaryOperator, CmpInst, CastInst >( v );
 }
 
 ConstantInt* bitwidth( Value *v ) {
     auto &ctx = v->getContext();
-    auto ty = v->getType();
-    auto bw = cast< IntegerType >( ty )->getBitWidth();
+    auto bw = v->getType()->getPrimitiveSizeInBits();
     return ConstantInt::get( IntegerType::get( ctx, 32 ), bw );
 }
 
@@ -226,6 +225,22 @@ namespace lifter {
 
     using Predicate = CmpInst::Predicate;
     const std::unordered_map< Predicate, std::string > predicate = {
+        { Predicate::FCMP_FALSE, "false" },
+        { Predicate::FCMP_OEQ, "oeq" },
+        { Predicate::FCMP_OGT, "ogt" },
+        { Predicate::FCMP_OGE, "oge" },
+        { Predicate::FCMP_OLT, "olt" },
+        { Predicate::FCMP_OLE, "ole" },
+        { Predicate::FCMP_ONE, "one" },
+        { Predicate::FCMP_ORD, "ord" },
+        { Predicate::FCMP_UNO, "uno" },
+        { Predicate::FCMP_UEQ, "ueq" },
+        { Predicate::FCMP_UGT, "ugt" },
+        { Predicate::FCMP_UGE, "uge" },
+        { Predicate::FCMP_ULT, "ult" },
+        { Predicate::FCMP_ULE, "ule" },
+        { Predicate::FCMP_UNE, "une" },
+        { Predicate::FCMP_TRUE, "true" },
         { Predicate::ICMP_EQ, "eq" },
         { Predicate::ICMP_NE, "ne" },
         { Predicate::ICMP_UGT, "ugt" },
@@ -241,9 +256,9 @@ namespace lifter {
     std::string name( Instruction *inst, Domain dom ) {
         auto pref = prefix( inst, dom );
 
-        if ( auto icmp = dyn_cast< ICmpInst >( inst ) )
-            return pref + "_" + predicate.at( icmp->getPredicate() )
-                        + "." + llvm_name( icmp->getOperand( 0 )->getType() );
+        if ( auto cmp = dyn_cast< CmpInst >( inst ) )
+            return pref + "_" + predicate.at( cmp->getPredicate() )
+                        + "." + llvm_name( cmp->getOperand( 0 )->getType() );
 
         if ( isa< BinaryOperator >( inst ) )
             return pref + "." + llvm_name( inst->getType() );
@@ -305,8 +320,17 @@ struct LifterBuilder {
 
     ConstantInt* cast_bitwidth( Function *fn ) {
         auto &ctx = fn->getContext();
-        auto bw = fn->getName().rsplit('.').second.drop_front().str();
-        return ConstantInt::get( IntegerType::get( ctx, 32 ), std::stoi( bw ) );
+        auto type = fn->getName().rsplit('.').second;
+
+        int bitwidth = 0;
+        if ( type == "float" )
+            bitwidth = 32;
+        else if ( type == "double" )
+            bitwidth = 64;
+        else
+            bitwidth = std::stoi( type.drop_front().str() );
+
+        return ConstantInt::get( IntegerType::get( ctx, 32 ), bitwidth );
     }
 
     Value* process_cast( CallInst *call, Values &args ) {
@@ -402,10 +426,23 @@ struct Lifter : BaseLifter {
     CallInst * lift( Value * val ) {
         auto &ctx = val->getContext();
         IRBuilder<> irb( ctx );
-        auto fn = get_module( val )->getFunction( "__" + domain().name()  + "_lift" );
-        auto val64bit = irb.CreateSExt( val, IntegerType::get( ctx, 64 ) );
+
         auto argc = ConstantInt::get( IntegerType::get( ctx, 32 ), 1 );
-        return irb.CreateCall( fn, { bitwidth( val ), argc, val64bit } );
+
+        if ( val->getType()->isIntegerTy() ) {
+            // TODO rename lift to lift_int
+            auto fn = get_module( val )->getFunction( "__" + domain().name()  + "_lift" );
+            auto val64bit = irb.CreateSExt( val, IntegerType::get( ctx, 64 ) );
+            return irb.CreateCall( fn, { bitwidth( val ), argc, val64bit } );
+        }
+
+        if ( val->getType()->isFloatingPointTy() ) {
+            auto fn = get_module( val )->getFunction( "__" + domain().name()  + "_lift_float" );
+            return irb.CreateCall( fn, { bitwidth( val ), argc, val } );
+        }
+
+
+        UNREACHABLE( "Unknown type to be lifted.\n" );
     }
 
     ArgBlock generate_arg_block( ArgPair arg, size_t idx ) {
@@ -452,8 +489,10 @@ struct ThawLifter : BaseLifter {
 
         auto begin = function()->arg_begin();
         Value *addr = &*std::next( begin, 3 );
-        // TODO move to symbolic domain
+
+        ASSERT( addr->getType()->getPointerElementType()->isIntegerTy() );
         auto ty = cast< IntegerType >( addr->getType()->getPointerElementType() );
+
         if ( !ty->isIntegerTy( 8 ) )
             addr = irb.CreateBitCast( addr, Type::getInt8PtrTy( ctx ) );
 

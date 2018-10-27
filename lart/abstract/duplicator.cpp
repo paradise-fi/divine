@@ -17,8 +17,7 @@ namespace lart::abstract
 {
 
 bool is_duplicable( Value *v ) {
-    return abstract::is_one_of< BinaryOperator, CmpInst, TruncInst,
-                                SExtInst, ZExtInst, LoadInst, PHINode >( v );
+    return abstract::is_one_of< BinaryOperator, CmpInst, CastInst, LoadInst, PHINode >( v );
 }
 
 Function* placeholder( Module *m, Type *in, Type *out ) {
@@ -37,8 +36,8 @@ void Duplicator::run( llvm::Module &m ) {
 	    .map( query::llvmdyncast< Instruction > )
 	    .filter( [] ( auto v ) { return is_base_type( v->getType() ); } )
 	    .filter( [] ( auto v ) {
-            if ( auto icmp = dyn_cast< ICmpInst >( v ) ) {
-                return query::query( icmp->operands() ).all( [] ( auto &op ) {
+            if ( auto cmp = dyn_cast< CmpInst >( v ) ) {
+                return query::query( cmp->operands() ).all( [] ( auto &op ) {
                     return is_base_type( op->getType() );
                 } );
             } else {
@@ -54,7 +53,6 @@ void Duplicator::run( llvm::Module &m ) {
 }
 
 void Duplicator::process( llvm::Instruction *i ) {
-    ASSERT( i->getType()->isIntegerTy() );
     auto dom = MDValue( i ).domain();
     auto type = abstract_type( i->getType(), dom );
 
