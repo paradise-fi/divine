@@ -874,7 +874,8 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) noexcept {
         else
             __dios_fault( _VM_Fault::_VM_F_Locking, "Locked mutex destroyed" );
     }
-    mutex->__initialized = 0;
+    pthread_mutex_t uninit;
+    *mutex = uninit;
     return 0;
 }
 
@@ -986,7 +987,8 @@ int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) noexcept {
     if ( attr == NULL )
         return EINVAL;
 
-    attr->__type = 0;
+    int uninit;
+    attr->__type = uninit;
     return 0;
 }
 
@@ -1146,8 +1148,8 @@ template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier 
     // (probably better alternative when compared to: return EBUSY)
     assert( cond->__counter == 0 );
 
-    cond->__counter = 0;
-    cond->__initialized = 0;
+    CondOrBarrier uninit;
+    *cond = uninit;
     return 0;
 }
 
@@ -1155,8 +1157,10 @@ int pthread_cond_destroy( pthread_cond_t *cond ) noexcept {
     __dios::FencedInterruptMask mask;
 
     int r = _destroy_cond_or_barrier( cond );
-    if ( r == 0 )
-        cond->__mutex = NULL;
+    if ( r == 0 ) {
+        pthread_mutex_t *uninit;
+        cond->__mutex = uninit;
+    }
     return r;
 }
 
@@ -1523,7 +1527,8 @@ int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) noexcept {
         // rwlock is locked
         return EBUSY;
 
-    rwlock->__initialized = 0;
+    pthread_rwlock_t uninit;
+    *rwlock = uninit;
     return 0;
 }
 
@@ -1614,7 +1619,8 @@ int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) noexcept {
     if ( attr == NULL )
         return EINVAL;
 
-    *attr = 0;
+    pthread_rwlockattr_t uninit;
+    *attr = uninit;
     return 0;
 }
 
@@ -1667,8 +1673,10 @@ int pthread_barrier_destroy( pthread_barrier_t *barrier ) noexcept {
         return EINVAL;
 
     int r = _destroy_cond_or_barrier( barrier );
-    if ( r == 0 )
-        barrier->__nthreads = 0;
+    if ( r == 0 ) {
+        int uninit;
+        barrier->__nthreads = uninit;
+    }
     return r;
 }
 
