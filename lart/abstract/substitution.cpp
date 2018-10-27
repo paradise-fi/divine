@@ -329,7 +329,6 @@ struct LifterBuilder {
             bitwidth = 64;
         else
             bitwidth = std::stoi( type.drop_front().str() );
-
         return ConstantInt::get( IntegerType::get( ctx, 32 ), bitwidth );
     }
 
@@ -381,8 +380,16 @@ struct BaseLifter {
         return Domain( name );
     }
 
+    LLVMContext & ctx() { return taint->getContext(); }
+
     Function * function() const { return taint_function( taint ); }
 protected:
+    Type * i32() { return IntegerType::get( ctx(), 32 ); }
+    Type * i64() { return IntegerType::get( ctx(), 64 ); }
+
+    Constant * i32_cv( uint32_t v ) { return ConstantInt::get( i32(), v ); }
+    Constant * i64_cv( uint64_t v ) { return ConstantInt::get( i64(), v ); }
+
     CallInst *taint;
 };
 
@@ -424,15 +431,14 @@ struct Lifter : BaseLifter {
     };
 
     CallInst * lift( Value * val ) {
-        auto &ctx = val->getContext();
-        IRBuilder<> irb( ctx );
+        IRBuilder<> irb( ctx() );
 
-        auto argc = ConstantInt::get( IntegerType::get( ctx, 32 ), 1 );
+        auto argc = i32_cv( 1 );
 
         if ( val->getType()->isIntegerTy() ) {
             // TODO rename lift to lift_int
             auto fn = get_module( val )->getFunction( "__" + domain().name()  + "_lift" );
-            auto val64bit = irb.CreateSExt( val, IntegerType::get( ctx, 64 ) );
+            auto val64bit = irb.CreateSExt( val, i64() );
             return irb.CreateCall( fn, { bitwidth( val ), argc, val64bit } );
         }
 
@@ -481,28 +487,31 @@ struct Lifter : BaseLifter {
 struct ThawLifter : BaseLifter {
     using BaseLifter::BaseLifter;
 
+    using Arguments = Values;
+
+    template< typename Builder >
+    void build( Builder irb, Arguments && args ) {
+        auto thaw = LifterBuilder( domain() ).process( taint, args );
+        irb.Insert( cast< Instruction >( thaw ) );
+        irb.CreateRet( thaw );
+    }
+
     void syntetize() final {
         ASSERT( function()->empty() );
         IRBuilder<> irb( make_bb( function(), "entry" ) );
 
-        auto &ctx = taint->getContext();
+        Value * addr = std::next( function()->arg_begin(), 3 );
+        auto base = addr->getType()->getPointerElementType();
+        auto bitwidth = base->getPrimitiveSizeInBits();
 
-        auto begin = function()->arg_begin();
-        Value *addr = &*std::next( begin, 3 );
+        if ( !base->isIntegerTy( 8 ) )
+            addr = irb.CreateBitCast( addr, Type::getInt8PtrTy( ctx() ) );
 
-        ASSERT( addr->getType()->getPointerElementType()->isIntegerTy() );
-        auto ty = cast< IntegerType >( addr->getType()->getPointerElementType() );
-
-        if ( !ty->isIntegerTy( 8 ) )
-            addr = irb.CreateBitCast( addr, Type::getInt8PtrTy( ctx ) );
-
-        auto i32 = Type::getInt32Ty( ctx );
-        auto bitwidth = ConstantInt::get( i32, ty->getBitWidth() );
-
-        Values args = { addr, bitwidth };
-        auto thaw = LifterBuilder( domain() ).process( taint, args );
-        irb.Insert( cast< Instruction >( thaw ) );
-        irb.CreateRet( thaw );
+        if ( base->isIntegerTy() || base->isFloatingPointTy() ) {
+            build( irb, { addr, i32_cv( bitwidth ) } );
+        } else {
+            UNREACHABLE( "Unsupported type for thawing." );
+        }
     }
 };
 
@@ -523,7 +532,6 @@ struct FreezeLifter : BaseLifter {
         auto freeze = LifterBuilder( domain() ).process( taint, args );
         irb.Insert( cast< Instruction >( freeze ) );
 
-        // TODO insert to symbolic domain
         auto taint_zero = get_module( taint )->getFunction( "__rst_taint_i64" );
 
         Value *ret = irb.CreateCall( taint_zero );
@@ -844,7 +852,7 @@ struct AssumeTaint : TaintBase< AssumeTaint > {
 namespace bundle {
 
 bool is_base_type( Value* val ) {
-    return val->getType()->isIntegerTy(); // TODO move to domain
+    return val->getType()->isIntegerTy() || val->getType()->isFloatingPointTy(); // TODO move to domain
 }
 
 Values argument_placeholders( Function * fn ) {
