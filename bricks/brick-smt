@@ -76,8 +76,7 @@ enum class Op
     LastCast = UIntToFP,
 
     FirstBvBinary,
-    Eq = FirstBvBinary,
-    And,
+    And = FirstBvBinary,
     Or,
     Xor,
     Implies,
@@ -100,7 +99,8 @@ enum class Op
 
     // Icmp
     FirstICMP,
-    BvULE = FirstICMP,
+    Eq = FirstICMP,
+    BvULE,
     BvULT,
     BvUGE,
     BvUGT,
