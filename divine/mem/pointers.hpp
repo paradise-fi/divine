@@ -203,6 +203,10 @@ struct PointerLayer : public NextLayer
 
         if ( sz == vm::PointerBytes && exp[ 1 ].pointer && ! exp[ 0 ].pointer )
             value.pointer( true );
+        else if ( sz == vm::PointerBytes && ! exp[ 1 ].pointer && exp[ 0 ].pointer )
+            value.objid_offset( 0 );
+        else if ( sz == _VM_PB_Obj / 8 && exp[ 0 ].pointer )
+            value.pointer( true );
         else
             value.pointer( false );
 
