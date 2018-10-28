@@ -288,6 +288,55 @@ namespace __dios::fs
         return 0;
     }
 
+    bool rappend( char *&buff, size_t &size, std::string_view add )
+    {
+        if ( size <= add.size() )
+            return false;
+        std::copy( add.rbegin(), add.rend(), buff );
+        buff += add.size();
+        size -= add.size();
+        *buff = 0;
+        return true;
+    }
+
+    char *Syscall::getcwd( char *buff, size_t size )
+    {
+        auto buff_start = buff;
+
+        if ( !buff )
+            return error( EFAULT ), nullptr;
+        if ( !size )
+            return error( EINVAL ), nullptr;
+
+        for ( auto dir = proc()._cwd; dir != root(); dir = dir->as< Directory >()->parent() )
+        {
+            if ( !rappend( buff, size, dir->as< Directory >()->name() ) )
+                return error( ERANGE ), nullptr;
+
+            if ( !rappend( buff, size, "/" ) )
+                return error( ERANGE ), nullptr;
+        }
+
+        if ( proc()._cwd == root() )
+            if ( !rappend( buff, size, "/" ) )
+                return error( ERANGE ), nullptr;
+
+        for ( auto c = buff_start; c < buff; ++c )
+            std::swap( *c, *--buff );
+
+        return buff_start;
+    }
+
+    int Syscall::chdir( const char *path )
+    {
+        return _chdir( lookup( get_dir( AT_FDCWD ), path, true ) );
+    }
+
+    int Syscall::fchdir( int dirfd )
+    {
+        return _chdir( get_dir( dirfd ) );
+    }
+
     int Syscall::access( const char *path, int amode )
     {
         return faccessat( AT_FDCWD, path, amode, 0 );

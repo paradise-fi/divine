@@ -29,6 +29,7 @@ namespace __dios::fs
     struct ProcessInfo
     {
         Mode _umask;
+        Node _cwd;
         __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
     };
 
@@ -36,7 +37,6 @@ namespace __dios::fs
     {
         virtual ProcessInfo &proc() = 0;
         virtual Node root() = 0;
-        virtual Node cwd() = 0;
 
         FileDescriptor *get_fd( int fd )
         {
@@ -118,9 +118,10 @@ namespace __dios::fs
         Node get_dir( int fd = AT_FDCWD )
         {
             if ( fd == AT_FDCWD )
-                return cwd();
-            else
-                return get_fd( fd )->inode();
+                return proc()._cwd;
+            else if ( auto n = get_fd( fd ) )
+                return n->inode();
+            else return error( EBADF ), nullptr;
         }
 
         using split_view = std::pair< std::string_view, std::string_view >;

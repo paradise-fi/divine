@@ -88,6 +88,22 @@ namespace __dios::fs
             return renameat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
         }
 
+        int _chdir( Node ino )
+        {
+            if ( !ino )
+                return -1;
+            if ( !ino->mode().is_dir() )
+                return error( ENOTDIR ), -1;
+            if ( !ino->mode().user_exec() )
+                return error( EACCES ), -1;
+            proc()._cwd = ino;
+            return 0;
+        }
+
+        int chdir( const char *path );
+        int fchdir( int dirfd );
+        char *getcwd( char *buff, size_t size );
+
         ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t size );
         ssize_t readlink( const char *path, char *buf, size_t size );
 

@@ -52,8 +52,9 @@ struct Manager {
 
     off_t lseek( int fd, off_t offset, Seek whence );
 
-    Node currentDirectory() {
-        return _currentDirectory.lock();
+    Node currentDirectory()
+    {
+        return _proc->_cwd;
     }
 
     void getCurrentWorkingDir( char *buff, size_t size );
@@ -70,7 +71,6 @@ struct Manager {
 
     template< typename U > friend struct VFS;
     Node _root;
-    WeakNode _currentDirectory;
     std::array< Node, 3 > _standardIO;
 
     ProcessInfo *_proc;
@@ -129,7 +129,6 @@ struct VFS: Syscall, Next
     {};
 
     Node root() override { return _root; }
-    Node cwd() override { return instance().currentDirectory(); }
     ProcessInfo &proc() override { return *static_cast< Process * >( this->getCurrentTask()->_proc ); }
 
     using Syscall::open;
@@ -171,6 +170,10 @@ struct VFS: Syscall, Next
     using Syscall::renameat;
     using Syscall::rename;
 
+    using Syscall::chdir;
+    using Syscall::fchdir;
+    using Syscall::getcwd;
+
     using Syscall::faccessat;
     using Syscall::access;
 
@@ -198,6 +201,8 @@ struct VFS: Syscall, Next
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
         _root = instance()._root;
+        s.proc1->_cwd = _root;
+
         import( s.env );
         Next::setup( s );
     }
@@ -370,29 +375,6 @@ public: /* system call implementation */
     {
         try {
             return instance( ).duplicate2( oldfd, newfd );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-
-    int chdir( const char *path )
-    {
-        try {
-            instance( ).changeDirectory( path );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int fchdir( int dirfd )
-    {
-        try {
-            instance( ).changeDirectory( dirfd );
-            return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
@@ -764,17 +746,6 @@ public: /* system call implementation */
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
-        }
-    }
-
-    //char *getcwd(char *buf, size_t size);
-    char *getcwd( char *buff, size_t size ) {
-        try {
-            instance( ).getCurrentWorkingDir( buff, size );
-            return buff;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return nullptr;
         }
     }
 

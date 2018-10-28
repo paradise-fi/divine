@@ -3,20 +3,11 @@
 #include "manager.h"
 #include <dios/sys/memory.hpp>
 
-#define REMEMBER_DIRECTORY( dirfd, name )                               \
-    WeakNode savedDir = _currentDirectory;                               \
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } ); \
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )       \
-        changeDirectory( dirfd );                                       \
-    else                                                                \
-        d.pass();
-
 namespace __dios {
 namespace fs {
 
 Manager::Manager( bool ) :
     _root( new( __dios::nofail ) Directory() ),
-    _currentDirectory( _root ),
     _standardIO{ { make_shared< StandardInput >(), nullptr, nullptr } }
 {
     _root->mode( S_IFDIR | ACCESSPERMS );
@@ -124,56 +115,6 @@ off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
         throw Error( EINVAL );
     }
     return f->offset();
-}
-
-void Manager::getCurrentWorkingDir( char *buff, size_t size ) {
-    if ( buff == nullptr )
-        throw Error( EFAULT );
-    if ( size == 0 )
-        throw Error( EINVAL );
-    __dios::String path = "";
-    Node originalDirectory = currentDirectory( );
-
-    Node current = originalDirectory;
-    while( current != _root ) {
-        Directory *dir = current->as< Directory >( );
-        if ( !dir )
-            break;
-        path = "/" + String( dir->name() ) + path;
-        current = dir->find( ".." );
-    }
-    if ( path.empty( ) )
-        path = "/";
-
-    if ( path.size( ) >= size )
-        throw Error( ERANGE );
-    char *end =std::copy( path.c_str(), path.c_str() + path.length(), buff );
-    *end = '\0';
-}
-
-void Manager::changeDirectory( __dios::String pathname ) {
-    Node item = findDirectoryItem( pathname );
-    if ( !item )
-        throw Error( ENOENT );
-    if ( !item->mode().is_dir() )
-        throw Error( ENOTDIR );
-    _checkGrants( item, S_IXUSR );
-
-    _currentDirectory = item;
-}
-
-void Manager::changeDirectory( int dirfd ) {
-    auto fd = getFile( dirfd );
-    if ( !fd )
-        throw Error( EBADF );
-    Node item = fd->inode();
-    if ( !item )
-        throw Error( ENOENT );
-    if ( !item->mode().is_dir() )
-        throw Error( ENOTDIR );
-    _checkGrants( item, S_IXUSR );
-
-    _currentDirectory = item;
 }
 
 int Manager::socket( SocketType type, OFlags fl )
