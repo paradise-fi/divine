@@ -88,6 +88,11 @@ namespace __dios::fs
             return renameat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
         }
 
+        ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t size );
+        ssize_t readlink( const char *path, char *buf, size_t size );
+
+        int access( const char *path, int amode );
+        int faccessat( int dirfd, const char *path, int amode, int flag );
     };
 
 }

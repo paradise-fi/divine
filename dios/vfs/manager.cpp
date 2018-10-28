@@ -50,39 +50,6 @@ void Manager::setErrFile(FileTrace trace) {
 }
 
 
-ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t count ) {
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    Node inode = findDirectoryItem( std::move( name ), false );
-    if ( !inode )
-        throw Error( ENOENT );
-    if ( !inode->mode().is_link() )
-        throw Error( EINVAL );
-
-    SymLink *sl = inode->as< SymLink >();
-    auto target = sl->target();
-    auto realLength = std::min( target.size(), count );
-    std::copy( target.begin(), target.begin() + realLength, buf );
-    return realLength;
-}
-
-void Manager::accessAt( int dirfd, __dios::String name, int mode, bool follow )
-{
-    if ( name.empty() )
-        throw Error( ENOENT );
-
-    REMEMBER_DIRECTORY( dirfd, name );
-
-    Node item = findDirectoryItem( name, follow );
-    if ( !item )
-        throw Error( ENOENT );
-
-    if ( ( ( mode & R_OK ) && !item->mode().user_read() ) ||
-         ( ( mode & W_OK ) && !item->mode().user_write() ) ||
-         ( ( mode & X_OK ) && !item->mode().user_exec() ) )
-        throw Error( EACCES );
-}
-
 void Manager::closeFile( int fd )
 {
     __dios_assert( fd >= 0 && fd < int( _proc->_openFD.size() ) );

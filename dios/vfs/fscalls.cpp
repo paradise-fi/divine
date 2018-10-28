@@ -287,4 +287,51 @@ namespace __dios::fs
 
         return 0;
     }
+
+    int Syscall::access( const char *path, int amode )
+    {
+        return faccessat( AT_FDCWD, path, amode, 0 );
+    }
+
+    int Syscall::faccessat( int dirfd, const char *path, int mode, int flag )
+    {
+        if ( ( flag | AT_EACCESS ) != AT_EACCESS )
+            return error( EINVAL ), -1;
+
+        if ( ( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ) )
+            return error( EINVAL ), -1;
+
+        if ( auto ino = lookup( get_dir( dirfd ), path, true ) )
+        {
+            if ( ( ( mode & R_OK ) && !ino->mode().user_read() ) ||
+                 ( ( mode & W_OK ) && !ino->mode().user_write() ) ||
+                 ( ( mode & X_OK ) && !ino->mode().user_exec() ) )
+                return error( EACCES ), -1;
+            else
+                return 0;
+        }
+        else
+            return -1;
+    }
+
+    ssize_t Syscall::readlink( const char *path, char *buf, size_t size )
+    {
+        return readlinkat( AT_FDCWD, path, buf, size );
+    }
+
+    ssize_t Syscall::readlinkat( int dirfd, const char *path, char *buf, size_t size )
+    {
+        if ( auto ino = lookup( get_dir( dirfd ), path, false ) )
+        {
+            if ( !ino->mode().is_link() )
+                return error( EINVAL ), -1;
+            auto tgt = ino->as< SymLink >()->target();
+            size = std::min( tgt.size(), size );
+            std::copy( tgt.begin(), tgt.begin() + size, buf );
+            return size;
+        }
+        else
+            return error( ENOENT ), -1;
+    }
+
 }

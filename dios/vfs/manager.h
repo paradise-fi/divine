@@ -42,9 +42,6 @@ struct Manager {
 
     Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
 
-    ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
-
-    void accessAt( int dirfd, __dios::String name, int mode, bool follow );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -166,11 +163,16 @@ struct VFS: Syscall, Next
     using Syscall::link;
     using Syscall::symlinkat;
     using Syscall::symlink;
+    using Syscall::readlinkat;
+    using Syscall::readlink;
 
     using Syscall::umask;
 
     using Syscall::renameat;
     using Syscall::rename;
+
+    using Syscall::faccessat;
+    using Syscall::access;
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -374,48 +376,6 @@ public: /* system call implementation */
         }
     }
 
-    ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count )
-    {
-        try {
-            return instance( ).readLinkAt( dirfd, path, buf, count );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    ssize_t readlink( const char *path, char *buf, size_t count )
-    {
-        return readlinkat( AT_FDCWD, path, buf, count );
-    }
-
-    bool check_access( int mode )
-    {
-        return ( mode | R_OK | W_OK | X_OK ) == ( R_OK | W_OK | X_OK );
-    }
-
-    int faccessat( int dirfd, const char *path, int mode, int flags )
-    {
-        if ( !check_access( mode ) )
-            return error_negative( EINVAL );
-
-        if ( ( flags | AT_EACCESS | AT_SYMLINK_NOFOLLOW ) != ( AT_EACCESS | AT_SYMLINK_NOFOLLOW ) )
-            return error_negative( EINVAL );
-
-        try {
-            /* FIXME handle AT_EACCESS */
-            instance( ).accessAt( dirfd, path, mode, !( flags & AT_SYMLINK_NOFOLLOW ) );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int access( const char *path, int mode )
-    {
-        return faccessat( AT_FDCWD, path, mode, 0 );
-    }
 
     int chdir( const char *path )
     {
