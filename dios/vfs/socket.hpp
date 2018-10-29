@@ -124,7 +124,7 @@ struct Socket : INode
     }
 
     const Address &address() const { return _address; }
-    void address( Address addr ) { _address.swap( addr ); }
+    bool bind( const char *addr ) override { _address = Address( addr ); return true; }
 
     virtual Socket *peer() const = 0;
 

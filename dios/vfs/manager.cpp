@@ -157,24 +157,6 @@ std::pair< int, int > Manager::socketpair( SocketType type, OFlags fl )
     };
 }
 
-void Manager::bind( int sockfd, Socket::Address address ) {
-    auto sd = getSocket( sockfd );
-
-    Node current;
-    __dios::String name = address.value();
-    std::tie( current, name ) = _findDirectoryOfFile( name );
-
-    Directory *dir = current->as< Directory >();
-    if ( dir->find( name ) )
-        throw Error( EADDRINUSE );
-
-    if ( sd->address() )
-        throw Error( EINVAL );
-
-    dir->create( std::move( name ), sd, false );
-    sd->address( std::move( address ) );
-}
-
 int Manager::accept( int sockfd, Socket::Address &address )
 {
     Node partner = getSocket( sockfd )->accept();

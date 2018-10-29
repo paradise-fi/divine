@@ -407,4 +407,30 @@ namespace __dios::fs
         return -1;
     }
 
+    int Syscall::bind( int sockfd, const struct sockaddr *addr, socklen_t )
+    {
+        auto sock = check_fd( sockfd, W_OK );
+
+        if ( !sock )
+            return -1;
+        if ( !addr )
+            return error( EFAULT ), -1;
+        if ( addr->sa_family != AF_UNIX )
+            return error( EINVAL ), -1; /* FIXME */
+
+        /* FIXME check the size of addr against len? */
+        auto un = reinterpret_cast< const sockaddr_un * >( addr );
+        auto [ dir, name ] = lookup_dir( get_dir(), un->sun_path, true );
+        if ( !dir )
+            return -1;
+
+        if ( !link_node( dir, name, sock->inode(), false ) )
+            return -1;
+
+        if ( sock->inode()->bind( un->sun_path ) )
+            return 0;
+        else
+            return -1;
+    }
+
 }

@@ -160,7 +160,9 @@ struct INode
 
     virtual void open( FileDescriptor & ) {}
     virtual void close( FileDescriptor & ) {}
+
     virtual bool connect( Node, Node ) { return error( ENOTSOCK ), false; }
+    virtual bool bind( const char * ) { return error( ENOTSOCK ), false; }
 
     Mode mode() const { return _mode; }
     void mode( Mode mode ) { _mode = mode; }

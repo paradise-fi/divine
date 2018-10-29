@@ -111,6 +111,7 @@ namespace __dios::fs
         int faccessat( int dirfd, const char *path, int amode, int flag );
 
         int connect( int sockfd, const struct sockaddr *addr, socklen_t len );
+        int bind( int sockfd, const struct sockaddr *addr, socklen_t len );
     };
 
 }
