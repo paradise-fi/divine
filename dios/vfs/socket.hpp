@@ -47,8 +47,8 @@ struct Socket : INode
             _valid( false )
         {}
 
-        explicit Address( __dios::String value, bool anonymous = false ) :
-            _value( std::move( value ) ),
+        explicit Address( std::string_view value, bool anonymous = false ) :
+            _value( value ),
             _anonymous( anonymous ),
             _valid( true )
         {}
@@ -119,7 +119,7 @@ struct Socket : INode
     }
 
     const Address &address() const { return _address; }
-    bool bind( const char *addr ) override { _address = Address( addr ); return true; }
+    bool bind( std::string_view addr ) override { _address = Address( addr ); return true; }
 
     virtual Socket *peer() const = 0;
 

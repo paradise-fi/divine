@@ -17,7 +17,6 @@
  */
 
 #include <dios/vfs/syscall.hpp>
-#include <sys/un.h>
 
 namespace __dios::fs
 {
@@ -330,7 +329,7 @@ namespace __dios::fs
 
     int Syscall::chdir( const char *path )
     {
-        return _chdir( lookup( get_dir( AT_FDCWD ), path, true ) );
+        return _chdir( lookup( get_dir(), path, true ) );
     }
 
     int Syscall::fchdir( int dirfd )
@@ -384,50 +383,40 @@ namespace __dios::fs
             return error( ENOENT ), -1;
     }
 
-    int Syscall::connect( int sockfd, const struct sockaddr *addr, socklen_t )
+    int Syscall::connect( int sockfd, const struct sockaddr *addr, socklen_t len )
     {
-        auto sock = check_fd( sockfd, W_OK );
-        if ( !sock )
+        auto [ ino, path ] = get_sock( sockfd, addr, len );
+        if ( !ino )
             return -1;
-        if ( !addr )
-            return error( EFAULT ), -1;
-        if ( addr->sa_family != AF_UNIX )
-            return error( EAFNOSUPPORT ), -1; /* FIXME */
 
-        auto un = reinterpret_cast< const sockaddr_un * >( addr );
-        /* FIXME check the size of addr against len? */
-        if ( auto ino = lookup( get_dir(), un->sun_path, true ) )
+        if ( auto remote = lookup( get_dir(), path, true ) )
         {
-            if ( !ino->mode().user_read() )
+            if ( !remote->mode().user_read() )
                 return error( EACCES ), -1;
-            sock->inode()->connect( sock->inode(), ino );
-            return 0;
+            if ( ino->connect( ino, remote ) )
+                return 0;
         }
 
         return -1;
     }
 
-    int Syscall::bind( int sockfd, const struct sockaddr *addr, socklen_t )
+    int Syscall::bind( int sockfd, const struct sockaddr *addr, socklen_t len )
     {
-        auto sock = check_fd( sockfd, W_OK );
-
-        if ( !sock )
-            return -1;
-        if ( !addr )
-            return error( EFAULT ), -1;
         if ( addr->sa_family != AF_UNIX )
-            return error( EINVAL ), -1; /* FIXME */
+            return error( EINVAL ), -1;
 
-        /* FIXME check the size of addr against len? */
-        auto un = reinterpret_cast< const sockaddr_un * >( addr );
-        auto [ dir, name ] = lookup_dir( get_dir(), un->sun_path, true );
+        auto [ ino, path ] = get_sock( sockfd, addr, len );
+        if ( !ino )
+            return -1;
+
+        auto [ dir, name ] = lookup_dir( get_dir(), path, true );
         if ( !dir )
             return -1;
 
-        if ( !link_node( dir, name, sock->inode(), false ) )
+        if ( !link_node( dir, name, ino, false ) )
             return -1;
 
-        if ( sock->inode()->bind( un->sun_path ) )
+        if ( ino->bind( path ) )
             return 0;
         else
             return -1;

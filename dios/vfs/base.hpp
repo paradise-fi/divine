@@ -21,6 +21,7 @@
 #include <dios/vfs/directory.hpp>
 #include <dios/vfs/file.hpp>
 #include <dios/vfs/socket.hpp>
+#include <sys/un.h>
 
 #pragma once
 
@@ -209,6 +210,24 @@ namespace __dios::fs
             if ( auto ndir = ino->as< Directory >() )
                 ndir->parent( parent );
             return parent->as< Directory >()->create( name, ino, overwrite );
+        }
+
+        std::pair< Node, std::string_view > get_sock( int sockfd, const sockaddr *addr, socklen_t )
+        {
+            auto null = std::make_pair( nullptr, "" );
+            auto sock = check_fd( sockfd, F_OK );
+
+            if ( !sock )
+                return null;
+            if ( !addr )
+                return error( EFAULT ), null;
+
+            if ( addr->sa_family != AF_UNIX )
+                return error( EAFNOSUPPORT ), null;
+
+            /* FIXME check the size of addr against len */
+            auto un = reinterpret_cast< const sockaddr_un * >( addr );
+            return { sock->inode(), un->sun_path };
         }
 
         bool import( const _VM_Env *env, Map< ino_t, Node > & );
