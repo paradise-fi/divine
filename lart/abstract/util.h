@@ -52,11 +52,14 @@ template< typename Fn >
 void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
     for ( auto &mdv : abstract_metadata( m ) ) {
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( mdv.value() ) ) {
-            for ( auto fn : get_potentialy_called_functions( call ) ) {
-                if ( !fn || ( !fn->isIntrinsic() && !fn->empty() ) ) {
-                    functor( call );
-                }
-            }
+            auto fns = get_potentialy_called_functions( call );
+
+            bool process = query::query( fns ).any( [] ( auto fn ) {
+                return fn != nullptr && !fn->isIntrinsic() && !fn->empty();
+            } );
+
+            if ( process )
+                functor( call );
         }
     }
 }
