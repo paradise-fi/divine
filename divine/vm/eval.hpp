@@ -146,7 +146,7 @@ struct Eval
     HeapPointer globals() { return context().globals(); }
     HeapPointer constants() { return context().constants(); }
 
-    PointerV makeobj( int size, int off = 0 )
+    PointerV makeobj( int64_t size, int off = 0 )
     {
         using brick::bitlevel::mixdown;
         if ( size >= 16 * 1024 * 1024 )
@@ -343,9 +343,9 @@ public:
     void implement_alloca()
     {
         int count = operandCk< IntV >( 0 ).cooked();
-        int size = types().allocsize( instruction().subcode );
+        int64_t size = types().allocsize( instruction().subcode );
 
-        unsigned alloc = std::max( 1, count * size );
+        int64_t alloc = std::max( 1l, count * size );
         auto res = makeobj( alloc );
         result( res );
     }
