@@ -40,8 +40,6 @@ struct Manager {
     void setOutputFile(FileTrace trace);
     void setErrFile(FileTrace trace);
 
-    Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
-
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -66,7 +64,6 @@ struct Manager {
     std::pair< int, int > socketpair( SocketType type, OFlags fl );
     void bind( int sockfd, Socket::Address address );
     int accept( int sockfd, Socket::Address &address );
-    Node resolveAddress( const Socket::Address &address );
 
     template< typename U > friend struct VFS;
     Node _root;
@@ -75,11 +72,6 @@ struct Manager {
     ProcessInfo *_proc;
 
     Manager( bool );// private default ctor
-
-    std::pair< Node, __dios::String > _findDirectoryOfFile( __dios::String name );
-
-    template< typename I >
-    Node _findDirectoryItem( __dios::String name, bool followSymLinks, I itemChecker );
 
     int _getFileDescriptor( Node node, OFlags flags, int lowEdge = 0 );
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
