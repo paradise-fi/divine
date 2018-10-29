@@ -396,7 +396,7 @@ namespace __dios::fs
 
         auto un = reinterpret_cast< const sockaddr_un * >( addr );
         /* FIXME check the size of addr against len? */
-        if ( auto ino = lookup( get_dir( AT_FDCWD ), un->sun_path, true ) )
+        if ( auto ino = lookup( get_dir(), un->sun_path, true ) )
         {
             if ( !ino->mode().user_read() )
                 return error( EACCES ), -1;

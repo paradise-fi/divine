@@ -134,7 +134,6 @@ struct Socket : INode
     virtual void listen( int ) = 0;
     virtual Node accept() = 0;
     virtual void addBacklog( Node ) = 0;
-    virtual void connect( Node, Node ) = 0;
 
     virtual bool send( const char *, size_t &, LegacyFlags< flags::Message > ) = 0;
     virtual bool sendTo( const char *, size_t &, LegacyFlags< flags::Message >, Node ) = 0;
@@ -222,17 +221,17 @@ struct SocketStream : Socket {
         return result;
     }
 
-    void connect( Node self, Node remote, bool allocateNew )
+    bool connect( Node self, Node remote, bool allocateNew )
     {
         if ( _peer )
-            throw Error( EISCONN );
+            return error( EISCONN ), false;
 
         SocketStream *m = remote->as< SocketStream >();
 
         if ( allocateNew )
         {
             if ( !m->canConnect() )
-                throw Error( ECONNREFUSED );
+                return error( ECONNREFUSED ), false;
 
             _peer.reset( new( __dios::nofail ) SocketStream( self ) );
             _peer->mode( ACCESSPERMS );
@@ -243,11 +242,13 @@ struct SocketStream : Socket {
             _peer = std::move( remote );
             m->_peer = std::move( self );
         }
+
+        return true;
     }
 
-    void connect( Node self, Node remote ) override
+    bool connect( Node self, Node remote ) override
     {
-        connect( std::move( self ), std::move( remote ), true );
+        return connect( std::move( self ), std::move( remote ), true );
     }
 
     void addBacklog( Node incomming ) override {
@@ -381,8 +382,10 @@ struct SocketDatagram : Socket {
     void addBacklog( Node ) override {
     }
 
-    void connect( Node, Node defaultRecipient ) override {
+    bool connect( Node, Node defaultRecipient ) override
+    {
         _defaultRecipient = defaultRecipient;
+        return true;
     }
 
     bool send( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls ) override
