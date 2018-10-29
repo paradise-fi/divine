@@ -939,51 +939,57 @@ void stash_return_value( CallInst *call, Function * fn ) {
     if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
 
-    auto rets = query::query( *fn ).flatten()
-        .map( query::refToPtr )
-        .filter( query::llvmdyncast< ReturnInst > )
-        .freeze();
+    if ( auto terminator = returns_abstract_value( fn ) ) {
+        auto ret = cast< ReturnInst >( terminator );
+        auto val = ret->getReturnValue();
 
-    ASSERT( rets.size() == 1 && "No single return instruction found." );
-    auto ret = cast< ReturnInst >( rets[ 0 ] );
-    auto val = ret->getReturnValue();
+        IRBuilder<> irb( ret );
+        auto sfn = stash_function( get_module( call ) );
 
-    IRBuilder<> irb( ret );
-    auto sfn = stash_function( get_module( call ) );
-
-    auto dom = MDValue( call ).domain();
-    auto i64 = IntegerType::get( call->getContext(), 64 );
-    ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
-    // TODO get value from stash placeholder
-    if ( !has_placeholder_in_domain( val, dom ) ) {
-        irb.CreateCall( sfn, { ConstantInt::get( i64, 0 ) } );
-    } else {
-        auto get = GetTaint( get_placeholder_in_domain( val, dom ) ).generate();
-        auto i = irb.CreatePtrToInt( get, i64 );
-        irb.CreateCall( sfn, { i } );
+        auto dom = MDValue( call ).domain();
+        auto i64 = IntegerType::get( call->getContext(), 64 );
+        ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
+        // TODO get value from stash placeholder
+        if ( !has_placeholder_in_domain( val, dom ) ) {
+            irb.CreateCall( sfn, { ConstantInt::get( i64, 0 ) } );
+        } else {
+            auto get = GetTaint( get_placeholder_in_domain( val, dom ) ).generate();
+            auto i = irb.CreatePtrToInt( get, i64 );
+            irb.CreateCall( sfn, { i } );
+        }
     }
 }
 
 Value* unstash_return_value( CallInst *call ) {
-    IRBuilder<> irb( call );
-
-    auto unfn = unstash_function( get_module( call ) );
-    auto unstash = irb.CreateCall( unfn );
-
-    auto dom = MDValue( call ).domain();
-
-    auto meta = domain_metadata( *get_module( call ), dom );
-    auto base = meta.base_type();
-
     Value * ret = nullptr;
-    if ( base->isPointerTy() ) {
-        ret = irb.CreateIntToPtr( unstash, base );
-    } else if ( base->isIntegerTy() ) {
-        ret = irb.CreateIntCast( unstash, base, false );
-    }
 
-    call->removeFromParent();
-    call->insertBefore( unstash );
+    Values terminators;
+    run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+        terminators.push_back( returns_abstract_value( fn ) );
+    } );
+
+    size_t noreturns = std::count( terminators.begin(), terminators.end(), nullptr );
+
+    if ( noreturns != terminators.size() ) { // there is at least one return
+        IRBuilder<> irb( call );
+
+        auto unfn = unstash_function( get_module( call ) );
+        auto unstash = irb.CreateCall( unfn );
+
+        auto dom = MDValue( call ).domain();
+
+        auto meta = domain_metadata( *get_module( call ), dom );
+        auto base = meta.base_type();
+
+        if ( base->isPointerTy() ) {
+            ret = irb.CreateIntToPtr( unstash, base );
+        } else if ( base->isIntegerTy() ) {
+            ret = irb.CreateIntCast( unstash, base, false );
+        }
+
+        call->removeFromParent();
+        call->insertBefore( unstash );
+    }
 
     return ret;
 }
@@ -1034,9 +1040,11 @@ void Tainting::run( Module &m ) {
         } );
 
         if ( is_stashable( call ) ) {
-            auto dom = MDValue( call ).domain();
-            auto ph = get_placeholder_in_domain( call, dom );
-            substitutes[ ph ] = bundle::unstash_return_value( call );
+            if ( auto ret = bundle::unstash_return_value( call ) ) {
+                auto dom = MDValue( call ).domain();
+                auto ph = get_placeholder_in_domain( call, dom );
+                substitutes[ ph ] = ret;
+            }
         }
     }, m );
 

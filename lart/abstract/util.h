@@ -127,5 +127,28 @@ inline bool is_concrete( llvm::Value *val ) {
     return is_concrete( get_domain( val ) );
 }
 
+inline bool is_terminal_intruction( llvm::Value * val ) {
+    return llvm::isa< llvm::ReturnInst >( val ) ||
+           llvm::isa< llvm::UnreachableInst >( val );
+}
+
+inline llvm::Value * returns_abstract_value( llvm::Function * fn ) {
+    auto retty = fn->getReturnType();
+    if ( retty->isVoidTy() || retty->isPointerTy() )
+        // TODO check abstraction settings for ignored types
+        return nullptr; // no return value to stash
+
+    auto rets = query::query( *fn ).flatten()
+        .map( query::refToPtr )
+        .filter( is_terminal_intruction )
+        .freeze();
+
+    ASSERT( rets.size() == 1 && "No single terminator instruction found." );
+    if ( llvm::isa< llvm::UnreachableInst >( rets[ 0 ] ) )
+        return nullptr; // do not unstash from noreturn functions
+
+    return rets[ 0 ];
+}
+
 } // namespace abstract
 } // namespace lart

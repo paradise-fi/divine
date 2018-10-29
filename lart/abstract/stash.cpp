@@ -64,7 +64,6 @@ void Stash::run( Module &m ) {
             stashed.insert( fn );
         } );
     }, m );
-
 }
 
 void Stash::arg_unstash( CallInst *call, Function * fn ) {
@@ -115,51 +114,48 @@ void Stash::arg_stash( CallInst *call ) {
 }
 
 void Stash::ret_stash( CallInst *call, Function * fn ) {
-    auto retty = fn->getReturnType();
-    if ( retty->isVoidTy() || retty->isPointerTy() )
-        return; // no return value to stash
+    if ( auto terminator = returns_abstract_value( fn ) ) {
+        auto ret = cast< ReturnInst >( terminator );
 
-    auto rets = query::query( *fn ).flatten()
-        .map( query::refToPtr )
-        .filter( query::llvmdyncast< ReturnInst > )
-        .freeze();
+        auto val = ret->getReturnValue();
+        auto dom = MDValue( call ).domain();
+        auto aty = abstract_type( call->getType(), dom );
 
-    ASSERT( rets.size() == 1 && "No single return instruction found." );
-    auto ret = cast< ReturnInst >( rets[ 0 ] );
+        IRBuilder<> irb( ret );
+        auto stash_fn = stash_placeholder( get_module( call ), aty );
 
-    auto val = ret->getReturnValue();
-    auto dom = MDValue( call ).domain();
-    auto aty = abstract_type( call->getType(), dom );
-
-    IRBuilder<> irb( ret );
-    auto stash_fn = stash_placeholder( get_module( call ), aty );
-
-    Value *tostash = nullptr;
-    if ( has_placeholder( val ) )
-        tostash = get_placeholder( val );
-    else if ( isa< Argument >( val ) || isa< CallInst >( val ) )
+        Value *tostash = nullptr;
+        if ( has_placeholder( val ) )
+            tostash = get_placeholder( val );
+        else if ( isa< Argument >( val ) || isa< CallInst >( val ) )
             tostash = get_unstash_placeholder( val );
-    else
-        tostash = UndefValue::get( aty );
+        else
+            tostash = UndefValue::get( aty );
 
-    auto stash = irb.CreateCall( stash_fn, { tostash } );
-    make_duals( stash, ret );
+        auto stash = irb.CreateCall( stash_fn, { tostash } );
+        make_duals( stash, ret );
+    }
 }
 
 void Stash::ret_unstash( CallInst *call ) {
-    auto retty = call->getType();
-    if ( retty->isVoidTy() || retty->isPointerTy() )
-        return; // no return value to stash
+    Values terminators;
+    run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+        terminators.push_back( returns_abstract_value( fn ) );
+    } );
 
-    auto dom = MDValue( call ).domain();
-    auto aty = abstract_type( call->getType(), dom );
+    size_t noreturns = std::count( terminators.begin(), terminators.end(), nullptr );
 
-    IRBuilder<> irb( call );
-    auto unstash_fn = unstash_placeholder( get_module( call ), call, aty );
-    auto unstash = irb.CreateCall( unstash_fn, { call } );
+    if ( noreturns != terminators.size() ) { // there is at least one return
+        auto dom = MDValue( call ).domain();
+        auto aty = abstract_type( call->getType(), dom );
 
-    call->removeFromParent();
-    call->insertBefore( unstash );
+        IRBuilder<> irb( call );
+        auto unstash_fn = unstash_placeholder( get_module( call ), call, aty );
+        auto unstash = irb.CreateCall( unstash_fn, { call } );
 
-    make_duals( unstash, call );
+        call->removeFromParent();
+        call->insertBefore( unstash );
+
+        make_duals( unstash, call );
+    }
 }
