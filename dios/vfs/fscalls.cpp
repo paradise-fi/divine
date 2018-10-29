@@ -17,6 +17,7 @@
  */
 
 #include <dios/vfs/syscall.hpp>
+#include <sys/un.h>
 
 namespace __dios::fs
 {
@@ -381,6 +382,29 @@ namespace __dios::fs
         }
         else
             return error( ENOENT ), -1;
+    }
+
+    int Syscall::connect( int sockfd, const struct sockaddr *addr, socklen_t )
+    {
+        auto sock = check_fd( sockfd, W_OK );
+        if ( !sock )
+            return -1;
+        if ( !addr )
+            return error( EFAULT ), -1;
+        if ( addr->sa_family != AF_UNIX )
+            return error( EAFNOSUPPORT ), -1; /* FIXME */
+
+        auto un = reinterpret_cast< const sockaddr_un * >( addr );
+        /* FIXME check the size of addr against len? */
+        if ( auto ino = lookup( get_dir( AT_FDCWD ), un->sun_path, true ) )
+        {
+            if ( !ino->mode().user_read() )
+                return error( EACCES ), -1;
+            sock->inode()->connect( sock->inode(), ino );
+            return 0;
+        }
+
+        return -1;
     }
 
 }

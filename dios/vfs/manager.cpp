@@ -149,7 +149,7 @@ std::pair< int, int > Manager::socketpair( SocketType type, OFlags fl )
     Node server( new( __dios::nofail ) SocketStream );
     server->mode( ACCESSPERMS | S_IFSOCK );
 
-    cl->connected( client, server );
+    cl->connect( client, server );
 
     return {
         _getFileDescriptor( server, fl ),
@@ -173,14 +173,6 @@ void Manager::bind( int sockfd, Socket::Address address ) {
 
     dir->create( std::move( name ), sd, false );
     sd->address( std::move( address ) );
-}
-
-void Manager::connect( int sockfd, const Socket::Address &address ) {
-    auto sd = getSocket( sockfd );
-
-    Node model = resolveAddress( address );
-
-    sd->connected( sd, model );
 }
 
 int Manager::accept( int sockfd, Socket::Address &address )

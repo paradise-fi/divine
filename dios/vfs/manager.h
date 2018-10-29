@@ -65,7 +65,6 @@ struct Manager {
     int socket( SocketType type, OFlags fl );
     std::pair< int, int > socketpair( SocketType type, OFlags fl );
     void bind( int sockfd, Socket::Address address );
-    void connect( int sockfd, const Socket::Address &address );
     int accept( int sockfd, Socket::Address &address );
     Node resolveAddress( const Socket::Address &address );
 
@@ -176,6 +175,8 @@ struct VFS: Syscall, Next
 
     using Syscall::faccessat;
     using Syscall::access;
+
+    using Syscall::connect;
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -521,28 +522,6 @@ public: /* system call implementation */
             Address address( target->sun_path );
 
             instance( ).bind( sockfd, std::move( address ));
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int connect( int sockfd, const struct sockaddr *addr, socklen_t )
-    {
-        using Address = __dios::fs::Socket::Address;
-
-        try {
-
-            if ( !addr )
-                throw Error( EFAULT );
-            if ( addr->sa_family != AF_UNIX )
-                throw Error( EAFNOSUPPORT );
-
-            const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
-            Address address( target->sun_path );
-
-            instance( ).connect( sockfd, address );
             return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();

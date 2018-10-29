@@ -125,6 +125,9 @@ constexpr Mode ACCESSPERMS = S_IRWXU | S_IRWXG | S_IRWXO;
 constexpr Mode ALLPERMS = ACCESSPERMS | S_ISUID | S_ISGID | S_ISVTX;
 
 struct FileDescriptor;
+struct INode;
+
+using Node = std::shared_ptr< INode >;
 
 struct INode
 {
@@ -157,6 +160,10 @@ struct INode
 
     virtual void open( FileDescriptor & ) {}
     virtual void close( FileDescriptor & ) {}
+    virtual void connect( Node, Node )
+    {
+        error( ENOTSOCK );
+    }
 
     Mode mode() const { return _mode; }
     void mode( Mode mode ) { _mode = mode; }
@@ -199,7 +206,6 @@ private:
     }
 };
 
-using Node = std::shared_ptr< INode >;
 using WeakNode = std::weak_ptr< INode >;
 
 }
