@@ -135,10 +135,13 @@ namespace __dios::fs
             return { p.substr( 0, s ), p.substr( s + 1, npos ) };
         }
 
-        Node lookup_relative( Node dir, std::string_view path, bool follow )
+        Node lookup_relative( Node dir, std::string_view path, bool follow, int depth = 8 )
         {
             if ( path.empty() )
                 return dir;
+
+            if ( !depth )
+                return error( ELOOP ), nullptr;
 
             if ( !dir->mode().is_dir() )
                 return error( ENOTDIR ), nullptr;
@@ -153,9 +156,10 @@ namespace __dios::fs
             if ( auto next = dir->template as< Directory >()->find( name ) )
             {
                 if ( auto link = next->template as< SymLink >(); link && ( follow || !tail.empty() ) )
-                    return lookup_relative( lookup( dir, link->target(), follow ), tail, follow );
+                    return lookup_relative( lookup( dir, link->target(), follow ),
+                                            tail, follow, depth - 1 );
 
-                return lookup_relative( next, tail, follow );
+                return lookup_relative( next, tail, follow, depth - 1 );
             }
             else
                 return error( ENOENT ), nullptr;
@@ -171,7 +175,7 @@ namespace __dios::fs
             if ( path[0] == '/' )
                 return lookup( root(), path.substr( 1, npos ), follow );
             else
-                return lookup_relative( dir, path, follow );
+                return lookup_relative( dir, path, follow, 8 );
         }
 
         std::pair< Node, std::string_view > lookup_dir( Node dir, std::string_view path, bool follow )
