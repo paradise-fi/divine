@@ -62,16 +62,17 @@ struct FileDescriptor
         return length;
     }
 
-    long long write( const void *buf, size_t length )
+    long long write( const void *buf, size_t length, Node remote = nullptr )
     {
-        if ( _flags.nonblock() && !_inode->canWrite() )
+        if ( _flags.nonblock() && !_inode->canWrite( length, remote ) )
             return error( EAGAIN ), -1;
 
         if ( _flags.has( O_APPEND ) )
             _offset = _inode->size();
 
         const char *src = reinterpret_cast< const char * >( buf );
-        if ( !_inode->write( src, _offset, length ) )
+
+        if ( !_inode->write( src, _offset, length, remote ) )
             return error( EBADF ), -1;
 
         _offset += length;

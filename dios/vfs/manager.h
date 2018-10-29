@@ -157,6 +157,8 @@ struct VFS: Syscall, Next
 
     using Syscall::connect;
     using Syscall::bind;
+    using Syscall::send;
+    using Syscall::sendto;
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -510,64 +512,6 @@ public: /* system call implementation */
             }
             *len = address.size( ) + 1 + sizeof( target->sun_family );
             return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    size_t _send( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
-                  LegacyFlags< flags::Message > fls )
-    {
-        if ( fd.flags().nonblock() && !socket.canWrite() )
-            throw Error( EAGAIN );
-
-        if ( fd.flags().nonblock() )
-            fls |= flags::Message::DontWait;
-
-        socket.send( buffer, length, fls );
-        return length;
-    }
-
-    size_t _sendto( FileDescriptor &fd, Socket &socket, const char *buffer, size_t length,
-                    LegacyFlags< flags::Message > fls, Node node )
-    {
-        if ( fd.flags().nonblock() && !socket.canWrite() )
-            throw Error( EAGAIN );
-
-        if ( fd.flags().nonblock() )
-            fls |= flags::Message::DontWait;
-
-        socket.sendTo( buffer, length, fls, node );
-        return length;
-    }
-
-    ssize_t sendto( int sockfd, const void *buf, size_t n, int flags, const struct sockaddr * addr,
-                    socklen_t )
-    {
-        using Address = __dios::fs::Socket::Address;
-
-        if ( !addr ) {
-            try {
-                auto s = instance( ).getSocket( sockfd );
-                return _send( *instance().getFile( sockfd ), *s, static_cast< const char * >( buf ),
-                              n, conversion::message( flags ));
-            } catch ( Error & e ) {
-                *__dios_errno() = e.code();
-                return -1;
-            }
-        }
-
-        try {
-            if ( addr->sa_family != AF_UNIX )
-                throw Error( EAFNOSUPPORT );
-
-            auto s = instance( ).getSocket( sockfd );
-            const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
-            Address address( target ? target->sun_path : __dios::String( ));
-
-            return _sendto( *instance().getFile( sockfd ), *s, static_cast< const char * >( buf ), n,
-                            conversion::message( flags ), instance( ).resolveAddress( address ) );
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;

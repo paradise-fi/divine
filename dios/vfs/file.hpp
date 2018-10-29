@@ -74,7 +74,7 @@ struct RegularFile : INode
 
     size_t size() const override { return _size; }
     bool canRead() const override { return true; }
-    bool canWrite() const override { return true; }
+    bool canWrite( int, Node ) const override { return true; }
 
     bool read( char *buffer, size_t offset, size_t &length ) override
     {
@@ -91,7 +91,7 @@ struct RegularFile : INode
         return true;
     }
 
-    bool write( const char *buffer, size_t offset, size_t &length ) override
+    bool write( const char *buffer, size_t offset, size_t &length, Node ) override
     {
         if ( _isSnapshot() )
             _copyOnWrite();
@@ -146,10 +146,10 @@ private:
 
 struct VmTraceFile : INode
 {
-    bool canWrite() const override { return true; }
+    bool canWrite( int, Node ) const override { return true; }
 
     __attribute__(( __annotate__( "divine.debugfn" ) ))
-    bool write( const char *buffer, size_t, size_t &length ) override
+    bool write( const char *buffer, size_t, size_t &length, Node ) override
     {
         if ( buffer[ length - 1 ] == 0 )
             __dios::traceInternal( 0, "%s", buffer );
@@ -166,7 +166,7 @@ struct VmTraceFile : INode
 
 struct VmBuffTraceFile : INode
 {
-    bool canWrite() const override { return true; }
+    bool canWrite( int, Node ) const override { return true; }
 
     __debugfn void do_write( const char *data, size_t &length ) noexcept
     {
@@ -194,7 +194,7 @@ struct VmBuffTraceFile : INode
         get_debug().persist_buffers();
     }
 
-    bool write( const char *data, size_t, size_t & length ) override
+    bool write( const char *data, size_t, size_t & length, Node ) override
     {
         do_write( data, length );
         return true;
@@ -259,7 +259,7 @@ struct Pipe : INode
 
     size_t size() const override { return _stream.size(); }
     bool canRead() const override { return size() > 0; }
-    bool canWrite() const override { return size() < PIPE_SIZE_LIMIT; }
+    bool canWrite( int, Node ) const override { return size() < PIPE_SIZE_LIMIT; }
 
     void open( FileDescriptor &fd ) override
     {
@@ -304,7 +304,7 @@ struct Pipe : INode
         return true;
     }
 
-    bool write( const char *buffer, size_t, size_t &length ) override
+    bool write( const char *buffer, size_t, size_t &length, Node ) override
     {
         if ( !_reader ) {
             raise( SIGPIPE );

@@ -112,6 +112,10 @@ namespace __dios::fs
 
         int connect( int sockfd, const struct sockaddr *addr, socklen_t len );
         int bind( int sockfd, const struct sockaddr *addr, socklen_t len );
+
+        ssize_t send( int sockfd, const void *buf, size_t n, int flags );
+        ssize_t sendto( int sockfd, const void *buf, size_t n, int flags,
+                        const sockaddr *addr, socklen_t len );
     };
 
 }

@@ -118,11 +118,6 @@ struct Socket : INode
         return true;
     }
 
-    bool write( const char *buffer, size_t, size_t &length ) override
-    {
-        return send( buffer, length, flags::Message::NoFlags );
-    }
-
     const Address &address() const { return _address; }
     bool bind( const char *addr ) override { _address = Address( addr ); return true; }
 
@@ -134,9 +129,6 @@ struct Socket : INode
     virtual void listen( int ) = 0;
     virtual Node accept() = 0;
     virtual void addBacklog( Node ) = 0;
-
-    virtual bool send( const char *, size_t &, LegacyFlags< flags::Message > ) = 0;
-    virtual bool sendTo( const char *, size_t &, LegacyFlags< flags::Message >, Node ) = 0;
 
     virtual bool receive( char *, size_t &, LegacyFlags< flags::Message >, Address & ) = 0;
 
@@ -260,9 +252,12 @@ struct SocketStream : Socket {
     bool canRead() const override {
         return !_stream.empty();
     }
-    bool canWrite() const override {
-        return peer() && peer()->canReceive( 1 );
+
+    bool canWrite( int size, Node ) const override
+    {
+        return peer() && peer()->canReceive( size );
     }
+
     bool canReceive( size_t amount ) const override {
         return _stream.size() + amount <= _stream.capacity();
     }
@@ -270,7 +265,7 @@ struct SocketStream : Socket {
         return _passive && !closed();
     }
 
-    bool send( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls ) override
+    bool write( const char *buffer, size_t, size_t &length, Node ) override
     {
         if ( !peer() )
             return error( ENOTCONN ), false;
@@ -278,15 +273,7 @@ struct SocketStream : Socket {
         if ( !peer()->mode().user_write() )
             return error( EACCES ), false;
 
-        if ( fls.has( flags::Message::DontWait ) && !peer()->canReceive( length ) )
-            return error( EAGAIN ), false;
-
         return peer()->fillBuffer( buffer, length );
-    }
-
-    bool sendTo( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Node ) override
-    {
-        return send( buffer, length, fls );
     }
 
     bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override
@@ -356,11 +343,13 @@ struct SocketDatagram : Socket {
         return !_packets.empty();
     }
 
-    bool canWrite() const override {
-        if ( auto dr = _defaultRecipient.lock() ) {
-            return !dr->as< Socket >()->canReceive( 0 );
-        }
-        return true;
+    bool canWrite( int size, Node remote ) const override
+    {
+        if ( !remote )
+            remote = _defaultRecipient.lock();
+        if ( !remote )
+            return true;
+        return !remote->as< Socket >()->canReceive( size );
     }
 
     bool canReceive( size_t ) const override {
@@ -388,20 +377,18 @@ struct SocketDatagram : Socket {
         return true;
     }
 
-    bool send( const char *buffer, size_t &length, LegacyFlags< flags::Message > fls ) override
+    bool write( const char *buffer, size_t, size_t &length, Node remote ) override
     {
-        return SocketDatagram::sendTo( buffer, length, fls, _defaultRecipient.lock() );
-    }
+        if ( !remote )
+            remote = _defaultRecipient.lock();
 
-    bool sendTo( const char *buffer, size_t &length, LegacyFlags< flags::Message >, Node target ) override
-    {
-        if ( !target )
+        if ( !remote )
             return error( EDESTADDRREQ ), false;
 
-        if ( !target->mode().user_write() )
+        if ( !remote->mode().user_write() )
             return error( EACCES ), false;
 
-        Socket *socket = target->as< Socket >();
+        Socket *socket = remote->as< Socket >();
         return socket->fillBuffer( address(), buffer, length );
     }
 

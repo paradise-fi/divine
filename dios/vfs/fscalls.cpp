@@ -433,4 +433,28 @@ namespace __dios::fs
             return -1;
     }
 
+    ssize_t Syscall::send( int sockfd, const void *buf, size_t n, int )
+    {
+        if ( auto sock = check_fd( sockfd, W_OK ) )
+            return sock->write( buf, n ), n;
+
+        return -1;
+    }
+
+    ssize_t Syscall::sendto( int sockfd, const void *buf, size_t n, int flags,
+                             const sockaddr *addr, socklen_t len )
+    {
+        if ( !addr )
+            return send( sockfd, buf, n, flags );
+
+        auto [ ino, path ] = get_sock( sockfd, addr, len );
+        if ( !ino )
+            return -1;
+
+        if ( auto remote = lookup( get_dir(), path, true ) )
+            return check_fd( sockfd, F_OK )->write( buf, n, remote ), n;
+
+        return -1;
+    }
+
 }
