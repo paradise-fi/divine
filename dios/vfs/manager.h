@@ -50,16 +50,6 @@ struct Manager {
 
     off_t lseek( int fd, off_t offset, Seek whence );
 
-    Node currentDirectory()
-    {
-        return _proc->_cwd;
-    }
-
-    void getCurrentWorkingDir( char *buff, size_t size );
-
-    void changeDirectory( __dios::String pathname );
-    void changeDirectory( int dirfd );
-
     int socket( SocketType type, OFlags fl );
     std::pair< int, int > socketpair( SocketType type, OFlags fl );
     void bind( int sockfd, Socket::Address address );
@@ -75,8 +65,6 @@ struct Manager {
 
     int _getFileDescriptor( Node node, OFlags flags, int lowEdge = 0 );
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
-
-    void _checkGrants( Node inode, Mode grant ) const;
 };
 
 namespace conversion {

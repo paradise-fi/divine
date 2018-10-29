@@ -215,11 +215,5 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdg
     return i;
 }
 
-void Manager::_checkGrants( Node inode, Mode grant ) const
-{
-    if ( ( inode->mode() & grant ) != grant )
-        throw Error( EACCES );
-}
-
 } // namespace fs
 } // namespace __dios
