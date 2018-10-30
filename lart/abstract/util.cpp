@@ -170,6 +170,29 @@ bool is_base_type( Type *type ) {
     return type->isIntegerTy() || type->isFloatingPointTy();
 }
 
+// Tries to find precise set of possible called functions.
+// Returns true if it succeeded.
+bool potentialy_called_functions( Value * called, Functions & fns ) {
+    bool surrender = true;
+    llvmcase( called,
+        [&] ( Function * fn ) {
+            fns.push_back( fn );
+        },
+        [&] ( PHINode * phi ) {
+            for ( auto & iv : phi->incoming_values() ) {
+                if ( ( surrender = potentialy_called_functions( iv.get(), fns ) ) )
+                    break;
+            }
+        },
+        [&] ( LoadInst * ) { surrender = true; }, // TODO
+        [&] ( Argument * ) { surrender = true; },
+        [&] ( Value * val ) {
+            UNREACHABLE( "Unknown parent instruction:", val );
+        }
+    );
+
+    return !surrender;
+}
 
 std::vector< Function* > get_potentialy_called_functions( llvm::CallInst* call ) {
     auto val = call->getCalledValue();
@@ -181,6 +204,14 @@ std::vector< Function* > get_potentialy_called_functions( llvm::CallInst* call )
     auto m = get_module( call );
     auto type = call->getCalledValue()->getType();
 
+    if ( !isa< Argument >( call->getCalledValue() ) ) {
+        Functions fns;
+        if ( potentialy_called_functions( call->getCalledValue(), fns) ) {
+            return fns;
+        }
+    }
+
+    // brute force all possible functions with correct signature
     return query::query( m->functions() )
         .filter( [type] ( auto & fn ) { return fn.getType() == type; } )
         .filter( [] ( auto & fn ) { return fn.hasAddressTaken(); } )

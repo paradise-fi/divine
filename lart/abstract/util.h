@@ -9,6 +9,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/query.h>
+#include <lart/support/util.h>
 
 #include <lart/abstract/metadata.h>
 #include <lart/abstract/domain.h>
