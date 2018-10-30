@@ -58,7 +58,15 @@ void process( StringRef prefix, Module &m ) noexcept {
 }
 
 template< typename Value >
-void annotation_to_metadata( StringRef anno_namespace, Module &m ) {
+void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
+    auto &ctx = m.getContext();
+    brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
+        auto name = anno_namespace.str() + "." + anno.toString();
+        val->setMetadata( name, empty_metadata_tuple( ctx ) );
+    });
+}
+template< typename Value >
+void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
     auto &ctx = m.getContext();
     MDBuilder mdb( ctx );
 
@@ -81,9 +89,11 @@ void CreateAbstractMetadata::run( Module &m ) {
     process( "llvm.var.annotation", m );
     process( "llvm.ptr.annotation", m );
 
-    annotation_to_metadata< Function >( abstract_tag, m );
-    annotation_to_metadata< GlobalVariable >( abstract_domain_tag, m );
-    annotation_to_metadata< GlobalVariable >( abstract_domain_kind, m );
+    annotation_to_domain_metadata< Function >( abstract_tag, m );
+    annotation_to_domain_metadata< GlobalVariable >( abstract_domain_tag, m );
+    annotation_to_domain_metadata< GlobalVariable >( abstract_domain_kind, m );
+
+    annotation_to_transform_metadata< Function >( "lart.transform", m );
 
     for ( auto & fn : m ) {
         if ( auto md = fn.getMetadata( abstract_tag ) )
@@ -103,23 +113,6 @@ inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
                      [&]{ return mdb.domain_node( Domain::Concrete() ); } );
 
     return MDTuple::get( ctx, doms );
-}
-
-void AnnotateInternalFunctions::run( llvm::Module &m ) {
-    auto empty_metadata = empty_metadata_tuple( m.getContext() );
-    auto internal = { "malloc", "free" };
-
-    auto is_internal = [&] ( const auto & fn ) {
-        return query::query( internal ).any( [&] ( const auto name ) {
-            return name == fn.getName();
-        } );
-    };
-
-    for ( auto & fn : m ) {
-        if ( is_internal( fn ) ) {
-            fn.setMetadata( FunctionTag::ignore, empty_metadata );
-        }
-    }
 }
 
 MDNode* MDBuilder::domain_node( Domain dom ) {

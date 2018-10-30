@@ -108,6 +108,16 @@ void VPA::preprocess( Function * fn ) {
     }
 }
 
+bool ignore_call_of_function( CallInst * call ) {
+    auto fns = get_potentialy_called_functions( call );
+    return query::query( fns ).all( FunctionTag::ignore_call_of_function );
+}
+
+bool ignore_return_of_function( CallInst * call ) {
+    auto fns = get_potentialy_called_functions( call );
+    return query::query( fns ).all( FunctionTag::ignore_return_of_function );
+}
+
 void VPA::propagate_value( Value *val, Domain dom ) {
     if ( seen_vals.count( { val, dom } ) )
         return;
@@ -119,15 +129,17 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     }
 
     auto deps = reach_from( val );
+
+    if ( auto call = dyn_cast< CallInst >( val ) ) {
+        if ( ignore_return_of_function( call ) )
+            deps.pop_back(); // root dependency (val) is last
+    }
+
     for ( auto & dep : lart::util::reverse( deps ) ) {
         seen_vals.emplace( dep, dom );
 
-        auto ignore_function = [] ( Function * fn ) {
-            return fn->getMetadata( FunctionTag::ignore );
-        };
         if ( auto call = dyn_cast< CallInst >( dep ) ) {
-            auto fns = get_potentialy_called_functions( call );
-            if ( query::query( fns ).any( ignore_function ) )
+            if ( ignore_call_of_function( call ) )
                 continue;
         }
 
@@ -164,8 +176,15 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 
 void VPA::propagate( CallInst *call, Domain dom ) {
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-        FunctionMetadata fmd{ fn };
+        if ( FunctionTag::ignore_call_of_function( fn ) )
+            return;
 
+        if ( FunctionTag::forbidden_function( fn ) ) {
+            auto name = fn->hasName() ? fn->getName().str() : "anonymous";
+            throw std::runtime_error( "transforming forbidden function: " + name );
+        }
+
+        FunctionMetadata fmd{ fn };
         if ( !fn->isIntrinsic() ) {
             preprocess( fn );
             for ( auto &op : call->arg_operands() ) {

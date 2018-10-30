@@ -25,17 +25,26 @@ private:
 };
 
 struct FunctionTag {
-    static constexpr char ignore[] = "lart.abstract.ignore";
+    static constexpr char ignore_ret[] = "lart.transform.ignore.ret";
+    static constexpr char ignore_arg[] = "lart.transform.ignore.arg";
+    static constexpr char forbidden[] = "lart.transform.forbidden";
+
+    static inline bool ignore_call_of_function( llvm::Function * fn ) {
+        return fn->getMetadata( ignore_arg );
+    }
+
+    static inline bool ignore_return_of_function( llvm::Function * fn ) {
+        return fn->getMetadata( ignore_ret );
+    }
+
+    static inline bool forbidden_function( llvm::Function * fn ) {
+        return fn->getMetadata( forbidden );
+    }
 };
 
 struct CreateAbstractMetadata {
     void run( llvm::Module &m );
 };
-
-struct AnnotateInternalFunctions {
-    void run( llvm::Module &m );
-};
-
 
 struct MDValue {
     MDValue( llvm::Metadata * md )
