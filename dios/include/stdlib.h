@@ -8,6 +8,7 @@
 #define _PDCLIB_STDLIB_H _PDCLIB_STDLIB_H
 #include "_PDCLIB/int.h"
 #include <sys/cdefs.h>
+#include <rst/lart.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -117,28 +118,28 @@ void srand( unsigned int seed ) _PDCLIB_nothrow;
    satisfied, return NULL. Otherwise, return a pointer to the allocated
    memory. Memory contents are undefined.
 */
-void * malloc( size_t size ) _PDCLIB_nothrow;
+void * malloc( size_t size ) _PDCLIB_nothrow _LART_FORBIDDEN _LART_IGNORE_RET;
 
 /* Allocate a chunk of memory that is large enough to hold nmemb elements of
    the given size, and zero-initialize that memory. If request could not be
    satisfied, return NULL. Otherwise, return a pointer to the allocated
    memory.
 */
-void * calloc( size_t nmemb, size_t size ) _PDCLIB_nothrow;
+void * calloc( size_t nmemb, size_t size ) _PDCLIB_nothrow _LART_FORBIDDEN _LART_IGNORE_RET;
 
 /* Allocate a chunk of memory of given size, with specified alignment (which
    must be a power of two; if it is not, the next greater power of two is
    used). If request could not be satisfied, return NULL. Otherwise, return
    a pointer to the allocated memory.
 */
-void * aligned_alloc( size_t alignment, size_t size ) _PDCLIB_nothrow;
+void * aligned_alloc( size_t alignment, size_t size ) _PDCLIB_nothrow _LART_FORBIDDEN _LART_IGNORE_RET;
 
 /* De-allocate a chunk of heap memory previously allocated using malloc(),
    calloc(), or realloc(), and pointed to by ptr. If ptr does not match a
    pointer previously returned by the mentioned allocation functions, or
    free() has already been called for this ptr, behaviour is undefined.
 */
-void free( void * ptr ) _PDCLIB_nothrow;
+void free( void * ptr ) _PDCLIB_nothrow _LART_IGNORE_ARG;
 
 /* Resize a chunk of memory previously allocated with malloc() and pointed to
    by ptr to the given size (which might be larger or smaller than the original
@@ -149,13 +150,14 @@ void free( void * ptr ) _PDCLIB_nothrow;
    memory beyond the original size is undefined. If ptr is NULL, realloc()
    behaves like malloc().
 */
-void * realloc( void * ptr, size_t size ) _PDCLIB_nothrow;
+void * realloc( void * ptr, size_t size ) _PDCLIB_nothrow _LART_FORBIDDEN _LART_IGNORE_RET;
 
 /*
  * CLang generates a builtin (intrinsic) for alloca calls, but we still need a
  * prototype.
  */
-void *alloca( size_t ) _PDCLIB_nothrow;
+void *alloca( size_t ) _PDCLIB_nothrow _LART_FORBIDDEN _LART_IGNORE_RET;
+
 
 /* Communication with the environment */
 
