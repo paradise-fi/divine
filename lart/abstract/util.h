@@ -147,11 +147,21 @@ inline llvm::Value * returns_abstract_value( llvm::Function * fn ) {
         .filter( is_terminal_intruction )
         .freeze();
 
-    ASSERT( rets.size() == 1 && "No single terminator instruction found." );
-    if ( llvm::isa< llvm::UnreachableInst >( rets[ 0 ] ) )
+    auto unreachable = query::query( rets ).all( [] ( auto v ) {
+            return llvm::isa< llvm::UnreachableInst >( v );
+    } );
+
+    if ( unreachable )
         return nullptr; // do not unstash from noreturn functions
 
-    return rets[ 0 ];
+    auto return_insts = query::query( rets )
+        .map( query::llvmdyncast< llvm::ReturnInst > )
+        .filter( query::notnull )
+        .freeze();
+
+    ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
+
+    return return_insts[ 0 ];
 }
 
 } // namespace abstract
