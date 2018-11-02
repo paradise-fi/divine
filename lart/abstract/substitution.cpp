@@ -998,7 +998,6 @@ Value* unstash_return_value( CallInst *call ) {
 
 bool is_stashable( Value * val ) {
     return !val->getType()->isVoidTy() && !val->getType()->isPointerTy(); // TODO use base type
-
 }
 
 void Tainting::run( Module &m ) {

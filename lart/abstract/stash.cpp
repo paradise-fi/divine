@@ -119,7 +119,7 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
 
         auto val = ret->getReturnValue();
         auto dom = MDValue( call ).domain();
-        auto aty = abstract_type( call->getType(), dom );
+        auto aty = abstract_type( fn->getReturnType(), dom );
 
         IRBuilder<> irb( ret );
         auto stash_fn = stash_placeholder( get_module( call ), aty );
@@ -147,14 +147,30 @@ void Stash::ret_unstash( CallInst *call ) {
 
     if ( noreturns != terminators.size() ) { // there is at least one return
         auto dom = MDValue( call ).domain();
-        auto aty = abstract_type( call->getType(), dom );
+        auto fty = cast< FunctionType >( call->getCalledValue()->stripPointerCasts()
+                                             ->getType()->getPointerElementType() );
+
+        auto aty = abstract_type( fty->getReturnType(), dom );
 
         IRBuilder<> irb( call );
-        auto unstash_fn = unstash_placeholder( get_module( call ), call, aty );
-        auto unstash = irb.CreateCall( unstash_fn, { call } );
+
+        Instruction * arg = call;
+        if ( auto ce = dyn_cast< ConstantExpr >( call->getCalledValue() ) ) {
+            ASSERT( ce->isCast() );
+            if ( call->getType()->isPointerTy() && fty->getReturnType()->isIntegerTy() )
+                arg = cast< Instruction >( irb.CreatePtrToInt( call, fty->getReturnType() ) );
+            else
+                UNREACHABLE( "Unsupported unstash of constant expression." );
+        }
+
+        auto unstash_fn = unstash_placeholder( get_module( call ), arg, aty );
+        auto unstash = irb.CreateCall( unstash_fn, { arg } );
 
         call->removeFromParent();
-        call->insertBefore( unstash );
+        if ( call == arg )
+            call->insertBefore( unstash );
+        else
+            call->insertBefore( arg );
 
         make_duals( unstash, call );
     }
