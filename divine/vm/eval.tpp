@@ -577,6 +577,21 @@ void Eval< Ctx >::implement_intrinsic( int id )
             return implement_stacksave();
         case Intrinsic::stackrestore:
             return implement_stackrestore();
+        case Intrinsic::lifetime_start:
+        {
+            auto size = operand< IntV >( 0 );
+            auto op = operand< PointerV >( 1 );
+            if ( !heap().valid( op.cooked() ) )
+                heap().make( size.cooked(), op.cooked().object(), true );
+            return;
+        }
+        case Intrinsic::lifetime_end:
+        {
+            auto op = operand< PointerV >( 1 );
+            if ( !freeobj( op.cooked() ) )
+                fault( _VM_F_Memory ) << "invalid pointer passed to llvm.lifetime.end";
+            return;
+        }
         default:
             /* We lowered everything else in buildInfo. */
             // instruction().op->dump();
