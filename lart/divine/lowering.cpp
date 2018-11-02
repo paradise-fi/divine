@@ -54,6 +54,8 @@ struct LowerLLVM {
             case llvm::Intrinsic::ssub_with_overflow:
             case llvm::Intrinsic::dbg_declare:
             case llvm::Intrinsic::dbg_value:
+            case llvm::Intrinsic::lifetime_start:
+            case llvm::Intrinsic::lifetime_end:
                 return true;
             default:
                 return false;
