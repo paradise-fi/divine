@@ -247,6 +247,8 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
                 return define( _ctx.binop< Op::Or >( 1, a, b ) );
             case sym::Op::EQ:
                 return define( _ctx.binop< Op::Eq >( 1, a, b ) );
+            case sym::Op::Xor:
+                return define( _ctx.binop< Op::Xor >( 1, a, b ) );
             default:
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
@@ -436,6 +438,7 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
             case sym::Op::And:  return a && b;
             case sym::Op::Or:   return a || b;
             case sym::Op::EQ:   return a == b;
+            case sym::Op::Xor:  return a != b;
             default:
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
