@@ -77,8 +77,11 @@ struct NondetTracking {
         auto calls = query::query( fn ).flatten()
                           .map( []( auto &i ) { return llvm::CallSite( &i ); } )
                           .filter( [this]( auto &cs ) {
-                              return cs && cs.getCalledFunction()
-                                     && cs.getCalledFunction()->getName().startswith( _nondet );
+                              if ( !cs )
+                                  return false;
+                              auto *fn = llvm::dyn_cast< llvm::Function >(
+                                              cs.getCalledValue()->stripPointerCasts() );
+                              return fn && fn->getName().startswith( _nondet );
                           } )
                           .freeze();
 
