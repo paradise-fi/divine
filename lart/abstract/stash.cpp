@@ -157,8 +157,12 @@ void Stash::ret_unstash( CallInst *call ) {
         Instruction * arg = call;
         if ( auto ce = dyn_cast< ConstantExpr >( call->getCalledValue() ) ) {
             ASSERT( ce->isCast() );
-            if ( call->getType()->isPointerTy() && fty->getReturnType()->isIntegerTy() )
+            Type * from = fty->getReturnType();
+            Type * to = call->getType();
+            if ( to->isPointerTy() && from->isIntegerTy() )
                 arg = cast< Instruction >( irb.CreatePtrToInt( call, fty->getReturnType() ) );
+            else if ( to == from )
+                arg = call;
             else
                 UNREACHABLE( "Unsupported unstash of constant expression." );
         }
