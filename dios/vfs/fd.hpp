@@ -56,7 +56,7 @@ struct FileDescriptor
 
         char *dst = reinterpret_cast< char * >( buf );
         if ( !_inode->read( dst, _offset, length ) )
-            return error( EBADF ), -1;
+            return -1;
 
         _offset += length;
         return length;
