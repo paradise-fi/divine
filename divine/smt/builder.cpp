@@ -435,12 +435,43 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
 
         switch ( bin.op )
         {
-            case sym::Op::And:  return a && b;
-            case sym::Op::Or:   return a || b;
-            case sym::Op::EQ:   return a == b;
-            case sym::Op::Xor:  return a != b;
+            case sym::Op::Xor:
+            case sym::Op::Sub:
+                return a != b;
+            case sym::Op::Add:
+                return a && b;
+            case sym::Op::UDiv:
+            case sym::Op::SDiv:
+                return a; // ?
+            case sym::Op::URem:
+            case sym::Op::SRem:
+            case sym::Op::Shl:
+            case sym::Op::LShr:
+                return constant( false );
+            case sym::Op::AShr:
+                return a;
+            case sym::Op::Or:
+                return a || b;
+            case sym::Op::And:
+                return a && b;
+            case sym::Op::UGE:
+            case sym::Op::SLE:
+                return a || !b;
+            case sym::Op::ULE:
+            case sym::Op::SGE:
+                return b || !a;
+            case sym::Op::UGT:
+            case sym::Op::SLT:
+                return a && !b;
+            case sym::Op::ULT:
+            case sym::Op::SGT:
+                return b && !a;
+            case sym::Op::EQ:
+                return a == b;
+            case sym::Op::NE:
+                return a != b;
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
         }
     }
 }
