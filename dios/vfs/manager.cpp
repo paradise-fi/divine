@@ -47,22 +47,6 @@ void Manager::closeFile( int fd )
     _proc->_openFD[ fd ].reset();
 }
 
-int Manager::duplicate( int oldfd, int lowEdge ) {
-    return _getFileDescriptor( getFile( oldfd ), lowEdge );
-}
-
-int Manager::duplicate2( int oldfd, int newfd ) {
-    if ( oldfd == newfd )
-        return newfd;
-    auto f = getFile( oldfd );
-    if ( newfd < 0 || newfd > FILE_DESCRIPTOR_LIMIT )
-        throw Error( EBADF );
-    if ( newfd >= int( _proc->_openFD.size() ) )
-        _proc->_openFD.resize( newfd + 1 );
-    _proc->_openFD[ newfd ] = f;
-    return newfd;
-}
-
 std::shared_ptr< FileDescriptor > Manager::getFile( int fd )
 {
     if ( fd >= 0 && fd < int( _proc->_openFD.size() ) && _proc->_openFD[ fd ] )

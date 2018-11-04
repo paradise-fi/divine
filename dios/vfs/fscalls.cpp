@@ -192,6 +192,74 @@ namespace __dios::fs
         return new_fd( ino, flags );
     }
 
+    int Syscall::_dup( int fd_, int min )
+    {
+        if ( auto fd = check_fd( fd_, F_OK ) )
+        {
+            int newfd = new_fd( nullptr, 0, min );
+            proc()._openFD[ newfd ] = fd;
+            return newfd;
+        }
+        else
+            return -1;
+    }
+
+    int Syscall::dup2( int fd_, int newfd )
+    {
+        if ( newfd < 0 || newfd > FILE_DESCRIPTOR_LIMIT )
+            return error( EBADF ), -1;
+        if ( int( proc()._openFD.size() ) <= newfd )
+            proc()._openFD.resize( newfd + 1 );
+        auto &fd = proc()._openFD[ newfd ] = check_fd( fd_, F_OK );
+        return fd ? newfd : -1;
+    }
+
+    int Syscall::fcntl( int fd_, int cmd, va_list *vl )
+    {
+        auto fd = check_fd( fd_, F_OK );
+        if ( !fd )
+            return -1;
+
+	switch ( cmd )
+        {
+	    case F_SETFD:
+	    case F_GETFD:
+		va_end( *vl );
+		return 0;
+	    case F_DUPFD_CLOEXEC: // for now let assume we cannot handle O_CLOEXEC
+		va_end( *vl );
+		return -1;
+	    case F_DUPFD:
+	    {
+		int min = va_arg(  *vl, int );
+		va_end( *vl );
+		return _dup( fd_, min );
+	    }
+	    case F_GETFL:
+		va_end( *vl );
+		return fd->flags().to_i();
+	    case F_SETFL:
+	    {
+		OFlags mode = va_arg( *vl, int );
+
+		if ( mode & ~( O_APPEND | O_NONBLOCK ) )
+		    return error( EINVAL ), -1;
+		if ( !( mode & O_APPEND ) && ( fd->flags() & O_APPEND ) )
+		    return error( EPERM ), -1;
+
+		fd->flags() &= ~( O_APPEND | O_NONBLOCK );
+		fd->flags() |= mode;
+
+		va_end( *vl );
+		return 0;
+	    }
+	    default:
+		__dios_trace_f( "the fcntl command %d is not implemented", cmd );
+		va_end( *vl );
+		return -1;
+	}
+    }
+
     int Syscall::unlink( const char *path )
     {
         return unlinkat( AT_FDCWD, path, 0 );

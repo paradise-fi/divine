@@ -27,11 +27,13 @@
 
 namespace __dios::fs
 {
+    using FDPtr = std::shared_ptr< FileDescriptor >;
+
     struct ProcessInfo
     {
         Mode _umask;
         Node _cwd;
-        __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
+        __dios::Vector< FDPtr > _openFD;
     };
 
     struct Base
@@ -39,11 +41,11 @@ namespace __dios::fs
         virtual ProcessInfo &proc() = 0;
         virtual Node root() = 0;
 
-        FileDescriptor *get_fd( int fd )
+        FDPtr get_fd( int fd )
         {
             auto &open = proc()._openFD;
             if ( fd >= 0 && fd < int( open.size() ) && open[ fd ] )
-                return open[ fd ].get();
+                return open[ fd ];
             return nullptr;
         }
 
@@ -62,7 +64,8 @@ namespace __dios::fs
             if ( fd == int( open.size() ) )
                 open.emplace_back();
 
-            open[ fd ] = fs::make_shared< FileDescriptor >( n, flags );
+            if ( n )
+                open[ fd ] = fs::make_shared< FileDescriptor >( n, flags );
             return fd;
         }
 
@@ -94,7 +97,7 @@ namespace __dios::fs
             return r;
         }
 
-        FileDescriptor *check_fd( int fd_, int acc )
+        FDPtr check_fd( int fd_, int acc )
         {
             auto fd = get_fd( fd_ );
             if ( !fd )

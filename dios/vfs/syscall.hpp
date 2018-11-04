@@ -29,6 +29,11 @@ namespace __dios::fs
         int open( const char *path, int flags, Mode mode );
         int openat( int dirfd, const char *path, OFlags flags, Mode mode );
 
+        int _dup( int fd, int min );
+        int dup( int fd ) { return _dup( fd, 0 ); }
+        int dup2( int oldfd, int newfd );
+        int fcntl( int fd, int cmd, va_list *va );
+
         void _chmod( Node ino, Mode mode )
         {
             ino->mode() = ( ino->mode() & ~ALLPERMS ) | ( mode & ALLPERMS );

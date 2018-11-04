@@ -41,8 +41,6 @@ struct Manager {
     void setErrFile(FileTrace trace);
 
     void closeFile( int fd );
-    int duplicate( int oldfd, int lowEdge = 0 );
-    int duplicate2( int oldfd, int newfd );
     std::shared_ptr< FileDescriptor > getFile( int fd );
     std::shared_ptr< Socket > getSocket( int sockfd );
 
@@ -107,6 +105,10 @@ struct VFS: Syscall, Next
 
     using Syscall::open;
     using Syscall::openat;
+
+    using Syscall::dup;
+    using Syscall::dup2;
+    using Syscall::fcntl;
 
     using Syscall::chmod;
     using Syscall::fchmod;
@@ -253,55 +255,6 @@ public: /* system call implementation */
         return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
     }
 
-    int fcntl( int fd, int cmd, va_list *vl )
-    {
-        try {
-            auto f = instance( ).getFile( fd );
-
-            switch ( cmd ) {
-                case F_SETFD:
-                    va_end( *vl );
-                case F_GETFD:
-                    return 0;
-                case F_DUPFD_CLOEXEC: // for now let assume we cannot handle O_CLOEXEC
-                    return -1;
-                case F_DUPFD:
-                {
-                    int lowEdge = va_arg(  *vl, int );
-                    va_end( *vl );
-                    return instance( ).duplicate( fd, lowEdge );
-                }
-                case F_GETFL:
-                    va_end( *vl );
-                    return f->flags().to_i();
-                case F_SETFL:
-                {
-                    OFlags mode = va_arg( *vl, int );
-
-                    if ( mode & ~( O_APPEND | O_NONBLOCK ) )
-                        return error( EINVAL ), -1;
-                    if ( !( mode & O_APPEND ) && ( f->flags() & O_APPEND ) )
-                        return error( EPERM ), -1;
-
-                    f->flags() &= ~( O_APPEND | O_NONBLOCK );
-                    f->flags() |= mode;
-
-                    va_end( *vl );
-                    return 0;
-                }
-                default:
-                    __dios_trace_f( "the fcntl command %d is not implemented", cmd );
-                    va_end( *vl );
-                    return -1;
-            }
-
-        } catch ( Error & e ) {
-            va_end( *vl );
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
     int close( int fd )
     {
         if ( check_fd( fd, F_OK ) )
@@ -315,26 +268,6 @@ public: /* system call implementation */
         try {
             std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = instance( ).pipe( );
             return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int dup( int fd )
-    {
-       try {
-            return instance( ).duplicate( fd );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int dup2( int oldfd, int newfd )
-    {
-        try {
-            return instance( ).duplicate2( oldfd, newfd );
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
