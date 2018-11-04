@@ -51,7 +51,6 @@ struct Manager {
     off_t lseek( int fd, off_t offset, Seek whence );
 
     int socket( SocketType type, OFlags fl );
-    std::pair< int, int > socketpair( SocketType type, OFlags fl );
 
     template< typename U > friend struct VFS;
     Node _root;
@@ -158,6 +157,7 @@ struct VFS: Syscall, Next
     using Syscall::bind;
     using Syscall::accept;
     using Syscall::accept4;
+    using Syscall::socketpair;
 
     using Syscall::send;
     using Syscall::sendto;
@@ -427,37 +427,6 @@ public: /* system call implementation */
 
             return instance().socket( type, t & SOCK_NONBLOCK ? O_NONBLOCK : 0 );
 
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int socketpair( int domain, int t, int protocol, int *fds )
-    {
-        using namespace conversion;
-        try {
-
-            if ( domain != AF_UNIX )
-                throw Error( EAFNOSUPPORT );
-
-            SocketType type;
-            switch ( t & __SOCK_TYPE_MASK ) {
-                case SOCK_STREAM:
-                    type = SocketType::Stream;
-                    break;
-                case SOCK_DGRAM:
-                    type = SocketType::Datagram;
-                    break;
-                default:
-                    throw Error( EPROTONOSUPPORT );
-            }
-            if ( protocol )
-                throw Error( EPROTONOSUPPORT );
-
-            std::tie( fds[ 0 ], fds[ 1 ] ) =
-                instance().socketpair( type, t & SOCK_NONBLOCK ? O_NONBLOCK : 0 );
-            return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;

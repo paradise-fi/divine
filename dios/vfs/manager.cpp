@@ -137,26 +137,6 @@ int Manager::socket( SocketType type, OFlags fl )
     return _getFileDescriptor( socket, fl );
 }
 
-std::pair< int, int > Manager::socketpair( SocketType type, OFlags fl )
-{
-    if ( type != SocketType::Stream )
-        throw Error( EOPNOTSUPP );
-
-    SocketStream *cl = new( __dios::nofail ) SocketStream;
-    Node client( cl );
-    client->mode( ACCESSPERMS | S_IFSOCK );
-
-    Node server( new( __dios::nofail ) SocketStream );
-    server->mode( ACCESSPERMS | S_IFSOCK );
-
-    cl->connect( client, server );
-
-    return {
-        _getFileDescriptor( server, fl ),
-        _getFileDescriptor( client, fl )
-    };
-}
-
 int Manager::_getFileDescriptor( Node node, OFlags flags, int lowEdge )
 {
     return _getFileDescriptor( fs::make_shared< FileDescriptor >( node, flags ), lowEdge );

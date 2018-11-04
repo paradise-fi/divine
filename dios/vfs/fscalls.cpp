@@ -383,6 +383,27 @@ namespace __dios::fs
             return error( ENOENT ), -1;
     }
 
+    int Syscall::socketpair( int dom, int type, int proto, int fds[2] )
+    {
+        if ( dom != AF_UNIX )
+            return error( EAFNOSUPPORT ), -1;
+
+        if ( type != SOCK_STREAM )
+            return error( EPROTOTYPE ), -1;
+
+        if ( proto ) /* TODO: support SOCK_NONBLOCK */
+            return error( EOPNOTSUPP ), -1;
+
+        auto ino_a = make_shared< SocketStream >(), ino_b = make_shared< SocketStream >();
+        ino_a->connect( ino_a, ino_b, false );
+        ino_a->mode( ACCESSPERMS | S_IFSOCK );
+        ino_b->mode( ACCESSPERMS | S_IFSOCK );
+
+        fds[0] = new_fd( ino_a, O_RDWR );
+        fds[1] = new_fd( ino_b, O_RDWR );
+        return 0;
+    }
+
     int Syscall::connect( int sockfd, const struct sockaddr *addr, socklen_t len )
     {
         auto [ ino, path ] = get_sock( sockfd, addr, len );
