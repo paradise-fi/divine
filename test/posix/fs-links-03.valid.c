@@ -22,9 +22,7 @@ int main() {
     assert( access( "dir/linkB/dir/file", W_OK | R_OK ) == 0 );
     assert( access( "dir/linkC/dir/file", W_OK | R_OK ) == 0 );
 
-    errno = 0;
-    assert( access( "dir/linkA/dir/linkA/dir/file", F_OK ) == -1 );
-    assert( errno == ELOOP );
+    assert( access( "dir/linkA/dir/linkA/dir/file", F_OK ) == 0 );
 
     assert( mkdir( "dir/linkA/dir2", 0755 ) == 0 );
     assert( access( "dir2", F_OK ) == 0 );
