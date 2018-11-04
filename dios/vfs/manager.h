@@ -48,8 +48,6 @@ struct Manager {
 
     std::pair< int, int > pipe();
 
-    off_t lseek( int fd, off_t offset, Seek whence );
-
     int socket( SocketType type, OFlags fl );
 
     template< typename U > friend struct VFS;
@@ -124,6 +122,7 @@ struct VFS: Syscall, Next
 
     using Syscall::truncate;
     using Syscall::ftruncate;
+    using Syscall::lseek;
 
     using Syscall::unlink;
     using Syscall::rmdir;
@@ -316,30 +315,6 @@ public: /* system call implementation */
         try {
             std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = instance( ).pipe( );
             return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    off_t lseek( int fd, off_t offset, int whence )
-    {
-        if ( !check_fd( fd, F_OK ) )
-            return -1;
-        try {
-            __dios::fs::Seek w = __dios::fs::Seek::Undefined;
-            switch ( whence ) {
-                case SEEK_SET:
-                    w = __dios::fs::Seek::Set;
-                    break;
-                case SEEK_CUR:
-                    w = __dios::fs::Seek::Current;
-                    break;
-                case SEEK_END:
-                    w = __dios::fs::Seek::End;
-                    break;
-            }
-            return instance( ).lseek( fd, offset, w );
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;

@@ -58,6 +58,7 @@ namespace __dios::fs
                 return error( EINVAL ), -1;
         }
 
+        off_t lseek( int fd_, off_t off, int whence );
         int ftruncate( int fd_, off_t length );
         int truncate( const char *path, off_t length );
 

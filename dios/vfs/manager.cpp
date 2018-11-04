@@ -86,37 +86,6 @@ std::pair< int, int > Manager::pipe()
     return { fd1, fd2 };
 }
 
-off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
-    auto f = getFile( fd );
-    if ( f->inode()->mode().is_fifo() )
-        throw Error( ESPIPE );
-
-    switch( whence ) {
-    case Seek::Set:
-        if ( offset < 0 )
-            throw Error( EINVAL );
-        f->offset( offset );
-        break;
-    case Seek::Current:
-        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->offset() < size_t( offset ) )
-            throw Error( EOVERFLOW );
-        if ( int( f->offset() ) < -offset )
-            throw Error( EINVAL );
-        f->offset( offset + f->offset() );
-        break;
-    case Seek::End:
-        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->size() < size_t( offset ) )
-            throw Error( EOVERFLOW );
-        if ( offset < 0 && int( f->size() ) < -offset )
-            throw Error( EINVAL );
-        f->offset( f->size() + offset );
-        break;
-    default:
-        throw Error( EINVAL );
-    }
-    return f->offset();
-}
-
 int Manager::socket( SocketType type, OFlags fl )
 {
     Socket *s = nullptr;

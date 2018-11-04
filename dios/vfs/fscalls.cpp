@@ -93,6 +93,48 @@ namespace __dios::fs
         return mknodat( AT_FDCWD, path, mode, dev );
     }
 
+    off_t Syscall::lseek( int fd_, off_t offset, int whence )
+    {
+        auto fd = check_fd( fd_, F_OK );
+        if ( !fd )
+            return -1;
+
+        if ( fd->inode()->mode().is_fifo() )
+            return error( ESPIPE ), -1;
+
+        auto size_t_max = std::numeric_limits< size_t >::max();
+
+        switch ( whence )
+        {
+            case SEEK_SET:
+                if ( offset < 0 )
+                    return error( EINVAL ), -1;
+                fd->offset( offset );
+                break;
+
+            case SEEK_CUR:
+                if ( offset > 0 && size_t_max - fd->offset() < size_t( offset ) )
+                    return error( EOVERFLOW ), -1;
+                if ( int( fd->offset() ) < -offset )
+                    return error( EINVAL ), -1;
+                fd->offset( offset + fd->offset() );
+                break;
+
+            case SEEK_END:
+                if ( offset > 0 && size_t_max - fd->size() < size_t( offset ) )
+                    return error( EOVERFLOW ), -1;
+                if ( offset < 0 && int( fd->size() ) < -offset )
+                    return error( EINVAL ), -1;
+                fd->offset( fd->size() + offset );
+                break;
+
+            default:
+                return error( EINVAL ), -1;
+        }
+
+        return fd->offset();
+    }
+
     int Syscall::ftruncate( int fd_, off_t length )
     {
         if ( auto fd = check_fd( fd_, W_OK ) )
