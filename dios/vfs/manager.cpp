@@ -157,14 +157,6 @@ std::pair< int, int > Manager::socketpair( SocketType type, OFlags fl )
     };
 }
 
-int Manager::accept( int sockfd, Socket::Address &address )
-{
-    Node partner = getSocket( sockfd )->accept();
-    address = partner->as< Socket >()->address();
-
-    return _getFileDescriptor( partner, 0 );
-}
-
 int Manager::_getFileDescriptor( Node node, OFlags flags, int lowEdge )
 {
     return _getFileDescriptor( fs::make_shared< FileDescriptor >( node, flags ), lowEdge );

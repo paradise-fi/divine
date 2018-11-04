@@ -127,7 +127,6 @@ struct Socket : INode
     virtual bool canConnect() const = 0;
 
     virtual void listen( int ) = 0;
-    virtual Node accept() = 0;
     virtual void addBacklog( Node ) = 0;
 
     virtual bool receive( char *, size_t &, LegacyFlags< flags::Message >, Address & ) = 0;
@@ -202,7 +201,7 @@ struct SocketStream : Socket {
     Node accept() override
     {
         if ( !_passive )
-            throw Error( EINVAL );
+            return error( EINVAL ), nullptr;
 
         // progress or deadlock
         if ( _backlog.empty() )
@@ -365,7 +364,7 @@ struct SocketDatagram : Socket {
     }
 
     Node accept() override {
-        throw Error( EOPNOTSUPP );
+        return error( EOPNOTSUPP ), nullptr;
     }
 
     void addBacklog( Node ) override {

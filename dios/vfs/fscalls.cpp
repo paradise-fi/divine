@@ -422,6 +422,40 @@ namespace __dios::fs
             return -1;
     }
 
+    int Syscall::accept( int fd, struct sockaddr *addr, socklen_t *len )
+    {
+        return accept4( fd, addr, len, 0 );
+    }
+
+    int Syscall::accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags )
+    {
+        if ( ( flags | SOCK_NONBLOCK ) != SOCK_NONBLOCK )
+            return error( EINVAL ), -1;
+
+        auto sock = check_fd( sockfd, F_OK );
+        OFlags fd_flags;
+
+        if ( !sock )
+            return -1;
+
+        if ( flags & SOCK_NONBLOCK )
+            fd_flags |= O_NONBLOCK;
+
+        auto ino = sock->inode()->accept();
+        if ( !ino )
+            return -1;
+
+        if ( addr )
+        {
+            auto asun = reinterpret_cast< sockaddr_un * >( addr );
+            asun->sun_family = AF_UNIX;
+            std::strcpy( asun->sun_path, ino->address().begin() );
+            *len = ino->address().size() + 1 + sizeof( sockaddr );
+        }
+
+        return new_fd( ino, fd_flags );
+    }
+
     ssize_t Syscall::send( int sockfd, const void *buf, size_t n, int )
     {
         if ( auto sock = check_fd( sockfd, W_OK ) )

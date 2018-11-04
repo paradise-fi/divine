@@ -52,7 +52,6 @@ struct Manager {
 
     int socket( SocketType type, OFlags fl );
     std::pair< int, int > socketpair( SocketType type, OFlags fl );
-    int accept( int sockfd, Socket::Address &address );
 
     template< typename U > friend struct VFS;
     Node _root;
@@ -157,6 +156,9 @@ struct VFS: Syscall, Next
 
     using Syscall::connect;
     using Syscall::bind;
+    using Syscall::accept;
+    using Syscall::accept4;
+
     using Syscall::send;
     using Syscall::sendto;
 
@@ -578,52 +580,6 @@ public: /* system call implementation */
             auto s = instance( ).getSocket( sockfd );
             s->listen( n );
             return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int _accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags )
-    {
-        using Address = __dios::fs::Socket::Address;
-
-        if ( addr && !len )
-            throw Error( EFAULT );
-
-        if (( flags | SOCK_NONBLOCK | SOCK_CLOEXEC ) != ( SOCK_NONBLOCK | SOCK_CLOEXEC ))
-            throw Error( EINVAL );
-
-        Address address;
-        int newSocket = instance( ).accept( sockfd, address );
-
-        if ( addr ) {
-            struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
-            target->sun_family = AF_UNIX;
-            char *end = std::copy( address.value( ).begin( ), address.value( ).end( ), target->sun_path );
-            *end = '\0';
-            *len = address.size( ) + 1 + sizeof( target->sun_family );
-        }
-        if ( flags & SOCK_NONBLOCK )
-            instance().getFile( newSocket )->flags() |= O_NONBLOCK;
-
-        return newSocket;
-    }
-
-    int accept( int sockfd, struct sockaddr *addr, socklen_t *len )
-    {
-        try {
-            return _accept4( sockfd, addr, len, 0 );
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags )
-    {
-        try {
-            return _accept4( sockfd, addr, len, flags );
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;
