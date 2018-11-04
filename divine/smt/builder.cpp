@@ -241,16 +241,43 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
 
         switch ( bin.op )
         {
-            case sym::Op::And:
+            case sym::Op::Xor:
+            case sym::Op::Sub:
+                return define( _ctx.binop< Op::Xor >( 1, a, b ) );
+            case sym::Op::Add:
                 return define( _ctx.binop< Op::And >( 1, a, b ) );
+            case sym::Op::UDiv:
+            case sym::Op::SDiv:
+                return a; // ?
+            case sym::Op::URem:
+            case sym::Op::SRem:
+            case sym::Op::Shl:
+            case sym::Op::LShr:
+                return constant( false );
+            case sym::Op::AShr:
+                return a;
             case sym::Op::Or:
                 return define( _ctx.binop< Op::Or >( 1, a, b ) );
+            case sym::Op::And:
+                return define( _ctx.binop< Op::And >( 1, a, b ) );
+            case sym::Op::UGE:
+            case sym::Op::SLE:
+                return define( _ctx.binop< Op::Or >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
+            case sym::Op::ULE:
+            case sym::Op::SGE:
+                return define( _ctx.binop< Op::Or >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
+            case sym::Op::UGT:
+            case sym::Op::SLT:
+                return define( _ctx.binop< Op::And >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
+            case sym::Op::ULT:
+            case sym::Op::SGT:
+                return define( _ctx.binop< Op::And >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
             case sym::Op::EQ:
                 return define( _ctx.binop< Op::Eq >( 1, a, b ) );
-            case sym::Op::Xor:
-                return define( _ctx.binop< Op::Xor >( 1, a, b ) );
+            case sym::Op::NE:
+                return define( _ctx.unop< Op::Not >( 1, _ctx.binop< Op::And >( 1, a, b ) ) );
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
         }
     }
 }
