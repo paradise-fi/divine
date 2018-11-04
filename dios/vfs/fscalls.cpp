@@ -514,6 +514,16 @@ namespace __dios::fs
         return 0;
     }
 
+    int Syscall::pipe( int fds[2] )
+    {
+        auto ino = make_shared< Pipe >();
+        ino->mode( S_IRWXU | S_IFIFO );
+
+        fds[0] = new_fd( ino, O_RDONLY | O_NONBLOCK );
+        fds[1] = new_fd( ino, O_WRONLY | O_NONBLOCK );
+        return 0;
+    }
+
     int Syscall::connect( int sockfd, const struct sockaddr *addr, socklen_t len )
     {
         auto [ ino, path ] = get_sock( sockfd, addr, len );

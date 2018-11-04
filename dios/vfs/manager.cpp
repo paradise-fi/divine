@@ -61,15 +61,6 @@ std::shared_ptr< Socket > Manager::getSocket( int sockfd ) {
     return f;
 }
 
-std::pair< int, int > Manager::pipe()
-{
-    Node node( new ( nofail ) Pipe() );
-    node->mode( S_IRWXU | S_IFIFO );
-    auto fd1 = _getFileDescriptor( node, O_RDONLY | O_NONBLOCK );
-    auto fd2 =  _getFileDescriptor( node, O_WRONLY | O_NONBLOCK );
-    return { fd1, fd2 };
-}
-
 int Manager::socket( SocketType type, OFlags fl )
 {
     Socket *s = nullptr;

@@ -44,8 +44,6 @@ struct Manager {
     std::shared_ptr< FileDescriptor > getFile( int fd );
     std::shared_ptr< Socket > getSocket( int sockfd );
 
-    std::pair< int, int > pipe();
-
     int socket( SocketType type, OFlags fl );
 
     template< typename U > friend struct VFS;
@@ -154,11 +152,13 @@ struct VFS: Syscall, Next
     using Syscall::faccessat;
     using Syscall::access;
 
+    using Syscall::pipe;
+    using Syscall::socketpair;
+
     using Syscall::connect;
     using Syscall::bind;
     using Syscall::accept;
     using Syscall::accept4;
-    using Syscall::socketpair;
 
     using Syscall::send;
     using Syscall::sendto;
@@ -261,17 +261,6 @@ public: /* system call implementation */
             return instance().closeFile( fd ), 0;
         else
             return -1;
-    }
-
-    int pipe( int *pipefd )
-    {
-        try {
-            std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = instance( ).pipe( );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
     }
 
     int fdatasync( int fd  )

@@ -116,6 +116,7 @@ namespace __dios::fs
         int access( const char *path, int amode );
         int faccessat( int dirfd, const char *path, int amode, int flag );
 
+        int pipe( int fds[2] );
         int socketpair( int dom, int type, int proto, int fds[2] );
 
         int connect( int sockfd, const struct sockaddr *addr, socklen_t len );
