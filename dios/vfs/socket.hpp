@@ -114,8 +114,7 @@ struct Socket : INode
     bool read( char *buffer, size_t, size_t &length ) override
     {
         Address dummy;
-        receive( buffer, length, flags::Message::NoFlags, dummy );
-        return true;
+        return receive( buffer, length, flags::Message::NoFlags, dummy );
     }
 
     const Address &address() const { return _address; }
