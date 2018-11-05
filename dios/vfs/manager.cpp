@@ -12,13 +12,6 @@ Manager::Manager( bool ) :
     _root->mode( S_IFDIR | ACCESSPERMS );
 }
 
-
-void Manager::closeFile( int fd )
-{
-    __dios_assert( fd >= 0 && fd < int( _proc->_openFD.size() ) );
-    _proc->_openFD[ fd ].reset();
-}
-
 std::shared_ptr< FileDescriptor > Manager::getFile( int fd )
 {
     if ( fd >= 0 && fd < int( _proc->_openFD.size() ) && _proc->_openFD[ fd ] )

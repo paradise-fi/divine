@@ -256,7 +256,7 @@ public: /* system call implementation */
     int close( int fd )
     {
         if ( check_fd( fd, F_OK ) )
-            return instance().closeFile( fd ), 0;
+            return proc()._openFD[ fd ].reset(), 0;
         else
             return -1;
     }
