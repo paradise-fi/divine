@@ -19,6 +19,7 @@ my $prog =<<'EOF';
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <signal.h>
 
 int offset = 0;
@@ -125,6 +126,9 @@ fmt( "O_CREAT" );
 fmt( "O_NOCTTY" );
 fmt( "O_DIRECTORY" );
 fmt( "O_NOFOLLOW" );
+
+fmt( "SOCK_NONBLOCK" );
+fmt( "SOCK_CLOEXEC" );
 
 fmt( "S_ISUID" );
 fmt( "S_ISGID" );
