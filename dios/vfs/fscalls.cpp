@@ -524,6 +524,29 @@ namespace __dios::fs
         return 0;
     }
 
+    int Syscall::socket( int domain, SFlags t, int protocol )
+    {
+        if ( domain != AF_UNIX )
+            return error( EAFNOSUPPORT ), -1;
+        if ( protocol )
+            return error( EPROTONOSUPPORT ), -1;
+
+        Node ino;
+
+        switch ( t.type() )
+        {
+            case SOCK_STREAM:
+                ino = make_shared< SocketStream >(); break;
+            case SOCK_DGRAM:
+                ino = make_shared< SocketDatagram >(); break;
+            default:
+                return error( EPROTONOSUPPORT ), -1;
+        }
+
+        ino->mode( ACCESSPERMS | S_IFSOCK );
+        return new_fd( ino, O_RDWR | ( t & SOCK_NONBLOCK ? O_NONBLOCK : 0 ) );
+    }
+
     int Syscall::getsockname( int sockfd, struct sockaddr *addr, socklen_t *len )
     {
         auto fd = check_fd( sockfd, F_OK );
@@ -586,7 +609,7 @@ namespace __dios::fs
         return accept4( fd, addr, len, 0 );
     }
 
-    int Syscall::accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags )
+    int Syscall::accept4( int sockfd, struct sockaddr *addr, socklen_t *len, SFlags flags )
     {
         if ( ( flags | SOCK_NONBLOCK ) != SOCK_NONBLOCK )
             return error( EINVAL ), -1;

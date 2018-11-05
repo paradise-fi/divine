@@ -44,8 +44,6 @@ struct Manager {
     std::shared_ptr< FileDescriptor > getFile( int fd );
     std::shared_ptr< Socket > getSocket( int sockfd );
 
-    int socket( SocketType type, OFlags fl );
-
     template< typename U > friend struct VFS;
     Node _root;
 
@@ -153,6 +151,7 @@ struct VFS: Syscall, Next
 
     using Syscall::pipe;
     using Syscall::socketpair;
+    using Syscall::socket;
 
     using Syscall::getsockname;
     using Syscall::getpeername;
@@ -299,36 +298,6 @@ public: /* system call implementation */
     {
         __dios_trace_t( "statfs() is not implemented" );
         return -1;
-    }
-
-    int socket( int domain, int t, int protocol )
-    {
-        using SocketType = __dios::fs::SocketType;
-        using namespace __dios::fs::flags;
-        try {
-            if ( domain != AF_UNIX )
-                throw Error( EAFNOSUPPORT );
-
-            SocketType type;
-            switch ( t & __SOCK_TYPE_MASK ) {
-                case SOCK_STREAM:
-                    type = SocketType::Stream;
-                    break;
-                case SOCK_DGRAM:
-                    type = SocketType::Datagram;
-                    break;
-                default:
-                    throw Error( EPROTONOSUPPORT );
-            }
-            if ( protocol )
-                throw Error( EPROTONOSUPPORT );
-
-            return instance().socket( type, t & SOCK_NONBLOCK ? O_NONBLOCK : 0 );
-
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
     }
 
     size_t _receive( FileDescriptor &fd, Socket &socket, char *buffer, size_t length,

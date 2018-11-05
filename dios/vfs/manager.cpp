@@ -26,26 +26,6 @@ std::shared_ptr< Socket > Manager::getSocket( int sockfd ) {
     return f;
 }
 
-int Manager::socket( SocketType type, OFlags fl )
-{
-    Socket *s = nullptr;
-    switch ( type ) {
-    case SocketType::Stream:
-        s = new( __dios::nofail ) SocketStream;
-        break;
-    case SocketType::Datagram:
-        s = new( __dios::nofail ) SocketDatagram;
-        break;
-    default:
-        throw Error( EPROTONOSUPPORT );
-    }
-
-    Node socket( s );
-    socket->mode( ACCESSPERMS | S_IFSOCK );
-
-    return _getFileDescriptor( socket, fl );
-}
-
 int Manager::_getFileDescriptor( Node node, OFlags flags, int lowEdge )
 {
     return _getFileDescriptor( fs::make_shared< FileDescriptor >( node, flags ), lowEdge );
