@@ -148,6 +148,13 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             add_abstract_metadata( i, dom );
         }
 
+        if ( auto a = dyn_cast< AllocaInst >( dep ) ) {
+            // TODO check also arguments and global values
+            if ( auto i = dyn_cast< Instruction >( a->getArraySize() ) )
+                if ( has_abstract_metadata( i ) )
+                    throw std::runtime_error( "calling alloca with abstract value" );
+        }
+
         llvmcase( dep,
             [&] ( StoreInst *store ) { propagate( store, dom ); },
             [&] ( CallInst *call )   { propagate( call, dom ); },
