@@ -119,6 +119,9 @@ namespace __dios::fs
         int pipe( int fds[2] );
         int socketpair( int dom, int type, int proto, int fds[2] );
 
+        int getpeername( int sockfd, struct sockaddr *addr, socklen_t *len );
+        int getsockname( int sockfd, struct sockaddr *addr, socklen_t *len );
+
         int connect( int sockfd, const struct sockaddr *addr, socklen_t len );
         int bind( int sockfd, const struct sockaddr *addr, socklen_t len );
         int accept( int fd, struct sockaddr *addr, socklen_t *len );

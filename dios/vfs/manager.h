@@ -154,6 +154,9 @@ struct VFS: Syscall, Next
     using Syscall::pipe;
     using Syscall::socketpair;
 
+    using Syscall::getsockname;
+    using Syscall::getpeername;
+
     using Syscall::connect;
     using Syscall::bind;
     using Syscall::accept;
@@ -322,62 +325,6 @@ public: /* system call implementation */
 
             return instance().socket( type, t & SOCK_NONBLOCK ? O_NONBLOCK : 0 );
 
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int getsockname( int sockfd, struct sockaddr *addr, socklen_t *len )
-    {
-        try {
-            if ( !len )
-                throw Error( EFAULT );
-
-            auto s = instance( ).getSocket( sockfd );
-            struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
-
-            auto &address = s->address( );
-
-            if ( address.size( ) >= *len )
-                throw Error( ENOBUFS );
-
-            if ( target ) {
-                target->sun_family = AF_UNIX;
-                char *end = std::copy( address.value( ).begin( ), address.value( ).end( ), target->sun_path );
-                *end = '\0';
-            }
-            *len = address.size( ) + 1 + sizeof( target->sun_family );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int getpeername( int sockfd, struct sockaddr *addr, socklen_t *len )
-    {
-        try {
-            if ( !len )
-                throw Error( EFAULT );
-
-            auto s = instance( ).getSocket( sockfd );
-            struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
-
-            if ( !s->peer() )
-                return error( ENOTCONN ), -1;
-            auto &address = s->peer()->address( );
-
-            if ( address.size( ) >= *len )
-                throw Error( ENOBUFS );
-
-            if ( target ) {
-                target->sun_family = AF_UNIX;
-                char *end = std::copy( address.value( ).begin( ), address.value( ).end( ), target->sun_path );
-                *end = '\0';
-            }
-            *len = address.size( ) + 1 + sizeof( target->sun_family );
-            return 0;
         } catch ( Error & e ) {
             *__dios_errno() = e.code();
             return -1;

@@ -233,6 +233,22 @@ namespace __dios::fs
             return { sock->inode(), un->sun_path };
         }
 
+        bool address_out( Node socket, sockaddr *addr, socklen_t *len )
+        {
+            if ( !len )
+                return error( EFAULT ), false;
+
+            if ( addr )
+            {
+                auto asun = reinterpret_cast< sockaddr_un * >( addr );
+                asun->sun_family = AF_UNIX;
+                std::strncpy( asun->sun_path, socket->address().begin(), *len - sizeof( sockaddr ) );
+                *len = socket->address().size() + 1 + sizeof( sockaddr );
+            }
+
+            return true;
+        }
+
         bool import( const _VM_Env *env, Map< ino_t, Node > & );
         bool import( const _VM_Env *env )
         {

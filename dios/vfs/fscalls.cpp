@@ -524,6 +524,24 @@ namespace __dios::fs
         return 0;
     }
 
+    int Syscall::getsockname( int sockfd, struct sockaddr *addr, socklen_t *len )
+    {
+        auto fd = check_fd( sockfd, F_OK );
+        if ( address_out( fd->inode(), addr, len ) )
+            return 0;
+        else
+            return -1;
+    }
+
+    int Syscall::getpeername( int sockfd, struct sockaddr *addr, socklen_t *len )
+    {
+        auto fd = check_fd( sockfd, F_OK );
+        if ( address_out( fd->inode()->peer(), addr, len ) )
+            return 0;
+        else
+            return -1;
+    }
+
     int Syscall::connect( int sockfd, const struct sockaddr *addr, socklen_t len )
     {
         auto [ ino, path ] = get_sock( sockfd, addr, len );
@@ -586,13 +604,8 @@ namespace __dios::fs
         if ( !ino )
             return -1;
 
-        if ( addr )
-        {
-            auto asun = reinterpret_cast< sockaddr_un * >( addr );
-            asun->sun_family = AF_UNIX;
-            std::strcpy( asun->sun_path, ino->address().begin() );
-            *len = ino->address().size() + 1 + sizeof( sockaddr );
-        }
+        if ( addr && !address_out( ino, addr, len ) )
+            return -1;
 
         return new_fd( ino, fd_flags );
     }

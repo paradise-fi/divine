@@ -117,10 +117,11 @@ struct Socket : INode
         return receive( buffer, length, flags::Message::NoFlags, dummy );
     }
 
-    const Address &address() const { return _address; }
+    std::string_view address() override { return _address.value(); }
     bool bind( std::string_view addr ) override { _address = Address( addr ); return true; }
 
-    virtual Socket *peer() const = 0;
+    virtual Socket *sock_peer() const = 0;
+    const Address &sock_address() const { return _address; }
 
     virtual bool canReceive( size_t ) const = 0;
     virtual bool canConnect() const = 0;
@@ -184,7 +185,9 @@ struct SocketStream : Socket {
         _limit( 0 )
     {}
 
-    Socket *peer() const override
+    Node peer() const override { return _peer; }
+
+    Socket *sock_peer() const override
     {
         return _peer ? _peer->as< Socket >() : nullptr;
     }
@@ -241,10 +244,11 @@ struct SocketStream : Socket {
         return connect( std::move( self ), std::move( remote ), true );
     }
 
-    void addBacklog( Node incomming ) override {
+    void addBacklog( Node incoming ) override {
         if ( int( _backlog.size() ) == _limit )
             throw Error( ECONNREFUSED );
-        _backlog.push( std::move( incomming ) );
+        incoming->bind( address() );
+        _backlog.push( std::move( incoming ) );
     }
 
     bool canRead() const override {
@@ -253,7 +257,7 @@ struct SocketStream : Socket {
 
     bool canWrite( int size, Node ) const override
     {
-        return peer() && peer()->canReceive( size );
+        return peer() && sock_peer()->canReceive( size );
     }
 
     bool canReceive( size_t amount ) const override {
@@ -271,7 +275,7 @@ struct SocketStream : Socket {
         if ( !peer()->mode().user_write() )
             return error( EACCES ), false;
 
-        return peer()->fillBuffer( buffer, length );
+        return sock_peer()->fillBuffer( buffer, length );
     }
 
     bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override
@@ -290,7 +294,7 @@ struct SocketStream : Socket {
         else
             length = _stream.pop( buffer, length );
 
-        address = peer()->address();
+        address = sock_peer()->sock_address();
 
         return true;
     }
@@ -325,16 +329,22 @@ struct SocketDatagram : Socket {
     SocketDatagram()
     {}
 
-    Socket *peer() const override
+    Node peer()  const override
     {
         if ( auto dr = _defaultRecipient.lock() )
         {
             SocketDatagram *defRec = dr->as< SocketDatagram >();
             if ( auto self = defRec->_defaultRecipient.lock() )
                 if ( self.get() == this )
-                    return defRec;
+                    return dr;
         }
         return nullptr;
+    }
+
+    Socket *sock_peer() const override
+    {
+        auto p = peer();
+        return p ? p->as< Socket >() : nullptr;
     }
 
     bool canRead() const override {
@@ -387,7 +397,7 @@ struct SocketDatagram : Socket {
             return error( EACCES ), false;
 
         Socket *socket = remote->as< Socket >();
-        return socket->fillBuffer( address(), buffer, length );
+        return socket->fillBuffer( sock_address(), buffer, length );
     }
 
     bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override {
