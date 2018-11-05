@@ -126,7 +126,6 @@ struct Socket : INode
     virtual bool canReceive( size_t ) const = 0;
     virtual bool canConnect() const = 0;
 
-    virtual void listen( int ) = 0;
     virtual void addBacklog( Node ) = 0;
 
     virtual bool receive( char *, size_t &, LegacyFlags< flags::Message >, Address & ) = 0;
@@ -194,10 +193,11 @@ struct SocketStream : Socket {
 
     void abort() override { _peer.reset(); }
 
-    void listen( int limit ) override
+    bool listen( int limit ) override
     {
         _passive = true;
         _limit = limit;
+        return true;
     }
 
     Node accept() override
@@ -368,8 +368,9 @@ struct SocketDatagram : Socket {
         return false;
     }
 
-    void listen( int ) override {
-        throw Error( EOPNOTSUPP );
+    bool listen( int ) override
+    {
+        return error( EOPNOTSUPP ), false;
     }
 
     Node accept() override {

@@ -123,6 +123,7 @@ namespace __dios::fs
         int getpeername( int sockfd, struct sockaddr *addr, socklen_t *len );
         int getsockname( int sockfd, struct sockaddr *addr, socklen_t *len );
 
+        int listen( int sockfd, int n );
         int connect( int sockfd, const struct sockaddr *addr, socklen_t len );
         int bind( int sockfd, const struct sockaddr *addr, socklen_t len );
         int accept( int fd, struct sockaddr *addr, socklen_t *len );

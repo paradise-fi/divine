@@ -157,6 +157,7 @@ struct VFS: Syscall, Next
     using Syscall::getpeername;
 
     using Syscall::connect;
+    using Syscall::listen;
     using Syscall::bind;
     using Syscall::accept;
     using Syscall::accept4;
@@ -350,18 +351,6 @@ public: /* system call implementation */
              return _recvfrom( sockfd, buf, n, flags, addr, len );
         }catch( Error & e ){
              *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    int listen( int sockfd, int n )
-    {
-        try {
-            auto s = instance( ).getSocket( sockfd );
-            s->listen( n );
-            return 0;
-        } catch ( Error & e ) {
-            *__dios_errno() = e.code();
             return -1;
         }
     }

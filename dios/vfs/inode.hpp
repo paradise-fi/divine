@@ -161,6 +161,7 @@ struct INode
     virtual void open( FileDescriptor & ) {}
     virtual void close( FileDescriptor & ) {}
 
+    virtual bool listen( int ) { return error( ENOTSOCK ), false; }
     virtual bool connect( Node, Node ) { return error( ENOTSOCK ), false; }
     virtual bool bind( std::string_view ) { return error( ENOTSOCK ), false; }
     virtual Node accept() { return error( ENOTSOCK ), nullptr; }

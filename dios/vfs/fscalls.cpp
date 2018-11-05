@@ -582,6 +582,14 @@ namespace __dios::fs
         return -1;
     }
 
+    int Syscall::listen( int sockfd, int n )
+    {
+        if ( auto fd = check_fd( sockfd, F_OK ) )
+            return fd->inode()->listen( n ) ? 0 : -1;
+        else
+            return -1;
+    }
+
     int Syscall::bind( int sockfd, const struct sockaddr *addr, socklen_t len )
     {
         if ( addr->sa_family != AF_UNIX )
