@@ -123,6 +123,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         return;
 
     if ( isa< GlobalValue >( val ) ) {
+        seen_vals.emplace( val, dom );
         for ( auto u : val->users() )
             tasks.push_back( [=]{ propagate_value( u, dom ); } );
         return;
