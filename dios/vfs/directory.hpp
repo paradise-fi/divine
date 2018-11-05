@@ -136,13 +136,6 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
 
     bool empty() { return _items.empty(); }
 
-    void replaceEntry( const __dios::String &name, Node node ) {
-        auto position = _findItem( name );
-        if ( position == _items.end() || name != position->name() )
-            throw Error( ENOENT );
-        *position = DirectoryEntry( name, node );
-    }
-
     template< typename T >
     T *find( const __dios::String &name ) {
         Node node = find( name );
@@ -151,38 +144,10 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         return node->as< T >();
     }
 
-    void remove( const __dios::String &name ) {
-        auto position = _findItem( name );
-        if ( position == _items.end() || name != position->name() )
-            throw Error( ENOENT );
-        if ( position->inode()->mode().is_dir() )
-            throw Error( EISDIR );
-        _items.erase( position );
-    }
-
-    void removeDirectory( const __dios::String &name ) {
-        auto position = _findItem( name );
-        if ( position == _items.end() || name != position->name() )
-            throw Error( ENOENT );
-        if ( !position->inode()->mode().is_dir() )
-            throw Error( ENOTDIR );
-
-        if ( position->inode()->size() != 2 )
-            throw Error( ENOTEMPTY );
-
-        _items.erase( position );
-    }
-
-    void forceRemove( const __dios::String &name ) {
-        auto position = _findItem( name );
-        if ( position != _items.end() && name == position->name() )
-            _items.erase( position );
-    }
-
     bool read( char *buf, size_t offset, size_t &length ) override
     {
         if ( length != sizeof( struct dirent ) )
-            throw Error( EINVAL );
+            return error( EINVAL ), false;
 
         int idx = offset / sizeof( struct dirent );
 
