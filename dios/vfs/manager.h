@@ -48,7 +48,6 @@ struct Manager {
 
     template< typename U > friend struct VFS;
     Node _root;
-    std::array< Node, 3 > _standardIO;
 
     ProcessInfo *_proc;
 
@@ -164,26 +163,27 @@ struct VFS: Syscall, Next
     using Syscall::sendto;
 
     template< typename Setup >
-    void setup( Setup s ) {
+    void setup( Setup s )
+    {
         traceAlias< VFS >( "{VFS}" );
-
-        auto &sio = instance()._standardIO;
 
         for ( auto env = s.env ; env->key; env++ )
             if ( !strcmp( env->key, "vfs.stdin" ) )
-                sio[ 0 ].reset( new( __dios::nofail ) StandardInput( env->value, env->size ) );
+                _stdio[ 0 ] = fs::make_shared< StandardInput >( env->value, env->size );
 
-        instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
-        instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
+        if ( !_stdio[ 0 ] )
+            _stdio[ 0 ] = fs::make_shared< StandardInput >();
+        _stdio[ 1 ] = make_tracefile( s.opts, "stdout" );
+        _stdio[ 2 ] = make_tracefile( s.opts, "stderr" );
 
         for ( int i = 0; i < 2; ++i )
-            sio[ i ]->mode( S_IFREG | S_IRUSR );
+            _stdio[ i ]->mode( S_IFREG | S_IRUSR );
 
-        s.proc1->_openFD = __dios::Vector< std::shared_ptr< FileDescriptor > > ( {
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 0 ], O_RDONLY ),
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 1 ], O_WRONLY ),
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), sio[ 2 ], O_WRONLY )
-        } );
+        auto &fds = s.proc1->_openFD;
+        fds.resize( 3 );
+        for ( int i = 0; i < 2; ++i )
+            fds[ i ] = fs::make_shared< FileDescriptor >( _stdio[ i ], i ? O_WRONLY : O_RDONLY );
+
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
         _root = instance()._root;
@@ -225,28 +225,26 @@ struct VFS: Syscall, Next
         Next::finalize();
     }
 
-    static FileTrace getFileTraceConfig( SysOpts& o, String stream ) {
-        auto r = std::find_if( o.begin(), o.end(), [&]( const auto& o ) {
-            return o.first == stream;
-        } );
-        if ( r == o.end() )
-            return FileTrace::TRACE;
-        String s = r->second;
-        o.erase( r );
-        if ( s == "notrace" )
-            return FileTrace::NOTRACE;
-        if ( s == "unbuffered" )
-            return FileTrace::UNBUFFERED;
-        if ( s == "trace" )
-            return FileTrace::TRACE;
+    static Node make_tracefile( SysOpts& o, String stream )
+    {
+        auto r = std::find_if( o.begin(), o.end(), [&]( const auto& o ) { return o.first == stream; } );
+
+        if ( r == o.end() || r->second == "trace" )
+            return make_shared< VmBuffTraceFile >();
+        if ( r->second == "unbuffered" )
+            return make_shared< VmTraceFile >();
+        if ( r->second == "notrace" )
+            return nullptr;
+
         __dios_trace_f( "Invalid configuration for file %s", stream.c_str() );
         __dios_fault( _DiOS_F_Config, "Invalid file tracing configuration" );
-        __builtin_unreachable();
+        __builtin_trap();
     }
 
 private: /* helper methods */
 
     Node _root;
+    std::array< Node, 3 > _stdio;
 
 public: /* system call implementation */
 

@@ -7,37 +7,9 @@ namespace __dios {
 namespace fs {
 
 Manager::Manager( bool ) :
-    _root( new( __dios::nofail ) Directory() ),
-    _standardIO{ { make_shared< StandardInput >(), nullptr, nullptr } }
+    _root( new( __dios::nofail ) Directory() )
 {
     _root->mode( S_IFDIR | ACCESSPERMS );
-}
-
-void Manager::setOutputFile( FileTrace trace )
-{
-    switch (trace) {
-        case FileTrace::UNBUFFERED:
-            _standardIO[ 1 ].reset( new( __dios::nofail ) VmTraceFile() );
-            break;
-        case FileTrace::TRACE:
-             _standardIO[ 1 ].reset( new( __dios::nofail ) VmBuffTraceFile() );
-             break;
-        default :
-            break;
-    }
-}
-
-void Manager::setErrFile(FileTrace trace) {
-    switch (trace) {
-        case FileTrace::UNBUFFERED:
-            _standardIO[ 2 ].reset( new( __dios::nofail ) VmTraceFile() );
-            break;
-        case FileTrace::TRACE:
-             _standardIO[ 2 ].reset( new( __dios::nofail ) VmBuffTraceFile() );
-             break;
-        default :
-            break;
-    }
 }
 
 
