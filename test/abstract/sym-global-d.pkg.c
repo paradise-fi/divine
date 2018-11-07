@@ -1,4 +1,4 @@
-/* TAGS: sym c todo */
+/* TAGS: sym c */
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
