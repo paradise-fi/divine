@@ -54,28 +54,62 @@ Function * strip_int_to_ptr( IntToPtrInst * itp ) {
     return stripped;
 }
 
-void replace_calls( Function * original, Function * nouveau ) {
+template< typename Replacer >
+void replace_calls( Function * original, Function * nouveau, Replacer replacer ) {
     for ( auto user : original->users() ) {
-        auto call = cast< CallInst >( user );
-        IRBuilder<> irb( call );
+        if ( auto call = dyn_cast< CallInst >( user ) ) {
+            IRBuilder<> irb( call );
 
-        Values args = { call->arg_begin(), call->arg_end() };
-        auto replace = irb.CreateCall( nouveau, args );
-        replace->copyMetadata( *call );
+            Values args = { call->arg_begin(), call->arg_end() };
+            auto replace = irb.CreateCall( nouveau, args );
+            replace->copyMetadata( *call );
 
-        for ( auto cu : call->users() ) {
-            auto pti = cast< PtrToIntInst >( cu );
-            ASSERT_EQ( replace->getType(), pti->getDestTy() );
-            pti->replaceAllUsesWith( replace );
-        }
+            replacer( call, replace );
 
-        for ( auto cu : call->users() ) {
-            cast< Instruction >( cu )->eraseFromParent();
+            for ( auto calluser : call->users() ) {
+                if( auto inst = dyn_cast< Instruction >( calluser ) )
+                    inst->eraseFromParent();
+            }
         }
     }
 
     for ( auto user : original->users() ) {
-        cast< Instruction >( user )->eraseFromParent();
+        if( auto inst = dyn_cast< Instruction >( user ) )
+            inst->eraseFromParent();
+    }
+}
+
+void ptr_to_int_replacer( CallInst * call, Value * replace ) {
+    for ( auto cu : call->users() ) {
+        auto pti = cast< PtrToIntInst >( cu );
+        ASSERT_EQ( replace->getType(), pti->getDestTy() );
+        pti->replaceAllUsesWith( replace );
+    }
+};
+
+Value * ptr_to_int( Value * val, Instruction * pos ) {
+    ASSERT( val->getType()->isPointerTy() );
+    auto i64  = IntegerType::get( val->getContext(), 64 );
+    if ( isa< ConstantPointerNull >( val ) ) {
+        return ConstantInt::get( i64, 0 );
+    } else {
+        return IRBuilder<>( pos ).CreatePtrToInt( val, i64 );
+    }
+}
+
+void icmp_replacer( CallInst * call, Value * replace ) {
+    for ( auto cu : call->users() ) {
+        auto cmp = cast< ICmpInst >( cu );
+
+        bool first = cmp->getOperand( 0 ) == call;
+        Value * lhs = first ? replace : ptr_to_int( cmp->getOperand( 0 ), cmp );
+        Value * rhs = first ? ptr_to_int( cmp->getOperand( 1 ), cmp ) : replace;
+
+        auto new_cmp = cast< Instruction >(
+            IRBuilder<>( cmp ).CreateICmp( cmp->getPredicate(), lhs, rhs ) );
+
+        cmp->replaceAllUsesWith( new_cmp );
+        new_cmp->copyMetadata( *cmp );
     }
 }
 
@@ -89,6 +123,14 @@ void Decast::run( Module &m ) {
         .freeze();
 
     Functions remove;
+
+    auto replace = [&remove] ( auto cast, auto replacer ) {
+        auto fn = cast->getFunction();
+        auto stripped = strip_int_to_ptr( cast );
+        replace_calls( fn, stripped, replacer );
+        remove.push_back( fn );
+    };
+
     for ( auto cast : casts ) {
         bool only_returned = query::all( cast->users(), isa< ReturnInst > );
 
@@ -100,12 +142,12 @@ void Decast::run( Module &m ) {
                 } )
                 .flatten().freeze();
 
-            bool casts_back = query::all( users, isa< PtrToIntInst > );
-
-            if ( casts_back ) {
-                auto stripped = strip_int_to_ptr( cast );
-                replace_calls( fn, stripped );
-                remove.push_back( fn );
+            // TODO enable mixing
+            if ( query::all( users, isa< PtrToIntInst > ) ) {
+                replace( cast, ptr_to_int_replacer );
+            }
+            else if ( query::all( users, isa< ICmpInst > ) ) {
+                replace( cast, icmp_replacer );
             }
         }
     }
