@@ -39,11 +39,7 @@ namespace __dios::fs
 
 struct SymLink : INode
 {
-    SymLink( std::string_view target = "" ) : _target( target )
-    {
-        if ( _target.size() > PATH_LIMIT )
-            throw Error( ENAMETOOLONG );
-    }
+    SymLink( std::string_view target = "" ) : _target( target ) {}
 
     size_t size() const override { return _target.size(); }
     std::string_view target() const { return _target; }

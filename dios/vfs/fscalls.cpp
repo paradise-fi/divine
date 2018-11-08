@@ -344,8 +344,13 @@ namespace __dios::fs
         return linkat( AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
     }
 
-    int Syscall::symlinkat( const char *target, int dirfd, const char *linkpath )
+    int Syscall::symlinkat( const char *target_, int dirfd, const char *linkpath )
     {
+        std::string_view target( target_ );
+
+        if ( target.size() > PATH_LIMIT )
+            return error( ENAMETOOLONG ), -1;
+
         auto ino = fs::make_shared< SymLink >( target );
         ino->mode( ACCESSPERMS | S_IFLNK );
         if ( link_node( get_dir( dirfd ), linkpath, ino ) )
