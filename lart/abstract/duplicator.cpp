@@ -10,10 +10,12 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
 #include <lart/abstract/util.h>
-#include <lart/abstract/metadata.h>
 
 
 using namespace llvm;
+
+using lart::util::get_module;
+using lart::util::get_or_insert_function;
 
 namespace lart::abstract
 {
@@ -36,11 +38,11 @@ void Duplicator::run( llvm::Module &m ) {
 	auto abstract = query::query( abstract_metadata( m ) )
 	    .map( [] ( auto mdv ) { return mdv.value(); } )
 	    .map( query::llvmdyncast< Instruction > )
-	    .filter( [] ( auto v ) { return is_base_type( v->getType() ); } )
+	    .filter( [] ( auto v ) { return is_base_type( v ); } )
 	    .filter( [] ( auto v ) {
             if ( auto cmp = dyn_cast< CmpInst >( v ) ) {
                 return query::query( cmp->operands() ).all( [] ( auto &op ) {
-                    return is_base_type( op->getType() );
+                    return is_base_type( op );
                 } );
             } else {
                 return true;
@@ -55,7 +57,7 @@ void Duplicator::run( llvm::Module &m ) {
 }
 
 void Duplicator::process( llvm::Instruction *i ) {
-    auto dom = MDValue( i ).domain();
+    auto dom = ValueMetadata( i ).domain();
     auto type = abstract_type( i->getType(), dom );
 
     auto place = isa< PHINode >( i ) ? i->getParent()->getFirstNonPHI() : i;

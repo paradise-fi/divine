@@ -11,7 +11,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/lowerselect.h>
-#include <lart/abstract/metadata.h>
+#include <lart/abstract/domain.h>
 #include <lart/abstract/util.h>
 
 #include <lart/analysis/postorder.h>
@@ -22,6 +22,8 @@ namespace lart {
 namespace abstract {
 
 using namespace llvm;
+
+using lart::util::get_function;
 
 namespace {
 
@@ -205,7 +207,7 @@ void VPA::propagate( CallInst *call, Domain dom ) {
                     unsigned idx = op.getOperandNo();
                     auto arg = get_argument( fn, idx );
                     tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                    if ( is_base_type( arg->getType() ) ) // TODO domain basetype
+                    if ( is_base_type( arg ) )
                         fmd.set_arg_domain( idx, dom );
                     entry_args.emplace( arg, dom );
                 }

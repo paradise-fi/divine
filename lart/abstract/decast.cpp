@@ -6,7 +6,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/metadata.h>
 #include <lart/abstract/util.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>

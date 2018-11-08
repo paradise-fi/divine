@@ -19,17 +19,13 @@ namespace abstract {
 
 using namespace llvm;
 
+using lart::util::get_module;
+
 std::string llvm_name( Type *type ) {
     std::string buffer;
     raw_string_ostream rso( buffer );
     type->print( rso );
     return rso.str();
-}
-
-Domain get_domain( Type *type ) {
-    auto st = cast< StructType >( type );
-    auto name = st->getName().split('.').second.split('.').first;
-    return Domain( name.str() );
 }
 
 bool is_intr( CallInst *intr, std::string name ) {
@@ -59,30 +55,6 @@ Values taints( Module &m ) {
             for ( auto u : fn.users() )
                 res.push_back( u );
     return res;
-}
-
-Function* get_function( Argument *a ) {
-    return a->getParent();
-}
-
-Function* get_function( Instruction *i ) {
-    return i->getParent()->getParent();
-}
-
-Function* get_function( Value *v ) {
-    if ( auto arg = dyn_cast< Argument >( v ) )
-        return get_function( arg );
-    return get_function( cast< Instruction >( v ) );
-}
-
-Function* get_or_insert_function( Module *m, FunctionType *fty, StringRef name ) {
-    auto fn = cast< Function >( m->getOrInsertFunction( name, fty ) );
-    fn->addFnAttr( llvm::Attribute::NoUnwind );
-    return fn;
-}
-
-Module* get_module( llvm::Value *v ) {
-    return get_function( v )->getParent();
 }
 
 Type* abstract_type( Type *orig, Domain dom ) {
@@ -164,11 +136,6 @@ std::vector< Instruction* > placeholders( Module &m ) {
         .freeze();
 }
 
-
-bool is_base_type( Type *type ) {
-    // TODO determine from domain metadata what is base type
-    return type->isIntegerTy() || type->isFloatingPointTy();
-}
 
 // Tries to find precise set of possible called functions.
 // Returns true if it succeeded.

@@ -18,7 +18,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <fstream>
 #include <string>
 
-#include <lart/abstract/metadata.h>
 #include <lart/abstract/vpa.h>
 #include <lart/abstract/decast.h>
 #include <lart/abstract/duplicator.h>

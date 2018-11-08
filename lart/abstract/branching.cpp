@@ -16,6 +16,9 @@ namespace abstract {
 
 using namespace llvm;
 
+using lart::util::get_module;
+using lart::util::get_or_insert_function;
+
 void ExpandBranching::run( Module &m ) {
     auto branched_on = [] ( Value* val ) {
         return query::query( val->users() ).any( [] ( auto u ) { return isa< BranchInst >( u ); } );

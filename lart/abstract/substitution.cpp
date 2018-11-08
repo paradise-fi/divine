@@ -9,7 +9,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/abstract/stash.h>
-#include <lart/abstract/metadata.h>
 
 #include <iostream>
 
@@ -19,6 +18,9 @@ namespace lart {
 namespace abstract {
 
 using namespace llvm;
+
+using lart::util::get_module;
+using lart::util::get_or_insert_function;
 
 namespace {
 
@@ -44,7 +46,7 @@ Domain get_domain_of_intr( Instruction *inst ) {
         auto fn = get_function( call );
         if ( fn->getName().startswith( "__lart_cast" ) ) {
             auto dual = get_dual( call );
-            return MDValue( dual ).domain();
+            return ValueMetadata( dual ).domain();
         }
 
         if ( fn->getName().startswith( "lart.placeholder" ) ) {
@@ -55,13 +57,13 @@ Domain get_domain_of_intr( Instruction *inst ) {
         // taint
         auto intr = cast< Function >( call->getOperand( 0 ) );
         if ( intr->getName().count( ".assume" ) )
-            return MDValue( call ).domain();
+            return ValueMetadata( call ).domain();
         else
-            return MDValue( get_dual( call ) ).domain();
+            return ValueMetadata( get_dual( call ) ).domain();
     } else {
         auto phi = cast< PHINode >( inst );
         auto dual = get_dual( phi );
-        return MDValue( dual ).domain();
+        return ValueMetadata( dual ).domain();
     }
 }
 
@@ -946,7 +948,7 @@ void stash_return_value( CallInst *call, Function * fn ) {
         IRBuilder<> irb( ret );
         auto sfn = stash_function( get_module( call ) );
 
-        auto dom = MDValue( call ).domain();
+        auto dom = ValueMetadata( call ).domain();
         auto i64 = IntegerType::get( call->getContext(), 64 );
         ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
         // TODO get value from stash placeholder
@@ -976,7 +978,7 @@ Value* unstash_return_value( CallInst *call ) {
         auto unfn = unstash_function( get_module( call ) );
         auto unstash = irb.CreateCall( unfn );
 
-        auto dom = MDValue( call ).domain();
+        auto dom = ValueMetadata( call ).domain();
 
         auto meta = domain_metadata( *get_module( call ), dom );
         auto base = meta.base_type();
@@ -1040,7 +1042,7 @@ void Tainting::run( Module &m ) {
 
         if ( is_stashable( call ) ) {
             if ( auto ret = bundle::unstash_return_value( call ) ) {
-                auto dom = MDValue( call ).domain();
+                auto dom = ValueMetadata( call ).domain();
                 auto ph = get_placeholder_in_domain( call, dom );
                 substitutes[ ph ] = ret;
             }
@@ -1062,7 +1064,7 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
     IRBuilder<> irb( placeholder );
     auto abstract = irb.CreatePHI( ty, phi->getNumIncomingValues() );
 
-    auto dom = MDValue( phi ).domain();
+    auto dom = ValueMetadata( phi ).domain();
 
     for ( unsigned int i = 0; i < phi->getNumIncomingValues(); ++i ) {
         auto in = phi->getIncomingValue( i );
@@ -1120,7 +1122,7 @@ void FreezeStores::run( Module &m ) {
 
 void FreezeStores::process( StoreInst *store ) {
     auto m = get_module( store );
-    auto meta = domain_metadata( *m, MDValue( store ).domain() );
+    auto meta = domain_metadata( *m, ValueMetadata( store ).domain() );
     auto dom = meta.domain();
 
     auto val = store->getValueOperand();

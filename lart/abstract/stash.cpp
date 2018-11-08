@@ -8,11 +8,13 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/metadata.h>
 #include <lart/abstract/util.h>
 
 using namespace lart::abstract;
 using namespace llvm;
+
+using lart::util::get_module;
+using lart::util::get_or_insert_function;
 
 namespace {
 
@@ -118,7 +120,7 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
         auto ret = cast< ReturnInst >( terminator );
 
         auto val = ret->getReturnValue();
-        auto dom = MDValue( call ).domain();
+        auto dom = ValueMetadata( call ).domain();
         auto aty = abstract_type( fn->getReturnType(), dom );
 
         IRBuilder<> irb( ret );
@@ -146,7 +148,7 @@ void Stash::ret_unstash( CallInst *call ) {
     size_t noreturns = std::count( terminators.begin(), terminators.end(), nullptr );
 
     if ( noreturns != terminators.size() ) { // there is at least one return
-        auto dom = MDValue( call ).domain();
+        auto dom = ValueMetadata( call ).domain();
         auto fty = cast< FunctionType >( call->getCalledValue()->stripPointerCasts()
                                              ->getType()->getPointerElementType() );
 

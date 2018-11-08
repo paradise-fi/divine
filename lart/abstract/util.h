@@ -10,8 +10,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/query.h>
 #include <lart/support/util.h>
-
-#include <lart/abstract/metadata.h>
 #include <lart/abstract/domain.h>
 
 namespace lart {
@@ -60,8 +58,6 @@ void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
     }
 }
 
-Domain get_domain( llvm::Type *type );
-
 bool is_intr( llvm::CallInst *intr, std::string name );
 bool is_lift( llvm::CallInst *intr );
 bool is_lower( llvm::CallInst *intr );
@@ -74,14 +70,6 @@ bool is_cast( llvm::CallInst *intr );
 std::string llvm_name( llvm::Type *type );
 
 Values taints( llvm::Module &m );
-
-llvm::Function* get_function( llvm::Argument *a );
-llvm::Function* get_function( llvm::Instruction *i );
-llvm::Function* get_function( llvm::Value *v );
-
-llvm::Function* get_or_insert_function( llvm::Module*, llvm::FunctionType*, llvm::StringRef );
-
-llvm::Module* get_module( llvm::Value *val );
 
 llvm::Type* abstract_type( llvm::Type *orig, Domain dom );
 
@@ -97,34 +85,6 @@ bool has_placeholder_in_domain( llvm::Value *val, Domain dom );
 bool is_placeholder( llvm::Instruction* );
 
 std::vector< llvm::Instruction* > placeholders( llvm::Module & );
-
-bool is_base_type( llvm::Type *type );
-
-inline Domain get_domain( llvm::Argument *arg ) {
-    auto fmd = FunctionMetadata( get_function( arg ) );
-    return fmd.get_arg_domain( arg->getArgNo() );
-}
-
-inline Domain get_domain( llvm::Instruction *inst ) {
-    return MDValue( inst ).domain();
-}
-
-inline Domain get_domain( llvm::Value *val ) {
-    if ( llvm::isa< llvm::Constant >( val ) )
-        return Domain::Concrete();
-    else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-        return get_domain( arg );
-    else
-        return get_domain( llvm::cast< llvm::Instruction >( val ) );
-}
-
-inline bool is_concrete( Domain dom ) {
-    return dom == Domain::Concrete();
-}
-
-inline bool is_concrete( llvm::Value *val ) {
-    return is_concrete( get_domain( val ) );
-}
 
 inline bool is_terminal_intruction( llvm::Value * val ) {
     return llvm::isa< llvm::ReturnInst >( val ) ||

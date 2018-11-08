@@ -14,6 +14,9 @@ using namespace lart::abstract;
 using namespace lart;
 using namespace llvm;
 
+using lart::util::get_module;
+using lart::util::get_or_insert_function;
+
 namespace {
 
 Function * interrupt_function( Module &m ) {

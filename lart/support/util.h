@@ -205,6 +205,33 @@ bool is_one_of( llvm::Value *v ) {
     return ( llvm::isa< Ts >( v ) || ... );
 }
 
+static inline llvm::Function* get_function( llvm::Argument *a ) {
+    return a->getParent();
+}
+
+static inline llvm::Function* get_function( llvm::Instruction *i ) {
+    return i->getParent()->getParent();
+}
+
+static inline llvm::Function* get_function( llvm::Value *v ) {
+    if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
+        return get_function( arg );
+    return get_function( llvm::cast< llvm::Instruction >( v ) );
+}
+
+static inline llvm::Function* get_or_insert_function( llvm::Module *m,
+                                               llvm::FunctionType *fty,
+                                               llvm::StringRef name )
+{
+    auto fn = llvm::cast< llvm::Function >( m->getOrInsertFunction( name, fty ) );
+    fn->addFnAttr( llvm::Attribute::NoUnwind );
+    return fn;
+}
+
+static inline llvm::Module* get_module( llvm::Value *v ) {
+    return get_function( v )->getParent();
+}
+
 template< typename X >
 auto succs( X *x ) { return range( succ_begin( x ), succ_end( x ) ); }
 

@@ -14,7 +14,6 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 
-#include <lart/abstract/metadata.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/util.h>
 #include <lart/analysis/edge.h>
@@ -23,6 +22,9 @@ namespace lart {
 namespace abstract {
 
 using namespace llvm;
+
+using lart::util::get_module;
+using lart::util::get_or_insert_function;
 
 namespace {
     struct Assumption {
