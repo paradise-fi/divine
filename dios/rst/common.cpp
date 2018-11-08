@@ -2,7 +2,8 @@
 
 using namespace abstract;
 
-uint32_t __tainted = 0;
+uint64_t __tainted = 0;
+void * __tainted_ptr = nullptr;
 
 __attribute__((constructor)) void __tainted_init()
 {

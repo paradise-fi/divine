@@ -16,7 +16,8 @@
         __builtin_unreachable(); \
     } while ( false )
 
-extern uint32_t __tainted;
+extern uint64_t __tainted;
+extern void * __tainted_ptr;
 
 namespace abstract {
 
@@ -40,8 +41,12 @@ static T *weaken( T *ptr ) {
 template< typename T >
 static T __taint()
 {
-    static_assert( std::is_arithmetic_v< T >, "Cannot taint a non-arithmetic value." );
-    return static_cast< T >( __tainted );
+    static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
+                   "Cannot taint a non-arithmetic or non-pointer value." );
+    if constexpr ( std::is_arithmetic_v< T > )
+        return static_cast< T >( __tainted );
+    else
+        return static_cast< T >( __tainted_ptr );
 }
 
 
