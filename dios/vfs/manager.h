@@ -55,24 +55,6 @@ struct Manager {
     int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
 };
 
-namespace conversion {
-
-    using namespace __dios::fs::flags;
-
-    static inline LegacyFlags< Message > message( int fls )
-    {
-        LegacyFlags< Message > f = Message::NoFlags;
-
-        if ( fls & MSG_DONTWAIT ) f |= Message::DontWait;
-        if ( fls & MSG_PEEK ) f |= Message::Peek;
-        if ( fls & MSG_WAITALL ) f |= Message::WaitAll;
-        return f;
-    }
-
-    static_assert( AT_FDCWD == __dios::fs::CURRENT_DIRECTORY,
-                   "mismatch value of AT_FDCWD and __dios::fs::CURRENT_DIRECTORY" );
-}
-
 template < typename Next >
 struct VFS: Syscall, Next
 {
@@ -164,6 +146,8 @@ struct VFS: Syscall, Next
 
     using Syscall::send;
     using Syscall::sendto;
+    using Syscall::recv;
+    using Syscall::recvfrom;
 
     template< typename Setup >
     void setup( Setup s )
@@ -299,60 +283,6 @@ public: /* system call implementation */
     {
         __dios_trace_t( "statfs() is not implemented" );
         return -1;
-    }
-
-    size_t _receive( FileDescriptor &fd, Socket &socket, char *buffer, size_t length,
-                     LegacyFlags< flags::Message > fls, Socket::Address &address )
-    {
-        if ( fd.flags().nonblock() && !socket.canRead() )
-            throw Error( EAGAIN );
-
-        if ( fd.flags().nonblock() )
-            fls |= flags::Message::DontWait;
-
-        socket.receive( buffer, length, fls, address );
-        return length;
-    }
-
-    ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len )
-    {
-        using Address = __dios::fs::Socket::Address;
-        Address address;
-        struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
-        if ( target && !len )
-            throw Error( EFAULT );
-
-        auto s = instance( ).getSocket( sockfd );
-        n = _receive( *instance().getFile( sockfd ), *s, static_cast< char * >( buf ), n,
-                      conversion::message( flags ), address );
-
-        if ( target ) {
-            target->sun_family = AF_UNIX;
-            char *end = std::copy( address.value( ).begin( ), address.value( ).end( ), target->sun_path );
-            *end = '\0';
-            *len = address.size( ) + 1 + sizeof( target->sun_family );
-        }
-        return n;
-    }
-
-    ssize_t recv( int sockfd, void *buf, size_t n, int flags )
-    {
-        try {
-             return _recvfrom( sockfd, buf, n, flags, nullptr, nullptr );
-        }catch( Error & e ){
-             *__dios_errno() = e.code();
-            return -1;
-        }
-    }
-
-    ssize_t recvfrom( int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len )
-    {
-        try {
-             return _recvfrom( sockfd, buf, n, flags, addr, len );
-        }catch( Error & e ){
-             *__dios_errno() = e.code();
-            return -1;
-        }
     }
 
 private:

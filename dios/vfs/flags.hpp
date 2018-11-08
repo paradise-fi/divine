@@ -63,6 +63,11 @@ struct SFlags : FlagOps< SFlags >
     constexpr int type() const { return _value & __SOCK_TYPE_MASK; }
 };
 
+struct MFlags : FlagOps< MFlags >
+{
+    using FlagOps< MFlags >::FlagOps;
+};
+
 #undef O_RDONLY
 #undef O_WRONLY
 #undef O_RDWR
@@ -90,9 +95,18 @@ constexpr OFlags O_NOFOLLOW  = _HOST_O_NOFOLLOW;
 constexpr OFlags O_NDELAY    = O_NONBLOCK;
 
 #undef SOCK_NONBLOCK
+#undef SOCK_CLOEXEC
 
 constexpr SFlags SOCK_NONBLOCK = _HOST_SOCK_NONBLOCK;
 constexpr SFlags SOCK_CLOEXEC  = _HOST_SOCK_CLOEXEC;
+
+#undef MSG_PEEK
+#undef MSG_DONTWAIT
+#undef MSG_WAITALL
+
+constexpr MFlags MSG_PEEK = _HOST_MSG_PEEK;
+constexpr MFlags MSG_DONTWAIT = _HOST_MSG_DONTWAIT;
+constexpr MFlags MSG_WAITALL = _HOST_MSG_WAITALL;
 
 template< typename F >
 constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, F > operator &( F a, F b )

@@ -113,8 +113,7 @@ struct Socket : INode
 
     bool read( char *buffer, size_t, size_t &length ) override
     {
-        Address dummy;
-        return receive( buffer, length, flags::Message::NoFlags, dummy );
+        return !!receive( buffer, length, 0 );
     }
 
     std::string_view address() override { return _address.value(); }
@@ -128,10 +127,8 @@ struct Socket : INode
 
     virtual void addBacklog( Node ) = 0;
 
-    virtual bool receive( char *, size_t &, LegacyFlags< flags::Message >, Address & ) = 0;
-
     virtual bool fillBuffer( const char*, size_t & ) = 0;
-    virtual bool fillBuffer( const Address &, const char *, size_t & ) = 0;
+    virtual bool fillBuffer( Node sender, const char *, size_t & ) = 0;
 
     bool closed() const {
         return _closed;
@@ -278,28 +275,26 @@ struct SocketStream : Socket {
         return sock_peer()->fillBuffer( buffer, length );
     }
 
-    bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override
+    Node receive( char *buffer, size_t &length, MFlags flags ) override
     {
         if ( !peer() && !closed() )
-            return error( ENOTCONN ), false;
+            return error( ENOTCONN ), nullptr;
 
         if ( _stream.empty() )
             __vm_cancel();
 
-        if ( fls.has( flags::Message::WaitAll ) && _stream.size() < length )
+        if ( flags.has( MSG_WAITALL ) && _stream.size() < length )
             __vm_cancel();
 
-        if ( fls.has( flags::Message::Peek ) )
+        if ( flags.has( MSG_PEEK ) )
             length = _stream.peek( buffer, length );
         else
             length = _stream.pop( buffer, length );
 
-        address = sock_peer()->sock_address();
-
-        return true;
+        return peer();
     }
 
-    bool fillBuffer( const Address &, const char *, size_t & ) override
+    bool fillBuffer( Node, const char *, size_t & ) override
     {
         return error( EPROTOTYPE ), false;
     }
@@ -324,7 +319,7 @@ private:
     int _limit;
 };
 
-struct SocketDatagram : Socket {
+struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
 
     SocketDatagram()
     {}
@@ -398,31 +393,31 @@ struct SocketDatagram : Socket {
             return error( EACCES ), false;
 
         Socket *socket = remote->as< Socket >();
-        return socket->fillBuffer( sock_address(), buffer, length );
+        return socket->fillBuffer( shared_from_this(), buffer, length );
     }
 
-    bool receive( char *buffer, size_t &length, LegacyFlags< flags::Message > fls, Address &address ) override {
-
-        if ( fls.has( flags::Message::DontWait ) && _packets.empty() )
-            return error( EAGAIN ), false;
+    Node receive( char *buffer, size_t &length, MFlags flags ) override
+    {
+        if ( flags.has( MSG_DONTWAIT ) && _packets.empty() )
+            return error( EAGAIN ), nullptr;
 
         if  ( _packets.empty() )
             __vm_cancel();
 
         length = _packets.front().read( buffer, length );
-        address = _packets.front().from();
-        if ( !fls.has( flags::Message::Peek ) )
+        auto peer = _packets.front().from();
+        if ( !flags.has( MSG_PEEK ) )
             _packets.pop();
 
-        return true;
+        return peer;
     }
 
-    bool fillBuffer( const char */*buffer*/, size_t &/*length*/ ) override
+    bool fillBuffer( const char *, size_t &/*length*/ ) override
     {
         return error( EPROTOTYPE ), false;
     }
 
-    bool fillBuffer( const Address &sender, const char *buffer, size_t &length ) override
+    bool fillBuffer( Node sender, const char *buffer, size_t &length ) override
     {
         if ( closed() )
             return error( ECONNREFUSED ), false;
@@ -437,7 +432,7 @@ struct SocketDatagram : Socket {
 private:
     struct Packet {
 
-        Packet( Address from, const char *data, size_t length ) :
+        Packet( Node from, const char *data, size_t length ) :
             _from( std::move( from ) ),
             _data( data, data + length )
         {}
@@ -455,7 +450,7 @@ private:
             return result;
         }
 
-        const Address &from() const {
+        Node from() const {
             return _from;
         }
 
@@ -467,7 +462,7 @@ private:
         }
 
     private:
-        Address _from;
+        Node _from;
         __dios::Vector< char > _data;
     };
 

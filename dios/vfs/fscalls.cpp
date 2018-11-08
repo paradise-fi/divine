@@ -644,9 +644,9 @@ namespace __dios::fs
     ssize_t Syscall::send( int sockfd, const void *buf, size_t n, int )
     {
         if ( auto sock = check_fd( sockfd, W_OK ) )
-            return sock->write( buf, n ), n;
-
-        return -1;
+            return sock->write( buf, n );
+        else
+            return -1;
     }
 
     ssize_t Syscall::sendto( int sockfd, const void *buf, size_t n, int flags,
@@ -660,7 +660,36 @@ namespace __dios::fs
             return -1;
 
         if ( auto remote = lookup( get_dir(), path, true ) )
-            return check_fd( sockfd, F_OK )->write( buf, n, remote ), n;
+            return check_fd( sockfd, F_OK )->write( buf, n, remote );
+        else
+            return -1;
+    }
+
+    ssize_t Syscall::recv( int sockfd, void *buf, size_t n, MFlags flags )
+    {
+        return recvfrom( sockfd, buf, n, flags, nullptr, nullptr );
+    }
+
+    ssize_t Syscall::recvfrom( int sockfd, void *buf, size_t n, MFlags flags,
+                               struct sockaddr *addr, socklen_t *len )
+    {
+        auto fd = check_fd( sockfd, F_OK );
+        if ( !fd )
+            return -1;
+
+        if ( fd->flags().nonblock() && !fd->inode()->canRead() )
+            return error( EAGAIN ), -1;
+
+        if ( fd->flags().nonblock() )
+            flags |= MSG_DONTWAIT;
+
+        if ( auto peer = fd->inode()->receive( static_cast< char * >( buf ), n, flags ) )
+        {
+            if ( addr && !address_out( peer, addr, len ) )
+                return -1;
+            else
+                return n;
+        }
 
         return -1;
     }
