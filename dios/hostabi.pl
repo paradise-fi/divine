@@ -130,6 +130,10 @@ fmt( "O_NOFOLLOW" );
 fmt( "SOCK_NONBLOCK" );
 fmt( "SOCK_CLOEXEC" );
 
+fmt( "MSG_PEEK" );
+fmt( "MSG_DONTWAIT" );
+fmt( "MSG_WAITALL" );
+
 fmt( "S_ISUID" );
 fmt( "S_ISGID" );
 
