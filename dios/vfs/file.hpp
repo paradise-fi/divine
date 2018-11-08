@@ -103,15 +103,6 @@ struct RegularFile : INode
         return true;
     }
 
-    void clear() override
-    {
-        if ( !_size )
-            return;
-
-        _snapshot = false;
-        resize( 0 );
-    }
-
     void resize( size_t length )
     {
         _content.resize( length );
@@ -318,7 +309,6 @@ struct Pipe : INode
         return true;
     }
 
-    void clear() override { throw Error( EINVAL ); }
     void releaseReader() { _reader = false; }
     bool reader() const { return _reader; }
     bool writer() const { return _writer; }

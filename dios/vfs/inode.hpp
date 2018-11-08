@@ -156,7 +156,6 @@ struct INode
     virtual bool write( const char *, size_t, size_t &, Node ) { return false; }
     virtual bool canRead() const { return false; }
     virtual bool canWrite( int, Node ) const { return false; }
-    virtual void clear() {}
 
     virtual void open( FileDescriptor & ) {}
     virtual void close( FileDescriptor & ) {}
