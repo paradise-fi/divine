@@ -200,6 +200,11 @@ struct PtrPlusBit {
     T *ptr;
 };
 
+template< typename... Ts >
+bool is_one_of( llvm::Value *v ) {
+    return ( llvm::isa< Ts >( v ) || ... );
+}
+
 template< typename X >
 auto succs( X *x ) { return range( succ_begin( x ), succ_end( x ) ); }
 

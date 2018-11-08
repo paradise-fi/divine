@@ -8,8 +8,10 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Constants.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/util.h>
 #include <lart/abstract/util.h>
 #include <lart/abstract/metadata.h>
+
 
 using namespace llvm;
 
@@ -17,7 +19,7 @@ namespace lart::abstract
 {
 
 bool is_duplicable( Value *v ) {
-    return abstract::is_one_of< BinaryOperator, CmpInst, CastInst, LoadInst, PHINode >( v );
+    return util::is_one_of< BinaryOperator, CmpInst, CastInst, LoadInst, PHINode >( v );
 }
 
 Function* placeholder( Module *m, Type *in, Type *out ) {

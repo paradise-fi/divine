@@ -116,7 +116,7 @@ Types args_with_taints( Value* val, const Values &args ) {
 }
 
 bool is_taintable( Value *v ) {
-    return is_one_of< BinaryOperator, CmpInst, CastInst >( v );
+    return util::is_one_of< BinaryOperator, CmpInst, CastInst >( v );
 }
 
 ConstantInt* bitwidth( Value *v ) {

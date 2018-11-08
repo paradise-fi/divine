@@ -56,6 +56,8 @@ private:
     llvm::GlobalVariable * glob;
 };
 
+bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom );
+
 template< typename Yield >
 auto global_variable_walker( llvm::Module &m, Yield yield ) {
     brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( abstract_domain_tag, m, yield );

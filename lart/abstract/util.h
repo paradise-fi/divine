@@ -44,11 +44,6 @@ Types types_of( const Values & vs ) {
     } ).freeze();
 }
 
-template< typename... Ts >
-bool is_one_of( llvm::Value *v ) {
-    return ( llvm::isa< Ts >( v ) || ... );
-}
-
 template< typename Fn >
 void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
     for ( auto &mdv : abstract_metadata( m ) ) {

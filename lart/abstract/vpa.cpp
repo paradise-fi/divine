@@ -145,7 +145,8 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         }
 
         if ( auto i = dyn_cast< Instruction >( dep ) ) {
-            add_abstract_metadata( i, dom );
+            if ( is_transformable_in_domain( i, dom ) )
+                add_abstract_metadata( i, dom );
         }
 
         if ( auto a = dyn_cast< AllocaInst >( dep ) ) {
@@ -183,6 +184,9 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 }
 
 void VPA::propagate( CallInst *call, Domain dom ) {
+
+    // TODO do not propagate to calls if thay are base of domain!
+
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
         if ( FunctionTag::ignore_call_of_function( fn ) )
             return;
