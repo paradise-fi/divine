@@ -297,9 +297,10 @@ struct Pipe : INode
 
     bool write( const char *buffer, size_t, size_t &length, Node ) override
     {
-        if ( !_reader ) {
+        if ( !_reader )
+        {
             raise( SIGPIPE );
-            throw Error( EPIPE );
+            return error( EPIPE ), false;
         }
 
         // progress or deadlock

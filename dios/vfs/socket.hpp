@@ -125,7 +125,7 @@ struct Socket : INode
     virtual bool canReceive( size_t ) const = 0;
     virtual bool canConnect() const = 0;
 
-    virtual void addBacklog( Node ) = 0;
+    virtual bool addBacklog( Node ) = 0;
 
     virtual bool fillBuffer( const char*, size_t & ) = 0;
     virtual bool fillBuffer( Node sender, const char *, size_t & ) = 0;
@@ -225,15 +225,14 @@ struct SocketStream : Socket {
 
             _peer.reset( new( __dios::nofail ) SocketStream( self ) );
             _peer->mode( ACCESSPERMS );
-            m->addBacklog( _peer );
+            return m->addBacklog( _peer );
         }
         else
         {
             _peer = std::move( remote );
             m->_peer = std::move( self );
+            return true;
         }
-
-        return true;
     }
 
     bool connect( Node self, Node remote ) override
@@ -241,11 +240,13 @@ struct SocketStream : Socket {
         return connect( std::move( self ), std::move( remote ), true );
     }
 
-    void addBacklog( Node incoming ) override {
+    bool addBacklog( Node incoming ) override
+    {
         if ( int( _backlog.size() ) == _limit )
-            throw Error( ECONNREFUSED );
+            return error( ECONNREFUSED ), false;
         incoming->bind( address() );
         _backlog.push( std::move( incoming ) );
+        return true;
     }
 
     bool canRead() const override {
@@ -372,8 +373,7 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
         return error( EOPNOTSUPP ), nullptr;
     }
 
-    void addBacklog( Node ) override {
-    }
+    bool addBacklog( Node ) override { return true; }
 
     bool connect( Node, Node defaultRecipient ) override
     {
