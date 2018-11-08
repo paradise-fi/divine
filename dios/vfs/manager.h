@@ -33,47 +33,9 @@
 namespace __dios {
 namespace fs {
 
-struct Manager {
-
-    Manager() : Manager( true ) {}
-
-    void setOutputFile(FileTrace trace);
-    void setErrFile(FileTrace trace);
-
-    void closeFile( int fd );
-    std::shared_ptr< FileDescriptor > getFile( int fd );
-    std::shared_ptr< Socket > getSocket( int sockfd );
-
-    template< typename U > friend struct VFS;
-    Node _root;
-
-    ProcessInfo *_proc;
-
-    Manager( bool );// private default ctor
-
-    int _getFileDescriptor( Node node, OFlags flags, int lowEdge = 0 );
-    int _getFileDescriptor( std::shared_ptr< FileDescriptor >, int lowEdge = 0 );
-};
-
 template < typename Next >
 struct VFS: Syscall, Next
 {
-    VFS() { _manager = new( __dios::nofail ) Manager{}; }
-    VFS( const VFS& ) = delete;
-    ~VFS() {
-        if ( _manager )
-            delete _manager;
-    }
-    VFS& operator=( const VFS& ) = delete;
-
-    Manager &instance() {
-        __FS_assert( _manager );
-
-        if ( this->getCurrentTask() )
-            _manager->_proc = static_cast< Process* >( this->getCurrentTask()->_proc );
-        return *_manager;
-    }
-
     struct Process : Next::Process, fs::ProcessInfo
     {};
 
@@ -173,7 +135,8 @@ struct VFS: Syscall, Next
 
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
-        _root = instance()._root;
+        _root = fs::make_shared< Directory >();
+        _root->mode( S_IFDIR | ACCESSPERMS );
         s.proc1->_cwd = _root;
 
         import( s.env );
@@ -203,13 +166,6 @@ struct VFS: Syscall, Next
             "passthrough - use syscalls from the underlying host OS (cannot be used with verify) " } };
 
         Next::getHelp( options );
-    }
-
-    void finalize()
-    {
-        delete _manager;
-        _manager = nullptr;
-        Next::finalize();
     }
 
     static Node make_tracefile( SysOpts& o, String stream )
@@ -284,9 +240,6 @@ public: /* system call implementation */
         __dios_trace_t( "statfs() is not implemented" );
         return -1;
     }
-
-private:
-    Manager *_manager;
 };
 
 } // namespace fs
