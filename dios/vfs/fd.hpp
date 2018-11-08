@@ -73,7 +73,7 @@ struct FileDescriptor
         const char *src = reinterpret_cast< const char * >( buf );
 
         if ( !_inode->write( src, _offset, length, remote ) )
-            return error( EBADF ), -1;
+            return -1;
 
         _offset += length;
         return length;
