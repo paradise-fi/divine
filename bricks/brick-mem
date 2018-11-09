@@ -747,50 +747,62 @@ struct SlavePool : PoolMixin< SlavePool< Master_ >, typename Master_::Pointer >
 
 };
 
-template< typename SlavePool >
-struct RefCnt
+template< typename Master, typename T = uint16_t >
+struct RefPool : SlavePool< Master >
 {
-    using Pointer = typename SlavePool::Pointer;
+    using Pointer = typename Master::Pointer;
+    using SlavePool< Master >::SlavePool;
 
-    SlavePool _pool;
-    Pointer _ptr;
-
-    uint16_t &count() /* TODO atomic? */
+    T &count( Pointer p ) /* TODO atomic? */
     {
-        _pool.materialise( _ptr, sizeof( uint16_t ), false );
-        return *_pool.template machinePointer< uint16_t >( _ptr );
+        this->materialise( p, sizeof( T ), false );
+        return *this->template machinePointer< T >( p );
     }
 
-    void get()
+    void get( Pointer p )
     {
-        if ( _ptr.slab() )
-        {
-            ASSERT_LT( count(), 65535 );
-            count() ++;
-        }
+        if ( p.slab() && count( p ) < std::numeric_limits< T >::max() )
+            count( p ) ++;
     }
 
-    void put()
+    void put( Pointer p )
     {
-        if ( !_ptr.slab() )
+        if ( !p.slab() )
             return;
 
-        ASSERT_LEQ( 1, count() );
-        if ( ! -- count() ) /* TODO refactor */
+        if ( count( p ) == std::numeric_limits< T >::max() )
+            return; /* counter saturation makes the object immortal */
+
+        ASSERT_LEQ( 1, count( p ) );
+        if ( ! -- count( p ) ) /* TODO refactor */
         {
-            typename SlavePool::Master::FreeList fl;
+            typename Master::FreeList fl;
             fl.count = 1;
-            fl.head = _ptr;
-            auto block = _pool._m->block[ _ptr.slab() ];
+            fl.head = p;
+            auto block = this->_m->block[ p.slab() ];
             int sz = block->itemsize;
-            const char *mem = block->data + _ptr.chunk() * ( sz > 1 ? align( sz , 4 ) : sz );
-            _pool._m->freelist_return( sz, fl );
-            _pool._m->valgrind_dealloc( _ptr, mem, sz );
+            const char *mem = block->data + p.chunk() * ( sz > 1 ? align( sz , 4 ) : sz );
+            this->_m->freelist_return( sz, fl );
+            this->_m->valgrind_dealloc( p, mem, sz );
         }
     }
 
+};
+
+template< typename Master, typename T = uint16_t >
+struct RefCnt
+{
+    using Pointer = typename Master::Pointer;
+
+    RefPool< Master, T >  _pool;
+    Pointer _ptr;
+
+    void get() { _pool.get( _ptr ); }
+    void put() { _pool.put( _ptr ); }
+    T count() { return _pool.count( _ptr ); }
+
     RefCnt() {}
-    RefCnt( SlavePool &s, Pointer p ) : _pool( s ), _ptr( p )    { get(); }
+    RefCnt( RefPool< Master, T > &s, Pointer p ) : _pool( s ), _ptr( p )    { get(); }
     RefCnt( const RefCnt &o ) : _pool( o._pool ), _ptr( o._ptr ) { get(); }
 
     RefCnt &operator=( const RefCnt &r )
@@ -903,14 +915,14 @@ struct Pool
 
     TEST(refcnt)
     {
-        using SP = mem::SlavePool< _Pool >;
+        using RP = mem::RefPool< _Pool >;
 
         _Pool pool;
-        SP slave( pool );
+        RP refpool( pool );
 
         auto p = pool.allocate( 10 );
         {
-            mem::RefCnt< SP > ref( slave, p );
+            mem::RefCnt< _Pool > ref( refpool, p );
             ASSERT_EQ( ref.count(), 1 );
             {
                 auto ref2 = ref;
