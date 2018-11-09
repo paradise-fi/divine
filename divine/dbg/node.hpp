@@ -57,7 +57,7 @@ struct Node
     Snapshot _snapshot;
     DNKind _kind;
     bool _executing;
-    brick::mem::RefCnt< typename Context::RefCnt > _ref;
+    brick::mem::RefCnt< typename Context::RefPool::Master > _ref;
 
     std::map< std::string, int > _related_count;
     std::set< vm::GenericPointer > _related_ptrs;

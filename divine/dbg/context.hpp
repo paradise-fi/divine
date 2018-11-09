@@ -37,10 +37,11 @@ struct DNContext : vm::Context< vm::Program, Heap >
 {
     using Super = vm::Context< vm::Program, Heap >;
     using Snapshot = typename Heap::Snapshot;
-    using RefCnt = brick::mem::SlavePool< typename Heap::SnapPool >;
+    using RefPool = brick::mem::RefPool< typename Heap::SnapPool >;
+    using RefCnt  = brick::mem::RefCnt< typename Heap::SnapPool >;
 
     Info *_debug;
-    RefCnt _refcnt;
+    RefPool _refcnt;
 
     Info &debug() { return *_debug; }
     DNContext( vm::Program &p, Info &i, const Heap &h )
@@ -50,7 +51,7 @@ struct DNContext : vm::Context< vm::Program, Heap >
     void load( const Ctx &ctx )
     {
         Super::load( ctx );
-        _refcnt = RefCnt( this->heap()._snapshots );
+        _refcnt = RefPool( this->heap()._snapshots );
     }
 
     void load( typename Heap::Snapshot snap ) { Super::load( snap ); }

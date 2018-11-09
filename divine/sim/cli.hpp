@@ -43,7 +43,6 @@ using DN = dbg::Node< vm::Program, vm::CowHeap >;
 using BC = std::shared_ptr< mc::BitCode >;
 using PointerV = Context::PointerV;
 using Stepper = dbg::Stepper< Context >;
-using RefCnt = brick::mem::RefCnt< typename Context::RefCnt >;
 using Snapshot = vm::CowHeap::Snapshot;
 
 struct OneLineTokenizer
@@ -77,7 +76,7 @@ struct CLI
     std::vector< std::string > _env;
 
     std::map< std::string, DN > _dbg;
-    std::map< Snapshot, RefCnt > _state_refs;
+    std::map< Snapshot, Context::RefCnt > _state_refs;
     std::map< Snapshot, std::string > _state_names;
     std::map< Snapshot, vm::Step > _trace;
     mc::ExplicitBuilder _explore;

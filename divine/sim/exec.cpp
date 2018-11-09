@@ -137,7 +137,7 @@ Snapshot CLI::newstate( Snapshot snap, bool update_choices, bool terse )
     {
         isnew = true;
         name = _state_names[ snap ] = "#" + brick::string::fmt( ++_state_count );
-        _state_refs[ snap ] = RefCnt( _ctx._refcnt, snap );
+        _state_refs[ snap ] = Context::RefCnt( _ctx._refcnt, snap );
         DN state( _ctx, snap );
         state.address( dbg::DNKind::Object, _ctx.get( _VM_CR_State ).pointer );
         state.type( _ctx._state_type );
