@@ -184,6 +184,13 @@ struct VFS: Syscall, Next
         __builtin_trap();
     }
 
+    void finalize()
+    {
+        for ( auto &ino : _stdio )
+            ino.reset();
+        Next::finalize();
+    }
+
 private: /* helper methods */
 
     Node _root;
