@@ -20,8 +20,8 @@ using lart::util::get_or_insert_function;
 namespace lart::abstract
 {
 
-bool is_duplicable( Value *v ) {
-    return util::is_one_of< BinaryOperator, CmpInst, CastInst, LoadInst, PHINode >( v );
+inline bool is_transformable( Instruction *inst ) {
+    return is_transformable_in_domain( inst, get_domain( inst ) );
 }
 
 Function* placeholder( Module *m, Type *in, Type *out ) {
@@ -38,22 +38,12 @@ void Duplicator::run( llvm::Module &m ) {
 	auto abstract = query::query( abstract_metadata( m ) )
 	    .map( [] ( auto mdv ) { return mdv.value(); } )
 	    .map( query::llvmdyncast< Instruction > )
-	    .filter( [] ( auto v ) { return is_base_type( v ); } )
-	    .filter( [] ( auto v ) {
-            if ( auto cmp = dyn_cast< CmpInst >( v ) ) {
-                return query::query( cmp->operands() ).all( [] ( auto &op ) {
-                    return is_base_type( op );
-                } );
-            } else {
-                return true;
-            }
-        } )
-        .filter( [] ( auto v ) { return !isa< CallInst >( v ); } )
-        .freeze();
+	    .filter( is_base_type )
+	    .filter( is_transformable )
+	    .freeze();
 
     for ( const auto &inst : abstract )
-		if ( is_duplicable( inst ) )
-    		process( inst );
+    	process( inst );
 }
 
 void Duplicator::process( llvm::Instruction *i ) {

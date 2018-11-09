@@ -147,7 +147,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         }
 
         if ( auto i = dyn_cast< Instruction >( dep ) ) {
-            if ( is_transformable_in_domain( i, dom ) )
+            if ( is_propagable_in_domain( i, dom ) )
                 add_abstract_metadata( i, dom );
         }
 

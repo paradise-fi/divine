@@ -254,16 +254,34 @@ void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     inst->setMetadata( "lart.domains", MDTuple::get( ctx, node ) );
 }
 
+bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
+    auto dm = domain_metadata( *inst->getModule(), dom );
+
+    switch ( dm.kind() ) {
+        case DomainKind::scalar:
+            return is_transformable_in_domain( inst, dom ) ||
+                   util::is_one_of< CallInst, StoreInst, GetElementPtrInst >( inst );
+        case DomainKind::string:
+            return is_transformable_in_domain( inst, dom );
+        case DomainKind::pointer:
+        case DomainKind::custom:
+        default:
+            UNREACHABLE( "Unsupported domain transformation." );
+    }
+}
+
 bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
     auto dm = domain_metadata( *inst->getModule(), dom );
 
     switch ( dm.kind() ) {
         case DomainKind::scalar:
-            return true; // TODO filter unsupported instructions
-        case DomainKind::pointer:
-            return true; // TODO filter unsupported instructions
+            return util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
+                   ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [] ( auto &op ) {
+                        return is_base_type( op );
+                   } ) );
         case DomainKind::string:
             return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst, CallInst >( inst );
+        case DomainKind::pointer:
         case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain transformation." );
@@ -292,7 +310,8 @@ bool is_base_type_in_domain( llvm::Value * val, Domain dom ) {
         case DomainKind::pointer:
             return val->getType()->isPointerTy();
         case DomainKind::string:
-            return val->getType()->isPointerTy(); // TODO check pointer to char
+            return val->getType()->isPointerTy() &&
+                   cast< PointerType >( val->getType() )->getPointerElementType()->isIntegerTy( 8 );
         case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain type." );

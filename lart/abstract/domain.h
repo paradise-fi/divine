@@ -178,6 +178,7 @@ inline bool is_concrete( llvm::Value *val ) {
 }
 
 
+bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom );
 bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom );
 
 bool is_base_type( llvm::Value * val );
