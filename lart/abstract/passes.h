@@ -58,6 +58,7 @@ namespace abstract {
             auto passes = make_pass_wrapper( CreateAbstractMetadata()
                                            , VPA()
                                            , Decast()
+                                           , VPA() // run once more to propagate through decasted functions
                                            , Duplicator()
                                            , Stash()
                                            , ExpandBranching()
