@@ -166,7 +166,7 @@ if( CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "SemiDbg" )
   set( IS_NDEBUG OFF )
 endif()
 
-opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ${IS_NDEBUG} )
+opt( OPT_TBBMALLOC "use Intel TBB memory allocator" OFF )
 opt( OPT_SIM "build the interactive debugger/simulator" ON )
 opt( OPT_SQL "enable ODBC-based database support" ${ODBC_FOUND} )
 opt( OPT_Z3 "enable the Z3 solver backend (needs a Z3 installation)" ${Z3_FOUND} )
