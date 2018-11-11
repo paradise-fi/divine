@@ -1,4 +1,5 @@
 #include <divine/cc/cc1.hpp>
+#include <divine/cc/options.hpp>
 #include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
 #include <divine/vm/xg-code.hpp>
@@ -27,6 +28,7 @@ static const std::string bcsec = ".llvmbc";
 
 using namespace divine;
 using namespace llvm;
+using PairedFiles = std::vector< std::pair< std::string, std::string > >;
 
 
 void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )
@@ -125,7 +127,7 @@ bool isType( std::string file, cc::FileType type )
     return cc::typeFromFile( file ) == type;
 }
 
-std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string, std::string > >& files, cc::CC1& clang )
+std::unique_ptr< llvm::Module > llvmExtract( PairedFiles& files, cc::CC1& clang )
 {
     using FileType = cc::FileType;
     using namespace brick::types;
@@ -172,6 +174,48 @@ std::unique_ptr< llvm::Module > llvmExtract( std::vector< std::pair< std::string
     return m;
 }
 
+int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
+{
+    using FileType = cc::FileType;
+
+    for ( auto file : objFiles )
+    {
+        if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
+            continue;
+        auto mod = clang.compile( file.first, po.opts );
+        emitObjFile( *mod, file.second );
+    }
+    return 0;
+}
+
+int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
+{
+    using FileType = cc::FileType;
+
+    std::string s;
+    for ( auto file : objFiles )
+    {
+        if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
+        {
+            s += file.first + " ";
+            continue;
+        }
+        std::string ofn = file.second;
+        auto mod = clang.compile( file.first, po.opts );
+        emitObjFile( *mod, ofn );
+        s += ofn + " ";
+    }
+
+    if ( po.outputFile != "" )
+        s += " -o " + po.outputFile;
+
+    s.insert( 0, "gcc " );
+    s.append( " -static" );
+    int gccret = system( s.c_str() );
+
+    return WEXITSTATUS( gccret );
+}
+
 
 /* usage: same as gcc */
 int main( int argc, char **argv )
@@ -180,7 +224,7 @@ int main( int argc, char **argv )
         cc::CC1 clang;
         clang.allowIncludePath( "/" );
         divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
-        std::vector< std::pair< std::string, std::string > > objFiles;
+        PairedFiles objFiles;
 
         std::vector< std::string > opts;
         std::copy( argv + 1, argv + argc, std::back_inserter( opts ) );
@@ -243,39 +287,9 @@ int main( int argc, char **argv )
         int ret = 0;
 
         if ( po.toObjectOnly )
-        {
-            for ( auto file : objFiles )
-            {
-                if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
-                    continue;
-                auto mod = clang.compile( file.first, po.opts );
-                emitObjFile( *mod, file.second );
-            }
-
-            return 0;
-        }
+            return compile( po, clang, objFiles );
         else
-        {
-            std::string s;
-            for ( auto file : objFiles )
-            {
-                if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
-                {
-                    s += file.first + " ";
-                    continue;
-                }
-                std::string ofn = file.second;
-                auto mod = clang.compile( file.first, po.opts );
-                emitObjFile( *mod, ofn );
-                s += ofn + " ";
-            }
-            if ( po.outputFile != "" )
-                s += " -o " + po.outputFile;
-            s.insert( 0, "gcc " );
-            s.append( " -static" );
-            int gccret = system( s.c_str() );
-            ret = WEXITSTATUS( gccret );
-        }
+            ret = compile_and_link( po, clang, objFiles );
 
         if ( !ret )
         {
