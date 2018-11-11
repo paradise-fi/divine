@@ -150,7 +150,10 @@ std::unique_ptr< llvm::Module > llvmExtract( PairedFiles& files, cc::CC1& clang 
         auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
         if ( !bc ) std::cerr << "No .llvmbc section found in file " << file.second << "." << std::endl;
 
-        std::unique_ptr< llvm::Module > m = std::move( llvm::parseBitcodeFile( bc.get(), *clang.context().get()).get() );
+        auto expected_m = llvm::parseBitcodeFile( bc.get(), *clang.context().get() );
+        if ( !expected_m )
+            std::cerr << "Error parsing bitcode." << std::endl;
+        auto m = std::move( expected_m.get() );
         m->setTargetTriple( "x86_64-unknown-none-elf" );
         verifyModule( *m );
         drv->link( std::move( m ) );
