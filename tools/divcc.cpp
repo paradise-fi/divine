@@ -28,14 +28,19 @@ static const std::string bcsec = ".llvmbc";
 
 using namespace divine;
 using namespace llvm;
+using namespace brick::types;
+
 using PairedFiles = std::vector< std::pair< std::string, std::string > >;
+using FileType = cc::FileType;
 
 
 void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )
 {
-    brick::fs::TempDir workdir( ".divine.addSection.XXXXXX", brick::fs::AutoDelete::Yes,
-                                brick::fs::UseSystemTemp::Yes );
-    auto secpath = brick::fs::joinPath( workdir, "sec" );
+    using namespace brick::fs;
+
+    TempDir workdir( ".divine.addSection.XXXXXX", AutoDelete::Yes,
+                     UseSystemTemp::Yes );
+    auto secpath = joinPath( workdir, "sec" );
     std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
     secf << sectionData;
     secf.close();
@@ -122,26 +127,29 @@ int emitObjFile( Module &m, std::string filename )
     return 0;
 }
 
-bool isType( std::string file, cc::FileType type )
+bool is_type( std::string file, FileType type )
 {
     return cc::typeFromFile( file ) == type;
 }
 
-std::unique_ptr< llvm::Module > llvmExtract( PairedFiles& files, cc::CC1& clang )
+bool is_object_type( std::string file )
 {
-    using FileType = cc::FileType;
-    using namespace brick::types;
-    std::unique_ptr< rt::DiosCC > drv = std::unique_ptr< rt::DiosCC >( new rt::DiosCC( clang.context() ) );
+    return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive );
+}
+
+std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang )
+{
+    auto drv = std::make_unique< rt::DiosCC >( clang.context() );
 
     for ( auto file : files )
     {
-        if ( !isType( file.second, FileType::Obj ) && !isType( file.second, FileType::Archive ) )
+        if ( !is_object_type( file.second ) )
             continue;
 
         ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( file.second );
         if ( !buf ) throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
 
-        if ( isType( file.second, FileType::Archive ) )
+        if ( is_type( file.second, FileType::Archive ) )
         {
             drv->linkArchive( std::move( buf.get() ) , clang.context() );
             continue;
@@ -179,11 +187,9 @@ std::unique_ptr< llvm::Module > llvmExtract( PairedFiles& files, cc::CC1& clang 
 
 int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 {
-    using FileType = cc::FileType;
-
     for ( auto file : objFiles )
     {
-        if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
+        if ( is_object_type( file.first ) )
             continue;
         auto mod = clang.compile( file.first, po.opts );
         emitObjFile( *mod, file.second );
@@ -193,12 +199,10 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 
 int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 {
-    using FileType = cc::FileType;
-
     std::string s;
     for ( auto file : objFiles )
     {
-        if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
+        if ( is_object_type( file.first ) )
         {
             s += file.first + " ";
             continue;
@@ -216,7 +220,25 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
     s.append( " -static" );
     int gccret = system( s.c_str() );
 
-    return WEXITSTATUS( gccret );
+    int ret = WEXITSTATUS( gccret );
+
+    if ( !ret )
+    {
+        std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang );
+        std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
+
+        addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
+    }
+
+    for ( auto file : objFiles )
+    {
+        if ( is_object_type( file.first ) )
+            continue;
+        std::string ofn = file.second;
+        unlink( ofn.c_str() );
+    }
+
+    return ret;
 }
 
 
@@ -233,8 +255,7 @@ int main( int argc, char **argv )
         std::copy( argv + 1, argv + argc, std::back_inserter( opts ) );
         auto po = cc::parseOpts( opts );
 
-        using brick::fs::joinPath;
-        using brick::fs::splitFileName;
+        using namespace brick::fs;
         using divine::rt::includeDir;
 
         po.opts.insert( po.opts.end(), {
@@ -250,15 +271,12 @@ int main( int argc, char **argv )
             return 1;
         }
 
-        using FileType = cc::FileType;
-        using namespace brick::types;
-
         if ( po.preprocessOnly )
         {
             for ( auto srcFile : po.files )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
-                if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
+                if ( is_object_type( ifn ) )
                     continue;
                 std::cout << clang.preprocess( ifn, po.opts );
             }
@@ -270,7 +288,7 @@ int main( int argc, char **argv )
             if ( srcFile.is< cc::File >() )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
-                std::string ofn = brick::fs::dropExtension( ifn );
+                std::string ofn = dropExtension( ifn );
                 ofn = splitFileName( ofn ).second;
                 if ( po.outputFile != "" && po.toObjectOnly )
                     ofn = po.outputFile;
@@ -281,36 +299,16 @@ int main( int argc, char **argv )
                     ofn += ".o";
                 }
 
-                if ( isType( ifn, FileType::Obj ) || isType( ifn, FileType::Archive ) )
+                if ( is_object_type( ifn ) )
                     ofn = ifn;
                 objFiles.emplace_back( ifn, ofn );
             }
         }
 
-        int ret = 0;
-
         if ( po.toObjectOnly )
             return compile( po, clang, objFiles );
         else
-            ret = compile_and_link( po, clang, objFiles );
-
-        if ( !ret )
-        {
-            std::unique_ptr< llvm::Module > mod = llvmExtract( objFiles, clang );
-            std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
-
-            addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
-        }
-
-        for ( auto file : objFiles )
-        {
-            if ( isType( file.first, FileType::Obj ) || isType( file.first, FileType::Archive ) )
-                continue;
-            std::string ofn = file.second;
-            unlink( ofn.c_str() );
-        }
-
-        return ret;
+            return compile_and_link( po, clang, objFiles );
 
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
