@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 
 #include <divine/cc/driver.hpp>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Program.h>
 
 #include <brick-string>
 #include <brick-types>
@@ -40,6 +42,34 @@ static std::vector< std::string > mergeFlags( Xs &&... xs ) {
     std::vector< std::string > out;
     MergeFlags_()( out, std::forward< Xs >( xs )... );
     return out;
+}
+
+std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
+{
+    using clang::driver::Driver;
+    using clang::driver::Compilation;
+
+    std::unique_ptr< clang::TextDiagnosticPrinter > diagPrinter;
+    std::unique_ptr< clang::DiagnosticsEngine > diagEngine;
+    std::unique_ptr< clang::driver::Driver > drv;
+
+    diagPrinter = std::make_unique< clang::TextDiagnosticPrinter >( llvm::errs(), new clang::DiagnosticOptions() );
+    diagEngine = std::make_unique< clang::DiagnosticsEngine >(
+            llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
+            new clang::DiagnosticOptions(), &*diagPrinter, false );
+    drv = std::make_unique< clang::driver::Driver >( "/usr/bin/false", LLVM_HOST_TRIPLE, *diagEngine );
+
+    Compilation* c = drv->BuildCompilation( args );
+    std::vector< Command > clangJobs;
+
+    for( auto job : c->getJobs() )
+    {
+        Command cmd( job.getExecutable() );
+        for( auto arg : job.getArguments() )
+            cmd.addArg( arg );
+        clangJobs.push_back( cmd );
+    }
+    return clangJobs;
 }
 
 Driver::Driver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :

@@ -5,8 +5,6 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/FrontendActions.h>
 #include <clang/Basic/DiagnosticOptions.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
-#include <clang/Driver/Driver.h>
-#include <clang/Driver/Compilation.h>
 #include <clang/Frontend/CompilerInstance.h> // CompilerInvocation
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <clang/Frontend/Utils.h>
@@ -147,7 +145,7 @@ std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
     invocation->getDependencyOutputOpts() = clang::DependencyOutputOptions();
 
     // actually run the compiler invocation
-    clang::CompilerInstance compiler( std::make_shared< clang::PCHContainerOperations>() );
+    clang::CompilerInstance compiler( std::make_shared< clang::PCHContainerOperations >() );
     auto fmgr = std::make_unique< clang::FileManager >( clang::FileSystemOptions(), vfs );
     compiler.setFileManager( fmgr.get() );
     compiler.setInvocation( invocation );

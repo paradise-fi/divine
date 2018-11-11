@@ -1,6 +1,14 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 #pragma once
 
+DIVINE_RELAX_WARNINGS
+#include <clang/Driver/Compilation.h>
+#include <clang/Driver/Driver.h>
+DIVINE_UNRELAX_WARNINGS
+#include "llvm/ADT/ArrayRef.h"
+#include <clang/Basic/DiagnosticOptions.h>
+#include <clang/Frontend/TextDiagnosticPrinter.h>
+
 #include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/rt/paths.hpp>
@@ -19,6 +27,19 @@ namespace cc {
 // get generated source which defines symbol with name 'name' in namespaces 'ns'
 // which contains char array literal 'value'
 std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value );
+
+struct Command
+{
+    Command( std::string name )
+        : name( name ){}
+
+    void addArg( std::string a )
+    {
+        args.push_back( a );
+    }
+    std::string name;
+    std::vector< std::string > args;
+};
 
 struct Driver
 {
@@ -63,6 +84,8 @@ struct Driver
         for( auto [f,c] : files )
             compiler.mapVirtualFile( f, c );
     }
+
+    std::vector< Command > getJobs( llvm::ArrayRef< const char * > args );
 
   protected:
     brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
