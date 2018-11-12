@@ -111,6 +111,16 @@ struct VFS: Syscall, Next
     using Syscall::recv;
     using Syscall::recvfrom;
 
+    void sysfork( pid_t *child )
+    {
+        Next::sysfork( child );
+        /* FIXME the shared pointers in _openFD are probably all mangled */
+        Process *proc = static_cast< Process * >( Next::findProcess( *child ) );
+        for ( auto &fd : proc->_openFD )
+            if ( fd && fd->inode() )
+                fd->inode()->open();
+    }
+
     template< typename Setup >
     void setup( Setup s )
     {
