@@ -197,39 +197,50 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
     return 0;
 }
 
-int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
+std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles )
 {
-    auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
-    std::vector< std::string > ld_args;
-    std::vector< const char * > ld_args_c;
+    std::vector< std::string > args;
 
     for ( auto op : po.opts )
-        ld_args.push_back( op );
+        args.push_back( op );
     for ( auto path : po.libSearchPath )
-        ld_args.push_back( "-L" + path );
+        args.push_back( "-L" + path );
     if ( po.outputFile != "" )
     {
-        ld_args.push_back( "-o" );
-        ld_args.push_back( po.outputFile );
+        args.push_back( "-o" );
+        args.push_back( po.outputFile );
     }
 
     for ( auto file : objFiles )
     {
         if ( is_object_type( file.first ) )
-        {
-            ld_args.push_back( file.first );
-            continue;
-        }
-        std::string ofn = file.second;
-        auto mod = clang.compile( file.first, po.opts );
-        emitObjFile( *mod, ofn );
-        ld_args.push_back( ofn );
+            args.push_back( file.first );
+        else
+            args.push_back( file.second );
     }
-    ld_args.insert( ld_args.begin(), "divcc" );
+    args.insert( args.begin(), "divcc" );
 
-    ld_args_c.reserve( ld_args.size() );
-    for ( size_t i = 0; i < ld_args.size(); ++i )
-        ld_args_c.push_back( ld_args[i].c_str() );
+    return args;
+}
+
+int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
+{
+    auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
+    std::vector< const char * > ld_args_c;
+
+    for ( auto file : objFiles )
+    {
+        if ( is_object_type( file.first ) )
+            continue;
+        auto mod = clang.compile( file.first, po.opts );
+        emitObjFile( *mod, file.second );
+    }
+
+    std::vector< std::string > args = ld_args( po, objFiles );
+
+    ld_args_c.reserve( args.size() );
+    for ( size_t i = 0; i < args.size(); ++i )
+        ld_args_c.push_back( args[i].c_str() );
 
     auto ld_job = diosCC->getJobs( ld_args_c ).back();
     ld_job.args.insert( ld_job.args.begin(), ld_job.name );
