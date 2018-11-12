@@ -83,6 +83,19 @@ void Context< P, H >::trace( TraceLeakCheck )
         trace( "LEAK: " + brick::string::fmt( ptr ) );
     };
 
+    if ( debug_mode() )
+        return;
+
+    /* FIXME 'are we in a fault handler?' duplicated with Eval::fault() */
+    PointerV frame( get( _VM_CR_Frame ).pointer ), fpc;
+    while ( !frame.cooked().null() )
+    {
+        heap().read_shift( frame, fpc );
+        if ( fpc.cooked().object() == get( _VM_CR_FaultHandler ).pointer.object() )
+            return; /* already handling a faut */
+        heap().read( frame.cooked(), frame );
+    }
+
     mem::leaked( heap(), leak, get( _VM_CR_State ).pointer, get( _VM_CR_Frame ).pointer );
 }
 
