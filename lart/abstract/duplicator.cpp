@@ -43,7 +43,7 @@ void Duplicator::run( llvm::Module &m ) {
 
 void Duplicator::process( llvm::Instruction *i ) {
     auto dom = ValueMetadata( i ).domain();
-    auto type = abstract_type( i->getType(), dom );
+    auto type = is_base_type( i ) ? abstract_type( i->getType(), dom ) : i->getType();
 
     auto place = isa< PHINode >( i ) ? i->getParent()->getFirstNonPHI() : i;
 
