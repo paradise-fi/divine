@@ -228,13 +228,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
     auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
     std::vector< const char * > ld_args_c;
 
-    for ( auto file : objFiles )
-    {
-        if ( is_object_type( file.first ) )
-            continue;
-        auto mod = clang.compile( file.first, po.opts );
-        emitObjFile( *mod, file.second );
-    }
+    compile( po, clang, objFiles );
 
     std::vector< std::string > args = ld_args( po, objFiles );
 
