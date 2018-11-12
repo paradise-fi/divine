@@ -219,6 +219,8 @@ void WithBC::report_options()
 
     if ( _symbolic )
         _log->info( "symbolic: 1\n" );
+    if ( _leakcheck )
+        _log->info( "leak check: [ " + to_string( _leakcheck, true ) + " ]\n", true );
 
     if ( _svcomp )
         _log->info( "svcomp: 1\n" );
