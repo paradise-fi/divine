@@ -206,7 +206,7 @@ struct SocketStream : Socket {
         return result;
     }
 
-    bool connect( Node self, Node remote, bool allocateNew )
+    bool connect( Node remote, bool allocateNew )
     {
         if ( _peer )
             return error( EISCONN ), false;
@@ -218,21 +218,21 @@ struct SocketStream : Socket {
             if ( !m->canConnect() )
                 return error( ECONNREFUSED ), false;
 
-            _peer.reset( new( __dios::nofail ) SocketStream( self ) );
+            _peer = new( nofail ) SocketStream( this );
             _peer->mode( ACCESSPERMS );
             return m->addBacklog( _peer );
         }
         else
         {
-            _peer = std::move( remote );
-            m->_peer = std::move( self );
+            _peer = remote;
+            m->_peer = this;
             return true;
         }
     }
 
-    bool connect( Node self, Node remote ) override
+    bool connect( Node remote ) override
     {
-        return connect( std::move( self ), std::move( remote ), true );
+        return connect( remote, true );
     }
 
     bool addBacklog( Node incoming ) override
@@ -312,18 +312,19 @@ private:
     int _limit;
 };
 
-struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
+struct SocketDatagram : Socket
+{
 
     SocketDatagram()
     {}
 
     Node peer()  const override
     {
-        if ( auto dr = _defaultRecipient.lock() )
+        if ( auto dr = _defaultRecipient )
         {
             SocketDatagram *defRec = dr->as< SocketDatagram >();
-            if ( auto self = defRec->_defaultRecipient.lock() )
-                if ( self.get() == this )
+            if ( auto self = defRec->_defaultRecipient )
+                if ( self == this )
                     return dr;
         }
         return nullptr;
@@ -342,7 +343,7 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
     bool canWrite( int size, Node remote ) const override
     {
         if ( !remote )
-            remote = _defaultRecipient.lock();
+            remote = _defaultRecipient;
         if ( !remote )
             return true;
         return !remote->as< Socket >()->canReceive( size );
@@ -367,8 +368,9 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
 
     bool addBacklog( Node ) override { return true; }
 
-    bool connect( Node, Node defaultRecipient ) override
+    bool connect( Node defaultRecipient ) override
     {
+        /* FIXME the default recipient might disappear any time */
         _defaultRecipient = defaultRecipient;
         return true;
     }
@@ -376,7 +378,7 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
     bool write( const char *buffer, size_t, size_t &length, Node remote ) override
     {
         if ( !remote )
-            remote = _defaultRecipient.lock();
+            remote = _defaultRecipient;
 
         if ( !remote )
             return error( EDESTADDRREQ ), false;
@@ -385,7 +387,7 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
             return error( EACCES ), false;
 
         Socket *socket = remote->as< Socket >();
-        return socket->fillBuffer( shared_from_this(), buffer, length );
+        return socket->fillBuffer( this, buffer, length );
     }
 
     Node receive( char *buffer, size_t &length, MFlags flags ) override
@@ -453,8 +455,7 @@ private:
     };
 
     __dios::Queue< Packet > _packets;
-    WeakNode _defaultRecipient;
-
+    Node _defaultRecipient;
 };
 
 }

@@ -127,7 +127,7 @@ constexpr Mode ALLPERMS = ACCESSPERMS | S_ISUID | S_ISGID | S_ISVTX;
 struct FileDescriptor;
 struct INode;
 
-using Node = std::shared_ptr< INode >;
+using Node = INode *;
 
 struct INode
 {
@@ -159,13 +159,13 @@ struct INode
     virtual bool canWrite( int, Node ) const { return false; }
 
     void open() { ++ _nopen; }
-    void close() { -- _nopen; }
+    void close() { -- _nopen; checkref(); }
 
     virtual void open( FileDescriptor & ) { open(); }
     virtual void close( FileDescriptor & ) { close(); }
 
     virtual bool listen( int ) { return error( ENOTSOCK ), false; }
-    virtual bool connect( Node, Node ) { return error( ENOTSOCK ), false; }
+    virtual bool connect( Node ) { return error( ENOTSOCK ), false; }
     virtual bool bind( std::string_view ) { return error( ENOTSOCK ), false; }
     virtual Node receive( char *, size_t &, MFlags ) { return error( ENOTSOCK ), nullptr; }
     virtual Node accept() { return error( ENOTSOCK ), nullptr; }
@@ -180,7 +180,13 @@ struct INode
     unsigned gid() const { return _gid; }
 
     void link() { ++ _nlink; }
-    void unlink() { -- _nlink; }
+    void unlink() { -- _nlink; checkref(); }
+
+    void checkref()
+    {
+        if ( !_nlink && !_nopen )
+            delete this;
+    }
 
     void stat( struct stat &buf )
     {

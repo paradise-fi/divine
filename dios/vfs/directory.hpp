@@ -77,7 +77,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
 {
     using Items = __dios::Vector< DirectoryEntry >;
 
-    Directory( WeakNode parent = WeakNode{} )
+    Directory( Node parent = Node{} )
         : _items{}, _parent( parent )
     {}
 
@@ -86,17 +86,16 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
 
     std::string_view name()
     {
-        auto parent = _parent.lock();
-        if ( parent.get() == this )
+        if ( _parent == this )
             return "/";
-        for ( const auto &entry : parent->as< Directory >()->_items )
-            if ( entry.inode().get() == this )
+        for ( const auto &entry : _parent->as< Directory >()->_items )
+            if ( entry.inode() == this )
                 return entry.name();
         __builtin_unreachable();
     }
 
-    void parent( WeakNode p ) { _parent = p; }
-    Node parent() const { return _parent.lock(); }
+    void parent( Node p ) { _parent = p; }
+    Node parent() const { return _parent; }
 
     bool create( std::string_view name, Node inode, bool overwrite )
     {
@@ -117,9 +116,9 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
     Node find( std::string_view name )
     {
         if ( name == "." )
-            return shared_from_this();
+            return this;
         if ( name == ".." )
-            return _parent.expired() ? shared_from_this() : _parent.lock();
+            return _parent ? _parent : this;
 
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
@@ -171,7 +170,7 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
         if ( idx == 0 )
             return do_read( ".", ino() );
         if ( idx == 1 )
-            return do_read( "..", _parent.expired() ? ino() : _parent.lock()->ino() );
+            return do_read( "..", _parent ? _parent->ino() : ino() );
         if ( idx - 2 == int( _items.size() ) )
             return length = 0, true;
 
@@ -209,7 +208,7 @@ private:
     }
 
     Items _items;
-    WeakNode _parent;
+    Node _parent;
 };
 
 }

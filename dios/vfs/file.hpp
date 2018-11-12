@@ -250,7 +250,7 @@ struct Pipe : INode
 
     void open( FileDescriptor &fd ) override
     {
-        __dios_assert( fd.inode().get() == this );
+        __dios_assert( fd.inode() == this );
 
         if ( fd.flags().read() && fd.flags().write() )
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
@@ -275,7 +275,7 @@ struct Pipe : INode
 
     void close( FileDescriptor &fd ) override
     {
-        __dios_assert( fd.inode().get() == this );
+        __dios_assert( fd.inode() == this );
         if ( fd.flags().read() )
             releaseReader();
         INode::close( fd );

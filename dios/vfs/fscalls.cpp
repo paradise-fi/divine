@@ -63,10 +63,11 @@ namespace __dios::fs
 
     int Syscall::mkdirat( int dirfd, const char *path, Mode mode )
     {
-        if ( link_node( get_dir( dirfd ), path, new_node( mode | S_IFDIR ) ) )
+        auto ino = new_node( mode | S_IFDIR );
+        if ( link_node( get_dir( dirfd ), path, ino ) )
             return 0;
         else
-            return -1;
+            return delete ino, -1;
     }
 
     int Syscall::mkdir( const char *path, Mode mode )
@@ -351,12 +352,12 @@ namespace __dios::fs
         if ( target.size() > PATH_LIMIT )
             return error( ENAMETOOLONG ), -1;
 
-        auto ino = fs::make_shared< SymLink >( target );
+        auto ino = new ( nofail ) SymLink( target );
         ino->mode( ACCESSPERMS | S_IFLNK );
         if ( link_node( get_dir( dirfd ), linkpath, ino ) )
             return 0;
         else
-            return -1;
+            return delete ino, -1;
     }
 
     int Syscall::symlink( const char *target, const char *linkpath )
@@ -396,10 +397,10 @@ namespace __dios::fs
             nino->unlink();
         }
 
-        if ( !odir->as< Directory >()->unlink( oname ) )
+        if ( !link_node( ndir, nname, oino, true ) )
             __builtin_trap();
 
-        if ( !link_node( ndir, nname, oino, true ) )
+        if ( !odir->as< Directory >()->unlink( oname ) )
             __builtin_trap();
 
         return 0;
@@ -511,8 +512,8 @@ namespace __dios::fs
         if ( proto ) /* TODO: support SOCK_NONBLOCK */
             return error( EOPNOTSUPP ), -1;
 
-        auto ino_a = make_shared< SocketStream >(), ino_b = make_shared< SocketStream >();
-        ino_a->connect( ino_a, ino_b, false );
+        auto ino_a = new ( nofail ) SocketStream(), ino_b = new ( nofail ) SocketStream();
+        ino_a->connect( ino_b, false );
         ino_a->mode( ACCESSPERMS | S_IFSOCK );
         ino_b->mode( ACCESSPERMS | S_IFSOCK );
 
@@ -523,7 +524,7 @@ namespace __dios::fs
 
     int Syscall::pipe( int fds[2] )
     {
-        auto ino = make_shared< Pipe >();
+        auto ino = new ( nofail ) Pipe();
         ino->mode( S_IRWXU | S_IFIFO );
 
         fds[0] = new_fd( ino, O_RDONLY | O_NONBLOCK );
@@ -543,9 +544,9 @@ namespace __dios::fs
         switch ( t.type() )
         {
             case SOCK_STREAM:
-                ino = make_shared< SocketStream >(); break;
+                ino = new ( nofail ) SocketStream(); break;
             case SOCK_DGRAM:
-                ino = make_shared< SocketDatagram >(); break;
+                ino = new ( nofail ) SocketDatagram(); break;
             default:
                 return error( EPROTONOSUPPORT ), -1;
         }
@@ -582,7 +583,7 @@ namespace __dios::fs
         {
             if ( !remote->mode().user_read() )
                 return error( EACCES ), -1;
-            if ( ino->connect( ino, remote ) )
+            if ( ino->connect( remote ) )
                 return 0;
         }
 

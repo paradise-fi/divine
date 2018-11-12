@@ -74,19 +74,19 @@ namespace __dios::fs
             Node r;
 
             if ( mode.is_socket() )
-                r = make_shared< SocketDatagram >();
+                r = new ( nofail ) SocketDatagram();
 
             if ( mode.is_file() )
-                r = make_shared< RegularFile >();
+                r = new ( nofail ) RegularFile();
 
             if ( mode.is_dir() )
-                r = make_shared< Directory >();
+                r = new ( nofail ) Directory();
 
             if ( mode.is_fifo() )
-                r = make_shared< Pipe >();
+                r = new ( nofail ) Pipe();
 
             if ( mode.is_link() )
-                r = make_shared< SymLink >();
+                r = new ( nofail )  SymLink();
 
             if ( apply_umask )
                 mode &= ~proc()._umask;

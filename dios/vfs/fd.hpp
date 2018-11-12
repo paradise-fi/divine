@@ -90,7 +90,7 @@ struct FileDescriptor
     void close()
     {
         _inode->close( *this );
-        _inode.reset();
+        _inode = nullptr;
         _flags = 0;
         _offset = 0;
     }
