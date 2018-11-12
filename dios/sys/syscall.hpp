@@ -118,6 +118,7 @@ struct BaseContext
 
     void (*reschedule)( BaseContext * );
     void finalize() { __vm_suspend(); }
+    Process *findProcess( pid_t ) { return nullptr; }
 
     void getHelp( Map< String, HelpOption >& ) {}
 
