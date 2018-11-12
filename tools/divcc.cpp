@@ -199,36 +199,50 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 
 int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 {
-    std::string s;
+    auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
+    std::vector< std::string > ld_args;
+    std::vector< const char * > ld_args_c;
+
+    for ( auto op : po.opts )
+        ld_args.push_back( op );
+    for ( auto path : po.libSearchPath )
+        ld_args.push_back( "-L" + path );
+    if ( po.outputFile != "" )
+    {
+        ld_args.push_back( "-o" );
+        ld_args.push_back( po.outputFile );
+    }
+
     for ( auto file : objFiles )
     {
         if ( is_object_type( file.first ) )
         {
-            s += file.first + " ";
+            ld_args.push_back( file.first );
             continue;
         }
         std::string ofn = file.second;
         auto mod = clang.compile( file.first, po.opts );
         emitObjFile( *mod, ofn );
-        s += ofn + " ";
+        ld_args.push_back( ofn );
     }
+    ld_args.insert( ld_args.begin(), "divcc" );
 
-    if ( po.outputFile != "" )
-        s += " -o " + po.outputFile;
+    ld_args_c.reserve( ld_args.size() );
+    for ( size_t i = 0; i < ld_args.size(); ++i )
+        ld_args_c.push_back( ld_args[i].c_str() );
 
-    s.insert( 0, "gcc " );
-    s.append( " -static" );
-    int gccret = system( s.c_str() );
+    auto ld_job = diosCC->getJobs( ld_args_c ).back();
+    ld_job.args.insert( ld_job.args.begin(), ld_job.name );
 
-    int ret = WEXITSTATUS( gccret );
+    auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, ld_job.args );
+    if ( !r )
+        throw cc::CompileError( "failed to link, ld exited with " + to_string( r ) );
 
-    if ( !ret )
-    {
-        std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang );
-        std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
-        addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
-    }
+    std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang );
+    std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
+
+    addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
 
     for ( auto file : objFiles )
     {
@@ -238,7 +252,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
         unlink( ofn.c_str() );
     }
 
-    return ret;
+    return 0;
 }
 
 
