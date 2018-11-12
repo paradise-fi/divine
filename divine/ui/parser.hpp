@@ -142,12 +142,8 @@ struct CLI : Interface
 
             for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
             {
-                if ( x == "return" )
-                    flags |= mc::LeakCheck::Return;
-                else if ( x == "state" )
-                    flags |= mc::LeakCheck::State;
-                else if ( x == "exit" )
-                    flags |= mc::LeakCheck::Exit;
+                if ( auto v = mc::leakcheck_from_string( x ) )
+                    flags |= v;
                 else
                     return bad( cmd::BadContent, x.str() + " is not a valid leakpoint" );
             }
