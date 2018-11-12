@@ -136,7 +136,8 @@ struct INode
         _ino( getIno() ),
         _uid( 0 ),
         _gid( 0 ),
-        _nlink( 0 )
+        _nlink( 0 ),
+        _nopen( 0 )
     {}
 
     virtual ~INode() {}
@@ -157,8 +158,11 @@ struct INode
     virtual bool canRead() const { return false; }
     virtual bool canWrite( int, Node ) const { return false; }
 
-    virtual void open( FileDescriptor & ) {}
-    virtual void close( FileDescriptor & ) {}
+    void open() { ++ _nopen; }
+    void close() { -- _nopen; }
+
+    virtual void open( FileDescriptor & ) { open(); }
+    virtual void close( FileDescriptor & ) { close(); }
 
     virtual bool listen( int ) { return error( ENOTSOCK ), false; }
     virtual bool connect( Node, Node ) { return error( ENOTSOCK ), false; }
@@ -201,6 +205,7 @@ private:
     uint16_t _uid;
     uint16_t _gid;
     uint16_t _nlink;
+    uint16_t _nopen;
 
     static unsigned getIno()
     {

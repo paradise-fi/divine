@@ -270,6 +270,7 @@ struct Pipe : INode
         }
 
         fd.flags().clear( O_NONBLOCK );
+        INode::open( fd );
     }
 
     void close( FileDescriptor &fd ) override
@@ -277,6 +278,7 @@ struct Pipe : INode
         __dios_assert( fd.inode().get() == this );
         if ( fd.flags().read() )
             releaseReader();
+        INode::close( fd );
     }
 
     bool read( char *buffer, size_t, size_t &length ) override

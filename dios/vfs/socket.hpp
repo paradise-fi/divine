@@ -109,6 +109,7 @@ struct Socket : INode
     {
         fd.flags().clear( O_RDONLY | O_WRONLY );
         fd.flags().set( O_RDWR );
+        INode::open( fd );
     }
 
     bool read( char *buffer, size_t, size_t &length ) override
