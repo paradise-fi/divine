@@ -292,6 +292,7 @@ void WithBC::setup()
 
     _bc->environment( _bc_env );
     _bc->autotrace( _autotrace );
+    _bc->leakcheck( _leakcheck );
     _bc->reduce( !_disableStaticReduction );
     _bc->sequential( _sequential );
     _bc->interrupts( !_synchronous );

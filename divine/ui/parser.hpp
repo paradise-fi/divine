@@ -133,6 +133,28 @@ struct CLI : Interface
             return bad( cmd::BadContent, s + " is not a valid tracepoint specification" );
         };
 
+        auto leakpoints = []( std::string s, auto good, auto bad )
+        {
+            mc::LeakCheckFlags flags = mc::LeakCheck::Nothing;
+
+            if ( s == "none" )
+                return good( flags );
+
+            for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
+            {
+                if ( x == "return" )
+                    flags |= mc::LeakCheck::Return;
+                else if ( x == "state" )
+                    flags |= mc::LeakCheck::State;
+                else if ( x == "exit" )
+                    flags |= mc::LeakCheck::Exit;
+                else
+                    return bad( cmd::BadContent, x.str() + " is not a valid leakpoint" );
+            }
+
+            return good( flags );
+        };
+
         auto paths = []( std::string s, auto good, auto )
         {
             std::vector< std::string > out;
@@ -165,6 +187,7 @@ struct CLI : Interface
             add( "repfmt", repfmt )->
             add( "label", label )->
             add( "tracepoints", tracepoints )->
+            add( "leakpoints", leakpoints )->
             add( "paths", paths )->
             add( "result", result )->
             add( "commasep", commasep );
@@ -181,6 +204,7 @@ struct CLI : Interface
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
             .option( "[-C,{commasep}]", &WithBC::_ccOpts, "pass additional options to the compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
+            .option( "[--leakcheck {leakpoints}]", &WithBC::_leakcheck, "insert leak checks"s )
             .option( "[--sequential]", &WithBC::_sequential, "disable support for threading"s )
             .option( "[--synchronous]", &WithBC::_synchronous, "enable synchronous mode"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )

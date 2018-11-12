@@ -73,6 +73,7 @@ struct WithBC : Command
     std::vector< VfsDir > _vfs;
     size_t _vfsSizeLimit;
     mc::AutoTraceFlags _autotrace;
+    mc::LeakCheckFlags _leakcheck;
     bool _disableStaticReduction = false;
     bool _symbolic = false, _sequential = false, _synchronous = false, _svcomp = false;
     bool _init_done = false;
