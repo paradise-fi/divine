@@ -123,7 +123,7 @@ std::string to_string( const SystemOutput &o ) {
             ss << x.first << ":" << std::endl;
             std::stringstream data( *x.second );
             std::string line;
-            while ( std::getline( ss, line ) )
+            while ( std::getline( data, line ) )
                 ss << "    " << line << std::endl;
             ss << std::endl;
         }
