@@ -270,15 +270,20 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
     }
 }
 
+bool is_transformable( Instruction *inst ) {
+    return is_transformable_in_domain( inst, get_domain( inst ) );
+}
+
 bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
     auto dm = domain_metadata( *inst->getModule(), dom );
 
     switch ( dm.kind() ) {
         case DomainKind::scalar:
-            return util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
+            return is_base_type_in_domain( inst, dom ) &&
+                   (util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
                    ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [] ( auto &op ) {
                         return is_base_type( op );
-                   } ) );
+                   } ) ));
         case DomainKind::string:
             return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst, CallInst >( inst );
         case DomainKind::pointer:

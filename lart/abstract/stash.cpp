@@ -44,27 +44,31 @@ Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
 
 void Stash::run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
-        run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-            if ( !fn->getMetadata( "lart.abstract" ) )
-                if ( !stashed.count( fn ) )
-                    arg_unstash( call, fn );
-            stashed.insert( fn );
-        } );
+        if ( !is_transformable( call ) ) {
+            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                if ( !fn->getMetadata( "lart.abstract" ) )
+                    if ( !stashed.count( fn ) )
+                        arg_unstash( call, fn );
+                stashed.insert( fn );
+            } );
 
-        ret_unstash( call );
+            ret_unstash( call );
+        }
     }, m );
 
     stashed.clear();
 
     run_on_abstract_calls( [&] ( auto call ) {
-        arg_stash( call );
+        if ( !is_transformable( call ) ) {
+            arg_stash( call );
 
-        run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-            if ( !fn->getMetadata( "lart.abstract" ) )
-                if ( !stashed.count( fn ) )
-                    ret_stash( call, fn );
-            stashed.insert( fn );
-        } );
+            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                if ( !fn->getMetadata( "lart.abstract" ) )
+                    if ( !stashed.count( fn ) )
+                        ret_stash( call, fn );
+                stashed.insert( fn );
+            } );
+        }
     }, m );
 }
 
@@ -78,13 +82,14 @@ void Stash::arg_unstash( CallInst *call, Function * fn ) {
         auto op = call->getArgOperand( idx );
         auto ty = op->getType();
 
-        if ( !ty->isPointerTy() ) { // TODO is base_type
-            auto dom = fmd.get_arg_domain( idx );
-            if ( !is_concrete( dom ) ) {
-                auto aty = abstract_type( ty, dom );
-                auto unstash_fn = unstash_placeholder( get_module( call ), op, aty );
-                irb.CreateCall( unstash_fn, { &arg } );
-            }
+        auto dom = fmd.get_arg_domain( idx );
+        if ( is_concrete( dom ) )
+            continue;
+
+        if ( is_base_type_in_domain( &arg, dom ) ) {
+            auto aty = abstract_type( ty, dom );
+            auto unstash_fn = unstash_placeholder( get_module( call ), op, aty );
+            irb.CreateCall( unstash_fn, { &arg } );
         }
     }
 }
@@ -96,20 +101,23 @@ void Stash::arg_stash( CallInst *call ) {
         auto op = call->getArgOperand( idx );
         auto ty = op->getType();
 
-        if ( !ty->isPointerTy() && !isa< Constant >( op ) ) { // TODO is_base_type
-            auto dom = get_domain( op );
+        if ( isa< Constant >( op ) )
+            continue;
 
-            if ( !is_concrete( dom ) && !is_concrete( op ) ) {
-                auto aty = abstract_type( ty, dom );
-                auto stash_fn = stash_placeholder( get_module( call ), aty );
-                if ( isa< CallInst >( op ) || isa< Argument >( op ) )
-                    irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
-                else if ( has_placeholder( op ) )
-                    irb.CreateCall( stash_fn, { get_placeholder( op ) } );
-                else {
-                    auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
-                    irb.CreateCall( stash_fn, { undef } );
-                }
+        auto dom = get_domain( op );
+        if ( is_concrete( dom ) )
+            continue;
+
+        if ( is_base_type_in_domain( op, dom ) ) {
+            auto aty = abstract_type( ty, dom );
+            auto stash_fn = stash_placeholder( get_module( call ), aty );
+            if ( isa< CallInst >( op ) || isa< Argument >( op ) )
+                irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
+            else if ( has_placeholder( op ) )
+                irb.CreateCall( stash_fn, { get_placeholder( op ) } );
+            else {
+                auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
+                irb.CreateCall( stash_fn, { undef } );
             }
         }
     }

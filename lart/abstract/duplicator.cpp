@@ -20,10 +20,6 @@ using lart::util::get_or_insert_function;
 namespace lart::abstract
 {
 
-inline bool is_transformable( Instruction *inst ) {
-    return is_transformable_in_domain( inst, get_domain( inst ) );
-}
-
 Function* placeholder( Module *m, Type *in, Type *out ) {
 	auto fty = llvm::FunctionType::get( out, { in }, false );
     std::string name = "lart.placeholder.";
@@ -38,7 +34,6 @@ void Duplicator::run( llvm::Module &m ) {
 	auto abstract = query::query( abstract_metadata( m ) )
 	    .map( [] ( auto mdv ) { return mdv.value(); } )
 	    .map( query::llvmdyncast< Instruction > )
-	    .filter( is_base_type )
 	    .filter( is_transformable )
 	    .freeze();
 
