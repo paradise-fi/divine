@@ -35,6 +35,28 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::mc
 {
 
+std::string to_string( LeakCheckFlags lf )
+{
+    std::string out;
+    auto append = [&]( auto str )
+    {
+        if ( !out.empty() ) out += ",";
+        out += str;
+    };
+
+    if ( lf & LeakCheck::Return )
+        append( "return" );
+    if ( lf & LeakCheck::Exit )
+        append( "exit" );
+    if ( lf & LeakCheck::State )
+        append( "state" );
+
+    if ( out.empty() )
+        return "none";
+    else
+        return out;
+}
+
 BitCode::BitCode( std::string file )
 {
     _ctx.reset( new llvm::LLVMContext() );
@@ -71,6 +93,9 @@ void BitCode::do_lart()
     // User defined passes are run first so they don't break instrumentation
     for ( auto p : _lart )
         lart.setup( p );
+
+    if ( _leakcheck )
+        lart.setup( lart::divine::leakCheck(), to_string( _leakcheck ) );
 
     // reduce before any instrumentation to avoid unnecessary instrumentation
     // and mark silent operations

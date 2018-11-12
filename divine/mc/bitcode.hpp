@@ -38,7 +38,9 @@ namespace divine::mc
 {
 
 enum class AutoTrace { Nothing, Calls };
+enum class LeakCheck { Nothing, Exit = 0x1 , Return = 0x2 , State = 0x4 };
 using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
+using LeakCheckFlags = brick::types::StrongEnumFlags< LeakCheck >;
 
 struct BCParseError : brick::except::Error { using brick::except::Error::Error; };
 
@@ -53,6 +55,8 @@ struct BitCode
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     AutoTraceFlags _autotrace;
+    LeakCheckFlags _leakcheck;
+
     bool _reduce = false, _sequential = false, _symbolic = false, _interrupts = true,
          _svcomp = false;
     Env _env;
@@ -71,6 +75,7 @@ struct BitCode
              std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
 
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
+    void leakcheck( LeakCheckFlags fl ) { _leakcheck = fl; }
     void reduce( bool r ) { _reduce = r; }
     void sequential( bool s ) { _sequential = s; }
     void interrupts( bool s ) { _interrupts = s; }
