@@ -131,20 +131,8 @@ struct Socket : INode
     virtual bool fillBuffer( const char*, size_t & ) = 0;
     virtual bool fillBuffer( Node sender, const char *, size_t & ) = 0;
 
-    bool closed() const {
-        return _closed;
-    }
-
-    void close( FileDescriptor & ) override
-    {
-        _closed = true;
-        abort();
-    }
-protected:
-    virtual void abort() = 0;
 private:
     Address _address;
-    bool _closed = false;
 };
 
 }
@@ -182,14 +170,20 @@ struct SocketStream : Socket {
         _limit( 0 )
     {}
 
+    virtual ~SocketStream() { abort( false ); }
     Node peer() const override { return _peer; }
 
-    Socket *sock_peer() const override
+    SocketStream *sock_peer() const override
     {
-        return _peer ? _peer->as< Socket >() : nullptr;
+        return _peer ? _peer->as< SocketStream >() : nullptr;
     }
 
-    void abort() override { _peer.reset(); }
+    void abort( bool remote )
+    {
+        if ( _peer && !remote )
+            sock_peer()->abort( true );
+        _peer = nullptr;
+    }
 
     bool listen( int limit ) override
     {
@@ -263,7 +257,7 @@ struct SocketStream : Socket {
         return _stream.size() + amount <= _stream.capacity();
     }
     bool canConnect() const override {
-        return _passive && !closed();
+        return _passive;
     }
 
     bool write( const char *buffer, size_t, size_t &length, Node ) override
@@ -279,7 +273,7 @@ struct SocketStream : Socket {
 
     Node receive( char *buffer, size_t &length, MFlags flags ) override
     {
-        if ( !peer() && !closed() )
+        if ( !peer() )
             return error( ENOTCONN ), nullptr;
 
         if ( _stream.empty() )
@@ -303,11 +297,8 @@ struct SocketStream : Socket {
 
     bool fillBuffer( const char *buffer, size_t &length ) override
     {
-        if ( closed() )
-        {
-            abort();
+        if ( !peer() )
             return error( ECONNRESET ), false;
-        }
 
         length = _stream.push( buffer, length );
         return true;
@@ -358,7 +349,7 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
     }
 
     bool canReceive( size_t ) const override {
-        return !closed();
+        return true;
     }
 
     bool canConnect() const override {
@@ -420,15 +411,9 @@ struct SocketDatagram : Socket, std::enable_shared_from_this< SocketDatagram > {
 
     bool fillBuffer( Node sender, const char *buffer, size_t &length ) override
     {
-        if ( closed() )
-            return error( ECONNREFUSED ), false;
         _packets.emplace( sender, buffer, length );
         return true;
     }
-
-    void abort() override {
-    }
-
 
 private:
     struct Packet {
