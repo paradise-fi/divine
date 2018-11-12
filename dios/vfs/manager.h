@@ -137,6 +137,7 @@ struct VFS: Syscall, Next
 
         _root = fs::make_shared< Directory >();
         _root->mode( S_IFDIR | ACCESSPERMS );
+        _root->link();
         s.proc1->_cwd = _root;
 
         import( s.env );

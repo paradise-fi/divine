@@ -104,8 +104,14 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
             return error( ENAMETOOLONG ), false;
         if ( special_name( name ) )
             return error( EEXIST ), false;
-        inode->link();
-        return _insertItem( DirectoryEntry( String( name ), std::move( inode ) ), overwrite );
+        if ( _insertItem( DirectoryEntry( String( name ), std::move( inode ) ), overwrite ) )
+        {
+            inode->link();
+            if ( inode->mode().is_dir() )
+                link();
+            return true;
+        }
+        return false;
     }
 
     Node find( std::string_view name )
@@ -128,6 +134,8 @@ struct Directory : INode, std::enable_shared_from_this< Directory >
             return error( ENOENT ), false;
         else
         {
+            if ( position->inode()->mode().is_dir() )
+                INode::unlink();
             position->inode()->unlink();
             _items.erase( position );
             return true;

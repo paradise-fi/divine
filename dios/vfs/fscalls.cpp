@@ -392,6 +392,8 @@ namespace __dios::fs
 
             if ( nino->mode().is_dir() && nino->size() > 2 )
                 return error( ENOTEMPTY ), -1;
+
+            nino->unlink();
         }
 
         if ( !odir->as< Directory >()->unlink( oname ) )
