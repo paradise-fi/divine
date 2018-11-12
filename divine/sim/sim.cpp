@@ -156,18 +156,24 @@ void Sim::process_options()
                                     "options to the program" );
 
     std::vector< std::pair< std::string, std::string > > env;
+    std::vector< std::string > leakcheck;
+
     parsed.get( { "input options", "*" }, env );
     for ( auto p : env )
         _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
 
     _ccopts_final = parsed.getOr( { "compile options", "*" }, _ccopts_final );
     _lartPasses = parsed.getOr( { "lart passes", "*" }, _lartPasses );
+    leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );
     _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
     _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
     _svcomp = parsed.getOr( { "svcomp" }, _svcomp );
     _sequential = parsed.getOr( { "sequential" }, _sequential );
     _synchronous = parsed.getOr( { "synchronous" }, _synchronous );
     _disableStaticReduction = parsed.getOr( { "disable static reduction" }, _disableStaticReduction );
+
+    for ( auto s : leakcheck )
+        _leakcheck |= mc::leakcheck_from_string( s );
 
     if ( parsed.get< std::string >( { "error found" } ) == "yes" )
     {
