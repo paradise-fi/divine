@@ -25,9 +25,9 @@
 namespace __dios::fs
 {
 
-struct Mode : FlagOps< Mode >
+struct Mode : FlagOps< Mode, uint16_t >
 {
-    using FlagOps< Mode >::FlagOps;
+    using FlagOps< Mode, uint16_t >::FlagOps;
 
     bool is_socket() const { return _is( S_IFSOCK ); }
     bool is_link()   const { return _is( S_IFLNK ); }

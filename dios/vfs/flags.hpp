@@ -27,28 +27,31 @@
 namespace __dios::fs
 {
 
-struct Flags
+struct Flags {};
+
+template< typename Int = unsigned >
+struct FlagVal : Flags
 {
-    int _value = 0;
-    constexpr Flags() = default;
-    constexpr Flags( int o ) : _value( o ) {} /* implicit */
+    Int _value = 0;
+    constexpr FlagVal() = default;
+    constexpr FlagVal( Int o ) : _value( o ) {} /* implicit */
     explicit constexpr operator bool() const { return _value; }
-    constexpr int to_i() const { return _value; }
+    constexpr Int to_i() const { return _value; }
 };
 
-template< typename Self >
-struct FlagOps : Flags
+template< typename Self, typename Int = unsigned >
+struct FlagOps : FlagVal< Int >
 {
-    using Flags::Flags;
-    constexpr bool has( Self s ) const { return _value & s._value; }
-    constexpr void clear( Self s ) { _value &= ~s._value; }
-    constexpr void set( Self s ) { _value |= s._value; }
+    using FlagVal< Int >::FlagVal;
+    constexpr bool has( Self s ) const { return this->_value & s._value; }
+    constexpr void clear( Self s ) { this->_value &= ~s._value; }
+    constexpr void set( Self s ) { this->_value |= s._value; }
 };
 
 struct OFlags : FlagOps< OFlags >
 {
     using FlagOps< OFlags >::FlagOps;
-    static constexpr int NOACC = O_WRONLY | O_RDWR;
+    static constexpr unsigned NOACC = O_WRONLY | O_RDWR;
 
     constexpr bool read() const     { return !( _value & O_WRONLY ); }
     constexpr bool write() const    { return _value & ( O_WRONLY | O_RDWR ); }
@@ -60,7 +63,7 @@ struct OFlags : FlagOps< OFlags >
 struct SFlags : FlagOps< SFlags >
 {
     using FlagOps< SFlags >::FlagOps;
-    constexpr int type() const { return _value & __SOCK_TYPE_MASK; }
+    constexpr unsigned type() const { return _value & __SOCK_TYPE_MASK; }
 };
 
 struct MFlags : FlagOps< MFlags >
