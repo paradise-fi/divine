@@ -42,6 +42,9 @@ enum class LeakCheck { Nothing, Exit = 0x1 , Return = 0x2 , State = 0x4 };
 using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
 using LeakCheckFlags = brick::types::StrongEnumFlags< LeakCheck >;
 
+std::string to_string( LeakCheckFlags, bool yaml = false );
+LeakCheckFlags leakcheck_from_string( std::string x );
+
 struct BCParseError : brick::except::Error { using brick::except::Error::Error; };
 
 struct BitCode

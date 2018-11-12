@@ -35,13 +35,15 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::mc
 {
 
-std::string to_string( LeakCheckFlags lf )
+std::string to_string( LeakCheckFlags lf, bool yaml )
 {
     std::string out;
     auto append = [&]( auto str )
     {
-        if ( !out.empty() ) out += ",";
+        if ( !out.empty() ) out += yaml ? ", " : ",";
+        if ( yaml ) out += '"';
         out += str;
+        if ( yaml ) out += '"';
     };
 
     if ( lf & LeakCheck::Return )
@@ -55,6 +57,18 @@ std::string to_string( LeakCheckFlags lf )
         return "none";
     else
         return out;
+}
+
+LeakCheckFlags leakcheck_from_string( std::string x )
+{
+    if ( x == "return" )
+        return mc::LeakCheck::Return;
+    if ( x == "state" )
+        return mc::LeakCheck::State;
+    if ( x == "exit" )
+        return mc::LeakCheck::Exit;
+
+    return mc::LeakCheck::Nothing;
 }
 
 BitCode::BitCode( std::string file )
