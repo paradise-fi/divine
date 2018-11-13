@@ -144,12 +144,12 @@ struct INode
 
     template< typename T >
     T *as() {
-        return dynamic_cast< T * >( this );
+        return static_cast< T * >( this );
     }
 
     template< typename T >
     const T *as() const {
-        return dynamic_cast< const T * >( this );
+        return static_cast< const T * >( this );
     }
 
     virtual size_t size() const { return 0; }

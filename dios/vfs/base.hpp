@@ -159,9 +159,13 @@ namespace __dios::fs
 
             if ( auto next = dir->template as< Directory >()->find( name ) )
             {
-                if ( auto link = next->template as< SymLink >(); link && ( follow || !tail.empty() ) )
-                    return lookup_relative( lookup( dir, link->target(), follow ),
-                                            tail, follow, depth - 1 );
+                if ( next->mode().is_link() )
+                {
+                    auto link = next->template as< SymLink >();
+                    if ( follow || !tail.empty() )
+                        return lookup_relative( lookup( dir, link->target(), follow ),
+                                                tail, follow, depth - 1 );
+                }
 
                 return lookup_relative( next, tail, follow, depth - 1 );
             }
@@ -210,8 +214,8 @@ namespace __dios::fs
             if ( !parent )
                 return false;
 
-            if ( auto ndir = ino->as< Directory >() )
-                ndir->parent( parent );
+            if ( ino->mode().is_dir() )
+                ino->as< Directory >()->parent( parent );
             return parent->as< Directory >()->create( name, ino, overwrite );
         }
 
