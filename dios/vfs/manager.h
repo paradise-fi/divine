@@ -24,7 +24,6 @@
 #include "file.hpp"
 #include "directory.hpp"
 #include "fd.hpp"
-#include "path.h"
 #include "syscall.hpp"
 
 #ifndef _FS_MANAGER_H_
