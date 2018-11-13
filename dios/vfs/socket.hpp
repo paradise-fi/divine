@@ -308,7 +308,7 @@ private:
     Node _peer;
     storage::Stream _stream;
     bool _passive;
-    __dios::Queue< Node > _backlog;
+    Queue< Node > _backlog;
     int _limit;
 };
 
@@ -454,7 +454,7 @@ private:
         Array< char > _data;
     };
 
-    __dios::Queue< Packet > _packets;
+    Queue< Packet > _packets;
     Node _defaultRecipient;
 };
 
