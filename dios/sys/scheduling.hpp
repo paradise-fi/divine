@@ -563,7 +563,6 @@ struct Scheduler : public Next
 
     Tasks tasks;
     Debug *debug;
-    Map< pid_t, Process* > zombies;
     sighandler_t *sighandlers;
 };
 

@@ -254,6 +254,8 @@ struct ProcessManager : public Next
         p->exitStatus = code << 8;
         Next::killProcess( p->pid );
     }
+
+    Map< pid_t, Process* > zombies;
 };
 
 } //namespace __dios
