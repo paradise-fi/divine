@@ -47,32 +47,6 @@ private:
     Node _inode;
 };
 
-struct DirectoryItemLabel {
-    DirectoryItemLabel( const DirectoryEntry &entry ) :
-        _name( entry.name() ),
-        _ino( entry.inode()->ino() )
-    {}
-
-    DirectoryItemLabel( const DirectoryItemLabel & ) = default;
-    DirectoryItemLabel( DirectoryItemLabel && ) = default;
-    DirectoryItemLabel &operator=( DirectoryItemLabel other ) {
-        _name.swap( other._name );
-        _ino = other._ino;
-        return *this;
-    }
-
-    const __dios::String &name() const {
-        return _name;
-    }
-    unsigned ino() const {
-        return _ino;
-    }
-
-private:
-    __dios::String _name;
-    unsigned _ino;
-};
-
 struct Directory : INode, std::enable_shared_from_this< Directory >
 {
     using Items = __dios::Vector< DirectoryEntry >;
