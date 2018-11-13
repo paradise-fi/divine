@@ -116,8 +116,8 @@ struct FaultBase
     void backtrace( _VM_Frame * frame );
     void fault_handler( int kernel, _VM_Frame * frame, int what );
 
-    static int str_to_fault( String fault );
-    static String fault_to_str( int f, bool ext = false );
+    static int str_to_fault( std::string_view fault );
+    static std::string_view fault_to_str( int f, bool ext = false );
     void trace_config( int indent );
     void load_user_pref( uint8_t *config, SysOpts& opts );
     int _faultToStatus( int fault );

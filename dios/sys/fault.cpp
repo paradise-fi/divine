@@ -61,7 +61,7 @@ namespace __dios
 
         if ( !( _flags & Ready ) || fault_cfg & FaultFlag::Enabled )
         {
-            __dios_trace_f( "FATAL: %s in %s", fault_to_str( what, true ).c_str(),
+            __dios_trace_f( "FATAL: %s in %s", fault_to_str( what, true ).begin(),
                             kernel ? "kernel" : "userspace" );
             __vm_ctl_flag( 0, _VM_CF_Error );
             backtrace( frame );
@@ -71,9 +71,8 @@ namespace __dios
         }
     }
 
-    int FaultBase::str_to_fault( String fault )
+    int FaultBase::str_to_fault( std::string_view fault )
     {
-        std::transform( fault.begin(), fault.end(), fault.begin(), ::tolower );
         if ( fault == "assert" )
             return _VM_F_Assert;
         if ( fault == "integer" )
@@ -103,7 +102,7 @@ namespace __dios
         return static_cast< _VM_Fault >( -1 );
     }
 
-    String FaultBase::fault_to_str( int f, bool ext )
+    std::string_view FaultBase::fault_to_str( int f, bool ext )
     {
         switch( f )
         {
@@ -129,9 +128,9 @@ namespace __dios
         __dios_trace_i( indent, "fault and simfail configuration:" );
         for (int f = _VM_F_NoFault + 1; f != _DiOS_SF_Last; f++ ) {
             uint8_t cfg = config[f];
-            String name = fault_to_str( f );
-            String force = cfg & FaultFlag::AllowOverride ? "" : "force-";
-            String state;
+            std::string_view name = fault_to_str( f );
+            std::string_view force = cfg & FaultFlag::AllowOverride ? "" : "force-";
+            std::string_view state;
             if ( f >= _DiOS_F_Last )
                 state = cfg & FaultFlag::Enabled ? "simfail" : "nofail";
             else {
@@ -142,22 +141,23 @@ namespace __dios
                 else
                     state = "ignore";
             }
-            String def = cfg & FaultFlag::UserSpec ? "user" : "default";
+            std::string_view def = cfg & FaultFlag::UserSpec ? "user" : "default";
 
-            __dios_trace_i( indent + 1, "%s: %s%s, %s", name.c_str(), force.c_str(),
-                            state.c_str(), def.c_str() );;
+            __dios_trace_i( indent + 1, "%s: %s%s, %s", name.begin(), force.begin(),
+                                                        state.begin(), def.begin() );
         }
     }
 
     void FaultBase::load_user_pref( uint8_t *config, SysOpts& opts )
     {
         SysOpts unused;
-        for( const auto& i : opts ) {
-            String cmd = i.first;
-            String f = i.second;
+        for ( const auto& i : opts )
+        {
+            std::string_view cmd = i.first;
+            std::string_view f = i.second;
 
             uint8_t cfg = FaultFlag::AllowOverride | FaultFlag::UserSpec;
-            const String force("force-");
+            std::string_view force("force-");
             if ( cmd.size() > force.size() && std::equal( force.begin(), force.end(), cmd.begin() ) ) {
                 cfg &= ~FaultFlag::AllowOverride;
                 cmd = cmd.substr( force.size() );
@@ -175,15 +175,17 @@ namespace __dios
             };
 
             int f_num = str_to_fault( f );
-            if ( f_num == - 1 ) {
+            if ( f_num == - 1 )
+            {
                 __dios_trace( 0, "Invalid argument '%s' in option '%s:%s'",
-                    f.c_str(), cmd.c_str(), f.c_str() );
+                              f.begin(), cmd.begin(), f.begin() );
                 __dios_fault( _DiOS_F_Config, "Invalid configuration of fault handler" );
             }
 
-            if ( simfail && f_num < _DiOS_F_Last ) {
+            if ( simfail && f_num < _DiOS_F_Last )
+            {
                 __dios_trace( 0, "Invalid argument '%s' for command '%s'",
-                    f.c_str(), cmd.c_str() );
+                              f.begin(), cmd.begin() );
                 __dios_fault( _DiOS_F_Config, "Invalid configuration of fault handler" );
             }
 
