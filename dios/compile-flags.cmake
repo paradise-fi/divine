@@ -27,7 +27,7 @@ mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXA
 
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror)
-mkobjs( dios "${flags};-D__dios_kernel__" )
+mkobjs( dios "${flags};-D__dios_kernel__;-fno-rtti" )
 mkobjs( librst "${flags}" )
 
 mklib( libc libc_cpp )
