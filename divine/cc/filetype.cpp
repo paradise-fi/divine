@@ -45,7 +45,8 @@ FileType typeFromXOpt( std::string selector ) {
 
 std::vector< std::string > argsOfType( FileType t ) {
     std::vector< std::string > out { "-x" };
-    switch ( t ) {
+    switch ( t )
+    {
         case FileType::Cpp:
             add( out, { "c++" } );
             break;
@@ -68,13 +69,6 @@ std::vector< std::string > argsOfType( FileType t ) {
         case FileType::Unknown:
         default:
             UNREACHABLE( "Unknown file type" );
-    }
-    switch ( t ) {
-        case FileType::Cpp:
-        case FileType::CppPreprocessed:
-            add( out, { "-fcxx-exceptions", "-fexceptions" } );
-            break;
-        default: ;
     }
     return out;
 }

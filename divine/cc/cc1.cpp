@@ -125,14 +125,23 @@ std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
                                             "-fcolor-diagnostics",
                                             // "-o", "test.o",
                                             };
+    bool exceptions = type == FileType::Cpp || type == FileType::CppPreprocessed;
+
+    for ( auto &a : args )
+        if ( a == "-fno-exceptions" )
+            exceptions = false;
+
     add( args, cc1args );
     add( args, argsOfType( type ) );
+    if ( exceptions )
+        add( args, { "-fcxx-exceptions", "-fexceptions" } );
     args.push_back( filename );
 
     std::vector< const char * > cc1a;
-    std::transform( args.begin(), args.end(),
-                    std::back_inserter( cc1a ),
-                    []( std::string &str ) { return str.c_str(); } );
+
+    for ( auto &a : args )
+        if ( a != "-fno-exceptions" )
+            cc1a.push_back( a.c_str() );
 
     clang::TextDiagnosticPrinter diagprinter( llvm::errs(), new clang::DiagnosticOptions() );
     clang::DiagnosticsEngine diag(
