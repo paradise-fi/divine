@@ -24,13 +24,13 @@ template< typename T >
 using Deque = std::deque< T, Allocator< T > >;
 
 template< typename T >
-using Queue = std::queue< T, Deque< T > >;
-
-template< typename T >
 using Set = std::set< T, std::less< T >, Allocator< T > >;
 
 template< typename T >
 using List = std::list< T, Allocator< T > >;
+
+template< typename T >
+using Queue = std::queue< T, List< T > >;
 
 template < class K, class V >
 using Map = std::map< K, V, std::less< K >, Allocator< std::pair< const K, V > > >;
