@@ -27,7 +27,7 @@ bool getSysOpts( const _VM_Env *e, SysOpts& res ) {
             continue;
 
         // Add sugar for help command
-        String s( e->value, e->size );
+        std::string_view s( e->value, e->size );
         if ( s == "help") {
             res.emplace_back( "debug", "help" );
             continue;
@@ -44,25 +44,28 @@ bool getSysOpts( const _VM_Env *e, SysOpts& res ) {
             return false;
         }
 
-        String val( p, s.end() );
-        String key( s.begin(), --p );
+        std::string_view val( p, s.end() - p );
+        std::string_view key( s.begin(), --p - s.begin() );
         res.emplace_back( key, val );
     }
     return true;
 }
 
-String extractOpt( const String& key, SysOpts& opts ) {
-    auto r = std::find_if( opts.begin(), opts.end(), [&]( const auto& opt ) {
+std::string_view extractOpt( std::string_view key, SysOpts& opts )
+{
+    auto r = std::find_if( opts.begin(), opts.end(), [&]( const auto& opt )
+    {
         return key == opt.first;
     } );
     if ( r == opts.end() )
-        return String{};
-    String s = r->second;
+        return std::string_view{};
+    std::string_view s = r->second;
     opts.erase( r );
     return s;
 }
 
-bool extractOpt( const String& key, const String& value, SysOpts& opts ) {
+bool extractOpt( std::string_view key, std::string_view value, SysOpts& opts )
+{
     auto r = std::find_if( opts.begin(), opts.end(), [&]( const auto& opt ) {
         return key == opt.first && value == opt.second;
     } );
@@ -116,8 +119,9 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
     return { argc, argv };
 }
 
-void trace_main_arg( int indent, String name, std::pair<int, char**> args ) {
-    __dios_trace_i( indent, "%s:", name.c_str() );
+void trace_main_arg( int indent, std::string_view name, std::pair<int, char**> args )
+{
+    __dios_trace_i( indent, "%*s:", name.size(), name.begin() );
     for (int i = 0; i != args.first; i++ )
         __dios_trace_i( indent + 1, "%d: %s", i, args.second[i] );
 }

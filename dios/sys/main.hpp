@@ -15,8 +15,8 @@ namespace __dios {
  */
 bool getSysOpts( const _VM_Env *e, SysOpts& res );
 
-String extractOpt( const String& key, SysOpts& opts );
-bool extractOpt( const String& key, const String& value, SysOpts& opts );
+std::string_view extractOpt( std::string_view key, SysOpts& opts );
+bool extractOpt( std::string_view key, std::string_view value, SysOpts& opts );
 
 /*
  * Construct null-terminated string from env->value
@@ -39,7 +39,7 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
 /*
  * Trace arguments constructed by construct_main_arg
  */
-void trace_main_arg( int indent, String name, std::pair< int, char** > arg );
+void trace_main_arg( int indent, std::string_view name, std::pair< int, char** > arg );
 
 /*
  * Free argv/envp-like arguments created by construct_main_arg

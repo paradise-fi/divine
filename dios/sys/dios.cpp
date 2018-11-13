@@ -34,14 +34,17 @@ String extractDiosConfiguration( SysOpts& o ) {
     return cfg;
 }
 
-void traceHelpOption( int i, String opt, String desc, const Vector<String>& args ) {
-    __dios_trace_i( i, "- %s: %s", opt.c_str(), desc.c_str() );
+void traceHelpOption( int i, std::string_view opt, std::string_view desc,
+                      const Array< std::string_view >& args )
+{
+    __dios_trace_i( i, "- %*s: %*s", opt.size(), opt.begin(), desc.size(), desc.begin() );
     __dios_trace_i( i, "  arguments:" );
     for ( const auto& arg : args )
-        __dios_trace_i( i, "   - %s", arg.c_str() );
+        __dios_trace_i( i, "   - %*s", arg.size(), arg.begin() );
 }
 
-void traceHelp( int i, const Map< String, HelpOption >& help ) {
+void traceHelp( int i, const Map< std::string_view, HelpOption >& help )
+{
     for ( const auto& option : help )
         traceHelpOption( i, option.first, option.second.description,
                          option.second.options );
@@ -63,7 +66,7 @@ void boot( SetupBase sb ) {
 
     if ( extractOpt( "debug", "help", sb.opts ) )
     {
-        Map< String, HelpOption > help = {
+        Map< std::string_view, HelpOption > help = {
             { "config" , { "run DiOS in a given configuration",
                            { "default: async threads, processes, vfs",
                              "passthrough: pass syscalls to the host OS",

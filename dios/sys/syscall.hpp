@@ -112,7 +112,9 @@ struct BaseContext
         if ( s.opts.empty() )
             return;
         for ( const auto& opt : s.opts )
-            __dios_trace_f( "ERROR: Unused option %s:%s", opt.first.c_str(), opt.second.c_str() );
+            __dios_trace_f( "ERROR: Unused option %*s:%*s",
+                            opt.first.size(), opt.first.begin(),
+                            opt.second.size(), opt.second.begin() );
         __dios_fault( _DiOS_F_Config, "Unused options" );
     }
 
@@ -120,7 +122,7 @@ struct BaseContext
     void finalize() { __vm_suspend(); }
     Process *findProcess( pid_t ) { return nullptr; }
 
-    void getHelp( Map< String, HelpOption >& ) {}
+    void getHelp( Map< std::string_view, HelpOption >& ) {}
 
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) ret name arg;

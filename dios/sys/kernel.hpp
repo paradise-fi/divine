@@ -19,7 +19,7 @@ void __attribute__((__noinline__)) traceAlias( const char *name, T *type = nullp
     __vm_trace( _VM_T_TypeAlias, type, name );
 }
 
-using SysOpts = Array< std::pair< String, String > >;
+using SysOpts = Array< std::pair< std::string_view, std::string_view > >;
 using SC_Handler = void (*)( void *ctx, int *err, void* retval, va_list vl );
 
 struct sighandler_t
@@ -28,9 +28,10 @@ struct sighandler_t
     int sa_flags;
 };
 
-struct HelpOption {
-    String description;
-    Array< String > options;
+struct HelpOption
+{
+    std::string_view description;
+    Array< std::string_view > options;
 };
 
 bool useSyscallPassthrough( const SysOpts& o );

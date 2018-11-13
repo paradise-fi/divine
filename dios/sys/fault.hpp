@@ -150,7 +150,7 @@ struct Fault: FaultBase, Next
         Next::setup( s );
     }
 
-    void getHelp( Map< String, HelpOption >& options )
+    void getHelp( Map< std::string_view, HelpOption >& options )
     {
         const char *opt1 = "[force-]{ignore|report|abort}";
         if ( options.find( opt1 ) != options.end() ) {

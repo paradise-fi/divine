@@ -27,7 +27,8 @@ struct MachineParams : Next
         Next::setup( s );
     }
 
-    void getHelp( Map< String, HelpOption >& options ) {
+    void getHelp( Map< std::string_view, HelpOption >& options )
+    {
         const char *opt = "ncpus";
         if ( options.find( opt ) != options.end() ) {
             __dios_trace_f( "Option %s already present", opt );
@@ -41,11 +42,11 @@ struct MachineParams : Next
 
     void readHardwareConcurrency( SysOpts& opts )
     {
-        String ncpus = extractOpt( "ncpus", opts );
+        std::string_view ncpus = extractOpt( "ncpus", opts );
         if ( !ncpus.empty() ) {
             char *end;
-            hardwareConcurrency = strtol( ncpus.c_str(), &end, 10 );
-            if ( ncpus.data() == end || end - 1 != &ncpus.back() )
+            hardwareConcurrency = strtol( ncpus.begin(), &end, 10 );
+            if ( ncpus.begin() == end || end - 1 != &ncpus.back() )
                 __dios_fault( _DiOS_F_Config,
                     "DiOS boot configuration: invalid ncpus specified" );
         }
