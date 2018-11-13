@@ -33,7 +33,7 @@ namespace __dios::fs
     {
         Mode _umask;
         Node _cwd;
-        __dios::Vector< FDPtr > _openFD;
+        Array< FDPtr > _openFD;
     };
 
     struct Base

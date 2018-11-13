@@ -80,7 +80,7 @@ struct RegularFile : INode
         }
         const char *source = _isSnapshot() ?
                           _roContent + offset :
-                          _content.data() + offset;
+                          _content.begin() + offset;
         if ( offset + length > _size )
             length = _size - offset;
         std::copy( source, source + length, buffer );
@@ -128,7 +128,7 @@ private:
     bool _snapshot;
     size_t _size;
     const char *_roContent;
-    __dios::Vector< char > _content;
+    Array< char > _content;
 };
 
 struct VmTraceFile : INode

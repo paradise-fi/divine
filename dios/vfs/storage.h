@@ -161,7 +161,7 @@ struct Stream {
         if ( newCapacity < size() )
             return false;
 
-        __dios::Vector< char > newData( newCapacity );
+        Array< char > newData( newCapacity );
 
         _occupied = pop( &newData.front(), _occupied );
         _head = 0;
@@ -170,7 +170,7 @@ struct Stream {
     }
 
 private:
-    using Iterator = __dios::Vector< char >::iterator;
+    using Iterator = Array< char >::iterator;
 
     Iterator begin() {
         return _data.begin() + _head;
@@ -179,7 +179,7 @@ private:
         return _data.begin() + ( _head + _occupied ) % capacity();
     }
 
-    __dios::Vector< char > _data;
+    Array< char > _data;
     size_t _head;
     size_t _occupied;
 };

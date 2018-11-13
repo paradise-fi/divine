@@ -49,7 +49,7 @@ private:
 
 struct Directory : INode, std::enable_shared_from_this< Directory >
 {
-    using Items = __dios::Vector< DirectoryEntry >;
+    using Items = Array< DirectoryEntry >;
 
     Directory( Node parent = Node{} )
         : _items{}, _parent( parent )

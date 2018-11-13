@@ -422,7 +422,7 @@ private:
 
         Packet( Node from, const char *data, size_t length ) :
             _from( std::move( from ) ),
-            _data( data, data + length )
+            _data( length, data, data + length )
         {}
 
         Packet( const Packet & ) = delete;
@@ -433,7 +433,7 @@ private:
         }
 
         size_t read( char *buffer, size_t max ) const {
-            size_t result = std::min( max, _data.size() );
+            size_t result = std::min( max, size_t( _data.size() ) );
             std::copy( _data.begin(), _data.begin() + result, buffer );
             return result;
         }
@@ -451,7 +451,7 @@ private:
 
     private:
         Node _from;
-        __dios::Vector< char > _data;
+        Array< char > _data;
     };
 
     __dios::Queue< Packet > _packets;
