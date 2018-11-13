@@ -59,11 +59,11 @@ namespace __dios::fs
         auto ino = nodes.count( st.st_ino ) ? nodes[ st.st_ino ] : new_node( st.st_mode, false );
         nodes[ st.st_ino ] = ino;
 
-        if ( auto sym = ino->as< SymLink >() )
-            sym->target( content );
+        if ( ino->mode().is_link() )
+            ino->as< SymLink >()->target( content );
 
-        if ( auto reg = ino->as< RegularFile >() )
-            reg->content( content );
+        if ( ino->mode().is_file() )
+            ino->as< RegularFile >()->content( content );
 
         link_node( root(), name, ino );
         return import( env + 1, nodes );
