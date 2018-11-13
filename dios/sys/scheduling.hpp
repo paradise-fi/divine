@@ -307,7 +307,7 @@ struct Scheduler : public Next
         bool res = tasks.remove( tid );
         __dios_assert_v( res, "Killing non-existing task" );
         if ( tid == __dios_this_task() )
-            this->reschedule( this );
+            this->reschedule();
     }
 
     template< typename I >
@@ -329,7 +329,7 @@ struct Scheduler : public Next
             size_t c = tasks.size();
             eraseProcesses( tasks.begin() );
             tasks.erase( tasks.begin(), tasks.end() );
-            this->reschedule( this );
+            this->reschedule();
         }
 
         bool resched = false;
@@ -345,7 +345,7 @@ struct Scheduler : public Next
         eraseProcesses( r );
         tasks.erase( r, tasks.end() );
         if ( resched )
-            this->reschedule( this );
+            this->reschedule();
     }
 
     int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact )

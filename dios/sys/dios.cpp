@@ -58,7 +58,8 @@ void traceEnv( int ind, const _VM_Env *env ) {
 }
 
 template < typename Configuration >
-void boot( SetupBase sb ) {
+void boot( SetupBase sb )
+{
     auto *context = new_object< Configuration >();
     __vm_trace( _VM_T_StateType, context );
     traceAlias< Configuration >( "{Context}" );
@@ -91,21 +92,8 @@ void boot( SetupBase sb ) {
         traceEnv( 1, sb.env );
     }
 
-    using Process = typename Configuration::Process;
     Setup< Configuration > s = sb;
-    s.proc1 = new_object< Process >();
-    context->reschedule = []( BaseContext * ctx_ )
-    {
-        Configuration *ctx = static_cast< Configuration * >( ctx_ );
-        if ( ctx->check_final() )
-            ctx->finalize();
-        else
-        {
-            /* destroy the stack to avoid memory leaks */
-            __dios_unwind( nullptr, nullptr, nullptr );
-            __vm_suspend();
-        }
-    };
+    s.proc1 = new_object< typename Configuration::Process >();
     context->setup( s );
 }
 

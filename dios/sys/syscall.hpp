@@ -118,7 +118,9 @@ struct BaseContext
         __dios_fault( _DiOS_F_Config, "Unused options" );
     }
 
-    void (*reschedule)( BaseContext * );
+    virtual void reschedule() = 0;
+    virtual Process *make_process( Process * ) = 0;
+
     void finalize() { __vm_suspend(); }
     Process *findProcess( pid_t ) { return nullptr; }
 
