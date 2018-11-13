@@ -23,24 +23,32 @@ struct Array : brick::types::Ord {
     using reverse_iterator = std::reverse_iterator< iterator >;
     using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
-    Array() : _data( nullptr ) {}
+    Array() = default;
 
-    ~Array() {
+    ~Array()
+    {
         erase( begin(), end() );
     }
 
-    Array( const Array& other ) :
-        Array( other.size(), other.begin(), other.end() )
+    Array( const Array& other )
+        : Array( other.size(), other.begin(), other.end() )
     { }
 
-    Array( Array&& other ) : _data( nullptr ) { swap( other ); };
+    Array( Array&& other )  { swap( other ); };
 
     Array( std::initializer_list< T > ilist ) :
         Array( ilist.size(), ilist.begin(), ilist.end() )
     { }
 
+    Array( size_type size, const T &val = T() )
+    {
+        _resize( size );
+        std::uninitialized_fill( begin(), end(), val );
+    }
+
     template< typename It >
-    Array( size_type size, It b, It e ) : _data( nullptr ) {
+    Array( size_type size, It b, It e )
+    {
         _resize( size );
         std::uninitialized_copy( b, e, begin() );
     }
@@ -77,6 +85,7 @@ struct Array : brick::types::Ord {
     const_reverse_iterator crend() const { return const_reverse_iterator( begin() ); }
 
     T& back() { return *( end() - 1 ); }
+    T& front() { return *begin(); }
 
     bool empty() const { return !_data; }
     size_type size() const  { return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T ); }
@@ -123,8 +132,26 @@ struct Array : brick::types::Ord {
         return last;
     }
 
+    iterator insert( iterator where, const T &val )
+    {
+        _resize( size() + 1 );
+        for ( iterator i = end() - 1; i > where; --i )
+            new ( i ) T( std::move( *( i - 1 ) ) );
+        new ( where ) T( val );
+        return where;
+    }
+
+
     T& operator[]( size_type idx ) { return _data->get()[ idx ]; }
     const T& operator[]( size_type idx ) const { return _data->get()[ idx ]; }
+
+    void resize( size_type n, const T &val = T() )
+    {
+        size_type old = size();
+        _resize( n );
+        if ( n > old )
+            std::uninitialized_fill( begin() + old, end(), val );
+    }
 
     void _resize( size_type n ) {
         if ( n == 0 ) {
@@ -146,7 +173,7 @@ struct Array : brick::types::Ord {
         return std::lexicographical_compare( begin(), end(), o.begin(), o.end() );
     }
 
-    _Item *_data;
+    _Item *_data = nullptr;
 };
 
 } // namespace __dios
