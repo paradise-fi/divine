@@ -160,27 +160,35 @@ struct ProcessManager : public Next
     void sysfork( pid_t *child )
     {
         auto tid = __dios_this_task();
-        auto task = this->tasks.find( tid );
-        __dios_assert( task );
+        auto oldtask = this->tasks.find( tid );
+        __dios_assert( oldtask );
+
+        auto oldproc = proc( oldtask );
 
         pid_t maxPid = 0;
         for( auto& t : this->tasks )
         {
-            if ( (proc(t.get()))->pid > maxPid )
-                maxPid = (proc(t.get()))->pid;
+            if ( proc( t.get() )->pid > maxPid )
+                maxPid = proc( t.get() )->pid;
         }
 
         *child = maxPid + 1;
 
-        task->_frame = this->sysenter()->parent;
-        Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
-        Process *newTaskProc = proc( newTask );
-        Process *taskProc = proc( task );
-        newTaskProc->pid = maxPid + 1;
-        newTaskProc->ppid = taskProc->pid;
-        newTaskProc->sid = taskProc->sid;
-        newTaskProc->pgid = taskProc->pgid;
-        this->tasks.emplace_back( newTask );
+        oldtask->_frame = this->sysenter()->parent;
+        oldtask->_proc = nullptr;
+
+        Task *newtask = static_cast< Task * >( __vm_obj_clone( oldtask ) );
+        Process *newproc = static_cast< Process * >( this->make_process( oldproc ) );
+
+        oldtask->_proc = oldproc;
+        newtask->_proc = newproc;
+
+        newproc->pid  = maxPid + 1;
+        newproc->ppid = oldproc->pid;
+        newproc->sid  = oldproc->sid;
+        newproc->pgid = oldproc->pgid;
+
+        this->tasks.emplace_back( newtask );
     }
 
     pid_t wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage)

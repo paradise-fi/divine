@@ -44,6 +44,7 @@ struct FileDescriptor
             _inode->close( *this );
     }
 
+    FileDescriptor( const FileDescriptor & ) noexcept = default; /* used during fork */
     FileDescriptor( FileDescriptor && ) noexcept = default;
     FileDescriptor &operator=( FileDescriptor && ) noexcept = default;
 
