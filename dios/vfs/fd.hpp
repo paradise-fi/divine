@@ -40,7 +40,8 @@ struct FileDescriptor
 
     ~FileDescriptor()
     {
-        _inode->close( *this );
+        if ( _inode )
+            _inode->close( *this );
     }
 
     FileDescriptor( FileDescriptor && ) noexcept = default;
@@ -95,10 +96,14 @@ struct FileDescriptor
         _offset = 0;
     }
 
+    void ref() { ++_refcnt; }
+    void unref() { if ( !--_refcnt ) close(); }
+
 protected:
     Node _inode;
     OFlags _flags;
     size_t _offset;
+    short _refcnt = 0;
 };
 
 }

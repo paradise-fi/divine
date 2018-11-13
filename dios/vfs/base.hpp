@@ -27,13 +27,12 @@
 
 namespace __dios::fs
 {
-    using FDPtr = std::shared_ptr< FileDescriptor >;
-
     struct ProcessInfo
     {
         Mode _umask;
         Node _cwd;
-        Array< FDPtr > _openFD;
+        Array< short > _fd_refs;
+        Array< FileDescriptor > _fds;
     };
 
     struct Base
@@ -41,17 +40,17 @@ namespace __dios::fs
         virtual ProcessInfo &proc() = 0;
         virtual Node root() = 0;
 
-        FDPtr get_fd( int fd )
+        FileDescriptor *get_fd( int fd )
         {
-            auto &open = proc()._openFD;
-            if ( fd >= 0 && fd < int( open.size() ) && open[ fd ] )
-                return open[ fd ];
+            auto &open = proc()._fd_refs;
+            if ( fd >= 0 && fd < int( open.size() ) && open[ fd ] >= 0 )
+                return &proc()._fds[ open[ fd ] ];
             return nullptr;
         }
 
         int new_fd( Node n, OFlags flags, int min = 0 )
         {
-            auto &open = proc()._openFD;
+            auto &open = proc()._fd_refs;
             int fd;
 
             if ( min >= int( open.size() ) )
@@ -65,7 +64,12 @@ namespace __dios::fs
                 open.emplace_back();
 
             if ( n )
-                open[ fd ] = fs::make_shared< FileDescriptor >( n, flags );
+            {
+                open[ fd ] = proc()._fds.size();
+                auto &newfd = proc()._fds.emplace_back( n, flags );
+                newfd.ref();
+            }
+
             return fd;
         }
 
@@ -86,7 +90,7 @@ namespace __dios::fs
                 r = new ( nofail ) Pipe();
 
             if ( mode.is_link() )
-                r = new ( nofail )  SymLink();
+                r = new ( nofail ) SymLink();
 
             if ( apply_umask )
                 mode &= ~proc()._umask;
@@ -97,7 +101,7 @@ namespace __dios::fs
             return r;
         }
 
-        FDPtr check_fd( int fd_, int acc )
+        FileDescriptor *check_fd( int fd_, int acc )
         {
             auto fd = get_fd( fd_ );
             if ( !fd )

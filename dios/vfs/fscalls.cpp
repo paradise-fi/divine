@@ -198,7 +198,8 @@ namespace __dios::fs
         if ( auto fd = check_fd( fd_, F_OK ) )
         {
             int newfd = new_fd( nullptr, 0, min );
-            proc()._openFD[ newfd ] = fd;
+            proc()._fd_refs[ newfd ] = proc()._fd_refs[ fd_ ];
+            fd->ref();
             return newfd;
         }
         else
@@ -209,10 +210,23 @@ namespace __dios::fs
     {
         if ( newfd < 0 || newfd > FILE_DESCRIPTOR_LIMIT )
             return error( EBADF ), -1;
-        if ( int( proc()._openFD.size() ) <= newfd )
-            proc()._openFD.resize( newfd + 1 );
-        auto &fd = proc()._openFD[ newfd ] = check_fd( fd_, F_OK );
-        return fd ? newfd : -1;
+
+        if ( auto fd = check_fd( newfd, F_OK ) )
+            fd->unref();
+
+        auto &fd_refs = proc()._fd_refs;
+
+        if ( int( fd_refs.size() ) <= newfd )
+            fd_refs.resize( newfd + 1 );
+
+        if ( auto fd = check_fd( fd_, F_OK ) )
+        {
+            fd->ref();
+            fd_refs[ newfd ] = fd_refs[ fd_ ];
+            return newfd;
+        }
+
+        return -1;
     }
 
     int Syscall::fcntl( int fd_, int cmd, va_list *vl )

@@ -220,6 +220,4 @@ private:
     }
 };
 
-using WeakNode = std::weak_ptr< INode >;
-
 }

@@ -113,12 +113,11 @@ struct VFS: Syscall, Next
     void sysfork( pid_t *child )
     {
         Next::sysfork( child );
-        /* FIXME the shared pointers in _openFD are probably all mangled */
         Process *proc = static_cast< Process * >( Next::findProcess( *child ) );
         if ( proc )
-            for ( auto &fd : proc->_openFD )
-                if ( fd && fd->inode() )
-                    fd->inode()->open();
+            for ( auto &fd : proc->_fds )
+                if ( fd.inode() )
+                    fd.inode()->open();
         return proc;
     }
 
@@ -136,13 +135,13 @@ struct VFS: Syscall, Next
         _stdio[ 1 ] = make_tracefile( s.opts, "stdout" );
         _stdio[ 2 ] = make_tracefile( s.opts, "stderr" );
 
-        for ( int i = 0; i < 2; ++i )
-            _stdio[ i ]->mode( S_IFREG | S_IRUSR );
 
-        auto &fds = s.proc1->_openFD;
-        fds.resize( 3 );
         for ( int i = 0; i < 2; ++i )
-            fds[ i ] = fs::make_shared< FileDescriptor >( _stdio[ i ], i ? O_WRONLY : O_RDONLY );
+        {
+            _stdio[ i ]->mode( S_IFREG | S_IRUSR );
+            s.proc1->_fds.emplace_back( _stdio[ i ], i ? O_WRONLY : O_RDONLY );
+            s.proc1->_fd_refs.emplace_back( i );
+        }
 
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
@@ -209,10 +208,14 @@ public: /* system call implementation */
         return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
     }
 
-    int close( int fd )
+    int close( int fd_ )
     {
-        if ( check_fd( fd, F_OK ) )
-            return proc()._openFD[ fd ].reset(), 0;
+        if ( auto fd = check_fd( fd_, F_OK ) )
+        {
+            fd->unref();
+            proc()._fd_refs[ fd_ ] = -1;
+            return 0;
+        }
         else
             return -1;
     }
