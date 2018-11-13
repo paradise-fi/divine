@@ -68,11 +68,11 @@ extern "C" {
     DIR *opendir( const char *name )
     {
         int fd = open( name, O_DIRECTORY );
-        if ( fd > 0 ) {
+        if ( fd >= 0 ) {
             DirWrapper *wrapper = new ( __dios::nofail ) DirWrapper;
             wrapper->fd = fd;
             return wrapper;
-        }else {
+        } else {
             return nullptr;
         }
     }
