@@ -49,8 +49,7 @@ struct Array : brick::types::Ord {
     template< typename It >
     Array( size_type size, It b, It e )
     {
-        _resize( size );
-        std::uninitialized_copy( b, e, begin() );
+        append( size, b, e );
     }
 
     Array& operator=( Array other ) {
@@ -102,6 +101,14 @@ struct Array : brick::types::Ord {
     void push_back( const T& t ) {
         _resize( size() + 1 );
         new ( &back() ) T( t );
+    }
+
+    template< typename It >
+    void append( size_type count, It b, It e )
+    {
+        size_type oldsz = size();
+        _resize( oldsz + count );
+        std::uninitialized_copy( b, e, begin() + oldsz );
     }
 
     template < typename... Args >
