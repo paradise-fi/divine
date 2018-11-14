@@ -357,7 +357,7 @@ int _PDCLIB_print( const char * spec, struct _PDCLIB_status_t * status )
         */
         // Original: status->width = (int)strtol( spec, (char**)&spec, 10 );
         // See _PDCLIB_io.h
-        status->width = ( int ) _DIVINE_strtol( spec, ( char ** )&spec );
+        status->width = ( int ) _DIVINE_strtol( spec, INT_MAX, ( char ** )&spec );
     }
 
     /* Optional precision */
@@ -377,7 +377,7 @@ int _PDCLIB_print( const char * spec, struct _PDCLIB_status_t * status )
         {
             // Original: status->prec = (int)strtol( spec, (char**) &spec, 10 );
             // See _PDCLIB_io.h
-            status->prec = ( int ) _DIVINE_strtol( spec, ( char ** ) &spec );
+            status->prec = ( int ) _DIVINE_strtol( spec, INT_MAX, ( char ** ) &spec );
         }
         /* Having a precision cancels out any zero flag. */
         status->flags &= ~E_zero;

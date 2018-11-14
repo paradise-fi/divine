@@ -71,7 +71,7 @@ int _PDCLIB_print( const char * spec, struct _PDCLIB_status_t * status );
    in _PDCLIB_print - strtol uses pthread local storage and breaks __dios_trace.
    Implementation is simple and naive (as the rest of _PDCLIB_print)
 */
-long int _DIVINE_strtol( const char *s, char **endptr );
+long int _DIVINE_strtol( const char *s, int size, char **endptr );
 
 /* The worker for all scanf() type of functions. The pointer spec should point
    to the introducing '%' of a conversion specifier. The status structure is to
