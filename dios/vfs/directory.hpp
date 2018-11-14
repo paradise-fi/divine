@@ -47,7 +47,7 @@ private:
     Node _inode;
 };
 
-struct Directory : INode, std::enable_shared_from_this< Directory >
+struct Directory : INode
 {
     using Items = Array< DirectoryEntry >;
 
