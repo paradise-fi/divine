@@ -121,7 +121,7 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
 
 void trace_main_arg( int indent, std::string_view name, std::pair<int, char**> args )
 {
-    __dios_trace_i( indent, "%*s:", name.size(), name.begin() );
+    __dios_trace_i( indent, "%.*s:", int( name.size() ), name.begin() );
     for (int i = 0; i != args.first; i++ )
         __dios_trace_i( indent + 1, "%d: %s", i, args.second[i] );
 }

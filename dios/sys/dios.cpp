@@ -37,10 +37,10 @@ String extractDiosConfiguration( SysOpts& o ) {
 void traceHelpOption( int i, std::string_view opt, std::string_view desc,
                       const Array< std::string_view >& args )
 {
-    __dios_trace_i( i, "- %*s: %*s", opt.size(), opt.begin(), desc.size(), desc.begin() );
+    __dios_trace_i( i, "- %.*s: %.*s", int( opt.size() ), opt.begin(), int( desc.size() ), desc.begin() );
     __dios_trace_i( i, "  arguments:" );
     for ( const auto& arg : args )
-        __dios_trace_i( i, "   - %*s", arg.size(), arg.begin() );
+        __dios_trace_i( i, "   - %.*s", int( arg.size() ), arg.begin() );
 }
 
 void traceHelp( int i, const Map< std::string_view, HelpOption >& help )

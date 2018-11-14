@@ -112,9 +112,9 @@ struct BaseContext
         if ( s.opts.empty() )
             return;
         for ( const auto& opt : s.opts )
-            __dios_trace_f( "ERROR: Unused option %*s:%*s",
-                            opt.first.size(), opt.first.begin(),
-                            opt.second.size(), opt.second.begin() );
+            __dios_trace_f( "ERROR: Unused option %.*s:%.*s",
+                            int( opt.first.size() ), opt.first.begin(),
+                            int( opt.second.size() ), opt.second.begin() );
         __dios_fault( _DiOS_F_Config, "Unused options" );
     }
 
