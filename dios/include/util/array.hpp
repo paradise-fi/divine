@@ -64,7 +64,7 @@ struct Array : brick::types::Ord {
 
     struct _Item {
         T _items[ 0 ];
-        T *get() { return reinterpret_cast< T * >( _items ); }
+        T *get() { return _items; }
     };
 
     iterator begin() { return _data ?_data->get() : nullptr; }
