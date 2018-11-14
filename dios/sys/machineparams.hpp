@@ -43,9 +43,10 @@ struct MachineParams : Next
     void readHardwareConcurrency( SysOpts& opts )
     {
         std::string_view ncpus = extractOpt( "ncpus", opts );
-        if ( !ncpus.empty() ) {
+        if ( !ncpus.empty() )
+        {
             char *end;
-            hardwareConcurrency = strtol( ncpus.begin(), &end, 10 );
+            hardwareConcurrency = _DIVINE_strtol( ncpus.begin(), ncpus.size(), &end );
             if ( ncpus.begin() == end || end - 1 != &ncpus.back() )
                 __dios_fault( _DiOS_F_Config,
                     "DiOS boot configuration: invalid ncpus specified" );
