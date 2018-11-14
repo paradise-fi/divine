@@ -40,7 +40,7 @@ struct Debug
 {
     AutoIncMap< __dios_task, int > hids;
     ArrayMap< __dios_task, short > trace_indent;
-    ArrayMap< __dios_task, String > trace_buf;
+    ArrayMap< __dios_task, Array< char > > trace_buf;
     short kernel_indent = 0;
     void persist();
     void persist_buffers();

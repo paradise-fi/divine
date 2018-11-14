@@ -158,12 +158,12 @@ struct VmBuffTraceFile : INode
     __debugfn void do_write( const char *data, size_t &length ) noexcept
     {
         auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_this_task() ) ];
-        buf.insert( buf.length(), data, length );
-        auto nl = buf.find_last_of( "\n" );
-        if ( nl != std::string::npos )
+        buf.append( length, data, data + length );
+        auto nl = std::find( buf.rbegin(), buf.rend(), '\n' );
+        if ( nl != buf.rend() )
         {
-            __dios::traceInternal( 0, "%s", buf.substr( 0, nl ).c_str() );
-            buf.erase( 0, nl + 1 );
+            traceInternal( 0, "%.*s", int( buf.rend() - nl - 1 ), buf.begin() );
+            buf.erase( buf.begin(), nl.base() );
         }
         get_debug().persist();
         get_debug().persist_buffers();
@@ -174,7 +174,7 @@ struct VmBuffTraceFile : INode
         for ( auto &b : get_debug().trace_buf )
         {
             if ( !b.second.empty() )
-                __dios::traceInternal( 0, "%s", b.second.c_str() );
+                __dios::traceInternal( 0, "%.*s", b.second.size(), b.second.begin() );
             b.second.clear();
         }
         get_debug().persist();
