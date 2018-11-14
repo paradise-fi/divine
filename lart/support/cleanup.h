@@ -110,8 +110,6 @@ void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall 
 
 template< typename AtExit >
 void atExits( llvm::Function &fn, AtExit &&atExit ) {
-    using query::operator&&;
-    using query::operator||;
     auto exits = query::query( fn ).flatten()
             .map( query::refToPtr )
             // exits are ret and resume
