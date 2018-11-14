@@ -53,6 +53,8 @@ union _PDCLIB_fd
     _PDCLIB_intptr_t    sval;
 };
 
+__BEGIN_DECLS
+
 /******************************************************************************/
 /* Internal functions                                                         */
 /******************************************************************************/
@@ -296,5 +298,7 @@ int _PDCLIB_scanf_unlocked( const char * _PDCLIB_restrict format, ... ) _PDCLIB_
 int _PDCLIB_vscanf_unlocked( const char * _PDCLIB_restrict format, _PDCLIB_va_list arg ) _PDCLIB_nothrow;
 int _PDCLIB_fscanf_unlocked( struct _PDCLIB_file * _PDCLIB_restrict stream, const char * _PDCLIB_restrict format, ... ) _PDCLIB_nothrow;
 int _PDCLIB_vfscanf_unlocked( struct _PDCLIB_file * _PDCLIB_restrict stream, const char * _PDCLIB_restrict format, _PDCLIB_va_list arg ) _PDCLIB_nothrow;
+
+__END_DECLS
 
 #endif
