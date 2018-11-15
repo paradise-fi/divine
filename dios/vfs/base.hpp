@@ -184,7 +184,7 @@ namespace __dios::fs
             if ( path.size() > PATH_LIMIT )
                 return error( ENAMETOOLONG ), nullptr;
 
-            if ( path[0] == '/' )
+            if ( path.size() && path[0] == '/' )
                 return lookup( root(), path.substr( 1, npos ), follow );
             else
                 return lookup_relative( dir, path, follow, 8 );

@@ -39,15 +39,14 @@ namespace __dios::fs
 
 struct SymLink : INode
 {
-    SymLink( std::string_view target = "" ) : _target( target ) {}
+    SymLink( std::string_view t = "" ) { target( t ); }
 
     size_t size() const override { return _target.size(); }
-    std::string_view target() const { return _target; }
-    void target( String s ) { _target = std::move( s ); }
-    void target( std::string_view s ) { _target = String( s ); }
+    std::string_view target() const { return { _target.begin(), _target.size() }; }
+    void target( std::string_view s ) { _target.assign( s.size(), s.begin(), s.end() ); }
 
 private:
-    String _target;
+    Array< char > _target;
 };
 
 struct RegularFile : INode
