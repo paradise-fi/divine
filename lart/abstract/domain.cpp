@@ -260,9 +260,11 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
     switch ( dm.kind() ) {
         case DomainKind::scalar:
             return is_transformable_in_domain( inst, dom ) ||
-                   util::is_one_of< CallInst, StoreInst, GetElementPtrInst >( inst );
+                   util::is_one_of< CallInst, StoreInst, GetElementPtrInst,
+                                    IntToPtrInst, PtrToIntInst >( inst );
         case DomainKind::string:
-            return is_transformable_in_domain( inst, dom );
+            return is_transformable_in_domain( inst, dom ) ||
+                   util::is_one_of< CallInst >( inst );
         case DomainKind::pointer:
         case DomainKind::custom:
         default:
