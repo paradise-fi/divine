@@ -8,6 +8,10 @@
 #include <sys/types.h>
 #include <sys/task.h>
 #include <sys/monitor.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/resource.h>
+#include <sys/utsname.h>
 
 typedef enum
 {
