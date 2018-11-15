@@ -53,7 +53,7 @@ debug_FLAGS   += CMAKE_BUILD_TYPE=Debug;$(TOOLCHAIN);$(CONFIG_SHARED)
 asan_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O1
 asan_FLAGS = $(debug_FLAGS);CMAKE_CXX_FLAGS_DEBUG=$(asan_CXXFLAGS)
 
-toolchain_FLAGS += CMAKE_BUILD_TYPE=RelWithDebInfo;TOOLCHAIN=ON; \
+toolchain_FLAGS += CMAKE_BUILD_TYPE=Release;TOOLCHAIN=ON; \
 		   CMAKE_CXX_COMPILER=$(CXX);CMAKE_C_COMPILER=$(CC); \
 		   CMAKE_INSTALL_PREFIX=${PREFIX}
 
