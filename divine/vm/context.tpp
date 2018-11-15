@@ -96,7 +96,9 @@ void Context< P, H >::trace( TraceLeakCheck )
         heap().read( frame.cooked(), frame );
     }
 
-    mem::leaked( heap(), leak, get( _VM_CR_State ).pointer, get( _VM_CR_Frame ).pointer );
+    mem::leaked( heap(), leak, get( _VM_CR_State ).pointer,
+                               get( _VM_CR_Frame ).pointer,
+                               get( _VM_CR_Globals ).pointer );
 }
 
 }
