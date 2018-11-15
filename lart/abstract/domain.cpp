@@ -277,17 +277,24 @@ bool is_transformable( Instruction *inst ) {
 }
 
 bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
-    auto dm = domain_metadata( *inst->getModule(), dom );
+    auto m = inst->getModule();
+    auto dm = domain_metadata( *m, dom );
 
     switch ( dm.kind() ) {
         case DomainKind::scalar:
-            return is_base_type_in_domain( inst, dom ) &&
+            return is_base_type_in_domain( m, inst, dom ) &&
                    (util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
-                   ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [] ( auto &op ) {
-                        return is_base_type( op );
+                   ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [m, dom] ( auto &op ) {
+                        return is_base_type_in_domain( m, op, dom );
                    } ) ));
         case DomainKind::string:
-            return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst, CallInst >( inst );
+            if ( auto call = dyn_cast< CallInst >( inst ) ) {
+                if ( auto fn = call->getCalledFunction() ) {
+                    auto name = "__lart_string_op_" + fn->getName().str();
+                    return get_module( inst )->getFunction( name );
+                }
+            }
+            return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
         case DomainKind::pointer:
         case DomainKind::custom:
         default:
@@ -302,15 +309,15 @@ Domain get_domain( Type *type ) {
 }
 
 
-bool is_base_type( llvm::Value * val ) {
-    return is_base_type_in_domain( val, get_domain( val ) );
+bool is_base_type( llvm::Module *m, llvm::Value * val ) {
+    return is_base_type_in_domain( m, val, get_domain( val ) );
 }
 
-bool is_base_type_in_domain( llvm::Value * val, Domain dom ) {
+bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
     if ( is_concrete( dom ) )
         return true;
 
-    auto dm = domain_metadata( *get_module( val ), dom );
+    auto dm = domain_metadata( *m, dom );
     switch ( dm.kind() ) {
         case DomainKind::scalar:
             return val->getType()->isIntegerTy();

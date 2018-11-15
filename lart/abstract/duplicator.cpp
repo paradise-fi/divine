@@ -42,13 +42,16 @@ void Duplicator::run( llvm::Module &m ) {
 }
 
 void Duplicator::process( llvm::Instruction *i ) {
+    auto m = get_module( i );
+
     auto dom = ValueMetadata( i ).domain();
-    auto type = is_base_type( i ) ? abstract_type( i->getType(), dom ) : i->getType();
+    auto type = is_base_type_in_domain( m, i, dom )
+              ? abstract_type( i->getType(), dom ) : i->getType();
 
     auto place = isa< PHINode >( i ) ? i->getParent()->getFirstNonPHI() : i;
 
     IRBuilder<> irb( place );
-    auto fn = placeholder( get_module( i ), i->getType(), type );
+    auto fn = placeholder( m, i->getType(), type );
     auto ph = irb.CreateCall( fn, { i } );
     add_abstract_metadata( ph, dom );
 

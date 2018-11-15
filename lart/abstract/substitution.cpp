@@ -725,11 +725,14 @@ struct TaintBase : CRTP< Derived > {
     }
 
     Value* default_value() const {
+        auto m = get_module( placeholder );
         if ( placeholder::is_to_i1( placeholder ) )
             return concrete();
         if ( placeholder::is_assume( placeholder ) )
             return concrete();
-        auto meta = domain_metadata( *get_module( placeholder ), domain() );
+        if ( !is_base_type( m, concrete() ) )
+            return concrete();
+        auto meta = domain_metadata( *m, domain() );
         return meta.default_value();
     }
 
@@ -863,7 +866,9 @@ Values argument_placeholders( Function * fn ) {
         .filter( [&] ( auto arg ) {
             return !is_concrete( arg );
         } )
-        .filter( is_base_type )
+        .filter( [&] ( const auto & arg ) {
+            return  is_base_type( fn->getParent(), arg );
+        } )
         .map( [&] ( auto arg ) -> Value* {
             auto dom = get_domain( arg );
             return get_placeholder_in_domain( arg, dom );
@@ -892,16 +897,17 @@ void stash_arguments( CallInst *call ) {
 
     unsigned pack_pos = 0;
 
+    auto m = fn->getParent();
     for ( auto &arg : fn->args() ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
         auto dom = fmd.get_arg_domain( idx );
 
         Value *abstract_arg = nullptr;
-        if ( is_concrete( dom ) || !is_base_type( op ) ) { // TODO check kind instead of base
-            continue; // skip concrete arguments
+        if ( is_concrete( dom ) || !is_base_type_in_domain( m, op, dom ) ) {
+            continue; // skip
         } else if ( is_concrete( op ) && !is_concrete( dom ) ) {
-            auto meta = domain_metadata( *get_module( call ), dom );
+            auto meta = domain_metadata( *m, dom );
             abstract_arg = meta.default_value();
         } else {
             auto ph = get_placeholder_in_domain( op, dom );
@@ -1015,6 +1021,7 @@ void Tainting::run( Module &m ) {
         if ( call->getNumArgOperands() )
             bundle::stash_arguments( call );
 
+        auto m = get_module( call );
         run_on_potentialy_called_functions( call, [&] ( auto fn ) {
             if ( call->getNumArgOperands() ) {
                 if ( !processed.count( fn ) ) {
@@ -1033,14 +1040,14 @@ void Tainting::run( Module &m ) {
                 }
             }
 
-            if ( is_stashable( call ) )
+            if ( is_base_type( m, call ) )
                 if ( !processed.count( fn ) )
                     bundle::stash_return_value( call, fn );
 
             processed.insert( fn );
         } );
 
-        if ( is_stashable( call ) ) {
+        if ( is_base_type( m, call ) ) {
             if ( auto ret = bundle::unstash_return_value( call ) ) {
                 auto dom = ValueMetadata( call ).domain();
                 auto ph = get_placeholder_in_domain( call, dom );
@@ -1055,6 +1062,7 @@ void Tainting::run( Module &m ) {
 
     for ( auto &ph : phs )
         ph->eraseFromParent();
+
 }
 
 Value* create_in_domain_phi( Instruction *placeholder ) {

@@ -183,8 +183,8 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom );
 bool is_transformable( llvm::Instruction *inst );
 bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom );
 
-bool is_base_type( llvm::Value * val );
-bool is_base_type_in_domain( llvm::Value * val, Domain dom );
+bool is_base_type( llvm::Module *m, llvm::Value *val );
+bool is_base_type_in_domain( llvm::Module *m, llvm::Value *val, Domain dom );
 
 template< typename Yield >
 auto global_variable_walker( llvm::Module &m, Yield yield ) {

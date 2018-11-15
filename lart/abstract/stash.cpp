@@ -86,9 +86,10 @@ void Stash::arg_unstash( CallInst *call, Function * fn ) {
         if ( is_concrete( dom ) )
             continue;
 
-        if ( is_base_type_in_domain( &arg, dom ) ) {
+        auto m = get_module( call );
+        if ( is_base_type_in_domain( m, &arg, dom ) ) {
             auto aty = abstract_type( ty, dom );
-            auto unstash_fn = unstash_placeholder( get_module( call ), op, aty );
+            auto unstash_fn = unstash_placeholder( m, op, aty );
             auto unstash = irb.CreateCall( unstash_fn, { &arg } );
             add_abstract_metadata( unstash, dom );
         }
@@ -109,9 +110,10 @@ void Stash::arg_stash( CallInst *call ) {
         if ( is_concrete( dom ) )
             continue;
 
-        if ( is_base_type_in_domain( op, dom ) ) {
+        auto m = get_module( call );
+        if ( is_base_type_in_domain( m, op, dom ) ) {
             auto aty = abstract_type( ty, dom );
-            auto stash_fn = stash_placeholder( get_module( call ), aty );
+            auto stash_fn = stash_placeholder( m, aty );
 
             Instruction * stash = nullptr;
             if ( isa< CallInst >( op ) || isa< Argument >( op ) )

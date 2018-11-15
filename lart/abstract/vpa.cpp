@@ -198,6 +198,9 @@ void VPA::propagate( CallInst *call, Domain dom ) {
             throw std::runtime_error( "transforming forbidden function: " + name );
         }
 
+        if ( is_transformable_in_domain( call, dom ) )
+            return;
+
         FunctionMetadata fmd{ fn };
         if ( !fn->isIntrinsic() ) {
             preprocess( fn );
@@ -207,7 +210,7 @@ void VPA::propagate( CallInst *call, Domain dom ) {
                     unsigned idx = op.getOperandNo();
                     auto arg = get_argument( fn, idx );
                     tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                    if ( is_base_type( arg ) )
+                    if ( is_base_type( fn->getParent(), arg ) )
                         fmd.set_arg_domain( idx, dom );
                     entry_args.emplace( arg, dom );
                 }

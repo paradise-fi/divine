@@ -91,10 +91,8 @@ inline bool is_terminal_intruction( llvm::Value * val ) {
            llvm::isa< llvm::UnreachableInst >( val );
 }
 
-inline llvm::Value * returns_abstract_value( llvm::Function * fn ) {
-    auto retty = fn->getReturnType();
-    if ( retty->isVoidTy() || retty->isPointerTy() )
-        // TODO check abstraction settings for ignored types
+inline llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Function * fn ) {
+    if ( !is_base_type( fn->getParent(), call ) )
         return nullptr; // no return value to stash
 
     auto rets = query::query( *fn ).flatten()
