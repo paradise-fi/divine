@@ -16,4 +16,19 @@ extern "C" {
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
         return abstract::__taint< const char * >( str );
     }
+
+    size_t __mstring_strlen( const Quintuple * str ) {
+        return str->strlen();
+    }
+}
+
+
+char * Quintuple::rho() const {
+    return nullptr;
+}
+
+size_t Quintuple::strlen() const {
+    if ( str == nullptr )
+        return -1;
+    return upper_bound;
 }
