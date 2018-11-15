@@ -41,7 +41,6 @@ struct Setup : SetupBase
     Setup( const SetupBase &s ) : SetupBase( s ) {}
 };
 
-template< typename Ret >
 struct Trap
 {
     enum RM { CONTINUE, RESCHEDULE, TRAMPOLINE } retmode;
@@ -62,7 +61,7 @@ struct Trap
         __vm_ctl_flag( kern & ~keepflags, 0 );
         if ( retmode == RESCHEDULE )
             __dios_reschedule();
-        if ( retmode == TRAMPOLINE || std::is_same< Ret, void >::value )
+        if ( retmode == TRAMPOLINE )
         {
             /* our parent is the __invoke of the sysenter lambda */
             auto frame = __dios_this_frame();
@@ -91,7 +90,7 @@ struct BaseContext
                                                                                       \
         __trapfn ret name arg noexcept override                                       \
         {                                                                             \
-            Trap< ret > _trap( Trap< ret >::schedule );                               \
+            Trap _trap( Trap::schedule );                                             \
             auto ctx = reinterpret_cast< Ctx * >( __vm_ctl_get( _VM_CR_State ) );     \
             return unpad( ctx, &Ctx::name, _1, _2, _3, _4, _5, _6 );                  \
         };
