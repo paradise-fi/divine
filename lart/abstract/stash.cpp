@@ -89,7 +89,8 @@ void Stash::arg_unstash( CallInst *call, Function * fn ) {
         if ( is_base_type_in_domain( &arg, dom ) ) {
             auto aty = abstract_type( ty, dom );
             auto unstash_fn = unstash_placeholder( get_module( call ), op, aty );
-            irb.CreateCall( unstash_fn, { &arg } );
+            auto unstash = irb.CreateCall( unstash_fn, { &arg } );
+            add_abstract_metadata( unstash, dom );
         }
     }
 }
@@ -111,14 +112,17 @@ void Stash::arg_stash( CallInst *call ) {
         if ( is_base_type_in_domain( op, dom ) ) {
             auto aty = abstract_type( ty, dom );
             auto stash_fn = stash_placeholder( get_module( call ), aty );
+
+            Instruction * stash = nullptr;
             if ( isa< CallInst >( op ) || isa< Argument >( op ) )
-                irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
+                stash = irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
             else if ( has_placeholder( op ) )
-                irb.CreateCall( stash_fn, { get_placeholder( op ) } );
+                stash = irb.CreateCall( stash_fn, { get_placeholder( op ) } );
             else {
                 auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
-                irb.CreateCall( stash_fn, { undef } );
+                stash = irb.CreateCall( stash_fn, { undef } );
             }
+            add_abstract_metadata( stash, dom );
         }
     }
 }
@@ -143,6 +147,7 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
             tostash = UndefValue::get( aty );
 
         auto stash = irb.CreateCall( stash_fn, { tostash } );
+        add_abstract_metadata( stash, dom );
         make_duals( stash, ret );
     }
 }
@@ -179,6 +184,7 @@ void Stash::ret_unstash( CallInst *call ) {
 
         auto unstash_fn = unstash_placeholder( get_module( call ), arg, aty );
         auto unstash = irb.CreateCall( unstash_fn, { arg } );
+        add_abstract_metadata( unstash, dom );
 
         call->removeFromParent();
         if ( call == arg )

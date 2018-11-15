@@ -50,6 +50,7 @@ void Duplicator::process( llvm::Instruction *i ) {
     IRBuilder<> irb( place );
     auto fn = placeholder( get_module( i ), i->getType(), type );
     auto ph = irb.CreateCall( fn, { i } );
+    add_abstract_metadata( ph, dom );
 
     if ( !isa< PHINode >( i ) ) {
         ph->removeFromParent();
