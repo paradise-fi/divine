@@ -1,11 +1,14 @@
+#define _DIOS_NORM_SYSCALLS
 #include <sys/syscall.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/monitor.h>
 #include <sys/resource.h>
 #include <sys/utsname.h>
 #include <sys/argpad.hpp>
+#include <fcntl.h>
 #include <signal.h>
 #include <dios.h>
 
@@ -16,32 +19,23 @@
 namespace __dios
 {
 
-/* NB. The extern declaration of this on the kernel side has real void return
- * types.  This is a bit of a dirty trick. We fiddle around with long jumps to
- * avoid void returns into non-void callsites. */
-
-#define VOID int
-#define SYSCALL( name, schedule, ret, arg )    ret (*name ## _ptr) arg noexcept;
-#include <sys/syscall.def>
-#undef VOID
-
-#undef SYSCALL
+    SysProxy *syscall_proxy;
 
 #define SYSCALL_DIOS(...)
-#define SYSCALL( name, schedule, ret, arg )                                   \
-    extern "C" __trapfn ret name arg noexcept                                 \
-    {                                                                         \
-        return unpad( __dios::name ## _ptr, _1, _2, _3, _4, _5, _6 );         \
+#define SYSCALL( name, schedule, ret, arg )                                     \
+    extern "C" __trapfn ret name arg noexcept                                   \
+    {                                                                           \
+        return unpad( syscall_proxy, &SysProxy::name, _1, _2, _3, _4, _5, _6 ); \
     }
 #include <sys/syscall.def>
 
 #undef SYSCALL
 #undef SYSCALL_DIOS
 #define SYSCALL(...)
-#define SYSCALL_DIOS( name, schedule, ret, arg )                              \
-    extern "C" __trapfn ret __dios_ ## name arg noexcept                      \
-    {                                                                         \
-        return unpad( __dios::name ## _ptr, _1, _2, _3, _4, _5, _6 );         \
+#define SYSCALL_DIOS( name, schedule, ret, arg )                                \
+    extern "C" __noinline __trapfn ret __dios_ ## name arg noexcept             \
+    {                                                                           \
+        return unpad( syscall_proxy, &SysProxy::name, _1, _2, _3, _4, _5, _6 ); \
     }
 #include <sys/syscall.def>
 #undef SYSCALL_DIOS
@@ -52,6 +46,14 @@ namespace __dios
                                  typename Todo::Empty = typename Todo::Empty()  )
     {
         return brick::tuple::pass( [&]( auto... x ) { return f( x... ); }, done );
+    }
+
+    template< typename Todo, typename Done, typename... Args >
+    __inline static long unpack( Done done, void (*f)( Args... ), va_list vl,
+                                 typename Todo::Empty = typename Todo::Empty()  )
+    {
+        brick::tuple::pass( [&]( auto... x ) { f( x... ); }, done );
+        return 0;
     }
 
     template< typename Todo, typename Done, typename Ret, typename... Args >
@@ -68,16 +70,16 @@ namespace __dios
         return unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), f, vl );
     }
 
-#define VOID int
-
     extern "C" long syscall( int id, ... ) noexcept
     {
         va_list ap;
         va_start( ap, id );
         switch ( id )
         {
+#define SYSCALL_DIOS( name, schedule, ret, arg ) \
+            case SYS_ ## name: return long( unpack( __dios_ ## name, ap ) );
 #define SYSCALL( name, schedule, ret, arg ) \
-            case SYS_ ## name: return long( unpack( name ## _ptr, ap ) );
+            case SYS_ ## name: return long( unpack( name, ap ) );
 #include <sys/syscall.def>
             default:
                 __dios_fault( _DiOS_F_Syscall, "bad syscall number" );
@@ -85,8 +87,6 @@ namespace __dios
                 return -1;
         }
     }
-
-#undef VOID
 
 #include <dios/macro/no_memory_tags.cleanup>
 #undef SYSCALL

@@ -8,20 +8,65 @@ static struct Pad {} _1, _2, _3, _4, _5, _6, _7;
 
 #define __inline __attribute__((always_inline))
 
-template< typename F, typename A, typename B, typename C, typename D, typename E, typename G >
-__inline auto unpad( F f, A a, B b, C c, D d, E e, G g ) { return f( a, b, c, d, e, g ); }
-template< typename F, typename A, typename B, typename C, typename D, typename E >
-__inline auto unpad( F f, A a, B b, C c, D d, E e, Pad ) { return f( a, b, c, d, e ); }
-template< typename F, typename A, typename B, typename C, typename D >
-__inline auto unpad( F f, A a, B b, C c, D d, Pad, Pad ) { return f( a, b, c, d ); }
-template< typename F, typename A, typename B, typename C >
-__inline auto unpad( F f, A a, B b, C c, Pad, Pad, Pad ) { return f( a, b, c ); }
-template< typename F, typename A, typename B >
-__inline auto unpad( F f, A a, B b, Pad, Pad, Pad, Pad ) { return f( a, b ); }
-template< typename F, typename A >
-__inline auto unpad( F f, A a, Pad, Pad, Pad, Pad, Pad ) { return f( a ); }
-template< typename F >
-__inline auto unpad( F f, Pad, Pad, Pad, Pad, Pad, Pad ) { return f(); }
+template< typename T1, typename T2, typename R,
+          typename FA, typename FB, typename FC, typename FD, typename FE, typename FF,
+          typename PA, typename PB, typename PC, typename PD, typename PE, typename PF >
+__inline auto unpad( T1 *t, R (T2::*f)( FA, FB, FC, FD, FE, FF ),
+                     PA a, PB b, PC c, PD d, PE e, PF g )
+{
+    return (t->*f)( a, b, c, d, e, g );
+}
+
+template< typename T1, typename T2, typename R,
+          typename FA, typename FB, typename FC, typename FD, typename FE,
+          typename PA, typename PB, typename PC, typename PD, typename PE >
+__inline auto unpad( T1 *t, R (T2::*f)( FA, FB, FC, FD, FE ),
+                     PA a, PB b, PC c, PD d, PE e, Pad )
+{
+    return (t->*f)( a, b, c, d, e );
+}
+
+template< typename T1, typename T2, typename R,
+          typename FA, typename FB, typename FC, typename FD,
+          typename PA, typename PB, typename PC, typename PD >
+__inline auto unpad( T1 *t, R (T2::*f)( FA, FB, FC, FD ),
+                     PA a, PB b, PC c, PD d, Pad, Pad )
+{
+    return (t->*f)( a, b, c, d );
+}
+
+template< typename T1, typename T2, typename R,
+          typename FA, typename FB, typename FC,
+          typename PA, typename PB, typename PC >
+__inline auto unpad( T1 *t, R (T2::*f)( FA, FB, FC ),
+                     PA a, PB b, PC c, Pad, Pad, Pad )
+{
+    return (t->*f)( a, b, c );
+}
+
+template< typename T1, typename T2, typename R,
+          typename FA, typename FB,
+          typename PA, typename PB >
+__inline auto unpad( T1 *t, R (T2::*f)( FA, FB ),
+                     PA a, PB b, Pad, Pad, Pad, Pad )
+{
+    return (t->*f)( a, b );
+}
+
+template< typename T1, typename T2, typename R,
+          typename FA,
+          typename PA >
+__inline auto unpad( T1 *t, R (T2::*f)( FA ),
+                     PA a, Pad, Pad, Pad, Pad, Pad )
+{
+    return (t->*f)( a );
+}
+
+template< typename T1, typename T2, typename R >
+__inline auto unpad( T1 *t, R (T2::*f)(), Pad, Pad, Pad, Pad, Pad, Pad )
+{
+    return (t->*f)();
+}
 
 }
 

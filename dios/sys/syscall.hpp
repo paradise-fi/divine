@@ -23,11 +23,7 @@
 namespace __dios
 {
 
-#include <dios/macro/no_memory_tags>
-#define SYSCALL( name, schedule, ret, arg )    extern ret (*name ## _ptr) arg noexcept;
-#include <sys/syscall.def>
-#undef SYSCALL
-#include <dios/macro/no_memory_tags.cleanup>
+    extern SysProxy *syscall_proxy;
 
 struct SetupBase
 {
@@ -86,28 +82,34 @@ struct BaseContext
         virtual ~Process() {}
     };
 
-    template< typename Setup >
-    void setup( Setup s )
+    template< typename Ctx >
+    struct SysEnter : SysProxy
     {
-        traceAlias< BaseContext >( "{BaseContext}" );
-        using Ctx = typename Setup::Context;
-
         #include <dios/macro/no_memory_tags>
+
         #define SYSCALL( name, schedule, ret, arg )                                   \
-        name ## _ptr = [] arg __trapfn noexcept -> ret                                \
+                                                                                      \
+        __trapfn ret name arg noexcept override                                       \
         {                                                                             \
             Trap< ret > _trap( Trap< ret >::schedule );                               \
-            return unpad( []( auto... t ) __inline noexcept -> ret                    \
-            {                                                                         \
-                auto ctx = reinterpret_cast< Ctx * >( __vm_ctl_get( _VM_CR_State ) ); \
-                return ctx->name( t... );                                             \
-            }, _1, _2, _3, _4, _5, _6 );                                              \
+            auto ctx = reinterpret_cast< Ctx * >( __vm_ctl_get( _VM_CR_State ) );     \
+            return unpad( ctx, &Ctx::name, _1, _2, _3, _4, _5, _6 );                  \
         };
 
         #include <sys/syscall.def>
 
         #undef SYSCALL
         #include <dios/macro/no_memory_tags.cleanup>
+    };
+
+    template< typename Setup >
+    void setup( Setup s )
+    {
+        traceAlias< BaseContext >( "{BaseContext}" );
+        using Ctx = typename Setup::Context;
+
+        /* FIXME use metadata and proc1->globals to fix this up */
+        syscall_proxy = new ( nofail ) SysEnter< Ctx >();
 
         if ( s.opts.empty() )
             return;

@@ -102,7 +102,11 @@ extern "C" {
 
 FS_NOINLINE int creat( const char *path, mode_t mode ) __nothrow;
 FS_NOINLINE int open( const char *path, int flags, ... ) __nothrow;
+#ifdef _DIOS_NORM_SYSCALLS
+FS_NOINLINE int openat( int dirfd, const char *path, int flags, mode_t mode ) __nothrow;
+#else
 FS_NOINLINE int openat( int dirfd, const char *path, int flags, ... ) __nothrow;
+#endif
 
 FS_NOINLINE int fcntl( int fd, int cmd, ... ) __nothrow;
 

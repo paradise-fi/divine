@@ -32,6 +32,23 @@ typedef struct
     va_list _args;
 } _DiOS_Syscall;
 
+#ifdef __cplusplus
+#include <signal.h>
+
+namespace __dios
+{
+    struct SysProxy
+    {
+        #define SYSCALL( name, schedule, ret, arg ) virtual ret name arg = 0;
+        #include <dios/macro/no_memory_tags>
+        #include <sys/syscall.def>
+        #include <dios/macro/no_memory_tags.cleanup>
+        #undef SYSCALL
+    };
+}
+
+#endif
+
 #ifndef __dios_kernel__
 _PDCLIB_EXTERN_C
 
