@@ -19,7 +19,7 @@ sim file.c <<EOF
 + ^\s*Frame
 + ^\s*PC
 > stepa
-+ ^# executing \{Fault\}
++ ^# executing __dios::FaultBase
 > info registers
 + ^\s*Flags:.*IgnoreCrit
 > info registers
