@@ -130,11 +130,11 @@ void Stash::arg_stash( CallInst *call ) {
 }
 
 void Stash::ret_stash( CallInst *call, Function * fn ) {
-    if ( auto terminator = returns_abstract_value( fn ) ) {
+    auto dom = ValueMetadata( call ).domain();
+    if ( auto terminator = returns_abstract_value( call, fn ) ) {
         auto ret = cast< ReturnInst >( terminator );
 
         auto val = ret->getReturnValue();
-        auto dom = ValueMetadata( call ).domain();
         auto aty = abstract_type( fn->getReturnType(), dom );
 
         IRBuilder<> irb( ret );
@@ -155,15 +155,16 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
 }
 
 void Stash::ret_unstash( CallInst *call ) {
+    auto dom = ValueMetadata( call ).domain();
+
     Values terminators;
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-        terminators.push_back( returns_abstract_value( fn ) );
+        terminators.push_back( returns_abstract_value( call, fn ) );
     } );
 
-    size_t noreturns = std::count( terminators.begin(), terminators.end(), nullptr );
+    size_t num_of_returns = std::count( terminators.begin(), terminators.end(), nullptr );
 
-    if ( noreturns != terminators.size() ) { // there is at least one return
-        auto dom = ValueMetadata( call ).domain();
+    if ( num_of_returns != terminators.size() ) { // there is at least one return
         auto fty = cast< FunctionType >( call->getCalledValue()->stripPointerCasts()
                                              ->getType()->getPointerElementType() );
 

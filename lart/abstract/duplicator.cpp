@@ -61,6 +61,11 @@ void Duplicator::process( llvm::Instruction *i ) {
     }
 
     make_duals( i, ph );
+
+    if ( !is_base_type_in_domain( m, i, dom ) ) {
+        i->replaceAllUsesWith( ph );
+        ph->setOperand( 0, i );
+    }
 }
 
 }

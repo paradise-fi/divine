@@ -98,7 +98,7 @@ size_t taint_args_size( CallInst *taint ) {
 }
 
 Type* base_type( Type* abstract ) {
-    return abstract->getContainedType( 0 );
+    return abstract->isStructTy() ? abstract->getContainedType( 0 ) : abstract;
 }
 
 std::string abstract_type_name( Type *ty ) {
@@ -118,7 +118,7 @@ Types args_with_taints( Value* val, const Values &args ) {
 }
 
 bool is_taintable( Value *v ) {
-    return util::is_one_of< BinaryOperator, CmpInst, CastInst >( v );
+    return util::is_one_of< BinaryOperator, CmpInst, CastInst, CallInst >( v );
 }
 
 ConstantInt* bitwidth( Value *v ) {
@@ -151,13 +151,11 @@ bool is_assume( Instruction *inst ) {
 }
 
 Domain domain( Instruction *inst ) {
-    auto ty = inst->getType();
     if ( is_assume( inst ) )
         return get_domain( cast< Instruction >( inst->getOperand( 0 ) )->getOperand( 0 )->getType() );
-    if ( ty->isVoidTy() || !inst->getType()->isStructTy() )
+    if ( is_to_i1( inst ) )
         return get_domain( inst->getOperand( 0 )->getType() );
-    else
-        return get_domain( ty );
+    return get_domain( inst );
 }
 
 Type* return_type( Instruction *inst ) {
@@ -256,6 +254,11 @@ namespace lifter {
     };
 
     std::string name( Instruction *inst, Domain dom ) {
+        if ( auto call = dyn_cast< CallInst >( inst ) ) {
+            assert( domain_metadata( *get_module( inst ), dom ).kind() == DomainKind::string );
+            return dom.name() + "." + call->getCalledFunction()->getName().str();
+        }
+
         auto pref = prefix( inst, dom );
 
         if ( auto cmp = dyn_cast< CmpInst >( inst ) )
@@ -687,6 +690,9 @@ void InDomainDuplicate::process( Instruction *inst ) {
 
     if ( placeholder::is_to_i1( call ) )
         inst->replaceAllUsesWith( call );
+
+    if ( call->getType() == inst->getType() )
+        inst->replaceAllUsesWith( call );
 }
 
 // ---------------------------- Tainting ---------------------------
@@ -772,7 +778,9 @@ struct Taint : TaintBase< Taint > {
         auto inst = cast< Instruction >( concrete() );
 
         Values res;
-        for ( auto & op : inst->operands() ) {
+        auto ops = isa< CallInst >( inst ) ? cast< CallInst >( inst )->arg_operands()
+                                           : inst->operands();
+        for ( auto & op : ops ) {
             res.push_back( op );
             if ( has_placeholder_in_domain( op, dom ) ) {
                 res.push_back( get_placeholder_in_domain( op, dom ) );
@@ -855,10 +863,6 @@ struct AssumeTaint : TaintBase< AssumeTaint > {
 };
 
 namespace bundle {
-
-bool is_base_type( Value* val ) {
-    return val->getType()->isIntegerTy() || val->getType()->isFloatingPointTy(); // TODO move to domain
-}
 
 Values argument_placeholders( Function * fn ) {
     return query::query( fn->args() )
@@ -947,7 +951,7 @@ void stash_return_value( CallInst *call, Function * fn ) {
     if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
 
-    if ( auto terminator = returns_abstract_value( fn ) ) {
+    if ( auto terminator = returns_abstract_value( call, fn ) ) {
         auto ret = cast< ReturnInst >( terminator );
         auto val = ret->getReturnValue();
 
@@ -973,7 +977,7 @@ Value* unstash_return_value( CallInst *call ) {
 
     Values terminators;
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-        terminators.push_back( returns_abstract_value( fn ) );
+        terminators.push_back( returns_abstract_value( call, fn ) );
     } );
 
     size_t noreturns = std::count( terminators.begin(), terminators.end(), nullptr );
@@ -1004,10 +1008,6 @@ Value* unstash_return_value( CallInst *call ) {
 
 } // namespace bundle
 
-bool is_stashable( Value * val ) {
-    return !val->getType()->isVoidTy() && !val->getType()->isPointerTy(); // TODO use base type
-}
-
 void Tainting::run( Module &m ) {
     std::unordered_map< Value*, Value* > substitutes;
     auto phs = placeholders( m );
@@ -1018,6 +1018,9 @@ void Tainting::run( Module &m ) {
 
     std::set< Function* > processed;
     run_on_abstract_calls( [&] ( auto call ) {
+        if ( is_transformable( call ) )
+            return;
+
         if ( call->getNumArgOperands() )
             bundle::stash_arguments( call );
 
@@ -1094,12 +1097,12 @@ Value* Tainting::process( Instruction *placeholder ) {
         return ThawTaint( placeholder ).generate();
     if ( isa< PHINode >( op ) )
         return create_in_domain_phi( placeholder );
-    if ( is_taintable( op ) )
-        return Taint( placeholder ).generate();
     if ( placeholder::is_to_i1( placeholder ) )
         return ToBoolTaint( placeholder ).generate();
     if ( placeholder::is_assume( placeholder ) )
         return AssumeTaint( placeholder ).generate();
+    if ( is_taintable( op ) )
+        return Taint( placeholder ).generate();
     UNREACHABLE( "Unknown placeholder", placeholder );
 }
 

@@ -186,9 +186,6 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 }
 
 void VPA::propagate( CallInst *call, Domain dom ) {
-
-    // TODO do not propagate to calls if thay are base of domain!
-
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
         if ( FunctionTag::ignore_call_of_function( fn ) )
             return;
