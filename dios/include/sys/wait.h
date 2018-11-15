@@ -95,11 +95,11 @@ extern "C" {
 _PDCLIB_EXTERN_C
 struct rusage;	/* forward declaration */
 
-pid_t	wait(int *);
-pid_t	waitpid(pid_t, int *, int);
+pid_t	wait(int *) __nothrow;
+pid_t	waitpid(pid_t, int *, int) __nothrow;
 #if __BSD_VISIBLE
-pid_t	wait3(int *, int, struct rusage *);
-pid_t	wait4(pid_t, int *, int, struct rusage *);
+pid_t	wait3(int *, int, struct rusage *) __nothrow;
+pid_t	wait4(pid_t, int *, int, struct rusage *) __nothrow;
 #endif /* __BSD_VISIBLE */
 _PDCLIB_EXTERN_END
 

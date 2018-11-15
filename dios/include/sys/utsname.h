@@ -34,6 +34,8 @@ struct utsname
     char machine[SYS_NMLN]; /* hardware type */
 };
 
+int uname( struct utsname *name ) __nothrow;
+
 _PDCLIB_EXTERN_END
 
 #endif

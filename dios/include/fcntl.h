@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/hostabi.h>
+#include <sys/cdefs.h>
 
 #define O_RDONLY   _HOST_O_RDONLY
 #define O_WRONLY   _HOST_O_WRONLY
@@ -99,11 +100,11 @@ extern "C" {
 
 #define FS_NOINLINE __attribute__((noinline))
 
-FS_NOINLINE int creat( const char *path, mode_t mode );
-FS_NOINLINE int open( const char *path, int flags, ... );
-FS_NOINLINE int openat( int dirfd, const char *path, int flags, ... );
+FS_NOINLINE int creat( const char *path, mode_t mode ) __nothrow;
+FS_NOINLINE int open( const char *path, int flags, ... ) __nothrow;
+FS_NOINLINE int openat( int dirfd, const char *path, int flags, ... ) __nothrow;
 
-FS_NOINLINE int fcntl( int fd, int cmd, ... );
+FS_NOINLINE int fcntl( int fd, int cmd, ... ) __nothrow;
 
 #undef FS_NOINLINE
 
