@@ -57,9 +57,8 @@ struct LeakCheck
             if ( fn.empty() || &fn == suspend || &fn == exit )
                 continue;
             cleanup::makeExceptionsVisible( ehInfo, fn, []( const auto & ) { return true; } );
-            cleanup::atExits( fn, [&]( llvm::Instruction *i )
+            cleanup::afterCalls( fn, [&]( llvm::CallSite &, llvm::IRBuilder<> irb )
                     {
-                        llvm::IRBuilder<> irb( i );
                         irb.CreateCall( trace, { irb.getInt32( _VM_T_LeakCheck ) } );
                     } );
         }
