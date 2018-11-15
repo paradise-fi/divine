@@ -1,6 +1,9 @@
 #include <rst/lart.h>
 #include <sys/task.h>
+#include <rst/common.h>
 #include <sys/divm.h>
+
+#include <string.h>
 
 extern "C"
 {
@@ -13,4 +16,6 @@ extern "C"
     {
         __dios_this_task()->__rst_stash = val;
     }
+
+    size_t __lart_string_op_strlen( const char * ) { _UNREACHABLE_F("LART PLACEHOLDER"); }
 }
