@@ -157,6 +157,12 @@ struct ProcessManager : public Next
         return setpgid( 0, 0 );
     }
 
+    struct Clone
+    {
+        Task *task;
+        void *globals;
+    };
+
     void sysfork( pid_t *child )
     {
         auto tid = __dios_this_task();
@@ -177,16 +183,25 @@ struct ProcessManager : public Next
         oldtask->_frame = this->sysenter()->parent;
         oldtask->_proc = nullptr;
 
-        Task *newtask = static_cast< Task * >( __vm_obj_clone( oldtask ) );
+        Clone *oldclone = new ( nofail ) Clone, *newclone;
+        oldclone->task = oldtask;
+        oldclone->globals = oldproc->globals;
+        newclone = static_cast< Clone * >( __vm_obj_clone( oldclone ) );
+
         Process *newproc = static_cast< Process * >( this->make_process( oldproc ) );
+        Task *newtask = newclone->task;
 
         oldtask->_proc = oldproc;
         newtask->_proc = newproc;
 
+        newproc->globals = newclone->globals;
         newproc->pid  = maxPid + 1;
         newproc->ppid = oldproc->pid;
         newproc->sid  = oldproc->sid;
         newproc->pgid = oldproc->pgid;
+
+        delete oldclone;
+        delete newclone;
 
         this->tasks.emplace_back( newtask );
     }
