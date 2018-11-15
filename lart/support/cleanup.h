@@ -119,6 +119,27 @@ void atExits( llvm::Function &fn, AtExit &&atExit ) {
         atExit( exit );
 }
 
+template< typename AfterCall /* void ( CallSite &, llvm::IRBuilder<> ) */ >
+void afterCalls( llvm::Function &fn, AfterCall &&afterCall, bool include_intrinsics = false ) {
+    auto calls = query::query( fn ).flatten()
+            .map( []( auto &i ) { return llvm::CallSite{ &i }; } )
+            .filter( [&]( auto &cs ) { return cs && (include_intrinsics
+                                                     || !cs.getCalledFunction()
+                                                     || !cs.getCalledFunction()->getIntrinsicID()); } )
+            .freeze();
+    using it = llvm::BasicBlock::iterator;
+    for ( auto cs : calls ) {
+        if ( cs.isCall() )
+            afterCall( cs, llvm::IRBuilder<>( cs.getInstruction()->getParent(),
+                                              std::next( it( cs.getInstruction() ) ) ) );
+        else if ( cs.isInvoke() ) {
+            auto *inv = llvm::cast< llvm::InvokeInst >( cs.getInstruction() );
+            for ( auto *dst : { inv->getNormalDest(), inv->getUnwindDest() } )
+                afterCall( cs, llvm::IRBuilder<>( dst, dst->getFirstInsertionPt() ) );
+        }
+    }
+}
+
 using AllocaReprMap = util::Map< std::pair< llvm::AllocaInst *, llvm::BasicBlock * >, llvm::Instruction * >;
 using ExitMap = util::Map< llvm::Instruction *, std::vector< llvm::AllocaInst * > >;
 
