@@ -12,16 +12,23 @@
 namespace abstract::mstring {
     struct Quintuple {
         Quintuple()
-            : str( nullptr ), len( 0 )
+            : index(0), lower_bound(0), upper_bound(0), str( nullptr )
         {}
 
         Quintuple( const char * str )
-            : str( str ), len( strlen( str ) )
+            : index(0), lower_bound(0), upper_bound(::strlen(str)), str( str )
         {}
 
-        const char * str;
-        size_t len;
+        char * rho() const;
+
+        size_t strlen() const;
+
+        size_t index;       // IV
+	    int lower_bound;
+	    int upper_bound;
+        const char * str;   // T
     };
+
 } // namespace abstract::mstring
 
 typedef abstract::mstring::Quintuple __mstring;

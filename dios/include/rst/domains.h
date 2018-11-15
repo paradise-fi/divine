@@ -22,7 +22,7 @@ extern "C" {
     uint16_t __star_val_i16();
     uint8_t __star_val_i8();
 
-    char * __mstring_val( const char * );
+    const char * __mstring_val( const char * );
 #ifdef __cplusplus
 }
 #endif
