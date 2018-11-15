@@ -49,5 +49,16 @@ static T __taint()
         return static_cast< T >( __tainted_ptr );
 }
 
+template< typename T >
+static T __taint( T val )
+{
+    static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
+                   "Cannot taint a non-arithmetic or non-pointer value." );
+    if constexpr ( std::is_arithmetic_v< T > )
+        return val + static_cast< T >( __tainted );
+    else
+        return  reinterpret_cast< T >( reinterpret_cast< uintptr_t >( val ) + __tainted );
+}
+
 
 } // namespace abstract
