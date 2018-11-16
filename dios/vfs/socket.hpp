@@ -48,10 +48,12 @@ struct Socket : INode
         {}
 
         explicit Address( std::string_view value, bool anonymous = false ) :
-            _value( value ),
             _anonymous( anonymous ),
             _valid( true )
-        {}
+        {
+            _value.assign( value.size(), value.begin(), value.end() );
+        }
+
         Address( const Address & ) = default;
         Address( Address && ) = default;
 
@@ -60,9 +62,7 @@ struct Socket : INode
             return *this;
         }
 
-        const __dios::String &value() const {
-            return _value;
-        }
+        std::string_view value() const { return { _value.begin(), _value.size() }; }
 
         bool anonymous() const {
             return _anonymous;
@@ -100,7 +100,7 @@ struct Socket : INode
         }
 
     private:
-        __dios::String _value;
+        Array< char > _value;
         bool _anonymous;
         bool _valid;
     };
@@ -141,7 +141,7 @@ namespace std {
 template<>
 struct hash< ::__dios::fs::Socket::Address > {
     size_t operator()( const ::__dios::fs::Socket::Address &a ) const {
-        return hash< __dios::String >()( a.value() );
+        return hash< std::string_view >()( a.value() );
     }
 };
 

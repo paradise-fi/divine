@@ -250,8 +250,12 @@ namespace __dios::fs
             {
                 auto asun = reinterpret_cast< sockaddr_un * >( addr );
                 asun->sun_family = AF_UNIX;
-                std::strncpy( asun->sun_path, socket->address().begin(), *len - sizeof( sockaddr ) );
-                *len = socket->address().size() + 1 + sizeof( sockaddr );
+                size_t space = *len - sizeof( sockaddr ),
+                       size = socket->address().size();
+                std::strncpy( asun->sun_path, socket->address().begin(), std::min( space, size ) );
+                if ( space > size )
+                    asun->sun_path[ size ] = 0;
+                *len = size + 1 + sizeof( sockaddr );
             }
 
             return true;
