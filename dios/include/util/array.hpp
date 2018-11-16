@@ -57,6 +57,14 @@ struct Array : brick::types::Ord {
         return *this;
     };
 
+    template< typename It >
+    void assign( size_type size, It b, It e )
+    {
+        _clear();
+        _resize( size );
+        std::uninitialized_copy( b, e, begin() );
+    }
+
     void swap( Array& other ) {
         using std::swap;
         swap( _data, other._data );
@@ -91,9 +99,7 @@ struct Array : brick::types::Ord {
     void clear() {
         if ( empty() )
             return;
-        auto s = size();
-        for ( size_type i = 0; i != s; i++ )
-            _data->get()[ i ].~T();
+        _clear();
         __vm_obj_free( _data );
         _data = nullptr;
     }
@@ -170,6 +176,13 @@ struct Array : brick::types::Ord {
             _data = static_cast< _Item * >( __vm_obj_make( n * sizeof( T ) ) );
         else
             __vm_obj_resize( _data, n * sizeof( T ) );
+    }
+
+    void _clear()
+    {
+        auto s = size();
+        for ( auto i = begin(); i != end(); ++i )
+            i->~T();
     }
 
     bool operator==( const Array &o ) const {
