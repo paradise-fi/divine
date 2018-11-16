@@ -140,6 +140,8 @@ llvm::Value * DomainMetadata::default_value() const {
         return ConstantPointerNull::get( cast< PointerType >( type ) );
     if ( type->isIntegerTy() )
         return ConstantInt::get( type, 0 );
+    if ( type->isFloatingPointTy() )
+        return ConstantFP::get( type, 0 );
     UNREACHABLE( "Unsupported base type." );
 }
 
@@ -317,15 +319,16 @@ bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
     if ( is_concrete( dom ) )
         return true;
 
+    auto type = val->getType();
     auto dm = domain_metadata( *m, dom );
     switch ( dm.kind() ) {
         case DomainKind::scalar:
-            return val->getType()->isIntegerTy();
+            return type->isIntegerTy() || type->isFloatingPointTy();
         case DomainKind::pointer:
-            return val->getType()->isPointerTy();
+            return type->isPointerTy();
         case DomainKind::string:
-            return val->getType()->isPointerTy() &&
-                   cast< PointerType >( val->getType() )->getPointerElementType()->isIntegerTy( 8 );
+            return type->isPointerTy() &&
+                   cast< PointerType >( type )->getPointerElementType()->isIntegerTy( 8 );
         case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain type." );
