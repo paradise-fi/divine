@@ -77,8 +77,6 @@ Unit __star_assume( Unit, Unit, bool ) {
     return Unit();
 }
 
-void __star_freeze_formula( Unit, void* ) { }
+void __star_freeze( Unit, void* ) {}
 
-Unit __sym_thaw_formula( void*, int ) {
-    return Unit();
-}
+Unit __star_thaw( void*, int ) { return Unit(); }
