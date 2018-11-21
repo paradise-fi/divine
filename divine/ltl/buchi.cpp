@@ -99,7 +99,7 @@ void fillSets( Node* node, LTLPtr form,
                 inject( node, new2, psi );
                 break;
             case Binary::And:
-                inject( node, new1, LTL::make( false ) );
+                inject( node, new1, LTL::make( false ) ); // note mistake in table 1 in Gianokopoulou/Lerda RIACS 2001
                 inject( node, new2, phi );
                 inject( node, new2, psi );
                 break;
@@ -160,10 +160,9 @@ StatePtr Node::findTwin( const std::set< StatePtr, State::Comparator >& states )
 
 //returns the new node that has been splitted from this
 NodePtr Node::split( LTLPtr form ) {
-    NodePtr node2 = std::make_shared< Node >( *this );
     resetRightOfUntils();
+    NodePtr node2 = std::make_shared< Node >( *this );
     node2->resetUntils();
-    node2->resetRightOfUntils();
 
     std::set< LTLPtr, LTLComparator > new1;
     std::set< LTLPtr, LTLComparator > next1;

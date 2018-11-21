@@ -394,7 +394,6 @@ static inline std::pair< bool, size_t > indexOfLiteral( LTLPtr literal, const st
     return std::make_pair( true, 0 );
 }
 
-
 /*
  * While TGBA1 is designed such a way that in each node it stores all the transitions
  * that are incoming in the node (which is needed for the translation process), the
