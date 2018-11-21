@@ -12,21 +12,21 @@
 namespace abstract::mstring {
     struct Quintuple {
         Quintuple()
-            : index(0), lower_bound(0), upper_bound(0), str( nullptr )
+            : index(0), end(0), str( nullptr )
         {}
 
-        Quintuple( const char * str )
-            : index(0), lower_bound(0), upper_bound(::strlen(str)), str( str )
+        Quintuple( const char * buff, unsigned buff_len )
+            : index(::strlen(buff)), end(buff_len), str(buff)
         {}
 
         char * rho() const;
 
         size_t strlen() const;
 
-        size_t index;       // IV
-	    int lower_bound;
-	    int upper_bound;
-        const char * str;   // T
+        size_t index;                        // IV - index of first \0
+	    static constexpr unsigned begin = 0; // lower_bound - begin of buffer
+	    unsigned end;                        // upper_bound - end of buffer
+        const char * str;                    // T - buffer
     };
 
 } // namespace abstract::mstring

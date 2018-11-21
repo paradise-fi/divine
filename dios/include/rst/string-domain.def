@@ -4,7 +4,7 @@ extern "C" {
 
 LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
 
-PROT( lift, const char * );
+PROT( lift, const char *, unsigned );
 
 RET_PROT( size_t, strlen, const DOMAIN_TYPE );
 
