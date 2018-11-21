@@ -205,6 +205,8 @@ struct LTL : Exp, std::enable_shared_from_this< LTL >
 
     static LTLPtr parse( const std::string& str, bool typeRERS = false );
 
+    static LTLPtr makeSimpler( LTLPtr form, bool& flag );
+
     bool isComplete()
     {
         return apply([]( auto e ) -> bool { return e.isComplete(); } ).value();
@@ -267,6 +269,14 @@ struct LTL : Exp, std::enable_shared_from_this< LTL >
         newForm->id = ++idCounter;
         return newForm;
     }
+
+    struct Simplifier{
+        bool changed; // true means there was a change
+        Simplifier( bool _changed )
+            : changed( _changed )
+        {}
+        LTLPtr makeSimpler( LTLPtr form );
+    };
 };
 
 } // end of namespace ltl

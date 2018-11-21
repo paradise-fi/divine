@@ -685,7 +685,14 @@ static inline TGBA2 HOAParser( const std::string& filename )
 
 static inline TGBA1 ltlToTGBA1( LTLPtr _formula, bool negate )
 {
-    LTLPtr formula = _formula->normalForm( negate );
+    LTLPtr formula = _formula;
+    LTL::Simplifier simplifier( true );
+    while( simplifier.changed )
+    {
+        simplifier = LTL::Simplifier( false );
+        formula = simplifier.makeSimpler( formula );
+    }
+    formula = formula->normalForm( negate );
     uCount = formula->countAndLabelU();
     formula->computeUParents();
 

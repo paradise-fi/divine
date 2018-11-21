@@ -25,7 +25,8 @@ namespace ltl {
 
 int LTL::idCounter = 0;
 
-bool helper( LTLPtr ltlA, LTLPtr ltlB )
+//defines ordering on LTLs
+bool ord( LTLPtr ltlA, LTLPtr ltlB ) // also comparing the sets of Until parents
 {
     if( !ltlA || !ltlB ) {
         if( ltlB ) // if A is nullptr but B is defined.
@@ -51,31 +52,30 @@ bool helper( LTLPtr ltlA, LTLPtr ltlB )
         return ltlA->string() < ltlB->string();
     }
     if( ltlA->is< Unary >() ) {
-        if( helper( ltlA->get< Unary >().subExp, ltlB->get< Unary >().subExp ) )
+        if( ord( ltlA->get< Unary >().subExp, ltlB->get< Unary >().subExp ) )
             return true;
-        if( helper( ltlB->get< Unary >().subExp, ltlA->get< Unary >().subExp ) )
+        if( ord( ltlB->get< Unary >().subExp, ltlA->get< Unary >().subExp ) )
             return false;
         return ltlA->indexesOfUParents() < ltlB->indexesOfUParents();
     }
     else { // ltlA->is< Binary >() )
-        if( helper( ltlA->get< Binary >().right, ltlB->get< Binary >().right ) )
+        if( ord( ltlA->get< Binary >().right, ltlB->get< Binary >().right ) )
             return true;
-        if( helper( ltlB->get< Binary >().right, ltlA->get< Binary >().right ) )
+        if( ord( ltlB->get< Binary >().right, ltlA->get< Binary >().right ) )
             return false;
-        if( helper( ltlA->get< Binary >().left, ltlB->get< Binary >().left ) )
+        if( ord( ltlA->get< Binary >().left, ltlB->get< Binary >().left ) )
             return true;
-        if( helper( ltlB->get< Binary >().left, ltlA->get< Binary >().left ) )
+        if( ord( ltlB->get< Binary >().left, ltlA->get< Binary >().left ) )
             return false;
         return ltlA->indexesOfUParents() < ltlB->indexesOfUParents();
     }
 }
 
-bool LTLComparator::operator()( LTLPtr ltlA, LTLPtr ltlB ) const
+bool LTLComparator::operator()( LTLPtr ltlA, LTLPtr ltlB ) const // also comparing the sets of Until parents
 {
-    return helper( ltlA, ltlB );
+    return ord( ltlA, ltlB );
 }
-
-bool LTLComparator2::operator()( LTLPtr ltlA, LTLPtr ltlB ) const // without comparing the sets of Until parents
+bool ord2( LTLPtr ltlA, LTLPtr ltlB ) // without comparing the sets of Until parents
 {
     if( !ltlA || !ltlB ) {
         if( ltlB ) // if A is nullptr but B is defined.
@@ -93,17 +93,26 @@ bool LTLComparator2::operator()( LTLPtr ltlA, LTLPtr ltlB ) const // without com
     if( ltlA->is< Atom >() )
         return ltlA->string() < ltlB->string();
     if( ltlA->is< Unary >() ) {
-        if( operator()( ltlA->get< Unary >().subExp, ltlB->get< Unary >().subExp ) )
+        if( ord2( ltlA->get< Unary >().subExp, ltlB->get< Unary >().subExp ) )
             return true;
         return false;
     }
-    if( operator()( ltlA->get< Binary >().right, ltlB->get< Binary >().right ) )
+    if( ord2( ltlA->get< Binary >().right, ltlB->get< Binary >().right ) )
         return true;
-    if( operator()( ltlB->get< Binary >().right, ltlA->get< Binary >().right ) )
+    if( ord2( ltlB->get< Binary >().right, ltlA->get< Binary >().right ) )
         return false;
-    if( operator()( ltlA->get< Binary >().left, ltlB->get< Binary >().left ) )
+    if( ord2( ltlA->get< Binary >().left, ltlB->get< Binary >().left ) )
         return true;
     return false;
+}
+bool equal2( LTLPtr ltlA, LTLPtr ltlB ) //without comparing the sets of Until parents
+{
+    return !ord2( ltlA, ltlB ) && !ord2( ltlB, ltlA );
+}
+
+bool LTLComparator2::operator()( LTLPtr ltlA, LTLPtr ltlB ) const // without comparing the sets of Until parents
+{
+    return ord2( ltlA, ltlB );
 }
 
 std::string Unary::string() const
@@ -377,7 +386,7 @@ LTLPtr Binary::normalForm( bool neg )
 
 /**
  * ******************************
- * ******** PARSE TOOLS *********
+ * ******** PARSE TOOLS *******
  * ******************************
  */
 
@@ -554,7 +563,7 @@ Tokens tokenizer( const std::string& formula, bool typeRERS /*= false*/ )
 
 /*
 * ****************************************
-* *********** SOLVE BRACKETS *************
+* *********** SOLVE BRACKETS **********
 */
 Tokens::iterator brackets( TokensPtr root, Tokens::iterator it, Tokens::iterator end )
 {
@@ -690,5 +699,234 @@ LTLPtr LTL::parse( const std::string& str, bool typeRERS /*= false*/ )
     return collapse( solveBrackets( str, typeRERS ) );
 }
 
+/**
+ * ******************************
+ * ********* SIMPLIFY ***********
+ * ******** the formula *********
+ * ******************************
+ */
+
+
+LTLPtr LTL::Simplifier::makeSimpler( LTLPtr form )
+{
+    if( form->isAtomOrBooleanOrNeg() )                                      // a, !a, True, False
+        return form;
+    if( form->is< Unary >() )
+    {
+        auto op = form->get< Unary >().op;
+        auto subExp = form->get< Unary >().subExp;
+        if( op == Unary::Global )                                                    // G _
+        {
+            // G G x = G x
+            if( subExp->isType( Unary::Global ) )
+            {
+                auto subSubExp = subExp->get<Unary>().subExp;
+                changed = true;
+                return LTL::make( Unary::Global, makeSimpler( subSubExp ) );
+            }
+            // G( p  && GFq ) = (Gp) || (GFq)
+            else if( subExp->isType( Binary::Or ) ) {                                    // G( _||_ )
+                auto r = subExp->get<Binary>().right;
+                auto l = subExp->get<Binary>().left;
+                if( r->isType( Unary::Global ) ) {                                      // G( _|| G_ )
+                    auto rsub = r->get< Unary >().subExp;
+                    if( rsub->isType( Unary::Future ) ) {                                 // G(_|| GF_  )
+                        auto q = rsub->get< Unary >().subExp;
+                        auto newGFq = LTL::make( Unary::Global, LTL::make( Unary::Future, makeSimpler( q ) ) );
+                        changed = true;
+                        return LTL::make( Binary::Or, LTL::make( Unary::Global, makeSimpler( l ) ), newGFq );
+                    }
+                }
+                if( l->isType( Unary::Global ) ) {                                      // G( G_|| _ )
+                    auto lsub = l->get< Unary >().subExp;
+                    if( lsub->isType( Unary::Future ) ) {                                 // G( GF_|| _  )
+                        auto q = lsub->get< Unary >().subExp;
+                        auto newGFq = LTL::make( Unary::Global, LTL::make( Unary::Future, makeSimpler( q ) ) );
+                        changed = true;
+                        return LTL::make( Binary::Or, LTL::make( Unary::Global, makeSimpler( r ) ), newGFq );
+                    }
+                }
+            }
+            return LTL::make( Unary::Global, makeSimpler( subExp ) );
+        }
+        else if( op == Unary::Future )
+        {
+            // F G F x = G F x
+            if( subExp->isType( Unary::Global ) )                             // F G _
+            {
+                auto subSubExp = subExp->get<Unary>().subExp;
+                if( subSubExp->isType( Unary::Future ) )  // F G F _
+                {
+                    changed = true;
+                    return makeSimpler( subExp );
+                }
+            }
+            // F( p  && GFq ) = (Fp) && (GFq)
+            else if( subExp->isType( Binary::And) )
+            {
+                auto r = subExp->get<Binary>().right;
+                auto l = subExp->get<Binary>().left;
+                if( r->isType( Unary::Global ) )                                      // F( _&& G_ )
+                {
+                    auto rsub = r->get< Unary >().subExp;
+                    if( rsub->isType( Unary::Future ) )                             // F(_&& GF_  )
+                    {
+                        auto q = rsub->get< Unary >().subExp;
+                        auto newGFq = LTL::make( Unary::Global, LTL::make( Unary::Future, makeSimpler( q ) ) );
+                        changed = true;
+                        return LTL::make( Binary::And, LTL::make( Unary::Future, makeSimpler( l ) ), newGFq );
+                    }
+                }
+                if( l->isType( Unary::Global ) )                                      // F( G_&& _ )
+                {
+                    auto lsub = l->get< Unary >().subExp;
+                    if( lsub->isType( Unary::Future ) )                                // F( GF_&& _  )
+                    {
+                        auto q = lsub->get< Unary >().subExp;
+                        auto newGFq = LTL::make( Unary::Global, LTL::make( Unary::Future, makeSimpler( q ) ) );
+                        changed = true;
+                        return LTL::make( Binary::And, LTL::make( Unary::Future, makeSimpler( r ) ), newGFq );
+                    }
+                }
+            }
+        }
+        return LTL::make( op, makeSimpler( subExp ) );
+    }
+    else
+    {
+        auto op = form->get< Binary >().op;
+        auto right = form->get< Binary >().right;
+        auto left = form->get< Binary >().left;
+        if( op == Binary::Until )                               // p U false = false   \/   p U true = true
+        {
+            if( right->is<Boolean>() )
+            {
+                changed = true;
+                return right;
+            }
+        }
+        else if( op == Binary::And )
+        {
+            if( equal2( right, left ) )
+            {
+                changed = true;
+                return makeSimpler( right );
+            }
+            else if( right->is< Boolean >() )
+            {
+                changed = true;
+                if( right->get< Boolean >().value )
+                    return makeSimpler( left );
+                return right;
+            }
+            else if( left->is<Boolean>() )
+            {
+                changed = true;
+                if( left->get< Boolean >().value )
+                    return makeSimpler( right );
+                return left;
+            }
+            else if( right->isType( Unary::Neg ) )
+            {
+                if( equal2( left, right->get< Unary >().subExp) )
+                {
+                    changed = true;
+                    return LTL::make( false );
+                }
+            }
+            else if( left->isType( Unary::Neg ) )
+            {
+                if( equal2( right, left->get< Unary >().subExp) )
+                {
+                    changed = true;
+                    return LTL::make( false );
+                }
+            }
+            else if( left->isType( Binary::Release ) && right->isType( Binary::Release ) )
+            {
+                auto leftL = left->get< Binary >().left;
+                auto rightL = right->get< Binary >().left;
+                if( equal2( leftL, rightL ) )
+                {
+                    auto leftR = left->get< Binary >().right;
+                    auto rightR = right->get< Binary >().right;
+                    changed = true;
+                    auto conjunct = LTL::make( Binary::And, makeSimpler( leftR ), makeSimpler( rightR ) );
+                    return LTL::make( Binary::Release, makeSimpler( leftL ), conjunct );
+                }
+            }
+        }
+        else if( op == Binary::Or )
+        {
+            if( equal2( right, left ) )
+            {
+                changed = true;
+                return makeSimpler( right );
+            }
+            else if( right->is< Boolean >() )
+            {
+                changed = true;
+                if( !right->get< Boolean >().value )
+                    return makeSimpler( left );
+                return right;
+            }
+            else if( left->is<Boolean>() )
+            {
+                changed = true;
+                if( !left->get< Boolean >().value )
+                    return makeSimpler( right );
+                return left;
+            }
+            else if( right->isType( Unary::Neg ) )
+            {
+                if( equal2( left, right->get< Unary >().subExp) )
+                {
+                    changed = true;
+                    return LTL::make( true );
+                }
+            }
+            else if( left->isType( Unary::Neg ) ) {
+                if( equal2( right, left->get< Unary >().subExp) )
+                {
+                    changed = true;
+                    return LTL::make( true );
+                }
+            }
+            else if( left->isType( Binary::Release ) && right->isType( Binary::Release ) )
+            {
+                auto leftR = left->get< Binary >().right;
+                auto rightR = right->get< Binary >().right;
+                if( equal2( leftR, rightR ) )
+                {
+                    auto leftL = left->get< Binary >().left;
+                    auto rightL = right->get< Binary >().left;
+                    changed = true;
+                    auto disjunct = LTL::make( Binary::Or, makeSimpler( leftL ), makeSimpler( rightL ) );
+                    return LTL::make( Binary::Release, disjunct, makeSimpler( leftR ) );
+                }
+            }
+            else if( left->isType( Unary::Global ) && right->isType( Unary::Global ) )
+            {
+                auto leftSub = left->get< Unary >().subExp;
+                auto rightSub = right->get< Unary >().subExp;
+                if( leftSub->isType( Unary::Future ) && rightSub->isType( Unary::Future ) )
+                {
+                    auto leftSubSub = leftSub->get< Unary >().subExp;
+                    auto rightSubSub = rightSub->get< Unary >().subExp;
+                    changed = true;
+                    auto disjunct = LTL::make( Binary::Or, makeSimpler( leftSubSub ), makeSimpler( rightSubSub ) );
+                    return LTL::make( Unary::Global, LTL::make( Unary::Future, disjunct ) );
+                }
+            }
+        }
+        return LTL::make( op, makeSimpler( left ), makeSimpler( right ) );
+    }
+}
+
 }
 }
+
+
+
+
+
