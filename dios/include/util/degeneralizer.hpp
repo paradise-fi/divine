@@ -33,12 +33,11 @@ struct Degeneralizer2
     {
     }
     size_t knownLevelFor( size_t dest ) {
-        size_t x = 0;
         auto it = visited.find( dest );
         if( it != visited.end() )
-            x = it->second;
-        markVisited( dest, x );
-        return x;
+            return it->second;
+        markVisited( dest, 0 );
+        return 0;
     }
     void markVisited( size_t state, size_t level ) {
         visited.emplace( std::make_pair( state, level ) );
