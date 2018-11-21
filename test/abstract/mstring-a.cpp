@@ -8,5 +8,5 @@
 #include <string.h>
 
 int main() {
-    const char * str = __mstring_val( "string" );
+    const char * str = __mstring_val( "string", 7 );
 }
