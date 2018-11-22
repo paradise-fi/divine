@@ -92,7 +92,9 @@ struct Array : brick::types::Ord {
     const_reverse_iterator crend() const { return const_reverse_iterator( begin() ); }
 
     T& back() { return *( end() - 1 ); }
+    const T& back() const { return *( end() - 1 ); }
     T& front() { return *begin(); }
+    const T& front() const { return *begin(); }
 
     bool empty() const { return !_data; }
     size_type size() const  { return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T ); }
