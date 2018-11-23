@@ -73,7 +73,7 @@ string do_strerror_r(int ev) {
   std::snprintf(buffer, strerror_buff_size, "unknown error %d", ev);
   return string(buffer);
 }
-#elif (defined(__linux__) || defined(__divine__)) && !defined(_LIBCPP_HAS_MUSL_LIBC) &&                 \
+#elif defined(__linux__) && !defined(_LIBCPP_HAS_MUSL_LIBC) &&                 \
     (!defined(__ANDROID__) || __ANDROID_API__ >= 23)
 // GNU Extended version
 string do_strerror_r(int ev) {
