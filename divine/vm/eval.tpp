@@ -1334,14 +1334,14 @@ void Eval< Ctx >::implement_ret()
             return;
         } else if ( caller.result().size() != operand( 0 ).size() ) {
             fault( _VM_F_Control, parent.cooked(), caller_pc.cooked() )
-                << "Returned value is bigger then expected by caller";
+                << "The returned value is bigger than expected by the caller";
             return;
         } else if ( !heap().copy( s2ptr( operand( 0 ) ),
                                 s2ptr( caller.result(), 0, parent.cooked() ),
                                 caller.result().size() ) )
         {
             fault( _VM_F_Memory, parent.cooked(), caller_pc.cooked() )
-                << "Cound not return value";
+                << "Could not return a value";
             return;
         }
     } else if ( caller.result().size() > 0 ) {
