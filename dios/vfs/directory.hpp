@@ -33,17 +33,17 @@ namespace __dios::fs
 
 struct DirectoryEntry
 {
-    DirectoryEntry( __dios::String name, Node inode ) :
-        _name( std::move( name ) ),
+    DirectoryEntry( std::string_view name, Node inode ) :
         _inode( std::move( inode ) )
-    {}
+    {
+        _name.assign( name.size(), name.begin(), name.end() );
+    }
 
-    __dios::String &name() { return _name; }
-    const __dios::String &name() const { return _name; }
+    std::string_view name() const { return { _name.begin(), _name.size() }; }
     Node inode() const { return _inode; }
 
 private:
-    __dios::String _name;
+    Array< char > _name;
     Node _inode;
 };
 
@@ -77,7 +77,7 @@ struct Directory : INode
             return error( ENAMETOOLONG ), false;
         if ( special_name( name ) )
             return error( EEXIST ), false;
-        if ( _insertItem( DirectoryEntry( String( name ), std::move( inode ) ), overwrite ) )
+        if ( _insertItem( DirectoryEntry( name, std::move( inode ) ), overwrite ) )
         {
             inode->link();
             if ( inode->mode().is_dir() )
@@ -117,14 +117,6 @@ struct Directory : INode
 
     bool empty() { return _items.empty(); }
 
-    template< typename T >
-    T *find( const __dios::String &name ) {
-        Node node = find( name );
-        if ( !node )
-            return nullptr;
-        return node->as< T >();
-    }
-
     bool read( char *buf, size_t offset, size_t &length ) override
     {
         if ( length != sizeof( struct dirent ) )
@@ -132,7 +124,7 @@ struct Directory : INode
 
         int idx = offset / sizeof( struct dirent );
 
-        auto do_read = [&]( const String &name, int inode )
+        auto do_read = [&]( std::string_view name, int inode )
         {
             struct dirent *dst = reinterpret_cast< struct dirent *>( buf );
             dst->d_ino = inode;
