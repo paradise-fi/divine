@@ -206,6 +206,12 @@ fmt( "is_linux",   $uname eq "Linux" ? 1 : 0);
 fmt( "is_openbsd", $uname eq "OpenBSD" ? 1 : 0);
 fmt( "mode_t", "(int) (8*sizeof(mode_t))", "__uint%d_t" );
 
+$prog .= "#ifdef __GNU_LIBRARY__\n";
+fmt( "is_glibc", 1 );
+$prog .= "#else\n";
+fmt( "is_glibc", 0 );
+$prog .= "#endif\n";
+
 line("");
 line( "#endif" );
 
