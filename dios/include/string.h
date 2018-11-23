@@ -8,6 +8,9 @@
 #define _PDCLIB_STRING_H _PDCLIB_STRING_H
 #include "_PDCLIB/int.h"
 
+#include "_PDCLIB/cdefs.h"
+#include <sys/hostabi.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -236,8 +239,18 @@ char * strerror( int errnum ) _PDCLIB_nothrow;
 
 /* The strerror_r() function is similar to strerror(), but is thread safe.
    TODO: PDCLib does not yet support locales.
+   Support both strerror_r returning int (POSIX) and char * (GNU).
   */
-char * strerror_r( int errnum, char *buf, size_t buflen );
+#if _HOST_is_glibc
+    #if _PDCLIB_GNU_SOURCE
+        char * strerror_r( int errnum, char *buf, size_t buflen );
+    #else //_XOPEN_SOURCE
+        int __xpg_strerror_r( int errnum, char *buf, size_t buflen );
+        #define strerror_r( errnum, buf, buflen ) __xpg_strerror_r( errnum, buf, buflen )
+    #endif
+#else
+    int strerror_r( int errnum, char *buf, size_t buflen );
+#endif
 
 /* Returns the length of the string s (excluding terminating '\0').
 */
