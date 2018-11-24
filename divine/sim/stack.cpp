@@ -30,7 +30,7 @@ struct Stack
     { }
 
     // returns invalid DN if there is none
-    DN raw_up( DN frame )
+    DN up( DN frame )
     {
         return _i->get( "caller", true, std::make_unique< DN >( std::move( frame ) ) );
     }
@@ -42,7 +42,7 @@ struct Stack
         DN i = _top, prev = _top;
         while ( i.valid() ) {
             prev = i;
-            i = raw_up( i );
+            i = up( i );
         }
         return prev;
     }
@@ -54,17 +54,6 @@ struct Stack
         return sched_pc.object() == bottom_pc.object();
     }
 
-    std::optional< Stack > get_userspace_stack()
-    {
-        auto int_frame = _i->_ctx.get( _VM_CR_IntFrame ).pointer;
-        if ( !is_kernel() || int_frame.null() )
-            return std::nullopt;
-
-        DN other_top = _top;
-        other_top.address( dbg::DNKind::Frame, int_frame );
-        return Stack( *_i, other_top );
-    }
-
     private:
     CLI *_i;
     DN _top;
@@ -73,20 +62,7 @@ struct Stack
 DN CLI::frame_up( DN frame )
 {
     Stack stack( *this, frame );
-    DN up = stack.raw_up( frame );
-
-    // switch to userspace if we hit the bottom of the kernel stack
-    if ( stack.is_kernel() && !up.valid() )
-    {
-        auto nstack = stack.get_userspace_stack();
-        if ( nstack )
-        {
-            stack = nstack.value();
-            up = stack.top();
-        }
-    }
-
-    return up;
+    return stack.up( frame );
 }
 
 }
