@@ -56,7 +56,6 @@ static const char *__vmutil_reg_name( int id )
 
         DIVM_REG_NAME( _VM_CR_Scheduler );
         DIVM_REG_NAME( _VM_CR_State );
-        DIVM_REG_NAME( _VM_CR_IntFrame );
         DIVM_REG_NAME( _VM_CR_Flags );
 
         DIVM_REG_NAME( _VM_CR_FaultHandler );

@@ -60,7 +60,6 @@ namespace divine::vm::setup
     void scheduler( Context &ctx )
     {
         ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
-        ctx.set( _VM_CR_IntFrame, ctx.frame() );
         ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit;
         ctx.flush_ptr2i();
     }
