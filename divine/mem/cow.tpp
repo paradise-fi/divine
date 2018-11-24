@@ -101,7 +101,15 @@ namespace divine::mem
             this->free( si.second );
         }
         si.second = *r;
+        _obj_refcnt.get( si.second );
         return si;
+    }
+
+    template< typename Next >
+    void Cow< Next >::unref( Snapshot s )
+    {
+        for ( auto si = snap_begin( s ); si != snap_end( s ); ++si )
+            _obj_refcnt.put( si->second );
     }
 
     template< typename Next >

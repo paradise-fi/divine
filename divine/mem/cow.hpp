@@ -21,6 +21,7 @@
 #include <brick-types>
 #include <brick-hash>
 #include <brick-hashset>
+#include <brick-mem>
 #include <unordered_set>
 
 namespace divine::mem
@@ -38,6 +39,8 @@ namespace divine::mem
         using typename Next::Pointer;
         using typename Next::Loc;
         using Next::_l; /* FIXME */
+
+        mutable brick::mem::RefPool< typename Next::Pool, uint8_t > _obj_refcnt;
 
         struct ObjHasher
         {
@@ -60,8 +63,8 @@ namespace divine::mem
 
         void setupHT() { _ext.objects.hasher._heap = this; }
 
-        Cow() { setupHT(); }
-        Cow( const Cow &o ) : Next( o ), _ext( o._ext )
+        Cow() : _obj_refcnt( this->_objects ) { setupHT(); }
+        Cow( const Cow &o ) : Next( o ), _obj_refcnt( o._obj_refcnt ), _ext( o._ext )
         {
             setupHT();
             restore( o.snapshot() );
@@ -70,6 +73,7 @@ namespace divine::mem
         Cow &operator=( const Cow &o )
         {
             Next::operator=( o );
+            _obj_refcnt = o._obj_refcnt;
             _ext = o._ext;
             setupHT();
             restore( o.snapshot() );
@@ -113,6 +117,7 @@ namespace divine::mem
         Internal detach( Loc l );
         SnapItem dedup( SnapItem si ) const;
         Snapshot snapshot() const;
+        void unref( Snapshot s );
 
         bool resize( Pointer p, int sz_new )
         {
