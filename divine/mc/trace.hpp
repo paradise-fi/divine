@@ -32,6 +32,12 @@ namespace divine::mc
 using DbgCtx = dbg::Context< vm::CowHeap >;
 using DbgNode = dbg::Node< vm::Program, vm::CowHeap >;
 
+struct BadTrace
+{
+    vm::CowHeap::Snapshot expected;
+    std::vector< vm::CowHeap::Snapshot > candidate;
+};
+
 static inline DbgNode root( DbgCtx &ctx, vm::CowHeap::Snapshot snap )
 {
     DbgNode n( ctx, snap );
@@ -104,8 +110,23 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                         return ss::Listen::Process;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
-    if ( next != states.end() || !t.final )
-        std::cerr << "E: incomplete trace! this is a bug." << std::endl;
+    if ( next != states.end() )
+    {
+        BadTrace error;
+        error.expected = next->first;
+        typename std::remove_reference_t< decltype ( ex ) >::State state;
+        state.snap = last->first;
+
+        ex.edges( state, [&]( auto st, auto, bool isnew )
+        {
+                error.candidate.push_back( st.snap );
+        } );
+        throw error;
+    }
+
+    if ( !t.final )
+        std::cerr << "W: Failed to find an error label. Probably a bad trace." << std::endl;
+
     return t;
 }
 
