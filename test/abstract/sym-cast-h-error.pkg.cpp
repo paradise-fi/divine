@@ -23,7 +23,6 @@ int main() {
     y = 0;
     ++y;
     assert( y == 1 );
-    assert( x <= 0x7fff0001 );
     assert( x == 0 ); /* ERROR */
 }
 
