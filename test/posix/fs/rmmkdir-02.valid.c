@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/trace.h>
 
 int main() {
     int fd = open( "file", O_WRONLY | O_CREAT, 0644 );
@@ -14,6 +15,7 @@ int main() {
 
     errno = 0;
     assert( mkdir( "file/dir", 0755 ) == -1 );
+    __dios_trace_f( "errno = %d", errno );
     int e = errno;
     assert( e == ENOTDIR );
 

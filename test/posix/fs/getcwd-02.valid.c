@@ -20,9 +20,11 @@ int main()
 
 	res = getcwd(workingDir, 99);
 	assert ( res == workingDir );
+  __dios_trace_f( "cwd: %s", workingDir );
 	assert( strcmp(workingDir, "/hajdeby" ) == 0 );
 	chdir("fixa");
 	res = getcwd(workingDir, 99);
+  __dios_trace_f( "cwd: %s", workingDir );
 	assert( strcmp(workingDir, "/hajdeby/fixa" ) == 0 );
 	chdir("..");
 	res = getcwd(workingDir, 99);
