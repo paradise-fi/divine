@@ -542,18 +542,20 @@ auto prog( std::string p )
 
 auto prog_int( std::string first, std::string next )
 {
-    return prog(
-        R"(void __sched() {
-            int *r = __vm_ctl_get( 5 ); __vm_trace( 0, "foo" );
-            *r = )" + next + R"(;
-            if ( *r < 0 ) __vm_ctl_flag( 0, 0b10000 );
-            __vm_ctl_set( 2, 0 );
-        }
-        void __boot( void *environ ) {
-            __vm_ctl_set( 4, __sched );
-            void *e = __vm_obj_make( sizeof( int ) );
-            __vm_ctl_set( 5, e );
-            int *r = e; *r = )" + first + "; __vm_ctl_set( 2, 0 ); }"s );
+    std::stringstream p;
+    p << "void __sched() {" << std::endl
+      << "    int *r = __vm_ctl_get( " << _VM_CR_State << " ); __vm_trace( 0, \"foo\" );" << std::endl
+      << "    *r = " << next << ";" << std::endl
+      << "    if ( *r < 0 ) __vm_ctl_flag( 0, 0b10000 );" << std::endl
+      << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 );" << std::endl
+      << "}" << std::endl
+      << "void __boot( void *environ ) {"
+      << "    __vm_ctl_set( " << _VM_CR_Scheduler << ", __sched );"
+      << "    void *e = __vm_obj_make( sizeof( int ) );"
+      << "    __vm_ctl_set( " << _VM_CR_State << ", e );"
+      << "    int *r = e; *r = " << first << ";"
+      << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 ); }" << std::endl;
+    return prog( p.str() );
 }
 
 }
