@@ -10,8 +10,12 @@ int main() {
     errno = 0;
     DIR *d = opendir( "dir" );
     assert( d != NULL );
+    closedir( d );
+
     DIR *e = opendir( "dir/x" );
     assert( e == NULL );
     assert( errno == EACCES );
+    closedir( e );
+
     return 0;
 }

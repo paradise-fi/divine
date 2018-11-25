@@ -10,5 +10,6 @@ int main() {
     DIR *d = fdopendir( 1 );
     assert( d == NULL );
     assert( errno == ENOTDIR );
+    closedir( d );
     return 0;
 }

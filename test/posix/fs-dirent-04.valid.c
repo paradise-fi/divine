@@ -10,5 +10,6 @@ int main() {
     DIR *d = opendir( "dir" );
     assert( d == NULL );
     assert( errno == ENOENT );
+    closedir( d );
     return 0;
 }
