@@ -43,6 +43,7 @@ union ControlRegister
 };
 
 using ControlRegisters = std::array< ControlRegister, _VM_CR_Last >;
+using PersistRegisters = std::array< ControlRegister, _VM_CR_PersistLast >;
 
 template< typename _Program, typename _Heap >
 struct Context

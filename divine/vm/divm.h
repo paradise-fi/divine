@@ -230,19 +230,21 @@ enum _VM_ControlRegister
     _VM_CR_Constants,        /* read-only,  pointer */
     _VM_CR_Globals,          /* read-write, pointer */
     _VM_CR_Frame,            /* read-write, pointer */
-    _VM_CR_PC,               /* read-write, code pointer */
-
-    _VM_CR_Scheduler,        /* write-once, function pointer */
-    _VM_CR_State,            /* write-once, pointer */
     _VM_CR_Flags,            /* read-write, _VM_Flags */
 
-    _VM_CR_FaultHandler,     /* write-once, function pointer */
     _VM_CR_ObjIdShuffle,
-
     _VM_CR_User1,
     _VM_CR_User2,
     _VM_CR_User3,
-    _VM_CR_User4,
+
+    _VM_CR_User4, /* TODO remove */
+
+    _VM_CR_PersistLast,
+
+    _VM_CR_PC = _VM_CR_PersistLast, /* read-write, code pointer */
+    _VM_CR_Scheduler,        /* write-once, function pointer */
+    _VM_CR_State,            /* write-once, pointer */
+    _VM_CR_FaultHandler,     /* write-once, function pointer */
 
     _VM_CR_Last
 };
