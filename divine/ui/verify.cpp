@@ -94,7 +94,7 @@ void Verify::run()
         safety();
 }
 
-void Verify::print_ce( mc::Job &job )
+void Verify::print_ce( mc::Job &job ) try
 {
     dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
 
@@ -124,6 +124,21 @@ void Verify::print_ce( mc::Job &job )
         step._ff_components = dbg::Component::Kernel;
         step.run( dbg, Stepper::Quiet );
         _log->backtrace( dbg, _num_callers );
+    }
+}
+catch ( mc::BadTrace &bt )
+{
+    dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
+    job.dbg_fill( dbg );
+    int i = 1;
+
+    std::cerr << "E: Incomplete trace! This is a bug." << std::endl;
+    for ( auto c : bt.candidate )
+    {
+        auto exp_root = mc::root( dbg, bt.expected );
+        auto c_root = mc::root( dbg, c );
+        std::cerr << "candidate " << i++ << " failed, diff follows" << std::endl;
+        dbg::diff( std::cerr, exp_root, c_root );
     }
 }
 
