@@ -170,7 +170,7 @@ struct Eval
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
         ASSERT_LT( v.location, Slot::Invalid );
-        return context().get_ptr( v.location ) + v.offset + off;
+        return context().get_ptr( _VM_ControlRegister( v.location ) ) + v.offset + off;
     }
 
     GenericPointer s2ptr( Slot v, int off, HeapPointer f )
