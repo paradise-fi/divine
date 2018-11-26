@@ -102,6 +102,8 @@ auto test( std::unique_ptr< llvm::Module > m, Passes&&... passes )
     lart::Driver drv;
     drv.setup( CreateAbstractMetadata()
              , VPA()
+             , Decast()
+             , VPA()
              , Duplicator()
              , Stash()
              , ExpandBranching()
@@ -111,6 +113,10 @@ auto test( std::unique_ptr< llvm::Module > m, Passes&&... passes )
 }
 
 using namespace abstract;
+
+inline bool returns_abstract( llvm::Function * call ) {
+    return call->back().getTerminator()->getMetadata( "lart.domains" );
+}
 
 struct TestBase
 {
@@ -182,7 +188,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT_EQ( abstract_metadata( main ).size(), 3 );
+        ASSERT_EQ( abstract_metadata( main ).size(), 2 );
     }
 
     TEST( types ) {
@@ -195,7 +201,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT_EQ( abstract_metadata( main ).size(), 9 );
+        ASSERT_EQ( abstract_metadata( main ).size(), 6 );
     }
 
     TEST( binary_ops ) {
@@ -232,7 +238,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_twice ) {
@@ -246,7 +252,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_independent ) {
@@ -260,7 +266,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_two_args_mixed ) {
@@ -274,7 +280,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_two_args_abstract ) {
@@ -288,7 +294,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_two_args_multiple_times ) {
@@ -305,7 +311,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_two_times_from_different_source ) {
@@ -320,10 +326,10 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call1 = m->getFunction( "_Z5call1i" );
         ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
         ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call2 ) );
     }
 
     TEST( propagate_from_call_not_returning_abstract ) {
@@ -337,7 +343,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( !call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( !returns_abstract( call ) );
     }
 
     TEST( call_propagate_1 ) {
@@ -354,7 +360,7 @@ struct Abstraction : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto call = m->getFunction( "_Z4callv" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_propagate_back_multiple_times ) {
@@ -377,10 +383,10 @@ struct Abstraction : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto add = m->getFunction( "_Z3addv" );
         ASSERT( add->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( add->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( add ) );
         auto nondet = m->getFunction( "_Z6nondetv" );
         ASSERT( nondet->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( nondet->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( nondet ) );
     }
 
     TEST( call_propagate_deeper_1 ) {
@@ -401,10 +407,10 @@ struct Abstraction : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto call1 = m->getFunction( "_Z5call1v" );
         ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
         ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call2 ) );
     }
 
     TEST( call_propagate_deeper_2 ) {
@@ -428,16 +434,16 @@ struct Abstraction : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto call1 = m->getFunction( "_Z5call1v" );
         ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
         ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call2 ) );
         auto call3 = m->getFunction( "_Z5call3i" );
         ASSERT( call3->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call3->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call3 ) );
         auto call4 = m->getFunction( "_Z5call4i" );
         ASSERT( call4->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call4->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call4 ) );
     }
 
     TEST( switch_test ) {
@@ -504,7 +510,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
         ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
     }
 
@@ -525,7 +531,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( !call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( !returns_abstract( call ) );
         ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
     }
 
@@ -544,7 +550,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
         ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
     }
 
@@ -609,7 +615,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
     }
 
     TEST( struct_nested_1 ) {
@@ -625,7 +631,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
     }
 
     TEST( struct_nested_2 ) {
@@ -642,7 +648,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
     }
 
     TEST( output_int_arg_1 ) {
@@ -658,7 +664,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         auto init = m->getFunction( "_Z4initPi" );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
     }
@@ -677,7 +683,7 @@ struct Abstraction : TestBase
         auto main = m->getFunction( "main" );
         auto init = m->getFunction( "_Z4initPii" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
     }
 
@@ -702,7 +708,7 @@ struct Abstraction : TestBase
         auto init_impl = m->getFunction( "_Z9init_implPi" );
 
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
         ASSERT( init_impl->getMetadata( "lart.abstract.roots" ) );
     }
@@ -726,7 +732,7 @@ struct Abstraction : TestBase
         auto init = m->getFunction( "_Z4initPi" );
         auto init_impl = m->getFunction( "_Z9init_implPii" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
         ASSERT( init_impl->getMetadata( "lart.abstract.roots" ) );
     }
@@ -746,7 +752,7 @@ struct Abstraction : TestBase
         auto main = m->getFunction( "main" );
         auto init = m->getFunction( "_Z4initP6Widget" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
     }
 
@@ -770,10 +776,10 @@ struct Abstraction : TestBase
         auto init = m->getFunction( "_Z4initP6Widget" );
         auto check = m->getFunction( "_Z5checkP6Widget" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
         ASSERT( check->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( check->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( check ) );
     }
 
     TEST( output_struct_arg_3 ) {
@@ -799,7 +805,7 @@ struct Abstraction : TestBase
         auto init = m->getFunction( "_Z4initP6Widget" );
         auto init_store = m->getFunction( "_Z4initP5StoreP6Widget" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( init->getMetadata( "lart.abstract.roots" ) );
         ASSERT( init_store->getMetadata( "lart.abstract.roots" ) );
     }
@@ -818,9 +824,9 @@ struct Abstraction : TestBase
         auto main = m->getFunction( "main" );
         auto f = m->getFunction( "_Z1fv" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
         ASSERT( f->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( f->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( f ) );
     }
 };
 
@@ -869,7 +875,7 @@ struct Substitution : TestBase
         auto m = test_substitution( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
     }
 
     TEST( types ) {
@@ -921,7 +927,7 @@ struct Substitution : TestBase
         auto m = test_substitution( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( main->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( main ) );
     }
 
     TEST( switch_test ) {
@@ -981,7 +987,7 @@ struct Substitution : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto call = m->getFunction( "_Z4callv" );
         ASSERT( call->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call ) );
     }
 
     TEST( call_propagate_deeper_1 ) {
@@ -1002,10 +1008,10 @@ struct Substitution : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto call1 = m->getFunction( "_Z5call1v" );
         ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
         ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call2 ) );
     }
 
     TEST( call_propagate_deeper_2 ) {
@@ -1029,16 +1035,16 @@ struct Substitution : TestBase
         ASSERT( main->getMetadata( "lart.abstract.roots" ) );
         auto call1 = m->getFunction( "_Z5call1v" );
         ASSERT( call1->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call1->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
         ASSERT( call2->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call2->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call2 ) );
         auto call3 = m->getFunction( "_Z5call3i" );
         ASSERT( call3->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call3->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call3 ) );
         auto call4 = m->getFunction( "_Z5call4i" );
         ASSERT( call4->getMetadata( "lart.abstract.roots" ) );
-        ASSERT( call4->back().getTerminator()->getMetadata( "lart.domains" ) );
+        ASSERT( returns_abstract( call4 ) );
     }
 
     TEST( call_undef_return ) {
