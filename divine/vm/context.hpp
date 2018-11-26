@@ -90,11 +90,15 @@ struct Context
         return get( r ).integer;
     }
 
+    GenericPointer state_ptr() const { return get_ptr( _VM_CR_State ); }
+    GenericPointer scheduler() const { return get_ptr( _VM_CR_Scheduler ); }
     GenericPointer fault_handler() const { return get_ptr( _VM_CR_FaultHandler ); }
     GenericPointer frame() const { return get_ptr( _VM_CR_Frame ); }
     GenericPointer pc() const { return get_ptr( _VM_CR_PC ); }
     uint64_t flags() const { return get_int( _VM_CR_Flags ); }
-    uint64_t objid_shuffle() const { return get_int( _VM_CR_ObjIdShuffle ); }
+    uint64_t &objid_shuffle() { return ref( _VM_CR_ObjIdShuffle ).integer; }
+    uint32_t instruction_count() { return _instruction_counter; }
+    void instruction_count( uint32_t v ) { _instruction_counter = v; }
 
     template< typename Ctx >
     void load( const Ctx &ctx )
