@@ -126,19 +126,19 @@ struct Stepper
         if ( !ctx.frame().null() )
             return false; /* nothing to be done */
 
-        if ( _stop_on_error && ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error ) )
+        if ( _stop_on_error && ( ctx.flags_any( _VM_CF_Error ) ) )
             return false; /* can't schedule if there is an error and we should stop */
 
         if ( _booting && ctx.frame().null() && !vm::setup::postboot_check( ctx ) )
             return false; /* boot failed */
 
-        if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
+        if ( ctx.flags_any( _VM_CF_Cancel ) )
             return true;
 
         _booting = false;
         if ( _yield_state )
             ctx.load( _yield_state( ctx.snapshot() ) );
-        if ( ctx.get( _VM_CR_Scheduler ).pointer.type() == vm::PointerType::Code )
+        if ( ctx.scheduler().type() == vm::PointerType::Code )
             vm::setup::scheduler( ctx );
         else
             return false;

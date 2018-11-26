@@ -54,8 +54,8 @@ template< typename Context >
 void Stepper< Context >::run( Context &ctx, Verbosity verb )
 {
     vm::Eval< Context > eval( ctx );
-    auto fault_handler = vm::CodePointer( ctx.get( _VM_CR_FaultHandler ).pointer ).function();
-    bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
+    auto fault_handler = vm::CodePointer( ctx.fault_handler() ).function();
+    bool error_set = !_stop_on_error || ctx.flags_any( _VM_CF_Error );
     bool moved = false, in_fault, rewind_to_fault = false;
     Context _backup( ctx.program(), ctx.debug() );
 
@@ -66,7 +66,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     {
         in_fault = eval.pc().function() == fault_handler;
 
-        if ( !error_set && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error )
+        if ( !error_set && ctx.flags_any( _VM_CF_Error ) )
         {
             if ( rewind_to_fault )
                 ctx = _backup;
@@ -74,7 +74,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             break;
         }
 
-        if ( _stop_on_accept && ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting )
+        if ( _stop_on_accept && ctx.flags_any( _VM_CF_Accepting ) )
             break;
 
         if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_components )
@@ -117,7 +117,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             if ( ctx.heap().valid( frame ) )
             {
                 auto newframe = ctx.frame();
-                auto newpc = ctx.get( _VM_CR_PC ).pointer;
+                auto newpc = ctx.pc();
                 ctx.set( _VM_CR_Frame, frame ); /* :-( */
                 ctx.set( _VM_CR_PC, oldpc );
                 output = printer( ctx.debug(), eval ).instruction( 2 );

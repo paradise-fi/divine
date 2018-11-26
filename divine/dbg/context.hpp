@@ -132,20 +132,20 @@ struct Context : DNContext< Heap >
         if ( _lock_mode != LockBoth )
             return (this->*up)( pc, args... );
 
-        if ( !_lock.interrupts.empty() && this->_instruction_counter > _lock.interrupts.front().ictr )
+        if ( !_lock.interrupts.empty() && this->instruction_count() > _lock.interrupts.front().ictr )
         {
             std::cerr << "current function: "
                       << this->debug().function( pc )->getName().str() << std::endl;
             std::cerr << "interrupt expected in:"
                       << this->debug().function( _lock.interrupts.front().pc )->getName().str()
                       << std::endl;
-            std::cerr << "current counter: " << this->_instruction_counter << std::endl;
+            std::cerr << "current counter: " << this->instruction_count() << std::endl;
             std::cerr << "expected counter: " << _lock.interrupts.front().ictr << std::endl;
             std::cerr << "expected pc: " << _lock.interrupts.front().pc << std::endl;
             UNREACHABLE( "mismatched interrupt" );
         }
 
-        if ( !_lock.interrupts.empty() && this->_instruction_counter == _lock.interrupts.front().ictr )
+        if ( !_lock.interrupts.empty() && this->instruction_count() == _lock.interrupts.front().ictr )
         {
             ASSERT_EQ( t, _lock.interrupts.front().type );
             ASSERT_EQ( pc, _lock.interrupts.front().pc );
@@ -252,7 +252,7 @@ struct Context : DNContext< Heap >
     {
         if ( ( comp & Component::Kernel ) && this->in_kernel() )
             return true;
-        return this->debug().in_component( this->get( _VM_CR_PC ).pointer, comp );
+        return this->debug().in_component( this->pc(), comp );
     }
 };
 
