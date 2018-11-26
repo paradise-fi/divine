@@ -23,48 +23,35 @@
 namespace divine::vm
 {
 
-template< typename P, typename H >
-bool Context< P, H >::enter_debug()
+template< typename H >
+void TracingContext< H >::debug_save()
 {
-    if ( !debug_allowed() )
-        -- _instruction_counter; /* dbg.call does not count */
-
-    if ( debug_allowed() && !debug_mode() )
-    {
-        -- _instruction_counter;
-        ASSERT_EQ( _debug_depth, 0 );
-        _debug_reg = _reg;
-        _reg[ _VM_CR_Flags ].integer |= _VM_CF_DebugMode;
-        with_snap( [&]( auto &h ) { _debug_snap = h.snapshot(); } );
-        return true;
-    }
-    else
-        return false;
+    _debug_snap = this->heap().snapshot();
+    this->flush_ptr2i();
 }
 
-template< typename P, typename H >
-void Context< P, H >::leave_debug()
+template< typename H >
+void TracingContext< H >::debug_restore()
 {
-    ASSERT( debug_allowed() );
-    ASSERT( debug_mode() );
-    ASSERT( !_debug_depth );
-    _reg = _debug_reg;
     if ( _debug_persist.empty() )
-        with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
+    {
+        this->heap().restore( _debug_snap );
+    }
     else
     {
-        Heap from = heap();
-        with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
+        auto from = this->heap();
+        this->heap().restore( _debug_snap );
         for ( auto ptr : _debug_persist )
         {
             if ( !from.valid( ptr ) ) continue;
-            heap().free( ptr );
-            auto res = heap().make( from.size( ptr ), ptr.object(), true ).cooked();
+            this->heap().free( ptr );
+            auto res = this->heap().make( from.size( ptr ), ptr.object(), true ).cooked();
             ASSERT_EQ( res.object(), ptr.object() );
-            heap().copy( from, ptr, ptr, from.size( ptr ) );
+            this->heap().copy( from, ptr, ptr, from.size( ptr ) );
         }
         _debug_persist.clear();
     }
+    this->flush_ptr2i();
 }
 
 template< typename P, typename H >
@@ -73,32 +60,30 @@ void Context< P, H >::trace( TraceLeakCheck )
     bool flagged = false;
     auto leak = [&]( HeapPointer ptr )
     {
-        if ( GenericPointer( ptr ) == get( _VM_CR_Constants ).pointer )
+        if ( ptr == this->constants() )
             return;
         if ( program().metadata_ptr.count( ptr ) )
             return;
         if ( !flagged )
-            fault( _VM_F_Leak, get( _VM_CR_Frame ).pointer, get( _VM_CR_PC ).pointer );
+            fault( _VM_F_Leak, this->frame(), this->pc() );
         flagged = true;
         trace( "LEAK: " + brick::string::fmt( ptr ) );
     };
 
-    if ( debug_mode() )
+    if ( this->debug_mode() )
         return;
 
     /* FIXME 'are we in a fault handler?' duplicated with Eval::fault() */
-    PointerV frame( get( _VM_CR_Frame ).pointer ), fpc;
+    PointerV frame( this->frame() ), fpc;
     while ( !frame.cooked().null() )
     {
-        heap().read_shift( frame, fpc );
-        if ( fpc.cooked().object() == get( _VM_CR_FaultHandler ).pointer.object() )
+        this->heap().read_shift( frame, fpc );
+        if ( fpc.cooked().object() == this->fault_handler().object() )
             return; /* already handling a faut */
-        heap().read( frame.cooked(), frame );
+        this->heap().read( frame.cooked(), frame );
     }
 
-    mem::leaked( heap(), leak, get( _VM_CR_State ).pointer,
-                               get( _VM_CR_Frame ).pointer,
-                               get( _VM_CR_Globals ).pointer );
+    mem::leaked( this->heap(), leak, this->state_ptr(), Base::frame(), Base::globals() );
 }
 
 }

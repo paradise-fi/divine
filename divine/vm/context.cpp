@@ -23,6 +23,33 @@
 namespace divine::vm
 {
 
+bool Tracing::enter_debug()
+{
+    if ( !debug_allowed() )
+        -- _state.instruction_counter; /* dbg.call does not count */
+
+    if ( debug_allowed() && !debug_mode() )
+    {
+        -- _state.instruction_counter;
+        ASSERT_EQ( _debug_depth, 0 );
+        _debug_state = _state;
+        this->flags_set( 0, _VM_CF_DebugMode );
+        this->debug_save();
+        return true;
+    }
+    else
+        return false;
+}
+
+void Tracing::leave_debug()
+{
+    ASSERT( debug_allowed() );
+    ASSERT( debug_mode() );
+    ASSERT( !_debug_depth );
+    _state = _debug_state;
+    this->debug_restore();
+}
+
 template struct Context< Program, CowHeap >;
 template struct Context< Program, SmallHeap >;
 template struct Context< Program, MutableHeap >;

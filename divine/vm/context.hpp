@@ -35,6 +35,10 @@ namespace divine::vm
 
 struct TraceSchedChoice { value::Pointer list; };
 
+using Location = _VM_Operand::Location;
+using PtrRegister = GenericPointer;
+using IntRegister = uint64_t;
+
 union ControlRegister
 {
     GenericPointer pointer;
@@ -45,239 +49,172 @@ union ControlRegister
 using ControlRegisters = std::array< ControlRegister, _VM_CR_Last >;
 using PersistRegisters = std::array< ControlRegister, _VM_CR_PersistLast >;
 
-template< typename _Program, typename _Heap >
-struct Context
+/* state of a computation */
+struct State
 {
-    using Program = _Program;
-    using Heap = _Heap;
-    using PointerV = value::Pointer;
-    using HeapInternal = typename Heap::Internal;
-    using Location = typename Program::Slot::Location;
-    using Snapshot = typename Heap::Snapshot;
+    std::array< PtrRegister, _VM_CR_PtrCount > ptr;
+    std::array< PtrRegister, _VM_CR_UserCount > user;
+    IntRegister flags = 0, objid_shuffle = 0;
+    uint32_t instruction_counter = 0;
+    std::vector< std::unordered_set< GenericPointer > > loops;
+};
 
-    ControlRegisters _reg, _debug_reg;
-
-    /* indexed by _VM_ControlRegister */
-    HeapInternal _ptr2i[ _VM_CR_Frame + 1 ];
-
-    Program *_program;
-    Heap _heap;
-    std::vector< Interrupt > _interrupts;
-
-    uint32_t _instruction_counter;
-    int _debug_depth = 0;
-    bool _debug_allowed = false, _track_mem = false, _incremental_enter = false;
-    std::vector< HeapPointer > _debug_persist;
-    Snapshot _debug_snap;
-
-    using MemMap = brick::data::IntervalSet< GenericPointer >;
-    std::vector< std::unordered_set< GenericPointer > > _loops;
-    MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
-
-    bool debug_allowed() { return _debug_allowed; }
-    bool debug_mode() { return _reg[ _VM_CR_Flags ].integer & _VM_CF_DebugMode; }
-    void enable_debug() { _debug_allowed = true; }
-    void track_memory( bool b ) { _track_mem = b; }
-
-    GenericPointer get_ptr( Location l ) const { return get_ptr( _VM_ControlRegister( l ) ); }
-    GenericPointer get_ptr( _VM_ControlRegister r ) const
-    {
-        return get( r ).pointer;
-    }
-
-    uint64_t get_int( _VM_ControlRegister r ) const
-    {
-        return get( r ).integer;
-    }
-
-    GenericPointer state_ptr() const { return get_ptr( _VM_CR_State ); }
-    GenericPointer scheduler() const { return get_ptr( _VM_CR_Scheduler ); }
-    GenericPointer fault_handler() const { return get_ptr( _VM_CR_FaultHandler ); }
-    GenericPointer frame() const { return get_ptr( _VM_CR_Frame ); }
-    GenericPointer pc() const { return get_ptr( _VM_CR_PC ); }
-    uint64_t flags() const { return get_int( _VM_CR_Flags ); }
-    uint64_t &objid_shuffle() { return ref( _VM_CR_ObjIdShuffle ).integer; }
-    uint32_t instruction_count() { return _instruction_counter; }
-    void instruction_count( uint32_t v ) { _instruction_counter = v; }
-
-    template< typename Ctx >
-    void load( const Ctx &ctx )
-    {
-        clear();
-        for ( int i = 0; i < _VM_CR_Last; ++i )
-        {
-            auto cr = _VM_ControlRegister( i );
-            if ( cr == _VM_CR_Flags || cr == _VM_CR_User2 )
-                set( cr, ctx.get( cr ).integer );
-            else
-                set( cr, ctx.get( cr ).pointer );
-        }
-        ASSERT( !debug_mode() );
-        _heap = ctx.heap();
-    }
-
-    void reset_interrupted()
-    {
-        _loops.clear();
-        _loops.emplace_back();
-    }
-
-    void clear()
-    {
-        _interrupts.clear();
-        reset_interrupted();
-        flush_ptr2i();
-        set( _VM_CR_User1, 0 );
-        set( _VM_CR_User2, 0 );
-        set( _VM_CR_User3, 0 );
-        set( _VM_CR_User4, 0 );
-        set( _VM_CR_ObjIdShuffle, 0 );
-        _mem_loads.clear();
-        _mem_stores.clear();
-        _crit_loads.clear();
-        _crit_stores.clear();
-        _instruction_counter = 0;
-    }
-
-    void load( Snapshot snap ) { _heap.restore( snap ); clear(); }
-    void reset() { _heap.reset(); clear(); }
-
-    template< typename I >
-    int choose( int, I, I ) { return 0; }
+struct Registers
+{
+    State _state; /* TODO make this a ref */
+    PtrRegister _pc;
+    PtrRegister _fault_handler, _state_ptr, _scheduler;
 
     void set( _VM_ControlRegister r, uint64_t v )
     {
-        _reg[ r ].integer = v;
-        if ( r == _VM_CR_Flags && _debug_depth )
-            ASSERT( debug_mode() );
+        ASSERT( r == _VM_CR_Flags || r == _VM_CR_ObjIdShuffle );
+        if ( r == _VM_CR_Flags )
+            _state.flags = v;
+        else
+            _state.objid_shuffle = v;
+    }
+
+    PtrRegister &_ref_ptr( _VM_ControlRegister r )
+    {
+        ASSERT( r != _VM_CR_ObjIdShuffle && r != _VM_CR_Flags );
+
+        if ( r < _VM_CR_PtrCount )
+            return _state.ptr[ r ];
+        else if ( r < _VM_CR_PtrCount + _VM_CR_UserCount )
+            return _state.user[ r - _VM_CR_User1 ];
+        else if ( r == _VM_CR_Scheduler )
+            return _scheduler;
+        else if ( r == _VM_CR_FaultHandler )
+            return _fault_handler;
+        else if ( r == _VM_CR_State )
+            return _state_ptr;
+        else if ( r == _VM_CR_PC )
+            return _pc;
+        else __builtin_unreachable();
+    }
+
+    PtrRegister _ref_ptr( _VM_ControlRegister r ) const
+    {
+        return const_cast< Registers * >( this )->_ref_ptr( r );
     }
 
     void set( _VM_ControlRegister r, GenericPointer v )
     {
-        _reg[ r ].pointer = v;
-        if ( r <= _VM_CR_Frame )
-            _ptr2i[ r ] = v.null() ? HeapInternal() : _heap.ptr2i( v );
+        _ref_ptr( r ) = v;
     }
 
-    ControlRegister get( _VM_ControlRegister r ) const { return _reg[ r ]; }
-    ControlRegister get( Location l ) const { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
-    ControlRegister &ref( _VM_ControlRegister r ) { return _reg[ r ]; }
-
-    HeapInternal ptr2i( Location l )
+    PtrRegister get_ptr( _VM_ControlRegister r ) const
     {
-        ASSERT_LT( l, Program::Slot::Invalid );
-        ASSERT_EQ( _heap.ptr2i( _reg[ l ].pointer ), _ptr2i[ l ] );
-        return _ptr2i[ l ];
-    }
-    HeapInternal ptr2i( _VM_ControlRegister r ) { return ptr2i( Location( r ) ); }
-
-    void ptr2i( Location l, HeapInternal i ) { if ( i ) _ptr2i[ l ] = i; else flush_ptr2i(); }
-    void ptr2i( _VM_ControlRegister r, HeapInternal i ) { ptr2i( Location( r ), i ); }
-    void flush_ptr2i()
-    {
-        for ( int i = 0; i <= _VM_CR_Frame; ++i )
-            _ptr2i[ i ] = _heap.ptr2i( get( Location( i ) ).pointer );
+        return _ref_ptr( r );
+        NOT_IMPLEMENTED();
     }
 
-    Context( Program &p ) : Context( p, Heap() ) {}
-    Context( Program &p, const Heap &h ) : _program( &p ), _heap( h )
+    IntRegister get_int( _VM_ControlRegister r ) const
     {
-        for ( int i = 0; i < _VM_CR_Last; ++i )
-            _reg[ i ].integer = 0;
-    }
-    virtual ~Context() { }
-
-    Program &program() { return *_program; }
-    Heap &heap() { return _heap; }
-    const Heap &heap() const { return _heap; }
-    HeapPointer frame() { return get( _VM_CR_Frame ).pointer; }
-    HeapPointer globals() { return get( _VM_CR_Globals ).pointer; }
-    HeapPointer constants() { return get( _VM_CR_Constants ).pointer; }
-
-    typename Heap::Snapshot snapshot()
-    {
-        auto rv = _heap.snapshot();
-        flush_ptr2i();
-        return rv;
+        if ( r == _VM_CR_Flags )
+            return _state.flags;
+        if ( r == _VM_CR_ObjIdShuffle )
+            return _state.objid_shuffle;
+        NOT_IMPLEMENTED();
     }
 
-    void push( typename Program::Function &f, int i, HeapPointer )
+    uint32_t instruction_count() { return _state.instruction_counter; }
+    void instruction_count( uint32_t v ) { return _state.instruction_counter = v; }
+
+    void pc( PtrRegister pc ) { _pc = pc; }
+
+    PtrRegister pc() { return _pc; }
+    PtrRegister frame() { return _state.ptr[ _VM_CR_Frame ]; }
+    PtrRegister globals() { return _state.ptr[ _VM_CR_Globals ]; }
+    PtrRegister constants() { return _state.ptr[ _VM_CR_Constants ]; }
+    IntRegister &objid_shuffle() { return _state.objid_shuffle; }
+
+    PtrRegister fault_handler() { return _fault_handler; }
+    PtrRegister state_ptr() { return _state_ptr; }
+    PtrRegister scheduler() { return _scheduler; }
+
+    bool in_kernel() { return _state.flags & _VM_CF_KernelMode; }
+
+    uint64_t flags() { return _state.flags; }
+    bool flags_any( uint64_t f ) { return _state.flags & f; }
+    bool flags_all( uint64_t f ) { return ( _state.flags & f ) == f; }
+    void flags_set( uint64_t clear, uint64_t set )
     {
-        if ( _incremental_enter )
-        {
-            if ( i == f.argcount + f.vararg )
-                _incremental_enter = false;
-        }
-        else
-            ASSERT_EQ( f.argcount + f.vararg , i );
-    }
-
-    template< typename X, typename... Args >
-    void push( typename Program::Function &f, int i, HeapPointer p, X x, Args... args )
-    {
-        heap().write( p + f.instructions[ i ].result().offset, x );
-        push( f, i + 1, p, args... );
-    }
-
-    template< typename H, typename F >
-    static auto with_snap( H &heap, F f, brick::types::Preferred )
-        -> decltype( heap.is_shared( heap.snapshot() ), void( 0 ) )
-    {
-        f( heap );
-    }
-
-    template< typename H, typename F >
-    static void with_snap( H &, F, brick::types::NotPreferred )
-    {
-        /* nothing: debug mode does not need a rollback in 'run' */
-    }
-
-    template< typename F >
-    void with_snap( F f )
-    {
-        with_snap( heap(), f, brick::types::Preferred() );
-        flush_ptr2i();
-    }
-
-    bool enter_debug();
-    void leave_debug();
-
-    template< typename... Args >
-    void enter( CodePointer pc, PointerV parent, Args... args )
-    {
-        auto &f = program().function( pc );
-        auto frameptr = heap().make( f.framesize, 16 ).cooked();
-        set( _VM_CR_Frame, frameptr );
-        set( _VM_CR_PC, pc );
-        heap().write( frameptr, PointerV( pc ) );
-        heap().write( frameptr + PointerBytes, parent );
-        push( f, 0, frameptr, args... );
-        entered( pc );
-    }
-
-    bool test_loop( CodePointer pc, int /* TODO */ )
-    {
-        if ( flags_all( _VM_CF_IgnoreLoop ) || debug_mode() )
-            return false;
-
-        /* TODO track the counter value too */
-        if ( _loops.back().count( pc ) )
-            return track_test( Interrupt::Cfl, pc );
-        else
-            _loops.back().insert( pc );
-
-        return false;
+        _state.flags &= ~clear;
+        _state.flags |=  set;
     }
 
     void entered( CodePointer )
     {
-        if ( debug_mode() )
-            ++ _debug_depth;
-        else
-            _loops.emplace_back();
+        _state.loops.emplace_back();
     }
 
     void left( CodePointer )
+    {
+        _state.loops.pop_back();
+        if ( _state.loops.empty() ) /* more returns than calls could happen along an edge */
+            _state.loops.emplace_back();
+    }
+};
+
+struct TracingInterface
+{
+    virtual void trace( TraceText tt ) {}
+    virtual void trace( TraceDebugPersist ) {}
+    virtual void trace( TraceSchedInfo ) {}
+    virtual void trace( TraceSchedChoice ) {}
+    virtual void trace( TraceTaskID ) {}
+    virtual void trace( TraceStateType ) {}
+    virtual void trace( TraceTypeAlias ) {}
+    virtual void trace( TraceInfo ) {}
+    virtual void trace( TraceAssume ) {}
+    virtual void trace( TraceLeakCheck ) {}
+    virtual void trace( std::string ) {}
+    virtual ~TracingInterface() {}
+};
+
+struct NoTracing : Registers, TracingInterface
+{
+    bool enter_debug() {}
+    void leave_debug() {}
+    bool debug_allowed() { return false; }
+
+    /* an interface for debug mode implementation */
+    void debug_save() {}
+    void debug_restore() {}
+};
+
+struct Tracing : Registers, TracingInterface
+{
+    State _debug_state;
+    int _debug_depth = 0;
+    bool _debug_allowed = false;
+    std::vector< Interrupt > _interrupts;
+
+    bool debug_allowed() { return _debug_allowed; }
+    bool debug_mode() { return flags_any( _VM_CF_DebugMode ); }
+    void enable_debug() { _debug_allowed = true; }
+
+    bool enter_debug();
+    void leave_debug();
+
+    using Registers::set;
+    void set( _VM_ControlRegister r, uint64_t v )
+    {
+        Registers::set( r, v );
+        if ( _debug_depth )
+            ASSERT( debug_mode() );
+    }
+
+    void entered( CodePointer f )
+    {
+        if ( debug_mode() )
+            ++ _debug_depth;
+        else
+            Registers::entered( f );
+    }
+
+    void left( CodePointer f )
     {
         if ( debug_mode() )
         {
@@ -287,23 +224,281 @@ struct Context
                 leave_debug();
         }
         else
+            Registers::left( f );
+    }
+
+    virtual void debug_save() {}
+    virtual void debug_restore() {}
+};
+
+template< typename Heap_ >
+struct Memory
+{
+    using Heap = Heap_;
+    using HeapInternal = typename Heap::Internal;
+    using Snapshot = typename Heap::Snapshot;
+
+    Heap _heap; /* TODO make this a reference */
+    std::array< HeapInternal, _VM_CR_PtrCount > _ptr2i;
+
+    Memory( Registers &regs, Heap h )
+        : _heap( h )
+    {
+        flush_ptr2i( regs );
+
+        if ( !regs.frame().null() )
         {
-            _loops.pop_back();
-            if ( _loops.empty() ) /* more returns than calls could happen along an edge */
-                _loops.emplace_back();
+            PointerV pc;
+            this->heap().read( regs.frame(), pc );
+            regs.pc( pc.cooked() );
         }
+    }
+
+    Heap &heap() { return _heap; }
+    const Heap &heap() const { return _heap; }
+
+    void set( _VM_ControlRegister r, GenericPointer v )
+    {
+        if ( r < _VM_CR_PtrCount )
+            _ptr2i[ r ] = v.null() ? HeapInternal() : _heap.ptr2i( v );
+    }
+
+    HeapInternal ptr2i( Registers &regs, Location l )
+    {
+        ASSERT_LT( l, _VM_Operand::Invalid );
+        ASSERT_EQ( _heap.ptr2i( regs.get_ptr( _VM_ControlRegister( l ) ) ), _ptr2i[ l ] );
+        return _ptr2i[ l ];
+    }
+
+    void ptr2i( Registers &regs, Location l, HeapInternal i )
+    {
+        if ( i )
+            _ptr2i[ l ] = i;
+        else
+            flush_ptr2i( regs );
+    }
+
+    void flush_ptr2i( Registers &regs )
+    {
+        for ( int i = 0; i < _VM_CR_PtrCount; ++i )
+            _ptr2i[ i ] = _heap.ptr2i( regs.get_ptr( _VM_ControlRegister( i ) ) );
+    }
+
+    void sync_pc( Registers &regs )
+    {
+        if ( regs.frame().null() )
+            return;
+        auto loc = _heap.loc( regs.frame(), ptr2i( regs, Location( _VM_CR_Frame ) ) );
+        auto newfr = _heap.write( loc, PointerV( regs.pc() ) );
+        ptr2i( regs, Location( _VM_CR_Frame ), newfr );
+    }
+
+    void debug_save() {}
+    void debug_restore() {}
+};
+
+template< typename Reg, typename Mem >
+struct ContextBase : Reg, Mem
+{
+    using HeapInternal = typename Mem::HeapInternal;
+
+    ContextBase( typename Mem::Heap h )
+        : Mem( *this, h )
+    {}
+
+    HeapInternal ptr2i( Location l ) { return Mem::ptr2i( *this, l ); }
+    void ptr2i( Location l, HeapInternal i ) { return Mem::ptr2i( *this, l, i ); }
+    void flush_ptr2i() { return Mem::flush_ptr2i( *this ); }
+    void sync_pc() { return Mem::sync_pc( *this ); }
+
+    using Reg::set;
+    void set( _VM_ControlRegister r, GenericPointer v )
+    {
+        Reg::set( r, v );
+        Mem::set( r, v );
+    }
+
+    using Reg::trace;
+    virtual void trace( TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
+};
+
+template< typename Heap >
+struct TracingContext : ContextBase< Tracing, Memory< Heap > >
+{
+    using Base = ContextBase< Tracing, Memory< Heap > >;
+
+    TracingContext( typename Base::Heap h )
+        : Base( h )
+    {}
+
+    std::vector< HeapPointer > _debug_persist;
+    typename Base::Snapshot _debug_snap;
+
+    using Base::trace;
+    virtual void trace( TraceDebugPersist t ) { _debug_persist.push_back( t.ptr ); }
+
+    virtual void debug_save() override;
+    virtual void debug_restore() override;
+};
+
+template< typename Ctx >
+struct MakeFrame
+{
+    Ctx &_ctx;
+    typename Ctx::Program::Function *_fun = nullptr;
+    CodePointer _pc;
+    bool _incremental;
+
+    MakeFrame( Ctx &ctx, CodePointer pc, bool inc = false )
+        : _ctx( ctx ), _pc( pc ), _incremental( inc )
+    {
+        if ( _pc.function() )
+            _fun = &ctx.program().function( pc );
+    }
+
+    void push( int i, HeapPointer )
+    {
+        if ( _incremental )
+        {
+            if ( i == _fun->argcount + _fun->vararg )
+                _incremental = false;
+        }
+        else
+            ASSERT_EQ( _fun->argcount + _fun->vararg , i );
+    }
+
+    template< typename X, typename... Args >
+    void push( int i, HeapPointer p, X x, Args... args )
+    {
+        _ctx.heap().write( p + _fun->instructions[ i ].result().offset, x );
+        push( i + 1, p, args... );
+    }
+
+    template< typename... Args >
+    void enter( PointerV parent, Args... args )
+    {
+        ASSERT( _fun );
+        auto frameptr = _ctx.heap().make( _fun->framesize, 16 ).cooked();
+        _ctx.set( _VM_CR_Frame, frameptr );
+        _ctx.pc( _pc );
+        _ctx.heap().write( frameptr, PointerV( _pc ) );
+        _ctx.heap().write( frameptr + PointerBytes, parent );
+        push( 0, frameptr, args... );
+        _ctx.entered( _pc );
+    }
+};
+
+template< typename Program_, typename Heap_ >
+struct Context : TracingContext< Heap_ >
+{
+    using Program = Program_;
+    using Heap = Heap_;
+    using PointerV = value::Pointer;
+    using Location = typename Program::Slot::Location;
+    using Snapshot = typename Heap::Snapshot;
+    using Base = TracingContext< Heap_ >;
+    using Base::_heap;
+
+    Program *_program;
+
+    using Base::trace;
+    virtual void trace( TraceLeakCheck ) override;
+
+    bool _track_mem = false;
+
+    using MemMap = brick::data::IntervalSet< GenericPointer >;
+    MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
+
+    void track_memory( bool b ) { _track_mem = b; }
+
+    template< typename Ctx >
+    void load( const Ctx &ctx )
+    {
+        clear();
+        for ( int i = 0; i < _VM_CR_Last; ++i )
+        {
+            auto cr = _VM_ControlRegister( i );
+            if ( cr == _VM_CR_Flags || cr == _VM_CR_ObjIdShuffle )
+                this->set( cr, ctx.get_int( cr ) );
+            else
+                this->set( cr, ctx.get_ptr( cr ) );
+        }
+        ASSERT( !this->debug_mode() );
+        this->_heap = ctx.heap();
+    }
+
+    void reset_interrupted()
+    {
+        this->_state.loops.clear();
+        this->_state.loops.emplace_back();
+    }
+
+    void clear()
+    {
+        this->_interrupts.clear();
+        reset_interrupted();
+        this->flush_ptr2i();
+        this->set( _VM_CR_User1, GenericPointer() );
+        this->set( _VM_CR_User2, GenericPointer() );
+        this->set( _VM_CR_User3, GenericPointer() );
+        this->set( _VM_CR_User4, GenericPointer() );
+        this->set( _VM_CR_ObjIdShuffle, 0 );
+        _mem_loads.clear();
+        _mem_stores.clear();
+        _crit_loads.clear();
+        _crit_stores.clear();
+        this->_state.instruction_counter = 0;
+    }
+
+    void load( Snapshot snap ) { _heap.restore( snap ); clear(); }
+    void reset() { _heap.reset(); clear(); }
+
+    template< typename I >
+    int choose( int, I, I ) { return 0; }
+
+    Context( Program &p ) : Context( p, Heap() ) {}
+    Context( Program &p, const Heap &h ) : Base( h ), _program( &p )
+    {}
+
+    virtual ~Context() { }
+
+    Program &program() { return *_program; }
+
+    HeapPointer frame() { return Base::frame(); }
+    HeapPointer globals() { return Base::globals(); }
+    HeapPointer constants() { return Base::constants(); }
+
+    typename Heap::Snapshot snapshot()
+    {
+        auto rv = _heap.snapshot();
+        this->flush_ptr2i();
+        return rv;
+    }
+
+    bool test_loop( CodePointer pc, int /* TODO */ )
+    {
+        if ( this->flags_all( _VM_CF_IgnoreLoop ) || this->debug_mode() )
+            return false;
+
+        /* TODO track the counter value too */
+        if ( this->_state.loops.back().count( pc ) )
+            return track_test( Interrupt::Cfl, pc );
+        else
+            this->_state.loops.back().insert( pc );
+
+        return false;
     }
 
     bool track_test( Interrupt::Type t, CodePointer pc )
     {
         // if ( _debug_allowed ) TODO
-            _interrupts.push_back( Interrupt{ t, _instruction_counter, pc } );
+            this->_interrupts.push_back( Interrupt{ t, this->_state.instruction_counter, pc } );
         return true;
     }
 
     bool test_crit( CodePointer pc, GenericPointer ptr, int size, int type )
     {
-        if ( flags_all( _VM_CF_IgnoreCrit ) || debug_mode() )
+        if ( this->flags_all( _VM_CF_IgnoreCrit ) || this->debug_mode() )
             return false;
 
         auto start = ptr;
@@ -333,67 +528,42 @@ struct Context
 
     void count_instruction()
     {
-        if ( !debug_mode() )
-            ++ _instruction_counter;
+        if ( !this->debug_mode() )
+            ++ this->_state.instruction_counter;
     }
 
-    virtual void trace( TraceDebugPersist t ) { _debug_persist.push_back( t.ptr ); }
-    virtual void trace( TraceText tt ) { trace( heap().read_string( tt.text ) ); }
-    virtual void trace( TraceSchedInfo ) {}
-    virtual void trace( TraceSchedChoice ) {}
-    virtual void trace( TraceTaskID ) {}
-    virtual void trace( TraceStateType ) {}
-    virtual void trace( TraceTypeAlias ) {}
-    virtual void trace( TraceInfo ) {}
-    virtual void trace( TraceAssume ) {}
-    virtual void trace( TraceLeakCheck );
-    virtual void trace( std::string ) {}
+    template< typename... Args >
+    void enter( CodePointer pc, PointerV parent, Args... args )
+    {
+        MakeFrame< Context > mkframe( *this, pc );
+        mkframe.enter( parent, args... );
+    }
 
     virtual void doublefault()
     {
-        ref( _VM_CR_Flags ).integer |= _VM_CF_Error;
-        set( _VM_CR_Frame, nullPointer() );
+        this->flags_set( 0, _VM_CF_Error );
+        this->set( _VM_CR_Frame, nullPointer() );
     }
 
     void fault( Fault f, HeapPointer frame, CodePointer pc )
     {
-        auto fh = get( _VM_CR_FaultHandler ).pointer;
-        if ( debug_mode() )
+        auto fh = this->fault_handler();
+        if ( this->debug_mode() )
         {
-            trace( "W: cannot handle a fault in debug mode (abandoned)" );
-            _debug_depth = 0; /* short-circuit */
-            leave_debug();
+            this->trace( "W: cannot handle a fault in debug mode (abandoned)" );
+            this->_debug_depth = 0; /* short-circuit */
+            this->leave_debug();
         }
         else if ( fh.null() )
         {
-            trace( "FATAL: no fault handler installed" );
+            this->trace( "FATAL: no fault handler installed" );
             doublefault();
         }
         else
-            enter( fh, PointerV( get( _VM_CR_Frame ).pointer ),
+            enter( fh, PointerV( this->frame() ),
                    value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
     }
 
-    void sync_pc()
-    {
-        ASSERT( !_incremental_enter ); /* as good a place as any... */
-        auto frame = get( _VM_CR_Frame ).pointer;
-        if ( frame.null() )
-            return;
-        auto pc = get( _VM_CR_PC ).pointer;
-        ptr2i( _VM_CR_Frame,
-               heap().write( heap().loc( frame, ptr2i( _VM_CR_Frame ) ), PointerV( pc ) ) );
-    }
-
-    bool in_kernel() { return ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode; }
-
-    bool flags_any( uint64_t f ) { return ref( _VM_CR_Flags ).integer & f; }
-    bool flags_all( uint64_t f ) { return ( ref( _VM_CR_Flags ).integer & f ) == f; }
-    void flags_set( uint64_t clear, uint64_t set )
-    {
-        ref( _VM_CR_Flags ).integer &= ~clear;
-        ref( _VM_CR_Flags ).integer |=  set;
-    }
 };
 
 template< typename Program, typename _Heap >
