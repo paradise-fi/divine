@@ -178,6 +178,7 @@ struct NoTracing : Registers, TracingInterface
     bool enter_debug() {}
     void leave_debug() {}
     bool debug_allowed() { return false; }
+    bool debug_mode() { return false; }
 
     /* an interface for debug mode implementation */
     void debug_save() {}
@@ -320,6 +321,14 @@ struct ContextBase : Reg, Mem
 
     using Reg::trace;
     virtual void trace( TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
+
+    void doublefault() {}
+    void fault( Fault, HeapPointer, CodePointer ) {}
+    bool test_loop( CodePointer, int ) {}
+    bool test_crit( CodePointer, GenericPointer, int, int ) {}
+
+    template< typename I >
+    int choose( int, I, I ) { return 0; }
 };
 
 template< typename Heap >
@@ -453,9 +462,6 @@ struct Context : TracingContext< Heap_ >
     void load( Snapshot snap ) { _heap.restore( snap ); clear(); }
     void reset() { _heap.reset(); clear(); }
 
-    template< typename I >
-    int choose( int, I, I ) { return 0; }
-
     Context( Program &p ) : Context( p, Heap() ) {}
     Context( Program &p, const Heap &h ) : Base( h ), _program( &p )
     {}
@@ -566,9 +572,14 @@ struct Context : TracingContext< Heap_ >
 
 };
 
-template< typename Program, typename _Heap >
-struct ConstContext : Context< Program, _Heap >
+template< typename Program_, typename Heap_ >
+struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >
 {
+    using Base = ContextBase< NoTracing, Memory< Heap_ > >;
+    using Program = Program_;
+    Program *_program;
+    Program &program() { return *_program; }
+
     void setup( int gds, int cds )
     {
         this->set( _VM_CR_Constants, this->heap().make( cds ).cooked() );
@@ -576,8 +587,15 @@ struct ConstContext : Context< Program, _Heap >
             this->set( _VM_CR_Globals, this->heap().make( gds ).cooked() );
     }
 
-    ConstContext( Program &p ) : Context< Program, _Heap >( p ) {}
-    ConstContext( Program &p, const _Heap &h ) : Context< Program, _Heap >( p, h ) {}
+    template< typename... Args >
+    void enter( CodePointer pc, PointerV parent, Args... args )
+    {
+        MakeFrame< ConstContext > mkframe( *this, pc );
+        mkframe.enter( parent, args... );
+    }
+
+    ConstContext( Program &p ) : ConstContext( p, Heap_() ) {}
+    ConstContext( Program &p, const Heap_ &h ) : Base( h ), _program( &p ) {}
 };
 
 }
