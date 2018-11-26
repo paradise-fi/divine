@@ -47,9 +47,9 @@ namespace divine::vm::setup
             return false; /* can't schedule if boot failed */
         if ( ctx.flags_any( _VM_CF_Cancel ) )
             return false;
-        if ( ctx.ref( _VM_CR_Scheduler ).pointer.type() != PointerType::Code )
+        if ( ctx.scheduler().type() != PointerType::Code )
             return false;
-        if ( !ctx.heap().valid( ctx.get( _VM_CR_State ).pointer ) )
+        if ( !ctx.heap().valid( ctx.state_ptr() ) )
             return false;
 
         return true;
@@ -58,7 +58,7 @@ namespace divine::vm::setup
     template< typename Context >
     void scheduler( Context &ctx )
     {
-        ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
+        ctx.enter( ctx.scheduler(), nullPointerV() );
         ctx.flags_set( -1, _VM_CF_KernelMode | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit );
         ctx.flush_ptr2i();
     }

@@ -154,7 +154,7 @@ struct Eval
             fault( _VM_F_Memory ) << "only allocations smaller than 16MiB are allowed";
             return PointerV( nullPointer() );
         }
-        ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
+        ++ context().objid_shuffle();
         uint32_t hint = mixdown( context().objid_shuffle(), context().frame().object() );
         auto p = heap().make( size, hint + off );
         ASSERT( p.cooked().type() == PointerType::Heap );
@@ -163,7 +163,7 @@ struct Eval
 
     bool freeobj( HeapPointer p )
     {
-        ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
+        ++ context().objid_shuffle();
         return heap().free( p );
     }
 
