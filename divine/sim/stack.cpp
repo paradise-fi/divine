@@ -49,7 +49,7 @@ struct Stack
 
     bool is_kernel()
     {
-        auto sched_pc = _i->_ctx.get( _VM_CR_Scheduler ).pointer;
+        auto sched_pc = _i->_ctx.scheduler();
         auto bottom_pc = bottom().pc();
         return sched_pc.object() == bottom_pc.object();
     }

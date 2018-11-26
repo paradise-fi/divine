@@ -32,7 +32,7 @@ void CLI::run( Stepper &step, Stepper::Verbosity verbose )
     _sigint = &step._sigint;
     brick::types::Defer _( [](){ _sigint = nullptr; } );
 
-    auto initial = location( _ctx.get( _VM_CR_PC ).pointer );
+    auto initial = location( _ctx.pc() );
     if ( !step._breakpoint )
         step._breakpoint = [&]( auto a, auto b ) { return check_bp( initial, a, b ); };
 
@@ -139,7 +139,7 @@ Snapshot CLI::newstate( Snapshot snap, bool update_choices, bool terse )
         name = _state_names[ snap ] = "#" + brick::string::fmt( ++_state_count );
         _state_refs[ snap ] = Context::RefCnt( _ctx._refcnt, snap );
         DN state( _ctx, snap );
-        state.address( dbg::DNKind::Object, _ctx.get( _VM_CR_State ).pointer );
+        state.address( dbg::DNKind::Object, _ctx.state_ptr() );
         state.type( _ctx._state_type );
         state.di_type( _ctx._state_di_type );
         set( name, state );
@@ -296,7 +296,7 @@ void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
                 return next;
             }
             visited.insert( next );
-            _ctx._instruction_counter = 0;
+            _ctx.instruction_count( 0 );
             if ( !simple )
                 update_lock( snap );
             last = get( "#last", true ).snapshot();

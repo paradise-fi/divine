@@ -85,15 +85,16 @@ void CLI::update()
 {
     set( "$top", frameDN() );
 
-    auto globals = _ctx.get( _VM_CR_Globals ).pointer;
-    if ( !get( "$globals", true ).valid() || get( "$globals" ).address() != globals )
+    auto globals = _ctx.globals();
+    if ( !get( "$globals", true ).valid() ||
+         get( "$globals" ).address() != vm::GenericPointer( globals ) )
     {
         DN gdn( _ctx, _ctx.snapshot() );
         gdn.address( dbg::DNKind::Globals, globals );
         set( "$globals", gdn );
     }
 
-    auto state = _ctx.get( _VM_CR_State ).pointer;
+    auto state = _ctx.state_ptr();
     if ( !get( "$state", true ).valid() || get( "$state" ).address() != state )
     {
         DN sdn( _ctx, _ctx.snapshot() );
@@ -145,15 +146,16 @@ void CLI::dump_registers()
     for ( int i = 0; i < _VM_CR_Last; ++i )
         name_length = std::max( name_length, std::strlen( __vmutil_reg_name( i ) ) );
 
-    for ( int i = 0; i < _VM_CR_Last; ++i ) {
+    for ( int i = 0; i < _VM_CR_Last; ++i )
+    {
         auto name = __vmutil_reg_name( i );
         int pad = name_length - strlen( name );
         out() << name << ": " << std::string( pad, ' ' );
         if ( i == _VM_CR_Flags )
-            dump_flags( _ctx.ref( _VM_CR_Flags ).integer, out() );
-        else
-            out() << std::hex << _ctx.ref( _VM_ControlRegister( i ) ).integer
-                    << std::dec << std::endl;
+            dump_flags( _ctx.flags(), out() );
+        else if ( i == _VM_CR_ObjIdShuffle )
+            out() << std::hex << _ctx.objid_shuffle() << std::dec << std::endl;
+        else  out() << _ctx.get_ptr( _VM_ControlRegister( i ) ) << std::endl;
     }
 }
 
