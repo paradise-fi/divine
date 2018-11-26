@@ -985,7 +985,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
 
     if ( context().flags_all( _VM_CF_KeepFrame ) )
     {
-        context().ref( _VM_CR_Flags ).integer &= ~_VM_CF_KeepFrame;
+        context().flags_set( _VM_CF_KeepFrame, 0 );
         free = false;
     }
     else if ( ptr.cooked() == GenericPointer( frame() ) )

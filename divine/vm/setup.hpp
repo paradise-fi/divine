@@ -37,16 +37,15 @@ namespace divine::vm::setup
         if ( fun.argcount != 1 )
             throw brick::except::Error( "__boot must take exactly 1 argument" );
         ctx.enter( ipc, nullPointerV(), value::Pointer( ctx.program().envptr() ) );
-        ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Booting |
-                                          _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit;
+        ctx.flags_set( -1, _VM_CF_KernelMode | _VM_CF_Booting | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit );
     }
 
     template< typename Context >
     bool postboot_check( Context &ctx )
     {
-        if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error )
+        if ( ctx.flags_any( _VM_CF_Error ) )
             return false; /* can't schedule if boot failed */
-        if ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel )
+        if ( ctx.flags_any( _VM_CF_Cancel ) )
             return false;
         if ( ctx.ref( _VM_CR_Scheduler ).pointer.type() != PointerType::Code )
             return false;
@@ -60,7 +59,7 @@ namespace divine::vm::setup
     void scheduler( Context &ctx )
     {
         ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
-        ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit;
+        ctx.flags_set( -1, _VM_CF_KernelMode | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit );
         ctx.flush_ptr2i();
     }
 
