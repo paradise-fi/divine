@@ -48,7 +48,7 @@ struct ExecContext_ : Super
     {
         std::cerr << "E: Double fault, program terminated." << std::endl;
         this->set( _VM_CR_Frame, vm::nullPointer() );
-        this->ref( _VM_CR_Flags ).integer |= _VM_CF_Cancel;
+        this->flags_set( 0, _VM_CF_Cancel );
     }
 
     using Super::trace;

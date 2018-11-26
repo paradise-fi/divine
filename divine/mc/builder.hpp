@@ -354,8 +354,8 @@ struct Builder
         Label lbl;
         lbl.trace = context()._trace;
         lbl.stack = context()._stack;
-        lbl.accepting = context().get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
-        lbl.error = context().get( _VM_CR_Flags ).integer & _VM_CF_Error;
+        lbl.accepting = context().flags_any( _VM_CF_Accepting );
+        lbl.error = context().flags_any( _VM_CF_Error );
         lbl.interrupts = context()._interrupts;
         return lbl;
     }
@@ -364,7 +364,7 @@ struct Builder
 
     bool feasible()
     {
-        if ( context().get( _VM_CR_Flags ).integer & _VM_CF_Cancel )
+        if ( context().flags_any( _VM_CF_Cancel ) )
             return false;
         if ( context()._assume.null() )
             return true;
