@@ -198,7 +198,7 @@ void CLI::go( command::Call c )
 
     Context ctx( _ctx );
     vm::Eval< Context > eval( ctx );
-    ctx.ref( _VM_CR_Flags ).integer |= _VM_CF_KernelMode | _VM_CF_DebugMode;
+    ctx.flags_set( 0, _VM_CF_KernelMode | _VM_CF_DebugMode );
     ctx.enter( pc, PointerV() );
     eval.run();
     for ( auto t : ctx._trace )
