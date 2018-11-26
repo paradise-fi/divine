@@ -1207,21 +1207,20 @@ void Eval< Ctx >::implement_test_taint()
 
     context().sync_pc();
     auto oldframe = frame();
-    context()._incremental_enter = true;
+
+    MakeFrame< Ctx > mkframe( context(), taints ? tf : nf, true );
 
     if ( taints )
-        context().enter( tf, PointerV( frame() ) );
+        mkframe.enter( PointerV( frame() ) );
     else if ( nf.function() ) /* what to call for non-tainted */
-        context().enter( nf, PointerV( frame() ) );
+        mkframe.enter( PointerV( frame() ) );
     else
     {
         slot_copy( s2ptr( operand( 1 ) ), result(), result().size() );
-        context()._incremental_enter = false;
         return;
     }
 
     auto newframe = frame();
-    auto &ff = program().function( taints ? tf : nf );
 
     for ( int i = 2; i < instruction().argcount(); ++i )
         op< Any >( i + 1, [&]( auto v )
@@ -1231,9 +1230,9 @@ void Eval< Ctx >::implement_test_taint()
             context().set( _VM_CR_Frame, newframe );
             auto taint_v = value::Int< 8 >( arg.taints() );
             if ( taints )
-                context().push( ff, (i - 2) * 2, frame(), taint_v, arg );
+                mkframe.push( (i - 2) * 2, frame(), taint_v, arg );
             else
-                context().push( ff, (i - 2), frame(), arg );
+                mkframe.push( (i - 2), frame(), arg );
         } );
 }
 
