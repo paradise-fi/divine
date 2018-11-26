@@ -79,6 +79,23 @@ struct Context
     void enable_debug() { _debug_allowed = true; }
     void track_memory( bool b ) { _track_mem = b; }
 
+    GenericPointer get_ptr( Location l ) const { return get_ptr( _VM_ControlRegister( l ) ); }
+    GenericPointer get_ptr( _VM_ControlRegister r ) const
+    {
+        return get( r ).pointer;
+    }
+
+    uint64_t get_int( _VM_ControlRegister r ) const
+    {
+        return get( r ).integer;
+    }
+
+    GenericPointer fault_handler() const { return get_ptr( _VM_CR_FaultHandler ); }
+    GenericPointer frame() const { return get_ptr( _VM_CR_Frame ); }
+    GenericPointer pc() const { return get_ptr( _VM_CR_PC ); }
+    uint64_t flags() const { return get_int( _VM_CR_Flags ); }
+    uint64_t objid_shuffle() const { return get_int( _VM_CR_ObjIdShuffle ); }
+
     template< typename Ctx >
     void load( const Ctx &ctx )
     {

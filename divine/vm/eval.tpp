@@ -184,7 +184,7 @@ typename Eval< Ctx >::FaultStream Eval< Ctx >::fault( Fault f, HeapPointer frame
     while ( !context().debug_mode() && !fr.cooked().null() && heap().valid( fr.cooked() ) )
     {
         heap().read_shift( fr, fpc );
-        if ( fpc.cooked().object() == context().get( _VM_CR_FaultHandler ).pointer.object() )
+        if ( fpc.cooked().object() == context().fault_handler().object() )
             return FaultStream( context(), f, frame, c, true, true );
         heap().read( fr.cooked(), fr );
     }
@@ -604,7 +604,7 @@ void Eval< Ctx >::update_shuffle()
 {
     using brick::bitlevel::mixdown;
     uint64_t next = mixdown( heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
-                             context().get( _VM_CR_Frame ).pointer.object() );
+                             context().frame().object() );
     context().set( _VM_CR_ObjIdShuffle, next );
 }
 
@@ -1080,7 +1080,7 @@ void Eval< Ctx >::implement_ctl_set()
     if ( reg == _VM_CR_Flags )
     {
         uint64_t want = operandCk< PtrIntV >( 1 ).cooked();
-        uint64_t change = context().get( reg ).integer ^ want;
+        uint64_t change = context().flags() ^ want;
         if ( change & _VM_CF_DebugMode )
         {
             fault( _VM_F_Access ) << "debug mode cannot be changed";
@@ -1114,9 +1114,9 @@ void Eval< Ctx >::implement_ctl_get()
 
     /* TODO mask out privileged bits from _VM_CR_Flags? */
     if ( reg == _VM_CR_Flags )
-        result( PtrIntV( context().get( reg ).integer ) );
+        result( PtrIntV( context().flags() ) );
     else
-        result( PointerV( context().get( reg ).pointer ) );
+        result( PointerV( context().get_ptr( reg ) ) );
 }
 
 template< typename Ctx >
@@ -1149,7 +1149,7 @@ void Eval< Ctx >::implement_ctl_flag()
         if ( !assert_flag( _VM_CF_KernelMode, "the error flag can be only changed in kernel mode" ) )
             return;
 
-    result( PtrIntV( context().get( _VM_CR_Flags ).integer ) );
+    result( PtrIntV( context().flags() ) );
     context().flags_set( clear, set );
 }
 

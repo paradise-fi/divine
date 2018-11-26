@@ -140,7 +140,7 @@ struct Eval
     static_assert( Convertible< value::Int< 64, true > >::template Guard< PointerV >::value, "" );
     static_assert( IntegerComparable< IntV >::value, "" );
 
-    CodePointer pc() { return context().get( _VM_CR_PC ).pointer; }
+    CodePointer pc() { return context().pc(); }
 
     HeapPointer frame() { return context().frame(); }
     HeapPointer globals() { return context().globals(); }
@@ -155,8 +155,7 @@ struct Eval
             return PointerV( nullPointer() );
         }
         ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
-        uint32_t hint = mixdown( context().get( _VM_CR_ObjIdShuffle ).integer,
-                                 context().get( _VM_CR_Frame ).pointer.object() );
+        uint32_t hint = mixdown( context().objid_shuffle(), context().frame().object() );
         auto p = heap().make( size, hint + off );
         ASSERT( p.cooked().type() == PointerType::Heap );
         return p;
@@ -171,7 +170,7 @@ struct Eval
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
         ASSERT_LT( v.location, Slot::Invalid );
-        return context().get( v.location ).pointer + v.offset + off;
+        return context().get_ptr( v.location ) + v.offset + off;
     }
 
     GenericPointer s2ptr( Slot v, int off, HeapPointer f )
@@ -416,8 +415,8 @@ public:
     {
         R res;
 
-        ASSERT( context().ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode );
-        ASSERT( context().get( _VM_CR_Frame ).pointer.null() );
+        ASSERT( context().flags() & _VM_CF_KernelMode );
+        ASSERT( context().frame().null() );
         ASSERT( !_final_frame.null() );
         ASSERT_EQ( instruction().opcode, OpCode::Ret );
         context().set( _VM_CR_Frame, _final_frame );
@@ -495,7 +494,7 @@ public:
 
     void advance()
     {
-        ASSERT_EQ( CodePointer( context().get( _VM_CR_PC ).pointer ), pc() );
+        ASSERT_EQ( CodePointer( context().pc() ), pc() );
         context().count_instruction();
         context().set( _VM_CR_PC, program().nextpc( pc() + 1 ) );
         _instruction = &program().instruction( pc() );
