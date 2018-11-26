@@ -114,7 +114,10 @@ inline llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Functi
 
     ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
 
-    return return_insts[ 0 ];
+    if ( return_insts[ 0 ]->getMetadata( "lart.domains" ) || fn->getMetadata( "lart.abstract" ) )
+        return return_insts[ 0 ];
+    else
+        return nullptr;
 }
 
 } // namespace abstract

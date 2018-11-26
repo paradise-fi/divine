@@ -133,7 +133,6 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
     auto dom = ValueMetadata( call ).domain();
     if ( auto terminator = returns_abstract_value( call, fn ) ) {
         auto ret = cast< ReturnInst >( terminator );
-
         auto val = ret->getReturnValue();
         auto aty = abstract_type( fn->getReturnType(), dom );
 
@@ -141,12 +140,16 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
         auto stash_fn = stash_placeholder( get_module( call ), aty );
 
         Value *tostash = nullptr;
-        if ( has_placeholder( val ) )
+        if ( has_placeholder( val ) ) {
             tostash = get_placeholder( val );
-        else if ( isa< Argument >( val ) || isa< CallInst >( val ) )
+        } else if ( isa< Argument >( val ) || isa< CallInst >( val ) ) {
+            if ( !has_placeholder( val, "lart.unstash.placeholder" ) ) {
+                return; // does not return abstract value
+            }
             tostash = get_unstash_placeholder( val );
-        else
+        } else {
             tostash = UndefValue::get( aty );
+        }
 
         auto stash = irb.CreateCall( stash_fn, { tostash } );
         add_abstract_metadata( stash, dom );
