@@ -230,14 +230,14 @@ enum _VM_ControlRegister
     _VM_CR_Constants,        /* read-only,  pointer */
     _VM_CR_Globals,          /* read-write, pointer */
     _VM_CR_Frame,            /* read-write, pointer */
-    _VM_CR_Flags,            /* read-write, _VM_Flags */
 
-    _VM_CR_ObjIdShuffle,
     _VM_CR_User1,
     _VM_CR_User2,
     _VM_CR_User3,
-
     _VM_CR_User4, /* TODO remove */
+
+    _VM_CR_Flags,            /* read-write, _VM_Flags */
+    _VM_CR_ObjIdShuffle,
 
     _VM_CR_PersistLast,
 
@@ -248,6 +248,9 @@ enum _VM_ControlRegister
 
     _VM_CR_Last
 };
+
+static const int _VM_CR_PtrCount = 3;
+static const int _VM_CR_UserCount = 4;
 
 /* jumping out of the scheduler:
    __vm_control( _VM_CA_Set, _VM_CR_Frame, destination,
