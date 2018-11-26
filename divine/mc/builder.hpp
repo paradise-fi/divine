@@ -324,7 +324,7 @@ struct Builder
         vm::setup::boot( context() );
         context().track_memory( false );
         eval.run();
-        hasher()._root = context().get( _VM_CR_State ).pointer;
+        hasher()._root = context().state_ptr();
 
         if ( vm::setup::postboot_check( context() ) )
             _d.initial.snap = *store( context().snapshot() );
@@ -339,7 +339,7 @@ struct Builder
         context().load( ctx ); /* copy over registers */
         context().track_memory( false );
         hasher().setup( context().heap(), _d.solver );
-        hasher()._root = context().get( _VM_CR_State ).pointer;
+        hasher()._root = context().state_ptr();
 
         if ( context().heap().valid( hasher()._root ) )
             _d.initial.snap = *store( snap );
@@ -423,7 +423,7 @@ struct Builder
             auto &tc = to_check.back();
 
             do_eval( tc );
-            _d.instructions += context()._instruction_counter;
+            _d.instructions += context().instruction_count();
 
             for ( int i = 0; i < context()._level; ++i )
                 tc.lock.push_back( context()._stack[ i ] );
@@ -481,7 +481,7 @@ struct Builder
 
                 do_eval( tc );
                 ASSERT_EQ( tc.tid, context()._tid );
-                _d.instructions += context()._instruction_counter;
+                _d.instructions += context().instruction_count();
 
                 if ( tc.feasible )
                 {

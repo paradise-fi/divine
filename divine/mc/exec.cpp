@@ -40,7 +40,7 @@ namespace divine::mc
         _ctx.enable_debug();
         eval.run();
         if ( !_ctx.flags_any( _VM_CF_Cancel ) )
-            ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );
+            ASSERT( !_ctx.state_ptr().null() );
 
         while ( !_ctx.flags_any( _VM_CF_Cancel ) )
         {

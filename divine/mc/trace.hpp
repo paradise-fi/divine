@@ -41,7 +41,7 @@ struct BadTrace
 static inline DbgNode root( DbgCtx &ctx, vm::CowHeap::Snapshot snap )
 {
     DbgNode n( ctx, snap );
-    n.address( dbg::DNKind::Object, ctx.get( _VM_CR_State ).pointer );
+    n.address( dbg::DNKind::Object, ctx.state_ptr() );
     n.type( ctx._state_type );
     n.di_type( ctx._state_di_type );
     n._ref.get();
@@ -53,7 +53,7 @@ void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowSnapshot snap, int maxdepth = 1
 {
     auto dn = root( dbg, snap );
     DbgNode dn_top( dbg, snap );
-    dn_top.address( dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
+    dn_top.address( dbg::DNKind::Frame, dbg.frame() );
     dbg::DNSet visited;
     int stacks = 0;
     dbg::backtrace( bt, fmt, dn_top, visited, stacks, maxdepth );

@@ -90,7 +90,7 @@ struct Safety : Job
             search->ws_each( [&]( auto &bld, auto & )
             {
                 st += bld._d.states._l.inserts;
-                mip += bld.context()._instruction_counter; /* might double-count */
+                mip += bld.context().instruction_count(); /* might double-count */
                 mip += bld._d.instructions;
             } );
             return std::make_pair( st, mip );

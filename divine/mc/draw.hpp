@@ -87,7 +87,7 @@ std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance
                 init( st );
                 dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
                 dn._ref.get();
-                dn.address( dbg::DNKind::Object, bld.context().get( _VM_CR_State ).pointer );
+                dn.address( dbg::DNKind::Object, bld.context().state_ptr() );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
                 str << ext( st ).seq << " [ style=filled fillcolor=gray ]" << std::endl;
