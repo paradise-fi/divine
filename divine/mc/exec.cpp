@@ -39,10 +39,10 @@ namespace divine::mc
         vm::setup::boot( _ctx );
         _ctx.enable_debug();
         eval.run();
-        if ( !_ctx.flags_any( _VM_CF_Cancel ) )
+        if ( !_ctx.flags_any( _VM_CF_Cancel | _VM_CF_Error ) )
             ASSERT( !_ctx.state_ptr().null() );
 
-        while ( !_ctx.flags_any( _VM_CF_Cancel ) )
+        while ( !_ctx.flags_any( _VM_CF_Cancel | _VM_CF_Error ) )
         {
             vm::setup::scheduler( _ctx );
             eval.run();
