@@ -154,6 +154,8 @@ namespace abstract::mstring {
         size_t strlen() const noexcept;
 		int strcmp( const Quintuple * other ) const noexcept;
 
+        constexpr char * data() noexcept { return _buff.data(); }
+        constexpr const char * data() const noexcept { return _buff.data(); }
     private:
         size_t _from;
 

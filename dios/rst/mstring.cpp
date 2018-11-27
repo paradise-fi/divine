@@ -13,10 +13,10 @@ __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
 }
 
 extern "C" {
-    _MSTRING const char * __mstring_val( const char * buff, unsigned buff_len ) {
+    _MSTRING char * __mstring_val( const char * buff, unsigned buff_len ) {
         auto val = __mstring_lift( buff, buff_len ); // TODO copy str
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
-        return abstract::__taint< const char * >( buff );
+        return abstract::__taint< char * >( val->data() );
     }
 
     size_t __mstring_strlen( const __mstring * str ) {
