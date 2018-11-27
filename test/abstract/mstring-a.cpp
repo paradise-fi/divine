@@ -1,5 +1,5 @@
 /* TAGS: mstring min */
-/* VERIFY_OPTS: --symbolic */
+/* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
 
