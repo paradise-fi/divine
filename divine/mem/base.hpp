@@ -100,6 +100,8 @@ struct Base
     {
         return 0;
     }
+
+    static constexpr bool can_snapshot() { return false; }
 };
 
 template< typename Next >

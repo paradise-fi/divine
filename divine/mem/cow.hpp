@@ -133,5 +133,7 @@ namespace divine::mem
             _ext.writable.clear();
             _l.snapshot = s;
         }
+
+        static constexpr bool can_snapshot() { return true; }
     };
 }
