@@ -9,7 +9,7 @@ using abstract::mark;
 using abstract::__new;
 
 __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
-    return __new< Quintuple< Buffer > >( buff, buff_len );
+    return __new< Quintuple >( buff, buff_len, 0 );
 }
 
 extern "C" {
@@ -28,65 +28,51 @@ extern "C" {
     }
 }
 
-template< typename Buffer >
-char * Quintuple< Buffer >::rho() const {
+char * Quintuple::rho() const {
     return nullptr;
 }
 
-template< typename Buffer >
-size_t Quintuple< Buffer >::strlen() const {
-    if ( buff.data() == nullptr )
+size_t Quintuple::strlen() const noexcept {
+    if ( _buff.data() == nullptr )
         return -1;
-    assert(!terminators.empty());
-    return terminators.front();
+    assert(!_terminators.empty());
+    return _terminators.front();
 }
 
-template< typename Buffer >
-Split::Segments segments( const Buffer& buff ) {
-    Split::Segments segs;
-
-	auto str = buff;
-    while ( !buff.empty() ) {
-        auto segment_end = str.find_first_not_of( buff.front() );
-		segs.push_back( buff.substr( 0, segment_end ) );
-        str.remove_prefix( std::min( segment_end, str.size() ) );
+auto Quintuple::split() const noexcept -> Split< Quintuple::Buffer > {
+    if ( _buff.data() != nullptr ) {
+        assert(!_terminators.empty());
+        return Split( _buff, _terminators );
     }
-
-    return segs;
+    _UNREACHABLE_F( "Error: Trying to split buffer without a string of interest." );
 }
 
+int Quintuple::strcmp( const Quintuple * other ) const noexcept {
+    auto split_q1 = this->split();
+    auto split_q2 = other->split();
 
-template< typename Buffer >
-Split Quintuple< Buffer >::split() const {
-    Split split;
+	auto sq1 =  split_q1.sections().front();
+	auto sq2 =  split_q2.sections().front();
 
-    if ( buff.data() != nullptr ) {
-        assert(!terminators.empty());
+	if ( !sq1.empty() && !sq2.empty() ) {
+		for ( size_t i = 0; i < sq1.size(); i++ ) {
+		    const auto& sq1_seg = sq1.segment_of( i ); // TODO optimize segment_of
+		    const auto& sq2_seg = sq2.segment_of( i );
 
-        unsigned preffix = 0;
-        auto str = buff.substr();
-		for ( auto terminator : terminators ) {
-			unsigned len = terminator - preffix;
-			split.substrs.push_back( segments( str.substr( 0, len ) ) );
-			str.remove_prefix( len + 1 );
-			preffix = terminator + 1;
-        }
+           // TODO optimize per segment comparison
+		    if ( sq1_seg.value() == sq2_seg.value() ) {
+			    if ( sq1_seg.to() - this->from() > sq2_seg.to() - other->from() ) {
+				    return sq1_seg.value() - sq2.segment_of( i + 1 ).value();
+			    } else if (sq1_seg.to() - this->from() < sq2_seg.to() - other->from() ) {
+				    return sq1.segment_of( i + 1 ).value() - sq2_seg.value();
+			    }
+		    } else {
+				return sq1[ i ] - sq2[ i ];
+			}
+		}
 
-		// last substring
-		split.substrs.push_back( segments( str ) );
-    }
+		return 0;
+	}
 
-	return split;
-}
-
-template< typename Buffer >
-int Quintuple< Buffer >::strcmp( const Quintuple *other ) const {
-	auto split_lhs = split();
-	auto split_rhs = other->split();
-
-	const auto& segs_lhs = split_lhs.substrs.front();
-	const auto& segs_rhs = split_rhs.substrs.front();
-
-	assert((!segs_lhs.empty() || !segs_rhs.empty()) && "Error: there is no string of interest.");
-	return buff.substr( 0, terminators[0] ).compare( other->buff.substr( 0, other->terminators[0] ) );
+    _UNREACHABLE_F( "Error: there is no string of interest." );
 }
