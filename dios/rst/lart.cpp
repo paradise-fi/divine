@@ -18,4 +18,5 @@ extern "C"
     }
 
     size_t __lart_string_op_strlen( const char * ) { _UNREACHABLE_F("LART PLACEHOLDER"); }
+    size_t __lart_string_op_strcmp( const char * ) { _UNREACHABLE_F("LART PLACEHOLDER"); }
 }
