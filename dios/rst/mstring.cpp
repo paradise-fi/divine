@@ -26,6 +26,11 @@ extern "C" {
     int __mstring_strcmp( const __mstring * lhs, const __mstring * rhs ) {
         return lhs->strcmp( rhs );
     }
+
+    _MSTRING __mstring * __mstring_undef_value() {
+        _UNREACHABLE_F( "Invalid use of mstring value." );
+        return nullptr;
+    }
 }
 
 char * Quintuple::rho() const {

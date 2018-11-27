@@ -172,3 +172,8 @@ typedef abstract::mstring::Quintuple __mstring;
 #undef DOMAIN_NAME
 #undef DOMAIN_TYPE
 #undef DOMAIN_KIND
+
+extern "C" {
+    __mstring * __mstring_undef_value();
+}
+
