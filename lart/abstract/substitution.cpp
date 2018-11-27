@@ -452,6 +452,13 @@ struct Lifter : BaseLifter {
             return irb.CreateCall( fn, { bitwidth( val ), argc, val } );
         }
 
+        auto m = get_module( val );
+        auto dom = domain_metadata( *m, domain() );
+
+        if ( dom.kind() == DomainKind::string ) {
+            auto fault = m->getFunction( "__" + domain().name() + "_undef_value" );
+            return irb.CreateCall( fault );
+        }
 
         UNREACHABLE( "Unknown type to be lifted.\n" );
     }
