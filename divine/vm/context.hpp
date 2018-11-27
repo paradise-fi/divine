@@ -39,16 +39,6 @@ using Location = _VM_Operand::Location;
 using PtrRegister = GenericPointer;
 using IntRegister = uint64_t;
 
-union ControlRegister
-{
-    GenericPointer pointer;
-    uint64_t integer;
-    ControlRegister() : integer( 0 ) {}
-};
-
-using ControlRegisters = std::array< ControlRegister, _VM_CR_Last >;
-using PersistRegisters = std::array< ControlRegister, _VM_CR_PersistLast >;
-
 /* state of a computation */
 struct State
 {
