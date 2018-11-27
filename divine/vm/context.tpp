@@ -26,13 +26,19 @@ namespace divine::vm
 template< typename H >
 void TracingContext< H >::debug_save()
 {
-    _debug_snap = this->heap().snapshot();
-    this->flush_ptr2i();
+    if ( this->heap().can_snapshot() )
+    {
+        _debug_snap = this->heap().snapshot();
+        this->flush_ptr2i();
+    }
 }
 
 template< typename H >
 void TracingContext< H >::debug_restore()
 {
+    if ( !this->heap().can_snapshot() )
+        return;
+
     if ( _debug_persist.empty() )
     {
         this->heap().restore( _debug_snap );
