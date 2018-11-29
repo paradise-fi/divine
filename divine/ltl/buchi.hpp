@@ -547,6 +547,157 @@ struct TGBA2 {
     }
 };
 
+static inline TGBA2 HOAParser( const std::string& filename )
+{
+    //std::cout << "HOAParser called on " << filename << std::endl;
+    std::ifstream source( filename );
+    TGBA2 tgba2;
+    std::string line;
+    std::getline( source, line );
+    if( line.substr( 0, 4 ) != "HOA:" )
+        throw std::invalid_argument("invalid HOA format: 'HOA:' should always be the first token of the file.");
+    while( std::getline( source, line ) )
+    {
+        if( line.substr( 0, 8 ) == "--BODY--" )
+            break;
+        std::stringstream ssLine( line );
+        std::string feature;
+        std::string data;
+        getline( ssLine, feature, ':' );
+        if( feature == "name" || feature == "Name" )
+        {
+            ssLine.ignore(std::numeric_limits<std::streamsize>::max(), '"');
+            std::getline( ssLine, tgba2.name, '"' );
+            ssLine.ignore(std::numeric_limits<std::streamsize>::max(), ssLine.widen( '\n' ) );
+        }
+        else if( feature == "states" || feature == "States" )
+        {
+            std::getline( ssLine, data );
+            std::stringstream ssData( data );
+            ssData >> tgba2.nStates;
+            tgba2.states.resize( tgba2.nStates );
+            /*for( size_t i = 0; i < tgba2.nStates; ++i )
+            {
+                tgba2.states.emplace_back(  )
+            }*/
+        }
+        else if( feature == "start" || feature == "Start" )
+        {
+            std::getline( ssLine, data );
+            std::stringstream ssData( data );
+            ssData >> tgba2.start;
+        }
+        else if( feature == "AP" )
+        {
+            ssLine.ignore(std::numeric_limits<std::streamsize>::max(), ' ');
+            std::getline( ssLine, data, ' ' );
+            //std::cout << "data " << "'" << data << "'" << std::endl;
+            size_t apCount;
+            apCount = std::stoll( data );
+            while( std::getline( ssLine, data, ' ' ) )
+            {
+                std::string atom = data.substr(1, data.length() - 2);
+                //std::cout << "'" << atom << "'" << std::endl;
+                tgba2.allTrivialLiterals.push_back( LTL::make( atom ) );
+            }
+            //std::cout << apCount << " vs " << tgba2.allTrivialLiterals.size() << std::endl;
+            if( apCount != tgba2.allTrivialLiterals.size() )
+                throw std::invalid_argument( "Invalid HOA format: unexpected number of atomic propositions." );
+
+        }
+        else if( feature == "acceptance" || feature == "Acceptance" )
+        {
+            ssLine.ignore( std::numeric_limits<std::streamsize>::max(), ' ' );
+            std::getline( ssLine, data, ' ' );
+            tgba2.nAcceptingSets = std::stoll( data );
+            uCount = tgba2.nAcceptingSets;
+        }
+        else if( feature != "acc-name" && feature != "Acc-name" && feature != "properties" && feature != "Properties" )
+            throw std::invalid_argument( "invalid HOA format: unrecognized option '" + feature );
+    }
+    size_t stateId;
+    while( std::getline( source, line ) )
+    {
+        if( line.substr( 0, 7 ) == "--END--" )
+            break;
+        if( line.substr( 0, 6 ) == "State:" ) //finished actual state and starting new one
+        {
+            stateId = std::stoll( line.substr( 6 ) );
+            //std::cout << "'State' token with id " << stateId << std::endl;
+            continue;
+        }
+        else
+        {
+            //std::cout << "'[' token" << std::endl;
+            std::stringstream ssLine( line );
+            std::string label, tmpLetter;
+
+            std::getline( ssLine, label, ']' );
+            assert( label.at( 0 ) == '[' );
+
+            std::stringstream ssLabel( label );
+            ssLabel.ignore( 1, '[' );
+
+            size_t target;
+            std::set< std::pair< bool, size_t > > labels;
+            std::set< size_t > accepting;
+
+            //PARSING labels
+            std::set< std::pair< bool, size_t > > parsedLabels;
+            while( std::getline( ssLabel, tmpLetter, '&') )
+            {
+                std::string tmpSubLetter;
+                std::pair< bool, size_t > parsedLabel;
+                //std::cout << "  Letter '" << tmpLetter << "'" << std::endl;
+                std::stringstream ssLetter( tmpLetter );
+                while( tmpSubLetter.empty() && std::getline( ssLetter, tmpSubLetter, ' ' ) )
+                {}
+                //std::cout << "  tmpSubLetter '" << tmpSubLetter << "'" << std::endl;
+                if( !tmpSubLetter.empty() )
+                {
+                    parsedLabel.first = true;
+                    size_t i = 0;
+                    for( ; i < tmpSubLetter.size(); ++i ) {
+                        if( tmpSubLetter.at( i ) == '!' )
+                            parsedLabel.first = !parsedLabel.first;
+                        else if( tmpSubLetter.at( i ) != ' ' )
+                            break;
+                    }
+                    if( i < tmpSubLetter.size() && tmpSubLetter.at( i ) == 't' )
+                        continue;
+                    parsedLabel.second = std::stoll( tmpSubLetter.substr( i ) );
+                }
+                //std::cout << "  parsedLabel: " << parsedLabel.first << ", " << parsedLabel.second << std::endl;
+                parsedLabels.insert( parsedLabel );
+            }
+            //PARSING target
+            std::string trg;
+            while( trg.empty() && std::getline( ssLine, trg, ' ' ) )
+            {}
+            target = std::stoll( trg );
+
+            //PARSING acceptance
+            ssLine.ignore( 1, '{' );
+            std::string acceptance, tmpAcceptance;
+            std::getline( ssLine, acceptance, '}' );
+            std::stringstream ssAcceptance( acceptance );
+            while( std::getline( ssAcceptance, tmpAcceptance, ' ' ) )
+            {
+                accepting.insert( std::stoll( tmpAcceptance ) );
+            }
+            Transition transition( target, parsedLabels, accepting);
+            //std::cout << "Transition: " << transition << std::endl << std::endl;
+            tgba2.states.at( stateId ).push_back( transition );
+        }
+    }
+    //TODO: pro kazdy State: a hrany na radcich pod nim vytvorit vektor instanci tridy Transition a tento vektor pridat do vektoru states. Dale bude nutne naplnit tgba1, accSCC, allLiterals bez uziti formula. Promyslet poradi!
+
+    std::cout << tgba2 << std::endl;
+    //TODO use TGBA1 constructor with parameter this (for the embedded TGBA1 in this)
+    //TODO implement the constructor
+    return tgba2;
+}
+
 
 
 static inline TGBA1 ltlToTGBA1( LTLPtr _formula, bool negate )
