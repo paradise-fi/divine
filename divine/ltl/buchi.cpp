@@ -329,5 +329,29 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
     }
 }
 
+TGBA1::TGBA1( const TGBA2& _tgba2 )
+        : formula( nullptr )
+        , name( _tgba2.name )
+        , allLiterals( _tgba2.allLiterals )
+        , allTrivialLiterals( _tgba2.allTrivialLiterals )
+    {
+        for( size_t stateId = 0; stateId < _tgba2.states.size(); ++stateId ) {
+            states.push_back( std::make_shared< State >( stateId ) );
+        }
+        for( size_t stateId = 0; stateId < _tgba2.states.size(); ++stateId ) {
+            assert( stateId < states.size() );
+            std::set< size_t > sources;
+            sources.insert( stateId );
+            std::set< LTLPtr, LTLComparator2 > emptyLabel;
+            for( const auto& transition : _tgba2.states.at( stateId ) ) {
+                std::vector< bool > acc;
+                acc.resize( _tgba2.nAcceptingSets, false );
+                for( bool index : transition.accepting )
+                    acc.at( index ) = true;
+                states.at( transition.target )->addEdge( sources, emptyLabel, acc );
+            }
+        }
+    }
+
 } // ltl namespace
 } // divine namespace

@@ -107,6 +107,10 @@ struct State
     std::set< LTLPtr, LTLComparator > old;
 
     State() = default;
+    State( size_t _id )
+	: id( _id )
+    {
+    }
     State( const State& other )
         : id( other.id )
         , edgesIn( other.edgesIn )
@@ -257,9 +261,11 @@ struct TGBA1 {
             assert( i == states.at( i )->id );
         assert( allLiterals.size() == allLiteralsSet.size() );
     }
+    TGBA1( const TGBA2& _tgba2 );
+
     void print() const
     {
-        std::cout << "TGBA made from formula " << formula->string() << ":" << std::endl;
+        std::cout << "TGBA made from formula " << name << ":" << std::endl;
         for( auto state : states )
             std::cout << *state;
     }
@@ -287,7 +293,7 @@ struct TGBA1 {
 
     friend std::ostream& operator<<( std::ostream & os, const TGBA1& tgba ) {
         os << "HOA: v1" << std::endl;
-        os << "name: \"" << tgba.formula->string() << "\"" << std::endl;
+        os << "name: \"" << tgba.name << "\"" << std::endl;
         os << "States: " << tgba.states.size() << std::endl;
         os << "Start: 0" << std::endl;
         os << "AP: " << tgba.allTrivialLiterals.size();
@@ -305,7 +311,7 @@ struct TGBA1 {
         for( size_t i = 0; i < uCount; ++i) {
             os << " Inf(" << i << ")";
             if ( i + 1 != uCount )
-                os << "&";
+                os << " &";
         }
         os << std::endl;
         os << "properties: trans-labels trans-acc " << std::endl;
@@ -437,6 +443,7 @@ struct TGBA2 {
         }
         computeAccSCC();
     }
+
     friend std::ostream& operator<<( std::ostream & os, const TGBA2& tgba2 )
     {
         os << "HOA: v1" << std::endl;
@@ -458,7 +465,7 @@ struct TGBA2 {
         for( size_t i = 0; i < uCount; ++i) {
             os << " Inf(" << i << ")";
             if ( i + 1 != uCount )
-                os << "&";
+                os << " &";
         }
         os << std::endl;
         os << "properties: trans-labels trans-acc " << std::endl;
