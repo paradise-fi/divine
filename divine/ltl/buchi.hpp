@@ -204,7 +204,8 @@ struct Node
     std::set< StatePtr, State::Comparator > expand( std::set< StatePtr, State::Comparator >& states );
 };
 
-struct TGBA1 {
+struct TGBA1
+{
     LTLPtr formula;
     std::string name;
     std::vector< StatePtr > states;

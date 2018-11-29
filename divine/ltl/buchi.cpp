@@ -48,7 +48,8 @@ State::State( Node* node )
     addEdge( node->incomingList, label, acc );
 }
 
-void State::merge( Node* node ) {
+void State::merge( Node* node )
+{
     std::vector< bool > acc( uCount );
     for( size_t i = 0; i < uCount; ++i )
         acc[i] = !node->untils[i] || node->rightOfUntils[i];
@@ -68,10 +69,10 @@ void State::merge( Node* node ) {
 }
 
 // inserts f in target unless node->old contains it ( and node is not nullptr )
-bool inject( Node* node, std::set< LTLPtr, LTLComparator >& target, LTLPtr f ) {
-    if( !node || node->old.count( f ) == 0 ) {
+bool inject( Node* node, std::set< LTLPtr, LTLComparator >& target, LTLPtr f )
+{
+    if( !node || node->old.count( f ) == 0 )
         return target.insert( f ).second;
-    }
     return false;
 }
 
@@ -317,9 +318,8 @@ std::set< StatePtr, State::Comparator > Node::expand( std::set< StatePtr, State:
             assert( false && "formula should have been in normal form!");
             return states;
         } else { //next formula is literal
-            if( nf->is< Boolean >() && !nf->get< Boolean >().value ) { //nf=False
+            if( nf->is< Boolean >() && !nf->get< Boolean >().value ) //nf=False
                 return states;
-            }
             old.insert( nf );
             return expand( states );
         }
@@ -332,9 +332,8 @@ TGBA1::TGBA1( const TGBA2& _tgba2 )
         , allLiterals( _tgba2.allLiterals )
         , allTrivialLiterals( _tgba2.allTrivialLiterals )
     {
-        for( size_t stateId = 0; stateId < _tgba2.states.size(); ++stateId ) {
+        for( size_t stateId = 0; stateId < _tgba2.states.size(); ++stateId )
             states.push_back( std::make_shared< State >( stateId ) );
-        }
         for( size_t stateId = 0; stateId < _tgba2.states.size(); ++stateId ) {
             assert( stateId < states.size() );
             std::set< size_t > sources;
