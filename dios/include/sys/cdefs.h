@@ -91,6 +91,7 @@
 #define __inline       __attribute__(( __always_inline__ ))
 #define __noinline     __attribute__(( __noinline__ ))
 #define __debugfn      __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
+#define __link_always  __attribute__((__annotate__("divine.link.always")))
 #define __trapfn       __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
 #define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), __noinline__ ))
 #define __invisible    __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), \
