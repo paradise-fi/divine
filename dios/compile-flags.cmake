@@ -18,7 +18,7 @@ list( APPEND flags -isystem${divine_SOURCE_DIR}/ ) # for #includes starting with
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
-mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR}" )
+mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR};-fno-rtti;-fno-exceptions" )
 mkobjs( libm "${flags}" )
 
 list( APPEND flags -std=c++1z )
