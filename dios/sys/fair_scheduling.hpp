@@ -61,6 +61,14 @@ struct FairScheduler : public Scheduler< Next > {
             _workingGroup = 0;
     }
 
+    __inline void run( Task &t )
+    {
+        this->prepare( t );
+        this->monitor( t );
+        check_fairness();
+        this->jump( t );
+    }
+
     template < typename Context >
     static void run_scheduler() noexcept
     {
@@ -80,7 +88,7 @@ struct FairScheduler : public Scheduler< Next > {
         __vm_cancel();
     }
 
-    void interrupt() /* figure out fairness constraints */
+    void check_fairness() /* figure out fairness constraints */
     {
         bool accepting = __vm_ctl_flag( 0, 0 ) & _VM_CF_Accepting;
 

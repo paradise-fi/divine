@@ -532,16 +532,31 @@ struct Scheduler : public Next
         return tasks.empty();
     }
 
-    __inline void run( Task &t )
+    __inline void prepare( Task &t )
     {
-        auto f = t._frame;
         __vm_ctl_set( _VM_CR_Globals, t._proc->globals );
         __vm_ctl_set( _VM_CR_User1, &t._frame );
         __vm_ctl_set( _VM_CR_User2, t.getId() );
         __vm_ctl_set( _VM_CR_User3, debug );
-        this->runMonitors(); /* hmm. */
+    }
+
+    __inline void monitor( Task &t )
+    {
+        this->runMonitors();
+    }
+
+    __inline void jump( Task &t )
+    {
+        auto f = t._frame;
         __vm_ctl_flag( _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop, 0 );
         __vm_ctl_set( _VM_CR_Frame, f );
+    }
+
+    __inline void run( Task &t )
+    {
+        prepare( t );
+        monitor( t ); /* hmm. */
+        jump( t );
     }
 
     template < typename Context >
