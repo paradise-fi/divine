@@ -1,17 +1,10 @@
 #include <sys/cdefs.h>
 #include <dios/sys/fault.hpp>
-#include <dios/sys/config.hpp>
 #include <stdint.h>
 
 #define INTR                                                                                     \
     if ( flags & _VM_CF_KernelMode )                                                             \
         __dios_fault( _VM_F_Control, "oops, interrupted in kernel mode" );                       \
-    if ( flags & _DiOS_CF_Fairness )                                                             \
-    {                                                                                            \
-        __vm_ctl_flag( 0, _VM_CF_KernelMode );                                                   \
-        __dios::get_state< __dios::config::Fair >().interrupt();                                 \
-        __vm_ctl_flag( _VM_CF_KernelMode, 0 );                                                   \
-    }                                                                                            \
                                                                                                  \
     __vm_ctl_flag( _DiOS_CF_Deferred, 0 );                                                       \
     *reinterpret_cast< void ** >( __vm_ctl_get( _VM_CR_User1 ) ) = __dios_this_frame()->parent;  \
