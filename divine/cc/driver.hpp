@@ -86,10 +86,9 @@ struct Driver
     }
 
     std::vector< Command > getJobs( llvm::ArrayRef< const char * > args );
-
-  protected:
     brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
 
+  protected:
     Options opts;
     CC1 compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
