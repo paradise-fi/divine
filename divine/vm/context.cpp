@@ -33,6 +33,7 @@ bool Tracing::enter_debug()
         -- _state.instruction_counter;
         ASSERT_EQ( _debug_depth, 0 );
         _debug_state = _state;
+        _debug_pc = _pc;
         this->flags_set( 0, _VM_CF_DebugMode );
         this->debug_save();
         return true;
@@ -47,6 +48,7 @@ void Tracing::leave_debug()
     ASSERT( debug_mode() );
     ASSERT( !_debug_depth );
     _state = _debug_state;
+    _pc = _debug_pc;
     this->debug_restore();
 }
 

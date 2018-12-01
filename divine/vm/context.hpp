@@ -178,6 +178,8 @@ struct NoTracing : Registers, TracingInterface
 struct Tracing : Registers, TracingInterface
 {
     State _debug_state;
+    PtrRegister _debug_pc;
+
     int _debug_depth = 0;
     bool _debug_allowed = false;
     std::vector< Interrupt > _interrupts;
