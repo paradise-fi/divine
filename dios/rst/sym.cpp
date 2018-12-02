@@ -37,12 +37,15 @@ State __sym_state;
 
 extern "C" void __sym_formula_dump()
 {
+    __vm_trace( _VM_T_Text, "not implemented" );
+/*
     Formula *pcf = __sym_state.constraints;
     while ( pcf != NULL )
     {
-        __vm_trace( _VM_T_Text, lart::sym::toString( pcf->binary.left ).c_str() );
+        TODO trace pcf->binary.left
         pcf = pcf->binary.right;
     }
+*/
 }
 
 template< typename T, typename Lift >
