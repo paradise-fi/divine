@@ -4,6 +4,7 @@
 
 #include <unwind.h>
 #include <sys/divm.h>
+#include <sys/start.h>
 #include <sys/interrupt.h>
 #include <sys/fault.h>
 #include <sys/metadata.h>
@@ -215,8 +216,14 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
                 break;
             }
         }
-        if ( attrs.is_nounwind )
+
+        if ( attrs.is_nounwind &&
+             __md_get_pc_meta( ctx.pc() )->entry_point != reinterpret_cast< void (*)() >( &_start ) )
+        {
+            /* TODO demangle the name? */
+            __dios_trace_f( "unexpected nounwind function: %s", __md_get_pc_meta( ctx.pc() )->name );
             __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
+        }
     }
 
     if ( !foundCtx )
