@@ -217,12 +217,17 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
             }
         }
 
-        if ( attrs.is_nounwind &&
-             __md_get_pc_meta( ctx.pc() )->entry_point != reinterpret_cast< void (*)() >( &_start ) )
+        if ( attrs.is_nounwind )
         {
-            /* TODO demangle the name? */
-            __dios_trace_f( "unexpected nounwind function: %s", __md_get_pc_meta( ctx.pc() )->name );
-            __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
+            auto meta = __md_get_pc_meta( ctx.pc() );
+            auto entry = meta->entry_point;
+            if ( entry != reinterpret_cast< void (*)() >( &_start ) &&
+                 entry != reinterpret_cast< void (*)() >( &__pthread_start ) )
+            {
+                /* TODO demangle the name? */
+                __dios_trace_f( "unexpected nounwind function: %s", meta->name );
+                __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
+            }
         }
     }
 

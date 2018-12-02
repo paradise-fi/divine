@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/divm.h>
 #include <sys/interrupt.h>
+#include <sys/start.h>
 #include <sys/fault.h>
 #include <assert.h>
 #include <errno.h>

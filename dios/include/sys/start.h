@@ -20,6 +20,8 @@ void _start_synchronous( int variant, int argc, char **argv, char **envp );
 void __dios_run_ctors();
 void __dios_run_dtors();
 
+void __pthread_start( void * );
+
 #ifdef __cplusplus
 int main(...);
 #else
