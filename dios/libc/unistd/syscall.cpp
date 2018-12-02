@@ -19,28 +19,6 @@
 namespace __dios
 {
 
-    SysProxy *syscall_proxy;
-
-#define SYSCALL_DIOS(...)
-#define SYSCALL( name, schedule, ret, arg )                                     \
-    extern "C" ret name arg noexcept                                            \
-    {                                                                           \
-        return unpad( syscall_proxy, &SysProxy::name, _1, _2, _3, _4, _5, _6 ); \
-    }
-#include <sys/syscall.def>
-
-#undef SYSCALL
-#undef SYSCALL_DIOS
-#define SYSCALL(...)
-#define SYSCALL_DIOS( name, schedule, ret, arg )                                \
-    extern "C" __noinline ret __dios_ ## name arg noexcept                      \
-    {                                                                           \
-        return unpad( syscall_proxy, &SysProxy::name, _1, _2, _3, _4, _5, _6 ); \
-    }
-#include <sys/syscall.def>
-#undef SYSCALL_DIOS
-#undef SYSCALL
-
     template< typename Todo, typename Done, typename Ret, typename... Args >
     __inline static auto unpack( Done done, Ret (*f)( Args... ), va_list vl,
                                  typename Todo::Empty = typename Todo::Empty()  )
