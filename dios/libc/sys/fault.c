@@ -3,6 +3,8 @@
 #include <sys/stack.h>
 #include <sys/divm.h>
 
+uint8_t __dios_simfail_flags;
+
 void __dios_fault( int f, const char *msg )
 {
     if( msg )

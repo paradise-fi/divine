@@ -4,8 +4,6 @@
 #include <cstdint>
 #include <dios/sys/fault.hpp>
 
-uint8_t __dios_simfail_flags;
-
 namespace __dios
 {
 
