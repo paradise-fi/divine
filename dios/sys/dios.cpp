@@ -21,13 +21,16 @@
 namespace __dios
 {
 
-String extractDiosConfiguration( SysOpts& o ) {
+std::string_view extractDiosConfiguration( SysOpts& o )
+{
     auto r = std::find_if( o.begin(), o.end(),
         []( const auto& opt ) {
             return opt.first == "config";
         } );
-    String cfg( "default" );
-    if ( r != o.end() ) {
+
+    std::string_view cfg( "default" );
+    if ( r != o.end() )
+    {
         cfg = r->second;
         o.erase( r );
     }
@@ -138,7 +141,7 @@ void init( const _VM_Env *env )
     if ( cfg == "fair" )
         return boot< config::Fair >( setup );
 
-    __dios_trace_f( "Unknown configaration: %s", cfg.c_str() );
+    __dios_trace_f( "Unknown configaration: %.*s", cfg.size(), cfg.begin() );
     __vm_ctl_flag( 0, _VM_CF_Error );
 }
 
