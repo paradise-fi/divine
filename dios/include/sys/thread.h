@@ -247,6 +247,101 @@ static void wait( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
         __vm_cancel();
 }
 
+static bool _canceled() noexcept {
+    return getThread().cancelled;
+}
+
+void _cancel( __dios::FencedInterruptMask &mask ) noexcept;
+
+template < typename Cond >
+__attribute__( ( __always_inline__, __flatten__ ) )
+static void waitOrCancel( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
+{
+    if ( _canceled() )
+        _cancel( mask );
+    else
+        wait( mask, cond );
+}
+
+template < typename CondOrBarrier > int _cond_adjust_count( CondOrBarrier *cond, int adj ) noexcept
+{
+    int count = cond->__counter;
+    count += adj;
+    assert( count < ( 1 << 16 ) );
+    assert( count >= 0 );
+
+    cond->__counter = count;
+    return count;
+}
+
+template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier *cond ) noexcept
+{
+    if ( cond == NULL )
+        return EINVAL;
+
+    // make sure that no thread is waiting on this condition
+    // (probably better alternative when compared to: return EBUSY)
+    assert( cond->__counter == 0 );
+
+    CondOrBarrier uninit;
+    *cond = uninit;
+    return 0;
+}
+
+template < typename > static inline SleepingOn _sleepCond() noexcept;
+template <> inline SleepingOn _sleepCond< pthread_barrier_t >() noexcept {
+    return Barrier;
+}
+template <> inline SleepingOn _sleepCond< pthread_cond_t >() noexcept {
+    return Condition;
+}
+
+static inline bool _eqSleepTrait( _PThread &t, pthread_cond_t *cond ) noexcept {
+    return t.condition == cond;
+}
+
+static inline bool _eqSleepTrait( _PThread &t, pthread_barrier_t *bar ) noexcept
+{
+    return t.barrier == bar;
+}
+
+template< bool broadcast, typename CondOrBarrier >
+static int _cond_signal( CondOrBarrier *cond ) noexcept
+{
+    if ( cond == NULL )
+        return EINVAL;
+
+    int count = cond->__counter;
+    if ( count ) { // some threads are waiting for condition
+        int waiting = 0, wokenup = 0, choice;
+
+        if ( !broadcast ) {
+            /* non-determinism */
+            choice = __vm_choose( ( 1 << count ) - 1 );
+        }
+
+        iterateThreads( [&]( pthread_t tid ) {
+
+            _PThread &thread = getThread( tid );
+
+            if ( thread.sleeping == _sleepCond< CondOrBarrier >() && _eqSleepTrait( thread, cond ) ) {
+                ++waiting;
+                if ( broadcast || ( ( choice + 1 ) & ( 1 << ( waiting - 1 ) ) ) ) {
+                    // wake up the thread
+                    thread.sleeping = NotSleeping;
+                    thread.condition = NULL;
+                    ++wokenup;
+                }
+            }
+        } );
+
+        assert( count == waiting );
+
+        _cond_adjust_count( cond, -wokenup );
+    }
+    return 0;
+}
+
 }
 
 #pragma GCC diagnostic pop
