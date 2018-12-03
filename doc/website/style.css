@@ -393,7 +393,13 @@ select { width: calc( 100% + 4px ); }
 table.properties th, table.trac-properties th { padding-left: 1em; padding-right: .5em; }
 table.properties td, table.trac-properties td  { padding-right: 2em; }
 .trac-properties table { border-spacing: 2px; }
-fieldset#action { display: none; }
+
+fieldset#action { margin-top: 1ex; padding-top: 2ex; }
+fieldset#action .hint { display: none; }
+fieldset#action div { display: block; height: 3.5ex; }
+fieldset#action select { width: calc( 16em + 4px ); margin-left: 3em; }
+fieldset#action #action_reassign_reassign_owner { width: 16em; margin-left: 2.5em; }
+
 #properties legend { display: none; }
 #ticket h2 { display: none; }
 .trac-topnav { display: none; }
