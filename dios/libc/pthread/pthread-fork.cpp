@@ -4,7 +4,10 @@
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
-#include <sys/thread.hpp>
+#include <sys/thread.h>
+
+namespace __dios
+{
 
 static _PthreadAtFork atForkHandlers;
 
@@ -40,4 +43,6 @@ void __run_atfork_handlers( uint16_t index ) noexcept
                 getThread().is_main = true;
                 invoke( h[i].child );
             }
+}
+
 }

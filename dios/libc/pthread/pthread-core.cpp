@@ -4,10 +4,14 @@
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
-#include <sys/thread.hpp>
+#include <sys/thread.h>
+
+namespace __dios
+{
 
 // this is not run when thread's main returns!
-static void _run_cleanup_handlers() noexcept {
+static void _run_cleanup_handlers() noexcept
+{
     _PThread &thread = getThread();
 
     CleanupHandler *handler = thread.cleanup_handlers;
@@ -22,7 +26,7 @@ static void _run_cleanup_handlers() noexcept {
     }
 }
 
-static void _cancel( __dios::FencedInterruptMask &mask ) noexcept
+void _cancel( __dios::FencedInterruptMask &mask ) noexcept
 {
     __dios_task tid = __dios_this_task();
     _PThread &thread = getThread( tid );
@@ -53,26 +57,6 @@ extern "C" void __pthread_entry( void *_args )
     __dios_suicide();
 }
 
-int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
-    __dios::FencedInterruptMask mask;
-
-    // test input arguments
-    __dios_assert( entry );
-    if ( ptid == NULL || entry == NULL )
-        return EINVAL;
-
-    // create new thread and pass arguments to the entry wrapper
-    Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
-    args->entry = entry;
-    args->arg = arg;
-    auto tid = __dios_start_task( __pthread_entry, static_cast< void * >( args ), 0 );
-    // init thread here, before it has first chance to run
-    __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
-    *ptid = tid;
-
-    return 0;
-}
-
 static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) noexcept {
     _PThread &thread = getThread( gtid );
 
@@ -100,6 +84,30 @@ static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, voi
     // kill the thread so that it does not pollute state space by ending
     // nondeterministically
     releaseAndKillThread( gtid );
+    return 0;
+}
+
+}
+
+using namespace __dios;
+
+int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
+    __dios::FencedInterruptMask mask;
+
+    // test input arguments
+    __dios_assert( entry );
+    if ( ptid == NULL || entry == NULL )
+        return EINVAL;
+
+    // create new thread and pass arguments to the entry wrapper
+    Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
+    args->entry = entry;
+    args->arg = arg;
+    auto tid = __dios_start_task( __pthread_entry, static_cast< void * >( args ), 0 );
+    // init thread here, before it has first chance to run
+    __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
+    *ptid = tid;
+
     return 0;
 }
 
@@ -629,6 +637,9 @@ void pthread_cleanup_pop( int execute ) noexcept {
 
 /* Readers-Writer lock */
 
+namespace __dios
+{
+
 static int _rlock_adjust_count( _ReadLock *rlock, int adj ) noexcept {
     int count = rlock->__count;
     count += adj;
@@ -706,6 +717,8 @@ static int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rw
         }
     }
     return 0;
+}
+
 }
 
 int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) noexcept {

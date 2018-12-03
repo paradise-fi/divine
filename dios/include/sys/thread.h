@@ -28,6 +28,9 @@
 #define _MUTEX_ATTR_TYPE_MASK 0x3
 #define _RWLOCK_ATTR_SHARING_MASK 0x1
 
+namespace __dios
+{
+
 struct CleanupHandler
 {
     void ( *routine )( void * );
@@ -37,6 +40,8 @@ struct CleanupHandler
 
 enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 
+}
+
 struct _PThread // (user-space) information maintained for every (running) thread
 {
     _PThread() noexcept
@@ -45,13 +50,16 @@ struct _PThread // (user-space) information maintained for every (running) threa
         ++refcnt;
     }
 
+    static void* operator new ( size_t, void* p ) noexcept { return p; }
+
+
     // avoid accidental copies
     _PThread( const _PThread & ) = delete;
     _PThread( _PThread && ) = delete;
 
     void *result;
     pthread_mutex_t *waiting_mutex;
-    CleanupHandler *cleanup_handlers;
+    __dios::CleanupHandler *cleanup_handlers;
     union {
         pthread_cond_t *condition;
         pthread_barrier_t *barrier;
@@ -59,7 +67,7 @@ struct _PThread // (user-space) information maintained for every (running) threa
 
     bool running : 1;
     bool detached : 1;
-    SleepingOn sleeping : 2;
+    __dios::SleepingOn sleeping : 2;
     bool cancelled : 1;
 
     bool cancel_state : 1;
@@ -69,15 +77,18 @@ struct _PThread // (user-space) information maintained for every (running) threa
     uint32_t refcnt;
 
     void setSleeping( pthread_cond_t *cond ) noexcept {
-        sleeping = Condition;
+        sleeping = __dios::Condition;
         condition = cond;
     }
 
     void setSleeping( pthread_barrier_t *bar ) noexcept {
-        sleeping = Barrier;
+        sleeping = __dios::Barrier;
         barrier = bar;
     }
 };
+
+namespace __dios
+{
 
 static_assert( sizeof( _PThread ) == 5 * sizeof( void * ) );
 
@@ -222,8 +233,6 @@ static void iterateThreads( Yield yield ) noexcept
     __vm_obj_free( threads );
 }
 
-inline void* operator new ( size_t, void* p ) noexcept { return p; }
-
 int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept;
 void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept;
 _Noreturn void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, __dios_task tid ) noexcept;
@@ -236,6 +245,8 @@ static void wait( __dios::FencedInterruptMask &mask, Cond cond ) noexcept
         mask.without( []{ __dios_reschedule(); } );
     if ( cond() )
         __vm_cancel();
+}
+
 }
 
 #pragma GCC diagnostic pop

@@ -4,25 +4,9 @@
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
-#include <sys/thread.hpp>
+#include <sys/thread.h>
 
-void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept
-{
-    __dios_assert( gtid );
-
-    if ( __vm_obj_size( gtid ) < _PthreadTLS::raw_size( 0 ) )
-        __vm_obj_resize( gtid, _PthreadTLS::raw_size( 0 ) );
-    auto *thread = static_cast< _PThread * >( __vm_obj_make( sizeof( _PThread ) ) );
-    new ( thread ) _PThread();
-    tls( gtid ).thread = thread;
-
-    // initialize thread metadata
-    thread->running = true;
-    thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
-    thread->condition = nullptr;
-    thread->cancel_state = PTHREAD_CANCEL_ENABLE;
-    thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
-}
+using namespace __dios;
 
 void __pthread_initialize() noexcept
 {
@@ -59,6 +43,27 @@ __noinline void __pthread_start( void *_args )
     _clean_and_become_zombie( mask, tid );
 }
 
+namespace __dios
+{
+
+void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept
+{
+    __dios_assert( gtid );
+
+    if ( __vm_obj_size( gtid ) < _PthreadTLS::raw_size( 0 ) )
+        __vm_obj_resize( gtid, _PthreadTLS::raw_size( 0 ) );
+    auto *thread = static_cast< _PThread * >( __vm_obj_make( sizeof( _PThread ) ) );
+    new ( thread ) _PThread();
+    tls( gtid ).thread = thread;
+
+    // initialize thread metadata
+    thread->running = true;
+    thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
+    thread->condition = nullptr;
+    thread->cancel_state = PTHREAD_CANCEL_ENABLE;
+    thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
+}
+
 _Noreturn void _clean_and_become_zombie( __dios::FencedInterruptMask &mask,
                                          __dios_task tid ) noexcept
 {
@@ -83,7 +88,7 @@ _Noreturn void _clean_and_become_zombie( __dios::FencedInterruptMask &mask,
     int iter = 0;
     bool done;
 
-    auto &tls = ::tls( tid );
+    auto &tls = __dios::tls( tid );
     do {
         done = true;
         for ( int i = 0; i < tls.keyCount(); ++i )
@@ -105,4 +110,6 @@ _Noreturn void _clean_and_become_zombie( __dios::FencedInterruptMask &mask,
     else // wait until detach / join kills us
         wait( mask, [&] { return true; } );
     __builtin_trap();
+}
+
 }

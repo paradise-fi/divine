@@ -4,7 +4,7 @@
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
-#include <sys/thread.hpp>
+#include <sys/thread.h>
 
 /* Once-only execution */
 /*

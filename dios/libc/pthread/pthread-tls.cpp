@@ -4,7 +4,9 @@
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
-#include <sys/thread.hpp>
+#include <sys/thread.h>
+
+using namespace __dios;
 
 using _PthreadTLSDestructors = _PthreadHandlers< Destructor >;
 static _PthreadTLSDestructors tlsDestructors;

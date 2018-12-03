@@ -4,7 +4,10 @@
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
-#include <sys/thread.hpp>
+#include <sys/thread.h>
+
+namespace __dios
+{
 
 /* Mutex */
 
@@ -118,6 +121,10 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
 
     return 0;
 }
+
+}
+
+using namespace __dios;
 
 int pthread_mutex_destroy( pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
