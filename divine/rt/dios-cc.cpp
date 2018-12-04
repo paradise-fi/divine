@@ -5,12 +5,15 @@ namespace rt {
 
 using namespace cc;
 
+void DiosCC::linkDios()
+{
+    for ( auto arch : { "dios", "rst" } )
+        linkEntireArchive( arch );
+}
+
 void DiosCC::linkEssentials()
 {
     using namespace std::literals;
-
-    for ( auto arch : { "dios", "rst" } )
-        linkEntireArchive( arch );
     // the _link_essentials modules are built from divine.link.always annotations
     for ( auto e : defaultDIVINELibs )
     {
@@ -42,6 +45,7 @@ DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
 void DiosCC::build( ParsedOpts po )
 {
     Driver::build( po );
+
     if ( linker->hasModule() ) {
         linkEssentials();
         linkLibs( defaultDIVINELibs );
