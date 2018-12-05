@@ -132,7 +132,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
     if ( S_ISLNK( stat->st_mode ) ) {
         std::string symPath ( cont.begin(), cont.end() );
-        bool absolute = brick::fs::isAbsolute( symPath);
+        bool absolute = brick::fs::isAbsolute( symPath );
         if ( !absolute ) {
             auto split = brick::fs::splitPath( oPath );
             split.pop_back();
@@ -246,13 +246,13 @@ void WithBC::setup()
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;
     for ( auto vfs : _vfs ) {
-        auto ex = [&](const std::string& item) {
+        auto ex = [&]( const std::string& item ) {
             return explore( vfs.followSymlink,
-                [&]( const std::string& s) { return changePathPrefix( s, vfs.capture, vfs.mount ); },
+                [&]( const std::string& s ) { return changePathPrefix( s, vfs.capture, vfs.mount ); },
                 [&]( const std::string& s ) { vfsCaptured.insert( s ); },
-                [&]( const std::string& s ) { return visited( vfsCaptured, s); },
+                [&]( const std::string& s ) { return visited( vfsCaptured, s ); },
                 [&]( ) { return i++; },
-                [&]( size_t s ) { if ( limit < s ) die( "VFS capture limit reached"); limit -= s;  },
+                [&]( size_t s ) { if ( limit < s ) die( "VFS capture limit reached" ); limit -= s;  },
                 _bc_env,
                 item );
         };
