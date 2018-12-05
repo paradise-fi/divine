@@ -2,6 +2,7 @@
 
 /*
  * (c) 2018 Petr Ročkai <code@fixp.eu>
+ * (c) 2018 Henrich Lauko <xlauko@mail.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,8 +19,7 @@
 
 #pragma once
 
-#include <lart/lart.h>
-#include <brick-smt>
+#include <divine/smt/builder-common.hpp>
 
 #if OPT_Z3
 #include <z3++.h>
@@ -29,7 +29,6 @@
 #include <stp/STPManager/STPManager.h>
 #endif
 
-namespace divine::smt { namespace sym = lart::sym; }
 namespace divine::smt::builder
 {
 
@@ -85,20 +84,6 @@ struct Z3
     z3::context &_ctx;
 };
 #endif
-
-template< typename B >
-auto mk_bin( B &bld, sym::Op op, int bw, typename B::Node a, typename B::Node b )
-{
-    return bld.binary( sym::Binary( op, sym::Type( sym::Type::Int, bw ), vm::nullPointer(),
-                                    vm::nullPointer() ),
-                       a, b );
-}
-
-template< typename B >
-auto mk_un( B &bld, sym::Op op, int bw, typename B::Node a )
-{
-    return bld.unary( sym::Unary( op, sym::Type( sym::Type::Int, bw ), vm::nullPointer() ), a );
-}
 
 }
 
