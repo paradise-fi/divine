@@ -21,6 +21,7 @@ void __dios_run_ctors();
 void __dios_run_dtors();
 
 void __pthread_start( void * );
+void __pthread_entry( void * );
 
 #ifdef __cplusplus
 int main(...);
