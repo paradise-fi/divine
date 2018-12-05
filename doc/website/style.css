@@ -394,6 +394,14 @@ table.properties th, table.trac-properties th { padding-left: 1em; padding-right
 table.properties td, table.trac-properties td  { padding-right: 2em; }
 .trac-properties table { border-spacing: 2px; }
 
+table.tickets td, table.tickets th { padding-left: .7em; }
+table.tickets td.summary
+{
+    text-overflow: ellipsis; white-space: nowrap;
+    display: inline-block; width: 25em; overflow: hidden;
+}
+table.tickets tr:nth-child(even) { background-color: #f0f0f0; }
+
 fieldset#action { margin-top: 1ex; padding-top: 2ex; }
 fieldset#action .hint { display: none; }
 fieldset#action div { display: block; height: 3.5ex; }
