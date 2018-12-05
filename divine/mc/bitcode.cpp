@@ -16,6 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <divine/rt/dios-cc.hpp>
 #include <divine/mc/bitcode.hpp>
 #include <divine/vm/memory.tpp>
 #include <divine/vm/program.hpp>
@@ -71,6 +72,18 @@ LeakCheckFlags leakcheck_from_string( std::string x )
     return mc::LeakCheck::Nothing;
 }
 
+void BitCode::lazy_link_dios()
+{
+    if( !(_module->getFunction( "__boot" )) )
+    {
+        rt::DiosCC drv( _ctx );
+        drv.link( std::move( _module ) );
+        drv.linkDios();
+        drv.linkLibs( rt::DiosCC::defaultDIVINELibs );
+        _module = drv.takeLinked();
+    }
+}
+
 BitCode::BitCode( std::string file )
 {
     _ctx.reset( new llvm::LLVMContext() );
@@ -87,6 +100,7 @@ BitCode::BitCode( std::string file )
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
     _module = std::move( parsed.get() );
+    lazy_link_dios();
 }
 
 
@@ -94,6 +108,7 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
     : _ctx( ctx ), _module( std::move( m ) )
 {
     ASSERT( _module.get() );
+    lazy_link_dios();
     _program.reset( new vm::Program( llvm::DataLayout( _module.get() ) ) );
 }
 

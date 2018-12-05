@@ -96,6 +96,9 @@ struct BitCode
     void init();
 
     ~BitCode();
+
+private:
+    void lazy_link_dios();
 };
 
 }
