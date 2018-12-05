@@ -20,8 +20,27 @@
 #pragma once
 
 #include <divine/smt/builder-common.hpp>
-#include <divine/smt/builder-smtlib-bv.hpp>
-#include <divine/smt/builder-stp-bv.hpp>
-#include <divine/smt/builder-z3-bv.hpp>
 
+namespace divine::smt::builder
+{
 
+struct SMTLib2
+{
+    using Node = brick::smt::Node;
+    SMTLib2( brick::smt::Context &ctx, std::string suff = "", bool defs = true )
+        : _ctx( ctx ), _suff( suff ), _use_defs( defs ) {}
+
+    Node unary( sym::Unary un, Node n );
+    Node binary( sym::Binary bin, Node a, Node b );
+    Node constant( sym::Type t, uint64_t val );
+    Node constant( bool );
+    Node variable( sym::Type t, int32_t id );
+    Node define( Node def );
+
+    brick::smt::Context &_ctx;
+    std::string _suff;
+    bool _use_defs = true;
+    int _def_counter = 0;
+};
+
+} // namespace divine::smt::builder

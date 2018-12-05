@@ -19,9 +19,26 @@
 
 #pragma once
 
+#if OPT_Z3
 #include <divine/smt/builder-common.hpp>
-#include <divine/smt/builder-smtlib-bv.hpp>
-#include <divine/smt/builder-stp-bv.hpp>
-#include <divine/smt/builder-z3-bv.hpp>
+#include <z3++.h>
 
+namespace divine::smt::builder
+{
 
+struct Z3
+{
+    using Node = z3::expr;
+    Z3( z3::context &c ) : _ctx( c ) {}
+
+    Node unary( sym::Unary un, Node n );
+    Node binary( sym::Binary bin, Node a, Node b );
+    Node constant( sym::Type t, uint64_t val );
+    Node constant( bool );
+    Node variable( sym::Type t, int32_t id );
+
+    z3::context &_ctx;
+};
+
+} // namespace divine::smt::builder
+#endif

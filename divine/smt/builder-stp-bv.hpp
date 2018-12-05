@@ -19,9 +19,28 @@
 
 #pragma once
 
+#if OPT_STP
 #include <divine/smt/builder-common.hpp>
-#include <divine/smt/builder-smtlib-bv.hpp>
-#include <divine/smt/builder-stp-bv.hpp>
-#include <divine/smt/builder-z3-bv.hpp>
+#include <stp/STPManager/STPManager.h>
 
+namespace divine::smt::builder
+{
 
+struct STP
+{
+    using Node = stp::ASTNode;
+
+    Node unary( sym::Unary un, Node n );
+    Node binary( sym::Binary bin, Node a, Node b );
+    Node constant( sym::Type t, uint64_t val );
+    Node constant( int w, uint64_t val );
+    Node constant( int val );
+    Node constant( bool );
+    Node variable( sym::Type t, int32_t id );
+
+    STP( stp::STPMgr &stp ) : _stp( stp ) {}
+    stp::STPMgr &_stp;
+};
+
+} // namespace divine::smt::builder
+#endif
