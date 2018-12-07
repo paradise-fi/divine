@@ -130,7 +130,7 @@ void Stash::arg_stash( CallInst *call ) {
 }
 
 void Stash::ret_stash( CallInst *call, Function * fn ) {
-    auto dom = ValueMetadata( call ).domain();
+    auto dom = get_domain( call );
     if ( auto terminator = returns_abstract_value( call, fn ) ) {
         auto ret = cast< ReturnInst >( terminator );
         auto val = ret->getReturnValue();
@@ -158,7 +158,7 @@ void Stash::ret_stash( CallInst *call, Function * fn ) {
 }
 
 void Stash::ret_unstash( CallInst *call ) {
-    auto dom = ValueMetadata( call ).domain();
+    auto dom = get_domain( call );
 
     Values terminators;
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {

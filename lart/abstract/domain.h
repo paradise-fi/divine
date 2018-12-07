@@ -153,10 +153,6 @@ llvm::MDNode * get_abstract_metadata( llvm::Instruction *inst );
 
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
 
-
-
-Domain get_domain( llvm::Type *type );
-
 inline Domain get_domain( llvm::Argument *arg ) {
     auto fmd = FunctionMetadata( arg->getParent() );
     return fmd.get_arg_domain( arg->getArgNo() );

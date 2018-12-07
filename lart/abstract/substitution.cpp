@@ -40,33 +40,6 @@ Function * get_function( CallInst * call ) {
     return fns[ 0 ];
 }
 
-Domain get_domain_of_intr( Instruction *inst ) {
-    assert( inst->getType()->isStructTy() );
-    if ( auto call = dyn_cast< CallInst >( inst ) ) {
-        auto fn = get_function( call );
-        if ( fn->getName().startswith( "__lart_cast" ) ) {
-            auto dual = get_dual( call );
-            return ValueMetadata( dual ).domain();
-        }
-
-        if ( fn->getName().startswith( "lart.placeholder" ) ) {
-            ASSERT( isa<Argument >( get_dual( call ) ) );
-            return get_domain( call->getType() );
-        }
-
-        // taint
-        auto intr = cast< Function >( call->getOperand( 0 ) );
-        if ( intr->getName().count( ".assume" ) )
-            return ValueMetadata( call ).domain();
-        else
-            return ValueMetadata( get_dual( call ) ).domain();
-    } else {
-        auto phi = cast< PHINode >( inst );
-        auto dual = get_dual( phi );
-        return ValueMetadata( dual ).domain();
-    }
-}
-
 bool is_taint_of_type( Function *fn, const std::string &name ) {
     return fn->getName().count( "lart." ) &&
            fn->getName().count( name );
@@ -79,7 +52,7 @@ Function* taint_function( CallInst *taint ) {
 Type* return_type_of_intr( CallInst *call ) {
     if ( !call->getType()->isStructTy() )
         return call->getType();
-    auto dom = get_domain_of_intr( call );
+    auto dom = get_domain( call );
 
     if ( is_taint_of_type( taint_function( call ), "assume" ) ) {
         auto def = cast< Instruction >( call->getOperand( 1 ) );
@@ -151,10 +124,6 @@ bool is_assume( Instruction *inst ) {
 }
 
 Domain domain( Instruction *inst ) {
-    if ( is_assume( inst ) )
-        return get_domain( cast< Instruction >( inst->getOperand( 0 ) )->getOperand( 0 )->getType() );
-    if ( is_to_i1( inst ) )
-        return get_domain( inst->getOperand( 0 )->getType() );
     return get_domain( inst );
 }
 
@@ -163,8 +132,7 @@ Type* return_type( Instruction *inst ) {
     if ( ty->isVoidTy() )
         return ty;
 
-    auto dom = get_domain( ty );
-    return domain_metadata( *inst->getModule(), dom ).base_type();
+    return domain_metadata( *inst->getModule(), get_domain( inst ) ).base_type();
 }
 
 Values arguments( Instruction *inst ) {
@@ -694,7 +662,7 @@ void InDomainDuplicate::process( Instruction *inst ) {
     auto ph = placeholder::get( inst );
     auto args = placeholder::arguments( inst );
     auto call = irb.CreateCall( ph, args );
-    add_abstract_metadata( call, ValueMetadata( inst ).domain() );
+    add_abstract_metadata( call, get_domain( inst ) );
 
     if ( placeholder::is_to_i1( call ) )
         inst->replaceAllUsesWith( call );
@@ -966,7 +934,7 @@ void stash_return_value( CallInst *call, Function * fn ) {
         IRBuilder<> irb( ret );
         auto sfn = stash_function( get_module( call ) );
 
-        auto dom = ValueMetadata( call ).domain();
+        auto dom = get_domain( call );
         auto i64 = IntegerType::get( call->getContext(), 64 );
         ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
         // TODO get value from stash placeholder
@@ -996,7 +964,7 @@ Value* unstash_return_value( CallInst *call ) {
         auto unfn = unstash_function( get_module( call ) );
         auto unstash = irb.CreateCall( unfn );
 
-        auto dom = ValueMetadata( call ).domain();
+        auto dom = get_domain( call );
 
         auto meta = domain_metadata( *get_module( call ), dom );
         auto base = meta.base_type();
@@ -1060,7 +1028,7 @@ void Tainting::run( Module &m ) {
 
         if ( is_base_type( m, call ) ) {
             if ( auto ret = bundle::unstash_return_value( call ) ) {
-                auto dom = ValueMetadata( call ).domain();
+                auto dom = get_domain( call );
                 auto ph = get_placeholder_in_domain( call, dom );
                 substitutes[ ph ] = ret;
             }
@@ -1073,7 +1041,6 @@ void Tainting::run( Module &m ) {
 
     for ( auto &ph : phs )
         ph->eraseFromParent();
-
 }
 
 Value* create_in_domain_phi( Instruction *placeholder ) {
@@ -1083,7 +1050,7 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
     IRBuilder<> irb( placeholder );
     auto abstract = irb.CreatePHI( ty, phi->getNumIncomingValues() );
 
-    auto dom = ValueMetadata( phi ).domain();
+    auto dom = get_domain( phi );
 
     for ( unsigned int i = 0; i < phi->getNumIncomingValues(); ++i ) {
         auto in = phi->getIncomingValue( i );
@@ -1141,7 +1108,7 @@ void FreezeStores::run( Module &m ) {
 
 void FreezeStores::process( StoreInst *store ) {
     auto m = get_module( store );
-    auto meta = domain_metadata( *m, ValueMetadata( store ).domain() );
+    auto meta = domain_metadata( *m, get_domain( store ) );
     auto dom = meta.domain();
 
     auto val = store->getValueOperand();
@@ -1155,11 +1122,9 @@ void FreezeStores::process( StoreInst *store ) {
     auto name = "lart." + dom.name() + ".freeze." + llvm_name( ty );
     auto freeze = get_or_insert_function( m, freeze_fty, name );
 
-    Value *abstract;
-    if ( has_placeholder_in_domain( val, dom ) )
-        abstract = get_placeholder_in_domain( val, dom );
-    else
-        abstract = meta.default_value();
+    Value *abstract = has_placeholder_in_domain( val, dom )
+                    ? get_placeholder_in_domain( val, dom )
+                    : meta.default_value();
 
     Values args = { freeze, val, val, abstract, ptr };
 

@@ -327,13 +327,6 @@ bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
     }
 }
 
-Domain get_domain( Type *type ) {
-    auto st = cast< StructType >( type );
-    auto name = st->getName().split('.').second.split('.').first;
-    return Domain( name.str() );
-}
-
-
 bool is_base_type( llvm::Module *m, llvm::Value * val ) {
     return is_base_type_in_domain( m, val, get_domain( val ) );
 }
