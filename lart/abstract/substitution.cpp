@@ -62,8 +62,8 @@ Type* return_type_of_intr( CallInst *call ) {
 }
 
 BasicBlock* make_bb( Function *fn, std::string name ) {
-	auto &ctx = fn->getContext();
-	return BasicBlock::Create( ctx, name, fn );
+    auto &ctx = fn->getContext();
+    return BasicBlock::Create( ctx, name, fn );
 }
 
 size_t taint_args_size( CallInst *taint ) {
@@ -187,7 +187,7 @@ Function* get( Instruction *inst ) {
     auto dom = domain( inst );
     auto phname = name( inst, inst->getOperand( 0 ), dom );
     auto fty = FunctionType::get( rty, types_of( args ), false );
-   	return get_or_insert_function( get_module( inst ), fty, phname );
+    return get_or_insert_function( get_module( inst ), fty, phname );
 }
 
 } // namespace placeholder
@@ -506,7 +506,7 @@ struct FreezeLifter : BaseLifter {
 
     void syntetize() final {
         ASSERT( function()->empty() );
-      	IRBuilder<> irb( make_bb( function(), "entry" ) );
+        IRBuilder<> irb( make_bb( function(), "entry" ) );
 
         auto begin = function()->arg_begin();
         auto formula = std::next( begin, 3 );
@@ -1152,7 +1152,7 @@ void FreezeStores::run( Module &m ) {
         process( cast< StoreInst >( s ) );
 
     for ( auto s : stores )
-	    s->eraseFromParent();
+        s->eraseFromParent();
 }
 
 void FreezeStores::process( StoreInst *store ) {

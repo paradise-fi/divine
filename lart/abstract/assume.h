@@ -11,7 +11,7 @@ namespace lart {
 namespace abstract {
 
 struct AddAssumes {
-	void run( llvm::Module &m );
+    void run( llvm::Module &m );
 
     void process( llvm::BranchInst *i );
 };

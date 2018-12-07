@@ -20,23 +20,23 @@ namespace {
 
 Function* stash_placeholder( Module *m, Type *in ) {
     auto void_type = Type::getVoidTy( m->getContext() );
-	auto fty = llvm::FunctionType::get( void_type, { in }, false );
+    auto fty = llvm::FunctionType::get( void_type, { in }, false );
     std::string name = "lart.stash.placeholder.";
-	if ( auto s = dyn_cast< StructType >( in ) )
+    if ( auto s = dyn_cast< StructType >( in ) )
         name += s->getName().str();
     else
         name += llvm_name( in );
-   	return get_or_insert_function( m, fty, name );
+    return get_or_insert_function( m, fty, name );
 }
 
 Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
-	auto fty = llvm::FunctionType::get( out, { val->getType() }, false );
+    auto fty = llvm::FunctionType::get( out, { val->getType() }, false );
     std::string name = "lart.unstash.placeholder.";
-	if ( auto s = dyn_cast< StructType >( out ) )
+    if ( auto s = dyn_cast< StructType >( out ) )
         name += s->getName().str();
     else
         name += llvm_name( out );
-   	return get_or_insert_function( m, fty, name );
+    return get_or_insert_function( m, fty, name );
 }
 
 

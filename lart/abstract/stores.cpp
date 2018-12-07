@@ -28,12 +28,12 @@ Value * offset( Value * ptr ) {
 
 template< typename T >
 std::vector< T * > transformable( Module & m ) {
-	return query::query( abstract_metadata( m ) )
-	    .map( [] ( auto mdv ) { return mdv.value(); } )
-	    .map( query::llvmdyncast< T > )
-	    .filter( query::notnull )
-	    .filter( is_transformable )
-	    .freeze();
+    return query::query( abstract_metadata( m ) )
+        .map( [] ( auto mdv ) { return mdv.value(); } )
+        .map( query::llvmdyncast< T > )
+        .filter( query::notnull )
+        .filter( is_transformable )
+        .freeze();
 }
 
 void AddStores::run( Module &m ) {
@@ -45,7 +45,7 @@ void AddStores::run( Module &m ) {
     }
 
     for ( const auto &store : transformable< StoreInst >( m ) )
-    	process( store );
+        process( store );
 }
 
 Function * abstract_store( Module * m, StoreInst * store ) {

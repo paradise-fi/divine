@@ -21,13 +21,13 @@ namespace lart::abstract
 {
 
 Function* placeholder( Module *m, Type *in, Type *out ) {
-	auto fty = llvm::FunctionType::get( out, { in }, false );
+    auto fty = llvm::FunctionType::get( out, { in }, false );
     std::string name = "lart.placeholder.";
     if ( auto s = dyn_cast< StructType >( out ) )
         name += s->getName().str();
     else
         name += llvm_name( out );
-   	return get_or_insert_function( m, fty, name );
+    return get_or_insert_function( m, fty, name );
 }
 
 bool is_duplicable( llvm::Instruction * inst ) {
@@ -35,15 +35,15 @@ bool is_duplicable( llvm::Instruction * inst ) {
 }
 
 void Duplicator::run( llvm::Module &m ) {
-	auto abstract = query::query( abstract_metadata( m ) )
-	    .map( [] ( auto mdv ) { return mdv.value(); } )
-	    .map( query::llvmdyncast< Instruction > )
-	    .filter( query::notnull )
-	    .filter( is_duplicable )
-	    .freeze();
+    auto abstract = query::query( abstract_metadata( m ) )
+        .map( [] ( auto mdv ) { return mdv.value(); } )
+        .map( query::llvmdyncast< Instruction > )
+        .filter( query::notnull )
+        .filter( is_duplicable )
+        .freeze();
 
     for ( const auto &inst : abstract )
-    	process( inst );
+        process( inst );
 }
 
 void Duplicator::process( llvm::Instruction *i ) {

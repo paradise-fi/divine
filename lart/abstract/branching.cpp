@@ -32,9 +32,9 @@ void ExpandBranching::run( Module &m ) {
 
 Function* to_i1_placeholder( Instruction* abstract ) {
     auto i1 = Type::getInt1Ty( abstract->getContext() );
-	auto fty = llvm::FunctionType::get( i1, { abstract->getType() }, false );
+    auto fty = llvm::FunctionType::get( i1, { abstract->getType() }, false );
     std::string name = "lart.to_i1.placeholder." + cast< StructType >( abstract->getType() )->getName().str();
-   	return get_or_insert_function( get_module( abstract ), fty, name );
+    return get_or_insert_function( get_module( abstract ), fty, name );
 }
 
 void ExpandBranching::expand_to_i1( Instruction *abstract ) {

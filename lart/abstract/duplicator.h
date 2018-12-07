@@ -16,7 +16,7 @@ struct Duplicator {
     void process( llvm::Instruction* );
 private:
     std::unordered_set< llvm::Function* > seen;
-	std::map< llvm::Value*, llvm::Value* > dups;
+    std::map< llvm::Value*, llvm::Value* > dups;
 };
 
 } // namespace abstract

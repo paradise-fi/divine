@@ -62,7 +62,7 @@ Type* abstract_type( Type *orig, Domain dom ) {
     if ( dom == Domain::Tristate() )
         name = "lart." + dom.name();
     else
-		name = "lart." + dom.name() + "." + llvm_name( orig );
+        name = "lart." + dom.name() + "." + llvm_name( orig );
 
     if ( auto aty = orig->getContext().pImpl->NamedStructTypes.lookup( name ) )
         return aty;

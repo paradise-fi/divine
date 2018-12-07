@@ -11,7 +11,7 @@ namespace lart {
 namespace abstract {
 
 struct CallInterrupt {
-	void run( llvm::Module &m );
+    void run( llvm::Module &m );
 };
 
 } // namespace abstract
