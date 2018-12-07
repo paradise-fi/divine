@@ -30,11 +30,16 @@ Function* placeholder( Module *m, Type *in, Type *out ) {
    	return get_or_insert_function( m, fty, name );
 }
 
+bool is_duplicable( llvm::Instruction * inst ) {
+    return is_transformable( inst ) && !isa< GetElementPtrInst >( inst );
+}
+
 void Duplicator::run( llvm::Module &m ) {
 	auto abstract = query::query( abstract_metadata( m ) )
 	    .map( [] ( auto mdv ) { return mdv.value(); } )
 	    .map( query::llvmdyncast< Instruction > )
-	    .filter( is_transformable )
+	    .filter( query::notnull )
+	    .filter( is_duplicable )
 	    .freeze();
 
     for ( const auto &inst : abstract )
