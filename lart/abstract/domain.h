@@ -135,6 +135,12 @@ private:
     llvm::Function *fn;
 };
 
+void set_addr_offset( llvm::Instruction *inst, llvm::Value * offset );
+void set_addr_origin( llvm::Instruction *inst, llvm::Value * origin );
+
+llvm::Value * get_addr_offset( llvm::Instruction *inst );
+llvm::Value * get_addr_origin( llvm::Instruction *inst );
+
 void make_duals( llvm::Instruction *a, llvm::Instruction *b );
 llvm::Value* get_dual( llvm::Instruction *i );
 
