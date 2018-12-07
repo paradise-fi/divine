@@ -23,7 +23,7 @@ namespace lart::abstract
 Function* placeholder( Module *m, Type *in, Type *out ) {
 	auto fty = llvm::FunctionType::get( out, { in }, false );
     std::string name = "lart.placeholder.";
-	if ( auto s = dyn_cast< StructType >( out ) )
+    if ( auto s = dyn_cast< StructType >( out ) )
         name += s->getName().str();
     else
         name += llvm_name( out );

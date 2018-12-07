@@ -23,6 +23,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/duplicator.h>
 #include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
+#include <lart/abstract/stores.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/substitution.h>
@@ -61,6 +62,7 @@ namespace abstract {
                                            , VPA() // run once more to propagate through decasted functions
                                            , Duplicator()
                                            , Stash()
+                                           , AddStores()
                                            , ExpandBranching()
                                            , AddAssumes()
                                            , InDomainDuplicate()

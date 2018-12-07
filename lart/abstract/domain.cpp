@@ -289,7 +289,7 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
                                     IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
         case DomainKind::string:
             return is_transformable_in_domain( inst, dom ) ||
-                   util::is_one_of< CallInst, ReturnInst >( inst );
+                   util::is_one_of< CallInst, StoreInst, ReturnInst >( inst );
         case DomainKind::pointer:
         case DomainKind::custom:
         default:
@@ -319,7 +319,7 @@ bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
                     return get_module( inst )->getFunction( name );
                 }
             }
-            return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
+            return util::is_one_of< LoadInst, GetElementPtrInst >( inst );
         case DomainKind::pointer:
         case DomainKind::custom:
         default:
