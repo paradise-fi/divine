@@ -9,4 +9,6 @@ PROT( lift, const char *, unsigned );
 RET_PROT( size_t, strlen, const DOMAIN_TYPE );
 RET_PROT( int, strcmp, const DOMAIN_TYPE, const DOMAIN_TYPE );
 
+RET_PROT( bool, store, char, DOMAIN_TYPE, uint64_t );
+
 }

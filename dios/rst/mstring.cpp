@@ -27,6 +27,11 @@ extern "C" {
         return lhs->strcmp( rhs );
     }
 
+    bool __mstring_store( char val, __mstring * str, uint64_t idx) {
+        str->set( idx, val );
+        return true;
+    }
+
     _MSTRING __mstring * __mstring_undef_value() {
         _UNREACHABLE_F( "Invalid use of mstring value." );
         return nullptr;
