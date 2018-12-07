@@ -68,7 +68,8 @@ namespace {
             auto to_i1 = cast< Instruction >( ass.cond );
 
             llvm::IRBuilder<> irb( &*edgebb->getFirstInsertionPt() );
-            irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
+            auto ph = irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
+            add_abstract_metadata( ph, ValueMetadata( to_i1 ).domain() );
 
             // Correct phis after edge splitting
             replace_phis_incoming_bbs( to, from, edgebb );

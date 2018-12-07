@@ -694,6 +694,7 @@ void InDomainDuplicate::process( Instruction *inst ) {
     auto ph = placeholder::get( inst );
     auto args = placeholder::arguments( inst );
     auto call = irb.CreateCall( ph, args );
+    add_abstract_metadata( call, ValueMetadata( inst ).domain() );
 
     if ( placeholder::is_to_i1( call ) )
         inst->replaceAllUsesWith( call );
