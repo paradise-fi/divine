@@ -31,7 +31,8 @@ Function* placeholder( Module *m, Type *in, Type *out ) {
 }
 
 bool is_duplicable( llvm::Instruction * inst ) {
-    return is_transformable( inst ) && !isa< GetElementPtrInst >( inst );
+    return is_transformable( inst ) &&
+        !lart::util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
 }
 
 void Duplicator::run( llvm::Module &m ) {
