@@ -96,7 +96,8 @@ namespace abstract::mstring {
             }
 
 		    // last substring
-		    _sections.push_back( Section( buff, preffix, buff.size() ) );
+		    if ( preffix < buff.size() )
+		        _sections.push_back( Section( buff, preffix, buff.size() ) );
 	    }
 
         const Sections< Buffer >& sections() const noexcept { return _sections; }
