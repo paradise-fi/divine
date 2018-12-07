@@ -61,28 +61,28 @@ int Quintuple::strcmp( const Quintuple * other ) const noexcept {
     auto split_q1 = this->split();
     auto split_q2 = other->split();
 
-	auto sq1 =  split_q1.sections().front();
-	auto sq2 =  split_q2.sections().front();
+    auto sq1 =  split_q1.sections().front();
+    auto sq2 =  split_q2.sections().front();
 
-	if ( !sq1.empty() && !sq2.empty() ) {
-		for ( size_t i = 0; i < sq1.size(); i++ ) {
-		    const auto& sq1_seg = sq1.segment_of( i ); // TODO optimize segment_of
-		    const auto& sq2_seg = sq2.segment_of( i );
+    if ( !sq1.empty() && !sq2.empty() ) {
+        for ( size_t i = 0; i < sq1.size(); i++ ) {
+            const auto& sq1_seg = sq1.segment_of( i ); // TODO optimize segment_of
+            const auto& sq2_seg = sq2.segment_of( i );
 
            // TODO optimize per segment comparison
-		    if ( sq1_seg.value() == sq2_seg.value() ) {
-			    if ( sq1_seg.to() - this->from() > sq2_seg.to() - other->from() ) {
-				    return sq1_seg.value() - sq2.segment_of( i + 1 ).value();
-			    } else if (sq1_seg.to() - this->from() < sq2_seg.to() - other->from() ) {
-				    return sq1.segment_of( i + 1 ).value() - sq2_seg.value();
-			    }
-		    } else {
-				return sq1[ i ] - sq2[ i ];
-			}
-		}
+            if ( sq1_seg.value() == sq2_seg.value() ) {
+                if ( sq1_seg.to() - this->from() > sq2_seg.to() - other->from() ) {
+                    return sq1_seg.value() - sq2.segment_of( i + 1 ).value();
+                } else if (sq1_seg.to() - this->from() < sq2_seg.to() - other->from() ) {
+                    return sq1.segment_of( i + 1 ).value() - sq2_seg.value();
+                }
+            } else {
+                return sq1[ i ] - sq2[ i ];
+            }
+        }
 
-		return 0;
-	}
+        return 0;
+    }
 
     _UNREACHABLE_F( "Error: there is no string of interest." );
 }

@@ -4,11 +4,11 @@
 namespace abstract {
 
 struct Tristate {
-	enum Value { False = 0, True = 1, Unknown = 2 };
+    enum Value { False = 0, True = 1, Unknown = 2 };
 
     Tristate( Value val ) : value( val ) { }
 
-	Value value;
+    Value value;
 };
 
 extern "C" {

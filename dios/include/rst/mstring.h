@@ -38,7 +38,7 @@ namespace abstract::mstring {
         char _val;
     };
 
-	using Segments = __dios::Array< Segment >;
+    using Segments = __dios::Array< Segment >;
 
 
     template< typename Buffer >
@@ -82,28 +82,28 @@ namespace abstract::mstring {
     };
 
     template< typename Buffer >
-	using Sections = __dios::Array< Section< Buffer > >;
+    using Sections = __dios::Array< Section< Buffer > >;
 
 
     template< typename Buffer >
-	struct Split {
-	    Split( const Buffer& buff, const __dios::Array< int >& terminators )
-	    {
+    struct Split {
+        Split( const Buffer& buff, const __dios::Array< int >& terminators )
+        {
             unsigned preffix = 0;
-	    	for ( auto terminator : terminators ) {
-		    	_sections.push_back( Section( buff, preffix, terminator ) );
-			    preffix = terminator + 1;
+            for ( auto terminator : terminators ) {
+                _sections.push_back( Section( buff, preffix, terminator ) );
+                preffix = terminator + 1;
             }
 
-		    // last substring
-		    if ( preffix < buff.size() )
-		        _sections.push_back( Section( buff, preffix, buff.size() ) );
-	    }
+            // last substring
+            if ( preffix < buff.size() )
+                _sections.push_back( Section( buff, preffix, buff.size() ) );
+        }
 
         const Sections< Buffer >& sections() const noexcept { return _sections; }
     private:
-		Sections< Buffer > _sections;
-	};
+        Sections< Buffer > _sections;
+    };
 
 
     template< typename T >
@@ -153,7 +153,7 @@ namespace abstract::mstring {
         constexpr size_t from() const noexcept { return _buff.from(); }
 
         size_t strlen() const noexcept;
-		int strcmp( const Quintuple * other ) const noexcept;
+        int strcmp( const Quintuple * other ) const noexcept;
 
         void set( uint64_t idx, char val ) noexcept;
 
