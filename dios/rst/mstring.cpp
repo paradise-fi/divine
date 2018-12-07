@@ -81,3 +81,23 @@ int Quintuple::strcmp( const Quintuple * other ) const noexcept {
 
     _UNREACHABLE_F( "Error: there is no string of interest." );
 }
+
+void Quintuple::set( uint64_t idx, char val ) noexcept {
+    auto split = this->split();
+    auto sq = split.sections().front();
+
+    if ( !sq.empty() ) {
+        assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
+        if ( _buff[ idx ] == '\0' ) {
+            auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
+            _terminators.erase( it );
+        }
+        _buff[ idx ] = val;
+        if ( val == '\0' ) {
+            auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
+            _terminators.insert( it, idx );
+        }
+    } else {
+        _UNREACHABLE_F( "Error: there is no string of interest." );
+    }
+}

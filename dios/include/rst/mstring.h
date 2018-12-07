@@ -154,13 +154,15 @@ namespace abstract::mstring {
         size_t strlen() const noexcept;
 		int strcmp( const Quintuple * other ) const noexcept;
 
+        void set( uint64_t idx, char val ) noexcept;
+
         constexpr char * data() noexcept { return _buff.data(); }
         constexpr const char * data() const noexcept { return _buff.data(); }
     private:
         size_t _from;
 
         Buffer _buff;                        // IV - buffer
-        __dios::Array< int > _terminators;   // T - zeros in sbuffer
+        __dios::Array< int > _terminators;   // T - zeros in buffer
     };
 
 } // namespace abstract::mstring
