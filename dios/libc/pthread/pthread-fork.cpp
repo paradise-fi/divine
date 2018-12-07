@@ -6,10 +6,7 @@
 /* Includes */
 #include <sys/thread.h>
 
-namespace __dios
-{
-
-static _PthreadAtFork atForkHandlers;
+static __dios::_PthreadAtFork atForkHandlers;
 
 /* Process */
 int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ),
@@ -40,9 +37,7 @@ void __run_atfork_handlers( uint16_t index ) noexcept
                 invoke( h[i].parent );
             else
             {
-                getThread().is_main = true;
+                __dios::getThread().is_main = true;
                 invoke( h[i].child );
             }
-}
-
 }
