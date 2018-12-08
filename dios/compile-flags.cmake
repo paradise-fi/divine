@@ -17,8 +17,9 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/ld80 )
 list( APPEND flags -isystem${divine_SOURCE_DIR}/ ) # for #includes starting with dios/
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 
+set( NOEXCEPT "-fno-rtti;-fno-exceptions" )
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
-mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR};-fno-rtti;-fno-exceptions" )
+mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;${NOEXCEPT};-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR}" )
 mkobjs( libm "${flags}" )
 
 list( APPEND flags -std=c++1z )
@@ -27,8 +28,8 @@ mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXA
 
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror)
-mkobjs( dios "${flags};-D__dios_kernel__;-fno-rtti;-fno-exceptions" )
-mkobjs( librst "${flags}" )
+mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT}" )
+mkobjs( librst "${flags};${NOEXCEPT}" )
 
 mklib( libc libc_cpp )
 mklib( libm )
