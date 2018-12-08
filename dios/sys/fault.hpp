@@ -13,7 +13,6 @@
 
 #include <algorithm>
 #include <cstdarg>
-#include <cxxabi.h>
 #include <sys/metadata.h>
 #include <sys/trace.h>
 

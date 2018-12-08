@@ -28,16 +28,11 @@ namespace __dios
         __dios_trace_t( "Backtrace:" );
         auto guard = makeMallocNofail();
         char *buffer = static_cast< char * >( malloc( 1024 ) );
-        size_t len = 1024;
         int i = 0;
-        for ( auto *f = frame; f != nullptr; f = f->parent ) {
+        for ( auto *f = frame; f != nullptr; f = f->parent )
+        {
             const char *name = __md_get_pc_meta( f->pc )->name;
-            int status;
-            char *b = __cxxabiv1::__cxa_demangle( name, buffer, &len, &status );
-            if ( b )
-                __dios_trace_f( "  %d: %s", ++i, b );
-            else
-                __dios_trace_f( "  %d: %s", ++i, name );
+            __dios_trace_f( "  %d: %s", ++i, name );
         }
         free( buffer );
     }
