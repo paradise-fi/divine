@@ -39,6 +39,35 @@ using Location = _VM_Operand::Location;
 using PtrRegister = GenericPointer;
 using IntRegister = uint64_t;
 
+struct LoopTrack
+{
+    std::vector< std::unordered_set< GenericPointer > > loops;
+
+    void entered( CodePointer )
+    {
+        loops.emplace_back();
+    }
+
+    void left( CodePointer )
+    {
+        loops.pop_back();
+        if ( loops.empty() ) /* more returns than calls could happen along an edge */
+            loops.emplace_back();
+    }
+
+    bool test_loop( CodePointer pc, int /* TODO */ )
+    {
+        /* TODO track the counter value too */
+        if ( loops.back().count( pc ) )
+            return true;
+        else
+            loops.back().insert( pc );
+
+        return false;
+    }
+
+};
+
 /* state of a computation */
 struct State
 {
@@ -46,7 +75,6 @@ struct State
     std::array< PtrRegister, _VM_CR_UserCount > user;
     IntRegister flags = 0, objid_shuffle = 0;
     uint32_t instruction_counter = 0;
-    std::vector< std::unordered_set< GenericPointer > > loops;
 };
 
 struct Registers
@@ -134,17 +162,6 @@ struct Registers
         _state.flags |=  set;
     }
 
-    void entered( CodePointer )
-    {
-        _state.loops.emplace_back();
-    }
-
-    void left( CodePointer )
-    {
-        _state.loops.pop_back();
-        if ( _state.loops.empty() ) /* more returns than calls could happen along an edge */
-            _state.loops.emplace_back();
-    }
 };
 
 struct TracingInterface
@@ -178,6 +195,7 @@ struct NoTracing : Registers, TracingInterface
 struct Tracing : Registers, TracingInterface
 {
     State _debug_state;
+    LoopTrack _loops;
     PtrRegister _debug_pc;
 
     int _debug_depth = 0;
@@ -204,7 +222,7 @@ struct Tracing : Registers, TracingInterface
         if ( debug_mode() )
             ++ _debug_depth;
         else
-            Registers::entered( f );
+            _loops.entered( f );
     }
 
     void left( CodePointer f )
@@ -217,7 +235,7 @@ struct Tracing : Registers, TracingInterface
                 leave_debug();
         }
         else
-            Registers::left( f );
+            _loops.left( f );
     }
 
     virtual void debug_save() {}
@@ -285,9 +303,29 @@ struct Memory
         auto newfr = _heap.write( loc, PointerV( regs.pc() ) );
         ptr2i( regs, Location( _VM_CR_Frame ), newfr );
     }
+};
 
-    void debug_save() {}
-    void debug_restore() {}
+struct CowMemory : Memory< vm::CowHeap >
+{};
+
+struct NoTracking
+{
+    void entered( CodePointer ) {}
+    void left( CodePointer ) {}
+    bool test_loop( CodePointer, int ) {}
+    bool test_crit( CodePointer, GenericPointer, int, int ) {}
+};
+
+struct NoFault
+{
+    void doublefault() {}
+    void fault( Fault, HeapPointer, CodePointer ) {}
+};
+
+struct NoChoice
+{
+    template< typename I >
+    int choose( int, I, I ) { return 0; }
 };
 
 template< typename Reg, typename Mem >
@@ -304,6 +342,13 @@ struct ContextBase : Reg, Mem
     void flush_ptr2i() { return Mem::flush_ptr2i( *this ); }
     void sync_pc() { return Mem::sync_pc( *this ); }
 
+    typename Mem::Heap::Snapshot snapshot()
+    {
+        auto rv = this->_heap.snapshot();
+        this->flush_ptr2i();
+        return rv;
+    }
+
     using Reg::set;
     void set( _VM_ControlRegister r, GenericPointer v )
     {
@@ -313,18 +358,10 @@ struct ContextBase : Reg, Mem
 
     using Reg::trace;
     virtual void trace( TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
-
-    void doublefault() {}
-    void fault( Fault, HeapPointer, CodePointer ) {}
-    bool test_loop( CodePointer, int ) {}
-    bool test_crit( CodePointer, GenericPointer, int, int ) {}
-
-    template< typename I >
-    int choose( int, I, I ) { return 0; }
 };
 
 template< typename Heap >
-struct TracingContext : ContextBase< Tracing, Memory< Heap > >
+struct TracingContext : ContextBase< Tracing, Memory< Heap > >, NoChoice
 {
     using Base = ContextBase< Tracing, Memory< Heap > >;
 
@@ -430,8 +467,8 @@ struct Context : TracingContext< Heap_ >
 
     void reset_interrupted()
     {
-        this->_state.loops.clear();
-        this->_state.loops.emplace_back();
+        this->_loops.loops.clear();
+        this->_loops.loops.emplace_back();
     }
 
     void clear()
@@ -466,32 +503,22 @@ struct Context : TracingContext< Heap_ >
     HeapPointer globals() { return Base::globals(); }
     HeapPointer constants() { return Base::constants(); }
 
-    typename Heap::Snapshot snapshot()
-    {
-        auto rv = _heap.snapshot();
-        this->flush_ptr2i();
-        return rv;
-    }
-
-    bool test_loop( CodePointer pc, int /* TODO */ )
-    {
-        if ( this->flags_all( _VM_CF_IgnoreLoop ) || this->debug_mode() )
-            return false;
-
-        /* TODO track the counter value too */
-        if ( this->_state.loops.back().count( pc ) )
-            return track_test( Interrupt::Cfl, pc );
-        else
-            this->_state.loops.back().insert( pc );
-
-        return false;
-    }
-
     bool track_test( Interrupt::Type t, CodePointer pc )
     {
         // if ( _debug_allowed ) TODO
             this->_interrupts.push_back( Interrupt{ t, this->_state.instruction_counter, pc } );
         return true;
+    }
+
+    bool test_loop( CodePointer pc, int ctr )
+    {
+        if ( this->flags_all( _VM_CF_IgnoreLoop ) || this->debug_mode() )
+            return false;
+
+        if ( this->_loops.test_loop( pc, ctr ) )
+            return track_test( Interrupt::Cfl, pc );
+        else
+            return false;
     }
 
     bool test_crit( CodePointer pc, GenericPointer ptr, int size, int type )
@@ -565,7 +592,7 @@ struct Context : TracingContext< Heap_ >
 };
 
 template< typename Program_, typename Heap_ >
-struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >
+struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >, NoFault, NoChoice, NoTracking
 {
     using Base = ContextBase< NoTracing, Memory< Heap_ > >;
     using Program = Program_;
