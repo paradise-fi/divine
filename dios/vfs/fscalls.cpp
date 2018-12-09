@@ -366,7 +366,7 @@ namespace __dios::fs
         if ( target.size() > PATH_LIMIT )
             return error( ENAMETOOLONG ), -1;
 
-        auto ino = new ( nofail ) SymLink( target );
+        auto ino = new SymLink( target );
         ino->mode( ACCESSPERMS | S_IFLNK );
         if ( link_node( get_dir( dirfd ), linkpath, ino ) )
             return 0;
@@ -526,7 +526,7 @@ namespace __dios::fs
         if ( proto ) /* TODO: support SOCK_NONBLOCK */
             return error( EOPNOTSUPP ), -1;
 
-        auto ino_a = new ( nofail ) SocketStream(), ino_b = new ( nofail ) SocketStream();
+        auto ino_a = new SocketStream(), ino_b = new SocketStream();
         ino_a->connect( ino_b, false );
         ino_a->mode( ACCESSPERMS | S_IFSOCK );
         ino_b->mode( ACCESSPERMS | S_IFSOCK );
@@ -538,7 +538,7 @@ namespace __dios::fs
 
     int Syscall::pipe( int fds[2] )
     {
-        auto ino = new ( nofail ) Pipe();
+        auto ino = new Pipe();
         ino->mode( S_IRWXU | S_IFIFO );
 
         fds[0] = new_fd( ino, O_RDONLY | O_NONBLOCK );
@@ -558,9 +558,9 @@ namespace __dios::fs
         switch ( t.type() )
         {
             case SOCK_STREAM:
-                ino = new ( nofail ) SocketStream(); break;
+                ino = new SocketStream(); break;
             case SOCK_DGRAM:
-                ino = new ( nofail ) SocketDatagram(); break;
+                ino = new SocketDatagram(); break;
             default:
                 return error( EPROTONOSUPPORT ), -1;
         }

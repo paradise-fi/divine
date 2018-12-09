@@ -78,19 +78,19 @@ namespace __dios::fs
             Node r;
 
             if ( mode.is_socket() )
-                r = new ( nofail ) SocketDatagram();
+                r = new SocketDatagram();
 
             if ( mode.is_file() )
-                r = new ( nofail ) RegularFile();
+                r = new RegularFile();
 
             if ( mode.is_dir() )
-                r = new ( nofail ) Directory();
+                r = new Directory();
 
             if ( mode.is_fifo() )
-                r = new ( nofail ) Pipe();
+                r = new Pipe();
 
             if ( mode.is_link() )
-                r = new ( nofail ) SymLink();
+                r = new SymLink();
 
             if ( apply_umask )
                 mode &= ~proc()._umask;

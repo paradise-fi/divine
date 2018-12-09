@@ -218,7 +218,7 @@ struct SocketStream : Socket {
             if ( !m->canConnect() )
                 return error( ECONNREFUSED ), false;
 
-            _peer = new( nofail ) SocketStream( this );
+            _peer = new SocketStream( this );
             _peer->mode( ACCESSPERMS );
             return m->addBacklog( _peer );
         }

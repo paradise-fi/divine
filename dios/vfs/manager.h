@@ -128,10 +128,10 @@ struct VFS: Syscall, Next
 
         for ( auto env = s.env ; env->key; env++ )
             if ( !strcmp( env->key, "vfs.stdin" ) )
-                _stdio[ 0 ] = new ( nofail ) StandardInput( env->value, env->size );
+                _stdio[ 0 ] = new StandardInput( env->value, env->size );
 
         if ( !_stdio[ 0 ] )
-            _stdio[ 0 ] = new ( nofail ) StandardInput();
+            _stdio[ 0 ] = new StandardInput();
         _stdio[ 1 ] = make_tracefile( s.opts, "stdout" );
         _stdio[ 2 ] = make_tracefile( s.opts, "stderr" );
 
@@ -145,7 +145,7 @@ struct VFS: Syscall, Next
 
         s.proc1->_umask = S_IWGRP | S_IWOTH;
 
-        _root = new ( nofail ) Directory();
+        _root = new Directory();
         _root->mode( S_IFDIR | ACCESSPERMS );
         _root->link();
         s.proc1->_cwd = _root;
@@ -185,9 +185,9 @@ struct VFS: Syscall, Next
         auto r = std::find_if( o.begin(), o.end(), [&]( const auto& o ) { return o.first == stream; } );
 
         if ( r == o.end() || r->second == "trace" )
-            return new ( nofail ) VmBuffTraceFile();
+            return new VmBuffTraceFile();
         if ( r->second == "unbuffered" )
-            return new ( nofail ) VmTraceFile();
+            return new VmTraceFile();
         if ( r->second == "notrace" )
             return nullptr;
 

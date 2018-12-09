@@ -20,6 +20,8 @@
 #pragma once
 #include <memory>
 #include <sys/types.h>
+
+#include <dios/sys/kobject.hpp>
 #include <dios/vfs/flags.hpp>
 
 namespace __dios::fs
@@ -129,7 +131,7 @@ struct INode;
 
 using Node = INode *;
 
-struct INode
+struct INode : KObject
 {
     INode() :
         _mode( 0 ),
