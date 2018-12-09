@@ -2,13 +2,12 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 
 #include <cstdio>
-#include <dios/sys/trace.hpp>
-#include <dios/sys/syscall.hpp>
-#include <dios/vfs/utils.h>
+#include <dios/sys/kernel.hpp> // get_debug
 #include <rst/common.h> // for weaken
 #include <fcntl.h>
 #include <dios.h>
-#include <string.h>
+#include <cstring>
+#include <cstdarg>
 
 namespace __dios {
 

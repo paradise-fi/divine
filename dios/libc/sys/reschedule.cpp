@@ -1,6 +1,9 @@
 #include <sys/cdefs.h>
-#include <dios/sys/fault.hpp>
-#include <stdint.h>
+#include <sys/divm.h>
+#include <sys/interrupt.h>
+#include <sys/stack.h>
+#include <sys/fault.h>
+#include <cstdint>
 
 #define INTR                                                                                     \
     if ( flags & _VM_CF_KernelMode )                                                             \
