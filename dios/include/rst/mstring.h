@@ -110,11 +110,11 @@ namespace abstract::mstring {
         Buffer( size_t from, const T * buff, size_t len )
             : _from( from ), _len( len )
         {
-            _buff = ::new T[_len];
+            _buff = reinterpret_cast< char * >( __vm_obj_make( _len ) );
             std::memcpy( _buff, buff, _len );
         }
 
-        ~Buffer() { ::delete[] _buff; }
+        ~Buffer() { __vm_obj_free( _buff ); }
 
         constexpr size_t size() const noexcept { return _len; }
 
