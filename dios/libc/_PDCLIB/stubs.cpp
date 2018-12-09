@@ -85,16 +85,6 @@ int mbtowc( wchar_t *, const char *s, size_t )
 
 int chown(const char* /*path*/, uid_t /*owner*/, gid_t /*group*/) NOT_IMPLEMENTED;
 
-
-locale_t newlocale( int, const char *lc, locale_t )
-{
-    if ( strcmp( lc, "C" ) == 0 )
-        return const_cast< locale_t >( &_PDCLIB_global_locale );
-
-    __dios_fault( _VM_F_NotImplemented, "newlocale" );
-    return 0;
-}
-
 int gettimeofday( struct timeval *tp, void * /* tzp */ )
 {
     tp->tv_sec = 0;
