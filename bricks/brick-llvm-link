@@ -270,14 +270,6 @@ struct ArchiveReader
             if ( _parent->_err )
                 _throwLLVMError( _parent->_err );
             _bc.reset();
-            while ( _it != _end )
-            {
-                if ( _load( false ) )
-                    break;
-                ++_it;
-                if ( _parent->_err )
-                    _throwLLVMError( _parent->_err );
-            }
         }
 
         BitcodeIterator( Underlying beg, Underlying end, ArchiveReader *parent,
