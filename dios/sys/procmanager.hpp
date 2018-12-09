@@ -157,7 +157,7 @@ struct ProcessManager : public Next
         return setpgid( 0, 0 );
     }
 
-    struct Clone
+    struct Clone : KObject
     {
         Task *task;
         void *globals;
@@ -183,7 +183,7 @@ struct ProcessManager : public Next
         oldtask->_frame = this->sysenter()->parent;
         oldtask->_proc = nullptr;
 
-        Clone *oldclone = new ( nofail ) Clone, *newclone;
+        Clone *oldclone = new Clone, *newclone;
         oldclone->task = oldtask;
         oldclone->globals = oldproc->globals;
         newclone = static_cast< Clone * >( __vm_obj_clone( oldclone ) );
