@@ -61,7 +61,7 @@ void traceEnv( int ind, const _VM_Env *env ) {
 template < typename Configuration >
 void boot( SetupBase sb )
 {
-    auto *context = new_object< Configuration >();
+    auto *context = new Configuration();
     __vm_trace( _VM_T_StateType, context );
     traceAlias< Configuration >( "{Context}" );
     __vm_ctl_set( _VM_CR_State, context );
@@ -94,7 +94,7 @@ void boot( SetupBase sb )
     }
 
     Setup< Configuration > s = sb;
-    s.proc1 = new_object< typename Configuration::Process >();
+    s.proc1 = new typename Configuration::Process();
     context->setup( s );
 }
 

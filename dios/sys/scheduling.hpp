@@ -66,7 +66,7 @@ struct TaskStorage: Array< std::unique_ptr< T > > {
 };
 
 template < typename Process >
-struct Task
+struct Task : KObject
 {
     _VM_Frame *_frame;
     __dios_tls *_tls;
@@ -175,7 +175,7 @@ struct Scheduler : public Next
     using Tasks = TaskStorage< Task >;
 
     Scheduler() :
-        debug( new_object< Debug >() ),
+        debug( new Debug() ),
         sighandlers( nullptr )
     {
         debug = abstract::weaken( debug );
@@ -272,8 +272,7 @@ struct Scheduler : public Next
     Task *newTaskMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
         __dios_assert_v( routine, "Invalid task routine" );
-        Task *ret = tasks.emplace_back(
-            new_object< Task >( mainFrame, mainTls, routine, tls_size, proc ) ).get();
+        Task *ret = tasks.emplace_back( new Task( mainFrame, mainTls, routine, tls_size, proc ) ).get();
         sortTasks();
         return ret;
     }
@@ -282,8 +281,7 @@ struct Scheduler : public Next
     Task *newTask( void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
         __dios_assert_v( routine, "Invalid task routine" );
-        Task *ret = tasks.emplace_back(
-            new_object< Task >( routine, tls_size, proc ) ).get();
+        Task *ret = tasks.emplace_back( new Task( routine, tls_size, proc ) ).get();
         sortTasks();
         return ret;
     }

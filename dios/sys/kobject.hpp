@@ -17,36 +17,15 @@
  */
 
 #pragma once
-#include <dios/sys/syscall.hpp>
+#include <sys/divm.h>
 
 namespace __dios
 {
 
-    template< typename Conf >
-    struct Upcall : Conf
+    struct KObject
     {
-        using Process = typename Conf::Process;
-        using BaseProcess = typename BaseContext::Process;
-
-        virtual void reschedule() override
-        {
-            if ( this->check_final() )
-                this->finalize();
-            else
-            {
-                /* destroy the stack to avoid memory leaks */
-                __dios_unwind( nullptr, nullptr, nullptr );
-                __vm_suspend();
-            }
-        }
-
-        virtual BaseProcess *make_process( BaseProcess *bp ) override
-        {
-            if ( bp )
-                return new Process( *static_cast< Process * >( bp ) );
-            else
-                return new Process();
-        }
+        static void operator delete( void *p ) { __vm_obj_free( p ); }
+        static void *operator new( size_t s ) { return __vm_obj_make( s ); }
     };
 
 }

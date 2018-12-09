@@ -1,14 +1,9 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#ifndef __DIOS_SYSCALL_H__
-#define __DIOS_SYSCALL_H__
-
-#include <cstdarg>
-#include <new>
-#include <dios.h>
-#include <errno.h>
+#pragma once
 #include <dios/sys/kernel.hpp>
-#include <sys/syscall.h>
+#include <dios/sys/kobject.hpp>
+#include <dios/sys/memory.hpp>
 
 // Syscall argument types
 #include <sys/syscall.h>
@@ -74,15 +69,15 @@ struct Trap
     }
 };
 
-struct BaseContext
+struct BaseContext : KObject
 {
-    struct Process
+    struct Process : KObject
     {
         virtual ~Process() {}
     };
 
     template< typename Ctx >
-    struct SysEnter : SysProxy
+    struct SysEnter : SysProxy, KObject
     {
         #include <dios/macro/no_memory_tags>
 
@@ -108,7 +103,7 @@ struct BaseContext
         using Ctx = typename Setup::Context;
 
         /* FIXME use metadata and proc1->globals to fix this up */
-        syscall_proxy = new ( nofail ) SysEnter< Ctx >();
+        syscall_proxy = new SysEnter< Ctx >();
 
         if ( s.opts.empty() )
             return;
@@ -137,6 +132,3 @@ struct BaseContext
 };
 
 }
-
-
-#endif // __DIOS_SYSCALL_H__

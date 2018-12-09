@@ -8,6 +8,7 @@
 #include <dios/sys/stdlibwrap.hpp>
 #include <util/map.hpp>
 #include <dios.h>
+#include <dios/sys/kobject.hpp>
 
 #define DIOS_DBG( ... ) __dios_trace_f( __VA_ARGS__ )
 
@@ -36,7 +37,7 @@ struct HelpOption
 
 bool useSyscallPassthrough( const SysOpts& o );
 
-struct Debug
+struct Debug : KObject
 {
     AutoIncMap< __dios_task, int > hids;
     ArrayMap< __dios_task, short > trace_indent;
