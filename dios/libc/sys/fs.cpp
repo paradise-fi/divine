@@ -87,7 +87,7 @@ extern "C" {
 
         DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( dirp );
         int fd = wrapper->fd;
-        delete wrapper;
+        __vm_obj_free( wrapper );
         return close( fd );
     }
 
@@ -157,12 +157,12 @@ extern "C" {
                 std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
             std::swap( entries, newEntries );
             if ( newEntries )
-                delete[] newEntries;
+                __vm_obj_free( newEntries );
             entries[ length ] = workingEntry;
             workingEntry = new ( __dios::nofail ) struct dirent;
             ++length;
         }
-        delete workingEntry;
+        __vm_obj_free( workingEntry );
         closedir( dirp );
 
         typedef int( *cmp )( const void *, const void * );
