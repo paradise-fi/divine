@@ -141,7 +141,7 @@ void init( const _VM_Env *env )
     if ( cfg == "fair" )
         return boot< config::Fair >( setup );
 
-    __dios_trace_f( "Unknown configaration: %.*s", cfg.size(), cfg.begin() );
+    __dios_trace_f( "Unknown configuration: %.*s", int( cfg.size() ), cfg.begin() );
     __vm_ctl_flag( 0, _VM_CF_Error );
 }
 
