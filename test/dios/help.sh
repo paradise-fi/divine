@@ -17,8 +17,8 @@ EOF
 
 result=0
 check_help "default"
-check_help "passthrough"
+#check_help "passthrough"
 check_help "synchronous"
-check_help "replay"
+#check_help "replay"
 
 exit $result
