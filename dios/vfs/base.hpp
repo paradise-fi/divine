@@ -261,10 +261,10 @@ namespace __dios::fs
             return true;
         }
 
-        bool import( const _VM_Env *env, Map< ino_t, Node > & );
+        bool import( const _VM_Env *env, ArrayMap< ino_t, Node > & );
         bool import( const _VM_Env *env )
         {
-            Map< ino_t, Node > map;
+            ArrayMap< ino_t, Node > map;
             return import( env, map );
         }
     };

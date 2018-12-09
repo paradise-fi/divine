@@ -35,7 +35,7 @@ namespace __dios::fs
         return true;
     }
 
-    bool Base::import( const _VM_Env *env, Map< ino_t, Node > &nodes )
+    bool Base::import( const _VM_Env *env, ArrayMap< ino_t, Node > &nodes )
     {
         if ( !env->key )
             return true;
