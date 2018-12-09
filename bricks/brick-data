@@ -557,13 +557,72 @@ struct SmallVector {
     }
 };
 
-template < typename Key, typename Val, typename Compare = std::less< Key >,
+template< typename T >
+struct StdSort
+{
+    template< typename It >
+    static void sort( It begin, It end )
+    {
+        std::sort( begin, end, comparator() );
+    }
+
+    template< typename It >
+    static It lower_bound( It begin, It end, const T &v )
+    {
+        return std::lower_bound( begin, end, v, comparator() );
+    }
+
+    static auto comparator()
+    {
+        return []( const T &a, const T& b )
+        {
+            return a.first < b.first;
+        };
+    }
+};
+
+template< typename T >
+struct InsertSort
+{
+    template< typename It >
+    static It lower_bound( It begin, It end, const T &v )
+    {
+        if ( begin == end )
+            return begin;
+        auto pivot = begin + ( end - begin ) / 2;
+        if ( pivot->first < v.first )
+            return lower_bound( pivot + 1, end, v );
+        else
+            return lower_bound( begin, pivot, v );
+    }
+
+    template< typename It >
+    static void sort( It begin, It end )
+    {
+        int i = 1;
+        while ( i < end - begin )
+        {
+            int j = i;
+            while ( j > 0 && begin[ j - 1 ].first > begin[ j ].first )
+            {
+                std::swap( begin[ j ], begin[ j - 1 ] );
+                -- j;
+            }
+            ++ i;
+        }
+    }
+};
+
+template < typename Key, typename Val,
+           template< typename T > class Sort_ = StdSort,
            typename Container = std::vector< std::pair< Key, Val > > >
-class ArrayMap : brick::types::Ord {
+class ArrayMap : brick::types::Ord
+{
 public:
     using key_type = Key;
     using mapped_type = Val;
     using value_type = std::pair< Key, Val >;
+    using Sort = Sort_< value_type >;
     using size_type = typename Container::size_type;
     using iterator = typename Container::iterator;
     using const_iterator = typename Container::const_iterator;
@@ -587,17 +646,17 @@ public:
         if ( it != cend() )
             return { it, false };
         _container.push_back( value );
-        std::sort( begin(), end(), comparator() );
+        Sort::sort( begin(), end() );
         return { find( value.first ), true };
     }
 
     template< class... Args >
     std::pair< iterator, bool > emplace( Args&&... args ) {
         _container.emplace_back( std::forward< Args >( args )... );
-        auto it = std::lower_bound( begin(), end() - 1, _container.back(), comparator() );
+        auto it = Sort::lower_bound( begin(), end() - 1, _container.back() );
         if ( it == end() - 1 || it->first != _container.back().first ) {
             auto key = _container.back().first;
-            std::sort( begin(), end(), comparator() );
+            Sort::sort( begin(), end() );
             return { find( key ), true };
         }
         auto key = it->first;
@@ -609,7 +668,7 @@ public:
         using std::swap;
         swap( *pos, _container.back() );
         _container.pop_back();
-        std::sort( begin(), end(), comparator() );
+        Sort::sort( begin(), end() );
     }
 
     size_type erase( const key_type& key ) {
@@ -630,14 +689,12 @@ public:
     }
 
     iterator find( const Key& key ) {
-        auto elem = std::lower_bound( begin(), end(), std::make_pair( key, Val() ),
-            comparator() );
+        auto elem = Sort::lower_bound( begin(), end(), std::make_pair( key, Val() ) );
         return elem != end() && elem->first == key ? elem : end();
     }
 
     const_iterator find( const Key& key ) const {
-        auto elem = std::lower_bound( cbegin(), cend(), std::make_pair( key, Val() ),
-            comparator() );
+        auto elem = Sort::lower_bound( cbegin(), cend(), std::make_pair( key, Val() ) );
         return elem != cend() && elem->first == key ? elem : cend();
     }
 
@@ -671,17 +728,13 @@ public:
     }
 
 private:
-    auto comparator() const {
-        return []( const_reference a, const_reference b ) {
-            return Compare()( a.first, b.first );
-        };
-    }
 
     Container _container;
 };
 
 }
 
+#ifdef BRICK_UNITTEST_REG
 namespace t_data {
 
 using namespace brick::data;
@@ -1339,9 +1392,10 @@ struct TestSmallVector {
     }
 };
 
+template< template< typename T > class Sort >
 struct TestArrayMap {
     TEST( simple ) {
-        ArrayMap< std::string, std::string > x;
+        ArrayMap< std::string, std::string, Sort > x;
 
         ASSERT( x.insert( std::make_pair( "bKey", "bVal" ) ).second );
         ASSERT( !x.insert( std::make_pair( "bKey", "bVal" ) ).second );
@@ -1369,7 +1423,7 @@ struct TestArrayMap {
     }
 
     TEST(outOfRange) {
-        ArrayMap< int, std::string > am;
+        ArrayMap< int, std::string, Sort > am;
         am[ 1 ] = "aKey";
         try {
             am.at( 2 );
@@ -1378,7 +1432,7 @@ struct TestArrayMap {
     }
 
     TEST(comparison) {
-        ArrayMap< int, int > m;
+        ArrayMap< int, int, Sort > m;
         m.emplace( 1, 1 );
         m.emplace( 2, 1 );
 
@@ -1405,8 +1459,13 @@ struct TestArrayMap {
     }
 };
 
+template struct TestArrayMap< StdSort >;
+template struct TestArrayMap< InsertSort >;
+
 #undef TC
 }
+#endif
+
 }
 
 #endif // BRICK_DATA_H
