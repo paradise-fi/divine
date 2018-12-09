@@ -278,7 +278,7 @@ struct ProcessManager : public Next
         Next::killProcess( p->pid );
     }
 
-    Map< pid_t, Process* > zombies;
+    ArrayMap< pid_t, Process* > zombies;
 };
 
 } //namespace __dios

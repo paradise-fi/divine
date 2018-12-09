@@ -311,13 +311,13 @@ struct Scheduler : public Next
     template< typename I >
     void eraseProcesses( I pivot )
     {
-        Set< Process * > p;
+        ArrayMap< Process *, bool > p;
         for ( auto i = pivot; i != tasks.end(); ++i )
-            p.insert( (*i)->_proc );
+            p.emplace( (*i)->_proc, true );
         for ( auto i = tasks.begin(); i != pivot; ++i )
             p.erase( (*i)->_proc );
-        for ( auto proc : p )
-            delete_object( proc );
+        for ( auto item : p )
+            delete item.first;
     }
 
     void killProcess( pid_t id ) noexcept
