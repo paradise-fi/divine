@@ -120,7 +120,7 @@ struct BaseContext : KObject
     void finalize() { __vm_suspend(); }
     Process *findProcess( pid_t ) { return nullptr; }
 
-    void getHelp( Map< std::string_view, HelpOption >& ) {}
+    void getHelp( ArrayMap< std::string_view, HelpOption >& ) {}
 
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) ret name arg;

@@ -44,7 +44,7 @@ void traceHelpOption( int i, std::string_view opt, std::string_view desc,
         __dios_trace_i( i, "   - %.*s", int( arg.size() ), arg.begin() );
 }
 
-void traceHelp( int i, const Map< std::string_view, HelpOption >& help )
+void traceHelp( int i, const ArrayMap< std::string_view, HelpOption >& help )
 {
     for ( const auto& option : help )
         traceHelpOption( i, option.first, option.second.description,
@@ -68,20 +68,24 @@ void boot( SetupBase sb )
 
     if ( extractOpt( "debug", "help", sb.opts ) )
     {
-        Map< std::string_view, HelpOption > help = {
-            { "config" , { "run DiOS in a given configuration",
+        ArrayMap< std::string_view, HelpOption > help;
+
+        help.emplace( "config", HelpOption
+                      { "run DiOS in a given configuration",
                            { "default: async threads, processes, vfs",
                              "passthrough: pass syscalls to the host OS",
                              "replay: re-use a trace recorded in passthrough mode",
-                             "synchronous: for use with synchronous systems" } } },
-            { "debug", { "print debug information during boot",
+                             "synchronous: for use with synchronous systems" } } );
+
+        help.emplace( "debug", HelpOption
+                      { "print debug information during boot",
                          { "help - help of selected configuration and exit",
                            // ToDo: trace binary blobs
                            /*"rawenvironment - user DiOS boot parameters",*/
                            "machineparams - specified by user, e.g. number of cpus",
                            "mainargs - argv and envp",
-                           "faultcfg - fault and simfail configuration" } } }
-        };
+                           "faultcfg - fault and simfail configuration" } } );
+
         context->getHelp( help );
         traceHelp( 0, help );
         __vm_cancel();

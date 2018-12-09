@@ -154,7 +154,7 @@ struct VFS: Syscall, Next
         Next::setup( s );
     }
 
-     void getHelp( Map< std::string_view, HelpOption >& options )
+     void getHelp( ArrayMap< std::string_view, HelpOption >& options )
      {
         const char *opt1 = "{stdout|stderr}";
         if ( options.find( opt1 ) != options.end() ) {

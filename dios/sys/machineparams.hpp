@@ -27,7 +27,7 @@ struct MachineParams : Next
         Next::setup( s );
     }
 
-    void getHelp( Map< std::string_view, HelpOption >& options )
+    void getHelp( ArrayMap< std::string_view, HelpOption >& options )
     {
         const char *opt = "ncpus";
         if ( options.find( opt ) != options.end() ) {
