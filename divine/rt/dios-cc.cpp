@@ -20,8 +20,13 @@ void DiosCC::linkEssentials()
         auto archive = getLib( e );
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
-            if ( it->getModuleIdentifier() == "_link_essentials.ll"s )
+        {
+            if ( it.getName() == "_link_essentials.ll"s )
+            {
                 linker->link_decls( it.take() );
+                break;
+            }
+        }
     }
 }
 
