@@ -180,7 +180,7 @@ struct VFS: Syscall, Next
         Next::getHelp( options );
     }
 
-    static Node make_tracefile( SysOpts& o, String stream )
+    static Node make_tracefile( SysOpts& o, std::string_view stream )
     {
         auto r = std::find_if( o.begin(), o.end(), [&]( const auto& o ) { return o.first == stream; } );
 
@@ -191,7 +191,7 @@ struct VFS: Syscall, Next
         if ( r->second == "notrace" )
             return nullptr;
 
-        __dios_trace_f( "Invalid configuration for file %s", stream.c_str() );
+        __dios_trace_f( "Invalid configuration for file %.*s", int( stream.size() ), stream.begin() );
         __dios_fault( _DiOS_F_Config, "Invalid file tracing configuration" );
         __builtin_trap();
     }
