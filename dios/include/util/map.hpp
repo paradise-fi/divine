@@ -8,15 +8,18 @@
 
 namespace __dios {
 
-template < typename Key, typename Val >
-using ArrayMap = brick::data::ArrayMap< Key, Val, std::less< Key >,
-    Array< std::pair< Key, Val > > >;
+namespace data = brick::data;
 
 template < typename Key, typename Val >
-struct AutoIncMap: public ArrayMap< Key, Val> {
+using ArrayMap = data::ArrayMap< Key, Val, data::InsertSort, Array< std::pair< Key, Val > > >;
+
+template < typename Key, typename Val >
+struct AutoIncMap: public ArrayMap< Key, Val>
+{
     AutoIncMap(): _nextVal( 0 ) {}
 
-    Val push( const Key& k ) {
+    Val push( const Key& k )
+    {
         Val v = _nextVal++;
         this->emplace( k, v );
         return v;
