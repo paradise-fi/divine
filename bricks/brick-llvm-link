@@ -213,6 +213,17 @@ struct ArchiveReader
             return *_bc.get();
         }
 
+        ::llvm::StringRef getName()
+        {
+            auto name = _it->getName();
+            if ( !name )
+            {
+                auto err = name.takeError();
+                _throwLLVMError( err );
+            }
+            return name.get();
+        }
+
         ::llvm::Module &operator*()  { return get(); }
         ::llvm::Module *operator->() { return &get(); }
 
