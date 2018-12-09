@@ -15,8 +15,6 @@
 #include <dios/sys/config.hpp>
 
 #include <dios/vfs/manager.h>
-#include <dios/vfs/passthru.h>
-#include <dios/vfs/replay.h>
 
 namespace __dios
 {
@@ -132,10 +130,10 @@ void init( const _VM_Env *env )
 
     if ( cfg == "default" )
         return boot< config::Default >( setup );
-    if ( cfg == "passthrough" )
-        return boot< config::Passthrough >( setup );
-    if ( cfg == "replay" )
-        return boot< config::Replay >( setup );
+//    if ( cfg == "passthrough" )
+//        return boot< config::Passthrough >( setup );
+//    if ( cfg == "replay" )
+//        return boot< config::Replay >( setup );
     if ( cfg == "synchronous" )
         return boot< config::Sync >( setup );
     if ( cfg == "fair" )
