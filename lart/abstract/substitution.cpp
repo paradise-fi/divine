@@ -264,36 +264,37 @@ struct LifterBuilder {
         return "__" + domain.name() + "_" + tag.str();
     }
 
-    Value* process_thaw( CallInst *call, Values &args ) {
-        IRBuilder<> irb( call->getContext() );
-        auto name = "__" + domain.name() + "_thaw";
-        auto thaw = get_module( call )->getFunction( name );
-        return irb.CreateCall( thaw, args );
-    }
-
-    Value* process_freeze( CallInst *call, Values &args  ) {
-        IRBuilder<> irb( call->getContext() );
-        auto name = "__" + domain.name() + "_freeze";
-        auto freeze = get_module( call )->getFunction( name );
-        return irb.CreateCall( freeze, args );
-    }
-
-    Value* process_assume( CallInst *call, Values &args ) {
-        IRBuilder<> irb( call->getContext() );
-        auto fn = get_module( call )->getFunction( "__" + domain.name() + "_assume" );
-        return irb.CreateCall( fn, { args[ 1 ], args[ 1 ], args[ 2 ] } );
-    }
-
-    Value* process_tobool( CallInst *call, Values &args ) {
-        IRBuilder<> irb( call->getContext() );
-        if ( domain == Domain::Tristate() ) {
-            auto fn = get_module( call )->getFunction( "__tristate_lower" );
+    Value* create_operation( Instruction *call, const std::string& name, Values && args ) {
+        if ( auto fn = get_module( call )->getFunction( name ) ) {
+            IRBuilder<> irb( call->getContext() );
             return irb.CreateCall( fn, args );
         } else {
-            IRBuilder<> irb( call->getContext() );
+            throw std::runtime_error( "missing function in domain: " + name );
+        }
+    }
+
+
+    Value* process_thaw( CallInst *call, Values && args ) {
+        auto name = "__" + domain.name() + "_thaw";
+        return create_operation( call, name, std::move( args ) );
+    }
+
+    Value* process_freeze( CallInst *call, Values && args ) {
+        auto name = "__" + domain.name() + "_freeze";
+        return create_operation( call, name, std::move( args ) );
+    }
+
+    Value* process_assume( CallInst *call, Values && args ) {
+        auto name = "__" + domain.name() + "_assume";
+        return create_operation( call, name, { args[ 1 ], args[ 1 ], args[ 2 ] } );
+    }
+
+    Value* process_tobool( CallInst *call, Values && args ) {
+        if ( domain == Domain::Tristate() ) {
+            return create_operation( call, "__tristate_lower", std::move( args ) );
+        } else {
             auto name = "__" + domain.name() + "_bool_to_tristate";
-            auto fn = get_module( call )->getFunction( name );
-            return irb.CreateCall( fn, args );
+            return create_operation( call, name, std::move( args ) );
         }
     }
 
@@ -311,36 +312,31 @@ struct LifterBuilder {
         return ConstantInt::get( IntegerType::get( ctx, 32 ), bitwidth );
     }
 
-    Value* process_cast( CallInst *call, Values &args ) {
-        IRBuilder<> irb( call->getContext() );
+    Value* process_cast( CallInst *call, Values && args ) {
         auto name = intr_name( call );
         auto op = cast< Function >( call->getOperand( 0 ) );
-
-        auto fn = get_module( call )->getFunction( name );
-        return irb.CreateCall( fn, { args[ 0 ], cast_bitwidth( op ) } );
+        return create_operation( call, name, { args[0], cast_bitwidth( op ) } );
     }
 
-    Value* process_op( CallInst *call, Values &args ) {
-        IRBuilder<> irb( call->getContext() );
+    Value* process_op( CallInst *call, Values && args ) {
         auto name = intr_name( call );
-        auto fn = get_module( call )->getFunction( name );
-        return irb.CreateCall( fn, args );
+        return create_operation( call, name, std::move( args ) );
     }
 
-    Value * process( Value * intr, Values & args ) {
+    Value * process( Value * intr, Values && args ) {
         auto call = cast< CallInst >( intr );
 
         if ( is_thaw( call ) )
-            return process_thaw( call, args );
+            return process_thaw( call, std::move( args ) );
         if ( is_freeze( call ) )
-            return process_freeze( call, args );
+            return process_freeze( call, std::move( args ) );
         if ( is_cast( call ) )
-            return process_cast( call, args );
+            return process_cast( call, std::move( args ) );
         if ( is_assume( call ) )
-            return process_assume( call, args );
+            return process_assume( call, std::move( args ) );
         if ( is_tobool( call ) )
-            return process_tobool( call, args );
-        return process_op( call, args );
+            return process_tobool( call, std::move( args ) );
+        return process_op( call, std::move( args ) );
     }
 private:
     Domain domain;
@@ -477,7 +473,7 @@ struct ThawLifter : BaseLifter {
 
     template< typename Builder >
     void build( Builder irb, Arguments && args ) {
-        auto thaw = LifterBuilder( domain() ).process( taint, args );
+        auto thaw = LifterBuilder( domain() ).process( taint, std::move( args ) );
         irb.Insert( cast< Instruction >( thaw ) );
         irb.CreateRet( thaw );
     }
@@ -515,7 +511,7 @@ struct FreezeLifter : BaseLifter {
         auto bcst = irb.CreateBitCast( &*addr, Type::getInt8PtrTy( addr->getContext() ) );
 
         Values args = { &*formula, &*bcst };
-        auto freeze = LifterBuilder( domain() ).process( taint, args );
+        auto freeze = LifterBuilder( domain() ).process( taint, std::move( args ) );
         irb.Insert( cast< Instruction >( freeze ) );
 
         auto taint_zero = get_module( taint )->getFunction( "__rst_taint_i64" );
@@ -546,12 +542,10 @@ struct ToBoolLifter : Lifter {
         IRBuilder<> irb( make_bb( function(), "entry" ) );
         auto arg = *args().begin();
 
-        Values args = { arg.abstract.value };
-        auto tristate = LifterBuilder( domain() ).process( taint, args );
+        auto tristate = LifterBuilder( domain() ).process( taint, { arg.abstract.value } );
         irb.Insert( cast< Instruction >( tristate ) );
 
-        Values lower = { tristate };
-        auto ret = LifterBuilder( Domain::Tristate() ).process( taint, lower );
+        auto ret = LifterBuilder( Domain::Tristate() ).process( taint, { tristate } );
         irb.Insert( cast< Instruction >( ret ) );
         irb.CreateRet( ret );
     }
@@ -568,7 +562,7 @@ struct AssumeLifter : Lifter {
 
         IRBuilder<> irb( make_bb( function(), "entry" ) );
         Values args = { &*concrete, &*abstract, &*assumed };
-        auto call = LifterBuilder( domain() ).process( taint, args );
+        auto call = LifterBuilder( domain() ).process( taint, std::move( args ) );
         irb.Insert( cast< Instruction >( call ) );
 
         // TODO fix return value for other domains
@@ -583,7 +577,7 @@ struct UnaryLifter : Lifter {
     void syntetize() final {
         IRBuilder<> irb( make_bb( function(), "entry" ) );
         Values vals = { args().begin()->abstract.value };
-        auto rep = LifterBuilder( domain() ).process( taint, vals );
+        auto rep = LifterBuilder( domain() ).process( taint, std::move( vals ) );
         irb.Insert( cast< Instruction >( rep ) );
         irb.CreateRet( rep );
     }
@@ -617,7 +611,7 @@ struct BinaryLifter : Lifter {
         auto abstract_args = query::query( blocks )
             .map( [] ( auto & block ) { return block.value; } )
             .freeze();
-        auto call = LifterBuilder( domain() ).process( taint, abstract_args );
+        auto call = LifterBuilder( domain() ).process( taint, std::move( abstract_args ) );
         irb.Insert( cast< Instruction >( call ) );
         irb.CreateRet( call );
     }
@@ -647,7 +641,7 @@ struct StoreLifter : Lifter {
 
         IRBuilder<> irb( make_bb( function(), "entry" ) );
         Values vals = { val, origin, offset };
-        auto lifter = LifterBuilder( domain() ).process( taint, vals );
+        auto lifter = LifterBuilder( domain() ).process( taint, std::move( vals ) );
         irb.Insert( cast< Instruction >( lifter ) );
         irb.CreateRet( lifter );
     }
