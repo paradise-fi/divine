@@ -118,7 +118,9 @@ void Decast::run( Module &m ) {
     auto casts = query::query( m ).flatten().flatten()
         .map( query::llvmdyncast< IntToPtrInst > )
         .filter( query::notnull )
-        .filter( has_abstract_metadata )
+        .filter( [] ( const auto& inst ) {
+            return has_abstract_metadata( inst );
+        } )
         .freeze();
 
     Functions remove;
@@ -130,7 +132,7 @@ void Decast::run( Module &m ) {
         remove.push_back( fn );
     };
 
-    for ( auto cast : casts ) {
+    for ( const auto & cast : casts ) {
         bool only_returned = query::all( cast->users(), isa< ReturnInst > );
 
         if ( only_returned ) {

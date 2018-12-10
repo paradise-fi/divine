@@ -196,10 +196,16 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
     }
 }
 
-Domain FunctionMetadata::get_arg_domain( unsigned idx ) {
+Domain FunctionMetadata::get_arg_domain( unsigned idx ) const {
     if ( auto md = fn->getMetadata( tag ) )
         return ArgMetadata( md->getOperand( idx ).get() ).domain();
     return Domain::Concrete();
+}
+
+bool FunctionMetadata::has_arg_domain( unsigned idx ) const {
+    if ( auto md = fn->getMetadata( tag ) )
+        return ArgMetadata( md->getOperand( idx ).get() ).domain() != Domain::Concrete();
+    return false;
 }
 
 void FunctionMetadata::clear() {
@@ -218,24 +224,24 @@ llvm::Value * get_metadata( llvm::Instruction * inst, const std::string& tag ) {
 }
 
 void set_addr_offset( llvm::Instruction *inst, llvm::Value * offset ) {
-    set_metadata( inst,  "lart.addr.offset", offset );
+    set_metadata( inst, "lart.addr.offset", offset );
 }
 
 void set_addr_origin( llvm::Instruction *inst, llvm::Value * origin ) {
-    set_metadata( inst,  "lart.addr.origin", origin );
+    set_metadata( inst, "lart.addr.origin", origin );
 }
 
 llvm::Value * get_addr_offset( llvm::Instruction *inst ) {
-    return get_metadata( inst,  "lart.addr.offset" );
+    return get_metadata( inst, "lart.addr.offset" );
 }
 
 llvm::Value * get_addr_origin( llvm::Instruction *inst ) {
-    return get_metadata( inst,  "lart.addr.origin" );
+    return get_metadata( inst, "lart.addr.origin" );
 }
 
 void make_duals( Instruction *a, Instruction *b ) {
-    set_metadata( a,  "lart.dual", b );
-    set_metadata( b,  "lart.dual", a );
+    set_metadata( a, "lart.dual", b );
+    set_metadata( b, "lart.dual", a );
 }
 
 Value* get_dual( Instruction *inst ) {
@@ -254,12 +260,26 @@ std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
     if ( fn->getMetadata( "lart.abstract.roots" ) ) {
         auto abstract = query::query( *fn ).flatten()
             .map( query::refToPtr )
-            .filter( has_abstract_metadata )
+            .filter( [] ( const auto& inst ) {
+                return has_abstract_metadata( inst );
+            } )
             .freeze();
-        for ( auto i : abstract )
-            mds.emplace_back( i );
+        std::move( abstract.begin(), abstract.end(), std::back_inserter( mds ) );
     }
     return mds;
+}
+
+bool has_abstract_metadata( llvm::Value *val ) {
+    if ( llvm::isa< llvm::Constant >( val ) )
+        return false;
+    else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+        return has_abstract_metadata( arg );
+    else
+        return has_abstract_metadata( llvm::cast< llvm::Instruction >( val ) );
+}
+
+bool has_abstract_metadata( llvm::Argument *arg ) {
+    return FunctionMetadata( arg->getParent() ).has_arg_domain( arg->getArgNo() );
 }
 
 bool has_abstract_metadata( llvm::Instruction *inst ) {
@@ -277,6 +297,35 @@ void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     // TODO enable multiple domains per instruction
     auto node = MetadataBuilder( ctx ).domain_node( dom );
     inst->setMetadata( "lart.domains", MDTuple::get( ctx, node ) );
+}
+
+inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
+    return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
+        return has_abstract_metadata( idx );
+    } );
+}
+
+inline bool allocating_abstract_size( AllocaInst * a ) {
+    return has_abstract_metadata( a->getArraySize() );
+}
+
+bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
+    auto dm = domain_metadata( *inst->getModule(), dom );
+
+    switch ( dm.kind() ) {
+        case DomainKind::scalar:
+            if ( auto gep = dyn_cast< GetElementPtrInst >( inst ) ) {
+                return accessing_abstract_offset( gep );
+            }
+            if ( auto a = dyn_cast< AllocaInst >( inst ) ) {
+                return allocating_abstract_size( a );
+            }
+        case DomainKind::string:
+        case DomainKind::pointer:
+        case DomainKind::custom:
+        default:
+            return false;
+    }
 }
 
 bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {

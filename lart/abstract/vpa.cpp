@@ -120,6 +120,15 @@ bool ignore_return_of_function( CallInst * call ) {
     return query::query( fns ).all( FunctionTag::ignore_return_of_function );
 }
 
+void stop_on_forbidden_propagation( Instruction * inst, Domain dom ) {
+    std::string msg = "Propagating through unsupported operation in "
+                      + dom.name() + " domain:\n";
+    llvm::raw_string_ostream os( msg );
+    inst->print( os, true );
+
+    throw std::runtime_error( os.str() );
+}
+
 void VPA::propagate_value( Value *val, Domain dom ) {
     if ( seen_vals.count( { val, dom } ) )
         return;
@@ -146,16 +155,13 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                 continue;
         }
 
-        if ( auto i = dyn_cast< Instruction >( dep ) ) {
-            if ( is_propagable_in_domain( i, dom ) )
-                add_abstract_metadata( i, dom );
-        }
-
-        if ( auto a = dyn_cast< AllocaInst >( dep ) ) {
-            // TODO check also arguments and global values
-            if ( auto i = dyn_cast< Instruction >( a->getArraySize() ) )
-                if ( has_abstract_metadata( i ) )
-                    throw std::runtime_error( "calling alloca with abstract value" );
+        if ( auto inst = dyn_cast< Instruction >( dep ) ) {
+            if ( is_propagable_in_domain( inst, dom ) ) {
+                if ( forbidden_propagation_by_domain( inst, dom ) ) {
+                    stop_on_forbidden_propagation( inst, dom );
+                }
+                add_abstract_metadata( inst, dom );
+            }
         }
 
         llvmcase( dep,

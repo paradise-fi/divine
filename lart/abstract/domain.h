@@ -125,7 +125,9 @@ struct FunctionMetadata {
     {}
 
     void set_arg_domain( unsigned i, Domain dom );
-    Domain get_arg_domain( unsigned i );
+    Domain get_arg_domain( unsigned i ) const;
+
+    bool has_arg_domain( unsigned i ) const;
 
     void clear();
 private:
@@ -147,6 +149,8 @@ llvm::Value* get_dual( llvm::Instruction *i );
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m );
 std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn );
 
+bool has_abstract_metadata( llvm::Value *val );
+bool has_abstract_metadata( llvm::Argument *arg );
 bool has_abstract_metadata( llvm::Instruction *inst );
 
 llvm::MDNode * get_abstract_metadata( llvm::Instruction *inst );
@@ -179,6 +183,7 @@ inline bool is_concrete( llvm::Value *val ) {
     return is_concrete( get_domain( val ) );
 }
 
+bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom );
 
 bool is_duplicable( llvm::Instruction *inst );
 bool is_duplicable_in_domain( llvm::Instruction *inst, Domain dom );
