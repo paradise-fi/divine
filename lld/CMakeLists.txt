@@ -175,6 +175,7 @@ endif()
 list (APPEND CMAKE_MODULE_PATH "${LLD_SOURCE_DIR}/cmake/modules")
 
 include(AddLLD)
+include(TableGen)
 
 option(LLD_USE_VTUNE
        "Enable VTune user task tracking."

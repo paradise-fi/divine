@@ -6,6 +6,8 @@ if(NOT LLD_BUILT_STANDALONE)
   set(tablegen_deps intrinsics_gen)
 endif()
 
+include_directories( . ${CMAKE_CURRENT_BINARY_DIR} )
+
 add_lld_library(lldELF
   Arch/AArch64.cpp
   Arch/AMDGPU.cpp
