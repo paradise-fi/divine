@@ -1,3 +1,5 @@
+/* TAGS: todo sym */
+/* VERIFY_OPTS: --symbolic */
 #include <assert.h>
 
 int __VERIFIER_nondet_int();
