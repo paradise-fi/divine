@@ -180,6 +180,9 @@ inline bool is_concrete( llvm::Value *val ) {
 }
 
 
+bool is_duplicable( llvm::Instruction *inst );
+bool is_duplicable_in_domain( llvm::Instruction *inst, Domain dom );
+
 bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom );
 
 bool is_transformable( llvm::Instruction *inst );

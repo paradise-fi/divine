@@ -30,11 +30,6 @@ Function* placeholder( Module *m, Type *in, Type *out ) {
     return get_or_insert_function( m, fty, name );
 }
 
-bool is_duplicable( llvm::Instruction * inst ) {
-    return is_transformable( inst ) &&
-        !lart::util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
-}
-
 void Duplicator::run( llvm::Module &m ) {
     auto abstract = query::query( abstract_metadata( m ) )
         .map( [] ( auto mdv ) { return mdv.value(); } )

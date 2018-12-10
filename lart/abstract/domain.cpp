@@ -289,7 +289,29 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
                                     IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
         case DomainKind::string:
             return is_transformable_in_domain( inst, dom ) ||
-                   util::is_one_of< CallInst, StoreInst, ReturnInst >( inst );
+                   util::is_one_of< CallInst, ReturnInst >( inst );
+        case DomainKind::pointer:
+        case DomainKind::custom:
+        default:
+            UNREACHABLE( "Unsupported domain transformation." );
+    }
+}
+
+bool is_duplicable( Instruction *inst ) {
+    return is_duplicable_in_domain( inst, get_domain( inst ) );
+}
+
+bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
+    if ( !is_transformable_in_domain( inst, dom ) )
+        return false;
+
+    auto dm = domain_metadata( *inst->getModule(), dom );
+
+    switch ( dm.kind() ) {
+        case DomainKind::scalar:
+            return true;
+        case DomainKind::string:
+            return !util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
         case DomainKind::pointer:
         case DomainKind::custom:
         default:
