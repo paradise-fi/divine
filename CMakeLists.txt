@@ -3,6 +3,7 @@ cmake_minimum_required( VERSION 3.2 )
 # file( COPY ) happens at configure time and confuses cmake into thinking
 # the old policy is required
 cmake_policy( SET CMP0058 NEW )
+cmake_policy( SET CMP0057 NEW )
 
 configure_file( ${CMAKE_BINARY_DIR}/config.vars ${CMAKE_BINARY_DIR}/config.vars.stamp COPYONLY )
 file( READ ${CMAKE_BINARY_DIR}/config.vars VARS )
@@ -111,6 +112,9 @@ function(build_llvm)
   include_directories( llvm/include ${CMAKE_CURRENT_BINARY_DIR}/llvm/include )
   add_subdirectory( clang )
   include_directories( clang/include ${CMAKE_CURRENT_BINARY_DIR}/clang/include )
+
+  add_subdirectory( lld )
+  include_directories( lld/include ${CMAKE_CURRENT_BINARY_DIR}/lld/include )
 
   if ( TOOLCHAIN )
     # defines for the sake of compiler-rt, normaly from llvm-config
