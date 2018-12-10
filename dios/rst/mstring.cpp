@@ -19,6 +19,33 @@ extern "C" {
         return abstract::__taint< char * >( val->data() );
     }
 
+    bool __mstring_store( char val, __mstring * str, uint64_t idx) {
+        str->set( idx, val );
+        return true;
+    }
+
+    /* String manipulation */
+    __mstring * __mstring_strcpy( __mstring * /* dest */, const __mstring * /* src */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strncpy( __mstring * /* dest */, const __mstring * /* src */, size_t  /* count */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strcat( __mstring * /* dest */, const __mstring * /* src */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strncat( __mstring * /* dest */, const __mstring * /* src */, size_t  /* count */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    size_t __mstring_strxfrm( __mstring * /* dest */, const __mstring * /* src */, size_t  /* count */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    /* String examination */
     size_t __mstring_strlen( const __mstring * str ) {
         return str->strlen();
     }
@@ -27,9 +54,40 @@ extern "C" {
         return lhs->strcmp( rhs );
     }
 
-    bool __mstring_store( char val, __mstring * str, uint64_t idx) {
-        str->set( idx, val );
-        return true;
+    int __mstring_strncmp( const __mstring * /* lhs */, const __mstring * /* rhs */, size_t  /* count */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    int __mstring_strcoll( const __mstring * /* lhs */, const __mstring * /* rhs */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strchr( const __mstring * /* str */, int /* ch */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strrchr( const __mstring * /* str */, int /* ch */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    size_t __mstring_strspn( const __mstring * /* dest */, const __mstring * /* src */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    size_t __mstring_strcspn( const __mstring * /* dest */, const __mstring * /* src */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strpbrk( const __mstring * /* dest */, const char * /* breakset */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strstr( const __mstring * /* str */, const char * /*substr */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_strtok( __mstring * /* str */, const char * /* delim */ ) {
+        _UNREACHABLE_F( "Not implemented." );
     }
 
     _MSTRING __mstring * __mstring_undef_value() {
