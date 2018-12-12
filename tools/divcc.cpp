@@ -341,5 +341,8 @@ int main( int argc, char **argv )
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
         return 1;
+    } catch ( std::runtime_error &err ) {
+        std::cerr << "compilation failed: " << err.what() << std::endl;
+        return 2;
     }
 }
