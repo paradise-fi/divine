@@ -1,4 +1,5 @@
 #include <divine/cc/cc1.hpp>
+#include <divine/cc/filetype.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
@@ -287,7 +288,11 @@ int main( int argc, char **argv )
                       , "-isystem", joinPath( includeDir, "libunwind/include" )
                       , "-isystem", includeDir } );
 
-        if ( po.files.size() > 1 && po.outputFile != ""
+        // count files, i.e. not libraries
+        auto num_files = std::count_if( po.files.begin(), po.files.end(),
+                                        []( cc::FileEntry f ){ return f.is< cc::File >(); } );
+
+        if ( num_files > 1 && po.outputFile != ""
              && ( po.preprocessOnly || po.toObjectOnly ) )
         {
             std::cerr << "Cannot specify -o with multiple files" << std::endl;
