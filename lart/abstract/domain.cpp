@@ -386,7 +386,7 @@ bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
         case DomainKind::string:
             if ( auto call = dyn_cast< CallInst >( inst ) ) {
                 if ( auto fn = call->getCalledFunction() ) {
-                    auto name = "__lart_string_op_" + fn->getName().str();
+                    auto name =  "__" + dom.name() + "_" + fn->getName().str();
                     return get_module( inst )->getFunction( name );
                 }
             }
