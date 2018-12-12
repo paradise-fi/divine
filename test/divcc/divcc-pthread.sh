@@ -17,9 +17,17 @@ EOF
 
 divcc prog.c -pthread
 
-if ! [ -s a.out ] || ! [ -x a.out ];
-    then false;
-fi
+test -s a.out
+test -x a.out
 
 ./a.out
 divine check a.out
+
+
+divcc prog.c -lpthread -o lpthr
+
+test -s lpthr
+test -x lpthr
+
+./lpthr
+divine check lpthr
