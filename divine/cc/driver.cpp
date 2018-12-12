@@ -60,6 +60,8 @@ std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
     drv = std::make_unique< clang::driver::Driver >( "/usr/bin/false", LLVM_HOST_TRIPLE, *diagEngine );
 
     Compilation* c = drv->BuildCompilation( args );
+    if ( diagEngine->hasErrorOccurred() )
+        throw cc::CompileError( "failed to get linker arguments, aborting" );
     std::vector< Command > clangJobs;
 
     for( auto job : c->getJobs() )
