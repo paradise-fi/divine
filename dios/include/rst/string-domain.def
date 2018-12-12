@@ -2,30 +2,35 @@
 
 extern "C" {
 
+#define OP( ret, name, ... ) \
+    RET_PROT( ret, name, __VA_ARGS__ );
+
 LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
 
-PROT( lift, const char *, unsigned );
+OP( DOMAIN_TYPE, lift, const char *, unsigned );
 
-RET_PROT( bool, store, char, DOMAIN_TYPE, uint64_t );
+OP( bool, store, char, DOMAIN_TYPE, uint64_t );
 
 /* String manipulation */
-RET_PROT( DOMAIN_TYPE, strcpy , DOMAIN_TYPE dest, const DOMAIN_TYPE src );
-RET_PROT( DOMAIN_TYPE, strncpy, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );
-RET_PROT( DOMAIN_TYPE, strcat , DOMAIN_TYPE dest, const DOMAIN_TYPE src );
-RET_PROT( DOMAIN_TYPE, strncat, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );
-RET_PROT( size_t     , strxfrm, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );
+OP( DOMAIN_TYPE, strcpy , DOMAIN_TYPE dest, const DOMAIN_TYPE src );
+OP( DOMAIN_TYPE, strncpy, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );
+OP( DOMAIN_TYPE, strcat , DOMAIN_TYPE dest, const DOMAIN_TYPE src );
+OP( DOMAIN_TYPE, strncat, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );
+OP( size_t     , strxfrm, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );
 
 /* String examination */
-RET_PROT( size_t     , strlen , const DOMAIN_TYPE str );
-RET_PROT( int        , strcmp , const DOMAIN_TYPE lhs, const DOMAIN_TYPE rhs );
-RET_PROT( int        , strncmp, const DOMAIN_TYPE lhs, const DOMAIN_TYPE rhs, size_t count );
-RET_PROT( int        , strcoll, const DOMAIN_TYPE lhs, const DOMAIN_TYPE rhs );
-RET_PROT( DOMAIN_TYPE, strchr , const DOMAIN_TYPE str, int ch );
-RET_PROT( DOMAIN_TYPE, strrchr, const DOMAIN_TYPE str, int ch );
-RET_PROT( size_t     , strspn , const DOMAIN_TYPE dest, const DOMAIN_TYPE src );
-RET_PROT( size_t     , strcspn, const DOMAIN_TYPE dest, const DOMAIN_TYPE src );
-RET_PROT( DOMAIN_TYPE, strpbrk, const DOMAIN_TYPE dest, const char * breakset );
-RET_PROT( DOMAIN_TYPE, strstr , const DOMAIN_TYPE str, const char* substr );
-RET_PROT( DOMAIN_TYPE, strtok , DOMAIN_TYPE str, const char * delim );
+OP( size_t     , strlen , const DOMAIN_TYPE str );
+OP( int        , strcmp , const DOMAIN_TYPE lhs, const DOMAIN_TYPE rhs );
+OP( int        , strncmp, const DOMAIN_TYPE lhs, const DOMAIN_TYPE rhs, size_t count );
+OP( int        , strcoll, const DOMAIN_TYPE lhs, const DOMAIN_TYPE rhs );
+OP( DOMAIN_TYPE, strchr , const DOMAIN_TYPE str, int ch );
+OP( DOMAIN_TYPE, strrchr, const DOMAIN_TYPE str, int ch );
+OP( size_t     , strspn , const DOMAIN_TYPE dest, const DOMAIN_TYPE src );
+OP( size_t     , strcspn, const DOMAIN_TYPE dest, const DOMAIN_TYPE src );
+OP( DOMAIN_TYPE, strpbrk, const DOMAIN_TYPE dest, const char * breakset );
+OP( DOMAIN_TYPE, strstr , const DOMAIN_TYPE str, const char* substr );
+OP( DOMAIN_TYPE, strtok , DOMAIN_TYPE str, const char * delim );
+
+#undef OP
 
 }
