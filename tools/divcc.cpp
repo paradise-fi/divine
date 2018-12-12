@@ -191,6 +191,8 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 {
     for ( auto file : objFiles )
     {
+        if ( file.first == "lib" )
+            continue;
         if ( is_object_type( file.first ) )
             continue;
         auto mod = clang.compile( file.first, po.opts );
@@ -215,6 +217,12 @@ std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles )
 
     for ( auto file : objFiles )
     {
+        if ( file.first == "lib" )
+        {
+            args.push_back( "-l" + file.second );
+            continue;
+        }
+
         if ( is_object_type( file.first ) )
             args.push_back( file.first );
         else
@@ -330,6 +338,11 @@ int main( int argc, char **argv )
                 if ( is_object_type( ifn ) )
                     ofn = ifn;
                 objFiles.emplace_back( ifn, ofn );
+            }
+            else
+            {
+                assert( srcFile.is< cc::Lib >() );
+                objFiles.emplace_back( "lib", srcFile.get< cc::Lib >().name );
             }
         }
 
