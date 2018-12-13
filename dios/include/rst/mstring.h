@@ -175,7 +175,7 @@ namespace abstract::mstring {
 typedef abstract::mstring::Quintuple __mstring;
 
 #define DOMAIN_NAME mstring
-#define DOMAIN_KIND string
+#define DOMAIN_KIND content
 #define DOMAIN_TYPE __mstring *
     #include <rst/string-domain.def>
 #undef DOMAIN_NAME

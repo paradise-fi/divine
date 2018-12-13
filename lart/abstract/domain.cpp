@@ -412,6 +412,7 @@ bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
         case DomainKind::scalar:
             return type->isIntegerTy() || type->isFloatingPointTy();
         case DomainKind::content:
+            return type->isPointerTy();
         case DomainKind::pointer:
             return type->isPointerTy();
         case DomainKind::custom:
