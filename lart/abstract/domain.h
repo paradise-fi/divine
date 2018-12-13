@@ -17,7 +17,7 @@ namespace lart::abstract {
 enum class DomainKind : uint8_t {
     scalar,
     pointer,
-    string,
+    content,
     custom
 };
 

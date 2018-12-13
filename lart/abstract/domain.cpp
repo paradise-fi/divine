@@ -114,7 +114,7 @@ inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
 static const Bimap< DomainKind, std::string > KindTable = {
      { DomainKind::scalar , "scalar"  }
     ,{ DomainKind::pointer, "pointer" }
-    ,{ DomainKind::string , "string"  }
+    ,{ DomainKind::content, "content"  }
     ,{ DomainKind::custom , "custom"  }
 };
 
@@ -320,7 +320,7 @@ bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
             if ( auto a = dyn_cast< AllocaInst >( inst ) ) {
                 return allocating_abstract_size( a );
             }
-        case DomainKind::string:
+        case DomainKind::content:
         case DomainKind::pointer:
         case DomainKind::custom:
         default:
@@ -336,7 +336,7 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
             return is_transformable_in_domain( inst, dom ) ||
                    util::is_one_of< CallInst, StoreInst, GetElementPtrInst,
                                     IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
-        case DomainKind::string:
+        case DomainKind::content:
             return is_transformable_in_domain( inst, dom ) ||
                    util::is_one_of< CallInst, ReturnInst >( inst );
         case DomainKind::pointer:
@@ -359,7 +359,7 @@ bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
     switch ( dm.kind() ) {
         case DomainKind::scalar:
             return true;
-        case DomainKind::string:
+        case DomainKind::content:
             return !util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
         case DomainKind::pointer:
         case DomainKind::custom:
@@ -383,7 +383,7 @@ bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
                    ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [m, dom] ( auto &op ) {
                         return is_base_type_in_domain( m, op, dom );
                    } ) ));
-        case DomainKind::string:
+        case DomainKind::content:
             if ( auto call = dyn_cast< CallInst >( inst ) ) {
                 if ( auto fn = call->getCalledFunction() ) {
                     auto name =  "__" + dom.name() + "_" + fn->getName().str();
@@ -411,11 +411,9 @@ bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
     switch ( dm.kind() ) {
         case DomainKind::scalar:
             return type->isIntegerTy() || type->isFloatingPointTy();
+        case DomainKind::content:
         case DomainKind::pointer:
             return type->isPointerTy();
-        case DomainKind::string:
-            return type->isPointerTy() &&
-                   cast< PointerType >( type )->getPointerElementType()->isIntegerTy( 8 );
         case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain type." );

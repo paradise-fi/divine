@@ -229,7 +229,7 @@ namespace lifter {
 
     std::string name( Instruction *inst, Domain dom ) {
         if ( auto call = dyn_cast< CallInst >( inst ) ) {
-            assert( domain_metadata( *get_module( inst ), dom ).kind() == DomainKind::string );
+            assert( domain_metadata( *get_module( inst ), dom ).kind() == DomainKind::content );
             return dom.name() + "." + call->getCalledFunction()->getName().str();
         }
 
@@ -425,7 +425,7 @@ struct Lifter : BaseLifter {
         auto m = get_module( val );
         auto dom = domain_metadata( *m, domain() );
 
-        if ( dom.kind() == DomainKind::string ) {
+        if ( dom.kind() == DomainKind::content ) {
             auto fault = m->getFunction( "__" + domain().name() + "_undef_value" );
             return irb.CreateCall( fault );
         }
