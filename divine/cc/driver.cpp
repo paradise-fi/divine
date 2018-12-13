@@ -49,18 +49,14 @@ std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
     using clang::driver::Driver;
     using clang::driver::Compilation;
 
-    std::unique_ptr< clang::TextDiagnosticPrinter > diagPrinter;
-    std::unique_ptr< clang::DiagnosticsEngine > diagEngine;
-    std::unique_ptr< clang::driver::Driver > drv;
-
-    diagPrinter = std::make_unique< clang::TextDiagnosticPrinter >( llvm::errs(), new clang::DiagnosticOptions() );
-    diagEngine = std::make_unique< clang::DiagnosticsEngine >(
+    clang::TextDiagnosticPrinter diagPrinter( llvm::errs(), new clang::DiagnosticOptions() );
+    clang::DiagnosticsEngine diagEngine(
             llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
-            new clang::DiagnosticOptions(), &*diagPrinter, false );
-    drv = std::make_unique< clang::driver::Driver >( "/usr/bin/false", LLVM_HOST_TRIPLE, *diagEngine );
+            new clang::DiagnosticOptions(), &diagPrinter, false );
+    clang::driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diagEngine );
 
-    Compilation* c = drv->BuildCompilation( args );
-    if ( diagEngine->hasErrorOccurred() )
+    Compilation* c = drv.BuildCompilation( args );
+    if ( diagEngine.hasErrorOccurred() )
         throw cc::CompileError( "failed to get linker arguments, aborting" );
     std::vector< Command > clangJobs;
 
