@@ -37,6 +37,7 @@ mklib( libcxxabi )
 mklib( libcxx)
 mklib( dios )
 mklib( librst )
+mklib( libpthread )
 
 foreach( f ${H_RUNTIME} )
   stringify( "dios" "." ${f} )

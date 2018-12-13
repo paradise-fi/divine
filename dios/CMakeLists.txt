@@ -22,6 +22,7 @@ file( GLOB SRC_libc_cpp libc/*/*.cpp )
 file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
+file( GLOB SRC_libpthread libpthread/*.cpp )
 
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/include/sys/ )
 set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
