@@ -8,7 +8,6 @@
 #include <rst/common.h>
 #include <rst/lart.h>
 
-#include <new>
 #include <util/array.hpp>
 
 namespace abstract::mstring {
@@ -87,7 +86,7 @@ namespace abstract::mstring {
 
     template< typename Buffer >
     struct Split {
-        Split( const Buffer& buff, const __dios::Array< int >& terminators )
+        Split( const Buffer& buff, const __dios::Array< size_t >& terminators )
         {
             unsigned preffix = 0;
             for ( auto terminator : terminators ) {
@@ -139,7 +138,7 @@ namespace abstract::mstring {
         Quintuple( const char * buff, size_t len, size_t from )
             : _buff( from, buff, len )
         {
-            for ( int i = 0; i < _buff.size(); ++i ) {
+            for ( size_t i = 0; i < _buff.size(); ++i ) {
                 if ( buff[i] == '\0' )
                     _terminators.push_back(i);
             }
@@ -155,15 +154,20 @@ namespace abstract::mstring {
         size_t strlen() const noexcept;
         int strcmp( const Quintuple * other ) const noexcept;
 
-        void set( uint64_t idx, char val ) noexcept;
+        void strcpy(const Quintuple * other) noexcept;
+
+        void set( size_t idx, char val ) noexcept;
+        void safe_set( size_t idx, char val ) noexcept;
 
         constexpr char * data() noexcept { return _buff.data(); }
         constexpr const char * data() const noexcept { return _buff.data(); }
+
+        std::string to_string() const noexcept;
     private:
         size_t _from;
 
         Buffer _buff;                        // IV - buffer
-        __dios::Array< int > _terminators;   // T - zeros in buffer
+        __dios::Array< size_t > _terminators;   // T - zeros in buffer
     };
 
 } // namespace abstract::mstring

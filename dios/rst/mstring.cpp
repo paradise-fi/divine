@@ -4,7 +4,8 @@
 
 #include <algorithm> // min
 
-using namespace abstract::mstring;
+namespace abstract::mstring {
+
 using abstract::mark;
 using abstract::__new;
 
@@ -14,9 +15,14 @@ __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
 
 extern "C" {
     _MSTRING char * __mstring_val( const char * buff, unsigned buff_len ) {
-        auto val = __mstring_lift( buff, buff_len ); // TODO copy str
+        auto val = __mstring_lift( buff, buff_len );
+
+        // TODO get rid of by forwarding buff
+        char * _buff = reinterpret_cast< char * >( __vm_obj_make( buff_len ) );
+        std::memcpy( _buff, buff, buff_len );
+
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
-        return abstract::__taint< char * >( val->data() );
+        return abstract::__taint< char * >( _buff );
     }
 
     bool __mstring_store( char val, __mstring * str, uint64_t idx) {
@@ -25,8 +31,9 @@ extern "C" {
     }
 
     /* String manipulation */
-    __mstring * __mstring_strcpy( __mstring * /* dest */, const __mstring * /* src */ ) {
-        _UNREACHABLE_F( "Not implemented." );
+    __mstring * __mstring_strcpy( __mstring * dest, const __mstring * src ) {
+        dest->strcpy( src );
+        return dest;
     }
 
     __mstring * __mstring_strncpy( __mstring * /* dest */, const __mstring * /* src */, size_t  /* count */ ) {
@@ -92,7 +99,20 @@ extern "C" {
 
     _MSTRING __mstring * __mstring_undef_value() {
         _UNREACHABLE_F( "Invalid use of mstring value." );
-        return nullptr;
+    }
+}
+
+void Quintuple::strcpy(const Quintuple * other) noexcept {
+    if (this != other) {
+        size_t terminator = other->_terminators.front();
+
+        if ( _buff.size() < terminator + 1 ) {
+            assert( false && "copying mstring to smaller mstring" );
+        }
+
+        for ( size_t i = 0; i <= terminator; ++i ) {
+            safe_set( i, other->_buff[i] );
+        }
     }
 }
 
@@ -145,22 +165,41 @@ int Quintuple::strcmp( const Quintuple * other ) const noexcept {
     _UNREACHABLE_F( "Error: there is no string of interest." );
 }
 
-void Quintuple::set( uint64_t idx, char val ) noexcept {
+void Quintuple::set( size_t idx, char val ) noexcept {
     auto split = this->split();
     auto sq = split.sections().front();
 
     if ( !sq.empty() ) {
         assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
-        if ( _buff[ idx ] == '\0' ) {
-            auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
-            _terminators.erase( it );
-        }
-        _buff[ idx ] = val;
-        if ( val == '\0' ) {
-            auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
-            _terminators.insert( it, idx );
-        }
+        safe_set( idx, val );
     } else {
         _UNREACHABLE_F( "Error: there is no string of interest." );
     }
 }
+
+void Quintuple::safe_set( size_t idx, char val ) noexcept {
+    if ( _buff[ idx ] == '\0' ) {
+        auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
+        _terminators.erase( it );
+    }
+    _buff[ idx ] = val;
+    if ( val == '\0' ) {
+        auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
+        if ( it == _terminators.end() ) {
+            _terminators.push_back( idx );
+        } else {
+            _terminators.insert( it, idx );
+        }
+    }
+}
+
+std::string Quintuple::to_string() const noexcept {
+    std::string res;
+    for ( size_t i = 0; i < _buff.size(); ++i ) {
+        char c = _buff[i];
+        res += ( c == '\0' ) ? '0' : c;
+    }
+    return res;
+}
+
+} // namespace abstract::mstring
