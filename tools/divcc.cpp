@@ -146,7 +146,15 @@ std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang
     for ( auto file : files )
     {
         if ( !is_object_type( file.second ) )
-            continue;
+        {
+            if ( file.first != "lib" )
+                continue;
+            else
+            {
+                drv->linkLib( file.second );
+                continue;
+            }
+        }
 
         ErrorOr< std::unique_ptr< MemoryBuffer > > buf = MemoryBuffer::getFile( file.second );
         if ( !buf ) throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
