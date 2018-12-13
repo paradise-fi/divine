@@ -1,4 +1,4 @@
-/* TAGS: min c */
+/* TAGS: min c todo */
 
 int main(void) {
     int* p;
