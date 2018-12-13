@@ -195,17 +195,30 @@ struct Context : DNContext< Heap >
         _info += this->heap().read_string( ti.text ) + "\n";
     }
 
+    bool is_same( llvm::Value *a, llvm::Value *b )
+    {
+        if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( a ) )
+            if ( is_same( bc->getOperand( 0 ), b ) )
+                return true;
+        if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( b ) )
+            if ( is_same( a, bc->getOperand( 0 ) ) )
+                return true;
+        if ( a == b )
+            return true;
+        return false;
+    }
+
     template < typename F >
     void find_dbg_inst( llvm::Function *f, llvm::Value *v, F yield )
     {
         for ( auto &BB : *f )
             for ( auto &I : BB ) {
                 if ( auto DVI = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
-                        if ( DVI->getValue() == v )
-                            yield( DVI->getVariable() );
+                        if ( is_same( DVI->getValue(), v ) )
+                            yield( DVI->getValue(), DVI->getVariable() );
                 if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
-                    if ( DDI->getAddress() == v )
-                        yield( DDI->getVariable() );
+                    if ( is_same( DDI->getAddress(), v ) )
+                        yield( DDI->getAddress(), DDI->getVariable() );
             }
     }
 
@@ -222,17 +235,17 @@ struct Context : DNContext< Heap >
 
     void state_type( llvm::DIVariable *di )
     {
-        auto ptrtype = llvm::cast< llvm::DIDerivedType >(
-            di->getType().resolve() );
-        _state_di_type = ptrtype->getBaseType().resolve();
+        auto t_var = llvm::cast< llvm::DIDerivedType >( di->getType().resolve() );
+        _state_di_type = t_var->getBaseType().resolve();
     }
 
     void trace( vm::TraceStateType s )
     {
         auto sptr = this->debug().find( nullptr, s.pc ).first->getOperand( 1 );
         _state_type = sptr->getType()->getPointerElementType();
-        find_dbg_inst( sptr, [&]( llvm::DIVariable *di ) {
+        find_dbg_inst( sptr, [&]( auto val, llvm::DIVariable *di ) {
             state_type( di );
+            _state_type = val->getType()->getPointerElementType();
         } );
     }
 
@@ -240,9 +253,8 @@ struct Context : DNContext< Heap >
     {
         auto ptr = this->debug().find( nullptr, a.pc ).first->getOperand( 1 );
         std::string alias = this->_heap.read_string( a.alias );
-        find_dbg_inst( ptr, [&]( llvm::DIVariable *di ) {
-            auto ptrtype = llvm::cast< llvm::DIDerivedType >(
-                di->getType().resolve() );
+        find_dbg_inst( ptr, [&]( auto, llvm::DIVariable *di ) {
+            auto ptrtype = llvm::cast< llvm::DIDerivedType >( di->getType().resolve() );
             auto type = ptrtype->getBaseType().resolve();
             this->debug()._typenamemap.insert( { type, alias } );
         } );
