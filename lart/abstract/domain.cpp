@@ -115,7 +115,6 @@ static const Bimap< DomainKind, std::string > KindTable = {
      { DomainKind::scalar , "scalar"  }
     ,{ DomainKind::pointer, "pointer" }
     ,{ DomainKind::content, "content"  }
-    ,{ DomainKind::custom , "custom"  }
 };
 
 Domain DomainMetadata::domain() const {
@@ -322,7 +321,6 @@ bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
             }
         case DomainKind::content:
         case DomainKind::pointer:
-        case DomainKind::custom:
         default:
             return false;
     }
@@ -340,7 +338,6 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
             return is_transformable_in_domain( inst, dom ) ||
                    util::is_one_of< CallInst, ReturnInst >( inst );
         case DomainKind::pointer:
-        case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain transformation." );
     }
@@ -362,7 +359,6 @@ bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
         case DomainKind::content:
             return !util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
         case DomainKind::pointer:
-        case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain transformation." );
     }
@@ -392,7 +388,6 @@ bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
             }
             return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
         case DomainKind::pointer:
-        case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain transformation." );
     }
@@ -415,7 +410,6 @@ bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
             return type->isPointerTy();
         case DomainKind::pointer:
             return type->isPointerTy();
-        case DomainKind::custom:
         default:
             UNREACHABLE( "Unsupported domain type." );
     }
