@@ -54,8 +54,6 @@ int vwprintf( const wchar_t *, va_list ) NOT_IMPLEMENTED;
 int vfwprintf( FILE *, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 
-int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;
-
 int getgroups(int gidsetsize, gid_t grouplist[]) NOT_IMPLEMENTED;
 struct hostent* gethostbyname(const char *) NOT_IMPLEMENTED;
 char *inet_ntop(int, const void *, char *, socklen_t) NOT_IMPLEMENTED;
@@ -84,12 +82,5 @@ int mbtowc( wchar_t *, const char *s, size_t )
 }
 
 int chown(const char* /*path*/, uid_t /*owner*/, gid_t /*group*/) NOT_IMPLEMENTED;
-
-int gettimeofday( struct timeval *tp, void * /* tzp */ )
-{
-    tp->tv_sec = 0;
-    tp->tv_usec = 0;
-    return 0;
-}
 
 }
