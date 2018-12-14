@@ -40,8 +40,9 @@ extern "C" {
         _UNREACHABLE_F( "Not implemented." );
     }
 
-    __mstring * __mstring_strcat( __mstring * /* dest */, const __mstring * /* src */ ) {
-        _UNREACHABLE_F( "Not implemented." );
+    __mstring * __mstring_strcat( __mstring * dest, const __mstring * src ) {
+        dest->strcat( src );
+        return dest;
     }
 
     __mstring * __mstring_strncat( __mstring * /* dest */, const __mstring * /* src */, size_t  /* count */ ) {
@@ -113,6 +114,19 @@ void Quintuple::strcpy(const Quintuple * other) noexcept {
         for ( size_t i = 0; i <= terminator; ++i ) {
             safe_set( i, other->_buff[i] );
         }
+    }
+}
+
+void Quintuple::strcat( const Quintuple * other ) noexcept {
+    size_t begin = _terminators.front();
+    size_t end = other->_terminators.front() + 1;
+
+    if ( _buff.size() < begin + end ) {
+        assert( false && "concating mstring into smaller mstring" );
+    }
+
+    for ( size_t i = begin; i < end; ++i ) {
+        safe_set( i, other->_buff[i] );
     }
 }
 

@@ -154,7 +154,8 @@ namespace abstract::mstring {
         size_t strlen() const noexcept;
         int strcmp( const Quintuple * other ) const noexcept;
 
-        void strcpy(const Quintuple * other) noexcept;
+        void strcpy( const Quintuple * other ) noexcept;
+        void strcat( const Quintuple * other ) noexcept;
 
         void set( size_t idx, char val ) noexcept;
         void safe_set( size_t idx, char val ) noexcept;
