@@ -20,6 +20,7 @@ list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 set( NOEXCEPT "-fno-rtti;-fno-exceptions" )
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
 mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;${NOEXCEPT};-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR}" )
+mkobjs( libpthread "${flags};${NOEXCEPT};-std=c++1z" )
 mkobjs( libm "${flags}" )
 
 list( APPEND flags -std=c++1z )
