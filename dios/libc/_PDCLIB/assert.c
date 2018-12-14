@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <sys/trace.h>
 
 #ifndef REGTEST
 
