@@ -99,6 +99,11 @@ __debugfn void __dios_trace_f( const char *fmt, ... ) noexcept
     va_end( ap );
 }
 
+__debugfn void __dios_trace_v( const char *fmt, va_list ap ) noexcept
+{
+    __dios::traceInternalV( 0, fmt, ap );
+}
+
 void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept
 {
     va_list ap;

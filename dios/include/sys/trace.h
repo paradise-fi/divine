@@ -3,12 +3,14 @@
 
 #include <_PDCLIB/cdefs.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 _PDCLIB_EXTERN_C
 
 void __dios_trace( int indent, const char *fmt, ... ) _PDCLIB_nothrow;
 void __dios_trace_auto( int indent, const char *fmt, ... ) _PDCLIB_nothrow;
 void __dios_trace_t( const char *str ) _PDCLIB_nothrow;
+void __dios_trace_v( const char *str, va_list ap ) _PDCLIB_nothrow;
 void __dios_trace_f( const char *fmt, ... ) _PDCLIB_nothrow;
 void __dios_trace_i( int indent_level, const char *fmt, ... ) _PDCLIB_nothrow;
 void __dios_trace_out( const char *msg, size_t size)  _PDCLIB_nothrow;
