@@ -1,9 +1,9 @@
 #ifndef __DIVINE_TIME_H__
 #define __DIVINE_TIME_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
 
 #ifndef _TIMEVAL_DECLARED
 #define _TIMEVAL_DECLARED
@@ -14,14 +14,15 @@ struct timeval
 };
 #endif
 
-int gettimeofday( struct timeval *tp, void *tzp );
-
-struct timezone {
+struct timezone
+{
     int tz_minuteswest; /* minutes west of Greenwich */
     int tz_dsttime; /* type of dst correction */
 };
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+int gettimeofday( struct timeval *tp, struct timezone *tzp ) __nothrow;
+int settimeofday( const struct timeval *tp, const struct timezone *tzp ) __nothrow;
+
+__END_DECLS
+
 #endif // __DIVINE_TIME_H__

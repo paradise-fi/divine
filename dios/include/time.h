@@ -101,7 +101,8 @@ typedef unsigned int clockid_t;
 
 /* added for DIVINE */
 int nanosleep(const struct timespec *req, struct timespec *rem);
-int clock_gettime(clockid_t clk_id, struct timespec *tp);
+int clock_gettime(clockid_t clk_id, struct timespec *tp) __nothrow;
+int clock_settime(clockid_t clk_id, const struct timespec *tp) __nothrow;
 
 __END_DECLS
 #ifdef __cplusplus

@@ -36,6 +36,13 @@ SYSCALL_DIOS( register_monitor,  CONTINUE,   VOID, ( __dios::Monitor *_1 ) )
 SYSCALL_DIOS( register_monitor,  CONTINUE,   VOID, ( void *_1 ) )
 #endif
 
+SYSCALL( clock_gettime, CONTINUE, int, ( clockid_t _1, STRUCT(struct ::timespec *) _2 ) )
+SYSCALL( clock_settime, CONTINUE, int, ( clockid_t _1, STRUCT(const struct ::timespec *) _2 ) )
+
+SYSCALL( gettimeofday , CONTINUE, int, ( STRUCT(struct ::timeval *) _1, STRUCT(struct ::timezone *) _2 ) )
+SYSCALL( settimeofday , CONTINUE, int, ( STRUCT(const struct ::timeval *) _1,
+                                         STRUCT(const struct ::timezone *) _2 ) )
+
 SYSCALL( rename,      CONTINUE, int,     ( MEM _1, MEM _2 ) )
 SYSCALL( lseek,       CONTINUE, off_t,   ( int _1, off_t _2, int _3 ) )
 SYSCALL( accept4,     CONTINUE, int,     ( int _1, STRUCT(struct ::sockaddr *) _2,
