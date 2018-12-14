@@ -47,7 +47,7 @@
         return buflen <= errlen? ERANGE : 0;
     }
 
-#ifdef _HOST_is_glibc // _GNU_SOURCE
+#if _HOST_is_glibc // _GNU_SOURCE
     char * strerror_r( int errnum, char *buf, size_t buflen )
     {
         if ( errnum == 0 || errnum >= _PDCLIB_ERRNO_MAX )
