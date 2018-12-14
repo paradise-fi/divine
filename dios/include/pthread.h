@@ -3,9 +3,7 @@
 
 /* Includes */
 
-#include <time.h>
-#include <sys/types.h>
-#include <dios.h>
+#include <sys/task.h>
 
 /* Macros */
 
@@ -139,6 +137,8 @@ typedef struct {
 
 typedef int pthread_barrierattr_t;
 
+#include <time.h> /* struct timespec */
+
 struct sched_param {
     int sched_priority;
 #if defined(_POSIX_SPORADIC_SERVER) || defined(_POSIX_THREAD_SPORADIC_SERVER)
@@ -149,11 +149,11 @@ struct sched_param {
 #endif
 };
 
+#include <sys/types.h> /* pid_t */
+
 /* Function prototypes */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+__BEGIN_DECLS
 
 /* Implementation prototypes */
 void __pthread_initialize() _PTHREAD_NOEXCEPT;
@@ -282,7 +282,6 @@ int sched_setparam(pid_t, const struct sched_param *) _PTHREAD_NOEXCEPT _PTHREAD
 int sched_setscheduler(pid_t, int, const struct sched_param *) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
 int sched_yield(void) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 
-#ifdef __cplusplus
-}
-#endif
+__END_DECLS
+
 #endif
