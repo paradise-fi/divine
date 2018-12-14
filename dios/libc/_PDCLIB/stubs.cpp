@@ -83,4 +83,10 @@ int mbtowc( wchar_t *, const char *s, size_t )
 
 int chown(const char* /*path*/, uid_t /*owner*/, gid_t /*group*/) NOT_IMPLEMENTED;
 
+FILE *setmntent (const char *__file, const char *__mode) NOT_IMPLEMENTED;
+struct mntent *getmntent (FILE *__stream) NOT_IMPLEMENTED;
+int addmntent (FILE *__restrict __stream, const struct mntent *__restrict __mnt) NOT_IMPLEMENTED;
+int endmntent (FILE *__stream) NOT_IMPLEMENTED;
+char *hasmntopt (const struct mntent *__mnt, const char *__opt) NOT_IMPLEMENTED;
+
 }
