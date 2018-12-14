@@ -25,8 +25,8 @@ namespace __dios
 
     /* TODO do something about usec/nsec values */
 
-    template< typename Conf >
-    struct Clock : Conf
+    template< typename Next >
+    struct Clock : Next
     {
         enum { Fixed, DetTick, NDetTick, Sym, Sloppy } _clock_mode = Fixed;
         int _clock_delta = 0;
@@ -36,6 +36,39 @@ namespace __dios
                _clock_rbase = _clock_mbase; /* real-time */
 
         struct timezone _clock_tz = { 0, 1 };
+
+        void configure( SysOpts &opts )
+        {
+            auto sv = extractOpt( "clock-type", opts );
+            auto mt = extractOpt( "clock-maxticks", opts );
+            auto base = extractOpt( "clock-start", opts );
+
+            if ( sv.empty() || sv == "fixed" )
+                _clock_mode = Fixed;
+            else if ( sv == "det" )
+                _clock_mode = DetTick;
+            else if ( sv == "ndet" )
+                _clock_mode = NDetTick;
+            else if ( sv == "sym" )
+                _clock_mode = Sym;
+            else if ( sv == "sloppy" )
+                _clock_mode = Sloppy;
+            else
+                __dios_fault( _DiOS_F_Config, "invalid clock type" );
+
+            if ( !mt.empty() )
+                _clock_max_ticks = _DIVINE_strtol( mt.begin(), mt.size(), nullptr );
+            if ( !base.empty() )
+                _clock_mbase = _clock_rbase = _DIVINE_strtol( base.begin(), base.size(), nullptr );
+        }
+
+        template< typename Setup >
+        void setup( Setup s )
+        {
+            traceAlias< Clock >( "{Clock}" );
+            configure( s.opts );
+            Next::setup( s );
+        }
 
         int gettimeofday( struct timeval *tp, struct timezone *tzp )
         {
