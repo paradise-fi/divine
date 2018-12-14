@@ -9,6 +9,7 @@
 */
 
 #include <pthread.h>
+#include <assert.h>
 
 volatile int spinlock;
 volatile int critical;

@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cassert>
 #include <sys/divm.h>
+#include <sys/interrupt.h>
 #include <assert.h>
 
 std::atomic_int a;

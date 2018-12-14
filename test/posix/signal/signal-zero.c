@@ -1,6 +1,7 @@
 /* TAGS: c */
 #include <signal.h>
 #include <errno.h>
+#include <assert.h>
 
 typedef void (*func)(int);
 

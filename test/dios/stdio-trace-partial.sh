@@ -3,6 +3,7 @@
 
 cat > test.c <<EOF
 #include <stdio.h>
+#include <assert.h>
 int main()
 {
     fputs( "incomplete", stdout );

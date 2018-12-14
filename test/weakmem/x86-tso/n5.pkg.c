@@ -9,6 +9,7 @@
 */
 
 #include <pthread.h>
+#include <assert.h>
 
 volatile int x;
 volatile int rax, rbx;

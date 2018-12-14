@@ -33,6 +33,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <assert.h>
 
 int iPrepare = 0, iParent = 0, iChild = 0;
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;

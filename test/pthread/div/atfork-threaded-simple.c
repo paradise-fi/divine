@@ -45,6 +45,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <assert.h>
 
 pthread_t threads[ 3 ];
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;

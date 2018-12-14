@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/trace.h>
 
 int writer;
 int reader;
