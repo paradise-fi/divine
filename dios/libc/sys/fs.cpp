@@ -24,6 +24,11 @@ struct DirWrapper
     char *readdir_entry_raw() { return reinterpret_cast< char * >( &readdir_entry ); }
 };
 
+struct _nofail {};
+void *operator new( size_t s, _nofail ) { return __vm_obj_make( s ); }
+void *operator new[]( size_t s, _nofail ) { return __vm_obj_make( s ); }
+static _nofail nofail;
+
 extern "C" {
 
     void swab( const void *_from, void *_to, ssize_t n ) {
@@ -55,7 +60,7 @@ extern "C" {
 
         int newFD = dup( fd );
         if ( newFD > 0 ) {
-            DirWrapper *wrapper = new ( __dios::nofail ) DirWrapper;
+            DirWrapper *wrapper = new ( nofail ) DirWrapper;
             wrapper->fd = newFD;
             return wrapper;
         }else {
@@ -69,7 +74,7 @@ extern "C" {
     {
         int fd = open( name, O_DIRECTORY );
         if ( fd >= 0 ) {
-            DirWrapper *wrapper = new ( __dios::nofail ) DirWrapper;
+            DirWrapper *wrapper = new ( nofail ) DirWrapper;
             wrapper->fd = fd;
             return wrapper;
         } else {
@@ -139,7 +144,7 @@ extern "C" {
         }
 
         struct dirent **entries = nullptr;
-        struct dirent *workingEntry = new ( __dios::nofail ) struct dirent;
+        struct dirent *workingEntry = new ( nofail ) struct dirent;
 
         while ( true ) {
             struct dirent* ent = readdir( dirp );
@@ -152,14 +157,14 @@ extern "C" {
             if ( filter && !filter( workingEntry ) )
                 continue;
 
-            struct dirent **newEntries = new ( __dios::nofail ) struct dirent *[ length + 1 ];
+            struct dirent **newEntries = new ( nofail ) struct dirent *[ length + 1 ];
             if ( length )
                 std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
             std::swap( entries, newEntries );
             if ( newEntries )
                 __vm_obj_free( newEntries );
             entries[ length ] = workingEntry;
-            workingEntry = new ( __dios::nofail ) struct dirent;
+            workingEntry = new ( nofail ) struct dirent;
             ++length;
         }
         __vm_obj_free( workingEntry );
