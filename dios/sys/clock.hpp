@@ -92,6 +92,8 @@ namespace __dios
 
             if ( tzp )
                 _clock_tz = *tzp;
+
+            return 0;
         }
 
         int clock_gettime( clockid_t id, struct timespec *sp )
