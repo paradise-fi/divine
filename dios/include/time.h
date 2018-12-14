@@ -96,6 +96,8 @@ void tzset( void );
 #define CLOCK_MONOTONIC             2
 #define CLOCK_PROCESS_CPUTIME_ID    3
 #define CLOCK_THREAD_CPUTIME_ID     4
+#define CLOCK_BOOTTIME              5
+#define CLOCK_UPTIME                6
 
 typedef unsigned int clockid_t;
 
