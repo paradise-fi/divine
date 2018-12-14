@@ -19,9 +19,9 @@
 #ifndef _DIOS_SYS_UTSNAME_H
 #define _DIOS_SYS_UTSNAME_H
 
-#include <_PDCLIB/cdefs.h>
+#include <sys/cdefs.h>
 
-_PDCLIB_EXTERN_C
+__BEGIN_DECLS
 
 #define SYS_NMLN 65 /* SVID compat */
 
@@ -36,6 +36,6 @@ struct utsname
 
 int uname( struct utsname *name ) __nothrow;
 
-_PDCLIB_EXTERN_END
+__END_DECLS
 
 #endif
