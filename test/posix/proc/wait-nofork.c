@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/fault.h>
 
 int main( int argc, char *argv[] )
 {

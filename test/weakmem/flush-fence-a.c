@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/divm.h>
 #include <sys/lart.h>
+#include <assert.h>
 
 #define REACH( X ) assert( !(X) )
 

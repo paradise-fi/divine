@@ -6,6 +6,7 @@
  * x86-TSO in DIVINE */
 
 #include <pthread.h>
+#include <assert.h>
 
 volatile int x, y;
 

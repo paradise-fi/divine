@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <signal.h>
+#include <sys/fault.h>
 
 int main( int argc, char *argv[] )
 {
