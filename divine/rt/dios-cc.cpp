@@ -57,7 +57,7 @@ void DiosCC::build( ParsedOpts po )
     }
 }
 
-const std::vector< std::string > DiosCC::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
+const std::vector< std::string > DiosCC::defaultDIVINELibs = { "cxx", "cxxabi", "pthread", "c" };
 
 } // cc
 } // divine
