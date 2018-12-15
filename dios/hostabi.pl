@@ -21,6 +21,7 @@ my $prog =<<'EOF';
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <unistd.h>
 
 int offset = 0;
 int padding = 0;
@@ -199,6 +200,8 @@ fmt( "SIG_BLOCK" );
 fmt( "SIG_UNBLOCK" );
 fmt( "SIG_SETMASK" );
 fmt( "_NSIG" );
+
+fmt( "_SC_CLK_TCK" );
 
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );

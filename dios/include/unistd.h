@@ -48,6 +48,8 @@
     #error SEEK_HOLE != 4
 #endif
 
+#define _SC_CLK_TCK _HOST__SC_CLK_TCK
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -143,6 +145,8 @@ extern   int optind;
 extern   int optopt;
 extern   int optreset;
 #endif
+
+long sysconf( int ) __nothrow;
 
 #ifdef __cplusplus
 } // extern C
