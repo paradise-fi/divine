@@ -23,6 +23,7 @@ file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 file( GLOB SRC_libpthread libpthread/*.cpp )
+file( GLOB SRC_host host/*.c )
 
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/include/sys/ )
 set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
@@ -83,6 +84,10 @@ add_custom_command(
   VERBATIM
   COMMAND perl ${CMAKE_CURRENT_SOURCE_DIR}/hostabi.pl ${CMAKE_C_COMPILER} > ${HOSTABI}
 )
+
+add_library( dios-host STATIC ${SRC_host} )
+target_include_directories( dios-host BEFORE PRIVATE host )
+stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" )
 
 include( compile-flags.cmake )
 
