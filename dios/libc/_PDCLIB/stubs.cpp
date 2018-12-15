@@ -91,4 +91,18 @@ int addmntent (FILE *__restrict __stream, const struct mntent *__restrict __mnt)
 int endmntent (FILE *__stream) NOT_IMPLEMENTED;
 char *hasmntopt (const struct mntent *__mnt, const char *__opt) NOT_IMPLEMENTED;
 
+size_t __fbufsize (FILE *__fp) NOT_IMPLEMENTED;
+int __freading (FILE *__fp) NOT_IMPLEMENTED;
+int __fwriting (FILE *__fp) NOT_IMPLEMENTED;
+int __freadable (FILE *__fp) NOT_IMPLEMENTED;
+int __fwritable (FILE *__fp) NOT_IMPLEMENTED;
+int __flbf (FILE *__fp) NOT_IMPLEMENTED;
+void __fpurge (FILE *__fp) { __dios_fault( _VM_F_NotImplemented, "__fpurge" ); }
+size_t __fpending (FILE *__fp) NOT_IMPLEMENTED;
+int __fsetlocking (FILE *__fp, int __type) NOT_IMPLEMENTED;
+
+size_t __freadahead(FILE *) NOT_IMPLEMENTED;
+const char *__freadptr(FILE *, size_t *) NOT_IMPLEMENTED;
+void __freadptrinc(FILE *, size_t) { __dios_fault( _VM_F_NotImplemented, "__freadptrinc" ); }
+void __fseterr(FILE *) { __dios_fault( _VM_F_NotImplemented, "__fseterr" ); }
 }
