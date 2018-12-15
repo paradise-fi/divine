@@ -7,6 +7,7 @@
 #include <sys/monitor.h>
 #include <sys/resource.h>
 #include <sys/utsname.h>
+#include <sys/mount.h>
 #include <sys/argpad.hpp>
 #include <fcntl.h>
 #include <signal.h>

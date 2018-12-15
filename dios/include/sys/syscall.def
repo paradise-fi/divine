@@ -120,10 +120,8 @@ SYSCALL( sigaction,   CONTINUE, int,     ( int _1, const struct ::sigaction * _2
                                            struct ::sigaction * _3 ) )
 #endif
 
-#if 0 /* not implemented */
-SYSCALL( fstatfs,     CONTINUE, int,     ( int _1, STRUCT(struct statfs *) _2 ) )
-SYSCALL( statfs,      CONTINUE, int,     ( MEM _1, STRUCT(struct statfs *) _2 ) )
-#endif
+SYSCALL( fstatfs,     CONTINUE, int,     ( int _1, STRUCT(struct ::statfs *) _2 ) )
+SYSCALL( statfs,      CONTINUE, int,     ( MEM _1, STRUCT(struct ::statfs *) _2 ) )
 
 #undef MEM
 

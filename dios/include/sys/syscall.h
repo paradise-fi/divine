@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <sys/utsname.h>
+#include <sys/mount.h>
 
 typedef enum
 {
