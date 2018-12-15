@@ -250,6 +250,12 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
 
     std::vector< std::string > args = ld_args( po, objFiles );
 
+    using namespace brick::fs;
+    TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
+    auto hostlib = tmpdir.path + "/libdios-host.a";
+    writeFile( hostlib, rt::dios_host() );
+    args.push_back( hostlib );
+
     ld_args_c.reserve( args.size() );
     for ( size_t i = 0; i < args.size(); ++i )
         ld_args_c.push_back( args[i].c_str() );
