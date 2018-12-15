@@ -54,6 +54,15 @@ struct DNContext : vm::Context< vm::Program, Heap >
         _refcnt = RefPool( this->heap()._snapshots );
     }
 
+    Snapshot snapshot()
+    {
+        auto rv = Super::snapshot();
+        if constexpr ( Heap::can_snapshot() )
+            if ( this->heap().is_shared( rv ) )
+                _refcnt.get( rv ); /* leak :( */
+        return rv;
+    }
+
     void load( typename Heap::Snapshot snap ) { Super::load( snap ); }
 };
 
