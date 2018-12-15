@@ -110,6 +110,10 @@ size_t __freadahead(FILE *) NOT_IMPLEMENTED;
 const char *__freadptr(FILE *, size_t *) NOT_IMPLEMENTED;
 void __freadptrinc(FILE *, size_t) { __dios_fault( _VM_F_NotImplemented, "__freadptrinc" ); }
 void __fseterr(FILE *) { __dios_fault( _VM_F_NotImplemented, "__fseterr" ); }
+
+int execvp( const char *file, char *const argv[] ) NOT_IMPLEMENTED;
+int execlp( const char *file, const char *arg, ... ) NOT_IMPLEMENTED;
+int execl( const char *file, const char *arg, ... ) NOT_IMPLEMENTED;
 long sysconf( int ) NOT_IMPLEMENTED;
 
 }
