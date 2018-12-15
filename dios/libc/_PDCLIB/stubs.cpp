@@ -30,6 +30,8 @@ double strtod( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 float strtof( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 long double strtold( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 size_t mbsrtowcs( wchar_t *, const char **, size_t, mbstate_t * ) NOT_IMPLEMENTED;
+size_t mbstowcs( wchar_t *, const char *, size_t ) NOT_IMPLEMENTED;
+size_t wcstombs( char *, const wchar_t *, size_t ) NOT_IMPLEMENTED;
 wint_t btowc( int ) NOT_IMPLEMENTED;
 int wctob( wint_t ) NOT_IMPLEMENTED;
 size_t wcsnrtombs( char *, const wchar_t **, size_t, size_t, mbstate_t * ) NOT_IMPLEMENTED;
