@@ -33,4 +33,6 @@ static std::string_view source( std::string path )
     return res;
 }
 
+std::string_view dios_host();
+
 }
