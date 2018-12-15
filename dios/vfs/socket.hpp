@@ -24,6 +24,7 @@
 #include <dios.h>
 #include <dios/sys/memory.hpp>
 #include <dios/sys/trace.hpp>
+#include <dios/sys/stdlibwrap.hpp> // Queue
 #include <rst/common.h>
 #include <sys/fault.h>
 #include <sys/trace.h>
@@ -154,8 +155,8 @@ inline void swap( ::__dios::fs::Socket::Address &lhs, ::__dios::fs::Socket::Addr
 
 namespace __dios::fs {
 
-struct SocketStream : Socket {
-
+struct SocketStream : Socket
+{
     SocketStream() :
         _peer( nullptr ),
         _stream( 1024 ),

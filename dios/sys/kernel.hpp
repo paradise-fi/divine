@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdarg>
 
-#include <dios/sys/stdlibwrap.hpp>
 #include <util/map.hpp>
 #include <dios.h>
 #include <dios/sys/kobject.hpp>

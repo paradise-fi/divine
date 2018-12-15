@@ -10,7 +10,6 @@
 namespace __dios {
 
 void traceInternal( int indent, const char *fmt, ... ) noexcept;
-void traceInFile( const char *file, const char *msg, size_t size ) noexcept;
 
 
 } // namespace __dios

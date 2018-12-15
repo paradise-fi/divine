@@ -14,7 +14,6 @@
 
 #ifdef __divine__
 #include <sys/divm.h>
-#include <dios/sys/stdlibwrap.hpp>
 #include <dios/sys/syscall.hpp>
 #include <dios/sys/kernel.hpp>
 
