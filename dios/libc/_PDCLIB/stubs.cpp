@@ -10,6 +10,7 @@
 #include <grp.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <netinet/in.h>
 
 #include <sys/divm.h>
@@ -58,7 +59,9 @@ int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 
 int getgroups(int gidsetsize, gid_t grouplist[]) NOT_IMPLEMENTED;
 struct hostent* gethostbyname(const char *) NOT_IMPLEMENTED;
-char *inet_ntop(int, const void *, char *, socklen_t) NOT_IMPLEMENTED;
+const char *inet_ntop(int, const void *, char *, socklen_t) NOT_IMPLEMENTED;
+int inet_pton(int, const char *src, void *dst) NOT_IMPLEMENTED;
+
 struct passwd* getpwnam(const char *) NOT_IMPLEMENTED;
 uid_t geteuid( void ) NOT_IMPLEMENTED;
 gid_t getegid( void ) NOT_IMPLEMENTED;
@@ -75,11 +78,13 @@ void endgrent( void ) { __dios_fault( _VM_F_NotImplemented, "endgrent" ); }
 
 int fchown( int fildes, uid_t owner, gid_t group ) NOT_IMPLEMENTED;
 
+clock_t times( struct tms * ) NOT_IMPLEMENTED;
 void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_F_NotImplemented, "utime" ); };
 
 void *dlsym( void *, void * ) NOT_IMPLEMENTED;
 
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset) NOT_IMPLEMENTED;
+int pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset) NOT_IMPLEMENTED;
 
 int mbtowc( wchar_t *, const char *s, size_t )
 {
@@ -114,6 +119,9 @@ void __fseterr(FILE *) { __dios_fault( _VM_F_NotImplemented, "__fseterr" ); }
 int execvp( const char *file, char *const argv[] ) NOT_IMPLEMENTED;
 int execlp( const char *file, const char *arg, ... ) NOT_IMPLEMENTED;
 int execl( const char *file, const char *arg, ... ) NOT_IMPLEMENTED;
+
+int select(int, fd_set *, fd_set *, fd_set *, struct timeval *timeout) NOT_IMPLEMENTED;
+
 long sysconf( int ) NOT_IMPLEMENTED;
 
 }
