@@ -899,6 +899,18 @@ void writeFile( const std::string& file, const std::string& s ) {
     writeFile( out, s );
 }
 
+#if __cplusplus >= 201703L
+void writeFile( std::string file, std::string_view data )
+{
+    std::ofstream out( file.c_str(), std::ios::binary );
+    if ( !out.is_open() )
+        throw SystemException( "writing file " + file );
+    out << data;
+    if ( !out.good() )
+        throw SystemException( "writing data to file " + file );
+}
+#endif
+
 }
 
 #ifdef _WIN32
