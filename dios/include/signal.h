@@ -86,6 +86,8 @@ __BEGIN_DECLS
 #define SIGUSR1 _HOST_SIGUSR1
 #define SIGUSR2 _HOST_SIGUSR2
 
+#define SIGCHLD _HOST_SIGCHLD
+
 #if __POSIX_VISIBLE || __XPG_VISIBLE
 /*
  * Flags for sigprocmask:

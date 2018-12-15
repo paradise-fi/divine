@@ -193,6 +193,7 @@ fmt( "SIGHUP" );
 fmt( "SIGTSTP" );
 fmt( "SIGUSR1" );
 fmt( "SIGUSR2" );
+fmt( "SIGCHLD" );
 
 fmt( "SIG_BLOCK" );
 fmt( "SIG_UNBLOCK" );
