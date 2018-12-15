@@ -1,0 +1,11 @@
+This is the DiOS host library (libdios-host.a). It is a thin shim on top of
+the platform libc to fill in some of the functionality that is available in
+DiOS but might be missing or broken on some host platforms. The code here is
+based on gnulib, which is covered by GPLv3.
+
+The headers are private and are never used outside of building libdios-host.a
+itself. The compiled code is automatically linked into binaries when they are
+linked using `divcc`. For now, the host library covers the stdio_ext.h
+subfamily of functions available on MUSL (and stubbed in DiOS) but not
+available in glibc. Additionally, it contains an `fflush` wrapper that
+corrects various platform problems related to input streams.
