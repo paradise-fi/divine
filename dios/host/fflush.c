@@ -126,7 +126,17 @@ update_fpos_cache (FILE *fp _GL_UNUSED_PARAMETER,
 /* Flush all pending data on STREAM according to POSIX rules.  Both
    output and seekable input streams are supported.  */
 int
+#if __GNU_LIBRARY__
+_IO_fflush( FILE * ); int
+fflush( FILE *stream )
+#define fflush _IO_fflush
+#elif __OpenBSD__
+_libc_fflush( FILE * ); int
+fflush( FILE *stream )
+#define fflush _libc_fflush
+#else
 rpl_fflush (FILE *stream)
+#endif
 {
   /* When stream is NULL, POSIX and C99 only require flushing of "output
      streams and update streams in which the most recent operation was not
