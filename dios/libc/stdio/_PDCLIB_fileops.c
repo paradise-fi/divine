@@ -11,7 +11,6 @@
 #include "_PDCLIB/glue.h"
 #include <errno.h>
 #include <unistd.h>
-typedef int64_t off_t;
 
 static bool readf( _PDCLIB_fd_t fd, void * buf, size_t length,
                    size_t * numBytesRead )
