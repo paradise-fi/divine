@@ -194,6 +194,7 @@ struct CLI
 
     void bplist( command::Break b );
     void dump_registers();
+    void dump_functions();
 
     DN frame_up( DN frame );
 

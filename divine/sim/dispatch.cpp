@@ -154,6 +154,8 @@ void CLI::go( command::Info inf )
     {
         if ( inf.cmd == "registers" )
             return dump_registers();
+        if ( inf.cmd == "functions" )
+            return dump_functions();
         /* other builtins? */
         if ( !_info_cmd.count( inf.cmd ) )
             throw brick::except::Error( "No such info sub-command: " + inf.cmd );

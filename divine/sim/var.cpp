@@ -159,4 +159,21 @@ void CLI::dump_registers()
     }
 }
 
+void CLI::dump_functions()
+{
+    NOT_IMPLEMENTED();
+/*
+    for ( auto &f : *_ctx.program().module )
+    {
+        if ( f.isDeclaration() )
+            out() << f.getName().str() << " (undefined)" << std::endl;
+        else
+        {
+            auto ptr = _ctx.debug().find( &*f.begin()->begin(), vm::CodePointer() ).second;
+            out() << f.getName().str() << " " << ptr << std::endl;
+        }
+    }
+*/
+}
+
 }
