@@ -20,7 +20,6 @@ typedef __uint32_t          socklen_t;
 typedef __uint32_t          uid_t;
 typedef __uint32_t          gid_t;
 
-typedef long long           off_t;
 typedef __int64_t           off64_t;
 
 typedef __uint64_t          dev_t;
@@ -79,6 +78,8 @@ typedef __int32_t __timer_t;       /* POSIX timer identifiers */
 typedef __uint32_t __uid_t;        /* user id */
 typedef __uint32_t __useconds_t;   /* microseconds */
 typedef __suseconds_t suseconds_t; /* microseconds (signed) */
+
+typedef __off_t off_t;
 
 typedef char * caddr_t; /* core address */
 
