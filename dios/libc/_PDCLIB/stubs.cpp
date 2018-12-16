@@ -126,5 +126,9 @@ long sysconf( int ) NOT_IMPLEMENTED;
 int nice( int ) NOT_IMPLEMENTED;
 int gethostname( char *, size_t ) NOT_IMPLEMENTED;
 
+void *mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) NOT_IMPLEMENTED;
+int munlockall() NOT_IMPLEMENTED;
+int mlockall( int ) NOT_IMPLEMENTED;
+
 
 }
