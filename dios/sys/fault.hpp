@@ -84,13 +84,11 @@ struct FaultBase
     template < typename Context >
     static __trapfn void handler( _VM_Fault _what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept
     {
-        uint64_t old = __vm_ctl_flag( 0, _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop );
+        uint64_t old = __vm_ctl_flag( 0, _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop |
+                                         _DiOS_CF_IgnoreFault );
 
         if ( old & _DiOS_CF_IgnoreFault )
-        {
-            __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old & ~_DiOS_CF_IgnoreFault ) );
             goto ret;
-        }
 
         __dios_sync_parent_frame();
 
@@ -103,10 +101,10 @@ struct FaultBase
 
         // Continue if we get the control back
         old |= uint64_t( __vm_ctl_get( _VM_CR_Flags ) ) & ( _DiOS_CF_Fault | _VM_CF_Error );
-        __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
-      ret:
         // clean possible intermediate frames to avoid memory leaks
         __dios_unwind( nullptr, nullptr, cont_frame );
+      ret:
+        __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
         __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
         __builtin_trap();
     }
