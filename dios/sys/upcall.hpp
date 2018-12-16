@@ -32,12 +32,9 @@ namespace __dios
         {
             if ( this->check_final() )
                 this->finalize();
-            else
-            {
-                /* destroy the stack to avoid memory leaks */
-                __dios_unwind( nullptr, nullptr, nullptr );
-                __vm_suspend();
-            }
+            /* destroy the stack to avoid memory leaks */
+            __dios_unwind( nullptr, nullptr, nullptr );
+            __vm_suspend();
         }
 
         virtual BaseProcess *make_process( BaseProcess *bp ) override

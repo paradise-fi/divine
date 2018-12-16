@@ -117,7 +117,7 @@ struct BaseContext : KObject
     virtual void reschedule() = 0;
     virtual Process *make_process( Process * ) = 0;
 
-    void finalize() { __vm_suspend(); }
+    void finalize() {}
     Process *findProcess( pid_t ) { return nullptr; }
 
     void getHelp( ArrayMap< std::string_view, HelpOption >& ) {}
