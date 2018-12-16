@@ -147,6 +147,8 @@ extern   int optreset;
 #endif
 
 long sysconf( int ) __nothrow;
+int nice( int ) __nothrow;
+int gethostname( char *name, size_t namelen ) __nothrow;
 
 #ifdef __cplusplus
 } // extern C
