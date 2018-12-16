@@ -98,6 +98,11 @@ struct _PthreadHandlers
     _PthreadHandlers() noexcept = default;
     _PthreadHandlers( const _PthreadHandlers & ) noexcept = delete;
     _PthreadHandlers( _PthreadHandlers && ) noexcept = delete;
+    ~_PthreadHandlers()
+    {
+        if ( _dtors )
+            __vm_obj_free( _dtors );
+    }
 
     int count() noexcept
     {
