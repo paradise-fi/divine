@@ -262,6 +262,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
 
     auto ld_job = diosCC->getJobs( ld_args_c ).back();
     ld_job.args.insert( ld_job.args.begin(), "divcc" );
+    ld_job.args.push_back( "-static" );
 
     std::vector< const char * > lld_job_c;
     lld_job_c.reserve( ld_job.args.size() );
