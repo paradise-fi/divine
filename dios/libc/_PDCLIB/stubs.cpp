@@ -123,5 +123,8 @@ int execl( const char *file, const char *arg, ... ) NOT_IMPLEMENTED;
 int select(int, fd_set *, fd_set *, fd_set *, struct timeval *timeout) NOT_IMPLEMENTED;
 
 long sysconf( int ) NOT_IMPLEMENTED;
+int nice( int ) NOT_IMPLEMENTED;
+int gethostname( char *, size_t ) NOT_IMPLEMENTED;
+
 
 }
