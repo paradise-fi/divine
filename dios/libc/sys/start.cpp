@@ -16,12 +16,11 @@ struct CtorDtorEntry {
     void *ignored; // should be used only by linker to discard entries
 };
 
-template< typename It, typename Comp >
-__invisible void sort( It begin, It end, Comp cmp )
+__invisible void sort( CtorDtorEntry *begin, CtorDtorEntry *end, bool reverse )
 {
-    for ( It item = begin; item != end; ++item ) {
-        for ( It j = item; j != begin; j-- ) {
-            if ( cmp( *( j - 1), *j ) )
+    for ( auto item = begin; item != end; ++item ) {
+        for ( auto j = item; j != begin; j-- ) {
+            if ( reverse ? j->prio < (j - 1)->prio : (j - 1)->prio < j->prio )
                 break;
             // Swap
             auto tmp = *j;
@@ -31,15 +30,14 @@ __invisible void sort( It begin, It end, Comp cmp )
     }
 }
 
-template< typename Cmp >
-__invisible static void runCtorsDtors( const char *name, Cmp cmp )
+__invisible static void run_ctors_dtors( const char *name, bool reverse )
 {
     auto *meta = __md_get_global_meta( name );
     if ( !meta )
         return;
     auto *begin = reinterpret_cast< CtorDtorEntry * >( meta->address ),
          *end = begin + meta->size / sizeof( CtorDtorEntry );
-    sort( begin, end, cmp );
+    sort( begin, end, reverse );
     for ( ; begin != end; ++begin )
         begin->fn();
 }
@@ -61,14 +59,12 @@ extern "C" {
 
 void __dios_run_ctors()
 {
-    runCtorsDtors( "llvm.global_ctors",
-                   []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
+    run_ctors_dtors( "llvm.global_ctors", false );
 }
 
 void __dios_run_dtors()
 {
-    runCtorsDtors( "llvm.global_dtors",
-                   []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
+    run_ctors_dtors( "llvm.global_dtors", true );
 }
 
 __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp )
