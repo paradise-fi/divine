@@ -169,6 +169,10 @@ struct Scheduler : public Next
     {
         uint16_t pid;
         void *globals;
+        virtual ~Process()
+        {
+            __vm_obj_free( globals );
+        }
     };
 
     using Task = __dios::Task< Process >;
