@@ -365,7 +365,8 @@ struct Scheduler : public Next
             std::memcpy( sighandlers, defhandlers, sizeof(defhandlers) );
         }
 
-        oldact->sa_handler = sighandlers[sig].f;
+        if ( oldact )
+            oldact->sa_handler = sighandlers[sig].f;
         sighandlers[sig].f = act->sa_handler;
         return 0;
     }
