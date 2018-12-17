@@ -73,7 +73,13 @@ struct BaseContext : KObject
 {
     struct Process : KObject
     {
-        virtual ~Process() {}
+        SysProxy *syscall_proxy = nullptr;
+
+        virtual ~Process()
+        {
+            if ( syscall_proxy )
+                __vm_obj_free( syscall_proxy );
+        }
     };
 
     template< typename Ctx >
@@ -103,7 +109,7 @@ struct BaseContext : KObject
         using Ctx = typename Setup::Context;
 
         /* FIXME use metadata and proc1->globals to fix this up */
-        syscall_proxy = new SysEnter< Ctx >();
+        s.proc1->syscall_proxy = syscall_proxy = new SysEnter< Ctx >();
 
         if ( s.opts.empty() )
             return;
