@@ -66,6 +66,7 @@ int __cxa_finalize( void *dso_handle ) {
             entry->func = NULL;
         }
     }
+    __vm_obj_free( atexit_entries );
     // ToDo: Remove invalid entries?
     return 0;
 }
