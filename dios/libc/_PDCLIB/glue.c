@@ -85,8 +85,9 @@ void _exit( int rv )
         __dios_fault( _DiOS_F_Exit, "exit called with non-zero value" );
     }
     __dios_reschedule();
-    __cxa_finalize( 0 );
     __dios_run_dtors();
+    __cxa_finalize( 0 );
+    __pthread_finalize();
     __dios_exit_process( rv );
     __builtin_unreachable();
 }

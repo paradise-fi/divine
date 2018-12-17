@@ -17,7 +17,7 @@ void __pthread_initialize() noexcept
 
 void __pthread_finalize() noexcept
 {
-    // __vm_obj_free( &getThread() );
+    __vm_obj_free( &getThread() );
 }
 
 __noinline void __pthread_start( void *_args )

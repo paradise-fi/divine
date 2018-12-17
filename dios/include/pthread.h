@@ -157,6 +157,7 @@ __BEGIN_DECLS
 
 /* Implementation prototypes */
 void __pthread_initialize() _PTHREAD_NOEXCEPT;
+void __pthread_finalize() _PTHREAD_NOEXCEPT;
 
 int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 
