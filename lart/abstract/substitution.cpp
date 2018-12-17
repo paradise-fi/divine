@@ -405,6 +405,10 @@ struct Lifter : BaseLifter {
         Value *value;
     };
 
+    struct ForwardedArg {
+        Value *value;
+    };
+
     CallInst * lift( Value * val ) {
         IRBuilder<> irb( ctx() );
 
@@ -590,26 +594,34 @@ struct BinaryLifter : Lifter {
         auto fn = function();
         auto exit = make_bb( fn, "exit" );
 
+        std::vector< std::variant< ArgBlock, ForwardedArg > > arguments;
         std::vector< ArgBlock > blocks;
         for ( const auto &arg_pair : args() ) {
-            auto block = generate_arg_block( arg_pair, blocks.size() );
+            if ( is_base_type_in_domain( fn->getParent(), arg_pair.concrete.value, domain() ) ) {
+                auto block = generate_arg_block( arg_pair, blocks.size() );
 
-            if ( !blocks.empty() ) {
-                auto prev = blocks.back();
-                prev.exit->getTerminator()->setSuccessor( 0, block.entry );
+                if ( !blocks.empty() ) {
+                    auto prev = blocks.back();
+                    prev.exit->getTerminator()->setSuccessor( 0, block.entry );
+                }
+
+                exit->moveAfter( block.exit );
+                IRBuilder<> irb( block.exit );
+                irb.CreateBr( exit );
+
+                blocks.emplace_back( block );
+                arguments.emplace_back( block );
+            } else {
+                arguments.emplace_back( ForwardedArg{ arg_pair.concrete.value } );
             }
-
-            exit->moveAfter( block.exit );
-            IRBuilder<> irb( block.exit );
-            irb.CreateBr( exit );
-
-            blocks.emplace_back( block );
         }
 
         IRBuilder<> irb( exit );
 
-        auto abstract_args = query::query( blocks )
-            .map( [] ( auto & block ) { return block.value; } )
+        auto abstract_args = query::query( arguments )
+            .map( [] ( auto & arg ) {
+                return std::visit( []( auto& a ) -> Value * { return a.value; }, arg );
+            } )
             .freeze();
         auto call = LifterBuilder( domain() ).process( taint, std::move( abstract_args ) );
         irb.Insert( cast< Instruction >( call ) );
