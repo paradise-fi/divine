@@ -565,6 +565,10 @@ void IntrinsicLowering::LowerIntrinsicCall(CallInst *CI) {
     ReplaceFPIntrinsicWithCall(CI, "roundf", "round", "roundl");
     break;
   }
+  case Intrinsic::fabs: {
+    ReplaceFPIntrinsicWithCall(CI, "fabsf", "fabs", "fabsl");
+    break;
+  }
   case Intrinsic::copysign: {
     ReplaceFPIntrinsicWithCall(CI, "copysignf", "copysign", "copysignl");
     break;
