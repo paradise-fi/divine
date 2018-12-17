@@ -8,6 +8,7 @@ volatile int glob = 0;
 void *thread( void *x )
 {
     while ( !glob );
+    assert( glob == 1 );
     return 1;
 }
 
@@ -17,22 +18,16 @@ int main()
 
     pthread_create( &tid, NULL, thread, NULL );
 
-    struct __dios_tls **threads = __dios_this_process_tasks();
-    struct __dios_tls *current_thread = __dios_this_task();
-    int cnt = __vm_obj_size( threads ) / sizeof( struct __dios_tls * );
     pid_t pid = fork();
 
     if ( pid == 0 )
     {
-        glob++;
-        for ( int i = 0; i < cnt; ++i )
-            if ( threads[ i ] != current_thread )
-                threads[ i ]->__errno; /* ERROR */
+        glob = 2;
     }
     else
     {
+        glob = 1;
         void* s;
         pthread_join( tid, &s );
     }
-
 }
