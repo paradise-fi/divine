@@ -269,6 +269,27 @@ void VPA::step_out( Function *fn, Domain dom ) {
     }
 }
 
+Value * lower_constant_expr_if_possible( ConstantExpr * ce ) {
+    if ( ce->getNumUses() > 0 ) {
+        if ( auto orig = dyn_cast< CallInst >( *ce->user_begin() ) ) {
+            auto fn = ce->getOperand( 0 );
+            IRBuilder<> irb( orig );
+            auto call = irb.CreateCall( fn );
+            if ( call->getType() != orig->getType() ) {
+                auto cast = irb.CreateBitCast( call, orig->getType() );
+                orig->replaceAllUsesWith( cast );
+            } else {
+                orig->replaceAllUsesWith( call );
+            }
+
+            orig->eraseFromParent();
+            return call;
+        }
+    }
+
+    return ce;
+}
+
 void VPA::run( Module &m ) {
     for ( const auto & mdv : abstract_metadata( m ) ) {
         auto val = mdv.value();
@@ -277,6 +298,14 @@ void VPA::run( Module &m ) {
         tasks.push_back( [=]{ propagate_value( val, dom ); } );
     }
 
+    auto process = [&] ( const auto &val, const Domain &dom ) {
+        if ( auto call = dyn_cast< CallInst >( val ) ) {
+            auto fn = get_function( call );
+            preprocess( fn );
+            tasks.push_back( [=]{ propagate_value( call, dom ); } );
+        }
+    };
+
     for ( auto &fn : m ) {
         if ( auto md = fn.getMetadata( abstract_tag ) ) {
             // TODO use domain interface
@@ -284,11 +313,13 @@ void VPA::run( Module &m ) {
             auto &mdn = cast< MDNode >( tup )->getOperand( 0 );
             auto dom = Domain( cast< MDString >( mdn )->getString().str() );
 
-            for ( auto u : fn.users() )
-                if ( auto call = dyn_cast< CallInst >( u ) ) {
-                    preprocess( get_function( call ) );
-                    tasks.push_back( [=]{ propagate_value( call, dom ); } );
+            for ( auto u : fn.users() ) {
+                if ( auto ce = dyn_cast< ConstantExpr >( u ) ) {
+                    process( lower_constant_expr_if_possible( ce ), dom );
+                } else {
+                    process( u, dom );
                 }
+            }
         }
     }
 
