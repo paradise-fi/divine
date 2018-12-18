@@ -470,7 +470,9 @@ public:
     void implement_poke();
 
     void implement_hypercall_syscall();
+    void implement_hypercall_clone();
     void implement_hypercall();
+
     void implement_call( bool invoke );
 
     void implement_dbg_call()

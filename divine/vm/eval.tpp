@@ -730,6 +730,36 @@ void Eval< Ctx >::implement_hypercall_syscall()
 }
 
 template< typename Ctx >
+void Eval< Ctx >::implement_hypercall_clone()
+{
+    auto ptr = operandCk< PointerV >( 0 ).cooked();
+    auto block = operandCk< PointerV >( 1 );
+    std::map< HeapPointer, HeapPointer > visited;
+
+    if ( !block.cooked().null() )
+    {
+        if ( !ptr.heap() || !heap().valid( ptr ) )
+        {
+            fault( _VM_F_Hypercall ) << "invalid block pointer "
+                                     << ptr << " passed to __vm_obj_clone";
+            return;
+        }
+
+        while ( boundcheck_nop( block, PointerBytes, false ) )
+        {
+            PointerV blocked;
+            heap().read_shift( block, blocked );
+            visited.emplace( blocked.cooked(), nullPointer() );
+        }
+    }
+
+    if ( !ptr.heap() || !heap().valid( ptr ) )
+        fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_clone";
+    else
+        result( PointerV( mem::clone( heap(), heap(), ptr, visited, mem::CloneType::All ) ) );
+}
+
+template< typename Ctx >
 void Eval< Ctx >::implement_hypercall()
 {
     switch( instruction().subcode )
@@ -856,14 +886,7 @@ void Eval< Ctx >::implement_hypercall()
             return;
         }
         case lx::HypercallObjClone:
-        {
-            auto ptr = operandCk< PointerV >( 0 ).cooked();
-            if ( !ptr.heap() || !heap().valid( ptr ) )
-                fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_clone";
-            else
-                result( PointerV( mem::clone( heap(), heap(), ptr ) ) );
-            return;
-        }
+            return implement_hypercall_clone();
         default:
             UNREACHABLE_F( "unknown hypercall %d", instruction().subcode );
     }
