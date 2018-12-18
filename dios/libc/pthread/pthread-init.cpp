@@ -18,7 +18,20 @@ void __pthread_initialize() noexcept
 
 void __pthread_finalize() noexcept
 {
-    __vm_obj_free( &getThread() );
+    __dios::FencedInterruptMask mask;
+
+    auto **threads = __dios_this_process_tasks();
+    auto *self = __dios_this_task();
+    int cnt = __vm_obj_size( threads ) / sizeof( struct __dios_tls * );
+    for ( int i = 0; i < cnt; ++i )
+    {
+        /* FIXME this conflicts with any non-pthread tasks with non-trivial TLS */
+        if ( __vm_obj_size( threads[i] ) > sizeof( struct __dios_tls ) )
+            delete &getThread( threads[i] );
+        if ( threads[ i ] != self )
+            __dios_kill( threads[ i ] );
+    }
+    __vm_obj_free( threads );
 }
 
 __noinline void __pthread_start( void *_args )
