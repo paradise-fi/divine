@@ -1,5 +1,6 @@
 /* TAGS: min c */
 #include <assert.h>
+#include <stdlib.h>
 #include <sys/divm.h>
 
 struct Obj
@@ -16,7 +17,7 @@ int main()
 
     arr[1]->ptr = arr[1];
 
-    struct Obj **new_arr = __vm_obj_clone( arr );
+    struct Obj **new_arr = __vm_obj_clone( arr, NULL );
     assert( arr != new_arr );
 
     arr[2]->ptr = arr[2];
