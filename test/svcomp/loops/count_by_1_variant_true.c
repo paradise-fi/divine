@@ -1,4 +1,4 @@
-/* TAGS: c */
+/* TAGS: c big */
 /* VERIFY_OPTS: --sequential -o nofail:malloc */
 extern void __VERIFIER_error(void);
 extern void __VERIFIER_assume(int);
