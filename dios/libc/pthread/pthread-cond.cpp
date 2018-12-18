@@ -73,7 +73,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) noexcept
         return EINVAL;
     }
 
-    if ( mutex->__owner != &thread ) {
+    if ( mutex->__owner != __dios_this_task() ) {
         // mutex is not locked or it is already locked by another thread
         return EPERM;
     }

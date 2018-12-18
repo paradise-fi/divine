@@ -89,7 +89,7 @@ typedef struct __dios_tls *pthread_t;
 struct _PThread;
 
 typedef struct {
-    struct _PThread *__owner;
+    pthread_t __owner;
     union {
         struct {
             unsigned short __once:1;

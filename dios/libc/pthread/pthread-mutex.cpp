@@ -39,7 +39,7 @@ static bool _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept
 
     while ( mutex && mutex->__owner )
     {
-        _PThread *owner = mutex->__owner;
+        _PThread *owner = &getThread( mutex->__owner );
         if ( owner == &tid )
         {
             __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex cycle closed, circular waiting" );
@@ -61,7 +61,7 @@ static bool _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept
 }
 
 static bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
-    return !mutex->__owner || ( mutex->__owner == &thr );
+    return !mutex->__owner || ( &getThread( mutex->__owner ) == &thr );
 }
 
 int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept
@@ -73,7 +73,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( mutex->__owner == &thr ) {
+    if ( mutex->__owner && &getThread( mutex->__owner ) == &thr ) {
         // already locked by this thread
         assert( mutex->__lockCounter ); // count should be > 0
         if ( mutex->__type != PTHREAD_MUTEX_RECURSIVE ) {
@@ -117,7 +117,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
 
     // lock the mutex
     acquireThread( thr );
-    mutex->__owner = &thr;
+    mutex->__owner = gtid;
 
     return 0;
 }
@@ -189,7 +189,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
             return EPERM;
     }
 
-    if ( mutex->__owner != &thr ) {
+    if ( mutex->__owner != __dios_this_task() ) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->__lockCounter ); // count should be > 0
         if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
@@ -203,7 +203,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
     int r = _mutex_adjust_count( mutex, -1 );
     assert( r == 0 );
     if ( !mutex->__lockCounter ) {
-        releaseThread( *mutex->__owner );
+        releaseThread( getThread( mutex->__owner ) );
         mutex->__owner = nullptr; // unlock if count == 0
 
     }
