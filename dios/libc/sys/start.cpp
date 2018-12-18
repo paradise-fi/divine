@@ -4,6 +4,7 @@
 #include <sys/metadata.h>
 
 char** environ;
+static char **__argv;
 char* __progname;
 
 extern char* program_invocation_short_name __attribute__((alias ("__progname")));
@@ -67,6 +68,23 @@ void __dios_run_dtors()
     run_ctors_dtors( "llvm.global_dtors", true );
 }
 
+extern "C" void _exit( int rv )
+{
+    if ( rv )
+    {
+        __dios_trace_f( "Non-zero exit code: %d", rv );
+        __dios_fault( _DiOS_F_Exit, "exit called with non-zero value" );
+    }
+    __dios_reschedule();
+    __dios_run_dtors();
+    __cxa_finalize( 0 );
+    __pthread_finalize();
+    freeMainArgs( environ );
+    freeMainArgs( __argv );
+    __dios_exit_process( rv );
+    __builtin_unreachable();
+}
+
 __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp )
 {
     __lart_globals_initialize();
@@ -77,6 +95,7 @@ __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char *
     int res;
     environ = envp;
     __progname = argv? argv[0] : NULL;
+    __argv = argv;
     switch (l)
     {
         case 0:
@@ -93,8 +112,6 @@ __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char *
             res = 256;
     }
 
-    freeMainArgs( argv );
-    freeMainArgs( envp );
     return res;
 }
 
