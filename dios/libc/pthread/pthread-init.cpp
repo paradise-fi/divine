@@ -52,8 +52,7 @@ void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept
 
     if ( __vm_obj_size( gtid ) < _PthreadTLS::raw_size( 0 ) )
         __vm_obj_resize( gtid, _PthreadTLS::raw_size( 0 ) );
-    auto *thread = static_cast< _PThread * >( __vm_obj_make( sizeof( _PThread ) ) );
-    new ( thread ) _PThread();
+    auto *thread = new _PThread;
     tls( gtid ).thread = thread;
 
     // initialize thread metadata

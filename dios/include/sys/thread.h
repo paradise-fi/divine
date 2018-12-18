@@ -50,8 +50,8 @@ struct _PThread // (user-space) information maintained for every (running) threa
         ++refcnt;
     }
 
-    static void* operator new ( size_t, void* p ) noexcept { return p; }
-
+    static void* operator new( size_t s ) noexcept { return __vm_obj_make( s ); }
+    static void operator delete( void *p ) noexcept { return __vm_obj_free( p ); }
 
     // avoid accidental copies
     _PThread( const _PThread & ) = delete;
