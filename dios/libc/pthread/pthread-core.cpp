@@ -92,6 +92,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     auto tid = __dios_start_task( __pthread_entry, static_cast< void * >( args ), 0 );
     // init thread here, before it has first chance to run
     __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
+    getThread( tid ).entry = args;
     *ptid = tid;
 
     return 0;

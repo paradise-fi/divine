@@ -40,6 +40,12 @@ struct CleanupHandler
 
 enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 
+struct Entry
+{
+    void *( *entry )( void * );
+    void *arg;
+};
+
 }
 
 struct _PThread // (user-space) information maintained for every (running) thread
@@ -57,7 +63,18 @@ struct _PThread // (user-space) information maintained for every (running) threa
     _PThread( const _PThread & ) = delete;
     _PThread( _PThread && ) = delete;
 
-    void *result;
+    ~_PThread()
+    {
+        if ( !started )
+            __vm_obj_free( entry );
+    }
+
+    union
+    {
+        void *result;
+        __dios::Entry *entry;
+    };
+
     pthread_mutex_t *waiting_mutex;
     __dios::CleanupHandler *cleanup_handlers;
     union {
@@ -65,6 +82,7 @@ struct _PThread // (user-space) information maintained for every (running) threa
         pthread_barrier_t *barrier;
     };
 
+    bool started : 1;
     bool running : 1;
     bool detached : 1;
     __dios::SleepingOn sleeping : 2;
@@ -167,12 +185,6 @@ struct ForkHandler
 };
 
 using _PthreadAtFork = _PthreadHandlers< ForkHandler >;
-
-struct Entry
-{
-    void *( *entry )( void * );
-    void *arg;
-};
 
 struct _PthreadTLS
 {

@@ -13,6 +13,7 @@ void __pthread_initialize() noexcept
     // initialize implicitly created main thread
     __init_thread( __dios_this_task(), PTHREAD_CREATE_DETACHED );
     getThread().is_main = true;
+    getThread().started = true;
 }
 
 void __pthread_finalize() noexcept
@@ -32,6 +33,9 @@ __noinline void __pthread_start( void *_args )
     void *arg = args->arg;
     auto entry = args->entry;
     __vm_obj_free( _args );
+
+    thread.entry = nullptr;
+    thread.started = true;
 
     // call entry function
     mask.without( [&] {
@@ -56,6 +60,7 @@ void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept
     tls( gtid ).thread = thread;
 
     // initialize thread metadata
+    thread->started = false;
     thread->running = true;
     thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
     thread->condition = nullptr;
