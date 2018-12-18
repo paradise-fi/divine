@@ -171,12 +171,15 @@ struct ProcessManager : public Next
         __dios_assert( oldtask );
 
         auto oldproc = proc( oldtask );
+        Array< const void * > blocked;
 
         pid_t maxPid = 0;
         for( auto& t : this->tasks )
         {
             if ( proc( t.get() )->pid > maxPid )
                 maxPid = proc( t.get() )->pid;
+            if ( t.get() != oldtask )
+                blocked.push_back( t->_tls );
         }
 
         *child = maxPid + 1;
@@ -184,11 +187,12 @@ struct ProcessManager : public Next
         oldtask->_frame = this->sysenter()->parent;
         oldtask->_proc = nullptr;
 
+
         Clone *oldclone = new Clone, *newclone;
         oldclone->task = oldtask;
         oldclone->globals = oldproc->globals;
         oldclone->proxy = oldproc->syscall_proxy;
-        newclone = static_cast< Clone * >( __vm_obj_clone( oldclone ) );
+        newclone = static_cast< Clone * >( __vm_obj_clone( oldclone, blocked.begin() ) );
 
         Process *newproc = static_cast< Process * >( this->make_process( oldproc ) );
         Task *newtask = newclone->task;
