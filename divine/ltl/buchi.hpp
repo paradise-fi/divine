@@ -622,42 +622,48 @@ static inline TGBA2 HOAParser( const std::string& filename )
         else
         {
             std::stringstream ssLine( line );
-            std::string label, tmpLetter;
+            std::string label, tmpLetter, tmpSequence;
 
-            std::getline( ssLine, label, ']' );
+            std::getline( ssLine, label, ']' ); //label = [0&!1&!2 | 0&!1&!3
             assert( label.at( 0 ) == '[' );
 
             std::stringstream ssLabel( label );
-            ssLabel.ignore( 1, '[' );
+            ssLabel.ignore( 1, '[' ); //ssLabel = 0&!1&!2 | 0&!1&!3
 
             size_t target;
             std::set< std::pair< bool, size_t > > labels;
             std::set< size_t > accepting;
 
             //PARSING labels
-            std::set< std::pair< bool, size_t > > parsedLabels;
-            while( std::getline( ssLabel, tmpLetter, '&') )
+            std::set< std::set< std::pair< bool, size_t > > > allParsedLabels;
+            while( std::getline(ssLabel, tmpSequence, '|' ) )
             {
-                std::string tmpSubLetter;
-                std::pair< bool, size_t > parsedLabel;
-                std::stringstream ssLetter( tmpLetter );
-                while( tmpSubLetter.empty() && std::getline( ssLetter, tmpSubLetter, ' ' ) )
-                {}
-                if( !tmpSubLetter.empty() )
+                std::stringstream ssSequence( tmpSequence );
+                std::set< std::pair< bool, size_t > > parsedLabel;
+                while( std::getline( ssSequence, tmpLetter, '&') )
                 {
-                    parsedLabel.first = true;
-                    size_t i = 0;
-                    for( ; i < tmpSubLetter.size(); ++i ) {
-                        if( tmpSubLetter.at( i ) == '!' )
-                            parsedLabel.first = !parsedLabel.first;
-                        else if( tmpSubLetter.at( i ) != ' ' )
-                            break;
+                    std::string tmpSubLetter;
+                    std::pair< bool, size_t > parsedAtom;
+                    std::stringstream ssLetter( tmpLetter );
+                    while( tmpSubLetter.empty() && std::getline( ssLetter, tmpSubLetter, ' ' ) )
+                    {}
+                    if( !tmpSubLetter.empty() )
+                    {
+                        parsedAtom.first = true;
+                        size_t i = 0;
+                        for( ; i < tmpSubLetter.size(); ++i ) {
+                            if( tmpSubLetter.at( i ) == '!' )
+                                parsedAtom.first = !parsedAtom.first;
+                            else if( tmpSubLetter.at( i ) != ' ' )
+                                break;
+                        }
+                        if( i < tmpSubLetter.size() && tmpSubLetter.at( i ) == 't' )
+                            continue;
+                        parsedAtom.second = std::stoll( tmpSubLetter.substr( i ) );
                     }
-                    if( i < tmpSubLetter.size() && tmpSubLetter.at( i ) == 't' )
-                        continue;
-                    parsedLabel.second = std::stoll( tmpSubLetter.substr( i ) );
+                    parsedLabel.insert( parsedAtom );
                 }
-                parsedLabels.insert( parsedLabel );
+                allParsedLabels.insert( parsedLabel );
             }
             //PARSING target
             std::string trg;
@@ -672,8 +678,10 @@ static inline TGBA2 HOAParser( const std::string& filename )
             std::stringstream ssAcceptance( acceptance );
             while( std::getline( ssAcceptance, tmpAcceptance, ' ' ) )
                 accepting.insert( std::stoll( tmpAcceptance ) );
-            Transition transition( target, parsedLabels, accepting);
-            tgba2.states.at( stateId ).push_back( transition );
+            for( auto& parsedLabel  : allParsedLabels ) {
+                Transition transition( target, parsedLabel, accepting);
+                tgba2.states.at( stateId ).push_back( transition );
+            }
         }
     }
     tgba2.tgba1 = TGBA1( tgba2 );
