@@ -63,6 +63,20 @@ struct NotPreferred { CONSTEXPR NotPreferred( Preferred ) {} };
 template< typename _T >
 struct Witness { using T = _T; };
 
+namespace detail
+{
+    template< typename T >
+    constexpr auto _has_as_tuple( Preferred )
+        -> decltype( std::declval< const T & >().as_tuple(), bool() )
+    { return true; }
+
+    template< typename T >
+    constexpr auto _has_as_tuple( NotPreferred ) { return false; }
+
+    template< typename T >
+    constexpr bool has_as_tuple() { return _has_as_tuple< T >( Preferred() ); }
+}
+
 // requires operator==
 struct Eq { };
 
@@ -74,6 +88,13 @@ using IsEq = HasTrait< Eq, bool, T >;
 
 template< typename T >
 IsEq< T > operator!=( const T &a, const T &b ) { return !(a == b); }
+
+template< typename T >
+auto operator==( const T &a, const T &b )
+    -> std::enable_if_t< detail::has_as_tuple< T >(), IsEq< T > >
+{
+    return a.as_tuple() == b.as_tuple();
+}
 
 // requires operator <
 struct Ord : Eq { };
@@ -91,13 +112,15 @@ template< typename T >
 IsOrd< T > operator<=( const T &a, const T &b ) { return !(b < a); }
 
 template< typename T >
-IsOrd< T > operator==( const T &a, const T &b ) {
+auto operator==( const T &a, const T &b )
+    -> std::enable_if_t< !detail::has_as_tuple< T >(), IsOrd< T > >
+{
     return !(a < b) && !(b < a);
 }
 
 template< typename T >
-auto operator<( const T &a, const T& b )
-    -> decltype( a.as_tuple(), IsOrd< T >() )
+auto operator<( const T &a, const T &b )
+    -> std::enable_if_t< detail::has_as_tuple< T >(), IsOrd< T > >
 {
     return a.as_tuple() < b.as_tuple();
 }
@@ -1313,6 +1336,12 @@ struct IntegerEqOrdChild : IntegerEqOrd {
     using IntegerEqOrd::IntegerEqOrd;
 };
 
+struct IntegerAsTuple : Ord {
+    int val;
+    explicit IntegerAsTuple( int val ) : val( val ) { }
+    auto as_tuple() const { return std::tie( val ); }
+};
+
 struct Mixins {
 
     template< typename T >
@@ -1375,6 +1404,11 @@ struct Mixins {
     TEST(eqord_child) {
         eq< IntegerEqOrdChild >();
         ord< IntegerEqOrdChild >();
+    }
+
+    TEST(eqod_as_tuple) {
+        eq< IntegerAsTuple >();
+        ord< IntegerAsTuple >();
     }
 };
 
