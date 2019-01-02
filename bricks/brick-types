@@ -1305,30 +1305,26 @@ using namespace types;
 struct Integer : Comparable
 {
     int val;
-public:
-    Integer(int val) : val(val) {}
+    Integer( int val ) : val( val ) { }
     bool operator<( const Integer& o ) const { return val < o.val; }
 };
 
 struct IntegerEq : Eq {
     int val;
-public:
-    IntegerEq(int val) : val(val) {}
+    IntegerEq( int val ) : val( val ) { }
     bool operator==( const IntegerEq& o ) const { return val == o.val; }
 };
 
 struct IntegerEqOrd : Ord {
     int val;
-public:
-    IntegerEqOrd(int val) : val(val) {}
+    IntegerEqOrd( int val ) : val( val ) { }
     bool operator==( const IntegerEqOrd& o ) const { return val == o.val; }
     bool operator<( const IntegerEqOrd& o ) const { return val < o.val; }
 };
 
 struct IntegerOrd : Ord {
     int val;
-public:
-    IntegerOrd(int val) : val(val) {}
+    IntegerOrd( int val ) : val( val ) { }
     bool operator<( const IntegerOrd& o ) const { return val < o.val; }
 };
 
