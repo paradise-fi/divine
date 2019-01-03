@@ -64,6 +64,9 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <tuple>
+#include <array>
+#include <numeric>
+#include <functional>
 #include <type_traits>
 
 #include <brick-assert>
@@ -229,6 +232,58 @@ std::ostream &operator<<( std::ostream &o, const std::tuple< Args... > &t )
     return o << "]";
 }
 
+template< size_t... Is >
+auto index_tuple( std::index_sequence< Is... > ) {
+    return std::tuple( std::integral_constant< size_t, Is >()... );
+}
+
+template< typename > struct Witness { };
+
+template< typename... Ts >
+auto index_tuple( Witness< std::tuple< Ts... > > ) {
+    return index_tuple( std::index_sequence_for< Ts... >() );
+}
+
+template< typename T >
+auto index_tuple() {
+    return index_tuple( Witness< std::decay_t< T > >() );
+}
+
+// apply a function to each element of a tuple, returning a tuple of resutls
+template< typename F, typename Tup >
+auto pointwise_apply( F &&f, Tup &&tup ) {
+    return std::apply( [&]( auto... idxs ) {
+            return std::tuple( f( std::get< idxs.value >( tup ) )... );
+        }, index_tuple< Tup >() );
+}
+
+// zip-apply a function on a pair of (same length) tuples, and then reduce the
+// results the return type for all pairs has to be convertible to E and will be
+// converted to E before reduction
+template< typename F, typename R, typename E, typename Tup1, typename Tup2,
+          typename = std::enable_if_t< std::tuple_size< std::decay_t< Tup1 > >::value
+                                       == std::tuple_size< std::decay_t< Tup2 > >::value > >
+auto pointwise_zip_reduce( F &&f, R &&r, E &&e, Tup1 &&t1, Tup2 &&t2 ) {
+    constexpr size_t sz = std::tuple_size< std::decay_t< Tup1 > >::value;
+
+    auto results = std::apply( [&]( auto... idxs ) {
+            return std::array< E, sz >{
+                { E( f( std::get< idxs.value >( t1 ), std::get< idxs.value >( t2 ) ) )... } };
+        }, index_tuple< Tup1 >() );
+    return std::accumulate( results.begin(), results.end(), e, r );
+}
+
+// zip-apply a function on a pair of (same length) tuples, produce nothing
+// (function is encouraged to have side effect)
+template< typename F, typename Tup1, typename Tup2,
+          typename = std::enable_if_t< std::tuple_size< std::decay_t< Tup1 > >::value
+                                       == std::tuple_size< std::decay_t< Tup2 > >::value > >
+auto pointwise_zip_void( F &&f, Tup1 &&t1, Tup2 &&t2 ) {
+    std::apply( [&]( auto... idxs ) {
+            ( f( std::get< idxs.value >( t1 ), std::get< idxs.value >( t2 ) ),... );
+        }, index_tuple< Tup1 >() );
+}
+
 }
 
 namespace t_tuple {
@@ -379,6 +434,37 @@ struct Tuple {
         int x = 42;
         pass( CheckConst(), std::tuple< const int & >( x ) );
     }
+
+    TEST(pw_apply) {
+        std::tuple< int, long, unsigned > t{ 42, 3, 0 };
+        auto ta = pointwise_apply( []( auto v ) { return v + 1; }, t );
+        static_assert( std::is_same< decltype( t ), decltype( ta ) >::value );
+        ASSERT_EQ( std::get< 0 >( ta ), 43 );
+        ASSERT_EQ( std::get< 1 >( ta ), 4 );
+        ASSERT_EQ( std::get< 2 >( ta ), 1 );
+    }
+
+    TEST(pw_zip_void) {
+        std::tuple< int, long > t1{ 42, 1 };
+        std::tuple< long, int > t2{ 8, 41 };
+        long res[2];
+        int i = 0;
+
+        pointwise_zip_void( [&]( auto a, auto b ) { res[ i++ ] = a + b; }, t1, t2 );
+        ASSERT_EQ( i, 2 );
+        ASSERT_EQ( res[ 0 ], 50 );
+        ASSERT_EQ( res[ 1 ], 42 );
+    }
+
+    TEST(pw_zip_reduce) {
+        std::tuple< int, int > t1 { 1, 2 };
+        std::tuple< long, long > t2 { 3, 4 };
+
+        auto v = pointwise_zip_reduce( std::plus< void >(), std::multiplies< void >(), 1, t1, t2 );
+        static_assert( std::is_same< int, decltype( v ) >::value,
+                       "result of pointwise_zip_reduce does not have type of the base case" );
+        ASSERT_EQ( v, (1 + 3) * (2 + 4) );
+    }
 };
 
 struct Print
@@ -413,4 +499,4 @@ struct Print
 
 #endif // BRICK_TUPLE_H
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
