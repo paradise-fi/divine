@@ -210,18 +210,6 @@ int predicate( llvm::Instruction *I )
 
 int predicate( llvm::ConstantExpr *E ) { return E->getPredicate(); }
 
-int intrinsic_id( llvm::Value *v )
-{
-    auto insn = llvm::dyn_cast< llvm::Instruction >( v );
-    if ( !insn || insn->getOpcode() != llvm::Instruction::Call )
-        return llvm::Intrinsic::not_intrinsic;
-    llvm::CallSite CS( insn );
-    auto f = CS.getCalledFunction();
-    if ( !f )
-        return llvm::Intrinsic::not_intrinsic;
-    return f->getIntrinsicID();
-}
-
 template< typename IorCE >
 int subcode( Types &tg, AddressMap &am, IorCE *I )
 {
@@ -234,7 +222,7 @@ int subcode( Types &tg, AddressMap &am, IorCE *I )
     if ( I->getOpcode() == llvm::Instruction::Alloca )
         return tg.add( I->getType()->getPointerElementType() );
     if ( I->getOpcode() == llvm::Instruction::Call )
-        return intrinsic_id( I );
+        return brick::llvm::intrinsic_id( I );
     if ( auto INV = llvm::dyn_cast< llvm::InvokeInst >( I ) ) /* FIXME remove */
         return am.code( INV->getUnwindDest() ).instruction();
     if ( I->getOpcode() == llvm::Instruction::ICmp ||
