@@ -40,6 +40,9 @@
 #define THAW_PROT() \
     PROT( thaw, void * addr, int bw )
 
+#define CLEANUP_PROT() \
+    RET_PROT( void, cleanup, void )
+
 #define LART_DOMAIN_TAG( _tag ) \
     __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.tag, _tag) )))
 
@@ -66,5 +69,7 @@ ASSUME_PROT()
 
 FREEZE_PROT()
 THAW_PROT()
+
+CLEANUP_PROT()
 
 }

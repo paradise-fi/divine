@@ -236,3 +236,7 @@ Formula* __sym_thaw( void *addr, int bw ) {
         return ret;
     }
 }
+
+extern "C" void __sym_cleanup(void) {
+    _UNREACHABLE_F( "Not implemented." );
+}

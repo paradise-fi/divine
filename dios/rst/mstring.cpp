@@ -97,6 +97,10 @@ extern "C" {
     _MSTRING __mstring * __mstring_undef_value() {
         _UNREACHABLE_F( "Invalid use of mstring value." );
     }
+
+    void __mstring_cleanup(void) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
 }
 
 void Quintuple::strcpy(const Quintuple * other) noexcept {
