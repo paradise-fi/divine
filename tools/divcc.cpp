@@ -3,6 +3,7 @@
 #include <divine/cc/options.hpp>
 #include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
+#include <divine/ui/version.hpp>
 #include <divine/vm/xg-code.hpp>
 
 DIVINE_RELAX_WARNINGS
@@ -321,6 +322,18 @@ int main( int argc, char **argv )
         {
             std::cerr << "Cannot specify -o with multiple files" << std::endl;
             return 1;
+        }
+
+        using namespace clang;
+
+        if ( po.hasHelp || po.hasVersion )
+        {
+            if ( po.hasVersion )
+                std::cout << "divine version: " << ui::version() << "\n";
+            cc::Diagnostics diag;
+            driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.diagEngine );
+            drv.BuildCompilation( { "divcc", po.hasHelp? "--help" : "--version" } );
+            return 0;
         }
 
         if ( po.preprocessOnly )
