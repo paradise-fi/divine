@@ -9,7 +9,7 @@ add_executable( divcc divcc.cpp )
 
 target_link_libraries( runtime-cc divine-cc )
 target_link_libraries( runtime-ld divine-cc )
-target_link_libraries( divcc divine-cc divine-rt )
+target_link_libraries( divcc divine-cc divine-rt divine-ui )
 target_link_libraries( divcc LLVMTarget LLVMAsmPrinter )
 target_link_libraries( divcc lldELF )
 
