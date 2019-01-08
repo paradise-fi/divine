@@ -6,6 +6,8 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
+#include <clang/Basic/DiagnosticOptions.h>
+#include <clang/Frontend/TextDiagnosticPrinter.h>
 #include <clang/Tooling/Tooling.h> // ClangTool
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
@@ -23,6 +25,19 @@ struct CompileError : brick::except::Error
 };
 
 void initTargets();
+
+struct Diagnostics
+{
+    Diagnostics()
+        : diagPrinter( llvm::errs(), new clang::DiagnosticOptions() ),
+          diagEngine(
+            llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
+            new clang::DiagnosticOptions(), &diagPrinter, false )
+    {}
+
+    clang::TextDiagnosticPrinter diagPrinter;
+    clang::DiagnosticsEngine diagEngine;
+};
 
 /*
  A compiler, capable of compiling a single file into LLVM module

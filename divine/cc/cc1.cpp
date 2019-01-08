@@ -3,8 +3,6 @@
 DIVINE_RELAX_WARNINGS
 #include <clang/CodeGen/CodeGenAction.h> // EmitLLVMAction
 #include <clang/Frontend/FrontendActions.h>
-#include <clang/Basic/DiagnosticOptions.h>
-#include <clang/Frontend/TextDiagnosticPrinter.h>
 #include <clang/Frontend/CompilerInstance.h> // CompilerInvocation
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <clang/Frontend/Utils.h>
