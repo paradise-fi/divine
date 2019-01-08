@@ -22,6 +22,8 @@ struct ParsedOpts
     std::vector< std::string > allowedPaths;
     bool toObjectOnly = false;
     bool preprocessOnly = false;
+    bool hasHelp = false;
+    bool hasVersion = false;
 };
 
 ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );

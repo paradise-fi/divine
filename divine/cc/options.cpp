@@ -13,6 +13,14 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts )
     for ( auto it = rawCCOpts.begin(), end = rawCCOpts.end(); it != end; ++it )
     {
         std::string isystem = "-isystem", inc = "-inc";
+        if ( *it == "--help" ) {
+            po.hasHelp = true;
+            return po;
+        }
+        if ( *it == "--version" ) {
+            po.hasVersion = true;
+            return po;
+        }
         if ( brick::string::startsWith( *it, "-I" ) ) {
             std::string val;
             if ( it->size() > 2 )
