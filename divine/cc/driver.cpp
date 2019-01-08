@@ -49,14 +49,11 @@ std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
     using clang::driver::Driver;
     using clang::driver::Compilation;
 
-    clang::TextDiagnosticPrinter diagPrinter( llvm::errs(), new clang::DiagnosticOptions() );
-    clang::DiagnosticsEngine diagEngine(
-            llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
-            new clang::DiagnosticOptions(), &diagPrinter, false );
-    clang::driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diagEngine );
+    Diagnostics diag;
+    clang::driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.diagEngine );
 
     Compilation* c = drv.BuildCompilation( args );
-    if ( diagEngine.hasErrorOccurred() )
+    if ( diag.diagEngine.hasErrorOccurred() )
         throw cc::CompileError( "failed to get linker arguments, aborting" );
     std::vector< Command > clangJobs;
 
