@@ -106,7 +106,7 @@ std::string changePathPrefix( const std::string& path, const std::string& oldPre
         o.pop_back();
     std::vector< std::string > result{ newPref };
     std::copy( p.begin() + o.size(), p.end(), std::back_inserter( result ) );
-    return brick::fs::joinPath( result );
+    return brick::fs::normalize( brick::fs::joinPath( result ) );
 }
 
 std::string noPrefixChange( const std::string& s ) {
