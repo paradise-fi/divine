@@ -25,6 +25,7 @@
 #include <brick-string>
 #include <brick-fs>
 #include <brick-llvm>
+#include <brick-base64>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/BinaryFormat/Magic.h>
@@ -205,9 +206,17 @@ void WithBC::report_options()
     {
         auto &k = std::get< 0 >( e );
         auto &t = std::get< 1 >( e );
-        if ( !brick::string::startsWith( "vfs.", k ) )
-            /* FIXME quoting */
-            _log->info( "  " + k + ": " + std::string( t.begin(), t.end() ) + "\n", true );
+        std::string out;
+        if ( brick::string::startsWith( k, "vfs.") )
+        {
+            out = "!!binary ";
+            brick::base64::encode( t.begin(), t.end(), std::back_inserter( out ) );
+        }
+        else
+            std::copy( t.begin(), t.end(), std::back_inserter( out ) ); /* FIXME quoting */
+        if ( t.empty() )
+            out += "\"\"";
+        _log->info( "  " + k + ": " + out + "\n", true );
     }
 
     if ( !_lartPasses.empty() )
