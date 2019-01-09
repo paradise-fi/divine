@@ -189,6 +189,20 @@ void WithBC::process_options()
     }
 }
 
+template< typename I, typename O >
+void quote( I b, I e, O out )
+{
+    *out++ = '"';
+    for ( ; b != e ; ++ b )
+        switch ( *b )
+        {
+            case '\n': *out++ = '\\'; *out++ = 'n'; break;
+            case '"': case '\\': *out++ = '\\';
+            default: *out++ = *b;
+        }
+    *out++ = '"';
+}
+
 void WithBC::report_options()
 {
     _log->info( "input file: " + _file + "\n", true );
@@ -213,7 +227,7 @@ void WithBC::report_options()
             brick::base64::encode( t.begin(), t.end(), std::back_inserter( out ) );
         }
         else
-            std::copy( t.begin(), t.end(), std::back_inserter( out ) ); /* FIXME quoting */
+            quote( t.begin(), t.end(), std::back_inserter( out ) );
         if ( t.empty() )
             out += "\"\"";
         _log->info( "  " + k + ": " + out + "\n", true );
