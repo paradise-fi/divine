@@ -158,7 +158,7 @@ struct Parser
 
         ::llvm::SmallVector< char, 128 > storage;
         auto ref = scalar->getValue( storage );
-        if ( scalar->getVerbatimTag() == "!binary" )
+        if ( scalar->getVerbatimTag() == "tag:yaml.org,2002:binary" )
             base64::decode( ref.begin(), ref.end(), std::back_inserter( str ) );
         else
             str = ref.str();
@@ -292,7 +292,7 @@ struct TestParse
 
     TEST(binary)
     {
-        yaml::Parser y( "fluff: !binary Zmx1ZmY=\nfoo: !binary Zm9v\nfuzz: !binary ZnV6eg==" );
+        yaml::Parser y( "fluff: !!binary Zmx1ZmY=\nfoo: !!binary Zm9v\nfuzz: !!binary ZnV6eg==" );
         ASSERT_EQ( y.get< std::string >( { "foo" } ), "foo" );
         ASSERT_EQ( y.get< std::string >( { "fuzz" } ), "fuzz" );
         ASSERT_EQ( y.get< std::string >( { "fluff" } ), "fluff" );
@@ -301,8 +301,8 @@ struct TestParse
     TEST(bad_binary)
     {
         int ok = 0;
-        yaml::Parser y( "fluff: !binary Zmx1ZmY==\nfoo: !binary Zm9v=\n"
-                        "fuzz: !binary ZnV6eg\nbuzz: !binary YnV6eg===" );
+        yaml::Parser y( "fluff: !!binary Zmx1ZmY==\nfoo: !!binary Zm9v=\n"
+                        "fuzz: !!binary ZnV6eg\nbuzz: !!binary YnV6eg===" );
         try { y.get< std::string >( { "foo" } ); } catch (...) { ok ++; };
         try { y.get< std::string >( { "fluff" } ); } catch (...) { ok ++; };
         try { y.get< std::string >( { "fuzz" } ); } catch (...) { ok ++; };
