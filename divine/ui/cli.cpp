@@ -123,6 +123,17 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     auto path = mountPath( oPath );
     auto iCount = count();
 
+    auto path_comp = brick::fs::splitPath( path );
+    for ( const auto &c : path_comp )
+        if ( c == ".." )
+        {
+            std::cerr << "ERROR: Could not capture symlink." << std::endl
+                      << "  Link: " << oPath << std::endl
+                      << "  Mount point: " << mountPath( "" ) << std::endl
+                      << "  Resolves to: " << path << std::endl;
+            die( "Filesystem capture failed." );
+        }
+
     if ( seen( path ) )
         return false;
     see( path );
