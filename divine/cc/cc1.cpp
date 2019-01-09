@@ -141,12 +141,9 @@ std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
         if ( a != "-fno-exceptions" )
             cc1a.push_back( a.c_str() );
 
-    clang::TextDiagnosticPrinter diagprinter( llvm::errs(), new clang::DiagnosticOptions() );
-    clang::DiagnosticsEngine diag(
-            llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
-            new clang::DiagnosticOptions(), &diagprinter, false );
+    Diagnostics diag;
     bool succ = clang::CompilerInvocation::CreateFromArgs(
-                        *invocation, &cc1a[ 0 ], &*cc1a.end(), diag );
+                        *invocation, &cc1a[ 0 ], &*cc1a.end(), diag.engine );
     if ( !succ )
         throw CompileError( "Failed to create a compiler invocation for " + filename );
     invocation->getDependencyOutputOpts() = clang::DependencyOutputOptions();
@@ -157,7 +154,7 @@ std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
     compiler.setFileManager( fmgr.get() );
     compiler.setInvocation( invocation );
     ASSERT( compiler.hasInvocation() );
-    compiler.createDiagnostics( &diagprinter, false );
+    compiler.createDiagnostics( &diag.printer, false );
     ASSERT( compiler.hasDiagnostics() );
     compiler.createSourceManager( *fmgr.release() );
     compiler.getPreprocessorOutputOpts().ShowCPP = 1; // Allows for printing preprocessor
