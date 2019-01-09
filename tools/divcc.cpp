@@ -331,7 +331,7 @@ int main( int argc, char **argv )
             if ( po.hasVersion )
                 std::cout << "divine version: " << ui::version() << "\n";
             cc::Diagnostics diag;
-            driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.diagEngine );
+            driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.engine );
             drv.BuildCompilation( { "divcc", po.hasHelp? "--help" : "--version" } );
             return 0;
         }

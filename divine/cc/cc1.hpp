@@ -29,14 +29,14 @@ void initTargets();
 struct Diagnostics
 {
     Diagnostics()
-        : diagPrinter( llvm::errs(), new clang::DiagnosticOptions() ),
-          diagEngine(
+        : printer( llvm::errs(), new clang::DiagnosticOptions() ),
+          engine(
             llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
-            new clang::DiagnosticOptions(), &diagPrinter, false )
+            new clang::DiagnosticOptions(), &printer, false )
     {}
 
-    clang::TextDiagnosticPrinter diagPrinter;
-    clang::DiagnosticsEngine diagEngine;
+    clang::TextDiagnosticPrinter printer;
+    clang::DiagnosticsEngine engine;
 };
 
 /*

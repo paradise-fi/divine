@@ -50,10 +50,10 @@ std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
     using clang::driver::Compilation;
 
     Diagnostics diag;
-    clang::driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.diagEngine );
+    clang::driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.engine );
 
     Compilation* c = drv.BuildCompilation( args );
-    if ( diag.diagEngine.hasErrorOccurred() )
+    if ( diag.engine.hasErrorOccurred() )
         throw cc::CompileError( "failed to get linker arguments, aborting" );
     std::vector< Command > clangJobs;
 
