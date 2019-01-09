@@ -152,7 +152,14 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     {
         std::string symPath ( cont.begin(), cont.end() );
         bool absolute = brick::fs::isAbsolute( symPath );
-        if ( !absolute )
+        if ( absolute )
+        {
+            auto sym_split = brick::fs::splitPath( symPath );
+            for ( size_t i = 2; i < sym_split.size(); ++i )
+                explore( follow, noPrefixChange, see, seen, count, limit, env,
+                         brick::fs::joinPath( sym_split.begin(), sym_split.begin() + i ) );
+        }
+        else
         {
             auto split = brick::fs::splitPath( oPath );
             split.pop_back();
