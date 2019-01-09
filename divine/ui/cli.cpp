@@ -118,10 +118,17 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
               Limit limit, mc::BitCode::Env& env, const std::string& oPath )
 {
     auto stat = brick::fs::lstat( oPath );
+
+    if ( !stat )
+        die( "Failed to stat " + oPath + " during filesystem capture." );
+
     auto cont = readContent( oPath, *stat );
     auto pStat = packStat( *stat );
     auto path = mountPath( oPath );
     auto iCount = count();
+
+    if ( seen( path ) )
+        return false;
 
     auto path_comp = brick::fs::splitPath( path );
     for ( const auto &c : path_comp )
@@ -134,8 +141,6 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
             die( "Filesystem capture failed." );
         }
 
-    if ( seen( path ) )
-        return false;
     see( path );
 
     env.emplace_back( "vfs." + fmt( iCount ) + ".name", bstr( path.begin(), path.end() ) );
@@ -143,15 +148,18 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     env.emplace_back( "vfs." + fmt( iCount ) + ".content", cont );
     limit( cont.size() );
 
-    if ( S_ISLNK( stat->st_mode ) ) {
+    if ( S_ISLNK( stat->st_mode ) )
+    {
         std::string symPath ( cont.begin(), cont.end() );
         bool absolute = brick::fs::isAbsolute( symPath );
-        if ( !absolute ) {
+        if ( !absolute )
+        {
             auto split = brick::fs::splitPath( oPath );
             split.pop_back();
             symPath = brick::fs::joinPath( brick::fs::joinPath( split ), symPath );
         }
-        if ( follow && !seen( symPath ) ) {
+        if ( follow && !seen( symPath ) && brick::fs::lstat( symPath ) )
+        {
             auto ex = [&]( const std::string& item )
             {
                 if ( absolute )
