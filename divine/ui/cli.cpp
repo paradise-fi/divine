@@ -98,14 +98,15 @@ bool visited( const seenType& s, const std::string& path ) {
 }
 
 std::string changePathPrefix( const std::string& path, const std::string& oldPref,
-    const std::string& newPref )
+                              const std::string& newPref )
 {
     auto p = brick::fs::splitPath( path );
     auto o = brick::fs::splitPath( oldPref );
     if ( !o.empty() && o.back().empty() )
         o.pop_back();
-    std::vector< std::string > suf( p.begin() + o.size(), p.end() );
-    return brick::fs::joinPath( newPref, brick::fs::joinPath(suf) );
+    std::vector< std::string > result{ newPref };
+    std::copy( p.begin() + o.size(), p.end(), std::back_inserter( result ) );
+    return brick::fs::joinPath( result );
 }
 
 std::string noPrefixChange( const std::string& s ) {
@@ -114,7 +115,7 @@ std::string noPrefixChange( const std::string& s ) {
 
 template < typename MountPath, typename See, typename Seen, typename Count, typename Limit >
 bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
-    Limit limit, mc::BitCode::Env& env, const std::string& oPath )
+              Limit limit, mc::BitCode::Env& env, const std::string& oPath )
 {
     auto stat = brick::fs::lstat( oPath );
     auto cont = readContent( oPath, *stat );
@@ -140,13 +141,12 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
             symPath = brick::fs::joinPath( brick::fs::joinPath( split ), symPath );
         }
         if ( follow && !seen( symPath ) ) {
-            auto ex = [&]( const std::string& item ) {
+            auto ex = [&]( const std::string& item )
+            {
                 if ( absolute )
-                    return explore( follow, noPrefixChange, see, seen, count,
-                        limit, env, item );
+                    return explore( follow, noPrefixChange, see, seen, count, limit, env, item );
                 else
-                    return explore( follow, mountPath, see, seen, count,
-                            limit, env, item );
+                    return explore( follow, mountPath, see, seen, count, limit, env, item );
             };
             brick::fs::traverseDirectoryTree( symPath, ex, []( std::string ){}, ex );
         }
