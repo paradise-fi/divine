@@ -1,13 +1,12 @@
 #include <rst/sym.h>
 #include <rst/domains.h>
 #include <rst/common.h>
+#include <rst/formula.h>
 #include <rst/lart.h>
 #include <dios.h>
 #include <sys/divm.h>
 #include <cstdarg>
 #include <type_traits>
-
-#include <iostream>
 
 using namespace lart::sym;
 using abstract::Tristate;
@@ -238,5 +237,7 @@ Formula* __sym_thaw( void *addr, int bw ) {
 }
 
 extern "C" void __sym_cleanup(void) {
-    _UNREACHABLE_F( "Not implemented." );
+    auto *frame = __dios_this_frame()->parent;
+    __cleanup_orphan_formulae( frame );
+}
 }
