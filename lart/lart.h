@@ -157,17 +157,6 @@ namespace lart::sym
     Concat, LastBinary = Concat,
     };
 
-
-    inline bool isUnary( Op x )
-    {
-    return x >= Op::FirstUnary && x <= Op::LastUnary;
-    }
-
-    inline bool isBinary( Op x )
-    {
-    return x >= Op::FirstBinary && x <= Op::LastBinary;
-    }
-
     struct Type
     {
     enum T : uint8_t
@@ -307,6 +296,10 @@ namespace lart::sym
     void refcount_increment() {
         if ( hdr.refcount != std::numeric_limits<RefCount>::max() )
             ++hdr.refcount;
+    }
+
+    void refcount_decrement() {
+        --hdr.refcount;
     }
 
     Variable var;
