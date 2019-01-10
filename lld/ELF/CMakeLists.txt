@@ -9,6 +9,7 @@ endif()
 include_directories( . ${CMAKE_CURRENT_BINARY_DIR} )
 
 add_lld_library(lldELF
+  AArch64ErrataFix.cpp
   Arch/AArch64.cpp
   Arch/AMDGPU.cpp
   Arch/ARM.cpp
@@ -23,7 +24,6 @@ add_lld_library(lldELF
   Driver.cpp
   DriverUtils.cpp
   EhFrame.cpp
-  Error.cpp
   Filesystem.cpp
   GdbIndex.cpp
   ICF.cpp
@@ -47,28 +47,17 @@ add_lld_library(lldELF
 
   LINK_COMPONENTS
   ${LLVM_TARGETS_TO_BUILD}
-  Analysis
   BinaryFormat
-  BitReader
-  BitWriter
-  Codegen
   Core
   DebugInfoDWARF
-  Demangle
-  IPO
-  Linker
   LTO
+  MC
   Object
   Option
-  Passes
-  MC
   Support
-  Target
-  TransformUtils
 
   LINK_LIBS
-  lldConfig
-  lldCore
+  lldCommon
   ${LLVM_PTHREAD_LIB}
 
   DEPENDS
