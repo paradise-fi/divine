@@ -41,6 +41,18 @@ struct Command
     std::vector< std::string > args;
 };
 
+struct DiagnosticsWrapper
+{
+    Diagnostics diag;
+};
+
+struct ClangDriver : DiagnosticsWrapper, clang::driver::Driver
+{
+    ClangDriver()
+      : clang::driver::Driver( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.engine )
+    {}
+};
+
 struct Driver
 {
     using ModulePtr = std::unique_ptr< llvm::Module >;
