@@ -43,6 +43,12 @@
 #define CLEANUP_PROT() \
     RET_PROT( void, cleanup, void )
 
+#define STASH_PROT() \
+    RET_PROT( void, stash, DOMAIN_TYPE val )
+
+#define UNSTASH_PROT() \
+    PROT( unstash )
+
 #define LART_DOMAIN_TAG( _tag ) \
     __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.tag, _tag) )))
 
@@ -71,5 +77,8 @@ FREEZE_PROT()
 THAW_PROT()
 
 CLEANUP_PROT()
+
+STASH_PROT()
+UNSTASH_PROT()
 
 }
