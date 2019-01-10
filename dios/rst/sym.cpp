@@ -4,7 +4,7 @@
 #include <rst/formula.h>
 #include <rst/lart.h>
 #include <dios.h>
-#include <sys/divm.h>
+
 #include <cstdarg>
 #include <type_traits>
 
@@ -50,8 +50,8 @@ extern "C" void __sym_formula_dump()
 
 template< typename T, typename Lift >
 T __sym_val_impl( Lift lift ) {
-    auto val = lift( sizeof( T ) * 8, 0 );
-    __lart_stash( reinterpret_cast< uintptr_t >( val ) );
+    auto *ptr = lift( sizeof( T ) * 8, 0 );
+    __lart_stash( reinterpret_cast< uintptr_t >( ptr ) );
     return taint< T >();
 }
 
@@ -205,15 +205,14 @@ __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool ass
 }
 
 void __sym_freeze( Formula *f, void *addr ) {
+    f->refcount_increment();
     struct { uint32_t off, obj; } ptr;
     memcpy( &ptr, &f, sizeof( Formula* ) );
     __vm_poke( addr, _VM_ML_User, ptr.obj );
 }
 
 Formula* __sym_thaw( void *addr, int bw ) {
-    struct { uint32_t off, obj; } ptr;
-
-    ptr.off = 0;
+    struct { uint32_t off = 0, obj; } ptr;
     ptr.obj = __vm_peek( addr, _VM_ML_User );
 
     Formula *ret;
@@ -239,4 +238,5 @@ Formula* __sym_thaw( void *addr, int bw ) {
 extern "C" void __sym_cleanup(void) {
     auto *frame = __dios_this_frame()->parent;
     __cleanup_orphan_formulae( frame );
+}
 }
