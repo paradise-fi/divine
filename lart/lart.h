@@ -307,6 +307,18 @@ namespace lart::sym
         Unary unary;
         Binary binary;
     };
+
+    inline bool isConstant( Op x ) { return x == Op::Constant; }
+    inline bool isConstant( Formula * f ) { return isConstant( f->op() ); }
+
+    inline bool isVariable( Op x ) { return x == Op::Variable; }
+    inline bool isVariable( Formula * f ) { return isVariable( f->op() ); }
+
+    inline bool isUnary( Op x ) { return x >= Op::FirstUnary && x <= Op::LastUnary; }
+    inline bool isUnary( Formula * f ) { return isUnary( f->op() ); }
+
+    inline bool isBinary( Op x ) { return x >= Op::FirstBinary && x <= Op::LastBinary; }
+    inline bool isBinary( Formula * f ) { return isBinary( f->op() ); }
 }
 
 #endif
