@@ -46,14 +46,11 @@ static std::vector< std::string > mergeFlags( Xs &&... xs ) {
 
 std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
 {
-    using clang::driver::Driver;
     using clang::driver::Compilation;
-
-    Diagnostics diag;
-    clang::driver::Driver drv( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.engine );
+    ClangDriver drv;
 
     Compilation* c = drv.BuildCompilation( args );
-    if ( diag.engine.hasErrorOccurred() )
+    if ( drv.diag.engine.hasErrorOccurred() )
         throw cc::CompileError( "failed to get linker arguments, aborting" );
     std::vector< Command > clangJobs;
 
