@@ -28,6 +28,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/substitution.h>
 #include <lart/abstract/interrupt.h>
+#include <lart/abstract/cleanup.h>
 
 namespace lart {
 namespace abstract {
@@ -70,6 +71,7 @@ namespace abstract {
                                            , Tainting()
                                            , Synthesize()
                                            , CallInterrupt()
+                                           , Cleanup()
                                            );
             passes.run( m );
         }
