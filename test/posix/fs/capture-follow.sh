@@ -1,4 +1,3 @@
-# TAGS: todo
 . lib/testcase
 
 cat > test.c <<EOF
@@ -10,7 +9,7 @@ cat > test.c <<EOF
 
 int main() {
 
-    int fd = open( "file.txt", O_RDONLY );
+    int fd = open( "subdir/file.txt", O_RDONLY );
     assert( fd >= 0 );
     assert( close( fd ) == 0 );
 
@@ -18,10 +17,8 @@ int main() {
 }
 EOF
 
-mkdir capture/
-cd capture
-ln -s ../file file.txt
 touch file
-cd ..
+mkdir capture/
+ln -s ../file capture/file.txt
 
 verify test.c
