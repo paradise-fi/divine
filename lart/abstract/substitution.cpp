@@ -509,6 +509,7 @@ struct FreezeLifter : BaseLifter {
         IRBuilder<> irb( make_bb( function(), "entry" ) );
 
         auto begin = function()->arg_begin();
+        auto value = std::next( begin );
         auto formula = std::next( begin, 3 );
         auto addr = std::next( begin, 5 );
 
@@ -518,24 +519,7 @@ struct FreezeLifter : BaseLifter {
         auto freeze = LifterBuilder( domain() ).process( taint, std::move( args ) );
         irb.Insert( cast< Instruction >( freeze ) );
 
-        auto taint_zero = get_module( taint )->getFunction( "__rst_taint_i64" );
-
-        Value *ret = irb.CreateCall( taint_zero );
-        auto rty = function()->getReturnType();
-
-        if ( rty->isFloatingPointTy() )
-            ret = irb.CreateBitCast( ret, Type::getDoubleTy( ctx() ) );
-
-        if ( rty->getPrimitiveSizeInBits() != 64 ) {
-            if ( rty->isIntegerTy() )
-                ret = irb.CreateTrunc( ret, rty );
-            else if ( rty->isFloatingPointTy() )
-                ret = irb.CreateFPTrunc( ret, function()->getReturnType() );
-            else
-                UNREACHABLE( "Unsupported type for freezing." );
-        }
-
-        irb.CreateRet( ret );
+        irb.CreateRet( value );
     }
 };
 
@@ -1156,9 +1140,6 @@ void FreezeStores::run( Module &m ) {
 
     for ( auto s : stores )
         process( cast< StoreInst >( s ) );
-
-    for ( auto s : stores )
-        s->eraseFromParent();
 }
 
 void FreezeStores::process( StoreInst *store ) {
@@ -1188,8 +1169,7 @@ void FreezeStores::process( StoreInst *store ) {
     auto tfn = get_or_insert_function( m, fty, tname );
 
     IRBuilder<> irb( store );
-    auto taint = irb.CreateCall( tfn, args );
-    irb.CreateStore( taint, ptr );
+    irb.CreateCall( tfn, args );
 }
 
 // ---------------------------- Synthesize ---------------------------
