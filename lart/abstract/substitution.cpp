@@ -846,7 +846,7 @@ struct StoreTaint : TaintBase< StoreTaint > {
     }
 };
 
-namespace bundle {
+namespace  {
 
 Values argument_placeholders( Function * fn ) {
     return query::query( fn->args() )
@@ -869,47 +869,50 @@ StructType* packed_type( Function * fn ) {
     return StructType::get( fn->getContext(), types_of( phs ) );
 }
 
+Function * function_in_domain_with_suffix( Value * val, Domain dom, std::string suffix ) {
+    auto m = get_module( val );
+    auto name = "__" + dom.name() + "_" + suffix;
+    if ( auto fn = m->getFunction( name ) ) {
+        return fn;
+    } else {
+        throw std::runtime_error( "missing function in domain: " + name );
+    }
+}
+
+Function * stash_function( Value * val, Domain dom ) {
+    return function_in_domain_with_suffix( val, dom, "stash" );
+}
+
+Function * unstash_function( Value * val, Domain dom ) {
+    return function_in_domain_with_suffix( val, dom, "unstash" );
+}
+
 void stash_arguments( CallInst *call ) {
     auto fn = get_some_called_function( call );
     if ( fn->getMetadata( abstract_tag ) )
         return; // skip internal lart functions
 
-    auto pack_ty = packed_type( fn );
-
     IRBuilder<> irb( call );
-    auto pack = irb.CreateAlloca( pack_ty );
-
     FunctionMetadata fmd{ fn };
-
-    Value *val = UndefValue::get( pack_ty );
-
-    unsigned pack_pos = 0;
-
     auto m = fn->getParent();
+
     for ( auto &arg : fn->args() ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
         auto dom = fmd.get_arg_domain( idx );
 
-        Value *abstract_arg = nullptr;
-        if ( is_concrete( dom ) || !is_base_type_in_domain( m, op, dom ) ) {
+        if ( is_concrete( dom ) || !is_base_type_in_domain( m, op, dom ) )
             continue; // skip
-        } else if ( is_concrete( op ) && !is_concrete( dom ) ) {
+
+        auto stash = stash_function( call, dom );
+        if ( is_concrete( op ) && !is_concrete( dom ) ) {
             auto meta = domain_metadata( *m, dom );
-            abstract_arg = meta.default_value();
+            irb.CreateCall( stash, { meta.default_value() } );
         } else {
             auto ph = get_placeholder_in_domain( op, dom );
-            abstract_arg = GetTaint( ph ).generate();
+            irb.CreateCall( stash, { GetTaint( ph ).generate() } );
         }
-        val = irb.CreateInsertValue( val, abstract_arg, { pack_pos++ } );
     }
-
-    irb.CreateStore( val, pack );
-
-    auto i64 = IntegerType::get( call->getContext(), 64 );
-    auto i = irb.CreatePtrToInt( pack, i64 );
-    auto sfn = stash_function( get_module( call ) );
-    irb.CreateCall( sfn, { i } );
 }
 
 Values unstash_arguments( CallInst *call, Function * fn ) {
@@ -917,17 +920,26 @@ Values unstash_arguments( CallInst *call, Function * fn ) {
         return {}; // skip internal lart functions
 
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
-
-    auto pack_ty = packed_type( fn );
-
-    auto unfn = unstash_function( get_module( call ) );
-    auto unstash = irb.CreateCall( unfn );
-    auto packed = irb.CreateIntToPtr( unstash, pack_ty->getPointerTo() );
-    auto loaded = irb.CreateLoad( packed );
+    FunctionMetadata fmd{ fn };
+    auto m = fn->getParent();
 
     Values unpacked;
-    for ( unsigned int i = 0; i < pack_ty->getNumElements(); ++i )
-        unpacked.push_back( irb.CreateExtractValue( loaded, { i } ) );
+
+    for ( int i = fn->getFunctionType()->getNumParams() - 1; i >= 0; --i ) {
+        auto arg = std::next( fn->arg_begin(), i );
+        auto dom = fmd.get_arg_domain( i );
+
+        if ( is_concrete( dom ) || !is_base_type_in_domain( m, arg, dom ) ) {
+            continue; // skip
+        } else {
+            auto unstash = unstash_function( call, dom );
+            auto call = irb.CreateCall( unstash );
+            add_abstract_metadata( cast< Instruction >( call ), dom );
+            unpacked.push_back( call );
+        }
+    }
+
+    std::reverse(unpacked.begin(), unpacked.end());
     return unpacked;
 }
 
@@ -940,24 +952,24 @@ void stash_return_value( CallInst *call, Function * fn ) {
         auto val = ret->getReturnValue();
 
         IRBuilder<> irb( ret );
-        auto sfn = stash_function( get_module( call ) );
 
         auto dom = get_domain( call );
-        auto i64 = IntegerType::get( call->getContext(), 64 );
+        auto stash = stash_function( call, dom );
+
         ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
-        // TODO get value from stash placeholder
+
         if ( !has_placeholder_in_domain( val, dom ) ) {
-            irb.CreateCall( sfn, { ConstantInt::get( i64, 0 ) } );
+            auto null = Constant::getNullValue( stash->getFunctionType()->getParamType( 0 ) );
+            irb.CreateCall( stash, { null } );
         } else {
             auto get = GetTaint( get_placeholder_in_domain( val, dom ) ).generate();
-            auto i = irb.CreatePtrToInt( get, i64 );
-            irb.CreateCall( sfn, { i } );
+            irb.CreateCall( stash, { get } );
         }
     }
 }
 
 Value* unstash_return_value( CallInst *call ) {
-    Value * ret = nullptr;
+    Value * unstash = nullptr;
 
     Values terminators;
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
@@ -968,29 +980,25 @@ Value* unstash_return_value( CallInst *call ) {
 
     if ( noreturns != terminators.size() ) { // there is at least one return
         IRBuilder<> irb( call );
-
-        auto unfn = unstash_function( get_module( call ) );
-        auto unstash = irb.CreateCall( unfn );
-
         auto dom = get_domain( call );
-
-        auto meta = domain_metadata( *get_module( call ), dom );
-        auto base = meta.base_type();
-
-        if ( base->isPointerTy() ) {
-            ret = irb.CreateIntToPtr( unstash, base );
-        } else if ( base->isIntegerTy() ) {
-            ret = irb.CreateIntCast( unstash, base, false );
-        }
+        unstash = irb.CreateCall( unstash_function( call, dom ) );
+        add_abstract_metadata( cast< Instruction >( unstash ), dom );
 
         call->removeFromParent();
-        call->insertBefore( unstash );
+        call->insertBefore( cast< Instruction >( unstash ) );
     }
 
-    return ret;
+    return unstash;
 }
 
-} // namespace bundle
+void stash_arguments_of_nonabstract_calls( Function * fn ) {
+    for ( auto concrete : fn->users() )
+        if ( auto cc = dyn_cast< CallInst >( concrete ) )
+            if ( !cc->getMetadata( "lart.domains" ) )
+                stash_arguments( cc );
+}
+
+} // anonymous namespace
 
 void Tainting::run( Module &m ) {
     std::unordered_map< Value*, Value* > substitutes;
@@ -1006,22 +1014,18 @@ void Tainting::run( Module &m ) {
             return;
 
         if ( call->getNumArgOperands() )
-            bundle::stash_arguments( call );
+            stash_arguments( call );
 
         auto m = get_module( call );
         run_on_potentialy_called_functions( call, [&] ( auto fn ) {
             if ( call->getNumArgOperands() ) {
                 if ( !processed.count( fn ) ) {
-                    // stash default arguments for non-abstract calls
-                    for ( auto concrete : fn->users() )
-                        if ( auto cc = dyn_cast< CallInst >( concrete ) )
-                            if ( !cc->getMetadata( "lart.domains" ) )
-                                bundle::stash_arguments( cc );
+                    stash_arguments_of_nonabstract_calls( fn );
 
-                    auto vals = bundle::unstash_arguments( call, fn );
+                    auto vals = unstash_arguments( call, fn );
 
                     unsigned idx = 0;
-                    for ( auto ph : bundle::argument_placeholders( fn ) ) {
+                    for ( auto ph : argument_placeholders( fn ) ) {
                         substitutes[ ph ] = vals[ idx++ ];
                     }
                 }
@@ -1029,13 +1033,13 @@ void Tainting::run( Module &m ) {
 
             if ( is_base_type( m, call ) )
                 if ( !processed.count( fn ) )
-                    bundle::stash_return_value( call, fn );
+                    stash_return_value( call, fn );
 
             processed.insert( fn );
         } );
 
         if ( is_base_type( m, call ) ) {
-            if ( auto ret = bundle::unstash_return_value( call ) ) {
+            if ( auto ret = unstash_return_value( call ) ) {
                 auto dom = get_domain( call );
                 auto ph = get_placeholder_in_domain( call, dom );
                 substitutes[ ph ] = ret;
