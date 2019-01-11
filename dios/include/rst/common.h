@@ -39,7 +39,7 @@ static T *weaken( T *ptr ) {
 }
 
 template< typename T >
-static T __taint()
+static T taint()
 {
     static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
                    "Cannot taint a non-arithmetic or non-pointer value." );
@@ -50,7 +50,7 @@ static T __taint()
 }
 
 template< typename T >
-static T __taint( T val )
+static T taint( T val )
 {
     static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
                    "Cannot taint a non-arithmetic or non-pointer value." );
@@ -58,6 +58,21 @@ static T __taint( T val )
         return val + static_cast< T >( __tainted );
     else
         return  reinterpret_cast< T >( reinterpret_cast< uintptr_t >( val ) + __tainted );
+}
+
+extern "C" bool __vm_test_taint_addr( bool (*tainted) ( bool, void * addr ), bool, void * addr );
+
+static bool tainted( void * addr )
+{
+    return __vm_test_taint_addr( [] ( bool, void * ) { return true; }, false, addr );
+}
+
+extern "C" bool __vm_test_taint_byte( bool (*tainted) ( bool, char val ), bool, char val );
+
+static bool tainted( char val )
+{
+    return __vm_test_taint_byte( [] ( bool, char ) { return true; }, false, val );
+}
 }
 
 

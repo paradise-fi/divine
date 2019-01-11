@@ -14,6 +14,7 @@ using abstract::Tristate;
 using abstract::__new;
 using abstract::mark;
 using abstract::weaken;
+using abstract::taint;
 
 extern "C" uint64_t __rst_taint_i64()
 {
@@ -52,7 +53,7 @@ template< typename T, typename Lift >
 T __sym_val_impl( Lift lift ) {
     auto val = lift( sizeof( T ) * 8, 0 );
     __lart_stash( reinterpret_cast< uintptr_t >( val ) );
-    return abstract::__taint< T >();
+    return taint< T >();
 }
 
 template< typename T >

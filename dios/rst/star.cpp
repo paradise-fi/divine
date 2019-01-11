@@ -15,7 +15,7 @@ template< typename T >
 T __star_val_impl() {
     auto val = __star_lift( sizeof( T ) * 8, 0 );
     __lart_stash( to_underlying( val ) );
-    return abstract::__taint< T >();
+    return abstract::taint< T >();
 }
 
 extern "C" {

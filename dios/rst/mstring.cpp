@@ -22,7 +22,7 @@ extern "C" {
         std::memcpy( _buff, buff, buff_len );
 
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
-        return abstract::__taint< char * >( _buff );
+        return abstract::taint< char * >( _buff );
     }
 
     bool __mstring_store( char val, __mstring * str, uint64_t idx) {
