@@ -20,3 +20,4 @@ touch 1/1.h
 
 cd 1/2/3
 divine cc test.c -I.. -I../..
+divine cc -c test.c -I.. -I../..
