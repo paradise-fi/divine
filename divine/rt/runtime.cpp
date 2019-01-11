@@ -21,24 +21,31 @@
 namespace divine::str
 {
 
-struct stringtable { std::string n; std::string_view c; };
-extern stringtable dios_list[];
-namespace dios { extern std::string_view libdios_host_a; }
+    struct stringtable { std::string n; std::string_view c; };
+    extern stringtable dios_list[];
+    namespace dios { extern std::string_view libdios_host_a; }
 
 }
 
 namespace divine::rt
 {
 
-void each( std::function< void( std::string, std::string_view ) > yield )
-{
-    for ( auto src = str::dios_list; !src->n.empty(); ++src )
-        yield( brick::fs::joinPath( rt::directory( src->n ), src->n ), src->c );
-}
+    static std::string fixname( std::string n )
+    {
+        if ( n == "libcxx.a" ) return "libc++.a";
+        if ( n == "libcxxabi.a" ) return "libc++abi.a";
+        return n;
+    }
 
-std::string_view dios_host()
-{
-    return divine::str::dios::libdios_host_a;
-}
+    void each( std::function< void( std::string, std::string_view ) > yield )
+    {
+        for ( auto src = str::dios_list; !src->n.empty(); ++src )
+            yield( brick::fs::joinPath( rt::directory( src->n ), fixname( src->n ) ), src->c );
+    }
+
+    std::string_view dios_host()
+    {
+        return divine::str::dios::libdios_host_a;
+    }
 
 }
