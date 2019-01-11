@@ -391,12 +391,17 @@ void Cc::run()
         die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
 
     if ( _opts.dont_link )
+    {
+        for ( auto path : po.allowedPaths )
+            _driver.addDirectory( path );
+
         for( auto file : po.files ) {
             if ( !file.is< cc::File >() )
                 continue;
             auto f = file.get< cc::File >();
             auto m = _driver.compile( f.name, f.type, po.opts );
             _driver.writeToFile( outputName( f.name, "bc" ), m.get() );
+        }
     }
     else
     {
