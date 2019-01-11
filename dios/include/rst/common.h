@@ -73,5 +73,7 @@ static bool tainted( char val )
 {
     return __vm_test_taint_byte( [] ( bool, char ) { return true; }, false, val );
 }
+}
+
 
 } // namespace abstract

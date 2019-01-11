@@ -14,6 +14,8 @@ using abstract::__new;
 using abstract::mark;
 using abstract::weaken;
 using abstract::taint;
+using abstract::peek_object;
+using abstract::poke_object;
 
 extern "C" uint64_t __rst_taint_i64()
 {
@@ -204,19 +206,13 @@ __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool ass
     return value;
 }
 
-void __sym_freeze( Formula *f, void *addr ) {
-    f->refcount_increment();
-    struct { uint32_t off, obj; } ptr;
-    memcpy( &ptr, &f, sizeof( Formula* ) );
-    __vm_poke( addr, _VM_ML_User, ptr.obj );
+void __sym_freeze( Formula *formula, void *addr ) {
+    formula->refcount_increment();
+    poke_object< Formula >( formula, addr );
 }
 
 Formula* __sym_thaw( void *addr, int bw ) {
-    struct { uint32_t off = 0, obj; } ptr;
-    ptr.obj = __vm_peek( addr, _VM_ML_User );
-
-    Formula *ret;
-    memcpy( &ret, &ptr, sizeof( Formula* ) );
+    Formula *ret = peek_object< Formula >( addr );
 
     if ( ret->type().bitwidth() < bw ) {
         if ( ret->type().type() == Type::Int )

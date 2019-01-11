@@ -6,16 +6,10 @@
 #include <sys/metadata.h>
 #include <sys/bitcode.h>
 
+using abstract::peek_object;
+using abstract::poke_object;
+
 namespace lart::sym {
-
-Formula * __peek_formula( void * addr ) {
-    struct { uint32_t off = 0, obj; } ptr;
-    ptr.obj = __vm_peek( addr, _VM_ML_User );
-
-    Formula *formula;
-    memcpy( &formula, &ptr, sizeof( Formula* ) );
-    return formula;
-}
 
 __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) noexcept {
     auto *meta = __md_get_pc_meta( frame->pc );
@@ -30,7 +24,7 @@ __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) no
 
             if ( inst->opcode == OpCode::Alloca )  {
                 // TODO fix peek of undefined value
-                if ( auto * formula = __peek_formula( addr ) ) {
+                if ( auto * formula = peek_object< Formula >( addr ) ) {
                     formula->refcount_decrement();
                 }
             }
