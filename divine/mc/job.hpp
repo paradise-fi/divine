@@ -71,6 +71,7 @@ struct Job : ss::Job
     virtual PoolStats poolstats() { return PoolStats(); }
     virtual void dbg_fill( DbgCtx & ) {}
     virtual void start( int ) override = 0;
+    virtual ~Job() = default;
 };
 
 template< template< typename, typename > class Job_, typename Next >
