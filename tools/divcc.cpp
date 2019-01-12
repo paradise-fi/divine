@@ -95,7 +95,7 @@ int emitObjFile( Module &m, std::string filename )
 
     TargetOptions opt;
     auto RM = Reloc::Model();
-    auto TargetMachine = Target->createTargetMachine( TargetTriple, CPU, Features, opt, RM );
+    std::unique_ptr< llvm::TargetMachine > TargetMachine{ Target->createTargetMachine( TargetTriple, CPU, Features, opt, RM ) };
 
     m.setDataLayout( TargetMachine->createDataLayout() );
     m.setTargetTriple( TargetTriple );
