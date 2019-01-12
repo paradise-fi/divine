@@ -95,7 +95,7 @@ BitCode::BitCode( std::string file )
     auto bc = IRObjectFile::findBitcodeInMemBuffer( input->getMemBufferRef() );
 
     if ( !bc )
-        std::cerr << bc.getError() << std::endl;
+        std::cerr << toString( bc.takeError() ) << std::endl;
     auto parsed = llvm::parseBitcodeFile( bc.get(), *_ctx );
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
