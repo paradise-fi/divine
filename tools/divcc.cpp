@@ -331,7 +331,7 @@ int main( int argc, char **argv )
             if ( po.hasVersion )
                 std::cout << "divine version: " << ui::version() << "\n";
             cc::ClangDriver drv;
-            drv.BuildCompilation( { "divcc", po.hasHelp? "--help" : "--version" } );
+            delete drv.BuildCompilation( { "divcc", po.hasHelp ? "--help" : "--version" } );
             return 0;
         }
 
