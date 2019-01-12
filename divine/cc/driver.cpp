@@ -49,7 +49,7 @@ std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
     using clang::driver::Compilation;
     ClangDriver drv;
 
-    Compilation* c = drv.BuildCompilation( args );
+    std::unique_ptr< Compilation > c( drv.BuildCompilation( args ) );
     if ( drv.diag.engine.hasErrorOccurred() )
         throw cc::CompileError( "failed to get linker arguments, aborting" );
     std::vector< Command > clangJobs;
