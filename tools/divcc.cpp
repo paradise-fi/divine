@@ -111,8 +111,7 @@ int emitObjFile( Module &m, std::string filename )
 
     PM_BC PM;
 
-    if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false,
-                                             nullptr, nullptr, nullptr, nullptr ) )
+    if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false ) )
     {
         errs() << "TargetMachine can't emit a file of this type\n";
         return 1;
