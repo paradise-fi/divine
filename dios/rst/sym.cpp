@@ -182,6 +182,11 @@ FCMP( ule, FpULE );
 FCMP( une, FpUNE );
 FCMP( fctrue, FpTrue );
 
+__invisible Formula *__sym_ptrtoint( Formula *v )
+{
+    return v;
+}
+
 Tristate __sym_bool_to_tristate( Formula * )
 {
     // TODO: pattern matching for trivial cases of True/False

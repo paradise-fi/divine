@@ -32,6 +32,7 @@ CAST_PROT( trunc )
 CAST_PROT( zext )
 CAST_PROT( sext )
 UNARY_PROT( bitcast )
+UNARY_PROT( ptrtoint )
 
 ICMP_PROT( eq )
 ICMP_PROT( ne )
