@@ -102,7 +102,8 @@ Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
     if ( auto CDS = dyn_cast< llvm::ConstantDataSequential >( val ) )
         ASSERT_EQ( result.width(), 8 * CDS->getNumElements() * CDS->getElementByteSize() );
 
-    if ( isa< llvm::AllocaInst >( val ) || xg::intrinsic_id( val ) == llvm::Intrinsic::stacksave )
+    if ( isa< llvm::AllocaInst >( val ) ||
+         brick::llvm::intrinsic_id( val ) == llvm::Intrinsic::stacksave )
     {
         ASSERT_EQ( loc, Slot::Local );
         result.type = Slot::PtrA;
