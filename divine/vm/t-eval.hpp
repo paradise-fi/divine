@@ -470,10 +470,10 @@ struct Eval
         int32_t i32max = std::numeric_limits< int32_t >::max(),
                 i32min = std::numeric_limits< int32_t >::min();
 
-        testOverflow( Intrinsic::sadd_with_overflow, i32max, 1, 0, i32max + 1 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32max, 1, 0, i32min );
         testOverflow( Intrinsic::sadd_with_overflow, i32max, 1, 1, 1 );
         testOverflow( Intrinsic::sadd_with_overflow, i32max - 1, 1, 1, 0 );
-        testOverflow( Intrinsic::sadd_with_overflow, i32min, -1, 0, i32min - 1 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32min, -1, 0, i32max );
         testOverflow( Intrinsic::sadd_with_overflow, i32min, -1, 1, 1 );
         testOverflow( Intrinsic::sadd_with_overflow, i32min + 1, -1, 1, 0 );
     }
@@ -518,9 +518,9 @@ struct Eval
         int32_t i32max = std::numeric_limits< int32_t >::max(),
                 i32min = std::numeric_limits< int32_t >::min();
 
-        testOverflow( Intrinsic::smul_with_overflow, i32max, 2, 0, i32max * 2 );
+        testOverflow( Intrinsic::smul_with_overflow, i32max, 2, 0, int32_t( 0xFFFFFFFE ) );
         testOverflow( Intrinsic::smul_with_overflow, i32max, 2, 1, 1 );
-        testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 0, i32min * 2 );
+        testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 0, 0 );
         testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 1, 1 );
     }
 
