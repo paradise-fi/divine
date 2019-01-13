@@ -223,6 +223,11 @@ static void _throwLLVMError( ::llvm::Error &e )
     throw std::runtime_error( "LLVM Error: " + toString( std::move( e ) ) );
 }
 
+static void _throwLLVMError( ::llvm::Error &&e )
+{
+    throw std::runtime_error( "LLVM Error: " + toString( std::move( e ) ) );
+}
+
 inline void writeModule( ::llvm::Module *m, std::string out ) {
     verifyModule( *m );
     std::error_code serr;

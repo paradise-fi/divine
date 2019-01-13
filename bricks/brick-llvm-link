@@ -40,6 +40,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/DiagnosticPrinter.h>
+#include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
@@ -122,7 +123,7 @@ inline void writeArchive( It begin, It end, std::string out )
     }
 
     fs::mkFilePath( out );
-    auto res = ::llvm::writeArchive( out, members, true, object::Archive::K_GNU, true, false ).second;
+    auto res = ::llvm::writeArchive( out, members, true, object::Archive::K_GNU, true, false );
     if ( res )
         _throwLLVMError( res );
 }
@@ -266,7 +267,7 @@ struct ArchiveReader
                 auto bc_buf = IRObjectFile::findBitcodeInMemBuffer( buf.get()->getMemoryBufferRef() );
 
                 if ( !bc_buf )
-                    _throwLLVMError( bc_buf.getError() );
+                    _throwLLVMError( bc_buf.takeError() );
 
                 auto parsed = ::llvm::parseBitcodeFile( bc_buf.get(), *_parent->_ctx.get() );
                 if ( !parsed )
