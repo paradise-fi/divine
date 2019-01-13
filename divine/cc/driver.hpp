@@ -49,7 +49,7 @@ struct DiagnosticsWrapper
 struct ClangDriver : DiagnosticsWrapper, clang::driver::Driver
 {
     ClangDriver()
-      : clang::driver::Driver( "/usr/bin/false", LLVM_HOST_TRIPLE, diag.engine )
+      : clang::driver::Driver( "divcc", LLVM_HOST_TRIPLE, diag.engine )
     {}
 };
 
