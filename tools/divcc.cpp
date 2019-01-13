@@ -20,7 +20,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm-c/Target.h"
-#include "lld/include/lld/Driver/Driver.h"
+#include "lld/Common/Driver.h"
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
