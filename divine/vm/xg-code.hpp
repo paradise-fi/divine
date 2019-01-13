@@ -143,7 +143,7 @@ struct AddressMap
     {
         if ( is_codeptr( v ) )
             return true;
-        return has_slot( v );
+        return llvm::isa< llvm::GlobalVariable >( v ) || llvm::isa< llvm::GlobalAlias >( v );
     }
 
     bool has_slot( llvm::Value *v )
