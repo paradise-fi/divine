@@ -22,10 +22,11 @@ namespace __dios
 
 #define SYSCALL_DIOS(...)
 #define SYSCALL( name, schedule, ret, arg )                                     \
-    extern "C" ret name arg noexcept                                            \
+    extern "C" ret __libc_ ## name arg noexcept                                 \
     {                                                                           \
         return unpad( syscall_proxy, &SysProxy::name, _1, _2, _3, _4, _5, _6 ); \
-    }
+    }                                                                           \
+    extern "C" ret name arg noexcept __attribute__ ((weak, alias ("__libc_" #name)));
 #include <sys/syscall.def>
 
 #undef SYSCALL
