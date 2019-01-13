@@ -209,20 +209,13 @@ struct ConstAllocaElimination {
             }
         }
 
+        llvm::DIBuilder dib( *fn.getParent() );
+
         for ( auto var : vars ) {
-            std::vector< llvm::DbgInfoIntrinsic * > dbgs;
             auto val = var.second->getValueOperand();
             std::vector< llvm::Instruction * > toDelete;
-            auto dbgdec = llvm::FindAllocaDbgDeclare( var.first );
-            if ( dbgdec ) {
-                auto expr = dbgdec->getExpression();
-                if ( expr->getElements().size() ) {
-                    std::cerr << brick::string::format(
-                                 "don't know what to do with this dbg.declare:",
-                                 dbgdec, "for", var.first );
-                    dbgdec = nullptr;
-                }
-            }
+            for ( auto dbgi : FindDbgAddrUses( var.first ) )
+                llvm::ConvertDebugDeclareToDebugValue( dbgi, var.second, dib );
             for ( auto user : var.first->users() )
                 llvmcase( user,
                     [val,&toDelete]( llvm::LoadInst *load ) {
@@ -235,22 +228,6 @@ struct ConstAllocaElimination {
                     [&]( llvm::StoreInst *store ) {
                         ASSERT_EQ( store, var.second );
                         toDelete.push_back( store );
-
-                        if ( !dbgdec )
-                            return;
-
-                        auto local = dbgdec->getVariable();
-                        auto localSubprogram = local->getScope()->getSubprogram();
-                        auto dbgloc = store->getDebugLoc().get();
-                        // TODO: dbg.value needs subprograms to match, but where can we find the right dbgloc?
-                        if ( dbgloc && dbgloc->getScope()->getSubprogram() != localSubprogram )
-                            dbgloc = nullptr;
-
-                        if ( !dbgloc )
-                            return;
-
-                        llvm::DIBuilder dib( *fn.getParent() );
-                        dib.insertDbgValueIntrinsic( val, 0, local, dbgdec->getExpression(), dbgloc, store );
                     },
                     [&]( llvm::Value *val ) {
                         UNREACHABLE( "unhandled case in", fn.getName().str(), " var.first =", var.first,
