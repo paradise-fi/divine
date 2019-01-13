@@ -110,6 +110,7 @@ function(build_llvm)
   set( PACKAGE_VERSION "5.0.0" )
   add_subdirectory( llvm )
   include_directories( llvm/include ${CMAKE_CURRENT_BINARY_DIR}/llvm/include )
+  set( LLVM_TARGETS_TO_BUILD ${LLVM_TARGETS_TO_BUILD} PARENT_SCOPE )
   add_subdirectory( clang )
   include_directories( clang/include ${CMAKE_CURRENT_BINARY_DIR}/clang/include )
 
