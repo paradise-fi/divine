@@ -78,192 +78,192 @@ namespace lart::sym
 
     enum class Op : uint8_t
     {
-    Invalid,
+        Invalid,
 
-    Variable,
-    Constant,
+        Variable,
+        Constant,
 
-    BitCast, FirstUnary = BitCast,
+        BitCast, FirstUnary = BitCast,
 
-    SExt,
-    ZExt,
-    Trunc,
+        SExt,
+        ZExt,
+        Trunc,
 
-    IntToPtr,
-    PtrToInt,
+        IntToPtr,
+        PtrToInt,
 
-    FPExt,
-    FPTrunc,
-    FPToSInt,
-    FPToUInt,
-    SIntToFP,
-    UIntToFP,
+        FPExt,
+        FPTrunc,
+        FPToSInt,
+        FPToUInt,
+        SIntToFP,
+        UIntToFP,
 
-    BoolNot,
-    Extract, LastUnary = Extract,
+        BoolNot,
+        Extract, LastUnary = Extract,
 
-    Add, FirstBinary = Add,
-    Sub,
-    Mul,
-    UDiv,
-    SDiv,
-    URem,
-    SRem,
+        Add, FirstBinary = Add,
+        Sub,
+        Mul,
+        UDiv,
+        SDiv,
+        URem,
+        SRem,
 
-    FpAdd,
-    FpSub,
-    FpMul,
-    FpDiv,
-    FpRem,
+        FpAdd,
+        FpSub,
+        FpMul,
+        FpDiv,
+        FpRem,
 
-    Shl,
-    LShr,
-    AShr,
-    And,
-    Or,
-    Xor,
+        Shl,
+        LShr,
+        AShr,
+        And,
+        Or,
+        Xor,
 
-    // Icmp
-    EQ,
-    NE,
-    UGT,
-    UGE,
-    ULT,
-    ULE,
-    SGT,
-    SGE,
-    SLT,
-    SLE,
+        // Icmp
+        EQ,
+        NE,
+        UGT,
+        UGE,
+        ULT,
+        ULE,
+        SGT,
+        SGE,
+        SLT,
+        SLE,
 
-    // Fcmp
-    FpFalse, // no comparison, always returns false
-    FpOEQ,   // ordered and equal
-    FpOGT,   // ordered and greater than
-    FpOGE,   // ordered and greater than or equal
-    FpOLT,   // ordered and less than
-    FpOLE,   // ordered and less than or equal
-    FpONE,   // ordered and not equal
-    FpORD,   // ordered (no nans)
-    FpUEQ,   // unordered or equal
-    FpUGT,   // unordered or greater than
-    FpUGE,   // unordered or greater than or equal
-    FpULT,   // unordered or less than
-    FpULE,   // unordered or less than or equal
-    FpUNE,   // unordered or not equal
-    FpUNO,   // unordered (either nans)
-    FpTrue,  // no comparison, always returns true
-    Constraint, // behaves as binary logical and
+        // Fcmp
+        FpFalse, // no comparison, always returns false
+        FpOEQ,   // ordered and equal
+        FpOGT,   // ordered and greater than
+        FpOGE,   // ordered and greater than or equal
+        FpOLT,   // ordered and less than
+        FpOLE,   // ordered and less than or equal
+        FpONE,   // ordered and not equal
+        FpORD,   // ordered (no nans)
+        FpUEQ,   // unordered or equal
+        FpUGT,   // unordered or greater than
+        FpUGE,   // unordered or greater than or equal
+        FpULT,   // unordered or less than
+        FpULE,   // unordered or less than or equal
+        FpUNE,   // unordered or not equal
+        FpUNO,   // unordered (either nans)
+        FpTrue,  // no comparison, always returns true
+        Constraint, // behaves as binary logical and
 
-    Concat, LastBinary = Concat,
+        Concat, LastBinary = Concat,
     };
 
     struct Type
     {
-    enum T : uint8_t
-    {
-        Int,
-        Float
-    };
+        enum T : uint8_t
+        {
+            Int,
+            Float
+        };
 
-    static const int bwmask = 0x7fff;
+        static const int bwmask = 0x7fff;
 
-    Type() = default;
-    Type( T g, int bitwidth ) : _data( (g << 15) | bitwidth ) { }
+        Type() = default;
+        Type( T g, int bitwidth ) : _data( (g << 15) | bitwidth ) { }
 
-    T type() { return T( _data >> 15 ); }
-    int bitwidth() { return _data & bwmask; }
-    void bitwidth( int x ) {
-        _data &= ~bwmask;
-        _data |= bwmask & x;
-    }
+        T type() { return T( _data >> 15 ); }
+        int bitwidth() { return _data & bwmask; }
+        void bitwidth( int x ) {
+            _data &= ~bwmask;
+            _data |= bwmask & x;
+        }
 
-    uint16_t _data;
+        uint16_t _data;
     };
 
     static_assert( sizeof( VarID ) == 4, "" );
     static_assert( sizeof( Type ) == 2, "" );
 
     struct Variable {
-    Variable( Type type, VarID id ) :
-        op( Op::Variable ), refcount( 0 ), type( type ), id( id )
-    { }
+        Variable( Type type, VarID id ) :
+            op( Op::Variable ), refcount( 0 ), type( type ), id( id )
+        { }
 
-    Op op;              // 8B
-    RefCount refcount;  // 8B
-    Type type;          // 16B
-    VarID id;           // 32B
+        Op op;              // 8B
+        RefCount refcount;  // 8B
+        Type type;          // 16B
+        VarID id;           // 32B
     };
 
     static_assert( sizeof( Variable ) == 8, "" );
 
     union ValueU {
-    //    ValueT raw;
-    RefCount i8;
-    uint16_t i16;
-    uint32_t i32;
-    uint64_t i64;
-    float fp32;
-    double fp64;
-    //    long double fp80;
+        //    ValueT raw;
+        RefCount i8;
+        uint16_t i16;
+        uint32_t i32;
+        uint64_t i64;
+        float fp32;
+        double fp64;
+        //    long double fp80;
     };
 
     struct Constant {
-    Constant( Type type, uint64_t value ) :
-        op( Op::Constant ), refcount( 0 ), type( type ), value( value )
-    { }
+        Constant( Type type, uint64_t value ) :
+            op( Op::Constant ), refcount( 0 ), type( type ), value( value )
+        { }
 
-    Op op;            // 8B
-    RefCount refcount;// 8B
-    Type type;        // 16B
-    uint64_t value;
-    //    std::array< uint32_t, 3 > value; // 96B - enough to hold long double
+        Op op;            // 8B
+        RefCount refcount;// 8B
+        Type type;        // 16B
+        uint64_t value;
+        //    std::array< uint32_t, 3 > value; // 96B - enough to hold long double
     };
 
     static_assert( sizeof( Constant ) == 16, "" );
 
     template< typename Formula >
     struct Unary_ {
-    Unary_( Op op, Type t, Formula child ) :
-        op( op ), refcount( 0 ), type( t ), child( child )
-    {
+        Unary_( Op op, Type t, Formula child ) :
+            op( op ), refcount( 0 ), type( t ), child( child )
+        {
 #ifdef __divine__
-        child->refcount_increment();
+            child->refcount_increment();
 #endif
-    }
+        }
 
-    Unary_( Op op, Type t, unsigned short from, unsigned short to, Formula child ) :
-        op( op ), refcount( 0 ), type( t ), from( from ), to( to ), child( child )
-    {
+        Unary_( Op op, Type t, unsigned short from, unsigned short to, Formula child ) :
+            op( op ), refcount( 0 ), type( t ), from( from ), to( to ), child( child )
+        {
 #ifdef __divine__
-        child->refcount_increment();
+            child->refcount_increment();
 #endif
-    }
+        }
 
-    Op op;                   // 8B
-    RefCount refcount;       // 8B
-    Type type;               // 16B
-    unsigned short from, to; // 32B, only for Extract
-    Formula child;           // 64B
+        Op op;                   // 8B
+        RefCount refcount;       // 8B
+        Type type;               // 16B
+        unsigned short from, to; // 32B, only for Extract
+        Formula child;           // 64B
     };
 
     static_assert( sizeof( Unary_< void * > ) == 16, "" );
 
     template< typename Formula >
     struct Binary_ {
-    Binary_( Op op, Type t, Formula left, Formula right ) :
-        op( op ), type( t ), refcount( 0 ), left( left ), right( right )
-    {
+        Binary_( Op op, Type t, Formula left, Formula right ) :
+            op( op ), type( t ), refcount( 0 ), left( left ), right( right )
+        {
 #ifdef __divine__
-        left->refcount_increment();
-        right->refcount_increment();
+            left->refcount_increment();
+            right->refcount_increment();
 #endif
-    }
+        }
 
-    Op op;            // 8B
-    RefCount refcount;// 8B
-    Type type;        // 16B
-    Formula left;     // 64B
-    Formula right;    // 64B
+        Op op;            // 8B
+        RefCount refcount;// 8B
+        Type type;        // 16B
+        Formula left;     // 64B
+        Formula right;    // 64B
     };
 
     static_assert( sizeof( Binary_< void * > ) == 24, "" );
@@ -280,32 +280,32 @@ namespace lart::sym
 
     union Formula
     {
-    Formula() : hdr{ Op::Invalid, 0, Type() } { }
+        Formula() : hdr{ Op::Invalid, 0, Type() } { }
 
-    struct
-    {
-        Op op;                   // 8B
-        RefCount refcount;       // 8B
-        Type type;               // 16B
-    } hdr;
+        struct
+        {
+            Op op;                   // 8B
+            RefCount refcount;       // 8B
+            Type type;               // 16B
+        } hdr;
 
-    Op op() const { return hdr.op; }
-    RefCount refcount() const { return hdr.refcount; }
-    Type type() const { return hdr.type; }
+        Op op() const { return hdr.op; }
+        RefCount refcount() const { return hdr.refcount; }
+        Type type() const { return hdr.type; }
 
-    void refcount_increment() {
-        if ( hdr.refcount != std::numeric_limits<RefCount>::max() )
-            ++hdr.refcount;
-    }
+        void refcount_increment() {
+            if ( hdr.refcount != std::numeric_limits<RefCount>::max() )
+                ++hdr.refcount;
+        }
 
-    void refcount_decrement() {
-        --hdr.refcount;
-    }
+        void refcount_decrement() {
+            --hdr.refcount;
+        }
 
-    Variable var;
-    Constant con;
-    Unary unary;
-    Binary binary;
+        Variable var;
+        Constant con;
+        Unary unary;
+        Binary binary;
     };
 }
 
