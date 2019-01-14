@@ -16,11 +16,11 @@ __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) no
     auto *inst = meta->inst_table;
     auto base = reinterpret_cast< uint8_t * >( frame );
 
-    __dios::Array< Formula * > orphans;
+    __dios::Array< Formula * > formulae;
+
     for ( int i = 0; i < meta->inst_table_size; ++i, ++inst ) {
         if ( inst->val_width == 8 ) {
             auto addr = *reinterpret_cast< void ** >( base + inst->val_offset );
-
             auto old_flag = __vm_ctl_flag( 0, _DiOS_CF_IgnoreFault );
 
             if ( inst->opcode == OpCode::Alloca )  {
@@ -30,10 +30,7 @@ __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) no
             }
 
             if ( __dios_pointer_get_type( addr ) == _VM_PT_Marked ) {
-                Formula * formula = static_cast< Formula * >( abstract::weaken( addr ) );
-                if ( formula->refcount() == 0 ) {
-                    orphans.push_back( formula );
-                }
+                formulae.push_back( static_cast< Formula * >( abstract::weaken( addr ) ) );
             }
 
             if ( ( old_flag & _DiOS_CF_IgnoreFault ) == 0 )
@@ -41,11 +38,13 @@ __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) no
         }
     }
 
-    std::sort(orphans.begin(), orphans.end());
-    auto end = std::unique(orphans.begin(), orphans.end());
-    orphans.erase( end, orphans.end() );
+    auto not_orphan = [] ( auto * formula ) { return formula->refcount(); };
 
-    return orphans;
+    formulae.erase( std::remove_if( formulae.begin(), formulae.end(), not_orphan ), formulae.end() );
+    std::sort( formulae.begin(), formulae.end() );
+    formulae.erase( std::unique( formulae.begin(), formulae.end() ), formulae.end() );
+
+    return formulae;
 }
 
 __invisible void __formula_cleanup( Formula * formula ) noexcept {
