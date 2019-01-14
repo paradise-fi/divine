@@ -198,7 +198,7 @@ namespace lart::sym
 
     union ValueU {
         //    ValueT raw;
-        RefCount i8;
+        uint8_t i8;
         uint16_t i16;
         uint32_t i32;
         uint64_t i64;
