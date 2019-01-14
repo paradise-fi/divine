@@ -20,12 +20,12 @@ __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) no
     for ( int i = 0; i < meta->inst_table_size; ++i, ++inst ) {
         if ( inst->val_width == 8 ) {
             auto addr = *reinterpret_cast< void ** >( base + inst->val_offset );
+
             auto old_flag = __vm_ctl_flag( 0, _DiOS_CF_IgnoreFault );
 
             if ( inst->opcode == OpCode::Alloca )  {
-                // TODO fix peek of undefined value
-                if ( auto * formula = peek_object< Formula >( addr ) ) {
-                    formula->refcount_decrement();
+                if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
+                    peek_object< Formula >( addr )->refcount_decrement();
                 }
             }
 

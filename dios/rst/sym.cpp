@@ -208,9 +208,7 @@ __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool ass
 
 void __sym_freeze( Formula *formula, void *addr ) {
     if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
-        if ( auto * old = peek_object< Formula >( addr ) ) {
-            old->refcount_decrement();
-        }
+        peek_object< Formula >( addr )->refcount_decrement();
     }
 
     formula->refcount_increment();
