@@ -25,42 +25,81 @@ struct Autotrace {
 
     using Vals = std::vector< llvm::Value * >;
 
-    static PassMeta meta() {
-        return passMeta< Autotrace >( "Autotrace", "" );
+    bool _calls = false, _allocs = false;
+    llvm::Function *_fn_trace, *_fn_mkobj;
+
+    Autotrace( std::string opt )
+    {
+        if ( opt.find( "allocs" ) != std::string::npos )
+            _allocs = true;
+        if ( opt.find( "calls" ) != std::string::npos )
+            _calls = true;
+        if ( !_calls && !_allocs )
+            throw std::logic_error( "constructed a useless Autotrace instance" );
     }
 
-    void run( llvm::Module &m ) {
+    void handle_calls( llvm::Function &fn )
+    {
+        llvm::IRBuilder<> irb( &*fn.front().getFirstInsertionPt() );
+        irb.CreateCall( _fn_trace, callArgs( fn, irb ) );
+        ++entry;
+
+        auto ehInfo = cleanup::EhInfo::cpp( *fn.getParent() );
+
+        cleanup::makeExceptionsVisible( ehInfo, fn, []( const auto & ) { return true; } );
+        cleanup::atExits( fn, [&]( llvm::Instruction *i )
+        {
+            llvm::IRBuilder<> irb( i );
+            irb.CreateCall( _fn_trace, applyInst( i, [&]( auto *i ) { return retArgs( i, irb ); } ) );
+            ++exit;
+        } );
+    }
+
+    void handle_alloc( llvm::Function &fn, llvm::BasicBlock::iterator inst )
+    {
+        auto call = llvm::dyn_cast< llvm::CallInst >( inst );
+        if ( !call || call->getCalledFunction() != _fn_mkobj )
+            return;
+        llvm::IRBuilder<> irb( &*std::next( inst ) );
+        auto fmt = getLit( "allocated %p in " + fn.getName().str(), irb );
+        irb.CreateCall( _fn_trace, { traceStay, fmt, call } );
+    }
+
+    void handle_allocs( llvm::Function &fn )
+    {
+        for ( auto &bb : fn )
+            for ( auto inst = bb.begin(); inst != bb.end(); ++inst )
+                handle_alloc( fn, inst );
+    }
+
+    void run( llvm::Module &m )
+    {
         // void __dios_trace( int upDown, const char *p, ... )
-        auto *trace = m.getFunction( "__dios_trace_auto" );
-        if ( !trace )
+        _fn_mkobj = m.getFunction( "__vm_obj_make" );
+        _fn_trace = m.getFunction( "__dios_trace_auto" );
+        if ( !_fn_trace )
             return;
 
         auto *suspend = m.getFunction( "__dios_suspend" );
+        auto *resched = m.getFunction( "__dios_reschedule" );
 
         if ( !tagModuleWithMetadata( m, "lart.divine.autotrace" ) )
             return;
 
-        auto *traceT = trace->getFunctionType();
-        traceUp = llvm::ConstantInt::get( traceT->getParamType( 0 ), 1 );
-        traceDown = llvm::ConstantInt::get( traceT->getFunctionParamType( 0 ), -1 );
+        auto *traceT = _fn_trace->getFunctionType();
+        traceUp   = llvm::ConstantInt::get( traceT->getParamType( 0 ),  1 );
+        traceStay = llvm::ConstantInt::get( traceT->getParamType( 0 ),  0 );
+        traceDown = llvm::ConstantInt::get( traceT->getParamType( 0 ), -1 );
 
-        auto ehInfo = cleanup::EhInfo::cpp( m );
-
-        for ( auto &fn : m ) {
-            if ( fn.empty() || &fn == trace || &fn == suspend )
+        for ( auto &fn : m )
+        {
+            if ( fn.empty() || &fn == _fn_trace || &fn == suspend || &fn == resched )
                 continue;
 
-            llvm::IRBuilder<> irb( &*fn.front().getFirstInsertionPt() );
-            irb.CreateCall( trace, callArgs( fn, irb ) );
-            ++entry;
-
-            cleanup::makeExceptionsVisible( ehInfo, fn, []( const auto & ) { return true; } );
-            cleanup::atExits( fn, [&]( llvm::Instruction *i ) {
-                    llvm::IRBuilder<> irb( i );
-                    irb.CreateCall( trace, applyInst( i, [&]( auto *i ) {
-                                              return retArgs( i, irb ); } ) );
-                    ++exit;
-                } );
+            if ( _calls )
+                handle_calls( fn );
+            if ( _allocs )
+                handle_allocs( fn );
         }
     }
 
@@ -170,13 +209,13 @@ struct Autotrace {
     }
 
     long entry = 0, exit = 0;
-    llvm::Constant *traceUp = nullptr, *traceDown = nullptr;
+    llvm::Constant *traceUp = nullptr, *traceDown = nullptr, *traceStay = nullptr;
     util::Map< std::string, llvm::Value * > litmap;
 };
 
-PassMeta autotracePass() {
-    return compositePassMeta< Autotrace >( "autotrace",
-            "Instrument bitcode for DIVINE: add trace calls to function begins and ends." );
+PassMeta autotracePass()
+{
+    return passMetaO< Autotrace >( "autotrace", "Insert tracing calls at points of interest." );
 }
 
 }
