@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/mc/bitcode.hpp>
+#include <divine/mc/hasher.hpp>
 #include <divine/smt/solver.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/memory.tpp>
@@ -34,7 +35,6 @@ namespace divine::mc::builder
 {
 
 using namespace std::literals;
-using Snapshot = vm::CowHeap::Snapshot;
 
 struct State
 {
@@ -141,85 +141,6 @@ struct Context : vm::Context< vm::Program, vm::CowHeap >
     }
 };
 
-template< typename Solver >
-struct Hasher_
-{
-    mutable vm::CowHeap _h1, _h2;
-    vm::HeapPointer _root;
-    Solver *_solver = nullptr;
-
-    void setup( const vm::CowHeap &heap, Solver &solver )
-    {
-        _h1 = heap;
-        _h2 = heap;
-        _solver = &solver;
-    }
-
-    bool equal_fastpath( Snapshot a, Snapshot b ) const
-    {
-        bool rv = false;
-        if ( _h1.snapshots().size( a ) == _h1.snapshots().size( b ) )
-            rv = std::equal( _h1.snap_begin( a ), _h1.snap_end( a ), _h1.snap_begin( b ) );
-        if ( !rv )
-            _h1.restore( a ), _h2.restore( b );
-        return rv;
-    }
-
-    bool equal_explicit( Snapshot a, Snapshot b ) const
-    {
-        if ( equal_fastpath( a, b ) )
-            return true;
-        else
-            return mem::compare( _h1, _h2, _root, _root ) == 0;
-    }
-
-    bool equal_symbolic( Snapshot a, Snapshot b ) const
-    {
-        if ( equal_fastpath( a, b ) )
-            return true;
-
-
-        struct Cmp : mem::NoopCmp< vm::HeapPointer >
-        {
-            std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > > pairs;
-
-            void marked( vm::HeapPointer a, vm::HeapPointer b )
-            {
-                a.type( vm::PointerType::Weak ); // unmark pointers so they are equal to their
-                b.type( vm::PointerType::Weak ); // weak equivalents inside the formula
-                pairs.emplace_back( a, b );
-            };
-        } extract;
-
-        if ( mem::compare( _h1, _h2, _root, _root, extract ) != 0 )
-            return false;
-
-        if ( extract.pairs.empty() )
-            return true;
-
-        ASSERT( _solver );
-        return _solver->equal( extract.pairs, _h1, _h2 );
-    }
-
-    brick::hash::hash128_t hash( Snapshot s ) const
-    {
-        _h1.restore( s );
-        return mem::hash( _h1, _root );
-    }
-};
-
-template< typename Solver >
-struct Hasher : Hasher_< Solver >
-{
-    bool equal( Snapshot a, Snapshot b ) const { return this->equal_symbolic( a, b ); }
-};
-
-template<>
-struct Hasher< smt::NoSolver > : Hasher_< smt::NoSolver >
-{
-    bool equal( Snapshot a, Snapshot b ) const { return this->equal_explicit( a, b ); }
-};
-
 using BC = std::shared_ptr< BitCode >;
 
 }
@@ -235,7 +156,7 @@ struct Builder
     using PointerV = vm::value::Pointer;
     using Context = builder::Context;
     using Eval = vm::Eval< Context >;
-    using Hasher = builder::Hasher< Solver >;
+    using Hasher = mc::Hasher< Solver >;
 
     using BC = builder::BC;
     using Env = std::vector< std::string >;
