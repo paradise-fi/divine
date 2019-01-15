@@ -11,6 +11,7 @@
 #include <sys/vmutil.h>
 #include <string.h>
 #include <dios.h>
+#include <sys/syswrap.h>
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -108,7 +109,7 @@ int raise( int sig )
         case SIGKILL:
             __dios_reschedule();
         default:
-            return kill( getpid(), sig );
+            return __libc_kill( __libc_getpid(), sig );
     }
 }
 
@@ -121,7 +122,7 @@ SignalHandler signal( int sig, SignalHandler handler )
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART; /* Restart functions if
                                 interrupted by handler */
-    if ( sigaction( sig, &sa, &res ) == -1 )
+    if ( __libc_sigaction( sig, &sa, &res ) == -1 )
         return SIG_ERR;
     else
         return res.sa_handler;
