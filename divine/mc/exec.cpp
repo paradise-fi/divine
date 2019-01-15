@@ -47,6 +47,12 @@ namespace divine::mc
             vm::setup::scheduler( _ctx );
             eval.run();
         }
+
+        if ( _ctx.flags_any( _VM_CF_Cancel ) )
+            std::cerr << "encountered an infeasible path (execution cancelled)" << std::endl;
+
+        if ( _ctx.flags_any( _VM_CF_Error ) )
+            std::cerr << "execution stopped due to a program error" << std::endl;
     }
 
     void Exec::trace()
