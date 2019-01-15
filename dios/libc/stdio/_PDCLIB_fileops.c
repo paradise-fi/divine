@@ -11,11 +11,12 @@
 #include "_PDCLIB/glue.h"
 #include <errno.h>
 #include <unistd.h>
+#include <sys/syswrap.h>
 
 static bool readf( _PDCLIB_fd_t fd, void * buf, size_t length,
                    size_t * numBytesRead )
 {
-    ssize_t res = read(fd.sval, buf, length);
+    ssize_t res = __libc_read(fd.sval, buf, length);
     if(res == -1) {
         *numBytesRead = 0;
         return false;
@@ -28,7 +29,7 @@ static bool readf( _PDCLIB_fd_t fd, void * buf, size_t length,
 static bool writef( _PDCLIB_fd_t fd, const void * buf, size_t length,
                    size_t * numBytesWritten )
 {
-    ssize_t res = write(fd.sval, buf, length);
+    ssize_t res = __libc_write(fd.sval, buf, length);
     if(res == -1) {
         *numBytesWritten = 0;
         return false;
@@ -43,7 +44,7 @@ static bool writef( _PDCLIB_fd_t fd, const void * buf, size_t length,
 static bool seekf( _PDCLIB_fd_t fd, int_fast64_t offset, int whence,
     int_fast64_t* newPos )
 {
-    off_t npos = lseek( fd.sval, offset, whence );
+    off_t npos = __libc_lseek( fd.sval, offset, whence );
     if( npos == -1 ) {
         return false;
     } else {
@@ -54,7 +55,7 @@ static bool seekf( _PDCLIB_fd_t fd, int_fast64_t offset, int whence,
 
 static void closef( _PDCLIB_fd_t self )
 {
-    close( self.sval );
+    __libc_close( self.sval );
 }
 
 const _PDCLIB_fileops_t _PDCLIB_fileops = {
