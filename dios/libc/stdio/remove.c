@@ -14,6 +14,7 @@
 #include <string.h>
 #include <threads.h>
 #include <_PDCLIB/glue.h>
+#include <sys/syswrap.h>
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -37,11 +38,11 @@ int remove( const char * pathname )
     mtx_unlock( &_PDCLIB_filelist_lock );
 
     struct stat st;
-    int r = stat( pathname, &st );
+    int r = __libc_stat( pathname, &st );
     if ( r == 0 ) {
         if ( S_ISDIR( st.st_mode ) )
-            return rmdir( pathname );
-        return unlink( pathname );
+            return __libc_rmdir( pathname );
+        return __libc_unlink( pathname );
     }
     return -1;
 }
