@@ -103,7 +103,6 @@ Formula *__sym_lift_float( int bitwidth, int argc, ... ) {
     va_list args;
     va_start( args, argc );
     return mark( __newf< Constant >( Type{ Type::Float, bitwidth }, va_arg( args, float ) ) );
-
 }
 
 #define BINARY( suff, op ) Formula *__sym_ ## suff( Formula *a, Formula *b ) \
@@ -208,7 +207,11 @@ __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool ass
 
 void __sym_freeze( Formula *formula, void *addr ) {
     if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
-        peek_object< Formula >( addr )->refcount_decrement();
+        auto old = peek_object< Formula >( addr );
+        old->refcount_decrement();
+        if ( old->refcount() == 0 ) {
+            __formula_cleanup( old );
+        }
     }
 
     formula->refcount_increment();
