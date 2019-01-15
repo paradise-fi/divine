@@ -81,6 +81,8 @@ void __star_freeze( Unit, void* ) {}
 
 Unit __star_thaw( void*, int ) { return Unit(); }
 
-extern "C" void __star_cleanup(void) {
-    _UNREACHABLE_F( "Not implemented." );
-}
+extern "C" void __star_stash( Unit ) { }
+
+extern "C" Unit __star_unstash() { return Unit(); }
+
+extern "C" void __star_cleanup(void) { }
