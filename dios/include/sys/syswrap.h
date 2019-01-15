@@ -20,6 +20,10 @@ __BEGIN_DECLS
 
 #include <sys/syscall.def>
 
+#if _HOST_is_linux
+SYSCALL( sigaction, CONTINUE, int, ( int _1, const struct sigaction * _2, struct sigaction * _3 ) )
+#endif
+
 __END_DECLS
 
 #undef SYSCALL
