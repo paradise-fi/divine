@@ -60,6 +60,28 @@ std::string to_string( LeakCheckFlags lf, bool yaml )
         return out;
 }
 
+std::string to_string( AutoTraceFlags lf, bool yaml )
+{
+    std::string out;
+    auto append = [&]( auto str )
+    {
+        if ( !out.empty() ) out += yaml ? ", " : ",";
+        if ( yaml ) out += '"';
+        out += str;
+        if ( yaml ) out += '"';
+    };
+
+    if ( lf & AutoTrace::Calls )
+        append( "calls" );
+    if ( lf & AutoTrace::Allocs )
+        append( "allocs" );
+
+    if ( out.empty() )
+        return "none";
+    else
+        return out;
+}
+
 LeakCheckFlags leakcheck_from_string( std::string x )
 {
     if ( x == "return" )
@@ -70,6 +92,16 @@ LeakCheckFlags leakcheck_from_string( std::string x )
         return mc::LeakCheck::Exit;
 
     return mc::LeakCheck::Nothing;
+}
+
+AutoTraceFlags autotrace_from_string( std::string x )
+{
+    if ( x == "calls" )
+        return mc::AutoTrace::Calls;
+    if ( x == "allocs" )
+        return mc::AutoTrace::Allocs;
+
+    return mc::AutoTrace::Nothing;
 }
 
 void BitCode::lazy_link_dios()
@@ -149,7 +181,7 @@ void BitCode::do_lart()
     }
 
     if ( _autotrace )
-        lart.setup( lart::divine::autotracePass() );
+        lart.setup( lart::divine::autotracePass(), to_string( _autotrace ) );
 
     if ( !_relaxed.empty() )
         lart.setup( "weakmem:" + _relaxed, false );

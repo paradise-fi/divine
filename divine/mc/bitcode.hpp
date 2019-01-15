@@ -37,13 +37,15 @@ namespace divine::vm { struct Program; }
 namespace divine::mc
 {
 
-enum class AutoTrace { Nothing, Calls };
+enum class AutoTrace { Nothing, Calls = 1, Allocs = 2 };
 enum class LeakCheck { Nothing, Exit = 0x1 , Return = 0x2 , State = 0x4 };
 using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
 using LeakCheckFlags = brick::types::StrongEnumFlags< LeakCheck >;
 
 std::string to_string( LeakCheckFlags, bool yaml = false );
+std::string to_string( AutoTraceFlags, bool yaml = false );
 LeakCheckFlags leakcheck_from_string( std::string x );
+AutoTraceFlags autotrace_from_string( std::string x );
 
 struct BCParseError : brick::except::Error { using brick::except::Error::Error; };
 
