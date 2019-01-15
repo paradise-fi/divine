@@ -15,6 +15,8 @@
 #include <sys/un.h>
 #include <dios.h>
 
+#include <sys/syswrap.h>
+
 #include <dios/sys/memory.hpp>
 
 struct DirWrapper
@@ -46,7 +48,7 @@ extern "C" {
     {
         struct stat fdStat;
 
-        int result = fstat( fd, &fdStat );
+        int result = __libc_fstat( fd, &fdStat );
         if ( result == -1 )
             return nullptr;
 
@@ -58,7 +60,7 @@ extern "C" {
             return nullptr;
         }
 
-        int newFD = dup( fd );
+        int newFD = __libc_dup( fd );
         if ( newFD > 0 ) {
             DirWrapper *wrapper = new ( nofail ) DirWrapper;
             wrapper->fd = newFD;
@@ -93,7 +95,7 @@ extern "C" {
         DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( dirp );
         int fd = wrapper->fd;
         __vm_obj_free( wrapper );
-        return close( fd );
+        return __libc_close( fd );
     }
 
     int dirfd( DIR *dirp )
@@ -111,7 +113,7 @@ extern "C" {
 
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
 
-        int res = read( wrapper->fd, wrapper->readdir_entry_raw(), sizeof( struct dirent ) );
+        int res = __libc_read( wrapper->fd, wrapper->readdir_entry_raw(), sizeof( struct dirent ) );
         return res > 0 ? &wrapper->readdir_entry : nullptr;
     }
 
@@ -120,7 +122,7 @@ extern "C" {
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
         char *dirInfo = reinterpret_cast< char * >(entry);
 
-        int res = read(wrapper->fd, dirInfo, sizeof( struct dirent ));
+        int res = __libc_read(wrapper->fd, dirInfo, sizeof( struct dirent ));
         *result = ( res == sizeof( struct dirent ) ) ? entry : nullptr;
         return (res >= 0) ? 0 : -1;
     }
@@ -128,7 +130,7 @@ extern "C" {
     void rewinddir( DIR *dirp )
     {
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >(dirp);
-        lseek( wrapper->fd, 0, SEEK_SET );
+        __libc_lseek( wrapper->fd, 0, SEEK_SET );
     }
 
     int scandir( const char *path, struct dirent ***namelist,
@@ -180,64 +182,64 @@ extern "C" {
     long telldir( DIR *dirp )
     {
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
-        return lseek( wrapper->fd, 0, SEEK_CUR );
+        return __libc_lseek( wrapper->fd, 0, SEEK_CUR );
     }
 
     void seekdir( DIR *dirp, long loc )
     {
         DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
-        lseek( wrapper->fd, loc, SEEK_SET );
+        __libc_lseek( wrapper->fd, loc, SEEK_SET );
     }
 
 
     ssize_t send(int sockfd, const void *buf, size_t len, int flags)
     {
-        return sendto(sockfd, buf, len, flags, NULL, 0);
+        return __libc_sendto(sockfd, buf, len, flags, NULL, 0);
     }
 
     ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset)
     {
-       int currPos = lseek( fd, 0, SEEK_CUR );
+       int currPos = __libc_lseek( fd, 0, SEEK_CUR );
 
-        int moved = lseek( fd, offset, SEEK_SET );
+        int moved = __libc_lseek( fd, offset, SEEK_SET );
         if ( moved != offset ) 
             return -1;
 
-        int writed = write( fd, buf, count );
-        lseek( fd, currPos, SEEK_SET );
+        int writed = __libc_write( fd, buf, count );
+        __libc_lseek( fd, currPos, SEEK_SET );
 
         return writed;
     }
 
     ssize_t pread(int fd, void *buf, size_t count, off_t offset)
     {
-        int currPos = lseek( fd, 0, SEEK_CUR );
+        int currPos = __libc_lseek( fd, 0, SEEK_CUR );
 
-        int moved = lseek( fd, offset, SEEK_SET );
+        int moved = __libc_lseek( fd, offset, SEEK_SET );
         if ( moved != offset ) 
             return -1;
 
-        int readed = read( fd, buf, count );
-        lseek( fd, currPos, SEEK_SET );
+        int readed = __libc_read( fd, buf, count );
+        __libc_lseek( fd, currPos, SEEK_SET );
 
         return readed;
     }
 
     int mkfifoat(int dirfd, const char *pathname, mode_t mode)
     {
-        return mknodat( dirfd, pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
+        return __libc_mknodat( dirfd, pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
         
     }
 
     int mkfifo(const char *pathname, mode_t mode)
     {
-        return mknod( pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
+        return __libc_mknod( pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
     }
 
 
     ssize_t recv(int sockfd, void *buf, size_t len, int flags)
     {
-        return recvfrom( sockfd, buf, len, flags, nullptr, nullptr );   
+        return __libc_recvfrom( sockfd, buf, len, flags, nullptr, nullptr );
     }
 
     char *ttyname(int fd)
@@ -245,7 +247,7 @@ extern "C" {
         struct stat fdStat;
 
         //just to set errno if fd is not valid file descriptor
-        fstat( fd, &fdStat );
+        __libc_fstat( fd, &fdStat );
         return nullptr;
     }
 
@@ -254,7 +256,7 @@ extern "C" {
         struct stat fdStat;
 
         //just to set errno if fd is not valid file descriptor
-        int res = fstat( fd, &fdStat );
+        int res = __libc_fstat( fd, &fdStat );
         return res == 0 ? ENOTTY : res;
     }
 
@@ -263,7 +265,7 @@ extern "C" {
         struct stat fdStat;
 
         //just to set errno if fd is not valid file descriptor
-        int res = fstat( fd, &fdStat );
+        int res = __libc_fstat( fd, &fdStat );
         return res == 0 ? EINVAL : res;
     }
 
