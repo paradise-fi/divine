@@ -21,6 +21,7 @@ int open(const char *fname, int flags, ...);
 #include <fcntl.h>
 #endif
 #include <errno.h>
+#include <sys/syswrap.h>
 
 extern const _PDCLIB_fileops_t _PDCLIB_fileops;
 
@@ -35,7 +36,7 @@ FILE* _PDCLIB_nothrow tmpfile( void )
     for ( ;; )
     {
         long long randnum;
-        if( urandom == -1 || read(urandom, &randnum, sizeof randnum ) != sizeof randnum )
+        if( urandom == -1 || __libc_read(urandom, &randnum, sizeof randnum ) != sizeof randnum )
             randnum = rand();
 
         sprintf( filename, "/tmp/%llx.tmp", randnum );
@@ -51,7 +52,7 @@ FILE* _PDCLIB_nothrow tmpfile( void )
         if ( fd == -1 && errno != EEXIST )
         {
             if ( urandom != -1 )
-                close( urandom );
+                __libc_close( urandom );
             return NULL;
         }
         if ( fd != -1 )
@@ -60,14 +61,14 @@ FILE* _PDCLIB_nothrow tmpfile( void )
         }
     }
     if ( urandom != -1 )
-        close( urandom );
+        __libc_close( urandom );
 
     FILE* rc = _PDCLIB_fvopen(((_PDCLIB_fd_t){ .sval = fd}), &_PDCLIB_fileops,
                                 _PDCLIB_FWRITE | _PDCLIB_FRW |
                                 _PDCLIB_DELONCLOSE, filename);
     if( rc == NULL )
     {
-        close( fd );
+        __libc_close( fd );
         return NULL;
     }
 

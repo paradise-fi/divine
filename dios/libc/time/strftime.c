@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <sys/syswrap.h>
+
 #include "private.h"
 #include "tzfile.h"
 
@@ -665,7 +667,7 @@ _loc(void)
 		if (fd < 0)
 			goto no_locale;
 	}
-	if (fstat(fd, &st) != 0)
+	if (__libc_fstat(fd, &st) != 0)
 		goto bad_locale;
 	if (st.st_size <= 0)
 		goto bad_locale;
@@ -681,9 +683,9 @@ _loc(void)
 	(void) strlcpy(lbuf, name, bufsize);
 	p = lbuf + namesize;
 	plim = p + st.st_size;
-	if (read(fd, p, st.st_size) != st.st_size)
+	if (__libc_read(fd, p, st.st_size) != st.st_size)
 		goto bad_lbuf;
-	if (close(fd) != 0)
+	if (__libc_close(fd) != 0)
 		goto bad_lbuf;
 	/*
 	** Parse the locale file into localebuf.
@@ -721,7 +723,7 @@ _loc(void)
 bad_lbuf:
 	free(lbuf);
 bad_locale:
-	(void) close(fd);
+	(void) __libc_close(fd);
 no_locale:
 	localebuf = C_time_locale;
 	locale_buf = NULL;

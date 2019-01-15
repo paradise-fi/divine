@@ -18,6 +18,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/syswrap.h>
+
 #include "private.h"
 #include "tzfile.h"
 #include "thread_private.h"
@@ -358,8 +360,8 @@ tzload(const char *name, struct state *sp, int doextend)
 	if ((fid = open(name, O_RDONLY)) == -1)
 		goto oops;
 
-	nread = read(fid, up->buf, sizeof up->buf);
-	if (close(fid) < 0 || nread <= 0)
+	nread = __libc_read(fid, up->buf, sizeof up->buf);
+	if (__libc_close(fid) < 0 || nread <= 0)
 		goto oops;
 	for (stored = 4; stored <= 8; stored *= 2) {
 		int		ttisstdcnt;
