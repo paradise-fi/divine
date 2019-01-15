@@ -110,7 +110,7 @@ using DrawBuilder = STPBuilder;
 using DrawBuilder = ExplicitBuilder;
 #endif
 
-template< typename Builder = DrawBuilder, typename Ctx = builder::Context >
+template< typename Builder = DrawBuilder, typename Ctx = Context >
 std::string draw( std::shared_ptr< BitCode > bc, int distance, bool heap,
                   Ctx *ctx = nullptr, typename Builder::Snapshot *initial = nullptr )
 {
