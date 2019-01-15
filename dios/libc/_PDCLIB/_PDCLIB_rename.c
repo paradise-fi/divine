@@ -5,14 +5,15 @@
 */
 
 #include <stdio.h>
+#include <sys/syswrap.h>
 
 #ifndef REGTEST
 #include "_PDCLIB/glue.h"
 
 #include <errno.h>
 
-extern int unlink( const char * pathname );
-extern int link( const char * old, const char * new );
+extern int __libc_unlink( const char * pathname );
+extern int __libc_link( const char * old, const char * new );
 
 int _PDCLIB_rename( const char * old, const char * new )
 {
@@ -21,9 +22,9 @@ int _PDCLIB_rename( const char * old, const char * new )
        operation, but you might want to document whichever you chose.
        This example fails if new file exists.
     */
-    if ( link( old, new ) == 0 )
+    if ( __libc_link( old, new ) == 0 )
     {
-        if ( unlink( old ) == EOF )
+        if ( __libc_unlink( old ) == EOF )
         {
             return -1;
         }
