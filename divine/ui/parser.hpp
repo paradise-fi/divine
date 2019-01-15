@@ -126,11 +126,20 @@ struct CLI : Interface
 
         auto tracepoints = []( std::string s, auto good, auto bad )
         {
-            if ( s == "calls" )
-                return good( mc::AutoTrace::Calls );
+            mc::AutoTraceFlags flags = mc::AutoTrace::Nothing;
+
             if ( s == "none" )
                 return good( mc::AutoTrace::Nothing );
-            return bad( cmd::BadContent, s + " is not a valid tracepoint specification" );
+
+            for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
+            {
+                if ( auto v = mc::autotrace_from_string( x ) )
+                    flags |= v;
+                else
+                    return bad( cmd::BadContent, x.str() + " is not a valid tracepoint" );
+            }
+
+            return good( flags );
         };
 
         auto leakpoints = []( std::string s, auto good, auto bad )
