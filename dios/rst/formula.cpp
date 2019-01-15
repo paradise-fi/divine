@@ -24,8 +24,21 @@ __invisible __dios::Array< Formula * > __orphan_formulae( _VM_Frame * frame ) no
             auto old_flag = __vm_ctl_flag( 0, _DiOS_CF_IgnoreFault );
 
             if ( inst->opcode == OpCode::Alloca )  {
-                if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
-                    peek_object< Formula >( addr )->refcount_decrement();
+                __dios::Array< Formula * > seen;
+                auto size = __vm_obj_size( addr );
+                for (int off = 0; off < size; ++off ) {
+                    auto obj = static_cast< char * >( addr ) + off;
+                    if ( abstract::tainted( *( obj ) ) ) {
+                        auto formula = peek_object< Formula >( obj );
+                        seen.push_back( formula );
+                    }
+                }
+
+                std::sort( seen.begin(), seen.end() );
+                seen.erase( std::unique( seen.begin(), seen.end() ), seen.end() );
+
+                for ( auto * formula : seen ) {
+                    formula->refcount_decrement();
                 }
             }
 
