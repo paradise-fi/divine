@@ -1157,38 +1157,21 @@ void FreezeStores::process( StoreInst *store ) {
     auto meta = domain_metadata( *m, get_domain( store ) );
     auto dom = meta.domain();
 
-    auto val = store->getValueOperand();
-    auto ptr = store->getPointerOperand();
+    auto name = "__" + dom.name() + "_freeze";
+    if ( auto fn = m->getFunction( name ) ) {
+        IRBuilder<> irb( store );
 
-    auto ty = store->getValueOperand()->getType();
-    auto aty = meta.base_type();
+        auto val = store->getValueOperand();
+        auto ptr = store->getPointerOperand();
+        auto bcst = irb.CreateBitCast( ptr, Type::getInt8PtrTy( ctx ) );
+        auto abstract = has_placeholder_in_domain( val, dom )
+                      ? get_placeholder_in_domain( val, dom )
+                      : meta.default_value();
 
-    auto flag = Type::getInt1Ty( ctx );
-
-    auto freeze_fty = FunctionType::get( ty, { flag, ty, flag, aty, flag, ptr->getType() }, false );
-    auto name = "lart." + dom.name() + ".freeze." + llvm_name( ty );
-    auto freeze = get_or_insert_function( m, freeze_fty, name );
-
-    // used to trigger freeze in the case of rewriting frozen variable
-    auto tainted = m->getNamedValue( "__tainted_ptr" );
-
-    IRBuilder<> irb( store );
-
-    Value *abstract = nullptr;
-    if ( has_placeholder_in_domain( val, dom ) ) {
-        abstract = get_placeholder_in_domain( val, dom );
+        irb.CreateCall( fn, {abstract, bcst} );
     } else {
-        auto taint = irb.CreateLoad( Type::getInt8PtrTy( ctx ) , tainted );
-        abstract = irb.CreateBitCast( taint, aty );
+        throw std::runtime_error( "missing function in domain: " + name );
     }
-
-    Values args = { freeze, val, val, abstract, ptr };
-
-    auto fty = FunctionType::get( ty, types_of( args ), false );
-    auto tname = "__vm_test_taint." + freeze->getName().str();
-    auto tfn = get_or_insert_function( m, fty, tname );
-
-    irb.CreateCall( tfn, args );
 }
 
 // ---------------------------- Synthesize ---------------------------
