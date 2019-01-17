@@ -101,6 +101,16 @@ extern "C" {
     void __mstring_cleanup(void) {
         _UNREACHABLE_F( "Not implemented." );
     }
+
+    void __mstring_stash( __mstring * str ) {
+        if ( str )
+            str->refcount_increment();
+        __lart_stash( reinterpret_cast< uintptr_t >( str ) );
+    }
+
+    __mstring * __mstring_unstash() {
+        return reinterpret_cast< __mstring * >( __lart_unstash() );
+    }
 }
 
 void Quintuple::strcpy(const Quintuple * other) noexcept {
