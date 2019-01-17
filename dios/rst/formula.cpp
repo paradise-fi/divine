@@ -9,19 +9,19 @@ __invisible void formula_release( Formula * formula ) noexcept {
     formula->refcount_decrement();
 }
 
-__invisible void __formula_cleanup( Formula * formula ) noexcept {
-    auto clean_child = [] (auto * child) {
-        child->refcount_decrement();
-        if ( child->refcount() == 0 )
-            __formula_cleanup( child );
-    };
-
+__invisible void formula_cleanup( Formula * formula ) noexcept {
     if ( isUnary( formula->op() ) ) {
-        clean_child( formula->unary.child );
+        auto * child = formula->unary.child;
+        child->refcount_decrement();
+        formula_cleanup_check( child );
     }
     else if ( isBinary( formula->op() ) ) {
-        clean_child( formula->binary.left );
-        clean_child( formula->binary.right );
+        auto * left = formula->binary.left;
+        auto * right = formula->binary.right;
+        left->refcount_decrement();
+        formula_cleanup_check( left );
+        right->refcount_decrement();
+        formula_cleanup_check( right );
     }
 
     __dios_safe_free( formula );

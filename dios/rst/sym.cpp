@@ -26,7 +26,9 @@ template< typename T, typename ... Args >
 static Formula *__newf( Args &&...args ) {
     void *ptr = __vm_obj_make( sizeof( T ) );
     new ( ptr ) T( std::forward< Args >( args )... );
-    return static_cast< Formula* >( ptr );
+    auto * formula = static_cast< Formula* >( ptr );
+    formula->refcount_increment();
+    return formula;
 }
 
 struct State
@@ -88,7 +90,9 @@ Formula *__sym_lift( int bitwidth, int argc, ... ) {
 
     va_list args;
     va_start( args, argc );
-    return mark( __newf< Constant >( Type{ Type::Int, bitwidth }, va_arg( args, int64_t ) ) );
+    auto ptr = mark( __newf< Constant >( Type{ Type::Int, bitwidth }, va_arg( args, int64_t ) ) );
+    ptr->refcount_decrement(); // consider constant movable
+    return ptr;
 }
 
 Formula *__sym_lift_float( int bitwidth, int argc, ... ) {
@@ -102,7 +106,9 @@ Formula *__sym_lift_float( int bitwidth, int argc, ... ) {
 
     va_list args;
     va_start( args, argc );
-    return mark( __newf< Constant >( Type{ Type::Float, bitwidth }, va_arg( args, float ) ) );
+    auto ptr = mark( __newf< Constant >( Type{ Type::Float, bitwidth }, va_arg( args, float ) ) );
+    ptr->refcount_decrement(); // consider constant movable
+    return ptr;
 }
 
 #define BINARY( suff, op ) Formula *__sym_ ## suff( Formula *a, Formula *b ) \
@@ -209,13 +215,16 @@ void __sym_freeze( Formula *formula, void *addr ) {
     if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
         auto old = peek_object< Formula >( addr );
         old->refcount_decrement();
-        if ( old->refcount() == 0 ) {
-            __formula_cleanup( old );
+        if ( !old->refcount() ) {
+            __vm_poke( addr, _VM_ML_User, 0 );
+            formula_cleanup( old );
         }
     }
 
-    formula->refcount_increment();
-    poke_object< Formula >( formula, addr );
+    if ( formula ) {
+        formula->refcount_increment();
+        poke_object< Formula >( formula, addr );
+    }
 }
 
 Formula* __sym_thaw( void *addr, int bw ) {
@@ -241,31 +250,4 @@ Formula* __sym_thaw( void *addr, int bw ) {
 extern "C" void __sym_cleanup(void) {
     lart::sym::cleanup( __dios_this_frame()->parent );
 }
-
-extern "C" void __sym_stash( Formula * f ) {
-    auto stash = [] (auto *ptr) {
-        __lart_stash( reinterpret_cast< uintptr_t >( mark( ptr ) ) );
-    };
-
-    if ( f ) {
-        if ( isUnary( f ) ) {
-            // TODO unary constructor of extract
-            return stash( __newf< Unary >( f->op(), f->type(), f->unary.child ) );
-        } else if ( isBinary( f ) ) {
-            return stash( __newf< Binary >( f->op(), f->type(),
-                                            f->binary.left, f->binary.right ) );
-        } else if ( isConstant( f ) ) {
-            return stash( __newf< Constant >( f->type(), f->con.value ) );
-        } else if ( isVariable( f ) ) {
-            return stash( __newf< Variable >( f->type(), f->var.id ) );
-        } else {
-            _UNREACHABLE_F( "Unknown type of formula." );
-        }
-    } else {
-        __lart_stash( reinterpret_cast< uintptr_t >( nullptr ) );
-    }
-}
-
-extern "C" Formula * __sym_unstash() {
-    return reinterpret_cast< Formula * >( __lart_unstash() );
 }
