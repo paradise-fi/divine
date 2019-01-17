@@ -135,8 +135,8 @@ namespace abstract::mstring {
 
     struct Quintuple {
         using Buffer = Buffer< char >;
-        Quintuple( const char * buff, size_t len, size_t from )
-            : _buff( from, buff, len )
+        Quintuple( const char * buff, size_t len, size_t from, size_t refcount = 0 )
+            : _buff( from, buff, len ), _refcount( refcount )
         {
             for ( size_t i = 0; i < _buff.size(); ++i ) {
                 if ( buff[i] == '\0' )
@@ -164,11 +164,18 @@ namespace abstract::mstring {
         constexpr const char * data() const noexcept { return _buff.data(); }
 
         std::string to_string() const noexcept;
+
+        size_t refcount() const noexcept { return _refcount; }
+        void refcount_decrement() { --_refcount; }
+        void refcount_increment() { ++_refcount; }
+
     private:
         size_t _from;
 
         Buffer _buff;                        // IV - buffer
         __dios::Array< size_t > _terminators;   // T - zeros in buffer
+
+        size_t _refcount;
     };
 
 } // namespace abstract::mstring
