@@ -10,7 +10,7 @@ using abstract::mark;
 using abstract::__new;
 
 __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
-    return __new< Quintuple >( buff, buff_len, 0 );
+    return mark( __new< Quintuple >( buff, buff_len, 0, 1 ) );
 }
 
 extern "C" {
