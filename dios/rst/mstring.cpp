@@ -14,15 +14,11 @@ __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
 }
 
 extern "C" {
-    _MSTRING char * __mstring_val( const char * buff, unsigned buff_len ) {
+    _MSTRING char * __mstring_val( char * buff, unsigned buff_len ) {
         auto val = __mstring_lift( buff, buff_len );
 
-        // TODO get rid of by forwarding buff
-        char * _buff = reinterpret_cast< char * >( __vm_obj_make( buff_len ) );
-        std::memcpy( _buff, buff, buff_len );
-
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
-        return abstract::taint< char * >( _buff );
+        return abstract::taint< char * >( buff );
     }
 
     bool __mstring_store( char val, __mstring * str, uint64_t idx) {
