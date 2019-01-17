@@ -279,11 +279,6 @@ struct LifterBuilder {
         return create_operation( call, name, std::move( args ) );
     }
 
-    Value* process_freeze( CallInst *call, Values && args ) {
-        auto name = "__" + domain.name() + "_freeze";
-        return create_operation( call, name, std::move( args ) );
-    }
-
     Value* process_assume( CallInst *call, Values && args ) {
         auto name = "__" + domain.name() + "_assume";
         return create_operation( call, name, { args[ 1 ], args[ 1 ], args[ 2 ] } );
@@ -328,8 +323,6 @@ struct LifterBuilder {
 
         if ( is_thaw( call ) )
             return process_thaw( call, std::move( args ) );
-        if ( is_freeze( call ) )
-            return process_freeze( call, std::move( args ) );
         if ( is_cast( call ) )
             return process_cast( call, std::move( args ) );
         if ( is_assume( call ) )
@@ -498,28 +491,6 @@ struct ThawLifter : BaseLifter {
         } else {
             UNREACHABLE( "Unsupported type for thawing." );
         }
-    }
-};
-
-struct FreezeLifter : BaseLifter {
-    using BaseLifter::BaseLifter;
-
-    void syntetize() final {
-        ASSERT( function()->empty() );
-        IRBuilder<> irb( make_bb( function(), "entry" ) );
-
-        auto begin = function()->arg_begin();
-        auto value = std::next( begin );
-        auto formula = std::next( begin, 3 );
-        auto addr = std::next( begin, 5 );
-
-        auto bcst = irb.CreateBitCast( &*addr, Type::getInt8PtrTy( addr->getContext() ) );
-
-        Values args = { &*formula, &*bcst };
-        auto freeze = LifterBuilder( domain() ).process( taint, std::move( args ) );
-        irb.Insert( cast< Instruction >( freeze ) );
-
-        irb.CreateRet( value );
     }
 };
 
@@ -1188,8 +1159,6 @@ void Synthesize::process( CallInst *taint ) {
 
     if ( is_taint_of_type( fn, ".thaw" ) ) {
         ThawLifter( taint ).syntetize();
-    } else if ( is_taint_of_type( fn, ".freeze" ) ) {
-        FreezeLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".to_i1" ) ) {
         ToBoolLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".assume" ) ) {
