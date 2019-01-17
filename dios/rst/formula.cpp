@@ -3,7 +3,7 @@
 
 #if __cplusplus >= 201103L
 
-namespace lart::sym {
+namespace abstract::sym {
 
 __invisible void formula_release( Formula * formula ) noexcept {
     formula->refcount_decrement();
@@ -33,6 +33,6 @@ __invisible void formula_cleanup_check( Formula * formula ) noexcept {
     formula_cleanup( formula );
 }
 
-} // namespace lart::sym
+} // namespace abstract::sym
 
 #endif

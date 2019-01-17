@@ -17,6 +17,9 @@ using abstract::taint;
 using abstract::peek_object;
 using abstract::poke_object;
 
+using abstract::sym::formula_cleanup;
+using abstract::sym::formula_cleanup_check;
+
 extern "C" uint64_t __rst_taint_i64()
 {
     return __tainted;
@@ -248,6 +251,6 @@ Formula* __sym_thaw( void *addr, int bw ) {
 }
 
 extern "C" void __sym_cleanup(void) {
-    lart::sym::cleanup( __dios_this_frame()->parent );
+    abstract::sym::cleanup( __dios_this_frame()->parent );
 }
 }

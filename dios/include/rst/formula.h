@@ -4,7 +4,8 @@
 
 #if __cplusplus >= 201103L
 
-namespace lart::sym {
+namespace abstract::sym {
+    using Formula = lart::sym::Formula;
 
     void formula_release( Formula * formula ) noexcept;
 
@@ -18,8 +19,8 @@ namespace lart::sym {
 
 namespace abstract {
     using Object = lart::sym::Formula;
-    using Release = lart::sym::Release;
-    using Check = lart::sym::Check;
+    using Release = abstract::sym::Release;
+    using Check = abstract::sym::Check;
 
     // explicitly instantiate because of __invisible attribute
     template __invisible void cleanup< Object, Release, Check >(
@@ -27,7 +28,7 @@ namespace abstract {
     ) noexcept;
 } // namespace abstract
 
-namespace lart::sym {
+namespace abstract::sym {
     __invisible static inline void cleanup( _VM_Frame * frame ) noexcept {
         abstract::cleanup< Formula, Release, Check >( frame, formula_release, formula_cleanup_check );
     }
