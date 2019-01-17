@@ -239,8 +239,7 @@ Formula* __sym_thaw( void *addr, int bw ) {
 }
 
 extern "C" void __sym_cleanup(void) {
-    auto *frame = __dios_this_frame()->parent;
-    __cleanup_orphan_formulae( frame );
+    lart::sym::cleanup( __dios_this_frame()->parent );
 }
 
 extern "C" void __sym_stash( Formula * f ) {
