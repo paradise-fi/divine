@@ -1140,20 +1140,20 @@ void FreezeStores::run( Module &m ) {
         .filter( query::llvmdyncast< StoreInst > )
         .filter( query::notnull )
         .filter( [] ( auto store ) { return store->getMetadata( "lart.domains" ); } )
-        .filter( [] ( auto store ) {
-                // TODO is base type
-                return store->getOperand( 0 )->getType()->isIntegerTy()
-                    || store->getOperand( 0 )->getType()->isFloatingPointTy();
+        .filter( [&] ( auto store ) {
+            return  is_base_type_in_domain( &m, store->getOperand( 0 ), get_domain( store ) );
         } )
-        .filter( [] ( auto store ) { return !isa< Constant >( store->getOperand( 0 ) ); } )
         .freeze();
 
-    for ( auto s : stores )
+    for ( auto s : stores ) {
         process( cast< StoreInst >( s ) );
+    }
 }
 
 void FreezeStores::process( StoreInst *store ) {
     auto m = get_module( store );
+    auto & ctx = m->getContext();
+
     auto meta = domain_metadata( *m, get_domain( store ) );
     auto dom = meta.domain();
 
@@ -1163,14 +1163,24 @@ void FreezeStores::process( StoreInst *store ) {
     auto ty = store->getValueOperand()->getType();
     auto aty = meta.base_type();
 
-    auto flag = Type::getInt1Ty( store->getContext() );
+    auto flag = Type::getInt1Ty( ctx );
+
     auto freeze_fty = FunctionType::get( ty, { flag, ty, flag, aty, flag, ptr->getType() }, false );
     auto name = "lart." + dom.name() + ".freeze." + llvm_name( ty );
     auto freeze = get_or_insert_function( m, freeze_fty, name );
 
-    Value *abstract = has_placeholder_in_domain( val, dom )
-                    ? get_placeholder_in_domain( val, dom )
-                    : meta.default_value();
+    // used to trigger freeze in the case of rewriting frozen variable
+    auto tainted = m->getNamedValue( "__tainted_ptr" );
+
+    IRBuilder<> irb( store );
+
+    Value *abstract = nullptr;
+    if ( has_placeholder_in_domain( val, dom ) ) {
+        abstract = get_placeholder_in_domain( val, dom );
+    } else {
+        auto taint = irb.CreateLoad( Type::getInt8PtrTy( ctx ) , tainted );
+        abstract = irb.CreateBitCast( taint, aty );
+    }
 
     Values args = { freeze, val, val, abstract, ptr };
 
@@ -1178,7 +1188,6 @@ void FreezeStores::process( StoreInst *store ) {
     auto tname = "__vm_test_taint." + freeze->getName().str();
     auto tfn = get_or_insert_function( m, fty, tname );
 
-    IRBuilder<> irb( store );
     irb.CreateCall( tfn, args );
 }
 
