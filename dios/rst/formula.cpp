@@ -28,9 +28,7 @@ __invisible void formula_cleanup( Formula * formula ) noexcept {
 }
 
 __invisible void formula_cleanup_check( Formula * formula ) noexcept {
-    if ( !formula || formula->refcount() )
-        return;
-    formula_cleanup( formula );
+    cleanup_check( formula, formula_cleanup );
 }
 
 } // namespace abstract::sym
