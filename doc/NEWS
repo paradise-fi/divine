@@ -1,5 +1,14 @@
 # DIVINE 4.1
 
+- In 4.1.5 (2018-05-01):
+    - Add `__vm_peek` and `__vm_poke` hypercalls.
+    - Robustness improvements and bugfixes in pointer and heap-related code.
+    - Fix instrumentation of control-flow loop detection.
+    - Testsuite improvements.
+- In 4.1.4 (2018-04-15):
+    - Improved coverage of pthread and C11 thread APIs.
+    - Do not rely on the OS to mark certain memory objects as shared.
+    - The `divcc` compiler now also works with cmake-based projects.
 - In 4.1.3 (2018-04-01):
     - Produce counterexamples for violations of liveness properties.
     - A new, more flexible implementation of shadow memory.
