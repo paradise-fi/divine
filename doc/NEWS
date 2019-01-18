@@ -1,5 +1,24 @@
 # DIVINE 4.1
 
+- In 4.1.21 (2019-01-01):
+    - `__vm_clone` now takes a second argument (objects blocked from clone).
+    - Fix a number of memory leaks in DiOS.
+    - Fix lowering of `llvm.fabs.*` intrinsics.
+    - A number of `libc` compatibility improvements.
+- In 4.1.20 (2018-12-15):
+    - The DiOS kernel and `libc` now builds with -fno-exceptions.
+    - Reduce the size and improve linking granularity of DiOS.
+    - Link the DiOS kernel at load time, not at bitcode link time.
+    - The passthrough mode in DiOS has been disabled until further notice.
+    - Clean up and unify memory management in the DiOS kernel.
+    - Import `lld` and use it as the linker in `divcc`.
+    - Improve `--leakcheck return` by doing the check after, not before, `ret`.
+    - Improve handling of memory instructions in LART abstraction passes.
+    - Add support for the `-l` flag to `divcc`.
+    - Add support for `divcc -pthread`.
+    - Add support for (discrete) clock simulation to DiOS.
+    - A number of improvements to the M-String abstract domain.
+    - Improve ABI and API compatibility of DiOS with the host system.
 - In 4.1.5 (2018-05-01):
     - Add `__vm_peek` and `__vm_poke` hypercalls.
     - Robustness improvements and bugfixes in pointer and heap-related code.
