@@ -11,6 +11,9 @@
 #include <util/array.hpp>
 
 namespace abstract::mstring {
+
+    struct Quintuple;
+
     /*
      *  |      section      |
      *  |  segment  |
@@ -57,6 +60,8 @@ namespace abstract::mstring {
         constexpr bool empty() const noexcept { return _segments.empty(); }
 
         constexpr size_t size() const noexcept { return _to - _from; }
+        size_t from() const noexcept { return _from; }
+        size_t to() const noexcept { return _to; }
 
         const Segments& segments() const noexcept { return _segments; }
 
@@ -100,6 +105,7 @@ namespace abstract::mstring {
         }
 
         const Sections< Buffer >& sections() const noexcept { return _sections; }
+
     private:
         Sections< Buffer > _sections;
     };
@@ -113,6 +119,10 @@ namespace abstract::mstring {
             _buff = reinterpret_cast< char * >( __vm_obj_make( _len ) );
             std::memcpy( _buff, buff, _len );
         }
+
+        Buffer( size_t from, const Buffer & other )
+            : Buffer( from, other.data(), other.size() )
+        {}
 
         ~Buffer() { __vm_obj_free( _buff ); }
 
@@ -135,15 +145,17 @@ namespace abstract::mstring {
 
     struct Quintuple {
         using Buffer = Buffer< char >;
+
         Quintuple( const char * buff, size_t len, size_t from, size_t refcount = 0 )
-            : _buff( from, buff, len ), _refcount( refcount )
+            : _buff( from, buff, len ), _from( from ), _refcount( refcount )
         {
-            for ( size_t i = 0; i < _buff.size(); ++i ) {
-                if ( buff[i] == '\0' )
-                    _terminators.push_back(i);
-            }
-            assert(!_terminators.empty());
-            assert(_terminators.front() <= _buff.size());
+            init();
+        }
+
+        Quintuple( Quintuple * quituple, size_t from )
+            : _buff( from, quituple->_buff ), _from( from )
+        {
+            init();
         }
 
         char * rho() const;
@@ -156,6 +168,8 @@ namespace abstract::mstring {
 
         void strcpy( const Quintuple * other ) noexcept;
         void strcat( const Quintuple * other ) noexcept;
+
+        Quintuple * strchr( char ch ) const noexcept;
 
         void set( size_t idx, char val ) noexcept;
         void safe_set( size_t idx, char val ) noexcept;
@@ -170,6 +184,16 @@ namespace abstract::mstring {
         void refcount_increment() { ++_refcount; }
 
     private:
+
+        void init() noexcept {
+            for ( size_t i = _from; i < _buff.size(); ++i ) {
+                if ( _buff[i] == '\0' )
+                    _terminators.push_back(i);
+            }
+            assert(!_terminators.empty());
+            assert(_terminators.front() <= _buff.size());
+        }
+
         size_t _from;
 
         Buffer _buff;                        // IV - buffer

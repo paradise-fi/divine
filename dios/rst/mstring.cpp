@@ -66,8 +66,8 @@ extern "C" {
         _UNREACHABLE_F( "Not implemented." );
     }
 
-    __mstring * __mstring_strchr( const __mstring * /* str */, int /* ch */ ) {
-        _UNREACHABLE_F( "Not implemented." );
+    __mstring * __mstring_strchr( const __mstring * str, int ch ) {
+        return str->strchr( ch );
     }
 
     __mstring * __mstring_strrchr( const __mstring * /* str */, int /* ch */ ) {
@@ -111,7 +111,7 @@ void Quintuple::strcpy(const Quintuple * other) noexcept {
             assert( false && "copying mstring to smaller mstring" );
         }
 
-        for ( size_t i = 0; i <= terminator; ++i ) {
+        for ( size_t i = _from; i <= terminator; ++i ) {
             safe_set( i, other->_buff[i] );
         }
     }
@@ -127,6 +127,28 @@ void Quintuple::strcat( const Quintuple * other ) noexcept {
 
     for ( size_t i = begin; i < end; ++i ) {
         safe_set( i, other->_buff[i] );
+    }
+}
+
+Quintuple * Quintuple::strchr( char ch ) const noexcept {
+    auto split = this->split();
+    auto interest = split.sections().front();
+
+    if ( !interest.empty() ) {
+        const auto &begin = interest.segments().begin();
+        const auto &end = interest.segments().end();
+
+        auto search = std::find_if( begin, end, [ch] (const auto &seg) {
+            return seg.value() == ch;
+        });
+
+        if ( search != end ) {
+            return mark( __new< Quintuple >( const_cast< Quintuple * >( this ), search->from() ) );
+        } else {
+            return nullptr;
+        }
+    } else {
+        _UNREACHABLE_F("Error: there's no string of interest!");
     }
 }
 
@@ -209,7 +231,7 @@ void Quintuple::safe_set( size_t idx, char val ) noexcept {
 
 std::string Quintuple::to_string() const noexcept {
     std::string res;
-    for ( size_t i = 0; i < _buff.size(); ++i ) {
+    for ( size_t i = _from; i < _buff.size(); ++i ) {
         char c = _buff[i];
         res += ( c == '\0' ) ? '0' : c;
     }
