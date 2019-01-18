@@ -8,13 +8,15 @@
 #include <string.h>
 
 int main() {
-    char * expected = __mstring_val( "aaabbb", 7 );
+    char buffe[7] = "aaabbb";
+    char * expected = __mstring_val( buffe, 7 );
 
-    char arr[7] = "aaa\0";
-    char * a = __mstring_val( arr, 7 );
-    char * b = __mstring_val( "bbb\0", 4 );
+    char buffa[7] = "aaa";
+    char * a = __mstring_val( buffa, 7 );
+    char buffb[7] = "bbb";
+    char * b = __mstring_val( buffb, 4 );
 
     strcat(a, b);
 
-    assert( strcmp(a, expected) == 0 );
+    assert( strcmp( a, expected ) == 0 );
 }

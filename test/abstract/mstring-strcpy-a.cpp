@@ -8,8 +8,10 @@
 #include <string.h>
 
 int main() {
-    char * dest = __mstring_val( "aaaaaa\0", 7 );
-    char * src = __mstring_val( "bbb\0", 4 );
+    char stra[7] = "aaaaaa";
+    char * dest = __mstring_val( stra, 7 );
+    char strb[4] = "bbb";
+    char * src = __mstring_val( strb, 4 );
 
     strcpy( dest, src );
     assert( strlen( dest ) == 3 );

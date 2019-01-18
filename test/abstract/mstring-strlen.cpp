@@ -8,7 +8,8 @@
 #include <string.h>
 
 int main() {
-    const char * str = __mstring_val( "string", 7 );
+    char buff[7] = "string";
+    const char * str = __mstring_val( buff, 7 );
     int len = strlen( str );
     assert( len == 6 );
 }

@@ -8,7 +8,9 @@
 #include <string.h>
 
 int main() {
-    const char * a = __mstring_val( "abc\0abc", 7 );
-    const char * b = __mstring_val( "abc\0cba", 7 );
+    char stra[8] = "abc\0abc";
+    const char * a = __mstring_val( stra, 8 );
+    char strb[8] = "abc\0cba";
+    const char * b = __mstring_val( strb, 8 );
     assert( strcmp( a, b ) == 0 );
 }

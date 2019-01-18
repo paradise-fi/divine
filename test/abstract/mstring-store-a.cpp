@@ -8,7 +8,8 @@
 #include <string.h>
 
 int main() {
-    char * a = __mstring_val( "aabb\0cc\0", 8 );
+    char str[8] = "aabb\0cc";
+    char * a = __mstring_val( str, 8 );
     a[ 4 ] = 'b';
     assert( strlen( a ) == 7 );
 }
