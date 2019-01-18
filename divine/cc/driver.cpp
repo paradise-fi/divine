@@ -189,8 +189,18 @@ brick::llvm::ArchiveReader Driver::getLib( std::string lib, std::vector< std::st
     return brick::llvm::ArchiveReader( std::move( buf ), context() );
 }
 
-void Driver::linkLib( std::string lib, std::vector< std::string > searchPaths ) {
+void Driver::linkLib( std::string lib, std::vector< std::string > searchPaths )
+{
     auto archive = getLib( lib, std::move( searchPaths ) );
+    auto modules = archive.modules();
+    for ( auto it = modules.begin(); it != modules.end(); ++it )
+    {
+        if ( it.getName() == "_link_essentials.ll"s )
+        {
+            linker->link_decls( it.take() );
+            break;
+        }
+    }
     linker->linkArchive( archive );
 }
 
