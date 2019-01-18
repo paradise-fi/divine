@@ -99,7 +99,7 @@ extern "C" {
     }
 
     void __mstring_cleanup(void) {
-        _UNREACHABLE_F( "Not implemented." );
+        abstract::mstring::cleanup( __dios_this_frame()->parent );
     }
 
     void __mstring_stash( __mstring * str ) {
@@ -246,6 +246,19 @@ std::string Quintuple::to_string() const noexcept {
         res += ( c == '\0' ) ? '0' : c;
     }
     return res;
+}
+
+void mstring_release( Quintuple * quintuple ) noexcept {
+    quintuple->refcount_decrement();
+}
+
+void mstring_cleanup( Quintuple * quintuple ) noexcept {
+    quintuple->~Quintuple();
+    __dios_safe_free( quintuple );
+}
+
+void mstring_cleanup_check( Quintuple * quintuple ) noexcept {
+    cleanup_check( quintuple, mstring_cleanup );
 }
 
 } // namespace abstract::mstring

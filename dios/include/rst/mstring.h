@@ -202,6 +202,13 @@ namespace abstract::mstring {
         size_t _refcount;
     };
 
+    void mstring_release( Quintuple * quintuple ) noexcept;
+
+    void mstring_cleanup( Quintuple * quintuple ) noexcept;
+    void mstring_cleanup_check( Quintuple * quintuple ) noexcept;
+
+    using Release = decltype( mstring_release );
+    using Check = decltype( mstring_cleanup_check );
 } // namespace abstract::mstring
 
 typedef abstract::mstring::Quintuple __mstring;
@@ -217,4 +224,21 @@ typedef abstract::mstring::Quintuple __mstring;
 extern "C" {
     __mstring * __mstring_undef_value();
 }
+
+namespace abstract {
+    using Object = abstract::mstring::Quintuple;
+    using Release = abstract::mstring::Release;
+    using Check = abstract::mstring::Check;
+
+    // explicitly instantiate because of __invisible attribute
+    template __invisible void cleanup< Object, Release, Check >(
+        _VM_Frame * frame, Release release, Check check
+    ) noexcept;
+} // namespace abstract
+
+namespace abstract::mstring {
+    __invisible static inline void cleanup( _VM_Frame * frame ) noexcept {
+        abstract::cleanup< Quintuple, Release, Check >( frame, mstring_release, mstring_cleanup_check );
+    }
+} // namespace abstract::mstring
 
