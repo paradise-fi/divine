@@ -128,14 +128,14 @@ void Quintuple::strcpy(const Quintuple * other) noexcept {
 
 void Quintuple::strcat( const Quintuple * other ) noexcept {
     size_t begin = _terminators.front();
-    size_t end = other->_terminators.front() + 1;
+    size_t dist = other->_terminators.front() + 1;
 
-    if ( _buff.size() < begin + end ) {
+    if ( _buff.size() < begin + dist ) {
         assert( false && "concating mstring into smaller mstring" );
     }
 
-    for ( size_t i = begin; i < end; ++i ) {
-        safe_set( i, other->_buff[i] );
+    for ( size_t i = 0; i < dist; ++i ) {
+        safe_set( begin + i, other->_buff[i] );
     }
 }
 
