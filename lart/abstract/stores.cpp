@@ -44,8 +44,11 @@ void AddStores::run( Module &m ) {
         // TODO propaget geps through phis + propaget to functions
     }
 
-    for ( const auto &store : transformable< StoreInst >( m ) )
-        process( store );
+    for ( const auto &store : transformable< StoreInst >( m ) ) {
+        if ( get_domain( store->getPointerOperand() ) == get_domain( store ) ) {
+            process( store );
+        }
+    }
 }
 
 Function * abstract_store( Module * m, StoreInst * store ) {
