@@ -110,6 +110,13 @@ extern "C" {
     __mstring * __mstring_unstash() {
         return reinterpret_cast< __mstring * >( __lart_unstash() );
     }
+    void __mstring_freeze( __mstring * /*str*/, void * /*addr*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_thaw( void * /* addr */ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
 }
 
 void Quintuple::strcpy(const Quintuple * other) noexcept {

@@ -38,6 +38,9 @@
     RET_PROT( void, freeze, DOMAIN_TYPE val, void * addr )
 
 #define THAW_PROT() \
+    PROT( thaw, void * addr )
+
+#define THAW_PROT_BV() \
     PROT( thaw, void * addr, int bw )
 
 #define CLEANUP_PROT() \
@@ -74,7 +77,6 @@ RET_PROT( __tristate , bool_to_tristate, DOMAIN_TYPE )
 ASSUME_PROT()
 
 FREEZE_PROT()
-THAW_PROT()
 
 CLEANUP_PROT()
 

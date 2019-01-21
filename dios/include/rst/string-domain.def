@@ -11,6 +11,9 @@ OP( DOMAIN_TYPE, lift, const char *, unsigned );
 
 OP( bool, store, char, DOMAIN_TYPE, uint64_t );
 
+FREEZE_PROT()
+THAW_PROT()
+
 /* String manipulation */
 OP( DOMAIN_TYPE, strcpy , DOMAIN_TYPE dest, const DOMAIN_TYPE src );
 OP( DOMAIN_TYPE, strncpy, DOMAIN_TYPE dest, const DOMAIN_TYPE src, size_t count );

@@ -45,6 +45,8 @@ ICMP_PROT( sge )
 ICMP_PROT( slt )
 ICMP_PROT( sle )
 
+THAW_PROT_BV()
+
 }
 
 #undef ICMP_PROT
