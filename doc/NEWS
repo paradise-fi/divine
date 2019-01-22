@@ -36,6 +36,18 @@
     - Substantially improve the robustness of linking in `divcc`.
     - Simplify abstract domain descriptions employed by LART.
     - Refactor the abstraction passes in LART.
+- In 4.1.6 (2018-05-15):
+    - Track pointers through bitshift operations.
+    - Improve the efficiency of pointer encoding.
+    - Import STP and CryptoMiniSat into the source tree.
+    - Add support for STP as the SMT backend and make it the default.
+    - Robustness improvements in the VM.
+    - Substantial improvements in `divbench` (and some in `divcheck`).
+    - Improve compatibility and usability of `divcc`.
+    - Rewrite the LART abstraction pass to leverage dynamic tainting.
+    - Make implementation of new abstract domains easier.
+    - Cover a number of missing cases in abstract value propagation.
+    - Add a very simple SMT query cache.
 - In 4.1.5 (2018-05-01):
     - Add `__vm_peek` and `__vm_poke` hypercalls.
     - Robustness improvements and bugfixes in pointer and heap-related code.
