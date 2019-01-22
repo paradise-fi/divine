@@ -63,5 +63,14 @@ void StoresToContent::process( StoreInst * store ) {
     make_duals( store, ph );
 }
 
+void LoadsFromContent::run( Module & ) {
+
+}
+
+void LoadsFromContent::process( LoadInst * /*load*/ ) {
+
+}
+
+
 } // namespace abstract
 } // namespace lart

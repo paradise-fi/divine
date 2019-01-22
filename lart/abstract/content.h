@@ -6,6 +6,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/pass.h>
+
 #include <lart/abstract/util.h>
 
 namespace lart {
@@ -18,6 +20,11 @@ struct IndicesAnalysis {
 struct StoresToContent {
     void run( llvm::Module& );
     void process( llvm::StoreInst* );
+};
+
+struct LoadsFromContent {
+    void run( llvm::Module& );
+    void process( llvm::LoadInst* );
 };
 
 } // namespace abstract
