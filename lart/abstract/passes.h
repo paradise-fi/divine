@@ -23,7 +23,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/duplicator.h>
 #include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
-#include <lart/abstract/stores.h>
+#include <lart/abstract/content.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/substitution.h>

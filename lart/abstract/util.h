@@ -120,5 +120,16 @@ inline llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Functi
         return nullptr;
 }
 
+template< typename T >
+std::vector< T * > transformable( llvm::Module & m ) {
+    return query::query( abstract_metadata( m ) )
+        .map( [] ( auto mdv ) { return mdv.value(); } )
+        .map( query::llvmdyncast< T > )
+        .filter( query::notnull )
+        .filter( is_transformable )
+        .freeze();
+}
+
+
 } // namespace abstract
 } // namespace lart

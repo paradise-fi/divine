@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2018 Henrich Lauko <xlauko@mail.muni.cz>
-#include <lart/abstract/stores.h>
+#include <lart/abstract/content.h>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Constants.h>
@@ -10,40 +10,27 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/util.h>
 
-using namespace llvm;
+using llvm::Module;
+using llvm::Function;
+using llvm::Type;
+using llvm::LoadInst;
+using llvm::StoreInst;
+using llvm::GetElementPtrInst;
+using llvm::IRBuilder;
 
 namespace lart {
 namespace abstract {
 
-Value * offset( Value * ptr ) {
-    // TODO get offset from index placeholder
-
-    if ( auto gep = dyn_cast< GetElementPtrInst >( ptr ) ) {
-        assert( gep->getNumIndices() == 1 );
-        return gep->idx_begin()->get();
-    }
-
-    UNREACHABLE( "Unsupported offset for abstract store." );
-}
-
-template< typename T >
-std::vector< T * > transformable( Module & m ) {
-    return query::query( abstract_metadata( m ) )
-        .map( [] ( auto mdv ) { return mdv.value(); } )
-        .map( query::llvmdyncast< T > )
-        .filter( query::notnull )
-        .filter( is_transformable )
-        .freeze();
-}
-
-void StoresToContent::run( Module &m ) {
+void IndicesAnalysis::run( Module & m ) {
     for ( const auto &gep : transformable< GetElementPtrInst >( m ) ) {
         assert( gep->getNumIndices() == 1 );
         set_addr_offset( gep, gep->idx_begin()->get() );
         set_addr_origin( gep, gep->getPointerOperand() );
-        // TODO propaget geps through phis + propaget to functions
+        // TODO propagate geps through phis + propagate to functions
     }
+}
 
+void StoresToContent::run( Module &m ) {
     for ( const auto &store : transformable< StoreInst >( m ) ) {
         if ( get_domain( store->getPointerOperand() ) == get_domain( store ) ) {
             process( store );
