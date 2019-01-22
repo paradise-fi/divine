@@ -74,6 +74,7 @@ void StoresToContent::process( StoreInst * store ) {
 
     add_abstract_metadata( ph, get_domain( store ) );
     make_duals( store, ph );
+    ph->moveAfter( store );
 }
 
 void LoadsFromContent::run( Module & m ) {
@@ -96,6 +97,7 @@ void LoadsFromContent::process( LoadInst * load ) {
     make_duals( load, ph );
 
     load->replaceAllUsesWith( ph );
+    ph->moveAfter( load );
 }
 
 
