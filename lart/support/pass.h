@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
 //             (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
@@ -55,6 +56,25 @@ struct PassVector {
   private:
     std::vector< std::unique_ptr< Pass > > _passes;
 };
+
+template< typename... Passes >
+struct ChainedPass {
+    using passes_t = std::tuple< Passes... >;
+
+    ChainedPass() : passes( std::tuple< Passes... >() ) {}
+    ChainedPass( Passes... passes ) : passes( std::forward_as_tuple( passes... ) ) {}
+
+    void run( llvm::Module & m ) {
+        apply( [&]( auto... p ) { ( p.run( m ),... ); }, passes );
+    }
+
+    passes_t passes;
+};
+
+template < typename... Passes >
+auto make_chained_pass( Passes... passes ) {
+    return ChainedPass< Passes... >( passes... );
+}
 
 }
 

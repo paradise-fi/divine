@@ -8,6 +8,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Casting.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
@@ -33,23 +34,6 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-    template< typename Passes >
-    struct PassWrapperImpl {
-        PassWrapperImpl( Passes&& passes ) : passes( std::move( passes ) ) {}
-
-        void run( llvm::Module & m ) {
-            apply( [&]( auto... p ) { ( p.run( m ),... ); }, passes );
-        }
-
-        Passes passes;
-    };
-
-    template < typename... Passes >
-    auto make_pass_wrapper( Passes... passes ) {
-        using passes_t = std::tuple< Passes... >;
-        return PassWrapperImpl< passes_t >( std::forward_as_tuple( passes... ) );
-    }
-
     struct PassWrapper {
         static PassMeta meta() {
             return passMeta< PassWrapper >(
@@ -57,7 +41,7 @@ namespace abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_pass_wrapper( CreateAbstractMetadata()
+            auto passes = make_chained_pass( CreateAbstractMetadata()
                                            , VPA()
                                            , Decast()
                                            , VPA() // run once more to propagate through decasted functions
