@@ -11,6 +11,10 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+struct IndicesAnalysis {
+    void run( llvm::Module& );
+};
+
 struct StoresToContent {
     void run( llvm::Module& );
     void process( llvm::StoreInst* );
