@@ -21,6 +21,31 @@ using llvm::IRBuilder;
 namespace lart {
 namespace abstract {
 
+namespace {
+
+Function * abstract_store( Module * m, StoreInst * store ) {
+    // return some arbitrary type - needed for taint call
+    auto rty = Type::getInt1Ty( store->getContext() );
+
+    auto val = store->getValueOperand();
+    auto ptr = store->getPointerOperand();
+
+    auto fty = llvm::FunctionType::get( rty, { val->getType(), ptr->getType() }, false );
+    auto name = "lart.store.placeholder." + llvm_name( val->getType() );
+    return lart::util::get_or_insert_function( m, fty, name );
+}
+
+Function * abstract_load( Module * m, LoadInst * load ) {
+    auto rty = load->getType();
+    auto ptr = load->getPointerOperand();
+
+    auto fty = llvm::FunctionType::get( rty, { ptr->getType() }, false );
+    auto name = "lart.load.placeholder." + llvm_name( rty );
+    return lart::util::get_or_insert_function( m, fty, name );
+}
+
+} // anonymous namespace
+
 void IndicesAnalysis::run( Module & m ) {
     for ( const auto &gep : transformable< GetElementPtrInst >( m ) ) {
         assert( gep->getNumIndices() == 1 );
@@ -38,23 +63,11 @@ void StoresToContent::run( Module &m ) {
     }
 }
 
-Function * abstract_store( Module * m, StoreInst * store ) {
-    // return some arbitrary type - needed for taint call
-    auto rty = Type::getInt1Ty( store->getContext() );
-
-    auto val = store->getValueOperand();
-    auto ptr = store->getPointerOperand();
-
-    auto fty = llvm::FunctionType::get( rty, { val->getType(), ptr->getType() }, false );
-    auto name = "lart.store.placeholder." + llvm_name( val->getType() );
-    return lart::util::get_or_insert_function( m, fty, name );
-}
-
 void StoresToContent::process( StoreInst * store ) {
     auto val = store->getValueOperand();
     auto ptr = store->getPointerOperand();
 
-    auto fn = abstract_store( util::get_module( store ), store );
+    auto fn = abstract_store( store->getModule(), store );
 
     IRBuilder<> irb( store );
     auto ph = irb.CreateCall( fn, { val, ptr } );
@@ -63,12 +76,26 @@ void StoresToContent::process( StoreInst * store ) {
     make_duals( store, ph );
 }
 
-void LoadsFromContent::run( Module & ) {
-
+void LoadsFromContent::run( Module & m ) {
+    for ( const auto &load : transformable< LoadInst >( m ) ) {
+        if ( get_domain( load->getPointerOperand() ) == get_domain( load ) ) {
+            process( load );
+        }
+    }
 }
 
-void LoadsFromContent::process( LoadInst * /*load*/ ) {
+void LoadsFromContent::process( LoadInst * load ) {
+    auto ptr = load->getPointerOperand();
 
+    auto fn = abstract_load( load->getModule(), load );
+
+    IRBuilder<> irb( load );
+    auto ph = irb.CreateCall( fn, { ptr } );
+
+    add_abstract_metadata( ph, get_domain( load ) );
+    make_duals( load, ph );
+
+    load->replaceAllUsesWith( ph );
 }
 
 
