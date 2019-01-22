@@ -6,6 +6,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/pass.h>
 #include <lart/abstract/domain.h>
 
 #include <map>
@@ -35,6 +36,9 @@ struct Synthesize {
     void run( llvm::Module& );
     void process( llvm::CallInst* );
 };
+
+using SubstitutionPass =
+    ChainedPass< InDomainDuplicate, Tainting, FreezeStores, Synthesize >;
 
 } // namespace abstract
 } // namespace lart

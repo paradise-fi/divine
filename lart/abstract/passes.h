@@ -50,10 +50,7 @@ namespace abstract {
                                            , ContentPass()
                                            , ExpandBranching()
                                            , AddAssumes()
-                                           , InDomainDuplicate()
-                                           , FreezeStores()
-                                           , Tainting()
-                                           , Synthesize()
+                                           , SubstitutionPass()
                                            , CallInterrupt()
                                            // , Cleanup()
                                            );
@@ -144,12 +141,7 @@ struct TestBase
 
     auto test_substitution( const File & src )
     {
-        return test_assume( src
-                          , InDomainDuplicate()
-                          , Tainting()
-                          , FreezeStores()
-                          , Synthesize()
-                          , CallInterrupt() );
+        return test_assume( src, SubstitutionPass(), CallInterrupt() );
     }
 
     bool isVmInterupt( llvm::Function * fn )
