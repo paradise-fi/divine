@@ -27,5 +27,7 @@ struct LoadsFromContent {
     void process( llvm::LoadInst* );
 };
 
+using ContentPass = ChainedPass< IndicesAnalysis, StoresToContent, LoadsFromContent >;
+
 } // namespace abstract
 } // namespace lart
