@@ -11,7 +11,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-struct AddStores {
+struct StoresToContent {
     void run( llvm::Module& );
     void process( llvm::StoreInst* );
 };

@@ -63,7 +63,7 @@ namespace abstract {
                                            , VPA() // run once more to propagate through decasted functions
                                            , Duplicator()
                                            , Stash()
-                                           , AddStores()
+                                           , StoresToContent()
                                            , ExpandBranching()
                                            , AddAssumes()
                                            , InDomainDuplicate()

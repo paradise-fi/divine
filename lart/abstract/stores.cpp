@@ -36,7 +36,7 @@ std::vector< T * > transformable( Module & m ) {
         .freeze();
 }
 
-void AddStores::run( Module &m ) {
+void StoresToContent::run( Module &m ) {
     for ( const auto &gep : transformable< GetElementPtrInst >( m ) ) {
         assert( gep->getNumIndices() == 1 );
         set_addr_offset( gep, gep->idx_begin()->get() );
@@ -52,7 +52,7 @@ void AddStores::run( Module &m ) {
 }
 
 Function * abstract_store( Module * m, StoreInst * store ) {
-    // return some arbitrary type - need to acth taint call
+    // return some arbitrary type - needed for taint call
     auto rty = Type::getInt1Ty( store->getContext() );
 
     auto val = store->getValueOperand();
@@ -63,7 +63,7 @@ Function * abstract_store( Module * m, StoreInst * store ) {
     return lart::util::get_or_insert_function( m, fty, name );
 }
 
-void AddStores::process( StoreInst * store ) {
+void StoresToContent::process( StoreInst * store ) {
     auto val = store->getValueOperand();
     auto ptr = store->getPointerOperand();
 
