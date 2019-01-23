@@ -584,19 +584,6 @@ struct BinaryLifter : Lifter {
     }
 };
 
-struct GetLifter : Lifter {
-    using Lifter::Lifter;
-
-    void syntetize() final {
-        auto entry = make_bb( function(), "entry" );
-
-        IRBuilder<> irb( entry );
-
-        auto abstract = std::next( function()->arg_begin(), 3 );
-        irb.CreateRet( &*abstract );
-    }
-};
-
 struct StoreLifter : Lifter {
     using Lifter::Lifter;
 
@@ -783,23 +770,6 @@ struct ThawTaint : TaintBase< ThawTaint > {
     }
 };
 
-struct GetTaint : TaintBase< GetTaint > {
-    using TaintBase< GetTaint >::TaintBase;
-
-    Value* stash() {
-        ASSERT( placeholder->hasNUses( 1 ) );
-        return placeholder->user_back();
-    }
-
-    Values arguments() {
-        return { concrete(), placeholder };
-    }
-
-    std::string name() const {
-        return domain().name() + ".get." + llvm_name( concrete()->getType() );
-    }
-};
-
 struct ToBoolTaint : TaintBase< ToBoolTaint > {
     using TaintBase< ToBoolTaint >::TaintBase;
 
@@ -909,8 +879,7 @@ void stash_arguments( CallInst *call ) {
             auto meta = domain_metadata( *m, dom );
             irb.CreateCall( stash, { meta.default_value() } );
         } else {
-            auto ph = get_placeholder_in_domain( op, dom );
-            irb.CreateCall( stash, { GetTaint( ph ).generate() } );
+            irb.CreateCall( stash, { get_placeholder_in_domain( op, dom ) } );
         }
     }
 }
@@ -962,8 +931,7 @@ void stash_return_value( CallInst *call, Function * fn ) {
             auto null = Constant::getNullValue( stash->getFunctionType()->getParamType( 0 ) );
             irb.CreateCall( stash, { null } );
         } else {
-            auto get = GetTaint( get_placeholder_in_domain( val, dom ) ).generate();
-            irb.CreateCall( stash, { get } );
+            irb.CreateCall( stash, { get_placeholder_in_domain( val, dom ) } );
         }
     }
 }
@@ -1167,8 +1135,6 @@ void Synthesize::process( CallInst *taint ) {
         ToBoolLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".assume" ) ) {
         AssumeLifter( taint ).syntetize();
-    } else if ( is_taint_of_type( fn, ".get" ) ) {
-        GetLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".store" ) ) {
         StoreLifter( taint ).syntetize();
     } else if ( taint_args_size( taint ) == 1 ) {
