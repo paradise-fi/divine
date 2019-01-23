@@ -73,6 +73,10 @@ void Stash::run( Module &m ) {
 }
 
 void Stash::arg_unstash( CallInst *call, Function * fn ) {
+    if ( fn->empty() ) {
+        throw std::runtime_error( "Trying to transform undefined function: " + fn->getName().str() );
+    }
+
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
     FunctionMetadata fmd{ fn };
