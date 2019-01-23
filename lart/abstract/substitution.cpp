@@ -1096,7 +1096,17 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
             auto val = get_placeholder_in_domain( in , dom );
             abstract->addIncoming( val, bb );
         } else {
-            abstract->addIncoming( UndefValue::get( ty ), bb );
+            auto default_value = [&] () -> llvm::Constant * {
+                if ( ty->isIntegerTy() )
+                    return llvm::ConstantInt::get( ty, 0 );
+                else if ( ty->isFloatingPointTy() )
+                    return llvm::ConstantFP::get( ty, 0 );
+                else if ( ty->isPointerTy() )
+                    return llvm::ConstantPointerNull::get( cast< PointerType >( ty ) );
+                else
+                    UNREACHABLE( "Unsupported type" );
+            }();
+            abstract->addIncoming( default_value, bb );
         }
     }
 
