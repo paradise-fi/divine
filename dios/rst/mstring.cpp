@@ -22,8 +22,12 @@ extern "C" {
     }
 
     bool __mstring_store( char val, __mstring * str, uint64_t idx) {
-        str->set( idx, val );
+        str->write( idx, val );
         return true;
+    }
+
+    char __mstring_load( __mstring * str, uint64_t idx ) {
+        return str->read( idx );
     }
 
     /* String manipulation */
@@ -129,7 +133,7 @@ void Quintuple::strcpy(const Quintuple * other) noexcept {
         }
 
         for ( size_t i = _from; i <= terminator; ++i ) {
-            safe_set( i, other->_buff[i] );
+            safe_write( i, other->_buff[i] );
         }
     }
 }
@@ -143,7 +147,7 @@ void Quintuple::strcat( const Quintuple * other ) noexcept {
     }
 
     for ( size_t i = 0; i < dist; ++i ) {
-        safe_set( begin + i, other->_buff[i] );
+        safe_write( begin + i, other->_buff[i] );
     }
 }
 
@@ -218,19 +222,19 @@ int Quintuple::strcmp( const Quintuple * other ) const noexcept {
     _UNREACHABLE_F( "Error: there is no string of interest." );
 }
 
-void Quintuple::set( size_t idx, char val ) noexcept {
+void Quintuple::write( size_t idx, char val ) noexcept {
     auto split = this->split();
     auto sq = split.sections().front();
 
     if ( !sq.empty() ) {
         assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
-        safe_set( idx, val );
+        safe_write( idx, val );
     } else {
         _UNREACHABLE_F( "Error: there is no string of interest." );
     }
 }
 
-void Quintuple::safe_set( size_t idx, char val ) noexcept {
+void Quintuple::safe_write( size_t idx, char val ) noexcept {
     if ( _buff[ idx ] == '\0' ) {
         auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
         _terminators.erase( it );
@@ -244,6 +248,15 @@ void Quintuple::safe_set( size_t idx, char val ) noexcept {
             _terminators.insert( it, idx );
         }
     }
+}
+
+std::string Quintuple::to_string() const noexcept {
+    std::string res;
+    for ( size_t i = _from; i < _buff.size(); ++i ) {
+        char c = _buff[i];
+        res += ( c == '\0' ) ? '0' : c;
+    }
+    return res;
 }
 
 void mstring_release( Quintuple * quintuple ) noexcept {

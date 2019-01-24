@@ -7,9 +7,10 @@ extern "C" {
 
 LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
 
-OP( DOMAIN_TYPE, lift, const char *, unsigned );
+OP( DOMAIN_TYPE, lift, const char * str, unsigned len );
 
-OP( bool, store, char, DOMAIN_TYPE, uint64_t );
+OP( bool, store, char val, DOMAIN_TYPE str, uint64_t idx );
+OP( char, load, DOMAIN_TYPE str, uint64_t idx );
 
 FREEZE_PROT()
 THAW_PROT()

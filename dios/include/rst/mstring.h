@@ -167,8 +167,10 @@ namespace abstract::mstring {
 
         Quintuple * strchr( char ch ) const noexcept;
 
-        void set( size_t idx, char val ) noexcept;
-        void safe_set( size_t idx, char val ) noexcept;
+        void write( size_t idx, char val ) noexcept;
+        void safe_write( size_t idx, char val ) noexcept;
+
+        char read( size_t idx ) noexcept;
 
         constexpr char * data() noexcept { return _buff.data(); }
         constexpr const char * data() const noexcept { return _buff.data(); }
