@@ -39,7 +39,7 @@ Function * abstract_load( Module * m, LoadInst * load ) {
     auto rty = load->getType();
     auto ptr = load->getPointerOperand();
 
-    auto fty = llvm::FunctionType::get( rty, { ptr->getType() }, false );
+    auto fty = llvm::FunctionType::get( rty, { load->getType(), ptr->getType() }, false );
     auto name = "lart.load.placeholder." + llvm_name( rty );
     return lart::util::get_or_insert_function( m, fty, name );
 }
@@ -91,7 +91,7 @@ void LoadsFromContent::process( LoadInst * load ) {
     auto fn = abstract_load( load->getModule(), load );
 
     IRBuilder<> irb( load );
-    auto ph = irb.CreateCall( fn, { ptr } );
+    auto ph = irb.CreateCall( fn, { load, ptr } );
 
     add_abstract_metadata( ph, get_domain( load ) );
     make_duals( load, ph );

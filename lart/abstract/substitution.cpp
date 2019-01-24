@@ -127,6 +127,10 @@ bool is_store( Instruction *inst ) {
     return is_placeholder_of_name( inst, ".store." );
 }
 
+bool is_load( Instruction *inst ) {
+    return is_placeholder_of_name( inst, ".load." );
+}
+
 Domain domain( Instruction *inst ) {
     return get_domain( inst );
 }
@@ -159,25 +163,30 @@ Values arguments( Instruction *inst ) {
 
 std::string name( Instruction *inst, Value *arg, Domain dom ) {
     auto name = "lart." + dom.name() + ".placeholder.";
-    if ( is_stash( inst ) ) {
-        name += "stash.";
-    } else if ( is_unstash( inst ) ) {
-        name += "unstash.";
-    } else if ( is_to_i1( inst ) ) {
-        name += "to_i1.";
-    } else if ( is_assume( inst ) ) {
-        name += "assume";
-    } else if ( is_store( inst ) ) {
-        name += "store.";
-    }
 
-    if ( !is_assume( inst ) ) {
+    auto suffix = [&] ( auto && name ) {
         auto ty = inst->getType();
         name += ty->isVoidTy() || !ty->isStructTy()
               ? llvm_name( base_type( arg->getType() ) )
               : llvm_name( base_type( ty ) );
+        return name;
+    };
+
+    if ( is_stash( inst ) ) {
+        return suffix( name + "stash." );
+    } else if ( is_unstash( inst ) ) {
+        return suffix( name + "unstash." );
+    } else if ( is_to_i1( inst ) ) {
+        return suffix( name + "to_i1." );
+    } else if ( is_assume( inst ) ) {
+        return name + "assume";
+    } else if ( is_store( inst ) ) {
+        return suffix( name + "store." );
+    } else if ( is_load( inst ) ) {
+        return name + "load." + llvm_name( inst->getType() );
+    } else {
+        return suffix( name );
     }
-    return name;
 }
 
 Function* get( Instruction *inst ) {
@@ -601,6 +610,22 @@ struct StoreLifter : Lifter {
     }
 };
 
+struct LoadLifter : Lifter {
+    using Lifter::Lifter;
+
+    void syntetize() final {
+        auto args_begin = function()->arg_begin();
+        auto origin = std::next( args_begin, 3 );
+        auto offset = std::next( args_begin, 5 );
+
+        IRBuilder<> irb( make_bb( function(), "entry" ) );
+        Values vals = { origin, offset };
+        auto lifter = LifterBuilder( domain() ).process( taint, std::move( vals ) );
+        irb.Insert( cast< Instruction >( lifter ) );
+        irb.CreateRet( lifter );
+    }
+};
+
 } // anonymous namespace
 
 // --------------------------- Duplication ---------------------------
@@ -684,6 +709,8 @@ struct TaintBase : CRTP< Derived > {
         if ( placeholder::is_assume( placeholder ) )
             return concrete();
         if ( placeholder::is_store( placeholder ) )
+            return concrete();
+        if ( placeholder::is_load( placeholder ) )
             return concrete();
         if ( !is_base_type( m, concrete() ) )
             return concrete();
@@ -813,6 +840,22 @@ struct StoreTaint : TaintBase< StoreTaint > {
 
     std::string name() const {
         return domain().name() + ".store";
+    }
+};
+
+struct LoadTaint : TaintBase< LoadTaint > {
+    using TaintBase< LoadTaint >::TaintBase;
+
+    Values arguments() {
+        auto ptr = placeholder->getOperand( 1 );
+        auto origin = get_addr_origin( cast< Instruction >( ptr ) );
+        auto aorigin = get_placeholder_in_domain( origin, domain() );
+        auto offset = get_addr_offset( cast< Instruction >( ptr ) );
+        return { ptr, aorigin, offset };
+    }
+
+    std::string name() const {
+        return domain().name() + ".load";
     }
 };
 
@@ -1068,6 +1111,8 @@ Value* Tainting::process( Instruction *placeholder ) {
         return AssumeTaint( placeholder ).generate();
     if ( placeholder::is_store( placeholder ) )
         return StoreTaint( placeholder ).generate();
+    if ( placeholder::is_load( placeholder ) )
+        return LoadTaint( placeholder ).generate();
     if ( is_taintable( op ) )
         return Taint( placeholder ).generate();
     UNREACHABLE( "Unknown placeholder", placeholder );
@@ -1137,6 +1182,8 @@ void Synthesize::process( CallInst *taint ) {
         AssumeLifter( taint ).syntetize();
     } else if ( is_taint_of_type( fn, ".store" ) ) {
         StoreLifter( taint ).syntetize();
+    } else if ( is_taint_of_type( fn, ".load" ) ) {
+        LoadLifter( taint ).syntetize();
     } else if ( taint_args_size( taint ) == 1 ) {
         UnaryLifter( taint ).syntetize();
     } else if ( taint_args_size( taint ) == 2 ) {
