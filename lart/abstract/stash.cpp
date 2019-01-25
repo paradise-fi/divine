@@ -10,7 +10,9 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/util.h>
 
-using namespace lart::abstract;
+namespace lart {
+namespace abstract {
+
 using namespace llvm;
 
 using lart::util::get_module;
@@ -45,62 +47,47 @@ Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
 void Stash::run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
         if ( !is_transformable( call ) ) {
-            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                if ( !fn->getMetadata( "lart.abstract" ) )
-                    if ( !stashed.count( fn ) )
-                        arg_unstash( call, fn );
-                stashed.insert( fn );
-            } );
-
-            ret_unstash( call );
-        }
-    }, m );
-
-    stashed.clear();
-
-    run_on_abstract_calls( [&] ( auto call ) {
-        if ( !is_transformable( call ) ) {
-            arg_stash( call );
+            process_arguments( call );
 
             run_on_potentialy_called_functions( call, [&] ( auto fn ) {
                 if ( !fn->getMetadata( "lart.abstract" ) )
                     if ( !stashed.count( fn ) )
-                        ret_stash( call, fn );
+                        process_return_value( call, fn );
                 stashed.insert( fn );
             } );
         }
     }, m );
 }
 
-void Stash::arg_unstash( CallInst *call, Function * fn ) {
-    if ( fn->empty() ) {
-        throw std::runtime_error( "Trying to transform undefined function: " + fn->getName().str() );
-    }
+void Stash::process_return_value( CallInst *call, Function * fn ) {
+    auto dom = get_domain( call );
+    if ( auto terminator = returns_abstract_value( call, fn ) ) {
+        auto ret = cast< ReturnInst >( terminator );
+        auto val = ret->getReturnValue();
+        auto aty = abstract_type( fn->getReturnType(), dom );
 
-    IRBuilder<> irb( &*fn->getEntryBlock().begin() );
+        IRBuilder<> irb( ret );
+        auto stash_fn = stash_placeholder( get_module( call ), aty );
 
-    FunctionMetadata fmd{ fn };
-
-    for ( auto &arg : fn->args() ) {
-        auto idx = arg.getArgNo();
-        auto op = call->getArgOperand( idx );
-        auto ty = op->getType();
-
-        auto dom = fmd.get_arg_domain( idx );
-        if ( is_concrete( dom ) )
-            continue;
-
-        auto m = get_module( call );
-        if ( is_base_type_in_domain( m, &arg, dom ) ) {
-            auto aty = abstract_type( ty, dom );
-            auto unstash_fn = unstash_placeholder( m, op, aty );
-            auto unstash = irb.CreateCall( unstash_fn, { &arg } );
-            add_abstract_metadata( unstash, dom );
+        Value *tostash = nullptr;
+        if ( has_placeholder( val ) ) {
+            tostash = get_placeholder( val );
+        } else if ( isa< Argument >( val ) || isa< CallInst >( val ) ) {
+            if ( !has_placeholder( val, "lart.unstash.placeholder" ) ) {
+                return; // does not return abstract value
+            }
+            tostash = get_unstash_placeholder( val );
+        } else {
+            tostash = UndefValue::get( aty );
         }
+
+        auto stash = irb.CreateCall( stash_fn, { tostash } );
+        add_abstract_metadata( stash, dom );
+        make_duals( stash, ret );
     }
 }
 
-void Stash::arg_stash( CallInst *call ) {
+void Stash::process_arguments( CallInst *call ) {
     IRBuilder<> irb( call );
 
     for ( unsigned idx = 0; idx < call->getNumArgOperands(); ++idx ) {
@@ -133,35 +120,46 @@ void Stash::arg_stash( CallInst *call ) {
     }
 }
 
-void Stash::ret_stash( CallInst *call, Function * fn ) {
-    auto dom = get_domain( call );
-    if ( auto terminator = returns_abstract_value( call, fn ) ) {
-        auto ret = cast< ReturnInst >( terminator );
-        auto val = ret->getReturnValue();
-        auto aty = abstract_type( fn->getReturnType(), dom );
+void Unstash::run( Module &m ) {
+    run_on_abstract_calls( [&] ( auto call ) {
+        if ( !is_transformable( call ) ) {
+            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                if ( !fn->getMetadata( "lart.abstract" ) )
+                    if ( !unstashed.count( fn ) )
+                        process_arguments( call, fn );
+                unstashed.insert( fn );
+            } );
 
-        IRBuilder<> irb( ret );
-        auto stash_fn = stash_placeholder( get_module( call ), aty );
-
-        Value *tostash = nullptr;
-        if ( has_placeholder( val ) ) {
-            tostash = get_placeholder( val );
-        } else if ( isa< Argument >( val ) || isa< CallInst >( val ) ) {
-            if ( !has_placeholder( val, "lart.unstash.placeholder" ) ) {
-                return; // does not return abstract value
-            }
-            tostash = get_unstash_placeholder( val );
-        } else {
-            tostash = UndefValue::get( aty );
+            process_return_value( call );
         }
+    }, m );
+}
 
-        auto stash = irb.CreateCall( stash_fn, { tostash } );
-        add_abstract_metadata( stash, dom );
-        make_duals( stash, ret );
+void Unstash::process_arguments( CallInst *call, Function * fn ) {
+    IRBuilder<> irb( &*fn->getEntryBlock().begin() );
+
+    FunctionMetadata fmd{ fn };
+
+    for ( auto &arg : fn->args() ) {
+        auto idx = arg.getArgNo();
+        auto op = call->getArgOperand( idx );
+        auto ty = op->getType();
+
+        auto dom = fmd.get_arg_domain( idx );
+        if ( is_concrete( dom ) )
+            continue;
+
+        auto m = get_module( call );
+        if ( is_base_type_in_domain( m, &arg, dom ) ) {
+            auto aty = abstract_type( ty, dom );
+            auto unstash_fn = unstash_placeholder( m, op, aty );
+            auto unstash = irb.CreateCall( unstash_fn, { &arg } );
+            add_abstract_metadata( unstash, dom );
+        }
     }
 }
 
-void Stash::ret_unstash( CallInst *call ) {
+void Unstash::process_return_value( CallInst *call ) {
     auto dom = get_domain( call );
 
     Values terminators;
@@ -205,3 +203,6 @@ void Stash::ret_unstash( CallInst *call ) {
         make_duals( unstash, call );
     }
 }
+
+} // namespace abstract
+} // namespace lart

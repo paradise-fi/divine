@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <unordered_set>
 
+#include <lart/support/pass.h>
 #include <lart/abstract/util.h>
 
 namespace lart {
@@ -15,15 +16,23 @@ namespace abstract {
 
 struct Stash {
     void run( llvm::Module& );
-
 private:
-    void ret_stash( llvm::CallInst*, llvm::Function* );
-    void ret_unstash( llvm::CallInst* );
-    void arg_unstash( llvm::CallInst*, llvm::Function* );
-    void arg_stash( llvm::CallInst* );
+    void process_return_value( llvm::CallInst*, llvm::Function* );
+    void process_arguments( llvm::CallInst* );
 
     std::unordered_set< llvm::Function* > stashed;
 };
+
+struct Unstash {
+    void run( llvm::Module& );
+private:
+    void process_return_value( llvm::CallInst* );
+    void process_arguments( llvm::CallInst*, llvm::Function* );
+
+    std::unordered_set< llvm::Function* > unstashed;
+};
+
+using StashingPass = ChainedPass< Unstash, Stash >;
 
 } // namespace abstract
 } // namespace lart

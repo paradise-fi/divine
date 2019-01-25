@@ -46,7 +46,7 @@ namespace abstract {
                                            , Decast()
                                            , VPA() // run once more to propagate through decasted functions
                                            , Duplicator()
-                                           , Stash()
+                                           , StashingPass()
                                            , ContentPass()
                                            , ExpandBranching()
                                            , AddAssumes()
@@ -90,7 +90,7 @@ auto test( std::unique_ptr< llvm::Module > m, Passes&&... passes )
              , Decast()
              , VPA()
              , Duplicator()
-             , Stash()
+             , StashingPass()
              , ExpandBranching()
              , std::forward< Passes >( passes )... );
     drv.process( m.get() );
