@@ -11,17 +11,21 @@ __invisible void formula_release( Formula * formula ) noexcept {
 
 __invisible void formula_cleanup( Formula * formula ) noexcept {
     if ( isUnary( formula->op() ) ) {
-        auto * child = formula->unary.child;
-        child->refcount_decrement();
-        formula_cleanup_check( child );
+        if ( auto * child = formula->unary.child ) {
+            child->refcount_decrement();
+            formula_cleanup_check( child );
+        }
     }
     else if ( isBinary( formula->op() ) ) {
-        auto * left = formula->binary.left;
-        auto * right = formula->binary.right;
-        left->refcount_decrement();
-        formula_cleanup_check( left );
-        right->refcount_decrement();
-        formula_cleanup_check( right );
+        if ( auto * left = formula->binary.left ) {
+            left->refcount_decrement();
+            formula_cleanup_check( left );
+        }
+
+        if ( auto * right = formula->binary.right ) {
+            right->refcount_decrement();
+            formula_cleanup_check( right );
+        }
     }
 
     __dios_safe_free( formula );
