@@ -26,6 +26,7 @@
 
 #ifdef __divine__
 #include <sys/divm.h>
+#include <dios.h>
 #else
 #include <divine/vm/divm.h>
 #endif
@@ -221,13 +222,19 @@ namespace lart::sym
 
     static_assert( sizeof( Constant ) == 16, "" );
 
+    union Formula;
+
+#ifdef __divine__
+    static inline void refcount_increment( Formula * ptr );
+#endif
+
     template< typename Formula >
     struct Unary_ {
         Unary_( Op op, Type t, Formula child ) :
             op( op ), refcount( 0 ), type( t ), child( child )
         {
 #ifdef __divine__
-            child->refcount_increment();
+            refcount_increment( child );
 #endif
         }
 
@@ -235,7 +242,7 @@ namespace lart::sym
             op( op ), refcount( 0 ), type( t ), from( from ), to( to ), child( child )
         {
 #ifdef __divine__
-            child->refcount_increment();
+            refcount_increment( child );
 #endif
         }
 
@@ -254,8 +261,8 @@ namespace lart::sym
             op( op ), type( t ), refcount( 0 ), left( left ), right( right )
         {
 #ifdef __divine__
-            left->refcount_increment();
-            right->refcount_increment();
+            refcount_increment( left );
+            refcount_increment( right );
 #endif
         }
 
@@ -307,6 +314,13 @@ namespace lart::sym
         Unary unary;
         Binary binary;
     };
+
+#ifdef __divine__
+    __invisible static inline void refcount_increment( Formula * ptr ) {
+        if ( ptr )
+            ptr->refcount_increment();
+    }
+#endif
 
     inline bool isConstant( Op x ) { return x == Op::Constant; }
     inline bool isConstant( Formula * f ) { return isConstant( f->op() ); }
