@@ -357,8 +357,8 @@ int main( int argc, char **argv )
                     ofn = po.outputFile;
                 else
                 {
-                    if ( po.outputFile != "" )
-                        ofn += ".temp";
+                    if ( !po.toObjectOnly )
+                        ofn += ".divcc.temp";
                     ofn += ".o";
                 }
 
