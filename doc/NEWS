@@ -36,6 +36,15 @@
     - Substantially improve the robustness of linking in `divcc`.
     - Simplify abstract domain descriptions employed by LART.
     - Refactor the abstraction passes in LART.
+- In 4.1.11 - 4.1.17: Minor changes only.
+- In 4.1.8 (2018-06-01):
+    - Show the SMT formulas for path condition in counterexample traces.
+- In 4.1.7 (2018-06-01):
+    - Import a large number of SV-COMP test cases.
+    - Substantial expansion of POSIX compatibility in DiOS.
+    - Add an `--svcomp` option for dealing with SV-COMP quirks.
+    - A number of fixes in the abstraction engine in LART.
+    - Fix a few problems in the weakmem runtime support code.
 - In 4.1.6 (2018-05-15):
     - Track pointers through bitshift operations.
     - Improve the efficiency of pointer encoding.
