@@ -1701,13 +1701,15 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                     auto change = oldval == expected;
 
                     if ( change.cooked() ) {
-                        // undefined if one of the inputs was not defined
-                        if ( !change.defined() || !ptr.defined() )
+                        if ( !change.defined() )
                             newval.defined( false );
                         heap().write( ptr2h( ptr ), newval );
                     }
                     slot_write( result(), oldval, 0 );
                     slot_write( result(), change, sizeof( typename T::Raw ) );
+                    if ( !change.defined() )
+                        fault( _VM_F_Control )
+                            << "atomic compare exchange depends on an undefined value";
                 } );
 
         case OpCode::AtomicRMW:
