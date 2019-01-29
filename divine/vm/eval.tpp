@@ -1499,7 +1499,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
             slot_copy( s2ptr( operand( select.cooked() ? 1 : 2 ) ),
                         result(), result().size() );
 
-            if ( !select.defined() )
+            if ( !(select.defbits() & 1) )
                 fault( _VM_F_Control ) << "select on an undefined value";
             /* TODO make the result undefined if !select.defined()? */
             return;
