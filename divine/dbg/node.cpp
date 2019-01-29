@@ -303,6 +303,8 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias, bool pr
         return di_name( di_base( t ) ) + " restrict";
     if ( di_derived( llvm::dwarf::DW_TAG_volatile_type, t ) )
         return "volatile " + di_name( di_base( t ) );
+    if ( di_derived( llvm::dwarf::DW_TAG_atomic_type, t ) )
+        return "_Atomic " + di_name( di_base( t ) );
     if ( di_composite( llvm::dwarf::DW_TAG_array_type, t ) )
         return di_name( di_base( t ) ) + "[]";
     UNREACHABLE( "unexpected debuginfo metadata:", t );
