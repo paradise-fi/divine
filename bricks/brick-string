@@ -506,7 +506,7 @@ struct Formatter
     auto format( T *llvmval ) -> decltype( llvmval->print( std::declval< ::llvm::raw_ostream & >() ) )
     {
         if ( llvmval )
-            detail::LFMT< T >::format( *llvmval );
+            ss << detail::LFMT< T >::format( *llvmval );
         else
             format( "(nullptr)" );
     }
