@@ -1752,7 +1752,9 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                     slot_write( result(), change, sizeof( typename T::Raw ) );
                     if ( !change.defined() )
                         fault( _VM_F_Control )
-                            << "atomic compare exchange depends on an undefined value";
+                            << "atomic compare exchange depends on an undefined value"
+                            << (oldval.defined() ? "" : " (old value not defined)")
+                            << (newval.defined() ? "" : " (new value not defined)");
                 } );
 
         case OpCode::AtomicRMW:
