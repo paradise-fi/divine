@@ -18,7 +18,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/smt/builder-z3-bv.hpp>
+#include <divine/smt/builder-z3.hpp>
 
 #if OPT_Z3
 namespace divine::smt::builder

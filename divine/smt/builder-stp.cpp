@@ -18,7 +18,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/smt/builder-stp-bv.hpp>
+#include <divine/smt/builder-stp.hpp>
 
 #if OPT_STP
 namespace divine::smt::builder

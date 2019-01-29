@@ -18,7 +18,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/smt/builder-smtlib-bv.hpp>
+#include <divine/smt/builder-smtlib.hpp>
 
 namespace divine::smt::builder
 {

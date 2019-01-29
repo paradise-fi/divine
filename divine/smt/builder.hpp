@@ -20,8 +20,8 @@
 #pragma once
 
 #include <divine/smt/builder-common.hpp>
-#include <divine/smt/builder-smtlib-bv.hpp>
-#include <divine/smt/builder-stp-bv.hpp>
-#include <divine/smt/builder-z3-bv.hpp>
+#include <divine/smt/builder-smtlib.hpp>
+#include <divine/smt/builder-stp.hpp>
+#include <divine/smt/builder-z3.hpp>
 
 
