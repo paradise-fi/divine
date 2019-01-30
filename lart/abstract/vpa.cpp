@@ -181,8 +181,9 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 
     if ( seen_vals.count( { val, dom } ) ) {
         preprocess( store->getParent()->getParent() );
-        for ( auto src : AbstractionSources( ptr ).get() )
+        for ( auto src : AbstractionSources( ptr ).get() ) {
             tasks.push_back( [=]{ propagate_value( src, dom ); } );
+        }
         if ( auto arg = dyn_cast< Argument >( ptr ) )
             propagate_back( arg, dom );
     } else {

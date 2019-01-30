@@ -73,12 +73,13 @@ Instruction* find_placeholder( Value *val, std::string name ) {
     if ( isa< Constant >( val ) )
         return nullptr;
 
-    for ( auto u : val->users() )
+    for ( auto u : val->users() ) {
         if ( auto call = dyn_cast< CallInst >( u ) ) {
             auto fn = call->getCalledFunction();
             if ( fn && fn->hasName() && fn->getName().startswith( name ) )
                 return call;
         }
+    }
     return nullptr;
 }
 

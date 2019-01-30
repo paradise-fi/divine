@@ -107,6 +107,11 @@ bool is_placeholder_of_name( Instruction *inst, std::string name ) {
     return fn->getName().count( name );
 }
 
+bool is_thaw( Instruction *inst ) {
+    return is_placeholder_of_name( inst, ".thaw." );
+}
+
+
 bool is_stash( Instruction *inst ) {
     return is_placeholder_of_name( inst, ".stash." );
 }
@@ -599,14 +604,13 @@ struct StoreLifter : Lifter {
     void syntetize() final {
         auto args_begin = function()->arg_begin();
         auto val = std::next( args_begin, 1 );
-        auto origin = std::next( args_begin, 5 );
-        auto offset = std::next( args_begin, 7 );
+        auto ptr = std::next( args_begin, 3 );
 
         IRBuilder<> irb( make_bb( function(), "entry" ) );
-        Values vals = { val, origin, offset };
+        Values vals = { val, ptr };
         auto lifter = LifterBuilder( domain() ).process( taint, std::move( vals ) );
         irb.Insert( cast< Instruction >( lifter ) );
-        irb.CreateRet( lifter );
+        irb.CreateRet( UndefValue::get( Type::getInt1Ty( lifter->getContext() ) ) );
     }
 };
 
@@ -615,11 +619,10 @@ struct LoadLifter : Lifter {
 
     void syntetize() final {
         auto args_begin = function()->arg_begin();
-        auto origin = std::next( args_begin, 3 );
-        auto offset = std::next( args_begin, 5 );
+        auto ptr = std::next( args_begin, 1 );
 
         IRBuilder<> irb( make_bb( function(), "entry" ) );
-        Values vals = { origin, offset };
+        Values vals = { ptr };
         auto lifter = LifterBuilder( domain() ).process( taint, std::move( vals ) );
         irb.Insert( cast< Instruction >( lifter ) );
         irb.CreateRet( lifter );
@@ -832,10 +835,7 @@ struct StoreTaint : TaintBase< StoreTaint > {
     Values arguments() {
         auto val = placeholder->getOperand( 0 );
         auto ptr = placeholder->getOperand( 1 );
-        auto origin = get_addr_origin( cast< Instruction >( ptr ) );
-        auto aorigin = get_placeholder_in_domain( origin, domain() );
-        auto offset = get_addr_offset( cast< Instruction >( ptr ) );
-        return { val, ptr, aorigin, offset };
+        return { val, ptr };
     }
 
     std::string name() const {
@@ -847,11 +847,7 @@ struct LoadTaint : TaintBase< LoadTaint > {
     using TaintBase< LoadTaint >::TaintBase;
 
     Values arguments() {
-        auto ptr = placeholder->getOperand( 1 );
-        auto origin = get_addr_origin( cast< Instruction >( ptr ) );
-        auto aorigin = get_placeholder_in_domain( origin, domain() );
-        auto offset = get_addr_offset( cast< Instruction >( ptr ) );
-        return { ptr, aorigin, offset };
+        return { placeholder->getOperand( 1 ) };
     }
 
     std::string name() const {
@@ -1015,9 +1011,11 @@ void Tainting::run( Module &m ) {
     std::unordered_map< Value*, Value* > substitutes;
     auto phs = placeholders( m );
 
-    for ( auto ph : phs )
-        if ( !placeholder::is_stash( ph ) && !placeholder::is_unstash( ph ) )
+    for ( auto ph : phs ) {
+        if ( !placeholder::is_stash( ph ) && !placeholder::is_unstash( ph ) ) {
             substitutes[ ph ] = process( ph );
+        }
+    }
 
     std::set< Function* > processed;
     run_on_abstract_calls( [&] ( auto call ) {
@@ -1101,7 +1099,7 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
 
 Value* Tainting::process( Instruction *placeholder ) {
     auto op = placeholder->getOperand( 0 );
-    if ( isa< LoadInst >( op ) )
+    if ( placeholder::is_thaw( placeholder ) )
         return ThawTaint( placeholder ).generate();
     if ( isa< PHINode >( op ) )
         return create_in_domain_phi( placeholder );
@@ -1152,6 +1150,7 @@ void FreezeStores::process( StoreInst *store ) {
         auto val = store->getValueOperand();
         auto ptr = store->getPointerOperand();
         auto bcst = irb.CreateBitCast( ptr, Type::getInt8PtrTy( ctx ) );
+
         auto abstract = has_placeholder_in_domain( val, dom )
                       ? get_placeholder_in_domain( val, dom )
                       : meta.default_value();

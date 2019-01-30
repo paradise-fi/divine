@@ -38,7 +38,7 @@ struct Synthesize {
 };
 
 using SubstitutionPass =
-    ChainedPass< InDomainDuplicate, Tainting, FreezeStores, Synthesize >;
+    ChainedPass< InDomainDuplicate, FreezeStores, Tainting, Synthesize >;
 
 } // namespace abstract
 } // namespace lart

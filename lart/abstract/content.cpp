@@ -47,17 +47,25 @@ Function * abstract_load( Module * m, LoadInst * load ) {
 } // anonymous namespace
 
 void IndicesAnalysis::run( Module & m ) {
+    // TODO implement indices propagation
     for ( const auto &gep : transformable< GetElementPtrInst >( m ) ) {
         assert( gep->getNumIndices() == 1 );
         set_addr_offset( gep, gep->idx_begin()->get() );
-        set_addr_origin( gep, gep->getPointerOperand() );
         // TODO propagate geps through phis + propagate to functions
+    }
+
+    auto i64 = llvm::IntegerType::get( m.getContext(), 64 );
+
+    for ( const auto &load : transformable< LoadInst >( m ) ) {
+        if ( get_domain( load->getPointerOperand() ) != get_domain( load ) ) {
+            set_addr_offset( load, llvm::ConstantInt::get( i64, 0 ) );
+        }
     }
 }
 
 void StoresToContent::run( Module &m ) {
     for ( const auto &store : transformable< StoreInst >( m ) ) {
-        if ( get_domain( store->getPointerOperand() ) == get_domain( store ) ) {
+        if ( get_domain( store->getValueOperand() ) != get_domain( store ) ) {
             process( store );
         }
     }
@@ -87,12 +95,10 @@ void LoadsFromContent::run( Module & m ) {
 
 void LoadsFromContent::process( LoadInst * load ) {
     auto ptr = load->getPointerOperand();
-
     auto fn = abstract_load( load->getModule(), load );
 
     IRBuilder<> irb( load );
-    auto ph = irb.CreateCall( fn, { load, ptr } );
-
+    auto ph = llvm::cast< llvm::CallInst >( irb.CreateCall( fn, { load, ptr } ) );
     add_abstract_metadata( ph, get_domain( load ) );
     make_duals( load, ph );
 

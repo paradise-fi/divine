@@ -226,16 +226,8 @@ void set_addr_offset( llvm::Instruction *inst, llvm::Value * offset ) {
     set_metadata( inst, "lart.addr.offset", offset );
 }
 
-void set_addr_origin( llvm::Instruction *inst, llvm::Value * origin ) {
-    set_metadata( inst, "lart.addr.origin", origin );
-}
-
 llvm::Value * get_addr_offset( llvm::Instruction *inst ) {
     return get_metadata( inst, "lart.addr.offset" );
-}
-
-llvm::Value * get_addr_origin( llvm::Instruction *inst ) {
-    return get_metadata( inst, "lart.addr.origin" );
 }
 
 void make_duals( Instruction *a, Instruction *b ) {
@@ -336,7 +328,7 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
                                     IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
         case DomainKind::content:
             return is_transformable_in_domain( inst, dom ) ||
-                   util::is_one_of< CallInst, ReturnInst >( inst );
+                   util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
         case DomainKind::pointer:
         default:
             UNREACHABLE( "Unsupported domain transformation." );

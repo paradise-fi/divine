@@ -30,6 +30,8 @@ Function* placeholder( Module *m, Type *in, Type *out ) {
     return get_or_insert_function( m, fty, name );
 }
 
+// TODO duplicate freeze and thaws
+
 void Duplicator::run( llvm::Module &m ) {
     auto abstract = query::query( abstract_metadata( m ) )
         .map( [] ( auto mdv ) { return mdv.value(); } )
