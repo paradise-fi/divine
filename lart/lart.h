@@ -306,7 +306,8 @@ namespace lart::sym
         }
 
         void refcount_decrement() {
-            --hdr.refcount;
+            if ( hdr.refcount != std::numeric_limits<RefCount>::max() )
+                --hdr.refcount;
         }
 
         Variable var;
