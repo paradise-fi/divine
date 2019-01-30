@@ -35,7 +35,7 @@ static T *mark( T *ptr ) {
 
 template< typename T >
 static T *weaken( T *ptr ) {
-    return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Weak ) );
+    return ptr ? static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Weak ) ) : nullptr;
 }
 
 template< typename T >
