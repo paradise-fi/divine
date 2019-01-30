@@ -2,9 +2,9 @@
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
-// V: v.return VERIFY_OPTS: --leakcheck return
-// V: v.state VERIFY_OPTS: --leakcheck state
-// V: v.exit VERIFY_OPTS: --leakcheck exit
+// V: v.return V_OPT: --leakcheck return
+// V: v.state V_OPT: --leakcheck state
+// V: v.exit V_OPT: --leakcheck exit
 #include <rst/domains.h>
 
 #include <array>
