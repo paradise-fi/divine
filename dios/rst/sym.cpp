@@ -240,4 +240,3 @@ extern "C" void __sym_cleanup(void) {
     auto *frame = __dios_this_frame()->parent;
     __cleanup_orphan_formulae( frame );
 }
-}
