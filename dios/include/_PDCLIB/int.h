@@ -337,7 +337,7 @@ typedef char16_t                _PDCLIB_char16_t;
 typedef char32_t                _PDCLIB_char32_t;
 #endif
 
-typedef struct _PDCLIB_mbstate {
+typedef struct __mbstate_t {
     union {
         /* Is this the best way to represent this? Is this big enough? */
         _PDCLIB_uint64_t _St64[15];
