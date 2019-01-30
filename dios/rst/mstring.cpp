@@ -120,8 +120,22 @@ extern "C" {
     __mstring * __mstring_unstash() {
         return reinterpret_cast< __mstring * >( __lart_unstash() );
     }
-    void __mstring_freeze( __mstring * /*str*/, void * /*addr*/ ) {
-        _UNREACHABLE_F( "Not implemented." );
+
+    // TODO extract impl
+    void __mstring_freeze( __mstring * str, void * addr ) {
+        if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
+            auto old = peek_object< __mstring >( addr );
+            old->refcount_decrement();
+            if ( !old->refcount() ) {
+                __vm_poke( addr, _VM_ML_User, 0 );
+                mstring_cleanup( old );
+            }
+        }
+
+        if ( str ) {
+            str->refcount_increment();
+            poke_object< __mstring >( str, addr );
+        }
     }
 
     __mstring * __mstring_thaw( void * /* addr */ ) {
