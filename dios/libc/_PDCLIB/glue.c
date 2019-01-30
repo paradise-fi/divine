@@ -32,6 +32,11 @@ __invisible void *malloc( size_t size )
         return NULL; // failure
 }
 
+__invisible void *aligned_alloc( size_t align, size_t size )
+{
+    return malloc( size ); /* we are always aligned */
+}
+
 #define MIN( a, b )   ((a) < (b) ? (a) : (b))
 
 void *realloc( void *orig, size_t size )
