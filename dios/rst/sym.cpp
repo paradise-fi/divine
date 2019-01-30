@@ -242,4 +242,31 @@ extern "C" void __sym_cleanup(void) {
     auto *frame = __dios_this_frame()->parent;
     __cleanup_orphan_formulae( frame );
 }
+
+extern "C" void __sym_stash( Formula * f ) {
+    auto stash = [] (auto *ptr) {
+        __lart_stash( reinterpret_cast< uintptr_t >( mark( ptr ) ) );
+    };
+
+    if ( f ) {
+        if ( isUnary( f ) ) {
+            // TODO unary constructor of extract
+            return stash( __newf< Unary >( f->op(), f->type(), f->unary.child ) );
+        } else if ( isBinary( f ) ) {
+            return stash( __newf< Binary >( f->op(), f->type(),
+                                            f->binary.left, f->binary.right ) );
+        } else if ( isConstant( f ) ) {
+            return stash( __newf< Constant >( f->type(), f->con.value ) );
+        } else if ( isVariable( f ) ) {
+            return stash( __newf< Variable >( f->type(), f->var.id ) );
+        } else {
+            _UNREACHABLE_F( "Unknown type of formula." );
+        }
+    } else {
+        __lart_stash( reinterpret_cast< uintptr_t >( nullptr ) );
+    }
+}
+
+extern "C" Formula * __sym_unstash() {
+    return reinterpret_cast< Formula * >( __lart_unstash() );
 }

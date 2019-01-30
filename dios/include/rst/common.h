@@ -73,7 +73,24 @@ static bool tainted( char val )
 {
     return __vm_test_taint_byte( [] ( bool, char ) { return true; }, false, val );
 }
+
+template< typename T >
+static T * peek_object( void * addr ) noexcept
+{
+    struct { uint32_t off = 0, obj; } ptr;
+    ptr.obj = __vm_peek( addr, _VM_ML_User );
+
+    T * obj;
+    memcpy( &obj, &ptr, sizeof( T * ) );
+    return obj;
 }
 
+template< typename T >
+static void poke_object( T * obj, void * addr ) noexcept
+{
+    struct { uint32_t off, obj; } ptr;
+    memcpy( &ptr, &obj, sizeof( T * ) );
+    __vm_poke( addr, _VM_ML_User, ptr.obj );
+}
 
 } // namespace abstract
