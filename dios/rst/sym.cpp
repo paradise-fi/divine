@@ -253,4 +253,13 @@ Formula* __sym_thaw( void *addr, int bw ) {
 extern "C" void __sym_cleanup(void) {
     abstract::sym::cleanup( __dios_this_frame()->parent );
 }
+
+extern "C" void __sym_stash( Formula * formula ) {
+    if ( formula )
+        formula->refcount_increment();
+    __lart_stash( reinterpret_cast< uintptr_t >( formula ) );
+}
+
+extern "C" Formula * __sym_unstash() {
+    return reinterpret_cast< Formula * >( __lart_unstash() );
 }
