@@ -82,18 +82,16 @@ struct Stepper
 
     bool check_location( vm::CodePointer pc, const llvm::Instruction *op )
     {
-        bool dbg_changed = !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc();
+        auto l = dbg::fileline( *op );
 
-        if ( dbg_changed )
+        if ( _line.second && l != _line && ( _frame.null() || _frame == _frame_cur ) )
         {
-            auto l = dbg::fileline( *op );
-            if ( _line.second && l != _line )
-                add( _lines );
-            if ( _frame.null() || _frame == _frame_cur )
-                _line = l;
+            add( _lines );
+            _line = l;
         }
+
         if ( _breakpoint )
-            return _breakpoint( pc, dbg_changed );
+            return _breakpoint( pc, true );
         return false;
     }
 
