@@ -18,7 +18,7 @@
 
 static const float huge = 1.0e30;
 
-float
+__link_always float
 ceilf(float x)
 {
 	int32_t i0,jj0;

@@ -19,7 +19,7 @@
 #include <machine/ieee.h>
 #include <math.h>
 
-double
+__link_always double
 fabs(double x)
 {
 	struct ieee_double *p = (struct ieee_double *)&x;
