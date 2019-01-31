@@ -177,7 +177,6 @@ std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang
         drv->link( std::move( m ) );
     }
 
-    drv->linkEssentials();
     drv->linkLibs( rt::DiosCC::defaultDIVINELibs );
 
     auto m = drv->takeLinked();
