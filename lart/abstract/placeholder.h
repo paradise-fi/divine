@@ -140,39 +140,49 @@ namespace abstract {
             UNREACHABLE( "Unsupported placeholder type" );
         }
 
-        llvm::Type * output( llvm::Instruction * inst ) const
+        llvm::Type * output( llvm::Value * val ) const
         {
             static_assert( Level == Placeholder::Level::Abstract );
 
-            auto m = inst->getModule();
-            auto dom = get_domain( inst );
-            if ( is_base_type_in_domain( m, inst, dom ) ) { // TODO make domain + op specific
-                return abstract_type( inst->getType(), dom );
+            auto m = util::get_module( val );
+            auto dom = get_domain( val );
+            if ( is_base_type_in_domain( m, val, dom ) ) { // TODO make domain + op specific
+                return abstract_type( val->getType(), dom );
             } else {
-                return inst->getType();
+                return val->getType();
             }
         }
 
-        llvm::FunctionType * function_type( llvm::Instruction * inst ) const
+        llvm::FunctionType * function_type( llvm::Value * val ) const
         {
             if constexpr ( Level == Placeholder::Level::Abstract ) {
-                return llvm::FunctionType::get( output( inst ), { inst->getType() }, false );
+                return llvm::FunctionType::get( output( val ), { val->getType() }, false );
             } else {
                 UNREACHABLE( "Unsupported abstraction level" );
             }
         }
 
-        std::string name( llvm::Instruction * inst ) const
+        std::string name( llvm::Value * val ) const
         {
             if constexpr ( Level == Placeholder::Level::Abstract ) {
-                auto out = output( inst );
-                if ( auto aggr = llvm::dyn_cast< llvm::StructType >( out ) )
+                if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) )
                     return prefix + aggr->getName().str();
                 else
-                    return prefix + llvm_name( out );
+                    return prefix + llvm_name( val->getType() );
             } else {
                 UNREACHABLE( "Unsupported abstraction level" );
             }
+        }
+
+
+        template< Placeholder::Type Type, typename Value, typename Builder >
+        Placeholder construct( Value * val, Builder & builder ) const
+        {
+            auto m = util::get_module( val );
+            auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
+            auto ph = builder.CreateCall( fn, { val } );
+            add_abstract_metadata( ph, get_domain( val ) );
+            return Placeholder{ ph, Level, Type };
         }
 
         template< Placeholder::Type Type >
@@ -185,27 +195,30 @@ namespace abstract {
                 irb.SetInsertPoint( inst );
             }
 
-            auto m = inst->getModule();
+            auto ph = construct< Type >( inst, irb );
 
-            auto fn = util::get_or_insert_function( m, function_type( inst ), name( inst ) );
-            auto ph = irb.CreateCall( fn, { inst } );
-
-            auto dom = get_domain( inst );
-            assert( is_base_type_in_domain( m, inst, dom ) );
-
-            if constexpr ( Type != Placeholder::Type::PHI ) {
-                ph->moveAfter( inst );
+            if constexpr ( Type != Placeholder::Type::PHI ) { // TODO remove
+                ph.inst->moveAfter( inst );
             }
 
-            add_abstract_metadata( ph, dom );
-            make_duals( inst, ph );
+            make_duals( inst, ph.inst );
+            assert( is_base_type_in_domain( inst->getModule(), inst, get_domain( inst ) ) );
 
-            if ( !is_base_type_in_domain( m, inst, dom ) ) {
-                inst->replaceAllUsesWith( ph );
-                ph->setArgOperand( 0, inst );
-            }
+            return ph;
+        }
 
-            return Placeholder{ ph, Level, Type };
+        template< Placeholder::Type Type >
+        Placeholder construct( llvm::Argument & arg )
+        {
+            static_assert( Type == Placeholder::Type::Stash || Type == Placeholder::Type::Unstash );
+
+            auto m = util::get_module( &arg );
+
+            auto & entry = arg.getParent()->getEntryBlock();
+            llvm::IRBuilder<> irb{ &entry, entry.getFirstInsertionPt() };
+            assert( is_base_type_in_domain( m, &arg, get_domain( &arg ) ) );
+
+            return construct< Type >( &arg, irb );
         }
 
     private:
