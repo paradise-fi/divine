@@ -190,9 +190,22 @@ struct NoTracing : Registers, TracingInterface
     /* an interface for debug mode implementation */
     void debug_save() {}
     void debug_restore() {}
+
+    bool test_loop( CodePointer, int )
+    {
+        return !this->flags_all( _VM_CF_IgnoreLoop );
+    }
+
+    bool test_crit( CodePointer, GenericPointer, int, int )
+    {
+        return !this->flags_all( _VM_CF_IgnoreCrit );
+    }
+
+    void entered( CodePointer ) {}
+    void left( CodePointer ) {}
 };
 
-struct Tracing : Registers, TracingInterface
+struct Tracing : NoTracing
 {
     State _debug_state;
     LoopTrack _loops;
@@ -205,6 +218,16 @@ struct Tracing : Registers, TracingInterface
     bool debug_allowed() { return _debug_allowed; }
     bool debug_mode() { return flags_any( _VM_CF_DebugMode ); }
     void enable_debug() { _debug_allowed = true; }
+
+    bool test_loop( CodePointer p, int i )
+    {
+        return NoTracing::test_loop( p, i ) && !debug_mode();
+    }
+
+    bool test_crit( CodePointer p, GenericPointer a, int s, int t )
+    {
+        return NoTracing::test_crit( p, a, s, t ) && !debug_mode();
+    }
 
     bool enter_debug();
     void leave_debug();
@@ -307,14 +330,6 @@ struct Memory
 
 struct CowMemory : Memory< vm::CowHeap >
 {};
-
-struct NoTracking
-{
-    void entered( CodePointer ) {}
-    void left( CodePointer ) {}
-    bool test_loop( CodePointer, int ) {}
-    bool test_crit( CodePointer, GenericPointer, int, int ) {}
-};
 
 struct NoFault
 {
@@ -592,7 +607,7 @@ struct Context : TracingContext< Heap_ >
 };
 
 template< typename Program_, typename Heap_ >
-struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >, NoFault, NoChoice, NoTracking
+struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >, NoFault, NoChoice
 {
     using Base = ContextBase< NoTracing, Memory< Heap_ > >;
     using Program = Program_;
