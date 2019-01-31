@@ -35,6 +35,7 @@ namespace divine::mc
         std::deque< vm::Choice > _lock;
         vm::HeapPointer _assume;
         vm::GenericPointer _tid;
+        MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
         std::unordered_map< vm::GenericPointer, Critical > _critical;
         int _level;
 
@@ -63,6 +64,15 @@ namespace divine::mc
             return 0;
         }
 
+        void clear() override
+        {
+            Super::clear();
+            _mem_loads.clear();
+            _mem_stores.clear();
+            _crit_loads.clear();
+            _crit_stores.clear();
+        }
+
         using Super::trace;
 
         void trace( vm::TraceSchedInfo ) {} /* noop */
@@ -83,6 +93,36 @@ namespace divine::mc
                 auto n = extract.convert( assume->binary.left );
                 trace( "ASSUME " + to_string( n ) );
             }
+        }
+
+        bool test_crit( vm::CodePointer pc, vm::GenericPointer ptr, int size, int type )
+        {
+            if ( this->flags_all( _VM_CF_IgnoreCrit ) || this->debug_mode() )
+                return false;
+
+            auto start = ptr;
+            if ( start.heap() )
+                start.type( vm::PointerType::Heap );
+            auto end = start;
+            end.offset( start.offset() + size );
+
+            if ( type == _VM_MAT_Load || type == _VM_MAT_Both )
+            {
+                if ( _crit_loads.intersect( start, end ) )
+                    return track_test( vm::Interrupt::Mem, pc );
+                else if ( _track_mem )
+                    _mem_loads.insert( start, end );
+            }
+
+            if ( type == _VM_MAT_Store || type == _VM_MAT_Both )
+            {
+                if ( _crit_stores.intersect( start, end ) )
+                    return track_test( vm::Interrupt::Mem, pc );
+                else if ( _track_mem )
+                    _mem_stores.insert( start, end );
+            }
+
+            return false;
         }
 
         void swap_critical()

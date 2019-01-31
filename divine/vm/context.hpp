@@ -460,7 +460,6 @@ struct Context : TracingContext< Heap_ >
     bool _track_mem = false;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
-    MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
 
     void track_memory( bool b ) { _track_mem = b; }
 
@@ -486,7 +485,7 @@ struct Context : TracingContext< Heap_ >
         this->_loops.loops.emplace_back();
     }
 
-    void clear()
+    virtual void clear()
     {
         this->_interrupts.clear();
         reset_interrupted();
@@ -496,10 +495,6 @@ struct Context : TracingContext< Heap_ >
         this->set( _VM_CR_User3, GenericPointer() );
         this->set( _VM_CR_User4, GenericPointer() );
         this->set( _VM_CR_ObjIdShuffle, 0 );
-        _mem_loads.clear();
-        _mem_stores.clear();
-        _crit_loads.clear();
-        _crit_stores.clear();
         this->_state.instruction_counter = 0;
     }
 
@@ -534,36 +529,6 @@ struct Context : TracingContext< Heap_ >
             return track_test( Interrupt::Cfl, pc );
         else
             return false;
-    }
-
-    bool test_crit( CodePointer pc, GenericPointer ptr, int size, int type )
-    {
-        if ( this->flags_all( _VM_CF_IgnoreCrit ) || this->debug_mode() )
-            return false;
-
-        auto start = ptr;
-        if ( start.heap() )
-            start.type( PointerType::Heap );
-        auto end = start;
-        end.offset( start.offset() + size );
-
-        if ( type == _VM_MAT_Load || type == _VM_MAT_Both )
-        {
-            if ( _crit_loads.intersect( start, end ) )
-                return track_test( Interrupt::Mem, pc );
-            else if ( _track_mem )
-                _mem_loads.insert( start, end );
-        }
-
-        if ( type == _VM_MAT_Store || type == _VM_MAT_Both )
-        {
-            if ( _crit_stores.intersect( start, end ) )
-                return track_test( Interrupt::Mem, pc );
-            else if ( _track_mem )
-                _mem_stores.insert( start, end );
-        }
-
-        return false;
     }
 
     void count_instruction()
