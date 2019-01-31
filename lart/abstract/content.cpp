@@ -87,7 +87,7 @@ void StoresToContent::process( StoreInst * store ) {
 
 void LoadsFromContent::run( Module & m ) {
     for ( const auto &load : transformable< LoadInst >( m ) ) {
-        if ( get_domain( load->getPointerOperand() ) == get_domain( load ) ) {
+        if ( get_domain( load->getPointerOperand() ) != get_domain( load ) ) {
             process( load );
         }
     }
