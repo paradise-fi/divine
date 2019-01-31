@@ -74,7 +74,7 @@ void CLI::go( command::Break b )
 
 void CLI::go( command::Step s )
 {
-    auto step = stepper( s, true );
+    auto step = stepper( s, false );
     if ( !s.out )
         step.lines( s.count );
     run( step, !s.quiet );
@@ -83,7 +83,7 @@ void CLI::go( command::Step s )
 
 void CLI::go( command::StepI s )
 {
-    auto step = stepper( s, true );
+    auto step = stepper( s, false );
     step.instructions( s.count );
     run( step, !s.quiet );
     set( "$_", frameDN() );
