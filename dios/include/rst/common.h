@@ -88,6 +88,18 @@ static void poke_object( T * obj, void * addr ) noexcept
     __vm_poke( addr, _VM_ML_User, ptr.obj );
 }
 
+template< typename T >
+inline T * object( T * ptr ) noexcept
+{
+    return reinterpret_cast< T * >( reinterpret_cast< uintptr_t >( ptr ) & _VM_PM_Obj );
+}
+
+template< typename T >
+inline uint32_t offset( T * ptr ) noexcept
+{
+    return static_cast< uint32_t >( reinterpret_cast< uintptr_t >( ptr ) & _VM_PM_Off );
+}
+
 __invisible static inline uint64_t ignore_fault() noexcept {
     return __vm_ctl_flag( 0, _DiOS_CF_IgnoreFault );
 }
