@@ -47,6 +47,10 @@ struct DomainMetadata {
         : glob( glob )
     {}
 
+    inline bool scalar() const noexcept { return kind() == DomainKind::scalar; }
+    inline bool pointer() const noexcept { return kind() == DomainKind::pointer; }
+    inline bool content() const noexcept { return kind() == DomainKind::content; }
+
     Domain domain() const;
     DomainKind kind() const;
     llvm::Type * base_type() const;
