@@ -11,25 +11,6 @@ void DiosCC::linkDios()
         linkEntireArchive( arch );
 }
 
-void DiosCC::linkEssentials()
-{
-    using namespace std::literals;
-    // the _link_essentials modules are built from divine.link.always annotations
-    for ( auto e : defaultDIVINELibs )
-    {
-        auto archive = getLib( e );
-        auto modules = archive.modules();
-        for ( auto it = modules.begin(); it != modules.end(); ++it )
-        {
-            if ( it.getName() == "_link_essentials.ll"s )
-            {
-                linker->link_decls( it.take() );
-                break;
-            }
-        }
-    }
-}
-
 DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     Driver( opts, ctx )
 {
@@ -51,10 +32,8 @@ void DiosCC::build( ParsedOpts po )
 {
     Driver::build( po );
 
-    if ( linker->hasModule() ) {
-        linkEssentials();
+    if ( linker->hasModule() )
         linkLibs( defaultDIVINELibs );
-    }
 }
 
 const std::vector< std::string > DiosCC::defaultDIVINELibs = { "c++", "c++abi", "pthread", "c" };
