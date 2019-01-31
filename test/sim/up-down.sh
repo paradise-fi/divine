@@ -8,7 +8,7 @@ sim $SRC <<EOF
 > setup --debug-everything
 > start
 + ^# executing main
-> stepa
+> stepa --count 100
 + ^# executing .*fault_handler
 > up
 > up
