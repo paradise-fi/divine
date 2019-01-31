@@ -254,7 +254,7 @@ bool CLI::check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
     return false;
 }
 
-void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
+void CLI::trace( Trace tr, bool boot, std::function< void() > end )
 {
     std::set< vm::CowHeap::Snapshot > visited;
 
@@ -263,7 +263,7 @@ void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
         vm::setup::boot( _ctx );
 
     auto old_mode = _ctx._lock_mode;
-    _ctx._lock_mode = simple ? Context::LockChoices : Context::LockBoth;
+    _ctx._lock_mode = Context::LockBoth;
     brick::types::Defer _( [&](){ _ctx._lock_mode = old_mode; } );
 
     auto update_lock = [&]( vm::CowHeap::Snapshot snap )
@@ -278,9 +278,7 @@ void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
     bool stop = false;
     step._callback = [&]()
     {
-        if ( simple && _ctx._lock.choices.empty() )
-            stop = true;
-        if ( !simple && tr.steps.empty() )
+        if ( tr.steps.empty() )
             stop = true;
         return !stop;
     };
@@ -297,8 +295,7 @@ void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
             }
             visited.insert( next );
             _ctx.instruction_count( 0 );
-            if ( !simple )
-                update_lock( snap );
+            update_lock( snap );
             last = get( "#last", true ).snapshot();
             return next;
         };
@@ -306,15 +303,7 @@ void CLI::trace( Trace tr, bool simple, bool boot, std::function< void() > end )
 
     out() << std::endl;
 
-    if ( simple && !_ctx._lock.choices.empty() )
-    {
-        out() << "unused choices:";
-        for ( auto c : _ctx._lock.choices )
-            out() << " " << c;
-        out() << std::endl;
-    }
-
-    if ( !simple && !tr.steps.empty() )
+    if ( !tr.steps.empty() )
         out() << "WARNING: Program terminated unexpectedly." << std::endl;
 
     if ( !_ctx._trace.empty() )

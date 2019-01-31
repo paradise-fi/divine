@@ -243,29 +243,6 @@ void CLI::go( command::Set s )
     set( s.options[0], s.options[1] );
 }
 
-void CLI::go( command::Trace tr )
-{
-    if ( !tr.from.empty() )
-    {
-        _ctx.load( get( tr.from ).snapshot() );
-        vm::setup::scheduler( _ctx );
-    }
-
-    _trace.clear();
-    bool simple = false;
-
-    if ( !tr.simple_choices.empty() )
-    {
-        simple = true;
-        if ( !tr.steps.empty() )
-            throw brick::except::Error( "Can't specify both steps and (simple) choices." );
-        for ( auto i : tr.simple_choices )
-            _ctx._lock.choices.emplace_back( i, 0 );
-    }
-
-    trace( tr, simple, tr.from.empty(), [=]() { reach_user(); } );
-}
-
 void CLI::go( command::Thread thr )
 {
     _sched_random = thr.random;

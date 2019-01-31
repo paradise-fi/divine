@@ -35,10 +35,6 @@ auto make_parser()
                         return bad( cmd::BadFormat, "function names cannot start with a digit" );
                     return good( s );
                 } )->
-            add( "step", []( std::string, auto, auto bad )
-                {
-                    return bad( cmd::BadFormat, "not implemented yet" );
-                } )->
             add( "component", []( std::string s, auto good, auto bad )
                 {
                     if ( s == "kernel" ) return good( dbg::Component::Kernel );
@@ -95,13 +91,6 @@ auto make_parser()
         .option( "[--sticky {string}]", &command::Setup::sticky_commands,
                     "run given commands after each step"s );
 
-    auto o_trace = cmd::make_option_set< Trace >( v )
-        .option( "[{step}+]", &Trace::steps, "step descriptions" );
-    auto o_trace_cmd = cmd::make_option_set< command::Trace >( v )
-        .option( "--choices {int}+", &command::Trace::simple_choices, "use simple choices" )
-        .option( "[--from {string}]", &command::Trace::from,
-                    "start in a given state, instead of initial"s );
-
     auto o_info = cmd::make_option_set< command::Info >( v )
         .option( "{string}", &command::Info::cmd, "what info to print" )
         .option( "[--setup {string}]", &command::Info::setup, "set up a new info source" );
@@ -130,7 +119,6 @@ auto make_parser()
         .command< command::Source >( "show the source code of the current function"s,
                                         teflopts, varopts )
         .command< command::Thread >( "control thread scheduling"s, threadopts )
-        .command< command::Trace >( "load a counterexample trace"s, o_trace, o_trace_cmd )
         .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
         .command< command::Diff >( "diff two objects"s, teflopts, o_diff )
         .command< command::Call >( "run a custom information-gathering function"s,

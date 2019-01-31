@@ -110,14 +110,6 @@ struct Info : Teflon
 
 struct Thread : CastIron  { std::string spec; bool random; };
 
-struct Trace : CastIron, sim::Trace
-{
-    Trace() = default;
-    explicit Trace( const sim::Trace &tr ) : sim::Trace( tr ) {}
-    std::string from;
-    std::vector< int > simple_choices;
-};
-
 struct BackTrace : WithVar, Teflon
 {
     BackTrace() : WithVar( "$top" ) {}

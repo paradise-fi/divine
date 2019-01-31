@@ -189,7 +189,7 @@ struct CLI
     Stepper stepper( command::WithSteps s, bool jmp );
     void reach_user();
     void reach_error();
-    void trace( sim::Trace, bool, bool, std::function< void() > );
+    void trace( sim::Trace, bool, std::function< void() > );
 
     void bplist( command::Break b );
     void dump_registers();
@@ -215,7 +215,6 @@ struct CLI
     void go( command::Up );
     void go( command::Down );
     void go( command::Set s );
-    void go( command::Trace tr );
     void go( command::Thread thr );
     void go( command::BitCode bc );
     void go( command::Source src );
