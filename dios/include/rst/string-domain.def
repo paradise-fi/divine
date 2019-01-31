@@ -9,8 +9,8 @@ LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
 
 OP( DOMAIN_TYPE, lift, const char * str, unsigned len );
 
-OP( bool, store, char val, DOMAIN_TYPE str, uint64_t idx );
-OP( char, load, DOMAIN_TYPE str, uint64_t idx );
+OP( void, store, char val,  char * str );
+OP( char, load, char * str );
 
 OP( DOMAIN_TYPE, gep, DOMAIN_TYPE str, uint64_t idx );
 
