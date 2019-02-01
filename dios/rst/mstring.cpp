@@ -238,15 +238,6 @@ void Quintuple::safe_set( size_t idx, char val ) noexcept {
     }
 }
 
-std::string Quintuple::to_string() const noexcept {
-    std::string res;
-    for ( size_t i = _from; i < _buff.size(); ++i ) {
-        char c = _buff[i];
-        res += ( c == '\0' ) ? '0' : c;
-    }
-    return res;
-}
-
 void mstring_release( Quintuple * quintuple ) noexcept {
     quintuple->refcount_decrement();
 }
