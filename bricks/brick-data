@@ -148,6 +148,171 @@ struct Bimap : _impl::BimapIx< A, B > {
     }
 };
 
+
+// a map whose keys are disjunct intervals [from, to) ('from' is inclusive, 'to'
+// is exclusive). Overlapping intervals are not merged, but the old are
+// shortened/deleted/split to accommodate for the newly inserted.
+
+template< typename  K, typename T, typename Cmp = std::less< K > >
+struct IntervalMap
+{
+    struct key_type {
+        K from;
+        mutable K to;
+        bool operator<( const key_type & o ) const { return Cmp()( from , o.from ); }
+        key_type( K from, K to ) : from( from ), to( to ) {}
+        key_type( K from ) : from( from ), to( from ) {}
+    };
+
+    using map = std::map< key_type, T >;
+    using iterator = typename map::const_iterator;
+    using const_iterator = iterator;
+
+    map _map;
+
+
+    template< typename TT >
+    iterator insert( K from, K to, TT && data ) {
+        ASSERT( _less( from, to ) );
+
+        auto it = _map.upper_bound( from );
+
+        if ( ! _map.empty() ) {
+            if ( it != _map.begin() ) {
+                --it;
+            }
+            if ( _less( it->first.from, from ) && _less( to, it->first.to ) ) {
+                // Splitting an existing interval in two
+                _map.insert( { { to, it->first.to }, it->second } );
+                it->first.to = from;
+            } else {
+                if ( _leq( it->first.to, from ) ) {
+                    ++it;
+                } else if ( _less( it->first.from, from )
+                        && _geq( to, it->first.to ) ) { // Chomp from right
+                    it->first.to = from;
+                    ++it;
+                }
+
+                while ( it != _map.end()
+                        && _leq( from, it->first.from )
+                        && _geq( to, it->first.to ) ) { // Destroy covered
+                    it = _map.erase( it );
+                }
+
+                if ( it != _map.end()
+                        && _less( it->first.from, to )
+                        && _less( to, it->first.to ) ) { // Chomp from left
+                    // XXX: once we have a newer stdlib...
+                    // auto nh = _map.extract( it++ );
+                    // nh.key().from = to;
+                    // it = _map.insert( it, std::move( nh ) );
+
+                    // It would *probably* be safe to change the key inside the map
+                    T data = std::move( it->second );
+                    key_type i = it->first;
+                    _map.erase( it++ );
+                    i.from = to;
+                    it = _map.insert( it, { i, std::move( data ) } );
+                }
+            }
+        }
+
+        return _map.insert( it, { { from, to }, std::forward< TT >( data ) } );
+    }
+
+    const_iterator find( K val ) const {
+        auto it = _map.upper_bound( val );
+        if ( it == _map.begin() )
+            return _map.end();
+        --it;
+        if ( _inside( val, it->first ) )
+            return it;
+        return _map.end();
+    }
+
+    bool empty() const { return _map.empty(); }
+    size_t size() const { return _map.size(); }
+
+    void clear() { _map.clear(); }
+
+    const_iterator begin() const { return _map.begin(); }
+    const_iterator cbegin() const { return _map.begin(); }
+
+    const_iterator end() const { return _map.end(); }
+    const_iterator cend() const { return _map.end(); }
+
+    friend void swap( IntervalMap &a, IntervalMap &b )
+    {
+        using std::swap;
+        swap( a._map, b._map );
+    }
+
+    bool intersect( K from, K to )
+    {
+        ASSERT( _less( from, to ) );
+
+        typename map::iterator next = _map.upper_bound( from );
+
+        if ( next == _map.end() )
+        {
+            if ( _map.empty() )
+                return false;
+
+            if ( _less( from, std::prev( next )->first.to ) )
+                return true;
+
+            return false;
+        }
+
+        if ( next == _map.begin() )
+        {
+            ASSERT( _leq( from, next->first.from ) );
+            return !_leq( to, next->first.from );
+        }
+
+        if ( _less( from, next->first.from ) && _less( next->first.from, to ) )
+            return true;
+
+        if ( _less( from, std::prev( next )->first.to ) )
+            return true;
+
+        return false;
+    }
+
+    void _validate() {
+        bool prevSet = false;
+        T prev;
+        for ( const auto &p : _map ) {
+            ASSERT( _less( p.first.from, p.first.to ) );
+            ASSERT( !prevSet || _leq( prev, p.first.from ) );
+            prev = p.first.to;
+            prevSet = true;
+        }
+    }
+
+    static bool _less( const K &a, const K &b ) {
+        return Cmp()( a, b );
+    }
+
+    static bool _eq( const K &a, const K &b ) {
+        return !_less( a, b ) && !_less( b, a );
+    }
+
+    static bool _geq( const K &a, const K &b ) {
+        return !_less( a, b );
+    }
+
+    static bool _leq( const K &a, const K &b ) {
+        return _geq( b, a );
+    }
+
+    static bool _inside( const K &p, const key_type &i ) {
+        return _leq( i.from, p ) && _less( p, i.to );
+    }
+};
+
+
 // a set for efficient storage of intervals [a, b) (i.e. from is inclusive,
 // while to is exclusive)
 template< typename T, typename Cmp = std::less< T > >
