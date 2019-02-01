@@ -46,6 +46,8 @@ void rewriteDebugPaths( llvm::Module &m, Mapper map ) {
 
     for ( auto *cu : dif.compile_units() )
         rewriteMDDebugPaths( cu, seen, ctx, map );
+    for ( auto *subr : dif.subprograms() )
+        rewriteMDDebugPaths( subr, seen, ctx, map );
 }
 
 }
