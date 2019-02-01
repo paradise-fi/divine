@@ -15,7 +15,7 @@ DIVINE_UNRELAX_WARNINGS
 using namespace divine;
 using namespace brick;
 
-#define VERSION "2" /* bump this to force rebuilds despite .fp matches */
+#define VERSION "3" /* bump this to force rebuilds despite .fp matches */
 
 /* usage: runtime-cc srcdir bindir source.c output.bc [flags] */
 int main( int argc, const char **argv )
@@ -39,15 +39,14 @@ int main( int argc, const char **argv )
         }
         auto mod = clang.compile( argv[3], opts );
 
-        auto runtimeBase = fs::joinPath( srcDir, "dios" );
-        if ( !fs::exists( runtimeBase ) )
-                runtimeBase = srcDir;
         lart::divine::rewriteDebugPaths( *mod, [=]( auto p ) {
                 std::string relpath;
-                if ( string::startsWith( p, runtimeBase ) )
-                    relpath = p.substr( runtimeBase.size() );
+                if ( string::startsWith( p, srcDir ) )
+                    relpath = p.substr( srcDir.size() );
                 else if ( string::startsWith( p, binDir ) )
                     relpath = p.substr( binDir.size() );
+                if ( string::startsWith( relpath, "/dios" ) )
+                    relpath = relpath.substr( 5 );
                 if ( !relpath.empty() ) {
                     while ( fs::isPathSeparator( relpath[0] ) )
                         relpath.erase( relpath.begin() );
