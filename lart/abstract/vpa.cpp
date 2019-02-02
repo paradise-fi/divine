@@ -110,14 +110,18 @@ void VPA::preprocess( Function * fn ) {
     }
 }
 
-bool ignore_call_of_function( CallInst * call ) {
+template< typename Meta, typename Call >
+bool has_called_function_meta( Call call, Meta meta ) {
     auto fns = get_potentialy_called_functions( call );
-    return query::query( fns ).all( FunctionTag::ignore_call_of_function );
+    return query::query( fns ).all( meta );
+}
+
+bool ignore_call_of_function( CallInst * call ) {
+    return has_called_function_meta( call, meta::ignore_call_of_function );
 }
 
 bool ignore_return_of_function( CallInst * call ) {
-    auto fns = get_potentialy_called_functions( call );
-    return query::query( fns ).all( FunctionTag::ignore_return_of_function );
+    return has_called_function_meta( call, meta::ignore_return_of_function );
 }
 
 void stop_on_forbidden_propagation( Instruction * inst, Domain dom ) {
@@ -194,10 +198,10 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 
 void VPA::propagate( CallInst *call, Domain dom ) {
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-        if ( FunctionTag::ignore_call_of_function( fn ) )
+        if ( meta::ignore_call_of_function( fn ) )
             return;
 
-        if ( FunctionTag::forbidden_function( fn ) ) {
+        if ( meta::is_forbidden_function( fn ) ) {
             auto name = fn->hasName() ? fn->getName().str() : "anonymous";
             throw std::runtime_error( "transforming forbidden function: " + name );
         }

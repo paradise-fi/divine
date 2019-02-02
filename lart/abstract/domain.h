@@ -88,19 +88,6 @@ private:
     llvm::LLVMContext &ctx;
 };
 
-struct FunctionTag {
-    static inline bool ignore_call_of_function( llvm::Function * fn ) {
-        return fn->getMetadata( meta::tag::transform::ignore::arg );
-    }
-
-    static inline bool ignore_return_of_function( llvm::Function * fn ) {
-        return fn->getMetadata( meta::tag::transform::ignore::ret );
-    }
-
-    static inline bool forbidden_function( llvm::Function * fn ) {
-        return fn->getMetadata( meta::tag::transform::forbidden );
-    }
-};
 
 struct CreateAbstractMetadata {
     void run( llvm::Module &m );

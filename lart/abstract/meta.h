@@ -30,4 +30,17 @@ namespace lart::abstract::meta {
             constexpr char kind[] = "lart.abstract.domain.kind";
         }
     } // namespace tag
+
+    static inline bool ignore_call_of_function( llvm::Function * fn ) {
+        return fn->getMetadata( tag::transform::ignore::arg );
+    }
+
+    static inline bool ignore_return_of_function( llvm::Function * fn ) {
+        return fn->getMetadata( tag::transform::ignore::ret );
+    }
+
+    static inline bool is_forbidden_function( llvm::Function * fn ) {
+        return fn->getMetadata( tag::transform::forbidden );
+    }
+
 } // namespace lart::abstract::meta
