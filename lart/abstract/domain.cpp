@@ -14,8 +14,6 @@ using lart::util::get_module;
 
 namespace {
 
-inline auto empty_metadata_tuple( LLVMContext &ctx ) { return MDTuple::get( ctx, {} ); }
-
 inline auto annotation( CallInst *call ) -> brick::llvm::Annotation {
    auto anno = brick::llvm::transformer( call ).operand( 1 )
                .apply( [] ( auto val ) { return val->stripPointerCasts(); } )
@@ -28,15 +26,12 @@ inline auto annotation( CallInst *call ) -> brick::llvm::Annotation {
     return brick::llvm::Annotation{ anno->getAsCString() };
 }
 
-decltype(auto) functions_with_prefix( Module &m, StringRef pref ) noexcept {
+auto functions_with_prefix( Module &m, StringRef pref ) noexcept {
     return query::query( m ).map( query::refToPtr )
           .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
 }
 
-Domain domain( MDNode * node ) {
-    auto &dom = cast< MDNode >( node->getOperand( 0 ) )->getOperand( 0 );
-    return Domain( cast< MDString >( dom )->getString().str() );
-}
+Domain domain( llvm::MDNode * node ) { return Domain{ meta::value::get( node ) }; }
 
 } // anonymous namespace
 
@@ -59,7 +54,7 @@ void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
     auto &ctx = m.getContext();
     brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
         auto name = anno_namespace.str() + "." + anno.toString();
-        val->setMetadata( name, empty_metadata_tuple( ctx ) );
+        val->setMetadata( name, meta::tuple::empty( ctx ) );
     });
 }
 template< typename Value >
@@ -98,17 +93,6 @@ void CreateAbstractMetadata::run( Module &m ) {
                 if ( auto call = dyn_cast< CallInst >( user ) )
                     add_abstract_metadata( call, domain( md ) );
     }
-}
-
-inline MDTuple* make_mdtuple( LLVMContext &ctx, unsigned size ) {
-    std::vector< Metadata* > doms;
-    doms.reserve( size );
-
-    MetadataBuilder mdb( ctx );
-    std::generate_n( std::back_inserter( doms ), size,
-                     [&]{ return mdb.domain_node( Domain::Concrete() ); } );
-
-    return MDTuple::get( ctx, doms );
 }
 
 static const Bimap< DomainKind, std::string > KindTable = {
@@ -175,6 +159,12 @@ Domain ArgMetadata::domain() const {
     return Domain( mdstr->getString().str() );
 }
 
+
+llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
+    auto value = [&] { return meta::value::create( ctx, Domain::Concrete().name() ); };
+    return meta::tuple::get( ctx, size, value );
+}
+
 constexpr char FunctionMetadata::meta[];
 
 void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
@@ -182,7 +172,7 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
     auto size = fn->arg_size();
 
     if ( !fn->getMetadata( meta ) )
-        fn->setMetadata( meta, make_mdtuple( ctx, size ) );
+        fn->setMetadata( meta, concrete_domain_tuple( ctx, size ) );
 
     auto md = fn->getMetadata( meta );
 
@@ -276,7 +266,7 @@ MDNode * get_abstract_metadata( llvm::Instruction *inst ) {
 
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     auto& ctx = inst->getContext();
-    inst->getFunction()->setMetadata( meta::tag::roots, empty_metadata_tuple( ctx ) );
+    inst->getFunction()->setMetadata( meta::tag::roots, meta::tuple::empty( ctx ) );
     // TODO enable multiple domains per instruction
     auto node = MetadataBuilder( ctx ).domain_node( dom );
     inst->setMetadata( meta::tag::domains, MDTuple::get( ctx, node ) );

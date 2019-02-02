@@ -31,6 +31,36 @@ namespace lart::abstract::meta {
         }
     } // namespace tag
 
+
+    struct tuple
+    {
+        template< typename Init >
+        static llvm::MDTuple * get( llvm::LLVMContext &ctx, unsigned size, Init init ) {
+            std::vector< llvm::Metadata* > values( size );
+            std::generate( values.begin(), values.end(), init );
+            return llvm::MDTuple::get( ctx, values );
+        }
+
+        static llvm::MDTuple * empty( llvm::LLVMContext &ctx ) {
+            return llvm::MDTuple::get( ctx, {} );
+        }
+    };
+
+
+    struct value
+    {
+        static std::string get( llvm::MDNode * node ) {
+            auto & op = node->getOperand( 0 );
+            auto & str = llvm::cast< llvm::MDNode >( op )->getOperand( 0 );
+            return llvm::cast< llvm::MDString >( str )->getString().str();
+        }
+
+        static llvm::MDNode * create( llvm::LLVMContext &ctx, const std::string & str ) {
+            return llvm::MDNode::get( ctx, llvm::MDString::get( ctx, str ) );
+        }
+    };
+
+
     static inline bool ignore_call_of_function( llvm::Function * fn ) {
         return fn->getMetadata( tag::transform::ignore::arg );
     }
@@ -42,5 +72,4 @@ namespace lart::abstract::meta {
     static inline bool is_forbidden_function( llvm::Function * fn ) {
         return fn->getMetadata( tag::transform::forbidden );
     }
-
 } // namespace lart::abstract::meta
