@@ -4,7 +4,8 @@
 cat > file.cpp <<EOF
 #include <atomic>
 
-int main() {
+int main()
+{
     std::atomic< int > x{ 42 };
 }
 EOF
@@ -12,7 +13,7 @@ EOF
 sim file.cpp <<EOF
 + ^# executing __boot at
 > start
-> step --over --count 2 --quiet
+> step --count 2 --quiet
 + ^# executing main at
 > show .x
 + ^attributes
