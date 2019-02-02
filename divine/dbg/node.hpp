@@ -153,10 +153,7 @@ struct Node
 
     DNKey sortkey() const
     {
-        auto addr = _address;
-        if ( addr.heap() )
-            addr.type( vm::PointerType::Heap );
-        return std::make_tuple( addr, _offset, _kind,
+        return std::make_tuple( _address, _offset, _kind,
                                 _kind == DNKind::Frame ? nullptr : _di_type );
     }
 
