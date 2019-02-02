@@ -77,7 +77,16 @@ void *calloc( size_t n, size_t size )
 }
 
 __attribute__((__nothrow__))
-void free( void * p) { if ( p ) __vm_obj_free( p ); }
+void free( void * p)
+{
+    if ( !p )
+        return;
+
+    if ( __dios_pointer_get_type( p ) != _VM_PT_Heap )
+        __dios_fault( _VM_F_Memory, "invalid free of a non-heap pointer" );
+
+    __vm_obj_free( p );
+}
 
 /* IOStream */
 
