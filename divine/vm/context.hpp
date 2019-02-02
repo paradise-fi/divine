@@ -431,7 +431,7 @@ struct MakeFrame
     void enter( PointerV parent, Args... args )
     {
         ASSERT( _fun );
-        auto frameptr = _ctx.heap().make( _fun->framesize, 16 ).cooked();
+        auto frameptr = _ctx.heap().make( _fun->framesize, _VM_PL_Code + 16 ).cooked();
         _ctx.set( _VM_CR_Frame, frameptr );
         _ctx.pc( _pc );
         _ctx.heap().write( frameptr, PointerV( _pc ) );

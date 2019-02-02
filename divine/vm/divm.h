@@ -2,21 +2,45 @@
 
 #if !defined(__DIVM_H_CONST__) && ( !defined(__divm__) || defined(__divm_const__) )
 #define __DIVM_H_CONST__
+#include <stdint.h>
 
-enum { _VM_PM_Off  = 0x000000003FFFFFFFull,
-       _VM_PM_Type = 0x00000000C0000000ull,
+enum { _VM_PM_Off  = 0x00000000FFFFFFFFull,
        _VM_PM_Obj  = 0xFFFFFFFF00000000ull };
 enum { _VM_PB_Full = 64,
        _VM_PB_Obj = 32,
-       _VM_PB_Type = 2,
-       _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
-enum _VM_PointerType { _VM_PT_Heap = 0, _VM_PT_Weak = 1, _VM_PT_Marked = 2, _VM_PT_Reserved = 3,
-                       _VM_PT_Global, _VM_PT_Code };
+       _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj };
 
+enum _VM_PointerType { _VM_PT_Global, _VM_PT_Code, _VM_PT_Heap, _VM_PT_Marked, _VM_PT_Weak };
 enum _VM_MemLayer { _VM_ML_Pointers, _VM_ML_Definedness, _VM_ML_Taints, _VM_ML_User };
 
+struct _VM_PointerLimits { uint32_t low, high; };
 enum { _VM_PL_Global = 0x00080000,
-       _VM_PL_Code   = 0x00100000 };
+       _VM_PL_Code   = 0x00100000,
+       _VM_PL_Heap   = 0xF0000000,
+       _VM_PL_Marked = 0xF7000000 };
+
+static const struct _VM_PointerLimits __vm_pointer_limits[] =
+{
+    [_VM_PT_Global] = { 0,             _VM_PL_Global },
+    [_VM_PT_Code]   = { _VM_PL_Global, _VM_PL_Code   },
+    [_VM_PT_Heap]   = { _VM_PL_Code,   _VM_PL_Heap   },
+    [_VM_PT_Marked] = { _VM_PL_Heap,   _VM_PL_Marked },
+    [_VM_PT_Weak]   = { _VM_PL_Marked, 0xFFFFFFFF    }
+};
+
+static inline int __vm_pointer_type( uint32_t objid )
+{
+    if ( objid < _VM_PL_Global )
+        return _VM_PT_Global;
+    if ( objid < _VM_PL_Code )
+        return _VM_PT_Code;
+    if ( objid < _VM_PL_Heap )
+        return _VM_PT_Heap;
+    if ( objid < _VM_PL_Marked )
+        return _VM_PT_Marked;
+    if ( 1 )
+        return _VM_PT_Weak;
+}
 
 #endif
 
@@ -365,7 +389,7 @@ void __vm_trace( enum _VM_Trace type, ... ) NOTHROW NATIVE_VISIBLE;
 /*
  * Create and destroy heap objects.
  */
-void *__vm_obj_make( int size ) NOTHROW NATIVE_VISIBLE;
+void *__vm_obj_make( int size, int type ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_resize( void *ptr, int size ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_free( void *ptr ) NOTHROW NATIVE_VISIBLE;
 int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;

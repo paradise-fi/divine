@@ -845,6 +845,7 @@ void Eval< Ctx >::implement_hypercall()
         case lx::HypercallObjMake:
         {
             int64_t size = operandCk< IntV >( 0 ).cooked();
+            auto type = PointerType( operandCk< IntV >( 1 ).cooked() );
             if ( size >= ( 2ll << _VM_PB_Off ) || size < 1 )
             {
                 result( nullPointerV() );
@@ -852,7 +853,7 @@ void Eval< Ctx >::implement_hypercall()
                                             << " passed to __vm_obj_make";
                 return;
             }
-            result( size ? makeobj( size ) : nullPointerV() );
+            result( size ? makeobj( size, type ) : nullPointerV() );
             return;
         }
         case lx::HypercallObjFree:
@@ -967,7 +968,7 @@ void Eval< Ctx >::implement_call( bool invoke )
         int size = 0;
         for ( int i = function.argcount; i < argcount; ++i )
             size += operand( i ).size();
-        auto vaptr = size ? makeobj( size, 1 ) : nullPointerV();
+        auto vaptr = size ? makeobj( size ) : nullPointerV();
         auto vaptr_loc = s2ptr( function.instructions[ function.argcount ].result(),
                                 0, frameptr.cooked() );
         heap().write( vaptr_loc, vaptr );

@@ -110,8 +110,8 @@ struct Eval
 
     TEST(ptr)
     {
-        int x = testF( "void *__vm_obj_make( int ); int __vm_obj_size( void * ); "
-                       "int f() { void *x = __vm_obj_make( 10 );"
+        int x = testF( "void *__vm_obj_make( int, int ); int __vm_obj_size( void * ); "
+                       "int f() { void *x = __vm_obj_make( 10, 2 );"
                        "return __vm_obj_size( x ); }" );
         ASSERT_EQ( x, 10 );
     }

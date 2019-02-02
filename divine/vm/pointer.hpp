@@ -36,9 +36,6 @@ enum class PointerType : unsigned { Global = _VM_PT_Global,
                                     Weak = _VM_PT_Weak,
                                     Marked = _VM_PT_Marked,
                                   };
-enum class PointerMark : unsigned { None = _VM_PT_Heap,
-                                    Weak = _VM_PT_Weak,
-                                    Marked = _VM_PT_Marked };
 
 static const int PointerBytes = _VM_PB_Full / 8;
 using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
@@ -54,33 +51,27 @@ using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
 struct GenericPointer : brick::types::Comparable
 {
     static const int ObjBits  = _VM_PB_Obj;
-    static const int TypeBits = _VM_PB_Type;
     static const int OffBits  = _VM_PB_Off;
 
     using ObjT = bitlevel::bitvec< ObjBits >;
     using OffT = bitlevel::bitvec< OffBits >;
     using Type = PointerType;
-    using Mark = PointerMark;
 
     union Rep { /* note: type punning is OK in clang */
         PointerRaw raw;
         struct { // beware: bitfields seem to be little-endian in clang but it is impmentation defined
             OffT off:OffBits; // offset must be last (for the sake of arithmetic)
-            PointerMark mark:TypeBits;
             ObjT obj;
         };
     } _rep;
 
     static_assert( sizeof( Rep ) == PointerBytes );
 
-    explicit GenericPointer( Mark m, ObjT obj = 0, OffT off = 0 )
+    explicit GenericPointer( ObjT obj, OffT off = 0 )
     {
         _rep.obj = obj;
         _rep.off = off;
-        _rep.mark = m;
     }
-    explicit GenericPointer( ObjT obj, OffT off )
-        : GenericPointer( Mark::None, obj, off ) {}
 
     explicit GenericPointer( Rep r = Rep() ) : _rep( r ) {}
 
@@ -97,28 +88,13 @@ struct GenericPointer : brick::types::Comparable
         return _rep.raw < o._rep.raw;
     }
 
-    auto mark() const { return _rep.mark; }
-    void mark( Mark m ) { _rep.mark = m; }
-
-    auto type() const
+    Type type() const
     {
-        if ( object() < _VM_PL_Global )
-            return Type::Global;
-        if ( object() < _VM_PL_Code )
-            return Type::Code;
-        return Type( unsigned( mark() ) );
+        return Type( __vm_pointer_type( object() ) );
     }
 
-    void type( Type t )
-    {
-        // TODO: obliterate
-        ASSERT( heap() );
-        ASSERT( t == Type::Heap || t == Type::Marked || t == Type::Weak );
-        mark( Mark( unsigned( t ) ) );
-    }
     bool heap() const { return object() >= _VM_PL_Code; }
-
-    GenericPointer operator+( int o ) { return GenericPointer( mark(), object(), offset() + o ); }
+    GenericPointer operator+( int o ) { return GenericPointer( object(), offset() + o ); }
 };
 
 /* the canonic null pointer, do *not* use as a null check through comparison;
@@ -171,7 +147,7 @@ template< PointerType T >
 struct SlotPointer : GenericPointer
 {
     explicit SlotPointer( ObjT obj = 0, OffT off = 0 )
-        : GenericPointer( PointerMark::None, obj, off ) {}
+        : GenericPointer( obj, off ) {}
 
     SlotPointer( GenericPointer r ) : GenericPointer( r )
     {
@@ -192,7 +168,7 @@ using GlobalPointer = SlotPointer< PointerType::Global >;
 
 struct HeapPointer : GenericPointer
 {
-    HeapPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerMark::None, obj, off ) {}
+    HeapPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( obj, off ) {}
     HeapPointer( GenericPointer r ) : GenericPointer( r )
     {
         if ( ! null() )

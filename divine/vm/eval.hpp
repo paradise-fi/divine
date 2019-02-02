@@ -146,7 +146,12 @@ struct Eval
     HeapPointer globals() { return context().globals(); }
     HeapPointer constants() { return context().constants(); }
 
-    PointerV makeobj( int64_t size, int off = 0 )
+    static uint32_t squash( uint32_t v, uint32_t l, uint32_t h )
+    {
+        return l + ( uint64_t( v ) * ( h - l ) ) / UINT32_MAX;
+    }
+
+    PointerV makeobj( int64_t size, PointerType t = PointerType::Heap )
     {
         using brick::bitlevel::mixdown;
         if ( size >= 16 * 1024 * 1024 )
@@ -156,8 +161,10 @@ struct Eval
         }
         ++ context().objid_shuffle();
         uint32_t hint = mixdown( context().objid_shuffle(), context().frame().object() );
-        auto p = heap().make( size, hint + off );
-        ASSERT( p.cooked().type() == PointerType::Heap );
+        const auto &limits = __vm_pointer_limits[ int( t ) ];
+        hint = squash( hint, limits.low, limits.high );
+        auto p = heap().make( size, hint );
+        ASSERT_EQ( p.cooked().type(), t );
         return p;
     }
 
