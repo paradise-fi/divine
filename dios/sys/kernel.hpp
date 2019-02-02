@@ -36,7 +36,7 @@ struct HelpOption
 
 bool useSyscallPassthrough( const SysOpts& o );
 
-struct Debug : KObject
+struct Debug : DbgObject
 {
     AutoIncMap< __dios_task, int > hids;
     ArrayMap< __dios_task, short > trace_indent;

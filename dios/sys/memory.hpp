@@ -21,10 +21,10 @@ namespace __dios {
 struct MemoryPool {
     MemoryPool( int size ) noexcept :
         _pos( 0 ),
-        _pool( static_cast< void ** >( __vm_obj_make( size * sizeof( void * ) ) ) )
+        _pool( static_cast< void ** >( __vm_obj_make( size * sizeof( void * ), _VM_PT_Heap ) ) )
     {
         for ( int i = 0; i != size; i++ ) {
-            _pool[ i ] = __vm_obj_make( 1 );
+            _pool[ i ] = __vm_obj_make( 1, _VM_PT_Heap );
         }
     }
 
@@ -63,7 +63,7 @@ struct AllocatorBase {
 
     pointer allocate( size_type n, __attribute__((unused)) const_pointer hint = nullptr ) {
 #ifdef __divine__
-        return static_cast< pointer >( __vm_obj_make( n ) );
+        return static_cast< pointer >( __vm_obj_make( n, _VM_PT_Heap ) );
 #else
         return std::allocator< char >().allocate( n, hint );
 #endif

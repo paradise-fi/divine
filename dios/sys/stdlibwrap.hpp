@@ -37,7 +37,7 @@ using Map = std::map< K, V, std::less< K >, Allocator< std::pair< const K, V > >
 
 template < class T, class... Args >
 T *new_object( Args... args ) {
-    T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ?: 1 ) );
+    T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ?: 1, _VM_PT_Heap ) );
     new (obj) T( args... );
     return obj;
 }

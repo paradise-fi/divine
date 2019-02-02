@@ -12,7 +12,7 @@
 namespace __dios {
 
 char *env_to_string( const _VM_Env *env ) noexcept {
-    auto arg = static_cast< char * >( __vm_obj_make( env->size + 1 ) );
+    auto arg = static_cast< char * >( __vm_obj_make( env->size + 1, _VM_PT_Heap ) );
     memcpy( arg, env->value, env->size );
     arg[ env->size ] = '\0';
     return arg;
@@ -99,7 +99,7 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
             name = e;
         }
     }
-    auto argv = static_cast< char ** >( __vm_obj_make( ( argc + 1 ) * sizeof( char * ) ) );
+    auto argv = static_cast< char ** >( __vm_obj_make( ( argc + 1 ) * sizeof( char * ), _VM_PT_Heap ) );
 
     char **arg = argv;
     if (prepend_name) {

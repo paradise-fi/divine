@@ -80,7 +80,8 @@ struct Task : KObject
           _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
         setup_stack();
-        _tls = static_cast< __dios_tls * >( __vm_obj_make( sizeof( __dios_tls ) + tls_size ) );
+        _tls = static_cast< __dios_tls * >( __vm_obj_make( sizeof( __dios_tls ) + tls_size,
+                                                           _VM_PT_Heap ) );
         _tls->__errno = 0;
     }
 
@@ -134,7 +135,7 @@ struct Task : KObject
             __vm_obj_resize( _frame, _fun->frame_size );
         }
         else
-            _frame = static_cast< _VM_Frame * >( __vm_obj_make( _fun->frame_size ) );
+            _frame = static_cast< _VM_Frame * >( __vm_obj_make( _fun->frame_size, _VM_PT_Heap ) );
         _frame->pc = _fun->entry_point;
         _frame->parent = nullptr;
     }
@@ -181,9 +182,7 @@ struct Scheduler : public Next
     Scheduler() :
         debug( new Debug() ),
         sighandlers( nullptr )
-    {
-        debug = abstract::weaken( debug );
-    }
+    {}
 
     ~Scheduler()
     {
@@ -243,13 +242,13 @@ struct Scheduler : public Next
         if ( c == 0 )
             return;
         struct PI { int pid, tid; unsigned choice; };
-        PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
+        PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ), _VM_PT_Heap ) );
         PI *pi_it = pi;
 
         for ( int i = 0; i != c; i++ )
         {
             pi_it->pid = 0;
-            auto tid = abstract::weaken( tasks[ i ]->getId() );
+            auto tid = tasks[ i ]->getId();
             auto tidhid = debug->hids.find( tid );
             if ( tidhid != debug->hids.end() )
                 pi_it->tid = tidhid->second;
@@ -361,7 +360,7 @@ struct Scheduler : public Next
         if ( !sighandlers )
         {
             sighandlers = reinterpret_cast< sighandler_t * >(
-                    __vm_obj_make( sizeof( defhandlers ) ) );
+                    __vm_obj_make( sizeof( defhandlers ), _VM_PT_Heap ) );
             std::memcpy( sighandlers, defhandlers, sizeof(defhandlers) );
         }
 
@@ -418,7 +417,8 @@ struct Scheduler : public Next
             if ( t->_proc == proc )
                 ++count;
         }
-        auto ret = static_cast< __dios_task * >( __vm_obj_make( sizeof( __dios_task ) * count ) );
+        auto ret = static_cast< __dios_task * >( __vm_obj_make( sizeof( __dios_task ) * count,
+                                                                _VM_PT_Heap ) );
         int i = 0;
         for ( auto &t : tasks ) {
             if ( t->_proc == proc ) {
@@ -433,7 +433,7 @@ struct Scheduler : public Next
     _VM_Frame *mkframe( F f )
     {
         auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( f ) );
-        auto frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
+        auto frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size, _VM_PT_Heap ) );
         frame->pc = reinterpret_cast< _VM_CodePointer >( f );
         return frame;
     }

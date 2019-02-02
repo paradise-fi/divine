@@ -25,7 +25,12 @@ namespace __dios
     struct KObject
     {
         static void operator delete( void *p ) { __vm_obj_free( p ); }
-        static void *operator new( size_t s ) { return __vm_obj_make( s ); }
+        static void *operator new( size_t s ) { return __vm_obj_make( s, _VM_PT_Heap ); }
+    };
+
+    struct DbgObject : KObject
+    {
+        static void *operator new( size_t s ) { return __vm_obj_make( s, _VM_PT_Weak ); }
     };
 
 }
