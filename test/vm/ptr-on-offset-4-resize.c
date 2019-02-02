@@ -3,7 +3,7 @@
 #include <sys/divm.h>
 
 int main() {
-    char *array = __vm_obj_make( 12 );
+    char *array = __vm_obj_make( 12, _VM_PT_Heap );
     int x;
 
     int **ptr = (int**)&array[4];

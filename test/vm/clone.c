@@ -10,10 +10,10 @@ struct Obj
 
 int main()
 {
-    struct Obj **arr = __vm_obj_make( 3 * sizeof( struct Obj* ) );
+    struct Obj **arr = __vm_obj_make( 3 * sizeof( struct Obj* ), _VM_PT_Heap );
 
     for( int i = 0; i < 3; ++i )
-        arr[i] = __vm_obj_make( sizeof( struct Obj ) );
+        arr[i] = __vm_obj_make( sizeof( struct Obj ), _VM_PT_Heap );
 
     arr[1]->ptr = arr[1];
 
