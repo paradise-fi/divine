@@ -112,7 +112,7 @@ namespace abstract::mstring {
         Buffer( size_t from, const T * buff, size_t len )
             : _from( from ), _len( len )
         {
-            _buff = reinterpret_cast< char * >( __vm_obj_make( _len ) );
+            _buff = reinterpret_cast< char * >( __vm_obj_make( _len, _VM_PT_Heap ) );
             std::memcpy( _buff, buff, _len );
         }
 

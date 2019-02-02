@@ -11,8 +11,6 @@
 using namespace lart::sym;
 using abstract::Tristate;
 using abstract::__new;
-using abstract::mark;
-using abstract::weaken;
 using abstract::taint;
 using abstract::peek_object;
 using abstract::poke_object;
@@ -27,7 +25,7 @@ extern "C" uint64_t __rst_taint_i64()
 
 template< typename T, typename ... Args >
 static Formula *__newf( Args &&...args ) {
-    void *ptr = __vm_obj_make( sizeof( T ) );
+    void *ptr = __vm_obj_make( sizeof( T ), _VM_PT_Marked );
     new ( ptr ) T( std::forward< Args >( args )... );
     auto * formula = static_cast< Formula* >( ptr );
     formula->refcount_increment();
@@ -86,14 +84,14 @@ Formula *__sym_lift( int bitwidth, int argc, ... ) {
     if ( bitwidth > 64 )
         _UNREACHABLE_F( "Type too long: %d bits", bitwidth );
     if ( !argc ) {
-        return mark( __newf< Variable >( Type{ Type::Int, bitwidth }, __sym_state.counter++ ) );
+        return __newf< Variable >( Type{ Type::Int, bitwidth }, __sym_state.counter++ );
     }
     if ( argc > 1 )
         _UNREACHABLE_F( "Lifting of more values is not yet supported." );
 
     va_list args;
     va_start( args, argc );
-    auto ptr = mark( __newf< Constant >( Type{ Type::Int, bitwidth }, va_arg( args, int64_t ) ) );
+    auto ptr = __newf< Constant >( Type{ Type::Int, bitwidth }, va_arg( args, int64_t ) );
     ptr->refcount_decrement(); // consider constant movable
     return ptr;
 }
@@ -102,21 +100,21 @@ Formula *__sym_lift_float( int bitwidth, int argc, ... ) {
     if ( bitwidth > 64 )
         _UNREACHABLE_F( "Type too long: %d bits", bitwidth );
     if ( !argc ) {
-        return mark( __newf< Variable >( Type{ Type::Float, bitwidth }, __sym_state.counter++ ) );
+        return __newf< Variable >( Type{ Type::Float, bitwidth }, __sym_state.counter++ );
     }
     if ( argc > 1 )
         _UNREACHABLE_F( "Lifting of more values is not yet supported." );
 
     va_list args;
     va_start( args, argc );
-    auto ptr = mark( __newf< Constant >( Type{ Type::Float, bitwidth }, va_arg( args, float ) ) );
+    auto ptr = __newf< Constant >( Type{ Type::Float, bitwidth }, va_arg( args, float ) );
     ptr->refcount_decrement(); // consider constant movable
     return ptr;
 }
 
 #define BINARY( suff, op ) Formula *__sym_ ## suff( Formula *a, Formula *b ) \
-{                                                                                     \
-    return mark( __newf< Binary >( Op::op, a->type(), weaken( a ), weaken( b ) ) );   \
+{                                                                            \
+    return  __newf< Binary >( Op::op, a->type(), a, b );                     \
 }
 
 BINARY( add, Add );
@@ -140,10 +138,10 @@ BINARY( fdiv, FpDiv )
 BINARY( frem, FpRem )
 
 #define CAST( suff, op ) Formula *__sym_ ## suff( Formula *a, int bitwidth ) \
-{                                                                                     \
-    Type t = a->type();                                                               \
-    t.bitwidth( bitwidth );                                                           \
-    return mark( __newf< Unary >( Op::op, t, weaken( a ) ) );                         \
+{                                                                            \
+    Type t = a->type();                                                      \
+    t.bitwidth( bitwidth );                                                  \
+    return __newf< Unary >( Op::op, t, a );                                  \
 }
 
 CAST( trunc, Trunc );
@@ -156,7 +154,7 @@ CAST( fpext, FPExt )
 
 #define ICMP( suff, op ) Formula *__sym_icmp_ ## suff( Formula *a, Formula *b ) { \
     Type i1( Type::Int, 1 ); \
-    return mark( __newf< Binary >( Op::op, i1, weaken( a ), weaken( b ) ) ); \
+    return __newf< Binary >( Op::op, i1, a, b ); \
 }
 
 ICMP( eq, EQ );
@@ -172,7 +170,7 @@ ICMP( slt, SLT );
 
 #define FCMP( suff, op ) Formula *__sym_fcmp_ ## suff( Formula *a, Formula *b ) { \
     Type i1( Type::Int, 1 ); \
-    return mark( __newf< Binary >( Op::op, i1, weaken( a ), weaken( b ) ) ); \
+    return __newf< Binary >( Op::op, i1, a, b ); \
 }
 
 FCMP( fcfalse, FpFalse );
@@ -205,11 +203,10 @@ Tristate __sym_bool_to_tristate( Formula * )
 
 __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool assume )
 {
-    Formula *wconstraint = weaken( constraint );
     if ( !assume )
-        wconstraint = weaken( __newf< Unary >( Op::BoolNot, wconstraint->type(), wconstraint ) );
-    __sym_state.constraints = mark( __newf< Binary >( Op::Constraint, wconstraint->type(), wconstraint,
-                                                      weaken( __sym_state.constraints ) ) );
+        constraint = __newf< Unary >( Op::BoolNot, constraint->type(), constraint );
+    __sym_state.constraints = __newf< Binary >( Op::Constraint, constraint->type(), constraint,
+                                                __sym_state.constraints );
     __vm_trace( _VM_T_Assume, __sym_state.constraints );
     return value;
 }

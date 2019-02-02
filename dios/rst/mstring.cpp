@@ -6,11 +6,10 @@
 
 namespace abstract::mstring {
 
-using abstract::mark;
 using abstract::__new;
 
 __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
-    return mark( __new< Quintuple >( buff, buff_len, 0, 1 ) );
+    return __new< Quintuple >( _VM_PT_Marked, buff, buff_len, 0, 1 );
 }
 
 extern "C" {
@@ -153,7 +152,7 @@ Quintuple * Quintuple::strchr( char ch ) const noexcept {
         });
 
         if ( search != end ) {
-            return mark( __new< Quintuple >( const_cast< Quintuple * >( this ), search->from() ) );
+            return __new< Quintuple >( _VM_PT_Marked, const_cast< Quintuple * >( this ), search->from() );
         } else {
             return nullptr;
         }

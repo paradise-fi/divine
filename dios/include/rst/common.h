@@ -26,20 +26,11 @@ extern void * __tainted_ptr;
 namespace abstract {
 
 template< typename T, typename ... Args >
-static T *__new( Args &&...args ) {
-    void *ptr = __vm_obj_make( sizeof( T ) );
+static T *__new( _VM_PointerType pt, Args &&...args )
+{
+    void *ptr = __vm_obj_make( sizeof( T ), pt );
     new ( ptr ) T( std::forward< Args >( args )... );
     return static_cast< T * >( ptr );
-}
-
-template< typename T >
-static T *mark( T *ptr ) {
-    return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Marked ) );
-}
-
-template< typename T >
-static T *weaken( T *ptr ) {
-    return ptr ? static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Weak ) ) : nullptr;
 }
 
 template< typename T >
@@ -144,6 +135,7 @@ void cleanup( _VM_Frame * frame, Release release, Check check ) noexcept {
                 release( obj );
                 check( obj );
             }
+
         }
     }
     restore_fault( flags );

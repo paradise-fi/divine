@@ -9,7 +9,6 @@
 #include <sys/vmutil.h>
 #include <sys/cdefs.h>
 #include <dios/sys/kernel.hpp> // get_debug
-#include <rst/common.h> // weaken
 
 #define _WM_INLINE __attribute__((__always_inline__, __flatten__))
 #define _WM_NOINLINE __attribute__((__noinline__))
@@ -25,9 +24,6 @@ _WM_INTERFACE int __lart_weakmem_buffer_size() noexcept;
 _WM_INLINE
 static char *baseptr( char *ptr ) noexcept {
     uintptr_t base = uintptr_t( ptr ) & ~_VM_PM_Off;
-    uintptr_t type = (base & _VM_PM_Type) >> _VM_PB_Off;
-    if ( type == _VM_PT_Marked || type == _VM_PT_Weak )
-        base = (base & ~_VM_PM_Type) | (_VM_PT_Heap << _VM_PB_Off);
     return reinterpret_cast< char * >( base );
 }
 
@@ -425,7 +421,7 @@ struct Buffers : ThreadMap< Buffer > {
         auto *hids = __dios::have_debug() ? &__dios::get_debug().hids : nullptr;
         for ( auto &p : *this ) {
             if ( !p.second.empty() ) {
-                auto tid = abstract::weaken( p.first );
+                auto tid = p.first;
                 int nice_id = [&]() noexcept { if ( !hids ) return -1;
                                     auto it = hids->find( tid );
                                     return it == hids->end() ? -1 : it->second;
@@ -621,7 +617,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
         return;
     }
 
-    assert( addr != abstract::weaken( addr ) );
+    assert( __dios_pointer_get_type( addr ) != _VM_PT_Weak );
     // we are running without memory interrupt instrumentation and the other
     // threads have to see we have written something to our buffer (for the
     // sake of lazy loads)

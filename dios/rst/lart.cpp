@@ -27,7 +27,7 @@ extern "C"
 
     void __lart_stash( uintptr_t val )
     {
-        auto *stash = static_cast< Stash * >( __vm_obj_make( sizeof( Stash ) ) );
+        auto *stash = static_cast< Stash * >( __vm_obj_make( sizeof( Stash ), _VM_PT_Heap ) );
         stash->next = __stash_top();
         stash->val = val;
         __dios_this_task()->__rst_stash = reinterpret_cast< uintptr_t >( stash );
