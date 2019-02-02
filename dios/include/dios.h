@@ -36,14 +36,6 @@ static inline int __dios_pointer_get_type( void *ptr ) NOTHROW
     return ( p & _VM_PM_Type ) >> _VM_PB_Off;
 }
 
-static inline void *__dios_pointer_set_type( void *ptr, int type ) NOTHROW
-{
-    unsigned long p = (unsigned long) ptr;
-    p &= ~_VM_PM_Type;
-    unsigned long newt = ( type << _VM_PB_Off ) & _VM_PM_Type;
-    return (void *)( p | newt );
-}
-
 /*
  * Return number of claimed hardware concurrency units, specified in DiOS boot
  * parameters.
