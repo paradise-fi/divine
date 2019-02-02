@@ -354,7 +354,7 @@ namespace {
 auto prog( std::string p )
 {
     return t_vm::c2bc(
-        "void *__vm_obj_make( int );"s +
+        "void *__vm_obj_make( int, int );"s +
         "void *__vm_ctl_get( int );"s +
         "void __vm_ctl_set( int, void * );"s +
         "long __vm_ctl_flag( long, long );"s +
@@ -374,7 +374,7 @@ auto prog_int( std::string first, std::string next )
       << "}" << std::endl
       << "void __boot( void *environ ) {"
       << "    __vm_ctl_set( " << _VM_CR_Scheduler << ", __sched );"
-      << "    void *e = __vm_obj_make( sizeof( int ) );"
+      << "    void *e = __vm_obj_make( sizeof( int ), " << _VM_PT_Heap << " );"
       << "    __vm_ctl_set( " << _VM_CR_State << ", e );"
       << "    int *r = e; *r = " << first << ";"
       << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 ); }" << std::endl;
