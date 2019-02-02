@@ -46,7 +46,7 @@ static void call(void *p) {
 int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
     typedef struct AtexitEntry Ent;
     if ( !atexit_entries )
-        atexit_entries = ( Ent* ) __vm_obj_make( sizeof( Ent ) );
+        atexit_entries = ( Ent* ) __vm_obj_make( sizeof( Ent ), _VM_PT_Heap );
     else
         __vm_obj_resize( atexit_entries, __vm_obj_size( atexit_entries ) + sizeof( Ent ) );
 

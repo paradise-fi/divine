@@ -175,7 +175,7 @@ struct Array : brick::types::Ord {
             _data = nullptr;
         }
         else if ( empty() )
-            _data = static_cast< _Item * >( __vm_obj_make( n * sizeof( T ) ) );
+            _data = static_cast< _Item * >( __vm_obj_make( n * sizeof( T ), _VM_PT_Heap ) );
         else
             __vm_obj_resize( _data, n * sizeof( T ) );
     }

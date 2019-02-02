@@ -33,7 +33,8 @@ EXTERN_C
 static inline int __dios_pointer_get_type( void *ptr ) NOTHROW
 {
     unsigned long p = (unsigned long) ptr;
-    return ( p & _VM_PM_Type ) >> _VM_PB_Off;
+    uint32_t obj = p >> _VM_PB_Off;
+    return __vm_pointer_type( obj );
 }
 
 /*

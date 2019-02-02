@@ -15,7 +15,7 @@ void *__c11_thread_start( void *_arg ) {
 }
 
 int thrd_create( thrd_t *thr, thrd_start_t func, void *arg ) {
-    struct WrapThreadArg *wrapArg = __vm_obj_make( sizeof( struct WrapThreadArg ) );
+    struct WrapThreadArg *wrapArg = __vm_obj_make( sizeof( struct WrapThreadArg ), _VM_PT_Heap );
     wrapArg->start = func;
     wrapArg->arg = arg;
     if ( pthread_create( thr, 0, __c11_thread_start, wrapArg ) == 0 )

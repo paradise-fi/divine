@@ -86,7 +86,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
         return EINVAL;
 
     // create new thread and pass arguments to the entry wrapper
-    Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
+    Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ), _VM_PT_Heap ) );
     args->entry = entry;
     args->arg = arg;
     auto tid = __dios_start_task( __pthread_entry, static_cast< void * >( args ), 0 );

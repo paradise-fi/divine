@@ -56,7 +56,7 @@ struct _PThread // (user-space) information maintained for every (running) threa
         ++refcnt;
     }
 
-    static void* operator new( size_t s ) noexcept { return __vm_obj_make( s ); }
+    static void* operator new( size_t s ) noexcept { return __vm_obj_make( s, _VM_PT_Heap ); }
     static void operator delete( void *p ) noexcept { return __vm_obj_free( p ); }
 
     // avoid accidental copies
@@ -167,7 +167,8 @@ struct _PthreadHandlers
     void init() noexcept
     {
         if ( !_dtors )
-            _dtors = static_cast< Handler * >( __vm_obj_make( 1 ) ); // placeholder so that resize works
+            // placeholder so that resize works
+            _dtors = static_cast< Handler * >( __vm_obj_make( 1, _VM_PT_Heap ) );
     }
 
     Handler &operator[]( size_t x ) noexcept { return _dtors[ x ]; }

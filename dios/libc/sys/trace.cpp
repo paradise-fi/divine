@@ -35,10 +35,9 @@ __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) no
 
     if ( have_debug() )
     {
-        auto key = abstract::weaken( tid );
         auto &hids = get_debug().hids;
-        indent = tid ? &get_debug().trace_indent[ key ] : &get_debug().kernel_indent;
-        auto nice_id_it = tid ? hids.find( key ): hids.end();
+        indent = tid ? &get_debug().trace_indent[ tid ] : &get_debug().kernel_indent;
+        auto nice_id_it = tid ? hids.find( tid ): hids.end();
         nice_id = nice_id_it == hids.end() ? -2 : nice_id_it->second;
 
         if ( indent && shift < 0 && *indent > 0 )

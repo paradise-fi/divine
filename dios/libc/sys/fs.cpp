@@ -27,8 +27,8 @@ struct DirWrapper
 };
 
 struct _nofail {};
-void *operator new( size_t s, _nofail ) { return __vm_obj_make( s ); }
-void *operator new[]( size_t s, _nofail ) { return __vm_obj_make( s ); }
+void *operator new( size_t s, _nofail ) { return __vm_obj_make( s, _VM_PT_Heap ); }
+void *operator new[]( size_t s, _nofail ) { return __vm_obj_make( s, _VM_PT_Heap ); }
 static _nofail nofail;
 
 extern "C" {

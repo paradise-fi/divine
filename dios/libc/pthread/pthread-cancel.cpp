@@ -71,7 +71,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) noexcept
 
     _PThread &thread = getThread();
     CleanupHandler *handler = reinterpret_cast< CleanupHandler * >(
-            __vm_obj_make( sizeof( CleanupHandler ) ) );
+            __vm_obj_make( sizeof( CleanupHandler ), _VM_PT_Heap ) );
     handler->routine = routine;
     handler->arg = arg;
     handler->next = thread.cleanup_handlers;

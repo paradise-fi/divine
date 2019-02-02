@@ -27,7 +27,7 @@ __invisible void *malloc( size_t size )
     int ok = ( simfail && !kernel ) ? __vm_choose( 2 ) : 1;
 
     if ( ok && size > 0 )
-        return __vm_obj_make( size ); // success
+        return __vm_obj_make( size, _VM_PT_Heap ); // success
     else
         return NULL; // failure
 }
@@ -49,7 +49,7 @@ void *realloc( void *orig, size_t size )
         r = NULL;
     }
     else if ( ok ) {
-        void *n = __vm_obj_make( size );
+        void *n = __vm_obj_make( size, _VM_PT_Heap );
         if ( orig ) {
             memcpy( n, orig, MIN( size , (size_t) __vm_obj_size( orig ) ) );
             __vm_obj_free( orig );
@@ -67,7 +67,7 @@ void *calloc( size_t n, size_t size )
     void *r;
     int ok = __dios_sim_fail( _DiOS_SF_Malloc ) ? __vm_choose( 2 ) : 1;
     if ( ok ) {
-        void *mem = __vm_obj_make( n * size ); // success
+        void *mem = __vm_obj_make( n * size, _VM_PT_Heap ); // success
         memset( mem, 0, n * size );
         r = mem;
     } else
