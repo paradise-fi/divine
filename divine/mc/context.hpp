@@ -100,10 +100,7 @@ namespace divine::mc
             if ( this->flags_all( _VM_CF_IgnoreCrit ) || this->debug_mode() )
                 return false;
 
-            auto start = ptr;
-            if ( start.heap() )
-                start.type( vm::PointerType::Heap );
-            auto end = start;
+            auto start = ptr, end = start;
             end.offset( start.offset() + size );
 
             if ( type == _VM_MAT_Load || type == _VM_MAT_Both )

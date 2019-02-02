@@ -67,8 +67,6 @@ namespace divine::mc::impl
 
                 void marked( vm::HeapPointer a, vm::HeapPointer b )
                 {
-                    a.type( vm::PointerType::Weak ); // unmark pointers so they are equal to their
-                    b.type( vm::PointerType::Weak ); // weak equivalents inside the formula
                     pairs.emplace_back( a, b );
                 };
             } extract;
