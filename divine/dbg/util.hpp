@@ -27,7 +27,7 @@ using DNSet = std::set< DNKey >;
 template< typename BT, typename Fmt, typename DN >
 void backtrace( BT bt, Fmt fmt, DN dn, DNSet &visited, int &stacks, int maxdepth )
 {
-    if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
+    if ( visited.count( dn.sortkey() ) && dn.address().type() != vm::PointerType::Global )
         return;
     visited.insert( dn.sortkey() );
 
