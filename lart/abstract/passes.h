@@ -71,7 +71,7 @@ namespace abstract {
                                            , Tainting()
                                            , Synthesize()
                                            , CallInterrupt()
-                                           , Cleanup()
+                                           // , Cleanup()
                                            );
             passes.run( m );
         }
