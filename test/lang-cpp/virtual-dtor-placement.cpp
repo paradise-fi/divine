@@ -9,10 +9,9 @@ struct y : x { virtual ~y() { global = 1; } };
 
 int main()
 {
-    if ( x *a = new (std::nothrow) y() )
-    {
-        delete a;
-        assert( global == 1 );
-    }
+    char mem[ 32 ];
+    x *a = new (mem) y();
+    a->~x();
+    assert( global == 1 );
     return 0;
 }
