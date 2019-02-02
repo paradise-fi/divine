@@ -352,7 +352,7 @@ public:
         int64_t size = types().allocsize( instruction().subcode );
 
         int64_t alloc = std::max( 1l, count * size );
-        auto res = makeobj( alloc );
+        auto res = makeobj( alloc, PointerType::Alloca );
         result( res );
     }
 

@@ -10,12 +10,14 @@ enum { _VM_PB_Full = 64,
        _VM_PB_Obj = 32,
        _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj };
 
-enum _VM_PointerType { _VM_PT_Global, _VM_PT_Code, _VM_PT_Heap, _VM_PT_Marked, _VM_PT_Weak };
+enum _VM_PointerType { _VM_PT_Global, _VM_PT_Code, _VM_PT_Alloca, _VM_PT_Heap,
+                       _VM_PT_Marked, _VM_PT_Weak };
 enum _VM_MemLayer { _VM_ML_Pointers, _VM_ML_Definedness, _VM_ML_Taints, _VM_ML_User };
 
 struct _VM_PointerLimits { uint32_t low, high; };
 enum { _VM_PL_Global = 0x00080000,
        _VM_PL_Code   = 0x00100000,
+       _VM_PL_Alloca = 0x10000000,
        _VM_PL_Heap   = 0xF0000000,
        _VM_PL_Marked = 0xF7000000 };
 
@@ -23,7 +25,8 @@ static const struct _VM_PointerLimits __vm_pointer_limits[] =
 {
     [_VM_PT_Global] = { 0,             _VM_PL_Global },
     [_VM_PT_Code]   = { _VM_PL_Global, _VM_PL_Code   },
-    [_VM_PT_Heap]   = { _VM_PL_Code,   _VM_PL_Heap   },
+    [_VM_PT_Alloca] = { _VM_PL_Code,   _VM_PL_Alloca },
+    [_VM_PT_Heap]   = { _VM_PL_Alloca, _VM_PL_Heap   },
     [_VM_PT_Marked] = { _VM_PL_Heap,   _VM_PL_Marked },
     [_VM_PT_Weak]   = { _VM_PL_Marked, 0xFFFFFFFF    }
 };
@@ -34,6 +37,8 @@ static inline int __vm_pointer_type( uint32_t objid )
         return _VM_PT_Global;
     if ( objid < _VM_PL_Code )
         return _VM_PT_Code;
+    if ( objid < _VM_PL_Alloca )
+        return _VM_PT_Alloca;
     if ( objid < _VM_PL_Heap )
         return _VM_PT_Heap;
     if ( objid < _VM_PL_Marked )

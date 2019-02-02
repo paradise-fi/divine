@@ -32,6 +32,7 @@ namespace bitlevel = brick::bitlevel;
 
 enum class PointerType : unsigned { Global = _VM_PT_Global,
                                     Code = _VM_PT_Code,
+                                    Alloca = _VM_PT_Alloca,
                                     Heap = _VM_PT_Heap,
                                     Weak = _VM_PT_Weak,
                                     Marked = _VM_PT_Marked,
@@ -183,6 +184,7 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
     {
         case PointerType::Global: return o << "global";
         case PointerType::Code: return o << "code";
+        case PointerType::Alloca: return o << "alloca";
         case PointerType::Heap: return o << "heap";
         case PointerType::Weak: return o << "weak";
         case PointerType::Marked: return o << "marked";
