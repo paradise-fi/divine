@@ -131,7 +131,7 @@ namespace divine::mem
             if ( p1pp.type() == Pointer::Type::Marked )
                 cb.marked( p1pp, p2pp );
 
-            if ( p1pp.type() == Pointer::Type::Heap )
+            if ( p1pp.type() == Pointer::Type::Heap || p1pp.type() == Pointer::Type::Alloca )
                 if ( int d = compare( h1, h2, p1pp, p2pp, v1, v2, seq, cb ) )
                     return d;
 
@@ -175,7 +175,7 @@ namespace divine::mem
             auto obj = ptr.cooked();
             ptr_data[0] = 0;
             ptr_data[1] = obj.offset();
-            if ( obj.type() == Heap::Pointer::Type::Heap )
+            if ( obj.type() == Heap::Pointer::Type::Heap || obj.type() == Heap::Pointer::Type::Alloca )
             {
                 auto vis = visited.find( obj.object() );
                 if ( vis == visited.end() )
