@@ -1,2 +1,2 @@
-# TAGS: c todo
+# TAGS: c
 TESTCASE=stdio/snprintf.c
