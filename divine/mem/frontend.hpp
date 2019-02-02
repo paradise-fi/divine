@@ -19,6 +19,7 @@
 #pragma once
 
 #include <brick-types>
+#include <divine/vm/divm.h>
 
 namespace divine::mem
 {
@@ -107,7 +108,7 @@ namespace divine::mem
         int size( Pointer p ) const { return Next::size( this->ptr2i( p ) ); }
         using Next::size;
 
-        PointerV make( int size, uint32_t hint = 1, bool over = false )
+        PointerV make( int size, uint32_t hint = _VM_PL_Code + 1, bool over = false )
         {
             auto l = Next::make( size, hint, over );
             return PointerV( Pointer( l.objid ) );

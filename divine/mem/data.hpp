@@ -130,7 +130,7 @@ namespace divine::mem
             return begin;
         }
 
-        Loc make( int size, uint32_t hint = 1, bool overwrite = false );
+        Loc make( int size, uint32_t hint, bool overwrite );
         bool resize( Pointer p, int sz_new );
         bool free( Pointer p );
 
