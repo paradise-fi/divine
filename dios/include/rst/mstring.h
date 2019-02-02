@@ -31,10 +31,6 @@ namespace abstract::mstring {
 
         char value() const noexcept { return _val; }
 
-        std::string to_string() const {
-            return "from " + std::to_string(_from) + " to " + std::to_string(_to) + " val " + _val;
-        }
-
     private:
         size_t _from, _to;
         char _val;
@@ -176,8 +172,6 @@ namespace abstract::mstring {
 
         constexpr char * data() noexcept { return _buff.data(); }
         constexpr const char * data() const noexcept { return _buff.data(); }
-
-        std::string to_string() const noexcept;
 
         size_t refcount() const noexcept { return _refcount; }
         void refcount_decrement() { --_refcount; }
