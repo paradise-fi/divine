@@ -11,6 +11,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-llvm>
 
 #include <lart/support/query.h>
+#include <lart/abstract/meta.h>
 
 namespace lart::abstract {
 
@@ -24,12 +25,8 @@ namespace {
     using DomainData = std::tuple< std::string >;
 
     using brick::data::Bimap;
-
 } // anonymous namespace
 
-static constexpr char abstract_tag[] = "lart.abstract";
-static constexpr char abstract_domain_tag[]   = "lart.abstract.domain.tag";
-static constexpr char abstract_domain_kind[]  = "lart.abstract.domain.kind";
 
 struct Domain : DomainData {
     using DomainData::DomainData;
@@ -41,8 +38,8 @@ struct Domain : DomainData {
     static Domain Unknown() { return Domain( "unknown" ); }
 };
 
-struct DomainMetadata {
 
+struct DomainMetadata {
     DomainMetadata( llvm::GlobalVariable * glob )
         : glob( glob )
     {}
@@ -62,6 +59,7 @@ private:
     llvm::GlobalVariable * glob;
 };
 
+
 struct ValueMetadata {
     ValueMetadata( llvm::Metadata * md )
         : _md( llvm::cast< llvm::ValueAsMetadata >( md ) )
@@ -78,6 +76,7 @@ private:
     llvm::ValueAsMetadata  *_md;
 };
 
+
 struct MetadataBuilder {
     MetadataBuilder( llvm::LLVMContext &ctx )
         : ctx( ctx )
@@ -90,20 +89,16 @@ private:
 };
 
 struct FunctionTag {
-    static constexpr char ignore_ret[] = "lart.transform.ignore.ret";
-    static constexpr char ignore_arg[] = "lart.transform.ignore.arg";
-    static constexpr char forbidden[] = "lart.transform.forbidden";
-
     static inline bool ignore_call_of_function( llvm::Function * fn ) {
-        return fn->getMetadata( ignore_arg );
+        return fn->getMetadata( meta::tag::transform::ignore::arg );
     }
 
     static inline bool ignore_return_of_function( llvm::Function * fn ) {
-        return fn->getMetadata( ignore_ret );
+        return fn->getMetadata( meta::tag::transform::ignore::ret );
     }
 
     static inline bool forbidden_function( llvm::Function * fn ) {
-        return fn->getMetadata( forbidden );
+        return fn->getMetadata( meta::tag::transform::forbidden );
     }
 };
 
@@ -135,13 +130,10 @@ struct FunctionMetadata {
     void clear();
 private:
 
-    static constexpr char tag[] = "lart.function.domains";
+    static constexpr char meta[] = "lart.function.meta";
 
     llvm::Function *fn;
 };
-
-void set_addr_offset( llvm::Instruction *inst, llvm::Value * offset );
-llvm::Value * get_addr_offset( llvm::Instruction *inst );
 
 void make_duals( llvm::Instruction *a, llvm::Instruction *b );
 llvm::Value* get_dual( llvm::Instruction *i );
@@ -198,7 +190,7 @@ bool is_base_type_in_domain( llvm::Module *m, llvm::Value *val, Domain dom );
 
 template< typename Yield >
 auto global_variable_walker( llvm::Module &m, Yield yield ) {
-    brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( abstract_domain_tag, m, yield );
+    brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( meta::tag::domain::name, m, yield );
 }
 
 DomainMetadata domain_metadata( llvm::Module &m, Domain dom );

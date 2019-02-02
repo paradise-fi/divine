@@ -308,7 +308,7 @@ void VPA::run( Module &m ) {
     };
 
     for ( auto &fn : m ) {
-        if ( auto md = fn.getMetadata( abstract_tag ) ) {
+        if ( auto md = fn.getMetadata( meta::tag::abstract ) ) {
             // TODO use domain interface
             auto &tup = cast< MDNode >( md )->getOperand( 0 );
             auto &mdn = cast< MDNode >( tup )->getOperand( 0 );

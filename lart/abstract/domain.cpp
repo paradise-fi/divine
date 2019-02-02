@@ -76,24 +76,24 @@ void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
 // CreateAbstractMetadata pass transform annotations into llvm metadata.
 //
 // As result of the pass, each function with annotated values has
-// annotation with name: "lart.abstract.roots".
+// annotation with name: lart::meta::tag::roots.
 //
 // Where root instructions are marked with MDTuple of domains
-// named "lart.domains".
+// named lart::meta::tag::domains.
 //
 // Domain MDNode holds a string name of domain retrieved from annotation.
 void CreateAbstractMetadata::run( Module &m ) {
     process( "llvm.var.annotation", m );
     process( "llvm.ptr.annotation", m );
 
-    annotation_to_domain_metadata< Function >( abstract_tag, m );
-    annotation_to_domain_metadata< GlobalVariable >( abstract_domain_tag, m );
-    annotation_to_domain_metadata< GlobalVariable >( abstract_domain_kind, m );
+    annotation_to_domain_metadata< Function >( meta::tag::abstract, m );
+    annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::name, m );
+    annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::kind, m );
 
-    annotation_to_transform_metadata< Function >( "lart.transform", m );
+    annotation_to_transform_metadata< Function >( meta::tag::transform::prefix, m );
 
     for ( auto & fn : m ) {
-        if ( auto md = fn.getMetadata( abstract_tag ) )
+        if ( auto md = fn.getMetadata( meta::tag::abstract ) )
             for ( auto user : fn.users() )
                 if ( auto call = dyn_cast< CallInst >( user ) )
                     add_abstract_metadata( call, domain( md ) );
@@ -118,13 +118,13 @@ static const Bimap< DomainKind, std::string > KindTable = {
 };
 
 Domain DomainMetadata::domain() const {
-    auto meta = glob->getMetadata( abstract_domain_tag );
+    auto meta = glob->getMetadata( meta::tag::domain::name );
     auto &tag = cast< MDNode >( meta->getOperand( 0 ) )->getOperand( 0 );
     return Domain( cast< MDString >( tag )->getString().str() );
 }
 
 DomainKind DomainMetadata::kind() const {
-    auto meta = glob->getMetadata( abstract_domain_kind );
+    auto meta = glob->getMetadata( meta::tag::domain::kind );
     auto data = cast< MDTuple >( meta->getOperand( 0 ) );
     return KindTable[ cast< MDString >( data->getOperand( 0 ) )->getString().str() ];
 }
@@ -175,16 +175,16 @@ Domain ArgMetadata::domain() const {
     return Domain( mdstr->getString().str() );
 }
 
-constexpr char FunctionMetadata::tag[];
+constexpr char FunctionMetadata::meta[];
 
 void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
     auto &ctx = fn->getContext();
     auto size = fn->arg_size();
 
-    if ( !fn->getMetadata( tag ) )
-        fn->setMetadata( tag, make_mdtuple( ctx, size ) );
+    if ( !fn->getMetadata( meta ) )
+        fn->setMetadata( meta, make_mdtuple( ctx, size ) );
 
-    auto md = fn->getMetadata( tag );
+    auto md = fn->getMetadata( meta );
 
     auto curr = get_arg_domain( idx );
     ASSERT( curr == Domain::Concrete() || curr == dom ); // multiple domains are not supported yet
@@ -196,20 +196,20 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
 }
 
 Domain FunctionMetadata::get_arg_domain( unsigned idx ) const {
-    if ( auto md = fn->getMetadata( tag ) )
+    if ( auto md = fn->getMetadata( meta ) )
         return ArgMetadata( md->getOperand( idx ).get() ).domain();
     return Domain::Concrete();
 }
 
 bool FunctionMetadata::has_arg_domain( unsigned idx ) const {
-    if ( auto md = fn->getMetadata( tag ) )
+    if ( auto md = fn->getMetadata( meta ) )
         return ArgMetadata( md->getOperand( idx ).get() ).domain() != Domain::Concrete();
     return false;
 }
 
 void FunctionMetadata::clear() {
-    if ( fn->getMetadata( tag ) )
-        fn->setMetadata( tag, nullptr );
+    if ( fn->getMetadata( meta ) )
+        fn->setMetadata( meta, nullptr );
 }
 
 void set_metadata( llvm::Instruction * inst, const std::string& tag, llvm::Value * value ) {
@@ -220,14 +220,6 @@ void set_metadata( llvm::Instruction * inst, const std::string& tag, llvm::Value
 llvm::Value * get_metadata( llvm::Instruction * inst, const std::string& tag ) {
     auto &meta = inst->getMetadata( tag )->getOperand( 0 );
     return cast< ValueAsMetadata >( meta.get() )->getValue();
-}
-
-void set_addr_offset( llvm::Instruction *inst, llvm::Value * offset ) {
-    set_metadata( inst, "lart.addr.offset", offset );
-}
-
-llvm::Value * get_addr_offset( llvm::Instruction *inst ) {
-    return get_metadata( inst, "lart.addr.offset" );
 }
 
 void make_duals( Instruction *a, Instruction *b ) {
@@ -248,7 +240,7 @@ std::vector< ValueMetadata > abstract_metadata( llvm::Module &m ) {
 
 std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
     std::vector< ValueMetadata > mds;
-    if ( fn->getMetadata( "lart.abstract.roots" ) ) {
+    if ( fn->getMetadata( meta::tag::roots ) ) {
         auto abstract = query::query( *fn ).flatten()
             .map( query::refToPtr )
             .filter( [] ( const auto& inst ) {
@@ -274,20 +266,20 @@ bool has_abstract_metadata( llvm::Argument *arg ) {
 }
 
 bool has_abstract_metadata( llvm::Instruction *inst ) {
-    return inst->getMetadata( "lart.domains" );
+    return inst->getMetadata( meta::tag::domains );
 }
 
 MDNode * get_abstract_metadata( llvm::Instruction *inst ) {
     ASSERT( has_abstract_metadata( inst ) );
-    return cast< MDNode >( inst->getMetadata( "lart.domains" ) );
+    return cast< MDNode >( inst->getMetadata( meta::tag::domains ) );
 }
 
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     auto& ctx = inst->getContext();
-    inst->getFunction()->setMetadata( "lart.abstract.roots", empty_metadata_tuple( ctx ) );
+    inst->getFunction()->setMetadata( meta::tag::roots, empty_metadata_tuple( ctx ) );
     // TODO enable multiple domains per instruction
     auto node = MetadataBuilder( ctx ).domain_node( dom );
-    inst->setMetadata( "lart.domains", MDTuple::get( ctx, node ) );
+    inst->setMetadata( meta::tag::domains, MDTuple::get( ctx, node ) );
 }
 
 inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {

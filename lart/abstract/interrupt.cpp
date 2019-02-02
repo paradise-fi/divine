@@ -32,7 +32,7 @@ struct RecursiveCalls {
         std::set< Function* > recursive;
 
         for ( auto &fn : m )
-            if ( fn.getMetadata( "lart.abstract.roots" ) )
+            if ( fn.getMetadata( meta::tag::roots ) )
                 if ( is_recursive( &fn ) )
                     recursive.insert( &fn );
 
@@ -63,7 +63,7 @@ struct RecursiveCalls {
                         return true;
                     if ( !seen.count( called_fn ) ) {
                         seen.insert( called_fn );
-                        if ( called_fn->getMetadata( "lart.abstract.roots" ) )
+                        if ( called_fn->getMetadata( meta::tag::roots ) )
                             stack.push_back( called_fn );
                     }
                 }

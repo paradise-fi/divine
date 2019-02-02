@@ -26,7 +26,7 @@ void Cleanup::run( llvm::Module &m ) {
     } );
 
     for ( auto &fn : m ) {
-        if ( fn.getMetadata( "lart.abstract.roots" ) ) {
+        if ( fn.getMetadata( meta::tag::roots ) ) {
             auto domains = query::query( abstract_metadata( &fn ) )
                 .map( [] ( auto & mdv ) { return mdv.domain(); } )
                 .freeze();
