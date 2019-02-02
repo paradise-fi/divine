@@ -23,7 +23,6 @@
 #include <dios.h>
 #include <dios/sys/memory.hpp>
 #include <dios/sys/trace.hpp>
-#include <rst/common.h>
 #include <sys/fault.h>
 #include <sys/trace.h>
 
@@ -156,7 +155,7 @@ struct VmBuffTraceFile : INode
 
     __debugfn void do_write( const char *data, size_t &length ) noexcept
     {
-        auto &buf = get_debug().trace_buf[ abstract::weaken( __dios_this_task() ) ];
+        auto &buf = get_debug().trace_buf[ __dios_this_task() ];
         buf.append( length, data, data + length );
         auto nl = std::find( buf.rbegin(), buf.rend(), '\n' );
         if ( nl != buf.rend() )
