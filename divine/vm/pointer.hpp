@@ -100,9 +100,8 @@ struct GenericPointer : brick::types::Comparable
 
 /* the canonic null pointer, do *not* use as a null check through comparison;
  * see GenericPointer::null() instead */
-static inline GenericPointer nullPointer( PointerType t = PointerType::Global )
+static inline GenericPointer nullPointer()
 {
-    (void) t;
     return GenericPointer( 0, 0 );
 }
 
