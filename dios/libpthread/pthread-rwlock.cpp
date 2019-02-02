@@ -36,7 +36,7 @@ static _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock
 }
 
 static _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) noexcept {
-    _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
+    _ReadLock *rlock = static_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ), _VM_PT_Heap ) );
     acquireThread( tid );
     rlock->__owner = &tid;
     rlock->__count = 1;
