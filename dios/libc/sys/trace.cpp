@@ -11,18 +11,24 @@
 
 namespace __dios {
 
+    static void dbg_persist( void *ptr )
+    {
+        if ( ptr )
+            __vm_trace( _VM_T_DebugPersist, ptr );
+    }
+
 void Debug::persist()
 {
-    __vm_trace( _VM_T_DebugPersist, this );
-    __vm_trace( _VM_T_DebugPersist, hids.begin() );
-    __vm_trace( _VM_T_DebugPersist, trace_indent.begin() );
-    __vm_trace( _VM_T_DebugPersist, trace_buf.begin() );
+    dbg_persist( this );
+    dbg_persist( hids.begin() );
+    dbg_persist( trace_indent.begin() );
+    dbg_persist( trace_buf.begin() );
 }
 
 void Debug::persist_buffers()
 {
     for ( auto &b : trace_buf )
-        __vm_trace( _VM_T_DebugPersist, b.second.begin() );
+        dbg_persist( b.second.begin() );
 }
 
 __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
