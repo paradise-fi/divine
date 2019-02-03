@@ -33,6 +33,10 @@ struct Domain : DomainData {
 
     inline std::string name() const noexcept { return std::get< std::string >( *this ); }
 
+    inline auto meta( llvm::LLVMContext & ctx ) const noexcept {
+        return meta::value::create( ctx, name() );
+    }
+
     static Domain Concrete() { return Domain( "concrete" ); }
     static Domain Tristate() { return Domain( "tristate" ); }
     static Domain Unknown() { return Domain( "unknown" ); }
@@ -74,18 +78,6 @@ struct ValueMetadata {
     Domain domain() const noexcept;
 private:
     llvm::ValueAsMetadata  *_md;
-};
-
-
-struct MetadataBuilder {
-    MetadataBuilder( llvm::LLVMContext &ctx )
-        : ctx( ctx )
-    {}
-
-    llvm::MDNode* domain_node( llvm::StringRef dom );
-    llvm::MDNode* domain_node( Domain dom );
-private:
-    llvm::LLVMContext &ctx;
 };
 
 

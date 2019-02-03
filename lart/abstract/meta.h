@@ -34,8 +34,15 @@ namespace lart::abstract::meta {
 
     struct tuple
     {
+        static llvm::MDTuple * create( llvm::LLVMContext & ctx,
+                                       const llvm::ArrayRef< llvm::Metadata * > vals )
+        {
+            assert( !vals.empty() );
+            return llvm::MDTuple::get( ctx, vals );
+        }
+
         template< typename Init >
-        static llvm::MDTuple * get( llvm::LLVMContext &ctx, unsigned size, Init init ) {
+        static llvm::MDTuple * create( llvm::LLVMContext &ctx, unsigned size, Init init ) {
             std::vector< llvm::Metadata* > values( size );
             std::generate( values.begin(), values.end(), init );
             return llvm::MDTuple::get( ctx, values );

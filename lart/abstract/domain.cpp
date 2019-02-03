@@ -36,9 +36,6 @@ Domain domain( llvm::MDNode * node ) { return Domain{ meta::value::get( node ) }
 } // anonymous namespace
 
 void process( StringRef prefix, Module &m ) noexcept {
-    auto &ctx = m.getContext();
-    MetadataBuilder mdb( ctx );
-
     for ( const auto &fn : functions_with_prefix( m, prefix ) ) {
         for ( const auto &u : fn->users() ) {
             if ( auto call = dyn_cast< CallInst >( u ) ) {
@@ -60,11 +57,10 @@ void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
 template< typename Value >
 void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
     auto &ctx = m.getContext();
-    MetadataBuilder mdb( ctx );
 
     brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
-        auto dn = mdb.domain_node( Domain( anno.name() ) );
-        val->setMetadata( anno_namespace, MDTuple::get( ctx, { dn } ) );
+        auto meta = Domain( anno.name() ).meta( ctx );
+        val->setMetadata( anno_namespace, meta::tuple::create( ctx, { meta } ) );
     });
 }
 
@@ -144,25 +140,14 @@ Domain ValueMetadata::domain() const noexcept {
     return ::lart::abstract::domain( md );
 }
 
-MDNode* MetadataBuilder::domain_node( Domain dom ) {
-    auto name = MDString::get( ctx, dom.name() );
-    return MDNode::get( ctx, name );
-}
-
-MDNode* MetadataBuilder::domain_node( StringRef dom ) {
-    auto name = MDString::get( ctx, dom );
-    return MDNode::get( ctx, name );
-}
-
 Domain ArgMetadata::domain() const {
     auto mdstr = cast< MDString >( data->getOperand( 0 ) );
     return Domain( mdstr->getString().str() );
 }
 
-
 llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
     auto value = [&] { return meta::value::create( ctx, Domain::Concrete().name() ); };
-    return meta::tuple::get( ctx, size, value );
+    return meta::tuple::create( ctx, size, value );
 }
 
 constexpr char FunctionMetadata::meta[];
@@ -180,8 +165,7 @@ void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
     ASSERT( curr == Domain::Concrete() || curr == dom ); // multiple domains are not supported yet
 
     if ( curr != dom ) {
-        MetadataBuilder mdb( ctx );
-        md->replaceOperandWith( idx, mdb.domain_node( dom ) );
+        md->replaceOperandWith( idx, dom.meta( ctx ) );
     }
 }
 
@@ -267,9 +251,9 @@ MDNode * get_abstract_metadata( llvm::Instruction *inst ) {
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
     auto& ctx = inst->getContext();
     inst->getFunction()->setMetadata( meta::tag::roots, meta::tuple::empty( ctx ) );
-    // TODO enable multiple domains per instruction
-    auto node = MetadataBuilder( ctx ).domain_node( dom );
-    inst->setMetadata( meta::tag::domains, MDTuple::get( ctx, node ) );
+
+    auto meta = meta::tuple::create( ctx, { dom.meta( ctx ) } );
+    inst->setMetadata( meta::tag::domains, meta );
 }
 
 inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
