@@ -38,9 +38,9 @@ bool useSyscallPassthrough( const SysOpts& o );
 
 struct Debug : DbgObject
 {
-    AutoIncMap< __dios_task, int > hids;
-    ArrayMap< __dios_task, short > trace_indent;
-    ArrayMap< __dios_task, Array< char > > trace_buf;
+    AutoIncMap< __dios_task, int, _VM_PT_Weak > hids;
+    ArrayMap< __dios_task, short, _VM_PT_Weak > trace_indent;
+    ArrayMap< __dios_task, Array< char, _VM_PT_Weak >, _VM_PT_Weak > trace_buf;
     short kernel_indent = 0;
     void persist();
     void persist_buffers();
