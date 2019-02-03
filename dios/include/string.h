@@ -3,6 +3,7 @@
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
 */
+#include <sys/cdefs.h>
 
 #ifndef _PDCLIB_STRING_H
 #define _PDCLIB_STRING_H _PDCLIB_STRING_H
@@ -256,18 +257,18 @@ char * strerror( int errnum ) _PDCLIB_nothrow;
 */
 size_t strlen( const char * s ) _PDCLIB_nothrow;
 
-#if _PDCLIB_POSIX_MIN(2008098L)
+#if __POSIX_VISIBLE >= 200809L
 /* Returns the length of the string s (excluding terminating '\0') or maxlen if
  * no terminating '\0' is found in the first maxlen characters.
  */
 size_t strnlen( const char * s, size_t maxlen ) _PDCLIB_nothrow;
 #endif
 
-#if _PDCLIB_POSIX_MIN(200112L) || _PDCLIB_XOPEN_MIN(0)
+#if __POSIX_VISIBLE >= 200112L || _PDCLIB_XOPEN_MIN(0)
 char * strdup( const char* src ) _PDCLIB_nothrow;
 #endif
 
-#if _PDCLIB_POSIX_MIN(2008098L) || _PDCLIB_XOPEN_MIN(0)
+#if __POSIX_VISIBLE >= 200809L || _PDCLIB_XOPEN_MIN(0)
 char * strndup( const char* src, size_t n ) _PDCLIB_nothrow;
 #endif
 

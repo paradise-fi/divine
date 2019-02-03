@@ -4,6 +4,8 @@
    Permission is granted to use, modify, and / or redistribute at will.
 */
 
+#include <sys/cdefs.h>
+
 #ifndef _PDCLIB_LOCALE_H
 #define _PDCLIB_LOCALE_H _PDCLIB_LOCALE_H
 #include "_PDCLIB/int.h"
@@ -95,7 +97,7 @@ char * setlocale( int category, const char * locale ) _PDCLIB_nothrow;
 */
 struct lconv * localeconv( void ) _PDCLIB_nothrow;
 
-#if _PDCLIB_POSIX_MIN(2008)
+#if __POSIX_VISIBLE >= 2008
 #define LC_COLLATE_MASK  (1 << LC_COLLATE)
 #define LC_CTYPE_MASK    (1 << LC_CTYPE)
 #define LC_MONETARY_MASK (1 << LC_MONETARY)

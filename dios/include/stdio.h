@@ -3,6 +3,7 @@
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
 */
+#include <sys/cdefs.h>
 
 #ifndef _PDCLIB_STDIO_H
 #define _PDCLIB_STDIO_H _PDCLIB_STDIO_H
@@ -892,7 +893,7 @@ void perror( const char * s ) _PDCLIB_nothrow;
  * the stream locks. The behaviour of the _unlocked functions if called when the
  * stream isn't locked by the calling thread is implementation defined.
  */
-#if _PDCLIB_POSIX_MIN(200112L) || _PDCLIB_BSD_SOURCE || _PDCLIB_SVID_SOURCE
+#if __POSIX_VISIBLE >= 200112L || _PDCLIB_BSD_SOURCE || _PDCLIB_SVID_SOURCE
 void flockfile(FILE *file) _PDCLIB_nothrow;
 int ftrylockfile(FILE *file) _PDCLIB_nothrow;
 void funlockfile(FILE *file) _PDCLIB_nothrow;
