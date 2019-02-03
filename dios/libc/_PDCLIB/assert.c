@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 #include <sys/trace.h>
+#include <sys/fault.h>
 
 #ifndef REGTEST
 

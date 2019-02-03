@@ -3,6 +3,7 @@
 #include <string.h>
 #include <_PDCLIB/locale.h>
 #include "_PDCLIB/unicodedata.h"
+#include <sys/fault.h>
 
 #ifndef REGTEST
 /* "C" locale - defaulting to ASCII-7.
