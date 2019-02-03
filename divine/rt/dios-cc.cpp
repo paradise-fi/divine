@@ -22,7 +22,6 @@ DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
                  , "-isystem", joinPath( includeDir, "libcxxabi/include" )
                  , "-isystem", joinPath( includeDir, "libunwind/include" )
                  , "-isystem", includeDir
-                 , "-D_POSIX_C_SOURCE=2008098L"
                  , "-D_LITTLE_ENDIAN=1234"
                  , "-D_BYTE_ORDER=1234"
                  } );
