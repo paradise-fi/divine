@@ -251,7 +251,7 @@ bool Eval< Ctx >::boundcheck( MkF mkf, PointerV p, int sz, bool write, std::stri
         width = ptr2s( pp ).size();
     }
 
-    if ( int( pp.offset() ) + sz > width )
+    if ( int64_t( pp.offset() ) + sz > width )
     {
         mkf( _VM_F_Memory ) << "access of size " << sz << " at " << p
                             << " is " << pp.offset() + sz - width
