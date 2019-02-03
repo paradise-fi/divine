@@ -166,6 +166,8 @@ struct Registers
 
 struct TracingInterface
 {
+    virtual void doublefault() {}
+    virtual void fault( Fault, HeapPointer, CodePointer ) {}
     virtual void trace( TraceText tt ) {}
     virtual void trace( TraceDebugPersist ) {}
     virtual void trace( TraceSchedInfo ) {}
@@ -331,12 +333,6 @@ struct Memory
 struct CowMemory : Memory< vm::CowHeap >
 {};
 
-struct NoFault
-{
-    void doublefault() {}
-    void fault( Fault, HeapPointer, CodePointer ) {}
-};
-
 struct NoChoice
 {
     template< typename I >
@@ -388,7 +384,16 @@ struct TracingContext : ContextBase< Tracing, Memory< Heap > >, NoChoice
     typename Base::Snapshot _debug_snap;
 
     using Base::trace;
-    virtual void trace( TraceDebugPersist t ) { _debug_persist.push_back( t.ptr ); }
+    virtual void trace( TraceDebugPersist t )
+    {
+        if ( t.ptr.type() == PointerType::Weak )
+            _debug_persist.push_back( t.ptr );
+        else
+        {
+            this->trace( "FAULT: cannot persist a non-weak object " + brick::string::fmt( t.ptr ) );
+            this->fault( _VM_F_Memory, this->frame(), this->pc() );
+        }
+    }
 
     virtual void debug_save() override;
     virtual void debug_restore() override;
@@ -544,13 +549,13 @@ struct Context : TracingContext< Heap_ >
         mkframe.enter( parent, args... );
     }
 
-    virtual void doublefault()
+    void doublefault() override
     {
         this->flags_set( 0, _VM_CF_Error );
         this->set( _VM_CR_Frame, nullPointer() );
     }
 
-    void fault( Fault f, HeapPointer frame, CodePointer pc )
+    void fault( Fault f, HeapPointer frame, CodePointer pc ) override
     {
         auto fh = this->fault_handler();
         if ( this->debug_mode() )
@@ -572,7 +577,7 @@ struct Context : TracingContext< Heap_ >
 };
 
 template< typename Program_, typename Heap_ >
-struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >, NoFault, NoChoice
+struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >, NoChoice
 {
     using Base = ContextBase< NoTracing, Memory< Heap_ > >;
     using Program = Program_;
