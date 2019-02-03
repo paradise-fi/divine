@@ -20,7 +20,7 @@ sim test.c <<EOF
 > start
 > step --over
 > source
-> step --over
+> step
 > show .x
 + a:
 + value:.*[i16 2 d]
