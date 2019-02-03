@@ -305,6 +305,12 @@ int main( int argc, char **argv )
         using namespace brick::fs;
         using divine::rt::includeDir;
 
+        auto drv = std::make_unique< cc::Driver >( clang.context() );
+
+        po.opts.insert( po.opts.end(),
+                        drv->commonFlags.begin(),
+                        drv->commonFlags.end() );
+
         po.opts.insert( po.opts.end(), {
                         "-isystem", joinPath( includeDir, "libcxx/include" )
                       , "-isystem", joinPath( includeDir, "libcxxabi/include" )
