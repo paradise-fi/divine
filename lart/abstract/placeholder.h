@@ -201,7 +201,7 @@ namespace abstract {
                 ph.inst->moveAfter( inst );
             }
 
-            make_duals( inst, ph.inst );
+            meta::make_duals( inst, ph.inst );
             assert( is_base_type_in_domain( inst->getModule(), inst, get_domain( inst ) ) );
 
             return ph;

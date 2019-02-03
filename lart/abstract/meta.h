@@ -29,6 +29,8 @@ namespace lart::abstract::meta {
             constexpr char name[] = "lart.abstract.domain.name";
             constexpr char kind[] = "lart.abstract.domain.kind";
         }
+
+        constexpr char dual[] = "lart.dual";
     } // namespace tag
 
 
@@ -68,15 +70,14 @@ namespace lart::abstract::meta {
     };
 
 
-    static inline bool ignore_call_of_function( llvm::Function * fn ) {
-        return fn->getMetadata( tag::transform::ignore::arg );
-    }
+    void set_llvm_value( llvm::Instruction * inst, const std::string& tag, llvm::Value * val );
+    llvm::Value * get_llvm_value( llvm::Instruction * inst, const std::string& tag );
 
-    static inline bool ignore_return_of_function( llvm::Function * fn ) {
-        return fn->getMetadata( tag::transform::ignore::ret );
-    }
+    bool ignore_call_of_function( llvm::Function * fn );
+    bool ignore_return_of_function( llvm::Function * fn );
+    bool is_forbidden_function( llvm::Function * fn );
 
-    static inline bool is_forbidden_function( llvm::Function * fn ) {
-        return fn->getMetadata( tag::transform::forbidden );
-    }
+    void make_duals( llvm::Instruction * a, llvm::Instruction * b );
+    llvm::Value * get_dual( llvm::Instruction *inst );
+
 } // namespace lart::abstract::meta

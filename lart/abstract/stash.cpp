@@ -83,7 +83,7 @@ void Stash::process_return_value( CallInst *call, Function * fn ) {
 
         auto stash = irb.CreateCall( stash_fn, { tostash } );
         add_abstract_metadata( stash, dom );
-        make_duals( stash, ret );
+        meta::make_duals( stash, ret );
     }
 }
 
@@ -200,7 +200,7 @@ void Unstash::process_return_value( CallInst *call ) {
         else
             call->insertBefore( arg );
 
-        make_duals( unstash, call );
+        meta::make_duals( unstash, call );
     }
 }
 

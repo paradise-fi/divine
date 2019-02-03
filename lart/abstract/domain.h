@@ -114,9 +114,6 @@ private:
     llvm::Function *fn;
 };
 
-void make_duals( llvm::Instruction *a, llvm::Instruction *b );
-llvm::Value* get_dual( llvm::Instruction *i );
-
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m );
 std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn );
 

@@ -186,25 +186,6 @@ void FunctionMetadata::clear() {
         fn->setMetadata( meta, nullptr );
 }
 
-void set_metadata( llvm::Instruction * inst, const std::string& tag, llvm::Value * value ) {
-    auto &ctx = inst->getContext();
-    inst->setMetadata( tag, MDTuple::get( ctx, { ValueAsMetadata::get( value ) } ) );
-}
-
-llvm::Value * get_metadata( llvm::Instruction * inst, const std::string& tag ) {
-    auto &meta = inst->getMetadata( tag )->getOperand( 0 );
-    return cast< ValueAsMetadata >( meta.get() )->getValue();
-}
-
-void make_duals( Instruction *a, Instruction *b ) {
-    set_metadata( a, "lart.dual", b );
-    set_metadata( b, "lart.dual", a );
-}
-
-Value* get_dual( Instruction *inst ) {
-    return get_metadata( inst, "lart.dual" );
-}
-
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m ) {
     return query::query( m )
         .map( []( auto &fn ) { return abstract_metadata( &fn ); } )
