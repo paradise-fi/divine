@@ -395,7 +395,7 @@
 
     #if _PDCLIB_XOPEN_MIN(700) && !_PDCLIB_POSIX_MIN(200809L)
         #undef _POSIX_C_SOURCE
-        #define _POSIX_C_SOURCE 2008098L    
+        #define _POSIX_C_SOURCE 200809L
     #elif _PDCLIB_XOPEN_MIN(600) && !_PDCLIB_POSIX_MIN(200112L)
         #undef _POSIX_C_SOURCE
         #define _POSIX_C_SOURCE 200112L

@@ -1,7 +1,7 @@
 list( APPEND flags -Oz )
 list( APPEND flags -debug-info-kind=standalone )
 list( APPEND flags -D__divine__ )
-list( APPEND flags -D_POSIX_C_SOURCE=2008098L )
+list( APPEND flags -D_POSIX_C_SOURCE=200809L )
 list( APPEND flags -D_BSD_SOURCE )
 list( APPEND flags -D_LITTLE_ENDIAN=1234 )
 list( APPEND flags -D_BYTE_ORDER=1234 )

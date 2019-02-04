@@ -1,5 +1,5 @@
 #ifndef REGTEST
-#define _POSIX_C_SOURCE 2008098L
+#define _POSIX_C_SOURCE 200809L
 #include <threads.h>
 // On Mac OS X, supress system definition of struct timespec
 #ifdef __APPLE__

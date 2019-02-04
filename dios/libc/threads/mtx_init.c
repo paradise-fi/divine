@@ -1,5 +1,5 @@
 #ifndef REGTEST
-#define _POSIX_C_SOURCE 2008098L
+#define _POSIX_C_SOURCE 200809L
 #include <threads.h>
 #include <pthread.h>
 
