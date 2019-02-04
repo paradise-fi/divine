@@ -152,6 +152,26 @@ namespace divine::mc
             return extend( Observer< F >( fs ) ... );
         }
 
+        template< typename F >
+        struct Lambda
+        {
+            F f;
+            Lambda( F f ) : f( f ) {}
+
+            template< typename T >
+            auto run( TQ &tq, T t )
+            {
+                if constexpr ( std::__invokable< F, TQ &, T >::value ) // FIXME std::is_invocable_v
+                    return f( tq, t );
+            }
+        };
+
+        template< typename... F >
+        auto extend_f( F... fs )
+        {
+            return extend( Lambda< F >( fs ) ... );
+        }
+
         Weaver( MachineT mt ) : _machines( mt ) {}
         Weaver() = default;
 
