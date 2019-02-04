@@ -1844,7 +1844,7 @@ template< typename Ctx >
 bool Eval< Ctx >::run_seq( bool continued )
 {
     if ( continued )
-        dispatch();
+        refresh(), dispatch();
     else
         context().reset_interrupted();
 
