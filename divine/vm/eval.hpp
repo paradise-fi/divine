@@ -506,6 +506,11 @@ public:
         ASSERT_EQ( CodePointer( context().pc() ), pc() );
         context().count_instruction();
         context().set( _VM_CR_PC, program().nextpc( pc() + 1 ) );
+        refresh();
+    }
+
+    void refresh()
+    {
         _instruction = &program().instruction( pc() );
     }
 };
