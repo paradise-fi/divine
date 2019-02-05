@@ -361,10 +361,10 @@ struct ContextBase : Reg, Mem
     void sync_pc() { return Mem::sync_pc( *this ); }
     void load_pc() { return Mem::load_pc( *this ); }
 
-    typename Mem::Heap::Snapshot snapshot()
+    typename Mem::Heap::Snapshot snapshot( typename Mem::Heap::Pool &p )
     {
         this->sync_pc();
-        auto rv = this->_heap.snapshot();
+        auto rv = this->_heap.snapshot( p );
         this->flush_ptr2i();
         return rv;
     }
@@ -390,6 +390,7 @@ struct TracingContext : ContextBase< Tracing, Memory< Heap > >, NoChoice
     {}
 
     std::vector< HeapPointer > _debug_persist;
+    typename Heap::Pool _debug_pool;
     typename Base::Snapshot _debug_snap;
 
     using Base::trace;
@@ -460,6 +461,7 @@ struct Context : TracingContext< Heap_ >
 {
     using Program = Program_;
     using Heap = Heap_;
+    using Pool = typename Heap::Pool;
     using PointerV = value::Pointer;
     using Location = typename Program::Slot::Location;
     using Snapshot = typename Heap::Snapshot;
@@ -512,7 +514,7 @@ struct Context : TracingContext< Heap_ >
         this->_state.instruction_counter = 0;
     }
 
-    void load( Snapshot snap ) { _heap.restore( snap ); clear(); }
+    void load( Pool &p, Snapshot snap ) { _heap.restore( p, snap ); clear(); }
     void reset() { _heap.reset(); clear(); }
 
     Context( Program &p ) : Context( p, Heap() ) {}

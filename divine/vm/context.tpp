@@ -28,7 +28,7 @@ void TracingContext< H >::debug_save()
 {
     if ( this->heap().can_snapshot() )
     {
-        _debug_snap = this->heap().snapshot();
+        _debug_snap = this->heap().snapshot( _debug_pool );
         this->flush_ptr2i();
     }
 }
@@ -41,12 +41,13 @@ void TracingContext< H >::debug_restore()
 
     if ( _debug_persist.empty() )
     {
-        this->heap().restore( _debug_snap );
+        this->heap().restore( _debug_pool, _debug_snap );
     }
     else
     {
+        this->heap().snapshot( _debug_pool );
         auto from = this->heap();
-        this->heap().restore( _debug_snap );
+        this->heap().restore( _debug_pool, _debug_snap );
         for ( auto ptr : _debug_persist )
         {
             if ( !from.valid( ptr ) ) continue;
