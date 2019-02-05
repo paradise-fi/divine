@@ -233,6 +233,7 @@ static const uint64_t _VM_CF_DebugMode   = 0b1000000;
 static const uint64_t _VM_CF_AutoSuspend = 0b10000000;
 static const uint64_t _VM_CF_KeepFrame   = 0b100000000;
 static const uint64_t _VM_CF_Booting     = 0b1000000000;
+static const uint64_t _VM_CF_Stop        = 0b10000000000;
 
 /*
  * Control flags are split up into 4 blocks of 16 bits, each reserved for a

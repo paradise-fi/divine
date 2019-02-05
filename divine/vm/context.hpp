@@ -560,8 +560,7 @@ struct Context : TracingContext< Heap_ >
 
     void doublefault() override
     {
-        this->flags_set( 0, _VM_CF_Error );
-        this->set( _VM_CR_Frame, nullPointer() );
+        this->flags_set( 0, _VM_CF_Error | _VM_CF_Stop );
     }
 
     void fault( Fault f, HeapPointer frame, CodePointer pc ) override

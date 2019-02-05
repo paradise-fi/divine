@@ -1030,6 +1030,7 @@ void Eval< Ctx >::implement_ctl_set_frame()
     if ( ptr.cooked().null() )
     {
         maybe_free();
+        context().flags_set( 0, _VM_CF_Stop );
         return context().set( _VM_CR_Frame, ptr.cooked() );
     }
 
@@ -1329,7 +1330,7 @@ void Eval< Ctx >::implement_ret()
     {
         if ( context().flags_any( _VM_CF_AutoSuspend ) )
         {
-            context().flags_set( 0, _VM_CF_KeepFrame );
+            context().flags_set( 0, _VM_CF_KeepFrame | _VM_CF_Stop );
             _final_frame = frame();
             context().set( _VM_CR_Frame, parent.cooked() );
         }
@@ -1837,7 +1838,7 @@ void Eval< Ctx >::run()
     do {
         advance();
         dispatch();
-    } while ( !context().frame().null() );
+    } while ( !context().flags_any( _VM_CF_Stop ) );
 }
 
 template< typename Ctx >
@@ -1853,7 +1854,7 @@ bool Eval< Ctx >::run_seq( bool continued )
         if ( instruction().opcode == lx::OpHypercall && instruction().subcode == lx::HypercallChoose )
             return true;
         dispatch();
-    } while ( !context().frame().null() );
+    } while ( !context().flags_any( _VM_CF_Stop ) );
 
     return false;
 }
