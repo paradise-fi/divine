@@ -80,6 +80,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
         if ( _stop_on_error && in_fault && !rewind_to_fault && _ff_components )
         {
             rewind_to_fault = true;
+            ctx.snapshot();
             _backup = ctx;
             ctx.flush_ptr2i();
         }
