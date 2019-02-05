@@ -165,6 +165,7 @@ struct CLI
           _sched_random( false ), _ctx( _bc->program(), _bc->debug() ),
           _state_count( 0 ), _stream( &std::cerr )
     {
+        _ctx.set_pool( _explore.pool() );
         _ctx._lock_mode = Context::LockScheduler;
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
