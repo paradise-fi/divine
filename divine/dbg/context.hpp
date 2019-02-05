@@ -37,33 +37,43 @@ struct DNContext : vm::Context< vm::Program, Heap >
 {
     using Super = vm::Context< vm::Program, Heap >;
     using Snapshot = typename Heap::Snapshot;
-    using RefPool = brick::mem::RefPool< typename Heap::SnapPool >;
-    using RefCnt  = brick::mem::RefCnt< typename Heap::SnapPool >;
+    using SnapPool = typename Heap::SnapPool;
+    using RefPool = brick::mem::RefPool< SnapPool >;
+    using RefCnt  = brick::mem::RefCnt< SnapPool >;
 
     Info *_debug;
+    SnapPool _pool;
     RefPool _refcnt;
 
     Info &debug() { return *_debug; }
     DNContext( vm::Program &p, Info &i, const Heap &h )
-        : Super( p, h ), _debug( &i ), _refcnt( this->heap()._snapshots ) {}
+        : Super( p, h ), _debug( &i ), _refcnt( _pool ) {}
 
     template< typename Ctx >
-    void load( const Ctx &ctx )
+    void load( SnapPool &p, const Ctx &ctx )
     {
+        _pool = p;
         Super::load( ctx );
-        _refcnt = RefPool( this->heap()._snapshots );
+        _refcnt = RefPool( _pool );
+    }
+
+    void set_pool( SnapPool &p )
+    {
+        _pool = p;
+        _refcnt = RefPool( _pool );
     }
 
     Snapshot snapshot()
     {
-        auto rv = Super::snapshot();
+        auto rv = Super::snapshot( _pool );
         if constexpr ( Heap::can_snapshot() )
-            if ( this->heap().is_shared( rv ) )
+            if ( this->heap().is_shared( _pool, rv ) )
                 _refcnt.get( rv ); /* leak :( */
         return rv;
     }
 
-    void load( typename Heap::Snapshot snap ) { Super::load( snap ); }
+    void load( Snapshot snap ) { Super::load( _pool, snap ); }
+    void load( SnapPool &p, Snapshot snap ) { Super::load( p, snap ); }
 };
 
 template< typename Heap >
