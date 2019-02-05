@@ -106,20 +106,16 @@ namespace divine::mem
     }
 
     template< typename Next >
-    void Cow< Next >::unref( Snapshot s )
+    void Cow< Next >::unref( Pool &p, Snapshot s )
     {
-        for ( auto si = snap_begin( s ); si != snap_end( s ); ++si )
+        for ( auto si = snap_begin( p, s ); si != snap_end( p, s ); ++si )
             _obj_refcnt.put( si->second );
     }
 
     template< typename Next >
-    auto Cow< Next >::snapshot() const -> Snapshot
+    auto Cow< Next >::snapshot( Pool &p ) const -> Snapshot
     {
         int count = 0;
-
-        if ( _l.exceptions.empty() )
-            return _l.snapshot;
-
         auto snap = this->snap_begin();
 
         for ( auto &except : _l.exceptions )
@@ -138,8 +134,8 @@ namespace divine::mem
         if ( !count )
             return Snapshot();
 
-        auto s = this->snapshots().allocate( count * sizeof( SnapItem ) );
-        auto si = this->snapshots().template machinePointer< SnapItem >( s );
+        auto s = p.allocate( count * sizeof( SnapItem ) );
+        auto si = p.template machinePointer< SnapItem >( s );
         snap = this->snap_begin();
 
         for ( auto &except : _l.exceptions )
@@ -155,14 +151,15 @@ namespace divine::mem
         while ( snap != this->snap_end() )
             *si++ = *snap++;
 
-        auto newsnap = this->snapshots().template machinePointer< SnapItem >( s );
+        auto newsnap = p.template machinePointer< SnapItem >( s );
         ASSERT_EQ( si, newsnap + count );
         for ( auto s = newsnap; s < newsnap + count; ++s )
             ASSERT( this->valid( s->second ) );
 
         _l.exceptions.clear();
         _ext.writable.clear();
-        _l.snapshot = s;
+        _l.snap_begin = newsnap;
+        _l.snap_size = count;
 
         return s;
     }

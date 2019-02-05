@@ -43,7 +43,6 @@ namespace divine::mem
         using typename Next::PointerV;
 
         Pool &objects() const { return this->_objects; }
-        Pool &snapshots() const { return this->_snapshots; }
 
         struct SnapItem
         {
@@ -57,13 +56,14 @@ namespace divine::mem
         mutable struct Local
         {
             std::map< uint32_t, Internal > exceptions;
-            Snapshot snapshot;
+            SnapItem *snap_begin = nullptr;
+            int snap_size = 0;
         } _l;
 
         uint64_t objhash( Internal ) { return 0; }
         Internal detach( Loc l ) { return l.object; }
 
-        void reset() { _l.exceptions.clear(); _l.snapshot = Snapshot(); }
+        void reset() { _l.exceptions.clear(); _l.snap_size = 0; _l.snap_begin = nullptr; }
         void rollback() { _l.exceptions.clear(); } /* fixme leak */
 
         using Next::loc;
@@ -89,23 +89,17 @@ namespace divine::mem
             return si && si != snap_end() && si->first == object ? si->second : Internal();
         }
 
-        int snap_size( Snapshot s ) const
+        SnapItem *snap_begin() const { return _l.snap_begin; }
+        SnapItem *snap_begin( Pool &p, Snapshot s ) const
         {
-            if ( !snapshots().valid( s ) )
-                return 0;
-            return snapshots().size( s ) / sizeof( SnapItem );
+            return p.template machinePointer< SnapItem >( s );
         }
 
-        SnapItem *snap_begin( Snapshot s ) const
+        SnapItem *snap_end() const { return _l.snap_begin + _l.snap_size; }
+        SnapItem *snap_end( Pool &p, Snapshot s ) const
         {
-            if ( !snapshots().valid( s ) )
-                return nullptr;
-            return snapshots().template machinePointer< SnapItem >( s );
+            return snap_begin( p, s ) + p.size( s ) / sizeof( SnapItem );
         }
-
-        SnapItem *snap_begin() const { return snap_begin( _l.snapshot ); }
-        SnapItem *snap_end( Snapshot s ) const { return snap_begin( s ) + snap_size( s ); }
-        SnapItem *snap_end() const { return snap_end( _l.snapshot ); }
 
         SnapItem *snap_find( uint32_t obj ) const
         {
@@ -163,8 +157,8 @@ namespace divine::mem
             t.raw( *unsafe_deref< typename T::Raw >( p, i ) );
         }
 
-        void restore( Snapshot ) { UNREACHABLE( "restore() is not available" ); }
-        Snapshot snapshot() { UNREACHABLE( "snapshot() is not available" ); }
+        void restore( Pool &, Snapshot ) { UNREACHABLE( "restore() is not available" ); }
+        Snapshot snapshot( Pool & ) { return Snapshot(); }
     };
 
 }

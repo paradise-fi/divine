@@ -38,9 +38,10 @@ namespace divine::mem
         using typename Next::Snapshot;
         using typename Next::Pointer;
         using typename Next::Loc;
+        using typename Next::Pool;
         using Next::_l; /* FIXME */
 
-        mutable brick::mem::RefPool< typename Next::Pool, uint8_t > _obj_refcnt;
+        mutable brick::mem::RefPool< Pool, uint8_t > _obj_refcnt;
 
         struct ObjHasher
         {
@@ -67,7 +68,7 @@ namespace divine::mem
         Cow( const Cow &o ) : Next( o ), _obj_refcnt( o._obj_refcnt ), _ext( o._ext )
         {
             setupHT();
-            restore( o.snapshot() );
+            ASSERT( _l.exceptions.empty() );
         }
 
         Cow &operator=( const Cow &o )
@@ -76,7 +77,7 @@ namespace divine::mem
             _obj_refcnt = o._obj_refcnt;
             _ext = o._ext;
             setupHT();
-            restore( o.snapshot() );
+            ASSERT( _l.exceptions.empty() );
             return *this;
         }
 
@@ -116,8 +117,8 @@ namespace divine::mem
 
         Internal detach( Loc l );
         SnapItem dedup( SnapItem si ) const;
-        Snapshot snapshot() const;
-        void unref( Snapshot s );
+        Snapshot snapshot( Pool &p ) const;
+        void unref( Pool &p, Snapshot s );
 
         bool resize( Pointer p, int sz_new )
         {
@@ -126,12 +127,17 @@ namespace divine::mem
             return rv;
         }
 
-        bool is_shared( Snapshot s ) const { return s == _l.snapshot; }
-        void restore( Snapshot s )
+        bool is_shared( Pool &p, Snapshot s ) const
         {
+            return p.template machinePointer< SnapItem >( s ) == _l.snap_begin;
+        }
+
+        void restore( Pool &p, Snapshot s )
+        {
+            _l.snap_size = p.size( s ) / sizeof( SnapItem );
+            _l.snap_begin = p.template machinePointer< SnapItem >( s );
             _l.exceptions.clear();
             _ext.writable.clear();
-            _l.snapshot = s;
         }
 
         static constexpr bool can_snapshot() { return true; }

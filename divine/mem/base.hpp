@@ -35,7 +35,7 @@ struct Base
     using UIntV  = IV< 32, false >;
     using IntV = IV< 32, true >;
 
-    mutable Pool _objects, _snapshots;
+    mutable Pool _objects;
 
     template< typename Self >
     struct LocMixin : public brick::types::Ord
