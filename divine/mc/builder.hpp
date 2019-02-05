@@ -120,13 +120,13 @@ struct Builder
 
     Builder( const Builder &e ) : _d( e._d )
     {
-        hasher().setup( context().heap(), _d.solver );
+        hasher().setup( pool(), context().heap(), _d.solver );
     }
 
     template< typename... Args >
     Builder( BC bc, Args && ... args ) : _d( bc, args... )
     {
-        hasher().setup( context().heap(), _d.solver );
+        hasher().setup( pool(), context().heap(), _d.solver );
     }
 
     auto store( Snapshot snap )
@@ -163,7 +163,7 @@ struct Builder
     {
         context().load( ctx ); /* copy over registers */
         context().track_memory( false );
-        hasher().setup( context().heap(), _d.solver );
+        hasher().setup( pool(), context().heap(), _d.solver );
         hasher()._root = context().state_ptr();
 
         if ( context().heap().valid( hasher()._root ) )
@@ -410,7 +410,7 @@ struct TestBuilder
         ex.start();
         ex.initials( [&]( auto s )
         {
-            ASSERT( ex.hasher()._h1.snapshots().size( s.snap ) );
+            ASSERT( ex.hasher()._pool->size( s.snap ) );
         } );
     }
 
@@ -421,8 +421,8 @@ struct TestBuilder
         ex.start();
         ex.initials( [&]( auto s )
         {
-            ASSERT( ex.hasher()._h1.snapshots().size( s.snap ) );
-            ASSERT( ex_.hasher()._h1.snapshots().size( s.snap ) );
+            ASSERT( ex.hasher()._pool->size( s.snap ) );
+            ASSERT( ex_.hasher()._pool->size( s.snap ) );
         } );
     }
 

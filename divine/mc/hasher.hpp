@@ -26,12 +26,16 @@ namespace divine::mc::impl
     struct Hasher
     {
         using Snapshot = vm::CowHeap::Snapshot;
+        using Pool = vm::CowHeap::Pool;
+
         mutable vm::CowHeap _h1, _h2;
         vm::HeapPointer _root;
         Solver *_solver = nullptr;
+        Pool *_pool = nullptr;
 
-        void setup( const vm::CowHeap &heap, Solver &solver )
+        void setup( Pool &pool, const vm::CowHeap &heap, Solver &solver )
         {
+            _pool = &pool;
             _h1 = heap;
             _h2 = heap;
             _solver = &solver;
@@ -40,10 +44,11 @@ namespace divine::mc::impl
         bool equal_fastpath( Snapshot a, Snapshot b ) const
         {
             bool rv = false;
-            if ( _h1.snapshots().size( a ) == _h1.snapshots().size( b ) )
-                rv = std::equal( _h1.snap_begin( a ), _h1.snap_end( a ), _h1.snap_begin( b ) );
+            if ( _pool->size( a ) == _pool->size( b ) )
+                rv = std::equal( _h1.snap_begin( *_pool, a ), _h1.snap_end( *_pool, a ),
+                                 _h1.snap_begin( *_pool, b ) );
             if ( !rv )
-                _h1.restore( a ), _h2.restore( b );
+                _h1.restore( *_pool, a ), _h2.restore( *_pool, b );
             return rv;
         }
 
@@ -83,7 +88,7 @@ namespace divine::mc::impl
 
         brick::hash::hash128_t hash( Snapshot s ) const
         {
-            _h1.restore( s );
+            _h1.restore( *_pool, s );
             return mem::hash( _h1, _root );
         }
     };
