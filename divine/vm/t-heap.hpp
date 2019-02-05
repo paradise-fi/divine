@@ -31,6 +31,7 @@ namespace divine::t_vm
         using PointerV = vm::value::Pointer;
 
         H heap;
+        typename H::Pool pool;
         PointerV p;
 
         Heap() { p = heap.make( 16 ); }
@@ -222,6 +223,7 @@ namespace divine::t_vm
 
         TEST(compare)
         {
+            heap.snapshot( pool );
             decltype( heap ) cloned( heap );
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
             heap.write( p, PointerV( q ) );
@@ -258,6 +260,7 @@ namespace divine::t_vm
         using PointerV = vm::value::Pointer;
 
         vm::CowHeap heap;
+        vm::CowHeap::Pool pool;
         PointerV p;
         CowHeap() { p = heap.make( 16 ); }
 
@@ -267,13 +270,13 @@ namespace divine::t_vm
 
             auto p = heap.make( 16 ).cooked();
             heap.write( p, PointerV( p ) );
-            auto snap = heap.snapshot();
+            auto snap = heap.snapshot( pool );
 
             heap.read( p, check );
             ASSERT_EQ( check.cooked(), p );
 
             heap.write( p, PointerV( vm::nullPointer() ) );
-            heap.restore( snap );
+            heap.restore( pool, snap );
 
             check = PointerV( vm::nullPointer() );
             heap.read( p, check );
@@ -285,7 +288,7 @@ namespace divine::t_vm
             vm::CowHeap heap;
             auto copy = heap;
             auto p = heap.make( 16 ).cooked();
-            copy.restore( heap.snapshot() );
+            copy.restore( pool, heap.snapshot( pool ) );
             ASSERT( copy.valid( p ) );
         }
 
@@ -293,13 +296,13 @@ namespace divine::t_vm
         {
             IntV i( 0, 0xFF, false ), j;
             heap.write( p.cooked(), i );
-            auto s = heap.snapshot();
+            auto s = heap.snapshot( pool );
             heap.read( p.cooked(), j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xFF );
 
             heap.write( p.cooked(), IntV( 0 ) );
-            heap.restore( s );
+            heap.restore( pool, s );
             heap.read( p.cooked(), j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xFF );
@@ -309,13 +312,13 @@ namespace divine::t_vm
         {
             IntV i( 0, 0xF0, false ), j;
             heap.write( p.cooked(), i );
-            auto s = heap.snapshot();
+            auto s = heap.snapshot( pool );
             heap.read( p.cooked(), j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xF0 );
 
             heap.write( p.cooked(), IntV( 0 ) );
-            heap.restore( s );
+            heap.restore( pool, s );
             heap.read( p.cooked(), j );
             ASSERT_EQ( i, j );
             ASSERT_EQ( j.defbits(), 0xF0 );
@@ -327,7 +330,7 @@ namespace divine::t_vm
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
-            heap.snapshot();
+            heap.snapshot( pool );
             ASSERT( mem::hash( heap, p ).first != mem::hash( heap, q ).first );
         }
 
@@ -337,6 +340,7 @@ namespace divine::t_vm
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
+            heap.snapshot( pool );
             decltype( heap ) h2( heap );
             PointerV val;
             h2.read( p, val );
@@ -351,6 +355,7 @@ namespace divine::t_vm
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
+            heap.snapshot( pool );
             decltype( heap ) h2( heap );
 
             heap.write( p, IntV( 7 ) );
@@ -369,11 +374,12 @@ namespace divine::t_vm
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
+            heap.snapshot( pool );
             decltype( heap ) h2( heap );
 
             heap.write( p, IntV( 7 ) );
             h2.write( p, PointerV( p ) );
-            h2.snapshot();
+            h2.snapshot( pool );
 
             IntV iv; PointerV pv;
             heap.read( p, iv );
@@ -385,23 +391,23 @@ namespace divine::t_vm
         TEST(snap_restore)
         {
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
-            auto s1 = heap.snapshot();
+            auto s1 = heap.snapshot( pool );
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
-            auto s2 = heap.snapshot();
+            auto s2 = heap.snapshot( pool );
             heap.write( p, IntV( 7 ) );
-            auto s3 = heap.snapshot();
+            auto s3 = heap.snapshot( pool );
 
             IntV iv; PointerV pv;
 
-            heap.restore( s1 );
+            heap.restore( pool, s1 );
             heap.read( p, iv );
             ASSERT_EQ( iv.defbits(), 0 );
-            heap.restore( s2 );
+            heap.restore( pool, s2 );
             heap.read( p, pv );
             ASSERT_EQ( pv.cooked(), q );
-            heap.restore( s3 );
+            heap.restore( pool, s3 );
             heap.read( p, iv );
             ASSERT( iv.defined() );
             ASSERT_EQ( iv.cooked(), 7 );
@@ -410,35 +416,35 @@ namespace divine::t_vm
         TEST(snap_restore_isolation)
         {
             auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
-            auto s1 = heap.snapshot();
+            auto s1 = heap.snapshot( pool );
             heap.write( p, PointerV( q ) );
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
-            auto s2 = heap.snapshot();
+            auto s2 = heap.snapshot( pool );
             heap.write( p, IntV( 7 ) );
-            auto s3 = heap.snapshot();
+            auto s3 = heap.snapshot( pool );
 
             IntV iv; PointerV pv;
 
-            heap.restore( s1 );
+            heap.restore( pool, s1 );
             heap.write( p, IntV( 8 ) );
-            heap.restore( s1 );
+            heap.restore( pool, s1 );
             heap.read( p, iv );
             ASSERT_EQ( iv.defbits(), 0 );
-            heap.restore( s2 );
+            heap.restore( pool, s2 );
             heap.write( p, IntV( 8 ) );
-            heap.restore( s2 );
+            heap.restore( pool, s2 );
             heap.read( p, pv );
             ASSERT_EQ( pv.cooked(), q );
-            heap.restore( s3 );
+            heap.restore( pool, s3 );
             heap.write( p, IntV( 8 ) );
-            heap.restore( s3 );
+            heap.restore( pool, s3 );
             heap.read( p, iv );
             ASSERT( iv.defined() );
             ASSERT_EQ( iv.cooked(), 7 );
 
             heap.write( p, IntV( 8 ) );
-            heap.restore( s1 );
+            heap.restore( pool, s1 );
             heap.read( p, iv );
             ASSERT_EQ( iv.defbits(), 0 );
         }
