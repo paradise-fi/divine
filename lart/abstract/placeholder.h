@@ -44,18 +44,15 @@ namespace abstract {
 
         static const Bimap< Level, std::string > LevelTable;
 
-        static constexpr const char * type_meta = "lart.placeholder.type";
-        static constexpr const char * level_meta = "lart.placeholder.level";
-
         explicit Placeholder( llvm::Instruction * inst, Level level, Type type )
             : inst( inst ), level( level ), type( type )
         {
             auto & ctx = inst->getContext();
             auto tname = llvm::MDString::get( ctx, TypeTable[ type ] );
-            inst->setMetadata( type_meta, llvm::MDNode::get( ctx, tname ) );
+            inst->setMetadata( meta::tag::placeholder::type, llvm::MDNode::get( ctx, tname ) );
 
             auto lname = llvm::MDString::get( ctx, LevelTable[ level ] );
-            inst->setMetadata( type_meta, llvm::MDNode::get( ctx, lname ) );
+            inst->setMetadata( meta::tag::placeholder::type, llvm::MDNode::get( ctx, lname ) );
         }
 
         llvm::Instruction * inst;

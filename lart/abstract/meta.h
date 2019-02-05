@@ -30,6 +30,11 @@ namespace lart::abstract::meta {
             constexpr char kind[] = "lart.abstract.domain.kind";
         }
 
+        namespace placeholder {
+            constexpr const char type[] = "lart.placeholder.type";
+            constexpr const char level[] = "lart.placeholder.level";
+        }
+
         constexpr char dual[] = "lart.dual";
     } // namespace tag
 
