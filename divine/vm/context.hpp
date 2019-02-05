@@ -328,6 +328,13 @@ struct Memory
         auto newfr = _heap.write( loc, PointerV( regs.pc() ) );
         ptr2i( regs, Location( _VM_CR_Frame ), newfr );
     }
+
+    void load_pc( Registers &regs )
+    {
+        PointerV pc;
+        _heap.read( _heap.loc( regs.frame(), ptr2i( regs, Location( _VM_CR_Frame ) ) ), pc );
+        regs._pc = pc.cooked();
+    }
 };
 
 struct CowMemory : Memory< vm::CowHeap >
@@ -352,9 +359,11 @@ struct ContextBase : Reg, Mem
     void ptr2i( Location l, HeapInternal i ) { return Mem::ptr2i( *this, l, i ); }
     void flush_ptr2i() { return Mem::flush_ptr2i( *this ); }
     void sync_pc() { return Mem::sync_pc( *this ); }
+    void load_pc() { return Mem::load_pc( *this ); }
 
     typename Mem::Heap::Snapshot snapshot()
     {
+        this->sync_pc();
         auto rv = this->_heap.snapshot();
         this->flush_ptr2i();
         return rv;
