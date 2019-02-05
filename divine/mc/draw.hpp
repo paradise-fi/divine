@@ -33,7 +33,7 @@ template< typename Builder >
 std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance, bool heap )
 {
     dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
-    dbg.load( bld.context() );
+    dbg.load( bld.pool(), bld.context() );
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ) > dbg_eval( dbg );
     dbg_eval.run();

@@ -117,7 +117,7 @@ struct Safety : Job
         return mc::trace( _ex, rv );
     }
 
-    void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex.context() ); }
+    void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex.pool(), _ex.context() ); }
 
     Result result() override
     {
@@ -128,7 +128,7 @@ struct Safety : Job
 
     virtual PoolStats poolstats() override
     {
-        return PoolStats{ { "snapshot memory", _ex.context().heap()._snapshots.stats() },
+        return PoolStats{ { "snapshot memory", _ex.pool().stats() },
                           { "fragment memory", _ex.context().heap()._objects.stats() } };
     }
 };

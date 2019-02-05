@@ -84,7 +84,7 @@ struct Builder
     auto &program() { return _d.bc->program(); }
     auto &debug() { return _d.bc->debug(); }
     auto &heap() { return context().heap(); }
-    auto &pool() { return _d.ctx.heap().snapshots(); }
+    auto &pool() { return _d.pool; }
 
     struct Data
     {
@@ -93,6 +93,7 @@ struct Builder
         HT states;
         builder::State initial;
         Solver solver;
+        vm::CowHeap::Pool pool;
 
         bool overwrite = false;
         int64_t instructions = 0;
@@ -134,7 +135,7 @@ struct Builder
         if ( *r != snap )
         {
             ASSERT( !_d.overwrite );
-            pool().free( snap ), context().load( *r );
+            pool().free( snap ), context().load( pool(), *r );
         }
         else
             context().flush_ptr2i();
@@ -149,8 +150,9 @@ struct Builder
         eval.run();
         hasher()._root = context().state_ptr();
 
+        auto s = context().snapshot( pool() );
         if ( vm::setup::postboot_check( context() ) )
-            _d.initial.snap = *store( context().snapshot() );
+            _d.initial.snap = *store( s );
         _d.states.updateUsage();
         if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
@@ -238,7 +240,7 @@ struct Builder
         _d.solver.reset();
 
         do {
-            context().load( from.snap );
+            context().load( pool(), from.snap );
             vm::setup::scheduler( context() );
             ASSERT_EQ( context()._level, 0 );
 
@@ -253,8 +255,8 @@ struct Builder
 
             if ( tc.feasible )
             {
-                tc.snap = context().heap().snapshot();
-                tc.free = !context().heap().is_shared( tc.snap );
+                tc.snap = context().heap().snapshot( pool() );
+                tc.free = !context().heap().is_shared( pool(), tc.snap );
                 tc.lbl = label();
             }
             tc.tid = context()._tid;
@@ -294,7 +296,7 @@ struct Builder
                 if ( tc.feasible && tc.free )
                     pool().free( tc.snap );
                 context()._lock = tc.lock;
-                context().load( from.snap );
+                context().load( pool(), from.snap );
                 _d.solver.reset();
                 ASSERT( context()._stack.empty() );
                 ASSERT_EQ( context()._level, 0 );
@@ -309,7 +311,7 @@ struct Builder
                 if ( tc.feasible )
                 {
                     auto lbl = label();
-                    do_yield( context().heap().snapshot(), lbl );
+                    do_yield( context().heap().snapshot( pool() ), lbl );
 
                     int i = 0;
                     for ( auto t : lbl.stack )
