@@ -134,6 +134,11 @@ void * calloc( size_t nmemb, size_t size ) _PDCLIB_nothrow _LART_FORBIDDEN _LART
 */
 void * aligned_alloc( size_t alignment, size_t size ) _PDCLIB_nothrow _LART_FORBIDDEN _LART_IGNORE_RET;
 
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200112
+int posix_memalign( void **ptr, size_t alignment, size_t size ) __nothrow
+    _LART_FORBIDDEN _LART_IGNORE_RET;
+#endif
+
 /* De-allocate a chunk of heap memory previously allocated using malloc(),
    calloc(), or realloc(), and pointed to by ptr. If ptr does not match a
    pointer previously returned by the mentioned allocation functions, or

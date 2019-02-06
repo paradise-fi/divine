@@ -11,6 +11,7 @@
 #include <sys/vmutil.h>
 #include <string.h>
 #include <dios.h>
+#include <errno.h>
 #include <sys/syswrap.h>
 
 /*
@@ -35,6 +36,16 @@ __invisible void *malloc( size_t size )
 __invisible void *aligned_alloc( size_t align, size_t size )
 {
     return malloc( size ); /* we are always aligned */
+}
+
+__invisible int posix_memalign( void **ptr, size_t align, size_t size )
+{
+    /* TODO EINVAL if align is not a power of two >= sizeof( void* ) */
+    *ptr = malloc( size ); /* we are always aligned */
+    if ( *ptr )
+        return 0;
+    else
+        return ENOMEM;
 }
 
 #define MIN( a, b )   ((a) < (b) ? (a) : (b))
