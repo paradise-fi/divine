@@ -212,6 +212,7 @@ struct Int : Base
 
     Int< _width, true, is_dynamic > make_signed()
     {
+        ASSERT( !is_dynamic );
         Int< _width, true, is_dynamic > result( _raw, _m, false );
         result._meta.pointer = _meta.pointer;
         result.taints( _meta.taints );
