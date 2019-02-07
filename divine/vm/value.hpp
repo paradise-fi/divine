@@ -188,9 +188,9 @@ struct Int : Base
     void defined( bool d ) { defbits( d ? full() : 0 ); }
     bool pointer() { return _meta.pointer == _isptr; }
     void pointer( bool p ) { _meta.pointer = p ? _isptr : _notptr; }
-    auto raw() { return _raw; }
-    void raw( Raw r ) { _raw = r; }
-    auto cooked() { return bitcast< Cooked >( _raw ); }
+    Raw raw() { return _raw & full(); }
+    void raw( Raw r ) { _raw = r & full(); }
+    auto cooked() { return bitcast< Cooked >( raw() ); }
 
     GenericPointer as_pointer()
     {
