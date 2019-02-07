@@ -1020,7 +1020,7 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 
 #if defined(__divine__)
 #define _LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE 1
-#define _LIBCPP_HAS_NO_ALIGNED_ALLOCATION  1
+#undef _LIBCPP_HAS_NO_ALIGNED_ALLOCATION
 #endif
 
 #endif // __cplusplus
