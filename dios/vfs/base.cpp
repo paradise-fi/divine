@@ -26,7 +26,7 @@ namespace __dios::fs
         const auto npos = std::string_view::npos;
         std::string_view key( env->key );
 
-        if ( key.substr( 0, 4 ) != "vfs." )
+        if ( key.substr( 0, 4 ) != "vfs." || key == "vfs.stdin" )
             return false;
 
         if ( key.find( suffix ) == npos )
