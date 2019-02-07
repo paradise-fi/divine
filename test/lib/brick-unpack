@@ -33,13 +33,14 @@ for my $unit (@tests)
     for my $variant ("nfta", "nfaa", "sfaa")
     {
         $tags = $tags_common;
+        $ccopt = "-std=c++17";
         if ($variant =~ /^nf/) { $vopt = "-o nofail:malloc" } else { $tags .= " big"; }
-        if ($variant =~ /aa$/) { $ccopt = "-DBRICK_NOTHROW_ASSERTS"; } else { $tags .= " ext"; }
-        if ($variant eq "sfaa") { $ccopt .= "-DIGNORE_TERMINATE $helper"; }
+        if ($variant =~ /aa$/) { $ccopt .= " -DBRICK_NOTHROW_ASSERTS"; } else { $tags .= " ext"; }
+        if ($variant eq "sfaa") { $ccopt .= " -DIGNORE_TERMINATE $helper"; }
 
         open F, ">$unit.$variant.cpp";
         print F <<EOF
-/* TAGS: c++ $tags */
+/* TAGS: $tags */
 /* CC_OPTS: $ccopt -I$ENV{SRC_ROOT}/bricks/ */
 /* VERIFY_OPTS: $vopt */
 /* PROGRAM_OPTS: $unit */
