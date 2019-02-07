@@ -139,9 +139,12 @@ bool is_object_type( std::string file )
     return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive );
 }
 
-std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang )
+std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang,
+                                              std::vector< std::string > libSearchPath )
 {
     auto drv = std::make_unique< rt::DiosCC >( clang.context() );
+    for( auto path : libSearchPath )
+        drv->addDirectory( path );
 
     for ( auto file : files )
     {
@@ -151,7 +154,7 @@ std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang
                 continue;
             else
             {
-                drv->linkLib( file.second );
+                drv->linkLib( file.second, libSearchPath );
                 continue;
             }
         }
@@ -272,7 +275,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
     if ( !linked )
         throw cc::CompileError( "lld failed, not linked" );
 
-    std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang );
+    std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang, po.libSearchPath );
     std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
     addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
