@@ -175,9 +175,10 @@ brick::llvm::ArchiveReader Driver::getLib( std::string lib, std::vector< std::st
                 if ( compiler.fileExists( n ) )
                 {
                     name = n;
-                    break;
+                    goto done;
                 }
             }
+done:
 
     if ( name.empty() )
         throw std::runtime_error( "Library not found: " + lib );
