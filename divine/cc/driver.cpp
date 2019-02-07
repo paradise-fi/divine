@@ -166,7 +166,7 @@ brick::llvm::ArchiveReader Driver::getLib( std::string lib, std::vector< std::st
     using namespace brick::fs;
 
     std::string name;
-    searchPaths.push_back( "/dios/lib" );
+    searchPaths.insert( searchPaths.begin(), "/dios/lib" );
     for ( auto p : searchPaths )
         for ( auto suf : { "a", "bc" } )
             for ( auto pref : { "lib", "" } )
