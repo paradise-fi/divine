@@ -416,3 +416,14 @@ fieldset#action #action_reassign_reassign_owner { width: 16em; margin-left: 2.5e
 .description input { display: none; }
 .description p { padding-left: 1em; }
 div.attachments { padding-left: 1em; }
+
+div.board { display: inline-block; vertical-align: top; margin-right: 1em; margin-bottom: 1ex; }
+div.board caption
+{
+    white-space: nowrap;
+    background-color: #f0f0f0;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+div.statistics { text-align: left; }
+.board td { padding-left: .5em; }
