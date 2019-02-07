@@ -1,4 +1,4 @@
-# TAGS: ext todo
+# TAGS: ext
 . lib/testcase
 
 unxz --version || skip
