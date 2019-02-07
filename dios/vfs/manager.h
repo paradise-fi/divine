@@ -135,8 +135,7 @@ struct VFS: Syscall, Next
         _stdio[ 1 ] = make_tracefile( s.opts, "stdout" );
         _stdio[ 2 ] = make_tracefile( s.opts, "stderr" );
 
-
-        for ( int i = 0; i < 2; ++i )
+        for ( int i = 0; i <= 2; ++i )
         {
             _stdio[ i ]->mode( S_IFREG | S_IRUSR );
             s.proc1->_fds.emplace_back( _stdio[ i ], i ? O_WRONLY : O_RDONLY );
