@@ -17,7 +17,7 @@
  */
 
 /*
- * (c) 2014 Petr Ročkai <me@mornfall.net>
+ * (c) 2014-2019 Petr Ročkai <me@mornfall.net>
  * (c) 2014 Red Hat, Inc.
  * (c) 2015-2016 Vladimír Štill <xstill@fi.muni.cz>
  */
@@ -1074,7 +1074,7 @@ struct Main
             runnable = true;
 
         for ( auto i : options.interpreters )
-            if ( check_interpreter( i, name ) )
+            if ( check_interpreter( i, name ) || check_interpreter( i, variant ) )
             {
                  runnable = true;
                  interpreter = options.testdir + i.second;
