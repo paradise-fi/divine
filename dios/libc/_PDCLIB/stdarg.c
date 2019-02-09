@@ -64,12 +64,14 @@ static int test( enum tag_t s, ... )
                 tag = va_arg( ap, enum tag_t );
                 break;
             }
+/* FIXME (fails on divine, broken out into a separate test)
             case TAG_LDBL:
             {
                 TESTCASE( va_arg( ap, long double ) == LDBL_MAX );
                 tag = va_arg( ap, enum tag_t );
                 break;
             }
+*/
             case TAG_INTPTR:
             {
                 TESTCASE( *( va_arg( ap, int * ) ) == INT_MAX );
