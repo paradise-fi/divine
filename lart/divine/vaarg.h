@@ -18,6 +18,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 #include <lart/support/util.h>
 
+#include <divine/vm/divm.h>
+
 namespace lart {
 namespace divine {
 
@@ -29,6 +31,11 @@ struct VaArgInstr
 
     void run( llvm::Module &m ) {
         auto *vaargfn = m.getFunction( "__lart_llvm_va_arg" );
+        auto i8ptr = llvm::Type::getInt8Ty( m.getContext() )->getPointerTo();
+        auto i32  = llvm::Type::getInt32Ty( m.getContext() );
+        auto voidT = llvm::Type::getVoidTy( m.getContext() );
+        auto faultfn_type = llvm::FunctionType::get( voidT, { i32, i8ptr }, false );
+        auto faultfn = m.getOrInsertFunction( "__dios_fault", faultfn_type );
         if ( !vaargfn )
             return;
         if ( vaargfn->hasAddressTaken() )
@@ -63,11 +70,34 @@ struct VaArgInstr
             if ( !load )
                 UNREACHABLE( "could not find load corresponding to va_arg call", call );
 
-            for ( auto x : toDrop ) {
+            for ( auto x : toDrop )
+            {
                 x->replaceAllUsesWith( llvm::UndefValue::get( x->getType() ) );
                 x->eraseFromParent();
             }
-            llvm::ReplaceInstWithInst( load, new llvm::VAArgInst( valist, load->getType() ) );
+
+            if ( load->getType() == llvm::Type::getX86_FP80Ty( m.getContext() ) )
+            {
+                llvm::IRBuilder irb( load );
+                auto mkstr = [&]( auto s )
+                {
+                    return llvm::ConstantDataArray::getString( m.getContext(), s );
+                };
+                auto str = mkstr( "va_arg for long double is not implemented" );
+                auto var_ = m.getOrInsertGlobal( "lart.vaarg.fp80.na", str->getType() );
+                auto var = llvm::cast< llvm::GlobalVariable >( var_ );
+                auto msg = llvm::ConstantExpr::getPointerCast( var, i8ptr );
+                auto id = llvm::ConstantInt::get( i32, _VM_F_NotImplemented );
+
+                var->setInitializer( str );
+                var->setConstant( true );
+                var->dump();
+                irb.CreateCall( faultfn, { id, msg } );
+                load->replaceAllUsesWith( llvm::UndefValue::get( load->getType() ) );
+                load->eraseFromParent();
+            }
+            else
+                llvm::ReplaceInstWithInst( load, new llvm::VAArgInst( valist, load->getType() ) );
         }
 
         vaargfn->eraseFromParent();
