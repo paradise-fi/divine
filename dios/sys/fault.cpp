@@ -54,9 +54,9 @@ namespace __dios
 
         if ( !( _flags & Ready ) || fault_cfg & FaultFlag::Enabled )
         {
+            __vm_ctl_flag( 0, _VM_CF_Error );
             __dios_trace_f( "FATAL: %s in %s", fault_to_str( what, true ).begin(),
                             kernel ? "kernel" : "userspace" );
-            __vm_ctl_flag( 0, _VM_CF_Error );
             backtrace( frame );
 
             if ( !( _flags & Ready ) || !( fault_cfg & FaultFlag::Continue ) )
