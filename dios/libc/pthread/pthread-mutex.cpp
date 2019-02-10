@@ -42,17 +42,17 @@ static bool _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept
         _PThread *owner = &getThread( mutex->__owner );
         if ( owner == &tid )
         {
-            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex cycle closed, circular waiting" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "deadlock: circular wait on a mutex" );
             return tid.deadlocked = owner->deadlocked = true;
         }
         if ( owner->deadlocked )
         {
-            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: waiting for a deadlocked thread" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "deadlock: waiting for a deadlocked thread" );
             return tid.deadlocked = true;
         }
         if ( !owner->running )
         {
-            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex locked by a dead thread" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "deadlock: mutex locked by a dead thread" );
             return tid.deadlocked = true;
         }
         mutex = owner->waiting_mutex;
@@ -80,7 +80,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
             if ( mutex->__type == PTHREAD_MUTEX_ERRORCHECK )
                 return EDEADLK;
             else
-                __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Nonrecursive mutex locked again" );
+                __dios_fault( _VM_Fault::_VM_F_Locking, "deadlock: double lock on a nonrecursive mutex" );
         }
     }
 
@@ -137,7 +137,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) noexcept {
         if ( mutex->__type == PTHREAD_MUTEX_ERRORCHECK )
             return EBUSY;
         else
-            __dios_fault( _VM_Fault::_VM_F_Locking, "Locked mutex destroyed" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "destroying a locked mutex" );
     }
     pthread_mutex_t uninit;
     *mutex = uninit;
@@ -183,8 +183,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
 
     if ( mutex->__owner == nullptr ) {
         if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
-            __dios_fault( _VM_Fault::_VM_F_Locking,
-                          "Attempting to unlock mutex which is not locked." );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "mutex already unlocked" );
         else
             return EPERM;
     }
@@ -193,9 +192,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->__lockCounter ); // count should be > 0
         if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
-            __dios_fault( _VM_Fault::_VM_F_Locking, "Mutex has to be released by the "
-                                            "same thread which acquired the "
-                                            "mutex." );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "mutex locked by another thread" );
         else
             return EPERM; // recursive mutex can also detect
     }
