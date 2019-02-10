@@ -186,6 +186,7 @@ enum _VM_Fault
 enum _VM_Trace
 {
     _VM_T_Text,        /* ( const char *text ) */
+    _VM_T_Fault,       /* ( const char *text ) */
     _VM_T_SchedChoice, /* ( void *info ) */
     _VM_T_SchedInfo,   /* ( int pid, int tid ) */
     _VM_T_TaskID,      /* ( void *id ) */

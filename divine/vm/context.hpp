@@ -166,9 +166,12 @@ struct Registers
 
 struct TracingInterface
 {
+    virtual std::string fault_str() { return "(no info)"; }
+    virtual void fault_clear() {}
     virtual void doublefault() {}
     virtual void fault( Fault, HeapPointer, CodePointer ) {}
     virtual void trace( TraceText tt ) {}
+    virtual void trace( TraceFault tt ) {}
     virtual void trace( TraceDebugPersist ) {}
     virtual void trace( TraceSchedInfo ) {}
     virtual void trace( TraceSchedChoice ) {}
@@ -469,9 +472,14 @@ struct Context : TracingContext< Heap_ >
     using Base::_heap;
 
     Program *_program;
+    std::string _fault;
 
     using Base::trace;
     virtual void trace( TraceLeakCheck ) override;
+    void trace( TraceFault tt ) override { _fault = tt.string; }
+
+    void fault_clear() override { _fault.clear(); }
+    std::string fault_str() override { return _fault; }
 
     bool _track_mem = false;
 
@@ -503,6 +511,7 @@ struct Context : TracingContext< Heap_ >
 
     virtual void clear()
     {
+        _fault.clear();
         this->_interrupts.clear();
         reset_interrupted();
         this->flush_ptr2i();
@@ -570,7 +579,8 @@ struct Context : TracingContext< Heap_ >
         auto fh = this->fault_handler();
         if ( this->debug_mode() )
         {
-            this->trace( "W: cannot handle a fault in debug mode (abandoned)" );
+            this->trace( "W: " + this->fault_str() + " in debug mode (abandoned)" );
+            this->fault_clear();
             this->_debug_depth = 0; /* short-circuit */
             this->leave_debug();
         }

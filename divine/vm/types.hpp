@@ -84,6 +84,7 @@ namespace divine::vm
     using Fault = ::_VM_Fault;
 
     struct TraceText { GenericPointer text; };
+    struct TraceFault { std::string string; };
     struct TraceSchedInfo { int pid; int tid; };
     struct TraceTaskID { GenericPointer ptr; };
     struct TraceStateType { CodePointer pc; };

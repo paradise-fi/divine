@@ -274,11 +274,11 @@ struct Eval
             if ( !_ctx )
                 return;
             if ( _trace )
-                _ctx->trace( "FAULT: " + str() );
+                _ctx->trace( TraceFault{ str() } );
             if ( _double )
             {
                 if ( _trace )
-                    _ctx->trace( "FATAL: fault handler called recursively" );
+                    _ctx->trace( "DOUBLE FAULT: " + _ctx->fault_str() );
                 _ctx->doublefault();
             } else
                 _ctx->fault( _fault, _frame, _pc );

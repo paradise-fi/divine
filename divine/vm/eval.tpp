@@ -803,6 +803,12 @@ void Eval< Ctx >::implement_hypercall()
                 case _VM_T_Text:
                     context().trace( TraceText{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                     return;
+                case _VM_T_Fault:
+                {
+                    auto arg = ptr2h( operandCk< PointerV >( 1 ) );
+                    context().trace( TraceFault{ heap().read_string( arg ) } );
+                    return;
+                }
                 case _VM_T_StateType:
                     context().trace( TraceStateType{ pc() } );
                     return;
@@ -1171,8 +1177,12 @@ void Eval< Ctx >::implement_ctl_flag()
     }
 
     if ( change & _VM_CF_Error )
+    {
         if ( !assert_flag( _VM_CF_KernelMode, "the error flag can be only changed in kernel mode" ) )
             return;
+        context().trace( "FAULT: " + context().fault_str() );
+        context().fault_clear();
+    }
 
     result( PtrIntV( context().flags() ) );
     context().flags_set( clear, set );
