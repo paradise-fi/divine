@@ -4754,7 +4754,7 @@ arena<N>::allocate(std::size_t n)
 #ifndef __divine__
             std::malloc(n)
 #else
-            __vm_obj_make(n)
+            __vm_obj_make(n, _VM_PT_Heap)
 #endif
             );
 }
@@ -4840,11 +4840,11 @@ public:
     {
         return static_cast<T*>(
 #ifndef __divine__
-                std::malloc
+                std::malloc(n*sizeof(T))
 #else
-                __vm_obj_make
+                __vm_obj_make(n*sizeof(T), _VM_PT_Heap)
 #endif
-                (n*sizeof(T)));
+        );
     }
     void deallocate(T* p, std::size_t) noexcept
     {
@@ -4935,7 +4935,7 @@ __cxa_demangle(const char* mangled_name, char* buf, size_t* n, int* status)
     size_t internal_size = buf != nullptr ? *n : 0;
 #ifdef __divine__
     if (buf == nullptr) {
-        buf = static_cast<char*>(__vm_obj_make(8));
+        buf = static_cast<char*>(__vm_obj_make(8, _VM_PT_Heap));
         internal_size = 8;
     }
 #endif
