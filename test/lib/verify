@@ -13,7 +13,7 @@ export EXPORT
 
 run()
 {
-    if test -n "$EXPORT"; then echo "$@"; else divine "$@"; fi
+    if test -n "$EXPORT"; then echo "$@"; else echo "+ divine $@"; divine "$@"; fi
 }
 
 getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
@@ -81,6 +81,7 @@ if test -n "$EXPORT"; then exit 0; fi
 
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
+    echo "+ divine sim --batch --skip-init --load-report verify.out"
     echo "backtrace" | \
         divine sim --batch --skip-init --load-report verify.out > sim.out 2>&1
 fi
