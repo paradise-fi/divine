@@ -1201,10 +1201,11 @@ void Eval< Ctx >::implement_test_crit()
 
     auto size = operandCk< IntV >( 1 ).cooked();
 
-    if ( !boundcheck( ptr, size, false ) )
+    if ( !boundcheck_nop( ptr, size, false ) )
     {
-        std::cerr << "W: boundcheck failed on vm.test.crit" << std::endl;
-        return; /* TODO fault on failing pointers? */
+        if ( !context().flags_any( _VM_CF_Error ) )
+            boundcheck( ptr, size, false );
+        return;
     }
 
     auto at = operandCk< IntV >( 2 ).cooked();
