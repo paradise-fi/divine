@@ -111,7 +111,7 @@ struct Context : DNContext< Heap >
     {
         if ( this->debug_mode() )
         {
-            trace( "FAULT: __vm_choose is not allowed in debug mode" );
+            trace( vm::TraceFault{ "__vm_choose is not allowed" } );
             this->fault( _VM_F_Hypercall, vm::HeapPointer(), vm::CodePointer() );
             return -1;
         }
