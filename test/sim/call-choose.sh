@@ -16,5 +16,5 @@ sim -std=c++14 -C,-I$SRC_ROOT/bricks file.cpp <<EOF
 + ^# executing __boot at
 > start
 > call use_choice
-+ fault in debug mode
++ __vm_choose is not allowed in debug mode
 EOF
