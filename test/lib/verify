@@ -82,7 +82,7 @@ if test -n "$EXPORT"; then exit 0; fi
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
     echo "backtrace" | \
-        divine sim --batch --skip-init --load-report verify.out 2>&1 | tee sim.out
+        divine sim --batch --skip-init --load-report verify.out > sim.out 2>&1
 fi
 
 check verify "$name"
