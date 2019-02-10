@@ -177,6 +177,14 @@ verify() {
             echo "# expected error to be found at $location, but it was not"
             exit 1
         fi
+        if test $(grep -c '^  FAULT:' verify.out) != 1; then
+            echo "# expected exactly one FAULT line in the trace"
+            exit 1
+        fi
+        if egrep -q "DOUBLE FAULT:" verify.out; then
+            echo "# an unexpected double fault encountered"
+            exit 1
+        fi
         if [ -s sim.out ] && ! grep -q "^  [{}a-zA-Z_].* at $location" sim.out; then
             nl -ba "$1"
             echo "# expected error to be found in divine sim at $location, but it was not"
