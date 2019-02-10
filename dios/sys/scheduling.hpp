@@ -395,7 +395,7 @@ struct Scheduler : public Next
 
     void exit_process( int code )
     {
-        die();
+        killProcess( 0 );
     }
 
     void kill_task( __dios_task id )
@@ -528,7 +528,13 @@ struct Scheduler : public Next
         return trampoline_return( 0 );
     }
 
-    void die() noexcept { killProcess( 0 ); }
+    void die() noexcept
+    {
+        /* we are in the fault handler, do not touch anything that may trigger a double fault */
+        for ( auto& t : tasks )
+            t->_frame = nullptr;
+        killProcess( 0 );
+    }
 
     bool check_final()
     {
