@@ -229,7 +229,7 @@ bool Eval< Ctx >::boundcheck( MkF mkf, PointerV p, int sz, bool write, std::stri
         HeapPointer hp = pp;
         if ( hp.null() || !heap().valid( hp ) )
         {
-            mkf( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
+            mkf( _VM_F_Memory ) << "invalid pointer dereference " << p << dsc;
             return false;
         }
         width = heap().size( hp );
