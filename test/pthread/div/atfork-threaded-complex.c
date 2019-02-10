@@ -62,71 +62,71 @@ void c6( void ) { iChild |= 1 << 6; }
 
 void * threaded( void * arg )
 {
-	int ret, status;
-	pid_t child, ctl;
+    int ret, status;
+    pid_t child, ctl;
 
-	ret = pthread_mutex_lock( &mtx );
+    ret = pthread_mutex_lock( &mtx );
     if(ret != 0) return 0;
 
-	ret = pthread_mutex_unlock( &mtx );
-	if(ret != 0) return 0;
+    ret = pthread_mutex_unlock( &mtx );
+    if(ret != 0) return 0;
 
-	child = fork();
+    child = fork();
 
-	if ( child == ( pid_t ) - 1 )
+    if ( child == ( pid_t ) - 1 )
         return 0;
 
-	if ( child == ( pid_t ) 0 )
-	{
-		assert( iPrepare == 50 );
+    if ( child == ( pid_t ) 0 )
+    {
+        assert( iPrepare == 50 );
         assert( iChild == 104 );
         exit( 0 );
-	}
+    }
 
-	assert( iPrepare == 50 );
+    assert( iPrepare == 50 );
     assert( iParent == 84 );
 
-	return NULL;
+    return NULL;
 }
 
 int main( int argc, char * argv[] )
 {
-	int ret;
-	pthread_t ch;
+    int ret;
+    pthread_t ch;
 
-	ret = pthread_mutex_lock( &mtx );
-   	if(ret != 0) return 0;
+    ret = pthread_mutex_lock( &mtx );
+    if(ret != 0) return 0;
 
-	ret = pthread_create( &ch, NULL, threaded, NULL );
-	if(ret != 0) return 0;
+    ret = pthread_create( &ch, NULL, threaded, NULL );
+    if(ret != 0) return 0;
 
     ret = pthread_atfork( NULL, NULL, NULL );
-	if(ret != 0) return 0;
+    if(ret != 0) return 0;
 
-	ret = pthread_atfork( p1, NULL, NULL );
-	if(ret != 0) return 0;
+    ret = pthread_atfork( p1, NULL, NULL );
+    if(ret != 0) return 0;
 
-	ret = pthread_atfork( NULL, pa2, NULL );
-	if(ret != 0) return 0;
+    ret = pthread_atfork( NULL, pa2, NULL );
+    if(ret != 0) return 0;
 
-	ret = pthread_atfork( NULL, NULL, c3 );
-	if(ret != 0) return 0;
+    ret = pthread_atfork( NULL, NULL, c3 );
+    if(ret != 0) return 0;
 
-	ret = pthread_atfork( p4, pa4, NULL );
-	if(ret != 0) return 0;
+    ret = pthread_atfork( p4, pa4, NULL );
+    if(ret != 0) return 0;
 
-	ret = pthread_atfork( p5, NULL, c5 );
-	if(ret != 0) return 0;
+    ret = pthread_atfork( p5, NULL, c5 );
+    if(ret != 0) return 0;
 
-	ret = pthread_atfork( NULL, pa6, c6 );
-	if(ret != 0) return 0;
+    ret = pthread_atfork( NULL, pa6, c6 );
+    if(ret != 0) return 0;
 
-	/* Let the child go on */
-	ret = pthread_mutex_unlock( &mtx );
-	if(ret != 0) return 0;
+    /* Let the child go on */
+    ret = pthread_mutex_unlock( &mtx );
+    if(ret != 0) return 0;
 
-	ret = pthread_join( ch, NULL );
-	if(ret != 0) return 0;
+    ret = pthread_join( ch, NULL );
+    if(ret != 0) return 0;
 
     return 0;
 }

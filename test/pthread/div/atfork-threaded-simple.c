@@ -53,65 +53,65 @@ pthread_t ch;
 
 /* at fork handlers */
 void prepare( void ) {
-	threads[ 0 ] = pthread_self();
+    threads[ 0 ] = pthread_self();
 }
 
 void parent( void ) {
-	threads[ 1 ] = pthread_self();
+    threads[ 1 ] = pthread_self();
 }
 
 void child( void ) {
-	threads[ 2 ] = pthread_self();
+    threads[ 2 ] = pthread_self();
 }
 
 /* Thread function */
 void * threaded( void * arg )
 {
-	int ret, status;
-	pid_t child, ctl;
+    int ret, status;
+    pid_t child, ctl;
 
-	ret = pthread_mutex_lock( &mtx );
-	if ( ret != 0 ) return 0;
+    ret = pthread_mutex_lock( &mtx );
+    if ( ret != 0 ) return 0;
 
-	ret = pthread_mutex_unlock( &mtx );
-	if ( ret != 0 ) return 0;
+    ret = pthread_mutex_unlock( &mtx );
+    if ( ret != 0 ) return 0;
 
-	child = fork();
+    child = -1; // fork();
 
-	if ( child == ( pid_t ) -1 )
+    if ( child == ( pid_t ) -1 )
         return 0;
 
-	if ( child == ( pid_t ) 0 )
-	{
-		assert( pthread_equal( ch, threads[ 0 ] ) );
+    if ( child == ( pid_t ) 0 )
+    {
+        assert( pthread_equal( ch, threads[ 0 ] ) );
         assert( pthread_equal( pthread_self(), threads[ 2 ] ) );
-		exit( 0 );
-	}
+        exit( 0 );
+    }
 
-	assert( pthread_equal( ch, threads[ 0 ] ) );
+    assert( pthread_equal( ch, threads[ 0 ] ) );
     assert( pthread_equal( pthread_self(), threads[ 1 ] ) );
 
-	return NULL;
+    return NULL;
 }
 
 int main( int argc, char * argv[] )
 {
-	int ret;
+    int ret;
 
-	ret = pthread_mutex_lock( &mtx );
-	if ( ret != 0 ) return 0;
+    ret = pthread_mutex_lock( &mtx );
+    if ( ret != 0 ) return 0;
 
-	ret = pthread_create( &ch, NULL, threaded, NULL );
+    ret = pthread_create( &ch, NULL, threaded, NULL );
     if ( ret != 0 ) return 0;
 
     ret = pthread_atfork( prepare, parent, child );
     if ( ret != 0 ) return 0;
 
-	/* Let the child go on */
-	ret = pthread_mutex_unlock( &mtx );
+    /* Let the child go on */
+    ret = pthread_mutex_unlock( &mtx );
     if ( ret != 0 ) return 0;
 
-	ret = pthread_join( ch, NULL );
+    ret = pthread_join( ch, NULL );
     if ( ret != 0 ) return 0;
 }
 
