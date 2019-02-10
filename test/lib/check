@@ -177,7 +177,8 @@ verify() {
             echo "# expected error to be found at $location, but it was not"
             exit 1
         fi
-        if test $(grep -c '^  FAULT:' verify.out) != 1; then
+        if test $(grep -c '^  FAULT:' verify.out) != 1 &&
+           ! grep -q '^property type: liveness' verify.out; then
             echo "# expected exactly one FAULT line in the trace"
             exit 1
         fi
