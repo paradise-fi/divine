@@ -10,6 +10,6 @@ int *test()
 int main()
 {
     int *x = test();
-    assert( *x == 3 ); /* ERROR: invalid dereference */
+    assert( *x == 3 ); /* ERROR: invalid pointer dereference */
     return 0;
 }

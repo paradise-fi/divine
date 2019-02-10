@@ -177,6 +177,13 @@ verify() {
             echo "# expected error to be found at $location, but it was not"
             exit 1
         fi
+        if fgrep -q '/* ERROR:' "$1"; then
+            spec=$(fgrep '/* ERROR:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
+            if ! grep -q "^  FAULT:.*$spec" verify.out; then
+                echo "# expected FAULT: $spec in the output"
+                exit 1
+            fi
+        fi
         if test $(grep -c '^  FAULT:' verify.out) != 1 &&
            ! grep -q '^property type: liveness' verify.out; then
             echo "# expected exactly one FAULT line in the trace"

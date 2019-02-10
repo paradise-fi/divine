@@ -31,5 +31,5 @@ int main()
     assert( new_arr[1]->ptr == new_arr[1] );
     assert( arr[1]->ptr != new_arr[1]->ptr );
 
-    assert( new_arr[2]->ptr ); /* ERROR: uninitialised */
+    assert( new_arr[2]->ptr ); /* ERROR: undefined value */
 }

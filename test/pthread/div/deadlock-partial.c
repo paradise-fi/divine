@@ -7,7 +7,7 @@ void *thr( void *mtx ) {
     pthread_mutex_t *mutex1 = ( (pthread_mutex_t **)mtx )[ 0 ];
     pthread_mutex_t *mutex2 = ( (pthread_mutex_t **)mtx )[ 1 ];
     pthread_mutex_lock( mutex1 );
-    pthread_mutex_lock( mutex2 ); /* ERROR: check_deadlock */
+    pthread_mutex_lock( mutex2 ); /* ERROR: circular wait */
     i = (i + 1) % 3;
     pthread_mutex_unlock( mutex2 );
     pthread_mutex_unlock( mutex1 );
