@@ -91,7 +91,6 @@ struct VaArgInstr
 
                 var->setInitializer( str );
                 var->setConstant( true );
-                var->dump();
                 irb.CreateCall( faultfn, { id, msg } );
                 load->replaceAllUsesWith( llvm::UndefValue::get( load->getType() ) );
                 load->eraseFromParent();
