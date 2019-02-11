@@ -765,7 +765,10 @@ struct RefPool : SlavePool< Master >
             count( p ) ++;
     }
 
-    void put( Pointer p )
+    static void _no_dtor( Pointer ) {}
+
+    template< typename F = decltype( _no_dtor ) >
+    void put( Pointer p, F dtor = _no_dtor )
     {
         if ( !p.slab() )
             return;
@@ -776,6 +779,7 @@ struct RefPool : SlavePool< Master >
         ASSERT_LEQ( 1, count( p ) );
         if ( ! -- count( p ) ) /* TODO refactor */
         {
+            dtor( p );
             typename Master::FreeList fl;
             fl.count = 1;
             fl.head = p;
