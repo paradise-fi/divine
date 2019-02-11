@@ -128,13 +128,15 @@ namespace divine::mc::machine
         auto &program() { return _bc->program(); }
         auto &debug() { return _bc->debug(); }
         auto &heap() { return context().heap(); }
-        auto &pool() { return _pool; }
         Context &context() { return _ctx; }
 
         Solver _solver;
         BC _bc;
         Context _ctx;
-        Pool _pool;
+
+        Pool _snap_pool, _state_pool;
+        brick::mem::RefPool< Pool, uint8_t > _snap_refcnt;
+
         std::shared_ptr< std::atomic< int64_t > > _total_instructions;
 
         void update_instructions()
@@ -148,15 +150,22 @@ namespace divine::mc::machine
         {}
 
         Tree( BC bc, const Context &ctx )
-            : _bc( bc ), _ctx( ctx ), _total_instructions( new std::atomic< int64_t >( 0 ) )
+            : _bc( bc ), _ctx( ctx ), _snap_refcnt( _snap_pool ),
+              _total_instructions( new std::atomic< int64_t >( 0 ) )
         {}
 
-        ~Tree() { update_instructions(); }
+        ~Tree()
+        {
+            ASSERT_EQ( _snap_pool.stats().total.count.used, 0 );
+            update_instructions();
+        }
 
         void choose( TQ &tq, Snapshot origin )
         {
-            auto snap = context().snapshot( _pool );
+            auto snap = context().snapshot( _snap_pool );
             auto state = context()._state;
+
+            _snap_refcnt.get( snap );
 
             Eval eval( context() );
             context()._choice_take = context()._choice_count = 0;
@@ -165,15 +174,18 @@ namespace divine::mc::machine
 
             /* queue up all choices other than 0 */
             for ( int i = 1; i < context()._choice_count; ++i )
+            {
+                _snap_refcnt.get( snap );
                 tq.add< Task::Choose >( snap, origin, state, i, context()._choice_count );
+            }
 
             /* proceed with choice = 0 */
-            compute( tq, origin );
+            compute( tq, origin, snap );
         }
 
         virtual std::pair< State, bool > store()
         {
-            return { State( context().snapshot( _pool ) ), true };
+            return { State( context().snapshot( _state_pool ) ), true };
         }
 
         void edge( TQ &tq, Snapshot origin )
@@ -196,10 +208,19 @@ namespace divine::mc::machine
             return _solver.feasible( context().heap(), context()._assume );
         }
 
-        void compute( TQ &tq, Snapshot origin, bool cont = false )
+        void compute( TQ &tq, Snapshot origin, Snapshot cont_from = Snapshot() )
         {
+            auto destroy = [&]( auto p ) { heap().snap_put( _snap_pool, p ); };
+
+            auto cleanup = [&]
+            {
+                if ( cont_from )
+                    _snap_refcnt.put( cont_from, destroy );
+            };
+
+            brick::types::Defer _( cleanup );
             Eval eval( context() );
-            bool choice = eval.run_seq( cont );
+            bool choice = eval.run_seq( !!cont_from );
 
             if ( !feasible() )
                 return;
@@ -208,6 +229,7 @@ namespace divine::mc::machine
                 choose( tq, origin );
             else
                 edge( tq, origin );
+
         }
 
         virtual void boot( TQ &tq )
@@ -229,26 +251,26 @@ namespace divine::mc::machine
 
         void run( TQ &tq, Task::Schedule e )
         {
-            context().load( _pool, e.from.snap );
+            context().load( _state_pool, e.from.snap );
             vm::setup::scheduler( context() );
-            compute( tq, e.from.snap, false );
+            compute( tq, e.from.snap );
         }
 
         void run( TQ &tq, Task::Choose c )
         {
-            context().load( _pool, c.snap );
+            context().load( _snap_pool, c.snap );
             context()._state = c.state;
             context()._choice_take = c.choice;
             context()._choice_count = c.total;
             context().flush_ptr2i();
             context().load_pc();
-            compute( tq, c.origin, true );
+            compute( tq, c.origin, c.snap );
         }
 
         auto make_hasher()
         {
             Hasher h;
-            h.setup( _pool, context().heap(), this->_solver );
+            h.setup( _state_pool, context().heap(), this->_solver );
             h._root = context().state_ptr();
             ASSERT( !h._root.null() );
             return h;
@@ -269,7 +291,7 @@ namespace divine::mc::machine
 
         Graph( BC bc ) : Tree< Solver >( bc )
         {
-            this->hasher().setup( this->_pool, context().heap(), this->_solver );
+            this->hasher().setup( this->_state_pool, context().heap(), this->_solver );
         }
 
         struct Ext
@@ -287,12 +309,12 @@ namespace divine::mc::machine
 
         virtual std::pair< State, bool > store() override
         {
-            auto snap = context().snapshot( this->_pool );
+            auto snap = context().snapshot( this->_state_pool );
             auto r = _ext.states.insert( snap, _ext.overwrite );
             if ( *r != snap )
             {
                 ASSERT( !_ext.overwrite );
-                this->pool().free( snap ), context().load( this->_pool, *r );
+                this->_state_pool.free( snap ), context().load( this->_state_pool, *r );
             }
             else
                 context().flush_ptr2i();
