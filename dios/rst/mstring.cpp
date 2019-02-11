@@ -21,13 +21,14 @@ extern "C" {
         return abstract::taint< char * >( buff );
     }
 
-    bool __mstring_store( char val, __mstring * str, uint64_t idx) {
-        str->write( idx, val );
-        return true;
+    void __mstring_store( char val, char * addr ) {
+         __mstring *mstr = peek_object< __mstring >( object( addr ) );
+         mstr->write( offset( addr ), val );
     }
 
-    char __mstring_load( __mstring * str, uint64_t idx ) {
-        return str->read( idx );
+    char __mstring_load( char * addr ) {
+        __mstring *mstr = peek_object< __mstring >( object( addr ) );
+        return mstr->read( offset( addr ) );
     }
 
     /* String manipulation */
@@ -250,13 +251,9 @@ void Quintuple::safe_write( size_t idx, char val ) noexcept {
     }
 }
 
-std::string Quintuple::to_string() const noexcept {
-    std::string res;
-    for ( size_t i = _from; i < _buff.size(); ++i ) {
-        char c = _buff[i];
-        res += ( c == '\0' ) ? '0' : c;
-    }
-    return res;
+char Quintuple::read( size_t idx ) noexcept {
+    assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
+    return _buff[ idx ];
 }
 
 void mstring_release( Quintuple * quintuple ) noexcept {
