@@ -116,9 +116,15 @@ namespace divine::mem
         }
 
         Internal detach( Loc l );
-        SnapItem dedup( SnapItem si ) const;
         Snapshot snapshot( Pool &p ) const;
-        void unref( Pool &p, Snapshot s );
+        SnapItem snap_dedup( SnapItem si ) const;
+        void snap_put( Pool &p, Snapshot s );
+
+        SnapItem *snap_get( SnapItem *si ) const
+        {
+            _obj_refcnt.get( si->second );
+            return si;
+        }
 
         bool resize( Pointer p, int sz_new )
         {

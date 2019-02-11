@@ -92,7 +92,7 @@ namespace divine::mem
     }
 
     template< typename Next >
-    auto Cow< Next >::dedup( SnapItem si ) const -> SnapItem
+    auto Cow< Next >::snap_dedup( SnapItem si ) const -> SnapItem
     {
         auto r = _ext.objects.insert( si.second );
         if ( !r.isnew() )
@@ -106,10 +106,11 @@ namespace divine::mem
     }
 
     template< typename Next >
-    void Cow< Next >::unref( Pool &p, Snapshot s )
+    void Cow< Next >::snap_put( Pool &p, Snapshot s )
     {
-        for ( auto si = snap_begin( p, s ); si != snap_end( p, s ); ++si )
-            _obj_refcnt.put( si->second );
+        auto erase = [&]( auto p ) { _ext.objects.erase( p ); };
+        for ( auto si = this->snap_begin( p, s ); si != this->snap_end( p, s ); ++si )
+            _obj_refcnt.put( si->second, erase );
     }
 
     template< typename Next >
@@ -141,15 +142,15 @@ namespace divine::mem
         for ( auto &except : _l.exceptions )
         {
             while ( snap != this->snap_end() && snap->first < except.first )
-                *si++ = *snap++;
+                *si++ = *snap_get( snap++ );
             if ( snap != this->snap_end() && snap->first == except.first )
                 snap++;
             if ( this->valid( except.second ) )
-                *si++ = dedup( except );
+                *si++ = snap_dedup( except );
         }
 
         while ( snap != this->snap_end() )
-            *si++ = *snap++;
+            *si++ = *snap_get( snap++ );
 
         auto newsnap = p.template machinePointer< SnapItem >( s );
         ASSERT_EQ( si, newsnap + count );
