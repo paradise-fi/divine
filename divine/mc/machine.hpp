@@ -188,13 +188,23 @@ namespace divine::mc::machine
             return { State( context().snapshot( _state_pool ) ), true };
         }
 
-        void edge( TQ &tq, Snapshot origin )
+        virtual bool loop_closed()
         {
-            Label lbl;
-            lbl.accepting = context().flags_any( _VM_CF_Accepting );
-            lbl.error = context().flags_any( _VM_CF_Error );
-            auto [ state, isnew ] = store();
-            tq.add< StateTQ::Skel::Edge >( State( origin ), state, lbl, isnew );
+            return false;
+        }
+
+        void schedule( TQ &tq, Snapshot origin, Snapshot cont_from )
+        {
+            if ( context().frame().null() )
+            {
+                Label lbl;
+                lbl.accepting = context().flags_any( _VM_CF_Accepting );
+                lbl.error = context().flags_any( _VM_CF_Error );
+                auto [ state, isnew ] = store();
+                tq.add< StateTQ::Skel::Edge >( State( origin ), state, lbl, isnew );
+            }
+            else if ( !loop_closed() )
+                return compute( tq, origin, cont_from );
         }
 
         bool feasible()
@@ -228,7 +238,7 @@ namespace divine::mc::machine
             if ( choice )
                 choose( tq, origin );
             else
-                edge( tq, origin );
+                schedule( tq, origin, cont_from );
 
         }
 
