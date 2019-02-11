@@ -27,7 +27,9 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/content.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
-#include <lart/abstract/substitution.h>
+#include <lart/abstract/concretization.h>
+#include <lart/abstract/tainting.h>
+#include <lart/abstract/synthesize.h>
 #include <lart/abstract/interrupt.h>
 #include <lart/abstract/cleanup.h>
 
@@ -39,6 +41,8 @@ namespace abstract {
             return passMeta< PassWrapper >(
                 "Abstraction", "Abstract annotated values to given domains." );
         }
+
+        using SubstitutionPass = ChainedPass< Concretization, Tainting, Synthesize >;
 
         void run( llvm::Module & m ) {
             auto passes = make_chained_pass( CreateAbstractMetadata()
