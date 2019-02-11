@@ -76,6 +76,8 @@ struct CellBase
 {
     using value_type = T;
     using Hasher = _Hasher;
+    static constexpr bool can_tombstone() { return false; }
+    bool tombstone() { return false; }
 };
 
 template< typename T, typename Hasher >
@@ -85,7 +87,8 @@ struct FastCell : CellBase< T, Hasher >
     hash64_t _hash;
 
     template< typename Value >
-    bool is( const Value &v, hash64_t hash, Hasher &h ) {
+    bool is( const Value &v, hash64_t hash, Hasher &h )
+    {
         return _hash == hash && h.equal( _value, v );
     }
 
@@ -106,7 +109,8 @@ struct CompactCell : CellBase< T, Hasher >
     T _value;
 
     template< typename Value >
-    bool is( const Value &v, hash64_t, Hasher &h ) {
+    bool is( const Value &v, hash64_t, Hasher &h )
+    {
         return h.equal( _value, v );
     }
 
@@ -168,7 +172,8 @@ struct FastAtomicCell : CellBase< T, Hasher >
     void store( T v, hash32_t hash ) { tryStore( v, hash ); }
 
     template< typename Value >
-    bool is( const Value &v, hash64_t hash, Hasher &h ) {
+    bool is( const Value &v, hash64_t hash, Hasher &h )
+    {
         hash |= 0x1;
         if ( ( (hash << 2) | 1) != (_hashlock | 1) )
             return false;
@@ -214,19 +219,36 @@ struct AtomicCell : CellBase< T, Hasher >
 
     static_assert( sizeof( std::atomic< Tagged< T > > ) == sizeof( Tagged< T > ),
                    "std::atomic< Tagged< T > > must be lock-free" );
-    static_assert( Tagged< T >::tag_bits > 0, "T has at least a one-bit tagspace" );
+    static_assert( Tagged< T >::tag_bits >= 2, "T has at least a two-bit tagspace" );
+
+    static constexpr bool can_tombstone() { return true; }
 
     bool empty() { return !value.load().t; }
-    bool invalid() {
+    bool tombstone()
+    {
+        Tagged< T > v = value.load();
+        return v.tag() == 2;
+    }
+
+    bool invalid()
+    {
         Tagged< T > v = value.load();
         return (v.tag() == 0 && v.t) || (v.tag() != 0 && !v.t);
     }
 
     /* returns old cell value */
-    AtomicCell invalidate() {
+    AtomicCell invalidate()
+    {
         Tagged< T > v = value;
         v.tag( v.tag() ? 0 : 1 ); // set tag to 1 if it was empty -> empty != invalid
         return AtomicCell( value.exchange( v ) );
+    }
+
+    void bury()
+    {
+        Tagged< T > v = value;
+        v.tag( 2 );
+        value.exchange( v );
     }
 
     T fetch() { return value.load().t; }
@@ -250,7 +272,8 @@ struct AtomicCell : CellBase< T, Hasher >
     }
 
     template< typename Value >
-    bool is( const Value &v, hash64_t hash, Hasher &h ) {
+    bool is( const Value &v, hash64_t hash, Hasher &h )
+    {
         return value.load().tag() == ( highbits( hash, Tagged< T >::tag_bits ) | 1 ) &&
             h.equal( value.load().t, v );
     }
@@ -287,9 +310,10 @@ Found< T > isNew( const T &x, bool y ) {
     return Found< T >( x, !y );
 }
 
-template< typename Cell >
+template< typename Cell_ >
 struct HashSetBase
 {
+    using Cell = Cell_;
     using value_type = typename Cell::value_type;
     using Hasher = typename Cell::Hasher;
 
@@ -385,11 +409,24 @@ struct _HashSet : HashSetBase< Cell >
         return findHinted( i, hash( i ) );
     }
 
+    bool erase( const value_type &key )
+    {
+        static_assert( Cell::can_tombstone() );
+        auto i = findHinted( key, hash( key ) );
+        if ( !i.valid() )
+            return false;
+
+        i._cell->bury();
+        -- _used;
+        return true;
+    }
+
     template< typename T >
     iterator findHinted( const T &item, hash64_t hash )
     {
         size_t idx;
-        for ( size_t i = 0; i < this->maxcollisions; ++i ) {
+        for ( size_t i = 0; i < this->maxcollisions; ++i )
+        {
             idx = this->index( hash, i, _bits );
 
             if ( _table[ idx ].empty() )
@@ -415,16 +452,29 @@ struct _HashSet : HashSetBase< Cell >
         if ( !_growing && size_t( _used ) > ( capacity() / 100 ) * 75 )
             grow();
 
+        Cell *tombstone = nullptr;
+
         size_t idx;
         for ( size_t i = 0; i < this->maxcollisions; ++i )
         {
             idx = this->index( h, i, _bits );
 
+            if ( !tombstone && table[ idx ].tombstone() )
+                tombstone = &table[ idx ];
+
             if ( table[ idx ].empty() )
             {
                 ++ used;
-                table[ idx ].store( item, h );
-                return iterator( &table[ idx ], true );
+                if ( tombstone )
+                {
+                    tombstone->store( item, h );
+                    return iterator( tombstone, true );
+                }
+                else
+                {
+                    table[ idx ].store( item, h );
+                    return iterator( &table[ idx ], true );
+                }
             }
 
             if ( table[ idx ].is( item, h, this->hasher ) )
@@ -636,6 +686,25 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         return findHinted( x, hasher.hash( x ).first );
     }
 
+    bool erase( value_type v )
+    {
+        static_assert( Cell::can_tombstone() );
+        while ( true )
+        {
+            Find f = findCell( v, hasher.hash( v ).first, _l.currentRow );
+            switch ( f.r )
+            {
+                case Resolution::Found: f.c->bury(); return true;
+                case Resolution::NotFound: return false;
+                case Resolution::Growing:
+                    helpWithRehashing();
+                    updateIndex( _l.currentRow );
+                    break;
+                default: UNREACHABLE( "impossible result from findCell" );
+            }
+        }
+    }
+
     int count( value_type x ) { return find( x ).valid() ? 1 : 0; }
 
     iterator insertHinted( value_type x, hash64_t h, bool replace = false )
@@ -716,7 +785,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     template< bool force >
     Insert insertCell( Row &row, value_type x, hash64_t h, bool replace = false )
     {
-        if ( !force ) {
+        if ( !force )
+        {
             // read usage first to guarantee usage <= size
             size_t u = _s->used.load( std::memory_order_relaxed );
             // usage >= 75% of table size
@@ -729,6 +799,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
         ASSERT( !row.empty() );
         const size_t mask = row.size() - 1;
+        std::vector< Cell * > tombstones;
 
         for ( size_t i = 0; i < Base::maxcollisions; ++i )
         {
@@ -736,11 +807,17 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
             if ( cell.empty() )
             {
+                for ( auto stone : tombstones )
+                    if ( stone->tryStore( x, h ) )
+                        return Insert( Resolution::Success, stone );
                 if ( cell.tryStore( x, h ) )
                     return Insert( Resolution::Success, &cell );
                 if ( !force && changed( _l.currentRow ) )
                     return Insert( Resolution::Growing );
             }
+
+            if ( cell.tombstone() )
+                tombstones.push_back( &cell );
 
             if ( cell.is( x, h, hasher ) )
             {
@@ -822,7 +899,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         // every cell has to be invalidated
         for ( ; it != end; ++it ) {
             Cell old = it->invalidate();
-            if ( old.empty() || old.invalid() )
+            if ( old.empty() || old.invalid() || old.tombstone() )
                 continue;
 
             value_type value = old.fetch();
@@ -979,6 +1056,44 @@ struct Sequential
         }
         for ( int i = 1; i < size; ++i ) {
             ASSERT( set.count( i ) );
+        }
+    }
+
+    TEST(erase_basic)
+    {
+        if constexpr ( HS< int >::Cell::can_tombstone() )
+        {
+            HS< int > set;
+
+            ASSERT( !set.count( 1 ) );
+            ASSERT( set.insert( 1 ).isnew() );
+            ASSERT( set.count( 1 ) );
+            ASSERT( set.erase( 1 ) );
+            ASSERT( !set.count( 1 ) );
+            ASSERT( set.insert( 1 ).isnew() );
+            ASSERT( set.count( 1 ) );
+        }
+    }
+
+    TEST(erase_many)
+    {
+        if constexpr ( HS< int >::Cell::can_tombstone() )
+        {
+            HS< int > set;
+
+            for ( int i = 1; i < size; ++i )
+            {
+                set.insert( i );
+                ASSERT( set.count( i ) );
+                if ( i % 2 == 0 )
+                {
+                    set.erase( i );
+                    ASSERT( !set.count( i ) );
+                }
+            }
+
+            for ( int i = 1; i < size; ++i )
+                ASSERT_EQ( set.count( i ), i % 2 );
         }
     }
 
