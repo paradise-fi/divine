@@ -11,7 +11,7 @@ namespace lart::abstract {
 
     struct Synthesize {
         void run( llvm::Module & m );
-        void process( const Taint & taint );
+        void dispach( const Taint & taint );
     };
 
 } // namespace lart::abstract
