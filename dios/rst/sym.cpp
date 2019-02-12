@@ -212,14 +212,14 @@ __invisible Formula *__sym_assume( Formula *value, Formula *constraint, bool ass
 }
 
 void __sym_freeze( Formula *formula, void *addr ) {
-    if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
+    /*if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
         auto old = peek_object< Formula >( addr );
         old->refcount_decrement();
         if ( !old->refcount() ) {
             __vm_poke( addr, _VM_ML_User, 0 );
             formula_cleanup( old );
         }
-    }
+    }*/
 
     if ( formula ) {
         formula->refcount_increment();
