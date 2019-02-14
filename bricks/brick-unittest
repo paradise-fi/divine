@@ -129,7 +129,7 @@ void fork_test( TestBase *tc, int *fds )
     }
     if ( pid > 0 ) {
         int status;
-        pid_t finished UNUSED = waitpid( pid, &status, 0 );
+        pid_t finished = waitpid( pid, &status, 0 );
         ASSERT_EQ( finished, pid );
 
         if ( WIFEXITED( status ) &&
@@ -433,7 +433,7 @@ struct SelfTest
 
     TEST(_assert_eq)
     {
-        bool die UNUSED = true;
+        bool die = true;
         try {
             ASSERT_EQ( 1, 2 );
         } catch ( _assert::AssertFailed ) {
