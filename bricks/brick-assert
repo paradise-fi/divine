@@ -28,6 +28,9 @@
 #define TEST(n)         void n()
 #endif
 
+#define BRICK_SHARP_FIRST(x, ...) #x
+#define BRICK_ASSERT(t,l,...) ::brick::_assert::assert_ ## t ## _fn( BRICK_LOCATION( l ), __VA_ARGS__ )
+
 #ifdef NDEBUG
 
 #define ASSERT(...)       static_cast< decltype(__VA_ARGS__, void(0)) >(0)
@@ -39,9 +42,6 @@
 
 #else
 
-#define BRICK_SHARP_FIRST(x, ...) #x
-#define BRICK_ASSERT(t,l,...) ::brick::_assert::assert_ ## t ## _fn( BRICK_LOCATION( l ), __VA_ARGS__ )
-
 #define ASSERT(...)      BRICK_ASSERT( bool, BRICK_SHARP_FIRST( __VA_ARGS__, ignored ), __VA_ARGS__ )
 #define ASSERT_P(p, x)   BRICK_ASSERT( pred, #p "( " #x " )", x, p( x ) )
 #define ASSERT_EQ(x, y)  BRICK_ASSERT( eq,   #x " == " #y, x, y )
@@ -52,10 +52,10 @@
 #endif
 
 /* you must #include <brick-string> to use UNREACHABLE_F */
-#define UNREACHABLE_F(...) BRICK_ASSERT( die, ::brick::string::fmtf(__VA_ARGS__) )
-#define UNREACHABLE(...)   BRICK_ASSERT( die, ::brick::_assert::fmt( __VA_ARGS__ ) )
-#define UNREACHABLE_()     BRICK_ASSERT( die, "an unreachable location" )
-#define NOT_IMPLEMENTED()  BRICK_ASSERT( die, "a missing implementation" )
+#define UNREACHABLE_F(...) BRICK_ASSERT( die, ::brick::string::fmtf(__VA_ARGS__), 0 )
+#define UNREACHABLE(...)   BRICK_ASSERT( die, ::brick::_assert::fmt( __VA_ARGS__ ), 0 )
+#define UNREACHABLE_()     BRICK_ASSERT( die, "an unreachable location", 0 )
+#define NOT_IMPLEMENTED()  BRICK_ASSERT( die, "a missing implementation", 0 )
 
 #ifndef BRICK_ASSERT_H
 #define BRICK_ASSERT_H
@@ -157,10 +157,8 @@ namespace brick::_assert
     }
 
     template< typename Location >
-    inline void assert_die_fn( Location l ) __attribute__((noreturn));
-
-    template< typename Location >
-    inline void assert_die_fn( Location l )
+    __attribute__((noreturn))
+    inline void assert_die_fn( Location l, int )
     {
         throw Failed( l, "encountered" );
     }
