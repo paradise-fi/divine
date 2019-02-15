@@ -2020,7 +2020,7 @@ struct EngineTest {
         opts.push_back("foobar");
 
         Engine1 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 2u);
         ASSERT_EQ(string(*opts.begin()), string("ciaps"));
@@ -2038,7 +2038,7 @@ struct EngineTest {
 
         Engine1 engine;
 	engine.no_switches_after_first_arg = true;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 2u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2053,7 +2053,7 @@ struct EngineTest {
         opts.push_back("foobar");
 
         Engine1 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 1u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2067,7 +2067,7 @@ struct EngineTest {
         opts.push_back("cippo");
 
         Engine1 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.antani->boolValue(), true);
@@ -2080,7 +2080,7 @@ struct EngineTest {
         opts.push_back("foobar");
 
         Engine1 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 1u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2095,7 +2095,7 @@ struct EngineTest {
         opts.push_back("--antani");
 
         Engine1 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 1u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2110,7 +2110,7 @@ struct EngineTest {
         opts.push_back("-r");
 
         Engine2 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.foundCommand(), engine.scramble);
@@ -2129,7 +2129,7 @@ struct EngineTest {
         opts.push_back("-Q");
 
         Engine2 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.foundCommand(), engine.fix);
@@ -2145,7 +2145,7 @@ struct EngineTest {
         opts.push_back("--help");
 
         Engine2 engine;
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.foundCommand(), static_cast<Engine*>(0));
@@ -2160,12 +2160,12 @@ struct EngineTest {
         MemoryManager mman;
         Public<Engine> engine(&mman, "test", "[options]", "test engine", "this is the long description of a test engine");
         OptionGroup* group = engine.addGroup("test option group");
-        BoolOption* testBool UNUSED = group->add<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
-        IntOption* testInt UNUSED = group->add<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
-        StringOption* testString UNUSED = group->add<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
-        BoolOption* testBool1 UNUSED = engine.add<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
-        IntOption* testInt1 UNUSED = engine.add<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
-        StringOption* testString1 UNUSED = engine.add<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
+        BoolOption* testBool = group->add<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
+        IntOption* testInt = group->add<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
+        StringOption* testString = group->add<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
+        BoolOption* testBool1 = engine.add<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
+        IntOption* testInt1 = engine.add<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
+        StringOption* testString1 = engine.add<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
 
         ArgList opts;
         opts.push_back("--testbool=true");
@@ -2175,7 +2175,7 @@ struct EngineTest {
         opts.push_back("--testint1=5");
         opts.push_back("--teststring1=blinda");
 
-        ArgList::iterator i UNUSED = engine.parseList(opts);
+        ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(testBool->boolValue(), true);
