@@ -1,0 +1,68 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * Macros for run-time-configurable debug tracing.
+ */
+
+/*
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <brick-assert>
+#ifdef __divine__
+#include <sys/trace.h>
+#else
+#include <iostream>
+#define __debugfn
+#endif
+
+#ifdef NDEBUG
+
+#define TRACE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+
+#else
+
+#define TRACE(...) ::brick::trace::trace_fn( BRICK_LOCATION( "" ), __VA_ARGS__ )
+
+#endif
+
+namespace brick::trace
+{
+
+    void format( std::stringstream &acc )
+    {
+#ifdef __divine__
+        __dios_trace_t( acc.str() );
+#else
+        acc << "\n";
+        std::cerr << acc.str() << std::flush;
+#endif
+    }
+
+    template< typename A, typename... Args >
+    void format( std::stringstream &acc, const A &a, const Args & ... as )
+    {
+        acc << a << " ";
+        format( acc, as... );
+    }
+
+    template< typename... Args >
+    __debugfn void trace_fn( brick::_assert::Location l, const Args &... args )
+    {
+        std::stringstream acc;
+        acc << l.short_info() << ": ";
+        format( acc, args... );
+    }
+}

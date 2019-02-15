@@ -71,6 +71,15 @@ namespace brick::_assert
         const char *_file, *_statement;
         std::string _statement_s;
 
+        std::string short_info()
+        {
+            std::stringstream str;
+            std::string r( _file );
+            str << std::string( r, r.find( '/' ) == std::string::npos ? 0 : r.rfind( '/' ),
+                                std::string::npos ) << ':' << line;
+            return str.str();
+        }
+
         std::string file()
         {
             std::string r( _file );
