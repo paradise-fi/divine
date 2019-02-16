@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2010-2015 Petr Ročkai <code@fixp.eu>
+ * (c) 2010-2019 Petr Ročkai <code@fixp.eu>
  * (c) 2012-2014 Jiří Weiser <xweiser1@fi.muni.cz>
  * (c) 2013-2014 Vladimír Štill <xstill@fi.muni.cz>
  *
@@ -24,6 +24,7 @@
 #include <brick-shmem>
 #include <brick-bitlevel>
 #include <brick-assert>
+#include <brick-trace>
 #include <brick-types>
 
 #include <type_traits>
@@ -568,104 +569,98 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     using typename Base::iterator;
     using Base::hasher;
 
-    enum class Resolution {
-        Success, // the item has been inserted successfully
-        Failed,  // cannot insert value, table growth has been triggered while
-                 // we were looking for a free cell
-        Found,   // item was already in the table
-        NotFound,
-        NoSpace, // there's is not enough space in the table
-        Growing  // table is growing or was already resized, retry
-    };
+    enum LookupTag { Found, Empty, Invalid };
+    using Lookup = std::pair< Cell *, LookupTag >;
 
-    struct _Resolution {
-        Resolution r;
-        Cell *c;
-
-        _Resolution( Resolution r, Cell *c = nullptr ) : r( r ), c( c ) {}
-    };
-
-    using Insert = _Resolution;
-    using Find = _Resolution;
-
-    struct Local {
-        unsigned inserts;
-        unsigned currentRow;
-
-        Local() : inserts( 0 ), currentRow( 0 ) {}
-    };
-
-    Local _l;
-
-    struct Row {
-        std::atomic< Cell * > _data;
-        size_t _size;
-
-        size_t size() const { return _size; }
-
-        void size( size_t s ) {
-            ASSERT( empty() );
-            _size = std::max( s, size_t( 1 ) );
-        }
-
-        bool empty() const { return begin() == nullptr; }
-
-        void resize( size_t n ) {
-            Cell *old = _data.exchange( new Cell[ n ] );
-            _size = n;
-            delete[] old;
-        }
-
-        void free() {
-            Cell *old = _data.exchange( nullptr );
-            _size = 0;
-            delete[] old;
-        }
-
-        Cell &operator[]( size_t i ) {
-            return _data.load( std::memory_order_relaxed )[ i ];
-        }
-
-        Cell *begin() {
-            return _data.load( std::memory_order_relaxed );
-        }
-        Cell *begin() const {
-            return _data.load( std::memory_order_relaxed );
-        }
-
-        Cell *end() {
-            return begin() + size();
-        }
-        Cell *end() const {
-            return begin() + size();
-        }
-
-        Row() : _data( nullptr ), _size( 0 ) {}
-        ~Row() { free(); }
-    };
-
-    static const unsigned segmentSize = 1 << 16; // 65536
-    static const unsigned syncPoint = 1024;
-
-    struct Shared
+    struct Table
     {
-        std::vector< Row > table;
-        std::vector< std::atomic< unsigned short > > tableWorkers;
-        std::atomic< unsigned > currentRow;
-        std::atomic< int > availableSegments;
-        std::atomic< unsigned > doneSegments;
-        std::atomic< size_t > used;
-        std::atomic< bool > growing;
+        std::shared_ptr< Table > next; /* TODO make std::atomic after C++20 */
+        std::atomic< size_t > size;
+        std::atomic< ssize_t > to_rehash;
+        Cell data[];
 
-        Shared( unsigned maxGrows )
-            : table( maxGrows ), tableWorkers( maxGrows ), currentRow( 0 ),
-              availableSegments( 0 ), used( 0 ), growing( false )
-        {}
+        static void *operator new( size_t objsize, size_t cellcount )
+        {
+            return malloc( objsize + cellcount * sizeof( Cell ) );
+        }
+
+        Table( size_t size, ssize_t rehash )
+            : next( nullptr ), size( size ), to_rehash( rehash )
+        {
+            std::uninitialized_default_construct( data, data + size );
+        }
+
+        size_t max_chain() { return std::min( size.load(), 512ul ); }
+
+        size_t segment_size() { return std::min( 1024ul, size.load() ); }
+        size_t segment_count() { return size.load() / segment_size(); }
+        Cell *segment_end( int id ) { return segment_begin( id ) + segment_size(); }
+        Cell *segment_begin( int id )
+        {
+            ASSERT_LT( id, segment_count() );
+            return data + segment_size() * id;
+        }
+
+        Lookup insert( Hasher &hasher, const value_type &v, hash64_t hash, bool replace = false )
+        {
+            const size_t mask = size.load() - 1;
+            ASSERT_EQ( mask & size.load(), 0 );
+            ASSERT_EQ( mask | size.load(), mask + size.load() );
+
+            Cell *tomb = nullptr;
+
+            for ( size_t i = 0; i < max_chain(); ++i )
+            {
+                Cell &cell = data[ Base::index( hash, i, mask ) ];
+
+                if ( cell.invalid() )
+                    return { &cell, Invalid };
+
+                if ( cell.empty() )
+                {
+                    if ( tomb && tomb->tryStore( v, hash ) )
+                        return { tomb, Empty };
+
+                    if ( cell.tryStore( v, hash ) )
+                        return { &cell, Empty };
+                }
+
+                if ( !tomb && cell.tombstone() )
+                    tomb = &cell;
+
+                if ( cell.is( v, hash, hasher ) )
+                {
+                    if ( replace )
+                        cell.store( v, hash );
+                    return { &cell, Found };
+                }
+            }
+
+            return { nullptr, Empty };
+        }
+
+        template< typename T >
+        Lookup find( Hasher &hasher, const T &x, hash64_t hash )
+        {
+            const size_t mask = size.load() - 1;
+            for ( size_t i = 0; i < max_chain(); ++i )
+            {
+                Cell &cell = data[ Base::index( hash, i, mask ) ];
+                if ( cell.invalid() )
+                    return { nullptr, Invalid };
+                if ( cell.empty() )
+                    return { nullptr, Empty };
+                if ( cell.is( x, hash, hasher ) )
+                    return { &cell, Found };
+            }
+            return { nullptr, Empty };
+        }
     };
 
-    std::shared_ptr< Shared > _s;
+    std::shared_ptr< Table > _table;
 
-    static size_t nextSize( size_t s ) {
+    static size_t next_size( size_t s )
+    {
 #ifndef __divine__
         if ( s < 512 * 1024 )
             return s * 16;
@@ -677,333 +672,170 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         return s * 2;
     }
 
-    size_t capacity() { return current().size(); }
-    Row &current() { return _s->table[ _s->currentRow ]; }
-    Row &current( unsigned index ) { return _s->table[ index ]; }
-    bool changed( unsigned row ) { return row < _s->currentRow || _s->growing; }
+    size_t capacity() { check_outdated(); return _table->size; }
+
+    bool check_outdated()
+    {
+        auto next = std::atomic_load( &_table->next );
+        if ( !next )
+            return false;
+
+        while ( rehash_segment( *_table, *next ) );
+
+        _table = std::atomic_load( &_table->next );
+        while ( _table->to_rehash.load() < 0 );
+        check_outdated();
+
+        return true;
+    }
 
     iterator insert( value_type x, bool replace = false )
     {
-        return insertHinted( x, hasher.hash( x ).first, replace );
+        return insert( x, hasher.hash( x ).first, replace );
+    }
+
+    iterator insert( value_type x, hash64_t hash, bool replace = false, bool wasnew = false )
+    {
+        auto [ cell, outcome ] = _table->insert( hasher, x, hash, replace );
+
+        if ( !cell )
+            return grow(), insert( x, hash, replace );
+
+        if ( check_outdated() )
+        {
+            TRACE( _table, "insert outdated, retrying; outcome was", outcome );
+            return insert( x, hash, replace, outcome == Empty );
+        }
+
+        ASSERT_NEQ( outcome, Invalid );
+        TRACE( _table, "insert", x, "hash", hash, "→", wasnew || outcome == Empty ? "new" : "old" );
+        return iterator( cell, wasnew || outcome == Empty );
     }
 
     template< typename T >
     iterator find( const T &x )
     {
-        return findHinted( x, hasher.hash( x ).first );
+        return find( x, hasher.hash( x ).first );
     }
 
-    bool erase( value_type v )
+    template< typename T >
+    iterator find( const T &x, hash64_t hash )
+    {
+        auto [ cell, outcome ] = _table->find( hasher, x, hash );
+        if ( check_outdated() )
+            return find( x, hash );
+        else
+            return iterator( cell );
+    }
+
+    template< typename T >
+    bool erase( const T &x )
+    {
+        return erase( x, hasher.hash( x ).first );
+    }
+
+    template< typename T >
+    bool erase( const T &x, hash64_t hash )
     {
         static_assert( Cell::can_tombstone() );
-        while ( true )
+
+        auto [ cell, outcome ]  = _table->find( hasher, x, hash );
+        if ( outcome == Found )
+            outcome = cell->bury() ? Found : Invalid;
+
+        if ( check_outdated() )
         {
-            Find f = findCell( v, hasher.hash( v ).first, _l.currentRow );
-            switch ( f.r )
-            {
-                case Resolution::Found: f.c->bury(); return true;
-                case Resolution::NotFound: return false;
-                case Resolution::Growing:
-                    helpWithRehashing();
-                    updateIndex( _l.currentRow );
-                    break;
-                default: UNREACHABLE( "impossible result from findCell" );
-            }
+            TRACE( _table, "erase outdated, retry?", outcome == Found ? "no" : "yes" );
+            return outcome == Found || erase( x, hash );
         }
-    }
-
-    int count( value_type x ) { return find( x ).valid() ? 1 : 0; }
-
-    iterator insertHinted( value_type x, hash64_t h, bool replace = false )
-    {
-        while ( true ) {
-            Row &row = current( _l.currentRow );
-            Insert ir = insertCell< false >( row, x, h, replace );
-            switch ( ir.r ) {
-                case Resolution::Success:
-                    increaseUsage();
-                    return iterator( ir.c, true );
-                case Resolution::Found:
-                    return iterator( ir.c, false );
-                case Resolution::NoSpace:
-                    if ( grow( _l.currentRow + 1 ) ) {
-                        ++_l.currentRow;
-                        break;
-                    }
-                case Resolution::Growing:
-                    helpWithRehashing();
-                    updateIndex( _l.currentRow );
-                    break;
-                default:
-                    UNREACHABLE("impossible result from insertCell");
-            }
+        else
+        {
+            TRACE( _table, "erase", x, "outcome", outcome );
+            ASSERT_NEQ( outcome, Invalid );
+            return outcome == Found;
         }
-        UNREACHABLE("broken loop");
     }
 
     template< typename T >
-    iterator findHinted( const T &x, hash64_t h ) {
-        while ( true ) {
-            Find fr = findCell( x, h, _l.currentRow );
-            switch ( fr.r ) {
-                case Resolution::Found:
-                    return iterator( fr.c );
-                case Resolution::NotFound:
-                    return iterator();
-                case Resolution::Growing:
-                    helpWithRehashing();
-                    updateIndex( _l.currentRow );
-                    break;
-                default:
-                    UNREACHABLE("impossible result from findCell");
-            }
-        }
-        UNREACHABLE("broken loop");
+    int count( const T &x ) { return find( x ).valid() ? 1 : 0; }
+
+    static std::pair< ssize_t, bool > atomic_add_if_nonzero( std::atomic< ssize_t > &v, int off )
+    {
+        ssize_t current = v.load(), next = current + off;
+        while ( current && !v.compare_exchange_weak( current, next ) )
+            next = current + off;
+        if ( current )
+            return { next, true };
+        else
+            return { 0, false };
     }
 
-    template< typename T >
-    Find findCell( const T &v, hash64_t h, unsigned rowIndex )
+    bool rehash_segment( Table &from, Table &to )
     {
-        if ( changed( rowIndex ) )
-            return Find( Resolution::Growing );
+        auto [ id, success ] = atomic_add_if_nonzero( from.to_rehash, -1 );
+        if ( !success )
+            return false;
 
-        Row &row = current( rowIndex );
-
-        if ( row.empty() )
-            return Find( Resolution::NotFound );
-
-        const size_t mask = row.size() - 1;
-
-        for ( size_t i = 0; i < Base::maxcollisions; ++i ) {
-            if ( changed( rowIndex ) )
-                return Find( Resolution::Growing );
-
-            Cell &cell = row[ Base::index( h, i, mask ) ];
-            if ( cell.empty() )
-                return Find( Resolution::NotFound );
-            if ( cell.is( v, h, hasher ) )
-                return Find( Resolution::Found, &cell );
-            if ( cell.invalid() )
-                return Find( Resolution::Growing );
-        }
-        return Find( Resolution::NotFound );
-    }
-
-    template< bool force >
-    Insert insertCell( Row &row, value_type x, hash64_t h, bool replace = false )
-    {
-        if ( !force )
+        TRACE( _table, "rehash segment", id );
+        for ( auto c = from.segment_begin( id ); c != from.segment_end( id ); ++ c )
         {
-            // read usage first to guarantee usage <= size
-            size_t u = _s->used.load( std::memory_order_relaxed );
-            // usage >= 75% of table size
-            // usage is never greater than size
-            if ( row.empty() || double( row.size() ) <= double( 4 * u ) / 3 )
-                return Insert( Resolution::NoSpace );
-            if ( changed( _l.currentRow ) )
-                return Insert( Resolution::Growing );
-        }
-
-        ASSERT( !row.empty() );
-        const size_t mask = row.size() - 1;
-        std::vector< Cell * > tombstones;
-
-        for ( size_t i = 0; i < Base::maxcollisions; ++i )
-        {
-            Cell &cell = row[ Base::index( h, i, mask ) ];
-
-            if ( cell.empty() )
-            {
-                for ( auto stone : tombstones )
-                    if ( stone->tryStore( x, h ) )
-                        return Insert( Resolution::Success, stone );
-                if ( cell.tryStore( x, h ) )
-                    return Insert( Resolution::Success, &cell );
-                if ( !force && changed( _l.currentRow ) )
-                    return Insert( Resolution::Growing );
-            }
-
-            if ( cell.tombstone() )
-                tombstones.push_back( &cell );
-
-            if ( cell.is( x, h, hasher ) )
-            {
-                if ( replace )
-                    cell.store( x, h );
-                return Insert( Resolution::Found, &cell );
-            }
-
-            if ( !force && changed( _l.currentRow ) )
-                return Insert( Resolution::Growing );
-        }
-        return Insert( Resolution::NoSpace );
-    }
-
-    bool grow( unsigned rowIndex )
-    {
-        ASSERT( rowIndex );
-
-        if ( rowIndex >= _s->table.size() )
-            UNREACHABLE( "out of growth space" );
-
-        if ( _s->currentRow >= rowIndex )
-            return false;
-
-        while ( _s->growing.exchange( true ) ) // acquire growing lock
-            helpWithRehashing();
-
-        if ( _s->currentRow >= rowIndex ) {
-            _s->growing.exchange( false ); // release the lock
-            return false;
-        }
-
-        Row &row = current( rowIndex - 1 );
-        _s->table[ rowIndex ].resize( nextSize( row.size() ) );
-        _s->currentRow.exchange( rowIndex );
-        _s->tableWorkers[ rowIndex ] = 1;
-        _s->doneSegments.exchange( 0 );
-
-        // current row is fake, so skip the rehashing
-        if ( row.empty() ) {
-            rehashingDone();
-            return true;
-        }
-
-        const unsigned segments = std::max( row.size() / segmentSize, size_t( 1 ) );
-        _s->availableSegments.exchange( segments );
-
-        while ( rehashSegment() );
-
-        return true;
-    }
-
-    void helpWithRehashing() {
-        while ( _s->growing )
-            while( rehashSegment() );
-    }
-
-    void rehashingDone() {
-        releaseRow( _s->currentRow - 1 );
-        _s->growing.exchange( false ); /* done */
-    }
-
-    bool rehashSegment() {
-        int segment;
-        if ( _s->availableSegments <= 0 )
-            return false;
-        if ( ( segment = --_s->availableSegments ) < 0 )
-            return false;
-
-        Row &row = current( _s->currentRow - 1 ),
-           &next = current( _s->currentRow );
-        size_t segments = std::max( row.size() / segmentSize, size_t( 1 ) );
-        auto it = row.begin() + segmentSize * segment;
-        auto end = it + segmentSize;
-        if ( end > row.end() )
-            end = row.end();
-        ASSERT( it < end );
-
-        // every cell has to be invalidated
-        for ( ; it != end; ++it ) {
-            Cell old = it->invalidate();
-            if ( old.empty() || old.invalid() || old.tombstone() )
+            Cell insert = c->invalidate();
+            if ( insert.empty() || insert.invalid() || insert.tombstone() )
                 continue;
-
-            value_type value = old.fetch();
-            Resolution r = insertCell< true >( next, value, old.hash( hasher ) ).r;
-            switch( r ) {
-                case Resolution::Success:
-                    break;
-                case Resolution::NoSpace:
-                    UNREACHABLE( "ran out of space during growth" );
-                case Resolution::Found:
-                    UNREACHABLE( "value cloned during growth" );
-                default:
-                    UNREACHABLE( "internal error" );
-            }
+            auto [ cell, success ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ) );
+            ASSERT( success );
         }
 
-        if ( ++_s->doneSegments == segments )
-            rehashingDone();
-
-        return segment > 0;
+        TRACE( _table, "rehash", id, "done" );
+        ++ to.to_rehash;
+        return id > 0;
     }
 
-    void updateIndex( unsigned &index ) {
-        unsigned row = _s->currentRow;
-        if ( row != index ) {
-            releaseRow( index );
-            acquireRow( row );
-            index = row;
-        }
+    auto make_table( size_t size, ssize_t rehash )
+    {
+        return std::shared_ptr< Table >( new ( size ) Table( size, rehash ) );
     }
 
-    void releaseRow( unsigned index ) {
-        // special case - zero index
-        if ( !_s->tableWorkers[ index ] )
+    void grow()
+    {
+        auto next = make_table( next_size( _table->size ), -_table->segment_count() );
+        decltype( next ) old;
+
+        TRACE( _table, "grow from", _table->size.load(), "to", next_size( _table->size ) );
+        if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
+        {
+            next.reset();
+            check_outdated();
             return;
-        // only last thread releases memory
-        if ( !--_s->tableWorkers[ index ] )
-            _s->table[ index ].free();
+        }
+        else
+        {
+            while ( rehash_segment( *_table, *next ) );
+            ASSERT_EQ( _table->to_rehash.load(), 0 );
+            _table = next;
+            while ( _table->to_rehash.load() );
+            _table->to_rehash = _table->segment_count();
+        }
+        TRACE( _table, "growth done" );
     }
 
-    void acquireRow( unsigned &index )
+    explicit _ConcurrentHashSet( Hasher h = Hasher() )
+        : Base( h )
     {
-        unsigned short refCount = _s->tableWorkers[ index ];
-
-        do {
-            if ( !refCount ) {
-                index = _s->currentRow;
-                refCount = _s->tableWorkers[ index ];
-                continue;
-            }
-
-            if (_s->tableWorkers[ index ].compare_exchange_weak( refCount, refCount + 1 ))
-                break;
-        } while( true );
-    }
-
-    void increaseUsage()
-    {
-        if ( ++_l.inserts == syncPoint )
-            updateUsage();
-    }
-
-    void updateUsage()
-    {
-        _s->used.fetch_add( _l.inserts, std::memory_order_relaxed );
-        _l.inserts = 0;
-    }
-
-    ~_ConcurrentHashSet() { updateUsage(); }
-
-    explicit _ConcurrentHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
-        : Base( h ), _s( new Shared( maxGrows ) )
-    {
+        size_t initial = 256;
 #ifdef __divine__
-        initialSize( 8 );
-#else
-        initialSize( 4 * syncPoint ); // by default
+        initial = 4;
 #endif
-    }
-
-    void initialSize( size_t s )
-    {
-        s = bitlevel::fill( s - 1 ) + 1;
-        size_t toSet = 1;
-        while ( nextSize( toSet ) < s )
-            toSet <<= 1;
-        _s->table[ 0 ].size( toSet );
+        _table = make_table( initial, 0 );
+        _table->to_rehash = _table->segment_count();
     }
 
     hash64_t hash( const value_type &t ) { return hash128( t ).first; }
     hash128_t hash128( const value_type &t ) { return hasher.hash( t ); }
 
-    _ConcurrentHashSet( const _ConcurrentHashSet &o )
-        : Base( o ), _s( o._s )
-    {}
+    _ConcurrentHashSet( const _ConcurrentHashSet &o ) = default;
 
-    Cell &cellAt( size_t index ) { return _s->table[ _s->currentRow ][ index ]; }
+    Cell &cellAt( size_t index ) { return _table->data[ index ]; }
     value_type valueAt( size_t idx ) { return cellAt( idx ).fetch(); }
     bool valid( size_t idx ) { return !cellAt( idx ).empty(); }
 };
@@ -1030,10 +862,8 @@ using namespace hashset;
 
 #ifdef __divine__
 static constexpr int size = 4;
-static constexpr int isize = 2;
 #else
 static constexpr int size = 32 * 1024;
-static constexpr int isize = 4 * 1024;
 #endif
 
 template< template< typename > class HS >
@@ -1148,7 +978,6 @@ struct Parallel
 
     TEST(insert) {
         Insert a;
-        a.set.initialSize( isize );
         a.from = 1;
         a.to = size;
         a.overlap = false;
@@ -1178,7 +1007,6 @@ struct Parallel
     {
         shmem::ThreadSet< Insert > arr;
         arr.resize( count );
-        arr[ 0 ].set.initialSize( isize );
 
         for ( std::size_t i = 0; i < count; ++i )
         {
@@ -1197,7 +1025,7 @@ struct Parallel
     {
         auto set = _multi( 10, 1, size );
 
-        for  ( int i = 1; i < isize; ++i )
+        for  ( int i = 1; i < size; ++i )
             ASSERT( set.count( i ) );
 
         int count = 0;
@@ -1223,7 +1051,6 @@ struct Parallel
     TEST(empty)
     {
         HS< int > set;
-        set.initialSize( isize );
 
         for ( int i = 1; i < size; ++i )
             ASSERT( !set.count( i ) );
