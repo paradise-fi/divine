@@ -25,6 +25,9 @@
 #include <sys/trace.h>
 #else
 #include <iostream>
+#include <string_view>
+#include <unordered_set>
+#include <cstring>
 #define __debugfn
 #endif
 
@@ -58,9 +61,43 @@ namespace brick::trace
         format( acc, as... );
     }
 
+#ifdef __divine__
+    static bool enabled( const _assert::Location & ) { return true; }
+#else
+    using Set = std::unordered_set< std::string_view >;
+
+    static inline Set init( const char *str_ )
+    {
+        if ( !str_ )
+            return Set();
+
+        std::string_view str( str_ );
+        Set i;
+        while ( !str.empty() )
+        {
+            auto s = str.find( ',' );
+            i.insert( str.substr( 0, s ) );
+            if ( s == str.npos )
+                return i;
+            str = str.substr( s + 1 );
+        }
+        return i;
+    }
+
+    static bool enabled( const _assert::Location &l )
+    {
+        static Set yes = init( getenv( "BRICK_TRACE" ) ), no = init( getenv( "BRICK_NOTRACE" ) );
+        static bool all = getenv( "BRICK_TRACE" ) && !strcmp( getenv( "BRICK_TRACE" ), "all" );
+        return ( all || yes.count( l.filename() ) || yes.count( l.short_info() ) ) &&
+               !no.count( l.filename() ) && !no.count( l.short_info() );
+    }
+#endif
+
     template< typename... Args >
     __debugfn void trace_fn( brick::_assert::Location l, const Args &... args )
     {
+        if ( !enabled( l ) )
+            return;
         std::stringstream acc;
         acc << l.short_info() << ": ";
         format( acc, args... );
