@@ -20,6 +20,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifndef BRICK_TRACE_H
+#define BRICK_TRACE_H
+
 #include <brick-assert>
 #ifdef __divine__
 #include <sys/trace.h>
@@ -103,3 +106,7 @@ namespace brick::trace
         format( acc, args... );
     }
 }
+
+#endif
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
