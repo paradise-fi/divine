@@ -24,6 +24,7 @@
 #define BRICK_TRACE_H
 
 #include <brick-assert>
+
 #ifdef __divine__
 #include <sys/trace.h>
 #else
@@ -47,10 +48,11 @@
 namespace brick::trace
 {
 
-    void format( std::stringstream &acc )
+    static inline void format( std::stringstream &acc ) noexcept
     {
 #ifdef __divine__
-        __dios_trace_t( acc.str() );
+        std::string x = acc.str();
+        __dios_trace_internal( 0, "%s", x.c_str() );
 #else
         acc << "\n";
         std::cerr << acc.str() << std::flush;
@@ -58,7 +60,7 @@ namespace brick::trace
     }
 
     template< typename A, typename... Args >
-    void format( std::stringstream &acc, const A &a, const Args & ... as )
+    void format( std::stringstream &acc, const A &a, const Args & ... as ) noexcept
     {
         acc << a << " ";
         format( acc, as... );
@@ -97,7 +99,7 @@ namespace brick::trace
 #endif
 
     template< typename... Args >
-    __debugfn void trace_fn( brick::_assert::Location l, const Args &... args )
+    __debugfn void trace_fn( brick::_assert::Location l, const Args &... args ) noexcept
     {
         if ( !enabled( l ) )
             return;
