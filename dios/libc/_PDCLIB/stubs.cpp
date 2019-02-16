@@ -108,7 +108,6 @@ int __freadable (FILE *__fp) NOT_IMPLEMENTED;
 int __fwritable (FILE *__fp) NOT_IMPLEMENTED;
 int __flbf (FILE *__fp) NOT_IMPLEMENTED;
 void __fpurge (FILE *__fp) { __dios_fault( _VM_F_NotImplemented, "__fpurge" ); }
-size_t __fpending (FILE *__fp) NOT_IMPLEMENTED;
 int __fsetlocking (FILE *__fp, int __type) NOT_IMPLEMENTED;
 
 size_t __freadahead(FILE *) NOT_IMPLEMENTED;
