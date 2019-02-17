@@ -261,77 +261,72 @@ struct AtomicCell : CellBase< T, Hasher >
 
     static constexpr bool can_tombstone() { return true; }
 
-    bool empty() { return !value.load().t; }
-    bool tombstone()
-    {
-        Tagged< T > v = value.load();
-        return v.tag() == 2;
-    }
+    uint32_t status() { return value.load().tag() & 3u; }
 
-    bool invalid()
-    {
-        Tagged< T > v = value.load();
-        return (v.tag() == 0 && v.t) || (v.tag() != 0 && !v.t);
-    }
+    bool empty() { return status() == 0; }
+    bool invalid() { return status() == 1; }
+    bool tombstone() { return status() == 2; }
 
     /* returns old cell value */
     AtomicCell invalidate()
     {
         Tagged< T > expect = value, update = value;
-        update.tag( update.tag() ? 0 : 1 ); // set tag to 1 if it was empty -> empty != invalid
+        update.tag( 1 );
         while ( !value.compare_exchange_weak( expect, update ) )
         {
             update = expect;
-            update.tag( update.tag() ? 0 : 1 );
+            update.tag( 1 );
         }
         return AtomicCell( expect );
     }
 
     bool bury()
     {
-        Tagged< T > expect = value, update = expect;
+        Tagged< T > expect = value, update;
         if ( invalid() )
             return false;
         update.tag( 2 );
         return value.compare_exchange_strong( expect, update );
     }
 
-    T fetch() { return value.load().t; }
-    T copy() { Tagged< T > v = value; v.tag( 0 ); return v.t; }
+    static hash64_t hashbits( hash64_t in ) { return highbits( in, Tagged< T >::tag_bits - 2 ) << 2; }
+
+    T fetch() { return value.load().value(); }
+    T copy() { Tagged< T > v = value; v.tag( 0 ); return v.value(); }
     bool wait() { return !invalid(); }
 
     void store( T bn, hash64_t hash )
     {
         Tagged< T > next( bn );
-        next.tag( highbits( hash, Tagged< T >::tag_bits ) | 1 );
+        next.tag( hashbits( hash ) | 3 );
         value.store( next );
     }
 
     bool tryStore( T b, hash64_t hash )
     {
-        Tagged< T > zero;
+        Tagged< T > zero, tomb;
         Tagged< T > next( b );
-        next.tag( highbits( hash, Tagged< T >::tag_bits ) | 1 );
+        next.tag( hashbits( hash ) | 3 );
+        tomb.tag( 2 );
         auto rv = value.compare_exchange_strong( zero, next );
+        if ( !rv )
+            rv = value.compare_exchange_strong( tomb, next );
         return rv;
     }
 
     template< typename Value >
     bool is( const Value &v, hash64_t hash, Hasher &h )
     {
-        return value.load().tag() == ( highbits( hash, Tagged< T >::tag_bits ) | 1 ) &&
-               h.equal( value.load().t, v );
+        return value.load().tag() == ( hashbits( hash ) | 3 ) && h.equal( value.load().value(), v );
     }
 
-    hash64_t hash( Hasher &h ) { return h.hash( value.load().t ).first; }
+    hash64_t hash( Hasher &h ) { return h.hash( value.load().value() ).first; }
 
     // AtomicCell &operator=( const AtomicCell &cc ) = delete;
 
     AtomicCell() : value() {}
     AtomicCell( const AtomicCell & ) : value() {}
-    AtomicCell( Tagged< T > val ) : value() {
-        value.store( val );
-    }
+    explicit AtomicCell( Tagged< T > val ) : value( val ) {}
 };
 
 template< typename T >
