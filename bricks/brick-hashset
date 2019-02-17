@@ -251,7 +251,7 @@ struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
 };
 
 template< typename T, typename Hasher >
-struct AtomicCell : CellBase< T, Hasher >
+struct alignas( std::min( 16ul, sizeof( Tagged< T > ) ) ) AtomicCell : CellBase< T, Hasher >
 {
     std::atomic< Tagged< T > > value;
 
