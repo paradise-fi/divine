@@ -101,7 +101,7 @@ struct Builder
 
         template< typename... Args >
         Data( BC bc, Args... solver_opts )
-            : Data( bc, Context( bc->program() ), HT( Hasher(), 1024 ), solver_opts... )
+            : Data( bc, Context( bc->program() ), HT( Hasher() ), solver_opts... )
         {}
 
         template< typename... Args >

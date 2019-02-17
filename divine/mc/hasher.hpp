@@ -86,7 +86,7 @@ namespace divine::mc::impl
             return _solver->equal( extract.pairs, _h1, _h2 );
         }
 
-        brick::hash::hash128_t hash( Snapshot s ) const
+        auto hash( Snapshot s ) const
         {
             _h1.restore( *_pool, s );
             return mem::hash( _h1, _root );
