@@ -699,10 +699,8 @@ template< typename T, typename Hasher = DefaultHasher >
 using Compact = HashSet< CompactCell< T, Hasher >, false >;
 
 template< typename T, typename Hasher >
-using ConcurrentCell =
-    std::conditional_t< ( sizeof( std::atomic< Tagged< T > > ) > sizeof( Tagged< T > ) ||
-                          sizeof( AtomicCell< T, Hasher > ) >= sizeof( LockedCell< T, Hasher > ) ),
-                        LockedCell< T, Hasher >, AtomicCell< T, Hasher > >;
+using ConcurrentCell = std::conditional_t< std::atomic< Tagged< T > >::is_always_lock_free,
+                                           AtomicCell< T, Hasher >, LockedCell< T, Hasher > >;
 
 template< typename T, typename Hasher = DefaultHasher >
 using Concurrent = HashSet< ConcurrentCell< T, Hasher >, true >;
