@@ -134,23 +134,36 @@ struct CompactCell : CellBase< T, Hasher >
 template< typename T, typename Hasher >
 struct LockedCell : CellBase< T, Hasher >
 {
+    /* 2 least-significant bits are special */
     std::atomic< hash32_t > _hashlock;
     T _value;
 
     bool empty() { return _hashlock == 0; }
     bool invalid() { return _hashlock == 3; }
+    bool tombstone() { return _hashlock == 2; }
+
+    static constexpr bool can_tombstone() { return true; }
 
     /* returns old cell value */
     LockedCell invalidate()
     {
         // wait for write to end
         hash32_t prev = 0;
-        while ( !_hashlock.compare_exchange_weak( prev, 0x3 ) ) {
-            if ( prev == 3 )
+        while ( !_hashlock.compare_exchange_weak( prev, 3 ) )
+        {
+            if ( prev == 3 ) /* already invalid */
                 return LockedCell( prev, _value );
-            prev &= ~(0x3); // clean flags
+            prev &= ~3; // clean flags
         }
         return LockedCell( prev, _value );
+    }
+
+    bool bury()
+    {
+        hash32_t hl = _hashlock.load();
+        if ( invalid() )
+            return false;
+        return _hashlock.compare_exchange_strong( hl, 2 );
     }
 
     T &fetch() { return _value; }
@@ -159,32 +172,34 @@ struct LockedCell : CellBase< T, Hasher >
     hash64_t hash( Hasher &h ) { return h.hash( _value ).first; }
 
     // wait for another write; returns false if cell was invalidated
-    bool wait() {
+    bool wait()
+    {
         while( _hashlock & 1 )
             if ( invalid() )
                 return false;
         return true;
     }
 
-    bool tryStore( T v, hash32_t hash )
+    bool tryStore( const T &v, hash32_t hash )
     {
-        hash |= 0x1;
+        hash |= 1;
         hash32_t chl = 0;
-        if ( _hashlock.compare_exchange_strong( chl, (hash << 2) | 1 ) ) {
+        if ( _hashlock.compare_exchange_strong( chl, (hash << 2) | 1 ) )
+        {
             _value = v;
-            _hashlock.exchange( hash << 2 );
+            _hashlock.exchange( hash << 2 ); /* unlock */
             return true;
         }
         return false;
     }
 
-    void store( T v, hash32_t hash ) { tryStore( v, hash ); }
+    void store( T v, hash32_t hash ) { _hashlock = hash << 2; _value = v; }
 
     template< typename Value >
     bool is( const Value &v, hash64_t hash, Hasher &h )
     {
-        hash |= 0x1;
-        if ( ( (hash << 2) | 1) != (_hashlock | 1) )
+        hash |= 1;
+        if ( ( ( hash << 2 ) | 1 ) != ( _hashlock | 1 ) )
             return false;
         if ( !wait() )
             return false;
@@ -192,8 +207,9 @@ struct LockedCell : CellBase< T, Hasher >
     }
 
     LockedCell() : _hashlock( 0 ), _value() {}
-    LockedCell( const LockedCell & ) : _hashlock( 0 ), _value() {}
-    LockedCell( hash64_t hash, T value ) : _hashlock( hash << 2 ), _value( value ) { }
+
+private:
+    LockedCell( hash32_t h, const T &val ) : _hashlock( h ), _value( val ) {}
 };
 
 template< typename T, typename = void >
