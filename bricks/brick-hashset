@@ -357,11 +357,8 @@ struct HashSetBase
     using value_type = typename Cell::value_type;
     using Hasher = typename Cell::Hasher;
 
-    static const unsigned cacheLine = 64; // bytes
-    static const unsigned thresh = cacheLine / sizeof( Cell );
-    static const unsigned threshMSB = bitlevel::compiletime::MSB( thresh );
-    static const unsigned maxcollisions = 1 << 16; // 2^16
-    static const unsigned growthreshold = 75; // percent
+    static constexpr const size_t cluster_bytes = 32;
+    static constexpr const size_t cluster_size = std::max( 1ul, cluster_bytes / sizeof( Cell ) );
 
     Hasher hasher;
 
@@ -390,17 +387,13 @@ struct HashSetBase
 
     iterator end() { return iterator(); }
 
-    static size_t index( hash64_t h, size_t i, size_t mask ) {
-        h &= ~hash64_t( thresh - 1 );
+    static size_t index( hash64_t h, size_t i, size_t mask )
+    {
         const unsigned Q = 1, R = 1;
-        if ( i < thresh )
-            return ( h + i ) & mask;
-        else {
-            size_t j = i & ( thresh - 1 );
-            i = i >> threshMSB;
-            size_t hop = ( (2 * Q + 1) * i + 2 * R * (i * i) ) << threshMSB;
-            return ( h + j + hop ) & mask;
-        }
+        size_t j = i % cluster_size; /* index within cluster */
+        i = i / cluster_size;        /* index to the start of the cluster */
+        size_t hop = (2 * Q + 1) * i + 2 * R * i * i;
+        return ( h + j + hop * cluster_size ) & mask;
     }
 
     HashSetBase( const Hasher &h ) : hasher( h ) {}
