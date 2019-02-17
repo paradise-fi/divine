@@ -48,6 +48,19 @@
 namespace brick::trace
 {
 
+    template< typename T >
+    auto format_one( int, std::stringstream &acc, const T &t ) noexcept
+        -> decltype( acc << t ) &
+    {
+        return acc << t;
+    }
+
+    template< typename T >
+    auto &format_one( short, std::stringstream &acc, const T & ) noexcept
+    {
+        return acc << "<unknown>";
+    }
+
     static inline void format( std::stringstream &acc ) noexcept
     {
 #ifdef __divine__
@@ -62,7 +75,8 @@ namespace brick::trace
     template< typename A, typename... Args >
     void format( std::stringstream &acc, const A &a, const Args & ... as ) noexcept
     {
-        acc << a << " ";
+        format_one( 0, acc, a );
+        acc << " ";
         format( acc, as... );
     }
 
