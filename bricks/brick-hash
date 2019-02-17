@@ -96,12 +96,12 @@ namespace brick::hash
             return v & ( ~uint64_t(0) >> shift );
         }
 
-        void update( const uint8_t *, int )
+        __always_inline void update( const uint8_t *bytes, int count )
         {
             NOT_IMPLEMENTED();
         }
 
-        void update_aligned( const uint8_t *data, int count )
+        __always_inline void update_aligned( const uint8_t *data, int count )
         {
             const uint64_t *d64 = reinterpret_cast< const uint64_t * >( data );
 
