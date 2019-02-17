@@ -25,7 +25,6 @@ namespace divine::t_mc
 
     namespace
     {
-
         auto prog( std::string p )
         {
             return t_vm::c2bc(
@@ -33,30 +32,49 @@ namespace divine::t_mc
                 "void *__vm_ctl_get( int );"s +
                 "void __vm_ctl_set( int, void * );"s +
                 "long __vm_ctl_flag( long, long );"s +
-                "void __vm_trace( int, const char * );"s +
                 "int __vm_choose( int, ... );"s +
                 "void __boot( void * );"s + p );
         }
 
-        auto prog_int( std::string first, std::string next )
+        void sub_boot( std::stringstream &p )
         {
-            std::stringstream p;
-            p << "void __sched() {" << std::endl
-              << "    int *r = __vm_ctl_get( " << _VM_CR_State
-              << " ); __vm_trace( 0, \"foo\" );" << std::endl
-              << "    *r = " << next << ";" << std::endl
-              << "    if ( *r < 0 ) __vm_ctl_flag( 0, 0b10000 );" << std::endl
-              << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 );" << std::endl
-              << "}" << std::endl
-              << "void __boot( void *environ ) {"
+            p << "void __boot( void *environ )"
+              << "{"
               << "    __vm_ctl_set( " << _VM_CR_Scheduler << ", __sched );"
               << "    void *e = __vm_obj_make( sizeof( int ), " << _VM_PT_Heap << " );"
               << "    __vm_ctl_set( " << _VM_CR_State << ", e );"
-              << "    int *r = e; *r = " << first << ";"
-              << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 ); }" << std::endl;
-            return prog( p.str() );
+              << "    int *r = e; *r = init();"
+              << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 );"
+              << "}" << std::endl;
         }
 
+        auto sub_sched( std::stringstream &p )
+        {
+            p << "void __sched()"
+              << "{"
+              << "    int *r = __vm_ctl_get( " << _VM_CR_State << " );"
+              << "    do"
+              << "    {"
+              << "        *r = next( *r );"
+              << "        if ( *r < 0 ) __vm_ctl_flag( 0, " << _VM_CF_Cancel << " );"
+              << "        if ( loop( *r ) ) __vm_ctl_flag( 0, " << _VM_CF_Stop << ");"
+              << "    } while ( loop( *r ) );"
+              << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 );"
+              << "}" << std::endl;
+        }
+
+        auto prog_int( int first, std::string next, std::string loop = "0" )
+        {
+            std::stringstream p;
+            p << "int next( int x ) { return " << next << "; }" << std::endl
+              << "int loop( int x ) { return " << loop << "; }" << std::endl
+              << "int init() { return " << first << "; }" << std::endl;
+
+            sub_sched( p );
+            sub_boot( p );
+
+            return prog( p.str() );
+        }
     }
 
     struct Machine
@@ -81,7 +99,7 @@ namespace divine::t_mc
         {
             bool found = false;
             auto state = [&]( Expand ) { found = true; };
-            auto machine = mc::TMachine( prog_int( "4", "*r - 1" ) );
+            auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
             weave( machine ).observe( state ).start();
             ASSERT( found );
         }
@@ -89,7 +107,7 @@ namespace divine::t_mc
         TEST( hasher )
         {
             bool ran = false;
-            auto machine = mc::GMachine( prog_int( "4", "*r - 1" ) );
+            auto machine = mc::GMachine( prog_int( 4, "x - 1" ) );
             auto check = [&]( Expand s )
             {
                 ASSERT( machine.hasher()._pool->size( s.from.snap ) );
@@ -102,7 +120,7 @@ namespace divine::t_mc
 
         TEST( start_twice )
         {
-            auto machine = mc::TMachine( prog_int( "4", "*r - 1" ) );
+            auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
             mc::State i1, i2;
 
             weave( machine ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
@@ -115,7 +133,7 @@ namespace divine::t_mc
         {
             mc::State i1, i2;
 
-            auto m1 = mc::TMachine( prog_int( "4", "*r - 1" ) ), m2 = m1;
+            auto m1 = mc::TMachine( prog_int( 4, "x - 1" ) ), m2 = m1;
             weave( m1 ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
             weave( m2 ).observe( [&]( Expand e ) { i2 = e.from; } ).start();
 
@@ -126,7 +144,7 @@ namespace divine::t_mc
         TEST( unfold )
         {
             std::vector< mc::Snapshot > snaps;
-            auto machine = mc::TMachine( prog_int( "4", "*r - 1" ) );
+            auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
 
             auto state = [&]( Expand e )
             {
@@ -155,19 +173,19 @@ namespace divine::t_mc
 
         TEST( search )
         {
-            _search< mc::TMachine >( prog_int( "4", "*r - 1" ), 5, 4 );
-            _search< mc::GMachine >( prog_int( "4", "*r - 1" ), 5, 4 );
-            _search< mc::GMachine >( prog_int( "0", "( *r + 1 ) % 5" ), 5, 5 );
+            _search< mc::TMachine >( prog_int( 4, "x - 1" ), 5, 4 );
+            _search< mc::GMachine >( prog_int( 4, "x - 1" ), 5, 4 );
+            _search< mc::GMachine >( prog_int( 0, "( x + 1 ) % 5" ), 5, 5 );
         }
 
         TEST( branching )
         {
-            _search< mc::GMachine >( prog_int( "4", "*r - __vm_choose( 2 )" ), 5, 9 );
-            _search< mc::GMachine >( prog_int( "2", "*r - 1 - __vm_choose( 2 )" ), 3, 3 );
-            _search< mc::TMachine >( prog_int( "4", "*r - 1 - __vm_choose( 2 )" ), 12, 11 );
-            _search< mc::GMachine >( prog_int( "4", "*r - 1 - __vm_choose( 2 )" ), 5, 7 );
-            _search< mc::GMachine >( prog_int( "0", "( *r + __vm_choose( 2 ) ) % 5" ), 5, 10 );
-            _search< mc::GMachine >( prog_int( "0", "( *r + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 );
+            _search< mc::GMachine >( prog_int( 4, "x - __vm_choose( 2 )" ), 5, 9 );
+            _search< mc::GMachine >( prog_int( 2, "x - 1 - __vm_choose( 2 )" ), 3, 3 );
+            _search< mc::TMachine >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 12, 11 );
+            _search< mc::GMachine >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 5, 7 );
+            _search< mc::GMachine >( prog_int( 0, "( x + __vm_choose( 2 ) ) % 5" ), 5, 10 );
+            _search< mc::GMachine >( prog_int( 0, "( x + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 );
         }
     };
 
