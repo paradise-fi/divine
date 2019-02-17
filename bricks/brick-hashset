@@ -215,14 +215,27 @@ private:
 template< typename T, typename = void >
 struct Tagged
 {
-    T t;
-    uint32_t _tag;
+    struct Align { T a; uint16_t b; };
+    using Tag = bitlevel::bitvec< 8 * ( sizeof( Align ) - sizeof( T ) ) >;
+    struct Check { T a; Tag b; };
+    static_assert( sizeof( Align ) == sizeof( Check ) );
+    static_assert( sizeof( Check ) == sizeof( T ) + sizeof( Tag ) );
 
-    static const int tag_bits = 16;
-    void tag( uint32_t v ) { _tag = v; }
-    uint32_t tag() { return _tag; }
-    Tagged() noexcept : t(), _tag( 0 ) {}
-    Tagged( const T &t ) : t( t ), _tag( 0 ) {}
+    T _value;
+    Tag _tag;
+
+    static const int tag_bits = sizeof( Tag ) * 8;
+
+    T &value() { return _value; }
+    void tag( Tag v ) { _tag = v; }
+    Tag tag() { return _tag; }
+    Tagged() noexcept : _value(), _tag( 0 ) {}
+    explicit Tagged( const T &v ) : _value( v ), _tag( 0 ) {}
+
+    friend std::ostream &operator<<( std::ostream &o, const Tagged< T > &v )
+    {
+        return o << "[" << v._value << " " << uint64_t( v._tag ) << "]";
+    }
 };
 
 template< typename T >
@@ -234,7 +247,7 @@ struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
     void tag( uint32_t value ) { t.tag( value ); }
     uint32_t tag() { return t.tag(); }
     Tagged() noexcept : t() {}
-    Tagged( const T &t ) : t( t ) {}
+    explicit Tagged( const T &t ) : t( t ) {}
 };
 
 template< typename T, typename Hasher >
