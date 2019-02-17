@@ -1000,6 +1000,362 @@ struct BimapTest {
     }
 };
 
+struct TestIntervalMap {
+    TEST(disjoint_insert) {
+        IntervalMap< int, int > map;
+        ASSERT( map.empty() );
+        ASSERT_EQ( map.size(), 0 );
+        map._validate();
+
+        ASSERT( !map.intersect( 0, 1 ) );
+        map.insert( 0, 1, 0xDA7A1 );
+        ASSERT_EQ( map.size(), 1 );
+        map._validate();
+
+        // before
+        ASSERT( !map.intersect( -10, -8 ) );
+        map.insert( -10, -8, 0xDA7A2 );
+        ASSERT_EQ( map.size(), 2 );
+        map._validate();
+
+        // after
+        ASSERT( !map.intersect( 8, 12 ) );
+        map.insert( 8, 12, 0xDA7A3 );
+        ASSERT_EQ( map.size(), 3 );
+        map._validate();
+
+        // inbetween
+        ASSERT( !map.intersect( 3, 5 ) );
+        map.insert( 3, 5, 0xDA7A4 );
+        ASSERT_EQ( map.size(), 4 );
+        map._validate();
+
+        // close to, but not overlaping
+        ASSERT( !map.intersect( -7, -6 ) );
+        map.insert( -7, -6, 0xDA7A5 );
+        ASSERT_EQ( map.size(), 5 );
+        map._validate();
+
+        // close to, but not overlaping
+        ASSERT( !map.intersect( -3, -1 ) );
+        map.insert( -3, 0, 0xDA7A6 );
+        ASSERT_EQ( map.size(), 6 );
+        map._validate();
+
+        // close to end
+        ASSERT( !map.intersect( 13, 15 ) );
+        map.insert( 13, 15, 0xDA7A7 );
+        ASSERT_EQ( map.size(), 7 );
+        map._validate();
+
+        ASSERT_EQ( map.find(0)->second, 0xDA7A1 );
+        ASSERT_EQ( map.find(-10)->second, 0xDA7A2 );
+        ASSERT_EQ( map.find(-9)->second, 0xDA7A2 );
+        ASSERT( map.find(-8) == map.end() );
+        ASSERT_EQ( map.find(9)->second, 0xDA7A3 );
+        ASSERT_EQ( map.find(4)->second, 0xDA7A4 );
+        ASSERT_EQ( map.find(-7)->second, 0xDA7A5 );
+        ASSERT_EQ( map.find(-1)->second, 0xDA7A6 );
+        ASSERT_EQ( map.find(13)->second, 0xDA7A7 );
+        ASSERT( map.find(15) == map.end() );
+        ASSERT( map.find(20) == map.end() );
+        ASSERT( map.find(7) == map.end() );
+        ASSERT( map.find(-20) == map.end() );
+    }
+
+    TEST(overlap_inserts) {
+        IntervalMap< int, int > map;
+
+        // no overlap
+        ASSERT( !map.intersect( 4, 8 ) );
+        map.insert( 4, 8, 0xFF01 );
+        ASSERT( !map.empty() );
+        ASSERT_EQ( map.size(), 1 );
+        map._validate();
+        ASSERT_EQ( map.find( 5 )->first.from, 4 );
+        ASSERT_EQ( map.find( 5 )->first.to, 8 );
+        ASSERT_EQ( map.find( 5 )->second, 0xFF01 );
+        // [4, 8)
+
+        // no overlap, after end
+        ASSERT( !map.intersect( 32, 35 ) );
+        map.insert( 32, 35, 0xFF02 );
+        ASSERT( !map.empty() );
+        ASSERT_EQ( map.size(), 2 );
+        map._validate();
+        ASSERT_EQ( map.find( 34 )->first.from, 32 );
+        ASSERT_EQ( map.find( 34 )->first.to, 35 );
+        // [4, 8) [32, 35)
+
+        // overlaps with end
+        ASSERT( map.intersect( 5, 10 ) );
+        map.insert( 5, 10 , 0xFF03);
+        ASSERT( !map.empty() );
+        ASSERT_EQ( map.size(), 3 );
+        map._validate();
+        ASSERT_EQ( map.find( 5 )->first.from, 5 );
+        ASSERT_EQ( map.find( 5 )->first.to, 10 );
+        ASSERT_EQ( map.find( 5 )->second, 0xFF03 );
+        ASSERT( map.find( 5 ) == map.find( 7 ) );
+        ASSERT( map.find( 5 ) == map.find( 9 ) );
+        ASSERT( map.find( 10 ) == map.end() );
+        ASSERT_EQ( map.find( 4 )->first.from, 4 );
+        ASSERT_EQ( map.find( 4 )->first.to, 5 );
+        ASSERT_EQ( map.find( 4 )->second, 0xFF01 );
+        // [4, 5) [5, 10) [32, 35)
+
+        // begin-aligned
+        ASSERT( map.intersect( 5, 8 ) );
+        map.insert( 5, 8 , 0xFF04);
+        ASSERT_EQ( map.size(), 4 );
+        map._validate();
+        ASSERT_EQ( map.find( 5 )->first.from, 5 );
+        ASSERT_EQ( map.find( 5 )->first.to, 8 );
+        ASSERT_EQ( map.find( 5 )->second, 0xFF04 );
+        ASSERT_EQ( map.find( 8 )->first.from, 8 );
+        ASSERT_EQ( map.find( 8 )->first.to, 10 );
+        ASSERT_EQ( map.find( 9 )->second, 0xFF03 );
+        // [4, 5) [5, 8), [8, 10) [32, 35)
+
+        // complete precise ovelap
+        ASSERT( map.intersect( 4, 10 ) );
+        map.insert( 4, 10 , 0xFF05);
+        ASSERT_EQ( map.size(), 2 );
+        map._validate();
+        ASSERT_EQ( map.find( 5 )->first.from, 4 );
+        ASSERT_EQ( map.find( 5 )->first.to, 10 );
+        ASSERT_EQ( map.find( 5 )->second, 0xFF05 );
+        ASSERT( map.find( 5 ) == map.find( 9 ) );
+        // [4, 10) [32, 35)
+
+        // complete overlap, end-aligned
+        ASSERT( map.intersect( 30, 35 ) );
+        map.insert( 30, 35 , 0xFF06);
+        ASSERT_EQ( map.size(), 2 );
+        map._validate();
+        ASSERT_EQ( map.find( 34 )->first.from, 30 );
+        ASSERT_EQ( map.find( 34 )->first.to, 35 );
+        ASSERT_EQ( map.find( 34 )->second, 0xFF06 );
+        // [4, 10) [30, 35)
+
+        // right after end
+        ASSERT( !map.intersect( 10, 12 ) );
+        map.insert( 10, 12 , 0xFF07);
+        ASSERT_EQ( map.size(), 3 );
+        map._validate();
+        ASSERT_EQ( map.find( 5 )->first.from, 4 );
+        ASSERT_EQ( map.find( 5 )->first.to, 10 );
+        ASSERT_EQ( map.find( 10 )->first.from, 10 );
+        ASSERT_EQ( map.find( 10 )->first.to, 12 );
+        ASSERT( map.find( 12 ) == map.end() );
+        // [4, 10) [10, 12) [30, 35)
+
+        // right before end
+        ASSERT( !map.intersect( 25, 30 ) );
+        map.insert( 25, 30 , 0xFF08);
+        ASSERT_EQ( map.size(), 4 );
+        map._validate();
+        ASSERT_EQ( map.find( 30 )->first.from, 30 );
+        ASSERT_EQ( map.find( 30 )->first.to, 35 );
+        ASSERT_EQ( map.find( 28 )->first.from, 25 );
+        ASSERT_EQ( map.find( 28 )->first.to, 30 );
+        ASSERT_EQ( map.find( 30 )->second, 0xFF06 );
+        ASSERT_EQ( map.find( 28 )->second, 0xFF08 );
+        // [4, 10) [10, 12) [25, 30) [30, 35)
+
+        // inbetween
+        ASSERT( !map.intersect( 15, 20 ) );
+        map.insert( 15, 20 , 0xFF09);
+        ASSERT_EQ( map.size(), 5 );
+        map._validate();
+        ASSERT_EQ( map.find( 16 )->first.from, 15 );
+        ASSERT_EQ( map.find( 16 )->first.to, 20 );
+        // [4, 10) [10, 12) [15, 20) [25, 30) [30, 35)
+
+        // overlapping two
+        ASSERT( map.intersect( 11, 16 ) );
+        map.insert( 11, 16 , 0xFF0A);
+        ASSERT_EQ( map.size(), 6 );
+        map._validate();
+        ASSERT_EQ( map.find( 10 )->first.from, 10 );
+        ASSERT_EQ( map.find( 10 )->first.to, 11);
+        ASSERT_EQ( map.find( 14 )->first.from, 11 );
+        ASSERT_EQ( map.find( 14 )->first.to, 16);
+        ASSERT_EQ( map.find( 16 )->first.from, 16 );
+        ASSERT_EQ( map.find( 16 )->first.to, 20);
+        // [4, 10) [10, 11) [11, 16) [16, 20) [25, 30) [30, 35)
+
+        // right inbetween
+        ASSERT( !map.intersect( 20, 25 ) );
+        map.insert( 20, 25 , 0xFF0B);
+        ASSERT_EQ( map.size(), 7 );
+        map._validate();
+        ASSERT_EQ( map.find( 16 )->first.from, 16 );
+        ASSERT_EQ( map.find( 16 )->first.to, 20);
+        ASSERT_EQ( map.find( 20 )->first.from, 20 );
+        ASSERT_EQ( map.find( 20 )->first.to, 25 );
+        ASSERT_EQ( map.find( 25 )->first.from, 25 );
+        ASSERT_EQ( map.find( 25 )->first.to, 30 );
+        // [4, 10) [10, 11) [11, 16) [16, 20) [20, 25) [25, 30) [30, 35)
+
+        // no overlap, before first
+        ASSERT( !map.intersect( -5, -2 ) );
+        map.insert( -5, -2 , 0xFF0C);
+        ASSERT_EQ( map.size(), 8 );
+        map._validate();
+        // [-5, -2) [4, 10) [10, 11) [11, 16) [16, 20) [20, 25) [25, 30) [30, 35)
+
+        // spanning multiple succeeding with start overlap
+        ASSERT( map.intersect( 18, 40 ) );
+        map.insert( 18, 40 , 0xFF0D);
+        map._validate();
+        ASSERT_EQ( map.size(), 6 );
+        ASSERT_EQ( map.find( 16 )->first.from, 16 );
+        ASSERT_EQ( map.find( 16 )->first.to, 18 );
+        ASSERT_EQ( map.find( 30 )->first.from, 18 );
+        ASSERT_EQ( map.find( 30 )->first.to, 40 );
+        ASSERT( map.find( 18 ) == map.find( 30 ) );
+        ASSERT( map.find( 20 ) == map.find( 30 ) );
+        ASSERT( map.find( 25 ) == map.find( 30 ) );
+        ASSERT( map.find( 35 ) == map.find( 30 ) );
+        // [-5, -2) [4, 10) [10, 11) [11, 16) [16, 18) [18, 40)
+
+        // spanning multiple succeeding with end overlap
+        ASSERT( map.intersect( -10, 14 ) );
+        map.insert( -10, 14 , 0xFF0E);
+        map._validate();
+        ASSERT_EQ( map.size(), 4 );
+        ASSERT_EQ( map.find( 4 )->first.from, -10 );
+        ASSERT_EQ( map.find( 4 )->first.to, 14 );
+        ASSERT( map.find( -5 ) == map.find( 4 ) );
+        ASSERT( map.find( -10 ) == map.find( 4 ) );
+        ASSERT( map.find( 10 ) == map.find( 4 ) );
+        ASSERT( map.find( 11 ) == map.find( 4 ) );
+        ASSERT_EQ( map.find( 30 )->first.from, 18 );
+        ASSERT_EQ( map.find( 30 )->first.to, 40 );
+        // [-10, 14) [14, 16) [16, 18) [18, 40)
+
+        // spanning multiple succeeding with both overlaps
+        map.insert( 2, 25 , 0xFF0F);
+        ASSERT_EQ( map.size(), 3 );
+        map._validate();
+        ASSERT_EQ( map.find( 14 )->first.from, 2 );
+        ASSERT_EQ( map.find( 14 )->first.to, 25 );
+        ASSERT_EQ( map.find( 25 )->first.from, 25 );
+        ASSERT_EQ( map.find( 25 )->first.to, 40 );
+        ASSERT_EQ( map.find( 0 )->first.from, -10 );
+        ASSERT_EQ( map.find( 0 )->first.to, 2 );
+        // [-10, 2) [2, 25) [25, 40)
+
+        // splitting the last interval in two
+        map.insert( 30, 35 , 0xFF10);
+        ASSERT_EQ( map.size(), 5 );
+        map._validate();
+        ASSERT_EQ( map.find( 27 )->first.from, 25 );
+        ASSERT_EQ( map.find( 27 )->first.to, 30 );
+        ASSERT_EQ( map.find( 32 )->first.from, 30 );
+        ASSERT_EQ( map.find( 32 )->first.to, 35 );
+        ASSERT_EQ( map.find( 37 )->first.from, 35 );
+        ASSERT_EQ( map.find( 37 )->first.to, 40 );
+        ASSERT_EQ( map.find( 27 )->second, 0xFF0D );
+        ASSERT_EQ( map.find( 32 )->second, 0xFF10 );
+        ASSERT_EQ( map.find( 37 )->second, 0xFF0D );
+        // [-10, 2) [2, 25) [25, 30) [30, 35) [35, 40)
+
+        // splitting the first interval in two
+        map.insert( -5, 0 , 0xFF11);
+        ASSERT_EQ( map.size(), 7 );
+        map._validate();
+        ASSERT_EQ( map.find( -9 )->first.from, -10 );
+        ASSERT_EQ( map.find( -9 )->first.to, -5 );
+        ASSERT_EQ( map.find( -4 )->first.from, -5 );
+        ASSERT_EQ( map.find( -4 )->first.to, 0 );
+        ASSERT_EQ( map.find( 1 )->first.from, 0 );
+        ASSERT_EQ( map.find( 1 )->first.to, 2 );
+        ASSERT_EQ( map.find( -9 )->second, 0xFF0E );
+        ASSERT_EQ( map.find( -4 )->second, 0xFF11 );
+        ASSERT_EQ( map.find( 1 )->second, 0xFF0E );
+        // [-10, -5) [-5, 0) [0, 2) [2, 25) [25, 30) [30, 35) [35, 40)
+
+        // spanning multiple, aligned begin and end
+        map.insert( 0, 35, 0xFF12 );
+        map._validate();
+        ASSERT_EQ( map.size(), 4 );
+        ASSERT_EQ( map.find( -1 )->first.from, -5 );
+        ASSERT_EQ( map.find( -1 )->first.to, 0 );
+        ASSERT_EQ( map.find( -1 )->second, 0xFF11 );
+        ASSERT_EQ( map.find( 0 )->first.from, 0 );
+        ASSERT_EQ( map.find( 0 )->first.to, 35 );
+        ASSERT_EQ( map.find( 0 )->second, 0xFF12 );
+        ASSERT( map.find( 0 ) == map.find( 2 ) );
+        ASSERT( map.find( 0 ) == map.find( 25 ) );
+        ASSERT( map.find( 0 ) == map.find( 33 ) );
+        ASSERT_EQ( map.find( 35 )->first.from, 35 );
+        ASSERT_EQ( map.find( 35 )->first.to, 40 );
+        ASSERT_EQ( map.find( 35 )->second, 0xFF0D );
+        // [-10, -5) [-5, 0) [0, 35) [35, 40)
+
+        // clearing
+        map.clear();
+        map._validate();
+        ASSERT_EQ( map.size(), 0 );
+        ASSERT( map.empty() );
+
+        map.insert( 10, 20, 0xFE01 );
+        map._validate();
+        ASSERT_EQ( map.size(), 1 );
+        ASSERT_EQ( map.find( 15 )->second, 0xFE01 );
+        // [10, 20)
+
+        // no overlap, before the only entry
+        map.insert( 0, 5, 0xFE02 );
+        map._validate();
+        ASSERT_EQ( map.size(), 2 );
+        ASSERT_EQ( map.find( 15 )->second, 0xFE01 );
+        ASSERT_EQ( map.find( 1 )->second, 0xFE02 );
+        // [0, 5) [10, 20)
+
+        // no overlap, before the first entry
+        map.insert( -10, -5, 0xFE03 );
+        map._validate();
+        ASSERT_EQ( map.size(), 3 );
+        // [-10, -5) [0, 5) [10, 20)
+
+        // begin between, one destroyed, end overlaps
+        map.insert( -2, 15, 0xFE04 );
+        map._validate();
+        ASSERT_EQ( map.size(), 3 );
+        ASSERT_EQ( map.find( 15 )->second, 0xFE01 );
+        ASSERT_EQ( map.find( 0 )->second, 0xFE04 );
+        // [-10, -5) [-2, 15) [15, 20)
+
+        // no overlap, after last
+        map.insert( 30, 40, 0xFE05 );
+        map._validate();
+        ASSERT_EQ( map.size(), 4 );
+        // [-10, -5) [-2, 15) [15, 20) [30, 40)
+
+        // begin overlaps, two destroyed, end between
+        map.insert( -7, 25, 0xFE06 );
+        map._validate();
+        ASSERT_EQ( map.size(), 3 );
+        ASSERT_EQ( map.find( 15 )->second, 0xFE06 );
+        ASSERT_EQ( map.find( 0 )->second, 0xFE06 );
+        ASSERT_EQ( map.find( -9 )->second, 0xFE03 );
+        ASSERT( map.find( 25 ) == map.end() );
+        // [-10, -7) [-7, 25) [30, 40)
+
+        // everything destroyed
+        map.insert( -20, 50, 0xFE07 );
+        map._validate();
+        ASSERT_EQ( map.size(), 1 );
+        ASSERT_EQ( map.find( -10 )->second, 0xFE07 );
+        ASSERT_EQ( map.find( 25 )->second, 0xFE07 );
+        ASSERT_EQ( map.find( 40 )->second, 0xFE07 );
+        // [-20, 50)
+    }
+};
+
 struct TestIntervalSet {
 
     TEST(disjoint_insert) {
