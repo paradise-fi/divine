@@ -116,6 +116,12 @@ namespace brick::hash
             }
         }
 
+        void realign()
+        {
+            mix();
+            counter = counter + 32 - counter % 32;
+        }
+
         __always_inline void update_aligned( const uint8_t *data, int count )
         {
             ASSERT_EQ( counter % 32, 0 );
