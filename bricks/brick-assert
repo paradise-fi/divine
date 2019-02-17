@@ -71,13 +71,18 @@ namespace brick::_assert
         const char *_file, *_statement;
         std::string _statement_s;
 
-        std::string short_info()
+        std::string short_info() const
         {
             std::stringstream str;
-            std::string r( _file );
-            str << std::string( r, r.find( '/' ) == std::string::npos ? 0 : r.rfind( '/' ),
-                                std::string::npos ) << ':' << line;
+            str << filename() << ':' << line;
             return str.str();
+        }
+
+        std::string_view filename() const
+        {
+            std::string_view r( _file );
+            r = r.substr( r.find( '/' ) == r.npos ? 0 : r.rfind( '/' ) + 1 );
+            return r;
         }
 
         std::string file()
@@ -90,15 +95,16 @@ namespace brick::_assert
 
             while ( slashes >= 3 )
             {
-                r = std::string( r, r.find( "/" ) + 1, std::string::npos );
+                r = r.substr( r.find( "/" ) + 1 );
                 -- slashes;
             }
+
             if ( _file != r )
                 r = ".../" + r;
             return r;
         }
 
-        std::string statement()
+        std::string_view statement()
         {
             if ( _statement_s.empty() )
                 return _statement;
