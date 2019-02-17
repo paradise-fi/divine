@@ -43,7 +43,7 @@ namespace divine::mem
     template< typename Heap >
     int hash( Heap &heap, typename Heap::Pointer root,
               std::unordered_map< int, int > &visited,
-              brick::hash::jenkins::SpookyState &state, int depth );
+              brick::hash::State &state, int depth );
 
     template< typename H1, typename H2, typename CB >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2, CB &callback )
@@ -60,15 +60,13 @@ namespace divine::mem
         return compare( h1, h2, r1, r2, callback );
     }
 
-    using brick::hash::hash128_t;
-
     template< typename Heap >
-    hash128_t hash( Heap &heap, typename Heap::Pointer root )
+    hash64_t hash( Heap &heap, typename Heap::Pointer root )
     {
         std::unordered_map< int, int > visited;
-        brick::hash::jenkins::SpookyState state( 0, 0 );
+        brick::hash::State state( 0 );
         hash( heap, root, visited, state, 0 );
-        return state.finalize();
+        return state.hash();
     }
 
     enum class CloneType { All, SkipWeak, HeapOnly };

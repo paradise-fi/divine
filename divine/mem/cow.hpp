@@ -28,7 +28,6 @@ namespace divine::mem
 {
 
     using brick::hash::hash64_t;
-    using brick::hash::hash128_t;
 
     template< typename Next >
     struct Cow : Next
@@ -50,7 +49,7 @@ namespace divine::mem
             auto &objects() { return _heap->_objects; }
 
             hash64_t content_only( Internal i );
-            hash128_t hash( Internal i );
+            hash64_t hash( Internal i );
             bool equal( Internal a, Internal b );
         };
 

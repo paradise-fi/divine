@@ -26,36 +26,36 @@ namespace divine::mem
     template< typename Next>
     hash64_t Cow< Next >::ObjHasher::content_only( Internal i )
     {
-        auto size = objects().size( i );
-        auto base = objects().dereference( i );
+        auto count = objects().size( i );
+        auto word = objects().template machinePointer< uint32_t >( i );
 
-        brick::hash::jenkins::SpookyState high( 0, 0 );
+        brick::hash::State high;
 
-        auto comp = heap().compressed( Loc( i, 0, 0 ), size / 4 );
+        auto comp = heap().compressed( Loc( i, 0, 0 ), count / 4 );
         auto c = comp.begin();
-        int offset = 0;
 
-        while ( offset + 4 <= size )
+        while ( count >= 4 )
         {
             if ( ! Next::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
-                high.update( base + offset, 4 );
-            offset += 4;
-            ++c;
+                high.update_aligned( *word );
+            count -= 4;
+            ++c, ++word;
         }
 
-        high.update( base + offset, size - offset );
-        ASSERT_LEQ( offset, size );
+        auto byte = reinterpret_cast< uint8_t * >( word );
+        while ( count > 0 )
+            high.update_aligned( *byte++ ), --count;
 
-        return high.finalize().first;
+        return high.hash();
     }
 
     template< typename Next >
-    hash128_t Cow< Next >::ObjHasher::hash( Internal i )
+    hash64_t Cow< Next >::ObjHasher::hash( Internal i )
     {
+        using brick::hash::hash;
         /* TODO also hash some shadow data into low for better precision? */
-        auto low = brick::hash::spooky( objects().dereference( i ), objects().size( i ) );
-        return std::make_pair( ( content_only( i ) & 0xFFFFFFF000000000 ) | /* high 28 bits */
-                            ( low.first & 0x0000000FFFFFFFF ), low.second );
+        auto low = hash( objects().template machinePointer< uint8_t >( i ), objects().size( i ) );
+        return ( content_only( i ) & 0xFFFFFFF000000000 ) | ( low & 0x0000000FFFFFFFF );
     }
 
     template< typename Next >

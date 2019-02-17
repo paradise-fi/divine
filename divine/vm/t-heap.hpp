@@ -243,8 +243,7 @@ namespace divine::t_vm
             heap.write( p + vm::PointerBytes, PointerV( p ) );
             heap.write( q, PointerV( p ) );
             auto c_p = mem::clone( heap, cloned, p );
-            ASSERT_EQ( mem::hash( heap, p ).first,
-                    mem::hash( cloned, c_p ).first );
+            ASSERT_EQ( mem::hash( heap, p ), mem::hash( cloned, c_p ) );
         }
     };
 
@@ -331,7 +330,7 @@ namespace divine::t_vm
             heap.write( p + vm::PointerBytes, IntV( 5 ) );
             heap.write( q, PointerV( p ) );
             heap.snapshot( pool );
-            ASSERT( mem::hash( heap, p ).first != mem::hash( heap, q ).first );
+            ASSERT_NEQ( mem::hash( heap, p ), mem::hash( heap, q ) );
         }
 
         TEST(copy_content)

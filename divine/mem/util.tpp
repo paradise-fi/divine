@@ -148,7 +148,7 @@ namespace divine::mem
     template< typename Heap >
     int hash( Heap &heap, typename Heap::Pointer root,
               std::unordered_map< int, int > &visited,
-              brick::hash::jenkins::SpookyState &state, int depth )
+              brick::hash::State &state, int depth )
     {
         using PointerV = typename Heap::PointerV;
 
@@ -191,7 +191,7 @@ namespace divine::mem
             else if ( obj.heap() ); // Weak or Marked
             else
                 ptr_data[0] = obj.object();
-            state.update( ptr_data, sizeof( ptr_data ) );
+            state.update( reinterpret_cast< uint8_t * >( ptr_data ), sizeof( ptr_data ) );
         }
 
         return content_hash;
