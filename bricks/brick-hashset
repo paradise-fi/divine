@@ -242,13 +242,14 @@ struct Tagged
 template< typename T >
 struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
 {
-    T t;
+    T _value;
 
     static const int tag_bits = T::tag_bits;
-    void tag( uint32_t value ) { t.tag( value ); }
-    uint32_t tag() { return t.tag(); }
-    Tagged() noexcept : t() {}
-    explicit Tagged( const T &t ) : t( t ) {}
+    T &value() { return _value; }
+    void tag( uint32_t value ) { _value.tag( value ); }
+    uint32_t tag() { return _value.tag(); }
+    Tagged() noexcept : _value() {}
+    explicit Tagged( const T &v ) : _value( v ) {}
 };
 
 template< typename T, typename Hasher >
