@@ -195,7 +195,7 @@ struct Liveness : Job
 
         _search.reset( new NDFS( _ex, found ) ); //Builder, Next
         NDFS *search = dynamic_cast< NDFS * >( _search.get() );
-        stats = [=]() { return std::make_pair( _ex._d.states._s->used.load(), 0 ); };
+        stats = [=]() { return std::make_pair( _ex._d.total_states->load(), 0 ); };
 
         auto move = []( auto &stack, auto &trace )
         {

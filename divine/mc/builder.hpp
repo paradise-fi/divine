@@ -96,8 +96,8 @@ struct Builder
         vm::CowHeap::Pool pool;
 
         bool overwrite = false;
-        int64_t instructions = 0;
-        std::shared_ptr< std::atomic< int64_t > > total_instructions;
+        int64_t local_instructions = 0, local_states = 0;
+        std::shared_ptr< std::atomic< int64_t > > total_instructions, total_states;
 
         template< typename... Args >
         Data( BC bc, Args... solver_opts )
@@ -107,10 +107,18 @@ struct Builder
         template< typename... Args >
         Data( BC bc, const Context &ctx, HT states, Args... solver_opts )
             : bc( bc ), ctx( ctx ), states( states ), solver( solver_opts... ),
-              total_instructions( new std::atomic< int64_t >( 0 ) )
+              total_instructions( new std::atomic< int64_t >( 0 ) ),
+              total_states( new std::atomic< int64_t >( 0 ) )
         {}
 
-        ~Data() { *total_instructions += instructions; }
+        void sync()
+        {
+            *total_instructions += local_instructions;
+            *total_states += local_states;
+            local_instructions = local_states = 0;
+        }
+
+        ~Data() { sync(); }
     } _d;
 
     Context &context() { return _d.ctx; }
@@ -138,7 +146,10 @@ struct Builder
             pool().free( snap ), context().load( pool(), *r );
         }
         else
+        {
+            ++ _d.local_states;
             context().flush_ptr2i();
+        }
         return r;
     }
 
@@ -153,7 +164,7 @@ struct Builder
         auto s = context().snapshot( pool() );
         if ( vm::setup::postboot_check( context() ) )
             _d.initial.snap = *store( s );
-        _d.states.updateUsage();
+        _d.sync();
         if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
     }
@@ -168,7 +179,7 @@ struct Builder
 
         if ( context().heap().valid( hasher()._root ) )
             _d.initial.snap = *store( snap );
-        _d.states.updateUsage();
+        _d.sync();
         if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
         return _d.initial.snap;
@@ -248,7 +259,7 @@ struct Builder
             auto &tc = to_check.back();
 
             do_eval( tc );
-            _d.instructions += context().instruction_count();
+            _d.local_instructions += context().instruction_count();
 
             for ( int i = 0; i < context()._level; ++i )
                 tc.lock.push_back( context()._stack[ i ] );
@@ -306,7 +317,7 @@ struct Builder
 
                 do_eval( tc );
                 ASSERT_EQ( tc.tid, context()._tid );
-                _d.instructions += context().instruction_count();
+                _d.local_instructions += context().instruction_count();
 
                 if ( tc.feasible )
                 {

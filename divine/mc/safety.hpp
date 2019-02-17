@@ -85,13 +85,12 @@ struct Safety : Job
 
         stats = [=]()
         {
-            int64_t st = _ex._d.states._s->used;
+            int64_t st = _ex._d.total_states->load();
             int64_t mip = _ex._d.total_instructions->load();
             search->ws_each( [&]( auto &bld, auto & )
             {
-                st += bld._d.states._l.inserts;
-                mip += bld.context().instruction_count(); /* might double-count */
-                mip += bld._d.instructions;
+                st += bld._d.local_states;
+                mip += bld._d.local_instructions;
             } );
             return std::make_pair( st, mip );
         };
