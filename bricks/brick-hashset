@@ -718,11 +718,23 @@ static constexpr int size = 4;
 static constexpr int size = 32 * 1024;
 #endif
 
-template< template< typename > class HS >
+struct Big
+{
+    int v;
+    std::array< int, 16 > padding;
+    Big( int v = 0 ) : v( v ) {}
+    hash128_t hash() const { return { v, v }; }
+    bool operator==( const Big &o ) const { return v == o.v; }
+    bool operator!() const { return !v; }
+    explicit operator bool() const { return v; }
+    operator int() const { return v; }
+};
+
+template< template< typename > class HS, typename V = int >
 struct Sequential
 {
     TEST(basic) {
-        HS< int > set;
+        HS< V > set;
 
         ASSERT( !set.count( 1 ) );
         ASSERT( set.insert( 1 ).isnew() );
@@ -737,7 +749,7 @@ struct Sequential
     }
 
     TEST(stress) {
-        HS< int > set;
+        HS< V > set;
 
         for ( int i = 1; i < size; ++i ) {
             set.insert( i );
@@ -750,9 +762,9 @@ struct Sequential
 
     TEST(erase_basic)
     {
-        if constexpr ( HS< int >::Cell::can_tombstone() )
+        if constexpr ( HS< V >::Cell::can_tombstone() )
         {
-            HS< int > set;
+            HS< V > set;
 
             ASSERT( !set.count( 1 ) );
             ASSERT( set.insert( 1 ).isnew() );
@@ -766,9 +778,9 @@ struct Sequential
 
     TEST(erase_many)
     {
-        if constexpr ( HS< int >::Cell::can_tombstone() )
+        if constexpr ( HS< V >::Cell::can_tombstone() )
         {
-            HS< int > set;
+            HS< V > set;
 
             for ( int i = 1; i < size; ++i )
             {
@@ -787,7 +799,7 @@ struct Sequential
     }
 
     TEST(set) {
-        HS< int > set;
+        HS< V > set;
 
         for ( int i = 1; i < size; ++i ) {
             ASSERT( !set.count( i ) );
@@ -809,12 +821,12 @@ struct Sequential
     }
 };
 
-template< template< typename > class HS >
+template< template< typename > class HS, typename V = int >
 struct Parallel
 {
     struct Insert
     {
-        HS< int > set;
+        HS< V > set;
         int from, to;
         bool overlap;
 
@@ -838,7 +850,7 @@ struct Parallel
             ASSERT( a.set.count( i ) );
     }
 
-    static HS< int > _par( int f1, int t1, int f2, int t2 )
+    static HS< V > _par( int f1, int t1, int f2, int t2 )
     {
         shmem::Thread< Insert > a, b( a );
 
@@ -855,7 +867,7 @@ struct Parallel
         return a.set;
     }
 
-    static HS< int > _multi( std::size_t count, int from, int to )
+    static HS< V > _multi( std::size_t count, int from, int to )
     {
         shmem::ThreadSet< Insert > arr;
         arr.resize( count );
@@ -902,7 +914,7 @@ struct Parallel
 
     TEST(empty)
     {
-        HS< int > set;
+        HS< V > set;
 
         for ( int i = 1; i < size; ++i )
             ASSERT( !set.count( i ) );
@@ -929,8 +941,8 @@ struct test_hasher {
 
     template< typename X >
     auto hash( const X &t ) const -> decltype( t.hash() ) { return t.hash(); }
-    template< typename X >
-    auto equal( const X &s, const X &t ) const -> decltype( s == t ) { return s == t; }
+    template< typename X, typename Y >
+    auto equal( const X &s, const Y &t ) const -> decltype( s == t ) { return s == t; }
 
     template< typename X >
     uint64_t operator()( const X &x ) const { return hash( x ).first; }
@@ -955,6 +967,16 @@ template struct Sequential< CS >;
 template struct Sequential< FS >;
 template struct Sequential< PS >;
 template struct Parallel< PS >;
+
+template struct Sequential< CS, int64_t >;
+template struct Sequential< FS, int64_t >;
+template struct Sequential< PS, int64_t >;
+template struct Parallel< PS, int64_t >;
+
+template struct Sequential< CS, Big >;
+template struct Sequential< FS, Big >;
+template struct Sequential< PS, Big >;
+template struct Parallel< PS, Big >;
 
 }
 }
