@@ -153,7 +153,8 @@ struct LockedCell : CellBase< T, Hasher >
         {
             if ( prev == 3 ) /* already invalid */
                 return LockedCell( prev, _value );
-            prev &= ~3; // clean flags
+            if ( prev != 2 )
+                prev &= ~3; // clean flags
         }
         return LockedCell( prev, _value );
     }
@@ -174,10 +175,10 @@ struct LockedCell : CellBase< T, Hasher >
     // wait for another write; returns false if cell was invalidated
     bool wait()
     {
-        while( _hashlock & 1 )
+        while ( _hashlock & 1 )
             if ( invalid() )
                 return false;
-        return true;
+        return !tombstone();
     }
 
     bool tryStore( const T &v, hash32_t hash )
@@ -196,7 +197,7 @@ struct LockedCell : CellBase< T, Hasher >
     void store( T v, hash32_t hash ) { _hashlock = hash << 2; _value = v; }
 
     template< typename Value >
-    bool is( const Value &v, hash64_t hash, Hasher &h )
+    bool is( const Value &v, hash32_t hash, Hasher &h )
     {
         hash |= 1;
         if ( ( ( hash << 2 ) | 1 ) != ( _hashlock | 1 ) )
