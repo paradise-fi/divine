@@ -40,13 +40,13 @@ namespace hashset {
 
 using hash::hash32_t;
 using hash::hash64_t;
-using hash::hash128_t;
 
 struct DefaultHasher
 {
-    auto hash( int64_t v ) const
+    template< typename X >
+    auto hash( const X &v ) const -> decltype( hash::hash( v ) )
     {
-        return std::make_pair( v, ~v );
+        return hash::hash( v );
     }
 
     template< typename X >
@@ -128,7 +128,7 @@ struct CompactCell : CellBase< T, Hasher >
 
     T &fetch() { return _value; }
     T copy() { return _value; }
-    hash64_t hash( Hasher &h ) { return h.hash( _value ).first; }
+    hash64_t hash( Hasher &h ) { return h.hash( _value ); }
 };
 
 template< typename T, typename Hasher >
@@ -169,7 +169,7 @@ struct LockedCell : CellBase< T, Hasher >
     T &fetch() { return _value; }
     T copy() { return _value; }
 
-    hash64_t hash( Hasher &h ) { return h.hash( _value ).first; }
+    hash64_t hash( Hasher &h ) { return h.hash( _value ); }
 
     // wait for another write; returns false if cell was invalidated
     bool wait()
@@ -320,7 +320,7 @@ struct alignas( std::min( 16ul, sizeof( Tagged< T > ) ) ) AtomicCell : CellBase<
         return value.load().tag() == ( hashbits( hash ) | 3 ) && h.equal( value.load().value(), v );
     }
 
-    hash64_t hash( Hasher &h ) { return h.hash( value.load().value() ).first; }
+    hash64_t hash( Hasher &h ) { return h.hash( value.load().value() ); }
 
     // AtomicCell &operator=( const AtomicCell &cc ) = delete;
 
@@ -535,7 +535,7 @@ struct HashSet : HashSetBase< Cell >
 
     iterator insert( value_type x, bool replace = false )
     {
-        return insert( x, hasher.hash( x ).first, replace );
+        return insert( x, hasher.hash( x ), replace );
     }
 
     iterator insert( value_type x, hash64_t hash, bool replace = false, bool wasnew = false )
@@ -559,7 +559,7 @@ struct HashSet : HashSetBase< Cell >
     template< typename T >
     iterator find( const T &x )
     {
-        return find( x, hasher.hash( x ).first );
+        return find( x, hasher.hash( x ) );
     }
 
     template< typename T >
@@ -575,7 +575,7 @@ struct HashSet : HashSetBase< Cell >
     template< typename T >
     bool erase( const T &x )
     {
-        return erase( x, hasher.hash( x ).first );
+        return erase( x, hasher.hash( x ) );
     }
 
     template< typename T >
@@ -683,8 +683,7 @@ struct HashSet : HashSetBase< Cell >
         std::copy( o._table->data, o._table->data + capacity(), _table->data );
     }
 
-    hash64_t hash( const value_type &t ) { return hash128( t ).first; }
-    hash128_t hash128( const value_type &t ) { return hasher.hash( t ); }
+    hash64_t hash( const value_type &t ) { return hasher.hash( t ); }
 
     Cell &cellAt( size_t index ) { return _table->data[ index ]; }
     value_type valueAt( size_t idx ) { return cellAt( idx ).fetch(); }
@@ -723,7 +722,7 @@ struct Big
     int v;
     std::array< int, 16 > padding;
     Big( int v = 0 ) : v( v ) {}
-    hash128_t hash() const { return { v, v }; }
+    hash64_t hash() const { return hash::hash( v ); }
     bool operator==( const Big &o ) const { return v == o.v; }
     bool operator!() const { return !v; }
     explicit operator bool() const { return v; }
@@ -937,7 +936,7 @@ struct test_hasher {
     template< typename X >
     test_hasher( X& ) { }
     test_hasher() = default;
-    hash128_t hash( int t ) const { return std::make_pair( t, t ); }
+    hash64_t hash( int t ) const { return hash::hash( t ); }
 
     template< typename X >
     auto hash( const X &t ) const -> decltype( t.hash() ) { return t.hash(); }
@@ -945,7 +944,7 @@ struct test_hasher {
     auto equal( const X &s, const Y &t ) const -> decltype( s == t ) { return s == t; }
 
     template< typename X >
-    uint64_t operator()( const X &x ) const { return hash( x ).first; }
+    uint64_t operator()( const X &x ) const { return hash( x ); }
 
     bool equal( int a, int b ) const { return a == b; }
 };
@@ -953,9 +952,9 @@ struct test_hasher {
 template< typename T >
 struct ptr_hasher
 {
-    hash128_t hash( const T *x ) const { return x->hash(); }
+    hash64_t hash( const T *x ) const { return x->hash(); }
     bool equal( const T *x, const T *y ) const { return *x == *y; }
-    uint64_t operator()( const T *x ) const { return hash( x ).first; }
+    uint64_t operator()( const T *x ) const { return hash( x ); }
 };
 
 template< typename T > using CS = Compact< T, test_hasher< T > >;
