@@ -135,13 +135,13 @@ struct VmTraceFile : INode
     bool write( const char *buffer, size_t, size_t &length, Node ) override
     {
         if ( buffer[ length - 1 ] == 0 )
-            __dios::traceInternal( 0, "%s", buffer );
+            __dios_trace_internal( 0, "%s", buffer );
         else
         {
             char buf[ length + 1 ];
             std::copy( buffer, buffer + length, buf );
             buf[ length ] = 0;
-            __dios::traceInternal( 0, "%s", buf );
+            __dios_trace_internal( 0, "%s", buf );
         }
         return true;
     }
@@ -158,7 +158,7 @@ struct VmBuffTraceFile : INode
         auto nl = std::find( buf.rbegin(), buf.rend(), '\n' );
         if ( nl != buf.rend() )
         {
-            traceInternal( 0, "%.*s", int( buf.rend() - nl - 1 ), buf.begin() );
+            __dios_trace_internal( 0, "%.*s", int( buf.rend() - nl - 1 ), buf.begin() );
             buf.erase( buf.begin(), nl.base() );
         }
         get_debug().persist();
@@ -170,7 +170,7 @@ struct VmBuffTraceFile : INode
         for ( auto &b : get_debug().trace_buf )
         {
             if ( !b.second.empty() )
-                __dios::traceInternal( 0, "%.*s", b.second.size(), b.second.begin() );
+                __dios_trace_internal( 0, "%.*s", b.second.size(), b.second.begin() );
             b.second.clear();
         }
         get_debug().persist();

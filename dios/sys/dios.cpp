@@ -11,7 +11,6 @@
 
 #include <dios.h>
 #include <dios/sys/main.hpp>
-#include <dios/sys/trace.hpp>
 #include <dios/sys/config.hpp>
 
 #include <dios/vfs/manager.h>

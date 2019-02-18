@@ -80,20 +80,20 @@ __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) no
     }
 }
 
-void traceInternal( int indent, const char *fmt, ... ) noexcept
+} // namespace __dios
+
+void __dios_trace_internal( int indent, const char *fmt, ... ) noexcept
 {
-    __dios_assert( have_debug() );
+    __dios_assert( __dios::have_debug() );
     va_list ap;
     va_start( ap, fmt );
-    traceInternalV( indent, fmt, ap );
+    __dios::traceInternalV( indent, fmt, ap );
     va_end( ap );
 }
 
-} // namespace __dios
-
 __debugfn void __dios_trace_t( const char *txt ) noexcept
 {
-    __dios::traceInternal( 0, "%s", txt );
+    __dios_trace_internal( 0, "%s", txt );
 }
 
 __debugfn void __dios_trace_f( const char *fmt, ... ) noexcept
