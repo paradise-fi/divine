@@ -55,7 +55,17 @@ namespace brick::hash
         return v ^ rot64( v, 41 );
     }
 
-    /* streaming hash based on the t1ha design */
+    static inline uint64_t tail( uint64_t v, unsigned count )
+    {
+        const unsigned shift = ((8 - count) & 7) << 3;
+        return v & ( ~uint64_t(0) >> shift );
+    }
+
+    /* a fast, high-quality (according to smhasher) streaming hash function
+     * based on the t1ha design ; however, this design compromises maximum
+     * throughput for a few other design criteria: simplicity, portability,
+     * fast word-at-once (streaming) mode and reduced register pressure when
+     * interleaved with other code */
 
     struct State
     {
@@ -66,7 +76,7 @@ namespace brick::hash
          * ordering used here is what seems to work best with clang 7 ; gcc 8.2
          * doesn't seem to care much
          *
-         * unfortunately, clang still takes 40 cycles for messages < 32 bytes
+         * unfortunately, clang still takes 40 cycles for messages <= 32 bytes
          * and 2.6 bytes/cycle for longer stuff; gcc beats both at 32 cycles
          * and 3 bytes/cycle respectively (all on Xeon E5-2630v2) */
 
@@ -77,6 +87,12 @@ namespace brick::hash
             state[2] ^= mux64( x, prime_1 );
             state[0] ^= mux64( v, prime_3 );
             state[3] ^= mux64( u, prime_0 );
+        }
+
+        __always_inline void mix_if_needed()
+        {
+            if ( counter && counter % 32 == 0 )
+                mix();
         }
 
         uint64_t hash() const
@@ -90,11 +106,12 @@ namespace brick::hash
             return mix64( a_ + c_, prime_4 ) + mix64( b_ + d_, prime_5 );
         }
 
-        uint64_t tail( uint64_t v, unsigned count )
-        {
-            const unsigned shift = ((8 - count) & 7) << 3;
-            return v & ( ~uint64_t(0) >> shift );
-        }
+        /* updates: aligned access is aligned with respect to the hash state,
+         * not to the address of the hashed data ... update_aligned() may only
+         * be called after a whole number of items of the given type have been
+         * hashed; as a special case, update_aligned of variable-sized data
+         * uses 32-byte blocks and assumes 32-byte alignment; the size of the
+         * data can be arbitrary though */
 
         __always_inline void update( const uint8_t *bytes, int count )
         {
@@ -115,6 +132,13 @@ namespace brick::hash
                 update_aligned( bytes, count );
             }
         }
+
+        /* segments: when hashing multiple independent blocks of data into a
+         * single hash, it is often beneficial to realign() between the blocks
+         * (segments) so that update_aligned can be used even if the previous
+         * block(s) were not even multiples of 32 bytes ; NB. this affects the
+         * value of the hash, i.e. it is not the same as getting a hash of the
+         * blocks concatenated after each other! */
 
         void realign()
         {
@@ -162,12 +186,6 @@ namespace brick::hash
             }
         }
 
-        __always_inline void mix_if_needed()
-        {
-            if ( counter && counter % 32 == 0 )
-                mix();
-        }
-
         template< typename T >
         std::enable_if_t< std::is_integral_v< T > && sizeof( T ) <= 8 > update_aligned( T v )
         {
@@ -198,6 +216,11 @@ namespace brick::hash
             state[0] = seed;
         }
     };
+
+    /* convenience at-once variants of the above hash function ; integer
+     * variants and string hashes <= 32 bytes should take about 35-40 cycles
+     * per hash on modern, 64b superscalar processors, depending on the CPU and
+     * the compiler */
 
     static inline hash64_t hash( const uint8_t *data, size_t len, hash64_t seed = 0 )
     {
