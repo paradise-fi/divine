@@ -631,8 +631,16 @@ struct HashSet : HashSetBase< Cell >
             Cell insert = c->invalidate();
             if ( insert.empty() || insert.invalid() || insert.tombstone() )
                 continue;
-            auto [ cell, success ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ) );
-            ASSERT( success );
+
+            auto [ cell, outcome ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ) );
+            ASSERT_EQ( outcome, Empty );
+
+            if ( !cell )
+            {
+                std::stringstream err;
+                err << "hash table " << _table << " failed to rehash at size " << _table->size;
+                throw std::runtime_error( err.str() );
+            }
         }
 
         TRACE( _table, "rehash", id, "done" );
