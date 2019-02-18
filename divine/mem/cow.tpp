@@ -52,10 +52,13 @@ namespace divine::mem
     template< typename Next >
     hash64_t Cow< Next >::ObjHasher::hash( Internal i )
     {
-        using brick::hash::hash;
-        /* TODO also hash some shadow data into low for better precision? */
-        auto low = hash( objects().template machinePointer< uint8_t >( i ), objects().size( i ) );
-        return ( content_only( i ) & 0xFFFFFFF000000000 ) | ( low & 0x0000000FFFFFFFF );
+        brick::hash::State state;
+        auto size = objects().size( i );
+        state.update_aligned( objects().template machinePointer< uint8_t >( i ), size );
+        state.realign();
+        state.update_aligned( heap().meta().template machinePointer< uint8_t >( i ),
+                              heap().meta_size( size ) );
+        return ( content_only( i ) & 0xFFFFFFF000000000 ) | ( state.hash() & 0x0000000FFFFFFFF );
     }
 
     template< typename Next >

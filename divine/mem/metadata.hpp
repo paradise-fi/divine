@@ -227,11 +227,13 @@ struct Metadata : Next
 
     mutable MetaPool _meta;
     Metadata() : _meta( Next::_objects ) {}
+    auto &meta() { return _meta; }
+    void materialise( Internal i, int size ) { _meta.materialise( i, meta_size( size ) ); }
 
-    void materialise( Internal i, int size )
+    int meta_size( int size )
     {
         constexpr unsigned divisor = 32 / BPW;
-        _meta.materialise( i, ( size / divisor ) + ( size % divisor ? 1 : 0 ) );
+        return ( size / divisor ) + ( size % divisor ? 1 : 0 );
     }
 
     template< typename OtherSH >
