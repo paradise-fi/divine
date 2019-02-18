@@ -20,9 +20,9 @@
 #pragma once
 #include <unistd.h>
 #include <fcntl.h>
-
-#include "utils.h"
-#include "storage.h"
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 namespace __dios::fs
 {
@@ -155,44 +155,15 @@ constexpr std::enable_if_t< std::is_base_of_v< Flags, F >, bool > operator != ( 
     return a._value != b._value;
 }
 
-enum class FileTrace {
-    NOTRACE,     /* ignore write in file */
-    UNBUFFERED,  /* trace whenever possible */
-    TRACE        /* trace on newline */
-};
-
-enum class Seek {
-    Undefined,
-    Set,
-    Current,
-    End
-};
-
-enum class SocketType {
-    Stream,
-    Datagram,
-};
-
 const int CURRENT_DIRECTORY = -100;
 const int PATH_LIMIT = 1023;
 const int FILE_NAME_LIMIT = 255;
 const int FILE_DESCRIPTOR_LIMIT = 1024;
 const int PIPE_SIZE_LIMIT = 1024;
 
-namespace flags {
-
-enum class Message {
-    NoFlags = 0,
-    DontWait = 1,
-    Peek = 2,
-    WaitAll = 4,
-};
-
-
-} // namespace flags
-
-using storage::operator|;
-template< typename T >
-using LegacyFlags = storage::StrongEnumFlags< T >;
+static inline void error( int e )
+{
+    *__dios_errno() = e;
+}
 
 }
