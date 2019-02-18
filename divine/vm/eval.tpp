@@ -359,25 +359,55 @@ void Eval< Ctx >::switchBB( CodePointer target )
     }
     ASSERT_LEQ( 0, idx );
 
-    each_phi( target, [&]( auto &i )
-                {
-                    size += brick::bitlevel::align( i.result().size(), 4 );
-                    ++ count;
-                } );
-    auto tmp = makeobj( size ), tgt = tmp;
-    each_phi( target, [&]( auto &i )
-                {
-                    heap().copy( s2ptr( i.operand( idx ) ), tgt.cooked(), i.result().size() );
-                    heap().skip( tgt, brick::bitlevel::align( i.result().size(), 4 ) );
-                } );
-    tgt = tmp;
-    each_phi( target, [&]( auto &i )
-                {
-                    slot_copy( tgt.cooked(), i.result(), i.result().size() );
-                    heap().skip( tgt, brick::bitlevel::align( i.result().size(), 4 ) );
-                } );
+    auto &f = program().functions[ target.function() ];
+    std::unordered_set< int > read_offsets;
+    bool onephase = true;
+    PointerV stash_obj, stash_ptr;
 
-    freeobj( tmp.cooked() );
+    auto count_phis = [&]( auto &i )
+    {
+        size += brick::bitlevel::align( i.result().size(), 4 );
+        read_offsets.insert( i.operand( idx ).offset );
+        ++ count;
+    };
+
+    auto check_overlap = [&]( auto &i )
+    {
+        if ( read_offsets.count( i.result().offset ) )
+            onephase = false;
+    };
+
+    auto stash = [&]( auto &i )
+    {
+        heap().copy( s2ptr( i.operand( idx ) ), stash_ptr.cooked(), i.result().size() );
+        heap().skip( stash_ptr, brick::bitlevel::align( i.result().size(), 4 ) );
+    };
+
+    auto unstash = [&]( auto &i )
+    {
+        slot_copy( stash_ptr.cooked(), i.result(), i.result().size() );
+        heap().skip( stash_ptr, brick::bitlevel::align( i.result().size(), 4 ) );
+    };
+
+    auto direct = [&]( auto &i )
+    {
+        slot_copy( s2ptr( i.operand( idx ) ), i.result(), i.result().size() );
+    };
+
+    each_phi( target, count_phis );
+    each_phi( target, check_overlap );
+
+    if ( onephase )
+        each_phi( target, direct );
+    else
+    {
+        stash_obj = makeobj( size ), stash_ptr = stash_obj;
+        each_phi( target, stash );
+        stash_ptr = stash_obj;
+        each_phi( target, unstash );
+        freeobj( stash_obj.cooked() );
+    }
+
     target.instruction( target.instruction() + count - 1 );
     context().set( _VM_CR_PC, target );
 }
