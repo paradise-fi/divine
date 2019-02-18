@@ -309,7 +309,7 @@ namespace divine::mc::machine
             HT states;
             bool overwrite = false;
 
-            Ext() : Ext( HT( Hasher(), 1024 ) ) {}
+            Ext() : Ext( HT( Hasher() ) ) {}
             Ext( HT states ) : states( states ) {}
         } _ext;
 
