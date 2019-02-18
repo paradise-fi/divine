@@ -424,7 +424,10 @@ struct HashSet : HashSetBase< Cell >
 
         static void *operator new( size_t objsize, size_t cellcount )
         {
-            return malloc( objsize + cellcount * sizeof( Cell ) );
+            auto rv = malloc( objsize + cellcount * sizeof( Cell ) );
+            if ( !rv )
+                throw std::bad_alloc();
+            return rv;
         }
 
         Table( size_t size, ssize_t rehash )
