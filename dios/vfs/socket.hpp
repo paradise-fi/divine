@@ -30,7 +30,7 @@
 
 #include <dios/vfs/inode.hpp>
 #include <dios/vfs/fd.hpp>
-#include "storage.h"
+#include <dios/vfs/stream.hpp>
 
 #define FS_CHOICE_GOAL          0
 
@@ -305,7 +305,7 @@ struct SocketStream : Socket
 
 private:
     Node _peer;
-    storage::Stream _stream;
+    Stream _stream;
     bool _passive;
     Queue< Node > _backlog;
     int _limit;

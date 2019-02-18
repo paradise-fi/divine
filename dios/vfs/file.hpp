@@ -29,7 +29,7 @@
 
 #include <dios/vfs/inode.hpp>
 #include <dios/vfs/fd.hpp>
-#include "storage.h"
+#include <dios/vfs/stream.hpp>
 
 namespace __dios::fs
 {
@@ -323,7 +323,7 @@ struct Pipe : INode
     }
 
 private:
-    storage::Stream _stream;
+    Stream _stream;
     bool _reader;
     bool _writer;
 };
