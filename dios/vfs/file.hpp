@@ -21,17 +21,15 @@
 #include <algorithm>
 #include <signal.h>
 #include <dios.h>
-#include <dios/sys/memory.hpp>
-#include <dios/sys/trace.hpp>
 #include <sys/fault.h>
 #include <sys/trace.h>
 
-#include "utils.h"
+#include <dios/sys/memory.hpp>
+#include <dios/sys/kernel.hpp> /* get_debug */
+
 #include <dios/vfs/inode.hpp>
 #include <dios/vfs/fd.hpp>
 #include "storage.h"
-
-#define FS_CHOICE_GOAL          0
 
 namespace __dios::fs
 {
@@ -206,7 +204,7 @@ struct StandardInput : INode
     {
         // simulate user drinking coffee
         if ( _size )
-            return FS_CHOICE( 2 ) == FS_CHOICE_GOAL;
+            return __vm_choose( 2 ) == 0;
         return false;
     }
 

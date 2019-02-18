@@ -18,7 +18,6 @@
 #include <sys/vmutil.h>
 #include <string_view>
 
-#include "utils.h"
 #include "inode.hpp"
 #include "flags.hpp"
 #include "file.hpp"

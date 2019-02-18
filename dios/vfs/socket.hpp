@@ -23,13 +23,11 @@
 #include <signal.h>
 #include <dios.h>
 #include <dios/sys/memory.hpp>
-#include <dios/sys/trace.hpp>
 #include <dios/sys/stdlibwrap.hpp> // Queue
 #include <rst/common.h>
 #include <sys/fault.h>
 #include <sys/trace.h>
 
-#include "utils.h"
 #include <dios/vfs/inode.hpp>
 #include <dios/vfs/fd.hpp>
 #include "storage.h"

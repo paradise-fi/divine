@@ -23,10 +23,11 @@
 #include <cerrno>
 #include <dirent.h>
 #include <string_view>
+#include <util/array.hpp>
+#include <dios.h> /* __dios_assert */
 
 #include <dios/vfs/inode.hpp>
 #include <dios/vfs/flags.hpp>
-#include <dios/vfs/utils.h>
 
 namespace __dios::fs
 {

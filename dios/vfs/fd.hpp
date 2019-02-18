@@ -21,7 +21,6 @@
 #include <memory>
 #include <dirent.h>
 
-#include "utils.h"
 #include <dios/vfs/flags.hpp>
 #include <dios/vfs/inode.hpp>
 
