@@ -157,6 +157,7 @@ struct ShadowBase : Next
 
     void make( Internal, int ) {}
     void free( Internal ) const {}
+    void notify_snapshot() const {}
 };
 
 }

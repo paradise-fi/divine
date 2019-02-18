@@ -31,61 +31,72 @@ struct UserMeta : Next
     using typename Next::Internal;
     using typename Next::Loc;
     using Value = typename Next::UIntV;
+    static constexpr const uint8_t NLayers = 4;
 
-    struct Map : ExceptionMap< uint32_t, typename Loc::IntAddr >
+    enum MetaType { Pointers, Scalars, Unknown };
+    MetaType _type[ NLayers ] = { Unknown };
+
+    using Map = std::map< uint32_t, uint32_t >;
+    using Maps = Snapshotter< Map, typename Next::Pool, NLayers >;
+    mutable Maps _maps;
+
+    UserMeta() : _maps( Next::_objects ) {}
+
+    void materialise( Internal p, int size )
     {
-        Map() = default;
-        Map( Map && ) = default;
-        enum { Pointers, Scalars, Unknown } _type = Unknown;
-    };
+        _maps.materialise( p );
+        Next::materialise( p, size );
+    }
 
-    using Maps = std::array< Map, 4 >; /* TODO make this a vector? */
-    std::shared_ptr< Maps > _maps;
-
-    UserMeta() : _maps( new Maps ) {}
+    void notify_snapshot() const
+    {
+        _maps.snapshot();
+        Next::notify_snapshot();
+    }
 
     void free( Internal p ) const
     {
-        for ( auto &e : *_maps )
-            e.free( p );
+        _maps.free( p );
         Next::free( p );
     }
 
-    Value peek( Loc l, int key )
+    Value peek( Loc l, int layer )
     {
-        auto &map = _maps->at( key );
-        if ( map.has( l.object, l.offset ) )
-            return Value( map.at( l.object, l.offset ), -1, map._type == Map::Pointers );
-        else
-            return Value( 0, 0, map._type == Map::Pointers );
+        auto &map = _maps;
+
+        if ( auto *p = map.at( l.object, l.offset, layer ) )
+           return Value( p->second , -1, _type[ layer ] == MetaType::Pointers );
+
+        return Value( 0, 0, _type[ layer ] == MetaType::Pointers );
     }
 
-    void poke( Loc l, int key, Value v )
+    void poke( Loc l, int layer, Value v )
     {
-        auto &map = _maps->at( key );
-        if ( map._type == Map::Unknown )
-            map._type = v.pointer() ? Map::Pointers : Map::Scalars;
+        auto &map = _maps;
+        if ( _type[ layer ] == MetaType::Unknown )
+            _type[ layer ] = v.pointer() ? MetaType::Pointers : MetaType::Scalars;
 
-        ASSERT_EQ( map._type == Map::Pointers, v.pointer() );
-        map.set( l.object, l.offset, v.cooked() );
+        ASSERT_EQ( _type[ layer ] == MetaType::Pointers, v.pointer() );
+        map.set( l.object, l.offset, layer, v.cooked() );
     }
 
     template< typename FromH, typename ToH >
     static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz, bool internal )
     {
         if ( internal )
-            for ( unsigned i = 0; i < to_h._maps->size(); ++ i )
-                to_h._maps->at( i ).copy( from_h._maps->at( i ), from, to, sz );
+            to_h._maps.copy( from_h._maps, from.object, from.offset, to.object, to.offset, sz );
         Next::copy( from_h, from, to_h, to, sz, internal );
     }
 
     template< typename OtherSH >
     int compare( OtherSH &o, typename OtherSH::Internal a, Internal b, int sz, bool skip_objids )
     {
-        ASSERT_EQ( o._maps, _maps ); /* no support for inter-heap comparison, sorry */
-        for ( auto &map : *_maps )
-            if ( int diff = map.compare( a, b, sz, map._type == Map::Pointers && skip_objids ) )
+        for ( uint8_t layer = 0; layer < NLayers; ++layer )
+        {
+            bool no_objids = _type[ layer ] == MetaType::Pointers && skip_objids;
+            if ( int diff = _maps.compare( a, b, layer, no_objids ) )
                 return diff;
+        }
         return Next::compare( o, a, b, sz, skip_objids );
     }
 };

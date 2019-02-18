@@ -166,6 +166,8 @@ namespace divine::mem
         _l.snap_begin = newsnap;
         _l.snap_size = count;
 
+        Next::notify_snapshot();
+
         return s;
     }
 
