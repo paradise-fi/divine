@@ -146,55 +146,46 @@ namespace divine::mem
     }
 
     template< typename Heap >
-    int hash( Heap &heap, typename Heap::Pointer root,
-              std::unordered_map< int, int > &visited,
-              brick::hash::State &state, int depth )
+    void hash( Heap &heap, uint32_t root, std::unordered_map< int, int > &visited,
+               brick::hash::State &state, int depth )
     {
-        using PointerV = typename Heap::PointerV;
+        if ( auto seen = visited.find( root ); seen != visited.end() )
+        {
+            state.update_aligned( seen->second );
+            return;
+        }
 
         auto i = heap.ptr2i( root );
+        if ( !heap.objects().valid( i ) )
+            return;
+
         int size = heap.size( i );
         uint32_t content_hash = i.tag();
 
-        visited.emplace( root.object(), content_hash );
+        visited.emplace( root, content_hash );
+        state.update_aligned( content_hash );
 
-        if ( depth > 8 )
-            return content_hash;
+        if ( size > 16 * 1024 || depth > 8 )
+            return; /* skip the huge constants blobs */
 
-        if ( size > 16 * 1024 )
-            return content_hash; /* skip following pointers in objects over 16k, not worth it */
+        auto data = reinterpret_cast< uint32_t * >( heap.unsafe_ptr2mem( i ) );
+        auto meta = heap.compressed( typename Heap::Loc( i, 0, 0 ), ( size + 3 ) / 4 );
+        auto c = meta.begin();
 
-        int ptr_data[2];
-        auto pointers = heap.pointers( heap.loc( root, i ), size );
-        for ( auto pos : pointers )
+        for ( auto count = size; count >= 4 ; count -= 4, data++, c++ )
         {
-            PointerV ptr;
-            ASSERT_LT( pos.offset(), heap.size( root ) );
-            root.offset( pos.offset() );
-            heap.unsafe_read( root, ptr, i );
-            auto obj = ptr.cooked();
-            ptr_data[0] = 0;
-            ptr_data[1] = obj.offset();
-            if ( obj.type() == Heap::Pointer::Type::Heap || obj.type() == Heap::Pointer::Type::Alloca )
-            {
-                auto vis = visited.find( obj.object() );
-                if ( vis == visited.end() )
-                {
-                    obj.offset( 0 );
-                    if ( heap.valid( obj ) )
-                        ptr_data[0] = hash( heap, obj, visited, state, depth + 1 );
-                    /* else freed object, ignore */
-                }
-                else
-                    ptr_data[0] = vis->second;
-            }
-            else if ( obj.heap() ); // Weak or Marked
-            else
-                ptr_data[0] = obj.object();
-            state.update( reinterpret_cast< uint8_t * >( ptr_data ), sizeof( ptr_data ) );
-        }
+            if ( !Heap::is_pointer( *c ) )
+                continue;
 
-        return content_hash;
+            vm::GenericPointer ptr( *data, 0 );
+
+            if ( ptr.type() == Heap::Pointer::Type::Heap ||
+                 ptr.type() == Heap::Pointer::Type::Alloca )
+                hash( heap, ptr.object(), visited, state, depth + 1 );
+
+            if ( !ptr.heap() )
+                state.update_aligned( ptr.object() );
+        }
     }
 
     template< typename FromH, typename ToH >
