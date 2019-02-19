@@ -165,7 +165,7 @@ namespace divine::mem
         visited.emplace( root, content_hash );
         state.update_aligned( content_hash );
 
-        if ( size > 16 * 1024 || depth > 8 )
+        if ( size > 64 * 1024 )
             return; /* skip the huge constants blobs */
 
         auto data = reinterpret_cast< uint32_t * >( heap.unsafe_ptr2mem( i ) );
