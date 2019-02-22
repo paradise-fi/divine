@@ -501,7 +501,33 @@ namespace brick::hashset
         }
     };
 
-    template< typename Cell, bool Concurrent, int Initial = 256, int MaxChain = 24 >
+    template< size_t I, size_t... Next >
+    struct Grow
+    {
+        static constexpr const size_t Initial = I;
+
+        template< size_t >
+        static size_t next( size_t s ) { return 2 * s; }
+
+        template< size_t X, size_t Y, size_t... S >
+        static size_t next( size_t s )
+        {
+            if ( s == X )
+                return Y;
+            else
+                return next< Y, S... >( s );
+        }
+
+        static size_t next_size( size_t s )
+        {
+            return next< I, Next... >( s );
+        }
+    };
+
+    using Quick = Grow< 0x100, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000 >;
+    using Slow  = Grow< 0x10 >;
+
+    template< typename Cell, bool Concurrent, typename Grow = Quick, int MaxChain = 24 >
     struct HashSet : HashSetBase< Cell >
     {
         using Base = HashSetBase< Cell >;
@@ -510,23 +536,10 @@ namespace brick::hashset
         using typename Base::Hasher;
         using typename Base::value_type;
         using typename Base::iterator;
-        using Table = hashset::Table< Cell, MaxChain, Initial >;
+        using Table = hashset::Table< Cell, MaxChain, Grow::Initial >;
 
         using Base::hasher;
         std::shared_ptr< Table > _table;
-
-        static size_t next_size( size_t s )
-        {
-#ifndef __divine__
-            if ( s < 512 * 1024 )
-                return s * 16;
-            if ( s < 16 * 1024 * 1024 )
-                return s * 8;
-            if ( s < 32 * 1024 * 1024 )
-                return s * 4;
-#endif
-            return s * 2;
-        }
 
         size_t capacity() { check_outdated(); return _table->size(); }
 
@@ -669,10 +682,10 @@ namespace brick::hashset
 
         void grow()
         {
-            auto next = make_table( next_size( _table->size() ), -_table->segment_count() );
+            auto next = make_table( Grow::next_size( _table->size() ), -_table->segment_count() );
             decltype( next ) old;
 
-            TRACE( _table, "grow from", _table->size(), "to", next_size( _table->size() ) );
+            TRACE( _table, "grow from", _table->size(), "to", Grow::next_size( _table->size() ) );
             if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
             {
                 next.reset();
@@ -693,7 +706,7 @@ namespace brick::hashset
         explicit HashSet( Hasher h = Hasher() )
             : Base( h )
         {
-            _table = make_table( Initial, 0 );
+            _table = make_table( Grow::Initial, 0 );
             _table->to_rehash = _table->segment_count();
         }
 
