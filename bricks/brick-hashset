@@ -401,7 +401,7 @@ struct HashSetBase
     HashSetBase( const Hasher &h ) : hasher( h ) {}
 };
 
-template< typename Cell, bool Concurrent >
+template< typename Cell, bool Concurrent, int Initial = 256, int MaxChain = 24 >
 struct HashSet : HashSetBase< Cell >
 {
     using Base = HashSetBase< Cell >;
@@ -436,9 +436,7 @@ struct HashSet : HashSetBase< Cell >
             std::uninitialized_default_construct( data, data + size );
         }
 
-        size_t max_chain() { return std::min( size.load(), 512ul ); }
-
-        size_t segment_size() { return std::min( 1024ul, size.load() ); }
+        size_t segment_size() { return Initial; }
         size_t segment_count() { return size.load() / segment_size(); }
         Cell *segment_end( int id ) { return segment_begin( id ) + segment_size(); }
         Cell *segment_begin( int id )
@@ -454,8 +452,9 @@ struct HashSet : HashSetBase< Cell >
             ASSERT_EQ( mask | size.load(), mask + size.load() );
 
             Cell *tomb = nullptr;
+            unsigned max = MaxChain;
 
-            for ( size_t i = 0; i < max_chain(); ++i )
+            for ( unsigned i = 0; i < max; ++i )
             {
                 Cell &cell = data[ Base::index( hash, i, mask ) ];
 
@@ -489,7 +488,7 @@ struct HashSet : HashSetBase< Cell >
         Lookup find( Hasher &hasher, const T &x, hash64_t hash )
         {
             const size_t mask = size.load() - 1;
-            for ( size_t i = 0; i < max_chain(); ++i )
+            for ( size_t i = 0; i < MaxChain; ++i )
             {
                 Cell &cell = data[ Base::index( hash, i, mask ) ];
                 if ( cell.invalid() )
@@ -679,11 +678,7 @@ struct HashSet : HashSetBase< Cell >
     explicit HashSet( Hasher h = Hasher() )
         : Base( h )
     {
-        size_t initial = 256;
-#ifdef __divine__
-        initial = 4;
-#endif
-        _table = make_table( initial, 0 );
+        _table = make_table( Initial, 0 );
         _table->to_rehash = _table->segment_count();
     }
 
