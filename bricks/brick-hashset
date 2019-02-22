@@ -35,393 +35,374 @@
  * table. See also ...
  */
 
-namespace brick {
-namespace hashset {
-
-using hash::hash32_t;
-using hash::hash64_t;
-
-struct DefaultHasher
+namespace brick::hashset
 {
-    template< typename X >
-    auto hash( const X &v ) const -> decltype( hash::hash( v ) )
+
+    using hash::hash32_t;
+    using hash::hash64_t;
+
+    struct DefaultHasher
     {
-        return hash::hash( v );
-    }
-
-    template< typename X >
-    auto hash( const X &t ) const -> decltype( t.hash() )
-    {
-        return t.hash();
-    }
-
-    template< typename X >
-    auto equal( const X &s, const X &t ) const -> decltype( s == t )
-    {
-        return s == t;
-    }
-};
-
-static inline hash64_t highbits( hash64_t orig, int bits )
-{
-    // use a different part of the hash than what we use for indexing
-    return orig >> ( sizeof( hash64_t ) * 8 - bits );
-}
-
-/*
- * Tables are represented as vectors of cells.
- */
-
-template< typename T, typename _Hasher >
-struct CellBase
-{
-    using value_type = T;
-    using Hasher = _Hasher;
-    static constexpr bool can_tombstone() { return false; }
-    bool tombstone() { return false; }
-};
-
-template< typename T, typename Hasher >
-struct FastCell : CellBase< T, Hasher >
-{
-    T _value;
-    hash64_t _hash;
-
-    template< typename Value >
-    bool is( const Value &v, hash64_t hash, Hasher &h )
-    {
-        return _hash == hash && h.equal( _value, v );
-    }
-
-    bool empty() { return !_hash; }
-    void store( T bn, hash64_t hash )
-    {
-        _hash = hash;
-        _value = bn;
-    }
-
-    bool tryStore( T v, hash64_t h ) { store( v, h ); return true; }
-    bool invalid() { return false; }
-    FastCell invalidate() { return *this; }
-
-    T &fetch() { return _value; }
-    T copy() { return _value; }
-    hash64_t hash( Hasher & ) { return _hash; }
-};
-
-template< typename T, typename Hasher >
-struct CompactCell : CellBase< T, Hasher >
-{
-    T _value;
-
-    template< typename Value >
-    bool is( const Value &v, hash64_t, Hasher &h )
-    {
-        return h.equal( _value, v );
-    }
-
-    bool empty() { return !_value; } /* meh */
-    void store( T bn, hash64_t ) { _value = bn; }
-    bool tryStore( T v, hash64_t h ) { store( v, h ); return true; }
-    bool invalid() { return false; }
-    CompactCell invalidate() { return *this; }
-
-    T &fetch() { return _value; }
-    T copy() { return _value; }
-    hash64_t hash( Hasher &h ) { return h.hash( _value ); }
-};
-
-template< typename T, typename Hasher >
-struct LockedCell : CellBase< T, Hasher >
-{
-    /* 2 least-significant bits are special */
-    std::atomic< hash32_t > _hashlock;
-    T _value;
-
-    bool empty() { return _hashlock == 0; }
-    bool invalid() { return _hashlock == 3; }
-    bool tombstone() { return _hashlock == 2; }
-
-    static constexpr bool can_tombstone() { return true; }
-
-    /* returns old cell value */
-    LockedCell invalidate()
-    {
-        // wait for write to end
-        hash32_t prev = 0;
-        while ( !_hashlock.compare_exchange_weak( prev, 3 ) )
+        template< typename X >
+        auto hash( const X &v ) const -> decltype( hash::hash( v ) )
         {
-            if ( prev == 3 ) /* already invalid */
-                return LockedCell( prev, _value );
-            if ( prev != 2 )
-                prev &= ~3; // clean flags
+            return hash::hash( v );
         }
-        return LockedCell( prev, _value );
+
+        template< typename X >
+        auto hash( const X &t ) const -> decltype( t.hash() )
+        {
+            return t.hash();
+        }
+
+        template< typename X >
+        auto equal( const X &s, const X &t ) const -> decltype( s == t )
+        {
+            return s == t;
+        }
+    };
+
+    static inline hash64_t highbits( hash64_t orig, int bits )
+    {
+        // use a different part of the hash than what we use for indexing
+        return orig >> ( sizeof( hash64_t ) * 8 - bits );
     }
 
-    bool bury()
+    /*
+     * Tables are represented as vectors of cells.
+     */
+
+    template< typename T, typename _Hasher >
+    struct CellBase
     {
-        hash32_t hl = _hashlock.load();
-        if ( invalid() )
-            return false;
-        return _hashlock.compare_exchange_strong( hl, 2 );
-    }
+        using value_type = T;
+        using Hasher = _Hasher;
+        static constexpr bool can_tombstone() { return false; }
+        bool tombstone() { return false; }
+    };
 
-    T &fetch() { return _value; }
-    T copy() { return _value; }
-
-    hash64_t hash( Hasher &h ) { return h.hash( _value ); }
-
-    // wait for another write; returns false if cell was invalidated
-    bool wait()
+    template< typename T, typename Hasher >
+    struct FastCell : CellBase< T, Hasher >
     {
-        while ( _hashlock & 1 )
+        T _value;
+        hash64_t _hash;
+
+        template< typename Value >
+        bool is( const Value &v, hash64_t hash, Hasher &h )
+        {
+            return _hash == hash && h.equal( _value, v );
+        }
+
+        bool empty() { return !_hash; }
+        void store( T bn, hash64_t hash )
+        {
+            _hash = hash;
+            _value = bn;
+        }
+
+        bool tryStore( T v, hash64_t h ) { store( v, h ); return true; }
+        bool invalid() { return false; }
+        FastCell invalidate() { return *this; }
+
+        T &fetch() { return _value; }
+        T copy() { return _value; }
+        hash64_t hash( Hasher & ) { return _hash; }
+    };
+
+    template< typename T, typename Hasher >
+    struct CompactCell : CellBase< T, Hasher >
+    {
+        T _value;
+
+        template< typename Value >
+        bool is( const Value &v, hash64_t, Hasher &h )
+        {
+            return h.equal( _value, v );
+        }
+
+        bool empty() { return !_value; } /* meh */
+        void store( T bn, hash64_t ) { _value = bn; }
+        bool tryStore( T v, hash64_t h ) { store( v, h ); return true; }
+        bool invalid() { return false; }
+        CompactCell invalidate() { return *this; }
+
+        T &fetch() { return _value; }
+        T copy() { return _value; }
+        hash64_t hash( Hasher &h ) { return h.hash( _value ); }
+    };
+
+    template< typename T, typename Hasher >
+    struct LockedCell : CellBase< T, Hasher >
+    {
+        /* 2 least-significant bits are special */
+        std::atomic< hash32_t > _hashlock;
+        T _value;
+
+        bool empty() { return _hashlock == 0; }
+        bool invalid() { return _hashlock == 3; }
+        bool tombstone() { return _hashlock == 2; }
+
+        static constexpr bool can_tombstone() { return true; }
+
+        /* returns old cell value */
+        LockedCell invalidate()
+        {
+            // wait for write to end
+            hash32_t prev = 0;
+            while ( !_hashlock.compare_exchange_weak( prev, 3 ) )
+            {
+                if ( prev == 3 ) /* already invalid */
+                    return LockedCell( prev, _value );
+                if ( prev != 2 )
+                    prev &= ~3; // clean flags
+            }
+            return LockedCell( prev, _value );
+        }
+
+        bool bury()
+        {
+            hash32_t hl = _hashlock.load();
             if ( invalid() )
                 return false;
-        return !tombstone();
-    }
-
-    bool tryStore( const T &v, hash32_t hash )
-    {
-        hash |= 1;
-        hash32_t chl = 0;
-        if ( _hashlock.compare_exchange_strong( chl, (hash << 2) | 1 ) )
-        {
-            _value = v;
-            _hashlock.exchange( hash << 2 ); /* unlock */
-            return true;
+            return _hashlock.compare_exchange_strong( hl, 2 );
         }
-        return false;
-    }
 
-    void store( T v, hash32_t hash ) { _hashlock = hash << 2; _value = v; }
+        T &fetch() { return _value; }
+        T copy() { return _value; }
 
-    template< typename Value >
-    bool is( const Value &v, hash32_t hash, Hasher &h )
-    {
-        hash |= 1;
-        if ( ( ( hash << 2 ) | 1 ) != ( _hashlock | 1 ) )
-            return false;
-        if ( !wait() )
-            return false;
-        return h.equal( _value, v );
-    }
+        hash64_t hash( Hasher &h ) { return h.hash( _value ); }
 
-    LockedCell() : _hashlock( 0 ), _value() {}
-
-private:
-    LockedCell( hash32_t h, const T &val ) : _hashlock( h ), _value( val ) {}
-};
-
-template< typename T, typename = void >
-struct Tagged
-{
-    struct Align { T a; uint16_t b; };
-    using Tag = bitlevel::bitvec< 8 * ( sizeof( Align ) - sizeof( T ) ) >;
-    struct Check { T a; Tag b; };
-    static_assert( sizeof( Align ) == sizeof( Check ) );
-    static_assert( sizeof( Check ) == sizeof( T ) + sizeof( Tag ) );
-
-    T _value;
-    Tag _tag;
-
-    static const int tag_bits = sizeof( Tag ) * 8;
-
-    T &value() { return _value; }
-    void tag( Tag v ) { _tag = v; }
-    Tag tag() { return _tag; }
-    Tagged() noexcept : _value(), _tag( 0 ) {}
-    explicit Tagged( const T &v ) : _value( v ), _tag( 0 ) {}
-
-    friend std::ostream &operator<<( std::ostream &o, const Tagged< T > &v )
-    {
-        return o << "[" << v._value << " " << uint64_t( v._tag ) << "]";
-    }
-};
-
-template< typename T >
-struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
-{
-    T _value;
-
-    static const int tag_bits = T::tag_bits;
-    T &value() { return _value; }
-    void tag( uint32_t value ) { _value.tag( value ); }
-    uint32_t tag() { return _value.tag(); }
-    Tagged() noexcept : _value() {}
-    explicit Tagged( const T &v ) : _value( v ) {}
-};
-
-template< typename T, typename Hasher >
-struct alignas( std::min( 16ul, sizeof( Tagged< T > ) ) ) AtomicCell : CellBase< T, Hasher >
-{
-    std::atomic< Tagged< T > > value;
-
-    static_assert( sizeof( std::atomic< Tagged< T > > ) == sizeof( Tagged< T > ),
-                   "std::atomic< Tagged< T > > must be lock-free" );
-    static_assert( Tagged< T >::tag_bits >= 2, "T has at least a two-bit tagspace" );
-
-    static constexpr bool can_tombstone() { return true; }
-
-    uint32_t status() { return value.load().tag() & 3u; }
-
-    bool empty() { return status() == 0; }
-    bool invalid() { return status() == 1; }
-    bool tombstone() { return status() == 2; }
-
-    /* returns old cell value */
-    AtomicCell invalidate()
-    {
-        Tagged< T > expect = value, update = value;
-        update.tag( 1 );
-        while ( !value.compare_exchange_weak( expect, update ) )
+        // wait for another write; returns false if cell was invalidated
+        bool wait()
         {
-            update = expect;
+            while ( _hashlock & 1 )
+                if ( invalid() )
+                    return false;
+            return !tombstone();
+        }
+
+        bool tryStore( const T &v, hash32_t hash )
+        {
+            hash |= 1;
+            hash32_t chl = 0;
+            if ( _hashlock.compare_exchange_strong( chl, (hash << 2) | 1 ) )
+            {
+                _value = v;
+                _hashlock.exchange( hash << 2 ); /* unlock */
+                return true;
+            }
+            return false;
+        }
+
+        void store( T v, hash32_t hash ) { _hashlock = hash << 2; _value = v; }
+
+        template< typename Value >
+        bool is( const Value &v, hash32_t hash, Hasher &h )
+        {
+            hash |= 1;
+            if ( ( ( hash << 2 ) | 1 ) != ( _hashlock | 1 ) )
+                return false;
+            if ( !wait() )
+                return false;
+            return h.equal( _value, v );
+        }
+
+        LockedCell() : _hashlock( 0 ), _value() {}
+
+    private:
+        LockedCell( hash32_t h, const T &val ) : _hashlock( h ), _value( val ) {}
+    };
+
+    template< typename T, typename = void >
+    struct Tagged
+    {
+        struct Align { T a; uint16_t b; };
+        using Tag = bitlevel::bitvec< 8 * ( sizeof( Align ) - sizeof( T ) ) >;
+        struct Check { T a; Tag b; };
+        static_assert( sizeof( Align ) == sizeof( Check ) );
+        static_assert( sizeof( Check ) == sizeof( T ) + sizeof( Tag ) );
+
+        T _value;
+        Tag _tag;
+
+        static const int tag_bits = sizeof( Tag ) * 8;
+
+        T &value() { return _value; }
+        void tag( Tag v ) { _tag = v; }
+        Tag tag() { return _tag; }
+        Tagged() noexcept : _value(), _tag( 0 ) {}
+        explicit Tagged( const T &v ) : _value( v ), _tag( 0 ) {}
+
+        friend std::ostream &operator<<( std::ostream &o, const Tagged< T > &v )
+        {
+            return o << "[" << v._value << " " << uint64_t( v._tag ) << "]";
+        }
+    };
+
+    template< typename T >
+    struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
+    {
+        T _value;
+
+        static const int tag_bits = T::tag_bits;
+        T &value() { return _value; }
+        void tag( uint32_t value ) { _value.tag( value ); }
+        uint32_t tag() { return _value.tag(); }
+        Tagged() noexcept : _value() {}
+        explicit Tagged( const T &v ) : _value( v ) {}
+    };
+
+    template< typename T, typename Hasher >
+    struct alignas( std::min( 16ul, sizeof( Tagged< T > ) ) ) AtomicCell : CellBase< T, Hasher >
+    {
+        std::atomic< Tagged< T > > value;
+
+        static_assert( sizeof( std::atomic< Tagged< T > > ) == sizeof( Tagged< T > ),
+                       "std::atomic< Tagged< T > > must be lock-free" );
+        static_assert( Tagged< T >::tag_bits >= 2, "T has at least a two-bit tagspace" );
+
+        static constexpr bool can_tombstone() { return true; }
+
+        uint32_t status() { return value.load().tag() & 3u; }
+
+        bool empty() { return status() == 0; }
+        bool invalid() { return status() == 1; }
+        bool tombstone() { return status() == 2; }
+
+        /* returns old cell value */
+        AtomicCell invalidate()
+        {
+            Tagged< T > expect = value, update = value;
             update.tag( 1 );
+            while ( !value.compare_exchange_weak( expect, update ) )
+            {
+                update = expect;
+                update.tag( 1 );
+            }
+            return AtomicCell( expect );
         }
-        return AtomicCell( expect );
-    }
 
-    bool bury()
-    {
-        Tagged< T > expect = value, update;
-        if ( invalid() )
-            return false;
-        update.tag( 2 );
-        return value.compare_exchange_strong( expect, update );
-    }
+        bool bury()
+        {
+            Tagged< T > expect = value, update;
+            if ( invalid() )
+                return false;
+            update.tag( 2 );
+            return value.compare_exchange_strong( expect, update );
+        }
 
-    static hash64_t hashbits( hash64_t in ) { return highbits( in, Tagged< T >::tag_bits - 2 ) << 2; }
+        static hash64_t hashbits( hash64_t in ) { return highbits( in, Tagged< T >::tag_bits - 2 ) << 2; }
 
-    T fetch() { return value.load().value(); }
-    T copy() { Tagged< T > v = value; v.tag( 0 ); return v.value(); }
-    bool wait() { return !invalid(); }
+        T fetch() { return value.load().value(); }
+        T copy() { Tagged< T > v = value; v.tag( 0 ); return v.value(); }
+        bool wait() { return !invalid(); }
 
-    void store( T bn, hash64_t hash )
-    {
-        Tagged< T > next( bn );
-        next.tag( hashbits( hash ) | 3 );
-        value.store( next );
-    }
+        void store( T bn, hash64_t hash )
+        {
+            Tagged< T > next( bn );
+            next.tag( hashbits( hash ) | 3 );
+            value.store( next );
+        }
 
-    bool tryStore( T b, hash64_t hash )
-    {
-        Tagged< T > zero, tomb;
-        Tagged< T > next( b );
-        next.tag( hashbits( hash ) | 3 );
-        tomb.tag( 2 );
-        auto rv = value.compare_exchange_strong( zero, next );
-        if ( !rv )
-            rv = value.compare_exchange_strong( tomb, next );
-        return rv;
-    }
+        bool tryStore( T b, hash64_t hash )
+        {
+            Tagged< T > zero, tomb;
+            Tagged< T > next( b );
+            next.tag( hashbits( hash ) | 3 );
+            tomb.tag( 2 );
+            auto rv = value.compare_exchange_strong( zero, next );
+            if ( !rv )
+                rv = value.compare_exchange_strong( tomb, next );
+            return rv;
+        }
 
-    template< typename Value >
-    bool is( const Value &v, hash64_t hash, Hasher &h )
-    {
-        return value.load().tag() == ( hashbits( hash ) | 3 ) && h.equal( value.load().value(), v );
-    }
+        template< typename Value >
+        bool is( const Value &v, hash64_t hash, Hasher &h )
+        {
+            return value.load().tag() == ( hashbits( hash ) | 3 ) && h.equal( value.load().value(), v );
+        }
 
-    hash64_t hash( Hasher &h ) { return h.hash( value.load().value() ); }
+        hash64_t hash( Hasher &h ) { return h.hash( value.load().value() ); }
 
-    // AtomicCell &operator=( const AtomicCell &cc ) = delete;
+        // AtomicCell &operator=( const AtomicCell &cc ) = delete;
 
-    AtomicCell() : value() {}
-    AtomicCell( const AtomicCell & ) : value() {}
-    explicit AtomicCell( Tagged< T > val ) : value( val ) {}
-};
-
-template< typename T >
-struct Found : types::Wrapper< T >
-{
-    bool _found;
-
-    Found( const T &t, bool found ) : types::Wrapper< T >( t ), _found( found ) {}
-    bool isnew() { return !_found; }
-    bool found() { return _found; }
-
-};
-
-template< typename S, typename F >
-types::FMap< Found, S, F > fmap( F f, Found< S > n ) {
-    return types::FMap< Found, S, F >( f( n.unwrap() ), n._found );
-}
-
-template< typename T >
-Found< T > isNew( const T &x, bool y ) {
-    return Found< T >( x, !y );
-}
-
-template< typename Cell_ >
-struct HashSetBase
-{
-    using Cell = Cell_;
-    using value_type = typename Cell::value_type;
-    using Hasher = typename Cell::Hasher;
-
-    static constexpr const size_t cluster_bytes = 32;
-    static constexpr const size_t cluster_size = std::max( 1ul, cluster_bytes / sizeof( Cell ) );
-
-    Hasher hasher;
-
-    struct proxy
-    {
-        value_type v;
-        value_type *operator->() { return &v; }
+        AtomicCell() : value() {}
+        AtomicCell( const AtomicCell & ) : value() {}
+        explicit AtomicCell( Tagged< T > val ) : value( val ) {}
     };
 
-    struct iterator
+    template< typename T >
+    struct Found : types::Wrapper< T >
     {
-        Cell *_cell;
-        value_type _value;
-        bool _new;
+        bool _found;
 
-        iterator( Cell *c = nullptr, bool n = false )
-            : _cell( c ), _value( c ? c->fetch() : value_type() ), _new( n )
-        {}
-        proxy operator->() { return proxy( _value ); }
-        value_type operator*() { return _value; }
-        value_type copy() { return _cell->copy(); }
-        void update( value_type v ) { _cell->store( v ); }
-        bool valid() { return _cell; }
-        bool isnew() { return _new; }
+        Found( const T &t, bool found ) : types::Wrapper< T >( t ), _found( found ) {}
+        bool isnew() { return !_found; }
+        bool found() { return _found; }
+
     };
 
-    iterator end() { return iterator(); }
-
-    static size_t index( hash64_t h, unsigned i, size_t mask )
-    {
-        const unsigned Q = 1, R = 1;
-        size_t j = i % cluster_size; /* index within cluster */
-        i = i / cluster_size;        /* index to the start of the cluster */
-        size_t hop = (2 * Q + 1) * i + 2 * R * i * i;
-        return ( h + j + hop * cluster_size ) & mask;
+    template< typename S, typename F >
+    types::FMap< Found, S, F > fmap( F f, Found< S > n ) {
+        return types::FMap< Found, S, F >( f( n.unwrap() ), n._found );
     }
 
-    HashSetBase( const Hasher &h ) : hasher( h ) {}
-};
+    template< typename T >
+    Found< T > isNew( const T &x, bool y ) {
+        return Found< T >( x, !y );
+    }
 
-template< typename Cell, bool Concurrent, int Initial = 256, int MaxChain = 24 >
-struct HashSet : HashSetBase< Cell >
-{
-    using Base = HashSetBase< Cell >;
-    using Self = HashSet< Cell, Concurrent >;
+    template< typename Cell_ >
+    struct HashSetBase
+    {
+        using Cell = Cell_;
+        using value_type = typename Cell::value_type;
+        using Hasher = typename Cell::Hasher;
 
-    using typename Base::Hasher;
-    using typename Base::value_type;
-    using typename Base::iterator;
-    using Base::hasher;
+        Hasher hasher;
 
-    enum LookupTag { Found, Empty, Invalid };
-    using Lookup = std::pair< Cell *, LookupTag >;
-    enum InsertMode { Rehash, Replace, Normal };
+        struct proxy
+        {
+            value_type v;
+            value_type *operator->() { return &v; }
+        };
 
+        struct iterator
+        {
+            Cell *_cell;
+            value_type _value;
+            bool _new;
+
+            iterator( Cell *c = nullptr, bool n = false )
+                : _cell( c ), _value( c ? c->fetch() : value_type() ), _new( n )
+            {}
+            proxy operator->() { return proxy( _value ); }
+            value_type operator*() { return _value; }
+            value_type copy() { return _cell->copy(); }
+            void update( value_type v ) { _cell->store( v ); }
+            bool valid() { return _cell; }
+            bool isnew() { return _new; }
+        };
+
+        iterator end() { return iterator(); }
+
+        HashSetBase( const Hasher &h ) : hasher( h ) {}
+    };
+
+    template< typename Cell, unsigned MaxChain, unsigned Segment >
     struct Table
     {
         std::shared_ptr< Table > next; /* TODO make std::atomic after C++20 */
         std::atomic< size_t > _size;
         std::atomic< ssize_t > to_rehash;
         Cell data[];
+
+        using Hasher = typename Cell::Hasher;
+        using value_type = typename Cell::value_type;
+
+        enum LookupTag { Found, Empty, Invalid };
+        using Lookup = std::pair< Cell *, LookupTag >;
+        enum InsertMode { Rehash, Replace, Insert };
 
         static void *operator new( size_t objsize, size_t cellcount )
         {
@@ -438,7 +419,7 @@ struct HashSet : HashSetBase< Cell >
         }
 
         size_t size() { return _size.load( std::memory_order_relaxed ); }
-        size_t segment_size() { return Initial; }
+        size_t segment_size() { return Segment; }
         size_t segment_count() { return size() / segment_size(); }
         Cell *segment_end( int id ) { return segment_begin( id ) + segment_size(); }
         Cell *segment_begin( int id )
@@ -447,8 +428,20 @@ struct HashSet : HashSetBase< Cell >
             return data + segment_size() * id;
         }
 
+        static constexpr const size_t cluster_bytes = 32;
+        static constexpr const size_t cluster_size = std::max( 1ul, cluster_bytes / sizeof( Cell ) );
+
+        static size_t index( hash64_t h, unsigned i, size_t mask )
+        {
+            const unsigned Q = 1, R = 1;
+            size_t j = i % cluster_size; /* index within cluster */
+            i = i / cluster_size;        /* index to the start of the cluster */
+            size_t hop = (2 * Q + 1) * i + 2 * R * i * i;
+            return ( h + j + hop * cluster_size ) & mask;
+        }
+
         [[gnu::always_inline]]
-        Lookup insert( Hasher &hasher, const value_type &v, hash64_t hash, InsertMode mode = Normal )
+        Lookup insert( Hasher &hasher, const value_type &v, hash64_t hash, InsertMode mode = Insert )
         {
             const size_t mask = size() - 1;
             const unsigned max = mode == Rehash ? 3 * MaxChain / 4 : MaxChain;
@@ -460,7 +453,7 @@ struct HashSet : HashSetBase< Cell >
 
             for ( unsigned i = 0; i < max; ++i )
             {
-                Cell &cell = data[ Base::index( hash, i, mask ) ];
+                Cell &cell = data[ index( hash, i, mask ) ];
 
                 if ( cell.invalid() )
                     return { &cell, Invalid };
@@ -485,6 +478,7 @@ struct HashSet : HashSetBase< Cell >
                 }
             }
 
+            TRACE( "insert failed after", max, "collisions on", v, "hash", std::hex, hash );
             return { nullptr, Empty };
         }
 
@@ -495,7 +489,7 @@ struct HashSet : HashSetBase< Cell >
 
             for ( size_t i = 0; i < MaxChain; ++i )
             {
-                Cell &cell = data[ Base::index( hash, i, mask ) ];
+                Cell &cell = data[ index( hash, i, mask ) ];
                 if ( cell.invalid() )
                     return { nullptr, Invalid };
                 if ( cell.empty() )
@@ -507,220 +501,234 @@ struct HashSet : HashSetBase< Cell >
         }
     };
 
-    std::shared_ptr< Table > _table;
-
-    static size_t next_size( size_t s )
+    template< typename Cell, bool Concurrent, int Initial = 256, int MaxChain = 24 >
+    struct HashSet : HashSetBase< Cell >
     {
+        using Base = HashSetBase< Cell >;
+        using Self = HashSet< Cell, Concurrent >;
+
+        using typename Base::Hasher;
+        using typename Base::value_type;
+        using typename Base::iterator;
+        using Table = hashset::Table< Cell, MaxChain, Initial >;
+
+        using Base::hasher;
+        std::shared_ptr< Table > _table;
+
+        static size_t next_size( size_t s )
+        {
 #ifndef __divine__
-        if ( s < 512 * 1024 )
-            return s * 16;
-        if ( s < 16 * 1024 * 1024 )
-            return s * 8;
-        if ( s < 32 * 1024 * 1024 )
-            return s * 4;
+            if ( s < 512 * 1024 )
+                return s * 16;
+            if ( s < 16 * 1024 * 1024 )
+                return s * 8;
+            if ( s < 32 * 1024 * 1024 )
+                return s * 4;
 #endif
-        return s * 2;
-    }
-
-    size_t capacity() { check_outdated(); return _table->size(); }
-
-    bool check_outdated()
-    {
-        if constexpr ( !Concurrent )
-            return false;
-
-        auto next = std::atomic_load( &_table->next );
-        if ( !next )
-            return false;
-
-        while ( rehash_segment( *_table, *next ) );
-
-        _table = std::atomic_load( &_table->next );
-        while ( _table->to_rehash.load() < 0 );
-        check_outdated();
-
-        return true;
-    }
-
-    iterator insert( value_type x, bool replace = false )
-    {
-        return insert( x, hasher.hash( x ), replace );
-    }
-
-    iterator insert( value_type x, hash64_t hash, bool replace = false, bool wasnew = false )
-    {
-        auto mode = replace ? Replace : Normal;
-        auto [ cell, outcome ] = _table->insert( hasher, x, hash, mode );
-
-        if ( !cell )
-            return grow(), insert( x, hash, replace );
-
-        if ( check_outdated() )
-        {
-            TRACE( _table, "insert outdated, retrying; outcome was", outcome );
-            return insert( x, hash, replace, outcome == Empty );
+            return s * 2;
         }
 
-        ASSERT_NEQ( outcome, Invalid );
-        TRACE( _table, "insert", x, "hash", hash, "→", wasnew || outcome == Empty ? "new" : "old" );
-        return iterator( cell, wasnew || outcome == Empty );
-    }
+        size_t capacity() { check_outdated(); return _table->size(); }
 
-    template< typename T >
-    iterator find( const T &x )
-    {
-        return find( x, hasher.hash( x ) );
-    }
-
-    template< typename T >
-    iterator find( const T &x, hash64_t hash )
-    {
-        auto [ cell, outcome ] = _table->find( hasher, x, hash );
-        if ( check_outdated() )
-            return find( x, hash );
-        else
-            return iterator( cell );
-    }
-
-    template< typename T >
-    bool erase( const T &x )
-    {
-        return erase( x, hasher.hash( x ) );
-    }
-
-    template< typename T >
-    bool erase( const T &x, hash64_t hash )
-    {
-        static_assert( Cell::can_tombstone() );
-
-        auto [ cell, outcome ]  = _table->find( hasher, x, hash );
-        if ( outcome == Found )
-            outcome = cell->bury() ? Found : Invalid;
-
-        if ( check_outdated() )
+        bool check_outdated()
         {
-            TRACE( _table, "erase outdated, retry?", outcome == Found ? "no" : "yes" );
-            return outcome == Found || erase( x, hash );
+            if constexpr ( !Concurrent )
+                return false;
+
+            auto next = std::atomic_load( &_table->next );
+            if ( !next )
+                return false;
+
+            while ( rehash_segment( *_table, *next ) );
+
+            _table = std::atomic_load( &_table->next );
+            while ( _table->to_rehash.load() < 0 );
+            check_outdated();
+
+            return true;
         }
-        else
+
+        iterator insert( value_type x, bool replace = false )
         {
-            TRACE( _table, "erase", x, "outcome", outcome );
-            ASSERT_NEQ( outcome, Invalid );
-            return outcome == Found;
+            return insert( x, hasher.hash( x ), replace );
         }
-    }
 
-    template< typename T >
-    int count( const T &x ) { return find( x ).valid() ? 1 : 0; }
-
-    static std::pair< ssize_t, bool > atomic_add_if_nonzero( std::atomic< ssize_t > &v, int off )
-    {
-        ssize_t current = v.load(), next = current + off;
-        while ( current && !v.compare_exchange_weak( current, next ) )
-            next = current + off;
-        if ( current )
-            return { next, true };
-        else
-            return { 0, false };
-    }
-
-    bool rehash_segment( Table &from, Table &to )
-    {
-        auto [ id, success ] = atomic_add_if_nonzero( from.to_rehash, -1 );
-        if ( !success )
-            return false;
-
-        TRACE( _table, "rehash segment", id );
-        for ( auto c = from.segment_begin( id ); c != from.segment_end( id ); ++ c )
+        iterator insert( value_type x, hash64_t hash, bool replace = false, bool wasnew = false )
         {
-            Cell insert = c->invalidate();
-            if ( insert.empty() || insert.invalid() || insert.tombstone() )
-                continue;
-
-            auto [ cell, outcome ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ), Rehash );
-            ASSERT_EQ( outcome, Empty );
+            auto mode = replace ? Table::Replace : Table::Insert;
+            auto [ cell, outcome ] = _table->insert( hasher, x, hash, mode );
 
             if ( !cell )
+                return grow(), insert( x, hash, replace );
+
+            if ( check_outdated() )
             {
-                std::stringstream err;
-                err << "hash table " << _table << " failed to rehash at size " << _table->size();
-                to.to_rehash.store( 0 ); /* prevent stalls and deadlocks */
-                throw std::runtime_error( err.str() );
+                TRACE( _table, "insert outdated, retrying; outcome was", outcome );
+                return insert( x, hash, replace, outcome == Table::Empty );
+            }
+
+            ASSERT_NEQ( outcome, Table::Invalid );
+            TRACE( _table, "insert", x, "hash", std::hex, hash, "→",
+                   wasnew || outcome == Table::Empty ? "new" : "old" );
+            return iterator( cell, wasnew || outcome == Table::Empty );
+        }
+
+        template< typename T >
+        iterator find( const T &x )
+        {
+            return find( x, hasher.hash( x ) );
+        }
+
+        template< typename T >
+        iterator find( const T &x, hash64_t hash )
+        {
+            auto [ cell, outcome ] = _table->find( hasher, x, hash );
+            if ( check_outdated() )
+                return find( x, hash );
+            else
+                return iterator( cell );
+        }
+
+        template< typename T >
+        bool erase( const T &x )
+        {
+            return erase( x, hasher.hash( x ) );
+        }
+
+        template< typename T >
+        bool erase( const T &x, hash64_t hash )
+        {
+            static_assert( Cell::can_tombstone() );
+
+            auto [ cell, outcome ]  = _table->find( hasher, x, hash );
+            if ( outcome == Table::Found )
+                outcome = cell->bury() ? Table::Found : Table::Invalid;
+
+            if ( check_outdated() )
+            {
+                TRACE( _table, "erase outdated, retry?", outcome == Table::Found ? "no" : "yes" );
+                return outcome == Table::Found || erase( x, hash );
+            }
+            else
+            {
+                TRACE( _table, "erase", x, "outcome", outcome );
+                ASSERT_NEQ( outcome, Table::Invalid );
+                return outcome == Table::Found;
             }
         }
 
-        TRACE( _table, "rehash", id, "done" );
-        ++ to.to_rehash;
-        return id > 0;
-    }
+        template< typename T >
+        int count( const T &x ) { return find( x ).valid() ? 1 : 0; }
 
-    auto make_table( size_t size, ssize_t rehash )
-    {
-        return std::shared_ptr< Table >( new ( size ) Table( size, rehash ) );
-    }
-
-    void grow()
-    {
-        auto next = make_table( next_size( _table->size() ), -_table->segment_count() );
-        decltype( next ) old;
-
-        TRACE( _table, "grow from", _table->size(), "to", next_size( _table->size() ) );
-        if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
+        static std::pair< ssize_t, bool > atomic_add_if_nonzero( std::atomic< ssize_t > &v, int off )
         {
-            next.reset();
-            check_outdated();
-            return;
+            ssize_t current = v.load(), next = current + off;
+            while ( current && !v.compare_exchange_weak( current, next ) )
+                next = current + off;
+            if ( current )
+                return { next, true };
+            else
+                return { 0, false };
         }
-        else
+
+        bool rehash_segment( Table &from, Table &to )
         {
-            while ( rehash_segment( *_table, *next ) );
-            ASSERT_EQ( _table->to_rehash.load(), 0 );
-            _table = next;
-            while ( _table->to_rehash.load() );
+            auto [ id, success ] = atomic_add_if_nonzero( from.to_rehash, -1 );
+            if ( !success )
+                return false;
+
+            TRACE( _table, "rehash segment", id );
+            for ( auto c = from.segment_begin( id ); c != from.segment_end( id ); ++ c )
+            {
+                Cell insert = c->invalidate();
+                if ( insert.empty() || insert.invalid() || insert.tombstone() )
+                    continue;
+
+                auto [ cell, outcome ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ),
+                                                    Table::Rehash );
+                ASSERT_EQ( outcome, Table::Empty );
+
+                if ( !cell )
+                {
+                    std::stringstream err;
+                    err << "hash table " << _table << " failed to rehash at size " << _table->size();
+                    to.to_rehash.store( 0 ); /* prevent stalls and deadlocks */
+                    throw std::runtime_error( err.str() );
+                }
+            }
+
+            TRACE( _table, "rehash", id, "done" );
+            ++ to.to_rehash;
+            return id > 0;
+        }
+
+        auto make_table( size_t size, ssize_t rehash )
+        {
+            return std::shared_ptr< Table >( new ( size ) Table( size, rehash ) );
+        }
+
+        void grow()
+        {
+            auto next = make_table( next_size( _table->size() ), -_table->segment_count() );
+            decltype( next ) old;
+
+            TRACE( _table, "grow from", _table->size(), "to", next_size( _table->size() ) );
+            if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
+            {
+                next.reset();
+                check_outdated();
+                return;
+            }
+            else
+            {
+                while ( rehash_segment( *_table, *next ) );
+                ASSERT_EQ( _table->to_rehash.load(), 0 );
+                _table = next;
+                while ( _table->to_rehash.load() );
+                _table->to_rehash = _table->segment_count();
+            }
+            TRACE( _table, "growth done" );
+        }
+
+        explicit HashSet( Hasher h = Hasher() )
+            : Base( h )
+        {
+            _table = make_table( Initial, 0 );
             _table->to_rehash = _table->segment_count();
         }
-        TRACE( _table, "growth done" );
-    }
 
-    explicit HashSet( Hasher h = Hasher() )
-        : Base( h )
-    {
-        _table = make_table( Initial, 0 );
-        _table->to_rehash = _table->segment_count();
-    }
+        template< typename T >
+        HashSet( const std::enable_if_t< std::is_same_v< T, Self > && !Concurrent, HashSet > &o )
+        {
+            _table = make_table( o.capacity(), 0 );
+            _table->to_rehash = _table->segment_count();
+            /* TODO avoid the default-construct + overwrite here */
+            std::copy( o._table->data, o._table->data + capacity(), _table->data );
+        }
 
-    template< typename T >
-    HashSet( const std::enable_if_t< std::is_same_v< T, Self > && !Concurrent, HashSet > &o )
-    {
-        _table = make_table( o.capacity(), 0 );
-        _table->to_rehash = _table->segment_count();
-        /* TODO avoid the default-construct + overwrite here */
-        std::copy( o._table->data, o._table->data + capacity(), _table->data );
-    }
+        hash64_t hash( const value_type &t ) { return hasher.hash( t ); }
 
-    hash64_t hash( const value_type &t ) { return hasher.hash( t ); }
+        Cell &cellAt( size_t index ) { return _table->data[ index ]; }
+        value_type valueAt( size_t idx ) { return cellAt( idx ).fetch(); }
+        bool valid( size_t idx ) { return !cellAt( idx ).empty(); }
+    };
 
-    Cell &cellAt( size_t index ) { return _table->data[ index ]; }
-    value_type valueAt( size_t idx ) { return cellAt( idx ).fetch(); }
-    bool valid( size_t idx ) { return !cellAt( idx ).empty(); }
-};
+    template< typename T, typename Hasher = DefaultHasher >
+    using Fast = HashSet< FastCell< T, Hasher >, false >;
 
-template< typename T, typename Hasher = DefaultHasher >
-using Fast = HashSet< FastCell< T, Hasher >, false >;
+    template< typename T, typename Hasher = DefaultHasher >
+    using Compact = HashSet< CompactCell< T, Hasher >, false >;
 
-template< typename T, typename Hasher = DefaultHasher >
-using Compact = HashSet< CompactCell< T, Hasher >, false >;
+    template< typename T, typename Hasher >
+    using ConcurrentCell = std::conditional_t< std::atomic< Tagged< T > >::is_always_lock_free,
+                                               AtomicCell< T, Hasher >, LockedCell< T, Hasher > >;
 
-template< typename T, typename Hasher >
-using ConcurrentCell = std::conditional_t< std::atomic< Tagged< T > >::is_always_lock_free,
-                                           AtomicCell< T, Hasher >, LockedCell< T, Hasher > >;
-
-template< typename T, typename Hasher = DefaultHasher >
-using Concurrent = HashSet< ConcurrentCell< T, Hasher >, true >;
+    template< typename T, typename Hasher = DefaultHasher >
+    using Concurrent = HashSet< ConcurrentCell< T, Hasher >, true >;
 
 }
 
-namespace t_hashset {
+namespace brick::t_hashset {
 
 using namespace hashset;
 
@@ -990,7 +998,6 @@ template struct Sequential< FS, Big >;
 template struct Sequential< PS, Big >;
 template struct Parallel< PS, Big >;
 
-}
 }
 
 #ifdef BRICK_BENCHMARK_REG
@@ -1369,8 +1376,7 @@ using unordered_set = std::unordered_set< T >;
 using A = wrap_set< unordered_set >;
 using B = wrap_hashset< CS >;
 using C = wrap_hashset< FS >;
-using D = wrap_hashset< ConCS >;
-using E = wrap_hashset< ConFS >;
+using D = wrap_hashset< PS >;
 
 template<> struct TN< A > { static const char *n() { return "std"; } };
 template<> struct TN< B > { static const char *n() { return "scs"; } };
