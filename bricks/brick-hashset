@@ -414,6 +414,7 @@ struct HashSet : HashSetBase< Cell >
 
     enum LookupTag { Found, Empty, Invalid };
     using Lookup = std::pair< Cell *, LookupTag >;
+    enum InsertMode { Rehash, Replace, Normal };
 
     struct Table
     {
@@ -445,7 +446,7 @@ struct HashSet : HashSetBase< Cell >
             return data + segment_size() * id;
         }
 
-        Lookup insert( Hasher &hasher, const value_type &v, hash64_t hash, bool replace = false )
+        Lookup insert( Hasher &hasher, const value_type &v, hash64_t hash, InsertMode mode = Normal )
         {
             const size_t mask = size.load() - 1;
             ASSERT_EQ( mask & size.load(), 0 );
@@ -453,6 +454,9 @@ struct HashSet : HashSetBase< Cell >
 
             Cell *tomb = nullptr;
             unsigned max = MaxChain;
+
+            if ( mode == Rehash )
+                max = ( 3 * max ) / 4;
 
             for ( unsigned i = 0; i < max; ++i )
             {
@@ -475,7 +479,7 @@ struct HashSet : HashSetBase< Cell >
 
                 if ( cell.is( v, hash, hasher ) )
                 {
-                    if ( replace )
+                    if ( mode == Replace )
                         cell.store( v, hash );
                     return { &cell, Found };
                 }
@@ -544,7 +548,8 @@ struct HashSet : HashSetBase< Cell >
 
     iterator insert( value_type x, hash64_t hash, bool replace = false, bool wasnew = false )
     {
-        auto [ cell, outcome ] = _table->insert( hasher, x, hash, replace );
+        auto mode = replace ? Replace : Normal;
+        auto [ cell, outcome ] = _table->insert( hasher, x, hash, mode );
 
         if ( !cell )
             return grow(), insert( x, hash, replace );
@@ -631,7 +636,7 @@ struct HashSet : HashSetBase< Cell >
             if ( insert.empty() || insert.invalid() || insert.tombstone() )
                 continue;
 
-            auto [ cell, outcome ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ) );
+            auto [ cell, outcome ] = to.insert( hasher, insert.fetch(), insert.hash( hasher ), Rehash );
             ASSERT_EQ( outcome, Empty );
 
             if ( !cell )
