@@ -389,7 +389,7 @@ struct HashSetBase
 
     iterator end() { return iterator(); }
 
-    static size_t index( hash64_t h, size_t i, size_t mask )
+    static size_t index( hash64_t h, unsigned i, size_t mask )
     {
         const unsigned Q = 1, R = 1;
         size_t j = i % cluster_size; /* index within cluster */
@@ -419,7 +419,7 @@ struct HashSet : HashSetBase< Cell >
     struct Table
     {
         std::shared_ptr< Table > next; /* TODO make std::atomic after C++20 */
-        std::atomic< size_t > size;
+        std::atomic< size_t > _size;
         std::atomic< ssize_t > to_rehash;
         Cell data[];
 
@@ -432,13 +432,14 @@ struct HashSet : HashSetBase< Cell >
         }
 
         Table( size_t size, ssize_t rehash )
-            : next( nullptr ), size( size ), to_rehash( rehash )
+            : next( nullptr ), _size( size ), to_rehash( rehash )
         {
             std::uninitialized_default_construct( data, data + size );
         }
 
+        size_t size() { return _size.load( std::memory_order_relaxed ); }
         size_t segment_size() { return Initial; }
-        size_t segment_count() { return size.load() / segment_size(); }
+        size_t segment_count() { return size() / segment_size(); }
         Cell *segment_end( int id ) { return segment_begin( id ) + segment_size(); }
         Cell *segment_begin( int id )
         {
@@ -446,17 +447,16 @@ struct HashSet : HashSetBase< Cell >
             return data + segment_size() * id;
         }
 
+        [[gnu::always_inline]]
         Lookup insert( Hasher &hasher, const value_type &v, hash64_t hash, InsertMode mode = Normal )
         {
-            const size_t mask = size.load() - 1;
-            ASSERT_EQ( mask & size.load(), 0 );
-            ASSERT_EQ( mask | size.load(), mask + size.load() );
+            const size_t mask = size() - 1;
+            const unsigned max = mode == Rehash ? 3 * MaxChain / 4 : MaxChain;
+
+            ASSERT_EQ( mask & size(), 0 );
+            ASSERT_EQ( mask | size(), mask + size() );
 
             Cell *tomb = nullptr;
-            unsigned max = MaxChain;
-
-            if ( mode == Rehash )
-                max = ( 3 * max ) / 4;
 
             for ( unsigned i = 0; i < max; ++i )
             {
@@ -491,7 +491,8 @@ struct HashSet : HashSetBase< Cell >
         template< typename T >
         Lookup find( Hasher &hasher, const T &x, hash64_t hash )
         {
-            const size_t mask = size.load() - 1;
+            const size_t mask = size() - 1;
+
             for ( size_t i = 0; i < MaxChain; ++i )
             {
                 Cell &cell = data[ Base::index( hash, i, mask ) ];
@@ -521,7 +522,7 @@ struct HashSet : HashSetBase< Cell >
         return s * 2;
     }
 
-    size_t capacity() { check_outdated(); return _table->size; }
+    size_t capacity() { check_outdated(); return _table->size(); }
 
     bool check_outdated()
     {
@@ -642,7 +643,7 @@ struct HashSet : HashSetBase< Cell >
             if ( !cell )
             {
                 std::stringstream err;
-                err << "hash table " << _table << " failed to rehash at size " << _table->size;
+                err << "hash table " << _table << " failed to rehash at size " << _table->size();
                 to.to_rehash.store( 0 ); /* prevent stalls and deadlocks */
                 throw std::runtime_error( err.str() );
             }
@@ -660,10 +661,10 @@ struct HashSet : HashSetBase< Cell >
 
     void grow()
     {
-        auto next = make_table( next_size( _table->size ), -_table->segment_count() );
+        auto next = make_table( next_size( _table->size() ), -_table->segment_count() );
         decltype( next ) old;
 
-        TRACE( _table, "grow from", _table->size.load(), "to", next_size( _table->size ) );
+        TRACE( _table, "grow from", _table->size(), "to", next_size( _table->size() ) );
         if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
         {
             next.reset();
