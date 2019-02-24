@@ -53,25 +53,22 @@ namespace brick::hashset
     }
 
     template< typename T >
-    struct DefaultLookup
+    struct Adaptor
     {
         using value_type = T;
-
-        value_type value;
-        hash64_t hash;
-
-        explicit DefaultLookup( const value_type &v ) { reset( v ); }
-
-        void reset( const value_type &v )
-        {
-            value = v;
-            hash = hashset::hash( v );
-        }
+        using Payload = std::pair< T, hash64_t >;
+        enum Store { Found, Stored, Failed };
 
         template< typename X >
-        auto equal( const X &t ) const -> decltype( value == t )
+        hash64_t hash( const X &x ) const
         {
-            return value == t;
+            return hashset::hash( value_type( x ) );
+        }
+
+        template< typename Cell, typename X >
+        bool match( Cell &cell, const X &t, hash64_t ) const
+        {
+            return cell.fetch() == t;
         }
     };
 
@@ -362,7 +359,7 @@ namespace brick::hashset
 
         enum LookupTag { Found, Empty, Invalid };
         using Lookup = std::pair< Cell *, LookupTag >;
-        enum InsertMode { Rehash, Replace, Insert };
+        enum InsertMode { Rehash, Insert };
 
         static void *operator new( size_t objsize, size_t cellcount )
         {
@@ -400,8 +397,8 @@ namespace brick::hashset
             return ( h + j + hop * cluster_size ) & mask;
         }
 
-        template< typename X > [[gnu::always_inline]]
-        Lookup insert( const X &x, InsertMode mode = Insert )
+        template< typename X, typename A > [[gnu::always_inline]]
+        Lookup insert( const X &x, hash64_t h, const A &adaptor, InsertMode mode = Insert )
         {
             const size_t mask = size() - 1;
             const unsigned max = mode == Rehash ? 3 * MaxChain / 4 : MaxChain;
@@ -413,48 +410,44 @@ namespace brick::hashset
 
             for ( unsigned i = 0; i < max; ++i )
             {
-                Cell &cell = data[ index( x.hash, i, mask ) ];
+                Cell &cell = data[ index( h, i, mask ) ];
 
                 if ( cell.invalid() )
                     return { &cell, Invalid };
 
                 if ( cell.empty() )
                 {
-                    if ( tomb && tomb->try_store( x.value, x.hash ) )
+                    if ( tomb && tomb->try_store( x, h ) )
                         return { tomb, Empty };
 
-                    if ( cell.try_store( x.value, x.hash ) )
+                    if ( cell.try_store( x, h ) )
                         return { &cell, Empty };
                 }
 
                 if ( !tomb && cell.tombstone() )
                     tomb = &cell;
 
-                if ( cell.equal( x ) )
-                {
-                    if ( mode == Replace )
-                        cell.store( x.value, x.hash );
+                if ( cell.match( h ) && adaptor.match( cell, x, h ) )
                     return { &cell, Found };
-                }
             }
 
-            TRACE( "insert failed after", max, "collisions on", x.value, "hash", std::hex, x.hash );
+            TRACE( "insert failed after", max, "collisions on", x, "hash", std::hex, h );
             return { nullptr, Empty };
         }
 
-        template< typename X >
-        Lookup find( const X &x )
+        template< typename X, typename A >
+        Lookup find( const X &x, hash64_t h, const A &adaptor )
         {
             const size_t mask = size() - 1;
 
             for ( size_t i = 0; i < MaxChain; ++i )
             {
-                Cell &cell = data[ index( x.hash, i, mask ) ];
+                Cell &cell = data[ index( h, i, mask ) ];
                 if ( cell.invalid() )
                     return { nullptr, Invalid };
                 if ( cell.empty() )
                     return { nullptr, Empty };
-                if ( cell.equal( x ) )
+                if ( cell.match( h ) && adaptor.match( cell, x, h ) )
                     return { &cell, Found };
             }
             return { nullptr, Empty };
@@ -487,11 +480,11 @@ namespace brick::hashset
     using Quick = Grow< 0x100, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000 >;
     using Slow  = Grow< 0x10 >;
 
-    template< typename Cell, typename Lookup, bool Concurrent, typename Grow = Quick, int MaxChain = 24 >
+    template< typename Cell, bool Concurrent, typename Grow = Quick, int MaxChain = 24 >
     struct HashSet : HashSetBase< Cell >
     {
         using Base = HashSetBase< Cell >;
-        using Self = HashSet< Cell, Lookup, Concurrent, Grow, MaxChain >;
+        using Self = HashSet< Cell, Concurrent, Grow, MaxChain >;
 
         using typename Base::value_type;
         using typename Base::iterator;
@@ -505,7 +498,8 @@ namespace brick::hashset
             return _table->size();
         }
 
-        bool check_outdated( Lookup lookup )
+        template< typename A >
+        bool check_outdated( const A &adaptor )
         {
             if constexpr ( !Concurrent )
                 return false;
@@ -514,10 +508,10 @@ namespace brick::hashset
             if ( !next )
                 return false;
 
-            while ( rehash_segment( lookup, *_table, *next ) );
+            while ( rehash_segment( adaptor, *_table, *next ) );
 
             await_update();
-            check_outdated( lookup );
+            check_outdated( adaptor );
 
             return true;
         }
@@ -533,73 +527,78 @@ namespace brick::hashset
             return false;
         }
 
-        iterator insert( const value_type &x, bool replace = false )
+        template< typename X, typename A = Adaptor< value_type > >
+        iterator insert( const X &x, const A &adaptor = A() )
         {
-            return insert( Lookup( x ), replace );
+            return insert( x, adaptor.hash( x ), adaptor );
         }
 
-        iterator insert( const Lookup &x, bool replace = false, bool wasnew = false )
+        template< typename X, typename A = Adaptor< value_type > >
+        iterator insert( const X &x, hash64_t h, const A &adaptor = A(), bool wasnew = false )
         {
-            auto mode = replace ? Table::Replace : Table::Insert;
-            auto [ cell, outcome ] = _table->insert( x, mode );
+            auto [ cell, outcome ] = _table->insert( x, h, adaptor, Table::Insert );
 
             if ( !cell )
-                return grow( x ), insert( x, replace );
+                return grow( adaptor ), insert( x, h, adaptor );
 
-            if ( check_outdated( x ) )
+            if ( check_outdated( adaptor ) )
             {
                 TRACE( _table, "insert outdated, retrying; outcome was", outcome );
-                return insert( x, replace, outcome == Table::Empty );
+                return insert( x, h, adaptor, outcome == Table::Empty );
             }
 
             ASSERT_NEQ( outcome, Table::Invalid );
-            TRACE( _table, "insert", x.value, "hash", std::hex, x.hash, "→",
+            TRACE( _table, "insert", x, "hash", std::hex, h, "→",
                    wasnew || outcome == Table::Empty ? "new" : "old" );
             return iterator( cell, wasnew || outcome == Table::Empty );
         }
 
-        iterator find( const value_type &x )
+        template< typename X, typename A = Adaptor< value_type > >
+        iterator find( const X &x, const A &adaptor = A() )
         {
-            return find( Lookup( x ) );
+            return find( x, adaptor.hash( x ), adaptor );
         }
 
-        iterator find( const Lookup &x )
+        template< typename X, typename A = Adaptor< value_type > >
+        iterator find( const X &x, hash64_t h, const A &adaptor = A() )
         {
-            auto [ cell, outcome ] = _table->find( x );
-            if ( check_outdated( x ) )
-                return find( x );
+            auto [ cell, outcome ] = _table->find( x, h, adaptor );
+            if ( check_outdated( adaptor ) )
+                return find( x, h, adaptor );
             else
                 return iterator( cell );
         }
 
-        bool erase( const value_type &x )
+        template< typename X, typename A = Adaptor< value_type > >
+        bool erase( const X &x, const A &adaptor = A() )
         {
-            return erase( Lookup( x ) );
+            return erase( x, adaptor.hash( x ), adaptor );
         }
 
-        bool erase( const Lookup &x )
+        template< typename X, typename A = Adaptor< value_type > >
+        bool erase( const X &x, hash64_t h, const A &adaptor = A() )
         {
             static_assert( Cell::can_tombstone() );
 
-            auto [ cell, outcome ]  = _table->find( x );
+            auto [ cell, outcome ]  = _table->find( x, h, adaptor );
             if ( outcome == Table::Found )
                 outcome = cell->bury() ? Table::Found : Table::Invalid;
 
-            if ( check_outdated( x ) )
+            if ( check_outdated( adaptor ) )
             {
                 TRACE( _table, "erase outdated, retry?", outcome == Table::Found ? "no" : "yes" );
-                return outcome == Table::Found || erase( x );
+                return outcome == Table::Found || erase( x, h, adaptor );
             }
             else
             {
-                TRACE( _table, "erase", x.value, "outcome", outcome );
+                TRACE( _table, "erase", x, "outcome", outcome );
                 ASSERT_NEQ( outcome, Table::Invalid );
                 return outcome == Table::Found;
             }
         }
 
-        template< typename T >
-        int count( const T &x ) { return find( x ).valid() ? 1 : 0; }
+        template< typename T, typename A = Adaptor< value_type > >
+        int count( const T &x, const A &adaptor = A() ) { return find( x, adaptor ).valid() ? 1 : 0; }
 
         static std::pair< ssize_t, bool > atomic_add_if_nonzero( std::atomic< ssize_t > &v, int off )
         {
@@ -612,7 +611,8 @@ namespace brick::hashset
                 return { 0, false };
         }
 
-        bool rehash_segment( Lookup &lookup, Table &from, Table &to )
+        template< typename A >
+        bool rehash_segment( const A &adaptor, Table &from, Table &to )
         {
             auto [ id, success ] = atomic_add_if_nonzero( from.to_rehash, -1 );
             if ( !success )
@@ -625,8 +625,9 @@ namespace brick::hashset
                 if ( insert.empty() || insert.invalid() || insert.tombstone() )
                     continue;
 
-                lookup.reset( insert.fetch() );
-                auto [ cell, outcome ] = to.insert( lookup, Table::Rehash );
+                auto value = insert.fetch();
+                hash64_t hash = adaptor.hash( value );
+                auto [ cell, outcome ] = to.insert( value, hash, adaptor, Table::Rehash );
                 ASSERT_EQ( outcome, Table::Empty );
 
                 if ( !cell )
@@ -648,7 +649,8 @@ namespace brick::hashset
             return std::shared_ptr< Table >( new ( size ) Table( size, rehash ) );
         }
 
-        void grow( const Lookup &skel )
+        template< typename A >
+        void grow( const A &adaptor )
         {
             auto next = make_table( Grow::next_size( _table->size() ), -_table->segment_count() );
             decltype( next ) old;
@@ -657,13 +659,12 @@ namespace brick::hashset
             if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
             {
                 next.reset();
-                check_outdated( skel );
+                check_outdated( adaptor );
                 return;
             }
             else
             {
-                Lookup lookup( skel );
-                while ( rehash_segment( lookup, *_table, *next ) );
+                while ( rehash_segment( adaptor, *_table, *next ) );
                 ASSERT_EQ( _table->to_rehash.load(), 0 );
                 _table = next;
                 while ( _table->to_rehash.load() );
@@ -692,18 +693,18 @@ namespace brick::hashset
         bool valid( size_t idx ) { return !cellAt( idx ).empty(); }
     };
 
-    template< typename T, typename Lookup = DefaultLookup< T > >
-    using Fast = HashSet< FastCell< T >, Lookup, false >;
+    template< typename T >
+    using Fast = HashSet< FastCell< T >, false >;
 
-    template< typename T, typename Lookup = DefaultLookup< T > >
-    using Compact = HashSet< CompactCell< T >, Lookup, false >;
+    template< typename T >
+    using Compact = HashSet< CompactCell< T >, false >;
 
     template< typename T >
     using ConcurrentCell = std::conditional_t< std::atomic< Tagged< T > >::is_always_lock_free,
                                                AtomicCell< T >, LockedCell< T > >;
 
-    template< typename T, typename Lookup = DefaultLookup< T > >
-    using Concurrent = HashSet< ConcurrentCell< T >, Lookup, true >;
+    template< typename T >
+    using Concurrent = HashSet< ConcurrentCell< T >, true >;
 
 }
 
