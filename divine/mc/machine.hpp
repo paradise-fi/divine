@@ -288,7 +288,7 @@ namespace divine::mc::machine
 
         bool equal( Snapshot a, Snapshot b )
         {
-            return make_hasher().equal( a, b );
+            return make_hasher().equal_symbolic( a, b );
         }
     };
 
@@ -296,7 +296,7 @@ namespace divine::mc::machine
     struct Graph : Tree< Solver >
     {
         using Hasher = mc::Hasher< Solver >;
-        using HT = hashset::Concurrent< Snapshot, Hasher >;
+        using HT = hashset::Concurrent< Snapshot >;
         using Tree< Solver >::context;
 
         Graph( BC bc ) : Tree< Solver >( bc )
@@ -306,21 +306,19 @@ namespace divine::mc::machine
 
         struct Ext
         {
+            Hasher hasher;
             HT states;
             bool overwrite = false;
-
-            Ext() : Ext( HT( Hasher() ) ) {}
-            Ext( HT states ) : states( states ) {}
         } _ext;
 
-        auto &hasher() { return _ext.states.hasher; }
-        void enable_overwrite() { _ext.overwrite = true; }
-        bool equal( Snapshot a, Snapshot b ) { return hasher().equal( a, b ); }
+        auto &hasher() { return _ext.hasher; }
+        void enable_overwrite() { _ext.hasher.overwrite = true; }
+        bool equal( Snapshot a, Snapshot b ) { return hasher().equal_symbolic( a, b ); }
 
         virtual std::pair< State, bool > store() override
         {
             auto snap = context().snapshot( this->_state_pool );
-            auto r = _ext.states.insert( snap, _ext.overwrite );
+            auto r = _ext.states.insert( snap, hasher() );
             if ( *r != snap )
             {
                 ASSERT( !_ext.overwrite );
