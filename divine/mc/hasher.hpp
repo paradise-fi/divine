@@ -32,6 +32,7 @@ namespace divine::mc::impl
         vm::HeapPointer _root;
         Solver *_solver = nullptr;
         Pool *_pool = nullptr;
+        bool overwrite = false;
 
         void setup( Pool &pool, const vm::CowHeap &heap, Solver &solver )
         {
@@ -64,7 +65,6 @@ namespace divine::mc::impl
         {
             if ( equal_fastpath( a, b ) )
                 return true;
-
 
             struct Cmp : mem::NoopCmp< vm::HeapPointer >
             {
@@ -102,13 +102,33 @@ namespace divine::mc
     template< typename Solver >
     struct Hasher : impl::Hasher< Solver >
     {
-        bool equal( Snapshot a, Snapshot b ) const { return this->equal_symbolic( a, b ); }
+        template< typename Cell >
+        bool match( Cell &a, Snapshot b, mem::hash64_t h ) const
+        {
+            if ( !this->equal_symbolic( a.fetch(), b ) )
+                return false;
+
+            if ( this->overwrite )
+                a.store( b, h );
+
+            return true;
+        }
     };
 
     template<>
     struct Hasher< smt::NoSolver > : impl::Hasher< smt::NoSolver >
     {
-        bool equal( Snapshot a, Snapshot b ) const { return this->equal_explicit( a, b ); }
+        template< typename Cell >
+        bool match( Cell &a, Snapshot b, mem::hash64_t h ) const
+        {
+            if ( !this->equal_explicit( a.fetch(), b ) )
+                return false;
+
+            if ( this->overwrite )
+                a.store( b, h );
+
+            return true;
+        }
     };
 
 }
