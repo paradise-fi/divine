@@ -106,7 +106,7 @@ namespace brick::_assert
 
         std::string_view statement()
         {
-            if ( _statement_s.empty() )
+            if ( _statement )
                 return _statement;
             else
                 return _statement_s;
