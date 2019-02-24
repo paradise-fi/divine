@@ -24,7 +24,7 @@ namespace divine::mem
 {
 
     template< typename Next>
-    hash64_t Cow< Next >::ObjHasher::content_only( Internal i )
+    hash64_t Cow< Next >::ObjHasher::content_only( Internal i ) const
     {
         auto count = objects().size( i );
         auto word = objects().template machinePointer< uint32_t >( i );
@@ -50,7 +50,7 @@ namespace divine::mem
     }
 
     template< typename Next >
-    hash64_t Cow< Next >::ObjHasher::hash( Internal i )
+    hash64_t Cow< Next >::ObjHasher::hash( Internal i ) const
     {
         brick::hash::State state;
         auto size = objects().size( i );
@@ -61,13 +61,14 @@ namespace divine::mem
         return ( content_only( i ) & 0xFFFFFFF000000000 ) | ( state.hash() & 0x0000000FFFFFFFF );
     }
 
-    template< typename Next >
-    bool Cow< Next >::ObjHasher::equal( Internal a, Internal b )
+    template< typename Next > template< typename Cell >
+    bool Cow< Next >::ObjHasher::match( Cell &cell, Internal x, hash64_t ) const
     {
+        auto a = cell.fetch(), b = x;
         int size = objects().size( a );
         if ( objects().size( b ) != size )
             return false;
-        if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
+        if ( std::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
             return false;
         if ( heap().compare( heap(), a, b, size, false ) )
             return false;
@@ -97,7 +98,7 @@ namespace divine::mem
     template< typename Next >
     auto Cow< Next >::snap_dedup( SnapItem si ) const -> SnapItem
     {
-        auto r = _ext.objects.insert( si.second );
+        auto r = _ext.objects.insert( si.second, _ext.hasher );
         if ( !r.isnew() )
         {
             ASSERT_NEQ( *r, si.second );
@@ -111,7 +112,7 @@ namespace divine::mem
     template< typename Next >
     void Cow< Next >::snap_put( Pool &p, Snapshot s )
     {
-        auto erase = [&]( auto p ) { _ext.objects.erase( p ); };
+        auto erase = [&]( auto x ) { _ext.objects.erase( x, _ext.hasher ); };
         for ( auto si = this->snap_begin( p, s ); si != this->snap_end( p, s ); ++si )
             _obj_refcnt.put( si->second, erase );
     }

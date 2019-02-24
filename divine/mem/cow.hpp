@@ -45,23 +45,26 @@ namespace divine::mem
         struct ObjHasher
         {
             Cow< Next > *_heap;
-            auto &heap() { return *_heap; }
-            auto &objects() { return _heap->_objects; }
+            auto &heap() const { return *_heap; }
+            auto &objects() const { return _heap->_objects; }
 
-            hash64_t content_only( Internal i );
-            hash64_t hash( Internal i );
-            bool equal( Internal a, Internal b );
+            hash64_t content_only( Internal i ) const;
+            hash64_t hash( Internal i ) const;
+
+            template< typename Cell >
+            bool match( Cell &, Internal, hash64_t ) const;
         };
 
-        auto objhash( Internal i ) { return _ext.objects.hasher.content_only( i ); }
+        auto objhash( Internal i ) { return _ext.hasher.content_only( i ); }
 
         mutable struct Ext
         {
             std::unordered_set< int > writable;
-            brick::hashset::Concurrent< Internal, ObjHasher > objects;
+            ObjHasher hasher;
+            brick::hashset::Concurrent< Internal > objects;
         } _ext;
 
-        void setupHT() { _ext.objects.hasher._heap = this; }
+        void setupHT() { _ext.hasher._heap = this; }
 
         Cow() : _obj_refcnt( this->_objects ) { setupHT(); }
         Cow( const Cow &o ) : Next( o ), _obj_refcnt( o._obj_refcnt ), _ext( o._ext )
