@@ -37,7 +37,6 @@
 
 namespace brick::hashset
 {
-
     using hash::hash32_t;
     using hash::hash64_t;
 
@@ -100,30 +99,15 @@ namespace brick::hashset
         T _value;
         hash64_t _hash; // TODO: re-use when rehashing
 
-        template< typename Lookup >
-        bool equal( const Lookup &x )
-        {
-            return _hash == x.hash && x.equal( _value );
-        }
-
-        void store( const T &t, hash64_t h )
-        {
-            _hash = h;
-            _value = t;
-        }
-
-        bool try_store( const T &t, hash64_t h )
-        {
-            store( t, h );
-            return true;
-        }
-
-        bool invalid() { return false; }
-        bool empty() { return !_hash; }
-        FastCell invalidate() { return *this; }
-
+        bool match( hash64_t h ) const { return _hash == h; }
+        bool invalid() const { return false; }
+        bool empty() const { return !_hash; }
         T &fetch() { return _value; }
         T copy() { return _value; }
+
+        void store( const T &t, hash64_t h ) { _hash = h; _value = t; }
+        bool try_store( const T &t, hash64_t h ) { store( t, h ); return true; }
+        FastCell invalidate() { return *this; }
     };
 
     template< typename T >
@@ -131,20 +115,15 @@ namespace brick::hashset
     {
         T _value;
 
-        template< typename Lookup >
-        bool equal( const Lookup &x )
-        {
-            return x.equal( _value );
-        }
-
-        bool empty() { return !_value; } /* meh */
-        void store( T bn, hash64_t ) { _value = bn; }
-        bool try_store( T v, hash64_t h ) { store( v, h ); return true; }
-        bool invalid() { return false; }
-        CompactCell invalidate() { return *this; }
-
+        bool match( hash64_t ) const { return true; }
+        bool empty() const { return !_value; } /* meh */
+        bool invalid() const { return false; }
         T &fetch() { return _value; }
         T copy() { return _value; }
+
+        void store( T bn, hash64_t ) { _value = bn; }
+        bool try_store( T v, hash64_t h ) { store( v, h ); return true; }
+        CompactCell invalidate() { return *this; }
     };
 
     template< typename T >
@@ -154,9 +133,32 @@ namespace brick::hashset
         std::atomic< hash32_t > _hashlock;
         T _value;
 
-        bool empty() { return _hashlock == 0; }
-        bool invalid() { return _hashlock == 3; }
-        bool tombstone() { return _hashlock == 2; }
+        bool empty() const { return _hashlock == 0; }
+        bool invalid() const { return _hashlock == 3; }
+        bool tombstone() const { return _hashlock == 2; }
+
+        T &fetch() { return _value; }
+        T copy() { return _value; }
+
+        // wait for another write; returns false if cell was invalidated
+        bool wait() const
+        {
+            while ( _hashlock & 1 )
+                if ( invalid() )
+                    return false;
+            return !tombstone();
+        }
+
+        bool match( hash32_t hash ) const
+        {
+            hash |= 1;
+            if ( ( ( hash << 2 ) | 1 ) != ( _hashlock | 1 ) )
+                return false;
+            if ( wait() )
+                return true;
+            else
+                return false;
+        }
 
         static constexpr bool can_tombstone() { return true; }
 
@@ -183,18 +185,6 @@ namespace brick::hashset
             return _hashlock.compare_exchange_strong( hl, 2 );
         }
 
-        T &fetch() { return _value; }
-        T copy() { return _value; }
-
-        // wait for another write; returns false if cell was invalidated
-        bool wait()
-        {
-            while ( _hashlock & 1 )
-                if ( invalid() )
-                    return false;
-            return !tombstone();
-        }
-
         bool try_store( const T &v, hash32_t hash )
         {
             hash |= 1;
@@ -212,17 +202,6 @@ namespace brick::hashset
         {
             _hashlock = hash << 2;
             _value = v;
-        }
-
-        template< typename Lookup >
-        auto equal( const Lookup &x ) -> decltype( x.equal( _value ), true )
-        {
-            hash32_t hash = x.hash | 1;
-            if ( ( ( hash << 2 ) | 1 ) != ( _hashlock | 1 ) )
-                return false;
-            if ( !wait() )
-                return false;
-            return x.equal( _value );
         }
 
         LockedCell() : _hashlock( 0 ), _value() {}
@@ -282,10 +261,16 @@ namespace brick::hashset
         static constexpr bool can_tombstone() { return true; }
 
         uint32_t status() { return value.load().tag() & 3u; }
+        static hash64_t hashbits( hash64_t in ) { return highbits( in, Tagged< T >::tag_bits - 2 ) << 2; }
 
         bool empty() { return status() == 0; }
         bool invalid() { return status() == 1; }
         bool tombstone() { return status() == 2; }
+
+        T fetch() { return value.load().value(); }
+        T copy() { Tagged< T > v = value; v.tag( 0 ); return v.value(); }
+        bool wait() { return !invalid(); }
+        bool match( hash64_t hash ) const { return value.load().tag() == ( hashbits( hash ) | 3 ); }
 
         /* returns old cell value */
         AtomicCell invalidate()
@@ -309,12 +294,6 @@ namespace brick::hashset
             return value.compare_exchange_strong( expect, update );
         }
 
-        static hash64_t hashbits( hash64_t in ) { return highbits( in, Tagged< T >::tag_bits - 2 ) << 2; }
-
-        T fetch() { return value.load().value(); }
-        T copy() { Tagged< T > v = value; v.tag( 0 ); return v.value(); }
-        bool wait() { return !invalid(); }
-
         void store( T bn, hash64_t hash )
         {
             Tagged< T > next( bn );
@@ -332,13 +311,6 @@ namespace brick::hashset
             if ( !rv )
                 rv = value.compare_exchange_strong( tomb, next );
             return rv;
-        }
-
-        template< typename Lookup >
-        bool equal( const Lookup &x )
-        {
-            return value.load().tag() == ( hashbits( x.hash ) | 3 ) &&
-                   x.equal( value.load().value() );
         }
 
         AtomicCell() : value() {}
