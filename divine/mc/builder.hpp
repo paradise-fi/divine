@@ -79,7 +79,7 @@ struct Builder
         }
     };
 
-    using HT = hashset::Concurrent< Snapshot, Hasher >;
+    using HT = hashset::Concurrent< Snapshot >;
 
     auto &program() { return _d.bc->program(); }
     auto &debug() { return _d.bc->debug(); }
@@ -94,14 +94,14 @@ struct Builder
         builder::State initial;
         Solver solver;
         vm::CowHeap::Pool pool;
+        Hasher hasher;
 
-        bool overwrite = false;
         int64_t local_instructions = 0, local_states = 0;
         std::shared_ptr< std::atomic< int64_t > > total_instructions, total_states;
 
         template< typename... Args >
         Data( BC bc, Args... solver_opts )
-            : Data( bc, Context( bc->program() ), HT( Hasher() ), solver_opts... )
+            : Data( bc, Context( bc->program() ), HT(), solver_opts... )
         {}
 
         template< typename... Args >
@@ -122,9 +122,9 @@ struct Builder
     } _d;
 
     Context &context() { return _d.ctx; }
-    void enable_overwrite() { _d.overwrite = true; }
+    void enable_overwrite() { _d.hasher.overwrite = true; }
 
-    auto &hasher() { return _d.states.hasher; }
+    auto &hasher() { return _d.hasher; }
 
     Builder( const Builder &e ) : _d( e._d )
     {
@@ -139,10 +139,10 @@ struct Builder
 
     auto store( Snapshot snap )
     {
-        auto r = _d.states.insert( snap, _d.overwrite );
+        auto r = _d.states.insert( snap, hasher() );
         if ( *r != snap )
         {
-            ASSERT( !_d.overwrite );
+            ASSERT( !_d.hasher.overwrite );
             pool().free( snap ), context().load( pool(), *r );
         }
         else
@@ -196,7 +196,7 @@ struct Builder
         return lbl;
     }
 
-    bool equal( Snapshot a, Snapshot b ) { return hasher().equal( a, b ); }
+    bool equal( Snapshot a, Snapshot b ) { return hasher().equal_symbolic( a, b ); }
 
     bool feasible()
     {
