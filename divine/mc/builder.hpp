@@ -139,11 +139,12 @@ struct Builder
 
     auto store( Snapshot snap )
     {
+        _d.hasher.prepare( snap );
         auto r = _d.states.insert( snap, hasher() );
         if ( *r != snap )
         {
-            ASSERT( !_d.hasher.overwrite );
-            pool().free( snap ), context().load( pool(), *r );
+            if ( !_d.hasher.overwrite )
+                pool().free( snap ), context().load( pool(), *r );
         }
         else
         {

@@ -22,6 +22,16 @@
 namespace divine::mc::impl
 {
 
+    struct PairExtract : mem::NoopCmp< vm::HeapPointer >
+    {
+        std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > > pairs;
+
+        void marked( vm::HeapPointer a, vm::HeapPointer b )
+        {
+            pairs.emplace_back( a, b );
+        };
+    };
+
     template< typename Solver >
     struct Hasher
     {
@@ -41,6 +51,8 @@ namespace divine::mc::impl
             _h2 = heap;
             _solver = &solver;
         }
+
+        void prepare( Snapshot ) {}
 
         bool equal_fastpath( Snapshot a, Snapshot b ) const
         {
@@ -66,15 +78,7 @@ namespace divine::mc::impl
             if ( equal_fastpath( a, b ) )
                 return true;
 
-            struct Cmp : mem::NoopCmp< vm::HeapPointer >
-            {
-                std::vector< std::pair< vm::HeapPointer, vm::HeapPointer > > pairs;
-
-                void marked( vm::HeapPointer a, vm::HeapPointer b )
-                {
-                    pairs.emplace_back( a, b );
-                };
-            } extract;
+            PairExtract extract;
 
             if ( mem::compare( _h1, _h2, _root, _root, extract ) != 0 )
                 return false;
@@ -102,15 +106,62 @@ namespace divine::mc
     template< typename Solver >
     struct Hasher : impl::Hasher< Solver >
     {
-        template< typename Cell >
-        bool match( Cell &a, Snapshot b, mem::hash64_t h ) const
+        using Super = impl::Hasher< Solver >;
+        using SPool = brick::mem::SlavePool< typename Super::Pool >;
+        mutable SPool _sym_next;
+
+        void prepare( Snapshot s )
         {
-            if ( !this->equal_symbolic( a.fetch(), b ) )
-                return false;
+            _sym_next.materialise( s, sizeof( Snapshot ) );
+        }
 
-            if ( this->overwrite )
-                a.store( b, h );
+        void setup( typename Super::Pool &pool, const vm::CowHeap &heap, Solver &solver )
+        {
+            Super::setup( pool, heap, solver );
+            _sym_next = SPool( pool );
+        }
 
+        template< typename Cell >
+        bool match( Cell &cell, Snapshot b, mem::hash64_t h ) const
+        {
+            auto a = cell.fetch();
+
+            using ASnap = std::atomic< Snapshot >;
+            ASnap *a_ptr = nullptr;
+
+            if ( this->equal_fastpath( a, b ) )
+                return true;
+
+            while ( true )
+            {
+                impl::PairExtract extract;
+
+                if ( mem::compare( this->_h1, this->_h2, this->_root, this->_root, extract ) != 0 )
+                    return false;
+
+                if ( this->_solver->equal( extract.pairs, this->_h1, this->_h2 ) )
+                {
+                    if ( this->overwrite )
+                    {
+                        if ( a_ptr )
+                            a_ptr->store( b );
+                        else
+                            cell.store( b, h );
+                    }
+
+                    return true;
+                }
+
+                a_ptr = _sym_next.template machinePointer< ASnap >( a );
+                a = a_ptr->load();
+                if ( this->_pool->valid( a ) )
+                    this->_h1.restore( *this->_pool, a );
+                else
+                    break;
+            }
+
+            ASSERT( a_ptr );
+            a_ptr->store( b );
             return true;
         }
     };
