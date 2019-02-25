@@ -189,7 +189,7 @@ struct ODBCSink : TimedSink
         }
     }
 
-    void memory( const mc::PoolStats &st, bool ) override
+    void memory( const mc::PoolStats &st, const mc::HashStats &, bool ) override
     {
         for ( const auto &pool : st )
         {

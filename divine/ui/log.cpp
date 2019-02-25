@@ -39,8 +39,8 @@ struct CompositeSink : LogSink
     void progress( std::pair< int64_t, int64_t > x, int y, bool l ) override
     { each( [&]( auto s ) { s->progress( x, y, l ); } ); }
 
-    void memory( const mc::PoolStats &st, bool l ) override
-    { each( [&]( auto s ) { s->memory( st, l ); } ); }
+    void memory( const mc::PoolStats &st, const mc::HashStats &hs, bool l ) override
+    { each( [&]( auto s ) { s->memory( st, hs, l ); } ); }
 
     void backtrace( DbgContext &c, int lim ) override
     { each( [&]( auto s ) { s->backtrace( c, lim ); } ); }
@@ -119,13 +119,16 @@ struct YamlSink : TimedSink
                          { _out << k << ": " << v << std::endl; } );
     }
 
-    void memory( const mc::PoolStats &st, bool last ) override
+    void memory( const mc::PoolStats &st, const mc::HashStats &ht, bool last ) override
     {
         if ( !last || !_detailed )
             return;
         _out << std::endl;
         for ( auto p : st )
             printpool( _out, p.first, p.second );
+        for ( auto [ name, use ] : ht )
+            _out << name << ": { used: " << use.first
+                         << ", capacity: " << use.second << " }" << std::endl;
     }
 
     void result( mc::Result result, const mc::Trace &trace ) override

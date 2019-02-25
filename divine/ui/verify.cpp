@@ -162,7 +162,7 @@ void Verify::safety()
                        _log->progress( safety->stats(),
                                        safety->queuesize(), last );
                        if ( last || ( ++ps_ctr == 2 * _poolstat_period ) )
-                           ps_ctr = 0, _log->memory( safety->poolstats(), last );
+                           ps_ctr = 0, _log->memory( safety->poolstats(), safety->hashstats(), last );
                        if ( !last )
                            sysinfo.updateAndCheckTimeLimit( _max_time );
                    } );

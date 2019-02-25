@@ -33,7 +33,7 @@ using DbgContext = dbg::Context< vm::CowHeap >;
 struct LogSink
 {
     virtual void progress( std::pair< int64_t, int64_t >, int, bool ) {}
-    virtual void memory( const mc::PoolStats &, bool ) {}
+    virtual void memory( const mc::PoolStats &, const mc::HashStats &, bool ) {}
     virtual void loader( Phase ) {}
     virtual void info( std::string, bool = false ) {}
     virtual void result( mc::Result, const mc::Trace & ) {}
