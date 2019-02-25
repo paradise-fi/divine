@@ -156,7 +156,7 @@ namespace divine::mem
         }
 
         auto i = heap.ptr2i( root );
-        if ( !heap.objects().valid( i ) )
+        if ( !heap.valid( i ) )
             return;
 
         int size = heap.size( i );
@@ -276,7 +276,7 @@ namespace divine::mem
 
         for ( auto s = h.snap_begin(); s != h.snap_end(); ++s )
             check( *s );
-        for ( auto s : h._l.exceptions )
+        for ( auto s : h.exceptions() )
             check( s );
 
         for ( auto r : { roots... } )

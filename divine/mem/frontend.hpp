@@ -35,18 +35,26 @@ namespace divine::mem
     };
 
     template< typename Next >
-    struct Frontend : Next
+    struct Frontend
     {
-        using typename Next::Loc;
-        using typename Next::Pointer;
-        using typename Next::PointerV;
-        using typename Next::ByteV;
+    public:
+        using Loc = typename Next::Loc;
+        using Internal = typename Next::Internal;
+        using Pointer = typename Next::Pointer;
+        using PointerV = typename Next::PointerV;
+        using Snapshot = typename Next::Snapshot;
+        using Pool = typename Next::Pool;
+        using SnapPool = typename Next::SnapPool;
 
-        using Next::pointers;
+        auto pointers( Loc l, int sz = 0 )
+        {
+            return n.pointers( l, sz ? sz : n.size( l.object ) );
+        }
+
         auto pointers( Pointer p, int from = 0, int sz = 0 )
         {
-            auto l = this->loc( p + from );
-            return Next::pointers( l, sz ? sz : Next::size( l.object ) );
+            auto l = n.loc( p + from );
+            return n.pointers( l, sz ? sz : n.size( l.object ) );
         }
 
         template< typename T >
@@ -73,7 +81,7 @@ namespace divine::mem
         std::string read_string( Pointer ptr ) const
         {
             std::string str;
-            ByteV c;
+            typename Next::ByteV c;
             unsigned sz = size( ptr );
             do {
                 if ( ptr.offset() >= sz )
@@ -85,6 +93,23 @@ namespace divine::mem
             return str;
         }
 
+        bool valid( Pointer p ) const { return n.valid( p ); }
+        bool valid( Internal i ) const { return n.valid( i ); }
+        brick::hash::hash64_t objhash( Internal i ) const { return n.objhash( i ); }
+
+        static constexpr bool can_snapshot() { return Next::can_snapshot(); }
+        Snapshot snapshot( Pool &p ) { return n.snapshot( p ); }
+        void restore( Pool &p, Snapshot s ) { n.restore( p, s ); }
+        bool is_shared( Pool &p, Snapshot s ) const { return n.is_shared( p, s ); }
+        void reset() { n.reset(); }
+        void snap_put( Pool &p, Snapshot s ) { n.snap_put( p, s ); }
+
+        auto snap_begin() const { return n.snap_begin(); }
+        auto snap_end() const { return n.snap_end(); }
+        auto snap_begin( Pool &p, Snapshot s ) const { return n.snap_begin( p, s ); }
+        auto snap_end( Pool &p, Snapshot s ) const { return n.snap_end( p, s ); }
+        auto &exceptions() { return n._l.exceptions; }
+
         void skip( PointerV &p, int bytes ) const
         {
             Pointer pv = p.cooked();
@@ -92,71 +117,89 @@ namespace divine::mem
             p.v( pv );
         }
 
+        template< typename T >
+        T *unsafe_deref( Pointer p, Internal i ) { return n.template unsafe_deref< T >( p, i ); }
+        uint8_t *unsafe_ptr2mem( Internal i ) { return n.unsafe_ptr2mem( i ); }
+
+        template< typename T >
+        void unsafe_read( Pointer p, T &t, Internal i ) const
+        {
+            return n.unsafe_read( p, t, i );
+        }
+
         HeapBytes unsafe_bytes( Loc l, int sz = 0 ) const
         {
-            sz = sz ? sz : Next::size( l.object ) - l.offset;
-            ASSERT_LEQ( l.offset + sz, Next::size( l.object ) );
-            auto start = Next::unsafe_ptr2mem( l.object );
+            sz = sz ? sz : n.size( l.object ) - l.offset;
+            ASSERT_LEQ( l.offset + sz, n.size( l.object ) );
+            auto start = n.unsafe_ptr2mem( l.object );
             return HeapBytes( start + l.offset, start + l.offset + sz );
         }
 
         HeapBytes unsafe_bytes( Pointer p, int off = 0, int sz = 0 ) const
         {
-            return unsafe_bytes( this->loc( p + off ), sz );
+            return unsafe_bytes( n.loc( p + off ), sz );
         }
 
-        int size( Pointer p ) const { return Next::size( this->ptr2i( p ) ); }
-        using Next::size;
+        Loc loc( Pointer p ) const { return n.loc( p ); }
+        Loc loc( Pointer p, Internal i ) const { return n.loc( p, i ); }
+        Internal ptr2i( Pointer p ) const { return n.ptr2i( p ); }
+        int size( Pointer p ) const { return n.size( n.ptr2i( p ) ); }
+        int size( Internal p ) const { return n.size( p ); }
+
+        bool resize( Pointer p, int size ) { return n.resize( p, size ); }
 
         PointerV make( int size, uint32_t hint = _VM_PL_Alloca + 1, bool over = false )
         {
-            auto l = Next::make( size, hint, over );
+            auto l = n.make( size, hint, over );
             return PointerV( Pointer( l.objid ) );
         }
+
+        bool free( Pointer p ) { return n.free( p ); }
+        bool free( Internal i ) { return n.free( i ); }
 
         template< typename T >
         void read( Loc l, T &t ) const
         {
-            ASSERT_EQ( l.object, this->ptr2i( l.objid ) );
-            Next::read( l, t );
+            ASSERT_EQ( l.object, n.ptr2i( l.objid ) );
+            n.read( l, t );
         }
 
         template< typename T >
         void read( Pointer p, T &t ) const
         {
-            ASSERT( this->valid( p ), p );
-            Next::read( this->loc( p ), t );
+            ASSERT( n.valid( p ), p );
+            n.read( n.loc( p ), t );
         }
 
         template< typename T >
         auto write( Pointer p, T t )
         {
-            ASSERT( this->valid( p ), p );
-            return write( this->loc( p ), t );
+            ASSERT( n.valid( p ), p );
+            return write( n.loc( p ), t );
         }
 
         template< typename T >
         auto write( Loc l, T t )
         {
-            ASSERT_EQ( l.object, this->ptr2i( l.objid ) );
-            l.object = this->detach( l );
-            Next::write( l, t );
+            ASSERT_EQ( l.object, n.ptr2i( l.objid ) );
+            l.object = n.detach( l );
+            n.write( l, t );
             return l.object;
         }
 
-        using Next::peek;
-        typename Next::UIntV peek( Pointer p, int key )
-        {
-            return Next::peek( this->loc( p ), key );
-        }
+        typename Next::UIntV peek( Pointer p, int key ) { return n.peek( n.loc( p ), key ); }
+        typename Next::UIntV peek( Loc p, int key ) { return n.peek( p, key ); }
 
         template< typename T >
         auto poke( Loc l, int key, T v )
         {
-            l.object = this->detach( l );
-            Next::poke( l, key, v );
+            l.object = n.detach( l );
+            n.poke( l, key, v );
             return l.object;
         }
+
+        auto compressed( Loc l, unsigned w ) const { return n.compressed( l, w ); }
+        static bool is_pointer( typename Next::Compressed c ) { return Next::is_pointer( c ); }
 
         template< typename FromH >
         bool copy( FromH &from_h, Pointer from, Pointer to, int bytes )
@@ -164,7 +207,7 @@ namespace divine::mem
             if ( from.null() || to.null() )
                 return false;
 
-            auto to_l = this->loc( to );
+            auto to_l = n.loc( to );
             return copy( from_h, from_h.loc( from ), to_l, bytes );
         }
 
@@ -172,17 +215,31 @@ namespace divine::mem
         bool copy( FromH &from_h, typename FromH::Loc from, Loc &to, int bytes )
         {
             ASSERT_EQ( from.object, from_h.ptr2i( from.objid ) );
-            ASSERT_EQ( to.object, this->ptr2i( to.objid ) );
-            to.object = Next::detach( to );
-            return Next::copy( from_h, from, *this, to, bytes, false );
+            ASSERT_EQ( to.object, n.ptr2i( to.objid ) );
+            to.object = n.detach( to );
+            return n.copy( from_h.n, from, n, to, bytes, false );
         }
 
         bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }
 
         bool equal( typename Next::Internal a, typename Next::Internal b, int sz, bool skip_objids )
         {
-            return Next::compare( *this, a, b, sz, skip_objids ) == 0;
+            return n.compare( n, a, b, sz, skip_objids ) == 0;
         }
+
+        int compare( typename Next::Internal a, typename Next::Internal b, int sz, bool skip_objids )
+        {
+            return n.compare( n, a, b, sz, skip_objids );
+        }
+
+        template< typename H2 >
+        int compare( H2 &h2, typename Next::Internal a, typename Next::Internal b, int sz,
+                     bool skip_objids )
+        {
+            return n.compare( h2.n, a, b, sz, skip_objids );
+        }
+
+        Next n;
     };
 
 }

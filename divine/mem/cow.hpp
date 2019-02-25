@@ -55,7 +55,7 @@ namespace divine::mem
             bool match( Cell &, Internal, hash64_t ) const;
         };
 
-        auto objhash( Internal i ) { return _ext.hasher.content_only( i ); }
+        auto objhash( Internal i ) const { return _ext.hasher.content_only( i ); }
 
         mutable struct Ext
         {

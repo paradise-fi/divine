@@ -60,7 +60,7 @@ namespace divine::mem
             int snap_size = 0;
         } _l;
 
-        uint64_t objhash( Internal ) { return 0; }
+        uint64_t objhash( Internal ) const { return 0; }
         Internal detach( Loc l ) { return l.object; }
 
         void reset() { _l.exceptions.clear(); _l.snap_size = 0; _l.snap_begin = nullptr; }
