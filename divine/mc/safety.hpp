@@ -130,6 +130,22 @@ struct Safety : Job
         return PoolStats{ { "snapshot memory", _ex.pool().stats() },
                           { "fragment memory", _ex.context().heap()._objects.stats() } };
     }
+
+    template< typename HT >
+    std::pair< int64_t, int64_t > hashuse( HT ht )
+    {
+        int64_t used = 0, capacity = ht.capacity();
+        for ( auto i = 0; i < capacity; ++i )
+            if ( !ht.cellAt( i ).empty() )
+                ++ used;
+        return { used, capacity };
+    }
+
+    virtual HashStats hashstats() override
+    {
+        return HashStats{ { "snapshot table", hashuse( _ex._d.states ) },
+                          { "fragment table", hashuse( _ex.context().heap()._ext.objects ) } };
+    }
 };
 
 }

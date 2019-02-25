@@ -51,4 +51,5 @@ namespace divine::mc
                                               std::optional< typename Ex::Label > > >;
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;
+    using HashStats = std::map< std::string, std::pair< int64_t, int64_t > >;
 }

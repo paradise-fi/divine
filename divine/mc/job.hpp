@@ -69,6 +69,7 @@ struct Job : ss::Job
     virtual Trace ce_trace() { return Trace(); }
     virtual Result result() { return Result::None; }
     virtual PoolStats poolstats() { return PoolStats(); }
+    virtual HashStats hashstats() { return HashStats(); }
     virtual void dbg_fill( DbgCtx & ) {}
     virtual void start( int ) override = 0;
     virtual ~Job() = default;
