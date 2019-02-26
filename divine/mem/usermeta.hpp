@@ -21,6 +21,7 @@
 #include <divine/mem/exceptions.hpp>
 #include <divine/vm/value.hpp>
 #include <array>
+#include <atomic>
 
 namespace divine::mem
 {
@@ -33,14 +34,20 @@ struct UserMeta : Next
     using Value = typename Next::UIntV;
     static constexpr const uint8_t NLayers = 4;
 
-    enum MetaType { Pointers, Scalars, Unknown };
-    MetaType _type[ NLayers ] = { Unknown };
+    enum MetaType : uint8_t { Unknown, Pointers, Scalars };
+    using LayerTypes = std::array< std::atomic< MetaType >, NLayers >;
+    std::shared_ptr< LayerTypes > _type;
 
     using Map = std::map< uint32_t, uint32_t >;
     using Maps = Snapshotter< Map, typename Next::Pool, NLayers >;
     mutable Maps _maps;
 
-    UserMeta() : _maps( Next::_objects ) {}
+
+    UserMeta() : _type( std::make_shared< LayerTypes >() ), _maps( Next::_objects )
+    {
+        for ( auto & t : *_type )
+            t.store( MetaType::Unknown, std::memory_order_relaxed );
+    }
 
     void materialise( Internal p, int size )
     {
@@ -65,18 +72,20 @@ struct UserMeta : Next
         auto &map = _maps;
 
         if ( auto *p = map.at( l.object, l.offset, layer ) )
-           return Value( p->second , -1, _type[ layer ] == MetaType::Pointers );
+        {
+           return Value( p->second , -1, layer_type( layer ) == MetaType::Pointers );
+        }
 
-        return Value( 0, 0, _type[ layer ] == MetaType::Pointers );
+        return Value( 0, 0, layer_type( layer ) == MetaType::Pointers );
     }
 
     void poke( Loc l, int layer, Value v )
     {
         auto &map = _maps;
-        if ( _type[ layer ] == MetaType::Unknown )
-            _type[ layer ] = v.pointer() ? MetaType::Pointers : MetaType::Scalars;
+        if ( layer_type( layer ) == MetaType::Unknown )
+            layer_type( layer, v.pointer() ? MetaType::Pointers : MetaType::Scalars );
 
-        ASSERT_EQ( _type[ layer ] == MetaType::Pointers, v.pointer() );
+        ASSERT_EQ( layer_type( layer ) == MetaType::Pointers, v.pointer() );
         map.set( l.object, l.offset, layer, v.cooked() );
     }
 
@@ -93,11 +102,21 @@ struct UserMeta : Next
     {
         for ( uint8_t layer = 0; layer < NLayers; ++layer )
         {
-            bool no_objids = _type[ layer ] == MetaType::Pointers && skip_objids;
+            bool no_objids = layer_type( layer ) == MetaType::Pointers && skip_objids;
             if ( int diff = _maps.compare( a, b, layer, no_objids ) )
                 return diff;
         }
-        return Next::compare( o, a, b, sz, skip_objids );
+        int diff = Next::compare( o, a, b, sz, skip_objids );
+        return diff;
+    }
+
+    MetaType layer_type( uint8_t layer ) const
+    {
+        return (*_type)[ layer ].load( std::memory_order_relaxed );
+    }
+    void layer_type( uint8_t layer, MetaType type )
+    {
+        return (*_type)[ layer ].store( type, std::memory_order_relaxed );
     }
 };
 
