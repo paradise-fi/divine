@@ -119,16 +119,16 @@ struct YamlSink : TimedSink
                          { _out << k << ": " << v << std::endl; } );
     }
 
-    void memory( const mc::PoolStats &st, const mc::HashStats &ht, bool last ) override
+    void memory( const mc::PoolStats &ps, const mc::HashStats &hs, bool last ) override
     {
         if ( !last || !_detailed )
             return;
         _out << std::endl;
-        for ( auto p : st )
-            printpool( _out, p.first, p.second );
-        for ( auto [ name, use ] : ht )
-            _out << name << ": { used: " << use.first
-                         << ", capacity: " << use.second << " }" << std::endl;
+        for ( auto [ name, stat ] : ps )
+            printpool( _out, name, stat );
+        for ( auto [ name, stat ] : hs )
+            _out << name << ": { used: " << stat.used
+                         << ", capacity: " << stat.capacity << " }" << std::endl;
     }
 
     void result( mc::Result result, const mc::Trace &trace ) override
