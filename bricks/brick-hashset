@@ -454,6 +454,8 @@ namespace brick::hashset
         }
     };
 
+    struct Stats { size_t used = 0, capacity = 0; };
+
     template< size_t I, size_t... Next >
     struct Grow
     {
@@ -496,6 +498,18 @@ namespace brick::hashset
         {
             while ( await_update() );
             return _table->size();
+        }
+
+        Stats stats()
+        {
+            while ( await_update() );
+
+            Stats st;
+            st.capacity = _table->size();
+            for ( size_t i = 0; i < st.capacity; ++i )
+                if ( !_table->data[ i ].empty() )
+                    st.used ++;
+            return st;
         }
 
         template< typename A >
