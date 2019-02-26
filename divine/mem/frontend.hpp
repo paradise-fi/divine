@@ -46,6 +46,9 @@ namespace divine::mem
         using Pool = typename Next::Pool;
         using SnapPool = typename Next::SnapPool;
 
+        auto ht_stats()  { return n._ext.objects.stats(); }
+        auto mem_stats() { return n._objects.stats(); }
+
         auto pointers( Loc l, int sz = 0 )
         {
             return n.pointers( l, sz ? sz : n.size( l.object ) );
