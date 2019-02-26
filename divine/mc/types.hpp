@@ -19,6 +19,8 @@
 #pragma once
 
 #include <divine/vm/types.hpp>
+#include <brick-mem>
+#include <brick-hashset>
 #include <optional>
 
 namespace divine::mc
@@ -51,5 +53,5 @@ namespace divine::mc
                                               std::optional< typename Ex::Label > > >;
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;
-    using HashStats = std::map< std::string, std::pair< int64_t, int64_t > >;
+    using HashStats = std::map< std::string, brick::hashset::Stats >;
 }

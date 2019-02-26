@@ -235,7 +235,7 @@ struct Liveness : Job
     virtual PoolStats poolstats() override
     {
         return PoolStats{ { "snapshot memory", _ex.pool().stats() },
-                          { "fragment memory", _ex.context().heap()._objects.stats() } };
+                          { "fragment memory", _ex.context().heap().mem_stats() } };
     }
 };
 

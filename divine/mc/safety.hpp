@@ -128,7 +128,7 @@ struct Safety : Job
     virtual PoolStats poolstats() override
     {
         return PoolStats{ { "snapshot memory", _ex.pool().stats() },
-                          { "fragment memory", _ex.context().heap()._objects.stats() } };
+                          { "fragment memory", _ex.context().heap().mem_stats() } };
     }
 
     template< typename HT >
@@ -143,8 +143,8 @@ struct Safety : Job
 
     virtual HashStats hashstats() override
     {
-        return HashStats{ { "snapshot table", hashuse( _ex._d.states ) },
-                          { "fragment table", hashuse( _ex.context().heap()._ext.objects ) } };
+        return HashStats{ { "snapshot table", _ex._d.states.stats() },
+                          { "fragment table", _ex.context().heap().ht_stats() } };
     }
 };
 
