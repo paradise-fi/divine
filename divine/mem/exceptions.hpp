@@ -59,8 +59,7 @@ struct Snapshotter
             return ( it == i_map->second[ layer ].end() ) ? nullptr : &*it;
         }
 
-        const value_type * begin = _snap_begin( obj, layer );
-        const value_type * end = _snap_end( obj, layer );
+        auto [ begin, end ] = _snap_range( obj, layer );
         auto p = std::lower_bound( begin, end, key, []( auto & l, auto k )
                 {
                 return key_compare()( l.first, k );
@@ -68,7 +67,6 @@ struct Snapshotter
         if ( p == end || key_compare()( key, p->first ) )
             return nullptr;
         return p;
-
     }
 
     value_type * at_rw( Internal obj, key_type key, Layer layer )
@@ -98,27 +96,34 @@ struct Snapshotter
     {
         for ( const auto &[ obj, maps ] : _l._maps )
         {
-            unsigned snap_size = sizeof( Directory );
+            unsigned snap_size = 0;
             for ( const auto & m : maps )
                 snap_size += m.size() * sizeof( value_type );
+            if ( snap_size == 0 )
+                continue;
+
+            snap_size += sizeof( Directory );
             auto snap = _snapshots.allocate( snap_size );
-            auto dir = _snapshots.template machinePointer< DirEntry >( snap );
-            *( _snap_pointers.template machinePointer< SnapPointer >( obj ) ) = snap;
+            ASSERT_EQ( *_snap_pointers.template machinePointer< SnapPointer >( obj ), SnapPointer() );
+            *_snap_pointers.template machinePointer< SnapPointer >( obj ) = snap;
 
             Layer layer = 0;
-            auto dst = _snap_layer_begin( snap, 0 );
+            auto & dir = *_snapshots.template machinePointer< Directory >( snap );
+            auto begin = _snapshots.template machinePointer< value_type >( snap, sizeof( Directory ) );
+            auto dst = begin;
             for ( auto & map : maps )
             {
                 if ( layer > 0 )
-                    dir[ layer - 1 ] = DirEntry( size_t( dst ) - size_t( dir ) - sizeof( Directory ) );
+                    dir[ layer - 1 ] = DirEntry( dst - begin );
                 for ( const auto & p : map )
                 {
                     new ( dst ) value_type( p );
                     ++dst;
                 }
-            ++layer;
+                ++layer;
             }
-            ASSERT_EQ( snap_size, size_t( dst ) - size_t( dir ) );
+
+            ASSERT_EQ( snap_size, size_t( dst ) - size_t( begin ) + sizeof( Directory ) );
         }
         _l._maps.clear();
     }
@@ -126,25 +131,29 @@ struct Snapshotter
     void materialise( Internal obj )
     {
         _snap_pointers.materialise( obj, sizeof( SnapPointer ) );
+        ASSERT( !_snap( obj ) );
     }
 
     void free( Internal obj )
     {
+        ASSERT( !_snap( obj ) );
         _l._maps.erase( obj );
     }
 
-    int compare( Internal a, Internal b, Layer layer, bool ignore_values )
+    int compare( Internal a, Internal b, Layer layer, bool ignore_values ) const
     {
         auto it_a = _l._maps.find( a );
         if ( it_a != _l._maps.end() ) {
             const auto & map_a = it_a->second[ layer ];
             return _cmp( map_a.begin(), map_a.end(), b, layer, ignore_values );
         }
-        return _cmp( _snap_begin( a, layer ), _snap_end( a, layer ), b, layer, ignore_values );
+
+        auto [ begin_a, end_a ] = _snap_range( a, layer );
+        return _cmp( begin_a, end_a, b, layer, ignore_values );
     }
 
     template< typename IterA >
-    int _cmp( IterA begin_a, IterA end_a, Internal b, Layer layer, bool ignore_values )
+    int _cmp( IterA begin_a, IterA end_a, Internal b, Layer layer, bool ignore_values ) const
     {
         auto it_b = _l._maps.find( b );
         if ( it_b != _l._maps.end() )
@@ -152,11 +161,13 @@ struct Snapshotter
             const auto & map_b = it_b->second[ layer ];
             return _cmp( begin_a, end_a, map_b.begin(), map_b.end(), ignore_values );
         }
-        return _cmp( begin_a, end_a, _snap_begin( b, layer ), _snap_end( b, layer ), ignore_values );
+
+        auto [ begin_b, end_b ] = _snap_range( b, layer );
+        return _cmp( begin_a, end_a, begin_b, end_b, ignore_values );
     }
 
     template< typename IterA, typename IterB >
-    int _cmp( IterA begin_a, IterA end_a, IterB begin_b, IterB end_b, bool ignore_values )
+    int _cmp( IterA begin_a, IterA end_a, IterB begin_b, IterB end_b, bool ignore_values ) const
     {
         for ( ; begin_a != end_a; ++begin_a, ++begin_b )
         {
@@ -184,66 +195,43 @@ struct Snapshotter
         {
             auto translate_and_insert = [this, delta, to_object, layer]( const auto & x )
             {
-                _l._maps[ to_object ][ layer ].insert( { x.first + delta, x.second } );
+                _l._maps[ to_object ][ layer ][ x.first + delta ] = x.second;
             };
             auto it = from_m._l._maps.find( from_object );
             if ( it != from_m._l._maps.end() )
             {
                 auto lb = it->second[ layer ].lower_bound( from_offset );
-                auto ub = it->second[ layer ].upper_bound( from_offset + sz );
+                auto ub = it->second[ layer ].lower_bound( from_offset + sz );
                 std::for_each( lb, ub, translate_and_insert );
             }
             else
             {
-                auto f_begin = from_m._snap_begin( from_object, layer );
-                auto f_end = from_m._snap_end( from_object, layer );
+                auto [ f_begin, f_end ] = from_m._snap_range( from_object, layer );
                 auto compare_pk = []( auto &p, auto &k ) { return key_compare()( p.first, k ); };
                 auto lb = std::lower_bound( f_begin, f_end, from_offset, compare_pk );
-                auto compare_kp = []( auto &k, auto &p ) { return key_compare()( k, p.first ); };
-                auto ub = std::upper_bound( lb, f_end, from_offset + sz, compare_kp );
+                auto ub = std::lower_bound( lb, f_end, from_offset + sz, compare_pk );
                 std::for_each( lb, ub, translate_and_insert );
             }
         }
     }
 
-    value_type * _snap_begin( Internal obj, Layer layer ) const
+    std::pair< value_type *, value_type * > _snap_range( Internal obj, Layer layer ) const
     {
         ASSERT_LT( layer, NLayers );
-        if ( auto snap = _snap( obj ) )
-            return _snap_layer_begin( snap, layer );
-        return nullptr;
-    }
-    value_type * _snap_layer_begin( SnapPointer snap, Layer layer ) const
-    {
-        auto dir = _snapshots.template machinePointer< char >( snap );
-        char * begin = dir + sizeof( Directory );
-        if constexpr ( NLayers > 1 )
-        {
-            if ( layer > 0 )
-                begin += ( reinterpret_cast< DirEntry * >( dir ) )[ layer - 1 ];
-        }
-        return reinterpret_cast< value_type * >( begin );
-    }
-    value_type * _snap_end( Internal obj, Layer layer ) const
-    {
-        ASSERT_LT( layer, NLayers );
-        if ( auto snap = _snap( obj ) )
-            return _snap_layer_end( snap, layer );
-        return nullptr;
-    }
-    value_type * _snap_layer_end( SnapPointer snap, Layer layer ) const
-    {
-        auto dir = _snapshots.template machinePointer< char >( snap );
-        char * end = dir + _snapshots.size( snap );
+        auto snap = _snap( obj );
+        if ( !snap )
+            return std::make_pair( nullptr, nullptr );
+        auto & dir = *_snapshots.template machinePointer< Directory >( snap );
+        auto begin = _snapshots.template machinePointer< value_type >( snap, sizeof( Directory ) );
+        auto end = begin + ( _snapshots.size( snap ) - sizeof( Directory ) ) / sizeof( value_type );
         if constexpr ( NLayers > 1 )
         {
             if ( layer < NLayers - 1 )
-            {
-                end = dir + sizeof( Directory );
-                end += ( reinterpret_cast< DirEntry * >( dir ) )[ layer ];
-            }
+                end = begin + dir[ layer ];
+            if ( layer > 0 )
+                begin += dir[ layer - 1 ];
         }
-        return reinterpret_cast< value_type * >( end );
+        return std::make_pair( begin, end );
     }
     SnapPointer _snap( Internal obj ) const
     {
