@@ -31,6 +31,10 @@ extern "C" {
         return mstr->read( offset( addr ) );
     }
 
+    __mstring * __mstring_gep( __mstring * addr, uint64_t /*idx*/ ) {
+        return addr;
+    }
+
     /* String manipulation */
     __mstring * __mstring_strcpy( __mstring * dest, const __mstring * src ) {
         dest->strcpy( src );

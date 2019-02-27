@@ -12,6 +12,8 @@ OP( DOMAIN_TYPE, lift, const char * str, unsigned len );
 OP( bool, store, char val, DOMAIN_TYPE str, uint64_t idx );
 OP( char, load, DOMAIN_TYPE str, uint64_t idx );
 
+OP( DOMAIN_TYPE, gep, DOMAIN_TYPE str, uint64_t idx );
+
 FREEZE_PROT()
 THAW_PROT()
 
