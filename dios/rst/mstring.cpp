@@ -123,14 +123,14 @@ extern "C" {
 
     // TODO extract impl
     void __mstring_freeze( __mstring * str, void * addr ) {
-        if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
+        /*if ( abstract::tainted( *static_cast< char * >( addr ) ) ) {
             auto old = peek_object< __mstring >( addr );
             old->refcount_decrement();
             if ( !old->refcount() ) {
                 __vm_poke( addr, _VM_ML_User, 0 );
                 mstring_cleanup( old );
             }
-        }
+        }*/
 
         if ( str ) {
             str->refcount_increment();
@@ -138,8 +138,8 @@ extern "C" {
         }
     }
 
-    __mstring * __mstring_thaw( void * /* addr */ ) {
-        _UNREACHABLE_F( "Not implemented." );
+    __mstring * __mstring_thaw( void * addr ) {
+        return peek_object< __mstring >( addr );
     }
 }
 
