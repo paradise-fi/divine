@@ -192,10 +192,6 @@ Mstring * Mstring::strchr( char ch ) const noexcept {
     }
 }
 
-char * Mstring::rho() const {
-    return nullptr;
-}
-
 size_t Mstring::strlen() const noexcept {
     if ( _buff.data() == nullptr )
         return -1;

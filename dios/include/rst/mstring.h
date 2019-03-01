@@ -154,7 +154,6 @@ namespace abstract::mstring {
             init();
         }
 
-        char * rho() const;
         Split< Buffer > split() const noexcept;
 
         constexpr size_t from() const noexcept { return _buff.from(); }
