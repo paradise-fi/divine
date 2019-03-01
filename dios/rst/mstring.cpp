@@ -10,7 +10,7 @@ namespace abstract::mstring {
 using abstract::__new;
 
 __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
-    return __new< Quintuple >( _VM_PT_Marked, buff, buff_len, 0, 1 );
+    return __new< Mstring >( _VM_PT_Marked, buff, buff_len, 0, 1 );
 }
 
 extern "C" {
@@ -125,7 +125,7 @@ extern "C" {
     }
 }
 
-void Quintuple::strcpy(const Quintuple * other) noexcept {
+void Mstring::strcpy(const Mstring * other) noexcept {
     if (this != other) {
         size_t terminator = other->_terminators.front();
 
@@ -139,7 +139,7 @@ void Quintuple::strcpy(const Quintuple * other) noexcept {
     }
 }
 
-void Quintuple::strcat( const Quintuple * other ) noexcept {
+void Mstring::strcat( const Mstring * other ) noexcept {
     size_t begin = _terminators.front();
     size_t dist = other->_terminators.front() + 1;
 
@@ -152,7 +152,7 @@ void Quintuple::strcat( const Quintuple * other ) noexcept {
     }
 }
 
-Quintuple * Quintuple::strchr( char ch ) const noexcept {
+Mstring * Mstring::strchr( char ch ) const noexcept {
     auto split = this->split();
     auto interest = split.sections().front();
 
@@ -165,7 +165,7 @@ Quintuple * Quintuple::strchr( char ch ) const noexcept {
         });
 
         if ( search != end ) {
-            return __new< Quintuple >( _VM_PT_Marked, const_cast< Quintuple * >( this ), search->from() );
+            return __new< Mstring >( _VM_PT_Marked, const_cast< Mstring * >( this ), search->from() );
         } else {
             return nullptr;
         }
@@ -174,18 +174,18 @@ Quintuple * Quintuple::strchr( char ch ) const noexcept {
     }
 }
 
-char * Quintuple::rho() const {
+char * Mstring::rho() const {
     return nullptr;
 }
 
-size_t Quintuple::strlen() const noexcept {
+size_t Mstring::strlen() const noexcept {
     if ( _buff.data() == nullptr )
         return -1;
     assert(!_terminators.empty());
     return _terminators.front();
 }
 
-auto Quintuple::split() const noexcept -> Split< Quintuple::Buffer > {
+auto Mstring::split() const noexcept -> Split< Mstring::Buffer > {
     if ( _buff.data() != nullptr ) {
         assert(!_terminators.empty());
         return Split( _buff, _terminators );
@@ -193,7 +193,7 @@ auto Quintuple::split() const noexcept -> Split< Quintuple::Buffer > {
     _UNREACHABLE_F( "Error: Trying to split buffer without a string of interest." );
 }
 
-int Quintuple::strcmp( const Quintuple * other ) const noexcept {
+int Mstring::strcmp( const Mstring * other ) const noexcept {
     auto split_q1 = this->split();
     auto split_q2 = other->split();
 
@@ -223,7 +223,7 @@ int Quintuple::strcmp( const Quintuple * other ) const noexcept {
     _UNREACHABLE_F( "Error: there is no string of interest." );
 }
 
-void Quintuple::write( size_t idx, char val ) noexcept {
+void Mstring::write( size_t idx, char val ) noexcept {
     auto split = this->split();
     auto sq = split.sections().front();
 
@@ -235,7 +235,7 @@ void Quintuple::write( size_t idx, char val ) noexcept {
     }
 }
 
-void Quintuple::safe_write( size_t idx, char val ) noexcept {
+void Mstring::safe_write( size_t idx, char val ) noexcept {
     if ( _buff[ idx ] == '\0' ) {
         auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
         _terminators.erase( it );
@@ -251,22 +251,22 @@ void Quintuple::safe_write( size_t idx, char val ) noexcept {
     }
 }
 
-char Quintuple::read( size_t idx ) noexcept {
+char Mstring::read( size_t idx ) noexcept {
     assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
     return _buff[ idx ];
 }
 
-void mstring_release( Quintuple * quintuple ) noexcept {
-    quintuple->refcount_decrement();
+void mstring_release( Mstring * str ) noexcept {
+    str->refcount_decrement();
 }
 
-void mstring_cleanup( Quintuple * quintuple ) noexcept {
-    quintuple->~Quintuple();
-    __dios_safe_free( quintuple );
+void mstring_cleanup( Mstring * str ) noexcept {
+    str->~Mstring();
+    __dios_safe_free( str );
 }
 
-void mstring_cleanup_check( Quintuple * quintuple ) noexcept {
-    cleanup_check( quintuple, mstring_cleanup );
+void mstring_cleanup_check( Mstring * str ) noexcept {
+    cleanup_check( str, mstring_cleanup );
 }
 
 } // namespace abstract::mstring

@@ -12,7 +12,7 @@
 
 namespace abstract::mstring {
 
-    struct Quintuple;
+    struct Mstring;
 
     /*
      *  |      section      |
@@ -139,16 +139,16 @@ namespace abstract::mstring {
         T * _buff;
     };
 
-    struct Quintuple {
+    struct Mstring {
         using Buffer = Buffer< char >;
 
-        Quintuple( const char * buff, size_t len, size_t from, size_t refcount = 0 )
+        Mstring( const char * buff, size_t len, size_t from, size_t refcount = 0 )
             : _buff( from, buff, len ), _from( from ), _refcount( refcount )
         {
             init();
         }
 
-        Quintuple( Quintuple * quituple, size_t from )
+        Mstring( Mstring * quituple, size_t from )
             : _buff( from, quituple->_buff ), _from( from )
         {
             init();
@@ -160,12 +160,12 @@ namespace abstract::mstring {
         constexpr size_t from() const noexcept { return _buff.from(); }
 
         size_t strlen() const noexcept;
-        int strcmp( const Quintuple * other ) const noexcept;
+        int strcmp( const Mstring * other ) const noexcept;
 
-        void strcpy( const Quintuple * other ) noexcept;
-        void strcat( const Quintuple * other ) noexcept;
+        void strcpy( const Mstring * other ) noexcept;
+        void strcat( const Mstring * other ) noexcept;
 
-        Quintuple * strchr( char ch ) const noexcept;
+        Mstring * strchr( char ch ) const noexcept;
 
         void write( size_t idx, char val ) noexcept;
         void safe_write( size_t idx, char val ) noexcept;
@@ -198,16 +198,16 @@ namespace abstract::mstring {
         size_t _refcount;
     };
 
-    void mstring_release( Quintuple * quintuple ) noexcept;
+    void mstring_release( Mstring * str ) noexcept;
 
-    void mstring_cleanup( Quintuple * quintuple ) noexcept;
-    void mstring_cleanup_check( Quintuple * quintuple ) noexcept;
+    void mstring_cleanup( Mstring * str ) noexcept;
+    void mstring_cleanup_check( Mstring * str ) noexcept;
 
     using Release = decltype( mstring_release );
     using Check = decltype( mstring_cleanup_check );
 } // namespace abstract::mstring
 
-typedef abstract::mstring::Quintuple __mstring;
+typedef abstract::mstring::Mstring __mstring;
 
 #define DOMAIN_NAME mstring
 #define DOMAIN_KIND content
@@ -222,7 +222,7 @@ extern "C" {
 }
 
 namespace abstract {
-    using Object = abstract::mstring::Quintuple;
+    using Object = abstract::mstring::Mstring;
     using Release = abstract::mstring::Release;
     using Check = abstract::mstring::Check;
 
@@ -234,7 +234,7 @@ namespace abstract {
 
 namespace abstract::mstring {
     __invisible static inline void cleanup( _VM_Frame * frame ) noexcept {
-        abstract::cleanup< Quintuple, Release, Check >( frame, mstring_release, mstring_cleanup_check );
+        abstract::cleanup< Mstring, Release, Check >( frame, mstring_release, mstring_cleanup_check );
     }
 } // namespace abstract::mstring
 
