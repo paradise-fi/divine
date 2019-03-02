@@ -1,21 +1,10 @@
 #include <rst/common-domain.def>
+#include <rst/content-domain.def>
 
 extern "C" {
 
 #define OP( ret, name, ... ) \
     RET_PROT( ret, name, __VA_ARGS__ );
-
-LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
-
-OP( DOMAIN_TYPE, lift, const char * str, unsigned len );
-
-OP( void, store, char val,  char * str );
-OP( char, load, char * str );
-
-OP( DOMAIN_TYPE, gep, DOMAIN_TYPE str, uint64_t idx );
-
-FREEZE_PROT()
-THAW_PROT()
 
 /* String manipulation */
 OP( DOMAIN_TYPE, strcpy , DOMAIN_TYPE dest, const DOMAIN_TYPE src );

@@ -1,0 +1,22 @@
+#include <rst/common-domain.def>
+
+extern "C" {
+
+#define OP( ret, name, ... ) \
+    RET_PROT( ret, name, __VA_ARGS__ );
+
+LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
+
+OP( DOMAIN_TYPE, lift, const void * addr, unsigned len );
+
+OP( void, store, char val, void * addr );
+OP( char, load, void * addr );
+
+OP( DOMAIN_TYPE, gep, DOMAIN_TYPE addr, uint64_t idx );
+
+FREEZE_PROT()
+THAW_PROT()
+
+#undef OP
+
+}

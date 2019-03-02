@@ -21,12 +21,12 @@ extern "C" {
         return abstract::taint< char * >( buff );
     }
 
-    void __mstring_store( char val, char * addr ) {
+    void __mstring_store( char val, void * addr ) {
          __mstring *mstr = peek_object< __mstring >( object( addr ) );
          mstr->write( offset( addr ), val );
     }
 
-    char __mstring_load( char * addr ) {
+    char __mstring_load( void * addr ) {
         __mstring *mstr = peek_object< __mstring >( object( addr ) );
         return mstr->read( offset( addr ) );
     }

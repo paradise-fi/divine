@@ -148,8 +148,8 @@ namespace abstract::mstring {
             init();
         }
 
-        Mstring( Mstring * quituple, size_t from )
-            : _buff( from, quituple->_buff ), _from( from )
+        Mstring( Mstring * str, size_t from )
+            : _buff( from, str->_buff ), _from( from )
         {
             init();
         }
@@ -192,7 +192,7 @@ namespace abstract::mstring {
 
         size_t _from;
 
-        Buffer _buff;                        // IV - buffer
+        Buffer _buff;                           // IV - buffer
         __dios::Array< size_t > _terminators;   // T - zeros in buffer
 
         size_t _refcount;
