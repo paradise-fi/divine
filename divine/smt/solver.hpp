@@ -44,10 +44,7 @@ enum class Result { False, True, Unknown };
 
 struct None
 {
-    bool equal( SymPairs &, vm::CowHeap &, vm::CowHeap & )
-    {
-        UNREACHABLE( "no equality check" );
-    }
+    bool equal( SymPairs &, vm::CowHeap &, vm::CowHeap & ) { return true; }
     bool feasible( vm::CowHeap &, vm::HeapPointer ) { return true; }
     void reset() {}
 };
