@@ -147,25 +147,62 @@ namespace lart::abstract
                 return { a, da, b, db };
             }
 
+            if constexpr ( Taint::call( T ) ) {
+                auto call = llvm::cast< llvm::CallInst >( dual( inst() ) );
+
+                std::vector< llvm::Value * > args;
+                for ( const auto & use : call->arg_operands() ) {
+                    auto arg = use.get();
+                    args.push_back( arg );
+                    if ( meta::has_dual( arg ) ) {
+                        args.push_back( dual( arg ) );
+                    }
+                }
+
+                return args;
+            }
+
             UNREACHABLE( "Not implemented" );
         }
 
         llvm::Value * default_value() const
         {
-            if constexpr ( T == Taint::Type::ToBool ) {
-                return meta::get_dual( llvm::cast< llvm::Instruction >( inst()->getOperand( 0 ) ) );
+            if constexpr ( Taint::toBool( T ) ) {
+                return dual( inst()->getOperand( 0 ) );
             }
 
-            if constexpr ( T == Taint::Type::Lower ) {
+            if constexpr ( Taint::lower( T ) ) {
                 UNREACHABLE( "Not implemented" );
+            }
+
+            if constexpr ( Taint::call( T ) ) {
+                auto fn = domain_function();
+                auto meta = DomainMetadata::get( module(), domain() );
+                if ( fn->getReturnType() == meta.base_type() )
+                    return meta.default_value();
+                return dual( inst() );
             }
 
             return DomainMetadata::get( module(), domain() ).default_value();
         }
 
+        llvm::Function * domain_function() const
+        {
+            static_assert( Taint::call( T ) );
+            std::string name = "__" + domain().name() + "_" + suffix( dual( inst() ) );
+            if ( auto fn = module()->getFunction( name ) )
+                return fn;
+            UNREACHABLE( "Unknown domain function: " + name );
+        }
+
         std::string suffix( llvm::Value * val ) const
         {
             std::string res = TaintTable[ T ];
+
+            if constexpr ( Taint::call( T ) ) {
+                auto fn = llvm::cast< llvm::CallInst >( val )->getCalledFunction();
+                return fn->getName().str();
+            }
 
             if constexpr ( Taint::cmp( T ) ) {
                 auto cmp = llvm::cast< llvm::CmpInst >( val );

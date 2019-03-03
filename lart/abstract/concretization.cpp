@@ -186,6 +186,9 @@ namespace lart::abstract
 
         std::set< llvm::Function * > seen;
         run_on_abstract_calls( [&] ( auto * call ) {
+            if ( is_transformable( call ) )
+                return; // call of domain function
+
             if ( call->getNumArgOperands() != 0 ) {
                 Bundle bundle( call );
                 if ( bundle.empty() )

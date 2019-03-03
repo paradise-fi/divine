@@ -91,6 +91,9 @@ namespace lart::abstract {
         static constexpr bool thaw( Taint::Type type ) { return Type::Thaw == type; }
         static constexpr bool stash( Taint::Type type ) { return Type::Stash == type; }
         static constexpr bool unstash( Taint::Type type ) { return Type::Unstash == type; }
+        static constexpr bool call( Taint::Type type ) { return Type::Call == type; }
+        static constexpr bool lift( Taint::Type type ) { return Type::Lift == type; }
+        static constexpr bool lower( Taint::Type type ) { return Type::Lower == type; }
 
         static std::vector< Taint > enumerate( llvm::Module & m )
         {

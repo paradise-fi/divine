@@ -167,6 +167,13 @@ using lart::util::get_module;
             } );
         };
 
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
+            if ( auto fn = call->getCalledFunction() ) {
+                auto name =  "__" + dom.name() + "_" + fn->getName().str();
+                return inst->getModule()->getFunction( name );
+            }
+        }
+
         switch ( dm.kind() ) {
             case DomainKind::scalar:
                 if ( is_base_type_in_domain( m, inst, dom ) ) {
@@ -181,13 +188,6 @@ using lart::util::get_module;
 
                 return false;
             case DomainKind::content:
-                if ( auto call = dyn_cast< CallInst >( inst ) ) {
-                    if ( auto fn = call->getCalledFunction() ) {
-                        auto name =  "__" + dom.name() + "_" + fn->getName().str();
-                        return get_module( inst )->getFunction( name );
-                    }
-                }
-
                 return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
             case DomainKind::pointer:
             default:

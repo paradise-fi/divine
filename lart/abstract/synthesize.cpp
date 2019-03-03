@@ -61,9 +61,15 @@ namespace lart::abstract
             std::string prefix = "__" + domain().name() + "_";
             if constexpr ( Taint::toBool( T ) ) {
                 return get_operation( prefix + "bool_to_tristate" ); // TODO cleanup?
-            } else {
-                return get_operation( prefix + taint.name() );
             }
+
+            if constexpr ( Taint::call( T ) ) {
+                auto dual = meta::get_dual( taint.inst );
+                auto fn = llvm::cast< llvm::CallInst >( dual )->getCalledFunction();
+                return get_operation( prefix + fn->getName().str() );
+            }
+
+            return get_operation( prefix + taint.name() );
         }
 
         void construct()
@@ -165,11 +171,31 @@ namespace lart::abstract
                 irb.SetInsertPoint( exit );
             }
 
+            if constexpr ( Taint::call( T ) )
+            {
+                auto call = llvm::cast< llvm::CallInst >( meta::get_dual( taint.inst ) );
+                // TODO lifting
+
+                unsigned idx = 0;
+                auto abstract = [] ( unsigned i ) { return i + 1; };
+
+                for ( const auto & arg : call->arg_operands() ) {
+                    if ( meta::has_dual( arg.get() ) ) {
+                        vals.push_back( args[ abstract( idx ) ].value );
+                        idx += 2;
+                    } else {
+                        ASSERT( is_concrete( arg.get() ) );
+                        vals.push_back( args[ idx ].value );
+                        idx += 1;
+                    }
+                }
+            }
+
             ASSERT( operation );
             ASSERT( operation->arg_size() == vals.size() );
             auto call = irb.CreateCall( operation, vals );
 
-            if constexpr ( Taint::freeze( T ) || Taint::stash( T ) ) {
+            if constexpr ( Taint::freeze( T ) || Taint::store( T ) || Taint::stash( T ) ) {
                 irb.CreateRet( llvm::UndefValue::get( function()->getReturnType() ) );
             } else {
                 irb.CreateRet( call );

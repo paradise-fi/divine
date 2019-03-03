@@ -254,8 +254,8 @@ namespace lart::abstract
         }
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
-            // TODO assert transformable call
-            // return construct< Type::Call >( call );
+            ASSERT( is_transformable( call ) );
+            return construct< Type::Call >( call );
         }
 
         if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( inst ) ) {
