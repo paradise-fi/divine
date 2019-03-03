@@ -16,7 +16,7 @@ __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
 extern "C" {
     _MSTRING char * __mstring_val( char * buff, unsigned buff_len ) _LART_IGNORE_ARG {
         auto val = __mstring_lift( buff, buff_len );
-
+        poke_object< __mstring >( val, buff );
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
         return abstract::taint< char * >( buff );
     }
