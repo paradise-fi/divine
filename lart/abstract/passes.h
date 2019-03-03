@@ -21,7 +21,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/vpa.h>
 #include <lart/abstract/decast.h>
-#include <lart/abstract/duplicator.h>
+#include <lart/abstract/syntactic.h>
 #include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
 #include <lart/abstract/content.h>
@@ -49,7 +49,7 @@ namespace abstract {
                                            , VPA()
                                            , Decast()
                                            , VPA() // run once more to propagate through decasted functions
-                                           , Duplicator()
+                                           , Syntactic()
                                            , StashingPass()
                                            , ContentPass()
                                            , ExpandBranching()
