@@ -84,15 +84,35 @@ namespace lart::abstract {
 
     void Unstash::process_arguments( llvm::CallInst * call, llvm::Function * fn )
     {
-        auto concrete = [&] ( llvm::Argument & arg ) {
-            return is_concrete( call->getOperand( arg.getArgNo() ) );
+        auto concrete = [&] ( llvm::Argument * arg ) {
+            return is_concrete( call->getOperand( arg->getArgNo() ) );
+        };
+
+        auto in_concern = [&] ( llvm::Argument * arg ) {
+            auto  m = fn->getParent();
+            auto dom = Domain::get( arg );
+            return is_base_type_in_domain( m, arg, dom );
+        };
+
+        auto processed = [&] ( llvm::Argument * arg ) {
+            if ( auto dual = meta::get_dual( arg ) ) {
+                auto inst = llvm::cast< llvm::Instruction >( dual );
+                ASSERT( Placeholder::is( inst ) );
+                ASSERT( Placeholder( inst ).type == Placeholder::Type::Unstash );
+                return true;
+            }
+            return false;
         };
 
         llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHI() );
-        for ( auto & arg : fn->args() ) {
-            if ( !concrete( arg ) && !meta::has_dual( &arg ) )
-                unstash( &arg, irb );
-        }
+
+        query::query( fn->args() )
+            .map( query::refToPtr )
+            .filter( query::negate( concrete ) )
+            .filter( in_concern )
+            .filter( query::negate( processed ) )
+            .map( [&] ( auto * arg ) { return unstash( arg, irb ); } )
+            .freeze();
     }
 
     void Unstash::process_return_value( llvm::CallInst * call )
