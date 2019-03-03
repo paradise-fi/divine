@@ -13,12 +13,6 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-    struct Tainting {
-        void run( llvm::Module& );
-        llvm::Value* process( llvm::Instruction* );
-    };
-
-
     struct Synthesize {
         void run( llvm::Module& );
         void process( llvm::CallInst* );
