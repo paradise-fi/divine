@@ -144,7 +144,7 @@ using lart::util::get_module;
         switch ( dm.kind() ) {
             case DomainKind::scalar:
                 return util::is_one_of< AllocaInst, CallInst, StoreInst, LoadInst, CastInst,
-                    GetElementPtrInst, IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
+                    PHINode, GetElementPtrInst, IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
             case DomainKind::content:
                 return util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
             case DomainKind::pointer:
