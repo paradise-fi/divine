@@ -145,6 +145,14 @@ namespace divine::mem
         UNREACHABLE( "heap comparison fell through" );
     }
 
+    struct NopState
+    {
+        template< typename T > void update_aligned( T ) {}
+        void update_aligned( uint8_t *, size_t ) {}
+        void realign() {}
+        hash64_t hash() const { return 0; }
+    };
+
     template< typename Heap >
     void hash( Heap &heap, uint32_t root, std::unordered_map< int, int > &visited,
                brick::hash::State &state, int depth )
@@ -168,24 +176,20 @@ namespace divine::mem
         if ( size > 64 * 1024 )
             return; /* skip the huge constants blobs */
 
-        auto data = reinterpret_cast< uint32_t * >( heap.unsafe_ptr2mem( i ) );
-        auto meta = heap.compressed( typename Heap::Loc( i, 0, 0 ), ( size + 3 ) / 4 );
-        auto c = meta.begin();
-
-        for ( auto count = size; count >= 4 ; count -= 4, data++, c++ )
+        auto ptr_cb = [&]( uint32_t obj )
         {
-            if ( !Heap::is_pointer( *c ) )
-                continue;
-
-            vm::GenericPointer ptr( *data, 0 );
+            vm::GenericPointer ptr( obj, 0 );
 
             if ( ptr.type() == Heap::Pointer::Type::Heap ||
                  ptr.type() == Heap::Pointer::Type::Alloca )
-                hash( heap, ptr.object(), visited, state, depth + 1 );
+                hash( heap, obj, visited, state, depth + 1 );
 
             if ( !ptr.heap() )
                 state.update_aligned( ptr.object() );
-        }
+        };
+
+        NopState nop;
+        heap.hash( root, nop, ptr_cb );
     }
 
     template< typename FromH, typename ToH >

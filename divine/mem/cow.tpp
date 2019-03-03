@@ -23,44 +23,6 @@
 namespace divine::mem
 {
 
-    template< typename Next>
-    hash64_t Cow< Next >::ObjHasher::content_only( Internal i ) const
-    {
-        auto count = objects().size( i );
-        auto word = objects().template machinePointer< uint32_t >( i );
-
-        brick::hash::State high;
-
-        auto comp = heap().compressed( Loc( i, 0, 0 ), count / 4 );
-        auto c = comp.begin();
-
-        while ( count >= 4 )
-        {
-            if ( ! Next::is_pointer_or_exception( *c ) ) /* NB. assumes little endian */
-                high.update_aligned( *word );
-            count -= 4;
-            ++c, ++word;
-        }
-
-        auto byte = reinterpret_cast< uint8_t * >( word );
-        while ( count > 0 )
-            high.update_aligned( *byte++ ), --count;
-
-        return high.hash();
-    }
-
-    template< typename Next >
-    hash64_t Cow< Next >::ObjHasher::hash( Internal i ) const
-    {
-        brick::hash::State state;
-        auto size = objects().size( i );
-        state.update_aligned( objects().template machinePointer< uint8_t >( i ), size );
-        state.realign();
-        state.update_aligned( heap().meta().template machinePointer< uint8_t >( i ),
-                              heap().meta_size( size ) );
-        return ( content_only( i ) & 0xFFFFFFF000000000 ) | ( state.hash() & 0x0000000FFFFFFFF );
-    }
-
     template< typename Next > template< typename Cell >
     bool Cow< Next >::ObjHasher::match( Cell &cell, Internal x, hash64_t ) const
     {

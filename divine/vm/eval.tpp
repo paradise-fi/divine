@@ -633,8 +633,8 @@ template< typename Ctx >
 void Eval< Ctx >::update_shuffle()
 {
     using brick::bitlevel::mixdown;
-    uint64_t next = mixdown( heap().objhash( context().ptr2i( _VM_Operand::Location( _VM_CR_Frame ) ) ),
-                             context().frame().object() );
+    auto [ data, ptr ] = heap().hash_data( context().ptr2i( _VM_Operand::Location( _VM_CR_Frame ) ) );
+    uint64_t next = mixdown( data ^ ptr, context().frame().object() );
     context().set( _VM_CR_ObjIdShuffle, next );
 }
 

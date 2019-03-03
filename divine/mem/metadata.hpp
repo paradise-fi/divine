@@ -230,7 +230,7 @@ struct Metadata : Next
     auto &meta() { return _meta; }
     void materialise( Internal i, int size ) { _meta.materialise( i, meta_size( size ) ); }
 
-    int meta_size( int size )
+    static constexpr int meta_size( int size )
     {
         constexpr unsigned divisor = 32 / BPW;
         return ( size / divisor ) + ( size % divisor ? 1 : 0 );
@@ -269,6 +269,14 @@ struct Metadata : Next
         }
 
         return Next::compare( a_sh, a_obj, b_obj, sz, skip_objids );
+    }
+
+    template< typename S, typename F >
+    void hash( Internal i, int size, S &state, F ptr_cb ) const
+    {
+        state.realign();
+        state.update_aligned( _meta.template machinePointer< uint8_t >( i ), meta_size( size ) );
+        Next::hash( i, size, state, ptr_cb );
     }
 
     using CompressedC = BitsetContainer< BPW, MetaPool >;

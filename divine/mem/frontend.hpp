@@ -98,7 +98,21 @@ namespace divine::mem
 
         bool valid( Pointer p ) const { return n.valid( p ); }
         bool valid( Internal i ) const { return n.valid( i ); }
-        brick::hash::hash64_t objhash( Internal i ) const { return n.objhash( i ); }
+        auto hash_data( Internal i ) const { return n.hash_data( i ); }
+
+        template< typename S, typename F >
+        void hash( uint32_t obj, S &state, F ptr_cb ) const
+        {
+            auto i = n.ptr2i( obj );
+            auto bytes = n.size( i );
+            n.hash( i, bytes, state, ptr_cb );
+        }
+
+        template< typename S, typename F >
+        void hash( Pointer p, S &state, F ptr_cb ) const
+        {
+            hash( p.object(), state, ptr_cb );
+        }
 
         static constexpr bool can_snapshot() { return Next::can_snapshot(); }
         Snapshot snapshot( Pool &p ) { return n.snapshot( p ); }

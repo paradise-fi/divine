@@ -28,7 +28,6 @@ namespace divine::mem
 {
 
     using brick::hash::hash64_t;
-
     template< typename Next >
     struct Cow : Next
     {
@@ -48,14 +47,15 @@ namespace divine::mem
             auto &heap() const { return *_heap; }
             auto &objects() const { return _heap->_objects; }
 
-            hash64_t content_only( Internal i ) const;
-            hash64_t hash( Internal i ) const;
+            hash64_t hash( Internal i ) const
+            {
+                auto [ data, ptr ] = heap().hash_data( i );
+                return ( ptr & 0xFFFFFFFFul ) ^ data;
+            }
 
             template< typename Cell >
             bool match( Cell &, Internal, hash64_t ) const;
         };
-
-        auto objhash( Internal i ) const { return _ext.hasher.content_only( i ); }
 
         mutable struct Ext
         {

@@ -101,6 +101,9 @@ struct Base
         return 0;
     }
 
+    template< typename S, typename F >
+    void hash( Internal, int, S &, F ) const {}
+
     static constexpr bool can_snapshot() { return false; }
 };
 

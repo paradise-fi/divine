@@ -116,6 +116,30 @@ namespace divine::mem
         return true;
     }
 
+    template< typename Next > template< typename S, typename F > [[gnu::always_inline]]
+    void Data< Next >::hash( Internal i, int bytes, S &state, F ptr_cb ) const
+    {
+        int total_bytes = bytes;
+        auto word = reinterpret_cast< uint32_t * >( unsafe_ptr2mem( i ) );
+        auto meta = this->compressed( Loc( i, 0, 0 ), ( bytes + 3 ) / 4 );
+        auto c = meta.begin();
+
+        for ( ; bytes >= 4 ; bytes -= 4, word++, c++ )
+        {
+            if ( Next::is_pointer( *c ) )
+                ptr_cb( *word );
+
+            if ( !Next::is_pointer( *c ) && !Next::is_pointer_exception( *c ) )
+                state.update_aligned( *word );
+        }
+
+        auto byte = reinterpret_cast< uint8_t * >( word );
+        while ( bytes > 0 )
+            state.update_aligned( *byte++ ), --bytes;
+
+        Next::hash( i, total_bytes, state, ptr_cb );
+    }
+
 }
 
 // vim: ft=cpp

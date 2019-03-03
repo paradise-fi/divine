@@ -60,8 +60,19 @@ namespace divine::mem
             int snap_size = 0;
         } _l;
 
-        uint64_t objhash( Internal ) const { return 0; }
+        std::pair< uint64_t, uint64_t > hash_data( Internal i ) const
+        {
+            brick::hash::State data, ptr;
+            auto ptr_cb = [&]( uint32_t obj ) { ptr.update_aligned( obj ); };
+            hash( i, size( i ), data, ptr_cb );
+            TRACE( "hash_data", std::hex, data.hash(), ptr.hash() );
+            return { data.hash(), ptr.hash() };
+        }
+
         Internal detach( Loc l ) { return l.object; }
+
+        template< typename S, typename F >
+        void hash( Internal i, int bytes, S &state, F ptr_cb ) const;
 
         void reset() { _l.exceptions.clear(); _l.snap_size = 0; _l.snap_begin = nullptr; }
         void rollback() { _l.exceptions.clear(); } /* fixme leak */
