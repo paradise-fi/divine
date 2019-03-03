@@ -52,6 +52,11 @@ namespace lart::abstract {
                     UNREACHABLE( "Unknown predicate type." );
                 }
             }
+
+            if ( Taint::binary( type ) ) {
+                return llvm::cast< llvm::Instruction >( dual() )->getOpcodeName();
+            }
+
             return TaintTable[ type ];
         }
 

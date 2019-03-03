@@ -141,6 +141,39 @@ namespace lart::abstract
             return DomainMetadata::get( module(), domain() ).default_value();
         }
 
+        std::string suffix( llvm::Value * val ) const
+        {
+            std::string res = TaintTable[ T ];
+
+            if constexpr ( Taint::cmp( T ) ) {
+                auto cmp = llvm::cast< llvm::CmpInst >( val );
+                return res + "." + llvm_name( cmp->getOperand( 0 )->getType() );
+            }
+
+            if constexpr ( Taint::thaw( T ) ) {
+                return res + "." + llvm_name( val->getType()->getPointerElementType() );
+            }
+
+            if constexpr ( Taint::binary( T ) ) {
+                return llvm::cast< llvm::Instruction >( val )->getOpcodeName();
+            }
+
+            if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
+                return res + "." + aggr->getName().str();
+            } else {
+                return res + "." + llvm_name( val->getType() );
+            }
+        }
+
+        std::string infix( llvm::Value * val ) const
+        {
+            if constexpr ( Taint::cmp( T ) ) {
+                auto cmp = llvm::cast< llvm::CmpInst >( val );
+                return "." + PredicateTable.at( cmp->getPredicate() );
+            }
+            return "";
+        }
+
         std::string name( llvm::Value * val ) const
         {
             if ( auto i = llvm::dyn_cast< llvm::Instruction >( val ) ) {
@@ -151,26 +184,7 @@ namespace lart::abstract
                         return name( meta::get_dual( i ) );
             }
 
-            std::string suffix = TaintTable[ T ];
-
-            std::string infix = "";
-
-            if constexpr ( Taint::cmp( T ) ) {
-                auto cmp = llvm::cast< llvm::CmpInst >( val );
-                infix += "." + PredicateTable.at( cmp->getPredicate() );
-                suffix += "." + llvm_name( cmp->getOperand( 0 )->getType() );
-            } else if constexpr ( Taint::thaw( T ) ) {
-                suffix += "." + llvm_name( val->getType()->getPointerElementType() );
-            } else {
-                if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
-                    suffix += "." + aggr->getName().str();
-                } else {
-                    suffix += "." + llvm_name( val->getType() );
-                }
-            }
-
-            auto dom = domain();
-            return dom.name() + infix + "." + suffix;
+            return domain().name() + infix( val ) + "." + suffix( val );
         }
 
 
