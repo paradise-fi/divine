@@ -739,15 +739,15 @@ struct Big
     Big( int v = 0 ) : v( v ) {}
     hash64_t hash() const { return hash::hash( v ); }
     bool operator==( const Big &o ) const { return v == o.v; }
-    bool operator!() const { return !v; }
-    explicit operator bool() const { return v; }
+    bool operator==( int o ) const { return v == o; }
     operator int() const { return v; }
 };
 
 template< template< typename > class HS, typename V = int >
 struct Sequential
 {
-    TEST(basic) {
+    TEST(insert_basic)
+    {
         HS< V > set;
 
         ASSERT( !set.count( 1 ) );
