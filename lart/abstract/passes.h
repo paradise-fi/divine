@@ -36,13 +36,13 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+    using SubstitutionPass = ChainedPass< Concretization, Tainting, Synthesize >;
+
     struct PassWrapper {
         static PassMeta meta() {
             return passMeta< PassWrapper >(
                 "Abstraction", "Abstract annotated values to given domains." );
         }
-
-        using SubstitutionPass = ChainedPass< Concretization, Tainting, Synthesize >;
 
         void run( llvm::Module & m ) {
             auto passes = make_chained_pass( CreateAbstractMetadata()
@@ -82,6 +82,8 @@ namespace t_abstract {
 using File = std::string;
 using Files = std::vector< File >;
 
+using SubstitutionPass = lart::abstract::SubstitutionPass;
+
 namespace rt = ::divine::rt;
 
 template< typename... Passes >
@@ -93,9 +95,9 @@ auto test( std::unique_ptr< llvm::Module > m, Passes&&... passes )
              , VPA()
              , Decast()
              , VPA()
-             , Duplicator()
              , StashingPass()
-             , ExpandBranching()
+             , Syntactic()
+             , LowerToBool()
              , std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
@@ -172,7 +174,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( meta::abstract::roots( main ) );
-        ASSERT_EQ( abstract_metadata( main ).size(), 2 );
+        ASSERT_EQ( meta::enumerate( *main ).size(), 3 );
     }
 
     TEST( types ) {
@@ -185,7 +187,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( meta::abstract::roots( main ) );
-        ASSERT_EQ( abstract_metadata( main ).size(), 6 );
+        ASSERT_EQ( meta::enumerate( *main ).size(), 9 );
     }
 
     TEST( binary_ops ) {
@@ -198,7 +200,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( meta::abstract::roots( main ) );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.binary.i32" ) );
     }
 
     TEST( phi ) {
@@ -209,7 +211,7 @@ struct Abstraction : TestBase
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.phi.i1" ) );
     }
 
     TEST( call_simple ) {
@@ -417,7 +419,7 @@ struct Abstraction : TestBase
         auto main = m->getFunction( "main" );
         ASSERT( meta::abstract::roots( main ) );
         auto call1 = m->getFunction( "_Z5call1v" );
-        ASSERT( meta::abstract::roots( call ) );
+        ASSERT( meta::abstract::roots( call1 ) );
         ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
         ASSERT( meta::abstract::roots( call2 ) );
@@ -441,7 +443,8 @@ struct Abstraction : TestBase
                         }
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.freeze.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.tobool.i1" ) );
     }
 
     TEST( loop_test_1 ) {
@@ -453,8 +456,7 @@ struct Abstraction : TestBase
                                     _SYM int y = i * j *k;
                                 }
                     })";
-        auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        test_abstraction( annotation + s );
     }
 
     TEST( loop_test_2 ) {
@@ -475,7 +477,7 @@ struct Abstraction : TestBase
                       return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i64" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.binary.i64" ) );
     }
 
     TEST( recursion_direct ) {
@@ -495,7 +497,7 @@ struct Abstraction : TestBase
         auto call = m->getFunction( "_Z4calli" );
         ASSERT( meta::abstract::roots( call ) );
         ASSERT( returns_abstract( call ) );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.binary.i32" ) );
     }
 
     TEST( recursion_multiple_times ) {
@@ -516,7 +518,7 @@ struct Abstraction : TestBase
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( meta::abstract::roots( call ) );
         ASSERT( !returns_abstract( call ) );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.binary.i32" ) );
     }
 
     TEST( recursion_without_abstract_return ) {
@@ -535,7 +537,7 @@ struct Abstraction : TestBase
         auto call = m->getFunction( "_Z4callii" );
         ASSERT( meta::abstract::roots( call ) );
         ASSERT( returns_abstract( call ) );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.binary.i32" ) );
     }
 
     TEST( struct_simple ) {
@@ -566,7 +568,7 @@ struct Abstraction : TestBase
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         ASSERT( meta::abstract::roots( main ) );
-        ASSERT( m->getFunction( "lart.placeholder.lart.sym.i32" ) );
+        ASSERT( m->getFunction( "lart.placeholder.abstract.cmp.i1" ) );
     }
 
     TEST( struct_complex ) {
@@ -994,7 +996,7 @@ struct Substitution : TestBase
         ASSERT( meta::abstract::roots( call1 ) );
         ASSERT( returns_abstract( call1 ) );
         auto call2 = m->getFunction( "_Z5call2i" );
-        ASSERT( meta::abstract::roots( calll2 ) );
+        ASSERT( meta::abstract::roots( call2 ) );
         ASSERT( returns_abstract( call2 ) );
     }
 
