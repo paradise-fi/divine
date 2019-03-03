@@ -72,11 +72,6 @@ namespace lart::abstract {
             return ( (Ts == type) || ... );
         }
 
-        static constexpr bool unary( Taint::Type type )
-        {
-            return is_one_of< Type::Thaw, Type::ToBool >( type );
-        }
-
         static constexpr bool binary( Taint::Type type )
         {
             return is_one_of< Type::Cmp, Type::Binary >( type );

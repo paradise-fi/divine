@@ -93,9 +93,9 @@ namespace lart::abstract
 
             if constexpr ( Taint::thaw( T ) )
             {
-                auto addr = irb.CreateBitCast( args[ 0 ].value, i8ptr() );
+                auto addr = irb.CreateBitCast( args[ 1 ].value, i8ptr() );
                 if ( meta.scalar() ) {
-                    auto bw = addr->getType()->getPointerElementType()->getPrimitiveSizeInBits();
+                    auto bw = args[ 0 ].value->getType()->getPrimitiveSizeInBits();
                     vals.push_back( addr ); // thawed address
                     vals.push_back( i32cv( bw ) ); // bitwidth of thawed value
                 }

@@ -95,6 +95,11 @@ namespace lart::abstract
                 return { concrete, value, constraint, res };
             }
 
+            if constexpr ( Taint::thaw( T ) ) {
+                auto l = llvm::cast< llvm::LoadInst >( dual( inst() ) );
+                return { l, inst()->getOperand( 0 ) };
+            }
+
             if constexpr ( Taint::freeze( T ) ) {
                 auto s = llvm::cast< llvm::StoreInst >( dual( inst() ) );
                 auto v = s->getValueOperand();
@@ -106,7 +111,7 @@ namespace lart::abstract
                 return { inst()->getOperand( 0 ) };
             }
 
-            if constexpr ( Taint::unary( T ) || Taint::stash( T ) ) {
+            if constexpr ( Taint::toBool( T ) || Taint::stash( T ) ) {
                 auto op = inst()->getOperand( 0 );
                 return { op, dual( op ) };
             }
