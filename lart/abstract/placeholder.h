@@ -122,11 +122,8 @@ namespace lart::abstract {
         template< typename Value, typename Builder >
         Placeholder placeholder( Value * val, Builder & builder );
         Placeholder placeholder( llvm::Instruction * inst );
-        Placeholder placeholder( llvm::ReturnInst * ret );
         Placeholder placeholder( llvm::Argument * arg );
-
     private:
-        llvm::Value * stash_value( llvm::ReturnInst * ret );
         auto arguments( llvm::Value * val ) -> std::vector< llvm::Value * >;
 
         auto output( llvm::Value * val ) -> llvm::Type *;
@@ -165,10 +162,10 @@ namespace lart::abstract {
 
         Placeholder construct( llvm::Instruction * inst );
 
-        template< Type T >
-        Placeholder construct( llvm::Instruction * inst )
+        template< Type T, typename Value >
+        Placeholder construct( Value * val )
         {
-            return Construct< L, T >().placeholder( inst );
+            return Construct< L, T >().placeholder( val );
         }
 
         template< Type T, typename Value, typename Builder >

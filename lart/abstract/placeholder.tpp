@@ -18,12 +18,9 @@ namespace lart::abstract
     {
         auto m = util::get_module( val );
         auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
-        meta::set( fn, meta::tag::placeholder::function, "" );
+        meta::set( fn, meta::tag::placeholder::function );
         auto ph = builder.CreateCall( fn, arguments( val ) );
-
-        if constexpr ( T != Type::Stash ) { // TODO  maybe not needed
-            meta::abstract::inherit( ph, val );
-        }
+        meta::abstract::inherit( ph, val );
         return Placeholder{ ph, L, T };
     }
 
@@ -32,7 +29,6 @@ namespace lart::abstract
     {
         static_assert( abstract_level( L ) );
         assert( !llvm::isa< llvm::ReturnInst >( inst ) );
-
         llvm::IRBuilder<> irb{ inst->getContext() };
         if constexpr ( T == Type::PHI ) {
             irb.SetInsertPoint( inst->getParent()->getFirstNonPHI() );
@@ -41,24 +37,15 @@ namespace lart::abstract
         }
 
         Placeholder ph = placeholder( inst, irb );
-        ph.inst->moveAfter( inst );
+
+        if ( !llvm::isa< llvm::ReturnInst >( inst ) ) {
+            ph.inst->moveAfter( inst );
+        }
 
         if constexpr ( T != Type::ToBool ) {
             meta::make_duals( inst, ph.inst );
         }
 
-        return ph;
-    }
-
-    template< Placeholder::Level L, Placeholder::Type T >
-    Placeholder Construct< L, T >::placeholder( llvm::ReturnInst * ret )
-    {
-        static_assert( abstract_level( L ) );
-        static_assert( is< Type::Stash >( T ) );
-        llvm::IRBuilder<> irb{ ret };
-        Placeholder ph = placeholder( stash_value( ret ), irb );
-
-        meta::make_duals( ret, ph.inst );
         return ph;
     }
 
@@ -70,13 +57,6 @@ namespace lart::abstract
         auto & entry = arg->getParent()->getEntryBlock();
         llvm::IRBuilder<> irb{ &entry, entry.getFirstInsertionPt() };
         return placeholder( arg, irb );
-    }
-
-    template< Placeholder::Level L, Placeholder::Type T >
-    llvm::Value * Construct< L, T >::stash_value( llvm::ReturnInst * /*ret*/ )
-    {
-        static_assert( abstract_level( L ) );
-        UNREACHABLE( "Not implemented" );
     }
 
     template< Placeholder::Level L, Placeholder::Type T >
@@ -101,7 +81,6 @@ namespace lart::abstract
 
             UNREACHABLE( "Unsupported abstraction level" );
         }
-
     }
 
     template< Placeholder::Level L, Placeholder::Type T >
@@ -168,6 +147,19 @@ namespace lart::abstract
         UNREACHABLE( "Unsupported abstraction level" );
     }
 
+    template< Placeholder::Type T, typename Map >
+    auto operand( llvm::Instruction * inst, const Map & map ) -> llvm::Value *
+    {
+        if constexpr ( T == Placeholder::Type::Stash )
+            return inst->getOperand( 0 );
+
+        if ( meta::has_dual( inst ) )
+            return meta::get_dual( inst );
+
+        auto arg = llvm::cast< llvm::Instruction >( inst->getOperand( 0 ) );
+        ASSERT( Placeholder::is( arg ) );
+        return map.at( Placeholder{ arg } ).inst;
+    }
 
     template< Placeholder::Level L, Placeholder::Type T >
     Placeholder Concretize< L, T >::placeholder( const Placeholder & ph, Concretize< L, T >::Map & map )
@@ -176,24 +168,13 @@ namespace lart::abstract
         assert( abstract_level( ph.level ) );
 
         llvm::IRBuilder<> irb{ ph.inst };
-        llvm::Value * op = nullptr;
-
-        if ( meta::has_dual( ph.inst ) )
-            op = meta::get_dual( ph.inst );
-
-        if ( !op ) {
-            auto inst = llvm::cast< llvm::Instruction >( ph.inst->getOperand( 0 ) );
-            if ( Placeholder::is( inst ) )
-                op = map.at( Placeholder{ inst } ).inst;
-        }
+        auto op = operand< T >( ph.inst, map );
 
         using Builder = Construct< L, T >;
         auto conc = Builder().placeholder( op, irb );
 
         if constexpr ( T != Type::Assume && T != Type::ToBool ) {
-            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( op ) ) {
-                    meta::make_duals( inst, conc.inst );
-            }
+            meta::make_duals( op, conc.inst );
         }
 
         if constexpr ( to_concrete( T ) ) {
@@ -269,7 +250,7 @@ namespace lart::abstract
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
             // TODO assert transformable call
-            return construct< Type::Call >( call );
+            // return construct< Type::Call >( call );
         }
 
         if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( inst ) ) {
