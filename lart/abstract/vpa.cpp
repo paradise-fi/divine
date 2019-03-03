@@ -32,13 +32,17 @@ inline Argument* get_argument( Function *fn, unsigned idx ) {
     return &*std::next( fn->arg_begin(), idx );
 }
 
-Values value_succs( Value *v ) { return { v->user_begin(), v->user_end() }; }
-
-Values reach_from( Values roots ) {
+Values reach_from( Values roots, Domain dom ) {
+    auto value_succs = [=] ( llvm::Value * val ) -> Values {
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            if ( !is_propagable_in_domain( inst, dom ) )
+                return {};
+        return Values{ val->user_begin(), val->user_end() };
+    };
     return lart::analysis::postorder( roots, value_succs );
 };
 
-Values reach_from( Value *root ) { return reach_from( Values{ root } ); }
+Values reach_from( Value *root, Domain dom ) { return reach_from( Values{ root }, dom ); }
 
 struct AbstractionSources {
 
@@ -144,7 +148,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         return;
     }
 
-    auto deps = reach_from( val );
+    auto deps = reach_from( val, dom );
 
     if ( auto call = dyn_cast< CallInst >( val ) ) {
         if ( ignore_return_of_function( call ) )

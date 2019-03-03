@@ -136,16 +136,17 @@ using lart::util::get_module;
     }
 
     bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
+        if ( is_transformable_in_domain( inst, dom ) )
+            return true;
+
         auto dm = DomainMetadata::get( inst->getModule(), dom );
 
         switch ( dm.kind() ) {
             case DomainKind::scalar:
-                return is_transformable_in_domain( inst, dom ) ||
-                       util::is_one_of< CallInst, StoreInst, GetElementPtrInst,
-                                        IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
+                return util::is_one_of< AllocaInst, CallInst, StoreInst, LoadInst, CastInst,
+                    GetElementPtrInst, IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
             case DomainKind::content:
-                return is_transformable_in_domain( inst, dom ) ||
-                       util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
+                return util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
             case DomainKind::pointer:
             default:
                 UNREACHABLE( "Unsupported domain transformation." );
@@ -160,13 +161,25 @@ using lart::util::get_module;
         auto m = inst->getModule();
         auto dm = DomainMetadata::get( m, dom );
 
+        auto in_domain = [&] ( auto vals ) {
+            return query::query( vals ).all( [m, dom] ( auto & val ) {
+                return is_base_type_in_domain( m, val, dom );
+            } );
+        };
+
         switch ( dm.kind() ) {
             case DomainKind::scalar:
-                return is_base_type_in_domain( m, inst, dom ) &&
-                       (util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
-                       ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [m, dom] ( auto &op ) {
-                            return is_base_type_in_domain( m, op, dom );
-                       } ) ));
+                if ( is_base_type_in_domain( m, inst, dom ) ) {
+                    if ( util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) )
+                        return true;
+                    if ( isa< CmpInst >( inst ) && in_domain( inst->operands() ) )
+                        return true;
+                }
+
+                if ( auto store = llvm::dyn_cast< llvm::StoreInst >( inst ) )
+                    return is_base_type_in_domain( m, store->getValueOperand(), dom );
+
+                return false;
             case DomainKind::content:
                 if ( auto call = dyn_cast< CallInst >( inst ) ) {
                     if ( auto fn = call->getCalledFunction() ) {
@@ -174,7 +187,7 @@ using lart::util::get_module;
                         return get_module( inst )->getFunction( name );
                     }
                 }
-                return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
+                return util::is_one_of< LoadInst, StoreInst >( inst );
             case DomainKind::pointer:
             default:
                 UNREACHABLE( "Unsupported domain transformation." );

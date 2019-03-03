@@ -16,12 +16,10 @@ namespace lart::abstract
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::Instruction > )
             .filter( query::notnull )
+            .filter( is_transformable )
             // skip alredy processed instructions
             .filter( [] ( auto * inst ) {
                 return !meta::has_dual( inst );
-            } )
-            .filter( [] ( auto * inst ) {
-                return !llvm::isa< llvm::GetElementPtrInst >( inst );
             } )
             .freeze();
 

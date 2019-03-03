@@ -34,8 +34,8 @@ namespace lart::abstract
             auto function = util::get_or_insert_function( m, fty, name );
 
             llvm::IRBuilder<> irb( inst() );
-            auto taint = irb.CreateCall( function, args );
 
+            auto taint = irb.CreateCall( function, args );
             return Taint{ taint, T };
         }
 
