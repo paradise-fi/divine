@@ -12,23 +12,21 @@ namespace abstract {
 void Cleanup::run( llvm::Module &m ) {
     std::map< Domain, llvm::Function * > cleanups;
 
-    global_variable_walker( m, [&] ( const auto& glob, const auto& ) {
-        auto dom = DomainMetadata( glob ).domain();
-
-        auto name = "__" + dom.name() + "_cleanup";
+    for ( const auto & meta : domains( m ) ) {
+        auto name = "__" + meta.domain().name() + "_cleanup";
         auto cleanup_function = m.getFunction( name );
 
         if ( !cleanup_function ) {
             throw std::runtime_error( "missing function in domain: " + name );
         }
 
-        cleanups.emplace( dom, cleanup_function );
-    } );
+        cleanups.emplace( meta.domain(), cleanup_function );
+    }
 
     for ( auto &fn : m ) {
         if ( fn.getMetadata( meta::tag::roots ) ) {
-            auto domains = query::query( abstract_metadata( &fn ) )
-                .map( [] ( auto & mdv ) { return mdv.domain(); } )
+            auto domains = query::query( meta::enumerate( fn ) )
+                .map( Domain::get )
                 .freeze();
 
             auto it = std::unique( domains.begin(), domains.end() );

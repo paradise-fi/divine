@@ -92,45 +92,14 @@ namespace {
 
     namespace abstract
     {
-        const auto * tag = meta::tag::domains;
-
-        template< typename T >
-        bool has_impl( T * value ) noexcept {
-            return meta::has( value, abstract::tag );
+        bool has( llvm::Function * fn ) noexcept {
+            return fn->getMetadata( meta::tag::roots );
         }
-
-        template< typename T >
-        MetaVal get_impl( T * value ) noexcept {
-            return meta::get( value, abstract::tag );
-        }
-
-        template< typename T >
-        void set_impl( T * value, const std::string & meta ) noexcept {
-            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( value ) ) {
-                auto& ctx = inst->getContext();
-                auto data = meta::tuple::empty( ctx );
-                inst->getFunction()->setMetadata( meta::tag::roots, data );
-            }
-            meta::set( value, abstract::tag, meta );
-        }
-
-        bool has( llvm::Value * val ) noexcept { return has_impl( val ); }
-        bool has( llvm::Argument * arg ) noexcept { return has_impl( arg ); }
-        bool has( llvm::Instruction * inst ) noexcept { return has_impl( inst ); }
-
-        MetaVal get( llvm::Value * val ) noexcept { return get_impl( val ); }
-        MetaVal get( llvm::Argument * arg ) noexcept { return get_impl( arg ); }
-        MetaVal get( llvm::Instruction * inst ) noexcept { return get_impl( inst ); }
-
-        void set( llvm::Value * val, const std::string & meta ) noexcept { set_impl( val, meta ); }
-        void set( llvm::Argument * arg, const std::string & meta ) noexcept { set_impl( arg, meta ); }
-        void set( llvm::Instruction * inst, const std::string & meta ) noexcept { set_impl( inst, meta ); }
 
         void inherit( llvm::Value * dest, llvm::Value * src ) noexcept {
             if ( auto data = meta::abstract::get( src ) )
                 meta::abstract::set( dest, data.value() );
         }
-
     } // namespace abstract
 
     namespace function

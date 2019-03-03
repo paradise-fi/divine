@@ -14,8 +14,7 @@ namespace lart::abstract
 {
 
 void Duplicator::run( llvm::Module &m ) {
-    auto abstract = query::query( abstract_metadata( m ) )
-        .map( [] ( auto mdv ) { return mdv.value(); } )
+    auto abstract = query::query( meta::enumerate( m ) )
         .map( query::llvmdyncast< llvm::Instruction > )
         .filter( query::notnull )
         .filter( is_duplicable )

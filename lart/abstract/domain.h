@@ -49,7 +49,7 @@ namespace lart::abstract {
             return Domain::Concrete();
         }
 
-        static void set( llvm::Value * val, Domain dom ) {
+        static void set( llvm::Value * val, const Domain & dom ) {
             meta::abstract::set( val, dom.name() );
         }
     };
@@ -97,8 +97,6 @@ namespace lart::abstract {
         void run( llvm::Module &m );
     };
 
-    std::vector< ValueMetadata > abstract_metadata( llvm::Module &m );
-    std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn );
 
     inline bool is_concrete( Domain dom ) {
         return dom == Domain::Concrete();
@@ -121,11 +119,8 @@ namespace lart::abstract {
     bool is_base_type( llvm::Module *m, llvm::Value *val );
     bool is_base_type_in_domain( llvm::Module *m, llvm::Value *val, Domain dom );
 
-    template< typename Yield >
-    auto global_variable_walker( llvm::Module &m, Yield yield ) {
-        brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( meta::tag::domain::name, m, yield );
-    }
+    std::vector< DomainMetadata > domains( llvm::Module & m );
 
-    DomainMetadata domain_metadata( llvm::Module &m, Domain dom );
+    DomainMetadata domain_metadata( llvm::Module &m, const Domain & dom );
 
 } // namespace lart::abstract

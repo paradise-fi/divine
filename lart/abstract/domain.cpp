@@ -26,8 +26,13 @@ using lart::util::get_module;
         }
 
         auto functions_with_prefix( Module &m, StringRef pref ) noexcept {
-            return query::query( m ).map( query::refToPtr )
-                  .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
+            auto check = [pref] ( auto fn ) { return fn->getName().startswith( pref ); };
+            return query::query( m ).map( query::refToPtr ).filter( check );
+        }
+
+        template< typename Yield >
+        auto global_variable_walker( llvm::Module &m, Yield yield ) {
+            brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( meta::tag::domain::name, m, yield );
         }
 
         Domain domain( llvm::MDNode * node ) { return Domain{ meta::value( node ).value() }; }
@@ -37,7 +42,7 @@ using lart::util::get_module;
         for ( const auto &fn : functions_with_prefix( m, prefix ) ) {
             for ( const auto &u : fn->users() ) {
                 if ( auto call = dyn_cast< CallInst >( u ) ) {
-                    auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
+                    auto inst = call->getOperand( 0 )->stripPointerCasts();
                     meta::abstract::set( inst, annotation( call ).name() );
                 }
             }
@@ -140,30 +145,9 @@ using lart::util::get_module;
         return meta::tuple::create( ctx, size, value );
     }
 
-    std::vector< ValueMetadata > abstract_metadata( llvm::Module &m ) {
-        return query::query( m )
-            .map( []( auto &fn ) { return abstract_metadata( &fn ); } )
-            .flatten()
-            .freeze();
-    }
-
-    std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
-        std::vector< ValueMetadata > mds;
-        if ( fn->getMetadata( meta::tag::roots ) ) {
-            auto abstract = query::query( *fn ).flatten()
-                .map( query::refToPtr )
-                .filter( [] ( const auto& inst ) {
-                    return meta::abstract::has( inst );
-                } )
-                .freeze();
-            std::move( abstract.begin(), abstract.end(), std::back_inserter( mds ) );
-        }
-        return mds;
-    }
-
     inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
         return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
-            return meta::abstract::has( idx );
+            return meta::abstract::has( idx.get() );
         } );
     }
 
@@ -278,16 +262,24 @@ using lart::util::get_module;
         }
     }
 
-    DomainMetadata domain_metadata( Module &m, Domain dom ) {
-        std::optional< DomainMetadata > meta;
+    std::vector< DomainMetadata > domains( llvm::Module & m ) {
+        std::vector< DomainMetadata > doms;
+        global_variable_walker( m, [&] ( const auto& glob, const auto& ) {
+            doms.emplace_back( glob );
+        } );
+        return doms;
+    }
 
-        global_variable_walker( m, [&] ( auto glob, auto anno ) {
-            if ( anno.name() == dom.name() )
-                meta = DomainMetadata( glob );
+    DomainMetadata domain_metadata( Module &m, const Domain & dom ) {
+        auto doms = domains( m );
+        auto meta = std::find_if( doms.begin(), doms.end(), [&] ( const auto & data ) {
+            return data.domain() == dom;
         } );
 
-        ASSERT( meta && "Domain specification was not found." );
-        return meta.value();
+        if ( meta != doms.end() )
+            return *meta;
+
+        UNREACHABLE( "Domain specification was not found." );
     }
 
 } // namespace lart::abstract

@@ -8,6 +8,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <optional>
+#include <lart/support/query.h>
 
 namespace lart::abstract::meta {
     namespace tag {
@@ -67,25 +68,6 @@ namespace lart::abstract::meta {
     void set( llvm::Argument * arg, const std::string & tag, const std::string & meta ) noexcept;
     void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept;
 
-    namespace abstract
-    {
-        /* works with metadata with tag meta::tag::domains */
-
-        bool has( llvm::Value * val ) noexcept;
-        bool has( llvm::Argument * arg ) noexcept;
-        bool has( llvm::Instruction * inst ) noexcept;
-
-        MetaVal get( llvm::Value * val ) noexcept;
-        MetaVal get( llvm::Argument * arg ) noexcept;
-        MetaVal get( llvm::Instruction * inst ) noexcept;
-
-        void set( llvm::Value * val, const std::string & meta ) noexcept;
-        void set( llvm::Argument * arg, const std::string & meta ) noexcept;
-        void set( llvm::Instruction * inst, const std::string & meta ) noexcept;
-
-        void inherit( llvm::Value * dest, llvm::Value * src ) noexcept;
-    }
-
     namespace tuple
     {
         static llvm::MDTuple * create( llvm::LLVMContext & ctx,
@@ -105,8 +87,35 @@ namespace lart::abstract::meta {
         static llvm::MDTuple * empty( llvm::LLVMContext &ctx ) {
             return llvm::MDTuple::get( ctx, {} );
         }
-    };
+    } // namespace tuple
 
+    namespace abstract
+    {
+        constexpr auto * tag = meta::tag::domains;
+
+        /* checks whether function has meta::tag::roots */
+        bool has( llvm::Function * fn ) noexcept;
+
+        /* works with metadata with tag meta::tag::domains */
+
+        template< typename T >
+        bool has( T val ) noexcept { return meta::has( val, abstract::tag ); }
+
+        template< typename T >
+        MetaVal get( T val ) noexcept { return meta::get( val, abstract::tag ); }
+
+        template< typename T >
+        void set( T * value, const std::string & meta ) noexcept {
+            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( value ) ) {
+                auto& ctx = inst->getContext();
+                auto data = meta::tuple::empty( ctx );
+                inst->getFunction()->setMetadata( meta::tag::roots, data );
+            }
+            meta::set( value, abstract::tag, meta );
+        }
+
+        void inherit( llvm::Value * dest, llvm::Value * src ) noexcept;
+    } // namespace abstract
 
     namespace function
     {
@@ -128,5 +137,23 @@ namespace lart::abstract::meta {
 
     void make_duals( llvm::Instruction * a, llvm::Instruction * b );
     llvm::Value * get_dual( llvm::Instruction *inst );
+
+    template< typename T >
+    auto enumerate( T & llvm ) noexcept -> std::vector< llvm::Instruction * >
+    {
+        if constexpr ( std::is_same_v< T, llvm::Module > ) {
+            auto enumerate = [=] ( auto & data ) { return meta::enumerate( data ); };
+            return query::query( llvm ).map( enumerate ).flatten().freeze();
+        } else {
+            static_assert( std::is_same_v< T, llvm::Function > );
+            if ( !meta::abstract::has( &llvm ) )
+                return {};
+
+            return query::query( llvm ).flatten()
+                .map( query::refToPtr )
+                .filter( meta::abstract::has< llvm::Value * > )
+                .freeze();
+        }
+    }
 
 } // namespace lart::abstract::meta

@@ -295,11 +295,9 @@ Value * lower_constant_expr_if_possible( ConstantExpr * ce ) {
 }
 
 void VPA::run( Module &m ) {
-    for ( const auto & mdv : abstract_metadata( m ) ) {
-        auto val = mdv.value();
-        auto dom = mdv.domain();
+    for ( auto * val : meta::enumerate( m ) ) {
         preprocess( get_function( val ) );
-        tasks.push_back( [=]{ propagate_value( val, dom ); } );
+        tasks.push_back( [=]{ propagate_value( val, Domain::get( val ) ); } );
     }
 
     auto process = [&] ( const auto &val, const Domain &dom ) {

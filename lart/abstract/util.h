@@ -44,8 +44,8 @@ Types types_of( const Values & vs ) {
 
 template< typename Fn >
 void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
-    for ( auto &mdv : abstract_metadata( m ) ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( mdv.value() ) ) {
+    for ( auto * val : meta::enumerate( m ) ) {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
             auto fns = get_potentialy_called_functions( call );
 
             bool process = query::query( fns ).any( [] ( auto fn ) {
@@ -122,8 +122,7 @@ inline llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Functi
 
 template< typename T >
 std::vector< T * > transformable( llvm::Module & m ) {
-    return query::query( abstract_metadata( m ) )
-        .map( [] ( auto mdv ) { return mdv.value(); } )
+    return query::query( meta::enumerate( m ) )
         .map( query::llvmdyncast< T > )
         .filter( query::notnull )
         .filter( is_transformable )
