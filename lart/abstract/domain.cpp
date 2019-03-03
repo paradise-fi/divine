@@ -11,285 +11,284 @@ using namespace llvm;
 
 using lart::util::get_module;
 
-namespace {
+    namespace
+    {
+        inline auto annotation( CallInst *call ) -> brick::llvm::Annotation {
+           auto anno = brick::llvm::transformer( call ).operand( 1 )
+                       .apply( [] ( auto val ) { return val->stripPointerCasts(); } )
+                       .cast< GlobalVariable >()
+                       .apply( [] ( auto val ) { return val->getInitializer(); } )
+                       .cast< ConstantDataArray >()
+                       .freeze();
 
-inline auto annotation( CallInst *call ) -> brick::llvm::Annotation {
-   auto anno = brick::llvm::transformer( call ).operand( 1 )
-               .apply( [] ( auto val ) { return val->stripPointerCasts(); } )
-               .cast< GlobalVariable >()
-               .apply( [] ( auto val ) { return val->getInitializer(); } )
-               .cast< ConstantDataArray >()
-               .freeze();
+            ASSERT( anno && "Call does not have annotation." );
+            return brick::llvm::Annotation{ anno->getAsCString() };
+        }
 
-    ASSERT( anno && "Call does not have annotation." );
-    return brick::llvm::Annotation{ anno->getAsCString() };
-}
+        auto functions_with_prefix( Module &m, StringRef pref ) noexcept {
+            return query::query( m ).map( query::refToPtr )
+                  .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
+        }
 
-auto functions_with_prefix( Module &m, StringRef pref ) noexcept {
-    return query::query( m ).map( query::refToPtr )
-          .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
-}
+        Domain domain( llvm::MDNode * node ) { return Domain{ meta::value( node ).value() }; }
+    } // anonymous namespace
 
-Domain domain( llvm::MDNode * node ) { return Domain{ meta::value( node ).value() }; }
-
-} // anonymous namespace
-
-void process( StringRef prefix, Module &m ) noexcept {
-    for ( const auto &fn : functions_with_prefix( m, prefix ) ) {
-        for ( const auto &u : fn->users() ) {
-            if ( auto call = dyn_cast< CallInst >( u ) ) {
-                auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
-                meta::abstract::set( inst, annotation( call ).name() );
+    void process( StringRef prefix, Module &m ) noexcept {
+        for ( const auto &fn : functions_with_prefix( m, prefix ) ) {
+            for ( const auto &u : fn->users() ) {
+                if ( auto call = dyn_cast< CallInst >( u ) ) {
+                    auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
+                    meta::abstract::set( inst, annotation( call ).name() );
+                }
             }
         }
     }
-}
 
-template< typename Value >
-void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
-    auto &ctx = m.getContext();
-    brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
-        auto name = anno_namespace.str() + "." + anno.toString();
-        val->setMetadata( name, meta::tuple::empty( ctx ) );
-    });
-}
-template< typename Value >
-void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
-    auto &ctx = m.getContext();
-
-    brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
-        auto meta = Domain( anno.name() ).meta( ctx );
-        val->setMetadata( anno_namespace, meta::tuple::create( ctx, { meta } ) );
-    });
-}
-
-// CreateAbstractMetadata pass transform annotations into llvm metadata.
-//
-// As result of the pass, each function with annotated values has
-// annotation with name: lart::meta::tag::roots.
-//
-// Where root instructions are marked with MDTuple of domains
-// named lart::meta::tag::domains.
-//
-// Domain MDNode holds a string name of domain retrieved from annotation.
-void CreateAbstractMetadata::run( Module &m ) {
-    process( "llvm.var.annotation", m );
-    process( "llvm.ptr.annotation", m );
-
-    annotation_to_domain_metadata< Function >( meta::tag::abstract, m );
-    annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::name, m );
-    annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::kind, m );
-
-    annotation_to_transform_metadata< Function >( meta::tag::transform::prefix, m );
-
-    for ( auto & fn : m ) {
-        if ( auto md = fn.getMetadata( meta::tag::abstract ) )
-            for ( auto user : fn.users() )
-                if ( auto call = dyn_cast< CallInst >( user ) )
-                    Domain::set( call, domain( md ) );
+    template< typename Value >
+    void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
+        auto &ctx = m.getContext();
+        brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
+            auto name = anno_namespace.str() + "." + anno.toString();
+            val->setMetadata( name, meta::tuple::empty( ctx ) );
+        });
     }
-}
+    template< typename Value >
+    void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
+        auto &ctx = m.getContext();
 
-static const Bimap< DomainKind, std::string > KindTable = {
-     { DomainKind::scalar , "scalar"  }
-    ,{ DomainKind::pointer, "pointer" }
-    ,{ DomainKind::content, "content"  }
-};
+        brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
+            auto meta = Domain( anno.name() ).meta( ctx );
+            val->setMetadata( anno_namespace, meta::tuple::create( ctx, { meta } ) );
+        });
+    }
 
-Domain DomainMetadata::domain() const {
-    auto meta = glob->getMetadata( meta::tag::domain::name );
-    auto &tag = cast< MDNode >( meta->getOperand( 0 ) )->getOperand( 0 );
-    return Domain( cast< MDString >( tag )->getString().str() );
-}
+    // CreateAbstractMetadata pass transform annotations into llvm metadata.
+    //
+    // As result of the pass, each function with annotated values has
+    // annotation with name: lart::meta::tag::roots.
+    //
+    // Where root instructions are marked with MDTuple of domains
+    // named lart::meta::tag::domains.
+    //
+    // Domain MDNode holds a string name of domain retrieved from annotation.
+    void CreateAbstractMetadata::run( Module &m ) {
+        process( "llvm.var.annotation", m );
+        process( "llvm.ptr.annotation", m );
 
-DomainKind DomainMetadata::kind() const {
-    auto meta = glob->getMetadata( meta::tag::domain::kind );
-    auto data = cast< MDTuple >( meta->getOperand( 0 ) );
-    return KindTable[ cast< MDString >( data->getOperand( 0 ) )->getString().str() ];
-}
+        annotation_to_domain_metadata< Function >( meta::tag::abstract, m );
+        annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::name, m );
+        annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::kind, m );
 
-Type * DomainMetadata::base_type() const {
-    return glob->getType()->getPointerElementType()->getStructElementType( base_type_offset );
-}
+        annotation_to_transform_metadata< Function >( meta::tag::transform::prefix, m );
 
-llvm::Value * DomainMetadata::default_value() const {
-    auto type = base_type();
-    if ( type->isPointerTy() )
-        return ConstantPointerNull::get( cast< PointerType >( type ) );
-    if ( type->isIntegerTy() )
-        return ConstantInt::get( type, 0 );
-    if ( type->isFloatingPointTy() )
-        return ConstantFP::get( type, 0 );
-    UNREACHABLE( "Unsupported base type." );
-}
+        for ( auto & fn : m ) {
+            if ( auto md = fn.getMetadata( meta::tag::abstract ) )
+                for ( auto user : fn.users() )
+                    if ( auto call = dyn_cast< CallInst >( user ) )
+                        Domain::set( call, domain( md ) );
+        }
+    }
 
-std::string ValueMetadata::name() const noexcept {
-    return _md->getValue()->getName();
-}
+    static const Bimap< DomainKind, std::string > KindTable = {
+         { DomainKind::scalar , "scalar"  }
+        ,{ DomainKind::pointer, "pointer" }
+        ,{ DomainKind::content, "content"  }
+    };
 
-llvm::Value* ValueMetadata::value() const noexcept {
-    return _md->getValue();
-}
+    Domain DomainMetadata::domain() const {
+        auto meta = glob->getMetadata( meta::tag::domain::name );
+        auto &tag = cast< MDNode >( meta->getOperand( 0 ) )->getOperand( 0 );
+        return Domain( cast< MDString >( tag )->getString().str() );
+    }
 
-Domain ValueMetadata::domain() const noexcept {
-    auto inst = cast< Instruction >( value() );
-    return Domain::get( inst );
-}
+    DomainKind DomainMetadata::kind() const {
+        auto meta = glob->getMetadata( meta::tag::domain::kind );
+        auto data = cast< MDTuple >( meta->getOperand( 0 ) );
+        return KindTable[ cast< MDString >( data->getOperand( 0 ) )->getString().str() ];
+    }
 
-llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
-    auto value = [&] { return meta::create( ctx, Domain::Concrete().name() ); };
-    return meta::tuple::create( ctx, size, value );
-}
+    Type * DomainMetadata::base_type() const {
+        return glob->getType()->getPointerElementType()->getStructElementType( base_type_offset );
+    }
 
-std::vector< ValueMetadata > abstract_metadata( llvm::Module &m ) {
-    return query::query( m )
-        .map( []( auto &fn ) { return abstract_metadata( &fn ); } )
-        .flatten()
-        .freeze();
-}
+    llvm::Value * DomainMetadata::default_value() const {
+        auto type = base_type();
+        if ( type->isPointerTy() )
+            return ConstantPointerNull::get( cast< PointerType >( type ) );
+        if ( type->isIntegerTy() )
+            return ConstantInt::get( type, 0 );
+        if ( type->isFloatingPointTy() )
+            return ConstantFP::get( type, 0 );
+        UNREACHABLE( "Unsupported base type." );
+    }
 
-std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
-    std::vector< ValueMetadata > mds;
-    if ( fn->getMetadata( meta::tag::roots ) ) {
-        auto abstract = query::query( *fn ).flatten()
-            .map( query::refToPtr )
-            .filter( [] ( const auto& inst ) {
-                return meta::abstract::has( inst );
-            } )
+    std::string ValueMetadata::name() const noexcept {
+        return _md->getValue()->getName();
+    }
+
+    llvm::Value* ValueMetadata::value() const noexcept {
+        return _md->getValue();
+    }
+
+    Domain ValueMetadata::domain() const noexcept {
+        auto inst = cast< Instruction >( value() );
+        return Domain::get( inst );
+    }
+
+    llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
+        auto value = [&] { return meta::create( ctx, Domain::Concrete().name() ); };
+        return meta::tuple::create( ctx, size, value );
+    }
+
+    std::vector< ValueMetadata > abstract_metadata( llvm::Module &m ) {
+        return query::query( m )
+            .map( []( auto &fn ) { return abstract_metadata( &fn ); } )
+            .flatten()
             .freeze();
-        std::move( abstract.begin(), abstract.end(), std::back_inserter( mds ) );
     }
-    return mds;
-}
 
-inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
-    return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
-        return meta::abstract::has( idx );
-    } );
-}
-
-inline bool allocating_abstract_size( AllocaInst * a ) {
-    return meta::abstract::has( a->getArraySize() );
-}
-
-bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
-    auto dm = domain_metadata( *inst->getModule(), dom );
-
-    switch ( dm.kind() ) {
-        case DomainKind::scalar:
-            if ( auto gep = dyn_cast< GetElementPtrInst >( inst ) ) {
-                return accessing_abstract_offset( gep );
-            }
-            if ( auto a = dyn_cast< AllocaInst >( inst ) ) {
-                return allocating_abstract_size( a );
-            }
-        case DomainKind::content:
-        case DomainKind::pointer:
-        default:
-            return false;
+    std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
+        std::vector< ValueMetadata > mds;
+        if ( fn->getMetadata( meta::tag::roots ) ) {
+            auto abstract = query::query( *fn ).flatten()
+                .map( query::refToPtr )
+                .filter( [] ( const auto& inst ) {
+                    return meta::abstract::has( inst );
+                } )
+                .freeze();
+            std::move( abstract.begin(), abstract.end(), std::back_inserter( mds ) );
+        }
+        return mds;
     }
-}
 
-bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
-    auto dm = domain_metadata( *inst->getModule(), dom );
-
-    switch ( dm.kind() ) {
-        case DomainKind::scalar:
-            return is_transformable_in_domain( inst, dom ) ||
-                   util::is_one_of< CallInst, StoreInst, GetElementPtrInst,
-                                    IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
-        case DomainKind::content:
-            return is_transformable_in_domain( inst, dom ) ||
-                   util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
-        case DomainKind::pointer:
-        default:
-            UNREACHABLE( "Unsupported domain transformation." );
+    inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
+        return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
+            return meta::abstract::has( idx );
+        } );
     }
-}
 
-bool is_duplicable( Instruction *inst ) {
-    return is_duplicable_in_domain( inst, Domain::get( inst ) );
-}
-
-bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
-    if ( !is_transformable_in_domain( inst, dom ) )
-        return false;
-
-    auto dm = domain_metadata( *inst->getModule(), dom );
-
-    switch ( dm.kind() ) {
-        case DomainKind::scalar:
-            return true;
-        case DomainKind::content:
-            return !util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
-        case DomainKind::pointer:
-        default:
-            UNREACHABLE( "Unsupported domain transformation." );
+    inline bool allocating_abstract_size( AllocaInst * a ) {
+        return meta::abstract::has( a->getArraySize() );
     }
-}
 
-bool is_transformable( Instruction *inst ) {
-    return is_transformable_in_domain( inst, Domain::get( inst ) );
-}
+    bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
+        auto dm = domain_metadata( *inst->getModule(), dom );
 
-bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
-    auto m = inst->getModule();
-    auto dm = domain_metadata( *m, dom );
-
-    switch ( dm.kind() ) {
-        case DomainKind::scalar:
-            return is_base_type_in_domain( m, inst, dom ) &&
-                   (util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
-                   ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [m, dom] ( auto &op ) {
-                        return is_base_type_in_domain( m, op, dom );
-                   } ) ));
-        case DomainKind::content:
-            if ( auto call = dyn_cast< CallInst >( inst ) ) {
-                if ( auto fn = call->getCalledFunction() ) {
-                    auto name =  "__" + dom.name() + "_" + fn->getName().str();
-                    return get_module( inst )->getFunction( name );
+        switch ( dm.kind() ) {
+            case DomainKind::scalar:
+                if ( auto gep = dyn_cast< GetElementPtrInst >( inst ) ) {
+                    return accessing_abstract_offset( gep );
                 }
-            }
-            return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
-        case DomainKind::pointer:
-        default:
-            UNREACHABLE( "Unsupported domain transformation." );
+                if ( auto a = dyn_cast< AllocaInst >( inst ) ) {
+                    return allocating_abstract_size( a );
+                }
+            case DomainKind::content:
+            case DomainKind::pointer:
+            default:
+                return false;
+        }
     }
-}
 
-bool is_base_type( llvm::Module *m, llvm::Value * val ) {
-    return is_base_type_in_domain( m, val, Domain::get( val ) );
-}
+    bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
+        auto dm = domain_metadata( *inst->getModule(), dom );
 
-bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
-    if ( is_concrete( dom ) )
-        return true;
-
-    auto type = val->getType();
-    auto dm = domain_metadata( *m, dom );
-    switch ( dm.kind() ) {
-        case DomainKind::scalar:
-            return type->isIntegerTy() || type->isFloatingPointTy();
-        case DomainKind::content:
-            return type->isPointerTy();
-        case DomainKind::pointer:
-            return type->isPointerTy();
-        default:
-            UNREACHABLE( "Unsupported domain type." );
+        switch ( dm.kind() ) {
+            case DomainKind::scalar:
+                return is_transformable_in_domain( inst, dom ) ||
+                       util::is_one_of< CallInst, StoreInst, GetElementPtrInst,
+                                        IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
+            case DomainKind::content:
+                return is_transformable_in_domain( inst, dom ) ||
+                       util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
+            case DomainKind::pointer:
+            default:
+                UNREACHABLE( "Unsupported domain transformation." );
+        }
     }
-}
 
-DomainMetadata domain_metadata( Module &m, Domain dom ) {
-    std::optional< DomainMetadata > meta;
+    bool is_duplicable( Instruction *inst ) {
+        return is_duplicable_in_domain( inst, Domain::get( inst ) );
+    }
 
-    global_variable_walker( m, [&] ( auto glob, auto anno ) {
-        if ( anno.name() == dom.name() )
-            meta = DomainMetadata( glob );
-    } );
+    bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
+        if ( !is_transformable_in_domain( inst, dom ) )
+            return false;
 
-    ASSERT( meta && "Domain specification was not found." );
-    return meta.value();
-}
+        auto dm = domain_metadata( *inst->getModule(), dom );
+
+        switch ( dm.kind() ) {
+            case DomainKind::scalar:
+                return true;
+            case DomainKind::content:
+                return !util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
+            case DomainKind::pointer:
+            default:
+                UNREACHABLE( "Unsupported domain transformation." );
+        }
+    }
+
+    bool is_transformable( Instruction *inst ) {
+        return is_transformable_in_domain( inst, Domain::get( inst ) );
+    }
+
+    bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
+        auto m = inst->getModule();
+        auto dm = domain_metadata( *m, dom );
+
+        switch ( dm.kind() ) {
+            case DomainKind::scalar:
+                return is_base_type_in_domain( m, inst, dom ) &&
+                       (util::is_one_of< BinaryOperator, CastInst, LoadInst, PHINode >( inst ) ||
+                       ( isa< CmpInst >( inst ) && query::query( inst->operands() ).all( [m, dom] ( auto &op ) {
+                            return is_base_type_in_domain( m, op, dom );
+                       } ) ));
+            case DomainKind::content:
+                if ( auto call = dyn_cast< CallInst >( inst ) ) {
+                    if ( auto fn = call->getCalledFunction() ) {
+                        auto name =  "__" + dom.name() + "_" + fn->getName().str();
+                        return get_module( inst )->getFunction( name );
+                    }
+                }
+                return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
+            case DomainKind::pointer:
+            default:
+                UNREACHABLE( "Unsupported domain transformation." );
+        }
+    }
+
+    bool is_base_type( llvm::Module *m, llvm::Value * val ) {
+        return is_base_type_in_domain( m, val, Domain::get( val ) );
+    }
+
+    bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {
+        if ( is_concrete( dom ) )
+            return true;
+
+        auto type = val->getType();
+        auto dm = domain_metadata( *m, dom );
+        switch ( dm.kind() ) {
+            case DomainKind::scalar:
+                return type->isIntegerTy() || type->isFloatingPointTy();
+            case DomainKind::content:
+                return type->isPointerTy();
+            case DomainKind::pointer:
+                return type->isPointerTy();
+            default:
+                UNREACHABLE( "Unsupported domain type." );
+        }
+    }
+
+    DomainMetadata domain_metadata( Module &m, Domain dom ) {
+        std::optional< DomainMetadata > meta;
+
+        global_variable_walker( m, [&] ( auto glob, auto anno ) {
+            if ( anno.name() == dom.name() )
+                meta = DomainMetadata( glob );
+        } );
+
+        ASSERT( meta && "Domain specification was not found." );
+        return meta.value();
+    }
 
 } // namespace lart::abstract
 
