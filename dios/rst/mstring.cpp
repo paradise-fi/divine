@@ -1,6 +1,7 @@
 #include <rst/mstring.h>
 
 #include <rst/common.h>
+#include <rst/lart.h>
 
 #include <algorithm> // min
 
@@ -13,7 +14,7 @@ __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
 }
 
 extern "C" {
-    _MSTRING char * __mstring_val( char * buff, unsigned buff_len ) {
+    _MSTRING char * __mstring_val( char * buff, unsigned buff_len ) _LART_IGNORE_ARG {
         auto val = __mstring_lift( buff, buff_len );
 
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
