@@ -170,6 +170,10 @@ namespace lart::abstract
                 std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
                 auto src = llvm_name( ci->getSrcTy() );
                 auto dest = llvm_name( ci->getDestTy() );
+                if ( llvm::isa< llvm::PtrToIntInst >( val ) )
+                    return op + "." + dest;
+                if ( llvm::isa< llvm::IntToPtrInst >( val ) )
+                    return op + "." + src;
                 return op + "." + src + "." + dest;
             }
 

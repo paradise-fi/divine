@@ -120,8 +120,11 @@ namespace lart::abstract
                 auto paired = paired_arguments().front();
                 vals.push_back( paired.abstract.value );
 
-                auto bw = taint.dual()->getType()->getPrimitiveSizeInBits();
-                vals.push_back( i32cv( bw ) );
+                auto dual = taint.dual();
+                if ( !llvm::isa< llvm::PtrToIntInst >( dual ) ) {
+                    auto bw = dual->getType()->getPrimitiveSizeInBits();
+                    vals.push_back( i32cv( bw ) );
+                }
                 // TODO floats
             }
 
