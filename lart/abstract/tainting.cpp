@@ -163,7 +163,7 @@ namespace lart::abstract
                         return name( meta::get_dual( i ) );
             }
 
-            std::string suffix = Placeholder::TypeTable[ T ];
+            std::string suffix = TaintTable[ T ];
 
             std::string infix = "";
 
