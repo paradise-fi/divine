@@ -35,22 +35,31 @@ namespace lart::abstract
         auto i64 = llvm::Type::getInt64Ty( call->getContext() );
         auto val = irb.CreatePtrToInt( mem, i64 );
 
-        auto fn = call->getModule()->getFunction( "__lart_stash" );
-        ASSERT( fn && "Missing __lart_stash function" );
+        auto _stash = call->getModule()->getFunction( "__lart_stash" );
+        ASSERT( _stash && "Missing __lart_stash function" );
 
-        irb.CreateCall( fn, { val } );
+        irb.CreateCall( _stash, { val } );
+    }
+
+    auto unstash( llvm::Function * fn ) -> llvm::Instruction *
+    {
+        llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHI() );
+
+        auto _unstash = fn->getParent()->getFunction( "__lart_unstash" );
+        ASSERT( _unstash && "Missing __lart_unstash function" );
+
+        return irb.CreateCall( _unstash );
     }
 
     struct Bundle
     {
         Bundle( llvm::CallInst * call )
             : _call( call )
-        {}
-
-        llvm::StructType * type() const noexcept
         {
-            return llvm::StructType::create( concretized_types( function() ) );
+            _type = llvm::StructType::create( concretized_types( function() ) );
         }
+
+        llvm::StructType * type() const noexcept { return _type; }
 
         llvm::Function * function() const noexcept
         {
@@ -79,17 +88,39 @@ namespace lart::abstract
         {
             llvm::IRBuilder<> irb( _call );
             auto ty = type();
-            auto mem = irb.CreateAlloca( ty );
+            auto addr = irb.CreateAlloca( ty );
 
             llvm::Value * pack = llvm::UndefValue::get( ty );
             for ( const auto & op : _call->arg_operands() ) {
                 pack = irb.CreateInsertValue( pack, element( op ), { op.getOperandNo() } );
             }
 
-            irb.CreateStore( pack, mem );
-            return mem;
+            irb.CreateStore( pack, addr );
+            return addr;
         }
 
+        void unpack( llvm::Function * fn )
+        {
+            auto addr = unstash( fn );
+
+            llvm::IRBuilder<> irb( addr );
+            auto ptr = irb.CreateIntToPtr( addr, _type->getPointerTo() );
+            auto pack = irb.CreateLoad( _type, ptr );
+
+            for ( auto & arg : fn->args() ) {
+                if ( meta::has_dual( &arg ) ) {
+                    auto dual = llvm::cast< llvm::Instruction >( meta::get_dual( &arg ) );
+                    auto unstashed = irb.CreateExtractValue( pack, { arg.getArgNo() } );
+                    dual->replaceAllUsesWith( unstashed );
+                    dual->eraseFromParent();
+                    meta::make_duals( &arg, llvm::cast< llvm::Instruction >( unstashed ) );
+                }
+            }
+
+            addr->moveBefore( llvm::cast< llvm::Instruction >( ptr ) );
+        }
+
+        llvm::StructType * _type;
         llvm::CallInst * _call;
     };
 
@@ -124,12 +155,21 @@ namespace lart::abstract
             inst->eraseFromParent();
         }
 
+        std::set< llvm::Function * > seen;
         run_on_abstract_calls( [&] ( auto * call ) {
             if ( call->getNumArgOperands() != 0 ) {
                 Bundle bundle( call );
                 stash( call, bundle.pack() );
+
+                run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                    if ( !seen.count( fn ) ) {
+                        bundle.unpack( fn );
+                        seen.insert( fn );
+                    }
+                } );
             }
         }, m );
+
     }
 
 } // namespace lart::abstract

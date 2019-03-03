@@ -39,6 +39,15 @@ namespace lart::abstract
             return Taint{ taint, T };
         }
 
+        llvm::Type * return_type() const
+        {
+            if constexpr ( Taint::freeze( T ) ) {
+                return default_value()->getType();
+            }
+
+            return inst()->getType();
+        }
+
         llvm::Function * operation() const
         {
             auto m = module();
@@ -50,14 +59,7 @@ namespace lart::abstract
                 args.push_back( arg->getType() );
             }
 
-            llvm::Type * rty = nullptr;
-            if constexpr ( Taint::freeze( T ) ) {
-                rty = default_value()->getType();
-            } else {
-                rty = inst()->getType();
-            }
-
-            auto fty = llvm::FunctionType::get( rty, args, false );
+            auto fty = llvm::FunctionType::get( return_type(), args, false );
             auto tname = name( inst()->getOperand( 0 ) );
 
             return util::get_or_insert_function( m, fty, tname );

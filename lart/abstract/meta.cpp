@@ -278,8 +278,10 @@ namespace lart::abstract::meta {
         auto fn = arg->getParent();
         if ( auto node = fn->getMetadata( function::duals ) ) {
             auto idx = arg->getArgNo();
-            auto & meta = llvm::cast< llvm::MDNode >( node->getOperand( idx ) )->getOperand( 0 );
-            return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
+            auto meta = llvm::cast< llvm::MDNode >( node->getOperand( idx ) );
+            if ( meta->getNumOperands() == 0 )
+                return nullptr;
+            return llvm::cast< llvm::ValueAsMetadata >( meta->getOperand( 0 ).get() )->getValue();
         }
         return nullptr;
     }

@@ -74,9 +74,7 @@ namespace lart::abstract {
             if ( !is_transformable( call ) ) {
                 run_on_potentialy_called_functions( call, [&] ( auto fn ) {
                     if ( !meta::has( fn, meta::tag::abstract ) )
-                        if ( !unstashed.count( fn ) )
-                            process_arguments( call, fn );
-                    unstashed.insert( fn );
+                        process_arguments( call, fn );
                 } );
 
                 process_return_value( call );
@@ -86,11 +84,14 @@ namespace lart::abstract {
 
     void Unstash::process_arguments( llvm::CallInst * call, llvm::Function * fn )
     {
+        auto concrete = [&] ( llvm::Argument & arg ) {
+            return is_concrete( call->getOperand( arg.getArgNo() ) );
+        };
+
         llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHI() );
         for ( auto & arg : fn->args() ) {
-            if ( !is_concrete( call->getOperand( arg.getArgNo() ) ) ) {
+            if ( !concrete( arg ) && !meta::has_dual( &arg ) )
                 unstash( &arg, irb );
-            }
         }
     }
 
