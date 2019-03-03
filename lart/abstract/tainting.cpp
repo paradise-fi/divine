@@ -122,6 +122,13 @@ namespace lart::abstract
                 return { val, concrete, abstract };
             }
 
+            if constexpr ( Taint::load( T ) ) {
+                auto l = llvm::cast< llvm::LoadInst >( dual( inst() ) );
+                auto concrete = l->getPointerOperand();
+                auto abstract = dual( concrete );
+                return { concrete, abstract };
+            }
+
             if constexpr ( Taint::thaw( T ) ) {
                 auto l = llvm::cast< llvm::LoadInst >( dual( inst() ) );
                 return { l, inst()->getOperand( 0 ) };
@@ -180,6 +187,10 @@ namespace lart::abstract
         {
             if constexpr ( Taint::toBool( T ) ) {
                 return dual( inst()->getOperand( 0 ) );
+            }
+
+            if constexpr ( Taint::load( T ) ) {
+                return dual( inst() );
             }
 
             if constexpr ( Taint::lower( T ) ) {

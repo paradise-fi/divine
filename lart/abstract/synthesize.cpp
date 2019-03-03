@@ -113,7 +113,8 @@ namespace lart::abstract
 
             if constexpr ( Taint::load( T ) )
             {
-                UNREACHABLE( "Not implemented" );
+                vals.push_back( args[ 0 ].value ); // addr
+                // TODO use abstract addr
             }
 
             if constexpr ( Taint::thaw( T ) )

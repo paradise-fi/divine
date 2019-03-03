@@ -237,7 +237,10 @@ namespace lart::abstract
             }
 
             if ( meta.content() ) {
-
+                if ( is_base_type_in_domain( m, load, dom ) )
+                    return construct< Type::Thaw >( load );
+                else
+                    return construct< Type::Load >( load );
             }
         }
 
