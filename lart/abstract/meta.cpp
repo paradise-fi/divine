@@ -92,6 +92,10 @@ namespace lart::abstract::meta {
         return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
     }
 
+    void set( llvm::Value * val, const std::string & tag ) noexcept {
+        set( val, tag, "" );
+    }
+
     void set( llvm::Value * val, const std::string & tag, const std::string & meta ) noexcept {
         if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
             meta::set( arg, tag, meta );
@@ -106,12 +110,6 @@ namespace lart::abstract::meta {
     void set( llvm::Argument * arg, const std::string & /*tag*/, const std::string & meta ) noexcept {
         // TODO enable multiple tags
         meta::argument::set( arg, meta );
-    }
-
-    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
-        auto &ctx = inst->getContext();
-        auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
-        inst->setMetadata( tag, meta );
     }
 
 
@@ -144,21 +142,29 @@ namespace lart::abstract::meta {
 
     namespace function
     {
+        constexpr auto abstract = meta::tag::function::abstract;
+        constexpr auto duals = meta::tag::function::duals;
+
         void init( llvm::Function * fn ) noexcept {
             auto size = fn->arg_size();
-
             auto & ctx = fn->getContext();
 
-            if ( !meta::has( fn, meta::tag::function ) ) {
+            if ( !fn->getMetadata( abstract ) ) {
                 auto value = [&] { return meta::create( ctx, "" ); };
                 auto data = meta::tuple::create( ctx, size, value );
-                fn->setMetadata( meta::tag::function, data );
+                fn->setMetadata( abstract, data );
+            }
+
+            if ( !fn->getMetadata( duals ) ) {
+                auto empty = [&] { return meta::tuple::empty( ctx ); };
+                auto data = meta::tuple::create( ctx, size, empty );
+                fn->setMetadata( duals, data );
             }
         }
 
         void clear( llvm::Function * fn ) noexcept {
-            if ( meta::has( fn, meta::tag::function ) )
-                fn->setMetadata( meta::tag::function, nullptr );
+            if ( meta::has( fn, abstract ) )
+                fn->setMetadata( abstract, nullptr );
         }
 
         bool ignore_call( llvm::Function * fn ) noexcept {
@@ -190,13 +196,13 @@ namespace lart::abstract::meta {
             auto fn = arg->getParent();
             function::init( fn );
 
-            auto meta = fn->getMetadata( meta::tag::function );
+            auto meta = fn->getMetadata( meta::tag::function::abstract );
             meta->replaceOperandWith( arg->getArgNo(), node );
         }
 
         MetaVal get( llvm::Argument * arg ) noexcept {
             auto fn = arg->getParent();
-            if ( auto node = fn->getMetadata( meta::tag::function ) ) {
+            if ( auto node = fn->getMetadata( meta::tag::function::abstract ) ) {
                 return meta::value( node, arg->getArgNo() );
             }
             return std::nullopt;
@@ -205,15 +211,75 @@ namespace lart::abstract::meta {
         bool has( llvm::Argument * arg ) noexcept {
             return argument::get( arg ).has_value();
         }
+
     } // namespace argument
+
+    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
+        auto &ctx = inst->getContext();
+        auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
+        inst->setMetadata( tag, meta );
+    }
+
+    void set_value_as_meta( llvm::Argument * arg, llvm::Value * val ) {
+        auto fn = arg->getParent();
+        function::init( fn );
+
+        auto &ctx = fn->getContext();
+        auto node = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
+        auto meta = fn->getMetadata( function::duals );
+        meta->replaceOperandWith( arg->getArgNo(), node );
+    }
+
+    void make_duals( llvm::Value * a, llvm::Instruction * b ) {
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( a ) )
+            return make_duals( arg, b );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( a ) )
+            return make_duals( inst, b );
+        UNREACHABLE( "Unsupported dual pair" );
+    }
+
+    void make_duals( llvm::Argument * arg, llvm::Instruction * inst ) {
+        set_value_as_meta( arg, inst );
+        set_value_as_meta( inst, meta::tag::dual, arg );
+    }
 
     void make_duals( llvm::Instruction * a, llvm::Instruction * b ) {
         set_value_as_meta( a, meta::tag::dual, b );
         set_value_as_meta( b, meta::tag::dual, a );
     }
 
+    bool has_dual( llvm::Value * val ) {
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+            return has_dual( arg );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            return has_dual( inst );
+        UNREACHABLE( "Unsupported dual value" );
+    }
+
+    bool has_dual( llvm::Argument * arg ) {
+        return get_dual( arg );
+    }
+
     bool has_dual( llvm::Instruction * inst ) {
         return inst->getMetadata( meta::tag::dual );
+    }
+
+    llvm::Value * get_dual( llvm::Value * val ) {
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+            return get_dual( arg );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            return get_dual( inst );
+        UNREACHABLE( "Unsupported dual value" );
+    }
+
+    llvm::Value * get_dual( llvm::Argument * arg ) {
+        auto fn = arg->getParent();
+        if ( auto node = fn->getMetadata( function::duals ) ) {
+            auto idx = arg->getArgNo();
+            auto & meta = llvm::cast< llvm::MDNode >( node->getOperand( idx ) )->getOperand( 0 );
+            return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
+        }
+        return nullptr;
     }
 
     llvm::Value * get_dual( llvm::Instruction *inst ) {

@@ -15,7 +15,10 @@ namespace lart::abstract::meta {
         constexpr char abstract[] = "lart.abstract"; // TODO chenge to return
         constexpr char roots[] = "lart.abstract.roots";
 
-        constexpr char function[] = "lart.abstract.function";
+        namespace function {
+            constexpr char abstract[] = "lart.abstract.function";
+            constexpr char duals[] = "lart.abstract.function.duals";
+        }
 
         namespace transform {
             constexpr char prefix[] = "lart.transform";
@@ -45,7 +48,7 @@ namespace lart::abstract::meta {
             constexpr const char type[] = "lart.taint.type";
         }
 
-        constexpr char dual[] = "lart.dual";
+        constexpr char dual[] = "lart.abstract.dual";
     } // namespace tag
 
     using MetaVal = std::optional< std::string >;
@@ -77,6 +80,7 @@ namespace lart::abstract::meta {
     }
 
     /* sets metadata with tag to value */
+    void set( llvm::Value * val, const std::string & tag ) noexcept;
     void set( llvm::Value * val, const std::string & tag, const std::string & meta ) noexcept;
     void set( llvm::Argument * arg, const std::string & tag, const std::string & meta ) noexcept;
     void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept;
@@ -152,8 +156,16 @@ namespace lart::abstract::meta {
     } // namespace argument
 
 
+    void make_duals( llvm::Value * a, llvm::Instruction * b );
+    void make_duals( llvm::Argument * arg, llvm::Instruction * inst );
     void make_duals( llvm::Instruction * a, llvm::Instruction * b );
+
+    bool has_dual( llvm::Value * val );
+    bool has_dual( llvm::Argument * arg );
     bool has_dual( llvm::Instruction * inst );
+
+    llvm::Value * get_dual( llvm::Value * val );
+    llvm::Value * get_dual( llvm::Argument * arg );
     llvm::Value * get_dual( llvm::Instruction * inst );
 
     template< typename T >
