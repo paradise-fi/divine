@@ -65,7 +65,6 @@ struct LoopTrack
 
         return false;
     }
-
 };
 
 /* state of a computation */
@@ -124,7 +123,6 @@ struct Registers
     PtrRegister get_ptr( _VM_ControlRegister r ) const
     {
         return _ref_ptr( r );
-        NOT_IMPLEMENTED();
     }
 
     IntRegister get_int( _VM_ControlRegister r ) const
@@ -133,7 +131,7 @@ struct Registers
             return _state.flags;
         if ( r == _VM_CR_ObjIdShuffle )
             return _state.objid_shuffle;
-        NOT_IMPLEMENTED();
+        __builtin_unreachable();
     }
 
     uint32_t instruction_count() { return _state.instruction_counter; }
