@@ -37,8 +37,8 @@ namespace lart::abstract {
                                            , VPA()
                                            , Decast()
                                            , VPA() // run once more to propagate through decasted functions
-                                           , Syntactic()
                                            , StashingPass()
+                                           , Syntactic()
                                            , ContentPass()
                                            , LowerToBool()
                                            , AddAssumes()

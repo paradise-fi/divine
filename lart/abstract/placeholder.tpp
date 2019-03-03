@@ -271,7 +271,6 @@ namespace lart::abstract
         }
 
         UNREACHABLE( "Unsupported placeholder type" );
-
     }
 
     template< Placeholder::Level L >

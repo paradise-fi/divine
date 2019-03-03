@@ -16,10 +16,10 @@ namespace lart::abstract
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::Instruction > )
             .filter( query::notnull )
-            .filter( is_duplicable )
+            .filter( [] ( auto * inst ) { return !meta::has_dual( inst ); } )
             .freeze();
 
-        APlaceholderBuilder builder( m.getContext() );
+        APlaceholderBuilder builder;
         for ( const auto &inst : abstract ) {
             builder.construct( inst );
         }

@@ -152,27 +152,6 @@ using lart::util::get_module;
         }
     }
 
-    bool is_duplicable( Instruction *inst ) {
-        return is_duplicable_in_domain( inst, Domain::get( inst ) );
-    }
-
-    bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
-        if ( !is_transformable_in_domain( inst, dom ) )
-            return false;
-
-        auto dm = DomainMetadata::get( inst->getModule(), dom );
-
-        switch ( dm.kind() ) {
-            case DomainKind::scalar:
-                return true;
-            case DomainKind::content:
-                return !util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
-            case DomainKind::pointer:
-            default:
-                UNREACHABLE( "Unsupported domain transformation." );
-        }
-    }
-
     bool is_transformable( Instruction *inst ) {
         return is_transformable_in_domain( inst, Domain::get( inst ) );
     }
