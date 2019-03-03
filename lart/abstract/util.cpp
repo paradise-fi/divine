@@ -122,5 +122,4 @@ namespace lart::abstract
             return nullptr;
     }
 
-
 } // namespace lart::abstract

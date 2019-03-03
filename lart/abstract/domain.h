@@ -122,4 +122,6 @@ namespace lart::abstract {
     bool is_base_type( llvm::Module *m, llvm::Value *val );
     bool is_base_type_in_domain( llvm::Module *m, llvm::Value *val, Domain dom );
 
+    llvm::Value * lower_constant_expr_call( llvm::ConstantExpr * ce );
+
 } // namespace lart::abstract

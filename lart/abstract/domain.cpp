@@ -1,5 +1,9 @@
 #include <lart/abstract/domain.h>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/IRBuilder.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <lart/support/util.h>
 
 #include <optional>
@@ -68,10 +72,17 @@ using lart::util::get_module;
         annotation_to_transform_metadata< Function >( meta::tag::transform::prefix, m );
 
         for ( auto & fn : m ) {
-            if ( auto meta = meta::get( &fn, meta::tag::abstract ) )
-                for ( auto user : fn.users() )
-                    if ( auto call = dyn_cast< CallInst >( user ) )
+            if ( auto meta = meta::get( &fn, meta::tag::abstract ) ) {
+                for ( auto user : fn.users() ) {
+                    llvm::Value * val = user;
+                    if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( user ) )
+                        val = lower_constant_expr_call( ce );
+                    if ( !val )
+                        continue;
+                    if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
                         Domain::set( call, Domain{ meta.value() } );
+                }
+            }
         }
     }
 
@@ -211,6 +222,27 @@ using lart::util::get_module;
             default:
                 UNREACHABLE( "Unsupported domain type." );
         }
+    }
+
+    llvm::Value * lower_constant_expr_call( llvm::ConstantExpr * ce ) {
+        if ( ce->getNumUses() > 0 ) {
+            if ( auto orig = llvm::dyn_cast< llvm::CallInst >( *ce->user_begin() ) ) {
+                auto fn = ce->getOperand( 0 );
+                llvm::IRBuilder<> irb( orig );
+                auto call = irb.CreateCall( fn );
+                if ( call->getType() != orig->getType() ) {
+                    auto cast = irb.CreateBitCast( call, orig->getType() );
+                    orig->replaceAllUsesWith( cast );
+                } else {
+                    orig->replaceAllUsesWith( call );
+                }
+
+                orig->eraseFromParent();
+                return call;
+            }
+        }
+
+        return nullptr;
     }
 
     std::vector< DomainMetadata > domains( llvm::Module & m ) {

@@ -273,27 +273,6 @@ void VPA::step_out( Function *fn, Domain dom ) {
     }
 }
 
-Value * lower_constant_expr_if_possible( ConstantExpr * ce ) {
-    if ( ce->getNumUses() > 0 ) {
-        if ( auto orig = dyn_cast< CallInst >( *ce->user_begin() ) ) {
-            auto fn = ce->getOperand( 0 );
-            IRBuilder<> irb( orig );
-            auto call = irb.CreateCall( fn );
-            if ( call->getType() != orig->getType() ) {
-                auto cast = irb.CreateBitCast( call, orig->getType() );
-                orig->replaceAllUsesWith( cast );
-            } else {
-                orig->replaceAllUsesWith( call );
-            }
-
-            orig->eraseFromParent();
-            return call;
-        }
-    }
-
-    return ce;
-}
-
 void VPA::run( Module &m ) {
     for ( auto * val : meta::enumerate( m ) ) {
         preprocess( get_function( val ) );
@@ -313,7 +292,7 @@ void VPA::run( Module &m ) {
             auto dom = Domain{ meta.value() };
             for ( auto u : fn.users() ) {
                 if ( auto ce = dyn_cast< ConstantExpr >( u ) ) {
-                    process( lower_constant_expr_if_possible( ce ), dom );
+                    process( lower_constant_expr_call( ce ), dom );
                 } else {
                     process( u, dom );
                 }
