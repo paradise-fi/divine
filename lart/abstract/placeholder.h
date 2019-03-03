@@ -10,8 +10,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/util.h>
 #include <lart/support/util.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
     struct Placeholder
     {
@@ -158,6 +157,10 @@ namespace abstract {
                 return construct< Type::Call >( call );
             }
 
+            if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( inst ) ) {
+                return construct< Type::Stash >( ret );
+            }
+
             UNREACHABLE( "Unsupported placeholder type" );
         }
 
@@ -202,13 +205,18 @@ namespace abstract {
             auto m = util::get_module( val );
             auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
             auto ph = builder.CreateCall( fn, { val } );
-            meta::abstract::inherit( ph, val );
+
+            if constexpr ( Type != Placeholder::Type::Stash ) { // TODO  maybe not needed
+                meta::abstract::inherit( ph, val );
+            }
             return Placeholder{ ph, Level, Type };
         }
 
         template< Placeholder::Type Type >
         Placeholder construct( llvm::Instruction * inst ) const
         {
+            assert( !llvm::isa< llvm::ReturnInst >( inst ) );
+
             llvm::IRBuilder<> irb{ ctx };
             if constexpr ( Type == Placeholder::Type::PHI ) {
                 irb.SetInsertPoint( inst->getParent()->getFirstNonPHI() );
@@ -216,15 +224,24 @@ namespace abstract {
                 irb.SetInsertPoint( inst );
             }
 
-            auto ph = construct< Type >( inst, irb );
+            Placeholder ph = construct< Type >( inst, irb );
 
-            if constexpr ( Type != Placeholder::Type::PHI ) { // TODO remove
-                ph.inst->moveAfter( inst );
-            }
+            ph.inst->moveAfter( inst );
 
             meta::make_duals( inst, ph.inst );
             assert( is_base_type_in_domain( inst->getModule(), inst, Domain::get( inst ) ) );
 
+            return ph;
+        }
+
+        template< Placeholder::Type Type >
+        Placeholder construct( llvm::ReturnInst * ret )
+        {
+            static_assert( Type == Placeholder::Type::Stash );
+            llvm::IRBuilder<> irb{ ret };
+            Placeholder ph = construct< Type >( stash_value( ret ), irb );
+
+            meta::make_duals( ret, ph.inst );
             return ph;
         }
 
@@ -238,6 +255,22 @@ namespace abstract {
         }
 
     private:
+        llvm::Value * stash_value( llvm::ReturnInst * ret ) const noexcept
+        {
+            auto val = ret->getReturnValue();
+            if ( has_placeholder( val ) )
+                return get_placeholder( val );
+
+            if ( llvm::isa< llvm::Argument >( val ) || llvm::isa< llvm::CallInst >( val ) ) {
+                assert( has_placeholder( val, "lart.unstash.placeholder" ) );
+                return get_unstash_placeholder( val );
+            }
+
+            UNREACHABLE( "Stashing non abstract return value" );
+            //auto aty = abstract_type( val->getType(), Domain::get( call ) );
+            //return UndefValue::get( aty );
+        }
+
         llvm::LLVMContext & ctx;
     };
 
@@ -261,5 +294,4 @@ namespace abstract {
     using AbstractPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Abstract >;
     using TaintPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Taint >;
 
-} // namespace abstract
-} // namespace lart
+} // namespace lart::abstract

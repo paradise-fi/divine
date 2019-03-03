@@ -9,6 +9,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/util.h>
+#include <lart/abstract/placeholder.h>
 
 namespace lart {
 namespace abstract {
@@ -60,29 +61,10 @@ void Stash::run( Module &m ) {
 }
 
 void Stash::process_return_value( CallInst *call, Function * fn ) {
-    if ( auto terminator = returns_abstract_value( call, fn ) ) {
-        auto ret = cast< ReturnInst >( terminator );
-        auto val = ret->getReturnValue();
-        auto aty = abstract_type( fn->getReturnType(), Domain::get( call ) );
-
-        IRBuilder<> irb( ret );
-        auto stash_fn = stash_placeholder( get_module( call ), aty );
-
-        Value *tostash = nullptr;
-        if ( has_placeholder( val ) ) {
-            tostash = get_placeholder( val );
-        } else if ( isa< Argument >( val ) || isa< CallInst >( val ) ) {
-            if ( !has_placeholder( val, "lart.unstash.placeholder" ) ) {
-                return; // does not return abstract value
-            }
-            tostash = get_unstash_placeholder( val );
-        } else {
-            tostash = UndefValue::get( aty );
-        }
-
-        auto stash = irb.CreateCall( stash_fn, { tostash } );
-        meta::abstract::inherit( stash, call );
-        meta::make_duals( stash, ret );
+    if ( auto ret = returns_abstract_value( call, fn ) ) {
+        auto apb = AbstractPlaceholderBuilder( call->getContext() );
+        auto stash = apb.construct( llvm::cast< llvm::ReturnInst >( ret ) );
+        meta::abstract::inherit( stash.inst, call );
     }
 }
 
