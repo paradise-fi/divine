@@ -17,7 +17,12 @@ namespace lart::abstract
             .map( query::llvmdyncast< llvm::Instruction > )
             .filter( query::notnull )
             // skip alredy processed instructions
-            .filter( [] ( auto * inst ) { return !meta::has_dual( inst ); } )
+            .filter( [] ( auto * inst ) {
+                return !meta::has_dual( inst );
+            } )
+            .filter( [] ( auto * inst ) {
+                return !llvm::isa< llvm::GetElementPtrInst >( inst );
+            } )
             .freeze();
 
         APlaceholderBuilder builder;
