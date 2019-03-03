@@ -129,6 +129,5 @@ std::vector< T * > transformable( llvm::Module & m ) {
         .freeze();
 }
 
-
 } // namespace abstract
 } // namespace lart

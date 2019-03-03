@@ -141,13 +141,13 @@ Type* return_type( Instruction *inst ) {
     if ( ty->isVoidTy() )
         return ty;
 
-    return domain_metadata( *inst->getModule(), Domain::get( inst ) ).base_type();
+    return DomainMetadata::get( inst->getModule(), Domain::get( inst ) ).base_type();
 }
 
 Values arguments( Instruction *inst ) {
     if ( is_stash( inst ) ) {
         auto dom = Domain::get( inst );
-        auto meta = domain_metadata( *inst->getModule(), dom );
+        auto meta = DomainMetadata::get( inst->getModule(), dom );
         if ( auto uv = dyn_cast< UndefValue >( inst->getOperand( 0 ) ) )
             return { meta.default_value() };
         auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
@@ -239,7 +239,7 @@ namespace lifter {
 
     std::string name( Instruction *inst, Domain dom ) {
         if ( auto call = dyn_cast< CallInst >( inst ) ) {
-            assert( domain_metadata( *get_module( inst ), dom ).kind() == DomainKind::content );
+            assert( DomainMetadata::get( inst->getModule(), dom ).kind() == DomainKind::content );
             return dom.name() + "." + call->getCalledFunction()->getName().str();
         }
 
@@ -430,7 +430,7 @@ struct Lifter : BaseLifter {
         }
 
         auto m = get_module( val );
-        auto dom = domain_metadata( *m, domain() );
+        auto dom = DomainMetadata::get( m, domain() );
 
         if ( dom.kind() == DomainKind::content ) {
             auto fault = m->getFunction( "__" + domain().name() + "_undef_value" );
@@ -702,7 +702,7 @@ struct TaintBase : CRTP< Derived > {
     }
 
     Value* default_value() const {
-        auto m = get_module( placeholder );
+        auto m = placeholder->getModule();
         if ( placeholder::is_to_i1( placeholder ) )
             return concrete();
         if ( placeholder::is_assume( placeholder ) )
@@ -713,7 +713,7 @@ struct TaintBase : CRTP< Derived > {
             return concrete();
         if ( !is_base_type( m, concrete() ) )
             return concrete();
-        auto meta = domain_metadata( *m, domain() );
+        auto meta = DomainMetadata::get( m, domain() );
         return meta.default_value();
     }
 
@@ -739,11 +739,10 @@ struct TaintBase : CRTP< Derived > {
     }
 
     Function *function() {
-        auto m = get_module( placeholder );
         auto args = args_with_taints( placeholder, this->self().arguments() );
         auto fty = FunctionType::get( return_type(), args, false );
         auto fname = "lart." + this->self().name();
-        return get_or_insert_function( m, fty, fname );
+        return get_or_insert_function( placeholder->getModule(), fty, fname );
     }
 
 protected:
@@ -765,7 +764,7 @@ struct Taint : TaintBase< Taint > {
             if ( has_placeholder_in_domain( op, dom ) ) {
                 res.push_back( get_placeholder_in_domain( op, dom ) );
             } else {
-                auto meta = domain_metadata( *get_module( placeholder ), domain() );
+                auto meta = DomainMetadata::get( placeholder->getModule(), domain() );
                 res.push_back( meta.default_value() );
             }
         }
@@ -910,7 +909,7 @@ void stash_arguments( CallInst *call ) {
 
         auto stash = stash_function( call, dom );
         if ( is_concrete( op ) && !is_concrete( dom ) ) {
-            auto meta = domain_metadata( *m, dom );
+            auto meta = DomainMetadata::get( m, dom );
             irb.CreateCall( stash, { meta.default_value() } );
         } else {
             irb.CreateCall( stash, { get_placeholder_in_domain( op, dom ) } );
@@ -1134,7 +1133,7 @@ void FreezeStores::process( StoreInst *store ) {
     auto m = get_module( store );
     auto & ctx = m->getContext();
 
-    auto meta = domain_metadata( *m, Domain::get( store ) );
+    auto meta = DomainMetadata::get( m, Domain::get( store ) );
     auto dom = meta.domain();
 
     auto name = "__" + dom.name() + "_freeze";

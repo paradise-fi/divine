@@ -55,10 +55,30 @@ namespace lart::abstract {
     };
 
 
+    struct DomainMetadata;
+
+    std::vector< DomainMetadata > domains( llvm::Module & m );
+
     struct DomainMetadata {
         DomainMetadata( llvm::GlobalVariable * glob )
             : glob( glob )
         {}
+    private:
+        static DomainMetadata get( llvm::Module & m, const Domain & dom ) {
+            auto doms = domains( m );
+            auto meta = std::find_if( doms.begin(), doms.end(), [&] ( const auto & data ) {
+                return data.domain() == dom;
+            } );
+
+            if ( meta != doms.end() )
+                return *meta;
+
+            UNREACHABLE( "Domain specification was not found." );
+        }
+    public:
+        static DomainMetadata get( llvm::Module * m, const Domain & dom ) {
+            return get( *m, dom );
+        }
 
         inline bool scalar() const noexcept { return kind() == DomainKind::scalar; }
         inline bool pointer() const noexcept { return kind() == DomainKind::pointer; }
@@ -101,9 +121,5 @@ namespace lart::abstract {
 
     bool is_base_type( llvm::Module *m, llvm::Value *val );
     bool is_base_type_in_domain( llvm::Module *m, llvm::Value *val, Domain dom );
-
-    std::vector< DomainMetadata > domains( llvm::Module & m );
-
-    DomainMetadata domain_metadata( llvm::Module &m, const Domain & dom );
 
 } // namespace lart::abstract

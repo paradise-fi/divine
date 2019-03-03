@@ -1,27 +1,59 @@
 #include <lart/abstract/meta.h>
 
 #include <brick-assert>
+#include <brick-data>
+#include <brick-llvm>
 
 namespace lart::abstract::meta {
 
-namespace {
-    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
-        auto &ctx = inst->getContext();
-        auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
-        inst->setMetadata( tag, meta );
-    }
+    namespace {
+        auto annotation( llvm::CallInst * call ) -> brick::llvm::Annotation {
+            auto anno = brick::llvm::transformer( call ).operand( 1 )
+                       .apply( [] ( auto val ) { return val->stripPointerCasts(); } )
+                       .cast< llvm::GlobalVariable >()
+                       .apply( [] ( auto val ) { return val->getInitializer(); } )
+                       .cast< llvm::ConstantDataArray >()
+                       .freeze();
 
-    llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
-        auto &meta = inst->getMetadata( tag )->getOperand( 0 );
-        return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
-    }
+            ASSERT( anno && "Call does not have annotation." );
+            return brick::llvm::Annotation{ anno->getAsCString() };
+        }
 
-    template< typename T >
-    bool has_impl( T * value, const std::string & tag ) noexcept {
-        return meta::get( value, tag).has_value();
-    }
+        auto functions_with_prefix( llvm::StringRef pref, llvm::Module & m ) noexcept {
+            auto check = [pref] ( auto fn ) { return fn->getName().startswith( pref ); };
+            return query::query( m ).map( query::refToPtr ).filter( check );
+        }
 
-} // anonymous namespace
+
+
+        void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
+            auto &ctx = inst->getContext();
+            auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
+            inst->setMetadata( tag, meta );
+        }
+
+        llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
+            auto &meta = inst->getMetadata( tag )->getOperand( 0 );
+            return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
+        }
+
+        template< typename T >
+        bool has_impl( T * value, const std::string & tag ) noexcept {
+            return meta::get( value, tag).has_value();
+        }
+
+    } // anonymous namespace
+
+    void create_from_annotation( llvm::StringRef anno, llvm::Module & m ) noexcept {
+        for ( const auto &fn : functions_with_prefix( anno, m ) ) {
+            for ( const auto &u : fn->users() ) {
+                if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) ) {
+                    auto inst = call->getOperand( 0 )->stripPointerCasts();
+                    meta::abstract::set( inst, annotation( call ).name() );
+                }
+            }
+        }
+    }
 
     llvm::MDNode * create( llvm::LLVMContext & ctx, const std::string & str ) noexcept {
         return llvm::MDNode::get( ctx, llvm::MDString::get( ctx, str ) );

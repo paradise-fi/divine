@@ -45,6 +45,9 @@ namespace lart::abstract::meta {
 
     using MetaVal = std::optional< std::string >;
 
+    /* assigns metadata from annotations */
+    void create_from_annotation( llvm::StringRef anno, llvm::Module &m ) noexcept;
+
     /* creates metadata node from given string */
     llvm::MDNode * create( llvm::LLVMContext & ctx, const std::string & str ) noexcept;
 

@@ -13,21 +13,14 @@ using lart::util::get_module;
 
     namespace
     {
-        inline auto annotation( CallInst *call ) -> brick::llvm::Annotation {
-           auto anno = brick::llvm::transformer( call ).operand( 1 )
-                       .apply( [] ( auto val ) { return val->stripPointerCasts(); } )
-                       .cast< GlobalVariable >()
-                       .apply( [] ( auto val ) { return val->getInitializer(); } )
-                       .cast< ConstantDataArray >()
-                       .freeze();
-
-            ASSERT( anno && "Call does not have annotation." );
-            return brick::llvm::Annotation{ anno->getAsCString() };
+        bool accessing_abstract_offset( llvm::GetElementPtrInst * gep ) {
+            return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
+                return meta::abstract::has( idx.get() );
+            } );
         }
 
-        auto functions_with_prefix( Module &m, StringRef pref ) noexcept {
-            auto check = [pref] ( auto fn ) { return fn->getName().startswith( pref ); };
-            return query::query( m ).map( query::refToPtr ).filter( check );
+        bool allocating_abstract_size( llvm::AllocaInst * a ) {
+            return meta::abstract::has( a->getArraySize() );
         }
 
         template< typename Yield >
@@ -36,36 +29,26 @@ using lart::util::get_module;
         }
 
         Domain domain( llvm::MDNode * node ) { return Domain{ meta::value( node ).value() }; }
-    } // anonymous namespace
 
-    void process( StringRef prefix, Module &m ) noexcept {
-        for ( const auto &fn : functions_with_prefix( m, prefix ) ) {
-            for ( const auto &u : fn->users() ) {
-                if ( auto call = dyn_cast< CallInst >( u ) ) {
-                    auto inst = call->getOperand( 0 )->stripPointerCasts();
-                    meta::abstract::set( inst, annotation( call ).name() );
-                }
-            }
+        template< typename Value >
+        void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
+            auto &ctx = m.getContext();
+            brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
+                auto name = anno_namespace.str() + "." + anno.toString();
+                val->setMetadata( name, meta::tuple::empty( ctx ) );
+            });
         }
-    }
+        template< typename Value >
+        void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
+            auto &ctx = m.getContext();
 
-    template< typename Value >
-    void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
-        auto &ctx = m.getContext();
-        brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
-            auto name = anno_namespace.str() + "." + anno.toString();
-            val->setMetadata( name, meta::tuple::empty( ctx ) );
-        });
-    }
-    template< typename Value >
-    void annotation_to_domain_metadata( StringRef anno_namespace, Module &m ) {
-        auto &ctx = m.getContext();
+            brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
+                auto meta = Domain( anno.name() ).meta( ctx );
+                val->setMetadata( anno_namespace, meta::tuple::create( ctx, { meta } ) );
+            });
+        }
 
-        brick::llvm::enumerateAnnosInNs< Value >( anno_namespace, m, [&] ( auto val, auto anno ) {
-            auto meta = Domain( anno.name() ).meta( ctx );
-            val->setMetadata( anno_namespace, meta::tuple::create( ctx, { meta } ) );
-        });
-    }
+    } // anonymous namespace
 
     // CreateAbstractMetadata pass transform annotations into llvm metadata.
     //
@@ -77,8 +60,8 @@ using lart::util::get_module;
     //
     // Domain MDNode holds a string name of domain retrieved from annotation.
     void CreateAbstractMetadata::run( Module &m ) {
-        process( "llvm.var.annotation", m );
-        process( "llvm.ptr.annotation", m );
+        meta::create_from_annotation( "llvm.var.annotation", m );
+        meta::create_from_annotation( "llvm.ptr.annotation", m );
 
         annotation_to_domain_metadata< Function >( meta::tag::abstract, m );
         annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::name, m );
@@ -127,23 +110,8 @@ using lart::util::get_module;
         UNREACHABLE( "Unsupported base type." );
     }
 
-    llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
-        auto value = [&] { return meta::create( ctx, Domain::Concrete().name() ); };
-        return meta::tuple::create( ctx, size, value );
-    }
-
-    inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
-        return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
-            return meta::abstract::has( idx.get() );
-        } );
-    }
-
-    inline bool allocating_abstract_size( AllocaInst * a ) {
-        return meta::abstract::has( a->getArraySize() );
-    }
-
     bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
-        auto dm = domain_metadata( *inst->getModule(), dom );
+        auto dm = DomainMetadata::get( inst->getModule(), dom );
 
         switch ( dm.kind() ) {
             case DomainKind::scalar:
@@ -161,7 +129,7 @@ using lart::util::get_module;
     }
 
     bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
-        auto dm = domain_metadata( *inst->getModule(), dom );
+        auto dm = DomainMetadata::get( inst->getModule(), dom );
 
         switch ( dm.kind() ) {
             case DomainKind::scalar:
@@ -185,7 +153,7 @@ using lart::util::get_module;
         if ( !is_transformable_in_domain( inst, dom ) )
             return false;
 
-        auto dm = domain_metadata( *inst->getModule(), dom );
+        auto dm = DomainMetadata::get( inst->getModule(), dom );
 
         switch ( dm.kind() ) {
             case DomainKind::scalar:
@@ -204,7 +172,7 @@ using lart::util::get_module;
 
     bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
         auto m = inst->getModule();
-        auto dm = domain_metadata( *m, dom );
+        auto dm = DomainMetadata::get( m, dom );
 
         switch ( dm.kind() ) {
             case DomainKind::scalar:
@@ -236,7 +204,7 @@ using lart::util::get_module;
             return true;
 
         auto type = val->getType();
-        auto dm = domain_metadata( *m, dom );
+        auto dm = DomainMetadata::get( m, dom );
         switch ( dm.kind() ) {
             case DomainKind::scalar:
                 return type->isIntegerTy() || type->isFloatingPointTy();
@@ -255,18 +223,6 @@ using lart::util::get_module;
             doms.emplace_back( glob );
         } );
         return doms;
-    }
-
-    DomainMetadata domain_metadata( Module &m, const Domain & dom ) {
-        auto doms = domains( m );
-        auto meta = std::find_if( doms.begin(), doms.end(), [&] ( const auto & data ) {
-            return data.domain() == dom;
-        } );
-
-        if ( meta != doms.end() )
-            return *meta;
-
-        UNREACHABLE( "Domain specification was not found." );
     }
 
 } // namespace lart::abstract
