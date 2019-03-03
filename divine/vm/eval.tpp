@@ -1521,11 +1521,12 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
 
     /* instruction dispatch */
 /*
-    for ( int i = 1; i < instruction().values.size(); ++i )
-        op< Any >( i, [&]( auto v )
-                    { std::cerr << " op[" << i << "] = " << v.get( i ) << std::flush; } );
-    std::cerr << " | " << std::flush;
-    instruction().op->dump();
+    std::cerr << instruction().opcode << " " << instruction().subcode << " | " << std::flush;
+    for ( int i = 1; i <= instruction().argcount(); ++i )
+        if ( !instruction().value( i ).aggregate() )
+            op< Any >( i, [&]( auto v )
+                        { std::cerr << " op[" << i << "] = " << v.get( i ) << std::flush; } );
+    std::cerr << std::endl;
 */
 
     switch ( instruction().opcode )
