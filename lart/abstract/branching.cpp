@@ -10,6 +10,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
 #include <lart/abstract/util.h>
+#include <lart/abstract/placeholder.h>
 
 namespace lart {
 namespace abstract {
@@ -24,9 +25,10 @@ void ExpandBranching::run( Module &m ) {
         return query::query( val->users() ).any( [] ( auto u ) { return isa< BranchInst >( u ); } );
     };
 
-    for ( auto abstract : placeholders( m ) ) {
-        if ( branched_on( abstract->getOperand( 0 ) ) )
-            expand_to_i1( abstract );
+    for ( const auto & ph : placeholders( m ) ) {
+        auto inst = ph.inst;
+        if ( branched_on( inst->getOperand( 0 ) ) )
+            expand_to_i1( inst );
     }
 }
 

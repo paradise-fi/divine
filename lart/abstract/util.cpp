@@ -116,28 +116,6 @@ bool has_placeholder_in_domain( Value *val, Domain dom ) {
     return find_placeholder( val, name );
 }
 
-bool is_placeholder( Instruction* inst ) {
-    if ( auto call = dyn_cast< CallInst >( inst ) ) {
-        auto fn = call->getCalledFunction();
-        if ( fn && fn->hasName() ) {
-            auto name = fn->getName();
-            return name.count( "lart." ) && name.count( ".placeholder" );
-        }
-    }
-
-    return false;
-}
-
-std::vector< Instruction* > placeholders( Module &m ) {
-    return query::query( m ).flatten().flatten()
-        .map( query::refToPtr )
-        .filter( query::llvmdyncast< CallInst > )
-        .filter( query::notnull )
-        .filter( is_placeholder )
-        .freeze();
-}
-
-
 // Tries to find precise set of possible called functions.
 // Returns true if it succeeded.
 bool potentialy_called_functions( Value * called, Functions & fns ) {

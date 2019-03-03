@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
 #include <lart/abstract/domain.h>
+#include <lart/abstract/placeholder.h>
 
 #include <map>
 
@@ -15,8 +16,8 @@ namespace lart {
 namespace abstract {
 
 struct InDomainDuplicate {
-    void run( llvm::Module& );
-    void process( llvm::Instruction* );
+    void run( llvm::Module & m );
+    void process( const Placeholder & ph );
 };
 
 

@@ -6,8 +6,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <string_view>
-
 #include <lart/abstract/domain.h>
 #include <lart/abstract/util.h>
 #include <lart/support/util.h>
@@ -47,8 +45,8 @@ namespace abstract {
         explicit Placeholder( llvm::Instruction * inst, Level level, Type type )
             : inst( inst ), level( level ), type( type )
         {
+            meta::set( inst, meta::tag::placeholder::level, LevelTable[ level ] );
             meta::set( inst, meta::tag::placeholder::type, TypeTable[ type ] );
-            meta::set( inst, meta::tag::placeholder::type, LevelTable[ level ] );
         }
 
         explicit Placeholder( llvm::Instruction * inst )
@@ -58,7 +56,22 @@ namespace abstract {
             type = TypeTable[ meta::get( inst, meta::tag::placeholder::type ).value() ];
         }
 
-        friend std::ostream& operator<<( std::ostream & os, const Placeholder & ph ) {
+        static bool is( llvm::Instruction * inst )
+        {
+            return meta::has( inst, meta::tag::placeholder::type );
+        }
+
+        static std::vector< Placeholder > enumerate( llvm::Module & m )
+        {
+            return query::query( m ).flatten().flatten()
+                .map( query::refToPtr )
+                .filter( Placeholder::is )
+                .map( [] ( auto * inst ) { return Placeholder( inst ); } )
+                .freeze();
+        }
+
+        friend std::ostream& operator<<( std::ostream & os, const Placeholder & ph )
+        {
             auto fn = llvm::cast< llvm::CallInst >( ph.inst )->getCalledFunction();
             os << "[" << fn->getName().str()
                << ", " << LevelTable[ ph.level ]
@@ -227,6 +240,23 @@ namespace abstract {
     private:
         llvm::LLVMContext & ctx;
     };
+
+    static inline auto placeholders( llvm::Module & m ) noexcept
+    {
+        return Placeholder::enumerate( m );
+    }
+
+    template< typename Filter >
+    auto placeholders( llvm::Module & m, Filter filter ) noexcept
+    {
+        return query::query( placeholders( m ) ).filter( filter ).freeze();
+    }
+
+    template< Placeholder::Type type >
+    auto placeholders( llvm::Module & m ) noexcept
+    {
+        return placeholders( m, [] ( const auto & ph ) { return ph.type == type; } );
+    }
 
     using AbstractPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Abstract >;
     using TaintPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Taint >;

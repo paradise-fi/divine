@@ -565,33 +565,34 @@ struct LoadLifter : Lifter {
 // --------------------------- Duplication ---------------------------
 
 void InDomainDuplicate::run( Module &m ) {
-    auto phs = placeholders( m );
-
-    auto assumes = query::query( phs ).filter( placeholder::is_assume );
+    auto assumes = placeholders< Placeholder::Type::Assume >( m );
     std::for_each( assumes.begin(), assumes.end(), [&] ( auto ass ) { process( ass ); } );
 
-    auto rest = query::query( phs )
-        .filter( query::negate( placeholder::is_assume ) )
-        .filter( query::negate( placeholder::is_stash ) );
+    auto filter = [] ( const auto & ph ) {
+        return ph.type != Placeholder::Type::Assume && ph.type != Placeholder::Type::Stash;
+    };
+    auto rest = placeholders( m, filter );
     std::for_each( rest.begin(), rest.end(), [&] ( auto ph ) { process( ph ); } );
 
     // process stash placeholders separatelly in this order!
-    auto stashes = query::query( phs ).filter( placeholder::is_stash );
+    auto stashes = placeholders< Placeholder::Type::Stash >( m );
     std::for_each( stashes.begin(), stashes.end(), [&] ( auto st ) { process( st ); } );
 
     // clean abstract placeholders
-    for ( auto ph : phs ) {
-        ph->replaceAllUsesWith( UndefValue::get( ph->getType() ) );
-        ph->eraseFromParent();
+    for ( const auto & ph : placeholders( m ) ) {
+        auto inst = ph.inst;
+        inst->replaceAllUsesWith( UndefValue::get( inst->getType() ) );
+        inst->eraseFromParent();
     }
 }
 
-void InDomainDuplicate::process( Instruction *inst ) {
+void InDomainDuplicate::process( const Placeholder & ph ) {
+    auto inst = ph.inst;
     IRBuilder<> irb( inst );
 
-    auto ph = placeholder::get( inst );
+    auto aph = placeholder::get( inst );
     auto args = placeholder::arguments( inst );
-    auto call = irb.CreateCall( ph, args );
+    auto call = irb.CreateCall( aph, args );
     meta::abstract::inherit( call, inst );
 
     if ( placeholder::is_to_i1( call ) )
@@ -937,12 +938,12 @@ void stash_arguments_of_nonabstract_calls( Function * fn ) {
 
 void Tainting::run( Module &m ) {
     std::unordered_map< Value*, Value* > substitutes;
-    auto phs = placeholders( m );
+    auto filter = [] ( const auto & ph ) {
+        return ph.type != Placeholder::Type::Stash && ph.type != Placeholder::Type::Unstash;
+    };
 
-    for ( auto ph : phs ) {
-        if ( !placeholder::is_stash( ph ) && !placeholder::is_unstash( ph ) ) {
-            substitutes[ ph ] = process( ph );
-        }
+    for ( const auto & ph : placeholders( m, filter ) ) {
+        substitutes[ ph.inst ] = process( ph.inst );
     }
 
     std::set< Function* > processed;
@@ -988,8 +989,8 @@ void Tainting::run( Module &m ) {
         sub.first->replaceAllUsesWith( sub.second );
     }
 
-    for ( auto &ph : phs )
-        ph->eraseFromParent();
+    for ( auto &ph : placeholders( m ) )
+        ph.inst->eraseFromParent();
 }
 
 Value* create_in_domain_phi( Instruction *placeholder ) {

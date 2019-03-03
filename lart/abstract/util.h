@@ -82,10 +82,6 @@ bool has_placeholder( llvm::Value *val, const std::string &name );
 
 bool has_placeholder_in_domain( llvm::Value *val, Domain dom );
 
-bool is_placeholder( llvm::Instruction* );
-
-std::vector< llvm::Instruction* > placeholders( llvm::Module & );
-
 inline bool is_terminal_intruction( llvm::Value * val ) {
     return llvm::isa< llvm::ReturnInst >( val ) ||
            llvm::isa< llvm::UnreachableInst >( val );

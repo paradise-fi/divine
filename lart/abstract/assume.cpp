@@ -14,6 +14,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 
+#include <lart/abstract/placeholder.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/util.h>
 #include <lart/analysis/edge.h>
@@ -87,9 +88,9 @@ namespace {
 }
 
     void AddAssumes::run( Module & m ) {
-        for ( auto ph : placeholders( m ) )
-            for ( auto u : ph->users() )
-                if ( auto br = dyn_cast< BranchInst >( u ) )
+        for ( const auto & ph : placeholders( m ) )
+            for ( auto u : ph.inst->users() )
+                if ( auto br = llvm::dyn_cast< BranchInst >( u ) )
                     process( br );
     }
 
