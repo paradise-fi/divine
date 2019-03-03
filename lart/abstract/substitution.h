@@ -10,36 +10,29 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/domain.h>
 #include <lart/abstract/placeholder.h>
 
-#include <map>
+#include <lart/abstract/concretization.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
-struct Concretization {
-    void run( llvm::Module & m );
-};
-
-
-struct Tainting {
-    void run( llvm::Module& );
-    llvm::Value* process( llvm::Instruction* );
-};
+    struct Tainting {
+        void run( llvm::Module& );
+        llvm::Value* process( llvm::Instruction* );
+    };
 
 
-struct FreezeStores {
-    void run( llvm::Module& );
-    void process( llvm::StoreInst* );
-};
+    struct FreezeStores {
+        void run( llvm::Module& );
+        void process( llvm::StoreInst* );
+    };
 
 
-struct Synthesize {
-    void run( llvm::Module& );
-    void process( llvm::CallInst* );
-};
+    struct Synthesize {
+        void run( llvm::Module& );
+        void process( llvm::CallInst* );
+    };
 
-using SubstitutionPass =
-    ChainedPass< Concretization, FreezeStores, Tainting, Synthesize >;
+    using SubstitutionPass =
+        ChainedPass< Concretization, FreezeStores, Tainting, Synthesize >;
 
-} // namespace abstract
-} // namespace lart
+} // namespace lart::abstract
 
