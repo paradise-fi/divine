@@ -60,11 +60,10 @@ void Stash::run( Module &m ) {
 }
 
 void Stash::process_return_value( CallInst *call, Function * fn ) {
-    auto dom = Domain::get( call );
     if ( auto terminator = returns_abstract_value( call, fn ) ) {
         auto ret = cast< ReturnInst >( terminator );
         auto val = ret->getReturnValue();
-        auto aty = abstract_type( fn->getReturnType(), dom );
+        auto aty = abstract_type( fn->getReturnType(), Domain::get( call ) );
 
         IRBuilder<> irb( ret );
         auto stash_fn = stash_placeholder( get_module( call ), aty );
@@ -82,7 +81,7 @@ void Stash::process_return_value( CallInst *call, Function * fn ) {
         }
 
         auto stash = irb.CreateCall( stash_fn, { tostash } );
-        add_abstract_metadata( stash, dom );
+        meta::abstract::inherit( stash, call );
         meta::make_duals( stash, ret );
     }
 }
@@ -115,7 +114,7 @@ void Stash::process_arguments( CallInst *call ) {
                 auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
                 stash = irb.CreateCall( stash_fn, { undef } );
             }
-            add_abstract_metadata( stash, dom );
+            meta::abstract::inherit( stash, op );
         }
     }
 }
@@ -152,14 +151,12 @@ void Unstash::process_arguments( CallInst *call, Function * fn ) {
             auto aty = abstract_type( ty, dom );
             auto unstash_fn = unstash_placeholder( m, op, aty );
             auto unstash = irb.CreateCall( unstash_fn, { &arg } );
-            add_abstract_metadata( unstash, dom );
+            meta::abstract::inherit( unstash, &arg );
         }
     }
 }
 
 void Unstash::process_return_value( CallInst *call ) {
-    auto dom = Domain::get( call );
-
     Values terminators;
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
         terminators.push_back( returns_abstract_value( call, fn ) );
@@ -171,7 +168,7 @@ void Unstash::process_return_value( CallInst *call ) {
         auto fty = cast< FunctionType >( call->getCalledValue()->stripPointerCasts()
                                              ->getType()->getPointerElementType() );
 
-        auto aty = abstract_type( fty->getReturnType(), dom );
+        auto aty = abstract_type( fty->getReturnType(), Domain::get( call ) );
 
         IRBuilder<> irb( call );
 
@@ -190,7 +187,7 @@ void Unstash::process_return_value( CallInst *call ) {
 
         auto unstash_fn = unstash_placeholder( get_module( call ), arg, aty );
         auto unstash = irb.CreateCall( unstash_fn, { arg } );
-        add_abstract_metadata( unstash, dom );
+        meta::abstract::inherit( unstash, call );
 
         call->removeFromParent();
         if ( call == arg )

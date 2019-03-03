@@ -5,8 +5,7 @@
 #include <optional>
 #include <iostream>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
 using namespace llvm;
 
@@ -40,7 +39,7 @@ void process( StringRef prefix, Module &m ) noexcept {
         for ( const auto &u : fn->users() ) {
             if ( auto call = dyn_cast< CallInst >( u ) ) {
                 auto inst = cast< Instruction >( call->getOperand( 0 )->stripPointerCasts() );
-                add_abstract_metadata( inst, Domain( annotation( call ).name() ) );
+                meta::abstract::set( inst, annotation( call ).name() );
             }
         }
     }
@@ -87,7 +86,7 @@ void CreateAbstractMetadata::run( Module &m ) {
         if ( auto md = fn.getMetadata( meta::tag::abstract ) )
             for ( auto user : fn.users() )
                 if ( auto call = dyn_cast< CallInst >( user ) )
-                    add_abstract_metadata( call, domain( md ) );
+                    Domain::set( call, domain( md ) );
     }
 }
 
@@ -161,19 +160,6 @@ std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
         std::move( abstract.begin(), abstract.end(), std::back_inserter( mds ) );
     }
     return mds;
-}
-
-MDNode * get_abstract_metadata( llvm::Instruction *inst ) {
-    ASSERT( meta::abstract::has( inst ) );
-    return cast< MDNode >( inst->getMetadata( meta::tag::domains ) );
-}
-
-void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
-    auto& ctx = inst->getContext();
-    inst->getFunction()->setMetadata( meta::tag::roots, meta::tuple::empty( ctx ) );
-
-    auto meta = meta::tuple::create( ctx, { dom.meta( ctx ) } );
-    inst->setMetadata( meta::tag::domains, meta );
 }
 
 inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
@@ -305,7 +291,6 @@ DomainMetadata domain_metadata( Module &m, Domain dom ) {
     return meta.value();
 }
 
-} // namespace abstract
-} // namespace lart
+} // namespace lart::abstract
 
 

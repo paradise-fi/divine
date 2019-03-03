@@ -657,7 +657,7 @@ void InDomainDuplicate::process( Instruction *inst ) {
     auto ph = placeholder::get( inst );
     auto args = placeholder::arguments( inst );
     auto call = irb.CreateCall( ph, args );
-    add_abstract_metadata( call, Domain::get( inst ) );
+    meta::abstract::inherit( call, inst );
 
     if ( placeholder::is_to_i1( call ) )
         inst->replaceAllUsesWith( call );
@@ -936,7 +936,7 @@ Values unstash_arguments( CallInst *call, Function * fn ) {
         } else {
             auto unstash = unstash_function( call, dom );
             auto call = irb.CreateCall( unstash );
-            add_abstract_metadata( cast< Instruction >( call ), dom );
+            meta::abstract::inherit( call, arg );
             unpacked.push_back( call );
         }
     }
@@ -983,7 +983,7 @@ Value* unstash_return_value( CallInst *call ) {
         IRBuilder<> irb( call );
         auto dom = Domain::get( call );
         unstash = irb.CreateCall( unstash_function( call, dom ) );
-        add_abstract_metadata( cast< Instruction >( unstash ), dom );
+        meta::abstract::inherit( unstash, call );
 
         call->removeFromParent();
         call->insertBefore( cast< Instruction >( unstash ) );

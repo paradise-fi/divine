@@ -164,7 +164,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                 if ( forbidden_propagation_by_domain( inst, dom ) ) {
                     stop_on_forbidden_propagation( inst, dom );
                 }
-                add_abstract_metadata( inst, dom );
+                Domain::set( inst, dom );
             }
         }
 

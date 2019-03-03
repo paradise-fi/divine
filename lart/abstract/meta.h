@@ -82,6 +82,8 @@ namespace lart::abstract::meta {
         void set( llvm::Value * val, const std::string & meta ) noexcept;
         void set( llvm::Argument * arg, const std::string & meta ) noexcept;
         void set( llvm::Instruction * inst, const std::string & meta ) noexcept;
+
+        void inherit( llvm::Value * dest, llvm::Value * src ) noexcept;
     }
 
     namespace tuple

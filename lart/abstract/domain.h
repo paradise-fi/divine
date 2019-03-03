@@ -99,8 +99,6 @@ struct CreateAbstractMetadata {
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m );
 std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn );
 
-void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
-
 inline bool is_concrete( Domain dom ) {
     return dom == Domain::Concrete();
 }

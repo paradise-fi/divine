@@ -63,7 +63,7 @@ void StoresToContent::process( StoreInst * store ) {
     IRBuilder<> irb( store );
     auto ph = irb.CreateCall( fn, { val, ptr } );
 
-    add_abstract_metadata( ph, Domain::get( store ) );
+    meta::abstract::inherit( ph, store );
     meta::make_duals( store, ph );
     ph->moveAfter( store );
 }
@@ -82,7 +82,7 @@ void LoadsFromContent::process( LoadInst * load ) {
 
     IRBuilder<> irb( load );
     auto ph = llvm::cast< llvm::CallInst >( irb.CreateCall( fn, { load, ptr } ) );
-    add_abstract_metadata( ph, Domain::get( load ) );
+    meta::abstract::inherit( ph, load );
     meta::make_duals( load, ph );
 
     load->replaceAllUsesWith( ph );

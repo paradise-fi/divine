@@ -106,6 +106,11 @@ namespace {
 
         template< typename T >
         void set_impl( T * value, const std::string & meta ) noexcept {
+            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( value ) ) {
+                auto& ctx = inst->getContext();
+                auto data = meta::tuple::empty( ctx );
+                inst->getFunction()->setMetadata( meta::tag::roots, data );
+            }
             meta::set( value, abstract::tag, meta );
         }
 
@@ -120,6 +125,11 @@ namespace {
         void set( llvm::Value * val, const std::string & meta ) noexcept { set_impl( val, meta ); }
         void set( llvm::Argument * arg, const std::string & meta ) noexcept { set_impl( arg, meta ); }
         void set( llvm::Instruction * inst, const std::string & meta ) noexcept { set_impl( inst, meta ); }
+
+        void inherit( llvm::Value * dest, llvm::Value * src ) noexcept {
+            if ( auto data = meta::abstract::get( src ) )
+                meta::abstract::set( dest, data.value() );
+        }
 
     } // namespace abstract
 

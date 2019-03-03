@@ -41,7 +41,7 @@ void ExpandBranching::expand_to_i1( Instruction *abstract ) {
     IRBuilder<> irb( abstract );
     auto to_i1_fn = to_i1_placeholder( abstract );
     auto to_i1 = irb.CreateCall( to_i1_fn, { abstract } );
-    add_abstract_metadata( to_i1, Domain::get( abstract ) );
+    meta::abstract::inherit( to_i1, abstract );
 
     abstract->removeFromParent();
     abstract->insertBefore( to_i1 );

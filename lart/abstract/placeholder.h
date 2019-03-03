@@ -193,7 +193,7 @@ namespace abstract {
             auto m = util::get_module( val );
             auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
             auto ph = builder.CreateCall( fn, { val } );
-            add_abstract_metadata( ph, Domain::get( val ) );
+            meta::abstract::inherit( ph, val );
             return Placeholder{ ph, Level, Type };
         }
 
