@@ -13,7 +13,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/syntactic.h>
 #include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
-#include <lart/abstract/content.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/concretization.h>
@@ -39,7 +38,6 @@ namespace lart::abstract {
                                            , VPA() // run once more to propagate through decasted functions
                                            , StashingPass()
                                            , Syntactic()
-                                           , ContentPass()
                                            , LowerToBool()
                                            , AddAssumes()
                                            , SubstitutionPass()
