@@ -23,7 +23,7 @@ namespace lart::abstract
     };
 
     const Bimap< Placeholder::Level, std::string > Placeholder::LevelTable = {
-         { Placeholder::Level::Abstract , "abstract" }
-        ,{ Placeholder::Level::Taint    , "taint" }
+         { Placeholder::Level::Abstract, "abstract" }
+        ,{ Placeholder::Level::Concrete, "concrete" }
     };
 } // namespace lart::abstract

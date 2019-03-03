@@ -61,7 +61,7 @@ void Stash::run( Module &m ) {
 
 void Stash::process_return_value( CallInst *call, Function * fn ) {
     if ( auto ret = returns_abstract_value( call, fn ) ) {
-        AbstractPlaceholderBuilder builder{ call->getContext() };
+        APlaceholderBuilder builder{ call->getContext() };
         auto stash = builder.construct( llvm::cast< llvm::ReturnInst >( ret ) );
         meta::abstract::inherit( stash.inst, call );
     }
@@ -145,7 +145,7 @@ void Unstash::process_return_value( llvm::CallInst * call ) {
         .freeze();
 
     if ( !returns.empty() ) {
-        AbstractPlaceholderBuilder builder{ call->getContext() };
+        APlaceholderBuilder builder{ call->getContext() };
         builder.construct< Placeholder::Type::Unstash >( call );
     }
 }

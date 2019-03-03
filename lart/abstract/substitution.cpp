@@ -565,6 +565,8 @@ struct LoadLifter : Lifter {
 // --------------------------- Concretization ---------------------------
 
 void Concretization::run( llvm::Module & m ) {
+    CPlaceholderBuilder builder{ m.getContext() };
+
     auto assumes = placeholders< Placeholder::Type::Assume >( m );
     std::for_each( assumes.begin(), assumes.end(), [&] ( auto ass ) { process( ass ); } );
 

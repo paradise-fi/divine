@@ -12,7 +12,6 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract
 {
-
     void Syntactic::run( llvm::Module &m ) {
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::Instruction > )
@@ -20,9 +19,10 @@ namespace lart::abstract
             .filter( is_duplicable )
             .freeze();
 
-        AbstractPlaceholderBuilder apb( m.getContext() );
-        for ( const auto &inst : abstract )
-            apb.construct( inst );
+        APlaceholderBuilder builder( m.getContext() );
+        for ( const auto &inst : abstract ) {
+            builder.construct( inst );
+        }
     }
 
 } // namespace lart::abstract

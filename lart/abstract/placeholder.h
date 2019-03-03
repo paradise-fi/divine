@@ -36,7 +36,7 @@ namespace lart::abstract {
 
         enum class Level {
             Abstract, // represents abstract operation place
-            Taint     // represents taint place
+            Concrete  // represents concretized abstract place
         };
 
         static const Bimap< Level, std::string > LevelTable;
@@ -302,7 +302,7 @@ namespace lart::abstract {
         return placeholders( m, [] ( const auto & ph ) { return ph.type == T; } );
     }
 
-    using AbstractPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Abstract >;
-    using TaintPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Taint >;
+    using APlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Abstract >;
+    using CPlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Concrete >;
 
 } // namespace lart::abstract
