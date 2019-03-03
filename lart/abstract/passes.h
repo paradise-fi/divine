@@ -40,7 +40,7 @@ namespace lart::abstract {
                                            , Syntactic()
                                            , StashingPass()
                                            , ContentPass()
-                                           , ExpandBranching()
+                                           , LowerToBool()
                                            , AddAssumes()
                                            , SubstitutionPass()
                                            , CallInterrupt()
