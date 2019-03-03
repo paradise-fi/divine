@@ -11,8 +11,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/util.h>
 #include <lart/abstract/placeholder.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
 using namespace llvm;
 
@@ -62,8 +61,8 @@ void Stash::run( Module &m ) {
 
 void Stash::process_return_value( CallInst *call, Function * fn ) {
     if ( auto ret = returns_abstract_value( call, fn ) ) {
-        auto apb = AbstractPlaceholderBuilder( call->getContext() );
-        auto stash = apb.construct( llvm::cast< llvm::ReturnInst >( ret ) );
+        AbstractPlaceholderBuilder builder{ call->getContext() };
+        auto stash = builder.construct( llvm::cast< llvm::ReturnInst >( ret ) );
         meta::abstract::inherit( stash.inst, call );
     }
 }
@@ -138,48 +137,17 @@ void Unstash::process_arguments( CallInst *call, Function * fn ) {
     }
 }
 
-void Unstash::process_return_value( CallInst *call ) {
-    Values terminators;
-    run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-        terminators.push_back( returns_abstract_value( call, fn ) );
-    } );
+void Unstash::process_return_value( llvm::CallInst * call ) {
+    auto returns = query::query( get_potentialy_called_functions( call ) )
+        .filter( [call] ( const auto & fn ) {
+            return returns_abstract_value( call, fn );
+        } )
+        .freeze();
 
-    size_t num_of_returns = std::count( terminators.begin(), terminators.end(), nullptr );
-
-    if ( num_of_returns != terminators.size() ) { // there is at least one return
-        auto fty = cast< FunctionType >( call->getCalledValue()->stripPointerCasts()
-                                             ->getType()->getPointerElementType() );
-
-        auto aty = abstract_type( fty->getReturnType(), Domain::get( call ) );
-
-        IRBuilder<> irb( call );
-
-        Instruction * arg = call;
-        if ( auto ce = dyn_cast< ConstantExpr >( call->getCalledValue() ) ) {
-            ASSERT( ce->isCast() );
-            Type * from = fty->getReturnType();
-            Type * to = call->getType();
-            if ( to->isPointerTy() && from->isIntegerTy() )
-                arg = cast< Instruction >( irb.CreatePtrToInt( call, fty->getReturnType() ) );
-            else if ( to == from )
-                arg = call;
-            else
-                UNREACHABLE( "Unsupported unstash of constant expression." );
-        }
-
-        auto unstash_fn = unstash_placeholder( get_module( call ), arg, aty );
-        auto unstash = irb.CreateCall( unstash_fn, { arg } );
-        meta::abstract::inherit( unstash, call );
-
-        call->removeFromParent();
-        if ( call == arg )
-            call->insertBefore( unstash );
-        else
-            call->insertBefore( arg );
-
-        meta::make_duals( unstash, call );
+    if ( !returns.empty() ) {
+        AbstractPlaceholderBuilder builder{ call->getContext() };
+        builder.construct< Placeholder::Type::Unstash >( call );
     }
 }
 
-} // namespace abstract
-} // namespace lart
+} // namespace lart::abstract
