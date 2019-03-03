@@ -22,9 +22,7 @@ namespace lart::abstract {
             if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( val ) )
                 arg = ret->getReturnValue();
 
-            auto ph = APlaceholderBuilder().construct< T >( arg, irb );
-            meta::make_duals( val, ph.inst );
-            return ph;
+            return APlaceholderBuilder().construct< T >( arg, irb );
         }
 
         Placeholder stash( llvm::Value * val, llvm::IRBuilder<> & irb )
@@ -34,7 +32,9 @@ namespace lart::abstract {
 
         Placeholder unstash( llvm::Value * val, llvm::IRBuilder<> & irb )
         {
-            return process< Placeholder::Type::Unstash >( val, irb );
+            auto ph = process< Placeholder::Type::Unstash >( val, irb );
+            meta::make_duals( val, ph.inst );
+            return ph;
         }
 
         Placeholder unstash( llvm::Instruction * inst )
@@ -63,7 +63,8 @@ namespace lart::abstract {
         if ( auto ret = returns_abstract_value( call, fn ) ) {
             auto inst = llvm::cast< llvm::Instruction >( ret );
             llvm::IRBuilder<> irb( inst );
-            stash( inst, irb );
+            auto ph = stash( inst, irb );
+            meta::make_duals( inst, ph.inst );
         }
     }
 

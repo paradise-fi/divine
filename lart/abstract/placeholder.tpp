@@ -173,7 +173,7 @@ namespace lart::abstract
         using Builder = Construct< L, T >;
         auto conc = Builder().placeholder( op, irb );
 
-        if constexpr ( T != Type::Assume && T != Type::ToBool ) {
+        if constexpr ( !is_one_of< Type::Assume, Type::ToBool, Type::Stash >( T ) ) {
             meta::make_duals( op, conc.inst );
         }
 

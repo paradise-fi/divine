@@ -10,6 +10,10 @@ namespace lart::abstract
     {
         auto m = arg->getParent()->getParent();
         auto dom = Domain::get( arg );
+
+        if ( dom == Domain::Concrete() )
+            return arg->getType();
+
         return DomainMetadata::get( m, dom ).base_type();
     }
 
@@ -58,6 +62,10 @@ namespace lart::abstract
 
             auto fn = function();
             auto dom = Domain::get( std::next( fn->arg_begin(), idx ) );
+
+            if ( dom == Domain::Concrete() )
+                return op.get();
+
             return DomainMetadata::get( fn->getParent(), dom ).default_value();
         }
 

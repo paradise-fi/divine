@@ -185,6 +185,11 @@ namespace lart::abstract {
         Placeholder concretize( const Placeholder & ph );
     };
 
+    template< Placeholder::Type... Ts >
+    static constexpr bool is_one_of( Placeholder::Type type )
+    {
+        return ( (Ts == type) || ... );
+    }
 
     static inline auto placeholders( llvm::Module & m )
     {
