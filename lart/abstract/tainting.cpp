@@ -262,7 +262,13 @@ namespace lart::abstract
     {
         const auto Concretized = Placeholder::Level::Concrete;
 
-        for ( const auto & ph : placeholders< Concretized >( m ) ) {
+        auto places = placeholders< Concretized >( m );
+
+        std::partition( places.begin(), places.end(), [] ( const auto & ph ) {
+            return ph.type != Placeholder::Type::Assume;
+        });
+
+        for ( const auto & ph : places ) {
             auto taint = dispach( ph );
 
             if ( meta::has_dual( ph.inst ) ) {
