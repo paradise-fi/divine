@@ -24,9 +24,6 @@ namespace abstract {
 
 using namespace llvm;
 
-using lart::util::get_module;
-using lart::util::get_or_insert_function;
-
 namespace {
     struct Assumption {
         Assumption( Value *cond, Constant *val )
@@ -36,12 +33,6 @@ namespace {
         Value *cond;
         Constant *val;
     };
-
-    Function* assume_placeholder( Instruction *cond ) {
-        auto i1 = Type::getInt1Ty( cond->getContext() );
-        auto fty = llvm::FunctionType::get( i1, { i1, i1 }, false );
-        return get_or_insert_function( get_module( cond ), fty, "lart.assume.placeholder" );
-    }
 
     void replace_phis_incoming_bbs( BasicBlock *bb, BasicBlock *oldbb, BasicBlock *newbb ) {
         for ( auto& inst : *bb ) {
@@ -66,11 +57,14 @@ namespace {
 
             auto edgebb = from->getTerminator()->getSuccessor( i );
             to = edgebb->getSingleSuccessor();
-            auto to_i1 = cast< Instruction >( ass.cond );
+            auto cond = llvm::cast< llvm::Instruction >( ass.cond );
 
             llvm::IRBuilder<> irb( &*edgebb->getFirstInsertionPt() );
-            auto ph = irb.CreateCall( assume_placeholder( to_i1 ), { ass.cond, ass.val } );
-            meta::abstract::inherit( ph, to_i1 );
+
+            APlaceholderBuilder builder{ cond->getContext() };
+
+            auto ph = builder.construct< Placeholder::Type::Assume >( cond, irb );
+            meta::abstract::inherit( ph.inst, cond );
 
             // Correct phis after edge splitting
             replace_phis_incoming_bbs( to, from, edgebb );
@@ -88,9 +82,9 @@ namespace {
 }
 
     void AddAssumes::run( Module & m ) {
-        for ( const auto & ph : placeholders( m ) )
-            for ( auto u : ph.inst->users() )
-                if ( auto br = llvm::dyn_cast< BranchInst >( u ) )
+        for ( const auto & ph : placeholders< Placeholder::Type::ToBool >( m ) )
+            for ( auto * u : ph.inst->users() )
+                if ( auto * br = llvm::dyn_cast< llvm::BranchInst >( u ) )
                     process( br );
     }
 
