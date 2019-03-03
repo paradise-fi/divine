@@ -227,9 +227,9 @@ namespace lart::abstract {
                     return concretize< Type::Lower >( ph );
                 case Type::Call:
                     return concretize< Type::Call >( ph );
-                default:
-                    UNREACHABLE( "Unsupported placeholder type" );
             }
+
+            UNREACHABLE( "Unsupported placeholder type" );
         }
 
         template< Placeholder::Type T >

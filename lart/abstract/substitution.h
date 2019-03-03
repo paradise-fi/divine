@@ -7,10 +7,9 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
-#include <lart/abstract/domain.h>
-#include <lart/abstract/placeholder.h>
 
 #include <lart/abstract/concretization.h>
+#include <lart/abstract/tainting.h>
 
 namespace lart::abstract {
 

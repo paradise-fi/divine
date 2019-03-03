@@ -40,6 +40,10 @@ namespace lart::abstract::meta {
             constexpr const char level[] = "lart.placeholder.level";
         }
 
+        namespace taint {
+            constexpr const char type[] = "lart.taint.type";
+        }
+
         constexpr char dual[] = "lart.dual";
     } // namespace tag
 
