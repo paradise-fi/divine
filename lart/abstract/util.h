@@ -12,118 +12,83 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/abstract/domain.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract
+{
+    auto get_potentialy_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
+    auto get_some_called_function( llvm::CallInst * call ) -> llvm::Function *;
 
-std::vector< llvm::Function* > get_potentialy_called_functions( llvm::CallInst* call );
+    template< typename Fn >
+    void run_on_potentialy_called_functions( llvm::CallInst * call, Fn functor )
+    {
+        for ( auto fn : get_potentialy_called_functions( call ) )
+            functor( fn );
+    }
 
-llvm::Function * get_some_called_function( llvm::CallInst * call );
+    template< typename Fn >
+    void run_on_abstract_calls( Fn functor, llvm::Module & m )
+    {
+        for ( auto * val : meta::enumerate( m ) ) {
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
+                auto fns = get_potentialy_called_functions( call );
 
-template< typename Fn >
-void run_on_potentialy_called_functions( llvm::CallInst * call, Fn functor ) {
-    for ( auto fn : get_potentialy_called_functions( call ) )
-        functor( fn );
-}
+                bool process = query::query( fns ).any( [] ( auto fn ) {
+                    return fn != nullptr && !fn->isIntrinsic() && !fn->empty();
+                } );
 
-using Types = std::vector< llvm::Type * >;
-using Values = std::vector< llvm::Value * >;
-using Functions = std::vector< llvm::Function * >;
-
-template< typename T >
-struct CRTP {
-    T& self() { return static_cast< T& >( *this ); }
-    T const& self() const { return static_cast< T const& >( *this ); }
-};
-
-template< typename Values >
-Types types_of( const Values & vs ) {
-    return query::query( vs ).map( [] ( const auto & v ) {
-        return v->getType();
-    } ).freeze();
-}
-
-template< typename Fn >
-void run_on_abstract_calls( Fn functor, llvm::Module &m ) {
-    for ( auto * val : meta::enumerate( m ) ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
-            auto fns = get_potentialy_called_functions( call );
-
-            bool process = query::query( fns ).any( [] ( auto fn ) {
-                return fn != nullptr && !fn->isIntrinsic() && !fn->empty();
-            } );
-
-            if ( process )
-                functor( call );
+                if ( process )
+                    functor( call );
+            }
         }
     }
-}
 
-bool is_intr( llvm::CallInst *intr, std::string name );
-bool is_lift( llvm::CallInst *intr );
-bool is_lower( llvm::CallInst *intr );
-bool is_assume( llvm::CallInst *intr );
-bool is_thaw( llvm::CallInst *intr );
-bool is_freeze( llvm::CallInst *intr );
-bool is_tobool( llvm::CallInst *intr );
-bool is_cast( llvm::CallInst *intr );
+    using Types = std::vector< llvm::Type * >;
+    using Values = std::vector< llvm::Value * >;
+    using Functions = std::vector< llvm::Function * >;
 
-std::string llvm_name( llvm::Type *type );
+    template< typename Values >
+    Types types_of( const Values & vs )
+    {
+        return query::query( vs ).map( [] ( const auto & v ) {
+            return v->getType();
+        } ).freeze();
+    }
 
-Values taints( llvm::Module &m );
+    std::string llvm_name( llvm::Type * type );
 
-llvm::Type* abstract_type( llvm::Type *orig, Domain dom );
+    llvm::Type* abstract_type( llvm::Type * orig, Domain dom );
 
-llvm::Instruction* get_placeholder( llvm::Value *val );
-llvm::Instruction* get_unstash_placeholder( llvm::Value *val );
-llvm::Instruction* get_placeholder_in_domain( llvm::Value *val, Domain dom );
+    llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Function * fn );
 
-bool has_placeholder( llvm::Value *val );
-bool has_placeholder( llvm::Value *val, const std::string &name );
+    namespace {
+        using Predicate = llvm::CmpInst::Predicate;
+    }
 
-bool has_placeholder_in_domain( llvm::Value *val, Domain dom );
-
-inline bool is_terminal_intruction( llvm::Value * val ) {
-    return llvm::isa< llvm::ReturnInst >( val ) ||
-           llvm::isa< llvm::UnreachableInst >( val );
-}
-
-inline llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Function * fn ) {
-    if ( !is_base_type( fn->getParent(), call ) )
-        return nullptr; // no return value to stash
-
-    auto rets = query::query( *fn ).flatten()
-        .map( query::refToPtr )
-        .filter( is_terminal_intruction )
-        .freeze();
-
-    auto unreachable = query::query( rets ).all( [] ( auto v ) {
-            return llvm::isa< llvm::UnreachableInst >( v );
-    } );
-
-    if ( unreachable )
-        return nullptr; // do not unstash from noreturn functions
-
-    auto return_insts = query::query( rets )
-        .map( query::llvmdyncast< llvm::ReturnInst > )
-        .filter( query::notnull )
-        .freeze();
-
-    ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
-
-    if ( meta::has( return_insts[ 0 ], meta::tag::domains ) || meta::has( fn, meta::tag::abstract ) )
-        return return_insts[ 0 ];
-    else
-        return nullptr;
-}
-
-template< typename T >
-std::vector< T * > transformable( llvm::Module & m ) {
-    return query::query( meta::enumerate( m ) )
-        .map( query::llvmdyncast< T > )
-        .filter( query::notnull )
-        .filter( is_transformable )
-        .freeze();
-}
-
-} // namespace abstract
-} // namespace lart
+    static const std::unordered_map< llvm::CmpInst::Predicate, std::string > PredicateTable = {
+        { Predicate::FCMP_FALSE, "false" },
+        { Predicate::FCMP_OEQ, "oeq" },
+        { Predicate::FCMP_OGT, "ogt" },
+        { Predicate::FCMP_OGE, "oge" },
+        { Predicate::FCMP_OLT, "olt" },
+        { Predicate::FCMP_OLE, "ole" },
+        { Predicate::FCMP_ONE, "one" },
+        { Predicate::FCMP_ORD, "ord" },
+        { Predicate::FCMP_UNO, "uno" },
+        { Predicate::FCMP_UEQ, "ueq" },
+        { Predicate::FCMP_UGT, "ugt" },
+        { Predicate::FCMP_UGE, "uge" },
+        { Predicate::FCMP_ULT, "ult" },
+        { Predicate::FCMP_ULE, "ule" },
+        { Predicate::FCMP_UNE, "une" },
+        { Predicate::FCMP_TRUE, "true" },
+        { Predicate::ICMP_EQ, "eq" },
+        { Predicate::ICMP_NE, "ne" },
+        { Predicate::ICMP_UGT, "ugt" },
+        { Predicate::ICMP_UGE, "uge" },
+        { Predicate::ICMP_ULT, "ult" },
+        { Predicate::ICMP_ULE, "ule" },
+        { Predicate::ICMP_SGT, "sgt" },
+        { Predicate::ICMP_SGE, "sge" },
+        { Predicate::ICMP_SLT, "slt" },
+        { Predicate::ICMP_SLE, "sle" }
+    };
+} // namespace lart::abstract

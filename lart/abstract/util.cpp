@@ -14,160 +14,113 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-llvm>
 #include <brick-string>
 
-namespace lart {
-namespace abstract {
-
-using namespace llvm;
-
-using lart::util::get_module;
-
-std::string llvm_name( Type *type ) {
-    std::string buffer;
-    raw_string_ostream rso( buffer );
-    type->print( rso );
-    return rso.str();
-}
-
-bool is_intr( CallInst *intr, std::string name ) {
-    assert( intr->getCalledFunction()->getName().startswith( "__vm_test_taint." ) );
-    return intr->getCalledFunction()->getName().count( name );
-}
-
-bool is_lift( CallInst *intr ) { return is_intr( intr, ".lift" ); }
-bool is_lower( CallInst *intr ) { return is_intr( intr, ".lower" ); }
-bool is_assume( CallInst *intr ) { return is_intr( intr, ".assume" ); }
-bool is_thaw( CallInst *intr ) { return is_intr( intr, ".thaw" ); }
-bool is_freeze( CallInst *intr ) { return is_intr( intr, ".freeze" ); }
-bool is_tobool( CallInst *intr ) { return is_intr( intr, ".to_i1" ); }
-bool is_cast( CallInst *intr ) {
-    return is_intr( intr, ".zext" ) ||
-           is_intr( intr, ".sext" ) ||
-           is_intr( intr, ".trunc" ) ||
-           is_intr( intr, ".fpext" ) ||
-           is_intr( intr, ".fptrunc" ) ||
-           is_intr( intr, ".bitcast" );
-}
-
-Values taints( Module &m ) {
-    Values res;
-    for ( auto &fn : m )
-        if ( fn.getName().startswith( "__vm_test_taint" ) )
-            for ( auto u : fn.users() )
-                res.push_back( u );
-    return res;
-}
-
-Type* abstract_type( Type *orig, Domain dom ) {
-    std::string name;
-    if ( dom == Domain::Tristate() )
-        name = "lart." + dom.name();
-    else
-        name = "lart." + dom.name() + "." + llvm_name( orig );
-
-    if ( auto aty = orig->getContext().pImpl->NamedStructTypes.lookup( name ) )
-        return aty;
-    return StructType::create( { orig }, name );
-}
-
-Instruction* find_placeholder( Value *val, std::string name ) {
-    if ( isa< Constant >( val ) )
-        return nullptr;
-
-    for ( auto u : val->users() ) {
-        if ( auto call = dyn_cast< CallInst >( u ) ) {
-            auto fn = call->getCalledFunction();
-            if ( fn && fn->hasName() && fn->getName().startswith( name ) )
-                return call;
-        }
+namespace lart::abstract
+{
+    std::string llvm_name( llvm::Type * type ) {
+        std::string buffer;
+        llvm::raw_string_ostream rso( buffer );
+        type->print( rso );
+        return rso.str();
     }
-    return nullptr;
-}
 
-Instruction* get_placeholder_impl( Value *val, const std::string &name ) {
-    if ( auto ph = find_placeholder( val, name ) ) {
-        return ph;
-    } else
-        UNREACHABLE( "Value does not have", name, "val =", val );
-}
+    llvm::Type* abstract_type( llvm::Type * orig, Domain dom ) {
+        std::string name;
+        if ( dom == Domain::Tristate() )
+            name = "lart." + dom.name();
+        else
+            name = "lart." + dom.name() + "." + llvm_name( orig );
 
-Instruction* get_placeholder( Value *val ) {
-    return get_placeholder_impl( val, "lart.placeholder" );
-}
+        if ( auto aty = orig->getContext().pImpl->NamedStructTypes.lookup( name ) )
+            return aty;
+        return llvm::StructType::create( { orig }, name );
+    }
 
-Instruction* get_unstash_placeholder( Value *val ) {
-    return get_placeholder_impl( val, "lart.unstash.placeholder" );
-}
-
-Instruction* get_placeholder_in_domain( Value *val, Domain dom ) {
-    auto name = "lart." + dom.name() + ".placeholder";
-    return get_placeholder_impl( val, name );
-}
-
-bool has_placeholder( llvm::Value *val, const std::string &name ) {
-    return find_placeholder( val, name );
-}
-
-bool has_placeholder( Value *val ) {
-    return has_placeholder( val, "lart.placeholder" );
-}
-
-bool has_placeholder_in_domain( Value *val, Domain dom ) {
-    auto name = "lart." + dom.name() + ".placeholder";
-    return find_placeholder( val, name );
-}
-
-// Tries to find precise set of possible called functions.
-// Returns true if it succeeded.
-bool potentialy_called_functions( Value * called, Functions & fns ) {
-    bool surrender = true;
-    llvmcase( called,
-        [&] ( Function * fn ) {
-            fns.push_back( fn );
-        },
-        [&] ( PHINode * phi ) {
-            for ( auto & iv : phi->incoming_values() ) {
-                if ( ( surrender = potentialy_called_functions( iv.get(), fns ) ) )
-                    break;
+    // Tries to find precise set of possible called functions.
+    // Returns true if it succeeded.
+    bool potentialy_called_functions( llvm::Value * called, Functions & fns ) {
+        bool surrender = true;
+        llvmcase( called,
+            [&] ( llvm::Function * fn ) {
+                fns.push_back( fn );
+            },
+            [&] ( llvm::PHINode * phi ) {
+                for ( auto & iv : phi->incoming_values() ) {
+                    if ( ( surrender = potentialy_called_functions( iv.get(), fns ) ) )
+                        break;
+                }
+            },
+            [&] ( llvm::LoadInst * ) { surrender = true; }, // TODO
+            [&] ( llvm::Argument * ) { surrender = true; },
+            [&] ( llvm::Value * val ) {
+                UNREACHABLE( "Unknown parent instruction:", val );
             }
-        },
-        [&] ( LoadInst * ) { surrender = true; }, // TODO
-        [&] ( Argument * ) { surrender = true; },
-        [&] ( Value * val ) {
-            UNREACHABLE( "Unknown parent instruction:", val );
-        }
-    );
+        );
 
-    return !surrender;
-}
-
-std::vector< Function* > get_potentialy_called_functions( llvm::CallInst* call ) {
-    auto val = call->getCalledValue();
-    if ( auto fn = dyn_cast< Function >( val ) )
-        return { fn };
-    else if ( auto ce = dyn_cast< ConstantExpr >( val ) )
-        return { cast< Function >( ce->stripPointerCasts() ) };
-
-    auto m = get_module( call );
-    auto type = call->getCalledValue()->getType();
-
-    if ( !isa< Argument >( call->getCalledValue() ) ) {
-        Functions fns;
-        if ( potentialy_called_functions( call->getCalledValue(), fns) ) {
-            return fns;
-        }
+        return !surrender;
     }
 
-    // brute force all possible functions with correct signature
-    return query::query( m->functions() )
-        .filter( [type] ( auto & fn ) { return fn.getType() == type; } )
-        .filter( [] ( auto & fn ) { return fn.hasAddressTaken(); } )
-        .map( query::refToPtr )
-        .freeze();
-}
+    std::vector< llvm::Function * > get_potentialy_called_functions( llvm::CallInst* call ) {
+        auto val = call->getCalledValue();
+        if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
+            return { fn };
+        else if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val ) )
+            return { llvm::cast< llvm::Function >( ce->stripPointerCasts() ) };
 
-llvm::Function * get_some_called_function( llvm::CallInst * call ) {
-    return get_potentialy_called_functions( call ).front();
-}
+        auto m = call->getModule();
+        auto type = call->getCalledValue()->getType();
 
-} // namespace abstract
-} // namespace lart
+        if ( !llvm::isa< llvm::Argument >( call->getCalledValue() ) ) {
+            Functions fns;
+            if ( potentialy_called_functions( call->getCalledValue(), fns) ) {
+                return fns;
+            }
+        }
+
+        // brute force all possible functions with correct signature
+        return query::query( m->functions() )
+            .filter( [type] ( auto & fn ) { return fn.getType() == type; } )
+            .filter( [] ( auto & fn ) { return fn.hasAddressTaken(); } )
+            .map( query::refToPtr )
+            .freeze();
+    }
+
+    llvm::Function * get_some_called_function( llvm::CallInst * call ) {
+        return get_potentialy_called_functions( call ).front();
+    }
+
+    bool is_terminal_intruction( llvm::Value * val ) {
+        return llvm::isa< llvm::ReturnInst >( val ) ||
+               llvm::isa< llvm::UnreachableInst >( val );
+    }
+
+    llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Function * fn ) {
+        if ( !is_base_type( fn->getParent(), call ) )
+            return nullptr; // no return value to stash
+
+        auto rets = query::query( *fn ).flatten()
+            .map( query::refToPtr )
+            .filter( is_terminal_intruction )
+            .freeze();
+
+        auto unreachable = query::query( rets ).all( [] ( auto v ) {
+                return llvm::isa< llvm::UnreachableInst >( v );
+        } );
+
+        if ( unreachable )
+            return nullptr; // do not unstash from noreturn functions
+
+        auto return_insts = query::query( rets )
+            .map( query::llvmdyncast< llvm::ReturnInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
+
+        if ( meta::has( return_insts[ 0 ], meta::tag::domains ) || meta::has( fn, meta::tag::abstract ) )
+            return return_insts[ 0 ];
+        else
+            return nullptr;
+    }
+
+
+} // namespace lart::abstract
