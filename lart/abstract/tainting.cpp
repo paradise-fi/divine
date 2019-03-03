@@ -79,6 +79,10 @@ namespace lart::abstract
                 auto gep = llvm::cast< llvm::GetElementPtrInst >( inst()->getOperand( 0 ) );
 
                 auto concrete = gep->getPointerOperand();
+
+                if ( auto cast = llvm::dyn_cast< llvm::BitCastInst >( concrete ) )
+                    concrete = cast->getOperand( 0 );
+
                 ASSERT( meta::has_dual( concrete ) );
                 auto abstract = dual( concrete );
 

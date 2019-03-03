@@ -146,7 +146,7 @@ using lart::util::get_module;
                 return util::is_one_of< AllocaInst, CallInst, StoreInst, LoadInst, CastInst,
                     PHINode, GetElementPtrInst, IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
             case DomainKind::content:
-                return util::is_one_of< AllocaInst, CallInst, ReturnInst >( inst );
+                return util::is_one_of< AllocaInst, CallInst, ReturnInst, CastInst >( inst );
             case DomainKind::pointer:
             default:
                 UNREACHABLE( "Unsupported domain transformation." );
