@@ -116,6 +116,12 @@ namespace lart::abstract
                 return { op, dual( op ) };
             }
 
+            if constexpr ( Taint::cast( T ) ) {
+                auto ci = llvm::cast< llvm::CastInst >( dual( inst() ) );
+                auto src = ci->getOperand( 0 );
+                return { src, dual( src ) };
+            }
+
             if constexpr ( Taint::binary( T ) ) {
                 auto i = llvm::cast< llvm::Instruction >( dual( inst() ) );
                 auto a = i->getOperand( 0 );
@@ -155,7 +161,16 @@ namespace lart::abstract
             }
 
             if constexpr ( Taint::binary( T ) ) {
-                return llvm::cast< llvm::Instruction >( val )->getOpcodeName();
+                std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
+                return op + "." + llvm_name( val->getType() );
+            }
+
+            if constexpr ( Taint::cast( T ) ) {
+                auto ci = llvm::cast< llvm::CastInst >( val );
+                std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
+                auto src = llvm_name( ci->getSrcTy() );
+                auto dest = llvm_name( ci->getDestTy() );
+                return op + "." + src + "." + dest;
             }
 
             if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {

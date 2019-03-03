@@ -115,6 +115,16 @@ namespace lart::abstract
                 vals.push_back( paired.abstract.value );
             }
 
+            if constexpr ( Taint::cast( T ) )
+            {
+                auto paired = paired_arguments().front();
+                vals.push_back( paired.abstract.value );
+
+                auto bw = taint.dual()->getType()->getPrimitiveSizeInBits();
+                vals.push_back( i32cv( bw ) );
+                // TODO floats
+            }
+
             if constexpr ( Taint::binary( T ) )
             {
                 auto exit = basic_block( function(), "exit" );

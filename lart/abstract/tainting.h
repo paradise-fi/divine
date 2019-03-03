@@ -53,7 +53,7 @@ namespace lart::abstract {
                 }
             }
 
-            if ( Taint::binary( type ) ) {
+            if ( Taint::binary( type ) || Taint::cast( type ) ) {
                 return llvm::cast< llvm::Instruction >( dual() )->getOpcodeName();
             }
 
@@ -83,6 +83,7 @@ namespace lart::abstract {
         }
 
         static constexpr bool cmp( Taint::Type type ) { return Type::Cmp == type; }
+        static constexpr bool cast( Taint::Type type ) { return Type::Cast == type; }
         static constexpr bool assume( Taint::Type type ) { return Type::Assume == type; }
         static constexpr bool toBool( Taint::Type type ) { return Type::ToBool == type; }
         static constexpr bool freeze( Taint::Type type ) { return Type::Freeze == type; }
