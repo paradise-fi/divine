@@ -5,34 +5,6 @@
 
 namespace lart::abstract
 {
-
-    auto unstash_placeholder( llvm::Argument * arg ) -> std::optional< Placeholder >
-    {
-        auto is_placeholder = [] ( llvm::Instruction * inst ) {
-            return Placeholder::is( inst );
-        };
-        auto place = [] ( llvm::Instruction * inst ) {
-            return Placeholder( inst );
-        };
-        auto is_unstash = [] ( const Placeholder & ph ) {
-            return ph.type == Placeholder::Type::Unstash;
-        };
-
-        auto ph = query::query( arg->users() )
-            .map( query::llvmdyncast< llvm::Instruction > )
-            .filter( query::notnull )
-            .filter( is_placeholder )
-            .map( place )
-            .filter( is_unstash )
-            .freeze();
-
-        if ( ph.empty() )
-            return std::nullopt;
-
-        ASSERT( ph.size() == 1 );
-        return ph.front();
-    }
-
     void stash( llvm::CallInst * call, llvm::Value * mem )
     {
         llvm::IRBuilder<> irb( call );
@@ -134,20 +106,18 @@ namespace lart::abstract
             auto ptr = irb.CreateIntToPtr( addr, _type->getPointerTo() );
             auto pack = irb.CreateLoad( _type, ptr );
 
-            auto unstashes = query::query( fn->args() )
-                .map( query::refToPtr )
-                .map( unstash_placeholder )
-                .filter( [] ( const auto & ph ) { return ph.has_value(); } )
-                .map( [] ( const auto & ph ) { return ph.value(); } )
-                .freeze();
-
             unsigned int idx = 0;
-            for ( auto & un : unstashes ) {
-                auto arg = un.inst->getOperand( 0 );
+            for ( auto & arg : fn->args() ) {
+                if ( !meta::has_dual( &arg ) )
+                    continue;
+                auto dual = llvm::cast< llvm::Instruction >( meta::get_dual( &arg ) );
+                auto ph = Placeholder( dual );
+                ASSERT( ph.type == Placeholder::Type::Unstash );
+
                 auto unstashed = irb.CreateExtractValue( pack, { idx++ } );
-                meta::make_duals( arg, llvm::cast< llvm::Instruction >( unstashed ) );
-                un.inst->replaceAllUsesWith( unstashed );
-                un.inst->eraseFromParent();
+                meta::make_duals( &arg, llvm::cast< llvm::Instruction >( unstashed ) );
+                ph.inst->replaceAllUsesWith( unstashed );
+                ph.inst->eraseFromParent();
             }
 
             addr->moveBefore( llvm::cast< llvm::Instruction >( ptr ) );

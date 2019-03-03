@@ -224,6 +224,7 @@ namespace lart::abstract::meta {
         auto fn = arg->getParent();
         function::init( fn );
 
+        ASSERT( fn == llvm::cast< llvm::Instruction >( val )->getFunction() );
         auto &ctx = fn->getContext();
         auto node = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
         auto meta = fn->getMetadata( function::duals );

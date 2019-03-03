@@ -94,18 +94,18 @@ namespace lart::abstract::meta {
                                        const llvm::ArrayRef< llvm::Metadata * > vals )
         {
             assert( !vals.empty() );
-            return llvm::MDTuple::get( ctx, vals );
+            return llvm::MDTuple::getDistinct( ctx, vals );
         }
 
         template< typename Init >
         static llvm::MDTuple * create( llvm::LLVMContext & ctx, unsigned size, Init init ) {
             std::vector< llvm::Metadata* > values( size );
             std::generate( values.begin(), values.end(), init );
-            return llvm::MDTuple::get( ctx, values );
+            return llvm::MDTuple::getDistinct( ctx, values );
         }
 
         static llvm::MDTuple * empty( llvm::LLVMContext &ctx ) {
-            return llvm::MDTuple::get( ctx, {} );
+            return llvm::MDTuple::getDistinct( ctx, {} );
         }
     } // namespace tuple
 
