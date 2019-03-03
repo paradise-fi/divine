@@ -562,9 +562,9 @@ struct LoadLifter : Lifter {
 
 } // anonymous namespace
 
-// --------------------------- Duplication ---------------------------
+// --------------------------- Concretization ---------------------------
 
-void InDomainDuplicate::run( Module &m ) {
+void Concretization::run( llvm::Module & m ) {
     auto assumes = placeholders< Placeholder::Type::Assume >( m );
     std::for_each( assumes.begin(), assumes.end(), [&] ( auto ass ) { process( ass ); } );
 
@@ -586,7 +586,7 @@ void InDomainDuplicate::run( Module &m ) {
     }
 }
 
-void InDomainDuplicate::process( const Placeholder & ph ) {
+void Concretization::process( const Placeholder & ph ) {
     auto inst = ph.inst;
     IRBuilder<> irb( inst );
 

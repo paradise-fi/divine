@@ -15,7 +15,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-struct InDomainDuplicate {
+struct Concretization {
     void run( llvm::Module & m );
     void process( const Placeholder & ph );
 };
@@ -39,7 +39,7 @@ struct Synthesize {
 };
 
 using SubstitutionPass =
-    ChainedPass< InDomainDuplicate, FreezeStores, Tainting, Synthesize >;
+    ChainedPass< Concretization, FreezeStores, Tainting, Synthesize >;
 
 } // namespace abstract
 } // namespace lart
