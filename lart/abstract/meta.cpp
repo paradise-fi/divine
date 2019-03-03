@@ -249,6 +249,8 @@ namespace lart::abstract::meta {
     }
 
     bool has_dual( llvm::Value * val ) {
+        if ( llvm::isa< llvm::Constant >( val ) )
+            return false;
         if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
             return has_dual( arg );
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )

@@ -65,7 +65,7 @@ namespace lart::abstract
 
         llvm::Value * dual( llvm::Value * val ) const
         {
-            if ( !llvm::isa< llvm::Constant >( val ) && meta::has_dual( val ) )
+            if ( meta::has_dual( val ) )
                 return meta::get_dual( val );
             // TODO deal with frozen argument
             return default_value();
