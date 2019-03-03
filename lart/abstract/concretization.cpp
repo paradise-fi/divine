@@ -14,6 +14,9 @@ namespace lart::abstract
         if ( dom == Domain::Concrete() )
             return arg->getType();
 
+        if ( !is_base_type_in_domain( m, arg, dom ) )
+            return arg->getType();
+
         return DomainMetadata::get( m, dom ).base_type();
     }
 
@@ -64,6 +67,9 @@ namespace lart::abstract
             auto dom = Domain::get( std::next( fn->arg_begin(), idx ) );
 
             if ( dom == Domain::Concrete() )
+                return op.get();
+
+            if ( !is_base_type_in_domain( fn->getParent(), op.get(), dom ) )
                 return op.get();
 
             return DomainMetadata::get( fn->getParent(), dom ).default_value();

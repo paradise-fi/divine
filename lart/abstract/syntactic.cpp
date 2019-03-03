@@ -25,6 +25,8 @@ namespace lart::abstract
 
         APlaceholderBuilder builder;
         for ( const auto &inst : abstract ) {
+            if ( llvm::isa< llvm::ReturnInst >( inst ) ) // TODO remove
+                continue;
             if ( !llvm::isa< llvm::CallInst >( inst ) ) // TODO remove
                 builder.construct( inst );
         }
