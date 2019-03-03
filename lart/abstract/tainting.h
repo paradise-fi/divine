@@ -37,10 +37,58 @@ namespace lart::abstract {
             return llvm::cast< llvm::Function >( inst->getOperand( 0 ) );
         }
 
+        std::string name() const
+        {
+            if ( Taint::cmp( type ) ) {
+                if ( auto cmp = llvm::dyn_cast< llvm::CmpInst >( dual() ) ) {
+                    if ( cmp->isIntPredicate() ) {
+                        return "icmp_" + PredicateTable.at( cmp->getPredicate() );
+                    }
+
+                    if ( cmp->isFPPredicate() ) {
+                        return "fcmp_" + PredicateTable.at( cmp->getPredicate() );
+                    }
+
+                    UNREACHABLE( "Unknown predicate type." );
+                }
+            }
+            return TaintTable[ type ];
+        }
+
+        llvm::Value * dual() const
+        {
+            ASSERT( meta::has_dual( inst ) );
+            return meta::get_dual( inst );
+        }
+
         static bool is( llvm::Instruction * inst )
         {
             return meta::has( inst, meta::tag::taint::type );
         }
+
+        template< Taint::Type... Ts >
+        static constexpr bool is_one_of( Taint::Type type )
+        {
+            return ( (Ts == type) || ... );
+        }
+
+        static constexpr bool unary( Taint::Type type )
+        {
+            return is_one_of< Type::Thaw, Type::ToBool >( type );
+        }
+
+        static constexpr bool binary( Taint::Type type )
+        {
+            return is_one_of< Type::Cmp, Type::Binary >( type );
+        }
+
+        static constexpr bool cmp( Taint::Type type ) { return Type::Cmp == type; }
+        static constexpr bool assume( Taint::Type type ) { return Type::Assume == type; }
+        static constexpr bool toBool( Taint::Type type ) { return Type::ToBool == type; }
+        static constexpr bool freeze( Taint::Type type ) { return Type::Freeze == type; }
+        static constexpr bool thaw( Taint::Type type ) { return Type::Thaw == type; }
+        static constexpr bool stash( Taint::Type type ) { return Type::Stash == type; }
+        static constexpr bool unstash( Taint::Type type ) { return Type::Unstash == type; }
 
         static std::vector< Taint > enumerate( llvm::Module & m )
         {
@@ -55,12 +103,10 @@ namespace lart::abstract {
         llvm::Instruction * inst;
     };
 
-
     struct Tainting {
         void run( llvm::Module & m );
         Taint dispach( const Placeholder & ph ) const;
     };
-
 
     static auto taints( llvm::Module & m )
     {

@@ -63,7 +63,7 @@ namespace lart::abstract {
         DomainMetadata( llvm::GlobalVariable * glob )
             : glob( glob )
         {}
-    private:
+
         static DomainMetadata get( llvm::Module & m, const Domain & dom ) {
             auto doms = domains( m );
             auto meta = std::find_if( doms.begin(), doms.end(), [&] ( const auto & data ) {
@@ -75,7 +75,7 @@ namespace lart::abstract {
 
             UNREACHABLE( "Domain specification was not found." );
         }
-    public:
+
         static DomainMetadata get( llvm::Module * m, const Domain & dom ) {
             return get( *m, dom );
         }

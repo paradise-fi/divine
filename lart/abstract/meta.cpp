@@ -172,6 +172,10 @@ namespace lart::abstract::meta {
         bool is_forbidden( llvm::Function * fn ) noexcept {
             return meta::has( fn, tag::transform::forbidden );
         }
+
+        bool placeholder( llvm::Function * fn ) noexcept {
+            return fn->getMetadata( tag::placeholder::function );
+        }
     } // namespace function
 
     namespace argument

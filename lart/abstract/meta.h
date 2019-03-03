@@ -36,6 +36,7 @@ namespace lart::abstract::meta {
         }
 
         namespace placeholder {
+            constexpr const char function[] = "lart.placeholder.function";
             constexpr const char type[] = "lart.placeholder.type";
             constexpr const char level[] = "lart.placeholder.level";
         }
@@ -137,6 +138,7 @@ namespace lart::abstract::meta {
         bool ignore_call( llvm::Function * fn ) noexcept;
         bool ignore_return( llvm::Function * fn ) noexcept;
         bool is_forbidden( llvm::Function * fn ) noexcept;
+        bool placeholder( llvm::Function * fn ) noexcept;
     } // namespace function
 
     namespace argument

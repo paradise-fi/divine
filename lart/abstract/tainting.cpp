@@ -5,16 +5,6 @@
 
 namespace lart::abstract
 {
-    constexpr bool unary( Taint::Type type )
-    {
-        return is< Taint::Type::Thaw >( type );
-    }
-
-    constexpr bool binary( Taint::Type type )
-    {
-        return is< Taint::Type::Cmp >( type ) || is< Taint::Type::Binary >( type );
-    }
-
     template< Taint::Type T >
     struct TaintBuilder
     {
@@ -61,7 +51,7 @@ namespace lart::abstract
             }
 
             llvm::Type * rty = nullptr;
-            if constexpr ( is< Taint::Type::Freeze >( T ) ) {
+            if constexpr ( Taint::freeze( T ) ) {
                 rty = default_value()->getType();
             } else {
                 rty = inst()->getType();
@@ -90,15 +80,7 @@ namespace lart::abstract
 
         std::vector< llvm::Value * > arguments() const
         {
-            if constexpr ( is< Taint::Type::Unstash >( T ) ) {
-                return { inst()->getOperand( 0 ) };
-            }
-
-            if constexpr ( is< Taint::Type::ToBool >( T ) ) {
-                return { inst()->getOperand( 0 ) };
-            }
-
-            if constexpr ( is< Taint::Type::Assume >( T ) ) {
+            if constexpr ( Taint::assume( T ) ) {
                 auto tobool = llvm::cast< llvm::Instruction >( inst()->getOperand( 0 ) );
 
                 auto branch = query::query( tobool->users() )
@@ -108,28 +90,31 @@ namespace lart::abstract
 
                 auto & ctx = inst()->getContext();
 
-                llvm::Value * val = nullptr;
+                llvm::Value * res = nullptr;
                 if ( branch->getSuccessor( 0 ) == inst()->getParent() )
-                    val = llvm::ConstantInt::getTrue( ctx );
+                    res = llvm::ConstantInt::getTrue( ctx );
                 else
-                    val = llvm::ConstantInt::getFalse( ctx );
+                    res = llvm::ConstantInt::getFalse( ctx );
 
-                return { tobool->getOperand( 1 ), tobool->getOperand( 2 ), val };
+                auto concrete =tobool->getOperand( 1 );
+                auto value = meta::get_dual( llvm::cast< llvm::Instruction >( concrete ) );
+                auto constraint = tobool->getOperand( 2 );
+                return { concrete, value, constraint, res };
             }
 
-            if constexpr ( is< Taint::Type::Freeze >( T ) ) {
-                auto s = llvm::cast< llvm::StoreInst >( meta::get_dual( inst() ) );
+            if constexpr ( Taint::freeze( T ) ) {
+                auto s = llvm::cast< llvm::StoreInst >( dual( inst() ) );
                 auto v = s->getValueOperand();
                 auto d = dual( v );
                 return { v, d, s->getPointerOperand() };
             }
 
-            if constexpr ( unary( T ) ) {
+            if constexpr ( Taint::unary( T ) || Taint::unstash( T ) ) {
                 return { inst()->getOperand( 0 ) };
             }
 
-            if constexpr ( binary( T ) ) {
-                auto i = llvm::cast< llvm::Instruction >( meta::get_dual( inst() ) );
+            if constexpr ( Taint::binary( T ) ) {
+                auto i = llvm::cast< llvm::Instruction >( dual( inst() ) );
                 auto a = i->getOperand( 0 );
                 auto da = dual( a );
                 auto b = i->getOperand( 1 );
@@ -167,15 +152,18 @@ namespace lart::abstract
 
             std::string infix = "";
 
-            if constexpr ( is< Taint::Type::Cmp >( T ) ) {
+            if constexpr ( Taint::cmp( T ) ) {
                 auto cmp = llvm::cast< llvm::CmpInst >( val );
                 infix += "." + PredicateTable.at( cmp->getPredicate() );
-            }
-
-            if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
-                suffix += "." + aggr->getName().str();
+                suffix += "." + llvm_name( cmp->getOperand( 0 )->getType() );
+            } else if constexpr ( Taint::thaw( T ) ) {
+                suffix += "." + llvm_name( val->getType()->getPointerElementType() );
             } else {
-                suffix += "." + llvm_name( val->getType() );
+                if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
+                    suffix += "." + aggr->getName().str();
+                } else {
+                    suffix += "." + llvm_name( val->getType() );
+                }
             }
 
             auto dom = domain();
@@ -250,7 +238,15 @@ namespace lart::abstract
             if ( !ph.inst->user_empty() ) {
                 ph.inst->replaceAllUsesWith( taint.inst );
             }
+            ph.inst->eraseFromParent();
         }
+
+        auto remove = query::query( m )
+            .map( query::refToPtr )
+            .filter( meta::function::placeholder )
+            .freeze();
+
+        std::for_each( remove.begin(), remove.end(), [] ( auto * fn ) { fn->eraseFromParent(); } );
     }
 
 } // namespace lart::abstract

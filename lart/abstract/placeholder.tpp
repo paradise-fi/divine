@@ -18,6 +18,7 @@ namespace lart::abstract
     {
         auto m = util::get_module( val );
         auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
+        meta::set( fn, meta::tag::placeholder::function, "" );
         auto ph = builder.CreateCall( fn, arguments( val ) );
 
         if constexpr ( T != Type::Stash ) { // TODO  maybe not needed
