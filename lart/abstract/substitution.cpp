@@ -902,13 +902,12 @@ void stash_arguments( CallInst *call ) {
         return; // skip internal lart functions
 
     IRBuilder<> irb( call );
-    FunctionMetadata fmd{ fn };
     auto m = fn->getParent();
 
     for ( auto &arg : fn->args() ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
-        auto dom = fmd.get_arg_domain( idx );
+        auto dom = get_domain( &arg );
 
         if ( is_concrete( dom ) || !is_base_type_in_domain( m, op, dom ) )
             continue; // skip
@@ -928,14 +927,13 @@ Values unstash_arguments( CallInst *call, Function * fn ) {
         return {}; // skip internal lart functions
 
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
-    FunctionMetadata fmd{ fn };
     auto m = fn->getParent();
 
     Values unpacked;
 
     for ( int i = fn->getFunctionType()->getNumParams() - 1; i >= 0; --i ) {
         auto arg = std::next( fn->arg_begin(), i );
-        auto dom = fmd.get_arg_domain( i );
+        auto dom = get_domain( arg );
 
         if ( is_concrete( dom ) || !is_base_type_in_domain( m, arg, dom ) ) {
             continue; // skip

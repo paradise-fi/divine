@@ -140,50 +140,9 @@ Domain ValueMetadata::domain() const noexcept {
     return ::lart::abstract::domain( md );
 }
 
-Domain ArgMetadata::domain() const {
-    auto mdstr = cast< MDString >( data->getOperand( 0 ) );
-    return Domain( mdstr->getString().str() );
-}
-
 llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
     auto value = [&] { return meta::value::create( ctx, Domain::Concrete().name() ); };
     return meta::tuple::create( ctx, size, value );
-}
-
-constexpr char FunctionMetadata::meta[];
-
-void FunctionMetadata::set_arg_domain( unsigned idx, Domain dom ) {
-    auto &ctx = fn->getContext();
-    auto size = fn->arg_size();
-
-    if ( !fn->getMetadata( meta ) )
-        fn->setMetadata( meta, concrete_domain_tuple( ctx, size ) );
-
-    auto md = fn->getMetadata( meta );
-
-    auto curr = get_arg_domain( idx );
-    ASSERT( curr == Domain::Concrete() || curr == dom ); // multiple domains are not supported yet
-
-    if ( curr != dom ) {
-        md->replaceOperandWith( idx, dom.meta( ctx ) );
-    }
-}
-
-Domain FunctionMetadata::get_arg_domain( unsigned idx ) const {
-    if ( auto md = fn->getMetadata( meta ) )
-        return ArgMetadata( md->getOperand( idx ).get() ).domain();
-    return Domain::Concrete();
-}
-
-bool FunctionMetadata::has_arg_domain( unsigned idx ) const {
-    if ( auto md = fn->getMetadata( meta ) )
-        return ArgMetadata( md->getOperand( idx ).get() ).domain() != Domain::Concrete();
-    return false;
-}
-
-void FunctionMetadata::clear() {
-    if ( fn->getMetadata( meta ) )
-        fn->setMetadata( meta, nullptr );
 }
 
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m ) {
@@ -217,7 +176,7 @@ bool has_abstract_metadata( llvm::Value *val ) {
 }
 
 bool has_abstract_metadata( llvm::Argument *arg ) {
-    return FunctionMetadata( arg->getParent() ).has_arg_domain( arg->getArgNo() );
+    return meta::argument::has( arg );
 }
 
 bool has_abstract_metadata( llvm::Instruction *inst ) {

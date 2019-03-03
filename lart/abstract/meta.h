@@ -7,10 +7,14 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <optional>
+
 namespace lart::abstract::meta {
     namespace tag {
         constexpr char abstract[] = "lart.abstract";
         constexpr char roots[] = "lart.abstract.roots";
+
+        constexpr char function[] = "lart.abstract.function";
 
         namespace transform {
             constexpr char prefix[] = "lart.transform";
@@ -39,7 +43,7 @@ namespace lart::abstract::meta {
     } // namespace tag
 
 
-    struct tuple
+    namespace tuple
     {
         static llvm::MDTuple * create( llvm::LLVMContext & ctx,
                                        const llvm::ArrayRef< llvm::Metadata * > vals )
@@ -61,10 +65,10 @@ namespace lart::abstract::meta {
     };
 
 
-    struct value
+    namespace value
     {
-        static std::string get( llvm::MDNode * node ) {
-            auto & op = node->getOperand( 0 );
+        static std::string get( llvm::MDNode * node, unsigned idx = 0 ) {
+            auto & op = node->getOperand( idx );
             auto & str = llvm::cast< llvm::MDNode >( op )->getOperand( 0 );
             return llvm::cast< llvm::MDString >( str )->getString().str();
         }
@@ -72,15 +76,26 @@ namespace lart::abstract::meta {
         static llvm::MDNode * create( llvm::LLVMContext &ctx, const std::string & str ) {
             return llvm::MDNode::get( ctx, llvm::MDString::get( ctx, str ) );
         }
-    };
+    } // namespace value
 
 
-    void set_llvm_value( llvm::Instruction * inst, const std::string& tag, llvm::Value * val );
-    llvm::Value * get_llvm_value( llvm::Instruction * inst, const std::string& tag );
+    namespace function
+    {
+        bool ignore_call( llvm::Function * fn ) noexcept;
+        bool ignore_return( llvm::Function * fn ) noexcept;
+        bool is_forbidden( llvm::Function * fn ) noexcept;
+    } // namespace function
 
-    bool ignore_call_of_function( llvm::Function * fn );
-    bool ignore_return_of_function( llvm::Function * fn );
-    bool is_forbidden_function( llvm::Function * fn );
+
+    namespace argument
+    {
+        void set( llvm::Argument * arg, const std::string & str ) noexcept;
+        void set( llvm::Argument * arg, llvm::MDNode * node ) noexcept;
+
+        auto get( llvm::Argument * arg ) noexcept -> std::optional<std::string>;
+
+        bool has( llvm::Argument * arg ) noexcept;
+    } // namespace argument
 
     void make_duals( llvm::Instruction * a, llvm::Instruction * b );
     llvm::Value * get_dual( llvm::Instruction *inst );

@@ -85,35 +85,6 @@ struct CreateAbstractMetadata {
     void run( llvm::Module &m );
 };
 
-struct ArgMetadata {
-    ArgMetadata( llvm::Metadata *data )
-        : data( llvm::cast< llvm::MDNode >( data ) )
-    {}
-
-    Domain domain() const;
-private:
-    llvm::MDNode *data;
-};
-
-
-struct FunctionMetadata {
-    FunctionMetadata( llvm::Function * fn )
-        : fn( fn )
-    {}
-
-    void set_arg_domain( unsigned i, Domain dom );
-    Domain get_arg_domain( unsigned i ) const;
-
-    bool has_arg_domain( unsigned i ) const;
-
-    void clear();
-private:
-
-    static constexpr char meta[] = "lart.function.meta";
-
-    llvm::Function *fn;
-};
-
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m );
 std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn );
 
@@ -126,8 +97,11 @@ llvm::MDNode * get_abstract_metadata( llvm::Instruction *inst );
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
 
 inline Domain get_domain( llvm::Argument *arg ) {
-    auto fmd = FunctionMetadata( arg->getParent() );
-    return fmd.get_arg_domain( arg->getArgNo() );
+    if ( meta::argument::has( arg ) ) {
+        return Domain( meta::argument::get( arg ).value() );
+    }
+
+    return Domain::Concrete();
 }
 
 inline Domain get_domain( llvm::Instruction *inst ) {
@@ -141,6 +115,10 @@ inline Domain get_domain( llvm::Value *val ) {
         return get_domain( arg );
     else
         return get_domain( llvm::cast< llvm::Instruction >( val ) );
+}
+
+inline void set_domain( llvm::Value * /*val*/, Domain /*dom*/ ) {
+    UNREACHABLE( "Not implemented" );
 }
 
 inline bool is_concrete( Domain dom ) {

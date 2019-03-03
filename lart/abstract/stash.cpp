@@ -138,14 +138,12 @@ void Unstash::run( Module &m ) {
 void Unstash::process_arguments( CallInst *call, Function * fn ) {
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
 
-    FunctionMetadata fmd{ fn };
-
     for ( auto &arg : fn->args() ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
         auto ty = op->getType();
 
-        auto dom = fmd.get_arg_domain( idx );
+        auto dom = get_domain( &arg );
         if ( is_concrete( dom ) )
             continue;
 
