@@ -82,6 +82,7 @@ namespace lart::abstract {
             return is_one_of< Type::Cmp, Type::Binary >( type );
         }
 
+        static constexpr bool gep( Taint::Type type ) { return Type::GEP == type; }
         static constexpr bool cmp( Taint::Type type ) { return Type::Cmp == type; }
         static constexpr bool cast( Taint::Type type ) { return Type::Cast == type; }
         static constexpr bool assume( Taint::Type type ) { return Type::Assume == type; }

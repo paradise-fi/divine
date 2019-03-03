@@ -18,6 +18,7 @@ namespace lart::abstract {
     {
         enum class Type {
             PHI,
+            GEP,
             Thaw,
             Freeze,
             Stash,

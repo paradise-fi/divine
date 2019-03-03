@@ -77,6 +77,14 @@ namespace lart::abstract
 
             auto args = arguments();
 
+            if constexpr ( Taint::gep( T ) )
+            {
+                auto paired = TaintAgumment{ function()->arg_begin() };
+                vals.push_back( paired.abstract.value ); // address
+                auto idx = irb.CreateZExt( args[ 2 ].value, i64() );
+                vals.push_back( idx ); // index
+            }
+
             if constexpr ( Taint::toBool( T ) )
             {
                 vals.push_back( irb.CreateCall( operation, args[ 0 ].value ) );
@@ -311,6 +319,8 @@ namespace lart::abstract
         {
             case Type::PHI:
                 Lifter< Type::PHI >( taint ).construct(); break;
+            case Type::GEP:
+                Lifter< Type::GEP >( taint ).construct(); break;
             case Type::Thaw:
                 Lifter< Type::Thaw >( taint ).construct(); break;
             case Type::Freeze:

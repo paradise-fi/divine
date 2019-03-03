@@ -75,6 +75,18 @@ namespace lart::abstract
 
         std::vector< llvm::Value * > arguments() const
         {
+            if constexpr ( Taint::gep( T ) ) {
+                auto gep = llvm::cast< llvm::GetElementPtrInst >( inst()->getOperand( 0 ) );
+
+                auto concrete = gep->getPointerOperand();
+                ASSERT( meta::has_dual( concrete ) );
+                auto abstract = dual( concrete );
+
+                ASSERT( gep->getNumIndices() == 1 );
+                llvm::Value * idx = gep->idx_begin()->get();
+                return { concrete, abstract, idx };
+            }
+
             if constexpr ( Taint::assume( T ) ) {
                 auto tobool = llvm::cast< llvm::Instruction >( inst()->getOperand( 0 ) );
 
@@ -92,9 +104,11 @@ namespace lart::abstract
                     res = llvm::ConstantInt::getFalse( ctx );
 
                 auto concrete = tobool->getOperand( 1 );
-                auto value = meta::get_dual( llvm::cast< llvm::Instruction >( concrete ) );
+                ASSERT( meta::has_dual( concrete ) );
+                auto abstract = dual( concrete );
                 auto constraint = tobool->getOperand( 2 );
-                return { concrete, value, constraint, res };
+                return { concrete, abstract, constraint, res };
+            }
             }
 
             if constexpr ( Taint::thaw( T ) ) {
@@ -225,6 +239,8 @@ namespace lart::abstract
 
         switch ( ph.type )
         {
+            case Type::GEP:
+                return TaintBuilder< Type::GEP >( ph ).construct();
             case Type::Thaw:
                 return TaintBuilder< Type::Thaw >( ph ).construct();
             case Type::Freeze:

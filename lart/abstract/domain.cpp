@@ -187,7 +187,8 @@ using lart::util::get_module;
                         return get_module( inst )->getFunction( name );
                     }
                 }
-                return util::is_one_of< LoadInst, StoreInst >( inst );
+
+                return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
             case DomainKind::pointer:
             default:
                 UNREACHABLE( "Unsupported domain transformation." );

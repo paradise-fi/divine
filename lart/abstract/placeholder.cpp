@@ -6,6 +6,7 @@ namespace lart::abstract
 {
     const Bimap< Placeholder::Type, std::string > Placeholder::TypeTable = {
          { Placeholder::Type::PHI    , "phi"     }
+        ,{ Placeholder::Type::GEP    , "gep"     }
         ,{ Placeholder::Type::Thaw   , "thaw"    }
         ,{ Placeholder::Type::Freeze , "freeze"  }
         ,{ Placeholder::Type::Stash  , "stash"   }

@@ -203,6 +203,11 @@ namespace lart::abstract
             return construct< Type::PHI >( phi );
         }
 
+        if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( inst ) ) {
+            ASSERT( meta.content() );
+            return construct< Type::GEP >( inst );
+        }
+
         if ( auto store = llvm::dyn_cast< llvm::StoreInst >( inst ) ) {
             if ( meta.scalar() ) {
                 return construct< Type::Freeze >( store );
@@ -269,6 +274,8 @@ namespace lart::abstract
         {
             case Type::PHI:
                 return concretize< Type::PHI >( ph );
+            case Type::GEP:
+                return concretize< Type::GEP >( ph );
             case Type::Thaw:
                 return concretize< Type::Thaw >( ph );
             case Type::Freeze:
