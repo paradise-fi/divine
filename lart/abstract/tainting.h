@@ -14,27 +14,26 @@ namespace lart::abstract {
     {
         using Type = Placeholder::Type;
 
+        static constexpr const char * prefix = "__vm_test_taint";
+
         explicit Taint( llvm::Instruction * inst, Type type )
             : type( type ), inst( inst )
         {
             meta::set( inst, meta::tag::taint::type, Placeholder::TypeTable[ type ] );
         }
 
+        static bool is( llvm::Instruction * inst )
+        {
+            return meta::has( inst, meta::tag::taint::type );
+        }
+
         Type type;
         llvm::Instruction * inst;
     };
 
-    struct TaintBuilder
-    {
-        Taint construct( const Placeholder & ph );
-
-    private:
-        template< Taint::Type T >
-        Taint construct( const Placeholder & ph );
-    };
-
     struct Tainting {
         void run( llvm::Module & m );
+        Taint dispach( const Placeholder & ph ) const;
     };
 
 } // namespace lart::abstract

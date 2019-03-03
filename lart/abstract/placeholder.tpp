@@ -110,9 +110,14 @@ namespace lart::abstract
         if constexpr ( is< Type::Store >( T ) || is< Type::Freeze >( T ) ) {
             auto s = llvm::cast< llvm::StoreInst >( val );
             return { s->getValueOperand(), s->getPointerOperand() };
-        } else {
-            return { val };
         }
+
+        if constexpr ( is< Type::Load >( T ) || is< Type::Thaw >( T ) ) {
+            auto l = llvm::cast< llvm::LoadInst >( val );
+            return { l->getPointerOperand() };
+        }
+
+        return { val };
     }
 
     template< Placeholder::Level L, Placeholder::Type T >
