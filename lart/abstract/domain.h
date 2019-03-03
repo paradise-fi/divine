@@ -76,23 +76,6 @@ namespace lart::abstract {
     };
 
 
-    struct ValueMetadata {
-        ValueMetadata( llvm::Metadata * md )
-            : _md( llvm::cast< llvm::ValueAsMetadata >( md ) )
-        {}
-
-        ValueMetadata( llvm::Value * v )
-            : _md( llvm::LocalAsMetadata::get( v ) )
-        {}
-
-        std::string name() const noexcept;
-        llvm::Value * value() const noexcept;
-        Domain domain() const noexcept;
-    private:
-        llvm::ValueAsMetadata  *_md;
-    };
-
-
     struct CreateAbstractMetadata {
         void run( llvm::Module &m );
     };

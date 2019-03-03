@@ -127,19 +127,6 @@ using lart::util::get_module;
         UNREACHABLE( "Unsupported base type." );
     }
 
-    std::string ValueMetadata::name() const noexcept {
-        return _md->getValue()->getName();
-    }
-
-    llvm::Value* ValueMetadata::value() const noexcept {
-        return _md->getValue();
-    }
-
-    Domain ValueMetadata::domain() const noexcept {
-        auto inst = cast< Instruction >( value() );
-        return Domain::get( inst );
-    }
-
     llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
         auto value = [&] { return meta::create( ctx, Domain::Concrete().name() ); };
         return meta::tuple::create( ctx, size, value );
