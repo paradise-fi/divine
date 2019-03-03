@@ -55,6 +55,21 @@ namespace abstract {
             inst->setMetadata( meta::tag::placeholder::type, llvm::MDNode::get( ctx, lname ) );
         }
 
+        explicit Placeholder( llvm::Instruction * inst )
+            : inst( inst )
+        {
+            level = LevelTable[ meta::get( inst, meta::tag::placeholder::level ).value() ];
+            type = TypeTable[ meta::get( inst, meta::tag::placeholder::type ).value() ];
+        }
+
+        friend std::ostream& operator<<( std::ostream & os, const Placeholder & ph ) {
+            auto fn = llvm::cast< llvm::CallInst >( ph.inst )->getCalledFunction();
+            os << "[" << fn->getName().str()
+               << ", " << LevelTable[ ph.level ]
+               << ", " << TypeTable[ ph.type ] << "]";
+            return os;
+        }
+
         llvm::Instruction * inst;
         Level level;
         Type type;
@@ -205,17 +220,12 @@ namespace abstract {
         }
 
         template< Placeholder::Type Type >
-        Placeholder construct( llvm::Argument & arg )
+        Placeholder construct( llvm::Argument * arg )
         {
             static_assert( Type == Placeholder::Type::Stash || Type == Placeholder::Type::Unstash );
-
-            auto m = util::get_module( &arg );
-
-            auto & entry = arg.getParent()->getEntryBlock();
+            auto & entry = arg->getParent()->getEntryBlock();
             llvm::IRBuilder<> irb{ &entry, entry.getFirstInsertionPt() };
-            assert( is_base_type_in_domain( m, &arg, get_domain( &arg ) ) );
-
-            return construct< Type >( &arg, irb );
+            return construct< Type >( arg, irb );
         }
 
     private:
