@@ -13,141 +13,110 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-using namespace llvm;
+    namespace {
 
-using lart::util::get_module;
-using lart::util::get_or_insert_function;
+        template< Placeholder::Type T >
+        Placeholder process( llvm::Value * val, llvm::IRBuilder<> & irb )
+        {
+            llvm::Value * arg = val;
+            if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( val ) )
+                arg = ret->getReturnValue();
 
-namespace {
-
-Function* stash_placeholder( Module *m, Type *in ) {
-    auto void_type = Type::getVoidTy( m->getContext() );
-    auto fty = llvm::FunctionType::get( void_type, { in }, false );
-    std::string name = "lart.stash.placeholder.";
-    if ( auto s = dyn_cast< StructType >( in ) )
-        name += s->getName().str();
-    else
-        name += llvm_name( in );
-    return get_or_insert_function( m, fty, name );
-}
-
-Function* unstash_placeholder( Module *m, Value *val, Type *out ) {
-    auto fty = llvm::FunctionType::get( out, { val->getType() }, false );
-    std::string name = "lart.unstash.placeholder.";
-    if ( auto s = dyn_cast< StructType >( out ) )
-        name += s->getName().str();
-    else
-        name += llvm_name( out );
-    return get_or_insert_function( m, fty, name );
-}
-
-
-} // anonymous namespace
-
-void Stash::run( Module &m ) {
-    run_on_abstract_calls( [&] ( auto call ) {
-        if ( !is_transformable( call ) ) {
-            process_arguments( call );
-
-            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                if ( !meta::has( fn, meta::tag::abstract ) )
-                    if ( !stashed.count( fn ) )
-                        process_return_value( call, fn );
-                stashed.insert( fn );
-            } );
+            auto ph = APlaceholderBuilder().construct< T >( arg, irb );
+            meta::make_duals( val, ph.inst );
+            return ph;
         }
-    }, m );
-}
 
-void Stash::process_return_value( CallInst *call, Function * fn ) {
-    if ( auto ret = returns_abstract_value( call, fn ) ) {
-        APlaceholderBuilder builder;
-        auto stash = builder.construct( llvm::cast< llvm::ReturnInst >( ret ) );
-        meta::abstract::inherit( stash.inst, call );
-    }
-}
+        Placeholder stash( llvm::Value * val, llvm::IRBuilder<> & irb )
+        {
+            return process< Placeholder::Type::Stash >( val, irb );
+        }
 
-void Stash::process_arguments( CallInst *call ) {
-    IRBuilder<> irb( call );
+        Placeholder unstash( llvm::Value * val, llvm::IRBuilder<> & irb )
+        {
+            return process< Placeholder::Type::Unstash >( val, irb );
+        }
 
-    for ( unsigned idx = 0; idx < call->getNumArgOperands(); ++idx ) {
-        auto op = call->getArgOperand( idx );
-        auto ty = op->getType();
+        Placeholder unstash( llvm::Instruction * inst )
+        {
+            llvm::IRBuilder<> irb( inst );
+            return unstash( inst, irb );
+        }
+    } // anonymous namespace
 
-        if ( isa< Constant >( op ) )
-            continue;
+    void Stash::run( llvm::Module & m )
+    {
+        run_on_abstract_calls( [&] ( auto call ) {
+            if ( !is_transformable( call ) ) {
+                process_arguments( call );
 
-        auto dom = Domain::get( op );
-        if ( is_concrete( dom ) )
-            continue;
-
-        auto m = get_module( call );
-        if ( is_base_type_in_domain( m, op, dom ) ) {
-            auto aty = abstract_type( ty, dom );
-            auto stash_fn = stash_placeholder( m, aty );
-
-            Instruction * stash = nullptr;
-            if ( isa< CallInst >( op ) || isa< Argument >( op ) )
-                stash = irb.CreateCall( stash_fn, { get_unstash_placeholder( op ) } );
-            else if ( has_placeholder( op ) )
-                stash = irb.CreateCall( stash_fn, { get_placeholder( op ) } );
-            else {
-                auto undef = UndefValue::get( stash_fn->getFunctionType()->getParamType( 0 ) );
-                stash = irb.CreateCall( stash_fn, { undef } );
+                run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                    if ( !meta::has( fn, meta::tag::abstract ) )
+                        if ( !stashed.count( fn ) )
+                            process_return_value( call, fn );
+                    stashed.insert( fn );
+                } );
             }
-            meta::abstract::inherit( stash, op );
+        }, m );
+    }
+
+    void Stash::process_return_value( llvm::CallInst * call, llvm::Function * fn )
+    {
+        if ( auto ret = returns_abstract_value( call, fn ) ) {
+            auto inst = llvm::cast< llvm::Instruction >( ret );
+            llvm::IRBuilder<> irb( inst );
+            stash( inst, irb );
         }
     }
-}
 
-void Unstash::run( Module &m ) {
-    run_on_abstract_calls( [&] ( auto call ) {
-        if ( !is_transformable( call ) ) {
-            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                if ( !meta::has( fn, meta::tag::abstract ) )
-                    if ( !unstashed.count( fn ) )
-                        process_arguments( call, fn );
-                unstashed.insert( fn );
-            } );
-
-            process_return_value( call );
-        }
-    }, m );
-}
-
-void Unstash::process_arguments( CallInst *call, Function * fn ) {
-    IRBuilder<> irb( &*fn->getEntryBlock().begin() );
-
-    for ( auto &arg : fn->args() ) {
-        auto idx = arg.getArgNo();
-        auto op = call->getArgOperand( idx );
-        auto ty = op->getType();
-
-        auto dom = Domain::get( &arg );
-        if ( is_concrete( dom ) )
-            continue;
-
-        auto m = get_module( call );
-        if ( is_base_type_in_domain( m, &arg, dom ) ) {
-            auto aty = abstract_type( ty, dom );
-            auto unstash_fn = unstash_placeholder( m, op, aty );
-            auto unstash = irb.CreateCall( unstash_fn, { &arg } );
-            meta::abstract::inherit( unstash, &arg );
+    void Stash::process_arguments( llvm::CallInst * call )
+    {
+        llvm::IRBuilder<> irb( call );
+        for ( auto & arg : call->arg_operands() ) {
+            if ( !is_concrete( arg ) ) {
+                stash( arg.get(), irb );
+            }
         }
     }
-}
 
-void Unstash::process_return_value( llvm::CallInst * call ) {
-    auto returns = query::query( get_potentialy_called_functions( call ) )
-        .filter( [call] ( const auto & fn ) {
-            return returns_abstract_value( call, fn );
-        } )
-        .freeze();
+    void Unstash::run( llvm::Module & m )
+    {
+        run_on_abstract_calls( [&] ( auto call ) {
+            if ( !is_transformable( call ) ) {
+                run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                    if ( !meta::has( fn, meta::tag::abstract ) )
+                        if ( !unstashed.count( fn ) )
+                            process_arguments( call, fn );
+                    unstashed.insert( fn );
+                } );
 
-    if ( !returns.empty() ) {
-        APlaceholderBuilder builder;
-        builder.construct< Placeholder::Type::Unstash >( call );
+                process_return_value( call );
+            }
+        }, m );
     }
-}
+
+    void Unstash::process_arguments( llvm::CallInst * call, llvm::Function * fn )
+    {
+        llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHI() );
+        for ( auto & arg : fn->args() ) {
+            if ( !is_concrete( call->getOperand( arg.getArgNo() ) ) ) {
+                unstash( &arg, irb );
+            }
+        }
+    }
+
+    void Unstash::process_return_value( llvm::CallInst * call )
+    {
+        auto returns = query::query( get_potentialy_called_functions( call ) )
+            .filter( [call] ( const auto & fn ) {
+                return returns_abstract_value( call, fn );
+            } )
+            .freeze();
+
+        if ( !returns.empty() ) {
+            auto ph = unstash( call );
+            ph.inst->moveAfter( call );
+        }
+    }
 
 } // namespace lart::abstract
