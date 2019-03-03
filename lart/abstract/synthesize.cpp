@@ -108,6 +108,12 @@ namespace lart::abstract
                 vals.push_back( cst );             // concrete address
             }
 
+            if constexpr ( Taint::stash( T ) )
+            {
+                auto paired = paired_arguments().front();
+                vals.push_back( paired.abstract.value );
+            }
+
             if constexpr ( Taint::binary( T ) )
             {
                 auto exit = basic_block( function(), "exit" );
@@ -141,7 +147,7 @@ namespace lart::abstract
             ASSERT( operation->arg_size() == vals.size() );
             auto call = irb.CreateCall( operation, vals );
 
-            if constexpr ( Taint::freeze( T ) ) {
+            if constexpr ( Taint::freeze( T ) || Taint::stash( T ) ) {
                 irb.CreateRet( llvm::UndefValue::get( function()->getReturnType() ) );
             } else {
                 irb.CreateRet( call );

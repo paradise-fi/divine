@@ -65,16 +65,9 @@ namespace lart::abstract
 
         llvm::Value * dual( llvm::Value * val ) const
         {
-            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-                if ( meta::has_dual( inst ) )
-                        return meta::get_dual( inst );
-
-            ASSERT( !llvm::isa< llvm::Argument >( val ) );
+            if ( !llvm::isa< llvm::Constant >( val ) && meta::has_dual( val ) )
+                return meta::get_dual( val );
             // TODO deal with frozen argument
-            // if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-            //    if ( has::unstash )
-            //      dual = unstash
-
             return default_value();
         }
 
@@ -96,7 +89,7 @@ namespace lart::abstract
                 else
                     res = llvm::ConstantInt::getFalse( ctx );
 
-                auto concrete =tobool->getOperand( 1 );
+                auto concrete = tobool->getOperand( 1 );
                 auto value = meta::get_dual( llvm::cast< llvm::Instruction >( concrete ) );
                 auto constraint = tobool->getOperand( 2 );
                 return { concrete, value, constraint, res };
@@ -109,8 +102,13 @@ namespace lart::abstract
                 return { v, d, s->getPointerOperand() };
             }
 
-            if constexpr ( Taint::unary( T ) || Taint::unstash( T ) ) {
+            if constexpr ( Taint::unstash( T ) ) {
                 return { inst()->getOperand( 0 ) };
+            }
+
+            if constexpr ( Taint::unary( T ) || Taint::stash( T ) ) {
+                auto op = inst()->getOperand( 0 );
+                return { op, dual( op ) };
             }
 
             if constexpr ( Taint::binary( T ) ) {
@@ -230,8 +228,8 @@ namespace lart::abstract
             auto taint = dispach( ph );
 
             if ( meta::has_dual( ph.inst ) ) {
-                auto concrete = llvm::cast< llvm::Instruction >( meta::get_dual( ph.inst ) );
-                meta::make_duals( taint.inst, concrete );
+                auto concrete = meta::get_dual( ph.inst );
+                meta::make_duals( concrete, taint.inst );
             }
 
             meta::abstract::inherit( taint.inst, ph.inst );
