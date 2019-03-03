@@ -225,8 +225,6 @@ namespace lart::abstract
 
         switch ( ph.type )
         {
-            case Type::PHI:
-                return TaintBuilder< Type::PHI >( ph ).construct();
             case Type::Thaw:
                 return TaintBuilder< Type::Thaw >( ph ).construct();
             case Type::Freeze:
@@ -255,9 +253,10 @@ namespace lart::abstract
                 return TaintBuilder< Type::Lower >( ph ).construct();
             case Type::Call:
                 return TaintBuilder< Type::Call >( ph ).construct();
+            default:
+                UNREACHABLE( "Unsupported taint type" );
         }
 
-        UNREACHABLE( "Unsupported taint type" );
     };
 
     void Tainting::run( llvm::Module & m )

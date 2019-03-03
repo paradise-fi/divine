@@ -136,6 +136,30 @@ namespace lart::abstract
             builder.concretize( ph );
     }
 
+    void concretize_phi_placeholder( Placeholder ph )
+    {
+        ASSERT( ph.type == Placeholder::Type::PHI );
+        auto inst = ph.inst;
+        auto concrete = llvm::cast< llvm::PHINode >( meta::get_dual( inst ) );
+
+        llvm::IRBuilder<> irb( inst );
+        auto abstract = irb.CreatePHI( inst->getType(), concrete->getNumIncomingValues() );
+
+        auto dom = Domain::get( inst );
+        auto meta = DomainMetadata::get( inst->getModule(), dom );
+        for ( unsigned int i = 0; i < concrete->getNumIncomingValues(); ++i ) {
+            auto in = concrete->getIncomingValue( i );
+            auto bb = concrete->getIncomingBlock( i );
+            auto val = meta::has_dual( in ) ? meta::get_dual( in ) : meta.default_value();
+            abstract->addIncoming( val, bb );
+        }
+
+        meta::abstract::inherit( abstract, inst );
+        meta::make_duals( concrete, abstract );
+        inst->replaceAllUsesWith( abstract );
+        inst->eraseFromParent();
+    }
+
     void Concretization::run( llvm::Module & m )
     {
         CPlaceholderBuilder builder;
@@ -177,6 +201,10 @@ namespace lart::abstract
             }
         }, m );
 
+        auto phis = [] ( const auto & ph ) { return  ph.type == Placeholder::Type::PHI; };
+        for ( const auto & ph : placeholders( m, phis ) ) {
+            concretize_phi_placeholder( ph );
+        }
     }
 
 } // namespace lart::abstract
