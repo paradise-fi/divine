@@ -17,7 +17,6 @@ namespace abstract {
 
 struct Concretization {
     void run( llvm::Module & m );
-    void process( const Placeholder & ph );
 };
 
 

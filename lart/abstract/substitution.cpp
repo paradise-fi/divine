@@ -564,44 +564,34 @@ struct LoadLifter : Lifter {
 
 // --------------------------- Concretization ---------------------------
 
+template< Placeholder::Type T, typename Builder >
+void concretize( llvm::Module & m, Builder & builder ) {
+    for ( const auto & ph : placeholders< T >( m ) )
+        builder.template concretize< T >( ph );
+}
+
 void Concretization::run( llvm::Module & m ) {
     CPlaceholderBuilder builder{ m.getContext() };
 
-    auto assumes = placeholders< Placeholder::Type::Assume >( m );
-    std::for_each( assumes.begin(), assumes.end(), [&] ( auto ass ) { process( ass ); } );
-
     auto filter = [] ( const auto & ph ) {
-        return ph.type != Placeholder::Type::Assume && ph.type != Placeholder::Type::Stash;
+        return ph.type != Placeholder::Type::Assume &&
+               ph.type != Placeholder::Type::ToBool &&
+               ph.type != Placeholder::Type::Stash;
     };
-    auto rest = placeholders( m, filter );
-    std::for_each( rest.begin(), rest.end(), [&] ( auto ph ) { process( ph ); } );
 
-    // process stash placeholders separatelly in this order!
-    auto stashes = placeholders< Placeholder::Type::Stash >( m );
-    std::for_each( stashes.begin(), stashes.end(), [&] ( auto st ) { process( st ); } );
+    for ( const auto & ph : placeholders( m, filter ) )
+        builder.concretize( ph );
 
-    // clean abstract placeholders
-    for ( const auto & ph : placeholders( m ) ) {
+    // process the rest of placeholders after their arguments were generated
+    concretize< Placeholder::Type::Stash >( m, builder );
+    concretize< Placeholder::Type::ToBool >( m, builder );
+    concretize< Placeholder::Type::Assume >( m, builder );
+
+    for ( const auto & ph : placeholders< Placeholder::Level::Abstract >( m ) ) {
         auto inst = ph.inst;
         inst->replaceAllUsesWith( UndefValue::get( inst->getType() ) );
         inst->eraseFromParent();
     }
-}
-
-void Concretization::process( const Placeholder & ph ) {
-    auto inst = ph.inst;
-    IRBuilder<> irb( inst );
-
-    auto aph = placeholder::get( inst );
-    auto args = placeholder::arguments( inst );
-    auto call = irb.CreateCall( aph, args );
-    meta::abstract::inherit( call, inst );
-
-    if ( placeholder::is_to_i1( call ) )
-        inst->replaceAllUsesWith( call );
-
-    if ( call->getType() == inst->getType() )
-        inst->replaceAllUsesWith( call );
 }
 
 // ---------------------------- Tainting ---------------------------
