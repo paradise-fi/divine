@@ -48,8 +48,6 @@ namespace lart::abstract {
     {
         run_on_abstract_calls( [&] ( auto call ) {
             if ( !is_transformable( call ) ) {
-                process_arguments( call );
-
                 run_on_potentialy_called_functions( call, [&] ( auto fn ) {
                     if ( !meta::has( fn, meta::tag::abstract ) )
                         if ( !stashed.count( fn ) )
@@ -66,16 +64,6 @@ namespace lart::abstract {
             auto inst = llvm::cast< llvm::Instruction >( ret );
             llvm::IRBuilder<> irb( inst );
             stash( inst, irb );
-        }
-    }
-
-    void Stash::process_arguments( llvm::CallInst * call )
-    {
-        llvm::IRBuilder<> irb( call );
-        for ( auto & arg : call->arg_operands() ) {
-            if ( !is_concrete( arg ) ) {
-                stash( arg.get(), irb );
-            }
         }
     }
 

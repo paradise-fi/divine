@@ -18,7 +18,6 @@ struct Stash {
     void run( llvm::Module& );
 private:
     void process_return_value( llvm::CallInst*, llvm::Function* );
-    void process_arguments( llvm::CallInst* );
 
     std::unordered_set< llvm::Function* > stashed;
 };
