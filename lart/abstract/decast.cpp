@@ -119,7 +119,7 @@ void Decast::run( Module &m ) {
         .map( query::llvmdyncast< IntToPtrInst > )
         .filter( query::notnull )
         .filter( [] ( const auto& inst ) {
-            return has_abstract_metadata( inst );
+            return meta::abstract::has( inst );
         } )
         .freeze();
 

@@ -218,7 +218,7 @@ void VPA::propagate( CallInst *call, Domain dom ) {
                     auto arg = get_argument( fn, idx );
                     tasks.push_back( [=]{ propagate_value( arg, dom ); } );
                     if ( is_base_type( fn->getParent(), arg ) )
-                        set_domain( arg, dom );
+                        Domain::set( arg, dom );
                     entry_args.emplace( arg, dom );
                 }
             }

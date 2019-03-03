@@ -52,7 +52,7 @@ Function* taint_function( CallInst *taint ) {
 Type* return_type_of_intr( CallInst *call ) {
     if ( !call->getType()->isStructTy() )
         return call->getType();
-    auto dom = get_domain( call );
+    auto dom = Domain::get( call );
 
     if ( is_taint_of_type( taint_function( call ), "assume" ) ) {
         auto def = cast< Instruction >( call->getOperand( 1 ) );
@@ -136,21 +136,17 @@ bool is_load( Instruction *inst ) {
     return is_placeholder_of_name( inst, ".load." );
 }
 
-Domain domain( Instruction *inst ) {
-    return get_domain( inst );
-}
-
 Type* return_type( Instruction *inst ) {
     auto ty = inst->getType();
     if ( ty->isVoidTy() )
         return ty;
 
-    return domain_metadata( *inst->getModule(), get_domain( inst ) ).base_type();
+    return domain_metadata( *inst->getModule(), Domain::get( inst ) ).base_type();
 }
 
 Values arguments( Instruction *inst ) {
     if ( is_stash( inst ) ) {
-        auto dom = domain( inst );
+        auto dom = Domain::get( inst );
         auto meta = domain_metadata( *inst->getModule(), dom );
         if ( auto uv = dyn_cast< UndefValue >( inst->getOperand( 0 ) ) )
             return { meta.default_value() };
@@ -158,7 +154,7 @@ Values arguments( Instruction *inst ) {
         return { get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom ) };
     } else if ( is_to_i1( inst ) ) {
         auto abstract_placeholder = cast< Instruction >( inst->getOperand( 0 ) );
-        auto dom = domain( abstract_placeholder );
+        auto dom = Domain::get( abstract_placeholder );
         return { get_placeholder_in_domain( abstract_placeholder->getOperand( 0 ), dom ) };
     } else {
         auto call = cast< CallInst >( inst );
@@ -198,7 +194,7 @@ Function* get( Instruction *inst ) {
     auto rty = inst->getType()->isStructTy() ? return_type( inst ) : inst->getType();
     auto args = arguments( inst );
 
-    auto dom = domain( inst );
+    auto dom = Domain::get( inst );
     auto phname = name( inst, inst->getOperand( 0 ), dom );
     auto fty = FunctionType::get( rty, types_of( args ), false );
     return get_or_insert_function( get_module( inst ), fty, phname );
@@ -661,7 +657,7 @@ void InDomainDuplicate::process( Instruction *inst ) {
     auto ph = placeholder::get( inst );
     auto args = placeholder::arguments( inst );
     auto call = irb.CreateCall( ph, args );
-    add_abstract_metadata( call, get_domain( inst ) );
+    add_abstract_metadata( call, Domain::get( inst ) );
 
     if ( placeholder::is_to_i1( call ) )
         inst->replaceAllUsesWith( call );
@@ -739,7 +735,7 @@ struct TaintBase : CRTP< Derived > {
     Domain domain() const {
         auto val = placeholder::is_store( placeholder ) ? placeholder->getOperand( 1 )
                                                         : placeholder->getOperand( 0 );
-        return get_domain( val );
+        return Domain::get( val );
     }
 
     Function *function() {
@@ -867,7 +863,7 @@ Values argument_placeholders( Function * fn ) {
             return  is_base_type( fn->getParent(), arg );
         } )
         .map( [&] ( auto arg ) -> Value* {
-            auto dom = get_domain( arg );
+            auto dom = Domain::get( arg );
             return get_placeholder_in_domain( arg, dom );
         } ).freeze();
 }
@@ -907,7 +903,7 @@ void stash_arguments( CallInst *call ) {
     for ( auto &arg : fn->args() ) {
         auto idx = arg.getArgNo();
         auto op = call->getArgOperand( idx );
-        auto dom = get_domain( &arg );
+        auto dom = Domain::get( &arg );
 
         if ( is_concrete( dom ) || !is_base_type_in_domain( m, op, dom ) )
             continue; // skip
@@ -933,7 +929,7 @@ Values unstash_arguments( CallInst *call, Function * fn ) {
 
     for ( int i = fn->getFunctionType()->getNumParams() - 1; i >= 0; --i ) {
         auto arg = std::next( fn->arg_begin(), i );
-        auto dom = get_domain( arg );
+        auto dom = Domain::get( arg );
 
         if ( is_concrete( dom ) || !is_base_type_in_domain( m, arg, dom ) ) {
             continue; // skip
@@ -959,7 +955,7 @@ void stash_return_value( CallInst *call, Function * fn ) {
 
         IRBuilder<> irb( ret );
 
-        auto dom = get_domain( call );
+        auto dom = Domain::get( call );
         auto stash = stash_function( call, dom );
 
         ASSERT( has_placeholder( call, "lart." + dom.name() + ".placeholder.unstash" ) );
@@ -985,7 +981,7 @@ Value* unstash_return_value( CallInst *call ) {
 
     if ( noreturns != terminators.size() ) { // there is at least one return
         IRBuilder<> irb( call );
-        auto dom = get_domain( call );
+        auto dom = Domain::get( call );
         unstash = irb.CreateCall( unstash_function( call, dom ) );
         add_abstract_metadata( cast< Instruction >( unstash ), dom );
 
@@ -1047,7 +1043,7 @@ void Tainting::run( Module &m ) {
 
         if ( is_base_type( m, call ) ) {
             if ( auto ret = unstash_return_value( call ) ) {
-                auto dom = get_domain( call );
+                auto dom = Domain::get( call );
                 auto ph = get_placeholder_in_domain( call, dom );
                 substitutes[ ph ] = ret;
             }
@@ -1069,7 +1065,7 @@ Value* create_in_domain_phi( Instruction *placeholder ) {
     IRBuilder<> irb( placeholder );
     auto abstract = irb.CreatePHI( ty, phi->getNumIncomingValues() );
 
-    auto dom = get_domain( phi );
+    auto dom = Domain::get( phi );
 
     for ( unsigned int i = 0; i < phi->getNumIncomingValues(); ++i ) {
         auto in = phi->getIncomingValue( i );
@@ -1125,7 +1121,7 @@ void FreezeStores::run( Module &m ) {
         .filter( query::notnull )
         .filter( [] ( auto store ) { return store->getMetadata( meta::tag::domains ); } )
         .filter( [&] ( auto store ) {
-            return  is_base_type_in_domain( &m, store->getOperand( 0 ), get_domain( store ) );
+            return  is_base_type_in_domain( &m, store->getOperand( 0 ), Domain::get( store ) );
         } )
         .freeze();
 
@@ -1138,7 +1134,7 @@ void FreezeStores::process( StoreInst *store ) {
     auto m = get_module( store );
     auto & ctx = m->getContext();
 
-    auto meta = domain_metadata( *m, get_domain( store ) );
+    auto meta = domain_metadata( *m, Domain::get( store ) );
     auto dom = meta.domain();
 
     auto name = "__" + dom.name() + "_freeze";

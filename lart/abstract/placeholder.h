@@ -90,7 +90,7 @@ namespace abstract {
             using Type = Placeholder::Type;
 
             auto m = inst->getModule();
-            auto dom = get_domain( inst );
+            auto dom = Domain::get( inst );
             auto meta = domain_metadata( *m, dom );
 
             if ( auto phi = llvm::dyn_cast< llvm::PHINode >( inst ) ) {
@@ -99,7 +99,7 @@ namespace abstract {
 
             if ( auto store = llvm::dyn_cast< llvm::StoreInst >( inst ) ) {
                 if ( meta.scalar() ) {
-                    if ( get_domain( store->getValueOperand() ) == dom ) {
+                    if ( Domain::get( store->getValueOperand() ) == dom ) {
                         return construct< Type::Freeze >( store );
                     }
                 }
@@ -157,7 +157,7 @@ namespace abstract {
             static_assert( Level == Placeholder::Level::Abstract );
 
             auto m = util::get_module( val );
-            auto dom = get_domain( val );
+            auto dom = Domain::get( val );
             if ( is_base_type_in_domain( m, val, dom ) ) { // TODO make domain + op specific
                 return abstract_type( val->getType(), dom );
             } else {
@@ -193,7 +193,7 @@ namespace abstract {
             auto m = util::get_module( val );
             auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
             auto ph = builder.CreateCall( fn, { val } );
-            add_abstract_metadata( ph, get_domain( val ) );
+            add_abstract_metadata( ph, Domain::get( val ) );
             return Placeholder{ ph, Level, Type };
         }
 
@@ -214,7 +214,7 @@ namespace abstract {
             }
 
             meta::make_duals( inst, ph.inst );
-            assert( is_base_type_in_domain( inst->getModule(), inst, get_domain( inst ) ) );
+            assert( is_base_type_in_domain( inst->getModule(), inst, Domain::get( inst ) ) );
 
             return ph;
         }

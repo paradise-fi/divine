@@ -48,7 +48,7 @@ Function * abstract_load( Module * m, LoadInst * load ) {
 
 void StoresToContent::run( Module &m ) {
     for ( const auto &store : transformable< StoreInst >( m ) ) {
-        if ( get_domain( store->getValueOperand() ) != get_domain( store ) ) {
+        if ( Domain::get( store->getValueOperand() ) != Domain::get( store ) ) {
             process( store );
         }
     }
@@ -63,14 +63,14 @@ void StoresToContent::process( StoreInst * store ) {
     IRBuilder<> irb( store );
     auto ph = irb.CreateCall( fn, { val, ptr } );
 
-    add_abstract_metadata( ph, get_domain( store ) );
+    add_abstract_metadata( ph, Domain::get( store ) );
     meta::make_duals( store, ph );
     ph->moveAfter( store );
 }
 
 void LoadsFromContent::run( Module & m ) {
     for ( const auto &load : transformable< LoadInst >( m ) ) {
-        if ( get_domain( load->getPointerOperand() ) != get_domain( load ) ) {
+        if ( Domain::get( load->getPointerOperand() ) != Domain::get( load ) ) {
             process( load );
         }
     }
@@ -82,7 +82,7 @@ void LoadsFromContent::process( LoadInst * load ) {
 
     IRBuilder<> irb( load );
     auto ph = llvm::cast< llvm::CallInst >( irb.CreateCall( fn, { load, ptr } ) );
-    add_abstract_metadata( ph, get_domain( load ) );
+    add_abstract_metadata( ph, Domain::get( load ) );
     meta::make_duals( load, ph );
 
     load->replaceAllUsesWith( ph );

@@ -34,12 +34,23 @@ struct Domain : DomainData {
     inline std::string name() const noexcept { return std::get< std::string >( *this ); }
 
     inline auto meta( llvm::LLVMContext & ctx ) const noexcept {
-        return meta::value::create( ctx, name() );
+        return meta::create( ctx, name() );
     }
 
-    static Domain Concrete() { return Domain( "concrete" ); }
-    static Domain Tristate() { return Domain( "tristate" ); }
-    static Domain Unknown() { return Domain( "unknown" ); }
+    static inline Domain Concrete() { return Domain( "concrete" ); }
+    static inline Domain Tristate() { return Domain( "tristate" ); }
+    static inline Domain Unknown() { return Domain( "unknown" ); }
+
+    static Domain get( llvm::Value * val ) noexcept {
+        if ( auto str = meta::abstract::get( val ) ) {
+            return Domain{ str.value() };
+        }
+        return Domain::Concrete();
+    }
+
+    static void set( llvm::Value * val, Domain dom ) {
+        meta::abstract::set( val, dom.name() );
+    }
 };
 
 
@@ -88,45 +99,14 @@ struct CreateAbstractMetadata {
 std::vector< ValueMetadata > abstract_metadata( llvm::Module &m );
 std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn );
 
-bool has_abstract_metadata( llvm::Value *val );
-bool has_abstract_metadata( llvm::Argument *arg );
-bool has_abstract_metadata( llvm::Instruction *inst );
-
-llvm::MDNode * get_abstract_metadata( llvm::Instruction *inst );
-
 void add_abstract_metadata( llvm::Instruction *inst, Domain dom );
-
-inline Domain get_domain( llvm::Argument *arg ) {
-    if ( meta::argument::has( arg ) ) {
-        return Domain( meta::argument::get( arg ).value() );
-    }
-
-    return Domain::Concrete();
-}
-
-inline Domain get_domain( llvm::Instruction *inst ) {
-    return ValueMetadata( inst ).domain();
-}
-
-inline Domain get_domain( llvm::Value *val ) {
-    if ( llvm::isa< llvm::Constant >( val ) )
-        return Domain::Concrete();
-    else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-        return get_domain( arg );
-    else
-        return get_domain( llvm::cast< llvm::Instruction >( val ) );
-}
-
-inline void set_domain( llvm::Value * /*val*/, Domain /*dom*/ ) {
-    UNREACHABLE( "Not implemented" );
-}
 
 inline bool is_concrete( Domain dom ) {
     return dom == Domain::Concrete();
 }
 
 inline bool is_concrete( llvm::Value *val ) {
-    return is_concrete( get_domain( val ) );
+    return is_concrete( Domain::get( val ) );
 }
 
 bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom );

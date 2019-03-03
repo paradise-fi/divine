@@ -31,7 +31,7 @@ auto functions_with_prefix( Module &m, StringRef pref ) noexcept {
           .filter( [pref] ( auto fn ) { return fn->getName().startswith( pref ); } );
 }
 
-Domain domain( llvm::MDNode * node ) { return Domain{ meta::value::get( node ) }; }
+Domain domain( llvm::MDNode * node ) { return Domain{ meta::value( node ).value() }; }
 
 } // anonymous namespace
 
@@ -134,14 +134,11 @@ llvm::Value* ValueMetadata::value() const noexcept {
 
 Domain ValueMetadata::domain() const noexcept {
     auto inst = cast< Instruction >( value() );
-    if ( !has_abstract_metadata( inst ) )
-        return Domain::Concrete();
-    auto md = get_abstract_metadata( inst );
-    return ::lart::abstract::domain( md );
+    return Domain::get( inst );
 }
 
 llvm::MDTuple * concrete_domain_tuple( llvm::LLVMContext &ctx, unsigned size ) {
-    auto value = [&] { return meta::value::create( ctx, Domain::Concrete().name() ); };
+    auto value = [&] { return meta::create( ctx, Domain::Concrete().name() ); };
     return meta::tuple::create( ctx, size, value );
 }
 
@@ -158,7 +155,7 @@ std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
         auto abstract = query::query( *fn ).flatten()
             .map( query::refToPtr )
             .filter( [] ( const auto& inst ) {
-                return has_abstract_metadata( inst );
+                return meta::abstract::has( inst );
             } )
             .freeze();
         std::move( abstract.begin(), abstract.end(), std::back_inserter( mds ) );
@@ -166,25 +163,8 @@ std::vector< ValueMetadata > abstract_metadata( llvm::Function *fn ) {
     return mds;
 }
 
-bool has_abstract_metadata( llvm::Value *val ) {
-    if ( llvm::isa< llvm::Constant >( val ) )
-        return false;
-    else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-        return has_abstract_metadata( arg );
-    else
-        return has_abstract_metadata( llvm::cast< llvm::Instruction >( val ) );
-}
-
-bool has_abstract_metadata( llvm::Argument *arg ) {
-    return meta::argument::has( arg );
-}
-
-bool has_abstract_metadata( llvm::Instruction *inst ) {
-    return inst->getMetadata( meta::tag::domains );
-}
-
 MDNode * get_abstract_metadata( llvm::Instruction *inst ) {
-    ASSERT( has_abstract_metadata( inst ) );
+    ASSERT( meta::abstract::has( inst ) );
     return cast< MDNode >( inst->getMetadata( meta::tag::domains ) );
 }
 
@@ -198,12 +178,12 @@ void add_abstract_metadata( llvm::Instruction *inst, Domain dom ) {
 
 inline bool accessing_abstract_offset( GetElementPtrInst * gep ) {
     return std::any_of( gep->idx_begin(), gep->idx_end(), [] ( const auto & idx ) {
-        return has_abstract_metadata( idx );
+        return meta::abstract::has( idx );
     } );
 }
 
 inline bool allocating_abstract_size( AllocaInst * a ) {
-    return has_abstract_metadata( a->getArraySize() );
+    return meta::abstract::has( a->getArraySize() );
 }
 
 bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom ) {
@@ -242,7 +222,7 @@ bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
 }
 
 bool is_duplicable( Instruction *inst ) {
-    return is_duplicable_in_domain( inst, get_domain( inst ) );
+    return is_duplicable_in_domain( inst, Domain::get( inst ) );
 }
 
 bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
@@ -263,7 +243,7 @@ bool is_duplicable_in_domain( Instruction *inst, Domain dom ) {
 }
 
 bool is_transformable( Instruction *inst ) {
-    return is_transformable_in_domain( inst, get_domain( inst ) );
+    return is_transformable_in_domain( inst, Domain::get( inst ) );
 }
 
 bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
@@ -292,7 +272,7 @@ bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {
 }
 
 bool is_base_type( llvm::Module *m, llvm::Value * val ) {
-    return is_base_type_in_domain( m, val, get_domain( val ) );
+    return is_base_type_in_domain( m, val, Domain::get( val ) );
 }
 
 bool is_base_type_in_domain( llvm::Module *m, llvm::Value * val, Domain dom ) {

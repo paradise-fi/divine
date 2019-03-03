@@ -60,7 +60,7 @@ void Stash::run( Module &m ) {
 }
 
 void Stash::process_return_value( CallInst *call, Function * fn ) {
-    auto dom = get_domain( call );
+    auto dom = Domain::get( call );
     if ( auto terminator = returns_abstract_value( call, fn ) ) {
         auto ret = cast< ReturnInst >( terminator );
         auto val = ret->getReturnValue();
@@ -97,7 +97,7 @@ void Stash::process_arguments( CallInst *call ) {
         if ( isa< Constant >( op ) )
             continue;
 
-        auto dom = get_domain( op );
+        auto dom = Domain::get( op );
         if ( is_concrete( dom ) )
             continue;
 
@@ -143,7 +143,7 @@ void Unstash::process_arguments( CallInst *call, Function * fn ) {
         auto op = call->getArgOperand( idx );
         auto ty = op->getType();
 
-        auto dom = get_domain( &arg );
+        auto dom = Domain::get( &arg );
         if ( is_concrete( dom ) )
             continue;
 
@@ -158,7 +158,7 @@ void Unstash::process_arguments( CallInst *call, Function * fn ) {
 }
 
 void Unstash::process_return_value( CallInst *call ) {
-    auto dom = get_domain( call );
+    auto dom = Domain::get( call );
 
     Values terminators;
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {

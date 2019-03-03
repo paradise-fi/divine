@@ -42,6 +42,47 @@ namespace lart::abstract::meta {
         constexpr char dual[] = "lart.dual";
     } // namespace tag
 
+    using MetaVal = std::optional< std::string >;
+
+    /* creates metadata node from given string */
+    llvm::MDNode * create( llvm::LLVMContext & ctx, const std::string & str ) noexcept;
+
+    /* Gets stored metadata string from position 'idx' from metadata node */
+    MetaVal value( llvm::MDNode * node, unsigned idx = 0 ) noexcept;
+
+    /* Metadata are stored as map, where tag points to metadata tuple */
+
+    /* checks whether values has metadata for given tag */
+    bool has( llvm::Value * val, const std::string & tag ) noexcept;
+    bool has( llvm::Argument * arg, const std::string & tag ) noexcept;
+    bool has( llvm::Instruction * inst, const std::string & tag ) noexcept;
+
+    /* gets metadata string from value for given meta tag */
+    MetaVal get( llvm::Value * val, const std::string & tag ) noexcept;
+    MetaVal get( llvm::Argument * arg, const std::string & tag ) noexcept;
+    MetaVal get( llvm::Instruction * inst, const std::string & tag ) noexcept;
+
+    /* sets metadata with tag to value */
+    void set( llvm::Value * val, const std::string & tag, const std::string & meta ) noexcept;
+    void set( llvm::Argument * arg, const std::string & tag, const std::string & meta ) noexcept;
+    void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept;
+
+    namespace abstract
+    {
+        /* works with metadata with tag meta::tag::domains */
+
+        bool has( llvm::Value * val ) noexcept;
+        bool has( llvm::Argument * arg ) noexcept;
+        bool has( llvm::Instruction * inst ) noexcept;
+
+        MetaVal get( llvm::Value * val ) noexcept;
+        MetaVal get( llvm::Argument * arg ) noexcept;
+        MetaVal get( llvm::Instruction * inst ) noexcept;
+
+        void set( llvm::Value * val, const std::string & meta ) noexcept;
+        void set( llvm::Argument * arg, const std::string & meta ) noexcept;
+        void set( llvm::Instruction * inst, const std::string & meta ) noexcept;
+    }
 
     namespace tuple
     {
@@ -53,7 +94,7 @@ namespace lart::abstract::meta {
         }
 
         template< typename Init >
-        static llvm::MDTuple * create( llvm::LLVMContext &ctx, unsigned size, Init init ) {
+        static llvm::MDTuple * create( llvm::LLVMContext & ctx, unsigned size, Init init ) {
             std::vector< llvm::Metadata* > values( size );
             std::generate( values.begin(), values.end(), init );
             return llvm::MDTuple::get( ctx, values );
@@ -63,20 +104,6 @@ namespace lart::abstract::meta {
             return llvm::MDTuple::get( ctx, {} );
         }
     };
-
-
-    namespace value
-    {
-        static std::string get( llvm::MDNode * node, unsigned idx = 0 ) {
-            auto & op = node->getOperand( idx );
-            auto & str = llvm::cast< llvm::MDNode >( op )->getOperand( 0 );
-            return llvm::cast< llvm::MDString >( str )->getString().str();
-        }
-
-        static llvm::MDNode * create( llvm::LLVMContext &ctx, const std::string & str ) {
-            return llvm::MDNode::get( ctx, llvm::MDString::get( ctx, str ) );
-        }
-    } // namespace value
 
 
     namespace function
@@ -92,7 +119,7 @@ namespace lart::abstract::meta {
         void set( llvm::Argument * arg, const std::string & str ) noexcept;
         void set( llvm::Argument * arg, llvm::MDNode * node ) noexcept;
 
-        auto get( llvm::Argument * arg ) noexcept -> std::optional<std::string>;
+        MetaVal get( llvm::Argument * arg ) noexcept;
 
         bool has( llvm::Argument * arg ) noexcept;
     } // namespace argument
