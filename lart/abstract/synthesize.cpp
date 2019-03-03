@@ -105,6 +105,17 @@ namespace lart::abstract
                 vals.push_back( args[ 3 ].value ); // assumed constraint value
             }
 
+            if constexpr ( Taint::store( T ) )
+            {
+                vals.push_back( args[ 0 ].value ); // value
+                vals.push_back( args[ 1 ].value ); // addr
+            }
+
+            if constexpr ( Taint::load( T ) )
+            {
+                UNREACHABLE( "Not implemented" );
+            }
+
             if constexpr ( Taint::thaw( T ) )
             {
                 auto addr = irb.CreateBitCast( args[ 1 ].value, i8ptr() );

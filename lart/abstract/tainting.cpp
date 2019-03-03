@@ -41,7 +41,7 @@ namespace lart::abstract
 
         llvm::Type * return_type() const
         {
-            if constexpr ( Taint::freeze( T ) ) {
+            if constexpr ( Taint::freeze( T ) || Taint::store( T ) ) {
                 return default_value()->getType();
             }
 
@@ -113,6 +113,13 @@ namespace lart::abstract
                 auto constraint = tobool->getOperand( 2 );
                 return { concrete, abstract, constraint, res };
             }
+
+            if constexpr ( Taint::store( T ) ) {
+                auto s = llvm::cast< llvm::StoreInst >( dual( inst() ) );
+                auto val = s->getValueOperand();
+                auto concrete = s->getPointerOperand();
+                auto abstract = dual( concrete );
+                return { val, concrete, abstract };
             }
 
             if constexpr ( Taint::thaw( T ) ) {

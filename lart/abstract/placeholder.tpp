@@ -218,7 +218,10 @@ namespace lart::abstract
             }
 
             if ( meta.content() ) {
-
+                if ( is_base_type_in_domain( m, store->getValueOperand(), dom ) )
+                    return construct< Type::Freeze >( store );
+                else
+                    return construct< Type::Store >( store );
             }
         }
 
