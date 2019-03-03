@@ -19,19 +19,12 @@ namespace lart::abstract {
     };
 
 
-    struct FreezeStores {
-        void run( llvm::Module& );
-        void process( llvm::StoreInst* );
-    };
-
-
     struct Synthesize {
         void run( llvm::Module& );
         void process( llvm::CallInst* );
     };
 
-    using SubstitutionPass =
-        ChainedPass< Concretization, FreezeStores, Tainting, Synthesize >;
+    using SubstitutionPass = ChainedPass< Concretization, Tainting, Synthesize >;
 
 } // namespace lart::abstract
 

@@ -1005,51 +1005,6 @@ Value* Tainting::process( Instruction *placeholder ) {
     UNREACHABLE( "Unknown placeholder", placeholder );
 }
 
-// ---------------------------- FreezeStores ---------------------------
-
-void FreezeStores::run( Module &m ) {
-    auto stores = query::query( m )
-        .filter( [] ( auto &fn ) { return meta::abstract::roots( &fn ); } )
-        .flatten().flatten()
-        .map( query::refToPtr )
-        .filter( query::llvmdyncast< StoreInst > )
-        .filter( query::notnull )
-        .filter( [] ( auto store ) { return meta::has( store, meta::tag::domains ); } )
-        .filter( [&] ( auto store ) {
-            return  is_base_type_in_domain( &m, store->getOperand( 0 ), Domain::get( store ) );
-        } )
-        .freeze();
-
-    for ( auto s : stores ) {
-        process( cast< StoreInst >( s ) );
-    }
-}
-
-void FreezeStores::process( StoreInst *store ) {
-    auto m = get_module( store );
-    auto & ctx = m->getContext();
-
-    auto meta = DomainMetadata::get( m, Domain::get( store ) );
-    auto dom = meta.domain();
-
-    auto name = "__" + dom.name() + "_freeze";
-    if ( auto fn = m->getFunction( name ) ) {
-        IRBuilder<> irb( store );
-
-        auto val = store->getValueOperand();
-        auto ptr = store->getPointerOperand();
-        auto bcst = irb.CreateBitCast( ptr, Type::getInt8PtrTy( ctx ) );
-
-        auto abstract = has_placeholder_in_domain( val, dom )
-                      ? get_placeholder_in_domain( val, dom )
-                      : meta.default_value();
-
-        irb.CreateCall( fn, {abstract, bcst} );
-    } else {
-        throw std::runtime_error( "missing function in domain: " + name );
-    }
-}
-
 // ---------------------------- Synthesize ---------------------------
 
 void Synthesize::run( Module &m ) {
