@@ -10,9 +10,11 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/util.h>
 #include <lart/support/util.h>
 
+#include <brick-types>
+
 namespace lart::abstract {
 
-    struct Placeholder
+    struct Placeholder : brick::types::Ord
     {
         enum class Type {
             PHI,
@@ -69,6 +71,21 @@ namespace lart::abstract {
                 .freeze();
         }
 
+        auto as_tuple() const noexcept
+        {
+            return std::tuple( inst, level, type );
+        }
+
+        bool operator==( const Placeholder & other ) const
+        {
+            return this->as_tuple() == other.as_tuple();
+        }
+
+        bool operator<( const Placeholder & other ) const
+        {
+            return this->as_tuple() < other.as_tuple();
+        }
+
         friend std::ostream& operator<<( std::ostream & os, const Placeholder & ph )
         {
             auto fn = llvm::cast< llvm::CallInst >( ph.inst )->getCalledFunction();
@@ -83,9 +100,16 @@ namespace lart::abstract {
         Type type;
     };
 
+    struct Empty {};
+
+    struct ConcretizationBuilder
+    {
+        std::map< Placeholder, Placeholder > concretized;
+    };
 
     template< Placeholder::Level Level >
     struct PlaceholderBuilder
+        : std::conditional_t< Level == Placeholder::Level::Concrete, ConcretizationBuilder, Empty >
     {
         using Type = Placeholder::Type;
 
@@ -97,6 +121,7 @@ namespace lart::abstract {
 
         Placeholder construct( llvm::Instruction * inst ) const
         {
+            static_assert( Level == Placeholder::Level::Abstract );
 
             auto m = inst->getModule();
             auto dom = Domain::get( inst );
@@ -165,17 +190,104 @@ namespace lart::abstract {
             UNREACHABLE( "Unsupported placeholder type" );
         }
 
+        Placeholder concretize( const Placeholder & ph )
+        {
+            static_assert( Level == Placeholder::Level::Concrete );
+            assert( ph.level == Placeholder::Level::Abstract );
+
+            switch ( ph.type )
+            {
+                case Type::PHI:
+                    return concretize< Type::PHI >( ph );
+                case Type::Thaw:
+                    return concretize< Type::Thaw >( ph );
+                case Type::Freeze:
+                    return concretize< Type::Freeze >( ph );
+                case Type::Stash:
+                    return concretize< Type::Stash >( ph );
+                case Type::Unstash:
+                    return concretize< Type::Unstash >( ph );
+                case Type::ToBool:
+                    return concretize< Type::ToBool >( ph );
+                case Type::Assume:
+                    return concretize< Type::Assume >( ph );
+                case Type::Store:
+                    return concretize< Type::Store >( ph );
+                case Type::Load:
+                    return concretize< Type::Load >( ph );
+                case Type::Cmp:
+                    return concretize< Type::Cmp >( ph );
+                case Type::Cast:
+                    return concretize< Type::Cast >( ph );
+                case Type::Binary:
+                    return concretize< Type::Binary >( ph );
+                case Type::Lift:
+                    return concretize< Type::Lift >( ph );
+                case Type::Lower:
+                    return concretize< Type::Lower >( ph );
+                case Type::Call:
+                    return concretize< Type::Call >( ph );
+                default:
+                    UNREACHABLE( "Unsupported placeholder type" );
+            }
+        }
+
+        template< Placeholder::Type T >
+        Placeholder concretize( const Placeholder & ph )
+        {
+            static_assert( Level == Placeholder::Level::Concrete );
+            assert( ph.level == Placeholder::Level::Abstract );
+
+            llvm::IRBuilder<> irb{ ph.inst };
+            auto op = ph.inst->getOperand( 0 );
+
+
+            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( op ) )
+                if ( Placeholder::is( inst ) )
+                    op = this->concretized.at( Placeholder{ inst } ).inst;
+
+            auto conc = construct< T >( op, irb );
+
+            if constexpr ( T != Type::Assume && T != Type::ToBool ) {
+                if ( auto inst = llvm::dyn_cast< llvm::Instruction >( op ) ) {
+                        meta::make_duals( inst, conc.inst );
+                }
+            }
+
+            if constexpr ( T == Type::ToBool || T == Type::Lower ) {
+                for ( auto & u : ph.inst->uses() ) {
+                    if ( auto inst = llvm::dyn_cast< llvm::Instruction >( u.getUser() ) )
+                        if ( !Placeholder::is( inst ) )
+                            u.set( conc.inst );
+                }
+            }
+
+            this->concretized.emplace( ph, conc );
+
+            return conc;
+        }
+
         template< Placeholder::Type T >
         llvm::Type * output( llvm::Value * val ) const
         {
             auto m = util::get_module( val );
             auto dom = Domain::get( val );
 
-            if constexpr ( T == Type::ToBool )
-            {
+            if constexpr ( T == Type::ToBool ) {
                 return llvm::Type::getInt1Ty( ctx );
             } else {
-                return val->getType();
+                if ( is_base_type_in_domain( m, val, dom ) ) { // TODO make domain + op specific
+                    if constexpr ( Level == Placeholder::Level::Abstract ) {
+                        return abstract_type( val->getType(), dom );
+                    }
+                    if constexpr ( Level == Placeholder::Level::Concrete ) {
+                        return DomainMetadata::get( m, dom ).base_type();
+                    }
+                } else {
+                    return val->getType();
+                }
+
+                UNREACHABLE( "Unsupported abstraction level" );
             }
 
         }
@@ -189,6 +301,10 @@ namespace lart::abstract {
         template< Placeholder::Type T >
         std::string name( llvm::Value * val ) const
         {
+            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+                if ( Placeholder::is( inst ) )
+                    return name< T >( inst->getOperand( 0 ) );
+
             std::string suffix = Placeholder::TypeTable[ T ];
 
             if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
@@ -198,13 +314,17 @@ namespace lart::abstract {
             }
 
             if constexpr ( Level == Placeholder::Level::Abstract ) {
-                if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) )
-                    return prefix + aggr->getName().str();
-                else
-                    return prefix + llvm_name( val->getType() );
-            } else {
-                UNREACHABLE( "Unsupported abstraction level" );
+                std::string infix = ".abstract.";
+                return prefix + infix + suffix;
             }
+
+            if constexpr ( Level == Placeholder::Level::Concrete ) {
+                auto dom = Domain::get( val );
+                std::string infix = "." + dom.name() + ".";
+                return prefix + infix + suffix;
+            }
+
+            UNREACHABLE( "Unsupported abstraction level" );
         }
 
 
@@ -224,6 +344,7 @@ namespace lart::abstract {
         template< Placeholder::Type T >
         Placeholder construct( llvm::Instruction * inst ) const
         {
+            static_assert( Level == Placeholder::Level::Abstract );
             assert( !llvm::isa< llvm::ReturnInst >( inst ) );
 
             llvm::IRBuilder<> irb{ ctx };
@@ -248,6 +369,7 @@ namespace lart::abstract {
         template< Placeholder::Type T >
         Placeholder construct( llvm::ReturnInst * ret )
         {
+            static_assert( Level == Placeholder::Level::Abstract );
             static_assert( T == Type::Stash );
             llvm::IRBuilder<> irb{ ret };
             Placeholder ph = construct< T >( stash_value( ret ), irb );
@@ -259,6 +381,7 @@ namespace lart::abstract {
         template< Placeholder::Type T >
         Placeholder construct( llvm::Argument * arg )
         {
+            static_assert( Level == Placeholder::Level::Abstract );
             static_assert( T == Type::Stash || T == Type::Unstash );
             auto & entry = arg->getParent()->getEntryBlock();
             llvm::IRBuilder<> irb{ &entry, entry.getFirstInsertionPt() };
@@ -268,6 +391,7 @@ namespace lart::abstract {
     private:
         llvm::Value * stash_value( llvm::ReturnInst * ret ) const noexcept
         {
+            static_assert( Level == Placeholder::Level::Abstract );
             auto val = ret->getReturnValue();
             if ( has_placeholder( val ) )
                 return get_placeholder( val );
@@ -300,6 +424,12 @@ namespace lart::abstract {
     auto placeholders( llvm::Module & m ) noexcept
     {
         return placeholders( m, [] ( const auto & ph ) { return ph.type == T; } );
+    }
+
+    template< Placeholder::Level L >
+    auto placeholders( llvm::Module & m ) noexcept
+    {
+        return placeholders( m, [] ( const auto & ph ) { return ph.level == L; } );
     }
 
     using APlaceholderBuilder = PlaceholderBuilder< Placeholder::Level::Abstract >;
