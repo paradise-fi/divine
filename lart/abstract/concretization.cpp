@@ -9,11 +9,11 @@ namespace lart::abstract
     template< Placeholder::Type T, typename Builder >
     void concretize( llvm::Module & m, Builder & builder ) {
         for ( const auto & ph : placeholders< T >( m ) )
-            builder.template concretize< T >( ph );
+            builder.concretize( ph );
     }
 
     void Concretization::run( llvm::Module & m ) {
-        CPlaceholderBuilder builder{ m.getContext() };
+        CPlaceholderBuilder builder;
 
         auto filter = [] ( const auto & ph ) {
             return ph.type != Placeholder::Type::Assume &&

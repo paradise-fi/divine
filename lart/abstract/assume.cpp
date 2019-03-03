@@ -61,7 +61,7 @@ namespace {
 
             llvm::IRBuilder<> irb( &*edgebb->getFirstInsertionPt() );
 
-            APlaceholderBuilder builder{ cond->getContext() };
+            APlaceholderBuilder builder;
 
             auto ph = builder.construct< Placeholder::Type::Assume >( cond, irb );
             meta::abstract::inherit( ph.inst, cond );

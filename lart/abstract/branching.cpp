@@ -13,7 +13,7 @@ void LowerToBool::run( llvm::Module & m ) {
         } );
     };
 
-    APlaceholderBuilder builder{ m.getContext() };
+    APlaceholderBuilder builder;
     for ( const auto & ph : placeholders( m ) ) {
         auto op = ph.inst->getOperand( 0 );
         if ( conditional( op ) ) {

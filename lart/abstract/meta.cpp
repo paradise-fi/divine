@@ -208,6 +208,10 @@ namespace lart::abstract::meta {
         set_value_as_meta( b, meta::tag::dual, a );
     }
 
+    bool has_dual( llvm::Instruction * inst ) {
+        return inst->getMetadata( meta::tag::dual );
+    }
+
     llvm::Value * get_dual( llvm::Instruction *inst ) {
         return get_value_from_meta( inst, meta::tag::dual );
     }

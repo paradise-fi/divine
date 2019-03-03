@@ -151,7 +151,8 @@ namespace lart::abstract::meta {
 
 
     void make_duals( llvm::Instruction * a, llvm::Instruction * b );
-    llvm::Value * get_dual( llvm::Instruction *inst );
+    bool has_dual( llvm::Instruction * inst );
+    llvm::Value * get_dual( llvm::Instruction * inst );
 
     template< typename T >
     auto enumerate( T & llvm ) noexcept -> std::vector< llvm::Instruction * >
