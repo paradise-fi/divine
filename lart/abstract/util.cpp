@@ -103,7 +103,7 @@ namespace lart::abstract
             .freeze();
 
         auto unreachable = query::query( rets ).all( [] ( auto v ) {
-                return llvm::isa< llvm::UnreachableInst >( v );
+            return llvm::isa< llvm::UnreachableInst >( v );
         } );
 
         if ( unreachable )
@@ -116,10 +116,17 @@ namespace lart::abstract
 
         ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
 
-        if ( meta::has( return_insts[ 0 ], meta::tag::domains ) || meta::has( fn, meta::tag::abstract ) )
-            return return_insts[ 0 ];
-        else
-            return nullptr;
+        auto ret = return_insts[ 0 ];
+        if ( meta::abstract::has( ret ) ) {
+            auto dom = Domain::get( ret );
+            if ( is_base_type_in_domain( fn->getParent(), ret->getReturnValue(), dom ) )
+                return ret;
+        }
+
+        if ( meta::has( fn, meta::tag::abstract ) )
+            return ret;
+
+        return nullptr;
     }
 
 } // namespace lart::abstract

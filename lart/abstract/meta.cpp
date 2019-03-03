@@ -239,11 +239,13 @@ namespace lart::abstract::meta {
     }
 
     void make_duals( llvm::Argument * arg, llvm::Instruction * inst ) {
+        ASSERT( arg->getParent() == inst->getFunction() );
         set_value_as_meta( arg, inst );
         set_value_as_meta( inst, meta::tag::dual, arg );
     }
 
     void make_duals( llvm::Instruction * a, llvm::Instruction * b ) {
+        ASSERT( a->getFunction() == b->getFunction() );
         set_value_as_meta( a, meta::tag::dual, b );
         set_value_as_meta( b, meta::tag::dual, a );
     }
