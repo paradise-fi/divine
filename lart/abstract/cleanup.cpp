@@ -24,7 +24,7 @@ void Cleanup::run( llvm::Module &m ) {
     }
 
     for ( auto &fn : m ) {
-        if ( fn.getMetadata( meta::tag::roots ) ) {
+        if ( meta::abstract::roots( &fn ) ) {
             auto domains = query::query( meta::enumerate( fn ) )
                 .map( Domain::get )
                 .freeze();

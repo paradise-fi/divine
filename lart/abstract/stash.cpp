@@ -50,7 +50,7 @@ void Stash::run( Module &m ) {
             process_arguments( call );
 
             run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                if ( !fn->getMetadata( meta::tag::abstract ) )
+                if ( !meta::has( fn, meta::tag::abstract ) )
                     if ( !stashed.count( fn ) )
                         process_return_value( call, fn );
                 stashed.insert( fn );
@@ -123,7 +123,7 @@ void Unstash::run( Module &m ) {
     run_on_abstract_calls( [&] ( auto call ) {
         if ( !is_transformable( call ) ) {
             run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                if ( !fn->getMetadata( meta::tag::abstract ) )
+                if ( !meta::has( fn, meta::tag::abstract ) )
                     if ( !unstashed.count( fn ) )
                         process_arguments( call, fn );
                 unstashed.insert( fn );

@@ -12,7 +12,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract::meta {
     namespace tag {
-        constexpr char abstract[] = "lart.abstract";
+        constexpr char abstract[] = "lart.abstract"; // TODO chenge to return
         constexpr char roots[] = "lart.abstract.roots";
 
         constexpr char function[] = "lart.abstract.function";
@@ -56,20 +56,28 @@ namespace lart::abstract::meta {
 
     /* Metadata are stored as map, where tag points to metadata tuple */
 
-    /* checks whether values has metadata for given tag */
-    bool has( llvm::Value * val, const std::string & tag ) noexcept;
-    bool has( llvm::Argument * arg, const std::string & tag ) noexcept;
-    bool has( llvm::Instruction * inst, const std::string & tag ) noexcept;
-
     /* gets metadata string from value for given meta tag */
     MetaVal get( llvm::Value * val, const std::string & tag ) noexcept;
     MetaVal get( llvm::Argument * arg, const std::string & tag ) noexcept;
     MetaVal get( llvm::Instruction * inst, const std::string & tag ) noexcept;
+    MetaVal get( llvm::Function * fn, const std::string & tag ) noexcept;
+    MetaVal get( llvm::GlobalVariable * glob, const std::string & tag ) noexcept;
+
+    llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag );
+
+    /* checks whether values has metadata for given tag */
+    template< typename T >
+    bool has( T * val, const std::string & tag ) noexcept {
+        return meta::get( val, tag ).has_value();
+    }
 
     /* sets metadata with tag to value */
     void set( llvm::Value * val, const std::string & tag, const std::string & meta ) noexcept;
     void set( llvm::Argument * arg, const std::string & tag, const std::string & meta ) noexcept;
     void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept;
+    void set( llvm::Function * fn, const std::string & tag, const std::string & meta ) noexcept;
+
+    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val );
 
     namespace tuple
     {
@@ -97,15 +105,15 @@ namespace lart::abstract::meta {
         constexpr auto * tag = meta::tag::domains;
 
         /* checks whether function has meta::tag::roots */
-        bool has( llvm::Function * fn ) noexcept;
+        bool roots( llvm::Function * fn );
 
         /* works with metadata with tag meta::tag::domains */
 
         template< typename T >
-        bool has( T val ) noexcept { return meta::has( val, abstract::tag ); }
+        bool has( T * val ) noexcept { return meta::has( val, abstract::tag ); }
 
         template< typename T >
-        MetaVal get( T val ) noexcept { return meta::get( val, abstract::tag ); }
+        MetaVal get( T * val ) noexcept { return meta::get( val, abstract::tag ); }
 
         template< typename T >
         void set( T * value, const std::string & meta ) noexcept {
@@ -127,7 +135,6 @@ namespace lart::abstract::meta {
         bool is_forbidden( llvm::Function * fn ) noexcept;
     } // namespace function
 
-
     namespace argument
     {
         void set( llvm::Argument * arg, const std::string & str ) noexcept;
@@ -137,6 +144,7 @@ namespace lart::abstract::meta {
 
         bool has( llvm::Argument * arg ) noexcept;
     } // namespace argument
+
 
     void make_duals( llvm::Instruction * a, llvm::Instruction * b );
     llvm::Value * get_dual( llvm::Instruction *inst );
@@ -149,12 +157,12 @@ namespace lart::abstract::meta {
             return query::query( llvm ).map( enumerate ).flatten().freeze();
         } else {
             static_assert( std::is_same_v< T, llvm::Function > );
-            if ( !meta::abstract::has( &llvm ) )
+            if ( !meta::abstract::roots( &llvm ) )
                 return {};
 
             return query::query( llvm ).flatten()
                 .map( query::refToPtr )
-                .filter( meta::abstract::has< llvm::Value * > )
+                .filter( meta::abstract::has< llvm::Value > )
                 .freeze();
         }
     }

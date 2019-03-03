@@ -114,7 +114,7 @@ inline llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Functi
 
     ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
 
-    if ( return_insts[ 0 ]->getMetadata( meta::tag::domains ) || fn->getMetadata( meta::tag::abstract ) )
+    if ( meta::has( return_insts[ 0 ], meta::tag::domains ) || meta::has( fn, meta::tag::abstract ) )
         return return_insts[ 0 ];
     else
         return nullptr;

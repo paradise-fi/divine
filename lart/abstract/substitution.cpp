@@ -25,13 +25,13 @@ using lart::util::get_or_insert_function;
 namespace {
 
 bool has_dual_in_domain( Instruction *inst, Domain dom ) {
-    return inst->getMetadata( "lart.dual." + dom.name() );
+    auto tag = std::string( meta::tag::dual ) + "." + dom.name();
+    return meta::has( inst, tag );
 }
 
-Instruction* get_dual_in_domain( Instruction *inst, Domain dom ) {
-    auto &dual = inst->getMetadata( "lart.dual." + dom.name() )->getOperand( 0 );
-    auto md = cast< ValueAsMetadata >( dual.get() );
-    return cast< Instruction >( md->getValue() );
+llvm::Instruction * get_dual_in_domain( Instruction *inst, Domain dom ) {
+    auto tag = std::string( meta::tag::dual ) + "." + dom.name();
+    return llvm::cast< llvm::Instruction >( meta::get_value_from_meta( inst, tag ) );
 }
 
 Function * get_function( CallInst * call ) {
@@ -110,7 +110,6 @@ bool is_placeholder_of_name( Instruction *inst, std::string name ) {
 bool is_thaw( Instruction *inst ) {
     return is_placeholder_of_name( inst, ".thaw." );
 }
-
 
 bool is_stash( Instruction *inst ) {
     return is_placeholder_of_name( inst, ".stash." );
@@ -829,7 +828,7 @@ Function * unstash_function( Value * val, Domain dom ) {
 
 void stash_arguments( CallInst *call ) {
     auto fn = get_some_called_function( call );
-    if ( fn->getMetadata( meta::tag::abstract ) )
+    if ( meta::has( fn, meta::tag::abstract ) )
         return; // skip internal lart functions
 
     IRBuilder<> irb( call );
@@ -854,7 +853,7 @@ void stash_arguments( CallInst *call ) {
 }
 
 Values unstash_arguments( CallInst *call, Function * fn ) {
-    if ( fn->getMetadata( meta::tag::abstract ) )
+    if ( meta::has( fn, meta::tag::abstract ) )
         return {}; // skip internal lart functions
 
     IRBuilder<> irb( &*fn->getEntryBlock().begin() );
@@ -881,7 +880,7 @@ Values unstash_arguments( CallInst *call, Function * fn ) {
 }
 
 void stash_return_value( CallInst *call, Function * fn ) {
-    if ( fn->getMetadata( meta::tag::abstract ) )
+    if ( meta::has( fn, meta::tag::abstract ) )
         return; // skip internal lart functions
 
     if ( auto terminator = returns_abstract_value( call, fn ) ) {
@@ -930,7 +929,7 @@ Value* unstash_return_value( CallInst *call ) {
 void stash_arguments_of_nonabstract_calls( Function * fn ) {
     for ( auto concrete : fn->users() )
         if ( auto cc = dyn_cast< CallInst >( concrete ) )
-            if ( !cc->getMetadata( meta::tag::domains ) )
+            if ( !meta::has( cc, meta::tag::domains ) )
                 stash_arguments( cc );
 }
 
@@ -1049,12 +1048,12 @@ Value* Tainting::process( Instruction *placeholder ) {
 
 void FreezeStores::run( Module &m ) {
     auto stores = query::query( m )
-        .filter( [] ( auto &fn ) { return fn.getMetadata( meta::tag::roots ); } )
+        .filter( [] ( auto &fn ) { return meta::abstract::roots( &fn ); } )
         .flatten().flatten()
         .map( query::refToPtr )
         .filter( query::llvmdyncast< StoreInst > )
         .filter( query::notnull )
-        .filter( [] ( auto store ) { return store->getMetadata( meta::tag::domains ); } )
+        .filter( [] ( auto store ) { return meta::has( store, meta::tag::domains ); } )
         .filter( [&] ( auto store ) {
             return  is_base_type_in_domain( &m, store->getOperand( 0 ), Domain::get( store ) );
         } )

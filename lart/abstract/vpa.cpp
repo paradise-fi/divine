@@ -309,12 +309,8 @@ void VPA::run( Module &m ) {
     };
 
     for ( auto &fn : m ) {
-        if ( auto md = fn.getMetadata( meta::tag::abstract ) ) {
-            // TODO use domain interface
-            auto &tup = cast< MDNode >( md )->getOperand( 0 );
-            auto &mdn = cast< MDNode >( tup )->getOperand( 0 );
-            auto dom = Domain( cast< MDString >( mdn )->getString().str() );
-
+        if ( auto meta = meta::abstract::get( &fn ) ) {
+            auto dom = Domain{ meta.value() };
             for ( auto u : fn.users() ) {
                 if ( auto ce = dyn_cast< ConstantExpr >( u ) ) {
                     process( lower_constant_expr_if_possible( ce ), dom );

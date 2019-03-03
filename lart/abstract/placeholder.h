@@ -47,12 +47,8 @@ namespace abstract {
         explicit Placeholder( llvm::Instruction * inst, Level level, Type type )
             : inst( inst ), level( level ), type( type )
         {
-            auto & ctx = inst->getContext();
-            auto tname = llvm::MDString::get( ctx, TypeTable[ type ] );
-            inst->setMetadata( meta::tag::placeholder::type, llvm::MDNode::get( ctx, tname ) );
-
-            auto lname = llvm::MDString::get( ctx, LevelTable[ level ] );
-            inst->setMetadata( meta::tag::placeholder::type, llvm::MDNode::get( ctx, lname ) );
+            meta::set( inst, meta::tag::placeholder::type, TypeTable[ type ] );
+            meta::set( inst, meta::tag::placeholder::type, LevelTable[ level ] );
         }
 
         explicit Placeholder( llvm::Instruction * inst )
@@ -91,7 +87,7 @@ namespace abstract {
 
             auto m = inst->getModule();
             auto dom = Domain::get( inst );
-            auto meta = domain_metadata( *m, dom );
+            auto meta = DomainMetadata::get( m, dom );
 
             if ( auto phi = llvm::dyn_cast< llvm::PHINode >( inst ) ) {
                 return construct< Type::PHI >( phi );

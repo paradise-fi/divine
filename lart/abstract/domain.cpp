@@ -28,8 +28,6 @@ using lart::util::get_module;
             brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( meta::tag::domain::name, m, yield );
         }
 
-        Domain domain( llvm::MDNode * node ) { return Domain{ meta::value( node ).value() }; }
-
         template< typename Value >
         void annotation_to_transform_metadata( StringRef anno_namespace, Module &m ) {
             auto &ctx = m.getContext();
@@ -70,10 +68,10 @@ using lart::util::get_module;
         annotation_to_transform_metadata< Function >( meta::tag::transform::prefix, m );
 
         for ( auto & fn : m ) {
-            if ( auto md = fn.getMetadata( meta::tag::abstract ) )
+            if ( auto meta = meta::get( &fn, meta::tag::abstract ) )
                 for ( auto user : fn.users() )
                     if ( auto call = dyn_cast< CallInst >( user ) )
-                        Domain::set( call, domain( md ) );
+                        Domain::set( call, Domain{ meta.value() } );
         }
     }
 
@@ -84,15 +82,13 @@ using lart::util::get_module;
     };
 
     Domain DomainMetadata::domain() const {
-        auto meta = glob->getMetadata( meta::tag::domain::name );
-        auto &tag = cast< MDNode >( meta->getOperand( 0 ) )->getOperand( 0 );
-        return Domain( cast< MDString >( tag )->getString().str() );
+        auto meta = meta::get( glob, meta::tag::domain::name );
+        return Domain{ meta.value() };
     }
 
     DomainKind DomainMetadata::kind() const {
-        auto meta = glob->getMetadata( meta::tag::domain::kind );
-        auto data = cast< MDTuple >( meta->getOperand( 0 ) );
-        return KindTable[ cast< MDString >( data->getOperand( 0 ) )->getString().str() ];
+        auto meta = meta::get( glob, meta::tag::domain::kind );
+        return KindTable[ meta.value() ];
     }
 
     Type * DomainMetadata::base_type() const {

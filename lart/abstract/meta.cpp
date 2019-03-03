@@ -24,24 +24,6 @@ namespace lart::abstract::meta {
             return query::query( m ).map( query::refToPtr ).filter( check );
         }
 
-
-
-        void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
-            auto &ctx = inst->getContext();
-            auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
-            inst->setMetadata( tag, meta );
-        }
-
-        llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
-            auto &meta = inst->getMetadata( tag )->getOperand( 0 );
-            return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
-        }
-
-        template< typename T >
-        bool has_impl( T * value, const std::string & tag ) noexcept {
-            return meta::get( value, tag).has_value();
-        }
-
     } // anonymous namespace
 
     void create_from_annotation( llvm::StringRef anno, llvm::Module & m ) noexcept {
@@ -62,6 +44,9 @@ namespace lart::abstract::meta {
     MetaVal value( llvm::MDNode * node, unsigned idx ) noexcept {
         if ( !node )
             return std::nullopt;
+        if ( !node->getNumOperands() )
+            return "";
+
         auto & op = node->getOperand( idx );
         auto & str = llvm::cast< llvm::MDNode >( op )->getOperand( 0 );
         auto res = llvm::cast< llvm::MDString >( str )->getString().str();
@@ -71,7 +56,11 @@ namespace lart::abstract::meta {
     }
 
     MetaVal get( llvm::Value * val, const std::string & tag ) noexcept {
-        if ( llvm::isa< llvm::Constant >( val ) )
+        if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
+            return meta::get( fn, tag );
+        else if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
+            return meta::get( glob, tag );
+        else if ( llvm::isa< llvm::Constant >( val ) )
             return std::nullopt;
         else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
             return meta::get( arg, tag );
@@ -81,8 +70,8 @@ namespace lart::abstract::meta {
             UNREACHABLE( "Unsupported value" );
     }
 
-    // TODO enable multiple metadata in argument
-    MetaVal get( llvm::Argument * arg, const std::string & /* tag */ ) noexcept {
+    MetaVal get( llvm::Argument * arg, const std::string & /*tag*/ ) noexcept {
+        // TODO enable multiple tags
         return meta::argument::get( arg );
     }
 
@@ -90,16 +79,17 @@ namespace lart::abstract::meta {
         return meta::value( inst->getMetadata( tag ) );
     }
 
-    bool has( llvm::Value *val, const std::string & tag ) noexcept {
-        return has_impl( val, tag );
+    MetaVal get( llvm::Function * fn, const std::string & tag ) noexcept {
+        return meta::value( fn->getMetadata( tag ) );
     }
 
-    bool has( llvm::Argument *arg, const std::string & tag ) noexcept {
-        return has_impl( arg, tag );
+    MetaVal get( llvm::GlobalVariable * glob, const std::string & tag ) noexcept {
+        return meta::value( glob->getMetadata( tag ) );
     }
 
-    bool has( llvm::Instruction *inst, const std::string & tag ) noexcept {
-        return has_impl( inst, tag );
+    llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
+        auto &meta = inst->getMetadata( tag )->getOperand( 0 );
+        return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
     }
 
     void set( llvm::Value * val, const std::string & tag, const std::string & meta ) noexcept {
@@ -107,6 +97,8 @@ namespace lart::abstract::meta {
             meta::set( arg, tag, meta );
         else if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
             meta::set( inst, tag, meta );
+        else if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
+            meta::set( fn, tag, meta );
         else
             UNREACHABLE( "Unsupported value" );
     }
@@ -116,16 +108,32 @@ namespace lart::abstract::meta {
         meta::argument::set( arg, meta );
     }
 
-    void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept {
+    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
         auto &ctx = inst->getContext();
+        auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
+        inst->setMetadata( tag, meta );
+    }
+
+
+    template< typename T >
+    void set_impl( T * val, const std::string & tag, const std::string & meta ) noexcept {
+        auto &ctx = val->getContext();
         auto data = meta::tuple::create( ctx, { meta::create( ctx, meta ) } );
-        inst->setMetadata( tag, data );
+        val->setMetadata( tag, data );
+    }
+
+    void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept {
+        set_impl( inst, tag, meta );
+    }
+
+    void set( llvm::Function * fn, const std::string & tag, const std::string & meta ) noexcept {
+        set_impl( fn, tag, meta );
     }
 
     namespace abstract
     {
-        bool has( llvm::Function * fn ) noexcept {
-            return fn->getMetadata( meta::tag::roots );
+        bool roots( llvm::Function * fn ) {
+            return meta::has( fn, meta::tag::roots );
         }
 
         void inherit( llvm::Value * dest, llvm::Value * src ) noexcept {
@@ -141,7 +149,7 @@ namespace lart::abstract::meta {
 
             auto & ctx = fn->getContext();
 
-            if ( !fn->getMetadata( meta::tag::function ) ) {
+            if ( !meta::has( fn, meta::tag::function ) ) {
                 auto value = [&] { return meta::create( ctx, "" ); };
                 auto data = meta::tuple::create( ctx, size, value );
                 fn->setMetadata( meta::tag::function, data );
@@ -149,20 +157,20 @@ namespace lart::abstract::meta {
         }
 
         void clear( llvm::Function * fn ) noexcept {
-            if ( fn->getMetadata( meta::tag::function ) )
+            if ( meta::has( fn, meta::tag::function ) )
                 fn->setMetadata( meta::tag::function, nullptr );
         }
 
         bool ignore_call( llvm::Function * fn ) noexcept {
-            return fn->getMetadata( tag::transform::ignore::arg );
+            return meta::has( fn, tag::transform::ignore::arg );
         }
 
         bool ignore_return( llvm::Function * fn ) noexcept {
-            return fn->getMetadata( tag::transform::ignore::ret );
+            return meta::has( fn, tag::transform::ignore::ret );
         }
 
         bool is_forbidden( llvm::Function * fn ) noexcept {
-            return fn->getMetadata( tag::transform::forbidden );
+            return meta::has( fn, tag::transform::forbidden );
         }
     } // namespace function
 
