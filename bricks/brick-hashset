@@ -57,7 +57,7 @@ namespace brick::hashset
     {
         using value_type = T;
         using Payload = std::pair< T, hash64_t >;
-        enum Store { Found, Stored, Failed };
+        enum Erase { Bury, Done, Mismatch };
 
         template< typename X >
         hash64_t hash( const X &x ) const
@@ -66,9 +66,15 @@ namespace brick::hashset
         }
 
         template< typename Cell, typename X >
-        bool match( Cell &cell, const X &t, hash64_t ) const
+        typename Cell::pointer match( Cell &cell, const X &t, hash64_t ) const
         {
-            return cell.fetch() == t;
+            return cell.fetch() == t ? cell.value() : nullptr;
+        }
+
+        template< typename Cell, typename X >
+        Erase erase( Cell &cell, const X &t ) const
+        {
+            return cell.fetch() == t ? Bury : Mismatch;
         }
     };
 
@@ -86,6 +92,8 @@ namespace brick::hashset
     struct CellBase
     {
         using value_type = T;
+        using reference = const T &;
+        using pointer = const T *;
         static constexpr bool can_tombstone() { return false; }
         bool tombstone() { return false; }
     };
@@ -99,6 +107,7 @@ namespace brick::hashset
         bool match( hash64_t h ) const { return _hash == h; }
         bool invalid() const { return false; }
         bool empty() const { return !_hash; }
+        const T *value() const { return &_value; }
         T &fetch() { return _value; }
         T copy() { return _value; }
 
@@ -115,6 +124,7 @@ namespace brick::hashset
         bool match( hash64_t ) const { return true; }
         bool empty() const { return !_value; } /* meh */
         bool invalid() const { return false; }
+        const T *value() const { return &_value; }
         T &fetch() { return _value; }
         T copy() { return _value; }
 
@@ -134,6 +144,7 @@ namespace brick::hashset
         bool invalid() const { return _hashlock == 3; }
         bool tombstone() const { return _hashlock == 2; }
 
+        const T *value() const { return &_value; }
         T &fetch() { return _value; }
         T copy() { return _value; }
 
@@ -210,6 +221,7 @@ namespace brick::hashset
     template< typename T, typename = void >
     struct Tagged
     {
+        using Type = Tagged< T >;
         struct Align { T a; uint16_t b; };
         using Tag = bitlevel::bitvec< 8 * ( sizeof( Align ) - sizeof( T ) ) >;
         struct Check { T a; Tag b; };
@@ -222,59 +234,66 @@ namespace brick::hashset
         static const int tag_bits = sizeof( Tag ) * 8;
 
         T &value() { return _value; }
+        const T &value() const { return _value; }
         void tag( Tag v ) { _tag = v; }
         Tag tag() { return _tag; }
         Tagged() noexcept : _value(), _tag( 0 ) {}
         explicit Tagged( const T &v ) : _value( v ), _tag( 0 ) {}
+        operator T() const { return _value; }
 
         friend std::ostream &operator<<( std::ostream &o, const Tagged< T > &v )
         {
             return o << "[" << v._value << " " << uint64_t( v._tag ) << "]";
         }
+
+        static T fetch( const std::atomic< Type > &t ) { return t.load().value(); }
+        static T fetch( const Type &t ) { return t; }
     };
 
     template< typename T >
-    struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
+    struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type > : T
     {
-        T _value;
-
-        static const int tag_bits = T::tag_bits;
-        T &value() { return _value; }
-        void tag( uint32_t value ) { _value.tag( value ); }
-        uint32_t tag() { return _value.tag(); }
-        Tagged() noexcept : _value() {}
-        explicit Tagged( const T &v ) : _value( v ) {}
+        using Type = T;
+        static T fetch( const std::atomic< T > &t ) { return t.load(); }
+        static T fetch( const T &t ) { return t; }
     };
 
     template< typename T >
     struct alignas( std::min( 16ul, sizeof( Tagged< T > ) ) ) AtomicCell : CellBase< T >
     {
-        std::atomic< Tagged< T > > value;
+        using tagged = Tagged< T >;
+        using bare_value = typename tagged::Type;
+        using atomic_value = std::atomic< bare_value >;
+        using pointer = const atomic_value *;
+        using reference = const atomic_value &;
 
-        static_assert( sizeof( std::atomic< Tagged< T > > ) == sizeof( Tagged< T > ),
+        atomic_value _value;
+
+        static_assert( sizeof( atomic_value ) == sizeof( bare_value ),
                        "std::atomic< Tagged< T > > must be lock-free" );
-        static_assert( Tagged< T >::tag_bits >= 2, "T has at least a two-bit tagspace" );
+        static_assert( bare_value::tag_bits >= 2, "T has at least a two-bit tagspace" );
 
         static constexpr bool can_tombstone() { return true; }
 
-        uint32_t status() { return value.load().tag() & 3u; }
-        static hash64_t hashbits( hash64_t in ) { return highbits( in, Tagged< T >::tag_bits - 2 ) << 2; }
+        uint32_t status() { return _value.load().tag() & 3u; }
+        static hash64_t hashbits( hash64_t in ) { return highbits( in, bare_value::tag_bits - 2 ) << 2; }
 
         bool empty() { return status() == 0; }
         bool invalid() { return status() == 1; }
         bool tombstone() { return status() == 2; }
 
-        T fetch() { return value.load().value(); }
-        T copy() { Tagged< T > v = value; v.tag( 0 ); return v.value(); }
+        pointer value() const { return &_value; }
+        T fetch() { return tagged::fetch( _value ); }
+        T copy() { bare_value v = _value; v.tag( 0 ); return tagged::fetch( v ); }
         bool wait() { return !invalid(); }
-        bool match( hash64_t hash ) const { return value.load().tag() == ( hashbits( hash ) | 3 ); }
+        bool match( hash64_t hash ) const { return _value.load().tag() == ( hashbits( hash ) | 3 ); }
 
         /* returns old cell value */
         AtomicCell invalidate()
         {
-            Tagged< T > expect = value, update = value;
+            bare_value expect = _value, update = _value;
             update.tag( 1 );
-            while ( !value.compare_exchange_weak( expect, update ) )
+            while ( !_value.compare_exchange_weak( expect, update ) )
             {
                 update = expect;
                 update.tag( 1 );
@@ -284,35 +303,35 @@ namespace brick::hashset
 
         bool bury()
         {
-            Tagged< T > expect = value, update;
+            bare_value expect = _value, update;
             if ( invalid() )
                 return false;
             update.tag( 2 );
-            return value.compare_exchange_strong( expect, update );
+            return _value.compare_exchange_strong( expect, update );
         }
 
         void store( T bn, hash64_t hash )
         {
-            Tagged< T > next( bn );
+            bare_value next( bn );
             next.tag( hashbits( hash ) | 3 );
-            value.store( next );
+            _value.store( next );
         }
 
         bool try_store( T b, hash64_t hash )
         {
-            Tagged< T > zero, tomb;
-            Tagged< T > next( b );
+            bare_value zero, tomb;
+            bare_value next( b );
             next.tag( hashbits( hash ) | 3 );
             tomb.tag( 2 );
-            auto rv = value.compare_exchange_strong( zero, next );
+            auto rv = _value.compare_exchange_strong( zero, next );
             if ( !rv )
-                rv = value.compare_exchange_strong( tomb, next );
+                rv = _value.compare_exchange_strong( tomb, next );
             return rv;
         }
 
-        AtomicCell() : value() {}
-        AtomicCell( const AtomicCell & ) : value() {}
-        explicit AtomicCell( Tagged< T > val ) : value( val ) {}
+        AtomicCell() : _value() {}
+        AtomicCell( const AtomicCell & ) : _value() {}
+        explicit AtomicCell( bare_value val ) : _value( val ) {}
     };
 
     template< typename Cell_ >
@@ -320,28 +339,22 @@ namespace brick::hashset
     {
         using Cell = Cell_;
         using value_type = typename Cell::value_type;
-
-        struct proxy
-        {
-            value_type v;
-            value_type *operator->() { return &v; }
-        };
+        using pointer = typename Cell::pointer;
+        using reference = typename Cell::reference;
 
         struct iterator
         {
-            Cell *_cell;
-            value_type _value;
+            pointer _value;
             bool _new;
 
-            iterator( Cell *c = nullptr, bool n = false )
-                : _cell( c ), _value( c ? c->fetch() : value_type() ), _new( n )
+            iterator( pointer v = nullptr, bool n = false )
+                : _value( v ), _new( n )
             {}
-            proxy operator->() { return proxy( _value ); }
-            value_type operator*() { return _value; }
-            value_type copy() { return _cell->copy(); }
-            void update( value_type v ) { _cell->store( v ); }
-            bool valid() { return _cell; }
-            bool isnew() { return _new; }
+            pointer operator->() const { return _value; }
+            reference operator*() const { return *_value; }
+            value_type copy() const { return **this; }
+            bool valid() const { return _value; }
+            bool isnew() const { return _new; }
         };
 
         iterator end() { return iterator(); }
@@ -358,7 +371,7 @@ namespace brick::hashset
         using value_type = typename Cell::value_type;
 
         enum LookupTag { Found, Empty, Invalid };
-        using Lookup = std::pair< Cell *, LookupTag >;
+        using Lookup = std::pair< typename Cell::pointer, LookupTag >;
         enum InsertMode { Rehash, Insert };
 
         static void *operator new( size_t objsize, size_t cellcount )
@@ -413,30 +426,32 @@ namespace brick::hashset
                 Cell &cell = data[ index( h, i, mask ) ];
 
                 if ( cell.invalid() )
-                    return { &cell, Invalid };
+                    return { nullptr, Invalid };
 
                 if ( cell.empty() )
                 {
                     if ( tomb && tomb->try_store( x, h ) )
-                        return { tomb, Empty };
+                        return { tomb->value(), Empty };
 
                     if ( cell.try_store( x, h ) )
-                        return { &cell, Empty };
+                        return { cell.value(), Empty };
                 }
 
                 if ( !tomb && cell.tombstone() )
                     tomb = &cell;
 
-                if ( cell.match( h ) && adaptor.match( cell, x, h ) )
-                    return { &cell, Found };
+                if ( cell.match( h ) )
+                    if ( auto v = adaptor.match( cell, x, h ) )
+                        return { v, Found };
             }
 
             TRACE( "insert failed after", max, "collisions on", x, "hash", std::hex, h );
             return { nullptr, Empty };
         }
 
-        template< typename X, typename A >
-        Lookup find( const X &x, hash64_t h, const A &adaptor )
+        template< typename X, typename F >
+        auto find_generic( const X &x, hash64_t h, F match )
+            -> std::pair< decltype( match( std::declval< Cell & >(), x, h ) ), LookupTag >
         {
             const size_t mask = size() - 1;
 
@@ -447,10 +462,18 @@ namespace brick::hashset
                     return { nullptr, Invalid };
                 if ( cell.empty() )
                     return { nullptr, Empty };
-                if ( cell.match( h ) && adaptor.match( cell, x, h ) )
-                    return { &cell, Found };
+                if ( cell.match( h ) )
+                    if ( auto v = match( cell, x, h ) )
+                        return { v, Found };
             }
             return { nullptr, Empty };
+        }
+
+        template< typename X, typename A >
+        Lookup find( const X &x, hash64_t h, const A &adaptor )
+        {
+            auto m = [&]( Cell &c, const X &x, hash64_t h ) { return adaptor.match( c, x, h ); };
+            return find_generic( x, h, m );
         }
     };
 
@@ -550,9 +573,9 @@ namespace brick::hashset
         template< typename X, typename A = Adaptor< value_type > >
         iterator insert( const X &x, hash64_t h, const A &adaptor = A(), bool wasnew = false )
         {
-            auto [ cell, outcome ] = _table->insert( x, h, adaptor, Table::Insert );
+            auto [ value, outcome ] = _table->insert( x, h, adaptor, Table::Insert );
 
-            if ( !cell )
+            if ( !value && outcome == Table::Empty )
                 return grow( adaptor ), insert( x, h, adaptor );
 
             if ( check_outdated( adaptor ) )
@@ -564,7 +587,7 @@ namespace brick::hashset
             ASSERT_NEQ( outcome, Table::Invalid );
             TRACE( _table, "insert", x, "hash", std::hex, h, "→",
                    wasnew || outcome == Table::Empty ? "new" : "old" );
-            return iterator( cell, wasnew || outcome == Table::Empty );
+            return iterator( value, wasnew || outcome == Table::Empty );
         }
 
         template< typename X, typename A = Adaptor< value_type > >
@@ -576,11 +599,11 @@ namespace brick::hashset
         template< typename X, typename A = Adaptor< value_type > >
         iterator find( const X &x, hash64_t h, const A &adaptor = A() )
         {
-            auto [ cell, outcome ] = _table->find( x, h, adaptor );
+            auto [ value, outcome ] = _table->find( x, h, adaptor );
             if ( check_outdated( adaptor ) )
                 return find( x, h, adaptor );
             else
-                return iterator( cell );
+                return iterator( value );
         }
 
         template< typename X, typename A = Adaptor< value_type > >
@@ -594,9 +617,21 @@ namespace brick::hashset
         {
             static_assert( Cell::can_tombstone() );
 
-            auto [ cell, outcome ]  = _table->find( x, h, adaptor );
-            if ( outcome == Table::Found )
-                outcome = cell->bury() ? Table::Found : Table::Invalid;
+            bool buried = false;
+            auto match_erase = [&]( Cell &c, const X &x, hash64_t )
+            {
+                switch ( adaptor.erase( c, x ) )
+                {
+                    case A::Bury: buried = c.bury(); return true;
+                    case A::Done: buried = true; return true;
+                    case A::Mismatch: return false;
+                }
+            };
+
+            auto [ cell, outcome ]  = _table->find_generic( x, h, match_erase );
+
+            if ( outcome == Table::Found && !buried )
+                outcome = Table::Invalid;
 
             if ( check_outdated( adaptor ) )
             {
@@ -641,10 +676,10 @@ namespace brick::hashset
 
                 auto value = insert.fetch();
                 hash64_t hash = adaptor.hash( value );
-                auto [ cell, outcome ] = to.insert( value, hash, adaptor, Table::Rehash );
+                auto [ result, outcome ] = to.insert( value, hash, adaptor, Table::Rehash );
                 ASSERT_EQ( outcome, Table::Empty );
 
-                if ( !cell )
+                if ( !result )
                 {
                     std::stringstream err;
                     err << "hash table " << _table << " failed to rehash at size " << _table->size();
@@ -714,8 +749,9 @@ namespace brick::hashset
     using Compact = HashSet< CompactCell< T >, false >;
 
     template< typename T >
-    using ConcurrentCell = std::conditional_t< std::atomic< Tagged< T > >::is_always_lock_free,
-                                               AtomicCell< T >, LockedCell< T > >;
+    using ConcurrentCell =
+        std::conditional_t< std::atomic< typename Tagged< T >::Type >::is_always_lock_free,
+                            AtomicCell< T >, LockedCell< T > >;
 
     template< typename T >
     using Concurrent = HashSet< ConcurrentCell< T >, true >;
