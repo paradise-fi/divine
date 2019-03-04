@@ -157,7 +157,25 @@ debris() {
     cleanup
 }
 
+warn_table()
+{
+    if test $1 -lt $(($2 / 2)); then
+        grep table verify.out
+        echo WARNING: underutilized hash table $1/$2
+        touch warning
+    fi
+}
+
 verify() {
+    grep table verify.out | sed -re 's@.*\{ used: ([0-9]+), capacity: ([0-9]+) \}@\1 \2@' | \
+        while read used capacity; do
+            case $capacity in
+                256) ;; # nothing
+                4096) warn_table $used 256 ;;
+                65536) warn_table $used 4096 ;;
+                *) warn_table $used $(($capacity / 4)) ;;
+            esac
+        done
     if fgrep -q '/* ERRSPEC:' "$1"; then
         spec=$(fgrep '/* ERRSPEC:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
         if test -n "$EXPORT"; then exit 1; fi

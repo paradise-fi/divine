@@ -43,6 +43,6 @@ rm -rf __test_work_dir.$TEST_SLOT
 mkdir -p __test_work_dir.$TEST_SLOT
 cd __test_work_dir.$TEST_SLOT
 
-trap "check debris" EXIT
+trap "check debris; test -e warning && exit 201" EXIT
 set -e -o pipefail
 test -n "$SILENT" || set -x
