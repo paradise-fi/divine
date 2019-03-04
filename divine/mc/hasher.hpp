@@ -148,6 +148,8 @@ namespace divine::mc
                 {
                     if ( this->overwrite )
                     {
+                        auto b_next = _sym_next.template machinePointer< ASnap >( b );
+                        b_next->store( _sym_next.template machinePointer< ASnap >( a )->load() );
                         if ( a_ptr )
                             a_ptr->store( b );
                         else
