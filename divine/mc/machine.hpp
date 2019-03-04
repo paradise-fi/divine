@@ -301,7 +301,7 @@ namespace divine::mc::machine
         Hasher _hasher;
         struct Ext
         {
-            HT states;
+            HT ht_sched, ht_loop;
             bool overwrite = false;
         } _ext;
 
@@ -313,18 +313,33 @@ namespace divine::mc::machine
         void enable_overwrite() { _ext.hasher.overwrite = true; }
         bool equal( Snapshot a, Snapshot b ) { return hasher().equal_symbolic( a, b ); }
 
-        virtual std::pair< State, bool > store() override
+        std::pair< State, bool > store( HT &table )
         {
             auto snap = context().snapshot( this->_state_pool );
-            auto r = _ext.states.insert( snap, hasher() );
+            auto r = table.insert( snap, hasher() );
             if ( r->load() != snap )
             {
-                ASSERT( !_ext.overwrite );
-                this->_state_pool.free( snap ), context().load( this->_state_pool, *r );
+                ASSERT( !_hasher.overwrite );
+                ASSERT( !r.isnew() );
+                context().heap().snap_put( this->_state_pool, snap );
+                this->_state_pool.free( snap );
             }
-            else
-                context().flush_ptr2i();
             return { State( *r ), r.isnew() };
+        }
+
+        std::pair< State, bool > store() override
+        {
+            return store( _ext.ht_sched );
+        }
+
+        bool loop_closed() override
+        {
+            auto [ state, isnew ] = store( _ext.ht_loop );
+            if ( isnew )
+                context().flush_ptr2i();
+            else
+                context().load( this->_state_pool, state.snap );
+            return !isnew;
         }
 
         virtual void boot( TQ &tq ) override
@@ -332,7 +347,6 @@ namespace divine::mc::machine
             Tree< Solver >::boot( tq );
             hasher()._root = context().state_ptr();
         }
-
     };
 }
 
