@@ -131,24 +131,26 @@ struct Builder
 
     template< typename... Args >
     Builder( BC bc, Args && ... args ) : _d( bc, args... ), _hasher( _d.pool, _d.ctx.heap(), _d.solver )
-    {
-    }
+    {}
 
-    auto store( Snapshot snap )
+    std::pair< Snapshot, bool > store( Snapshot snap )
     {
-        _d.hasher.prepare( snap );
-        auto r = _d.states.insert( snap, hasher() );
-        if ( *r != snap )
+        _hasher.prepare( snap );
+        _hasher._matched = Snapshot();
+        _d.states.insert( snap, hasher() );
+        auto m = _hasher._matched;
+        if ( pool().valid( m ) )
         {
-            if ( !_d.hasher.overwrite )
-                pool().free( snap ), context().load( pool(), *r );
+            pool().free( snap );
+            context().load( pool(), m );
+            return { m, false };
         }
         else
         {
             ++ _d.local_states;
             context().flush_ptr2i();
+            return { snap, true };
         }
-        return r;
     }
 
     void start()
@@ -161,7 +163,7 @@ struct Builder
 
         auto s = context().snapshot( pool() );
         if ( vm::setup::postboot_check( context() ) )
-            _d.initial.snap = *store( s );
+            std::tie( _d.initial.snap, std::ignore ) = store( s );
         _d.sync();
         if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
@@ -177,7 +179,7 @@ struct Builder
         hasher()._root = context().state_ptr();
 
         if ( context().heap().valid( hasher()._root ) )
-            _d.initial.snap = *store( snap );
+            std::tie( _d.initial.snap, std::ignore ) = store( snap );
         _d.sync();
         if ( !context().finished() )
             UNREACHABLE( "choices encountered during start()" );
@@ -231,10 +233,10 @@ struct Builder
         auto do_yield = [&]( Snapshot snap, Label lbl )
         {
             builder::State st;
-            auto r = store( snap );
-            st.snap = *r;
+            bool isnew;
 
-            yield( st, lbl, r.isnew() );
+            std::tie( st.snap, isnew ) = store( snap );
+            yield( st, lbl, isnew );
         };
 
         auto do_eval = [&]( Check &tc )
