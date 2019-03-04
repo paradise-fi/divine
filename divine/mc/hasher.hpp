@@ -33,7 +33,7 @@ namespace divine::mc::impl
     };
 
     template< typename Solver >
-    struct Hasher
+    struct Hasher : brick::hashset::Adaptor< vm::CowHeap::Snapshot >
     {
         using Snapshot = vm::CowHeap::Snapshot;
         using Pool = vm::CowHeap::Pool;
@@ -42,7 +42,6 @@ namespace divine::mc::impl
         Solver &_solver;
         mutable vm::CowHeap _h1, _h2;
         vm::HeapPointer _root;
-        mutable Snapshot _matched;
         bool overwrite = false;
 
         Hasher( Pool &pool, const vm::CowHeap &heap, Solver &solver )
@@ -127,7 +126,7 @@ namespace divine::mc
         {}
 
         template< typename Cell >
-        bool match( Cell &cell, Snapshot b, mem::hash64_t h ) const
+        typename Cell::pointer match( Cell &cell, Snapshot b, mem::hash64_t h ) const
         {
             auto a = cell.fetch();
 
@@ -135,14 +134,14 @@ namespace divine::mc
             ASnap *a_ptr = nullptr;
 
             if ( this->equal_fastpath( a, b ) )
-                return this->_matched = a, true;
+                return cell.value();
 
             while ( true )
             {
                 impl::PairExtract extract;
 
                 if ( mem::compare( this->_h1, this->_h2, this->_root, this->_root, extract ) != 0 )
-                    return false;
+                    return nullptr;
 
                 if ( this->_solver.equal( extract.pairs, this->_h1, this->_h2 ) )
                 {
@@ -154,10 +153,9 @@ namespace divine::mc
                             a_ptr->store( b );
                         else
                             cell.store( b, h );
-                        return true;
                     }
 
-                    return this->_matched = a, true;
+                    return a_ptr ? a_ptr : cell.value();
                 }
 
                 a_ptr = _sym_next.template machinePointer< ASnap >( a );
@@ -170,7 +168,7 @@ namespace divine::mc
 
             ASSERT( a_ptr );
             a_ptr->store( b );
-            return this->_matched = a, true;
+            return a_ptr;
         }
     };
 
@@ -180,16 +178,15 @@ namespace divine::mc
         using impl::Hasher< smt::NoSolver >::Hasher;
 
         template< typename Cell >
-        bool match( Cell &a, Snapshot b, mem::hash64_t h ) const
+        typename Cell::pointer match( Cell &a, Snapshot b, mem::hash64_t h ) const
         {
             if ( !this->equal_explicit( a.fetch(), b ) )
-                return false;
+                return nullptr;
 
             if ( this->overwrite )
                 a.store( b, h );
-            else
-                this->_matched = a.fetch();
-            return true;
+
+            return a.value();
         }
     };
 

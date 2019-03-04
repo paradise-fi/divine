@@ -317,7 +317,7 @@ namespace divine::mc::machine
         {
             auto snap = context().snapshot( this->_state_pool );
             auto r = _ext.states.insert( snap, hasher() );
-            if ( *r != snap )
+            if ( r->load() != snap )
             {
                 ASSERT( !_ext.overwrite );
                 this->_state_pool.free( snap ), context().load( this->_state_pool, *r );

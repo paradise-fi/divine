@@ -136,14 +136,12 @@ struct Builder
     std::pair< Snapshot, bool > store( Snapshot snap )
     {
         _hasher.prepare( snap );
-        _hasher._matched = Snapshot();
-        _d.states.insert( snap, hasher() );
-        auto m = _hasher._matched;
-        if ( pool().valid( m ) )
+        auto r = _d.states.insert( snap, hasher() );
+        if ( r->load() != snap )
         {
             pool().free( snap );
-            context().load( pool(), m );
-            return { m, false };
+            context().load( pool(), *r );
+            return { *r, false };
         }
         else
         {
