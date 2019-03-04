@@ -279,8 +279,7 @@ namespace divine::mc::machine
 
         auto make_hasher()
         {
-            Hasher h;
-            h.setup( _state_pool, context().heap(), this->_solver );
+            Hasher h( _state_pool, context().heap(), this->_solver );
             h._root = context().state_ptr();
             ASSERT( !h._root.null() );
             return h;
@@ -299,19 +298,18 @@ namespace divine::mc::machine
         using HT = hashset::Concurrent< Snapshot >;
         using Tree< Solver >::context;
 
-        Graph( BC bc ) : Tree< Solver >( bc )
-        {
-            this->hasher().setup( this->_state_pool, context().heap(), this->_solver );
-        }
-
+        Hasher _hasher;
         struct Ext
         {
-            Hasher hasher;
             HT states;
             bool overwrite = false;
         } _ext;
 
-        auto &hasher() { return _ext.hasher; }
+        Graph( BC bc ) : Tree< Solver >( bc ),
+                         _hasher( this->_state_pool, context().heap(), this->_solver )
+        {}
+
+        auto &hasher() { return _hasher; }
         void enable_overwrite() { _ext.hasher.overwrite = true; }
         bool equal( Snapshot a, Snapshot b ) { return hasher().equal_symbolic( a, b ); }
 

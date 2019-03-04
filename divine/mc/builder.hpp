@@ -94,7 +94,6 @@ struct Builder
         builder::State initial;
         Solver solver;
         vm::CowHeap::Pool pool;
-        Hasher hasher;
 
         int64_t local_instructions = 0, local_states = 0;
         std::shared_ptr< std::atomic< int64_t > > total_instructions, total_states;
@@ -120,21 +119,19 @@ struct Builder
 
         ~Data() { sync(); }
     } _d;
+    Hasher _hasher;
 
     Context &context() { return _d.ctx; }
-    void enable_overwrite() { _d.hasher.overwrite = true; }
+    void enable_overwrite() { _hasher.overwrite = true; }
 
-    auto &hasher() { return _d.hasher; }
+    auto &hasher() { return _hasher; }
 
-    Builder( const Builder &e ) : _d( e._d )
-    {
-        hasher().setup( pool(), context().heap(), _d.solver );
-    }
+    Builder( const Builder &e ) : _d( e._d ), _hasher( e._hasher, _d.pool, _d.solver )
+    {}
 
     template< typename... Args >
-    Builder( BC bc, Args && ... args ) : _d( bc, args... )
+    Builder( BC bc, Args && ... args ) : _d( bc, args... ), _hasher( _d.pool, _d.ctx.heap(), _d.solver )
     {
-        hasher().setup( pool(), context().heap(), _d.solver );
     }
 
     auto store( Snapshot snap )
@@ -175,7 +172,8 @@ struct Builder
     {
         context().load( ctx ); /* copy over registers */
         context().track_memory( false );
-        hasher().setup( pool(), context().heap(), _d.solver );
+        hasher()._h1 = ctx.heap();
+        hasher()._h2 = ctx.heap();
         hasher()._root = context().state_ptr();
 
         if ( context().heap().valid( hasher()._root ) )
@@ -422,7 +420,7 @@ struct TestBuilder
         ex.start();
         ex.initials( [&]( auto s )
         {
-            ASSERT( ex.hasher()._pool->size( s.snap ) );
+            ASSERT( ex.hasher()._pool.size( s.snap ) );
         } );
     }
 
@@ -433,8 +431,8 @@ struct TestBuilder
         ex.start();
         ex.initials( [&]( auto s )
         {
-            ASSERT( ex.hasher()._pool->size( s.snap ) );
-            ASSERT( ex_.hasher()._pool->size( s.snap ) );
+            ASSERT( ex.hasher()._pool.size( s.snap ) );
+            ASSERT( ex_.hasher()._pool.size( s.snap ) );
         } );
     }
 

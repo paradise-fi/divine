@@ -38,18 +38,21 @@ namespace divine::mc::impl
         using Snapshot = vm::CowHeap::Snapshot;
         using Pool = vm::CowHeap::Pool;
 
+        Pool &_pool;
+        Solver &_solver;
         mutable vm::CowHeap _h1, _h2;
         vm::HeapPointer _root;
-        Solver *_solver = nullptr;
-        Pool *_pool = nullptr;
         bool overwrite = false;
 
-        void setup( Pool &pool, const vm::CowHeap &heap, Solver &solver )
+        Hasher( Pool &pool, const vm::CowHeap &heap, Solver &solver )
+            : _pool( pool ), _solver( solver ), _h1( heap ), _h2( heap )
+        {}
+
+        Hasher( const Hasher &o, Pool &p, Solver &s )
+            : Hasher( p, o._h1, s )
         {
-            _pool = &pool;
-            _h1 = heap;
-            _h2 = heap;
-            _solver = &solver;
+            _root = o._root;
+            overwrite = o.overwrite;
         }
 
         void prepare( Snapshot ) {}
@@ -57,11 +60,11 @@ namespace divine::mc::impl
         bool equal_fastpath( Snapshot a, Snapshot b ) const
         {
             bool rv = false;
-            if ( _pool->size( a ) == _pool->size( b ) )
-                rv = std::equal( _h1.snap_begin( *_pool, a ), _h1.snap_end( *_pool, a ),
-                                 _h1.snap_begin( *_pool, b ) );
+            if ( _pool.size( a ) == _pool.size( b ) )
+                rv = std::equal( _h1.snap_begin( _pool, a ), _h1.snap_end( _pool, a ),
+                                 _h1.snap_begin( _pool, b ) );
             if ( !rv )
-                _h1.restore( *_pool, a ), _h2.restore( *_pool, b );
+                _h1.restore( _pool, a ), _h2.restore( _pool, b );
             return rv;
         }
 
@@ -86,13 +89,12 @@ namespace divine::mc::impl
             if ( extract.pairs.empty() )
                 return true;
 
-            ASSERT( _solver );
-            return _solver->equal( extract.pairs, _h1, _h2 );
+            return _solver.equal( extract.pairs, _h1, _h2 );
         }
 
         auto hash( Snapshot s ) const
         {
-            _h1.restore( *_pool, s );
+            _h1.restore( _pool, s );
             return mem::hash( _h1, _root );
         }
     };
@@ -115,11 +117,13 @@ namespace divine::mc
             _sym_next.materialise( s, sizeof( Snapshot ) );
         }
 
-        void setup( typename Super::Pool &pool, const vm::CowHeap &heap, Solver &solver )
-        {
-            Super::setup( pool, heap, solver );
-            _sym_next = SPool( pool );
-        }
+        Hasher( typename Super::Pool &pool, const vm::CowHeap &heap, Solver &solver )
+            : Super( pool, heap, solver ), _sym_next( pool )
+        {}
+
+        Hasher( const Hasher &o, typename Super::Pool &pool, Solver &solver )
+            : Super( o, pool, solver ), _sym_next( o._sym_next )
+        {}
 
         template< typename Cell >
         bool match( Cell &cell, Snapshot b, mem::hash64_t h ) const
@@ -139,7 +143,7 @@ namespace divine::mc
                 if ( mem::compare( this->_h1, this->_h2, this->_root, this->_root, extract ) != 0 )
                     return false;
 
-                if ( this->_solver->equal( extract.pairs, this->_h1, this->_h2 ) )
+                if ( this->_solver.equal( extract.pairs, this->_h1, this->_h2 ) )
                 {
                     if ( this->overwrite )
                     {
@@ -154,8 +158,8 @@ namespace divine::mc
 
                 a_ptr = _sym_next.template machinePointer< ASnap >( a );
                 a = a_ptr->load();
-                if ( this->_pool->valid( a ) )
-                    this->_h1.restore( *this->_pool, a );
+                if ( this->_pool.valid( a ) )
+                    this->_h1.restore( this->_pool, a );
                 else
                     break;
             }
@@ -169,6 +173,8 @@ namespace divine::mc
     template<>
     struct Hasher< smt::NoSolver > : impl::Hasher< smt::NoSolver >
     {
+        using impl::Hasher< smt::NoSolver >::Hasher;
+
         template< typename Cell >
         bool match( Cell &a, Snapshot b, mem::hash64_t h ) const
         {

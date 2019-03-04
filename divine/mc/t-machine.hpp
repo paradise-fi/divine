@@ -110,7 +110,7 @@ namespace divine::t_mc
             auto machine = mc::GMachine( prog_int( 4, "x - 1" ) );
             auto check = [&]( Expand s )
             {
-                ASSERT( machine.hasher()._pool->size( s.from.snap ) );
+                ASSERT( machine.hasher()._pool.size( s.from.snap ) );
                 ran = true;
             };
 
