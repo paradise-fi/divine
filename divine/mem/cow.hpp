@@ -41,7 +41,7 @@ namespace divine::mem
 
         mutable brick::mem::RefPool< Pool, uint8_t > _obj_refcnt;
 
-        struct ObjHasher
+        struct ObjHasher : brick::hashset::Adaptor< Internal >
         {
             Cow< Next > *_heap;
             auto &heap() const { return *_heap; }
@@ -54,7 +54,7 @@ namespace divine::mem
             }
 
             template< typename Cell >
-            bool match( Cell &, Internal, hash64_t ) const;
+            typename Cell::pointer match( Cell &, Internal, hash64_t ) const;
         };
 
         mutable struct Ext

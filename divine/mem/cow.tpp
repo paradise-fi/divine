@@ -24,17 +24,17 @@ namespace divine::mem
 {
 
     template< typename Next > template< typename Cell >
-    bool Cow< Next >::ObjHasher::match( Cell &cell, Internal x, hash64_t ) const
+    typename Cell::pointer Cow< Next >::ObjHasher::match( Cell &cell, Internal x, hash64_t ) const
     {
         auto a = cell.fetch(), b = x;
         int size = objects().size( a );
         if ( objects().size( b ) != size )
-            return false;
+            return nullptr;
         if ( std::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
             return false;
         if ( heap().compare( heap(), a, b, size, false ) )
-            return false;
-        return true;
+            return nullptr;
+        return cell.value();
     }
 
     template< typename Next >
@@ -63,10 +63,10 @@ namespace divine::mem
         auto r = _ext.objects.insert( si.second, _ext.hasher );
         if ( !r.isnew() )
         {
-            ASSERT_NEQ( *r, si.second );
+            ASSERT_NEQ( r->load(), si.second );
             this->free( si.second );
         }
-        si.second = *r;
+        si.second = r->load();
         _obj_refcnt.get( si.second );
         return si;
     }
