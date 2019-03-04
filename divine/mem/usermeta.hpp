@@ -110,6 +110,19 @@ struct UserMeta : Next
         return diff;
     }
 
+    template< typename S, typename F >
+    void hash( Internal i, int size, S &state, F ptr_cb ) const
+    {
+        state.realign();
+        auto data_cb = [&]( uint32_t v ) { state.update_aligned( v ); };
+        for ( uint8_t layer = 0; layer < NLayers; ++layer )
+            if ( layer_type( layer ) == MetaType::Pointers )
+                _maps.hash( i, layer, data_cb, ptr_cb );
+            else
+                _maps.hash( i, layer, data_cb, data_cb );
+        Next::hash( i, size, state, ptr_cb );
+    }
+
     MetaType layer_type( uint8_t layer ) const
     {
         return (*_type)[ layer ].load( std::memory_order_relaxed );

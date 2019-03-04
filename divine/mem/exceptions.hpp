@@ -186,6 +186,20 @@ struct Snapshotter
         return 0;
     }
 
+    template< typename F, typename G >
+    void hash( Internal i, Layer layer, F key_cb, G val_cb )
+    {
+        ASSERT_LT( layer, NLayers );
+        auto map = _l._maps.find( i );
+        if ( map != _l._maps.end() )
+            for ( const auto &[ key, val ] : map->second[ layer ] )
+                key_cb( key ), val_cb( val );
+
+        auto [ b, e ] = _snap_range( i, layer );
+        while ( b != e )
+            key_cb( b->first ), val_cb( b->second ), b++;
+    }
+
     template< typename OM >
     void copy( OM &from_m, typename OM::Internal from_object, typename OM::key_type from_offset,
                Internal to_object, key_type to_offset, int sz )
