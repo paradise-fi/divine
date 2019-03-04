@@ -42,6 +42,7 @@ namespace divine::mc::impl
         Solver &_solver;
         mutable vm::CowHeap _h1, _h2;
         vm::HeapPointer _root;
+        mutable Snapshot _matched;
         bool overwrite = false;
 
         Hasher( Pool &pool, const vm::CowHeap &heap, Solver &solver )
@@ -134,7 +135,7 @@ namespace divine::mc
             ASnap *a_ptr = nullptr;
 
             if ( this->equal_fastpath( a, b ) )
-                return true;
+                return this->_matched = a, true;
 
             while ( true )
             {
@@ -151,9 +152,10 @@ namespace divine::mc
                             a_ptr->store( b );
                         else
                             cell.store( b, h );
+                        return true;
                     }
 
-                    return true;
+                    return this->_matched = a, true;
                 }
 
                 a_ptr = _sym_next.template machinePointer< ASnap >( a );
@@ -166,7 +168,7 @@ namespace divine::mc
 
             ASSERT( a_ptr );
             a_ptr->store( b );
-            return true;
+            return this->_matched = a, true;
         }
     };
 
@@ -183,7 +185,8 @@ namespace divine::mc
 
             if ( this->overwrite )
                 a.store( b, h );
-
+            else
+                this->_matched = a.fetch();
             return true;
         }
     };
