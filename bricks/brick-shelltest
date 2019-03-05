@@ -906,6 +906,8 @@ struct TestCase
                 r = Journal::PASSED;
             else if ( WEXITSTATUS( status ) == 200 )
                 r = Journal::SKIPPED;
+            else if ( WEXITSTATUS( status ) == 201 )
+                r = Journal::WARNED;
             else
                 r = Journal::FAILED;
         } else if ( interrupt && WIFSIGNALED( status ) && WTERMSIG( status ) == SIGINT )
