@@ -48,46 +48,33 @@ private:
 
 struct RegularFile : INode
 {
-    RegularFile( const char *content, size_t size ) :
-        _snapshot( bool( content ) ),
-        _size( content ? size : 0 ),
-        _roContent( content )
-    {}
-
-    RegularFile() :
-        _snapshot( false ),
-        _size( 0 ),
-        _roContent( nullptr )
-    {}
+    RegularFile() = default;
 
     RegularFile( const RegularFile &other ) = default;
     RegularFile( RegularFile &&other ) = default;
     RegularFile &operator=( RegularFile ) = delete;
 
-    size_t size() const override { return _size; }
+    size_t size() const override { return _content.size(); }
     bool canRead() const override { return true; }
     bool canWrite( int, Node ) const override { return true; }
 
     bool read( char *buffer, size_t offset, size_t &length ) override
     {
-        if ( offset >= _size ) {
+        if ( offset >= size() )
+        {
             length = 0;
             return true;
         }
-        const char *source = _isSnapshot() ?
-                          _roContent + offset :
-                          _content.begin() + offset;
-        if ( offset + length > _size )
-            length = _size - offset;
-        std::copy( source, source + length, buffer );
+
+        auto begin = _content.begin() + offset;
+        if ( offset + length > size() )
+            length = size() - offset;
+        std::copy( begin, begin + length, buffer );
         return true;
     }
 
     bool write( const char *buffer, size_t offset, size_t &length, Node ) override
     {
-        if ( _isSnapshot() )
-            _copyOnWrite();
-
         if ( _content.size() < offset + length )
             resize( offset + length );
 
@@ -98,7 +85,6 @@ struct RegularFile : INode
     void resize( size_t length )
     {
         _content.resize( length );
-        _size = _content.size();
     }
 
     void content( std::string_view s )
@@ -108,22 +94,6 @@ struct RegularFile : INode
     }
 
 private:
-
-    bool _isSnapshot() const {
-        return _snapshot;
-    }
-
-    void _copyOnWrite() {
-        const char *roContent = _roContent;
-        _content.resize( _size );
-
-        std::copy( roContent, roContent + _size, _content.begin() );
-        _snapshot = false;
-    }
-
-    bool _snapshot;
-    size_t _size;
-    const char *_roContent;
     Array< char > _content;
 };
 
