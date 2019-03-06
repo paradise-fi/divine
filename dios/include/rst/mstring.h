@@ -12,15 +12,16 @@
 
 namespace abstract::mstring {
 
-    struct Mstring;
+    struct Split;
 
     /*
-     *  |      section      |
+     *  |      section      |    |  sec. |
      *  |  segment  |
      *  | a | a | a | b | b | \0 | c | c |
      */
 
-    struct Segment {
+    struct Segment
+    {
         explicit Segment( size_t from, size_t to, char val )
             : _from( from ), _to( to ), _val( val )
         {}
@@ -38,10 +39,9 @@ namespace abstract::mstring {
 
     using Segments = __dios::Array< Segment >;
 
-
-    template< typename Buffer >
-    struct Section {
-        explicit Section( const Buffer& buff, size_t from, size_t to )
+    struct Section
+    {
+        explicit Section( const char * buff, size_t from, size_t to )
             : _from( from ), _to( to )
         {
             char c = buff[ _from ];
@@ -62,7 +62,7 @@ namespace abstract::mstring {
         const Segments& segments() const noexcept { return _segments; }
 
         const Segment& segment_of( size_t idx ) const noexcept {
-            assert( idx < size() );
+            ASSERT( idx < size() );
 
             int bound = 0;
             for ( const auto& seg : _segments ) {
@@ -81,132 +81,69 @@ namespace abstract::mstring {
         Segments _segments;
     };
 
-    template< typename Buffer >
-    using Sections = __dios::Array< Section< Buffer > >;
+    using Sections = __dios::Array< Section >;
 
-
-    template< typename Buffer >
-    struct Split {
-        Split( const Buffer& buff, const __dios::Array< size_t >& terminators )
+    struct Split
+    {
+        Split( const char * buff, size_t len )
+            : _len( len )
         {
-            unsigned preffix = 0;
-            for ( auto terminator : terminators ) {
-                _sections.push_back( Section( buff, preffix, terminator ) );
-                preffix = terminator + 1;
+            if ( buff == nullptr )
+                ASSERT( len == 0 );
+
+            int from = 0;
+            for ( int i = 0; i < len; ++i ) {
+                if ( buff[ i ] == '\0' ) {
+                    _sections.push_back( Section( buff, from, i ) );
+                    from = i + 1;
+                }
             }
 
             // last substring
-            if ( preffix < buff.size() )
-                _sections.push_back( Section( buff, preffix, buff.size() ) );
+            if ( from < len )
+                _sections.push_back( Section( buff, from, len ) );
         }
 
-        const Sections< Buffer >& sections() const noexcept { return _sections; }
+        Section & interest() noexcept;
+        const Section & interest() const noexcept;
 
-    private:
-        Sections< Buffer > _sections;
-    };
+        Section & section_of( int idx ) noexcept;
+        const Section & section_of( int idx ) const noexcept;
 
-
-    template< typename T >
-    struct Buffer {
-        Buffer( size_t from, const T * buff, size_t len )
-            : _from( from ), _len( len )
-        {
-            _buff = reinterpret_cast< char * >( __vm_obj_make( _len, _VM_PT_Heap ) );
-            std::memcpy( _buff, buff, _len );
-        }
-
-        Buffer( size_t from, const Buffer & other )
-            : Buffer( from, other.data(), other.size() )
-        {}
-
-        ~Buffer() { __vm_obj_free( _buff ); }
-
-        constexpr size_t size() const noexcept { return _len; }
-
-        T& operator[] ( int idx ) noexcept { return _buff[ idx ]; }
-        const T& operator[] ( int idx ) const noexcept { return _buff[ idx ]; }
-
-        constexpr T* data() noexcept { return _buff; }
-        constexpr const T* data() const noexcept { return _buff; }
-
-        constexpr bool empty() const noexcept { return _len == 0; }
-
-        constexpr size_t from() const noexcept { return _from; }
-    private:
-        const size_t _from;
-        const size_t _len;
-        T * _buff;
-    };
-
-    struct Mstring {
-        using Buffer = Buffer< char >;
-
-        Mstring( const char * buff, size_t len, size_t from, size_t refcount = 0 )
-            : _buff( from, buff, len ), _from( from ), _refcount( refcount )
-        {
-            init();
-        }
-
-        Mstring( Mstring * str, size_t from )
-            : _buff( from, str->_buff ), _from( from )
-        {
-            init();
-        }
-
-        Split< Buffer > split() const noexcept;
-
-        constexpr size_t from() const noexcept { return _buff.from(); }
+        bool empty() const noexcept { return _sections.empty(); }
+        bool well_formed() const noexcept;
 
         size_t strlen() const noexcept;
-        int strcmp( const Mstring * other ) const noexcept;
+        int strcmp( const Split * other ) const noexcept;
 
-        void strcpy( const Mstring * other ) noexcept;
-        void strcat( const Mstring * other ) noexcept;
+        void strcpy( const Split * other ) noexcept;
+        void strcat( const Split * other ) noexcept;
 
-        Mstring * strchr( char ch ) const noexcept;
+        Split * strchr( char ch ) const noexcept;
 
         void write( size_t idx, char val ) noexcept;
-        void safe_write( size_t idx, char val ) noexcept;
-
         char read( size_t idx ) noexcept;
 
-        constexpr char * data() noexcept { return _buff.data(); }
-        constexpr const char * data() const noexcept { return _buff.data(); }
+        size_t size() const noexcept { return _len; }
 
         size_t refcount() const noexcept { return _refcount; }
         void refcount_decrement() { --_refcount; }
         void refcount_increment() { ++_refcount; }
-
     private:
-
-        void init() noexcept {
-            for ( size_t i = _from; i < _buff.size(); ++i ) {
-                if ( _buff[i] == '\0' )
-                    _terminators.push_back(i);
-            }
-            assert(!_terminators.empty());
-            assert(_terminators.front() <= _buff.size());
-        }
-
-        size_t _from;
-
-        Buffer _buff;                           // IV - buffer
-        __dios::Array< size_t > _terminators;   // T - zeros in buffer
-
+        size_t _len;
+        Sections _sections;
         size_t _refcount;
     };
 
-    void mstring_release( Mstring * str ) noexcept;
+    void split_release( Split * str ) noexcept;
+    void split_cleanup( Split * str ) noexcept;
+    void split_cleanup_check( Split * str ) noexcept;
 
-    void mstring_cleanup( Mstring * str ) noexcept;
-    void mstring_cleanup_check( Mstring * str ) noexcept;
-
-    using Release = decltype( mstring_release );
-    using Check = decltype( mstring_cleanup_check );
+    using Release = decltype( split_release );
+    using Check = decltype( split_cleanup_check );
 } // namespace abstract::mstring
 
-typedef abstract::mstring::Mstring __mstring;
+typedef abstract::mstring::Split __mstring;
 
 #define DOMAIN_NAME mstring
 #define DOMAIN_KIND content
@@ -221,7 +158,7 @@ extern "C" {
 }
 
 namespace abstract {
-    using Object = abstract::mstring::Mstring;
+    using Object = abstract::mstring::Split;
     using Release = abstract::mstring::Release;
     using Check = abstract::mstring::Check;
 
@@ -233,7 +170,8 @@ namespace abstract {
 
 namespace abstract::mstring {
     __invisible static inline void cleanup( _VM_Frame * frame ) noexcept {
-        abstract::cleanup< Mstring, Release, Check >( frame, mstring_release, mstring_cleanup_check );
+        abstract::cleanup< Object, Release, Check >( frame,
+            split_release, split_cleanup_check
+        );
     }
 } // namespace abstract::mstring
-

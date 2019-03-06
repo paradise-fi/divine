@@ -3,14 +3,12 @@
 #include <rst/common.h>
 #include <rst/lart.h>
 
-#include <algorithm> // min
-
 namespace abstract::mstring {
 
 using abstract::__new;
 
 __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
-    return __new< Mstring >( _VM_PT_Marked, buff, buff_len, 0, 1 );
+    return __new< __mstring >( _VM_PT_Marked, buff, buff_len );
 }
 
 extern "C" {
@@ -22,8 +20,8 @@ extern "C" {
     }
 
     void __mstring_store( char val, void * addr ) {
-         __mstring *mstr = peek_object< __mstring >( object( addr ) );
-         mstr->write( offset( addr ), val );
+         __mstring * str = peek_object< __mstring >( object( addr ) );
+         str->write( offset( addr ), val );
     }
 
     char __mstring_load( void * addr ) {
@@ -143,47 +141,61 @@ extern "C" {
     }
 }
 
-void Mstring::strcpy(const Mstring * other) noexcept {
-    if (this != other) {
-        size_t terminator = other->_terminators.front();
+Section & Split::interest() noexcept
+{
+    ASSERT( well_formed() );
+    return _sections.front();
+}
 
-        if ( _buff.size() < terminator + 1 ) {
-            assert( false && "copying mstring to smaller mstring" );
-        }
+const Section & Split::interest() const noexcept
+{
+    ASSERT( well_formed() );
+    return _sections.front();
+}
 
-        for ( size_t i = _from; i <= terminator; ++i ) {
-            safe_write( i, other->_buff[i] );
-        }
+bool Split::well_formed() const noexcept
+{
+    return this->empty() || _sections.front().to() < _len;
+}
+
+void Split::strcpy( const Split * other ) noexcept
+{
+    if ( this != other ) {
+        auto str = other->interest();
+        // TODO check correct bounds
+        ASSERT( str.size() < _len && "copying mstring to smaller mstring" );
+        // TODO copy segments
+        _UNREACHABLE_F( "Not implemented." );
     }
 }
 
-void Mstring::strcat( const Mstring * other ) noexcept {
-    size_t begin = _terminators.front();
-    size_t dist = other->_terminators.front() + 1;
+void Split::strcat( const Split * other ) noexcept
+{
+    size_t begin = interest().size();
+    size_t dist = other->interest().size() + 1;
 
-    if ( _buff.size() < begin + dist ) {
-        assert( false && "concating mstring into smaller mstring" );
-    }
-
-    for ( size_t i = 0; i < dist; ++i ) {
-        safe_write( begin + i, other->_buff[i] );
-    }
+    // TODO check correct bounds
+    ASSERT( _len >= begin + dist && "concating mstring into smaller mstring" );
+    // TODO copy segments
+    _UNREACHABLE_F( "Not implemented." );
 }
 
-Mstring * Mstring::strchr( char ch ) const noexcept {
-    auto split = this->split();
-    auto interest = split.sections().front();
+Split * Split::strchr( char ch ) const noexcept
+{
+    auto str = interest();
 
-    if ( !interest.empty() ) {
-        const auto &begin = interest.segments().begin();
-        const auto &end = interest.segments().end();
+    if ( !str.empty() ) {
+        const auto &begin = str.segments().begin();
+        const auto &end = str.segments().end();
 
-        auto search = std::find_if( begin, end, [ch] (const auto &seg) {
+        auto search = std::find_if( begin, end, [ch] ( const auto &seg ) {
             return seg.value() == ch;
         });
 
         if ( search != end ) {
-            return __new< Mstring >( _VM_PT_Marked, const_cast< Mstring * >( this ), search->from() );
+            // TODO return subsplit
+            // return __new< Split >( _VM_PT_Marked, const_cast< Split * >( this ), search->from() );
+            _UNREACHABLE_F( "Not implemented." );
         } else {
             return nullptr;
         }
@@ -192,27 +204,17 @@ Mstring * Mstring::strchr( char ch ) const noexcept {
     }
 }
 
-size_t Mstring::strlen() const noexcept {
-    if ( _buff.data() == nullptr )
-        return -1;
-    assert(!_terminators.empty());
-    return _terminators.front();
+size_t Split::strlen() const noexcept
+{
+    if ( empty() )
+        return 0;
+    return interest().size();
 }
 
-auto Mstring::split() const noexcept -> Split< Mstring::Buffer > {
-    if ( _buff.data() != nullptr ) {
-        assert(!_terminators.empty());
-        return Split( _buff, _terminators );
-    }
-    _UNREACHABLE_F( "Error: Trying to split buffer without a string of interest." );
-}
-
-int Mstring::strcmp( const Mstring * other ) const noexcept {
-    auto split_q1 = this->split();
-    auto split_q2 = other->split();
-
-    auto sq1 =  split_q1.sections().front();
-    auto sq2 =  split_q2.sections().front();
+int Split::strcmp( const Split * other ) const noexcept
+{
+    const auto & sq1 = interest();
+    const auto & sq2 = other->interest();
 
     if ( !sq1.empty() && !sq2.empty() ) {
         for ( size_t i = 0; i < sq1.size(); i++ ) {
@@ -221,9 +223,9 @@ int Mstring::strcmp( const Mstring * other ) const noexcept {
 
            // TODO optimize per segment comparison
             if ( sq1_seg.value() == sq2_seg.value() ) {
-                if ( sq1_seg.to() - this->from() > sq2_seg.to() - other->from() ) {
+                if ( sq1_seg.to() > sq2_seg.to() ) {
                     return sq1_seg.value() - sq2.segment_of( i + 1 ).value();
-                } else if (sq1_seg.to() - this->from() < sq2_seg.to() - other->from() ) {
+                } else if (sq1_seg.to() < sq2_seg.to() ) {
                     return sq1.segment_of( i + 1 ).value() - sq2_seg.value();
                 }
             } else {
@@ -237,50 +239,52 @@ int Mstring::strcmp( const Mstring * other ) const noexcept {
     _UNREACHABLE_F( "Error: there is no string of interest." );
 }
 
-void Mstring::write( size_t idx, char val ) noexcept {
-    auto split = this->split();
-    auto sq = split.sections().front();
-
-    if ( !sq.empty() ) {
-        assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
-        safe_write( idx, val );
-    } else {
-        _UNREACHABLE_F( "Error: there is no string of interest." );
-    }
+Section & Split::section_of( int /*idx*/ ) noexcept
+{
+    _UNREACHABLE_F( "Not implemented." );
 }
 
-void Mstring::safe_write( size_t idx, char val ) noexcept {
-    if ( _buff[ idx ] == '\0' ) {
-        auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
-        _terminators.erase( it );
-    }
-    _buff[ idx ] = val;
+const Section & Split::section_of( int /*idx*/ ) const noexcept
+{
+    _UNREACHABLE_F( "Not implemented." );
+}
+
+void Split::write( size_t idx, char val ) noexcept
+{
+    ASSERT( idx < _len );
+    // TODO check value
+    // if ( _buff[ idx ] == '\0' ) {
+        // TODO merge sections
+    // }
+    // TODO change value
+    //_buff[ idx ] = val;
     if ( val == '\0' ) {
-        auto it = std::lower_bound( _terminators.begin(), _terminators.end(), idx );
-        if ( it == _terminators.end() ) {
-            _terminators.push_back( idx );
-        } else {
-            _terminators.insert( it, idx );
-        }
+        // TODO split sections
     }
+
+    _UNREACHABLE_F( "Not implemented." );
 }
 
-char Mstring::read( size_t idx ) noexcept {
-    assert( idx >= _buff.from() && idx < _buff.from() + _buff.size() );
-    return _buff[ idx ];
+char Split::read( size_t idx ) noexcept
+{
+    ASSERT( idx < _len );
+    _UNREACHABLE_F( "Not implemented." );
 }
 
-void mstring_release( Mstring * str ) noexcept {
+void split_release( Split * str ) noexcept
+{
     str->refcount_decrement();
 }
 
-void mstring_cleanup( Mstring * str ) noexcept {
-    str->~Mstring();
+void split_cleanup( Split * str ) noexcept
+{
+    str->~Split();
     __dios_safe_free( str );
 }
 
-void mstring_cleanup_check( Mstring * str ) noexcept {
-    cleanup_check( str, mstring_cleanup );
+void split_cleanup_check( Split * str ) noexcept
+{
+    cleanup_check( str, split_cleanup );
 }
 
 } // namespace abstract::mstring
