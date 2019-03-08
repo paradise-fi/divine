@@ -13,119 +13,153 @@ namespace abstract::mstring {
      *  | a | a | a | b | b | \0 | c | c |
      */
 
+    template< typename T >
+    using Array = __dios::Array< T >;
+
     struct Segment
     {
-        explicit Segment( size_t from, size_t to, char val )
-            : _from( from ), _to( to ), _val( val )
+        explicit Segment( int from, int to, char val )
+            : from( from ), to( to ), value( val )
         {}
 
-        constexpr size_t size() const noexcept { return _to - _from; }
-        constexpr size_t from() const noexcept { return _from; }
-        constexpr size_t to() const noexcept { return _to; }
+        int size() const noexcept { return to - from; }
+        bool empty() const noexcept { return size() == 0; }
 
-        char value() const noexcept { return _val; }
-
-    private:
-        size_t _from, _to;
-        char _val;
+        int from, to;
+        char value;
     };
 
-    using Segments = __dios::Array< Segment >;
+    inline bool operator==( const Segment& lhs, const Segment& rhs)
+    {
+        return std::tie( lhs.from, lhs.to, lhs.value ) == std::tie( rhs.from, rhs.to, rhs.value );
+    }
+
+    using Segments = Array< Segment >;
 
     struct Section
     {
-        explicit Section( const char * buff, size_t from, size_t to )
-            : _from( from ), _to( to )
+        explicit Section( const char * buff, int from, int to )
         {
-            char c = buff[ _from ];
-            for ( size_t i = from; i < to; ) {
-                size_t j = i + 1;
+            char c = buff[ from ];
+            for ( int i = from; i < to; ) {
+                int j = i + 1;
                 while ( j < to && buff[j] == c ) { ++j; }
                 _segments.push_back( Segment( i, j, c ) );
                 i = j;
+                if ( i < to )
+                    c = buff[ i ];
             }
         }
 
-        constexpr bool empty() const noexcept { return _segments.empty(); }
+        Section() = default;
+        Section(const Section&) = default;
+        Section(Section&&) = default;
 
-        constexpr size_t size() const noexcept { return _to - _from; }
-        size_t from() const noexcept { return _from; }
-        size_t to() const noexcept { return _to; }
+        bool empty() const noexcept { return size() == 0; }
+
+        int size() const noexcept { return to() - from(); }
+        int from() const noexcept { return _segments.front().from; }
+        int to() const noexcept { return _segments.back().to; }
 
         const Segments& segments() const noexcept { return _segments; }
+        Segments& segments() noexcept { return _segments; }
 
-        const Segment& segment_of( size_t idx ) const noexcept {
-            ASSERT( idx < size() );
+        Segment * erase( Segment * seg ) noexcept;
+        Segment * erase( Segment * from, Segment * to ) noexcept;
 
-            int bound = 0;
-            for ( const auto& seg : _segments ) {
-                bound += seg.size();
-                if ( idx < bound )
+        void append( Segment && seg ) noexcept;
+        void prepend( Segment && seg ) noexcept;
+
+        Segment& segment_of( int idx ) noexcept {
+            ASSERT( idx >= from() && idx < to() );
+            for ( auto& seg : _segments ) {
+                if ( idx >= seg.from && idx < seg.to )
                     return seg;
             }
         }
 
-        char operator[] ( int idx ) const noexcept {
-            return segment_of( idx ).value();
+        const Segment& segment_of( int idx ) const noexcept {
+            ASSERT( idx >= from() && idx < to() );
+            for ( const auto & seg : _segments ) {
+                if ( idx >= seg.from && idx < seg.to )
+                    return seg;
+            }
         }
 
     private:
-        size_t _from, _to;
         Segments _segments;
     };
 
-    using Sections = __dios::Array< Section >;
+    using Sections = Array< Section >;
 
     struct Split
     {
-        Split( const char * buff, size_t len )
+        Split( const char * buff, int len )
             : _len( len )
         {
             if ( buff == nullptr )
                 ASSERT( len == 0 );
 
+            bool seen_zero = true;
             int from = 0;
             for ( int i = 0; i < len; ++i ) {
-                if ( buff[ i ] == '\0' ) {
+                if ( seen_zero && buff[ i ] != '\0' ) {
+                    seen_zero = false;
+                    from = i;
+                } else if ( !seen_zero && buff[ i ] == '\0' ) {
                     _sections.push_back( Section( buff, from, i ) );
+                    seen_zero = true;
                     from = i + 1;
                 }
             }
 
             // last substring
-            if ( from < len )
+            if ( !seen_zero && from < len )
                 _sections.push_back( Section( buff, from, len ) );
         }
 
-        Section & interest() noexcept;
-        const Section & interest() const noexcept;
+        const Section * interest() const noexcept;
 
-        Section & section_of( int idx ) noexcept;
-        const Section & section_of( int idx ) const noexcept;
+        Section * section_of( int idx ) noexcept;
+        const Section * section_of( int idx ) const noexcept;
 
         bool empty() const noexcept { return _sections.empty(); }
         bool well_formed() const noexcept;
 
-        size_t strlen() const noexcept;
+        int strlen() const noexcept;
         int strcmp( const Split * other ) const noexcept;
 
         void strcpy( const Split * other ) noexcept;
         void strcat( const Split * other ) noexcept;
-
         Split * strchr( char ch ) const noexcept;
 
-        void write( size_t idx, char val ) noexcept;
-        char read( size_t idx ) noexcept;
+        void write( int idx, char val ) noexcept;
+        char read( int idx ) noexcept;
 
-        size_t size() const noexcept { return _len; }
+        int size() const noexcept { return _len; }
 
-        size_t refcount() const noexcept { return _refcount; }
+        Sections & sections() noexcept { return _sections; }
+        const Sections & sections() const noexcept { return _sections; }
+
+        int refcount() const noexcept { return _refcount; }
         void refcount_decrement() { --_refcount; }
         void refcount_increment() { ++_refcount; }
     private:
-        size_t _len;
+        void write_zero( int idx ) noexcept;
+        void write_char( int idx, char val ) noexcept;
+
+        void shrink_left( Section * sec, Segment * bound ) noexcept;
+        void shrink_right( Section * sec, Segment * bound ) noexcept;
+        void shrink_correction( Section * sec, Segment * bound ) noexcept;
+
+        void overwrite_char( Section * sec, Segment & seg, int idx, char val ) noexcept;
+        void overwrite_zero( int idx, char val ) noexcept;
+
+        void divide( Section * sec, Segment & seg, int idx ) noexcept;
+
+        int _len;
         Sections _sections;
-        size_t _refcount;
+        int _refcount;
     };
 
     void split_release( Split * str ) noexcept;
