@@ -70,13 +70,9 @@ namespace abstract::mstring {
         void append( Segment && seg ) noexcept;
         void prepend( Segment && seg ) noexcept;
 
-        Segment& segment_of( int idx ) noexcept {
-            ASSERT( idx >= from() && idx < to() );
-            for ( auto& seg : _segments ) {
-                if ( idx >= seg.from && idx < seg.to )
-                    return seg;
-            }
-        }
+        void merge( const Section * sec ) noexcept;
+
+        void drop( int bound ) noexcept;
 
         const Segment& segment_of( int idx ) const noexcept {
             ASSERT( idx >= from() && idx < to() );
@@ -84,6 +80,12 @@ namespace abstract::mstring {
                 if ( idx >= seg.from && idx < seg.to )
                     return seg;
             }
+        }
+
+        Segment& segment_of( int idx ) noexcept {
+            return const_cast< Segment & >(
+                const_cast< const Section * >( this )->segment_of( idx )
+            );
         }
 
     private:
@@ -119,6 +121,7 @@ namespace abstract::mstring {
         }
 
         const Section * interest() const noexcept;
+        Section * interest() noexcept;
 
         Section * section_of( int idx ) noexcept;
         const Section * section_of( int idx ) const noexcept;

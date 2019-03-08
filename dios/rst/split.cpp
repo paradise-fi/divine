@@ -32,23 +32,6 @@ namespace abstract::mstring {
 
     } // anonymous namespace
 
-    void Split::divide( Section * sec, Segment & seg, int idx ) noexcept
-    {
-        auto [left, right] = split( seg, idx );
-
-        Section right_section;
-        if ( !right.empty() )
-            right_section.append( std::move( right ) );
-        for ( auto rest = std::next( &seg ); rest != sec->segments().end(); ++rest )
-            right_section.append( std::move( *rest ) );
-
-        sec->erase( &seg, sec->segments().end() );
-        if ( !left.empty() )
-            sec->append( std::move( left ) );
-
-        _sections.insert( std::next( sec ), right_section );
-    }
-
     void Section::append( Segment && seg ) noexcept
     {
         _segments.emplace_back( std::move( seg ) );
@@ -59,6 +42,26 @@ namespace abstract::mstring {
     {
         _segments.insert( _segments.begin(), std::move( seg ) );
         merge_neighbours( this, _segments.begin() );
+    }
+
+    void Section::drop( int bound ) noexcept
+    {
+        if ( _segments.size() == 1 ) {
+            _segments[ 0 ].from = bound;
+        } else {
+            auto end = _segments.begin();
+            while ( end->from < bound ) ++end;
+            end->from = bound;
+            _segments.erase( _segments.begin(), end );
+        }
+    }
+
+    void Section::merge( const Section * sec ) noexcept
+    {
+        auto mid = _segments.size() - 1;
+        auto & segs = sec->segments();
+        _segments.append( segs.size(), segs.begin(), segs.end() );
+        merge_neighbours( this, &_segments[ mid ] );
     }
 
     Segment * Section::erase( Segment * seg ) noexcept
@@ -83,6 +86,11 @@ namespace abstract::mstring {
         return nullptr;
     }
 
+    Section * Split::interest() noexcept
+    {
+        return const_cast< Section * >( const_cast< const Split * >( this )->interest() );
+    }
+
     bool Split::well_formed() const noexcept
     {
         return this->empty() || _sections.front().to() < _len;
@@ -99,15 +107,44 @@ namespace abstract::mstring {
         }
     }
 
-    void Split::strcat( const Split * /*other*/ ) noexcept
+    void Split::strcat( const Split * other ) noexcept
     {
-        //int begin = interest().size();
-        //int dist = other->interest().size() + 1;
+        auto left = interest();
+        Section right = *other->interest();
 
-        // TODO check correct bounds
-        //ASSERT( _len >= begin + dist && "concating mstring into smaller mstring" );
-        // TODO copy segments
-        _UNREACHABLE_F( "Not implemented." );
+        int begin = left ? left->size() : 0;
+        int dist = right.size() + 1;
+        int end = begin + dist;
+        assert( _len >= end && "concating mstring into smaller mstring" );
+
+        // concat sections
+        if ( left ) {
+            int shift = left->to();
+            for ( auto & seg : right.segments() ) {
+                seg.from +=  shift;
+                seg.to += shift;
+            }
+
+            left->merge( &right );
+        } else {
+            if ( _sections.empty() ) {
+                _sections.push_back( right );
+                left = _sections.begin();
+            } else {
+                left =_sections.insert( _sections.begin(), right );
+            }
+        }
+
+        // drop overwritten sections
+        auto it = std::next( left );
+        while ( it != _sections.end() && it->from() <= end ) {
+            if ( it->to() <= end ) {
+                it = std::prev( _sections.erase( it ) );
+            } else {
+                it->drop( end );
+                break;
+            }
+        }
     }
 
     Split * Split::strchr( char /*ch*/ ) const noexcept
@@ -176,14 +213,7 @@ namespace abstract::mstring {
 
     Section * Split::section_of( int idx ) noexcept
     {
-        for ( auto& sec : _sections ) {
-            if ( idx >= sec.from() && idx < sec.to() )
-                return &sec;
-            if ( idx < sec.from() )
-                return nullptr;
-        }
-
-        return nullptr;
+        return const_cast< Section * >( const_cast< const Split * >( this )->section_of( idx ) );
     }
 
     const Section * Split::section_of( int idx ) const noexcept
@@ -218,6 +248,23 @@ namespace abstract::mstring {
     {
         bound->to--;
         shrink_correction( sec, bound );
+    }
+
+    void Split::divide( Section * sec, Segment & seg, int idx ) noexcept
+    {
+        auto [left, right] = split( seg, idx );
+
+        Section right_section;
+        if ( !right.empty() )
+            right_section.append( std::move( right ) );
+        for ( auto rest = std::next( &seg ); rest != sec->segments().end(); ++rest )
+            right_section.append( std::move( *rest ) );
+
+        sec->erase( &seg, sec->segments().end() );
+        if ( !left.empty() )
+            sec->append( std::move( left ) );
+
+        _sections.insert( std::next( sec ), right_section );
     }
 
     void Split::write_zero( int idx ) noexcept
@@ -274,15 +321,8 @@ namespace abstract::mstring {
         Segment seg{ idx, idx + 1, val };
 
         if ( left && right ) { // merge sections
-            auto & segs = left->segments();
-            auto mid = segs.size();
-            segs.push_back( seg );
-
-            auto & rsegs = right->segments();
-            // TODO use move
-            segs.append( rsegs.size(), rsegs.begin(), rsegs.end() );
-            merge_neighbours( left, &segs[ mid ] );
-
+            left->append( std::move( seg ) );
+            left->merge( right );
             _sections.erase( right );
         } else if ( left ) {
             left->append( std::move( seg ) );
