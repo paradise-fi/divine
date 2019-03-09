@@ -2,11 +2,7 @@
 /* CC_OPTS: -std=c++17 -I$SRC_ROOT/bricks */
 /* VERIFY_OPTS: -o nofail:malloc */
 
-#include <dios.h>
-#include <rst/split.h>
-#include <cassert>
-
-using namespace abstract::mstring;
+#include "common.h"
 
 int main()
 {

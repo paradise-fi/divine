@@ -2,11 +2,7 @@
 /* CC_OPTS: -std=c++17 -I$SRC_ROOT/bricks */
 /* VERIFY_OPTS: -o nofail:malloc */
 
-#include <dios.h>
-#include <rst/split.h>
-#include <cassert>
-
-using namespace abstract::mstring;
+#include "common.h"
 
 int main()
 {
@@ -17,17 +13,12 @@ int main()
 
         const auto & sec = split.sections();
         assert( sec.size() == 1 );
-        assert( sec[ 0 ].from() == 0 );
-        assert( sec[ 0 ].to() == 6 );
+        test_section( sec[ 0 ], 0, 6 );
 
         const auto & seg = sec[ 0 ].segments();
         assert( seg.size() == 2 );
-        assert( seg[ 0 ].from() == 0 );
-        assert( seg[ 0 ].to() == 3 );
-        assert( seg[ 0 ].value() == 'a' );
-        assert( seg[ 1 ].from() == 3 );
-        assert( seg[ 1 ].to() == 6 );
-        assert( seg[ 1 ].value() == 'b' );
+        test_segment( seg[ 0 ], 0, 3, 'a' );
+        test_segment( seg[ 1 ], 3, 6, 'b' );
     }
 
     { // non zero ending
@@ -38,17 +29,12 @@ int main()
 
         const auto & sec = split.sections();
         assert( sec.size() == 1 );
-        assert( sec[ 0 ].from() == 0 );
-        assert( sec[ 0 ].to() == 4 );
+        test_section( sec[ 0 ], 0, 4 );
 
         const auto & seg = sec[ 0 ].segments();
         assert( seg.size() == 2 );
-        assert( seg[ 0 ].from() == 0 );
-        assert( seg[ 0 ].to() == 2 );
-        assert( seg[ 0 ].value() == 'a' );
-        assert( seg[ 1 ].from() == 2 );
-        assert( seg[ 1 ].to() == 4 );
-        assert( seg[ 1 ].value() == 'b' );
+        test_segment( seg[ 0 ], 0, 2, 'a' );
+        test_segment( seg[ 1 ], 2, 4, 'b' );
     }
 
     { // multiple sections
@@ -58,25 +44,17 @@ int main()
 
         const auto & sec = split.sections();
         assert( sec.size() == 2 );
-        assert( sec[ 0 ].from() == 0 );
-        assert( sec[ 0 ].to() == 2 );
-        assert( sec[ 1 ].from() == 3 );
-        assert( sec[ 1 ].to() == 5 );
+        test_section( sec[ 0 ], 0, 2 );
+        test_section( sec[ 1 ], 3, 5 );
 
         const auto & seg0 = sec[ 0 ].segments();
         assert( seg0.size() == 1 );
-        assert( seg0[ 0 ].from() == 0 );
-        assert( seg0[ 0 ].to() == 2 );
-        assert( seg0[ 0 ].value() == 'a' );
+        test_segment( seg0[ 0 ], 0, 2, 'a' );
 
         const auto & seg1 = sec[ 1 ].segments();
         assert( seg1.size() == 2 );
-        assert( seg1[ 0 ].from() == 3 );
-        assert( seg1[ 0 ].to() == 4 );
-        assert( seg1[ 0 ].value() == 'a' );
-        assert( seg1[ 1 ].from() == 4 );
-        assert( seg1[ 1 ].to() == 5 );
-        assert( seg1[ 1 ].value() == 'b' );
+        test_segment( seg1[ 0 ], 3, 4, 'a' );
+        test_segment( seg1[ 1 ], 4, 5, 'b' );
     }
 
     { // multiple zeros in sequence
@@ -86,25 +64,17 @@ int main()
 
         const auto & sec = split.sections();
         assert( sec.size() == 2 );
-        assert( sec[ 0 ].from() == 0 );
-        assert( sec[ 0 ].to() == 2 );
-        assert( sec[ 1 ].from() == 4 );
-        assert( sec[ 1 ].to() == 6 );
+        test_section( sec[ 0 ], 0, 2 );
+        test_section( sec[ 1 ], 4, 6 );
 
         const auto & seg0 = sec[ 0 ].segments();
         assert( seg0.size() == 1 );
-        assert( seg0[ 0 ].from() == 0 );
-        assert( seg0[ 0 ].to() == 2 );
-        assert( seg0[ 0 ].value() == 'a' );
+        test_segment( seg0[ 0 ], 0, 2, 'a' );
 
         const auto & seg1 = sec[ 1 ].segments();
         assert( seg1.size() == 2 );
-        assert( seg1[ 0 ].from() == 4 );
-        assert( seg1[ 0 ].to() == 5 );
-        assert( seg1[ 0 ].value() == 'a' );
-        assert( seg1[ 1 ].from() == 5 );
-        assert( seg1[ 1 ].to() == 6 );
-        assert( seg1[ 1 ].value() == 'b' );
+        test_segment( seg1[ 0 ], 4, 5, 'a' );
+        test_segment( seg1[ 1 ], 5, 6, 'b' );
     }
 
     { // starts with a zero
@@ -114,20 +84,13 @@ int main()
 
         const auto & sec = split.sections();
         assert( sec.size() == 1 );
-        assert( sec[ 0 ].from() == 1 );
-        assert( sec[ 0 ].to() == 5 );
+        test_section( sec[ 0 ], 1, 5 );
 
         const auto & seg = sec[ 0 ].segments();
         assert( seg.size() == 3 );
-        assert( seg[ 0 ].from() == 1 );
-        assert( seg[ 0 ].to() == 2 );
-        assert( seg[ 0 ].value() == 'c' );
-        assert( seg[ 1 ].from() == 2 );
-        assert( seg[ 1 ].to() == 4 );
-        assert( seg[ 1 ].value() == 'a' );
-        assert( seg[ 2 ].from() == 4 );
-        assert( seg[ 2 ].to() == 5 );
-        assert( seg[ 2 ].value() == 'b' );
+        test_segment( seg[ 0 ], 1, 2, 'c' );
+        test_segment( seg[ 1 ], 2, 4, 'a' );
+        test_segment( seg[ 2 ], 4, 5, 'b' );
     }
 
     { // null segmentation
