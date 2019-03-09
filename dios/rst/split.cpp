@@ -30,6 +30,20 @@ namespace abstract::mstring {
 
         }
 
+        inline int begin_value( const Section * sec ) noexcept
+        {
+            if ( !sec )
+                return 0;
+            return sec->segments().front().value;
+        }
+
+        inline int value( const Section * sec, const Segment * seg ) noexcept
+        {
+            if ( seg != sec->segments().end() )
+                return seg->value;
+            return 0;
+        }
+
     } // anonymous namespace
 
     void Section::append( Segment && seg ) noexcept
@@ -181,34 +195,39 @@ namespace abstract::mstring {
         return 0;
     }
 
-    int Split::strcmp( const Split * /*other*/ ) const noexcept
+    int Split::strcmp( const Split * other ) const noexcept
     {
-        /*const auto & sq1 = interest();
-        const auto & sq2 = other->interest();
+        const auto * lhs = interest();
+        const auto * rhs = other->interest();
 
-        if ( !sq1.empty() && !sq2.empty() ) {
-            for ( int i = 0; i < sq1.size(); i++ ) {
-                const auto& sq1_seg = sq1.segment_of( i ); // TODO optimize segment_of
-                const auto& sq2_seg = sq2.segment_of( i );
+        if ( !lhs || !rhs )
+            return begin_value( lhs ) - begin_value( rhs );
 
-               // TODO optimize per segment comparison
-                if ( sq1_seg.value() == sq2_seg.value() ) {
-                    if ( sq1_seg.to() > sq2_seg.to() ) {
-                        return sq1_seg.value() - sq2.segment_of( i + 1 ).value();
-                    } else if (sq1_seg.to() < sq2_seg.to() ) {
-                        return sq1.segment_of( i + 1 ).value() - sq2_seg.value();
-                    }
-                } else {
-                    return sq1[ i ] - sq2[ i ];
+        const auto & lsegs = lhs->segments();
+        const auto & rsegs = rhs->segments();
+
+        auto * lseg = lsegs.begin();
+        auto * rseg = rsegs.begin();
+
+        while ( lseg != lsegs.end() && rseg != rsegs.end() ) {
+            char lhsv = lseg->value;
+            char rhsv = rseg->value;
+
+            if ( lhsv != rhsv ) {
+                return lhsv - rhsv;
+            } else {
+                if ( lseg->to > rseg->to ) {
+                    return lhsv - value( rhs, std::next( rseg ) );
+                } else if ( lseg->to < rseg->to ) {
+                    return value( lhs, std::next( lseg ) ) - rhsv;
                 }
             }
 
-            return 0;
+            ++lseg;
+            ++rseg;
         }
 
-        _UNREACHABLE_F( "Error: there is no string of interest." );*/
-
-        _UNREACHABLE_F( "Not implemented." );
+        return value( lhs, lseg ) - value( rhs, rseg );
     }
 
     Section * Split::section_of( int idx ) noexcept
