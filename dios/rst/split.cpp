@@ -44,6 +44,19 @@ namespace abstract::mstring {
             return 0;
         }
 
+        Section * get_boundary_section( Sections & secs, int bound ) noexcept
+        {
+            auto ovewrites = [bound] ( const Section * sec ) {
+                return sec->to() - 1 <= bound;
+            };
+
+            auto * sec = secs.begin();
+            while ( sec != secs.end() && ovewrites( sec ) ) {
+                ++sec;
+            }
+            return sec;
+        };
+
     } // anonymous namespace
 
     void Section::append( Segment && seg ) noexcept
@@ -63,10 +76,11 @@ namespace abstract::mstring {
         if ( _segments.size() == 1 ) {
             _segments[ 0 ].from = bound;
         } else {
-            auto end = _segments.begin();
-            while ( end->from < bound ) ++end;
-            end->from = bound;
-            _segments.erase( _segments.begin(), end );
+            auto beg = _segments.begin();
+            while ( beg->to <= bound )
+                ++beg;
+            beg->from = bound;
+            _segments.erase( _segments.begin(), beg );
         }
     }
 
@@ -113,17 +127,40 @@ namespace abstract::mstring {
     void Split::strcpy( const Split * other ) noexcept
     {
         if ( this != other ) {
-            //auto str = other->interest();
-            // TODO check correct bounds
-            //ASSERT( str.size() < _len && "copying mstring to smaller mstring" );
-            // TODO copy segments
-            _UNREACHABLE_F( "Not implemented." );
+            auto src = other->interest();
+
+            if ( !src ) {
+                if ( auto sec = _sections.begin(); sec != _sections.end() ) {
+                    sec->drop( 1 ); // rewrite first character by zero
+                }
+                return;
+            }
+
+            auto slen = src->size();
+            assert( slen <= _len && "copying mstring to smaller mstring" );
+            auto * bound = get_boundary_section( _sections, slen );
+
+            if ( bound == _sections.end() ) {
+                _sections.clear();
+                _sections.push_back( *src );
+            } else {
+                if ( bound != _sections.begin() ) {
+                    bound = std::prev( _sections.erase( _sections.begin(), bound ) );
+                }
+
+                if ( bound != _sections.end() && bound->from() <= src->to() ) {
+                    bound->drop( slen + 1 );
+                }
+
+                _sections.insert( _sections.begin(), *src );
+            }
         }
     }
 
     void Split::strcat( const Split * other ) noexcept
     {
         auto left = interest();
+        // TODO get rid of unnecessary copy
         Section right = *other->interest();
 
         int begin = left ? left->size() : 0;

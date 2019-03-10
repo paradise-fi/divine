@@ -25,6 +25,11 @@ namespace abstract::mstring {
         int size() const noexcept { return to - from; }
         bool empty() const noexcept { return size() == 0; }
 
+        void dump() const noexcept
+        {
+            __dios_trace_f( "seg: [%d, %d) = %c", from, to, value );
+        }
+
         int from, to;
         char value;
     };
