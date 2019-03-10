@@ -38,8 +38,10 @@ namespace lart::abstract
 
         Placeholder ph = placeholder( inst, irb );
 
-        if ( !llvm::isa< llvm::ReturnInst >( inst ) ) {
-            ph.inst->moveAfter( inst );
+        if constexpr ( T != Type::PHI ) {
+            if ( !llvm::isa< llvm::ReturnInst >( inst ) ) {
+                ph.inst->moveAfter( inst );
+            }
         }
 
         if constexpr ( T != Type::ToBool ) {
