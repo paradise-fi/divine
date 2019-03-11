@@ -1,4 +1,4 @@
-/* TAGS: mstring min todo */
+/* TAGS: mstring min */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -14,10 +14,10 @@ void my_strcpy( char * dest, const char * src ) {
 int main() {
     char buff[7] = "string";
     const char * src = __mstring_val( buff, 7 );
-    char res[7];
+    char res[7] = "";
     char * dest = __mstring_val( res, 7 );
 
-    my_strcpy(dest, src);
+    my_strcpy( dest, src );
 
-    assert(strcmp(src,dest) == 0);
+    assert( strcmp( src, dest ) == 0 );
 }

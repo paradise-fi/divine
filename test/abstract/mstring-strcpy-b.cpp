@@ -1,4 +1,4 @@
-/* TAGS: mstring min todo */
+/* TAGS: mstring min */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -9,8 +9,9 @@
 
 void my_strcpy( char * dest, const char * src ) {
     int i = 0;
-    for (; i != '\0'; i++) {
+    while ( src[i] != '\0' ) {
         dest[i] = src[i];
+        ++i;
     }
 
     dest[i] = '\0';
