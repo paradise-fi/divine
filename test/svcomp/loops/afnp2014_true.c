@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic */
 // Source: E. De Angelis, F. Fioravanti, J. A. Navas, M. Proietti:
 // "Verification of Programs by Combining Iterated Specialization with

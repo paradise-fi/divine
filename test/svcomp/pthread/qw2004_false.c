@@ -1,4 +1,4 @@
-/* TAGS: c todo */
+/* TAGS: c */
 /* VERIFY_OPTS: -o nofail:malloc */
 // Source: Shaz Qadeer, Dinghao Wu: "KISS: Keep It Simple and Sequential",
 // PLDI 2004

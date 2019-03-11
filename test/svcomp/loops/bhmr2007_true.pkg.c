@@ -1,4 +1,4 @@
-/* TAGS: c sym todo */
+/* TAGS: c sym */
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
@@ -15,7 +15,7 @@ void __VERIFIER_assert(int cond) {
 extern int __VERIFIER_nondet_int(void);
 
 // V: small.5 CC_OPT: -DNUM=5
-// V: small.10 CC_OPT: -DNUM=10 TAGS: ext
+// V: small.10 CC_OPT: -DNUM=10 TAGS: big
 // V: big.100 CC_OPT: -DNUM=100 TAGS: big
 // V: big.1000 CC_OPT: -DNUM=1000 TAGS: big
 // V: big.100000 CC_OPT: -DNUM=100000 TAGS: big
