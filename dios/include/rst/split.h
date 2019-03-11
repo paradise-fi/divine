@@ -99,13 +99,21 @@ namespace abstract::mstring {
 
     using Sections = Array< Section >;
 
+    struct SplitData
+    {
+        int len;
+        Sections sections;
+    };
+
     struct Split
     {
         Split( const char * buff, int len )
-            : _len( len )
         {
             if ( buff == nullptr )
                 assert( len == 0 );
+
+            _data = __new< SplitData >( _VM_PT_Weak );
+            _data->len = len;
 
             bool seen_zero = true;
             int from = 0;
@@ -114,7 +122,7 @@ namespace abstract::mstring {
                     seen_zero = false;
                     from = i;
                 } else if ( !seen_zero && buff[ i ] == '\0' ) {
-                    _sections.push_back( Section( buff, from, i ) );
+                    _data->sections.push_back( Section( buff, from, i ) );
                     seen_zero = true;
                     from = i + 1;
                 }
@@ -122,7 +130,12 @@ namespace abstract::mstring {
 
             // last substring
             if ( !seen_zero && from < len )
-                _sections.push_back( Section( buff, from, len ) );
+                _data->sections.push_back( Section( buff, from, len ) );
+        }
+
+        ~Split()
+        {
+            __dios_safe_free( _data );
         }
 
         const Section * interest() const noexcept;
@@ -131,7 +144,7 @@ namespace abstract::mstring {
         Section * section_of( int idx ) noexcept;
         const Section * section_of( int idx ) const noexcept;
 
-        bool empty() const noexcept { return _sections.empty(); }
+        bool empty() const noexcept { return _data->sections.empty(); }
         bool well_formed() const noexcept;
 
         int strlen() const noexcept;
@@ -144,10 +157,10 @@ namespace abstract::mstring {
         void write( int idx, char val ) noexcept;
         char read( int idx ) noexcept;
 
-        int size() const noexcept { return _len; }
+        int size() const noexcept { return _data->len; }
 
-        Sections & sections() noexcept { return _sections; }
-        const Sections & sections() const noexcept { return _sections; }
+        Sections & sections() noexcept { return _data->sections; }
+        const Sections & sections() const noexcept { return _data->sections; }
 
         int refcount() const noexcept { return _refcount; }
         void refcount_decrement() { --_refcount; }
@@ -165,9 +178,8 @@ namespace abstract::mstring {
 
         void divide( Section * sec, Segment & seg, int idx ) noexcept;
 
-        int _len;
-        Sections _sections;
         int _refcount;
+        SplitData * _data;
     };
 
     void split_release( Split * str ) noexcept;

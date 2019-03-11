@@ -108,9 +108,9 @@ namespace abstract::mstring {
         if ( empty() )
             return nullptr;
 
-        auto * front = &_sections[ 0 ];
-        if ( front->from() == 0 )
-            return front;
+        const auto & front = sections().front();
+        if ( front.from() == 0 )
+            return &front;
         return nullptr;
     }
 
@@ -121,7 +121,7 @@ namespace abstract::mstring {
 
     bool Split::well_formed() const noexcept
     {
-        return this->empty() || _sections.front().to() < _len;
+        return this->empty() || sections().front().to() < size();
     }
 
     void Split::strcpy( const Split * other ) noexcept
@@ -130,29 +130,31 @@ namespace abstract::mstring {
             auto src = other->interest();
 
             if ( !src ) {
-                if ( auto sec = _sections.begin(); sec != _sections.end() ) {
+                if ( auto sec = sections().begin(); sec != sections().end() ) {
                     sec->drop( 1 ); // rewrite first character by zero
                 }
                 return;
             }
 
+            auto & secs = sections();
             auto slen = src->size();
-            assert( slen <= _len && "copying mstring to smaller mstring" );
-            auto * bound = get_boundary_section( _sections, slen );
 
-            if ( bound == _sections.end() ) {
-                _sections.clear();
-                _sections.push_back( *src );
+            assert( slen <= size() && "copying mstring to smaller mstring" );
+            auto * bound = get_boundary_section( secs, slen );
+
+            if ( bound == secs.end() ) {
+                secs.clear();
+                secs.push_back( *src );
             } else {
-                if ( bound != _sections.begin() ) {
-                    bound = std::prev( _sections.erase( _sections.begin(), bound ) );
+                if ( bound != secs.begin() ) {
+                    bound = std::prev( secs.erase( secs.begin(), bound ) );
                 }
 
-                if ( bound != _sections.end() && bound->from() <= src->to() ) {
+                if ( bound != secs.end() && bound->from() <= src->to() ) {
                     bound->drop( slen + 1 );
                 }
 
-                _sections.insert( _sections.begin(), *src );
+                secs.insert( secs.begin(), *src );
             }
         }
     }
@@ -166,7 +168,9 @@ namespace abstract::mstring {
         int begin = left ? left->size() : 0;
         int dist = right.size() + 1;
         int end = begin + dist;
-        assert( _len >= end && "concating mstring into smaller mstring" );
+        assert( size() >= end && "concating mstring into smaller mstring" );
+
+        auto & secs = sections();
 
         // concat sections
         if ( left ) {
@@ -178,19 +182,19 @@ namespace abstract::mstring {
 
             left->merge( &right );
         } else {
-            if ( _sections.empty() ) {
-                _sections.push_back( right );
-                left = _sections.begin();
+            if ( secs.empty() ) {
+                secs.push_back( right );
+                left = secs.begin();
             } else {
-                left =_sections.insert( _sections.begin(), right );
+                left = secs.insert( secs.begin(), right );
             }
         }
 
         // drop overwritten sections
         auto it = std::next( left );
-        while ( it != _sections.end() && it->from() <= end ) {
+        while ( it != secs.end() && it->from() <= end ) {
             if ( it->to() <= end ) {
-                it = std::prev( _sections.erase( it ) );
+                it = std::prev( secs.erase( it ) );
             } else {
                 it->drop( end );
                 break;
@@ -274,7 +278,7 @@ namespace abstract::mstring {
 
     const Section * Split::section_of( int idx ) const noexcept
     {
-        for ( const auto& sec : _sections ) {
+        for ( const auto& sec : sections() ) {
             if ( idx >= sec.from() && idx < sec.to() )
                 return &sec;
             if ( idx < sec.from() )
@@ -287,7 +291,7 @@ namespace abstract::mstring {
     void Split::shrink_correction( Section * sec, Segment * bound ) noexcept
     {
         if ( sec->empty() ) {
-            _sections.erase( sec );
+            sections().erase( sec );
         } else {
             if ( bound->empty() )
                 sec->erase( bound );
@@ -320,7 +324,7 @@ namespace abstract::mstring {
         if ( !left.empty() )
             sec->append( std::move( left ) );
 
-        _sections.insert( std::next( sec ), right_section );
+        sections().insert( std::next( sec ), right_section );
     }
 
     void Split::write_zero( int idx ) noexcept
@@ -376,10 +380,12 @@ namespace abstract::mstring {
 
         Segment seg{ idx, idx + 1, val };
 
+        auto & secs = sections();
+
         if ( left && right ) { // merge sections
             left->append( std::move( seg ) );
             left->merge( right );
-            _sections.erase( right );
+            secs.erase( right );
         } else if ( left ) {
             left->append( std::move( seg ) );
         } else if ( right ) { // extend right section
@@ -388,12 +394,12 @@ namespace abstract::mstring {
             Section new_section;
             new_section.append( std::move( seg ) );
 
-            if ( _sections.empty() ) {
-                _sections.push_back( new_section );
+            if ( secs.empty() ) {
+                secs.push_back( new_section );
             } else {
-                auto point = _sections.begin();
+                auto point = secs.begin();
                 while ( point->to() < idx ) ++point;
-                _sections.insert( point, new_section );
+                secs.insert( point, new_section );
             }
         }
     }
@@ -412,7 +418,7 @@ namespace abstract::mstring {
 
     void Split::write( int idx, char val ) noexcept
     {
-        assert( idx < _len );
+        assert( idx < size() ); // TODO consider offset
         if ( val == '\0' )
             write_zero( idx );
         else
@@ -422,7 +428,7 @@ namespace abstract::mstring {
 
     char Split::read( int idx ) noexcept
     {
-        assert( idx < _len );
+        assert( idx < size() ); // TODO consider offset
         if ( auto sec = section_of( idx ) )
             return sec->segment_of( idx ).value;
         return '\0';
