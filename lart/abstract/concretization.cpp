@@ -20,12 +20,16 @@ namespace lart::abstract
 
     auto unstash( llvm::Function * fn ) -> llvm::Instruction *
     {
-        llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHI() );
+        auto entry = fn->getEntryBlock().getFirstNonPHIOrDbgOrLifetime();
+        llvm::IRBuilder<> irb( entry );
 
         auto _unstash = fn->getParent()->getFunction( "__lart_unstash" );
         ASSERT( _unstash && "Missing __lart_unstash function" );
 
-        return irb.CreateCall( _unstash );
+        auto call = irb.CreateCall( _unstash );
+        auto loc = llvm::DebugLoc::get( 0, 0, fn->getSubprogram() );
+        call->setDebugLoc( loc );
+        return call;
     }
 
     struct Bundle

@@ -104,7 +104,7 @@ namespace lart::abstract {
             return false;
         };
 
-        llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHI() );
+        llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHIOrDbgOrLifetime() );
 
         query::query( fn->args() )
             .map( query::refToPtr )
