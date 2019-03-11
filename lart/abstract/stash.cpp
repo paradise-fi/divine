@@ -84,6 +84,7 @@ namespace lart::abstract {
 
     void Unstash::process_arguments( llvm::CallInst * call, llvm::Function * fn )
     {
+        assert( !fn->empty() && "unstashing function without defininition" );
         auto concrete = [&] ( llvm::Argument * arg ) {
             return is_concrete( call->getOperand( arg->getArgNo() ) );
         };

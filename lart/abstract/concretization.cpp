@@ -101,7 +101,7 @@ namespace lart::abstract
             return addr;
         }
 
-        void unpack( llvm::Function * fn )
+        auto unpack( llvm::Function * fn )
         {
             ASSERT ( !empty() );
             auto addr = unstash( fn );
@@ -111,6 +111,9 @@ namespace lart::abstract
             auto pack = irb.CreateLoad( _type, ptr );
 
             unsigned int idx = 0;
+
+            std::vector< llvm::Instruction * > erase;
+
             for ( auto & arg : fn->args() ) {
                 if ( !meta::has_dual( &arg ) )
                     continue;
@@ -121,10 +124,11 @@ namespace lart::abstract
                 auto unstashed = irb.CreateExtractValue( pack, { idx++ } );
                 meta::make_duals( &arg, llvm::cast< llvm::Instruction >( unstashed ) );
                 ph.inst->replaceAllUsesWith( unstashed );
-                ph.inst->eraseFromParent();
+                erase.push_back( ph.inst );
             }
 
             addr->moveBefore( llvm::cast< llvm::Instruction >( ptr ) );
+            return erase;
         }
 
         bool empty() const noexcept { return _type == nullptr; }
@@ -161,7 +165,6 @@ namespace lart::abstract
         meta::abstract::inherit( abstract, inst );
         meta::make_duals( concrete, abstract );
         inst->replaceAllUsesWith( abstract );
-        inst->eraseFromParent();
     }
 
     void Concretization::run( llvm::Module & m )
@@ -189,6 +192,8 @@ namespace lart::abstract
         }
 
         std::set< llvm::Function * > seen;
+        std::set< llvm::Instruction * > erase;
+
         run_on_abstract_calls( [&] ( auto * call ) {
             if ( is_transformable( call ) )
                 return; // call of domain function
@@ -201,16 +206,26 @@ namespace lart::abstract
 
                 run_on_potentialy_called_functions( call, [&] ( auto fn ) {
                     if ( !seen.count( fn ) ) {
-                        bundle.unpack( fn );
+                        auto to_erase = bundle.unpack( fn );
+                        erase.insert( to_erase.begin(), to_erase.end() );
                         seen.insert( fn );
                     }
                 } );
             }
         }, m );
 
+        for ( auto * inst : erase ) {
+            inst->eraseFromParent();
+        }
+
         auto phis = [] ( const auto & ph ) { return  ph.type == Placeholder::Type::PHI; };
-        for ( const auto & ph : placeholders( m, phis ) ) {
+        auto places = placeholders( m, phis );
+        for ( const auto & ph : places ) {
             concretize_phi_placeholder( ph );
+        }
+
+        for ( const auto & ph : places ) {
+            ph.inst->eraseFromParent();
         }
     }
 
