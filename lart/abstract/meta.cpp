@@ -89,6 +89,10 @@ namespace lart::abstract::meta {
 
     llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
         auto &meta = inst->getMetadata( tag )->getOperand( 0 );
+        if ( auto con = llvm::dyn_cast< llvm::ConstantAsMetadata >( meta.get() ) ) {
+            auto idx = llvm::cast< llvm::ConstantInt >( con->getValue() )->getZExtValue();
+            return std::next( inst->getFunction()->arg_begin(), idx );
+        }
         return llvm::cast< llvm::ValueAsMetadata >( meta.get() )->getValue();
     }
 
@@ -214,83 +218,5 @@ namespace lart::abstract::meta {
 
     } // namespace argument
 
-    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
-        auto &ctx = inst->getContext();
-        auto meta = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
-        inst->setMetadata( tag, meta );
-    }
-
-    void set_value_as_meta( llvm::Argument * arg, llvm::Value * val ) {
-        auto fn = arg->getParent();
-        function::init( fn );
-
-        ASSERT( fn == llvm::cast< llvm::Instruction >( val )->getFunction() );
-        auto &ctx = fn->getContext();
-        auto node = meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
-        auto meta = fn->getMetadata( function::duals );
-        meta->replaceOperandWith( arg->getArgNo(), node );
-    }
-
-    void make_duals( llvm::Value * a, llvm::Instruction * b ) {
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( a ) )
-            return make_duals( arg, b );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( a ) )
-            return make_duals( inst, b );
-        UNREACHABLE( "Unsupported dual pair" );
-    }
-
-    void make_duals( llvm::Argument * arg, llvm::Instruction * inst ) {
-        ASSERT( arg->getParent() == inst->getFunction() );
-        set_value_as_meta( arg, inst );
-        set_value_as_meta( inst, meta::tag::dual, arg );
-    }
-
-    void make_duals( llvm::Instruction * a, llvm::Instruction * b ) {
-        ASSERT( a->getFunction() == b->getFunction() );
-        set_value_as_meta( a, meta::tag::dual, b );
-        set_value_as_meta( b, meta::tag::dual, a );
-    }
-
-    bool has_dual( llvm::Value * val ) {
-        if ( llvm::isa< llvm::Constant >( val ) )
-            return false;
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-            return has_dual( arg );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-            return has_dual( inst );
-        UNREACHABLE( "Unsupported dual value" );
-    }
-
-    bool has_dual( llvm::Argument * arg ) {
-        return get_dual( arg );
-    }
-
-    bool has_dual( llvm::Instruction * inst ) {
-        return inst->getMetadata( meta::tag::dual );
-    }
-
-    llvm::Value * get_dual( llvm::Value * val ) {
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-            return get_dual( arg );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-            return get_dual( inst );
-        UNREACHABLE( "Unsupported dual value" );
-    }
-
-    llvm::Value * get_dual( llvm::Argument * arg ) {
-        auto fn = arg->getParent();
-        if ( auto node = fn->getMetadata( function::duals ) ) {
-            auto idx = arg->getArgNo();
-            auto meta = llvm::cast< llvm::MDNode >( node->getOperand( idx ) );
-            if ( meta->getNumOperands() == 0 )
-                return nullptr;
-            return llvm::cast< llvm::ValueAsMetadata >( meta->getOperand( 0 ).get() )->getValue();
-        }
-        return nullptr;
-    }
-
-    llvm::Value * get_dual( llvm::Instruction *inst ) {
-        return get_value_from_meta( inst, meta::tag::dual );
-    }
 
 } // namespace lart::abstract::meta

@@ -246,6 +246,105 @@ using lart::util::get_module;
         return doms;
     }
 
+namespace meta {
+    void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
+        auto &ctx = inst->getContext();
+
+        auto meta = [&] {
+            if ( llvm::isa< llvm::Instruction >( val ) )
+                return meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
+            if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) ) {
+                auto i64 = llvm::Type::getInt64Ty( ctx );
+                auto con = llvm::ConstantInt::get( i64, arg->getArgNo() );
+                return meta::tuple::create( ctx, { llvm::ConstantAsMetadata::get( con ) } );
+            }
+            UNREACHABLE( "Unsupported value" );
+        } ();
+
+        inst->setMetadata( tag, meta );
+    }
+
+    void make_duals( llvm::Value * a, llvm::Instruction * b ) {
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( a ) )
+            return make_duals( arg, b );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( a ) )
+            return make_duals( inst, b );
+        UNREACHABLE( "Unsupported dual pair" );
+    }
+
+    void make_duals( llvm::Argument * arg, llvm::Instruction * inst ) {
+        ASSERT( arg->getParent() == inst->getFunction() );
+        set_value_as_meta( inst, meta::tag::dual, arg );
+    }
+
+    void make_duals( llvm::Instruction * a, llvm::Instruction * b ) {
+        ASSERT( a->getFunction() == b->getFunction() );
+        set_value_as_meta( a, meta::tag::dual, b );
+        set_value_as_meta( b, meta::tag::dual, a );
+    }
+
+    bool has_dual( llvm::Value * val ) {
+        if ( llvm::isa< llvm::Constant >( val ) )
+            return false;
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+            return has_dual( arg );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            return has_dual( inst );
+        UNREACHABLE( "Unsupported dual value" );
+    }
+
+    bool has_dual( llvm::Argument * arg ) {
+        if ( meta::abstract::has( arg ) ) {
+            auto m = arg->getParent()->getParent();
+            return is_base_type( m, arg );
+        }
+        return false;
+    }
+
+    bool has_dual( llvm::Instruction * inst ) {
+        return inst->getMetadata( meta::tag::dual );
+    }
+
+    llvm::Value * get_dual( llvm::Value * val ) {
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+            return get_dual( arg );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            return get_dual( inst );
+        UNREACHABLE( "Unsupported dual value" );
+    }
+
+    llvm::Value * get_dual( llvm::Argument * arg ) {
+        // TODO rework
+        auto fn = arg->getParent();
+        auto point = fn->getEntryBlock().getFirstNonPHIOrDbgOrLifetime();
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( point ) ) {
+            if ( call->getCalledFunction()->getName() == "__lart_unstash" ) {
+                auto ptr = llvm::cast< llvm::IntToPtrInst >( *call->user_begin() );
+                auto pack = llvm::cast< llvm::LoadInst >( *ptr->user_begin() );
+                for ( auto u : pack->users() ) {
+                    if ( meta::get_dual( u ) == arg ) {
+                        return u;
+                    }
+                }
+            }
+        }
+
+        for ( auto u : arg->users() ) {
+            if ( auto i = llvm::dyn_cast< llvm::Instruction >( u ); meta::has_dual( i ) ) {
+                if ( meta::get_dual( i ) == arg ) {
+                    return i; // unstash placeholder
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    llvm::Value * get_dual( llvm::Instruction *inst ) {
+        return get_value_from_meta( inst, meta::tag::dual );
+    }
+} // namespace meta
+
 } // namespace lart::abstract
 
 

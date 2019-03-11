@@ -121,4 +121,18 @@ namespace lart::abstract {
 
     llvm::Value * lower_constant_expr_call( llvm::ConstantExpr * ce );
 
+    namespace meta {
+        void make_duals( llvm::Value * a, llvm::Instruction * b );
+        void make_duals( llvm::Argument * arg, llvm::Instruction * inst );
+        void make_duals( llvm::Instruction * a, llvm::Instruction * b );
+
+        bool has_dual( llvm::Value * val );
+        bool has_dual( llvm::Argument * arg );
+        bool has_dual( llvm::Instruction * inst );
+
+        llvm::Value * get_dual( llvm::Value * val );
+        llvm::Value * get_dual( llvm::Argument * arg );
+        llvm::Value * get_dual( llvm::Instruction * inst );
+    } // namespace meta
+
 } // namespace lart::abstract
