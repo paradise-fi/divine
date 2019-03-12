@@ -80,7 +80,7 @@ namespace abstract::mstring {
         void drop( int bound ) noexcept;
 
         const Segment& segment_of( int idx ) const noexcept {
-            ASSERT( idx >= from() && idx < to() );
+            assert( idx >= from() && idx < to() );
             for ( const auto & seg : _segments ) {
                 if ( idx >= seg.from && idx < seg.to )
                     return seg;
@@ -105,7 +105,7 @@ namespace abstract::mstring {
             : _len( len )
         {
             if ( buff == nullptr )
-                ASSERT( len == 0 );
+                assert( len == 0 );
 
             bool seen_zero = true;
             int from = 0;
