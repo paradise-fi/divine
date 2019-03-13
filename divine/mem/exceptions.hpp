@@ -24,7 +24,7 @@
 namespace divine::mem
 {
 
-template< typename K, typename V, typename Pool, uint8_t NLayers >
+template< typename K, typename V, typename Pool >
 struct SnapshottedMap
 {
     using Map = std::map< K, V >;
@@ -35,15 +35,11 @@ struct SnapshottedMap
     using value_type = typename Map::value_type;
     using mapped_type = typename Map::mapped_type;
     using key_compare = typename Map::key_compare;
-    using Layer = uint8_t;
     using SnapPool = MasterPool; //TODO: customise?
     using SnapPointer = typename SnapPool::Pointer;
 
-    using DirEntry = uint32_t; // offset within snapshot
-    using Directory = std::array< DirEntry, NLayers - 1 >;
-
     mutable struct Local {
-        std::map< Internal, std::array< Map, NLayers > > _maps;
+        std::map< Internal, Map > _maps;
     } _l;
 
     mutable SlavePool _snap_pointers;
@@ -51,16 +47,16 @@ struct SnapshottedMap
 
     SnapshottedMap( MasterPool & mp ) : _snap_pointers( mp ) {}
 
-    const value_type * at( Internal obj, key_type key, Layer layer ) const
+    const value_type * at( Internal obj, key_type key ) const
     {
         const auto i_map = _l._maps.find( obj );
         if ( i_map != _l._maps.end() )
         {
-            const auto it = i_map->second[ layer ].find( key );
-            return ( it == i_map->second[ layer ].end() ) ? nullptr : &*it;
+            const auto it = i_map->second.find( key );
+            return ( it == i_map->second.end() ) ? nullptr : &*it;
         }
 
-        auto [ begin, end ] = _snap_range( obj, layer );
+        auto [ begin, end ] = _snap_range( obj );
         auto p = std::lower_bound( begin, end, key, []( auto & l, auto k )
                 {
                 return key_compare()( l.first, k );
@@ -70,61 +66,50 @@ struct SnapshottedMap
         return p;
     }
 
-    value_type * at_rw( Internal obj, key_type key, Layer layer )
+    value_type * at_rw( Internal obj, key_type key )
     {
         auto i_map = _l._maps.find( obj );
         if ( i_map != _l._maps.end() )
         {
-            auto it = i_map->second[ layer ].find( key );
-            return ( it == i_map->second[ layer ].end() ) ? nullptr : &*it;
+            auto it = i_map->second.find( key );
+            return ( it == i_map->second.end() ) ? nullptr : &*it;
         }
         return nullptr;
     }
 
-    void set( Internal obj, key_type key, Layer layer, const mapped_type &exc )
+    void set( Internal obj, key_type key, const mapped_type &exc )
     {
-        _l._maps[ obj ][ layer ][ key ] = exc;
+        _l._maps[ obj ][ key ] = exc;
     }
 
-    void erase( Internal obj, key_type key, Layer layer )
+    void erase( Internal obj, key_type key )
     {
         auto i_map = _l._maps.find( obj );
         if ( i_map != _l._maps.end() )
-            i_map->second[ layer ].erase( key );
+            i_map->second.erase( key );
     }
 
     void snapshot() const
     {
-        for ( const auto &[ obj, maps ] : _l._maps )
+        for ( const auto &[ obj, map ] : _l._maps )
         {
-            unsigned snap_size = 0;
-            for ( const auto & m : maps )
-                snap_size += m.size() * sizeof( value_type );
+            unsigned snap_size = map.size() * sizeof( value_type );
             if ( snap_size == 0 )
                 continue;
 
-            snap_size += sizeof( Directory );
             auto snap = _snapshots.allocate( snap_size );
             ASSERT_EQ( *_snap_pointers.template machinePointer< SnapPointer >( obj ), SnapPointer() );
             *_snap_pointers.template machinePointer< SnapPointer >( obj ) = snap;
 
-            Layer layer = 0;
-            auto & dir = *_snapshots.template machinePointer< Directory >( snap );
-            auto begin = _snapshots.template machinePointer< value_type >( snap, sizeof( Directory ) );
+            auto begin = _snapshots.template machinePointer< value_type >( snap );
             auto dst = begin;
-            for ( auto & map : maps )
+            for ( const auto & p : map )
             {
-                if ( layer > 0 )
-                    dir[ layer - 1 ] = DirEntry( dst - begin );
-                for ( const auto & p : map )
-                {
-                    new ( dst ) value_type( p );
-                    ++dst;
-                }
-                ++layer;
+                new ( dst ) value_type( p );
+                ++dst;
             }
 
-            ASSERT_EQ( snap_size, size_t( dst ) - size_t( begin ) + sizeof( Directory ) );
+            ASSERT_EQ( snap_size, size_t( dst ) - size_t( begin ) );
         }
         _l._maps.clear();
     }
@@ -141,34 +126,35 @@ struct SnapshottedMap
         _l._maps.erase( obj );
     }
 
-    int compare( Internal a, Internal b, Layer layer, bool ignore_values ) const
+    template< typename UnaryPredicate >
+    int compare( Internal a, Internal b, UnaryPredicate ignore_values ) const
     {
         auto it_a = _l._maps.find( a );
         if ( it_a != _l._maps.end() ) {
-            const auto & map_a = it_a->second[ layer ];
-            return _cmp( map_a.begin(), map_a.end(), b, layer, ignore_values );
+            const auto & map_a = it_a->second;
+            return _cmp( map_a.begin(), map_a.end(), b, ignore_values );
         }
 
-        auto [ begin_a, end_a ] = _snap_range( a, layer );
-        return _cmp( begin_a, end_a, b, layer, ignore_values );
+        auto [ begin_a, end_a ] = _snap_range( a );
+        return _cmp( begin_a, end_a, b, ignore_values );
     }
 
-    template< typename IterA >
-    int _cmp( IterA begin_a, IterA end_a, Internal b, Layer layer, bool ignore_values ) const
+    template< typename IterA, typename UnaryPredicate >
+    int _cmp( IterA begin_a, IterA end_a, Internal b, UnaryPredicate ignore_values ) const
     {
         auto it_b = _l._maps.find( b );
         if ( it_b != _l._maps.end() )
         {
-            const auto & map_b = it_b->second[ layer ];
+            const auto & map_b = it_b->second;
             return _cmp( begin_a, end_a, map_b.begin(), map_b.end(), ignore_values );
         }
 
-        auto [ begin_b, end_b ] = _snap_range( b, layer );
+        auto [ begin_b, end_b ] = _snap_range( b );
         return _cmp( begin_a, end_a, begin_b, end_b, ignore_values );
     }
 
-    template< typename IterA, typename IterB >
-    int _cmp( IterA begin_a, IterA end_a, IterB begin_b, IterB end_b, bool ignore_values ) const
+    template< typename IterA, typename IterB, typename UnaryPredicate >
+    int _cmp( IterA begin_a, IterA end_a, IterB begin_b, IterB end_b, UnaryPredicate ignore_values ) const
     {
         for ( ; begin_a != end_a; ++begin_a, ++begin_b )
         {
@@ -176,7 +162,7 @@ struct SnapshottedMap
                 return -1;
             if ( int diff = begin_a->first - begin_b->first )
                 return diff;
-            if ( !ignore_values )
+            if ( !ignore_values( begin_a->first ) )
                 if ( int diff = begin_a->second - begin_b->second )
                     return diff;
         }
@@ -187,18 +173,17 @@ struct SnapshottedMap
         return 0;
     }
 
-    template< typename F, typename G >
-    void hash( Internal i, Layer layer, F key_cb, G val_cb )
+    template< typename F >
+    void foreach( Internal i, F kv_cb )
     {
-        ASSERT_LT( layer, NLayers );
         auto map = _l._maps.find( i );
         if ( map != _l._maps.end() )
-            for ( const auto &[ key, val ] : map->second[ layer ] )
-                key_cb( key ), val_cb( val );
+            for ( const auto &[ key, val ] : map->second )
+                kv_cb( key, val );
 
-        auto [ b, e ] = _snap_range( i, layer );
+        auto [ b, e ] = _snap_range( i );
         while ( b != e )
-            key_cb( b->first ), val_cb( b->second ), b++;
+            kv_cb( b->first, b->second ), b++;
     }
 
     template< typename OM >
@@ -206,46 +191,34 @@ struct SnapshottedMap
                Internal to_object, key_type to_offset, int sz )
     {
         int delta = to_offset - from_offset;
-        for ( Layer layer = 0; layer < NLayers; ++layer )
+        auto translate_and_insert = [this, delta, to_object]( const auto & x )
         {
-            auto translate_and_insert = [this, delta, to_object, layer]( const auto & x )
-            {
-                _l._maps[ to_object ][ layer ][ x.first + delta ] = x.second;
-            };
-            auto it = from_m._l._maps.find( from_object );
-            if ( it != from_m._l._maps.end() )
-            {
-                auto lb = it->second[ layer ].lower_bound( from_offset );
-                auto ub = it->second[ layer ].lower_bound( from_offset + sz );
-                std::for_each( lb, ub, translate_and_insert );
-            }
-            else
-            {
-                auto [ f_begin, f_end ] = from_m._snap_range( from_object, layer );
-                auto compare_pk = []( auto &p, auto &k ) { return key_compare()( p.first, k ); };
-                auto lb = std::lower_bound( f_begin, f_end, from_offset, compare_pk );
-                auto ub = std::lower_bound( lb, f_end, from_offset + sz, compare_pk );
-                std::for_each( lb, ub, translate_and_insert );
-            }
+            _l._maps[ to_object ][ x.first + delta ] = x.second;
+        };
+        auto it = from_m._l._maps.find( from_object );
+        if ( it != from_m._l._maps.end() )
+        {
+            auto lb = it->second.lower_bound( from_offset );
+            auto ub = it->second.lower_bound( from_offset + sz );
+            std::for_each( lb, ub, translate_and_insert );
+        }
+        else
+        {
+            auto [ f_begin, f_end ] = from_m._snap_range( from_object );
+            auto compare_pk = []( auto &p, auto &k ) { return key_compare()( p.first, k ); };
+            auto lb = std::lower_bound( f_begin, f_end, from_offset, compare_pk );
+            auto ub = std::lower_bound( lb, f_end, from_offset + sz, compare_pk );
+            std::for_each( lb, ub, translate_and_insert );
         }
     }
 
-    std::pair< value_type *, value_type * > _snap_range( Internal obj, Layer layer ) const
+    std::pair< value_type *, value_type * > _snap_range( Internal obj ) const
     {
-        ASSERT_LT( layer, NLayers );
         auto snap = _snap( obj );
         if ( !snap )
             return std::make_pair( nullptr, nullptr );
-        auto & dir = *_snapshots.template machinePointer< Directory >( snap );
-        auto begin = _snapshots.template machinePointer< value_type >( snap, sizeof( Directory ) );
-        auto end = begin + ( _snapshots.size( snap ) - sizeof( Directory ) ) / sizeof( value_type );
-        if constexpr ( NLayers > 1 )
-        {
-            if ( layer < NLayers - 1 )
-                end = begin + dir[ layer ];
-            if ( layer > 0 )
-                begin += dir[ layer - 1 ];
-        }
+        auto begin = _snapshots.template machinePointer< value_type >( snap );
+        auto end = begin + _snapshots.size( snap ) / sizeof( value_type );
         return std::make_pair( begin, end );
     }
     SnapPointer _snap( Internal obj ) const
