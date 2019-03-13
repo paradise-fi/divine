@@ -38,8 +38,7 @@ struct UserMeta : Next
     using LayerTypes = std::array< std::atomic< MetaType >, NLayers >;
     std::shared_ptr< LayerTypes > _type;
 
-    using Map = std::map< uint32_t, uint32_t >;
-    using Maps = Snapshotter< Map, typename Next::Pool, NLayers >;
+    using Maps = SnapshottedMap< uint32_t, uint32_t, typename Next::Pool, NLayers >;
     mutable Maps _maps;
 
 

@@ -24,9 +24,10 @@
 namespace divine::mem
 {
 
-template< typename Map, typename Pool, uint8_t NLayers >
-struct Snapshotter
+template< typename K, typename V, typename Pool, uint8_t NLayers >
+struct SnapshottedMap
 {
+    using Map = std::map< K, V >;
     using MasterPool = Pool;
     using SlavePool = brick::mem::SlavePool< Pool >;
     using Internal = typename Pool::Pointer;
@@ -48,7 +49,7 @@ struct Snapshotter
     mutable SlavePool _snap_pointers;
     mutable SnapPool _snapshots;
 
-    Snapshotter( MasterPool & mp ) : _snap_pointers( mp ) {}
+    SnapshottedMap( MasterPool & mp ) : _snap_pointers( mp ) {}
 
     const value_type * at( Internal obj, key_type key, Layer layer ) const
     {
