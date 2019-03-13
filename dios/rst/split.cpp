@@ -202,29 +202,29 @@ namespace abstract::mstring {
         }
     }
 
-    Split * Split::strchr( char /*ch*/ ) const noexcept
+    Split * Split::strchr( char ch ) const noexcept
     {
-        /*auto str = interest();
+        auto sec = interest();
+        if ( !sec )
+            return nullptr;
 
-        if ( !str.empty() ) {
-            const auto &begin = str.segments().begin();
-            const auto &end = str.segments().end();
+        const auto & segs = sec->segments();
 
-            auto search = std::find_if( begin, end, [ch] ( const auto &seg ) {
-                return seg.value() == ch;
-            });
+        auto seg = segs.begin();
+        while ( seg->to <= _offset ) {
+            ++seg;
+        }
 
-            if ( search != end ) {
-                // TODO return subsplit
-                // return __new< Split >( _VM_PT_Marked, const_cast< Split * >( this ), search->from() );
-                _UNREACHABLE_F( "Not implemented." );
-            } else {
-                return nullptr;
-            }
-        } else {
-            _UNREACHABLE_F("Error: there's no string of interest!");
-        }*/
-        _UNREACHABLE_F( "Not implemented." );
+        while ( seg != segs.end() && seg->value != ch )
+            ++seg;
+
+        if ( seg != segs.end() ) {
+            auto split = __new< Split >( _VM_PT_Marked, _data );
+            split->_offset = std::max( seg->from, _offset );
+            return split;
+        }
+
+        return nullptr;
     }
 
     int Split::strlen() const noexcept
