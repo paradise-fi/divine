@@ -1,4 +1,4 @@
-/* TAGS: mstring min todo */
+/* TAGS: mstring min */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
