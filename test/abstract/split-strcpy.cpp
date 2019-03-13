@@ -37,7 +37,6 @@ int main()
         auto split = Split( "aaa\0cc", 7 );
         auto other = Split( "bbb", 4 );
         split.strcpy( &other );
-
         const auto & sec = split.sections();
         assert( sec.size() == 2 );
         test_section( sec[ 0 ], 0, 3 );
@@ -194,5 +193,32 @@ int main()
         split.strcpy( &other );
 
         test_abc( split );
+    }
+
+    { // drop from offset
+        auto split = Split( "aa\0bbb", 7 );
+        auto off1 = split.offset( 4 );
+        auto other = Split( "", 1 );
+        off1->strcpy( &other );
+
+
+        split.dump();
+        const auto & sec = split.sections();
+        assert( sec.size() == 3 );
+        test_section( sec[ 0 ], 0, 2 );
+        test_section( sec[ 1 ], 3, 4 );
+        test_section( sec[ 2 ], 5, 6 );
+
+        const auto & seg0 = sec[ 0 ].segments();
+        assert( seg0.size() == 1 );
+        test_segment( seg0[ 0 ], 0, 2, 'a' );
+
+        const auto & seg1 = sec[ 1 ].segments();
+        assert( seg1.size() == 1 );
+        test_segment( seg1[ 0 ], 3, 4, 'b' );
+
+        const auto & seg2 = sec[ 2 ].segments();
+        assert( seg2.size() == 1 );
+        test_segment( seg2[ 0 ], 5, 6, 'b' );
     }
 }
