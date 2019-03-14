@@ -177,8 +177,17 @@ namespace lart::abstract
                    ph.type != Placeholder::Type::Stash;
         };
 
-        for ( const auto & ph : placeholders( m, filter ) )
-            builder.concretize( ph );
+        for ( const auto & ph : placeholders( m, filter ) ) {
+            auto conc = builder.concretize( ph );
+            if ( ph.type == Placeholder::Type::Call ) {
+                if ( !is_base_type( &m, conc.inst ) ) {
+                    auto inst = llvm::cast< llvm::CallInst >( conc.inst );
+                    auto dual = meta::get_dual( inst );
+                    dual->replaceNonMetadataUsesWith( inst );
+                    inst->setArgOperand( 0, dual );
+                }
+            }
+        }
 
         // process the rest of placeholders after their arguments were generated
         concretize< Placeholder::Type::Stash >( m, builder );
