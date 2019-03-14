@@ -42,7 +42,7 @@ namespace lart::abstract {
                                            , AddAssumes()
                                            , SubstitutionPass()
                                            , CallInterrupt()
-                                           // , Cleanup()
+                                           , Cleanup()
                                            );
             passes.run( m );
         }

@@ -10,7 +10,7 @@ namespace lart {
 namespace abstract {
 
 void Cleanup::run( llvm::Module &m ) {
-    std::map< Domain, llvm::Function * > cleanups;
+    /*std::map< Domain, llvm::Function * > cleanups;
 
     for ( const auto & meta : domains( m ) ) {
         auto name = "__" + meta.domain().name() + "_cleanup";
@@ -39,6 +39,10 @@ void Cleanup::run( llvm::Module &m ) {
                 }
             } );
         }
+    }*/
+    for ( auto inst : meta::enumerate( m ) ) {
+        inst->setMetadata( meta::tag::dual, nullptr );
+        inst->setMetadata( meta::tag::domains, nullptr );
     }
 }
 
