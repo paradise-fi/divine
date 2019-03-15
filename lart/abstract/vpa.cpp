@@ -205,13 +205,13 @@ void VPA::propagate( CallInst *call, Domain dom ) {
         if ( meta::function::ignore_call( fn ) )
             return;
 
+        if ( is_transformable_in_domain( call, dom ) )
+            return;
+
         if ( meta::function::is_forbidden( fn ) ) {
             auto name = fn->hasName() ? fn->getName().str() : "anonymous";
             throw std::runtime_error( "transforming forbidden function: " + name );
         }
-
-        if ( is_transformable_in_domain( call, dom ) )
-            return;
 
         if ( !fn->isIntrinsic() ) {
             preprocess( fn );
