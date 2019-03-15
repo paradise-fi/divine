@@ -328,6 +328,12 @@ namespace lart::abstract
                 return TaintBuilder< Type::Lower >( ph ).construct();
             case Type::Call:
                 return TaintBuilder< Type::Call >( ph ).construct();
+            case Type::Memcpy:
+                return TaintBuilder< Type::Memcpy >( ph ).construct();
+            case Type::Memmove:
+                return TaintBuilder< Type::Memmove >( ph ).construct();
+            case Type::Memset:
+                return TaintBuilder< Type::Memset >( ph ).construct();
             default:
                 UNREACHABLE( "Unsupported taint type" );
         }

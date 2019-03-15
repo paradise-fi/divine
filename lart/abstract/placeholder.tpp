@@ -12,6 +12,18 @@ namespace lart::abstract
     template< Placeholder::Type _T >
     constexpr bool is( Placeholder::Type T ) { return T == _T; }
 
+    template< Placeholder::Type... Ts >
+    constexpr bool is_any_of( Placeholder::Type T )
+    {
+        return ( is< Ts >( T ) || ... );
+    }
+
+    constexpr bool is_mem_intrinsic( Placeholder::Type T )
+    {
+        using Type = Placeholder::Type;
+        return is_any_of< Type::Memset, Type::Memcpy, Type::Memmove >( T );
+    }
+
     template< Placeholder::Level L, Placeholder::Type T >
     template< typename Value, typename Builder >
     Placeholder Construct< L, T >::placeholder( Value * val, Builder & builder )
@@ -39,9 +51,7 @@ namespace lart::abstract
         Placeholder ph = placeholder( inst, irb );
 
         if constexpr ( T != Type::PHI ) {
-            if ( !llvm::isa< llvm::ReturnInst >( inst ) ) {
-                ph.inst->moveAfter( inst );
-            }
+            ph.inst->moveAfter( inst );
         }
 
         if constexpr ( T != Type::ToBool ) {
@@ -263,6 +273,12 @@ namespace lart::abstract
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
             ASSERT( is_transformable( call ) );
+            if ( llvm::isa< llvm::MemSetInst >( call ) )
+                return construct< Type::Memset >( call );
+            if ( llvm::isa< llvm::MemCpyInst >( call ) )
+                return construct< Type::Memcpy >( call );
+            if ( llvm::isa< llvm::MemMoveInst >( call ) )
+                return construct< Type::Memmove >( call );
             return construct< Type::Call >( call );
         }
 
@@ -312,6 +328,12 @@ namespace lart::abstract
                 return concretize< Type::Lower >( ph );
             case Type::Call:
                 return concretize< Type::Call >( ph );
+            case Type::Memcpy:
+                return concretize< Type::Memcpy >( ph );
+            case Type::Memmove:
+                return concretize< Type::Memmove >( ph );
+            case Type::Memset:
+                return concretize< Type::Memset >( ph );
         }
 
         UNREACHABLE( "Unsupported placeholder type" );

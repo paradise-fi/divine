@@ -32,7 +32,10 @@ namespace lart::abstract {
             Binary,
             Lift,
             Lower,
-            Call
+            Call,
+            Memcpy,
+            Memmove,
+            Memset
         };
 
         static const Bimap< Type, std::string > TypeTable;

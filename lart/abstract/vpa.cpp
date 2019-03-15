@@ -85,7 +85,7 @@ private:
                 }
             },
             [&] ( Value * ) {
-                UNREACHABLE( "Unknown parent instruction:", val );
+                UNREACHABLE( "Unknown parent instruction" );
             }
         );
 

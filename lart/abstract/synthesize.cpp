@@ -387,6 +387,12 @@ namespace lart::abstract
                 Lifter< Type::Lower >( taint ).construct(); break;
             case Type::Call:
                 Lifter< Type::Call >( taint ).construct(); break;
+            case Type::Memcpy:
+                Lifter< Type::Memcpy >( taint ).construct(); break;
+            case Type::Memmove:
+                Lifter< Type::Memmove >( taint ).construct(); break;
+            case Type::Memset:
+                Lifter< Type::Memset >( taint ).construct(); break;
         }
     }
 
