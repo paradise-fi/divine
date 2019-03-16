@@ -41,7 +41,8 @@ namespace lart::abstract
 
         llvm::Type * return_type() const
         {
-            if constexpr ( Taint::freeze( T ) || Taint::store( T ) ) {
+            if constexpr ( Taint::freeze( T ) || Taint::store( T ) || Taint::mem( T ) )
+            {
                 return default_value()->getType();
             }
 
@@ -165,7 +166,7 @@ namespace lart::abstract
                 return { a, da, b, db };
             }
 
-            if constexpr ( Taint::call( T ) ) {
+            if constexpr ( Taint::call( T ) || Taint::mem( T ) ) {
                 auto call = llvm::cast< llvm::CallInst >( dual( inst() ) );
 
                 std::vector< llvm::Value * > args;

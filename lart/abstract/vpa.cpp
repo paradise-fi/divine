@@ -170,6 +170,9 @@ void VPA::propagate_value( Value *val, Domain dom ) {
                 }
                 Domain::set( inst, dom );
             }
+            else if ( is_transformable_in_domain( inst, dom ) ) {
+                Domain::set( inst, dom );
+            }
         }
 
         llvmcase( dep,

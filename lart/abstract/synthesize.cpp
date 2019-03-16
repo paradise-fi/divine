@@ -183,23 +183,36 @@ namespace lart::abstract
                 irb.SetInsertPoint( exit );
             }
 
-            if constexpr ( Taint::call( T ) )
+
+            if constexpr ( Taint::call( T ) || Taint::mem( T ) )
             {
+                auto argument = [&] ( const auto & arg, unsigned & idx ) {
+                    auto abstract = [] ( unsigned i ) { return i + 1; };
+
+                    llvm::Value * res = nullptr;
+                    if ( meta::has_dual( arg ) ) {
+                        res = args[ abstract( idx ) ].value;
+                        idx += 2;
+                    } else {
+                        ASSERT( is_concrete( arg ) );
+                        res = args[ idx ].value;
+                        idx += 1;
+                    }
+
+                    return res;
+                };
+
                 auto call = llvm::cast< llvm::CallInst >( meta::get_dual( taint.inst ) );
                 // TODO lifting
 
-                unsigned idx = 0;
-                auto abstract = [] ( unsigned i ) { return i + 1; };
+                unsigned bound = call->getNumArgOperands();
+                if constexpr ( Taint::mem( T ) ) {
+                    bound = 3; // do not consider volatilnes argument
+                }
 
-                for ( const auto & arg : call->arg_operands() ) {
-                    if ( meta::has_dual( arg.get() ) ) {
-                        vals.push_back( args[ abstract( idx ) ].value );
-                        idx += 2;
-                    } else {
-                        ASSERT( is_concrete( arg.get() ) );
-                        vals.push_back( args[ idx ].value );
-                        idx += 1;
-                    }
+                unsigned idx = 0;
+                for ( unsigned i = 0; i < bound; ++i ) {
+                    vals.push_back( argument( call->getArgOperand( i ), idx ) );
                 }
             }
 

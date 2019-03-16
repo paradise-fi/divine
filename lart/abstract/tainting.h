@@ -97,6 +97,11 @@ namespace lart::abstract {
         static constexpr bool lift( Taint::Type type ) { return Type::Lift == type; }
         static constexpr bool lower( Taint::Type type ) { return Type::Lower == type; }
 
+        static constexpr bool mem( Taint::Type type )
+        {
+            return is_one_of< Type::Memcpy, Type::Memmove, Type::Memset >( type );
+        }
+
         static std::vector< Taint > enumerate( llvm::Module & m )
         {
             return query::query( m ).flatten().flatten()

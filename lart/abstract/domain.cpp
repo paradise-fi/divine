@@ -136,7 +136,8 @@ using lart::util::get_module;
     }
 
     bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom ) {
-        if ( is_transformable_in_domain( inst, dom ) )
+        auto m = inst->getModule();
+        if ( is_transformable_in_domain( inst, dom ) && is_base_type_in_domain( m, inst, dom ) )
             return true;
 
         auto dm = DomainMetadata::get( inst->getModule(), dom );
@@ -146,7 +147,10 @@ using lart::util::get_module;
                 return util::is_one_of< AllocaInst, CallInst, StoreInst, LoadInst, CastInst,
                     PHINode, GetElementPtrInst, IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
             case DomainKind::content:
-                return util::is_one_of< AllocaInst, CallInst, ReturnInst, CastInst >( inst );
+                if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) )
+                    if ( !is_base_type_in_domain( m, inst, dom ) )
+                        return false;
+                return util::is_one_of< AllocaInst, ReturnInst, CastInst >( inst );
             case DomainKind::pointer:
             default:
                 UNREACHABLE( "Unsupported domain transformation." );
@@ -168,10 +172,17 @@ using lart::util::get_module;
         };
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
-            if ( auto fn = call->getCalledFunction() ) {
-                auto name =  "__" + dom.name() + "_" + fn->getName().str();
-                return inst->getModule()->getFunction( name );
+            std::string name = "__" + dom.name() + "_";
+            if ( llvm::isa< llvm::MemSetInst >( call ) )
+                name += "memset";
+            else if ( llvm::isa< llvm::MemCpyInst >( call ) )
+                name += "memcpy";
+            else if ( llvm::isa< llvm::MemMoveInst >( call ) )
+                name += "memmove";
+            else if ( auto fn = call->getCalledFunction() ) {
+                name += fn->getName().str();
             }
+            return inst->getModule()->getFunction( name );
         }
 
         switch ( dm.kind() ) {
