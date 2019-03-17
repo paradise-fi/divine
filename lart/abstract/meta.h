@@ -17,7 +17,6 @@ namespace lart::abstract::meta {
 
         namespace function {
             constexpr char abstract[] = "lart.abstract.function";
-            constexpr char duals[] = "lart.abstract.function.duals";
         }
 
         namespace transform {

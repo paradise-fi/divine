@@ -147,7 +147,6 @@ namespace lart::abstract::meta {
     namespace function
     {
         constexpr auto abstract = meta::tag::function::abstract;
-        constexpr auto duals = meta::tag::function::duals;
 
         void init( llvm::Function * fn ) noexcept {
             auto size = fn->arg_size();
@@ -157,12 +156,6 @@ namespace lart::abstract::meta {
                 auto value = [&] { return meta::create( ctx, "" ); };
                 auto data = meta::tuple::create( ctx, size, value );
                 fn->setMetadata( abstract, data );
-            }
-
-            if ( !fn->getMetadata( duals ) ) {
-                auto empty = [&] { return meta::tuple::empty( ctx ); };
-                auto data = meta::tuple::create( ctx, size, empty );
-                fn->setMetadata( duals, data );
             }
         }
 
