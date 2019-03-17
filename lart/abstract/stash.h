@@ -25,7 +25,6 @@ private:
 struct Unstash {
     void run( llvm::Module& );
 private:
-    void process_return_value( llvm::CallInst* );
     void process_arguments( llvm::CallInst*, llvm::Function* );
 
     std::unordered_set< llvm::Function* > unstashed;

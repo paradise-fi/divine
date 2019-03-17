@@ -79,8 +79,11 @@ using lart::util::get_module;
                         val = lower_constant_expr_call( ce );
                     if ( !val )
                         continue;
-                    if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
+                    if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
+                        meta::set( &fn, meta::tag::abstract_return );
+                        meta::set( call, meta::tag::abstract_return );
                         Domain::set( call, Domain{ meta.value() } );
+                    }
                 }
             }
         }

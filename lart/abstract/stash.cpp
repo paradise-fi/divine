@@ -73,13 +73,26 @@ namespace lart::abstract {
         run_on_abstract_calls( [&] ( auto call ) {
             if ( !is_transformable( call ) ) {
                 run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                    if ( !meta::has( fn, meta::tag::abstract ) )
+                    if ( !meta::has( fn, meta::tag::abstract ) ) {
                         process_arguments( call, fn );
+                    }
                 } );
-
-                process_return_value( call );
             }
         }, m );
+
+        // TODO filter alias returns
+        auto calls = query::query( meta::enumerate( m ) )
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .filter( [] ( auto * call ) {
+                return call->getMetadata( meta::tag::abstract_return );
+            } )
+            .freeze();
+
+        for ( auto * call : calls ) {
+            auto ph = unstash( call );
+            ph.inst->moveAfter( call );
+        }
     }
 
     void Unstash::process_arguments( llvm::CallInst * call, llvm::Function * fn )
@@ -114,20 +127,6 @@ namespace lart::abstract {
             .filter( query::negate( processed ) )
             .map( [&] ( auto * arg ) { return unstash( arg, irb ); } )
             .freeze();
-    }
-
-    void Unstash::process_return_value( llvm::CallInst * call )
-    {
-        auto returns = query::query( get_potentialy_called_functions( call ) )
-            .filter( [call] ( const auto & fn ) {
-                return returns_abstract_value( call, fn );
-            } )
-            .freeze();
-
-        if ( !returns.empty() ) {
-            auto ph = unstash( call );
-            ph.inst->moveAfter( call );
-        }
     }
 
 } // namespace lart::abstract

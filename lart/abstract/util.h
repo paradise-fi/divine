@@ -57,8 +57,6 @@ namespace lart::abstract
 
     llvm::Type* abstract_type( llvm::Type * orig, Domain dom );
 
-    llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Function * fn );
-
     namespace {
         using Predicate = llvm::CmpInst::Predicate;
     }

@@ -93,40 +93,4 @@ namespace lart::abstract
                llvm::isa< llvm::UnreachableInst >( val );
     }
 
-    llvm::Value * returns_abstract_value( llvm::CallInst * call, llvm::Function * fn ) {
-        if ( !is_base_type( fn->getParent(), call ) )
-            return nullptr; // no return value to stash
-
-        auto rets = query::query( *fn ).flatten()
-            .map( query::refToPtr )
-            .filter( is_terminal_intruction )
-            .freeze();
-
-        auto unreachable = query::query( rets ).all( [] ( auto v ) {
-            return llvm::isa< llvm::UnreachableInst >( v );
-        } );
-
-        if ( unreachable )
-            return nullptr; // do not unstash from noreturn functions
-
-        auto return_insts = query::query( rets )
-            .map( query::llvmdyncast< llvm::ReturnInst > )
-            .filter( query::notnull )
-            .freeze();
-
-        ASSERT( return_insts.size() == 1 && "No single terminator instruction found." );
-
-        auto ret = return_insts[ 0 ];
-        if ( meta::abstract::has( ret ) ) {
-            auto dom = Domain::get( ret );
-            if ( is_base_type_in_domain( fn->getParent(), ret->getReturnValue(), dom ) )
-                return ret;
-        }
-
-        if ( meta::has( fn, meta::tag::abstract ) )
-            return ret;
-
-        return nullptr;
-    }
-
 } // namespace lart::abstract
