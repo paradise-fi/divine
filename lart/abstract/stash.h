@@ -16,10 +16,6 @@ namespace abstract {
 
 struct Stash {
     void run( llvm::Module& );
-private:
-    void process_return_value( llvm::CallInst*, llvm::Function* );
-
-    std::unordered_set< llvm::Function* > stashed;
 };
 
 struct Unstash {

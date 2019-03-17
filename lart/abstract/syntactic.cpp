@@ -27,7 +27,6 @@ namespace lart::abstract
         for ( const auto &inst : abstract ) {
             builder.construct( inst );
         }
-
     }
 
 } // namespace lart::abstract

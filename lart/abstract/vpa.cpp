@@ -243,7 +243,12 @@ void VPA::propagate( CallInst *call, Domain dom ) {
 }
 
 void VPA::propagate( ReturnInst *ret, Domain dom ) {
-    step_out( get_function( ret ), dom );
+    auto fn = ret->getFunction();
+    auto m = fn->getParent();
+    auto val = ret->getReturnValue();
+    if ( is_base_type_in_domain( m, val, dom ) )
+        meta::set( fn, meta::tag::abstract_return );
+    step_out( fn, dom );
 }
 
 void VPA::propagate_back( Argument *arg, Domain dom ) {
@@ -268,8 +273,8 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
 void VPA::step_out( Function *fn, Domain dom ) {
     auto process_call = [&] ( auto call ) {
         preprocess( get_function( call ) );
-        meta::set( fn, meta::tag::abstract_return );
-        meta::set( call, meta::tag::abstract_return );
+        if ( is_base_type_in_domain( fn->getParent(), call, dom ) )
+            meta::set( call, meta::tag::abstract_return );
         tasks.push_back( [=]{ propagate_value( call, dom ); } );
     };
 

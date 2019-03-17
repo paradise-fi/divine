@@ -46,25 +46,20 @@ namespace lart::abstract {
 
     void Stash::run( llvm::Module & m )
     {
-        run_on_abstract_calls( [&] ( auto call ) {
-            if ( !is_transformable( call ) ) {
-                run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                    if ( !meta::has( fn, meta::tag::abstract ) )
-                        if ( !stashed.count( fn ) )
-                            process_return_value( call, fn );
-                    stashed.insert( fn );
-                } );
-            }
-        }, m );
-    }
+        // TODO filter alias returns
+        auto returns = query::query( meta::enumerate( m ) )
+            .map( query::llvmdyncast< llvm::ReturnInst > )
+            .filter( query::notnull )
+            .filter( [] ( auto * ret ) {
+                auto fn = ret->getFunction();
+                return fn->getMetadata( meta::tag::abstract_return );
+            } )
+            .freeze();
 
-    void Stash::process_return_value( llvm::CallInst * call, llvm::Function * fn )
-    {
-        if ( auto ret = returns_abstract_value( call, fn ) ) {
-            auto inst = llvm::cast< llvm::Instruction >( ret );
-            llvm::IRBuilder<> irb( inst );
-            auto ph = stash( inst, irb );
-            meta::make_duals( inst, ph.inst );
+        for ( auto * ret : returns ) {
+            llvm::IRBuilder<> irb( ret );
+            auto ph = stash( ret, irb );
+            meta::make_duals( ret, ph.inst );
         }
     }
 
