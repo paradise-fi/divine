@@ -151,8 +151,7 @@ using lart::util::get_module;
                     PHINode, GetElementPtrInst, IntToPtrInst, PtrToIntInst, ReturnInst >( inst );
             case DomainKind::content:
                 if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) )
-                    if ( !is_base_type_in_domain( m, inst, dom ) )
-                        return false;
+                    return is_base_type_in_domain( m, inst, dom );
                 return util::is_one_of< AllocaInst, ReturnInst, CastInst >( inst );
             case DomainKind::pointer:
             default:

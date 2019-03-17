@@ -6,8 +6,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <unordered_set>
-
 #include <lart/support/pass.h>
 #include <lart/abstract/util.h>
 
@@ -22,8 +20,6 @@ struct Unstash {
     void run( llvm::Module& );
 private:
     void process_arguments( llvm::CallInst*, llvm::Function* );
-
-    std::unordered_set< llvm::Function* > unstashed;
 };
 
 using StashingPass = ChainedPass< Unstash, Stash >;

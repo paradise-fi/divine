@@ -204,8 +204,6 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 }
 
 void VPA::propagate( CallInst *call, Domain dom ) {
-    meta::set( call, meta::tag::abstract_arguments );
-
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
         if ( meta::function::ignore_call( fn ) )
             return;
@@ -226,8 +224,11 @@ void VPA::propagate( CallInst *call, Domain dom ) {
                     unsigned idx = op.getOperandNo();
                     auto arg = get_argument( fn, idx );
                     tasks.push_back( [=]{ propagate_value( arg, dom ); } );
-                    if ( is_base_type( fn->getParent(), arg ) )
+                    if ( is_base_type( fn->getParent(), arg ) ) {
                         Domain::set( arg, dom );
+                        meta::set( call, meta::tag::abstract_arguments );
+                        meta::set( fn, meta::tag::abstract_arguments );
+                    }
                     entry_args.emplace( arg, dom );
                 }
             }

@@ -65,26 +65,24 @@ namespace lart::abstract {
 
     void Unstash::run( llvm::Module & m )
     {
-        run_on_abstract_calls( [&] ( auto call ) {
-            if ( !is_transformable( call ) ) {
-                run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                    if ( !meta::has( fn, meta::tag::abstract ) ) {
-                        process_arguments( call, fn );
-                    }
-                } );
-            }
-        }, m );
-
-        // TODO filter alias returns
-        auto calls = query::query( meta::enumerate( m ) )
+        auto calls_with_tag = [&] ( const auto & tag ) {
+            return query::query( m ).flatten().flatten()
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
-            .filter( [] ( auto * call ) {
-                return call->getMetadata( meta::tag::abstract_return );
+            .filter( [&] ( auto * call ) {
+                return call->getMetadata( tag );
             } )
             .freeze();
+        };
 
-        for ( auto * call : calls ) {
+        for ( auto call : calls_with_tag( meta::tag::abstract_arguments ) ) {
+            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                process_arguments( call, fn );
+            } );
+        }
+
+        // TODO filter alias returns
+        for ( auto * call : calls_with_tag( meta::tag::abstract_return ) ) {
             auto ph = unstash( call );
             ph.inst->moveAfter( call );
         }
