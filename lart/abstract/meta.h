@@ -48,6 +48,8 @@ namespace lart::abstract::meta {
         }
 
         constexpr char abstract_return[] = "lart.abstract.return";
+        constexpr char abstract_arguments[] = "lart.abstract.arguments";
+
         constexpr char dual[] = "lart.abstract.dual";
     } // namespace tag
 

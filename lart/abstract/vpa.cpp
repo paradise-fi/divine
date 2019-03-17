@@ -204,6 +204,8 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
 }
 
 void VPA::propagate( CallInst *call, Domain dom ) {
+    meta::set( call, meta::tag::abstract_arguments );
+
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
         if ( meta::function::ignore_call( fn ) )
             return;
