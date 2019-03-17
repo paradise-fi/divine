@@ -266,6 +266,8 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
 void VPA::step_out( Function *fn, Domain dom ) {
     auto process_call = [&] ( auto call ) {
         preprocess( get_function( call ) );
+        meta::set( fn, meta::tag::abstract_return );
+        meta::set( call, meta::tag::abstract_return );
         tasks.push_back( [=]{ propagate_value( call, dom ); } );
     };
 

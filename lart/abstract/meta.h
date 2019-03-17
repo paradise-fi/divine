@@ -47,6 +47,7 @@ namespace lart::abstract::meta {
             constexpr const char type[] = "lart.taint.type";
         }
 
+        constexpr char abstract_return[] = "lart.abstract.return";
         constexpr char dual[] = "lart.abstract.dual";
     } // namespace tag
 
