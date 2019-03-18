@@ -87,7 +87,7 @@ add_custom_command(
 
 add_library( dios-host STATIC ${SRC_host} )
 target_include_directories( dios-host BEFORE PRIVATE host )
-stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" )
+stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" dios-host )
 
 include( compile-flags.cmake )
 

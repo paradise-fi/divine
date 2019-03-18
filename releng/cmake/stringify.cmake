@@ -10,7 +10,7 @@ macro( stringify namespace root path )
 
   add_custom_command(
     OUTPUT str_${outfile}.cpp
-    DEPENDS ${abspath} ${MODPATH}/stringify.pl
+    DEPENDS ${abspath} ${MODPATH}/stringify.pl ${ARGN}
     COMMAND perl ${MODPATH}/stringify.pl "${namespace}" "${outfile}" "${abspath}"
     VERBATIM
   )
