@@ -12,15 +12,13 @@ endforeach()
 set( VERSION_FILE ${divine_BINARY_DIR}/divine/version-generated.cpp )
 set( UPDATE_VERSION ${divine_SOURCE_DIR}/releng/update-version-sha.sh )
 
-add_custom_command(
+add_custom_target( divine-version
   COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}" "${CMAKE_BUILD_TYPE}"
-  DEPENDS ${UPDATE_VERSION}
+  # note: no DEPENDS to make target rebuild every time
   VERBATIM
-  BYPRODUCTS "${VERSION_FILE}"
-  OUTPUT "${VERSION_FILE}.check" "${VERSION_FILE}"
+  BYPRODUCTS ${VERSION_FILE}
+  COMMENT "Calculate version SHA"
 )
-set_source_files_properties( "${VERSION_FILE}.check" PROPERTIES SYMBOLIC ON )
-set_source_files_properties( "${VERSION_FILE}" PROPERTIES GENERATED ON )
 
 add_custom_command(
   OUTPUT flags-generated.cpp
@@ -34,7 +32,8 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
 # add_library( divine-ss ${CPP_ss} )
-add_library( divine-ui ${CPP_ui} ${VERSION_FILE} ${VERSION_FILE}.check "flags-generated.cpp" )
+add_library( divine-ui ${CPP_ui} ${VERSION_FILE} "flags-generated.cpp" )
+add_dependencies( divine-ui divine-version )
 foreach( D cc ltl mc smt vm dbg )
   add_library( divine-${D} ${CPP_${D}} )
 endforeach()
