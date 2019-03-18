@@ -17,6 +17,18 @@ namespace lart::abstract
     auto get_potentialy_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
     auto get_some_called_function( llvm::CallInst * call ) -> llvm::Function *;
 
+    template< const char * tag >
+    auto calls_with_tag( llvm::Module & m )
+    {
+        return query::query( m ).flatten().flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .filter( [&] ( auto * call ) {
+                return call->getMetadata( tag );
+            } )
+            .freeze();
+    }
+
     template< typename Fn >
     void run_on_potentialy_called_functions( llvm::CallInst * call, Fn functor )
     {

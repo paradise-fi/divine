@@ -160,7 +160,9 @@ using lart::util::get_module;
     }
 
     bool is_transformable( Instruction *inst ) {
-        return is_transformable_in_domain( inst, Domain::get( inst ) );
+        if ( auto dom = Domain::get( inst ); dom != Domain::Concrete() )
+            return is_transformable_in_domain( inst, dom );
+        return false;
     }
 
     bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom ) {

@@ -203,25 +203,21 @@ namespace lart::abstract
         std::set< llvm::Function * > seen;
         std::set< llvm::Instruction * > erase;
 
-        run_on_abstract_calls( [&] ( auto * call ) {
-            if ( is_transformable( call ) )
-                return; // call of domain function
+        for ( auto call : calls_with_tag< meta::tag::abstract_arguments >( m ) ) {
+            assert( !is_transformable( call ) );
 
-            if ( call->getNumArgOperands() != 0 ) {
-                Bundle bundle( call );
-                if ( bundle.empty() )
-                    return;
-                stash( call, bundle.pack() );
+            Bundle bundle( call );
+            if ( bundle.empty() )
+                continue;
+            stash( call, bundle.pack() );
 
-                run_on_potentialy_called_functions( call, [&] ( auto fn ) {
-                    if ( !seen.count( fn ) ) {
-                        auto to_erase = bundle.unpack( fn );
-                        erase.insert( to_erase.begin(), to_erase.end() );
-                        seen.insert( fn );
-                    }
-                } );
-            }
-        }, m );
+            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+                if ( auto [val, inserted] = seen.insert( fn ); inserted ) {
+                    auto to_erase = bundle.unpack( fn );
+                    erase.insert( to_erase.begin(), to_erase.end() );
+                }
+            } );
+        }
 
         for ( auto * inst : erase ) {
             inst->eraseFromParent();
