@@ -2,7 +2,7 @@
 use warnings;
 use strict;
 
-my %codemap = ( passed => "✓", failed => "✗", warning => "!",
+my %codemap = ( passed => "✓", failed => "✗", warnings => "!",
                 skipped => "–", timeout => "T", started => "…" );
 my ( $table, $lastcat ) = ( "", "" );
 my %rescount;
