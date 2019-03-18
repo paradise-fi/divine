@@ -108,13 +108,12 @@ namespace lart::abstract
             if constexpr ( Taint::store( T ) )
             {
                 vals.push_back( args[ 0 ].value ); // value
-                vals.push_back( args[ 1 ].value ); // addr
+                vals.push_back( args[ 2 ].value ); // addr
             }
 
             if constexpr ( Taint::load( T ) )
             {
-                vals.push_back( args[ 0 ].value ); // addr
-                // TODO use abstract addr
+                vals.push_back( args[ 1 ].value ); // addr
             }
 
             if constexpr ( Taint::thaw( T ) )
