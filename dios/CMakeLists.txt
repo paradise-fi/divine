@@ -23,7 +23,7 @@ file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 file( GLOB SRC_libpthread libpthread/*.cpp )
-file( GLOB SRC_host host/*.c )
+file( GLOB SRC_host host/fault.c host/fflush.c host/vmstubs.c )
 
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/include/sys/ )
 set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
@@ -84,6 +84,18 @@ add_custom_command(
   VERBATIM
   COMMAND perl ${CMAKE_CURRENT_SOURCE_DIR}/hostabi.pl ${CMAKE_C_COMPILER} > ${HOSTABI}
 )
+
+macro( check_hostfun fun )
+    check_c_source_compiles( "int main() { __${fun}(); }" HAVE_${fun} )
+    if ( NOT HAVE_${fun} )
+        list( APPEND SRC_host host/${fun}.c )
+    endif()
+endmacro()
+
+check_hostfun( freadptrinc )
+check_hostfun( freadptr )
+check_hostfun( freadahead )
+check_hostfun( fseterr )
 
 add_library( dios-host STATIC ${SRC_host} )
 target_include_directories( dios-host BEFORE PRIVATE host )
