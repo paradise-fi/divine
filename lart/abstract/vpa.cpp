@@ -32,12 +32,43 @@ inline Argument* get_argument( Function *fn, unsigned idx ) {
     return &*std::next( fn->arg_begin(), idx );
 }
 
+bool is_accessing_concrete_aggr_element( llvm::Value * val ) {
+    if ( !llvm::isa< llvm::GetElementPtrInst >( val ) )
+        return false;
+
+    auto gep = llvm::cast< llvm::GetElementPtrInst >( val );
+    if ( gep->getNumIndices() != 2 )
+        return false;
+
+    auto ptr = gep->getPointerOperand()->stripPointerCasts();
+    if ( !meta::aggregate::has( ptr ) )
+        return false;
+
+    auto idx = std::next( gep->idx_begin() );
+    if ( auto ci = llvm::dyn_cast< llvm::ConstantInt >( idx ) ) {
+        auto indices = meta::aggregate::indices( ptr );
+        return !std::count( indices.begin(), indices.end(), ci->getZExtValue() );
+    }
+
+    return false;
+}
+
 Values reach_from( Values roots, Domain dom ) {
     auto value_succs = [=] ( llvm::Value * val ) -> Values {
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
             if ( !is_propagable_in_domain( inst, dom ) )
                 return {};
-        return Values{ val->user_begin(), val->user_end() };
+
+        if ( is_accessing_concrete_aggr_element( val ) ) {
+            return {};
+        }
+
+        auto succs = query::query( val->users() )
+            .filter( query::negate( is_accessing_concrete_aggr_element ) )
+            .map( query::llvmdyncast< llvm::Value > )
+            .freeze();
+
+        return succs;
     };
     return lart::analysis::postorder( roots, value_succs );
 };
