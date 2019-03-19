@@ -37,6 +37,10 @@ namespace lart::abstract::meta {
             constexpr char kind[] = "lart.abstract.domain.kind";
         }
 
+        namespace aggregate {
+            constexpr char sources[] = "lart.abstract.aggregate.sources";
+        }
+
         namespace placeholder {
             constexpr const char function[] = "lart.placeholder.function";
             constexpr const char type[] = "lart.placeholder.type";
@@ -157,6 +161,15 @@ namespace lart::abstract::meta {
         bool has( llvm::Argument * arg ) noexcept;
     } // namespace argument
 
+    namespace aggregate
+    {
+        void set( llvm::Instruction * inst, size_t idx ) noexcept;
+        void set( llvm::GlobalVariable * inst, size_t idx ) noexcept;
+
+        bool has( llvm::Value * val ) noexcept;
+
+        std::vector< size_t > indices( llvm::Value * ) noexcept;
+    } // namespace aggregate
 
     template< typename T >
     auto enumerate( T & llvm ) noexcept -> std::vector< llvm::Instruction * >

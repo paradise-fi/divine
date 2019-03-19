@@ -116,7 +116,6 @@ namespace lart::abstract::meta {
         meta::argument::set( arg, meta );
     }
 
-
     template< typename T >
     void set_impl( T * val, const std::string & tag, const std::string & meta ) noexcept {
         auto &ctx = val->getContext();
@@ -211,5 +210,76 @@ namespace lart::abstract::meta {
 
     } // namespace argument
 
+    namespace aggregate
+    {
+        llvm::MDNode * get( llvm::Value * val ) noexcept {
+            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+                return inst->getMetadata( tag::aggregate::sources );
+            if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
+                return glob->getMetadata( tag::aggregate::sources );
+            // TODO llvm Argument
+            return nullptr;
+        }
+
+        template< typename T >
+        void init( T * val ) {
+            auto &ctx = val->getContext();
+            auto data = meta::tuple::empty( ctx );
+            val->setMetadata( tag::aggregate::sources, data );
+        }
+
+        template< typename T >
+        void add_source_index( T * val, size_t idx ) {
+            ASSERT( aggregate::has( val ) );
+
+            auto &ctx = val->getContext();
+            auto i64 = llvm::Type::getInt64Ty( ctx );
+            auto con = llvm::ConstantInt::get( i64, idx );
+            std::vector< llvm::Metadata * > data;
+
+            auto tuple = aggregate::get( val );
+            std::copy( tuple->op_begin(), tuple->op_end(), std::back_inserter( data ) );
+            data.push_back( llvm::ConstantAsMetadata::get( con ) );
+
+            val->setMetadata( tag::aggregate::sources, meta::tuple::create( ctx, { data } ) );
+        }
+
+        template< typename T >
+        void set_impl( T * val, size_t idx ) noexcept {
+            if ( !aggregate::has( val ) )
+                init( val );
+            add_source_index( val, idx );
+        }
+
+        void set( llvm::Instruction * inst, size_t idx ) noexcept {
+            set_impl( inst, idx );
+        }
+
+        void set( llvm::GlobalVariable * glob, size_t idx ) noexcept {
+            set_impl( glob, idx );
+        }
+
+        bool has( llvm::Value * val ) noexcept {
+            return get( val );
+        }
+
+        std::vector< size_t > indices( llvm::Value * val ) noexcept {
+            if ( !aggregate::has( val ) )
+                return {};
+            auto meta = aggregate::get( val );
+
+            std::vector< size_t > indices;
+            for ( const auto & op : meta->operands() ) {
+                ASSERT( llvm::isa< llvm::ConstantAsMetadata >( op ) );
+                auto val = llvm::cast< llvm::ConstantAsMetadata >( op )->getValue();
+                auto con = llvm::cast< llvm::ConstantInt >( val );
+                indices.push_back( con->getZExtValue() );
+            }
+
+            std::sort( indices.begin(), indices.end() );
+            return indices;
+        }
+
+    } // namespace aggregate
 
 } // namespace lart::abstract::meta
