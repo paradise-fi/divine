@@ -27,7 +27,7 @@ private:
 
     void propagate_back( llvm::Argument*, Domain );
 
-    void step_out( llvm::Function*, Domain );
+    void step_out( llvm::Function*, Domain, llvm::ReturnInst* );
 
     using Task = std::function< void() >;
     std::deque< Task > tasks;

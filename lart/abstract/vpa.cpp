@@ -316,13 +316,13 @@ void VPA::propagate( CallInst *call, Domain dom ) {
     } );
 }
 
-void VPA::propagate( ReturnInst *ret, Domain dom ) {
+void VPA::propagate( llvm::ReturnInst *ret, Domain dom ) {
     auto fn = ret->getFunction();
     auto m = fn->getParent();
     auto val = ret->getReturnValue();
     if ( is_base_type_in_domain( m, val, dom ) )
         meta::set( fn, meta::tag::abstract_return );
-    step_out( fn, dom );
+    step_out( fn, dom, ret );
 }
 
 void VPA::propagate_back( Argument *arg, Domain dom ) {
@@ -344,21 +344,27 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
     }
 }
 
-void VPA::step_out( Function *fn, Domain dom ) {
-    auto process_call = [&] ( auto call ) {
+void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret ) {
+    auto val = ret->getReturnValue();
+
+    auto process_call = [&] ( llvm::CallInst * call ) {
         preprocess( get_function( call ) );
         if ( is_base_type_in_domain( fn->getParent(), call, dom ) )
             meta::set( call, meta::tag::abstract_return );
+
+        if ( meta::aggregate::has( val ) )
+            meta::aggregate::inherit( call, val );
+
         tasks.push_back( [=]{ propagate_value( call, dom ); } );
     };
 
     for ( auto u : fn->users() ) {
-        if ( isa< CallInst >( u ) ) {
-            process_call( u );
-        } else if ( isa< ConstantExpr >( u ) ) {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) ) {
+            process_call( call );
+        } else if ( llvm::isa< llvm::ConstantExpr >( u ) ) {
             for ( auto ceu : u->users() )
-                if ( isa< CallInst >( ceu ) )
-                    process_call( ceu );
+                if ( auto call = llvm::dyn_cast< llvm::CallInst >( ceu ) )
+                    process_call( call );
         }
     }
 }

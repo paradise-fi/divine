@@ -169,6 +169,8 @@ namespace lart::abstract::meta {
         bool has( llvm::Value * val ) noexcept;
 
         std::vector< size_t > indices( llvm::Value * ) noexcept;
+
+        void inherit( llvm::Instruction * dst, llvm::Value * src ) noexcept;
     } // namespace aggregate
 
     template< typename T >

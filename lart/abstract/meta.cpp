@@ -280,6 +280,12 @@ namespace lart::abstract::meta {
             return indices;
         }
 
+        void inherit( llvm::Instruction * dst, llvm::Value * src ) noexcept {
+            ASSERT( aggregate::has( src ) );
+            auto meta = aggregate::get( src );
+            dst->setMetadata( tag::aggregate::sources, meta );
+        }
+
     } // namespace aggregate
 
 } // namespace lart::abstract::meta
