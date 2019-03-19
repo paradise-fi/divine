@@ -309,11 +309,7 @@ namespace meta {
     }
 
     bool has_dual( llvm::Argument * arg ) {
-        if ( meta::abstract::has( arg ) ) {
-            auto m = arg->getParent()->getParent();
-            return is_base_type( m, arg );
-        }
-        return false;
+        return meta::get_dual( arg );
     }
 
     bool has_dual( llvm::Instruction * inst ) {
