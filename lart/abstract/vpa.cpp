@@ -44,43 +44,85 @@ Values reach_from( Values roots, Domain dom ) {
 
 Values reach_from( Value *root, Domain dom ) { return reach_from( Values{ root }, dom ); }
 
-struct AbstractionSources {
+struct AbstractionSources
+{
 
     explicit AbstractionSources( Value *from ) : from( from ) {}
 
-    Values get() {
-        auto values = get_impl( from );
+    Values get()
+    {
+        auto values = get_impl( from, 0 );
 
-        Values res;
-        std::unique_copy( values.begin(), values.end(), std::back_inserter( res ) );
-        return res;
+        std::set< llvm::Value * > sources;
+        for ( const auto & [val, idx] : values ) {
+            if ( idx.has_value() ) {
+                if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+                    meta::aggregate::set( inst, idx.value() );
+                if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
+                    meta::aggregate::set( glob, idx.value() );
+                // TODO llvm::Argument
+            }
+            sources.insert( val );
+        }
+
+        return { sources.begin(), sources.end() };
     }
 
 private:
-    Values get_impl( Value *val ) {
-        Values res;
+    using Source = std::pair< llvm::Value *, std::optional< size_t > >;
+
+    auto get_impl( Value *val, std::optional< size_t > idx ) -> std::vector< Source >
+    {
+        std::vector< Source > sources;
 
         llvmcase( val,
-            [&] ( GetElementPtrInst *inst ) { res = get_impl( inst->getPointerOperand() ); },
-            [&] ( LoadInst *inst )          { res = get_impl( inst->getPointerOperand() ); },
-            [&] ( BitCastInst *inst )       { res = get_impl( inst->getOperand( 0 ) ); },
-            [&] ( ConstantExpr *inst )      { res = get_impl( inst->getOperand( 0 ) ); },
-            [&] ( IntToPtrInst *inst )      { res = get_impl( inst->getOperand( 0 ) ); },
-            [&] ( AllocaInst * )            { res = { val }; },
-            [&] ( Argument * )              { res = { val }; },
-            [&] ( CallInst * )              { res = { val }; },
-            [&] ( GlobalValue * )           { res = { val }; },
-            [&] ( ExtractValueInst * )      { res = { val }; },
+            [&] ( GetElementPtrInst *inst ) {
+                idx = std::nullopt;
+
+                if ( inst->getNumIndices(), 2 ) {
+                    auto i = std::next( inst->idx_begin() );
+                    if ( auto ci = llvm::dyn_cast< llvm::ConstantInt >( i ) )
+                        idx = ci->getZExtValue();
+                }
+
+                sources = get_impl( inst->getPointerOperand(), idx );
+            },
+            [&] ( LoadInst *inst ) {
+                sources = get_impl( inst->getPointerOperand(), std::nullopt );
+            },
+            [&] ( BitCastInst *inst ) {
+                sources = get_impl( inst->getOperand( 0 ), idx );
+            },
+            [&] ( ConstantExpr *inst ) {
+                sources = get_impl( inst->getOperand( 0 ), std::nullopt );
+            },
+            [&] ( IntToPtrInst *inst ) {
+                sources = get_impl( inst->getOperand( 0 ), idx );
+            },
+            [&] ( AllocaInst * ) {
+                sources = { { val, idx } };
+            },
+            [&] ( Argument * ) {
+                sources = { { val, idx } };
+            },
+            [&] ( CallInst * ) {
+                sources = { { val, idx } };
+            },
+            [&] ( GlobalVariable * ) {
+                sources = { { val, idx } };
+            },
+            [&] ( ExtractValueInst * ) {
+                sources = { { val, idx } };
+            },
             [&] ( Constant * ) {
-                res = {};
+                sources = {};
                 ASSERT( !isa< ConstantExpr >( val ) );
             },
             [&] ( PHINode *inst ) {
-                if ( !seen_phi_nodes.count( inst ) ) {
-                    seen_phi_nodes.insert( inst );
+                if ( auto [val, inserted] = seen_phi_nodes.insert( inst ); inserted ) {
                     for ( auto &in : inst->incoming_values() ) {
-                        auto values = get_impl( in.get() );
-                        std::move( values.begin(), values.end(), std::back_inserter( res ) );
+                        auto values = get_impl( in.get(), idx );
+                        std::move( values.begin(), values.end(), std::back_inserter( sources ) );
                     }
                 }
             },
@@ -89,7 +131,7 @@ private:
             }
         );
 
-        return res;
+        return sources;
     }
 
     Value * from;
@@ -141,7 +183,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
     if ( seen_vals.count( { val, dom } ) )
         return;
 
-    if ( isa< GlobalValue >( val ) ) {
+    if ( isa< GlobalVariable >( val ) ) {
         seen_vals.emplace( val, dom );
         for ( auto u : val->users() )
             tasks.push_back( [=]{ propagate_value( u, dom ); } );
