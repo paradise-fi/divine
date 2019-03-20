@@ -80,10 +80,7 @@ namespace lart::abstract::meta {
     llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag );
 
     /* checks whether values has metadata for given tag */
-    template< typename T >
-    bool has( T * val, const std::string & tag ) noexcept {
-        return meta::get( val, tag ).has_value();
-    }
+    bool has( llvm::Value * val, const std::string & tag ) noexcept;
 
     /* sets metadata with tag to value */
     void set( llvm::Value * val, const std::string & tag ) noexcept;

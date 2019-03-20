@@ -87,6 +87,22 @@ namespace lart::abstract::meta {
         return meta::value( glob->getMetadata( tag ) );
     }
 
+    bool has( llvm::Value * val, const std::string & tag ) noexcept {
+        if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
+            return fn->getMetadata( tag );
+        else if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
+            return glob->getMetadata( tag );
+        else if ( llvm::isa< llvm::Constant >( val ) )
+            return false;
+        else if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+            return meta::get( arg, tag ).has_value();
+        else if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            return inst->getMetadata( tag );
+        else
+            UNREACHABLE( "Unsupported value" );
+
+    }
+
     llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
         auto &meta = inst->getMetadata( tag )->getOperand( 0 );
         if ( auto con = llvm::dyn_cast< llvm::ConstantAsMetadata >( meta.get() ) ) {
