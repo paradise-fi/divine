@@ -6,21 +6,24 @@ structures, scaling all the way from a laptop to a high-end cluster.  Learn
 more in the [manual](manual.html). Our plans for upcoming releases are outlined
 in the [roadmap] [rmap].
 
-# DIVINE 4.1 Released
+# DIVINE 4.2 Released
 
-[2018-01-15] Version 4.1 of the DIVINE model checker has been released. Since
-version 4.0 was released a year ago, a large number of improvements has made
-its way into the tool -- however, there are only minor differences between the
-last 4.0 point release and the first version in the new 4.1 series. The changes
-that happened between the 4.0 release in January 2017 and 4.1 are summarised in
-our [release notes] [rnotes].
+[2019-01-15] A year since last major release, we are pleased to announce that
+DIVINE version 4.2 has been released. Like all 4.x releases, the changes
+included in 4.2 were integrated gradually. The 4.1.x series, culminating in the
+release of 4.2 today has brought substantially improved POSIX compatibility, to
+a level where packages like `gzip` or `coreutils` can be configured and
+compiled using `divcc`, which creates binaries which can be verified in divine
+and also executed in production. In this case, the executable binary code is
+derived from the exact same bitcode that is processed by the model checker.
 
-Likewise, we plan to implement many improvements over the lifetime of the 4.1
-series. The main points are described in our [roadmap] [rmap], including a
-much-improved **symbolic verification** mode, a new **compiler** binary that
-can be used as a drop-in replacement for `gcc` or `clang` when building complex
-projects, and a **`valgrind`-like** mode for executing programs in a
-semi-native environment.
+Other highlights include much faster bitcode loading, improved support for
+relaxed memory models used by Intel `x86_64`-series processors, support for C11
+threads, verification of synchronous systems specified using C with LTL
+properties, much faster and more robust symbolic verification mode. Basic
+support for detection of memory leaks has also been added, along with a large
+number of smaller improvements and fixes detailed in the [release notes]
+[rnotes].
 
 Previously: [more news] [news].
 
