@@ -105,6 +105,8 @@ namespace lart::abstract::meta {
             meta::set( arg, tag, meta );
         else if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
             meta::set( inst, tag, meta );
+        else if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
+            meta::set( glob, tag, meta );
         else if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
             meta::set( fn, tag, meta );
         else
@@ -125,6 +127,10 @@ namespace lart::abstract::meta {
 
     void set( llvm::Instruction * inst, const std::string & tag, const std::string & meta ) noexcept {
         set_impl( inst, tag, meta );
+    }
+
+    void set( llvm::GlobalVariable * glob, const std::string & tag, const std::string & meta ) noexcept {
+        set_impl( glob, tag, meta );
     }
 
     void set( llvm::Function * fn, const std::string & tag, const std::string & meta ) noexcept {
