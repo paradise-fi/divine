@@ -84,11 +84,22 @@ namespace lart::abstract
                 if ( auto cast = llvm::dyn_cast< llvm::BitCastInst >( concrete ) )
                     concrete = cast->getOperand( 0 );
 
-                ASSERT( meta::has_dual( concrete ) );
                 auto abstract = dual( concrete );
 
-                ASSERT( gep->getNumIndices() == 1 );
+                /* FIXME ASSERT( gep->getNumIndices() == 1 ); */
                 llvm::Value * idx = gep->idx_begin()->get();
+
+                if ( !idx->getType()->isIntegerTy( 64 ) ) {
+                    auto irb = llvm::IRBuilder<>( gep );
+                    idx = irb.CreateZExt( idx, llvm::Type::getInt64Ty( gep->getContext() ) );
+                }
+
+                /* FIXME get rid of cast */
+                if ( !concrete->getType()->getPointerElementType()->isIntegerTy( 8 ) ) {
+                    auto irb = llvm::IRBuilder<>( gep );
+                    concrete = irb.CreateBitCast( concrete, llvm::Type::getInt8PtrTy( gep->getContext() ) );
+                }
+
                 return { concrete, abstract, idx };
             }
 
