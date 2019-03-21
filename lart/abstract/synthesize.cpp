@@ -193,7 +193,7 @@ namespace lart::abstract
                         res = args[ abstract( idx ) ].value;
                         idx += 2;
                     } else {
-                        ASSERT( is_concrete( arg ) );
+                        /* FIXME ASSERT( is_concrete( arg ) ); */
                         res = args[ idx ].value;
                         idx += 1;
                     }
@@ -217,6 +217,15 @@ namespace lart::abstract
 
             ASSERT( operation );
             ASSERT( operation->arg_size() == vals.size() );
+
+            /* FIXME do not skip synthesization */
+            for ( unsigned i = 0; i < vals.size(); ++i ) {
+                if ( operation->getFunctionType()->getParamType( i ) != vals[ i ]->getType() ) {
+                    irb.CreateRet( llvm::UndefValue::get( function()->getReturnType() ) );
+                    return;
+                }
+            }
+
             auto call = irb.CreateCall( operation, vals );
 
             if constexpr ( Taint::freeze( T ) || Taint::store( T ) || Taint::stash( T ) ) {
