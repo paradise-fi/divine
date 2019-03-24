@@ -50,7 +50,7 @@ struct UserMeta : Next
     using LayerTypes = std::array< std::atomic< MetaType >, NLayers >;
     std::shared_ptr< LayerTypes > _type;
 
-    using Maps = SnapshottedMap< TaggedOffset, uint32_t, typename Next::Pool >;
+    using Maps = IntervalMetadataMap< TaggedOffset, uint32_t, typename Next::Pool >;
     mutable Maps _maps;
 
 
@@ -62,42 +62,37 @@ struct UserMeta : Next
 
     void materialise( Internal p, int size )
     {
-        _maps.materialise( p );
+        _maps._storage.materialise( p );
         Next::materialise( p, size );
     }
 
     void notify_snapshot() const
     {
-        _maps.snapshot();
+        _maps._storage.snapshot();
         Next::notify_snapshot();
     }
 
     void free( Internal p ) const
     {
-        _maps.free( p );
+        _maps._storage.free( p );
         Next::free( p );
     }
 
     Value peek( Loc l, int layer )
     {
-        auto &map = _maps;
-
-        if ( auto *p = map.at( l.object, { l.offset, layer } ) )
-        {
+        if ( auto *p = _maps.at( l.object, { l.offset, layer } ) )
            return Value( p->second , -1, layer_type( layer ) == MetaType::Pointers );
-        }
 
         return Value( 0, 0, layer_type( layer ) == MetaType::Pointers );
     }
 
     void poke( Loc l, int layer, Value v )
     {
-        auto &map = _maps;
         if ( layer_type( layer ) == MetaType::Unknown )
             layer_type( layer, v.pointer() ? MetaType::Pointers : MetaType::Scalars );
 
         ASSERT_EQ( layer_type( layer ) == MetaType::Pointers, v.pointer() );
-        map.set( l.object, { l.offset, layer }, v.cooked() );
+        _maps.insert( l.object, { l.offset, layer }, { l.offset + 1, layer }, v.cooked() );
     }
 
     template< typename FromH, typename ToH >
@@ -118,9 +113,9 @@ struct UserMeta : Next
         auto ltypes = layer_types();
         auto no_objids_cb = [ltypes, skip_objids]( auto k )
         {
-            return ltypes[ k.tag ] == MetaType::Pointers && skip_objids;
+            return ltypes[ k.from.tag ] == MetaType::Pointers && skip_objids;
         };
-        if ( int diff = _maps.compare( a, b, no_objids_cb ) )
+        if ( int diff = _maps._storage.compare( a, b, no_objids_cb ) )
             return diff;
         int diff = Next::compare( o, a, b, sz, skip_objids );
         return diff;
@@ -134,13 +129,14 @@ struct UserMeta : Next
         auto data_cb = [&]( uint32_t v ) { state.update_aligned( v ); };
         auto hash_cb = [&, ltypes]( auto k, auto v )
         {
-            data_cb( k );
-            if ( ltypes[ k.tag ] == MetaType::Pointers )
+            data_cb( k.from );
+            data_cb( k.to );
+            if ( ltypes[ k.from.tag ] == MetaType::Pointers )
                 ptr_cb( v );
             else
                 data_cb( v );
         };
-        _maps.foreach( i, hash_cb );
+        _maps._storage.foreach( i, hash_cb );
         Next::hash( i, size, state, ptr_cb );
     }
 
