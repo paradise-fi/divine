@@ -28,16 +28,14 @@ namespace divine::mem
 
 union TaggedOffset {
     struct {
-        uint32_t tag : 2;
         uint32_t off : 30;
+        uint32_t tag : 2;
     };
     uint32_t raw;
-    TaggedOffset( uint32_t raw ) : raw( tag ) {}
+    TaggedOffset( uint32_t raw ) : raw( raw ) {}
     TaggedOffset( uint32_t offset, uint32_t tag ) : tag( tag ), off( offset ) {}
     operator uint32_t() const { return raw; }
     TaggedOffset & operator=( uint32_t r ) { raw = r; return *this; }
-    bool operator<( TaggedOffset o ) const { return raw < o.raw; }
-    bool operator==( TaggedOffset o ) const { return raw == o.raw; }
 };
 
 template< typename Next >
