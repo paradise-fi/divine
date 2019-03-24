@@ -785,4 +785,464 @@ struct CompoundShadow
 #endif
 };
 
+struct IntervalMetadataMap
+{
+    using H = TestHeap< mem::ShadowLayers< vm::HeapBase< 8 > > >;
+    using Pool = typename H::Pool;
+    using Internal = typename H::Internal;
+    using IMP = divine::mem::IntervalMetadataMap< int32_t, uint32_t, Pool >;
+    using Interval = typename IMP::key_type;
+
+    H heap;
+    H::Ptr obj;
+    IMP map;
+
+    const auto & _map() const
+    {
+        ASSERT( map._storage.maps().find( obj ) != map._storage.maps().end() );
+        return map._storage.maps().find( obj )->second;
+    }
+    void _validate() const {
+        bool prevSet = false;
+        int32_t prev;
+        for ( const auto &p : _map() ) {
+            ASSERT( p.first.from < p.first.to );
+            ASSERT( !prevSet || prev <= p.first.from );
+            prev = p.first.to;
+            prevSet = true;
+        }
+    }
+    bool _intersect( int32_t from, int32_t to )
+    {
+        ASSERT( from < to );
+        auto next = _map().upper_bound( Interval( from ) );
+        if ( next == _map().end() )
+        {
+            if ( _map().empty() )
+                return false;
+            if ( from < std::prev( next )->first.to )
+                return true;
+            return false;
+        }
+        if ( next == _map().begin() )
+        {
+            ASSERT( from <= next->first.from );
+            return to > next->first.from;
+        }
+        if ( from < next->first.from && next->first.from < to )
+            return true;
+        if ( from < std::prev( next )->first.to )
+            return true;
+        return false;
+    }
+
+
+    IntervalMetadataMap() : map( heap._objects )
+    {
+        obj = heap.make( 100 );
+        map._storage.materialise( obj );
+        map._storage.maps()[ obj ];
+    }
+
+    TEST( snapshot )
+    {
+        map.insert( obj, 0, 16, 0xAD );
+        map._storage.snapshot();
+
+        ASSERT( map._storage._snap(obj) );
+        ASSERT( map._storage._snap_range(obj).first );
+        ASSERT( map.at(obj, 0) != nullptr );
+        ASSERT_EQ( map.at(obj, 0)->second, 0xAD );
+        ASSERT_EQ( map.at(obj, 0)->first.from, 0 );
+        ASSERT_EQ( map.at(obj, 0)->first.to, 16 );
+    }
+
+    TEST( upper_bound )
+    {
+        map.insert( obj, 0, 15, 0xAD );
+        ASSERT( map._storage.upper_bound( obj, Interval( 12 ) ) == map._storage.end( obj ) );
+
+        auto ub = map._storage.upper_bound( obj, Interval( -2 ) );
+        ASSERT( ub == map._storage.begin( obj ) );
+        ASSERT_EQ( ub->first.from, 0 );
+        ASSERT_EQ( ub->first.to, 15 );
+        ASSERT_EQ( ub->second, 0xAD );
+
+        ub = map._storage.upper_bound( obj, Interval( 0 ) );
+        ASSERT( ub == map._storage.end( obj ) );
+        ASSERT( ub != map._storage.begin( obj ) );
+        --ub;
+        ASSERT( ub == map._storage.begin( obj ) );
+        ASSERT_EQ( ub->first.from, 0 );
+        ASSERT_EQ( ub->first.to, 15 );
+        ASSERT_EQ( ub->second, 0xAD );
+    }
+
+    TEST( upper_bound_snap )
+    {
+        map.insert( obj, 0, 15, 0xAD );
+        ASSERT( map._storage.upper_bound( obj, Interval( 12 ) ) == map._storage.end( obj ) );
+
+        map._storage.snapshot();
+
+        auto ub = map._storage.upper_bound( obj, Interval( -2 ) );
+        ASSERT( ub == map._storage.begin( obj ) );
+        ASSERT_EQ( ub->first.from, 0 );
+        ASSERT_EQ( ub->first.to, 15 );
+        ASSERT_EQ( ub->second, 0xAD );
+
+        ub = map._storage.upper_bound( obj, Interval( 0 ) );
+        ASSERT( ub == map._storage.end( obj ) );
+        ASSERT( ub != map._storage.begin( obj ) );
+        --ub;
+        ASSERT( ub == map._storage.begin( obj ) );
+        ASSERT_EQ( ub->first.from, 0 );
+        ASSERT_EQ( ub->first.to, 15 );
+        ASSERT_EQ( ub->second, 0xAD );
+    }
+
+    TEST( disjoint_insert )
+    {
+        ASSERT( !_intersect( 0, 1 ) );
+        map.insert( obj, 0, 1, 0xDA7A1 );
+        ASSERT_EQ( _map().size(), 1 );
+        _validate();
+
+        // before
+        ASSERT( !_intersect( -10, -8 ) );
+        map.insert( obj, -10, -8, 0xDA7A2 );
+        ASSERT_EQ( _map().size(), 2 );
+        _validate();
+
+        // after
+        ASSERT( !_intersect( 8, 12 ) );
+        map.insert( obj, 8, 12, 0xDA7A3 );
+        ASSERT_EQ( _map().size(), 3 );
+        _validate();
+
+        // inbetween
+        ASSERT( !_intersect( 3, 5 ) );
+        map.insert( obj, 3, 5, 0xDA7A4 );
+        ASSERT_EQ( _map().size(), 4 );
+        _validate();
+
+        // close to, but not overlaping
+        ASSERT( !_intersect( -7, -6 ) );
+        map.insert( obj, -7, -6, 0xDA7A5 );
+        ASSERT_EQ( _map().size(), 5 );
+        _validate();
+
+        // close to, but not overlaping
+        ASSERT( !_intersect( -3, -1 ) );
+        map.insert( obj, -3, 0, 0xDA7A6 );
+        ASSERT_EQ( _map().size(), 6 );
+        _validate();
+
+        // close to end
+        ASSERT( !_intersect( 13, 15 ) );
+        map.insert( obj, 13, 15, 0xDA7A7 );
+        ASSERT_EQ( _map().size(), 7 );
+        _validate();
+
+        ASSERT_EQ( map.at(obj, 0)->second, 0xDA7A1 );
+        ASSERT_EQ( map.at(obj, -10)->second, 0xDA7A2 );
+        ASSERT_EQ( map.at(obj, -9)->second, 0xDA7A2 );
+        ASSERT( map.at(obj, -8) == nullptr );
+        ASSERT_EQ( map.at(obj, 9)->second, 0xDA7A3 );
+        ASSERT_EQ( map.at(obj, 4)->second, 0xDA7A4 );
+        ASSERT_EQ( map.at(obj, -7)->second, 0xDA7A5 );
+        ASSERT_EQ( map.at(obj, -1)->second, 0xDA7A6 );
+        ASSERT_EQ( map.at(obj, 13)->second, 0xDA7A7 );
+        ASSERT( map.at(obj, 15) == nullptr );
+        ASSERT( map.at(obj, 20) == nullptr );
+        ASSERT( map.at(obj, 7) == nullptr );
+        ASSERT( map.at(obj, -20) == nullptr );
+    }
+
+    TEST( overlap_inserts ) {
+        // no overlap
+        ASSERT( !_intersect( 4, 8 ) );
+        map.insert( obj, 4, 8, 0xFF01 );
+        ASSERT_EQ( _map().size(), 1 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 5 )->first.from, 4 );
+        ASSERT_EQ( map.at( obj, 5 )->first.to, 8 );
+        ASSERT_EQ( map.at( obj, 5 )->second, 0xFF01 );
+        // [4, 8)
+
+        // no overlap, after end
+        ASSERT( !_intersect( 32, 35 ) );
+        map.insert( obj, 32, 35, 0xFF02 );
+        ASSERT_EQ( _map().size(), 2 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 34 )->first.from, 32 );
+        ASSERT_EQ( map.at( obj, 34 )->first.to, 35 );
+        // [4, 8) [32, 35)
+
+        // overlaps with end
+        ASSERT( _intersect( 5, 10 ) );
+        map.insert( obj, 5, 10 , 0xFF03);
+        ASSERT_EQ( _map().size(), 3 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 5 )->first.from, 5 );
+        ASSERT_EQ( map.at( obj, 5 )->first.to, 10 );
+        ASSERT_EQ( map.at( obj, 5 )->second, 0xFF03 );
+        ASSERT( map.at( obj, 5 ) == map.at( obj, 7 ) );
+        ASSERT( map.at( obj, 5 ) == map.at( obj, 9 ) );
+        ASSERT( map.at( obj, 10 ) == nullptr );
+        ASSERT_EQ( map.at( obj, 4 )->first.from, 4 );
+        ASSERT_EQ( map.at( obj, 4 )->first.to, 5 );
+        ASSERT_EQ( map.at( obj, 4 )->second, 0xFF01 );
+        // [4, 5) [5, 10) [32, 35)
+
+        // begin-aligned
+        ASSERT( _intersect( 5, 8 ) );
+        map.insert( obj, 5, 8 , 0xFF04);
+        ASSERT_EQ( _map().size(), 4 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 5 )->first.from, 5 );
+        ASSERT_EQ( map.at( obj, 5 )->first.to, 8 );
+        ASSERT_EQ( map.at( obj, 5 )->second, 0xFF04 );
+        ASSERT_EQ( map.at( obj, 8 )->first.from, 8 );
+        ASSERT_EQ( map.at( obj, 8 )->first.to, 10 );
+        ASSERT_EQ( map.at( obj, 9 )->second, 0xFF03 );
+        // [4, 5) [5, 8), [8, 10) [32, 35)
+
+        // complete precise ovelap
+        ASSERT( _intersect( 4, 10 ) );
+        map.insert( obj, 4, 10 , 0xFF05);
+        ASSERT_EQ( _map().size(), 2 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 5 )->first.from, 4 );
+        ASSERT_EQ( map.at( obj, 5 )->first.to, 10 );
+        ASSERT_EQ( map.at( obj, 5 )->second, 0xFF05 );
+        ASSERT( map.at( obj, 5 ) == map.at( obj, 9 ) );
+        // [4, 10) [32, 35)
+
+        // complete overlap, end-aligned
+        ASSERT( _intersect( 30, 35 ) );
+        map.insert( obj, 30, 35 , 0xFF06);
+        ASSERT_EQ( _map().size(), 2 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 34 )->first.from, 30 );
+        ASSERT_EQ( map.at( obj, 34 )->first.to, 35 );
+        ASSERT_EQ( map.at( obj, 34 )->second, 0xFF06 );
+        // [4, 10) [30, 35)
+
+        // right after end
+        ASSERT( !_intersect( 10, 12 ) );
+        map.insert( obj, 10, 12 , 0xFF07);
+        ASSERT_EQ( _map().size(), 3 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 5 )->first.from, 4 );
+        ASSERT_EQ( map.at( obj, 5 )->first.to, 10 );
+        ASSERT_EQ( map.at( obj, 10 )->first.from, 10 );
+        ASSERT_EQ( map.at( obj, 10 )->first.to, 12 );
+        ASSERT( map.at( obj, 12 ) == nullptr );
+        // [4, 10) [10, 12) [30, 35)
+
+        // right before end
+        ASSERT( !_intersect( 25, 30 ) );
+        map.insert( obj, 25, 30 , 0xFF08);
+        ASSERT_EQ( _map().size(), 4 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 30 )->first.from, 30 );
+        ASSERT_EQ( map.at( obj, 30 )->first.to, 35 );
+        ASSERT_EQ( map.at( obj, 28 )->first.from, 25 );
+        ASSERT_EQ( map.at( obj, 28 )->first.to, 30 );
+        ASSERT_EQ( map.at( obj, 30 )->second, 0xFF06 );
+        ASSERT_EQ( map.at( obj, 28 )->second, 0xFF08 );
+        // [4, 10) [10, 12) [25, 30) [30, 35)
+
+        // inbetween
+        ASSERT( !_intersect( 15, 20 ) );
+        map.insert( obj, 15, 20 , 0xFF09);
+        ASSERT_EQ( _map().size(), 5 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 16 )->first.from, 15 );
+        ASSERT_EQ( map.at( obj, 16 )->first.to, 20 );
+        // [4, 10) [10, 12) [15, 20) [25, 30) [30, 35)
+
+        // overlapping two
+        ASSERT( _intersect( 11, 16 ) );
+        map.insert( obj, 11, 16 , 0xFF0A);
+        ASSERT_EQ( _map().size(), 6 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 10 )->first.from, 10 );
+        ASSERT_EQ( map.at( obj, 10 )->first.to, 11);
+        ASSERT_EQ( map.at( obj, 14 )->first.from, 11 );
+        ASSERT_EQ( map.at( obj, 14 )->first.to, 16);
+        ASSERT_EQ( map.at( obj, 16 )->first.from, 16 );
+        ASSERT_EQ( map.at( obj, 16 )->first.to, 20);
+        // [4, 10) [10, 11) [11, 16) [16, 20) [25, 30) [30, 35)
+
+        // right inbetween
+        ASSERT( !_intersect( 20, 25 ) );
+        map.insert( obj, 20, 25 , 0xFF0B);
+        ASSERT_EQ( _map().size(), 7 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 16 )->first.from, 16 );
+        ASSERT_EQ( map.at( obj, 16 )->first.to, 20);
+        ASSERT_EQ( map.at( obj, 20 )->first.from, 20 );
+        ASSERT_EQ( map.at( obj, 20 )->first.to, 25 );
+        ASSERT_EQ( map.at( obj, 25 )->first.from, 25 );
+        ASSERT_EQ( map.at( obj, 25 )->first.to, 30 );
+        // [4, 10) [10, 11) [11, 16) [16, 20) [20, 25) [25, 30) [30, 35)
+
+        // no overlap, before first
+        ASSERT( !_intersect( -5, -2 ) );
+        map.insert( obj, -5, -2 , 0xFF0C);
+        ASSERT_EQ( _map().size(), 8 );
+        _validate();
+        // [-5, -2) [4, 10) [10, 11) [11, 16) [16, 20) [20, 25) [25, 30) [30, 35)
+
+        // spanning multiple succeeding with start overlap
+        ASSERT( _intersect( 18, 40 ) );
+        map.insert( obj, 18, 40 , 0xFF0D);
+        _validate();
+        ASSERT_EQ( _map().size(), 6 );
+        ASSERT_EQ( map.at( obj, 16 )->first.from, 16 );
+        ASSERT_EQ( map.at( obj, 16 )->first.to, 18 );
+        ASSERT_EQ( map.at( obj, 30 )->first.from, 18 );
+        ASSERT_EQ( map.at( obj, 30 )->first.to, 40 );
+        ASSERT( map.at( obj, 18 ) == map.at( obj, 30 ) );
+        ASSERT( map.at( obj, 20 ) == map.at( obj, 30 ) );
+        ASSERT( map.at( obj, 25 ) == map.at( obj, 30 ) );
+        ASSERT( map.at( obj, 35 ) == map.at( obj, 30 ) );
+        // [-5, -2) [4, 10) [10, 11) [11, 16) [16, 18) [18, 40)
+
+        // spanning multiple succeeding with end overlap
+        ASSERT( _intersect( -10, 14 ) );
+        map.insert( obj, -10, 14 , 0xFF0E);
+        _validate();
+        ASSERT_EQ( _map().size(), 4 );
+        ASSERT_EQ( map.at( obj, 4 )->first.from, -10 );
+        ASSERT_EQ( map.at( obj, 4 )->first.to, 14 );
+        ASSERT( map.at( obj, -5 ) == map.at( obj, 4 ) );
+        ASSERT( map.at( obj, -10 ) == map.at( obj, 4 ) );
+        ASSERT( map.at( obj, 10 ) == map.at( obj, 4 ) );
+        ASSERT( map.at( obj, 11 ) == map.at( obj, 4 ) );
+        ASSERT_EQ( map.at( obj, 30 )->first.from, 18 );
+        ASSERT_EQ( map.at( obj, 30 )->first.to, 40 );
+        // [-10, 14) [14, 16) [16, 18) [18, 40)
+
+        // spanning multiple succeeding with both overlaps
+        map.insert( obj, 2, 25 , 0xFF0F);
+        ASSERT_EQ( _map().size(), 3 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 14 )->first.from, 2 );
+        ASSERT_EQ( map.at( obj, 14 )->first.to, 25 );
+        ASSERT_EQ( map.at( obj, 25 )->first.from, 25 );
+        ASSERT_EQ( map.at( obj, 25 )->first.to, 40 );
+        ASSERT_EQ( map.at( obj, 0 )->first.from, -10 );
+        ASSERT_EQ( map.at( obj, 0 )->first.to, 2 );
+        // [-10, 2) [2, 25) [25, 40)
+
+        // splitting the last interval in two
+        map.insert( obj, 30, 35 , 0xFF10);
+        ASSERT_EQ( _map().size(), 5 );
+        _validate();
+        ASSERT_EQ( map.at( obj, 27 )->first.from, 25 );
+        ASSERT_EQ( map.at( obj, 27 )->first.to, 30 );
+        ASSERT_EQ( map.at( obj, 32 )->first.from, 30 );
+        ASSERT_EQ( map.at( obj, 32 )->first.to, 35 );
+        ASSERT_EQ( map.at( obj, 37 )->first.from, 35 );
+        ASSERT_EQ( map.at( obj, 37 )->first.to, 40 );
+        ASSERT_EQ( map.at( obj, 27 )->second, 0xFF0D );
+        ASSERT_EQ( map.at( obj, 32 )->second, 0xFF10 );
+        ASSERT_EQ( map.at( obj, 37 )->second, 0xFF0D );
+        // [-10, 2) [2, 25) [25, 30) [30, 35) [35, 40)
+
+        // splitting the first interval in two
+        map.insert( obj, -5, 0 , 0xFF11);
+        ASSERT_EQ( _map().size(), 7 );
+        _validate();
+        ASSERT_EQ( map.at( obj, -9 )->first.from, -10 );
+        ASSERT_EQ( map.at( obj, -9 )->first.to, -5 );
+        ASSERT_EQ( map.at( obj, -4 )->first.from, -5 );
+        ASSERT_EQ( map.at( obj, -4 )->first.to, 0 );
+        ASSERT_EQ( map.at( obj, 1 )->first.from, 0 );
+        ASSERT_EQ( map.at( obj, 1 )->first.to, 2 );
+        ASSERT_EQ( map.at( obj, -9 )->second, 0xFF0E );
+        ASSERT_EQ( map.at( obj, -4 )->second, 0xFF11 );
+        ASSERT_EQ( map.at( obj, 1 )->second, 0xFF0E );
+        // [-10, -5) [-5, 0) [0, 2) [2, 25) [25, 30) [30, 35) [35, 40)
+
+        // spanning multiple, aligned begin and end
+        map.insert( obj, 0, 35, 0xFF12 );
+        _validate();
+        ASSERT_EQ( _map().size(), 4 );
+        ASSERT_EQ( map.at( obj, -1 )->first.from, -5 );
+        ASSERT_EQ( map.at( obj, -1 )->first.to, 0 );
+        ASSERT_EQ( map.at( obj, -1 )->second, 0xFF11 );
+        ASSERT_EQ( map.at( obj, 0 )->first.from, 0 );
+        ASSERT_EQ( map.at( obj, 0 )->first.to, 35 );
+        ASSERT_EQ( map.at( obj, 0 )->second, 0xFF12 );
+        ASSERT( map.at( obj, 0 ) == map.at( obj, 2 ) );
+        ASSERT( map.at( obj, 0 ) == map.at( obj, 25 ) );
+        ASSERT( map.at( obj, 0 ) == map.at( obj, 33 ) );
+        ASSERT_EQ( map.at( obj, 35 )->first.from, 35 );
+        ASSERT_EQ( map.at( obj, 35 )->first.to, 40 );
+        ASSERT_EQ( map.at( obj, 35 )->second, 0xFF0D );
+        // [-10, -5) [-5, 0) [0, 35) [35, 40)
+    }
+
+    TEST( overlap_insert2 )
+    {
+        map.insert( obj, 10, 20, 0xFE01 );
+        _validate();
+        ASSERT_EQ( _map().size(), 1 );
+        ASSERT_EQ( map.at( obj, 15 )->second, 0xFE01 );
+        // [10, 20)
+
+        // no overlap, before the only entry
+        map.insert( obj, 0, 5, 0xFE02 );
+        _validate();
+        ASSERT_EQ( _map().size(), 2 );
+        ASSERT_EQ( map.at( obj, 15 )->second, 0xFE01 );
+        ASSERT_EQ( map.at( obj, 1 )->second, 0xFE02 );
+        // [0, 5) [10, 20)
+
+        // no overlap, before the first entry
+        map.insert( obj, -10, -5, 0xFE03 );
+        _validate();
+        ASSERT_EQ( _map().size(), 3 );
+        // [-10, -5) [0, 5) [10, 20)
+
+        // begin between, one destroyed, end overlaps
+        map.insert( obj, -2, 15, 0xFE04 );
+        _validate();
+        ASSERT_EQ( _map().size(), 3 );
+        ASSERT_EQ( map.at( obj, 15 )->second, 0xFE01 );
+        ASSERT_EQ( map.at( obj, 0 )->second, 0xFE04 );
+        // [-10, -5) [-2, 15) [15, 20)
+
+        // no overlap, after last
+        map.insert( obj, 30, 40, 0xFE05 );
+        _validate();
+        ASSERT_EQ( _map().size(), 4 );
+        // [-10, -5) [-2, 15) [15, 20) [30, 40)
+
+        // begin overlaps, two destroyed, end between
+        map.insert( obj, -7, 25, 0xFE06 );
+        _validate();
+        ASSERT_EQ( _map().size(), 3 );
+        ASSERT_EQ( map.at( obj, 15 )->second, 0xFE06 );
+        ASSERT_EQ( map.at( obj, 0 )->second, 0xFE06 );
+        ASSERT_EQ( map.at( obj, -9 )->second, 0xFE03 );
+        ASSERT( map.at( obj, 25 ) == nullptr );
+        // [-10, -7) [-7, 25) [30, 40)
+
+        // everything destroyed
+        map.insert( obj, -20, 50, 0xFE07 );
+        _validate();
+        ASSERT_EQ( _map().size(), 1 );
+        ASSERT_EQ( map.at( obj, -10 )->second, 0xFE07 );
+        ASSERT_EQ( map.at( obj, 25 )->second, 0xFE07 );
+        ASSERT_EQ( map.at( obj, 40 )->second, 0xFE07 );
+        // [-20, 50)
+    }
+
+};
+
 }
