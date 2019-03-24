@@ -47,6 +47,10 @@ struct SnapshottedMap
 
     SnapshottedMap( MasterPool & mp ) : _snap_pointers( mp ) {}
 
+    Map & operator[]( Internal obj ) { return _l._maps[ obj ]; }
+    std::map< Internal, Map > & maps() { return _l._maps; }
+    const std::map< Internal, Map > & maps() const { return _l._maps; }
+
     const value_type * at( Internal obj, key_type key ) const
     {
         const auto i_map = _l._maps.find( obj );
@@ -190,6 +194,9 @@ struct SnapshottedMap
     void copy( OM &from_m, typename OM::Internal from_object, typename OM::key_type from_offset,
                Internal to_object, key_type to_offset, int sz )
     {
+        if ( sz < 1 )
+            return;
+
         int delta = to_offset - from_offset;
         auto translate_and_insert = [this, delta, to_object]( const auto & x )
         {
@@ -226,6 +233,238 @@ struct SnapshottedMap
         return *( _snap_pointers.template machinePointer< SnapPointer >( obj ) );
     }
 
+    struct const_iterator : std::iterator< std::bidirectional_iterator_tag, value_type >
+    {
+        using MapIter = typename Map::const_iterator;
+        std::variant< MapIter, value_type * > _it;
+
+        const_iterator( MapIter it ) : _it( it ) {}
+        const_iterator( typename Map::iterator it ) : _it( it ) {}
+        const_iterator( value_type * p ) : _it( p ) {}
+
+        const value_type & operator*() const
+        {
+            return std::visit( []( auto && it ) -> const value_type & { return *it; }, _it );
+        }
+        const value_type * operator->() const { return &( operator*() ); }
+        const_iterator &operator++() { std::visit( [this]( auto && it ){ ++it; }, _it ); return *this; }
+        const_iterator operator++( int ) { auto i = *this; ++*this; return i; }
+        const_iterator &operator--() { std::visit( [this]( auto && it ){ --it; }, _it ); return *this; }
+        const_iterator operator--( int ) { auto i = *this; --*this; return i; }
+        const_iterator &operator+=( int off )
+        {
+            std::visit( [off]( auto && it ){ it += off; }, _it);
+            return *this;
+        }
+        const_iterator operator+( int off ) const { auto r = *this; r += off; return r; }
+        const_iterator &operator-=( int off ) { return operator+=( -off ); }
+        const_iterator operator-( int off ) const { auto r = *this; r -= off; return r; }
+        bool operator!=( const_iterator o ) const { return _it != o._it; }
+        bool operator==( const_iterator o ) const { return _it == o._it; }
+        bool operator<( const_iterator o ) const { return _it < o._it; }
+    };
+
+    const_iterator cbegin( Internal obj ) const { return begin( obj ); }
+    const_iterator begin( Internal obj ) const
+    {
+        const auto i_map = _l._maps.find( obj );
+        if ( i_map != _l._maps.end() )
+            return i_map->second.begin();
+
+        auto [ begin, end ] = _snap_range( obj );
+        return begin;
+    }
+
+    const_iterator cend( Internal obj ) const { return end( obj ); }
+    const_iterator end( Internal obj ) const
+    {
+        const auto i_map = _l._maps.find( obj );
+        if ( i_map != _l._maps.end() )
+            return i_map->second.end();
+
+        auto [ begin, end ] = _snap_range( obj );
+        return end;
+    }
+
+    const_iterator upper_bound( Internal obj, key_type key ) const
+    {
+        const auto i_map = _l._maps.find( obj );
+        if ( i_map != _l._maps.end() )
+        {
+            const auto it = i_map->second.upper_bound( key );
+            return const_iterator( it );
+        }
+
+        auto [ begin, end ] = _snap_range( obj );
+        auto p = std::upper_bound( begin, end, key, []( auto k, auto & l )
+                {
+                return key_compare()( k, l.first );
+                } );
+        return const_iterator( p );
+    }
+};
+
+template< typename K >
+struct Interval {
+    K from;
+    mutable K to;
+    bool operator<( const Interval & o ) const { return from < o.from; }
+    bool operator<( const K k ) const { return from < k; }
+    friend bool operator<( const K k, const Interval & i ) { return k < i.from; }
+    Interval operator+( K tr ) const { return { from + tr, to + tr }; }
+    Interval operator-( K tr ) const { return { from - tr, to - tr }; }
+    //TODO: demystify (ie. dont abuse operator- for comparison)
+    // (once operator<=> is here...)
+    template< typename Other >
+    int operator-( const Other & o ) const
+    {
+        if ( from == o.from )
+            return to - o.to;
+        return from - o.from;
+    }
+
+    Interval( K from, K to ) : from( from ), to( to ) {}
+    explicit Interval( K from ) : from( from ), to( from ) {}
+
+    friend std::ostream& operator<<( std::ostream &os, const Interval & i )
+    {
+        return os << '[' << i.from << ',' << i.to << ')';
+    }
+};
+
+template< typename K, typename T, typename Pool >
+struct IntervalMetadataMap
+{
+    using key_type = Interval< K >;
+    using scalar_type = K;
+    using map = SnapshottedMap< key_type, T, Pool >;
+    using value_type = typename map::value_type;
+    using const_iterator = typename map::const_iterator;
+    using Internal = typename Pool::Pointer;
+
+    map _storage;
+
+    IntervalMetadataMap( Pool & mp ) : _storage( mp ) {}
+
+    template< typename TT >
+    auto insert( Internal obj, key_type key, TT && data )
+    {
+        return insert( obj, key.from, key.to, std::forward< TT >( data ) );
+    }
+
+    template< typename TT >
+    auto insert( Internal obj, scalar_type from, scalar_type to, TT && data )
+    {
+        auto it = erase_or_create( obj, from, to );
+        return _storage[ obj ].insert( it, { { from, to }, std::forward< TT >( data ) } );
+    }
+
+    void erase( Internal obj, scalar_type from, scalar_type to )
+    {
+        if ( _storage.maps().count( obj ) )
+            erase_or_create( obj, from, to );
+    }
+
+    auto erase_or_create( Internal obj, scalar_type from, scalar_type to )
+    {
+        auto & map = _storage[ obj ];
+        if ( from >= to || map.empty() )
+            return map.end();
+
+        auto it = map.upper_bound( key_type( from ) );
+
+        if ( it != map.begin() ) {
+            --it;
+        }
+        if ( it->first.from < from && to < it->first.to ) {
+            // Splitting an existing interval in two
+            map.insert( { { to, it->first.to }, it->second } );
+            it->first.to = from;
+        } else {
+            if ( it->first.to <= from ) {
+                ++it;
+            } else if ( it->first.from < from
+                    && to >= it->first.to ) { // Chomp from right
+                it->first.to = from;
+                ++it;
+            }
+
+            while ( it != map.end()
+                    && from <= it->first.from
+                    && to >= it->first.to ) { // Destroy covered
+                it = map.erase( it );
+            }
+
+            if ( it != map.end()
+                    && it->first.from < to
+                    && to < it->first.to ) { // Chomp from left
+                // XXX: once we have a newer stdlib...
+                // auto nh = map.extract( it++ );
+                // nh.key().from = to;
+                // it = map.insert( it, std::move( nh ) );
+
+                // It would *probably* be safe to change the key inside the map
+                T data = std::move( it->second );
+                key_type i = it->first;
+                map.erase( it++ );
+                i.from = to;
+                it = map.insert( it, { i, std::move( data ) } );
+            }
+        }
+
+        return it;
+    }
+
+    const value_type * at( Internal obj, scalar_type val ) const
+    {
+        auto it = _storage.upper_bound( obj, key_type( val ) );
+        if ( it == nullptr || it == _storage.begin( obj ) )
+            return nullptr;
+        --it;
+        if ( _inside( val, it->first ) )
+            return &*it;
+        return nullptr;
+    }
+
+    template< typename OM >
+    void copy( OM &from_m, typename OM::Internal from_object, typename OM::scalar_type from_offset,
+               Internal to_object, scalar_type to_offset, int sz )
+    {
+        if ( sz < 1 )
+            return;
+
+        int delta = to_offset - from_offset;
+
+        // Left partial
+        if ( 0 < from_offset )
+        {
+            if ( auto *p = from_m.at( from_object, from_offset - 1 ) )
+            {
+                insert( to_object, to_offset, p->first.to + delta, p->second );
+                from_offset = p->first.to;
+                to_offset = p->first.to + delta;
+            }
+        }
+        // Right partial
+        if ( auto *p = from_m.at( from_object, from_offset + sz - 1 ) )
+        {
+            insert( to_object, p->first.from + delta, to_offset + sz, p->second );
+            sz = p->first.from - from_offset;
+        }
+
+        if ( sz < 1 )
+            return;
+
+        // Clean existing intervals in destination
+        erase( to_object, to_offset, to_offset + sz );
+        _storage.copy( from_m._storage, from_object, key_type( from_offset ),
+                       to_object, key_type( to_offset ), sz );
+    }
+
+    static bool _inside( const scalar_type &p, const key_type &i ) {
+        bool b = i.from <= p && p < i.to;
+        return b;
+    }
 };
 
 template< typename ExceptionType, typename Loc_ >
