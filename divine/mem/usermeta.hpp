@@ -138,7 +138,7 @@ struct UserMeta : Next
             if ( ltypes[ k.tag ] == MetaType::Pointers )
                 ptr_cb( v );
             else
-                data_cb( k );
+                data_cb( v );
         };
         _maps.foreach( i, hash_cb );
         Next::hash( i, size, state, ptr_cb );
