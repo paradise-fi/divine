@@ -306,8 +306,10 @@ namespace abstract::mstring {
                 }
             }
 
-            ++le;
-            ++re;
+            while ( le.empty() && le.begin != li.bounds.end() )
+                ++le;
+            while ( re.empty() && le.begin != ri.bounds.end() )
+                ++re;
         }
 
         return 0;
