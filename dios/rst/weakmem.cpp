@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2015-2018 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015-2019 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <algorithm> // reverse iterator
 #include <cstdarg>
@@ -137,16 +137,9 @@ uint64_t _load( char *addr, uint32_t size ) noexcept {
 struct BufferLine : brick::types::Ord {
 
     BufferLine() noexcept = default;
-    BufferLine( MemoryOrder order ) noexcept : order( order ) { } // fence
     BufferLine( char *addr, uint64_t value, uint32_t size, MemoryOrder order ) noexcept :
         addr( addr ), value( value ), size( size ), order( order )
     { }
-
-    _WM_INLINE
-    bool isFence() const noexcept { return !addr; }
-
-    _WM_INLINE
-    bool isStore() const noexcept { return addr; }
 
     _WM_INLINE
     void store() noexcept {
@@ -218,11 +211,6 @@ struct Buffer : Array< BufferLine >
     Buffer() = default;
 
     _WM_INLINE
-    int storeCount() noexcept {
-        return std::count_if( begin(), end(), []( BufferLine &l ) noexcept { return l.isStore(); } );
-    }
-
-    _WM_INLINE
     BufferLine &newest() noexcept { return end()[ -1 ]; }
 
     _WM_INLINE
@@ -252,12 +240,6 @@ struct Buffer : Array< BufferLine >
     void shrink( size_t n ) noexcept {
         std::destroy( begin() + n, end() );
         _resize( n );
-    }
-
-    _WM_INLINE
-    void cleanOldAndFlushed() noexcept {
-        while ( size() > 0 && oldest().isFence() )
-            erase( 0 );
     }
 
     _WM_INLINE
@@ -389,15 +371,11 @@ struct Buffers : ThreadMap< Buffer > {
         if ( __lart_weakmem_buffer_size() == 0 )
             return; // not bounded
 
-        // there can be fence as oldest entry, so we need while here
-        while ( b.storeCount() > __lart_weakmem_buffer_size() ) {
+        if ( b.size() > __lart_weakmem_buffer_size() ) {
             auto &oldest = b.oldest();
-            if ( oldest.isStore() ) {
-                tso_load< true >( oldest.addr, oldest.size, tid );
-                oldest.store();
-            }
+            tso_load< true >( oldest.addr, oldest.size, tid );
+            oldest.store();
             b.erase( 0 );
-            b.cleanOldAndFlushed();
         }
     }
 
@@ -427,10 +405,8 @@ struct Buffers : ThreadMap< Buffer > {
     void flush( __dios_task tid, Buffer &buf ) noexcept
     {
         for ( auto &l : buf ) {
-            if ( l.isStore() ) {
-                tso_load< true >( l.addr, l.size, tid );
-                l.store();
-            }
+            tso_load< true >( l.addr, l.size, tid );
+            l.store();
         }
         buf.clear();
     }
