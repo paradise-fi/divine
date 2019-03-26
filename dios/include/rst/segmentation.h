@@ -129,7 +129,6 @@ namespace abstract::mstring {
         size_t from, to;
     };
 
-
     template< typename TBound, typename TValue >
     struct Segmentation
     {
@@ -284,9 +283,34 @@ namespace abstract::mstring {
     }
 
     template< typename Split >
-    int strcmp( const Split * /*lhs*/, const Split * /*rhs*/ ) noexcept
+    int strcmp( const Split * lhs, const Split * rhs ) noexcept
     {
-        _UNREACHABLE_F( "Not implemented" );
+        const auto & li = lhs->interest();
+        const auto & ri = rhs->interest();
+
+        auto le = li.front();
+        auto re = ri.front();
+
+        auto from_offset = [] ( const auto & idx, const auto & offset ) {
+            return idx - offset;
+        };
+
+        while ( le.begin != li.bounds.end() && re.begin != ri.bounds.end() ) {
+            if ( *le.value != *re.value ) {
+                return *le.value - *re.value;
+            } else {
+                if ( from_offset( *le.end, li.offset ) > from_offset( *re.end, ri.offset ) ) {
+                    return *le.value - *( ++re ).value;
+                } else if ( from_offset( *le.end, li.offset ) < from_offset( *re.end, ri.offset ) ) {
+                    return *( ++le ).value - *re.value;
+                }
+            }
+
+            ++le;
+            ++re;
+        }
+
+        return 0;
     }
 
     template< typename Split >
