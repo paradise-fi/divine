@@ -242,24 +242,10 @@ struct Buffer : Array< BufferLine >
     template< typename Drop >
     _WM_INLINE
     void evict( bool flushed_only, Drop drop ) noexcept {
-        auto filter = [=]( BufferLine &l ) {
-            return !(drop( l ) && (!flushed_only || l.status == Status::Committed));
-        };
-        int cnt = std::count_if( begin(), end(), filter );
-        if ( cnt == 0 )
-            clear();
-        else if ( cnt < size() )
-        {
-            auto dst = begin();
-            for ( auto &l : *this ) {
-                if ( filter( l ) ) {
-                    if ( dst != &l )
-                        *dst = std::move( l );
-                    ++dst;
-                }
-            }
-        }
-        _resize( cnt );
+        auto e = std::remove_if( begin(), end(), [=]( BufferLine &l ) {
+            return drop( l ) && (!flushed_only || l.status == Status::Committed);
+        } );
+        _resize( e - begin() );
     }
 
     _WM_INLINE
@@ -451,9 +437,8 @@ struct Buffers : ThreadMap< Buffer > {
 
     _WM_INLINE
     void flush( Buffer &buf, BufferLine *entry, char *addr, int size ) noexcept {
-        auto to_move = buf.begin();
         int kept = 0;
-        auto move = [&to_move]( BufferLine &e ) {
+        auto move = [to_move = buf.begin()]( BufferLine &e ) mutable {
             if ( &e != to_move )
                 *to_move = e;
             ++to_move;
@@ -778,4 +763,4 @@ void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
                     } );
 }
 
-} // namespace __lart::weakmem
+} // namespace lart::weakmem
