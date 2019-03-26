@@ -170,7 +170,7 @@ struct BufferLine : brick::types::Ord {
     }
 
     enum class Status : int8_t {
-        Normal, Committed
+        Normal, Committed, DependentCommitLater
     };
 
     char *addr = nullptr;
@@ -178,26 +178,24 @@ struct BufferLine : brick::types::Ord {
 
     uint8_t size = 0;
     MemoryOrder order = MemoryOrder::NotAtomic;
-    int16_t sc_seq = 0; // note: we can go negative in the flushing process
-    int16_t at_seq = 0; // same here
     Status status = Status::Normal;
 
     _WM_INLINE
     auto as_tuple() const noexcept {
         // note: ignore status in comparison, take into account only part
         // relevant to memory behaviour
-        return std::tie( addr, value, size, order, sc_seq, at_seq );
+        return std::tie( addr, value, size, order );
     }
 
     _WM_INLINE
     void dump() const noexcept {
-        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 0B; CWA SC;000;000]";
-        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %dB; %c%c%c%s;%d;%d]",
+        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 0B; CWA SC]";
+        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %dB; %c%c%c%s]",
                   uint64_t( addr ), value, size,
-                  status == Status::Committed ? 'C' : ' ',
+                  status == Status::Committed ? 'C' : (status == Status::DependentCommitLater ? 'D' : ' '),
                   subseteq( MemoryOrder::WeakCAS, order ) ? 'W' : ' ',
                   subseteq( MemoryOrder::AtomicOp, order ) ? 'A' : ' ',
-                  ordstr( order ), at_seq, sc_seq );
+                  ordstr( order ) );
         __vm_trace( _VM_T_Text, buffer );
     }
 };
@@ -302,65 +300,6 @@ struct Buffers : ThreadMap< Buffer > {
     _WM_INLINE
     void for_each( Yield y, Filter filt = Filter() ) const noexcept {
         _for_each( *this, y, filt );
-    }
-
-    template< typename Filter = Const< bool, true > >
-    _WM_INLINE
-    int16_t get_next_sc_seq( Filter filt = Filter() ) const noexcept
-    {
-        int16_t max = 0;
-        for_each( [&]( auto &, auto &, auto &l ) noexcept {
-                max = std::max( max, l.sc_seq );
-            }, filt );
-        return max + 1;
-    }
-
-    template< typename Filter = Const< bool, true > >
-    _WM_INLINE
-    int16_t get_next_at_seq( char *addr, int size, Filter filt = Filter() ) const noexcept
-    {
-        int16_t max = 0;
-        for_each( [&]( auto &, auto &, auto &l ) noexcept {
-                if ( l.addr == addr && l.size == size ) {
-                    if ( l.at_seq > max ) {
-                        max = l.at_seq;
-                    }
-                } else if ( l.matches( addr, size ) ) {
-                    __dios_fault( _VM_F_Memory, "Atomic operations over overlapping, "
-                            "but not same memory locations are not allowed" );
-                }
-            }, filt );
-        return max + 1;
-    }
-
-    _WM_INLINE
-    void fix_at_seq( BufferLine &entry ) noexcept
-    {
-        for_each( [&]( auto &, auto &, auto &l ) noexcept {
-                if ( l.addr == entry.addr && l.size == entry.size && l.at_seq ) {
-                    l.at_seq -= entry.at_seq;
-                }
-            } );
-    }
-
-    _WM_INLINE
-    void fix_sc_seq( BufferLine &entry ) noexcept
-    {
-        for_each( [&]( auto &, auto &, auto &l ) noexcept {
-                if ( l.sc_seq ) {
-                    l.sc_seq -= entry.sc_seq;
-                }
-            } );
-    }
-
-    _WM_INLINE
-    void push( __dios_task tid, Buffer &b, BufferLine &&line ) noexcept
-    {
-        if ( subseteq( MemoryOrder::AtomicOp, line.order ) )
-            line.at_seq = get_next_at_seq( line.addr, line.size );
-        if ( subseteq( MemoryOrder::SeqCst, line.order ) )
-            line.sc_seq = get_next_sc_seq();
-        push_tso( tid, b, std::move( line ) );
     }
 
     _WM_INLINE
