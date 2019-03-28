@@ -159,7 +159,7 @@ debris() {
 
 warn_table()
 {
-    if test $1 -lt $(($2 / 2)); then
+    if test $((100 * $1)) -lt $((66 * $2)); then
         grep table verify.out
         echo WARNING: underutilized hash table $1/$2
         touch warning
@@ -173,6 +173,7 @@ verify() {
                 256) ;; # nothing
                 4096) warn_table $used 256 ;;
                 65536) warn_table $used 4096 ;;
+                524288) warn_table $used 65536 ;;
                 *) warn_table $used $(($capacity / 4)) ;;
             esac
         done
