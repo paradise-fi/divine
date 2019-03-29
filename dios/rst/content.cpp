@@ -23,18 +23,16 @@ namespace abstract::content {
             return abstract::taint< void * >( addr );
         }
 
-        void __content_store( char byte, void * addr ) {
-             auto obj = peek_object< __content >( object( addr ) );
-             obj->data[ offset( addr ) ] = byte;
+        void __content_store( char /*byte*/, __content * /*obj*/ ) {
+            _UNREACHABLE_F( "Not implemented." );
         }
 
-        char __content_load( void * addr ) {
-            auto obj = peek_object< __content >( object( addr ) );
-            return obj->data[ offset( addr ) ];
+        char __content_load( __content * /*obj*/ ) {
+            _UNREACHABLE_F( "Not implemented." );
         }
 
-        __content * __content_gep( __content * addr, uint64_t /*idx*/ ) {
-            return addr;
+        __content * __content_gep( __content * /*obj*/, uint64_t /*idx*/ ) {
+            _UNREACHABLE_F( "Not implemented." );
         }
 
         void __content_stash( __content * str ) {
