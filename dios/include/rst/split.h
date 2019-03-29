@@ -27,7 +27,7 @@ namespace abstract::mstring {
 
         void dump() const noexcept
         {
-            __dios_trace_f( "seg: [%d, %d) = %c", from, to, value );
+            __dios_trace_f( "seg: [%lu, %lu) = %c", from, to, value );
         }
 
         int from, to;
@@ -102,7 +102,7 @@ namespace abstract::mstring {
 
         void dump() const noexcept
         {
-            __dios_trace_f( "section: [%d, %d)", from(), to() );
+            __dios_trace_f( "section: [%lu, %lu)", from(), to() );
             for ( const auto & seg : _segments )
                 seg.dump();
         }
