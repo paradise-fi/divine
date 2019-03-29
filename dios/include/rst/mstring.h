@@ -14,4 +14,6 @@ typedef abstract::mstring::Split __mstring;
 
 extern "C" {
     __mstring * __mstring_undef_value();
+
+    __mstring * __mstring_realloc( __mstring * str, size_t size );
 }

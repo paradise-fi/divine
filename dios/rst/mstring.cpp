@@ -139,6 +139,15 @@ extern "C" {
     __mstring * __mstring_thaw( void * addr ) {
         return peek_object< __mstring >( addr );
     }
+
+    __mstring * __mstring_realloc( __mstring * str, size_t size ) {
+        if ( str->size() < size ) {
+            str->extend( size );
+        } else if ( str->size() > size ) {
+            str->drop( size + 1, str->size() );
+        }
+        return str;
+    }
 }
 
 } // namespace abstract::mstring

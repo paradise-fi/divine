@@ -3,6 +3,8 @@
 #include <rst/common.h>
 #include <util/array.hpp>
 
+#include <assert.h>
+
 namespace abstract::mstring {
 
     struct Split;
@@ -194,6 +196,13 @@ namespace abstract::mstring {
 
         // size of underlying buffer
         size_t size() const noexcept { return _data->len; }
+        void extend( size_t size ) const noexcept
+        {
+            assert( this->size() < size );
+            _data->len = size;
+            // TODO how to set uninitialized values?
+        }
+
         void drop( size_t from, size_t to ) noexcept;
 
         Sections & sections() noexcept { return _data->sections; }
