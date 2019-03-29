@@ -60,11 +60,16 @@ namespace abstract::mstring {
         Section(const Section&) = default;
         Section(Section&&) = default;
 
+        Section& operator=(const Section& other) = default;
+        Section& operator=(Section&& other) = default;
+
         bool empty() const noexcept { return size() == 0; }
 
-        int size() const noexcept { return to() - from(); }
+        int size() const noexcept { return _segments.empty() ? 0 : to() - from(); }
         int from() const noexcept { return _segments.front().from; }
         int to() const noexcept { return _segments.back().to; }
+
+        void start_from( int idx ) noexcept;
 
         const Segments& segments() const noexcept { return _segments; }
         Segments& segments() noexcept { return _segments; }
@@ -77,7 +82,9 @@ namespace abstract::mstring {
 
         void merge( const Section * sec ) noexcept;
 
-        void drop( int bound ) noexcept;
+        void drop_front( int to ) noexcept;
+        void drop_back( int from ) noexcept;
+        void drop( int from, int to ) noexcept;
 
         const Segment& segment_of( int idx ) const noexcept {
             assert( idx >= from() && idx < to() );
@@ -91,6 +98,13 @@ namespace abstract::mstring {
             return const_cast< Segment & >(
                 const_cast< const Section * >( this )->segment_of( idx )
             );
+        }
+
+        void dump() const noexcept
+        {
+            __dios_trace_f( "section: [%d, %d)", from(), to() );
+            for ( const auto & seg : _segments )
+                seg.dump();
         }
 
     private:
@@ -108,11 +122,12 @@ namespace abstract::mstring {
     struct Split
     {
         Split( const char * buff, int len )
+            : _offset( 0 ), _refcount( 0 )
         {
             if ( buff == nullptr )
                 assert( len == 0 );
 
-            _data = __new< SplitData >( _VM_PT_Weak );
+            _data = std::make_shared< SplitData >();
             _data->len = len;
 
             bool seen_zero = true;
@@ -133,10 +148,9 @@ namespace abstract::mstring {
                 _data->sections.push_back( Section( buff, from, len ) );
         }
 
-        ~Split()
-        {
-            __dios_safe_free( _data );
-        }
+        Split( std::shared_ptr< SplitData > data )
+            : _offset( 0 ), _refcount( 0 ), _data( data )
+        {}
 
         const Section * interest() const noexcept;
         Section * interest() noexcept;
@@ -147,6 +161,8 @@ namespace abstract::mstring {
         bool empty() const noexcept { return _data->sections.empty(); }
         bool well_formed() const noexcept;
 
+        operator bool() const noexcept { return !empty(); }
+
         int strlen() const noexcept;
         int strcmp( const Split * other ) const noexcept;
 
@@ -155,8 +171,13 @@ namespace abstract::mstring {
         Split * strchr( char ch ) const noexcept;
 
         void write( int idx, char val ) noexcept;
-        char read( int idx ) noexcept;
+        char read( int idx ) const noexcept;
 
+        Split * offset( int idx ) const noexcept;
+
+        int getOffset() const noexcept { return _offset; }
+
+        // size of underlying buffer
         int size() const noexcept { return _data->len; }
 
         Sections & sections() noexcept { return _data->sections; }
@@ -165,6 +186,12 @@ namespace abstract::mstring {
         int refcount() const noexcept { return _refcount; }
         void refcount_decrement() { --_refcount; }
         void refcount_increment() { ++_refcount; }
+
+        void dump() const noexcept {
+            __dios_trace_f( "split" );
+            for ( const auto & sec : _data->sections )
+                sec.dump();
+        }
     private:
         void write_zero( int idx ) noexcept;
         void write_char( int idx, char val ) noexcept;
@@ -173,13 +200,17 @@ namespace abstract::mstring {
         void shrink_right( Section * sec, Segment * bound ) noexcept;
         void shrink_correction( Section * sec, Segment * bound ) noexcept;
 
+        void drop( int from, int to ) noexcept;
+
         void overwrite_char( Section * sec, Segment & seg, int idx, char val ) noexcept;
         void overwrite_zero( int idx, char val ) noexcept;
 
         void divide( Section * sec, Segment & seg, int idx ) noexcept;
 
         int _refcount;
-        SplitData * _data;
+        int _offset;
+
+        std::shared_ptr< SplitData > _data;
     };
 
     void split_release( Split * str ) noexcept;
