@@ -82,7 +82,7 @@ struct AbstractionSources
 
     Values get()
     {
-        auto values = get_impl( from, 0 );
+        auto values = get_impl( from, std::nullopt );
 
         std::set< llvm::Value * > sources;
         for ( const auto & [val, idx] : values ) {
@@ -232,7 +232,7 @@ void VPA::propagate_value( Value *val, Domain dom ) {
         seen_vals.emplace( dep, dom );
 
         if ( auto call = dyn_cast< CallInst >( dep ) ) {
-            if ( ignore_call_of_function( call ) )
+            if ( !is_transformable_in_domain( call, dom ) && ignore_call_of_function( call ) )
                 continue;
         }
 
