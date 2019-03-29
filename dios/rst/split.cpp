@@ -3,74 +3,58 @@
 namespace abstract::mstring {
 
     namespace {
-        auto split( Segment & s, int idx ) -> std::pair< Segment, Segment >
-        {
-            return { Segment{ s.from, idx, s.value }, Segment{ idx + 1, s.to, s.value } };
-        };
 
-        void merge_neighbours( Section * sec, Segment * seg ) noexcept
-        {
-            auto next = seg->to;
-            if ( next < sec->to() ) {
-                auto * right = std::next( seg );
-                if ( right->value == seg->value ) {
-                    seg->to = right->to;
-                    sec->erase( right );
-                }
-            }
-
-            auto prev = seg->from - 1;
-            if ( prev >= sec->from() ) {
-                auto * left = std::prev( seg );
-                if ( left->value == seg->value ) {
-                    seg->from = left->from;
-                    sec->erase( left );
-                }
-            }
-
-        }
-
-        inline int begin_value( const Section * sec ) noexcept
+        _LART_INLINE
+        char begin_value( const Section * sec ) noexcept
         {
             if ( !sec )
-                return 0;
-            return sec->segments().front().value;
-        }
-
-        inline int value( const Section * sec, const Segment * seg ) noexcept
-        {
-            if ( seg != sec->segments().end() )
-                return seg->value;
-            return 0;
+                return '\0';
+            return sec->front().value;
         }
 
     } // anonymous namespace
 
+    _LART_INLINE
+    void Section::start_from( int idx ) noexcept
+    {
+        for ( auto & seg : *this ) {
+            auto size = seg.size();
+            seg.from = idx;
+            idx += size;
+            seg.to = idx;
+        }
+    }
+
+    _LART_INLINE
     void Section::append( Segment && seg ) noexcept
     {
-        _segments.emplace_back( std::move( seg ) );
-        merge_neighbours( this, std::prev( _segments.end() ) );
+        emplace_back( std::move( seg ) );
+        merge_neighbours( std::prev( end() ) );
     }
 
+    _LART_INLINE
     void Section::prepend( Segment && seg ) noexcept
     {
-        _segments.insert( _segments.begin(), std::move( seg ) );
-        merge_neighbours( this, _segments.begin() );
+        insert( begin(), std::move( seg ) );
+        merge_neighbours( begin() );
     }
 
+    _LART_INLINE
     void Section::drop_front( int to ) noexcept
     {
         drop( from(), to );
     }
 
+    _LART_INLINE
     void Section::drop_back( int from ) noexcept
     {
         drop( from, to() );
     }
 
+    _LART_INLINE
     void Section::drop( int from, int to ) noexcept
     {
-        auto beg = _segments.begin();
+        auto beg = begin();
         while ( beg->to < from )
             ++beg;
 
@@ -78,11 +62,11 @@ namespace abstract::mstring {
             beg->to = from;
         else
             beg->from = std::min( beg->to, to );
-        auto end = _segments.end();
+        auto end = this->end();
 
         if ( to < this->to() ) {
             end = beg;
-            while ( end != _segments.end() && end->to <= to )
+            while ( end != this->end() && end->to <= to )
                 ++end;
             end->from = to;
         }
@@ -93,38 +77,41 @@ namespace abstract::mstring {
         if ( !beg->empty() )
             ++beg;
 
-        if ( end != _segments.end() && end->empty() )
+        if ( end != this->end() && end->empty() )
             ++end;
 
-        _segments.erase( beg, end );
+        this->erase( beg, end );
     }
 
+    _LART_INLINE
     void Section::merge( const Section * sec ) noexcept
     {
-        auto mid = _segments.size() - 1;
-        auto & segs = sec->segments();
-        _segments.append( segs.size(), segs.begin(), segs.end() );
-        merge_neighbours( this, &_segments[ mid ] );
+        auto mid = size() - 1;
+        auto * arr = static_cast< Array< Segment > * >( this );
+        arr->append( sec->size(), sec->begin(), sec->end() );
+        merge_neighbours( std::next( begin(), mid ) );
     }
 
-    void Section::start_from( int idx ) noexcept
+    _LART_INLINE
+    void Section::merge_neighbours( iterator seg ) noexcept
     {
-        for ( auto & seg : _segments ) {
-            auto size = seg.size();
-            seg.from = idx;
-            idx += size;
-            seg.to = idx;
+        auto next = seg->to;
+        if ( next < to() ) {
+            auto * right = std::next( seg );
+            if ( right->value == seg->value ) {
+                seg->to = right->to;
+                erase( right );
+            }
         }
-    }
 
-    Segment * Section::erase( Segment * seg ) noexcept
-    {
-        return _segments.erase( seg );
-    }
-
-    Segment * Section::erase( Segment * from, Segment * to ) noexcept
-    {
-        return _segments.erase( from, to );
+        auto prev = seg->from - 1;
+        if ( prev >= from() ) {
+            auto * left = std::prev( seg );
+            if ( left->value == seg->value ) {
+                seg->from = left->from;
+                erase( left );
+            }
+        }
     }
 
     const Section * Split::interest() const noexcept
@@ -211,15 +198,13 @@ namespace abstract::mstring {
             }
 
             auto & secs = sections();
-            auto slen = shifted.size();
-
-            assert( slen <= size() - _offset && "copying mstring to smaller mstring" );
-            if ( shifted.empty() ) {
+            assert( shifted.length() <= size() - _offset && "copying mstring to smaller mstring" );
+            if ( shifted.length() == 0 ) {
                 write_zero( _offset );
                 return;
             }
 
-            drop( _offset, slen + _offset + 1 );
+            drop( _offset, shifted.length() + _offset + 1 );
 
             auto sec = secs.begin();
             while ( sec != secs.end() && sec->to() < _offset )
@@ -241,7 +226,7 @@ namespace abstract::mstring {
         auto left = interest();
         Section right = *other->interest();
 
-        int begin = left ? left->size() : 0;
+        int begin = left ? left->length() : 0;
         int dist = other->strlen() + 1;
         int end = begin + dist;
         assert( size() >= end && "concating mstring into smaller mstring" );
@@ -279,17 +264,15 @@ namespace abstract::mstring {
         if ( !sec )
             return nullptr;
 
-        const auto & segs = sec->segments();
-
-        auto seg = segs.begin();
+        auto seg = sec->begin();
         while ( seg->to <= _offset ) {
             ++seg;
         }
 
-        while ( seg != segs.end() && seg->value != ch )
+        while ( seg != sec->end() && seg->value != ch )
             ++seg;
 
-        if ( seg != segs.end() ) {
+        if ( seg != sec->end() ) {
             auto split = __new< Split >( _VM_PT_Heap, _data );
             split->_offset = std::max( seg->from, _offset );
             return split;
@@ -316,13 +299,10 @@ namespace abstract::mstring {
         if ( !lhs || !rhs )
             return begin_value( lhs ) - begin_value( rhs );
 
-        const auto & lsegs = lhs->segments();
-        const auto & rsegs = rhs->segments();
+        auto * lseg = lhs->begin();
+        auto * rseg = rhs->begin();
 
-        auto * lseg = lsegs.begin();
-        auto * rseg = rsegs.begin();
-
-        while ( lseg != lsegs.end() && rseg != rsegs.end() ) {
+        while ( lseg != lhs->end() && rseg != rhs->end() ) {
             char lhsv = lseg->value;
             char rhsv = rseg->value;
 
@@ -330,9 +310,9 @@ namespace abstract::mstring {
                 return lhsv - rhsv;
             } else {
                 if ( lseg->to > rseg->to ) {
-                    return lhsv - value( rhs, std::next( rseg ) );
+                    return lhsv - rhs->value( std::next( rseg ) );
                 } else if ( lseg->to < rseg->to ) {
-                    return value( lhs, std::next( lseg ) ) - rhsv;
+                    return lhs->value( std::next( lseg ) ) - rhsv;
                 }
             }
 
@@ -340,7 +320,7 @@ namespace abstract::mstring {
             ++rseg;
         }
 
-        return value( lhs, lseg ) - value( rhs, rseg );
+        return lhs->value( lseg ) - rhs->value( rseg );
     }
 
     Section * Split::section_of( int idx ) noexcept
@@ -362,7 +342,7 @@ namespace abstract::mstring {
 
     void Split::shrink_correction( Section * sec, Segment * bound ) noexcept
     {
-        if ( sec->empty() ) {
+        if ( sec->length() == 0 ) {
             sections().erase( sec );
         } else {
             if ( bound->empty() )
@@ -384,15 +364,15 @@ namespace abstract::mstring {
 
     void Split::divide( Section * sec, Segment & seg, int idx ) noexcept
     {
-        auto [left, right] = split( seg, idx );
+        auto [left, right] = seg.divide( idx );
 
         Section right_section;
         if ( !right.empty() )
             right_section.append( std::move( right ) );
-        for ( auto rest = std::next( &seg ); rest != sec->segments().end(); ++rest )
+        for ( auto rest = std::next( &seg ); rest != sec->end(); ++rest )
             right_section.append( std::move( *rest ) );
 
-        sec->erase( &seg, sec->segments().end() );
+        sec->erase( &seg, sec->end() );
         if ( !left.empty() )
             sec->append( std::move( left ) );
 
@@ -420,10 +400,9 @@ namespace abstract::mstring {
     {
         if ( seg.size() == 1 ) {
             seg.value = val;
-            merge_neighbours( sec, &seg );
+            sec->merge_neighbours( &seg );
         } else {
-            auto [left, right] = split( seg, idx );
-            auto & segs = sec->segments();
+            auto [left, right] = seg.divide( idx );
 
             seg.from = idx;
             seg.to = idx + 1;
@@ -431,17 +410,17 @@ namespace abstract::mstring {
 
             auto place = &seg;
             if ( !left.empty() ) {
-                auto it = segs.insert( place, left );
+                auto it = sec->insert( place, left );
                 place = std::next( it );
             }
 
             if ( !right.empty() ) {
-                auto it = segs.insert( std::next( place ), right );
+                auto it = sec->insert( std::next( place ), right );
                 place = std::prev( it );
             }
 
             if ( left.empty() || right.empty() )
-                merge_neighbours( sec, place );
+                sec->merge_neighbours( place );
         }
     }
 

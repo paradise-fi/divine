@@ -20,10 +20,17 @@
         __builtin_unreachable(); \
     } while ( false )
 
+#define _LART_INLINE __attribute__((__always_inline__, __flatten__))
+#define _LART_NOINLINE __attribute__((__noinline__))
+#define _LART_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) __invisible extern "C"
+
 extern uint64_t __tainted;
 extern void * __tainted_ptr;
 
 namespace abstract {
+
+    template< typename T >
+    using Array = __dios::Array< T >;
 
     template< typename T, typename ... Args >
     static T *__new( _VM_PointerType pt, Args &&...args )

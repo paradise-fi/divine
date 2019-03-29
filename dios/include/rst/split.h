@@ -12,18 +12,23 @@ namespace abstract::mstring {
      *  |  segment  |
      *  | a | a | a | b | b | \0 | c | c |
      */
-
-    template< typename T >
-    using Array = __dios::Array< T >;
-
     struct Segment
     {
         explicit Segment( int from, int to, char val )
             : from( from ), to( to ), value( val )
         {}
 
+        _LART_INLINE
         int size() const noexcept { return to - from; }
+
+        _LART_INLINE
         bool empty() const noexcept { return size() == 0; }
+
+        _LART_INLINE
+        auto divide( int idx ) -> std::pair< Segment, Segment >
+        {
+            return { Segment{ from, idx, value }, Segment{ idx + 1, to, value } };
+        }
 
         void dump() const noexcept
         {
@@ -39,77 +44,87 @@ namespace abstract::mstring {
         return std::tie( lhs.from, lhs.to, lhs.value ) == std::tie( rhs.from, rhs.to, rhs.value );
     }
 
-    using Segments = Array< Segment >;
-
-    struct Section
+    struct Section : Array< Segment >
     {
-        explicit Section( const char * buff, int from, int to )
+        _LART_INLINE
+        int length() const noexcept
         {
-            char c = buff[ from ];
-            for ( int i = from; i < to; ) {
-                int j = i + 1;
-                while ( j < to && buff[j] == c ) { ++j; }
-                _segments.push_back( Segment( i, j, c ) );
-                i = j;
-                if ( i < to )
-                    c = buff[ i ];
-            }
+            return this->empty() ? 0 : to() - from();
         }
 
-        Section() = default;
-        Section(const Section&) = default;
-        Section(Section&&) = default;
+        _LART_INLINE
+        int from() const noexcept { return front().from; }
 
-        Section& operator=(const Section& other) = default;
-        Section& operator=(Section&& other) = default;
-
-        bool empty() const noexcept { return size() == 0; }
-
-        int size() const noexcept { return _segments.empty() ? 0 : to() - from(); }
-        int from() const noexcept { return _segments.front().from; }
-        int to() const noexcept { return _segments.back().to; }
+        _LART_INLINE
+        int to() const noexcept { return back().to; }
 
         void start_from( int idx ) noexcept;
-
-        const Segments& segments() const noexcept { return _segments; }
-        Segments& segments() noexcept { return _segments; }
-
-        Segment * erase( Segment * seg ) noexcept;
-        Segment * erase( Segment * from, Segment * to ) noexcept;
 
         void append( Segment && seg ) noexcept;
         void prepend( Segment && seg ) noexcept;
 
         void merge( const Section * sec ) noexcept;
+        void merge_neighbours( iterator seg ) noexcept;
 
         void drop_front( int to ) noexcept;
         void drop_back( int from ) noexcept;
         void drop( int from, int to ) noexcept;
 
-        const Segment& segment_of( int idx ) const noexcept {
+        auto view( int from, int to ) noexcept;
+
+        _LART_INLINE
+        const Segment& segment_of( int idx ) const noexcept
+        {
             assert( idx >= from() && idx < to() );
-            for ( const auto & seg : _segments ) {
+            for ( const auto & seg : *this ) {
                 if ( idx >= seg.from && idx < seg.to )
                     return seg;
             }
         }
 
-        Segment& segment_of( int idx ) noexcept {
+        _LART_INLINE
+        Segment& segment_of( int idx ) noexcept
+        {
             return const_cast< Segment & >(
                 const_cast< const Section * >( this )->segment_of( idx )
             );
         }
 
+        _LART_INLINE
+        char value( const_iterator seg ) const noexcept
+        {
+            if ( seg != end() )
+                return seg->value;
+            return '\0';
+        }
+
+        _LART_INLINE
         void dump() const noexcept
         {
             __dios_trace_f( "section: [%lu, %lu)", from(), to() );
-            for ( const auto & seg : _segments )
+            for ( const auto & seg : *this )
                 seg.dump();
         }
-
-    private:
-        Segments _segments;
     };
+
+    _LART_INLINE
+    static Section make_section( const char * buff, int from, int to )
+    {
+        Section sec;
+
+        char c = buff[ from ];
+        for ( int i = from; i < to; ) {
+            int j = i + 1;
+            while ( j < to && buff[j] == c ) { ++j; }
+            sec.push_back( Segment( i, j, c ) );
+            i = j;
+            if ( i < to )
+                c = buff[ i ];
+        }
+
+        return sec;
+    }
+
 
     using Sections = Array< Section >;
 
@@ -137,7 +152,7 @@ namespace abstract::mstring {
                     seen_zero = false;
                     from = i;
                 } else if ( !seen_zero && buff[ i ] == '\0' ) {
-                    _data->sections.push_back( Section( buff, from, i ) );
+                    _data->sections.push_back( make_section( buff, from, i ) );
                     seen_zero = true;
                     from = i + 1;
                 }
@@ -145,7 +160,7 @@ namespace abstract::mstring {
 
             // last substring
             if ( !seen_zero && from < len )
-                _data->sections.push_back( Section( buff, from, len ) );
+                _data->sections.push_back( make_section( buff, from, len ) );
         }
 
         Split( std::shared_ptr< SplitData > data )
