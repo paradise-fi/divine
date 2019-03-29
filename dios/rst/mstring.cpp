@@ -148,6 +148,18 @@ extern "C" {
         }
         return str;
     }
+
+    __mstring * __mstring_memcpy( __mstring * /*dst*/, __mstring * /*src*/, size_t /*len*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_memmove( __mstring * /*dst*/, __mstring * /*src*/, size_t /*len*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    __mstring * __mstring_memset( __mstring * /*str*/, char /*value*/, size_t /*len*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
 }
 
 } // namespace abstract::mstring
