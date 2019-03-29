@@ -32,6 +32,28 @@ namespace abstract {
     template< typename T >
     using Array = __dios::Array< T >;
 
+    template< typename It >
+    struct Range {
+        using iterator = It;
+        using const_iterator = It;
+
+        Range( It begin, It end ) noexcept : _begin( begin ), _end( end ) { }
+        Range( const Range & ) noexcept = default;
+
+        _LART_INLINE
+        iterator begin() const noexcept { return _begin; }
+
+        _LART_INLINE
+        iterator end() const noexcept { return _end; }
+
+      private:
+        It _begin, _end;
+    };
+
+    template< typename It >
+    _LART_INLINE
+    static Range< It > range( It begin, It end ) noexcept { return Range< It >( begin, end ); }
+
     template< typename T, typename ... Args >
     static T *__new( _VM_PointerType pt, Args &&...args )
     {

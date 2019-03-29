@@ -142,14 +142,58 @@ namespace abstract::mstring {
             BoundIt begin;
             BoundIt end;
             ValueIt value;
+
+            //_LART_INLINE
+            TBound size() const noexcept { return *end - *begin; }
+
+            //_LART_INLINE
+            bool empty() const noexcept { return *begin == *end; }
+
+            //_LART_INLINE
+            bool has_value( const TValue & val ) const noexcept
+            {
+                if ( !empty() )
+                    return *value == val;
+                return false;
+            }
+
+            Segment& operator++()
+            {
+                ++begin;
+                ++end;
+                ++value;
+                return *this;
+            }
         };
 
         using Interval = Bound;
+
+        struct View
+        {
+            TBound offset;
+            Range< BoundIt > bounds;
+            Range< ValueIt > values;
+
+            //_LART_INLINE
+            Segment front() const noexcept
+            {
+                return { bounds.begin(), std::next( bounds.begin() ), values.begin() };
+            }
+        };
 
         Segmentation()
             : _offset( sym::constant( 0 ) )
             , _values( std::make_shared< Values >() )
             , _bounds( std::make_shared< Bounds >() )
+        {}
+
+        Segmentation( TBound offset
+                    , std::shared_ptr< Values > values
+                    , std::shared_ptr< Bounds > bounds
+        )
+            : _offset( offset )
+            , _values( values )
+            , _bounds( bounds )
         {}
 
         //_LART_INLINE
@@ -176,24 +220,6 @@ namespace abstract::mstring {
             }
 
             _UNREACHABLE_F( "index out of bounds" );
-        }
-
-        //_LART_INLINE
-        const TValue& value( TBound idx ) const noexcept { return value( segment( idx ) ); }
-
-        //_LART_INLINE
-        TValue& value( TBound idx ) noexcept { return value( segment( idx ) ); }
-
-        //_LART_INLINE
-        const TValue& value( const Segment & seg ) const noexcept { return  *seg.value; }
-
-        //_LART_INLINE
-        TValue& value( const Segment & seg ) noexcept { return *seg.value; }
-
-        //_LART_INLINE
-        TBound segment_size( const Segment & seg ) const noexcept
-        {
-            return *seg.end - *seg.begin;
         }
 
         //_LART_INLINE
@@ -226,7 +252,7 @@ namespace abstract::mstring {
         {
             idx = idx + _offset;
             assert( idx < size() && "access out of bounds" );
-            return value( idx );
+            return *segment( idx ).value;
         }
 
         //_LART_INLINE
@@ -242,11 +268,11 @@ namespace abstract::mstring {
             assert( idx < size() && "access out of bounds" );
 
             auto seg = segment( idx );
-            if ( value( seg ) == val ) {
+            if ( seg.has_value( val ) ) {
                 // do nothing
-            } else if ( segment_size( seg ) == sym::constant( 1 ) ) {
+            } else if ( seg.size() == sym::constant( 1 ) ) {
                 // rewite single character segment
-                value( seg ) = val;
+                *seg.value = val;
             } else if ( idx == *seg.begin ) {
                 // rewrite first character of a segment
                 _bounds->insert( seg.end, idx + sym::constant( 1 ) );
@@ -257,7 +283,7 @@ namespace abstract::mstring {
                 _bounds->insert( seg.end, idx );
             } else {
                 // rewrite segment in the middle = split a segment
-                auto vit = _values->insert( seg.value, value( seg ) );
+                auto vit = _values->insert( seg.value, *seg.value );
                 _values->insert( std::next( vit ), val );
                 auto bit = _bounds->insert( seg.end, idx );
                 _bounds->insert( std::next( bit ), idx + sym::constant( 1 ) );
@@ -270,8 +296,18 @@ namespace abstract::mstring {
             return empty() ? sym::constant( 0 ) : end();
         }
 
-        TBound _offset;
+        View interest() const noexcept
+        {
+            auto seg = segment( _offset );
 
+            auto term = seg;
+            while ( term.value != _values->end() && !term.has_value( '\0' ) )
+                ++term;
+
+            return { _offset, range( seg.begin, term.begin ), range( seg.value, term.value ) };
+        }
+
+        TBound _offset;
         std::shared_ptr< Values > _values;
         std::shared_ptr< Bounds > _bounds;
     };
@@ -328,9 +364,22 @@ namespace abstract::mstring {
     }
 
     template< typename Split >
-    Split * strchr( const Split * /*str*/, char /*c*/ ) noexcept
+    Split * strchr( const Split * str, char ch ) noexcept
     {
-        _UNREACHABLE_F( "Not implemented" );
+        auto interest = str->interest();
+        auto seg = interest.front();
+
+        while ( seg.value != interest.values.end() ) {
+            if ( seg.has_value( ch ) ) {
+                auto offset = *seg.begin;
+                if ( offset < interest.offset )
+                    offset = interest.offset;
+                return __new< Split >( _VM_PT_Heap, offset, str->_values, str->_bounds );
+            }
+            ++seg;
+        }
+
+        return nullptr;
     }
 
     namespace sym {
