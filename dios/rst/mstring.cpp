@@ -29,8 +29,8 @@ extern "C" {
         return mstr->read( offset( addr ) );
     }
 
-    __mstring * __mstring_gep( __mstring * addr, uint64_t /*idx*/ ) {
-        return addr;
+    __mstring * __mstring_gep( __mstring * addr, uint64_t idx ) {
+        return addr->offset( idx );
     }
 
     /* String manipulation */

@@ -194,6 +194,7 @@ namespace abstract::mstring {
 
         Split * offset( size_t idx ) const noexcept;
 
+        void setOffset( size_t offset ) noexcept { _offset = offset; }
         size_t getOffset() const noexcept { return _offset; }
 
         // size of underlying buffer
