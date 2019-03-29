@@ -198,4 +198,21 @@ int main()
         assert( seg.size() == 1 );
         test_segment( seg[ 0 ], 0, 8, 'a' );
     }
+
+    { // strchr with strcmp
+        auto split = Split( "aabb", 5 );
+        auto rest = split.strchr( 'b' );
+
+        auto other = Split( "bb", 3 );
+        assert( rest->strcmp( &other ) == 0 );
+    }
+
+    { // strchr with strcmp
+        auto split = Split( "abbabb", 7 );
+        auto rest = split.offset( 1 );
+        rest = rest->strchr( 'a' );
+
+        auto other = Split( "abb", 4 );
+        assert( rest->strcmp( &other ) == 0 );
+    }
 }
