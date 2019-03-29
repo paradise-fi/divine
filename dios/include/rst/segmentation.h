@@ -301,9 +301,10 @@ namespace abstract::mstring {
             auto seg = segment( _offset );
 
             auto term = seg;
-            while ( term.value != _values->end() && !term.has_value( '\0' ) )
+            while ( term.value != _values->end() && !term.has_value( '\0' ) ) {
                 ++term;
-
+            }
+            assert( term.value != _values->end() && "missing string of interest" );
             return { _offset, range( seg.begin, term.begin ), range( seg.value, term.value ) };
         }
 
@@ -313,9 +314,18 @@ namespace abstract::mstring {
     };
 
     template< typename Split >
-    size_t strlen( const Split * /*split*/ ) noexcept
+    size_t strlen( const Split * split ) noexcept
     {
-        _UNREACHABLE_F( "Not implemented" );
+        auto interest = split->interest();
+        auto seg = interest.front();
+
+        while ( !seg.has_value( '\0' ) ) {
+            ++seg;
+        }
+
+        auto len = seg.begin->symbolic - interest.offset.symbolic;
+        auto interval = seg.begin->interval - interest.offset.interval;
+        return lower( len, interval );
     }
 
     template< typename Split >
@@ -328,7 +338,7 @@ namespace abstract::mstring {
         auto re = ri.front();
 
         auto from_offset = [] ( const auto & idx, const auto & offset ) {
-            return idx - offset;
+            return (idx - offset).symbolic;
         };
 
         while ( le.begin != li.bounds.end() && re.begin != ri.bounds.end() ) {
