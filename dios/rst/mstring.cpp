@@ -9,7 +9,7 @@ namespace abstract::mstring {
 using abstract::__new;
 
 __mstring * __mstring_lift( const char * buff, unsigned buff_len ) {
-    return __new< __mstring >( _VM_PT_Marked, buff, buff_len );
+    return __new< __mstring >( _VM_PT_Heap, buff, buff_len );
 }
 
 extern "C" {

@@ -290,7 +290,7 @@ namespace abstract::mstring {
             ++seg;
 
         if ( seg != segs.end() ) {
-            auto split = __new< Split >( _VM_PT_Marked, _data );
+            auto split = __new< Split >( _VM_PT_Heap, _data );
             split->_offset = std::max( seg->from, _offset );
             return split;
         }
@@ -510,7 +510,7 @@ namespace abstract::mstring {
 
     Split * Split::offset( int off ) const noexcept
     {
-        auto split = __new< Split >( _VM_PT_Marked, _data );
+        auto split = __new< Split >( _VM_PT_Heap, _data );
         split->_offset = _offset + off;
         return split;
     }
