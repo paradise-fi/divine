@@ -105,12 +105,12 @@ namespace abstract::mstring {
             return var;
         }
 
+        template< typename TInterval >
         //_LART_INLINE
-        template< typename TBound, typename TInterval >
-        size_t lower( TBound bound, TInterval interval ) noexcept
+        size_t lower( sym::Value symbolic, TInterval interval ) noexcept
         {
             auto val = interval.from + __vm_choose( interval.size() );
-            assume( bound == sym::constant( val ) );
+            assume( symbolic == sym::constant( val ) );
             return val;
         }
 
@@ -134,74 +134,8 @@ namespace abstract::mstring {
         size_t size() const noexcept { return to - from; }
 
         size_t from, to;
-
-        Bound& operator+=( const Bound& other ) noexcept
-        {
-            from += other.from;
-            to += other.to - 1; // TODO check
-            return *this;
-        }
-
-        Bound& operator-=( const Bound& other ) noexcept
-        {
-            from -= other.to + 1;
-            to -= other.from;
-            return *this;
-        }
     };
 
-    //_LART_INLINE
-    static Bound operator+( const Bound& l, const Bound& r ) noexcept
-    {
-        return { l.from + r.from, l.to + r.to - 1};
-    }
-
-    //_LART_INLINE
-    static Bound operator-( const Bound& l, const Bound& r ) noexcept
-    {
-        return { l.from - r.to + 1, l.to - r.from };
-    }
-
-    struct ConstrainedValue
-    {
-        using Abstract = sym::Value;
-        using Interval = Bound;
-
-        Abstract symbolic;
-        Interval interval;
-
-        ConstrainedValue& operator+=( const ConstrainedValue& other ) noexcept
-        {
-            symbolic += other.symbolic;
-            interval += other.interval; // TODO check
-            return *this;
-        }
-
-        ConstrainedValue& operator-=( const ConstrainedValue& other ) noexcept
-        {
-            symbolic -= other.symbolic;
-            interval -= other.interval; // TODO check
-            return *this;
-        }
-    };
-
-    //_LART_INLINE
-    static ConstrainedValue constrained_constant( size_t val ) noexcept
-    {
-        return { sym::constant( val ), Bound{ val, val + 1 } };
-    }
-
-    //_LART_INLINE
-    static ConstrainedValue operator+( const ConstrainedValue& l, const ConstrainedValue& r ) noexcept
-    {
-        return { l.symbolic + r.symbolic, l.interval + r.interval };
-    }
-
-    //_LART_INLINE
-    static ConstrainedValue operator-( const ConstrainedValue& l, const ConstrainedValue& r ) noexcept
-    {
-        return { l.symbolic - r.symbolic, l.interval - r.interval };
-    }
 
     template< typename TBound, typename TValue >
     struct Segmentation
@@ -211,9 +145,6 @@ namespace abstract::mstring {
         using BoundIt = typename Bounds::iterator;
         using ValueIt = typename Values::iterator;
 
-        using TAbstract = typename TBound::Abstract;
-        using TInterval = typename TBound::Interval;
-
         struct Segment
         {
             BoundIt begin;
@@ -221,10 +152,10 @@ namespace abstract::mstring {
             ValueIt value;
 
             //_LART_INLINE
-            TAbstract size() const noexcept { return end->symbolic - begin->symbolic; }
+            TBound size() const noexcept { return *end - *begin; }
 
             //_LART_INLINE
-            bool empty() const noexcept { return begin->symbolic == end->symbolic; }
+            bool empty() const noexcept { return *begin == *end; }
 
             //_LART_INLINE
             bool has_value( const TValue & val ) const noexcept
@@ -239,6 +170,14 @@ namespace abstract::mstring {
                 ++begin;
                 ++end;
                 ++value;
+                return *this;
+            }
+
+            Segment& operator--()
+            {
+                --begin;
+                --end;
+                --value;
                 return *this;
             }
         };
@@ -261,14 +200,22 @@ namespace abstract::mstring {
             }
 
             //_LART_INLINE
-            TAbstract size() const noexcept
+            TBound size() const noexcept
             {
-                return bounds.end()->symbolic - offset->symbolic;
+                assert( *values.end() == '\0' );
+                return (terminator() - offset) + sym::constant( 1 );
+            }
+
+            //_LART_INLINE
+            TBound terminator() const noexcept
+            {
+                return *std::prev( bounds.end() );
             }
         };
 
         Segmentation()
-            : _offset( constrained_constant( 0 ) )
+            : _max_size( 0 )
+            , _offset( sym::constant( 0 ) )
             , _values( std::make_shared< Values >() )
             , _bounds( std::make_shared< Bounds >() )
         {}
@@ -277,7 +224,8 @@ namespace abstract::mstring {
                     , std::shared_ptr< Values > values
                     , std::shared_ptr< Bounds > bounds
         )
-            : _offset( offset )
+            : _max_size( 0 )
+            , _offset( offset )
             , _values( values )
             , _bounds( bounds )
         {}
@@ -292,7 +240,7 @@ namespace abstract::mstring {
         bool empty() const noexcept { return _bounds->empty(); }
 
         //_LART_INLINE
-        Segment segment( TAbstract idx ) const noexcept
+        Segment segment( TBound idx ) const noexcept
         {
             assert( _bounds->size() >= 2 );
 
@@ -300,7 +248,7 @@ namespace abstract::mstring {
             auto to = std::next( _bounds->begin() );
             auto val = _values->begin();
             for (; to != _bounds->end(); ++from, ++to, ++val ) {
-                if ( idx >= from->symbolic && idx < to->symbolic ) {
+                if ( idx >= *from && idx < *to ) {
                     return { from, to, val };
                 }
             }
@@ -309,13 +257,14 @@ namespace abstract::mstring {
         }
 
         //_LART_INLINE
-        void append( const TInterval & interval ) noexcept
+        void append( const Bound & interval ) noexcept
         {
             auto symbolic = sym::make_bounded( interval );
             if ( !_bounds->empty() ) {
-                sym::assume( _bounds->back().symbolic <= symbolic );
+                sym::assume( _bounds->back() <= symbolic );
             }
-            _bounds->push_back( { symbolic, interval } );
+            _max_size += interval.to;
+            _bounds->push_back( symbolic );
         }
 
         //_LART_INLINE
@@ -329,15 +278,15 @@ namespace abstract::mstring {
 
         //_LART_INLINE
         TValue read( size_t idx ) const noexcept {
-            return read( constrained_constant( idx ) );
+            return read( sym::constant( idx ) );
         }
 
         //_LART_INLINE
         TValue read( TBound idx ) const noexcept
         {
             idx = idx + _offset;
-            assert( idx.symbolic < size() && "access out of bounds" );
-            return *segment( idx.symbolic ).value;
+            assert( idx < size() && "access out of bounds" );
+            return *segment( idx ).value;
         }
 
         //_LART_INLINE
@@ -346,40 +295,39 @@ namespace abstract::mstring {
         //_LART_INLINE
         void write( size_t idx, char val ) noexcept
         {
-            write( constrained_constant( idx ), val );
+            write( sym::constant( idx ), val );
         }
 
         //_LART_INLINE
         void write( TBound idx, TValue val ) noexcept
         {
             idx = idx + _offset;
-            assert( idx.symbolic < size() && "access out of bounds" );
+            assert( idx < size() && "access out of bounds" );
 
-            auto seg = segment( idx.symbolic );
-
-            auto one = constrained_constant( 1 );
+            auto seg = segment( idx );
+            assert( !seg.empty() );
 
             if ( seg.has_value( val ) ) {
                 // do nothing
             } else if ( seg.size() == sym::constant( 1 ) ) {
                 // rewite single character segment
                 *seg.value = val;
-            } else if ( idx.symbolic == seg.begin->symbolic ) {
+            } else if ( idx == *seg.begin ) {
                 // rewrite first character of a segment
                 if ( seg.begin != _bounds->begin() ) {
                     if ( *std::prev( seg.value ) == val ) {
-                        *seg.begin += one; // merge with left neighbour
+                        *seg.begin += sym::constant( 1 ); // merge with left neighbour
                         return;
                     }
                 }
 
-                _bounds->insert( seg.end, idx + one );
+                _bounds->insert( seg.end, idx + sym::constant( 1 ) );
                 _values->insert( seg.value, val );
-            } else if( idx.symbolic == seg.end->symbolic - sym::constant( 1 ) ) {
+            } else if( idx == *seg.end - sym::constant( 1 ) ) {
                 // rewrite last character of a segment
                 if ( seg.end != std::prev( _bounds->end() ) ) {
                     if ( *std::next( seg.value ) == val ) {
-                        *seg.end -= one; // merge with right neighbour
+                        *seg.end -= sym::constant( 1 ); // merge with right neighbour
                         return;
                     }
                 }
@@ -391,28 +339,91 @@ namespace abstract::mstring {
                 auto vit = _values->insert( seg.value, *seg.value );
                 _values->insert( std::next( vit ), val );
                 auto bit = _bounds->insert( seg.end, idx );
-                _bounds->insert( std::next( bit ), idx + one );
+                _bounds->insert( std::next( bit ), idx + sym::constant( 1 ) );
             }
         }
 
         //_LART_INLINE
-        TAbstract size() const noexcept
+        TBound size() const noexcept
         {
-            return empty() ? sym::constant( 0 ) : end().symbolic;
+            return empty() ? sym::constant( 0 ) : end();
         }
 
         View interest() const noexcept
         {
-            auto seg = segment( _offset.symbolic );
+            auto seg = segment( _offset );
 
             auto term = seg;
             while ( term.value != _values->end() && !term.has_value( '\0' ) ) {
                 ++term;
             }
+
             assert( term.value != _values->end() && "missing string of interest" );
-            return { _offset, range( seg.begin, term.begin ), range( seg.value, term.value ) };
+            return { _offset, range( seg.begin, term.end ), range( seg.value, term.value ) };
         }
 
+        View as_view() const noexcept
+        {
+            auto seg = segment( _offset );
+            return { _offset, range( seg.begin, _bounds->end() ), range( seg.value, _values->end() ) };
+        }
+
+        void drop( const TBound & from, const TBound & len ) noexcept
+        {
+            auto seg_begin = segment( from );
+            auto seg_end = seg_begin;
+
+            while ( *seg_end.begin < from + len ) {
+                ++seg_end;
+            }
+
+            auto segf = seg_begin.begin;
+            auto segt = seg_end.end;
+
+            auto valf = seg_begin.value;
+            auto valt = seg_end.value;
+
+            if ( *segf < from ) { // leave prefix
+                ++segf; ++valf;
+            }
+
+            if ( *std::prev( segt ) > from + len ) { // leave suffix
+                --segt; --valt;
+            }
+
+            _bounds->erase( segf, segt );
+            _values->erase( valf, valt );
+        }
+
+        void insert( const TBound & from, const View & str ) noexcept
+        {
+            auto bound = _bounds->begin();
+            auto value = _values->begin();
+            while ( bound != _bounds->end() && *bound < from ) {
+                ++bound; ++value;
+            }
+
+            Bounds bounds;
+            std::move( bound, _bounds->end(), std::back_inserter( bounds ) );
+            _bounds->erase( bound, _bounds->end() );
+
+            for ( const auto & b : str.bounds )
+                _bounds->push_back( from + ( b - str.offset ) );
+
+            _bounds->append( bounds.size(), bounds.begin(), bounds.end() );
+
+            Values values;
+            std::move( value, _values->end(), std::back_inserter( values ) );
+            _values->erase( value, _values->end() );
+
+            for ( const auto & v : str.values ) {
+                _values->push_back( v );
+            }
+
+            _values->append( values.size(), values.begin(), values.end() );
+        }
+
+        size_t _max_size;
         TBound _offset;
         std::shared_ptr< Values > _values;
         std::shared_ptr< Bounds > _bounds;
@@ -428,9 +439,7 @@ namespace abstract::mstring {
             ++seg;
         }
 
-        auto len = seg.begin->symbolic - interest.offset.symbolic;
-        auto interval = seg.begin->interval - interest.offset.interval;
-        return lower( len, interval );
+        return sym::lower( *seg.begin - interest.offset, Bound{ 0, split->_max_size } );
     }
 
     template< typename Split >
@@ -443,7 +452,7 @@ namespace abstract::mstring {
         auto re = ri.front();
 
         auto from_offset = [] ( const auto & idx, const auto & offset ) {
-            return (idx - offset).symbolic;
+            return idx - offset;
         };
 
         while ( le.begin != li.bounds.end() && re.begin != ri.bounds.end() ) {
@@ -467,15 +476,24 @@ namespace abstract::mstring {
     }
 
     template< typename Split >
-    Split * strcpy( const Split * /*dst*/, const Split * /*src*/ ) noexcept
+    Split * strcpy( Split * dst, const Split * src ) noexcept
     {
-        _UNREACHABLE_F( "Not implemented" );
+        const auto & si = src->interest();
+        auto ret = memcpy( dst, src, si.size() );
+        return ret;
     }
 
     template< typename Split >
-    Split * strcat( const Split * /*dst*/, const Split * /*src*/ ) noexcept
+    Split * strcat( Split * dst, const Split * src ) noexcept
     {
-        _UNREACHABLE_F( "Not implemented" );
+        const auto & si = src->interest();
+        const auto & di = dst->interest();
+
+        auto off = dst->_offset;
+        dst->_offset = di.terminator();
+        auto ret = memcpy( dst, src, si.size() );
+        ret->_offset = off;
+        return ret;
     }
 
     template< typename Split >
@@ -487,7 +505,7 @@ namespace abstract::mstring {
         while ( seg.value != interest.values.end() ) {
             if ( seg.has_value( ch ) ) {
                 auto offset = *seg.begin;
-                if ( offset.symbolic < interest.offset.symbolic )
+                if ( offset < interest.offset )
                     offset = interest.offset;
                 return __new< Split >( _VM_PT_Heap, offset, str->_values, str->_bounds );
             }
@@ -497,9 +515,26 @@ namespace abstract::mstring {
         return nullptr;
     }
 
+    template< typename Split, typename TBound >
+    Split * memcpy( Split * dst, const Split * src, TBound n ) noexcept
+    {
+        auto off = dst->_offset;
+        assert( n <= dst->size() - off && "copying string to a smaller buffer" );
+
+        dst->drop( off, n );
+        dst->insert( off, src->as_view() );
+        return dst;
+    }
+
+    template< typename Split >
+    Split * memcpy( Split * dst, const Split * src, size_t n ) noexcept
+    {
+        return memcpy( dst, src, sym::constant( n ) );
+    }
+
     namespace sym {
 
-        using Split = Segmentation< ConstrainedValue, char >;
+        using Split = Segmentation< sym::Value, char >;
 
         template< typename... Segments >
         //_LART_INLINE
