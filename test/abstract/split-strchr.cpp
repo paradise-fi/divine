@@ -100,7 +100,7 @@ int main()
         assert( sec.size() == 1 );
         test_section( sec[ 0 ], 0, 3 );
 
-        const auto & seg = sec[ 0 ].segments();
+        const auto & seg = sec[ 0 ];
         assert( seg.size() == 1 );
         test_segment( seg[ 0 ], 0, 3, 'b' );
     }
@@ -115,7 +115,7 @@ int main()
         assert( sec.size() == 1 );
         test_section( sec[ 0 ], 0, 5 );
 
-        const auto & seg = sec[ 0 ].segments();
+        const auto & seg = sec[ 0 ];
         assert( seg.size() == 4 );
         test_segment( seg[ 0 ], 0, 1, 'a' );
         test_segment( seg[ 1 ], 1, 3, 'b' );
@@ -134,7 +134,7 @@ int main()
         assert( sec.size() == 1 );
         test_section( sec[ 0 ], 0, 7 );
 
-        const auto & seg = sec[ 0 ].segments();
+        const auto & seg = sec[ 0 ];
         assert( seg.size() == 4 );
         test_segment( seg[ 0 ], 0, 1, 'b' );
         test_segment( seg[ 1 ], 1, 3, 'a' );
@@ -153,7 +153,7 @@ int main()
         assert( sec.size() == 1 );
         test_section( sec[ 0 ], 0, 6 );
 
-        const auto & seg = sec[ 0 ].segments();
+        const auto & seg = sec[ 0 ];
         assert( seg.size() == 2 );
         test_segment( seg[ 0 ], 0, 1, 'b' );
         test_segment( seg[ 1 ], 1, 6, 'a' );
@@ -174,7 +174,7 @@ int main()
         assert( sec.size() == 1 );
         test_section( sec[ 0 ], 0, 8 );
 
-        const auto & seg = sec[ 0 ].segments();
+        const auto & seg = sec[ 0 ];
         assert( seg.size() == 3 );
         test_segment( seg[ 0 ], 0, 2, 'a' );
         test_segment( seg[ 1 ], 2, 3, 'b' );
@@ -194,7 +194,7 @@ int main()
         assert( sec.size() == 1 );
         test_section( sec[ 0 ], 0, 8 );
 
-        const auto & seg = sec[ 0 ].segments();
+        const auto & seg = sec[ 0 ];
         assert( seg.size() == 1 );
         test_segment( seg[ 0 ], 0, 8, 'a' );
     }
