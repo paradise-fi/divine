@@ -199,7 +199,6 @@ namespace abstract::mstring {
                 shifted.start_from( _offset );
             }
 
-            auto & secs = sections();
             assert( shifted.length() <= size() - _offset && "copying mstring to smaller mstring" );
             if ( shifted.length() == 0 ) {
                 write_zero( _offset );
@@ -208,17 +207,26 @@ namespace abstract::mstring {
 
             drop( _offset, shifted.length() + _offset + 1 );
 
-            auto sec = secs.begin();
-            while ( sec != secs.end() && sec->to() < _offset )
-                ++sec;
+            auto sec = section_after_offset();
+            insert_section_at( sec, std::move( shifted ) );
+        }
+    }
 
-            if ( sec == secs.end() ) {
-                secs.push_back( shifted );
-            } else {
-                if ( sec->to() == _offset )
-                    sec->merge( &shifted );
-                else
-                    secs.insert( sec, shifted );
+    void Split::copy( const Split * src, size_t len ) noexcept
+    {
+        assert( len <= size() - _offset && "copying mstring to smaller mstring" );
+        // TODO check overlap
+        assert( len <= src->size() - src->getOffset() &&
+                "copying memory from out of src bounds" );
+
+        if ( this != src ) {
+            drop( _offset, len );
+
+            auto sec = src->section_after_offset();
+            if ( sec != src->sections().end() ) {
+                //auto & secs = sections();
+                //auto insert = section_after_offset();
+                _UNREACHABLE_F( "Not implemented." );
             }
         }
     }
@@ -340,6 +348,36 @@ namespace abstract::mstring {
         }
 
         return nullptr;
+    }
+
+    // returns first section that ends after offset
+    Section * Split::section_after_offset() noexcept
+    {
+        return const_cast< Section * >(
+            const_cast< const Split * >( this )->section_after_offset()
+        );
+    }
+
+    const Section * Split::section_after_offset() const noexcept
+    {
+        auto & secs = sections();
+        auto sec = secs.begin();
+        while ( sec != secs.end() && sec->to() < _offset )
+            ++sec;
+        return sec;
+    }
+
+    void Split::insert_section_at( Section * at, Section && sec ) noexcept
+    {
+        auto & secs = sections();
+        if ( at == secs.end() ) {
+            secs.push_back( std::move( sec ) );
+        } else {
+            if ( at->to() == _offset )
+                at->merge( &sec );
+            else
+                secs.insert( at, std::move( sec ) );
+        }
     }
 
     void Split::shrink_correction( Section * sec, Segment * bound ) noexcept

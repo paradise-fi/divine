@@ -180,6 +180,8 @@ namespace abstract::mstring {
 
         operator bool() const noexcept { return !empty(); }
 
+        void copy( const Split * other, size_t len ) noexcept;
+
         size_t strlen() const noexcept;
         int strcmp( const Split * other ) const noexcept;
 
@@ -229,6 +231,10 @@ namespace abstract::mstring {
         void overwrite_zero( size_t idx, char val ) noexcept;
 
         void divide( Section * sec, Segment & seg, size_t idx ) noexcept;
+
+        Section * section_after_offset() noexcept;
+        const Section * section_after_offset() const noexcept;
+        void insert_section_at( Section * at, Section && sec ) noexcept;
 
         size_t _refcount;
         size_t _offset;

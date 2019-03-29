@@ -149,8 +149,9 @@ extern "C" {
         return str;
     }
 
-    __mstring * __mstring_memcpy( __mstring * /*dst*/, __mstring * /*src*/, size_t /*len*/ ) {
-        _UNREACHABLE_F( "Not implemented." );
+    __mstring * __mstring_memcpy( __mstring * dst, __mstring * src, size_t len ) {
+        dst->copy( src, len );
+        return dst;
     }
 
     __mstring * __mstring_memmove( __mstring * /*dst*/, __mstring * /*src*/, size_t /*len*/ ) {
