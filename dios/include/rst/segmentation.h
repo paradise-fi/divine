@@ -45,7 +45,13 @@ namespace abstract::mstring {
         Value operator+( const Value& l, const Value& r ) noexcept { return __sym_add( l.ptr, r.ptr ); }
 
         //_LART_INLINE
+        Value operator+=( Value& l, const Value& r ) noexcept { return l + r; }
+
+        //_LART_INLINE
         Value operator-( const Value& l, const Value& r ) noexcept { return __sym_sub( l.ptr, r.ptr ); }
+
+        //_LART_INLINE
+        Value operator-=( Value& l, const Value& r ) noexcept { return l - r; }
 
         //_LART_INLINE
         Value operator&&( const Value& l, const Value& r ) noexcept { return __sym_and( l.ptr, r.ptr ); }
@@ -275,10 +281,24 @@ namespace abstract::mstring {
                 *seg.value = val;
             } else if ( idx == *seg.begin ) {
                 // rewrite first character of a segment
+                if ( seg.begin != _bounds->begin() ) {
+                    if ( *std::prev( seg.value ) == val ) {
+                        *seg.begin += sym::constant( 1 ); // merge with left neighbour
+                        return;
+                    }
+                }
+
                 _bounds->insert( seg.end, idx + sym::constant( 1 ) );
                 _values->insert( seg.value, val );
             } else if( idx == *seg.end - sym::constant( 1 ) ) {
                 // rewrite last character of a segment
+                if ( seg.end != std::prev( _bounds->end() ) ) {
+                    if ( *std::next( seg.value ) == val ) {
+                        *seg.end -= sym::constant( 1 ); // merge with right neighbour
+                        return;
+                    }
+                }
+
                 _values->insert( std::next( seg.value ), val );
                 _bounds->insert( seg.end, idx );
             } else {
