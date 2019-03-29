@@ -33,6 +33,7 @@ namespace lart::abstract::meta {
         constexpr char domains[]  = "lart.abstract.domains";
 
         namespace domain {
+            constexpr char spec[] = "lart.abstract.domain.spec";
             constexpr char name[] = "lart.abstract.domain.name";
             constexpr char kind[] = "lart.abstract.domain.kind";
         }

@@ -28,8 +28,8 @@ using lart::util::get_module;
         }
 
         template< typename Yield >
-        auto global_variable_walker( llvm::Module &m, Yield yield ) {
-            brick::llvm::enumerateAnnosInNs< llvm::GlobalVariable >( meta::tag::domain::name, m, yield );
+        auto specification_function_walker( llvm::Module &m, Yield yield ) {
+            brick::llvm::enumerateAnnosInNs< llvm::Function >( meta::tag::domain::kind, m, yield );
         }
 
         template< typename Value >
@@ -66,12 +66,14 @@ using lart::util::get_module;
         meta::create_from_annotation( "llvm.ptr.annotation", m );
 
         annotation_to_domain_metadata< Function >( meta::tag::abstract, m );
-        annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::name, m );
-        annotation_to_domain_metadata< GlobalVariable >( meta::tag::domain::kind, m );
+        annotation_to_domain_metadata< Function >( meta::tag::domain::spec, m );
+        annotation_to_domain_metadata< Function >( meta::tag::domain::kind, m );
 
         annotation_to_transform_metadata< Function >( meta::tag::transform::prefix, m );
 
         for ( auto & fn : m ) {
+            if ( meta::get( &fn, meta::tag::domain::spec ) )
+                continue;
             if ( auto meta = meta::get( &fn, meta::tag::abstract ) ) {
                 for ( auto user : fn.users() ) {
                     llvm::Value * val = user;
@@ -96,17 +98,17 @@ using lart::util::get_module;
     };
 
     Domain DomainMetadata::domain() const {
-        auto meta = meta::get( glob, meta::tag::domain::name );
+        auto meta = meta::get( spec, meta::tag::domain::spec );
         return Domain{ meta.value() };
     }
 
     DomainKind DomainMetadata::kind() const {
-        auto meta = meta::get( glob, meta::tag::domain::kind );
+        auto meta = meta::get( spec, meta::tag::domain::kind );
         return KindTable[ meta.value() ];
     }
 
     Type * DomainMetadata::base_type() const {
-        return glob->getType()->getPointerElementType()->getStructElementType( base_type_offset );
+        return spec->getReturnType();
     }
 
     llvm::Value * DomainMetadata::default_value() const {
@@ -255,8 +257,8 @@ using lart::util::get_module;
 
     std::vector< DomainMetadata > domains( llvm::Module & m ) {
         std::vector< DomainMetadata > doms;
-        global_variable_walker( m, [&] ( const auto& glob, const auto& ) {
-            doms.emplace_back( glob );
+        specification_function_walker( m, [&] ( const auto& fn, const auto& ) {
+            doms.emplace_back( fn );
         } );
         return doms;
     }

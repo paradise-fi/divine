@@ -60,8 +60,8 @@ namespace lart::abstract {
     std::vector< DomainMetadata > domains( llvm::Module & m );
 
     struct DomainMetadata {
-        DomainMetadata( llvm::GlobalVariable * glob )
-            : glob( glob )
+        DomainMetadata( llvm::Function * spec )
+            : spec( spec )
         {}
 
         static DomainMetadata get( llvm::Module & m, const Domain & dom ) {
@@ -90,9 +90,7 @@ namespace lart::abstract {
         llvm::Value * default_value() const;
 
     private:
-        static constexpr size_t base_type_offset = 0;
-
-        llvm::GlobalVariable * glob;
+        llvm::Function * spec;
     };
 
 
