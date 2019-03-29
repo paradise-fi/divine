@@ -5,11 +5,11 @@ namespace abstract::mstring {
     namespace {
 
         _LART_INLINE
-        char begin_value( const Section * sec ) noexcept
+        char begin_value( const Section * sec, size_t offset ) noexcept
         {
             if ( !sec )
                 return '\0';
-            return sec->front().value;
+            return sec->segment_of( offset ).value;
         }
 
     } // anonymous namespace
@@ -306,11 +306,18 @@ namespace abstract::mstring {
         const auto * lhs = interest();
         const auto * rhs = other->interest();
 
-        if ( !lhs || !rhs )
-            return begin_value( lhs ) - begin_value( rhs );
+        auto loff = _offset;
+        auto roff = other->getOffset();
 
-        auto * lseg = lhs->begin();
-        auto * rseg = rhs->begin();
+        if ( !lhs || !rhs )
+            return begin_value( lhs, loff ) - begin_value( rhs, roff );
+
+        auto * lseg = &lhs->segment_of( loff );
+        auto * rseg = &rhs->segment_of( roff );
+
+        auto from_offset = [] ( size_t idx, size_t offset ) {
+            return idx - offset;
+        };
 
         while ( lseg != lhs->end() && rseg != rhs->end() ) {
             char lhsv = lseg->value;
@@ -319,9 +326,9 @@ namespace abstract::mstring {
             if ( lhsv != rhsv ) {
                 return lhsv - rhsv;
             } else {
-                if ( lseg->to > rseg->to ) {
+                if ( from_offset( lseg->to, loff ) > from_offset( rseg->to, roff ) ) {
                     return lhsv - rhs->value( std::next( rseg ) );
-                } else if ( lseg->to < rseg->to ) {
+                } else if ( from_offset( lseg->to, loff ) < from_offset( rseg->to, roff ) ) {
                     return lhs->value( std::next( lseg ) ) - rhsv;
                 }
             }
