@@ -15,7 +15,7 @@ namespace abstract::mstring {
     } // anonymous namespace
 
     _LART_INLINE
-    void Section::start_from( int idx ) noexcept
+    void Section::start_from( size_t idx ) noexcept
     {
         for ( auto & seg : *this ) {
             auto size = seg.size();
@@ -40,19 +40,19 @@ namespace abstract::mstring {
     }
 
     _LART_INLINE
-    void Section::drop_front( int to ) noexcept
+    void Section::drop_front( size_t to ) noexcept
     {
         drop( from(), to );
     }
 
     _LART_INLINE
-    void Section::drop_back( int from ) noexcept
+    void Section::drop_back( size_t from ) noexcept
     {
         drop( from, to() );
     }
 
     _LART_INLINE
-    void Section::drop( int from, int to ) noexcept
+    void Section::drop( size_t from, size_t to ) noexcept
     {
         auto beg = begin();
         while ( beg->to < from )
@@ -86,6 +86,7 @@ namespace abstract::mstring {
     _LART_INLINE
     void Section::merge( const Section * sec ) noexcept
     {
+        assert( size() > 0 );
         auto mid = size() - 1;
         auto * arr = static_cast< Array< Segment > * >( this );
         arr->append( sec->size(), sec->begin(), sec->end() );
@@ -104,12 +105,14 @@ namespace abstract::mstring {
             }
         }
 
-        auto prev = seg->from - 1;
-        if ( prev >= from() ) {
-            auto * left = std::prev( seg );
-            if ( left->value == seg->value ) {
-                seg->from = left->from;
-                erase( left );
+        if ( seg->from != 0 ) {
+            auto prev = seg->from - 1;
+            if ( prev >= from() ) {
+                auto * left = std::prev( seg );
+                if ( left->value == seg->value ) {
+                    seg->from = left->from;
+                    erase( left );
+                }
             }
         }
     }
@@ -140,7 +143,7 @@ namespace abstract::mstring {
         return this->empty() || sections().front().to() < size();
     }
 
-    void Split::drop( int from, int to ) noexcept
+    void Split::drop( size_t from, size_t to ) noexcept
     {
         auto & secs = _data->sections;
         auto it = secs.begin();
@@ -173,7 +176,6 @@ namespace abstract::mstring {
 
                 if ( end->from() <= to )
                     end->drop_front( to );
-
             }
 
             if ( end != secs.end() && end->empty() ) {
@@ -226,9 +228,9 @@ namespace abstract::mstring {
         auto left = interest();
         Section right = *other->interest();
 
-        int begin = left ? left->length() : 0;
-        int dist = other->strlen() + 1;
-        int end = begin + dist;
+        size_t begin = left ? left->length() : 0;
+        size_t dist = other->strlen() + 1;
+        size_t end = begin + dist;
         assert( size() >= end && "concating mstring into smaller mstring" );
 
         auto & secs = sections();
@@ -281,7 +283,7 @@ namespace abstract::mstring {
         return nullptr;
     }
 
-    int Split::strlen() const noexcept
+    size_t Split::strlen() const noexcept
     {
         if ( empty() )
             return 0;
@@ -323,12 +325,12 @@ namespace abstract::mstring {
         return lhs->value( lseg ) - rhs->value( rseg );
     }
 
-    Section * Split::section_of( int idx ) noexcept
+    Section * Split::section_of( size_t idx ) noexcept
     {
         return const_cast< Section * >( const_cast< const Split * >( this )->section_of( idx ) );
     }
 
-    const Section * Split::section_of( int idx ) const noexcept
+    const Section * Split::section_of( size_t idx ) const noexcept
     {
         for ( const auto& sec : sections() ) {
             if ( idx >= sec.from() && idx < sec.to() )
@@ -362,7 +364,7 @@ namespace abstract::mstring {
         shrink_correction( sec, bound );
     }
 
-    void Split::divide( Section * sec, Segment & seg, int idx ) noexcept
+    void Split::divide( Section * sec, Segment & seg, size_t idx ) noexcept
     {
         auto [left, right] = seg.divide( idx );
 
@@ -379,7 +381,7 @@ namespace abstract::mstring {
         sections().insert( std::next( sec ), right_section );
     }
 
-    void Split::write_zero( int idx ) noexcept
+    void Split::write_zero( size_t idx ) noexcept
     {
         auto sec = section_of( idx );
         if ( !sec )
@@ -396,7 +398,7 @@ namespace abstract::mstring {
         }
     }
 
-    void Split::overwrite_char( Section * sec, Segment & seg, int idx, char val ) noexcept
+    void Split::overwrite_char( Section * sec, Segment & seg, size_t idx, char val ) noexcept
     {
         if ( seg.size() == 1 ) {
             seg.value = val;
@@ -424,7 +426,7 @@ namespace abstract::mstring {
         }
     }
 
-    void Split::overwrite_zero( int idx, char val ) noexcept
+    void Split::overwrite_zero( size_t idx, char val ) noexcept
     {
         auto left = section_of( idx - 1 );
         auto right = section_of( idx + 1 );
@@ -455,7 +457,7 @@ namespace abstract::mstring {
         }
     }
 
-    void Split::write_char( int idx, char val ) noexcept
+    void Split::write_char( size_t idx, char val ) noexcept
     {
         if ( auto sec = section_of( idx ) ) {
             auto & seg = sec->segment_of( idx );
@@ -467,7 +469,7 @@ namespace abstract::mstring {
         }
     }
 
-    void Split::write( int idx, char val ) noexcept
+    void Split::write( size_t idx, char val ) noexcept
     {
         idx = idx + _offset;
         assert( idx < size() );
@@ -478,7 +480,7 @@ namespace abstract::mstring {
     }
 
 
-    char Split::read( int idx ) const noexcept
+    char Split::read( size_t idx ) const noexcept
     {
         idx = idx + _offset;
         assert( idx < size() );
@@ -487,7 +489,7 @@ namespace abstract::mstring {
         return '\0';
     }
 
-    Split * Split::offset( int off ) const noexcept
+    Split * Split::offset( size_t off ) const noexcept
     {
         auto split = __new< Split >( _VM_PT_Heap, _data );
         split->_offset = _offset + off;

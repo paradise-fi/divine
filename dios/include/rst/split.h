@@ -14,18 +14,18 @@ namespace abstract::mstring {
      */
     struct Segment
     {
-        explicit Segment( int from, int to, char val )
+        explicit Segment( size_t from, size_t to, char val )
             : from( from ), to( to ), value( val )
         {}
 
         _LART_INLINE
-        int size() const noexcept { return to - from; }
+        size_t size() const noexcept { return to - from; }
 
         _LART_INLINE
         bool empty() const noexcept { return size() == 0; }
 
         _LART_INLINE
-        auto divide( int idx ) -> std::pair< Segment, Segment >
+        auto divide( size_t idx ) -> std::pair< Segment, Segment >
         {
             return { Segment{ from, idx, value }, Segment{ idx + 1, to, value } };
         }
@@ -35,7 +35,7 @@ namespace abstract::mstring {
             __dios_trace_f( "seg: [%lu, %lu) = %c", from, to, value );
         }
 
-        int from, to;
+        size_t from, to;
         char value;
     };
 
@@ -47,18 +47,18 @@ namespace abstract::mstring {
     struct Section : Array< Segment >
     {
         _LART_INLINE
-        int length() const noexcept
+        size_t length() const noexcept
         {
             return this->empty() ? 0 : to() - from();
         }
 
         _LART_INLINE
-        int from() const noexcept { return front().from; }
+        size_t from() const noexcept { return front().from; }
 
         _LART_INLINE
-        int to() const noexcept { return back().to; }
+        size_t to() const noexcept { return back().to; }
 
-        void start_from( int idx ) noexcept;
+        void start_from( size_t idx ) noexcept;
 
         void append( Segment && seg ) noexcept;
         void prepend( Segment && seg ) noexcept;
@@ -66,14 +66,14 @@ namespace abstract::mstring {
         void merge( const Section * sec ) noexcept;
         void merge_neighbours( iterator seg ) noexcept;
 
-        void drop_front( int to ) noexcept;
-        void drop_back( int from ) noexcept;
-        void drop( int from, int to ) noexcept;
+        void drop_front( size_t to ) noexcept;
+        void drop_back( size_t from ) noexcept;
+        void drop( size_t from, size_t to ) noexcept;
 
-        auto view( int from, int to ) noexcept;
+        auto view( size_t from, size_t to ) noexcept;
 
         _LART_INLINE
-        const Segment& segment_of( int idx ) const noexcept
+        const Segment& segment_of( size_t idx ) const noexcept
         {
             assert( idx >= from() && idx < to() );
             for ( const auto & seg : *this ) {
@@ -83,7 +83,7 @@ namespace abstract::mstring {
         }
 
         _LART_INLINE
-        Segment& segment_of( int idx ) noexcept
+        Segment& segment_of( size_t idx ) noexcept
         {
             return const_cast< Segment & >(
                 const_cast< const Section * >( this )->segment_of( idx )
@@ -108,13 +108,13 @@ namespace abstract::mstring {
     };
 
     _LART_INLINE
-    static Section make_section( const char * buff, int from, int to )
+    static Section make_section( const char * buff, size_t from, size_t to )
     {
         Section sec;
 
         char c = buff[ from ];
-        for ( int i = from; i < to; ) {
-            int j = i + 1;
+        for ( size_t i = from; i < to; ) {
+            size_t j = i + 1;
             while ( j < to && buff[j] == c ) { ++j; }
             sec.push_back( Segment( i, j, c ) );
             i = j;
@@ -130,13 +130,13 @@ namespace abstract::mstring {
 
     struct SplitData
     {
-        int len;
+        size_t len;
         Sections sections;
     };
 
     struct Split
     {
-        Split( const char * buff, int len )
+        Split( const char * buff, size_t len )
             : _offset( 0 ), _refcount( 0 )
         {
             if ( buff == nullptr )
@@ -146,8 +146,8 @@ namespace abstract::mstring {
             _data->len = len;
 
             bool seen_zero = true;
-            int from = 0;
-            for ( int i = 0; i < len; ++i ) {
+            size_t from = 0;
+            for ( size_t i = 0; i < len; ++i ) {
                 if ( seen_zero && buff[ i ] != '\0' ) {
                     seen_zero = false;
                     from = i;
@@ -170,35 +170,36 @@ namespace abstract::mstring {
         const Section * interest() const noexcept;
         Section * interest() noexcept;
 
-        Section * section_of( int idx ) noexcept;
-        const Section * section_of( int idx ) const noexcept;
+        Section * section_of( size_t idx ) noexcept;
+        const Section * section_of( size_t idx ) const noexcept;
 
         bool empty() const noexcept { return _data->sections.empty(); }
         bool well_formed() const noexcept;
 
         operator bool() const noexcept { return !empty(); }
 
-        int strlen() const noexcept;
+        size_t strlen() const noexcept;
         int strcmp( const Split * other ) const noexcept;
 
         void strcpy( const Split * other ) noexcept;
         void strcat( const Split * other ) noexcept;
         Split * strchr( char ch ) const noexcept;
 
-        void write( int idx, char val ) noexcept;
-        char read( int idx ) const noexcept;
+        void write( size_t idx, char val ) noexcept;
+        char read( size_t idx ) const noexcept;
 
-        Split * offset( int idx ) const noexcept;
+        Split * offset( size_t idx ) const noexcept;
 
-        int getOffset() const noexcept { return _offset; }
+        size_t getOffset() const noexcept { return _offset; }
 
         // size of underlying buffer
-        int size() const noexcept { return _data->len; }
+        size_t size() const noexcept { return _data->len; }
+        void drop( size_t from, size_t to ) noexcept;
 
         Sections & sections() noexcept { return _data->sections; }
         const Sections & sections() const noexcept { return _data->sections; }
 
-        int refcount() const noexcept { return _refcount; }
+        size_t refcount() const noexcept { return _refcount; }
         void refcount_decrement() { --_refcount; }
         void refcount_increment() { ++_refcount; }
 
@@ -208,22 +209,20 @@ namespace abstract::mstring {
                 sec.dump();
         }
     private:
-        void write_zero( int idx ) noexcept;
-        void write_char( int idx, char val ) noexcept;
+        void write_zero( size_t idx ) noexcept;
+        void write_char( size_t idx, char val ) noexcept;
 
         void shrink_left( Section * sec, Segment * bound ) noexcept;
         void shrink_right( Section * sec, Segment * bound ) noexcept;
         void shrink_correction( Section * sec, Segment * bound ) noexcept;
 
-        void drop( int from, int to ) noexcept;
+        void overwrite_char( Section * sec, Segment & seg, size_t idx, char val ) noexcept;
+        void overwrite_zero( size_t idx, char val ) noexcept;
 
-        void overwrite_char( Section * sec, Segment & seg, int idx, char val ) noexcept;
-        void overwrite_zero( int idx, char val ) noexcept;
+        void divide( Section * sec, Segment & seg, size_t idx ) noexcept;
 
-        void divide( Section * sec, Segment & seg, int idx ) noexcept;
-
-        int _refcount;
-        int _offset;
+        size_t _refcount;
+        size_t _offset;
 
         std::shared_ptr< SplitData > _data;
     };
