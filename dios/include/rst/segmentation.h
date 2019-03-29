@@ -22,7 +22,7 @@ namespace abstract::mstring {
 
             ~Value()
             {
-                ::abstract::sym::formula_cleanup_check( ptr );
+                //::abstract::sym::formula_cleanup_check( ptr );
             }
 
             //_LART_INLINE
@@ -131,6 +131,11 @@ namespace abstract::mstring {
             : from( from ), to ( to )
         { assert( from < to ); }
 
+        static Bound singleton( size_t val ) noexcept
+        {
+            return Bound( val, val + 1 );
+        }
+
         size_t size() const noexcept { return to - from; }
 
         size_t from, to;
@@ -220,11 +225,20 @@ namespace abstract::mstring {
             , _bounds( std::make_shared< Bounds >() )
         {}
 
-        Segmentation( TBound offset
+        Segmentation( size_t size
+                    , size_t offset
                     , std::shared_ptr< Values > values
                     , std::shared_ptr< Bounds > bounds
         )
-            : _max_size( 0 )
+			: Segmentation( size, sym::constant( offset ), values, bounds )
+        {}
+
+		Segmentation( size_t size
+                    , TBound offset
+                    , std::shared_ptr< Values > values
+                    , std::shared_ptr< Bounds > bounds
+        )
+            : _max_size( size )
             , _offset( offset )
             , _values( values )
             , _bounds( bounds )
@@ -290,7 +304,10 @@ namespace abstract::mstring {
         }
 
         //_LART_INLINE
-        void write( char val ) noexcept { write( 0, val ); }
+        void write( char val ) noexcept
+        {
+            write( 0, val );
+        }
 
         //_LART_INLINE
         void write( size_t idx, char val ) noexcept
@@ -344,11 +361,21 @@ namespace abstract::mstring {
         }
 
         //_LART_INLINE
+        void setOffset( size_t idx ) noexcept { setOffset( sym::constant( idx ) ); }
+
+        //_LART_INLINE
+        void setOffset( TBound idx ) noexcept { _offset = idx; }
+
+        //_LART_INLINE
+        TBound getOffset() const noexcept { return _offset; }
+
+        //_LART_INLINE
         TBound size() const noexcept
         {
             return empty() ? sym::constant( 0 ) : end();
         }
 
+        //_LART_INLINE
         View interest() const noexcept
         {
             auto seg = segment( _offset );
@@ -489,10 +516,10 @@ namespace abstract::mstring {
         const auto & si = src->interest();
         const auto & di = dst->interest();
 
-        auto off = dst->_offset;
-        dst->_offset = di.terminator();
+        auto off = dst->getOffset();
+        dst->setOffset( di.terminator() );
         auto ret = memcpy( dst, src, si.size() );
-        ret->_offset = off;
+        ret->setOffset( off );
         return ret;
     }
 
@@ -507,7 +534,7 @@ namespace abstract::mstring {
                 auto offset = *seg.begin;
                 if ( offset < interest.offset )
                     offset = interest.offset;
-                return __new< Split >( _VM_PT_Heap, offset, str->_values, str->_bounds );
+                return __new< Split >( _VM_PT_Heap, str->_max_size, offset, str->_values, str->_bounds );
             }
             ++seg;
         }
@@ -518,7 +545,7 @@ namespace abstract::mstring {
     template< typename Split, typename TBound >
     Split * memcpy( Split * dst, const Split * src, TBound n ) noexcept
     {
-        auto off = dst->_offset;
+        auto off = dst->getOffset();
         assert( n <= dst->size() - off && "copying string to a smaller buffer" );
 
         dst->drop( off, n );
@@ -530,6 +557,21 @@ namespace abstract::mstring {
     Split * memcpy( Split * dst, const Split * src, size_t n ) noexcept
     {
         return memcpy( dst, src, sym::constant( n ) );
+    }
+
+    template< typename Split, typename TBound >
+    Split * realloc( Split * /*dst*/, TBound /*n*/ ) noexcept
+    {
+        _UNREACHABLE_F( "Not implemented" );
+    }
+
+    template< typename Split >
+    Split * realloc( Split * ptr, size_t n ) noexcept
+    {
+        if ( n == 0 )
+            return nullptr;
+        else
+            return realloc( ptr, sym::constant( n ) );
     }
 
     namespace sym {
