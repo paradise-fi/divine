@@ -22,4 +22,9 @@ extern "C" {
     __mstring * __mstring_memmove( __mstring * dst, __mstring * src, size_t size );
 
     __mstring * __mstring_memset( __mstring * dst, char value, size_t size );
+
+    __mstring * __mstring_memchr( __mstring * str, int c, size_t n );
+
+    size_t __mstring_fread( __mstring * ptr, size_t size, size_t nmemb, FILE * stream );
+    size_t __mstring_fwrite( __mstring * ptr, size_t size, size_t nmemb, FILE * stream );
 }

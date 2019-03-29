@@ -161,6 +161,18 @@ extern "C" {
     __mstring * __mstring_memset( __mstring * /*str*/, char /*value*/, size_t /*len*/ ) {
         _UNREACHABLE_F( "Not implemented." );
     }
+
+    __mstring * __mstring_memchr( __mstring * /*str*/, int /*c*/, size_t /*n*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    size_t __mstring_fread( __mstring * /*ptr*/, size_t /*size*/, size_t /*nmemb*/, FILE * /*stream*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
+
+    size_t __mstring_fwrite( __mstring * /*ptr*/, size_t /*size*/, size_t /*nmemb*/, FILE * /*stream*/ ) {
+        _UNREACHABLE_F( "Not implemented." );
+    }
 }
 
 } // namespace abstract::mstring
