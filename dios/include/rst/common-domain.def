@@ -52,19 +52,11 @@
 #define UNSTASH_PROT() \
     PROT( unstash )
 
-#define LART_DOMAIN_TAG( _tag ) \
-    __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.name, _tag) )))
+#define LART_DOMAIN_SPEC( _tag ) \
+    __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.spec, _tag) )))
 
 #define LART_DOMAIN_KIND( _kind ) \
     __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.kind, _kind) )))
-
-#define LART_DOMAIN( tag, kind )        \
-    LART_DOMAIN_TAG( tag )              \
-    LART_DOMAIN_KIND( kind )            \
-struct CAT( __lart_domain_, tag )       \
-{                                       \
-    DOMAIN_TYPE type;                   \
-} CAT( __lart_domain_, tag );
 
 #include <rst/tristate.h>
 typedef abstract::Tristate __tristate;

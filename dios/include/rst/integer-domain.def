@@ -5,13 +5,13 @@
 
 extern "C" {
 
-LART_DOMAIN( DOMAIN_NAME, DOMAIN_KIND )
-
 VAL_PROT( 8 )
 VAL_PROT( 16 )
 VAL_PROT( 32 )
 VAL_PROT( 64 )
 
+LART_DOMAIN_SPEC( DOMAIN_NAME )
+LART_DOMAIN_KIND( DOMAIN_KIND )
 PROT( lift, int bitwidth, int argc, ... )
 
 BINARY_PROT( add )
