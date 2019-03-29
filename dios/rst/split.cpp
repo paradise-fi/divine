@@ -507,6 +507,11 @@ namespace abstract::mstring {
         }
     }
 
+    void Split::write( char val ) noexcept
+    {
+        write( 0, val );
+    }
+
     void Split::write( size_t idx, char val ) noexcept
     {
         idx = idx + _offset;
@@ -517,6 +522,11 @@ namespace abstract::mstring {
             write_char( idx, val );
     }
 
+
+    char Split::read() const noexcept
+    {
+        return read( 0 );
+    }
 
     char Split::read( size_t idx ) const noexcept
     {

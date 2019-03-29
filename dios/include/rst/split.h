@@ -189,7 +189,10 @@ namespace abstract::mstring {
         void strcat( const Split * other ) noexcept;
         Split * strchr( char ch ) const noexcept;
 
+        void write( char val ) noexcept;
         void write( size_t idx, char val ) noexcept;
+
+        char read() const noexcept;
         char read( size_t idx ) const noexcept;
 
         Split * offset( size_t idx ) const noexcept;

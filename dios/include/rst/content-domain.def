@@ -9,8 +9,8 @@ LART_DOMAIN_SPEC( DOMAIN_NAME )
 LART_DOMAIN_KIND( DOMAIN_KIND )
 OP( DOMAIN_TYPE, lift, const void * addr, unsigned len );
 
-OP( void, store, char val, void * addr );
-OP( char, load, void * addr );
+OP( void, store, char val, DOMAIN_TYPE addr );
+OP( char, load, DOMAIN_TYPE addr );
 
 OP( DOMAIN_TYPE, gep, DOMAIN_TYPE addr, uint64_t idx );
 
