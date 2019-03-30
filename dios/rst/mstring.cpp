@@ -176,14 +176,23 @@ extern "C" {
         _UNREACHABLE_F( "Not implemented." );
     }
 
-    size_t __mstring_fread( __mstring * /*ptr*/, size_t /*size*/, size_t /*nmemb*/, FILE * /*stream*/ )
+    size_t __mstring_fread( __mstring * ptr, size_t size, size_t nmemb, FILE * stream )
     {
-        _UNREACHABLE_F( "Not implemented." );
+        char buff[ size * nmemb ];
+        auto ret = fread( buff, size, nmemb, stream );
+        for ( unsigned i = 0; i < size * nmemb; ++i ) {
+            ptr->write( i, buff[ i ] );
+        }
+        return ret;
     }
 
-    size_t __mstring_fwrite( __mstring * /*ptr*/, size_t /*size*/, size_t /*nmemb*/, FILE * /*stream*/ )
+    size_t __mstring_fwrite( __mstring * ptr, size_t size, size_t nmemb, FILE * stream )
     {
-        _UNREACHABLE_F( "Not implemented." );
+        char buff[ size * nmemb ];
+        for ( unsigned i = 0; i < size * nmemb; ++i ) {
+            buff[ i ] = ptr->read( i );
+        }
+        return fwrite( buff, size, nmemb, stream );
     }
 
     void __mstring_stash( __mstring * str )
