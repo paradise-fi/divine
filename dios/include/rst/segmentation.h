@@ -45,13 +45,21 @@ namespace abstract::mstring {
         Value operator+( const Value& l, const Value& r ) noexcept { return __sym_add( l.ptr, r.ptr ); }
 
         //_LART_INLINE
-        Value operator+=( Value& l, const Value& r ) noexcept { return l + r; }
+        Value operator+=( Value& l, const Value& r ) noexcept
+        {
+            l = l + r;
+            return l;
+        }
 
         //_LART_INLINE
         Value operator-( const Value& l, const Value& r ) noexcept { return __sym_sub( l.ptr, r.ptr ); }
 
         //_LART_INLINE
-        Value operator-=( Value& l, const Value& r ) noexcept { return l - r; }
+        Value operator-=( Value& l, const Value& r ) noexcept
+        {
+            l = l - r;
+            return l;
+        }
 
         //_LART_INLINE
         Value operator&&( const Value& l, const Value& r ) noexcept { return __sym_and( l.ptr, r.ptr ); }
