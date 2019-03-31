@@ -213,6 +213,6 @@ reorderings which need to be analysed, while still preserving the ability to
 find all errors caused by reordering allowed under `x86-TSO` (up to some bound
 on the distance of reordered operations). More details about our approach to
 analysis of `x86-TSO` can be found in the paper [Model Checking of C++ Programs
-Under the x86-TSO Memory Model] [1].
+Under the x86-TSO Memory Model] [2].
 
-[1]: https://divine.fi.muni.cz/2018/x86tso
+[2]: https://divine.fi.muni.cz/2018/x86tso
