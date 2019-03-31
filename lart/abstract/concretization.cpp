@@ -177,15 +177,23 @@ namespace lart::abstract
                    ph.type != Placeholder::Type::Stash;
         };
 
+        auto replace_uses = [&] ( auto conc ) {
+            if ( !is_base_type( &m, conc.inst ) ) {
+                auto inst = llvm::cast< llvm::CallInst >( conc.inst );
+                auto dual = meta::get_dual( inst );
+                dual->replaceNonMetadataUsesWith( inst );
+                inst->setArgOperand( 0, dual );
+            }
+        };
+
         for ( const auto & ph : placeholders( m, filter ) ) {
             auto conc = builder.concretize( ph );
             if ( ph.type == Placeholder::Type::Call ) {
-                if ( !is_base_type( &m, conc.inst ) ) {
-                    auto inst = llvm::cast< llvm::CallInst >( conc.inst );
-                    auto dual = meta::get_dual( inst );
-                    dual->replaceNonMetadataUsesWith( inst );
-                    inst->setArgOperand( 0, dual );
-                }
+                replace_uses( conc );
+            }
+
+            if ( ph.type == Placeholder::Type::Load ) {
+                replace_uses( conc );
             }
         }
 
