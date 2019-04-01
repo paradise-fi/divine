@@ -385,6 +385,7 @@ struct Substitute {
         std::vector< llvm::LoadInst * > loads;
         std::vector< llvm::FenceInst * > fences;
         util::Map< llvm::Instruction *, llvm::Value * > masks;
+        util::Set< llvm::Instruction * > atomicOps;
 
         for ( auto *i : query::query( f ).flatten().map( query::refToPtr ).freeze() )
         {
@@ -465,12 +466,12 @@ struct Substitute {
             return getSize( op->getType(), ctx, dl );
         };
 
-        auto mo_ = [this]( MemoryOrder mo ) {
-            return llvm::ConstantInt::get( _moTy, uint64_t( mo ) );
+        auto mo_ = [this]( MemoryOrder mo, bool atomic = false ) {
+            return llvm::ConstantInt::get( _moTy, uint64_t( mo | (atomic ? MemoryOrder::AtomicOp : MemoryOrder(0)) ) );
         };
         auto mo = brick::types::overloaded( mo_,
-                    [mo_]( llvm::AtomicOrdering mo ) {
-                        return mo_( castmemord( mo ) );
+                    [mo_]( llvm::AtomicOrdering mo, bool atomic = false ) {
+                        return mo_( castmemord( mo ), atomic );
                     } );
 
         auto get_mask = [&masks]( llvm::Instruction *i ) {
@@ -513,7 +514,8 @@ struct Substitute {
                                                     value_cast( cmp, builder ),
                                                     value_cast( val, builder ),
                                                     sz( val ),
-                                                    mo( succord ), mo( failord ),
+                                                    mo( succord, true ),
+                                                    mo( failord, true ),
                                                     mask } );
             auto *orig = builder.CreateExtractValue( raw, { 0 } );
             auto *req = builder.CreateExtractValue( raw, { 1 } );
@@ -540,6 +542,7 @@ struct Substitute {
                                 ? llvm::AtomicOrdering::Acquire
                                 : aord );
             loads.push_back( orig );
+            atomicOps.insert( orig );
 
             switch ( op ) {
                 case llvm::AtomicRMWInst::Xchg: break;
@@ -583,6 +586,7 @@ struct Substitute {
                                 ? llvm::AtomicOrdering::Release
                                 : aord );
             stores.push_back( store );
+            atomicOps.insert( store );
 
             at->replaceAllUsesWith( orig );
             at->eraseFromParent();
@@ -602,7 +606,8 @@ struct Substitute {
 
             auto mask = get_mask( load );
             auto call = builder.CreateCall( _load, { addr, getSize( ety, ctx, dl ),
-                                                     mo( load->getOrdering() ), mask } );
+                                                     mo( load->getOrdering(), atomicOps.count( load ) ),
+                                                     mask } );
             llvm::Value *result = result_cast( call, ety, builder );
 
             load->replaceAllUsesWith( result );
@@ -622,7 +627,7 @@ struct Substitute {
                 continue; // TODO
 
             auto call = builder.CreateCall( _store, { addr, value_cast( value, builder ),
-                                                      sz( value ), mo( store->getOrdering() ),
+                                                      sz( value ), mo( store->getOrdering(), atomicOps.count( store ) ),
                                                       mask } );
             store->replaceAllUsesWith( call );
             store->eraseFromParent();
