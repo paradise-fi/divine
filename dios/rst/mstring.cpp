@@ -45,7 +45,7 @@ extern "C" {
     __mstring * __mstring_gep( __mstring * addr, uint64_t idx )
     {
         return __new< __mstring >( _VM_PT_Heap,
-            addr->_max_size, idx, addr->_values, addr->_bounds );
+            addr->_max_size, addr->_offset + sym::constant( idx ), addr->_values, addr->_bounds );
     }
 
     /* String manipulation */

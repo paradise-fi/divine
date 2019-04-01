@@ -233,14 +233,6 @@ namespace abstract::mstring {
             , _bounds( std::make_shared< Bounds >() )
         {}
 
-        Segmentation( size_t size
-                    , size_t offset
-                    , std::shared_ptr< Values > values
-                    , std::shared_ptr< Bounds > bounds
-        )
-			: Segmentation( size, sym::constant( offset ), values, bounds )
-        {}
-
 		Segmentation( size_t size
                     , TBound offset
                     , std::shared_ptr< Values > values
