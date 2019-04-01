@@ -525,7 +525,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
 
     auto tid = __dios_this_task();
     auto &buf = storeBuffers.b.get( tid );
-    if ( subseteq( MemoryOrder::SeqCst, ord ) ) {
+    if ( subseteq( MemoryOrder::SeqCst, ord ) || subseteq( MemoryOrder::AtomicOp, ord ) ) {
         storeBuffers.b.flush( tid, buf );
         line.store();
     }
