@@ -204,6 +204,12 @@ namespace abstract::mstring {
             Range< ValueIt > values;
 
             //_LART_INLINE
+            Segment next_segment( Segment seg ) const noexcept {
+                do { ++seg; } while ( seg.begin != bounds.end() && seg.empty() );
+                return seg;
+            };
+
+            //_LART_INLINE
             Segment front() const noexcept
             {
                 Segment seg{ bounds.begin(), std::next( bounds.begin() ), values.begin() };
@@ -487,16 +493,14 @@ namespace abstract::mstring {
                 return *le.value - *re.value;
             } else {
                 if ( from_offset( *le.end, li.offset ) > from_offset( *re.end, ri.offset ) ) {
-                    return *le.value - *( ++re ).value;
+                    return *le.value - *( ri.next_segment( re ) ).value;
                 } else if ( from_offset( *le.end, li.offset ) < from_offset( *re.end, ri.offset ) ) {
-                    return *( ++le ).value - *re.value;
+                    return *( li.next_segment( le ) ).value - *re.value;
                 }
             }
 
-            while ( le.empty() && le.begin != li.bounds.end() )
-                ++le;
-            while ( re.empty() && le.begin != ri.bounds.end() )
-                ++re;
+            le = li.next_segment( le );
+            re = ri.next_segment( re );
         }
 
         return 0;
