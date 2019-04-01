@@ -281,6 +281,12 @@ namespace abstract::mstring {
         {
             auto symbolic = sym::make_bounded( interval );
             if ( !_bounds->empty() ) {
+                if ( _bounds->back() == symbolic ) {
+                    // drop empty segment
+                    _values->pop_back();
+                    return;
+                }
+
                 sym::assume( _bounds->back() <= symbolic );
             }
             _max_size += interval.to;
