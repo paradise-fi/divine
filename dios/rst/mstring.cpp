@@ -4,6 +4,8 @@
 #include <rst/common.h>
 #include <rst/lart.h>
 
+#include <stdarg.h>
+
 namespace abstract::mstring {
 
 using abstract::__new;
@@ -35,6 +37,33 @@ extern "C" {
     _MSTRING char * __mstring_val( char * buff, unsigned len ) _LART_IGNORE_ARG {
         auto val = __mstring_lift( buff, len );
         __lart_stash( reinterpret_cast< uintptr_t >( val ) );
+        return abstract::taint< char * >( buff );
+    }
+
+    _MSTRING char * __mstring_sym_val( unsigned chars, ... ) _LART_IGNORE_ARG {
+        va_list argp;
+        va_start( argp, chars );
+
+        auto split = __new< __mstring >( _VM_PT_Heap );
+
+        size_t from = 0, to = 0;
+        for ( unsigned idx = 0; idx < 3 * chars; ++idx ) {
+            auto val = va_arg( argp, int );
+            if ( idx % 3 == 0 ) {
+                split->append( val );
+            } else if ( idx % 3 == 1 ) {
+                from = val;
+            } else {
+                to = val;
+                split->append( Bound{ from, to } );
+            }
+        }
+
+        va_end( argp );
+
+        char * buff = static_cast< char * >( calloc( split->_max_size, sizeof( char ) ) );
+
+        __lart_stash( reinterpret_cast< uintptr_t >( split ) );
         return abstract::taint< char * >( buff );
     }
 

@@ -13,6 +13,8 @@ typedef abstract::mstring::sym::Split __mstring;
 #undef DOMAIN_KIND
 
 extern "C" {
+    char * __mstring_sym_val( unsigned chars, ... );
+
     __mstring * __mstring_realloc( __mstring * str, size_t size );
 
     __mstring * __mstring_memcpy( __mstring * dst, __mstring * src, size_t size );

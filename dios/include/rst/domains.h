@@ -23,6 +23,7 @@ extern "C" {
     uint8_t __star_val_i8( void );
 
     char * __mstring_val( char * buff, unsigned buff_len );
+    char * __mstring_sym_val( unsigned chars, ... );
 #ifdef __cplusplus
 }
 #endif
