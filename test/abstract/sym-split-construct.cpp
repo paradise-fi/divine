@@ -12,7 +12,7 @@ using namespace abstract::mstring;
 
 int main() {
     { // simple one letter
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 5 }, '\0', Bound{ 5, 6 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 5 }, '\0', Bound{ 5, 6 } );
         assert( split.read( 0 ) == 'a' );
         auto c1 = split.read( 1 );
         assert( c1 == 'a' || c1 == '\0' );
@@ -23,8 +23,7 @@ int main() {
     }
 
     { // simple two letters
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 5 }, 'b',
-                                        Bound{ 5, 6 }, '\0', Bound{ 6, 7 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 5 }, 'b', Bound{ 5, 6 }, '\0', Bound{ 6, 7 } );
         assert( split.read( 0 ) == 'a' );
         auto c1 = split.read( 1 );
         assert( c1 == 'a' || c1 == 'b' );

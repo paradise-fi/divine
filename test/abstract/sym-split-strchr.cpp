@@ -19,7 +19,7 @@ void clean( Segmentation * seg )
 
 int main() {
     { // simple one letter
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 5 }, '\0', Bound{ 5, 6 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 5 }, '\0', Bound{ 5, 6 } );
         auto chr = strchr( &split, 'a' );
         assert( chr->read( 0 ) == 'a' );
         auto c1 = chr->read( 1 );
@@ -33,8 +33,7 @@ int main() {
     }
 
     { // missing letter
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 2 }, 'b', Bound{ 2, 4 },
-                                        '\0', Bound{ 4, 5 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 2 }, 'b', Bound{ 2, 4 }, '\0', Bound{ 4, 5 } );
         auto chr = strchr( &split, 'b' );
         assert( chr->read( 0 ) == 'b' );
         auto c1 = chr->read( 1 );
@@ -45,14 +44,12 @@ int main() {
     }
 
     { // missing letter
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 2 }, 'b', Bound{ 2, 4 },
-                                        '\0', Bound{ 4, 5 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 2 }, 'b', Bound{ 2, 4 }, '\0', Bound{ 4, 5 } );
         assert( strchr( &split, 'c' ) == nullptr );
     }
 
     { // possibly missing letter
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 2 }, 'b', Bound{ 1, 3 },
-                                        '\0', Bound{ 3, 4 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 2 }, 'b', Bound{ 1, 3 }, '\0', Bound{ 3, 4 } );
         auto chr = strchr( &split, 'b' );
 
         assert( chr == nullptr || chr->read( 0 ) == 'b' );

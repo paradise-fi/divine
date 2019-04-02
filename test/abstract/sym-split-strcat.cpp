@@ -12,8 +12,8 @@ using namespace abstract::mstring;
 
 int main() {
     { // simple one letter
-        auto dst = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 5 }, '\0', Bound{ 7, 8 } );
-        auto src = sym::segmentation( Bound{ 0, 1 }, 'b', Bound{ 1, 3 }, '\0', Bound{ 3, 4 } );
+        auto dst = sym::segmentation( 'a', Bound{ 1, 5 }, '\0', Bound{ 7, 8 } );
+        auto src = sym::segmentation( 'b', Bound{ 1, 3 }, '\0', Bound{ 3, 4 } );
 
         strcat( &dst, &src );
         assert( dst.read( 0 ) == 'a' );

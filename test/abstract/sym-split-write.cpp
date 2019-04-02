@@ -12,7 +12,7 @@ using namespace abstract::mstring;
 
 int main() {
     { // simple rewrite begin
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 2, 5 }, '\0', Bound{ 5, 6 } );
+        auto split = sym::segmentation( 'a', Bound{ 2, 5 }, '\0', Bound{ 5, 6 } );
         split.write( 0, 'b' );
         assert( split.read( 0 ) == 'b' );
         assert( split.read( 1 ) == 'a' );
@@ -21,7 +21,7 @@ int main() {
     }
 
     { // simple rewrite middle
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 3, 5 }, '\0', Bound{ 5, 6 } );
+        auto split = sym::segmentation( 'a', Bound{ 3, 5 }, '\0', Bound{ 5, 6 } );
         split.write( 1, 'b' );
         assert( split.read( 0 ) == 'a' );
         assert( split.read( 1 ) == 'b' );
@@ -30,7 +30,7 @@ int main() {
     }
 
     { // simple rewrite end
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 4, 5 }, '\0', Bound{ 5, 6 } );
+        auto split = sym::segmentation( 'a', Bound{ 4, 5 }, '\0', Bound{ 5, 6 } );
         split.write( 3, 'b' );
         assert( split.read( 0 ) == 'a' );
         assert( split.read( 1 ) == 'a' );
@@ -39,14 +39,14 @@ int main() {
     }
 
     { // simple rewrite single character segment
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 2 }, '\0', Bound{ 2, 3 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 2 }, '\0', Bound{ 2, 3 } );
         split.write( 0, 'b' );
         assert( split.read( 0 ) == 'b' );
         assert( split.read( 1 ) == '\0' );
     }
 
     { // simple rewrite same character
-        auto split = sym::segmentation( Bound{ 0, 1 }, 'a', Bound{ 1, 2 }, '\0', Bound{ 2, 3 } );
+        auto split = sym::segmentation( 'a', Bound{ 1, 2 }, '\0', Bound{ 2, 3 } );
         split.write( 0, 'a' );
         assert( split.read( 0 ) == 'a' );
         assert( split.read( 1 ) == '\0' );
