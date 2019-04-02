@@ -237,7 +237,9 @@ namespace abstract::mstring {
             , _offset( sym::constant( 0 ) )
             , _values( std::make_shared< Values >() )
             , _bounds( std::make_shared< Bounds >() )
-        {}
+        {
+            _bounds->push_back( sym::constant( 0 ) );
+        }
 
 		Segmentation( size_t size
                     , TBound offset

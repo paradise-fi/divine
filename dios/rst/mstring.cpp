@@ -15,7 +15,6 @@ extern "C" {
         auto str = static_cast< const char * >( buff );
         auto split = __new< __mstring >( _VM_PT_Heap );
 
-        split->append( Bound::singleton( 0 ) );
         if ( len == 0 )
             return split;
 
