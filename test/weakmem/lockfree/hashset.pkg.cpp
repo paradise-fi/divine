@@ -1,6 +1,6 @@
 /* TAGS: cpp big hashset */
 /* VERIFY_OPTS: -o nofail:malloc */
-/* CC_OPTS: -I$SRC_ROOT/bricks/ */
+/* CC_OPTS: -I$SRC_ROOT/test/weakmem/lockfree/ -I$SRC_ROOT/bricks/ */
 #include <brick-hashset>
 #include <pthread.h>
 #include <cassert>
