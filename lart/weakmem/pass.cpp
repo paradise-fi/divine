@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
-//             (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2015-2019 Vladimír Štill <xstill@fi.muni.cz>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
@@ -153,14 +153,16 @@ struct Substitute {
                 "Substitute loads and stores (and other memory manipulations) with appropriate "
                 "weak memory model versions.",
                 []( PassVector &ps, std::string opt ) {
-                    auto c = opt.find( ':' );
+                    std::stringstream ss( opt );
+                    std::string par, model;
                     int bufferSize = -1;
-                    if ( c != std::string::npos ) {
-                        bufferSize = std::stoi( opt.substr( c + 1 ) );
-                        opt = opt.substr( 0, c );
-                    }
 
-                    ASSERT( opt == "tso" || opt == "x86" );
+                    std::getline( ss, model, ':' );
+                    if ( std::getline( ss, par, ':' ) ) {
+                        if ( !par.empty() )
+                            bufferSize = std::stoi( par );
+                    }
+                    ASSERT( model == "tso" || model == "x86" );
 
                     ps.emplace_back< Substitute >( bufferSize );
                 } );
@@ -232,13 +234,16 @@ struct Substitute {
         auto debug_fence = get( "__lart_weakmem_debug_fence" );
         _mask = get( "__lart_weakmem_mask_enter" );
         _unmask = get( "__lart_weakmem_mask_leave" );
+        auto lart_init = get( "__lart_globals_initialize" );
+        auto weakmem_init = get( "__lart_weakmem_init" );
+        auto state = get( "__lart_weakmem_state" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
         util::Map< llvm::Function *, llvm::Function * > cloneMap;
 
         std::vector< llvm::Function * > inteface = { _store, _load, _fence, _cas, _cleanup, _resize,
-                                                     fsize, debug_fence };
+                                                     fsize, debug_fence, state, weakmem_init };
         if ( flusher )
             inteface.push_back( flusher );
         for ( auto i : inteface ) {
@@ -297,10 +302,33 @@ struct Substitute {
                 transformWeak( f, dl, silentID );
         }
 
-        if ( _bufferSize > 0 ) {
+        if ( _bufferSize >= 0 ) {
             makeReturnConstant( fsize, _bufferSize );
         }
         inlineIntoCallers( fsize );
+        mk_init( lart_init, weakmem_init, state );
+    }
+
+    void mk_init( llvm::Function *lart_init, llvm::Function *weakmem_init, llvm::Function *weakmem_state )
+    {
+        auto &m = *weakmem_state->getParent();
+        auto state_ty = llvm::cast< llvm::PointerType >( weakmem_state->getReturnType() )
+                                                       ->getElementType();
+        auto *state_glob = new llvm::GlobalVariable( m, state_ty, false,
+                                      llvm::GlobalValue::ExternalLinkage,
+                                      llvm::ConstantAggregateZero::get( state_ty ),
+                                      "__lart_weakmem_state_var" );
+
+        weakmem_state->setLinkage( llvm::GlobalValue::ExternalLinkage );
+        auto *wminit_bb = &*weakmem_state->begin();
+        wminit_bb->begin()->eraseFromParent();
+        llvm::IRBuilder<> irb( wminit_bb );
+        irb.CreateRet( state_glob );
+
+        irb.SetInsertPoint( &*lart_init->begin()->getFirstInsertionPt() );
+        irb.CreateCall( weakmem_init, { } );
+
+        inlineIntoCallers( weakmem_state );
     }
 
   private:
