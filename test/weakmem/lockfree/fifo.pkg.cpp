@@ -152,9 +152,21 @@ public:
 
 ///////////////////////////////
 
+#ifndef BLOCK_SIZE
 const int B = 2;
+#else
+const int B = BLOCK_SIZE;
+#endif
+#ifndef MAX_LENGTH
 const int L = 3;
+#else
+const int L = MAX_LENGTH;
+#endif
+#ifndef DISTINCT_ELEMS
 const int N = 2;
+#else
+const int N = DISTINCT_ELEMS;
+#endif
 
 using Q = Fifo< int, B >;
 Q *q = nullptr;
