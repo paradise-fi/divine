@@ -26,6 +26,7 @@ file( GLOB SRC_libpthread libpthread/*.cpp )
 file( GLOB SRC_host host/fault.c host/fflush.c host/vmstubs.c )
 
 set( SYSINC ${CMAKE_CURRENT_BINARY_DIR}/include/sys/ )
+file( MAKE_DIRECTORY ${SYSINC} )
 set( LIBCINC ${CMAKE_CURRENT_SOURCE_DIR}/include/ )
 set( HOSTABI ${SYSINC}hostabi.h )
 set( VMINC ${SYSINC}divm.h ${SYSINC}vmutil.h ${SYSINC}lart.h )
