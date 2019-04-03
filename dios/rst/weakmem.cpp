@@ -9,6 +9,7 @@
 #include <sys/vmutil.h>
 #include <sys/cdefs.h>
 #include <dios/sys/kernel.hpp> // get_debug
+#include <rst/common.h>
 
 #define _WM_INLINE __attribute__((__always_inline__, __flatten__))
 #define _WM_NOINLINE __attribute__((__noinline__))
@@ -81,28 +82,7 @@ using ThreadMap = __dios::ArrayMap< __dios_task, T >;
 template< typename T >
 using Array = __dios::Array< T >;
 
-template< typename It >
-struct Range {
-    using T = typename It::value_type;
-    using iterator = It;
-    using const_iterator = It;
-
-    Range( It begin, It end ) noexcept : _begin( begin ), _end( end ) { }
-    Range( const Range & ) noexcept = default;
-
-    _WM_INLINE
-    iterator begin() const noexcept { return _begin; }
-
-    _WM_INLINE
-    iterator end() const noexcept { return _end; }
-
-  private:
-    It _begin, _end;
-};
-
-template< typename It >
-_WM_INLINE
-static Range< It > range( It begin, It end ) noexcept { return Range< It >( begin, end ); }
+using abstract::range;
 
 template< typename T >
 _WM_INLINE
@@ -173,7 +153,7 @@ struct BufferLine : brick::types::Ord {
     }
 
     enum class Status : int8_t {
-        Normal, Committed, DependentCommitLater
+        Delayed, Committed
     };
 
     char *addr = nullptr;
@@ -181,7 +161,7 @@ struct BufferLine : brick::types::Ord {
 
     uint8_t size = 0;
     MemoryOrder order = MemoryOrder::NotAtomic;
-    Status status = Status::Normal;
+    Status status = Status::Delayed;
 
     _WM_INLINE
     auto as_tuple() const noexcept {
@@ -192,10 +172,10 @@ struct BufferLine : brick::types::Ord {
 
     _WM_INLINE
     void dump() const noexcept {
-        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 0B; CWA SC]";
-        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %dB; %c%c%c%s]",
+        char buffer[] = "[0xdeadbeafdeadbeaf := 0xdeadbeafdeadbeaf; 0B; CWA SC]";
+        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx := 0x%llx; %dB; %c%c%c%s]",
                   uint64_t( addr ), value, size,
-                  status == Status::Committed ? 'C' : (status == Status::DependentCommitLater ? 'D' : ' '),
+                  status == Status::Committed ? 'C' : ' ',
                   subseteq( MemoryOrder::WeakCAS, order ) ? 'W' : ' ',
                   subseteq( MemoryOrder::AtomicOp, order ) ? 'A' : ' ',
                   ordstr( order ) );
@@ -366,15 +346,15 @@ struct Buffers : ThreadMap< Buffer > {
             if ( &e > entry ) {
                 move( e );
                 ++kept;
-                continue;
             }
-            if ( e.matches( addr, size ) ) {
+            else if ( e.matches( addr, size ) ) {
                 e.store();
-                continue;
             }
-            e.status = Status::Committed;
-            ++kept;
-            move( e );
+            else {
+                e.status = Status::Committed;
+                ++kept;
+                move( e );
+            }
         }
         if ( kept == 0 )
             buf.clear();
