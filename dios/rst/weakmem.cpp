@@ -19,7 +19,10 @@ namespace lart::weakmem {
 
 struct CasRes { uint64_t value; bool success; };
 
+struct Buffers;
+
 _WM_INTERFACE int __lart_weakmem_buffer_size() noexcept;
+_WM_INTERFACE Buffers *__lart_weakmem_state() noexcept;
 
 _WM_INLINE
 static char *baseptr( char *ptr ) noexcept {
@@ -469,13 +472,10 @@ struct Buffers : ThreadMap< Buffer > {
     }
 };
 
-// avoid global ctors/dtors for Buffers
-union BFH {
-    BFH() noexcept : raw() { }
-    ~BFH() { }
-    void *raw;
-    Buffers b;
-} storeBuffers;
+_WM_NOINLINE_WEAK extern "C" Buffers *__lart_weakmem_state() noexcept { return nullptr; }
+_WM_INTERFACE void __lart_weakmem_init() noexcept {
+    new ( __lart_weakmem_state() ) Buffers();
+}
 
 /* weak here is to prevent optimizer from eliminating calls to these functions
  * -- they will be replaced by weakmem transformation */
@@ -484,7 +484,7 @@ _WM_NOINLINE_WEAK extern "C" int __lart_weakmem_buffer_size() noexcept { return 
 _WM_NOINLINE_WEAK __attribute__((__annotate__("divine.debugfn")))
 extern "C" void __lart_weakmem_dump() noexcept
 {
-    storeBuffers.b.dump();
+    __lart_weakmem_state()->dump();
 }
 
 _WM_INTERFACE
@@ -497,7 +497,7 @@ void __lart_weakmem_debug_fence() noexcept
     auto *tid = __dios_this_task();
     if ( !tid )
         return;
-    auto *buf = storeBuffers.b.getIfExists( tid );
+    auto *buf = __lart_weakmem_state()->getIfExists( tid );
     if ( !buf )
         return;
     for ( auto &l : *buf )
@@ -524,13 +524,13 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t size,
     __vm_test_crit( addr, size, _VM_MAT_Store, &crit_seen );
 
     auto tid = __dios_this_task();
-    auto &buf = storeBuffers.b.get( tid );
+    auto &buf = __lart_weakmem_state()->get( tid );
     if ( subseteq( MemoryOrder::SeqCst, ord ) || subseteq( MemoryOrder::AtomicOp, ord ) ) {
-        storeBuffers.b.flush( tid, buf );
+        __lart_weakmem_state()->flush( tid, buf );
         line.store();
     }
     else
-        storeBuffers.b.push_tso( tid, buf, std::move( line ) );
+        __lart_weakmem_state()->push_tso( tid, buf, std::move( line ) );
 }
 
 _WM_INTERFACE
@@ -540,12 +540,12 @@ void __lart_weakmem_fence( MemoryOrder ord, MaskFlags mask ) noexcept
         return; // should not be called recursivelly
 
     auto tid = __dios_this_task();
-    auto *buf = storeBuffers.b.getIfExists( tid );
+    auto *buf = __lart_weakmem_state()->getIfExists( tid );
     if ( !buf )
         return;
 
     if ( subseteq( MemoryOrder::SeqCst, ord ) )
-        storeBuffers.b.flush( tid, *buf );
+        __lart_weakmem_state()->flush( tid, *buf );
 }
 
 union I64b {
@@ -612,11 +612,11 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t size, MemoryOrder,
     __vm_test_crit( addr, size, _VM_MAT_Load, &crit_seen );
 
     auto tid = __dios_this_task();
-    Buffer *buf = storeBuffers.b.getIfExists( tid );
+    Buffer *buf = __lart_weakmem_state()->getIfExists( tid );
 
-    if ( storeBuffers.b.size() != 1
-         || storeBuffers.b.begin()->first != tid )
-        storeBuffers.b.tso_load( addr, size, tid );
+    if ( __lart_weakmem_state()->size() != 1
+         || __lart_weakmem_state()->begin()->first != tid )
+        __lart_weakmem_state()->tso_load( addr, size, tid );
 
     return doLoad( buf, addr, size );
 }
@@ -647,7 +647,7 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept
     va_list ptrs;
     va_start( ptrs, cnt );
 
-    Buffer *buf = storeBuffers.b.getIfExists();
+    Buffer *buf = __lart_weakmem_state()->getIfExists();
 
     for ( int i = 0; i < cnt; ++i ) {
         char *ptr = va_arg( ptrs, char * );
@@ -655,7 +655,7 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept
             continue;
 
         const auto id = baseptr( ptr );
-        storeBuffers.b.evict( buf, [id]( BufferLine &l ) noexcept {
+        __lart_weakmem_state()->evict( buf, [id]( BufferLine &l ) noexcept {
                             return baseptr( l.addr ) == id;
                         } );
     }
@@ -671,9 +671,9 @@ void __lart_weakmem_resize( char *ptr, uint32_t newsize ) noexcept {
     if ( orig <= newsize )
         return;
 
-    Buffer *buf = storeBuffers.b.getIfExists();
+    Buffer *buf = __lart_weakmem_state()->getIfExists();
     auto from = baseptr( ptr ) + newsize;
-    storeBuffers.b.evict( buf, [from]( BufferLine &l ) noexcept {
+    __lart_weakmem_state()->evict( buf, [from]( BufferLine &l ) noexcept {
                         return l.addr >= from;
                     } );
 }
