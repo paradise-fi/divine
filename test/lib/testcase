@@ -27,6 +27,8 @@ fi
 
 chmod +x lib/check lib/run lib/sim lib/ordgrep lib/verify
 
+draw() { divine draw --render cat "$@"; }
+
 PATH="$PWD/lib:$TOOLS:$TOOLS/../llvm/bin:$PATH"
 extracheck=:
 export cesmiext=.so
