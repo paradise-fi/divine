@@ -72,11 +72,13 @@ namespace divine::mem
     }
 
     template< typename Next >
-    void Cow< Next >::snap_put( Pool &p, Snapshot s )
+    void Cow< Next >::snap_put( Pool &p, Snapshot s, bool dealloc )
     {
         auto erase = [&]( auto x ) { _ext.objects.erase( x, _ext.hasher ); };
         for ( auto si = this->snap_begin( p, s ); si != this->snap_end( p, s ); ++si )
             _obj_refcnt.put( si->second, erase );
+        if ( dealloc )
+            p.free( s );
     }
 
     template< typename Next >

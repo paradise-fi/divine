@@ -120,7 +120,7 @@ namespace divine::mem
         Internal detach( Loc l );
         Snapshot snapshot( Pool &p ) const;
         SnapItem snap_dedup( SnapItem si ) const;
-        void snap_put( Pool &p, Snapshot s );
+        void snap_put( Pool &p, Snapshot s, bool dealloc = true );
 
         SnapItem *snap_get( SnapItem *si ) const
         {

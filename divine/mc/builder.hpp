@@ -139,7 +139,7 @@ struct Builder
         auto r = _d.states.insert( snap, hasher() );
         if ( r->load() != snap )
         {
-            pool().free( snap );
+            heap().snap_put( pool(), snap );
             context().load( pool(), *r );
             return { *r, false };
         }

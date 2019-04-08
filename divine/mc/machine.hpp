@@ -220,7 +220,7 @@ namespace divine::mc::machine
 
         void compute( TQ &tq, Snapshot origin, Snapshot cont_from = Snapshot() )
         {
-            auto destroy = [&]( auto p ) { heap().snap_put( _snap_pool, p ); };
+            auto destroy = [&]( auto p ) { heap().snap_put( _snap_pool, p, false ); };
 
             auto cleanup = [&]
             {
@@ -322,7 +322,6 @@ namespace divine::mc::machine
                 ASSERT( !_hasher.overwrite );
                 ASSERT( !r.isnew() );
                 context().heap().snap_put( this->_state_pool, snap );
-                this->_state_pool.free( snap );
             }
             return { State( *r ), r.isnew() };
         }
