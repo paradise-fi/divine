@@ -171,22 +171,19 @@ namespace divine::t_mc
             ASSERT_EQ( edgecount, ec );
         }
 
-        TEST( search )
-        {
-            _search< mc::TMachine >( prog_int( 4, "x - 1" ), 5, 4 );
-            _search< mc::GMachine >( prog_int( 4, "x - 1" ), 5, 4 );
-            _search< mc::GMachine >( prog_int( 0, "( x + 1 ) % 5" ), 5, 5 );
-        }
+        using TM = mc::TMachine;
+        using GM = mc::GMachine;
 
-        TEST( branching )
-        {
-            _search< mc::GMachine >( prog_int( 4, "x - __vm_choose( 2 )" ), 5, 9 );
-            _search< mc::GMachine >( prog_int( 2, "x - 1 - __vm_choose( 2 )" ), 3, 3 );
-            _search< mc::TMachine >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 12, 11 );
-            _search< mc::GMachine >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 5, 7 );
-            _search< mc::GMachine >( prog_int( 0, "( x + __vm_choose( 2 ) ) % 5" ), 5, 10 );
-            _search< mc::GMachine >( prog_int( 0, "( x + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 );
-        }
+        TEST( search1 ) { _search< TM >( prog_int( 4, "x - 1" ), 5, 4 ); }
+        TEST( search2 ) { _search< GM >( prog_int( 4, "x - 1" ), 5, 4 ); }
+        TEST( search3 ) { _search< GM >( prog_int( 0, "( x + 1 ) % 5" ), 5, 5 ); }
+
+        TEST( branching1 ){ _search< GM >( prog_int( 4, "x - __vm_choose( 2 )" ), 5, 9 ); }
+        TEST( branching2 ){ _search< GM >( prog_int( 2, "x - 1 - __vm_choose( 2 )" ), 3, 3 ); }
+        TEST( branching3 ){ _search< TM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 12, 11 ); }
+        TEST( branching4 ){ _search< GM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 5, 7 ); }
+        TEST( branching5 ){ _search< GM >( prog_int( 0, "( x + __vm_choose( 2 ) ) % 5" ), 5, 10 ); }
+        TEST( branching6 ){ _search< GM >( prog_int( 0, "( x + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 ); }
     };
 
 }
