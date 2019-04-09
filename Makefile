@@ -29,12 +29,13 @@ CXX_LDIR = $(TOOLDIR)/lib
 CXX_STATIC = $(TOOLDIR)/lib-static
 
 LDFLAGS_ = -L$(LIBUNWIND_LDIR) -Wl,-rpath,$(LIBUNWIND_LDIR) \
-           -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR)
+           -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR) $(LDFLAGS)
 BUILD_RPATH = $(LIBUNWIND_LDIR):$(CXX_LDIR)
 
 CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
             -isystem $(RTSRC)/libunwind/include \
-            -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument
+            -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument \
+	    -I/usr/local/include $(CXXFLAGS)
 
 TOOLCHAIN_ = CMAKE_C_COMPILER=$(CLANG)/bin/clang;CMAKE_CXX_COMPILER=$(CLANG)/bin/clang++;\
 	     CMAKE_CXX_FLAGS=$(CXXFLAGS_)
