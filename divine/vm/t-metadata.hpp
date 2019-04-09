@@ -836,6 +836,30 @@ struct IntervalMetadataMap
         return false;
     }
 
+    void _dump_map( std::string label = "" )
+    {
+        std::cout << label << " { ";
+        for ( const auto &p : _map() )
+            std::cout << p.first << ": " << p.second << ", ";
+        std::cout << "}\n";
+    }
+
+    std::string _serialise()
+    {
+        std::ostringstream out;
+        for ( const auto &p : _map() )
+            out << "[" << p.first.from << "," << p.first.to << ")=" << p.second;
+        return out.str();
+    }
+
+    void check_interval( int32_t peek, int32_t assert_from, int32_t assert_to, uint32_t assert_data )
+    {
+        auto it = map.at( obj, peek );
+        ASSERT( it != nullptr );
+        ASSERT_EQ( it->first.from, assert_from );
+        ASSERT_EQ( it->first.to, assert_to );
+        ASSERT_EQ( it->second, assert_data );
+    }
 
     IntervalMetadataMap() : map( heap._objects )
     {
@@ -1243,6 +1267,228 @@ struct IntervalMetadataMap
         // [-20, 50)
     }
 
+    TEST( copy_one_whole_to_whole )
+    {
+        uint32_t datum = 0xFE01;
+        auto src = map.insert( obj, 10, 15, datum );
+
+        // "tight" source
+        map.copy( map, obj, 10, obj, 100, 5 );
+        check_interval( 102, 100, 105, datum );
+        src->second = ++datum;
+        ASSERT_EQ( _map().size(), 2 );
+
+        // source with "loose" end
+        map.copy( map, obj, 9, obj, 49, 9 );
+        check_interval( 52, 50, 55, datum );
+        ASSERT( map.at( obj, 16 ) == nullptr );
+        ASSERT( map.at( obj, 57 ) == nullptr );
+        ASSERT( map.at( obj, 55 ) == nullptr );
+        src->second = ++datum;
+        ASSERT_EQ( _map().size(), 3 );
+
+        // source with "loose" beginning
+        map.copy( map, obj, 8, obj, 18, 7 );
+        check_interval( 22, 20, 25, datum );
+        ASSERT( map.at( obj, 19 ) == nullptr );
+        src->second = ++datum;
+        ASSERT_EQ( _map().size(), 4 );
+
+        // "tight" destination
+        map.copy( map, obj, 10, obj, 15, 5 );
+        check_interval( 16, 15, 20, datum );
+        src->second = ++datum;
+        ASSERT_EQ( _map().size(), 5 );
+
+        map.copy( map, obj, 15, obj, 0, 5 );
+        check_interval( 2, 0, 5, datum - 1 );
+        src->second = ++datum;
+        ASSERT_EQ( _map().size(), 6 );
+
+        map.copy( map, obj, 10, obj, 5, 5 );
+        check_interval( 7, 5, 10, datum );
+        src->second = ++datum;
+        ASSERT_EQ( _map().size(), 7 );
+    }
+
+    TEST( copy_more_whole_to_whole )
+    {
+        uint32_t datum = 0xFE01;
+        auto src = map.insert( obj, 10, 15, datum );
+
+        map.copy( map, obj, 10, obj, 15, 5 );
+        src->second = ++datum;
+
+        map.copy( map, obj, 10, obj, 0, 10 );
+        src->second = ++datum;
+
+        map.copy( map, obj, 0, obj, 20, 20 );
+        src->second = ++datum;
+
+        ASSERT_EQ( _map().size(), 8 );
+        int i = 0;
+        for ( uint32_t n : { 2, 1, 4, 1, 2, 1, 3, 1 } )
+        {
+            check_interval( i * 5 + 2, i * 5, i * 5 + 5, 0xFE00 + n );
+            ++i;
+        }
+    }
+
+    TEST( chomp_right_by_copy )
+    {
+        uint32_t datum = 0xFE01;
+        auto src = map.insert( obj, 0, 5, datum );
+        map.insert( obj, 10, 30, 0xAAAA );
+
+        // ends aligned
+        map.copy( map, obj, 0, obj, 25, 5 );
+        ASSERT_EQ( _map().size(), 3 );
+        check_interval( 28, 25, 30, datum );
+        check_interval( 24, 10, 25, 0xAAAA );
+        src->second = ++datum;
+
+        // ends unaligned
+        map.copy( map, obj, 0, obj, 28, 5 );
+        ASSERT_EQ( _map().size(), 4 );
+        check_interval( 29, 28, 33, datum );
+        check_interval( 27, 25, 28, datum - 1 );
+        check_interval( 24, 10, 25, 0xAAAA );
+        src->second = ++datum;
+
+        // erase by copy
+        map.copy( map, obj, 50, obj, 20, 20 );
+        ASSERT( map.at( obj, 20 ) == nullptr );
+        ASSERT( map.at( obj, 26 ) == nullptr );
+        ASSERT( map.at( obj, 30 ) == nullptr );
+        ASSERT_EQ( _map().size(), 2 );
+        check_interval( 15, 10, 20, 0xAAAA );
+
+        map.copy( map, obj, -1, obj, 13, 8 );
+        check_interval( 10, 10, 13, 0xAAAA );
+        ASSERT( map.at( obj, 13 ) == nullptr );
+        check_interval( 14, 14, 19, datum );
+        ASSERT( map.at( obj, 19 ) == nullptr );
+        ASSERT( map.at( obj, 20 ) == nullptr );
+        ASSERT_EQ( _map().size(), 3 );
+    }
+
+    TEST( chomp_left_by_copy )
+    {
+        uint32_t datum = 0xFE01;
+        map.insert( obj, 10, 30, 0xAAAA );
+        auto src = map.insert( obj, 0, 5, datum );
+
+        // begins aligned
+        map.copy( map, obj, 0, obj, 10, 5 );
+        ASSERT_EQ( _map().size(), 3 );
+        check_interval( 11, 10, 15, datum );
+        check_interval( 20, 15, 30, 0xAAAA );
+        src->second = ++datum;
+
+        // ends unaligned
+        map.copy( map, obj, 0, obj, 8, 5 );
+        ASSERT_EQ( _map().size(), 4 );
+        check_interval( 9, 8, 13, datum );
+        check_interval( 13, 13, 15, datum - 1 );
+        check_interval( 20, 15, 30, 0xAAAA );
+        src->second = ++datum;
+
+        // erase by copy
+        map.copy( map, obj, 50, obj, 5, 15 );
+        ASSERT( map.at( obj, 5 ) == nullptr );
+        ASSERT( map.at( obj, 9 ) == nullptr );
+        ASSERT( map.at( obj, 13 ) == nullptr );
+        ASSERT( map.at( obj, 19 ) == nullptr );
+        ASSERT_EQ( _map().size(), 2 );
+        check_interval( 20, 20, 30, 0xAAAA );
+
+        map.copy( map, obj, -2, obj, 19, 8 );
+        ASSERT( map.at( obj, 19 ) == nullptr );
+        ASSERT( map.at( obj, 20 ) == nullptr );
+        check_interval( 22, 21, 26, datum );
+        ASSERT( map.at( obj, 26 ) == nullptr );
+        check_interval( 29, 27, 30, 0xAAAA );
+        ASSERT_EQ( _map().size(), 3 );
+    }
+
+    TEST( split_by_copy ) {
+        uint32_t datum = 0xFE01;
+        map.insert( obj, 10, 50, 0xAAAA );
+        auto src = map.insert( obj, 0, 5, datum );
+
+        // tight
+        map.copy( map, obj, 0, obj, 12, 5 );
+        check_interval( 11, 10, 12, 0xAAAA );
+        check_interval( 12, 12, 17, datum );
+        check_interval( 20, 17, 50, 0xAAAA );
+        ASSERT_EQ( _map().size(), 4 );
+        src->second = ++datum;
+
+        // loose
+        map.copy( map, obj, -2, obj, 20, 9 );
+        check_interval( 11, 10, 12, 0xAAAA );
+        check_interval( 12, 12, 17, datum - 1);
+        check_interval( 18, 17, 20, 0xAAAA );
+        ASSERT( map.at( obj, 20 ) == nullptr );
+        ASSERT( map.at( obj, 21 ) == nullptr );
+        check_interval( 22, 22, 27, datum );
+        ASSERT( map.at( obj, 27 ) == nullptr );
+        ASSERT( map.at( obj, 28 ) == nullptr );
+        check_interval( 30, 29, 50, 0xAAAA );
+        ASSERT_EQ( _map().size(), 6 );
+    }
+
+    TEST( copy_partial )
+    {
+        uint32_t datum = 101;
+        auto src = map.insert( obj, 4, 8, datum );
+        ASSERT_EQ( "[4,8)=101", _serialise() );
+
+        // right tight
+        map.copy( map, obj, 6, obj, 12, 2 );
+        ASSERT_EQ( "[4,8)=101[12,14)=101", _serialise() );
+        src->second = ++datum;
+
+        // right loose
+        map.copy( map, obj, 13, obj, 8, 2 );
+        ASSERT_EQ( "[4,8)=102[8,9)=101[12,14)=101", _serialise() );
+
+        // left tight
+        map.copy( map, obj, 4, obj, 2, 2 );
+        ASSERT_EQ( "[2,4)=102[4,8)=102[8,9)=101[12,14)=101", _serialise() );
+        src->second = ++datum;
+
+        // left loose
+        map.copy( map, obj, 1, obj, 10, 2 );
+        ASSERT_EQ( "[2,4)=102[4,8)=103[8,9)=101[11,12)=102[12,14)=101", _serialise() );
+
+        // both
+        map.copy( map, obj, 6, obj, 16, 3 );
+        ASSERT_EQ( "[2,4)=102[4,8)=103[8,9)=101[11,12)=102[12,14)=101[16,18)=103[18,19)=101",
+                   _serialise() );
+        src->second = ++datum;
+
+        // inner
+        map.copy( map, obj, 5, obj, 20, 2 );
+        ASSERT_EQ( "[2,4)=102[4,8)=104[8,9)=101[11,12)=102[12,14)=101[16,18)=103[18,19)=101[20,22)=104",
+                   _serialise() );
+    }
+
+    TEST( copy_partial_with_neighbour )
+    {
+        map.insert( obj, 10, 20, 42 );
+        map.insert( obj, 22, 24, 666 );
+        map.insert( obj, 6, 8, 66 );
+        ASSERT_EQ( "[6,8)=66[10,20)=42[22,24)=666", _serialise() );
+
+        // right
+        map.copy( map, obj, 15, obj, 40, 7 );
+        ASSERT_EQ( "[6,8)=66[10,20)=42[22,24)=666[40,45)=42", _serialise() );
+
+        // left
+        map.copy( map, obj, 8, obj, 50, 7 );
+        ASSERT_EQ( "[6,8)=66[10,20)=42[22,24)=666[40,45)=42[52,57)=42", _serialise() );
+    }
 };
 
 }
