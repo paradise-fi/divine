@@ -351,7 +351,7 @@ public:
         int count = operandCk< IntV >( 0 ).cooked();
         int64_t size = types().allocsize( instruction().subcode );
 
-        int64_t alloc = std::max( 1l, count * size );
+        int64_t alloc = std::max( int64_t( 1 ), count * size );
         auto res = makeobj( alloc, PointerType::Alloca );
         result( res );
     }
