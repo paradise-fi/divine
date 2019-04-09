@@ -118,15 +118,6 @@ function(build_llvm)
   include_directories( lld/include ${CMAKE_CURRENT_BINARY_DIR}/lld/include )
 
   if ( TOOLCHAIN )
-    # defines for the sake of compiler-rt, normaly from llvm-config
-    set( LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm )
-    set( LLVM_TOOLS_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/bin )
-    set( LLVM_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/lib )
-    set( LLVM_MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/llvm )
-    set( TARGET_TRIPLE ${LLVM_DEFAULT_TARGET_TRIPLE} )
-    add_subdirectory( compiler-rt )
-    include_directories( compiler-rt/include ${CMAKE_CURRENT_BINARY_DIR}/compiler-rt/include )
-
     add_subdirectory( dios/libunwind )
     add_subdirectory( dios/libcxxabi )
     set( LIBCXX_INCLUDE_BENCHMARKS OFF CACHE BOOL "" )
