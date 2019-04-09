@@ -168,8 +168,6 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   std::string Triple = getToolChain().getTripleString();
   if (Triple.substr(0, 6) == "x86_64")
     Triple.replace(0, 6, "amd64");
-  CmdArgs.push_back(
-      Args.MakeArgString("-L/usr/lib/gcc-lib/" + Triple + "/4.2.1"));
 
   Args.AddAllArgs(CmdArgs, {options::OPT_L, options::OPT_T_Group,
                             options::OPT_e, options::OPT_s, options::OPT_t,
@@ -189,7 +187,7 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
     // FIXME: For some reason GCC passes -lgcc before adding
     // the default system libraries. Just mimic this for now.
-    CmdArgs.push_back("-lgcc");
+    CmdArgs.push_back("-lcompiler_rt");
 
     if (Args.hasArg(options::OPT_pthread)) {
       if (!Args.hasArg(options::OPT_shared) && Args.hasArg(options::OPT_pg))
@@ -198,14 +196,12 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
         CmdArgs.push_back("-lpthread");
     }
 
-    if (!Args.hasArg(options::OPT_shared)) {
-      if (Args.hasArg(options::OPT_pg))
-        CmdArgs.push_back("-lc_p");
-      else
-        CmdArgs.push_back("-lc");
-    }
+    if (Args.hasArg(options::OPT_pg))
+      CmdArgs.push_back("-lc_p");
+    else
+      CmdArgs.push_back("-lc");
 
-    CmdArgs.push_back("-lgcc");
+    CmdArgs.push_back("-lcompiler_rt");
   }
 
   if (!Args.hasArg(options::OPT_nostdlib, options::OPT_nostartfiles)) {
