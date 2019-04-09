@@ -356,6 +356,8 @@ struct IntervalMetadataMap
     auto insert( Internal obj, scalar_type from, scalar_type to, TT && data )
     {
         auto it = erase_or_create( obj, from, to );
+        if ( from >= to )
+            return it; // == _storage[ obj ].end()
         return _storage[ obj ].insert( it, { { from, to }, std::forward< TT >( data ) } );
     }
 
