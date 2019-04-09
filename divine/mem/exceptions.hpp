@@ -454,7 +454,14 @@ struct IntervalMetadataMap
         {
             if ( auto *p = from_m.at( from_object, from_offset - 1 ) )
             {
+                if ( p->first.to > from_offset + sz )
+                {
+                    // Inner
+                    insert( to_object, to_offset, to_offset + sz, p->second );
+                    return;
+                }
                 insert( to_object, to_offset, p->first.to + delta, p->second );
+                sz -= p->first.to - from_offset;
                 from_offset = p->first.to;
                 to_offset = p->first.to + delta;
             }
