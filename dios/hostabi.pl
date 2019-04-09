@@ -11,6 +11,7 @@ for ( split /\n/, $preproc )
 my $prog =<<'EOF';
 #define _POSIX_C_SOURCE 200809
 #define _DEFAULT_SOURCE 1
+#define _BSD_SOURCE 1
 
 #include <stdio.h>
 #include <assert.h>
