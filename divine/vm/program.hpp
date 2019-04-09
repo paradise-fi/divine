@@ -50,8 +50,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <map>
 #include <unordered_map>
 
-#undef alloca
-
 namespace divine::vm
 {
 
