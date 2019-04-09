@@ -202,12 +202,24 @@ struct SnapshottedMap
         {
             _l._maps[ to_object ][ x.first + delta ] = x.second;
         };
+        auto for_each_endo = []( auto first, auto last, auto f )
+        {
+            while ( first != last )
+                f( *first++ );
+        };
         auto it = from_m._l._maps.find( from_object );
         if ( it != from_m._l._maps.end() )
         {
             auto lb = it->second.lower_bound( from_offset );
             auto ub = it->second.lower_bound( from_offset + sz );
-            std::for_each( lb, ub, translate_and_insert );
+            bool reverse = false;
+            if constexpr ( std::is_same_v< OM, SnapshottedMap > )
+                reverse = from_object == to_object && delta > 0;
+            if ( reverse )
+                for_each_endo( std::reverse_iterator( ub ), std::reverse_iterator( lb ),
+                               translate_and_insert );
+            else
+                std::for_each( lb, ub, translate_and_insert );
         }
         else
         {
@@ -448,7 +460,7 @@ struct IntervalMetadataMap
             }
         }
         // Right partial
-        if ( auto *p = from_m.at( from_object, from_offset + sz - 1 ) )
+        if ( auto *p = from_m.at( from_object, from_offset + sz ) )
         {
             insert( to_object, p->first.from + delta, to_offset + sz, p->second );
             sz = p->first.from - from_offset;
