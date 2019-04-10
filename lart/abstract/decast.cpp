@@ -54,7 +54,10 @@ Function * strip_int_to_ptr( IntToPtrInst * itp ) {
 }
 
 template< typename Replacer >
-void replace_calls( Function * original, Function * nouveau, Replacer replacer ) {
+auto replace_calls( Function * original, Function * nouveau, Replacer replacer )
+    -> std::set< llvm::Instruction * >
+{
+    std::set< llvm::Instruction * > remove;
     for ( auto user : original->users() ) {
         if ( auto call = dyn_cast< CallInst >( user ) ) {
             IRBuilder<> irb( call );
@@ -66,16 +69,18 @@ void replace_calls( Function * original, Function * nouveau, Replacer replacer )
             replacer( call, replace );
 
             for ( auto calluser : call->users() ) {
-                if( auto inst = dyn_cast< Instruction >( calluser ) )
-                    inst->eraseFromParent();
+                if ( auto inst = dyn_cast< Instruction >( calluser ) )
+                    remove.insert( inst );
             }
         }
     }
 
     for ( auto user : original->users() ) {
         if( auto inst = dyn_cast< Instruction >( user ) )
-            inst->eraseFromParent();
+            remove.insert( inst );
     }
+
+    return remove;
 }
 
 void ptr_to_int_replacer( CallInst * call, Value * replace ) {
@@ -124,11 +129,13 @@ void Decast::run( Module &m ) {
         .freeze();
 
     Functions remove;
+    std::set< llvm::Instruction * > replaced;
 
-    auto replace = [&remove] ( auto cast, auto replacer ) {
+    auto replace = [&] ( auto cast, auto replacer ) {
         auto fn = cast->getFunction();
         auto stripped = strip_int_to_ptr( cast );
-        replace_calls( fn, stripped, replacer );
+        auto old = replace_calls( fn, stripped, replacer );
+        replaced.insert( old.begin(), old.end() );
         remove.push_back( fn );
     };
 
@@ -151,6 +158,11 @@ void Decast::run( Module &m ) {
                 replace( cast, icmp_replacer );
             }
         }
+    }
+
+    for ( auto val : replaced ) {
+        val->replaceAllUsesWith( llvm::UndefValue::get( val->getType() ) );
+        val->eraseFromParent();
     }
 
     for ( auto fn : remove ) {
