@@ -30,7 +30,7 @@ extern "C" {
         split->append( prev );
         split->append( Bound::singleton( len ) );
 
-        return split;
+        return abstract::taint< __mstring * >( split );
     }
 
     _MSTRING char * __mstring_val( char * buff, unsigned len ) _LART_IGNORE_ARG {
@@ -72,14 +72,16 @@ extern "C" {
 
     __mstring * __mstring_gep( __mstring * addr, uint64_t idx )
     {
-        return __new< __mstring >( _VM_PT_Heap,
-            addr->_max_size, addr->_offset + sym::constant( idx ), addr->_values, addr->_bounds );
+        return abstract::taint< __mstring * >(
+            __new< __mstring >( _VM_PT_Heap,
+                addr->_max_size, addr->_offset + sym::constant( idx ), addr->_values, addr->_bounds )
+        );
     }
 
     /* String manipulation */
     __mstring * __mstring_strcpy( __mstring * dst, const __mstring * src )
     {
-        return mstring::strcpy( dst, src );
+        return abstract::taint< __mstring * >( mstring::strcpy( dst, src ) );
     }
 
     __mstring * __mstring_strncpy( __mstring * /* dst */, const __mstring * /* src */, size_t  /* count */ )
@@ -89,7 +91,7 @@ extern "C" {
 
     __mstring * __mstring_strcat( __mstring * dst, const __mstring * src )
     {
-        return mstring::strcat( dst, src );
+        return abstract::taint< __mstring * >( mstring::strcat( dst, src ) );
     }
 
     __mstring * __mstring_strncat( __mstring * /* dst */, const __mstring * /* src */, size_t  /* count */ )
@@ -122,7 +124,7 @@ extern "C" {
 
     __mstring * __mstring_strchr( const __mstring * str, int ch )
     {
-        return mstring::strchr( str, ch );
+        return abstract::taint< __mstring * >( mstring::strchr( str, ch ) );
     }
 
     __mstring * __mstring_strrchr( const __mstring * /* str */, int /* ch */ )
@@ -181,12 +183,12 @@ extern "C" {
 
     __mstring * __mstring_realloc( __mstring * str, size_t size )
     {
-        return mstring::realloc( str, size );
+        return abstract::taint< __mstring * >( mstring::realloc( str, size ) );
     }
 
     __mstring * __mstring_memcpy( __mstring * dst, __mstring * src, size_t len )
     {
-        return mstring::memcpy( dst, src, len );
+        return abstract::taint< __mstring * >( mstring::memcpy( dst, src, len ) );
     }
 
     __mstring * __mstring_memmove( __mstring * /*dst*/, __mstring * /*src*/, size_t /*len*/ )
