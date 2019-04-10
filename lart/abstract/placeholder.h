@@ -35,7 +35,8 @@ namespace lart::abstract {
             Call,
             Memcpy,
             Memmove,
-            Memset
+            Memset,
+            Union
         };
 
         static const Bimap< Type, std::string > TypeTable;

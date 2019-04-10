@@ -157,7 +157,7 @@ namespace lart::abstract
                 return { inst()->getOperand( 0 ) };
             }
 
-            if constexpr ( Taint::toBool( T ) || Taint::stash( T ) ) {
+            if constexpr ( Taint::toBool( T ) || Taint::stash( T ) || T == Taint::Type::Union ) {
                 auto op = inst()->getOperand( 0 );
                 return { op, dual( op ) };
             }
@@ -197,6 +197,10 @@ namespace lart::abstract
 
         llvm::Value * default_value() const
         {
+            if constexpr ( T == Taint::Type::Union ) {
+                return inst()->getOperand( 0 );
+            }
+
             if constexpr ( Taint::toBool( T ) ) {
                 return dual( inst()->getOperand( 0 ) );
             }
@@ -282,6 +286,10 @@ namespace lart::abstract
 
         std::string name( llvm::Value * val ) const
         {
+            if ( T == Taint::Type::Union ) {
+                return domain().name() + ".union." + llvm_name( val->getType() );
+            }
+
             if ( auto i = llvm::dyn_cast< llvm::Instruction >( val ) ) {
                 if ( Placeholder::is( i ) )
                     return name( i->getOperand( 0 ) );
@@ -346,6 +354,8 @@ namespace lart::abstract
                 return TaintBuilder< Type::Memmove >( ph ).construct();
             case Type::Memset:
                 return TaintBuilder< Type::Memset >( ph ).construct();
+            case Type::Union:
+                return TaintBuilder< Type::Union >( ph ).construct();
             default:
                 UNREACHABLE( "Unsupported taint type" );
         }

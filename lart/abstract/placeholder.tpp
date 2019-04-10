@@ -54,7 +54,7 @@ namespace lart::abstract
             ph.inst->moveAfter( inst );
         }
 
-        if constexpr ( T != Type::ToBool ) {
+        if constexpr ( T != Type::ToBool && T != Type::Union ) {
             meta::make_duals( inst, ph.inst );
         }
 
@@ -81,6 +81,8 @@ namespace lart::abstract
             return llvm::Type::getInt1Ty( m->getContext() );
         } else {
             if ( is_base_type_in_domain( m, val, dom ) ) { // TODO make domain + op specific
+                if constexpr ( T == Type::Union )
+                    return val->getType();
                 if constexpr ( abstract_level( L ) ) {
                     return abstract_type( val->getType(), dom );
                 }
@@ -134,7 +136,7 @@ namespace lart::abstract
         if constexpr ( is< Type::Store >( T ) || is< Type::Freeze >( T ) ) {
             auto s = llvm::cast< llvm::StoreInst >( val );
             return suffix + "." + llvm_name( s->getValueOperand()->getType() );
-        } else if constexpr( is_mem_intrinsic( T ) ) {
+        } else if constexpr ( is_mem_intrinsic( T ) ) {
             auto intr = llvm::cast< llvm::MemIntrinsic >( val );
             auto dst = intr->getRawDest()->getType();
             return suffix + "." + llvm_name( dst->getPointerElementType() );
@@ -173,7 +175,7 @@ namespace lart::abstract
     template< Placeholder::Type T, typename Map >
     auto operand( llvm::Instruction * inst, const Map & map ) -> llvm::Value *
     {
-        if constexpr ( T == Placeholder::Type::Stash )
+        if constexpr ( T == Placeholder::Type::Stash || T == Placeholder::Type::Union )
             return inst->getOperand( 0 );
 
         if ( meta::has_dual( inst ) )
@@ -196,8 +198,12 @@ namespace lart::abstract
         using Builder = Construct< L, T >;
         auto conc = Builder().placeholder( op, irb );
 
-        if constexpr ( !is_one_of< Type::Assume, Type::ToBool, Type::Stash >( T ) ) {
+        if constexpr ( !is_one_of< Type::Assume, Type::ToBool, Type::Stash, Type::Union >( T ) ) {
             meta::make_duals( op, conc.inst );
+        }
+
+        if constexpr ( T == Placeholder::Type::Union ) {
+            ph.inst->replaceAllUsesWith( conc.inst );
         }
 
         if constexpr ( to_concrete( T ) ) {
@@ -345,6 +351,8 @@ namespace lart::abstract
                 return concretize< Type::Memmove >( ph );
             case Type::Memset:
                 return concretize< Type::Memset >( ph );
+            case Type::Union:
+                return concretize< Type::Union >( ph );
         }
 
         UNREACHABLE( "Unsupported placeholder type" );

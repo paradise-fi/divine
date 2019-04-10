@@ -77,6 +77,16 @@ namespace lart::abstract
             auto entry =  basic_block( function(), "entry" );
             llvm::IRBuilder<> irb( entry );
 
+            if constexpr ( T == Taint::Type::Union ) {
+                auto paired = TaintAgumment{ function()->arg_begin() };
+                auto val = paired.abstract.value;
+
+                ASSERT( val->getType()->isPointerTy() );
+                auto cast = irb.CreateBitCast( val, function()->getReturnType() );
+                irb.CreateRet( cast );
+                return;
+            }
+
             auto meta = DomainMetadata::get( module(), domain() );
             std::vector< llvm::Value * > vals = {};
             auto operation = get_operation();
@@ -414,6 +424,8 @@ namespace lart::abstract
                 Lifter< Type::Memmove >( taint ).construct(); break;
             case Type::Memset:
                 Lifter< Type::Memset >( taint ).construct(); break;
+            case Type::Union:
+                Lifter< Type::Union >( taint ).construct(); break;
         }
     }
 

@@ -188,11 +188,7 @@ namespace lart::abstract
 
         for ( const auto & ph : placeholders( m, filter ) ) {
             auto conc = builder.concretize( ph );
-            if ( ph.type == Placeholder::Type::Call ) {
-                replace_uses( conc );
-            }
-
-            if ( ph.type == Placeholder::Type::Load ) {
+            if ( is_one_of< Placeholder::Type::Call, Placeholder::Type::Load >( ph.type ) ) {
                 replace_uses( conc );
             }
         }

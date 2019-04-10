@@ -24,6 +24,7 @@ namespace lart::abstract
         ,{ Placeholder::Type::Memcpy , "memcpy"  }
         ,{ Placeholder::Type::Memmove, "memmove" }
         ,{ Placeholder::Type::Memset , "memset"  }
+        ,{ Placeholder::Type::Union , "union"  }
     };
 
     const Bimap< Placeholder::Level, std::string > Placeholder::LevelTable = {
