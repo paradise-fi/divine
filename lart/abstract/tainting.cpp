@@ -91,7 +91,7 @@ namespace lart::abstract
 
                 if ( !idx->getType()->isIntegerTy( 64 ) ) {
                     auto irb = llvm::IRBuilder<>( gep );
-                    idx = irb.CreateZExt( idx, llvm::Type::getInt64Ty( gep->getContext() ) );
+                    idx = irb.CreateSExt( idx, llvm::Type::getInt64Ty( gep->getContext() ) );
                 }
 
                 /* FIXME get rid of cast */
