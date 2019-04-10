@@ -205,7 +205,7 @@ using lart::util::get_module;
 
                 return false;
             case DomainKind::content:
-                return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst >( inst );
+                return util::is_one_of< LoadInst, StoreInst, GetElementPtrInst, PHINode >( inst );
             case DomainKind::pointer:
             default:
                 UNREACHABLE( "Unsupported domain transformation." );
