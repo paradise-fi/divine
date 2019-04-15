@@ -275,23 +275,23 @@ void CLI::trace( Trace tr, bool boot, std::function< void() > end )
 
     auto last = get( "#last", true ).snapshot();
     out() << "traced states:";
-    bool stop = false;
+    bool stop = false, loop = false;
     step._callback = [&]()
     {
         if ( tr.steps.empty() )
             stop = true;
         return !stop;
     };
-    step._stop_on_error = false;
+    step._stop_on_error = step._stop_on_accept = false;
     step._yield_state =
         [&]( auto snap )
         {
             auto next = newstate( snap, false, true );
             if ( visited.count( next ) )
             {
-                out() << " [loop closed]" << std::flush;
-                stop = true;
-                return next;
+                if ( !loop )
+                    out() << " [loop closed] " << std::flush;
+                loop = true;
             }
             visited.insert( next );
             _ctx.instruction_count( 0 );
@@ -307,7 +307,7 @@ void CLI::trace( Trace tr, bool boot, std::function< void() > end )
         out() << "WARNING: Program terminated unexpectedly." << std::endl;
 
     if ( !_ctx._trace.empty() )
-        out() << "trace:" << std::endl;;
+        out() << "trace:" << std::endl;
     for ( auto t : _ctx._trace )
         out() << "T: " << t << std::endl;
     _ctx._trace.clear();
