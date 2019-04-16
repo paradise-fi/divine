@@ -18,15 +18,15 @@ run()
 
 getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
 
-std=
-echo "$1" | grep -q '.cpp$' && std="-std=c++14"
-
 opts=$(eval echo $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
 ccopt=$(eval echo $(getopt CC_OPTS $1))
 extrasrc=$(eval echo $(getopt EXTRA_SRCS $1))
 gtest=
 skipcc=$(getopt SKIP_CC $1)
+
+std=
+echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++17"
 
 if test -z "$EXPORT"; then
     resources="--max-memory 4GiB --threads 1"
