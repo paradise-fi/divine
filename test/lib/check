@@ -181,7 +181,7 @@ verify() {
         spec=$(fgrep '/* ERRSPEC:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
         if test -n "$EXPORT"; then exit 1; fi
         echo spec: $spec
-        if ! grep -q "^  [ -] [^ .][a-z]*:.*$spec" verify.out; then
+        if ! perl $TESTS/lib/check-errspec "$spec" verify.out; then
             echo "# expected error to be found in $spec, but it was not"
             exit 1
         fi

@@ -38,6 +38,24 @@ extra source files. The easiest way to do that is to include `skip` as a tag
 in those files. Files tagged `skip` are never considered for execution as
 stand-alone testcases.
 
+It is also possible to specify errors which cannot be specified on the line of
+error in the test header.
+
+    /* ERRSPEC: abort */
+    /* ERRSPEC: active stack: abort */
+    /* ERRSPEC: error trace: loop; stack: pthread_mutex_lock */
+
+The first example specifies that on some of the stacks running at the moment of
+error there should be abort called. The second is basically the some, adding
+the condition that abort must be called by the thread (stack) which caused the
+error. Finally, the last example ensures that the program must have printed
+"loop" into the trace and on some stack there must be call to
+pthread_mutex_lock. In general ERRSPEC specifications are of form [key:]match,
+where key is optional and if not provided "stack" is used as the key. The key
+part of spec is used to find the corresponding part of error report and in
+which to search for the match. Multiple specs can be separated by ';', in this
+case, all of them must be matched.
+
 Finally, one special-purpose tag is recognized:
 
     /* SKIP_CC: 1 */

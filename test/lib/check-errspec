@@ -1,0 +1,36 @@
+#!/usr/bin/env perl
+
+use warnings;
+use strict;
+
+my $spec = shift @ARGV;
+my $file = shift @ARGV;
+
+for my $s ( split /;\s*/, $spec ) {
+    my $k = "stack";
+    my $m;
+    if ( $s =~ /^([^:]*):\s*(.*)$/ ) {
+        $k = $1;
+        $m = $2;
+    } else {
+        $m = $s;
+    }
+    if ( $k =~ /stack/ && $m !~ /:/ ) {
+        $m = "^  [ -] [^ .][a-z]*:.*$m";
+    }
+    open( my $h, "<", $file );
+    my $match = 0;
+    my $found = 0;
+    while ( <$h> ) {
+        if ( /^([^ \t].*):\s*\|?\s*$/ ) {
+            $match = ($1 =~ /$k/);
+        } elsif ( $match ) {
+            $found = 1 if /$m/;
+        }
+    }
+    if ( not $found ) {
+        print "specification $k: $m not matched\n";
+        exit 1;
+    }
+    close $h;
+}
