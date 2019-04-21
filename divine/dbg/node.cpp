@@ -749,18 +749,15 @@ void Node< Prog, Heap >::framevars( YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
-void Node< Prog, Heap >::globalvars( YieldDN /*yield*/ )
+void Node< Prog, Heap >::globalvars( YieldDN yield )
 {
-    NOT_IMPLEMENTED();
-#if 0 /* needs rewrite for 4.0 */
     DNEval< Heap > eval( _ctx );
-    llvm::DebugInfoFinder finder;
-    finder.processModule( *_ctx.program().module );
     std::map< std::string, int > disamb;
 
-    for ( auto GV : finder.global_variables() )
+    for ( auto GVE : _ctx.debug().finder().global_variables() )
     {
-        auto var = GV->getVariable();
+        auto GV = GVE->getVariable();
+        auto var = _ctx.debug().global( GV->getName() );
         if ( !var || !llvm::isa< llvm::GlobalVariable >( var ) )
             continue;
         auto ptr = _ctx.program().addr( var );
@@ -776,6 +773,7 @@ void Node< Prog, Heap >::globalvars( YieldDN /*yield*/ )
         Node dn( _ctx, _snapshot );
         dn.address( DNKind::Object, ptr );
         dn.di_var( GV );
+        dn.di_type( GV->getType().resolve() );
         dn.type( var->getType()->getPointerElementType() );
         std::string name = GV->getName();
         if ( llvm::isa< llvm::DINamespace >( GV->getScope() ) )
@@ -786,7 +784,6 @@ void Node< Prog, Heap >::globalvars( YieldDN /*yield*/ )
             disamb[ name ] = 1;
         yield( name, dn );
     }
-#endif
 }
 
 static std::string rightpad( std::string s, int i )
