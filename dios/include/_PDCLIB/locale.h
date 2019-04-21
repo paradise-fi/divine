@@ -20,18 +20,18 @@
 #if !defined(__cplusplus)
 #if !defined(_PDCLIB_LOCALE_METHOD)
     /* If undefined, no POSIX per thread locales */
-    #define _PDCLIB_threadlocale() (&_PDCLIB_global_locale)
+    #define _PDCLIB_threadlocale() _PDCLIB_global_locale
 #elif _PDCLIB_LOCALE_METHOD == _PDCLIB_LOCALE_METHOD_TSS
     extern tss_t _PDCLIB_locale_tss;
     static inline locale_t _PDCLIB_threadlocale( void )
     {
         _PDCLIB_locale_t l;
         if (_PDCLIB_locale_tss == NULL)
-            l = &_PDCLIB_global_locale;
+            l = _PDCLIB_global_locale;
         else
             l = tss_get(_PDCLIB_locale_tss);
         if(l == NULL)
-            l = &_PDCLIB_global_locale;
+            l = _PDCLIB_global_locale;
         return l;
     }
 
@@ -44,12 +44,12 @@
     }
 #elif _PDCLIB_LOCALE_METHOD == _PDCLIB_LOCALE_METHOD_THREAD_LOCAL
     extern thread_local locale_t _PDCLIB_locale_tls;
-    #define _PDCLIB_threadlocale() ( _PDCLIB_locale_tls || &_PDCLIB_global_locale )
+    #define _PDCLIB_threadlocale() ( _PDCLIB_locale_tls || _PDCLIB_global_locale )
     static inline locale_t _PDCLIB_threadlocale( void )
     {
         locale_t l = _PDCLIB_locale_tls;
         if(l == NULL)
-            l = &_PDCLIB_global_locale;
+            l = _PDCLIB_global_locale;
         return l;
     }
 
@@ -112,8 +112,8 @@ struct _PDCLIB_locale {
     const char * const           _ErrnoStr[_PDCLIB_ERRNO_MAX];
 };
 
-extern const _PDCLIB_wcinfo_t _PDCLIB_wcinfo[];
-extern const size_t           _PDCLIB_wcinfo_size;
+extern const _PDCLIB_wcinfo_t * const _PDCLIB_wcinfo;
+extern const size_t                   _PDCLIB_wcinfo_size;
 
 static inline int _PDCLIB_wcinfo_cmp( const void * _key, const void * _obj )
 {

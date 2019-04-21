@@ -112,8 +112,8 @@ struct lconv * localeconv( void ) _PDCLIB_nothrow;
 typedef _PDCLIB_locale_t locale_t;
 
 /* Global locale */
-extern const struct _PDCLIB_locale _PDCLIB_global_locale;
-#define LC_GLOBAL_LOCALE (&_PDCLIB_global_locale)
+extern const struct _PDCLIB_locale * const _PDCLIB_global_locale;
+#define LC_GLOBAL_LOCALE _PDCLIB_global_locale
 
 #ifdef _PDCLIB_LOCALE_METHOD
 

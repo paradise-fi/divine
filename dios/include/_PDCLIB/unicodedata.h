@@ -13,7 +13,7 @@
  #ifndef REGTEST
  #include <_PDCLIB/locale.h>
 
-const _PDCLIB_wcinfo_t _PDCLIB_wcinfo[] = {
+static const _PDCLIB_wcinfo_t _PDCLIB_wcinfo_data[] = {
 //   { value, 	length, 	flags,	lower,	upper	}, // name
  // 0 <control>
 // 1 <control>
@@ -29876,6 +29876,6 @@ const _PDCLIB_wcinfo_t _PDCLIB_wcinfo[] = {
     { 0x10FFFD, 	0x1, 	0x0, 	0, 	0 },
 };
 
-
+const _PDCLIB_wcinfo_t * const _PDCLIB_wcinfo = _PDCLIB_wcinfo_data;
 const size_t _PDCLIB_wcinfo_size = sizeof(_PDCLIB_wcinfo) / sizeof(_PDCLIB_wcinfo[0]);
 #endif

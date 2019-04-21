@@ -8,10 +8,10 @@
 #include "_PDCLIB/int.h"
 #endif
 
-const char _PDCLIB_digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+const char * const _PDCLIB_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 /* For _PDCLIB/print.c only; obsolete with ctype.h */
-const char _PDCLIB_Xdigits[] = "0123456789ABCDEF";
+const char * const _PDCLIB_Xdigits = "0123456789ABCDEF";
 
 #ifdef TEST
 #include "_PDCLIB_test.h"

@@ -272,7 +272,7 @@ static const _PDCLIB_ctype_t global_ctype[] =
 };
 
 extern const struct _PDCLIB_charcodec_t _PDCLIB_ascii_codec;
-const struct _PDCLIB_locale _PDCLIB_global_locale =
+static const struct _PDCLIB_locale _PDCLIB_global_locale_data =
 {
     ._Codec = &_PDCLIB_ascii_codec,
     ._Conv  =
@@ -442,12 +442,14 @@ const struct _PDCLIB_locale _PDCLIB_global_locale =
     },
 };
 
+const struct _PDCLIB_locale * const _PDCLIB_global_locale = &_PDCLIB_global_locale_data;
+
 tss_t _PDCLIB_locale_tss;
 
 locale_t newlocale( int mask, const char *lc, locale_t old )
 {
     if ( strcmp( lc, "C" ) == 0 )
-        return ( locale_t ) &_PDCLIB_global_locale;
+        return ( locale_t ) _PDCLIB_global_locale;
 
     __dios_fault( _VM_F_NotImplemented, "newlocale" );
     return 0;

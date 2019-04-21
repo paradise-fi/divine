@@ -302,8 +302,8 @@ const char * _PDCLIB_strtox_prelim( const char * p, char * sign, int * base );
 _PDCLIB_uintmax_t _PDCLIB_strtox_main( const char ** p, unsigned int base, _PDCLIB_uintmax_t error, _PDCLIB_uintmax_t limval, int limdigit, char * sign );
 
 /* Digits arrays used by various integer conversion functions */
-extern const char _PDCLIB_digits[];
-extern const char _PDCLIB_Xdigits[];
+extern const char * const _PDCLIB_digits;
+extern const char * const _PDCLIB_Xdigits;
 
 /* -------------------------------------------------------------------------- */
 /* Sanity checks                                                              */
