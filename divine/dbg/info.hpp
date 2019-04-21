@@ -127,16 +127,19 @@ struct Info
     };
 
     llvm::DataLayout &layout() { return _layout; }
+    llvm::DebugInfoFinder &finder() { return _finder; }
 
     llvm::DataLayout _layout;
     vm::Program &_program;
     llvm::Module &_module;
+    llvm::DebugInfoFinder _finder;
     std::map< int, llvm::Function * > _funmap;
     std::map< llvm::DIType *, std::string > _typenamemap;
     std::map< std::string, std::string, StringLenCmp > _prettyNames;
 
     Info( vm::Program &p, llvm::Module &m ) : _layout( p.TD ), _program( p ), _module( m )
     {
+        _finder.processModule( m );
         for ( auto p : _program._addr._code )
             _funmap[ p.second.function() ] = p.first->getParent();
     }
