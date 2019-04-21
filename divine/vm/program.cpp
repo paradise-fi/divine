@@ -22,6 +22,7 @@
 #include <divine/vm/xg-code.hpp>
 #include <divine/vm/memory.tpp>
 #include <lart/divine/cppeh.h>
+#include <brick-trace>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
@@ -194,6 +195,11 @@ out:
     c[ result.offset ].push_back( val );
 }
 
+static bool is_constant( llvm::GlobalVariable *gv )
+{
+    return gv->isConstant() || ( gv->hasSection() && gv->getSection() == "llvm.metadata" );
+}
+
 Program::Slot Program::insert( int function, llvm::Value *val, bool )
 {
     Slot::Location sl;
@@ -244,9 +250,9 @@ Program::Slot Program::insert( int function, llvm::Value *val, bool )
 
         slot = allocateSlot( slot_i, function, nullptr );
         insert( 0, G->getInitializer() );
-        Slot slot_val = initSlot( G->getInitializer(), G->isConstant() ? Slot::Const : Slot::Global );
+        Slot slot_val = initSlot( G->getInitializer(), is_constant( G ) ? Slot::Const : Slot::Global );
 
-        if ( G->isConstant() )
+        if ( is_constant( G ) )
         {
             int idx = _addr.addr( G ).object();
             makeFit( _globals, idx );
@@ -460,7 +466,7 @@ void Program::computeStatic( llvm::Module *module )
 
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
     {
-        if ( !var->getInitializer() || var->isConstant() )
+        if ( !var->getInitializer() || is_constant( &*var ) )
             continue;
         ASSERT( globalmap.find( &*var ) != globalmap.end() );
         ASSERT( valuemap.find( var->getInitializer() ) != valuemap.end() );
@@ -628,6 +634,7 @@ lx::Slot Program::allocateSlot( Slot slot, int function, llvm::Value *val )
             }
             return slot;
         case Slot::Global:
+            TRACE( "allocate global slot at", _globals_size, "size", slot.size(), val );
             slot.offset = _globals_size;
             _globals_size = brick::mem::align( _globals_size + slot.size(), 4 );
             ASSERT( val && _addr.has_slot( val ) );
