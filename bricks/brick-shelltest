@@ -1104,6 +1104,17 @@ struct Main
         cases.push_back( tc );
     }
 
+    void setup( std::string dir, std::string name, std::string variant )
+    {
+        for ( auto &flavour : options.flavours )
+        {
+            if ( skip( flavour.name, options.flavourFilter, false ) )
+                continue;
+
+            setup( flavour, dir, name, variant );
+        }
+    }
+
     void setup()
     {
         Listing l = listdir( options.testdir, true );
@@ -1112,38 +1123,32 @@ struct Main
         char cwd[ PATH_MAX ];
         ::getcwd( cwd, PATH_MAX );
 
-        for ( auto &flavour : options.flavours )
+        for ( Listing::iterator i = l.begin(); i != l.end(); ++i )
         {
-            if ( skip( flavour.name, options.flavourFilter, false ) )
-                continue;
+            std::string expand;
 
-            for ( Listing::iterator i = l.begin(); i != l.end(); ++i )
+            for ( auto exp : options.expand )
+                if ( check_interpreter( exp, *i ) )
+                    expand = exp.second;
+
+            if ( expand.empty() )
+                setup( options.testdir, *i, "" );
+            else
             {
-                std::string expand;
-
-                for ( auto exp : options.expand )
-                    if ( check_interpreter( exp, *i ) )
-                        expand = exp.second;
-
-                if ( expand.empty() )
-                    setup( flavour, options.testdir, *i, "" );
-                else
-                {
-                    ::mkdir( "_expand", 0700 );
-                    std::string dir = "_expand/" + *i;
-                    std::string base = cwd;
-                    base += "/_expand/";
-                    std::string cmd = options.testdir + "/" + expand + " " + options.testdir + "/" + *i;
-                    try { fs::rmtree( dir ); } catch (...) {};
-                    fs::mkpath( dir.c_str() );
-                    ::chdir( dir.c_str() ); /* eww */
-                    ::system( cmd.c_str() );
-                    ::chdir( cwd );
-                    Listing l = listdir( dir, true );
-                    for ( auto file : l )
-                        setup( flavour, base, *i, file );
-                }
-
+                ::mkdir( "_expand", 0700 );
+                std::string dir = "_expand/" + *i;
+                std::string base = cwd;
+                base += "/_expand/";
+                std::string cmd = options.testdir + "/" + expand + " " + options.testdir + "/" + *i;
+                try { fs::rmtree( dir ); } catch (...) {};
+                fs::mkpath( dir.c_str() );
+                ::chdir( dir.c_str() ); /* eww */
+                std::cerr << "+ " << cmd << std::endl;
+                ::system( cmd.c_str() );
+                ::chdir( cwd );
+                Listing l = listdir( dir, true );
+                for ( auto file : l )
+                    setup( base, *i, file );
             }
         }
 
