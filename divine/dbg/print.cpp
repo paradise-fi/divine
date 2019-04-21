@@ -141,7 +141,7 @@ std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
 {
     std::stringstream out;
 
-    auto bytes = heap.unsafe_bytes( hloc, sz );
+    auto bytes = heap.unsafe_bytes( hloc, 0, sz );
     /*
     auto types = heap.type( hloc, hloc.offset(), sz );
     auto defined = heap.defined( hloc, hloc.offset(), sz );
@@ -151,7 +151,10 @@ std::string raw( Heap &heap, vm::HeapPointer hloc, int sz )
     {
         int col = 0;
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+        {
+            ASSERT_LEQ( i, bytes.size() );
             print::hexbyte( out, col, i, bytes[ i ] );
+        }
         /*
         print::pad( out, col, 30 ); out << "| ";
         for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
