@@ -37,6 +37,7 @@ std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ) > dbg_eval( dbg );
     dbg_eval.run();
+    dbg.snapshot();
 
     struct ext_data { int seq; int distance; };
     brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext_pool( bld.pool() );
