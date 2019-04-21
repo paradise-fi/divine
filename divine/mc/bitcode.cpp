@@ -209,7 +209,7 @@ void BitCode::do_rr()
     _program.reset( new vm::Program( llvm::DataLayout( mod ) ) );
     _program->setupRR( mod );
     _program->computeRR( mod );
-    _dbg.reset( new dbg::Info( *_program.get() ) );
+    _dbg.reset( new dbg::Info( *_program.get(), *mod ) );
 }
 
 void BitCode::do_constants()

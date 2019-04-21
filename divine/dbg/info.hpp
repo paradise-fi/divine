@@ -56,6 +56,11 @@ struct Info
         return _funmap[ pc.function() ];
     }
 
+    llvm::GlobalVariable *global( llvm::StringRef name )
+    {
+        return _module.getGlobalVariable( name );
+    }
+
     std::pair< llvm::StringRef, int > fileline( vm::CodePointer pc );
     bool in_component( vm::CodePointer pc, Components comp );
 
@@ -125,11 +130,12 @@ struct Info
 
     llvm::DataLayout _layout;
     vm::Program &_program;
+    llvm::Module &_module;
     std::map< int, llvm::Function * > _funmap;
     std::map< llvm::DIType *, std::string > _typenamemap;
     std::map< std::string, std::string, StringLenCmp > _prettyNames;
 
-    Info( vm::Program &p ) : _layout( p.TD ), _program( p )
+    Info( vm::Program &p, llvm::Module &m ) : _layout( p.TD ), _program( p ), _module( m )
     {
         for ( auto p : _program._addr._code )
             _funmap[ p.second.function() ] = p.first->getParent();
