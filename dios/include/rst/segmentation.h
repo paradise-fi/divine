@@ -233,23 +233,16 @@ namespace abstract::mstring {
         };
 
         Segmentation()
-            : _max_size( 0 )
-            , _offset( sym::constant( 0 ) )
-            , _values( std::make_shared< Values >() )
-            , _bounds( std::make_shared< Bounds >() )
+            : _max_size( 0 ),
+              _offset( sym::constant( 0 ) ),
+              _values( __new< Values >( _VM_PT_Heap ) ),
+              _bounds( __new< Bounds >( _VM_PT_Heap ) )
         {
             _bounds->push_back( sym::constant( 0 ) );
         }
 
-		Segmentation( size_t size
-                    , TBound offset
-                    , std::shared_ptr< Values > values
-                    , std::shared_ptr< Bounds > bounds
-        )
-            : _max_size( size )
-            , _offset( offset )
-            , _values( values )
-            , _bounds( bounds )
+        Segmentation( size_t size, TBound offset, Values *values, Bounds *bounds )
+            : _max_size( size ), _offset( offset ), _values( values ), _bounds( bounds )
         {}
 
         //_LART_INLINE
@@ -466,8 +459,8 @@ namespace abstract::mstring {
 
         size_t _max_size;
         TBound _offset;
-        std::shared_ptr< Values > _values;
-        std::shared_ptr< Bounds > _bounds;
+        Values *_values;
+        Bounds *_bounds;
     };
 
     template< typename Split >
