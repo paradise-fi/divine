@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym */
+/* TAGS: mstring sym */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 
 #include <rst/domains.h>
