@@ -29877,5 +29877,5 @@ static const _PDCLIB_wcinfo_t _PDCLIB_wcinfo_data[] = {
 };
 
 const _PDCLIB_wcinfo_t * const _PDCLIB_wcinfo = _PDCLIB_wcinfo_data;
-const size_t _PDCLIB_wcinfo_size = sizeof(_PDCLIB_wcinfo) / sizeof(_PDCLIB_wcinfo[0]);
+const size_t _PDCLIB_wcinfo_size = sizeof(_PDCLIB_wcinfo_data) / sizeof(_PDCLIB_wcinfo_data[0]);
 #endif
