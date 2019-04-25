@@ -105,7 +105,11 @@ extern "C" {
     }
 
     /* String examination */
-    size_t __mstring_strlen( const __mstring * str ) { return mstring::strlen( str ); }
+    size_t __mstring_strlen( const __mstring * str )
+    {
+        auto len = mstring::strlen( str );
+        return sym::lower( len, Bound{ 0, str->_max_size } );
+    }
 
     int __mstring_strcmp( const __mstring * lhs, const __mstring * rhs )
     {

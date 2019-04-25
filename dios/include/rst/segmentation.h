@@ -465,7 +465,7 @@ namespace abstract::mstring {
     };
 
     template< typename Split >
-    size_t strlen( const Split * split ) noexcept
+    auto strlen( const Split * split ) noexcept
     {
         auto interest = split->interest();
         auto seg = interest.front();
@@ -474,7 +474,7 @@ namespace abstract::mstring {
             ++seg;
         }
 
-        return sym::lower( *seg.begin - interest.offset, Bound{ 0, split->_max_size } );
+        return *seg.begin - interest.offset;
     }
 
     template< typename Split >
