@@ -107,9 +107,6 @@ struct Range {
     InputIt end() { return _end; }
 
     Range() = default;
-    Range( const Range & ) = default;
-    Range( Range & ) = default;
-    Range( Range && ) = default;
     Range( InputIt begin, InputIt end ) : _begin( begin ), _end( end ) { }
 
     template< typename Collection,
