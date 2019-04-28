@@ -1,0 +1,114 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+#include <brick-assert>
+
+namespace brq
+{
+    template< typename T >
+    struct refcount_ptr
+    {
+        refcount_ptr() noexcept = default;
+        refcount_ptr( const refcount_ptr< T > &o ) noexcept : refcount_ptr( o._ptr ) {}
+        refcount_ptr( T *v ) noexcept : _ptr( v ) { _get(); }
+        ~refcount_ptr() noexcept { _put(); }
+        T *operator->() const noexcept { return _ptr; }
+        T &operator*() const noexcept { return *_ptr; }
+
+        refcount_ptr< T > &operator=( const refcount_ptr< T > &o ) noexcept
+        {
+            if ( &o == this )
+                return *this;
+            _ptr = o._ptr;
+            _get();
+            return *this;
+        }
+
+        void _get() const noexcept { _ptr->ref_get(); }
+        void _put() const noexcept
+        {
+            if ( _ptr && !_ptr->ref_put() )
+                delete _ptr, _ptr = nullptr;
+        }
+
+        mutable T *_ptr;
+    };
+
+    template< typename T = uint16_t >
+    struct refcount_base
+    {
+        void ref_get()
+        {
+            if ( _refcount < std::numeric_limits< T >::max() )
+                ++_refcount;
+        }
+
+        bool ref_put()
+        {
+            ASSERT_LEQ( 1, _refcount );
+            return _refcount < std::numeric_limits< T >::max() && --_refcount;
+        }
+
+        T _refcount = 0;
+    };
+
+    template< typename T, typename... Args >
+    refcount_ptr< T > make_refcount( Args && ... args )
+    {
+        return refcount_ptr< T >( new T( std::forward< Args >( args )... ) );
+    }
+}
+
+namespace brq_t
+{
+    struct refcount_ptr
+    {
+        struct obj : brq::refcount_base<> {};
+
+        TEST(simple)
+        {
+            auto a = brq::make_refcount< obj >();
+            ASSERT_EQ( a->_refcount, 1 );
+        }
+
+        TEST(dtor)
+        {
+            auto a = brq::make_refcount< obj >();
+            ASSERT_EQ( a->_refcount, 1 );
+            {
+                auto b = a;
+                ASSERT_EQ( a->_refcount, 2 );
+            }
+            ASSERT_EQ( a->_refcount, 1 );
+        }
+
+        TEST(assign)
+        {
+            auto a = brq::make_refcount< obj >();
+            decltype( a ) b;
+            ASSERT_EQ( a->_refcount, 1 );
+            b = a;
+            ASSERT_EQ( a->_refcount, 2 );
+            b = b;
+            ASSERT_EQ( a->_refcount, 2 );
+        }
+    };
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
