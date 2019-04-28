@@ -191,7 +191,12 @@ void Verify::liveness()
     auto liveness = mc::make_job< mc::Liveness >( bitcode(), ss::passive_listen() );
 
     _log->start();
-    liveness->start( 1 ); // threadcount
+    liveness->start( 1, [&]( bool last )
+                   {
+                       _log->progress( liveness->stats(),
+                                       liveness->queuesize(), last );
+                   } );
+
     liveness->wait();
 
     report_options();
