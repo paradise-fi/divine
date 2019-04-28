@@ -82,7 +82,7 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
 
     ss::search( ss::Order::PseudoBFS, ex, 1,
                 ss::listen(
-                    [&]( auto from, auto to, auto label )
+                    [&, has_acc = false]( auto from, auto to, auto label ) mutable
                     {
                         ASSERT( last != states.end() );
 
@@ -98,12 +98,14 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
 
                         if ( label.error )
                         {
-                            ASSERT( !t.final );
+                            ASSERT( has_acc || !t.final );
                             t.final = last->first;
                         }
 
-                        if ( label.accepting )
+                        if ( label.accepting ) {
                             t.final = last->first;
+                            has_acc = true;
+                        }
 
                         process( label );
                         ++last, ++next;
