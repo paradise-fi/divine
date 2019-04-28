@@ -18,6 +18,9 @@ foreach( V ${VARS} )
     endif()
 endforeach()
 
+string( REGEX REPLACE "-O[a-z0-9]?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "" FORCE )
+
 # this must be set BEFORE project
 set( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
 set( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
