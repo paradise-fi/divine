@@ -48,9 +48,11 @@ namespace divine::mc
         vm::CowSnapshot final;
     };
 
+    template< typename Label >
+    using LabelledTrace = std::deque< std::pair< vm::CowSnapshot,
+                                                 std::optional< Label > > >;
     template< typename Ex >
-    using StateTrace = std::deque< std::pair< vm::CowSnapshot,
-                                              std::optional< typename Ex::Label > > >;
+    using StateTrace = LabelledTrace< typename Ex::Label >;
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;
     using HashStats = std::map< std::string, brq::hash_set_stats >;

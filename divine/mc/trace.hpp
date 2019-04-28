@@ -60,8 +60,9 @@ void backtrace( BT bt, Fmt fmt, Dbg &dbg, vm::CowSnapshot snap, int maxdepth = 1
     dbg::backtrace( bt, fmt, dn, visited, stacks, maxdepth );
 }
 
-template< typename Explore >
-Trace trace( Explore &ex, StateTrace< Explore > states )
+// LabelComparer: check if the label in the trace is equal to the label of an edge (in this order)
+template< typename Explore, typename Label, typename LabelComparer = std::equal_to< Label > >
+Trace trace( Explore &ex, LabelledTrace< Label > states, LabelComparer comparer = LabelComparer() )
 {
     Trace t;
     auto last = states.begin(), next = last + 1;
@@ -93,7 +94,7 @@ Trace trace( Explore &ex, StateTrace< Explore > states )
                             return ss::Listen::Terminate;
                         if ( !ex.equal( to.snap, next->first ) )
                             return ss::Listen::Ignore;
-                        if ( next->second.has_value() && label != next->second.value() )
+                        if ( next->second.has_value() && !comparer( *next->second, label ) )
                             return ss::Listen::Ignore;
 
                         if ( label.error )
