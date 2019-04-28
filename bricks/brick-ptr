@@ -77,6 +77,13 @@ namespace brq
 
 namespace brq_t
 {
+    struct ref_test : brq::refcount_base<>
+    {
+        int &cnt;
+        ref_test( int &cnt ) : cnt( cnt ) { ++cnt; }
+        ~ref_test() { --cnt; }
+    };
+
     struct refcount_ptr
     {
         struct obj : brq::refcount_base<> {};
@@ -107,6 +114,16 @@ namespace brq_t
             ASSERT_EQ( a->_refcount, 2 );
             b = b;
             ASSERT_EQ( a->_refcount, 2 );
+        }
+
+        TEST(destroy)
+        {
+            int objs = 0;
+            {
+                auto a = brq::make_refcount< ref_test >( objs );
+                ASSERT_EQ( objs, 1 );
+            }
+            ASSERT_EQ( objs, 0 );
         }
     };
 }
