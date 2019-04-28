@@ -36,110 +36,182 @@ struct EdgeHasher {
     }
 };
 
-template< typename Next, typename Builder >
+enum class StackItemType { DfsStack, Successors };
+
+template< typename Builder >
 struct NestedDFS : ss::Job
 {
     using State = typename Builder::State;
     using Label = typename Builder::Label;
-    using Edge = std::pair< State, State >;
-    using EdgeMap = std::unordered_map< Edge, bool, EdgeHasher >;
+    using MasterPool = typename vm::CowHeap::SnapPool;
+    using SlavePool = brick::mem::SlavePool< MasterPool >;
 
     Builder _builder;
-    EdgeMap _visited;
-    Next _next;
+    SlavePool _flagPool;
 
-    NestedDFS( Builder builder, Next next )
-        : _builder( builder ),
-          _next( next )
-    {
-    }
-
-    struct DFSItem
-    {
-        Edge edge;
-        enum Type { Pre, Post } type:1;
-        bool label:1;
-
-        DFSItem( Type t, Edge e, bool l = false )
-            : edge( e )
-            , type( t )
-            , label( l )
-        {
-        }
+    struct StateFlags {
+        bool outer_visited:1 = false;
+        bool inner_visited:1 = false;
+        bool in_outer_stack:1 = false;
     };
 
-    std::stack< DFSItem > _inner, _outer;
+    explicit NestedDFS( Builder builder ) :
+        _builder( builder ),
+        _flagPool( _builder.pool() )
+    { }
 
-    bool nested( Edge seed )
+    struct StackItem
     {
-        _inner.emplace( DFSItem::Pre, seed, false );
-        bool out = false;
+        State state;
+        bool accepting:1;
+        bool error:1;
+        StackItemType type:1;
 
-        while( !_inner.empty() && !out )
-        {
-            auto item = _inner.top(); _inner.pop();
-            Edge from = item.edge;
-            _builder.edges( from.second,
-                [&]( State to, Label, bool )
-                {
-                    auto next = std::make_pair( from.second, to );
-                    if( seed == next )
-                    {
-                        out = true;
-                        _next( seed );
-                    }
-                    ASSERT( _visited.count( next ) );
-                    if( !_visited[next] )
-                    {
-                        _inner.emplace( DFSItem::Pre, next, false );
-                        _visited[next] = true;
-                    }
-                } );
-        }
-        return out;
-    }
+        template< typename Label >
+        StackItem( State s, const Label &l ) :
+            state( s ), type( StackItemType::Successors ), accepting( l.accepting ), error( l.error )
+        { }
 
-    bool dfs( Edge edge )
+        StackItem( State s ) :
+            state( s ), type( StackItemType::Successors ), accepting( false ), error( false )
+        { }
+    };
+
+    using Stack = std::deque< StackItem >;
+    Stack inner_stack, outer_stack;
+
+    using StackRange = brick::query::Range< typename Stack::iterator >;
+    struct CeDescription {
+        StackRange tail_fragment;
+        StackRange lasso_inner_fragment;
+        StackRange lasso_outer_fragment;
+        std::optional< State > goal;
+    } counterexample;
+
+    auto init_state( State &s )
     {
-        bool out = false;
-        _outer.emplace( DFSItem::Pre, edge, false );
-        _visited.emplace( edge, false );
+        _flagPool.materialise( s.snap, sizeof( StateFlags ) );
+        new ( _flagPool.machinePointer< StateFlags >( s.snap ) ) StateFlags();
+    };
 
-        while( !_outer.empty() )
+    bool outer( State from )
+    {
+        outer_stack.emplace_back( from );
+        init_state( from );
+
+        while ( !outer_stack.empty() )
         {
-            auto item = _outer.top(); _outer.pop();
-            ASSERT( _visited.count( item.edge ) );
-            if( item.type == DFSItem::Post ) // Post -> backtracking -> run detect cycle
+            const auto item = outer_stack.back();
+            auto &flags = *_flagPool.machinePointer< StateFlags >( item.state.snap );
+
+            if ( item.type == StackItemType::DfsStack ) // backtracking
             {
-                if( item.label )
-                    out = out || nested( item.edge );
+                ASSERT( flags.outer_visited );
+                flags.in_outer_stack = false;
+                outer_stack.pop_back();
+
+                if ( item.accepting && inner( item.state ) ) {
+                    counterexample.tail_fragment = StackRange( outer_stack.begin(), outer_stack.end() );
+                    return true;
+                }
             }
             else
             {
-                item.type = DFSItem::Post;
-                _outer.push( item );
-                _builder.edges( item.edge.second,
-                    [&]( State to, Label label, bool )
+                outer_stack.back().type = StackItemType::DfsStack;
+                if ( !flags.outer_visited )
+                {
+                    flags.outer_visited = true;
+                    flags.in_outer_stack = true;
+                    if ( item.error ) {
+                        counterexample.goal = item.state;
+                        counterexample.tail_fragment = StackRange( outer_stack.begin(), outer_stack.end() - 1 );
+                        return true;
+                    }
+
+                    _builder.edges( item.state, [&]( State to, const Label &l, bool isnew )
+                        {
+                            if ( isnew )
+                                init_state( to );
+                            outer_stack.emplace_back( to, l );
+                        } );
+                }
+                else
+                {
+                    outer_stack.pop_back();
+                    if ( item.accepting )
                     {
-                        auto kid = std::make_pair( item.edge.second, to );
-                        if( !_visited.count( kid ) ) {
-                            _outer.emplace( DFSItem::Pre, kid, bool( label.accepting ) );
-                            _visited.emplace( kid, false );
+                        if ( flags.in_outer_stack ) // fastpath
+                        {
+                            counterexample.goal = item.state;
+                            counterexample.tail_fragment = StackRange( outer_stack.begin(), outer_stack.end() );
+                            return true;
                         }
-                    } );
+                        else if ( inner( item.state ) ) {
+                            counterexample.tail_fragment = StackRange( outer_stack.begin(), outer_stack.end() );
+                            return true;
+                        }
+                    }
+                }
             }
-            if( out )
-                return true;
+            _builder._d.sync();
         }
-        return out;
+        return false;
     }
 
-    void ndfs()
-    {
-        bool found = false;
-        _builder.initials( [&] ( State state )
+    bool inner( State seed ) {
+        inner_stack.emplace_back( seed );
+
+        while ( !inner_stack.empty() )
+        {
+            auto &item = inner_stack.back();
+            auto &flags = *_flagPool.machinePointer< StateFlags >( item.state.snap );
+
+            if ( item.type == StackItemType::DfsStack ) // backtracking
+                inner_stack.pop_back();
+            else
             {
-                found = found || dfs( std::make_pair( State(), state ) );
+                item.type = StackItemType::DfsStack;
+                if ( item.accepting && item.state == seed || flags.in_outer_stack )
+                {
+                    counterexample.goal = seed;
+                    if ( item.state == seed )
+                        counterexample.lasso_inner_fragment = StackRange( inner_stack.begin(), inner_stack.end() - 1 );
+                    else {
+                        auto it = outer_stack.begin(),
+                             oend = outer_stack.end();
+                        for ( ; it != oend && !(it->state == item.state && it->type == StackItemType::DfsStack); ++it )
+                        { }
+                        counterexample.lasso_inner_fragment = StackRange( inner_stack.begin(), inner_stack.end() );
+                        if ( it + 1 < oend )
+                            counterexample.lasso_outer_fragment = StackRange( it + 1, oend );
+                    }
+                    return true;
+                }
+                if ( !flags.inner_visited )
+                {
+                    flags.inner_visited = true;
+                    _builder.edges( item.state, [&]( State to, const Label &l, bool isnew )
+                        {
+                            if ( isnew )
+                                init_state( to );
+                            inner_stack.emplace_back( to, l );
+                        } );
+                } else
+                    inner_stack.pop_back();
+            }
+            _builder._d.sync();
+        }
+
+        inner_stack.clear();
+        return false;
+    }
+
+    void run()
+    {
+        _builder.initials( [found = false, this] ( State state ) mutable
+            {
+                if ( !found )
+                    found = outer( state );
             } );
     }
 
@@ -149,7 +221,7 @@ struct NestedDFS : ss::Job
     {
         if ( thread_count != 1 )
             throw new std::runtime_error( "Nested DFS only supports one thread." );
-        _thread = std::async( [&]{ ndfs(); } );
+        _thread = std::async( [&]{ run(); } );
     }
 
     void wait() override
@@ -164,56 +236,58 @@ template< typename Next, typename Builder_ = ExplicitBuilder >
 struct Liveness : Job
 {
     using Builder = Builder_;
-    using Parent = std::atomic< vm::CowHeap::Snapshot >;
-    using MasterPool = typename vm::CowHeap::SnapPool;
-    using SlavePool = brick::mem::SlavePool< MasterPool >;
-    using CEStates = std::deque< vm::CowHeap::Snapshot >;
 
-    Builder _ex; //state space
-    SlavePool _ext;
+    Builder _ex;
     Next _next;
-
-    bool _error_found;
-
     using StateTrace = mc::StateTrace< Builder >;
     std::function< StateTrace() > _get_trace;
+    std::function< bool() > _error_found;
 
     template< typename... Args >
     Liveness( builder::BC bc, Next next, Args... builder_opts )
         : _ex( bc, builder_opts... ),
-          _ext( _ex.pool() ),
-          _next( next ),
-          _error_found( false )
+          _next( next )
     {
         _ex.start();
     }
 
     void start( int threads ) override
     {
-        auto found = [&]( auto ){ _error_found = true; };
-        using NDFS = NestedDFS< decltype( found ), Builder >;
-
-        _search.reset( new NDFS( _ex, found ) ); //Builder, Next
-        NDFS *search = dynamic_cast< NDFS * >( _search.get() );
-        stats = [=]() { return std::make_pair( _ex._d.total_states->load(), 0 ); };
-
-        auto move = []( auto &stack, auto &trace )
-        {
-            while ( !stack.empty() )
-            {
-                if ( stack.top().type == NDFS::DFSItem::Post )
-                    trace.emplace_front( stack.top().edge.second.snap, std::nullopt );
-                stack.pop();
-            }
-        };
+        auto *search = new NestedDFS( _ex );
+        _search.reset( search );
+        stats = [=] { return std::pair( _ex._d.total_states->load(), _ex._d.total_instructions->load() ); };
+        queuesize = [=] { return search->outer_stack.size() + search->inner_stack.size(); };
 
         _get_trace = [=]() mutable
         {
+            using State = typename std::remove_reference_t< decltype( *search ) >::State;
+            auto &ce = search->counterexample;
             StateTrace trace;
-            move( search->_inner, trace );
-            move( search->_outer, trace );
+
+            for ( auto &i : ce.lasso_outer_fragment )
+                if ( i.type == StackItemType::DfsStack )
+                    trace.emplace_back( i.state.snap, std::nullopt );
+            trace.emplace_back( ce.goal->snap, std::nullopt );
+
+            auto move_to_trace = [&]( auto r, auto &stack )
+            {
+                for ( auto it = std::reverse_iterator( r.end() ), end = std::reverse_iterator( r.begin() );
+                      it != end; ++it )
+                {
+                    if ( it->type == StackItemType::DfsStack )
+                        trace.emplace_front( it->state.snap, std::nullopt );
+                    stack.erase( it.base() - 1, stack.end() );
+                }
+                stack.clear();
+            };
+
+            move_to_trace( ce.lasso_inner_fragment, search->inner_stack );
+            move_to_trace( ce.tail_fragment, search->outer_stack );
+
             return trace;
         };
+
+        _error_found = [=]() { return search->counterexample.goal.has_value(); };
 
         search->start( threads );
     }
@@ -224,12 +298,12 @@ struct Liveness : Job
     {
         if ( !stats().first )
             return Result::BootError;
-        return _error_found ? Result::Error : Result::Valid;
+        return _error_found() ? Result::Error : Result::Valid;
     }
 
     Trace ce_trace() override
     {
-        return _error_found ? mc::trace( _ex, _get_trace() ) : mc::Trace();
+        return _error_found() ? mc::trace( _ex, _get_trace() ) : mc::Trace();
     }
 
     virtual PoolStats poolstats() override

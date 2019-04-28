@@ -40,7 +40,8 @@ using namespace std::literals;
 struct State
 {
     Snapshot snap;
-    bool operator==( const State& o ) const { return snap.intptr() == o.snap.intptr(); }
+    bool operator==( const State &o ) const { return snap.intptr() == o.snap.intptr(); }
+    bool operator!=( const State &o ) const { return !(*this == o); }
 };
 
 using BC = std::shared_ptr< BitCode >;
