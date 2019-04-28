@@ -4,6 +4,7 @@
 #include <util/array.hpp>
 #include <rst/sym.h>
 #include <assert.h>
+#include <brick-ptr>
 
 namespace abstract::mstring {
 
@@ -149,12 +150,11 @@ namespace abstract::mstring {
         size_t from, to;
     };
 
-
     template< typename TBound, typename TValue >
     struct Segmentation
     {
-        using Values = Array< TValue >;
-        using Bounds = Array< TBound >;
+        struct Values : Array< TValue >, brq::refcount_base<> {};
+        struct Bounds : Array< TBound >, brq::refcount_base<> {};
         using BoundIt = typename Bounds::iterator;
         using ValueIt = typename Values::iterator;
 
@@ -241,7 +241,8 @@ namespace abstract::mstring {
             _bounds->push_back( sym::constant( 0 ) );
         }
 
-        Segmentation( size_t size, TBound offset, Values *values, Bounds *bounds )
+        Segmentation( size_t size, TBound offset, const brq::refcount_ptr< Values > &values,
+                      const brq::refcount_ptr< Bounds > &bounds )
             : _max_size( size ), _offset( offset ), _values( values ), _bounds( bounds )
         {}
 
@@ -459,8 +460,8 @@ namespace abstract::mstring {
 
         size_t _max_size;
         TBound _offset;
-        Values *_values;
-        Bounds *_bounds;
+        brq::refcount_ptr< Values > _values;
+        brq::refcount_ptr< Bounds > _bounds;
     };
 
     template< typename Split >
