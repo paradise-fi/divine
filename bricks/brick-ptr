@@ -47,7 +47,7 @@ namespace brq
                 delete _ptr, _ptr = nullptr;
         }
 
-        mutable T *_ptr;
+        mutable T *_ptr = nullptr;
     };
 
     template< typename T = uint16_t >
