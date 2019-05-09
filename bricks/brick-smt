@@ -7,6 +7,7 @@
 /*
  * (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
  * (c) 2018 Petr Ročkai <code@fixp.eu>
+ * (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
  */
 
 /* Redistribution and use in source and binary forms, with or without
@@ -40,6 +41,7 @@
 
 #include <memory>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <functional>
 #include <unordered_map>
@@ -212,6 +214,264 @@ inline std::string_view name( Op op )
         default: UNREACHABLE_F( "unknown operation %d", int( op ) );
     }
 }
+
+template< typename T >
+union ByteUnion
+{
+    using Byte = uint8_t;
+
+    ByteUnion( T data ) : data( data ) {}
+
+    T data;
+    Byte bytes[ sizeof( T ) ];
+
+    constexpr const Byte * begin() const noexcept { return bytes; }
+    constexpr const Byte * end() const noexcept { return bytes + size(); }
+    constexpr const std::size_t size() const { return sizeof( T ); };
+};
+
+template< typename Container >
+struct RPN
+{
+    using Bitwidth = int8_t;
+    using VarID = uint16_t;
+
+    using size_type = typename Container::size_type;
+    using iterator = typename Container::iterator;
+    using const_iterator = typename Container::const_iterator;
+
+    enum class Op : uint8_t
+    {
+        Invalid,
+
+        VarI8, FisrtVar = VarI8,
+        VarI16,
+        VarI32,
+        VarI64,
+        VarFP32,
+        VarFP64,
+        VarFP80, LastVar = VarFP80,
+
+        I1, FirstConstant = I1,
+        I8,
+        I16,
+        I32,
+        I64,
+        FP32,
+        FP64,
+        FP80, LastConstant = FP80,
+
+        FirstUnary,
+        Not = FirstUnary,
+        BvNot,
+        LastUnary = BvNot,
+
+        FirstCast,
+        SExt = FirstCast,
+        ZExt,
+        Trunc,
+        FPExt,
+        FPTrunc,
+        FPToSInt,
+        FPToUInt,
+        SIntToFP,
+        UIntToFP,
+        LastCast = UIntToFP,
+
+        FirstBinary,
+        And = FirstBinary,
+        Or,
+        Xor,
+        Add,
+        Sub,
+        Mul,
+        UDiv,
+        SDiv,
+        URem,
+        SRem,
+        Shl,
+        LShr,
+        AShr,
+
+        // Icmp
+        FirstICMP,
+        EQ = FirstICMP,
+        NE,
+        ULE,
+        ULT,
+        UGE,
+        UGT,
+        SLE,
+        SLT,
+        SGE,
+        SGT,
+        LastICMP = SGT,
+        LastBinary = LastICMP,
+
+        Constraint,
+
+        Extract,
+    };
+
+    template< typename T >
+    struct Constant
+    {
+        Bitwidth bw;
+        T value;
+    } __attribute__(( packed, aligned(1) ));
+
+    static_assert( sizeof( Constant< uint8_t > ) == 2 );
+    static_assert( sizeof( Constant< uint32_t > ) == 5 );
+
+    struct Variable
+    {
+        Op op;
+        VarID id;
+    } __attribute__(( packed, aligned(1) ));
+
+    static_assert( sizeof( Variable ) == 3 );
+
+    RPN( Variable var ) : RPN( ByteUnion< Variable >( var ) ) {}
+
+    template< typename T >
+    RPN( Constant< T > con ) : RPN( ByteUnion< Constant< T > >( con ) ) {}
+
+    template< typename T >
+    RPN( ByteUnion< T > bytes ) noexcept
+        : _data( bytes.size(), bytes.begin(), bytes.end() )
+    {}
+
+    RPN( Container cont ) noexcept : _data( cont ) {}
+
+    RPN( const RPN& ) = default;
+    RPN( RPN&& ) = default;
+
+    RPN& operator=( const RPN& ) = default;
+    RPN& operator=( RPN& ) = default;
+
+    template< typename T >
+    static inline constexpr Op ivar() noexcept
+    {
+        if constexpr ( sizeof( T ) == 1 )
+            return Op::VarI8;
+        if constexpr ( sizeof( T ) == 2 )
+            return Op::VarI16;
+        if constexpr ( sizeof( T ) == 4 )
+            return Op::VarI32;
+        if constexpr ( sizeof( T ) == 8 )
+            return Op::VarI64;
+    }
+
+    template< typename T >
+    static inline constexpr Op fpvar() noexcept
+    {
+        if constexpr ( sizeof( T ) == 4 )
+            return Op::VarFP32;
+        if constexpr ( sizeof( T ) == 8 )
+            return Op::VarFP64;
+        if constexpr ( sizeof( T ) == 10 )
+            return Op::VarFP80;
+    }
+
+    template< typename T >
+    static inline constexpr Op var() noexcept
+    {
+        if constexpr ( std::is_integral_v< T > )
+            return ivar< T >();
+        if constexpr ( std::is_floating_point_v< T > )
+            return fpvar< T >();
+    }
+
+    static inline constexpr bool is_variable( Op op ) noexcept
+    {
+        return Op::FisrtVar <= op && op <= Op::LastVar;
+    }
+
+    static inline constexpr bool is_constant( Op op ) noexcept
+    {
+        return Op::FirstConstant <= op && op <= Op::LastConstant;
+    }
+
+    static inline constexpr bool is_unary( Op op ) noexcept
+    {
+        return Op::FirstUnary <= op && op <= Op::LastUnary;
+    }
+
+    static inline constexpr bool is_cast( Op op ) noexcept
+    {
+        return Op::FirstCast <= op && op <= Op::LastCast;
+    }
+
+    static inline constexpr bool is_binary( Op op ) noexcept
+    {
+        return Op::FirstBinary <= op && op <= Op::LastBinary;
+    }
+
+    constexpr Op op() const noexcept { return static_cast< Op >( _data.back() ); }
+
+    constexpr Op operand() const noexcept { return static_cast< Op >( _data.front() ); }
+
+    constexpr bool is_variable() const noexcept { return is_variable( operand() ); }
+    constexpr bool is_constant() const noexcept
+    {
+        return static_cast< Bitwidth >( operand() ) < 0; // bitwidths are in negative range
+    }
+    constexpr bool is_unary() const noexcept { return is_unary( op() ); }
+    constexpr bool is_binary() const noexcept { return is_binary( op() ); }
+    constexpr bool is_cast() const noexcept { return is_cast( op() ); }
+    constexpr bool is_constraint() const noexcept { return op() == Op::Constraint; }
+
+
+    constexpr Bitwidth bitwidth() const noexcept
+    {
+        assert( !is_variable() ); // TODO bitwidth for variables
+        return -static_cast< Bitwidth >( operand() );
+    }
+
+    template< typename T >
+    constexpr T extract( size_t from = 0 ) const noexcept
+    {
+        auto it = std::next( _data.begin(), from );
+        return *reinterpret_cast< T * >( const_cast< uint8_t * >( it ) );
+    }
+
+    constexpr VarID id() const noexcept
+    {
+        assert( is_variable() );
+        constexpr auto offset = 1;
+        return extract< VarID >( offset );
+    }
+
+    template< typename T >
+    constexpr T extract_constant() const noexcept
+    {
+        assert( is_constant() );
+        auto bw = bitwidth();
+        constexpr auto offset = 1;
+        return extract< T >( offset );
+    }
+
+    size_type size() const noexcept { return _data.size(); }
+
+    iterator begin() noexcept { return _data.begin(); }
+    const_iterator begin() const noexcept { return _data.begin(); }
+
+    iterator end() noexcept { return _data.end(); }
+    const_iterator end() const noexcept { return _data.end(); }
+
+    constexpr void apply( Op op ) noexcept
+    {
+        _data.push_back( static_cast< uint8_t >( op ) );
+    }
+
+    constexpr void extend( const RPN& other ) noexcept
+    {
+        _data.append( other.size(), other.begin(), other.end() );
+    }
+
+private:
+    Container _data;
+};
 
 struct Node
 {
