@@ -74,6 +74,9 @@ void Verify::setup()
         _log = make_composite( log );
     }
 
+    if ( _dios_config.empty() && _liveness )
+        _dios_config = "fair";
+
     WithBC::setup();
 
     if ( _symbolic )

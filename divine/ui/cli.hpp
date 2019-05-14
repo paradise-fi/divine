@@ -80,6 +80,7 @@ struct WithBC : Command
     SinkPtr _log = nullsink();
     std::string _relaxed;
     std::string _dump_bc;
+    std::string _dios_config;
 
     mc::BitCode::Env _bc_env;
     std::vector< std::string > _ccopts_final;

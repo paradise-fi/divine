@@ -232,6 +232,8 @@ struct CLI : Interface
                      "run SV-COMP specific program transformations"s )
             .option( "[--dump-bc {string}]", &WithBC::_dump_bc,
                      "dump the final pre-processed bitcode"s )
+            .option( "[--dios-config {string}]", &WithBC::_dios_config,
+                     "which DiOS configuration to use"s )
             .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
                      "link in a library, e.g. -lm for libm"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,

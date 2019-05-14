@@ -266,6 +266,8 @@ void WithBC::report_options()
             _log->info( "  - " + p + "\n", true );
     }
 
+    _log->info( "dios config: " + _dios_config + "\n", true );
+
     if ( _symbolic )
         _log->info( "symbolic: 1\n" );
     if ( _leakcheck )
@@ -319,6 +321,9 @@ void WithBC::setup()
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
+    if ( _dios_config.empty() && _synchronous )
+        _dios_config = "sync";
+
     auto magic_data = brick::fs::readFile( _file, 18 );
     auto magic = llvm::identify_magic( magic_data );
 
@@ -350,6 +355,7 @@ void WithBC::setup()
     _bc->symbolic( _symbolic );
     _bc->svcomp( _svcomp );
     _bc->lart( _lartPasses );
+    _bc->dios_config( _dios_config.empty() ? "default" : _dios_config );
     _bc->relaxed( _relaxed );
 }
 

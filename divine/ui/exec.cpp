@@ -30,8 +30,8 @@ namespace divine::ui
             std::cerr << "W: --symbolic implies --virtual" << std::endl;
         }
 
-        if ( !_virtual )
-            _systemopts.push_back( "config:passthrough" );
+        if ( _dios_config.empty() )
+            _dios_config = _virtual ? "default" : "proxy";
 
         WithBC::setup();
     }
