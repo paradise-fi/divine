@@ -167,6 +167,7 @@ void Sim::process_options()
     leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );
     _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
     _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
+    _dios_config = parsed.getOr( { "dios config" }, _dios_config );
     _svcomp = parsed.getOr( { "svcomp" }, _svcomp );
     _sequential = parsed.getOr( { "sequential" }, _sequential );
     _synchronous = parsed.getOr( { "synchronous" }, _synchronous );
