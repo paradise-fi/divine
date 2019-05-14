@@ -11,7 +11,6 @@
 
 #include <dios.h>
 #include <dios/sys/main.hpp>
-#include <dios/sys/config.hpp>
 
 #include <dios/vfs/manager.h>
 
@@ -57,9 +56,37 @@ void traceEnv( int ind, const _VM_Env *env ) {
     }
 }
 
-template < typename Configuration >
-void boot( SetupBase sb )
+void temporaryScheduler()
 {
+    __vm_cancel();
+}
+
+void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)() )
+{
+    __vm_ctl_flag( 0, _VM_CF_Error );
+    __vm_ctl_set( _VM_CR_Scheduler, nullptr );
+    __dios_this_frame()->parent = nullptr;
+}
+
+template < typename Configuration >
+void boot( const _VM_Env *env )
+{
+    MemoryPool deterministicPool( 2 );
+
+    __vm_ctl_set( _VM_CR_User1, nullptr );
+    __vm_ctl_set( _VM_CR_FaultHandler, reinterpret_cast< void * >( temporaryFaultHandler ) );
+    __vm_ctl_set( _VM_CR_Scheduler, reinterpret_cast< void * >( temporaryScheduler ) );
+
+    SysOpts sysOpts;
+    if ( !getSysOpts( env, sysOpts ) )
+    {
+        __vm_ctl_flag( 0, _VM_CF_Error );
+        return;
+    }
+
+    auto cfg = extractDiosConfiguration( sysOpts );
+    SetupBase sb{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
+
     auto *context = new Configuration();
     __vm_trace( _VM_T_StateType, context );
     traceAlias< Configuration >( "{Context}" );
@@ -101,57 +128,4 @@ void boot( SetupBase sb )
     context->setup( s );
 }
 
-void temporaryScheduler()
-{
-    __vm_cancel();
-}
-
-void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)() )
-{
-    __vm_ctl_flag( 0, _VM_CF_Error );
-    __vm_ctl_set( _VM_CR_Scheduler, nullptr );
-    __dios_this_frame()->parent = nullptr;
-}
-
-void init( const _VM_Env *env )
-{
-    MemoryPool deterministicPool( 2 );
-
-    __vm_ctl_set( _VM_CR_User1, nullptr );
-    __vm_ctl_set( _VM_CR_FaultHandler, reinterpret_cast< void * >( temporaryFaultHandler ) );
-    __vm_ctl_set( _VM_CR_Scheduler, reinterpret_cast< void * >( temporaryScheduler ) );
-
-    SysOpts sysOpts;
-    if ( !getSysOpts( env, sysOpts ) )
-    {
-        __vm_ctl_flag( 0, _VM_CF_Error );
-        return;
-    }
-
-    auto cfg = extractDiosConfiguration( sysOpts );
-    SetupBase setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
-
-    if ( cfg == "default" )
-        return boot< config::Default >( setup );
-//    if ( cfg == "passthrough" )
-//        return boot< config::Passthrough >( setup );
-//    if ( cfg == "replay" )
-//        return boot< config::Replay >( setup );
-    if ( cfg == "synchronous" )
-        return boot< config::Sync >( setup );
-    if ( cfg == "fair" )
-        return boot< config::Fair >( setup );
-
-    __dios_trace_f( "Unknown configuration: %.*s", int( cfg.size() ), cfg.begin() );
-    __vm_ctl_flag( 0, _VM_CF_Error );
-}
-
-}
-
-/*
- * DiOS entry point. Defined weak to allow user to redefine it.
- */
-extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
-    __dios::init( env );
-    __vm_suspend();
 }

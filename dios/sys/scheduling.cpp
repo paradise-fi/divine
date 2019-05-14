@@ -8,7 +8,6 @@
 #include <sys/lart.h>
 
 #include <dios/sys/scheduling.hpp>
-#include <dios/sys/config.hpp>
 
 namespace __dios {
 
