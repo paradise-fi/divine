@@ -5,10 +5,16 @@ namespace rt {
 
 using namespace cc;
 
-void DiosCC::linkDios()
+void DiosCC::link_dios()
 {
-    for ( auto arch : { "dios", "rst" } )
-        linkEntireArchive( arch );
+    linkEntireArchive( "rst" );
+    linkLib( "dios" );
+}
+
+void DiosCC::link_dios_config( std::string n )
+{
+    auto mod = load_object( "config/" + n );
+    link( std::move( mod ) );
 }
 
 DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :

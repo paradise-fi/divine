@@ -24,7 +24,8 @@ struct DiosCC : cc::Driver
 
     void setup( Options opts ){ opts = opts; }
 
-    void linkDios();
+    void link_dios();
+    void link_dios_config( std::string cfg );
     void build( cc::ParsedOpts po );
 };
 
