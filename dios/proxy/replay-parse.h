@@ -149,8 +149,8 @@ bool getArg( String& _inputs, Struct <Type> process )
         return false;
 
     auto data = _inputs.substr( 0, length );
-    char *structure = reinterpret_cast<char *>(Type( process ));
-    memcpy( structure, data.data(), length );
+    const char *structure = reinterpret_cast<const char *>(Type( process ));
+    memcpy( const_cast< char * >( structure ), data.data(), length );
     _inputs = _inputs.substr( length );
     return true;
 

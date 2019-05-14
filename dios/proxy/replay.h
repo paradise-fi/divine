@@ -21,8 +21,8 @@
 #include <sys/syscall.h>
 #include <sys/resource.h>
 #include <dios/sys/stdlibwrap.hpp>
-#include <dios/vfs/passthru-types.h>
-#include <dios/vfs/replay-parse.h>
+#include <dios/proxy/passthru-types.h>
+#include <dios/proxy/replay-parse.h>
 
 
 using String = __dios::String;
