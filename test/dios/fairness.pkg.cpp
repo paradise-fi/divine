@@ -6,8 +6,8 @@
 #include <atomic>
 #include <sys/monitor.h>
 
-// V: unfair
-// V: fair   V_OPT: -o config:fair
+// V: unfair V_OPT: --dios-config default
+// V: fair   V_OPT: --dios-config fair
 
 bool checkX();
 void __buchi_accept();
