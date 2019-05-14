@@ -18,8 +18,6 @@
 namespace __dios
 {
 
-    extern SysProxy *syscall_proxy;
-
 struct SetupBase
 {
     MemoryPool *pool;
@@ -73,33 +71,7 @@ struct BaseContext : KObject
 {
     struct Process : KObject
     {
-        SysProxy *syscall_proxy = nullptr;
-
-        virtual ~Process()
-        {
-            if ( syscall_proxy )
-                __vm_obj_free( syscall_proxy );
-        }
-    };
-
-    template< typename Ctx >
-    struct SysEnter : SysProxy, KObject
-    {
-        #include <dios/macro/no_memory_tags>
-
-        #define SYSCALL( name, schedule, ret, arg )                                   \
-                                                                                      \
-        __trapfn ret name arg noexcept override                                       \
-        {                                                                             \
-            Trap _trap( Trap::schedule );                                             \
-            auto ctx = reinterpret_cast< Ctx * >( __vm_ctl_get( _VM_CR_State ) );     \
-            return unpad( ctx, &Ctx::name, _1, _2, _3, _4, _5, _6 );                  \
-        };
-
-        #include <sys/syscall.def>
-
-        #undef SYSCALL
-        #include <dios/macro/no_memory_tags.cleanup>
+        virtual ~Process() {}
     };
 
     template< typename Setup >
@@ -107,9 +79,6 @@ struct BaseContext : KObject
     {
         traceAlias< BaseContext >( "{BaseContext}" );
         using Ctx = typename Setup::Context;
-
-        /* FIXME use metadata and proc1->globals to fix this up */
-        s.proc1->syscall_proxy = syscall_proxy = new SysEnter< Ctx >();
 
         if ( s.opts.empty() )
             return;

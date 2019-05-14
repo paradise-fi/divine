@@ -162,7 +162,6 @@ struct ProcessManager : public Next
     {
         Task *task;
         void *globals;
-        SysProxy *proxy;
     };
 
     void sysfork( pid_t *child )
@@ -192,7 +191,6 @@ struct ProcessManager : public Next
         Clone *oldclone = new Clone, *newclone;
         oldclone->task = oldtask;
         oldclone->globals = oldproc->globals;
-        oldclone->proxy = oldproc->syscall_proxy;
         newclone = static_cast< Clone * >( __vm_obj_clone( oldclone, blocked.begin() ) );
 
         Process *newproc = static_cast< Process * >( this->make_process( oldproc ) );
@@ -202,7 +200,6 @@ struct ProcessManager : public Next
         newtask->_proc = newproc;
 
         newproc->globals = newclone->globals;
-        newproc->syscall_proxy = newclone->proxy;
         newproc->pid  = maxPid + 1;
         newproc->ppid = oldproc->pid;
         newproc->sid  = oldproc->sid;

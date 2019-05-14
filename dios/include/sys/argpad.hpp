@@ -68,6 +68,66 @@ __inline auto unpad( T1 *t, R (T2::*f)(), Pad, Pad, Pad, Pad, Pad, Pad )
     return (t->*f)();
 }
 
+template< typename R,
+          typename FA, typename FB, typename FC, typename FD, typename FE, typename FF,
+          typename PA, typename PB, typename PC, typename PD, typename PE, typename PF >
+__inline auto unpad( R (*f)( FA, FB, FC, FD, FE, FF ),
+                     PA a, PB b, PC c, PD d, PE e, PF g )
+{
+    return (*f)( a, b, c, d, e, g );
+}
+
+template< typename R,
+          typename FA, typename FB, typename FC, typename FD, typename FE,
+          typename PA, typename PB, typename PC, typename PD, typename PE >
+__inline auto unpad( R (*f)( FA, FB, FC, FD, FE ),
+                     PA a, PB b, PC c, PD d, PE e, Pad )
+{
+    return (*f)( a, b, c, d, e );
+}
+
+template< typename R,
+          typename FA, typename FB, typename FC, typename FD,
+          typename PA, typename PB, typename PC, typename PD >
+__inline auto unpad( R (*f)( FA, FB, FC, FD ),
+                     PA a, PB b, PC c, PD d, Pad, Pad )
+{
+    return (*f)( a, b, c, d );
+}
+
+template< typename R,
+          typename FA, typename FB, typename FC,
+          typename PA, typename PB, typename PC >
+__inline auto unpad( R (*f)( FA, FB, FC ),
+                     PA a, PB b, PC c, Pad, Pad, Pad )
+{
+    return (*f)( a, b, c );
+}
+
+template< typename R,
+          typename FA, typename FB,
+          typename PA, typename PB >
+__inline auto unpad( R (*f)( FA, FB ),
+                     PA a, PB b, Pad, Pad, Pad, Pad )
+{
+    return (*f)( a, b );
+}
+
+template< typename R,
+          typename FA,
+          typename PA >
+__inline auto unpad( R (*f)( FA ),
+                     PA a, Pad, Pad, Pad, Pad, Pad )
+{
+    return (*f)( a );
+}
+
+template< typename R >
+__inline auto unpad( R (*f)(), Pad, Pad, Pad, Pad, Pad, Pad )
+{
+    return (*f)();
+}
+
 }
 
 #endif

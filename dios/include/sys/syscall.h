@@ -40,7 +40,7 @@ namespace __dios
 {
     struct SysProxy
     {
-        #define SYSCALL( name, schedule, ret, arg ) virtual ret name arg = 0;
+        #define SYSCALL( name, schedule, ret, arg ) static ret name arg noexcept;
         #include <dios/macro/no_memory_tags>
         #include <sys/syscall.def>
         #include <dios/macro/no_memory_tags.cleanup>
