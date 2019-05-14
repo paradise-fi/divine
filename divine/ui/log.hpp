@@ -27,7 +27,7 @@ namespace divine::dbg { template< typename > struct Context; }
 namespace divine::ui
 {
 
-enum class Phase { LART, RR, Constants, Done };
+enum class Phase { DiOS, LART, RR, Constants, Done };
 using DbgContext = dbg::Context< vm::CowHeap >;
 
 struct LogSink
@@ -95,6 +95,7 @@ struct TimedSink : LogSink
     {
         switch ( p )
         {
+            case Phase::DiOS:      reset_interval(); break;
             case Phase::LART:      reset_interval(); break;
             case Phase::RR:        _time_lart  = reset_interval(); break;
             case Phase::Constants: _time_rr    = reset_interval(); break;

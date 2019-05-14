@@ -357,6 +357,9 @@ void WithBC::init()
 {
     ASSERT( !_init_done );
 
+    _log->loader( Phase::DiOS );
+    _bc->do_dios();
+
     _log->loader( Phase::LART );
     _bc->do_lart();
 

@@ -217,7 +217,8 @@ struct InteractiveSink : TimedSink
     {
         switch ( p )
         {
-            case Phase::LART:      std::cerr << "loading bitcode … LART … " << std::flush; break;
+            case Phase::DiOS:      std::cerr << "loading bitcode … DiOS … " << std::flush; break;
+            case Phase::LART:      std::cerr << "LART … " << std::flush; break;
             case Phase::RR:        std::cerr << "RR … " << std::flush; break;
             case Phase::Constants: std::cerr << "constants … " << std::flush; break;
             case Phase::Done:      std::cerr << "done" << std::endl << "booting … "; break;
