@@ -30,6 +30,7 @@ mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXA
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror)
 mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT}" )
+mkobjs( config "${flags};-D__dios_kernel__;${NOEXCEPT}" )
 mkobjs( librst "${flags};${NOEXCEPT}" )
 
 mklib( libc libc_cpp )
@@ -42,6 +43,11 @@ mklib( libpthread )
 
 foreach( f ${H_RUNTIME} )
   stringify( "dios" "." ${f} )
+endforeach()
+
+foreach( f ${SRC_config} )
+  string( REGEX REPLACE ".*/\([a-z]*)\\.[a-z]+" "config/\\1.bc" mod ${f} )
+  stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${mod}" )
 endforeach()
 
 set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )

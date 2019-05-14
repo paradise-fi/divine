@@ -15,6 +15,7 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libunwind/include/* libunwind/include/mach-o/* )
 
 file( GLOB SRC_dios sys/*.cpp vfs/*.cpp )
+file( GLOB SRC_config config/*.cpp )
 
 file( GLOB SRC_librst rst/*.cpp )
 file( GLOB SRC_libc libc/*/*.c )
