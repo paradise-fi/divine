@@ -59,8 +59,17 @@ namespace smt {
 using Format = std::function< void ( std::ostream & ) >;
 struct Context;
 
-enum class Op
+enum class Op : uint8_t
 {
+    VarBool, FisrtVar = VarBool,
+    VarI8,
+    VarI16,
+    VarI32,
+    VarI64,
+    VarFP32,
+    VarFP64,
+    VarFP80, LastVar = VarFP80,
+
     FirstUnary,
     Not = FirstUnary,
     BvNot,
@@ -68,15 +77,19 @@ enum class Op
     LastUnary = BvNegate,
 
     FirstCast,
-	FPExt = FirstCast,
-	FPTrunc,
-	FPToSInt,
-	FPToUInt,
-	SIntToFP,
-	UIntToFP,
+    SExt = FirstCast,
+    ZExt,
+    Trunc,
+    FPExt,
+    FPTrunc,
+    FPToSInt,
+    FPToUInt,
+    SIntToFP,
+    UIntToFP,
     LastCast = UIntToFP,
 
-    FirstBvBinary,
+    FirstBinary,
+    FirstBvBinary = FirstBinary,
     And = FirstBvBinary,
     Or,
     Xor,
@@ -101,6 +114,7 @@ enum class Op
     // Icmp
     FirstICMP,
     Eq = FirstICMP,
+    NE,
     BvULE,
     BvULT,
     BvUGE,
@@ -119,26 +133,29 @@ enum class Op
     FpDiv,
     FpRem,
 
-	// Fcmp
-	FirstFCMP,
-	FpFalse = FirstFCMP, // no comparison, always returns false
-	FpOEQ,   // ordered and equal
-	FpOGT,   // ordered and greater than
-	FpOGE,   // ordered and greater than or equal
-	FpOLT,   // ordered and less than
-	FpOLE,   // ordered and less than or equal
-	FpONE,   // ordered and not equal
-	FpORD,   // ordered (no nans)
-	FpUEQ,   // unordered or equal
-	FpUGT,   // unordered or greater than
-	FpUGE,   // unordered or greater than or equal
-	FpULT,   // unordered or less than
-	FpULE,   // unordered or less than or equal
-	FpUNE,   // unordered or not equal
-	FpUNO,   // unordered (either nans)
-	FpTrue,  // no comparison, always returns true
-	LastFCMP = FpTrue,
-	LastFpBinary = LastFCMP,
+    // Fcmp
+    FirstFCMP,
+    FpFalse = FirstFCMP, // no comparison, always returns false
+    FpOEQ,   // ordered and equal
+    FpOGT,   // ordered and greater than
+    FpOGE,   // ordered and greater than or equal
+    FpOLT,   // ordered and less than
+    FpOLE,   // ordered and less than or equal
+    FpONE,   // ordered and not equal
+    FpORD,   // ordered (no nans)
+    FpUEQ,   // unordered or equal
+    FpUGT,   // unordered or greater than
+    FpUGE,   // unordered or greater than or equal
+    FpULT,   // unordered or less than
+    FpULE,   // unordered or less than or equal
+    FpUNE,   // unordered or not equal
+    FpUNO,   // unordered (either nans)
+    FpTrue,  // no comparison, always returns true
+    LastFCMP = FpTrue,
+    LastFpBinary = LastFCMP,
+
+    Constraint,
+    LastBinary = Constraint,
 
     Extract,
 };
@@ -214,6 +231,44 @@ inline std::string_view name( Op op )
     }
 }
 
+struct Node
+{
+    enum class Type {
+        Bool,
+        Int,
+        Float
+    };
+
+    Format _fmt;
+    int bw = 0;
+    Type type;
+
+    Node( int bw, Type type, Format &&fmt ) :
+        _fmt( std::move( fmt ) ), bw( bw ), type( type )
+    {}
+
+    Node( int bw, Type type, std::string str ) :
+        _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ), type( type )
+    {}
+
+    constexpr inline bool is_bool() const noexcept { return type == Type::Bool; }
+    constexpr inline bool is_bv() const noexcept { return type == Type::Int; }
+    constexpr inline bool is_float() const noexcept { return type == Type::Float; }
+};
+
+static inline std::ostream &operator<<( std::ostream &o, const Node &n )
+{
+    n._fmt( o );
+    return o;
+}
+
+inline std::string to_string( const Node &p )
+{
+    std::stringstream ss;
+    ss << p;
+    return ss.str();
+}
+
 template< typename T >
 union ByteUnion
 {
@@ -236,81 +291,12 @@ struct RPN
     using VarID = uint16_t;
 
     using size_type = typename Container::size_type;
+    using value_type = typename Container::value_type;
+    using reference = typename Container::reference;
+    using const_reference = typename Container::const_reference;
     using iterator = typename Container::iterator;
     using const_iterator = typename Container::const_iterator;
-
-    enum class Op : uint8_t
-    {
-        Invalid,
-
-        VarI8, FisrtVar = VarI8,
-        VarI16,
-        VarI32,
-        VarI64,
-        VarFP32,
-        VarFP64,
-        VarFP80, LastVar = VarFP80,
-
-        I1, FirstConstant = I1,
-        I8,
-        I16,
-        I32,
-        I64,
-        FP32,
-        FP64,
-        FP80, LastConstant = FP80,
-
-        FirstUnary,
-        Not = FirstUnary,
-        BvNot,
-        LastUnary = BvNot,
-
-        FirstCast,
-        SExt = FirstCast,
-        ZExt,
-        Trunc,
-        FPExt,
-        FPTrunc,
-        FPToSInt,
-        FPToUInt,
-        SIntToFP,
-        UIntToFP,
-        LastCast = UIntToFP,
-
-        FirstBinary,
-        And = FirstBinary,
-        Or,
-        Xor,
-        Add,
-        Sub,
-        Mul,
-        UDiv,
-        SDiv,
-        URem,
-        SRem,
-        Shl,
-        LShr,
-        AShr,
-
-        // Icmp
-        FirstICMP,
-        EQ = FirstICMP,
-        NE,
-        ULE,
-        ULT,
-        UGE,
-        UGT,
-        SLE,
-        SLT,
-        SGE,
-        SGT,
-        LastICMP = SGT,
-        LastBinary = LastICMP,
-
-        Constraint,
-
-        Extract,
-    };
+    using difference_type = typename Container::difference_type;
 
     template< typename T >
     struct Constant
@@ -342,6 +328,7 @@ struct RPN
 
     RPN( Container cont ) noexcept : _data( cont ) {}
 
+    RPN() = default;
     RPN( const RPN& ) = default;
     RPN( RPN&& ) = default;
 
@@ -388,7 +375,7 @@ struct RPN
 
     static inline constexpr bool is_constant( Op op ) noexcept
     {
-        return Op::FirstConstant <= op && op <= Op::LastConstant;
+        return static_cast< Bitwidth >( op ) < 0; // bitwidths are in negative range
     }
 
     static inline constexpr bool is_unary( Op op ) noexcept
@@ -406,25 +393,64 @@ struct RPN
         return Op::FirstBinary <= op && op <= Op::LastBinary;
     }
 
-    constexpr Op op() const noexcept { return static_cast< Op >( _data.back() ); }
+    static inline constexpr Op op( const_iterator it ) noexcept { return static_cast< Op >( *it ); }
 
-    constexpr Op operand() const noexcept { return static_cast< Op >( _data.front() ); }
-
-    constexpr bool is_variable() const noexcept { return is_variable( operand() ); }
-    constexpr bool is_constant() const noexcept
+    static inline constexpr Bitwidth bitwidth( Op op ) noexcept
     {
-        return static_cast< Bitwidth >( operand() ) < 0; // bitwidths are in negative range
+        if ( is_constant( op ) ) {
+            return -static_cast< Bitwidth >( op );
+        } else if ( is_variable( op ) ) {
+            switch( op ) {
+                case Op::VarBool: return 1;
+                case Op::VarI8: return 8;
+                case Op::VarI16: return 16;
+                case Op::VarI32: return 32;
+                case Op::VarI64: return 64;
+                case Op::VarFP32: return 32;
+                case Op::VarFP64: return 64;
+                case Op::VarFP80: return 80;
+            }
+        }
+
+        UNREACHABLE_F( "Op %hu is neither constant or variable", op );
     }
-    constexpr bool is_unary() const noexcept { return is_unary( op() ); }
-    constexpr bool is_binary() const noexcept { return is_binary( op() ); }
-    constexpr bool is_cast() const noexcept { return is_cast( op() ); }
-    constexpr bool is_constraint() const noexcept { return op() == Op::Constraint; }
 
-
-    constexpr Bitwidth bitwidth() const noexcept
+    static inline constexpr Node::Type type( Op op ) noexcept
     {
-        assert( !is_variable() ); // TODO bitwidth for variables
-        return -static_cast< Bitwidth >( operand() );
+        ASSERT( is_variable( op ) );
+        switch( op ) {
+            case Op::VarBool:
+                return Node::Type::Bool;
+            case Op::VarI8:
+            case Op::VarI16:
+            case Op::VarI32:
+            case Op::VarI64:
+                return Node::Type::Int;
+            case Op::VarFP32:
+            case Op::VarFP64:
+            case Op::VarFP80:
+                return Node::Type::Float;
+        }
+        UNREACHABLE_F( "Unknown variable type: %hu", op );
+    }
+
+
+    enum class Category
+    {
+        Constant, Variable, Unary, Binary
+    };
+
+    static Category category( Op op ) noexcept
+    {
+        if ( is_constant( op ) )
+            return Category::Constant;
+        if ( is_variable( op ) )
+            return Category::Variable;
+        if ( is_unary( op ) )
+            return Category::Unary;
+        if ( is_binary( op ) )
+            return Category::Binary;
+        UNREACHABLE_F( "Unknown category" );
     }
 
     template< typename T >
@@ -434,9 +460,19 @@ struct RPN
         return *reinterpret_cast< T * >( const_cast< uint8_t * >( it ) );
     }
 
+    Op operand() const noexcept
+    {
+        return op( _data.begin() );
+    }
+
+    Op operation() const noexcept
+    {
+        return op( std::prev( _data.end() ) );
+    }
+
     constexpr VarID id() const noexcept
     {
-        assert( is_variable() );
+        ASSERT( is_variable( operand() ) );
         constexpr auto offset = 1;
         return extract< VarID >( offset );
     }
@@ -444,8 +480,8 @@ struct RPN
     template< typename T >
     constexpr T extract_constant() const noexcept
     {
-        assert( is_constant() );
-        auto bw = bitwidth();
+        assert( is_constant( operand() ) );
+        auto bw = bitwidth( operand() );
         constexpr auto offset = 1;
         return extract< T >( offset );
     }
@@ -468,72 +504,33 @@ struct RPN
         _data.append( other.size(), other.begin(), other.end() );
     }
 
-private:
     Container _data;
 };
 
-struct Node
-{
-    enum class Type {
-        Bool,
-        Int,
-        Float
-    };
-
-    Format _fmt;
-    int bw = 0;
-    Type type;
-
-    Node( int bw, Type type, Format &&fmt ) :
-        _fmt( std::move( fmt ) ), bw( bw ), type( type )
-    {}
-
-    Node( int bw, Type type, std::string str ) :
-        _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ), type( type )
-    {}
-
-    inline bool is_bool() { return type == Type::Bool; }
-    inline bool is_bv() { return type == Type::Int; }
-    inline bool is_float() { return type == Type::Float; }
-};
-
-static inline std::ostream &operator<<( std::ostream &o, const Node &n )
-{
-    n._fmt( o );
-    return o;
-}
-
-inline std::string to_string( const Node &p )
-{
-    std::stringstream ss;
-    ss << p;
-    return ss.str();
-}
-
 enum class RoundingMode {
-	RNE,	// round nearest ties to even
-	RNA,	// round nearest ties to away
-	RTP,	// round toward positive
-	RTN,	// round toward negative
-	RTZ	    // round toward zero
+    RNE,    // round nearest ties to even
+    RNA,    // round nearest ties to away
+    RTP,    // round toward positive
+    RTN,    // round toward negative
+    RTZ     // round toward zero
 };
 
 inline std::string to_string( RoundingMode mode )
 {
-	switch ( mode ) {
-		case RoundingMode::RNE: return "RNE";
-		case RoundingMode::RNA: return "RNA";
-		case RoundingMode::RTP: return "RTP";
-		case RoundingMode::RTN: return "RTN";
-		case RoundingMode::RTZ: return "RTZ";
-		default: UNREACHABLE_F( "Unknown rounding mode." );
-	};
+    switch ( mode ) {
+        case RoundingMode::RNE: return "RNE";
+        case RoundingMode::RNA: return "RNA";
+        case RoundingMode::RTP: return "RTP";
+        case RoundingMode::RTN: return "RTN";
+        case RoundingMode::RTZ: return "RTZ";
+        default: UNREACHABLE_F( "Unknown rounding mode." );
+    };
 }
 
 static inline std::ostream &operator<<( std::ostream &o, RoundingMode mode )
 {
-	o << to_string( mode );
-	return o;
+    o << to_string( mode );
+    return o;
 }
 
 template< size_t bitwidth >
@@ -847,7 +844,7 @@ inline std::stringstream to_bitvecor( int bitwidth, brick::data::SmallVector< ui
 
 inline Node Context::floatv( int bitwidth, double val, RoundingMode mode )
 {
-	static_assert( sizeof( double ) == sizeof( uint64_t ) );
+    static_assert( sizeof( double ) == sizeof( uint64_t ) );
     return Node( bitwidth, Node::Type::Float,
         "(" + to_fp( bitwidth ) + " " + to_string( mode ) + " " + std::to_string( val ) + " )"
     );
@@ -863,24 +860,6 @@ inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > 
 
 namespace t_smt {
 using namespace brick::smt;
-
-/*
-struct StringTest
-{
-    TEST(basic)
-    {
-        ASSERT_EQ( R"("a")", to_string( smt::string( "a" ) ) );
-        std::string b( "b" );
-        ASSERT_EQ( R"("b")", to_string( smt::string( b ) ) );
-    }
-
-    TEST(escape)
-    {
-        ASSERT_EQ( R"("a\\b\"c")", to_string( smt::string( R"(a\b"c)" ) ) );
-        ASSERT_EQ( R"("a\\\"c")", to_string( smt::string( R"(a\"c)" ) ) );
-    }
-};
-*/
 
 struct BVecTest
 {
@@ -958,19 +937,7 @@ struct CombinationTest
                            ctx.unop< Op::BvNegate >( 16, ctx.bitvec( short( 42 ) ) ) ) ),
                    "(bvsle ((_ extract 32 16) a) (bvneg #x002a))" );
     }
-/*
-    TEST(constants)
-    {
-        ASSERT_EQ( to_string( defineFun( "a", bitvecT( 32 ), bitvec( 42 ) ) ),
-                   "(define-fun a () (_ BitVec 32) #x0000002a)" );
-        ASSERT_EQ( to_string( declareConst( "a", bitvecT( 32 ) ) ),
-                   "(declare-const a (_ BitVec 32))" );
-        ASSERT_EQ( to_string( defineFun( "b", bitvecT( 32 ),
-                                  binop< Op::BvAnd >( 16, bitvec( short( 1 ) ),
-                                                      bitvec( short( 2 ) ) ) ) ),
-                   "(define-fun b () (_ BitVec 32) (bvand #x0001 #x0002))" );
-    }
-*/
+
 };
 
 } // namespace t_smt
