@@ -276,6 +276,55 @@ void VPA::propagate( StoreInst *store, Domain dom ) {
     }
 }
 
+struct ArgumentsAnnotation {
+
+    ArgumentsAnnotation( llvm::Function * fn ) : _fn( fn ) {}
+
+    void run() {
+        std::vector< llvm::Value * > stack = { _fn->user_begin(), _fn->user_end() };
+
+        while ( !stack.empty() ) {
+            auto val = stack.back();
+            stack.pop_back();
+
+            llvmcase( val,
+                [&] ( llvm::CallInst * call ) {
+                    meta::set( call, meta::tag::abstract_arguments );
+                },
+                [&] ( llvm::BitCastInst * btcst ) {
+                    for ( auto u : btcst->users() ) {
+                        stack.push_back( u );
+                    }
+                },
+                [&] ( llvm::StoreInst * ) {
+                    UNREACHABLE( "Unknown arguments propagation rule" );
+                },
+                [&] ( llvm::LoadInst * ) {
+                    UNREACHABLE( "Unknown arguments propagation rule" );
+                },
+                [&] ( llvm::ExtractValueInst * ) {
+                    UNREACHABLE( "Unknown arguments propagation rule" );
+                },
+                [&] ( llvm::InsertValueInst * ) {
+                    UNREACHABLE( "Unknown arguments propagation rule" );
+                },
+                [&] ( llvm::PHINode * phi ) {
+                    for ( auto u : phi->users() ) {
+                        stack.push_back( u );
+                    }
+                },
+                [&] ( llvm::CallInst * ) {
+                    UNREACHABLE( "Unknown arguments propagation rule" );
+                }
+            );
+        }
+
+        meta::set( _fn, meta::tag::abstract_arguments );
+    }
+
+    llvm::Function * _fn;
+};
+
 void VPA::propagate( CallInst *call, Domain dom ) {
     run_on_potentialy_called_functions( call, [&] ( auto fn ) {
         if ( meta::function::ignore_call( fn ) )
@@ -299,8 +348,7 @@ void VPA::propagate( CallInst *call, Domain dom ) {
                     tasks.push_back( [=]{ propagate_value( arg, dom ); } );
                     if ( is_base_type( fn->getParent(), arg ) ) {
                         Domain::set( arg, dom );
-                        meta::set( call, meta::tag::abstract_arguments );
-                        meta::set( fn, meta::tag::abstract_arguments );
+                        ArgumentsAnnotation( fn ).run();
                     }
                     entry_args.emplace( arg, dom );
                 }
