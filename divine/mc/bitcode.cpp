@@ -110,7 +110,8 @@ void BitCode::lazy_link_dios()
     {
         rt::DiosCC drv( _ctx );
         drv.link( std::move( _module ) );
-        drv.linkDios();
+        drv.link_dios_config( _dios_config );
+        drv.link_dios();
         drv.linkLibs( rt::DiosCC::defaultDIVINELibs );
         _module = drv.takeLinked();
     }
@@ -132,7 +133,6 @@ BitCode::BitCode( std::string file )
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
     _module = std::move( parsed.get() );
-    lazy_link_dios();
 }
 
 
@@ -140,7 +140,6 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
     : _ctx( ctx ), _module( std::move( m ) )
 {
     ASSERT( _module.get() );
-    lazy_link_dios();
     _program.reset( new vm::Program( llvm::DataLayout( _module.get() ) ) );
 }
 
@@ -217,8 +216,14 @@ void BitCode::do_constants()
     _program->computeStatic( _module.get() );
 }
 
+void BitCode::do_dios()
+{
+    lazy_link_dios();
+}
+
 void BitCode::init()
 {
+    do_dios();
     do_lart();
     do_rr();
     do_constants();

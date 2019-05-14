@@ -68,6 +68,7 @@ struct BitCode
     std::vector< std::string > _lart;
     std::string _relaxed;
     std::string _solver;
+    std::string _dios_config;
 
     bool is_symbolic() const { return _symbolic; }
     std::string solver() const { ASSERT( is_symbolic() ); return _solver; }
@@ -90,8 +91,10 @@ struct BitCode
     void symbolic( bool s ) { _symbolic = s; }
     void svcomp( bool s ) { _svcomp = s; }
     void solver( std::string s ) { _solver = s; }
+    void dios_config( std::string s ) { _dios_config = s; }
 
     void do_lart();
+    void do_dios();
     void do_rr();
     void do_constants();
 
