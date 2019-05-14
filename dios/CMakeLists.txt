@@ -14,7 +14,7 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/support/xlocale/*.h libcxx/src/support/atomic_support.h
       libunwind/include/* libunwind/include/mach-o/* )
 
-file( GLOB SRC_dios sys/*.cpp vfs/*.cpp )
+file( GLOB SRC_dios sys/*.cpp vfs/*.cpp proxy/*.cpp )
 file( GLOB SRC_config config/*.cpp )
 
 file( GLOB SRC_librst rst/*.cpp )
