@@ -99,6 +99,7 @@ struct Driver
 
     std::vector< Command > getJobs( llvm::ArrayRef< const char * > args );
     brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
+    ModulePtr load_object( std::string name );
 
   protected:
     Options opts;

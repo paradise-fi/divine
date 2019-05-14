@@ -190,6 +190,25 @@ done:
     return brick::llvm::ArchiveReader( std::move( buf ), context() );
 }
 
+Driver::ModulePtr Driver::load_object( std::string name )
+{
+    using namespace brick::fs;
+    auto path = joinPath( "/dios/lib", name + ".bc"s );
+
+    if ( !compiler.fileExists( path ) )
+        throw std::runtime_error( "object not found: " + path );
+
+    auto buf = compiler.getFileBuffer( path );
+    if ( !buf )
+        throw std::runtime_error( "cannot open object: " + path );
+
+    auto parsed = llvm::parseBitcodeFile( *buf.get(), *context() );
+    if ( !parsed )
+        throw std::runtime_error( "cannot parse object: " + path );
+
+    return std::move( parsed.get() );
+}
+
 void Driver::linkLib( std::string lib, std::vector< std::string > searchPaths )
 {
     auto archive = getLib( lib, std::move( searchPaths ) );
