@@ -22,6 +22,9 @@ struct Array : brick::types::Ord {
     using const_iterator = const T *;
     using reverse_iterator = std::reverse_iterator< iterator >;
     using const_reverse_iterator = std::reverse_iterator< const_iterator >;
+    using difference_type = std::ptrdiff_t;
+    using reference = T&;
+    using const_reference = T const&;
 
     Array() = default;
 
