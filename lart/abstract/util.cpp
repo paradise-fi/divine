@@ -37,29 +37,30 @@ namespace lart::abstract
 
     // Tries to find precise set of possible called functions.
     // Returns true if it succeeded.
-    bool potentialy_called_functions( llvm::Value * called, Functions & fns ) {
-        bool surrender = true;
+    bool potentially_called_functions( llvm::Value * called, Functions & fns ) {
+        bool succeeded = false;
         llvmcase( called,
             [&] ( llvm::Function * fn ) {
                 fns.push_back( fn );
+                succeeded = true;
             },
             [&] ( llvm::PHINode * phi ) {
                 for ( auto & iv : phi->incoming_values() ) {
-                    if ( ( surrender = potentialy_called_functions( iv.get(), fns ) ) )
+                    if ( succeeded = potentially_called_functions( iv.get(), fns ); !succeeded )
                         break;
                 }
             },
-            [&] ( llvm::LoadInst * ) { surrender = true; }, // TODO
-            [&] ( llvm::Argument * ) { surrender = true; },
-            [&] ( llvm::Value * val ) {
-                UNREACHABLE( "Unknown parent instruction:", val );
+            [&] ( llvm::LoadInst * ) { succeeded = false; }, // TODO
+            [&] ( llvm::Argument * ) { succeeded = false; },
+            [&] ( llvm::Value * ) {
+                UNREACHABLE( "Unknown parent instruction" );
             }
         );
 
-        return !surrender;
+        return succeeded;
     }
 
-    std::vector< llvm::Function * > get_potentialy_called_functions( llvm::CallInst* call ) {
+    std::vector< llvm::Function * > get_potentially_called_functions( llvm::CallInst* call ) {
         auto val = call->getCalledValue();
         if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
             return { fn };
@@ -71,7 +72,7 @@ namespace lart::abstract
 
         if ( !llvm::isa< llvm::Argument >( call->getCalledValue() ) ) {
             Functions fns;
-            if ( potentialy_called_functions( call->getCalledValue(), fns) ) {
+            if ( potentially_called_functions( call->getCalledValue(), fns) ) {
                 return fns;
             }
         }
@@ -85,7 +86,7 @@ namespace lart::abstract
     }
 
     llvm::Function * get_some_called_function( llvm::CallInst * call ) {
-        return get_potentialy_called_functions( call ).front();
+        return get_potentially_called_functions( call ).front();
     }
 
     bool is_terminal_intruction( llvm::Value * val ) {

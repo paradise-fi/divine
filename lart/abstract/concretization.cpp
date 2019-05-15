@@ -215,7 +215,7 @@ namespace lart::abstract
                 continue;
             stash( call, bundle.pack() );
 
-            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+            run_on_potentially_called_functions( call, [&] ( auto fn ) {
                 if ( auto [val, inserted] = seen.insert( fn ); inserted ) {
                     auto to_erase = bundle.unpack( fn );
                     erase.insert( to_erase.begin(), to_erase.end() );

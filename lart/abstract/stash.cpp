@@ -66,7 +66,7 @@ namespace lart::abstract {
     void Unstash::run( llvm::Module & m )
     {
         for ( auto call : calls_with_tag< meta::tag::abstract_arguments >( m ) ) {
-            run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+            run_on_potentially_called_functions( call, [&] ( auto fn ) {
                 process_arguments( call, fn );
             } );
         }

@@ -196,7 +196,7 @@ void VPA::preprocess( Function * fn ) {
 
 template< typename Meta, typename Call >
 bool has_called_function_meta( Call call, Meta meta ) {
-    auto fns = get_potentialy_called_functions( call );
+    auto fns = get_potentially_called_functions( call );
     return query::query( fns ).all( meta );
 }
 
@@ -333,7 +333,7 @@ struct ArgumentsAnnotation {
 };
 
 void VPA::propagate( CallInst *call, Domain dom ) {
-    run_on_potentialy_called_functions( call, [&] ( auto fn ) {
+    run_on_potentially_called_functions( call, [&] ( auto fn ) {
         if ( meta::function::ignore_call( fn ) )
             return;
 

@@ -14,7 +14,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract
 {
-    auto get_potentialy_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
+    auto get_potentially_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
     auto get_some_called_function( llvm::CallInst * call ) -> llvm::Function *;
 
     template< const char * tag >
@@ -30,9 +30,9 @@ namespace lart::abstract
     }
 
     template< typename Fn >
-    void run_on_potentialy_called_functions( llvm::CallInst * call, Fn functor )
+    void run_on_potentially_called_functions( llvm::CallInst * call, Fn functor )
     {
-        for ( auto fn : get_potentialy_called_functions( call ) )
+        for ( auto fn : get_potentially_called_functions( call ) )
             functor( fn );
     }
 
@@ -41,7 +41,7 @@ namespace lart::abstract
     {
         for ( auto * val : meta::enumerate( m ) ) {
             if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
-                auto fns = get_potentialy_called_functions( call );
+                auto fns = get_potentially_called_functions( call );
 
                 bool process = query::query( fns ).any( [] ( auto fn ) {
                     return fn != nullptr && !fn->isIntrinsic() && !fn->empty();
