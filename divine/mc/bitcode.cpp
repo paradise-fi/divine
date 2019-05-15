@@ -106,15 +106,20 @@ AutoTraceFlags autotrace_from_string( std::string x )
 
 void BitCode::lazy_link_dios()
 {
-    if( !(_module->getFunction( "__boot" )) )
+    bool has_boot = _module->getFunction( "__boot" );
+
+    rt::DiosCC drv( _ctx );
+    drv.link( std::move( _module ) );
+
+    if ( has_boot )
+        drv.link_dios_config( "null" );
+    else
     {
-        rt::DiosCC drv( _ctx );
-        drv.link( std::move( _module ) );
         drv.link_dios_config( _dios_config );
         drv.link_dios();
         drv.linkLibs( rt::DiosCC::defaultDIVINELibs );
-        _module = drv.takeLinked();
     }
+    _module = drv.takeLinked();
 }
 
 BitCode::BitCode( std::string file )
