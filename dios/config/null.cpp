@@ -1,7 +1,7 @@
 #include <dios/config/context.hpp>
 #include <dios/macro/no_memory_tags>
 
-#define SYSCALL( name, schedule, ret, arg ) ret SysProxy::name arg noexcept {}
+#define SYSCALL( name, schedule, ret, arg ) ret SysProxy::name arg noexcept { __builtin_trap(); }
 
 namespace __dios
 {
