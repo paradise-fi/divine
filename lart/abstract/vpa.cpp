@@ -130,6 +130,13 @@ private:
             [&] ( IntToPtrInst *inst ) {
                 sources = get_impl( inst->getOperand( 0 ), idx );
             },
+            [&] ( SelectInst *inst ) {
+                for ( auto i : { 1, 2 } )
+                {
+                    auto v = get_impl( inst->getOperand( i ), idx );
+                    std::move( v.begin(), v.end(), std::back_inserter( sources ) );
+                }
+            },
             [&] ( AllocaInst * ) {
                 sources = { { val, idx } };
             },
