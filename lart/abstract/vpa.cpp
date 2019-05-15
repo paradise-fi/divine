@@ -399,10 +399,12 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
     }
 }
 
-void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret ) {
+void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret )
+{
     auto val = ret->getReturnValue();
 
-    auto process_call = [&] ( llvm::CallInst * call ) {
+    auto process_call = [&] ( llvm::CallInst * call )
+    {
         preprocess( get_function( call ) );
         if ( is_base_type_in_domain( fn->getParent(), call, dom ) )
             meta::set( call, meta::tag::abstract_return );
@@ -413,15 +415,24 @@ void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret ) {
         tasks.push_back( [=]{ propagate_value( call, dom ); } );
     };
 
-    for ( auto u : fn->users() ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) ) {
-            process_call( call );
-        } else if ( llvm::isa< llvm::ConstantExpr >( u ) ) {
-            for ( auto ceu : u->users() )
-                if ( auto call = llvm::dyn_cast< llvm::CallInst >( ceu ) )
-                    process_call( call );
+    auto process_users = [&]( llvm::Value *val, auto recurse ) -> void
+    {
+        if ( auto go = llvm::dyn_cast< llvm::GlobalObject >( val ) )
+        {
+            for ( auto &a : go->getParent()->aliases() )
+                if ( a.getBaseObject() == go )
+                    recurse( &a, recurse );
         }
-    }
+        for ( auto u : val->users() )
+        {
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
+                process_call( call );
+            if ( llvm::isa< llvm::ConstantExpr >( u ) )
+                recurse( u, recurse );
+        }
+    };
+
+    process_users( fn, process_users );
 }
 
 void VPA::run( Module &m ) {
