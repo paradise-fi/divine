@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2015-2016 Vladimír Štill <xstill@fi.muni.cz>
+#include <lart/divine/stubs.h>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
-#include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
@@ -11,7 +11,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <iostream>
 
 #include <lart/support/pass.h>
-#include <lart/support/meta.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 
@@ -20,28 +19,25 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct DropEmptyDecls {
+PassMeta DropEmptyDecls::meta() {
+    return passMeta< DropEmptyDecls >( "DropEmptyDecls", "Remove unused function declarations." );
+}
 
-    static PassMeta meta() {
-        return passMeta< DropEmptyDecls >( "DropEmptyDecls", "Remove unused function declarations." );
-    }
-
-    void run( llvm::Module &m ) {
-        std::vector< llvm::Function * > toDrop;
-        long all = 0;
-        for ( auto &fn : m ) {
-            if ( fn.isDeclaration() ) {
-                ++all;
-                if ( fn.user_empty() )
-                    toDrop.push_back( &fn );
-            }
+void DropEmptyDecls::run( llvm::Module &m ) {
+    std::vector< llvm::Function * > toDrop;
+    long all = 0;
+    for ( auto &fn : m ) {
+        if ( fn.isDeclaration() ) {
+            ++all;
+            if ( fn.user_empty() )
+                toDrop.push_back( &fn );
         }
-        for ( auto f : toDrop )
-            f->eraseFromParent();
-        if ( toDrop.size() )
-            std::cerr << "INFO: erased " << toDrop.size() << " empty declarations out of " << all << std::endl;
     }
-};
+    for ( auto f : toDrop )
+        f->eraseFromParent();
+    if ( toDrop.size() )
+        std::cerr << "INFO: erased " << toDrop.size() << " empty declarations out of " << all << std::endl;
+}
 
 
 
