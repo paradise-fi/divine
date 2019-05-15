@@ -40,6 +40,10 @@ namespace lart::abstract
     bool potentially_called_functions( llvm::Value * called, Functions & fns ) {
         bool succeeded = false;
         llvmcase( called,
+            [&] ( llvm::GlobalAlias *ga )
+            {
+                succeeded = potentially_called_functions( ga->getBaseObject(), fns );
+            },
             [&] ( llvm::Function * fn ) {
                 fns.push_back( fn );
                 succeeded = true;
@@ -70,12 +74,9 @@ namespace lart::abstract
         auto m = call->getModule();
         auto type = call->getCalledValue()->getType();
 
-        if ( !llvm::isa< llvm::Argument >( call->getCalledValue() ) ) {
-            Functions fns;
-            if ( potentially_called_functions( call->getCalledValue(), fns) ) {
-                return fns;
-            }
-        }
+        Functions fns;
+        if ( potentially_called_functions( call->getCalledValue(), fns) )
+            return fns;
 
         // brute force all possible functions with correct signature
         return query::query( m->functions() )
