@@ -380,7 +380,8 @@ void VPA::propagate( llvm::ReturnInst *ret, Domain dom ) {
     step_out( fn, dom, ret );
 }
 
-void VPA::propagate_back( Argument *arg, Domain dom ) {
+void VPA::propagate_back( Argument *arg, Domain dom )
+{
     if ( entry_args.count( { arg, dom } ) )
         return;
     if ( !arg->getType()->isPointerTy() )
@@ -388,15 +389,27 @@ void VPA::propagate_back( Argument *arg, Domain dom ) {
 
     preprocess( get_function( arg ) );
 
-    for ( auto u : get_function( arg )->users() ) {
-        if ( auto call = dyn_cast< CallInst >( u ) ) {
-            auto op = call->getOperand( arg->getArgNo() );
-            ASSERT( seen_funs.count( get_function( arg ) ) );
-            for ( auto src : AbstractionSources( op ).get() ) {
-                tasks.push_back( [=]{ propagate_value( src, dom ); } );
-            }
+    auto process_users = [&]( llvm::Value *val, auto recurse ) -> void
+    {
+        if ( auto go = llvm::dyn_cast< llvm::GlobalObject >( val ) )
+        {
+            for ( auto &a : go->getParent()->aliases() )
+                if ( a.getBaseObject() == go )
+                    recurse( &a, recurse );
         }
-    }
+
+        for ( auto u : val->users() )
+            if ( auto call = dyn_cast< CallInst >( u ) )
+            {
+                auto op = call->getOperand( arg->getArgNo() );
+                ASSERT( seen_funs.count( get_function( arg ) ) );
+                for ( auto src : AbstractionSources( op ).get() ) {
+                    tasks.push_back( [=]{ propagate_value( src, dom ); } );
+                }
+            }
+    };
+
+    process_users( get_function( arg ), process_users );
 }
 
 void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret )
