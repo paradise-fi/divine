@@ -130,6 +130,14 @@ private:
             [&] ( IntToPtrInst *inst ) {
                 sources = get_impl( inst->getOperand( 0 ), idx );
             },
+            [&] ( PtrToIntInst *inst ) {
+                sources = get_impl( inst->getOperand( 0 ), idx );
+            },
+            [&] ( BinaryOperator *inst ) {
+                sources = get_impl( inst->getOperand( 0 ), idx );
+                auto values = get_impl( inst->getOperand( 1 ), idx );
+                std::move( values.begin(), values.end(), std::back_inserter( sources ) );
+            },
             [&] ( SelectInst *inst ) {
                 for ( auto i : { 1, 2 } )
                 {
