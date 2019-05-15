@@ -1,4 +1,5 @@
-#include <dios/config/context.hpp>
+#include <sys/types.h>
+#include <sys/syscall.h>
 #include <dios/macro/no_memory_tags>
 
 #define SYSCALL( name, schedule, ret, arg ) ret SysProxy::name arg noexcept { __builtin_trap(); }
