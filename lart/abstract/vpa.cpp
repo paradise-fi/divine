@@ -475,7 +475,8 @@ void VPA::run( Module &m ) {
             auto dom = Domain{ meta.value() };
             for ( auto u : fn.users() ) {
                 if ( auto ce = dyn_cast< ConstantExpr >( u ) ) {
-                    process( lower_constant_expr_call( ce ), dom );
+                    if ( auto c = lower_constant_expr_call( ce ) )
+                        process( c, dom );
                 } else {
                     process( u, dom );
                 }
