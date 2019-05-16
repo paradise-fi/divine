@@ -5,6 +5,10 @@
 #ifndef __DIOS_SCHEDULING_H__
 #define __DIOS_SCHEDULING_H__
 
+#include <dios/sys/task.hpp>
+#include <dios/sys/main.hpp>
+#include <dios/sys/syscall.hpp>
+
 #include <cstring>
 #include <signal.h>
 #include <sys/monitor.h>
@@ -13,8 +17,6 @@
 #include <sys/metadata.h>
 #include <dios.h>
 
-#include <dios/sys/main.hpp>
-#include <dios/sys/syscall.hpp>
 #include <util/map.hpp>
 
 #include <rst/common.h>
@@ -42,119 +44,6 @@ struct TrampolineFrame : _VM_Frame
     int rv;
 };
 
-template < typename T >
-struct TaskStorage: Array< std::unique_ptr< T > > {
-    using Tid = decltype( std::declval< T >().getId() );
-
-    T *find( Tid id ) noexcept {
-        for ( auto& t : *this )
-            if ( t->getId() == id )
-                return t.get();
-        return nullptr;
-    }
-
-    bool remove( Tid id ) noexcept {
-        for ( auto& t : *this ) {
-            if ( t ->getId() != id )
-                continue;
-            std::swap( t, this->back() );
-            this->pop_back();
-            return true;
-        }
-        return false;
-    }
-};
-
-template < typename Process >
-struct Task : KObject
-{
-    _VM_Frame *_frame;
-    __dios_tls *_tls;
-    Process *_proc;
-    const _MD_Function *_fun;
-
-    template <class F>
-    Task( F routine, int tls_size, Process *proc ) noexcept
-        : _frame( nullptr ),
-          _proc( proc ),
-          _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
-    {
-        setup_stack();
-        _tls = static_cast< __dios_tls * >( __vm_obj_make( sizeof( __dios_tls ) + tls_size,
-                                                           _VM_PT_Heap ) );
-        _tls->__errno = 0;
-    }
-
-    template <class F>
-    Task( void *mainFrame, void *mainTls, F routine, int tls_size, Process *proc ) noexcept
-        : _frame( nullptr ),
-          _proc( proc ),
-          _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
-    {
-        setup_stack( mainFrame );
-        _tls = static_cast< __dios_tls * >( mainTls );
-        __vm_obj_resize( _tls, sizeof( __dios_tls ) + tls_size );
-        _tls->__errno = 0;
-    }
-
-    Task( const Task& o ) noexcept = delete;
-    Task& operator=( const Task& o ) noexcept = delete;
-
-    Task( Task&& o ) noexcept
-        : _frame( o._frame ), _tls( o._tls ), _proc( o._proc )
-    {
-        o._frame = nullptr;
-        o._tls = nullptr;
-    }
-
-    Task& operator=( Task&& o ) noexcept {
-        std::swap( _frame, o._frame );
-        std::swap( _tls, o._tls );
-        std::swap( _proc, o._proc );
-        return *this;
-    }
-
-    ~Task() noexcept
-    {
-        free_stack();
-        __vm_obj_free( _tls );
-    }
-
-    bool active() const noexcept { return _frame; }
-    __dios_task getId() const noexcept { return _tls; }
-    uint32_t getUserId() const noexcept {
-        auto tid = reinterpret_cast< uint64_t >( _tls ) >> 32;
-        return static_cast< uint32_t >( tid );
-    }
-
-    void setup_stack( void *frame = nullptr ) noexcept
-    {
-        free_stack();
-        if ( frame ) {
-            _frame = static_cast< _VM_Frame * >( frame );
-            __vm_obj_resize( _frame, _fun->frame_size );
-        }
-        else
-            _frame = static_cast< _VM_Frame * >( __vm_obj_make( _fun->frame_size, _VM_PT_Heap ) );
-        _frame->pc = _fun->entry_point;
-        _frame->parent = nullptr;
-    }
-
-private:
-
-    void free_stack() noexcept
-    {
-        if ( _frame )
-            /* if the destructed part of stack is usperspace end of this stack,
-             * we need to pass the actual top of this stack as the first
-             * argument to make sure the stack does not end with a dangling
-             * pointer */
-            __dios_unwind( _tls == __dios_this_task() ? __dios_this_frame() : _frame,
-                           _frame, nullptr );
-        _frame = nullptr;
-    }
-};
-
 #ifdef __dios_kernel__
 
 void sig_ign( int );
@@ -176,8 +65,8 @@ struct Scheduler : public Next
         }
     };
 
-    using Task = __dios::Task< Process >;
-    using Tasks = TaskStorage< Task >;
+    using Task = __dios::task< Process >;
+    using Tasks = task_array< Task >;
 
     Scheduler() :
         debug( new Debug() ),
@@ -193,7 +82,7 @@ struct Scheduler : public Next
         if ( tasks.empty() )
             return;
         std::sort( tasks.begin(), tasks.end(), []( const auto& a, const auto& b ) {
-            return a->getId() < b->getId();
+            return a->get_id() < b->get_id();
         });
     }
 
@@ -248,7 +137,7 @@ struct Scheduler : public Next
         for ( int i = 0; i != c; i++ )
         {
             pi_it->pid = 0;
-            auto tid = tasks[ i ]->getId();
+            auto tid = tasks[ i ]->get_id();
             auto tidhid = debug->hids.find( tid );
             if ( tidhid != debug->hids.end() )
                 pi_it->tid = tidhid->second;
@@ -390,7 +279,7 @@ struct Scheduler : public Next
     {
         auto t = newTask( routine, tls_size, getCurrentTask()->_proc );
         setupTask( t, arg );
-        return t->getId();
+        return t->get_id();
     }
 
     void exit_process( int code )
@@ -545,7 +434,7 @@ struct Scheduler : public Next
     {
         __vm_ctl_set( _VM_CR_Globals, t._proc->globals );
         __vm_ctl_set( _VM_CR_User1, &t._frame );
-        __vm_ctl_set( _VM_CR_User2, t.getId() );
+        __vm_ctl_set( _VM_CR_User2, t.get_id() );
         __vm_ctl_set( _VM_CR_User3, debug );
     }
 

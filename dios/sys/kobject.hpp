@@ -18,6 +18,7 @@
 
 #pragma once
 #include <sys/divm.h>
+#include <stdlib.h>   /* size_t */
 
 namespace __dios
 {

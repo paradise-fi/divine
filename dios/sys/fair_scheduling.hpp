@@ -9,7 +9,7 @@ namespace __dios {
 
 template < typename Next >
 struct FairScheduler : public Scheduler< Next > {
-     using Task = __dios::Task< typename Scheduler< Next >::Process >;
+     using Task = __dios::task< typename Scheduler< Next >::Process >;
      using Process = typename Scheduler< Next >::Process;
 
     FairScheduler() : _workingGroup( 0 ) {
@@ -24,7 +24,7 @@ struct FairScheduler : public Scheduler< Next > {
         s.proc1->pid = 1;
 
         auto mainTask = this->newTaskMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
-        _fairGroup.push_back( mainTask->getId() );
+        _fairGroup.push_back( mainTask->get_id() );
         auto argv = construct_main_arg( "arg.", s.env, true );
         auto envp = construct_main_arg( "env.", s.env );
         this->setupMainTask( mainTask, argv.first, argv.second, envp.second );
@@ -40,8 +40,8 @@ struct FairScheduler : public Scheduler< Next > {
     {
         auto t = this->newTask( routine, tls_size, this->getCurrentTask()->_proc );
         this->setupTask( t, arg );
-        _fairGroup.push_back( t->getId() );
-        return t->getId();
+        _fairGroup.push_back( t->get_id() );
+        return t->get_id();
     }
 
     void killTask( __dios_task tid ) noexcept

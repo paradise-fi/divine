@@ -10,7 +10,7 @@ namespace __dios {
 template < typename Next >
 struct SyncScheduler : public Scheduler< Next >
 {
-    using Task = __dios::Task< typename Scheduler< Next >::Process >;
+    using Task = __dios::task< typename Scheduler< Next >::Process >;
 
     template < typename Setup >
     void setup( Setup s ) {
@@ -53,12 +53,12 @@ struct SyncScheduler : public Scheduler< Next >
         auto t_obj = new Task( routine, tls_size, _setupTask->_proc );
         auto t = this->tasks.emplace_back( t_obj ).get();
         this->setupTask( t, arg );
-        return t->getId();
+        return t->get_id();
     }
 
     __inline void run( Task& t ) noexcept
     {
-        __vm_ctl_set( _VM_CR_User2, t.getId() );
+        __vm_ctl_set( _VM_CR_User2, t.get_id() );
 
          // In synchronous mode, interrupts don't happen, but RESCHEDULE simply
          // calls __dios_interrupt and we need to prevent that.
