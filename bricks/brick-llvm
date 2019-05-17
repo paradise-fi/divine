@@ -115,9 +115,9 @@ struct Annotation : brick::types::Eq {
     template< typename It >
     Annotation( It begin, It end ) : _parts( begin, end ) { }
 
-    std::string name() { return _parts.back(); }
-    Annotation ns() { return Annotation( _parts.begin(), _parts.end() - 1); }
-    std::string toString() {
+    std::string name() const { return _parts.back(); }
+    Annotation ns() const { return Annotation( _parts.begin(), _parts.end() - 1); }
+    std::string toString() const {
         std::stringstream ss;
         for ( auto &n : _parts )
             ss << n << ".";
@@ -125,12 +125,12 @@ struct Annotation : brick::types::Eq {
         return str.substr( 0, str.size() - 1 );
     }
 
-    bool inNamespace( Annotation ns ) {
+    bool inNamespace( Annotation ns ) const {
         return ns._parts.size() < _parts.size()
             && std::equal( ns._parts.begin(), ns._parts.end(), _parts.begin() );
     }
 
-    Annotation dropNamespace( Annotation ns ) {
+    Annotation dropNamespace( Annotation ns ) const {
         return inNamespace( ns )
              ? Annotation( _parts.begin() + ns.size(), _parts.end() )
              : *this;
