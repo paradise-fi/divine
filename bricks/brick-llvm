@@ -205,6 +205,13 @@ void enumerateFunctionAnnosInNs( const std::string& ns, ::llvm::Module &m, Yield
     enumerateAnnosInNs< ::llvm::Function >( ns, m, std::forward< Yield >( yield ) );
 }
 
+template< typename Yield >
+void enumerateFunctionsForAttribute( const std::string& attr, ::llvm::Module &m, Yield &&yield ) {
+    for ( auto & fn : m )
+        if ( fn.hasFnAttribute( attr ) )
+            yield( fn );
+}
+
 inline void verifyModule( ::llvm::Module *module ) {
     std::string err;
     ::llvm::raw_string_ostream serr( err );
