@@ -10,7 +10,8 @@
         __dios_fault( _VM_F_Control, "oops, interrupted in kernel mode" );                       \
                                                                                                  \
     __vm_ctl_flag( _DiOS_CF_Deferred, 0 );                                                       \
-    *reinterpret_cast< void ** >( __vm_ctl_get( _VM_CR_User1 ) ) = __dios_this_frame()->parent;  \
+    auto f = reinterpret_cast< void ** >( __vm_ctl_get( _VM_CR_User1 ) );                        \
+    if ( f ) *f = __dios_this_frame()->parent;                                                   \
     __vm_suspend();
 
 extern "C" __link_always __trapfn __invisible __weakmem_direct void __dios_reschedule()
