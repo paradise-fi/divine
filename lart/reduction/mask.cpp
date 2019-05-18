@@ -13,6 +13,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
+#include <lart/support/annotate.h>
 
 #include <brick-assert>
 
@@ -132,16 +133,20 @@ struct HoistMasks {
 
 struct Mask {
 
+    inline static const std::string annotation = "lart.interrupt.masked";
+
     static PassMeta meta() {
         return passMeta< Mask >( "Mask", "Mask whole functions annotated with 'lart.interrupt.masked'" );
     }
 
     void run( llvm::Module &m ) {
+        LowerAnnotations( annotation ).run( m );
+
         auto mask = m.getFunction( "__divine_interrupt_mask" );
         ASSERT( mask );
-        brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.masked", m, [&]( llvm::Function *fn ) {
-                ASSERT( !fn->empty() );
-                llvm::CallInst::Create( mask )->insertBefore( &*fn->front().begin() );
+        brick::llvm::enumerateFunctionsForAttribute( annotation, m, [&]( llvm::Function & fn ) {
+                ASSERT( !fn.empty() );
+                llvm::CallInst::Create( mask )->insertBefore( &*fn.front().begin() );
             } );
     }
 };

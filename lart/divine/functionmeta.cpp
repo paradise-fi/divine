@@ -20,6 +20,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
+#include <lart/support/annotate.h>
 #include <lart/divine/metadata.h>
 
 #include <divine/vm/divm.h>
@@ -133,6 +134,8 @@ struct GlobalMeta {
 
 struct IndexFunctions {
 
+    inline static const std::string trapfn = "divine.trapfn";
+
     static PassMeta meta() {
         return passMeta< IndexFunctions >( "IndexFunctions", "Create function metadata tables" );
     }
@@ -184,7 +187,6 @@ struct IndexFunctions {
         if ( mdGlobals )
             ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
 
-	// Look up functions marked with `__trapfn`
         std::set< llvm::Function * > traps;
         brick::llvm::enumerateFunctionsForAnno( "divine.trapfn", mod,
                                                 [&]( llvm::Function *f ) { traps.insert( f ); } );

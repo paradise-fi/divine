@@ -19,6 +19,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
+#include <lart/support/annotate.h>
 #include <lart/divine/passes.h>
 #include <lart/reduction/passes.h>
 
@@ -30,6 +31,8 @@ namespace divine {
 struct CflInterrupt
 {
     CflInterrupt( std::string n ) : _handler_name( n ) {}
+
+    inline static const std::string skipcfl = "lart.interrupt.skipcfl";
 
     void insert( llvm::Value *v, llvm::IRBuilder<> &b ) { b.CreateCall( _hypercall, { v, _handler } ); }
     void insert( llvm::Value *v, llvm::Instruction *where )
@@ -98,9 +101,8 @@ struct CflInterrupt
         _hypercall->addFnAttr( llvm::Attribute::NoUnwind );
         _handler->addFnAttr( llvm::Attribute::NoUnwind );
 
-        std::set< llvm::Function * > skip;
-        brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.skipcfl", m,
-                                                [&]( llvm::Function *f ) { skip.insert( f ); } );
+        LowerAnnotations( skipcfl ).run( m );
+        auto skip = util::functions_with_attr( skipcfl, m );
 
         for ( auto &fn : m )
         {
@@ -117,6 +119,8 @@ struct CflInterrupt
 
 struct MemInterrupt
 {
+    inline static const std::string skipmem = "lart.interrupt.skipmem";
+
     MemInterrupt( std::string n ) : _handler_name( n ) {}
 
     void annotateFn( llvm::Function &fn, llvm::DataLayout &dl, unsigned silentID )
@@ -179,9 +183,8 @@ struct MemInterrupt
         auto silentID = m.getMDKindID( reduction::silentTag );
         llvm::DataLayout dl( &m );
 
-        std::set< llvm::Function * > skip;
-        brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.skipmem", m,
-                                                [&]( llvm::Function *f ) { skip.insert( f ); } );
+        LowerAnnotations( skipmem ).run( m );
+        auto skip = util::functions_with_attr( skipmem, m );
 
         for ( auto &fn : m )
         {
