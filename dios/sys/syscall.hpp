@@ -61,7 +61,7 @@ struct Trap
             auto parent = frame->parent;
             auto target = parent->parent;
             /* free the in-between frame */
-            __dios_unwind( frame, parent, target );
+            __dios_stack_free( parent, target );
             __dios_set_frame( target );
         }
     }

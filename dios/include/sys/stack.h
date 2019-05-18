@@ -41,17 +41,8 @@ __inline static inline void __dios_sync_this_frame() __nothrow
         *f = __dios_this_frame();
 }
 
-// unwind and free frames on stack 'stack' from 'from' to 'to' so that 'to'
-// the frame which originally returned to 'from' now returns to 'to'
-// * 'stack' can be nullptr if unwinding on local stack
-// * 'from' can be nullptr if everything from the caller of __dios_unwind should be unwound
-// * 'to' can be nullptr if all frames from 'from' below should be destroyed
-//
-// i.e. __dios_unwind( nullptr, nullptr, nullptr ) destroys complete stack
-// except for the caller of __dios_unwind, which will have 'parent' set to
-// nullptr
-void __dios_unwind( struct _VM_Frame *stack, struct _VM_Frame *from, struct _VM_Frame *to )
-    _PDCLIB_nothrow __attribute__((__noinline__));
+__noinline void __dios_stack_cut( struct _VM_Frame *top, struct _VM_Frame *bottom ) __nothrow;
+__noinline void __dios_stack_free( struct _VM_Frame *from, struct _VM_Frame *to ) __nothrow;
 
 // destroy this frame and transfer control to given frame and program counter,
 // if restoreMaskTo is -1 it does not change mask

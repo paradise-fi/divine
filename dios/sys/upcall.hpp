@@ -32,8 +32,7 @@ namespace __dios
         {
             if ( this->check_final() )
                 this->finalize();
-            /* destroy the stack to avoid memory leaks */
-            __dios_unwind( nullptr, nullptr, nullptr );
+            __dios_stack_free( __dios_parent_frame(), nullptr );
             __vm_suspend();
         }
 

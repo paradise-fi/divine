@@ -140,11 +140,11 @@ namespace __dios
 
         void free_stack() noexcept
         {
+            if ( _frame && _tls == __dios_this_task() )
+                __dios_stack_cut( __dios_this_frame(), _frame );
             if ( _frame )
-            {
-                auto *top = _tls == __dios_this_task() ? __dios_this_frame() : _frame;
-                __dios_unwind( top, _frame, nullptr );
-            }
+                __dios_stack_free( _frame, nullptr );
+
             _frame = nullptr;
         }
     };

@@ -161,7 +161,7 @@ static _Unwind_Reason_Code _Unwind_Phase2( _VM_Frame *topFrame, _Unwind_Context 
             // save mask state before it is removed from the stack
             auto maskState = mask._origState();
             // kill the part of stack which will be jumped over
-            __dios_unwind( nullptr, nullptr, ctx.frame );
+            __dios_stack_free( __dios_parent_frame(), ctx.frame );
             __dios_assert( ctx.jumpPC != 0 );
             // unwinder has to put the mask to the same state as it was before throw/resume
             __dios_jump( ctx.frame, reinterpret_cast< void (*)() >( ctx.jumpPC ), maskState );

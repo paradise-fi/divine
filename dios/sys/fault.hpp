@@ -101,7 +101,7 @@ struct FaultBase
         // Continue if we get the control back
         old |= uint64_t( __vm_ctl_get( _VM_CR_Flags ) ) & ( _DiOS_CF_Fault | _VM_CF_Error );
         // clean possible intermediate frames to avoid memory leaks
-        __dios_unwind( nullptr, nullptr, cont_frame );
+        __dios_stack_free( __dios_parent_frame(), cont_frame );
       ret:
         __vm_ctl_set( _VM_CR_Flags, reinterpret_cast< void * >( old ) );
         __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc );
