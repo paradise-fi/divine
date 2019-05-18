@@ -170,7 +170,7 @@ struct Fault: FaultBase, Next
 
     uint8_t *config() override
     {
-        auto *task = Next::getCurrentTask();
+        auto *task = Next::current_task();
         if ( !task )
             return nullptr;
         return static_cast< Process * >( task->_proc )->faultConfig;

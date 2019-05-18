@@ -38,7 +38,7 @@ struct FairScheduler : public Scheduler< Next > {
 
     __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size )
     {
-        auto t = this->newTask( routine, tls_size, this->getCurrentTask()->_proc );
+        auto t = this->newTask( routine, tls_size, this->current_process() );
         this->setupTask( t, arg );
         _fairGroup.push_back( t->get_id() );
         return t->get_id();

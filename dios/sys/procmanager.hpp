@@ -63,20 +63,20 @@ struct ProcessManager : public Next
 
     pid_t getppid()
     {
-        return proc(this->getCurrentTask())->ppid;
+        return proc( this->current_task() )->ppid;
     }
 
     pid_t getsid( pid_t pid )
     {
         if ( pid == 0 )
-            return proc(this->getCurrentTask())->sid;
+            return proc( this->current_task() )->sid;
         Process* proc = this->findProcess( pid );
         return proc ? proc->sid : -1;
     }
 
     pid_t setsid()
     {
-        Process* p = proc(this->getCurrentTask());
+        Process* p = proc( this->current_task() );
         for( auto& t : this->tasks )
             if( proc(t.get())->sid == p->sid && proc(t.get())->pgid == p->pid )
             {
@@ -91,7 +91,7 @@ struct ProcessManager : public Next
     pid_t getpgid( pid_t pid )
     {
         if ( pid == 0 )
-            return proc(this->getCurrentTask())->pgid;
+            return proc( this->current_task() )->pgid;
         Process* proc = this->findProcess( pid );
         return proc ? proc->pgid : -1;
     }
@@ -105,7 +105,7 @@ struct ProcessManager : public Next
         }
 
         Process* procToSet;
-        Process* currentProc = proc(this->getCurrentTask());
+        Process* currentProc = proc( this->current_task() );
         if ( pid == 0 )
             procToSet = currentProc;
         else
@@ -167,7 +167,7 @@ struct ProcessManager : public Next
     void sysfork( pid_t *child )
     {
         auto tid = __dios_this_task();
-        auto oldtask = this->tasks.find( tid );
+        auto oldtask = this->find_task( tid );
         __dios_assert( oldtask );
 
         auto oldproc = proc( oldtask );
@@ -278,9 +278,9 @@ struct ProcessManager : public Next
 
     void exit_process( int code )
     {
-        Process* p = proc( this->tasks.find( __dios_this_task() ) );
+        Process* p = proc( this->current_task() );
         p->exitStatus = code << 8;
-        Next::killProcess( p->pid );
+        Next::kill_process( p->pid );
     }
 
     ArrayMap< pid_t, Process* > zombies;

@@ -38,7 +38,7 @@ struct VFS: Syscall, Next
     {};
 
     Node root() override { return _root; }
-    ProcessInfo &proc() override { return *static_cast< Process * >( this->getCurrentTask()->_proc ); }
+    ProcessInfo &proc() override { return *static_cast< Process * >( this->current_process() ); }
 
     using Syscall::open;
     using Syscall::openat;

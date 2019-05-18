@@ -212,7 +212,7 @@ struct Scheduler : public Next
             delete item.first;
     }
 
-    void killProcess( pid_t id ) noexcept
+    void kill_process( pid_t id ) noexcept
     {
         if ( !id )
         {
@@ -266,25 +266,22 @@ struct Scheduler : public Next
         __dios_fault( _VM_F_NotImplemented, "rt_sigaction with size != sizeof( sigset_t )" );
     }
 
-    Task* getCurrentTask() {
-        auto tid = __dios_this_task();
-        return tasks.find( tid );
-    }
+    Task *find_task( __dios_task id ) { return tasks.find( id ); }
+    Task *current_task() { return tasks.find( __dios_this_task() ); }
+    Process *current_process() { return current_task()->_proc; }
 
-    pid_t getpid() {
-        return getCurrentTask()->_proc->pid;
-    }
+    pid_t getpid() { return current_process()->pid; }
 
     __dios_task start_task( __dios_task_routine routine, void * arg, int tls_size )
     {
-        auto t = newTask( routine, tls_size, getCurrentTask()->_proc );
+        auto t = newTask( routine, tls_size, current_task()->_proc );
         setupTask( t, arg );
         return t->get_id();
     }
 
     void exit_process( int code )
     {
-        killProcess( 0 );
+        kill_process( 0 );
     }
 
     void kill_task( __dios_task id )
@@ -402,7 +399,7 @@ struct Scheduler : public Next
         if ( handler.f == sig_die )
         {
             func( task->_proc );
-            killProcess( pid );
+            kill_process( pid );
         }
         else if ( handler.f == sig_fault )
             __dios_fault( _VM_F_Control, "Uncaught signal." );
@@ -422,7 +419,7 @@ struct Scheduler : public Next
         /* we are in the fault handler, do not touch anything that may trigger a double fault */
         for ( auto& t : tasks )
             t->_frame = nullptr;
-        killProcess( 0 );
+        kill_process( 0 );
     }
 
     bool check_final()
