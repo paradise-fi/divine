@@ -10,15 +10,7 @@
 
 _PDCLIB_EXTERN_C
 
-// minimal implementation
-struct __jmp_buf_tag
-{
-    struct _VM_Frame *__jumpFrame;
-    _VM_CodePointer __jumpPC;
-    const _MD_Function *__jumpFunctionMeta;
-};
-
-typedef struct __jmp_buf_tag jmp_buf[1];
+typedef uint64_t jmp_buf[ _HOST_jmp_buf_size / 8 ];
 
 int setjmp( jmp_buf env ) __attribute__((__noinline__, __returns_twice__, __nothrow__));
 // int sigsetjmp( sigjmp_buf env, int savesigs );

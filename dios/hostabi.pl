@@ -23,6 +23,7 @@ my $prog =<<'EOF';
 #include <sys/socket.h>
 #include <signal.h>
 #include <unistd.h>
+#include <setjmp.h>
 
 int offset = 0;
 int padding = 0;
@@ -210,6 +211,7 @@ fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );
 fmt( "is_linux",   $uname eq "Linux" ? 1 : 0);
 fmt( "is_openbsd", $uname eq "OpenBSD" ? 1 : 0);
 fmt( "mode_t", "(int) (8*sizeof(mode_t))", "__uint%d_t" );
+fmt( "jmp_buf_size", "sizeof(jmp_buf)", "%zd" );
 
 $prog .= "#ifdef __GNU_LIBRARY__\n";
 fmt( "is_glibc", 1 );
