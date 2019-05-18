@@ -93,7 +93,7 @@ struct FaultBase
 
         {
             bool kernel = old & _VM_CF_KernelMode;
-            auto *frame = __dios_this_frame()->parent;
+            auto *frame = __dios_parent_frame();
             auto& fault = get_state< Context >();
             fault.fault_handler( kernel, frame, _what );
         }

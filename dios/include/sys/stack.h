@@ -12,6 +12,15 @@ __inline static inline struct _VM_Frame *__dios_this_frame() __nothrow
     return __CAST( struct _VM_Frame *, __vm_ctl_get( _VM_CR_Frame ) );
 }
 
+__inline static inline struct _VM_Frame *__dios_parent_frame() __nothrow
+{
+    struct _VM_Frame *f = __dios_this_frame();
+    if ( f )
+        return f->parent;
+    else
+        return 0;
+}
+
 static inline void __dios_set_frame( struct _VM_Frame *f ) __nothrow
 {
     __vm_ctl_set( _VM_CR_Frame, f );
