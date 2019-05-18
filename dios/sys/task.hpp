@@ -60,6 +60,12 @@ namespace __dios
         process *_proc;
         const _MD_Function *_fun;
 
+        task() : _frame( nullptr ),
+                 _tls( static_cast< __dios_tls * >(
+                             __vm_obj_make( sizeof( __dios_tls ) , _VM_PT_Heap ) ) ),
+                 _proc( nullptr ), _fun( nullptr )
+        {}
+
         template< typename F >
         task( F routine, int tls_size, process *proc ) noexcept
             : _frame( nullptr ),
