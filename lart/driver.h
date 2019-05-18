@@ -34,6 +34,7 @@ struct Driver {
     std::vector< PassMeta > passes() const {
         std::vector< PassMeta > out;
         out.push_back( AnnotateFunctions::meta() );
+        out.push_back( LowerAnnotations::meta() );
         out.push_back( weakmem::meta() );
         insertPasses( out, reduction::passes() );
         insertPasses( out, svcomp::passes() );

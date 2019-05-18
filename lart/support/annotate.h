@@ -31,6 +31,31 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart
 {
+    /* Lower function annotations to function attributes */
+    struct LowerAnnotations
+    {
+        using Annotation = brick::llvm::Annotation;
+
+        LowerAnnotations( std::string opt )
+        {
+            std::stringstream ss( opt );
+            std::getline( ss, _anno );
+        }
+
+        static PassMeta meta() {
+            return passMetaO< LowerAnnotations >( "lower-annot",
+                    "options: annotation\n"
+                    "\n"
+                    "Lowers function annotations to function attributes.\n" );
+        };
+
+
+        void run( llvm::Module &m ) const noexcept;
+        void lower( llvm::Function * fn ) const noexcept;
+
+        std::string _anno;
+    };
+
     /* Annotates all functions which name is matched by given regex */
     struct AnnotateFunctions
     {

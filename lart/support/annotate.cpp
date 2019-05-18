@@ -20,6 +20,16 @@
 
 namespace lart {
 
+    void LowerAnnotations::run( llvm::Module &m ) const noexcept
+    {
+        brick::llvm::enumerateFunctionsForAnno( _anno, m, [&] ( auto * fn ) { lower( fn ); } );
+    }
+
+    void LowerAnnotations::lower( llvm::Function * fn ) const noexcept
+    {
+        fn->addFnAttr( _anno );
+    }
+
     void AnnotateFunctions::run( llvm::Module &m )
     {
         for ( auto & fn : m )
