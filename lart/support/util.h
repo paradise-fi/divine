@@ -200,6 +200,13 @@ struct PtrPlusBit {
     T *ptr;
 };
 
+static inline auto functions_with_attr( const std::string & attr, llvm::Module & m ) {
+    std::set< llvm::Function * > set;
+    brick::llvm::enumerateFunctionsForAttribute( attr, m,
+        [&]( llvm::Function &f ) { set.insert( &f ); } );
+    return set;
+}
+
 template< typename... Ts >
 bool is_one_of( llvm::Value *v ) {
     return ( llvm::isa< Ts >( v ) || ... );

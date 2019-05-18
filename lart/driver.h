@@ -8,6 +8,7 @@
 #include <lart/svcomp/passes.h>
 #include <lart/divine/passes.h>
 #include <lart/support/fixphi.h>
+#include <lart/support/annotate.h>
 
 #include <iostream>
 
@@ -32,6 +33,7 @@ struct Driver {
 
     std::vector< PassMeta > passes() const {
         std::vector< PassMeta > out;
+        out.push_back( AnnotateFunctions::meta() );
         out.push_back( weakmem::meta() );
         insertPasses( out, reduction::passes() );
         insertPasses( out, svcomp::passes() );
