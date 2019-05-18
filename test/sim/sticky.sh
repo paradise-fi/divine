@@ -14,5 +14,5 @@ sim $TESTS/lang-c/assert.c <<EOF
 > setup --sticky "backtrace $state"
 > stepi
 +   main at
-+   _start at
++   __dios_start at
 EOF

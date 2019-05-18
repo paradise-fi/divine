@@ -8,7 +8,7 @@ sim $TESTS/lang-c/assert.c <<EOF
 > start
 + ^\s*4 int main\(\)
 +   main at
-+   _start at
++   __dios_start at
 EOF
 
 sim $TESTS/lang-c/assert.c <<EOF

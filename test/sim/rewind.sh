@@ -9,5 +9,5 @@ sim $SRC <<EOF
 > stepa
 > rewind #1
 ! ERROR
-+ executing _start
++ executing __dios_start
 EOF
