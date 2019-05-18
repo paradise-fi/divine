@@ -15,5 +15,6 @@
 namespace __dios
 {
     struct Base : Clock< MachineParams< MonitorManager< BaseContext > > > {};
+    template< typename B > using WithFS = fs::VFS< Fault< B > >;
     template< typename B > using WithProc = fs::VFS< ProcessManager< Fault< B > > >;
 }
