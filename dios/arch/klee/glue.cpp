@@ -3,19 +3,11 @@
 #undef __vm_trace
 extern "C" void __vm_trace( int t, ... );
 
-#include <sys/metadata.h>
 #include <stdint.h>
-#include <dios/config/context.hpp>
+#include <stdarg.h>
+#include <stdlib.h>
 
-namespace __dios
-{
-    using Context = Upcall< WithFS< sched_null< Base > > >;
-}
-
-extern const _MD_Function __md_functions[];
-extern const int __md_functions_count;
-
-extern "C"
+extern "C" /* the klee api */
 {
     uint8_t *klee_malloc( int );
     uint8_t *klee_realloc( void *, int );
@@ -26,7 +18,10 @@ extern "C"
     void klee_abort();
     void klee_silent_exit( int );
     void klee_make_symbolic( void *, size_t, const char * );
+}
 
+extern "C" /* platform glue */
+{
     void *__vm_obj_make( int sz, int )
     {
         uint8_t *mem = klee_malloc( 4100 );
@@ -53,7 +48,13 @@ extern "C"
         vmreg[ reg ] = val;
 
         if ( reg == _VM_CR_Frame && val == 0 )
-            klee_silent_exit( 0 );
+        {
+            uint64_t flags = reinterpret_cast< uint64_t >( vmreg[ _VM_CR_Flags ] );
+            if ( flags & _VM_CF_Error )
+                klee_abort();
+            else
+                klee_silent_exit( 0 );
+        }
     }
 
     void *__vm_ctl_get( enum _VM_ControlRegister reg )
@@ -61,7 +62,12 @@ extern "C"
         return vmreg[ reg ];
     }
 
-    uint64_t __vm_ctl_flag( uint64_t, uint64_t ) { return 0; }
+    uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set )
+    {
+        uint64_t flags = reinterpret_cast< uint64_t >( vmreg[ _VM_CR_Flags ] );
+        vmreg[ _VM_CR_Flags ] = reinterpret_cast< void * >( ( flags & ~clear ) | set );
+        return flags;
+    }
 
     void __vm_trace( int t, ... )
     {
@@ -74,26 +80,6 @@ extern "C"
         }
     }
 
-    void klee_boot()
-    {
-        struct _VM_Env env[] = { { "divine.bcname", "kleevm", 7 }, { 0, 0, 0 } };
-        __dios::boot< __dios::Context >( env );
-        reinterpret_cast< void(*)() >( vmreg[ _VM_CR_Scheduler ] )();
-    }
-
-    void __dios_fault( int, const char * )
-    {
-        klee_abort();
-    }
-
-    const _MD_Function *__md_get_pc_meta( _VM_CodePointer f )
-    {
-        for ( int i = 0; i < __md_functions_count; ++i )
-            if ( f == __md_functions[ i ].entry_point )
-                return __md_functions + i;
-        return 0;
-    }
-
     int __vm_choose( int count, ... )
     {
         int rv;
@@ -104,5 +90,3 @@ extern "C"
     }
 
 }
-
-#include <dios/config/common.hpp>
