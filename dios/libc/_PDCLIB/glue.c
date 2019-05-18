@@ -20,6 +20,8 @@
  * exploded over runtime/ which is even worse.
  */
 
+uint8_t __dios_simfail_flags;
+
 /* Memory allocation */
 __invisible void *malloc( size_t size )
 {
