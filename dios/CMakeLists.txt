@@ -17,6 +17,10 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
 file( GLOB SRC_dios sys/*.cpp vfs/*.cpp proxy/*.cpp )
 file( GLOB SRC_config config/*.cpp )
 
+file( GLOB SRC_dios_divm arch/divm/*.cpp arch/divm/*.c )
+file( GLOB SRC_dios_klee arch/klee/*.cpp arch/klee/*.c )
+file( GLOB SRC_dios_native arch/native/*.cpp arch/native/*.c )
+
 file( GLOB SRC_librst rst/*.cpp )
 file( GLOB SRC_libc libc/*/*.c )
 file( GLOB SRC_libc_cpp libc/*/*.cpp )

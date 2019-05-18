@@ -18,20 +18,26 @@ list( APPEND flags -isystem${divine_SOURCE_DIR}/ ) # for #includes starting with
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 
 set( NOEXCEPT "-fno-rtti;-fno-exceptions" )
+
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
-mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;${NOEXCEPT};-std=c++1z;-I${CMAKE_CURRENT_BINARY_DIR}" )
-mkobjs( libpthread "${flags};${NOEXCEPT};-std=c++1z" )
+mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;${NOEXCEPT};-std=c++17;-I${CMAKE_CURRENT_BINARY_DIR}" )
+mkobjs( libpthread "${flags};${NOEXCEPT};-std=c++17" )
 mkobjs( libm "${flags}" )
 
-list( APPEND flags -std=c++1z )
-mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
-mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI" )
+mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER;-std=c++17" )
+mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI;-std=c++17" )
 
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
-                   -Wall -Wextra -Wold-style-cast -Werror)
-mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT}" )
-mkobjs( config "${flags};-D__dios_kernel__;${NOEXCEPT}" )
-mkobjs( librst "${flags};${NOEXCEPT}" )
+                   -Wall -Wextra -Wold-style-cast -Werror )
+
+mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
+mkobjs( config "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
+mkobjs( librst "${flags};${NOEXCEPT};-std=c++17" )
+
+foreach( arch divm klee native )
+    mkobjs( dios_${arch} "${flags};${NOEXCEPT}" )
+    mklib( dios_${arch} )
+endforeach()
 
 mklib( libc libc_cpp )
 mklib( libm )
