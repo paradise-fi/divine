@@ -23,7 +23,7 @@ struct FairScheduler : public Scheduler< Next > {
         s.proc1->globals = __vm_ctl_get( _VM_CR_Globals );
         s.proc1->pid = 1;
 
-        auto mainTask = this->newTaskMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
+        auto mainTask = this->newTaskMem( s.pool->get(), s.pool->get(), __dios_start, 0, s.proc1 );
         _fairGroup.push_back( mainTask->get_id() );
         auto argv = construct_main_arg( "arg.", s.env, true );
         auto envp = construct_main_arg( "env.", s.env );

@@ -146,7 +146,7 @@ namespace __dios
             /* switch to user mode */
             __vm_ctl_flag( _VM_CF_KernelMode | _VM_CF_IgnoreCrit | _VM_CF_IgnoreLoop, 0 );
             /* call the entry point */
-            _start( f->l, f->argc, f->argv, f->envp );
+            __dios_start( f->l, f->argc, f->argv, f->envp );
         }
 
         template < typename Context >

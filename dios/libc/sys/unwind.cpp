@@ -221,7 +221,7 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
         {
             auto meta = __md_get_pc_meta( ctx.pc() );
             auto entry = meta->entry_point;
-            if ( entry != reinterpret_cast< void (*)() >( &_start ) &&
+            if ( entry != reinterpret_cast< void (*)() >( &__dios_start ) &&
                  entry != reinterpret_cast< void (*)() >( &__pthread_entry ) &&
                  entry != reinterpret_cast< void (*)() >( &__pthread_start ) )
             {

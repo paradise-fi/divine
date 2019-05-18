@@ -115,13 +115,13 @@ __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char *
     return res;
 }
 
-void _start( int l, int argc, char **argv, char **envp )
+void __dios_start( int l, int argc, char **argv, char **envp )
 {
     int res = __execute_main( l, argc, argv, envp );
     exit( res );
 }
 
-void _start_synchronous( int l, int argc, char **argv, char **envp )
+void __dios_start_synchronous( int l, int argc, char **argv, char **envp )
 {
     int res = __execute_main( l, argc, argv, envp );
     if ( res )

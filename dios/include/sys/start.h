@@ -14,8 +14,8 @@ _PDCLIB_EXTERN_C
  * then messes with standard behaviour of uncaught exceptions which should not
  * unwind stack.
  */
-void _start( int variant, int argc, char **argv, char **envp );
-void _start_synchronous( int variant, int argc, char **argv, char **envp );
+void __dios_start( int variant, int argc, char **argv, char **envp );
+void __dios_start_synchronous( int variant, int argc, char **argv, char **envp );
 
 void __dios_run_ctors();
 void __dios_run_dtors();

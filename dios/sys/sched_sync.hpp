@@ -18,7 +18,8 @@ struct SyncScheduler : public Scheduler< Next >
         s.proc1->globals = __vm_ctl_get( _VM_CR_Globals );
         s.proc1->pid = 1;
 
-        _setupTask.reset( new Task( s.pool->get(), s.pool->get(), _start_synchronous, 0, s.proc1 ) );
+        _setupTask.reset( new Task( s.pool->get(), s.pool->get(),
+                                    __dios_start_synchronous, 0, s.proc1 ) );
         assert( _setupTask );
         auto argv = construct_main_arg( "arg.", s.env, true );
         auto envp = construct_main_arg( "env.", s.env );
