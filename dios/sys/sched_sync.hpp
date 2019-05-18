@@ -3,7 +3,7 @@
 #ifndef __DIOS_SYNC_SCHEDULING_H__
 #define __DIOS_SYNC_SCHEDULING_H__
 
-#include <dios/sys/scheduling.hpp>
+#include <dios/sys/sched_base.hpp>
 
 namespace __dios {
 

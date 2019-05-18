@@ -6,7 +6,6 @@ extern "C" void __vm_trace( int t, ... );
 #include <sys/metadata.h>
 #include <stdint.h>
 #include <dios/config/context.hpp>
-#include <dios/sys/sched_null.hpp>
 
 namespace __dios
 {

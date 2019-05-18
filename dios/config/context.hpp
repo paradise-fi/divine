@@ -1,6 +1,7 @@
-#include <dios/sys/scheduling.hpp>
-#include <dios/sys/sync_scheduling.hpp>
-#include <dios/sys/fair_scheduling.hpp>
+#include <dios/sys/sched_base.hpp>
+#include <dios/sys/sched_sync.hpp>
+#include <dios/sys/sched_fair.hpp>
+#include <dios/sys/sched_null.hpp>
 #include <dios/sys/syscall.hpp>
 #include <dios/sys/fault.hpp>
 #include <dios/sys/monitor.hpp>

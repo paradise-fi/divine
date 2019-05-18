@@ -1,5 +1,4 @@
 #include <dios/config/context.hpp>
-#include <dios/sys/sched_null.hpp>
 
 namespace __dios
 {

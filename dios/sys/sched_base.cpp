@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <sys/lart.h>
 
-#include <dios/sys/scheduling.hpp>
+#include <dios/sys/sched_base.hpp>
 
 namespace __dios {
 
