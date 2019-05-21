@@ -132,9 +132,6 @@ static inline bool shouldCallPersonality( _DiOS_FunAttrs &attrs, _Unwind_Context
             && __dios_get_opcode( ctx.pc() ) == OpCode::Invoke;
 }
 
-static const uint64_t cppExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
-static const uint64_t cppDependentExceptionClass = 0x434C4E47432B2B01; // CLNGC++\1
-
 // internal, used in _Unwind_RaiseException and _Unwind_Resume for the actual
 // stack unwinding
 static _Unwind_Reason_Code _Unwind_Phase2( _VM_Frame *topFrame, _Unwind_Context &foundCtx,
