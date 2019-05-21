@@ -24,33 +24,7 @@ namespace divine::smt
 template< typename Builder >
 typename Builder::Node Extract< Builder >::build( vm::HeapPointer p )
 {
-    auto f = read( p );
-
-    if ( isUnary( f->op() ) )
-    {
-        auto arg = convert( f->unary.child );
-        return this->unary( f->unary, arg );
-    }
-
-    if ( isBinary( f->op() ) )
-    {
-        auto a = convert( f->binary.left ), b = convert( f->binary.right );
-        return this->binary( f->binary, a, b );
-    }
-
-    switch ( f->op() )
-    {
-        case sym::Op::Variable:
-            return this->variable( f->var.type, f->var.id );
-        case sym::Op::Constant:
-            switch ( f->con.type.type() ) {
-                case sym::Type::Int:
-                    return this->constant( f->con.type, f->con.value );
-                case sym::Type::Float:
-                    return this->constant( f->con.type, static_cast< double >( f->con.value ) );
-            }
-        default: UNREACHABLE_F( "unexpected operation %d", f->op() );
-    }
+    return evaluate( *this, read( p ) );
 }
 
 template struct Extract< builder::SMTLib2 >;

@@ -20,7 +20,7 @@
 
 #include <divine/vm/memory.hpp>
 #include <divine/smt/builder.hpp>
-#include <lart/lart.h>
+#include <divine/smt/rpn.hpp>
 
 namespace divine::smt
 {
@@ -35,9 +35,11 @@ struct Extract : Builder
         : Builder( std::forward< Args >( args )... ), _heap( heap )
     {}
 
-    lart::sym::Formula *read( vm::HeapPointer ptr )
+    RPN read( vm::HeapPointer ptr )
     {
-        return reinterpret_cast< lart::sym::Formula * >( _heap.unsafe_bytes( ptr ).begin() );
+        auto term = *reinterpret_cast< vm::HeapPointer * >( _heap.unsafe_bytes( ptr ).begin() );
+        auto data = _heap.unsafe_bytes( ptr );
+        return RPN{ { data.begin(), data.end() } };
     }
 
     Node build( vm::HeapPointer p );
