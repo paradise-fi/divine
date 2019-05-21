@@ -1,4 +1,4 @@
-# TAGS:
+# TAGS: divcc
 . lib/testcase
 
 cat > strerr_gnu.c <<EOF
