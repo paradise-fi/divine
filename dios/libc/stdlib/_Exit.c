@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #ifndef REGTEST
 #include "_PDCLIB/glue.h"
@@ -15,7 +16,7 @@ void _Exit( int status )
     /* TODO: Flush and close open streams. Remove tmpfile() files. Make this
        called on process termination automatically.
     */
-    _PDCLIB_Exit( status );
+    _exit( status );
 }
 
 #endif

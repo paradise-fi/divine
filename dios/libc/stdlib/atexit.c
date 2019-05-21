@@ -56,12 +56,15 @@ int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
     return 0;
 }
 
-int __cxa_finalize( void *dso_handle ) {
+int __cxa_finalize( void *dso_handle )
+{
     typedef struct AtexitEntry Ent;
     size_t i = atexit_entries ? __vm_obj_size( atexit_entries ) / sizeof( Ent ) : 0;
-    for ( ; i != 0; i-- ) {
+    for ( ; i != 0; i-- )
+    {
         Ent *entry = &atexit_entries[ i - 1 ];
-        if ( entry->func && ( !dso_handle || entry->dso_handle == dso_handle ) ) {
+        if ( entry->func && ( !dso_handle || entry->dso_handle == dso_handle ) )
+        {
             ( *entry->func )( entry->arg );
             entry->func = NULL;
         }
