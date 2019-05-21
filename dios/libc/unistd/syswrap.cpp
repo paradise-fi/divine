@@ -17,9 +17,6 @@
 
 namespace __dios
 {
-
-    SysProxy *syscall_proxy;
-
 #define SYSCALL_DIOS(...)
 #define SYSCALL( name, schedule, ret, arg )                                     \
     extern "C" ret __libc_ ## name arg noexcept                                 \
