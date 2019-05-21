@@ -29,8 +29,7 @@ namespace abstract::mstring {
             //_LART_INLINE
             operator bool() const {
                 assert( ptr->type().bitwidth() == 1 );
-                auto tr = __sym_bool_to_tristate( ptr );
-                if ( __tristate_lower( tr ) ) {
+                if ( __sym_bool_to_tristate( ptr ) ) {
                     __sym_assume( ptr, ptr, true );
                     return true;
                 } else {

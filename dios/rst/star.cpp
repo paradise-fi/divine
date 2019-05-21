@@ -70,7 +70,7 @@ ICMP( sle, SLE );
 ICMP( slt, SLT );
 
 Tristate __star_bool_to_tristate( Unit ) {
-    return Tristate::Value::Unknown;
+    return { Tristate::Value::Unknown };
 }
 
 Unit __star_assume( Unit, Unit, bool ) {

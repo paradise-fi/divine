@@ -58,7 +58,7 @@
 #define LART_DOMAIN_KIND( _kind ) \
     __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.kind, _kind) )))
 
-#include <rst/tristate.h>
+#include <rst/tristate.hpp>
 typedef abstract::Tristate __tristate;
 
 
