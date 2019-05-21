@@ -1,4 +1,4 @@
-# TAGS: ext
+# TAGS: ext capture
 . lib/testcase
 
 mkdir -p capture

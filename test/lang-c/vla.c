@@ -1,4 +1,4 @@
-/* TAGS: min c */
+/* TAGS: min c lifetime */
 int main( int argc, char **argv ) {
     int *x;
     {

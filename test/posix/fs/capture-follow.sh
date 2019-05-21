@@ -1,3 +1,4 @@
+# TAGS: capture
 . lib/testcase
 
 cat > test.c <<EOF

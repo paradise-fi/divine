@@ -1,4 +1,4 @@
-/* TAGS: min c */
+/* TAGS: min c const */
 const int x = 42;
 
 int main() {

@@ -1,4 +1,4 @@
-# TAGS: min
+# TAGS: min capture
 . lib/testcase
 
 mkdir -p capture
