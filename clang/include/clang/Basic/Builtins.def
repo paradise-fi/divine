@@ -872,6 +872,7 @@ LIBBUILTIN(wmemcmp, "iwC*wC*z", "f", "wchar.h", ALL_LANGUAGES)
 LIBBUILTIN(setjmp, "iJ",          "fj",    "setjmp.h", ALL_LANGUAGES)
 LIBBUILTIN(longjmp, "vJi",        "fr",    "setjmp.h", ALL_LANGUAGES)
 
+#undef alloca
 // Non-C library functions, active in GNU mode only.
 // Functions with (returns_twice) attribute (marked as "j") are still active in
 // all languages, because losing this attribute would result in miscompilation
