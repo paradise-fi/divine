@@ -65,9 +65,7 @@ namespace lart
         {
             std::stringstream ss( opt );
 
-            std::string annotation;
-            std::getline( ss, annotation, ':' );
-            _annotation = Annotation{ annotation };
+            std::getline( ss, _anno, ':' );
 
             std::string rgx;
             std::getline( ss, rgx, ':' );
@@ -86,7 +84,7 @@ namespace lart
         bool match( const llvm::Function & fn ) const noexcept;
         void annotate( llvm::Function & fn ) const noexcept;
 
-        brick::llvm::Annotation _annotation;
+        std::string _anno;
         std::regex _rgx;
     };
 

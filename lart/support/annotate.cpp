@@ -45,7 +45,7 @@ namespace lart {
 
     void AnnotateFunctions::annotate( llvm::Function & fn ) const noexcept
     {
-        fn.addFnAttr( _annotation.name() );
+        fn.addFnAttr( _anno );
     }
 
 } // namespace lart
