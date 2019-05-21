@@ -8,9 +8,11 @@ int main() {
     foo[0] = 0;
 
     uintptr_t a = (uintptr_t) foo;
+    uintptr_t lowbits = a & 0xffffffff;
     a >>= 32;
     uintptr_t b = a;
     b <<= 32;
+    b |= lowbits;
     int *bar = (void *) b;
     bar[0] ++;
     assert( foo[0] == 1 );
@@ -18,6 +20,7 @@ int main() {
     uint32_t c = a;
     uintptr_t d = c;
     d <<= 32;
+    d |= lowbits;
 
     int *baz = (int *) d;
     baz[0] ++;
