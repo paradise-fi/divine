@@ -13,5 +13,5 @@ void test( int( *toTest )( int ) ) {
 int main() {
     test( fsync );
     test( fdatasync );
-    test( syncfs );
+    // test( syncfs ); this only works on linux
 }
