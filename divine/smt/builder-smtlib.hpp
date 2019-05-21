@@ -30,11 +30,11 @@ struct SMTLib2
     SMTLib2( brick::smt::Context &ctx, std::string suff = "", bool defs = true )
         : _ctx( ctx ), _suff( suff ), _use_defs( defs ) {}
 
-    Node unary( sym::Unary un, Node n );
-    Node binary( sym::Binary bin, Node a, Node b );
-    Node constant( sym::Type t, uint64_t val );
+    Node unary( Operation op, Node n );
+    Node binary( Operation op, Node a, Node b );
+    Node constant( Constant con );
     Node constant( bool );
-    Node variable( sym::Type t, int32_t id );
+    Node variable( Variable var );
     Node define( Node def );
 
     brick::smt::Context &_ctx;

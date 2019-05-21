@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2018 Henrich Lauko <xlauko@mail.muni.cz>
+ * (c) 2018-2019 Henrich Lauko <xlauko@mail.muni.cz>
  * (c) 2017-2018 Petr Ročkai <code@fixp.eu>
  * (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
  *
@@ -34,29 +34,34 @@ SMTLib2::Node SMTLib2::define( Node def )
     return _ctx.define( name, def );
 }
 
-SMTLib2::Node SMTLib2::variable( sym::Type t, int32_t id )
+SMTLib2::Node SMTLib2::variable( Variable var )
 {
-    auto name = "var_" + std::to_string( id );
-    switch ( t.type() ) {
-        case sym::Type::Int:
-            return _ctx.variable( _ctx.bitvecT( t.bitwidth() ), name );
-        case sym::Type::Float:
-            ASSERT( t.bitwidth() > 1 );
-            return _ctx.variable( _ctx.floatT( t.bitwidth() ), name );
+    auto name = "var_" + std::to_string( var.id );
+    switch ( var.type ) {
+        case Node::Type::Bool:
+            ASSERT_EQ( var.bitwidth, 1 );
+            return _ctx.variable( _ctx.boolT(), name );
+        case Node::Type::Int:
+            return _ctx.variable( _ctx.bitvecT( var.bitwidth ), name );
+        case Node::Type::Float:
+            ASSERT( var.bitwidth > 1 );
+            return _ctx.variable( _ctx.floatT( var.bitwidth ), name );
     }
-    UNREACHABLE_F( "unknown type" );
 }
 
-SMTLib2::Node SMTLib2::constant( sym::Type t, uint64_t val )
+SMTLib2::Node SMTLib2::constant( Constant con )
 {
-    switch ( t.type() ) {
-        case sym::Type::Int:
-            return _ctx.bitvec( t.bitwidth(), val );
-        case sym::Type::Float:
-            ASSERT( t.bitwidth() > 1 );
-            return _ctx.floatv( t.bitwidth(), val );
+   switch ( con.type ) {
+        case Node::Type::Bool:
+            ASSERT_EQ( con.bitwidth, 1 );
+            return constant( static_cast< bool >( con.value ) );
+        case Node::Type::Int:
+            return _ctx.bitvec( con.bitwidth, con.value );
+        case Node::Type::Float:
+            ASSERT( con.bitwidth > 1 );
+            return _ctx.floatv( con.bitwidth, con.value );
     }
-    ASSERT_EQ( t.type(), sym::Type::Int );
+    UNREACHABLE_F( "Unknown constant type: %hu" );
 }
 
 SMTLib2::Node SMTLib2::constant( bool v )
@@ -64,14 +69,13 @@ SMTLib2::Node SMTLib2::constant( bool v )
     return v ? _ctx.symbol( 1, Node::Type::Bool, "true" ) : _ctx.symbol( 1, Node::Type::Bool, "false" );
 }
 
-SMTLib2::Node SMTLib2::unary( sym::Unary unary, smt::Node arg )
+SMTLib2::Node SMTLib2::unary( Operation unary, Node arg )
 {
-    using smt::Op;
-    auto bw = unary.type.bitwidth();
+    auto bw = unary.bw;
 
     switch ( unary.op )
     {
-        case sym::Op::Trunc:
+        case Op::Trunc:
         {
             ASSERT_LT( bw, arg.bw );
             auto op = _ctx.extract( bw - 1, 0, arg );
@@ -79,12 +83,12 @@ SMTLib2::Node SMTLib2::unary( sym::Unary unary, smt::Node arg )
                 op = _ctx.binop< Op::Eq >( bw, op, _ctx.bitvec( 1, 1 ) );
             return define( op );
         }
-        case sym::Op::ZExt:
+        case Op::ZExt:
             ASSERT_LT( arg.bw, bw );
             return define( arg.bw > 1
                            ? _ctx.binop< Op::Concat >( bw, _ctx.bitvec( bw - arg.bw, 0 ), arg )
                            : _ctx.ite( arg, _ctx.bitvec( bw, 1 ), _ctx.bitvec( bw, 0 ) ) );
-        case sym::Op::SExt:
+        case Op::SExt:
             ASSERT_LT( arg.bw, bw );
             if ( arg.bw == 1 )
             {
@@ -101,48 +105,46 @@ SMTLib2::Node SMTLib2::unary( sym::Unary unary, smt::Node arg )
                                                           _ctx.extract( arg.bw - 1, arg.bw - 1, arg ) );
                 return define( _ctx.binop< Op::Concat >( bw, _ctx.ite( sign, one_ext, z_ext ), arg ) );
             }
-        case sym::Op::FPExt:
+        case Op::FPExt:
             ASSERT_LT( arg.bw, bw );
             return _ctx.cast< Op::FPExt >( bw, arg );
-        case sym::Op::FPTrunc:
+        case Op::FPTrunc:
             ASSERT_LT( bw, arg.bw );
             return _ctx.cast< Op::FPTrunc >( bw, arg );
-        case sym::Op::FPToSInt:
+        case Op::FPToSInt:
             ASSERT_EQ( arg.bw, bw );
             return _ctx.cast< Op::FPToSInt >( bw, arg );
-        case sym::Op::FPToUInt:
+        case Op::FPToUInt:
             ASSERT_EQ( arg.bw, bw );
             return _ctx.cast< Op::FPToUInt >( bw, arg );
-        case sym::Op::SIntToFP:
+        case Op::SIntToFP:
             ASSERT_EQ( arg.bw, bw );
             return _ctx.cast< Op::SIntToFP >( bw, arg );
-        case sym::Op::UIntToFP:
+        case Op::UIntToFP:
             ASSERT_EQ( arg.bw, bw );
             return _ctx.cast< Op::UIntToFP >( bw, arg );
-        case sym::Op::BoolNot:
+        case Op::Not:
             ASSERT_EQ( arg.bw, bw );
             ASSERT_EQ( bw, 1 );
             return define( _ctx.unop< Op::Not >( 1, arg ) );
-        case sym::Op::Extract:
-            ASSERT_LT( bw, arg.bw );
-            return define( _ctx.extract( unary.from, unary.to, arg ) );
+        //case Op::Extract:
+        //   ASSERT_LT( bw, arg.bw );
+        //    return define( _ctx.extract( unary.from, unary.to, arg ) );
         default:
             UNREACHABLE_F( "unknown unary operation %d", unary.op );
     }
 }
 
-SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
+SMTLib2::Node SMTLib2::binary( Operation bin, Node a, Node b )
 {
-
-    using smt::Op;
-    int bw = bin.type.bitwidth();
+    auto bw = bin.bw;
     if ( a.is_bv() && b.is_bv() )
     {
         ASSERT_EQ( a.bw, b.bw );
         switch ( bin.op )
         {
-#define MAP_OP_ARITH( OP ) case sym::Op::OP:                            \
-            ASSERT_EQ( bw, a.bw );                                      \
+#define MAP_OP_ARITH( OP ) case Op::Bv ## OP:                          \
+            ASSERT_EQ( bw, a.bw );                                 \
             return define( _ctx.binop< Op::Bv ## OP >( bw, a, b ) );
             MAP_OP_ARITH( Add );
             MAP_OP_ARITH( Sub );
@@ -159,8 +161,8 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
             MAP_OP_ARITH( Xor );
 #undef MAP_OP_ARITH
 
-#define MAP_OP_CMP( OP ) case sym::Op::OP:                              \
-            ASSERT_EQ( bw, 1 );                                         \
+#define MAP_OP_CMP( OP ) case Op::Bv ## OP:                        \
+            ASSERT_EQ( bw, 1 );                                    \
             return define( _ctx.binop< Op::Bv ## OP >( bw, a, b ) );
             MAP_OP_CMP( ULE );
             MAP_OP_CMP( ULT );
@@ -171,13 +173,13 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
             MAP_OP_CMP( SGE );
             MAP_OP_CMP( SGT );
 #undef MAP_OP_CMP
-            case sym::Op::EQ:
+            case Op::Eq:
                 ASSERT_EQ( bw, 1 );
                 return define( _ctx.binop< Op::Eq >( bw, a, b ) );
-            case sym::Op::NE:
+            case Op::NE:
                 ASSERT_EQ( bw, 1 );
                 return define( _ctx.unop< Op::Not >( bw, _ctx.binop< Op::Eq >( bw, a, b ) ) );
-            case sym::Op::Concat:
+            case Op::Concat:
                 ASSERT_EQ( bw, a.bw + b.bw );
                 return define( _ctx.binop< Op::Concat >( bw, a, b ) );
             default:
@@ -189,8 +191,8 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
         smt::Node node = a;
         switch ( bin.op )
         {
-#define MAP_OP_FLOAT_ARITH( OP ) case sym::Op::OP:                      \
-            ASSERT_EQ( bw, a.bw );                                      \
+#define MAP_OP_FLOAT_ARITH( OP ) case Op::OP:                   \
+            ASSERT_EQ( bw, a.bw );                              \
             return define( _ctx.fpbinop< Op:: OP >( bw, a, b ) );
             MAP_OP_FLOAT_ARITH( FpAdd );
             MAP_OP_FLOAT_ARITH( FpSub );
@@ -199,8 +201,8 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
             MAP_OP_FLOAT_ARITH( FpRem );
 #undef MAP_OP_FLOAT_ARITH
 
-#define MAP_OP_FCMP( OP ) case sym::Op::OP:                             \
-            ASSERT_EQ( bw, 1 );                                         \
+#define MAP_OP_FCMP( OP ) case Op::OP:                          \
+            ASSERT_EQ( bw, 1 );                                 \
             return define( _ctx.fpbinop< Op:: OP >( bw, a, b ) );
             MAP_OP_FCMP( FpFalse );
             MAP_OP_FCMP( FpOEQ );
@@ -242,45 +244,46 @@ SMTLib2::Node SMTLib2::binary( sym::Binary bin, smt::Node a, smt::Node b )
 
         switch ( bin.op )
         {
-            case sym::Op::Xor:
-            case sym::Op::Sub:
+            case Op::Xor:
+            case Op::BvSub:
                 return define( _ctx.binop< Op::Xor >( 1, a, b ) );
-            case sym::Op::Add:
+            case Op::BvAdd:
                 return define( _ctx.binop< Op::And >( 1, a, b ) );
-            case sym::Op::UDiv:
-            case sym::Op::SDiv:
+            case Op::BvUDiv:
+            case Op::BvSDiv:
                 return a;
-            case sym::Op::URem:
-            case sym::Op::SRem:
-            case sym::Op::Shl:
-            case sym::Op::LShr:
+            case Op::BvURem:
+            case Op::BvSRem:
+            case Op::BvShl:
+            case Op::BvLShr:
                 return constant( false );
-            case sym::Op::AShr:
+            case Op::BvAShr:
                 return a;
-            case sym::Op::Or:
+            case Op::Or:
                 return define( _ctx.binop< Op::Or >( 1, a, b ) );
-            case sym::Op::And:
+            case Op::And:
                 return define( _ctx.binop< Op::And >( 1, a, b ) );
-            case sym::Op::UGE:
-            case sym::Op::SLE:
+            case Op::BvUGE:
+            case Op::BvSLE:
                 return define( _ctx.binop< Op::Or >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
-            case sym::Op::ULE:
-            case sym::Op::SGE:
+            case Op::BvULE:
+            case Op::BvSGE:
                 return define( _ctx.binop< Op::Or >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
-            case sym::Op::UGT:
-            case sym::Op::SLT:
+            case Op::BvUGT:
+            case Op::BvSLT:
                 return define( _ctx.binop< Op::And >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
-            case sym::Op::ULT:
-            case sym::Op::SGT:
+            case Op::BvULT:
+            case Op::BvSGT:
                 return define( _ctx.binop< Op::And >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
-            case sym::Op::EQ:
+            case Op::Eq:
                 return define( _ctx.binop< Op::Eq >( 1, a, b ) );
-            case sym::Op::NE:
+            case Op::NE:
                 return define( _ctx.unop< Op::Not >( 1, _ctx.binop< Op::And >( 1, a, b ) ) );
             default:
                 UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
         }
     }
+    UNREACHABLE_F( "NOT IMPLEMENTED" );
 }
 
-} // namespace divine::smtl::builder
+} // namespace divine::smt::builder

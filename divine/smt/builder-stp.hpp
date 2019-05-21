@@ -26,6 +26,7 @@
 namespace divine::smt::builder
 {
 
+#if 0
 struct STP
 {
     using Node = stp::ASTNode;
@@ -39,6 +40,22 @@ struct STP
     Node variable( sym::Type t, int32_t id );
 
     STP( stp::STPMgr &stp ) : _stp( stp ) {}
+    stp::STPMgr &_stp;
+};
+#endif
+
+struct STP
+{
+    using Node = stp::ASTNode;
+
+    STP( stp::STPMgr &stp ) : _stp( stp ) {}
+
+    Node unary( Operation, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node binary( Operation, Node, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node constant( Constant ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node constant( bool ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node variable( Variable ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+
     stp::STPMgr &_stp;
 };
 

@@ -20,6 +20,7 @@
 
 #include <divine/smt/builder-stp.hpp>
 
+#if 0
 #if OPT_STP
 namespace divine::smt::builder
 {
@@ -190,4 +191,5 @@ stp::ASTNode STP::binary( sym::Binary bin, Node a, Node b )
 }
 
 }
+#endif
 #endif

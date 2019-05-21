@@ -5,16 +5,18 @@
 #include <brick-proc>
 #include <brick-bitlevel>
 
+using namespace divine::smt::builder;
+
 namespace divine::smt::solver
 {
 
 namespace smt = brick::smt;
 namespace proc = brick::proc;
 
-bool match( sym::Constant &a, sym::Constant &b )
+bool match( const Constant &a, const Constant &b )
 {
-    const auto mask = brick::bitlevel::ones< uint64_t >( a.type.bitwidth() );
-    return a.type.bitwidth() == b.type.bitwidth() && ( a.value & mask ) == ( b.value & mask );
+    const auto mask = brick::bitlevel::ones< uint64_t >( a.bitwidth );
+    return a.bitwidth == b.bitwidth && ( a.value & mask ) == ( b.value & mask );
 }
 
 Result SMTLib::solve()
@@ -23,7 +25,7 @@ Result SMTLib::solve()
     auto q = b.constant( true );
 
     for ( auto clause : _asserts )
-        q = builder::mk_bin( b, sym::Op::And, 1, q, clause );
+        q = builder::mk_bin( b, Op::And, 1, q, clause );
 
     auto r = brick::proc::spawnAndWait( proc::StdinString( _ctx.query( q ) ) | proc::CaptureStdout |
                                         proc::CaptureStderr, _opts );
@@ -45,17 +47,17 @@ Result SMTLib::solve()
 template< typename Extract >
 auto get_pc( Extract &e, vm::HeapPointer ptr )
 {
-    auto query = e.constant( true );
+    return evaluate( e, e.read( ptr ) );
+}
 
-    while ( !ptr.null() )
-    {
-        auto f = e.read( ptr );
-        auto clause = e.convert( f->binary.left );
-        query = builder::mk_bin( e, sym::Op::And, 1, query, clause );
-        ptr = f->binary.right;
-    }
 
-    return query;
+template< typename Core, typename Node >
+Op equality( const Node& node ) noexcept
+{
+    if constexpr ( std::is_same_v< Core, STP > )
+        return Op::Eq;
+    else
+        return node.is_bv() || node.is_bool() ? Op::Eq : Op::FpOEQ;
 }
 
 template< typename Core >
@@ -69,42 +71,38 @@ bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &
     auto c_1 = e_1.constant( true ), c_2 = e_2.constant( true );
     bool constraints_found = false;
 
-    using namespace builder;
-
-    for ( auto p : sym_pairs )
+    for ( auto [lhs, rhs] : sym_pairs )
     {
-        auto f_1 = e_1.read( p.first ), f_2 = e_2.read( p.second );
-        if ( f_1->op() == sym::Op::Constraint )
+        auto f_1 = e_1.read( lhs );
+        auto f_2 = e_2.read( rhs );
+
+        if ( f_1.is_constraint() )
         {
             ASSERT( !constraints_found );
-            ASSERT_EQ( int( f_2->op() ), int( sym::Op::Constraint ) );
+            ASSERT( f_2.is_constraint() );
             constraints_found = true;
-            c_1 = get_pc( e_1, p.first );
-            c_2 = get_pc( e_2, p.second );
+            c_1 = get_pc( e_1, lhs );
+            c_2 = get_pc( e_2, rhs );
         }
         else
         {
-            auto v_1 = e_1.convert( p.first ), v_2 = e_2.convert( p.second );
+            auto v_1 = e_1.convert( lhs );
+            auto v_2 = e_2.convert( rhs );
 
-            sym::Op op;
-            if constexpr ( std::is_same_v< Core, STP > )
-                op = sym::Op::EQ;
-            else
-                op = v_1.is_bv() || v_1.is_bool() ? sym::Op::EQ : sym::Op::FpOEQ;
+            Op op = equality< Core >( v_1 );
 
             auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
-            v_eq = mk_bin( b, sym::Op::And, 1, v_eq, pair_eq );
+            v_eq = mk_bin( b, Op::And, 1, v_eq, pair_eq );
         }
     }
 
-
     /* we already know that both constraint sets are sat */
-    auto c_eq = mk_bin( b, sym::Op::EQ, 1, c_1, c_2 ),
-      pc_fail = mk_un( b, sym::Op::BoolNot, 1, c_1 ),
-       v_eq_c = mk_bin( b, sym::Op::Or, 1, pc_fail, v_eq ),
-           eq = mk_bin( b, sym::Op::And, 1, c_eq, v_eq_c );
+    auto c_eq = mk_bin( b, Op::Eq, 1, c_1, c_2 ),
+      pc_fail = mk_un(  b, Op::Not, 1, c_1 ),
+       v_eq_c = mk_bin( b, Op::Or, 1, pc_fail, v_eq ),
+           eq = mk_bin( b, Op::And, 1, c_eq, v_eq_c );
 
-    this->add( mk_un( b, sym::Op::BoolNot, 1, eq ) );
+    this->add( mk_un( b, Op::Not, 1, eq ) );
     auto r = this->solve();
     this->reset();
     return r == Result::False;
@@ -131,8 +129,9 @@ bool Caching< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
 }
 
 template< typename Core >
-bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
+bool Incremental< Core >::feasible( vm::CowHeap &/*heap*/, vm::HeapPointer /*ptr*/ )
 {
+#if 0
     auto e = this->extract( heap );
     auto query = e.constant( true );
     std::unordered_set< vm::HeapPointer > in_context{ _inc.begin(), _inc.end() };
@@ -142,7 +141,7 @@ bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
     {
         auto f = e.read( ptr );
         auto clause = e.convert( f->binary.left );
-        query = mk_bin( e, sym::Op::And, 1, query, clause );
+        query = mk_bin( e, Op::And, 1, query, clause );
         ptr = f->binary.right;
     }
 
@@ -169,6 +168,7 @@ bool Incremental< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
         this->pop();
 
     return result != Result::False;
+    #endif
 }
 
 #if OPT_STP

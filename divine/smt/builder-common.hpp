@@ -2,7 +2,7 @@
 
 /*
  * (c) 2018 Petr Ročkai <code@fixp.eu>
- * (c) 2018 Henrich Lauko <xlauko@mail.muni.cz>
+ * (c) 2018-2019 Henrich Lauko <xlauko@mail.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,25 +19,32 @@
 
 #pragma once
 
-#include <lart/lart.h>
+#include <variant>
+
+#include <divine/smt/rpn.hpp>
+#include <divine/vm/divm.h>
 #include <brick-smt>
 
-namespace divine::smt { namespace sym = lart::sym; }
 namespace divine::smt::builder
 {
+    using RPN = divine::smt::RPN;
+    using Operation = RPN::Operation;
+    using Op = brick::smt::Op;
 
-template< typename B >
-auto mk_bin( B &bld, sym::Op op, int bw, typename B::Node a, typename B::Node b )
-{
-    return bld.binary( sym::Binary( op, sym::Type( sym::Type::Int, bw ), vm::nullPointer(),
-                                    vm::nullPointer() ),
-                       a, b );
-}
+    template< typename Builder >
+    auto mk_bin( Builder &bld, Op op, int bw, typename Builder::Node a, typename Builder::Node b )
+        -> typename Builder::Node
+    {
+        ASSERT( RPN::is_binary( op ) );
+        return bld.binary( Operation{ op, bw }, a, b );
+    }
 
-template< typename B >
-auto mk_un( B &bld, sym::Op op, int bw, typename B::Node a )
-{
-    return bld.unary( sym::Unary( op, sym::Type( sym::Type::Int, bw ), vm::nullPointer() ), a );
-}
+    template< typename Builder >
+    auto mk_un( Builder &bld, Op op, int bw, typename Builder::Node a )
+        -> typename Builder::Node
+    {
+        ASSERT( RPN::is_unary( op ) );
+        return bld.unary( Operation{ op, bw }, a );
+    }
 
 } // namespace divine::smt::builder

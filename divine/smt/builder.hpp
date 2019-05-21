@@ -24,4 +24,3 @@
 #include <divine/smt/builder-stp.hpp>
 #include <divine/smt/builder-z3.hpp>
 
-

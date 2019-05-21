@@ -19,7 +19,7 @@
  */
 
 #include <divine/smt/builder-z3.hpp>
-
+#if 0
 #if OPT_Z3
 namespace divine::smt::builder
 {
@@ -248,4 +248,5 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
 
 
 } // namespace divine::smtl::builder
+#endif
 #endif
