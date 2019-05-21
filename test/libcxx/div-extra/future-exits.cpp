@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: min c++ threads */
 #include <future>
 #include <cassert>
 

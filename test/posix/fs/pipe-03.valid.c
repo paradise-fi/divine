@@ -1,4 +1,4 @@
-/* TAGS: c */
+/* TAGS: c threads */
 #include <pthread.h>
 #include <unistd.h>
 #include <assert.h>

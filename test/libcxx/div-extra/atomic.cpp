@@ -1,4 +1,4 @@
-/* TAGS: min c++ */
+/* TAGS: min c++ threads */
 #include <sys/divm.h>
 #include <pthread.h>
 #include <atomic>
