@@ -1,4 +1,4 @@
-/* TAGS: min c */
+/* TAGS: min c setjmp */
 #include <setjmp.h>
 #include <assert.h>
 #include <stdbool.h>
