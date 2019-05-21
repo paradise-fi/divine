@@ -108,7 +108,8 @@ namespace __dios::fs
 
         int chdir( const char *path );
         int fchdir( int dirfd );
-        char *getcwd( char *buff, size_t size );
+        char *getcwd( char *buf, size_t size );
+        int __getcwd( char *buf, size_t size );
 
         ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t size );
         ssize_t readlink( const char *path, char *buf, size_t size );

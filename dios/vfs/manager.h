@@ -87,6 +87,7 @@ struct VFS: Syscall, Next
     using Syscall::chdir;
     using Syscall::fchdir;
     using Syscall::getcwd;
+    using Syscall::__getcwd;
 
     using Syscall::faccessat;
     using Syscall::access;

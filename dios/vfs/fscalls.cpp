@@ -459,6 +459,14 @@ namespace __dios::fs
         return buff_start;
     }
 
+    int Syscall::__getcwd( char *buf, size_t size )
+    {
+        if ( !getcwd( buf, size ) )
+            return -1;
+        else
+            return 0;
+    }
+
     int Syscall::chdir( const char *path )
     {
         return _chdir( lookup( get_dir(), path, true ) );
