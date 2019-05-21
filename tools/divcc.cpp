@@ -184,8 +184,14 @@ std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang
 
     auto m = drv->takeLinked();
 
-    for( auto& func : *m )
-        if( func.isDeclaration() && vm::xg::hypercall( &func ) == vm::lx::NotHypercall )
+    using brick::string::startsWith;
+    using vm::xg::hypercall;
+
+    for ( auto& func : *m )
+        if ( func.isDeclaration() &&
+             hypercall( &func ) == vm::lx::NotHypercall &&
+             !startsWith( func.getName(), "__dios_" ) &&
+             !startsWith( func.getName(), "_ZN6__dios" ) )
             throw cc::CompileError( "Symbol undefined (function): " + func.getName().str() );
 
     for ( auto& val : m->globals() )
