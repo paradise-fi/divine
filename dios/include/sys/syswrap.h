@@ -22,6 +22,8 @@ __BEGIN_DECLS
 
 #if _HOST_is_linux
 SYSCALL( sigaction, CONTINUE, int, ( int _1, const struct sigaction * _2, struct sigaction * _3 ) )
+#else
+SYSCALL( fdatasync, CONTINUE, int, ( int _1 ) )
 #endif
 
 __END_DECLS
