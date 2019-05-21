@@ -124,6 +124,7 @@ SYSCALL( rt_sigaction, CONTINUE, int,    ( int _1, const struct TOP sigaction * 
 #if _HOST_is_openbsd
 SYSCALL( sigaction,   CONTINUE, int,     ( int _1, const struct TOP sigaction * _2,
                                            struct TOP sigaction * _3 ) )
+SYSCALL( __getcwd,    CONTINUE, int,     ( COUNT(char*) _1, size_t _2 ) )
 #endif
 
 SYSCALL( fstatfs,     CONTINUE, int,     ( int _1, STRUCT(struct TOP statfs *) _2 ) )
