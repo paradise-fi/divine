@@ -89,9 +89,8 @@ namespace divine::mc
             {
                 brick::smt::Context ctx;
                 smt::extract::SMTLib2 extract( heap(), ctx, "", false );
-                auto assume = extract.read( ta.ptr );
-                auto n = extract.convert( assume->binary.left );
-                trace( "ASSUME " + to_string( n ) );
+                auto assumes = extract.read( ta.ptr );
+                trace( "ASSUME " + to_string( evaluate( extract, assumes ) ) );
             }
         }
 
