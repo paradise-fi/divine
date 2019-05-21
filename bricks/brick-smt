@@ -39,6 +39,7 @@
 #include <brick-data>
 
 #include <memory>
+#include <variant>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -61,14 +62,16 @@ struct Context;
 
 enum class Op : uint8_t
 {
+    Invalid,
+
     VarBool, FisrtVar = VarBool,
     VarI8,
     VarI16,
     VarI32,
     VarI64,
-    VarFP32,
-    VarFP64,
-    VarFP80, LastVar = VarFP80,
+    VarFloat,
+    VarDouble,
+    LastVar = VarDouble,
 
     FirstUnary,
     Not = FirstUnary,
@@ -164,6 +167,16 @@ inline std::string_view name( Op op )
 {
     switch ( op )
     {
+        case Op::Invalid: return "invalid";
+
+        case Op::VarBool: return "bool";
+        case Op::VarI8: return "i8";
+        case Op::VarI16: return "i16";
+        case Op::VarI32: return "i32";
+        case Op::VarI64: return "i64";
+        case Op::VarFloat: return "float";
+        case Op::VarDouble: return "double";
+
         case Op::Not: return "not";
         case Op::BvNot: return "bvnot";
         case Op::BvNegate: return "bvneg";
@@ -189,6 +202,8 @@ inline std::string_view name( Op op )
         case Op::BvShl: return "bvshl";
         case Op::BvAShr: return "bvashr";
         case Op::BvLShr: return "bvlshr";
+
+        case Op::Constraint: return "constraint";
 
         case Op::FpAdd:  return "fp.add";
         case Op::FpSub:  return "fp.sub";
@@ -269,8 +284,17 @@ inline std::string to_string( const Node &p )
     return ss.str();
 }
 
+inline std::string to_string( Node::Type type )
+{
+    switch ( type ) {
+        case Node::Type::Bool: return "bool";
+        case Node::Type::Int: return "int";
+        case Node::Type::Float: return "float";
+    }
+}
+
 template< typename T >
-union ByteUnion
+inline uint8_t * bytes_begin( const T & v ) noexcept
 {
     using Byte = uint8_t;
 
@@ -281,7 +305,7 @@ union ByteUnion
 
     constexpr const Byte * begin() const noexcept { return bytes; }
     constexpr const Byte * end() const noexcept { return bytes + size(); }
-    constexpr std::size_t size() const { return sizeof( T ); };
+    constexpr const std::size_t size() const { return sizeof( T ); };
 };
 
 template< typename Container >
@@ -297,6 +321,14 @@ struct RPN
     using iterator = typename Container::iterator;
     using const_iterator = typename Container::const_iterator;
     using difference_type = typename Container::difference_type;
+
+    struct Operation
+    {
+        Op op;
+        Bitwidth bw;
+    };
+
+    static_assert( sizeof( Operation ) == 2 );
 
     template< typename T >
     struct Constant
@@ -316,15 +348,16 @@ struct RPN
 
     static_assert( sizeof( Variable ) == 3 );
 
-    RPN( Variable var ) : RPN( ByteUnion< Variable >( var ) ) {}
-
-    template< typename T >
-    RPN( Constant< T > con ) : RPN( ByteUnion< Constant< T > >( con ) ) {}
-
-    template< typename T >
-    RPN( ByteUnion< T > bytes ) noexcept
-        : _data( bytes.size(), bytes.begin(), bytes.end() )
+    RPN( Variable var ) noexcept
+        : _data( sizeof( var ), bytes_begin( var ), bytes_end( var ) )
     {}
+
+    template< typename T >
+    RPN( Constant< T > con ) noexcept
+        : _data( sizeof( con ), bytes_begin( con ), bytes_end( con ) )
+    {}
+
+    static_assert( sizeof( Constant< bool > ) == 2 );
 
     RPN( Container cont ) noexcept : _data( cont ) {}
 
@@ -352,11 +385,9 @@ struct RPN
     static inline constexpr Op fpvar() noexcept
     {
         if constexpr ( sizeof( T ) == 4 )
-            return Op::VarFP32;
+            return Op::VarFloat;
         if constexpr ( sizeof( T ) == 8 )
-            return Op::VarFP64;
-        if constexpr ( sizeof( T ) == 10 )
-            return Op::VarFP80;
+            return Op::VarDouble;
     }
 
     template< typename T >
@@ -393,7 +424,18 @@ struct RPN
         return Op::FirstBinary <= op && op <= Op::LastBinary;
     }
 
-    static inline constexpr Op op( const_iterator it ) noexcept { return static_cast< Op >( *it ); }
+    static inline constexpr Op operand( const_iterator it ) noexcept
+    {
+        return static_cast< Op >( *it );
+    }
+
+    static inline constexpr Operation operation( const_iterator it ) noexcept
+    {
+        Operation o;
+        o.op = static_cast< Op >( *it );
+        o.bw = *std::next( it );
+        return o;
+    }
 
     static inline constexpr Bitwidth bitwidth( Op op ) noexcept
     {
@@ -406,13 +448,12 @@ struct RPN
                 case Op::VarI16: return 16;
                 case Op::VarI32: return 32;
                 case Op::VarI64: return 64;
-                case Op::VarFP32: return 32;
-                case Op::VarFP64: return 64;
-                case Op::VarFP80: return 80;
+                case Op::VarFloat: return 32;
+                case Op::VarDouble: return 64;
             }
         }
 
-        UNREACHABLE_F( "Op %hu is neither constant or variable", op );
+        UNREACHABLE_F( "Op %hu is neither constant nor variable", op );
     }
 
     static inline constexpr Node::Type type( Op op ) noexcept
@@ -426,31 +467,12 @@ struct RPN
             case Op::VarI32:
             case Op::VarI64:
                 return Node::Type::Int;
-            case Op::VarFP32:
-            case Op::VarFP64:
-            case Op::VarFP80:
+            case Op::VarFloat:
+            case Op::VarDouble:
                 return Node::Type::Float;
+            default:
+                UNREACHABLE_F( "Unknown variable type: %hu", op );
         }
-        UNREACHABLE_F( "Unknown variable type: %hu", op );
-    }
-
-
-    enum class Category
-    {
-        Constant, Variable, Unary, Binary
-    };
-
-    static Category category( Op op ) noexcept
-    {
-        if ( is_constant( op ) )
-            return Category::Constant;
-        if ( is_variable( op ) )
-            return Category::Variable;
-        if ( is_unary( op ) )
-            return Category::Unary;
-        if ( is_binary( op ) )
-            return Category::Binary;
-        UNREACHABLE_F( "Unknown category" );
     }
 
     template< typename T >
@@ -462,12 +484,13 @@ struct RPN
 
     Op operand() const noexcept
     {
-        return op( _data.begin() );
+        return operand( _data.begin() );
     }
 
-    Op operation() const noexcept
+    Operation operation() const noexcept
     {
-        return op( std::prev( _data.end() ) );
+        ASSERT( !_data.empty() );
+        return operation( std::prev( _data.end(), 2 ) );
     }
 
     constexpr VarID id() const noexcept
@@ -494,9 +517,11 @@ struct RPN
     iterator end() noexcept { return _data.end(); }
     const_iterator end() const noexcept { return _data.end(); }
 
-    constexpr void apply( Op op ) noexcept
+    template< Op op, Bitwidth bw >
+    constexpr void apply() noexcept
     {
-        _data.push_back( static_cast< uint8_t >( op ) );
+        Operation o { op, bw };
+        _data.append( sizeof( Operation ), bytes_begin( o ), bytes_end( o ) );
     }
 
     constexpr void extend( const RPN& other ) noexcept
@@ -504,7 +529,179 @@ struct RPN
         _data.append( other.size(), other.begin(), other.end() );
     }
 
+    bool is_constraint() const noexcept
+    {
+        if ( _data.size() > 2 )
+            return operation( std::prev( _data.end(), 2 ) ).op == Op::Constraint;
+        return false;
+    }
+
+    bool empty() const noexcept { return _data.empty(); }
+
     Container _data;
+};
+
+template< typename RPN >
+struct RPNView
+{
+    using Bitwidth = typename RPN::Bitwidth;
+    using VarID = typename RPN::VarID;
+
+    RPNView( const RPN & rpn ) : _rpn( rpn ) {}
+
+    struct Variable
+    {
+        VarID id;
+        Node::Type type;
+        Bitwidth bitwidth;
+
+        friend std::ostream& operator<<( std::ostream& os, const Variable& var )
+        {
+            os << "[var " << std::to_string( var.id )
+               << " : "   << to_string( var.type )
+               << " "     << std::to_string( var.bitwidth ) << "]";
+            return os;
+        }
+    };
+
+    struct Constant
+    {
+        uint64_t value;
+        Node::Type type;
+        Bitwidth bitwidth;
+
+        friend std::ostream& operator<<( std::ostream& os, const Constant& con )
+        {
+            os << "[const " << std::to_string( con.value )
+               << " : "     <<  to_string( con.type )
+               << " "       << std::to_string( con.bitwidth ) << "]";
+            return os;
+        }
+    };
+
+    struct UnaryOp
+    {
+        Op op;
+        Bitwidth bitwidth;
+
+        friend std::ostream& operator<<( std::ostream& os, const UnaryOp& un )
+        {
+            os << name( un.op ) << " " << std::to_string( un.bitwidth );
+            return os;
+        }
+    };
+
+    struct BinaryOp {
+        Op op;
+        Bitwidth bitwidth;
+
+        friend std::ostream& operator<<( std::ostream& os, const BinaryOp& bin )
+        {
+            os << name( bin.op ) << " " << std::to_string( bin.bitwidth );
+            return os;
+        }
+    };
+
+    using Token = std::variant< Variable, Constant, UnaryOp, BinaryOp >;
+
+    struct Iterator : brick::types::Eq
+    {
+        // TODO usings
+        using rpn_iterator = typename RPN::const_iterator;
+
+        Iterator( rpn_iterator it ) : _it( it ) {}
+
+        auto operation() const noexcept { return RPN::operation( _it ); }
+        auto operand() const noexcept { return RPN::operand( _it ); }
+
+        auto bitwidth() const noexcept
+        {
+            auto o = operand();
+            if ( RPN::is_constant( o ) || RPN::is_variable( o ) )
+                return RPN::bitwidth( operand() );
+            else // unary or binary
+                return operation().bw;
+        }
+
+        template< typename T >
+        Constant extract_constant() const noexcept
+        {
+            ASSERT( RPN::is_constant( operand() ) );
+            auto pos = &(*std::next( _it ));
+            auto val = *reinterpret_cast< T * >( const_cast< uint8_t * >( pos ) );
+            auto ty = Node::Type::Int; // TODO other types
+            auto bw = bitwidth();
+            return Constant{ val, ty, bw };
+        }
+
+        Iterator& operator++() noexcept
+        {
+            if ( RPN::is_constant( operand() ) ) {
+                auto byte = static_cast< typename RPN::Bitwidth >( 8 );
+                auto bw = std::max( byte, RPN::bitwidth( operand() ) );
+                std::advance( _it, 1 + bw / 8 );
+            } else if ( RPN::is_variable( operand() ) ) {
+                std::advance( _it, sizeof( typename RPN::Variable ) );
+            } else if ( RPN::is_unary( operation().op ) ) {
+                std::advance( _it, sizeof( typename RPN::Operation ) );
+            } else {
+                std::advance( _it, sizeof( typename RPN::Operation ) );
+            }
+            return *this;
+        }
+
+        Token operator*() const noexcept
+        {
+            auto op = operand();
+            if ( RPN::is_constant( op ) ) {
+                switch ( bitwidth() ) {
+                    case  1: return extract_constant< bool >();
+                    case  8: return extract_constant< uint8_t >();
+                    case 16: return extract_constant< uint16_t >();
+                    case 32: return extract_constant< uint32_t >();
+                    case 64: return extract_constant< uint64_t >();
+                    default:
+                        UNREACHABLE_F( "unsupported constant bitwidth %d", bitwidth() );
+                }
+            }
+
+            if ( RPN::is_variable( op ) ) {
+                using Var = typename RPN::Variable;
+                auto ptr = reinterpret_cast< const Var * >( &(*_it) );
+                return Variable{ ptr->id, RPN::type( op ), bitwidth() };
+            }
+
+            auto o = operation();
+            if ( RPN::is_unary( op ) )
+                return UnaryOp{ o.op, o.bw };
+
+            if ( RPN::is_binary( op ) )
+                return BinaryOp{ o.op, o.bw };
+
+            UNREACHABLE_F( "Unknown RPN Token" );
+        }
+
+        bool operator==( const Iterator& other ) const noexcept
+        {
+            return _it == other._it;
+        }
+
+        rpn_iterator _it;
+    };
+
+    Iterator begin() const noexcept { return Iterator{ _rpn.begin() }; }
+    Iterator end() const noexcept { return Iterator{ _rpn.end() }; }
+
+    friend std::ostream& operator<<( std::ostream& os, const RPNView& view )
+    {
+        for ( const auto & term : view ) {
+            std::visit( [&]( const auto& val ) { os << val << " "; }, term );
+        }
+
+        return os;
+    }
+
+    const RPN & _rpn;
 };
 
 enum class RoundingMode {
