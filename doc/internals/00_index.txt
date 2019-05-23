@@ -1,0 +1,90 @@
+The files in this directory are outlines of individual lectures in the DIVINE
+implementation seminar series. It will walk you through the implementation and
+internals of DIVINE in a tutorial form. The outline of the entire series
+follows.
+
+# DiOS
+
+DiOS is a model operating system that DIVINE relies on for a ton of
+functionality. It can run (somewhat crippled) on KLEE or as a user-mode
+kernel in a normal UNIX process (perhaps even in `valgrind`).
+
+## Kernel Basics (23.5., mornfall)
+
+- sys/*, apart from sched_*
+- the configuration stack
+- the syscall mechanism, trampoline returns
+
+## Scheduling (29.5.)
+
+- dios/sys/sched_*
+- dios/arch/divm/reschedule.cpp
+- dios/libc/sys/interrupt.c
+- dios/include/sys/interrupt.h
+- lart/divine/interrupt.cpp
+
+## POSIX Threads (5.6.)
+
+- dios/include/sys/thread.h
+- dios/include/pthread.h
+- dios/libc/pthread/*
+- dios/libpthread/*
+
+## File System (12.6.)
+
+- dios/vfs/*
+
+## Syscall Proxy (19.6.)
+
+- dios/proxy/*
+
+## Runtime Support for Transformations (26.6.)
+
+- dios/rst/* (minus weakmem)
+- dios/include/rst/*
+
+## Stack Management (3.7.)
+
+- dios/include/sys/stack.h
+- dios/arch/divm/{unwind,stack}.cpp
+
+# LART
+
+## Introspection (10.7.)
+
+- lart/divine/{cppeh.h,cpplsda.cpp}
+- lart/divine/functionmeta.cpp
+- dios/include/sys/metadata.h
+- dios/libc/sys/metadata.cpp
+
+## Weakmem (17.7.)
+
+- dios/rst/weakmem.cpp
+- lart/weakmem/*
+
+## Abstraction 1 (24.7.)
+
+## Abstraction 2 (31.7.)
+
+# DIVINE
+
+## Compiler (7.8.)
+
+- divine/cc/*
+- tools/divcc.cpp
+
+## VM Overview (14.8.)
+
+## Debug Info (21.8.)
+
+## Simulator (28.8.)
+
+## VM 2 (4.9.)
+
+## Heap 1 (11.9.)
+
+## Heap 2 (18.9.)
+
+## Model Checker
+
+## LTL, Liveness
