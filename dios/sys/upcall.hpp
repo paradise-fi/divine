@@ -22,11 +22,21 @@
 namespace __dios
 {
 
+    /* Implements calls that depend on the entire stack. This component is
+     * always at the top of the stack and its functionality is in virtual
+     * method overrides (and they are declared in `BaseContext`). */
+
     template< typename Conf >
     struct Upcall : Conf
     {
         using Process = typename Conf::Process;
         using BaseProcess = typename BaseContext::Process;
+
+        /* This method is used by the kernel to force a reschedule in the
+         * middle of a system call, usually because the task that is currently
+         * running was killed. Do not confuse with __dios_reschedule() which is
+         * instrumented into userspace code by LART to facilitate task
+         * preemption. */
 
         virtual void reschedule() override
         {
