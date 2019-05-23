@@ -1,0 +1,36 @@
+Today we will look at the basic structure of the DiOS kernel. Since this is
+first of the DiOS lectures, we will start by an overview of DiOS as a whole.
+Let's look at `dios/README` first. When we are done with that file, we will
+return here for more pointers.
+
+Now that we have sorted out the basics, let's look at the boot process. When a
+bitcode file is loaded into DIVINE, the first thing that happens is that
+DIVINE creates a new stack and pushes a frame for the function `__boot` onto
+the empty stack. It passes a single argument, which contains the description
+of an ‘environment’. The data structure which carries the environment is part
+of the DiVM interface and as such is declared in `divine/vm/divm.h`. However,
+DiVM is not generally responsible for filling it in. The content that DiOS
+expects is described in `dios/sys/options.hpp`.
+
+The boot code is in `dios/sys/boot.hpp`, with the configuration-independent
+part performed by __dios::boot. Each component then has an (optional)
+`setup()` method which does component-specific, well, setup.
+
+Let's now look at the configuration stack and the basic components that appear
+in it. The common components of the stack are listed in
+`dios/config/context.hpp` (and each .cpp file in `dios/config/` has a specific
+complete stack; the default configuration is in `dios/config/default.cpp`).
+
+We will start from the top, with the `Upcall` component, which is implemented
+in `dios/sys/upcall.hpp`. This is basically a technicality of how the stack is
+implemented. Below that is VFS (which will be discussed in a separate
+lecture), then the process manager (which we will deal with next week along
+with the scheduler), then the fault handler, where we will stop for a moment
+(`dios/sys/fault.hpp`). Below that is a `Clock` which is implemented in
+`dios/sys/clock.hpp`. The next two components are rather boring and/or
+deprecated, and we will skip them for now.
+
+The final bit that we want to deal with is the system call mechanism. The
+kernel-side implementation and the transition between kernel and user code is
+implemented in `dios/sys/syscall.hpp`. The authoritative list of system calls
+is in `dios/include/sys/syscall.def`.
