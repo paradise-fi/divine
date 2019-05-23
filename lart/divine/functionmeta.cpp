@@ -93,53 +93,67 @@ struct IndexFunctions {
         return passMeta< IndexFunctions >( "IndexFunctions", "Create function metadata tables" );
     }
 
-    void run( llvm::Module &mod ) {
+    void run( llvm::Module &mod )
+    {
         if ( !tagModuleWithMetadata( mod, "lart.divine.index.functions" ) )
             return;
 
         _dl = std::make_unique< llvm::DataLayout >( &mod );
 
         llvm::GlobalVariable *mdRoot = mod.getGlobalVariable( "__md_functions" );
-        ASSERT( mdRoot && "The bitcode must define __md_functions" );
+        llvm::StructType *funcMetaT = nullptr, *instMetaT = nullptr, *gloMetaT = nullptr;
 
-        auto *funcMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
-                            mdRoot->getType()->getElementType() )->getElementType() );
-        ASSERT( funcMetaT && "The bitcode must define _MD_Function" );
-        ASSERT( funcMetaT->getNumElements() == 12 && "Incompatible _MD_Function" );
 
-        auto *instMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::PointerType >(
-                            funcMetaT->getElementType( 7 ) )->getElementType() );
-        ASSERT( instMetaT && "The bitcode must define _MD_InstInfo" );
+        if ( mdRoot )
+        {
+            funcMetaT = llvm::cast< llvm::StructType >(
+                            llvm::cast< llvm::ArrayType >(
+                                mdRoot->getType()->getElementType() )->getElementType() );
+            ASSERT( funcMetaT && "The bitcode must define _MD_Function" );
+            ASSERT( funcMetaT->getNumElements() == 12 && "Incompatible _MD_Function" );
+
+            instMetaT = llvm::cast< llvm::StructType >(
+                            llvm::cast< llvm::PointerType >(
+                                funcMetaT->getElementType( 7 ) )->getElementType() );
+            ASSERT( instMetaT && "The bitcode must define _MD_InstInfo" );
+        }
 
         llvm::GlobalVariable *mdSize = mod.getGlobalVariable( "__md_functions_count" );
-        ASSERT( mdSize && "The bitcode must define __md_functions_count" );
+        if ( mdRoot )
+            ASSERT( mdSize && "The bitcode must define __md_functions_count" );
 
         llvm::GlobalVariable *mdGlobals = mod.getGlobalVariable( "__md_globals" );
-        ASSERT( mdGlobals && "The bitcode must define __md_globals" );
 
-        auto *gloMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
-                            mdGlobals->getType()->getElementType() )->getElementType() );
-        ASSERT( gloMetaT && "The bitcode must define _MD_Global" );
-        ASSERT( gloMetaT->getNumElements() == 4 && "Incompatible _MD_Global" );
+        if ( mdGlobals )
+        {
+            gloMetaT = llvm::cast< llvm::StructType >(
+                           llvm::cast< llvm::ArrayType >(
+                               mdGlobals->getType()->getElementType() )->getElementType() );
+            ASSERT( gloMetaT && "The bitcode must define _MD_Global" );
+            ASSERT( gloMetaT->getNumElements() == 4 && "Incompatible _MD_Global" );
+        }
 
         llvm::GlobalVariable *mdGlobalsCount = mod.getGlobalVariable( "__md_globals_count" );
-        ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
+        if ( mdGlobals )
+            ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
 
         std::set< llvm::Function * > traps;
         brick::llvm::enumerateFunctionsForAnno( "divine.trapfn", mod,
                                                 [&]( llvm::Function *f ) { traps.insert( f ); } );
 
         std::vector< FunctionMeta > funMeta;
-        for ( auto &fn : mod ) {
-            if ( fn.isDeclaration() )
-                continue;
-            funMeta.emplace_back( fn );
-        }
+
+        if ( mdRoot )
+            for ( auto &fn : mod )
+                if ( !fn.isDeclaration() )
+                    funMeta.emplace_back( fn );
 
         // build metadata table
         std::vector< llvm::Constant * > metatable;
         metatable.reserve( funMeta.size() );
-        for ( auto &m : funMeta ) {
+
+        for ( auto &m : funMeta )
+        {
             std::string funNameStr = m.entryPoint->getName().str();
             std::string funNameCStr = funNameStr;
             funNameCStr.push_back( 0 );
@@ -180,29 +194,36 @@ struct IndexFunctions {
         }
 
         // insert metadata table to the module
-        mdSize->setInitializer( llvm::ConstantInt::get(
-                    llvm::cast< llvm::PointerType >( mdSize->getType() )->getElementType(),
-                    metatable.size() ) );
+        if ( mdRoot )
+        {
+            mdSize->setInitializer( llvm::ConstantInt::get(
+                        llvm::cast< llvm::PointerType >( mdSize->getType() )->getElementType(),
+                        metatable.size() ) );
 
-        auto *mdRootT = llvm::ArrayType::get( funcMetaT, metatable.size() );
-        util::replaceGlobalArray( mdRoot, llvm::ConstantArray::get( mdRootT, metatable ) );
+            auto *mdRootT = llvm::ArrayType::get( funcMetaT, metatable.size() );
+            util::replaceGlobalArray( mdRoot, llvm::ConstantArray::get( mdRootT, metatable ) );
+        }
 
         // now build global variable metadata
         std::map< llvm::StringRef, GlobalMeta > gloMetaMap;
-        for ( auto &g : mod.globals() )
-        {
-            using brick::string::startsWith;
-            if ( g.hasName() && ( startsWith( g.getName().str(), "llvm." ) ||
-                                  startsWith( g.getName().str(), "__dios_" ) ) )
+
+        if ( mdGlobals )
+            for ( auto &g : mod.globals() )
             {
-                auto r = gloMetaMap.emplace( g.getName(), GlobalMeta( g, *this ) );
-                if ( !r.second )
-                    UNREACHABLE( "broken metadata map: global", g, "already present" );
+                using brick::string::startsWith;
+                if ( g.hasName() && ( startsWith( g.getName().str(), "llvm." ) ||
+                                      startsWith( g.getName().str(), "__dios_" ) ) )
+                {
+                    auto r = gloMetaMap.emplace( g.getName(), GlobalMeta( g, *this ) );
+                    if ( !r.second )
+                        UNREACHABLE( "broken metadata map: global", g, "already present" );
+                }
             }
-        }
 
         std::vector< llvm::Constant * > glometa;
-        for ( auto &m : gloMetaMap ) {
+
+        for ( auto &m : gloMetaMap )
+        {
             std::string name = m.second.name().str();
             name.push_back( 0 );
             auto *llvmname = util::getStringGlobal( name, mod );
@@ -218,11 +239,14 @@ struct IndexFunctions {
                     } ) );
         }
 
-        mdGlobalsCount->setInitializer( llvm::ConstantInt::get(
-                    llvm::cast< llvm::PointerType >( mdGlobalsCount->getType() )->getElementType(),
-                    glometa.size() ) );
-        auto *gloArrayT = llvm::ArrayType::get( gloMetaT, glometa.size() );
-        util::replaceGlobalArray( mdGlobals, llvm::ConstantArray::get( gloArrayT, glometa ) );
+        if ( mdGlobals )
+        {
+            mdGlobalsCount->setInitializer( llvm::ConstantInt::get(
+                        llvm::cast< llvm::PointerType >( mdGlobalsCount->getType() )->getElementType(),
+                        glometa.size() ) );
+            auto *gloArrayT = llvm::ArrayType::get( gloMetaT, glometa.size() );
+            util::replaceGlobalArray( mdGlobals, llvm::ConstantArray::get( gloArrayT, glometa ) );
+        }
     }
 
     llvm::Constant *mkint( llvm::StructType *st, int i, int64_t val ) {
