@@ -132,6 +132,7 @@ int usleep( useconds_t usec ) __nothrow;
 int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath ) __nothrow;
 
 char *getcwd(char *buf, size_t size) __nothrow;
+int __getcwd(char *buf, size_t size) __nothrow;
 
 pid_t fork( void ) __nothrow;
 
