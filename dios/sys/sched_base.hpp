@@ -6,7 +6,7 @@
 #define __DIOS_SCHEDULING_H__
 
 #include <dios/sys/task.hpp>
-#include <dios/sys/main.hpp>
+#include <dios/sys/options.hpp>
 #include <dios/sys/syscall.hpp>
 
 #include <cstring>

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <dios/sys/main.hpp>
+#include <dios/sys/options.hpp>
 #include <sys/utsname.h>
 
 namespace __dios {

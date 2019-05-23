@@ -8,7 +8,7 @@
 #include <array>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <dios/sys/main.hpp>
+#include <dios/sys/options.hpp>
 #include <bits/types.h>
 #include <unistd.h>
 #include <fcntl.h>

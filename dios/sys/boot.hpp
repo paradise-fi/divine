@@ -10,7 +10,7 @@
 #include <sys/metadata.h>
 
 #include <dios.h>
-#include <dios/sys/main.hpp>
+#include <dios/sys/options.hpp>
 
 #include <dios/vfs/manager.h>
 
