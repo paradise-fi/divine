@@ -23,11 +23,18 @@
 namespace __dios
 {
 
+    /* All classes that are dynamically allocated in the kernel should inherit
+     * from KObject. Use new/delete to manage the allocations like normal.
+     * Bypasses out-of-memory simulation and all the overhead associated with
+     * new/malloc and delete/free. */
+
     struct KObject
     {
         static void operator delete( void *p ) { __vm_obj_free( p ); }
         static void *operator new( size_t s ) { return __vm_obj_make( s, _VM_PT_Heap ); }
     };
+
+    /* Like above, but for objects which track debug metadata. See `dios/sys/debug.hpp`. */
 
     struct DbgObject : KObject
     {
