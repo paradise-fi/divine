@@ -23,7 +23,11 @@
 namespace __dios
 {
 
-    /* TODO do something about usec/nsec values */
+    /* Simulate clocks. Tick (or not) whenever the clock is observed, depending
+     * on the configuration. See `configure`. Supports symbolic and
+     * non-deterministic clocks, and also setting the time. TODO Only currently
+     * deals with whole seconds, we may want to do something about usec/nsec
+     * values. */
 
     template< typename Next >
     struct Clock : Next
