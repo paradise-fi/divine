@@ -18,7 +18,7 @@ struct MachineParams : Next
         traceAlias< MachineParams >( "{MachineParams}" );
         hardwareConcurrency = 0;
         readHardwareConcurrency( s.opts );
-        if ( extractOpt( "debug", "machineparams", s.opts ) )
+        if ( extract_opt( "debug", "machineparams", s.opts ) )
         {
             traceConfig( 1 );
             __vm_ctl_flag( 0, _VM_CF_Error );
@@ -42,7 +42,7 @@ struct MachineParams : Next
 
     void readHardwareConcurrency( SysOpts& opts )
     {
-        std::string_view ncpus = extractOpt( "ncpus", opts );
+        std::string_view ncpus = extract_opt( "ncpus", opts );
         if ( !ncpus.empty() )
         {
             char *end;

@@ -134,13 +134,13 @@ struct Fault: FaultBase, Next
                       reinterpret_cast< void * >( handler< typename Setup::Context > ) );
         load_user_pref( s.proc1->faultConfig, s.opts );
 
-        if ( extractOpt( "debug", "faultcfg", s.opts ) )
+        if ( extract_opt( "debug", "faultcfg", s.opts ) )
         {
             trace_config( 1 );
             __vm_ctl_flag( 0, _VM_CF_Error );
         }
         _flags = Ready;
-        if ( extractOpt( "debug", "faultbt", s.opts ) )
+        if ( extract_opt( "debug", "faultbt", s.opts ) )
             _flags |= PrintBacktrace;
         Next::setup( s );
     }

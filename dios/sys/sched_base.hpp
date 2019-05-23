@@ -109,8 +109,8 @@ struct Scheduler : public Next
     template < typename Setup >
     void setupDebug( Setup s, std::pair< int, char** >& argv, std::pair< int, char** >& envp )
     {
-        if ( extractOpt( "debug", "mainargs", s.opts ) ||
-             extractOpt( "debug", "mainarg", s.opts ) )
+        if ( extract_opt( "debug", "mainargs", s.opts ) ||
+             extract_opt( "debug", "mainarg", s.opts ) )
         {
             trace_main_arg( 1, "main argv", argv );
             trace_main_arg( 1, "main envp", envp );

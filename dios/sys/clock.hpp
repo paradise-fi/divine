@@ -39,9 +39,9 @@ namespace __dios
 
         void configure( SysOpts &opts )
         {
-            auto sv = extractOpt( "clock-type", opts );
-            auto mt = extractOpt( "clock-maxticks", opts );
-            auto base = extractOpt( "clock-start", opts );
+            auto sv = extract_opt( "clock-type", opts );
+            auto mt = extract_opt( "clock-maxticks", opts );
+            auto base = extract_opt( "clock-start", opts );
 
             if ( sv.empty() || sv == "fixed" )
                 _clock_mode = Fixed;
