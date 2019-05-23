@@ -29,6 +29,14 @@
  * arguments, the UNIX environment and a filesystem snapshot). This file deals
  * with everything other than the vfs snapshot. */
 
+/* The keys that DiOS expects and understands in the environment are as follows:
+ *
+ *  - arg.[0-9]+: the argv[] to be passed to main() of pid 1
+ *  - env.[0-9]+: the envp[] (and __environ) passed to pid 1
+ *  - sys.[0-9]+: the options intended for the kernel (-o xxx in DIVINE)
+ *  - vfs.*: the filesystem snapshot (details in `dios/vfs/base.cp`)
+ *  - `divine.bcname`: argv[0] (TODO rename this key or merge into arg.*) */
+
 namespace __dios
 {
     bool parse_sys_options( const _VM_Env *e, SysOpts& res );
