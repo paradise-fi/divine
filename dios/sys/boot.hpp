@@ -108,14 +108,12 @@ namespace __dios
             return;
         }
 
-        SetupBase sb{ .pool = &deterministic_memory, .env = env, .opts = opt };
-
         auto *context = new Configuration();
         __vm_trace( _VM_T_StateType, context );
         traceAlias< Configuration >( "{Context}" );
         __vm_ctl_set( _VM_CR_State, context );
 
-        if ( extract_opt( "debug", "help", sb.opts ) ) /* please send hulp */
+        if ( extract_opt( "debug", "help", opt ) ) /* please send hulp */
         {
             ArrayMap< std::string_view, HelpOption > help;
 
@@ -134,10 +132,22 @@ namespace __dios
             return;
         }
 
-        if ( extract_opt( "debug", "rawenvironment", sb.opts ) )
-            trace_env( 1, sb.env );
+        if ( extract_opt( "debug", "rawenvironment", opt ) )
+            trace_env( 1, env );
 
-        Setup< Configuration > s = sb;
+        /* The Setup structure is passed down the stack and each component in
+         * turn parses the options that it understands and removes them from
+         * .opts. If some options remain when we hit bottom, that's an error.
+         * The structure is passed by value, hence the removal of options does
+         * not propagate back up. */
+        Setup< Configuration > s = SetupBase{ .pool = &deterministic_memory,
+                                              .env = env, .opts = opt };
+
+        /* The first process is special and is created during boot. Other
+         * processes can only be created using `fork`. Components that maintain
+         * per-process data should initialize their fields in proc1. The
+         * Process structure itself is stacked the same way the configuration
+         * stack is. */
         s.proc1 = new typename Configuration::Process();
         context->setup( s );
     }
