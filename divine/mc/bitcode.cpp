@@ -198,7 +198,7 @@ void BitCode::do_lart()
 
     lart.setup( lart::divine::lsda() );
     auto mod = _module.get();
-    if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
+    if ( mod->getGlobalVariable( "__md_functions" ) || mod->getGlobalVariable( "__md_globals" ) )
         lart.setup( lart::divine::functionMetaPass() );
     if ( mod->getGlobalVariable( "__sys_env" ) )
         lart::util::replaceGlobalArray( *mod, "__sys_env", _env );
