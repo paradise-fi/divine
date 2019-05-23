@@ -1,0 +1,79 @@
+DiOS is a lightweight operating system model, portable across multiple
+*platforms*: typically dynamical analysis tools aimed at verification of
+software. DiOS uses a traditional UNIX architecture, with a kernel/userspace
+split, with the kernel providing its services through system calls.
+
+## Kernel
+
+The DiOS kernel is made up from components, arranged in a *configuration
+stack*. Each component can use services of the components below on the stack.
+The other direction is possible, but less convenient and generally discouraged
+(and involves virtual methods). See the `upcall` component below.
+
+When a kernel method is called from the outside, it is handled by the topmost
+component in the stack with a matching method. For instance, each system call
+is a method of the kernel. When called from within, the components above the
+active one are ‘invisible’ (other than for virtual method dispatch).
+
+The kernel is mostly written in C++ and it may use both `libc` and `libc++`
+functionality, as long as no system calls are involved. Invoking system calls
+from within the kernel is UB and strongly discouraged.
+
+More details about the kernel can be found in `sys/README` and in comments in
+the individual source files. What follows is a high-level overview.
+
+### Components
+
+The kernel framework and a bunch of basic components lives under`sys/*`. Those
+are:
+
+ - `BaseContext` in `sys/syscall.hpp` (fallback syscall stubs)
+ - `MonitorManager` in `sys/monitor.hpp` (deprecated, LTL and automata)
+ - `MachineParams` in `sys/machineparams.hpp` (`uname`, metadata)
+ - `Clock` in `sys/clock.hpp` (keeps track of time, `clock_*`, `gettimeofday`)
+ - `Fault` in `sys/fault.hpp` (the fault handler)
+ - `ProcessManager` in `sys/procmanager.hpp` (process management, `fork`)
+ - `Upcall` in `sys/upcall.hpp` (call upward in the configuration stack)
+
+A couple more kernel components get their own directories besides `sys`:
+
+ - `VFS` in `vfs/*` (POSIX-compatible filesystem)
+ - `Proxy` and `Replay` in `proxy/*` (pass system calls to the host OS)
+
+### Configuration
+
+Configuration stacks are *static*: they are declared at compile time. The idea
+is to cut down on runtime overhead. Verification tools are *slow* and *memory
+hungry*. When DiOS is built, you get `dios.a` which contains the kernel code
+shared by all configurations. The `.cpp` files under `config/` each get
+compiled to a single bitcode file and each of those contains
+configuration-specific code (mainly template instantiations).
+
+### Platform Support
+
+DiOS is mostly portable C and C++, but some of its functionality relies on
+platform details, like memory organisation, how execution (activation) stacks
+are represented (and how they can be switched or unwound), the ability to make
+non-deterministic choices or create indeterminate values. Code which is
+specific to a particular platform is stored under `arch/<platform>`, e.g.
+`arch/divm`. Semantically, the code under `arch` belongs to `libc`.
+
+The native platform for DiOS is DiVM, and its hypercall interface is used even
+in ostensibly platform-independent code in DiOS.
+
+### Linking the Kernel
+
+To link a runnable kernel, 3 pieces are needed: `dios.a` (shared kernel code),
+`config/foo.bc` which contains the per-configuration code and the entry point
+(`__boot` by default) and `dios_arch.a` which contains platform-specific code.
+They should be linked into a single bitcode file (possibly along with the user
+program) in this order: `config/foo.bc`, then `dios.a` then `dios_arch.a`.
+
+Since the kernel uses both `libc` and `libc++`, you also need to link in
+those, in this order: `-lc++ -lc++abi -lc`. In DIVINE, the bitcode loader
+takes care of linking in the kernel, and the configuration to use is picked
+with the `--dios-config` flag.
+
+## Userspace
+
+TBD
