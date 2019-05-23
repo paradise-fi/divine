@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
+/* A bag of DiOS-related functionality. Deprecated, do not use. */
+
 #ifndef __DIOS_H__
 #define __DIOS_H__
 
