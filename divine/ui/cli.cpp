@@ -188,9 +188,6 @@ void WithBC::process_options()
     using bstr = std::vector< uint8_t >;
     int i = 0;
 
-    if ( _synchronous )
-        _systemopts.emplace_back( "config:synchronous" );
-
     for ( auto s : _env )
         _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
     i = 0;
