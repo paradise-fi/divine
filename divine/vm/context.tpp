@@ -82,7 +82,7 @@ void Context< P, H >::trace( TraceLeakCheck )
 
     /* FIXME 'are we in a fault handler?' duplicated with Eval::fault() */
     PointerV frame( this->frame() ), fpc;
-    while ( !frame.cooked().null() )
+    while ( this->heap().valid( frame.cooked() ) )
     {
         this->heap().read_shift( frame, fpc );
         if ( fpc.cooked().object() == this->fault_handler().object() )
