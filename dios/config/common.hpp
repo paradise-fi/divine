@@ -18,13 +18,13 @@ namespace __dios
 
 }
 
-extern "C" void __dios_boot( const _VM_Env *env )
+extern "C" void __attribute__((weak)) __dios_boot( const _VM_Env *env )
 {
     __dios::boot< __dios::Context >( env );
 }
 
 extern "C" void  __attribute__((weak)) __link_always __boot( const _VM_Env *env )
 {
-    __dios::boot< __dios::Context >( env );
+    __dios_boot( env );
     __vm_suspend();
 }
