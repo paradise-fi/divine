@@ -60,9 +60,9 @@ bool Info::in_component( vm::CodePointer pc, Components comp )
 
     if ( comp & Component::LibC )
     {
-        if ( startsWith( file, "/dios/src/libc/" ) )
-            return true;
-        if ( startsWith( file, "/dios/include/sys/" ) )
+        if ( startsWith( file, "/dios/src/libc/" ) ||
+             startsWith( file, "/dios/src/arch/" ) ||
+             startsWith( file, "/dios/include/sys/" ) )
             return true;
         if ( startsWith( file, "/dios/include/" ) && file.substr( 14 ).find( '/' ) == std::string::npos )
             return true;
