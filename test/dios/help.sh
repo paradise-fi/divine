@@ -4,7 +4,7 @@
 check_help()
 {
     divine exec -o help --dios-config $1 test.c > trace.out
-    if ! grep "config: run" trace.out; then
+    if ! grep "configure the fault handler" trace.out; then
         echo "# unexpected help output for configuration $1:"
         cat trace.out
         result=1
