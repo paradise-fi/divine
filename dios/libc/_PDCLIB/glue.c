@@ -35,6 +35,17 @@ __invisible void *malloc( size_t size )
         return NULL; // failure
 }
 
+void __dios_check_free( void * );
+
+__invisible void free( void * p )
+{
+    if ( !p )
+        return;
+
+    __dios_check_free( p );
+    __vm_obj_free( p );
+}
+
 __invisible void *aligned_alloc( size_t align, size_t size )
 {
     return malloc( size ); /* we are always aligned */
