@@ -1,5 +1,5 @@
 /* TAGS: min c */
 #include <sys/divm.h>
 
-void __boot() {} /* BOOT ERROR */
+void __dios_boot() {} /* BOOT ERROR */
 int main() {}

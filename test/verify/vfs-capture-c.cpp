@@ -9,7 +9,8 @@
 
 #include "vfs-capture-assert.h"
 
-extern "C" void __boot( const _VM_Env *env ) {
+extern "C" void __dios_boot( const _VM_Env *env )
+{
     std::set< std::string > expected({ "/", "/a" });
 
     auto context = new Context();
