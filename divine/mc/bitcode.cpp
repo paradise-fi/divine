@@ -111,9 +111,7 @@ void BitCode::lazy_link_dios()
     rt::DiosCC drv( _ctx );
     drv.link( std::move( _module ) );
 
-    if ( has_boot )
-        drv.link_dios_config( "null" );
-    else
+    if ( !has_boot )
     {
         drv.link_dios_config( _dios_config );
         drv.link_dios();
