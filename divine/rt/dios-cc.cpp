@@ -15,8 +15,11 @@ void DiosCC::link_dios_config( std::string n )
 {
     auto mod = load_object( "config/" + n );
     link( std::move( mod ) );
-    linkLib( "dios_divm" );
     linkLib( "dios" );
+    linkLib( "dios_divm" );
+    link_dios();
+    linkLibs( rt::DiosCC::defaultDIVINELibs );
+    linkLib( "dios_divm" ); /* libc might depend on this */
 }
 
 DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :

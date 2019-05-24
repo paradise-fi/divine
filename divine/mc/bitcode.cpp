@@ -112,11 +112,7 @@ void BitCode::lazy_link_dios()
     drv.link( std::move( _module ) );
 
     if ( !has_boot )
-    {
         drv.link_dios_config( _dios_config );
-        drv.link_dios();
-        drv.linkLibs( rt::DiosCC::defaultDIVINELibs );
-    }
     _module = drv.takeLinked();
 }
 
