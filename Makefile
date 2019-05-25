@@ -83,7 +83,7 @@ divbench-install:
 	sh releng/install-divbench.sh $(OBJ)bench/tools/divbench $(BENCH_DIR) $(BENCH_NAME) \
 	  $(SKIP_SCHEDULE)
 
-SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)"
+SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)" JOBS="$(JOBS)" TEST_ALLOW_DOWNLOADS="$(TEST_ALLOW_DOWNLOADS)"
 OF = $(OBJ)$(FLAVOUR)/
 DIRENV_PATH = $(OF)/tools:$(OF)/llvm/bin:$(OBJ)bench/tools:$(OF)/divine:$(OF)/lart:$(OF)
 
