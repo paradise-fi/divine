@@ -101,6 +101,7 @@ endmacro()
 check_hostfun( freadptrinc )
 check_hostfun( freadptr )
 check_hostfun( freadahead )
+check_hostfun( freading )
 check_hostfun( fseterr )
 
 add_library( dios-host STATIC ${SRC_host} )
