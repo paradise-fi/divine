@@ -53,21 +53,21 @@
 #define O_ACCMODE  (O_RDONLY|O_WRONLY|O_RDWR)
 
 /* Values for the second argument to `fcntl'.  */
-#define F_DUPFD         0  /* Duplicate file descriptor.  */
-#define F_GETFD         1  /* Get file descriptor flags.  */
-#define F_SETFD         2  /* Set file descriptor flags.  */
-#define F_GETFL         3  /* Get file status flags.  */
-#define F_SETFL         4  /* Set file status flags.  */
-#define F_GETOWN        5  /* Get owner (receiver of SIGIO).  */
-#define F_SETOWN        6  /* Set owner (receiver of SIGIO).  */
-#define F_GETLK         7  /* Get record locking info.  */
-#define F_SETLK         8  /* Set record locking info (non-blocking).  */
-#define F_SETLKW        9  /* Set record locking info (blocking).  */
+#define F_DUPFD         _HOST_F_DUPFD   /* Duplicate file descriptor.  */
+#define F_GETFD         _HOST_F_GETFD   /* Get file descriptor flags.  */
+#define F_SETFD         _HOST_F_SETFD   /* Set file descriptor flags.  */
+#define F_GETFL         _HOST_F_GETFL   /* Get file status flags.  */
+#define F_SETFL         _HOST_F_SETFL   /* Set file status flags.  */
+#define F_GETOWN        _HOST_F_GETOWN  /* Get owner (receiver of SIGIO).  */
+#define F_SETOWN        _HOST_F_SETOWN  /* Set owner (receiver of SIGIO).  */
+#define F_GETLK         _HOST_F_GETLK   /* Get record locking info.  */
+#define F_SETLK         _HOST_F_SETLK   /* Set record locking info (non-blocking).  */
+#define F_SETLKW        _HOST_F_SETLKW  /* Set record locking info (blocking).  */
 /* Not necessary, we always have 64-bit offsets.  */
 #define F_GETLK64       F_GETLK  /* Get record locking info.  */
 #define F_SETLK64       F_SETLK  /* Set record locking info (non-blocking).  */
 #define F_SETLKW64      F_SETLKW/* Set record locking info (blocking).  */
-#define F_DUPFD_CLOEXEC 12  /* Duplicate file descriptor with close-on-exit set.  */
+#define F_DUPFD_CLOEXEC _HOST_F_DUPFD_CLOEXEC /* Duplicate file descriptor with close-on-exit set.  */
 
 /* File descriptor flags used with F_GETFD and F_SETFD.  */
 #define FD_CLOEXEC  1  /* Close on exec.  */

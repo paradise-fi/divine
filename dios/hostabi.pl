@@ -238,6 +238,19 @@ fmt( "_NSIG" );
 
 fmt( "_SC_CLK_TCK" );
 
+fmt( "F_DUPFD" );
+fmt( "F_DUPFD_CLOEXEC" );
+fmt( "F_GETFD" );
+fmt( "F_SETFD" );
+fmt( "F_GETFL" );
+fmt( "F_SETFL" );
+fmt( "F_GETOWN" );
+fmt( "F_SETOWN" );
+
+fmt( "F_GETLK" );
+fmt( "F_SETLK" );
+fmt( "F_SETLKW" );
+
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );
 
