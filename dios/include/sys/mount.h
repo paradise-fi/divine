@@ -2,6 +2,8 @@
 #define _SYS_MOUNT_H_
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
+#include <stdint.h>
 
 /*
  * file system statistics
