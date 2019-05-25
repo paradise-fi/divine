@@ -137,18 +137,7 @@ typedef struct {
 
 typedef int pthread_barrierattr_t;
 
-#include <time.h> /* struct timespec */
-
-struct sched_param {
-    int sched_priority;
-#if defined(_POSIX_SPORADIC_SERVER) || defined(_POSIX_THREAD_SPORADIC_SERVER)
-    int sched_ss_low_priority;
-    struct timespec sched_ss_repl_period;
-    struct timespec sched_ss_init_budget;
-    int sched_ss_max_repl;
-#endif
-};
-
+#include <sched.h> /* sched_param */
 #include <sys/types.h> /* pid_t */
 
 /* Function prototypes */
@@ -281,7 +270,6 @@ int sched_getscheduler(pid_t) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_NO_EF
 int sched_rr_get_interval(pid_t, struct timespec *) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
 int sched_setparam(pid_t, const struct sched_param *) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
 int sched_setscheduler(pid_t, int, const struct sched_param *) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
-int sched_yield(void) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 
 __END_DECLS
 
