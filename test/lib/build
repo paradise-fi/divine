@@ -1,0 +1,8 @@
+. lib/testcase
+test "$TEST_ALLOW_DOWNLOADS" = 1 || skip
+name=$(basename $1 .bld)
+curl https://divine.fi.muni.cz/test-tarballs/$name.tar.xz | unxz | tar xf -
+cd $name
+./configure CC=divcc
+make
+. $1

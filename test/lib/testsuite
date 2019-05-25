@@ -19,6 +19,7 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --interpreter c:lib/verify \
     --interpreter pkg:lib/pkg \
     --interpreter pdc:lib/pdclib-test \
+    --interpreter bld:lib/build \
     --flavour z3:sym,!float,!z3skip \
     --flavour stp:sym,!float \
     --flavour smtlib:sym,min \
