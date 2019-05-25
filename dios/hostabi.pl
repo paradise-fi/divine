@@ -16,6 +16,7 @@ my $prog =<<'EOF';
 #include <stdio.h>
 #include <assert.h>
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -28,66 +29,103 @@ my $prog =<<'EOF';
 int offset = 0;
 int padding = 0;
 
-void output( const char *name, int size, int istime )
+#define TIME 1
+#define STR  2
+#define UINT 3
+
+#define PAD() do {                                                      \
+    while ( padding > 3 )                                               \
+    {                                                                   \
+        printf( "    __uint32_t __padding%d;\n", offset - padding );    \
+        padding -= 4;                                                   \
+    }                                                                   \
+    while ( padding > 0 )                                               \
+    {                                                                   \
+        printf( "    __uint8_t __padding%d;\n", offset - padding );     \
+        padding -= 1;                                                   \
+    }                                                                   \
+    assert( padding == 0 ); } while ( 0 )
+
+void output( const char *name, int size, int type )
 {
     if ( padding )
-        printf( "    __uint%d_t __padding%d;\n", padding * 8, offset );
-    if ( istime )
-        printf( "    struct timespec %s;\n", name );
-    else
-        printf( "    __uint%d_t %s;\n", size * 8, name );
+        PAD();
+    switch ( type )
+    {
+        case TIME:
+            printf( "    struct timespec %s;\n", name );
+            break;
+        case STR:
+            printf( "    char %s[%d];\n", name, size );
+            break;
+        case UINT:
+            printf( "    __uint%d_t %s;\n", size * 8, name );
+            break;
+    }
     offset += size;
     padding = 0;
 }
 
-void print_stat()
-{
-    struct stat st;
-    printf("struct _HOST_stat\n{\n");
-
 #define FIELD(n, t)                              \
-    if ( (char *)&st.n - (char *)&st == offset ) \
+    if ( (char *)&s.n - (char *)&s == offset )   \
     {                                            \
-        output( #n , sizeof( st.n ), t );        \
+        output( #n , sizeof( s.n ), t );         \
         continue;                                \
     }
 
-    while ( offset < sizeof( st ) )
-    {
-
-        FIELD( st_mode, 0 );
-        FIELD( st_dev, 0 );
-        FIELD( st_ino, 0 );
-        FIELD( st_nlink, 0 );
-        FIELD( st_uid, 0 );
-        FIELD( st_gid, 0 );
-        FIELD( st_rdev, 0 );
-        FIELD( st_atim, 1 );
-        FIELD( st_mtim, 1 );
-        FIELD( st_ctim, 1 );
-        FIELD( st_size , 0 );
-        FIELD( st_blocks , 0 );
-        FIELD( st_blksize, 0 );
-        // FIELD( st_flags, 0 );
-        // FIELD( st_gen, 0 );
-        // FIELD( __st_birthtim, 1 );
-
-        padding ++;
-        offset ++;
-    }
-
-    while ( padding > 0 )
-    {
-        printf( "    __uint32_t __padding%d;\n", offset - padding );
-        padding -= 4;
-    }
-    assert( padding == 0 );
-
-    printf( "} __attribute__((packed));\n" );
-}
-
 int main()
 {
+EOF
+
+sub print_struct
+{
+    my $name = shift;
+    my $fields = shift;
+
+    $prog .= <<EOF
+    {
+        printf("#ifdef _HOST_$name\\n");
+        struct $name s;
+        printf("struct _HOST_$name\\n{\\n");
+        padding = offset = 0;
+
+        while ( offset < sizeof( s ) )
+        {
+            $fields
+            padding ++;
+            offset ++;
+        }
+
+        PAD();
+
+        printf( "} __attribute__((packed));\\n" );
+        printf("#endif\\n");
+    }
+EOF
+}
+
+print_struct( "stat", <<EOF );
+    FIELD( st_mode,    UINT );
+    FIELD( st_dev,     UINT );
+    FIELD( st_ino,     UINT );
+    FIELD( st_nlink,   UINT );
+    FIELD( st_uid,     UINT );
+    FIELD( st_gid,     UINT );
+    FIELD( st_rdev,    UINT );
+    FIELD( st_atim,    TIME );
+    FIELD( st_mtim,    TIME );
+    FIELD( st_ctim,    TIME );
+    FIELD( st_size ,   UINT );
+    FIELD( st_blocks , UINT );
+    FIELD( st_blksize, UINT );
+    // FIELD( st_flags, UINT );
+    // FIELD( st_gen, UINT );
+    // FIELD( __st_birthtim, TIME );
+EOF
+
+print_struct( "dirent", <<EOF );
+    FIELD( d_ino,  UINT );
+    FIELD( d_name, STR );
 EOF
 
 sub fmt
@@ -108,11 +146,6 @@ sub fail
     print $prog;
     die $@;
 }
-
-line("#ifdef _HOST_stat");
-$prog .= "    print_stat();";
-line("#endif");
-line("");
 
 line("#ifndef _HOSTABI_H");
 line("#define _HOSTABI_H");
