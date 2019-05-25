@@ -25,6 +25,7 @@ my $prog =<<'EOF';
 #include <signal.h>
 #include <unistd.h>
 #include <setjmp.h>
+#include <locale.h>
 
 int offset = 0;
 int padding = 0;
@@ -272,6 +273,14 @@ fmt( "_PC_REC_XFER_ALIGN" );
 fmt( "_PC_SYMLINK_MAX" );
 fmt( "_PC_SYNC_IO" );
 # fmt( "_PC_TIMESTAMP_RESOLUTION" );
+
+fmt( "LC_ALL" );
+fmt( "LC_COLLATE" );
+fmt( "LC_CTYPE" );
+fmt( "LC_MONETARY" );
+fmt( "LC_NUMERIC" );
+fmt( "LC_TIME" );
+fmt( "LC_MESSAGES" );
 
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );

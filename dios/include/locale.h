@@ -5,6 +5,7 @@
 */
 
 #include <sys/cdefs.h>
+#include <sys/hostabi.h>
 
 #ifndef _PDCLIB_LOCALE_H
 #define _PDCLIB_LOCALE_H _PDCLIB_LOCALE_H
@@ -67,20 +68,20 @@ struct lconv
    TODO: Beware, values might change before v0.6 is released.
 */
 /* Entire locale */
-#define LC_ALL      -1
+#define LC_ALL      _HOST_LC_ALL
 /* Collation (strcoll(), strxfrm()) */
-#define LC_COLLATE  0
+#define LC_COLLATE  _HOST_LC_COLLATE
 /* Character types (<ctype.h>) */
-#define LC_CTYPE    1
+#define LC_CTYPE    _HOST_LC_CTYPE
 /* Monetary formatting (as returned by localeconv) */
-#define LC_MONETARY 2
+#define LC_MONETARY _HOST_LC_MONETARY
 /* Decimal-point character (for printf() / scanf() functions), string
    conversions, nonmonetary formatting as returned by localeconv              */
-#define LC_NUMERIC  3
+#define LC_NUMERIC  _HOST_LC_NUMERIC
 /* Time formats (strftime(), wcsftime()) */
-#define LC_TIME     4
+#define LC_TIME     _HOST_LC_TIME
 /* required by libc++ (DIVINE) */
-#define LC_MESSAGES 5
+#define LC_MESSAGES _HOST_LC_MESSAGES
 
 /* The category parameter can be any of the LC_* macros to specify if the call
    to setlocale() shall affect the entire locale or only a portion thereof.
