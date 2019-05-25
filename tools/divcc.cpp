@@ -139,6 +139,23 @@ bool is_object_type( std::string file )
     return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive );
 }
 
+bool whitelisted( llvm::Function &f )
+{
+    using brick::string::startsWith;
+    using vm::xg::hypercall;
+
+    auto n = f.getName();
+    return hypercall( &f ) != vm::lx::NotHypercall ||
+           startsWith( n, "__dios_" ) ||
+           startsWith( n, "_ZN6__dios" ) ||
+           n == "setjmp" || n == "longjmp";
+}
+
+bool whitelisted( llvm::GlobalVariable &gv )
+{
+    return brick::string::startsWith( gv.getName(), "__md_" );
+}
+
 std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang,
                                               std::vector< std::string > libSearchPath )
 {
@@ -184,20 +201,14 @@ std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang
 
     auto m = drv->takeLinked();
 
-    using brick::string::startsWith;
-    using vm::xg::hypercall;
-
     for ( auto& func : *m )
-        if ( func.isDeclaration() &&
-             hypercall( &func ) == vm::lx::NotHypercall &&
-             !startsWith( func.getName(), "__dios_" ) &&
-             !startsWith( func.getName(), "_ZN6__dios" ) )
+        if ( func.isDeclaration() && !whitelisted( func ) )
             throw cc::CompileError( "Symbol undefined (function): " + func.getName().str() );
 
     for ( auto& val : m->globals() )
-        if( auto G = dyn_cast< llvm::GlobalVariable >( &val ) )
-            if( !G->hasInitializer() && !brick::string::startsWith( val.getName(), "__md_" ) )
-                throw cc::CompileError( "Symbol undefined (global variable): " + val.getName().str() );
+        if ( auto G = dyn_cast< llvm::GlobalVariable >( &val ) )
+            if ( !G->hasInitializer() && !whitelisted( *G ) )
+                throw cc::CompileError( "Symbol undefined (global variable): " + G->getName().str() );
 
     verifyModule( *m );
     return m;
