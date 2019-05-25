@@ -4,6 +4,10 @@
 #ifndef _DIRENT_H
 #define _DIRENT_H
 
+#define _HOST_dirent dirent
+#include <sys/hostabi.h>
+#undef _HOST_dirent
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,11 +15,6 @@ extern "C" {
 typedef void DIR;
 
 #define FS_NOINLINE __attribute__((noinline))
-
-struct dirent {
-    ino_t d_ino;
-    char d_name[ 256 ];
-};
 
 int alphasort( const struct dirent **, const struct dirent ** );
 
