@@ -151,6 +151,8 @@ extern   int optreset;
 long sysconf( int ) __nothrow;
 int nice( int ) __nothrow;
 int gethostname( char *name, size_t namelen ) __nothrow;
+unsigned alarm( unsigned ) __nothrow;
+char *getlogin( void ) __nothrow;
 int getpagesize( void ) __nothrow;
 
 #define _PC_LINK_MAX             _HOST__PC_LINK_MAX

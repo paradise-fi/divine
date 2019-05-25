@@ -128,6 +128,8 @@ int gethostname( char *, size_t ) NOT_IMPLEMENTED;
 void *mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) NOT_IMPLEMENTED;
 int munlockall() NOT_IMPLEMENTED;
 int mlockall( int ) NOT_IMPLEMENTED;
+unsigned alarm( unsigned ) NOT_IMPLEMENTED;
+char *getlogin() NOT_IMPLEMENTED;
 
 int fpathconf( int, int ) NOT_IMPLEMENTED;
 int pathconf( const char *, int ) NOT_IMPLEMENTED;
