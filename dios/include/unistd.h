@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 #include <sys/cdefs.h>
+#include <sys/hostabi.h>
 
 #ifndef _UNISTD_H_
 #define _UNISTD_H_
@@ -151,6 +152,30 @@ long sysconf( int ) __nothrow;
 int nice( int ) __nothrow;
 int gethostname( char *name, size_t namelen ) __nothrow;
 int getpagesize( void ) __nothrow;
+
+#define _PC_LINK_MAX             _HOST__PC_LINK_MAX
+#define _PC_MAX_CANON            _HOST__PC_MAX_CANON
+#define _PC_MAX_INPUT            _HOST__PC_MAX_INPUT
+#define _PC_NAME_MAX             _HOST__PC_NAME_MAX
+#define _PC_PATH_MAX             _HOST__PC_PATH_MAX
+#define _PC_PIPE_BUF             _HOST__PC_PIPE_BUF
+#define _PC_CHOWN_RESTRICTED     _HOST__PC_CHOWN_RESTRICTED
+#define _PC_NO_TRUNC             _HOST__PC_NO_TRUNC
+#define _PC_VDISABLE             _HOST__PC_VDISABLE
+#define _PC_2_SYMLINKS           _HOST__PC_2_SYMLINKS
+#define _PC_ALLOC_SIZE_MIN       _HOST__PC_ALLOC_SIZE_MIN
+#define _PC_ASYNC_IO             _HOST__PC_ASYNC_IO
+#define _PC_FILESIZEBITS         _HOST__PC_FILESIZEBITS
+#define _PC_PRIO_IO              _HOST__PC_PRIO_IO
+#define _PC_REC_INCR_XFER_SIZE   _HOST__PC_REC_INCR_XFER_SIZE
+#define _PC_REC_MAX_XFER_SIZE    _HOST__PC_REC_MAX_XFER_SIZE
+#define _PC_REC_MIN_XFER_SIZE    _HOST__PC_REC_MIN_XFER_SIZE
+#define _PC_REC_XFER_ALIGN       _HOST__PC_REC_XFER_ALIGN
+#define _PC_SYMLINK_MAX          _HOST__PC_SYMLINK_MAX
+#define _PC_SYNC_IO              _HOST__PC_SYNC_IO
+
+int pathconf( const char *, int ) __nothrow;
+int fpathconf( int, int ) __nothrow;
 
 #ifdef __cplusplus
 } // extern C

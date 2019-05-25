@@ -251,6 +251,28 @@ fmt( "F_GETLK" );
 fmt( "F_SETLK" );
 fmt( "F_SETLKW" );
 
+fmt( "_PC_LINK_MAX" );
+fmt( "_PC_MAX_CANON" );
+fmt( "_PC_MAX_INPUT" );
+fmt( "_PC_NAME_MAX" );
+fmt( "_PC_PATH_MAX" );
+fmt( "_PC_PIPE_BUF" );
+fmt( "_PC_CHOWN_RESTRICTED" );
+fmt( "_PC_NO_TRUNC" );
+fmt( "_PC_VDISABLE" );
+fmt( "_PC_2_SYMLINKS" );
+fmt( "_PC_ALLOC_SIZE_MIN" );
+fmt( "_PC_ASYNC_IO" );
+fmt( "_PC_FILESIZEBITS" );
+fmt( "_PC_PRIO_IO" );
+fmt( "_PC_REC_INCR_XFER_SIZE" );
+fmt( "_PC_REC_MAX_XFER_SIZE" );
+fmt( "_PC_REC_MIN_XFER_SIZE" );
+fmt( "_PC_REC_XFER_ALIGN" );
+fmt( "_PC_SYMLINK_MAX" );
+fmt( "_PC_SYNC_IO" );
+# fmt( "_PC_TIMESTAMP_RESOLUTION" );
+
 my $uname = (POSIX::uname())[0];
 fmt( "uname", '"' . $uname . '"', "\\\"%s\\\"" );
 
