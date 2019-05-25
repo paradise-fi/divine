@@ -69,6 +69,10 @@
 #define F_SETLKW64      F_SETLKW/* Set record locking info (blocking).  */
 #define F_DUPFD_CLOEXEC _HOST_F_DUPFD_CLOEXEC /* Duplicate file descriptor with close-on-exit set.  */
 
+#define F_RDLCK 1
+#define F_UNLCK 2
+#define F_WRLCK 3
+
 /* File descriptor flags used with F_GETFD and F_SETFD.  */
 #define FD_CLOEXEC  1  /* Close on exec.  */
 
@@ -94,6 +98,15 @@
                                         effective IDs, not real IDs.  */
 
 
+struct flock
+{
+        off_t   l_start;
+        off_t   l_len;
+        pid_t   l_pid;
+        short   l_type;
+        short   l_whence;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -109,6 +122,7 @@ FS_NOINLINE int openat( int dirfd, const char *path, int flags, ... ) __nothrow;
 #endif
 
 FS_NOINLINE int fcntl( int fd, int cmd, ... ) __nothrow;
+FS_NOINLINE int flock( int fd, int cmd ) __nothrow;
 
 #undef FS_NOINLINE
 

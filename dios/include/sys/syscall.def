@@ -110,6 +110,7 @@ SYSCALL( link,        CONTINUE, int,     ( MEM _1, MEM _2 ) )
 SYSCALL( listen,      CONTINUE, int,     ( int _1, int _2 ) )
 SYSCALL( mkdirat,     CONTINUE, int,     ( int _1, MEM _2, mode_t _3 ) )
 SYSCALL( wait4,       CONTINUE, pid_t,   ( pid_t _1, int *_2, int _3, STRUCT(struct TOP rusage *) _4 ) )
+SYSCALL( flock,       CONTINUE, int,     ( int _1, int _2 ) )
 
 #if _HOST_is_linux /* linux-specific syscalls */
 SYSCALL( creat,       CONTINUE, int,     ( MEM _1, mode_t _2 ) )
