@@ -103,8 +103,11 @@ check_hostfun( freadptr )
 check_hostfun( freadahead )
 check_hostfun( freading )
 check_hostfun( fseterr )
+check_c_source_compiles( "int main() { fpurge(); }" HAVE_BSD_fpurge )
+check_hostfun( fpurge )
 
 add_library( dios-host STATIC ${SRC_host} )
+target_compile_definitions( dios-host PRIVATE HAVE_BSD_fpurge=${HAVE_BSD_fpurge} )
 target_include_directories( dios-host BEFORE PRIVATE host )
 stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" dios-host )
 
