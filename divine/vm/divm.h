@@ -1,8 +1,31 @@
-/* -*- C++ -*- but can be built as C too */
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2012-2019 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/* The values of constants defined in this file are used in the VM
+ * implementation itself -- hence the funny include guards. */
 
 #if !defined(__DIVM_H_CONST__) && ( !defined(__divm__) || defined(__divm_const__) )
 #define __DIVM_H_CONST__
 #include <stdint.h>
+
+/* Constants related to pointer layout and object types. The _VM_PM_* are
+ * simply masks for the 2 parts of a pointer (object identifier and an offset).
+ * The _VM_PB_* are number of bits. */
 
 enum { _VM_PM_Off  = 0x00000000FFFFFFFFull,
        _VM_PM_Obj  = 0xFFFFFFFF00000000ull };
@@ -10,17 +33,50 @@ enum { _VM_PB_Full = 64,
        _VM_PB_Obj = 32,
        _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj };
 
+/* The _VM_PT_* classify objects (and hence pointers to those objects) into a
+ * number of classes. Global pointers are addresses of global variables, code
+ * pointers are addresses of functions and labels, alloca pointers are
+ * addresses of local variables, heap pointers are for heap allocations (this
+ * includes both `malloc` memory and function frames and similar VM-allocated
+ * objects), marked objects are like heap, but are treated specially when
+ * states are compared in the model checker (see `divine/mc/hasher.hpp`).
+ * Finally, weak objects don't enter state comparison at all -- any two weak
+ * objects are considered equal. */
+
 enum _VM_PointerType { _VM_PT_Global, _VM_PT_Code, _VM_PT_Alloca, _VM_PT_Heap,
                        _VM_PT_Marked, _VM_PT_Weak };
+
+/* The VM keeps certain metadata about all allocated memory: whether a
+ * particular address stores an object ID, whether a particular byte is defined
+ * (initialized) or whether it is tainted. Additionally, the userspace can
+ * attach metadata to memory locations and the VM will keep track of it. The
+ * interface to access and possibly modify the metadata is via `__vm_peek` and
+ * `__vm_poke`, which both take the metadata layer to operate on as one of its
+ * parameters. The available layers are listed in the _VM_MemLayer enum below.
+ * There may be more than one user-defined metadata layer, in which case they
+ * are numbered sequentially starting from _VM_ML_User. */
+
 enum _VM_MemLayer { _VM_ML_Pointers, _VM_ML_Definedness, _VM_ML_Taints, _VM_ML_User };
 
-struct _VM_PointerLimits { uint32_t low, high; };
+/* The object identifier part of the pointer is a 32 bit number, but each
+ * object type has a range of values from which the VM allocates object
+ * identifiers for the given object types. The specific ranges are described
+ * here. The _VM_PL* constants are the upper limit of each range (but the
+ * ranges are not guaranteed to be in any particular order and may be
+ * rearranged in a later version); a more convenient way to obtain the limits
+ * is via the __vm_pointer_limits array below. */
+
 enum { _VM_PL_Global = 0x00080000,
        _VM_PL_Code   = 0x00100000,
        _VM_PL_Alloca = 0x10000000,
        _VM_PL_Heap   = 0xF0000000,
        _VM_PL_Marked = 0xF7000000 };
 
+/* Each entry of __vm_pointer_limits describes the lower and upper bound of
+ * object identifier values that correspond to the given object type. The
+ * interval is closed from left but open at the end (like C++ iterators). */
+
+struct _VM_PointerLimits { uint32_t low, high; };
 static const struct _VM_PointerLimits __vm_pointer_limits[] =
 {
     [_VM_PT_Global] = { 0,             _VM_PL_Global },
@@ -30,6 +86,10 @@ static const struct _VM_PointerLimits __vm_pointer_limits[] =
     [_VM_PT_Marked] = { _VM_PL_Heap,   _VM_PL_Marked },
     [_VM_PT_Weak]   = { _VM_PL_Marked, 0xFFFFFFFF    }
 };
+
+/* Obtain the type of object associated to a given object identifier (an
+ * efficient implementation depends on the range ordering, hence it's part of
+ * this file and not part of dios). */
 
 static inline int __vm_pointer_type( uint32_t objid )
 {
@@ -48,6 +108,10 @@ static inline int __vm_pointer_type( uint32_t objid )
 }
 
 #endif
+
+/* Definitions of data structures and hypercalls follow. The __divm__ macro is
+ * defined when DiVM itself is being built, while __divine__ is defined when
+ * `divine cc` or `divcc` is compiling code to be executed in DiVM. */
 
 #if !defined(__DIVM_H__) && !defined(__divm_const__)
 #define __DIVM_H__
