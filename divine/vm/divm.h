@@ -367,73 +367,66 @@ enum _VM_SC_ValueType
 
 EXTERN_C
 
-/*
- * The main task of the __boot procedure is to set up the scheduler. After
+/* The main task of the __boot procedure is to set up the scheduler. After
  * __boot returns, the VM will repeatedly call the scheduler (every time with a
- * blank frame). The scheduler may use __vm_control to invoke suspended threads
- * of execution. Upon interrupt, the control is returned to the scheduler's
- * frame (i.e. if the scheduler invokes __vm_control to transfer to the user
- * program and the jumped-to function is then interrupted, control returns to
- * the instruction right after the call to __vm_control).
+ * blank frame). The scheduler may use __vm_ctl_set to invoke suspended threads
+ * of execution. After a __vm_suspend(), the scheduler is started again.
  *
  * Additionally, __boot can (and probably should) set up a fault handler, using
- * __vm_control( _VM_CR_FaultHandler | _VM_CR_Set, &handler_function ). See
- * also below.
- */
+ * `__vm_cfl_set( _VM_CR_FaultHandler, &handler_function )`. See also below. */
 
 void __boot( const struct _VM_Env *env )
     __attribute__((__annotate__("brick.llvm.prune.root")));
 
-/*
- * The type of the fault handler. The 'type' parameter exists to make it easier
+/* The type of the fault handler. The 'type' parameter exists to make it easier
  * for the handler to quickly decide whether to continue execution and whether
  * to raise a user-reported error. In case the handler decides to continue
  * execution, it should transfer control to the cont_frame at the cont_pc
- * location:
- * __vm_control( _VM_CA_Set, _VM_CR_Frame, cont_frame,
- *               _VM_CA_Set, _VM_CR_PC, cont_pc );
- */
+ * location: __vm_ctl_set( _VM_CR_Frame, cont_frame, cont_pc ) */
+
 typedef void (*__vm_fault_t)( enum _VM_Fault type,
                               struct _VM_Frame *cont_frame,
                               void (*cont_pc)(void) )
     __attribute__((__noreturn__));
 
-typedef void (*__vm_sched_t)( void *state );
-
-/*
- * Access the control registers of the VM. See the definition of
- * _VM_ControlRegister above for details on the registers themselves. It is
- * possible to pass multiple requests at once, making it possible to control
- * transfer (by manipulating _VM_CR_PC and/or _VM_CR_Frame) and set other
- * register values atomically (e.g. clear the interrupt flag or unmask
- * interrupts, or to also transfer control within the target frame).
- */
-void *__vm_control( enum _VM_ControlAction, ... ) NOTHROW NATIVE_VISIBLE;
+/* Read and write the control registers of the VM. See the definition of
+ * _VM_ControlRegister above for details on the registers themselves. The
+ * __vm_ctl_flag call clears and sets individual flags in the _VM_CR_Flags
+ * register and returns the value of the flags register as it was before the
+ * changes were performed. Depending on the particular register, __vm_ctl_set
+ * might have side-effects (specifically, setting _VM_CR_Frame transfers
+ * control to the specified frame; in this case, a third argument might be
+ * given to __vm_ctl_set, which specifies the value of the program counter to
+ * jump to within the function associated with the target frame). */
 
 void     __vm_ctl_set( enum _VM_ControlRegister reg, void *val, ... ) NOTHROW;
 void    *__vm_ctl_get( enum _VM_ControlRegister reg ) NOTHROW;
 uint64_t __vm_ctl_flag( uint64_t clear, uint64_t set ) NOTHROW;
 
-void __vm_test_crit( void *addr, int size, enum _VM_MemAccessType access, void (*yes)( void ) ) NOTHROW;
+/* Conditionally call a function on criteria tracked by the VM related to state
+ * space generation. An effect of both functions is to make a note of the call.
+ * In case of `__vm_test_crit`, if a conflicting (critical) memory operation
+ * was already tested on this edge, the condition is satisfied and the function
+ * 'yes' is called. In the case of `__vm_test_loop`, if the same call is
+ * performed a second time within a single state space edge and with the same
+ * call stack and the same 'counter' argument, the function is called. In both
+ * cases, the function is expected to cause a reschedule and call
+ * `__vm_suspend` to restart the scheduler. */
+
+void __vm_test_crit( void *addr, int size, enum _VM_MemAccessType access,
+                     void (*yes)( void ) ) NOTHROW;
 void __vm_test_loop( int counter, void (*yes)( void ) ) NOTHROW;
 
-/*
- * Non-deterministic choice: when __vm_choose is encountered, the "universe" of
- * the program splits into n copies. Each copy of the "universe" will see a
- * different return value from __vm_choose, starting from 0.
- *
- * When more than one parameter is given, the choice becomes probabilistic: for
- * N choices, you need to provide N additional integers, giving probability
- * weight of a given alternative (numbering from 0). E.g.  `__vm_choose( 2, 1,
- * 9 )` will return 0 with probability 1/10 and 1 with probability 9/10.
- */
-int __vm_choose( int n, ... ) NOTHROW NATIVE_VISIBLE;
+/* Non-deterministic choice: when __vm_choose is encountered, the 'universe' of
+ * the program splits into n copies (n is the first argument of __vm_choose).
+ * In each such 'universe', the program will see a different return value from
+ * __vm_choose, starting from 0. The remaining arguments specify the
+ * probability of each outcome, but no model checking algorithm can currently
+ * use those values. */
 
-void __vm_interrupt_cfl( void ) NOTHROW NATIVE_VISIBLE;
-void __vm_interrupt_mem( void *, int size, _VM_MemAccessType ) NOTHROW NATIVE_VISIBLE;
+int __vm_choose( int n, ... ) NOTHROW;
 
-/*
- * Provides meta-information about the executing code. The 'type' parameter
+/* Provides meta-information about the executing code. The 'type' parameter
  * distinguishes between multiple categories of said meta-information. How the
  * trace info is used or presented to the user depends on the particular
  * frontend: text traces may be printed out as the program executes, or they
@@ -441,32 +434,30 @@ void __vm_interrupt_mem( void *, int size, _VM_MemAccessType ) NOTHROW NATIVE_VI
  * scheduling trace data can be used for annotating counterexamples, for
  * guiding heuristic searches (minimising the number of context switches, for
  * example) or in an interactive simulator/debugger for constructing a
- * high-level view of thread/process structure of the program.
- */
-void __vm_trace( enum _VM_Trace type, ... ) NOTHROW NATIVE_VISIBLE;
+ * high-level view of thread/process structure of the program. The details of
+ * individual trace types are documented at the _VM_Trace enum. */
+
+void __vm_trace( enum _VM_Trace type, ... ) NOTHROW;
 
 /*
  * Create and destroy heap objects.
  */
-void *__vm_obj_make( int size, int type ) NOTHROW NATIVE_VISIBLE;
-void  __vm_obj_resize( void *ptr, int size ) NOTHROW NATIVE_VISIBLE;
-void  __vm_obj_free( void *ptr ) NOTHROW NATIVE_VISIBLE;
-int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;
-void *__vm_obj_clone( const void *root, const void **block ) NOTHROW NATIVE_VISIBLE;
+void *__vm_obj_make( int size, int type ) NOTHROW;
+void  __vm_obj_resize( void *ptr, int size ) NOTHROW;
+void  __vm_obj_free( void *ptr ) NOTHROW;
+int   __vm_obj_size( const void * ) NOTHROW;
+void *__vm_obj_clone( const void *root, const void **block ) NOTHROW;
 
-/*
- * Read and write additional metadata, keyed by an address and a key. The
+/* Read and write additional metadata, indexed by an address and a key. The
  * metadata is only valid as long as the corresponding address is. There are a
  * few reserved keys that allow access to metadata automatically tracked by the
- * VM. Generic metadata (i.e. attached to a non-reserved key) does not
- * propagate automatically.
- */
+ * VM (see _VM_MemLayer above). User-specified metadata (i.e. attached to
+ * _VM_ML_User and higher-valued keys) does not propagate automatically. */
 
 uint32_t __vm_peek( void *addr, int key ) NOTHROW;
 void     __vm_poke( void *addr, int key, uint32_t value ) NOTHROW;
 
-/*
- * Pass a syscall through the VM to the host system. The parameters must
+/* Pass a syscall through the VM to the host system. The parameters must
  * describe the parameters of the actual operating system on the outside,
  * corresponding to the syscall with a given id.
  *
@@ -489,25 +480,25 @@ void     __vm_poke( void *addr, int key, uint32_t value ) NOTHROW;
  *                                       100 );
  *   int close_err;
  *   errno = __vm_syscall( SYS_close, _VM_SC_Int32, &close_err,
- *                                    _VM_SC_Int32 | _VM_SC_In, fileno );
- */
+ *                                    _VM_SC_Int32 | _VM_SC_In, fileno ); */
 
 int __vm_syscall( int id, int retval_type, ... ) NOTHROW;
+
+/* Suspend execution of the VM. This will cause the scheduler to be called again. */
 
 _VMUTIL_INLINE void __vm_suspend( void ) NOTHROW
 {
     __vm_ctl_set( _VM_CR_Frame, 0 );
 }
 
+/* Abandon the current execution. Everything since the last invocation of the
+ * scheduler is thrown away and not considered part of the state space of the
+ * program. Can be used to implement assume() and similar constructs. */
+
 _VMUTIL_INLINE void __vm_cancel( void ) NOTHROW
 {
     __vm_ctl_flag( 0, _VM_CF_Cancel );
     __vm_ctl_set( _VM_CR_Frame, 0 );
-}
-
-_VMUTIL_INLINE void __vm_trap( void ) NOTHROW
-{
-    __vm_ctl_flag( 0, _VM_CF_KernelMode );
 }
 
 EXTERN_END
