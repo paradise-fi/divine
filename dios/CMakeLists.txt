@@ -111,6 +111,17 @@ target_compile_definitions( dios-host PRIVATE HAVE_BSD_fpurge=${HAVE_BSD_fpurge}
 target_include_directories( dios-host BEFORE PRIVATE host )
 stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" dios-host )
 
+function( libcxx )
+  set( BUILD_SHARED_LIBS OFF )
+  set( LIBCXX_INCLUDE_BENCHMARKS OFF CACHE BOOL "" )
+  set( LIBCXX_ABI_VERSION 2 CACHE STRING "" )
+  add_subdirectory( libcxxabi )
+  add_subdirectory( libcxx )
+endfunction()
+
+libcxx()
+stringify( "dios" "${CMAKE_BINARY_DIR}/lib" "libc++.a" )
+stringify( "dios" "${CMAKE_BINARY_DIR}/lib" "libc++abi.a" )
 include( compile-flags.cmake )
 
 include_directories( ${divine_SOURCE_DIR} )
