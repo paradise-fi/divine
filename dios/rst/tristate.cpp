@@ -1,7 +1,7 @@
 #include <rst/tristate.hpp>
 #include <rst/common.h>
 
-namespace abstract {
+namespace __dios::rst::abstract {
     bool Tristate::lower() const noexcept {
         return static_cast<bool>( *this );
     }

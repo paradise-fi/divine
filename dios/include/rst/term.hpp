@@ -6,8 +6,7 @@
 #include <brick-smt>
 #include <type_traits>
 
-namespace abstract
-{
+namespace __dios::rst::abstract {
     namespace smt = brick::smt;
 
     struct Term

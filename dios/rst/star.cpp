@@ -4,7 +4,7 @@
 
 using namespace abstract::star;
 
-using abstract::Tristate;
+using __dios::rst::abstract::Tristate;
 
 template <typename E>
 constexpr auto to_underlying(E e) noexcept {

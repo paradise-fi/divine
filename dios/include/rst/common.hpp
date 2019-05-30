@@ -31,7 +31,7 @@
 #define _LART_FN \
 __attribute__((__nothrow__, __always_inline__, __flatten__)) __invisible \
 
-namespace abstract {
+namespace __dios::rst::abstract {
 
     template < typename T, int PT = _VM_PT_Heap >
     using Array = __dios::Array< T, PT >;

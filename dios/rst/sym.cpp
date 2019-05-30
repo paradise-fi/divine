@@ -9,7 +9,7 @@
 #include <type_traits>
 
 using namespace lart::sym;
-using abstract::Tristate;
+using __dios::rst::abstract::Tristate;
 using abstract::__new;
 using abstract::taint;
 using abstract::peek_object;

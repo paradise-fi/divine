@@ -3,8 +3,7 @@
 
 #include <cassert>
 
-namespace abstract
-{
+namespace __dios::rst::abstract {
     TermState __term_state;
 
     Tristate Term::to_tristate() noexcept

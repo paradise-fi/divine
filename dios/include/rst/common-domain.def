@@ -59,7 +59,7 @@
     __attribute__((annotate( NAMESPACE_JOIN(lart.abstract.domain.kind, _kind) )))
 
 #include <rst/tristate.hpp>
-typedef abstract::Tristate __tristate;
+typedef __dios::rst::abstract::Tristate __tristate;
 
 
 extern "C" {

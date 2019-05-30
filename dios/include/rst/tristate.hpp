@@ -6,12 +6,12 @@
 #include <cstdlib>
 #endif
 
-namespace abstract {
+namespace __dios::rst::abstract {
 
     struct Tristate {
         enum Value { False = 0, True = 1, Unknown = 2 };
 
-        Tristate( Value val ) : value( val ) { }
+        Tristate( Value val ) noexcept : value( val ) { }
 
         bool lower() const noexcept;
 
