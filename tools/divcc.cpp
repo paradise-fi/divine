@@ -148,6 +148,7 @@ bool whitelisted( llvm::Function &f )
     return hypercall( &f ) != vm::lx::NotHypercall ||
            startsWith( n, "__dios_" ) ||
            startsWith( n, "_ZN6__dios" ) ||
+           startsWith( n, "_Unwind_" ) ||
            n == "setjmp" || n == "longjmp";
 }
 
@@ -260,7 +261,7 @@ std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles )
     return args;
 }
 
-int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
+int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles, bool cxx = false )
 {
     auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
     std::vector< const char * > ld_args_c;
@@ -271,7 +272,19 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles 
 
     using namespace brick::fs;
     TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
-    auto hostlib = tmpdir.path + "/libdios-host.a";
+    auto hostlib = tmpdir.path + "/libdios-host.a",
+         cxxlib  = tmpdir.path + "/libc++.a",
+         cxxabi  = tmpdir.path + "/libc++abi.a";
+
+    if ( cxx )
+    {
+        args.push_back( "--driver-mode=g++" );
+        args.push_back( "-stdlib=libc++" );
+        args.push_back( "-L" + tmpdir.path );
+        writeFile( cxxlib, rt::libcxx() );
+        writeFile( cxxabi, rt::libcxxabi() );
+    }
+
     writeFile( hostlib, rt::dios_host() );
     args.push_back( hostlib );
 
@@ -401,7 +414,8 @@ int main( int argc, char **argv )
         if ( po.toObjectOnly )
             return compile( po, clang, objFiles );
         else
-            return compile_and_link( po, clang, objFiles );
+            return compile_and_link( po, clang, objFiles,
+                                     brick::string::endsWith( argv[0], "divc++" ) );
 
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
