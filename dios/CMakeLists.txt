@@ -112,6 +112,7 @@ target_include_directories( dios-host BEFORE PRIVATE host )
 stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" dios-host )
 
 function( libcxx )
+  add_compile_options( -Wno-old-style-cast )
   set( BUILD_SHARED_LIBS OFF )
   set( LIBCXX_INCLUDE_BENCHMARKS OFF CACHE BOOL "" )
   set( LIBCXX_ABI_VERSION 2 CACHE STRING "" )
