@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
+#include <lart/abstract/init.h>
 #include <lart/abstract/vpa.h>
 #include <lart/abstract/decast.h>
 #include <lart/abstract/syntactic.h>
@@ -32,7 +33,8 @@ namespace lart::abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_chained_pass( CreateAbstractMetadata()
+            auto passes = make_chained_pass( InitAbstractions()
+                                           , CreateAbstractMetadata()
                                            , VPA()
                                            , Decast()
                                            , VPA() // run once more to propagate through decasted functions

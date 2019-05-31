@@ -14,6 +14,9 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract
 {
+    #define ERROR( msg ) \
+        throw std::runtime_error( msg );
+
     auto get_potentially_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
     auto get_some_called_function( llvm::CallInst * call ) -> llvm::Function *;
 
