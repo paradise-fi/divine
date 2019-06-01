@@ -65,5 +65,6 @@ foreach( hdr divm.h lart.h vmutil.h hostabi.h )
 endforeach()
 stringify( "dios" ${CMAKE_CURRENT_BINARY_DIR} include/stdatomic.h )
 stringlist( "dios" dios )
+stringlist( "dios_native" dios_native )
 
 # vim: ft=cmake
