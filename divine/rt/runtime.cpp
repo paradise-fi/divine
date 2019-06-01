@@ -23,8 +23,7 @@ namespace divine::str
 
     struct stringtable { std::string n; std::string_view c; };
     extern stringtable dios_list[];
-    namespace dios { extern std::string_view libdios_host_a; }
-
+    namespace dios_native { extern std::string_view libdios_host_a, libc__abi_a, libc___a; }
 }
 
 namespace divine::rt
@@ -45,7 +44,17 @@ namespace divine::rt
 
     std::string_view dios_host()
     {
-        return divine::str::dios::libdios_host_a;
+        return divine::str::dios_native::libdios_host_a;
+    }
+
+    std::string_view libcxxabi()
+    {
+        return divine::str::dios_native::libc__abi_a;
+    }
+
+    std::string_view libcxx()
+    {
+        return divine::str::dios_native::libc___a;
     }
 
 }

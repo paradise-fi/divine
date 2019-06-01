@@ -34,5 +34,7 @@ static std::string_view source( std::string path )
 }
 
 std::string_view dios_host();
+std::string_view libcxx();
+std::string_view libcxxabi();
 
 }
