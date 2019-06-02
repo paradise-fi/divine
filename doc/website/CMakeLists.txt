@@ -14,7 +14,7 @@ macro( page to srcdir opts )
     DEPENDS ${sources} template.html ${SRCDIR}/../panmd.pl
     WORKING_DIRECTORY ${SRCDIR}
     COMMAND perl ${SRCDIR}/../panmd.pl --to=html ${opts}
-            version=${DIVINE_VERSION} ${sources}
+            version=${DIVINE_VERSION} major=${DIVINE_MAJOR} ${sources}
             | sed -e "s,:DIVINE:,<span class=\"divine\">DIVINE</span>,g" > ${out}
     VERBATIM
   )
