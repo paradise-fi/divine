@@ -117,7 +117,7 @@ namespace brick::_assert
         {}
 
         Location( const char *f, int l, std::string s )
-            : line( l ), _file( f ), _statement_s( s )
+            : line( l ), _file( f ), _statement( nullptr ), _statement_s( s )
         {}
     };
 
