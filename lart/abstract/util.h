@@ -5,6 +5,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -19,6 +20,26 @@ namespace lart::abstract
 
     auto get_potentially_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
     auto get_some_called_function( llvm::CallInst * call ) -> llvm::Function *;
+
+    static inline llvm::Value * lower_constant_expr_call( llvm::Value * val ) {
+        auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val );
+        if ( !ce )
+            return val;
+        if ( ce->getNumUses() == 0 )
+            return nullptr;
+        if ( auto orig = llvm::dyn_cast< llvm::CallInst >( *ce->user_begin() ) ) {
+            auto fn = ce->getOperand( 0 );
+            llvm::IRBuilder<> irb( orig );
+            llvm::Value * call = irb.CreateCall( fn );
+            if ( call->getType() != orig->getType() )
+                call = irb.CreateBitCast( call, orig->getType() );
+            orig->replaceAllUsesWith( call );
+            orig->eraseFromParent();
+            return call;
+        }
+
+        return nullptr;
+    }
 
     template< const char * tag >
     auto calls_with_tag( llvm::Module & m )

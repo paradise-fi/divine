@@ -234,27 +234,6 @@ using lart::util::get_module;
         }
     }
 
-    llvm::Value * lower_constant_expr_call( llvm::ConstantExpr * ce ) {
-        if ( ce->getNumUses() > 0 ) {
-            if ( auto orig = llvm::dyn_cast< llvm::CallInst >( *ce->user_begin() ) ) {
-                auto fn = ce->getOperand( 0 );
-                llvm::IRBuilder<> irb( orig );
-                auto call = irb.CreateCall( fn );
-                if ( call->getType() != orig->getType() ) {
-                    auto cast = irb.CreateBitCast( call, orig->getType() );
-                    orig->replaceAllUsesWith( cast );
-                } else {
-                    orig->replaceAllUsesWith( call );
-                }
-
-                orig->eraseFromParent();
-                return call;
-            }
-        }
-
-        return nullptr;
-    }
-
     std::vector< DomainMetadata > domains( llvm::Module & m ) {
         std::vector< DomainMetadata > doms;
         specification_function_walker( m, [&] ( const auto& fn, const auto& ) {

@@ -3,6 +3,7 @@
 #include <lart/abstract/annotation.h>
 
 #include <lart/support/util.h>
+#include <lart/abstract/util.h>
 #include <lart/abstract/meta.h>
 
 namespace lart::abstract {
@@ -29,6 +30,16 @@ namespace lart::abstract {
     {
         annotation_to_domain_metadata< llvm::Function >( meta::tag::abstract, m );
         annotation_to_transform_metadata< llvm::Function >( meta::tag::transform::prefix, m );
+
+        for ( auto & fn : m ) {
+            if ( auto meta = meta::get( &fn, meta::tag::abstract ) ) {
+                for ( auto user : fn.users() ) {
+                    if ( auto val = lower_constant_expr_call( user ) )
+                        if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
+                            meta::set( call, meta::tag::abstract, meta.value() );
+                }
+            }
+        }
     }
 
 } // namespace lart::abstract
