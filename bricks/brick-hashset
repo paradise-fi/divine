@@ -37,13 +37,13 @@
 
 namespace brick::hashset
 {
-    using hash::hash32_t;
-    using hash::hash64_t;
+    using brq::hash32_t;
+    using brq::hash64_t;
 
     template< typename X >
-    auto hash( const X &v ) -> decltype( hash::hash( v ) )
+    auto hash( const X &v ) -> decltype( brq::hash( v ) )
     {
-        return hash::hash( v );
+        return brq::hash( v );
     }
 
     template< typename X >
@@ -773,7 +773,7 @@ struct Big
     int v;
     std::array< int, 16 > padding;
     Big( int v = 0 ) : v( v ) {}
-    hash64_t hash() const { return hash::hash( v ); }
+    hash64_t hash() const { return brq::hash( v ); }
     bool operator==( const Big &o ) const { return v == o.v; }
     bool operator==( int o ) const { return v == o; }
     operator int() const { return v; }

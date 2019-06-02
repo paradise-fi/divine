@@ -23,11 +23,8 @@
 #include <brick-assert>
 #include <brick-trace>
 
-namespace brick::hash
+namespace brq::impl
 {
-    using hash64_t = uint64_t;
-    using hash32_t = uint32_t;
-
     /* constants and elementary operations by Leonid Yuriev <leo@yuriev.ru> */
 
     static const uint64_t prime_0 = UINT64_C( 0xEC99BF0D8372CAAB );
@@ -60,6 +57,12 @@ namespace brick::hash
         const unsigned shift = ((8 - count) & 7) << 3;
         return v & ( ~uint64_t(0) >> shift );
     }
+}
+
+namespace brq
+{
+    using hash64_t = uint64_t;
+    using hash32_t = uint32_t;
 
     /* a fast, high-quality (according to smhasher) streaming hash function
      * based on the t1ha design ; however, this design compromises maximum
@@ -67,7 +70,7 @@ namespace brick::hash
      * fast word-at-once (streaming) mode and reduced register pressure when
      * interleaved with other code */
 
-    struct State
+    struct hash_state
     {
         std::array< uint64_t, 4 > state;
         uint64_t counter = 0;
@@ -83,10 +86,10 @@ namespace brick::hash
         void mix()
         {
             const uint64_t u = state[0], v = state[1], w = state[2], x = state[3] + counter;
-            state[1] ^= mux64( w, prime_2 );
-            state[2] ^= mux64( x, prime_1 );
-            state[0] ^= mux64( v, prime_3 );
-            state[3] ^= mux64( u, prime_0 );
+            state[1] ^= impl::mux64( w, impl::prime_2 );
+            state[2] ^= impl::mux64( x, impl::prime_1 );
+            state[0] ^= impl::mux64( v, impl::prime_3 );
+            state[3] ^= impl::mux64( u, impl::prime_0 );
         }
 
         [[gnu::always_inline]] void mix_if_needed()
@@ -99,11 +102,11 @@ namespace brick::hash
         {
             const uint64_t u = state[0], v = state[1], w = state[2], x = state[3] + counter;
             uint64_t a_ = state[0], b_ = state[1], c_ = state[2], d_ = state[3];
-            b_ ^= mux64( w, prime_2 );
-            c_ ^= mux64( x, prime_1 );
-            a_ ^= mux64( v, prime_3 );
-            d_ ^= mux64( u, prime_0 );
-            return mix64( a_ + c_, prime_4 ) + mix64( b_ + d_, prime_5 );
+            b_ ^= impl::mux64( w, impl::prime_2 );
+            c_ ^= impl::mux64( x, impl::prime_1 );
+            a_ ^= impl::mux64( v, impl::prime_3 );
+            d_ ^= impl::mux64( u, impl::prime_0 );
+            return impl::mix64( a_ + c_, impl::prime_4 ) + impl::mix64( b_ + d_, impl::prime_5 );
         }
 
         /* updates: aligned access is aligned with respect to the hash state,
@@ -171,16 +174,16 @@ namespace brick::hash
                     state[0] ^= *d64++; count -= 8;
                     state[1] ^= *d64++; count -= 8;
                     state[2] ^= *d64++; count -= 8;
-                    state[3] ^= tail( *d64++, count ); break;
+                    state[3] ^= impl::tail( *d64++, count ); break;
                 case 24: case 23: case 22: case 21: case 20: case 19: case 18: case 17:
                     state[0] ^= *d64++; count -= 8;
                     state[1] ^= *d64++; count -= 8;
-                    state[2] ^= tail( *d64++, count ); break;
+                    state[2] ^= impl::tail( *d64++, count ); break;
                 case 16: case 15: case 14: case 13: case 12: case 11: case 10: case  9:
                     state[0] ^= *d64++; count -= 8;
-                    state[1] ^= tail( *d64++, count ); break;
+                    state[1] ^= impl::tail( *d64++, count ); break;
                 case  8: case  7: case  6: case  5: case  4: case  3: case  2: case  1:
-                    state[0] ^= tail( *d64++, count ); break;
+                    state[0] ^= impl::tail( *d64++, count ); break;
                 case 0:
                     ;
             }
@@ -210,7 +213,7 @@ namespace brick::hash
                 update_aligned( *bytes++ );
         }
 
-        State( uint64_t seed = 0 )
+        hash_state( uint64_t seed = 0 )
         {
             std::fill( state.begin(), state.end(), 0 );
             state[0] = seed;
@@ -224,7 +227,7 @@ namespace brick::hash
 
     static inline hash64_t hash( const uint8_t *data, size_t len, hash64_t seed = 0 )
     {
-        State s( seed );
+        hash_state s( seed );
         s.update_aligned( data, len );
         return s.hash();
     }
@@ -232,17 +235,16 @@ namespace brick::hash
     template< typename T >
     std::enable_if_t< std::is_integral_v< T > && sizeof( T ) <= 8, hash64_t > hash( T v )
     {
-        State s;
+        hash_state s;
         s.update_aligned( v );
         return s.hash();
     }
 
 }
 
-namespace brick::t_hash
+namespace brq_t
 {
-
-    struct Hash
+    struct hash
     {
         static constexpr const char * const str =
             "abcdefghijklmnopABCDEFGHIJKLMNOPabcdefghijklmnopABCDEFGHIJKLMNOP_";
@@ -251,7 +253,7 @@ namespace brick::t_hash
         {
             for ( unsigned len = 0; len < strlen( str ); ++len )
             {
-                brick::hash::State s1( len ), s2( len );
+                brq::hash_state s1( len ), s2( len );
                 s1.update_aligned( reinterpret_cast< const uint8_t * >( str ), len );
                 for ( unsigned i = 0; i < len; ++i )
                     s2.update( str[i] );
@@ -264,7 +266,7 @@ namespace brick::t_hash
         {
             for ( unsigned len = 0; len < strlen( str ); ++len )
             {
-                brick::hash::State s1( len ), s2( len );
+                brq::hash_state s1( len ), s2( len );
                 s1.update_aligned( reinterpret_cast< const uint8_t * >( str ), len );
 
                 for ( unsigned i = 0; i < len; ++i )
@@ -297,7 +299,7 @@ namespace brick::t_hash
                     for ( int k = 1; k <= i; ++k )
                         buf[ j + k ] = k;
                     buf[ j + i + 1 ] = char( i + j );
-                    hash[j] = hash::hash( reinterpret_cast< const uint8_t * >( buf + j + 1 ), i, 0 );
+                    hash[j] = brq::hash( reinterpret_cast< const uint8_t * >( buf + j + 1 ), i, 0 );
                 }
 
                 for ( int j = 1; j < 8; ++ j )
@@ -317,9 +319,9 @@ namespace brick::t_hash
                 uint64_t a, c, seed = 1;
 
                 // all as one call
-                a = hash::hash( buf, i, seed );
+                a = brq::hash( buf, i, seed );
 
-                hash::State state( seed );
+                brq::hash_state state( seed );
                 state.update_aligned( buf, i );
                 c = state.hash();
 
@@ -328,7 +330,7 @@ namespace brick::t_hash
                 // all possible two consecutive pieces
                 for ( int j = 0; j < i; ++ j )
                 {
-                    hash::State state( seed );
+                    brq::hash_state state( seed );
                     state.update( buf, j );
                     state.update( buf + j, i - j );
                     c = state.hash();
