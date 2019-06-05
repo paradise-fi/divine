@@ -35,11 +35,14 @@
  * table. See also ...
  */
 
-namespace brick::hashset
+namespace brq
 {
-    using brq::hash32_t;
-    using brq::hash64_t;
+    template< typename T >
+    struct hash_adaptor;
+}
 
+namespace brq::impl
+{
     template< typename X >
     auto hash( const X &v ) -> decltype( brq::hash( v ) )
     {
@@ -52,32 +55,6 @@ namespace brick::hashset
         return t.hash();
     }
 
-    template< typename T >
-    struct Adaptor
-    {
-        using value_type = T;
-        using Payload = std::pair< T, hash64_t >;
-        enum Erase { Bury, Done, Mismatch };
-
-        template< typename X >
-        hash64_t hash( const X &x ) const
-        {
-            return hashset::hash( value_type( x ) );
-        }
-
-        template< typename Cell, typename X >
-        typename Cell::pointer match( Cell &cell, const X &t, hash64_t ) const
-        {
-            return cell.fetch() == t ? cell.value() : nullptr;
-        }
-
-        template< typename Cell, typename X >
-        Erase erase( Cell &cell, const X &t ) const
-        {
-            return cell.fetch() == t ? Bury : Mismatch;
-        }
-    };
-
     static inline hash64_t highbits( hash64_t orig, int bits )
     {
         // use a different part of the hash than what we use for indexing
@@ -89,7 +66,7 @@ namespace brick::hashset
      */
 
     template< typename T >
-    struct CellBase
+    struct cell_base
     {
         using value_type = T;
         using reference = const T &;
@@ -99,7 +76,7 @@ namespace brick::hashset
     };
 
     template< typename T >
-    struct FastCell : CellBase< T >
+    struct fast_cell : cell_base< T >
     {
         T _value;
         hash64_t _hash; // TODO: re-use when rehashing
@@ -113,11 +90,11 @@ namespace brick::hashset
 
         void store( const T &t, hash64_t h ) { _hash = h; _value = t; }
         bool try_store( const T &t, hash64_t h ) { store( t, h ); return true; }
-        FastCell invalidate() { return *this; }
+        fast_cell invalidate() { return *this; }
     };
 
     template< typename T >
-    struct CompactCell : CellBase< T >
+    struct compact_cell : cell_base< T >
     {
         T _value;
 
@@ -130,11 +107,11 @@ namespace brick::hashset
 
         void store( T bn, hash64_t ) { _value = bn; }
         bool try_store( T v, hash64_t h ) { store( v, h ); return true; }
-        CompactCell invalidate() { return *this; }
+        compact_cell invalidate() { return *this; }
     };
 
     template< typename T >
-    struct LockedCell : CellBase< T >
+    struct locked_cell : cell_base< T >
     {
         /* 2 least-significant bits are special */
         std::atomic< hash32_t > _hashlock;
@@ -171,18 +148,18 @@ namespace brick::hashset
         static constexpr bool can_tombstone() { return true; }
 
         /* returns old cell value */
-        LockedCell invalidate()
+        locked_cell invalidate()
         {
             // wait for write to end
             hash32_t prev = 0;
             while ( !_hashlock.compare_exchange_weak( prev, 3 ) )
             {
                 if ( prev == 3 ) /* already invalid */
-                    return LockedCell( prev, _value );
+                    return locked_cell( prev, _value );
                 if ( prev != 2 )
                     prev &= ~3; // clean flags
             }
-            return LockedCell( prev, _value );
+            return locked_cell( prev, _value );
         }
 
         bool bury()
@@ -212,18 +189,18 @@ namespace brick::hashset
             _value = v;
         }
 
-        LockedCell() : _hashlock( 0 ), _value() {}
+        locked_cell() : _hashlock( 0 ), _value() {}
 
     private:
-        LockedCell( hash32_t h, const T &val ) : _hashlock( h ), _value( val ) {}
+        locked_cell( hash32_t h, const T &val ) : _hashlock( h ), _value( val ) {}
     };
 
     template< typename T, typename = void >
-    struct Tagged
+    struct tagged
     {
-        using Type = Tagged< T >;
+        using Type = tagged< T >;
         struct Align { T a; uint16_t b; };
-        using Tag = bitlevel::bitvec< 8 * ( sizeof( Align ) - sizeof( T ) ) >;
+        using Tag = brick::bitlevel::bitvec< 8 * ( sizeof( Align ) - sizeof( T ) ) >;
         struct Check { T a; Tag b; };
         static_assert( sizeof( Align ) == sizeof( Check ) );
         static_assert( sizeof( Check ) == sizeof( T ) + sizeof( Tag ) );
@@ -237,11 +214,11 @@ namespace brick::hashset
         const T &value() const { return _value; }
         void tag( Tag v ) { _tag = v; }
         Tag tag() { return _tag; }
-        Tagged() noexcept : _value(), _tag( 0 ) {}
-        explicit Tagged( const T &v ) : _value( v ), _tag( 0 ) {}
+        tagged() noexcept : _value(), _tag( 0 ) {}
+        explicit tagged( const T &v ) : _value( v ), _tag( 0 ) {}
         operator T() const { return _value; }
 
-        friend std::ostream &operator<<( std::ostream &o, const Tagged< T > &v )
+        friend std::ostream &operator<<( std::ostream &o, const tagged< T > &v )
         {
             return o << "[" << v._value << " " << uint64_t( v._tag ) << "]";
         }
@@ -251,7 +228,7 @@ namespace brick::hashset
     };
 
     template< typename T >
-    struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type > : T
+    struct tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type > : T
     {
         using Type = T;
         static T fetch( const std::atomic< T > &t ) { return t.load(); }
@@ -259,9 +236,9 @@ namespace brick::hashset
     };
 
     template< typename T >
-    struct alignas( std::min( 16ul, sizeof( Tagged< T > ) ) ) AtomicCell : CellBase< T >
+    struct alignas( std::min( 16ul, sizeof( tagged< T > ) ) ) atomic_cell : cell_base< T >
     {
-        using tagged = Tagged< T >;
+        using tagged = tagged< T >;
         using bare_value = typename tagged::Type;
         using atomic_value = std::atomic< bare_value >;
         using pointer = const atomic_value *;
@@ -270,7 +247,7 @@ namespace brick::hashset
         atomic_value _value;
 
         static_assert( sizeof( atomic_value ) == sizeof( bare_value ),
-                       "std::atomic< Tagged< T > > must be lock-free" );
+                       "std::atomic< tagged< T > > must be lock-free" );
         static_assert( bare_value::tag_bits >= 2, "T has at least a two-bit tagspace" );
 
         static constexpr bool can_tombstone() { return true; }
@@ -289,7 +266,7 @@ namespace brick::hashset
         bool match( hash64_t hash ) const { return _value.load().tag() == ( hashbits( hash ) | 3 ); }
 
         /* returns old cell value */
-        AtomicCell invalidate()
+        atomic_cell invalidate()
         {
             bare_value expect = _value, update = _value;
             update.tag( 1 );
@@ -298,7 +275,7 @@ namespace brick::hashset
                 update = expect;
                 update.tag( 1 );
             }
-            return AtomicCell( expect );
+            return atomic_cell( expect );
         }
 
         bool bury()
@@ -329,13 +306,21 @@ namespace brick::hashset
             return rv;
         }
 
-        AtomicCell() : _value() {}
-        AtomicCell( const AtomicCell & ) : _value() {}
-        explicit AtomicCell( bare_value val ) : _value( val ) {}
+        atomic_cell() : _value() {}
+        atomic_cell( const atomic_cell & ) : _value() {}
+        explicit atomic_cell( bare_value val ) : _value( val ) {}
     };
 
+    template< typename T >
+    using default_cell = std::conditional_t< ( sizeof( T ) < 16 ), compact_cell< T >, fast_cell< T > >;
+
+    template< typename T >
+    using concurrent_cell =
+        std::conditional_t< std::atomic< typename tagged< T >::Type >::is_always_lock_free,
+                            atomic_cell< T >, locked_cell< T > >;
+
     template< typename Cell_ >
-    struct HashSetBase
+    struct hash_set_base
     {
         using Cell = Cell_;
         using value_type = typename Cell::value_type;
@@ -360,10 +345,10 @@ namespace brick::hashset
         iterator end() { return iterator(); }
     };
 
-    template< typename Cell, unsigned MaxChain, unsigned Segment >
-    struct Table
+    template< typename Cell, unsigned max_chain, unsigned Segment >
+    struct hash_table
     {
-        std::shared_ptr< Table > next; /* TODO make std::atomic after C++20 */
+        std::shared_ptr< hash_table > next; /* TODO make std::atomic after C++20 */
         std::atomic< size_t > _size;
         std::atomic< ssize_t > to_rehash;
         Cell data[];
@@ -382,7 +367,7 @@ namespace brick::hashset
             return rv;
         }
 
-        Table( size_t size, ssize_t rehash )
+        hash_table( size_t size, ssize_t rehash )
             : next( nullptr ), _size( size ), to_rehash( rehash )
         {
             std::uninitialized_default_construct( data, data + size );
@@ -414,7 +399,7 @@ namespace brick::hashset
         Lookup insert( const X &x, hash64_t h, const A &adaptor, InsertMode mode = Insert )
         {
             const size_t mask = size() - 1;
-            const unsigned max = mode == Rehash ? 3 * MaxChain / 4 : MaxChain;
+            const unsigned max = mode == Rehash ? 3 * max_chain / 4 : max_chain;
 
             ASSERT_EQ( mask & size(), 0 );
             ASSERT_EQ( mask | size(), mask + size() );
@@ -455,7 +440,7 @@ namespace brick::hashset
         {
             const size_t mask = size() - 1;
 
-            for ( size_t i = 0; i < MaxChain; ++i )
+            for ( size_t i = 0; i < max_chain; ++i )
             {
                 Cell &cell = data[ index( h, i, mask ) ];
                 if ( cell.invalid() )
@@ -480,7 +465,7 @@ namespace brick::hashset
     struct Stats { size_t used = 0, capacity = 0; };
 
     template< size_t I, size_t... Next >
-    struct Grow
+    struct grow
     {
         static constexpr const size_t Initial = I;
 
@@ -502,20 +487,20 @@ namespace brick::hashset
         }
     };
 
-    using Quick = Grow< 0x100, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000 >;
-    using Slow  = Grow< 0x10 >;
+    using quick = grow< 0x100, 0x1000, 0x10000, 0x80000, 0x100000, 0x400000 >;
+    using slow  = grow< 0x10 >;
 
-    template< typename Cell, bool Concurrent, typename Grow = Quick, int MaxChain = 24 >
-    struct HashSet : HashSetBase< Cell >
+    template< typename cell, bool concurrent, typename grow_t = impl::quick, int max_chain = 24 >
+    struct hash_set : hash_set_base< cell >
     {
-        using Base = HashSetBase< Cell >;
-        using Self = HashSet< Cell, Concurrent, Grow, MaxChain >;
+        using Base = hash_set_base< cell >;
+        using Self = hash_set< cell, concurrent, grow_t, max_chain >;
 
         using typename Base::value_type;
         using typename Base::iterator;
-        using Table = hashset::Table< Cell, MaxChain, Grow::Initial >;
+        using table = impl::hash_table< cell, max_chain, grow_t::Initial >;
 
-        std::shared_ptr< Table > _table;
+        std::shared_ptr< table > _table;
 
         size_t capacity()
         {
@@ -538,7 +523,7 @@ namespace brick::hashset
         template< typename A >
         bool check_outdated( const A &adaptor )
         {
-            if constexpr ( !Concurrent )
+            if constexpr ( !concurrent )
                 return false;
 
             auto next = std::atomic_load( &_table->next );
@@ -564,39 +549,39 @@ namespace brick::hashset
             return false;
         }
 
-        template< typename X, typename A = Adaptor< value_type > >
+        template< typename X, typename A = hash_adaptor< value_type > >
         iterator insert( const X &x, const A &adaptor = A() )
         {
             return insert( x, adaptor.hash( x ), adaptor );
         }
 
-        template< typename X, typename A = Adaptor< value_type > >
+        template< typename X, typename A = hash_adaptor< value_type > >
         iterator insert( const X &x, hash64_t h, const A &adaptor = A(), bool wasnew = false )
         {
-            auto [ value, outcome ] = _table->insert( x, h, adaptor, Table::Insert );
+            auto [ value, outcome ] = _table->insert( x, h, adaptor, table::Insert );
 
-            if ( !value && outcome == Table::Empty )
+            if ( !value && outcome == table::Empty )
                 return grow( adaptor ), insert( x, h, adaptor );
 
             if ( check_outdated( adaptor ) )
             {
                 TRACE( _table, "insert outdated, retrying; outcome was", outcome );
-                return insert( x, h, adaptor, outcome == Table::Empty );
+                return insert( x, h, adaptor, outcome == table::Empty );
             }
 
-            ASSERT_NEQ( outcome, Table::Invalid );
+            ASSERT_NEQ( outcome, table::Invalid );
             TRACE( _table, "insert", x, "hash", std::hex, h, "→",
-                   wasnew || outcome == Table::Empty ? "new" : "old" );
-            return iterator( value, wasnew || outcome == Table::Empty );
+                   wasnew || outcome == table::Empty ? "new" : "old" );
+            return iterator( value, wasnew || outcome == table::Empty );
         }
 
-        template< typename X, typename A = Adaptor< value_type > >
+        template< typename X, typename A = hash_adaptor< value_type > >
         iterator find( const X &x, const A &adaptor = A() )
         {
             return find( x, adaptor.hash( x ), adaptor );
         }
 
-        template< typename X, typename A = Adaptor< value_type > >
+        template< typename X, typename A = hash_adaptor< value_type > >
         iterator find( const X &x, hash64_t h, const A &adaptor = A() )
         {
             auto [ value, outcome ] = _table->find( x, h, adaptor );
@@ -606,19 +591,19 @@ namespace brick::hashset
                 return iterator( value );
         }
 
-        template< typename X, typename A = Adaptor< value_type > >
+        template< typename X, typename A = hash_adaptor< value_type > >
         bool erase( const X &x, const A &adaptor = A() )
         {
             return erase( x, adaptor.hash( x ), adaptor );
         }
 
-        template< typename X, typename A = Adaptor< value_type > >
+        template< typename X, typename A = hash_adaptor< value_type > >
         bool erase( const X &x, hash64_t h, const A &adaptor = A() )
         {
-            static_assert( Cell::can_tombstone() );
+            static_assert( cell::can_tombstone() );
 
             bool buried = false;
-            auto match_erase = [&]( Cell &c, const X &x, hash64_t )
+            auto match_erase = [&]( cell &c, const X &x, hash64_t )
             {
                 switch ( adaptor.erase( c, x ) )
                 {
@@ -628,25 +613,25 @@ namespace brick::hashset
                 }
             };
 
-            auto [ cell, outcome ]  = _table->find_generic( x, h, match_erase );
+            auto [ c, outcome ]  = _table->find_generic( x, h, match_erase );
 
-            if ( outcome == Table::Found && !buried )
-                outcome = Table::Invalid;
+            if ( outcome == table::Found && !buried )
+                outcome = table::Invalid;
 
             if ( check_outdated( adaptor ) )
             {
-                TRACE( _table, "erase outdated, retry?", outcome == Table::Found ? "no" : "yes" );
-                return outcome == Table::Found || erase( x, h, adaptor );
+                TRACE( _table, "erase outdated, retry?", outcome == table::Found ? "no" : "yes" );
+                return outcome == table::Found || erase( x, h, adaptor );
             }
             else
             {
                 TRACE( _table, "erase", x, "outcome", outcome );
-                ASSERT_NEQ( outcome, Table::Invalid );
-                return outcome == Table::Found;
+                ASSERT_NEQ( outcome, table::Invalid );
+                return outcome == table::Found;
             }
         }
 
-        template< typename T, typename A = Adaptor< value_type > >
+        template< typename T, typename A = hash_adaptor< value_type > >
         int count( const T &x, const A &adaptor = A() ) { return find( x, adaptor ).valid() ? 1 : 0; }
 
         static std::pair< ssize_t, bool > atomic_add_if_nonzero( std::atomic< ssize_t > &v, int off )
@@ -661,7 +646,7 @@ namespace brick::hashset
         }
 
         template< typename A >
-        bool rehash_segment( const A &adaptor, Table &from, Table &to )
+        bool rehash_segment( const A &adaptor, table &from, table &to )
         {
             auto [ id, success ] = atomic_add_if_nonzero( from.to_rehash, -1 );
             if ( !success )
@@ -670,14 +655,14 @@ namespace brick::hashset
             TRACE( _table, "rehash segment", id );
             for ( auto c = from.segment_begin( id ); c != from.segment_end( id ); ++ c )
             {
-                Cell insert = c->invalidate();
+                cell insert = c->invalidate();
                 if ( insert.empty() || insert.invalid() || insert.tombstone() )
                     continue;
 
                 auto value = insert.fetch();
                 hash64_t hash = adaptor.hash( value );
-                auto [ result, outcome ] = to.insert( value, hash, adaptor, Table::Rehash );
-                ASSERT_EQ( outcome, Table::Empty );
+                auto [ result, outcome ] = to.insert( value, hash, adaptor, table::Rehash );
+                ASSERT_EQ( outcome, table::Empty );
 
                 if ( !result )
                 {
@@ -695,16 +680,16 @@ namespace brick::hashset
 
         auto make_table( size_t size, ssize_t rehash )
         {
-            return std::shared_ptr< Table >( new ( size ) Table( size, rehash ) );
+            return std::shared_ptr< table >( new ( size ) table( size, rehash ) );
         }
 
         template< typename A >
         void grow( const A &adaptor )
         {
-            auto next = make_table( Grow::next_size( _table->size() ), -_table->segment_count() );
+            auto next = make_table( grow_t::next_size( _table->size() ), -_table->segment_count() );
             decltype( next ) old;
 
-            TRACE( _table, "grow from", _table->size(), "to", Grow::next_size( _table->size() ) );
+            TRACE( _table, "grow from", _table->size(), "to", grow_t::next_size( _table->size() ) );
             if ( !std::atomic_compare_exchange_strong( &_table->next, &old, next ) )
             {
                 next.reset();
@@ -722,14 +707,14 @@ namespace brick::hashset
             TRACE( _table, "growth done" );
         }
 
-        HashSet()
+        hash_set()
         {
-            _table = make_table( Grow::Initial, 0 );
+            _table = make_table( grow_t::Initial, 0 );
             _table->to_rehash = _table->segment_count();
         }
 
         template< typename T >
-        HashSet( const std::enable_if_t< std::is_same_v< T, Self > && !Concurrent, HashSet > &o )
+        hash_set( const std::enable_if_t< std::is_same_v< T, Self > && !concurrent, hash_set > &o )
         {
             _table = make_table( o.capacity(), 0 );
             _table->to_rehash = _table->segment_count();
@@ -737,270 +722,284 @@ namespace brick::hashset
             std::copy( o._table->data, o._table->data + capacity(), _table->data );
         }
 
-        Cell &cellAt( size_t index ) { return _table->data[ index ]; }
-        value_type valueAt( size_t idx ) { return cellAt( idx ).fetch(); }
-        bool valid( size_t idx ) { return !cellAt( idx ).empty(); }
+        cell &cell_at( size_t index ) { return _table->data[ index ]; }
+        value_type valueAt( size_t idx ) { return cell_at( idx ).fetch(); }
+        bool valid( size_t idx ) { return !cell_at( idx ).empty(); }
     };
-
-    template< typename T >
-    using Fast = HashSet< FastCell< T >, false >;
-
-    template< typename T >
-    using Compact = HashSet< CompactCell< T >, false >;
-
-    template< typename T >
-    using ConcurrentCell =
-        std::conditional_t< std::atomic< typename Tagged< T >::Type >::is_always_lock_free,
-                            AtomicCell< T >, LockedCell< T > >;
-
-    template< typename T >
-    using Concurrent = HashSet< ConcurrentCell< T >, true >;
 
 }
 
-namespace brick::t_hashset {
+namespace brq
+{
+    template< typename T >
+    struct hash_adaptor
+    {
+        using value_type = T;
+        using Payload = std::pair< T, hash64_t >;
+        enum Erase { Bury, Done, Mismatch };
 
-using namespace hashset;
+        template< typename X >
+        hash64_t hash( const X &x ) const
+        {
+            return impl::hash( value_type( x ) );
+        }
+
+        template< typename cell, typename X >
+        typename cell::pointer match( cell &c, const X &t, hash64_t ) const
+        {
+            return c.fetch() == t ? c.value() : nullptr;
+        }
+
+        template< typename cell, typename X >
+        Erase erase( cell &c, const X &t ) const
+        {
+            return c.fetch() == t ? Bury : Mismatch;
+        }
+    };
+
+    template< typename T >
+    using hash_set = impl::hash_set< impl::default_cell< T >, false >;
+
+    template< typename T >
+    using concurrent_hash_set = impl::hash_set< impl::concurrent_cell< T >, true >;
+
+}
+
+namespace brq_t
+{
 
 #ifdef __divine__
-static constexpr int size = 4;
+    static constexpr int size = 4;
 #else
-static constexpr int size = 32 * 1024;
+    static constexpr int size = 32 * 1024;
 #endif
 
-struct Big
-{
-    int v;
-    std::array< int, 16 > padding;
-    Big( int v = 0 ) : v( v ) {}
-    hash64_t hash() const { return brq::hash( v ); }
-    bool operator==( const Big &o ) const { return v == o.v; }
-    bool operator==( int o ) const { return v == o; }
-    operator int() const { return v; }
-};
-
-template< template< typename > class HS, typename V = int >
-struct Sequential
-{
-    TEST(insert_basic)
+    struct big
     {
-        HS< V > set;
+        int v;
+        std::array< int, 16 > padding;
+        big( int v = 0 ) : v( v ) {}
+        brq::hash64_t hash() const { return brq::hash( v ); }
+        bool operator==( const big &o ) const { return v == o.v; }
+        bool operator==( int o ) const { return v == o; }
+        operator int() const { return v; }
+    };
 
-        ASSERT( !set.count( 1 ) );
-        ASSERT( set.insert( 1 ).isnew() );
-        ASSERT( set.count( 1 ) );
-
-        unsigned count = 0;
-        for ( unsigned i = 0; i != set.capacity(); ++i )
-            if ( set.valueAt( i ) )
-                ++count;
-
-        ASSERT_EQ( count, 1u );
-    }
-
-    TEST(stress) {
-        HS< V > set;
-
-        for ( int i = 1; i < size; ++i ) {
-            set.insert( i );
-            ASSERT( set.count( i ) );
-        }
-        for ( int i = 1; i < size; ++i ) {
-            ASSERT( set.count( i ) );
-        }
-    }
-
-    TEST(erase_basic)
+    template< template< typename > class HS, typename V = int >
+    struct sequential
     {
-        if constexpr ( HS< V >::Cell::can_tombstone() )
+        TEST(insert_basic)
         {
             HS< V > set;
 
             ASSERT( !set.count( 1 ) );
             ASSERT( set.insert( 1 ).isnew() );
             ASSERT( set.count( 1 ) );
-            ASSERT( set.erase( 1 ) );
-            ASSERT( !set.count( 1 ) );
-            ASSERT( set.insert( 1 ).isnew() );
-            ASSERT( set.count( 1 ) );
-        }
-    }
 
-    TEST(erase_many)
-    {
-        if constexpr ( HS< V >::Cell::can_tombstone() )
-        {
+            unsigned count = 0;
+            for ( unsigned i = 0; i != set.capacity(); ++i )
+                if ( set.valueAt( i ) )
+                    ++count;
+
+            ASSERT_EQ( count, 1u );
+        }
+
+        TEST(stress) {
             HS< V > set;
 
-            for ( int i = 1; i < size; ++i )
-            {
+            for ( int i = 1; i < size; ++i ) {
                 set.insert( i );
                 ASSERT( set.count( i ) );
-                if ( i % 2 == 0 )
+            }
+            for ( int i = 1; i < size; ++i ) {
+                ASSERT( set.count( i ) );
+            }
+        }
+
+        TEST(erase_basic)
+        {
+            if constexpr ( HS< V >::Cell::can_tombstone() )
+            {
+                HS< V > set;
+
+                ASSERT( !set.count( 1 ) );
+                ASSERT( set.insert( 1 ).isnew() );
+                ASSERT( set.count( 1 ) );
+                ASSERT( set.erase( 1 ) );
+                ASSERT( !set.count( 1 ) );
+                ASSERT( set.insert( 1 ).isnew() );
+                ASSERT( set.count( 1 ) );
+            }
+        }
+
+        TEST(erase_many)
+        {
+            if constexpr ( HS< V >::Cell::can_tombstone() )
+            {
+                HS< V > set;
+
+                for ( int i = 1; i < size; ++i )
                 {
-                    set.erase( i );
-                    ASSERT( !set.count( i ) );
+                    set.insert( i );
+                    ASSERT( set.count( i ) );
+                    if ( i % 2 == 0 )
+                    {
+                        set.erase( i );
+                        ASSERT( !set.count( i ) );
+                    }
                 }
+
+                for ( int i = 1; i < size; ++i )
+                    ASSERT_EQ( set.count( i ), i % 2 );
+            }
+        }
+
+        TEST(set) {
+            HS< V > set;
+
+            for ( int i = 1; i < size; ++i ) {
+                ASSERT( !set.count( i ) );
             }
 
-            for ( int i = 1; i < size; ++i )
-                ASSERT_EQ( set.count( i ), i % 2 );
-        }
-    }
-
-    TEST(set) {
-        HS< V > set;
-
-        for ( int i = 1; i < size; ++i ) {
-            ASSERT( !set.count( i ) );
-        }
-
-        for ( int i = 1; i < size; ++i ) {
-            set.insert( i );
-            ASSERT( set.count( i ) );
-            ASSERT( !set.count( i + 1 ) );
-        }
-
-        for ( int i = 1; i < size; ++i ) {
-            ASSERT( set.count( i ) );
-        }
-
-        for ( int i = size; i < 2 * size; ++i ) {
-            ASSERT( !set.count( i ) );
-        }
-    }
-};
-
-template< template< typename > class HS, typename V = int >
-struct Parallel
-{
-    struct Insert
-    {
-        HS< V > set;
-        int from, to;
-        bool overlap;
-
-        void main() {
-            for ( int i = from; i < to; ++i ) {
+            for ( int i = 1; i < size; ++i ) {
                 set.insert( i );
-                ASSERT( !set.insert( i ).isnew() );
-                if ( !overlap && i < to - 1 )
-                    ASSERT( !set.count( i + 1 ) );
+                ASSERT( set.count( i ) );
+                ASSERT( !set.count( i + 1 ) );
+            }
+
+            for ( int i = 1; i < size; ++i ) {
+                ASSERT( set.count( i ) );
+            }
+
+            for ( int i = size; i < 2 * size; ++i ) {
+                ASSERT( !set.count( i ) );
             }
         }
     };
 
-    TEST(insert) {
-        Insert a;
-        a.from = 1;
-        a.to = size;
-        a.overlap = false;
-        a.main();
-        for ( int i = 1; i < size; ++i )
-            ASSERT( a.set.count( i ) );
-    }
-
-    static HS< V > _par( int f1, int t1, int f2, int t2 )
+    template< template< typename > class HS, typename V = int >
+    struct parallel
     {
-        shmem::Thread< Insert > a, b( a );
-
-        a.from = f1;
-        a.to = t1;
-        b.from = f2;
-        b.to = t2;
-        a.overlap = b.overlap = (t1 > f2);
-
-        a.start();
-        b.start();
-        a.join();
-        b.join();
-        return a.set;
-    }
-
-    static HS< V > _multi( std::size_t count, int from, int to )
-    {
-        shmem::ThreadSet< Insert > arr;
-        arr.resize( count );
-
-        for ( std::size_t i = 0; i < count; ++i )
+        struct Insert
         {
-            arr[ i ].from = from;
-            arr[ i ].to = to;
-            arr[ i ].overlap = true;
-        }
+            HS< V > set;
+            int from, to;
+            bool overlap;
 
-        arr.start();
-        arr.join();
-
-        return arr[ 0 ].set;
-    }
-
-    TEST(multi)
-    {
-        auto set = _multi( 10, 1, size );
-
-        for  ( int i = 1; i < size; ++i )
-            ASSERT( set.count( i ) );
-
-        int count = 0;
-        std::set< int > s;
-        for ( size_t i = 0; i != set.capacity(); ++i ) {
-            if ( set.valueAt( i ) ) {
-                if ( s.find( set.valueAt( i ) ) == s.end() )
-                    s.insert( set.valueAt( i ) );
-                ++count;
+            void main() {
+                for ( int i = from; i < to; ++i ) {
+                    set.insert( i );
+                    ASSERT( !set.insert( i ).isnew() );
+                    if ( !overlap && i < to - 1 )
+                        ASSERT( !set.count( i + 1 ) );
+                }
             }
+        };
+
+        TEST(insert) {
+            Insert a;
+            a.from = 1;
+            a.to = size;
+            a.overlap = false;
+            a.main();
+            for ( int i = 1; i < size; ++i )
+                ASSERT( a.set.count( i ) );
         }
-        ASSERT_EQ( count, size - 1 );
-    }
 
-    TEST(stress)
-    {
-        auto s = _par( 1, size / 2, size / 4, size );
+        static HS< V > _par( int f1, int t1, int f2, int t2 )
+        {
+            brick::shmem::Thread< Insert > a, b( a );
 
-        for ( int i = 1; i < size; ++i )
-            ASSERT( s.count( i ) );
-    }
+            a.from = f1;
+            a.to = t1;
+            b.from = f2;
+            b.to = t2;
+            a.overlap = b.overlap = (t1 > f2);
 
-    TEST(empty)
-    {
-        HS< V > set;
+            a.start();
+            b.start();
+            a.join();
+            b.join();
+            return a.set;
+        }
 
-        for ( int i = 1; i < size; ++i )
-            ASSERT( !set.count( i ) );
-    }
+        static HS< V > _multi( std::size_t count, int from, int to )
+        {
+            brick::shmem::ThreadSet< Insert > arr;
+            arr.resize( count );
 
-    TEST(set)
-    {
-        auto set = _par( 1, size / 2, size / 2, size );
+            for ( std::size_t i = 0; i < count; ++i )
+            {
+                arr[ i ].from = from;
+                arr[ i ].to = to;
+                arr[ i ].overlap = true;
+            }
 
-        for ( int i = 1; i < size; ++i )
-            ASSERT_EQ( i, i * set.count( i ) );
+            arr.start();
+            arr.join();
 
-        for ( int i = size; i < size * 2; ++i )
-            ASSERT( !set.count( i ) );
-    }
-};
+            return arr[ 0 ].set;
+        }
 
-template< typename T > using CS = Compact< T >;
-template< typename T > using FS = Fast< T >;
-template< typename T > using PS = Concurrent< T >;
+        TEST(multi)
+        {
+            auto set = _multi( 10, 1, size );
 
-/* instantiate the testcases */
-template struct Sequential< CS >;
-template struct Sequential< FS >;
-template struct Sequential< PS >;
-template struct Parallel< PS >;
+            for  ( int i = 1; i < size; ++i )
+                ASSERT( set.count( i ) );
 
-template struct Sequential< CS, int64_t >;
-template struct Sequential< FS, int64_t >;
-template struct Sequential< PS, int64_t >;
-template struct Parallel< PS, int64_t >;
+            int count = 0;
+            std::set< int > s;
+            for ( size_t i = 0; i != set.capacity(); ++i ) {
+                if ( set.valueAt( i ) ) {
+                    if ( s.find( set.valueAt( i ) ) == s.end() )
+                        s.insert( set.valueAt( i ) );
+                    ++count;
+                }
+            }
+            ASSERT_EQ( count, size - 1 );
+        }
 
-template struct Sequential< CS, Big >;
-template struct Sequential< FS, Big >;
-template struct Sequential< PS, Big >;
-template struct Parallel< PS, Big >;
+        TEST(stress)
+        {
+            auto s = _par( 1, size / 2, size / 4, size );
+
+            for ( int i = 1; i < size; ++i )
+                ASSERT( s.count( i ) );
+        }
+
+        TEST(empty)
+        {
+            HS< V > set;
+
+            for ( int i = 1; i < size; ++i )
+                ASSERT( !set.count( i ) );
+        }
+
+        TEST(set)
+        {
+            auto set = _par( 1, size / 2, size / 2, size );
+
+            for ( int i = 1; i < size; ++i )
+                ASSERT_EQ( i, i * set.count( i ) );
+
+            for ( int i = size; i < size * 2; ++i )
+                ASSERT( !set.count( i ) );
+        }
+    };
+
+    /* instantiate the testcases */
+    template struct sequential< brq::hash_set >;
+    template struct sequential< brq::concurrent_hash_set >;
+    template struct parallel< brq::concurrent_hash_set >;
+
+    template struct sequential< brq::hash_set, int64_t >;
+    template struct sequential< brq::concurrent_hash_set, int64_t >;
+    template struct parallel< brq::concurrent_hash_set, int64_t >;
+
+    template struct sequential< brq::hash_set, big >;
+    template struct sequential< brq::concurrent_hash_set, big >;
+    template struct parallel< brq::concurrent_hash_set, big >;
 
 }
 
@@ -1019,7 +1018,7 @@ namespace brick {
 namespace b_hashset {
 
 template< typename HS >
-struct RandomThread : shmem::Thread {
+struct RandomThread : brick::shmem::Thread {
     HS *_set;
     typename HS::ThreadData td;
     int count, id;
