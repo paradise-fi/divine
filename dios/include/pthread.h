@@ -84,10 +84,29 @@ enum {
 /* Data types */
 
 typedef int pthread_attr_t;
+
+/* Thread in DiOS is defined as a task.
+ * All its data and metadata are stored in task local storage.
+ *
+ * For `pthread_t` the `__dios_tls` hols in `__data` attribute
+ * the _PthreadTLS data.
+ *
+ * Thread metadata are stored in form of _PThread in the _PthreadTLS.
+ * */
 typedef struct __dios_tls *pthread_t;
 
 struct _PThread;
 
+/* Each mutex tracks its owner to detect if another thread wants to unlock it.
+ *
+ * Attribute __once is used to detect a single execution of a thread
+ * subroutine (see pthread_once implementation).
+ *
+ * Attribute __type stores type of mutex{PTHREAD_MUTEX_INITIALIZER,
+ * PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP, PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP}
+ *
+ * Attribute __lockCounter maintains number of thread owners of this mutex {0,1}.
+ * */
 typedef struct {
     pthread_t __owner;
     union {
@@ -107,7 +126,7 @@ typedef struct {
 typedef pthread_mutex_t pthread_spinlock_t;
 
 typedef struct {
-    pthread_mutex_t *__mutex;
+    pthread_mutex_t *__mutex; // waits on mutex
     unsigned short __counter;
 } pthread_cond_t;
 

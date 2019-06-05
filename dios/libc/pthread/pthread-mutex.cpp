@@ -29,6 +29,12 @@ static int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) noexcept {
     return 0;
 }
 
+/* The function _check_deadlock tries to find a cycle dependency in waiting
+ * threads. For this reason, a thread maintains a mutex on which it is waiting,
+ * and mutex keeps a pointer to a thread which holds it. Hence threads and
+ * mutexes together form a graph of dependencies in which we can detect a
+ * cycle.
+ */
 static bool _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept
 {
     // note: the cycle is detected first time it occurs, therefore it must go

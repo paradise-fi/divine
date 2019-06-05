@@ -20,7 +20,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
 
-// thresholds
+/* MILLIARD defines a maximal threshold for time arguments
+ * of pthread waiting functions. */
 #define MILLIARD 1000000000
 
 // bit masks
@@ -38,17 +39,69 @@ struct CleanupHandler
     CleanupHandler *next;
 };
 
+/* SleepingOn state keeps track on what primitive the thread was put to sleep */
 enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 
+/* The entry point for thread holds its start routine `entry` and
+ * arguments `arg` that are passed to it.
+ *
+ * The new thread starts execution by invoking entry;
+ * arg is passed as the sole argument of entry().
+ **/
 struct Entry
 {
     void *( *entry )( void * );
     void *arg;
 };
 
-}
+} // namespace __dios
 
-struct _PThread // (user-space) information maintained for every (running) thread
+/* _PThread maintains user-space information about an existing POSIX thread.
+ * It is not directly used/created by a user, instead _PThread is wrapped by
+ * _PthreadTLS which is further used as pthread_t, see below. _PThread just
+ * keeps following information about thread:
+ *
+ * entry/result:
+ *  entry point of the thread is maintained as `__dios::Entry`, which shares
+ *  place with the result of the thread.
+ *
+ * state flags: thread keeps track of its state, with multiple flags
+ *  1. started: is set by __pthread_start
+ *
+ *  2. running: is set by __pthread_init
+ *
+ *  3. detached: is set by pthread_detach.
+ *     When a detached thread terminates, its resources are automatically
+ *     released back to the system without the need for another thread
+ *     to join with the terminated thread.
+ *
+ *  4. sleeping: holds what primitive put the thread to sleep
+ *   - can be changed using a setSleeping method
+ *
+ *  5. cancelled:
+ *   - `cancel_state` holds whether cancelation is enabled
+ *   - `cancel_type` holds is either PTHREAD_CANCEL_DEFERRED
+ *                                or PTHREAD_CANCEL_ASYNCHRONOUS
+ *
+ *  6. is_main: holds whether the entry point is main, the main thread
+ *     waits until all its threads terminates
+ *
+ *  7. deadlocked: to detect deadlock on mutex,
+ *     if true pruduces fault _VM_F_Locking
+ *
+ * condition/barrier:
+ *  holds a primitive that put the thread to sleep state
+ *
+ * mutex:
+ *  the thread holds a pointer to a mutex on which it is waiting to detect
+ *  cyclic dependencies (deadlock)
+ * XXX refcounted:
+ *  `refcnf` holds number of references to this thread. When the reference
+ *  count drops to zero, _PThread frees its memory. To decrease/increase
+ *  the reference count use dedicated functions acquireThread/releaseThread.
+ *
+ */
+struct _PThread
 {
     _PThread() noexcept
     {
@@ -59,7 +112,7 @@ struct _PThread // (user-space) information maintained for every (running) threa
     static void* operator new( size_t s ) noexcept { return __vm_obj_make( s, _VM_PT_Heap ); }
     static void operator delete( void *p ) noexcept { return __vm_obj_free( p ); }
 
-    // avoid accidental copies
+    /* avoid accidental copies */
     _PThread( const _PThread & ) = delete;
     _PThread( _PThread && ) = delete;
 
@@ -69,19 +122,29 @@ struct _PThread // (user-space) information maintained for every (running) threa
             __vm_obj_free( entry );
     }
 
+    /* entry point for thread and place for its result */
     union
     {
         void *result;
         __dios::Entry *entry;
     };
 
+    /* used when thread waits for mutex
+     *
+     * waiting_mutex is used in detection of deadlock (see pthread-mutex.cpp)
+     * */
     pthread_mutex_t *waiting_mutex;
+
+    /* cleanup handlers linked-list */
     __dios::CleanupHandler *cleanup_handlers;
+
+    /* used when thread sleeps on condition/barrier */
     union {
         pthread_cond_t *condition;
         pthread_barrier_t *barrier;
     };
 
+    /* state flags */
     bool started : 1;
     bool running : 1;
     bool detached : 1;
@@ -92,8 +155,11 @@ struct _PThread // (user-space) information maintained for every (running) threa
     bool cancel_type : 1;
     bool is_main : 1;
     bool deadlocked : 1;
+
+    /* reference count */
     uint32_t refcnt;
 
+    /* sleep state modifiers */
     void setSleeping( pthread_cond_t *cond ) noexcept {
         sleeping = __dios::Condition;
         condition = cond;
@@ -110,6 +176,7 @@ namespace __dios
 
 static_assert( sizeof( _PThread ) == 5 * sizeof( void * ) );
 
+/* A container of PthreadHandlers used to hold TLS destructors or ForkHandlers. */
 template< typename Handler >
 struct _PthreadHandlers
 {
@@ -175,6 +242,7 @@ struct _PthreadHandlers
     Handler *_dtors;
 };
 
+/* destructor handle used in _PthreadHandlers */
 using Destructor = void (*)( void * );
 
 struct ForkHandler
@@ -187,6 +255,13 @@ struct ForkHandler
 
 using _PthreadAtFork = _PthreadHandlers< ForkHandler >;
 
+/* _PthreadTLS holds pthread_t data of thread (see pthread documentation):
+ *
+ *  pointer to thread data _PThread`
+ *  pointer to thread local storage `keys`
+ *
+ *  implementation is located in `libc/pthread/pthread-tls.cpp`
+ */
 struct _PthreadTLS
 {
     _PthreadTLS( const _PthreadTLS & ) noexcept = delete;
@@ -200,14 +275,33 @@ struct _PthreadTLS
         return sizeof( __dios_tls ) + sizeof( _PThread * ) + cnt * sizeof( void * );
     }
 
+    /* size of keys array */
     int keyCount() noexcept;
+
+    /* resize keys array to `count` size and initialize it by nullptr */
     void makeFit( int count ) noexcept;
+
+    /* deletes nullptr keys from the back of the keys array */
     void shrink() noexcept;
+
+    /* returns keys[ key ] if exists else nullptr
+     *
+     * requires key >= 0 and key < tlsDestructor.count */
     void *getKey( int key ) noexcept;
+
+    /* associates value to key
+     *
+     * if key is higher than keyCount, extends keys array
+     * if value is nullptr then shinks keys if possible
+     *
+     * requires key >= 0 and key < tlsDestructor.count */
     void setKey( int key, const void *value ) noexcept;
+
+    /* calls destructor on value associated with key */
     void destroy( int key ) noexcept;
 };
 
+/* extract thread data from dios task */
 static inline _PthreadTLS &tls( __dios_task tid ) noexcept
 {
     return *reinterpret_cast< _PthreadTLS * >( &( tid->__data ) );
@@ -223,6 +317,7 @@ static inline _PThread &getThread() noexcept
     return getThread( __dios_this_task() );
 }
 
+/* reference modifiers for thread */
 static inline void acquireThread( _PThread &thread )
 {
     ++thread.refcnt;

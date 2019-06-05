@@ -8,6 +8,10 @@
 
 using namespace __dios;
 
+/* Initializes a thread of the main task. This should be executed before we
+ * run main and call global constructors, because they may depend on thread
+ * data.
+ * */
 void __pthread_initialize() noexcept
 {
     // initialize implicitly created main thread
@@ -16,6 +20,12 @@ void __pthread_initialize() noexcept
     getThread().started = true;
 }
 
+/* Terminate and cleanup all threads except itself for the current process.
+ * All threads are killed and their TLS is deallocated without calling cleanup
+ * handlers.
+ *
+ * This function is used at exit() from process.
+ * */
 void __pthread_finalize() noexcept
 {
     __dios::FencedInterruptMask mask;
@@ -34,6 +44,17 @@ void __pthread_finalize() noexcept
     __vm_obj_free( threads );
 }
 
+
+/* At start of a thread, DiOS associates the current task with the thread.
+ * Hence the tid is initialized to be equal to __dios_task handle.
+ *
+ * The __pthread_start function executes thread entry function in an unmasked
+ * environment (with enabled interrupts), and stores the result to thread storage
+ * (see dios/include/sys/thread.h).
+ *
+ * After successful execution, thread storage is released and the thread
+ * becomes zombie (see _clean_and_become_zombie).
+ */
 __noinline void __pthread_start( void *_args )
 {
     __dios::FencedInterruptMask mask;
@@ -63,6 +84,12 @@ __noinline void __pthread_start( void *_args )
 namespace __dios
 {
 
+/* Creates a thread for task `gtid`. Constructs its thread local storage
+ * and sets its metadata. The resulting thread is in running state.
+ *
+ * Each thread, either main thread or threads created by
+ * pthread_create, is initialized by this method.
+ * */
 void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept
 {
     __dios_assert( gtid );
@@ -81,6 +108,13 @@ void __init_thread( const __dios_task gtid, const pthread_attr_t attr ) noexcept
     thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
 }
 
+/* Cleanup TLS associated with thread `tid`. For every tls key calls associated
+ * cleanup handler until any such handler exists.
+ *
+ * If the terminating thread is main, the function exits the process. Otherwise,
+ * the thread is either is in the detached state than it can be freely killed and
+ * release its storage, else the thread needs to wait to be detached or joined.
+ */
 _Noreturn void _clean_and_become_zombie( __dios::FencedInterruptMask &mask,
                                          __dios_task tid ) noexcept
 {
