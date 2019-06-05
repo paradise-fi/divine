@@ -1,0 +1,159 @@
+## POSIX Threads (5.6.)
+
+Today we will continue with exploring DiOS internals. To remind us what we have
+learned so far, let's investigate the known structure of DiOS:
+
+
+                +---------------------------+
+                |                           |
+                |           DiOS            |
+                |                           |
+                +---------------------------+
+                |         libraries:        |
+                |           ????            |
+                |                           |
+                +---------------------------+
+                |                           |
+                |       config stack:       |
+                |       - scheduler         |
+                |       - fault handler     |
+                |         ...               |
+                |                           |
+                |       - dios task         |
+                |         + TLS             |
+                |                           |
+                +---------------------------+
+
+                +---------------------------+
+                |                           |
+                |           DiVM            |
+                |                           |
+                |   - __vm_choose(...)      |
+                |   - __vm_obj_make(...)    |
+                |     __vm_obj_free(...)    |
+                |   - __vm_test_crit(...)   |
+                |     __vm_test_loop(...)   |
+                |   - __vm_suspend(...)     |
+                |   - __vm_cancel(...)      |
+                |                           |
+                +---------------------------+
+
+We will now start to examine userspace libraries. The pthread library is one
+of the essentials. DIVINE ships its own version, because it needs to integrate
+it with DiOS scheduler.
+
+## TLS
+
+Basic data-types for thread support are defined in `dios/include/sys/thread.h`.
+You can find there a definition of a thread internal data `_PThread`, thread
+local storage `_PThreadTLS` and also a definition of thread handlers
+`_PThreadHandlers`. The userspace thread definition is located in
+`include/pthread.h`. DiOS recognizes threads as tasks in the scheduler, thread
+data and metadata are stored in the __dios_tls structure.
+
+## Initialization
+
+Thread initialization code is in `libc/pthread/pthread-init.cpp`. A general
+thread is created in the usual way via `pthread_create` defined in
+`libc/pthread/pthred-core.cpp`. A thread is started as a new __dios_task which
+we need to assign a thread. This happens in __pthred_entry. The __pthread_entry
+function associates thread with a new task and executes the thread entry
+function. Finally the thread is killed either by detaching or by join (except
+main function). After thread cleanup ends, the corresponding task is terminated
+with `__dios_suicide`.
+
+## Main thread
+
+The main thread is created differently. During boot, DiOS has to assign the
+current task to the main thread. This happens in two steps. First, during the
+setup of a scheduler, we create a main task that executes `__dios_start` which
+calls `__execute_main` in the first run of scheduler.  Before main is called,
+we initialize pthread library (__pthread_initialize). In `__pthread_initialize`
+DiOS allocates TLS for main thread and initializes its flags and sets the
+current task to execute this thread.
+
+Pthread functions need to be executed atomically. This is because an interrupt
+in the middle of such function might leave the thread in an undefined state. To
+prevent undefined behavior pthread functions contain a __dios::FencedInterruptMask
+which ensures atomic execution.
+
+## Excursion to the start of pthread
+
+Try to run simulator a check when pthread is created/rescheduled.
+
+divine sim test/pthread/div/thread-exits.cpp
+
+1. __boot               config/common.hpp
+2. __dios_boot          config/common.hpp
+3. __dios::boot         sys/boot.hpp
+
+   ...
+
+4. Scheduler::setup     sys/sched_base.hpp
+  - creates task __dios_start (main)
+
+5. run scheduler
+
+6. __execute_main       libc/sys/start.cpp
+
+7. __pthread_initialize libc/sys/start.cpp
+    - __init_thread
+    - __dios_reschedule
+
+8. main
+    - ptread_create
+        - pthread_init
+    - pthread_join
+
+The implementation of pthread_join is located in `dios/libc/pthread-core.cpp`.
+Join wait for the result of the thread and subsequently it releases and kills
+the thread task (see `include/sys/thread.h`).
+
+Waiting mechanism is located in `include/sys/thread.h`. TODO
+
+The rest of the pthread function definitions reside in `dios/libc/pthread/*`.
+Whereas function declarations with data-types definitions are located in
+`dios/include/pthread.h`
+
+## Synchronization primitives
+
+
+### Mutex
+
+Mutex implementation is located `libc/pthread/pthread-mutex.cpp`.
+Generally, errors related to locking are announced as:
+
+```
+    __dios_fault( _VM_Fault::_VM_F_Locking, "message" );
+```
+
+As fault DiOS announces:
+ 1. the detection of deadlock (see below),
+ 2. destruction of a locked mutex,
+ 3. double-lock of nonrecursive mutex,
+ 4. unlocking of unlocked mutex,
+ 5. unlocking of mutex by another thread.
+
+An interesting detail in the implementation is in `pthread_mutex_timedlock`
+whete time is simulated via nondeterminism.
+
+Exercise: try to create a fault and then suppress it with ignore.
+
+### Barrier see `libpthread/pthread-barrier.cpp`
+
+### CondVar see `libc/pthread/pthread-cond.cpp`
+
+The signaling on a conditional variable is implemented in
+`include/sys/thread.h`, where the thread to be waken is nondeterministically
+chosen.
+
+### RWLock see `libpthread/pthread-rwlock.cpp`
+
+## Deadlock
+
+DiOS performs deadlock detection on a lock of a mutex (see
+`libc/pthread/pthread-mutex.cpp`). A deadlock is signaled as a _VM_F_Locking
+fault. It may occur when:
+ 1. threads form a cyclic dependency,
+ 2. a thread waits for a resource that is held by a deadlocked thread,
+ 3. a thread waits for a resource held by a death thread.
