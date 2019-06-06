@@ -39,6 +39,8 @@ namespace brq
 {
     template< typename T >
     struct hash_adaptor;
+
+    struct hash_set_stats { size_t used = 0, capacity = 0; };
 }
 
 namespace brq::impl
@@ -462,8 +464,6 @@ namespace brq::impl
         }
     };
 
-    struct Stats { size_t used = 0, capacity = 0; };
-
     template< size_t I, size_t... Next >
     struct grow
     {
@@ -508,11 +508,11 @@ namespace brq::impl
             return _table->size();
         }
 
-        Stats stats()
+        hash_set_stats stats()
         {
             while ( await_update() );
 
-            Stats st;
+            hash_set_stats st;
             st.capacity = _table->size();
             for ( size_t i = 0; i < st.capacity; ++i )
                 if ( !_table->data[ i ].empty() )
