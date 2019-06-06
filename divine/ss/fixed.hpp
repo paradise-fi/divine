@@ -14,7 +14,7 @@ struct Fixed
     using Label = int;
 
     std::set< std::pair< int, int > > _edges;
-    hashset::Concurrent< int > _states;
+    brq::concurrent_hash_set< int > _states;
 
     Fixed( std::initializer_list< std::pair< int, int > > il )
     {

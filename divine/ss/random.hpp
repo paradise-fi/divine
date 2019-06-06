@@ -7,15 +7,13 @@
 namespace divine {
 namespace ss {
 
-namespace hashset = brick::hashset;
-
 struct Random
 {
     using State = int;
     using Label = int;
 
     std::vector< std::vector< int > > _succs;
-    hashset::Concurrent< int > _states;
+    brq::concurrent_hash_set< int > _states;
 
     Random( int vertices, int edges, unsigned seed = 0 )
     {
