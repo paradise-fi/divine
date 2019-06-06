@@ -81,8 +81,8 @@ namespace brq::impl
     template< typename T >
     struct fast_cell : cell_base< T >
     {
-        T _value;
-        hash64_t _hash; // TODO: re-use when rehashing
+        T _value = T();
+        hash64_t _hash = 0; // TODO: re-use when rehashing
 
         bool match( hash64_t h ) const { return _hash == h; }
         bool invalid() const { return false; }
@@ -99,7 +99,7 @@ namespace brq::impl
     template< typename T >
     struct compact_cell : cell_base< T >
     {
-        T _value;
+        T _value = T();
 
         bool match( hash64_t ) const { return true; }
         bool empty() const { return !_value; } /* meh */
