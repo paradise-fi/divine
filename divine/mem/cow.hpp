@@ -27,7 +27,7 @@
 namespace divine::mem
 {
 
-    using brick::hash::hash64_t;
+    using brq::hash64_t;
     template< typename Next >
     struct Cow : Next
     {
@@ -41,7 +41,7 @@ namespace divine::mem
 
         mutable brick::mem::RefPool< Pool, uint8_t > _obj_refcnt;
 
-        struct ObjHasher : brick::hashset::Adaptor< Internal >
+        struct ObjHasher : brq::hash_adaptor< Internal >
         {
             Cow< Next > *_heap;
             auto &heap() const { return *_heap; }
@@ -61,7 +61,7 @@ namespace divine::mem
         {
             std::unordered_set< int > writable;
             ObjHasher hasher;
-            brick::hashset::Concurrent< Internal > objects;
+            brq::concurrent_hash_set< Internal > objects;
         } _ext;
 
         void setupHT() { _ext.hasher._heap = this; }

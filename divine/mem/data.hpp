@@ -62,7 +62,7 @@ namespace divine::mem
 
         std::pair< uint64_t, uint64_t > hash_data( Internal i ) const
         {
-            brick::hash::State data, ptr;
+            brq::hash_state data, ptr;
             auto ptr_cb = [&]( uint32_t obj ) { ptr.update_aligned( obj ); };
             hash( i, size( i ), data, ptr_cb );
             TRACE( "hash_data", std::hex, data.hash(), ptr.hash() );

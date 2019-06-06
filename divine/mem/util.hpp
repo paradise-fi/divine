@@ -42,7 +42,7 @@ namespace divine::mem
 
     template< typename Heap >
     void hash( Heap &heap, uint32_t root, std::unordered_map< int, int > &visited,
-               brick::hash::State &state, int depth );
+               brq::hash_state &state, int depth );
 
     template< typename H1, typename H2, typename CB >
     int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H1::Pointer r2, CB &callback )
@@ -63,7 +63,7 @@ namespace divine::mem
     hash64_t hash( Heap &heap, typename Heap::Pointer root )
     {
         std::unordered_map< int, int > visited;
-        brick::hash::State state( 0 );
+        brq::hash_state state( 0 );
         hash( heap, root.object(), visited, state, 0 );
         return state.hash();
     }

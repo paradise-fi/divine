@@ -155,7 +155,7 @@ namespace divine::mem
 
     template< typename Heap >
     void hash( Heap &heap, uint32_t root, std::unordered_map< int, int > &visited,
-               brick::hash::State &state, int depth )
+               brq::hash_state &state, int depth )
     {
         if ( auto seen = visited.find( root ); seen != visited.end() )
         {
