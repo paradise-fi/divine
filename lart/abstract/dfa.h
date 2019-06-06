@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
+// -*- C++ -*- (c) 2016-2019 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
 DIVINE_RELAX_WARNINGS
@@ -8,14 +8,11 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <deque>
-#include <set>
-#include <unordered_set>
-
 #include <lart/abstract/domain.h>
 
 namespace lart::abstract {
 
-struct VPA {
+struct DataFlowAnalysis {
     using Task = std::function< void() >;
 
     void run( llvm::Module & );

@@ -1,5 +1,5 @@
-// -*- C++ -*- (c) 2017 Henrich Lauko <xlauko@mail.muni.cz>
-#include <lart/abstract/vpa.h>
+// -*- C++ -*- (c) 2016-2019 Henrich Lauko <xlauko@mail.muni.cz>
+#include <lart/abstract/dfa.h>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
@@ -19,12 +19,12 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-    bool VPA::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
+    bool DataFlowAnalysis::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
         return interval( lhs ).join( interval( rhs ) );
     }
 
-    void VPA::propagate( llvm::Value * val ) noexcept
+    void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
         std::vector< Source > sources;
 
@@ -323,7 +323,6 @@ void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret )
         for ( const auto & [ val, in ] : _intervals ) {
             // TODO decide what to annotate
             meta::abstract::set( val, to_string( DomainKind::scalar ) );
-            val->dump();
         }
     };
 
