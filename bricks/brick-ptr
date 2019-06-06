@@ -31,6 +31,9 @@ namespace brq
         T *operator->() const noexcept { return _ptr; }
         T &operator*() const noexcept { return *_ptr; }
 
+        explicit operator bool() const noexcept { return ptr(); }
+        bool operator !() const noexcept { return !ptr(); }
+
         template< bool o_atomic >
         refcount_ptr< T, atomic > &operator=( const refcount_ptr< T, o_atomic > &o ) noexcept
         {
@@ -63,6 +66,14 @@ namespace brq
             auto p = ptr();
             if ( p && !p->ref_put() )
                 delete ptr(), ptr( nullptr );
+        }
+
+        void reset( T *p = nullptr ) noexcept
+        {
+            ASSERT( !atomic );
+            _put();
+            ptr( p );
+            _get();
         }
 
         bool compare_exchange_strong( refcount_ptr< T, false > &p, refcount_ptr< T, false > n )
