@@ -4,6 +4,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstVisitor.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <deque>
@@ -12,31 +13,84 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domain.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
 struct VPA {
-    void run( llvm::Module& );
-private:
-    void preprocess( llvm::Function* );
-    void propagate_value( llvm::Value*, Domain );
-
-    void propagate( llvm::StoreInst*, Domain );
-    void propagate( llvm::CallInst*, Domain );
-    void propagate( llvm::ReturnInst*, Domain );
-
-    void propagate_back( llvm::Argument*, Domain );
-
-    void step_out( llvm::Function*, Domain, llvm::ReturnInst* );
-
     using Task = std::function< void() >;
-    std::deque< Task > tasks;
 
-    std::set< std::pair< llvm::Value*, Domain > > seen_vals;
-    std::set< std::pair< llvm::Value*, Domain > > entry_args;
-    std::unordered_set< llvm::Function* > seen_funs;
+    void run( llvm::Module & );
+
+    void propagate( llvm::Value *inst ) noexcept;
+
+    bool join( llvm::Value *, llvm::Value * ) noexcept;
+
+    inline void push( Task && t ) noexcept {
+        _tasks.emplace_back( std::move( t ) );
+    }
+
+    struct LatticeValue {
+
+        struct Top { };
+        struct Bottom { };
+
+        using Value = std::variant< Top, Bottom >;
+
+        void to_bottom() noexcept { value = { Bottom{} }; }
+        void to_top() noexcept { value = { Top{} }; }
+
+        static inline bool is_bottom( const Value &v ) noexcept
+        {
+            return std::holds_alternative< Bottom >( v );
+        }
+
+        static inline bool is_top( const Value &v ) noexcept
+        {
+            return std::holds_alternative< Top >( v );
+        }
+
+        bool join( const LatticeValue & /*other*/ ) noexcept
+        {
+            if ( is_top( value ) )
+                return false;
+            to_top();
+            return true;
+        }
+
+        Value value;
+    };
+
+    template< typename I >
+    struct IntervalMap
+    {
+        bool has( llvm::Value * val ) const noexcept
+        {
+            return _intervals.count( val );
+        }
+
+        I& operator[]( llvm::Value * val ) noexcept
+        {
+            if ( !has( val ) )
+                _intervals[ val ].to_bottom();
+            return _intervals[ val ];
+        }
+
+        decltype(auto) begin() { return _intervals.begin(); }
+        decltype(auto) begin() const { return _intervals.begin(); }
+
+        decltype(auto) end() { return _intervals.end(); }
+        decltype(auto) end() const { return _intervals.end(); }
+
+        std::map< llvm::Value *, I > _intervals;
+    };
+
+    inline auto& interval( llvm::Value * val ) noexcept
+    {
+        return _intervals[ val ];
+    }
+
+    IntervalMap< LatticeValue > _intervals;
+
+    std::deque< Task > _tasks;
 };
 
-
-} // namespace abstract
-} // namespace lart
+} // namespace lart::abstract

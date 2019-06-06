@@ -15,95 +15,16 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/domain.h>
 #include <lart/abstract/util.h>
 
-#include <lart/analysis/postorder.h>
-
 #include <brick-llvm>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
-using namespace llvm;
-
-using lart::util::get_function;
-
-namespace {
-
-inline Argument* get_argument( Function *fn, unsigned idx ) {
-    ASSERT_LT( idx, fn->arg_size() );
-    return &*std::next( fn->arg_begin(), idx );
-}
-
-bool is_accessing_concrete_aggr_element( llvm::Value * val ) {
-    if ( !llvm::isa< llvm::GetElementPtrInst >( val ) )
-        return false;
-
-    auto gep = llvm::cast< llvm::GetElementPtrInst >( val );
-    if ( gep->getNumIndices() != 2 )
-        return false;
-
-    auto ptr = gep->getPointerOperand()->stripPointerCasts();
-    if ( !meta::aggregate::has( ptr ) )
-        return false;
-
-    auto idx = std::next( gep->idx_begin() );
-    if ( auto ci = llvm::dyn_cast< llvm::ConstantInt >( idx ) ) {
-        auto indices = meta::aggregate::indices( ptr );
-        return !std::count( indices.begin(), indices.end(), ci->getZExtValue() );
-    }
-
-    return false;
-}
-
-Values reach_from( Values roots, Domain dom ) {
-    auto value_succs = [=] ( llvm::Value * val ) -> Values {
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-            if ( !is_propagable_in_domain( inst, dom ) )
-                return {};
-
-        if ( is_accessing_concrete_aggr_element( val ) ) {
-            return {};
-        }
-
-        auto succs = query::query( val->users() )
-            .filter( query::negate( is_accessing_concrete_aggr_element ) )
-            .map( query::llvmdyncast< llvm::Value > )
-            .freeze();
-
-        return succs;
-    };
-    return lart::analysis::postorder( roots, value_succs );
-};
-
-Values reach_from( Value *root, Domain dom ) { return reach_from( Values{ root }, dom ); }
-
-struct AbstractionSources
-{
-
-    explicit AbstractionSources( Value *from ) : from( from ) {}
-
-    Values get()
+    bool VPA::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        auto values = get_impl( from, std::nullopt );
-
-        std::set< llvm::Value * > sources;
-        for ( const auto & [val, idx] : values ) {
-            if ( idx.has_value() ) {
-                if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-                    meta::aggregate::set( inst, idx.value() );
-                if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
-                    meta::aggregate::set( glob, idx.value() );
-                // TODO llvm::Argument
-            }
-            sources.insert( val );
-        }
-
-        return { sources.begin(), sources.end() };
+        return interval( lhs ).join( interval( rhs ) );
     }
 
-private:
-    using Source = std::pair< llvm::Value *, std::optional< size_t > >;
-
-    auto get_impl( Value *val, std::optional< size_t > idx ) -> std::vector< Source >
+    void VPA::propagate( llvm::Value * val ) noexcept
     {
         std::vector< Source > sources;
 
@@ -130,14 +51,6 @@ private:
             },
             [&] ( IntToPtrInst *inst ) {
                 sources = get_impl( inst->getOperand( 0 ), idx );
-            },
-            [&] ( PtrToIntInst *inst ) {
-                sources = get_impl( inst->getOperand( 0 ), idx );
-            },
-            [&] ( BinaryOperator *inst ) {
-                sources = get_impl( inst->getOperand( 0 ), idx );
-                auto values = get_impl( inst->getOperand( 1 ), idx );
-                std::move( values.begin(), values.end(), std::back_inserter( sources ) );
             },
             [&] ( SelectInst *inst ) {
                 for ( auto i : { 1, 2 } )
@@ -251,25 +164,6 @@ void VPA::propagate_value( Value *val, Domain dom ) {
             if ( !is_transformable_in_domain( call, dom ) && ignore_call_of_function( call ) )
                 continue;
         }
-
-        if ( auto inst = dyn_cast< Instruction >( dep ) ) {
-            if ( is_propagable_in_domain( inst, dom ) ) {
-                if ( forbidden_propagation_by_domain( inst, dom ) ) {
-                    stop_on_forbidden_propagation( inst, dom );
-                }
-                Domain::set( inst, dom );
-            }
-            else if ( is_transformable_in_domain( inst, dom ) ) {
-                Domain::set( inst, dom );
-            }
-        }
-
-        llvmcase( dep,
-            [&] ( StoreInst *store ) { propagate( store, dom ); },
-            [&] ( CallInst *call )   { propagate( call, dom ); },
-            [&] ( ReturnInst *ret )  { propagate( ret, dom ); },
-            [&] ( Argument *arg )    { propagate_back( arg, dom ); }
-        );
     }
 
     seen_vals.emplace( val, dom );
@@ -389,8 +283,7 @@ void VPA::propagate( llvm::ReturnInst *ret, Domain dom ) {
     step_out( fn, dom, ret );
 }
 
-void VPA::propagate_back( Argument *arg, Domain dom )
-{
+void VPA::propagate_back( Argument *arg, Domain dom ) {
     if ( entry_args.count( { arg, dom } ) )
         return;
     if ( !arg->getType()->isPointerTy() )
@@ -398,27 +291,15 @@ void VPA::propagate_back( Argument *arg, Domain dom )
 
     preprocess( get_function( arg ) );
 
-    auto process_users = [&]( llvm::Value *val, auto recurse ) -> void
-    {
-        if ( auto go = llvm::dyn_cast< llvm::GlobalObject >( val ) )
-        {
-            for ( auto &a : go->getParent()->aliases() )
-                if ( a.getBaseObject() == go )
-                    recurse( &a, recurse );
-        }
-
-        for ( auto u : val->users() )
-            if ( auto call = dyn_cast< CallInst >( u ) )
-            {
-                auto op = call->getOperand( arg->getArgNo() );
-                ASSERT( seen_funs.count( get_function( arg ) ) );
-                for ( auto src : AbstractionSources( op ).get() ) {
-                    tasks.push_back( [=]{ propagate_value( src, dom ); } );
-                }
+    for ( auto u : get_function( arg )->users() ) {
+        if ( auto call = dyn_cast< CallInst >( u ) ) {
+            auto op = call->getOperand( arg->getArgNo() );
+            ASSERT( seen_funs.count( get_function( arg ) ) );
+            for ( auto src : AbstractionSources( op ).get() ) {
+                tasks.push_back( [=]{ propagate_value( src, dom ); } );
             }
-    };
-
-    process_users( get_function( arg ), process_users );
+        }
+    }
 }
 
 void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret )
@@ -427,47 +308,22 @@ void VPA::step_out( llvm::Function * fn, Domain dom, llvm::ReturnInst * ret )
 
     auto process_call = [&] ( llvm::CallInst * call )
     {
-        preprocess( get_function( call ) );
-        if ( is_base_type_in_domain( fn->getParent(), call, dom ) )
-            meta::set( call, meta::tag::abstract_return );
+        for ( auto * val : meta::enumerate( m ) ) {
+            // TODO preprocessing
 
-        if ( meta::aggregate::has( val ) )
-            meta::aggregate::inherit( call, val );
-
-        tasks.push_back( [=]{ propagate_value( call, dom ); } );
-    };
-
-    auto process_users = [&]( llvm::Value *val, auto recurse ) -> void
-    {
-        if ( auto go = llvm::dyn_cast< llvm::GlobalObject >( val ) )
-        {
-            for ( auto &a : go->getParent()->aliases() )
-                if ( a.getBaseObject() == go )
-                    recurse( &a, recurse );
+            interval( val ).to_bottom();
+            push( [=] { propagate( val ); } );
         }
-        for ( auto u : val->users() )
-        {
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
-                process_call( call );
-            if ( llvm::isa< llvm::ConstantExpr >( u ) )
-                recurse( u, recurse );
+
+        while ( !_tasks.empty() ) {
+            _tasks.front()();
+            _tasks.pop_front();
         }
-    };
 
-    process_users( fn, process_users );
-}
-
-void VPA::run( Module &m ) {
-    for ( auto * val : meta::enumerate( m ) ) {
-        preprocess( get_function( val ) );
-        tasks.push_back( [=]{ propagate_value( val, Domain::get( val ) ); } );
-    }
-
-    auto process = [&] ( const auto &val, const Domain &dom ) {
-        if ( auto call = dyn_cast< CallInst >( val ) ) {
-            auto fn = get_function( call );
-            preprocess( fn );
-            tasks.push_back( [=]{ propagate_value( call, dom ); } );
+        for ( const auto & [ val, in ] : _intervals ) {
+            // TODO decide what to annotate
+            meta::abstract::set( val, to_string( DomainKind::scalar ) );
+            val->dump();
         }
     };
 
@@ -476,8 +332,7 @@ void VPA::run( Module &m ) {
             auto dom = Domain{ meta.value() };
             for ( auto u : fn.users() ) {
                 if ( auto ce = dyn_cast< ConstantExpr >( u ) ) {
-                    if ( auto c = lower_constant_expr_call( ce ) )
-                        process( c, dom );
+                    process( lower_constant_expr_call( ce ), dom );
                 } else {
                     process( u, dom );
                 }
@@ -485,11 +340,4 @@ void VPA::run( Module &m ) {
         }
     }
 
-    while ( !tasks.empty() ) {
-        tasks.front()();
-        tasks.pop_front();
-    }
-}
-
-} // namespace abstract
-} // namespace lart
+} // namespace lart::abstract
