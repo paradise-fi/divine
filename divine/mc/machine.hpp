@@ -36,7 +36,6 @@ namespace divine::mc
 {
 
     using namespace std::literals;
-    namespace hashset = brick::hashset;
     using BC = std::shared_ptr< BitCode >;
 
     struct State
@@ -295,7 +294,7 @@ namespace divine::mc::machine
     struct Graph : Tree< Solver >
     {
         using Hasher = mc::Hasher< Solver >;
-        using HT = hashset::Concurrent< Snapshot >;
+        using HT = brq::concurrent_hash_set< Snapshot >;
         using Tree< Solver >::context;
 
         Hasher _hasher;

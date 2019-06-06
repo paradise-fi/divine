@@ -33,7 +33,7 @@ namespace divine::mc::impl
     };
 
     template< typename Solver >
-    struct Hasher : brick::hashset::Adaptor< vm::CowHeap::Snapshot >
+    struct Hasher : brq::hash_adaptor< vm::CowHeap::Snapshot >
     {
         using Snapshot = vm::CowHeap::Snapshot;
         using Pool = vm::CowHeap::Pool;

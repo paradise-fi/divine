@@ -50,8 +50,6 @@ using BC = std::shared_ptr< BitCode >;
 namespace divine::mc
 {
 
-namespace hashset = brick::hashset;
-
 template< typename Solver >
 struct Builder
 {
@@ -79,7 +77,7 @@ struct Builder
         }
     };
 
-    using HT = hashset::Concurrent< Snapshot >;
+    using HT = brq::concurrent_hash_set< Snapshot >;
 
     auto &program() { return _d.bc->program(); }
     auto &debug() { return _d.bc->debug(); }

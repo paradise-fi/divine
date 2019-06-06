@@ -28,11 +28,9 @@ namespace divine::t_mc
     enum Label { Red, Black };
     using TQ = mc::GraphTQ< int, Label >;
 
-    namespace hashset = brick::hashset;
-
     struct Base : TQ::Skel
     {
-        hashset::Concurrent< int > _states;
+        brq::concurrent_hash_set< int > _states;
 
         using TQ::Skel::run;
 
