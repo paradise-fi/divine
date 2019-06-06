@@ -88,6 +88,11 @@ namespace brq
                 return false;
         }
 
+        friend std::ostream &operator<<( std::ostream &o, const refcount_ptr< T, atomic > &p )
+        {
+            return o << p.ptr();
+        }
+
         mutable std::conditional_t< atomic, std::atomic< T * >, T * > _ptr = nullptr;
     };
 
