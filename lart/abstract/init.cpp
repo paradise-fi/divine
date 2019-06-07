@@ -45,10 +45,10 @@ namespace lart::abstract {
         return query::query( doms ).map( get_ops ).flatten().freeze();
     }
 
-    template< typename T >
-    llvm::ConstantInt * to_llvm_constant( llvm::LLVMContext &ctx, T value )
+    template< typename I >
+    llvm::ConstantInt * to_llvm_constant( llvm::LLVMContext &ctx, I value )
     {
-        auto bw = std::numeric_limits< T >::digits;
+        auto bw = std::numeric_limits< I >::digits;
         auto ty = llvm::Type::getIntNTy( ctx, bw );
         return llvm::ConstantInt::get( ty, value );
     }
@@ -59,6 +59,14 @@ namespace lart::abstract {
         return llvm::ConstantStruct::getAnon( ctx, values );
     }
 
+    template< typename I >
+    void set_index_metadata( llvm::Function * fn, const char * meta, I index )
+    {
+        auto &ctx = fn->getContext();
+        auto i = llvm::ConstantAsMetadata::get( to_llvm_constant( ctx, index ) );
+        auto node = llvm::MDNode::get( ctx, { i } );
+        fn->setMetadata( meta, node );
+    }
 
     std::vector< Namespace > abstract_namespaces( llvm::Module * m )
     {
@@ -139,6 +147,18 @@ namespace lart::abstract {
             auto &ctx = m.getContext();
             auto ops = operations(); // operation indices
 
+            auto void_t = llvm::Type::getVoidTy( m.getContext() );
+
+            for ( size_t i = 0; i < ops.size(); ++i ) {
+                auto &op = ops[ i ];
+                auto name = "lart.abstract." + op.name();
+                auto fty = llvm::FunctionType::get( void_t, {}, false );
+                auto fn = llvm::cast< llvm::Function >(
+                    m.getOrInsertFunction( name.str(), fty )
+                );
+                set_index_metadata( fn, meta::tag::operation::index, i );
+            }
+
             std::vector< llvm::Constant * > domains;
             for ( const auto & dom : doms ) {
                 auto row = row_data( dom, ops );
@@ -216,11 +236,7 @@ namespace lart::abstract {
     void DomainT::annotate( index_t index ) const
     {
         auto lift = get_operation( "lift_any" ).value();
-        auto & ctx = lift.impl->getContext();
-
-        auto i = llvm::ConstantAsMetadata::get( to_llvm_constant( ctx, index ) );
-        auto meta = llvm::MDNode::get( ctx, { i } );
-        lift.impl->setMetadata( domain_index, meta );
+        set_index_metadata( lift.impl, domain_index, index );
     }
 
     Operation DomainT::lift() const
