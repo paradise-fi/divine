@@ -25,7 +25,7 @@
 #include <sstream>
 
 #ifndef TEST
-#define TEST(n)         void n()
+#define TEST(n)         template< bool > void n()
 #endif
 
 #define BRICK_SHARP_FIRST(x, ...) #x

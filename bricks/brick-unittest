@@ -401,8 +401,8 @@ struct TestCase : TestBase
 
 #ifndef BRICK_UNITTEST_REG
 
-#define TEST(n)         void n()
-#define TEST_FAILING(n) void n()
+#define TEST(n)         template< bool > void n()
+#define TEST_FAILING(n) template< bool > void n()
 
 #else
 
