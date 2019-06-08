@@ -119,6 +119,9 @@ namespace brick::trace
             return;
         std::stringstream acc;
         acc << l.short_info() << ": ";
+#ifndef __divine__
+        acc << "[" << pthread_self() << "] ";
+#endif
         format( acc, args... );
     }
 }
