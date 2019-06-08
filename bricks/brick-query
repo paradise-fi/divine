@@ -805,7 +805,7 @@ struct Query {
 
     TEST(freeze_id_deque) {
         std::deque< int > deq = { 1, 2, 3, 4 };
-        ASSERT( query::query( deq ).freezeAs< std::deque< int > >() == deq );
+        ASSERT( query::query( deq ).template freezeAs< std::deque< int > >() == deq );
     }
 
     // freeze . map( id ) . query == id
@@ -937,7 +937,7 @@ struct Query {
             .flatten()
             .filter( []( int x ) { return x % 2 == 0; } )
             .concatMap( []( int x ) { return  x ? std::string( "" ) : std::string( "aa" ); } )
-            .freezeAs< std::string >();
+            .template freezeAs< std::string >();
     }
 
     TEST(forall) {

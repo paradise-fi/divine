@@ -1378,29 +1378,31 @@ struct UnionInstances {
     Union< int, long, A, B, std::string > e;
 };
 
-struct UnionTest {
-    TEST(basic) {
+struct UnionTest
+{
+    TEST(basic)
+    {
         Union< int > u( 1 );
         ASSERT( !u.empty() );
-        ASSERT( u.is< int >() );
-        ASSERT_EQ( u.get< int >(), 1 );
+        ASSERT( u.template is< int >() );
+        ASSERT_EQ( u.template get< int >(), 1 );
         u = 2; // move
         ASSERT( !u.empty() );
-        ASSERT_EQ( u.get< int >(), 2 );
+        ASSERT_EQ( u.template get< int >(), 2 );
         int i = 3;
         u = i; // copy
         ASSERT( !u.empty() );
-        ASSERT_EQ( u.get< int >(), 3 );
+        ASSERT_EQ( u.template get< int >(), 3 );
         u = types::Union< int >( 4 );
-        ASSERT( u.is< int >() );
+        ASSERT( u.template is< int >() );
         ASSERT_EQ( u.get< int >(), 4 );
         u = types::Union< int >();
         ASSERT( u.empty() );
-        ASSERT( !u.is< int >() );
+        ASSERT( !u.template is< int >() );
         u = 5;
         ASSERT( !u.empty() );
-        ASSERT( u.is< int >() );
-        ASSERT_EQ( u.get< int >(), 5 );
+        ASSERT( u.template is< int >() );
+        ASSERT_EQ( u.template get< int >(), 5 );
     }
 
     TEST(moveNoCopy) {
@@ -1418,28 +1420,28 @@ struct UnionTest {
 
         wierd = 2L;
         ASSERT( !wierd.empty() );
-        ASSERT( wierd.is< long >() );
-        ASSERT_EQ( wierd.get< long >(), 2L );
+        ASSERT( wierd.template is< long >() );
+        ASSERT_EQ( wierd.template get< long >(), 2L );
 
         wierd = Move();
         ASSERT( !wierd.empty() );
-        ASSERT( wierd.is< Move >() );
+        ASSERT( wierd.template is< Move >() );
     }
 
     TEST(ctorCast) {
-        ASSERT( ( Union< int, long >{ int( 1 ) }.is< int >() ) );
-        ASSERT( ( Union< int, long >{ long( 1 ) }.is< long >() ) );
+        ASSERT( ( Union< int, long >{ int( 1 ) }.template is< int >() ) );
+        ASSERT( ( Union< int, long >{ long( 1 ) }.template is< long >() ) );
 
-        ASSERT( ( Union< long, std::string >{ int( 1 ) }.is< long >() ) );
+        ASSERT( ( Union< long, std::string >{ int( 1 ) }.template is< long >() ) );
 
         struct A { operator int(){ return 1; } };
-        ASSERT( ( Union< int, A >{ A() }.is< A >() ) );
-        ASSERT( ( Union< int, std::string >{ A() }.is< int >() ) );
+        ASSERT( ( Union< int, A >{ A() }.template is< A >() ) );
+        ASSERT( ( Union< int, std::string >{ A() }.template is< int >() ) );
 
         struct B { B( int ) { } B() = default; };
-        ASSERT( ( Union< int, B >{ B() }.is< B >() ) );
-        ASSERT( ( Union< int, B >{ 1 }.is< int >() ) );
-        ASSERT( ( Union< B, std::string >{ 1 }.is< B >() ) );
+        ASSERT( ( Union< int, B >{ B() }.template is< B >() ) );
+        ASSERT( ( Union< int, B >{ 1 }.template is< int >() ) );
+        ASSERT( ( Union< B, std::string >{ 1 }.template is< B >() ) );
     }
 
     static C idC( C c ) { return c; }
