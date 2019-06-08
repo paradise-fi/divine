@@ -18,6 +18,7 @@
 
 #pragma once
 #include <brick-assert>
+#include <atomic>
 
 namespace brq
 {
