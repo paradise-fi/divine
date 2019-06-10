@@ -140,6 +140,7 @@ template <class charT, class traits, class T>
 #include <locale>
 #include <iterator>
 #include <bitset>
+#include <version>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -160,22 +161,20 @@ public:
     typedef typename traits_type::off_type off_type;
 
     // 27.7.2.2 Constructor/destructor:
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     explicit basic_ostream(basic_streambuf<char_type, traits_type>* __sb)
     { this->init(__sb); }
     virtual ~basic_ostream();
 protected:
-#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#ifndef _LIBCPP_CXX03_LANG
     inline _LIBCPP_INLINE_VISIBILITY
     basic_ostream(basic_ostream&& __rhs);
-#endif
 
     // 27.7.2.3 Assign/swap
-#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     inline _LIBCPP_INLINE_VISIBILITY
     basic_ostream& operator=(basic_ostream&& __rhs);
 #endif
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     void swap(basic_ostream& __rhs)
     { basic_ios<char_type, traits_type>::swap(__rhs); }
 
@@ -192,16 +191,16 @@ public:
     class _LIBCPP_TEMPLATE_VIS sentry;
 
     // 27.7.2.6 Formatted output:
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     basic_ostream& operator<<(basic_ostream& (*__pf)(basic_ostream&))
     { return __pf(*this); }
 
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     basic_ostream& operator<<(basic_ios<char_type, traits_type>&
                               (*__pf)(basic_ios<char_type,traits_type>&))
     { __pf(*this); return *this; }
 
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     basic_ostream& operator<<(ios_base& (*__pf)(ios_base&))
     { __pf(*this); return *this; }
 
@@ -226,15 +225,15 @@ public:
     basic_ostream& flush();
 
     // 27.7.2.5 seeks:
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     pos_type tellp();
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     basic_ostream& seekp(pos_type __pos);
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     basic_ostream& seekp(off_type __off, ios_base::seekdir __dir);
 
 protected:
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     basic_ostream() {}  // extension, intentially does not initialize
 };
 
@@ -251,7 +250,7 @@ public:
     explicit sentry(basic_ostream<_CharT, _Traits>& __os);
     ~sentry();
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
         _LIBCPP_EXPLICIT
         operator bool() const {return __ok_;}
 };
@@ -290,7 +289,7 @@ basic_ostream<_CharT, _Traits>::sentry::~sentry()
     }
 }
 
-#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#ifndef _LIBCPP_CXX03_LANG
 
 template <class _CharT, class _Traits>
 basic_ostream<_CharT, _Traits>::basic_ostream(basic_ostream&& __rhs)
@@ -306,7 +305,7 @@ basic_ostream<_CharT, _Traits>::operator=(basic_ostream&& __rhs)
     return *this;
 }
 
-#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#endif  // _LIBCPP_CXX03_LANG
 
 template <class _CharT, class _Traits>
 basic_ostream<_CharT, _Traits>::~basic_ostream()
@@ -1023,7 +1022,7 @@ flush(basic_ostream<_CharT, _Traits>& __os)
     return __os;
 }
 
-#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#ifndef _LIBCPP_CXX03_LANG
 
 template <class _Stream, class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
@@ -1039,7 +1038,7 @@ operator<<(_Stream&& __os, const _Tp& __x)
     return _VSTD::move(__os);
 }
 
-#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#endif  // _LIBCPP_CXX03_LANG
 
 template<class _CharT, class _Traits, class _Allocator>
 basic_ostream<_CharT, _Traits>&
@@ -1073,6 +1072,18 @@ operator<<(basic_ostream<_CharT, _Traits>& __os, shared_ptr<_Yp> const& __p)
     return __os << __p.get();
 }
 
+template<class _CharT, class _Traits, class _Yp, class _Dp>
+inline _LIBCPP_INLINE_VISIBILITY
+typename enable_if
+<
+    is_same<void, typename __void_t<decltype((declval<basic_ostream<_CharT, _Traits>&>() << declval<typename unique_ptr<_Yp, _Dp>::pointer>()))>::type>::value,
+    basic_ostream<_CharT, _Traits>&
+>::type
+operator<<(basic_ostream<_CharT, _Traits>& __os, unique_ptr<_Yp, _Dp> const& __p)
+{
+    return __os << __p.get();
+}
+
 template <class _CharT, class _Traits, size_t _Size>
 basic_ostream<_CharT, _Traits>&
 operator<<(basic_ostream<_CharT, _Traits>& __os, const bitset<_Size>& __x)
@@ -1082,8 +1093,10 @@ operator<<(basic_ostream<_CharT, _Traits>& __os, const bitset<_Size>& __x)
                          use_facet<ctype<_CharT> >(__os.getloc()).widen('1'));
 }
 
+#ifndef _LIBCPP_DO_NOT_ASSUME_STREAMS_EXPLICIT_INSTANTIATION_IN_DYLIB
 _LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS basic_ostream<char>)
 _LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS basic_ostream<wchar_t>)
+#endif
 
 _LIBCPP_END_NAMESPACE_STD
 

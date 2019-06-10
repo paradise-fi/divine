@@ -8,11 +8,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifdef __deallocate
-#if defined(_MSC_VER) && !defined(__clang__)
-_LIBCPP_WARNING("macro __deallocate is incompatible with C++.  #undefining __deallocate")
-#else
-#warning: macro __deallocate is incompatible with C++.  #undefining __deallocate
+#ifndef LIBCXXRT
+#error this header may only be used when targeting libcxxrt
 #endif
-#undef __deallocate
-#endif
+
+namespace std {
+
+bad_exception::~bad_exception() _NOEXCEPT
+{
+}
+
+const char* bad_exception::what() const _NOEXCEPT
+{
+  return "std::bad_exception";
+}
+
+} // namespace std

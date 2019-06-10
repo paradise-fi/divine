@@ -19,14 +19,14 @@
 
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 # include <sys/param.h>
-# if defined(BSD)
+# if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__APPLE__)
 #   include <sys/sysctl.h>
-# endif // defined(BSD)
+# endif
 #endif // defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__)) || defined(__CloudABI__) || defined(__Fuchsia__)
 # include <unistd.h>
-#endif // defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#endif // defined(__unix__) || (defined(__APPLE__) && defined(__MACH__)) || defined(__CloudABI__) || defined(__Fuchsia__)
 
 #if defined(__NetBSD__)
 #pragma weak pthread_create // Do not create libpthread dependency
@@ -34,17 +34,13 @@
 
 #if defined(_LIBCPP_WIN32API)
 #include <windows.h>
-#endif // defined(_LIBCPP_WIN32API)
-
-#if defined(__divine__)
-#include <dios.h>
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 thread::~thread()
 {
-    if (__t_ != 0)
+    if (!__libcpp_thread_isnull(&__t_))
         terminate();
 }
 
@@ -52,11 +48,11 @@ void
 thread::join()
 {
     int ec = EINVAL;
-    if (__t_ != 0)
+    if (!__libcpp_thread_isnull(&__t_))
     {
         ec = __libcpp_thread_join(&__t_);
         if (ec == 0)
-            __t_ = 0;
+            __t_ = _LIBCPP_NULL_THREAD;
     }
 
     if (ec)
@@ -67,11 +63,11 @@ void
 thread::detach()
 {
     int ec = EINVAL;
-    if (__t_ != 0)
+    if (!__libcpp_thread_isnull(&__t_))
     {
         ec = __libcpp_thread_detach(&__t_);
         if (ec == 0)
-            __t_ = 0;
+            __t_ = _LIBCPP_NULL_THREAD;
     }
 
     if (ec)
@@ -81,9 +77,7 @@ thread::detach()
 unsigned
 thread::hardware_concurrency() _NOEXCEPT
 {
-#if defined(__divine__)
-    return __dios_hardware_concurrency();
-#elif defined(CTL_HW) && defined(HW_NCPU)
+#if defined(CTL_HW) && defined(HW_NCPU)
     unsigned n;
     int mib[2] = {CTL_HW, HW_NCPU};
     std::size_t s = sizeof(n);
@@ -105,7 +99,7 @@ thread::hardware_concurrency() _NOEXCEPT
 #else  // defined(CTL_HW) && defined(HW_NCPU)
     // TODO: grovel through /proc or check cpuid on x86 and similar
     // instructions on other architectures.
-#   if defined(_MSC_VER) && ! defined(__clang__)
+#   if defined(_LIBCPP_WARNING)
         _LIBCPP_WARNING("hardware_concurrency not yet implemented")
 #   else
 #       warning hardware_concurrency not yet implemented
@@ -120,33 +114,9 @@ namespace this_thread
 void
 sleep_for(const chrono::nanoseconds& ns)
 {
-    using namespace chrono;
-    if (ns > nanoseconds::zero())
+    if (ns > chrono::nanoseconds::zero())
     {
-#if defined(_LIBCPP_WIN32API)
-        milliseconds ms = duration_cast<milliseconds>(ns);
-        if (ms.count() == 0 || ns > duration_cast<nanoseconds>(ms))
-          ++ms;
-        Sleep(ms.count());
-#else
-        seconds s = duration_cast<seconds>(ns);
-        timespec ts;
-        typedef decltype(ts.tv_sec) ts_sec;
-        _LIBCPP_CONSTEXPR ts_sec ts_sec_max = numeric_limits<ts_sec>::max();
-        if (s.count() < ts_sec_max)
-        {
-            ts.tv_sec = static_cast<ts_sec>(s.count());
-            ts.tv_nsec = static_cast<decltype(ts.tv_nsec)>((ns-s).count());
-        }
-        else
-        {
-            ts.tv_sec = ts_sec_max;
-            ts.tv_nsec = giga::num - 1;
-        }
-
-        while (nanosleep(&ts, &ts) == -1 && errno == EINTR)
-            ;
-#endif
+        __libcpp_thread_sleep_for(ns);
     }
 }
 
@@ -166,7 +136,7 @@ class _LIBCPP_HIDDEN __hidden_allocator
 {
 public:
     typedef T  value_type;
-
+    
     T* allocate(size_t __n)
         {return static_cast<T*>(::operator new(__n * sizeof(T)));}
     void deallocate(T* __p, size_t) {::operator delete(static_cast<void*>(__p));}
