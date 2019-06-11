@@ -115,7 +115,7 @@ inline void writeArchive( It begin, It end, std::string out )
             throw std::runtime_error( "member " + bc.second + " multiply defined creating " + out );
 
         ::llvm::raw_string_ostream stream( bc.first );
-        ::llvm::WriteBitcodeToFile( mod.get(), stream );
+        ::llvm::WriteBitcodeToFile( *mod.get(), stream );
         stream.flush();
 
         members.emplace_back( ::llvm::MemoryBufferRef( bc.first, bc.second ) );
@@ -330,7 +330,7 @@ struct Linker {
     using StringRef = ::llvm::StringRef;
 
     void link( Module &src ) {
-        return link( std::unique_ptr< Module >( ::llvm::CloneModule( &src ) ) );
+        return link( std::unique_ptr< Module >( ::llvm::CloneModule( src ) ) );
     }
 
     void link_decls( std::unique_ptr< Module > src )
@@ -461,7 +461,7 @@ struct Linker {
 
     template< typename It >
     static std::unique_ptr< Module > _takeModule( It it ) {
-        return std::unique_ptr< Module >( ::llvm::CloneModule( *it ) );
+        return std::unique_ptr< Module >( ::llvm::CloneModule( **it ) );
     }
 
     static std::unique_ptr< Module > _takeModule( ArchiveReader::BitcodeIterator &bcit ) {
