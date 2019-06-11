@@ -39,7 +39,7 @@ namespace divine::mem
         using typename Next::Pool;
         using Next::_l; /* FIXME */
 
-        mutable brick::mem::RefPool< Pool, uint8_t > _obj_refcnt;
+        mutable brick::mem::RefPool< Pool, uint8_t, true > _obj_refcnt;
 
         struct ObjHasher : brq::hash_adaptor< Internal >
         {
