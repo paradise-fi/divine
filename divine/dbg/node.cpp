@@ -273,7 +273,7 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias, bool pr
     if ( di_pointer( t ) && !di_base( t ) ) /* special case */
         return "void *";
 
-    if ( !di_base( t ) || di_composite( llvm::dwarf::DW_TAG_enumeration_type ) )
+    if ( !di_base( t ) || di_composite( llvm::dwarf::DW_TAG_enumeration_type, t ) )
         return name.empty() ? "<anon>" : name;
 
     if ( di_derived( llvm::dwarf::DW_TAG_typedef, t ) )
