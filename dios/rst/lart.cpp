@@ -7,13 +7,13 @@
 
 extern "C"
 {
-    __invisible uintptr_t __lart_unstash()
+    _LART_INTERFACE void * __lart_unstash()
     {
-        return __dios_this_task()->__rst_stash;
+        return reinterpret_cast< void * >( __dios_this_task()->__rst_stash );
     }
 
-    __invisible void __lart_stash( uintptr_t val )
+    _LART_INTERFACE void __lart_stash( void * val )
     {
-        __dios_this_task()->__rst_stash = val;
+        __dios_this_task()->__rst_stash = reinterpret_cast< uintptr_t >( val );
     }
 }
