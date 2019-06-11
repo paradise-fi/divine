@@ -8,6 +8,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
+#include <llvm/Transforms/Utils.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/lowerselect.h>

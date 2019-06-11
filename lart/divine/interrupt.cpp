@@ -132,7 +132,7 @@ struct MemInterrupt
             {
                 auto *type = _hypercall->getFunctionType();
                 llvm::IRBuilder<> irb{ inst };
-                auto *origPtr = getPointerOperand( inst );
+                auto *origPtr = lart::getPointerOperand( inst );
                 auto *origT = llvm::cast< llvm::PointerType >( origPtr->getType() )
                                   ->getElementType();
                 auto *ptr = irb.CreateBitCast( origPtr, type->getParamType( 0 ) );

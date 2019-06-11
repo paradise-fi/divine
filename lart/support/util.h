@@ -731,7 +731,7 @@ namespace _detail {
             {
                 // dyn_cast: if it is a constant or argument, we don't even need to look at it
                 auto *storedPtr = llvm::dyn_cast_or_null< llvm::Instruction >( getStoredPtr( use ) );
-                auto *ptr = getPointerOperand( use );
+                auto *ptr = lart::getPointerOperand( use );
                 if ( storedPtr == def ) {
                     // track the stored-to pointer
                     for ( auto *u : ptr->users() )
