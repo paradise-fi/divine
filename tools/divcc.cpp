@@ -96,10 +96,11 @@ bool whitelisted( llvm::GlobalVariable &gv )
     return brick::string::startsWith( gv.getName(), "__md_" );
 }
 
+template < typename Driver, bool link_dios >
 std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang,
                                               std::vector< std::string > libSearchPath )
 {
-    auto drv = std::make_unique< rt::DiosCC >( clang.context() );
+    auto drv = std::make_unique< Driver >( clang.context() );
     for( auto path : libSearchPath )
         drv->addDirectory( path );
 
@@ -137,7 +138,8 @@ std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang
         drv->link( std::move( m ) );
     }
 
-    drv->linkLibs( rt::DiosCC::defaultDIVINELibs );
+    if constexpr ( link_dios )
+        drv->linkLibs( Driver::defaultDIVINELibs );
 
     auto m = drv->takeLinked();
 
@@ -251,7 +253,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
         if ( !linked )
             throw cc::CompileError( "lld failed, not linked" );
     }
-    std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang, po.libSearchPath );
+    std::unique_ptr< llvm::Module > mod = link_bitcode< rt::DiosCC, true >( objFiles, clang, po.libSearchPath );
     std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
     addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
