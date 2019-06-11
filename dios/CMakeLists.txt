@@ -114,10 +114,7 @@ stringify( "dios_native" "${CMAKE_CURRENT_BINARY_DIR}" "libdios-host.a" dios-hos
 function( libcxx )
   add_compile_options( -Wno-old-style-cast )
   set( BUILD_SHARED_LIBS OFF )
-  set( LIBCXX_INCLUDE_BENCHMARKS OFF CACHE BOOL "" )
-  set( LIBCXX_ABI_VERSION 2 CACHE STRING "" )
-  add_subdirectory( libcxxabi )
-  add_subdirectory( libcxx )
+  build_libcxx( . )
 endfunction()
 
 libcxx()
