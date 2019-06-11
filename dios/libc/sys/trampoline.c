@@ -10,8 +10,9 @@ int __dios_signal_trampoline_ret( void *a, void * b, int ret )
     return ret;
 }
 
-int __dios_signal_trampoline_noret( void *a, void * b, int ret )
+int __dios_signal_trampoline_noret( void *a, void *b, int ret )
 {
+    ( void ) ret;
     void (*handler)( int ) = a;
     int arg = (int) b;
     handler( arg );
@@ -22,5 +23,7 @@ int __dios_signal_trampoline_noret( void *a, void * b, int ret )
 
 int __dios_simple_trampoline( void *a, void * b, int ret )
 {
+    ( void ) a;
+    ( void ) b;
     return ret;
 }

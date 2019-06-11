@@ -48,11 +48,13 @@ __invisible void free( void * p )
 
 __invisible void *aligned_alloc( size_t align, size_t size )
 {
+    (void) align;
     return malloc( size ); /* we are always aligned */
 }
 
 __invisible int posix_memalign( void **ptr, size_t align, size_t size )
 {
+    (void) align;
     /* TODO EINVAL if align is not a power of two >= sizeof( void* ) */
     *ptr = malloc( size ); /* we are always aligned */
     if ( *ptr )
