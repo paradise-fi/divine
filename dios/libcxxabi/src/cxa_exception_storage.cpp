@@ -11,6 +11,7 @@
 //  
 //===----------------------------------------------------------------------===//
 
+#define _LIBCPP_BUILDING_LIBRARY
 #include "cxa_exception.hpp"
 
 #include <__threading_support>

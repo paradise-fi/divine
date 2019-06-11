@@ -10,6 +10,7 @@
 //   unexpected_handler, and new_handler.
 //===----------------------------------------------------------------------===//
 
+#define _LIBCPP_BUILDING_LIBRARY
 #include <stdexcept>
 #include <new>
 #include <exception>

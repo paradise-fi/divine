@@ -9,6 +9,7 @@
 // This file implements the default terminate_handler and unexpected_handler.
 //===----------------------------------------------------------------------===//
 
+#define _LIBCPP_BUILDING_LIBRARY
 #include <stdexcept>
 #include <new>
 #include <exception>
