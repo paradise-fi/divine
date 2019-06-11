@@ -92,7 +92,8 @@ namespace divine::cc
 
         PM_BC PM;
 
-        if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false ) )
+        if ( TargetMachine->addPassesToEmitFile( PM, dest, nullptr,
+                                                 TargetMachine::CGFT_ObjectFile, false ) )
         {
             errs() << "TargetMachine can't emit a file of this type\n";
             return 1;

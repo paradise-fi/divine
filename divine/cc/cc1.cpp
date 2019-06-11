@@ -187,7 +187,7 @@ std::string CC1::serializeModule( llvm::Module &m ) {
     std::string str;
     {
         llvm::raw_string_ostream os( str );
-        llvm::WriteBitcodeToFile( &m, os );
+        llvm::WriteBitcodeToFile( m, os );
         os.flush();
     }
     return str;
