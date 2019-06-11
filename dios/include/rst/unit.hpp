@@ -6,90 +6,119 @@
 
 namespace __dios::rst::abstract {
 
+    template< bool pointer_based >
     struct Unit : Base
     {
+        using Return = std::conditional_t< pointer_based, Unit *, Unit >;
+        using Argument = std::conditional_t< pointer_based, const Unit *, const Unit& >;
+
         using Bitwidth = uint8_t;
 
+        #define __op( name, ... ) \
+            _LART_INTERFACE static Return name(__VA_ARGS__) noexcept { \
+                if constexpr ( pointer_based ) { \
+                    void *ptr = __vm_obj_make( sizeof( Unit ), _VM_PT_Heap ); \
+                    new ( ptr ) Unit(); \
+                    return static_cast< Return >( ptr ); \
+                } else { \
+                    return Unit{}; \
+                } \
+            }
+
+        #define __un( name ) __op( name, Argument )
+
+        #define __bin( name ) __op( name, Argument, Argument )
+
+        #define __cast( name ) __op( name, Argument, Bitwidth )
+
         /* abstraction operations */
-        static Unit * lift_one( uint8_t ) noexcept;
-        static Unit * lift_one( uint16_t ) noexcept;
-        static Unit * lift_one( uint32_t ) noexcept;
-        static Unit * lift_one( uint64_t ) noexcept;
+        __op( lift_one, uint8_t )
+        __op( lift_one, uint16_t )
+        __op( lift_one, uint32_t )
+        __op( lift_one, uint64_t )
 
-        static Unit * lift_one( float ) noexcept;
-        static Unit * lift_one( double ) noexcept;
+        __op( lift_one, float )
+        __op( lift_one, double )
 
-        static Unit * lift_any() noexcept;
+        __op( lift_any )
 
-        static Tristate to_tristate( Unit * ) noexcept;
+        _LART_INTERFACE
+        static Tristate to_tristate( Argument ) noexcept
+        {
+            return { Tristate::Unknown };
+        }
 
-        static Unit * assume( Unit *, Unit *, bool ) noexcept;
+        __op( assume, Argument, Argument, bool );
 
         /* arithmetic operations */
-        static Unit * op_add( Unit *, Unit * ) noexcept;
-        static Unit * op_fadd( Unit *, Unit * ) noexcept;
-        static Unit * op_sub( Unit *, Unit * ) noexcept;
-        static Unit * op_fsub( Unit *, Unit * ) noexcept;
-        static Unit * op_mul( Unit *, Unit * ) noexcept;
-        static Unit * op_fmul( Unit *, Unit * ) noexcept;
-        static Unit * op_udiv( Unit *, Unit * ) noexcept;
-        static Unit * op_sdiv( Unit *, Unit * ) noexcept;
-        static Unit * op_fdiv( Unit *, Unit * ) noexcept;
-        static Unit * op_urem( Unit *, Unit * ) noexcept;
-        static Unit * op_srem( Unit *, Unit * ) noexcept;
-        static Unit * op_frem( Unit *, Unit * ) noexcept;
+        __bin( op_add )
+        __bin( op_fadd )
+        __bin( op_sub )
+        __bin( op_fsub )
+        __bin( op_mul )
+        __bin( op_fmul )
+        __bin( op_udiv )
+        __bin( op_sdiv )
+        __bin( op_fdiv )
+        __bin( op_urem )
+        __bin( op_srem )
+        __bin( op_frem )
 
         /* logic operations */
-        static Unit * op_fneg( Unit * ) noexcept;
+        __un( op_fneg )
 
         /* bitwise operations */
-        static Unit * op_shl( Unit *, Unit * ) noexcept;
-        static Unit * op_lshr( Unit *, Unit * ) noexcept;
-        static Unit * op_ashr( Unit *, Unit * ) noexcept;
-        static Unit * op_and( Unit *, Unit * ) noexcept;
-        static Unit * op_or( Unit *, Unit * ) noexcept;
-        static Unit * op_xor( Unit *, Unit * ) noexcept;
+        __bin( op_shl )
+        __bin( op_lshr )
+        __bin( op_ashr )
+        __bin( op_and )
+        __bin( op_or )
+        __bin( op_xor )
 
         /* comparison operations */
-        static Unit * op_ffalse( Unit *, Unit * ) noexcept;
-        static Unit * op_foeq( Unit *, Unit * ) noexcept;
-        static Unit * op_fogt( Unit *, Unit * ) noexcept;
-        static Unit * op_foge( Unit *, Unit * ) noexcept;
-        static Unit * op_folt( Unit *, Unit * ) noexcept;
-        static Unit * op_fole( Unit *, Unit * ) noexcept;
-        static Unit * op_fone( Unit *, Unit * ) noexcept;
-        static Unit * op_ford( Unit *, Unit * ) noexcept;
-        static Unit * op_funo( Unit *, Unit * ) noexcept;
-        static Unit * op_fueq( Unit *, Unit * ) noexcept;
-        static Unit * op_fugt( Unit *, Unit * ) noexcept;
-        static Unit * op_fuge( Unit *, Unit * ) noexcept;
-        static Unit * op_fult( Unit *, Unit * ) noexcept;
-        static Unit * op_fule( Unit *, Unit * ) noexcept;
-        static Unit * op_fune( Unit *, Unit * ) noexcept;
-        static Unit * op_ftrue( Unit *, Unit * ) noexcept;
-        static Unit * op_eq( Unit *, Unit * ) noexcept;
-        static Unit * op_ne( Unit *, Unit * ) noexcept;
-        static Unit * op_ugt( Unit *, Unit * ) noexcept;
-        static Unit * op_uge( Unit *, Unit * ) noexcept;
-        static Unit * op_ult( Unit *, Unit * ) noexcept;
-        static Unit * op_ule( Unit *, Unit * ) noexcept;
-        static Unit * op_sgt( Unit *, Unit * ) noexcept;
-        static Unit * op_sge( Unit *, Unit * ) noexcept;
-        static Unit * op_slt( Unit *, Unit * ) noexcept;
-        static Unit * op_sle( Unit *, Unit * ) noexcept;
+        __bin( op_ffalse );
+        __bin( op_foeq );
+        __bin( op_fogt );
+        __bin( op_foge );
+        __bin( op_folt );
+        __bin( op_fole );
+        __bin( op_fone );
+        __bin( op_ford );
+        __bin( op_funo );
+        __bin( op_fueq );
+        __bin( op_fugt );
+        __bin( op_fuge );
+        __bin( op_fult );
+        __bin( op_fule );
+        __bin( op_fune );
+        __bin( op_ftrue );
+        __bin( op_eq );
+        __bin( op_ne );
+        __bin( op_ugt );
+        __bin( op_uge );
+        __bin( op_ult );
+        __bin( op_ule );
+        __bin( op_sgt );
+        __bin( op_sge );
+        __bin( op_slt );
+        __bin( op_sle );
 
         /* cast operations */
-        static Unit * op_fpext( Unit *, Bitwidth ) noexcept;
-        static Unit * op_fptosi( Unit *, Bitwidth ) noexcept;
-        static Unit * op_fptoui( Unit *, Bitwidth ) noexcept;
-        static Unit * op_fptrunc( Unit *, Bitwidth ) noexcept;
-        static Unit * op_inttoptr( Unit *, Bitwidth ) noexcept;
-        static Unit * op_ptrtoint( Unit *, Bitwidth ) noexcept;
-        static Unit * op_sext( Unit *, Bitwidth ) noexcept;
-        static Unit * op_sitofp( Unit *, Bitwidth ) noexcept;
-        static Unit * op_trunc( Unit *, Bitwidth ) noexcept;
-        static Unit * op_uitofp( Unit *, Bitwidth ) noexcept;
-        static Unit * op_zext( Unit *, Bitwidth ) noexcept;
+        __cast( op_fpext );
+        __cast( op_fptosi );
+        __cast( op_fptoui );
+        __cast( op_fptrunc );
+        __cast( op_inttoptr );
+        __cast( op_ptrtoint );
+        __cast( op_sext );
+        __cast( op_sitofp );
+        __cast( op_trunc );
+        __cast( op_uitofp );
+        __cast( op_zext );
+
+        #undef __op
+        #undef __un
+        #undef __bin
     };
 
 } // namespace __dios::rst::abstract
