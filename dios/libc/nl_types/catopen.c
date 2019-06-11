@@ -216,8 +216,9 @@ verify_msgcat(nl_catd catd)
 	struct _nls_cat_hdr *cat;
 	struct _nls_set_hdr *set;
 	struct _nls_msg_hdr *msg;
-	size_t remain;
+	ssize_t remain;
 	int hdr_offset, i, index, j, msgs, nmsgs, nsets, off, txt_offset;
+        const ssize_t cat_size = sizeof (*cat), set_size = sizeof (*set), msg_size = sizeof (*msg);
 
 	remain = catd->__size;
 	cat = (struct _nls_cat_hdr *) catd->__data;
@@ -230,20 +231,20 @@ verify_msgcat(nl_catd catd)
 	if (nsets < 1 || hdr_offset < 0 || txt_offset < 0)
 		return (1);
 
-	remain -= sizeof (*cat);
+	remain -= cat_size;
 
 	/* check if offsets or set size overflow */
 	if (remain <= hdr_offset || remain <= ntohl(cat->__msg_txt_offset) ||
-	    remain / sizeof (*set) < nsets)
+	    remain / set_size < nsets)
 		return (1);
 
-	set = (struct _nls_set_hdr *) ((char *) catd->__data + sizeof (*cat));
+	set = (struct _nls_set_hdr *) ((char *) catd->__data + cat_size);
 
 	/* make sure that msg has space for at least one index */
-	if (remain - hdr_offset < sizeof(*msg))
+	if (remain - hdr_offset < msg_size)
 		return (1);
 
-	msg = (struct _nls_msg_hdr *) ((char *) catd->__data + sizeof (*cat)
+	msg = (struct _nls_msg_hdr *) ((char *) catd->__data + cat_size
 	    + hdr_offset);
 
 	/* validate and retrieve largest string offset from sets */
@@ -260,20 +261,20 @@ verify_msgcat(nl_catd catd)
 		msgs = index + nmsgs;
 
 		/* avoid msg index overflow */
-		if ((remain - hdr_offset) / sizeof(*msg) < msgs)
+		if ((remain - hdr_offset) / msg_size < msgs)
 			return (1);
 
 		/* retrieve largest string offset */
 		for (j = index; j < nmsgs; j++) {
 			if (ntohl(msg[j].__offset) > INT_MAX)
 				return (1);
-			off = MAXIMUM(off, ntohl(msg[j].__offset));
+			off = MAXIMUM(off, (int) ntohl(msg[j].__offset));
 		}
 	}
 
 	/* check if largest string offset is nul-terminated */
 	if (remain - txt_offset < off ||
-	    memchr((char *) catd->__data + sizeof(*cat) + txt_offset + off,
+	    memchr((char *) catd->__data + cat_size + txt_offset + off,
 	    '\0', remain - txt_offset - off) == NULL)
 		return (1);
 
