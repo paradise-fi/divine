@@ -167,7 +167,7 @@ namespace brq_t
             ASSERT_EQ( a->_refcount, 1 );
             b = a;
             ASSERT_EQ( a->_refcount, 2 );
-            b = b;
+            *&b = b;
             ASSERT_EQ( a->_refcount, 2 );
         }
 
