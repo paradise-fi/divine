@@ -223,8 +223,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
     struct VHandle
     {
-        int handle;
-        bool allocated;
+        std::atomic< int > handle;
+        std::atomic< bool > allocated;
         VHandle() : handle( -1 ), allocated( false ) {}
     };
 
@@ -621,6 +621,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
         ASSERT( header( p ).total > 0 && "trying to free ephemeral block" );
 
+        _s->valgrind_dealloc( p, dereference( p ), size( p ) );
+
         auto &si = sizeinfo( size( p ) );
         FreeList *fl = si.touse.count < 4096 ? &si.touse : &si.tofree;
 #pragma GCC diagnostic push
@@ -630,8 +632,6 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         freechunk( p ) = fl->head;
         fl->head = p;
         ++ fl->count;
-
-        _s->valgrind_dealloc( p, dereference( p ), size( p ) );
 
         /* if there's a lot on our freelists, give some to the pool */
         if ( fl == &si.tofree && fl->count >= 4096 ) {
