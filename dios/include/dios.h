@@ -39,12 +39,6 @@ static inline int __dios_pointer_get_type( void *ptr ) NOTHROW
     return __vm_pointer_type( obj );
 }
 
-/*
- * Return number of claimed hardware concurrency units, specified in DiOS boot
- * parameters.
- */
-int __dios_hardware_concurrency() NOTHROW;
-
 void __run_atfork_handlers( unsigned short index ) NOTHROW;
 
 void __dios_exit_process( int code ) NOTHROW;
