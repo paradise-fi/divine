@@ -153,7 +153,7 @@ namespace brick::_assert
     }
 
     template< typename Location, typename X, typename... Y >
-    void assert_bool_fn( Location l, X x, Y... y  )
+    void assert_bool_fn( Location l, const X &x, const Y & ... y  )
     {
         if ( x )
             return;
