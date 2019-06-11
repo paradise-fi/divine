@@ -30,6 +30,8 @@
 # include <support/solaris/xlocale.h>
 #elif defined(_NEWLIB_VERSION)
 # include <support/newlib/xlocale.h>
+#elif defined(__OpenBSD__)
+# include <support/openbsd/xlocale.h>
 #elif (defined(__APPLE__)      || defined(__FreeBSD__) \
     || defined(__EMSCRIPTEN__) || defined(__IBMCPP__))
 # include <xlocale.h>
@@ -437,7 +439,7 @@ public:
     static const mask punct  = _ISPUNCT;
     static const mask xdigit = _ISXDIGIT;
     static const mask blank  = _ISBLANK;
-#elif defined(_NEWLIB_VERSION)
+#elif defined(_NEWLIB_VERSION) || defined(__OpenBSD__)
     // Same type as Newlib's _ctype_ array in newlib/libc/include/ctype.h.
     typedef char mask;
     static const mask space  = _S;
