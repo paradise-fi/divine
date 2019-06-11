@@ -842,7 +842,7 @@ endif()
 include(AddLLVM)
 include(TableGen)
 
-if( MINGW )
+if( MINGW AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" )
   # People report that -O3 is unreliable on MinGW. The traditional
   # build also uses -O2 for that reason:
   llvm_replace_compiler_option(CMAKE_CXX_FLAGS_RELEASE "-O3" "-O2")
@@ -1029,3 +1029,9 @@ endif()
 if (MSVC AND CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_INSTALL_UCRT_LIBRARIES)
   include(InstallRequiredSystemLibraries)
 endif()
+
+set( LLVM_TABLEGEN_EXE ${LLVM_TABLEGEN_EXE} PARENT_SCOPE )
+set( LLVM_TARGETS_TO_BUILD ${LLVM_TARGETS_TO_BUILD} PARENT_SCOPE )
+set( LLVM_VERSION_MAJOR ${LLVM_VERSION_MAJOR} PARENT_SCOPE )
+set( LLVM_VERSION_MINOR ${LLVM_VERSION_MINOR} PARENT_SCOPE )
+set( LLVM_VERSION_PATCH ${LLVM_VERSION_PATCH} PARENT_SCOPE )
