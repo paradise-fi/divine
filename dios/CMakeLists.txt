@@ -12,6 +12,7 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
       libcxx/include/support/xlocale/*.h libcxx/src/support/atomic_support.h
+      libcxx/include/support/divine/*.h
       libunwind/include/* libunwind/include/mach-o/* )
 
 file( GLOB SRC_dios sys/*.cpp vfs/*.cpp proxy/*.cpp )
