@@ -38,7 +38,8 @@ using FileEntry = brick::types::Union< File, Lib >;
 FileType typeFromFile( std::string name );
 FileType typeFromXOpt( std::string selector );
 std::vector< std::string > argsOfType( FileType t );
-
+bool is_type( std::string file, FileType type );
+bool is_object_type( std::string file );
 
 template< typename A, typename B = std::initializer_list< std::decay_t<
                         decltype( *std::declval< A & >().begin() ) > > >

@@ -73,5 +73,15 @@ std::vector< std::string > argsOfType( FileType t ) {
     return out;
 }
 
+bool is_type( std::string file, FileType type )
+{
+    return cc::typeFromFile( file ) == type;
+}
+
+bool is_object_type( std::string file )
+{
+    return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive );
+}
+
 } // cc
 } // divine

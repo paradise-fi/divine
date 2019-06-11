@@ -68,16 +68,6 @@ void addSection( std::string filepath, std::string sectionName, const std::strin
                         + ", objcopy exited with " + to_string( r ) );
 }
 
-bool is_type( std::string file, FileType type )
-{
-    return cc::typeFromFile( file ) == type;
-}
-
-bool is_object_type( std::string file )
-{
-    return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive );
-}
-
 bool whitelisted( llvm::Function &f )
 {
     using brick::string::startsWith;
@@ -162,7 +152,7 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
     {
         if ( file.first == "lib" )
             continue;
-        if ( is_object_type( file.first ) )
+        if ( cc::is_object_type( file.first ) )
             continue;
         auto mod = clang.compile( file.first, po.opts );
         cc::emit_obj_file( *mod, file.second );
@@ -192,7 +182,7 @@ std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles )
             continue;
         }
 
-        if ( is_object_type( file.first ) )
+        if ( cc::is_object_type( file.first ) )
             args.push_back( file.first );
         else
             args.push_back( file.second );
@@ -260,7 +250,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
 
     for ( auto file : objFiles )
     {
-        if ( is_object_type( file.first ) )
+        if ( cc::is_object_type( file.first ) )
             continue;
         std::string ofn = file.second;
         unlink( ofn.c_str() );
@@ -325,7 +315,7 @@ int main( int argc, char **argv )
             for ( auto srcFile : po.files )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
-                if ( is_object_type( ifn ) )
+                if ( cc::is_object_type( ifn ) )
                     continue;
                 std::cout << clang.preprocess( ifn, po.opts );
             }
@@ -348,7 +338,7 @@ int main( int argc, char **argv )
                     ofn += ".o";
                 }
 
-                if ( is_object_type( ifn ) )
+                if ( cc::is_object_type( ifn ) )
                     ofn = ifn;
                 objFiles.emplace_back( ifn, ofn );
             }
