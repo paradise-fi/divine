@@ -36,7 +36,7 @@
 #define _LIBCPP_VERSION 8000
 
 #ifndef _LIBCPP_ABI_VERSION
-#  define _LIBCPP_ABI_VERSION 1
+#  define _LIBCPP_ABI_VERSION 2
 #endif
 
 #ifndef _LIBCPP_STD_VER
@@ -1165,6 +1165,7 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
       defined(__APPLE__) || \
       defined(__CloudABI__) || \
       defined(__sun__) || \
+      defined(__divine__) || \
       (defined(__MINGW32__) && __has_include(<pthread.h>))
 #    define _LIBCPP_HAS_THREAD_API_PTHREAD
 #  elif defined(_LIBCPP_WIN32API)
@@ -1205,7 +1206,8 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 #endif
 
 #if defined(__BIONIC__) || defined(__CloudABI__) ||                            \
-    defined(__Fuchsia__) || defined(_LIBCPP_HAS_MUSL_LIBC)
+    defined(__Fuchsia__) || defined(_LIBCPP_HAS_MUSL_LIBC) ||                  \
+    defined(__divine__)
 #define _LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE
 #endif
 

@@ -77,7 +77,9 @@ thread::detach()
 unsigned
 thread::hardware_concurrency() _NOEXCEPT
 {
-#if defined(CTL_HW) && defined(HW_NCPU)
+#if defined(__divine__)
+    return __dios_hardware_concurrency();
+#elif defined(CTL_HW) && defined(HW_NCPU)
     unsigned n;
     int mib[2] = {CTL_HW, HW_NCPU};
     std::size_t s = sizeof(n);

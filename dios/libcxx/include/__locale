@@ -32,6 +32,8 @@
 # include <support/newlib/xlocale.h>
 #elif defined(__OpenBSD__)
 # include <support/openbsd/xlocale.h>
+#elif defined(__divine__)
+# include <support/divine/xlocale.h>
 #elif (defined(__APPLE__)      || defined(__FreeBSD__) \
     || defined(__EMSCRIPTEN__) || defined(__IBMCPP__))
 # include <xlocale.h>
