@@ -1,4 +1,5 @@
 #include <divine/cc/cc1.hpp>
+#include <divine/cc/codegen.hpp>
 #include <divine/cc/filetype.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/rt/dios-cc.hpp>
@@ -9,14 +10,6 @@
 DIVINE_RELAX_WARNINGS
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/CodeGen/AsmPrinter.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/MC/MCContext.h"
-#include "llvm/MC/MCSection.h"
-#include "llvm/MC/MCSectionELF.h"
-#include "llvm/MC/MCStreamer.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/BinaryFormat/ELF.h"
-#include "llvm/Target/TargetOptions.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm-c/Target.h"
@@ -26,8 +19,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-llvm>
 #include <brick-string>
 #include <brick-proc>
-
-static const std::string bcsec = ".llvmbc";
 
 using namespace divine;
 using namespace llvm;
@@ -56,77 +47,6 @@ void addSection( std::string filepath, std::string sectionName, const std::strin
     if ( !r )
         throw cc::CompileError( "could not add section " + sectionName + " to " + filepath
                         + ", objcopy exited with " + to_string( r ) );
-}
-
-struct PM_BC : legacy::PassManager
-{
-    MCStreamer* mc = nullptr;
-
-    void add( Pass *P ) override
-    {
-        legacy::PassManager::add( P );
-
-        if( auto printer = dynamic_cast< AsmPrinter* >( P ) )
-            mc = printer->OutStreamer.get();
-    }
-};
-
-int emitObjFile( Module &m, std::string filename )
-{
-    //auto TargetTriple = sys::getDefaultTargetTriple();
-    auto TargetTriple = "x86_64-unknown-none-elf";
-
-    divine::cc::initTargets();
-
-    std::string Error;
-    auto Target = TargetRegistry::lookupTarget( TargetTriple, Error );
-
-    // Print an error and exit if we couldn't find the requested target.
-    // This generally occurs if we've forgotten to initialise the
-    // TargetRegistry or we have a bogus target triple.
-    if ( !Target )
-    {
-        errs() << Error;
-        return 1;
-    }
-
-    auto CPU = "generic";
-    auto Features = "";
-
-    TargetOptions opt;
-    auto RM = Reloc::Model();
-    std::unique_ptr< llvm::TargetMachine > TargetMachine{ Target->createTargetMachine( TargetTriple, CPU, Features, opt, RM ) };
-
-    m.setDataLayout( TargetMachine->createDataLayout() );
-    m.setTargetTriple( TargetTriple );
-
-    std::error_code EC;
-    raw_fd_ostream dest( filename, EC, sys::fs::F_None );
-
-    if ( EC )
-    {
-        errs() << "Could not open file: " << EC.message();
-        return 1;
-    }
-
-    PM_BC PM;
-
-    if ( TargetMachine->addPassesToEmitFile( PM, dest, TargetMachine::CGFT_ObjectFile, false ) )
-    {
-        errs() << "TargetMachine can't emit a file of this type\n";
-        return 1;
-    }
-
-    MCStreamer *AsmStreamer = PM.mc;
-    // write bitcode into section .bc
-    AsmStreamer->SwitchSection( AsmStreamer->getContext().getELFSection( bcsec, ELF::SHT_NOTE, 0 ) );
-    std::string bytes = brick::llvm::getModuleBytes( &m );
-    AsmStreamer->EmitBytes( bytes );
-
-    PM.run( m );
-    dest.flush();
-
-    return 0;
 }
 
 bool is_type( std::string file, FileType type )
@@ -224,7 +144,7 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
         if ( is_object_type( file.first ) )
             continue;
         auto mod = clang.compile( file.first, po.opts );
-        emitObjFile( *mod, file.second );
+        cc::emit_obj_file( *mod, file.second );
     }
     return 0;
 }
@@ -315,7 +235,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
     std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang, po.libSearchPath );
     std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
-    addSection( file_out, ".llvmbc", clang.serializeModule( *mod ) );
+    addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
 
     for ( auto file : objFiles )
     {
