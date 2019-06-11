@@ -7,9 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#define _LIBCPP_BUILDING_LIBRARY
+#include <new>
 #include <exception>
-
-#pragma GCC visibility push(default)
 
 namespace std
 {
@@ -36,6 +36,37 @@ const char* bad_exception::what() const _NOEXCEPT
   return "std::bad_exception";
 }
 
-}  // std
 
-#pragma GCC visibility pop
+//  bad_alloc
+
+bad_alloc::bad_alloc() _NOEXCEPT
+{
+}
+
+bad_alloc::~bad_alloc() _NOEXCEPT
+{
+}
+
+const char*
+bad_alloc::what() const _NOEXCEPT
+{
+    return "std::bad_alloc";
+}
+
+// bad_array_new_length
+
+bad_array_new_length::bad_array_new_length() _NOEXCEPT
+{
+}
+
+bad_array_new_length::~bad_array_new_length() _NOEXCEPT
+{
+}
+
+const char*
+bad_array_new_length::what() const _NOEXCEPT
+{
+    return "bad_array_new_length";
+}
+
+}  // std
