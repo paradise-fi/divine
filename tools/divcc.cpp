@@ -293,18 +293,25 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
         ld_args_c.push_back( args[i].c_str() );
 
     auto ld_job = diosCC->getJobs( ld_args_c ).back();
-    ld_job.args.insert( ld_job.args.begin(), "divcc" );
-    ld_job.args.push_back( "-static" );
+    if ( po.use_system_ld )
+    {
+        ld_job.args.insert( ld_job.args.begin(), ld_job.name );
+        auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, ld_job.args );
+        if ( !r )
+            throw cc::CompileError( "failed to link, ld exited with " + to_string( r ) );
+    }
+    else
+    {
+        ld_job.args.insert( ld_job.args.begin(), "divcc" );
+        std::vector< const char * > lld_job_c;
+        lld_job_c.reserve( ld_job.args.size() );
+        for ( size_t i = 0; i < ld_job.args.size(); ++i )
+            lld_job_c.push_back( ld_job.args[i].c_str() );
 
-    std::vector< const char * > lld_job_c;
-    lld_job_c.reserve( ld_job.args.size() );
-    for ( size_t i = 0; i < ld_job.args.size(); ++i )
-        lld_job_c.push_back( ld_job.args[i].c_str() );
-
-    bool linked = lld::elf::link( lld_job_c, false );
-    if ( !linked )
-        throw cc::CompileError( "lld failed, not linked" );
-
+        bool linked = lld::elf::link( lld_job_c, false );
+        if ( !linked )
+            throw cc::CompileError( "lld failed, not linked" );
+    }
     std::unique_ptr< llvm::Module > mod = link_bitcode( objFiles, clang, po.libSearchPath );
     std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
