@@ -102,8 +102,7 @@ struct VmTraceFile : INode
 {
     bool canWrite( int, Node ) const override { return true; }
 
-    __attribute__(( __annotate__( "divine.debugfn" ) ))
-    bool write( const char *buffer, size_t, size_t &length, Node ) override
+    __debugfn void do_write( const char *buffer, size_t &length ) noexcept
     {
         if ( buffer[ length - 1 ] == 0 )
             __dios_trace_internal( 0, "%s", buffer );
@@ -114,6 +113,11 @@ struct VmTraceFile : INode
             buf[ length ] = 0;
             __dios_trace_internal( 0, "%s", buf );
         }
+    }
+
+    bool write( const char *buffer, size_t, size_t &length, Node ) override
+    {
+        do_write( buffer, length );
         return true;
     }
 };
