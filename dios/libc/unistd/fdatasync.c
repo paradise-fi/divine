@@ -1,5 +1,5 @@
 #include <sys/syscall.h>
-#include <fcntl.h>
+#include <unistd.h>
 
 #if !_HOST_is_linux /* linux provides a separate fdatasync as a syscall */
 

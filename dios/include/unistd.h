@@ -115,6 +115,7 @@ gid_t getgid( void );
 uid_t getuid( void );
 
 int fsync( int fd ) __nothrow;
+int __libc_fsync( int fd ) __nothrow;
 int fdatasync( int fd ) __nothrow;
 
 void swab( const void *from, void *to, ssize_t n ) __nothrow;
