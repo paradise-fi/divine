@@ -79,6 +79,8 @@ ParsedOpts parseOpts( std::vector< std::string > rawCCOpts )
             po.toObjectOnly = true;
         else if ( *it == "-E" )
             po.preprocessOnly = true;
+        else if ( *it == "--use-system-ld" )
+            po.use_system_ld = true;
         else if ( *it == "-g" )
             po.opts.emplace_back( "-debug-info-kind=standalone" );
         else

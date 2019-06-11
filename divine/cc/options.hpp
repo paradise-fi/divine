@@ -24,6 +24,7 @@ struct ParsedOpts
     bool preprocessOnly = false;
     bool hasHelp = false;
     bool hasVersion = false;
+    bool use_system_ld = false;
 };
 
 ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );
