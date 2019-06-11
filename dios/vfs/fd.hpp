@@ -27,6 +27,7 @@
 namespace __dios::fs
 {
 
+/* Keeps track of an inode and offset using for writing to it/reading from it. */
 struct FileDescriptor
 {
     FileDescriptor( Node inode, OFlags fl, size_t offset = 0 ) :

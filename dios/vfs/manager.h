@@ -46,6 +46,15 @@
 namespace __dios::fs
 {
 
+    /* This is a part of the DiOS config stack which provides filesystem
+       functionality.
+
+       - Extends process-local information (struct Process) with filesystem
+         data.
+       - Overrideds fork to keep files open.
+       - In setup initializes stdin (empty, or with a specified content if
+         passed to it), creates stdout & stder, and imports filesystem
+         snapshot. */
     template < typename Next >
     struct VFS: Syscall, Next
     {
@@ -132,7 +141,7 @@ namespace __dios::fs
             if ( proc )
                 for ( auto &fd : proc->_fds )
                     if ( fd.inode() )
-                        fd.inode()->open();
+                        fd.inode()->open(); /* update refcount */
             return proc;
         }
 

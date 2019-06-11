@@ -27,6 +27,7 @@
 namespace __dios::fs
 {
 
+/* Enable operators for types which inherit from it. */
 struct Flags {};
 
 template< typename Int = unsigned >

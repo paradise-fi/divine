@@ -27,6 +27,9 @@
 
 namespace __dios::fs
 {
+    /* A per-process information related to the filesystem.
+       This gets injected the Process struct which is part of the scheduler
+       configuration (see VFS). */
     struct ProcessInfo
     {
         Mode _umask;
@@ -35,6 +38,8 @@ namespace __dios::fs
         Array< FileDescriptor > _fds;
     };
 
+    /* A base of the virtual file system. Defines basic building operations and
+       import of VFS images. */
     struct Base
     {
         virtual ProcessInfo &proc() = 0;

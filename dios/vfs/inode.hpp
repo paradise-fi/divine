@@ -28,6 +28,10 @@
 namespace __dios::fs
 {
 
+/* A file mode and type saved in the INode. Please note that S_* are now
+   integral macros defined in sys/stat.h (through #include
+   <dios/vfs/flags.hpp>), but they will be later replaced by corresponding
+   instances of this struct. */
 struct Mode : FlagOps< Mode, uint16_t >
 {
     using FlagOps< Mode, uint16_t >::FlagOps;
@@ -132,6 +136,13 @@ struct INode;
 
 using Node = INode *;
 
+/* An object in the virtual file system. This is a base type for all types of
+   filesystem objects, each of them can override their operations and own its
+   data. INode itself defines operations for many file types, but mostly in a
+   way which reports an error.
+   See file.hpp for these objects.
+   An INode contains a refference count and self-destructs if it reaches zero.
+   For this reason, an INode must be always allocated dynamically. */
 struct INode : KObject
 {
     INode() :

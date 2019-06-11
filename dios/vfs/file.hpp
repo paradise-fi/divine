@@ -97,6 +97,7 @@ private:
     Array< char > _content;
 };
 
+/* Each write is propagated to the trace/counterexample. */
 struct VmTraceFile : INode
 {
     bool canWrite( int, Node ) const override { return true; }
@@ -117,6 +118,7 @@ struct VmTraceFile : INode
     }
 };
 
+/* Each written line is propagated to the trace/counterexample. */
 struct VmBuffTraceFile : INode
 {
     bool canWrite( int, Node ) const override { return true; }
@@ -156,6 +158,7 @@ struct VmBuffTraceFile : INode
     ~VmBuffTraceFile() { do_flush(); }
 };
 
+/* For simulation of stdin from a file (passed to the verifier) */
 struct StandardInput : INode
 {
     StandardInput() :

@@ -32,6 +32,7 @@
 namespace __dios::fs
 {
 
+/* A name and a pointer to corresponding inode */
 struct DirectoryEntry
 {
     DirectoryEntry( std::string_view name, Node inode ) :
@@ -48,6 +49,9 @@ private:
     Node _inode;
 };
 
+/* Directory is a list of entries + a pointer to inode of its parent.
+   It makes it possible to create, delete (unlink), and find its sub-entries.
+   Reading it produces a list of struct dirent elements. */
 struct Directory : INode
 {
     using Items = Array< DirectoryEntry >;
