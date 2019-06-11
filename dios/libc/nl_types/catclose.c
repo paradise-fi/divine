@@ -51,4 +51,3 @@ catclose(nl_catd catd)
 
 	return 0;
 }
-DEF_WEAK(catclose);

@@ -158,7 +158,6 @@ catopen(const char *name, int oflag)
 
 	return (nl_catd) -1;
 }
-DEF_WEAK(catopen);
 
 static nl_catd
 load_msgcat(const char *path)

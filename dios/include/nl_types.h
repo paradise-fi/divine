@@ -33,6 +33,7 @@
 #ifndef _NL_TYPES_H_
 #define _NL_TYPES_H_
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 #ifdef _NLS_PRIVATE
 /*

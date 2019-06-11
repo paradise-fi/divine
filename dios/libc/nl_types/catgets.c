@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <nl_types.h>
+#include <endian.h>
 
 char *
 catgets(nl_catd catd, int set_id, int msg_id, const char *s)
@@ -94,4 +95,3 @@ catgets(nl_catd catd, int set_id, int msg_id, const char *s)
 	/* not found */
 	return (char *) s;
 }
-DEF_WEAK(catgets);
