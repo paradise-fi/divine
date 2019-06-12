@@ -1,6 +1,8 @@
 list( APPEND flags -Oz )
 list( APPEND flags -debug-info-kind=standalone )
 list( APPEND flags -D__divine__ )
+list( APPEND flags -D__ELF__ )
+list( APPEND flags -D__unix__ )
 list( APPEND flags -D_POSIX_C_SOURCE=200809L )
 list( APPEND flags -D_BSD_SOURCE )
 list( APPEND flags -D_LITTLE_ENDIAN=1234 )
