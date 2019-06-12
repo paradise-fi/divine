@@ -20,6 +20,7 @@
 
 #include <divine/vm/program.hpp>
 #include <divine/vm/eval.tpp>
+#include <divine/cc/cc1.hpp>
 
 namespace divine::t_vm
 {

@@ -37,7 +37,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/context.hpp>
-#include <divine/cc/cc1.hpp>
 
 #include <divine/vm/lx-type.hpp>
 #include <divine/vm/lx-code.hpp>
