@@ -16,9 +16,9 @@ $data =~ s:\\x0a:\\x0a"\n":gsm;
 $data =~ s:(\\x[0-9a-f]{2})([a-fA-F0-9]):$1""$2:g;
 
 open OUT, ">str_${out}.cpp";
-print OUT "#include <experimental/string_view>\n";
+print OUT "#include <string_view>\n";
 print OUT "namespace divine::str::${ns} {\n";
-print OUT "extern const std::experimental::string_view ${name}( \n";
+print OUT "extern const std::string_view ${name}( \n";
 print OUT '"';
 print OUT $data;
 print OUT "\", $len ); }";
