@@ -171,8 +171,6 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   std::string Triple = getToolChain().getTripleString();
   if (Triple.substr(0, 6) == "x86_64")
     Triple.replace(0, 6, "amd64");
-  CmdArgs.push_back(
-      Args.MakeArgString("-L/usr/lib/gcc-lib/" + Triple + "/4.2.1"));
 
   Args.AddAllArgs(CmdArgs, {options::OPT_L, options::OPT_T_Group,
                             options::OPT_e, options::OPT_s, options::OPT_t,
