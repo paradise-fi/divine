@@ -20,17 +20,18 @@ list( APPEND flags -isystem${divine_SOURCE_DIR}/ ) # for #includes starting with
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 
 set( NOEXCEPT "-fno-rtti;-fno-exceptions" )
+set( WARN "-Wall;-Wextra;-Wold-style-cast;-Werror" )
 
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
 mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;${NOEXCEPT};-std=c++17;-I${CMAKE_CURRENT_BINARY_DIR}" )
 mkobjs( libpthread "${flags};${NOEXCEPT};-std=c++17" )
 mkobjs( libm "${flags}" )
 
-mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER;-std=c++17" )
+mkobjs( libcxxabi "${flags};-D_LIBCXXABI_BUILDING_LIBRARY;-DLIBCXXABI_USE_LLVM_UNWINDER;-std=c++17" )
 mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI;-std=c++17" )
 
-list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/fs -I${CMAKE_CURRENT_BINARY_DIR}
-                   -Wall -Wextra -Wold-style-cast -Werror )
+list( APPEND flags -I${CMAKE_CURRENT_BINARY_DIR} )
+set( flags "${flags};${WARN}" )
 
 mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
 mkobjs( config "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
