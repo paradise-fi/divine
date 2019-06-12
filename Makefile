@@ -127,6 +127,7 @@ toolchain: $(TOOLSTAMP)
 
 $(TOOLSTAMP):
 	-test -d _darcs && touch _darcs/patches/pending
+	rm -f $(OBJ)toolchain/{CMakeCache.txt,config.done}
 	$(MAKE) config FLAVOUR=toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target unwind_static -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target cxxabi_static -- $(EXTRA)
