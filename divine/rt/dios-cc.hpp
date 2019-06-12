@@ -22,7 +22,7 @@ struct DiosCC : cc::Driver
     DiosCC( DiosCC&& ) = default;
     DiosCC& operator=( DiosCC&& ) = default;
 
-    void setup( Options opts ){ opts = opts; }
+    void setup( Options opts ) { this->opts = opts; }
 
     void link_dios_config( std::string cfg );
     void build( cc::ParsedOpts po );
