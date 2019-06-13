@@ -130,7 +130,7 @@ function( build_llvm )
   endif()
 
   # set( PACKAGE_VERSION "${LLVM_PACKAGE_VERSION}" )
-  set( PACKAGE_VERSION "6.0.0" )
+  set( PACKAGE_VERSION "7.0.0" )
   add_subdirectory( llvm )
   include_directories( llvm/include ${CMAKE_CURRENT_BINARY_DIR}/llvm/include )
   set( LLVM_TARGETS_TO_BUILD ${LLVM_TARGETS_TO_BUILD} PARENT_SCOPE )
