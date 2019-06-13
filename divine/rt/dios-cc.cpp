@@ -31,6 +31,8 @@ DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
                  , "-isystem", includeDir
                  , "-D_LITTLE_ENDIAN=1234"
                  , "-D_BYTE_ORDER=1234"
+                 , "-D__ELF__"
+                 , "-D__unix__"
                  } );
 }
 
