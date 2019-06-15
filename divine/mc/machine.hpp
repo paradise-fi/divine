@@ -37,6 +37,7 @@ namespace divine::mc
 
     using namespace std::literals;
     using BC = std::shared_ptr< BitCode >;
+    using HT = brq::concurrent_hash_set< Snapshot >;
 
     struct State
     {
@@ -82,6 +83,13 @@ namespace divine::mc
 
     using StateTQ = GraphTQ< State, Label >;
 
+    struct Origin
+    {
+        Snapshot snap;
+        HT ht_loop;
+        explicit Origin( Snapshot s ) : snap( s ) {}
+    };
+
     struct Task
     {
         using GraphTs = StateTQ::Tasks;
@@ -90,9 +98,10 @@ namespace divine::mc
 
         struct Compute
         {
-            Snapshot snap, origin;
+            Snapshot snap;
+            Origin origin;
             vm::State state;
-            Compute( Snapshot snap, Snapshot orig, vm::State state )
+            Compute( Snapshot snap, Origin orig, vm::State state )
                 : snap( snap ), origin( orig ), state( state )
             {}
         };
@@ -100,7 +109,7 @@ namespace divine::mc
         struct Choose : Compute
         {
             int choice, total;
-            Choose( Snapshot snap, Snapshot orig, vm::State state, int c, int t )
+            Choose( Snapshot snap, Origin orig, vm::State state, int c, int t )
                 : Compute( snap, orig, state ), choice( c ), total( t )
             {}
         };
@@ -159,7 +168,7 @@ namespace divine::mc::machine
             update_instructions();
         }
 
-        void choose( TQ &tq, Snapshot origin )
+        void choose( TQ &tq, Origin origin )
         {
             auto snap = context().snapshot( _snap_pool );
             auto state = context()._state;
@@ -187,12 +196,12 @@ namespace divine::mc::machine
             return { State( context().snapshot( _state_pool ) ), true };
         }
 
-        virtual bool loop_closed()
+        virtual bool loop_closed( Origin & )
         {
             return false;
         }
 
-        void schedule( TQ &tq, Snapshot origin, Snapshot cont_from )
+        void schedule( TQ &tq, Origin origin, Snapshot cont_from )
         {
             if ( context().frame().null() )
             {
@@ -200,9 +209,9 @@ namespace divine::mc::machine
                 lbl.accepting = context().flags_any( _VM_CF_Accepting );
                 lbl.error = context().flags_any( _VM_CF_Error );
                 auto [ state, isnew ] = store();
-                tq.add< StateTQ::Skel::Edge >( State( origin ), state, lbl, isnew );
+                tq.add< StateTQ::Skel::Edge >( State( origin.snap ), state, lbl, isnew );
             }
-            else if ( !loop_closed() )
+            else if ( !loop_closed( origin ) )
                 return compute( tq, origin, cont_from );
         }
 
@@ -217,7 +226,7 @@ namespace divine::mc::machine
             return _solver.feasible( context().heap(), context()._assume );
         }
 
-        void compute( TQ &tq, Snapshot origin, Snapshot cont_from = Snapshot() )
+        void compute( TQ &tq, Origin origin, Snapshot cont_from = Snapshot() )
         {
             auto destroy = [&]( auto p ) { heap().snap_put( _snap_pool, p, false ); };
 
@@ -262,7 +271,7 @@ namespace divine::mc::machine
         {
             context().load( _state_pool, e.from.snap );
             vm::setup::scheduler( context() );
-            compute( tq, e.from.snap );
+            compute( tq, Origin( e.from.snap ) );
         }
 
         void run( TQ &tq, Task::Choose c )
@@ -294,13 +303,12 @@ namespace divine::mc::machine
     struct Graph : Tree< Solver >
     {
         using Hasher = mc::Hasher< Solver >;
-        using HT = brq::concurrent_hash_set< Snapshot >;
         using Tree< Solver >::context;
 
         Hasher _hasher;
         struct Ext
         {
-            HT ht_sched, ht_loop;
+            HT ht_sched;
             bool overwrite = false;
         } _ext;
 
@@ -330,9 +338,9 @@ namespace divine::mc::machine
             return store( _ext.ht_sched );
         }
 
-        bool loop_closed() override
+        bool loop_closed( Origin &origin ) override
         {
-            auto [ state, isnew ] = store( _ext.ht_loop );
+            auto [ state, isnew ] = store( origin.ht_loop );
             if ( isnew )
                 context().flush_ptr2i();
             else
