@@ -44,10 +44,11 @@ struct Base
 using Bool = Int< 1, false >;
 
 template< int i > struct _signed { using T = typename _signed< i + 1 >::T; };
-template<> struct _signed<  8 > { using T = int8_t; };
-template<> struct _signed< 16 > { using T = int16_t; };
-template<> struct _signed< 32 > { using T = int32_t; };
-template<> struct _signed< 64 > { using T = int64_t; };
+template<> struct _signed<   8 > { using T = int8_t; };
+template<> struct _signed<  16 > { using T = int16_t; };
+template<> struct _signed<  32 > { using T = int32_t; };
+template<> struct _signed<  64 > { using T = int64_t; };
+template<> struct _signed< 128 > { using T = __int128_t; };
 
 template< bool l, typename A, typename B > struct _choose {};
 template< typename A, typename B > struct _choose< true, A, B > { using T = A; };
@@ -73,7 +74,8 @@ template< int _width, bool is_signed, bool is_dynamic >
 struct Int : Base
 {
     using Raw = brick::bitlevel::bitvec< _width >;
-    using Cooked = Choose< is_signed, typename _signed< _width >::T, Raw >;
+    using Cooked = Choose< is_signed, typename _signed< _width >::T,
+                                      Choose< _width == 128, __uint128_t, Raw > >;
 
     Raw _raw, _m;
 
@@ -114,7 +116,7 @@ struct Int : Base
     {
         if ( offset > _isptr )
             return 0; /* not a pointer */
-        return ( _raw >> offset ) & brick::bitlevel::ones< Raw >( _VM_PB_Obj );
+        return uint32_t( ( _raw >> offset ) & brick::bitlevel::ones< Raw >( _VM_PB_Obj ) );
     }
 
     int objid_offset() { return _meta.pointer; }
@@ -205,7 +207,7 @@ struct Int : Base
 
     Int() : _raw( 0 ), _m( 0 ) {}
     explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( value::full< Raw >() ) {}
-    Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m )
+    Int( Raw r, Raw m, bool ptr = false ) : _raw( r ), _m( m )
     {
         if ( ptr ) _meta.pointer = _isptr;
     }
@@ -291,7 +293,7 @@ struct Int : Base
             if ( sh._raw >= bits ) /* all original bits rotated away */
                 result._m = bitlevel::ones< Raw >( bits );
             else /* only some of the bits are new */
-                result._m |= ~bitlevel::ones< Raw >( bits - sh._raw );
+                result._m |= ~bitlevel::ones< Raw >( bits - int( sh._raw ) );
         }
 
         bitcast( Cooked( cooked() >> sh.cooked() ), result._raw );
@@ -526,7 +528,7 @@ struct Pointer : Base
     {
         if ( w >= PointerBytes )
         {
-            _cooked.raw( i.raw() );
+            _cooked.raw( PointerRaw( i.raw() ) );
             _obj_defined = _off_defined = i.defined();
             _ispointer = i.pointer();
         }
