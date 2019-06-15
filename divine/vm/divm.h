@@ -175,7 +175,8 @@ struct _VM_Instruction
 struct _VM_Operand
 {
     uint32_t is_instruction:1; /* always 0 */
-    enum Type { I1, I8, I16, I32, I64, IX, F32, F64, F80, Ptr, PtrC, PtrA, Agg, Void, Other } type:4;
+    enum Type { I1, I8, I16, I32, I64, I128, IX,
+                F32, F64, F80, Ptr, PtrC, PtrA, Agg, Void, Other } type:4;
     /* NB. The numeric value of Location has to agree with the
            corresponding register's index in the _VM_ControlRegister enum */
     enum Location { Const, Global, Local, Invalid } location:3;

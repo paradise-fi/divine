@@ -311,11 +311,12 @@ _VM_Operand::Type type( llvm::Type *t )
     if ( t->isIntegerTy() )
         switch ( t->getPrimitiveSizeInBits() )
         {
-            case  1: return _VM_Operand::I1;
-            case  8: return _VM_Operand::I8;
-            case 16: return _VM_Operand::I16;
-            case 32: return _VM_Operand::I32;
-            case 64: return _VM_Operand::I64;
+            case   1: return _VM_Operand::I1;
+            case   8: return _VM_Operand::I8;
+            case  16: return _VM_Operand::I16;
+            case  32: return _VM_Operand::I32;
+            case  64: return _VM_Operand::I64;
+            case 128: return _VM_Operand::I128;
             default: return _VM_Operand::IX;
         }
 

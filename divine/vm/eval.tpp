@@ -111,6 +111,7 @@ void Eval< Ctx >::type_dispatch( typename Slot::Type type, Op _op, Slot slot )
         case Slot::I16: return op< Guard, value::Int< 16 > >( _op );
         case Slot::I32: return op< Guard, value::Int< 32 > >( _op );
         case Slot::I64: return op< Guard, value::Int< 64 > >( _op );
+        case Slot::I128: return op< Guard, value::Int< 128 > >( _op );
         case Slot::IX:
             ASSERT( slot.width() );
             return op< Guard, value::DynInt<> >( _op, slot.width() );
