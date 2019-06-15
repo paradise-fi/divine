@@ -30,6 +30,7 @@ namespace divine::t_mc
             return t_vm::c2bc(
                 "void *__vm_obj_make( int, int );"s +
                 "void *__vm_ctl_get( int );"s +
+                "void __vm_test_loop( int, void (*)() );"s +
                 "void __vm_ctl_set( int, void * );"s +
                 "long __vm_ctl_flag( long, long );"s +
                 "int __vm_choose( int, ... );"s +
@@ -50,14 +51,16 @@ namespace divine::t_mc
 
         auto sub_sched( std::stringstream &p )
         {
+            p << "void stop() { __vm_ctl_flag( 0, " << _VM_CF_Stop << " ); }";
             p << "void __sched()"
               << "{"
               << "    int *r = __vm_ctl_get( " << _VM_CR_State << " );"
+              << "    __vm_ctl_flag( " << _VM_CF_IgnoreLoop << ", 0 );"
               << "    do"
               << "    {"
               << "        *r = next( *r );"
               << "        if ( *r < 0 ) __vm_ctl_flag( 0, " << _VM_CF_Cancel << " );"
-              << "        if ( loop( *r ) ) __vm_ctl_flag( 0, " << _VM_CF_Stop << ");"
+              << "        __vm_test_loop( 0, stop );"
               << "    } while ( loop( *r ) );"
               << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 );"
               << "}" << std::endl;
@@ -173,6 +176,8 @@ namespace divine::t_mc
 
         using TM = mc::TMachine;
         using GM = mc::GMachine;
+
+        TEST( cf_loop ) { _search< GM >( prog_int( 0, "x < 2 ? x + 1 : 2" , "x == 2" ), 2, 1 ); }
 
         TEST( search1 ) { _search< TM >( prog_int( 4, "x - 1" ), 5, 4 ); }
         TEST( search2 ) { _search< GM >( prog_int( 4, "x - 1" ), 5, 4 ); }
