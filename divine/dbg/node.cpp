@@ -184,7 +184,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
                 {
                     yield( "raw_value", brick::string::fmt( raw ) );
                     auto val = raw >> vm::value::Int< 32 >( bitoffset() );
-                    val = val & V( brick::bitlevel::ones< typename V::Raw >( width() ) );
+                    val = val & V( brick::bitlevel::ones< typename V::Cooked >( width() ) );
                     ASSERT_LEQ( bitoffset() + width(), size() * 8 );
                     yield( "value", brick::string::fmt( val ) );
                 }
