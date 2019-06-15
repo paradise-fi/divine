@@ -1741,7 +1741,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                     if ( !boundcheck( ptr, operand( 2 ).size(), true ) )
                         return;
 
-                    T oldval;
+                    T oldval( expected );
                     heap().read( ptr2h( ptr ), oldval );
                     auto change = oldval == expected;
 

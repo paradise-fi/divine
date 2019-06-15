@@ -140,6 +140,8 @@ struct Int : Base
     Int arithmetic( Int o, Raw r )
     {
         Int result( r, ( _m & o._m & full() ) == full() ? full() : 0, false );
+        if constexpr ( is_dynamic )
+            result._meta.width = width();
         result.taints( taints() | o.taints() );
         checkptr( o, result );
         return result;
@@ -148,6 +150,8 @@ struct Int : Base
     Int bitwise( Raw r, Raw m, Int o )
     {
         Int result( r, (_m & o._m) | m, false );
+        if constexpr ( is_dynamic )
+            result._meta.width = width();
         result.taints( taints() | o.taints() );
         checkptr( o, result );
         return result;
@@ -192,7 +196,19 @@ struct Int : Base
     void pointer( bool p ) { _meta.pointer = p ? _isptr : _notptr; }
     Raw raw() { return _raw & full(); }
     void raw( Raw r ) { _raw = r & full(); }
-    auto cooked() { return bitcast< Cooked >( raw() ); }
+
+    auto cooked()
+    {
+        auto r = raw();
+
+        if constexpr ( is_dynamic )
+        {
+            auto shift = this->width() - 1;
+            if ( r & ( 1 << shift ) )
+                r |= ~full();
+        }
+        return bitcast< Cooked >( r );
+    }
 
     GenericPointer as_pointer()
     {
@@ -214,17 +230,20 @@ struct Int : Base
 
     Int< _width, true, is_dynamic > make_signed()
     {
-        ASSERT( !is_dynamic );
         Int< _width, true, is_dynamic > result( _raw, _m, false );
+
+        if constexpr ( is_dynamic )
+            result._meta.width = width();
+
         result._meta.pointer = _meta.pointer;
         result.taints( _meta.taints );
         return result;
     }
 
-    template< int w > Raw signbit()
+    template< int w, bool dyn > Raw signbit( Int< w, is_signed, dyn > i )
     {
-        if constexpr ( _width >= w )
-            return Raw( 1 ) << ( w - 1 );
+        if ( width() >= i.width() )
+            return Raw( 1 ) << ( i.width() - 1 );
         else
             return 0;
     }
@@ -232,19 +251,21 @@ struct Int : Base
     template< int w, bool dyn > Int( Int< w, is_signed, dyn > i )
         : _raw( i._raw ), _m( i._m )
     {
-        ASSERT( !dyn ); /* FIXME */
         _meta.taints = i._meta.taints;
 
-        if ( _width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
-            _m |= ( bitlevel::ones< Raw >( _width ) & ~bitlevel::ones< Raw >( w ) );
+        if constexpr ( is_dynamic )
+            _meta.width = i.width();
 
-        if ( i._meta.pointer > _width - _VM_PB_Obj )
+        if ( width() > i.width() && ( !is_signed || ( _m & signbit( i ) ) ) )
+            _m |= ( bitlevel::ones< Raw >( width() ) & ~bitlevel::ones< Raw >( i.width() ) );
+
+        if ( i._meta.pointer > width() - _VM_PB_Obj )
             _meta.pointer = _notptr;
         else
             _meta.pointer = i._meta.pointer;
 
         if ( is_signed )
-            bitcast( Cooked( ( w == 1 && i.cooked() ) ? -1 : i.cooked() ), _raw );
+            bitcast( Cooked( ( i.width() == 1 && i.cooked() ) ? -1 : i.cooked() ), _raw );
     }
 
     template< typename T > Int( Float< T > f )
@@ -266,7 +287,6 @@ struct Int : Base
     template< int w, bool dyn >
     Int operator<<( Int< w, false, dyn > sh )
     {
-        ASSERT( !dyn ); /* FIXME */
         Int result( 0, 0, false );
         result.taints( taints() | sh.taints() );
         if ( !sh.defined() )
@@ -280,7 +300,10 @@ struct Int : Base
     template< int w, bool dyn >
     Int operator>>( Int< w, false, dyn > sh )
     {
-        ASSERT( !dyn ); /* FIXME */
+        if constexpr ( dyn && is_dynamic )
+            ASSERT( _meta.width == 128 && sh._meta.width == 128 ); /* FIXME */
+        else if ( dyn || is_dynamic )
+            NOT_IMPLEMENTED();
         Int result( 0, 0, false );
         result.taints( taints() | sh.taints() );
         if ( !sh.defined() )
@@ -321,17 +344,17 @@ struct Int : Base
 };
 
 template< bool s >
-struct DynInt : Int< 64, s, true >
+struct DynInt : Int< 128, s, true >
 {
     static const bool IsFix = false;
-    using Super = Int< 64, s, true >;
+    using Super = Int< 128, s, true >;
     using Super::Super;
 
     DynInt( const Super &i ) : Super( i ) {}
 
     void setup( int bw )
     {
-        ASSERT_LEQ( bw, 64 );
+        ASSERT_LEQ( bw, 128 );
         this->_meta.width = bw;
     }
 
@@ -526,7 +549,7 @@ struct Pointer : Base
     template< int w, bool s > explicit Pointer( Int< w, s > i )
         : _taints( i.taints() )
     {
-        if ( w >= PointerBytes )
+        if constexpr ( w >= PointerBytes )
         {
             _cooked.raw( PointerRaw( i.raw() ) );
             _obj_defined = _off_defined = i.defined();
