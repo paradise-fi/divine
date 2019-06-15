@@ -110,6 +110,23 @@ struct bvpair
     constexpr bvpair( L l, H h = 0 ) : low( l ), high( h ) {}
     constexpr bvpair() = default;
     explicit constexpr operator bool() const { return low || high; }
+
+    explicit constexpr operator uint64_t() const { return low; }
+    explicit constexpr operator uint32_t() const { return low; }
+    explicit constexpr operator uint16_t() const { return low; }
+    explicit constexpr operator  uint8_t() const { return low; }
+    explicit constexpr operator      int() const { return low; }
+
+    constexpr bvpair operator<<( bvpair p ) const
+    {
+        return p.high ? bvpair( 0, 0 ) : *this << p.low;
+    }
+
+    constexpr bvpair operator>>( bvpair p ) const
+    {
+        return p.high ? bvpair( 0, 0 ) : *this >> p.low;
+    }
+
     constexpr bvpair operator<<( int s ) const
     {
         int rem = 8 * sizeof( low ) - s;
@@ -118,6 +135,7 @@ struct bvpair
         H carry = ( low & ~ones< L >( unshift ) ) >> unshift;
         return bvpair( low << s, ( high << s ) | ( carry << shift ) );
     }
+
     constexpr bvpair operator>>( int s ) const
     {
         int rem = 8 * sizeof( low ) - s;
@@ -126,12 +144,18 @@ struct bvpair
         L carry = L( high & ones< H >( s ) ) << unshift;
         return bvpair( ( low >> s ) | ( carry >> shift ), high >> s );
     }
+
     constexpr bvpair operator&( bvpair o ) const { return bvpair( o.low & low, o.high & high ); }
     constexpr bvpair operator|( bvpair o ) const { return bvpair( o.low | low, o.high | high ); }
+    constexpr bvpair operator^( bvpair o ) const { return bvpair( o.low ^ low, o.high ^ high ); }
     bvpair &operator|=( bvpair o ) { return *this = *this | o; }
+
     constexpr bool operator==( bvpair o ) const { return o.low == low && o.high == high; }
+    constexpr bool operator>=( bvpair o ) const { return high == o.high ? low >= o.low : high > o.high; }
     constexpr bool operator!=( bvpair o ) const { return o.low != low || o.high != high; }
+
     constexpr bvpair operator+() const { return *this; }
+    constexpr bvpair operator~() const { return bvpair( ~low, ~high ); }
     friend std::ostream &operator<<( std::ostream &o, bvpair p ) {
         return o << p.high << "_" << p.low; }
 } __attribute__((packed));
