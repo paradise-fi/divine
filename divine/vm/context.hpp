@@ -18,10 +18,11 @@
 
 #pragma once
 
+#include <divine/vm/loops.hpp>
+#include <divine/vm/frame.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/memory.hpp>
 #include <divine/vm/types.hpp>
-#include <divine/vm/frame.hpp>
 #include <divine/vm/divm.h>
 
 #include <brick-data>
@@ -33,40 +34,11 @@ namespace llvm { class Value; }
 
 namespace divine::vm
 {
-
     struct TraceSchedChoice { value::Pointer list; };
 
     using Location = _VM_Operand::Location;
     using PtrRegister = GenericPointer;
     using IntRegister = uint64_t;
-
-    struct LoopTrack
-    {
-        std::vector< std::unordered_set< GenericPointer > > loops;
-
-        void entered( CodePointer )
-        {
-            loops.emplace_back();
-        }
-
-        void left( CodePointer )
-        {
-            loops.pop_back();
-            if ( loops.empty() ) /* more returns than calls could happen along an edge */
-                loops.emplace_back();
-        }
-
-        bool test_loop( CodePointer pc, int /* TODO */ )
-        {
-            /* TODO track the counter value too */
-            if ( loops.back().count( pc ) )
-                return true;
-            else
-                loops.back().insert( pc );
-
-            return false;
-        }
-    };
 
     /* state of a computation */
     struct State
@@ -212,7 +184,7 @@ namespace divine::vm
     struct Tracing : NoTracing
     {
         State _debug_state;
-        LoopTrack _loops;
+        track_loops _loops;
         PtrRegister _debug_pc;
 
         int _debug_depth = 0;
