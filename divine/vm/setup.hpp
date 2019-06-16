@@ -36,7 +36,7 @@ namespace divine::vm::setup
         auto &fun = ctx.program().function( ipc );
         if ( fun.argcount != 1 )
             throw brick::except::Error( "__boot must take exactly 1 argument" );
-        ctx.enter( ipc, nullPointerV(), value::Pointer( ctx.program().envptr() ) );
+        make_frame( ctx, ipc, nullPointerV(), value::Pointer( ctx.program().envptr() ) );
         ctx.flags_set( -1, _VM_CF_KernelMode | _VM_CF_Booting | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit );
     }
 
@@ -58,7 +58,7 @@ namespace divine::vm::setup
     template< typename Context >
     void scheduler( Context &ctx )
     {
-        ctx.enter( ctx.scheduler(), nullPointerV() );
+        make_frame( ctx, ctx.scheduler(), nullPointerV() );
         ctx.flags_set( -1, _VM_CF_KernelMode | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit );
         ctx.flush_ptr2i();
     }

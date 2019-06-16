@@ -62,7 +62,7 @@ struct Eval
         c.set( _VM_CR_Globals , data.second );
         vm::Eval< TContext< vm::Program > > e( c );
         auto pc = p->functionByName( "f" );
-        c.enter( pc, vm::nullPointerV(), args... );
+        make_frame( c, pc, vm::nullPointerV(), args... );
         c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_AutoSuspend );
         e.run();
         return e.retval< IntV >();

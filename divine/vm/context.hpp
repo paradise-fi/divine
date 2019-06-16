@@ -21,6 +21,7 @@
 #include <divine/vm/value.hpp>
 #include <divine/vm/memory.hpp>
 #include <divine/vm/types.hpp>
+#include <divine/vm/frame.hpp>
 #include <divine/vm/divm.h>
 
 #include <brick-data>
@@ -410,53 +411,6 @@ namespace divine::vm
         virtual void debug_restore() override;
     };
 
-    template< typename Ctx >
-    struct MakeFrame
-    {
-        Ctx &_ctx;
-        typename Ctx::Program::Function *_fun = nullptr;
-        CodePointer _pc;
-        bool _incremental;
-
-        MakeFrame( Ctx &ctx, CodePointer pc, bool inc = false )
-            : _ctx( ctx ), _pc( pc ), _incremental( inc )
-        {
-            if ( _pc.function() )
-                _fun = &ctx.program().function( pc );
-        }
-
-        void push( int i, HeapPointer )
-        {
-            if ( _incremental )
-            {
-                if ( i == _fun->argcount + _fun->vararg )
-                    _incremental = false;
-            }
-            else
-                ASSERT_EQ( _fun->argcount + _fun->vararg , i );
-        }
-
-        template< typename X, typename... Args >
-        void push( int i, HeapPointer p, X x, Args... args )
-        {
-            _ctx.heap().write( p + _fun->instructions[ i ].result().offset, x );
-            push( i + 1, p, args... );
-        }
-
-        template< typename... Args >
-        void enter( PointerV parent, Args... args )
-        {
-            ASSERT( _fun );
-            auto frameptr = _ctx.heap().make( _fun->framesize, _VM_PL_Code + 16 ).cooked();
-            _ctx.set( _VM_CR_Frame, frameptr );
-            _ctx.pc( _pc );
-            _ctx.heap().write( frameptr, PointerV( _pc ) );
-            _ctx.heap().write( frameptr + PointerBytes, parent );
-            push( 0, frameptr, args... );
-            _ctx.entered( _pc );
-        }
-    };
-
     template< typename Program_, typename Heap_ >
     struct Context : TracingContext< Heap_ >
     {
@@ -560,13 +514,6 @@ namespace divine::vm
                 ++ this->_state.instruction_counter;
         }
 
-        template< typename... Args >
-        void enter( CodePointer pc, PointerV parent, Args... args )
-        {
-            MakeFrame< Context > mkframe( *this, pc );
-            mkframe.enter( parent, args... );
-        }
-
         void doublefault() override
         {
             this->flags_set( 0, _VM_CF_Error | _VM_CF_Stop );
@@ -588,8 +535,8 @@ namespace divine::vm
                 doublefault();
             }
             else
-                enter( fh, PointerV( this->frame() ),
-                    value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
+                make_frame( *this, fh, PointerV( this->frame() ),
+                            value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
         }
 
     };
@@ -607,13 +554,6 @@ namespace divine::vm
             this->set( _VM_CR_Constants, this->heap().make( cds ).cooked() );
             if ( gds )
                 this->set( _VM_CR_Globals, this->heap().make( gds ).cooked() );
-        }
-
-        template< typename... Args >
-        void enter( CodePointer pc, PointerV parent, Args... args )
-        {
-            MakeFrame< ConstContext > mkframe( *this, pc );
-            mkframe.enter( parent, args... );
         }
 
         ConstContext( Program &p ) : ConstContext( p, Heap_() ) {}

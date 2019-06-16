@@ -1224,12 +1224,12 @@ void Eval< Ctx >::implement_test_loop()
 {
     auto counter = operandCk< IntV >( 0 ).cooked();
 
-    if ( !context().test_loop( pc(), counter ) )
-        return;
-
-    context().sync_pc();
-    CodePointer h = operandCk< PointerV >( 1 ).cooked();
-    context().enter( h, PointerV( frame() ) );
+    if ( context().test_loop( pc(), counter ) )
+    {
+        context().sync_pc();
+        CodePointer h = operandCk< PointerV >( 1 ).cooked();
+        make_frame( context(), h, PointerV( frame() ) );
+    }
 }
 
 template< typename Ctx >
@@ -1256,7 +1256,7 @@ void Eval< Ctx >::implement_test_crit()
 
     context().sync_pc();
     CodePointer h = operandCk< PointerV >( 3 ).cooked();
-    context().enter( h, PointerV( frame() ) );
+    make_frame( context(), h, PointerV( frame() ) );
 }
 
 template< typename Ctx >
