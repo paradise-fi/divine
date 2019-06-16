@@ -31,6 +31,7 @@
 
 #include <set>
 #include <memory>
+#include <random>
 
 namespace divine::mc
 {
@@ -123,7 +124,7 @@ namespace divine::mc
 
 namespace divine::mc::machine
 {
-    template< typename Solver >
+    template< typename Solver, bool randomize = false >
     struct Tree : TQ::Skel
     {
         using Hasher = mc::Hasher< Solver >;
@@ -141,6 +142,7 @@ namespace divine::mc::machine
         Solver _solver;
         BC _bc;
         Context _ctx;
+        std::mt19937 rand;
 
         Pool _snap_pool, _state_pool;
         brick::mem::RefPool< Pool, uint8_t > _snap_refcnt;
@@ -180,14 +182,18 @@ namespace divine::mc::machine
             eval.refresh();
             eval.dispatch();
 
-            /* queue up all choices other than 0 */
-            for ( int i = 1; i < context()._choice_count; ++i )
-            {
-                _snap_refcnt.get( snap );
-                tq.add< Task::Choose >( snap, origin, state, i, context()._choice_count );
-            }
+            using dist = std::uniform_int_distribution< int >;
+            if constexpr ( randomize )
+                context()._choice_take = dist( 0, context()._choice_count - 1 )( rand );
 
-            /* proceed with choice = 0 */
+            /* queue up all choices other than the selected */
+            for ( int i = 0; i < context()._choice_count; ++i )
+                if ( i != context()._choice_take )
+                {
+                    _snap_refcnt.get( snap );
+                    tq.add< Task::Choose >( snap, origin, state, i, context()._choice_count );
+                }
+
             compute( tq, origin, snap );
         }
 
