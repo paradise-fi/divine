@@ -92,18 +92,12 @@ namespace divine::t_mc
         using Expand = mc::TQ::Tasks::Expand;
         using Edge = mc::TQ::Tasks::Edge;
 
-        template< typename M >
-        auto weave( M &machine )
-        {
-            return mc::Task::Weaver().extend_ref( machine );
-        }
-
         TEST( simple )
         {
             bool found = false;
             auto state = [&]( Expand ) { found = true; };
             auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
-            weave( machine ).observe( state ).start();
+            mc::weave( machine ).observe( state ).start();
             ASSERT( found );
         }
 
@@ -117,7 +111,7 @@ namespace divine::t_mc
                 ran = true;
             };
 
-            weave( machine ).observe( check ).start();
+            mc::weave( machine ).observe( check ).start();
             ASSERT( ran );
         }
 
@@ -126,8 +120,8 @@ namespace divine::t_mc
             auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
             mc::State i1, i2;
 
-            weave( machine ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
-            weave( machine ).observe( [&]( Expand e ) { i2 = e.from; } ).start();
+            mc::weave( machine ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
+            mc::weave( machine ).observe( [&]( Expand e ) { i2 = e.from; } ).start();
 
             ASSERT( machine.equal( i1.snap, i2.snap ) );
         }
@@ -137,8 +131,8 @@ namespace divine::t_mc
             mc::State i1, i2;
 
             auto m1 = mc::TMachine( prog_int( 4, "x - 1" ) ), m2 = m1;
-            weave( m1 ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
-            weave( m2 ).observe( [&]( Expand e ) { i2 = e.from; } ).start();
+            mc::weave( m1 ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
+            mc::weave( m2 ).observe( [&]( Expand e ) { i2 = e.from; } ).start();
 
             ASSERT( m1.equal( i1.snap, i2.snap ) );
             ASSERT( m2.equal( i1.snap, i2.snap ) );
@@ -156,7 +150,7 @@ namespace divine::t_mc
                     ASSERT( !machine.equal( snaps[ 0 ], snaps[ 1 ] ) );
             };
 
-            weave( machine ).extend( Search() ).observe( state ).start();
+            mc::weave( machine ).extend( Search() ).observe( state ).start();
             ASSERT_LEQ( 2, snaps.size() );
         }
 
@@ -168,7 +162,7 @@ namespace divine::t_mc
             auto edge = [&]( Edge ) { ++edgecount; };
             auto state = [&]( Expand ) { ++statecount; };
 
-            weave( machine ).extend( Search() ).observe( edge, state ).start();
+            mc::weave( machine ).extend( Search() ).observe( edge, state ).start();
 
             ASSERT_EQ( statecount, sc );
             ASSERT_EQ( edgecount, ec );

@@ -366,4 +366,10 @@ namespace divine::mc
 {
     using TMachine = machine::Tree< smt::NoSolver >;
     using GMachine = machine::Graph< smt::NoSolver >;
+
+    template< typename M >
+    auto weave( M &machine )
+    {
+        return mc::Task::Weaver().extend_ref( machine );
+    }
 }
