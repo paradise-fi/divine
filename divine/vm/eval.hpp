@@ -132,7 +132,7 @@ struct Eval
     using BoolV = value::Bool;
     /* TODO should be sizeof( int ) of the *bitcode*, not ours! */
     using IntV = value::Int< 8 * sizeof( int ), true >;
-    using CharV = value::Int< 1, false >;
+    using CharV = value::Int< 8, true >;
     using PtrIntV = vm::value::Int< _VM_PB_Full >;
 
     static_assert( Convertible< PointerV >::template Guard< IntV >::value, "" );
