@@ -135,12 +135,12 @@ struct UnVoid< void > {
 
 
 template< typename T >
-struct IsCout {
+struct IsCount {
     using type = std::false_type;
 };
 
 template< typename T >
-struct IsCout< Count< T>> {
+struct IsCount< Count< T > > {
     using type = std::true_type;
 };
 

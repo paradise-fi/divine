@@ -86,7 +86,7 @@ int parse( std::true_type, __dios::Vector <String>& _out, InputTuple currTup, Ty
     return result;
 }
 
-//parsing if previous was Cout<X> and thus next argument defines size argument for it
+//parsing if previous was Count<X> and thus next argument defines size argument for it
 template< typename InputTuple, typename Type, class... Args >
 int parseWithCount( __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args )
 {
@@ -105,7 +105,7 @@ int parseWithCount( __dios::Vector <String>& _out, InputTuple currTup, Type proc
 template< typename InputTuple, typename Type, class... Args >
 int parse( __dios::Vector <String>& _out, InputTuple tuple, Type process, Args ... args )
 {
-    return parse( typename IsCout< Type >::type(), _out, tuple, process, args... );
+    return parse( typename IsCount< Type >::type(), _out, tuple, process, args... );
 }
 
 namespace fs {
