@@ -298,7 +298,7 @@ struct Replay : public Next {
         int fcntl( int fd, int cmd, va_list *vl )
         {
             UnVoid< int > rv;
-            if ( !isProcessible( _HOST_SYS_open ))
+            if ( !isProcessible( _HOST_SYS_fcntl ))
             {
                 __vm_cancel();
                 return rv.get();
@@ -322,7 +322,7 @@ struct Replay : public Next {
                 {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
-                    if ( !parse( _HOST_SYS_open, rv, fd, cmd, flag, _5, _6, _7 ))
+                    if ( !parse( _HOST_SYS_fcntl, rv, fd, cmd, flag, _5, _6, _7 ))
                     {
                         __vm_cancel();
                         return rv.get();
@@ -331,7 +331,7 @@ struct Replay : public Next {
                     break;
                 default: {
                     va_end( *vl );
-                    if ( !parse( _HOST_SYS_open, rv, fd, cmd, _3, _4, _5, _6, _7 ))
+                    if ( !parse( _HOST_SYS_fcntl, rv, fd, cmd, _3, _4, _5, _6, _7 ))
                     {
                         __vm_cancel();
                         return rv.get();

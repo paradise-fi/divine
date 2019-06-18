@@ -221,7 +221,7 @@ namespace fs {
                     break;
             }
             __dios_trace_out( "SYSCALL:", 8 );
-            int sysnum = static_cast<int>(_HOST_SYS_open);
+            int sysnum = static_cast<int>(_HOST_SYS_fcntl);
             __dios_trace_out( reinterpret_cast<const char *>(&sysnum), sizeof( int ));
             *__dios_errno() = 0;
             switch ( cmd )
@@ -233,13 +233,13 @@ namespace fs {
                 {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
-                    auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
+                    auto input = std::make_tuple( _HOST_SYS_fcntl, outType, rv.address());
                     *__dios_errno() = parse( _out, input, fd, cmd, flag, _4 );
                 }
                     break;
                 default:
                 {
-                    auto input = std::make_tuple( _HOST_SYS_open, outType, rv.address());
+                    auto input = std::make_tuple( _HOST_SYS_fcntl, outType, rv.address());
                     *__dios_errno() = parse( _out, input, fd, cmd, _3 );
                     va_end( *vl );
                 }
