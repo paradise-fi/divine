@@ -23,18 +23,6 @@ namespace lart::abstract
         return rso.str();
     }
 
-    llvm::Type* abstract_type( llvm::Type * orig, Domain dom ) {
-        std::string name;
-        if ( dom == Domain::Tristate() )
-            name = "lart." + dom.name();
-        else
-            name = "lart." + dom.name() + "." + llvm_name( orig );
-
-        if ( auto aty = orig->getContext().pImpl->NamedStructTypes.lookup( name ) )
-            return aty;
-        return llvm::StructType::create( { orig }, name );
-    }
-
     // Tries to find precise set of possible called functions.
     // Returns true if it succeeded.
     bool potentially_called_functions( llvm::Value * called, Functions & fns ) {

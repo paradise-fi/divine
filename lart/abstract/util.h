@@ -91,29 +91,27 @@ namespace lart::abstract
 
     std::string llvm_name( llvm::Type * type );
 
-    llvm::Type* abstract_type( llvm::Type * orig, Domain dom );
-
     namespace {
         using Predicate = llvm::CmpInst::Predicate;
     }
 
     static const std::unordered_map< llvm::CmpInst::Predicate, std::string > PredicateTable = {
-        { Predicate::FCMP_FALSE, "false" },
-        { Predicate::FCMP_OEQ, "oeq" },
-        { Predicate::FCMP_OGT, "ogt" },
-        { Predicate::FCMP_OGE, "oge" },
-        { Predicate::FCMP_OLT, "olt" },
-        { Predicate::FCMP_OLE, "ole" },
-        { Predicate::FCMP_ONE, "one" },
-        { Predicate::FCMP_ORD, "ord" },
-        { Predicate::FCMP_UNO, "uno" },
-        { Predicate::FCMP_UEQ, "ueq" },
-        { Predicate::FCMP_UGT, "ugt" },
-        { Predicate::FCMP_UGE, "uge" },
-        { Predicate::FCMP_ULT, "ult" },
-        { Predicate::FCMP_ULE, "ule" },
-        { Predicate::FCMP_UNE, "une" },
-        { Predicate::FCMP_TRUE, "true" },
+        { Predicate::FCMP_FALSE, "ffalse" },
+        { Predicate::FCMP_OEQ, "foeq" },
+        { Predicate::FCMP_OGT, "fogt" },
+        { Predicate::FCMP_OGE, "foge" },
+        { Predicate::FCMP_OLT, "folt" },
+        { Predicate::FCMP_OLE, "fole" },
+        { Predicate::FCMP_ONE, "fone" },
+        { Predicate::FCMP_ORD, "ford" },
+        { Predicate::FCMP_UNO, "funo" },
+        { Predicate::FCMP_UEQ, "fueq" },
+        { Predicate::FCMP_UGT, "fugt" },
+        { Predicate::FCMP_UGE, "fuge" },
+        { Predicate::FCMP_ULT, "fult" },
+        { Predicate::FCMP_ULE, "fule" },
+        { Predicate::FCMP_UNE, "fune" },
+        { Predicate::FCMP_TRUE, "ftrue" },
         { Predicate::ICMP_EQ, "eq" },
         { Predicate::ICMP_NE, "ne" },
         { Predicate::ICMP_UGT, "ugt" },
