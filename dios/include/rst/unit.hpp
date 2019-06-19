@@ -32,13 +32,13 @@ namespace __dios::rst::abstract {
         #define __cast( name ) __op( name, Argument, Bitwidth )
 
         /* abstraction operations */
-        __op( lift_one, uint8_t )
-        __op( lift_one, uint16_t )
-        __op( lift_one, uint32_t )
-        __op( lift_one, uint64_t )
+        __op( lift_one_i8, uint8_t )
+        __op( lift_one_i16, uint16_t )
+        __op( lift_one_i32, uint32_t )
+        __op( lift_one_i64, uint64_t )
 
-        __op( lift_one, float )
-        __op( lift_one, double )
+        __op( lift_one_float, float )
+        __op( lift_one_double, double )
 
         __op( lift_any )
 
