@@ -39,22 +39,25 @@ namespace divine::cc
 {
     using PairedFiles = std::vector< std::pair< std::string, std::string > >;
 
-    bool whitelisted( llvm::Function &f )
+    namespace
     {
-        using brick::string::startsWith;
-        using vm::xg::hypercall;
+        bool whitelisted( llvm::Function &f )
+        {
+            using brick::string::startsWith;
+            using vm::xg::hypercall;
 
-        auto n = f.getName();
-        return hypercall( &f ) != vm::lx::NotHypercall ||
-               startsWith( n, "__dios_" ) ||
-               startsWith( n, "_ZN6__dios" ) ||
-               startsWith( n, "_Unwind_" ) ||
-               n == "setjmp" || n == "longjmp";
-    }
+            auto n = f.getName();
+            return hypercall( &f ) != vm::lx::NotHypercall ||
+                   startsWith( n, "__dios_" ) ||
+                   startsWith( n, "_ZN6__dios" ) ||
+                   startsWith( n, "_Unwind_" ) ||
+                   n == "setjmp" || n == "longjmp";
+        }
 
-    bool whitelisted( llvm::GlobalVariable &gv )
-    {
-        return brick::string::startsWith( gv.getName(), "__md_" );
+        bool whitelisted( llvm::GlobalVariable &gv )
+        {
+            return brick::string::startsWith( gv.getName(), "__md_" );
+        }
     }
 
     template < typename Driver, bool link_dios >
