@@ -2,29 +2,34 @@
 #include <lart/abstract/branching.h>
 
 #include <lart/support/util.h>
-#include <lart/abstract/placeholder.h>
+#include <lart/abstract/operation.h>
 
 namespace lart::abstract {
 
-void LowerToBool::run( llvm::Module & m ) {
-    auto conditional = [] ( llvm::Value * val ) {
-        return query::query( val->users() ).any( [] ( auto * u ) {
-            return llvm::isa< llvm::BranchInst >( u );
-        } );
-    };
+    void LowerToBool::run( llvm::Module & m )
+    {
+        auto brs = query::query( m ).flatten().flatten()
+            .map( query::llvmdyncast< llvm::BranchInst > )
+            .filter( query::notnull )
+            .filter( [] ( auto br ) {
+                if ( br->isConditional() )
+                    return meta::abstract::has( br->getCondition() );
+                return false;
+            } ).freeze();
 
-    APlaceholderBuilder builder;
-    for ( const auto & ph : placeholders( m ) ) {
-        auto op = ph.inst->getOperand( 0 );
-        if ( conditional( op ) ) {
-            auto cond = builder.construct< Placeholder::Type::ToBool >( ph.inst );
+        auto tag = meta::tag::operation::index;
+        auto index = m.getFunction( "lart.abstract.to_tristate" )->getMetadata( tag );
 
-            for ( auto * u : op->users() )
-                if ( auto br = llvm::dyn_cast< llvm::BranchInst >( u ) )
-                    br->setCondition( cond.inst );
-        }
+        OperationBuilder builder;
+        for ( auto * br : brs ) {
+            auto abs = llvm::cast< llvm::Instruction >( meta::get_dual( br->getCondition() ) );
+            auto cond = builder.construct< Operation::Type::ToBool >( abs );
+
+            cond.inst->setMetadata( tag, index );
+
+            br->setCondition( cond.inst );
+        };
     }
-}
 
 } // namespace lart::abstract
 

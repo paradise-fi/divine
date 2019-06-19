@@ -14,7 +14,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 
-#include <lart/abstract/placeholder.h>
+#include <lart/abstract/operation.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/util.h>
 #include <lart/analysis/edge.h>
@@ -61,10 +61,13 @@ namespace {
 
             llvm::IRBuilder<> irb( &*edgebb->getFirstInsertionPt() );
 
-            APlaceholderBuilder builder;
+            OperationBuilder builder;
 
-            auto ph = builder.construct< Placeholder::Type::Assume >( cond, irb );
-            meta::abstract::inherit( ph.inst, cond );
+            auto op = builder.construct< Operation::Type::Assume >( cond, irb );
+
+            auto abs = cond->getModule()->getFunction( "lart.abstract.assume" );
+            auto tag = meta::tag::operation::index;
+            op.inst->setMetadata( tag, abs->getMetadata( tag ) );
 
             // Correct phis after edge splitting
             replace_phis_incoming_bbs( to, from, edgebb );
@@ -82,7 +85,7 @@ namespace {
 }
 
     void AddAssumes::run( Module & m ) {
-        for ( const auto & ph : placeholders< Placeholder::Type::ToBool >( m ) )
+        for ( const auto & ph : operations< Operation::Type::ToBool >( m ) )
             for ( auto * u : ph.inst->users() )
                 if ( auto * br = llvm::dyn_cast< llvm::BranchInst >( u ) )
                     process( br );
