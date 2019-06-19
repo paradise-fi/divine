@@ -15,122 +15,12 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-    namespace {
-        using DomainData = std::tuple< std::string >;
-
-        using brick::data::Bimap;
-    } // anonymous namespace
-
-
     enum class DomainKind : uint8_t {
         scalar,
         pointer,
         content
     };
 
-
-    struct Domain : DomainData {
-        using DomainData::DomainData;
-
-        inline std::string name() const noexcept { return std::get< std::string >( *this ); }
-
-        inline auto meta( llvm::LLVMContext & ctx ) const noexcept {
-            return meta::create( ctx, name() );
-        }
-
-        static inline Domain Concrete() { return Domain( "concrete" ); }
-        static inline Domain Tristate() { return Domain( "tristate" ); }
-        static inline Domain Unknown() { return Domain( "unknown" ); }
-
-        static Domain get( llvm::Value * val ) noexcept {
-            if ( auto str = meta::abstract::get( val ) ) {
-                return Domain{ str.value() };
-            }
-            return Domain::Concrete();
-        }
-
-        static void set( llvm::Value * val, const Domain & dom ) {
-            meta::abstract::set( val, dom.name() );
-        }
-    };
-
-
-    struct DomainMetadata;
-
-    std::vector< DomainMetadata > domains( llvm::Module & m );
-
-    struct DomainMetadata {
-        DomainMetadata( llvm::Function * spec )
-            : spec( spec )
-        {}
-
-        static DomainMetadata get( llvm::Module & m, const Domain & dom ) {
-            auto doms = domains( m );
-            auto meta = std::find_if( doms.begin(), doms.end(), [&] ( const auto & data ) {
-                return data.domain() == dom;
-            } );
-
-            if ( meta != doms.end() )
-                return *meta;
-
-            UNREACHABLE( "Domain specification was not found." );
-        }
-
-        static DomainMetadata get( llvm::Module * m, const Domain & dom ) {
-            return get( *m, dom );
-        }
-
-        inline bool scalar() const noexcept { return kind() == DomainKind::scalar; }
-        inline bool pointer() const noexcept { return kind() == DomainKind::pointer; }
-        inline bool content() const noexcept { return kind() == DomainKind::content; }
-
-        Domain domain() const;
-        DomainKind kind() const;
-        llvm::Type * base_type() const;
-        llvm::Value * default_value() const;
-
-    private:
-        llvm::Function * spec;
-    };
-
-
-    struct CreateAbstractMetadata {
-        void run( llvm::Module &m );
-    };
-
-
-    inline bool is_concrete( Domain dom ) {
-        return dom == Domain::Concrete();
-    }
-
-    inline bool is_concrete( llvm::Value *val ) {
-        return is_concrete( Domain::get( val ) );
-    }
-
-    bool forbidden_propagation_by_domain( llvm::Instruction * inst, Domain dom );
-
-    bool is_propagable_in_domain( llvm::Instruction *inst, Domain dom );
-
-    bool is_transformable( llvm::Instruction *inst );
-    bool is_transformable_in_domain( llvm::Instruction *inst, Domain dom );
-
-    bool is_base_type( llvm::Module *m, llvm::Value *val );
-    bool is_base_type_in_domain( llvm::Module *m, llvm::Value *val, Domain dom );
-
-    llvm::Value * lower_constant_expr_call( llvm::ConstantExpr * ce );
-
-    namespace meta {
-        void make_duals( llvm::Value * a, llvm::Instruction * b );
-        void make_duals( llvm::Argument * arg, llvm::Instruction * inst );
-        void make_duals( llvm::Instruction * a, llvm::Instruction * b );
-
-        bool has_dual( llvm::Value * val );
-        bool has_dual( llvm::Argument * arg );
-        bool has_dual( llvm::Instruction * inst );
-
-        llvm::Value * get_dual( llvm::Value * val );
-        llvm::Value * get_dual( llvm::Argument * arg );
-        llvm::Value * get_dual( llvm::Instruction * inst );
-    } // namespace meta
+    std::string to_string( DomainKind kind );
 
 } // namespace lart::abstract
