@@ -85,6 +85,8 @@ struct DataFlowAnalysis {
         return _intervals[ val ];
     }
 
+    void add_meta( llvm::Value *value, const LatticeValue& lattice ) noexcept;
+
     IntervalMap< LatticeValue > _intervals;
 
     std::deque< Task > _tasks;
