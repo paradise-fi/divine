@@ -9,14 +9,14 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 
 #include <lart/abstract/init.h>
-#include <lart/abstract/vpa.h>
+#include <lart/abstract/annotation.h>
+#include <lart/abstract/dfa.h>
 #include <lart/abstract/decast.h>
 #include <lart/abstract/syntactic.h>
 #include <lart/abstract/branching.h>
 #include <lart/abstract/stash.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
-#include <lart/abstract/concretization.h>
 #include <lart/abstract/tainting.h>
 #include <lart/abstract/synthesize.h>
 #include <lart/abstract/interrupt.h>
@@ -24,7 +24,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-    using SubstitutionPass = ChainedPass< Concretization, Tainting, Synthesize >;
+    using SubstitutionPass = ChainedPass< Tainting, Synthesize >;
 
     struct PassWrapper {
         static PassMeta meta() {
@@ -34,12 +34,12 @@ namespace lart::abstract {
 
         void run( llvm::Module & m ) {
             auto passes = make_chained_pass( InitAbstractions()
-                                           , CreateAbstractMetadata()
-                                           , VPA()
-                                           , Decast()
-                                           , VPA() // run once more to propagate through decasted functions
-                                           , StashingPass()
+                                           , LowerAnnotations()
+                                           , DataFlowAnalysis()
+                                           // , Decast() // TODO remove after vpa reimplementation
+                                           // , DataFlowAnalysis() // run once more to propagate through decasted functions
                                            , Syntactic()
+                                           , StashingPass()
                                            , LowerToBool()
                                            , AddAssumes()
                                            , SubstitutionPass()
