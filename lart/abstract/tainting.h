@@ -6,18 +6,18 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domain.h>
-#include <lart/abstract/placeholder.h>
+#include <lart/abstract/operation.h>
 
 namespace lart::abstract {
 
     namespace {
-        const auto & TaintTable = Placeholder::TypeTable;
+        const auto & TaintTable = Operation::TypeTable;
     }
 
 
     struct Taint
     {
-        using Type = Placeholder::Type;
+        using Type = Operation::Type;
         static constexpr auto Tag = meta::tag::taint::type;
 
         static constexpr const char * prefix = "__vm_test_taint";
@@ -117,7 +117,7 @@ namespace lart::abstract {
 
     struct Tainting {
         void run( llvm::Module & m );
-        Taint dispach( const Placeholder & ph ) const;
+        Taint dispach( const Operation & ph ) const;
     };
 
     static auto taints( llvm::Module & m )

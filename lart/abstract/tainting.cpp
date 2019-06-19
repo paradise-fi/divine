@@ -8,7 +8,7 @@ namespace lart::abstract
     template< Taint::Type T >
     struct TaintBuilder
     {
-        TaintBuilder( const Placeholder & ph ) : ph( ph ) {}
+        TaintBuilder( const Operation & op ) : op( op ) {}
 
         Taint construct()
         {
@@ -18,7 +18,7 @@ namespace lart::abstract
             ASSERT( op->getReturnType() == def->getType() );
 
             std::vector< llvm::Value * > args;
-            args.push_back( operation() );
+            args.push_back( op );
             args.push_back( def );
 
             auto vals = arguments();
@@ -32,6 +32,16 @@ namespace lart::abstract
 
             auto m = module();
             auto function = util::get_or_insert_function( m, fty, name );
+
+            // set operation index
+            auto tag = meta::tag::operation::index;
+            if ( meta::has_dual( inst() ) ) {
+                if ( auto i = llvm::dyn_cast< llvm::Instruction >( dual( inst() ) ) )
+                    op->setMetadata( tag, i->getMetadata( tag ) );
+            } else {
+                if ( auto i = llvm::dyn_cast< llvm::Instruction >( inst() ) )
+                    op->setMetadata( tag, i->getMetadata( tag ) );
+            }
 
             llvm::IRBuilder<> irb( inst() );
 
@@ -153,9 +163,9 @@ namespace lart::abstract
                 return { v, d, s->getPointerOperand() };
             }
 
-            if constexpr ( Taint::unstash( T ) ) {
+            /*if constexpr ( Taint::unstash( T ) ) {
                 return { inst()->getOperand( 0 ) };
-            }
+            }*/
 
             if constexpr ( Taint::toBool( T ) || Taint::stash( T ) || T == Taint::Type::Union ) {
                 auto op = inst()->getOperand( 0 );
@@ -214,23 +224,16 @@ namespace lart::abstract
             }
 
             if constexpr ( Taint::call( T ) ) {
-                auto fn = domain_function();
+                UNREACHABLE( "Not implemented" );
+                /*auto fn = domain_function();
                 auto meta = DomainMetadata::get( module(), domain() );
                 if ( fn->getReturnType() == meta.base_type() )
                     return meta.default_value();
-                return dual( inst() );
+                return dual( inst() );*/
             }
 
-            return DomainMetadata::get( module(), domain() ).default_value();
-        }
-
-        llvm::Function * domain_function() const
-        {
-            static_assert( Taint::call( T ) );
-            std::string name = "__" + domain().name() + "_" + suffix( dual( inst() ) );
-            if ( auto fn = module()->getFunction( name ) )
-                return fn;
-            UNREACHABLE( "Unknown domain function: " + name );
+            auto ty = llvm::Type::getInt8PtrTy( module()->getContext() );
+            return llvm::ConstantPointerNull::get( ty );
         }
 
         std::string suffix( llvm::Value * val ) const
@@ -284,78 +287,75 @@ namespace lart::abstract
             return "";
         }
 
-        std::string name( llvm::Value * val ) const
+        std::string name( llvm::Value *val ) const
         {
             if ( T == Taint::Type::Union ) {
-                return domain().name() + ".union." + llvm_name( val->getType() );
+                return "lart.abstract.union." + llvm_name( val->getType() );
             }
 
             if ( auto i = llvm::dyn_cast< llvm::Instruction >( val ) ) {
-                if ( Placeholder::is( i ) )
+                if ( Operation::is( i ) )
                     return name( i->getOperand( 0 ) );
                 if ( Taint::is( i ) )
                     if ( meta::has_dual( i ) )
                         return name( meta::get_dual( i ) );
             }
 
-            return domain().name() + infix( val ) + "." + suffix( val );
+            return "lart.abstract" + infix( val ) + "." + suffix( val );
         }
 
 
-        llvm::Instruction * inst() const { return ph.inst; }
+        llvm::Instruction * inst() const { return op.inst; }
 
         llvm::Module * module() const { return inst()->getModule(); }
-
-        Domain domain() const { return Domain::get( inst() ); }
     private:
-        const Placeholder & ph;
+        const Operation & op;
     };
 
-    Taint Tainting::dispach( const Placeholder & ph ) const
+    Taint Tainting::dispach( const Operation & op ) const
     {
         using Type = Taint::Type;
-        assert( ph.level == Placeholder::Level::Concrete );
 
-        switch ( ph.type )
+        switch ( op.type )
         {
             case Type::GEP:
-                return TaintBuilder< Type::GEP >( ph ).construct();
+                return TaintBuilder< Type::GEP >( op ).construct();
             case Type::Thaw:
-                return TaintBuilder< Type::Thaw >( ph ).construct();
+                return TaintBuilder< Type::Thaw >( op ).construct();
             case Type::Freeze:
-                return TaintBuilder< Type::Freeze >( ph ).construct();
+                return TaintBuilder< Type::Freeze >( op ).construct();
             case Type::Stash:
-                return TaintBuilder< Type::Stash >( ph ).construct();
+                return TaintBuilder< Type::Stash >( op ).construct();
             case Type::Unstash:
-                return TaintBuilder< Type::Unstash >( ph ).construct();
+                return TaintBuilder< Type::Unstash >( op ).construct();
             case Type::ToBool:
-                return TaintBuilder< Type::ToBool >( ph ).construct();
+                return TaintBuilder< Type::ToBool >( op ).construct();
             case Type::Assume:
-                return TaintBuilder< Type::Assume >( ph ).construct();
+                return TaintBuilder< Type::Assume >( op ).construct();
             case Type::Store:
-                return TaintBuilder< Type::Store >( ph ).construct();
+                return TaintBuilder< Type::Store >( op ).construct();
             case Type::Load:
-                return TaintBuilder< Type::Load >( ph ).construct();
+                return TaintBuilder< Type::Load >( op ).construct();
             case Type::Cmp:
-                return TaintBuilder< Type::Cmp >( ph ).construct();
+                return TaintBuilder< Type::Cmp >( op ).construct();
             case Type::Cast:
-                return TaintBuilder< Type::Cast >( ph ).construct();
+                return TaintBuilder< Type::Cast >( op ).construct();
             case Type::Binary:
-                return TaintBuilder< Type::Binary >( ph ).construct();
+                return TaintBuilder< Type::Binary >( op ).construct();
             case Type::Lift:
-                return TaintBuilder< Type::Lift >( ph ).construct();
+                return TaintBuilder< Type::Lift >( op ).construct();
             case Type::Lower:
-                return TaintBuilder< Type::Lower >( ph ).construct();
+                return TaintBuilder< Type::Lower >( op ).construct();
             case Type::Call:
-                return TaintBuilder< Type::Call >( ph ).construct();
+                return TaintBuilder< Type::Call >( op ).construct();
             case Type::Memcpy:
-                return TaintBuilder< Type::Memcpy >( ph ).construct();
+                return TaintBuilder< Type::Memcpy >( op ).construct();
             case Type::Memmove:
-                return TaintBuilder< Type::Memmove >( ph ).construct();
+                return TaintBuilder< Type::Memmove >( op ).construct();
             case Type::Memset:
-                return TaintBuilder< Type::Memset >( ph ).construct();
+                return TaintBuilder< Type::Memset >( op ).construct();
             case Type::Union:
-                return TaintBuilder< Type::Union >( ph ).construct();
+                return TaintBuilder< Type::Union >( op ).construct();
             default:
                 UNREACHABLE( "Unsupported taint type" );
         }
@@ -364,32 +364,30 @@ namespace lart::abstract
 
     void Tainting::run( llvm::Module & m )
     {
-        const auto Concretized = Placeholder::Level::Concrete;
+        auto ops = operations( m );
 
-        auto places = placeholders< Concretized >( m );
-
-        std::partition( places.begin(), places.end(), [] ( const auto & ph ) {
-            return ph.type != Placeholder::Type::Assume;
+        std::partition( ops.begin(), ops.end(), [] ( const auto & op ) {
+            return op.type != Operation::Type::Assume;
         });
 
-        for ( const auto & ph : places ) {
-            auto taint = dispach( ph );
+        for ( const auto & op : ops ) {
+            auto taint = dispach( op );
 
-            if ( meta::has_dual( ph.inst ) ) {
-                auto concrete = meta::get_dual( ph.inst );
+            if ( meta::has_dual( op.inst ) ) {
+                auto concrete = meta::get_dual( op.inst );
                 meta::make_duals( concrete, taint.inst );
             }
 
-            meta::abstract::inherit( taint.inst, ph.inst );
-            if ( !ph.inst->user_empty() ) {
-                ph.inst->replaceAllUsesWith( taint.inst );
+            meta::abstract::inherit( taint.inst, op.inst );
+            if ( !op.inst->user_empty() ) {
+                op.inst->replaceAllUsesWith( taint.inst );
             }
-            ph.inst->eraseFromParent();
+            op.inst->eraseFromParent();
         }
 
         auto remove = query::query( m )
             .map( query::refToPtr )
-            .filter( meta::function::placeholder )
+            .filter( meta::function::operation )
             .freeze();
 
         std::for_each( remove.begin(), remove.end(), [] ( auto * fn ) { fn->eraseFromParent(); } );
