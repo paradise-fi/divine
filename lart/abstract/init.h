@@ -34,6 +34,13 @@ namespace lart::abstract {
 
             inline bool is_op() const { return name().startswith( "op_" ); }
             inline bool is_fn() const { return name().startswith( "fn_" ); }
+            inline bool is_lift() const { return name().startswith( "lift" ); }
+            inline bool is_to_tristate() const { return name() == "to_tristate"; }
+            inline bool is_assume() const { return name() == "assume"; }
+
+            inline bool is() const {
+                return is_op() || is_fn() || is_lift() || is_to_tristate() || is_assume();
+            }
         };
 
         struct Domain

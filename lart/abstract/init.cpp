@@ -53,10 +53,12 @@ namespace lart::abstract {
         return llvm::ConstantInt::get( ty, value );
     }
 
-    template< typename Ctx, typename V >
-    llvm::Constant * as_constant( Ctx &ctx, const V &values )
+    template< typename V >
+    llvm::Constant * as_constant( const V &values )
     {
-        return llvm::ConstantStruct::getAnon( ctx, values );
+        ASSERT( !values.empty() );
+        auto ty = llvm::ArrayType::get( values.front()->getType(), values.size() );
+        return llvm::ConstantArray::get( ty, values );
     }
 
     template< typename I >
@@ -68,10 +70,22 @@ namespace lart::abstract {
         fn->setMetadata( meta, node );
     }
 
+    auto functions_with_ptrefix( llvm::Module &m, llvm::StringRef prefix )
+    {
+        auto has_prefix = [&] ( auto f ) { return f->getName().startswith( prefix ); };
+        return query::query( m ).map( query::refToPtr ).filter( has_prefix ).freeze();
+    }
+
     std::vector< Namespace > abstract_namespaces( llvm::Module * m )
     {
-        if ( auto base = m->getFunction( base_constructor ) ) {
-            return query::query( base->users() )
+        auto bases = functions_with_ptrefix( *m, base_constructor );
+
+        if ( bases.empty() )
+            ERROR( "Missing abstract domain base constructor." )
+
+        std::set< Namespace > lifts;
+        for ( auto base : bases ) {
+            auto l = query::query( base->users() )
                 .map( query::llvmdyncast< llvm::CallInst > )
                 .filter( query::notnull )
                 .map( [] ( auto call ) {
@@ -84,9 +98,11 @@ namespace lart::abstract {
                     return name.take_front( name.find( "lift_any" ) - 1 );
                 } )
                 .freeze();
-        } else {
-            ERROR( "Missing abstract domain base constructor." )
+
+            lifts.insert( l.begin(), l.end() );
         }
+
+        return { lifts.begin(), lifts.end() };
     }
 
     // Sets correct indices of domain base constructor.
@@ -99,18 +115,17 @@ namespace lart::abstract {
         void run( llvm::Module & m )
         {
             // enumerate base calls
-            auto base = m.getFunction( base_constructor );
-            if ( !base )
-                ERROR( "Missing abstract domain base constructor." );
+            auto bases = functions_with_ptrefix( m, base_constructor );
+            for ( auto  base : bases ) {
+                auto base_calls = query::query( base->users() )
+                    .map( query::llvmdyncast< llvm::CallInst > )
+                    .filter( query::notnull )
+                    .freeze();
 
-            auto base_calls = query::query( base->users() )
-                .map( query::llvmdyncast< llvm::CallInst > )
-                .filter( query::notnull )
-                .freeze();
-
-            // change base call indices
-            for ( auto call : base_calls ) {
-                call->setArgOperand( 1, get_domain_index( call->getFunction() ) );
+                // change base call indices
+                for ( auto call : base_calls ) {
+                    call->setArgOperand( 1, get_domain_index( call->getFunction() ) );
+                }
             }
         }
 
@@ -161,11 +176,11 @@ namespace lart::abstract {
 
             std::vector< llvm::Constant * > domains;
             for ( const auto & dom : doms ) {
-                auto row = row_data( dom, ops );
-                domains.push_back( as_constant( ctx, row ) );
+                auto row = row_data( ctx, dom, ops );
+                domains.push_back( as_constant( row ) );
             }
 
-            auto table = as_constant( ctx, domains );
+            auto table = as_constant( domains );
 
             auto g = m.getOrInsertGlobal( name, table->getType() );
             auto global = llvm::cast< llvm::GlobalVariable >( g );
@@ -180,9 +195,7 @@ namespace lart::abstract {
         // Operations of domains index columns of VTable
         Operations operations() const
         {
-            auto is_abstractable = [] ( const auto & op ) {
-                return op.is_op() || op.is_fn();
-            };
+            auto is_abstractable = [] ( const auto & op ) { return op.is(); };
 
             auto gt = [] ( const auto &a, const auto &b ) {
                 return a.name() > b.name();
@@ -199,17 +212,22 @@ namespace lart::abstract {
             return ops;
         }
 
-        auto row_data( const D &dom, const Operations &ops ) const
+        auto row_data( llvm::LLVMContext &ctx, const D &dom, const Operations &ops ) const
         {
             std::vector< llvm::Constant * > functions;
 
             for ( const auto & op : ops ) {
-                if ( auto dop = dom->get_operation( op.name() ) ) {
-                    functions.push_back( dop->impl );
-                } else {
-                    auto stub = llvm::ConstantPointerNull::get( op.impl->getType() );
-                    functions.push_back( stub );
-                }
+                auto val = [&] () -> llvm::Constant * {
+                    if ( auto dop = dom->get_operation( op.name() ) ) {
+                        return dop->impl;
+                    } else {
+                        return llvm::ConstantPointerNull::get( op.impl->getType() );
+                    }
+                } ();
+                // let pointers to function to have uniform type
+                auto i8ptr = llvm::Type::getInt8PtrTy( ctx );
+                auto ptr = llvm::ConstantExpr::getBitCast( val, i8ptr );
+                functions.push_back( ptr );
             }
 
             return functions;
@@ -221,8 +239,9 @@ namespace lart::abstract {
     llvm::StringRef Operation::name() const
     {
         auto n = impl->getName().substr( domain->ns.size() );
-        auto len = n.take_while( [] ( auto c ) { return std::isdigit( c ); } );
-        return n.substr( len.size(), std::stoi( len.str() ) );
+        auto num = n.take_while( [] ( auto c ) { return std::isdigit( c ); } );
+        auto len = num.empty() ? std::string::npos : std::stoi( num.str() );
+        return n.substr( num.size(), len );
     }
 
     std::optional< Operation > DomainT::get_operation( llvm::StringRef name ) const
@@ -281,16 +300,11 @@ namespace lart::abstract {
         Domains doms;
 
         for ( auto ns : abstract_namespaces( _m ) ) {
-            auto in_namespace = [&] ( auto f ) { return f->getName().startswith( ns ); };
-
             auto dom = std::make_unique< DomainT >( ns );
 
-            dom->operations = query::query( *_m )
-                .map( query::refToPtr )
-                .filter( in_namespace )
+            dom->operations = query::query( functions_with_ptrefix( *_m, ns ) )
                 .map( [&] ( auto fn ) { return Operation{ fn, dom.get() }; } )
                 .freeze();
-
             doms.emplace_back( std::move( dom ) );
         }
 
