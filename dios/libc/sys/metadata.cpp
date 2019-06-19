@@ -2,6 +2,15 @@
 #include <string.h>
 #include <limits.h>
 
+/*
+ * This file contains the implementations of the metadata query functions.
+ * Additional query functions are implemented in `dios/arch/{divm, klee}/
+ * metadata.{cpp, c}`.
+ * 
+ * The four extern constants are defined by `IndexFunctions` pass over at
+ * `lart/divine/functionmeta.cpp`. They store the generated metadata tables.
+ */
+
 extern const _MD_Function __md_functions[];
 extern const int __md_functions_count;
 extern const _MD_Global __md_globals[];
