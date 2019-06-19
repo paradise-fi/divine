@@ -42,10 +42,10 @@ namespace lart::abstract::meta {
             constexpr char sources[] = "lart.abstract.aggregate.sources";
         }
 
-        namespace placeholder {
-            constexpr const char function[] = "lart.placeholder.function";
-            constexpr const char type[] = "lart.placeholder.type";
-            constexpr const char level[] = "lart.placeholder.level";
+        namespace operation {
+            constexpr const char function[] = "lart.op.function";
+            constexpr const char type[] = "lart.op.type";
+            constexpr const char index[] = "lart.op.index";
         }
 
         namespace taint {
@@ -115,7 +115,7 @@ namespace lart::abstract::meta {
 
     namespace abstract
     {
-        constexpr auto * tag = meta::tag::domains;
+        constexpr auto * tag = meta::tag::abstract;
 
         /* checks whether function has meta::tag::roots */
         bool roots( llvm::Function * fn );
@@ -146,7 +146,7 @@ namespace lart::abstract::meta {
         bool ignore_call( llvm::Function * fn ) noexcept;
         bool ignore_return( llvm::Function * fn ) noexcept;
         bool is_forbidden( llvm::Function * fn ) noexcept;
-        bool placeholder( llvm::Function * fn ) noexcept;
+        bool operation( llvm::Function * fn ) noexcept;
     } // namespace function
 
     namespace argument
@@ -179,14 +179,23 @@ namespace lart::abstract::meta {
             return query::query( llvm ).map( enumerate ).flatten().freeze();
         } else {
             static_assert( std::is_same_v< T, llvm::Function > );
-            if ( !meta::abstract::roots( &llvm ) )
-                return {};
-
             return query::query( llvm ).flatten()
                 .map( query::refToPtr )
                 .filter( meta::abstract::has< llvm::Value > )
                 .freeze();
         }
     }
+
+    void make_duals( llvm::Value * a, llvm::Instruction * b );
+    void make_duals( llvm::Argument * arg, llvm::Instruction * inst );
+    void make_duals( llvm::Instruction * a, llvm::Instruction * b );
+
+    bool has_dual( llvm::Value * val );
+    bool has_dual( llvm::Argument * arg );
+    bool has_dual( llvm::Instruction * inst );
+
+    llvm::Value * get_dual( llvm::Value * val );
+    llvm::Value * get_dual( llvm::Argument * arg );
+    llvm::Value * get_dual( llvm::Instruction * inst );
 
 } // namespace lart::abstract::meta
