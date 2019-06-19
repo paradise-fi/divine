@@ -35,6 +35,12 @@ DIVINE_UNRELAX_WARNINGS
 #include <vector>
 #include <set>
 
+/*
+ * This file contains the `CppEhTab` structure. It is used by the `IndexFunctions` pass.
+ * `CppEhTab` generates the language specific data area (LSDA), which is used by a personality
+ * routine during exception handling, for a given function.
+ */
+
 namespace lart {
 namespace divine {
 
@@ -42,8 +48,14 @@ namespace dwarf = llvm::dwarf;
 
 struct CppEhTab
 {
+    /* A type that represents the clauses of a landingpad */
     using Actions = std::vector< llvm::Constant * >;
 
+    /*
+     * A helper structure to represent an `invoke` call.
+     * It stores the basic block of the invoke itself and that of it's landingpad.
+     * It also stores the clauses of the landingpad and whether it's `cleanup`.
+     */
     struct CallSite
     {
         CallSite( llvm::Instruction *pc, llvm::BasicBlock *lb, Actions act, bool cleanup ) :
@@ -87,13 +99,15 @@ struct CppEhTab
         for ( int i = 0, end = lp->getNumClauses(); i < end; ++i )
             if ( lp->isCatch( i ) )
             {
+		// In C++, catch clauses contain a type_info pointer
                 auto *ti = lp->getClause( i )->stripPointerCasts();
                 addID( ti );
                 actions.emplace_back( ti );
             }
             else if ( lp->isFilter( i ) )
             {
-                std::vector< llvm::Constant * > filter;
+		// In C++, filter clauses contain an array of type_info pointers
+                std::vector< llvm::Constant * > filter; // Hmm...
                 auto *clause = lp->getClause( i )->stripPointerCasts();
                 iterateFilter( clause, [&]( auto *ti )
                                {
@@ -110,6 +124,10 @@ struct CppEhTab
     using ValueVec = std::vector< llvm::Value * >;
     using ConstIL = std::initializer_list< llvm::Constant * >;
 
+    /*
+     * Helpers useful for generation of the LSDA
+     */
+
     auto const_int( llvm::Type *t, int v ) { return llvm::ConstantInt::get( t, v ); };
     auto const_struct( ConstVec v, bool p ) { return llvm::ConstantStruct::getAnon( _ctx, v, p ); };
     auto const_struct( ConstIL il, bool p ) { return const_struct( ConstVec( il ), p ); }
@@ -121,8 +139,13 @@ struct CppEhTab
         return const_str( str );
     };
 
+    /*
+     * This function uses the computed information to generate a specific LSDA for the function.
+     * This is where the fun begins...
+     */
     llvm::Constant *getLSDAConst()
     {
+	// If the function has no invokes, then it won't handle exceptions, so just return nullptr
         if ( _callSites.empty() )
             return nullptr;
 
@@ -213,6 +236,9 @@ struct CppEhTab
         return lsda( offset( 1, 3 ) - offset( 0, 3 ), offset( 1, 1 ) - offset( 1, 0 ) );
     }
 
+    /*
+     * LEB128 number encoding used in DWARF format
+     */
     static void pushLeb_n( std::string &str, int32_t data, int n = -1 )
     {
         if ( n < 0 && data < 0 ) n = 4;
@@ -230,6 +256,11 @@ struct CppEhTab
             str.push_back( byte );
         } while ( todo > 0 );
     }
+
+    /*
+     * These helpers ensure that we can use integer constants to compare types in clauses,
+     * as type_info comparison would be too expensive.
+     */
 
     int typeID( llvm::Constant *c )
     {

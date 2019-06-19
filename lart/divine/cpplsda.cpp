@@ -8,6 +8,12 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Analysis/EHPersonalities.h>
 DIVINE_UNRELAX_WARNINGS
 
+/*
+ * This file contains the `AddCppLSDA` pass that is responsible for insertion
+ * of language specific data areas (LSDAs), which are used for exception handling,
+ * into the module.
+ */
+
 namespace lart {
 namespace divine {
 
@@ -23,6 +29,7 @@ struct AddCppLSDA {
         auto &ctx = mod.getContext();
         auto vptr = llvm::Type::getInt8PtrTy( ctx );
         for ( auto &fn : mod ) {
+	    // We only care about functions that have the GNU_CXX  personality function
             if ( !fn.hasPersonalityFn() ||
                  llvm::classifyEHPersonality( fn.getPersonalityFn() ) != llvm::EHPersonality::GNU_CXX )
                 continue;
@@ -30,7 +37,9 @@ struct AddCppLSDA {
             CppEhTab ehtab( fn );
             auto *lsda = ehtab.getLSDAConst();
             if ( !lsda )
-                continue;
+                continue; // This function won't catch and has no LSDA
+
+	    // Attach the LSDA as metadata of this function
             auto glo = new llvm::GlobalVariable( mod, lsda->getType(), true,
                                     llvm::GlobalValue::InternalLinkage,
                                     lsda, fn.getName() + std::string( ".cpp_lsda" ) );

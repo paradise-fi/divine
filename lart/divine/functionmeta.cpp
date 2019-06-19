@@ -24,8 +24,18 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/divm.h>
 
+/*
+ * This file contains the `IndexFunctions` pass that is responsible for
+ * metadata generation.
+ */ 
+
 namespace lart {
 namespace divine {
+
+/*
+ * Encode a single LLVM type as a character.
+ * Pointers all use the same character.
+ */ 
 
 char encLLVMBasicType( llvm::Type *t ) {
     if ( t->isVoidTy() )
@@ -36,6 +46,11 @@ char encLLVMBasicType( llvm::Type *t ) {
         return metadata::TypeSig::encodeIntTy( it->getBitWidth() );
     return metadata::TypeSig::unknownType;
 }
+
+/*
+ * Encode a function type as a string.
+ * The first character is the return type, the parameters follow after it.
+ */
 
 std::string encLLVMFunType( llvm::FunctionType *ft ) {
     std::string enc;
@@ -95,12 +110,14 @@ struct IndexFunctions {
 
     void run( llvm::Module &mod )
     {
+	// Skip if already tagged
         if ( !tagModuleWithMetadata( mod, "lart.divine.index.functions" ) )
             return;
 
         _dl = std::make_unique< llvm::DataLayout >( &mod );
 
         llvm::GlobalVariable *mdRoot = mod.getGlobalVariable( "__md_functions" );
+	// Types of _MD_Function, _MD_InstInfo, and _MD_Global
         llvm::StructType *funcMetaT = nullptr, *instMetaT = nullptr, *gloMetaT = nullptr;
 
 
