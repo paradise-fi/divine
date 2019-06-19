@@ -2,6 +2,7 @@
 #pragma once
 
 #include <rst/common.hpp>
+#include <rst/base.hpp>
 
 #include <brick-smt>
 #include <type_traits>
@@ -9,200 +10,218 @@
 namespace __dios::rst::abstract {
     namespace smt = brick::smt;
 
+    using RPN = smt::RPN< Array< uint8_t, _VM_PT_Marked > >;
+
+    template< typename T >
+    _LART_INLINE constexpr std::size_t bitwidth() noexcept
+    {
+        return std::numeric_limits< T >::digits;
+    }
+
     struct Term
     {
-        using Bitwidth = int8_t;
-        using VarID = uint16_t;
+        void * pointer = nullptr;
+
         using Op = smt::Op;
 
-        using RPN = smt::RPN< Array< uint8_t, _VM_PT_Marked > >;
-
-        RPN rpn;
-
-        template< typename T >
-        inline constexpr std::size_t bitwidth() noexcept
+        _LART_INLINE RPN& as_rpn() noexcept
         {
-            return std::numeric_limits< T >::digits;
+            return *reinterpret_cast< RPN * >( &pointer );
         }
 
-        template< typename T >
-        Term( Abstracted< T > ) noexcept;
-
-        template< typename T >
-        Term( T value ) noexcept;
-
-        Term( RPN rpn ) : rpn( rpn ) {}
-
-        Term() = default;
-        Term( const Term& ) = default;
-        Term( Term&& ) = default;
-
-        Term& operator=( const Term& ) = default;
-        Term& operator=( Term&& ) = default;
-
-        static inline Term lift_bool( bool v ) noexcept { return Term( v ); }
-        static inline Term lift_s( uint8_t v ) noexcept { return Term( v ); }
-        static inline Term lift_s( uint16_t v ) noexcept { return Term( v ); }
-        static inline Term lift_s( uint32_t v ) noexcept { return Term( v ); }
-        static inline Term lift_s( uint64_t v ) noexcept { return Term( v ); }
-
-        template< Op op, Bitwidth bw >
-        constexpr Term& apply_in_place( const Term& other ) noexcept
+        _LART_INLINE const RPN& as_rpn() const noexcept
         {
-            rpn.extend( other.rpn );
-            rpn.apply< op, bw >();
+            return *reinterpret_cast< const RPN * >( &pointer );
+        }
+
+        template< Op op >
+        constexpr Term apply_in_place( const Term& other ) noexcept
+        {
+            this->as_rpn().extend( other.as_rpn() );
+            this->as_rpn().apply< op >();
             return *this;
         }
 
-        template< Op op, Bitwidth bw >
-        constexpr Term& apply_in_place_op() noexcept
+        template< Op op >
+        constexpr Term apply_in_place_op() noexcept
         {
-            rpn.apply< op, bw >();
+            this->as_rpn().apply< op >();
             return *this;
         }
 
-        template< Op op, Bitwidth bw >
-        static Term apply( const Term& lhs, const Term& rhs ) noexcept
+        explicit operator void*() const { return pointer; }
+
+        template< typename T >
+        _LART_INLINE static RPN::Constant< T > constant( T value ) noexcept
         {
-            Term res( lhs );
-            res.rpn.extend( rhs.rpn );
-            res.rpn.apply< op, bw >();
-            return res;
+            return { -bitwidth< T >(), value };
         }
 
-        template< Op op, Bitwidth bw >
-        static Term apply( Term term ) noexcept
+        template< typename T >
+        _LART_INTERFACE static Term lift_any( Abstracted< T > ) noexcept;
+
+        template< typename T >
+        _LART_INLINE static Term lift( T value ) noexcept
         {
-            term.rpn.apply< op, bw >();
+            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            new ( ptr ) Base();
+            Term term{ ptr };
+            term.as_rpn().extend( constant( value ) );
             return term;
         }
 
-        inline bool empty() const noexcept
+        #define __lift( name, T ) \
+            _LART_INTERFACE static Term lift_one_ ## name( T value ) noexcept { \
+                return lift( value ); \
+            }
+
+        /* abstraction operations */
+        __lift( i1, bool )
+        __lift( i8, uint8_t )
+        __lift( i16, uint16_t )
+        __lift( i32, uint32_t )
+        __lift( i64, uint64_t )
+
+        __lift( float, float )
+        __lift( double, double )
+
+        _LART_INTERFACE
+        static Tristate to_tristate( Term ) noexcept
         {
-            return rpn.empty();
+            return { Tristate::Unknown };
         }
 
-        #define BINARY( name, op, bw ) \
-        friend inline Term name ## _ ## bw( const Term &a, const Term &b ) noexcept \
-        { \
-            return apply< Op::op, bw >( a, b ); \
+        template< Op op >
+        static Term binary( Term lhs, Term rhs ) noexcept
+        {
+            assert( false );
         }
 
-        #define COMPARISON( name, op ) \
-        friend inline Term name( const Term &a, const Term &b ) noexcept \
-        { \
-            return apply< Op::op, 1 >( a, b ); \
+        template< Op op >
+        static Term unary( Term arg ) noexcept
+        {
+            assert( false );
         }
 
-        #define UNARY( name, op, bw ) \
-        friend inline Term name ## _ ## bw( const Term &a ) noexcept \
-        { \
-            return apply< Op::op, bw >( a ); \
+        template< Op op >
+        _LART_INLINE static Term cmp( Term lhs, Term rhs ) noexcept
+        {
+            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            new ( ptr ) Base();
+            Term term{ ptr };
+            term.as_rpn().extend( lhs.as_rpn() );
+            term.as_rpn().extend( rhs.as_rpn() );
+            term.as_rpn().apply< op >();
+            return term;
         }
 
-        // Arithmetic operations
-        #define ARITHMETIC_OP( bw ) \
-            BINARY( op_add, BvAdd, bw ) \
-            BINARY( op_fadd, FpAdd, bw) \
-            BINARY( op_sub, BvSub, bw ) \
-            BINARY( op_fsub, FpSub, bw ) \
-            BINARY( op_mul, BvMul, bw ) \
-            BINARY( op_fmul, FpMul, bw ) \
-            BINARY( cf_udiv, BvUDiv, bw ) \
-            BINARY( cf_sdiv, BvSDiv, bw ) \
-            BINARY( cf_fdiv, FpDiv, bw ) \
-            BINARY( cf_urem, BvURem, bw ) \
-            BINARY( cf_srem, BvSRem, bw ) \
-            BINARY( cf_frem, FpRem, bw )
+        template< Op op >
+        static Term cast( Term arg, Bitwidth bw ) noexcept
+        {
+            assert( false );
+        }
 
-        ARITHMETIC_OP( 8 )
-        ARITHMETIC_OP( 16 )
-        ARITHMETIC_OP( 32 )
-        ARITHMETIC_OP( 64 )
-
-        // Bitwise operations
-        // BINARY( op_shl, BvShl )
-        // BINARY( op_lshr, BvLShr )
-        // BINARY( op_ashr, BvAShr )
-        // BINARY( op_and, BvAnd )
-        // BINARY( op_or, BvOr )
-        // BINARY( op_xor, BvXor )
-
-        // Logical operations
-        UNARY( op_not, Not, 1 )
-
-        // TODO vector operations
-        // extract element
-        // insert element
-        // shuffle vector
-
-        // TODO Memory access operations
-        // alloca
-        // load
-        // store
-        // fence
-        // cmpxchg
-        // atomicrmw
-        // getelementptr
-
-        // TODO Coversion operations
-        // trunc
-        // zext
-        // sext
-        // fptrunc
-        // fpext
-        // fptoui
-        // fptosi
-        // uitofp
-        // sitofp
-        // ptrtoint
-        // inttoptr
-        // bitcast
-        // addrspacecast
-        /* Comparison operations */
-        COMPARISON( op_ieq , Eq )
-        COMPARISON( op_ine , NE )
-        COMPARISON( op_iugt, BvUGT )
-        COMPARISON( op_iuge, BvUGE )
-        COMPARISON( op_iult, BvULT )
-        COMPARISON( op_iule, BvULE )
-        COMPARISON( op_isgt, BvSGT )
-        COMPARISON( op_isge, BvSGE )
-        COMPARISON( op_islt, BvSLT )
-        COMPARISON( op_isle, BvSLE )
-        COMPARISON( op_ffalse, FpFalse )
-        COMPARISON( op_foeq, FpOEQ )
-        COMPARISON( op_fogt, FpOGT )
-        COMPARISON( op_foge, FpOGE )
-        COMPARISON( op_folt, FpOLT )
-        COMPARISON( op_fole, FpOLE )
-        COMPARISON( op_fone, FpONE )
-        COMPARISON( op_ford, FpORD )
-        COMPARISON( op_fueq, FpUEQ )
-        COMPARISON( op_fugt, FpUGT )
-        COMPARISON( op_fuge, FpUGE )
-        COMPARISON( op_fult, FpULT )
-        COMPARISON( op_fule, FpULE )
-        COMPARISON( op_fune, FpUNE )
-        COMPARISON( op_funo, FpUNO )
-        COMPARISON( op_ftrue, FpTrue )
-
-        Tristate to_tristate() noexcept;
-
+        _LART_INLINE
         Term constrain( Term constraint, bool expect ) const noexcept;
 
-        uint8_t * pointer() const noexcept
-        {
-            return reinterpret_cast< uint8_t * >( rpn._data._data );
-        }
-
-        friend Term assume( const Term& value, const Term &constraint, bool expect ) noexcept
+        _LART_INTERFACE
+        Term static assume( Term value, Term constraint, bool expect ) noexcept
         {
             return value.constrain( constraint, expect );
         }
 
-        #undef BINARY
-        #undef UNARY
+        #define __bin( name, op ) \
+            _LART_INTERFACE static Term name( Term lhs, Term rhs ) noexcept { \
+                return binary< Op::op >( lhs, rhs ); \
+            }
+
+        #define __un( name, op ) \
+            _LART_INTERFACE static Term name( Term arg ) noexcept { \
+                return unary< Op::op >( arg ); \
+            }
+
+        #define __cmp( name, op ) \
+            _LART_INTERFACE static Term name( Term lhs, Term rhs ) noexcept { \
+                return cmp< Op::op >( lhs, rhs ); \
+            }
+
+        #define __cast( name, op ) \
+            _LART_INTERFACE static Term name( Term arg, Bitwidth bw ) noexcept { \
+                return cast< Op::op >( arg, bw ); \
+            }
+
+        /* arithmetic operations */
+        __bin( op_add, BvAdd )
+        __bin( op_fadd, FpAdd )
+        __bin( op_sub, BvSub )
+        __bin( op_fsub, FpSub )
+        __bin( op_mul, BvMul )
+        __bin( op_fmul, FpMul )
+        __bin( op_udiv, BvUDiv )
+        __bin( op_sdiv, BvSDiv )
+        __bin( op_fdiv, FpDiv )
+        __bin( op_urem, BvURem )
+        __bin( op_srem, BvSRem )
+        __bin( op_frem, FpRem )
+
+        /* logic operations */
+        // TODO __un( op_fneg )
+
+        /* bitwise operations */
+        __bin( op_shl, BvShl )
+        __bin( op_lshr, BvLShr )
+        __bin( op_ashr, BvAShr )
+        __bin( op_and, BvAnd )
+        __bin( op_or, BvOr )
+        __bin( op_xor, BvXor )
+
+        /* comparison operations */
+        __cmp( op_ffalse, FpFalse )
+        __cmp( op_foeq, FpOEQ )
+        __cmp( op_fogt, FpOGT )
+        __cmp( op_foge, FpOGE )
+        __cmp( op_folt, FpOLT )
+        __cmp( op_fole, FpOLE )
+        __cmp( op_fone, FpONE )
+        __cmp( op_ford, FpORD )
+        __cmp( op_funo, FpUNO )
+        __cmp( op_fueq, FpUEQ )
+        __cmp( op_fugt, FpUGT )
+        __cmp( op_fuge, FpUGE )
+        __cmp( op_fult, FpULT )
+        __cmp( op_fule, FpULE )
+        __cmp( op_fune, FpUNE )
+        __cmp( op_ftrue, FpTrue )
+        __cmp( op_eq, Eq );
+        __cmp( op_ne, NE );
+        __cmp( op_ugt, BvUGT );
+        __cmp( op_uge, BvUGE );
+        __cmp( op_ult, BvULT );
+        __cmp( op_ule, BvULE );
+        __cmp( op_sgt, BvSGT );
+        __cmp( op_sge, BvSGE );
+        __cmp( op_slt, BvSLT );
+        __cmp( op_sle, BvSLE );
+
+
+        /* cast operations */
+        /*__cast( op_fpext );
+        __cast( op_fptosi );
+        __cast( op_fptoui );
+        __cast( op_fptrunc );
+        __cast( op_inttoptr );
+        __cast( op_ptrtoint );
+        __cast( op_sext );
+        __cast( op_sitofp );
+        __cast( op_trunc );
+        __cast( op_uitofp );
+        __cast( op_zext );*/
+
+        #undef __un
+        #undef __bin
+        #undef __cmp
+        #undef __cast
+        #undef __lift
     };
 
     struct TermState
@@ -214,17 +233,19 @@ namespace __dios::rst::abstract {
     extern TermState __term_state;
 
     template< typename T >
-    Term::Term( Abstracted< T > ) noexcept
-        : rpn( RPN::Variable{ RPN::var< T >(), __term_state.counter++ } )
+    _LART_INLINE RPN::Variable variable() noexcept
     {
-        static_assert( std::is_integral_v< T > );
+        return { RPN::var< T >(), __term_state.counter++ };
     }
 
     template< typename T >
-    Term::Term( T value ) noexcept
-        : rpn( RPN::Constant< T >{ -bitwidth< T >(), value } )
+    _LART_INTERFACE Term Term::lift_any( Abstracted< T > ) noexcept
     {
-        static_assert( std::is_integral_v< T > );
+        auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+        new ( ptr ) Base();
+        Term term{ ptr };
+        term.as_rpn().extend( variable< T >() );
+        return term;
     }
 
     static_assert( sizeof( Term ) == 8 );
