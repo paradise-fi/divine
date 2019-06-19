@@ -8,66 +8,46 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
 #include <lart/abstract/util.h>
-#include <lart/abstract/placeholder.h>
+#include <lart/abstract/operation.h>
 
 namespace lart::abstract
 {
 
-    void union_on_branches( llvm::Module & m )
+    bool is_faultable( llvm::Instruction * inst )
     {
-        auto vals = query::query( m ).flatten().flatten()
-            .map( query::llvmdyncast< llvm::CmpInst > )
-            .filter( query::notnull )
-            .filter( [&] ( auto * cmp ) {
-                return query::any( cmp->operands(), [&] ( const auto & op ) {
-                    auto dom = Domain::get( op.get() );
-                    if ( is_concrete( dom ) || !op->getType()->isPointerTy() )
-                        return false;
-                    return DomainMetadata::get( &m, dom ).content();
-                } );
-            } )
-            .map( [] ( auto cmp ) { return cmp->getOperand( 0 ); } )
-            .map( query::llvmdyncast< llvm::Instruction > )
-            .filter( query::notnull )
-            .filter( [] ( auto val ) { return meta::has_dual( val ); } )
-            .freeze();
-
-        std::set< llvm::Instruction * > uni{ vals.begin(), vals.end() };
-
-        APlaceholderBuilder builder;
-        for ( auto val : uni ) {
-            auto ph = builder.construct< Placeholder::Type::Union >( val );
-
-            ph.inst->moveAfter( llvm::cast< llvm::Instruction >( meta::get_dual( val ) ) );
-
-            auto icmps = query::query( val->users() )
-                .map( query::llvmdyncast< llvm::CmpInst > )
-                .filter( query::notnull )
-                .freeze();
-
-            for ( auto icmp : icmps ) {
-                icmp->setOperand( 0, ph.inst );
-            }
+        using Inst = llvm::Instruction;
+        if ( auto bin = llvm::dyn_cast< llvm::BinaryOperator >( inst ) ) {
+            auto op = bin->getOpcode();
+            return op == Inst::UDiv ||
+                   op == Inst::SDiv ||
+                   op == Inst::FDiv ||
+                   op == Inst::URem ||
+                   op == Inst::SRem ||
+                   op == Inst::FRem;
         }
+
+        return llvm::isa< llvm::CallInst >( inst );
     }
 
     void Syntactic::run( llvm::Module &m ) {
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::Instruction > )
             .filter( query::notnull )
-            .filter( is_transformable )
-            // skip alredy processed instructions
-            .filter( [] ( auto * inst ) {
-                return !meta::has_dual( inst );
-            } )
             .freeze();
 
-        APlaceholderBuilder builder;
-        for ( const auto &inst : abstract ) {
+        OperationBuilder builder;
+        for ( auto * inst : abstract ) {
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
+                if ( call->getCalledFunction()->getMetadata( meta::tag::abstract ) )
+                    continue;
+            }
+
+            assert( !is_faultable( inst ) );
+            // TODO replace faultable operations by lifter handler
+            // TODO annotate it as abstract return function to unstash its value
+
             builder.construct( inst );
         }
-
-        union_on_branches( m );
     }
 
 } // namespace lart::abstract
