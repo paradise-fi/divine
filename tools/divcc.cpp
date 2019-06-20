@@ -46,13 +46,8 @@ using namespace brick::types;
 
 using FileType = cc::FileType;
 
+auto link_dios_native( std::vector< std::string > &args, bool cxx )
 {
-    using namespace brick::fs;
-int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles, bool cxx = false )
-{
-    auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
-    std::vector< const char * > ld_args_c;
-
     using namespace brick::fs;
     TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
     auto hostlib = tmpdir.path + "/libdios-host.a",
@@ -71,7 +66,17 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
     writeFile( hostlib, rt::dios_host() );
     args.push_back( hostlib );
 
+    return tmpdir;
+}
+
+int link( cc::ParsedOpts& po, cc::CC1& clang, cc::PairedFiles& objFiles, bool cxx = false )
+{
+    auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
+    std::vector< const char * > ld_args_c;
+
     std::vector< std::string > args = cc::ld_args( po, objFiles );
+
+    auto tmpdir = link_dios_native( args, cxx );
     ld_args_c.reserve( args.size() );
     for ( size_t i = 0; i < args.size(); ++i )
         ld_args_c.push_back( args[i].c_str() );
@@ -96,6 +101,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
         if ( !linked )
             throw cc::CompileError( "lld failed, not linked" );
     }
+
     std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( objFiles, clang, po.libSearchPath );
     std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
@@ -207,7 +213,7 @@ int main( int argc, char **argv )
         else
         {
             cc::compileFiles( po, clang, objFiles );
-            return compile_and_link( po, clang, objFiles, brick::string::endsWith( argv[0], "divc++" ) );
+            return link( po, clang, objFiles, brick::string::endsWith( argv[0], "divc++" ) );
         }
 
     } catch ( cc::CompileError &err ) {
