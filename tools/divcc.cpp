@@ -71,7 +71,7 @@ auto link_dios_native( std::vector< std::string > &args, bool cxx )
 
 int link( cc::ParsedOpts& po, cc::CC1& clang, cc::PairedFiles& objFiles, bool cxx = false )
 {
-    auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
+    auto drv = std::make_unique< cc::Driver >( clang.context() );
     std::vector< const char * > ld_args_c;
 
     std::vector< std::string > args = cc::ld_args( po, objFiles );
@@ -81,7 +81,7 @@ int link( cc::ParsedOpts& po, cc::CC1& clang, cc::PairedFiles& objFiles, bool cx
     for ( size_t i = 0; i < args.size(); ++i )
         ld_args_c.push_back( args[i].c_str() );
 
-    auto ld_job = diosCC->getJobs( ld_args_c ).back();
+    auto ld_job = drv->getJobs( ld_args_c ).back();
     if ( po.use_system_ld )
     {
         ld_job.args.insert( ld_job.args.begin(), ld_job.name );
