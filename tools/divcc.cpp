@@ -21,6 +21,7 @@
 #include <divine/cc/codegen.hpp>
 #include <divine/cc/filetype.hpp>
 #include <divine/cc/link.hpp>
+#include <divine/cc/native.hpp>
 #include <divine/cc/options.hpp>
 #include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
@@ -43,31 +44,14 @@ using namespace divine;
 using namespace llvm;
 using namespace brick::types;
 
-using PairedFiles = std::vector< std::pair< std::string, std::string > >;
 using FileType = cc::FileType;
 
 {
     using namespace brick::fs;
-int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
-{
-    for ( auto file : objFiles )
-    {
-        if ( file.first == "lib" )
-            continue;
-        if ( cc::is_object_type( file.first ) )
-            continue;
-        auto mod = clang.compile( file.first, po.opts );
-        cc::emit_obj_file( *mod, file.second );
-    }
-    return 0;
-}
-
 int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles, bool cxx = false )
 {
     auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
     std::vector< const char * > ld_args_c;
-
-    compile( po, clang, objFiles );
 
     using namespace brick::fs;
     TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
@@ -136,7 +120,7 @@ int main( int argc, char **argv )
         cc::CC1 clang;
         clang.allowIncludePath( "/" );
         divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
-        PairedFiles objFiles;
+        cc::PairedFiles objFiles;
 
         std::vector< std::string > opts;
         std::copy( argv + 1, argv + argc, std::back_inserter( opts ) );
@@ -219,10 +203,12 @@ int main( int argc, char **argv )
         }
 
         if ( po.toObjectOnly )
-            return compile( po, clang, objFiles );
+            return cc::compileFiles( po, clang, objFiles );
         else
-            return compile_and_link( po, clang, objFiles,
-                                     brick::string::endsWith( argv[0], "divc++" ) );
+        {
+            cc::compileFiles( po, clang, objFiles );
+            return compile_and_link( po, clang, objFiles, brick::string::endsWith( argv[0], "divc++" ) );
+        }
 
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
