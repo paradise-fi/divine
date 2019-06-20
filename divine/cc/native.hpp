@@ -33,11 +33,14 @@ namespace divine::cc
     struct Native
     {
         int compileFiles();
+        void init_ld_args();
+        void link();
 
         cc::ParsedOpts _po;
         PairedFiles _files;
         std::vector< std::string > _ld_args;
         cc::CC1 _clang;
-        bool _cxx;
+
+        ~Native();
     };
 }

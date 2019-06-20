@@ -33,7 +33,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm-c/Target.h"
-#include "lld/Common/Driver.h"
+
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
@@ -69,56 +69,6 @@ auto link_dios_native( std::vector< std::string > &args, bool cxx )
     return tmpdir;
 }
 
-int link( cc::ParsedOpts& po, cc::CC1& clang, cc::PairedFiles& objFiles, bool cxx = false )
-{
-    auto drv = std::make_unique< cc::Driver >( clang.context() );
-    std::vector< const char * > ld_args_c;
-
-    std::vector< std::string > args = cc::ld_args( po, objFiles );
-
-    auto tmpdir = link_dios_native( args, cxx );
-    ld_args_c.reserve( args.size() );
-    for ( size_t i = 0; i < args.size(); ++i )
-        ld_args_c.push_back( args[i].c_str() );
-
-    auto ld_job = drv->getJobs( ld_args_c ).back();
-    if ( po.use_system_ld )
-    {
-        ld_job.args.insert( ld_job.args.begin(), ld_job.name );
-        auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, ld_job.args );
-        if ( !r )
-            throw cc::CompileError( "failed to link, ld exited with " + to_string( r ) );
-    }
-    else
-    {
-        ld_job.args.insert( ld_job.args.begin(), "divcc" );
-        std::vector< const char * > lld_job_c;
-        lld_job_c.reserve( ld_job.args.size() );
-        for ( size_t i = 0; i < ld_job.args.size(); ++i )
-            lld_job_c.push_back( ld_job.args[i].c_str() );
-
-        bool linked = lld::elf::link( lld_job_c, false );
-        if ( !linked )
-            throw cc::CompileError( "lld failed, not linked" );
-    }
-
-    std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( objFiles, clang, po.libSearchPath );
-    std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
-
-    cc::addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
-
-    for ( auto file : objFiles )
-    {
-        if ( cc::is_object_type( file.first ) )
-            continue;
-        std::string ofn = file.second;
-        unlink( ofn.c_str() );
-    }
-
-    return 0;
-}
-
-
 /* usage: same as gcc */
 int main( int argc, char **argv )
 {
@@ -137,11 +87,11 @@ int main( int argc, char **argv )
         using namespace brick::fs;
         using divine::rt::includeDir;
 
-        auto drv = std::make_unique< cc::Driver >( clang.context() );
+        auto driver = std::make_unique< cc::Driver >( clang.context() );
 
         po.opts.insert( po.opts.end(),
-                        drv->commonFlags.begin(),
-                        drv->commonFlags.end() );
+                        driver->commonFlags.begin(),
+                        driver->commonFlags.end() );
 
         po.opts.insert( po.opts.end(), {
                         "-isystem", joinPath( includeDir, "libcxx/include" )
@@ -215,7 +165,15 @@ int main( int argc, char **argv )
         else
         {
             nativeCC.compileFiles();
-            return link( po, clang, pairedFiles, brick::string::endsWith( argv[0], "divc++" ) );
+            nativeCC.init_ld_args();
+            auto tmpdir = link_dios_native( nativeCC._ld_args, brick::string::endsWith( argv[0], "divc++" ) );
+            nativeCC.link();
+
+            std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( pairedFiles, clang, po.libSearchPath );
+            std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
+
+            cc::addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
+            return 0;
         }
 
     } catch ( cc::CompileError &err ) {
