@@ -46,28 +46,8 @@ using namespace brick::types;
 using PairedFiles = std::vector< std::pair< std::string, std::string > >;
 using FileType = cc::FileType;
 
-
-void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )
 {
     using namespace brick::fs;
-
-    TempDir workdir( ".divine.addSection.XXXXXX", AutoDelete::Yes,
-                     UseSystemTemp::Yes );
-    auto secpath = joinPath( workdir, "sec" );
-    std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
-    secf << sectionData;
-    secf.close();
-
-    auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, "objcopy",
-                                  "--remove-section", sectionName, // objcopy can't override section
-                                  "--add-section", sectionName + "=" +  secpath,
-                                  "--set-section-flags", sectionName + "=noload,readonly",
-                                  filepath );
-    if ( !r )
-        throw cc::CompileError( "could not add section " + sectionName + " to " + filepath
-                        + ", objcopy exited with " + to_string( r ) );
-}
-
 int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
 {
     for ( auto file : objFiles )
@@ -82,46 +62,12 @@ int compile( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
     return 0;
 }
 
-std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles )
-{
-    std::vector< std::string > args;
-
-    for ( auto op : po.opts )
-        args.push_back( op );
-    for ( auto path : po.libSearchPath )
-        args.push_back( "-L" + path );
-    if ( po.outputFile != "" )
-    {
-        args.push_back( "-o" );
-        args.push_back( po.outputFile );
-    }
-
-    for ( auto file : objFiles )
-    {
-        if ( file.first == "lib" )
-        {
-            args.push_back( "-l" + file.second );
-            continue;
-        }
-
-        if ( cc::is_object_type( file.first ) )
-            args.push_back( file.first );
-        else
-            args.push_back( file.second );
-    }
-    args.insert( args.begin(), "divcc" );
-
-    return args;
-}
-
 int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles, bool cxx = false )
 {
     auto diosCC = std::make_unique< rt::DiosCC >( clang.context() );
     std::vector< const char * > ld_args_c;
 
     compile( po, clang, objFiles );
-
-    std::vector< std::string > args = ld_args( po, objFiles );
 
     using namespace brick::fs;
     TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
@@ -141,6 +87,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
     writeFile( hostlib, rt::dios_host() );
     args.push_back( hostlib );
 
+    std::vector< std::string > args = cc::ld_args( po, objFiles );
     ld_args_c.reserve( args.size() );
     for ( size_t i = 0; i < args.size(); ++i )
         ld_args_c.push_back( args[i].c_str() );
@@ -168,7 +115,7 @@ int compile_and_link( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles,
     std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( objFiles, clang, po.libSearchPath );
     std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
-    addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
+    cc::addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
 
     for ( auto file : objFiles )
     {

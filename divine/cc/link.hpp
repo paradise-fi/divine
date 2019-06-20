@@ -1,4 +1,5 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+#pragma once
 
 /*
  * (c) 2017 Jan Horáček <me@apophis.cz>
@@ -20,6 +21,7 @@
 #include <memory>
 #include <divine/cc/cc1.hpp>
 #include <divine/cc/filetype.hpp>
+#include <divine/cc/options.hpp>
 #include <divine/vm/xg-code.hpp>
 
 DIVINE_RELAX_WARNINGS
@@ -59,6 +61,9 @@ namespace divine::cc
             return brick::string::startsWith( gv.getName(), "__md_" );
         }
     }
+
+    void addSection( std::string filepath, std::string sectionName, const std::string &sectionData );
+    std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles );
 
     template < typename Driver, bool link_dios >
     std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang,
