@@ -17,6 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
 
 namespace divine::cc
@@ -29,5 +30,14 @@ namespace divine::cc
      */
     using PairedFiles = std::vector< std::pair< std::string, std::string > >;
 
-    int compileFiles( ParsedOpts& po, CC1& clang, PairedFiles& objFiles );
+    struct Native
+    {
+        int compileFiles();
+
+        cc::ParsedOpts _po;
+        PairedFiles _files;
+        std::vector< std::string > _ld_args;
+        cc::CC1 _clang;
+        bool _cxx;
+    };
 }

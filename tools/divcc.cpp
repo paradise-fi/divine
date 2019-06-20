@@ -123,14 +123,16 @@ int link( cc::ParsedOpts& po, cc::CC1& clang, cc::PairedFiles& objFiles, bool cx
 int main( int argc, char **argv )
 {
     try {
-        cc::CC1 clang;
+        cc::Native nativeCC;
+        cc::CC1& clang = nativeCC._clang;
         clang.allowIncludePath( "/" );
         divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
-        cc::PairedFiles objFiles;
 
         std::vector< std::string > opts;
         std::copy( argv + 1, argv + argc, std::back_inserter( opts ) );
-        auto po = cc::parseOpts( opts );
+        nativeCC._po = cc::parseOpts( opts );
+        auto& po = nativeCC._po;
+        auto& pairedFiles = nativeCC._files;
 
         using namespace brick::fs;
         using divine::rt::includeDir;
@@ -199,21 +201,21 @@ int main( int argc, char **argv )
 
                 if ( cc::is_object_type( ifn ) )
                     ofn = ifn;
-                objFiles.emplace_back( ifn, ofn );
+                pairedFiles.emplace_back( ifn, ofn );
             }
             else
             {
                 assert( srcFile.is< cc::Lib >() );
-                objFiles.emplace_back( "lib", srcFile.get< cc::Lib >().name );
+                pairedFiles.emplace_back( "lib", srcFile.get< cc::Lib >().name );
             }
         }
 
         if ( po.toObjectOnly )
-            return cc::compileFiles( po, clang, objFiles );
+            return nativeCC.compileFiles();
         else
         {
-            cc::compileFiles( po, clang, objFiles );
-            return link( po, clang, objFiles, brick::string::endsWith( argv[0], "divc++" ) );
+            nativeCC.compileFiles();
+            return link( po, clang, pairedFiles, brick::string::endsWith( argv[0], "divc++" ) );
         }
 
     } catch ( cc::CompileError &err ) {

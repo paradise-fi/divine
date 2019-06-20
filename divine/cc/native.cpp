@@ -18,21 +18,22 @@
 
 #include <divine/cc/codegen.hpp>
 #include <divine/cc/link.hpp>
+#include <divine/cc/native.hpp>
 #include <divine/cc/options.hpp>
 
 #include <brick-proc>
 
 namespace divine::cc
 {
-    int compileFiles( cc::ParsedOpts& po, cc::CC1& clang, PairedFiles& objFiles )
+    int Native::compileFiles()
     {
-        for ( auto file : objFiles )
+        for ( auto file : _files )
         {
             if ( file.first == "lib" )
                 continue;
             if ( cc::is_object_type( file.first ) )
                 continue;
-            auto mod = clang.compile( file.first, po.opts );
+            auto mod = _clang.compile( file.first, _po.opts );
             cc::emit_obj_file( *mod, file.second );
         }
         return 0;
