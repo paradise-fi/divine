@@ -165,7 +165,6 @@ int main( int argc, char **argv )
         else
         {
             nativeCC.compile_files();
-            nativeCC.init_ld_args();
             auto tmpdir = link_dios_native( nativeCC._ld_args, brick::string::endsWith( argv[0], "divc++" ) );
             nativeCC.link();
 

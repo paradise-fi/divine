@@ -46,11 +46,14 @@ namespace divine::cc
 
     void Native::init_ld_args()
     {
-        _ld_args = cc::ld_args( _po, _files );
+        if ( _ld_args.empty() )
+            _ld_args = cc::ld_args( _po, _files );
     }
 
     void Native::link()
     {
+        init_ld_args();
+
         auto drv = std::make_unique< cc::Driver >( _clang.context() );
         std::vector< const char * > ld_args_c;
 
