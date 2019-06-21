@@ -1,6 +1,7 @@
 #pragma once
 
 #include <divine/cc/driver.hpp>
+#include <divine/cc/native.hpp>
 #include <divine/rt/runtime.hpp>
 
 namespace divine {
@@ -26,6 +27,14 @@ struct DiosCC : cc::Driver
 
     void link_dios_config( std::string cfg );
     void build( cc::ParsedOpts po );
+};
+
+struct NativeDiosCC : cc::Native
+{
+    auto link_dios_native( bool cxx );
+    void link();
+
+    bool _cxx;
 };
 
 } // rt

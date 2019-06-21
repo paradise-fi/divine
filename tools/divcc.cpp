@@ -46,34 +46,11 @@ using namespace brick::types;
 
 using FileType = cc::FileType;
 
-auto link_dios_native( std::vector< std::string > &args, bool cxx )
-{
-    using namespace brick::fs;
-    TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
-    auto hostlib = tmpdir.path + "/libdios-host.a",
-         cxxlib  = tmpdir.path + "/libc++.a",
-         cxxabi  = tmpdir.path + "/libc++abi.a";
-
-    if ( cxx )
-    {
-        args.push_back( "--driver-mode=g++" );
-        args.push_back( "-stdlib=libc++" );
-        args.push_back( "-L" + tmpdir.path );
-        writeFile( cxxlib, rt::libcxx() );
-        writeFile( cxxabi, rt::libcxxabi() );
-    }
-
-    writeFile( hostlib, rt::dios_host() );
-    args.push_back( hostlib );
-
-    return tmpdir;
-}
-
 /* usage: same as gcc */
 int main( int argc, char **argv )
 {
     try {
-        cc::Native nativeCC;
+        rt::NativeDiosCC nativeCC;
         cc::CC1& clang = nativeCC._clang;
         clang.allowIncludePath( "/" );
         divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
@@ -165,7 +142,7 @@ int main( int argc, char **argv )
         else
         {
             nativeCC.compile_files();
-            auto tmpdir = link_dios_native( nativeCC._ld_args, brick::string::endsWith( argv[0], "divc++" ) );
+            nativeCC._cxx = brick::string::endsWith( argv[0], "divc++" );
             nativeCC.link();
 
             std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( pairedFiles, clang, po.libSearchPath );
