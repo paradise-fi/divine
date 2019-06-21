@@ -58,7 +58,7 @@ llvm_map_components_to_libnames( CC_TGTS ${LLVM_TARGETS_TO_BUILD} )
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject LLVMTransformUtils ${CC_TGTS}
-                                 clang clangBasic clangCodeGen )
+                                 clang clangBasic clangCodeGen lldELF )
 target_link_libraries( divine-smt ${Z3_LIBRARIES} ${STP_LIBRARIES} )
 target_link_libraries( divine-dbg divine-vm )
 target_link_libraries( divine-mc divine-vm divine-dbg divine-smt divine-rt divine-cc # FIXME divine-cc
