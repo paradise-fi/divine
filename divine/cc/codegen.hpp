@@ -1,4 +1,5 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+#pragma once
 
 /*
  * (c) 2019 Zuzana Baranová <xbaranov@fi.muni.cz>
@@ -15,7 +16,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#pragma once
 
 #include <llvm/IR/Module.h>
 

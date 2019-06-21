@@ -32,7 +32,7 @@ namespace divine::cc
 
     struct Native
     {
-        int compileFiles();
+        int compile_files();
         void init_ld_args();
         void link();
 

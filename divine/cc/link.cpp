@@ -29,7 +29,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
-    void addSection( std::string filepath, std::string sectionName, const std::string &sectionData )
+    void add_section( std::string filepath, std::string section_name, const std::string &section_data )
     {
         using namespace brick::fs;
 
@@ -37,20 +37,20 @@ namespace divine::cc
                         UseSystemTemp::Yes );
         auto secpath = joinPath( workdir, "sec" );
         std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
-        secf << sectionData;
+        secf << section_data;
         secf.close();
 
         auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, "objcopy",
-                                    "--remove-section", sectionName, // objcopy can't override section
-                                    "--add-section", sectionName + "=" +  secpath,
-                                    "--set-section-flags", sectionName + "=noload,readonly",
+                                    "--remove-section", section_name, // objcopy can't override section
+                                    "--add-section", section_name + "=" +  secpath,
+                                    "--set-section-flags", section_name + "=noload,readonly",
                                     filepath );
         if ( !r )
-            throw cc::CompileError( "could not add section " + sectionName + " to " + filepath
+            throw cc::CompileError( "could not add section " + section_name + " to " + filepath
                             + ", objcopy exited with " + to_string( r ) );
     }
 
-    std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles )
+    std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& files )
     {
         std::vector< std::string > args;
 
@@ -64,7 +64,7 @@ namespace divine::cc
             args.push_back( po.outputFile );
         }
 
-        for ( auto file : objFiles )
+        for ( auto file : files )
         {
             if ( file.first == "lib" )
             {

@@ -62,8 +62,8 @@ namespace divine::cc
         }
     }
 
-    void addSection( std::string filepath, std::string sectionName, const std::string &sectionData );
-    std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& objFiles );
+    void add_section( std::string filepath, std::string section_name, const std::string &section_data );
+    std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& files );
 
     template < typename Driver, bool link_dios >
     std::unique_ptr< llvm::Module > link_bitcode( PairedFiles& files, cc::CC1& clang,

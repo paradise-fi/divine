@@ -30,7 +30,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
-    int Native::compileFiles()
+    int Native::compile_files()
     {
         for ( auto file : _files )
         {

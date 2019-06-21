@@ -161,10 +161,10 @@ int main( int argc, char **argv )
         }
 
         if ( po.toObjectOnly )
-            return nativeCC.compileFiles();
+            return nativeCC.compile_files();
         else
         {
-            nativeCC.compileFiles();
+            nativeCC.compile_files();
             nativeCC.init_ld_args();
             auto tmpdir = link_dios_native( nativeCC._ld_args, brick::string::endsWith( argv[0], "divc++" ) );
             nativeCC.link();
@@ -172,7 +172,7 @@ int main( int argc, char **argv )
             std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( pairedFiles, clang, po.libSearchPath );
             std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
 
-            cc::addSection( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
+            cc::add_section( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
             return 0;
         }
 

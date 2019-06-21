@@ -38,7 +38,6 @@ using namespace llvm;
 
 namespace divine::cc
 {
-
     struct PM_BC : legacy::PassManager
     {
         MCStreamer* mc = nullptr;
@@ -76,9 +75,12 @@ namespace divine::cc
 
         TargetOptions opt;
         auto RM = Reloc::Model();
-        std::unique_ptr< llvm::TargetMachine > TargetMachine{ Target->createTargetMachine( TargetTriple, CPU, Features, opt, RM ) };
 
-        m.setDataLayout( TargetMachine->createDataLayout() );
+        using TargetPtr = std::unique_ptr< llvm::TargetMachine >;
+        TargetPtr tmach{ Target->createTargetMachine( TargetTriple, CPU,
+                                                      Features, opt, RM ) };
+
+        m.setDataLayout( tmach->createDataLayout() );
         m.setTargetTriple( TargetTriple );
 
         std::error_code EC;
@@ -92,8 +94,8 @@ namespace divine::cc
 
         PM_BC PM;
 
-        if ( TargetMachine->addPassesToEmitFile( PM, dest, nullptr,
-                                                 TargetMachine::CGFT_ObjectFile, false ) )
+        if ( tmach->addPassesToEmitFile( PM, dest, nullptr,
+                                         TargetMachine::CGFT_ObjectFile, false ) )
         {
             errs() << "TargetMachine can't emit a file of this type\n";
             return 1;
@@ -101,7 +103,8 @@ namespace divine::cc
 
         MCStreamer *AsmStreamer = PM.mc;
         // write bitcode into section .llvmbc
-        AsmStreamer->SwitchSection( AsmStreamer->getContext().getELFSection( llvm_section_name, ELF::SHT_NOTE, 0 ) );
+        AsmStreamer->SwitchSection( AsmStreamer->getContext().getELFSection( llvm_section_name,
+                                                                             ELF::SHT_NOTE, 0 ) );
         std::string bytes = brick::llvm::getModuleBytes( &m );
         AsmStreamer->EmitBytes( bytes );
 
