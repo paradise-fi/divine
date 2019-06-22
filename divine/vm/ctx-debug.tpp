@@ -21,11 +21,11 @@
 #include <divine/vm/memory.tpp>
 #include <divine/vm/program.hpp>
 
-namespace divine::vm
+namespace divine::vm::ctx
 {
 
     template< typename next >
-    void ctx_debug< next >::debug_save()
+    void debug_i< next >::debug_save()
     {
         if ( this->heap().can_snapshot() )
         {
@@ -35,7 +35,7 @@ namespace divine::vm
     }
 
     template< typename next >
-    void ctx_debug< next >::debug_restore()
+    void debug_i< next >::debug_restore()
     {
         if ( !this->heap().can_snapshot() )
             return;
@@ -63,7 +63,7 @@ namespace divine::vm
     }
 
     template< typename next >
-    void ctx_legacy< next >::trace( TraceLeakCheck )
+    void legacy_i< next >::trace( TraceLeakCheck )
     {
         bool flagged = false;
         auto leak = [&]( HeapPointer ptr )
@@ -96,7 +96,7 @@ namespace divine::vm
     }
 
     template< typename next >
-    bool ctx_debug< next >::enter_debug()
+    bool debug_i< next >::enter_debug()
     {
         if ( !debug_allowed() )
             -- this->_state.instruction_counter; /* dbg.call does not count */
@@ -117,7 +117,7 @@ namespace divine::vm
     }
 
     template< typename next >
-    void ctx_debug< next >::leave_debug()
+    void debug_i< next >::leave_debug()
     {
         ASSERT( debug_allowed() );
         ASSERT( debug_mode() );

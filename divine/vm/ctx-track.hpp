@@ -21,10 +21,29 @@
 #include <divine/vm/pointer.hpp>
 #include <unordered_set>
 
-namespace divine::vm
+namespace divine::vm::ctx
 {
     template< typename next >
-    struct track_loops : next
+    struct track_nothing_i : next
+    {
+        static_assert( !next::has_debug_mode );
+
+        bool test_loop( CodePointer, int )
+        {
+            return !this->flags_all( _VM_CF_IgnoreLoop );
+        }
+
+        bool test_crit( CodePointer, GenericPointer, int, int )
+        {
+            return !this->flags_all( _VM_CF_IgnoreCrit );
+        }
+
+        bool track_test( Interrupt::Type, CodePointer ) { return true; }
+        void reset_interrupted() {}
+    };
+
+    template< typename next >
+    struct track_loops_i : next
     {
         static_assert( !next::has_debug_mode );
 
@@ -61,4 +80,7 @@ namespace divine::vm
             loops.emplace_back();
         }
     };
+
+    using track_nothing = m< track_nothing_i >;
+    using track_loops = m< track_loops_i >;
 }
