@@ -144,11 +144,6 @@ int main( int argc, char **argv )
             nativeCC.compile_files();
             nativeCC._cxx = brick::string::endsWith( argv[0], "divc++" );
             nativeCC.link();
-
-            std::unique_ptr< llvm::Module > mod = cc::link_bitcode< rt::DiosCC, true >( pairedFiles, clang, po.libSearchPath );
-            std::string file_out = po.outputFile != "" ? po.outputFile : "a.out";
-
-            cc::add_section( file_out, cc::llvm_section_name, clang.serializeModule( *mod ) );
             return 0;
         }
 

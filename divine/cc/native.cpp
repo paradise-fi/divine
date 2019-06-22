@@ -81,6 +81,15 @@ namespace divine::cc
             if ( !linked )
                 throw cc::CompileError( "lld failed, not linked" );
         }
+
+        std::unique_ptr< llvm::Module > mod = link_bitcode();
+        std::string file_out = _po.outputFile != "" ? _po.outputFile : "a.out";
+        cc::add_section( file_out, cc::llvm_section_name, _clang.serializeModule( *mod ) );
+    }
+
+    std::unique_ptr< llvm::Module > Native::link_bitcode()
+    {
+        return cc::link_bitcode< cc::Driver, false >( _files, _clang, _po.libSearchPath );
     }
 
     Native::~Native()
