@@ -32,6 +32,8 @@ namespace divine::cc
 
     struct Native
     {
+        Native( const std::vector< std::string >& args );
+
         int compile_files();
         void init_ld_args();
         void link();

@@ -49,7 +49,6 @@ int main( int argc, char **argv )
     try {
         rt::NativeDiosCC nativeCC;
         cc::CC1& clang = nativeCC._clang;
-        clang.allowIncludePath( "/" );
         divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
 
         std::vector< std::string > opts;
@@ -60,11 +59,6 @@ int main( int argc, char **argv )
 
         using namespace brick::fs;
 
-        auto driver = std::make_unique< cc::Driver >( clang.context() );
-
-        po.opts.insert( po.opts.end(),
-                        driver->commonFlags.begin(),
-                        driver->commonFlags.end() );
 
         rt::add_dios_header_paths( po.opts );
 

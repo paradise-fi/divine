@@ -30,6 +30,16 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
+    Native::Native( const std::vector< std::string >& opts )
+    {
+        auto driver = std::make_unique< cc::Driver >( _clang.context() );
+        _po = cc::parseOpts( opts );
+        _po.opts.insert( _po.opts.end(),
+                         driver->commonFlags.begin(),
+                         driver->commonFlags.end() );
+        _clang.allowIncludePath( "/" );
+    }
+
     int Native::compile_files()
     {
         for ( auto file : _files )
