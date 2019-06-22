@@ -21,6 +21,7 @@
 #include <divine/vm/eval.hpp>
 #include <divine/vm/memory.tpp>
 #include <divine/vm/opnames.hpp>
+#include <divine/vm/context.tpp>
 #include <brick-tuple>
 
 namespace divine::vm
