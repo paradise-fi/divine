@@ -108,6 +108,37 @@ namespace divine::cc
         cc::add_section( file_out, cc::llvm_section_name, _clang.serializeModule( *mod ) );
     }
 
+    int Native::run()
+    {
+        // count files, i.e. not libraries
+        auto num_files = std::count_if( _po.files.begin(), _po.files.end(),
+                                        []( cc::FileEntry f ){ return f.is< cc::File >(); } );
+
+        if ( num_files > 1 && _po.outputFile != ""
+             && ( _po.preprocessOnly || _po.toObjectOnly ) )
+        {
+            std::cerr << "Cannot specify -o with multiple files" << std::endl;
+            return 1;
+        }
+
+        if ( _po.preprocessOnly )
+        {
+            preprocess_only();
+            return 0;
+        }
+
+        construct_paired_files();
+
+        if ( _po.toObjectOnly )
+            return compile_files();
+        else
+        {
+            compile_files();
+            link();
+            return 0;
+        }
+    }
+
     std::unique_ptr< llvm::Module > Native::link_bitcode()
     {
         return cc::link_bitcode< cc::Driver, false >( _files, _clang, _po.libSearchPath );

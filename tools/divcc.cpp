@@ -17,52 +17,22 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/cc/cc1.hpp>
-#include <divine/cc/codegen.hpp>
-#include <divine/cc/filetype.hpp>
-#include <divine/cc/link.hpp>
+#include <divine/cc/cc1.hpp> //CompileError
 #include <divine/cc/native.hpp>
-#include <divine/cc/options.hpp>
 #include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
 #include <divine/ui/version.hpp>
 
-DIVINE_RELAX_WARNINGS
-#include "llvm/CodeGen/AsmPrinter.h"
-#include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/Object/IRObjectFile.h"
-DIVINE_UNRELAX_WARNINGS
-
-#include <brick-llvm>
-#include <brick-string>
-#include <brick-proc>
 
 using namespace divine;
-using namespace llvm;
-using namespace brick::types;
-
-using FileType = cc::FileType;
 
 /* usage: same as gcc */
 int main( int argc, char **argv )
 {
     try {
         rt::NativeDiosCC nativeCC( { argv + 1, argv + argc } );
-        cc::CC1& clang = nativeCC._clang;
+        nativeCC._cxx = brick::string::endsWith( argv[0], "divc++" );
         auto& po = nativeCC._po;
-
-        // count files, i.e. not libraries
-        auto num_files = std::count_if( po.files.begin(), po.files.end(),
-                                        []( cc::FileEntry f ){ return f.is< cc::File >(); } );
-
-        if ( num_files > 1 && po.outputFile != ""
-             && ( po.preprocessOnly || po.toObjectOnly ) )
-        {
-            std::cerr << "Cannot specify -o with multiple files" << std::endl;
-            return 1;
-        }
-
-        using namespace clang;
 
         if ( po.hasHelp || po.hasVersion )
         {
@@ -73,23 +43,7 @@ int main( int argc, char **argv )
             return 0;
         }
 
-        if ( po.preprocessOnly )
-        {
-            nativeCC.preprocess_only();
-            return 0;
-        }
-
-        nativeCC.construct_paired_files();
-
-        if ( po.toObjectOnly )
-            return nativeCC.compile_files();
-        else
-        {
-            nativeCC.compile_files();
-            nativeCC._cxx = brick::string::endsWith( argv[0], "divc++" );
-            nativeCC.link();
-            return 0;
-        }
+        return nativeCC.run();
 
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
