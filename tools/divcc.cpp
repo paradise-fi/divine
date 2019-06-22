@@ -50,10 +50,6 @@ int main( int argc, char **argv )
         rt::NativeDiosCC nativeCC( { argv + 1, argv + argc } );
         cc::CC1& clang = nativeCC._clang;
         auto& po = nativeCC._po;
-        auto& pairedFiles = nativeCC._files;
-
-        using namespace brick::fs;
-
 
         // count files, i.e. not libraries
         auto num_files = std::count_if( po.files.begin(), po.files.end(),
@@ -89,32 +85,7 @@ int main( int argc, char **argv )
             return 0;
         }
 
-        for ( auto srcFile : po.files )
-        {
-            if ( srcFile.is< cc::File >() )
-            {
-                std::string ifn = srcFile.get< cc::File >().name;
-                std::string ofn = dropExtension( ifn );
-                ofn = splitFileName( ofn ).second;
-                if ( po.outputFile != "" && po.toObjectOnly )
-                    ofn = po.outputFile;
-                else
-                {
-                    if ( !po.toObjectOnly )
-                        ofn += ".divcc.temp";
-                    ofn += ".o";
-                }
-
-                if ( cc::is_object_type( ifn ) )
-                    ofn = ifn;
-                pairedFiles.emplace_back( ifn, ofn );
-            }
-            else
-            {
-                assert( srcFile.is< cc::Lib >() );
-                pairedFiles.emplace_back( "lib", srcFile.get< cc::Lib >().name );
-            }
-        }
+        nativeCC.construct_paired_files();
 
         if ( po.toObjectOnly )
             return nativeCC.compile_files();

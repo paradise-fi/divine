@@ -102,6 +102,38 @@ namespace divine::cc
         return cc::link_bitcode< cc::Driver, false >( _files, _clang, _po.libSearchPath );
     }
 
+    void Native::construct_paired_files()
+    {
+        using namespace brick::fs;
+
+        for ( auto srcFile : _po.files )
+        {
+            if ( srcFile.is< cc::File >() )
+            {
+                std::string ifn = srcFile.get< cc::File >().name;
+                std::string ofn = dropExtension( ifn );
+                ofn = splitFileName( ofn ).second;
+                if ( _po.outputFile != "" && _po.toObjectOnly )
+                    ofn = _po.outputFile;
+                else
+                {
+                    if ( !_po.toObjectOnly )
+                        ofn += ".divcc.temp";
+                    ofn += ".o";
+                }
+
+                if ( cc::is_object_type( ifn ) )
+                    ofn = ifn;
+                _files.emplace_back( ifn, ofn );
+            }
+            else
+            {
+                assert( srcFile.is< cc::Lib >() );
+                _files.emplace_back( "lib", srcFile.get< cc::Lib >().name );
+            }
+        }
+    }
+
     Native::~Native()
     {
         if ( !_po.toObjectOnly )
