@@ -33,7 +33,8 @@ namespace divine::mc
     {
         using Eval = vm::Eval< ExecContext >;
         auto &program = _bc->program();
-        ExecContext _ctx( program );
+        ExecContext _ctx;
+        _ctx.program( program );
         Eval eval( _ctx );
 
         vm::setup::boot( _ctx );
