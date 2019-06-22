@@ -1,6 +1,7 @@
 #pragma once
 
 #include <divine/cc/driver.hpp>
+#include <divine/cc/link.hpp>
 #include <divine/cc/native.hpp>
 #include <divine/rt/runtime.hpp>
 
@@ -32,6 +33,7 @@ struct DiosCC : cc::Driver
 struct NativeDiosCC : cc::Native
 {
     auto link_dios_native( bool cxx );
+    std::unique_ptr< llvm::Module > link_bitcode() override;
     void link();
 
     bool _cxx;

@@ -1,5 +1,8 @@
 #include <divine/rt/dios-cc.hpp>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/Module.h>
+DIVINE_UNRELAX_WARNINGS
 namespace divine {
 namespace rt {
 
@@ -65,6 +68,11 @@ auto NativeDiosCC::link_dios_native( bool cxx )
     _ld_args.push_back( hostlib );
 
     return tmpdir;
+}
+
+std::unique_ptr< llvm::Module > NativeDiosCC::link_bitcode()
+{
+    return cc::link_bitcode< rt::DiosCC, true >( _files, _clang, _po.libSearchPath );
 }
 
 void NativeDiosCC::link()
