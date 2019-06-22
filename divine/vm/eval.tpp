@@ -20,6 +20,7 @@
 #pragma once
 #include <divine/vm/eval.hpp>
 #include <divine/vm/memory.tpp>
+#include <divine/vm/opnames.hpp>
 #include <brick-tuple>
 
 namespace divine::vm
@@ -1520,15 +1521,19 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                 this->result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
     };
 
+    auto trace = [&]( auto &stream )
+    {
+        stream << opname( instruction() );
+        for ( int i = 1; i <= instruction().argcount(); ++i )
+            if ( instruction().value( i ).aggregate() )
+                stream << " <agg>";
+            else
+                op< Any >( i, [&]( auto v ) { stream << " " << v.get( i ); } );
+    };
+
+    TRACE( trace );
+
     /* instruction dispatch */
-/*
-    std::cerr << instruction().opcode << " " << instruction().subcode << " | " << std::flush;
-    for ( int i = 1; i <= instruction().argcount(); ++i )
-        if ( !instruction().value( i ).aggregate() )
-            op< Any >( i, [&]( auto v )
-                        { std::cerr << " op[" << i << "] = " << v.get( i ) << std::flush; } );
-    std::cerr << std::endl;
-*/
 
     switch ( instruction().opcode )
     {
