@@ -161,19 +161,17 @@ void CLI::dump_registers()
 
 void CLI::dump_functions()
 {
-    NOT_IMPLEMENTED();
-/*
-    for ( auto &f : *_ctx.program().module )
+    for ( auto &item : _ctx.debug()._funmap )
     {
-        if ( f.isDeclaration() )
-            out() << f.getName().str() << " (undefined)" << std::endl;
+        auto f = item.second;
+        if ( f->isDeclaration() )
+            out() << f->getName().str() << " (undefined)" << std::endl;
         else
         {
-            auto ptr = _ctx.debug().find( &*f.begin()->begin(), vm::CodePointer() ).second;
-            out() << f.getName().str() << " " << ptr << std::endl;
+            auto ptr = _ctx.debug().find( &*f->begin()->begin(), vm::CodePointer() ).second;
+            out() << ptr << ": " << f->getName().str() << std::endl;
         }
     }
-*/
 }
 
 }
