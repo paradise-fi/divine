@@ -1,8 +1,12 @@
+#include <divine/cc/codegen.hpp>
 #include <divine/rt/dios-cc.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
+
+#include <brick-fs>
+
 namespace divine {
 namespace rt {
 
@@ -21,18 +25,26 @@ void DiosCC::link_dios_config( std::string n )
     }
 }
 
+void add_dios_header_paths( std::vector< std::string >& paths )
+{
+    using namespace brick::fs;
+
+    paths.insert( paths.end(),
+                 { "-isystem", joinPath( includeDir, "libcxx/include" )
+                 , "-isystem", joinPath( includeDir, "libcxxabi/include" )
+                 , "-isystem", joinPath( includeDir, "libunwind/include" )
+                 , "-isystem", includeDir } );
+}
+
 DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     Driver( opts, ctx )
 {
     using brick::fs::joinPath;
     setupFS( rt::each );
 
+    add_dios_header_paths( commonFlags );
     commonFlags.insert( commonFlags.end(),
-                 { "-isystem", joinPath( includeDir, "libcxx/include" )
-                 , "-isystem", joinPath( includeDir, "libcxxabi/include" )
-                 , "-isystem", joinPath( includeDir, "libunwind/include" )
-                 , "-isystem", includeDir
-                 , "-D_LITTLE_ENDIAN=1234"
+                 { "-D_LITTLE_ENDIAN=1234"
                  , "-D_BYTE_ORDER=1234"
                  , "-D__ELF__"
                  , "-D__unix__"

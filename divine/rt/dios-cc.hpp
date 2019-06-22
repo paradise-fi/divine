@@ -30,6 +30,8 @@ struct DiosCC : cc::Driver
     void build( cc::ParsedOpts po );
 };
 
+void add_dios_header_paths( std::vector< std::string >& paths );
+
 struct NativeDiosCC : cc::Native
 {
     auto link_dios_native( bool cxx );

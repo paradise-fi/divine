@@ -28,12 +28,9 @@
 #include <divine/ui/version.hpp>
 
 DIVINE_RELAX_WARNINGS
-#include "llvm/Target/TargetMachine.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Object/IRObjectFile.h"
-#include "llvm-c/Target.h"
-
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
@@ -62,7 +59,6 @@ int main( int argc, char **argv )
         auto& pairedFiles = nativeCC._files;
 
         using namespace brick::fs;
-        using divine::rt::includeDir;
 
         auto driver = std::make_unique< cc::Driver >( clang.context() );
 
@@ -70,11 +66,7 @@ int main( int argc, char **argv )
                         driver->commonFlags.begin(),
                         driver->commonFlags.end() );
 
-        po.opts.insert( po.opts.end(), {
-                        "-isystem", joinPath( includeDir, "libcxx/include" )
-                      , "-isystem", joinPath( includeDir, "libcxxabi/include" )
-                      , "-isystem", joinPath( includeDir, "libunwind/include" )
-                      , "-isystem", includeDir } );
+        rt::add_dios_header_paths( po.opts );
 
         // count files, i.e. not libraries
         auto num_files = std::count_if( po.files.begin(), po.files.end(),
