@@ -54,6 +54,17 @@ namespace divine::cc
         return 0;
     }
 
+    void Native::preprocess_only()
+    {
+        for ( auto srcFile : _po.files )
+        {
+            std::string ifn = srcFile.get< cc::File >().name;
+            if ( cc::is_object_type( ifn ) )
+                continue;
+            std::cout << _clang.preprocess( ifn, _po.opts );
+        }
+    }
+
     void Native::init_ld_args()
     {
         if ( _ld_args.empty() )

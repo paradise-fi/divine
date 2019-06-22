@@ -37,6 +37,7 @@ namespace divine::cc
         int compile_files();
         void init_ld_args();
         void link();
+        void preprocess_only();
         virtual std::unique_ptr< llvm::Module > link_bitcode();
         void construct_paired_files();
 

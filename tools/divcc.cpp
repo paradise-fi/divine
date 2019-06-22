@@ -75,13 +75,7 @@ int main( int argc, char **argv )
 
         if ( po.preprocessOnly )
         {
-            for ( auto srcFile : po.files )
-            {
-                std::string ifn = srcFile.get< cc::File >().name;
-                if ( cc::is_object_type( ifn ) )
-                    continue;
-                std::cout << clang.preprocess( ifn, po.opts );
-            }
+            nativeCC.preprocess_only();
             return 0;
         }
 
