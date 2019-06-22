@@ -39,6 +39,7 @@ struct NativeDiosCC : cc::Native
     auto link_dios_native( bool cxx );
     std::unique_ptr< llvm::Module > link_bitcode() override;
     void link() override;
+    void set_cxx( bool cxx ) { _cxx = cxx; }
 
     bool _cxx;
 };
