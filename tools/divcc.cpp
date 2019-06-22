@@ -36,10 +36,7 @@ int main( int argc, char **argv )
 
         if ( po.hasHelp || po.hasVersion )
         {
-            if ( po.hasVersion )
-                std::cout << "divine version: " << ui::version() << "\n";
-            cc::ClangDriver drv;
-            delete drv.BuildCompilation( { "divcc", po.hasHelp ? "--help" : "--version" } );
+            nativeCC.print_info( ui::version() );
             return 0;
         }
 

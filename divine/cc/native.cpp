@@ -176,6 +176,14 @@ namespace divine::cc
         }
     }
 
+    void Native::print_info( std::string_view version )
+    {
+        if ( _po.hasVersion )
+            std::cout << "divine version: " << version << "\n";
+        cc::ClangDriver drv;
+        delete drv.BuildCompilation( { "divcc", _po.hasHelp ? "--help" : "--version" } );
+    }
+
     Native::~Native()
     {
         if ( !_po.toObjectOnly )

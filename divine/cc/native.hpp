@@ -41,6 +41,7 @@ namespace divine::cc
         int run();
         virtual std::unique_ptr< llvm::Module > link_bitcode();
         void construct_paired_files();
+        void print_info( std::string_view version );
 
         cc::ParsedOpts _po;
         PairedFiles _files;
