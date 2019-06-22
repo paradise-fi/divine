@@ -39,7 +39,7 @@ namespace divine::mc
         std::unordered_map< vm::GenericPointer, Critical > _critical;
         int _level;
 
-        Context( vm::Program &p ) : Super( p ), _level( 0 ) {}
+        Context( vm::Program &p ) : _level( 0 ) { this->program( p ); }
 
         template< typename I >
         int choose( int count, I, I )

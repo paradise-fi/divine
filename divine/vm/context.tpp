@@ -23,76 +23,109 @@
 namespace divine::vm
 {
 
-template< typename H >
-void TracingContext< H >::debug_save()
-{
-    if ( this->heap().can_snapshot() )
+    template< typename next >
+    void ctx_debug< next >::debug_save()
     {
-        _debug_snap = this->heap().snapshot( _debug_pool );
+        if ( this->heap().can_snapshot() )
+        {
+            _debug_snap = this->heap().snapshot( _debug_pool );
+            this->flush_ptr2i();
+        }
+    }
+
+    template< typename next >
+    void ctx_debug< next >::debug_restore()
+    {
+        if ( !this->heap().can_snapshot() )
+            return;
+
+        if ( _debug_persist.empty() )
+        {
+            this->heap().restore( _debug_pool, _debug_snap );
+        }
+        else
+        {
+            this->heap().snapshot( _debug_pool );
+            auto from = this->heap();
+            this->heap().restore( _debug_pool, _debug_snap );
+            for ( auto ptr : _debug_persist )
+            {
+                if ( !from.valid( ptr ) ) continue;
+                this->heap().free( ptr );
+                auto res = this->heap().make( from.size( ptr ), ptr.object(), true ).cooked();
+                ASSERT_EQ( res.object(), ptr.object() );
+                this->heap().copy( from, ptr, ptr, from.size( ptr ) );
+            }
+            _debug_persist.clear();
+        }
         this->flush_ptr2i();
     }
-}
 
-template< typename H >
-void TracingContext< H >::debug_restore()
-{
-    if ( !this->heap().can_snapshot() )
-        return;
-
-    if ( _debug_persist.empty() )
+    template< typename next >
+    void ctx_legacy< next >::trace( TraceLeakCheck )
     {
-        this->heap().restore( _debug_pool, _debug_snap );
-    }
-    else
-    {
-        this->heap().snapshot( _debug_pool );
-        auto from = this->heap();
-        this->heap().restore( _debug_pool, _debug_snap );
-        for ( auto ptr : _debug_persist )
+        bool flagged = false;
+        auto leak = [&]( HeapPointer ptr )
         {
-            if ( !from.valid( ptr ) ) continue;
-            this->heap().free( ptr );
-            auto res = this->heap().make( from.size( ptr ), ptr.object(), true ).cooked();
-            ASSERT_EQ( res.object(), ptr.object() );
-            this->heap().copy( from, ptr, ptr, from.size( ptr ) );
+            if ( ptr == this->constants() )
+                return;
+            if ( this->program().metadata_ptr.count( ptr ) )
+                return;
+            if ( !flagged )
+                this->fault( _VM_F_Leak, this->frame(), this->pc() );
+            flagged = true;
+            trace( "LEAK: " + brick::string::fmt( ptr ) );
+        };
+
+        if ( this->debug_mode() )
+            return;
+
+        /* FIXME 'are we in a fault handler?' duplicated with Eval::fault() */
+        PointerV frame( this->frame() ), fpc;
+        while ( this->heap().valid( frame.cooked() ) )
+        {
+            this->heap().read_shift( frame, fpc );
+            if ( fpc.cooked().object() == this->fault_handler().object() )
+                return; /* already handling a faut */
+            this->heap().read( frame.cooked(), frame );
         }
-        _debug_persist.clear();
-    }
-    this->flush_ptr2i();
-}
 
-template< typename P, typename H >
-void Context< P, H >::trace( TraceLeakCheck )
-{
-    bool flagged = false;
-    auto leak = [&]( HeapPointer ptr )
-    {
-        if ( ptr == this->constants() )
-            return;
-        if ( program().metadata_ptr.count( ptr ) )
-            return;
-        if ( !flagged )
-            fault( _VM_F_Leak, this->frame(), this->pc() );
-        flagged = true;
-        trace( "LEAK: " + brick::string::fmt( ptr ) );
-    };
-
-    if ( this->debug_mode() )
-        return;
-
-    /* FIXME 'are we in a fault handler?' duplicated with Eval::fault() */
-    PointerV frame( this->frame() ), fpc;
-    while ( this->heap().valid( frame.cooked() ) )
-    {
-        this->heap().read_shift( frame, fpc );
-        if ( fpc.cooked().object() == this->fault_handler().object() )
-            return; /* already handling a faut */
-        this->heap().read( frame.cooked(), frame );
+        mem::leaked( this->heap(), leak, HeapPointer( this->state_ptr() ),
+                     HeapPointer( this->frame() ), HeapPointer( this->globals() ) );
     }
 
-    mem::leaked( this->heap(), leak, this->state_ptr(), Base::frame(), Base::globals() );
-}
+    template< typename next >
+    bool ctx_debug< next >::enter_debug()
+    {
+        if ( !debug_allowed() )
+            -- this->_state.instruction_counter; /* dbg.call does not count */
 
+        if ( debug_allowed() && !debug_mode() )
+        {
+            TRACE( "entering debug mode" );
+            -- this->_state.instruction_counter;
+            ASSERT_EQ( _debug_depth, 0 );
+            _debug_state = this->_state;
+            _debug_pc = this->_pc;
+            this->flags_set( 0, _VM_CF_DebugMode );
+            this->debug_save();
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template< typename next >
+    void ctx_debug< next >::leave_debug()
+    {
+        ASSERT( debug_allowed() );
+        ASSERT( debug_mode() );
+        ASSERT( !_debug_depth );
+        TRACE( "leaving debug mode" );
+        this->_state = _debug_state;
+        this->_pc = _debug_pc;
+        this->debug_restore();
+    }
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

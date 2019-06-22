@@ -156,8 +156,10 @@ namespace divine::mc::machine
         }
 
         Tree( BC bc )
-            : Tree( bc, Context( bc->program() ) )
-        {}
+            : Tree( bc, Context() )
+        {
+            _ctx.program( bc->program() );
+        }
 
         Tree( BC bc, const Context &ctx )
             : _bc( bc ), _ctx( ctx ), _snap_refcnt( _snap_pool ),

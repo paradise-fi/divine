@@ -45,7 +45,10 @@ struct TContext : vm::Context< Prog, vm::SmallHeap >
     void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
     void trace( vm::TraceDebugPersist ) { UNREACHABLE( "debug persist not allowed in unit tests" ); }
 
-    TContext( Prog &p ) : vm::Context< Prog, vm::SmallHeap >( p ), _fault( _VM_F_NoFault ) {}
+    TContext( Prog &p ) : _fault( _VM_F_NoFault )
+    {
+        this->program( p );
+    }
 };
 
 #ifdef BRICK_UNITTEST_REG

@@ -23,20 +23,25 @@
 
 namespace divine::vm
 {
-    struct track_loops
+    template< typename next >
+    struct track_loops : next
     {
+        static_assert( !next::has_debug_mode );
+
         std::vector< std::unordered_set< GenericPointer > > loops;
 
-        void entered( CodePointer )
+        void entered( CodePointer pc )
         {
             loops.emplace_back();
+            next::entered( pc );
         }
 
-        void left( CodePointer )
+        void left( CodePointer pc )
         {
             loops.pop_back();
             if ( loops.empty() ) /* more returns than calls could happen along an edge */
                 loops.emplace_back();
+            next::left( pc );
         }
 
         bool test_loop( CodePointer pc, int /* TODO */ )
@@ -48,6 +53,12 @@ namespace divine::vm
                 loops.back().insert( pc );
 
             return false;
+        }
+
+        void reset_interrupted()
+        {
+            loops.clear();
+            loops.emplace_back();
         }
     };
 }

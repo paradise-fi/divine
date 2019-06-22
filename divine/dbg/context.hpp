@@ -47,7 +47,11 @@ struct DNContext : vm::Context< vm::Program, Heap >
 
     Info &debug() { return *_debug; }
     DNContext( vm::Program &p, Info &i, const Heap &h )
-        : Super( p, h ), _debug( &i ), _refcnt( _pool ) {}
+        : _debug( &i ), _refcnt( _pool )
+    {
+        this->program( p );
+        this->heap( h );
+    }
 
     template< typename Ctx >
     void load( SnapPool &p, const Ctx &ctx )

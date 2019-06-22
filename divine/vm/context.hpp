@@ -32,6 +32,24 @@
 
 namespace llvm { class Value; }
 
+/* The context of a computation, takes care of the following aspects:
+ *  - storing and interacting with control registers (ctx_ctlreg)
+ *  - interaction with the heap (ctx_heap)
+ *  - debug mode and tracing (ctx_trace, ctx_debug)
+ *  - taking and restoring snapshots of the computation (ctx_snapshot)
+ *  - hold on to the program -- harvard architecture (ctx_program)
+ *  - keeping track of faults (ctx_fault)
+ *  - cache the internal pointers of 'important' objects (ctx_ptr2i)
+ *
+ * There are some dependencies:
+ *   - ctx_ctlreg, ctx_trace and ctx_program have no further dependencies
+ *   - ctx_heap needs to interact with the active frame and hence needs ctx_ctlreg
+ *   - ctx_ptr2i needs registers and heap
+ *   - ctx_debug needs to look at control flags and snapshot/rollback the heap: ctx_ctlreg & ctx_heap
+ *     plus it needs to invalidate the ptr2i cache
+ *   - ctx_snapshot needs to invalidate the ptr2i cache
+ *   - ctx_fault needs to ctx_program and ctx_ctlreg to construct the fault handler frame */
+
 namespace divine::vm
 {
     struct TraceSchedChoice { value::Pointer list; };
@@ -39,6 +57,9 @@ namespace divine::vm
     using Location = _VM_Operand::Location;
     using PtrRegister = GenericPointer;
     using IntRegister = uint64_t;
+
+    template< typename... Ts >
+    struct ctx_mod : Ts... {};
 
     /* state of a computation */
     struct State
@@ -49,7 +70,7 @@ namespace divine::vm
         uint32_t instruction_counter = 0;
     };
 
-    struct Registers
+    struct ctx_ctlreg
     {
         State _state; /* TODO make this a ref */
         PtrRegister _pc;
@@ -85,7 +106,7 @@ namespace divine::vm
 
         PtrRegister _ref_ptr( _VM_ControlRegister r ) const
         {
-            return const_cast< Registers * >( this )->_ref_ptr( r );
+            return const_cast< ctx_ctlreg * >( this )->_ref_ptr( r );
         }
 
         void set( _VM_ControlRegister r, GenericPointer v )
@@ -108,7 +129,7 @@ namespace divine::vm
         }
 
         uint32_t instruction_count() { return _state.instruction_counter; }
-        void instruction_count( uint32_t v ) { return _state.instruction_counter = v; }
+        void instruction_count( uint32_t v ) { _state.instruction_counter = v; }
 
         void pc( PtrRegister pc ) { _pc = pc; }
 
@@ -132,17 +153,68 @@ namespace divine::vm
             _state.flags &= ~clear;
             _state.flags |=  set;
         }
-
     };
 
-    struct TracingInterface
+    template< typename heap_t, typename next >
+    struct ctx_heap : next
     {
+        using Heap = heap_t;
+        heap_t _heap;
+
+        heap_t &heap() { return _heap; }
+        const heap_t &heap() const { return _heap; }
+
+        void heap( const heap_t &h )
+        {
+            _heap = h;
+            if ( !this->frame().null() )
+                load_pc();
+        }
+
+        auto sync_pc()
+        {
+            if ( this->frame().null() )
+                return typename heap_t::Internal();
+            auto loc = this->heap().loc( this->frame(), ptr2i( Location( _VM_CR_Frame ) ) );
+            return this->heap().write( loc, PointerV( this->pc() ) );
+        }
+
+        void load_pc()
+        {
+            PointerV pc;
+            this->heap().read( this->frame(), pc );
+            this->pc( pc.cooked() );
+        }
+
+        typename Heap::Internal ptr2i( Location l )
+        {
+            return this->heap().ptr2i( this->get_ptr( _VM_ControlRegister( l ) ) );
+        }
+
+        void ptr2i( Location, typename Heap::Internal ) {}
+        void flush_ptr2i() {}
+    };
+
+    struct ctx_trace
+    {
+        bool enter_debug() { return false; }
+        void leave_debug() {}
+        bool debug_allowed() { return false; }
+        bool debug_mode() { return false; }
+
+        /* an interface for debug mode implementation */
+        void debug_save() {}
+        void debug_restore() {}
+
+        void entered( CodePointer ) {}
+        void left( CodePointer ) {}
+
         virtual std::string fault_str() { return "(no info)"; }
         virtual void fault_clear() {}
         virtual void doublefault() {}
         virtual void fault( Fault, HeapPointer, CodePointer ) {}
-        virtual void trace( TraceText tt ) {}
-        virtual void trace( TraceFault tt ) {}
+        virtual void trace( TraceText ) {}
+        virtual void trace( TraceFault ) {}
         virtual void trace( TraceDebugPersist ) {}
         virtual void trace( TraceSchedInfo ) {}
         virtual void trace( TraceSchedChoice ) {}
@@ -153,19 +225,40 @@ namespace divine::vm
         virtual void trace( TraceAssume ) {}
         virtual void trace( TraceLeakCheck ) {}
         virtual void trace( std::string ) {}
-        virtual ~TracingInterface() {}
+        virtual ~ctx_trace() {}
     };
 
-    struct NoTracing : Registers, TracingInterface
+    template< typename program_t >
+    struct ctx_program
     {
-        bool enter_debug() {}
-        void leave_debug() {}
-        bool debug_allowed() { return false; }
-        bool debug_mode() { return false; }
+        using Program = program_t;
+        Program *_program;
+        Program &program() { return *_program; }
+        void program( Program &p ) { _program = &p; }
+    };
 
-        /* an interface for debug mode implementation */
-        void debug_save() {}
-        void debug_restore() {}
+    template< typename next >
+    struct ctx_choose_0 : next
+    {
+        template< typename I >
+        int choose( int, I, I ) { return 0; }
+    };
+
+    template< typename heap, typename program >
+    struct ctx_base
+    {
+        template< typename >
+        struct module : ctx_heap< heap, ctx_mod< ctx_trace, ctx_ctlreg, ctx_program< program > > >
+        {
+            static constexpr const bool uses_ptr2i = false;
+            static constexpr const bool has_debug_mode = false;
+        };
+    };
+
+    template< typename next >
+    struct track_nothing : next
+    {
+        static_assert( !next::has_debug_mode );
 
         bool test_loop( CodePointer, int )
         {
@@ -177,41 +270,58 @@ namespace divine::vm
             return !this->flags_all( _VM_CF_IgnoreCrit );
         }
 
-        void entered( CodePointer ) {}
-        void left( CodePointer ) {}
+        bool track_test( Interrupt::Type, CodePointer ) { return true; }
+        void reset_interrupted() {}
     };
 
-    struct Tracing : NoTracing
+    /* Implementation of debug mode. Include in the context stack when you want
+     * dbg.call to be actually performed. Not including ctx_debug in the context
+     * saves considerable resources (especially computation time). */
+
+    template< typename next >
+    struct ctx_debug : next
     {
         State _debug_state;
-        track_loops _loops;
         PtrRegister _debug_pc;
 
         int _debug_depth = 0;
         bool _debug_allowed = false;
         std::vector< Interrupt > _interrupts;
 
+        static constexpr const bool uses_ptr2i = true;
+        static constexpr const bool has_debug_mode = true;
+
+        bool track_test( Interrupt::Type t, CodePointer pc )
+        {
+            _interrupts.push_back( Interrupt{ t, this->_state.instruction_counter, pc } );
+            return true;
+        }
+
         bool debug_allowed() { return _debug_allowed; }
-        bool debug_mode() { return flags_any( _VM_CF_DebugMode ); }
+        bool debug_mode() { return this->flags_any( _VM_CF_DebugMode ); }
         void enable_debug() { _debug_allowed = true; }
 
         bool test_loop( CodePointer p, int i )
         {
-            return NoTracing::test_loop( p, i ) && !debug_mode();
+            return !debug_mode() && next::test_loop( p, i );
         }
 
         bool test_crit( CodePointer p, GenericPointer a, int s, int t )
         {
-            return NoTracing::test_crit( p, a, s, t ) && !debug_mode();
+            return !debug_mode() && next::test_crit( p, a, s, t );
         }
 
         bool enter_debug();
         void leave_debug();
 
-        using Registers::set;
+        void debug_save();
+        void debug_restore();
+
+        using next::set;
+
         void set( _VM_ControlRegister r, uint64_t v )
         {
-            Registers::set( r, v );
+            next::set( r, v );
             if ( _debug_depth )
                 ASSERT( debug_mode() );
         }
@@ -221,7 +331,7 @@ namespace divine::vm
             if ( debug_mode() )
                 ++ _debug_depth;
             else
-                _loops.entered( f );
+                next::entered( f );
         }
 
         void left( CodePointer f )
@@ -234,257 +344,114 @@ namespace divine::vm
                     leave_debug();
             }
             else
-                _loops.left( f );
+                next::left( f );
         }
-
-        virtual void debug_save() {}
-        virtual void debug_restore() {}
-    };
-
-    template< typename Heap_ >
-    struct Memory
-    {
-        using Heap = Heap_;
-        using HeapInternal = typename Heap::Internal;
-        using Snapshot = typename Heap::Snapshot;
-
-        Heap _heap; /* TODO make this a reference */
-        std::array< HeapInternal, _VM_CR_PtrCount > _ptr2i;
-
-        Memory( Registers &regs, Heap h )
-            : _heap( h )
-        {
-            flush_ptr2i( regs );
-
-            if ( !regs.frame().null() )
-            {
-                PointerV pc;
-                this->heap().read( regs.frame(), pc );
-                regs.pc( pc.cooked() );
-            }
-        }
-
-        Heap &heap() { return _heap; }
-        const Heap &heap() const { return _heap; }
-
-        void set( _VM_ControlRegister r, GenericPointer v )
-        {
-            if ( r < _VM_CR_PtrCount )
-                _ptr2i[ r ] = v.null() ? HeapInternal() : _heap.ptr2i( v );
-        }
-
-        HeapInternal ptr2i( Registers &regs, Location l )
-        {
-            ASSERT_LT( l, _VM_Operand::Invalid );
-            ASSERT_EQ( _heap.ptr2i( regs.get_ptr( _VM_ControlRegister( l ) ) ), _ptr2i[ l ] );
-            return _ptr2i[ l ];
-        }
-
-        void ptr2i( Registers &regs, Location l, HeapInternal i )
-        {
-            if ( i )
-                _ptr2i[ l ] = i;
-            else
-                flush_ptr2i( regs );
-        }
-
-        void flush_ptr2i( Registers &regs )
-        {
-            for ( int i = 0; i < _VM_CR_PtrCount; ++i )
-                _ptr2i[ i ] = _heap.ptr2i( regs.get_ptr( _VM_ControlRegister( i ) ) );
-        }
-
-        void sync_pc( Registers &regs )
-        {
-            if ( regs.frame().null() )
-                return;
-            auto loc = _heap.loc( regs.frame(), ptr2i( regs, Location( _VM_CR_Frame ) ) );
-            auto newfr = _heap.write( loc, PointerV( regs.pc() ) );
-            ptr2i( regs, Location( _VM_CR_Frame ), newfr );
-        }
-
-        void load_pc( Registers &regs )
-        {
-            PointerV pc;
-            _heap.read( _heap.loc( regs.frame(), ptr2i( regs, Location( _VM_CR_Frame ) ) ), pc );
-            regs._pc = pc.cooked();
-        }
-    };
-
-    struct CowMemory : Memory< vm::CowHeap >
-    {};
-
-    struct NoChoice
-    {
-        template< typename I >
-        int choose( int, I, I ) { return 0; }
-    };
-
-    template< typename Reg, typename Mem >
-    struct ContextBase : Reg, Mem
-    {
-        using HeapInternal = typename Mem::HeapInternal;
-
-        ContextBase( typename Mem::Heap h )
-            : Mem( *this, h )
-        {}
-
-        HeapInternal ptr2i( Location l ) { return Mem::ptr2i( *this, l ); }
-        void ptr2i( Location l, HeapInternal i ) { return Mem::ptr2i( *this, l, i ); }
-        void flush_ptr2i() { return Mem::flush_ptr2i( *this ); }
-        void sync_pc() { return Mem::sync_pc( *this ); }
-        void load_pc() { return Mem::load_pc( *this ); }
-
-        typename Mem::Heap::Snapshot snapshot( typename Mem::Heap::Pool &p )
-        {
-            this->sync_pc();
-            auto rv = this->_heap.snapshot( p );
-            this->flush_ptr2i();
-            return rv;
-        }
-
-        using Reg::set;
-        void set( _VM_ControlRegister r, GenericPointer v )
-        {
-            Reg::set( r, v );
-            Mem::set( r, v );
-        }
-
-        using Reg::trace;
-        virtual void trace( TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
-    };
-
-    template< typename Heap >
-    struct TracingContext : ContextBase< Tracing, Memory< Heap > >, NoChoice
-    {
-        using Base = ContextBase< Tracing, Memory< Heap > >;
-
-        TracingContext( typename Base::Heap h )
-            : Base( h )
-        {}
 
         std::vector< HeapPointer > _debug_persist;
-        typename Heap::Pool _debug_pool;
-        typename Base::Snapshot _debug_snap;
+        typename next::Heap::Pool _debug_pool;
+        typename next::Heap::Snapshot _debug_snap;
 
-        using Base::trace;
+        using next::trace;
+
         virtual void trace( TraceDebugPersist t )
         {
             if ( t.ptr.type() == PointerType::Weak )
                 _debug_persist.push_back( t.ptr );
             else
-            {
-                this->trace( "FAULT: cannot persist a non-weak object " + brick::string::fmt( t.ptr ) );
-                this->fault( _VM_F_Memory, this->frame(), this->pc() );
-            }
+                {
+                    this->trace( "FAULT: cannot persist a non-weak object " +
+                                 brick::string::fmt( t.ptr ) );
+                    this->fault( _VM_F_Memory, this->frame(), this->pc() );
+                }
         }
-
-        virtual void debug_save() override;
-        virtual void debug_restore() override;
     };
 
-    template< typename Program_, typename Heap_ >
-    struct Context : TracingContext< Heap_ >
+    template< typename next >
+    struct ctx_ptr2i : next
     {
-        using Program = Program_;
-        using Heap = Heap_;
-        using Pool = typename Heap::Pool;
-        using PointerV = value::Pointer;
-        using Location = typename Program::Slot::Location;
+        using Heap = typename next::Heap;
+        using HeapInternal = typename Heap::Internal;
         using Snapshot = typename Heap::Snapshot;
-        using Base = TracingContext< Heap_ >;
-        using Base::_heap;
 
-        Program *_program;
+        static_assert( !next::uses_ptr2i );
+        std::array< HeapInternal, _VM_CR_PtrCount > _ptr2i;
+
+        using next::set;
+
+        void set( _VM_ControlRegister r, GenericPointer v )
+        {
+            if ( r < _VM_CR_PtrCount )
+                _ptr2i[ r ] = v.null() ? HeapInternal() : this->heap().ptr2i( v );
+            next::set( r, v );
+        }
+
+        HeapInternal ptr2i( Location l )
+        {
+            ASSERT_LT( l, _VM_Operand::Invalid );
+            ASSERT_EQ( next::ptr2i( l ), _ptr2i[ l ] );
+            return _ptr2i[ l ];
+        }
+
+        void ptr2i( Location l, HeapInternal i )
+        {
+            if ( i )
+                _ptr2i[ l ] = i;
+            else
+                flush_ptr2i();
+        }
+
+        void flush_ptr2i()
+        {
+            for ( int i = 0; i < _VM_CR_PtrCount; ++i )
+                _ptr2i[ i ] = next::ptr2i( Location( i ) );
+        }
+
+        auto sync_pc()
+        {
+            auto newfr = next::sync_pc();
+            ptr2i( Location( _VM_CR_Frame ), newfr );
+            return newfr;
+        }
+
+        void load_pc()
+        {
+            PointerV pc;
+            auto loc = this->heap().loc( this->frame(), ptr2i( Location( _VM_CR_Frame ) ) );
+            this->heap().read( loc, pc );
+            this->_pc = pc.cooked();
+        }
+    };
+
+    template< typename next >
+    struct ctx_snapshot : next
+    {
+        using Heap = typename next::Heap;
+        using Snapshot = typename Heap::Snapshot;
+
+        static constexpr const bool uses_ptr2i = true;
+
+        Snapshot snapshot( typename Heap::Pool &p )
+        {
+            this->sync_pc();
+            auto rv = this->heap().snapshot( p );
+            this->flush_ptr2i();
+            return rv;
+        }
+
+        using next::trace;
+        virtual void trace( TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
+    };
+
+    template< typename next >
+    struct ctx_fault : next
+    {
         std::string _fault;
 
-        using Base::trace;
-        virtual void trace( TraceLeakCheck ) override;
+        using next::trace;
         void trace( TraceFault tt ) override { _fault = tt.string; }
 
         void fault_clear() override { _fault.clear(); }
         std::string fault_str() override { return _fault; }
-
-        bool _track_mem = false;
-
-        using MemMap = brick::data::IntervalSet< GenericPointer >;
-
-        void track_memory( bool b ) { _track_mem = b; }
-
-        template< typename Ctx >
-        void load( const Ctx &ctx )
-        {
-            clear();
-            for ( int i = 0; i < _VM_CR_Last; ++i )
-            {
-                auto cr = _VM_ControlRegister( i );
-                if ( cr == _VM_CR_Flags || cr == _VM_CR_ObjIdShuffle )
-                    this->set( cr, ctx.get_int( cr ) );
-                else
-                    this->set( cr, ctx.get_ptr( cr ) );
-            }
-            ASSERT( !this->debug_mode() );
-            this->_heap = ctx.heap();
-        }
-
-        void reset_interrupted()
-        {
-            this->_loops.loops.clear();
-            this->_loops.loops.emplace_back();
-        }
-
-        virtual void clear()
-        {
-            _fault.clear();
-            this->_interrupts.clear();
-            reset_interrupted();
-            this->flush_ptr2i();
-            this->set( _VM_CR_User1, GenericPointer() );
-            this->set( _VM_CR_User2, GenericPointer() );
-            this->set( _VM_CR_User3, GenericPointer() );
-            this->set( _VM_CR_User4, GenericPointer() );
-            this->set( _VM_CR_ObjIdShuffle, 0 );
-            this->_state.instruction_counter = 0;
-        }
-
-        void load( Pool &p, Snapshot snap ) { _heap.restore( p, snap ); clear(); }
-        void reset() { _heap.reset(); clear(); }
-
-        Context( Program &p ) : Context( p, Heap() ) {}
-        Context( Program &p, const Heap &h ) : Base( h ), _program( &p )
-        {}
-
-        virtual ~Context() { }
-
-        Program &program() { return *_program; }
-
-        HeapPointer frame() { return Base::frame(); }
-        HeapPointer globals() { return Base::globals(); }
-        HeapPointer constants() { return Base::constants(); }
-
-        bool track_test( Interrupt::Type t, CodePointer pc )
-        {
-            // if ( _debug_allowed ) TODO
-                this->_interrupts.push_back( Interrupt{ t, this->_state.instruction_counter, pc } );
-            return true;
-        }
-
-        bool test_loop( CodePointer pc, int ctr )
-        {
-            if ( this->flags_all( _VM_CF_IgnoreLoop ) || this->debug_mode() )
-                return false;
-
-            if ( this->_loops.test_loop( pc, ctr ) )
-                return track_test( Interrupt::Cfl, pc );
-            else
-                return false;
-        }
-
-        void count_instruction()
-        {
-            if ( !this->debug_mode() )
-                ++ this->_state.instruction_counter;
-        }
 
         void doublefault() override
         {
@@ -510,26 +477,116 @@ namespace divine::vm
                 make_frame( *this, fh, PointerV( this->frame() ),
                             value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
         }
-
     };
 
-    template< typename Program_, typename Heap_ >
-    struct ConstContext : ContextBase< NoTracing, Memory< Heap_ > >, NoChoice
+    template< typename next >
+    struct ctx_legacy : next
     {
-        using Base = ContextBase< NoTracing, Memory< Heap_ > >;
-        using Program = Program_;
-        Program *_program;
-        Program &program() { return *_program; }
+        using Program = typename next::Program;
+        using Heap = typename next::Heap;
+        using Pool = typename Heap::Pool;
+        using PointerV = value::Pointer;
+        using Location = typename Program::Slot::Location;
+        using Snapshot = typename Heap::Snapshot;
+        using next::_heap;
 
+        static constexpr const bool uses_ptr2i = true;
+
+        using next::trace;
+        virtual void trace( TraceLeakCheck ) override;
+
+        bool _track_mem = false;
+
+        using MemMap = brick::data::IntervalSet< GenericPointer >;
+
+        void track_memory( bool b ) { _track_mem = b; }
+
+        template< typename Ctx >
+        void load( const Ctx &ctx )
+        {
+            clear();
+            for ( int i = 0; i < _VM_CR_Last; ++i )
+            {
+                auto cr = _VM_ControlRegister( i );
+                if ( cr == _VM_CR_Flags || cr == _VM_CR_ObjIdShuffle )
+                    this->set( cr, ctx.get_int( cr ) );
+                else
+                    this->set( cr, ctx.get_ptr( cr ) );
+            }
+            ASSERT( !this->debug_mode() );
+            this->_heap = ctx.heap();
+        }
+
+        virtual void clear()
+        {
+            this->_fault.clear();
+            this->_interrupts.clear();
+            this->reset_interrupted();
+            this->flush_ptr2i();
+            this->set( _VM_CR_User1, GenericPointer() );
+            this->set( _VM_CR_User2, GenericPointer() );
+            this->set( _VM_CR_User3, GenericPointer() );
+            this->set( _VM_CR_User4, GenericPointer() );
+            this->set( _VM_CR_ObjIdShuffle, 0 );
+            this->_state.instruction_counter = 0;
+        }
+
+        void load( Pool &p, Snapshot snap ) { _heap.restore( p, snap ); clear(); }
+        void reset() { _heap.reset(); clear(); }
+
+        HeapPointer frame() { return next::frame(); }
+        HeapPointer globals() { return next::globals(); }
+        HeapPointer constants() { return next::constants(); }
+
+        bool test_loop( CodePointer pc, int ctr )
+        {
+            if ( this->flags_all( _VM_CF_IgnoreLoop ) || this->debug_mode() )
+                return false;
+
+            if ( next::test_loop( pc, ctr ) )
+                return this->track_test( Interrupt::Cfl, pc );
+            else
+                return false;
+        }
+
+        void count_instruction()
+        {
+            if ( !this->debug_mode() )
+                ++ this->_state.instruction_counter;
+        }
+    };
+
+    template< template< typename > class mod >
+    struct m
+    {
+        template < typename next >
+        using module = mod< next >;
+    };
+
+    template< typename... > struct compose {};
+
+    template< typename head, typename... tail >
+    struct compose< head, tail... > : head::template module< compose< tail... > >
+    {
+    };
+
+    template<>
+    struct compose<> {};
+
+    template< typename Program, typename Heap >
+    struct Context : compose< m< ctx_legacy >, m< ctx_fault >, m< ctx_debug >,
+                              m< track_loops >, m< track_nothing >, m< ctx_choose_0 >,
+                              m< ctx_snapshot >, m< ctx_ptr2i >, ctx_base< Heap, Program > > {};
+
+    template< typename program_t, typename heap >
+    struct ctx_const : compose< m< ctx_choose_0 >, m< track_nothing >, ctx_base< heap, program_t > >
+    {
         void setup( int gds, int cds )
         {
             this->set( _VM_CR_Constants, this->heap().make( cds ).cooked() );
             if ( gds )
                 this->set( _VM_CR_Globals, this->heap().make( gds ).cooked() );
         }
-
-        ConstContext( Program &p ) : ConstContext( p, Heap_() ) {}
-        ConstContext( Program &p, const Heap_ &h ) : Base( h ), _program( &p ) {}
     };
 
 }

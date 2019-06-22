@@ -131,7 +131,7 @@ struct Program
     std::unordered_set< int > is_trap;
     std::set< HeapPointer > metadata_ptr;
 
-    using Context = ConstContext< Program, SmallHeap >;
+    using Context = ctx_const< Program, SmallHeap >;
     Context _ccontext;
 
     using LXTypes = lx::Types< typename Context::Heap >;
@@ -271,8 +271,9 @@ struct Program
        3a) (optional) set up additional constant/global data
        3b) computeRR
        4) computeStatic */
-    Program( llvm::DataLayout l ) : TD( l ), _ccontext( *this ), _types_gen( l )
+    Program( llvm::DataLayout l ) : TD( l ), _types_gen( l )
     {
+        _ccontext.program( *this );
         _constants_size = 0;
         _globals_size = 0;
     }
