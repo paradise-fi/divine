@@ -37,8 +37,6 @@ namespace divine::dbg::print
 
 namespace lx = vm::lx;
 
-std::string opcode( int );
-
 static void pad( std::ostream &o, int &col, int target )
 {
     while ( col < target )
@@ -65,9 +63,6 @@ void ascbyte( std::ostream &o, int &col, B byte )
 }
 
 enum class DisplayVal { Name, Value, PreferName };
-
-template< typename I >
-decltype( I::opcode, std::string() ) opcode( I &insn );
 
 template< typename Ctx >
 struct Print

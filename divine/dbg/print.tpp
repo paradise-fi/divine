@@ -18,6 +18,7 @@
 
 #include <divine/dbg/print.hpp>
 #include <divine/vm/eval.tpp>
+#include <divine/vm/opnames.hpp>
 #include <brick-llvm>
 
 using namespace std::literals;
@@ -95,7 +96,7 @@ std::string Print< Ctx >::instruction( int padding, int colmax )
 
     auto I = dbg.find( nullptr, eval.pc() ).first;
     if ( !I )
-        return opcode( insn );
+        return vm::opname( insn );
 
     bool printres = true;
 
@@ -104,7 +105,7 @@ std::string Print< Ctx >::instruction( int padding, int colmax )
     else
         printres = false;
 
-    out << opcode( insn ) << " ";
+    out << vm::opname( insn ) << " ";
     uint64_t skipMask = 0;
 
     int argc = I->getNumOperands();
