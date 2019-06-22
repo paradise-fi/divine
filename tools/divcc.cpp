@@ -47,20 +47,13 @@ using FileType = cc::FileType;
 int main( int argc, char **argv )
 {
     try {
-        rt::NativeDiosCC nativeCC;
+        rt::NativeDiosCC nativeCC( { argv + 1, argv + argc } );
         cc::CC1& clang = nativeCC._clang;
-        divine::rt::each( [&]( auto path, auto c ) { clang.mapVirtualFile( path, c ); } );
-
-        std::vector< std::string > opts;
-        std::copy( argv + 1, argv + argc, std::back_inserter( opts ) );
-        nativeCC._po = cc::parseOpts( opts );
         auto& po = nativeCC._po;
         auto& pairedFiles = nativeCC._files;
 
         using namespace brick::fs;
 
-
-        rt::add_dios_header_paths( po.opts );
 
         // count files, i.e. not libraries
         auto num_files = std::count_if( po.files.begin(), po.files.end(),

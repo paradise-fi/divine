@@ -34,6 +34,8 @@ void add_dios_header_paths( std::vector< std::string >& paths );
 
 struct NativeDiosCC : cc::Native
 {
+    NativeDiosCC( const std::vector< std::string >& opts );
+
     auto link_dios_native( bool cxx );
     std::unique_ptr< llvm::Module > link_bitcode() override;
     void link();

@@ -59,6 +59,13 @@ void DiosCC::build( ParsedOpts po )
         linkLibs( defaultDIVINELibs );
 }
 
+NativeDiosCC::NativeDiosCC( const std::vector< std::string >& opts )
+  :  Native( opts )
+{
+    rt::add_dios_header_paths( _po.opts );
+    divine::rt::each( [&]( auto path, auto c ) { _clang.mapVirtualFile( path, c ); } );
+}
+
 auto NativeDiosCC::link_dios_native( bool cxx )
 {
     using namespace brick::fs;
