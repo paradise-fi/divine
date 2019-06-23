@@ -77,3 +77,45 @@ with the `--dios-config` flag.
 ## Userspace
 
 TBD
+
+### Introspection
+
+Some parts of DiOS rely on introspection abilities. The "recieving side" of our
+introspection system is, semantically, a part of libc and lives in
+`sys/metadata.{h, cpp}`. A small fraction of the introspection code is
+platform-dependent and can be found in `arch/<platform>/metadata.{c, cpp}`. The
+system comprises several structs which store metadata, and functions to query
+the system by fetching a specific struct. DiOS doesn't necessarilly care about
+the origin of the metadata, however, they have to be availible at all times
+during the execution. In our architecture, this is ensured by injecting them
+into the bitcode before the execution begins (see `LART`).
+
+### Exception handling support
+
+Exceptions are usually implemented using the so-called zero cost approach. This
+means that generated code is optimised to be as fast as possible on the
+standard run. Exceptions, by definition, occur only in exceptional
+circumstances, and so the data used for handling are pushed out of the code
+into unwind tables. There are other availible mechanisms (setjmp/longjmp,
+etc.), but the aforementioned approach is probably the most prevalent one on
+ordinary UNIX-like systems and the only one currently supported by DiOS.
+
+When an exception is thrown, the unwinder is activated (this part is handled by
+`libunwind`). It uses the unwind tables to realise the unwinding proper. The
+unwinder, however, has no knowledge about possible catch blocks along the way
+and it doesn't know anything about language specific things such as destructors
+that have to be called before the currend frame is destroyed. For that, it
+consults a personality function.
+
+A personality function is a language-dependent routine that receives
+information about a frame and an exception and decides whether the frame can
+handle the exception. This function uses the language-specific data area (LSDA)
+part of the unwind table which encodes whether a specific frame can handle an
+exeption (and other data, such as whether to run destructors). The C++
+personality function, along with other low level exception handling routines,
+is a part of `libc++abi`, which is included in DiOS without modification.
+
+The metadata used for exception handling, such as a personality routine of a
+function and the LSDA associated with a function, are accesible using the
+introspection query system. Such data are injected into code in a similar
+fashion to other previously mentioned metadata.
