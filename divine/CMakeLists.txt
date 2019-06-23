@@ -31,10 +31,13 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
+stringify( cc ${divine_SOURCE_DIR}/divine/cc stddef.h )
+
 # add_library( divine-ss ${CPP_ss} )
 add_library( divine-ui ${CPP_ui} ${VERSION_FILE} "flags-generated.cpp" )
+add_library( divine-cc ${CPP_cc} ${cc_FILES} )
 add_dependencies( divine-ui divine-version )
-foreach( D cc ltl mc smt vm dbg )
+foreach( D ltl mc smt vm dbg )
   add_library( divine-${D} ${CPP_${D}} )
 endforeach()
 

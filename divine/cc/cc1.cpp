@@ -32,6 +32,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/cc/cc1.hpp>
 #include <lart/divine/vaarg.h>
 
+namespace divine::str::cc { extern const std::string_view stddef_h; }
+
 namespace divine::cc
 {
     class GetPreprocessedAction : public clang::PreprocessorFrontendAction
@@ -77,6 +79,8 @@ namespace divine::cc
         overlayFS->pushOverlay( divineVFS );
         if ( !ctx )
             ctx.reset( new llvm::LLVMContext );
+
+        mapVirtualFile( "/builtin/stddef.h", ::divine::str::cc::stddef_h );
     }
 
     CC1::~CC1() { }
