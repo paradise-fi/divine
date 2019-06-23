@@ -114,6 +114,13 @@ namespace divine::mc
             return Extend< ExMachines... >( std::tuple_cat( _machines, ext ) );
         }
 
+        template< typename... ExMachines >
+        auto prepend( ExMachines... exm )
+        {
+            std::tuple< ExMachines... > ext( exm... );
+            return Weaver< TQ, ExMachines..., Machines... >( std::tuple_cat( ext, _machines ) );
+        }
+
         template< typename M >
         struct Ref : std::reference_wrapper< M >
         {
@@ -170,6 +177,12 @@ namespace divine::mc
         auto extend_f( F... fs )
         {
             return extend( Lambda< F >( fs ) ... );
+        }
+
+        template< typename... F >
+        auto prepend_f( F... fs )
+        {
+            return prepend( Lambda< F >( fs ) ... );
         }
 
         Weaver( MachineT mt ) : _machines( mt ) {}
