@@ -63,7 +63,7 @@ all: $(DEFAULT_FLAVOUR)
 FLAVOURS = debug asan release semidbg static bench
 SPECIAL = divbench
 NORMAL = divine unit functional website check llvm-utils clang \
-         install lart runner divcheck divcc manual \
+         install lart runner divcheck divcc dioscc manual \
          test-divine test-lart test-bricks
 TARGETS = $(NORMAL) $(SPECIAL)
 
