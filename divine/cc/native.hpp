@@ -20,6 +20,13 @@
 #include <divine/cc/cc1.hpp>
 #include <divine/cc/options.hpp>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/Object/IRObjectFile.h>
+DIVINE_UNRELAX_WARNINGS
+
 namespace divine::cc
 {
     /* PairedFiles is used for mapping IN => OUT filenames at compilation,
@@ -33,6 +40,52 @@ namespace divine::cc
     struct Native
     {
         Native( const std::vector< std::string >& args );
+
+        template< typename Driver >
+        std::unique_ptr< llvm::Module > do_link_bitcode()
+        {
+            auto drv = std::make_unique< Driver >( _clang.context() );
+            for( auto path : _po.libSearchPath )
+                drv->addDirectory( path );
+
+            for ( auto file : _files )
+            {
+                if ( !is_object_type( file.second ) )
+                {
+                    if ( file.first != "lib" )
+                        continue;
+                    else
+                    {
+                        drv->linkLib( file.second, _po.libSearchPath );
+                        continue;
+                    }
+                }
+
+                llvm::ErrorOr< std::unique_ptr< llvm::MemoryBuffer > > buf = llvm::MemoryBuffer::getFile( file.second );
+                if ( !buf ) throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
+
+                if ( is_type( file.second, FileType::Archive ) )
+                {
+                    drv->linkArchive( std::move( buf.get() ) , _clang.context() );
+                    continue;
+                }
+
+                auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
+                if ( !bc ) std::cerr << "No .llvmbc section found in file " << file.second << "." << std::endl;
+
+                auto expected_m = llvm::parseBitcodeFile( bc.get(), *_clang.context().get() );
+                if ( !expected_m )
+                    std::cerr << "Error parsing bitcode." << std::endl;
+                auto m = std::move( expected_m.get() );
+                m->setTargetTriple( "x86_64-unknown-none-elf" );
+                verifyModule( *m );
+                drv->link( std::move( m ) );
+            }
+
+            auto m = drv->takeLinked();
+            verifyModule( *m );
+            return m;
+        }
 
         int compile_files();
         void init_ld_args();

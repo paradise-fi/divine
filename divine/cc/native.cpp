@@ -141,7 +141,7 @@ namespace divine::cc
 
     std::unique_ptr< llvm::Module > Native::link_bitcode()
     {
-        return cc::link_bitcode< cc::Driver, false >( _files, _clang, _po.libSearchPath );
+        return do_link_bitcode< cc::Driver >();
     }
 
     void Native::construct_paired_files()
