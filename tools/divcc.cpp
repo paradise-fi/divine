@@ -30,8 +30,7 @@ using namespace divine;
 int main( int argc, char **argv )
 {
     try {
-        rt::NativeDiosCC nativeCC( { argv + 1, argv + argc } );
-        nativeCC.set_cxx( brick::string::endsWith( argv[0], "divc++" ) );
+        cc::Native nativeCC( { argv + 1, argv + argc } );
         auto& po = nativeCC._po;
 
         if ( po.hasHelp || po.hasVersion )
