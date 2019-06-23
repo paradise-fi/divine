@@ -146,6 +146,7 @@ namespace divine::cc
                                                 "-fdiagnostics-show-option",
                                                 "-fcolor-diagnostics",
                                                 // "-o", "test.o",
+                                                "-isystem", "/builtin"
                                                 };
         bool exceptions = type == FileType::Cpp || type == FileType::CppPreprocessed;
 

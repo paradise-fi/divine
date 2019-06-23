@@ -38,7 +38,6 @@ namespace divine::cc
                          driver->commonFlags.begin(),
                          driver->commonFlags.end() );
         _clang.allowIncludePath( "/" );
-        _po.opts.insert( _po.opts.end(), { "-isystem", "/builtin" } );
     }
 
     int Native::compile_files()
