@@ -1,0 +1,66 @@
+## LART Introspection (26. 6. 2019)
+
+Introspection is, in general, the ability of a program to access information
+about itself at runtime. In our context, this allows DiOS to examine metadata
+of functions, LLVM instructions and their registers, and (some specifically
+named) global variables.
+
+- main sources:
+  - `dios/include/sys/metadata.h`
+  - `dios/libc/sys/metadata.cpp`
+  - `lart/divine/functionmeta.cpp`
+  - `lart/divine/cppeh.h`
+  - `lart/divine/cpplsda.cpp`
+- aux sources:
+  - `dios/arch/divm/metadata.cpp`
+  - `dios/arch/klee/metadata.c`
+  - `lart/divine/metadata.h`
+  - `lart/support/metadata.h`
+
+### Overview
+
+We will begin our seminar by looking at a brand new `Introspection` section in
+`dios/README`, which contains the basic overview of the DiOS side of our
+introspection system.
+
+### Metadata structures
+
+Now that we have a general understanding of the structure of the system, let's
+look at how it's implemented.
+
+The first stop is `dios/include/sys/metadata.h`.
+The main point of interest here are the metadata structs:
+- _MD_InstInfo
+- _MD_Function
+- _MD_RegInfo
+- _MD_Global
+
+Of course, we need to get to the desired struct somehow, so let's look at the
+query functions in `dios/libc/sys/metadata.cpp` and the platform-dependent ones
+over at `dios/arch/{divm, klee}/metadata.{cpp, c}`.
+
+### Metadata generation
+
+We now know how metadata are accessible by DiOS. Now we will look at how they
+are generated and hooked into the bitcode.
+
+This happens in `lart/divine/functionmeta.cpp`, where the `IndexFunctions` pass
+lives. This is the source of all of the metadata that we have seen so far, so
+let's look at it now.
+
+### Exception handling support (LSDA metadata generation)
+
+And now for something completely different...
+The general overview of exception handling is provided yet again in
+`dios/README`, this time in the section `Exception handling support`.
+
+With this information in mind, let's look at `lart/divine/cpplsda.cpp`, where
+we will find the `AddCppLSDA` pass responsible for injection of LSDA areas into
+our functions. A single helper function is also defined in
+`lart/support/metadata.h`, so let's take a quick look at it.
+
+However, this pass relies on a `CppEhTab` struct over at `lart/divine/cppeh.h`.
+We will head there now and all the mysteries of exception handling shall be
+unraveled to us (well, almost all). Our final stop will be a beautiful
+template-metaprogramming-filled file `lart/divine/metadata.h` which provides
+some support to our `CppEhTab` (it provides type-to-char conversion functions).
