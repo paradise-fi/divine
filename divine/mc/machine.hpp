@@ -29,14 +29,16 @@
 #include <divine/vm/setup.hpp>
 #include <divine/vm/eval.tpp> // FIXME
 
+#include <brick-compose>
+
 #include <set>
 #include <memory>
 #include <random>
 
 namespace divine::mc
 {
-
     using namespace std::literals;
+    namespace ctx = vm::ctx;
     using BC = std::shared_ptr< BitCode >;
     using HT = brq::concurrent_hash_set< Snapshot >;
 
@@ -124,84 +126,213 @@ namespace divine::mc
 
 namespace divine::mc::machine
 {
-    template< typename Solver, bool randomize = false >
-    struct Tree : TQ::Skel
+    struct with_pools
     {
-        using Hasher = mc::Hasher< Solver >;
-        using PointerV = vm::value::Pointer;
-        using Context = MContext;
-        using Eval = vm::Eval< Context >;
-        using Env = std::vector< std::string >;
         using Pool = vm::CowHeap::Pool;
-
-        auto &program() { return _bc->program(); }
-        auto &debug() { return _bc->debug(); }
-        auto &heap() { return context().heap(); }
-        Context &context() { return _ctx; }
-
-        Solver _solver;
-        BC _bc;
-        Context _ctx;
-        std::mt19937 rand;
 
         Pool _snap_pool, _state_pool;
         brick::mem::RefPool< Pool, uint8_t > _snap_refcnt;
 
+        with_pools() : _snap_refcnt( _snap_pool ) {}
+
+        void queue_choices( TQ &tq, Snapshot snap, Origin origin, vm::State state, int take, int total )
+        {
+            for ( int i = 0; i < total; ++i )
+                if ( i != take )
+                {
+                    _snap_refcnt.get( snap );
+                    tq.add< Task::Choose >( snap, origin, state, i, total );
+                }
+        }
+
+        int select_choice( TQ &tq, Snapshot snap, Origin origin, vm::State state, int count )
+        {
+            queue_choices( tq, snap, origin, state, 0, count );
+            return 0;
+        }
+    };
+
+    struct with_counters
+    {
         std::shared_ptr< std::atomic< int64_t > > _total_instructions;
+
+        with_counters()
+            : _total_instructions( new std::atomic< int64_t >( 0 ) )
+        {}
+    };
+
+    struct with_bc
+    {
+        using Env = std::vector< std::string >;
+        BC _bc;
+
+        void bc( BC bc ) { _bc = bc; }
+        auto &program() { return _bc->program(); }
+        auto &debug() { return _bc->debug(); }
+    };
+
+    template< typename solver_ >
+    struct with_solver
+    {
+        using solver_t = solver_;
+        solver_t _solver;
+        solver_t &solver();
+    };
+
+    template< typename solver, typename next >
+    struct base_ : TQ::Skel, with_pools, with_counters, with_bc, with_solver< solver >, next
+    {
+        void boot( TQ & ) {}
+    };
+
+    template< typename next >
+    struct select_random_ : next
+    {
+        std::mt19937 rand;
+
+        int select_choice( TQ &tq, Snapshot snap, Origin origin, vm::State state, int count )
+        {
+            using dist = std::uniform_int_distribution< int >;
+            int c = dist( 0, count - 1 )( rand );
+            this->queue_choices( tq, snap, origin, state, c, count );
+        }
+    };
+
+    template< typename ctx, typename next >
+    struct with_context_ : next
+    {
+        using context_t = ctx;
+        ctx _ctx;
+        ctx &context() { return _ctx; }
+        auto &heap() { return context().heap(); }
 
         void update_instructions()
         {
-            *_total_instructions += context().instruction_count();
+            *this->_total_instructions += context().instruction_count();
             context().instruction_count( 0 );
         }
 
-        Tree( BC bc )
-            : Tree( bc, Context() )
+        ~with_context_()
         {
-            _ctx.program( bc->program() );
-        }
-
-        Tree( BC bc, const Context &ctx )
-            : _bc( bc ), _ctx( ctx ), _snap_refcnt( _snap_pool ),
-              _total_instructions( new std::atomic< int64_t >( 0 ) )
-        {}
-
-        ~Tree()
-        {
-            ASSERT_EQ( _snap_pool.stats().total.count.used, 0 );
             update_instructions();
         }
+    };
 
-        void choose( TQ &tq, Origin origin )
+    template< typename next >
+    struct compute_ : next
+    {
+        using Eval = vm::Eval< typename next::context_t >;
+
+        void eval_choice( TQ &tq, Origin origin )
         {
-            auto snap = context().snapshot( _snap_pool );
-            auto state = context()._state;
+            auto snap = this->context().snapshot( this->_snap_pool );
+            auto state = this->context()._state;
 
-            _snap_refcnt.get( snap );
+            this->_snap_refcnt.get( snap );
 
-            Eval eval( context() );
-            context()._choice_take = context()._choice_count = 0;
+            Eval eval( this->context() );
+            this->context()._choice_take = this->context()._choice_count = 0;
             eval.refresh();
             eval.dispatch();
 
-            using dist = std::uniform_int_distribution< int >;
-            if constexpr ( randomize )
-                context()._choice_take = dist( 0, context()._choice_count - 1 )( rand );
-
-            /* queue up all choices other than the selected */
-            for ( int i = 0; i < context()._choice_count; ++i )
-                if ( i != context()._choice_take )
-                {
-                    _snap_refcnt.get( snap );
-                    tq.add< Task::Choose >( snap, origin, state, i, context()._choice_count );
-                }
-
+            this->context()._choice_take =
+                this->select_choice( tq, snap, origin, state, this->context()._choice_count );
             compute( tq, origin, snap );
         }
 
+        void eval_interrupt( TQ &tq, Origin origin, Snapshot cont_from )
+        {
+            if ( this->context().frame().null() )
+            {
+                Label lbl;
+                lbl.accepting = this->context().flags_any( _VM_CF_Accepting );
+                lbl.error = this->context().flags_any( _VM_CF_Error );
+                auto [ state, isnew ] = this->store();
+                tq.add< StateTQ::Skel::Edge >( State( origin.snap ), state, lbl, isnew );
+            }
+            else if ( this->loop_closed( origin ) )
+            {
+                /* TODO: check for error/accepting flags */
+            }
+            else
+                return compute( tq, origin, cont_from );
+        }
+
+        bool feasible()
+        {
+            if ( this->context().flags_any( _VM_CF_Cancel ) )
+                return false;
+            if ( this->context()._assume.null() )
+                return true;
+
+            return this->_solver.feasible( this->context().heap(), this->context()._assume );
+        }
+
+        void compute( TQ &tq, Origin origin, Snapshot cont_from = Snapshot() )
+        {
+            auto destroy = [&]( auto p ) { this->heap().snap_put( this->_snap_pool, p, false ); };
+            auto cleanup = [&]
+            {
+                if ( cont_from )
+                    this->_snap_refcnt.put( cont_from, destroy );
+            };
+
+            brick::types::Defer _( cleanup );
+            Eval eval( this->context() );
+            bool choice = eval.run_seq( !!cont_from );
+
+            if ( !feasible() )
+                return;
+
+            if ( choice )
+                eval_choice( tq, origin );
+            else
+                eval_interrupt( tq, origin, cont_from );
+        }
+
+        bool boot( TQ &tq )
+        {
+            this->context().program( this->program() );
+            Eval eval( this->context() );
+            vm::setup::boot( this->context() );
+            eval.run();
+            next::boot( tq );
+
+            if ( vm::setup::postboot_check( this->context() ) )
+                return tq.add< Task::Schedule >( this->store().first ), true;
+            else
+                return false;
+        }
+
+        void schedule( TQ &tq, Task::Schedule e )
+        {
+            TRACE( "task (schedule)", e );
+            this->context().load( this->_state_pool, e.from.snap );
+            vm::setup::scheduler( this->context() );
+            compute( tq, Origin( e.from.snap ) );
+        }
+
+        void choose( TQ &tq, Task::Choose c )
+        {
+            TRACE( "task (choose)", c );
+            if ( !c.total )
+                return;
+            this->context().load( this->_snap_pool, c.snap );
+            this->context()._state = c.state;
+            this->context()._choice_take = c.choice;
+            this->context()._choice_count = c.total;
+            this->context().flush_ptr2i();
+            this->context().load_pc();
+            compute( tq, c.origin, c.snap );
+        }
+    };
+
+    template< typename next >
+    struct tree_store_ : next
+    {
         virtual std::pair< State, bool > store()
         {
-            return { State( context().snapshot( _state_pool ) ), true };
+            return { State( this->context().snapshot( this->_state_pool ) ), true };
         }
 
         virtual bool loop_closed( Origin & )
@@ -209,94 +340,10 @@ namespace divine::mc::machine
             return false;
         }
 
-        void schedule( TQ &tq, Origin origin, Snapshot cont_from )
-        {
-            if ( context().frame().null() )
-            {
-                Label lbl;
-                lbl.accepting = context().flags_any( _VM_CF_Accepting );
-                lbl.error = context().flags_any( _VM_CF_Error );
-                auto [ state, isnew ] = store();
-                tq.add< StateTQ::Skel::Edge >( State( origin.snap ), state, lbl, isnew );
-            }
-            else if ( !loop_closed( origin ) )
-                return compute( tq, origin, cont_from );
-        }
-
-        bool feasible()
-        {
-            if ( context().flags_any( _VM_CF_Cancel ) )
-                return false;
-            if ( context()._assume.null() )
-                return true;
-
-            // TODO validate the path condition
-            return _solver.feasible( context().heap(), context()._assume );
-        }
-
-        void compute( TQ &tq, Origin origin, Snapshot cont_from = Snapshot() )
-        {
-            auto destroy = [&]( auto p ) { heap().snap_put( _snap_pool, p, false ); };
-
-            auto cleanup = [&]
-            {
-                if ( cont_from )
-                    _snap_refcnt.put( cont_from, destroy );
-            };
-
-            brick::types::Defer _( cleanup );
-            Eval eval( context() );
-            bool choice = eval.run_seq( !!cont_from );
-
-            if ( !feasible() )
-                return;
-
-            if ( choice )
-                choose( tq, origin );
-            else
-                schedule( tq, origin, cont_from );
-
-        }
-
-        virtual void boot( TQ &tq )
-        {
-            Eval eval( context() );
-            vm::setup::boot( context() );
-            eval.run();
-        }
-
-        using TQ::Skel::run;
-
-        void run( TQ &tq, Task::Boot )
-        {
-            boot( tq );
-
-            if ( vm::setup::postboot_check( context() ) )
-                tq.add< Task::Schedule >( store().first );
-        }
-
-        void run( TQ &tq, Task::Schedule e )
-        {
-            context().load( _state_pool, e.from.snap );
-            vm::setup::scheduler( context() );
-            compute( tq, Origin( e.from.snap ) );
-        }
-
-        void run( TQ &tq, Task::Choose c )
-        {
-            context().load( _snap_pool, c.snap );
-            context()._state = c.state;
-            context()._choice_take = c.choice;
-            context()._choice_count = c.total;
-            context().flush_ptr2i();
-            context().load_pc();
-            compute( tq, c.origin, c.snap );
-        }
-
         auto make_hasher()
         {
-            Hasher h( _state_pool, context().heap(), this->_solver );
-            h._root = context().state_ptr();
+            Hasher h( this->_state_pool, this->context().heap(), this->_solver );
+            h._root = this->context().state_ptr();
             ASSERT( !h._root.null() );
             return h;
         }
@@ -305,69 +352,100 @@ namespace divine::mc::machine
         {
             return make_hasher().equal_symbolic( a, b );
         }
+
+        ~tree_store_()
+        {
+            ASSERT_EQ( this->_snap_pool.stats().total.count.used, 0 );
+        }
+
     };
 
-    template< typename Solver >
-    struct Graph : Tree< Solver >
+    template< typename next >
+    struct graph_store_ : next
     {
-        using Hasher = mc::Hasher< Solver >;
-        using Tree< Solver >::context;
+        using Hasher = mc::Hasher< typename next::solver_t >;
 
         Hasher _hasher;
-        struct Ext
-        {
-            HT ht_sched;
-            bool overwrite = false;
-        } _ext;
-
-        Graph( BC bc ) : Tree< Solver >( bc ),
-                         _hasher( this->_state_pool, context().heap(), this->_solver )
-        {}
+        HT _ht_sched;
 
         auto &hasher() { return _hasher; }
-        void enable_overwrite() { _ext.hasher.overwrite = true; }
         bool equal( Snapshot a, Snapshot b ) { return hasher().equal_symbolic( a, b ); }
+        graph_store_() : _hasher( this->_state_pool, this->heap(), this->_solver ) {}
 
         std::pair< State, bool > store( HT &table )
         {
-            auto snap = context().snapshot( this->_state_pool );
+            auto snap = this->context().snapshot( this->_state_pool );
             auto r = table.insert( snap, hasher() );
             if ( r->load() != snap )
             {
                 ASSERT( !_hasher.overwrite );
                 ASSERT( !r.isnew() );
-                context().heap().snap_put( this->_state_pool, snap );
+                this->heap().snap_put( this->_state_pool, snap );
             }
             return { State( *r ), r.isnew() };
         }
 
-        std::pair< State, bool > store() override
+        std::pair< State, bool > store()
         {
-            return store( _ext.ht_sched );
+            return store( _ht_sched );
         }
 
-        bool loop_closed( Origin &origin ) override
+        bool loop_closed( Origin &origin )
         {
             auto [ state, isnew ] = store( origin.ht_loop );
             if ( isnew )
-                context().flush_ptr2i();
+                this->context().flush_ptr2i();
             else
-                context().load( this->_state_pool, state.snap );
+            {
+                this->context().load( this->_state_pool, state.snap );
+                TRACE( "loop closed at", state.snap );
+            }
+
             return !isnew;
         }
 
-        virtual void boot( TQ &tq ) override
+        void boot( TQ &tq )
         {
-            Tree< Solver >::boot( tq );
-            hasher()._root = context().state_ptr();
+            next::boot( tq );
+            hasher()._root = this->context().state_ptr();
         }
     };
+
+    template< typename next >
+    struct dispatch_ : next
+    {
+        using next::run;
+
+        void run( TQ &tq, Task::Boot ) { next::boot( tq ); }
+        void run( TQ &tq, Task::Schedule e ) { next::schedule( tq, e ); }
+        void run( TQ &tq, Task::Choose c ) { next::choose( tq, c ); }
+    };
+
+    template< typename solver >
+    using base = brq::module< base_, solver >;
+
+    template< typename ctx >
+    using with_context = brq::module< with_context_, ctx >;
+
+    using compute = brq::module< compute_ >;
+    using select_random = brq::module< select_random_ >;
+    using tree_store = brq::module< tree_store_ >;
+    using graph_store = brq::module< graph_store_ >;
+    using dispatch = brq::module< dispatch_ >;
+
+    template< typename solver >
+    using tree = brq::compose_stack< dispatch, compute, tree_store,
+                                     with_context< MContext >, base< solver > >;
+
+    template< typename solver >
+    using graph = brq::compose_stack< dispatch, compute, graph_store, with_context< MContext >,
+                                      base< solver > >;
 }
 
 namespace divine::mc
 {
-    using TMachine = machine::Tree< smt::NoSolver >;
-    using GMachine = machine::Graph< smt::NoSolver >;
+    using TMachine = machine::tree< smt::NoSolver >;
+    using GMachine = machine::graph< smt::NoSolver >;
 
     template< typename M >
     auto weave( M &machine )

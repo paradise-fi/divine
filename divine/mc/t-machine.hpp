@@ -85,18 +85,22 @@ namespace divine::t_mc
         TEST( instance )
         {
             auto bc = prog( "void __boot( void *e ) { __vm_ctl_flag( 0, 0b10000 ); }" );
-            mc::TMachine m( bc );
+            mc::TMachine m;
+            m.bc( bc );
         }
 
         using Search = mc::Search< mc::TQ >;
         using Expand = mc::TQ::Tasks::Expand;
         using Edge = mc::TQ::Tasks::Edge;
 
+        auto tmachine( mc::BC bc ) { mc::TMachine tm; tm.bc( bc ); return tm; }
+        auto gmachine( mc::BC bc ) { mc::GMachine tm; tm.bc( bc ); return tm; }
+
         TEST( simple )
         {
             bool found = false;
             auto state = [&]( Expand ) { found = true; };
-            auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
+            auto machine = tmachine( prog_int( 4, "x - 1" ) );
             mc::weave( machine ).observe( state ).start();
             ASSERT( found );
         }
@@ -104,7 +108,7 @@ namespace divine::t_mc
         TEST( hasher )
         {
             bool ran = false;
-            auto machine = mc::GMachine( prog_int( 4, "x - 1" ) );
+            auto machine = gmachine( prog_int( 4, "x - 1" ) );
             auto check = [&]( Expand s )
             {
                 ASSERT( machine.hasher()._pool.size( s.from.snap ) );
@@ -117,7 +121,7 @@ namespace divine::t_mc
 
         TEST( start_twice )
         {
-            auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
+            auto machine = tmachine( prog_int( 4, "x - 1" ) );
             mc::State i1, i2;
 
             mc::weave( machine ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
@@ -130,7 +134,7 @@ namespace divine::t_mc
         {
             mc::State i1, i2;
 
-            auto m1 = mc::TMachine( prog_int( 4, "x - 1" ) ), m2 = m1;
+            auto m1 = tmachine( prog_int( 4, "x - 1" ) ), m2 = m1;
             mc::weave( m1 ).observe( [&]( Expand e ) { i1 = e.from; } ).start();
             mc::weave( m2 ).observe( [&]( Expand e ) { i2 = e.from; } ).start();
 
@@ -141,7 +145,7 @@ namespace divine::t_mc
         TEST( unfold )
         {
             std::vector< mc::Snapshot > snaps;
-            auto machine = mc::TMachine( prog_int( 4, "x - 1" ) );
+            auto machine = tmachine( prog_int( 4, "x - 1" ) );
 
             auto state = [&]( Expand e )
             {
@@ -157,7 +161,8 @@ namespace divine::t_mc
         template< typename M >
         void _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
         {
-            M machine( bc );
+            M machine;
+            machine.bc( bc );
             int edgecount = 0, statecount = 0;
             auto edge = [&]( Edge ) { ++edgecount; };
             auto state = [&]( Expand ) { ++statecount; };
