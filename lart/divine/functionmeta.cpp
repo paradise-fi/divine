@@ -27,15 +27,44 @@ DIVINE_UNRELAX_WARNINGS
 /*
  * This file contains the `IndexFunctions` pass that is responsible for
  * metadata generation.
- */ 
+ *
+ * Here, we see the origin of most of the metadata used by DiOS. Before
+ * the execution of the provided bitcode begins, it is scanned and transformed
+ * several times. This pass scans a given module, extracts information about
+ * functions and globals, and injects metadata representing it back into the
+ * bitcode.
+ *
+ * It works as follows: The pass scans the input bitcode and builds an internal
+ * representation of its functions and globals (structs `FunctionMeta` and
+ * `GlobalMeta`). From this data, it generates arrays of type `_MD_Function`
+ * and `_MD_Global` which represent the metadata at runtime. These arrays are
+ * then hooked back into the bitcode by inserting them as initializers of
+ * global variables `__md_functions` and `__md_globals`. The pass also stores
+ * the sizes of the aforementioned arrays in `__md_functions_count` and
+ * `__md_globals_count`.
+ */
 
 namespace lart {
 namespace divine {
 
 /*
  * Encode a single LLVM type as a character.
- * Pointers all use the same character.
- */ 
+ * Partially implements Itanium ABI C++ mangling.
+ * Pointer types are not distinguished from each other.
+ *
+ * +------------+------+
+ * |    type    | char |
+ * +------------+------+
+ * | bool       | b    |
+ * | char       | c    |
+ * | int16_t    | s    |
+ * | int32_t    | i    |
+ * | int64_t    | l    |
+ * | __int128_t | n    |
+ * | T *        | p    |
+ * | void       | v    |
+ * +------------+------+
+ */
 
 char encLLVMBasicType( llvm::Type *t ) {
     if ( t->isVoidTy() )
@@ -110,12 +139,13 @@ struct IndexFunctions {
 
     void run( llvm::Module &mod )
     {
-	// Skip if already tagged
+	// Tag this module as processed, skip if already tagged
         if ( !tagModuleWithMetadata( mod, "lart.divine.index.functions" ) )
             return;
 
         _dl = std::make_unique< llvm::DataLayout >( &mod );
 
+	// Set up injection points
         llvm::GlobalVariable *mdRoot = mod.getGlobalVariable( "__md_functions" );
 	// Types of _MD_Function, _MD_InstInfo, and _MD_Global
         llvm::StructType *funcMetaT = nullptr, *instMetaT = nullptr, *gloMetaT = nullptr;
@@ -154,12 +184,14 @@ struct IndexFunctions {
         if ( mdGlobals )
             ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
 
+	// Look up functions marked with `__trapfn`
         std::set< llvm::Function * > traps;
         brick::llvm::enumerateFunctionsForAnno( "divine.trapfn", mod,
                                                 [&]( llvm::Function *f ) { traps.insert( f ); } );
 
         std::vector< FunctionMeta > funMeta;
 
+	// Build internal representation for every defined function
         if ( mdRoot )
             for ( auto &fn : mod )
                 if ( !fn.isDeclaration() )
@@ -256,6 +288,7 @@ struct IndexFunctions {
                     } ) );
         }
 
+	// Insert global variable metadata into the module
         if ( mdGlobals )
         {
             mdGlobalsCount->setInitializer( llvm::ConstantInt::get(

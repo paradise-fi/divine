@@ -36,9 +36,35 @@ DIVINE_UNRELAX_WARNINGS
 #include <set>
 
 /*
- * This file contains the `CppEhTab` structure. It is used by the `IndexFunctions` pass.
- * `CppEhTab` generates the language specific data area (LSDA), which is used by a personality
- * routine during exception handling, for a given function.
+ * This file contains the `CppEhTab` structure. It is used by the
+ * `IndexFunctions` pass to generate LSDA for a given function.
+ *
+ * What we care about here are LLVM instructions `invoke` and `landingpad`.
+ * An `invoke` realises a function call that can throw an exception. The
+ * instruction receives, among other things, `to` and `unwind` labels. When the
+ * functions exits normally, control flow is resumed at the `to` label. If,
+ * however, the function exits abnormally (by raising an exception), execution
+ * is diverted to the `unwind` label. The `unwind` label contains a
+ * `landingpad` at the beginning.
+ *
+ * A `landingpad` can contain several clauses and a cleanup flag. Each clause
+ * is either a `catch` clause or a `filter` clause. In C++, a `catch` clause
+ * holds a type info pointer and means that the landingpad will be entered if
+ * the exception has the specified type or is a subtype of the specified type.
+ * A `filter`, on the other hand, contains an array of type info pointers and
+ * means that the landingpad will be entered if the exception type does not
+ * match any listed type. Filters are used to implement the (deprecated, as of
+ * C++11) dynamic exception specification in C++. When a `landingpad` has a
+ * cleanup tag, it means that it will always be entered. This tag is used in
+ * C++ to call destructors when a stack frame is being destroyed during
+ * stack unwinding.
+ *
+ * This structure works as follows: It receives an LLVM function, scans it for
+ * invokes and their respective landingpads and stores this information. It
+ * also generates integral selector values used for type info comparison in
+ * catch blocks (using the `llvm.eh.typeid.for` intrinsic). When the
+ * `getLSDAConst` function is called, the stored information are used to
+ * generate a specific LSDA in DWARF-like format.
  */
 
 namespace lart {
@@ -48,13 +74,17 @@ namespace dwarf = llvm::dwarf;
 
 struct CppEhTab
 {
-    /* A type that represents the clauses of a landingpad */
+    /*
+     * A type that represents the clauses of a landingpad.
+     * This information is then encoded into the LSDA.
+     */
     using Actions = std::vector< llvm::Constant * >;
 
     /*
-     * A helper structure to represent an `invoke` call.
+     * A structure representing an `invoke` call.
      * It stores the basic block of the invoke itself and that of it's landingpad.
      * It also stores the clauses of the landingpad and whether it's `cleanup`.
+     * This information is then encoded into the LSDA.
      */
     struct CallSite
     {
@@ -258,7 +288,8 @@ struct CppEhTab
     }
 
     /*
-     * These helpers ensure that we can use integer constants to compare types in clauses,
+     * These helpers store type infos and generate selector values for them.
+     * Selector values ensure that we can use integer constants to compare types in clauses,
      * as type_info comparison would be too expensive.
      */
 
