@@ -16,10 +16,13 @@ __BEGIN_DECLS
  * `lart/divine/functionmeta.cpp`.
  * - _MD_InstInfo - a single LLVM instruction
  * - _MD_Function - a function
- * - _MD_RegInfo - an LLVM register
+ * - _MD_RegInfo - an LLVM register (stored in a function frame)
  * - _MD_Global - a global variable
  * Functions stored in `__md_functions` array of size `__md_functions_count`.
  * Globals stored in `__md_globals` array of size `__md_globals_count`.
+ *
+ * Several DiOS systems (scheduling, stack management, exception handling
+ * support) depend on this system. For more information see `README`.
  */
 
 typedef struct
@@ -52,8 +55,8 @@ typedef struct
     _MD_InstInfo *inst_table;
     void (*ehPersonality)( void ); /* language-specific personality routine */
     void *ehLSDA; /* language-specific exception handling tables */
-    int is_nounwind;
-    int is_trap;
+    int is_nounwind; /* nounwind functions never raise an exception */
+    int is_trap; /* trap functions can trap into the kernel */
 } _MD_Function;
 
 typedef struct
