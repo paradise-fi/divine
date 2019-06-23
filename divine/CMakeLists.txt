@@ -32,6 +32,7 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
 stringify( cc ${divine_SOURCE_DIR}/divine/cc stddef.h )
+stringify( cc ${divine_SOURCE_DIR}/divine/cc stdarg.h )
 
 # add_library( divine-ss ${CPP_ss} )
 add_library( divine-ui ${CPP_ui} ${VERSION_FILE} "flags-generated.cpp" )

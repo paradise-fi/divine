@@ -32,7 +32,11 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/cc/cc1.hpp>
 #include <lart/divine/vaarg.h>
 
-namespace divine::str::cc { extern const std::string_view stddef_h; }
+namespace divine::str::cc
+{
+    extern const std::string_view stddef_h;
+    extern const std::string_view stdarg_h;
+}
 
 namespace divine::cc
 {
@@ -81,6 +85,7 @@ namespace divine::cc
             ctx.reset( new llvm::LLVMContext );
 
         mapVirtualFile( "/builtin/stddef.h", ::divine::str::cc::stddef_h );
+        mapVirtualFile( "/builtin/stdarg.h", ::divine::str::cc::stdarg_h );
     }
 
     CC1::~CC1() { }
