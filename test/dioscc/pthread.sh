@@ -15,7 +15,7 @@ int main()
 }
 EOF
 
-divcc prog.c -pthread
+dioscc prog.c -pthread
 
 test -s a.out
 test -x a.out
@@ -24,7 +24,7 @@ test -x a.out
 divine check a.out
 
 
-divcc prog.c -lpthread -o lpthr
+dioscc prog.c -lpthread -o lpthr
 
 test -s lpthr
 test -x lpthr

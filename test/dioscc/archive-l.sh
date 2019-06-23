@@ -11,7 +11,7 @@ cat > foo.c <<EOF
 int foo(){ return 6; }
 EOF
 
-divcc -c foo.c
+dioscc -c foo.c
 ar r libfoo.a foo.o
 nm libfoo.a | grep "T foo"
 
@@ -25,11 +25,11 @@ int main()
 }
 EOF
 
-divcc main.c libfoo.a
+dioscc main.c libfoo.a
 ./a.out
 divine check a.out
 rm a.out
 
-divcc main.c -L. -lfoo
+dioscc main.c -L. -lfoo
 ./a.out
 divine check a.out

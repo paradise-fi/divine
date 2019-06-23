@@ -9,7 +9,7 @@ cat > b.c <<EOF
 int foo(){}
 EOF
 
-divcc -c a.c b.c
+dioscc -c a.c b.c
 
 if ! [ -s a.c ] || ! [ -s b.c ];
     then false;

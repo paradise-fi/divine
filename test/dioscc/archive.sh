@@ -19,7 +19,7 @@ int main()
 }
 EOF
 
-divcc -g -c f.c prog.c    # create object files
+dioscc -g -c f.c prog.c    # create object files
 
 if ! [ -s f.o ] || ! [ -s prog.o ];   # make sure they exist
     then false;
@@ -31,7 +31,7 @@ if ! [ -s f.a ];
     then false;
 fi
 
-divcc prog.o f.a        # fully compile
+dioscc prog.o f.a        # fully compile
 
 if [ -s linked.bc ];    # should NOT spawn linked.bc
     then false;

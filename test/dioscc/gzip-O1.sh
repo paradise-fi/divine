@@ -2,9 +2,9 @@
 . lib/testcase
 
 unxz --version || skip
-unxz < $SRC_ROOT/test/divcc/gzip-1.8.tar.xz | tar x
+unxz < $SRC_ROOT/test/dioscc/gzip-1.8.tar.xz | tar x
 cd gzip-1.8
-./configure CC=divcc CFLAGS=-O2
+./configure CC=dioscc CFLAGS=-O1
 make
 echo hello world | ./gzip - > hello.gz
 divine check --stdin hello.gz ./gzip -f -d -

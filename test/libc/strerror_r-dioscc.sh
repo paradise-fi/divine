@@ -1,4 +1,4 @@
-# TAGS: divcc
+# TAGS: dioscc
 . lib/testcase
 
 cat > strerr_gnu.c <<EOF
@@ -13,7 +13,7 @@ int main()
 }
 EOF
 
-divcc -o gnu -D_GNU_SOURCE strerr_gnu.c
+dioscc -o gnu -D_GNU_SOURCE strerr_gnu.c
 
 if [ -s a.out ] || ! [ -s gnu ] || ! [ -x gnu ];
     then false;
@@ -38,7 +38,7 @@ int main()
 }
 EOF
 
-divcc -o nognu -D_XOPEN_SOURCE strerr_nognu.c
+dioscc -o nognu -D_XOPEN_SOURCE strerr_nognu.c
 
 if [ -s a.out ] || ! [ -s nognu ] || ! [ -x nognu ];
     then false;
