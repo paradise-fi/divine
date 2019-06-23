@@ -1,0 +1,94 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+
+/* Utilities for composing modules into stacks. This code composition approach
+ * uses 'late' (but still static) inheritance to allow both a fair degree of
+ * flexibility without compromising performance by using references and
+ * pointers. See the code in the brq_t namespace for an example of how this can
+ * be used. */
+
+namespace brq
+{
+    template< typename... > struct compose {};
+
+    template< typename head, typename... tail >
+    struct compose< head, tail... >
+    {
+        template< typename next >
+        struct module : head::template module< typename compose< tail... >::template module< next > >
+        {};
+    };
+
+    template<>
+    struct compose<>
+    {
+        template< typename next >
+        struct module : next {};
+    };
+
+    struct unit {};
+
+    template< typename... comps >
+    using compose_stack = typename compose< comps... >::template module< unit >;
+
+    template< template< typename... > class mod, typename... x >
+    struct module_
+    {
+        template < typename next >
+        using module = mod< x..., next >;
+    };
+
+    template< template< typename... > class mod, typename... x >
+    using module = module_< mod, x... >;
+}
+
+namespace brq_t
+{
+    template< typename next >
+    struct m0_ : next
+    {
+        static const bool has_m1 = false, has_m2 = false;
+    };
+
+    template< typename next >
+    struct m1_ : next { static const bool has_m1 = true; };
+
+    template< typename foo, typename next >
+    struct m2_ : next { static const bool has_m2 = true; };
+
+    using m0 = brq::module< m0_ >;
+    using m1 = brq::module< m1_ >;
+    template< typename foo >
+    using m2 = brq::module< m2_, foo >;
+
+    struct compose
+    {
+        using m01 = brq::compose_stack< m1, m0 >;
+        static_assert( m01::has_m1 );
+        static_assert( !m01::has_m2 );
+        using m012 = brq::compose_stack< m2< void >, m1, m0 >;
+        static_assert( m012::has_m1 );
+        static_assert( m012::has_m2 );
+
+        TEST( empty ) {}
+    };
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
