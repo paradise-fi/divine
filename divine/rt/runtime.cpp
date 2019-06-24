@@ -20,7 +20,6 @@
 
 namespace divine::str
 {
-
     struct stringtable { std::string n; std::string_view c; };
     extern stringtable dios_list[];
     namespace dios_native { extern std::string_view libdios_host_a, libc__abi_a, libc___a; }
