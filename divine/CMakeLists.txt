@@ -7,6 +7,12 @@ foreach( D mem vm ss mc ui cc ltl sim smt dbg )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
 endforeach()
 
+file( GLOB H_BUILTIN LIST_DIRECTORIES false cc/*.h )
+foreach( f ${H_BUILTIN} )
+  stringify( cc ${divine_SOURCE_DIR}/divine/cc ${f} )
+endforeach()
+stringlist( "cc" cc )
+
 #template_separe( VM vm/interpreter.cpp )
 
 set( VERSION_FILE ${divine_BINARY_DIR}/divine/version-generated.cpp )
@@ -31,12 +37,9 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-stringify( cc ${divine_SOURCE_DIR}/divine/cc stddef.h )
-stringify( cc ${divine_SOURCE_DIR}/divine/cc stdarg.h )
-
 # add_library( divine-ss ${CPP_ss} )
 add_library( divine-ui ${CPP_ui} ${VERSION_FILE} "flags-generated.cpp" )
-add_library( divine-cc ${CPP_cc} ${cc_FILES} )
+add_library( divine-cc ${CPP_cc} ${cc_FILES} cc_list.cpp )
 add_dependencies( divine-ui divine-version )
 foreach( D ltl mc smt vm dbg )
   add_library( divine-${D} ${CPP_${D}} )
