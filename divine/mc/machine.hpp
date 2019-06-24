@@ -134,22 +134,6 @@ namespace divine::mc::machine
         brick::mem::RefPool< Pool, uint8_t > _snap_refcnt;
 
         with_pools() : _snap_refcnt( _snap_pool ) {}
-
-        void queue_choices( TQ &tq, Snapshot snap, Origin origin, vm::State state, int take, int total )
-        {
-            for ( int i = 0; i < total; ++i )
-                if ( i != take )
-                {
-                    _snap_refcnt.get( snap );
-                    tq.add< Task::Choose >( snap, origin, state, i, total );
-                }
-        }
-
-        int select_choice( TQ &tq, Snapshot snap, Origin origin, vm::State state, int count )
-        {
-            queue_choices( tq, snap, origin, state, 0, count );
-            return 0;
-        }
     };
 
     struct with_counters
@@ -182,11 +166,35 @@ namespace divine::mc::machine
     template< typename solver, typename next >
     struct base_ : TQ::Skel, with_pools, with_counters, with_bc, with_solver< solver >, next
     {
+        using task_choose   = Task::Choose;
+        using task_schedule = Task::Schedule;
+        using task_edge     = StateTQ::Tasks::Edge;
+
         void boot( TQ & ) {}
     };
 
     template< typename next >
-    struct select_random_ : next
+    struct choose_ : next
+    {
+        void queue_choices( TQ &tq, Snapshot snap, Origin origin, vm::State state, int take, int total )
+        {
+            for ( int i = 0; i < total; ++i )
+                if ( i != take )
+                {
+                    this->_snap_refcnt.get( snap );
+                    tq.add< typename next::task_choose >( snap, origin, state, i, total );
+                }
+        }
+
+        int select_choice( TQ &tq, Snapshot snap, Origin origin, vm::State state, int count )
+        {
+            queue_choices( tq, snap, origin, state, 0, count );
+            return 0;
+        }
+    };
+
+    template< typename next >
+    struct choose_random_ : next
     {
         std::mt19937 rand;
 
@@ -248,7 +256,7 @@ namespace divine::mc::machine
                 lbl.accepting = this->context().flags_any( _VM_CF_Accepting );
                 lbl.error = this->context().flags_any( _VM_CF_Error );
                 auto [ state, isnew ] = this->store();
-                tq.add< StateTQ::Skel::Edge >( State( origin.snap ), state, lbl, isnew );
+                tq.add< typename next::task_edge >( State( origin.snap ), state, lbl, isnew );
             }
             else if ( this->loop_closed( origin ) )
             {
@@ -299,7 +307,7 @@ namespace divine::mc::machine
             next::boot( tq );
 
             if ( vm::setup::postboot_check( this->context() ) )
-                return tq.add< Task::Schedule >( this->store().first ), true;
+                return tq.add< typename next::task_schedule >( this->store().first ), true;
             else
                 return false;
         }
@@ -428,18 +436,19 @@ namespace divine::mc::machine
     using with_context = brq::module< with_context_, ctx >;
 
     using compute = brq::module< compute_ >;
-    using select_random = brq::module< select_random_ >;
+    using choose = brq::module< choose_ >;
+    using choose_random = brq::module< choose_random_ >;
     using tree_store = brq::module< tree_store_ >;
     using graph_store = brq::module< graph_store_ >;
     using dispatch = brq::module< dispatch_ >;
 
     template< typename solver >
-    using tree = brq::compose_stack< dispatch, compute, tree_store,
-                                     with_context< MContext >, base< solver > >;
+    using tree = brq::compose_stack< dispatch, compute, tree_store, choose,
+                                     with_context< context >, base< solver > >;
 
     template< typename solver >
-    using graph = brq::compose_stack< dispatch, compute, graph_store, with_context< MContext >,
-                                      base< solver > >;
+    using graph = brq::compose_stack< dispatch, compute, graph_store, choose,
+                                      with_context< context >, base< solver > >;
 }
 
 namespace divine::mc
