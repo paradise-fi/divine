@@ -22,6 +22,7 @@
 #include <divine/mc/context.hpp>
 #include <divine/mc/hasher.hpp>
 #include <divine/mc/search.hpp>
+#include <divine/mc/ctx-assume.hpp>
 #include <divine/smt/solver.hpp>
 
 #include <divine/vm/value.hpp>
@@ -67,10 +68,10 @@ namespace divine::mc
         }
     };
 
-    struct MContext : vm::Context< vm::Program, vm::CowHeap >
+    template< typename next >
+    struct ctx_choice_ : next
     {
         int _choice_take, _choice_count;
-        vm::GenericPointer _assume;
 
         template< typename I >
         int choose( int count, I, I )
@@ -80,9 +81,13 @@ namespace divine::mc
             _choice_count = count;
             return _choice_take;
         }
-
-        using vm::Context< vm::Program, vm::CowHeap >::Context;
     };
+
+    using ctx_choice = brq::module< ctx_choice_ >;
+
+    /* TODO get rid of the debug */
+    using context = brq::compose_stack< ctx_choice, ctx_assume, ctx::legacy, ctx::fault, ctx::debug,
+                                        ctx::with_tracking, ctx::common< vm::Program, vm::CowHeap > >;
 
     using StateTQ = GraphTQ< State, Label >;
 
