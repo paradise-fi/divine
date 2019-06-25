@@ -43,7 +43,7 @@ namespace divine::mc
         std::deque< task > _queue;
 
         template< typename... ex >
-        using extend = task_queue< ex..., tasks... >;
+        using extend = task_queue< ex..., task, tasks... >;
 
         template< typename T, typename... Args >
         void add( Args... args )
