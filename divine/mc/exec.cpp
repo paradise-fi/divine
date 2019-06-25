@@ -22,7 +22,7 @@
 #include <divine/vm/setup.hpp>
 
 #include <divine/vm/eval.tpp>
-#include <divine/vm/context.tpp>
+#include <divine/vm/ctx-debug.tpp>
 #include <divine/dbg/stepper.tpp>
 #include <divine/dbg/print.tpp>
 
