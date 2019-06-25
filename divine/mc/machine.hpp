@@ -88,45 +88,37 @@ namespace divine::mc
     /* TODO get rid of the debug */
     using context = brq::compose_stack< ctx_choice, ctx_assume, ctx::legacy, ctx::fault, ctx::debug,
                                         ctx::with_tracking, ctx::common< vm::Program, vm::CowHeap > >;
+}
 
-    using StateTQ = GraphTQ< State, Label >;
+namespace divine::mc::task
+{
+    using Boot     = Start;
 
-    struct Origin
+    struct origin
     {
         Snapshot snap;
         HT ht_loop;
-        explicit Origin( Snapshot s ) : snap( s ) {}
+        explicit origin( Snapshot s ) : snap( s ) {}
     };
 
-    struct Task
+    struct Compute
     {
-        using GraphTs = StateTQ::Tasks;
-        using Boot = GraphTs::Start;
-        using Schedule = GraphTs::Expand;
-
-        struct Compute
-        {
-            Snapshot snap;
-            Origin origin;
-            vm::State state;
-            Compute( Snapshot snap, Origin orig, vm::State state )
-                : snap( snap ), origin( orig ), state( state )
-            {}
-        };
-
-        struct Choose : Compute
-        {
-            int choice, total;
-            Choose( Snapshot snap, Origin orig, vm::State state, int c, int t )
-                : Compute( snap, orig, state ), choice( c ), total( t )
-            {}
-        };
-
-        using TQ = StateTQ::Extend< Task, Choose >;
-        using Weaver = mc::Weaver< TQ >;
+        Snapshot snap;
+        task::origin origin;
+        vm::State state;
+        Compute( Snapshot snap, task::origin orig, vm::State state )
+            : snap( snap ), origin( orig ), state( state )
+        {}
     };
 
-    using TQ = Task::TQ;
+    struct Choose : Compute
+    {
+        int choice, total;
+        void cancel() { total = 0; }
+        Choose( Snapshot snap, task::origin orig, vm::State state, int c, int t )
+            : Compute( snap, orig, state ), choice( c ), total( t )
+        {}
+    };
 }
 
 namespace divine::mc::machine
@@ -169,31 +161,37 @@ namespace divine::mc::machine
     };
 
     template< typename solver, typename next >
-    struct base_ : TQ::Skel, with_pools, with_counters, with_bc, with_solver< solver >, next
+    struct base_ : with_pools, with_counters, with_bc, with_solver< solver >, next
     {
-        using task_choose   = Task::Choose;
-        using task_schedule = Task::Schedule;
-        using task_edge     = StateTQ::Tasks::Edge;
+        using origin        = task::origin;
+        using task_choose   = task::Choose;
+        using task_schedule = task::Expand< State >;
+        using task_edge     = task::Edge< State, Label >;
+        using tq            = task_queue< task_choose, task::Start, task_schedule, task_edge >;
 
-        void boot( TQ & ) {}
+        template< typename T > void run( tq &, T ) {}
+        void boot( tq & ) {}
     };
 
     template< typename next >
     struct choose_ : next
     {
-        void queue_choices( TQ &tq, Snapshot snap, Origin origin, vm::State state, int take, int total )
+        using typename next::origin;
+        using typename next::tq;
+
+        void queue_choices( tq &q, Snapshot snap, origin o, vm::State state, int take, int total )
         {
             for ( int i = 0; i < total; ++i )
                 if ( i != take )
                 {
                     this->_snap_refcnt.get( snap );
-                    tq.add< typename next::task_choose >( snap, origin, state, i, total );
+                    q.template add< typename next::task_choose >( snap, o, state, i, total );
                 }
         }
 
-        int select_choice( TQ &tq, Snapshot snap, Origin origin, vm::State state, int count )
+        int select_choice( tq &q, Snapshot snap, origin o, vm::State state, int count )
         {
-            queue_choices( tq, snap, origin, state, 0, count );
+            queue_choices( q, snap, o, state, 0, count );
             return 0;
         }
     };
@@ -201,13 +199,15 @@ namespace divine::mc::machine
     template< typename next >
     struct choose_random_ : next
     {
+        using typename next::origin;
+        using typename next::tq;
         std::mt19937 rand;
 
-        int select_choice( TQ &tq, Snapshot snap, Origin origin, vm::State state, int count )
+        int select_choice( tq &q, Snapshot snap, origin o, vm::State state, int count )
         {
             using dist = std::uniform_int_distribution< int >;
             int c = dist( 0, count - 1 )( rand );
-            this->queue_choices( tq, snap, origin, state, c, count );
+            this->queue_choices( q, snap, o, state, c, count );
         }
     };
 
@@ -234,9 +234,11 @@ namespace divine::mc::machine
     template< typename next >
     struct compute_ : next
     {
+        using typename next::origin;
+        using typename next::tq;
         using Eval = vm::Eval< typename next::context_t >;
 
-        void eval_choice( TQ &tq, Origin origin )
+        void eval_choice( tq &q, origin o )
         {
             auto snap = this->context().snapshot( this->_snap_pool );
             auto state = this->context()._state;
@@ -249,11 +251,11 @@ namespace divine::mc::machine
             eval.dispatch();
 
             this->context()._choice_take =
-                this->select_choice( tq, snap, origin, state, this->context()._choice_count );
-            compute( tq, origin, snap );
+                this->select_choice( q, snap, o, state, this->context()._choice_count );
+            compute( q, o, snap );
         }
 
-        void eval_interrupt( TQ &tq, Origin origin, Snapshot cont_from )
+        void eval_interrupt( tq &q, origin o, Snapshot cont_from )
         {
             if ( this->context().frame().null() )
             {
@@ -261,14 +263,14 @@ namespace divine::mc::machine
                 lbl.accepting = this->context().flags_any( _VM_CF_Accepting );
                 lbl.error = this->context().flags_any( _VM_CF_Error );
                 auto [ state, isnew ] = this->store();
-                tq.add< typename next::task_edge >( State( origin.snap ), state, lbl, isnew );
+                q.template add< typename next::task_edge >( State( o.snap ), state, lbl, isnew );
             }
-            else if ( this->loop_closed( origin ) )
+            else if ( this->loop_closed( o ) )
             {
                 /* TODO: check for error/accepting flags */
             }
             else
-                return compute( tq, origin, cont_from );
+                return compute( q, o, cont_from );
         }
 
         bool feasible()
@@ -281,7 +283,7 @@ namespace divine::mc::machine
             return this->_solver.feasible( this->context().heap(), this->context()._assume );
         }
 
-        void compute( TQ &tq, Origin origin, Snapshot cont_from = Snapshot() )
+        void compute( tq &q, origin o, Snapshot cont_from = Snapshot() )
         {
             auto destroy = [&]( auto p ) { this->heap().snap_put( this->_snap_pool, p, false ); };
             auto cleanup = [&]
@@ -298,34 +300,34 @@ namespace divine::mc::machine
                 return;
 
             if ( choice )
-                eval_choice( tq, origin );
+                eval_choice( q, o );
             else
-                eval_interrupt( tq, origin, cont_from );
+                eval_interrupt( q, o, cont_from );
         }
 
-        bool boot( TQ &tq )
+        bool boot( tq &q )
         {
             this->context().program( this->program() );
             Eval eval( this->context() );
             vm::setup::boot( this->context() );
             eval.run();
-            next::boot( tq );
+            next::boot( q );
 
             if ( vm::setup::postboot_check( this->context() ) )
-                return tq.add< typename next::task_schedule >( this->store().first ), true;
+                return q.template add< typename next::task_schedule >( this->store().first ), true;
             else
                 return false;
         }
 
-        void schedule( TQ &tq, Task::Schedule e )
+        void schedule( tq &q, typename next::task_schedule e )
         {
             TRACE( "task (schedule)", e );
             this->context().load( this->_state_pool, e.from.snap );
             vm::setup::scheduler( this->context() );
-            compute( tq, Origin( e.from.snap ) );
+            compute( q, task::origin( e.from.snap ) );
         }
 
-        void choose( TQ &tq, Task::Choose c )
+        void choose( tq &q, typename next::task_choose c )
         {
             TRACE( "task (choose)", c );
             if ( !c.total )
@@ -336,19 +338,19 @@ namespace divine::mc::machine
             this->context()._choice_count = c.total;
             this->context().flush_ptr2i();
             this->context().load_pc();
-            compute( tq, c.origin, c.snap );
+            compute( q, c.origin, c.snap );
         }
     };
 
     template< typename next >
-    struct tree_store_ : next
+    struct tree_search_ : next
     {
         virtual std::pair< State, bool > store()
         {
             return { State( this->context().snapshot( this->_state_pool ) ), true };
         }
 
-        virtual bool loop_closed( Origin & )
+        virtual bool loop_closed( typename next::origin & )
         {
             return false;
         }
@@ -366,7 +368,7 @@ namespace divine::mc::machine
             return make_hasher().equal_symbolic( a, b );
         }
 
-        ~tree_store_()
+        ~tree_search_()
         {
             ASSERT_EQ( this->_snap_pool.stats().total.count.used, 0 );
         }
@@ -374,8 +376,9 @@ namespace divine::mc::machine
     };
 
     template< typename next >
-    struct graph_store_ : next
+    struct graph_search_ : next
     {
+        using typename next::origin;
         using Hasher = mc::Hasher< typename next::solver_t >;
 
         Hasher _hasher;
@@ -383,7 +386,7 @@ namespace divine::mc::machine
 
         auto &hasher() { return _hasher; }
         bool equal( Snapshot a, Snapshot b ) { return hasher().equal_symbolic( a, b ); }
-        graph_store_() : _hasher( this->_state_pool, this->heap(), this->_solver ) {}
+        graph_search_() : _hasher( this->_state_pool, this->heap(), this->_solver ) {}
 
         std::pair< State, bool > store( HT &table )
         {
@@ -403,9 +406,9 @@ namespace divine::mc::machine
             return store( _ht_sched );
         }
 
-        bool loop_closed( Origin &origin )
+        bool loop_closed( origin &o )
         {
-            auto [ state, isnew ] = store( origin.ht_loop );
+            auto [ state, isnew ] = store( o.ht_loop );
             if ( isnew )
                 this->context().flush_ptr2i();
             else
@@ -417,21 +420,22 @@ namespace divine::mc::machine
             return !isnew;
         }
 
-        void boot( TQ &tq )
+        void boot( typename next::tq &q )
         {
-            next::boot( tq );
+            next::boot( q );
             hasher()._root = this->context().state_ptr();
         }
     };
 
     template< typename next >
-    struct dispatch_ : next
+    struct graph_dispatch_ : next
     {
+        using typename next::tq;
         using next::run;
 
-        void run( TQ &tq, Task::Boot ) { next::boot( tq ); }
-        void run( TQ &tq, Task::Schedule e ) { next::schedule( tq, e ); }
-        void run( TQ &tq, Task::Choose c ) { next::choose( tq, c ); }
+        void run( tq &q, task::Boot ) { next::boot( q ); }
+        void run( tq &q, typename next::task_schedule e ) { next::schedule( q, e ); }
+        void run( tq &q, typename next::task_choose c ) { next::choose( q, c ); }
     };
 
     template< typename solver >
@@ -440,20 +444,26 @@ namespace divine::mc::machine
     template< typename ctx >
     using with_context = brq::module< with_context_, ctx >;
 
-    using compute = brq::module< compute_ >;
+    template< typename solver >
+    using common = brq::compose< with_context< context >, base< solver > >;
+
     using choose = brq::module< choose_ >;
     using choose_random = brq::module< choose_random_ >;
-    using tree_store = brq::module< tree_store_ >;
-    using graph_store = brq::module< graph_store_ >;
-    using dispatch = brq::module< dispatch_ >;
+
+    using tree_search = brq::module< tree_search_ >;
+    using graph_search = brq::module< graph_search_ >;
+
+    using compute = brq::module< compute_ >;
+    using graph_dispatch = brq::module< graph_dispatch_ >;
+
+    using tree_compute  = brq::compose< graph_dispatch, compute,  tree_search, choose >;
+    using graph_compute = brq::compose< graph_dispatch, compute, graph_search, choose >;
 
     template< typename solver >
-    using tree = brq::compose_stack< dispatch, compute, tree_store, choose,
-                                     with_context< context >, base< solver > >;
+    using tree = brq::compose_stack< tree_compute, common< solver > >;
 
     template< typename solver >
-    using graph = brq::compose_stack< dispatch, compute, graph_store, choose,
-                                      with_context< context >, base< solver > >;
+    using graph = brq::compose_stack< graph_compute, common< solver > >;
 }
 
 namespace divine::mc
@@ -464,6 +474,6 @@ namespace divine::mc
     template< typename M >
     auto weave( M &machine )
     {
-        return mc::Task::Weaver().extend_ref( machine );
+        return mc::Weaver< typename M::tq >().extend_ref( machine );
     }
 }

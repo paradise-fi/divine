@@ -89,9 +89,9 @@ namespace divine::t_mc
             m.bc( bc );
         }
 
-        using Search = mc::Search< mc::TQ >;
-        using Expand = mc::TQ::Tasks::Expand;
-        using Edge = mc::TQ::Tasks::Edge;
+        using Search = mc::Search< mc::State, mc::Label >;
+        using Expand = mc::task::Expand< mc::State >;
+        using Edge   = mc::task::Edge< mc::State, mc::Label >;
 
         auto tmachine( mc::BC bc ) { mc::TMachine tm; tm.bc( bc ); return tm; }
         auto gmachine( mc::BC bc ) { mc::GMachine tm; tm.bc( bc ); return tm; }
