@@ -26,15 +26,19 @@
 namespace divine::t_mc
 {
     enum Label { Red, Black };
-    using TQ = mc::GraphTQ< int, Label >;
 
-    struct Base : TQ::Skel
+    using TQ     = mc::GraphTQ< int, Label >;
+    using Edge   = mc::task::Edge< int, Label >;
+    using Expand = mc::task::Expand< int >;
+
+
+    struct Base : TQ::skeleton
     {
         brq::concurrent_hash_set< int > _states;
 
-        using TQ::Skel::run;
+        using TQ::skeleton::run;
 
-        void run( TQ &tq, typename TQ::Tasks::Start )
+        void run( TQ &tq, mc::task::Start )
         {
             _states.insert( 1 );
             tq.add< Expand >( 1 );
@@ -126,13 +130,10 @@ namespace divine::t_mc
 
     struct Search
     {
-        using Edge = TQ::Tasks::Edge;
-        using Expand = TQ::Tasks::Expand;
-
         template< typename B >
         auto weave( B builder )
         {
-            return mc::Weaver< TQ >().extend( mc::Search< TQ >(), builder );
+            return mc::Weaver< TQ >().extend( mc::Search< int, Label >(), builder );
         }
 
         TEST( fixed )

@@ -19,41 +19,40 @@
 #pragma once
 #include <divine/mc/weaver.hpp>
 
+namespace divine::mc::task
+{
+    template< typename State, typename Label >
+    struct Edge
+    {
+        State from, to;
+        Label label;
+        bool isnew;
+        Edge( State f, State t, Label l, bool n )
+            : from( f ), to( t ), label( l ), isnew( n )
+        {}
+    };
+
+    template< typename State >
+    struct Expand
+    {
+        State from;
+        Expand( State s ) : from( s ) {}
+    };
+}
+
 namespace divine::mc
 {
     template< typename State, typename Label >
-    struct GraphTasks
-    {
-        struct Edge
-        {
-            State from, to;
-            Label label;
-            bool isnew;
-            Edge( State f, State t, Label l, bool n )
-                : from( f ), to( t ), label( l ), isnew( n )
-            {}
-        };
-
-        struct Expand
-        {
-            State from;
-            Expand( State s ) : from( s ) {}
-        };
-
-        struct Start {};
-        using TQ_ = TaskQueue< GraphTasks< State, Label >, Start, Expand, Edge >;
-    };
+    using GraphTQ = task_queue< task::Start, task::Expand< State >, task::Edge< State, Label > >;
 
     template< typename State, typename Label >
-    using GraphTQ = typename GraphTasks< State, Label >::TQ_;
-
-    template< typename TQ >
-    struct Search : TQ::Skel
+    struct Search : GraphTQ< State, Label >::skeleton
     {
-        using Edge = typename TQ::Tasks::Edge;
-        using Expand = typename TQ::Tasks::Expand;
+        using TQ     = GraphTQ< State, Label >;
+        using Edge   = task::Edge< State, Label >;
+        using Expand = task::Expand< State >;
 
-        using TQ::Skel::run;
+        using TQ::skeleton::run;
 
         void run( TQ &tq, Edge e )
         {
@@ -61,5 +60,4 @@ namespace divine::mc
                 tq.template add< Expand >( e.to );
         }
     };
-
 }

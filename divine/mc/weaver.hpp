@@ -19,76 +19,65 @@
 #pragma once
 #include <deque>
 
+namespace divine::mc::task
+{
+    struct Start {};
+}
+
 namespace divine::mc
 {
+    template< typename... > struct task_queue;
 
-    template< typename... > struct MachineSkel;
-
-    template< typename TS, typename TQ, typename Task, typename... Tasks >
-    struct MachineSkel< TS, TQ, Task, Tasks... > : MachineSkel< TS, TQ, Tasks... >
+    template<>
+    struct task_queue<>
     {
-        using MachineSkel< TS, TQ, Tasks... >::run;
-        void run( TQ &, Task ) {}
+        void clear();
+        template< typename P > bool process_next( P ) { return false; }
     };
 
-    template< typename TS, typename TQ >
-    struct MachineSkel< TS, TQ > : TS
+    template< typename task, typename... tasks >
+    struct task_queue< task, tasks... > : task_queue< tasks... >
     {
-        void run();
-    };
+        using next = task_queue< tasks... >;
+        using tq   = task_queue< task, tasks... >;
+        std::deque< task > _queue;
 
-    template< typename TaskStruct, typename... TaskList >
-    struct TaskQueue
-    {
-        using TQ = TaskQueue< TaskStruct, TaskList... >;
-        using Tasks = TaskStruct;
+        template< typename... ex >
+        using extend = task_queue< ex..., tasks... >;
 
-        template< typename TS >
-        struct ExtendTS : TaskStruct, TS {};
-
-        template< typename TS, typename... Extra >
-        using Extend = TaskQueue< ExtendTS< TS >, Extra..., TaskList... >;
-
-        using Queues = std::tuple< std::deque< TaskList > ... >;
-        Queues _queues;
-
-        template< typename Task, typename... Args >
+        template< typename T, typename... Args >
         void add( Args... args )
         {
-            std::get< std::deque< Task > >( _queues ).emplace_back( args... );
+            if constexpr ( std::is_convertible_v< T, task > )
+                _queue.emplace_back( args... );
+            else
+                next::template add< T >( args... );
         }
 
-        template< int i = 0 >
         void clear()
         {
-            if constexpr ( i < std::tuple_size_v< Queues > )
-            {
-                std::get< i >( _queues ).clear();
-                return clear< i + 1 >();
-            }
+            _queue.clear();
+            next::clear();
         }
 
-        template< int i = 0, typename P >
+        template< typename P >
         bool process_next( P process )
         {
-            if constexpr ( i < std::tuple_size_v< Queues > )
-            {
-                auto &q = std::get< i >( _queues );
-
-                if ( !q.empty() )
-                {
-                    process( q.front() );
-                    q.pop_front();
-                    return true;
-                }
-
-                return process_next< i + 1 >( process );
-            }
+            if ( _queue.empty() )
+                return next::process_next( process );
             else
-                return false;
+            {
+                process( _queue.front() );
+                _queue.pop_front();
+                return true;
+            }
         }
 
-        using Skel = MachineSkel< TaskStruct, TQ, TaskList... >;
+        struct skeleton
+        {
+            template< typename T >
+            void run( tq &, const T & ) {}
+        };
     };
 
     template< typename TQ, typename... Machines >
@@ -213,12 +202,12 @@ namespace divine::mc
         void run() /* TODO parallel */
         {
             auto process = [&]( auto t ) { process_task< 0 >( t ); };
-            while ( _queue.template process_next< 0 >( process ) );
+            while ( _queue.process_next( process ) );
         }
 
         void start()
         {
-            add< typename TQ::Tasks::Start >();
+            add< task::Start >();
             run();
         }
     };
