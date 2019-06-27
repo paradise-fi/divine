@@ -171,6 +171,11 @@ namespace divine::mc::machine
 
         template< typename T > void run( tq &, T ) {}
         void boot( tq & ) {}
+
+        void queue_edge( tq &q, const origin &o, State state, Label lbl, bool isnew )
+        {
+            q.template add< task_edge >( State( o.snap ), state, lbl, isnew );
+        }
     };
 
     template< typename next >
@@ -263,7 +268,7 @@ namespace divine::mc::machine
                 lbl.accepting = this->context().flags_any( _VM_CF_Accepting );
                 lbl.error = this->context().flags_any( _VM_CF_Error );
                 auto [ state, isnew ] = this->store();
-                q.template add< typename next::task_edge >( State( o.snap ), state, lbl, isnew );
+                this->queue_edge( q, o, state, lbl, isnew );
             }
             else if ( this->loop_closed( o ) )
             {
@@ -325,12 +330,11 @@ namespace divine::mc::machine
                 return false;
         }
 
-        void schedule( tq &q, typename next::task_schedule e )
+        void schedule( tq &q, typename next::origin o )
         {
-            TRACE( "task (schedule)", e );
-            this->context().load( this->_state_pool, e.from.snap );
+            this->context().load( this->_state_pool, o.snap );
             vm::setup::scheduler( this->context() );
-            compute( q, task::origin( e.from.snap ) );
+            compute( q, o );
         }
 
         void choose( tq &q, typename next::task_choose c )
@@ -440,8 +444,12 @@ namespace divine::mc::machine
         using next::run;
 
         void run( tq &q, task::Boot ) { next::boot( q ); }
-        void run( tq &q, typename next::task_schedule e ) { next::schedule( q, e ); }
         void run( tq &q, typename next::task_choose c ) { next::choose( q, c ); }
+
+        void run( tq &q, typename next::task_schedule e )
+        {
+            next::schedule( q, task::origin( e.from.snap ) );
+        }
     };
 
     template< typename solver >
