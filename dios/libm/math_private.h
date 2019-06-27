@@ -19,6 +19,7 @@
 
 #include <sys/types.h>
 #include <stdint.h>
+#include <endian.h>
 
 typedef __uint64_t u_int64_t;
 typedef __uint32_t u_int32_t;
