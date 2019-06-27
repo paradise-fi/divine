@@ -76,30 +76,10 @@ extern char __nan[];
 #define	MATH_ERREXCEPT	2
 #define	math_errhandling	MATH_ERREXCEPT
 
-#define fpclassify(x) \
-	((sizeof (x) == sizeof (float)) ? \
-		__fpclassifyf(x) \
-	: (sizeof (x) == sizeof (double)) ? \
-		__fpclassify(x) \
-	:	__fpclassifyl(x))
-#define isfinite(x) \
-	((sizeof (x) == sizeof (float)) ? \
-		__isfinitef(x) \
-	: (sizeof (x) == sizeof (double)) ? \
-		__isfinite(x) \
-	:	__isfinitel(x))
-#define isnormal(x) \
-	((sizeof (x) == sizeof (float)) ? \
-		__isnormalf(x) \
-	: (sizeof (x) == sizeof (double)) ? \
-		__isnormal(x) \
-	:	__isnormall(x))
-#define signbit(x) \
-	((sizeof (x) == sizeof (float)) ? \
-		__signbitf(x) \
-	: (sizeof (x) == sizeof (double)) ? \
-		__signbit(x) \
-	:	__signbitl(x))
+#define fpclassify(x) __builtin_fpclassify(x)
+#define isfinite(x) __builtin_isfinite(x)
+#define isnormal(x) __builtin_isnormal(x)
+#define signbit(x) __builtin_signbit(x)
 
 #define	isgreater(x, y)		(!isunordered((x), (y)) && (x) > (y))
 #define	isgreaterequal(x, y)	(!isunordered((x), (y)) && (x) >= (y))
@@ -110,18 +90,8 @@ extern char __nan[];
 #define	isunordered(x, y)	(isnan(x) || isnan(y))
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
-#define isinf(x) \
-	((sizeof (x) == sizeof (float)) ? \
-		__isinff(x) \
-	: (sizeof (x) == sizeof (double)) ? \
-		__isinf(x) \
-	:	__isinfl(x))
-#define isnan(x) \
-	((sizeof (x) == sizeof (float)) ? \
-		__isnanf(x) \
-	: (sizeof (x) == sizeof (double)) ? \
-		__isnan(x) \
-	:	__isnanl(x))
+#define isinf(x) __builtin_isinf(x)
+#define isnan(x) __builtin_isnan(x)
 
 /*
  * XOPEN/SVID
