@@ -95,11 +95,13 @@ namespace divine::cc
         virtual std::unique_ptr< llvm::Module > link_bitcode();
         void construct_paired_files();
         void print_info( std::string_view version );
+        void set_cxx( bool cxx ) { _cxx = cxx; }
 
         cc::ParsedOpts _po;
         PairedFiles _files;
         std::vector< std::string > _ld_args;
         cc::CC1 _clang;
+        bool _cxx;
 
         ~Native();
     };
