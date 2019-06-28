@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
+#include <bits/confname.h>
 #include <sys/types.h>
 #include <sys/cdefs.h>
 #include <sys/hostabi.h>
