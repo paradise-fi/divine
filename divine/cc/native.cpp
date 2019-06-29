@@ -83,14 +83,7 @@ namespace divine::cc
             ld_args_c.push_back( _ld_args[i].c_str() );
 
         auto ld_job = drv->getJobs( ld_args_c ).back();
-        if ( _po.use_system_ld )
-        {
-            ld_job.args.insert( ld_job.args.begin(), ld_job.name );
-            auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, ld_job.args );
-            if ( !r )
-                throw cc::CompileError( "failed to link, ld exited with " + to_string( r ) );
-        }
-        else
+        if ( _po.use_lld )
         {
             ld_job.args.insert( ld_job.args.begin(), "divcc" );
             std::vector< const char * > lld_job_c;
@@ -101,6 +94,13 @@ namespace divine::cc
             bool linked = lld::elf::link( lld_job_c, false );
             if ( !linked )
                 throw cc::CompileError( "lld failed, not linked" );
+        }
+        else
+        {
+            ld_job.args.insert( ld_job.args.begin(), ld_job.name );
+            auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, ld_job.args );
+            if ( !r )
+                throw cc::CompileError( "failed to link, ld exited with " + to_string( r ) );
         }
 
         std::unique_ptr< llvm::Module > mod = link_bitcode();
