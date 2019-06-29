@@ -69,6 +69,8 @@ namespace divine::cc
     {
         if ( _ld_args.empty() )
             _ld_args = cc::ld_args( _po, _files );
+        if ( _cxx )
+            _ld_args.push_back( "--driver-mode=g++" );
     }
 
     void Native::link()

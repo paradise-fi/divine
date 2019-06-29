@@ -76,7 +76,6 @@ auto NativeDiosCC::link_dios_native( bool cxx )
 
     if ( cxx )
     {
-        _ld_args.push_back( "--driver-mode=g++" );
         _ld_args.push_back( "-stdlib=libc++" );
         _ld_args.push_back( "-L" + tmpdir.path );
         writeFile( cxxlib, rt::libcxx() );
