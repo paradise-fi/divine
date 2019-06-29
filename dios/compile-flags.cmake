@@ -16,6 +16,7 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
 list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/include ) # dios generated
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/include ) # dios
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/ld80 )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm )
 list( APPEND flags -isystem${divine_SOURCE_DIR}/ ) # for #includes starting with dios/
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks )
 
@@ -45,7 +46,7 @@ endforeach()
 mklib( libc libc_cpp )
 mklib( libm )
 mklib( libcxxabi )
-mklib( libcxx)
+mklib( libcxx )
 mklib( dios )
 mklib( librst )
 mklib( libpthread )
