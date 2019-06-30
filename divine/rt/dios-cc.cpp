@@ -36,6 +36,16 @@ void add_dios_header_paths( std::vector< std::string >& paths )
                  , "-isystem", includeDir } );
 }
 
+void add_dios_defines( std::vector< std::string >& flags )
+{
+    flags.insert( flags.end(),
+                  { "-D_LITTLE_ENDIAN=1234"
+                  , "-D_BYTE_ORDER=1234"
+                  , "-D__ELF__"
+                  , "-D__unix__"
+                  });
+}
+
 DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     Driver( opts, ctx )
 {
@@ -43,12 +53,7 @@ DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     setupFS( rt::each );
 
     add_dios_header_paths( commonFlags );
-    commonFlags.insert( commonFlags.end(),
-                 { "-D_LITTLE_ENDIAN=1234"
-                 , "-D_BYTE_ORDER=1234"
-                 , "-D__ELF__"
-                 , "-D__unix__"
-                 } );
+    add_dios_defines( commonFlags );
 }
 
 void DiosCC::build( ParsedOpts po )
@@ -62,7 +67,8 @@ void DiosCC::build( ParsedOpts po )
 NativeDiosCC::NativeDiosCC( const std::vector< std::string >& opts )
   :  Native( opts )
 {
-    rt::add_dios_header_paths( _po.opts );
+    add_dios_header_paths( _po.opts );
+    add_dios_defines( _po.opts );
     divine::rt::each( [&]( auto path, auto c ) { _clang.mapVirtualFile( path, c ); } );
 }
 
