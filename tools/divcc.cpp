@@ -59,6 +59,7 @@ int main( int argc, char **argv )
 
         if( nativeCC._cxx )
         {
+            po.opts.push_back( "-D_GNU_SOURCE=1" );
             get_cpp_header_paths( std::back_inserter( po.cc1_args ) );
         }
 
