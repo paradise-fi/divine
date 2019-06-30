@@ -22,16 +22,45 @@
 #include <divine/rt/dios-cc.hpp>
 #include <divine/rt/runtime.hpp>
 #include <divine/ui/version.hpp>
-
+#include <clang/Driver/Compilation.h>
+#include <clang/Driver/ToolChain.h>
 
 using namespace divine;
+
+/* Fetched in form of options {"-isystem", "PATH", etc.} */
+template< typename IOVector >
+void get_cpp_header_paths( IOVector out )
+{
+        using clang::driver::Compilation;
+        cc::ClangDriver drv;
+
+        std::unique_ptr< Compilation > c( drv.BuildCompilation( { "divcc" } ) );
+        /* TODO: "error: no input files" -- BuildCompilation takes args */
+        //if ( drv.diag.engine.hasErrorOccurred() )
+        //    throw cc::CompileError( "failed to get cpp header paths" );
+
+        llvm::opt::InputArgList drv_args;
+        llvm::opt::ArgStringList cc1_args;
+
+        c->getDefaultToolChain().AddClangCXXStdlibIncludeArgs( drv_args, cc1_args );
+        c->getDefaultToolChain().AddClangSystemIncludeArgs( drv_args, cc1_args );
+
+        for( auto arg : cc1_args )
+            *out++ = arg;
+}
 
 /* usage: same as gcc */
 int main( int argc, char **argv )
 {
     try {
         cc::Native nativeCC( { argv + 1, argv + argc } );
+        nativeCC.set_cxx( brick::string::endsWith( argv[0], "divc++" ) );
         auto& po = nativeCC._po;
+
+        if( nativeCC._cxx )
+        {
+            get_cpp_header_paths( std::back_inserter( po.cc1_args ) );
+        }
 
         if ( po.hasHelp || po.hasVersion )
         {

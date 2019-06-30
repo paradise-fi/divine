@@ -33,6 +33,7 @@ namespace divine::cc
         std::vector< FileEntry > files;
         std::string outputFile;
         std::vector< std::string > allowedPaths;
+        std::vector< std::string > cc1_args;
         bool toObjectOnly = false;
         bool preprocessOnly = false;
         bool hasHelp = false;
