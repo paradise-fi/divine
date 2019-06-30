@@ -23,6 +23,8 @@ struct timezone
 int gettimeofday( struct timeval *tp, struct timezone *tzp ) __nothrow;
 int settimeofday( const struct timeval *tp, const struct timezone *tzp ) __nothrow;
 
+int utimes( const char *filename, const struct timeval times[2] );
+
 __END_DECLS
 
 #endif // __DIVINE_TIME_H__

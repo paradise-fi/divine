@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <sys/resource.h>
 #include <netinet/in.h>
 
 #include <sys/divm.h>
@@ -80,6 +81,7 @@ int fchown( int fildes, uid_t owner, gid_t group ) NOT_IMPLEMENTED;
 
 clock_t times( struct tms * ) NOT_IMPLEMENTED;
 void utime( const char *path, const struct utimbuf *times ) { __dios_fault( _VM_F_NotImplemented, "utime" ); };
+int utimes( const char *filename, const struct timeval times[2] ) { __dios_fault( _VM_F_NotImplemented, "utimes" ); };
 
 void *dlsym( void *, void * ) NOT_IMPLEMENTED;
 
@@ -134,5 +136,10 @@ char *getlogin() NOT_IMPLEMENTED;
 
 int fpathconf( int, int ) NOT_IMPLEMENTED;
 int pathconf( const char *, int ) NOT_IMPLEMENTED;
+
+FILE *popen( const char *command, const char *type ) { __dios_fault( _VM_F_NotImplemented, "popen" ); }
+int pclose( FILE* stream ) { __dios_fault( _VM_F_NotImplemented, "pclose" ); }
+
+int getrusage( int who, struct rusage *r_usage ) { __dios_fault( _VM_F_NotImplemented, "getrusage" ); }
 
 }
