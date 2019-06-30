@@ -25,8 +25,9 @@ struct Autotrace {
 
     using Vals = std::vector< llvm::Value * >;
 
-    bool _calls = false, _allocs = false;
-    llvm::Function *_fn_trace, *_fn_mkobj;
+    bool _calls = false, _returns = false, _allocs = false;
+    std::set< llvm::Function * > _skip;
+    llvm::Function *_fn_trace, *_fn_mkobj, *_fn_frobj;
 
     Autotrace( std::string opt )
     {
@@ -34,15 +35,23 @@ struct Autotrace {
             _allocs = true;
         if ( opt.find( "calls" ) != std::string::npos )
             _calls = true;
+        if ( opt.find( "returns" ) != std::string::npos )
+            _returns = true;
         if ( !_calls && !_allocs )
             throw std::logic_error( "constructed a useless Autotrace instance" );
     }
 
     void handle_calls( llvm::Function &fn )
     {
-        llvm::IRBuilder<> irb( &*fn.front().getFirstInsertionPt() );
-        irb.CreateCall( _fn_trace, callArgs( fn, irb ) );
-        ++entry;
+        if ( _skip.count( &fn ) )
+            return;
+
+        if ( _calls )
+        {
+            llvm::IRBuilder<> irb( &*fn.front().getFirstInsertionPt() );
+            irb.CreateCall( _fn_trace, callArgs( fn, irb ) );
+            ++entry;
+        }
 
         auto ehInfo = cleanup::EhInfo::cpp( *fn.getParent() );
 
@@ -58,11 +67,18 @@ struct Autotrace {
     void handle_alloc( llvm::Function &fn, llvm::BasicBlock::iterator inst )
     {
         auto call = llvm::dyn_cast< llvm::CallInst >( inst );
-        if ( !call || call->getCalledFunction() != _fn_mkobj )
-            return;
+        if ( !call ) return;
         llvm::IRBuilder<> irb( &*std::next( inst ) );
-        auto fmt = getLit( "allocated %p in " + fn.getName().str(), irb );
-        irb.CreateCall( _fn_trace, { traceStay, fmt, call } );
+        llvm::Value *fmt = nullptr, *operand = call;
+        if ( call->getCalledFunction() == _fn_mkobj )
+            fmt = getLit( "allocated %p in " + fn.getName().str(), irb );
+        if ( call->getCalledFunction() == _fn_frobj )
+        {
+            fmt = getLit( "deleted %p in " + fn.getName().str(), irb );
+            operand = call->getOperand( 0 );
+        }
+        if ( fmt )
+            irb.CreateCall( _fn_trace, { traceStay, fmt, operand } );
     }
 
     void handle_allocs( llvm::Function &fn )
@@ -76,9 +92,13 @@ struct Autotrace {
     {
         // void __dios_trace( int upDown, const char *p, ... )
         _fn_mkobj = m.getFunction( "__vm_obj_make" );
+        _fn_frobj = m.getFunction( "__vm_obj_free" );
         _fn_trace = m.getFunction( "__dios_trace_auto" );
         if ( !_fn_trace )
             return;
+
+        brick::llvm::enumerateFunctionsForAnno( "lart.boring", m,
+                                                [&]( llvm::Function *f ) { _skip.insert( f ); } );
 
         auto *suspend = m.getFunction( "__dios_suspend" );
         auto *resched = m.getFunction( "__dios_reschedule" );
@@ -188,7 +208,11 @@ struct Autotrace {
                                   irb.getInt8PtrTy() ) ).first->second;
     }
 
-    Vals retArgs( llvm::ReturnInst *i, llvm::IRBuilder<> &irb ) {
+    Vals retArgs( llvm::ReturnInst *i, llvm::IRBuilder<> &irb )
+    {
+        if ( !_returns )
+            return { traceDown, getLit( "", irb ) };
+
         if ( !i->getReturnValue() )
             return { traceDown, getLit( "return void", irb ) };
 
