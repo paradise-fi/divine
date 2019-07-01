@@ -544,7 +544,7 @@ namespace brq::impl
             if ( auto next = _table->next )
             {
                 _table = next;
-                while ( _table->to_rehash.load() < 0 );
+                while ( _table->to_rehash.load() <= 0 );
                 return true;
             }
             return false;
