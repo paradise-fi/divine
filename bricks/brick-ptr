@@ -72,10 +72,10 @@ namespace brq
 
         void reset( T *p = nullptr ) noexcept
         {
-            ASSERT( !atomic );
+            if ( p )
+                p->ref_get();
             _put();
             ptr( p );
-            _get();
         }
 
         bool compare_exchange_strong( refcount_ptr< T, false > &p, refcount_ptr< T, false > n )
