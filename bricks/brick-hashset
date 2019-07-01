@@ -249,8 +249,7 @@ namespace brq::impl
 
         atomic_value _value;
 
-        static_assert( sizeof( atomic_value ) == sizeof( bare_value ),
-                       "std::atomic< tagged< T > > must be lock-free" );
+        static_assert( atomic_value::is_always_lock_free );
         static_assert( bare_value::tag_bits >= 2, "T has at least a two-bit tagspace" );
 
         static constexpr bool can_tombstone() { return true; }
