@@ -42,6 +42,7 @@ namespace brq
                 if ( &o == this )
                     return *this;
 
+            _put();
             ptr( o.ptr() );
             _get();
             return *this;
