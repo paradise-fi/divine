@@ -637,8 +637,10 @@ namespace brq::impl
         static std::pair< ssize_t, bool > atomic_add_if_nonzero( std::atomic< ssize_t > &v, int off )
         {
             ssize_t current = v.load(), next = current + off;
-            while ( current && !v.compare_exchange_weak( current, next ) )
-                next = current + off;
+            if ( current )
+                while ( !v.compare_exchange_weak( current, next ) && current )
+                    next = current + off;
+
             if ( current )
                 return { next, true };
             else
