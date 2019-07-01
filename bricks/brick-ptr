@@ -53,7 +53,17 @@ namespace brq
             return operator=< atomic >( o );
         }
 
-        T *ptr() const noexcept { if constexpr ( atomic ) return _ptr.load(); else return _ptr; }
+        T *ptr() const noexcept
+        {
+            if constexpr ( atomic )
+            {
+                auto val = uintptr_t( _ptr.load() );
+                return reinterpret_cast< T * >( val & ~uintptr_t( 1 ) );
+            }
+            else
+                return _ptr;
+        }
+
         void ptr( T *p ) const noexcept { if constexpr ( atomic ) _ptr.store( p ); else _ptr = p; }
 
         void _get() const noexcept
@@ -80,14 +90,33 @@ namespace brq
 
         bool compare_exchange_strong( refcount_ptr< T, false > &p, refcount_ptr< T, false > n )
         {
-            if ( _ptr.compare_exchange_strong( p._ptr, n._ptr ) )
+            TRACE( "cmpxchg ", ptr(), p.ptr(), n.ptr() );
+            std::atomic< uintptr_t > &self = *reinterpret_cast< std::atomic< uintptr_t > * >( &_ptr );
+            uintptr_t expect = self.load() & ~uintptr_t( 1 );
+            uintptr_t want = expect | 1;
+
+            while ( !self.compare_exchange_weak( expect, want ) )
+                want = expect | 1, expect = expect & ~uintptr_t( 1 );
+
+            uintptr_t self_val = want & ~uintptr_t( 1 );
+            T *self_ptr = reinterpret_cast< T * >( self_val );
+
+            if ( p.ptr() == self_ptr ) /* success, update this */
             {
-                _get();
+                n._get();
                 p._put();
+                _ptr.store( n.ptr() );
                 return true;
             }
-            else
+            else /* failed, update p */
+            {
+                if ( self_ptr )
+                    self_ptr->ref_get();
+                p._put();
+                p.ptr( self_ptr );
+                _ptr.store( self_ptr );
                 return false;
+            }
         }
 
         friend std::ostream &operator<<( std::ostream &o, const refcount_ptr< T, atomic > &p )
