@@ -60,14 +60,14 @@ namespace brq
         {
             auto p = ptr();
             if ( p )
-                ptr()->ref_get();
+                p->ref_get();
         }
 
         void _put() const noexcept
         {
             auto p = ptr();
             if ( p && !p->ref_put() )
-                delete ptr(), ptr( nullptr );
+                delete p, ptr( nullptr );
         }
 
         void reset( T *p = nullptr ) noexcept
