@@ -50,7 +50,51 @@
 
 namespace brick::trace
 {
+    struct Location
     {
+        int line;
+        const char *_file, *_statement;
+
+        std::string short_info() const
+        {
+            std::stringstream str;
+            str << filename() << ':' << line;
+            return str.str();
+        }
+
+        std::string_view filename() const
+        {
+            std::string_view r( _file );
+            r = r.substr( r.find( '/' ) == r.npos ? 0 : r.rfind( '/' ) + 1 );
+            return r;
+        }
+
+        std::string file() const
+        {
+            std::string r( _file );
+            int slashes = 0;
+            for ( int i = 0; i < int( r.size() ); ++i )
+                if ( r[i] == '/' )
+                    ++ slashes;
+
+            while ( slashes >= 3 )
+            {
+                r = r.substr( r.find( "/" ) + 1 );
+                -- slashes;
+            }
+
+            if ( _file != r )
+                r = ".../" + r;
+            return r;
+        }
+
+        const char *statement() const
+        {
+            return _statement;
+        }
+
+    };
+
     template< typename stream, typename T >
     static constexpr auto can_format( int ) noexcept
         -> decltype( std::declval< stream & >() << std::declval< T >(), true )
@@ -108,7 +152,7 @@ namespace brick::trace
     }
 
 #ifdef __divine__
-    static bool enabled( const _assert::Location & ) { return true; }
+    static bool enabled( const Location & ) { return true; }
 #else
     using Set = std::unordered_set< std::string_view >;
 
@@ -130,7 +174,7 @@ namespace brick::trace
         return i;
     }
 
-    static bool enabled( const _assert::Location &l )
+    static bool enabled( const Location &l )
     {
         static Set yes = init( getenv( "BRICK_TRACE" ) ), no = init( getenv( "BRICK_NOTRACE" ) );
         static bool all = getenv( "BRICK_TRACE" ) && !strcmp( getenv( "BRICK_TRACE" ), "all" );
@@ -140,7 +184,7 @@ namespace brick::trace
 #endif
 
     template< typename... Args >
-    __debugfn void trace_fn( brick::_assert::Location l, const Args &... args ) noexcept
+    __debugfn void trace_fn( brick::trace::Location l, const Args &... args ) noexcept
     {
         if ( !enabled( l ) )
             return;
