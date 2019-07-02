@@ -3,6 +3,33 @@ implementation seminar series. It will walk you through the implementation and
 internals of DIVINE in a tutorial form. The outline of the entire series
 follows.
 
+# bricks
+
+Code that is not really DIVINE-specific lives under bricks/, a header-only
+collection of useful code snippets. The code is intended to be lightweight and
+simple to implement (and understand, though it often fails at that).
+
+## Part 1 (3.7., mornfall)
+
+- bricks/brick-trace
+- bricks/brick-assert
+- bricks/brick-compose
+- bricks/brick-bitlevel
+
+- bricks/brick-mem
+- bricks/brick-ptr
+- bricks/brick-hash
+- bricks/brick-hashset
+
+## Part 2 (tba)
+
+- bricks/brick-yaml
+- bricks/brick-query
+- bricks/brick-string
+- bricks/brick-cmd
+- bricks/brick-llvm
+- bricks/brick-shmem
+
 # DiOS
 
 DiOS is a model operating system that DIVINE relies on for a ton of
@@ -15,76 +42,105 @@ kernel in a normal UNIX process (perhaps even in `valgrind`).
 - the configuration stack
 - the syscall mechanism, trampoline returns
 
-## Scheduling (29.5.)
+## Scheduling (29.5., laky)
 
 - dios/sys/sched_*
+- dios/
 - dios/arch/divm/reschedule.cpp
 - dios/libc/sys/interrupt.c
 - dios/include/sys/interrupt.h
 - lart/divine/interrupt.cpp
 
-## POSIX Threads (5.6.)
+## POSIX Threads (5.6., xheno)
 
 - dios/include/sys/thread.h
 - dios/include/pthread.h
 - dios/libc/pthread/*
 - dios/libpthread/*
 
-## File System (12.6.)
+## File System (12.6., xstill)
 
 - dios/vfs/*
 
-## Syscall Proxy (19.6.)
+## Syscall Proxy (19.6., adamat)
 
 - dios/proxy/*
 
-## Runtime Support for Transformations (26.6.)
+# DiVM
 
-- dios/rst/* (minus weakmem)
-- dios/include/rst/*
+## VM Overview (10.7., mornfall)
 
-## Stack Management (3.7.)
+- divine/vm/divm.h
+- divine/vm/ctx-*.hpp
+- divine/vm/pointer.hpp
+- divine/vm/program.*
 
-- dios/include/sys/stack.h
-- dios/arch/divm/{unwind,stack}.cpp
+## Evaluator (17.7., blurry)
+
+- divine/vm/eval.*
+- divine/vm/value.*
+
+## Heap Data (24.7., laky)
+
+- divine/mem/types.hpp
+- divine/mem/frontend.*
+- divine/mem/data.*
+- divine/mem/cow.*
+- divine/mem/util.*
+
+## Heap Metadata (31.7., xheno)
+
+- divine/mem/pointers.*
+- divine/mem/usermeta.*
+- divine/mem/exceptions.*
+- divine/mem/taint.*
+- divine/mem/definedness.*
+- divine/mem/metadata.hpp
+
+# Automated Testing (7.8., xstill)
+
+- bricks/brick-unittest
+- bricks/brick-shelltest
+- test/lib/*
+
+# DivCC (14.8., adamat)
+
+- divine/cc/*
+- tools/divcc.cpp
+- bricks/brick-llvm-link
 
 # LART
 
-## Introspection (10.7.)
+## Introspection (26.6., xsarnik)
 
 - lart/divine/{cppeh.h,cpplsda.cpp}
 - lart/divine/functionmeta.cpp
 - dios/include/sys/metadata.h
 - dios/libc/sys/metadata.cpp
 
-## Weakmem (17.7.)
+## Runtime Support for Transformations (21.8., blurry)
+
+- dios/rst/* (minus weakmem)
+- dios/include/rst/*
+- bricks/brick-smt
+
+## Abstraction 1 (28.8., xsarnik)
+
+- to be decided by xheno
+
+## Abstraction 2 (4.9., laky)
+
+- to be decided by xheno
+
+## Weakmem (11.9., xheno)
 
 - dios/rst/weakmem.cpp
 - lart/weakmem/*
 
-## Abstraction 1 (24.7.)
+# Simulator
+## Debug Info (tba)
+## CLI (tba)
 
-## Abstraction 2 (31.7.)
-
-# DIVINE
-
-## Compiler (7.8.)
-
-- divine/cc/*
-- tools/divcc.cpp
-
-## VM Overview (14.8.)
-
-## Debug Info (21.8.)
-
-## Simulator (28.8.)
-
-## VM 2 (4.9.)
-
-## Heap 1 (11.9.)
-
-## Heap 2 (18.9.)
-
-## Model Checker
-
-## LTL, Liveness
+# Model Checker
+## Infrastructure, Safety (tba)
+## LTL, Liveness (tba)
