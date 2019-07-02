@@ -23,6 +23,7 @@
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/context.hpp>
+#include <divine/vm/ctx-debug.tpp>
 
 #include <divine/vm/divm.h>
 
