@@ -23,16 +23,19 @@
 #ifndef BRICK_TRACE_H
 #define BRICK_TRACE_H
 
-#include <brick-assert>
+#include <string_view>
+#include <sstream>
+#include <string>
 
 #ifdef __divine__
+#include <sys/cdefs.h>
 #include <sys/trace.h>
 #else
 #include <iostream>
-#include <string_view>
 #include <unordered_set>
 #include <cstring>
 #define __debugfn
+#define __boring
 #endif
 
 #ifdef NDEBUG
@@ -47,44 +50,61 @@
 
 namespace brick::trace
 {
-
-    template< typename T >
-    auto format_one( int, int, std::stringstream &acc, const T &t ) noexcept
-        -> decltype( acc << t ) &
     {
-        return acc << t;
+    template< typename stream, typename T >
+    static constexpr auto can_format( int ) noexcept
+        -> decltype( std::declval< stream & >() << std::declval< T >(), true )
+    {
+        return true;
     }
 
-    template< typename F >
-    auto format_one( int, short, std::stringstream &acc, const F &f ) noexcept
-        -> decltype( f( acc ), void(0) )
+    template< typename stream, typename T >
+    static constexpr bool can_format( short ) noexcept
+    {
+        return false;
+    }
+
+    template< typename stream, typename T >
+    static constexpr bool can_format() noexcept
+    {
+        return can_format< stream, T >( 0 );
+    }
+
+    struct fallback
+    {
+        template< typename T >
+        fallback( const T & ) {}
+    };
+
+    template< typename stream, typename T >
+    auto format( stream &acc, const T &t ) noexcept
+        -> std::enable_if_t< can_format< stream, T >() >
+    {
+        acc << t;
+    }
+
+    template< typename stream, typename F >
+    auto format( stream &acc, const F &f ) noexcept
+        -> std::enable_if_t< std::is_invocable_v< F, stream & > && !can_format< stream, F >() >
     {
         f( acc );
     }
 
-    template< typename T >
-    auto &format_one( short, short, std::stringstream &acc, const T & ) noexcept
+    template< typename stream >
+    void format( stream &acc, fallback ) noexcept
     {
-        return acc << "<unknown>";
+        acc << "<unknown>";
     }
 
-    static inline void format( std::stringstream &acc ) noexcept
-    {
-#ifdef __divine__
-        std::string x = acc.str();
-        __dios_trace_internal( 0, "%s", x.c_str() );
-#else
-        acc << "\n";
-        std::cerr << acc.str() << std::flush;
-#endif
-    }
+    template< typename stream >
+    void format_args( stream & ) noexcept {}
 
-    template< typename A, typename... Args >
-    void format( std::stringstream &acc, const A &a, const Args & ... as ) noexcept
+    template< typename stream, typename A, typename... Args >
+    void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
     {
-        format_one( 0, 0, acc, a );
+        format( acc, a );
         acc << " ";
-        format( acc, as... );
+        format_args( acc, as... );
     }
 
 #ifdef __divine__
@@ -129,7 +149,15 @@ namespace brick::trace
 #ifndef __divine__
         acc << "[" << pthread_self() << "] ";
 #endif
-        format( acc, args... );
+        format_args( acc, args... );
+
+#ifdef __divine__
+        std::string x = acc.str();
+        __dios_trace_internal( 0, "%s", x.c_str() );
+#else
+        acc << "\n";
+        std::cerr << acc.str() << std::flush;
+#endif
     }
 }
 
