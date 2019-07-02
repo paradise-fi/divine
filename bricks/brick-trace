@@ -24,16 +24,17 @@
 #define BRICK_TRACE_H
 
 #include <string_view>
-#include <sstream>
 #include <string>
+#include <charconv>
+#include <iomanip>
 
 #ifdef __divine__
 #include <sys/cdefs.h>
 #include <sys/trace.h>
 #else
-#include <iostream>
 #include <unordered_set>
 #include <cstring>
+#include <iostream>
 #define __debugfn
 #define __boring
 #endif
@@ -50,6 +51,118 @@
 
 namespace brq
 {
+    struct string_builder
+    {
+        char *_buffer = nullptr;
+        int _capacity = 0, _offset = 0;
+        bool _hex:1;
+
+        string_builder() : _hex( false ) {}
+        ~string_builder() { free( _buffer ); }
+
+        char *pointer() { return _buffer + _offset; }
+        char *buffer_end() { return _buffer + _capacity; }
+        char *buffer() { return _buffer; }
+        const char *buffer() const { return _buffer; }
+
+        void _make_space( int sz )
+        {
+            if ( _offset + sz < _capacity )
+                return;
+
+            int new_capacity = _capacity + std::max( _capacity / 2, sz + 1 );
+            void *mem = realloc( _buffer, new_capacity );
+            if ( mem )
+            {
+                _buffer = static_cast< char * >( mem );
+                _capacity = new_capacity;
+            }
+            else
+                throw std::bad_alloc();
+        }
+
+        string_builder &operator<<( std::string_view str )
+        {
+            _make_space( str.size() );
+            std::copy( str.begin(), str.end(), pointer() );
+            _offset += str.size();
+            _buffer[ _offset ] = 0;
+            return *this;
+        }
+
+        string_builder &operator<<( char c )
+        {
+            _make_space( 1 );
+            _buffer[ _offset++ ] = c;
+            _buffer[ _offset ] = 0;
+            return *this;
+        }
+
+        struct pointer
+        {
+            void *p;
+            template< typename T >
+            pointer( T *p ) : p( p ) {}
+        };
+
+        string_builder &operator<<( struct pointer ptr )
+        {
+            auto was_hex = _hex;
+            _hex = true;
+            (*this) << uintptr_t( ptr.p );
+            _hex = was_hex;
+            return *this;
+        }
+
+        string_builder &operator<<( const char *str )
+        {
+            return (*this) << std::string_view( str );
+        }
+
+        string_builder &operator<<( const std::string &str )
+        {
+            return (*this) << std::string_view( str );
+        }
+
+        string_builder &operator<<( decltype( std::hex ) manip )
+        {
+            if ( manip == std::hex )
+                _hex = true;
+            if ( manip == std::dec )
+                _hex = false;
+            return *this;
+        }
+
+        template< typename F >
+        auto operator<<( const F &f )
+            -> decltype( f( *this ), *this )
+        {
+            return f( *this ), *this;
+        }
+
+        template< typename V >
+        auto operator<<( const V &val ) -> decltype( std::to_chars( _buffer, _buffer, val ), *this )
+        {
+            int cap = 16;
+            std::to_chars_result result;
+            do {
+                _make_space( cap );
+                if constexpr ( std::is_integral_v< V > )
+                {
+                    if ( _hex ) (*this) << "0x";
+                    result = std::to_chars( pointer(), buffer_end(), val, _hex ? 16 : 10 );
+                }
+                else
+                    result = std::to_chars( pointer(), buffer_end(), val );
+                cap *= 2;
+            } while ( result.ec == std::errc::value_too_large );
+
+            _offset = result.ptr - _buffer;
+            _buffer[ _offset ] = 0;
+            return *this;
+        }
+    };
+
     struct trace_location
     {
         int line;
@@ -57,9 +170,9 @@ namespace brq
 
         std::string short_info() const
         {
-            std::stringstream str;
+            string_builder str;
             str << filename() << ':' << line;
-            return str.str();
+            return str.buffer();
         }
 
         std::string_view filename() const
@@ -92,27 +205,7 @@ namespace brq
         {
             return _statement;
         }
-
     };
-
-    template< typename stream, typename T >
-    static constexpr auto can_format( int ) noexcept
-        -> decltype( std::declval< stream & >() << std::declval< T >(), true )
-    {
-        return true;
-    }
-
-    template< typename stream, typename T >
-    static constexpr bool can_format( short ) noexcept
-    {
-        return false;
-    }
-
-    template< typename stream, typename T >
-    static constexpr bool can_format() noexcept
-    {
-        return can_format< stream, T >( 0 );
-    }
 
     struct fallback
     {
@@ -122,16 +215,9 @@ namespace brq
 
     template< typename stream, typename T >
     auto format( stream &acc, const T &t ) noexcept
-        -> std::enable_if_t< can_format< stream, T >() >
+        -> decltype( acc << t, void(0) )
     {
         acc << t;
-    }
-
-    template< typename stream, typename F >
-    auto format( stream &acc, const F &f ) noexcept
-        -> std::enable_if_t< std::is_invocable_v< F, stream & > && !can_format< stream, F >() >
-    {
-        f( acc );
     }
 
     template< typename stream >
@@ -189,7 +275,7 @@ namespace brq
     {
         if ( !enabled( l ) )
             return;
-        std::stringstream acc;
+        string_builder acc;
         acc << l.short_info() << ": ";
 #ifndef __divine__
         acc << "[" << pthread_self() << "] ";
@@ -197,11 +283,10 @@ namespace brq
         format_args( acc, args... );
 
 #ifdef __divine__
-        std::string x = acc.str();
-        __dios_trace_internal( 0, "%s", x.c_str() );
+        __dios_trace_internal( 0, "%s", acc.buffer() );
 #else
         acc << "\n";
-        std::cerr << acc.str() << std::flush;
+        std::cerr << acc.buffer() << std::flush;
 #endif
     }
 }
