@@ -59,7 +59,7 @@
 #ifndef BRICK_ASSERT_H
 #define BRICK_ASSERT_H
 
-#define BRICK_LOCATION(stmt) ::brick::trace::Location{ __LINE__, __FILE__, stmt }
+#define BRICK_LOCATION(stmt) ::brq::trace_location{ __LINE__, __FILE__, stmt }
 
 namespace brq
 {
@@ -106,7 +106,7 @@ namespace brq
     };
 
     template< typename X, typename... Y >
-    void assert_bool_fn( const trace::Location &l, const X &x, const Y & ... y  )
+    void assert_bool_fn( const trace_location &l, const X &x, const Y & ... y  )
     {
         if ( x )
             return;
@@ -117,7 +117,7 @@ namespace brq
 
     template< typename... T >
     __attribute__((noreturn))
-    void assert_die_fn( const trace::Location &l, const T & ... args )
+    void assert_die_fn( const trace_location &l, const T & ... args )
     {
         assert_failed f( l, "unreachable executed:" );
         format_args( f, args... );
@@ -126,7 +126,7 @@ namespace brq
 
 #define ASSERT_FN(name, op, inv)                                                             \
     __boring static inline                                                                   \
-    void assert_ ## name ## _fn( const trace::Location &l, int64_t x, int64_t y )            \
+    void assert_ ## name ## _fn( const trace_location &l, int64_t x, int64_t y )             \
     {                                                                                        \
         if ( !( x op y ) )                                                                   \
         {                                                                                    \
@@ -135,10 +135,10 @@ namespace brq
               << x << " " #inv " " << y << "\n";                                             \
             throw f;                                                                         \
         }                                                                                    \
-        trace::trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" );           \
+        trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" );                  \
     }                                                                                        \
     template< typename X, typename Y >                                                       \
-    __boring auto assert_ ## name ## _fn( const trace::Location &l, const X &x, const Y &y ) \
+    __boring auto assert_ ## name ## _fn( const trace_location &l, const X &x, const Y &y )  \
         -> typename std::enable_if<                                                          \
         !std::is_integral< X >::value ||                                                     \
         !std::is_integral< Y >::value >::type                                                \
@@ -150,7 +150,7 @@ namespace brq
               << x << " " #inv " " << y << "\n";                                             \
             throw f;                                                                         \
         }                                                                                    \
-        trace::trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" );           \
+        trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" );                  \
     }
 
     ASSERT_FN(eq, ==, !=);
@@ -159,7 +159,7 @@ namespace brq
     ASSERT_FN(neq, !=, ==);
 
     template< typename X >
-    __boring void assert_pred_fn( const trace::Location &l, X x, bool p )
+    __boring void assert_pred_fn( const trace_location &l, X x, bool p )
     {
         if ( !p )
         {
