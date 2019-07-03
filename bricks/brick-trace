@@ -38,6 +38,23 @@
 #define __boring
 #endif
 
+/* The purpose of the TRACE macro is to allow tracing statements to be included
+ * in production code, just like ASSERT macros allow for sanity checks and
+ * pre/post-condition checking. If compiled with NDEBUG, it's a noop and in
+ * debug builds, the output must be enabled by setting environment variables
+ * BRICK_TRACE and optionally BRICK_NOTRACE, which accept either `all`, a file
+ * name (without path) or a file name and a line number (formatted like
+ * `file.cpp:15`). A runtime-disabled trace point compiles to a few lookups in
+ * std::unordered_set.
+ *
+ * Normally, the formatted trace output is printed using std::cerr. The
+ * formatting is done using a brq::string_builder (see below) to cut down on
+ * overhead and to prevent exceptions being thrown. When built for DiOS, the
+ * output is done unconditionally using the __dios_trace mechanism, and the
+ * entire trace function is marked as __debugfn (i.e. it is not executed during
+ * model checking, only for counter-example generation -- TRACE therefore only
+ * causes very modest overhead in DIVINE). */
+
 #ifdef NDEBUG
 
 #define TRACE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
@@ -211,6 +228,10 @@ namespace brq
         }
     };
 
+    /* Wrap __FILE__ and __LINE__, optionally together with a stringified
+     * assertion statement. Needs to be cheap to construct and pass around,
+     * since in debug builds this happens a lot. */
+
     struct trace_location
     {
         int line;
@@ -228,6 +249,13 @@ namespace brq
             return _statement;
         }
     };
+
+    /* Format a bunch of values into a stream, separated by spaces. Values that
+     * don't have a string_builder formatting operator are printed as
+     * <unknown>, because TRACE statements can include values whose types
+     * depend on template parameters and we don't want TRACE uses to cause
+     * unexpected instantiation failures (especially for cases where the user
+     * doesn't care about the trace output). */
 
     struct fallback
     {
@@ -259,6 +287,11 @@ namespace brq
             acc << " ";
         format_args( acc, as... );
     }
+
+    /* In debug builds, decide which traces are active at run-time. This is to
+     * prevent swamping the user with irrelevant traces from library code they
+     * might be using. For short programs (e.g. unit tests), it might be okay
+     * to just say `env BRICK_TRACE=all program`. */
 
     namespace trace_impl
     {
