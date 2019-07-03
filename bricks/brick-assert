@@ -1,10 +1,6 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * Various assert macros based on C++ exceptions and their support code.
- */
-
-/*
  * (c) 2006-2019 Petr Ročkai <code@fixp.eu>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -22,6 +18,22 @@
 
 #include <brick-trace>
 #include <exception>
+
+/* This file provides an assortment of assertion macros which provide
+ * additional information about the circumstances of assertion failures, for
+ * instance ASSERT_EQ will print both the source code statement and the actual
+ * values that unexpectedly compared inequal.
+ *
+ * The assertion failure mechanism is currently implemented as an exception,
+ * with the intention to be catchable, if the user so desires. This can be used
+ * to e.g. print additional context information relevant to the failure, as the
+ * stack is being unwound.
+ *
+ * Additionally, this files provides a stub version of the TEST() macro, a real
+ * version of which is implemented in brick-unittest. This allows unit test
+ * suites to be included in header files along with the code that they test
+ * (without the testcases being actually registered or instantiatied unless the
+ * unit testsuite is being built). */
 
 #ifndef TEST
 #define TEST(n)         template< bool > void n()
