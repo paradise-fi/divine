@@ -75,7 +75,15 @@ namespace brq
         bool _oom:1;
 
         string_builder( const string_builder & ) = delete;
-        string_builder( string_builder && ) = default;
+        string_builder( string_builder &&o )
+            : _buffer( o._buffer ), _capacity( o._capacity ), _offset( o._offset ),
+              _hex( o._hex ), _oom( o._oom )
+        {
+            o._buffer = nullptr;
+            o._capacity = 0;
+            o._offset = 0;
+        }
+
         string_builder() noexcept : _hex( false ), _oom( false ) {}
         ~string_builder() noexcept { free( _buffer ); }
 
