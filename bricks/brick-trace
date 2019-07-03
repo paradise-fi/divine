@@ -113,6 +113,33 @@ namespace brq
             return (*this) << std::string_view( str );
         }
 
+        template< typename C >
+        auto operator<<( const C &c )
+            -> std::enable_if_t< !std::is_same_v< typename C::value_type, char >,
+                                 decltype( *this << *c.begin() << *c.end() ) >
+        {
+            bool first = true;
+            *this << '[';
+            for ( const auto &e : c )
+                *this << ( first ? first = false, " " : ", " ) << e;
+            *this << ( first ? "]" : " ]" );
+            return *this;
+        }
+
+        template< int i = 0, typename... T >
+        auto operator<<( const std::tuple< T... > &t )
+        {
+            if ( i == 0 )
+                *this << "[";
+            if constexpr ( i < sizeof...( T ) )
+            {
+                *this << ( i > 0 ? ", " : " " ) << std::get< i >( t );
+                this->operator<<< i + 1 >( t );
+            }
+            else
+                *this << ( i == 0 ? "]" : " ]" );
+        }
+
         string_builder &operator<<( decltype( std::hex ) manip )
         {
             if ( manip == std::hex )
