@@ -668,10 +668,10 @@ namespace brq::impl
 
                 if ( !result )
                 {
-                    std::stringstream err;
+                    string_builder err;
                     err << "hash table " << _table << " failed to rehash at size " << _table->size();
                     to.to_rehash.store( 0 ); /* prevent stalls and deadlocks */
-                    throw std::runtime_error( err.str() );
+                    throw std::runtime_error( err.buffer() );
                 }
             }
 
