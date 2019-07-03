@@ -436,7 +436,7 @@ struct SelfTest
         bool die = true;
         try {
             ASSERT_EQ( 1, 2 );
-        } catch ( _assert::Failed ) {
+        } catch ( brq::assert_failed & ) {
             die = false;
         }
         ASSERT( !die );
