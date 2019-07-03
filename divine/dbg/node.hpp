@@ -33,7 +33,8 @@ namespace divine::dbg
 enum class DNKind { Globals, Frame, Object };
 using DNKey = std::tuple< vm::GenericPointer, int, DNKind, llvm::DIType * >;
 
-static std::ostream &operator<<( std::ostream &o, DNKind dnk )
+template< typename stream >
+static auto operator<<( stream &o, DNKind dnk ) -> decltype( o << "" )
 {
     switch ( dnk )
     {
