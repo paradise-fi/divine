@@ -147,7 +147,8 @@ namespace brick::trace
     void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
     {
         format( acc, a );
-        acc << " ";
+        if constexpr ( !std::is_same_v< A, decltype( std::hex ) > )
+            acc << " ";
         format_args( acc, as... );
     }
 
