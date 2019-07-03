@@ -64,7 +64,8 @@ struct Void : Base
     using Raw = struct {};
     using Cooked = Raw;
     Void( Raw = Raw() ) {}
-    friend std::ostream &operator<<( std::ostream &o, Void ) { return o << "[void]"; }
+    template< typename stream >
+    friend auto operator<<( stream &o, Void ) -> decltype( o << "" ) { return o << "[void]"; }
 
     Raw raw() { return Raw(); }
     void raw( Raw ) {}
@@ -324,7 +325,8 @@ struct Int : Base
         return result;
     }
 
-    friend std::ostream & operator<<( std::ostream &o, Int v )
+    template< typename stream >
+    friend auto operator<<( stream &o, Int v ) -> decltype( o << "" )
     {
         std::stringstream def;
         auto aw = brick::bitlevel::align( _width, 8 );
@@ -440,7 +442,8 @@ struct Float : Base
         return result;
     }
 
-    friend std::ostream & operator<<( std::ostream &o, Float v )
+    template< typename stream >
+    friend auto operator<<( stream &o, Float v ) -> decltype( o << "" )
     {
         return o << "[f" << sizeof( Cooked ) * 8 << " " << v.cooked() << " "
                  << ( v.defined() ? 'd' : 'u' ) << ( v.taints() ? "t" : "" ) << "]";
@@ -477,7 +480,8 @@ struct Pointer : Base
         return l( _cooked );
     }
 
-    friend std::ostream &operator<<( std::ostream &o, Pointer v )
+    template< typename stream >
+    friend auto operator<<( stream &o, Pointer v ) -> decltype( o << "" )
     {
         std::string def = "ddp";
         if ( !v._obj_defined ) def[0] = 'u';
