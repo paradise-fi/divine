@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <iostream>
+#include <sstream>
 #include <brick-types>
 #include <cassert>
 #include <set>
