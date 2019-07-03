@@ -119,7 +119,9 @@ namespace brq
             }
         }
 
-        friend std::ostream &operator<<( std::ostream &o, const refcount_ptr< T, atomic > &p )
+        template< typename stream >
+        friend auto operator<<( stream &o, const refcount_ptr< T, atomic > &p )
+            -> decltype( o << std::declval< void * >() )
         {
             return o << p.ptr();
         }
