@@ -100,18 +100,11 @@ namespace brq
             return *this;
         }
 
-        struct pointer
-        {
-            void *p;
-            template< typename T >
-            pointer( T *p ) : p( p ) {}
-        };
-
-        string_builder &operator<<( struct pointer ptr )
+        string_builder &operator<<( void *ptr )
         {
             auto was_hex = _hex;
             _hex = true;
-            (*this) << uintptr_t( ptr.p );
+            (*this) << uintptr_t( ptr );
             _hex = was_hex;
             return *this;
         }
