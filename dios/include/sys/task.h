@@ -39,7 +39,7 @@ __BEGIN_DECLS
  * The resulting _DiOS_TaskHandle points to the beginning of TLS. Userspace
  * code is allowed to use __data, but not other fields.
  */
-static inline __dios_task __dios_this_task() __nothrow
+__boring static inline __dios_task __dios_this_task() __nothrow
 {
     return __CAST( __dios_task, __vm_ctl_get( _VM_CR_User2 ) );
 }
@@ -48,7 +48,7 @@ static inline __dios_task __dios_this_task() __nothrow
  * get a pointer to errno, which is in dios-managed task-local data (accessible
  * to userspace, but independent of pthreads)
  */
-static inline int *__dios_errno() __nothrow
+__boring static inline int *__dios_errno() __nothrow
 {
     return &__dios_this_task()->__errno;
 }

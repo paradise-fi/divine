@@ -93,9 +93,9 @@
 #define __debugfn      __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
 #define __link_always  __attribute__((__annotate__("divine.link.always")))
 #define __trapfn       __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
-#define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), __noinline__ ))
-#define __invisible    __attribute__(( __annotate__( "lart.interrupt.skipcfl" ), \
-                                       __annotate__( "lart.interrupt.skipmem" ), __noinline__ ))
+#define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ) )) __noinline
+#define __invisible    __attribute__(( __annotate__( "lart.interrupt.skipmem" ) )) __skipcfl
+#define __boring       __attribute__(( __annotate__( "lart.boring" ) ))
 #define __weakmem_direct __attribute__(( __annotate__( "lart.weakmem.direct" ), __noinline__ ))
 
 /*
