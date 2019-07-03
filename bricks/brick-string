@@ -558,16 +558,16 @@ struct TestRegexp {
     {
         Splitter splitter("[ \t]+or[ \t]+", std::regex::extended | std::regex::icase );
         Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
-        ASSERT_EQ(*i, "a");
+        ASSERT_EQ(i->str(), "a");
         ASSERT_EQ(i->length(), 1u);
         ++i;
-        ASSERT_EQ(*i, "b");
+        ASSERT_EQ(i->str(), "b");
         ASSERT_EQ(i->length(), 1u);
         ++i;
-        ASSERT_EQ(*i, "c");
+        ASSERT_EQ(i->str(), "c");
         ASSERT_EQ(i->length(), 1u);
         ++i;
-        ASSERT_EQ(*i, "dadada");
+        ASSERT_EQ(i->str(), "dadada");
         ASSERT_EQ(i->length(), 6u);
         ++i;
         ASSERT(i == splitter.end());
@@ -583,7 +583,7 @@ struct TestRegexp {
         {
             ASSERT( i != matches.end() );
             ASSERT_EQ( m.length(), i->size() );
-            ASSERT_EQ( m, *i );
+            ASSERT_EQ( m.str(), *i );
             ++i;
         }
         ASSERT( i == matches.end() );
