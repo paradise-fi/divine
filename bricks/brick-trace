@@ -50,6 +50,23 @@
 
 namespace brq
 {
+
+    /* A simple string builder, similar to std::stringstream but much lighter.
+     * Only works with 8-bit characters (i.e. no wchar_t or char32_t). Provides
+     * a basic selection of formatting operators. To provide formatting
+     * operators for custom types, the following idiom may be useful to use the
+     * same definition for std::ostream and for string_builder (also works for
+     * friend-style definitions):
+     *
+     * template< typename stream >
+     * auto operator<<( stream &o, my_type t ) -> decltype( o << "" )
+     * {
+     *     // ...
+     * }
+     *
+     * Besides accepting values to format, string_builder also understands
+     * std::dec and std::hex IO manipulators. */
+
     struct string_builder
     {
         char *_buffer = nullptr;
