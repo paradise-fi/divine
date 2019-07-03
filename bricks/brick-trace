@@ -72,21 +72,25 @@ namespace brq
         char *_buffer = nullptr;
         int _capacity = 0, _offset = 0;
         bool _hex:1;
+        bool _oom:1;
 
         string_builder( const string_builder & ) = delete;
         string_builder( string_builder && ) = default;
-        string_builder() : _hex( false ) {}
-        ~string_builder() { free( _buffer ); }
+        string_builder() noexcept : _hex( false ), _oom( false ) {}
+        ~string_builder() noexcept { free( _buffer ); }
 
-        char *pointer() { return _buffer + _offset; }
-        char *buffer_end() { return _buffer + _capacity; }
-        char *buffer() { return _buffer; }
-        const char *buffer() const { return _buffer; }
+        char *pointer() noexcept { return _buffer + _offset; }
+        char *buffer_end() noexcept { return _buffer + _capacity; }
+        char *buffer() noexcept { return _buffer; }
+        const char *buffer() const noexcept { return _buffer; }
+        bool truncated() { return _oom; }
 
-        void _make_space( int sz )
+        bool _make_space( int sz ) noexcept
         {
+            if ( _oom )
+                return false;
             if ( _offset + sz < _capacity )
-                return;
+                return true;
 
             int new_capacity = _capacity + std::max( _capacity / 2, sz + 1 );
             void *mem = realloc( _buffer, new_capacity );
@@ -96,27 +100,29 @@ namespace brq
                 _capacity = new_capacity;
             }
             else
-                throw std::bad_alloc();
+                _oom = true;
+
+            return !_oom;
         }
 
-        string_builder &operator<<( std::string_view str )
+        string_builder &operator<<( std::string_view str ) noexcept
         {
-            _make_space( str.size() );
+            if ( !_make_space( str.size() ) ) return *this;
             std::copy( str.begin(), str.end(), pointer() );
             _offset += str.size();
             _buffer[ _offset ] = 0;
             return *this;
         }
 
-        string_builder &operator<<( char c )
+        string_builder &operator<<( char c ) noexcept
         {
-            _make_space( 1 );
+            if ( !_make_space( 1 ) ) return *this;
             _buffer[ _offset++ ] = c;
             _buffer[ _offset ] = 0;
             return *this;
         }
 
-        string_builder &operator<<( void *ptr )
+        string_builder &operator<<( void *ptr ) noexcept
         {
             auto was_hex = _hex;
             _hex = true;
@@ -125,13 +131,13 @@ namespace brq
             return *this;
         }
 
-        string_builder &operator<<( const char *str )
+        string_builder &operator<<( const char *str ) noexcept
         {
             return (*this) << std::string_view( str );
         }
 
         template< typename C >
-        auto operator<<( const C &c )
+        auto operator<<( const C &c ) noexcept
             -> std::enable_if_t< !std::is_same_v< typename C::value_type, char >,
                                  decltype( *this << *c.begin() << *c.end() ) >
         {
@@ -144,7 +150,7 @@ namespace brq
         }
 
         template< int i = 0, typename... T >
-        auto operator<<( const std::tuple< T... > &t )
+        auto operator<<( const std::tuple< T... > &t ) noexcept
         {
             if ( i == 0 )
                 *this << "[";
@@ -157,7 +163,7 @@ namespace brq
                 *this << ( i == 0 ? "]" : " ]" );
         }
 
-        string_builder &operator<<( decltype( std::hex ) manip )
+        string_builder &operator<<( decltype( std::hex ) manip ) noexcept
         {
             if ( manip == std::hex )
                 _hex = true;
@@ -167,19 +173,20 @@ namespace brq
         }
 
         template< typename F >
-        auto operator<<( const F &f )
+        auto operator<<( const F &f ) noexcept
             -> decltype( f( *this ), *this )
         {
             return f( *this ), *this;
         }
 
         template< typename V >
-        auto operator<<( const V &val ) -> decltype( std::to_chars( _buffer, _buffer, val ), *this )
+        auto operator<<( const V &val ) noexcept
+            -> decltype( std::to_chars( _buffer, _buffer, val ), *this )
         {
             int cap = 16;
             std::to_chars_result result;
             do {
-                _make_space( cap );
+                if ( !_make_space( cap ) ) return *this;
                 if constexpr ( std::is_integral_v< V > )
                 {
                     if ( _hex ) (*this) << "0x";
