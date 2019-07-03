@@ -74,8 +74,8 @@
 #ifndef BRICK_TUPLE_H
 #define BRICK_TUPLE_H
 
-namespace brick {
-namespace tuple {
+namespace brick::tuple
+{
 
 template< int... Ixs >
 struct Indices {
@@ -286,7 +286,11 @@ auto pointwise_zip_void( F &&f, Tup1 &&t1, Tup2 &&t2 ) {
 
 }
 
-namespace t_tuple {
+#ifdef BRICK_UNITTEST_REG
+#include <sstream>
+
+namespace brick::t_tuple
+{
 
 using namespace tuple;
 
@@ -495,7 +499,8 @@ struct Print
 };
 
 }
-}
+
+#endif
 
 #endif // BRICK_TUPLE_H
 
