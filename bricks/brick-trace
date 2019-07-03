@@ -146,7 +146,7 @@ namespace brq
 
         template< typename C >
         auto operator<<( const C &c ) noexcept
-            -> std::enable_if_t< !std::is_same_v< typename C::value_type, char >,
+            -> std::enable_if_t< !std::is_same< typename C::value_type, char >::value,
                                  decltype( *this << *c.begin() << *c.end() ) >
         {
             bool first = true;
@@ -195,7 +195,7 @@ namespace brq
             std::to_chars_result result;
             do {
                 if ( !_make_space( cap ) ) return *this;
-                if constexpr ( std::is_integral_v< V > )
+                if constexpr ( std::is_integral< V >::value )
                 {
                     if ( _hex ) (*this) << "0x";
                     result = std::to_chars( pointer(), buffer_end(), val, _hex ? 16 : 10 );
@@ -255,7 +255,7 @@ namespace brq
     void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
     {
         format( acc, a );
-        if constexpr ( !std::is_same_v< A, decltype( std::hex ) > )
+        if constexpr ( !std::is_same< A, decltype( std::hex ) >::value )
             acc << " ";
         format_args( acc, as... );
     }
