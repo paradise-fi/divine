@@ -22,8 +22,6 @@
 
 #include <brick-trace>
 #include <exception>
-#include <string>
-#include <sstream>
 
 #ifndef TEST
 #define TEST(n)         template< bool > void n()
@@ -67,25 +65,44 @@ namespace brq
 {
     struct assert_failed : std::exception
     {
-        std::string str;
+        string_builder str;
+
+        struct fail_ref
+        {
+            assert_failed &ref;
+            fail_ref( assert_failed &f ) : ref( f ) {}
+        };
 
         template< typename X >
-        friend inline auto operator<<( Failed &f, const X &x )
-            -> decltype( std::declval< std::stringstream & >() << x, f )
+        friend inline auto operator<<( fail_ref f, const X &x )
+            -> decltype( std::declval< string_builder & >() << x, f.ref )
         {
-            std::stringstream str;
-            str << x;
-            f.str += str.str();
-            return f;
+            f.ref.str << x;
+            return f.ref;
         }
 
         assert_failed( const trace_location &l, const char *expected = "expected" )
         {
-            (*this) << l.file() << ": " << l.line;
+            std::string_view file( l._file );
+            int slashes = 0;
+
+            for ( auto c : file )
+                if ( c == '/' )
+                    ++ slashes;
+
+            while ( slashes >= 3 )
+            {
+                file.remove_prefix( file.find( "/" ) + 1 );
+                -- slashes;
+            }
+
+            if ( file != l._file )
+                (*this) << ".../";
+            (*this) << file << ": " << l.line;
             (*this) << ":\n  " << expected << " " << l.statement();
         }
 
-        const char *what() const noexcept { return str.c_str(); }
+        const char *what() const noexcept { return str.buffer(); }
     };
 
     template< typename X, typename... Y >
@@ -149,11 +166,6 @@ namespace brq
             throw f;
         }
     }
-
-    // another overload of fmt is exported by brick-string and it allows more complex formating
-    inline std::string fmt( const char *str ) { return str; }
-    inline std::string fmt( std::string str ) { return str; }
-
 }
 
 #endif
