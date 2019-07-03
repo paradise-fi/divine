@@ -24,7 +24,6 @@
 #define BRICK_TRACE_H
 
 #include <string_view>
-#include <string>
 #include <charconv>
 #include <iomanip>
 
@@ -114,11 +113,6 @@ namespace brq
             return (*this) << std::string_view( str );
         }
 
-        string_builder &operator<<( const std::string &str )
-        {
-            return (*this) << std::string_view( str );
-        }
-
         string_builder &operator<<( decltype( std::hex ) manip )
         {
             if ( manip == std::hex )
@@ -163,36 +157,10 @@ namespace brq
         int line;
         const char *_file, *_statement;
 
-        std::string short_info() const
-        {
-            string_builder str;
-            str << filename() << ':' << line;
-            return str.buffer();
-        }
-
         std::string_view filename() const
         {
             std::string_view r( _file );
             r = r.substr( r.find( '/' ) == r.npos ? 0 : r.rfind( '/' ) + 1 );
-            return r;
-        }
-
-        std::string file() const
-        {
-            std::string r( _file );
-            int slashes = 0;
-            for ( int i = 0; i < int( r.size() ); ++i )
-                if ( r[i] == '/' )
-                    ++ slashes;
-
-            while ( slashes >= 3 )
-            {
-                r = r.substr( r.find( "/" ) + 1 );
-                -- slashes;
-            }
-
-            if ( _file != r )
-                r = ".../" + r;
             return r;
         }
 
@@ -233,45 +201,65 @@ namespace brq
         format_args( acc, as... );
     }
 
+    namespace trace_impl
+    {
 #ifdef __divine__
-    static bool enabled( const trace_location & ) { return true; }
+        static bool enabled( const trace_location & ) { return true; }
 #else
-    using Set = std::unordered_set< std::string_view >;
-
-    static inline Set init( const char *str_ )
-    {
-        if ( !str_ )
-            return Set();
-
-        std::string_view str( str_ );
-        Set i;
-        while ( !str.empty() )
+        using pair = std::pair< std::string_view, int >;
+        struct hash
         {
-            auto s = str.find( ',' );
-            i.insert( str.substr( 0, s ) );
-            if ( s == str.npos )
-                return i;
-            str = str.substr( s + 1 );
-        }
-        return i;
-    }
+            auto operator()( pair p ) const
+            {
+                return std::hash< std::string_view >()( p.first ) + std::hash< int >()( p.second );
+            }
+        };
+        using Set = std::unordered_set< std::pair< std::string_view, int >, hash >;
 
-    static bool enabled( const trace_location &l )
-    {
-        static Set yes = init( getenv( "BRICK_TRACE" ) ), no = init( getenv( "BRICK_NOTRACE" ) );
-        static bool all = getenv( "BRICK_TRACE" ) && !strcmp( getenv( "BRICK_TRACE" ), "all" );
-        return ( all || yes.count( l.filename() ) || yes.count( l.short_info() ) ) &&
-               !no.count( l.filename() ) && !no.count( l.short_info() );
-    }
+        static inline Set init( const char *str_ )
+        {
+            if ( !str_ )
+                return Set();
+
+            std::string_view str( str_ );
+            Set i;
+            while ( !str.empty() )
+            {
+                auto s = str.find( ',' );
+                auto filename = str.substr( 0, s ), lineno = filename;
+                lineno.remove_prefix( std::min( lineno.find( ':' ), lineno.size() ) );
+                int line = 0;
+                if ( lineno.size() )
+                {
+                    filename.remove_suffix( lineno.size() );
+                    lineno.remove_prefix( 1 );
+                    line = strtol( lineno.begin(), nullptr, 10 );
+                }
+                i.emplace( filename, line );
+                if ( s == str.npos )
+                    return i;
+                str = str.substr( s + 1 );
+            }
+            return i;
+        }
+
+        static bool enabled( const trace_location &l )
+        {
+            static Set yes = init( getenv( "BRICK_TRACE" ) ), no = init( getenv( "BRICK_NOTRACE" ) );
+            static bool all = getenv( "BRICK_TRACE" ) && !strcmp( getenv( "BRICK_TRACE" ), "all" );
+            return ( all || yes.count( { l.filename(), 0 } ) || yes.count( { l.filename(), l.line } ) ) &&
+                   !no.count( { l.filename(), 0 } ) && !no.count( { l.filename(), l.line } );
+        }
 #endif
+    }
 
     template< typename... Args >
     __debugfn void trace_fn( trace_location l, const Args &... args ) noexcept
     {
-        if ( !enabled( l ) )
+        if ( !trace_impl::enabled( l ) )
             return;
         string_builder acc;
-        acc << l.short_info() << ": ";
+        acc << l.filename() << ':' << l.line << ": ";
 #ifndef __divine__
         acc << "[" << pthread_self() << "] ";
 #endif
