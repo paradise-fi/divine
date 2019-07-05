@@ -225,6 +225,7 @@ namespace divine::cc
 
     Driver::ModulePtr Driver::load_object( std::string path )
     {
+        using IRO = llvm::object::IRObjectFile;
 
         if ( !compiler.fileExists( path ) )
             throw std::runtime_error( "object not found: " + path );
@@ -233,9 +234,14 @@ namespace divine::cc
         if ( !buf )
             throw std::runtime_error( "cannot open object: " + path );
 
-        auto parsed = llvm::parseBitcodeFile( *buf.get(), *context() );
+        auto bc_buf = IRO::findBitcodeInMemBuffer( buf.get()->getMemBufferRef() );
+
+        if ( !bc_buf )
+            throw std::runtime_error( "could not parse object: " + path );
+
+        auto parsed = llvm::parseBitcodeFile( bc_buf.get(), *context() );
         if ( !parsed )
-            throw std::runtime_error( "cannot parse object: " + path );
+            throw std::runtime_error( "could not parse bitcode in " + path );
 
         return std::move( parsed.get() );
     }
