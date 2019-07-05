@@ -6,7 +6,7 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-// V: v.leakcheck CC_OPT: -Os VERIFY_OPTS: --leakcheck exit TAGS: todo
+// V: v.leakcheck CC_OPT: -Os V_OPT: --leakcheck exit TAGS: todo
 
 #include <rst/domains.h>
 #include <cassert>
