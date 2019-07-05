@@ -21,6 +21,7 @@
 #include <divine/cc/link.hpp>
 #include <divine/cc/native.hpp>
 #include <divine/cc/options.hpp>
+#include <iterator> // std::next
 
 DIVINE_RELAX_WARNINGS
 #include "lld/Common/Driver.h"
@@ -103,6 +104,14 @@ namespace divine::cc
             auto r = brick::proc::spawnAndWait( brick::proc::CaptureStderr, ld_job.args );
             if ( !r )
                 throw cc::CompileError( "failed to link, ld exited with " + to_string( r ) );
+        }
+
+        _po.libSearchPath.clear();
+        for ( auto it = ld_job.args.begin(); it != ld_job.args.end(); ++it )
+        {
+            if ( brick::string::startsWith( *it, "-L"  ) )
+                _po.libSearchPath.push_back( it->length() > 2 ?
+                                             it->substr( 2 ) : *std::next( it ) );
         }
 
         std::unique_ptr< llvm::Module > mod = link_bitcode();
