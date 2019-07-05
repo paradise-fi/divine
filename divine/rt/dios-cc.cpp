@@ -15,7 +15,7 @@ using namespace cc;
 void DiosCC::link_dios_config( std::string n )
 {
     linkEntireArchive( "rst" );
-    auto mod = load_object( "config/" + n );
+    auto mod = load_object( find_object( "config/" + n ) );
     link( std::move( mod ) );
     for ( int i = 0; i < 3; ++i )
     {
