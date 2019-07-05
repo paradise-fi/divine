@@ -1,4 +1,4 @@
-/* TAGS: c min */
+/* TAGS: c min todo */
 /* VERIFY_OPTS: --liveness */
 /* CC_OPTS: -Os */ // avoid duplicated states
 
