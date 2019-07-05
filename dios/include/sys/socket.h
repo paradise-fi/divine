@@ -357,14 +357,14 @@ __noinline ssize_t recvfrom( int fd, void *buf, size_t n, int flags,
 /* Put the current value for socket FD's option OPTNAME at protocol level LEVEL
    into OPTVAL (which is *OPTLEN bytes long), and set *OPTLEN to the value's
    actual length.  Returns 0 on success, -1 for errors.  */
-/*extern int getsockopt( int fd, int level, int optname,
-                       void *optval, socklen_t *optlen )  CVFS_NOT_IMPLEMENTED;*/
+extern int getsockopt( int fd, int level, int optname,
+                       void *optval, socklen_t *optlen );
 
 /* Set socket FD's option OPTNAME at protocol level LEVEL
    to *OPTVAL (which is OPTLEN bytes long).
    Returns 0 on success, -1 for errors.  */
-/*extern int setsockopt( int fd, int level, int optname,
-                       const void *optval, socklen_t optlen )  CVFS_NOT_IMPLEMENTED;*/
+extern int setsockopt( int fd, int level, int optname,
+                       const void *optval, socklen_t optlen );
 
 /* Prepare to accept connections on socket FD.
    N connection requests will be queued before further requests are refused.
