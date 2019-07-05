@@ -69,6 +69,7 @@ namespace divine::cc
 
     struct Driver
     {
+        using string_vec = std::vector< std::string >;
         using ModulePtr = std::unique_ptr< llvm::Module >;
 
         explicit Driver( std::shared_ptr< llvm::LLVMContext > ctx ) : Driver( Options(), ctx ) {}
@@ -112,7 +113,10 @@ namespace divine::cc
         }
 
         std::vector< Command > getJobs( llvm::ArrayRef< const char * > args );
-        brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
+        std::string find_library( std::string lib, string_vec suff, string_vec search = {} );
+        brick::llvm::ArchiveReader find_archive( std::string lib, string_vec search = {} );
+        brick::llvm::ArchiveReader read_archive( std::string path );
+
         ModulePtr load_object( std::string name );
 
       protected:

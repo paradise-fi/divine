@@ -187,33 +187,35 @@ namespace divine::cc
        linker->link( std::move( mod ) );
     }
 
-    brick::llvm::ArchiveReader Driver::getLib( std::string lib, std::vector< std::string > searchPaths )
+    brick::llvm::ArchiveReader Driver::find_archive( std::string lib, string_vec dirs )
+    {
+        return read_archive( find_library( lib, { ".a", ".bc" }, dirs ) );
+    }
+
+    brick::llvm::ArchiveReader Driver::read_archive( std::string path )
+    {
+        auto buf = compiler.getFileBuffer( path );
+        if ( !buf )
+            throw std::runtime_error( "Cannot open library file: " + path );
+
+        return brick::llvm::ArchiveReader( std::move( buf ), context() );
+    }
+
+    std::string Driver::find_library( std::string lib, string_vec suffixes, string_vec dirs )
     {
         using namespace brick::fs;
 
         std::string name;
-        searchPaths.insert( searchPaths.begin(), "/dios/lib" );
-        for ( auto p : searchPaths )
-            for ( auto suf : { "a", "bc" } )
+        dirs.insert( dirs.begin(), "/dios/lib" );
+        for ( auto p : dirs )
+            for ( auto suf : suffixes )
                 for ( auto pref : { "lib", "" } )
                 {
-                    auto n = joinPath( p, pref + lib + "."s + suf );
+                    auto n = joinPath( p, pref + lib + suf );
                     if ( compiler.fileExists( n ) )
-                    {
-                        name = n;
-                        goto done;
-                    }
+                        return n;
                 }
-    done:
-
-        if ( name.empty() )
-            throw std::runtime_error( "Library not found: " + lib );
-
-        auto buf = compiler.getFileBuffer( name );
-        if ( !buf )
-            throw std::runtime_error( "Cannot open library file: " + name );
-
-        return brick::llvm::ArchiveReader( std::move( buf ), context() );
+        throw std::runtime_error( "Library not found: " + lib );
     }
 
     Driver::ModulePtr Driver::load_object( std::string name )
@@ -235,9 +237,9 @@ namespace divine::cc
         return std::move( parsed.get() );
     }
 
-    void Driver::linkLib( std::string lib, std::vector< std::string > searchPaths )
+    void Driver::linkLib( std::string lib, std::vector< std::string > dirs )
     {
-        auto archive = getLib( lib, std::move( searchPaths ) );
+        auto archive = find_archive( lib, std::move( dirs ) );
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
         {
@@ -258,7 +260,7 @@ namespace divine::cc
 
     void Driver::linkEntireArchive( std::string arch )
     {
-        auto archive = getLib( arch );
+        auto archive = find_archive( arch );
         auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             linker->link( it.take() );
