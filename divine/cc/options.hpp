@@ -39,6 +39,7 @@ namespace divine::cc
         bool hasHelp = false;
         bool hasVersion = false;
         bool use_lld = false;
+        bool shared = false;
     };
 
     ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );

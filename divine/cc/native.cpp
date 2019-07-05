@@ -72,6 +72,8 @@ namespace divine::cc
             _ld_args = cc::ld_args( _po, _files );
         if ( _cxx )
             _ld_args.push_back( "--driver-mode=g++" );
+        if ( _po.shared )
+            _ld_args.push_back( "-shared" );
     }
 
     void Native::link()

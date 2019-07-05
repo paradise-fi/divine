@@ -100,6 +100,8 @@ namespace divine::cc
                 po.toObjectOnly = true;
             else if ( *it == "-E" )
                 po.preprocessOnly = true;
+            else if ( *it == "-shared" )
+                po.shared = true;
             else if ( *it == "--use-lld" )
                 po.use_lld = true;
             else if ( *it == "-g" )
