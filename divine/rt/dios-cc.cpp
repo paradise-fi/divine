@@ -70,6 +70,7 @@ NativeDiosCC::NativeDiosCC( const std::vector< std::string >& opts )
     add_dios_header_paths( _po.opts );
     add_dios_defines( _po.opts );
     divine::rt::each( [&]( auto path, auto c ) { _clang.mapVirtualFile( path, c ); } );
+    _missing_bc_fatal = true;
 }
 
 auto NativeDiosCC::link_dios_native( bool cxx )

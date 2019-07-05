@@ -56,7 +56,17 @@ namespace divine::cc
                         continue;
                     else
                     {
-                        drv->linkLib( file.second, _po.libSearchPath );
+                        try
+                        {
+                            drv->linkLib( file.second, _po.libSearchPath );
+                        }
+                        catch( std::exception )
+                        {
+                            if ( _missing_bc_fatal )
+                                throw;
+                            else
+                                std::cerr << "Warning: bitcode not found in lib: " << file.second << std::endl;
+                        }
                         continue;
                     }
                 }
@@ -102,6 +112,7 @@ namespace divine::cc
         std::vector< std::string > _ld_args;
         cc::CC1 _clang;
         bool _cxx;
+        bool _missing_bc_fatal = false;  // abort at a file/lib without bitcode?
 
         ~Native();
     };
