@@ -2,6 +2,7 @@
 #define _SYS_UIO_H  1
 
 #include <sys/types.h>
+#include <sys/cdefs.h>
 
 
 /* `struct iovec' -- Structure describing a section of memory.  */
@@ -13,6 +14,7 @@ struct iovec
   size_t iov_len;
 };
 
+__BEGIN_DECLS
 
 /* Read data from file descriptor FD, and put the result in the
    buffers described by IOVEC, which is a vector of COUNT 'struct iovec's.
@@ -45,5 +47,7 @@ extern ssize_t preadv( int fd, const struct iovec *iovec, int count,
    contiguous buffer. */
 extern ssize_t pwritev( int fd, const struct iovec *iovec, int count,
                         off_t offset);
+
+__END_DECLS
 
 #endif /* sys/uio.h */
