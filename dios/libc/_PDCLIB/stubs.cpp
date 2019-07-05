@@ -11,7 +11,9 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/resource.h>
+#include <sys/uio.h>
 #include <netinet/in.h>
 
 #include <sys/divm.h>
@@ -126,7 +128,8 @@ int select(int, fd_set *, fd_set *, fd_set *, struct timeval *timeout) NOT_IMPLE
 long sysconf( int ) NOT_IMPLEMENTED;
 int nice( int ) NOT_IMPLEMENTED;
 int gethostname( char *, size_t ) NOT_IMPLEMENTED;
-
+int getaddrinfo(const char *, const char *, const struct addrinfo *, struct addrinfo **) NOT_IMPLEMENTED;
+void freeaddrinfo(struct addrinfo *) { __dios_fault( _VM_F_NotImplemented, "freeaddrinfo" ); }
 void *mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) NOT_IMPLEMENTED;
 int munmap(void *addr, size_t len) NOT_IMPLEMENTED;
 int munlockall() NOT_IMPLEMENTED;
@@ -140,6 +143,12 @@ int pathconf( const char *, int ) NOT_IMPLEMENTED;
 FILE *popen( const char *command, const char *type ) { __dios_fault( _VM_F_NotImplemented, "popen" ); }
 int pclose( FILE* stream ) { __dios_fault( _VM_F_NotImplemented, "pclose" ); }
 
+const char *gai_strerror(int) NOT_IMPLEMENTED;
 int getrusage( int who, struct rusage *r_usage ) { __dios_fault( _VM_F_NotImplemented, "getrusage" ); }
+extern int getsockopt( int fd, int level, int optname, void *optval, socklen_t *optlen ) NOT_IMPLEMENTED;
+extern int setsockopt( int fd, int level, int optname, const void *optval, socklen_t optlen ) NOT_IMPLEMENTED;
+
+ssize_t writev(int fildes, const struct iovec *iov, int iovcnt) NOT_IMPLEMENTED;
+ssize_t readv(int fildes, const struct iovec *iov, int iovcnt) NOT_IMPLEMENTED;
 
 }
