@@ -248,17 +248,28 @@ namespace divine::cc
 
     void Driver::linkLib( std::string lib, std::vector< std::string > dirs )
     {
-        auto archive = find_archive( lib, std::move( dirs ) );
-        auto modules = archive.modules();
-        for ( auto it = modules.begin(); it != modules.end(); ++it )
+        TRACE( "link lib", lib, dirs );
+        auto path = find_library( lib, { ".a", ".so", ".bc" }, dirs );
+        TRACE( "using", path );
+
+        if ( brick::string::endsWith( path, ".so" ) )
         {
-            if ( it.getName() == "_link_essentials.ll"s )
-            {
-                linker->link_decls( it.take() );
-                break;
-            }
+            linker->link( load_object( path ) );
         }
-        linker->linkArchive( archive );
+        else
+        {
+            auto archive = find_archive( lib, std::move( dirs ) );
+            auto modules = archive.modules();
+            for ( auto it = modules.begin(); it != modules.end(); ++it )
+            {
+                if ( it.getName() == "_link_essentials.ll"s )
+                {
+                    linker->link_decls( it.take() );
+                    break;
+                }
+            }
+            linker->linkArchive( archive );
+        }
     }
 
     void Driver::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context )
