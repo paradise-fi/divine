@@ -218,10 +218,13 @@ namespace divine::cc
         throw std::runtime_error( "Library not found: " + lib );
     }
 
-    Driver::ModulePtr Driver::load_object( std::string name )
+    std::string Driver::find_object( std::string name )
     {
-        using namespace brick::fs;
-        auto path = joinPath( "/dios/lib", name + ".bc"s );
+        return joinPath( "/dios/lib", name + ".bc"s );
+    }
+
+    Driver::ModulePtr Driver::load_object( std::string path )
+    {
 
         if ( !compiler.fileExists( path ) )
             throw std::runtime_error( "object not found: " + path );

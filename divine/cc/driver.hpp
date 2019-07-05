@@ -117,7 +117,8 @@ namespace divine::cc
         brick::llvm::ArchiveReader find_archive( std::string lib, string_vec search = {} );
         brick::llvm::ArchiveReader read_archive( std::string path );
 
-        ModulePtr load_object( std::string name );
+        std::string find_object( std::string name );
+        ModulePtr load_object( std::string path );
 
       protected:
         Options opts;
