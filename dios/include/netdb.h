@@ -314,14 +314,13 @@ void		setprotoent_r(int, struct protoent_data *);
 void		setservent_r(int, struct servent_data *);
 #endif
 
-/*
 int		getaddrinfo(const char *, const char *,
 		    const struct addrinfo *, struct addrinfo **);
-void		freeaddrinfo(struct addrinfo *);
+void	freeaddrinfo(struct addrinfo *);
 int		getnameinfo(const struct sockaddr *, socklen_t,
 		    char *, size_t, char *, size_t, int);
 const char	*gai_strerror(int);
-*/
+
 #if __BSD_VISIBLE
 int		getrrsetbyname(const char *, unsigned int, unsigned int, unsigned int, struct rrsetinfo **);
 void		freerrset(struct rrsetinfo *);
