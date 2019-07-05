@@ -29,7 +29,7 @@ std=
 echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++17"
 
 if test -z "$EXPORT"; then
-    resources="--max-memory 4GiB --threads 1"
+    resources="--max-memory 4GiB --threads 2"
     extra="--report-filename verify.out"
 fi
 
