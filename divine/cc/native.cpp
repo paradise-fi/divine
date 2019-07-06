@@ -50,7 +50,7 @@ namespace divine::cc
             if ( cc::is_object_type( file.first ) )
                 continue;
             auto mod = _clang.compile( file.first, _po.opts );
-            cc::emit_obj_file( *mod, file.second );
+            cc::emit_obj_file( *mod, file.second, _po.pic );
         }
         return 0;
     }

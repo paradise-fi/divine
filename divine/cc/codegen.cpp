@@ -28,6 +28,7 @@ DIVINE_RELAX_WARNINGS
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -51,7 +52,7 @@ namespace divine::cc
         }
     };
 
-    int emit_obj_file( Module &m, std::string filename )
+    int emit_obj_file( Module &m, std::string filename, bool pic /* = false */ )
     {
         //auto TargetTriple = sys::getDefaultTargetTriple();
         auto TargetTriple = "x86_64-unknown-none-elf";
@@ -74,7 +75,7 @@ namespace divine::cc
         auto Features = "";
 
         TargetOptions opt;
-        auto RM = Reloc::Model();
+        auto RM = pic ? Reloc::PIC_ : Reloc::Static;
 
         using TargetPtr = std::unique_ptr< llvm::TargetMachine >;
         TargetPtr tmach{ Target->createTargetMachine( TargetTriple, CPU,

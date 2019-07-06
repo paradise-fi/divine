@@ -102,6 +102,8 @@ namespace divine::cc
                 po.preprocessOnly = true;
             else if ( *it == "-shared" )
                 po.shared = true;
+            else if ( *it == "-fPIC" )
+                po.pic = true;
             else if ( *it == "--use-lld" )
                 po.use_lld = true;
             else if ( *it == "-g" )

@@ -25,5 +25,5 @@ namespace divine::cc
 {
     static const std::string llvm_section_name = ".llvmbc";
 
-    int emit_obj_file( llvm::Module &m, std::string filename );
+    int emit_obj_file( llvm::Module &m, std::string filename, bool pic = false );
 }
