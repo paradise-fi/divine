@@ -26,7 +26,7 @@ gtest=
 skipcc=$(getopt SKIP_CC $1)
 
 std=
-echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++17"
+echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++14"
 
 if test -z "$EXPORT"; then
     resources="--max-memory 4GiB --threads 2"
