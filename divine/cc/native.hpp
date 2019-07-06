@@ -42,6 +42,50 @@ namespace divine::cc
         Native( const std::vector< std::string >& args );
 
         template< typename Driver >
+        void link_bitcode_file( std::pair< std::string, std::string > file, Driver &drv )
+        {
+            if ( !is_object_type( file.second ) )
+            {
+                if ( file.first != "lib" )
+                    return;
+                try
+                {
+                    drv->linkLib( file.second, _po.libSearchPath );
+                }
+                catch( std::exception )
+                {
+                    if ( _missing_bc_fatal )
+                        throw;
+                    else
+                        std::cerr << "Warning: bitcode not found in lib: " << file.second << std::endl;
+                }
+                return;
+            }
+
+            auto buf = llvm::MemoryBuffer::getFile( file.second );
+            if ( !buf )
+                throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
+
+            if ( is_type( file.second, FileType::Archive ) )
+            {
+                drv->linkArchive( std::move( buf.get() ) , _clang.context() );
+                return;
+            }
+
+            auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
+            if ( !bc )
+                std::cerr << "No .llvmbc section found in file " << file.second << "." << std::endl;
+
+            auto expected_m = llvm::parseBitcodeFile( bc.get(), *_clang.context().get() );
+            if ( !expected_m )
+                std::cerr << "Error parsing bitcode." << std::endl;
+            auto m = std::move( expected_m.get() );
+            m->setTargetTriple( "x86_64-unknown-none-elf" );
+            verifyModule( *m );
+            drv->link( std::move( m ) );
+        }
+
+        template< typename Driver >
         std::unique_ptr< llvm::Module > do_link_bitcode()
         {
             auto drv = std::make_unique< Driver >( _clang.context() );
@@ -49,48 +93,7 @@ namespace divine::cc
                 drv->addDirectory( path );
 
             for ( auto file : _files )
-            {
-                if ( !is_object_type( file.second ) )
-                {
-                    if ( file.first != "lib" )
-                        continue;
-                    else
-                    {
-                        try
-                        {
-                            drv->linkLib( file.second, _po.libSearchPath );
-                        }
-                        catch( std::exception )
-                        {
-                            if ( _missing_bc_fatal )
-                                throw;
-                            else
-                                std::cerr << "Warning: bitcode not found in lib: " << file.second << std::endl;
-                        }
-                        continue;
-                    }
-                }
-
-                llvm::ErrorOr< std::unique_ptr< llvm::MemoryBuffer > > buf = llvm::MemoryBuffer::getFile( file.second );
-                if ( !buf ) throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
-
-                if ( is_type( file.second, FileType::Archive ) )
-                {
-                    drv->linkArchive( std::move( buf.get() ) , _clang.context() );
-                    continue;
-                }
-
-                auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
-                if ( !bc ) std::cerr << "No .llvmbc section found in file " << file.second << "." << std::endl;
-
-                auto expected_m = llvm::parseBitcodeFile( bc.get(), *_clang.context().get() );
-                if ( !expected_m )
-                    std::cerr << "Error parsing bitcode." << std::endl;
-                auto m = std::move( expected_m.get() );
-                m->setTargetTriple( "x86_64-unknown-none-elf" );
-                verifyModule( *m );
-                drv->link( std::move( m ) );
-            }
+                link_bitcode_file( file, drv );
 
             auto m = drv->takeLinked();
             verifyModule( *m );
