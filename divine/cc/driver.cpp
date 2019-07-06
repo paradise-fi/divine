@@ -189,7 +189,7 @@ namespace divine::cc
 
     brick::llvm::ArchiveReader Driver::find_archive( std::string lib, string_vec dirs )
     {
-        return read_archive( find_library( lib, { ".a", ".bc" }, dirs ) );
+        return read_archive( find_library( lib, { ".a", ".bc", "" }, dirs ) );
     }
 
     brick::llvm::ArchiveReader Driver::read_archive( std::string path )
@@ -205,7 +205,6 @@ namespace divine::cc
     {
         using namespace brick::fs;
 
-        std::string name;
         dirs.insert( dirs.begin(), "/dios/lib" );
         for ( auto p : dirs )
             for ( auto suf : suffixes )
@@ -249,7 +248,7 @@ namespace divine::cc
     void Driver::linkLib( std::string lib, std::vector< std::string > dirs )
     {
         TRACE( "link lib", lib, dirs );
-        auto path = find_library( lib, { ".a", ".so", ".bc" }, dirs );
+        auto path = find_library( lib, { ".a", ".so", ".bc", "" }, dirs );
         TRACE( "using", path );
 
         if ( brick::string::endsWith( path, ".so" ) )
