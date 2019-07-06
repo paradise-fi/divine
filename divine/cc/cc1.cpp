@@ -127,7 +127,7 @@ namespace divine::cc
                                                 // "-disable-free",
                                                 // "-disable-llvm-verifier",
                                                 // "-main-file-name", "test.c",
-                                                "-mrelocation-model", "static",
+                                                // "-mrelocation-model", "static",
                                                 "-mthread-model", "posix",
                                                 "-mdisable-fp-elim",
                                                 "-fmath-errno",
@@ -154,15 +154,23 @@ namespace divine::cc
                                                 "-isystem", "/builtin"
                                                 };
         bool exceptions = type == FileType::Cpp || type == FileType::CppPreprocessed;
+        bool reloc_model_present = false;
 
         for ( auto &a : args )
+        {
             if ( a == "-fno-exceptions" )
                 exceptions = false;
+            if ( a == "-mrelocation-model" )
+                reloc_model_present = true;
+        }
+
+        if ( !reloc_model_present )
+            add( args, { "-mrelocation-model", "static" } );
 
         add( args, cc1args );
-        add( args, argsOfType( type ) );
         if ( exceptions )
             add( args, { "-fcxx-exceptions", "-fexceptions" } );
+        add( args, argsOfType( type ) );
         args.push_back( filename );
 
         std::vector< const char * > cc1a;
