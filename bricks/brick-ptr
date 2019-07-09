@@ -144,6 +144,8 @@ namespace brq
             return _refcount < std::numeric_limits< T >::max() && --_refcount;
         }
 
+        ~refcount_base() { TRACE( this, "destroyed" ); }
+
         std::conditional_t< atomic, std::atomic< T >, T > _refcount = 0;
     };
 
