@@ -565,7 +565,7 @@ namespace brq::impl
 
             if ( check_outdated( adaptor ) )
             {
-                TRACE( _table, "insert outdated, retrying; outcome was", outcome );
+                TRACE( _table, "insert", x, "→ outdated, retrying; outcome was", outcome );
                 return insert( x, h, adaptor, outcome == table::Empty );
             }
 
@@ -654,7 +654,7 @@ namespace brq::impl
             if ( !success )
                 return false;
 
-            TRACE( _table, "rehash segment", id );
+            TRACE( _table, "rehash segment", id, "from", &from, "to", &to );
             for ( auto c = from.segment_begin( id ); c != from.segment_end( id ); ++ c )
             {
                 cell insert = c->invalidate();
