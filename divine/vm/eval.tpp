@@ -688,7 +688,9 @@ void Eval< Ctx >::implement_hypercall_syscall()
                     heap().read_shift( ptr, ch );
                     if ( !ch.defined() )
                     {
-                        fault( _VM_F_Hypercall ) << "uninitialised byte in __vm_syscall";
+                        fault( _VM_F_Hypercall ) << "uninitialised byte in __vm_syscall: argument "
+                                                 << idx << ", offset " << i << ", action 0x"
+                                                 << std::hex << action << ", size " << std::dec << size;
                         return false;
                     }
                     bufs.back()[ i ] = ch.cooked();
