@@ -18,6 +18,7 @@
 
 #include <brick-trace>
 #include <exception>
+#include <unistd.h>
 
 /* This file provides an assortment of assertion macros which provide
  * additional information about the circumstances of assertion failures, for
@@ -113,6 +114,14 @@ namespace brq
             (*this) << file << ": " << l.line;
             (*this) << ":\n  " << expected << " " << l.statement();
         }
+
+#ifdef BRICKS_NOTHROW_ASSERTS
+        assert_failed( assert_failed &&o )
+        {
+            ::write( 2, o.str.buffer(), o.str._offset );
+            abort();
+        }
+#endif
 
         const char *what() const noexcept { return str.buffer(); }
     };
