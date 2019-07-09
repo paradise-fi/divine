@@ -177,14 +177,15 @@ NodePtr Node::split( LTLPtr form ) {
 }
 
 
-void printSet( const std::set< LTLPtr, LTLComparator >& set  ) {
-    std::cout << "    { ";
+void printSet( std::ostream &o, const std::set< LTLPtr, LTLComparator >& set )
+{
+    o << "    { ";
     for( auto ptr = set.begin(); ptr != set.end(); ) {
-        std::cout << (*ptr)->string();
+        o << (*ptr)->string();
         if( ++ptr != set.end() )
-            std::cout << ", ";
+            o << ", ";
     }
-    std::cout << " }";
+    o << " }";
 }
 
 bool Node::isinSI( LTLPtr phi, const std::set< LTLPtr, LTLComparator >& A, const std::set< LTLPtr, LTLComparator >& B ) {
@@ -235,25 +236,23 @@ bool Node::isRedundant( LTLPtr phi ) {
     return result;
 }
 
+void Node::print( std::ostream &o ) const
+{
+    o << "NODE " << id <<  ":  ToBeDone = ";
+    printSet( o, toBeDone );
 
-void Node::print( ) const {
-    std::cout << "NODE " << id <<  ":  ToBeDone = ";
-    printSet( toBeDone );
-
-    std::cout << std::endl << "         Old =           ";
-    printSet( old );
-    std::cout << std::endl << "         Next =          ";
-    printSet( next );
-    std::cout << std::endl << "         Untils =        ";
+    o << std::endl << "         Old =           ";
+    printSet( o, old );
+    o << std::endl << "         Next =          ";
+    printSet( o, next );
+    o << std::endl << "         Untils =        ";
     for( auto b : untils )
-        std::cout << b;
-    std::cout << std::endl << "         rightOfUntils = ";
+        o << b;
+    o << std::endl << "         rightOfUntils = ";
     for( auto b : rightOfUntils )
-        std::cout << b;
-    std::cout << std::endl;
+        o << b;
+    o << std::endl;
 }
-
-
 
 size_t Node::depthOfRecursion = 0;
 

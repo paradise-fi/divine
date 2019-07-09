@@ -65,7 +65,9 @@ struct State
             , accepting( _accepting )
         {
         }
-        friend std::ostream& operator<<( std::ostream & os, const Edge& e ) {
+
+        friend std::ostream& operator<<( std::ostream & os, const Edge& e )
+        {
             os << "(";
             for( const auto & source : e.sources )
                 os << source << ", ";
@@ -124,7 +126,8 @@ struct State
     }
     void merge( Node* node );
 
-    friend std::ostream& operator<<( std::ostream & os, const State& s ) {
+    friend std::ostream& operator<<( std::ostream & os, const State& s )
+    {
         os << "  State " << s.id << std::endl;
         for( const auto & e : s.edgesIn )
             os << e << ", ";
@@ -155,7 +158,7 @@ struct Node
     static size_t depthOfRecursion;
     size_t localDepthOfRecursion = 1;
 
-    void print() const;
+    void print( std::ostream &o ) const;
 
     Node()
         : id( newNodeId() )
@@ -260,34 +263,34 @@ struct TGBA1
             assert( i == states.at( i )->id );
         assert( allLiterals.size() == allLiteralsSet.size() );
     }
+
     TGBA1( const TGBA2& _tgba2 );
 
-    void print() const
+    void print( std::ostream &o ) const
     {
-        std::cout << "TGBA made from formula " << name << ":" << std::endl;
-        for( auto state : states )
-            std::cout << *state;
+        o << "TGBA made from formula " << name << ":" << std::endl;
+        for ( auto state : states )
+            o << *state;
     }
 
-    std::string indexOfLiteral( LTLPtr literal ) const {
+    std::string indexOfLiteral( LTLPtr literal ) const
+    {
         std::stringstream output;
         auto wanted = literal->string();
-        for( size_t i = 0; i < allTrivialLiterals.size(); ++i ) {
-            if( allTrivialLiterals[i]->string() == wanted ) {
+        for( size_t i = 0; i < allTrivialLiterals.size(); ++i )
+        {
+            if ( allTrivialLiterals[i]->string() == wanted )
+            {
                 output << i;
                 return output.str();
             }
-            if( "!" + allTrivialLiterals[i]->string() == wanted ) {
+            if ( "!" + allTrivialLiterals[i]->string() == wanted )
+            {
                 output << "!" << i;
                 return output.str();
             }
         }
-        std::cerr << std::endl<< std::endl << "Literal " << wanted << " not found in " << std::endl;
-        for( auto l : allTrivialLiterals )
-            std::cerr << l->string() << ", ";
-        std::cerr << std::endl;
-        assert( false && "unused literal in TGBA" );
-        return "error";
+        UNREACHABLE( "literal", wanted, "not found in", allTrivialLiterals );
     }
 
     friend std::ostream& operator<<( std::ostream & os, const TGBA1& tgba ) {
@@ -381,16 +384,17 @@ struct Transition{
     }
 };
 
-static inline std::pair< bool, size_t > indexOfLiteral( LTLPtr literal, const std::vector< LTLPtr >& literals ) {
+static inline std::pair< bool, size_t > indexOfLiteral( LTLPtr literal, const std::vector< LTLPtr >& literals )
+{
     auto wanted = literal->string();
-    for( size_t i = 0; i < literals.size(); ++i ) {
-        if( literals.at( i )->string() == wanted )
+    for ( size_t i = 0; i < literals.size(); ++i )
+    {
+        if ( literals.at( i )->string() == wanted )
             return std::make_pair( true, i );
-        if( "!" + literals.at( i )->string() == wanted )
+        if ( "!" + literals.at( i )->string() == wanted )
             return std::make_pair( false, i );
     }
-    std::cerr << std::endl<< std::endl << "Literal " << wanted << " not found in " << std::endl;
-    assert( false && "unused literal in TGBA" );
+    UNREACHABLE( "literal", wanted, "not found in", literals );
     return std::make_pair( true, 0 );
 }
 
