@@ -759,11 +759,11 @@ namespace brq
         }
     };
 
-    template< typename T >
-    using hash_set = impl::hash_set< impl::default_cell< T >, false >;
+    template< typename T, typename grow = impl::quick, int max_chain = 24 >
+    using hash_set = impl::hash_set< impl::default_cell< T >, false, grow, max_chain >;
 
-    template< typename T >
-    using concurrent_hash_set = impl::hash_set< impl::concurrent_cell< T >, true >;
+    template< typename T, typename grow = impl::quick, int max_chain = 24 >
+    using concurrent_hash_set = impl::hash_set< impl::concurrent_cell< T >, true, grow, max_chain >;
 
 }
 
@@ -787,12 +787,14 @@ namespace brq_t
         operator int() const { return v; }
     };
 
-    template< template< typename > class HS, typename V = int >
+    template< template< typename, typename, int > class HS, typename V = int >
     struct sequential
     {
+        using hashset = HS< V, brq::impl::quick, 24 >;
+
         TEST(insert_basic)
         {
-            HS< V > set;
+            hashset set;
 
             ASSERT( !set.count( 1 ) );
             ASSERT( set.insert( 1 ).isnew() );
@@ -807,7 +809,7 @@ namespace brq_t
         }
 
         TEST(stress) {
-            HS< V > set;
+            hashset set;
 
             for ( int i = 1; i < size; ++i ) {
                 set.insert( i );
@@ -820,9 +822,9 @@ namespace brq_t
 
         TEST(erase_basic)
         {
-            if constexpr ( HS< V >::Cell::can_tombstone() )
+            if constexpr ( hashset::Cell::can_tombstone() )
             {
-                HS< V > set;
+                hashset set;
 
                 ASSERT( !set.count( 1 ) );
                 ASSERT( set.insert( 1 ).isnew() );
@@ -836,9 +838,9 @@ namespace brq_t
 
         TEST(erase_many)
         {
-            if constexpr ( HS< V >::Cell::can_tombstone() )
+            if constexpr ( hashset::Cell::can_tombstone() )
             {
-                HS< V > set;
+                hashset set;
 
                 for ( int i = 1; i < size; ++i )
                 {
@@ -857,7 +859,7 @@ namespace brq_t
         }
 
         TEST(set) {
-            HS< V > set;
+            hashset set;
 
             for ( int i = 1; i < size; ++i ) {
                 ASSERT( !set.count( i ) );
@@ -879,12 +881,15 @@ namespace brq_t
         }
     };
 
-    template< template< typename > class HS, typename V = int >
+    template< template< typename, typename, int > class HS, typename V = int >
     struct parallel
     {
+
+        using hashset = HS< V, brq::impl::quick, 24 >;
+
         struct Insert
         {
-            HS< V > set;
+            hashset set;
             int from, to;
             bool overlap;
 
@@ -908,7 +913,7 @@ namespace brq_t
                 ASSERT( a.set.count( i ) );
         }
 
-        static HS< V > _par( int f1, int t1, int f2, int t2 )
+        static hashset _par( int f1, int t1, int f2, int t2 )
         {
             brick::shmem::Thread< Insert > a, b( a );
 
@@ -925,7 +930,7 @@ namespace brq_t
             return a.set;
         }
 
-        static HS< V > _multi( std::size_t count, int from, int to )
+        static hashset _multi( std::size_t count, int from, int to )
         {
             brick::shmem::ThreadSet< Insert > arr;
             arr.resize( count );
@@ -972,7 +977,7 @@ namespace brq_t
 
         TEST(empty)
         {
-            HS< V > set;
+            hashset set;
 
             for ( int i = 1; i < size; ++i )
                 ASSERT( !set.count( i ) );
