@@ -33,9 +33,14 @@
 #else
 #include <unordered_set>
 #include <cstring>
-#include <iostream>
 #define __debugfn
 #define __boring
+#endif
+
+#ifdef __unix__
+#include <unistd.h>
+#else
+#include <cstdio>
 #endif
 
 /* The purpose of the TRACE macro is to allow tracing statements to be included
@@ -108,6 +113,7 @@ namespace brq
         char *buffer_end() noexcept { return _buffer + _capacity; }
         char *buffer() noexcept { return _buffer; }
         const char *buffer() const noexcept { return _buffer; }
+        int size() noexcept { return _offset; }
         bool truncated() { return _oom; }
 
         bool _make_space( int sz ) noexcept
@@ -361,7 +367,12 @@ namespace brq
         __dios_trace_internal( 0, "%s", acc.buffer() );
 #else
         acc << "\n";
-        std::cerr << acc.buffer() << std::flush;
+#ifdef __unix__
+        ::write( 2, acc.buffer(), acc.size() );
+#else
+        std::fwrite( acc.buffer(), 1, acc.size(), stderr );
+        std::fflush( stderr );
+#endif
 #endif
     }
 }
