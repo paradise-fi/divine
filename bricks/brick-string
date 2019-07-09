@@ -406,8 +406,8 @@ struct Splitter {
 };
 
 #if __cplusplus > 201402L
-namespace detail {
-
+namespace detail
+{
     struct NotPreferred { };
     struct Preferred : NotPreferred { };
 
@@ -442,14 +442,6 @@ namespace detail {
         static constexpr char right_bracket =
                 detail::container_bracket< T >( ']', '}', detail::Preferred() );
     };
-    template< typename >
-    struct LFMT_ { using T = llvm::Format; };
-
-    // make llvm::Format bogusly dependent on the template argument so that compiler
-    // does not compain that it is incomplete if it is not used
-    template< typename T >
-    using LFMT = typename LFMT_< T >::T;
-
 } // namespace detail
 
 struct Formatter
@@ -500,23 +492,6 @@ struct Formatter
         }
         ss << Trait::right_bracket;
     }
-
-#ifdef BRICKS_HAVE_LLVM
-    template< typename T >
-    auto format( T &&llvmval ) -> decltype( llvmval.print( std::declval< ::llvm::raw_ostream & >() ) )
-    {
-        ss << detail::LFMT< T >::format( llvmval );
-    }
-
-    template< typename T >
-    auto format( T *llvmval ) -> decltype( llvmval->print( std::declval< ::llvm::raw_ostream & >() ) )
-    {
-        if ( llvmval )
-            ss << detail::LFMT< T >::format( *llvmval );
-        else
-            format( "(nullptr)" );
-    }
-#endif // BRICKS_HAVE_LLVM
 
   private:
     std::stringstream ss;
