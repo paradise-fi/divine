@@ -57,35 +57,36 @@ struct GenericPointer : brick::types::Comparable
     using OffT = bitlevel::bitvec< OffBits >;
     using Type = PointerType;
 
-    union Rep { /* note: type punning is OK in clang */
-        PointerRaw raw;
-        struct { // beware: bitfields seem to be little-endian in clang but it is impmentation defined
-            OffT off:OffBits; // offset must be last (for the sake of arithmetic)
-            ObjT obj;
-        };
-    } _rep;
+    PointerRaw _raw;
+
+    struct Rep /* FIXME little endian */
+    {
+        Rep( ObjT obj = 0, OffT off = 0 ) : off( off ), obj( obj ) {}
+        OffT off;
+        ObjT obj;
+    };
 
     static_assert( sizeof( Rep ) == PointerBytes );
 
     explicit GenericPointer( ObjT obj, OffT off = 0 )
     {
-        _rep.obj = obj;
-        _rep.off = off;
+        brq::bitcast( Rep( obj, off ), _raw );
     }
 
-    explicit GenericPointer( Rep r = Rep() ) : _rep( r ) {}
+    explicit GenericPointer( Rep r = Rep() ) { brq::bitcast( r, _raw ); }
 
-    ObjT object() const { return _rep.obj; }
-    OffT offset() const { return _rep.off; }
-    void offset( OffT o ) { _rep.off = o; }
-    void object( ObjT o ) { _rep.obj = o; }
-    PointerRaw raw() const { return _rep.raw; }
-    void raw( PointerRaw r ) { _rep.raw = r; }
+    Rep rep() const { return brq::bitcast< Rep >( _raw ); }
+    ObjT object() const { return rep().obj; }
+    OffT offset() const { return rep().off; }
+    void offset( OffT o ) { auto r = rep(); r.off = o; brq::bitcast( r, _raw ); }
+    void object( ObjT o ) { auto r = rep(); r.obj = o; brq::bitcast( r, _raw ); }
+    PointerRaw raw() const { return _raw; }
+    void raw( PointerRaw r ) { _raw = r; }
     bool null() const { return object() == 0; } /* check whether a pointer is null */
 
     bool operator< ( GenericPointer o ) const
     {
-        return _rep.raw < o._rep.raw;
+        return raw() < o.raw();
     }
 
     Type type() const
@@ -117,7 +118,7 @@ struct CodePointer : GenericPointer
     explicit CodePointer( ObjT f, OffT i = 0 )
         : GenericPointer( f | _VM_PL_Global , i )
     {
-        ASSERT_LT( _rep.obj, _VM_PL_Code );
+        ASSERT_LT( object(), _VM_PL_Code );
     }
 
     CodePointer( GenericPointer r )
@@ -129,15 +130,15 @@ struct CodePointer : GenericPointer
 
     auto function() const
     {
-        return _rep.obj & ~_VM_PL_Global;
+        return object() & ~_VM_PL_Global;
     }
     void function( ObjT f )
     {
         ASSERT_LT( f, _VM_PL_Global );
-        _rep.obj = f | _VM_PL_Global;
+        object( f | _VM_PL_Global );
     }
-    auto instruction() const { return _rep.off; }
-    void instruction( OffT i ) { _rep.off = i; }
+    auto instruction() const { return offset(); }
+    void instruction( OffT i ) { offset( i ); }
     bool null() const { return function() == 0; }
 };
 
