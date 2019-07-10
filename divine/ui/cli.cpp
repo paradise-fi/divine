@@ -31,17 +31,17 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/BinaryFormat/Magic.h>
 DIVINE_UNRELAX_WARNINGS
 
-namespace divine {
-namespace ui {
-
-namespace {
+namespace divine::ui
+{
 
 using namespace brick::string;
 using bstr = std::vector< uint8_t >;
 using seenType = std::set< std::string >;
 
-bstr readContent( const std::string& path, const struct stat& s ) {
-    if ( S_ISLNK( s.st_mode ) ) {
+bstr read_content( const std::string& path, const struct stat& s )
+{
+    if ( S_ISLNK( s.st_mode ) )
+    {
         bstr content( 1024 );
         ssize_t ret;
         while ( ( ret = readlink( path.c_str(),
@@ -54,20 +54,23 @@ bstr readContent( const std::string& path, const struct stat& s ) {
         content.resize( ret );
         return content;
     }
-    else if ( S_ISREG( s.st_mode ) ) {
+    else if ( S_ISREG( s.st_mode ) )
+    {
         std::ifstream f( path, std::ios::binary );
         bstr content( (std::istreambuf_iterator< char >( f )),
                       std::istreambuf_iterator< char >() );
         return content;
     }
-    else if ( S_ISDIR( s.st_mode ) ) {
+    else if ( S_ISDIR( s.st_mode ) )
+    {
         return {};
     }
     die( "Capturing of sockets, devices and FIFOs is not supported" );
     __builtin_unreachable();
 }
 
-bstr packStat( const struct stat& s ) {
+bstr pack_stat( const struct stat& s )
+{
     bstr ret( sizeof( __vmutil_stat ) );
     auto *ss = reinterpret_cast< __vmutil_stat * >( ret.data() );
     ss->st_dev = s.st_dev;
@@ -93,12 +96,13 @@ bstr packStat( const struct stat& s ) {
     return ret;
 }
 
-bool visited( const seenType& s, const std::string& path ) {
+bool visited( const seenType& s, const std::string& path )
+{
     return std::find( s.begin(), s.end(), path ) != s.end();
 }
 
-std::string changePathPrefix( const std::string& path, const std::string& oldPref,
-                              const std::string& newPref )
+std::string change_path_prefix( const std::string& path, const std::string& oldPref,
+                                const std::string& newPref )
 {
     auto p = brick::fs::splitPath( path );
     auto o = brick::fs::splitPath( oldPref );
@@ -109,7 +113,8 @@ std::string changePathPrefix( const std::string& path, const std::string& oldPre
     return brick::fs::normalize( brick::fs::joinPath( result ) );
 }
 
-std::string noPrefixChange( const std::string& s ) {
+std::string no_prefix_change( const std::string& s )
+{
     return s;
 }
 
@@ -122,8 +127,8 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     if ( !stat )
         die( "Failed to stat " + oPath + " during filesystem capture." );
 
-    auto cont = readContent( oPath, *stat );
-    auto pStat = packStat( *stat );
+    auto cont = read_content( oPath, *stat );
+    auto pStat = pack_stat( *stat );
     auto path = mountPath( oPath );
     auto iCount = count();
 
@@ -156,7 +161,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
         {
             auto sym_split = brick::fs::splitPath( symPath );
             for ( size_t i = 2; i < sym_split.size(); ++i )
-                explore( follow, noPrefixChange, see, seen, count, limit, env,
+                explore( follow, no_prefix_change, see, seen, count, limit, env,
                          brick::fs::joinPath( sym_split.begin(), sym_split.begin() + i ) );
         }
         else
@@ -170,7 +175,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
             auto ex = [&]( const std::string& item )
             {
                 if ( absolute )
-                    return explore( follow, noPrefixChange, see, seen, count, limit, env, item );
+                    return explore( follow, no_prefix_change, see, seen, count, limit, env, item );
                 else
                     return explore( follow, mountPath, see, seen, count, limit, env, item );
             };
@@ -180,8 +185,6 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     }
     return S_ISDIR( stat->st_mode );
 }
-
-} // namespace
 
 void WithBC::process_options()
 {
@@ -293,10 +296,15 @@ void WithBC::setup()
 
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;
-    for ( auto vfs : _vfs ) {
-        auto ex = [&]( const std::string& item ) {
+    for ( auto vfs : _vfs )
+    {
+        auto ex = [&]( const std::string& item )
+        {
             return explore( vfs.followSymlink,
-                [&]( const std::string& s ) { return changePathPrefix( s, vfs.capture, vfs.mount ); },
+                [&]( const std::string& s )
+                {
+                    return change_path_prefix( s, vfs.capture, vfs.mount );
+                },
                 [&]( const std::string& s ) { vfsCaptured.insert( s ); },
                 [&]( const std::string& s ) { return visited( vfsCaptured, s ); },
                 [&]( ) { return i++; },
@@ -305,16 +313,17 @@ void WithBC::setup()
                 item );
         };
 
-        if ( vfs.capture == vfs.mount ) {
+        if ( vfs.capture == vfs.mount )
             vfsCaptured.insert( vfs.capture );
-        }
+
         brick::fs::traverseDirectoryTree( vfs.capture, ex, []( std::string ){ }, ex );
     }
 
-    if ( !_stdin.empty() ) {
+    if ( !_stdin.empty() )
+    {
         std::ifstream f( _stdin, std::ios::binary );
-        bstr content( (std::istreambuf_iterator< char >( f )),
-                      std::istreambuf_iterator< char >() );
+        bstr content{ std::istreambuf_iterator< char >( f ),
+                      std::istreambuf_iterator< char >() };
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
@@ -401,7 +410,8 @@ void Cc::run()
         for ( auto path : po.allowedPaths )
             _driver.addDirectory( path );
 
-        for( auto file : po.files ) {
+        for( auto file : po.files )
+        {
             if ( !file.is< cc::File >() )
                 continue;
             auto f = file.get< cc::File >();
@@ -432,5 +442,4 @@ std::shared_ptr< Interface > make_cli( std::vector< std::string > args )
 }
 
 
-}
 }
