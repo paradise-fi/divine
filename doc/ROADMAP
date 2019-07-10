@@ -41,7 +41,7 @@ also use it to improve verification of closed programs.
 
 People: Henrich Lauko, Adam Matoušek, Petr Ročkai
 
-## Version 4.3 (May 2019)
+## Version 4.4 (September 2019)
 
 The primary role of pointers in a program is to reference memory. They are,
 however, sometimes used as keys in data structures such as binary search trees
@@ -100,11 +100,6 @@ the toolchain is making compilation of such programs as easy and transparent for
 the user as possible. The main component of the toolchain is `divcc`.
 
 People: Zuzana Baranová, Petr Ročkai
-
-## Version 4.3 (May 2019)
-
-In its current form, `divcc` can only be used to build and link C programs out
-of the box. We would like to make C++ a fully supported language.
 
 ## Version 5 (Long-Term)
 
