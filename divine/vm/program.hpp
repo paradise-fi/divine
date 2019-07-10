@@ -52,25 +52,48 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::vm
 {
 
-/*
- * A representation of the LLVM program that is suitable for execution.
- */
+/* A representation of the LLVM program that is (more) suitable for execution.
+ * Functions are represented by flat vectors of instructions, so within a basic
+ * block, we hit consecutive memory locations and don't need to dereference
+ * pointers. Likewise, the entire program is represented as a vector of
+ * Function instances (which each contain a pointer to the first instruction
+ * belonging to that function).
+ *
+ * Instruction operands are always slot references, there is no support for
+ * immediates (yet?). Constant data is all stashed away in a single heap object
+ * which is split into a number of slots of variable size, each containing a
+ * single value. Constants are not de-duplicated. This arrangement is
+ * unfortunately not very cache-friendly. Within an instruction, operands are
+ * held in a SmallVector, so most instructions should be stored continuously,
+ * but they are still rather inefficient. A better representation is in the
+ * works. */
+
 struct Program
 {
     llvm::DataLayout TD;
     using Slot = lx::Slot;
+
+    /* Encoding of a single LLVM instruction. The opcode is the LLVM opcode or
+     * a few DiVM-specific specials which arise from llvm 'call' instructions.
+     * The subcode is either the LLVM sub-operation (for the icmp, fcmp and
+     * atomicrmw multi-purpose opcodes) or an index into the type table (for
+     * GEP or alloca) or the offset of the landing pad for invoke instructions.
+     * For 'call' instructions, the subcode (if nonzero) indicates the ID of
+     * the intrinsic function. */
 
     struct Instruction
     {
         uint32_t opcode:16;
         uint32_t subcode:16;
         Slot result() const { ASSERT( values.size() ); return values[0]; }
+
         Slot operand( int i ) const
         {
             int idx = (i >= 0) ? (i + 1) : (i + values.size());
             ASSERT_LT( idx, values.size() );
             return values[ idx ];
         }
+
         Slot value( int i ) const
         {
             int idx = (i >= 0) ? i : (i + values.size());
@@ -123,6 +146,12 @@ struct Program
     int framealign;
     bool codepointers;
 
+    /* Temporary data used during generation of the RR, tying LLVM data
+     * structures to our internal representation of the program (RR).
+     * Unfortunately, parts of the code (especially divine::dbg) still rely on
+     * those maps at runtime, hence we cannot clear them after the RR is built.
+     * Fixing this is a work in progress. */
+
     std::map< const llvm::Value *, Slot > valuemap;
     std::map< const llvm::Value *, Slot > globalmap;
     std::map< const llvm::Type *, int > typemap;
@@ -136,9 +165,20 @@ struct Program
 
     using LXTypes = lx::Types< typename Context::Heap >;
 
-    std::unique_ptr< LXTypes > _types;
+    /* New-style generators for parts of the runtime representation that has
+     * been moved over to a newer format (the new format is called LX for LLVM
+     * eXecutable, the translation from LLVM to LX is called XG, for eXecutable
+     * Generator). */
+
     xg::Types _types_gen;
     xg::AddressMap _addr;
+
+    /* New-style encoding for type information. This is mainly used for GEP
+     * (getelementptr) instructions, since those need to know the size of each
+     * type that appears in them, because those sizes may need to be multiplied
+     * by runtime values to compute the result. */
+
+    std::unique_ptr< LXTypes > _types;
 
     CodePointer _bootpoint;
     GlobalPointer _envptr;
@@ -176,6 +216,9 @@ struct Program
         return _addr.addr( v );
     }
 
+    /* Get the next instruction that should be executed -- skips debug metadata
+     * and other helper instructions. */
+
     CodePointer nextpc( CodePointer pc )
     {
         if ( !valid( pc ) )
@@ -186,7 +229,7 @@ struct Program
         return pc;
     }
 
-    CodePointer entry( CodePointer pc )
+    CodePointer entry( CodePointer pc )/* entry point of the function that 'pc' points into */
     {
         auto &f = function( pc );
         auto rv = CodePointer( pc.function(), brick::bitlevel::align( f.argcount + f.vararg, 4 ) );
@@ -239,10 +282,8 @@ struct Program
     template< typename T >
     auto initConstant( Slot s, T t ) -> decltype( std::declval< typename T::Raw >(), void() )
     {
-        // std::cerr << "initial constant value " << t << " at " << s2hptr( s ) << std::endl;
         _ccontext.heap().write( s2hptr( s ), t );
     }
-
 
     struct Position
     {
