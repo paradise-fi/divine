@@ -141,8 +141,6 @@ static inline int __vm_pointer_type( uint32_t objid )
 #define _VMUTIL_INLINE_UNDEF
 #endif
 
-#define NATIVE_VISIBLE
-
 #ifndef __divm__
 typedef void (*_VM_CodePointer)( void );
 typedef int (*_VM_Personality)( void *, void *, void * ); // ?
@@ -364,7 +362,7 @@ enum _VM_SC_ValueType
     _VM_SC_In = 0x100, _VM_SC_Out = 0x200
 };
 
-#if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
+#if defined( __divine__ )
 
 EXTERN_C
 
@@ -509,7 +507,6 @@ EXTERN_END
 #undef EXTERN_C
 #undef EXTERN_END
 #undef NOTHROW
-#undef NATIVE_VISIBLE
 
 #ifdef _VMUTIL_INLINE_UNDEF
 #undef _VMUTIL_INLINE_UNDEF
