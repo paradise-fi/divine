@@ -41,7 +41,7 @@
 #ifndef BRICK_BITLEVEL_H
 #define BRICK_BITLEVEL_H
 
-namespace brick::bitlevel
+namespace brq
 {
 
     /* Align a value to the closest higher value divisible by 'a', unless it's
@@ -87,6 +87,14 @@ namespace brick::bitlevel
         bitcast( f, t );
         return t;
     }
+}
+
+namespace brick::bitlevel
+{
+    using brq::bitcast;
+    using brq::maybe_bitcast;
+    using brq::align;
+    using brq::downalign;
 
     /* Compile-time bit manipulation utilities, useful for constructing bit masks. */
 
