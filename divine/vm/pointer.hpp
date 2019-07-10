@@ -41,13 +41,12 @@ enum class PointerType : unsigned { Global = _VM_PT_Global,
 static const int PointerBytes = _VM_PB_Full / 8;
 using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
 
-/*
- * There are multiple pointer types, distinguished by a three-bit type tag. The
- * generic pointer cannot be used directly, but it is the same size as all
- * other pointer types and it retains the type-specific content (i.e. it can be
- * treated like a value). All pointers are ultimately resolved through the
- * heap, but Global pointers go through an indirection.
- */
+/* There are multiple pointer types, distinguished by the range of object id's
+ * they fall into. The generic pointer cannot be used directly, but it is the
+ * same size as all other pointer types and it retains the type-specific
+ * content (i.e. it can be treated like a value). All data pointers are
+ * ultimately resolved through the heap, but Global pointers go through an
+ * indirection. */
 
 struct GenericPointer : brick::types::Comparable
 {
@@ -105,13 +104,12 @@ static inline GenericPointer nullPointer()
     return GenericPointer( 0, 0 );
 }
 
-/*
- * Points to a particular instruction in the program. Constant code pointers
+/* Points to a particular instruction in the program. Constant code pointers
  * can only point at functions or labels, not arbitrary instructions; however,
  * the unit of the pointer is an instruction (not a byte), and incrementing a
  * code pointer will give you a pointer to the next instruction. Program
- * counters are implemented as code pointers.
- */
+ * counters are implemented as code pointers. */
+
 struct CodePointer : GenericPointer
 {
     explicit CodePointer () // Canonic null
@@ -155,15 +153,14 @@ struct SlotPointer : GenericPointer
             ASSERT_EQ( type(), T );
     }
 };
-/*
- * Pointer to a global variable. Global pointers need to be indirected, because
+
+/* Pointer to a global variable. Global pointers need to be indirected, because
  * multiple copies of the program (processes) must be able to co-exist within a
  * single heap. A special per-process heap object is created to hold global
  * variables (similar to a frame). Its layout is dictated by the Program
  * object, the 'obj' part of the global pointer determines which Slot within
  * the global variable object this pointer points to. The offset is in bytes,
- * counting from the start of the slot.
- */
+ * counting from the start of the slot. */
 using GlobalPointer = SlotPointer< PointerType::Global >;
 
 struct HeapPointer : GenericPointer
