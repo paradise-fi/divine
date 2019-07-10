@@ -20,6 +20,10 @@
 
 #include <divine/vm/value.hpp>
 
+/* This file implements the make_frame() function, which builds an empty call
+ * frame for a given function, passing it down arguments (in form of value::*)
+ * and calls it. Takes a context instance. */
+
 namespace divine::vm
 {
     template< typename Ctx >
