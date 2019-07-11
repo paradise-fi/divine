@@ -39,21 +39,25 @@ int main( int argc, const char **argv )
         }
         auto mod = clang.compile( argv[3], opts );
 
-        lart::divine::rewriteDebugPaths( *mod, [=]( auto p ) {
-                std::string relpath;
-                if ( string::startsWith( p, srcDir ) )
-                    relpath = p.substr( srcDir.size() );
-                else if ( string::startsWith( p, binDir ) )
-                    relpath = p.substr( binDir.size() );
-                if ( string::startsWith( relpath, "/dios" ) )
-                    relpath = relpath.substr( 5 );
-                if ( !relpath.empty() ) {
-                    while ( fs::isPathSeparator( relpath[0] ) )
-                        relpath.erase( relpath.begin() );
-                    return fs::joinPath( rt::directory( relpath ), relpath );
-                }
-                return p;
-            } );
+        lart::divine::rewriteDebugPaths( *mod, [=]( auto p )
+        {
+            std::string relpath;
+            if ( string::startsWith( p, srcDir ) )
+                relpath = p.substr( srcDir.size() );
+            else if ( string::startsWith( p, binDir ) )
+                relpath = p.substr( binDir.size() );
+            if ( string::startsWith( relpath, "/dios" ) )
+                relpath = relpath.substr( 5 );
+            if ( !relpath.empty() )
+            {
+                while ( fs::isPathSeparator( relpath[0] ) )
+                    relpath.erase( relpath.begin() );
+                auto result = fs::joinPath( rt::directory( relpath ), relpath );
+                TRACE( "rewrite", p, "to", result );
+                return result;
+            }
+            return p;
+        } );
 
         brick::llvm::writeModule( mod.get(), argv[4] );
         fs::writeFile( fpFilename, newFp );
