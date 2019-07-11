@@ -136,6 +136,7 @@ catch ( mc::BadTrace &bt )
     int i = 1;
 
     std::cerr << "E: Incomplete trace! This is a bug." << std::endl;
+
     for ( auto c : bt.candidate )
     {
         auto exp_root = mc::root( dbg, bt.expected );
@@ -143,6 +144,9 @@ catch ( mc::BadTrace &bt )
         std::cerr << "candidate " << i++ << " failed, diff follows" << std::endl;
         dbg::diff( std::cerr, exp_root, c_root );
     }
+
+    dbg.load( bt.final );
+    _log->backtrace( dbg, _num_callers );
 }
 
 void Verify::safety()
