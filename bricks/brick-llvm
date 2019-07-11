@@ -248,23 +248,6 @@ inline std::string getModuleBytes( ::llvm::Module *m ) {
     return s;
 }
 
-struct Format
-{
-    template< typename T >
-    static std::string format( T &&v )
-    {
-        std::string s;
-        ::llvm::raw_string_ostream lstream( s );
-        v.print( lstream );
-        return lstream.str();
-    }
-};
-
-template< typename T >
-std::string format( T &&v ) {
-    return Format::format( std::forward< T >( v ) );
-}
-
 inline int intrinsic_id( ::llvm::Value *v )
 {
     auto insn = ::llvm::dyn_cast< ::llvm::Instruction >( v );
@@ -278,6 +261,20 @@ inline int intrinsic_id( ::llvm::Value *v )
 }
 
 } // namespace brick::llvm
+
+namespace llvm
+{
+    template< typename stream, typename T >
+    auto operator<<( stream &o, const T &v )
+        -> std::enable_if_t< !std::is_convertible_v< stream &, raw_ostream & >,
+                             decltype( v.print( std::declval< raw_ostream & >() ), o << "" ) >
+    {
+        std::string s;
+        raw_string_ostream lstream( s );
+        lstream << v;
+        return o << lstream.str();
+    }
+}
 
 #endif // BRICK_LLVM_H
 
