@@ -33,6 +33,13 @@ void panic()
         std::cerr << "E: std::terminate() called without an active exception" << std::endl;
         std::abort();
     }
+    catch ( brick::except::Error &e )
+    {
+        if ( _ui )
+            _ui->exception( e );
+        std::cerr << "E: " << e.what() << std::endl;
+        exit( 1 );
+    }
     catch ( std::exception &e )
     {
         if ( _ui )
