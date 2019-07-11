@@ -128,8 +128,7 @@ struct BasicBlockSCC {
         for ( auto &bb : fn ) {
             if ( map[ &bb ].index == TJ::undef )
                 _tjscc( &bb, index, map, stack );
-            ASSERT( _sccMap.count( &bb ) ||
-                    (std::cerr << brick::string::format( "bb:", bb, "parent:", bb.getParent() ), false) );
+            ASSERT( _sccMap.count( &bb ), "bb:", bb, "parent:", *bb.getParent() );
         }
 
         for ( auto &scc : _sccs )
