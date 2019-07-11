@@ -136,8 +136,9 @@ void Andersen::build( llvm::Instruction &i ) {
     if ( llvm::isa< llvm::StoreInst >( i ) )
         constraint( Constraint::Store, i.getOperand( 1 ), i.getOperand( 0 ) );
 
-    if ( llvm::isa< llvm::LoadInst >( i ) ) {
-        std::cerr << brick::string::format( i );
+    if ( llvm::isa< llvm::LoadInst >( i ) )
+    {
+        TRACE( i );
         constraint( Constraint::Deref, &i, i.getOperand( 0 ) );
         // std::cerr << _nodes[ &i ] << " <- " << _nodes[ i.getOperand( 0 ) ] << std::endl;
     }
