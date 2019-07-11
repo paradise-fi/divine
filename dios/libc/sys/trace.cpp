@@ -22,6 +22,7 @@ void Debug::persist()
     dbg_persist( this );
     dbg_persist( hids.begin() );
     dbg_persist( trace_indent.begin() );
+    dbg_persist( trace_inhibit.begin() );
     dbg_persist( trace_buf.begin() );
 }
 
@@ -41,6 +42,10 @@ __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) no
 
     if ( have_debug() )
     {
+        auto &inhibit = get_debug().trace_inhibit;
+        if ( inhibit[ tid ] )
+            return;
+
         auto &hids = get_debug().hids;
         indent = tid ? &get_debug().trace_indent[ tid ] : &get_debug().kernel_indent;
         auto nice_id_it = tid ? hids.find( tid ): hids.end();
@@ -144,3 +149,9 @@ __debugfn void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
     va_end( ap );
 }
 
+__debugfn void __dios_trace_adjust( int off ) noexcept
+{
+    auto &inhibit = __dios::get_debug().trace_inhibit;
+    inhibit[ __dios_this_task() ] += off;
+    __dios::get_debug().persist();
+}
