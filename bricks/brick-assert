@@ -156,7 +156,7 @@ namespace brq
               << x << " " #inv " " << y << "\n";                                             \
             throw f;                                                                         \
         }                                                                                    \
-        trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" );                  \
+        /* trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" ); */            \
     }                                                                                        \
     template< typename X, typename Y >                                                       \
     __boring auto assert_ ## name ## _fn( const trace_location &l, const X &x, const Y &y )  \
@@ -171,7 +171,7 @@ namespace brq
               << x << " " #inv " " << y << "\n";                                             \
             throw f;                                                                         \
         }                                                                                    \
-        trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" );                  \
+        /* trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" ); */            \
     }
 
     ASSERT_FN(eq, ==, !=);
