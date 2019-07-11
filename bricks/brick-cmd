@@ -85,7 +85,7 @@ struct Validator< Parse, Ps... >
         return _parse( v, set,
                        []( auto, std::string s )
                        {
-                           throw std::logic_error( "validator error: " + s );
+                           throw except::Error( "parsing command line: " + s );
                        } );
     }
 
