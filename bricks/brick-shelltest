@@ -1171,7 +1171,7 @@ struct Main
             msec = 0;
         }
 
-        if ( tty )
+        if ( tty && !options.verbose )
         {
             int extra = running_count;
             std::stringstream status;
