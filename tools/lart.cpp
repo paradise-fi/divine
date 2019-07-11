@@ -56,5 +56,5 @@ int main( int argc, char **argv ) {
     driver.process( module );
     lart::Driver::assertValid( module );
 
-    WriteBitcodeToFile( module, outs );
+    WriteBitcodeToFile( *module, outs );
 }
