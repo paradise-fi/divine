@@ -747,16 +747,17 @@ struct SlavePool : PoolMixin< SlavePool< Master_ >, typename Master_::Pointer >
 
 };
 
-template< typename Master, typename T = uint16_t >
+template< typename Master, typename T = uint16_t, bool atomic = false >
 struct RefPool : SlavePool< Master >
 {
     using Pointer = typename Master::Pointer;
     using SlavePool< Master >::SlavePool;
+    using counter = std::conditional_t< atomic, std::atomic< T >, T >;
 
-    T &count( Pointer p ) /* TODO atomic? */
+    counter &count( Pointer p )
     {
-        this->materialise( p, sizeof( T ), false );
-        return *this->template machinePointer< T >( p );
+        this->materialise( p, sizeof( counter ), false );
+        return *this->template machinePointer< counter >( p );
     }
 
     void get( Pointer p )
