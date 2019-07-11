@@ -34,7 +34,7 @@ using DbgNode = dbg::Node< vm::Program, vm::CowHeap >;
 
 struct BadTrace
 {
-    vm::CowHeap::Snapshot expected;
+    vm::CowHeap::Snapshot expected, final;
     std::vector< vm::CowHeap::Snapshot > candidate;
 };
 
@@ -117,6 +117,7 @@ Trace trace( Explore &ex, LabelledTrace< Label > states, LabelComparer comparer 
     {
         BadTrace error;
         error.expected = next->first;
+        error.final = states.back().first;
         typename std::remove_reference_t< decltype ( ex ) >::State state;
         state.snap = last->first;
 
