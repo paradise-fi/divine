@@ -392,20 +392,6 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         return s;
     }
 
-    void printstats()
-    {
-        auto s = stats();
-        std::cerr << "pool " << this << ": " << s.total.count.used << " objects in use:" << std::endl;
-
-        for ( auto i : s )
-            if ( i.count.used )
-                std::cerr << "   " << std::setw(8) << i.count.used << " object(s) of size " << std::setw(7) << i.size
-                          << " for " << std::setw(6) << i.bytes.used / 1024 << "/"
-                                     << std::setw(6) << i.bytes.held / 1024 << " kbytes" << std::endl;
-
-        std::cerr << " " << s.total.bytes.used / 1024 << " kbytes used + "
-                         << ( s.total.bytes.held - s.total.bytes.used ) / 1024 << " kbytes wasted" << std::endl;
-    }
     static void finalize( Shared *s )
     {
         s->valgrind_fini();
