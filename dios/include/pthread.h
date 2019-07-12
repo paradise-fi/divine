@@ -4,6 +4,7 @@
 /* Includes */
 
 #include <sys/task.h>
+#include <sys/hostabi.h>
 
 /* Macros */
 
@@ -88,7 +89,7 @@ typedef int pthread_attr_t;
 /* Thread in DiOS is defined as a task.
  * All its data and metadata are stored in task local storage.
  *
- * For `pthread_t` the `__dios_tls` hols in `__data` attribute
+ * For `pthread_t` the `__dios_tls` holds in `__data` attribute
  * the _PthreadTLS data.
  *
  * Thread metadata are stored in form of _PThread in the _PthreadTLS.
@@ -107,15 +108,25 @@ struct _PThread;
  *
  * Attribute __lockCounter maintains number of thread owners of this mutex {0,1}.
  * */
-typedef struct {
-    pthread_t __owner;
-    union {
-        struct {
-            unsigned short __once:1;
-            unsigned short __type:2;
-            unsigned int __lockCounter:28; // change _mutex_adjust_count if bitfield size changes
+typedef struct
+{
+    union
+    {
+        struct
+        {
+            pthread_t __owner;
+            union
+            {
+                struct
+                {
+                    unsigned short __once:1;
+                    unsigned short __type:2;
+                    unsigned int __lockCounter:28; // change _mutex_adjust_count if bitfield size changes
+                };
+                int32_t __bitflags;
+            };
         };
-        int __bitflags;
+        uint8_t __padding[ _HOST_pthr_mutex_t_size ];
     };
 } pthread_mutex_t;
 

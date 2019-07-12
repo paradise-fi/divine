@@ -289,6 +289,7 @@ fmt( "is_linux",   $uname eq "Linux" ? 1 : 0);
 fmt( "is_openbsd", $uname eq "OpenBSD" ? 1 : 0);
 fmt( "mode_t", "(int) (8*sizeof(mode_t))", "__uint%d_t" );
 fmt( "jmp_buf_size", "sizeof(jmp_buf)", "%zd" );
+fmt( "pthr_mutex_t_size", "sizeof(pthread_mutex_t)", "%zd" );
 
 $prog .= "#ifdef __GNU_LIBRARY__\n";
 fmt( "is_glibc", 1 );

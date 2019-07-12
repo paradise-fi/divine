@@ -9,6 +9,8 @@
 namespace __dios
 {
 
+static_assert( _HOST_pthr_mutex_t_size >= 16 );
+
 // this is not run when thread's main returns!
 static void _run_cleanup_handlers() noexcept
 {
