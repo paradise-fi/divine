@@ -205,6 +205,9 @@ namespace divine::cc
     {
         using namespace brick::fs;
 
+        compiler.allowIncludePath( "." );  // TODO: necessary?
+        compiler.allowIncludePath( brick::string::dirname( lib ) );
+
         dirs.insert( dirs.begin(), "/dios/lib" );
         for ( auto p : dirs )
             for ( auto suf : suffixes )
@@ -225,6 +228,9 @@ namespace divine::cc
     Driver::ModulePtr Driver::load_object( std::string path )
     {
         using IRO = llvm::object::IRObjectFile;
+
+        compiler.allowIncludePath( "." ); // TODO: necessary?
+        compiler.allowIncludePath( brick::string::dirname( path ) );
 
         if ( !compiler.fileExists( path ) )
             throw std::runtime_error( "object not found: " + path );
