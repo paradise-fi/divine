@@ -35,15 +35,15 @@ int link_a( int argc, const char **argv )
 
 int link_bc( int argc, const char **argv )
 {
-    brick::llvm::Linker linker;
     auto ctx = std::make_shared< llvm::LLVMContext >();
+    brick::llvm::Linker linker( ctx );
 
     for ( int i = 2; i < argc; ++i )
     {
         auto input = std::move( llvm::MemoryBuffer::getFile( argv[i] ).get() );
         if ( brick::string::endsWith( argv[i], ".bc" ) )
         {
-            auto bc = std::move( llvm::parseBitcodeFile( input->getMemBufferRef(), *ctx.get() ).get() );
+            auto bc = std::move( llvm::parseBitcodeFile( input->getMemBufferRef(), *ctx ).get() );
             linker.link( std::move( bc ) );
         }
 
