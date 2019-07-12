@@ -3,7 +3,7 @@
 
 mkdir 1
 touch 1/foo.h
-cat > test.c <<EOF
+tee test.c <<EOF
 #include "foo.h"
 int main() {}
 EOF
