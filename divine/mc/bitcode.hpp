@@ -55,6 +55,7 @@ struct BitCode
     std::unique_ptr< llvm::Module > _module;   // _program depends on _module which depends on _ctx
     std::unique_ptr< vm::Program > _program;       // and they have to be destroyed in the right order
                                                // otherwise DIVINE will SEGV if exception is thrown
+    std::unique_ptr< llvm::Module > _pure_module; // pre-LART version
     std::unique_ptr< dbg::Info > _dbg;
 
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
@@ -104,6 +105,7 @@ struct BitCode
 
 private:
     void lazy_link_dios();
+    void _save_original_module();
 };
 
 }

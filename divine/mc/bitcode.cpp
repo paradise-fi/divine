@@ -116,6 +116,11 @@ void BitCode::lazy_link_dios()
     _module = drv.takeLinked();
 }
 
+void BitCode::_save_original_module()
+{
+    _pure_module = llvm::CloneModule( *_module );
+}
+
 BitCode::BitCode( std::string file )
 {
     _ctx.reset( new llvm::LLVMContext() );
@@ -145,6 +150,8 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
 
 void BitCode::do_lart()
 {
+    _save_original_module();
+
     lart::Driver lart;
 
     lart.setup( lart::FixPHI::meta() );
