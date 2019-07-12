@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-int main() {
+/* NB. This is not actually valid C, though it will dtrt on most compilers. */
+
+int main()
+{
     int foo[4];
     foo[0] = 0;
 
