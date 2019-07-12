@@ -330,6 +330,7 @@ struct Linker
     using Module = ::llvm::Module;
     using StringRef = ::llvm::StringRef;
 
+    Linker( std::shared_ptr< ::llvm::LLVMContext > ctx ) : _ctx( ctx ) {}
 
     ::llvm::Linker &linker()
     {
@@ -346,7 +347,8 @@ struct Linker
 
     void link_decls( std::unique_ptr< Module > src )
     {
-        ASSERT( _module );
+        if ( !_module )
+            _module.reset( new ::llvm::Module( "placeholder", *_ctx ) );
 
         for ( auto &f : *src )
             if ( f.isDeclaration() )
@@ -500,8 +502,10 @@ struct Linker
 
     std::unique_ptr< ::llvm::Linker > _link;
     std::unique_ptr< ::llvm::Module > _module;
+    std::shared_ptr< ::llvm::LLVMContext > _ctx;
     std::vector< StringRef > _undefined;
 };
+
 }
 
 namespace t_llvm {
@@ -519,18 +523,19 @@ using ::llvm::Module;
 
 struct LinkerTest {
 
-    ::llvm::LLVMContext ctx;
+    std::shared_ptr< ::llvm::LLVMContext > ctx;
+    LinkerTest() : ctx( new ::llvm::LLVMContext ) {}
 
     Function *declareFun( Module &m, StringRef name ) {
         auto *fun = cast< Function >( m.getOrInsertFunction( name,
-                        FunctionType::get( Type::getInt32Ty( ctx ), false ) ) );
+                        FunctionType::get( Type::getInt32Ty( *ctx ), false ) ) );
         ASSERT( fun->isDeclaration() );
         return fun;
     }
 
     Function *defineFun( Module &m, StringRef name ) {
         auto *fun = declareFun( m, name );
-        auto bb = ::llvm::BasicBlock::Create( ctx, "entry", fun );
+        auto bb = ::llvm::BasicBlock::Create( *ctx, "entry", fun );
         ::llvm::IRBuilder<> irb( bb );
         irb.CreateRet( irb.getInt32( 0 ) );
         ASSERT( !fun->isDeclaration() );
@@ -543,26 +548,26 @@ struct LinkerTest {
     }
 
     TEST(undefined_single) {
-        auto m = std::make_unique< ::llvm::Module >( "test.ll", ctx );
+        auto m = std::make_unique< ::llvm::Module >( "test.ll", *ctx );
         declareFun( *m, "fun" );
 
-        Linker link;
+        Linker link( ctx );
         link.link( std::move( m ) );
         ASSERT_EQ( link._undefined.size(), 1 );
         ASSERT_EQ( count( link._undefined, "fun" ), 1 );
     }
 
     TEST(undefined_two) {
-        auto m = std::make_unique< ::llvm::Module >( "test.ll", ctx );
+        auto m = std::make_unique< ::llvm::Module >( "test.ll", *ctx );
         declareFun( *m, "fun" );
 
-        auto m2 = std::make_unique< ::llvm::Module >( "test2.ll", ctx );
+        auto m2 = std::make_unique< ::llvm::Module >( "test2.ll", *ctx );
         auto fun = defineFun( *m2, "fun" );
         auto foo = declareFun( *m2, "foo" );
         ::llvm::IRBuilder<> irb( &*fun->begin() );
         irb.CreateCall( foo );
 
-        Linker link;
+        Linker link( ctx );
         link.link( std::move( m ) );
         ASSERT_EQ( link._undefined.size(), 1 );
         ASSERT_EQ( count( link._undefined, "fun" ), 1 );
@@ -573,9 +578,9 @@ struct LinkerTest {
 
     template< typename Doit, typename Check >
     void archive_simple( Doit doit, Check check ) {
-        auto ma = std::make_unique< Module >( "a", ctx );
-        auto mb = std::make_unique< Module >( "b", ctx );
-        auto mmain = std::make_unique< Module >( "main", ctx );
+        auto ma = std::make_unique< Module >( "a", *ctx );
+        auto mb = std::make_unique< Module >( "b", *ctx );
+        auto mmain = std::make_unique< Module >( "main", *ctx );
 
         defineFun( *mmain, "main" );
         declareFun( *mmain, "foo" );
@@ -587,7 +592,7 @@ struct LinkerTest {
         defineFun( *mb, "foobar" );
 
         {
-            Linker link;
+            Linker link( ctx );
             link.link( std::move( mmain ) );
             doit( link, ma.get(), mb.get(), link.get() );
             ASSERT_EQ( link._undefined.size(), 0 );
@@ -637,8 +642,8 @@ struct LinkerTest {
     TEST(ar_archive) {
 
         fs::TempDir dir( ".brick-llvm-test-XXXXXX", fs::AutoDelete::Yes, fs::UseSystemTemp::Yes );
-        auto ma = std::make_unique< Module >( "a", ctx );
-        auto mb = std::make_unique< Module >( "b", ctx );
+        auto ma = std::make_unique< Module >( "a", *ctx );
+        auto mb = std::make_unique< Module >( "b", *ctx );
         declareFun( *ma, "foo" );
         declareFun( *mb, "bar" );
 
