@@ -23,7 +23,7 @@ namespace divine::cc
 {
     enum class FileType
     {
-        Unknown, C, Cpp, CPrepocessed, CppPreprocessed, IR, BC, Asm, Obj, Archive
+        Unknown, C, Cpp, CPrepocessed, CppPreprocessed, IR, BC, Asm, Obj, Archive, Shared
     };
 
     struct File

@@ -14,12 +14,18 @@
 
 #include <divine/cc/filetype.hpp>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/BinaryFormat/Magic.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <brick-fs>
 
 namespace divine::cc
 {
     FileType typeFromFile( std::string name )
     {
+        using llvm::file_magic;
+
         auto ext = brick::fs::takeExtension( name );
         if ( ext == ".c" )
             return FileType::C;
@@ -40,6 +46,19 @@ namespace divine::cc
             return FileType::Obj;
         if ( ext == ".a" )
             return FileType::Archive;
+        if ( ext == ".so" )
+            return FileType::Shared;
+
+        // shared libraries tend to end in numbers, e.g. so.1.2.11
+        // we are avoiding a regex here by checking the magic number
+        file_magic magic;
+        identify_magic( name, magic );
+        // object files with suffix other than .o
+        if ( magic == file_magic::elf_relocatable )
+            return FileType::Obj;
+        if ( magic == file_magic::elf_shared_object )
+            return FileType::Shared;
+
         return FileType::Unknown;
     }
 
@@ -96,7 +115,7 @@ namespace divine::cc
 
     bool is_object_type( std::string file )
     {
-        return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive );
+        return is_type( file, FileType::Obj ) || is_type( file, FileType::Archive ) || is_type( file, FileType::Shared );
     }
 
 }
