@@ -34,7 +34,7 @@ if test -z "$EXPORT"; then
 fi
 
 if test "$(eval echo $(getopt USE_GTEST $1))" = 1; then
-    gtest="$TESTS/lib/gtest/src/gtest-all.cc $TESTS/lib/gtest/src/gtest_main.cc -I$TESTS/lib/gtest"
+    gtest="$TESTS/lib/gtest/src/gtest-all.cc $TESTS/lib/gtest/src/gtest_main.cc -I$TESTS/lib/gtest -lm"
 fi
 
 if test -z "$EXPORT" && echo "$opts" | grep "symbolic"; then
