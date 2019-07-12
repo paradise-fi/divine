@@ -307,10 +307,25 @@ static inline _PthreadTLS &tls( __dios_task tid ) noexcept
     return *reinterpret_cast< _PthreadTLS * >( &( tid->__data ) );
 }
 
-static inline _PThread &getThread( pthread_t tid ) noexcept
+/* TODO: conversion functions:
+ * __dios_task get_task( pthread_t tid );
+ * pthread_t get_tid( __dios_task task );
+ * for now left as identities, we possibly want a hypercall
+ * */
+static inline pthread_t get_task( pthread_t tid ) { return tid; }
+static inline __dios_task get_tid( __dios_task task ) { return task; }
+
+static inline _PThread &getThread( __dios_task tid ) noexcept
 {
     return *tls( tid ).thread;
 }
+
+/* TODO:
+static inline _PThread &getThread( pthread_t tid ) noexcept
+{
+    return getThread( get_task( tid ) );
+}
+*/
 
 static inline _PThread &getThread() noexcept
 {
@@ -433,7 +448,7 @@ static int _cond_signal( CondOrBarrier *cond ) noexcept
             choice = __vm_choose( ( 1 << count ) - 1 );
         }
 
-        iterateThreads( [&]( pthread_t tid ) {
+        iterateThreads( [&]( __dios_task tid ) {
 
             _PThread &thread = getThread( tid );
 

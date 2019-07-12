@@ -95,6 +95,7 @@ typedef int pthread_attr_t;
  * Thread metadata are stored in form of _PThread in the _PthreadTLS.
  * */
 typedef struct __dios_tls *pthread_t;
+//typedef uint32_t pthread_t; TODO
 
 struct _PThread;
 

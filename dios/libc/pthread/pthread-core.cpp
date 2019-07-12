@@ -5,6 +5,7 @@
 
 /* Includes */
 #include <sys/thread.h>
+#include <sys/divm.h>
 
 namespace __dios
 {
@@ -50,10 +51,11 @@ extern "C" void __pthread_entry( void *_args )
     __dios_suicide();
 }
 
-static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) noexcept {
-    _PThread &thread = getThread( gtid );
+static int _pthread_join( __dios::FencedInterruptMask &mask, __dios_task task, void **result ) noexcept
+{
+    _PThread &thread = getThread( task );
 
-    if ( gtid == __dios_this_task() )
+    if ( task == __dios_this_task() )
         return EDEADLK;
 
     if ( thread.detached )
@@ -76,7 +78,7 @@ static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, voi
 
     // kill the thread so that it does not pollute state space by ending
     // nondeterministically
-    releaseAndKillThread( gtid );
+    releaseAndKillThread( task );
     return 0;
 }
 
@@ -94,7 +96,7 @@ using namespace __dios;
  *
  * The newly created thread is in running state.
  * */
-int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
+int pthread_create( __dios_task *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
     __dios::FencedInterruptMask mask;
 
     // test input arguments
@@ -144,18 +146,18 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 void pthread_exit( void *result ) noexcept {
     __dios::FencedInterruptMask mask;
 
-    auto gtid = __dios_this_task();
-    _PThread &thread = getThread( gtid );
+    auto task = __dios_this_task();
+    _PThread &thread = getThread( task );
     thread.result = result;
 
     // in main wait for all the threads
     if ( thread.is_main )
-        iterateThreads( [&]( __dios_task tid ) {
-                _pthread_join( mask, tid, nullptr ); // joining self is detected and ignored
+        iterateThreads( [&]( __dios_task task ) {
+                _pthread_join( mask, task, nullptr ); // joining self is detected and ignored
             } );
 
     _run_cleanup_handlers();
-    _clean_and_become_zombie( mask, gtid );
+    _clean_and_become_zombie( mask, task );
 }
 
 /* DESCRIPTION
@@ -190,9 +192,10 @@ void pthread_exit( void *result ) noexcept {
  * TODO not detecting:
  * ESRCH  No thread with the ID thread could be found.
  */
-int pthread_join( pthread_t gtid, void **result ) noexcept {
+int pthread_join( pthread_t tid, void **result ) noexcept
+{
     __dios::FencedInterruptMask mask;
-    return _pthread_join( mask, gtid, result );
+    return _pthread_join( mask, get_task( tid ), result );
 }
 
 /* DESCRIPTION
@@ -227,7 +230,7 @@ int pthread_detach( pthread_t gtid ) noexcept {
     if ( ended ) {
         // kill the thread so that it does not pollute state space by ending
         // nondeterministically
-        releaseAndKillThread( gtid );
+        releaseAndKillThread( get_task( gtid ) );
     }
     return 0;
 }
@@ -358,7 +361,7 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) noexcept {
 /* pthread is represented by dios task */
 pthread_t pthread_self( void ) noexcept {
     __dios::FencedInterruptMask mask;
-    return __dios_this_task();
+    return get_tid( __dios_this_task() );
 }
 
 int pthread_equal( pthread_t t1, pthread_t t2 ) noexcept {

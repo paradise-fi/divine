@@ -72,8 +72,8 @@ static bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
 
 int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept
 {
-    __dios_task gtid = __dios_this_task();
-    _PThread &thr = getThread( gtid );
+    __dios_task task = __dios_this_task();
+    _PThread &thr = getThread( task );
 
     if ( mutex == NULL ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
@@ -123,7 +123,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
 
     // lock the mutex
     acquireThread( thr );
-    mutex->__owner = gtid;
+    mutex->__owner = get_tid( task );
 
     return 0;
 }
@@ -187,14 +187,14 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( mutex->__owner == nullptr ) {
+    if ( mutex->__owner == 0 ) {
         if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
             __dios_fault( _VM_Fault::_VM_F_Locking, "mutex already unlocked" );
         else
             return EPERM;
     }
 
-    if ( mutex->__owner != __dios_this_task() ) {
+    if ( mutex->__owner != pthread_self() ) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->__lockCounter ); // count should be > 0
         if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
@@ -207,7 +207,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
     assert( r == 0 );
     if ( !mutex->__lockCounter ) {
         releaseThread( getThread( mutex->__owner ) );
-        mutex->__owner = nullptr; // unlock if count == 0
+        mutex->__owner = 0; // unlock if count == 0
 
     }
     return 0;
