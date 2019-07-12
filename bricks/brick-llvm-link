@@ -325,17 +325,29 @@ struct ArchiveReader
     ::llvm::Error _err;
 };
 
-struct Linker {
+struct Linker
+{
     using Module = ::llvm::Module;
     using StringRef = ::llvm::StringRef;
 
-    void link( Module &src ) {
+
+    ::llvm::Linker &linker()
+    {
+        ASSERT( _module );
+        if ( !_link )
+            _link.reset( new ::llvm::Linker( *_module ) );
+        return *_link;
+    }
+
+    void link( Module &src )
+    {
         return link( std::unique_ptr< Module >( ::llvm::CloneModule( src ) ) );
     }
 
     void link_decls( std::unique_ptr< Module > src )
     {
-        ASSERT( _link.get() );
+        ASSERT( _module );
+
         for ( auto &f : *src )
             if ( f.isDeclaration() )
                 _module->getOrInsertFunction( f.getName(),
@@ -351,20 +363,12 @@ struct Linker {
         if ( auto err = src->materializeAll() )
             _throwLLVMError( err );
 
-        if ( !_link )
-        {
+        if ( !_module )
             _module = std::move( src );
-            _link.reset( new ::llvm::Linker( *_module.get() ) );
-        }
-        else
-        {
-            auto r = _link->linkInModule( std::move( src ) );
-            if ( r ) {
-                std::cerr << "ERROR: while linking '"
-                          << src->getModuleIdentifier() << "'" << std::endl;
-                UNREACHABLE( "Linker error" );
-            }
-        }
+
+        if ( src && linker().linkInModule( std::move( src ) ) )
+            throw except::Error( "ERROR: while linking '" + src->getModuleIdentifier() + "'" );
+
         _updateUndefined();
     }
 
