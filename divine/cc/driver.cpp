@@ -261,7 +261,7 @@ namespace divine::cc
             auto modules = archive.modules();
             for ( auto it = modules.begin(); it != modules.end(); ++it )
             {
-                if ( it.getName() == "_link_essentials.ll"s )
+                if ( it.getName() == "_link_essentials"s )
                 {
                     linker->link_decls( it.take() );
                     break;
