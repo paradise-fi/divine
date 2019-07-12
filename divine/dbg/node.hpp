@@ -70,6 +70,7 @@ struct Node
     llvm::Type *_type;
     llvm::DIType *_di_type;
     llvm::DIVariable *_di_var;
+    llvm::Value *_var_loc;
 
     using PointerV = vm::value::Pointer;
 
@@ -111,6 +112,7 @@ struct Node
         _type = nullptr;
         _di_type = nullptr;
         _di_var = nullptr;
+        _var_loc = nullptr;
         _kind = DNKind::Object;
         _offset = 0;
         _bound = 0;

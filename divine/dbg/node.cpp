@@ -627,7 +627,6 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
     DNEval< Heap > eval( _ctx );
 
     auto divar = DDI->getVariable();
-    auto ditype = divar->getType().resolve();
     auto var = DDI->getAddress();
     auto &vmap = _ctx.program().valuemap;
     if ( vmap.find( var ) == vmap.end() )
@@ -646,7 +645,8 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
     Node lvar( _ctx, _snapshot );
     lvar.address( DNKind::Object, ptr.cooked() );
     lvar.type( type );
-    lvar.di_type( ditype );
+    lvar.di_var( divar );
+    lvar._var_loc = DDI->getVariableLocation();
     yield( name, lvar );
 }
 
