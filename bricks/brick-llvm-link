@@ -453,7 +453,7 @@ struct Linker
         return std::move( _module );
     }
 
-    bool hasModule() { return _link != nullptr; }
+    bool hasModule() { return _module != nullptr; }
 
   private:
     void _error( const ::llvm::DiagnosticInfo &i ) {
