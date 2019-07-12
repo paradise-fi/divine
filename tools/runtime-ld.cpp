@@ -9,7 +9,7 @@ int link_a( int argc, const char **argv )
     llvm::LLVMContext ctx;
     std::vector< std::unique_ptr< llvm::Module > > modules;
 
-    modules.emplace_back( std::make_unique< llvm::Module >( "_link_essentials.ll", ctx ) );
+    modules.emplace_back( std::make_unique< llvm::Module >( "_link_essentials", ctx ) );
     llvm::Module &essentials = *modules.back();
 
     for ( int i = 2; i < argc; ++i )
@@ -51,7 +51,7 @@ int link_bc( int argc, const char **argv )
         {
             auto archive = brick::llvm::ArchiveReader( std::move( input ), ctx );
             for ( auto &m : archive.modules() )
-                if ( m.getModuleIdentifier() == "_link_essentials.ll" )
+                if ( m.getModuleIdentifier() == "_link_essentials" )
                     linker.link( m ); /* TODO: link_decls here */
             linker.linkArchive( archive );
         }
