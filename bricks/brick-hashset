@@ -658,7 +658,13 @@ namespace brq::impl
             for ( auto c = from.segment_begin( id ); c != from.segment_end( id ); ++ c )
             {
                 cell insert = c->invalidate();
-                if ( insert.empty() || insert.invalid() || insert.tombstone() )
+
+                if ( insert.empty() || insert.invalid() )
+                    continue;
+
+                adaptor.invalidate( insert );
+
+                if ( insert.tombstone() )
                     continue;
 
                 auto value = insert.fetch();
@@ -757,6 +763,9 @@ namespace brq
         {
             return c.fetch() == t ? Bury : Mismatch;
         }
+
+        template< typename cell >
+        void invalidate( const cell & ) const {}
     };
 
     template< typename T, typename grow = impl::quick, int max_chain = 24 >
