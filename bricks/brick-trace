@@ -110,7 +110,7 @@ namespace brq
         ~string_builder() noexcept { free( _buffer ); }
 
         char *pointer() noexcept { return _buffer + _offset; }
-        char *buffer_end() noexcept { return _buffer + _capacity; }
+        char *buffer_end() noexcept { return _buffer + _capacity - 1; }
         char *buffer() noexcept { return _buffer; }
         const char *buffer() const noexcept { return _buffer; }
         int size() noexcept { return _offset; }
