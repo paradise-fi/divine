@@ -347,7 +347,7 @@ namespace brq::impl
         iterator end() { return iterator(); }
     };
 
-    template< typename Cell, unsigned max_chain, unsigned Segment >
+    template< typename Cell, unsigned max_chain, unsigned Segment, bool concurrent >
     struct hash_table : brq::refcount_base< uint16_t, true >
     {
         brq::refcount_ptr< hash_table, true > next;
@@ -417,15 +417,17 @@ namespace brq::impl
 
                 if ( cell.empty() )
                 {
-                    if ( tomb && tomb->try_store( x, h ) )
-                        return { tomb->value(), Empty };
+                    if constexpr ( !concurrent )
+                        if ( tomb && tomb->try_store( x, h ) )
+                            return { tomb->value(), Empty };
 
                     if ( cell.try_store( x, h ) )
                         return { cell.value(), Empty };
                 }
 
-                if ( !tomb && cell.tombstone() )
-                    tomb = &cell;
+                if constexpr ( !concurrent )
+                    if ( !tomb && cell.tombstone() )
+                        tomb = &cell;
 
                 if ( cell.match( h ) )
                     if ( auto v = adaptor.match( cell, x, h ) )
@@ -498,7 +500,7 @@ namespace brq::impl
 
         using typename Base::value_type;
         using typename Base::iterator;
-        using table = impl::hash_table< cell, max_chain, grow_t::Initial >;
+        using table = impl::hash_table< cell, max_chain, grow_t::Initial, concurrent >;
 
         brq::refcount_ptr< table > _table;
 
