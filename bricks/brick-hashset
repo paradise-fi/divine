@@ -75,7 +75,7 @@ namespace brq::impl
         using reference = const T &;
         using pointer = const T *;
         static constexpr bool can_tombstone() { return false; }
-        bool tombstone() { return false; }
+        bool tombstone() const { return false; }
     };
 
     template< typename T >
@@ -254,16 +254,16 @@ namespace brq::impl
 
         static constexpr bool can_tombstone() { return true; }
 
-        uint32_t status() { return _value.load().tag() & 3u; }
+        uint32_t status() const { return _value.load().tag() & 3u; }
         static hash64_t hashbits( hash64_t in ) { return highbits( in, bare_value::tag_bits - 2 ) << 2; }
 
-        bool empty() { return status() == 0; }
-        bool invalid() { return status() == 1; }
-        bool tombstone() { return status() == 2; }
+        bool empty() const { return status() == 0; }
+        bool invalid() const { return status() == 1; }
+        bool tombstone() const { return status() == 2; }
 
         pointer value() const { return &_value; }
-        T fetch() { return tagged::fetch( _value ); }
-        T copy() { bare_value v = _value; v.tag( 0 ); return tagged::fetch( v ); }
+        T fetch() const { return tagged::fetch( _value ); }
+        T copy() const { bare_value v = _value; v.tag( 0 ); return tagged::fetch( v ); }
         bool wait() { return !invalid(); }
         bool match( hash64_t hash ) const { return _value.load().tag() == ( hashbits( hash ) | 3 ); }
 
