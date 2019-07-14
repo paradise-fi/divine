@@ -290,6 +290,15 @@ namespace brq::impl
             return _value.compare_exchange_strong( expect, update );
         }
 
+        bool revive()
+        {
+            bare_value expect = _value, update = expect;
+            if ( invalid() )
+                return false;
+            update.tag( update.tag() | 3u );
+            return _value.compare_exchange_strong( expect, update );
+        }
+
         void store( T bn, hash64_t hash )
         {
             bare_value next( bn );
