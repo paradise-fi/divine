@@ -49,7 +49,9 @@ namespace divine::cc
                 continue;
             if ( cc::is_object_type( file.first ) )
                 continue;
-            auto mod = _clang.compile( file.first, _po.opts );
+            auto drv_args = _po.cc1_args;
+            add( drv_args, _po.opts );
+            auto mod = _clang.compile( file.first, drv_args );
             cc::emit_obj_file( *mod, file.second, _po.pic );
         }
         return 0;
