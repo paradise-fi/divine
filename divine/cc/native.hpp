@@ -61,28 +61,18 @@ namespace divine::cc
                 }
                 return;
             }
-
-            auto buf = llvm::MemoryBuffer::getFile( file.second );
-            if ( !buf )
-                throw cc::CompileError( "Error parsing file " + file.second + " into MemoryBuffer" );
-
-            if ( is_type( file.second, FileType::Archive ) )
+            if ( is_type( file.second, FileType::Archive ) || is_type( file.second, FileType::Shared ) )
             {
-                drv->linkArchive( std::move( buf.get() ) , _clang.context() );
+                drv->linkLib( file.second );
                 return;
             }
-
-            auto bc = llvm::object::IRObjectFile::findBitcodeInMemBuffer( (*buf.get()).getMemBufferRef() );
-            if ( !bc )
-                std::cerr << "No .llvmbc section found in file " << file.second << "." << std::endl;
-
-            auto expected_m = llvm::parseBitcodeFile( bc.get(), *_clang.context().get() );
-            if ( !expected_m )
-                std::cerr << "Error parsing bitcode." << std::endl;
-            auto m = std::move( expected_m.get() );
-            m->setTargetTriple( "x86_64-unknown-none-elf" );
-            verifyModule( *m );
-            drv->link( std::move( m ) );
+            else
+            {
+                auto obj = drv->load_object( file.second );
+                obj->setTargetTriple( "x86_64-unknown-none-elf" );
+                drv->link( std::move( obj ) );
+            }
+            return;
         }
 
         template< typename Driver >
