@@ -22,6 +22,8 @@
 #include <divine/ui/util.hpp>
 #include <divine/mc/trace.hpp>
 
+using namespace std::literals;
+
 namespace divine::ui
 {
 
@@ -195,22 +197,34 @@ struct YamlSink : TimedSink
 /* print progress updates to stderr */
 struct InteractiveSink : TimedSink
 {
+    MSecs _last = 0ms;
+    MSecs _step;
+    bool _rewrite;
+
+    InteractiveSink( MSecs step, bool rewrite ) : _step( step ), _rewrite( rewrite ) {}
+    const char *clear() const   { return _rewrite ? "\r" : ""; }
+    const char *endline() const { return _rewrite ? "          " : "\n"; }
+
     virtual void progress( std::pair< int64_t, int64_t > stat, int queued, bool last ) override
     {
+        if ( interval() >= _last + _step )
+            _last = interval();
+        else
+            return;
         TimedSink::progress( stat, queued, last );
         double ips = timeavg( stat.second, interval() );
         std::string ips_unit = ips > 500000 ? "mips" : "kips";
         ips = ips > 500000 ? ips / 1000000 : ips / 1000;
-        if ( last )
+        if ( last && _rewrite )
             std::cerr << "\r                                     "
                       << "                                     \r"
                       << std::flush;
         else
-            std::cerr << "\rsearching: " << stat.first
-                      << " states in " << interval_str( interval() )
-                      << ", avg " << timeavg_str( stat.first, interval() )
+            std::cerr << clear() << "searching: " << std::setw( 8 ) << stat.first
+                      << " states in " << std::setw( 5 ) << interval_str( interval() )
+                      << ", avg " << std::setw( 7 ) << timeavg_str( stat.first, interval() )
                       << "/s @ " << std::fixed << std::setprecision( 1 ) << ips
-                      << " " << ips_unit << ", queued: " << queued << "          ";
+                      << " " << ips_unit << ", queued: " << queued << endline();
     }
 
     void loader( Phase p ) override
@@ -246,8 +260,9 @@ SinkPtr make_yaml( std::ostream &o, bool d ) { return std::make_shared< YamlSink
 SinkPtr make_interactive()
 {
     if ( ::isatty( 2 ) )
-        return std::make_shared< InteractiveSink >();
-    return nullsink();
+        return std::make_shared< InteractiveSink >( 0ms, true );
+    else
+        return std::make_shared< InteractiveSink >( 60000ms, false );
 }
 
 SinkPtr make_composite( std::vector< SinkPtr > s )
