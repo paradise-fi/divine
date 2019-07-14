@@ -18,6 +18,7 @@ run()
 
 getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
 
+tags=$(eval echo $(getopt TAGS $1))
 opts=$(eval echo $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
 ccopt=$(eval echo $(getopt CC_OPTS $1))
@@ -29,7 +30,13 @@ std=
 echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++14"
 
 if test -z "$EXPORT"; then
-    resources="--max-memory 4GiB --threads 2"
+    if echo $tags | grep -q huge; then
+        resources="--max-memory 80GiB --threads 2"
+    elif echo $tags | grep -q big; then
+        resources="--max-memory 16GiB --max-time 1800 --threads 2"
+    else
+        resources="--max-memory 4GiB --max-time 600 --threads 2"
+    fi
     extra="--report-filename verify.out"
 fi
 
