@@ -100,18 +100,22 @@ std::unique_ptr< llvm::Module > NativeDiosCC::link_bitcode()
     auto drv = std::make_unique< DiosCC >( _clang.context() );
     std::unique_ptr< llvm::Module > m = Native::do_link_bitcode< rt::DiosCC >();
     drv->link( std::move( m ) );
-    drv->linkLibs( DiosCC::defaultDIVINELibs );
+    if ( !_po.shared )
+        drv->linkLibs( DiosCC::defaultDIVINELibs );
 
     m = drv->takeLinked();
 
-    for ( auto& func : *m )
-        if ( func.isDeclaration() && !whitelisted( func ) )
-            throw cc::CompileError( "Symbol undefined (function): " + func.getName().str() );
+    if ( !_po.shared )
+    {
+        for ( auto& func : *m )
+            if ( func.isDeclaration() && !whitelisted( func ) )
+                throw cc::CompileError( "Symbol undefined (function): " + func.getName().str() );
 
-    for ( auto& val : m->globals() )
-        if ( auto G = dyn_cast< llvm::GlobalVariable >( &val ) )
-            if ( !G->hasInitializer() && !whitelisted( *G ) )
-                throw cc::CompileError( "Symbol undefined (global variable): " + G->getName().str() );
+        for ( auto& val : m->globals() )
+            if ( auto G = dyn_cast< llvm::GlobalVariable >( &val ) )
+                if ( !G->hasInitializer() && !whitelisted( *G ) )
+                    throw cc::CompileError( "Symbol undefined (global variable): " + G->getName().str() );
+    }
 
     verifyModule( *m );
     return m;
