@@ -752,10 +752,10 @@ struct RefPool : SlavePool< Master >
             count( p ) ++;
     }
 
-    static void _no_dtor( Pointer ) {}
+    static void _no_cb( Pointer, T ) {}
 
-    template< typename F = decltype( _no_dtor ) >
-    void put( Pointer p, F dtor = _no_dtor )
+    template< typename F = decltype( _no_cb ) >
+    void put( Pointer p, F cb = _no_cb )
     {
         if ( !p.slab() )
             return;
@@ -764,9 +764,11 @@ struct RefPool : SlavePool< Master >
             return; /* counter saturation makes the object immortal */
 
         ASSERT_LEQ( 1, count( p ) );
-        if ( ! -- count( p ) ) /* TODO refactor */
+        auto rc = --count( p );
+        cb( p, rc );
+        if ( !rc ) /* TODO refactor */
         {
-            dtor( p );
+            TRACE( this->_m.get(), "refcount for", p, "dropped to 0" );
             typename Master::FreeList fl;
             fl.count = 1;
             fl.head = p;
