@@ -627,9 +627,9 @@ namespace brq::impl
             static_assert( cell::can_tombstone() );
 
             bool buried = false;
-            auto match_erase = [&]( cell &c, const X &x, hash64_t )
+            auto match_erase = [&]( cell &c, const X &x, hash64_t h )
             {
-                switch ( adaptor.erase( c, x ) )
+                switch ( adaptor.erase( c, x, h ) )
                 {
                     case A::Bury: buried = c.bury(); return true;
                     case A::Done: buried = true; return true;
@@ -783,7 +783,7 @@ namespace brq
         }
 
         template< typename cell, typename X >
-        Erase erase( cell &c, const X &t ) const
+        Erase erase( cell &c, const X &t, hash64_t ) const
         {
             return c.fetch() == t ? Bury : Mismatch;
         }
