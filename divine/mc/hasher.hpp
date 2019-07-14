@@ -128,6 +128,9 @@ namespace divine::mc
         template< typename Cell >
         typename Cell::pointer match( Cell &cell, Snapshot b, mem::hash64_t h ) const
         {
+            if ( !cell.match( h ) )
+                return nullptr;
+
             auto a = cell.fetch();
 
             using ASnap = std::atomic< Snapshot >;
