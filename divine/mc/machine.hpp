@@ -285,7 +285,12 @@ namespace divine::mc::machine
 
         void compute( tq &q, origin o, Snapshot cont_from = Snapshot() )
         {
-            auto destroy = [&]( auto p ) { this->heap().snap_put( this->_snap_pool, p, false ); };
+            auto destroy = [&]( auto p, int cnt )
+            {
+                 if ( cnt == 0 )
+                    this->heap().snap_put( this->_snap_pool, p, false );
+            };
+
             auto cleanup = [&]
             {
                 if ( cont_from )
