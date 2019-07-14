@@ -24,17 +24,47 @@ namespace divine::mem
 {
 
     template< typename Next > template< typename Cell >
-    typename Cell::pointer Cow< Next >::ObjHasher::match( Cell &cell, Internal x, hash64_t ) const
+    typename Cell::pointer Cow< Next >::ObjHasher::match( Cell &cell, Internal x, hash64_t hash ) const
     {
+        if ( !cell.match( hash ) && !cell.tombstone( hash ) )
+            return nullptr;
+
         auto a = cell.fetch(), b = x;
         int size = objects().size( a );
         if ( objects().size( b ) != size )
             return nullptr;
         if ( std::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
-            return false;
+            return nullptr;
+
         if ( heap().compare( heap(), a, b, size, false ) )
             return nullptr;
+
+        if ( cell.tombstone() )
+            if ( cell.revive() )
+                TRACE( "revive", x, "refcnt =",  _heap->_obj_refcnt.count( a ) );
+
         return cell.value();
+    }
+
+    template< typename Next > template< typename Cell >
+    void Cow< Next >::ObjHasher::invalidate( const Cell &cell ) const
+    {
+        if ( !cell.tombstone() )
+            return;
+
+        auto v = cell.fetch();
+        TRACE( "invalidate", v, "refcnt =", _heap->_obj_refcnt.count( v ) );
+        _heap->_obj_refcnt.put( v );
+    }
+
+    template< typename Next > template< typename Cell, typename X >
+    auto Cow< Next >::ObjHasher::erase( Cell &cell, const X &t, hash64_t h ) const -> typename HA::Erase
+    {
+        if ( cell.fetch() != t )
+            return TRACE( "erase mismatch", cell.fetch(), "vs", t, "hash", h ), HA::Mismatch;
+
+        TRACE( "erase", t, "refcnt =", _heap->_obj_refcnt.count( t ) );
+        return HA::Bury;
     }
 
     template< typename Next >
@@ -61,11 +91,10 @@ namespace divine::mem
     auto Cow< Next >::snap_dedup( SnapItem si ) const -> SnapItem
     {
         auto r = _ext.objects.insert( si.second, _ext.hasher );
-        if ( !r.isnew() )
-        {
-            ASSERT_NEQ( r->load(), si.second );
+        if ( r->load() == si.second )
+            _obj_refcnt.get( si.second ); /* for the hash table reference */
+        else
             this->free( si.second );
-        }
         si.second = r->load();
         _obj_refcnt.get( si.second );
         return si;
@@ -74,9 +103,15 @@ namespace divine::mem
     template< typename Next >
     void Cow< Next >::snap_put( Pool &p, Snapshot s, bool dealloc )
     {
-        auto erase = [&]( auto x ) { _ext.objects.erase( x, _ext.hasher ); };
+        auto erase = [&]( auto x, int refcnt )
+        {
+            if ( refcnt == 1 )
+                _ext.objects.erase( x, _ext.hasher );
+        };
+
         for ( auto si = this->snap_begin( p, s ); si != this->snap_end( p, s ); ++si )
             _obj_refcnt.put( si->second, erase );
+
         if ( dealloc )
             p.free( s );
     }

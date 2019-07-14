@@ -43,6 +43,8 @@ namespace divine::mem
 
         struct ObjHasher : brq::hash_adaptor< Internal >
         {
+            using HA = brq::hash_adaptor< Internal >;
+
             Cow< Next > *_heap;
             auto &heap() const { return *_heap; }
             auto &objects() const { return _heap->_objects; }
@@ -55,6 +57,12 @@ namespace divine::mem
 
             template< typename Cell >
             typename Cell::pointer match( Cell &, Internal, hash64_t ) const;
+
+            template< typename Cell >
+            void invalidate( const Cell & ) const;
+
+            template< typename cell, typename X >
+            typename HA::Erase erase( cell &c, const X &t, hash64_t ) const;
         };
 
         mutable struct Ext
