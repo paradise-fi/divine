@@ -63,7 +63,7 @@ namespace divine::cc
             }
             if ( is_type( file.second, FileType::Archive ) || is_type( file.second, FileType::Shared ) )
             {
-                drv->linkLib( file.second );
+                drv->linkLib( file.second, { "." }, is_type( file.second, FileType::Shared ) );
                 return;
             }
             else

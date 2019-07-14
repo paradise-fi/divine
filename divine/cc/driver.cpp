@@ -251,13 +251,13 @@ namespace divine::cc
         return std::move( parsed.get() );
     }
 
-    void Driver::linkLib( std::string lib, std::vector< std::string > dirs )
+    void Driver::linkLib( std::string lib, std::vector< std::string > dirs, bool shared /* = false */ )
     {
         TRACE( "link lib", lib, dirs );
         auto path = find_library( lib, { ".a", ".so", ".bc", "" }, dirs );
         TRACE( "using", path );
 
-        if ( brick::string::endsWith( path, ".so" ) )
+        if ( shared )
         {
             linker->link( load_object( path ) );
         }
