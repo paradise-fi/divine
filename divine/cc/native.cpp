@@ -173,7 +173,10 @@ namespace divine::cc
                 else
                 {
                     if ( !_po.toObjectOnly )
-                        ofn += ".divcc.temp";
+                    {
+                        ofn += ".divcc.";
+                        ofn += std::to_string( getpid() );
+                    }
                     ofn += ".o";
                 }
 
