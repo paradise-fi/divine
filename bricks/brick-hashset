@@ -451,9 +451,8 @@ namespace brq::impl
                     if ( !tomb && cell.tombstone() )
                         tomb = &cell;
 
-                if ( cell.match( h ) )
-                    if ( auto v = adaptor.match( cell, x, h ) )
-                        return { v, Found };
+                if ( auto v = adaptor.match( cell, x, h ) )
+                    return { v, Found };
             }
 
             TRACE( "insert failed after", max, "collisions on", x, "hash", std::hex, h );
@@ -473,9 +472,8 @@ namespace brq::impl
                     return { nullptr, Invalid };
                 if ( cell.empty() )
                     return { nullptr, Empty };
-                if ( cell.match( h ) )
-                    if ( auto v = match( cell, x, h ) )
-                        return { v, Found };
+                if ( auto v = match( cell, x, h ) )
+                    return { v, Found };
             }
             return { nullptr, Empty };
         }
@@ -777,9 +775,9 @@ namespace brq
         }
 
         template< typename cell, typename X >
-        typename cell::pointer match( cell &c, const X &t, hash64_t ) const
+        typename cell::pointer match( cell &c, const X &t, hash64_t h ) const
         {
-            return c.fetch() == t ? c.value() : nullptr;
+            return c.match( h ) && c.fetch() == t ? c.value() : nullptr;
         }
 
         template< typename cell, typename X >
