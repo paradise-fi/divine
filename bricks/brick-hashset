@@ -371,6 +371,18 @@ namespace brq::impl
         using Lookup = std::pair< typename Cell::pointer, LookupTag >;
         enum InsertMode { Rehash, Insert };
 
+        template< typename stream >
+        friend auto operator<<( stream &o, LookupTag t ) -> decltype( o << "" )
+        {
+            switch ( t )
+            {
+                case Found: return o << "found";
+                case Empty: return o << "empty";
+                case Invalid: return o << "invalid";
+                default: return o << int( t );
+            }
+        }
+
         static void *operator new( size_t objsize, size_t cellcount )
         {
             auto rv = malloc( objsize + cellcount * sizeof( Cell ) );
