@@ -274,8 +274,13 @@ struct Metadata : Next
     template< typename S, typename F >
     void hash( Internal i, int size, S &state, F ptr_cb ) const
     {
+        auto s = meta_size( size );
         state.realign();
-        state.update_aligned( _meta.template machinePointer< uint8_t >( i ), meta_size( size ) );
+        if ( s < 4 )
+            for ( int j = 0; j < s; ++ j )
+                state.update_aligned( _meta.template machinePointer< uint8_t >( i )[ j ] );
+        else
+            state.update_aligned( _meta.template machinePointer< uint8_t >( i ), s );
         Next::hash( i, size, state, ptr_cb );
     }
 
