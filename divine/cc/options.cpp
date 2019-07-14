@@ -103,7 +103,11 @@ namespace divine::cc
             else if ( *it == "-shared" )
                 po.shared = true;
             else if ( *it == "-fPIC" )
+            {
                 po.pic = true;
+                add( po.cc1_args, { "-pic-level", "1",
+                                    "-mrelocation-model", "pic" } );
+            }
             else if ( *it == "--use-lld" )
                 po.use_lld = true;
             else if ( *it == "-g" )
