@@ -266,6 +266,7 @@ namespace brq::impl
         T copy() const { bare_value v = _value; v.tag( 0 ); return tagged::fetch( v ); }
         bool wait() { return !invalid(); }
         bool match( hash64_t hash ) const { return _value.load().tag() == ( hashbits( hash ) | 3 ); }
+        bool tombstone( hash64_t hash ) const { return _value.load().tag() == ( hashbits( hash ) | 2 ); }
 
         /* returns old cell value */
         atomic_cell invalidate()
@@ -282,10 +283,10 @@ namespace brq::impl
 
         bool bury()
         {
-            bare_value expect = _value, update;
+            bare_value expect = _value, update = expect;
             if ( invalid() )
                 return false;
-            update.tag( 2 );
+            update.tag( ( update.tag() & ~decltype( update.tag() )( 3 ) ) | 2 );
             return _value.compare_exchange_strong( expect, update );
         }
 
