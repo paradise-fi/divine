@@ -597,6 +597,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         _s->valgrind_alloc( p, dereference( p ), size );
         if ( clear )
             ::memset( dereference( p ), 0, size );
+        TRACE( _s.get(), "allocated", p, "size =", size, "clear =", clear );
         return p;
     }
 
@@ -605,6 +606,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         if ( !valid( p ) )
             return;
 
+        TRACE( _s.get(), "free", p );
         ASSERT( header( p ).total > 0 && "trying to free ephemeral block" );
 
         _s->valgrind_dealloc( p, dereference( p ), size( p ) );
