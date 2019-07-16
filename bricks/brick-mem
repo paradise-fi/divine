@@ -778,8 +778,8 @@ struct RefPool : SlavePool< Master >
             auto block = this->_m->block[ p.slab() ];
             int sz = block->itemsize;
             const char *mem = block->data + p.chunk() * ( sz > 1 ? align( sz , 4 ) : sz );
-            this->_m->freelist_return( sz, fl );
             this->_m->valgrind_dealloc( p, mem, sz );
+            this->_m->freelist_return( sz, fl );
         }
     }
 
