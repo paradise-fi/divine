@@ -38,7 +38,7 @@ namespace brq
         template< bool o_atomic >
         refcount_ptr< T, atomic > &operator=( const refcount_ptr< T, o_atomic > &o ) noexcept
         {
-            if constexpr ( o_atomic == atomic )
+            if constexpr ( o_atomic == atomic ) /* atomic and !atomic can't alias each other */
                 if ( &o == this )
                     return *this;
 
