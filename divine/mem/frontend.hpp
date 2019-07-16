@@ -119,7 +119,7 @@ namespace divine::mem
         void restore( Pool &p, Snapshot s ) { n.restore( p, s ); }
         bool is_shared( Pool &p, Snapshot s ) const { return n.is_shared( p, s ); }
         void reset() { n.reset(); }
-        void snap_put( Pool &p, Snapshot s, bool dealloc = true ) { n.snap_put( p, s, dealloc ); }
+        void snap_put( Pool &p, Snapshot s ) { n.snap_put( p, s ); }
 
         auto snap_begin() const { return n.snap_begin(); }
         auto snap_end() const { return n.snap_end(); }

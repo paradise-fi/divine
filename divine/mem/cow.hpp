@@ -70,6 +70,8 @@ namespace divine::mem
             std::unordered_set< int > writable;
             ObjHasher hasher;
             brq::concurrent_hash_set< Internal > objects;
+            Pool *_free_pool = nullptr;
+            Snapshot _free_snap;
         } _ext;
 
         void setupHT() { _ext.hasher._heap = this; }
@@ -128,7 +130,8 @@ namespace divine::mem
         Internal detach( Loc l );
         Snapshot snapshot( Pool &p ) const;
         SnapItem snap_dedup( SnapItem si ) const;
-        void snap_put( Pool &p, Snapshot s, bool dealloc = true );
+        void snap_put( Pool &p, Snapshot s );
+        void snap_put() const;
 
         SnapItem *snap_get( SnapItem *si ) const
         {
@@ -150,6 +153,7 @@ namespace divine::mem
 
         void restore( Pool &p, Snapshot s )
         {
+            snap_put();
             _l.snap_size = p.size( s ) / sizeof( SnapItem );
             _l.snap_begin = p.template machinePointer< SnapItem >( s );
             _l.exceptions.clear();

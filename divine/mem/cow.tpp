@@ -101,8 +101,24 @@ namespace divine::mem
     }
 
     template< typename Next >
-    void Cow< Next >::snap_put( Pool &p, Snapshot s, bool dealloc )
+    void Cow< Next >::snap_put( Pool &p, Snapshot s )
     {
+        _ext._free_pool = &p;
+        _ext._free_snap = s;
+        if ( !is_shared( p, s ) )
+            snap_put();
+    }
+
+    template< typename Next >
+    void Cow< Next >::snap_put() const
+    {
+        if ( !_ext._free_pool )
+            return;
+
+        auto &p = *_ext._free_pool;
+        auto s = _ext._free_snap;
+        _ext._free_pool = nullptr;
+
         auto erase = [&]( auto x, int refcnt )
         {
             if ( refcnt == 1 )
@@ -113,8 +129,7 @@ namespace divine::mem
         for ( auto si = this->snap_begin( p, s ); si != this->snap_end( p, s ); ++si )
             _obj_refcnt.put( si->second, erase );
 
-        if ( dealloc )
-            p.free( s );
+        p.free( s );
     }
 
     template< typename Next >
@@ -161,6 +176,7 @@ namespace divine::mem
         for ( auto s = newsnap; s < newsnap + count; ++s )
             ASSERT( this->valid( s->second ) );
 
+        snap_put();
         _l.exceptions.clear();
         _ext.writable.clear();
         _l.snap_begin = newsnap;
