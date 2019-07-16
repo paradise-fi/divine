@@ -147,9 +147,15 @@ namespace brq
 
         string_builder &operator<<( char c ) noexcept
         {
-            if ( !_make_space( 1 ) ) return *this;
-            _buffer[ _offset++ ] = c;
-            _buffer[ _offset ] = 0;
+            *this << int( c );
+            if ( std::isprint( c ) )
+            {
+                if ( !_make_space( 3 ) ) return *this;
+                _buffer[ _offset++ ] = '\'';
+                _buffer[ _offset++ ] = c;
+                _buffer[ _offset++ ] = '\'';
+                _buffer[ _offset ] = 0;
+            }
             return *this;
         }
 
@@ -357,7 +363,7 @@ namespace brq
         if ( !trace_impl::enabled( l ) )
             return;
         string_builder acc;
-        acc << l.filename() << ':' << l.line << ": ";
+        acc << l.filename() << ":" << l.line << ": ";
 #ifndef __divine__
         acc << "[" << pthread_self() << "] ";
 #endif
