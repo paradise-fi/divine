@@ -288,7 +288,8 @@ namespace divine::mc::machine
             auto destroy = [&]( auto p, int cnt )
             {
                  if ( cnt == 0 )
-                    this->heap().snap_put( this->_snap_pool, p, false );
+                    this->heap().snap_put( this->_snap_pool, p );
+                 return false;
             };
 
             auto cleanup = [&]
@@ -375,7 +376,7 @@ namespace divine::mc::machine
 
         ~tree_search_()
         {
-            ASSERT_EQ( this->_snap_pool.stats().total.count.used, 0 );
+            ASSERT_LEQ( this->_snap_pool.stats().total.count.used, 1 );
         }
 
     };
