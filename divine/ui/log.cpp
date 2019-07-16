@@ -259,7 +259,7 @@ SinkPtr nullsink()
 SinkPtr make_yaml( std::ostream &o, bool d ) { return std::make_shared< YamlSink >( o, d ); }
 SinkPtr make_interactive()
 {
-    if ( ::isatty( 2 ) )
+    if ( ::isatty( 2 ) && !getenv( "BRICK_TRACE" ) )
         return std::make_shared< InteractiveSink >( 0ms, true );
     else
         return std::make_shared< InteractiveSink >( 60000ms, false );
