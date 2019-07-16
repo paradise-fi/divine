@@ -220,9 +220,9 @@ struct Builder
             std::deque< vm::Choice > lock;
             Label lbl;
             Snapshot snap;
-            bool free:1, feasible:1;
+            bool feasible:1;
             vm::GenericPointer tid;
-            Check() : free( false ), feasible( true ) {}
+            Check() : feasible( true ) {}
         };
 
         std::vector< Check > to_check;
@@ -265,7 +265,6 @@ struct Builder
             if ( tc.feasible )
             {
                 tc.snap = context().heap().snapshot( pool() );
-                tc.free = !context().heap().is_shared( pool(), tc.snap );
                 tc.lbl = label();
             }
             tc.tid = context()._tid;
@@ -302,8 +301,8 @@ struct Builder
             }
             else
             {
-                if ( tc.feasible && tc.free )
-                    pool().free( tc.snap );
+                if ( tc.feasible )
+                    context().heap().snap_put( pool(), tc.snap );
                 context()._lock = tc.lock;
                 context().load( pool(), from.snap );
                 _d.solver.reset();
