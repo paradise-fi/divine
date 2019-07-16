@@ -647,7 +647,7 @@ namespace brq::impl
             }
             else
             {
-                TRACE( _table, "erase", x, "outcome", outcome );
+                TRACE( _table, "erase", x, "hash", std::hex, h, "outcome", outcome );
                 ASSERT_NEQ( outcome, table::Invalid );
                 return outcome == table::Found;
             }
