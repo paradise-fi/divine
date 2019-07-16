@@ -752,7 +752,7 @@ struct RefPool : SlavePool< Master >
             count( p ) ++;
     }
 
-    static void _no_cb( Pointer, T ) {}
+    static bool _no_cb( Pointer, T ) { return true; }
 
     template< typename F = decltype( _no_cb ) >
     void put( Pointer p, F cb = _no_cb )
@@ -765,7 +765,10 @@ struct RefPool : SlavePool< Master >
 
         ASSERT_LEQ( 1, count( p ) );
         auto rc = --count( p );
-        cb( p, rc );
+
+        if ( !cb( p, rc ) )
+            return;
+
         if ( !rc ) /* TODO refactor */
         {
             TRACE( this->_m.get(), "refcount for", p, "dropped to 0" );
