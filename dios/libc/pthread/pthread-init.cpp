@@ -42,6 +42,9 @@ void __pthread_finalize() noexcept
             __dios_kill( threads[ i ] );
     }
     __vm_obj_free( threads );
+
+    __pthread_atfork_fini();
+    __pthread_tls_fini();
 }
 
 

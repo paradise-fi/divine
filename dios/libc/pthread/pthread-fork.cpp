@@ -8,6 +8,8 @@
 
 static __dios::_PthreadAtFork atForkHandlers;
 
+void __pthread_atfork_fini() noexcept { atForkHandlers.fini(); }
+
 /* Process */
 int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ),
                     void ( *child )( void ) ) noexcept

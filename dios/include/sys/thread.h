@@ -171,6 +171,9 @@ struct _PThread
     }
 };
 
+void __pthread_atfork_fini() noexcept;
+void __pthread_tls_fini() noexcept;
+
 namespace __dios
 {
 
@@ -183,7 +186,8 @@ struct _PthreadHandlers
     _PthreadHandlers() noexcept = default;
     _PthreadHandlers( const _PthreadHandlers & ) noexcept = delete;
     _PthreadHandlers( _PthreadHandlers && ) noexcept = delete;
-    ~_PthreadHandlers()
+
+    void fini() noexcept
     {
         if ( _dtors )
             __vm_obj_free( _dtors );

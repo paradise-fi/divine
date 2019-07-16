@@ -11,6 +11,8 @@ using namespace __dios;
 using _PthreadTLSDestructors = _PthreadHandlers< Destructor >;
 static _PthreadTLSDestructors tlsDestructors;
 
+void __pthread_tls_fini() noexcept { tlsDestructors.fini(); }
+
 void *_PthreadTLS::raw() noexcept
 {
     return reinterpret_cast< char * >( this ) - sizeof( __dios_tls );
