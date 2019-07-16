@@ -107,6 +107,7 @@ namespace divine::mem
         {
             if ( refcnt == 1 )
                 _ext.objects.erase( x, _ext.hasher );
+            return true;
         };
 
         for ( auto si = this->snap_begin( p, s ); si != this->snap_end( p, s ); ++si )
