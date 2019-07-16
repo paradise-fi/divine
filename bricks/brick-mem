@@ -782,8 +782,12 @@ struct RefPool : SlavePool< Master >
             this->_m->freelist_return( sz, fl );
         }
     }
-
 };
+
+/* An object which holds a reference to a pool object (preventing the object
+ * from being freed). Basically the pool equivalent of a reference-counting
+ * pointer (like std::shared_ptr or brq::refcount_ptr). Works in tandem with
+ * RefPool. */
 
 template< typename Master, typename T = uint16_t >
 struct RefCnt
