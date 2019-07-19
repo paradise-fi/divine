@@ -77,19 +77,25 @@ SMTLib2::Node SMTLib2::unary( Operation unary, Node arg )
     {
         case Op::Trunc:
         {
-            ASSERT_LT( bw, arg.bw );
+            ASSERT_LEQ( bw, arg.bw );
+            if ( arg.bw == bw )
+                return arg;
             auto op = _ctx.extract( bw - 1, 0, arg );
             if ( bw == 1 )
                 op = _ctx.binop< Op::Eq >( bw, op, _ctx.bitvec( 1, 1 ) );
             return define( op );
         }
         case Op::ZExt:
-            ASSERT_LT( arg.bw, bw );
+            ASSERT_LEQ( arg.bw, bw );
+            if ( arg.bw == bw )
+                return arg;
             return define( arg.bw > 1
                            ? _ctx.binop< Op::Concat >( bw, _ctx.bitvec( bw - arg.bw, 0 ), arg )
                            : _ctx.ite( arg, _ctx.bitvec( bw, 1 ), _ctx.bitvec( bw, 0 ) ) );
         case Op::SExt:
-            ASSERT_LT( arg.bw, bw );
+            ASSERT_LEQ( arg.bw, bw );
+            if ( arg.bw == bw )
+                return arg;
             if ( arg.bw == 1 )
             {
                 auto ones = _ctx.unop< Op::Not >( bw, _ctx.bitvec( bw, 0 ) ),
