@@ -34,19 +34,29 @@ namespace __dios::rst::abstract {
             return *reinterpret_cast< const RPN * >( &pointer );
         }
 
-        template< Op op >
-        constexpr Term apply_in_place( const Term& other ) noexcept
+        template< typename T >
+        _LART_INLINE constexpr Term extend( const T& value ) noexcept
         {
-            this->as_rpn().extend( other.as_rpn() );
+            this->as_rpn().extend( value );
+            return *this;
+        }
+
+        _LART_INLINE constexpr Term extend( const Term& other ) noexcept
+        {
+            return extend( other.as_rpn() );
+        }
+
+        template< Op op >
+        _LART_INLINE constexpr Term apply() noexcept
+        {
             this->as_rpn().apply< op >();
             return *this;
         }
 
         template< Op op >
-        constexpr Term apply_in_place_op() noexcept
+        _LART_INLINE constexpr Term apply_in_place( const Term& other ) noexcept
         {
-            this->as_rpn().apply< op >();
-            return *this;
+            return this->extend( other ).apply< op >();
         }
 
         explicit operator void*() const { return pointer; }
@@ -66,8 +76,7 @@ namespace __dios::rst::abstract {
             auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
             new ( ptr ) Base();
             Term term{ ptr };
-            term.as_rpn().extend( constant( value ) );
-            return term;
+            return term.extend( constant( value ) );
         }
 
         #define __lift( name, T ) \
@@ -91,38 +100,103 @@ namespace __dios::rst::abstract {
             return { Tristate::Unknown };
         }
 
-        template< Op op >
-        static Term binary( Term lhs, Term rhs ) noexcept
+        _LART_INLINE
+        static constexpr bool faultable( Op op ) noexcept
         {
-            assert( false );
+            using namespace brick::smt;
+            return is_one_of< Op::BvUDiv
+                            , Op::BvSDiv
+                            , Op::BvURem
+                            , Op::BvSRem
+                            , Op::FpDiv
+                            , Op::FpRem >( op );
         }
 
         template< Op op >
-        static Term unary( Term arg ) noexcept
+        _LART_INLINE static Term impl_binary( Term lhs, Term rhs ) noexcept
         {
+            // resulting rpn: [ lhs | rhs | op ]
+
+            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            new ( ptr ) Base();
+            Term term{ ptr };
+
+            return term.extend( lhs ).extend( rhs ).apply< op >();
+        }
+
+        template< Op op >
+        _LART_INLINE static Term fault_i_bin( Term lhs, Term rhs ) noexcept
+        {
+            auto eq = op_eq( op_zext( rhs, 64 ), lift_one_i64( 0 ) );
+            if ( to_tristate( eq ) ) {
+                assume( eq, eq, true );
+                fault_idiv_by_zero();
+                return rhs; // return zero
+            }
+
+            assume( eq, eq, false );
+            return impl_binary< op >( lhs, rhs );
+        }
+
+
+        template< Op op >
+        _LART_INLINE static Term fault_f_bin( Term lhs, Term rhs ) noexcept
+        {
+            assert( false ); // not implemented
+        }
+
+        template< Op op >
+        _LART_INLINE static Term binary( Term lhs, Term rhs ) noexcept
+        {
+            using namespace brick::smt;
+
+            // resulting rpn: [ lhs | rhs | op ]
+
+            if constexpr ( faultable( op ) ) {
+                static_assert( is_float_bin( op ) || is_integer_bin( op ) );
+                if constexpr ( is_integer_bin( op ) ) {
+                    return fault_i_bin< op >( lhs, rhs );
+                }
+                if constexpr ( is_float_bin( op ) ) {
+                    return fault_f_bin< op >( lhs, rhs );
+                }
+            } else {
+                return impl_binary< op >( lhs, rhs );
+            }
+        }
+
+        template< Op op >
+        _LART_INLINE static Term unary( Term arg ) noexcept
+        {
+            // resulting rpn: [ arg | op ]
             assert( false );
         }
 
         template< Op op >
         _LART_INLINE static Term cmp( Term lhs, Term rhs ) noexcept
         {
-            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
-            new ( ptr ) Base();
-            Term term{ ptr };
-            term.as_rpn().extend( lhs.as_rpn() );
-            term.as_rpn().extend( rhs.as_rpn() );
-            term.as_rpn().apply< op >();
-            return term;
+            return Term::binary< op >( lhs, rhs );
         }
 
         template< Op op >
-        static Term cast( Term arg, Bitwidth bw ) noexcept
+        _LART_INLINE static RPN::CastOp cast_op( Bitwidth bw ) noexcept
         {
-            assert( false );
+            return { op, bw };
+        }
+
+        template< Op op >
+        _LART_INLINE static Term cast( Term arg, Bitwidth bw ) noexcept
+        {
+            // resulting rpn: [ arg | bw | op ]
+            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            new ( ptr ) Base();
+            Term term{ ptr };
+
+            return term.extend( arg ).extend( cast_op< op >( bw ) );
         }
 
         _LART_INLINE
-        Term constrain( Term constraint, bool expect ) const noexcept;
+        Term constrain( const Term &constraint, bool expect ) const noexcept;
 
         _LART_INTERFACE
         Term static assume( Term value, Term constraint, bool expect ) noexcept
@@ -205,17 +279,17 @@ namespace __dios::rst::abstract {
 
 
         /* cast operations */
-        /*__cast( op_fpext );
-        __cast( op_fptosi );
-        __cast( op_fptoui );
-        __cast( op_fptrunc );
-        __cast( op_inttoptr );
-        __cast( op_ptrtoint );
-        __cast( op_sext );
-        __cast( op_sitofp );
-        __cast( op_trunc );
-        __cast( op_uitofp );
-        __cast( op_zext );*/
+        __cast( op_fpext, FPExt );
+        __cast( op_fptosi, FPToSInt );
+        __cast( op_fptoui, FPToUInt );
+        __cast( op_fptrunc, FPTrunc );
+        //__cast( op_inttoptr );
+        //__cast( op_ptrtoint );
+        __cast( op_sext, SExt );
+        __cast( op_sitofp, SIntToFP );
+        __cast( op_trunc, Trunc );
+        __cast( op_uitofp, UIntToFP );
+        __cast( op_zext, ZExt );
 
         #undef __un
         #undef __bin
@@ -244,8 +318,7 @@ namespace __dios::rst::abstract {
         auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
         new ( ptr ) Base();
         Term term{ ptr };
-        term.as_rpn().extend( variable< T >() );
-        return term;
+        return term.extend( variable< T >() );
     }
 
     static_assert( sizeof( Term ) == 8 );
