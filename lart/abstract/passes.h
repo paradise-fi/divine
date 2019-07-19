@@ -38,8 +38,9 @@ namespace lart::abstract {
                                            , DataFlowAnalysis()
                                            // , Decast() // TODO remove after vpa reimplementation
                                            // , DataFlowAnalysis() // run once more to propagate through decasted functions
+                                           , UnstashPass()
                                            , Syntactic()
-                                           , StashingPass()
+                                           , StashPass()
                                            , LowerToBool()
                                            , AddAssumes()
                                            , SubstitutionPass()

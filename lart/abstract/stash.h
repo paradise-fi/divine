@@ -9,20 +9,23 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/abstract/util.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract {
 
-struct Stash {
-    void run( llvm::Module& );
-};
+    struct StashPass {
+        void run( llvm::Module & m );
+    };
 
-struct Unstash {
-    void run( llvm::Module& );
-private:
-    void process_arguments( llvm::CallInst*, llvm::Function* );
-};
+    struct UnstashPass {
+        void run( llvm::Module & m );
+    };
 
-using StashingPass = ChainedPass< Unstash, Stash >;
+    constexpr char unpacked_argument[] = "lart.abstract.unpacked.argument.";
 
-} // namespace abstract
-} // namespace lart
+    auto unpacked_arguments( llvm::Module * m ) -> std::vector< llvm::CallInst * >;
+
+    auto unstash( llvm::CallInst * call ) -> llvm::Value *;
+    auto unstash( llvm::Function * fn ) -> llvm::Value *;
+
+    auto stash( llvm::ReturnInst * ret, llvm::Value * val ) -> llvm::Value *;
+
+} // namespace lart::abstract

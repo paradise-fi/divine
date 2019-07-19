@@ -9,107 +9,230 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/util.h>
-#include <lart/abstract/placeholder.h>
+#include <lart/abstract/operation.h>
 
 namespace lart::abstract {
 
-    namespace {
-
-        template< Placeholder::Type T >
-        Placeholder process( llvm::Value * val, llvm::IRBuilder<> & irb )
-        {
-            llvm::Value * arg = val;
-            if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( val ) )
-                arg = ret->getReturnValue();
-
-            return APlaceholderBuilder().construct< T >( arg, irb );
-        }
-
-        Placeholder stash( llvm::Value * val, llvm::IRBuilder<> & irb )
-        {
-            return process< Placeholder::Type::Stash >( val, irb );
-        }
-
-        Placeholder unstash( llvm::Value * val, llvm::IRBuilder<> & irb )
-        {
-            auto ph = process< Placeholder::Type::Unstash >( val, irb );
-            meta::make_duals( val, ph.inst );
-            return ph;
-        }
-
-        Placeholder unstash( llvm::Instruction * inst )
-        {
-            llvm::IRBuilder<> irb( inst );
-            return unstash( inst, irb );
-        }
-    } // anonymous namespace
-
-    void Stash::run( llvm::Module & m )
+    auto function( llvm::Module * m, const std::string & name )
     {
-        // TODO filter alias returns
-        auto returns = query::query( meta::enumerate( m ) )
-            .map( query::llvmdyncast< llvm::ReturnInst > )
+        auto fn = m->getFunction( name );
+        ASSERT( fn, "Missing " + name + " function." );
+        return fn;
+    }
+
+    auto unstash_function( llvm::Module * m )
+    {
+        return function( m, "__lart_unstash" );
+    }
+
+    auto stash_function( llvm::Module * m )
+    {
+        return function( m, "__lart_stash" );
+    }
+
+
+    struct ArgumentsBundle : LLVMUtil< ArgumentsBundle >
+    {
+        using Self = LLVMUtil< ArgumentsBundle >;
+
+        using Self::get_function;
+
+        ArgumentsBundle( llvm::Function * fn )
+            : function( fn ), module( fn->getParent() )
+        {}
+
+        auto arguments() const noexcept
+        {
+            return query::query( function->args() )
+                .map( query::refToPtr )
+                .filter( [] ( auto arg ) {
+                    return meta::argument::has( arg );
+                } )
+                .freeze();
+        }
+
+        auto type() const noexcept
+        {
+            Types types( arguments().size(), i8PTy() );
+
+            static auto ty = llvm::StructType::create( types );
+            if ( ty->getStructName().empty() )
+                ty->setName( function->getName().str() + ".lart.bundle" );
+            return ty;
+        }
+
+        auto packed( llvm::CallInst * call, const Matched & matched ) const noexcept
+            -> llvm::Value *
+        {
+            llvm::IRBuilder<> irb( call );
+
+            auto ty = type();
+            auto addr = irb.CreateAlloca( ty );
+
+            auto pack = undef( ty );
+
+            auto is_abstract = [&] ( auto val ) {
+                return matched.abstract.count( val );
+            };
+
+            uint32_t idx = 0;
+            for ( auto arg : arguments() ) {
+                auto op = call->getArgOperand( arg->getArgNo() );
+                auto val = is_abstract( op )
+                         ? matched.abstract.at( op )
+                         : null_ptr( i8PTy() );
+                pack = irb.CreateInsertValue( pack, val, { idx++ } );
+            }
+
+            irb.CreateStore( pack, addr );
+            auto fn = stash_function( module );
+            auto arg = irb.CreateBitCast( addr, i8PTy() );
+            return irb.CreateCall( fn, arg );
+        }
+
+        void match( llvm::Argument * arg, llvm::Instruction * unstashed ) noexcept
+        {
+            llvm::IRBuilder<> irb( unstashed->getNextNode() );
+            Values args = { arg, unstashed };
+
+            auto name = std::string( unpacked_argument ) + llvm_name( arg->getType() );
+            auto ret = voidTy();
+
+            auto intr = get_function( name, ret, types_of( args ) );
+            irb.CreateCall( intr, args );
+        }
+
+        auto unpacked() noexcept -> llvm::Value *
+        {
+            auto ip = function->getEntryBlock().getFirstNonPHIOrDbgOrLifetime();
+            auto fn = unstash_function( module );
+            auto addr = create_call( ip, fn );
+
+            llvm::IRBuilder<> irb( addr );
+            auto ptr = irb.CreateBitCast( addr, type()->getPointerTo() );
+            auto pack = irb.CreateLoad( type(), ptr );
+
+            uint32_t idx = 0;
+            for ( auto arg : arguments() ) {
+                auto ex = irb.CreateExtractValue( pack, { idx++ } );
+                match( arg, llvm::cast< llvm::Instruction >( ex ) );
+            }
+
+            addr->moveBefore( llvm::cast< llvm::Instruction >( ptr ) );
+            return addr;
+        }
+
+        llvm::Function * function;
+        llvm::Module * module;
+    };
+
+
+    auto unstash( llvm::CallInst * call ) -> llvm::Value *
+    {
+        auto fn = unstash_function( call->getModule() );
+        return create_call_after( call, fn );
+    }
+
+    auto unstash( llvm::Function * fn ) -> llvm::Value *
+    {
+        return ArgumentsBundle( fn ).unpacked();
+    }
+
+    auto unstashed( llvm::CallInst * call ) -> llvm::CallInst *
+    {
+        auto next = call->getNextNonDebugInstruction();
+        if ( auto un = llvm::dyn_cast< llvm::CallInst >( next ) ) {
+            auto fn = unstash_function( call->getModule() );
+            if ( un->getCalledFunction() == fn )
+                return un;
+        }
+
+        return nullptr;
+    }
+
+    auto stash( llvm::ReturnInst * ret, llvm::Value * val ) -> llvm::Value *
+    {
+        auto fn = stash_function( ret->getModule() );
+        return create_call( ret, fn, Values{ val } );
+    }
+
+    auto stash( llvm::CallInst * call, const Matched & matched )
+    {
+        return ArgumentsBundle( call->getCalledFunction() ).packed( call, matched );
+    }
+
+    auto unpacked_arguments( llvm::Module * m ) -> std::vector< llvm::CallInst * >
+    {
+        return query::query( *m ).flatten().flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
-            .filter( [] ( auto * ret ) {
-                auto fn = ret->getFunction();
-                return fn->getMetadata( meta::tag::abstract_return );
+            .filter( [&] ( auto call ) {
+                auto fn = call->getCalledFunction();
+                if ( !fn || !fn->hasName() )
+                    return false;
+                return fn->getName().startswith( unpacked_argument );
             } )
             .freeze();
-
-        for ( auto * ret : returns ) {
-            llvm::IRBuilder<> irb( ret );
-            auto ph = stash( ret, irb );
-            meta::make_duals( ret, ph.inst );
-        }
     }
 
-    void Unstash::run( llvm::Module & m )
+    auto has_abstract_args() noexcept
     {
-        for ( auto call : calls_with_tag< meta::tag::abstract_arguments >( m ) ) {
-            run_on_potentially_called_functions( call, [&] ( auto fn ) {
-                process_arguments( call, fn );
-            } );
-        }
-
-        // TODO filter alias returns
-        for ( auto * call : calls_with_tag< meta::tag::abstract_return >( m ) ) {
-            auto ph = unstash( call );
-            ph.inst->moveAfter( call );
-        }
+        return [] ( auto fn ) {
+            return meta::has( fn, meta::tag::function::arguments );
+        };
     }
 
-    void Unstash::process_arguments( llvm::CallInst * call, llvm::Function * fn )
+    auto fns_with_abstract_args( llvm::Module & m ) noexcept
     {
-        assert( !fn->empty() && "unstashing function without defininition" );
-        auto concrete = [&] ( llvm::Argument * arg ) {
-            return is_concrete( call->getOperand( arg->getArgNo() ) );
-        };
-
-        auto in_concern = [&] ( llvm::Argument * arg ) {
-            auto  m = fn->getParent();
-            auto dom = Domain::get( arg );
-            return is_base_type_in_domain( m, arg, dom );
-        };
-
-        auto processed = [&] ( llvm::Argument * arg ) {
-            if ( auto dual = meta::get_dual( arg ) ) {
-                auto inst = llvm::cast< llvm::Instruction >( dual );
-                ASSERT( Placeholder::is( inst ) );
-                ASSERT( Placeholder( inst ).type == Placeholder::Type::Unstash );
-                return true;
-            }
-            return false;
-        };
-
-        llvm::IRBuilder<> irb( fn->getEntryBlock().getFirstNonPHIOrDbgOrLifetime() );
-
-        query::query( fn->args() )
+        return query::query( m )
             .map( query::refToPtr )
-            .filter( query::negate( concrete ) )
-            .filter( in_concern )
-            .filter( query::negate( processed ) )
-            .map( [&] ( auto * arg ) { return unstash( arg, irb ); } )
+            .filter( has_abstract_args() )
             .freeze();
+    }
+
+    void StashPass::run( llvm::Module & m )
+    {
+        Matched matched;
+        matched.init( m );
+
+        auto rets = query::query( meta::enumerate( m, meta::tag::abstract_return ) )
+            .map( query::llvmdyncast< llvm::ReturnInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        for ( auto ret : rets ) {
+            auto val = matched.abstract.at( ret->getReturnValue() );
+            stash( ret, val );
+        }
+
+        auto get_calls_of = [] ( auto fn ) {
+            return query::query( fn->users() )
+                .map( query::llvmdyncast< llvm::CallInst > )
+                .filter( query::notnull );
+        };
+
+        auto calls = query::query( fns_with_abstract_args( m ) )
+            .map( get_calls_of )
+            .flatten()
+            .freeze();
+
+        for ( auto call : calls )
+            stash( call, matched );
+    }
+
+
+    void UnstashPass::run( llvm::Module & m )
+    {
+        for ( auto fn : fns_with_abstract_args( m ) )
+            unstash( fn );
+
+        auto abstract = query::query( meta::enumerate( m ) )
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        for ( auto * call : abstract )
+            unstash( call );
     }
 
 } // namespace lart::abstract
