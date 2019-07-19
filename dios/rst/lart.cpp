@@ -16,4 +16,14 @@ extern "C"
     {
         __dios_this_task()->__rst_stash = reinterpret_cast< uintptr_t >( val );
     }
+
+    _LART_INTERFACE void __lart_freeze( void * value, void * addr )
+    {
+        __dios::rst::abstract::poke_object( value, addr );
+    }
+
+    _LART_INTERFACE void * __lart_thaw( void * addr )
+    {
+        return __dios::rst::abstract::peek_object< void * >( addr );
+    }
 }
