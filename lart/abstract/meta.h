@@ -12,11 +12,11 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract::meta {
     namespace tag {
-        constexpr char abstract[] = "lart.abstract"; // TODO chenge to return
+        constexpr char abstract[] = "lart.abstract"; // TODO change to return
         constexpr char roots[] = "lart.abstract.roots";
 
         namespace function {
-            constexpr char abstract[] = "lart.abstract.function";
+            constexpr char arguments[] = "lart.abstract.function.arguments";
         }
 
         namespace transform {
@@ -38,24 +38,17 @@ namespace lart::abstract::meta {
             constexpr char kind[] = "lart.abstract.domain.kind";
         }
 
-        namespace aggregate {
-            constexpr char sources[] = "lart.abstract.aggregate.sources";
-        }
-
         namespace operation {
             constexpr const char function[] = "lart.op.function";
             constexpr const char type[] = "lart.op.type";
             constexpr const char index[] = "lart.op.index";
-        }
 
-        namespace taint {
-            constexpr const char type[] = "lart.taint.type";
+            constexpr const char freeze[] = "lart.op.freeze";
+            constexpr const char thaw[] = "lart.op.thaw";
         }
 
         constexpr char abstract_return[] = "lart.abstract.return";
         constexpr char abstract_arguments[] = "lart.abstract.arguments";
-
-        constexpr char dual[] = "lart.abstract.dual";
     } // namespace tag
 
     using MetaVal = std::optional< std::string >;
@@ -152,50 +145,37 @@ namespace lart::abstract::meta {
     namespace argument
     {
         void set( llvm::Argument * arg, const std::string & str ) noexcept;
-        void set( llvm::Argument * arg, llvm::MDNode * node ) noexcept;
+        void set( llvm::Argument * arg, llvm::Metadata * node ) noexcept;
 
         MetaVal get( llvm::Argument * arg ) noexcept;
 
         bool has( llvm::Argument * arg ) noexcept;
     } // namespace argument
 
-    namespace aggregate
-    {
-        void set( llvm::Instruction * inst, size_t idx ) noexcept;
-        void set( llvm::GlobalVariable * inst, size_t idx ) noexcept;
-
-        bool has( llvm::Value * val ) noexcept;
-
-        std::vector< size_t > indices( llvm::Value * ) noexcept;
-
-        void inherit( llvm::Instruction * dst, llvm::Value * src ) noexcept;
-    } // namespace aggregate
-
     template< typename T >
-    auto enumerate( T & llvm ) noexcept -> std::vector< llvm::Instruction * >
+    auto enumerate( T & llvm, std::string tag = meta::tag::abstract ) noexcept
+        -> std::vector< llvm::Instruction * >
     {
         if constexpr ( std::is_same_v< T, llvm::Module > ) {
-            auto enumerate = [=] ( auto & data ) { return meta::enumerate( data ); };
+            auto enumerate = [=] ( auto & data ) { return meta::enumerate( data, tag ); };
             return query::query( llvm ).map( enumerate ).flatten().freeze();
         } else {
             static_assert( std::is_same_v< T, llvm::Function > );
             return query::query( llvm ).flatten()
                 .map( query::refToPtr )
-                .filter( meta::abstract::has< llvm::Value > )
+                .filter( [&] ( auto val ) {
+                    return meta::has( val, tag );
+                } )
                 .freeze();
         }
     }
 
-    void make_duals( llvm::Value * a, llvm::Instruction * b );
-    void make_duals( llvm::Argument * arg, llvm::Instruction * inst );
-    void make_duals( llvm::Instruction * a, llvm::Instruction * b );
-
-    bool has_dual( llvm::Value * val );
-    bool has_dual( llvm::Argument * arg );
-    bool has_dual( llvm::Instruction * inst );
-
-    llvm::Value * get_dual( llvm::Value * val );
-    llvm::Value * get_dual( llvm::Argument * arg );
-    llvm::Value * get_dual( llvm::Instruction * inst );
+    template< typename I, typename T >
+    auto enumerate( T & llvm, const std::string & tag )
+    {
+        return query::query( enumerate( llvm, tag ) )
+            .map( query::llvmdyncast< I > )
+            .freeze();
+    }
 
 } // namespace lart::abstract::meta

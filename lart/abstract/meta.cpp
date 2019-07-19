@@ -98,9 +98,7 @@ namespace lart::abstract::meta {
             return meta::get( arg, tag ).has_value();
         else if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
             return inst->getMetadata( tag );
-        else
-            UNREACHABLE( "Unsupported value" );
-
+        return false;
     }
 
     llvm::Value * get_value_from_meta( llvm::Instruction * inst, const std::string & tag ) {
@@ -167,22 +165,17 @@ namespace lart::abstract::meta {
 
     namespace function
     {
-        constexpr auto abstract = meta::tag::function::abstract;
+        constexpr auto arguments = meta::tag::function::arguments;
 
         void init( llvm::Function * fn ) noexcept {
             auto size = fn->arg_size();
             auto & ctx = fn->getContext();
 
-            if ( !fn->getMetadata( abstract ) ) {
+            if ( !fn->getMetadata( arguments ) ) {
                 auto value = [&] { return meta::create( ctx, "" ); };
                 auto data = meta::tuple::create( ctx, size, value );
-                fn->setMetadata( abstract, data );
+                fn->setMetadata( arguments, data );
             }
-        }
-
-        void clear( llvm::Function * fn ) noexcept {
-            if ( meta::has( fn, abstract ) )
-                fn->setMetadata( abstract, nullptr );
         }
 
         bool ignore_call( llvm::Function * fn ) noexcept {
@@ -210,17 +203,17 @@ namespace lart::abstract::meta {
             argument::set( arg, meta::create( ctx, str ) );
         }
 
-        void set( llvm::Argument * arg, llvm::MDNode * node ) noexcept {
+        void set( llvm::Argument * arg, llvm::Metadata * node ) noexcept {
             auto fn = arg->getParent();
             function::init( fn );
 
-            auto meta = fn->getMetadata( meta::tag::function::abstract );
+            auto meta = fn->getMetadata( meta::tag::function::arguments );
             meta->replaceOperandWith( arg->getArgNo(), node );
         }
 
         MetaVal get( llvm::Argument * arg ) noexcept {
             auto fn = arg->getParent();
-            if ( auto node = fn->getMetadata( meta::tag::function::abstract ) ) {
+            if ( auto node = fn->getMetadata( meta::tag::function::arguments ) ) {
                 return meta::value( node, arg->getArgNo() );
             }
             return std::nullopt;
@@ -231,84 +224,6 @@ namespace lart::abstract::meta {
         }
 
     } // namespace argument
-
-    namespace aggregate
-    {
-        llvm::MDNode * get( llvm::Value * val ) noexcept {
-            if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-                return inst->getMetadata( tag::aggregate::sources );
-            if ( auto glob = llvm::dyn_cast< llvm::GlobalVariable >( val ) )
-                return glob->getMetadata( tag::aggregate::sources );
-            // TODO llvm Argument
-            return nullptr;
-        }
-
-        template< typename T >
-        void init( T * val ) {
-            auto &ctx = val->getContext();
-            auto data = meta::tuple::empty( ctx );
-            val->setMetadata( tag::aggregate::sources, data );
-        }
-
-        template< typename T >
-        void add_source_index( T * val, size_t idx ) {
-            ASSERT( aggregate::has( val ) );
-
-            auto &ctx = val->getContext();
-            auto i64 = llvm::Type::getInt64Ty( ctx );
-            auto con = llvm::ConstantInt::get( i64, idx );
-            std::vector< llvm::Metadata * > data;
-
-            auto tuple = aggregate::get( val );
-            std::copy( tuple->op_begin(), tuple->op_end(), std::back_inserter( data ) );
-            data.push_back( llvm::ConstantAsMetadata::get( con ) );
-
-            val->setMetadata( tag::aggregate::sources, meta::tuple::create( ctx, { data } ) );
-        }
-
-        template< typename T >
-        void set_impl( T * val, size_t idx ) noexcept {
-            if ( !aggregate::has( val ) )
-                init( val );
-            add_source_index( val, idx );
-        }
-
-        void set( llvm::Instruction * inst, size_t idx ) noexcept {
-            set_impl( inst, idx );
-        }
-
-        void set( llvm::GlobalVariable * glob, size_t idx ) noexcept {
-            set_impl( glob, idx );
-        }
-
-        bool has( llvm::Value * val ) noexcept {
-            return get( val );
-        }
-
-        std::vector< size_t > indices( llvm::Value * val ) noexcept {
-            if ( !aggregate::has( val ) )
-                return {};
-            auto meta = aggregate::get( val );
-
-            std::vector< size_t > indices;
-            for ( const auto & op : meta->operands() ) {
-                ASSERT( llvm::isa< llvm::ConstantAsMetadata >( op ) );
-                auto val = llvm::cast< llvm::ConstantAsMetadata >( op )->getValue();
-                auto con = llvm::cast< llvm::ConstantInt >( val );
-                indices.push_back( con->getZExtValue() );
-            }
-
-            std::sort( indices.begin(), indices.end() );
-            return indices;
-        }
-
-        void inherit( llvm::Instruction * dst, llvm::Value * src ) noexcept {
-            ASSERT( aggregate::has( src ) );
-            auto meta = aggregate::get( src );
-            dst->setMetadata( tag::aggregate::sources, meta );
-        }
-
-    } // namespace aggregate
 
     void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
         auto &ctx = inst->getContext();
@@ -325,82 +240,6 @@ namespace lart::abstract::meta {
         } ();
 
         inst->setMetadata( tag, meta );
-    }
-
-    void make_duals( llvm::Value * a, llvm::Instruction * b ) {
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( a ) )
-            return make_duals( arg, b );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( a ) )
-            return make_duals( inst, b );
-        UNREACHABLE( "Unsupported dual pair" );
-    }
-
-    void make_duals( llvm::Argument * arg, llvm::Instruction * inst ) {
-        ASSERT( arg->getParent() == inst->getFunction() );
-        set_value_as_meta( inst, meta::tag::dual, arg );
-    }
-
-    void make_duals( llvm::Instruction * a, llvm::Instruction * b ) {
-        ASSERT( a->getFunction() == b->getFunction() );
-        set_value_as_meta( a, meta::tag::dual, b );
-        set_value_as_meta( b, meta::tag::dual, a );
-    }
-
-    bool has_dual( llvm::Value * val ) {
-        if ( llvm::isa< llvm::Constant >( val ) )
-            return false;
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-            return has_dual( arg );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-            return has_dual( inst );
-        UNREACHABLE( "Unsupported dual value" );
-    }
-
-    bool has_dual( llvm::Argument * arg ) {
-        return meta::get_dual( arg );
-    }
-
-    bool has_dual( llvm::Instruction * inst ) {
-        return inst->getMetadata( meta::tag::dual );
-    }
-
-    llvm::Value * get_dual( llvm::Value * val ) {
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
-            return get_dual( arg );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
-            return get_dual( inst );
-        UNREACHABLE( "Unsupported dual value" );
-    }
-
-    llvm::Value * get_dual( llvm::Argument * arg ) {
-        // TODO rework
-        auto fn = arg->getParent();
-        auto point = fn->getEntryBlock().getFirstNonPHIOrDbgOrLifetime();
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( point ) ) {
-            if ( call->getCalledFunction()->getName() == "__lart_unstash" ) {
-                auto ptr = llvm::cast< llvm::IntToPtrInst >( *call->user_begin() );
-                auto pack = llvm::cast< llvm::LoadInst >( *ptr->user_begin() );
-                for ( auto u : pack->users() ) {
-                    if ( meta::get_dual( u ) == arg ) {
-                        return u;
-                    }
-                }
-            }
-        }
-
-        for ( auto u : arg->users() ) {
-            if ( auto i = llvm::dyn_cast< llvm::Instruction >( u ); meta::has_dual( i ) ) {
-                if ( meta::get_dual( i ) == arg ) {
-                    return i; // unstash placeholder
-                }
-            }
-        }
-
-        return nullptr;
-    }
-
-    llvm::Value * get_dual( llvm::Instruction *inst ) {
-        return get_value_from_meta( inst, meta::tag::dual );
     }
 
 } // namespace lart::abstract::meta
