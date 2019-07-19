@@ -22,12 +22,11 @@ namespace lart::abstract {
 
         OperationBuilder builder;
         for ( auto * br : brs ) {
-            auto abs = llvm::cast< llvm::Instruction >( meta::get_dual( br->getCondition() ) );
-            auto cond = builder.construct< Operation::Type::ToBool >( abs );
-
-            cond.inst->setMetadata( tag, index );
-
-            br->setCondition( cond.inst );
+            auto cond = llvm::cast< llvm::Instruction >( br->getCondition() );
+            auto abs = cond->getNextNonDebugInstruction();
+            auto op = builder.construct< Operation::Type::ToBool >( abs );
+            op.inst->setMetadata( tag, index );
+            br->setCondition( op.inst );
         };
     }
 
