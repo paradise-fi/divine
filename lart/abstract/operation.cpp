@@ -2,6 +2,9 @@
 
 #include <lart/abstract/operation.h>
 
+#include <lart/abstract/stash.h>
+#include <lart/abstract/meta.h>
+
 namespace lart::abstract
 {
     const Bimap< Operation::Type, std::string > Operation::TypeTable = {
@@ -9,8 +12,6 @@ namespace lart::abstract
         ,{ Operation::Type::GEP    , "gep"     }
         ,{ Operation::Type::Thaw   , "thaw"    }
         ,{ Operation::Type::Freeze , "freeze"  }
-        ,{ Operation::Type::Stash  , "stash"   }
-        ,{ Operation::Type::Unstash, "unstash" }
         ,{ Operation::Type::ToBool , "tobool"  }
         ,{ Operation::Type::Assume , "assume"  }
         ,{ Operation::Type::Store  , "store"   }
@@ -18,13 +19,13 @@ namespace lart::abstract
         ,{ Operation::Type::Cmp    , "cmp"     }
         ,{ Operation::Type::Cast   , "cast"    }
         ,{ Operation::Type::Binary , "binary"  }
+        ,{ Operation::Type::BinaryFaultable, "binary.faultabel"  }
         ,{ Operation::Type::Lift   , "lift"    }
         ,{ Operation::Type::Lower  , "lower"   }
         ,{ Operation::Type::Call   , "call"    }
         ,{ Operation::Type::Memcpy , "memcpy"  }
         ,{ Operation::Type::Memmove, "memmove" }
         ,{ Operation::Type::Memset , "memset"  }
-        ,{ Operation::Type::Union , "union"  }
     };
 
     Operation OperationBuilder::construct( llvm::Instruction * inst )
@@ -52,6 +53,7 @@ namespace lart::abstract
                 else
                     return construct< Type::Store >( store );
             }*/
+            UNREACHABLE( "not implemented" );
         }
 
         if ( auto load = llvm::dyn_cast< llvm::LoadInst >( inst ) ) {
@@ -71,6 +73,7 @@ namespace lart::abstract
                 else
                     return construct< Type::Load >( load );
             }*/
+            UNREACHABLE( "not implemented" );
         }
 
         if ( auto cmp = llvm::dyn_cast< llvm::CmpInst >( inst ) ) {
@@ -82,11 +85,13 @@ namespace lart::abstract
         }
 
         if ( auto bin = llvm::dyn_cast< llvm::BinaryOperator >( inst ) ) {
-            return construct< Type::Binary >( bin );
+            if ( is_faultable( inst ) )
+                return construct< Type::BinaryFaultable >( bin );
+            else
+                return construct< Type::Binary >( bin );
         }
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
-            // ASSERT( is_transformable( call ) );
             if ( llvm::isa< llvm::MemSetInst >( call ) )
                 return construct< Type::Memset >( call );
             if ( llvm::isa< llvm::MemCpyInst >( call ) )
@@ -96,11 +101,62 @@ namespace lart::abstract
             return construct< Type::Call >( call );
         }
 
-        if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( inst ) ) {
-            return construct< Type::Stash >( ret );
+        UNREACHABLE( "Unsupported operation type" );
+    }
+
+    void Matched::init( llvm::Module & m )
+    {
+        for ( auto call : abstract_calls( m ) ) {
+            auto dual = call->getNextNonDebugInstruction();
+            concrete[ dual ] = call;
+            abstract[ call ] = dual;
         }
 
-        UNREACHABLE( "Unsupported operation type" );
+        for ( auto op : operations( m ) ) {
+            match( op.type, op.inst, op.inst->getPrevNode() );
+        }
+
+        for ( auto intr : unpacked_arguments( &m ) ) {
+            auto call = llvm::cast< llvm::CallInst >( intr );
+
+            auto c = call->getArgOperand( 0 );
+            auto a = call->getArgOperand( 1 );
+
+            abstract[ c ] = a;
+            concrete[ a ] = c;
+        }
+
+        auto tag = meta::tag::operation::thaw;
+        for ( auto load : meta::enumerate< llvm::LoadInst >( m, tag ) ) {
+            auto c = load;
+            auto a = load->getNextNode()->getNextNode();
+            ASSERT( llvm::isa< llvm::CallInst >( a ) ); // is thaw
+            abstract[ c ] = a;
+            concrete[ a ] = c;
+        }
+    }
+
+    void Matched::match( Operation::Type type, llvm::Value * a, llvm::Value * c )
+    {
+        if ( type == Operation::Type::Assume )
+            return;
+
+        if ( type == Operation::Type::ToBool ) {
+            concrete[ a ] = concrete[ c ];
+        } else {
+            auto ai = llvm::cast< llvm::Instruction >( a );
+            auto ci = llvm::cast< llvm::Instruction >( c );
+
+            if ( is_faultable( ci ) ) {
+                concrete[ a ] = c;
+                auto unstash = ai->getNextNode();
+                abstract[ c ] = unstash;
+                concrete[ unstash ] = c;
+            } else {
+                concrete[ a ] = c;
+                abstract[ c ] = a;
+            }
+        }
     }
 
 } // namespace lart::abstract

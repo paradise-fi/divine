@@ -4,20 +4,21 @@
 
 namespace lart::abstract
 {
-    template< Operation::Type T >
+    template< Operation::Type type >
     template< typename Value, typename Builder >
-    Operation Construct< T >::operation( Value * val, Builder & builder )
+    Operation Construct< type >::operation( Value * val, Builder & builder )
     {
         auto m = util::get_module( val );
         auto fn = util::get_or_insert_function( m, function_type( val ), name( val ) );
-        return Operation{ builder.CreateCall( fn, arguments( val ) ), T };
+        auto call = builder.CreateCall( fn, arguments( val ) );
+        return Operation( call, type, false /* placeholder */ );
     }
 
     template< Operation::Type T >
     Operation Construct< T >::operation( llvm::Instruction * inst )
     {
-        assert( !llvm::isa< llvm::ReturnInst >( inst ) );
         llvm::IRBuilder<> irb{ inst->getContext() };
+
         if constexpr ( T == Type::PHI ) {
             irb.SetInsertPoint( inst->getParent()->getFirstNonPHI() );
         } else {
@@ -30,26 +31,17 @@ namespace lart::abstract
             ph.inst->moveAfter( inst );
         }
 
-        if constexpr ( T != Type::ToBool && T != Type::Union ) {
-            meta::make_duals( inst, ph.inst );
-        }
-
         return ph;
-    }
-
-    template< Operation::Type T >
-    Operation Construct< T >::operation( llvm::Argument * arg )
-    {
-        static_assert( Type::Stash == T  || Type::Unstash == T );
-        auto & entry = arg->getParent()->getEntryBlock();
-        llvm::IRBuilder<> irb{ &entry, entry.getFirstInsertionPt() };
-        return operation( arg, irb );
     }
 
     template< Operation::Type T >
     llvm::Type * Construct< T >::output( llvm::Value * val )
     {
         auto m = util::get_module( val );
+
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ); inst )
+            if ( !Operation::is( inst ) && is_faultable( inst ) )
+                return val->getType();
 
         if constexpr ( T == Type::ToBool ) {
             return llvm::Type::getInt1Ty( m->getContext() );
@@ -73,13 +65,13 @@ namespace lart::abstract
             return { l->getPointerOperand() };
         }
 
-        if constexpr ( is_mem_intrinsic( T ) ) {
+        /*if constexpr ( is_mem_intrinsic( T ) ) {
             auto mem = llvm::cast< llvm::MemIntrinsic >( val );
             auto dst = mem->getArgOperand( 0 );
             auto val = mem->getArgOperand( 1 );
             auto len = mem->getArgOperand( 2 );
             return { dst, val, len };
-        }
+        }*/
 
         return { val };
     }
@@ -95,13 +87,16 @@ namespace lart::abstract
     {
         std::string suffix = Operation::TypeTable[ T ];
 
+        suffix += "." + llvm_name( output( val ) );
+
         if constexpr ( T == Type::Store || T == Type::Freeze ) {
             auto s = llvm::cast< llvm::StoreInst >( val );
             return suffix + "." + llvm_name( s->getValueOperand()->getType() );
-        } else if constexpr ( is_mem_intrinsic( T ) ) {
-            auto intr = llvm::cast< llvm::MemIntrinsic >( val );
-            auto dst = intr->getRawDest()->getType();
-            return suffix + "." + llvm_name( dst->getPointerElementType() );
+        // } else if constexpr ( is_mem_intrinsic( T ) ) {
+        //    auto intr = llvm::cast< llvm::MemIntrinsic >( val );
+        //    auto dst = intr->getRawDest()->getType();
+        //    return suffix + "." + llvm_name( dst->getPointerElementType() );
+        //
         } else {
             if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
                 return suffix + "." + aggr->getName().str();

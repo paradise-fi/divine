@@ -23,8 +23,6 @@ namespace lart::abstract {
             GEP,
             Thaw,
             Freeze,
-            Stash,
-            Unstash,
             ToBool,
             Assume,
             Store,
@@ -32,38 +30,40 @@ namespace lart::abstract {
             Cmp,
             Cast,
             Binary,
+            BinaryFaultable,
             Lift,
             Lower,
             Call,
             Memcpy,
             Memmove,
-            Memset,
-            Union
+            Memset
         };
 
         static const Bimap< Type, std::string > TypeTable;
 
-        explicit Operation( llvm::Instruction * inst, Type type )
-            : inst( inst ), type( type )
+        explicit Operation( llvm::Instruction * inst, Type type, bool taint )
+            : inst( inst ), type( type ), taint( taint )
         {
             meta::set( inst, meta::tag::operation::type, TypeTable[ type ] );
         }
 
-        explicit Operation( llvm::Instruction * inst )
-            : Operation( inst, TypeTable[ meta::get( inst, meta::tag::operation::type ).value() ] )
+        explicit Operation( llvm::Instruction * inst, bool taint = false )
+            : Operation( inst, TypeTable[ meta::get( inst, meta::tag::operation::type ).value() ], taint )
         { }
+
+        bool is_taint() const { return taint; }
 
         static bool is( llvm::Instruction * inst )
         {
             return meta::has( inst, meta::tag::operation::type );
         }
 
-        static std::vector< Operation > enumerate( llvm::Module & m )
+        static std::vector< Operation > enumerate( llvm::Module & m, bool taints = false )
         {
             return query::query( m ).flatten().flatten()
                 .map( query::refToPtr )
                 .filter( Operation::is )
-                .map( [] ( auto * inst ) { return Operation( inst ); } )
+                .map( [taints] ( auto * inst ) { return Operation( inst, taints ); } )
                 .freeze();
         }
 
@@ -89,8 +89,49 @@ namespace lart::abstract {
             return os;
         }
 
+        template< Operation::Type... Ts >
+        static constexpr bool is_one_of( Operation::Type type )
+        {
+            return ( (Ts == type) || ... );
+        }
+
+        static constexpr bool binary( Operation::Type type )
+        {
+            return is_one_of< Type::Cmp, Type::Binary, Type::BinaryFaultable >( type );
+        }
+
+        static constexpr bool arith( Operation::Type type ) {
+            return Type::Binary == type || Type::BinaryFaultable == type;
+        }
+
+        static constexpr bool gep( Operation::Type type ) { return Type::GEP == type; }
+        static constexpr bool store( Operation::Type type ) { return Type::Store == type; }
+        static constexpr bool load( Operation::Type type ) { return Type::Load == type; }
+        static constexpr bool cmp( Operation::Type type ) { return Type::Cmp == type; }
+        static constexpr bool cast( Operation::Type type ) { return Type::Cast == type; }
+        static constexpr bool assume( Operation::Type type ) { return Type::Assume == type; }
+        static constexpr bool toBool( Operation::Type type ) { return Type::ToBool == type; }
+        static constexpr bool freeze( Operation::Type type ) { return Type::Freeze == type; }
+        static constexpr bool thaw( Operation::Type type ) { return Type::Thaw == type; }
+        static constexpr bool call( Operation::Type type ) { return Type::Call == type; }
+        static constexpr bool lift( Operation::Type type ) { return Type::Lift == type; }
+        static constexpr bool lower( Operation::Type type ) { return Type::Lower == type; }
+
+        static constexpr bool mem( Operation::Type type )
+        {
+            return is_one_of< Type::Memcpy, Type::Memmove, Type::Memset >( type );
+        }
+
+        static constexpr bool faultable( Operation::Type type )
+        {
+            // TODO memory operations
+            return is_one_of< Type::Store, Type::Load, Type::BinaryFaultable, Type::Call >( type );
+        }
+
         llvm::Instruction * inst;
         Type type;
+
+        bool taint;
     };
 
     template< Operation::Type T >
@@ -134,26 +175,9 @@ namespace lart::abstract {
         }
     };
 
-    static inline constexpr bool to_concrete( Operation::Type T )
-    {
-        return T == Operation::Type::ToBool || T == Operation::Type::Lower;
-    }
-
-    template< Operation::Type... Ts >
-    constexpr bool is_any_of( Operation::Type type )
-    {
-        return ( (Ts == type) || ... );
-    }
-
-    static inline constexpr bool is_mem_intrinsic( Operation::Type T )
-    {
-        using Type = Operation::Type;
-        return is_any_of< Type::Memset, Type::Memcpy, Type::Memmove >( T );
-    }
-
     static inline auto operations( llvm::Module & m )
     {
-        return Operation::enumerate( m );
+        return Operation::enumerate( m, false /* taint */ );
     }
 
     template< typename Filter >
@@ -167,6 +191,17 @@ namespace lart::abstract {
     {
         return operations( m, [] ( const auto & ph ) { return ph.type == T; } );
     }
+
+
+    struct Matched
+    {
+        void init( llvm::Module & m );
+
+        void match( Operation::Type type, llvm::Value * a, llvm::Value * c );
+
+        std::map< llvm::Value *, llvm::Value * > concrete;
+        std::map< llvm::Value *, llvm::Value * > abstract;
+    };
 
 } // namespace lart::abstract
 
