@@ -14,10 +14,10 @@ namespace __dios::rst::abstract {
     }
 
     extern "C" {
-        _LART_SCALAR uint8_t __term_val_i8() { return make_term< uint8_t >(); }
-        _LART_SCALAR uint16_t __term_val_i16() { return make_term< uint16_t >(); }
-        _LART_SCALAR uint32_t __term_val_i32() { return make_term< uint32_t >(); }
-        _LART_SCALAR uint64_t __term_val_i64() { return make_term< uint64_t >(); }
+        _LART_SCALAR uint8_t __sym_val_i8() { return make_term< uint8_t >(); }
+        _LART_SCALAR uint16_t __sym_val_i16() { return make_term< uint16_t >(); }
+        _LART_SCALAR uint32_t __sym_val_i32() { return make_term< uint32_t >(); }
+        _LART_SCALAR uint64_t __sym_val_i64() { return make_term< uint64_t >(); }
     }
 
     Term Term::constrain( const Term &constraint, bool expect ) const noexcept
