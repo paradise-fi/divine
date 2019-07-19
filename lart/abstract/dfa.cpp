@@ -13,6 +13,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/lowerselect.h>
+#include <lart/support/util.h>
 #include <lart/abstract/domain.h>
 #include <lart/abstract/util.h>
 
@@ -20,24 +21,43 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-    using LatticeValue = DataFlowAnalysis::LatticeValue;
+    using MapValue = DataFlowAnalysis::MapValue;
 
     struct AddAbstractMetaVisitor : llvm::InstVisitor< AddAbstractMetaVisitor >
     {
-        AddAbstractMetaVisitor( const LatticeValue &lattice )
-            : _lattice( lattice )
+        AddAbstractMetaVisitor( const MapValue &mval )
+            : _mval( mval )
         {}
 
         static constexpr char op_prefix[] = "lart.abstract.op_";
 
         void add_meta( llvm::Instruction *val, const std::string& operation )
         {
+            // TODO set correct domain kind?
             meta::abstract::set( val, to_string( DomainKind::scalar ) );
 
             auto m = val->getModule();
-            auto op = m->getFunction( operation );
-            auto index = op->getMetadata( meta::tag::operation::index );
-            val->setMetadata( meta::tag::operation::index, index );
+            if ( auto op = m->getFunction( operation ) ) {
+                auto index = op->getMetadata( meta::tag::operation::index );
+
+                val->setMetadata( meta::tag::operation::index, index );
+            }
+        }
+
+        void visitStoreInst( llvm::StoreInst &store )
+        {
+            // TODO if is freeze
+            // if ( store.getValueOperand()->getType()->isIntegerTy() ) // TODO remove
+            meta::set( &store, meta::tag::operation::freeze );
+            // TODO if is store
+        }
+
+        void visitLoadInst( llvm::LoadInst &load )
+        {
+            // TODO if is thaw
+            // if ( load.getType()->isIntegerTy() ) // TODO remove
+            meta::set( &load, meta::tag::operation::thaw );
+            // TODO if is load
         }
 
         void visitCmpInst( llvm::CmpInst &cmp )
@@ -61,8 +81,46 @@ namespace lart::abstract {
             add_meta( &bin, op );
         }
 
-        const LatticeValue &_lattice;
+        void visitReturnInst( llvm::ReturnInst &ret )
+        {
+            meta::set( &ret, meta::tag::abstract_return );
+        }
+
+        void visitCallInst( llvm::CallInst &call )
+        {
+            if ( meta::abstract::has( &call ) )
+                return;
+
+            auto fn = call.getCalledFunction();
+            ASSERT( fn->hasName() );
+            auto op = std::string( op_prefix ) + fn->getName().str();
+            add_meta( &call, op );
+        }
+
+        const MapValue &_mval;
     };
+
+    bool is_call( llvm::Value * val ) noexcept
+    {
+        return util::is_one_of< llvm::CallInst, llvm::InvokeInst >( val );
+    }
+
+    bool is_propagable( llvm::Value * val ) noexcept
+    {
+        if ( llvm::isa< llvm::Argument >( val ) )
+            return true;
+        if ( llvm::isa< llvm::GetElementPtrInst >( val ) )
+            return true;
+        if ( llvm::isa< llvm::LoadInst >( val ) )
+            return true;
+        if ( llvm::isa< llvm::AllocaInst >( val ) )
+            return true;
+        if ( is_call( val ) )
+            return true;
+        if ( auto i = llvm::dyn_cast< llvm::Instruction >( val ) )
+            return i->isBinaryOp() || i->isCast() || i->isShift();
+        UNREACHABLE( "unkonwn value" );
+    }
 
     bool DataFlowAnalysis::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
@@ -71,9 +129,89 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
-        for ( auto u : val->users() ) {
-            if ( join( u, val ) )
-                push( [=] { propagate( u ); } );
+        // memory operations
+        if ( auto store = llvm::dyn_cast< llvm::StoreInst >( val ) ) {
+            auto val = store->getValueOperand();
+            auto ptr = store->getPointerOperand();
+
+            if ( !_intervals.has( ptr ) ) {
+                ptr->dump();
+                val->dump();
+                ASSERT( LatticeValue::is_top( core( _intervals[ val ] ).value ) );
+                _intervals[ ptr ] = cover( _intervals[ val ] );
+                ASSERT( LatticeValue::is_top( core( _intervals[ ptr ] ).value ) );
+                push( [=] { propagate( ptr ); } );
+            } else if ( join( val, ptr ) ) {
+                push( [=] { propagate( ptr ); } );
+            } else {
+                return;
+            }
+
+            // TODO store to abstract value?
+        }
+        else if ( auto load = llvm::dyn_cast< llvm::LoadInst >( val ) ) {
+            auto ptr = load->getPointerOperand();
+
+            if ( !_intervals.has( ptr ) ) {
+                _intervals[ ptr ] = cover( _intervals[ load ] );
+                push( [=] { propagate( ptr ); } );
+            }
+            else if ( !_intervals.has( load ) ) {
+                ptr->dump();
+                ASSERT( LatticeValue::is_top( core( _intervals[ ptr ] ).value ) );
+                _intervals[ load ] = peel( _intervals[ ptr ] );
+                ASSERT( LatticeValue::is_top( core( _intervals[ load ] ).value ) );
+                // propagation performed in ssa propagation
+            }
+            else if ( join( load, ptr ) ) {
+                push( [=] { propagate( load ); } );
+            }
+            else if ( join( ptr, load ) ) {
+                push( [=] { propagate( ptr ); } );
+            }
+            else {
+                return;
+            }
+        }
+
+        // ssa operations
+        if ( is_propagable( val ) ) {
+            for ( auto u : val->users() ) {
+                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst >( u ) )
+                    push( [=] { propagate( u ); } );
+                else if ( join( u, val ) )
+                    push( [=] { propagate( u ); } );
+                else if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
+                    push( [=] { propagate_in( call ); } );
+                else if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
+                    push( [=] { propagate_out( ret ); } );
+            }
+        }
+    }
+
+    void DataFlowAnalysis::propagate_in( llvm::CallInst * call ) noexcept
+    {
+        call->dump();
+        auto fn = call->getCalledFunction();
+
+        for ( const auto & arg : fn->args() ) {
+            auto oparg = call->getArgOperand( arg.getArgNo() );
+            if ( _intervals.has( oparg ) ) {
+                auto a = const_cast< llvm::Argument * >( &arg );
+                if ( join( a, oparg ) ) {
+                    push( [=] { propagate( a ); } );
+                }
+            }
+        }
+    }
+
+    void DataFlowAnalysis::propagate_out( llvm::ReturnInst * ret ) noexcept
+    {
+        auto fn = ret->getFunction();
+        for ( auto u : fn->users() ) {
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
+                if ( join( call, ret ) )
+                    push( [=] { propagate( call ); } );
         }
     }
 
@@ -81,8 +219,7 @@ namespace lart::abstract {
     {
         for ( auto * val : meta::enumerate( m ) ) {
             // TODO preprocessing
-
-            interval( val ).to_bottom();
+            interval( val ).to_top();
             push( [=] { propagate( val ); } );
         }
 
@@ -93,15 +230,36 @@ namespace lart::abstract {
 
         for ( const auto & [ val, in ] : _intervals ) {
             // TODO decide what to annotate
-            add_meta( val, in );
+            if ( in.is_core() )
+                add_meta( val, in );
+        }
+
+        auto stores = query::query( m ).flatten().flatten()
+            .map( query::llvmdyncast< llvm::StoreInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        for ( auto store : stores ) {
+            auto val = store->getValueOperand();
+            if ( _intervals.has( val ) ) {
+                auto mval =_intervals[ val ];
+                if ( mval.is_core() )
+                    add_meta( store, mval );
+            }
         }
     }
 
-    void DataFlowAnalysis::add_meta( llvm::Value *v, const LatticeValue& l ) noexcept
+    void DataFlowAnalysis::add_meta( llvm::Value *v, const MapValue& mval ) noexcept
     {
-        auto inst = llvm::cast< llvm::Instruction >( v );
-        AddAbstractMetaVisitor visitor( l );
-        visitor.visit( inst );
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) ) {
+            AddAbstractMetaVisitor visitor( mval );
+            visitor.visit( inst );
+        }
+
+        if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
+            // TODO set correct domain kind?
+            meta::argument::set( arg, to_string( DomainKind::scalar ) );
+        }
     }
 
 } // namespace lart::abstract
