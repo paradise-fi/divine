@@ -20,14 +20,19 @@ namespace __dios::rst::abstract {
         _LART_SCALAR uint64_t __term_val_i64() { return make_term< uint64_t >(); }
     }
 
-    Term Term::constrain( Term constraint, bool expect ) const noexcept
+    Term Term::constrain( const Term &constraint, bool expect ) const noexcept
     {
+        auto & pc = __term_state.constraints;
+
         if ( !__term_state.constraints.pointer )
-            __term_state.constraints = Term::lift_one_i1( true );
+            pc = Term::lift_one_i1( true );
+
+        pc.extend( constraint );
         if ( !expect )
-            constraint.apply_in_place_op< Op::Not >();
-        __term_state.constraints.apply_in_place< Op::Constraint >( constraint );
-        __vm_trace( _VM_T_Assume, __term_state.constraints.pointer );
+            pc.apply< Op::Not >();
+        pc.apply< Op::Constraint >();
+
+        __vm_trace( _VM_T_Assume, pc.pointer );
         return *this;
     }
 
