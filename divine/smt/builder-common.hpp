@@ -27,24 +27,22 @@
 
 namespace divine::smt::builder
 {
-    using RPN = divine::smt::RPN;
-    using Operation = RPN::Operation;
-    using Op = brick::smt::Op;
+    using namespace divine::smt;
 
     template< typename Builder >
     auto mk_bin( Builder &bld, Op op, int bw, typename Builder::Node a, typename Builder::Node b )
         -> typename Builder::Node
     {
-        ASSERT( RPN::is_binary( op ) );
-        return bld.binary( Operation{ op, bw }, a, b );
+        ASSERT( brick::smt::is_binary( op ) );
+        return bld.binary( { op, bw }, a, b );
     }
 
     template< typename Builder >
     auto mk_un( Builder &bld, Op op, int bw, typename Builder::Node a )
         -> typename Builder::Node
     {
-        ASSERT( RPN::is_unary( op ) );
-        return bld.unary( Operation{ op, bw }, a );
+        ASSERT( brick::smt::is_unary( op ) );
+        return bld.unary( { op, bw }, a );
     }
 
 } // namespace divine::smt::builder

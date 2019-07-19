@@ -69,7 +69,7 @@ SMTLib2::Node SMTLib2::constant( bool v )
     return v ? _ctx.symbol( 1, Node::Type::Bool, "true" ) : _ctx.symbol( 1, Node::Type::Bool, "false" );
 }
 
-SMTLib2::Node SMTLib2::unary( Operation unary, Node arg )
+SMTLib2::Node SMTLib2::unary( Unary unary, Node arg )
 {
     auto bw = unary.bw;
 
@@ -141,7 +141,7 @@ SMTLib2::Node SMTLib2::unary( Operation unary, Node arg )
     }
 }
 
-SMTLib2::Node SMTLib2::binary( Operation bin, Node a, Node b )
+SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
 {
     auto bw = bin.bw;
     if ( a.is_bv() && b.is_bv() )

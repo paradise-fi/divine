@@ -30,8 +30,8 @@ struct SMTLib2
     SMTLib2( brick::smt::Context &ctx, std::string suff = "", bool defs = true )
         : _ctx( ctx ), _suff( suff ), _use_defs( defs ) {}
 
-    Node unary( Operation op, Node n );
-    Node binary( Operation op, Node a, Node b );
+    Node unary( Unary op, Node n );
+    Node binary( Binary op, Node a, Node b );
     Node constant( Constant con );
     Node constant( bool );
     Node variable( Variable var );

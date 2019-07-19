@@ -47,8 +47,8 @@ struct Z3
     using Node = z3::expr;
     Z3( z3::context &c ) : _ctx( c ) {}
 
-    Node unary( Operation, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node binary( Operation, Node, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node unary( Unary, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node binary( Binary, Node, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
     Node constant( Constant ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
     Node constant( bool ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
     Node variable( Variable ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }

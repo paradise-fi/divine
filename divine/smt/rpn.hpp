@@ -21,6 +21,8 @@
 
 #include <brick-smt>
 
+#include <cassert>
+
 namespace divine::smt
 {
     using RPN = brick::smt::RPN< std::vector< uint8_t > >;
@@ -28,59 +30,77 @@ namespace divine::smt
 
     using Op = brick::smt::Op;
 
+    using Bitwidth = brick::smt::Bitwidth;
+
     using Constant = RPNView::Constant;
     using Variable = RPNView::Variable;
+    using CastOp = RPNView::CastOp;
     using UnaryOp = RPNView::UnaryOp;
     using BinaryOp = RPNView::BinaryOp;
+
+    struct Unary : UnaryOp
+    {
+        Bitwidth bw;
+    };
+
+    struct Binary : BinaryOp
+    {
+        Bitwidth bw;
+    };
 
     // TODO move to utils
     template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
     template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
+    constexpr Bitwidth bitwidth( Op op, Bitwidth abw, Bitwidth bbw ) noexcept
+    {
+        ASSERT_EQ( abw, bbw );
+        if ( brick::smt::is_cmp( op ) )
+            return 1;
+        return abw;
+    }
+
     template< typename Builder >
     auto evaluate( Builder &bld, const RPN &rpn ) -> typename Builder::Node
     {
         using Node = typename Builder::Node;
-        std::vector< Node > stack;
+        std::vector< std::pair< Node, Bitwidth > > stack;
 
         auto binary = [&] ( Op op, const auto& bin ) {
-            auto a = stack.back();
+            auto [a, abw] = stack.back();
             stack.pop_back();
-            auto b = stack.back();
+            auto [b, bbw] = stack.back();
             stack.pop_back();
-            stack.push_back( bld.binary( { op, bin.bitwidth }, a, b ) );
-        };
 
-        auto constrain = [&] ( const auto& con ) {
-            if ( stack.size() == 1 ) {
-                auto a = stack.back();
-                stack.pop_back();
-                auto b = bld.constant( true );
-                stack.push_back( bld.binary( { Op::And, 1 }, a, b ) );
-            } else {
-                binary( Op::And, con );
-            }
+            auto bw = bitwidth( op, abw, bbw );
+            stack.push_back( { bld.binary( { op, bw }, a, b ), bw } );
         };
 
         for ( const auto& term : RPNView{ rpn } ) {
             std::visit( overload {
                 [&]( const Constant& con ) {
-                    stack.push_back( bld.constant( con ) );
+                    stack.push_back( { bld.constant( con ), con.bitwidth } );
                 },
                 [&]( const Variable& var ) {
-                    stack.push_back( bld.variable( var ) );
+                    stack.push_back( { bld.variable( var ), var.bitwidth } );
                 },
                 [&]( const UnaryOp& un ) {
-                    auto arg = stack.back();
+                    auto [arg, bw] = stack.back();
                     stack.pop_back();
-                    stack.push_back( bld.unary( { un.op, un.bitwidth }, arg ) );
+                    stack.push_back( { bld.unary( { un, bw }, arg ), bw } );
+                },
+                [&]( const CastOp& cast ) {
+                    auto [arg, bw] = stack.back();
+                    stack.pop_back();
+
+                    Unary op = { cast.op, cast.bitwidth };
+                    stack.push_back( { bld.unary( op, arg ), cast.bitwidth } );
                 },
                 [&]( const BinaryOp& bin ) {
-                    if ( bin.op == Op::Constraint ) {
-                        constrain( bin );
-                    } else {
+                    if ( bin.op == Op::Constraint )
+                        binary( Op::And, bin );
+                    else
                         binary( bin.op, bin );
-                    }
                 },
                 [&]( const auto& ) {
                     UNREACHABLE_F( "Unsupported term type" );
@@ -88,7 +108,7 @@ namespace divine::smt
             }, term );
         }
 
-        return stack.back();
+        return stack.back().first;
     }
 
 } // namespace divine::smt
