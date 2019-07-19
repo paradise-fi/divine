@@ -13,13 +13,252 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/abstract/domain.h>
 
+#include <experimental/type_traits>
+
 namespace lart::abstract
 {
     #define ERROR( msg ) \
         throw std::runtime_error( msg );
 
-    auto get_potentially_called_functions( llvm::CallInst* call ) -> std::vector< llvm::Function * >;
-    auto get_some_called_function( llvm::CallInst * call ) -> llvm::Function *;
+    template< typename T >
+    using module_t = decltype( T::module );
+
+    template< typename T >
+    using context_t = decltype( T::context );
+
+    template< typename T >
+    constexpr bool has_member_module = std::experimental::is_detected_v< module_t, T >;
+
+    template< typename T >
+    constexpr bool has_member_context = std::experimental::is_detected_v< context_t, T >;
+
+
+    template< typename T, template< typename > class Derived >
+    struct crtp
+    {
+        T& self() { return static_cast< T& >( *this ); }
+        const T& self() const { return static_cast< const T& >( *this ); }
+    private:
+        crtp() { }
+        friend Derived< T >;
+    };
+
+
+    template< typename Self >
+    struct LLVMUtilBase : crtp< Self, LLVMUtilBase >
+    {
+        static constexpr bool has_module = has_member_module< Self >;
+        static constexpr bool has_context = has_member_context< Self >;
+
+        template< typename T = Self,
+            typename = std::enable_if_t< has_member_module< T > > >
+        auto & module() const noexcept
+        {
+            return this->self().module;
+        }
+
+        template< typename T = Self,
+            typename = std::enable_if_t< has_member_module< T > > >
+        auto & module() noexcept
+        {
+            return this->self().module;
+        }
+
+        auto & ctx() const noexcept
+        {
+            static_assert( has_context || has_module );
+            if constexpr ( has_context ) {
+                return this->self().context;
+            } else {
+                return module()->getContext();
+            }
+        }
+
+        auto & ctx() noexcept
+        {
+            static_assert( has_context || has_module );
+            if constexpr ( has_context ) {
+                return this->self().context;
+            } else {
+                return module()->getContext();
+            }
+        }
+    };
+
+    template< typename Self >
+    struct LLVMUtil : LLVMUtilBase< Self >
+    {
+        using Name = llvm::StringRef;
+        using Type = llvm::Type *;
+        using Types = std::vector< Type >;
+
+        using LLVMUtilBase< Self >::ctx;
+
+        using LLVMUtilBase< Self >::module;
+
+        llvm::Function * get_function( Name name, Type ret, const Types &args )
+        {
+            auto fty = llvm::FunctionType::get( ret, args, false );
+            return llvm::cast< llvm::Function >( module()->getOrInsertFunction( name, fty ) );
+        }
+
+        llvm::Argument * argument( llvm::Function * fn, size_t i ) const noexcept
+        {
+            return std::next( fn->arg_begin(), i );
+        }
+
+        // type utilities
+        llvm::ConstantInt * i1( bool value ) const noexcept
+        {
+            return GetConstantInt( value );
+        }
+
+        llvm::ConstantInt * i8( uint8_t value ) const noexcept
+        {
+            return GetConstantInt( value );
+        }
+
+        llvm::ConstantInt * i16( uint16_t value ) const noexcept
+        {
+            return GetConstantInt( value );
+        }
+
+        llvm::ConstantInt * i32( uint32_t value ) const noexcept
+        {
+            return GetConstantInt( value );
+        }
+
+        llvm::ConstantInt * i64( uint64_t value ) const noexcept
+        {
+            return GetConstantInt( value );
+        }
+
+        template< typename T >
+        constexpr auto bitwidth() const noexcept
+        {
+            static_assert( std::is_integral_v< T > );
+            return std::numeric_limits< T >::digits;
+        }
+
+        template< typename T >
+        llvm::ConstantInt * GetConstantInt( T value ) const noexcept
+        {
+            auto i = llvm::ConstantInt::get( iNTy< T >(), value );
+            return llvm::cast< llvm::ConstantInt >( i );
+        }
+
+        llvm::Type * voidTy() const noexcept
+        {
+            return llvm::Type::getVoidTy( ctx() );
+        }
+
+        llvm::Type * i1Ty() const noexcept
+        {
+            return llvm::Type::getInt1Ty( ctx() );
+        }
+
+        llvm::Type * i8Ty() const noexcept
+        {
+            return llvm::Type::getInt8Ty( ctx() );
+        }
+
+        llvm::Type * i16Ty() const noexcept
+        {
+            return llvm::Type::getInt16Ty( ctx() );
+        }
+
+        llvm::Type * i32Ty() const noexcept
+        {
+            return llvm::Type::getInt32Ty( ctx() );
+        }
+
+        llvm::Type * i64Ty() const noexcept
+        {
+            return llvm::Type::getInt64Ty( ctx() );
+        }
+
+        template< typename T >
+        llvm::Type * iNTy() const noexcept
+        {
+            static_assert( std::is_integral_v< T > );
+            auto & c = const_cast< llvm::LLVMContext & >( ctx() );
+            return llvm::Type::getIntNTy( c, bitwidth< T >() );
+        }
+
+        llvm::PointerType * i8PTy() const noexcept
+        {
+            return llvm::Type::getInt8PtrTy( ctx() );
+        }
+
+        llvm::PointerType * i16PTy() const noexcept
+        {
+            return llvm::Type::getInt16PtrTy( ctx() );
+        }
+
+        llvm::PointerType * i32PTy() const noexcept
+        {
+            return llvm::Type::getInt32PtrTy( ctx() );
+        }
+
+        llvm::PointerType * i64PTy() const noexcept
+        {
+            return llvm::Type::getInt64PtrTy( ctx() );
+        }
+
+        llvm::ConstantPointerNull * null_ptr( llvm::PointerType * type ) const noexcept
+        {
+            return llvm::ConstantPointerNull::get( type );
+        }
+
+        llvm::Value * undef( llvm::Type * ty ) const noexcept
+        {
+            return llvm::UndefValue::get( ty );
+        }
+    };
+
+    template< typename IP, typename Callable, typename ArgPack >
+    auto create_call( IP point, Callable callable, ArgPack args ) noexcept
+    {
+        llvm::IRBuilder<> irb( point );
+        return irb.CreateCall( callable, args );
+    }
+
+    template< typename IP, typename Callable  >
+    auto create_call( IP point, Callable callable ) noexcept
+    {
+        return create_call( point, callable, llvm::None );
+    }
+
+    template< typename IP, typename Callable, typename ArgPack >
+    auto create_call_after( IP point, Callable callable, ArgPack args ) noexcept
+    {
+        auto call = create_call( point, callable, args );
+        call->moveAfter( point );
+        return call;
+    }
+
+    template< typename IP, typename Callable >
+    auto create_call_after( IP point, Callable callable ) noexcept
+    {
+        return create_call_after( point, callable, llvm::None );
+    }
+
+    static bool is_faultable( llvm::Instruction * inst ) noexcept
+    {
+        using Inst = llvm::Instruction;
+        if ( auto bin = llvm::dyn_cast< llvm::BinaryOperator >( inst ) ) {
+            auto op = bin->getOpcode();
+            return op == Inst::UDiv ||
+                   op == Inst::SDiv ||
+                   op == Inst::FDiv ||
+                   op == Inst::URem ||
+                   op == Inst::SRem ||
+                   op == Inst::FRem;
+        }
+
+        // TODO if call is in table
+        return llvm::isa< llvm::CallInst >( inst );
+    }
 
     static inline llvm::Value * lower_constant_expr_call( llvm::Value * val ) {
         auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val );
@@ -53,28 +292,9 @@ namespace lart::abstract
             .freeze();
     }
 
-    template< typename Fn >
-    void run_on_potentially_called_functions( llvm::CallInst * call, Fn functor )
+    static inline auto abstract_calls( llvm::Module & m )
     {
-        for ( auto fn : get_potentially_called_functions( call ) )
-            functor( fn );
-    }
-
-    template< typename Fn >
-    void run_on_abstract_calls( Fn functor, llvm::Module & m )
-    {
-        for ( auto * val : meta::enumerate( m ) ) {
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
-                auto fns = get_potentially_called_functions( call );
-
-                bool process = query::query( fns ).any( [] ( auto fn ) {
-                    return fn != nullptr && !fn->isIntrinsic() && !fn->empty();
-                } );
-
-                if ( process )
-                    functor( call );
-            }
-        }
+        return calls_with_tag< meta::tag::abstract >( m );
     }
 
     using Types = std::vector< llvm::Type * >;
