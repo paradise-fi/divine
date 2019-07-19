@@ -79,16 +79,29 @@ namespace lart::abstract
 
         OperationBuilder builder;
         for ( auto * inst : abstract ) {
+            // skip abstract constructors
             if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
                 if ( call->getCalledFunction()->getMetadata( meta::tag::abstract ) )
                     continue;
             }
 
-            assert( !is_faultable( inst ) );
-            // TODO replace faultable operations by lifter handler
-            // TODO annotate it as abstract return function to unstash its value
+            // return instructions will be stashed in stashing pass
+            if ( llvm::isa< llvm::ReturnInst >( inst ) )
+                continue;
 
-            builder.construct( inst );
+            // TODO fix call lifting
+            if ( llvm::isa< llvm::CallInst >( inst ) )
+                continue;
+
+            if ( is_faultable( inst ) ) {
+                // replace faultable operations by lifter handler
+                auto op = builder.construct( inst );
+                // annotate lifter as abstract return function to unstash its value
+                meta::abstract::inherit( op.inst, inst );
+                unstash( llvm::cast< llvm::CallInst >( op.inst ) );
+            } else {
+                builder.construct( inst );
+            }
         }
 
         FreezePass().run( m );
