@@ -3,394 +3,530 @@
 
 #include <lart/support/util.h>
 
-namespace lart::abstract
-{
-    template< Taint::Type T >
-    struct TaintBuilder
+namespace lart::abstract {
+
+    template< Operation::Type T >
+    struct NameBuilder
     {
-        TaintBuilder( const Operation & op ) : op( op ) {}
+        using Type = Operation::Type;
 
-        Taint construct()
+        inline static const std::string c_prefix = "lart.concrete";
+        inline static const std::string a_prefix = "lart.abstract";
+
+        static auto concrete_name( llvm::Value *val ) noexcept -> std::string
         {
-            auto def = default_value();
-            auto op = operation();
-
-            ASSERT( op->getReturnType() == def->getType() );
-
-            std::vector< llvm::Value * > args;
-            args.push_back( op );
-            args.push_back( def );
-
-            auto vals = arguments();
-            args.insert( args.end(), vals.begin(), vals.end() );
-
-            auto rty = default_value()->getType();
-            auto tys = types_of( args );
-            auto fty = llvm::FunctionType::get( rty, tys, false );
-            auto tname = name( inst()->getOperand( 0 ) );
-            auto name = std::string( Taint::prefix ) + "." + tname;
-
-            auto m = module();
-            auto function = util::get_or_insert_function( m, fty, name );
-
-            // set operation index
-            auto tag = meta::tag::operation::index;
-            if ( meta::has_dual( inst() ) ) {
-                if ( auto i = llvm::dyn_cast< llvm::Instruction >( dual( inst() ) ) )
-                    op->setMetadata( tag, i->getMetadata( tag ) );
-            } else {
-                if ( auto i = llvm::dyn_cast< llvm::Instruction >( inst() ) )
-                    op->setMetadata( tag, i->getMetadata( tag ) );
-            }
-
-            llvm::IRBuilder<> irb( inst() );
-
-            auto taint = irb.CreateCall( function, args );
-            return Taint{ taint, T };
+            return c_prefix + infix( val ) + "." + suffix( val );
         }
 
-        llvm::Type * return_type() const
+        static auto abstract_name( llvm::Value *val ) noexcept -> std::string
         {
-            if constexpr ( Taint::freeze( T ) || Taint::store( T ) || Taint::mem( T ) )
-            {
-                return default_value()->getType();
-            }
-
-            return inst()->getType();
+            return a_prefix + infix( val ) + "." + suffix( val );
         }
 
-        llvm::Function * operation() const
+        static auto result() noexcept -> std::string
         {
-            auto m = module();
-            auto i1 = llvm::Type::getInt1Ty( m->getContext() );
-
-            std::vector< llvm::Type * > args;
-            for ( auto * arg : arguments() ) {
-                args.push_back( i1 );
-                args.push_back( arg->getType() );
-            }
-
-            auto fty = llvm::FunctionType::get( return_type(), args, false );
-            auto tname = name( inst()->getOperand( 0 ) );
-
-            return util::get_or_insert_function( m, fty, tname );
+            return Operation::TypeTable[ T ];
         }
 
-        llvm::Value * dual( llvm::Value * val ) const
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept
+            -> typename std::enable_if_t< Taint::call( T_ ), std::string >
         {
-            if ( meta::has_dual( val ) )
-                return meta::get_dual( val );
-            // TODO deal with frozen argument
-            return default_value();
+            auto fn = llvm::cast< llvm::CallInst >( val )->getCalledFunction();
+            return fn->getName().str();
         }
 
-        std::vector< llvm::Value * > arguments() const
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept
+            -> typename std::enable_if_t< Taint::cmp( T_ ), std::string >
         {
-            if constexpr ( Taint::gep( T ) ) {
-                auto gep = llvm::cast< llvm::GetElementPtrInst >( inst()->getOperand( 0 ) );
-
-                auto concrete = gep->getPointerOperand();
-
-                if ( auto cast = llvm::dyn_cast< llvm::BitCastInst >( concrete ) )
-                    concrete = cast->getOperand( 0 );
-
-                auto abstract = dual( concrete );
-
-                /* FIXME ASSERT( gep->getNumIndices() == 1 ); */
-                llvm::Value * idx = gep->idx_begin()->get();
-
-                if ( !idx->getType()->isIntegerTy( 64 ) ) {
-                    auto irb = llvm::IRBuilder<>( gep );
-                    idx = irb.CreateSExt( idx, llvm::Type::getInt64Ty( gep->getContext() ) );
-                }
-
-                /* FIXME get rid of cast */
-                if ( !concrete->getType()->getPointerElementType()->isIntegerTy( 8 ) ) {
-                    auto irb = llvm::IRBuilder<>( gep );
-                    concrete = irb.CreateBitCast( concrete, llvm::Type::getInt8PtrTy( gep->getContext() ) );
-                }
-
-                return { concrete, abstract, idx };
-            }
-
-            if constexpr ( Taint::assume( T ) ) {
-                auto tobool = llvm::cast< llvm::Instruction >( inst()->getOperand( 0 ) );
-
-                auto branch = query::query( tobool->users() )
-                    .map( query::llvmdyncast< llvm::BranchInst > )
-                    .filter( query::notnull )
-                    .freeze()[ 0 ];
-
-                auto & ctx = inst()->getContext();
-
-                llvm::Value * res = nullptr;
-                if ( branch->getSuccessor( 0 ) == inst()->getParent() )
-                    res = llvm::ConstantInt::getTrue( ctx );
-                else
-                    res = llvm::ConstantInt::getFalse( ctx );
-
-                auto concrete = tobool->getOperand( 1 );
-                ASSERT( meta::has_dual( concrete ) );
-                auto abstract = dual( concrete );
-                auto constraint = tobool->getOperand( 2 );
-                return { concrete, abstract, constraint, res };
-            }
-
-            if constexpr ( Taint::store( T ) ) {
-                auto s = llvm::cast< llvm::StoreInst >( dual( inst() ) );
-                auto val = s->getValueOperand();
-                auto concrete = s->getPointerOperand();
-                auto abstract = dual( concrete );
-                return { val, concrete, abstract };
-            }
-
-            if constexpr ( Taint::load( T ) ) {
-                auto l = llvm::cast< llvm::LoadInst >( dual( inst() ) );
-                auto concrete = l->getPointerOperand();
-                auto abstract = dual( concrete );
-                return { concrete, abstract };
-            }
-
-            if constexpr ( Taint::thaw( T ) ) {
-                auto l = llvm::cast< llvm::LoadInst >( dual( inst() ) );
-                return { l, inst()->getOperand( 0 ) };
-            }
-
-            if constexpr ( Taint::freeze( T ) ) {
-                auto s = llvm::cast< llvm::StoreInst >( dual( inst() ) );
-                auto v = s->getValueOperand();
-                auto d = dual( v );
-                return { v, d, s->getPointerOperand() };
-            }
-
-            /*if constexpr ( Taint::unstash( T ) ) {
-                return { inst()->getOperand( 0 ) };
-            }*/
-
-            if constexpr ( Taint::toBool( T ) || Taint::stash( T ) || T == Taint::Type::Union ) {
-                auto op = inst()->getOperand( 0 );
-                return { op, dual( op ) };
-            }
-
-            if constexpr ( Taint::cast( T ) ) {
-                auto ci = llvm::cast< llvm::CastInst >( dual( inst() ) );
-                auto src = ci->getOperand( 0 );
-                return { src, dual( src ) };
-            }
-
-            if constexpr ( Taint::binary( T ) ) {
-                auto i = llvm::cast< llvm::Instruction >( dual( inst() ) );
-                auto a = i->getOperand( 0 );
-                auto da = dual( a );
-                auto b = i->getOperand( 1 );
-                auto db = dual( b );
-                return { a, da, b, db };
-            }
-
-            if constexpr ( Taint::call( T ) || Taint::mem( T ) ) {
-                auto call = llvm::cast< llvm::CallInst >( dual( inst() ) );
-
-                std::vector< llvm::Value * > args;
-                for ( const auto & use : call->arg_operands() ) {
-                    auto arg = use.get();
-                    args.push_back( arg );
-                    if ( meta::has_dual( arg ) ) {
-                        args.push_back( dual( arg ) );
-                    }
-                }
-
-                return args;
-            }
-
-            UNREACHABLE( "Not implemented" );
+            auto cmp = llvm::cast< llvm::CmpInst >( val );
+            return result() + "." + llvm_name( cmp->getOperand( 0 )->getType() );
         }
 
-        llvm::Value * default_value() const
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept
+            -> typename std::enable_if_t< Taint::thaw( T_ ), std::string >
         {
-            if constexpr ( T == Taint::Type::Union ) {
-                return inst()->getOperand( 0 );
-            }
-
-            if constexpr ( Taint::toBool( T ) ) {
-                return dual( inst()->getOperand( 0 ) );
-            }
-
-            if constexpr ( Taint::load( T ) ) {
-                return dual( inst() );
-            }
-
-            if constexpr ( Taint::lower( T ) ) {
-                UNREACHABLE( "Not implemented" );
-            }
-
-            if constexpr ( Taint::call( T ) ) {
-                UNREACHABLE( "Not implemented" );
-                /*auto fn = domain_function();
-                auto meta = DomainMetadata::get( module(), domain() );
-                if ( fn->getReturnType() == meta.base_type() )
-                    return meta.default_value();
-                return dual( inst() );*/
-            }
-
-            auto ty = llvm::Type::getInt8PtrTy( module()->getContext() );
-            return llvm::ConstantPointerNull::get( ty );
+            return result() + "." + llvm_name( val->getType()->getPointerElementType() );
         }
 
-        std::string suffix( llvm::Value * val ) const
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept
+            -> typename std::enable_if_t< Taint::arith( T_ ), std::string >
         {
-            std::string res = TaintTable[ T ];
-
-            if constexpr ( Taint::call( T ) ) {
-                auto fn = llvm::cast< llvm::CallInst >( val )->getCalledFunction();
-                return fn->getName().str();
-            }
-
-            if constexpr ( Taint::cmp( T ) ) {
-                auto cmp = llvm::cast< llvm::CmpInst >( val );
-                return res + "." + llvm_name( cmp->getOperand( 0 )->getType() );
-            }
-
-            if constexpr ( Taint::thaw( T ) ) {
-                return res + "." + llvm_name( val->getType()->getPointerElementType() );
-            }
-
-            if constexpr ( Taint::binary( T ) ) {
-                std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
-                return op + "." + llvm_name( val->getType() );
-            }
-
-            if constexpr ( Taint::cast( T ) ) {
-                auto ci = llvm::cast< llvm::CastInst >( val );
-                std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
-                auto src = llvm_name( ci->getSrcTy() );
-                auto dest = llvm_name( ci->getDestTy() );
-                if ( llvm::isa< llvm::PtrToIntInst >( val ) )
-                    return op + "." + dest;
-                if ( llvm::isa< llvm::IntToPtrInst >( val ) )
-                    return op + "." + src;
-                return op + "." + src + "." + dest;
-            }
-
-            if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
-                return res + "." + aggr->getName().str();
-            } else {
-                return res + "." + llvm_name( val->getType() );
-            }
+            std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
+            return op + "." + llvm_name( val->getType() );
         }
 
-        std::string infix( llvm::Value * val ) const
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept
+            -> typename std::enable_if_t< Taint::cast( T_ ), std::string >
+        {
+            auto ci = llvm::cast< llvm::CastInst >( val );
+            std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
+            auto src = llvm_name( ci->getSrcTy() );
+            auto dest = llvm_name( ci->getDestTy() );
+            if ( llvm::isa< llvm::PtrToIntInst >( val ) )
+                return op + "." + dest;
+            if ( llvm::isa< llvm::IntToPtrInst >( val ) )
+                return op + "." + src;
+            return op + "." + src + "." + dest;
+        }
+
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept
+            -> typename std::enable_if_t<
+                Taint::toBool( T_ ) ||
+                Taint::assume( T_ ) ||
+                Taint::store( T_ )  ||
+                Taint::load( T_ )   ||
+                Taint::freeze( T_ ) ||
+                Taint::gep( T_ )
+            ,std::string >
+        {
+            return result() + "." + llvm_name( val->getType() );
+        }
+
+        static auto infix( llvm::Value * val ) -> std::string
         {
             if constexpr ( Taint::cmp( T ) ) {
                 auto cmp = llvm::cast< llvm::CmpInst >( val );
                 return "." + PredicateTable.at( cmp->getPredicate() );
             }
+
             return "";
         }
-
-        std::string name( llvm::Value *val ) const
-        {
-            if ( T == Taint::Type::Union ) {
-                return "lart.abstract.union." + llvm_name( val->getType() );
-            }
-
-            if ( auto i = llvm::dyn_cast< llvm::Instruction >( val ) ) {
-                if ( Operation::is( i ) )
-                    return name( i->getOperand( 0 ) );
-                if ( Taint::is( i ) )
-                    if ( meta::has_dual( i ) )
-                        return name( meta::get_dual( i ) );
-            }
-
-            return "lart.abstract" + infix( val ) + "." + suffix( val );
-        }
-
-
-        llvm::Instruction * inst() const { return op.inst; }
-
-        llvm::Module * module() const { return inst()->getModule(); }
-    private:
-        const Operation & op;
     };
 
-    Taint Tainting::dispach( const Operation & op ) const
+
+    template< Operation::Type T >
+    struct TaintInst : LLVMUtil< TaintInst< T > >
     {
-        using Type = Taint::Type;
+        using Self = TaintInst< T >;
+        using Util = LLVMUtil< Self >;
+        using Type = Operation::Type;
+
+        using Util::i1Ty;
+        using Util::i64Ty;
+        using Util::i8PTy;
+
+        using Util::i1;
+        using Util::i64;
+
+        using Util::ctx;
+        using Util::argument;
+        using Util::get_function;
+
+        TaintInst( Matched & matched, llvm::Module & m )
+            : _matched( matched ), module( &m )
+        {}
+
+        template< typename Default, typename Lifter >
+        bool check_return_type( Default d, Lifter l ) const
+        {
+            auto expected = [&] () -> llvm::Type * {
+                if ( auto fn = llvm::dyn_cast< llvm::Function >( d ) )
+                    return fn->getReturnType();
+                return d->getType();
+            } ();
+
+            return l->getReturnType() == expected;
+        }
+
+        llvm::Value * null() const noexcept
+        {
+            return Util::null_ptr( i8PTy() );
+        }
+
+        llvm::Value * default_value( const Operation & op )
+        {
+            auto ph = op.inst;
+
+            if constexpr ( Operation::lower( T ) )
+                UNREACHABLE( "Not implemented" );
+
+            if constexpr ( Operation::toBool( T ) )
+                return concrete( ph->getOperand( 0 ) );
+
+            if constexpr ( Operation::assume( T ) )
+                return null();
+
+            if ( faultable_operation( op ) ) {
+                // call concrete operation instead
+                return concrete_function( ph );
+            }
+
+            return null();
+        }
+
+        llvm::Function * operation( const Operation &op )
+        {
+            Types args;
+            for ( auto * arg : arguments( op.inst ) ) {
+                args.push_back( i1Ty() );
+                args.push_back( arg->getType() );
+            }
+
+            auto name = abstract_name( op );
+            return get_function( name, return_type( op.inst ), args );
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::gep( T_ ), Values >
+        {
+            auto gep = llvm::cast< llvm::GetElementPtrInst >( i->getOperand( 0 ) );
+            auto con = gep->getPointerOperand();
+
+            if ( auto cast = llvm::dyn_cast< llvm::BitCastInst >( con ) )
+                con = cast->getOperand( 0 );
+
+            auto abs = abstract( con );
+
+            // FIXME ASSERT( gep->getNumIndices() == 1 );
+            llvm::Value * idx = gep->idx_begin()->get();
+
+            if ( !idx->getType()->isIntegerTy( 64 ) ) {
+                auto irb = llvm::IRBuilder<>( gep );
+                idx = irb.CreateSExt( idx, i64Ty() );
+            }
+
+            // FIXME get rid of cast
+            if ( !con->getType()->getPointerElementType()->isIntegerTy( 8 ) ) {
+                auto irb = llvm::IRBuilder<>( gep );
+                con = irb.CreateBitCast( con, i8PTy() );
+            }
+
+            return { con, abs, idx };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::assume( T_ ), Values >
+        {
+            auto tobool = llvm::cast< llvm::Instruction >( i->getOperand( 0 ) );
+
+            auto branch = query::query( tobool->users() )
+                .map( query::llvmdyncast< llvm::BranchInst > )
+                .filter( query::notnull )
+                .freeze()[ 0 ];
+
+            auto res = i1( branch->getSuccessor( 0 ) == i->getParent() );
+
+            auto con = tobool->getOperand( 1 );
+            auto abs = abstract( con );
+            auto constraint = tobool->getOperand( 2 );
+            auto cabs = abstract( constraint );
+            return { con, abs, con, cabs, res };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::store( T_ ), Values >
+        {
+            auto s = llvm::cast< llvm::StoreInst >( concrete( i ) );
+            auto val = s->getValueOperand();
+            auto con = s->getPointerOperand();
+            auto abs = abstract( con );
+            return { val, con, abs };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::load( T_ ), Values >
+        {
+            auto l = llvm::cast< llvm::LoadInst >( concrete( i ) );
+            auto con = l->getPointerOperand();
+            auto abs = abstract( con );
+            return { con, abs };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::thaw( T_ ), Values >
+        {
+            auto l = llvm::cast< llvm::LoadInst >( concrete( i ) );
+            return { l, i->getOperand( 0 ) };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::freeze( T_ ), Values >
+        {
+            auto s = llvm::cast< llvm::StoreInst >( concrete( i ) );
+            auto con = s->getValueOperand();
+            auto abs = abstract( con );
+            return { con, abs, s->getPointerOperand() };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::toBool( T_ ), Values >
+        {
+            auto con = concrete( i->getOperand( 0 ) );
+            return { con, abstract( con ) };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::cast( T_ ), Values >
+        {
+            auto ci = llvm::cast< llvm::CastInst >( concrete( i ) );
+            auto src = ci->getOperand( 0 );
+            return { src, abstract( src ) };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::binary( T_ ), Values >
+        {
+            auto con = concrete( i );
+            auto c = llvm::cast< llvm::Instruction >( con );
+            auto a = c->getOperand( 0 );
+            auto da = abstract( a );
+            auto b = c->getOperand( 1 );
+            auto db = abstract( b );
+            return { a, da, b, db };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i )
+            -> typename std::enable_if_t< Taint::call( T_ ), Values >
+        {
+            auto call = llvm::cast< llvm::CallInst >( i->getOperand( 0 ) );
+
+            Values args;
+            for ( const auto & use : call->arg_operands() ) {
+                auto arg = use.get();
+                args.push_back( arg );
+                args.push_back( abstract( arg ) );
+            }
+
+            return args;
+        }
+
+        llvm::Function * concrete_function( llvm::Instruction * op )
+        {
+            auto args = arguments( op );
+            auto name = concrete_name( op );
+            auto fn = get_function( name, op->getType(), types_of( args ) );
+
+            // call concrete instruction
+            if ( fn->empty() ) {
+                llvm::IRBuilder<> irb( llvm::BasicBlock::Create( ctx(), "entry", fn ) );
+
+                llvm::ValueToValueMapTy vmap;
+
+                auto *clone = op->getPrevNode()->clone(); // clone concrete operation
+                clone->dropUnknownNonDebugMetadata();
+                irb.Insert( clone );
+
+                vmap[ op ] = clone;
+                llvm::RemapInstruction( clone, vmap,
+                    llvm::RF_NoModuleLevelChanges | llvm::RF_IgnoreMissingLocals );
+
+                irb.CreateRet( clone );
+
+                for ( size_t i = 0; i < fn->arg_size(); i += 2 ) {
+                    // pass every second argument to concrete call
+                    clone->setOperand( i / 2, argument( fn, i ) );
+                }
+            }
+
+            return fn;
+        }
+
+        bool faultable_operation( const Operation & op ) const
+        {
+            if ( auto c = concrete( op.inst ) )
+                if ( auto i = llvm::dyn_cast< llvm::Instruction >( c ) )
+                    return is_faultable( i );
+            return false;
+        }
+
+        auto abstract_name( const Operation &op ) const noexcept
+        {
+            if constexpr ( Operation::assume( T ) )
+                return abstract_name( op.inst );
+            else if constexpr ( Operation::call( T ) )
+                return abstract_name( op.inst->getOperand( 0 ) ); // concrete call
+            else
+                return abstract_name( concrete( op.inst ) );
+        }
+
+        auto abstract_name( llvm::Value * val ) const noexcept
+        {
+            return NameBuilder< T >::abstract_name( val );
+        }
+
+        // name of default concrete operation
+        auto concrete_name( llvm::Value * val ) const noexcept
+        {
+            return NameBuilder< T >::concrete_name( concrete( val ) );
+        }
+
+        Taint materialize( const Operation & op )
+        {
+            auto def = default_value( op );
+            auto lifter = operation( op );
+
+            ASSERT( check_return_type( def, lifter ) );
+
+            auto placeholder = op.inst;
+
+            Values args{ lifter, def };
+
+            auto vals = arguments( placeholder );
+            args.insert( args.end(), vals.begin(), vals.end() );
+
+            auto rty = return_type( placeholder );
+            auto tys = types_of( args );
+
+            auto name = Taint::prefix + "." + abstract_name( op );
+
+            auto fn = get_function( name, rty, tys );
+
+            auto call = llvm::IRBuilder<>( placeholder ).CreateCall( fn, args );
+            auto mat = Taint( call, T, true );
+
+            inherit_index( mat, op );
+            rematch( mat, op );
+
+            return mat;
+        }
+
+        template< typename Lifter, typename Placeholder >
+        void rematch( Lifter lifter, Placeholder ph )
+        {
+            if constexpr ( Taint::assume( T ) )
+                return;
+
+            auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
+            auto lif = lifter.inst;
+
+            if ( is_faultable( con ) ) {
+                _matched.concrete[ abstract( con ) ] = lif;
+                _matched.abstract[ lif ] = abstract( con );
+                _matched.abstract.erase( con );
+                con->replaceAllUsesWith( lif );
+                con->eraseFromParent();
+            } else {
+                _matched.match( T, lif, con );
+            }
+
+            ph.inst->replaceAllUsesWith( lif );
+
+        }
+
+        template< typename Lifter, typename Placeholder >
+        void inherit_index( Lifter lifter, Placeholder ph )
+        {
+            if constexpr ( Taint::assume( T ) || Taint::toBool( T ) )
+                return;
+
+            // set operation index
+            auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
+
+            auto tag = meta::tag::operation::index;
+            lifter.inst->setMetadata( tag, con->getMetadata( tag ) );
+
+            lifter.function()->setMetadata( tag, con->getMetadata( tag ) );
+        }
+
+        auto concrete( llvm::Value * val )
+        {
+            return _matched.concrete.at( val );
+        }
+
+        auto concrete( llvm::Value * val ) const
+        {
+            return _matched.concrete.at( val );
+        }
+
+        auto abstract( llvm::Value * val ) const -> llvm::Value *
+        {
+            if ( _matched.abstract.count( val ) )
+                return  _matched.abstract.at( val );
+            return null();
+        }
+
+        auto return_type( llvm::Instruction * inst ) const
+        {
+            if constexpr ( Operation::freeze( T ) || Operation::store( T ) || Operation::mem( T ) )
+            {
+                UNREACHABLE( " not implemented" );
+            }
+
+            return inst->getType();
+        }
+
+        Matched & _matched;
+        llvm::Module * module;
+    };
+
+
+    Taint Tainting::dispach( const Operation &op )
+    {
+        using Type = Operation::Type;
+
+        #define DISPATCH( type ) \
+            case Type::type: \
+                return TaintInst< Type::type >( matched, *m ).materialize( op );
+
+        auto m = op.inst->getModule();
 
         switch ( op.type )
         {
-            case Type::GEP:
-                return TaintBuilder< Type::GEP >( op ).construct();
-            case Type::Thaw:
-                return TaintBuilder< Type::Thaw >( op ).construct();
-            case Type::Freeze:
-                return TaintBuilder< Type::Freeze >( op ).construct();
-            case Type::Stash:
-                return TaintBuilder< Type::Stash >( op ).construct();
-            case Type::Unstash:
-                return TaintBuilder< Type::Unstash >( op ).construct();
-            case Type::ToBool:
-                return TaintBuilder< Type::ToBool >( op ).construct();
-            case Type::Assume:
-                return TaintBuilder< Type::Assume >( op ).construct();
-            case Type::Store:
-                return TaintBuilder< Type::Store >( op ).construct();
-            case Type::Load:
-                return TaintBuilder< Type::Load >( op ).construct();
-            case Type::Cmp:
-                return TaintBuilder< Type::Cmp >( op ).construct();
-            case Type::Cast:
-                return TaintBuilder< Type::Cast >( op ).construct();
-            case Type::Binary:
-                return TaintBuilder< Type::Binary >( op ).construct();
-            case Type::Lift:
-                return TaintBuilder< Type::Lift >( op ).construct();
-            case Type::Lower:
-                return TaintBuilder< Type::Lower >( op ).construct();
-            case Type::Call:
-                return TaintBuilder< Type::Call >( op ).construct();
-            case Type::Memcpy:
-                return TaintBuilder< Type::Memcpy >( op ).construct();
-            case Type::Memmove:
-                return TaintBuilder< Type::Memmove >( op ).construct();
-            case Type::Memset:
-                return TaintBuilder< Type::Memset >( op ).construct();
-            case Type::Union:
-                return TaintBuilder< Type::Union >( op ).construct();
+            DISPATCH( GEP )
+            DISPATCH( Thaw )
+            DISPATCH( Freeze )
+            DISPATCH( ToBool )
+            DISPATCH( Assume )
+            DISPATCH( Store )
+            DISPATCH( Load )
+            DISPATCH( Cmp )
+            DISPATCH( Cast )
+            DISPATCH( Binary )
+            DISPATCH( BinaryFaultable )
+            // DISPATCH( Lift )
+            // DISPATCH( Lower )
+            DISPATCH( Call )
+            // DISPATCH( Memcpy )
+            // DISPATCH( Memmove )
+            // DISPATCH( Memset )
             default:
                 UNREACHABLE( "Unsupported taint type" );
         }
-
-    };
+        UNREACHABLE( "not implemented" );
+    }
 
     void Tainting::run( llvm::Module & m )
     {
+        matched.init( m );
+
         auto ops = operations( m );
 
+        // process assumes as last
         std::partition( ops.begin(), ops.end(), [] ( const auto & op ) {
             return op.type != Operation::Type::Assume;
         });
 
+        for ( const auto & op : ops )
+            dispach( op );
+
         for ( const auto & op : ops ) {
-            auto taint = dispach( op );
-
-            if ( meta::has_dual( op.inst ) ) {
-                auto concrete = meta::get_dual( op.inst );
-                meta::make_duals( concrete, taint.inst );
-            }
-
-            meta::abstract::inherit( taint.inst, op.inst );
-            if ( !op.inst->user_empty() ) {
-                op.inst->replaceAllUsesWith( taint.inst );
-            }
-            op.inst->eraseFromParent();
+            auto i = op.inst;
+            i->replaceAllUsesWith( llvm::UndefValue::get( i->getType() ) );
+            i->eraseFromParent();
         }
 
-        auto remove = query::query( m )
+        auto re = query::query( m )
             .map( query::refToPtr )
             .filter( meta::function::operation )
             .freeze();
 
-        std::for_each( remove.begin(), remove.end(), [] ( auto * fn ) { fn->eraseFromParent(); } );
+        std::for_each( re.begin(), re.end(), [] ( auto * fn ) { fn->eraseFromParent(); } );
     }
 
 } // namespace lart::abstract
