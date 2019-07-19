@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/synthesize.h>
 
+#include <lart/abstract/stash.h>
+
 namespace
 {
     llvm::BasicBlock * basic_block( llvm::Function * fn, std::string name )
@@ -29,7 +31,7 @@ namespace
 
 namespace lart::abstract
 {
-    template< Taint::Type T >
+    template< Operation::Type T >
     struct Lifter
     {
         static constexpr const char * vtable = "__lart_domains_vtable";
@@ -73,8 +75,15 @@ namespace lart::abstract
         template< typename IRB >
         auto get_function_from_domain( IRB &irb ) const
         {
-            auto op = llvm_index( function() );
-            return get_function_from_domain( irb, op, _domain );
+            auto index = [&] {
+                if constexpr ( Taint::toBool( T ) )
+                    return llvm_index( module()->getFunction( "lart.abstract.to_tristate" ) );
+                else if constexpr ( Taint::assume( T ) )
+                    return llvm_index( module()->getFunction( "lart.abstract.assume" ) );
+                else
+                    return llvm_index( function() );
+            } ();
+            return get_function_from_domain( irb, index, _domain );
         }
 
         void construct()
@@ -153,7 +162,7 @@ namespace lart::abstract
                 vals.push_back( merge( val2 ) );
             }
 
-            /*if constexpr ( T == Taint::Type::Union ) {
+            /*if constexpr ( T == Operation::Type::Union ) {
                 auto paired = TaintArgument{ function()->arg_begin() };
                 auto val = paired.abstract.value;
 
@@ -174,7 +183,8 @@ namespace lart::abstract
 
             if constexpr ( Taint::toBool( T ) )
             {
-                auto val = args[ 0 ].value;
+                auto arg = TaintArgument{ function()->arg_begin() };
+                auto val = arg.abstract.value;
                 auto lower = function()->getParent()->getFunction( "__lower_tristate" );
 
                 _domain = domain_index( val, irb );
@@ -187,7 +197,6 @@ namespace lart::abstract
                 auto tristate = irb.CreateCall( to_tristate, { val } );
                 auto _bool = irb.CreateCall( lower, { tristate } );
                 irb.CreateRet( _bool );
-
                 return;
             }
 
@@ -195,8 +204,8 @@ namespace lart::abstract
             {
                 auto constrained = TaintArgument{ function()->arg_begin() };
                 vals.push_back( constrained.abstract.value ); // constrained abstract value
-                vals.push_back( args[ 2 ].value ); // constraint condition
-                vals.push_back( args[ 3 ].value ); // assumed constraint value
+                vals.push_back( args[ 3 ].value ); // constraint condition
+                vals.push_back( args[ 4 ].value ); // assumed constraint value
 
                 _domain = domain_index( constrained.abstract.value, irb );
             }
@@ -239,7 +248,7 @@ namespace lart::abstract
                 auto paired = paired_arguments().front();
                 vals.push_back( paired.abstract.value );
 
-                auto cast = llvm::cast< llvm::CastInst >( taint.dual() );
+                auto cast = llvm::cast< llvm::CastInst >( taint.inst->getPrevNode() );
                 auto bw = cast->getDestTy()->getPrimitiveSizeInBits();
                 vals.push_back( i8cv( bw ) );
 
@@ -280,15 +289,23 @@ namespace lart::abstract
             }
 
             auto ptr = get_function_from_domain( irb );
-            auto fty = llvm::FunctionType::get( function()->getReturnType(), types_of( vals ), false );
+            auto rty = Taint::faultable( T ) ? i8ptr() : function()->getReturnType();
+            auto fty = llvm::FunctionType::get( rty, types_of( vals ), false );
             auto op = irb.CreateBitCast( ptr, fty->getPointerTo() );
-
             auto call = irb.CreateCall( op, vals );
 
-            if constexpr ( Taint::freeze( T ) || Taint::store( T ) || Taint::stash( T ) )
+            if constexpr ( Taint::freeze( T ) || Taint::store( T ) ) {
                 irb.CreateRet( llvm::UndefValue::get( function()->getReturnType() ) );
-            else
+            } else if constexpr ( Taint::faultable( T ) ) {
+                auto crty = function()->getReturnType();
+                auto t = module()->getNamedGlobal( "__tainted" );
+                auto load = irb.CreateLoad( t );
+                auto trunc = irb.CreateTruncOrBitCast( load, crty );
+                auto ret = irb.CreateRet( trunc );
+                stash( ret, call );
+            } else {
                 irb.CreateRet( call );
+            }
         }
 
     private:
@@ -387,48 +404,30 @@ namespace lart::abstract
 
         using Type = Taint::Type;
 
+        #define DISPATCH( type ) \
+            case Type::type: \
+                Lifter< Type::type >( taint ).construct(); break;
+
         switch ( taint.type )
         {
-            case Type::PHI:
-                Lifter< Type::PHI >( taint ).construct(); break;
-            case Type::GEP:
-                Lifter< Type::GEP >( taint ).construct(); break;
-            case Type::Thaw:
-                Lifter< Type::Thaw >( taint ).construct(); break;
-            case Type::Freeze:
-                Lifter< Type::Freeze >( taint ).construct(); break;
-            case Type::Stash:
-                Lifter< Type::Stash >( taint ).construct(); break;
-            case Type::Unstash:
-                Lifter< Type::Unstash >( taint ).construct(); break;
-            case Type::ToBool:
-                Lifter< Type::ToBool >( taint ).construct(); break;
-            case Type::Assume:
-                Lifter< Type::Assume >( taint ).construct(); break;
-            case Type::Store:
-                Lifter< Type::Store >( taint ).construct(); break;
-            case Type::Load:
-                Lifter< Type::Load >( taint ).construct(); break;
-            case Type::Cmp:
-                Lifter< Type::Cmp >( taint ).construct(); break;
-            case Type::Cast:
-                Lifter< Type::Cast >( taint ).construct(); break;
-            case Type::Binary:
-                Lifter< Type::Binary >( taint ).construct(); break;
-            case Type::Lift:
-                Lifter< Type::Lift >( taint ).construct(); break;
-            case Type::Lower:
-                Lifter< Type::Lower >( taint ).construct(); break;
-            case Type::Call:
-                Lifter< Type::Call >( taint ).construct(); break;
-            case Type::Memcpy:
-                Lifter< Type::Memcpy >( taint ).construct(); break;
-            case Type::Memmove:
-                Lifter< Type::Memmove >( taint ).construct(); break;
-            case Type::Memset:
-                Lifter< Type::Memset >( taint ).construct(); break;
-            case Type::Union:
-                Lifter< Type::Union >( taint ).construct(); break;
+            DISPATCH( PHI )
+            DISPATCH( GEP )
+            DISPATCH( Thaw )
+            DISPATCH( Freeze )
+            DISPATCH( ToBool )
+            DISPATCH( Assume )
+            DISPATCH( Store )
+            DISPATCH( Load )
+            DISPATCH( Cmp )
+            DISPATCH( Cast )
+            DISPATCH( Binary )
+            DISPATCH( BinaryFaultable )
+            DISPATCH( Lift )
+            DISPATCH( Lower )
+            DISPATCH( Call )
+            DISPATCH( Memcpy )
+            DISPATCH( Memmove )
+            DISPATCH( Memset )
         }
     }
 
