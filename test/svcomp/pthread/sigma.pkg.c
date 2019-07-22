@@ -44,6 +44,8 @@ int main()
 		sum += array[tid];
 	}
 
+        free(t);
+        free(array);
 	assert(sum == SIGMA); /* ERROR */
 
 	return 0;
