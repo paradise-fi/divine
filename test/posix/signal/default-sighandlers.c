@@ -1,4 +1,9 @@
 /* TAGS: fork c */
+/* VERIFY_OPTS: --leakcheck none */
+
+/* FIXME It is pretty hard to avoid leaks when a process is killed and DiOS
+ * currently fails at it. Hence the --leakcheck none above. */
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
