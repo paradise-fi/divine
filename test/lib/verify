@@ -52,7 +52,7 @@ if test -z "$EXPORT"; then
         if test $solver = smtlib; then solver=$solver:z3; z3 --version > /dev/null || skip; fi
         if test $solver = vanilla; then solver=none; fi
         extra="$extra --solver $solver"
-    elif ! echo "$opts" | grep -q "leakcheck"; then
+    elif ! echo "$opts" | egrep -q "leakcheck|relaxed"; then
         # --symbolic currently leaks memory
         extra="$extra --leakcheck exit"
     fi
