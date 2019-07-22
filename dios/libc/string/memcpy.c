@@ -6,15 +6,45 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
 
 #ifndef REGTEST
 
-__attribute__((__annotate__("divine.link.always")))
-__attribute__((optnone)) /* do not replace the memmove call below with a (recursive) memcpy */
+__link_always __skipcfl
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n )
 {
     assert( s1 < s2 ? s1 + n <= s2 : s2 + n <= s1 );
-    return memmove( s1, (void *)s2, n );
+
+    char *dst = ( char * ) s1;
+    const char *src = ( const char * ) s2;
+
+    switch ( n )
+    {
+        case 1: *dst = *src; return s1;
+        case 2: *( uint16_t * ) dst = *( uint16_t * ) src; return s1;
+        case 4: *( uint32_t * ) dst = *( uint32_t * ) src; return s1;
+        case 8: *( uint64_t * ) dst = *( uint64_t * ) src; return s1;
+        default:
+        {
+            while ( ( uint64_t ) dst % 8 && ( uint64_t ) src % 8 && n )
+                *dst++ = *src++, n --;
+
+            uint64_t *src_l = ( uint64_t * ) src;
+            uint64_t *dst_l = ( uint64_t * ) dst;
+
+            while ( n >= 8 )
+            {
+                *dst_l++ = *src_l++;
+                n -= 8;
+            }
+
+            src = ( const char * ) src_l;
+            dst = ( char *) dst_l;
+            while ( n-- )
+                *dst++ = *src++;
+        }
+        return s1;
+    }
 }
 
 #endif
