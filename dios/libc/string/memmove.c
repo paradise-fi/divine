@@ -10,8 +10,7 @@
 
 #ifndef REGTEST
 
-__attribute__((__annotate__("lart.interrupt.skipcfl")))
-__attribute__((__annotate__("divine.link.always")))
+__link_always __skipcfl
 void * memmove( void * s1, const void * s2, size_t n )
 {
     char *dest = ( char * ) s1;
