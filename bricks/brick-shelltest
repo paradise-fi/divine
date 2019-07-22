@@ -1143,7 +1143,6 @@ struct Main
                 try { fs::rmtree( dir ); } catch (...) {};
                 fs::mkpath( dir.c_str() );
                 ::chdir( dir.c_str() ); /* eww */
-                std::cerr << "+ " << cmd << std::endl;
                 ::system( cmd.c_str() );
                 ::chdir( cwd );
                 Listing l = listdir( dir, true );
