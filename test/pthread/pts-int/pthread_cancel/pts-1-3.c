@@ -73,6 +73,8 @@ void *a_thread_func(void *dummy)
 		return (void*)PTS_UNRESOLVED;
 	}
 
+	pthread_mutex_unlock(&mutex);
+
 	/* Should get here if the cancel request was deffered. */
 	pthread_cleanup_pop(0);
 	cleanup_flag=1;
