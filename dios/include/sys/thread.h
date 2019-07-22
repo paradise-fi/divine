@@ -353,7 +353,7 @@ static inline void releaseAndKillThread( __dios_task tid )
 {
     auto &thread = getThread( tid );
     if ( thread.refcnt != 1 )
-        __dios_fault( _VM_Fault::_VM_F_Locking, "thread terminated while holding a lock" );
+        __dios_trace_t( "warning: thread terminated while holding a lock" );
     releaseThread( thread );
     __dios_kill( tid );
 }
