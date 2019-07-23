@@ -27,6 +27,7 @@ add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
   COMMAND env SRCDIR=${divine_SOURCE_DIR}
+              BINDIR=${divine_BINARY_DIR}
               sh ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
                  --testdir ${CMAKE_CURRENT_SOURCE_DIR}
                  --exclude-tags ${EXCLUDE_TAGS}
