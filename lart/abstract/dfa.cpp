@@ -135,11 +135,7 @@ namespace lart::abstract {
             auto ptr = store->getPointerOperand();
 
             if ( !_intervals.has( ptr ) ) {
-                ptr->dump();
-                val->dump();
-                ASSERT( LatticeValue::is_top( core( _intervals[ val ] ).value ) );
-                _intervals[ ptr ] = cover( _intervals[ val ] );
-                ASSERT( LatticeValue::is_top( core( _intervals[ ptr ] ).value ) );
+                _intervals[ ptr ] = _intervals[ val ].cover();
                 push( [=] { propagate( ptr ); } );
             } else if ( join( val, ptr ) ) {
                 push( [=] { propagate( ptr ); } );
@@ -153,14 +149,11 @@ namespace lart::abstract {
             auto ptr = load->getPointerOperand();
 
             if ( !_intervals.has( ptr ) ) {
-                _intervals[ ptr ] = cover( _intervals[ load ] );
+                _intervals[ ptr ] = _intervals[ load ].cover();
                 push( [=] { propagate( ptr ); } );
             }
             else if ( !_intervals.has( load ) ) {
-                ptr->dump();
-                ASSERT( LatticeValue::is_top( core( _intervals[ ptr ] ).value ) );
-                _intervals[ load ] = peel( _intervals[ ptr ] );
-                ASSERT( LatticeValue::is_top( core( _intervals[ load ] ).value ) );
+                _intervals[ load ] = _intervals[ ptr ].peel();
                 // propagation performed in ssa propagation
             }
             else if ( join( load, ptr ) ) {
@@ -179,19 +172,18 @@ namespace lart::abstract {
             for ( auto u : val->users() ) {
                 if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst >( u ) )
                     push( [=] { propagate( u ); } );
-                else if ( join( u, val ) )
-                    push( [=] { propagate( u ); } );
                 else if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
                     push( [=] { propagate_in( call ); } );
                 else if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
                     push( [=] { propagate_out( ret ); } );
+                else if ( join( u, val ) )
+                    push( [=] { propagate( u ); } );
             }
         }
     }
 
     void DataFlowAnalysis::propagate_in( llvm::CallInst * call ) noexcept
     {
-        call->dump();
         auto fn = call->getCalledFunction();
 
         for ( const auto & arg : fn->args() ) {
@@ -242,7 +234,7 @@ namespace lart::abstract {
         for ( auto store : stores ) {
             auto val = store->getValueOperand();
             if ( _intervals.has( val ) ) {
-                auto mval =_intervals[ val ];
+                auto& mval =_intervals[ val ];
                 if ( mval.is_core() )
                     add_meta( store, mval );
             }

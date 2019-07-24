@@ -39,16 +39,16 @@ namespace lart::abstract
     {
         auto m = util::get_module( val );
 
+        if constexpr ( T == Type::ToBool ) {
+            return llvm::Type::getInt1Ty( m->getContext() );
+        }
+
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ); inst )
             if ( !Operation::is( inst ) && is_faultable( inst ) )
                 return val->getType();
 
-        if constexpr ( T == Type::ToBool ) {
-            return llvm::Type::getInt1Ty( m->getContext() );
-        } else {
-            // TODO what about operations returning concrete value?
-            return llvm::Type::getInt8PtrTy( m->getContext() );
-        }
+        // TODO what about operations returning concrete value?
+        return llvm::Type::getInt8PtrTy( m->getContext() );
     }
 
     template< Operation::Type T >

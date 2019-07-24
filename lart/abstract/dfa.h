@@ -9,38 +9,10 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <deque>
 #include <memory>
+#include <brick-types>
 #include <lart/abstract/domain.h>
 
 namespace lart::abstract {
-
-
-template< typename Onion >
-auto cover( const Onion &onion ) noexcept -> Onion
-{
-    return { std::make_shared< Onion >( onion ) };
-}
-
-
-template< typename Onion >
-Onion peel( const Onion &onion ) noexcept
-{
-    using Ptr = typename Onion::OnionPtr;
-
-    ASSERT( onion.is_covered() );
-    return *std::get< Ptr >( onion._layer );
-}
-
-
-template< typename Onion >
-auto& core( const Onion &onion ) noexcept
-{
-    using Core = typename Onion::Core;
-
-    auto layer = onion;
-    while ( !layer.is_core() )
-        layer = peel( layer );
-    return std::get< Core >( layer._layer );
-}
 
 
 struct DataFlowAnalysis
@@ -61,53 +33,13 @@ struct DataFlowAnalysis
     }
 
 
-    template< typename CoreT >
-    struct Onion
-    {
-        using Core = CoreT;
-
-        using OnionPtr = std::shared_ptr< Onion< Core > >;
-        using Layer = std::variant< OnionPtr, Core >;
-
-        bool is_covered() const
-        {
-            return std::holds_alternative< OnionPtr >( _layer );
-        }
-
-        bool is_core() const
-        {
-            return std::holds_alternative< Core >( _layer );
-        }
-
-        void to_bottom()
-        {
-            ASSERT( is_core() );
-            std::get< Core >( _layer ).to_bottom();
-        }
-
-        void to_top()
-        {
-            ASSERT( is_core() );
-            std::get< Core >( _layer ).to_top();
-        }
-
-        bool join( const Onion< Core > &other )
-        {
-            // TODO peel to the same level
-            return core( *this ).join( core( other ) );
-        }
-
-        Layer _layer = Core{};
-    };
-
-
     struct LatticeValue
     {
 
         struct Top { };
         struct Bottom { };
 
-        using Value = std::variant< Top, Bottom >;
+        using Value = std::variant< Bottom, Top >;
 
         void to_bottom() noexcept { value = { Bottom{} }; }
         void to_top() noexcept { value = { Top{} }; }
@@ -133,7 +65,81 @@ struct DataFlowAnalysis
             return false;
         }
 
-        Value value;
+        Value value = Bottom{};
+    };
+
+
+    template< typename Core >
+    struct Onion;
+
+    template< typename Core >
+    using Layer = std::shared_ptr< Onion< Core > >;
+
+    template< typename Core >
+    using OnionLayer = brick::types::Union< Core, Layer< Core > >;
+
+    template< typename Core >
+    struct Onion : OnionLayer< Core >
+                 , std::enable_shared_from_this< Onion< Core > >
+    {
+        using typename OnionLayer< Core >::Union;
+
+        Onion( Core core = Core() ) : Union( core ) {}
+        Onion( Layer< Core > layer ) : Union( layer ) {}
+
+        bool is_covered() const
+        {
+            return this->template is< Layer< Core > >();
+        }
+
+        bool is_core() const
+        {
+            return this->template is< Core >();
+        }
+
+        void to_bottom()
+        {
+            this->template get< Core >().to_bottom();
+        }
+
+        void to_top()
+        {
+            ASSERT( is_core() );
+            this->template get< Core >().to_top();
+        }
+
+        bool join( const Onion< Core > &other )
+        {
+            // TODO peel to the same level
+            return core().join( other.core() );
+        }
+
+        Onion& peel() const noexcept
+        {
+            ASSERT( is_covered() );
+            return *this->template get< Layer< Core > >();
+        }
+
+        Onion cover() noexcept
+        {
+            return { this->shared_from_this() };
+        }
+
+        Core& core() noexcept
+        {
+            auto layer = this;
+            while ( !layer->is_core() )
+                layer = &layer->peel();
+            return layer->template get< Core >();
+        }
+
+        const Core& core() const noexcept
+        {
+            auto layer = this;
+            while ( !layer->is_core() )
+                layer = &layer->peel();
+            return layer->template get< Core >();
+        }
     };
 
     template< typename I >
