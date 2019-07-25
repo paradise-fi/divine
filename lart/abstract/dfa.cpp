@@ -107,9 +107,14 @@ namespace lart::abstract {
 
     bool is_propagable( llvm::Value * val ) noexcept
     {
+        // TODO refactor
         if ( llvm::isa< llvm::Argument >( val ) )
             return true;
+        if ( llvm::isa< llvm::ReturnInst >( val ) )
+            return true;
         if ( llvm::isa< llvm::GetElementPtrInst >( val ) )
+            return true;
+        if ( llvm::isa< llvm::CmpInst >( val ) )
             return true;
         if ( llvm::isa< llvm::LoadInst >( val ) )
             return true;
@@ -202,7 +207,7 @@ namespace lart::abstract {
         auto fn = ret->getFunction();
         for ( auto u : fn->users() ) {
             if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
-                if ( join( call, ret ) )
+                if ( join( call, ret->getReturnValue() ) )
                     push( [=] { propagate( call ); } );
         }
     }
@@ -243,14 +248,19 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::add_meta( llvm::Value *v, const MapValuePtr& mval ) noexcept
     {
+        AddAbstractMetaVisitor visitor( mval );
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) ) {
-            AddAbstractMetaVisitor visitor( mval );
             visitor.visit( inst );
         }
-
-        if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
+        else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
             // TODO set correct domain kind?
             meta::argument::set( arg, to_string( DomainKind::scalar ) );
+        }
+
+        for ( auto u : v->users() ) {
+            if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) ) {
+                visitor.visit( ret );
+            }
         }
     }
 
