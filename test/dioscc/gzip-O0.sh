@@ -2,7 +2,7 @@
 . lib/testcase
 
 unxz --version || skip
-unxz < $SRC_ROOT/test/dioscc/gzip-1.8.tar.xz | tar x
+unxz < $SRC_ROOT/test/dioscc/gzip-1.8.tar.xz | tar xf -
 cd gzip-1.8
 ./configure CC=dioscc CFLAGS=-O0
 make
