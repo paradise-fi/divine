@@ -19,7 +19,9 @@
 #pragma once
 
 #include <brick-types>
+#include <brick-mem>
 #include <divine/vm/divm.h>
+#include <map>
 
 namespace divine::mem
 {
