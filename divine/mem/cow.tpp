@@ -70,10 +70,8 @@ namespace divine::mem
     template< typename Next >
     auto Cow< Next >::detach( Loc loc ) -> Internal
     {
-        if ( _ext.writable.count( loc.objid ) )
+        if ( _l.exceptions.count( loc.objid ) )
             return loc.object;
-        ASSERT_EQ( _l.exceptions.count( loc.objid ), 0 );
-        _ext.writable.insert( loc.objid );
 
         int sz = this->size( loc.object );
         auto newobj = this->objects().allocate( sz ); /* FIXME layering violation? */
@@ -178,7 +176,6 @@ namespace divine::mem
 
         snap_put();
         _l.exceptions.clear();
-        _ext.writable.clear();
         _l.snap_begin = newsnap;
         _l.snap_size = count;
 

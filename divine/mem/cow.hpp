@@ -67,7 +67,6 @@ namespace divine::mem
 
         mutable struct Ext
         {
-            std::unordered_set< int > writable;
             ObjHasher hasher;
             brq::concurrent_hash_set< Internal > objects;
             Pool *_free_pool = nullptr;
@@ -93,37 +92,10 @@ namespace divine::mem
             return *this;
         }
 
-        Loc make( int size, uint32_t hint, bool over )
-        {
-            auto l = Next::make( size, hint, over );
-            _ext.writable.insert( l.objid );
-            return l;
-        }
-
-        void reset()
-        {
-            Next::reset();
-            _ext.writable.clear();
-        }
-
-        void rollback()
-        {
-            Next::rollback();
-            _ext.writable.clear();
-        }
-
-        template< typename T >
-        auto write( Loc l, T t )
-        {
-            ASSERT( _ext.writable.count( l.objid ) );
-            return Next::write( l, t );
-        }
-
         template< typename FromH, typename ToH >
         static bool copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to,
                           int bytes, bool internal )
         {
-            ASSERT( to_h._ext.writable.count( to.objid ) );
             return Next::copy( from_h, from, to_h, to, bytes, internal );
         }
 
@@ -139,13 +111,6 @@ namespace divine::mem
             return si;
         }
 
-        bool resize( Pointer p, int sz_new )
-        {
-            auto rv = Next::resize( p, sz_new );
-            _ext.writable.insert( p.object() );
-            return rv;
-        }
-
         bool is_shared( Pool &p, Snapshot s ) const
         {
             return p.template machinePointer< SnapItem >( s ) == _l.snap_begin;
@@ -157,7 +122,6 @@ namespace divine::mem
             _l.snap_size = p.size( s ) / sizeof( SnapItem );
             _l.snap_begin = p.template machinePointer< SnapItem >( s );
             _l.exceptions.clear();
-            _ext.writable.clear();
         }
 
         static constexpr bool can_snapshot() { return true; }
