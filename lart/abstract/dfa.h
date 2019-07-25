@@ -70,42 +70,40 @@ struct DataFlowAnalysis
 
 
     template< typename Core >
-    struct Onion;
-
-    template< typename Core >
-    using Layer = std::shared_ptr< Onion< Core > >;
-
-    template< typename Core >
-    using OnionLayer = brick::types::Union< Core, Layer< Core > >;
-
-    template< typename Core >
-    struct Onion : OnionLayer< Core >
-                 , std::enable_shared_from_this< Onion< Core > >
+    struct Onion : std::enable_shared_from_this< Onion< Core > >
     {
-        using typename OnionLayer< Core >::Union;
+        using Layer = std::shared_ptr< Onion >;
 
-        Onion( Core core = Core() ) : Union( core ) {}
-        Onion( Layer< Core > layer ) : Union( layer ) {}
+        std::shared_ptr< Onion > getptr()
+        {
+            return this->shared_from_this();
+        }
+
+        std::shared_ptr< const Onion > getptr() const
+        {
+            return this->shared_from_this();
+        }
 
         bool is_covered() const
         {
-            return this->template is< Layer< Core > >();
+            return std::holds_alternative< Layer >( layer );
         }
 
         bool is_core() const
         {
-            return this->template is< Core >();
+            return std::holds_alternative< Core >( layer );
         }
 
         void to_bottom()
         {
-            this->template get< Core >().to_bottom();
+            ASSERT( is_core() );
+            std::get< Core >( layer ).to_bottom();
         }
 
         void to_top()
         {
             ASSERT( is_core() );
-            this->template get< Core >().to_top();
+            std::get< Core >( layer ).to_top();
         }
 
         bool join( const Onion< Core > &other )
@@ -114,46 +112,53 @@ struct DataFlowAnalysis
             return core().join( other.core() );
         }
 
-        Onion& peel() const noexcept
+        std::shared_ptr< Onion > peel() const noexcept
         {
             ASSERT( is_covered() );
-            return *this->template get< Layer< Core > >();
+            return (*std::get< Layer >( layer )).getptr();
         }
 
-        Onion cover() noexcept
+        std::shared_ptr< Onion > cover() noexcept
         {
-            return { this->shared_from_this() };
+            auto on = std::make_shared< Onion >();
+            on->layer = getptr();
+            return on;
         }
 
         Core& core() noexcept
         {
-            auto layer = this;
-            while ( !layer->is_core() )
-                layer = &layer->peel();
-            return layer->template get< Core >();
+            auto ptr = getptr();
+            while ( !ptr->is_core() )
+                ptr = ptr->peel();
+            return std::get< Core >( ptr->layer );
         }
 
         const Core& core() const noexcept
         {
-            auto layer = this;
-            while ( !layer->is_core() )
-                layer = &layer->peel();
-            return layer->template get< Core >();
+            auto ptr = getptr();
+            while ( !ptr->is_core() )
+                ptr = ptr->peel();
+            return std::get< Core >( ptr->layer );
         }
+
+        std::variant< Layer, Core > layer = Core{};
     };
 
     template< typename I >
     struct IntervalMap
     {
+        using Ptr = std::shared_ptr< I >;
+
         bool has( llvm::Value * val ) const noexcept
         {
             return _intervals.count( val );
         }
 
-        I& operator[]( llvm::Value * val ) noexcept
+        Ptr& operator[]( llvm::Value * val ) noexcept
         {
             if ( !has( val ) ) {
-                _intervals[ val ].to_bottom();
+                _intervals[ val ] = std::make_shared< I >();
+                _intervals[ val ]->to_bottom();
             }
             return _intervals[ val ];
         }
@@ -164,7 +169,7 @@ struct DataFlowAnalysis
         decltype(auto) end() { return _intervals.end(); }
         decltype(auto) end() const { return _intervals.end(); }
 
-        std::map< llvm::Value *, I > _intervals;
+        std::map< llvm::Value *, Ptr > _intervals;
     };
 
     inline auto& interval( llvm::Value * val ) noexcept
@@ -173,10 +178,11 @@ struct DataFlowAnalysis
     }
 
     using MapValue = Onion< LatticeValue >;
-
-    void add_meta( llvm::Value *value, const MapValue& mval ) noexcept;
+    using MapValuePtr = IntervalMap< MapValue >::Ptr;
 
     IntervalMap< MapValue > _intervals;
+
+    void add_meta( llvm::Value *value, const MapValuePtr& mval ) noexcept;
 
     std::deque< Task > _tasks;
 };

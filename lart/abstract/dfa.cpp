@@ -21,7 +21,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract {
 
-    using MapValue = DataFlowAnalysis::MapValue;
+    using MapValue = DataFlowAnalysis::MapValuePtr;
 
     struct AddAbstractMetaVisitor : llvm::InstVisitor< AddAbstractMetaVisitor >
     {
@@ -124,7 +124,7 @@ namespace lart::abstract {
 
     bool DataFlowAnalysis::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        return interval( lhs ).join( interval( rhs ) );
+        return interval( lhs )->join( *interval( rhs ) );
     }
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
@@ -135,7 +135,7 @@ namespace lart::abstract {
             auto ptr = store->getPointerOperand();
 
             if ( !_intervals.has( ptr ) ) {
-                _intervals[ ptr ] = _intervals[ val ].cover();
+                _intervals[ ptr ] = _intervals[ val ]->cover();
                 push( [=] { propagate( ptr ); } );
             } else if ( join( val, ptr ) ) {
                 push( [=] { propagate( ptr ); } );
@@ -149,11 +149,11 @@ namespace lart::abstract {
             auto ptr = load->getPointerOperand();
 
             if ( !_intervals.has( ptr ) ) {
-                _intervals[ ptr ] = _intervals[ load ].cover();
+                _intervals[ ptr ] = _intervals[ load ]->cover();
                 push( [=] { propagate( ptr ); } );
             }
             else if ( !_intervals.has( load ) ) {
-                _intervals[ load ] = _intervals[ ptr ].peel();
+                _intervals[ load ] = _intervals[ ptr ]->peel();
                 // propagation performed in ssa propagation
             }
             else if ( join( load, ptr ) ) {
@@ -211,7 +211,7 @@ namespace lart::abstract {
     {
         for ( auto * val : meta::enumerate( m ) ) {
             // TODO preprocessing
-            interval( val ).to_top();
+            interval( val )->to_top();
             push( [=] { propagate( val ); } );
         }
 
@@ -222,7 +222,7 @@ namespace lart::abstract {
 
         for ( const auto & [ val, in ] : _intervals ) {
             // TODO decide what to annotate
-            if ( in.is_core() )
+            if ( in->is_core() )
                 add_meta( val, in );
         }
 
@@ -235,13 +235,13 @@ namespace lart::abstract {
             auto val = store->getValueOperand();
             if ( _intervals.has( val ) ) {
                 auto& mval =_intervals[ val ];
-                if ( mval.is_core() )
+                if ( mval->is_core() )
                     add_meta( store, mval );
             }
         }
     }
 
-    void DataFlowAnalysis::add_meta( llvm::Value *v, const MapValue& mval ) noexcept
+    void DataFlowAnalysis::add_meta( llvm::Value *v, const MapValuePtr& mval ) noexcept
     {
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) ) {
             AddAbstractMetaVisitor visitor( mval );
