@@ -26,6 +26,7 @@ my $prog =<<'EOF';
 #include <unistd.h>
 #include <setjmp.h>
 #include <locale.h>
+#include <pthread.h>
 
 int offset = 0;
 int padding = 0;
