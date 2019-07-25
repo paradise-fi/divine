@@ -405,18 +405,19 @@ namespace lart::abstract {
             auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
             auto lif = lifter.inst;
 
-            if ( is_faultable( con ) ) {
-                _matched.concrete[ abstract( con ) ] = lif;
-                _matched.abstract[ lif ] = abstract( con );
-                _matched.abstract.erase( con );
-                con->replaceAllUsesWith( lif );
-                con->eraseFromParent();
-            } else {
-                _matched.match( T, lif, con );
+            if constexpr ( !Taint::toBool( T ) ) {
+                if ( is_faultable( con ) ) {
+                    _matched.concrete[ abstract( con ) ] = lif;
+                    _matched.abstract[ lif ] = abstract( con );
+                    _matched.abstract.erase( con );
+                    con->replaceAllUsesWith( lif );
+                    con->eraseFromParent();
+                } else {
+                    _matched.match( T, lif, con );
+                }
             }
 
             ph.inst->replaceAllUsesWith( lif );
-
         }
 
         template< typename Lifter, typename Placeholder >
