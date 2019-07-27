@@ -1,0 +1,326 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ * (c) 2017 Jan Mrázek <email@honzamrazek.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <vector>
+#include <algorithm>
+#include <functional>
+
+#include "brick-assert"
+#include "brick-types"
+
+namespace brq
+{
+    struct less_map
+    {
+        template< typename T >
+        auto operator()( const T &a, const T &b ) const -> decltype( a.first < b.first )
+        {
+            return a.first < b.first;
+        }
+
+        template< typename T, typename K >
+        auto operator()( const T &a, const K &b ) const -> decltype( a.first < b )
+        {
+            return a.first < b;
+        }
+
+        template< typename T, typename K >
+        auto operator()( const K &a, const T &b ) const -> decltype( a < b.first )
+        {
+            return a < b.first;
+        }
+    };
+
+    template< typename cmp_ = std::less<> >
+    struct std_sort
+    {
+        using cmp = cmp_;
+
+        template< typename it >
+        static void sort( it begin, it end )
+        {
+            std::sort( begin, end, cmp() );
+        }
+
+        template< typename It, typename K >
+        static It lower_bound( It begin, It end, const K &v )
+        {
+            return std::lower_bound( begin, end, v, cmp() );
+        }
+    };
+
+    template< typename cmp_ = std::less<> >
+    struct insert_sort
+    {
+        using cmp = cmp_;
+
+        template< typename It, typename K >
+        static It lower_bound( It begin, It end, const K &v )
+        {
+            if ( begin == end )
+                return begin;
+            auto pivot = begin + ( end - begin ) / 2;
+            if ( cmp()( *pivot, v ) )
+                return lower_bound( pivot + 1, end, v );
+            else
+                return lower_bound( begin, pivot, v );
+        }
+
+        template< typename It >
+        static void sort( It begin, It end )
+        {
+            int i = 1;
+            while ( i < end - begin )
+            {
+                int j = i;
+                while ( j > 0 && cmp()( begin[ j ], begin[ j - 1 ] ) )
+                {
+                    std::swap( begin[ j ], begin[ j - 1 ] );
+                    -- j;
+                }
+                ++ i;
+            }
+        }
+    };
+
+    template< typename key_t, typename sort = std_sort<>, typename container = std::vector< key_t > >
+    struct array_set : brick::types::Ord
+    {
+        using cmp = typename sort::cmp;
+        using key_type = key_t;
+        using value_type = key_t;
+
+        using size_type = typename container::size_type;
+        using iterator = typename container::iterator;
+        using const_iterator = typename container::const_iterator;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+
+        container _container;
+
+        auto begin() { return _container.begin(); }
+        auto begin() const { return _container.cbegin(); }
+        auto cbegin() const { return _container.cbegin(); }
+        auto end() { return _container.end(); }
+        auto end() const { return _container.cend(); }
+        auto cend() const { return _container.cend(); }
+
+        auto empty() const { return _container.empty(); }
+        auto size() const { return _container.size(); }
+
+        void clear() noexcept { _container.clear(); }
+
+        std::pair< iterator, bool > insert( const_reference value )
+        {
+            auto it = find( value.first );
+            if ( it != cend() )
+                return { it, false };
+            _container.push_back( value );
+            sort::sort( begin(), end() );
+            return { find( value.first ), true };
+        }
+
+        template< class... Args >
+        std::pair< iterator, bool > emplace( Args&&... args )
+        {
+            _container.emplace_back( std::forward< Args >( args )... );
+            auto it = sort::lower_bound( begin(), end() - 1, _container.back() );
+            if ( it == end() - 1 || it->first != _container.back().first )
+            {
+                auto key = _container.back().first;
+                sort::sort( begin(), end() );
+                return { find( key ), true };
+            }
+            else
+            {
+                auto key = it->first;
+                _container.pop_back();
+                return { find( key ), false };
+            }
+        }
+
+        void erase( iterator pos )
+        {
+            using std::swap;
+            swap( *pos, _container.back() );
+            _container.pop_back();
+            sort::sort( begin(), end() );
+        }
+
+        template< typename K >
+        auto erase( const K& key ) -> decltype( cmp()( key, *begin() ), size_type() )
+        {
+            auto it = find( key );
+            if ( it == end() )
+                return 0;
+            erase( it );
+            return 1;
+        }
+
+        void swap( array_set &other )
+        {
+            using std::swap;
+            swap( _container, other._container );
+        }
+
+        template< typename K >
+        static bool eq( const key_t &a, const K &b )
+        {
+            return !cmp()( a, b ) && !cmp()( b, a );
+        }
+
+        template< typename K >
+        size_type count( const K &key ) const
+        {
+            return find( key ) == cend() ? 0 : 1;
+        }
+
+        template< typename K >
+        iterator find( const K &key )
+        {
+            auto elem = sort::lower_bound( begin(), end(), key );
+            return elem != end() && eq( *elem, key ) ? elem : end();
+        }
+
+        template< typename K >
+        const_iterator find( const K& key ) const
+        {
+            auto elem = sort::lower_bound( cbegin(), cend(), key );
+            return elem != cend() && eq( *elem, key ) ? elem : cend();
+        }
+
+        bool operator<( const array_set &o ) const { return _container < o._container; }
+        bool operator==( const array_set &o ) const { return _container == o._container; }
+    };
+
+    template< typename key_t, typename val_t, typename sort = std_sort< less_map >,
+              typename container = std::vector< std::pair< key_t, val_t > > >
+    struct array_map : array_set< std::pair< key_t, val_t >, sort, container >
+    {
+        using value_type = std::pair< key_t, val_t >;
+        using reference = value_type &;
+        using const_reference = const value_type &;
+
+        val_t &operator[]( const key_t& key )
+        {
+            auto it = this->find( key );
+            if ( it != this->end() )
+                return it->second;
+            return this->emplace( key, val_t() ).first->second;
+        }
+
+        template< typename K >
+        val_t &at( const K& key )
+        {
+            auto it = this->find( key );
+            if ( it == this->end() )
+                throw std::out_of_range( "ArrayMap::at" );
+            return it->second;
+        }
+
+        template< typename K >
+        const val_t &at( const K& key ) const
+        {
+            auto it = this->find( key );
+            if ( it == this->cend() )
+                throw std::out_of_range( "ArrayMap::at" );
+            return it->second;
+        }
+    };
+
+}
+
+namespace brq_t
+{
+    template< template< typename > class sort_ >
+    struct test_array_map
+    {
+        using sort = sort_< brq::less_map >;
+
+        TEST( simple )
+        {
+            brq::array_map< std::string, std::string, sort > x;
+
+            ASSERT( x.insert( std::make_pair( "bKey", "bVal" ) ).second );
+            ASSERT( !x.insert( std::make_pair( "bKey", "bVal" ) ).second );
+            ASSERT_EQ( x.size(), 1 );
+            ASSERT_EQ( x.find( "bKey" )->second, "bVal" );
+
+            ASSERT( x.emplace( "aKey", "aVal" ).second );
+            ASSERT( !x.emplace( "aKey", "aVal" ).second );
+            ASSERT_EQ( x.size(), 2 );
+            ASSERT_EQ( x.find( "aKey" )->second, "aVal" );
+            ASSERT_EQ( x.find( "bKey" )->second, "bVal" );
+
+            x[ "cKey" ] = "cVal";
+            ASSERT_EQ( x.size(), 3 );
+            ASSERT_EQ( x.find( "aKey" )->second, "aVal" );
+            ASSERT_EQ( x.find( "bKey" )->second, "bVal" );
+            ASSERT_EQ( x.find( "cKey" )->second, "cVal" );
+
+            x.erase( "bKey" );
+            ASSERT_EQ( x.find( "aKey" )->second, "aVal" );
+            ASSERT_EQ( x.find( "cKey" )->second, "cVal" );
+
+            ASSERT_EQ( x.at( "aKey" ), "aVal" );
+            ASSERT_EQ( x.at( "cKey" ), "cVal" );
+        }
+
+        TEST( out_of_range )
+        {
+            brq::array_map< int, std::string, sort > am;
+            am[ 1 ] = "aKey";
+            try {
+                am.at( 2 );
+                ASSERT( false );
+            } catch ( std::out_of_range & ) { }
+        }
+
+        TEST( comparison )
+        {
+            brq::array_map< int, int, sort > m;
+            m.emplace( 1, 1 );
+            m.emplace( 2, 1 );
+
+            auto m2 = m;
+            ASSERT( m == m2 );
+            ASSERT( !(m != m2) );
+
+            ASSERT( m <= m2 );
+            ASSERT( m2 <= m );
+
+            ASSERT( !(m < m2) );
+            ASSERT( !(m2 < m) );
+
+            m2.emplace( 3, 1 );
+            ASSERT( m != m2 );
+            ASSERT( m <= m2 );
+            ASSERT( m < m2 );
+
+            m2.erase( m2.find( 3 ) );
+            m2[ 2 ] = 2;
+            ASSERT( m != m2 );
+            ASSERT( m <= m2 );
+            ASSERT( m < m2 );
+        }
+    };
+
+    template struct test_array_map< brq::std_sort >;
+    template struct test_array_map< brq::insert_sort >;
+}
