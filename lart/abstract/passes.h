@@ -8,6 +8,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
+#include <lart/support/annotate.h>
+
 #include <lart/abstract/init.h>
 #include <lart/abstract/annotation.h>
 #include <lart/abstract/dfa.h>
@@ -33,7 +35,13 @@ namespace lart::abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_chained_pass( InitAbstractions()
+            auto passes = make_chained_pass( AnnotateFunctions(
+                                                "lart.interrupt.skipcfl:_ZNSt3__218uninitialized_copy.*"
+                                           )
+                                           , AnnotateFunctions(
+                                                "lart.interrupt.skipcfl:_ZN6__dios5Array.*"
+                                           )
+                                           , InitAbstractions()
                                            , LowerAnnotations()
                                            , DataFlowAnalysis()
                                            // , Decast() // TODO remove after vpa reimplementation
