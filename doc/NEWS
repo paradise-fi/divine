@@ -12,6 +12,7 @@
 # DIVINE 4.2
 
 - In 4.2.7 (2019-05-01):
+    - Portability improvements (should build & work on OpenBSD again).
     - Initial support for string abstraction based on the M-String domain.
     - A number of fixes in LART abstraction passes.
     - Reduce the memory used for globals (ballooned due to a change in LLVM).
@@ -26,9 +27,9 @@
 - In 4.2.4 (2019-03-15):
     - Rewrite the concurrent hash table used in the model checker.
     - Implement a fast, low-overhead hash function (based on a custom design).
-- In 4.2.2 (2019-02-15):
-- In 4.2.1 (2019-02-02):
-- In 4.2.0 (2019-01-15):
+- In 4.2.2 (2019-02-15): TBD
+- In 4.2.1 (2019-02-02): TBD
+- In 4.2.0 (2019-01-15): TBD
 
 # DIVINE 4.1
 
