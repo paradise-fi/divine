@@ -15,57 +15,31 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart::abstract
 {
 
-    struct ThawPass {
+    struct ThawPass
+    {
         void run( llvm::Module &m )
         {
-            thawFn = llvm::cast< llvm::Function >( m.getFunction( "__lart_thaw" ) );
-            ASSERT( thawFn, "Missing implementation of 'thaw' function." );
+            OperationBuilder builder;
 
             const auto tag = meta::tag::operation::thaw;
-            for ( auto l : meta::enumerate< llvm::LoadInst >( m, tag ) )
-                thaw( l );
+            constexpr auto Thaw = Operation::Type::Thaw;
+            for ( auto load : meta::enumerate< llvm::LoadInst >( m, tag ) )
+                builder.construct< Thaw >( load );
         }
-
-        void thaw( llvm::LoadInst *load ) const noexcept
-        {
-            llvm::IRBuilder<> irb( load->getNextNode() );
-
-            auto fty = thawFn->getFunctionType();
-            auto addr = irb.CreateBitCast( load->getPointerOperand(), fty->getParamType( 0 ) );
-            irb.CreateCall( thawFn, { addr } );
-        }
-
-        llvm::Function * thawFn = nullptr;
     };
 
 
-    struct FreezePass {
+    struct FreezePass
+    {
         void run( llvm::Module &m )
         {
-            freezeFn = llvm::cast< llvm::Function >( m.getFunction( "__lart_freeze" ) );
-            ASSERT( freezeFn, "Missing implementation of 'freeze' function." );
-
-            _matched.init( m );
+            OperationBuilder builder;
 
             const auto tag = meta::tag::operation::freeze;
-            for ( auto s : meta::enumerate< llvm::StoreInst >( m, tag ) )
-                freeze( s );
+            constexpr auto Freeze = Operation::Type::Freeze;
+            for ( auto store : meta::enumerate< llvm::StoreInst >( m, tag ) )
+                builder.construct< Freeze >( store );
         }
-
-        void freeze( llvm::StoreInst *store ) const noexcept
-        {
-            auto abs = _matched.abstract.at( store->getValueOperand() );
-
-            auto fty = freezeFn->getFunctionType();
-
-            llvm::IRBuilder<> irb( store->getNextNode() );
-            auto addr = irb.CreateBitCast( store->getPointerOperand(), fty->getParamType( 1 ) );
-            irb.CreateCall( freezeFn, { abs, addr } );
-        }
-
-        Matched _matched;
-
-        llvm::Function * freezeFn = nullptr;
     };
 
 

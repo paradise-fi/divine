@@ -39,40 +39,10 @@ namespace lart::abstract
         }
 
         if ( auto store = llvm::dyn_cast< llvm::StoreInst >( inst ) ) {
-            /*if ( meta.scalar() ) {
-                return construct< Type::Freeze >( store );
-            }
-
-            if ( meta.pointer() ) {
-
-            }
-
-            if ( meta.content() ) {
-                if ( is_base_type_in_domain( m, store->getValueOperand(), dom ) )
-                    return construct< Type::Freeze >( store );
-                else
-                    return construct< Type::Store >( store );
-            }*/
             UNREACHABLE( "not implemented" );
         }
 
         if ( auto load = llvm::dyn_cast< llvm::LoadInst >( inst ) ) {
-            /*if ( meta.scalar() ) {
-                if ( is_base_type_in_domain( m, inst, dom ) ) {
-                    return construct< Type::Thaw >( load );
-                }
-            }
-
-            if ( meta.pointer() ) {
-
-            }
-
-            if ( meta.content() ) {
-                if ( is_base_type_in_domain( m, load, dom ) )
-                    return construct< Type::Thaw >( load );
-                else
-                    return construct< Type::Load >( load );
-            }*/
             UNREACHABLE( "not implemented" );
         }
 
@@ -122,15 +92,6 @@ namespace lart::abstract
             auto c = call->getArgOperand( 0 );
             auto a = call->getArgOperand( 1 );
 
-            abstract[ c ] = a;
-            concrete[ a ] = c;
-        }
-
-        auto tag = meta::tag::operation::thaw;
-        for ( auto load : meta::enumerate< llvm::LoadInst >( m, tag ) ) {
-            auto c = load;
-            auto a = load->getNextNode()->getNextNode();
-            ASSERT( llvm::isa< llvm::CallInst >( a ) ); // is thaw
             abstract[ c ] = a;
             concrete[ a ] = c;
         }

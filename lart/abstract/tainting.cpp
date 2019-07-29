@@ -46,9 +46,10 @@ namespace lart::abstract {
 
         template< Type T_ = T >
         static auto suffix( llvm::Value * val ) noexcept
-            -> typename std::enable_if_t< Taint::thaw( T_ ), std::string >
+            -> typename std::enable_if_t< Taint::freeze( T_ ), std::string >
         {
-            return result() + "." + llvm_name( val->getType()->getPointerElementType() );
+            auto store = llvm::cast< llvm::StoreInst >( val );
+            return result() + "." + llvm_name( store->getValueOperand()->getType() );
         }
 
         template< Type T_ = T >
@@ -79,9 +80,9 @@ namespace lart::abstract {
             -> typename std::enable_if_t<
                 Taint::toBool( T_ ) ||
                 Taint::assume( T_ ) ||
+                Taint::thaw( T_ )  ||
                 Taint::store( T_ )  ||
                 Taint::load( T_ )   ||
-                Taint::freeze( T_ ) ||
                 Taint::gep( T_ )
             ,std::string >
         {
@@ -452,11 +453,14 @@ namespace lart::abstract {
             return null();
         }
 
-        auto return_type( llvm::Instruction * inst ) const
+        auto return_type( llvm::Instruction * inst ) const -> llvm::Type *
         {
-            if constexpr ( Operation::freeze( T ) || Operation::store( T ) || Operation::mem( T ) )
-            {
+            if constexpr ( Operation::mem( T ) ) {
                 UNREACHABLE( " not implemented" );
+            }
+
+            if constexpr ( Operation::freeze( T ) || Operation::store( T ) ) {
+                return i8PTy();
             }
 
             return inst->getType();

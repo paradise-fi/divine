@@ -105,6 +105,30 @@ namespace lart::abstract
             return get_function_from_domain( irb, index, _domain );
         }
 
+        template< typename IRB >
+        auto thaw( IRB & irb, llvm::Value * value ) const
+        {
+            auto thawFn = llvm::cast< llvm::Function >( module->getFunction( "__lart_thaw" ) );
+            ASSERT( thawFn, "Missing implementation of 'thaw' function." );
+
+            auto fty = thawFn->getFunctionType();
+            auto addr = irb.CreateBitCast( value, fty->getParamType( 0 ) );
+            return irb.CreateCall( thawFn, { addr } );
+        }
+
+        template< typename IRB >
+        auto freeze( IRB & irb, llvm::Value * value, llvm::Value * addr ) const
+        {
+            auto freezeFn = llvm::cast< llvm::Function >( module->getFunction( "__lart_freeze" ) );
+            ASSERT( freezeFn, "Missing implementation of 'freeze' function." );
+
+            auto fty = freezeFn->getFunctionType();
+            auto v = irb.CreateBitCast( value, fty->getParamType( 0 ) );
+            auto a = irb.CreateBitCast( addr, fty->getParamType( 1 ) );
+
+            return irb.CreateCall( freezeFn, { v, a } );
+        }
+
         void construct()
         {
 
@@ -240,6 +264,22 @@ namespace lart::abstract
             {
                 //vals.push_back( args[ 1 ].value ); // addr
                 UNREACHABLE( "not implemented" );
+            }
+
+            if constexpr ( Taint::freeze( T ) )
+            {
+                auto val = args[ 1 ].value;
+                auto addr = args[ 2 ].value;
+                freeze( irb, val, addr );
+                irb.CreateRet( undef( function()->getReturnType() ) );
+                return;
+            }
+
+            if constexpr ( Taint::thaw( T ) )
+            {
+                auto t = thaw( irb, args[ 1 ].value );
+                irb.CreateRet( t );
+                return;
             }
 
             if constexpr ( Taint::cast( T ) )
@@ -394,6 +434,8 @@ namespace lart::abstract
             DISPATCH( Assume )
             DISPATCH( Store )
             DISPATCH( Load )
+            DISPATCH( Freeze )
+            DISPATCH( Thaw )
             DISPATCH( Cmp )
             DISPATCH( Cast )
             DISPATCH( Binary )
