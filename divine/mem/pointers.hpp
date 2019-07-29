@@ -25,6 +25,11 @@ namespace divine::mem
 
 namespace bitlevel = brick::bitlevel;
 
+/* PointerException store information for fragmented pointers
+ *
+ * For each byte of a word it maintains the objid of original pointer and
+ * position of the fragment in the original pointer.
+ */
 struct PointerException
 {
     uint32_t objid[ 4 ];   // Object IDs of the original pointers
@@ -33,6 +38,7 @@ struct PointerException
     uint8_t index( uint8_t p ) const { return metadata[ p ] & 0x07; }
     void index( uint8_t p, uint8_t i ) { metadata[ p ] &= ~0x07; metadata[ p ] |= i & 0x07; }
 
+    // pointer exception is redundant if a word represent a valid (non-fragmented) pointer
     bool redundant() const
     {
         for ( int i = 0; i < 4; ++i)
@@ -91,13 +97,16 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
     return o;
 }
 
-/*
- * Shadow layer for tracking pointers and their types, including fragmented pointers.
+/* Shadow layer for tracking pointers and their types, including fragmented
+ * pointers. It stores pointer exceptions map.
+ *
  * Required fields in Expanded:
  *      pointer : 1
  *      pointer_exception : 1
+ *
+ * PointerLayer is required shadow layer by DIVINE for reconstruction of
+ * fragmented pointers.
  */
-
 template< typename NextLayer >
 struct PointerLayer : public NextLayer
 {
@@ -130,6 +139,8 @@ struct PointerLayer : public NextLayer
     };
 
     std::shared_ptr< PointerExceptions > _ptr_exceptions;
+
+    // temporal data for copying of pointer exceptions
     PointerException current_ptr_from,
                      current_ptr_to;
 

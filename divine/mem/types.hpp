@@ -48,6 +48,25 @@ namespace divine::mem
     template< typename HeapPtr, typename PointerV, template< int, bool > class IntV, typename Pool >
     struct Base;
 
+    /* ShadowLayers are configurable to store only required metadata to a
+     * shadow memory attached to a heap pointer.
+     *
+     * Each kind of metadata has its own layer. The goal of each layer is to
+     * transform information from expanded form metadata to internal metadata
+     * representation in vm::value. Additionally layers store metadata
+     * exceptions related maps and manages their manipulations (copying).
+     *
+     * All layers has unified interface (see ShadowBase) to enable chaining of
+     * operations.
+     *
+     * It is required by shadow storage to provide interface layer for upper
+     * layers (Metadata). DiVM requires presence of the PointerLayer to be
+     * able to reconstruct fragmented pointers. Intermediate layers (Taint,
+     * Definedness, Pointer) implements various metadata chunks. ShadowBase is
+     * a trivial metadata storage that defines interface to shadow memory.  At
+     * the bottom of configuration layers is a compression layer. It is used to
+     * compress and decompress metadata from actual shadow memory.
+     */
     template< typename B >
     using ShadowLayers = Metadata<
                          TaintLayer<

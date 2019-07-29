@@ -107,15 +107,22 @@ struct Base
     static constexpr bool can_snapshot() { return false; }
 };
 
+/*
+ * ShadowBase is inheritence stopper for shadow layers. Its operations are
+ * called as last of the layered hierarchy.
+ *
+ * ShadowBase defines interface to shadow layers functionality.
+ */
 template< typename Next >
 struct ShadowBase : Next
 {
     using typename Next::Expanded;
-    using typename Next::Loc;
+    using typename Next::Loc; // address structure for shadow objects
     using typename Next::Internal;
 
     template< typename V >
     void write( Loc, V, Expanded * ) {}
+
     template< typename V >
     void read( Loc, V &, Expanded * ) const {}
 

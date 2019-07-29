@@ -490,6 +490,8 @@ struct IntervalMetadataMap
     }
 };
 
+
+// Map assigns metadata exceptions to shadow memory locations
 template< typename ExceptionType, typename Loc_ >
 struct ExceptionMap
 {

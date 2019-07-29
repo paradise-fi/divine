@@ -31,13 +31,13 @@ union ExpandedMetaPDT // Representation the shadow layers operate on
 {
     struct
     {
-        uint16_t taint : 4,
+        uint16_t taint : 4, // 15 possible colors for tainting
                  _free1_ : 3,
-                 pointer : 1,
+                 pointer : 1, // pointer or just a pointer fragment
                  pointer_exception : 1,
                  data_exception : 1,
                  _free2_ : 2,
-                 defined : 4;
+                 defined : 4; // definedness flags for 4 bytes of a word
     };
     uint16_t _raw;
     constexpr ExpandedMetaPDT() : _raw( 0 ) {}
@@ -65,6 +65,12 @@ struct CompressPDT : Next
     using Compressed = uint8_t; // Representation stored in the pool
     using Expanded = mem::ExpandedMetaPDT;
 
+    /* Compresses expanded form of metadata. Compressed form size is required
+     * to be power of two.
+     *
+     * Moreover compression is required to be lossless, with a regard to valid
+     * combinations of metadata.
+     * */
     constexpr static Compressed compress( Expanded exp )
     {
         if ( exp.pointer )
@@ -87,6 +93,12 @@ struct CompressPDT : Next
         return dt;
     }
 
+    /* Expands compressed form of metadata.
+     *
+     * Expansion (decompresion) of zero is required to be reasonable form of
+     * expanded metadata, i.e. it corresponds to newly allocated memory location.
+     * The expanded form represent undefined word without any exceptions or taints.
+     */
     constexpr static Expanded expand( Compressed c )
     {
         Expanded ec;
@@ -208,7 +220,6 @@ struct CompressPD : Next
  * to the individual metadata layers as needed.  Almost all actual operations
  * with the metadata are performed by the layers below.
  */
-
 template< typename Next >
 struct Metadata : Next
 {
@@ -236,6 +247,7 @@ struct Metadata : Next
         return ( size / divisor ) + ( size % divisor ? 1 : 0 );
     }
 
+    // Compares expanded metadata through all layers.
     template< typename OtherSH >
     int compare( OtherSH &a_sh, typename OtherSH::Internal a_obj, Internal b_obj, int sz,
                  bool skip_objids )
@@ -290,6 +302,10 @@ struct Metadata : Next
         return CompressedC( _meta, l.object, l.offset / 4, words + l.offset / 4 );
     }
 
+    // Stores metadata from internal representation (value) to shadow memory (l).
+    //
+    // After successful execution of writes of lower layers, metadata layer
+    // compresses and stores resulting expanded metadata.
     template< typename V >
     void write( Loc l, V value )
     {
@@ -311,6 +327,11 @@ struct Metadata : Next
         std::transform( exp, exp + words, sh.begin(), Next::compress );
     }
 
+
+    // Fill internal representation (value) by data from shadow memory (l).
+    //
+    // Firstly it expands and decompress metadata and afterwards it let lower
+    // layers to fill value from decompressed metadata.
     template< typename V >
     void read( Loc l, V &value ) const
     {
@@ -331,6 +352,34 @@ struct Metadata : Next
         Next::read( l, value, exp );
     }
 
+
+    // copy handles copying between shadow memory.
+    //
+    // 'from_h' are source shadow memory layers and 'from' is an internal
+    // address of source shadow memory
+    // 'to_h' are destination shadow memory layers and 'to' is an internal
+    // address of destination shadow memory
+    // 'sz' is size of copied shadow memory
+    //
+    // 'internal' ??? TODO
+    //
+    // Copy determines whether it can perform fast copy when source and
+    // destination are both word-aligned. In such case copy can operate on
+    // words (requires copy_word from below layers), else slow copying is
+    // performed. Slow copying operates on bytes (requires copy_init_src,
+    // copy_init_dst, copy_byte, copy_done from lower layers).
+    //
+    // Slow copy is state-full, in means that lower layers might store
+    // information about copying progress via above mentioned functions:
+    //
+    // 'copy_init_src', 'copy_init_dst' initializes copying in lower layers
+    // (e.g. layers with exceptions initializes exception related data if and
+    // exception is present in copied memory)
+    //
+    // 'copy_byte' mutates state of current copying
+    //
+    // 'copy_done' finalizes copying process -- layers compute and store final
+    // metadata and sets final expanded form, optionally sets an exception
     template< typename FromH, typename ToH >
     static void copy( FromH &from_h, typename FromH::Loc from, ToH &to_h, Loc to, int sz, bool internal )
     {
@@ -356,6 +405,7 @@ struct Metadata : Next
 
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             {
+                // If any of metadata contains an exception we need perform copy also in lower layers
                 if ( ! Next::is_trivial( *i_from ) || ! Next::is_trivial( *i_to ) )
                 {
                     Expanded exp_src = Next::expand( *i_from );
@@ -475,6 +525,7 @@ struct Metadata : Next
             uint32_t fragment() const { return exception().objid[ off % 4 ]; }
         };
 
+        // TODO remove deprecated std::iterator
         struct iterator : std::iterator< std::forward_iterator_tag, proxy >
         {
             PointerC &p;
@@ -554,6 +605,7 @@ struct Metadata : Next
         {}
     };
 
+    // Returns a range of pointers in the memory chunk from location 'l' of length 'sz'.
     auto pointers( Loc l, int sz )
     {
         return PointerC( _meta, *this, l.object, l.offset, l.offset + sz );

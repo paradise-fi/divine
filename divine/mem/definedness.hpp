@@ -25,6 +25,7 @@ namespace divine::mem
 
 namespace bitlevel = brick::bitlevel;
 
+// DataException stores information about definedness of word bits.
 struct DataException
 {
     union {
@@ -67,14 +68,23 @@ inline std::ostream &operator<<( std::ostream &o, const DataException &e )
 }
 
 /*
- * Shadow layer for tracking definedness of data
+ * Shadow layer for tracking definedness of data, it converts internal bit mask
+ * representation to byte mask stored in expanded form. For non-trivial mask it
+ * stores a DataException.
+ *
+ * DefinednessLayer stores data exceptions map, to which all accesses are
+ * guarded by lock.
+ *
+ * DefinednessLayer rely upon correct information about pointer in the expanded form.
+ * It automatically considers pointers as defined. In addition to pointer exceptions it
+ * creates a data exception (even if trivial).
+ *
  * Required fields in Expanded:
  *      defined : 4 (less significant bits correspond to bytes on lower addresses)
  *      data_exception : 1
  *      pointer : 1
  *      pointer_exception : 1 (if set, data_exception shall be set as well)
  */
-
 template< typename NextLayer >
 struct DefinednessLayer : public NextLayer
 {
@@ -146,6 +156,7 @@ struct DefinednessLayer : public NextLayer
     };
 
     std::shared_ptr< DataExceptions > _def_exceptions;
+    // temporal data for copying of data exceptions
     mutable uint8_t current_def_from[ 4 ];
     mutable uint8_t current_def_to[ 4 ];
 

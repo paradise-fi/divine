@@ -29,7 +29,7 @@ namespace divine::mem
 union TaggedOffset {
     struct {
         uint32_t off : 30;
-        uint32_t tag : 2;
+        uint32_t tag : 2; // stores type of data
     };
     uint32_t raw;
     TaggedOffset( uint32_t raw ) : raw( raw ) {}
@@ -38,6 +38,11 @@ union TaggedOffset {
     TaggedOffset & operator=( uint32_t r ) { raw = r; return *this; }
 };
 
+// UserMeta layer enable to store user metadata (integer value) to shadow memory.
+//
+// UserMeta define multiple layers of user metadata. Each layer
+// define its type -- whether it is assigned to pointer, value or unspecified
+// memory.
 template< typename Next >
 struct UserMeta : Next
 {
@@ -50,6 +55,10 @@ struct UserMeta : Next
     using LayerTypes = std::array< std::atomic< MetaType >, NLayers >;
     std::shared_ptr< LayerTypes > _type;
 
+    // Enables to assign user metadata to a part of a shadow memory
+    // -- defined by interval between two offsets
+    //
+    // TaggedOffset tracks also a type of data (pointer/data/unspecified)
     using Maps = IntervalMetadataMap< TaggedOffset, uint32_t, typename Next::Pool >;
     mutable Maps _maps;
 
@@ -78,6 +87,7 @@ struct UserMeta : Next
         Next::free( p );
     }
 
+    // Returns user metadata from 'layer' assigned to location 'l'
     Value peek( Loc l, int layer )
     {
         if ( auto *p = _maps.at( l.object, { l.offset, layer } ) )
@@ -86,6 +96,7 @@ struct UserMeta : Next
         return Value( 0, 0, layer_type( layer ) == MetaType::Pointers );
     }
 
+    // Assigns value 'v' to user meta layer at location 'l'
     void poke( Loc l, int layer, Value v )
     {
         if ( layer_type( layer ) == MetaType::Unknown )

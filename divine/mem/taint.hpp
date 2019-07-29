@@ -26,6 +26,7 @@ namespace bitlevel = brick::bitlevel;
 
 /*
  * Shadow layer for tracking a taint bit (the least significant taint bit in vm::Value).
+ *
  * Required fields in Expanded:
  *      taint : 4 (less significant bits correspond to bytes on lower addresses)
  */
@@ -49,6 +50,7 @@ struct TaintLayer : public NextLayer
         return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b, skip_objids );
     }
 
+    // Stores taints from value to expanded form of metadata 'exp' from memory location 'l'.
     template< typename V >
     void write( Loc l, V value, Expanded *exp )
     {
@@ -76,6 +78,7 @@ struct TaintLayer : public NextLayer
         }
     }
 
+    // Loads taints from expanded form to internal value
     template< typename V >
     void read( Loc l, V &value, Expanded *exp ) const
     {
@@ -103,6 +106,7 @@ struct TaintLayer : public NextLayer
         NextLayer::read( l, value, exp );
     }
 
+    // merge taints  of source and destination values
     template< typename FromH, typename ToH >
     static void copy_byte( FromH &from_h, ToH &to_h, typename FromH::Loc from, const Expanded &exp_src,
                            Loc to, Expanded &exp_dst )
