@@ -17,10 +17,12 @@ $cflags .= " $2" if ( $file =~ m,^(/\*|//) CC_OPTS: (.*?)(\*/)?$,sm );
 $cflags =~ s,\$SRC_ROOT,$ENV{SRCDIR},g;
 
 my $extras = `cd $dir && $cc -MM -MT "" $basename $cflags`;
+$extras =~ s,\\\n,,g;
 $extras =~ s,^: [^ ]*,,; # chop off the file itself
 for my $name ( split /\s+/, $extras )
 {
     next unless $name;
+    next if ( $name =~ m,^/, );
     my $subdir = $name;
     $subdir =~ s,(^|/)[^/]*$,,;
     system( "mkdir -p $subdir" ) if $subdir;
