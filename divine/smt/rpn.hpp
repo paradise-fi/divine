@@ -67,9 +67,9 @@ namespace divine::smt
         std::vector< std::pair< Node, Bitwidth > > stack;
 
         auto binary = [&] ( Op op, const auto& bin ) {
-            auto [a, abw] = stack.back();
-            stack.pop_back();
             auto [b, bbw] = stack.back();
+            stack.pop_back();
+            auto [a, abw] = stack.back();
             stack.pop_back();
 
             auto bw = bitwidth( op, abw, bbw );
