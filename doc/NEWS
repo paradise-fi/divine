@@ -1,3 +1,23 @@
+# DIVINE 4.3
+
+- In 4.3.0 (2019-06-01):
+    - DiOS configurations are now static, and selected with `--dios-config`.
+    - The system call sequence in DiOS no longer relies on indirect calls.
+    - DiOS can now be loaded into KLEE, in addition to DIVINE.
+    - Numerous fixes in dataflow value propagation in LART.
+    - Improved ABI compatibility of DiOS with the host platform.
+    - Better coverage of POSIX APIs (header files) in DiOS.
+    - Add support for linking C++ programs to `divcc`.
+
+# DIVINE 4.2
+
+- In 4.2.7 (2019-05-01):
+- In 4.2.5 (2019-04-01):
+- In 4.2.4 (2019-03-15):
+- In 4.2.2 (2019-02-15):
+- In 4.2.1 (2019-02-02):
+- In 4.2.0 (2019-01-15):
+
 # DIVINE 4.1
 
 - In 4.1.21 (2019-01-01):
@@ -6,7 +26,7 @@
     - Fix lowering of `llvm.fabs.*` intrinsics.
     - A number of `libc` compatibility improvements.
 - In 4.1.20 (2018-12-15):
-    - The DiOS kernel and `libc` now builds with -fno-exceptions.
+    - The DiOS kernel and `libc` now build with `-fno-exceptions`.
     - Reduce the size and improve linking granularity of DiOS.
     - Link the DiOS kernel at load time, not at bitcode link time.
     - The passthrough mode in DiOS has been disabled until further notice.
