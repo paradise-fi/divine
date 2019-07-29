@@ -1,0 +1,102 @@
+## Heap Metadata (31.7.)
+
+- divine/mem/pointers.*
+- divine/mem/usermeta.*
+- divine/mem/exceptions.*
+- divine/mem/taint.*
+- divine/mem/definedness.*
+- divine/mem/metadata.*
+
+In DIVINE we store additional metadata to objects. These are mainly used to
+track pointer types, undefined bytes, information about fragmented pointers,
+taints, or additional user metadata. Since metadata are tracked for each object
+in DiVM memory it is crucial to maintain them in a compact form.
+
+## Motivation
+
+In DIVINE we want to track bitfield definedness. However it would consume twice
+that much of memory if we would maintain definedness flags for each bit.
+Similarly, for fragmented pointers we need to track a real position of current
+byte in the pointer, what might not be necessary for most of pointers. We
+would like to maintain metadata in a way that they do not consume additional
+memory when they are not needed.
+
+## Metadata exceptions
+
+In order to annotate that an object has assigned metadata we track few
+exceptions flags in the pointer to the object. Two types of exceptions:
+
+1. Definedness exception (DataException)
+
+2. Pointer exception (PointerException)
+
+DIVINE does not track both exceptions at the same time. Existence of pointer
+exception implies definedness exceptions (even for a trivial case whne all
+bytes are defined).
+
+See divine/mem/exceptions.hpp, divine/mem/pointer.hpp and divine/mem/definedness.hpp
+
+
+## Additional metadata
+
+In addition to definedness and pointer metadata, DIVINE can track taint (color
+flag assigned to object) metadata. User metadata enable user to attach a number
+to the object.
+
+
+## Sandwich
+
+In order to minimize memory consumption, metadata are stored for each word (4
+bytes) in a compressed form:
+
+1. Valid objid flag (1 bit)
+2. Exception flags determine which exceptions are assigned to a word (2 bits)
+3. Definedness flags - 1 flag for each byte (4 bits)
+3. Taint flags - 1 flag for each byte (4 bits)
+
+These eleven bits form an expanded form of metadata flags. Since there is only
+129 possible states of metadata flags DIVINE compresses their representation to
+a single byte (see divine/mem/metadata.hpp CompressPDT).
+
+Shadow layers are configurable before compilation through stack-based template
+inheritance -- see divine/mem/types.hpp
+
+Metadata are assigned per 4 byte words.
+
+For the rest of the seminar we will investigate the stack of shadow layers:
+
+1. CompressPDT
+    - is parametrized by Base Pointer, compresses pointer, definedness and
+      taint metadata to single byte.
+
+    - metadata are in a trivial form if compressed form encodes all the
+      information. This is in the case when no exception is present.
+
+2. ShadowBase (divine/mem/base.hpp)
+    - defines bottom layer of shadow layers hierarchy.
+    - base operations serve as stoppers when calling operations through layers
+
+3. PointerLayer (divine/mem/pointers.hpp)
+    - takes care about pointer exceptions (pointer fragmentation)
+
+4. DefinednessLayer (divine/mem/definedness.hpp)
+    - takes care about conversion between data exception bit map and internal
+      DiVM byte mask of definedness
+
+5. TaintLayer (divine/mem/taint.hpp)
+    - manages taint metadata
+
+6. Metadata (divine/mem/metadata.hpp)
+    - defines an interface to shadow memory:
+        1. read from shadow memory to internal representation
+        2. write of internal representation to shadow memory
+        3. copy between shadow memory
+        4. compare
+        5. materialise - to inform about creation of a new object
+        6. pointers - to iterate through pointers
+
+In addition to ShadowLayers shadow memory is able to track user metadata. See
+divine/mem/usermeta.hpp. User metadata are accessed via two operations:
+    1. peek - read user metadata
+    2. poke - writes user metadata
+
