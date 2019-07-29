@@ -32,12 +32,32 @@ namespace
 namespace lart::abstract
 {
     template< Operation::Type T >
-    struct Lifter
+    struct Lifter : LLVMUtil< Lifter< T > >
     {
+        using Self = Lifter< T >;
+        using Util = LLVMUtil< Self >;
+
+        using Util::i1Ty;
+        using Util::i8Ty;
+        using Util::i16Ty;
+        using Util::i32Ty;
+        using Util::i64Ty;
+
+        using Util::i8PTy;
+
+        using Util::i1;
+        using Util::i8;
+        using Util::i32;
+        using Util::i64;
+
+        using Util::ctx;
+
+        using Util::undef;
+
         static constexpr const char * vtable = "__lart_domains_vtable";
 
         Lifter( const Taint & taint )
-            : taint( taint )
+            : taint( taint ), module( taint.inst->getModule() )
         {
             assert( taint.type == T );
         }
@@ -65,10 +85,9 @@ namespace lart::abstract
         template<typename IRB, typename Index, typename Domain >
         auto get_function_from_domain( IRB &irb, Index op, Domain dom ) const
         {
-            auto table = module()->getNamedGlobal( vtable );
-            auto z = llvm::ConstantInt::get( i64(), 0 ); // dummy zero
-            auto domain = irb.CreateZExt( dom, i32() );
-            auto o = irb.CreateGEP( table, { z, domain, op } );
+            auto table = module->getNamedGlobal( vtable );
+            auto domain = irb.CreateZExt( dom, i32Ty() );
+            auto o = irb.CreateGEP( table, { i64( 0 ), domain, op } );
             return  irb.CreateLoad( o );
         }
 
@@ -77,9 +96,9 @@ namespace lart::abstract
         {
             auto index = [&] {
                 if constexpr ( Taint::toBool( T ) )
-                    return llvm_index( module()->getFunction( "lart.abstract.to_tristate" ) );
+                    return llvm_index( module->getFunction( "lart.abstract.to_tristate" ) );
                 else if constexpr ( Taint::assume( T ) )
-                    return llvm_index( module()->getFunction( "lart.abstract.assume" ) );
+                    return llvm_index( module->getFunction( "lart.abstract.assume" ) );
                 else
                     return llvm_index( function() );
             } ();
@@ -145,14 +164,14 @@ namespace lart::abstract
                 irb.SetInsertPoint( exit );
 
                 auto merge = [&] ( auto args ) {
-                    auto arg = irb.CreatePHI( irb.getInt8PtrTy(), 3 );
+                    auto arg = irb.CreatePHI( i8PTy(), 3 );
                     auto phi = llvm::cast< llvm::PHINode >( arg );
                     for ( const auto &[bb, d] : args )
                         phi->addIncoming( d, bb );
                     return phi;
                 };
 
-                _domain = irb.CreatePHI( irb.getInt8Ty(), 3 );
+                _domain = irb.CreatePHI( i8Ty(), 3 );
 
                 auto phi = llvm::cast< llvm::PHINode >( _domain );
                 for ( const auto &[bb, d] : dom )
@@ -230,7 +249,7 @@ namespace lart::abstract
 
                 auto cast = llvm::cast< llvm::CastInst >( taint.inst->getPrevNode() );
                 auto bw = cast->getDestTy()->getPrimitiveSizeInBits();
-                vals.push_back( i8cv( bw ) );
+                vals.push_back( i8( bw ) );
 
                 _domain = domain_index( paired.abstract.value, irb );
             }
@@ -269,16 +288,16 @@ namespace lart::abstract
             }
 
             auto ptr = get_function_from_domain( irb );
-            auto rty = Taint::faultable( T ) ? i8ptr() : function()->getReturnType();
+            auto rty = Taint::faultable( T ) ? i8PTy() : function()->getReturnType();
             auto fty = llvm::FunctionType::get( rty, types_of( vals ), false );
             auto op = irb.CreateBitCast( ptr, fty->getPointerTo() );
             auto call = irb.CreateCall( op, vals );
 
             if constexpr ( Taint::freeze( T ) || Taint::store( T ) ) {
-                irb.CreateRet( llvm::UndefValue::get( function()->getReturnType() ) );
+                irb.CreateRet( undef( function()->getReturnType() ) );
             } else if constexpr ( Taint::faultable( T ) ) {
                 auto crty = function()->getReturnType();
-                auto t = module()->getNamedGlobal( "__tainted" );
+                auto t = module->getNamedGlobal( "__tainted" );
                 auto load = irb.CreateLoad( t );
                 auto trunc = irb.CreateTruncOrBitCast( load, crty );
                 auto ret = irb.CreateRet( trunc );
@@ -287,25 +306,6 @@ namespace lart::abstract
                 irb.CreateRet( call );
             }
         }
-
-    private:
-        using IntegerType = llvm::IntegerType;
-        using Constant = llvm::Constant;
-        using ConstantInt = llvm::ConstantInt;
-
-        llvm::Type * i8ptr() const { return llvm::Type::getInt8PtrTy( ctx() ); }
-
-        llvm::Type * i8() const { return IntegerType::get( ctx(), 8 ); }
-        llvm::Type * i16() const { return IntegerType::get( ctx(), 16 ); }
-        llvm::Type * i32() const { return IntegerType::get( ctx(), 32 ); }
-        llvm::Type * i64() const { return IntegerType::get( ctx(), 64 ); }
-
-        Constant * i8cv( uint32_t v ) const { return ConstantInt::get( i8(), v ); }
-        Constant * i16cv( uint32_t v ) const { return ConstantInt::get( i16(), v ); }
-        Constant * i32cv( uint32_t v ) const { return ConstantInt::get( i32(), v ); }
-        Constant * i64cv( uint32_t v ) const { return ConstantInt::get( i64(), v ); }
-
-        llvm::LLVMContext & ctx() const { return taint.inst->getContext(); }
 
         auto arguments() const
         {
@@ -334,7 +334,6 @@ namespace lart::abstract
             return args;
         }
 
-        llvm::Module * module() const { return taint.inst->getModule(); }
         llvm::Function * function() const { return taint.function(); }
 
         std::string type_name( llvm::Type * ty ) const noexcept
@@ -354,11 +353,9 @@ namespace lart::abstract
         template< typename V, typename I, typename IRB >
         llvm::CallInst * lift( V val, I dom, IRB &irb ) const
         {
-            auto m = module();
-
-            auto fty = llvm::FunctionType::get( i8ptr(), { val->getType() }, false );
+            auto fty = llvm::FunctionType::get( i8PTy(), { val->getType() }, false );
             auto name = "lart.abstract.lift_one_" + type_name( val );
-            auto op = llvm_index( m->getFunction( name ) );
+            auto op = llvm_index( module->getFunction( name ) );
             auto ptr = get_function_from_domain( irb, op, dom );
             auto fn = irb.CreateBitCast( ptr, fty->getPointerTo() );
 
@@ -368,6 +365,7 @@ namespace lart::abstract
         llvm::Value * _domain = nullptr;
 
         Taint taint;
+        llvm::Module * module;
     };
 
 
