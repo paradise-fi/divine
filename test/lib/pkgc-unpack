@@ -9,7 +9,7 @@ $dir =~ s,(^|/)([^/]*)$,,;
 my $basename = $2;
 
 # copy over any #include files
-my $cc = "cc";
+my $cc = "$ENV{BINDIR}/../toolchain/clang/bin/clang";
 $cc = "c++ -std=c++14" if $ext eq "cpp";
 my $cflags = "-isystem $ENV{SRCDIR}/dios/include -isystem $ENV{BINDIR}/dios/include";
 my $extras = `cd $dir && $cc -MM -MT "" $basename $cflags`;
