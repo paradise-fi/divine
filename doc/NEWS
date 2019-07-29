@@ -12,8 +12,20 @@
 # DIVINE 4.2
 
 - In 4.2.7 (2019-05-01):
+    - Initial support for string abstraction based on the M-String domain.
+    - A number of fixes in LART abstraction passes.
+    - Reduce the memory used for globals (ballooned due to a change in LLVM).
+    - Minor improvements in usability of `sim`.
+    - Fix a regression which caused `divine draw` to be unusable.
+    - Restore support for reading global variables in `sim` (via `$globals`).
+    - Minor improvements in support for relaxed memory models.
 - In 4.2.5 (2019-04-01):
+    - Initial support for aggregate abstract domains.
+    - Simplified passing of abstract arguments and return values.
+    - Prepare ground for interval-based tracking of user metadata.
 - In 4.2.4 (2019-03-15):
+    - Rewrite the concurrent hash table used in the model checker.
+    - Implement a fast, low-overhead hash function (based on a custom design).
 - In 4.2.2 (2019-02-15):
 - In 4.2.1 (2019-02-02):
 - In 4.2.0 (2019-01-15):
