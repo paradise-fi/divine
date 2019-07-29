@@ -223,26 +223,6 @@ namespace lart::abstract
                 UNREACHABLE( "not implemented" );
             }
 
-            if constexpr ( Taint::thaw( T ) )
-            {
-                //auto addr = irb.CreateBitCast( args[ 1 ].value, i8ptr() );
-                //vals.push_back( addr ); // thawed address
-
-                /*if ( meta.scalar() ) {
-                    auto bw = args[ 0 ].value->getType()->getPrimitiveSizeInBits();
-                    vals.push_back( i32cv( bw ) ); // bitwidth of thawed value
-                }*/
-                UNREACHABLE( "not implemented" );
-            }
-
-            if constexpr ( Taint::freeze( T ) )
-            {
-                //vals.push_back( args[ 1 ].value ); // abstract value
-                //auto cst = irb.CreateBitCast( args[ 2 ].value, i8ptr() );
-                //vals.push_back( cst );             // concrete address
-                UNREACHABLE( "not implemented" );
-            }
-
             if constexpr ( Taint::cast( T ) )
             {
                 auto paired = paired_arguments().front();
@@ -412,8 +392,6 @@ namespace lart::abstract
         {
             DISPATCH( PHI )
             DISPATCH( GEP )
-            DISPATCH( Thaw )
-            DISPATCH( Freeze )
             DISPATCH( ToBool )
             DISPATCH( Assume )
             DISPATCH( Store )
@@ -428,6 +406,8 @@ namespace lart::abstract
             DISPATCH( Memcpy )
             DISPATCH( Memmove )
             DISPATCH( Memset )
+            default:
+                UNREACHABLE( "unsupported taint type" );
         }
     }
 
