@@ -172,9 +172,14 @@ namespace divine::mc::machine
         template< typename T > void run( tq &, T ) {}
         void boot( tq & ) {}
 
-        void queue_edge( tq &q, const origin &o, State state, Label lbl, bool isnew )
+        void queue_edge( tq &q, const origin &from, State to, Label lbl, bool isnew )
         {
-            q.template add< task_edge >( State( o.snap ), state, lbl, isnew );
+            q.template add< task_edge >( State( from.snap ), to, lbl, isnew );
+        }
+
+        void queue_choice( tq &q, const origin &o, Snapshot snap, vm::State state, int i, int t )
+        {
+            q.template add< task_choose >( snap, o, state, i, t );
         }
     };
 
@@ -184,19 +189,19 @@ namespace divine::mc::machine
         using typename next::origin;
         using typename next::tq;
 
-        void queue_choices( tq &q, Snapshot snap, origin o, vm::State state, int take, int total )
+        void queue_choices( tq &q, origin o, Snapshot snap, vm::State state, int take, int total )
         {
             for ( int i = 0; i < total; ++i )
                 if ( i != take )
                 {
                     this->_snap_refcnt.get( snap );
-                    q.template add< typename next::task_choose >( snap, o, state, i, total );
+                    this->queue_choice( q, o, snap, state, i, total );
                 }
         }
 
-        int select_choice( tq &q, Snapshot snap, origin o, vm::State state, int count )
+        int select_choice( tq &q, origin o, Snapshot snap, vm::State state, int count )
         {
-            queue_choices( q, snap, o, state, 0, count );
+            queue_choices( q, o, snap, state, 0, count );
             return 0;
         }
     };
@@ -208,11 +213,11 @@ namespace divine::mc::machine
         using typename next::tq;
         std::mt19937 rand;
 
-        int select_choice( tq &q, Snapshot snap, origin o, vm::State state, int count )
+        int select_choice( tq &q, origin o, Snapshot snap, vm::State state, int count )
         {
             using dist = std::uniform_int_distribution< int >;
             int c = dist( 0, count - 1 )( rand );
-            this->queue_choices( q, snap, o, state, c, count );
+            this->queue_choices( q, o, snap, state, c, count );
         }
     };
 
@@ -256,7 +261,7 @@ namespace divine::mc::machine
             eval.dispatch();
 
             this->context()._choice_take =
-                this->select_choice( q, snap, o, state, this->context()._choice_count );
+                this->select_choice( q, o, snap, state, this->context()._choice_count );
             compute( q, o, snap );
         }
 
