@@ -44,7 +44,49 @@ namespace divine::mc
                                           ctx::with_debug, ctx::with_tracking,
                                           ctx::common< vm::Program, vm::CowHeap > > {};
 
-    struct mach_exec : brq::compose_stack< machine::graph_dispatch,
+    template< typename next >
+    struct backtrack_ : next
+    {
+        using typename next::tq;
+        using typename next::task_choose;
+
+        std::stack< task_choose > _stack;
+
+        bool feasible( tq &q ) override
+        {
+            if ( next::feasible( q ) )
+                return true;
+            if ( !this->context().flags_any( _VM_CF_Stop ) && !_stack.empty() )
+            {
+                TRACE( "encountered an infeasible path, backtracking", _stack.top() );
+                q.template add< task_choose >( _stack.top() );
+                _stack.pop();
+            }
+            return false;
+        }
+
+        void choose( tq &q, task_choose &c )
+        {
+            c.total = -c.total;
+            if ( c.total < 0 )
+            {
+                _stack.push( c );
+                c.cancel();
+            }
+            else
+                next::choose( q, c );
+        };
+
+        ~backtrack_()
+        {
+            while ( !_stack.empty() )
+                this->snap_put( _stack.top().snap ), _stack.pop();
+        }
+    };
+
+    struct backtrack : brq::module< backtrack_ > {};
+
+    struct mach_exec : brq::compose_stack< machine::graph_dispatch, backtrack,
                                            machine::compute,
                                            machine::tree_search,
                                            machine::choose_random, machine::choose,
