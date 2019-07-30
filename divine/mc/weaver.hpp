@@ -101,9 +101,9 @@ namespace divine::mc
         Lambda( F f ) : f( f ) {}
 
         template< typename TQ, typename T >
-        auto run( TQ &tq, T t )
+        auto run( TQ &tq, T &t )
         {
-            if constexpr ( std::__invokable< F, TQ &, T >::value ) // FIXME std::is_invocable_v
+            if constexpr ( std::__invokable< F, TQ &, T & >::value ) // FIXME std::is_invocable_v
                 return f( tq, t );
         }
     };
@@ -184,7 +184,7 @@ namespace divine::mc
         }
 
         template< int i = 0, typename T >
-        void process_task( T t )
+        void process_task( T &t )
         {
             if constexpr ( i < std::tuple_size_v< MachineT > )
             {
