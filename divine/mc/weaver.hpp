@@ -89,7 +89,7 @@ namespace divine::mc
         template< typename TQ, typename T >
         auto run( TQ &, T t )
         {
-            if constexpr ( std::__invokable< F, T >::value ) // FIXME std::is_invocable_v
+            if constexpr ( std::is_invocable_v< F, T > )
                 return f( t );
         }
     };
@@ -103,7 +103,7 @@ namespace divine::mc
         template< typename TQ, typename T >
         auto run( TQ &tq, T &t )
         {
-            if constexpr ( std::__invokable< F, TQ &, T & >::value ) // FIXME std::is_invocable_v
+            if constexpr ( std::is_invocable_v< F, TQ &, T & > )
                 return f( tq, t );
         }
     };
