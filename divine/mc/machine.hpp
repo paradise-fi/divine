@@ -380,6 +380,7 @@ namespace divine::mc::machine
 
         ~tree_search_()
         {
+            this->_snap_pool.sync();
             ASSERT_LEQ( this->_snap_pool.stats().total.count.used, 1 );
         }
 
