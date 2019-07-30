@@ -526,7 +526,7 @@ void Program::computeStatic( llvm::Module *module )
         writeMetaElem( 2, value::Int< 32 >( func.framesize ) ); // frame size
         writeMetaElem( 6, value::Int< 32 >( func.instructions.size() ) ); // inst count
 
-        // create and write write instruction table
+        // create and write instruction table
         auto instTable = instTableObj + instOffset;
         int instTableSize = TD.getTypeAllocSize( instTableT ) * func.instructions.size();
         writeMetaElem( 7, instTable );

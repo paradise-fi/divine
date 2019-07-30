@@ -39,7 +39,7 @@
  *   - ctx_debug needs to look at control flags and snapshot/rollback the heap: ctx_ctlreg & ctx_heap
  *     plus it needs to invalidate the ptr2i cache
  *   - ctx_snapshot needs to invalidate the ptr2i cache
- *   - ctx_fault needs to ctx_program and ctx_ctlreg to construct the fault handler frame */
+ *   - ctx_fault needs ctx_program and ctx_ctlreg to construct the fault handler frame */
 
 namespace divine::vm
 {

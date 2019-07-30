@@ -79,8 +79,8 @@ struct Program
      * atomicrmw multi-purpose opcodes) or an index into the type table (for
      * GEP or alloca) or the offset of the landing pad for invoke instructions.
      * For 'call' instructions, the subcode (if nonzero) indicates the ID of
-     * the intrinsic function. */
-
+     * the intrinsic function. The 'values' member holds all Slots belonging
+     * to this instruction - the result and all operands. */
     struct Instruction
     {
         uint32_t opcode:16;
@@ -94,6 +94,8 @@ struct Program
             return values[ idx ];
         }
 
+        /* Negative indices are used for fetching values from the back,
+         * -1 denotes the last value, -2 second last, etc. */
         Slot value( int i ) const
         {
             int idx = (i >= 0) ? i : (i + values.size());
