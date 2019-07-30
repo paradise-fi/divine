@@ -492,8 +492,18 @@ namespace divine::mc
     struct GMachine : machine::graph< smt::NoSolver > {};
 
     template< typename M >
+    struct TQ : M::tq {};
+
+    template< typename M >
+    struct MW
+    {
+        struct TQ : M::tq {};
+        struct W : Weaver< TQ > {};
+    };
+
+    template< typename M >
     auto weave( M &machine )
     {
-        return mc::Weaver< typename M::tq >().extend_ref( machine );
+        return typename MW< M >::W().extend_ref( machine );
     }
 }
