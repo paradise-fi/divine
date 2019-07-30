@@ -16,44 +16,49 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <divine/mc/ctx-assume.hpp>
 #include <divine/mc/exec.hpp>
+#include <divine/mc/search.hpp>
 #include <divine/mc/bitcode.hpp>
+#include <divine/mc/machine.hpp>
+#include <divine/mc/weaver.hpp>
+
 #include <divine/vm/eval.hpp>
 #include <divine/vm/setup.hpp>
 
 #include <divine/vm/eval.tpp>
-#include <divine/vm/ctx-debug.tpp>
 #include <divine/dbg/stepper.tpp>
 #include <divine/dbg/print.tpp>
 
 namespace divine::mc
 {
+    template< typename next >
+    struct print_trace : next
+    {
+        using next::trace;
+        void trace( std::string s ) { std::cout << s << std::endl; }
+    };
+
+    namespace ctx = vm::ctx;
+    struct ctx_exec : brq::compose_stack< ctx_assume, ctx_choice, brq::module< print_trace >,
+                                          ctx::with_debug, ctx::with_tracking,
+                                          ctx::common< vm::Program, vm::CowHeap > > {};
+
+    struct mach_exec : brq::compose_stack< machine::graph_dispatch,
+                                           machine::compute,
+                                           machine::tree_search,
+                                           machine::choose_random, machine::choose,
+                                           machine::with_context< ctx_exec >,
+                                           machine::base< smt::NoSolver > > {};
+
+    struct search : mc::Search< mc::State, mc::Label > {};
 
     void Exec::run()
     {
-        using Eval = vm::Eval< ExecContext >;
-        auto &program = _bc->program();
-        ExecContext _ctx;
-        _ctx.program( program );
-        Eval eval( _ctx );
-
-        vm::setup::boot( _ctx );
-        _ctx.enable_debug();
-        eval.run();
-        if ( !_ctx.flags_any( _VM_CF_Cancel | _VM_CF_Error ) )
-            ASSERT( !_ctx.state_ptr().null() );
-
-        while ( !_ctx.flags_any( _VM_CF_Cancel | _VM_CF_Error ) )
-        {
-            vm::setup::scheduler( _ctx );
-            eval.run();
-        }
-
-        if ( _ctx.flags_any( _VM_CF_Cancel ) )
-            std::cerr << "encountered an infeasible path (execution cancelled)" << std::endl;
-
-        if ( _ctx.flags_any( _VM_CF_Error ) )
-            std::cerr << "execution stopped due to a program error" << std::endl;
+        mach_exec m;
+        m.bc( _bc );
+        m.context().enable_debug();
+        weave( m ).extend( search() ).start();
     }
 
     void Exec::trace()
