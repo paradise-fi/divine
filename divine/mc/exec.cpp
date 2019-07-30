@@ -37,6 +37,7 @@ namespace divine::mc
     {
         using next::trace;
         void trace( std::string s ) { std::cout << s << std::endl; }
+        void trace( vm::TraceInfo ti ) { trace( this->heap().read_string( ti.text ) ); }
     };
 
     namespace ctx = vm::ctx;
