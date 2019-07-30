@@ -294,19 +294,24 @@ namespace divine::mc::machine
             return this->_solver.feasible( this->context().heap(), this->context()._assume );
         }
 
-        void compute( tq &q, origin o, Snapshot cont_from = Snapshot() )
+        void snap_put( Snapshot s )
         {
             auto destroy = [&]( auto p, int cnt )
             {
-                 if ( cnt == 0 )
+                if ( cnt == 0 )
                     this->heap().snap_put( this->_snap_pool, p );
-                 return false;
+                return false;
             };
 
+            this->_snap_refcnt.put( s, destroy );
+        }
+
+        void compute( tq &q, origin o, Snapshot cont_from = Snapshot() )
+        {
             auto cleanup = [&]
             {
                 if ( cont_from )
-                    this->_snap_refcnt.put( cont_from, destroy );
+                    this->snap_put( cont_from );
             };
 
             brick::types::Defer _( cleanup );
