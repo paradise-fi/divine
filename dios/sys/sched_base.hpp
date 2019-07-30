@@ -468,6 +468,7 @@ struct Scheduler : public Next
         if ( t && t->_frame )
             scheduler.run( *t ); /* does not return */
 
+        __vm_ctl_flag( 0, _VM_CF_Stop );
         __vm_cancel();
     }
 
