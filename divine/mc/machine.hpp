@@ -218,6 +218,7 @@ namespace divine::mc::machine
             using dist = std::uniform_int_distribution< int >;
             int c = dist( 0, count - 1 )( rand );
             this->queue_choices( q, o, snap, state, c, count );
+            return c;
         }
     };
 
