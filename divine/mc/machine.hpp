@@ -284,7 +284,7 @@ namespace divine::mc::machine
                 return compute( q, o, cont_from );
         }
 
-        bool feasible()
+        virtual bool feasible( tq & )
         {
             if ( this->context().flags_any( _VM_CF_Cancel ) )
                 return false;
@@ -313,7 +313,7 @@ namespace divine::mc::machine
             Eval eval( this->context() );
             bool choice = eval.run_seq( !!cont_from );
 
-            if ( !feasible() )
+            if ( !feasible( q ) )
                 return;
 
             if ( choice )
