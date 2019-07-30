@@ -454,10 +454,10 @@ namespace divine::mc::machine
     };
 
     template< typename solver >
-    using base = brq::module< base_, solver >;
+    struct base : brq::module< base_, solver > {};
 
     template< typename ctx >
-    using with_context = brq::module< with_context_, ctx >;
+    struct with_context : brq::module< with_context_, ctx > {};
 
     template< typename solver >
     using common = brq::compose< with_context< context >, base< solver > >;
@@ -483,8 +483,8 @@ namespace divine::mc::machine
 
 namespace divine::mc
 {
-    using TMachine = machine::tree< smt::NoSolver >;
-    using GMachine = machine::graph< smt::NoSolver >;
+    struct TMachine : machine::tree< smt::NoSolver > {};
+    struct GMachine : machine::graph< smt::NoSolver > {};
 
     template< typename M >
     auto weave( M &machine )

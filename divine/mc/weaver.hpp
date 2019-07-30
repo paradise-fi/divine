@@ -80,6 +80,46 @@ namespace divine::mc
         };
     };
 
+    template< typename F >
+    struct Observer
+    {
+        F f;
+        Observer( F f ) : f( f ) {}
+
+        template< typename TQ, typename T >
+        auto run( TQ &, T t )
+        {
+            if constexpr ( std::__invokable< F, T >::value ) // FIXME std::is_invocable_v
+                return f( t );
+        }
+    };
+
+    template< typename F >
+    struct Lambda
+    {
+        F f;
+        Lambda( F f ) : f( f ) {}
+
+        template< typename TQ, typename T >
+        auto run( TQ &tq, T t )
+        {
+            if constexpr ( std::__invokable< F, TQ &, T >::value ) // FIXME std::is_invocable_v
+                return f( tq, t );
+        }
+    };
+
+    template< typename M >
+    struct Ref : std::reference_wrapper< M >
+    {
+        using std::reference_wrapper< M >::reference_wrapper;
+
+        template< typename TQ, typename T >
+        void run( TQ &tq, const T &t )
+        {
+            this->get().run( tq, t );
+        }
+    };
+
     template< typename TQ, typename... Machines >
     struct Weaver
     {
@@ -110,57 +150,17 @@ namespace divine::mc
             return Weaver< TQ, ExMachines..., Machines... >( std::tuple_cat( ext, _machines ) );
         }
 
-        template< typename M >
-        struct Ref : std::reference_wrapper< M >
-        {
-            using std::reference_wrapper< M >::reference_wrapper;
-
-            template< typename T >
-            void run( TQ &tq, T t )
-            {
-                this->get().run( tq, t );
-            }
-        };
-
         template< typename R >
         auto extend_ref( R &ref )
         {
             return extend( Ref< R >( ref ) );
         }
 
-        template< typename F >
-        struct Observer
-        {
-            F f;
-            Observer( F f ) : f( f ) {}
-
-            template< typename T >
-            auto run( TQ &, T t )
-            {
-                if constexpr ( std::__invokable< F, T >::value ) // FIXME std::is_invocable_v
-                    return f( t );
-            }
-        };
-
         template< typename... F >
         auto observe( F... fs )
         {
             return extend( Observer< F >( fs ) ... );
         }
-
-        template< typename F >
-        struct Lambda
-        {
-            F f;
-            Lambda( F f ) : f( f ) {}
-
-            template< typename T >
-            auto run( TQ &tq, T t )
-            {
-                if constexpr ( std::__invokable< F, TQ &, T >::value ) // FIXME std::is_invocable_v
-                    return f( tq, t );
-            }
-        };
 
         template< typename... F >
         auto extend_f( F... fs )
