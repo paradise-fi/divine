@@ -801,21 +801,11 @@ struct ParserT< Validator >
     ParserT( brq::refcount_ptr< Validator > v ) : validator( v ) {}
 };
 
-template< typename Validator, typename... Ts >
-struct Parser
+template< typename Validator >
+struct ParserBase
 {
-    using PT = ParserT< Validator, Ts... >;
-    PT _rep;
     Match _match;
     bool _failed;
-
-    template< typename U >
-    auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
-    {
-        _match = Match::None;
-        _failed = false;
-        return _parse_rec( _rep, res, b, e );
-    }
 
     template< typename U >
     auto _parse_rec( ParserT< Validator > &, U &, Tokens::iterator b, Tokens::iterator )
@@ -868,6 +858,38 @@ struct Parser
         return rv;
     }
 
+    template< typename Rec >
+    std::string _describe_rec( Rec &rec, std::string name )
+    {
+        if ( name.empty() ) {
+            auto d = _describe_rec( rec.cdr, name );
+            if ( !d.empty() )
+                d += "\n";
+            return d + rec.car.describe_header( 10 );
+        }
+        if ( rec.car.name() == name )
+            return rec.car.describe();
+        return _describe_rec( rec.cdr, name );
+    }
+
+    std::string _describe_rec( ParserT< Validator > &, std::string ) { return ""; }
+
+};
+
+template< typename Validator, typename... Ts >
+struct Parser : ParserBase< Validator >
+{
+    using PT = ParserT< Validator, Ts... >;
+    PT _rep;
+
+    template< typename U >
+    auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
+    {
+        this->_match = Match::None;
+        this->_failed = false;
+        return this->_parse_rec( _rep, res, b, e );
+    }
+
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
     {
         typename PT::Types _result;
@@ -886,9 +908,9 @@ struct Parser
             std::stringstream extra;
             for (std::string str : unexpected)
                 extra << "'" << str << "' ";
-            if ( _match == Match::None )
+            if ( this->_match == Match::None )
                 throw except::Error( "unknown command, use 'help' for list of available commands" );
-            if ( _failed )
+            if ( this->_failed )
                 throw except::Error( "ambiguous command, use 'help' for list of available commands" );
             else
                 throw except::Error( "unexpected options: " + extra.str() );
@@ -919,23 +941,7 @@ struct Parser
         return cmd;
     }
 
-    std::string describe( std::string name = "" ) { return describe_rec( _rep, name ); }
-
-    template< typename Rec >
-    std::string describe_rec( Rec &rec, std::string name )
-    {
-        if ( name.empty() ) {
-            auto d = describe_rec( rec.cdr, name );
-            if ( !d.empty() )
-                d += "\n";
-            return d + rec.car.describe_header( 10 );
-        }
-        if ( rec.car.name() == name )
-            return rec.car.describe();
-        return describe_rec( rec.cdr, name );
-    }
-
-    std::string describe_rec( ParserT< Validator > &, std::string ) { return ""; }
+    std::string describe( std::string name = "" ) { return this->_describe_rec( _rep, name ); }
 
     Parser( PT rep ) : _rep( rep ) {}
 };
