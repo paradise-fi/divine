@@ -28,12 +28,15 @@ namespace brq
         refcount_ptr() noexcept = default;
         refcount_ptr( const refcount_ptr< T, atomic > &o ) noexcept : refcount_ptr( o._ptr ) {}
         refcount_ptr( T *v ) noexcept : _ptr( v ) { _get(); }
+        template< typename D, typename = std::enable_if_t< std::is_convertible_v< D *, T * > > >
+        refcount_ptr( const refcount_ptr< D > &o ) noexcept : refcount_ptr( o._ptr ) {}
         ~refcount_ptr() noexcept { _put(); }
         T *operator->() const noexcept { return _ptr; }
         T &operator*() const noexcept { return *_ptr; }
 
         explicit operator bool() const noexcept { return ptr(); }
         bool operator !() const noexcept { return !ptr(); }
+        bool operator<( const refcount_ptr &o ) const noexcept { return std::less()( ptr(), o.ptr() ); }
 
         template< bool o_atomic >
         refcount_ptr< T, atomic > &operator=( const refcount_ptr< T, o_atomic > &o ) noexcept
