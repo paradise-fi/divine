@@ -22,13 +22,7 @@
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/machine.hpp>
 #include <divine/mc/weaver.hpp>
-
-#include <divine/vm/eval.hpp>
-#include <divine/vm/setup.hpp>
-
 #include <divine/vm/eval.tpp>
-#include <divine/dbg/stepper.tpp>
-#include <divine/dbg/print.tpp>
 
 namespace divine::mc
 {
@@ -103,20 +97,5 @@ namespace divine::mc
         m.context().enable_debug();
         weave( m ).extend( search() ).start();
     }
-
-    void Exec::trace()
-    {
-        using Stepper = dbg::Stepper< mc::TraceContext >;
-        Stepper step;
-        step._ff_components = dbg::Component::Kernel;
-        step._booting = true;
-
-        mc::TraceContext ctx( _bc->program(), _bc->debug() );
-        vm::setup::boot( ctx );
-        step.run( ctx, Stepper::Verbosity::TraceInstructions );
-    }
-
 }
 
-namespace divine::dbg        { template struct Stepper< mc::TraceContext >; }
-namespace divine::dbg::print { template struct Print< mc::TraceContext >;   }
