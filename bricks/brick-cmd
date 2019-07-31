@@ -28,6 +28,7 @@
 #include <brick-types>
 #include <brick-except>
 #include <brick-string>
+#include <brick-ptr>
 
 namespace brick {
 namespace cmd {
@@ -44,7 +45,7 @@ struct Error
 template< typename T >
 using ErrorOr = types::Union< Error, T >;
 
-struct ValidatorInterface
+struct ValidatorInterface : brq::refcount_base<>
 {
     virtual bool validate( std::string t, std::string v ) = 0;
     virtual ~ValidatorInterface() {}
@@ -55,10 +56,9 @@ template< typename... > struct Validator;
 static const auto ignore2 = []( auto, auto ) {};
 
 template< typename Parse, typename... Ps >
-struct Validator< Parse, Ps... >
-    : ValidatorInterface, std::enable_shared_from_this< Validator< Parse, Ps... > >
+struct Validator< Parse, Ps... >:  ValidatorInterface
 {
-    using Next = std::shared_ptr< Validator< Ps... > >;
+    using Next = brq::refcount_ptr< Validator< Ps... > >;
 
     std::string _name;
     Parse _parse;
@@ -98,13 +98,12 @@ struct Validator< Parse, Ps... >
     template< typename P >
     auto add( std::string t, P parse )
     {
-        return std::make_shared< Validator< P, Parse, Ps... > >(
-            t, parse, this->shared_from_this() );
+        return brq::make_refcount< Validator< P, Parse, Ps... > >( t, parse, this );
     }
 };
 
 template<>
-struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator<> >
+struct Validator<> : ValidatorInterface
 {
     bool validate( std::string t, std::string ) override
     {
@@ -120,17 +119,17 @@ struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator
     template< typename P >
     auto add( std::string t, P parse )
     {
-        return std::make_shared< Validator< P > >( t, parse, this->shared_from_this() );
+        return brq::make_refcount< Validator< P > >( t, parse, this );
     }
 };
 
-using ValidatorPtr = std::shared_ptr< ValidatorInterface >;
+using ValidatorPtr = brq::refcount_ptr< ValidatorInterface >;
 
 namespace {
 
 auto make_validator()
 {
-    return std::make_shared< Validator<> >()->
+    return brq::make_refcount< Validator<> >()->
         add( "string", []( std::string s, auto good, auto ) { return good( s ); } ) ->
         add( "int", []( std::string s, auto good, auto bad )
              {
@@ -207,7 +206,7 @@ std::pair< std::string, std::string > next_token( std::string s )
  *   non-optional
  */
 
-struct Pattern
+struct Pattern : brq::refcount_base<>
 {
     /*
      * Match: prefix match
@@ -219,7 +218,7 @@ struct Pattern
     int _capture_id;
     ValidatorPtr _validator;
     bool _required, _many;
-    using Ptr = std::shared_ptr< Pattern >;
+    using Ptr = brq::refcount_ptr< Pattern >;
 
     Ptr _next;
     Ptr _alt;
@@ -428,7 +427,7 @@ enum class OptionFlag { Unique = 1, Final = 2, Required = 4 };
 using OptionFlags = brick::types::StrongEnumFlags< OptionFlag >;
 
 template< typename T >
-struct OptionInterface
+struct OptionInterface : brq::refcount_base<>
 {
     virtual Tokens::iterator parse( T &edit, Tokens::iterator, Tokens::iterator ) = 0;
     virtual Tokens::iterator match( Tokens::iterator, Tokens::iterator ) = 0;
@@ -443,7 +442,7 @@ template< typename Validator, typename T, typename V >
 struct Option : OptionInterface< T >
 {
     using Get = std::function< V &( T & ) >;
-    std::shared_ptr< Validator > _validator;
+    brq::refcount_ptr< Validator > _validator;
     Pattern _pattern;
     Get _get;
     std::string _descr;
@@ -543,7 +542,7 @@ struct Option : OptionInterface< T >
 
     int priority() override { return priority( _pattern ); }
 
-    Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr,
+    Option( brq::refcount_ptr< Validator > v, std::string fmt, Get get, std::string descr,
             OptionFlags flags = OptionFlags() )
             : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _flags( flags )
     {}
@@ -553,7 +552,7 @@ template< typename T, typename S >
 struct OptionWrapper : OptionInterface< T >
 {
     using Get = std::function< S &( T & ) >;
-    using Sub = std::shared_ptr< OptionInterface< S > >;
+    using Sub = brq::refcount_ptr< OptionInterface< S > >;
 
     Get _get;
     Sub _sub;
@@ -577,20 +576,21 @@ struct OptionWrapper : OptionInterface< T >
 };
 
 template< typename T >
-using OptionPtr = std::shared_ptr< OptionInterface< T > >;
+using OptionPtr = brq::refcount_ptr< OptionInterface< T > >;
 
 template< typename T, typename Value, typename Validator >
-OptionPtr< T > make_option( std::shared_ptr< Validator > validator, std::string pattern,
-                  Value T::*member, std::string descr = "", OptionFlags flags = OptionFlags() )
+OptionPtr< T > make_option( brq::refcount_ptr< Validator > validator, std::string pattern,
+                            Value T::*member, std::string descr = "",
+                            OptionFlags flags = OptionFlags() )
 {
-    return std::make_shared< Option< Validator, T, Value > >(
+    return brq::make_refcount< Option< Validator, T, Value > >(
         validator, pattern, [member]( auto &x ) -> auto& { return x.*member; }, descr, flags );
 }
 
 template< typename Validator, typename T >
 struct OptionSet
 {
-    std::shared_ptr< Validator > _validator;
+    brq::refcount_ptr< Validator > _validator;
     std::vector< OptionPtr< T > > _opts;
 
     template< typename V >
@@ -629,7 +629,7 @@ struct OptionSet
     }
 
     template< typename... Args >
-    explicit OptionSet( std::shared_ptr< Validator > v, Args... args )
+    explicit OptionSet( brq::refcount_ptr< Validator > v, Args... args )
         : _validator( v )
     {
         options( args... );
@@ -694,7 +694,7 @@ struct OptionSet
 };
 
 template< typename T, typename V, typename... Args >
-auto make_option_set( std::shared_ptr< V > v, Args... args )
+auto make_option_set( brq::refcount_ptr< V > v, Args... args )
 {
     return OptionSet< V, T >( v, args... );
 }
@@ -772,7 +772,7 @@ struct Command : OptionSet< Validator, T >
     }
 
     template< typename... Args >
-    Command( std::shared_ptr< Validator > v, Args... args )
+    Command( brq::refcount_ptr< Validator > v, Args... args )
         : OptionSet< Validator, T >( v, args... ), _extra( nullptr )
     {}
 };
@@ -784,21 +784,21 @@ struct ParserT< Validator, T, Ts... >
 {
     Command< Validator, T > car;
     ParserT< Validator, Ts... > cdr;
-    std::shared_ptr< Validator > validator;
+    brq::refcount_ptr< Validator > validator;
 
     using Type = T;
     using Types = types::Union< T, Ts... >;
 
     template< typename... Args >
-    ParserT( std::shared_ptr< Validator > v, ParserT< Validator, Ts... > cdr,
+    ParserT( brq::refcount_ptr< Validator > v, ParserT< Validator, Ts... > cdr,
              Args... args ) : car( v, args... ), cdr( cdr ), validator( v ) {}
 };
 
 template< typename Validator >
 struct ParserT< Validator >
 {
-    std::shared_ptr< Validator > validator;
-    ParserT( std::shared_ptr< Validator > v ) : validator( v ) {}
+    brq::refcount_ptr< Validator > validator;
+    ParserT( brq::refcount_ptr< Validator > v ) : validator( v ) {}
 };
 
 template< typename Validator, typename... Ts >
@@ -941,7 +941,7 @@ struct Parser
 };
 
 template< typename V >
-auto make_parser( std::shared_ptr< V > v )
+auto make_parser( brq::refcount_ptr< V > v )
 {
     return Parser< V >( ParserT< V >( v ) );
 }
