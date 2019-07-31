@@ -38,7 +38,7 @@ namespace divine::t_mc
 
         using TQ::skeleton::run;
 
-        void run( TQ &tq, mc::task::Start )
+        void run( TQ &tq, mc::task::start )
         {
             _states.insert( 1 );
             tq.add< Expand >( 1 );

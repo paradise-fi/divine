@@ -21,7 +21,8 @@
 
 namespace divine::mc::task
 {
-    struct Start {};
+    struct base { bool valid() { return true; } };
+    struct start : base {};
 }
 
 namespace divine::mc
@@ -187,10 +188,11 @@ namespace divine::mc
         void process_task( T &t )
         {
             if constexpr ( i < std::tuple_size_v< MachineT > )
-            {
-                std::get< i >( _machines ).run( _queue, t );
-                return process_task< i + 1 >( t );
-            }
+                if ( t.valid() )
+                {
+                    std::get< i >( _machines ).run( _queue, t );
+                    return process_task< i + 1 >( t );
+                }
         }
 
         template< typename T, typename... Args >
@@ -207,7 +209,7 @@ namespace divine::mc
 
         void start()
         {
-            add< task::Start >();
+            add< task::start >();
             run();
         }
     };

@@ -92,7 +92,7 @@ namespace divine::mc
 
 namespace divine::mc::task
 {
-    using Boot     = Start;
+    using Boot     = start;
 
     struct origin
     {
@@ -101,7 +101,7 @@ namespace divine::mc::task
         explicit origin( Snapshot s ) : snap( s ) {}
     };
 
-    struct Compute
+    struct Compute : base
     {
         Snapshot snap;
         task::origin origin;
@@ -115,6 +115,7 @@ namespace divine::mc::task
     {
         int choice, total;
         void cancel() { total = 0; }
+        bool valid() { return total; }
         Choose( Snapshot snap, task::origin orig, vm::State state, int c, int t )
             : Compute( snap, orig, state ), choice( c ), total( t )
         {}
@@ -167,7 +168,7 @@ namespace divine::mc::machine
         using task_choose   = task::Choose;
         using task_schedule = task::Expand< State >;
         using task_edge     = task::Edge< State, Label >;
-        using tq            = task_queue< task_choose, task::Start, task_schedule, task_edge >;
+        using tq            = task_queue< task_choose, task::start, task_schedule, task_edge >;
 
         template< typename T > void run( tq &, T ) {}
         void boot( tq & ) {}
@@ -350,9 +351,6 @@ namespace divine::mc::machine
 
         void choose( tq &q, typename next::task_choose c )
         {
-            TRACE( "task (choose)", c );
-            if ( !c.total )
-                return;
             this->context().load( this->_snap_pool, c.snap );
             this->context()._state = c.state;
             this->context()._choice_take = c.choice;

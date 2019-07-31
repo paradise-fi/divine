@@ -22,7 +22,7 @@
 namespace divine::mc::task
 {
     template< typename State, typename Label >
-    struct Edge
+    struct Edge : base
     {
         State from, to;
         Label label;
@@ -33,7 +33,7 @@ namespace divine::mc::task
     };
 
     template< typename State >
-    struct Expand
+    struct Expand : base
     {
         State from;
         Expand( State s ) : from( s ) {}
@@ -43,7 +43,7 @@ namespace divine::mc::task
 namespace divine::mc
 {
     template< typename State, typename Label >
-    using GraphTQ = task_queue< task::Start, task::Expand< State >, task::Edge< State, Label > >;
+    using GraphTQ = task_queue< task::start, task::Expand< State >, task::Edge< State, Label > >;
 
     template< typename State, typename Label >
     struct Search : GraphTQ< State, Label >::skeleton

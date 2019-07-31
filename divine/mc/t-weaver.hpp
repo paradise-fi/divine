@@ -22,13 +22,13 @@
 namespace divine::t_mc
 {
 
-    struct task1
+    struct task1 : mc::task::base
     {
         int i;
         task1( int i ) : i( i ) {}
     };
 
-    struct task2
+    struct task2 : mc::task::base
     {
         int j;
         task2( int j ) : j( j ) {}
