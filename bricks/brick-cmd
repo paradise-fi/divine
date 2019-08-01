@@ -490,9 +490,10 @@ struct OptionBase
     std::string fmt() { return _pattern.fmt(); };
     std::string describe()
     {
-        std::stringstream str;
-        str << std::setw(30) << fmt() << "   " << _descr;
-        return str.str();
+        brq::string_builder str;
+        auto f = fmt();
+        str << std::string( 30 - f.size(), ' ' ) << f << "   " << _descr;
+        return str.buffer();
     };
 
     int priority( Pattern &p )
@@ -600,9 +601,9 @@ struct OptionSet
 
     std::string fmt()
     {
-        std::stringstream s;
-        each_opt( [&]( auto &o ) { s << "  " << o.describe() << std::endl; } );
-        return s.str();
+        brq::string_builder s;
+        each_opt( [&]( auto &o ) { s << "  " << o.describe() << "\n"; } );
+        return s.buffer();
     }
 
     template< typename VPtr, typename T >
