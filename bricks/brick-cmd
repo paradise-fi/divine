@@ -190,6 +190,16 @@ std::pair< std::string, std::string > next_token( std::string s )
 
 }
 
+struct SetterInterface
+{
+    virtual void operator()( int, bool, std::string, std::string ) = 0;
+};
+
+struct NullSetter : SetterInterface
+{
+    void operator()( int, bool, std::string, std::string ) override {}
+};
+
 /*
  * Patterns (represented as format strings):
  * - tokens are whitespace-separated
@@ -257,19 +267,17 @@ struct Pattern : brq::refcount_base<>
 
     Tokens::iterator match( Tokens::iterator begin, Tokens::iterator end )
     {
-        auto ignore = []( int, bool, std::string, std::string ) {};
+        NullSetter ignore;
         return match( ignore, begin, end );
     }
 
-    template< typename C >
-    Tokens::iterator match( C capture, Tokens::iterator begin, Tokens::iterator end )
+    Tokens::iterator match( SetterInterface &capture, Tokens::iterator begin, Tokens::iterator end )
     {
         _capture_id = 0;
         return match( capture, begin, end, begin );
     }
 
-    template< typename C >
-    Tokens::iterator match( C capture, Tokens::iterator begin, Tokens::iterator end,
+    Tokens::iterator match( SetterInterface &capture, Tokens::iterator begin, Tokens::iterator end,
                             Tokens::iterator fail )
     {
         Tokens::iterator next = begin;
@@ -426,35 +434,46 @@ struct Pattern : brq::refcount_base<>
 enum class OptionFlag { Unique = 1, Final = 2, Required = 4 };
 using OptionFlags = brick::types::StrongEnumFlags< OptionFlag >;
 
-template< typename X >
-struct Set
+struct prefer {};
+
+template< typename Edit, typename X >
+auto push( Edit &edit, X &x, prefer ) -> decltype( edit.push_back( x ) )
 {
-    X &x;
-    Set( X &x ) : x( x ) {}
+    return edit.push_back( x );
+}
 
-    template< typename Y >
-    void operator()( Y y ) { _set( types::Preferred(), x, y ); }
+template< typename Edit, typename X >
+auto push( Edit &edit, X &x, brq::fallback ) -> decltype( edit = static_cast< Edit >( x ) )
+{
+    return edit = static_cast< Edit >( x );
+}
 
-    template< typename X_, typename Y >
-    auto _set( types::Preferred, X_ &x, Y y )
-        -> typename std::enable_if< std::is_convertible< Y, typename X_::value_type >::value >::type
+template< typename Edit >
+auto push( Edit &, brq::fallback, brq::fallback )
+{
+    UNREACHABLE( "capture type mismatch" );
+}
+
+template< typename VPtr, typename Edit >
+struct Setter : SetterInterface
+{
+    VPtr validator;
+    Edit &edit;
+    bool captured = false;
+
+    Setter( VPtr v, Edit &e ) : validator( v ), edit( e ) {}
+
+    template< typename X >
+    void operator()( X x )
     {
-        x.push_back( y );
+        push( edit, x, prefer() );
     }
 
-    template< typename X_, typename Y >
-    auto _set( types::NotPreferred, X_ &x, Y y )
-        -> typename std::enable_if< std::is_convertible< Y, X_ >::value >::type
+    void operator()( int, bool, std::string type, std::string val )
     {
-        x = static_cast< X_ >( y );
-    }
-
-    template< typename X_, typename Y >
-    auto _set( types::NotPreferred, X_ &, Y )
-        -> typename std::enable_if< !std::is_convertible< Y, X_ >::value >::type
-    {
-        UNREACHABLE( "capture type mismatch" );
-    }
+        validator->parse( *this, type, val );
+        captured = true;
+    };
 };
 
 struct OptionBase
@@ -527,14 +546,9 @@ struct Option : OptionBase
     template< typename T, typename VPtr >
     Tokens::iterator parse( const VPtr &validator, T &edit, Tokens::iterator b, Tokens::iterator e )
     {
-        bool captured = false;
-        auto result = _pattern.match(
-            [&]( int, bool, std::string type, std::string val )
-            {
-                validator->parse( Set< decltype( _get( edit ) ) >( _get( edit ) ), type, val );
-                captured = true;
-            }, b, e );
-        if ( !captured )
+        Setter< VPtr, decltype( _get( edit ) ) > setter( validator, _get( edit ) );
+        auto result = _pattern.match( setter, b, e );
+        if ( !setter.captured )
             set_true( _get( edit ) );
         return result;
     }
