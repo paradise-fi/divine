@@ -457,18 +457,19 @@ auto push( Edit &, brq::fallback, brq::fallback )
 template< typename VPtr, typename Edit >
 struct Setter : SetterInterface
 {
+    bool captured = false;
     VPtr validator;
     Edit &edit;
-    bool captured = false;
 
     Setter( VPtr v, Edit &e ) : validator( v ), edit( e ) {}
 
     template< typename X >
-    void operator()( X x )
+    void operator()( X x ) /* interface for Validator::parse() */
     {
         push( edit, x, prefer() );
     }
 
+    /* interface for Pattern::match() */
     void operator()( int, bool, std::string type, std::string val )
     {
         validator->parse( *this, type, val );
@@ -538,15 +539,16 @@ struct OptionBase
     {}
 };
 
-template< typename Get >
+template< typename T, typename V >
 struct Option : OptionBase
 {
+    using Get = std::function< V &( T & ) >;
     Get _get;
 
-    template< typename T, typename VPtr >
+    template< typename VPtr >
     Tokens::iterator parse( const VPtr &validator, T &edit, Tokens::iterator b, Tokens::iterator e )
     {
-        Setter< VPtr, decltype( _get( edit ) ) > setter( validator, _get( edit ) );
+        Setter< VPtr, V > setter( validator, _get( edit ) );
         auto result = _pattern.match( setter, b, e );
         if ( !setter.captured )
             set_true( _get( edit ) );
@@ -564,15 +566,16 @@ auto make_option( ValidatorPtr validator, std::string pattern,
                   OptionFlags flags = OptionFlags() )
 {
     auto get = [member]( auto &x ) -> auto &{ return x.*member; };
-    return Option< decltype( get ) >( validator, pattern, get, descr, flags );
+    return Option< T, Value >( validator, pattern, get, descr, flags );
 }
 
-template< typename Get >
+template< typename T, typename Value, typename I >
 auto make_option( ValidatorPtr validator, std::string pattern,
-                  Get get, std::string descr = "",
+                  I T::*intermediate, Value I::*member, std::string descr = "",
                   OptionFlags flags = OptionFlags() )
 {
-    return Option< decltype( get ) >( validator, pattern, get, descr, flags );
+    auto get = [intermediate, member]( auto &x ) -> auto & { return (x.*intermediate).*member; };
+    return Option< T, Value >( validator, pattern, get, descr, flags );
 }
 
 template< typename... Opts >
