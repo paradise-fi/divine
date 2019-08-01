@@ -839,25 +839,14 @@ struct Parser : ParserBase
         return b;
     }
 
-    template< int i = 0 >
     std::string describe( std::string name = "" )
     {
-        if constexpr ( i < sizeof...( Ts ) )
-        {
-            auto &cmd = std::get< i >( _cmds );
-            if ( name.empty() )
-            {
-                auto d = describe< i + 1 >( name );
-                if ( !d.empty() )
-                    d += "\n";
-                return d + cmd.describe_header( 10 );
-            }
-            if ( cmd.name() == name )
-                return cmd.describe();
-            return describe< i + 1 >( name );
-        }
+        brq::string_builder s;
+        if ( name.empty() )
+            each_cmd( [&]( auto &cmd ) { s << cmd.describe_header( 10 ) << "\n"; } );
         else
-            return "";
+            each_cmd( [&]( auto &cmd ) { if ( cmd.name() == name ) s << cmd.describe(); } );
+        return s.buffer();
     }
 
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
