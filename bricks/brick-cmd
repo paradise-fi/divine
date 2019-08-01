@@ -875,15 +875,28 @@ struct Parser : ParserBase
         auto _result = parse( b, e, unexpected );
         if ( !unexpected.empty() )
         {
-            std::stringstream extra;
-            for ( std::string str : unexpected )
-                extra << "'" << str << "' ";
+            brq::string_builder err;
+
+            auto amb = [&]( auto &cmd )
+            {
+                if ( cmd.matches( *b ) == Match::Partial )
+                    err << cmd.describe_header( 10 ) << "\n";
+            };
+
             if ( this->_match == Match::None )
-                throw except::Error( "unknown command, use 'help' for list of available commands" );
-            if ( this->_failed )
-                throw except::Error( "ambiguous command, use 'help' for list of available commands" );
+                err << "Unknown command '" << *b << "'. Available commands:\n" << describe();
+            else if ( this->_failed )
+            {
+                err << "Ambiguous command. Matches:\n";
+                each_cmd( amb );
+            }
             else
-                throw except::Error( "unexpected options: " + extra.str() );
+            {
+                err << "unexpected options: ";
+                for ( std::string str : unexpected )
+                    err << "'" << str << "' ";
+            }
+            throw except::Error( err.buffer() );
         }
         return _result;
     }
