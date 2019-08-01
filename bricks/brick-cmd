@@ -202,7 +202,7 @@ std::pair< std::string, std::string > next_token( std::string s )
  * - to capture a list of tuples, register a new type
  *
  * - the (regular) language for a set of patterns is obtained as [x|y|...]+ for
- *   all components x, y, ... unioned with .*X.*, .*Y.*, etc. for all X, Y
+ *   all components x, y, ... intersected with .*X.*, .*Y.*, etc. for all X, Y
  *   non-optional
  */
 
@@ -426,58 +426,43 @@ struct Pattern : brq::refcount_base<>
 enum class OptionFlag { Unique = 1, Final = 2, Required = 4 };
 using OptionFlags = brick::types::StrongEnumFlags< OptionFlag >;
 
-template< typename T >
-struct OptionInterface : brq::refcount_base<>
+template< typename X >
+struct Set
 {
-    virtual Tokens::iterator parse( T &edit, Tokens::iterator, Tokens::iterator ) = 0;
-    virtual Tokens::iterator match( Tokens::iterator, Tokens::iterator ) = 0;
-    virtual OptionFlags flags() = 0;
-    virtual int priority() = 0;
-    virtual std::string fmt() = 0;
-    virtual std::string describe() { return ""; }
-    virtual ~OptionInterface() {}
+    X &x;
+    Set( X &x ) : x( x ) {}
+
+    template< typename Y >
+    void operator()( Y y ) { _set( types::Preferred(), x, y ); }
+
+    template< typename X_, typename Y >
+    auto _set( types::Preferred, X_ &x, Y y )
+        -> typename std::enable_if< std::is_convertible< Y, typename X_::value_type >::value >::type
+    {
+        x.push_back( y );
+    }
+
+    template< typename X_, typename Y >
+    auto _set( types::NotPreferred, X_ &x, Y y )
+        -> typename std::enable_if< std::is_convertible< Y, X_ >::value >::type
+    {
+        x = static_cast< X_ >( y );
+    }
+
+    template< typename X_, typename Y >
+    auto _set( types::NotPreferred, X_ &, Y )
+        -> typename std::enable_if< !std::is_convertible< Y, X_ >::value >::type
+    {
+        UNREACHABLE( "capture type mismatch" );
+    }
 };
 
-template< typename Validator, typename T, typename V >
-struct Option : OptionInterface< T >
+struct OptionBase
 {
-    using Get = std::function< V &( T & ) >;
-    brq::refcount_ptr< Validator > _validator;
+    static constexpr const bool is_set = false;
     Pattern _pattern;
-    Get _get;
     std::string _descr;
     OptionFlags _flags;
-
-    template< typename X >
-    struct Set
-    {
-        X &x;
-        Set( X &x ) : x( x ) {}
-
-        template< typename Y >
-        void operator()( Y y ) { _set( types::Preferred(), x, y ); }
-
-        template< typename X_, typename Y >
-        auto _set( types::Preferred, X_ &x, Y y )
-            -> typename std::enable_if< std::is_convertible< Y, typename X_::value_type >::value >::type
-        {
-            x.push_back( y );
-        }
-
-        template< typename X_, typename Y >
-        auto _set( types::NotPreferred, X_ &x, Y y )
-            -> typename std::enable_if< std::is_convertible< Y, X_ >::value >::type
-        {
-            x = static_cast< X_ >( y );
-        }
-
-        template< typename X_, typename Y >
-        auto _set( types::NotPreferred, X_ &, Y )
-            -> typename std::enable_if< !std::is_convertible< Y, X_ >::value >::type
-        {
-            UNREACHABLE( "capture type mismatch" );
-        }
-    };
 
     void set_true( bool &edit )
     {
@@ -490,34 +475,20 @@ struct Option : OptionInterface< T >
         UNREACHABLE( "cannot set true to not bool" );
     }
 
-    Tokens::iterator parse( T &edit, Tokens::iterator b, Tokens::iterator e ) override
-    {
-        bool captured = false;
-        auto result = _pattern.match(
-            [&]( int, bool, std::string type, std::string val )
-            {
-                _validator->parse( Set< decltype( _get( edit ) ) >( _get( edit ) ), type, val );
-                captured = true;
-            }, b, e );
-        if ( !captured )
-            set_true( _get( edit ) );
-        return result;
-    }
-
-    Tokens::iterator match( Tokens::iterator b, Tokens::iterator e ) override
+    Tokens::iterator match( Tokens::iterator b, Tokens::iterator e )
     {
         return _pattern.match( b, e );
     }
 
-    OptionFlags flags() override
+    OptionFlags flags()
     {
         if ( _pattern._required )
             return _flags | OptionFlag::Required;
         return _flags;
     }
 
-    std::string fmt() override { return _pattern.fmt(); };
-    std::string describe() override
+    std::string fmt() { return _pattern.fmt(); };
+    std::string describe()
     {
         std::stringstream str;
         str << std::setw(30) << fmt() << "   " << _descr;
@@ -540,163 +511,176 @@ struct Option : OptionInterface< T >
         }
     }
 
-    int priority() override { return priority( _pattern ); }
+    int priority() { return priority( _pattern ); }
 
-    Option( brq::refcount_ptr< Validator > v, std::string fmt, Get get, std::string descr,
-            OptionFlags flags = OptionFlags() )
-            : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _flags( flags )
+    OptionBase( ValidatorPtr v, std::string fmt, std::string descr, OptionFlags flags )
+        : _pattern( v, fmt ), _descr( descr ), _flags( flags )
     {}
 };
 
-template< typename T, typename S >
-struct OptionWrapper : OptionInterface< T >
+template< typename Get >
+struct Option : OptionBase
 {
-    using Get = std::function< S &( T & ) >;
-    using Sub = brq::refcount_ptr< OptionInterface< S > >;
-
     Get _get;
-    Sub _sub;
 
-    OptionWrapper( Sub sub, Get get ) : _get( get ), _sub( sub ) {}
-
-    Tokens::iterator parse( T &edit, Tokens::iterator b, Tokens::iterator e ) override
+    template< typename T, typename VPtr >
+    Tokens::iterator parse( const VPtr &validator, T &edit, Tokens::iterator b, Tokens::iterator e )
     {
-        return _sub->parse( _get( edit ), b, e );
+        bool captured = false;
+        auto result = _pattern.match(
+            [&]( int, bool, std::string type, std::string val )
+            {
+                validator->parse( Set< decltype( _get( edit ) ) >( _get( edit ) ), type, val );
+                captured = true;
+            }, b, e );
+        if ( !captured )
+            set_true( _get( edit ) );
+        return result;
     }
 
-    Tokens::iterator match( Tokens::iterator b, Tokens::iterator e ) override
-    {
-        return _sub->match( b, e );
-    }
-
-    OptionFlags flags() override { return _sub->flags(); }
-    int priority() override { return _sub->priority(); }
-    std::string fmt() override { return _sub->fmt(); }
-    std::string describe() override { return _sub->describe(); }
+    Option( ValidatorPtr v, std::string fmt, Get get, std::string descr, OptionFlags flags )
+        : OptionBase( v, fmt, descr, flags ), _get( get )
+    {}
 };
 
-template< typename T >
-using OptionPtr = brq::refcount_ptr< OptionInterface< T > >;
-
-template< typename T, typename Value, typename Validator >
-OptionPtr< T > make_option( brq::refcount_ptr< Validator > validator, std::string pattern,
-                            Value T::*member, std::string descr = "",
-                            OptionFlags flags = OptionFlags() )
+template< typename T, typename Value >
+auto make_option( ValidatorPtr validator, std::string pattern,
+                  Value T::*member, std::string descr = "",
+                  OptionFlags flags = OptionFlags() )
 {
-    return brq::make_refcount< Option< Validator, T, Value > >(
-        validator, pattern, [member]( auto &x ) -> auto& { return x.*member; }, descr, flags );
+    auto get = [member]( auto &x ) -> auto &{ return x.*member; };
+    return Option< decltype( get ) >( validator, pattern, get, descr, flags );
 }
 
-template< typename Validator, typename T >
+template< typename Get >
+auto make_option( ValidatorPtr validator, std::string pattern,
+                  Get get, std::string descr = "",
+                  OptionFlags flags = OptionFlags() )
+{
+    return Option< decltype( get ) >( validator, pattern, get, descr, flags );
+}
+
+template< typename... Opts >
 struct OptionSet
 {
-    brq::refcount_ptr< Validator > _validator;
-    std::vector< OptionPtr< T > > _opts;
+    static constexpr const bool is_set = true;
+    ValidatorPtr _validator;
+    std::tuple< Opts... > _opts;
 
-    template< typename V >
-    auto &option( std::string fmt, V T::*member, std::string desc = "",
-                  OptionFlags flags = OptionFlags() )
-    {
-        _opts.emplace_back( make_option( _validator, fmt, member, desc, flags ) );
-        return *this;
-    };
+    OptionSet( ValidatorPtr v, const std::tuple< Opts... > &o )
+        : _validator( v ), _opts( o )
+    {}
 
     template< typename... Args >
-    auto &options( OptionPtr< T > opt, Args... args )
+    auto option( Args... args )
     {
-        _opts.emplace_back( opt );
-        return options( args... );
+        auto no = make_option( _validator, args... );
+        auto tuple = std::tuple_cat( _opts, std::make_tuple( no ) );
+        return OptionSet< Opts..., decltype( no ) >( _validator, tuple );
     };
 
-    template< typename S, typename... Args >
-    auto &options( OptionSet< Validator, S > opts, S T::*member, Args... args )
-    {
-        for ( auto o : opts._opts )
-            _opts.emplace_back(
-                new OptionWrapper< T, S >(
-                    o, [member]( T &x ) -> S& { return x.*member; } ) );
-        return options( args... );
-    }
-
-    template< typename S, typename... Args >
-    auto &options( OptionSet< Validator, S > opts, Args... args )
-    {
-        for ( auto o : opts._opts )
-            _opts.emplace_back(
-                new OptionWrapper< T, S >(
-                    o, []( T &x ) -> S& { return x; } ) );
-        return options( args... );
-    }
-
-    template< typename... Args >
-    explicit OptionSet( brq::refcount_ptr< Validator > v, Args... args )
-        : _validator( v )
-    {
-        options( args... );
-    }
-
-    auto &options() { return *this; }
-
-    virtual std::string describe()
+    std::string describe()
     {
         return fmt();
+    }
+
+    template< typename F, int i = 0 >
+    void each_opt( const F &f )
+    {
+        if constexpr ( i < sizeof...( Opts ) )
+        {
+            auto &opt = std::get< i >( _opts );
+            if constexpr ( std::remove_reference_t< decltype( opt ) >::is_set )
+                opt.each_opt( f );
+            else
+                f( opt );
+            each_opt< F, i + 1 >( f );
+        }
     }
 
     std::string fmt()
     {
         std::stringstream s;
-        for ( auto o : _opts )
-            s << "  " << o->describe() << std::endl;
+        each_opt( [&]( auto &o ) { s << "  " << o.describe() << std::endl; } );
         return s.str();
     }
 
-    Tokens::iterator parse( T &t, Tokens::iterator b, Tokens::iterator e )
+    template< typename VPtr, typename T >
+    Tokens::iterator parse( const VPtr &validator, T &t, Tokens::iterator b, Tokens::iterator e )
     {
-        std::set< OptionPtr< T > > parsed;
-        while ( b != e )
+        std::set< OptionBase * > parsed;
+        bool done = false;
+
+        while ( b != e && !done )
         {
-            std::set< OptionPtr< T > > matched, selected;
+            brq::string_builder alternatives;
+            std::set< OptionBase * > matched, selected;
             int prio = 0;
-            for ( auto o : _opts )
-                if ( o->match( b, e ) != b )
-                    matched.insert( o );
-            for ( auto &o : matched )
-                prio = std::max( prio, o->priority() );
-            for ( auto &o : matched )
-                if ( o->priority() == prio )
-                    selected.insert( o );
+
+            auto match = [&]( auto &o )
+            {
+                if ( o.match( b, e ) != b )
+                    matched.insert( &o ), prio = std::max( prio, o.priority() );
+            };
+
+            auto select = [&]( auto &o )
+            {
+                if ( matched.count( &o ) && o.priority() == prio )
+                    selected.emplace( &o );
+            };
+
+            auto format = [&]( auto &o )
+            {
+                if ( selected.count( &o ) )
+                    alternatives << "\n" << o.fmt();
+            };
+
+            auto do_parse = [&]( auto &o )
+            {
+                if ( !selected.count( &o ) )
+                    return;
+
+                if ( parsed.count( &o ) && ( o.flags() & OptionFlag::Unique ) )
+                    throw except::Error( "Option " + o.fmt() + " given more than once\n" );
+                parsed.insert( &o );
+                b = o.parse( validator, t, b, e );
+
+                if ( o.flags() & OptionFlag::Final )
+                    done = true;
+            };
+
+            each_opt( match );
+            each_opt( select );
+
             if ( selected.size() > 1 )
             {
-                std::string alts;
-                for ( auto o : selected )
-                    alts += "\n" + o->fmt();
-                throw except::Error( "Ambiguous option " + *b + ":" + alts );
+                alternatives << "Ambiguous option " << *b << ":";
+                each_opt( format );
+                throw except::Error( alternatives.buffer() );
             }
+
             if ( selected.empty() )
                 break;
-            auto o = *selected.begin();
-            if ( parsed.count( o ) && ( o->flags() & OptionFlag::Unique ) )
-                throw except::Error( "Option " + o->fmt() + " given more than once\n" );
-            parsed.insert( o );
 
-            b = o->parse( t, b, e );
-            if ( o->flags() & OptionFlag::Final )
-                break;
+            each_opt( do_parse );
         }
-        for ( auto o : _opts )
-            if ( ( o->flags() & OptionFlag::Required ) && !parsed.count( o ) )
-                throw except::Error( "Missing option: " + o->fmt() + ", expected:\n"
+
+        auto check_required = [&]( auto &o )
+        {
+            if ( ( o.flags() & OptionFlag::Required ) && !parsed.count( &o ) )
+                throw except::Error( "Missing option: " + o.fmt() + ", expected:\n"
                                      + this->describe() );
+        };
+
+        each_opt( check_required );
         return b;
     }
-
-    virtual ~OptionSet() {}
 };
 
-template< typename T, typename V, typename... Args >
-auto make_option_set( brq::refcount_ptr< V > v, Args... args )
+template< typename... Args >
+auto make_option_set( ValidatorPtr v, Args... args )
 {
-    return OptionSet< V, T >( v, args... );
+    return OptionSet< Args... >( v, std::make_tuple( args... ) );
 }
 
 template< typename T >
@@ -724,9 +708,10 @@ std::array< std::string, 1 > names( types::NotPreferred )
 
 enum class Match { None, Partial, Full };
 
-template< typename Validator, typename T >
-struct Command : OptionSet< Validator, T >
+template< typename T, typename... Opts >
+struct Command : OptionSet< Opts... >
 {
+    using Type = T;
     std::vector< std::string > T::*_extra;
     std::string _description;
 
@@ -748,18 +733,22 @@ struct Command : OptionSet< Validator, T >
         return Match::None;
     }
 
-    virtual std::string describe_header( int setw = 0 )
+    std::string describe_header( int setw = 0 )
     {
-        std::stringstream req;
-        for ( auto o : this->_opts )
-            if ( o->flags() & OptionFlag::Required )
-                req << o->fmt() << " ";
-        std::stringstream res;
-        res << std::setw( setw ) << name() <<  " [options] " << req.str() << " " << _description;
-        return res.str();
+        brq::string_builder s;
+        auto fmt = [&]( auto &o )
+        {
+            if ( o.flags() & OptionFlag::Required )
+                s << o.fmt() << " ";
+        };
+
+        s << std::string( setw - name().size(), ' ' ) << name() <<  " [options] ";
+        this->each_opt( fmt );
+        s << " " << _description;
+        return s.buffer();
     }
 
-    virtual std::string describe()
+    std::string describe()
     {
         return describe_header() + "\n" + this->fmt();
     }
@@ -771,64 +760,25 @@ struct Command : OptionSet< Validator, T >
         return _extra;
     }
 
-    template< typename... Args >
-    Command( brq::refcount_ptr< Validator > v, Args... args )
-        : OptionSet< Validator, T >( v, args... ), _extra( nullptr )
+    Command( ValidatorPtr v, Opts... args )
+        : OptionSet< Opts... >( v, std::make_tuple( args... ) ), _extra( nullptr )
     {}
 };
 
-template< typename... > struct ParserT;
-
-template< typename Validator, typename T, typename... Ts >
-struct ParserT< Validator, T, Ts... >
-{
-    Command< Validator, T > car;
-    ParserT< Validator, Ts... > cdr;
-    brq::refcount_ptr< Validator > validator;
-
-    using Type = T;
-    using Types = types::Union< T, Ts... >;
-
-    template< typename... Args >
-    ParserT( brq::refcount_ptr< Validator > v, ParserT< Validator, Ts... > cdr,
-             Args... args ) : car( v, args... ), cdr( cdr ), validator( v ) {}
-};
-
-template< typename Validator >
-struct ParserT< Validator >
-{
-    brq::refcount_ptr< Validator > validator;
-    ParserT( brq::refcount_ptr< Validator > v ) : validator( v ) {}
-};
-
-template< typename Validator >
 struct ParserBase
 {
     Match _match;
     bool _failed;
 
-    template< typename U >
-    auto _parse_rec( ParserT< Validator > &, U &, Tokens::iterator b, Tokens::iterator )
+    void check_match( Match latest )
     {
-        return b;
-    }
-
-    template< typename Rec, typename U >
-    auto _parse_rec( Rec &rec, U &res, Tokens::iterator b, Tokens::iterator e )
-    {
-        if (b == e)
-        {
-            return b;
-        }
-
-        Match latest = rec.car.matches( *b );
-
         switch ( _match )
         {
             case Match::Full:
                 if ( latest == Match::Full )
                     _failed = true;
                 break;
+
             case Match::Partial:
                 if ( latest == Match::Full )
                 {
@@ -838,61 +788,82 @@ struct ParserBase
                 else if ( latest == Match::Partial )
                     _failed = true;
                 break;
+
             case Match::None:
                 _match = latest;
                 break;
         }
-
-        auto rv = _parse_rec( rec.cdr, res, b, e );
-
-        if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
-            rec.car.matches( *b ) == _match )
-        {
-            typename Rec::Type t;
-            auto x = rec.car.parse( t, b + 1, e );
-            while ( x != e && rec.car.extra( t, *x ) )
-                ++ x;
-            res = std::move( t );
-            return x;
-        }
-        return rv;
     }
-
-    template< typename Rec >
-    std::string _describe_rec( Rec &rec, std::string name )
-    {
-        if ( name.empty() ) {
-            auto d = _describe_rec( rec.cdr, name );
-            if ( !d.empty() )
-                d += "\n";
-            return d + rec.car.describe_header( 10 );
-        }
-        if ( rec.car.name() == name )
-            return rec.car.describe();
-        return _describe_rec( rec.cdr, name );
-    }
-
-    std::string _describe_rec( ParserT< Validator > &, std::string ) { return ""; }
-
 };
 
 template< typename Validator, typename... Ts >
-struct Parser : ParserBase< Validator >
+struct Parser : ParserBase
 {
-    using PT = ParserT< Validator, Ts... >;
-    PT _rep;
+    brq::refcount_ptr< Validator > _validator;
+    std::tuple< Ts... > _cmds;
+
+    template< typename U, int i = 0 >
+    auto _parse_rec( U &res, Tokens::iterator b, Tokens::iterator e )
+    {
+        if ( b == e )
+            return b;
+
+        if constexpr ( i < sizeof...( Ts ) )
+        {
+            auto &cmd = std::get< i >( _cmds );
+            check_match( cmd.matches( *b ) );
+
+            auto rv = _parse_rec< U, i + 1 >( res, b, e );
+
+            if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
+                cmd.matches( *b ) == _match )
+            {
+                typename std::tuple_element< i, std::tuple< Ts... > >::type::Type t;
+                auto x = cmd.parse( _validator, t, b + 1, e );
+                while ( x != e && cmd.extra( t, *x ) )
+                    ++ x;
+                res = std::move( t );
+                return x;
+            }
+
+            return rv;
+        }
+        else
+            return b;
+    }
+
+    template< int i = 0 >
+    std::string describe( std::string name = "" )
+    {
+        if constexpr ( i < sizeof...( Ts ) )
+        {
+            auto &cmd = std::get< i >( _cmds );
+            if ( name.empty() )
+            {
+                auto d = describe< i + 1 >( name );
+                if ( !d.empty() )
+                    d += "\n";
+                return d + cmd.describe_header( 10 );
+            }
+            if ( cmd.name() == name )
+                return cmd.describe();
+            return describe< i + 1 >( name );
+        }
+        else
+            return "";
+    }
 
     template< typename U >
     auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
     {
-        this->_match = Match::None;
-        this->_failed = false;
-        return this->_parse_rec( _rep, res, b, e );
+        _match = Match::None;
+        _failed = false;
+        return _parse_rec( res, b, e );
     }
 
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
     {
-        typename PT::Types _result;
+        brick::types::Union< typename Ts::Type ... > _result;
         auto x = parse( _result, b, e );
         while ( x != e )
             unexpected.push_back( *x++ );
@@ -906,7 +877,7 @@ struct Parser : ParserBase< Validator >
         if ( !unexpected.empty() )
         {
             std::stringstream extra;
-            for (std::string str : unexpected)
+            for ( std::string str : unexpected )
                 extra << "'" << str << "' ";
             if ( this->_match == Match::None )
                 throw except::Error( "unknown command, use 'help' for list of available commands" );
@@ -921,15 +892,16 @@ struct Parser : ParserBase< Validator >
     template< typename T, typename... Args >
     auto command( Args... args )
     {
-        return Parser< Validator, T, Ts... >(
-            ParserT< Validator, T, Ts... >( _rep.validator, _rep, args... ) );
+        Command< T, Args... > cmd( _validator, args... );
+        auto cmds = std::tuple_cat( std::make_tuple( cmd ), _cmds );
+        return Parser< Validator, decltype( cmd ), Ts... >( _validator, cmds );
     }
 
     template< typename T, typename U, typename... Args >
     auto command( Tokens (U::*extra), Args... args )
     {
         auto cmd = command< T >( args... );
-        cmd._rep.car._extra = extra;
+        std::get< 0 >( cmd._cmds )._extra = extra;
         return cmd;
     }
 
@@ -937,19 +909,18 @@ struct Parser : ParserBase< Validator >
     auto command( std::string dsc, Args... args )
     {
         auto cmd = command< T >( args... );
-        cmd._rep.car._description = dsc;
+        std::get< 0 >( cmd._cmds )._description = dsc;
         return cmd;
     }
 
-    std::string describe( std::string name = "" ) { return this->_describe_rec( _rep, name ); }
-
-    Parser( PT rep ) : _rep( rep ) {}
+    Parser( brq::refcount_ptr< Validator > v, const std::tuple< Ts... > &cmds )
+        : _validator( v ), _cmds( cmds ) {}
 };
 
 template< typename V >
 auto make_parser( brq::refcount_ptr< V > v )
 {
-    return Parser< V >( ParserT< V >( v ) );
+    return Parser< V >( v, std::make_tuple() );
 }
 
 namespace {
@@ -1061,17 +1032,19 @@ struct TestCmd
     {
         auto v = validator();
 
-        auto common = cmd::make_option_set< Common >( v )
-                      .option( "[-r {int}|--range {int}]", &Common::range )
-                      .option( "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
+        auto common = cmd::make_option_set( v )
+            .option( "[-r {int}|--range {int}]", &Common::range )
+            .option( "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
+
+        auto uncommon = cmd::make_option_set( v )
+            .option( "[--bar|--no-bar]", &Foo::bar )
+            .option( "{int}", &Foo::value );
 
         auto p = cmd::make_parser( v )
-                 .command< Foo >( common,
-                                  cmd::make_option( v, "[--bar|--no-bar]", &Foo::bar ),
-                                  cmd::make_option( v, "{int}", &Foo::value ) )
-                 .command< Bar >( common );
+            .command< Foo >( common, uncommon )
+            .command< Bar >( common );
 
-        ASSERT_EQ( p._rep.car.name(), "bar" );
+        ASSERT_EQ( std::get< 0 >( p._cmds ).name(), "bar" );
 
         cmd::Tokens in = { "foo", "32" };
         bool is_foo = false;
@@ -1086,20 +1059,20 @@ struct TestCmd
     TEST(option)
     {
         auto v = validator();
-        auto opts = cmd::make_option_set< Common >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[-a {int}]", &Common::a )
                     .option( "[-b {int}]", &Common::b );
         Common c;
 
         cmd::Tokens in = { "-a", "10" };
-        opts.parse( c, in.begin(), in.end() );
+        opts.parse( v, c, in.begin(), in.end() );
         ASSERT_EQ( c.a, 10 );
     }
 
     TEST(option_bool)
     {
         auto v = validator();
-        auto opts = cmd::make_option_set< Common >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[-x]", &Common::x )
                     .option( "[-y]", &Common::y );
 
@@ -1108,7 +1081,7 @@ struct TestCmd
         c.y = false;
 
         cmd::Tokens in = { "-x" };
-        opts.parse( c, in.begin(), in.end() );
+        opts.parse( v, c, in.begin(), in.end() );
         ASSERT( c.x );
         ASSERT( !c.y );
     }
@@ -1116,7 +1089,7 @@ struct TestCmd
     TEST(option_bool_match)
     {
         auto v = validator();
-        auto opts = cmd::make_option_set< Common >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[-x]", &Common::x )
                     .option( "[-y]", &Common::y )
                     .option( "[(-a {int}|-b {int})]", &Common::a );
@@ -1126,7 +1099,7 @@ struct TestCmd
         c.y = false;
 
         cmd::Tokens in = { "-x", "-b", "10", "-y" };
-        opts.parse( c, in.begin(), in.end() );
+        opts.parse( v, c, in.begin(), in.end() );
         ASSERT_EQ( c.a, 10 );
         ASSERT( c.x );
         ASSERT( c.y );
@@ -1135,13 +1108,13 @@ struct TestCmd
     TEST(option_match_alt)
     {
         auto v = validator();
-        auto opts = cmd::make_option_set< Common >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[(-a|-b) {int}]", &Common::a );
 
         Common c;
 
         cmd::Tokens in = { "-b", "10" };
-        opts.parse( c, in.begin(), in.end() );
+        opts.parse( v, c, in.begin(), in.end() );
         ASSERT_EQ( c.a, 10 );
     }
 
@@ -1149,17 +1122,17 @@ struct TestCmd
     {
         struct X { int a, b; };
         auto v = validator();
-        auto opts = cmd::make_option_set< X >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[-a {int}]", &X::a )
                     .option( "{int}", &X::b );
         X x;
 
         cmd::Tokens in = { "10" };
-        opts.parse( x, in.begin(), in.end() );
+        opts.parse( v, x, in.begin(), in.end() );
         ASSERT_EQ( x.b, 10 );
 
         in = { "-a", "15", "20" };
-        opts.parse( x, in.begin(), in.end() );
+        opts.parse( v, x, in.begin(), in.end() );
         ASSERT_EQ( x.a, 15 );
         ASSERT_EQ( x.b, 20 );
     }
@@ -1168,17 +1141,17 @@ struct TestCmd
     {
         struct X { std::string a, b; };
         auto v = validator();
-        auto opts = cmd::make_option_set< X >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[-a {string}]", &X::a )
                     .option( "{string}", &X::b );
         X x;
 
         cmd::Tokens in = { "10" };
-        opts.parse( x, in.begin(), in.end() );
+        opts.parse( v, x, in.begin(), in.end() );
         ASSERT_EQ( x.b, "10" );
 
         in = { "-a", "15", "20" };
-        opts.parse( x, in.begin(), in.end() );
+        opts.parse( v, x, in.begin(), in.end() );
         ASSERT_EQ( x.a, "15" );
         ASSERT_EQ( x.b, "20" );
     }
@@ -1187,12 +1160,12 @@ struct TestCmd
     {
         struct X { std::vector< std::string > a; };
         auto v = validator();
-        auto opts = cmd::make_option_set< X >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "{string}+", &X::a );
         X x;
 
         cmd::Tokens in = { "10", "20" };
-        opts.parse( x, in.begin(), in.end() );
+        opts.parse( v, x, in.begin(), in.end() );
         ASSERT_EQ( x.a.size(), 2u );
         ASSERT_EQ( x.a[ 0 ], "10" );
         ASSERT_EQ( x.a[ 1 ], "20" );
@@ -1202,7 +1175,7 @@ struct TestCmd
     {
         struct X { std::vector< std::string > a; int x; };
         auto v = validator();
-        auto opts = cmd::make_option_set< X >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "[-y {int}]", &X::x )
                     .option( "{string}", &X::a );
         auto p = cmd::make_parser( v ).command< X >( opts );
@@ -1222,12 +1195,12 @@ struct TestCmd
     {
         struct X { std::vector< int > a; };
         auto v = validator();
-        auto opts = cmd::make_option_set< X >( v )
+        auto opts = cmd::make_option_set( v )
                     .option( "-y {int}+", &X::a );
         X x;
 
         cmd::Tokens in = { "-y", "10", "20" };
-        opts.parse( x, in.begin(), in.end() );
+        opts.parse( v, x, in.begin(), in.end() );
         ASSERT_EQ( x.a.size(), 2u );
         ASSERT_EQ( x.a[ 0 ], 10 );
         ASSERT_EQ( x.a[ 1 ], 20 );
