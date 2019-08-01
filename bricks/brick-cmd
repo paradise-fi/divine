@@ -802,34 +802,41 @@ struct Parser : ParserBase
     brq::refcount_ptr< Validator > _validator;
     std::tuple< Ts... > _cmds;
 
-    template< typename U, int i = 0 >
-    auto _parse_rec( U &res, Tokens::iterator b, Tokens::iterator e )
+    template< typename F, int i = 0 >
+    void each_cmd( const F &f )
     {
+        if constexpr ( i < sizeof...(Ts ) )
+            f( std::get< i >( _cmds ) ), each_cmd< F, i + 1 >( f );
+    }
+
+    template< typename U >
+    auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
+    {
+        _match = Match::None;
+        _failed = false;
+
         if ( b == e )
             return b;
 
-        if constexpr ( i < sizeof...( Ts ) )
+        auto match = [&]( auto &cmd ) { check_match( cmd.matches( *b ) ); };
+        auto do_parse = [&]( auto &cmd )
         {
-            auto &cmd = std::get< i >( _cmds );
-            check_match( cmd.matches( *b ) );
-
-            auto rv = _parse_rec< U, i + 1 >( res, b, e );
-
+            typename std::remove_reference_t< decltype( cmd ) >::Type t;
             if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
-                cmd.matches( *b ) == _match )
+                 cmd.matches( *b ) == _match )
             {
-                typename std::tuple_element< i, std::tuple< Ts... > >::type::Type t;
                 auto x = cmd.parse( _validator, t, b + 1, e );
                 while ( x != e && cmd.extra( t, *x ) )
                     ++ x;
                 res = std::move( t );
-                return x;
+                b = x;
             }
+        };
 
-            return rv;
-        }
-        else
-            return b;
+        each_cmd( match );
+        each_cmd( do_parse );
+
+        return b;
     }
 
     template< int i = 0 >
@@ -851,14 +858,6 @@ struct Parser : ParserBase
         }
         else
             return "";
-    }
-
-    template< typename U >
-    auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
-    {
-        _match = Match::None;
-        _failed = false;
-        return _parse_rec( res, b, e );
     }
 
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
