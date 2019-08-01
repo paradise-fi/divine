@@ -870,14 +870,14 @@ struct Parser : ParserBase
             auto amb = [&]( auto &cmd )
             {
                 if ( cmd.matches( *b ) == Match::Partial )
-                    err << cmd.describe_header( 10 ) << "\n";
+                    err << "\n" << cmd.describe_header( 10 );
             };
 
             if ( this->_match == Match::None )
                 err << "Unknown command '" << *b << "'. Available commands:\n" << describe();
             else if ( this->_failed )
             {
-                err << "Ambiguous command. Matches:\n";
+                err << "Ambiguous command. Matches:";
                 each_cmd( amb );
             }
             else
