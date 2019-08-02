@@ -24,7 +24,8 @@
 #include <stack>
 #include <unordered_map>
 
-#include <brick-unittest>
+#include <brick-unittest> // _typeid
+#include <brick-cons>
 #include <brick-types>
 #include <brick-except>
 #include <brick-string>
@@ -52,8 +53,6 @@ struct ValidatorInterface : brq::refcount_base<>
 };
 
 template< typename... > struct Validator;
-
-static const auto ignore2 = []( auto, auto ) {};
 
 template< typename Parse, typename... Ps >
 struct Validator< Parse, Ps... >:  ValidatorInterface
@@ -778,6 +777,14 @@ struct Command : OptionSet< Opts... >
         return _extra;
     }
 
+    template< typename V >
+    std::pair< T, Tokens::iterator > parse( const V &v, Tokens::iterator b, Tokens::iterator e )
+    {
+        T t;
+        auto x = OptionSet< Opts... >::parse( v, t, b, e );
+        return { std::move( t ), x };
+    }
+
     Command( ValidatorPtr v, Opts... args )
         : OptionSet< Opts... >( v, std::make_tuple( args... ) ), _extra( nullptr )
     {}
@@ -814,36 +821,32 @@ struct ParserBase
     }
 };
 
-template< typename Validator, typename... Ts >
+template< typename C >
+using GetT = typename C::Type;
+
+template< typename Validator, typename Cmds >
 struct Parser : ParserBase
 {
     brq::refcount_ptr< Validator > _validator;
-    std::tuple< Ts... > _cmds;
+    Cmds _cmds;
+    using Result = typename Cmds::template map< GetT >::co;
 
-    template< typename F, int i = 0 >
-    void each_cmd( const F &f )
-    {
-        if constexpr ( i < sizeof...(Ts ) )
-            f( std::get< i >( _cmds ) ), each_cmd< F, i + 1 >( f );
-    }
-
-    template< typename U >
-    auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
+    std::pair< Result, Tokens::iterator > do_parse( Tokens::iterator b, Tokens::iterator e )
     {
         _match = Match::None;
         _failed = false;
+        Result res;
 
         if ( b == e )
-            return b;
+            return { std::move( res ), b };
 
         auto match = [&]( auto &cmd ) { check_match( cmd.matches( *b ) ); };
-        auto do_parse = [&]( auto &cmd )
+        auto do_do_parse = [&]( auto &cmd )
         {
-            typename std::remove_reference_t< decltype( cmd ) >::Type t;
             if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
                  cmd.matches( *b ) == _match )
             {
-                auto x = cmd.parse( _validator, t, b + 1, e );
+                auto [ t, x ] = cmd.parse( _validator, b + 1, e );
                 while ( x != e && cmd.extra( t, *x ) )
                     ++ x;
                 res = std::move( t );
@@ -851,29 +854,28 @@ struct Parser : ParserBase
             }
         };
 
-        each_cmd( match );
-        each_cmd( do_parse );
+        _cmds.each( match );
+        _cmds.each( do_do_parse );
 
-        return b;
+        return { std::move( res ), b };
     }
 
     std::string describe( std::string name = "" )
     {
         brq::string_builder s;
         if ( name.empty() )
-            each_cmd( [&]( auto &cmd ) { s << cmd.describe_header( 10 ) << "\n"; } );
+            _cmds.each( [&]( auto &cmd ) { s << cmd.describe_header( 10 ) << "\n"; } );
         else
-            each_cmd( [&]( auto &cmd ) { if ( cmd.name() == name ) s << cmd.describe(); } );
+            _cmds.each( [&]( auto &cmd ) { if ( cmd.name() == name ) s << cmd.describe(); } );
         return s.buffer();
     }
 
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
     {
-        brick::types::Union< typename Ts::Type ... > _result;
-        auto x = parse( _result, b, e );
+        auto [ r, x ] = do_parse( b, e );
         while ( x != e )
             unexpected.push_back( *x++ );
-        return _result;
+        return std::move( r );
     };
 
     auto parse( Tokens::iterator b, Tokens::iterator e )
@@ -895,7 +897,7 @@ struct Parser : ParserBase
             else if ( this->_failed )
             {
                 err << "Ambiguous command. Matches:";
-                each_cmd( amb );
+                _cmds.each( amb );
             }
             else
             {
@@ -912,15 +914,15 @@ struct Parser : ParserBase
     auto command( Args... args )
     {
         Command< T, Args... > cmd( _validator, args... );
-        auto cmds = std::tuple_cat( std::make_tuple( cmd ), _cmds );
-        return Parser< Validator, decltype( cmd ), Ts... >( _validator, cmds );
+        using Cat = brq::cons< decltype( cmd ), Cmds >;
+        return Parser< Validator, Cat >( _validator, Cat( cmd, _cmds ) );
     }
 
     template< typename T, typename U, typename... Args >
     auto command( Tokens (U::*extra), Args... args )
     {
         auto cmd = command< T >( args... );
-        std::get< 0 >( cmd._cmds )._extra = extra;
+        cmd._cmds.car._extra = extra;
         return cmd;
     }
 
@@ -928,18 +930,19 @@ struct Parser : ParserBase
     auto command( std::string dsc, Args... args )
     {
         auto cmd = command< T >( args... );
-        std::get< 0 >( cmd._cmds )._description = dsc;
+        cmd._cmds.car._description = dsc;
         return cmd;
     }
 
-    Parser( brq::refcount_ptr< Validator > v, const std::tuple< Ts... > &cmds )
-        : _validator( v ), _cmds( cmds ) {}
+    Parser( brq::refcount_ptr< Validator > v, Cmds cmds )
+        : _validator( v ), _cmds( cmds )
+    {}
 };
 
 template< typename V >
 auto make_parser( brq::refcount_ptr< V > v )
 {
-    return Parser< V >( v, std::make_tuple() );
+    return Parser< V, brq::nil >( v, brq::nil() );
 }
 
 namespace {
@@ -973,6 +976,11 @@ struct Foo : Common
 };
 
 struct Bar : Common {};
+struct Nocopy
+{
+    Nocopy( Nocopy && ) = default;
+    Nocopy() = default;
+};
 
 struct TestCmd
 {
@@ -1063,7 +1071,7 @@ struct TestCmd
             .command< Foo >( common, uncommon )
             .command< Bar >( common );
 
-        ASSERT_EQ( std::get< 0 >( p._cmds ).name(), "bar" );
+        ASSERT_EQ( p._cmds.car.name(), "bar" );
 
         cmd::Tokens in = { "foo", "32" };
         bool is_foo = false;
@@ -1202,7 +1210,7 @@ struct TestCmd
         cmd::Tokens in = { "x", "10", "20" };
         auto r = p.parse( in.begin(), in.end() );
         bool matched = false;
-        r.apply( [&]( X x )
+        r.match( [&]( X x )
                  {
                      matched = true;
                      ASSERT_EQ( x.a.size(), 2 );
@@ -1223,6 +1231,14 @@ struct TestCmd
         ASSERT_EQ( x.a.size(), 2u );
         ASSERT_EQ( x.a[ 0 ], 10 );
         ASSERT_EQ( x.a[ 1 ], 20 );
+    }
+
+    TEST( move_only_cmd )
+    {
+        auto v = validator();
+        auto p = cmd::make_parser( v ).command< Nocopy >();
+        cmd::Tokens in;
+        p.parse( in.begin(), in.end() );
     }
 };
 
