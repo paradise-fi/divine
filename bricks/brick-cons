@@ -1,0 +1,145 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+#include <brick-trace>
+#include <type_traits>
+#include <optional>
+
+namespace brq
+{
+
+    struct nil
+    {
+        using co = nil;
+        template< template< typename > class f > using map = nil;
+
+        template< typename F >
+        void each( const F & ) {}
+
+        template< typename... Fs >
+        auto match( Fs... ) { return std::nullopt; }
+    };
+
+    template< typename, typename > struct ns;
+
+    template< typename A, typename B >
+    struct cons
+    {
+        using car_t = A;
+        using cdr_t = B;
+        using co = ns< car_t, typename cdr_t::co >;
+        template< template< typename > class f >
+        using map = cons< f< car_t >, typename cdr_t::template map< f > >;
+
+        car_t car;
+        cdr_t cdr;
+
+        template< typename F >
+        void each( const F &f )
+        {
+            f( car );
+            cdr.each( f );
+        }
+
+        cons( const car_t &car, const cdr_t &cdr )
+            : car( car ), cdr( cdr )
+        {}
+
+        cons() = default;
+    };
+
+    template< typename car_t_, typename cdr_t_ >
+    struct ns
+    {
+        using car_t = car_t_;
+        using cdr_t = cdr_t_;
+        using co = cons< car_t, typename cdr_t::co >;
+
+        bool _is_car;
+        union { car_t car; cdr_t cdr; };
+
+        ns( const car_t &car ) : _is_car( true ), car( car ) {}
+        ns( car_t &&car ) : _is_car( true ), car( std::move( car ) ) {}
+        ns() : _is_car( false ), cdr() {}
+        ns( const ns &o ) : ns() { *this = o; }
+        ns( ns &&o ) : ns() { *this = std::move( o ); }
+        void destroy() { if ( _is_car ) car.~car_t(); else cdr.~cdr_t(); }
+        ~ns() { destroy(); }
+
+        ns &operator=( const ns &o )
+        {
+            if ( &o == this )
+                return *this;
+            destroy();
+            _is_car = o._is_car;
+            if ( _is_car )
+                std::uninitialized_copy( &o.car, &o.car + 1, &car );
+            else
+                std::uninitialized_copy( &o.cdr, &o.cdr + 1, &cdr );
+            return *this;
+        }
+
+        ns &operator=( ns &&o )
+        {
+            if ( &o == this )
+                return *this;
+            destroy();
+            _is_car = o._is_car;
+            if ( _is_car )
+                std::uninitialized_move( &o.car, &o.car + 1, &car );
+            else
+                std::uninitialized_move( &o.cdr, &o.cdr + 1, &cdr );
+            return *this;
+        }
+
+        template< typename X >
+        ns( const X &cdr ) : _is_car( false ), cdr( cdr ) {}
+        template< typename X >
+        ns( X &&cdr ) : _is_car( false ), cdr( std::move( cdr ) ) {}
+
+        auto match() { return std::nullopt; }
+
+        template< typename F, typename... Fs >
+        auto match( F f, Fs... fs )
+        {
+            if constexpr ( std::is_invocable_v< F, car_t & > )
+            {
+                using R = std::invoke_result_t< F, car_t & >;
+                using R_ = std::conditional_t< std::is_same_v< R, void >, void, std::optional< R > >;
+                if ( _is_car )
+                    return R_( f( car ) );
+                else
+                    return R_( cdr.match( f, fs... ) );
+            }
+            else
+            {
+                using R1 = decltype( match( fs... ) );
+                using R2 = decltype( cdr.match( f, fs... ) );
+                using R = std::conditional_t< std::is_same_v< R1, std::nullopt_t >, R2, R1 >;
+                if ( _is_car )
+                    return R( match( fs... ) );
+                else
+                    return R( cdr.match( f, fs... ) );
+            }
+        }
+    };
+
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
