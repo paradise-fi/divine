@@ -33,6 +33,17 @@ target_link_libraries( lart
 
 target_link_libraries( divine divine-ui divine-rt )
 
+add_executable( shoop shoop.cpp )
+target_link_libraries( shoop
+                       LLVMCore
+                       LLVMSupport
+                       LLVMIRReader
+                       LLVMBitWriter
+                       LLVMAnalysis
+                       LLVMTransformUtils
+                       divine-ui
+                       divine-rt )
+
 if ( OPT_SQL )
   set( BENCH bench-common.cpp bench-report.cpp bench-run.cpp )
   add_executable( divbench ${BENCH} divbench.cpp )
