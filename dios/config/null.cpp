@@ -11,3 +11,11 @@ namespace __dios
 
 #undef SYSCALL
 #include <dios/macro/no_memory_tags.cleanup>
+
+extern "C" void __dios_boot( const _VM_Env *env );
+
+extern "C" void __boot( const _VM_Env *env )
+{
+    __dios_boot( env );
+    __vm_suspend();
+}
