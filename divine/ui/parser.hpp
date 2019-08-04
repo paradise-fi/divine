@@ -202,10 +202,10 @@ struct CLI : Interface
     {
         auto v = validator();
 
-        auto helpopts = cmd::make_option_set< Help >( v )
+        auto helpopts = cmd::make_option_set( v )
             .option( "[{string}]", &Help::_cmd, "print man to specified command"s );
 
-        auto bcopts = cmd::make_option_set< WithBC >( v )
+        auto bcopts = cmd::make_option_set( v )
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
             .option( "[-C,{commasep}]", &WithBC::_ccOpts, "pass additional options to the compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
@@ -239,26 +239,22 @@ struct CLI : Interface
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
-        using DrvOpt = cc::Options;
-        auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
-            .option( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s );
-
-        auto ltlcopts = cmd::make_option_set< Ltlc >( v )
+        auto ltlcopts = cmd::make_option_set( v )
             .option( "[--automaton {string}|-a {string}]", &Ltlc::_automaton, "text file containing TGBA in HOA format"s )
             .option( "[--formula {string}|-f {string}]", &Ltlc::_formula, "LTL formula"s )
             .option( "[--negate]", &Ltlc::_negate, "compute automaton of negation of given formula"s )
             .option( "[--output {string}|-o {string}]", &Ltlc::_output, "name of the file"s )
             .option( "[--system {string}|-s {string}]", &Ltlc::_system, "system to be verified"s );
 
-        auto ccopts = cmd::make_option_set< Cc >( v )
-            .options( ccdrvopts, &Cc::_opts )
+        auto ccopts = cmd::make_option_set( v )
+            .option( "[-c|--dont-link]", &Cc::_opts, &cc::Options::dont_link, "do not link"s )
             .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
             .option( "[-C,{commasep}]", &Cc::_passThroughFlags,
                      "pass additional options to the compiler"s )
             .option( "[{string}]", &Cc::_flags,
                      "any clang options or input files (C, C++, object, bitcode)"s );
 
-        auto vrfyopts = cmd::make_option_set< Verify >( v )
+        auto vrfyopts = cmd::make_option_set( v )
             .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
             .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
             .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
@@ -274,15 +270,15 @@ struct CLI : Interface
             .option( "[--num-callers {int}]"s, &Verify::_num_callers,
                      "the number of frames to print in a backtrace [default = 10]" );
 
-        auto drawopts = cmd::make_option_set< Draw >( v )
+        auto drawopts = cmd::make_option_set( v )
             .option( "[--distance {int}|-d {int}]", &Draw::_distance, "maximum node distance"s )
             .option( "[--render {string}]", &Draw::_render, "the command to process the dot source"s );
 
-        auto runopts = cmd::make_option_set< Exec >( v )
+        auto runopts = cmd::make_option_set( v )
             .option( "[--virtual]", &Exec::_virtual, "simulate system calls instead of executing them"s)
             .option( "[--trace]", &Exec::_trace, "trace instructions"s);
 
-        auto simopts = cmd::make_option_set< Sim >( v )
+        auto simopts = cmd::make_option_set( v )
             .option( "[--batch]", &Sim::_batch, "execute in batch mode"s )
             .option( "[--load-report]", &Sim::_load_report, "load a verify report"s )
             .option( "[--skip-init]", &Sim::_skip_init, "do not load ~/.divine/sim.init"s );
@@ -323,8 +319,10 @@ struct CLI : Interface
         try {
             auto cmds = commands();
             auto cmd = parse( cmds );
+            bool empty = true;
+            cmd.match( [&]( auto ) { empty = false; } );
 
-            if ( cmd.empty()  )
+            if ( empty )
             {
                 Help().run( cmds );
                 return 0;
