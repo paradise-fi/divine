@@ -45,40 +45,40 @@ auto make_parser()
                     return bad( cmd::BadFormat, "unknown component" );
                 } );
 
-    auto teflopts = cmd::make_option_set< command::Teflon >( v )
+    auto teflopts = cmd::make_option_set( v )
         .option( "[--clear-screen]", &command::Teflon::clear_screen,
                     "clear screen before writing"s )
         .option( "[--output-to {string}]", &command::Teflon::output_to,
                     "write output to a given stream"s );
-    auto varopts = cmd::make_option_set< command::WithVar >( v )
+    auto varopts = cmd::make_option_set( v )
         .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
-    auto breakopts = cmd::make_option_set< command::Break >( v )
+    auto breakopts = cmd::make_option_set( v )
         .option( "[--delete {int}|--delete {function}]",
                 &command::Break::del, "delete the designated breakpoint(s)"s )
         .option( "[--list]", &command::Break::list, "list breakpoints"s );
-    auto showopts = cmd::make_option_set< command::Show >( v )
+    auto showopts = cmd::make_option_set( v )
         .option( "[--raw]", &command::Show::raw, "dump raw data"s )
         .option( "[--depth {int}]", &command::Show::depth, "maximal component unfolding"s )
         .option( "[--deref {int}]", &command::Show::deref,
                     "maximal pointer dereference unfolding"s );
-    auto callopts = cmd::make_option_set< command::Call >( v )
+    auto callopts = cmd::make_option_set( v )
         .option( "{string}", &command::Call::function, "the function to call"s );
-    auto stepopts = cmd::make_option_set< command::WithSteps >( v )
+    auto stepopts = cmd::make_option_set( v )
         .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
         .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
         .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
         .option( "[--count {int}]", &command::WithSteps::count,
                     "execute {int} steps (default = 1)"s );
-    auto startopts = cmd::make_option_set< command::Start >( v )
+    auto startopts = cmd::make_option_set( v )
         .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s )
         .option( "[--no-boot]", &command::Start::noboot, "stop before booting"s );
-    auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
+    auto stepoutopts = cmd::make_option_set( v )
         .option( "[--out]", &command::WithSteps::out,
                     "execute until the current function returns"s );
-    auto threadopts = cmd::make_option_set< command::Thread >( v )
+    auto threadopts = cmd::make_option_set( v )
         .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
         .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
-    auto setupopts = cmd::make_option_set< command::Setup >( v )
+    auto setupopts = cmd::make_option_set( v )
         .option( "[--debug {component}]", &command::Setup::debug_components,
                  "enable debugging of {component}"s )
         .option( "[--ignore {component}]", &command::Setup::ignore_components,
@@ -91,14 +91,14 @@ auto make_parser()
         .option( "[--sticky {string}]", &command::Setup::sticky_commands,
                     "run given commands after each step"s );
 
-    auto o_info = cmd::make_option_set< command::Info >( v )
+    auto o_info = cmd::make_option_set( v )
         .option( "{string}", &command::Info::cmd, "what info to print" )
         .option( "[--setup {string}]", &command::Info::setup, "set up a new info source" );
 
-    auto o_diff = cmd::make_option_set< command::Diff >( v )
+    auto o_diff = cmd::make_option_set( v )
         .option( "{string}", &command::Diff::vars, "what to diff" );
 
-    auto dotopts = cmd::make_option_set< command::Dot >( v )
+    auto dotopts = cmd::make_option_set( v )
         .option( "[-T{string}|-T {string}]", &command::Dot::type,
                 "type of output (none,ps,svg,png…)"s )
         .option( "[-o{string}|-o {string}]", &command::Dot::output_file,
