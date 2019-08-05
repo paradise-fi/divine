@@ -64,6 +64,15 @@ namespace brq
         cons() = default;
     };
 
+    static auto cons_list() { return nil(); }
+
+    template< typename T, typename... Ts >
+    auto cons_list( const T &t, const Ts &... ts )
+    {
+        auto tail = cons_list( ts... );
+        return cons< T, decltype( tail ) >( t, tail );
+    }
+
     template< typename car_t_, typename cdr_t_ >
     struct ns
     {
