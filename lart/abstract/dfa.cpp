@@ -139,6 +139,7 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
+        // TODO refactor
         // memory operations
         if ( auto store = llvm::dyn_cast< llvm::StoreInst >( val ) ) {
             auto val = store->getValueOperand();
@@ -149,8 +150,6 @@ namespace lart::abstract {
                 push( [=] { propagate( ptr ); } );
             } else if ( join( val, ptr ) ) {
                 push( [=] { propagate( ptr ); } );
-            } else {
-                return;
             }
 
             // TODO store to abstract value?
@@ -159,28 +158,41 @@ namespace lart::abstract {
             auto ptr = load->getPointerOperand();
 
             if ( !_intervals.has( ptr ) ) {
+                ASSERT( _intervals.has( load ) );
                 _intervals[ ptr ] = _intervals[ load ]->cover();
                 push( [=] { propagate( ptr ); } );
-            }
-            else if ( !_intervals.has( load ) ) {
+            } else if ( !_intervals.has( load ) ) {
+                ASSERT( _intervals.has( ptr ) );
                 _intervals[ load ] = _intervals[ ptr ]->peel();
                 // propagation performed in ssa propagation
-            }
-            else if ( join( load, ptr ) ) {
+            } else if ( join( load, ptr ) ) {
                 push( [=] { propagate( load ); } );
-            }
-            else if ( join( ptr, load ) ) {
+            } else if ( join( ptr, load ) ) {
                 push( [=] { propagate( ptr ); } );
             }
-            else {
-                return;
+        }
+        else if ( auto cast = llvm::dyn_cast< llvm::CastInst >( val ) ) {
+            auto op = cast->getOperand( 0 );
+
+            if ( !_intervals.has( op ) ) {
+                ASSERT( _intervals.has( cast ) );
+                _intervals[ op ] = _intervals[ cast ];
+                push( [=] { propagate( op ); } );
+            } else if ( !_intervals.has( cast ) ) {
+                ASSERT( _intervals.has( op ) );
+                _intervals[ cast ] = _intervals[ op ];
+                push( [=] { propagate( cast ); } );
+            } else if ( join( cast, op ) ) {
+                push( [=] { propagate( cast ); } );
+            } else if ( join( op, cast ) ) {
+                push( [=] { propagate( op ); } );
             }
         }
 
         // ssa operations
         if ( is_propagable( val ) ) {
             for ( auto u : val->users() ) {
-                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst >( u ) )
+                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst, llvm::CastInst >( u ) )
                     push( [=] { propagate( u ); } );
                 else if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
                     push( [=] { propagate_in( call ); } );
