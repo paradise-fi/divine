@@ -267,6 +267,9 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::add_meta( llvm::Value *v, const MapValuePtr& mval ) noexcept
     {
+        if ( llvm::isa< llvm::Constant >( v ) )
+            return;
+
         AddAbstractMetaVisitor visitor( mval );
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) ) {
             visitor.visit( inst );
