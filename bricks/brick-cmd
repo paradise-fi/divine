@@ -841,7 +841,7 @@ struct Parser : ParserBase
         auto match = [&]( auto &cmd ) { check_match( cmd.matches( *b ) ); };
         auto do_do_parse = [&]( auto &cmd )
         {
-            if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
+            if ( b != e && !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
                  cmd.matches( *b ) == _match )
             {
                 auto [ t, x ] = cmd.parse( _validator, b + 1, e );
