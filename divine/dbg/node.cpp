@@ -21,7 +21,6 @@
 #include <divine/dbg/print.hpp>
 #include <divine/vm/xg-code.hpp>
 #include <divine/vm/eval.hpp>
-#include <divine/vm/eval.tpp>
 #include <divine/smt/extract.hpp>
 
 DIVINE_RELAX_WARNINGS

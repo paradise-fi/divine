@@ -17,7 +17,6 @@
  */
 
 #include <divine/dbg/print.hpp>
-#include <divine/vm/eval.tpp>
 #include <divine/vm/opnames.hpp>
 #include <brick-llvm>
 

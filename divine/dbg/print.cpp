@@ -18,7 +18,6 @@
 
 #include <divine/dbg/print.tpp>
 #include <divine/dbg/context.hpp>
-#include <divine/vm/eval.tpp>
 
 using namespace std::literals;
 
