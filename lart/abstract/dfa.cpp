@@ -67,6 +67,11 @@ namespace lart::abstract {
             add_meta( &cmp, op );
         }
 
+        void visitBitCastInst( llvm::BitCastInst & )
+        {
+            // skip
+        }
+
         void visitCastInst( llvm::CastInst &cast )
         {
             auto op = std::string( op_prefix )
