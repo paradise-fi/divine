@@ -54,6 +54,36 @@ struct ValidatorInterface : brq::refcount_base<>
 
 template< typename... > struct Validator;
 
+    struct prefer {};
+
+    template< typename Edit >
+    struct Push
+    {
+        Edit &edit;
+        Push( Edit &e ) : edit( e ) {}
+
+        template< typename X >
+        void operator()( const X &x ) const { push( edit, x, prefer() ); }
+
+        template< typename E, typename X >
+        auto push( E &edit, const X &x, prefer ) const -> decltype( edit.push_back( x ) )
+        {
+            return edit.push_back( x );
+        }
+
+        template< typename E, typename X >
+        auto push( E &edit, const X &x, brq::fallback ) const
+            -> decltype( edit = static_cast< Edit >( x ) )
+        {
+            return edit = static_cast< Edit >( x );
+        }
+
+        auto push( Edit &, brq::fallback, brq::fallback ) const
+        {
+            UNREACHABLE( "capture type mismatch" );
+        }
+    };
+
 template< typename Parse, typename... Ps >
 struct Validator< Parse, Ps... >:  ValidatorInterface
 {
@@ -76,16 +106,13 @@ struct Validator< Parse, Ps... >:  ValidatorInterface
         return result;
     }
 
-    template< typename S >
-    void parse( S set, std::string t, std::string v )
+    template< typename T >
+    void parse( T &edit, std::string t, std::string v )
     {
         if ( _name != t )
-            return _next->parse( set, t, v );
-        return _parse( v, set,
-                       []( auto, std::string s )
-                       {
-                           throw except::Error( "parsing command line: " + s );
-                       } );
+            return _next->parse( edit, t, v );
+        auto fail = []( auto, std::string s ) { throw except::Error( "parsing command line: " + s ); };
+        return _parse( v, Push< T >( edit ), fail );
     }
 
     Validator( std::string t, Parse parse, Next next )
@@ -433,26 +460,6 @@ struct Pattern : brq::refcount_base<>
 enum class OptionFlag { Unique = 1, Final = 2, Required = 4 };
 using OptionFlags = brick::types::StrongEnumFlags< OptionFlag >;
 
-struct prefer {};
-
-template< typename Edit, typename X >
-auto push( Edit &edit, X &x, prefer ) -> decltype( edit.push_back( x ) )
-{
-    return edit.push_back( x );
-}
-
-template< typename Edit, typename X >
-auto push( Edit &edit, X &x, brq::fallback ) -> decltype( edit = static_cast< Edit >( x ) )
-{
-    return edit = static_cast< Edit >( x );
-}
-
-template< typename Edit >
-auto push( Edit &, brq::fallback, brq::fallback )
-{
-    UNREACHABLE( "capture type mismatch" );
-}
-
 template< typename VPtr, typename Edit >
 struct Setter : SetterInterface
 {
@@ -462,16 +469,10 @@ struct Setter : SetterInterface
 
     Setter( VPtr v, Edit &e ) : validator( v ), edit( e ) {}
 
-    template< typename X >
-    void operator()( X x ) /* interface for Validator::parse() */
-    {
-        push( edit, x, prefer() );
-    }
-
     /* interface for Pattern::match() */
     void operator()( int, bool, std::string type, std::string val )
     {
-        validator->parse( *this, type, val );
+        validator->parse( edit, type, val );
         captured = true;
     };
 };
