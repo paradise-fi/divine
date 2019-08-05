@@ -57,6 +57,8 @@ namespace lart::abstract {
             // TODO if is thaw
             // if ( load.getType()->isIntegerTy() ) // TODO remove
             meta::set( &load, meta::tag::operation::thaw );
+            auto op = std::string( op_prefix ) + "thaw";
+            add_meta( &load, op );
             // TODO if is load
         }
 

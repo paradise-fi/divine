@@ -113,6 +113,7 @@ namespace lart::abstract
 
             auto fty = thawFn->getFunctionType();
             auto addr = irb.CreateBitCast( value, fty->getParamType( 0 ) );
+
             return irb.CreateCall( thawFn, { addr } );
         }
 
@@ -277,9 +278,14 @@ namespace lart::abstract
 
             if constexpr ( Taint::thaw( T ) )
             {
-                auto t = thaw( irb, args[ 1 ].value );
-                irb.CreateRet( t );
-                return;
+                auto thawed = thaw( irb, args[ 1 ].value );
+                vals.push_back( thawed ); // thawed address
+
+                // TODO if scalar
+                auto bw = args[ 0 ].value->getType()->getPrimitiveSizeInBits();
+                vals.push_back( i8( bw ) ); // bitwidth of thawed value
+
+                _domain = domain_index( thawed, irb );
             }
 
             if constexpr ( Taint::cast( T ) )

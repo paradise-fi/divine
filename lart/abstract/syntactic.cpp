@@ -15,20 +15,6 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart::abstract
 {
 
-    struct ThawPass
-    {
-        void run( llvm::Module &m )
-        {
-            OperationBuilder builder;
-
-            const auto tag = meta::tag::operation::thaw;
-            constexpr auto Thaw = Operation::Type::Thaw;
-            for ( auto load : meta::enumerate< llvm::LoadInst >( m, tag ) )
-                builder.construct< Thaw >( load );
-        }
-    };
-
-
     struct FreezePass
     {
         void run( llvm::Module &m )
@@ -44,8 +30,6 @@ namespace lart::abstract
 
 
     void Syntactic::run( llvm::Module &m ) {
-        ThawPass().run( m );
-
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::Instruction > )
             .filter( query::notnull )
