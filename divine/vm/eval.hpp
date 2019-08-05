@@ -24,6 +24,7 @@
 #include <divine/vm/value.hpp>
 #include <divine/vm/context.hpp>
 #include <divine/vm/ctx-debug.tpp>
+#include <divine/vm/dispatch.hpp>
 
 #include <divine/vm/divm.h>
 
@@ -48,54 +49,6 @@ using ::llvm::ICmpInst;
 using ::llvm::FCmpInst;
 using ::llvm::AtomicRMWInst;
 namespace Intrinsic = ::llvm::Intrinsic;
-
-struct NoOp { template< typename T > NoOp( T ) {} };
-
-template< typename To > struct Convertible
-{
-    template< typename From >
-    static constexpr decltype( To( std::declval< From >() ), true ) value( unsigned ) { return true; }
-    template< typename From >
-    static constexpr bool value( int ) { return false ; }
-
-    template< typename From >
-    struct Guard {
-        static const bool value = Convertible< To >::value< From >( 0u );
-    };
-};
-
-template< typename To > struct SignedConvertible
-{
-    template< typename From >
-    struct Guard {
-        static const bool value = std::is_arithmetic< typename To::Cooked >::value &&
-                                  std::is_arithmetic< typename From::Cooked >::value &&
-                                  Convertible< To >::template Guard< From >::value;
-    };
-};
-
-template< typename T > struct IsIntegral
-{
-    static const bool value = std::is_integral< typename T::Cooked >::value;
-};
-
-template< typename T > struct IsFloat
-{
-    static const bool value = std::is_floating_point< typename T::Cooked >::value;
-};
-
-template< typename T > struct IntegerComparable
-{
-    static const bool value = std::is_integral< typename T::Cooked >::value ||
-                              std::is_same< typename T::Cooked, GenericPointer >::value;
-};
-
-template< typename T > struct IsArithmetic
-{
-    static const bool value = std::is_arithmetic< typename T::Cooked >::value;
-};
-
-template< typename > struct Any { static const bool value = true; };
 
 /*
  * An efficient evaluator for the LLVM instruction set. Current semantics
