@@ -577,14 +577,14 @@ auto make_option( ValidatorPtr validator, std::string pattern,
     return Option< T, Value >( validator, pattern, get, descr, flags );
 }
 
-template< typename... Opts >
+template< typename Opts >
 struct OptionSet
 {
     static constexpr const bool is_set = true;
     ValidatorPtr _validator;
-    std::tuple< Opts... > _opts;
+    Opts _opts;
 
-    OptionSet( ValidatorPtr v, const std::tuple< Opts... > &o )
+    OptionSet( ValidatorPtr v, const Opts &o )
         : _validator( v ), _opts( o )
     {}
 
@@ -592,8 +592,8 @@ struct OptionSet
     auto option( Args... args )
     {
         auto no = make_option( _validator, args... );
-        auto tuple = std::tuple_cat( _opts, std::make_tuple( no ) );
-        return OptionSet< Opts..., decltype( no ) >( _validator, tuple );
+        using Cat = brq::cons< decltype( no ), Opts >;
+        return OptionSet< Cat >( _validator, Cat( no, _opts ) );
     };
 
     std::string describe()
@@ -604,15 +604,13 @@ struct OptionSet
     template< typename F, int i = 0 >
     void each_opt( const F &f )
     {
-        if constexpr ( i < sizeof...( Opts ) )
+        _opts.each( [&]( auto &opt )
         {
-            auto &opt = std::get< i >( _opts );
             if constexpr ( std::remove_reference_t< decltype( opt ) >::is_set )
                 opt.each_opt( f );
             else
                 f( opt );
-            each_opt< F, i + 1 >( f );
-        }
+        } );
     }
 
     std::string fmt()
@@ -694,10 +692,9 @@ struct OptionSet
     }
 };
 
-template< typename... Args >
-auto make_option_set( ValidatorPtr v, Args... args )
+static auto make_option_set( ValidatorPtr v )
 {
-    return OptionSet< Args... >( v, std::make_tuple( args... ) );
+    return OptionSet< brq::nil >( v, brq::nil() );
 }
 
 template< typename T >
@@ -725,8 +722,8 @@ std::array< std::string, 1 > names( types::NotPreferred )
 
 enum class Match { None, Partial, Full };
 
-template< typename T, typename... Opts >
-struct Command : OptionSet< Opts... >
+template< typename T, typename Opts >
+struct Command : OptionSet< Opts >
 {
     using Type = T;
     std::vector< std::string > T::*_extra;
@@ -781,12 +778,12 @@ struct Command : OptionSet< Opts... >
     std::pair< T, Tokens::iterator > parse( const V &v, Tokens::iterator b, Tokens::iterator e )
     {
         T t;
-        auto x = OptionSet< Opts... >::parse( v, t, b, e );
+        auto x = OptionSet< Opts >::parse( v, t, b, e );
         return { std::move( t ), x };
     }
 
-    Command( ValidatorPtr v, Opts... args )
-        : OptionSet< Opts... >( v, std::make_tuple( args... ) ), _extra( nullptr )
+    Command( ValidatorPtr v, Opts opts )
+        : OptionSet< Opts >( v, opts ), _extra( nullptr )
     {}
 };
 
@@ -913,7 +910,8 @@ struct Parser : ParserBase
     template< typename T, typename... Args >
     auto command( Args... args )
     {
-        Command< T, Args... > cmd( _validator, args... );
+        auto opts = brq::cons_list( args... );
+        Command< T, decltype( opts ) > cmd( _validator, opts );
         using Cat = brq::cons< decltype( cmd ), Cmds >;
         return Parser< Validator, Cat >( _validator, Cat( cmd, _cmds ) );
     }
