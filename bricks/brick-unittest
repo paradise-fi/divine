@@ -159,6 +159,10 @@ void fork_test( TestBase *tc, int * )
 
 namespace {
 
+/* Strips from s the namespace prefix which is common with l and padds it with
+   spaces if fill is set to true. It also strips namespaces from template
+   arguments if they are used as a parametr of something defined in the same
+   namespace. */
 std::string simplify( std::string s, std::string l, bool fill = true )
 {
     int cut = 0, stop = 0;
@@ -246,6 +250,8 @@ void group_summary( int good, int bad )
     std::cerr << std::endl;
 }
 
+/* Prints a list of testcases which match given commandline arguments. See run
+   for details on test filtering. */
 int list( int argc, const char **argv )
 {
     ASSERT( TestBase::testcases );
@@ -260,6 +266,13 @@ int list( int argc, const char **argv )
     return 0;
 }
 
+/* Runs all tests allowed by filters given with commandline arguments or the T
+   environment variable (if defined).
+   Filters can be written as a comma-separated list of substrings and tests
+   mathing at least one substring in each filter will be executed -- e.g., it
+   the only filter is "bricks,vm" then all tests which contain "bricks" or "vm"
+   in their name will be executed; if the filters are "bricks,vm" and "mem",
+   then tests wich contain "mem" and either "bricks" or "vm" will be executed. */
 int run( int argc, const char **argv )
 {
     ASSERT( TestBase::testcases );
@@ -380,7 +393,11 @@ struct TestCase : TestBase
     TestCase( std::string n ) : TestBase( n ) {}
 };
 
+/* Declares a test and makes sure it is registered in a global constructor of
+   the program. It is usually used through the TEST or TEST_FAILING macros.
+   Each TEST_ declaration should occur inside a class. */
 #define TEST_(n, T, INIT)                                               \
+    /* never called, just instanciates __reg2_ ## n */                  \
     void __reg1_ ## n()                                                 \
     {                                                                   \
         using SELFR = decltype(*this);                                  \

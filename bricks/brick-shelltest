@@ -688,6 +688,8 @@ struct Options {
     }
 };
 
+/* This class handles the actual execution of the test, either using bash, or
+   using the specified interpreter. */
 struct TestProcess
 {
     std::string filename, interpreter;
