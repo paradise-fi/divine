@@ -1,0 +1,94 @@
+## DivCC (14.8.)
+
+Main sources:
+- tools/divcc.cpp
+- divine/cc/native.*
+- divine/cc/options.*
+- divine/cc/driver.*
+- divine/cc/cc1.*
+
+Additional support sources:
+- bricks/brick-llvm-link
+- divine/cc/link.*
+- divine/cc/codegen.*
+- divine/cc/filetype.*
+- divine/cc/init.cpp
+- divine/cc/vfs.hpp
+
+Compiler provided headers:
+- stdarg.h
+- stddef.h
+- stdbool.h
+- float.h
+- limits.h
+
+### Introduction
+
+DivCC is a Clang-based compiler whose main aim is to enable easy and seamless
+integration of LLVM-based analysis and verification into an ordinary build
+process. In the case of DIVINE, its main usefulness stems from the ability to
+link all compilation units into a binary file that also includes a special
+section .llvmbc. This section contains a serialized LLVM bitcode of the whole
+system, which is then availible for verification.
+
+### The journey of CLI arguments
+
+We will begin our exploration in the file that contains the main function for
+DivCC, that is `tools/divcc.cpp`. This is, however, only a thin wrapper over
+`struct Native`, which is given the CLI arguments and immediately hands them
+over to a parsing code located in `divine/cc/options.*`.
+
+Now that the internal representation of the parsed CLI arguments is availible,
+we can further inspect `Native` in `divine/cc/native.*`. It is here where the
+main high-level logic of DivCC resides - this structure is responsible for
+acting on provided arguments, deferring to lower levels (mainly the driver and
+the compiler proper) where necessary.
+
+Few parts of `Native` depend on `struct Driver` over at `divine/cc/driver.*`.
+The driver could, in theory, also guide the compilation process. However,
+`Native` uses it mainly for linking. Both the driver and `Native` hold an
+instance of `struct CC1`. This structure, located at `divine/cc/cc1.*` is
+basically a handle to Clang that can (among other things) compile a single
+file into bitcode.
+
+### Linking and codegen support
+
+While looking at the main layers above, we saw functions concerned with
+linking. Now we shall look at the lower-level layers providing support for
+linking of both LLVM modules and object files as well as injecting the
+serialized bitcode into a binary.
+
+We will start by looking at `bricks/brick-llvm-link`. A part of the bricks
+support library, this file contains mainly two useful utility structures.
+`struct ArchiveReader` and its companion function `writeArchive` are useful for
+manipulating (modules <-> archive conversions) libraries stored in the GNU `ar`
+format. Another important struct present in this file is `struct Linker`, which
+acts as a wrapper over LLVM bitcode linker and provides a nicer interface (it
+also owns the composite module).
+
+Now we have an idea about how the LLVM bitcode linking works. We shall proceed
+to `divine/cc/link.*` to see some additional support code for object file
+linking. The function `ld_args` is used to construct arguments for a linker
+invocation. Additionaly, this file contains the function `add_section` that
+handles the injection of additional payload (LLVM bitcode) into an object file.
+
+However, linking alone is not enough. The input object files have to be created
+somehow, which is handled by the `emit_obj_file` stored in
+`divine/cc/codegen.*`. This is the function responsible for turning LLVM
+modules into object files (and injecting the serialized bitcode accordingly).
+
+### Additional support code
+
+We have seen nearly all the important bits of DivCC. All that remains are few
+relatively minor support files and compiler provided headers. Let us then end
+this seminar by looking at `divine/cc/filetype.*` which contains functionality
+used for determining file types based on their suffixes or CLI arguments,
+`divine/cc/init.cpp` (just a tiny initialization function) and
+`divine/cc/vfs.hpp` that provides a simple layer over Clang's VFS.
+
+The compiler provided headers at
+`divine/cc/{stdarg,stddef,stdbool,float,limits}.h` are, for the most part,
+relatively uninteresting. The exception being `stdarg.h`, which provides some
+plumbing used for translating elipsis function parameters into its own LLVM
+instruction `va_arg` - a functionality not provided by standard Clang which
+is, however, useful for verification.
