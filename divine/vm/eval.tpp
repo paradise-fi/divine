@@ -50,18 +50,6 @@ void Eval< Ctx >::op( int off, Op _op )
     return type_dispatch< Guard >( v.type, _op, v );
 }
 
-template< typename Ctx > template< typename V_ >
-void Eval< Ctx >::slot_read( Slot s, V_ &v )
-{
-    heap().read( s2loc( s ), v );
-}
-
-template< typename Ctx > template< typename V_ >
-void Eval< Ctx >::slot_read( Slot s, HeapPointer fr, V_ &v )
-{
-    heap().read( s2ptr( s, 0, fr ), v );
-}
-
 template< typename Ctx > template< typename T >
 T Eval< Ctx >::operand( int i ) { return V< Ctx, T >( this ).get( i >= 0 ? i + 1 : i ); }
 

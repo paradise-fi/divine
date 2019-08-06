@@ -114,4 +114,16 @@ namespace divine::vm
         UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
     }
 
+    template< typename Ctx > template< typename V_ >
+    void Eval< Ctx >::slot_read( Slot s, V_ &v )
+    {
+        heap().read( s2loc( s ), v );
+    }
+
+    template< typename Ctx > template< typename V_ >
+    void Eval< Ctx >::slot_read( Slot s, HeapPointer fr, V_ &v )
+    {
+        heap().read( s2ptr( s, 0, fr ), v );
+    }
+
 }
