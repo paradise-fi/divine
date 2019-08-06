@@ -25,6 +25,7 @@
 #include <divine/vm/context.hpp>
 #include <divine/vm/ctx-debug.tpp>
 #include <divine/vm/dispatch.hpp>
+#include <divine/vm/eval-fault.hpp>
 
 #include <divine/vm/divm.h>
 
@@ -203,44 +204,8 @@ struct Eval
         UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
     }
 
-    struct FaultStream : std::stringstream
-    {
-        Context *_ctx;
-        Fault _fault;
-        HeapPointer _frame;
-        CodePointer _pc;
-        bool _trace, _double;
-
-        FaultStream( Context &c, Fault f, HeapPointer frame, CodePointer pc, bool t, bool dbl )
-            : _ctx( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t ), _double( dbl )
-        {}
-
-        FaultStream( FaultStream &&s )
-            : FaultStream( *s._ctx, s._fault, s._frame, s._pc, s._trace, s._double )
-        {
-            s._ctx = nullptr;
-        }
-
-        FaultStream( const FaultStream & ) = delete;
-
-        ~FaultStream()
-        {
-            if ( !_ctx )
-                return;
-            if ( _trace )
-                _ctx->trace( TraceFault{ str() } );
-            if ( _double )
-            {
-                if ( _trace )
-                    _ctx->trace( "DOUBLE FAULT: " + _ctx->fault_str() );
-                _ctx->doublefault();
-            } else
-                _ctx->fault( _fault, _frame, _pc );
-        }
-    };
-
-    FaultStream fault( Fault f );
-    FaultStream fault( Fault f, HeapPointer frame, CodePointer c );
+    FaultStream< Context > fault( Fault f );
+    FaultStream< Context > fault( Fault f, HeapPointer frame, CodePointer c );
 
     template< typename T > T operand( int i );
     template< typename T > void result( T t );

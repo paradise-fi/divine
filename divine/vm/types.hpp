@@ -94,6 +94,7 @@ namespace divine::vm
     struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
     struct TraceDebugPersist { GenericPointer ptr; };
 
+    template< typename Context > struct FaultStream;
     template< typename _Program, typename _Heap > struct Context;
     template< typename Context > struct Eval;
 
