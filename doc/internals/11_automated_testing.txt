@@ -1,0 +1,142 @@
+# Automated Testing (7. 8., xstill)
+
+- `bricks/brick-unittest`
+- `bricks/brick-shelltest`
+- `test/lib/*`
+
+There are two kinds of tests in DIVINE, *unit tests*, which are written next to
+the code and test small parts of the code separately, and *functional tests*,
+which test functionality of DIVINE as a whole program and are declared in
+separate files.
+
+## Unit Tests (`brick-unittest`)
+
+Two main components: (i) a set of conventions, macros and functions to define
+unit tests, and (ii) a runner which handles execution of the unit tests and
+presentation of results.
+
+### Definition of Unit Tests
+
+- Usually defined in the namespace derived from the namespace of implementation
+  `brick::fs` → `brick::t_fs`, `brq` → `t_brq`, `divine::vm` →
+  `divine::t_vm`.
+
+- Tests are defined as member functions of a test class, header of tests is
+  defined using a `TEST` macro which contains test identifier:
+
+  ```cpp
+  namespace brick::t_fs {
+  using namespace brick::fs;
+  using vs = std::vector< std::string >;
+
+  struct TestSplit {
+
+      TEST( path ) {
+          ASSERT( (vs{ "a", "b", "c" }) == splitPath( "a/b/c" ) );
+          ASSERT( (vs{ "/", "a", "b", "c" }) == splitPath( "/a/b/c" ) );
+      }
+  };
+  }
+  ```
+
+- Tests usually use `brick-assert` macros.
+
+- Test targets are created by CMake using the `bricks_unittest` macro defined in
+  `bricks/support.cmake`, which gets a list of header files which may contain
+  tests.
+
+### Unit Test Runner
+
+We want to:
+
+- not have to specify which tests are defined, just a definition must suffice;
+- separate runs of tests so that one test cannot e.g., corrupt heap silently
+  and make following test fail;
+- be able to catch and report meaningfully signals delivered to tests (e.g.,
+  SIGSEGV, SIGALRM);
+- be able to debug tests.
+
+To achieve this:
+
+- the `TEST` macro also registers the test;
+- each tests is executed in a separate process using `fork` (isolation &
+  catching of signals);
+- it is possible to specify which tests are to be executed and if there is only
+  one test `fork` is skipped (simplifies debugging).
+
+The main points of `brick-unittest`:
+
+- Test are filtered and executed using `brick::unittest::run`.
+- On UNIX-like systems, `fork` is used for isolation (`fork_test`)
+- Each test is described using the `TestCase` class, which is parametrized by
+  the test function.
+- Tests are identified by their fully-qualified name (extracted from `typeid`,
+  demangled, and simplified).
+- Registration of test is performed using global constructors which are created
+  in the `TEST` macro; it fills static vector of tests defined in `TestBase`.
+
+
+## Functional Tests (`brick-shelltest` & `test/lib/*`)
+
+Functional tests check overall behaviour of the program. They are defined in
+files and each file/testcase is interpreted according to a test interpreter or
+executed as a shell script. We will first cover the runner of functional tests
+defined in `brick-shelltest` and then the concrete configuration of tests in
+DIVINE (specified in `test/lib/*`).
+
+### Functional Test Runner (`brick-shelltest`)
+
+- Most test runner options can be also affected using environmental variables.
+
+- There is no help, you must explore `brick::shelltest::run`.
+
+- The test runner is primarily used for running tests, but it can also be used
+  to list all tests (`--list`) or to export tests for use with external tools
+  such as `divbench` (`--export`).
+
+- The runner uses journal of actions in a file, this allows it to continue
+  previous interrupted run of tests (`shelltest::Journal`) -- every change of
+  test status (e.g., running, timeout) is appended to the journal.
+
+- Each test is represented using the `TestCase` class, which is responsible for
+  executing it, monitoring its status, and killing it if a timeout occurs.
+
+- The `Main` class searches for tests, expands tests which need expanding,
+  allocates tests to slots (for parallel execution of tests), and runs the
+  tests.
+
+- There are two types of timeouts -- *silence timeout*, which kills the test if it
+  does not produce any output in given time, and *total timeout* with limits
+  runtime of the entire test suite.
+
+### Functional Tests
+
+The invocation of functional tests in DIVINE is given by `test/lib/testsuite`
+which defines limits for tests, test flavours, which file types should be
+handled by which test script, and which tests should be expanded to build
+multiple testcases from them. Documentation for writing tests for DIVINE (mainly
+C/C++ tests interpreted by `test/lib/verify`) can be found in `test/README`.
+
+A test can be interpreted by a script located in `test/lib`, e.g.:
+
+- `verify` -- a C/C++ test which uses `divine cc` to compile the source and then
+  `divine verify` to check it. If an error is found, report is loaded into the
+  simulator to check simulator can load report files. It is possible to specify
+  arguments for these DIVINE commands using comments like `CC_OPTS`,
+  `VERIFY_OPTS` and to specify a line on which an error is expected using an
+  `/* ERROR */` comment (if no such comment is present in the file, the file
+  must be error-free to pass).
+
+- `bld` -- downloads a tarball of an external project from DIVINE website and
+  builds it using `dioscc`.
+
+There are also package expanders e.g., `test/lib/pkgc-unpack` which allows one
+C/C++ file to be used to define different tests (e.g., with different
+preprocessor defines passed to `divine cc`).
+
+Finally, it is possible to test using a shell script directly, this is used
+for example for simulator tests.
+
+<!--
+vim: ft=markdown tw=80 spell spelllang=en sw=2 sts=2
+-->
