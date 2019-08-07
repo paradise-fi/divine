@@ -29,6 +29,8 @@ struct DataFlowAnalysis
     void propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
     void propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
 
+    void propagate_back( llvm::Argument * arg ) noexcept;
+
     inline void push( Task && t ) noexcept {
         _tasks.emplace_back( std::move( t ) );
     }

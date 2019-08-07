@@ -114,6 +114,8 @@ namespace lart::abstract {
     bool is_propagable( llvm::Value * val ) noexcept
     {
         // TODO refactor
+        if ( llvm::isa< llvm::Constant >( val ) )
+            return false;
         if ( llvm::isa< llvm::Argument >( val ) )
             return true;
         if ( llvm::isa< llvm::ReturnInst >( val ) )
@@ -189,40 +191,83 @@ namespace lart::abstract {
         }
     }
 
+    void DataFlowAnalysis::propagate_back( llvm::Argument * arg ) noexcept
+    {
+        ASSERT( visited( arg ) );
+        if ( _intervals[ arg ]->is_covered() ) {
+            auto fn = arg->getParent();
+
+            ASSERT( !fn->hasAddressTaken() ); // TODO deal with indirect calls
+            auto calls = query::query( fn->users() )
+                .map( query::llvmdyncast< llvm::CallInst > )
+                .filter( query::notnull )
+                .freeze();
+
+            for ( auto call : calls ) {
+                auto op = call->getOperand( arg->getArgNo() );
+                propagate_identity( op, arg );
+            }
+        }
+    }
+
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
-        // TODO refactor
-
-        // memory operations
-        if ( auto store = llvm::dyn_cast< llvm::StoreInst >( val ) ) {
-            auto op = store->getValueOperand();
-            auto ptr = store->getPointerOperand();
-            if ( visited( op ) )
-                propagate( ptr, _intervals[ op ]->cover() );
-            // TODO store to abstract value?
-        } else if ( auto load = llvm::dyn_cast< llvm::LoadInst >( val ) ) {
-            auto ptr = load->getPointerOperand();
-            propagate_wrap( load, ptr );
-        } else if ( auto cast = llvm::dyn_cast< llvm::CastInst >( val ) ) {
-            auto op = cast->getOperand( 0 );
-            propagate_identity( cast, op );
-        } else if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( val ) ) {
-            auto ptr = gep->getPointerOperand();
-            propagate_wrap( gep, ptr );
-        }
+        llvmcase( val,
+            [&] ( llvm::StoreInst * store ) {
+                auto op = store->getValueOperand();
+                auto ptr = store->getPointerOperand();
+                if ( visited( op ) )
+                    propagate( ptr, _intervals[ op ]->cover() );
+                if ( auto arg = llvm::dyn_cast< llvm::Argument >( ptr ) )
+                    propagate_back( arg );
+                // TODO store to abstract value?
+            },
+            [&] ( llvm::LoadInst * load ) {
+                auto ptr = load->getPointerOperand();
+                propagate_wrap( load, ptr );
+                if ( auto arg = llvm::dyn_cast< llvm::Argument >( ptr ) )
+                    propagate_back( arg );
+            },
+            [&] ( llvm::CastInst * cast ) {
+                // TODO propagate out of function
+                auto op = cast->getOperand( 0 );
+                propagate_identity( cast, op );
+                if ( auto arg = llvm::dyn_cast< llvm::Argument >( op ) )
+                    propagate_back( arg );
+            },
+            [&] ( llvm::GetElementPtrInst * gep ) {
+                auto ptr = gep->getPointerOperand();
+                propagate_wrap( gep, ptr );
+            }
+        );
 
         // ssa operations
         if ( is_propagable( val ) ) {
             for ( auto u : val->users() ) {
-                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst
-                                    , llvm::CastInst, llvm::GetElementPtrInst >( u ) )
-                    push( [=] { propagate( u ); } );
-                else if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
-                    push( [=] { propagate_in( call ); } );
-                else if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
-                    push( [=] { propagate_out( ret ); } );
-                else if ( join( u, val ) )
-                    push( [=] { propagate( u ); } );
+                llvmcase( u,
+                    [&] ( llvm::LoadInst * load ) {
+                        push( [=] { propagate( load ); } );
+                    },
+                    [&] ( llvm::StoreInst * store ) {
+                        push( [=] { propagate( store ); } );
+                    },
+                    [&] ( llvm::GetElementPtrInst * gep ) {
+                        push( [=] { propagate( gep ); } );
+                    },
+                    [&] ( llvm::CastInst * cast ) {
+                        push( [=] { propagate( cast ); } );
+                    },
+                    [&] ( llvm::CallInst * call ) {
+                        push( [=] { propagate_in( call ); } );
+                    },
+                    [&] ( llvm::ReturnInst * ret ) {
+                        push( [=] { propagate_out( ret ); } );
+                    },
+                    [&] ( llvm::Value * ) {
+                        if ( join( u, val ) )
+                            push( [=] { propagate( u ); } );
+                    }
+                );
             }
         }
     }
