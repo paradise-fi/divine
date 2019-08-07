@@ -18,6 +18,7 @@
 
 #include <divine/dbg/print.hpp>
 #include <divine/vm/opnames.hpp>
+#include <divine/vm/eval-slot.tpp>
 #include <brick-llvm>
 
 using namespace std::literals;
