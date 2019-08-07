@@ -26,8 +26,8 @@ struct DataFlowAnalysis
     void propagate_in( llvm::CallInst * call ) noexcept;
     void propagate_out( llvm::ReturnInst * ret ) noexcept;
 
-    void propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
-    void propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
+    bool propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
+    bool propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
 
     void propagate_back( llvm::Argument * arg ) noexcept;
 
@@ -186,7 +186,7 @@ struct DataFlowAnalysis
     using MapValuePtr = IntervalMap< MapValue >::Ptr;
 
     bool visited( llvm::Value * val ) const noexcept;
-    void propagate( llvm::Value * to, const MapValuePtr& from ) noexcept;
+    bool propagate( llvm::Value * to, const MapValuePtr& from ) noexcept;
 
     IntervalMap< MapValue > _intervals;
 

@@ -120,26 +120,18 @@ namespace lart::abstract {
 
     bool is_propagable( llvm::Value * val ) noexcept
     {
-        // TODO refactor
         if ( llvm::isa< llvm::Constant >( val ) )
             return false;
-        if ( llvm::isa< llvm::Argument >( val ) )
-            return true;
-        if ( llvm::isa< llvm::ReturnInst >( val ) )
-            return true;
-        if ( llvm::isa< llvm::GetElementPtrInst >( val ) )
-            return true;
-        if ( llvm::isa< llvm::CmpInst >( val ) )
-            return true;
-        if ( llvm::isa< llvm::LoadInst >( val ) )
-            return true;
-        if ( llvm::isa< llvm::AllocaInst >( val ) )
-            return true;
         if ( is_call( val ) )
             return true;
-        if ( auto i = llvm::dyn_cast< llvm::Instruction >( val ) )
-            return i->isBinaryOp() || i->isCast() || i->isShift();
-        UNREACHABLE( "unkonwn value" );
+        return util::is_one_of< llvm::Argument
+                              , llvm::ReturnInst
+                              , llvm::GetElementPtrInst
+                              , llvm::CmpInst
+                              , llvm::UnaryInstruction
+                              , llvm::BinaryOperator
+                              , llvm::PHINode >( val );
+
     }
 
     bool DataFlowAnalysis::visited( llvm::Value * val ) const noexcept
@@ -147,45 +139,47 @@ namespace lart::abstract {
         return _intervals.has( val );
     }
 
-    void DataFlowAnalysis::propagate( llvm::Value * to, const MapValuePtr& from ) noexcept
+    bool DataFlowAnalysis::propagate( llvm::Value * to, const MapValuePtr& from ) noexcept
     {
         auto task = [=] { propagate( to ); };
         if ( !visited( to ) ) {
             _intervals[ to ] = from;
             push( task );
+            return true; // change
         } else if ( interval( to )->join( from ) ) {
             // if join introduces any new information
             push( task );
+            return true; // change
         }
+
+        return false; // no change
     }
 
-    void DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
+    bool DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        // forward propagation
-        if ( visited( rhs ) ) {
-            ASSERT( visited( rhs ) );
-            propagate( lhs, _intervals[ rhs ]->peel() );
-        }
-        // backward propagation
-        if ( visited( lhs ) ) {
-            ASSERT( visited( lhs ) );
-            propagate( rhs, _intervals[ lhs ]->cover() );
-        }
+        bool forward = [&] {
+            return visited( rhs ) ? propagate( lhs, _intervals[ rhs ]->peel() ) : false;
+        } ();
+
+        bool backward = [&] {
+            return visited( lhs ) ? propagate( rhs, _intervals[ lhs ]->cover() ) : false;
+        } ();
+
+        return forward || backward;
 
     }
 
-    void DataFlowAnalysis::propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept
+    bool DataFlowAnalysis::propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        // forward propagation
-        if ( visited( rhs ) ) {
-            ASSERT( visited( rhs ) );
-            propagate( lhs, _intervals[ rhs ] );
-        }
-        // backward propagation
-        if ( visited( lhs ) ) {
-            ASSERT( visited( lhs ) );
-            propagate( rhs, _intervals[ lhs ] );
-        }
+        bool forward = [&] {
+            return visited( rhs ) ? propagate( lhs, _intervals[ rhs ] ) : false;
+        } ();
+
+        bool backward = [&] {
+            return visited( lhs ) ? propagate( rhs, _intervals[ lhs ] ) : false;
+        } ();
+
+        return forward || backward;
     }
 
     void DataFlowAnalysis::propagate_back( llvm::Argument * arg ) noexcept
@@ -197,9 +191,10 @@ namespace lart::abstract {
             ASSERT( !fn->hasAddressTaken() ); // TODO deal with indirect calls
             for ( auto call : calls( fn ) ) {
                 auto op = call->getOperand( arg->getArgNo() );
-                propagate_identity( op, arg );
-                if ( auto opa = llvm::dyn_cast< llvm::Argument >( op ) )
-                    propagate_back( opa );
+                if ( propagate_identity( op, arg ) ) {
+                    if ( auto opa = llvm::dyn_cast< llvm::Argument >( op ) )
+                        propagate_back( opa );
+                }
             }
         }
     }
@@ -207,33 +202,32 @@ namespace lart::abstract {
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
         llvm::Value * ptr = nullptr;
+        bool change = false;
+
         llvmcase( val,
             [&] ( llvm::StoreInst * store ) {
                 auto op = store->getValueOperand();
                 ptr = store->getPointerOperand();
                 if ( visited( op ) )
-                    propagate( ptr, _intervals[ op ]->cover() );
+                    change = propagate( ptr, _intervals[ op ]->cover() );
                 // TODO store to abstract value?
             },
             [&] ( llvm::LoadInst * load ) {
                 ptr = load->getPointerOperand();
-                propagate_wrap( load, ptr );
+                change = propagate_wrap( load, ptr );
             },
             [&] ( llvm::CastInst * cast ) {
-                auto op = cast->getOperand( 0 );
-                propagate_identity( cast, op );
-                ptr = op; // TODO check correctness
+                ptr = cast->getOperand( 0 ); // TODO what if is not a pointer?
+                change = propagate_identity( cast, ptr );
             },
             [&] ( llvm::GetElementPtrInst * gep ) {
                 ptr = gep->getPointerOperand();
-                propagate_wrap( gep, ptr );
+                change = propagate_wrap( gep, ptr );
             }
         );
 
-        if ( ptr ) {
-            if ( auto arg = llvm::dyn_cast< llvm::Argument >( ptr ) )
-                propagate_back( arg );
-        }
+        if ( ptr && change && llvm::isa< llvm::Argument >( ptr ) )
+            propagate_back( llvm::cast< llvm::Argument >( ptr ) );
 
         // ssa operations
         if ( is_propagable( val ) ) {
