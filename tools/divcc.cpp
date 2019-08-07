@@ -19,14 +19,28 @@
 
 #include <divine/cc/cc1.hpp> //CompileError
 #include <divine/cc/native.hpp>
-#include <divine/rt/dios-cc.hpp>
-#include <divine/rt/runtime.hpp>
+#include <divine/rt/dios-cc.hpp> // TODO: Needed?
+#include <divine/rt/runtime.hpp> // TODO: Needed?
 #include <divine/ui/version.hpp>
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/ToolChain.h>
 
+/*
+ * This is the user-facing tool that forms the frontend for DivCC. It's a
+ * C/C++ compiler based on Clang whose main goal is to aid LLVM-based
+ * verification. To this end, it is capable of generating a whole-program binary
+ * containing an additional .llvmbc section that is used to store LLVM bitcode
+ * representation of the binary. It also handles linking of compilation units,
+ * appending the bitcode sections where necessary.
+ *
+ * One of the aims of the project is to be a drop-in replacement for a more
+ * traditional C/C++ toolchain such as GCC or Clang/LLVM. Therefore, the
+ * user-facing CLI is basically the same. 
+ */
+
 using namespace divine;
 
+// Insert system include paths and C++ standard library include paths to 'out'
 /* Fetched in form of options {"-isystem", "PATH", etc.} */
 template< typename IOVector >
 void get_cpp_header_paths( IOVector out )
@@ -53,9 +67,12 @@ void get_cpp_header_paths( IOVector out )
 int main( int argc, char **argv )
 {
     try {
+        // We choose whether to act as a C or C++ compiler depending on the name
+        // the tool was called by. 'divcc' for C, 'divc++' for C++
+
         cc::Native nativeCC( { argv + 1, argv + argc } );
         nativeCC.set_cxx( brick::string::endsWith( argv[0], "divc++" ) );
-        auto& po = nativeCC._po;
+        auto& po = nativeCC._po; // Parsed command line options
 
         if( nativeCC._cxx )
         {
