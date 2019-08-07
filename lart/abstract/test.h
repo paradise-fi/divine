@@ -40,12 +40,18 @@ namespace lart::t_abstract {
     {
         using namespace abstract;
         lart::Driver drv;
-        drv.setup( CreateAbstractMetadata()
-                 , VPA()
-                 , Decast()
-                 , VPA()
-                 , StashingPass()
+        drv.setup( AnnotateFunctions(
+                      "lart.interrupt.skipcfl:_ZNSt3__218uninitialized_copy.*"
+                 )
+                 , AnnotateFunctions(
+                      "lart.interrupt.skipcfl:_ZN6__dios5Array.*"
+                 )
+                 , InitAbstractions()
+                 , abstract::LowerAnnotations()
+                 , DataFlowAnalysis()
+                 , UnstashPass()
                  , Syntactic()
+                 , StashPass()
                  , LowerToBool()
                  , std::forward< Passes >( passes )... );
         drv.process( m.get() );
@@ -108,6 +114,7 @@ namespace lart::t_abstract {
             "#define _SYM __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
     };
 
+#if 0
     struct Abstraction : TestBase
     {
         TEST( simple ) {
@@ -992,6 +999,7 @@ namespace lart::t_abstract {
             test_substitution( annotation + s );
         }
     };
+#endif
 
 } // namespace lart::t_abstract
 #endif

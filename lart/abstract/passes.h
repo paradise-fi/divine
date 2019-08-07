@@ -44,8 +44,6 @@ namespace lart::abstract {
                                            , InitAbstractions()
                                            , LowerAnnotations()
                                            , DataFlowAnalysis()
-                                           // , Decast() // TODO remove after vpa reimplementation
-                                           // , DataFlowAnalysis() // run once more to propagate through decasted functions
                                            , UnstashPass()
                                            , Syntactic()
                                            , StashPass()
