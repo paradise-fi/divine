@@ -21,12 +21,13 @@ struct DataFlowAnalysis
 
     void run( llvm::Module & );
 
-    void propagate( llvm::Value *inst ) noexcept;
+    void propagate( llvm::Value * inst ) noexcept;
 
     void propagate_in( llvm::CallInst * call ) noexcept;
     void propagate_out( llvm::ReturnInst * ret ) noexcept;
 
-    bool join( llvm::Value *, llvm::Value * ) noexcept;
+    void propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
+    void propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
 
     inline void push( Task && t ) noexcept {
         _tasks.emplace_back( std::move( t ) );
@@ -73,13 +74,15 @@ struct DataFlowAnalysis
     struct Onion : std::enable_shared_from_this< Onion< Core > >
     {
         using Layer = std::shared_ptr< Onion >;
+        using Ptr = std::shared_ptr< Onion >;
+        using ConstPtr = std::shared_ptr< const Onion >;
 
-        std::shared_ptr< Onion > getptr()
+        Ptr getptr()
         {
             return this->shared_from_this();
         }
 
-        std::shared_ptr< const Onion > getptr() const
+        ConstPtr getptr() const
         {
             return this->shared_from_this();
         }
@@ -106,19 +109,19 @@ struct DataFlowAnalysis
             std::get< Core >( layer ).to_top();
         }
 
-        bool join( const Onion< Core > &other )
+        bool join( const Ptr &other )
         {
             // TODO peel to the same level
-            return core().join( other.core() );
+            return core().join( other->core() );
         }
 
-        std::shared_ptr< Onion > peel() const noexcept
+        Ptr peel() const noexcept
         {
             ASSERT( is_covered() );
             return (*std::get< Layer >( layer )).getptr();
         }
 
-        std::shared_ptr< Onion > cover() noexcept
+        Ptr cover() noexcept
         {
             auto on = std::make_shared< Onion >();
             on->layer = getptr();
@@ -179,6 +182,12 @@ struct DataFlowAnalysis
 
     using MapValue = Onion< LatticeValue >;
     using MapValuePtr = IntervalMap< MapValue >::Ptr;
+
+    bool join( llvm::Value *, llvm::Value * ) noexcept;
+    bool join( llvm::Value *, const MapValuePtr & ) noexcept;
+
+    bool visited( llvm::Value * val ) const noexcept;
+    void propagate( llvm::Value * to, const MapValuePtr& from ) noexcept;
 
     IntervalMap< MapValue > _intervals;
 

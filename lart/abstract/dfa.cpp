@@ -136,59 +136,77 @@ namespace lart::abstract {
 
     bool DataFlowAnalysis::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        return interval( lhs )->join( *interval( rhs ) );
+        return join( lhs, interval( rhs ) );
+    }
+
+    bool DataFlowAnalysis::join( llvm::Value * lhs, const MapValuePtr &val ) noexcept
+    {
+        return interval( lhs )->join( val );
+    }
+
+    bool DataFlowAnalysis::visited( llvm::Value * val ) const noexcept
+    {
+        return _intervals.has( val );
+    }
+
+    void DataFlowAnalysis::propagate( llvm::Value * to, const MapValuePtr& from ) noexcept
+    {
+        auto task = [=] { propagate( to ); };
+        if ( !visited( to ) ) {
+            _intervals[ to ] = from;
+            push( task );
+        } else if ( join( to, from ) ) {
+            // if join introduces any new information
+            push( task );
+        }
+    }
+
+    void DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
+    {
+        // forward propagation
+        if ( visited( rhs ) ) {
+            ASSERT( visited( rhs ) );
+            propagate( lhs, _intervals[ rhs ]->peel() );
+        }
+        // backward propagation
+        if ( visited( lhs ) ) {
+            ASSERT( visited( lhs ) );
+            propagate( rhs, _intervals[ lhs ]->cover() );
+        }
+
+    }
+
+    void DataFlowAnalysis::propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept
+    {
+        // forward propagation
+        if ( visited( rhs ) ) {
+            ASSERT( visited( rhs ) );
+            propagate( lhs, _intervals[ rhs ] );
+        }
+        // backward propagation
+        if ( visited( lhs ) ) {
+            ASSERT( visited( lhs ) );
+            propagate( rhs, _intervals[ lhs ] );
+        }
     }
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
         // TODO refactor
+
         // memory operations
         if ( auto store = llvm::dyn_cast< llvm::StoreInst >( val ) ) {
-            auto val = store->getValueOperand();
+            auto op = store->getValueOperand();
             auto ptr = store->getPointerOperand();
-
-            if ( !_intervals.has( ptr ) ) {
-                _intervals[ ptr ] = _intervals[ val ]->cover();
-                push( [=] { propagate( ptr ); } );
-            } else if ( join( val, ptr ) ) {
-                push( [=] { propagate( ptr ); } );
-            }
-
+            if ( visited( op ) )
+                propagate( ptr, _intervals[ op ]->cover() );
             // TODO store to abstract value?
-        }
-        else if ( auto load = llvm::dyn_cast< llvm::LoadInst >( val ) ) {
+        } else if ( auto load = llvm::dyn_cast< llvm::LoadInst >( val ) ) {
             auto ptr = load->getPointerOperand();
-
-            if ( !_intervals.has( ptr ) ) {
-                ASSERT( _intervals.has( load ) );
-                _intervals[ ptr ] = _intervals[ load ]->cover();
-                push( [=] { propagate( ptr ); } );
-            } else if ( !_intervals.has( load ) ) {
-                ASSERT( _intervals.has( ptr ) );
-                _intervals[ load ] = _intervals[ ptr ]->peel();
-                // propagation performed in ssa propagation
-            } else if ( join( load, ptr ) ) {
-                push( [=] { propagate( load ); } );
-            } else if ( join( ptr, load ) ) {
-                push( [=] { propagate( ptr ); } );
-            }
-        }
-        else if ( auto cast = llvm::dyn_cast< llvm::CastInst >( val ) ) {
+            propagate_wrap( load, ptr );
+        } else if ( auto cast = llvm::dyn_cast< llvm::CastInst >( val ) ) {
             auto op = cast->getOperand( 0 );
-
-            if ( !_intervals.has( op ) ) {
-                ASSERT( _intervals.has( cast ) );
-                _intervals[ op ] = _intervals[ cast ];
-                push( [=] { propagate( op ); } );
-            } else if ( !_intervals.has( cast ) ) {
-                ASSERT( _intervals.has( op ) );
-                _intervals[ cast ] = _intervals[ op ];
-                push( [=] { propagate( cast ); } );
-            } else if ( join( cast, op ) ) {
-                push( [=] { propagate( cast ); } );
-            } else if ( join( op, cast ) ) {
-                push( [=] { propagate( op ); } );
-            }
+            propagate_identity( cast, op );
         }
 
         // ssa operations
@@ -212,11 +230,9 @@ namespace lart::abstract {
 
         for ( const auto & arg : fn->args() ) {
             auto oparg = call->getArgOperand( arg.getArgNo() );
-            if ( _intervals.has( oparg ) ) {
+            if ( visited( oparg ) ) {
                 auto a = const_cast< llvm::Argument * >( &arg );
-                if ( join( a, oparg ) ) {
-                    push( [=] { propagate( a ); } );
-                }
+                propagate( a, _intervals[ oparg ] );
             }
         }
     }
@@ -265,7 +281,7 @@ namespace lart::abstract {
         }
     }
 
-    void DataFlowAnalysis::add_meta( llvm::Value *v, const MapValuePtr& mval ) noexcept
+    void DataFlowAnalysis::add_meta( llvm::Value * v, const MapValuePtr& mval ) noexcept
     {
         if ( llvm::isa< llvm::Constant >( v ) )
             return;
