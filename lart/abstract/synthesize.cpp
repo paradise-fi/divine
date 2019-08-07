@@ -206,16 +206,6 @@ namespace lart::abstract
                 vals.push_back( merge( val2 ) );
             }
 
-            /*if constexpr ( T == Operation::Type::Union ) {
-                auto paired = TaintArgument{ function()->arg_begin() };
-                auto val = paired.abstract.value;
-
-                ASSERT( val->getType()->isPointerTy() );
-                auto cast = irb.CreateBitCast( val, function()->getReturnType() );
-                irb.CreateRet( cast );
-                return;
-            }*/
-
             if constexpr ( Taint::gep( T ) )
             {
                 UNREACHABLE( "not implemented" );
