@@ -120,11 +120,12 @@ namespace lart::abstract {
 
     bool is_propagable( llvm::Value * val ) noexcept
     {
-        if ( llvm::isa< llvm::Constant >( val ) )
+        if ( llvm::isa< llvm::ConstantData >( val ) )
             return false;
         if ( is_call( val ) )
             return true;
         return util::is_one_of< llvm::Argument
+                              , llvm::GlobalVariable
                               , llvm::ReturnInst
                               , llvm::GetElementPtrInst
                               , llvm::CmpInst
