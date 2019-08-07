@@ -185,9 +185,6 @@ struct DataFlowAnalysis
     using MapValue = Onion< LatticeValue >;
     using MapValuePtr = IntervalMap< MapValue >::Ptr;
 
-    bool join( llvm::Value *, llvm::Value * ) noexcept;
-    bool join( llvm::Value *, const MapValuePtr & ) noexcept;
-
     bool visited( llvm::Value * val ) const noexcept;
     void propagate( llvm::Value * to, const MapValuePtr& from ) noexcept;
 

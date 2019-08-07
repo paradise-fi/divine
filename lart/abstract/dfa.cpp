@@ -111,6 +111,13 @@ namespace lart::abstract {
         return util::is_one_of< llvm::CallInst, llvm::InvokeInst >( val );
     }
 
+    auto calls( llvm::Function * fn ) noexcept
+    {
+        return query::query( fn->users() )
+            .filter( [] ( auto val ) { return is_call( val ); } )
+            .freeze();
+    }
+
     bool is_propagable( llvm::Value * val ) noexcept
     {
         // TODO refactor
@@ -135,16 +142,6 @@ namespace lart::abstract {
         UNREACHABLE( "unkonwn value" );
     }
 
-    bool DataFlowAnalysis::join( llvm::Value * lhs, llvm::Value * rhs ) noexcept
-    {
-        return join( lhs, interval( rhs ) );
-    }
-
-    bool DataFlowAnalysis::join( llvm::Value * lhs, const MapValuePtr &val ) noexcept
-    {
-        return interval( lhs )->join( val );
-    }
-
     bool DataFlowAnalysis::visited( llvm::Value * val ) const noexcept
     {
         return _intervals.has( val );
@@ -156,7 +153,7 @@ namespace lart::abstract {
         if ( !visited( to ) ) {
             _intervals[ to ] = from;
             push( task );
-        } else if ( join( to, from ) ) {
+        } else if ( interval( to )->join( from ) ) {
             // if join introduces any new information
             push( task );
         }
@@ -198,12 +195,7 @@ namespace lart::abstract {
             auto fn = arg->getParent();
 
             ASSERT( !fn->hasAddressTaken() ); // TODO deal with indirect calls
-            auto calls = query::query( fn->users() )
-                .map( query::llvmdyncast< llvm::CallInst > )
-                .filter( query::notnull )
-                .freeze();
-
-            for ( auto call : calls ) {
+            for ( auto call : calls( fn ) ) {
                 auto op = call->getOperand( arg->getArgNo() );
                 propagate_identity( op, arg );
             }
@@ -258,14 +250,16 @@ namespace lart::abstract {
                         push( [=] { propagate( cast ); } );
                     },
                     [&] ( llvm::CallInst * call ) {
-                        push( [=] { propagate_in( call ); } );
+                        auto fn = llvm::CallSite( call ).getCalledFunction();
+                        if ( !meta::function::ignore_call( fn ) )
+                            push( [=] { propagate_in( call ); } );
                     },
                     [&] ( llvm::ReturnInst * ret ) {
                         push( [=] { propagate_out( ret ); } );
                     },
                     [&] ( llvm::Value * ) {
-                        if ( join( u, val ) )
-                            push( [=] { propagate( u ); } );
+                        ASSERT( visited( val ) );
+                        propagate( u, _intervals[ val ] );
                     }
                 );
             }
@@ -288,10 +282,12 @@ namespace lart::abstract {
     void DataFlowAnalysis::propagate_out( llvm::ReturnInst * ret ) noexcept
     {
         auto fn = ret->getFunction();
-        for ( auto u : fn->users() ) {
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
-                if ( join( call, ret->getReturnValue() ) )
-                    push( [=] { propagate( call ); } );
+        for ( auto call : calls( fn ) ) {
+            auto fn = llvm::CallSite( call ).getCalledFunction();
+            if ( !meta::function::ignore_return( fn ) ) {
+                auto val = ret->getReturnValue();
+                propagate( call, _intervals[ val ] );
+            }
         }
     }
 
