@@ -198,40 +198,42 @@ namespace lart::abstract {
             for ( auto call : calls( fn ) ) {
                 auto op = call->getOperand( arg->getArgNo() );
                 propagate_identity( op, arg );
+                if ( auto opa = llvm::dyn_cast< llvm::Argument >( op ) )
+                    propagate_back( opa );
             }
         }
     }
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
+        llvm::Value * ptr = nullptr;
         llvmcase( val,
             [&] ( llvm::StoreInst * store ) {
                 auto op = store->getValueOperand();
-                auto ptr = store->getPointerOperand();
+                ptr = store->getPointerOperand();
                 if ( visited( op ) )
                     propagate( ptr, _intervals[ op ]->cover() );
-                if ( auto arg = llvm::dyn_cast< llvm::Argument >( ptr ) )
-                    propagate_back( arg );
                 // TODO store to abstract value?
             },
             [&] ( llvm::LoadInst * load ) {
-                auto ptr = load->getPointerOperand();
+                ptr = load->getPointerOperand();
                 propagate_wrap( load, ptr );
-                if ( auto arg = llvm::dyn_cast< llvm::Argument >( ptr ) )
-                    propagate_back( arg );
             },
             [&] ( llvm::CastInst * cast ) {
-                // TODO propagate out of function
                 auto op = cast->getOperand( 0 );
                 propagate_identity( cast, op );
-                if ( auto arg = llvm::dyn_cast< llvm::Argument >( op ) )
-                    propagate_back( arg );
+                ptr = op; // TODO check correctness
             },
             [&] ( llvm::GetElementPtrInst * gep ) {
-                auto ptr = gep->getPointerOperand();
+                ptr = gep->getPointerOperand();
                 propagate_wrap( gep, ptr );
             }
         );
+
+        if ( ptr ) {
+            if ( auto arg = llvm::dyn_cast< llvm::Argument >( ptr ) )
+                propagate_back( arg );
+        }
 
         // ssa operations
         if ( is_propagable( val ) ) {
