@@ -239,21 +239,36 @@ namespace divine::mem
 
         bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }
 
-        bool equal( typename Next::Internal a, typename Next::Internal b, int sz, bool skip_objids )
+        template< typename F >
+        bool equal( typename Next::Internal a, typename Next::Internal b, F ptr_cb )
         {
-            return n.compare( n, a, b, sz, skip_objids ) == 0;
+            if ( n.size( b ) == n.size( a ) )
+                return equal( a, b, ptr_cb, n.size( a ) );
+            else
+                return false;
         }
 
-        int compare( typename Next::Internal a, typename Next::Internal b, int sz, bool skip_objids )
+        template< typename F >
+        bool equal( typename Next::Internal a, typename Next::Internal b, F ptr_cb, int sz )
         {
-            return n.compare( n, a, b, sz, skip_objids );
+            return compare( a, b, [&]( auto a, auto b ) { return ptr_cb( a, b ) == 0; }, sz ) == 0;
         }
 
-        template< typename H2 >
-        int compare( H2 &h2, typename Next::Internal a, typename Next::Internal b, int sz,
-                     bool skip_objids )
+        template< typename F >
+        bool compare( typename Next::Internal a, typename Next::Internal b, F ptr_cb )
         {
-            return n.compare( h2.n, a, b, sz, skip_objids );
+            if ( int v = n.size( b ) - n.size( a ) )
+                return v;
+            else
+                return compare( a, b, ptr_cb, n.size( a ) );
+        }
+
+        template< typename F >
+        int compare( typename Next::Internal a, typename Next::Internal b, F ptr_cb, int sz )
+        {
+            ASSERT_EQ( size( a ), sz );
+            ASSERT_EQ( size( b ), sz );
+            return n.compare( a, b, ptr_cb, sz );
         }
 
         Next n;

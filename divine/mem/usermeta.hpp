@@ -118,18 +118,22 @@ struct UserMeta : Next
         Next::copy( from_h, from, to_h, to, sz, internal );
     }
 
-    template< typename OtherSH >
-    int compare( OtherSH &o, typename OtherSH::Internal a, Internal b, int sz, bool skip_objids )
+    template< typename F >
+    int compare( Internal a, Internal b, F ptr_cb, int sz ) const
     {
         auto ltypes = layer_types();
-        auto no_objids_cb = [ltypes, skip_objids]( auto k )
+        auto val_cb = [ltypes, ptr_cb]( auto k, auto a, auto b )
         {
-            return ltypes[ k.from.tag ] == MetaType::Pointers && skip_objids;
+            if ( ltypes[ k.from.tag ] == MetaType::Pointers )
+                return ptr_cb( a, b );
+            else
+                return int( b - a );
         };
-        if ( int diff = _maps._storage.compare( a, b, no_objids_cb ) )
+
+        if ( int diff = _maps._storage.compare( a, b, val_cb ) )
             return diff;
-        int diff = Next::compare( o, a, b, sz, skip_objids );
-        return diff;
+
+        return Next::compare( a, b, ptr_cb, sz );
     }
 
     template< typename S, typename F >

@@ -74,6 +74,9 @@ namespace divine::mem
         template< typename S, typename F >
         void hash( Internal i, int bytes, S &state, F ptr_cb ) const;
 
+        template< typename F >
+        int compare( Internal a, Internal b, F ptr_cb, int bytes ) const;
+
         void reset() { _l.exceptions.clear(); _l.snap_size = 0; _l.snap_begin = nullptr; }
         void rollback() { _l.exceptions.clear(); } /* fixme leak */
 

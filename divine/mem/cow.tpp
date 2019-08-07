@@ -36,7 +36,7 @@ namespace divine::mem
         if ( std::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
             return nullptr;
 
-        if ( heap().compare( heap(), a, b, size, false ) )
+        if ( heap().compare( a, b, []( auto a, auto b ) { return int32_t( b - a ); }, size ) )
             return nullptr;
 
         if ( cell.tombstone() )

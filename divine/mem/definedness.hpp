@@ -162,9 +162,8 @@ struct DefinednessLayer : public NextLayer
 
     DefinednessLayer() : _def_exceptions( new DataExceptions ) {}
 
-    template< typename OtherSh >
-    int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b,
-                      bool skip_objids )
+    template< typename F >
+    int compare_word( Loc a, Expanded exp_a, Loc b, Expanded exp_b, F ptr_cb ) const
     {
         // This function assumes that it is called only if there is a data exception, which
         // currently holds. Should it cease to, it will be necessary to rewrite this code.
@@ -176,14 +175,14 @@ struct DefinednessLayer : public NextLayer
             uint32_t def_word;
         } da, db;
 
-        a_sh._def_exceptions->get( a.object, a.offset, da.def_bytes );
+        _def_exceptions->get( a.object, a.offset, da.def_bytes );
         _def_exceptions->get( b.object, b.offset, db.def_bytes );
 
         int cmp = da.def_word - db.def_word;
         if ( cmp )
             return cmp;
 
-        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b, skip_objids );
+        return NextLayer::compare_word( a, exp_a, b, exp_b, ptr_cb );
     }
 
     void free( Internal p ) const

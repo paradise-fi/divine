@@ -248,16 +248,15 @@ struct Metadata : Next
     }
 
     // Compares expanded metadata through all layers.
-    template< typename OtherSH >
-    int compare( OtherSH &a_sh, typename OtherSH::Internal a_obj, Internal b_obj, int sz,
-                 bool skip_objids )
+    template< typename F >
+    int compare( Internal a_obj, Internal b_obj, F ptr_cb, int sz ) const
     {
         int cmp;
         const int words = ( sz + 3 ) / 4;
 
         auto a = Loc( a_obj, 0, 0 );
         auto b = Loc( b_obj, 0, 0 );
-        auto sh_a = a_sh.compressed( a, words );
+        auto sh_a = compressed( a, words );
         auto sh_b = compressed( b, words );
         auto i_a = sh_a.begin();
         auto i_b = sh_b.begin();
@@ -276,11 +275,11 @@ struct Metadata : Next
                 continue;
             Expanded exp_a = Next::expand( c_a );
             Expanded exp_b = Next::expand( c_b );
-            if ( ( cmp = Next::compare_word( a_sh, a + off, exp_a, b + off, exp_b, skip_objids ) ) )
+            if ( ( cmp = Next::compare_word( a + off, exp_a, b + off, exp_b, ptr_cb ) ) )
                 return cmp;
         }
 
-        return Next::compare( a_sh, a_obj, b_obj, sz, skip_objids );
+        return Next::compare( a_obj, b_obj, ptr_cb, sz );
     }
 
     template< typename S, typename F >

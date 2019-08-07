@@ -132,35 +132,35 @@ struct SnapshottedMap
         _l._maps.erase( obj );
     }
 
-    template< typename UnaryPredicate >
-    int compare( Internal a, Internal b, UnaryPredicate ignore_values ) const
+    template< typename cb_t >
+    int compare( Internal a, Internal b, cb_t cb ) const
     {
         auto it_a = _l._maps.find( a );
         if ( it_a != _l._maps.end() ) {
             const auto & map_a = it_a->second;
-            return _cmp( map_a.begin(), map_a.end(), b, ignore_values );
+            return _cmp( map_a.begin(), map_a.end(), b, cb );
         }
 
         auto [ begin_a, end_a ] = _snap_range( a );
-        return _cmp( begin_a, end_a, b, ignore_values );
+        return _cmp( begin_a, end_a, b, cb );
     }
 
-    template< typename IterA, typename UnaryPredicate >
-    int _cmp( IterA begin_a, IterA end_a, Internal b, UnaryPredicate ignore_values ) const
+    template< typename IterA, typename cb_t >
+    int _cmp( IterA begin_a, IterA end_a, Internal b, cb_t cb ) const
     {
         auto it_b = _l._maps.find( b );
         if ( it_b != _l._maps.end() )
         {
             const auto & map_b = it_b->second;
-            return _cmp( begin_a, end_a, map_b.begin(), map_b.end(), ignore_values );
+            return _cmp( begin_a, end_a, map_b.begin(), map_b.end(), cb );
         }
 
         auto [ begin_b, end_b ] = _snap_range( b );
-        return _cmp( begin_a, end_a, begin_b, end_b, ignore_values );
+        return _cmp( begin_a, end_a, begin_b, end_b, cb );
     }
 
-    template< typename IterA, typename IterB, typename UnaryPredicate >
-    int _cmp( IterA begin_a, IterA end_a, IterB begin_b, IterB end_b, UnaryPredicate ignore_values ) const
+    template< typename IterA, typename IterB, typename cb_t >
+    int _cmp( IterA begin_a, IterA end_a, IterB begin_b, IterB end_b, cb_t cb ) const
     {
         for ( ; begin_a != end_a; ++begin_a, ++begin_b )
         {
@@ -168,9 +168,8 @@ struct SnapshottedMap
                 return -1;
             if ( int diff = begin_a->first - begin_b->first )
                 return diff;
-            if ( !ignore_values( begin_a->first ) )
-                if ( int diff = begin_a->second - begin_b->second )
-                    return diff;
+            if ( int diff = cb( begin_a->first, begin_a->second, begin_b->second ) )
+                return diff;
         }
 
         if ( begin_b != end_b )
@@ -534,7 +533,8 @@ struct ExceptionMap
         _exceptions.erase( lb, ub );
     }
 
-    int compare( Internal a, Internal b, int sz, bool ignore_values )
+    template< typename cb_t >
+    int compare( Internal a, Internal b, int sz, cb_t cb )
     {
         Lock lk( _mtx );
 
@@ -550,9 +550,8 @@ struct ExceptionMap
                 return -1;
             if ( int diff = i_a->first.offset - i_b->first.offset )
                 return diff;
-            if ( !ignore_values )
-                if ( int diff = i_a->second - i_b->second )
-                    return diff;
+            if ( int diff = cb( i_a->second, i_b->second ) )
+                return diff;
         }
 
         if ( i_b != ub_b )

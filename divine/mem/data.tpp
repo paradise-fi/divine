@@ -140,6 +140,56 @@ namespace divine::mem
         Next::hash( i, total_bytes, state, ptr_cb );
     }
 
+    template< typename Next > template< typename F > [[gnu::always_inline]]
+    int Data< Next >::compare( Internal a, Internal b, F ptr_cb, int bytes ) const
+    {
+        int total_bytes = bytes;
+        auto a_word = reinterpret_cast< uint32_t * >( unsafe_ptr2mem( a ) ),
+             b_word = reinterpret_cast< uint32_t * >( unsafe_ptr2mem( b ) );
+        auto a_meta = this->compressed( Loc( a, 0, 0 ), ( bytes + 3 ) / 4 ),
+             b_meta = this->compressed( Loc( b, 0, 0 ), ( bytes + 3 ) / 4 );
+        auto a_miter = a_meta.begin(), b_miter = b_meta.begin();
+
+        for ( ; bytes >= 4 ; bytes -= 4, a_word++, b_word++, a_miter++, b_miter++ )
+        {
+            if ( int v = Next::is_pointer( *b_miter ) - Next::is_pointer( *a_miter ) )
+                return v;
+
+            if ( Next::is_pointer( *a_miter ) )
+                if ( int v = ptr_cb( *a_word, *b_word ) )
+                    return v;
+
+            if ( int v = Next::is_pointer_exception( *b_miter ) - Next::is_pointer_exception( *a_miter ) )
+                return v;
+
+            if ( !Next::is_pointer( *a_miter ) && Next::is_pointer_exception( *a_miter ) )
+            {
+                auto a_mask = this->pointer_exception( a, total_bytes - bytes ).mask(),
+                     b_mask = this->pointer_exception( b, total_bytes - bytes ).mask();
+                if ( int v = ( *b_word & ~b_mask ) - ( *a_word & ~a_mask ) )
+                    return v;
+            }
+
+            if ( !Next::is_pointer( *a_miter ) && !Next::is_pointer_exception( *a_miter ) )
+                if ( int v = *b_word - *a_word )
+                    return v;
+        }
+
+        a_miter ++;
+        b_miter ++;
+
+        auto a_byte = reinterpret_cast< uint8_t * >( a_word ),
+             b_byte = reinterpret_cast< uint8_t * >( b_word );
+
+        while ( bytes > 0 )
+            if ( int v = *b_byte - *a_byte )
+                return v;
+            else
+                -- bytes;
+
+        return Next::compare( a, b, ptr_cb, bytes );
+    }
+
 }
 
 // vim: ft=cpp

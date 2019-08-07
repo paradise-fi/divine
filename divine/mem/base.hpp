@@ -94,9 +94,8 @@ struct Base
     static void copy( FromH &, typename FromH::Loc, ToH &, Loc, int, bool )
     {}
 
-    template< typename OtherSH >
-    int compare( OtherSH &a_sh, typename OtherSH::Internal a_obj, Internal b_obj, int sz,
-                 bool skip_objids )
+    template< typename F >
+    int compare( Internal, Internal, F, int ) const
     {
         return 0;
     }
@@ -150,8 +149,8 @@ struct ShadowBase : Next
         ASSERT_EQ( off % 4, 0 );
     }
 
-    template< typename OtherSh >
-    int compare_word( OtherSh &, typename OtherSh::Loc a, Expanded, Loc b, Expanded, bool )
+    template< typename F >
+    int compare_word( Loc a, Expanded, Loc b, Expanded, F ) const
     {
             ASSERT_EQ( a.offset % 4, 0 );
             ASSERT_EQ( b.offset % 4, 0 );

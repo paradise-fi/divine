@@ -38,16 +38,15 @@ struct TaintLayer : public NextLayer
     using Loc = typename NextLayer::Loc;
     using Expanded = typename NextLayer::Expanded;
 
-    template< typename OtherSh >
-    int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b,
-                      bool skip_objids )
+    template< typename F >
+    int compare_word( Loc a, Expanded exp_a, Loc b, Expanded exp_b, F ptr_cb ) const
     {
         // Due to the nature of compressed metadata comparison, the expanded forms never differ in
         // taint bits. While efficient, it is, however, implementation-dependent, hence this assert,
         // which will fire if the assumption ever ceases to hold.
         ASSERT_EQ( exp_a.taint, exp_b.taint );
 
-        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b, skip_objids );
+        return NextLayer::compare_word( a, exp_a, b, exp_b, ptr_cb );
     }
 
     // Stores taints from value to expanded form of metadata 'exp' from memory location 'l'.

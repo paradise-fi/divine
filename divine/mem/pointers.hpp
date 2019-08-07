@@ -58,6 +58,15 @@ struct PointerException
         return false;
     }
 
+    uint32_t mask() const
+    {
+        uint32_t m = 0;
+        for ( int i = 0; i < 4; ++i )
+            if ( objid[ i ] )
+                m |= 0xff << ( 8 * i );
+        return m;
+    }
+
     void invalidate()
     {
         std::fill( objid, objid + 4, 0 );
@@ -146,9 +155,8 @@ struct PointerLayer : public NextLayer
 
     PointerLayer() : _ptr_exceptions( new PointerExceptions ) {}
 
-    template< typename OtherSh >
-    int compare_word( OtherSh &a_sh, typename OtherSh::Loc a, Expanded exp_a, Loc b, Expanded exp_b,
-                      bool skip_objids )
+    template< typename F >
+    int compare_word( Loc a, Expanded exp_a, Loc b, Expanded exp_b, F ptr_cb ) const
     {
         ASSERT_EQ( exp_a.pointer_exception, exp_b.pointer_exception );
         // This function correctly assumes that is is called only when there is an exception and the
@@ -160,23 +168,22 @@ struct PointerLayer : public NextLayer
 
         if ( exp_a.pointer_exception )
         {
-            auto pe_a = a_sh.pointer_exception( a.object, a.offset );
+            auto pe_a = pointer_exception( a.object, a.offset );
             auto pe_b = pointer_exception( b.object, b.offset );
             for ( int i = 0; i < 4 ; ++i )
             {
-                if ( skip_objids || ( pe_a.objid[ i ] == 0 && pe_b.objid[ i ] == 0 ) )
+                if ( pe_a.objid[ i ] == 0 && pe_b.objid[ i ] == 0 )
                     continue;
                 if ( pe_a.objid[ i ] == 0 )
                     return -1;
                 if ( pe_b.objid[ i ] == 0 )
                     return 1;
-                int cmp = pe_a.index( i ) - pe_b.index( i );
-                if ( cmp )
+                if ( int cmp = ptr_cb( pe_a.index( i ), pe_b.index( i ) ) )
                     return cmp;
             }
         }
 
-        return NextLayer::compare_word( a_sh, a, exp_a, b, exp_b, skip_objids );
+        return NextLayer::compare_word( a, exp_a, b, exp_b, ptr_cb );
     }
 
     void free( Internal p ) const
@@ -292,7 +299,7 @@ struct PointerLayer : public NextLayer
             to_h._ptr_exceptions->at( obj, off ).invalidate();
     }
 
-    PointerException pointer_exception( Internal obj, int off )
+    PointerException pointer_exception( Internal obj, int off ) const
     {
         ASSERT_EQ( off % 4, 0 );
         return _ptr_exceptions->at( obj, off );
