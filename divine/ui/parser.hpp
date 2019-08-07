@@ -320,7 +320,7 @@ struct CLI : Interface
             auto cmds = commands();
             auto cmd = parse( cmds );
             bool empty = true;
-            cmd.match( [&]( auto ) { empty = false; } );
+            cmd.match( [&]( const auto & ) { empty = false; } );
 
             if ( empty )
             {
