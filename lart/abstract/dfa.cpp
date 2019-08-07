@@ -69,10 +69,9 @@ namespace lart::abstract {
             add_meta( &cmp, op );
         }
 
-        void visitBitCastInst( llvm::BitCastInst & )
-        {
-            // skip
-        }
+        void visitBitCastInst( llvm::BitCastInst & ) { /* skip */ }
+        void visitIntToPtrInst( llvm::IntToPtrInst & ) { /* skip */ }
+        void visitPtrToIntInst( llvm::PtrToIntInst & ) { /* skip */ }
 
         void visitCastInst( llvm::CastInst &cast )
         {

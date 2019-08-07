@@ -77,16 +77,23 @@ namespace lart::abstract
         UNREACHABLE( "Unsupported operation type" );
     }
 
+    bool idempotent( llvm::Value * val )
+    {
+        return util::is_one_of< llvm::BitCastInst, llvm::IntToPtrInst, llvm::PtrToIntInst >( val );
+    }
+
     void Matched::init( llvm::Module & m )
     {
         for ( auto call : abstract_calls( m ) ) {
             auto dual = call->getNextNonDebugInstruction();
             concrete[ dual ] = call;
             abstract[ call ] = dual;
+            match_idempotent( call, dual );
         }
 
         for ( auto op : operations( m ) ) {
-            match( op.type, op.inst, op.inst->getPrevNode() );
+            auto concrete = op.inst->getPrevNode();
+            match( op.type, op.inst, concrete );
         }
 
         for ( auto intr : unpacked_arguments( &m ) ) {
@@ -97,6 +104,8 @@ namespace lart::abstract
 
             abstract[ c ] = a;
             concrete[ a ] = c;
+
+            match_idempotent( c, a );
         }
     }
 
@@ -116,10 +125,21 @@ namespace lart::abstract
                 auto unstash = ai->getNextNode();
                 abstract[ c ] = unstash;
                 concrete[ unstash ] = c;
+                match_idempotent( c, unstash );
             } else {
                 concrete[ a ] = c;
                 abstract[ c ] = a;
+                match_idempotent( c, a );
             }
+        }
+    }
+
+    void Matched::match_idempotent( llvm::Value * v, llvm::Value * dual )
+    {
+        for ( auto u : v->users() ) {
+            if ( idempotent( u ) )
+                abstract[ u ] = dual;
+            // TODO compute transitively
         }
     }
 

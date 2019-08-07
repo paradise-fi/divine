@@ -199,6 +199,9 @@ namespace lart::abstract {
 
         void match( Operation::Type type, llvm::Value * a, llvm::Value * c );
 
+        void match_idempotent( llvm::Value * v, llvm::Value * dual );
+
+
         std::map< llvm::Value *, llvm::Value * > concrete;
         std::map< llvm::Value *, llvm::Value * > abstract;
     };
