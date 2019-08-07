@@ -1,4 +1,4 @@
-/* TAGS: segmentation min sym c++ */
+/* TAGS: segmentation min sym c++ todo */
 /* CC_OPTS: -std=c++17 -I$SRC_ROOT/bricks */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc --leakcheck exit */
 
