@@ -45,7 +45,6 @@ struct RecursiveCalls {
 
         stack.push_back( fn );
 
-        bool recursive = false;
         while ( !stack.empty() ) {
             auto curr = stack.back();
             stack.pop_back();
@@ -57,21 +56,20 @@ struct RecursiveCalls {
                 .freeze();
 
             for ( auto call : calls ) {
-                run_on_potentially_called_functions( call, [&] ( auto called_fn ) {
-                    if ( called_fn->empty() )
-                        return;
-                    if ( called_fn == fn )
-                        recursive = true;
-                    if ( !seen.count( called_fn ) ) {
-                        seen.insert( called_fn );
-                        if ( meta::abstract::roots( called_fn ) )
-                            stack.push_back( called_fn );
-                    }
-                } );
+                auto cs = llvm::CallSite( call );
+                ASSERT( !cs.isIndirectCall() );
+                auto called_fn = call->getCalledFunction();
+                if ( called_fn == fn )
+                    return true;
+                if ( !seen.count( called_fn ) ) {
+                    seen.insert( called_fn );
+                    if ( meta::abstract::roots( called_fn ) )
+                        stack.push_back( called_fn );
+                }
             }
         }
 
-        return recursive;
+        return false;
     }
 };
 
