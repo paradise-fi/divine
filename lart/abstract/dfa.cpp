@@ -207,12 +207,16 @@ namespace lart::abstract {
         } else if ( auto cast = llvm::dyn_cast< llvm::CastInst >( val ) ) {
             auto op = cast->getOperand( 0 );
             propagate_identity( cast, op );
+        } else if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( val ) ) {
+            auto ptr = gep->getPointerOperand();
+            propagate_wrap( gep, ptr );
         }
 
         // ssa operations
         if ( is_propagable( val ) ) {
             for ( auto u : val->users() ) {
-                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst, llvm::CastInst >( u ) )
+                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst
+                                    , llvm::CastInst, llvm::GetElementPtrInst >( u ) )
                     push( [=] { propagate( u ); } );
                 else if ( auto call = llvm::dyn_cast< llvm::CallInst >( u ) )
                     push( [=] { propagate_in( call ); } );
