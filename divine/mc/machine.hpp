@@ -28,6 +28,7 @@
 #include <divine/vm/value.hpp>
 #include <divine/vm/memory.tpp>
 #include <divine/vm/setup.hpp>
+#include <divine/vm/eval.hpp>
 
 #include <brick-compose>
 
