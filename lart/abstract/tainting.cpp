@@ -28,41 +28,39 @@ namespace lart::abstract {
             return Operation::TypeTable[ T ];
         }
 
+        #define ENABLE_IF(name) \
+            typename std::enable_if_t< Taint::name( T_ ), std::string >
+
         template< Type T_ = T >
-        static auto suffix( llvm::Value * val ) noexcept
-            -> typename std::enable_if_t< Taint::call( T_ ), std::string >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( call )
         {
             auto fn = llvm::cast< llvm::CallInst >( val )->getCalledFunction();
             return fn->getName().str();
         }
 
         template< Type T_ = T >
-        static auto suffix( llvm::Value * val ) noexcept
-            -> typename std::enable_if_t< Taint::cmp( T_ ), std::string >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( cmp )
         {
             auto cmp = llvm::cast< llvm::CmpInst >( val );
             return result() + "." + llvm_name( cmp->getOperand( 0 )->getType() );
         }
 
         template< Type T_ = T >
-        static auto suffix( llvm::Value * val ) noexcept
-            -> typename std::enable_if_t< Taint::freeze( T_ ), std::string >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( freeze )
         {
             auto store = llvm::cast< llvm::StoreInst >( val );
             return result() + "." + llvm_name( store->getValueOperand()->getType() );
         }
 
         template< Type T_ = T >
-        static auto suffix( llvm::Value * val ) noexcept
-            -> typename std::enable_if_t< Taint::arith( T_ ), std::string >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( arith )
         {
             std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
             return op + "." + llvm_name( val->getType() );
         }
 
         template< Type T_ = T >
-        static auto suffix( llvm::Value * val ) noexcept
-            -> typename std::enable_if_t< Taint::cast( T_ ), std::string >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( cast )
         {
             auto ci = llvm::cast< llvm::CastInst >( val );
             std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
@@ -98,6 +96,8 @@ namespace lart::abstract {
 
             return "";
         }
+
+        #undef ENABLE_IF
     };
 
 
@@ -173,9 +173,11 @@ namespace lart::abstract {
             return get_function( name, return_type( op.inst ), args );
         }
 
+        #define ENABLE_IF(name) \
+            typename std::enable_if_t< Taint::name( T_ ), Values >
+
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::gep( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( gep )
         {
             auto gep = llvm::cast< llvm::GetElementPtrInst >( i->getOperand( 0 ) );
             auto con = gep->getPointerOperand();
@@ -203,8 +205,7 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::assume( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( assume )
         {
             auto tobool = llvm::cast< llvm::Instruction >( i->getOperand( 0 ) );
 
@@ -223,8 +224,7 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::store( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( store )
         {
             auto s = llvm::cast< llvm::StoreInst >( concrete( i ) );
             auto val = s->getValueOperand();
@@ -234,8 +234,7 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::load( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( load )
         {
             auto l = llvm::cast< llvm::LoadInst >( concrete( i ) );
             auto con = l->getPointerOperand();
@@ -244,16 +243,14 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::thaw( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( thaw )
         {
             auto l = llvm::cast< llvm::LoadInst >( concrete( i ) );
             return { l, i->getOperand( 0 ) };
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::freeze( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( freeze )
         {
             auto s = llvm::cast< llvm::StoreInst >( concrete( i ) );
             auto con = s->getValueOperand();
@@ -262,16 +259,14 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::toBool( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( toBool )
         {
             auto con = concrete( i->getOperand( 0 ) );
             return { con, abstract( con ) };
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::cast( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( cast )
         {
             auto ci = llvm::cast< llvm::CastInst >( concrete( i ) );
             auto src = ci->getOperand( 0 );
@@ -279,8 +274,7 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::binary( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( binary )
         {
             auto con = concrete( i );
             auto c = llvm::cast< llvm::Instruction >( con );
@@ -292,8 +286,7 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
-        auto arguments( llvm::Instruction * i )
-            -> typename std::enable_if_t< Taint::call( T_ ), Values >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( call )
         {
             auto call = llvm::cast< llvm::CallInst >( i->getOperand( 0 ) );
 
@@ -306,6 +299,8 @@ namespace lart::abstract {
 
             return args;
         }
+
+        #undef ENABLE_IF
 
         llvm::Function * concrete_function( llvm::Instruction * op )
         {
@@ -496,7 +491,7 @@ namespace lart::abstract {
             DISPATCH( BinaryFaultable )
             // DISPATCH( Lift )
             // DISPATCH( Lower )
-            DISPATCH( Call )
+            // DISPATCH( Call )
             // DISPATCH( Memcpy )
             // DISPATCH( Memmove )
             // DISPATCH( Memset )
@@ -504,6 +499,8 @@ namespace lart::abstract {
                 UNREACHABLE( "Unsupported taint type" );
         }
         UNREACHABLE( "not implemented" );
+
+        #undef DISPATCH
     }
 
     void Tainting::run( llvm::Module & m )
