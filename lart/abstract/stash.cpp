@@ -53,12 +53,13 @@ namespace lart::abstract {
 
         auto type() const noexcept
         {
-            Types types( arguments().size(), i8PTy() );
+            if ( !bundle ) {
+                Types types( arguments().size(), i8PTy() );
+                bundle = llvm::StructType::create( types );
+                bundle->setName( function->getName().str() + ".lart.bundle" );
+            }
 
-            static auto ty = llvm::StructType::create( types );
-            if ( ty->getStructName().empty() )
-                ty->setName( function->getName().str() + ".lart.bundle" );
-            return ty;
+            return bundle;
         }
 
         auto packed( llvm::CallInst * call, const Matched & matched ) const noexcept
@@ -121,6 +122,8 @@ namespace lart::abstract {
             addr->moveBefore( llvm::cast< llvm::Instruction >( ptr ) );
             return addr;
         }
+
+        mutable llvm::StructType * bundle = nullptr;
 
         llvm::Function * function;
         llvm::Module * module;
