@@ -296,7 +296,9 @@ namespace lart::abstract {
         }
         else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
             // TODO set correct domain kind?
-            meta::argument::set( arg, to_string( DomainKind::scalar ) );
+            if ( _intervals[ arg ]->is_core() ) {
+                meta::argument::set( arg, to_string( DomainKind::scalar ) );
+            }
         }
 
         for ( auto u : v->users() ) {
