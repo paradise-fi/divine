@@ -84,14 +84,14 @@ namespace abstract {
             return  reinterpret_cast< T >( reinterpret_cast< uintptr_t >( val ) + __tainted );
     }
 
-    extern "C" bool __vm_test_taint_addr( bool (*tainted) ( bool, void * addr ), bool, void * addr );
+    extern "C" bool __vm_test_taint_addr( bool (*tainted) ( bool, void * addr ), bool, void * addr ) noexcept;
 
     static bool tainted( void * addr )
     {
         return __vm_test_taint_addr( [] ( bool, void * ) { return true; }, false, addr );
     }
 
-    extern "C" bool __vm_test_taint_byte( bool (*tainted) ( bool, char val ), bool, char val );
+    extern "C" bool __vm_test_taint_byte( bool (*tainted) ( bool, char val ), bool, char val ) noexcept;
 
     static bool tainted( char val )
     {
