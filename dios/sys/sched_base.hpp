@@ -19,7 +19,7 @@
 
 #include <util/map.hpp>
 
-#include <rst/common.h>
+#include <rst/common.hpp>
 
 namespace __dios {
 

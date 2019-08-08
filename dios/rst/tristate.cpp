@@ -1,5 +1,5 @@
 #include <rst/tristate.hpp>
-#include <rst/common.h>
+#include <rst/common.hpp>
 
 using __tristate = __dios::rst::abstract::Tristate;
 

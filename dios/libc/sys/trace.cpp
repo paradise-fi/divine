@@ -3,7 +3,7 @@
 
 #include <cstdio>
 #include <dios/sys/kernel.hpp> // get_debug
-#include <rst/common.h> // for weaken
+#include <rst/common.hpp> // for weaken
 #include <fcntl.h>
 #include <dios.h>
 #include <cstring>

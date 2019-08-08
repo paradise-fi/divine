@@ -1,7 +1,6 @@
 #include <rst/lart.h>
 #include <sys/task.h>
-#include <rst/common.h>
-#include <sys/divm.h>
+#include <rst/common.hpp>
 
 #include <string.h>
 

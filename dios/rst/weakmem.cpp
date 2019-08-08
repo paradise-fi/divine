@@ -9,7 +9,7 @@
 #include <sys/vmutil.h>
 #include <sys/cdefs.h>
 #include <dios/sys/kernel.hpp> // get_debug
-#include <rst/common.h>
+#include <rst/common.hpp>
 
 #define _WM_INLINE __attribute__((__always_inline__, __flatten__))
 #define _WM_NOINLINE __attribute__((__noinline__))
@@ -82,7 +82,7 @@ using ThreadMap = __dios::ArrayMap< __dios_task, T >;
 template< typename T >
 using Array = __dios::Array< T >;
 
-using abstract::range;
+using __dios::rst::abstract::range;
 
 template< typename T >
 _WM_INLINE

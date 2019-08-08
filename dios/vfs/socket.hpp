@@ -24,7 +24,7 @@
 #include <dios.h>
 #include <dios/sys/memory.hpp>
 #include <dios/sys/stdlibwrap.hpp> // Queue
-#include <rst/common.h>
+#include <rst/common.hpp>
 #include <sys/fault.h>
 #include <sys/trace.h>
 
