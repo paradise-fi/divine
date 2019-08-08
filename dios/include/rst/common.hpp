@@ -158,4 +158,14 @@ namespace __dios::rst::abstract {
         return __dios_pointer_get_type( addr ) == _VM_PT_Weak;
     }
 
+    _LART_INLINE static void fault_idiv_by_zero() noexcept
+    {
+        __dios_fault( _VM_Fault::_VM_F_Integer, "division by zero" );
+    }
+
+    _LART_INLINE static void fault_fdiv_by_zero() noexcept
+    {
+        __dios_fault( _VM_Fault::_VM_F_Float, "division by zero" );
+    }
+
 } // namespace __dios::rst::abstract
