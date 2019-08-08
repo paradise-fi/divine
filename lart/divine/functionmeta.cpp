@@ -187,9 +187,9 @@ struct IndexFunctions {
         if ( mdGlobals )
             ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
 
-        std::set< llvm::Function * > traps;
-        brick::llvm::enumerateFunctionsForAnno( "divine.trapfn", mod,
-                                                [&]( llvm::Function *f ) { traps.insert( f ); } );
+	// Look up functions marked with `__trapfn`
+        LowerAnnotations( trapfn ).run( mod );
+        auto traps = util::functions_with_attr( trapfn, mod );
 
         std::vector< FunctionMeta > funMeta;
 
