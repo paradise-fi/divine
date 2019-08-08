@@ -12,8 +12,6 @@ namespace __dios::rst::abstract {
         using Return = std::conditional_t< pointer_based, Unit *, Unit >;
         using Argument = std::conditional_t< pointer_based, const Unit *, const Unit& >;
 
-        using Bitwidth = uint8_t;
-
         #define __op( name, ... ) \
             _LART_INTERFACE static Return name(__VA_ARGS__) noexcept { \
                 if constexpr ( pointer_based ) { \
@@ -40,7 +38,8 @@ namespace __dios::rst::abstract {
         __op( lift_one_float, float )
         __op( lift_one_double, double )
 
-        __op( lift_any )
+        template< typename T >
+        __op( lift_any, Abstracted< T > )
 
         _LART_INTERFACE
         static Tristate to_tristate( Argument ) noexcept

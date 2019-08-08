@@ -67,6 +67,8 @@ namespace __dios::rst::abstract {
     template< typename T >
     struct Abstracted { };
 
+    static constexpr bool PointerBase = true;
+
     using Bitwidth = int8_t;
 
     template< typename T >
@@ -104,6 +106,13 @@ namespace __dios::rst::abstract {
         void *ptr = __vm_obj_make( sizeof( T ), PT );
         new ( ptr ) T( std::forward< Args >( args )... );
         return static_cast< T * >( ptr );
+    }
+
+    template< typename C, typename A >
+    _LART_INLINE C make_abstract() noexcept
+    {
+        __lart_stash( A::lift_any( Abstracted< C >{} ) );
+        return taint< C >();
     }
 
     template< typename T >
