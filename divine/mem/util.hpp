@@ -27,7 +27,7 @@ namespace divine::mem
     template< typename Pointer >
     struct NoopCmp
     {
-        void pointer( Pointer, Pointer, int ) {}
+        void pointer( Pointer, Pointer ) {}
         void shadow( Pointer, Pointer ) {}
         void bytes( Pointer, Pointer, int ) {}
         void marked( Pointer, Pointer ) {}

@@ -65,84 +65,30 @@ namespace divine::mem
         if ( auto d = s1 - s2 )
             return cb.size( r1, r2, s1, s2 ), d;
 
-        if ( int d = h2.compare( i1, i2, []( auto, auto ) { return 0; }, s1 ) )
-            return cb.shadow( r1, r2 ), d;
-
-        auto l1 = h1.loc( r1, i1 ), l2 = h2.loc( r2, i2 );
-        auto b1 = h1.unsafe_bytes( l1 ), b2 = h2.unsafe_bytes( l2 );
-        auto p1 = h1.pointers( l1, s1 ), p2 = h2.pointers( l2, s2 );
-        int offset = 0;
-        auto p1i = p1.begin(), p2i = p2.begin();
-
-        while ( true )
+        auto ptr_cb = [&]( auto p1_id, auto p2_id )
         {
-            int end = p1i == p1.end() ? s1 : p1i->offset();
-            while ( offset < end )
-            {
-                if ( int d = b1[ offset ] - b2[ offset ] )
-                    return cb.bytes( r1, r2, offset ), d;
-                ++ offset;
-            }
+            vm::GenericPointer p1( p1_id ), p2( p2_id );
+            if ( int d = int( p1.type() ) - int( p2.type() ) )
+                return cb.pointer( p1, p2 ), d;
 
-            if ( p1i == p1.end() )
-                return 0;
+            if ( p1.type() == Pointer::Type::Marked )
+                cb.marked( p1, p2 );
 
-            if ( int d = p1i->size() - p2i->size() )
-                return cb.pointer( r1, r2, offset ), d;
-
-            offset += p1i->size();
-
-            ASSERT_EQ( p1i->offset(), p2i->offset() );
-            r1.offset( p1i->offset() );
-            r2.offset( p1i->offset() );
-
-            /* recurse */
-            typename H1::PointerV::Cooked p1pp, p2pp;
-
-            if ( p1i->size() == 8 )
-            {
-                typename H1::PointerV p1p, p2p;
-                h1.unsafe_read( r1, p1p, i1 );
-                h2.unsafe_read( r2, p2p, i2 );
-                p1pp = p1p.cooked();
-                p2pp = p2p.cooked();
-            } else if ( p1i->size() == 1 )
-            {
-                p1pp.object( p1i->fragment() );
-                p2pp.object( p2i->fragment() );
-            }
-            else if ( p1i->size() == 4 )
-            {
-                uint32_t obj1 = *h1.template unsafe_deref< uint32_t >( r1, i1 ),
-                         obj2 = *h2.template unsafe_deref< uint32_t >( r2, i2 );
-                p1pp.object( obj1 );
-                p2pp.object( obj2 );
-            }
-            else
-                NOT_IMPLEMENTED();
-
-
-            /* offsets and types must always match */
-            if ( int d = int( p1pp.type() ) - int( p2pp.type() ) )
-                return cb.pointer( r1, r2, offset ), d;
-            if ( int d = p1pp.offset() - p2pp.offset() )
-                return cb.pointer( r1, r2, offset ), d;
-
-            if ( p1pp.type() == Pointer::Type::Marked )
-                cb.marked( p1pp, p2pp );
-
-            if ( p1pp.type() == Pointer::Type::Heap || p1pp.type() == Pointer::Type::Alloca )
-                if ( int d = compare( h1, h2, p1pp, p2pp, v1, v2, seq, cb ) )
+            if ( p1.type() == Pointer::Type::Heap || p1.type() == Pointer::Type::Alloca )
+                if ( int d = compare( h1, h2, p1, p2, v1, v2, seq, cb ) )
                     return d;
 
-            if ( !p1pp.heap() )
-                if ( int d = p1pp.object() - p2pp.object() )
-                    return cb.pointer( r1, r2, offset ), d;
+            if ( !p1.heap() )
+                if ( int d = p1.object() - p2.object() )
+                    return cb.pointer( r1, r2 ), d;
 
-            ++ p1i; ++ p2i;
-        }
+            return 0;
+        };
 
-        UNREACHABLE( "heap comparison fell through" );
+        if ( int d = h2.compare( i1, i2, ptr_cb, s1 ) )
+            return d;
+
+        return 0;
     }
 
     struct NopState
