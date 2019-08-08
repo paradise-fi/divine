@@ -13,10 +13,10 @@ extern "C" {
     float __sym_val_float32( void );
     double __sym_val_float64( void );
 
-    uint64_t __star_val_i64( void );
-    uint32_t __star_val_i32( void );
-    uint16_t __star_val_i16( void );
-    uint8_t __star_val_i8( void );
+    uint64_t __unit_val_i64( void );
+    uint32_t __unit_val_i32( void );
+    uint16_t __unit_val_i16( void );
+    uint8_t __unit_val_i8( void );
 
     char * __mstring_val( char * buff, unsigned buff_len );
 #ifdef __cplusplus
