@@ -31,7 +31,7 @@ namespace abstract::content {
             _UNREACHABLE_F( "Not implemented." );
         }
 
-        __content * __content_gep( __content * /*obj*/, uint64_t /*idx*/ ) {
+        __content * __content_gep( __content * /*obj*/, int64_t /*idx*/ ) {
             _UNREACHABLE_F( "Not implemented." );
         }
 

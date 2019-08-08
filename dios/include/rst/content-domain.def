@@ -12,7 +12,7 @@ OP( DOMAIN_TYPE, lift, const void * addr, unsigned len );
 OP( void, store, char val, DOMAIN_TYPE addr );
 OP( char, load, DOMAIN_TYPE addr );
 
-OP( DOMAIN_TYPE, gep, DOMAIN_TYPE addr, uint64_t idx );
+OP( DOMAIN_TYPE, gep, DOMAIN_TYPE addr, int64_t idx );
 
 FREEZE_PROT()
 THAW_PROT()

@@ -70,7 +70,7 @@ extern "C" {
 
     char __mstring_load( __mstring * str ) { return str->read(); }
 
-    __mstring * __mstring_gep( __mstring * addr, uint64_t idx )
+    __mstring * __mstring_gep( __mstring * addr, int64_t idx )
     {
         return abstract::taint< __mstring * >(
             __new< __mstring >( _VM_PT_Heap,

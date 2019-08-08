@@ -42,23 +42,17 @@ namespace abstract::mstring {
         };
 
         //_LART_INLINE
-        Value operator+( const Value& l, const Value& r ) noexcept { return __sym_add( l.ptr, r.ptr ); }
-
-        //_LART_INLINE
-        Value operator+=( Value& l, const Value& r ) noexcept
+        Value constant( int64_t val ) noexcept
         {
-            l = l + r;
-            return l;
+            constexpr auto bw = std::numeric_limits< size_t >::digits;
+            return __sym_lift( bw, 1, val );
         }
 
         //_LART_INLINE
-        Value operator-( const Value& l, const Value& r ) noexcept { return __sym_sub( l.ptr, r.ptr ); }
-
-        //_LART_INLINE
-        Value operator-=( Value& l, const Value& r ) noexcept
+        Value variable() noexcept
         {
-            l = l - r;
-            return l;
+            constexpr auto bw = std::numeric_limits< size_t >::digits;
+            return __sym_lift( bw, 0 );
         }
 
         //_LART_INLINE
@@ -86,23 +80,32 @@ namespace abstract::mstring {
         Value operator!=( const Value& l, const Value& r ) noexcept { return __sym_icmp_ne( l.ptr, r.ptr ); }
 
         //_LART_INLINE
+        Value operator+( const Value& l, const Value& r ) noexcept { return __sym_add( l.ptr, r.ptr ); }
+
+        //_LART_INLINE
+        Value operator+=( Value& l, const Value& r ) noexcept
+        {
+            l = l + r;
+            return l;
+        }
+
+        //_LART_INLINE
+        Value operator-( const Value& l, const Value& r ) noexcept {
+            assert( l >= r );
+            return __sym_sub( l.ptr, r.ptr );
+        }
+
+        //_LART_INLINE
+        Value operator-=( Value& l, const Value& r ) noexcept
+        {
+            l = l - r;
+            return l;
+        }
+
+        //_LART_INLINE
         void assume( Value cond ) noexcept
         {
             __sym_assume( cond.ptr, cond.ptr, true );
-        }
-
-        //_LART_INLINE
-        Value constant( size_t val ) noexcept
-        {
-            constexpr auto bw = std::numeric_limits< size_t >::digits;
-            return __sym_lift( bw, 1, val );
-        }
-
-        //_LART_INLINE
-        Value variable() noexcept
-        {
-            constexpr auto bw = std::numeric_limits< size_t >::digits;
-            return __sym_lift( bw, 0 );
         }
 
         //_LART_INLINE
@@ -249,7 +252,10 @@ namespace abstract::mstring {
         const TBound & begin() const noexcept { return _bounds->front(); }
 
         //_LART_INLINE
-        const TBound & end() const noexcept { return _bounds->back(); }
+        const TBound & end() const noexcept {
+            assert( _bounds->size() > 1 );
+            return _bounds->back();
+        }
 
         //_LART_INLINE
         bool empty() const noexcept { return _bounds->empty(); }
@@ -305,7 +311,7 @@ namespace abstract::mstring {
         TValue read() const noexcept { return read( 0 ); }
 
         //_LART_INLINE
-        TValue read( size_t idx ) const noexcept {
+        TValue read( int64_t idx ) const noexcept {
             return read( sym::constant( idx ) );
         }
 
@@ -324,7 +330,7 @@ namespace abstract::mstring {
         }
 
         //_LART_INLINE
-        void write( size_t idx, char val ) noexcept
+        void write( int64_t idx, char val ) noexcept
         {
             write( sym::constant( idx ), val );
         }
@@ -375,7 +381,7 @@ namespace abstract::mstring {
         }
 
         //_LART_INLINE
-        void setOffset( size_t idx ) noexcept { setOffset( sym::constant( idx ) ); }
+        void setOffset( int64_t idx ) noexcept { setOffset( sym::constant( idx ) ); }
 
         //_LART_INLINE
         void setOffset( TBound idx ) noexcept { _offset = idx; }
