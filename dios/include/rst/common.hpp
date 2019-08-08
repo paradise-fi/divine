@@ -72,7 +72,7 @@ namespace __dios::rst::abstract {
     using Bitwidth = int8_t;
 
     template< typename T >
-    _LART_INLINE static T taint() noexcept
+    _LART_INLINE T taint() noexcept
     {
         static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
                        "Cannot taint a non-arithmetic or non-pointer value." );
@@ -80,7 +80,7 @@ namespace __dios::rst::abstract {
     }
 
     template< typename T >
-    _LART_INLINE static T taint( T val ) noexcept
+    _LART_INLINE T taint( T val ) noexcept
     {
         static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
                        "Cannot taint a non-arithmetic or non-pointer value." );
@@ -111,12 +111,12 @@ namespace __dios::rst::abstract {
     template< typename C, typename A >
     _LART_INLINE C make_abstract() noexcept
     {
-        __lart_stash( A::lift_any( Abstracted< C >{} ) );
+        __lart_stash( static_cast< void * >( A::lift_any( Abstracted< C >{} ) ) );
         return taint< C >();
     }
 
     template< typename T >
-    _LART_INLINE static T * peek_object( void * addr ) noexcept
+    _LART_INLINE T * peek_object( void * addr ) noexcept
     {
         struct { uint32_t off = 0, obj; } ptr;
         ptr.obj = __vm_peek( addr, _VM_ML_User );
@@ -127,7 +127,7 @@ namespace __dios::rst::abstract {
     }
 
     template< typename T >
-    _LART_INLINE static void poke_object( T * obj, void * addr ) noexcept
+    _LART_INLINE void poke_object( T * obj, void * addr ) noexcept
     {
         struct { uint32_t off, obj; } ptr;
         memcpy( &ptr, &obj, sizeof( T * ) );
