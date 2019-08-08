@@ -127,7 +127,7 @@ namespace __dios::rst::abstract {
     }
 
     template< typename T >
-    _LART_INLINE void poke_object( T * obj, void * addr ) noexcept
+    _LART_INLINE void poke_object( T obj, void * addr ) noexcept
     {
         struct { uint32_t off, obj; } ptr;
         memcpy( &ptr, &obj, sizeof( T * ) );
