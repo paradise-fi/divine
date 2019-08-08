@@ -467,6 +467,7 @@ struct RPN : Container
                 case Op::VarI64: return 64;
                 case Op::VarFloat: return 32;
                 case Op::VarDouble: return 64;
+                default:;
             }
         }
 
