@@ -282,6 +282,13 @@ namespace abstract::mstring {
                     return;
                 }
 
+                if ( _values->size() > 1 ) {
+                    if ( *( _values->end() - 1 ) == *( _values->end() - 2 ) ) {
+                        _values->pop_back();
+                        _bounds->pop_back();
+                    }
+                }
+
                 sym::assume( _bounds->back() <= symbolic );
             }
             _max_size += interval.to;
