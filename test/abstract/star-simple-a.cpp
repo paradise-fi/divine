@@ -5,6 +5,6 @@
 #include <assert.h>
 
 int main() {
-    int v = __star_val_i32();
+    int v = __unit_val_i32();
     assert( v ); /* ERROR */
 }
