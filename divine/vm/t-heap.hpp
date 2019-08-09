@@ -232,7 +232,7 @@ namespace divine::t_vm
             ASSERT_EQ( mem::compare( heap, cloned, p, c_p ), 0 );
             p.offset( 8 );
             heap.write( p, vm::value::Int< 32 >( 1 ) );
-            ASSERT_LT( 0, mem::compare( heap, cloned, p, c_p ) );
+            ASSERT_LT( mem::compare( heap, cloned, p, c_p ), 0 );
         }
 
         TEST(hash)
