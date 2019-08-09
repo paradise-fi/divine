@@ -148,6 +148,10 @@ namespace brq
         }
 
         ~refcount_base() { TRACE( this, "destroyed" ); }
+        refcount_base() = default;
+        refcount_base( const refcount_base & ) : _refcount( 0 ) {}
+        refcount_base( refcount_base && ) : _refcount( 0 ) {}
+        refcount_base &operator=( refcount_base ) { return *this; }
 
         std::conditional_t< atomic, std::atomic< T >, T > _refcount = 0;
     };
