@@ -26,35 +26,19 @@
 namespace divine::smt::builder
 {
 
-#if 0
 struct STP
 {
     using Node = stp::ASTNode;
 
-    Node unary( sym::Unary un, Node n );
-    Node binary( sym::Binary bin, Node a, Node b );
-    Node constant( sym::Type t, uint64_t val );
-    Node constant( int w, uint64_t val );
+    STP( stp::STPMgr &stp ) : _stp( stp ) {}
+
+    Node unary( Unary, Node );
+    Node binary( Binary, Node, Node );
+    Node constant( Constant );
+    Node constant( smt::Bitwidth bw, uint64_t value );
     Node constant( int val );
     Node constant( bool );
-    Node variable( sym::Type t, int32_t id );
-
-    STP( stp::STPMgr &stp ) : _stp( stp ) {}
-    stp::STPMgr &_stp;
-};
-#endif
-
-struct STP
-{
-    using Node = stp::ASTNode;
-
-    STP( stp::STPMgr &stp ) : _stp( stp ) {}
-
-    Node unary( Unary, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node binary( Binary, Node, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node constant( Constant ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node constant( bool ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node variable( Variable ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node variable( Variable );
 
     stp::STPMgr &_stp;
 };
