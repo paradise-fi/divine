@@ -62,8 +62,8 @@ namespace divine::cc
 
     struct ClangDriver : DiagnosticsWrapper, clang::driver::Driver
     {
-        ClangDriver()
-          : clang::driver::Driver( "divcc", LLVM_HOST_TRIPLE, diag.engine )
+        ClangDriver( const char* tool = "divcc" )
+          : clang::driver::Driver( tool, LLVM_HOST_TRIPLE, diag.engine )
         {}
     };
 

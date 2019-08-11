@@ -99,6 +99,7 @@ namespace divine::cc
         void construct_paired_files();
         void print_info( std::string_view version );
         void set_cxx( bool cxx ) { _cxx = cxx; }
+        virtual const char* tool_name() { return "divcc"; }
 
         cc::ParsedOpts _po;
         PairedFiles _files;

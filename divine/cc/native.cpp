@@ -92,7 +92,7 @@ namespace divine::cc
         auto ld_job = drv->getJobs( ld_args_c ).back();
         if ( _po.use_lld )
         {
-            ld_job.args.insert( ld_job.args.begin(), "divcc" );
+            ld_job.args.insert( ld_job.args.begin(), tool_name() );
             std::vector< const char * > lld_job_c;
             lld_job_c.reserve( ld_job.args.size() );
             for ( size_t i = 0; i < ld_job.args.size(); ++i )
@@ -198,8 +198,8 @@ namespace divine::cc
     {
         if ( _po.hasVersion )
             std::cout << "divine version: " << version << "\n";
-        cc::ClangDriver drv;
-        delete drv.BuildCompilation( { "divcc", _po.hasHelp ? "--help" : "--version" } );
+        cc::ClangDriver drv( tool_name() );
+        delete drv.BuildCompilation( { tool_name(), _po.hasHelp ? "--help" : "--version" } );
     }
 
     Native::~Native()
