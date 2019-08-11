@@ -129,6 +129,15 @@ namespace divine::cc
         auto num_files = std::count_if( _po.files.begin(), _po.files.end(),
                                         []( cc::FileEntry f ){ return f.is< cc::File >(); } );
 
+        if ( num_files == 0 )
+        {
+            std::vector< const char* > args = { tool_name() };
+            for ( auto& s : _po.opts )
+                args.push_back( s.c_str() );
+            print_info( args );
+            return 0;
+        }
+
         if ( num_files > 1 && _po.outputFile != ""
              && ( _po.preprocessOnly || _po.toObjectOnly ) )
         {
@@ -194,12 +203,19 @@ namespace divine::cc
         }
     }
 
+    /* Passing secondary options to clang, it knows what to do with them. */
     void Native::print_info( std::string_view version )
     {
         if ( _po.hasVersion )
             std::cout << "divine version: " << version << "\n";
+        std::vector< const char* > v = { tool_name(), _po.hasHelp ? "--help" : "--version" };
+        print_info( v );
+    }
+
+    void Native::print_info( std::vector< const char *>& args )
+    {
         cc::ClangDriver drv( tool_name() );
-        delete drv.BuildCompilation( { tool_name(), _po.hasHelp ? "--help" : "--version" } );
+        delete drv.BuildCompilation( args );
     }
 
     Native::~Native()

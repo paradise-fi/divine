@@ -98,6 +98,7 @@ namespace divine::cc
         virtual std::unique_ptr< llvm::Module > link_bitcode();
         void construct_paired_files();
         void print_info( std::string_view version );
+        void print_info( std::vector< const char *>& args );
         void set_cxx( bool cxx ) { _cxx = cxx; }
         virtual const char* tool_name() { return "divcc"; }
 
