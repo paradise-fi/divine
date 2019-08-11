@@ -21,6 +21,8 @@ struct DataFlowAnalysis
 
     void run( llvm::Module & );
 
+    void preprocess( llvm::Function * fn ) noexcept;
+
     void propagate( llvm::Value * inst ) noexcept;
 
     void propagate_in( llvm::CallInst * call ) noexcept;

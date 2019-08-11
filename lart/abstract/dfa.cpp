@@ -14,6 +14,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/lowerselect.h>
 #include <lart/support/util.h>
+#include <lart/support/metadata.h>
 #include <lart/abstract/domain.h>
 #include <lart/abstract/util.h>
 
@@ -138,6 +139,18 @@ namespace lart::abstract {
     bool DataFlowAnalysis::visited( llvm::Value * val ) const noexcept
     {
         return _intervals.has( val );
+    }
+
+    void DataFlowAnalysis::preprocess( llvm::Function * fn ) noexcept
+    {
+        if ( !tagFunctionWithMetadata( *fn, "lart.abstract.preprocessed" ) )
+            return;
+
+        auto lse = std::unique_ptr< llvm::FunctionPass >( lart::createLowerSelectPass() );
+        lse.get()->runOnFunction( *fn );
+
+        auto lsi = std::unique_ptr< llvm::FunctionPass >( llvm::createLowerSwitchPass() );
+        lsi.get()->runOnFunction( *fn );
     }
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const MapValuePtr& from ) noexcept
@@ -266,6 +279,7 @@ namespace lart::abstract {
     void DataFlowAnalysis::propagate_in( llvm::CallInst * call ) noexcept
     {
         auto fn = call->getCalledFunction();
+        preprocess( fn );
 
         for ( const auto & arg : fn->args() ) {
             auto oparg = call->getArgOperand( arg.getArgNo() );
@@ -280,6 +294,7 @@ namespace lart::abstract {
     {
         auto fn = ret->getFunction();
         for ( auto call : calls( fn ) ) {
+            preprocess( util::get_function( call ) );
             auto fn = llvm::CallSite( call ).getCalledFunction();
             if ( !meta::function::ignore_return( fn ) ) {
                 auto val = ret->getReturnValue();
@@ -291,7 +306,7 @@ namespace lart::abstract {
     void DataFlowAnalysis::run( llvm::Module &m )
     {
         for ( auto * val : meta::enumerate( m ) ) {
-            // TODO preprocessing
+            preprocess( util::get_function( val ) );
             interval( val )->to_top();
             push( [=] { propagate( val ); } );
         }
