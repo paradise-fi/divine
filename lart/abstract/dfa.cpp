@@ -215,33 +215,36 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
-        llvm::Value * ptr = nullptr;
-        bool change = false;
+        auto propagate_back_task = [&] ( llvm::Value * v ) {
+            if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
+                push( [=] { propagate_back( arg ); } );
+            }
+        };
 
         llvmcase( val,
             [&] ( llvm::StoreInst * store ) {
                 auto op = store->getValueOperand();
-                ptr = store->getPointerOperand();
-                if ( visited( op ) )
-                    change = propagate( ptr, _intervals[ op ]->cover() );
+                auto ptr = store->getPointerOperand();
+                if ( visited( op ) && propagate( ptr, _intervals[ op ]->cover() ) )
+                    propagate_back_task( ptr );
                 // TODO store to abstract value?
             },
             [&] ( llvm::LoadInst * load ) {
-                ptr = load->getPointerOperand();
-                change = propagate_wrap( load, ptr );
+                auto ptr = load->getPointerOperand();
+                if ( propagate_wrap( load, ptr ) )
+                    propagate_back_task( ptr );
             },
             [&] ( llvm::CastInst * cast ) {
-                ptr = cast->getOperand( 0 ); // TODO what if is not a pointer?
-                change = propagate_identity( cast, ptr );
+                auto ptr = cast->getOperand( 0 ); // TODO what if is not a pointer? (core)
+                if ( propagate_identity( cast, ptr ) )
+                    propagate_back_task( ptr );
             },
             [&] ( llvm::GetElementPtrInst * gep ) {
-                ptr = gep->getPointerOperand();
-                change = propagate_wrap( gep, ptr );
+                auto ptr = gep->getPointerOperand();
+                if ( propagate_wrap( gep, ptr ) )
+                    propagate_back_task( ptr );
             }
         );
-
-        if ( ptr && change && llvm::isa< llvm::Argument >( ptr ) )
-            propagate_back( llvm::cast< llvm::Argument >( ptr ) );
 
         // ssa operations
         if ( is_propagable( val ) ) {
