@@ -270,6 +270,12 @@ namespace lart::abstract {
                     [&] ( llvm::ReturnInst * ret ) {
                         push( [=] { propagate_out( ret ); } );
                     },
+                    [&] ( llvm::SelectInst * ) {
+                        UNREACHABLE( "unsupported propagation" );
+                    },
+                    [&] ( llvm::SwitchInst * ) {
+                        UNREACHABLE( "unsupported propagation" );
+                    },
                     [&] ( llvm::Value * ) {
                         ASSERT( visited( val ) );
                         propagate( u, _intervals[ val ] );
