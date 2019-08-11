@@ -55,17 +55,22 @@ namespace divine::cc
 } // divine::cc
 
 
-    namespace std {
-        template<>
-        struct is_error_code_enum< divine::cc::VFSError > : std::true_type { };
-    }
+namespace std
+{
+    template<>
+    struct is_error_code_enum< divine::cc::VFSError > : std::true_type { };
+}
 
 
 namespace divine::cc
 {
+    // A virtual filesystem implementing the Clang's interface, used, for example,
+    // to allow compiler provided header files without the need to store them
+    // explicitly on the physical filesystem
     struct VFS : clang::vfs::FileSystem
     {
 
+        // The result of a 'status' operation
         using Status = clang::vfs::Status;
 
       private:
@@ -124,10 +129,11 @@ namespace divine::cc
 
         VFS() : _cwd( brick::fs::getcwd() ) {}
 
+        // Transform a path in 'p' into the canonical form (absolute, no '.' or '..' symbols)
         std::string normal( std::string p )
         {
             auto abs = brick::fs::isAbsolute( p ) ? p : brick::fs::joinPath( _cwd, p );
-            return brick::fs::normalize( abs);
+            return brick::fs::normalize( abs );
         }
 
         auto status( const llvm::Twine &_path ) ->
