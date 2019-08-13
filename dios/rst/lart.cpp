@@ -4,6 +4,8 @@
 
 #include <string.h>
 
+using namespace __dios::rst::abstract;
+
 extern "C"
 {
     _LART_INTERFACE void * __lart_unstash()
@@ -18,11 +20,11 @@ extern "C"
 
     _LART_INTERFACE void __lart_freeze( void * value, void * addr )
     {
-        __dios::rst::abstract::poke_object( value, addr );
+        poke_object( value, addr );
     }
 
     _LART_INTERFACE void * __lart_thaw( void * addr )
     {
-        return __dios::rst::abstract::peek_object< void * >( addr );
+        return peek_object< void * >( addr );
     }
 }

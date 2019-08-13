@@ -199,9 +199,17 @@ namespace __dios::rst::abstract {
         Term constrain( const Term &constraint, bool expect ) const noexcept;
 
         _LART_INTERFACE
-        Term static assume( Term value, Term constraint, bool expect ) noexcept
+        static Term assume( Term value, Term constraint, bool expect ) noexcept
         {
             return value.constrain( constraint, expect );
+        }
+
+        _LART_INTERFACE
+        static Term op_thaw( Term term, uint8_t bw ) noexcept
+        {
+            // receives already thawed object
+            // TODO Zext
+            return cast< Op::Trunc >( term, bw );
         }
 
         #define __bin( name, op ) \
