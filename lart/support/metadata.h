@@ -14,4 +14,11 @@ inline bool tagModuleWithMetadata( llvm::Module &m, std::string tag ) {
     return true;
 }
 
+inline bool tagFunctionWithMetadata( llvm::Function &fn, std::string tag ) {
+    if ( fn.getMetadata( tag ) )
+        return false;
+    fn.setMetadata( tag, nullptr );
+    return true;
+}
+
 }
