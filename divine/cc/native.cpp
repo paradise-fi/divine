@@ -51,6 +51,7 @@ namespace divine::cc
                 continue;
             auto drv_args = _po.cc1_args;
             add( drv_args, _po.opts );
+            TRACE( "compile:", file.first, drv_args );
             auto mod = _clang.compile( file.first, drv_args );
             cc::emit_obj_file( *mod, file.second, _po.pic );
         }
@@ -90,6 +91,8 @@ namespace divine::cc
             ld_args_c.push_back( _ld_args[i].c_str() );
 
         auto ld_job = drv->getJobs( ld_args_c ).back();
+        TRACE( "link:", ld_job.args );
+
         if ( _po.use_lld )
         {
             ld_job.args.insert( ld_job.args.begin(), tool_name() );

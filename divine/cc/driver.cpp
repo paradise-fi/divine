@@ -178,6 +178,7 @@ namespace divine::cc
 
     void Driver::linkLibs( std::vector< std::string > ls, std::vector< std::string > searchPaths )
     {
+        TRACE( "link libs", ls, searchPaths );
         for ( auto lib : ls )
             linkLib( lib, searchPaths );
     }
