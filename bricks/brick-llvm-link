@@ -82,8 +82,10 @@ namespace std { using experimental::string_view; }
 
 namespace std {
 template<>
-struct hash< llvm::StringRef > {
-    size_t operator()( llvm::StringRef sr ) const {
+struct hash< llvm::StringRef >
+{
+    size_t operator()( llvm::StringRef sr ) const
+    {
         return hash< std::string_view >()( std::string_view( sr.data(), sr.size() ) );
     }
 };
@@ -97,13 +99,15 @@ namespace t_llvm { struct LinkerTest; };
 
 namespace llvm {
 
+
+// Write modules in the given range into a GNU archive at 'out'
 template< typename It >
 inline void writeArchive( It begin, It end, std::string out )
 {
     namespace object = ::llvm::object;
 
     std::set< std::string > names;
-    std::vector< std::pair< std::string, std::string > > data;
+    std::vector< std::pair< std::string, std::string > > data; // Module bitcode-identifier pairs
     data.reserve( end - begin );
     std::vector< ::llvm::NewArchiveMember > members;
 
@@ -111,17 +115,21 @@ inline void writeArchive( It begin, It end, std::string out )
     {
         auto &bc = data.emplace_back( "", fs::basename( mod->getModuleIdentifier() ) );
 
+        // Error if we already saw this module
         if ( !names.emplace( bc.second ).second )
             throw std::runtime_error( "member " + bc.second + " multiply defined creating " + out );
 
+        // Write the bitcode into bc.first
         ::llvm::raw_string_ostream stream( bc.first );
         ::llvm::WriteBitcodeToFile( *mod.get(), stream );
         stream.flush();
 
+        // Create a new archive member
         members.emplace_back( ::llvm::MemoryBufferRef( bc.first, bc.second ) );
         members.back().IsNew = true;
     }
 
+    // Write into 'out'
     fs::mkFilePath( out );
     auto res = ::llvm::writeArchive( out, members, true, object::Archive::K_GNU, true, false );
     if ( res )
@@ -129,6 +137,9 @@ inline void writeArchive( It begin, It end, std::string out )
 }
 
 using Archive = ::llvm::object::Archive;
+
+// A helper used for reading archives, which can be loaded either from the filesystem
+// (in which case it maps the archive into the memory), or come directly from the memory.
 
 struct ArchiveReader
 {
@@ -191,6 +202,7 @@ struct ArchiveReader
             _throwLLVMError( _err );
     }
 
+    // An iterator allowing nice access to modules contained in an archive
     struct BitcodeIterator : types::Eq
     {
         using Underlying = Archive::child_iterator;
@@ -236,13 +248,15 @@ struct ArchiveReader
 
         bool operator==( const BitcodeIterator &o ) const { return _it == o._it;  }
 
-        BitcodeIterator &operator++() {
+        BitcodeIterator &operator++()
+        {
             ++_it;
             _bump();
             return *this;
         }
 
-        BitcodeIterator operator++( int ) {
+        BitcodeIterator operator++( int )
+        {
             BitcodeIterator copy( _it, _end, _parent, std::move( _bc ) );
             ++(*this);
             return copy;
@@ -251,6 +265,7 @@ struct ArchiveReader
       private:
         using IRObjectFile = ::llvm::object::IRObjectFile;
 
+        // Load the bitcode for the current archive member
         bool _load( bool errorIsFatal )
         {
             if ( !_bc )
@@ -295,7 +310,8 @@ struct ArchiveReader
         std::unique_ptr< ::llvm::Module > _bc;
     };
 
-    ::llvm::iterator_range< BitcodeIterator > modules() {
+    ::llvm::iterator_range< BitcodeIterator > modules()
+    {
         return { modules_begin(), modules_end() };
     }
 
@@ -311,7 +327,8 @@ struct ArchiveReader
         return BitcodeIterator( _archive->child_end(), _archive->child_end(), this );
     }
 
-    BitcodeIterator iterator( ::llvm::object::Archive::child_iterator raw ) {
+    BitcodeIterator iterator( ::llvm::object::Archive::child_iterator raw )
+    {
         return BitcodeIterator( raw, _archive->child_end(), this, false );
     }
 
@@ -324,6 +341,9 @@ struct ArchiveReader
     std::shared_ptr< Ctx > _ctx;
     ::llvm::Error _err;
 };
+
+// A linker, capable of creating a composite module out of individual modules
+// and archives. 
 
 struct Linker
 {
@@ -345,6 +365,8 @@ struct Linker
         return link( std::unique_ptr< Module >( ::llvm::CloneModule( src ) ) );
     }
 
+    // Add undefined functions from src to the combined module,
+    // then update the list of undefined functions accordingly
     void link_decls( std::unique_ptr< Module > src )
     {
         if ( !_module )
@@ -355,16 +377,20 @@ struct Linker
                 _module->getOrInsertFunction( f.getName(),
                                               f.getFunctionType(),
                                               f.getAttributes() );
+        
         _updateUndefined();
     }
 
+    // Link the 'src' module into the composite module
     void link( std::unique_ptr< Module > src )
     {
         ASSERT( src != nullptr );
 
+        // In case the module was loaded lazily, we need to materialize definitions
         if ( auto err = src->materializeAll() )
             _throwLLVMError( err );
 
+        // If there is no composite module, we use 'src' as our new composite base
         if ( !_module )
             _module = std::move( src );
 
@@ -376,12 +402,17 @@ struct Linker
 
     using ModuleVector = std::vector< std::unique_ptr< Module > >;
 
+    // A map associating symbol names with modules they are defined in
     template< typename K, typename V >
-    struct ModuleMap : std::unordered_map< K, V > {
-
+    struct ModuleMap : std::unordered_map< K, V >
+    {
+        // Find the first symbol in 'undef' that has a definition in this map
+        // and return it's respective module or nullptr if no symbol in 'undef'
+        // has a definition here 
         std::unique_ptr< Module > findFirst( const std::vector< StringRef > &undef )
         {
-            for ( auto u : undef ) {
+            for ( auto u : undef )
+            {
                 auto it = this->find( u );
                 if ( it != this->end() )
                     return _takeModule( it->second );
@@ -390,6 +421,8 @@ struct Linker
         }
     };
 
+    // A ModuleMap that automatically fills itself with symbols defined
+    // in a specified range of module iterators
     template< typename It >
     struct ModuleFinder : ModuleMap< std::string, It >
     {
@@ -402,42 +435,57 @@ struct Linker
 
     };
 
+    // A ModuleMap that automatically fills itself with symbols defined in an archive
     struct SymtabFinder : ModuleMap< StringRef, ArchiveReader::BitcodeIterator >
     {
-        SymtabFinder( ArchiveReader &r ) {
-            for ( auto s : r.archive().symbols() ) {
+        SymtabFinder( ArchiveReader &r )
+        {
+            for ( auto s : r.archive().symbols() )
+            {
                 auto m = s.getMember();
                 if ( !m )
                 {
                     auto e = m.takeError();
                     _throwLLVMError( e );
                 }
+
                 Archive::child_iterator iter( m.get(), nullptr );
                 this->emplace( s.getName(), r.iterator( iter ) );
             }
         }
     };
 
+    // Link the specified archive into the composite module
+    // This links only those modules that contain definitions for 
+    // undefined symbols, which has semantical implications, as
+    // not every global constructor in an archive must necessarily
+    // be run.
     template< typename Finder >
-    void linkArchive( Finder finder ) {
-        while ( true ) {
+    void linkArchive( Finder finder )
+    {
+        while ( true )
+        {
             auto toLink = finder.findFirst( _undefined );
             if ( !toLink )
                 return; // no more symbols needed from this archive
+            
             link( std::move( toLink ) );
         }
     }
 
     template< typename It >
-    void linkArchive( It begin, It end ) {
+    void linkArchive( It begin, It end )
+    {
         linkArchive( ModuleFinder< It >( begin, end ) );
     }
 
-    void linkArchive( std::initializer_list< ::llvm::Module * > mods ) {
+    void linkArchive( std::initializer_list< ::llvm::Module * > mods )
+    {
         linkArchive( mods.begin(), mods.end() );
     }
 
-    void linkArchive( ArchiveReader &r ) {
+    void linkArchive( ArchiveReader &r )
+    {
         if ( r.archive().hasSymbolTable() )
             linkArchive( SymtabFinder( r ) );
         else
@@ -456,7 +504,8 @@ struct Linker
     bool hasModule() { return _module != nullptr; }
 
   private:
-    void _error( const ::llvm::DiagnosticInfo &i ) {
+    void _error( const ::llvm::DiagnosticInfo &i )
+    {
         ::llvm::raw_os_ostream err( std::cerr );
         err << "LLVM Linker error: ";
         ::llvm::DiagnosticPrinterRawOStream printer( err );
@@ -466,11 +515,13 @@ struct Linker
     }
 
     template< typename It >
-    static std::unique_ptr< Module > _takeModule( It it ) {
+    static std::unique_ptr< Module > _takeModule( It it )
+    {
         return std::unique_ptr< Module >( ::llvm::CloneModule( **it ) );
     }
 
-    static std::unique_ptr< Module > _takeModule( ArchiveReader::BitcodeIterator &bcit ) {
+    static std::unique_ptr< Module > _takeModule( ArchiveReader::BitcodeIterator &bcit )
+    {
         return bcit.take();
     }
 
@@ -479,6 +530,7 @@ struct Linker
 
     static Module &_getModule( ArchiveReader::BitcodeIterator &bcit ) { return *bcit; }
 
+    // Call yield callback either for all defined or all undefined symbols in a module
     template< typename Yield >
     static void _symbols( Module &m, bool defined, Yield yield )
     {
@@ -493,7 +545,9 @@ struct Linker
                 yield( ali.getName(), &ali );
     }
 
-    void _updateUndefined() {
+    // Fill the list of undefined symbols with all symbols that lack definition in the composite module
+    void _updateUndefined()
+    {
         _undefined.clear();
         _symbols( *get(), false, [this]( StringRef name, auto ) { _undefined.emplace_back( name ); } );
     }
@@ -501,9 +555,9 @@ struct Linker
     friend brick::t_llvm::LinkerTest;
 
     std::unique_ptr< ::llvm::Linker > _link;
-    std::unique_ptr< ::llvm::Module > _module;
+    std::unique_ptr< ::llvm::Module > _module; // The composite module
     std::shared_ptr< ::llvm::LLVMContext > _ctx;
-    std::vector< StringRef > _undefined;
+    std::vector< StringRef > _undefined; // A list of undefined symbols
 };
 
 }
