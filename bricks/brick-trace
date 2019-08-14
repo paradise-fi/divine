@@ -266,7 +266,7 @@ namespace brq
     struct fallback
     {
         template< typename T >
-        fallback( const T & ) {}
+        constexpr fallback( const T & ) {}
     };
 
     template< typename stream, typename T >
