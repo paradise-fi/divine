@@ -26,32 +26,16 @@
 namespace divine::smt::builder
 {
 
-#if 0
 struct Z3
 {
     using Node = z3::expr;
     Z3( z3::context &c ) : _ctx( c ) {}
 
-    Node unary( sym::Unary un, Node n );
-    Node binary( sym::Binary bin, Node a, Node b );
-    Node constant( sym::Type t, uint64_t val );
+    Node unary( Unary, Node );
+    Node binary( Binary, Node, Node );
+    Node constant( Constant );
     Node constant( bool );
-    Node variable( sym::Type t, int32_t id );
-
-    z3::context &_ctx;
-};
-#endif
-
-struct Z3
-{
-    using Node = z3::expr;
-    Z3( z3::context &c ) : _ctx( c ) {}
-
-    Node unary( Unary, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node binary( Binary, Node, Node ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node constant( Constant ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node constant( bool ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
-    Node variable( Variable ) { UNREACHABLE_F( "NOT IMPLEMENTED" ); }
+    Node variable( Variable );
 
     z3::context &_ctx;
 };

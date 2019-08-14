@@ -19,15 +19,16 @@
  */
 
 #include <divine/smt/builder-z3.hpp>
-#if 0
 #if OPT_Z3
 namespace divine::smt::builder
 {
 
+using BNode = brick::smt::Node;
+
 using namespace std::literals;
 namespace smt = brick::smt;
 
-z3::expr Z3::constant( sym::Type t, uint64_t v )
+z3::expr Z3::constant( Constant con )
 {
     // Sadly, Z3 changed API: bv_val used to take __int64 or __uint64 which was
     // a define for (unsigned) long long, now it takes (u)int_64_t, which is
@@ -38,11 +39,13 @@ z3::expr Z3::constant( sym::Type t, uint64_t v )
 #else
     using ValT = int64_t;
 #endif
-    switch ( t.type() ) {
-        case sym::Type::Int:
-            return _ctx.bv_val( static_cast< ValT >( v ), t.bitwidth() );
-        case sym::Type::Float:
+    switch ( con.type ) {
+        case BNode::Type::Int:
+            return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth );
+        case BNode::Type::Float:
             UNREACHABLE_F( "Floatigpoint is not yet supported with z3 solver." );
+        case BNode::Type::Bool:
+            return constant( static_cast< bool >( con.value ) );
     }
 
     UNREACHABLE_F( "unknown type" );
@@ -53,104 +56,110 @@ z3::expr Z3::constant( bool v )
     return _ctx.bool_val( v );
 }
 
-z3::expr Z3::variable( sym::Type t, int32_t id )
+z3::expr Z3::variable( Variable var )
 {
-    switch ( t.type() ) {
-        case sym::Type::Int:
-            return _ctx.bv_const( ( "var_"s + std::to_string( id ) ).c_str(), t.bitwidth() );
-        case sym::Type::Float:
+    switch ( var.type ) {
+        case BNode::Type::Int:
+            return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth );
+        case BNode::Type::Float:
             UNREACHABLE_F( "Floatigpoint is not yet supported with z3 solver." );
+        case BNode::Type::Bool:
+            UNREACHABLE_F( "Unsupported boolean variable." );
     }
 
     UNREACHABLE_F( "unknown type" );
 }
 
-z3::expr Z3::unary( sym::Unary un, Node arg )
+z3::expr Z3::unary( Unary un, Node arg )
 {
-    int bw = un.type.bitwidth();
+    int bw = un.bw;
     int childbw = arg.is_bv() ? arg.get_sort().bv_size() : 1;
 
     switch ( un.op )
     {
-        case sym::Op::Trunc:
-            ASSERT_LT( bw, childbw );
+        case Op::Trunc:
+            ASSERT_LEQ( bw, childbw );
             ASSERT( arg.is_bv() );
+            if ( bw == childbw )
+                return arg;
             return arg.extract( bw - 1, 0 );
-        case sym::Op::ZExt:
-            ASSERT_LT( childbw, bw );
+        case Op::ZExt:
+            ASSERT_LEQ( childbw, bw );
+            if ( bw == childbw )
+                return arg;
             return arg.is_bv()
                 ? z3::zext( arg, bw - childbw )
                 : z3::ite( arg, _ctx.bv_val( 1, bw ), _ctx.bv_val( 0, bw ) );
-        case sym::Op::SExt:
-            ASSERT_LT( childbw, bw );
+        case Op::SExt:
+            ASSERT_LEQ( childbw, bw );
+            if ( bw == childbw )
+                return arg;
             return arg.is_bv()
                 ? z3::sext( arg, bw - childbw )
                 : z3::ite( arg, ~_ctx.bv_val( 0, bw ), _ctx.bv_val( 0, bw ) );
-        /*case sym::Op::FPExt:
+        /*case Op::FPExt:
             ASSERT_LT( childbw, bw );
             // Z3_mk_fpa_to_fp_float( arg.ctx() ); // TODO
             UNREACHABLE_F( "Unsupported operation." );
-        case sym::Op::FPTrunc:
+        case Op::FPTrunc:
             ASSERT_LT( bw, childbw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO
-        case sym::Op::FPToSInt:
+        case Op::FPToSInt:
             UNREACHABLE_F( "Unsupported operation." ); // TODO
             ASSERT_EQ( childbw, bw );
-        case sym::Op::FPToUInt:
+        case Op::FPToUInt:
             ASSERT_EQ( childbw, bw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO
-        case sym::Op::SIntToFP:
+        case Op::SIntToFP:
             ASSERT_EQ( childbw, bw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO
-        case sym::Op::UIntToFP:
+        case Op::UIntToFP:
             ASSERT_EQ( childbw, bw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO*/
-        case sym::Op::BoolNot:
+        case Op::Not:
             ASSERT_EQ( childbw, bw );
             ASSERT_EQ( bw, 1 );
             return arg.is_bv() ? ~arg : !arg;
-        case sym::Op::Extract:
+        /*case Op::Extract:
             ASSERT_LT( bw, childbw );
             ASSERT( arg.is_bv() );
-            return arg.extract( un.from, un.to );
+            return arg.extract( un.from, un.to );*/ // TODO
         default:
             UNREACHABLE_F( "unknown unary operation %d", un.op );
     }
 }
 
-z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
+z3::expr Z3::binary( Binary bin, Node a, Node b )
 {
-    ASSERT( sym::isBinary( bin.op ) );
-
     if ( a.is_bv() && b.is_bv() )
     {
         switch ( bin.op )
         {
-            case sym::Op::Add:  return a + b;
-            case sym::Op::Sub:  return a - b;
-            case sym::Op::Mul:  return a * b;
-            case sym::Op::SDiv: return a / b;
-            case sym::Op::UDiv: return z3::udiv( a, b );
-            case sym::Op::SRem: return z3::srem( a, b );
-            case sym::Op::URem: return z3::urem( a, b );
-            case sym::Op::Shl:  return z3::shl( a, b );
-            case sym::Op::AShr: return z3::ashr( a, b );
-            case sym::Op::LShr: return z3::lshr( a, b );
-            case sym::Op::And:  return a & b;
-            case sym::Op::Or:   return a | b;
-            case sym::Op::Xor:  return a ^ b;
+            case Op::BvAdd:  return a + b;
+            case Op::BvSub:  return a - b;
+            case Op::BvMul:  return a * b;
+            case Op::BvSDiv: return a / b;
+            case Op::BvUDiv: return z3::udiv( a, b );
+            case Op::BvSRem: return z3::srem( a, b );
+            case Op::BvURem: return z3::urem( a, b );
+            case Op::BvShl:  return z3::shl( a, b );
+            case Op::BvAShr: return z3::ashr( a, b );
+            case Op::BvLShr: return z3::lshr( a, b );
+            case Op::BvAnd:  return a & b;
+            case Op::BvOr:   return a | b;
+            case Op::BvXor:  return a ^ b;
 
-            case sym::Op::ULE:  return z3::ule( a, b );
-            case sym::Op::ULT:  return z3::ult( a, b );
-            case sym::Op::UGE:  return z3::uge( a, b );
-            case sym::Op::UGT:  return z3::ugt( a, b );
-            case sym::Op::SLE:  return a <= b;
-            case sym::Op::SLT:  return a < b;
-            case sym::Op::SGE:  return a >= b;
-            case sym::Op::SGT:  return a > b;
-            case sym::Op::EQ:   return a == b;
-            case sym::Op::NE:   return a != b;
-            case sym::Op::Concat: return z3::concat( a, b );
+            case Op::BvULE:  return z3::ule( a, b );
+            case Op::BvULT:  return z3::ult( a, b );
+            case Op::BvUGE:  return z3::uge( a, b );
+            case Op::BvUGT:  return z3::ugt( a, b );
+            case Op::BvSLE:  return a <= b;
+            case Op::BvSLT:  return a < b;
+            case Op::BvSGE:  return a >= b;
+            case Op::BvSGT:  return a > b;
+            case Op::Eq:   return a == b;
+            case Op::NE:   return a != b;
+            case Op::Concat: return z3::concat( a, b );
             default:
                 UNREACHABLE_F( "unknown binary operation %d", bin.op );
         }
@@ -159,34 +168,34 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
     {
         switch ( bin.op )
         {
-            case sym::Op::FpAdd: return a + b;
-            case sym::Op::FpSub: return a - b;
-            case sym::Op::FpMul: return a * b;
-            case sym::Op::FpDiv: return a / b;
-            case sym::Op::FpRem:
+            case Op::FpAdd: return a + b;
+            case Op::FpSub: return a - b;
+            case Op::FpMul: return a * b;
+            case Op::FpDiv: return a / b;
+            case Op::FpRem:
                 UNREACHABLE_F( "unsupported operation FpFrem" );
-            case sym::Op::FpFalse:
+            case Op::FpFalse:
                 UNREACHABLE_F( "unsupported operation FpFalse" );
-            case sym::Op::FpOEQ: return a == b;
-            case sym::Op::FpOGT: return a > b;
-            case sym::Op::FpOGE: return a >= b;
-            case sym::Op::FpOLT: return a < b;
-            case sym::Op::FpOLE: return a <= b;
-            case sym::Op::FpONE: return a != b;
-            case sym::Op::FpORD:
+            case Op::FpOEQ: return a == b;
+            case Op::FpOGT: return a > b;
+            case Op::FpOGE: return a >= b;
+            case Op::FpOLT: return a < b;
+            case Op::FpOLE: return a <= b;
+            case Op::FpONE: return a != b;
+            case Op::FpORD:
                 UNREACHABLE_F( "unsupported operation FpORD" );
-            case sym::Op::FpUEQ: return a == b;
-            case sym::Op::FpUGT: return a > b;
-            case sym::Op::FpUGE: return a >= b;
-            case sym::Op::FpULT: return a < b;
-            case sym::Op::FpULE: return a <= b;
-            case sym::Op::FpUNE: return a != b;
-            case sym::Op::FpUNO:
+            case Op::FpUEQ: return a == b;
+            case Op::FpUGT: return a > b;
+            case Op::FpUGE: return a >= b;
+            case Op::FpULT: return a < b;
+            case Op::FpULE: return a <= b;
+            case Op::FpUNE: return a != b;
+            case Op::FpUNO:
                 UNREACHABLE_F( "unknown binary operation FpUNO" );
-            case sym::Op::FpTrue:
+            case Op::FpTrue:
                 UNREACHABLE_F( "unknown binary operation FpTrue" );
             default:
-                UNREACHABLE_F( "unknown binary operation %d %d", bin.op, int( sym::Op::EQ ) );
+                UNREACHABLE_F( "unknown binary operation %d %d", bin.op, int( Op::EQ ) );
         }
     }*/
     else
@@ -205,40 +214,42 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
 
         switch ( bin.op )
         {
-            case sym::Op::Xor:
-            case sym::Op::Sub:
+            case Op::Xor:
+            case Op::BvSub:
                 return a != b;
-            case sym::Op::Add:
+            case Op::BvAdd:
                 return a && b;
-            case sym::Op::UDiv:
-            case sym::Op::SDiv:
+            case Op::BvUDiv:
+            case Op::BvSDiv:
                 return a;
-            case sym::Op::URem:
-            case sym::Op::SRem:
-            case sym::Op::Shl:
-            case sym::Op::LShr:
+            case Op::BvURem:
+            case Op::BvSRem:
+            case Op::BvShl:
+            case Op::BvLShr:
                 return constant( false );
-            case sym::Op::AShr:
+            case Op::BvAShr:
                 return a;
-            case sym::Op::Or:
+            case Op::Or:
+            case Op::BvOr:
                 return a || b;
-            case sym::Op::And:
+            case Op::And:
+            case Op::BvAnd:
                 return a && b;
-            case sym::Op::UGE:
-            case sym::Op::SLE:
+            case Op::BvUGE:
+            case Op::BvSLE:
                 return a || !b;
-            case sym::Op::ULE:
-            case sym::Op::SGE:
+            case Op::BvULE:
+            case Op::BvSGE:
                 return b || !a;
-            case sym::Op::UGT:
-            case sym::Op::SLT:
+            case Op::BvUGT:
+            case Op::BvSLT:
                 return a && !b;
-            case sym::Op::ULT:
-            case sym::Op::SGT:
+            case Op::BvULT:
+            case Op::BvSGT:
                 return b && !a;
-            case sym::Op::EQ:
+            case Op::Eq:
                 return a == b;
-            case sym::Op::NE:
+            case Op::NE:
                 return a != b;
             default:
                 UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
@@ -247,6 +258,5 @@ z3::expr Z3::binary( sym::Binary bin, Node a, Node b )
 }
 
 
-} // namespace divine::smtl::builder
-#endif
+} // namespace divine::smt::builder
 #endif
