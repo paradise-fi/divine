@@ -8,23 +8,28 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/ADT/Statistic.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/query.h>
+
 using namespace llvm;
+
+char lart::LowerSelectPass::id = 0;
 
 // This pass converts SelectInst instructions into conditional branch and PHI
 // instructions.
-bool lart::LowerSelect::runOnFunction( Function &fn, bool changed )
+bool lart::LowerSelectPass::runOnFunction( Function &fn )
 {
-    for ( auto & bb : fn )
-        for ( auto & i : bb )
-            if ( auto si = dyn_cast<SelectInst>( &i ) )
-            {
-                lower( si );
-                return runOnFunction( fn, true );
-            }
-    return changed;
+    auto selects = query::query( fn ).flatten()
+        .map( query::refToPtr )
+        .map( query::llvmdyncast< llvm::SelectInst > )
+        .filter( query::notnull )
+        .freeze();
+
+    for ( auto sel : selects )
+        lower( sel );
+    return !selects.empty();
 }
 
-void lart::LowerSelect::lower( SelectInst *si )
+void lart::LowerSelectPass::lower( SelectInst *si )
 {
     BasicBlock * bb = si->getParent();
     // Split this basic block in half right before the select instruction.
