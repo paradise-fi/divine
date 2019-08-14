@@ -43,6 +43,9 @@ void add_dios_defines( std::vector< std::string >& flags )
                   , "-D_BYTE_ORDER=1234"
                   , "-D__ELF__"
                   , "-D__unix__"
+                  , "-D__divine__=4"
+                  , "-U__x86_64"
+                  , "-U__x86_64__"
                   });
 }
 

@@ -86,11 +86,7 @@ namespace divine::cc
     Driver::Driver( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
         opts( opts ), compiler( ctx ), linker( new brick::llvm::Linker( compiler.context() ) )
         {
-            commonFlags = { "-D__divine__=4"
-                          , "-debug-info-kind=standalone"
-                          , "-U__x86_64"
-                          , "-U__x86_64__"
-                          };
+            commonFlags = { "-debug-info-kind=standalone" };
         }
 
     Driver::~Driver() { }
