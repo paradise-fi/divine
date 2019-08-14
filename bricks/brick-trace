@@ -153,7 +153,7 @@ namespace brq
             return *this;
         }
 
-        string_builder &operator<<( void *ptr ) noexcept
+        string_builder &operator<<( const void *ptr ) noexcept
         {
             auto was_hex = _hex;
             _hex = true;
