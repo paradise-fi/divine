@@ -29,7 +29,53 @@ namespace lart::abstract
     };
 
 
+    struct PHINodePass
+    {
+        auto phis( llvm::Module &m )
+        {
+            const auto tag = meta::tag::operation::phi;
+            return meta::enumerate< llvm::PHINode >( m, tag );
+        }
+
+        void init( llvm::Module &m )
+        {
+            auto i8 = llvm::Type::getInt8PtrTy( m.getContext() );
+
+            for ( auto phi : phis( m ) ) {
+                llvm::IRBuilder<> irb( phi );
+                auto a = irb.CreatePHI( i8, phi->getNumIncomingValues() );
+                a->moveAfter( phi );
+            }
+        }
+
+        void fill( llvm::Module &m )
+        {
+            Matched matched;
+            matched.init( m );
+
+            auto i8 = llvm::Type::getInt8PtrTy( m.getContext() );
+            auto null = llvm::ConstantPointerNull::get( i8 );
+
+            for ( auto phi : phis( m ) ) {
+                auto aphi = llvm::cast< llvm::PHINode >( matched.abstract[ phi ] );
+
+                for ( unsigned i = 0; i < phi->getNumIncomingValues(); ++i ) {
+                    auto ci = phi->getIncomingValue( i );
+                    auto ai = matched.abstract.count( ci )
+                            ? matched.abstract[ ci ]
+                            : null;
+
+                    aphi->addIncoming( ai, phi->getIncomingBlock( i ) );
+                }
+            }
+        }
+    };
+
     void Syntactic::run( llvm::Module &m ) {
+        PHINodePass pnp;
+
+        pnp.init( m );
+
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::Instruction > )
             .filter( query::notnull )
@@ -61,6 +107,8 @@ namespace lart::abstract
                 builder.construct( inst );
             }
         }
+
+        pnp.fill( m );
 
         FreezePass().run( m );
     }

@@ -107,6 +107,15 @@ namespace lart::abstract
 
             match_idempotent( c, a );
         }
+
+        const auto tag = meta::tag::operation::phi;
+        for ( auto phi : meta::enumerate< llvm::PHINode >( m, tag ) ) {
+            auto dual = phi->getNextNode();
+            abstract[ phi ] = dual;
+            concrete[ dual ] = phi;
+
+            match_idempotent( phi, dual );
+        }
     }
 
     void Matched::match( Operation::Type type, llvm::Value * a, llvm::Value * c )
