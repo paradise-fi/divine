@@ -45,6 +45,8 @@ namespace lart::abstract::meta {
 
             constexpr const char freeze[] = "lart.op.freeze";
             constexpr const char thaw[] = "lart.op.thaw";
+
+            constexpr const char phi[] = "lart.op.phi";
         }
 
         constexpr char abstract_return[] = "lart.abstract.return";

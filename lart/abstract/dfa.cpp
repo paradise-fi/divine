@@ -104,6 +104,11 @@ namespace lart::abstract {
             add_meta( &call, op );
         }
 
+        void visitPHINode( llvm::PHINode &phi )
+        {
+            meta::set( &phi, meta::tag::operation::phi );
+        }
+
         const MapValue &_mval;
     };
 
@@ -239,6 +244,14 @@ namespace lart::abstract {
                 if ( propagate_identity( cast, ptr ) )
                     propagate_back_task( ptr );
             },
+            [&] ( llvm::PHINode * phi ) {
+                for ( auto & val : phi->incoming_values() ) {
+                    if ( propagate_identity( phi, val.get() ) )
+                        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val.get() ) )
+                            push( [=] { propagate_back( arg ); } );
+
+                }
+            },
             [&] ( llvm::GetElementPtrInst * gep ) {
                 auto ptr = gep->getPointerOperand();
                 if ( propagate_wrap( gep, ptr ) )
@@ -261,6 +274,9 @@ namespace lart::abstract {
                     },
                     [&] ( llvm::CastInst * cast ) {
                         push( [=] { propagate( cast ); } );
+                    },
+                    [&] ( llvm::PHINode * phi )  {
+                        push( [=] { propagate( phi ); } );
                     },
                     [&] ( llvm::CallInst * call ) {
                         auto fn = llvm::CallSite( call ).getCalledFunction();
