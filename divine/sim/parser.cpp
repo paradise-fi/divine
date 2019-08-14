@@ -104,6 +104,10 @@ auto make_parser()
         .option( "[-o{string}|-o {string}]", &command::Dot::output_file,
                 "file to write output to"s );
 
+    auto bitcodeopts = cmd::make_option_set( v )
+        .option( "[--dump {string}]", &command::BitCode::filename,
+                "save the module bitcode to a file" );
+
     return cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
         .command< command::Help >( "show this help or describe a particular command in more detail"s,
@@ -115,7 +119,8 @@ auto make_parser()
         .command< command::StepI >( "execute one instruction"s, varopts, stepopts )
         .command< command::Rewind >( "rewind to a stored program state"s, varopts )
         .command< command::Set >( "set a variable "s, &command::Set::options )
-        .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
+        .command< command::BitCode >( "show the bitcode of the current function"s,
+                                        varopts, bitcodeopts )
         .command< command::Source >( "show the source code of the current function"s,
                                         teflopts, varopts )
         .command< command::Thread >( "control thread scheduling"s, threadopts )

@@ -95,7 +95,11 @@ struct Draw : Dot
 };
 
 struct Inspect : Show {};
-struct BitCode : WithFrame, Teflon {};
+struct BitCode : WithFrame, Teflon
+{
+    std::string filename;
+};
+
 struct Source : WithFrame, Teflon {};
 struct Call : Teflon
 {

@@ -262,6 +262,16 @@ void CLI::go( command::Thread thr )
 
 void CLI::go( command::BitCode bc )
 {
+    if ( !bc.filename.empty() )
+    {
+        auto *m = _bc->_pure_module.get();
+        try {
+            brick::llvm::writeModule( m, bc.filename );
+        } catch ( std::runtime_error &e ) {
+            throw brick::except::Error ( e.what() );
+        }
+        return;
+    }
     get( bc.var ).bitcode( out() ); out() << std::flush;
 }
 
