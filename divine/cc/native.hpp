@@ -37,10 +37,15 @@ namespace divine::cc
      */
     using PairedFiles = std::vector< std::pair< std::string, std::string > >;
 
+    // The layer below divcc tool but above the driver and CC1.
+    // It is responsible for holding the parsed command line arguments,
+    // providing high-level access to preprocessing, compiling and linking.
     struct Native
     {
+        // 'args' contains command line arguments for this invocation of the compiler,
+        // which are handed to the parser and processed into _po.
         Native( const std::vector< std::string >& args );
-
+        
         template< typename Driver >
         void link_bitcode_file( std::pair< std::string, std::string > file, Driver &drv )
         {

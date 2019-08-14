@@ -41,6 +41,7 @@ namespace divine::cc
         _clang.allowIncludePath( "/" );
     }
 
+    // Compile all files that are neither libraries nor already object files
     int Native::compile_files()
     {
         for ( auto file : _files )
@@ -69,16 +70,19 @@ namespace divine::cc
         }
     }
 
+    // Initialize linker CLI arguments
     void Native::init_ld_args()
     {
         if ( _ld_args.empty() )
-            _ld_args = cc::ld_args( _po, _files );
+            _ld_args = cc::ld_args( _po, _files ); // The linker needs information about files...
         if ( _cxx )
-            _ld_args.push_back( "--driver-mode=g++" );
+            _ld_args.push_back( "--driver-mode=g++" ); // ... and whether it's linking C or C++...
         if ( _po.shared )
             _ld_args.push_back( "-shared" );
     }
 
+    // Link the files (using either LLD or a native linker), then link the bitcode representation
+    // of the files and insert it into the newly created object file
     void Native::link()
     {
         init_ld_args();
@@ -123,9 +127,12 @@ namespace divine::cc
 
         std::unique_ptr< llvm::Module > mod = link_bitcode();
         std::string file_out = _po.outputFile != "" ? _po.outputFile : "a.out";
+	// Ad the .llvmbc section with the serialized bitcode
         cc::add_section( file_out, cc::llvm_section_name, _clang.serializeModule( *mod ) );
     }
 
+    // Run the compiler - i.e preprocces the files, compile, and link them.
+    // It is also possible to stop after preprocessing or compilation
     int Native::run()
     {
         // count files, i.e. not libraries
@@ -171,6 +178,7 @@ namespace divine::cc
         return do_link_bitcode< cc::Driver >();
     }
 
+    // For every file given, construct the name of its output
     void Native::construct_paired_files()
     {
         using namespace brick::fs;
@@ -193,13 +201,15 @@ namespace divine::cc
                     }
                     ofn += ".o";
                 }
-
+                
+                // Input files that are already object files are paired as [<name>, <name>]
                 if ( cc::is_object_type( ifn ) )
                     ofn = ifn;
                 _files.emplace_back( ifn, ofn );
             }
             else
             {
+                // Libraries are special, they are paired as ["lib", <name>]
                 assert( srcFile.is< cc::Lib >() );
                 _files.emplace_back( "lib", srcFile.get< cc::Lib >().name );
             }
@@ -221,6 +231,7 @@ namespace divine::cc
         delete drv.BuildCompilation( args );
     }
 
+    // Clean up all the temporary files
     Native::~Native()
     {
         if ( !_po.toObjectOnly )

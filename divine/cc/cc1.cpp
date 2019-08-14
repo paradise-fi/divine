@@ -110,6 +110,8 @@ namespace divine::cc
         divineVFS->allowPath( path );
     }
 
+    // This builds and runs a Clang CC1 invocation (bypassing the GCC-like
+    // Clang driver and allowing us to fine-tune the behaviour)
     template< typename CodeGenAction >
     std::unique_ptr< CodeGenAction > CC1::cc1( std::string filename,
                                 FileType type, std::vector< std::string > args,
@@ -217,10 +219,13 @@ namespace divine::cc
         // EmitLLVMOnlyAction emits module in memory, does not write it into a file
         auto emit = cc1< clang::EmitLLVMOnlyAction >( filename, type, args );
         auto mod = emit->takeModule();
+        // We want to emit the va_arg instruction when working with elipsis arguments instead of
+        // Clang's default behaviour of emitting architecture-specific instruction sequence
         lart::divine::VaArgInstr().run( *mod );
         return mod;
     }
 
+    // Write a module bitcode into a string
     std::string CC1::serializeModule( llvm::Module &m )
     {
         std::string str;

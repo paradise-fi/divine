@@ -28,6 +28,7 @@ namespace divine::cc
     using brick::fs::joinPath;
     using namespace std::literals;
 
+    // TODO: Unused
     static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 )
     {
         auto *op = llvm::cast< llvm::MDTuple >( meta->getOperand( i ) );
@@ -35,6 +36,7 @@ namespace divine::cc
         return str->getString().str();
     }
 
+    // TODO: Clever but unused
     struct MergeFlags_
     { // hide in class so they can be mutually recursive
         void operator()( std::vector< std::string > & ) { }
@@ -63,6 +65,7 @@ namespace divine::cc
         return out;
     }
 
+    // Return all possible jobs for a Clang compilation with the provided args
     std::vector< Command > Driver::getJobs( llvm::ArrayRef< const char * > args )
     {
         using clang::driver::Compilation;
@@ -97,6 +100,7 @@ namespace divine::cc
         return compile( path, typeFromFile( path ), flags );
     }
 
+    // Append the necessary and provided flags and defer to the compiler
     std::unique_ptr< llvm::Module > Driver::compile( std::string path,
                                         FileType type, std::vector< std::string > flags )
     {
@@ -120,6 +124,7 @@ namespace divine::cc
         return mod;
     }
 
+    // Compile all the files and link them together, including necessary libraries
     void Driver::build( ParsedOpts po )
     {
         for ( auto path : po.allowedPaths )
@@ -130,7 +135,7 @@ namespace divine::cc
             f.match(
                 [&]( const File &f ) {
                     if( auto m = compile( f.name, f.type, po.opts ) )
-                    linker->link( std::move( m ) );
+                    	linker->link( std::move( m ) );
                 },
                 [&]( const Lib &l ) {
                     linkLib( l.name, po.libSearchPath );
@@ -144,6 +149,7 @@ namespace divine::cc
         return linker->take();
     }
 
+    // Write the linked bitcode into a file
     void Driver::writeToFile( std::string filename )
     {
         writeToFile( filename, linker->get() );
@@ -154,7 +160,7 @@ namespace divine::cc
         brick::llvm::writeModule( mod, filename );
     }
 
-
+    // Return the linked bitcode serialized into a string
     std::string Driver::serialize()
     {
         return compiler.serializeModule( *linker->get() );
@@ -184,6 +190,8 @@ namespace divine::cc
        linker->link( std::move( mod ) );
     }
 
+    // Find a library called 'lib' in 'dirs' and return it as an archive.
+    // Given a name "foo", these file names are tried: "foo.a", "foo.bc", "libfoo.a", "libfoo.bc"
     brick::llvm::ArchiveReader Driver::find_archive( std::string lib, string_vec dirs )
     {
         return read_archive( find_library( lib, { ".a", ".bc", "" }, dirs ) );
@@ -264,14 +272,14 @@ namespace divine::cc
             auto modules = archive.modules();
             for ( auto it = modules.begin(); it != modules.end(); ++it )
             {
-                if ( it.getName() == "_link_essentials"s )
+                if ( it.getName() == "_link_essentials"s ) // This contains the declarations
                 {
                     linker->link_decls( it.take() );
                     break;
                 }
             }
-            linker->linkArchive( archive );
-        }
+	    linker->linkArchive( archive );
+    	}
     }
 
     void Driver::linkArchive( std::unique_ptr< llvm::MemoryBuffer > buf, std::shared_ptr< llvm::LLVMContext > context )
@@ -280,6 +288,7 @@ namespace divine::cc
         linker->linkArchive( archive );
     }
 
+    // Link the entire archive - i.e. every module, including the ones that are not needed to resolve undefined symbols
     void Driver::linkEntireArchive( std::string arch )
     {
         auto archive = find_archive( arch );

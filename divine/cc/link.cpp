@@ -29,12 +29,15 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
+    // Add a section called 'section_name' with data 'section_data' into the object file at 'filepath'
     void add_section( std::string filepath, std::string section_name, const std::string &section_data )
     {
         using namespace brick::fs;
 
         TempDir workdir( ".divine.addSection.XXXXXX", AutoDelete::Yes,
                         UseSystemTemp::Yes );
+
+        // Dump the section data into a temporary file, so that objcopy can load them
         auto secpath = joinPath( workdir, "sec" );
         std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
         secf << section_data;
@@ -50,20 +53,25 @@ namespace divine::cc
                             + ", objcopy exited with " + to_string( r ) );
     }
 
+    // Build CLI arguments for a linker invocation
     std::vector< std::string > ld_args( cc::ParsedOpts& po, PairedFiles& files )
     {
         std::vector< std::string > args;
 
+	// Add compiler driver arguments
         for ( auto op : po.opts )
             args.push_back( op );
+	// Add library search paths
         for ( auto path : po.libSearchPath )
             args.push_back( "-L" + path );
+	// Set the output name
         if ( po.outputFile != "" )
         {
             args.push_back( "-o" );
             args.push_back( po.outputFile );
         }
 
+	// Push the input files
         for ( auto file : files )
         {
             if ( file.first == "lib" )

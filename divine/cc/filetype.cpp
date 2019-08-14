@@ -22,6 +22,7 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
+    // Determine the type by its suffix
     FileType typeFromFile( std::string name )
     {
         using llvm::file_magic;
@@ -62,6 +63,7 @@ namespace divine::cc
         return FileType::Unknown;
     }
 
+    // Determine the type by its -x CLI arg
     FileType typeFromXOpt( std::string selector )
     {
         if ( selector == "c++" )

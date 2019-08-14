@@ -67,6 +67,8 @@ namespace divine::cc
         {}
     };
 
+    // The driver controls the compilation process. It is capable of compiling and linking the files
+    // provided through the CLI into a single module, writing the resulting module into a file, etc.
     struct Driver
     {
         using string_vec = std::vector< std::string >;

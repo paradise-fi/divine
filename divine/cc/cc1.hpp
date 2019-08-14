@@ -71,6 +71,7 @@ namespace divine::cc
         void mapVirtualFile( std::string path, std::string_view contents );
         void mapVirtualFile( std::string path, std::string contents );
 
+        // T represents a string
         template< typename T >
         void mapVirtualFiles( std::initializer_list< std::pair< std::string, const T & > > files )
         {

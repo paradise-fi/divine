@@ -18,6 +18,8 @@
 
 namespace divine::cc
 {
+
+    // Driver options
     struct Options
     {
         bool dont_link;
@@ -26,6 +28,7 @@ namespace divine::cc
         Options( bool dont_link, bool verbose ) : dont_link( dont_link ), verbose( verbose ) {}
     };
 
+    // Parsed CLI options
     struct ParsedOpts
     {
         std::vector< std::string > opts;

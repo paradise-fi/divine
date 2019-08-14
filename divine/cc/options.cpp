@@ -17,6 +17,7 @@
 
 namespace divine::cc
 {
+    // Parse CLI options (switches and files) and process them into a form understood by the driver
     ParsedOpts parseOpts( std::vector< std::string > rawCCOpts )
     {
         using FT = FileType;

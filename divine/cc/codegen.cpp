@@ -52,6 +52,9 @@ namespace divine::cc
         }
     };
 
+    // Create an object file out of the specified module.
+    // This also creates the .llvmbc section inside the binary
+    // which includes the serialized module bitcode.
     int emit_obj_file( Module &m, std::string filename, bool pic /* = false */ )
     {
         //auto TargetTriple = sys::getDefaultTargetTriple();
@@ -103,7 +106,7 @@ namespace divine::cc
         }
 
         MCStreamer *AsmStreamer = PM.mc;
-        // write bitcode into section .llvmbc
+        // Write bitcode into section .llvmbc
         AsmStreamer->SwitchSection( AsmStreamer->getContext().getELFSection( llvm_section_name,
                                                                              ELF::SHT_NOTE, 0 ) );
         std::string bytes = brick::llvm::getModuleBytes( &m );

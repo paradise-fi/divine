@@ -19,6 +19,8 @@
 
 #include <brick-types>
 
+// Utilities used to detect a file type based on its filename or CLI xopt
+
 namespace divine::cc
 {
     enum class FileType
@@ -56,6 +58,7 @@ namespace divine::cc
     bool is_type( std::string file, FileType type );
     bool is_object_type( std::string file );
 
+    // Append contents of B to the end of A
     template< typename A, typename B = std::initializer_list< std::decay_t<
                             decltype( *std::declval< A & >().begin() ) > > >
     static void add( A &a, B b )
