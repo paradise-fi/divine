@@ -145,7 +145,7 @@ void CLI::go( command::show cmd )
     }
 }
 
-void CLI::go( command::diff cmd )
+void CLI::go( command::Diff cmd )
 {
     if ( cmd.vars.size() != 2 )
         throw brq::error( "Diff needs exactly 2 arguments." );

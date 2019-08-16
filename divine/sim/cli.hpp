@@ -198,29 +198,29 @@ struct CLI
     DN frame_up( DN frame );
 
     /* all of the go() variants are implemented in dispatch.cpp */
-    void go( command::exit );
-    void go( command::start s );
-    void go( command::breakpoint b );
-    void go( command::step s );
-    void go( command::stepi s );
-    void go( command::stepa s );
-    void go( command::rewind re );
-    void go( command::backtrace bt );
-    void go( command::show cmd );
-    void go( command::diff );
-    void go( command::dot cmd );
-    void go( command::inspect i );
-    void go( command::call c );
-    void go( command::info i );
+    void go( command::Exit );
+    void go( command::Start s );
+    void go( command::Break b );
+    void go( command::Step s );
+    void go( command::StepI s );
+    void go( command::StepA s );
+    void go( command::Rewind re );
+    void go( command::BackTrace bt );
+    void go( command::Show cmd );
+    void go( command::Diff );
+    void go( command::Dot cmd );
+    void go( command::Inspect i );
+    void go( command::Call c );
+    void go( command::Info i );
 
-    void go( command::up );
-    void go( command::down );
-    void go( command::set s );
-    void go( command::thread thr );
-    void go( command::bitcode bc );
-    void go( command::source src );
-    void go( command::setup set );
-    void go( brq::cmd_help ) {}
+    void go( command::Up );
+    void go( command::Down );
+    void go( command::Set s );
+    void go( command::Thread thr );
+    void go( command::BitCode bc );
+    void go( command::Source src );
+    void go( command::Setup set );
+    void go( command::Help ) { UNREACHABLE( "impossible case" ); }
 
     template< typename Parser >
     void help( Parser &p, std::string arg )
@@ -245,11 +245,9 @@ struct CLI
             out() << char( 27 ) << "[2J" << char( 27 ) << "[;H";
     }
 
-    void prepare( command::cast_iron ) {}
-    void prepare( brq::cmd_help ) {}
-    void finalize( command::teflon ) { update(); }
-    void finalize( command::cast_iron );
-    void finalize( brq::cmd_help ) {}
+    void prepare( command::CastIron ) {}
+    void finalize( command::Teflon ) { update(); }
+    void finalize( command::CastIron );
 };
 
 }

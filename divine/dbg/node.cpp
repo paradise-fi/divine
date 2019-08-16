@@ -687,6 +687,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
     lvar.bounds( 0, bound );
     lvar.type( type );
     lvar.di_var( divar );
+    lvar._var_loc = DDV->getVariableLocation();
     yield( name, lvar );
 }
 
