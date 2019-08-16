@@ -115,6 +115,32 @@ namespace __dios::rst::abstract {
         return taint< C >();
     }
 
+    template< typename A, typename C >
+    _LART_INLINE auto lift_one( C c ) noexcept
+    {
+        static_assert( std::is_integral_v< C > || std::is_pointer_v< C >,
+                       "Cannot lift a non-arithmetic or non-pointer value." );
+        if constexpr ( sizeof( C ) == 8 )
+            return A::lift_one_i64( c );
+        if constexpr ( sizeof( C ) == 4 )
+            return A::lift_one_i32( c );
+        if constexpr ( sizeof( C ) == 2 )
+            return A::lift_one_i16( c );
+        if constexpr ( sizeof( C ) == 1 )
+            return A::lift_one_i8( c );
+    }
+    template< typename A >
+    _LART_INLINE auto lift_one( float c ) noexcept { return A::lift_one_float( c ); }
+    template< typename A >
+    _LART_INLINE auto lift_one( double c ) noexcept { return A::lift_one_double( c ); }
+
+    template< typename C, typename A >
+    _LART_INLINE C make_abstract( C c ) noexcept
+    {
+        __lart_stash( static_cast< void * >( lift_one< A >( c ) ) );
+        return taint< C >( c );
+    }
+
     template< typename T >
     _LART_INLINE T * peek_object( void * addr ) noexcept
     {

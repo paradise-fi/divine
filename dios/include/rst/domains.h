@@ -31,6 +31,14 @@ extern "C" {
     float __unit_val_float32( void );
     double __unit_val_float64( void );
 
+    uint64_t __unit_lift_i64( uint64_t );
+    uint32_t __unit_lift_i32( uint32_t );
+    uint16_t __unit_lift_i16( uint16_t );
+    uint8_t __unit_lift_i8( uint8_t );
+
+    float __unit_lift_float32( float );
+    double __unit_lift_float64( double );
+
     char * __mstring_val( char * buff, unsigned buff_len );
 #ifdef __cplusplus
 }
