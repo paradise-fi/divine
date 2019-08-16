@@ -18,6 +18,8 @@ namespace __dios::rst::abstract {
         _LART_SCALAR uint16_t __sym_val_i16() { return make_term< uint16_t >(); }
         _LART_SCALAR uint32_t __sym_val_i32() { return make_term< uint32_t >(); }
         _LART_SCALAR uint64_t __sym_val_i64() { return make_term< uint64_t >(); }
+        _LART_SCALAR float __sym_val_float32() { return make_term< float >(); }
+        _LART_SCALAR double __sym_val_float64() { return make_term< double >(); }
     }
 
     /* Add a constraint to the term. A constraint is again a Term, e.g. a > 7.

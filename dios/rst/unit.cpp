@@ -20,6 +20,8 @@ namespace __dios::rst::abstract {
         _LART_SCALAR uint16_t __unit_val_i16() { return make_unit< uint16_t >(); }
         _LART_SCALAR uint32_t __unit_val_i32() { return make_unit< uint32_t >(); }
         _LART_SCALAR uint64_t __unit_val_i64() { return make_unit< uint64_t >(); }
+        _LART_SCALAR float __unit_val_float32() { return make_unit< float >(); }
+        _LART_SCALAR double __unit_val_float64() { return make_unit< double >(); }
     }
 
 } // namespace __dios::rst::abstract

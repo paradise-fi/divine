@@ -43,6 +43,8 @@ namespace __dios::rst::abstract {
         template< typename T >
         __op( lift_any, Abstracted< T > )
 
+        __op( op_thaw, Argument, uint8_t /* bw */ )
+
         _LART_INTERFACE
         static Tristate to_tristate( Argument ) noexcept
         {
