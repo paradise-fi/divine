@@ -34,10 +34,10 @@ struct AbstractStubs
         while ( i --> 0 )
         {
             int width = 8 << i;
-            aValCtor[ i ] = m.getFunction( "__star_val_i" + std::to_string( width ) );
+            aValCtor[ i ] = m.getFunction( "__unit_val_i" + std::to_string( width ) );
             if ( !aValCtor[ i ] )
             aValCtor[i] = llvm::cast< llvm::Function >(
-                    m.getOrInsertFunction( "__star_val_i" + std::to_string( width ),
+                    m.getOrInsertFunction( "__unit_val_i" + std::to_string( width ),
                     llvm::IntegerType::get( ctx, width ) ) );
             ASSERT( aValCtor[ i ] );
             lart::abstract::meta::set( aValCtor[ i ], lart::abstract::meta::tag::abstract_return );
@@ -47,7 +47,7 @@ struct AbstractStubs
         long count = 0;
         for ( auto &fn : m ) {
             if ( !fn.isDeclaration() || fn.isIntrinsic() || fn.getName().startswith( "__vm_" ) ||
-                    fn.getName().startswith( "__star_val" ) )
+                    fn.getName().startswith( "__unit_val" ) )
                 continue;
             auto retType = fn.getReturnType();
             if ( !retType->isIntegerTy() )
@@ -57,7 +57,7 @@ struct AbstractStubs
             auto call = irb.CreateCall( aValCtor[ brick::bitlevel::MSB( retType->getIntegerBitWidth() ) - 3 ] );
             irb.CreateRet( call );
             lart::abstract::meta::set( call, lart::abstract::meta::tag::abstract_return );
-            lart::abstract::Domain::set( call, lart::abstract::Domain{ "star" } );
+            lart::abstract::meta::abstract::set( call, to_string( lart::abstract::DomainKind::scalar ) );
             ++count;
             fn.setName( "__stub_" + fn.getName() );
         }
