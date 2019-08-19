@@ -161,7 +161,7 @@ namespace {
 
 /* Strips from s the namespace prefix which is common with l and padds it with
    spaces if fill is set to true. It also strips namespaces from template
-   arguments if they are used as a parametr of something defined in the same
+   arguments if they are used as a parameter of something defined in the same
    namespace. */
 std::string simplify( std::string s, std::string l, bool fill = true )
 {
@@ -269,10 +269,10 @@ int list( int argc, const char **argv )
 /* Runs all tests allowed by filters given with commandline arguments or the T
    environment variable (if defined).
    Filters can be written as a comma-separated list of substrings and tests
-   mathing at least one substring in each filter will be executed -- e.g., it
+   matching at least one substring in each filter will be executed -- e.g., if
    the only filter is "bricks,vm" then all tests which contain "bricks" or "vm"
    in their name will be executed; if the filters are "bricks,vm" and "mem",
-   then tests wich contain "mem" and either "bricks" or "vm" will be executed. */
+   then tests which contain "mem" and either "bricks" or "vm" will be executed. */
 int run( int argc, const char **argv )
 {
     ASSERT( TestBase::testcases );
@@ -397,7 +397,7 @@ struct TestCase : TestBase
    the program. It is usually used through the TEST or TEST_FAILING macros.
    Each TEST_ declaration should occur inside a class. */
 #define TEST_(n, T, INIT)                                               \
-    /* never called, just instanciates __reg2_ ## n */                  \
+    /* never called, just instantiates __reg2_ ## n */                  \
     void __reg1_ ## n()                                                 \
     {                                                                   \
         using SELFR = decltype(*this);                                  \
