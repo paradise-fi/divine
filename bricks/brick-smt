@@ -227,7 +227,7 @@ union ByteUnion
 
     constexpr const Byte * begin() const noexcept { return bytes; }
     constexpr const Byte * end() const noexcept { return bytes + size(); }
-    constexpr const std::size_t size() const { return sizeof( T ); };
+    constexpr std::size_t size() const { return sizeof( T ); };
 };
 
 template< typename Container >
