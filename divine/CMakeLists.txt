@@ -37,13 +37,16 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-# add_library( divine-ss ${CPP_ss} )
-add_library( divine-ui ${CPP_ui} ${VERSION_FILE} "flags-generated.cpp" )
-add_library( divine-cc ${CPP_cc} ${cc_FILES} cc_list.cpp )
-add_dependencies( divine-ui divine-version )
-foreach( D ltl mc smt vm dbg )
+set( CPP_ui ${CPP_ui} ${VERSION_FILE} "flags-generated.cpp" )
+set( CPP_cc ${CPP_cc} ${cc_FILES} cc_list.cpp )
+
+foreach( D ltl mc smt vm dbg cc ui )
   add_library( divine-${D} ${CPP_${D}} )
+  set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
+  install( TARGETS divine-${D} DESTINATION lib )
 endforeach()
+
+add_dependencies( divine-ui divine-version )
 
 if ( OPT_SIM )
   stringify( doc ${divine_SOURCE_DIR}/doc manual/sim.md )
@@ -55,11 +58,6 @@ endif()
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 
 bricks_unittest( test-divine ${HPP_ss} ${HPP_mem} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} ${HPP_smt} )
-
-foreach( D vm ui cc ltl smt )
-  set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
-  install( TARGETS divine-${D} DESTINATION lib )
-endforeach()
 
 llvm_map_components_to_libnames( CC_TGTS ${LLVM_TARGETS_TO_BUILD} )
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
@@ -90,5 +88,4 @@ add_custom_target( unit_divine
     DEPENDS test-divine )
 add_dependencies( unit unit_divine )
 
-install( TARGETS divine-ui divine-vm divine-cc divine-ltl DESTINATION lib )
 install( FILES ${HPP} DESTINATION include/divine )
