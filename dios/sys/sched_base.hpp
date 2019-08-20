@@ -246,6 +246,7 @@ struct Scheduler : public Next
             *__dios_errno() = EINVAL;
             return -1 ;
         }
+
         if ( !sighandlers )
         {
             sighandlers = reinterpret_cast< sighandler_t * >(
@@ -255,7 +256,9 @@ struct Scheduler : public Next
 
         if ( oldact )
             oldact->sa_handler = sighandlers[sig].f;
-        sighandlers[sig].f = act->sa_handler;
+        if ( act )
+            sighandlers[sig].f = act->sa_handler;
+
         return 0;
     }
 
