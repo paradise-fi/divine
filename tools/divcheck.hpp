@@ -139,10 +139,10 @@ void execute( std::string script_txt, F... prepare )
             expect->arm( cmdstr );
         };
 
-        auto o_expect = ui::cmd::make_option_set< Expect >( cli.validator() )
+        auto o_expect = ui::cmd::make_option_set( cli.validator() )
             .option( "--result {result}", &Expect::_result, "verification result" )
             .option( "[--location {string}]", &Expect::_location, "location of the expected error" );
-        auto o_load = ui::cmd::make_option_set< Load >( cli.validator() )
+        auto o_load = ui::cmd::make_option_set( cli.validator() )
             .option( "{string}+", &Load::args, "file path, file name" );
 
         auto parser = cli.commands().command< Expect >( o_expect ).command< Load >( o_load );
