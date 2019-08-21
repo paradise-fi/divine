@@ -3,18 +3,25 @@
 
 namespace divine::sim {
 
-std::set< llvm::StoreInst* > get_first_stores_to_alloca( llvm::AllocaInst* );
+std::set< llvm::StoreInst* > get_first_stores_to_alloca( llvm::AllocaInst * );
+std::set< llvm::DbgValueInst* > get_first_dvis_of_var( llvm::DbgValueInst * );
+void replace_until_next_dvi( llvm::BasicBlock::iterator, llvm::DILocalVariable *,
+                             llvm::Value *, llvm::Value * );
 
-/* Find the origin of a local variable in the original (pre-LART) LLVM module */
+/* Find the origin of a local variable in the original (pre-LART) LLVM module.
+ * Depending of the variable's origin, it returns
+ *   1) an llvm::Argument,
+ *   2) an llvm::AllocaInst, or
+ *   3) an llvm::DbgValueInst which is then tampered with specially. */
 llvm::Value* CLI::find_tamperee( const DN &dn )
 {
     if ( !dn._var_loc )
         return nullptr;
 
     auto *m = _bc->_pure_module.get();
-    if ( auto *origin = llvm::dyn_cast< llvm::Instruction >( dn._var_loc ) )
+    if ( auto *origin = llvm::dyn_cast< llvm::User >( dn._var_loc ) )
     {
-        auto *f = m->getFunction( origin->getFunction()->getName().str() );
+        auto *f = m->getFunction( dn._di_inst->getFunction()->getName().str() );
         for ( auto &bb : *f )
         {
             for ( auto &inst : bb )
@@ -32,7 +39,7 @@ llvm::Value* CLI::find_tamperee( const DN &dn )
                          divar->getFilename().equals( dn._di_var->getFilename() ) &&
                          divar->getDirectory().equals( dn._di_var->getDirectory() ) &&
                          divar->getName().equals( dn._di_var->getName() ) )
-                        return di->getVariableLocation();
+                        return llvm::isa< llvm::DbgValueInst >( inst ) ? &inst : di->getVariableLocation();
                 }
             }
         }
@@ -101,7 +108,7 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::Argument *arg )
 {
     auto argname = arg->getName().str();
 
-    llvm::IRBuilder<> irb( arg->getParent()->getEntryBlock().getFirstNonPHIOrDbgOrLifetime() );
+    llvm::IRBuilder<> irb( arg->getParent()->getEntryBlock().getFirstNonPHI() );
     if ( cmd.lift )
     {
         auto aval = mkCallLift( irb, dn, cmd.domain, arg, argname );
@@ -195,7 +202,35 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
     }
 }
 
+/* Tamper with a variable given by an llvm.dbg.value intrinsic -- replace all uses of the register
+ * (or constant) until next llvm.dbg.value with nondet or lifted value */
+void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::DbgValueInst *dvi )
 {
+    auto varname = dvi->getVariableLocation()->getName().str();
+
+    llvm::IRBuilder<> irb( dvi->getFunction()->getEntryBlock().getFirstNonPHI() );
+    llvm::Value *aval = nullptr;
+
+    // create nondet value to initialise the variable with
+    if ( !cmd.lift )
+        aval = mkCallNondet( irb, dn, cmd.domain, varname );
+
+    std::set< llvm::DbgValueInst* > first_dvis = get_first_dvis_of_var( dvi );
+    for ( auto *dvi : first_dvis )
+    {
+        if ( cmd.lift )
+        {
+            irb.SetInsertPoint( dvi );
+            aval = mkCallLift( irb, dn, cmd.domain, dvi->getVariableLocation(), varname );
+        }
+        auto iit = dvi->getParent()->begin();
+        while ( &*iit != dvi )
+            ++iit;
+        replace_until_next_dvi( ++iit, dvi->getVariable(), dvi->getVariableLocation(), aval );
+        dvi->replaceUsesOfWith( dvi->getVariableLocation(), aval );
+    }
+}
+
 template< typename Inst, typename Pred >
 void bb_dfs_first_rec( llvm::BasicBlock *bb, Pred p, std::set< Inst* > &insts,
                        std::set< llvm::BasicBlock* > &visited )
@@ -233,6 +268,37 @@ std::set< llvm::StoreInst* > get_first_stores_to_alloca( llvm::AllocaInst *origi
                 return store->getPointerOperand() == origin_alloca;
             });
 }
+
+// Return DVIs, that are potentially first definitions of the same variable as 'var_dvi'.
+std::set< llvm::DbgValueInst* > get_first_dvis_of_var( llvm::DbgValueInst* var_dvi )
+{
+    auto *di_lvar = var_dvi->getVariable();
+    return bb_dfs_first< llvm::DbgValueInst >( &( var_dvi->getFunction()->getEntryBlock() ),
+            [di_lvar]( auto *dvi )
+            {
+                return dvi->getVariable() == di_lvar;
+            });
+}
+
+void replace_until_next_dvi( llvm::BasicBlock::iterator iit, llvm::DILocalVariable *di_lvar,
+                             llvm::Value *orig, llvm::Value *subst )
+{
+    auto *bb = iit->getParent();
+    auto end = bb->end();
+    while ( iit != end )
+    {
+        if ( auto *dvi = llvm::dyn_cast< llvm::DbgValueInst >( &*iit ) )
+        {
+            if ( dvi->getVariable() == di_lvar )
+                return;
+        }
+        else if ( auto *u = llvm::dyn_cast< llvm::User >( &*iit ) )
+            u->replaceUsesOfWith( orig, subst );
+        ++iit;
+    }
+
+    for ( auto &s : lart::util::succs( bb ) )
+        replace_until_next_dvi( s.begin(), di_lvar, orig, subst );
 }
 
 } /* divine::sim */
