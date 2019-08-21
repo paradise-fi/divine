@@ -508,11 +508,16 @@ struct OptionBase
     }
 
     std::string fmt() { return _pattern.fmt(); };
-    std::string describe()
+    std::string describe( int max_width = 0 )
     {
         brq::string_builder str;
         auto f = fmt();
-        str << std::string( 30 - f.size(), ' ' ) << f << "   " << _descr;
+        if ( max_width )
+        {
+            ASSERT_LEQ( f.size(), max_width );
+            str << std::string( max_width - f.size(), ' ' );
+        }
+        str << f << "   " << _descr;
         return str.buffer();
     };
 
@@ -617,7 +622,9 @@ struct OptionSet
     std::string fmt()
     {
         brq::string_builder s;
-        each_opt( [&]( auto &o ) { s << "  " << o.describe() << "\n"; } );
+        size_t mw = 0;
+        each_opt( [&]( auto &o ) { mw = std::max( mw, o.fmt().size() ); } );
+        each_opt( [&]( auto &o ) { s << "  " << o.describe( mw + 1 ) << "\n"; } );
         return s.buffer();
     }
 
@@ -757,7 +764,12 @@ struct Command : OptionSet< Opts >
                 s << o.fmt() << " ";
         };
 
-        s << std::string( setw - name().size(), ' ' ) << name() <<  " [options] ";
+        if ( setw )
+        {
+            ASSERT_LEQ( name().size(), setw );
+            s << std::string( setw - name().size(), ' ' );
+        }
+        s << name() <<  " [options] ";
         this->each_opt( fmt );
         s << " " << _description;
         return s.buffer();
@@ -862,7 +874,11 @@ struct Parser : ParserBase
     {
         brq::string_builder s;
         if ( name.empty() )
-            _cmds.each( [&]( auto &cmd ) { s << cmd.describe_header( 10 ) << "\n"; } );
+        {
+            size_t mw = 0;
+            _cmds.each( [&]( auto &cmd ) { mw = std::max( mw, cmd.name().size() ); } );
+            _cmds.each( [&]( auto &cmd ) { s << cmd.describe_header( mw + 1 ) << "\n"; } );
+        }
         else
             _cmds.each( [&]( auto &cmd ) { if ( cmd.name() == name ) s << cmd.describe(); } );
         return s.buffer();
