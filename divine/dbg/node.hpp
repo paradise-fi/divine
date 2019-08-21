@@ -71,6 +71,7 @@ struct Node
     llvm::DIType *_di_type;
     llvm::DIVariable *_di_var;
     llvm::Value *_var_loc;
+    llvm::DbgInfoIntrinsic *_di_inst;
 
     using PointerV = vm::value::Pointer;
 

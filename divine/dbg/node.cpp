@@ -646,6 +646,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
     lvar.type( type );
     lvar.di_var( divar );
     lvar._var_loc = DDI->getVariableLocation();
+    lvar._di_inst = DDI;
     yield( name, lvar );
 }
 
@@ -688,6 +689,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
     lvar.type( type );
     lvar.di_var( divar );
     lvar._var_loc = DDV->getVariableLocation();
+    lvar._di_inst = DDV;
     yield( name, lvar );
 }
 
