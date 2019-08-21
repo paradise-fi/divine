@@ -7,7 +7,7 @@ distribution for co­pyright and licensing details.
 Download
 ========
 
-The current version series is **@major** -- the most recent available release
+The current version series is **@major@** -- the most recent available release
 (as a source tarball) is
 [divine-@version@.tar.gz](download/divine-@version@.tar.gz). You can also
 download [nightly snapshots] [6] or fetch the source code from our version
