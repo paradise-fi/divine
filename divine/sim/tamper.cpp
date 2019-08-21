@@ -128,9 +128,9 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
         aval = mkCallNondet( irb, dn, cmd.domain, varname );
 
     // Find first stores to the alloca and replace them with abstract value
-    std::set< llvm::StoreInst* > dominant_users = get_first_stores_to_alloca( origin_alloca );
+    std::set< llvm::StoreInst* > first_stores = get_first_stores_to_alloca( origin_alloca );
 
-    if ( !dominant_users.empty() ){
+    if ( !first_stores.empty() ){
 
         // create freshness flag for the variable (1 = no store yet, 0 = a store has happened)
         auto &entry = origin_alloca->getFunction()->getEntryBlock();
@@ -139,7 +139,7 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
         irb.SetInsertPoint( origin_alloca->getNextNonDebugInstruction() );
         irb.CreateStore( irb.getTrue(), a_freshness );
 
-        for ( auto *store : dominant_users )
+        for ( auto *store : first_stores )
         {
             auto *stored_orig = store->getValueOperand();
 
@@ -195,33 +195,44 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
     }
 }
 
-void find_first_stores_to_alloca( llvm::AllocaInst *origin_alloca, llvm::BasicBlock *bb,
-                                  std::set< llvm::StoreInst* > &stores,
-                                  std::set< llvm::BasicBlock* > &visited )
 {
-    // DFS
+template< typename Inst, typename Pred >
+void bb_dfs_first_rec( llvm::BasicBlock *bb, Pred p, std::set< Inst* > &insts,
+                       std::set< llvm::BasicBlock* > &visited )
+{
     visited.insert( bb );
     for ( auto &inst : *bb )
     {
-        auto *store = llvm::dyn_cast< llvm::StoreInst >( &inst );
-        if ( store && store->getPointerOperand() == origin_alloca )
+        auto *casted = llvm::dyn_cast< Inst >( &inst );
+        if ( casted && p( casted ) )
         {
-            stores.insert( store );
+            insts.insert( casted );
             return;
         }
     }
     for ( auto &s : lart::util::succs( bb ) )
         if ( ! visited.count( &s ) )
-            find_first_stores_to_alloca( origin_alloca, &s, stores, visited );
+            bb_dfs_first_rec( &s, p, insts, visited );
+}
+
+template< typename Inst, typename Pred >
+std::set< Inst* > bb_dfs_first( llvm::BasicBlock *from, Pred p )
+{
+    std::set< llvm::BasicBlock* > visited;
+    std::set< Inst* > insts;
+    bb_dfs_first_rec( from, p, insts, visited );
+    return insts;
 }
 
 // Return stores, that are potentially first to the given alloca
 std::set< llvm::StoreInst* > get_first_stores_to_alloca( llvm::AllocaInst *origin_alloca )
 {
-    std::set< llvm::BasicBlock* > visited;
-    std::set< llvm::StoreInst* > stores;
-    find_first_stores_to_alloca( origin_alloca, origin_alloca->getParent(), stores, visited );
-    return stores;
+    return bb_dfs_first< llvm::StoreInst >( origin_alloca->getParent(),
+            [origin_alloca]( auto *store )
+            {
+                return store->getPointerOperand() == origin_alloca;
+            });
+}
 }
 
 } /* divine::sim */
