@@ -18,6 +18,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #ifdef BRICKS_HAVE_LLVM
 
 #ifndef __STDC_LIMIT_MACROS
@@ -50,9 +52,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-string>
 #include <brick-types>
 #include <brick-fs>
-
-#ifndef BRICK_LLVM_H
-#define BRICK_LLVM_H
 
 namespace brick::llvm {
 
@@ -282,8 +281,6 @@ namespace llvm
         return o << lstream.str();
     }
 }
-
-#endif // BRICK_LLVM_H
 
 #endif // BRICKS_HAVE_LLVM
 

@@ -16,6 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #ifdef DIVINE_RELAX_WARNINGS
 DIVINE_RELAX_WARNINGS
 #endif
@@ -27,6 +29,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 #endif
 
+#include <sstream>
 #include <deque>
 #include <type_traits>
 

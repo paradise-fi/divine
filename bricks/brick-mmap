@@ -34,6 +34,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#pragma once
+
 #if __cplusplus < 201103L
 #error "brick-mmap is only supported with c++11 or newer"
 #endif
@@ -64,9 +66,6 @@
 
 #include <brick-assert>
 #include <brick-types>
-
-#ifndef BRICK_MMAP_H
-#define BRICK_MMAP_H
 
 namespace brick {
 namespace mmap {
@@ -449,7 +448,5 @@ struct MMapTest {
 
 }
 }
-
-#endif // BRICK_MMAP_H
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab

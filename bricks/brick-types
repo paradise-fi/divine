@@ -27,6 +27,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #include <brick-assert>
 
 #include <memory>
@@ -38,9 +40,6 @@
 #include <variant>
 #include <optional>
 #endif
-
-#ifndef BRICK_TYPES_H
-#define BRICK_TYPES_H
 
 #if __cplusplus >= 201103L
 #define CONSTEXPR constexpr
@@ -1715,5 +1714,4 @@ struct MatchTest {
 }
 
 
-#endif
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

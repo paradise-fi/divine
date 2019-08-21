@@ -17,6 +17,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #ifdef BRICKS_HAVE_LLVM
 
 #ifndef __STDC_LIMIT_MACROS
@@ -69,9 +71,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <set>
 #include <sstream>
 #include <algorithm>
-
-#ifndef BRICK_LLVM_LINK_H
-#define BRICK_LLVM_LINK_H
 
 #if _LIBCPP_VERSION >= 4000 || __GLIBCXX__ >= 20170630
 #include <string_view>
@@ -719,8 +718,6 @@ struct LinkerTest {
 }
 
 }
-
-#endif // BRICK_LLVM_LINK_H
 
 #endif
 

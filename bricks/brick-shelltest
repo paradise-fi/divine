@@ -44,6 +44,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#pragma once
+
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
@@ -86,9 +88,6 @@
 #ifdef __linux
 #include <sys/klog.h>
 #endif
-
-#ifndef BRICK_SHELLTEST_H
-#define BRICK_SHELLTEST_H
 
 namespace brick {
 namespace shelltest {
@@ -1535,8 +1534,6 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
 }
 }
-
-#endif
 
 #ifdef BRICK_DEMO
 

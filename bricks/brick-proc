@@ -26,6 +26,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#pragma once
+
 #include <brick-except>
 #include <brick-fs>
 #include <brick-string>
@@ -46,9 +48,6 @@
 #include <spawn.h>
 #include <sys/wait.h>
 #endif
-
-#ifndef BRICK_PROC
-#define BRICK_PROC
 
 extern char **environ;
 
@@ -478,7 +477,5 @@ struct TestSpawn {
 };
 
 }
-
-#endif // BRICK_PROC
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

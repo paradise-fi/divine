@@ -20,8 +20,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef BRICK_TRACE_H
-#define BRICK_TRACE_H
+#pragma once
 
 #include <string_view>
 #include <charconv>
@@ -382,7 +381,5 @@ namespace brq
 #endif
     }
 }
-
-#endif
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab

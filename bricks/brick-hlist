@@ -33,11 +33,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#pragma once
+
 #include <type_traits>
 #include <brick-assert>
-
-#ifndef BRICK_HLIST_H
-#define BRICK_HLIST_H
 
 namespace brick {
 namespace hlist {
@@ -446,5 +445,4 @@ struct BoolExpr {
 }
 }
 
-#endif
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab

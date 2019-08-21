@@ -26,6 +26,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -43,9 +45,6 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #endif
-
-#ifndef BRICK_UNITTEST_H
-#define BRICK_UNITTEST_H
 
 namespace brick {
 namespace unittest {
@@ -470,8 +469,6 @@ int main( int argc, const char **argv )
 {
     return brick::unittest::run( argc, argv );
 }
-
-#endif
 
 #endif
 

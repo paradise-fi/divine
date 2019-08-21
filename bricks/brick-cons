@@ -17,6 +17,7 @@
  */
 
 #pragma once
+
 #include <brick-trace>
 #include <type_traits>
 #include <optional>

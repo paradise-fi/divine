@@ -28,6 +28,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -38,9 +40,6 @@
 #include <brick-assert>
 #include <brick-types>
 #include <brick-string>
-
-#ifndef BRICK_GNUPLOT_H
-#define BRICK_GNUPLOT_H
 
 namespace brick {
 namespace gnuplot {
@@ -820,7 +819,5 @@ struct Plots {
 
 }
 }
-
-#endif
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab

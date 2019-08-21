@@ -44,9 +44,12 @@
  * IF IBM IS APPRISED OF THE POSSIBILITY OF SUCH DAMAGES.
  */
 
+#pragma once
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 
 namespace brick {
 namespace base64 {

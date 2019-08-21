@@ -28,6 +28,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#pragma once
+
 #include <brick-assert>
 #include <brick-except>
 #include <sys/types.h>
@@ -52,9 +54,6 @@
 #include <stdexcept>
 #include <algorithm>
 #include <memory>
-
-#ifndef BRICK_FS_H
-#define BRICK_FS_H
 
 namespace brick {
 namespace fs {
@@ -1078,7 +1077,5 @@ inline std::string replaceExtension( std::string path, std::string extension ) {
 inline std::pair< std::string, std::string > splitFileName( std::string path ) {
 inline std::pair< std::string, std::string > absolutePrefix( std::string path ) {
 #endif
-
-#endif // BRICK_FS_H
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

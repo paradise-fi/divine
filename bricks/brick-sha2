@@ -50,6 +50,8 @@
  * OPENBSD ORIGINAL: lib/libc/hash/sha2.c
  */
 
+#pragma once
+
 #include <brick-assert>
 #include <string>
 #include <iomanip>

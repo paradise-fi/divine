@@ -30,6 +30,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#pragma once
+
 #include <algorithm>
 #include <numeric>
 #include <type_traits>
@@ -43,9 +45,6 @@
 #include <cstddef>
 
 #include <brick-assert>
-
-#ifndef BRICK_QUERY_H
-#define BRICK_QUERY_H
 
 namespace brick {
 namespace query {
@@ -959,7 +958,5 @@ struct Query {
 
 }
 }
-
-#endif // BRICK_QUERY_H
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

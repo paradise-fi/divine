@@ -22,6 +22,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #include <brick-assert>
 
 #include <type_traits>
@@ -37,9 +39,6 @@
 
 #include <atomic>
 #include <cstring>
-
-#ifndef BRICK_BITLEVEL_H
-#define BRICK_BITLEVEL_H
 
 namespace brq
 {
@@ -939,5 +938,4 @@ namespace brick::t_bitlevel
 
 }
 
-#endif
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
