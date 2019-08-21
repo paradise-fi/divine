@@ -640,13 +640,13 @@ struct SelfTest : benchmark::Group
 }
 }
 
-#endif
-
 #ifdef BRICK_BENCHMARK_MAIN
 
 int main( int argc, const char **argv )
 {
     return brick::benchmark::run( argc, argv );
 }
+
+#endif
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
