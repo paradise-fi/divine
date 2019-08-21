@@ -54,11 +54,14 @@ namespace brick::smt
 using Format = std::function< void ( std::ostream & ) >;
 struct Context;
 
+/* Available operations in SMT-LIB.
+   Size of an operation is 1 byte (hence uint8_t). */
 enum class Op : uint8_t
 {
     Invalid,
 
-    VarBool, FisrtVar = VarBool,
+    // declare a variable of type
+    VarBool, FirstVar = VarBool,
     VarI8,
     VarI16,
     VarI32,
@@ -76,7 +79,6 @@ enum class Op : uint8_t
     FirstCast,
     SExt = FirstCast,
     ZExt,
-    ZFit,
     Trunc,
     FPExt,
     FPTrunc,
@@ -88,7 +90,7 @@ enum class Op : uint8_t
 
     FirstBinary,
     FirstBvBinary = FirstBinary,
-    And = FirstBvBinary,
+    And = FirstBvBinary, // TODO why is And the first *bitvector*? (BvAnd?)
     Or,
     Xor,
     Implies,
@@ -105,9 +107,9 @@ enum class Op : uint8_t
     BvSDiv,
     BvURem,
     BvSRem,
-    BvShl,
-    BvLShr,
-    BvAShr,
+    BvShl,     // bitvector shift left
+    BvLShr,    // bitvector logical shift right -- prepend zeroes
+    BvAShr,    // bitvector arithmetical shift right -- copy highest bit
 
     // Icmp
     FirstICMP,
@@ -132,6 +134,8 @@ enum class Op : uint8_t
     FpRem,
 
     // Fcmp
+    /* Floating point compare, either of the operands can be NaN,
+     * in which case the unordered versions are used. */
     FirstFCMP,
     FpFalse = FirstFCMP, // no comparison, always returns false
     FpOEQ,   // ordered and equal
@@ -168,7 +172,7 @@ static constexpr bool is_one_of( Op op )
 
 static inline constexpr bool is_variable( Op op ) noexcept
 {
-    return Op::FisrtVar <= op && op <= Op::LastVar;
+    return Op::FirstVar <= op && op <= Op::LastVar;
 }
 
 static inline constexpr bool is_constant( Op op ) noexcept
@@ -216,6 +220,8 @@ static inline constexpr bool is_cmp( Op op ) noexcept
     return is_icmp( op ) || is_fcmp( op );
 }
 
+/* SMT-LIB names for the operations, for generating the string
+ * to input to SMT-LIB. */
 inline std::string_view name( Op op )
 {
     switch ( op )
@@ -307,13 +313,6 @@ inline std::string_view name( Op op )
     }
 }
 
-    template< typename S >
-    auto operator<<( S &stream, Op op ) -> decltype( stream << name( op ) )
-    {
-        return stream << name( op );
-    }
-
-
 struct Node
 {
     enum class Type {
@@ -373,6 +372,21 @@ inline uint8_t * bytes_end( const T & v ) noexcept
     return reinterpret_cast< uint8_t * >( const_cast< std::remove_cv_t< T * > >( &v ) ) + sizeof( T );
 }
 
+/* Holds bytecode (a sequence of bytes) in the underlying container
+ * to encode operations and their operands in Reverse Polish Notation.
+ * The bytecode is parsed by RPNView, RPN only builds/holds it.
+ * RPN represents one term.
+
+    Example:
+       term a + 7
+       RPN a 7 +
+       container._data:
+        |    bytes for var a     |   bytes for const 7   |  bytes for op +   |
+        | 2 bytes op | 1 byte id |   bitwidth  |  value  | op  |   bitwidth  |
+    When this is decoded, a helper stack is used and the bytecode is taken
+    left-to-right to evaluate operands before they are used in an operation
+     - decode and push a, decode and push 7, (+) pop 2 operands for
+ */
 template< typename Container >
 struct RPN : Container
 {
@@ -445,6 +459,7 @@ struct RPN : Container
             return fpvar< T >();
     }
 
+    // TODO operation instead of operand?
     static inline constexpr Op operand( const_iterator it ) noexcept
     {
         return static_cast< Op >( *it );
@@ -512,12 +527,14 @@ struct RPN : Container
         return extract< T >( offset );
     }
 
+    /* apply == append an operation to the underlying container */
     template< Op op >
     constexpr void apply() noexcept
     {
         this->push_back( static_cast< std::underlying_type_t< Op > >( op ) );
     }
 
+    /* extend == append a container to the underlying container */
     template< typename Bytes >
     constexpr void extend( const Bytes& bytes ) noexcept
     {
@@ -541,6 +558,8 @@ struct RPN : Container
     }
 };
 
+/* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
+ * representation of the RPN . */
 template< typename RPN >
 struct RPNView
 {
@@ -720,9 +739,10 @@ std::ostream& operator<<( std::ostream& os, const RPN< T >& rpn )
     return os;
 }
 
+/* float operations */
 enum class RoundingMode {
-    RNE,    // round nearest ties to even
-    RNA,    // round nearest ties to away
+    RNE,    // round nearest, ties to even
+    RNA,    // round nearest, ties to away (from zero)
     RTP,    // round toward positive
     RTN,    // round toward negative
     RTZ     // round toward zero
@@ -749,6 +769,7 @@ static inline std::ostream &operator<<( std::ostream &o, RoundingMode mode )
 template< size_t bitwidth >
 std::string to_fp();
 
+// to_fp (bits in exponent) (bits in significand)
 template<>
 inline std::string to_fp< 16 >() { return "(_ to_fp 5 11)"; }
 
@@ -769,15 +790,15 @@ inline std::string to_fp( size_t bw )
     }
 }
 
-
 struct Context
 {
-    std::unordered_set< std::string > def_set;
-    std::vector< std::pair< std::string, Node > > defs;
+    std::unordered_set< std::string > def_set;  // set of definitions
+    std::vector< std::pair< std::string, Node > > defs;  // names of definitions
     std::unordered_map< std::string, Node > vars;
 
     void clear() { def_set.clear(); defs.clear(); vars.clear(); }
 
+    // alias a Node with a name
     Node define( std::string name, Node def )
     {
         ASSERT( !name.empty() );
@@ -828,7 +849,7 @@ struct Context
 
     Node floatv( int bw, double val, RoundingMode mode = RoundingMode::RNE );
 
-    void print( std::ostream &o, Node n, bool exq = true )
+    void print( std::ostream &o, Node n, bool exq = true )  // exq = Existential Quantifier
     {
         auto bind = [&]( std::string type, auto &vec, auto next )
         {
@@ -839,7 +860,7 @@ struct Context
                 o << ")";
         };
 
-        auto let = [&]{ bind( "let", defs, [&]{ o << n; } ); };
+        auto let = [&]{ bind( "let", defs, [&]{ o << n; } ); }; // local variable binder
         if ( exq )
             bind( "exists", vars, let );
         else
@@ -911,7 +932,7 @@ struct Context
     template< Op op >
     Node unop( int bw, Node arg )
     {
-        static_assert( op >= Op::FirstUnary && op <= Op::LastUnary, "op is not an unary operation" );
+        static_assert( op >= Op::FirstUnary && op <= Op::LastUnary, "op is not a unary operation" );
         return expr( bw, op, { arg } );
     }
 
@@ -931,6 +952,7 @@ struct Context
         return expr( bw, op, { a, b }, RoundingMode::RNE );
     }
 
+    // extract a subrange from a bitvector
     Node extract( int highest, int lowest, Node arg )
     {
         ASSERT_LEQ( lowest, highest );
@@ -941,6 +963,7 @@ struct Context
         return Node( 1 + highest - lowest, Node::Type::Int, f );
     };
 
+    // if - then - else
     Node ite( Node cond, Node t, Node f )
     {
         ASSERT_EQ( t.bw, f.bw );
@@ -1011,7 +1034,7 @@ inline static uint64_t u64mask( int bitwidth )
 
 namespace {
 
-inline std::stringstream to_bitvecor( int bitwidth, brick::data::SmallVector< uint64_t > data ) {
+inline std::stringstream to_bitvector( int bitwidth, brick::data::SmallVector< uint64_t > data ) {
     int bw = bitwidth;
     int i = 0;
 
@@ -1063,7 +1086,7 @@ inline Node Context::floatv( int bitwidth, double val, RoundingMode mode )
 
 inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
 {
-    auto o = to_bitvecor( bitwidth, data );
+    auto o = to_bitvector( bitwidth, data );
     return Node( bitwidth, Node::Type::Int, o.str() );
 }
 
