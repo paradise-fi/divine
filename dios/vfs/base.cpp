@@ -55,17 +55,27 @@ namespace __dios::fs
         if ( !check_key( env, ".content" ) )
             return false;
 
-        std::string_view content( env->value, env->size );
-        auto ino = nodes.count( st.st_ino ) ? nodes[ st.st_ino ] : new_node( st.st_mode, false );
-        nodes[ st.st_ino ] = ino;
+        if ( name == "/" )
+        {
+            root()->set_stat( st );
+            __dios_assert( root()->mode().is_dir() );
+        }
+        else
+        {
+            std::string_view content( env->value, env->size );
+            auto ino = nodes.count( st.st_ino ) ? nodes[ st.st_ino ] : new_node( st.st_mode, false );
 
-        if ( ino->mode().is_link() )
-            ino->as< SymLink >()->target( content );
+            if ( ino->mode().is_link() )
+                ino->as< SymLink >()->target( content );
 
-        if ( ino->mode().is_file() )
-            ino->as< RegularFile >()->content( content );
+            if ( ino->mode().is_file() )
+                ino->as< RegularFile >()->content( content );
 
-        link_node( root(), name, ino );
+            ino->set_stat( st );
+            nodes[ st.st_ino ] = ino;
+            link_node( root(), name, ino );
+        }
+
         return import( env + 1, nodes );
     }
 }

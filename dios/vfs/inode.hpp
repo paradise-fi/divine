@@ -219,6 +219,15 @@ struct INode : KObject
         buf.st_blocks = ( buf.st_size + 1 ) / buf.st_blksize;
     }
 
+    template< typename stat >
+    void set_stat( const stat &s )
+    {
+        _ino  = s.st_ino;
+        _mode = s.st_mode;
+        _uid  = s.st_uid;
+        _gid  = s.st_gid;
+    }
+
 private:
     Mode _mode;
     unsigned _ino;
