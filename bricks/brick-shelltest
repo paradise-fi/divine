@@ -1078,7 +1078,7 @@ struct Main
             runnable = true;
 
         for ( auto i : options.interpreters )
-            if ( check_interpreter( i, name ) || check_interpreter( i, variant ) )
+            if ( ( variant.empty() && check_interpreter( i, name ) ) || check_interpreter( i, variant ) )
             {
                  runnable = true;
                  interpreter = options.testdir + i.second;
