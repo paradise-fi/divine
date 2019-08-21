@@ -136,16 +136,18 @@ namespace brq
     template< typename T = uint16_t, bool atomic = false >
     struct refcount_base
     {
+        static constexpr const T max = std::numeric_limits< T >::max();
+
         void ref_get()
         {
-            if ( _refcount < std::numeric_limits< T >::max() )
+            if ( _refcount < max )
                 ++ _refcount;
         }
 
         bool ref_put()
         {
             ASSERT_LEQ( 1, _refcount );
-            return _refcount < std::numeric_limits< T >::max() && --_refcount;
+            return _refcount < max && --_refcount;
         }
 
         ~refcount_base() { TRACE( this, "destroyed" ); }
