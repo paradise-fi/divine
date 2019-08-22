@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+/* Functions available to the user to define an abstract value
+   of a given type (from a given domain). */
 #ifdef __cplusplus
 extern "C" {
 #endif

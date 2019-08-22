@@ -6,6 +6,7 @@
 
 namespace __dios::rst::abstract {
 
+    /* Unit/Star domain contains a single value, everything is abstracted to a Star. */
     template< bool pointer_based >
     struct Unit : Base
     {
@@ -29,6 +30,7 @@ namespace __dios::rst::abstract {
 
         #define __cast( name ) __op( name, Argument, Bitwidth )
 
+        // TODO lift bool
         /* abstraction operations */
         __op( lift_one_i8, uint8_t )
         __op( lift_one_i16, uint16_t )

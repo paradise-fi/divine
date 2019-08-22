@@ -18,9 +18,16 @@ namespace __dios::rst::abstract {
         return std::numeric_limits< T >::digits;
     }
 
+    /* Values in the Term abstract domain are built out of Constants, Variables and
+     * operations defined on them. Integers are represented as bitvectors of fixed
+     * bitwidth, operations similarly have a bitwidth specified (of the arguments they
+     * take). See `bricks/brick-smt` for details on the types and operations.
+     *
+     * A Term is stored/encoded as bytecode in the `pointer` data member, which
+     * is a pointer to an RPN structure (RPN is also defined in `brick-smt`). */
     struct Term
     {
-        void * pointer = nullptr;
+        void * pointer = nullptr;     // RPN * ?
 
         using Op = smt::Op;
 
@@ -61,6 +68,7 @@ namespace __dios::rst::abstract {
 
         explicit operator void*() const { return pointer; }
 
+        /* Constants are identified by having negative bitwidth. */
         template< typename T >
         _LART_INLINE static RPN::Constant< T > constant( T value ) noexcept
         {
@@ -70,6 +78,7 @@ namespace __dios::rst::abstract {
         template< typename T >
         _LART_INTERFACE static Term lift_any( Abstracted< T > ) noexcept;
 
+        /* Lift a constant to a Term. */
         template< typename T >
         _LART_INLINE static Term lift( T value ) noexcept
         {
@@ -310,9 +319,10 @@ namespace __dios::rst::abstract {
         #undef __lift
     };
 
+    /* `counter` is for unique variable names */
     struct TermState
     {
-        uint16_t counter = 0;
+        uint16_t counter = 0;  // TODO: why is this thing not atomic
         Term constraints;
     };
 

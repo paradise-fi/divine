@@ -8,7 +8,13 @@
 
 namespace __dios::rst::abstract {
 
-    struct Tristate {
+    /* The Tristate abstract domain has three values: True, False and Maybe (Unknown).
+     * It is used for branching, to decide whether to take the then or else path,
+     * or whether to choose non-deterministically (in DIVINE this means split and
+     * take both paths).
+     * Every other abstract domain needs to define a `to_tristate()` method, which specifies
+     * what happens if a value of that abstract type is encountered in an if condition. */
+    struct Tristate { // TODO why does it not inherit from Base?
         enum Value { False = 0, True = 1, Unknown = 2 };
 
         Tristate( Value val ) noexcept : value( val ) { }
