@@ -25,6 +25,8 @@
 #include <string_view>
 #include <charconv>
 #include <iomanip>
+#include <tuple>
+#include <variant>
 
 #ifdef __divine__
 #include <sys/cdefs.h>
@@ -206,6 +208,12 @@ namespace brq
             }
             else
                 return *this << ( i == 0 ? "]" : " ]" );
+        }
+
+        template< typename... T >
+        auto &operator<<( const std::variant< T... > &v ) noexcept
+        {
+            return std::visit( [&]( const auto &val ) -> auto & { return *this << val; }, v );
         }
 
         template< typename A, typename B >
