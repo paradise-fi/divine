@@ -25,7 +25,7 @@ struct DataFlowAnalysis
 
     void propagate( llvm::Value * inst ) noexcept;
 
-    void propagate_in( llvm::CallInst * call ) noexcept;
+    void propagate_in( llvm::Function *fn, llvm::CallInst * call ) noexcept;
     void propagate_out( llvm::ReturnInst * ret ) noexcept;
 
     bool propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;

@@ -278,10 +278,11 @@ namespace lart::abstract {
                     [&] ( llvm::PHINode * phi )  {
                         push( [=] { propagate( phi ); } );
                     },
-                    [&] ( llvm::CallInst * call ) {
-                        auto fn = llvm::CallSite( call ).getCalledFunction();
-                        if ( !meta::function::ignore_call( fn ) )
-                            push( [=] { propagate_in( call ); } );
+                    [&] ( llvm::CallInst * call )
+                    {
+                        for ( auto &fn : resolve_call( call ) )
+                            if ( !meta::function::ignore_call( fn ) )
+                                push( [=] { propagate_in( fn, call ); } );
                     },
                     [&] ( llvm::ReturnInst * ret ) {
                         push( [=] { propagate_out( ret ); } );
@@ -301,9 +302,8 @@ namespace lart::abstract {
         }
     }
 
-    void DataFlowAnalysis::propagate_in( llvm::CallInst * call ) noexcept
+    void DataFlowAnalysis::propagate_in( llvm::Function *fn, llvm::CallInst * call ) noexcept
     {
-        auto fn = call->getCalledFunction();
         preprocess( fn );
 
         for ( const auto & arg : fn->args() ) {
