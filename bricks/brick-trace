@@ -59,14 +59,12 @@
  * model checking, only for counter-example generation -- TRACE therefore only
  * causes very modest overhead in DIVINE). */
 
+#define BRICK_LOCATION(stmt) ::brq::trace_location{ __LINE__, __FILE__, stmt }
+
 #ifdef NDEBUG
-
 #define TRACE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
-
 #else
-
 #define TRACE(...) ::brq::trace_fn( BRICK_LOCATION( "" ), __VA_ARGS__ )
-
 #endif
 
 namespace brq
