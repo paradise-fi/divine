@@ -209,7 +209,8 @@ namespace brq
         }
 
         template< typename A, typename B >
-        auto &operator<<( const std::pair< A, B > &p ) noexcept
+        auto operator<<( const std::pair< A, B > &p ) noexcept
+            -> decltype( *this << p.first << p.second )
         {
             return *this << "[ " << p.first << ", " << p.second << " ]";
         }
