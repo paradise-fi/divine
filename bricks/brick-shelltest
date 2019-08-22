@@ -641,9 +641,7 @@ void split( std::string s, O o, Transform transform = id, char sep = ',' )
         *o++ = transform( item );
 }
 
-pid_t kill_pid = 0;
-bool fatal_signal = false;
-int interrupt = 0;
+int fatal_signal = 0;
 
 }
 
@@ -794,11 +792,11 @@ struct TestCase
         /* kill off tests after a minute of silence */
         if ( !options.interactive )
             if ( end - silent_start > options.timeout ) {
-                kill( pid, SIGINT );
+                ::kill( pid, SIGINT );
                 sleep( 5 ); /* wait a bit for a reaction */
                 if ( waitpid( pid, &status, WNOHANG ) == 0 ) {
                     system( "echo t | tee /proc/sysrq-trigger > /dev/null 2>&1" );
-                    kill( -pid, SIGKILL );
+                    killpg( pid, SIGKILL );
                     waitpid( pid, &status, 0 );
                 }
                 timeout = true;
@@ -911,18 +909,10 @@ struct TestCase
                 r = Journal::WARNED;
             else
                 r = Journal::FAILED;
-        } else if ( interrupt && WIFSIGNALED( status ) && WTERMSIG( status ) == SIGINT )
+        } else if ( WIFSIGNALED( status ) && WTERMSIG( status ) == SIGINT )
             r = Journal::INTERRUPTED;
         else
             r = Journal::FAILED;
-
-        if ( interrupt )
-        {
-            interrupt = 1;
-            alarm( 1 ); /* clear the interrupt flag after a second */
-            if ( options.batch )
-                fatal_signal = true;
-        }
 
         io.close();
 
@@ -945,8 +935,9 @@ struct TestCase
     {
         slot = s;
         pipe();
-        pid = kill_pid = fork();
-        if (pid < 0) {
+        pid = fork();
+        if ( pid < 0 )
+        {
             perror("Fork failed.");
             exit(201);
         } else if (pid == 0) {
@@ -962,7 +953,15 @@ struct TestCase
             parent();
     }
 
-    void setupIO() {
+    void kill( int sig )
+    {
+        ::kill( pid, sig );
+        usleep( 100000 );
+        killpg( pid, sig );
+    }
+
+    void setupIO()
+    {
         iobuf = 0;
         if ( options.verbose || options.interactive )
             io.sinks.push_back( new FdSink( 1 ) );
@@ -1280,6 +1279,11 @@ struct Main
                 break;
         }
 
+        if ( fatal_signal )
+            for ( auto &tc : running )
+                if ( tc )
+                    tc->kill( fatal_signal );
+
         while ( running_count )
             wait();
 
@@ -1308,22 +1312,8 @@ namespace {
 
 void handler( int sig )
 {
-    if ( sig == SIGALRM )
-    {
-        if ( interrupt == 1 )
-            interrupt = 0;
-        return;
-    }
-
-    if ( kill_pid > 0 )
-        kill( -kill_pid, sig );
-    if ( sig == SIGINT && !interrupt )
-        interrupt = 2;
-    else
-    {
-        signal( sig, SIG_DFL ); /* die right away next time */
-        fatal_signal = true;
-    }
+    signal( sig, SIG_DFL ); /* die right away next time */
+    fatal_signal = sig;
 }
 
 void setup_handlers() {
