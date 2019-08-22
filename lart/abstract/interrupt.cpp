@@ -39,13 +39,15 @@ struct RecursiveCalls {
         return { recursive.begin(), recursive.end() };
     }
 
-    bool is_recursive( Function *fn ) {
+    bool is_recursive( Function *fn )
+    {
         std::set< Function* > seen;
         std::vector< Function* > stack;
 
         stack.push_back( fn );
 
-        while ( !stack.empty() ) {
+        while ( !stack.empty() )
+        {
             auto curr = stack.back();
             stack.pop_back();
 

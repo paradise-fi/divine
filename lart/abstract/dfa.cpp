@@ -269,13 +269,16 @@ namespace lart::abstract {
                     [&] ( llvm::StoreInst * store ) {
                         push( [=] { propagate( store ); } );
                     },
-                    [&] ( llvm::GetElementPtrInst * gep ) {
+                    [&] ( llvm::GetElementPtrInst * gep )
+                    {
                         push( [=] { propagate( gep ); } );
                     },
-                    [&] ( llvm::CastInst * cast ) {
+                    [&] ( llvm::CastInst * cast )
+                    {
                         push( [=] { propagate( cast ); } );
                     },
-                    [&] ( llvm::PHINode * phi )  {
+                    [&] ( llvm::PHINode * phi )
+                    {
                         push( [=] { propagate( phi ); } );
                     },
                     [&] ( llvm::CallInst * call )
@@ -306,9 +309,11 @@ namespace lart::abstract {
     {
         preprocess( fn );
 
-        for ( const auto & arg : fn->args() ) {
+        for ( const auto & arg : fn->args() )
+        {
             auto oparg = call->getArgOperand( arg.getArgNo() );
-            if ( visited( oparg ) ) {
+            if ( visited( oparg ) )
+            {
                 auto a = const_cast< llvm::Argument * >( &arg );
                 propagate( a, _intervals[ oparg ] );
             }
