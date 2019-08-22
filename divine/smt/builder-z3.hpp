@@ -33,6 +33,7 @@ struct Z3
 
     Node unary( Unary, Node );
     Node binary( Binary, Node, Node );
+    Node constant( smt::Bitwidth bw, uint64_t value );
     Node constant( Constant );
     Node constant( bool );
     Node variable( Variable );

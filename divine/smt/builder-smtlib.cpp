@@ -69,6 +69,11 @@ SMTLib2::Node SMTLib2::constant( bool v )
     return v ? _ctx.symbol( 1, Node::Type::Bool, "true" ) : _ctx.symbol( 1, Node::Type::Bool, "false" );
 }
 
+SMTLib2::Node SMTLib2::constant( smt::Bitwidth bw, uint64_t value )
+{
+    return _ctx.bitvec( bw, value );
+}
+
 SMTLib2::Node SMTLib2::unary( Unary unary, Node arg )
 {
     auto bw = unary.bw;

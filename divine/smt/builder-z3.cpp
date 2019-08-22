@@ -56,6 +56,11 @@ z3::expr Z3::constant( bool v )
     return _ctx.bool_val( v );
 }
 
+z3::expr Z3::constant( smt::Bitwidth bw, uint64_t value )
+{
+    return _ctx.bv_val( bw, value );
+}
+
 z3::expr Z3::variable( Variable var )
 {
     switch ( var.type ) {

@@ -32,6 +32,7 @@ struct SMTLib2
 
     Node unary( Unary op, Node n );
     Node binary( Binary op, Node a, Node b );
+    Node constant( smt::Bitwidth bw, uint64_t value );
     Node constant( Constant con );
     Node constant( bool );
     Node variable( Variable var );
