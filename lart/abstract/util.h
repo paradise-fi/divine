@@ -301,6 +301,19 @@ namespace lart::abstract
     using Values = std::vector< llvm::Value * >;
     using Functions = std::vector< llvm::Function * >;
 
+    Functions resolve_function( llvm::Module *m, llvm::Value *fn );
+    static inline Functions resolve_call( llvm::CallInst *call )
+    {
+        return resolve_function( call->getModule(), call->getCalledValue() );
+    }
+
+    template< typename Y >
+    void resolve_function( llvm::Module *m, llvm::Value *fn, Y yield )
+    {
+        for ( auto f : resolve_function( m, fn ) )
+            yield( f );
+    }
+
     template< typename Values >
     Types types_of( const Values & vs )
     {

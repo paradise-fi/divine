@@ -25,46 +25,35 @@ namespace lart::abstract
 
     // Tries to find precise set of possible called functions.
     // Returns true if it succeeded.
-    bool potentially_called_functions( llvm::Value * called, Functions & fns ) {
-        bool succeeded = false;
-        llvmcase( called,
-            [&] ( llvm::GlobalAlias *ga )
-            {
-                succeeded = potentially_called_functions( ga->getBaseObject(), fns );
-            },
-            [&] ( llvm::Function * fn ) {
-                fns.push_back( fn );
-                succeeded = true;
-            },
-            [&] ( llvm::PHINode * phi ) {
-                for ( auto & iv : phi->incoming_values() ) {
-                    if ( succeeded = potentially_called_functions( iv.get(), fns ); !succeeded )
-                        break;
-                }
-            },
-            [&] ( llvm::LoadInst * ) { succeeded = false; }, // TODO
-            [&] ( llvm::Argument * ) { succeeded = false; },
-            [&] ( llvm::Value * ) {
-                UNREACHABLE( "Unknown parent instruction" );
-            }
-        );
+    bool resolve_function( llvm::Value *fn, Functions &fns )
+    {
+        if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( fn ) )
+            return resolve_function( ce->stripPointerCasts(), fns );
 
-        return succeeded;
+        if ( auto ga = llvm::dyn_cast< llvm::GlobalAlias >( fn ) )
+            return resolve_function( ga->getBaseObject(), fns );
+
+        if ( auto f = llvm::dyn_cast< llvm::Function >( fn ) )
+            return fns.push_back( f ), true;
+
+        if ( auto phi = llvm::dyn_cast< llvm::PHINode >( fn ) )
+            for ( auto & iv : phi->incoming_values() )
+                if ( !resolve_function( iv.get(), fns ) )
+                    return false;
+
+        if ( llvm::isa< llvm::LoadInst >( fn ) || llvm::isa< llvm::Argument >( fn ) )
+            return false;
+
+        UNREACHABLE( "unknown parent instruction in function resolution", *fn );
     }
 
-    std::vector< llvm::Function * > get_potentially_called_functions( llvm::CallInst* call ) {
-        auto val = call->getCalledValue();
-        if ( auto fn = llvm::dyn_cast< llvm::Function >( val ) )
-            return { fn };
-        else if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val ) )
-            return { llvm::cast< llvm::Function >( ce->stripPointerCasts() ) };
-
-        auto m = call->getModule();
-        auto type = call->getCalledValue()->getType();
-
+    Functions resolve_function( llvm::Module *m, llvm::Value *fn )
+    {
         Functions fns;
-        if ( potentially_called_functions( call->getCalledValue(), fns) )
+        if ( resolve_function( fn, fns ) )
             return fns;
+
+        auto type = fn->getType();
 
         // brute force all possible functions with correct signature
         return query::query( m->functions() )
@@ -72,10 +61,6 @@ namespace lart::abstract
             .filter( [] ( auto & fn ) { return fn.hasAddressTaken(); } )
             .map( query::refToPtr )
             .freeze();
-    }
-
-    llvm::Function * get_some_called_function( llvm::CallInst * call ) {
-        return get_potentially_called_functions( call ).front();
     }
 
     bool is_terminal_intruction( llvm::Value * val ) {
