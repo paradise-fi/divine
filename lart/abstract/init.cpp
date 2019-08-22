@@ -11,6 +11,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <iostream>
 
+using namespace std::literals;
+
 namespace std
 {
     template<> struct hash< lart::abstract::InitAbstractions::Operation >
@@ -166,10 +168,10 @@ namespace lart::abstract {
 
             for ( size_t i = 0; i < ops.size(); ++i ) {
                 auto &op = ops[ i ];
-                auto name = "lart.abstract." + op.name();
+                std::string name = "lart.abstract."s + op.name().str();
                 auto fty = llvm::FunctionType::get( void_t, {}, false );
                 auto fn = llvm::cast< llvm::Function >(
-                    m.getOrInsertFunction( name.str(), fty )
+                    m.getOrInsertFunction( name, fty )
                 );
                 set_index_metadata( fn, meta::tag::operation::index, i );
             }
