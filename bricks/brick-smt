@@ -46,16 +46,10 @@
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
-
-#if _LIBCPP_VERSION >= 4000 || __GLIBCXX__ >= 20170630
 #include <string_view>
-#else
-#include <experimental/string_view>
-namespace std { using experimental::string_view; }
-#endif
 
-namespace brick {
-namespace smt {
+namespace brick::smt
+{
 
 using Format = std::function< void ( std::ostream & ) >;
 struct Context;
@@ -1068,9 +1062,11 @@ inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > 
     return Node( bitwidth, Node::Type::Int, o.str() );
 }
 
-} // namespace smt
+}
 
-namespace t_smt {
+namespace brick::t_smt
+{
+
 using namespace brick::smt;
 
 struct BVecTest
@@ -1152,7 +1148,6 @@ struct CombinationTest
 
 };
 
-} // namespace t_smt
-} // namespace brick
+}
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
