@@ -84,10 +84,10 @@ namespace lart::abstract
         OperationBuilder builder;
         for ( auto * inst : abstract ) {
             // skip abstract constructors
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
-                if ( call->getCalledFunction()->getMetadata( meta::tag::abstract ) )
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) )
+                if ( call->getCalledFunction() &&
+                     call->getCalledFunction()->getMetadata( meta::tag::abstract ) )
                     continue;
-            }
 
             // return instructions will be stashed in stashing pass
             if ( llvm::isa< llvm::ReturnInst >( inst ) )
