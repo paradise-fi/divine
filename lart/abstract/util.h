@@ -302,9 +302,10 @@ namespace lart::abstract
     using Functions = std::vector< llvm::Function * >;
 
     Functions resolve_function( llvm::Module *m, llvm::Value *fn );
-    static inline Functions resolve_call( llvm::CallInst *call )
+
+    static inline Functions resolve_call( const llvm::CallSite &call )
     {
-        return resolve_function( call->getModule(), call->getCalledValue() );
+        return resolve_function( call.getInstruction()->getModule(), call.getCalledValue() );
     }
 
     template< typename Y >
