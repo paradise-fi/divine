@@ -37,9 +37,12 @@ namespace lart::abstract
             return fns.push_back( f ), true;
 
         if ( auto phi = llvm::dyn_cast< llvm::PHINode >( fn ) )
+        {
             for ( auto & iv : phi->incoming_values() )
                 if ( !resolve_function( iv.get(), fns ) )
                     return false;
+            return true;
+        }
 
         if ( llvm::isa< llvm::LoadInst >( fn ) || llvm::isa< llvm::Argument >( fn ) )
             return false;
