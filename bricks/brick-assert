@@ -16,7 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <brick-trace>
+#pragma once
+
+#include "brick-trace"
 #include <exception>
 #include <unistd.h>
 
@@ -68,9 +70,6 @@
 #define UNREACHABLE(...)   BRICK_ASSERT( die, "", __VA_ARGS__ )
 #define UNREACHABLE_()     BRICK_ASSERT( die, "", "" )
 #define NOT_IMPLEMENTED()  BRICK_ASSERT( die, "", "missing implementation" )
-
-#ifndef BRICK_ASSERT_H
-#define BRICK_ASSERT_H
 
 #define BRICK_LOCATION(stmt) ::brq::trace_location{ __LINE__, __FILE__, stmt }
 
