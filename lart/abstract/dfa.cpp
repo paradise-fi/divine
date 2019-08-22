@@ -115,25 +115,44 @@ namespace lart::abstract {
         const MapValue &_mval;
     };
 
-    bool is_call( llvm::Value * val ) noexcept
+    using ValueSet = std::set< llvm::Value * >;
+
+    template< typename F >
+    void each_call( llvm::Function *fn, F f, llvm::Value *val = nullptr,
+                    std::shared_ptr< ValueSet > seen = std::make_shared< ValueSet >() ) noexcept
     {
-        return util::is_one_of< llvm::CallInst, llvm::InvokeInst >( val );
+        if ( !val )
+            for ( auto u : fn->users() )
+                each_call( fn, f, u, seen );
+
+        if ( val && !seen->count( val ) )
+        {
+            seen->insert( val );
+
+            if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val ) )
+                for ( auto u : ce->users() )
+                    each_call( fn, f, u, seen );
+
+            if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( val ) )
+                for ( auto callee : resolve_call( llvm::CallSite( val ) ) )
+                    if ( callee == fn )
+                    {
+                        if ( auto invoke = llvm::dyn_cast< llvm::InvokeInst >( val ) )
+                            f( invoke );
+                        if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
+                            f( call );
+                    }
+        }
     }
 
-    auto calls( llvm::Function * fn ) noexcept
-    {
-        return query::query( fn->users() )
-            .filter( [] ( auto val ) { return is_call( val ); } )
-            .freeze();
-    }
-
-    bool is_propagable( llvm::Value * val ) noexcept
+    bool is_propagable( llvm::Value *val ) noexcept
     {
         if ( llvm::isa< llvm::ConstantData >( val ) )
             return false;
-        if ( is_call( val ) )
-            return true;
+
         return util::is_one_of< llvm::Argument
+                              , llvm::CallInst
+                              , llvm::InvokeInst
                               , llvm::GlobalVariable
                               , llvm::ReturnInst
                               , llvm::GetElementPtrInst
@@ -207,18 +226,19 @@ namespace lart::abstract {
     void DataFlowAnalysis::propagate_back( llvm::Argument * arg ) noexcept
     {
         ASSERT( visited( arg ) );
-        if ( _intervals[ arg ]->is_covered() ) {
-            auto fn = arg->getParent();
 
-            ASSERT( !fn->hasAddressTaken() ); // TODO deal with indirect calls
-            for ( auto call : calls( fn ) ) {
-                auto op = call->getOperand( arg->getArgNo() );
-                if ( propagate_identity( op, arg ) ) {
-                    if ( auto opa = llvm::dyn_cast< llvm::Argument >( op ) )
-                        propagate_back( opa );
-                }
+        auto handle_call = [&]( auto call )
+        {
+            auto op = call->getOperand( arg->getArgNo() );
+            if ( propagate_identity( op, arg ) )
+            {
+                if ( auto opa = llvm::dyn_cast< llvm::Argument >( op ) )
+                    propagate_back( opa );
             }
-        }
+        };
+
+        if ( _intervals[ arg ]->is_covered() )
+            each_call( arg->getParent(), handle_call );
     }
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
@@ -325,15 +345,17 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::propagate_out( llvm::ReturnInst * ret ) noexcept
     {
-        auto fn = ret->getFunction();
-        for ( auto call : calls( fn ) ) {
+        auto handle_call = [&]( auto call )
+        {
             preprocess( util::get_function( call ) );
-            auto fn = llvm::CallSite( call ).getCalledFunction();
-            if ( !meta::function::ignore_return( fn ) ) {
-                auto val = ret->getReturnValue();
-                propagate( call, _intervals[ val ] );
-            }
-        }
+            for ( auto fn : resolve_call( call ) )
+                if ( !meta::function::ignore_return( fn ) )
+                {
+                    auto val = ret->getReturnValue();
+                    propagate( call, _intervals[ val ] );
+                }
+        };
+        each_call( ret->getFunction(), handle_call );
     }
 
     void DataFlowAnalysis::run( llvm::Module &m )
