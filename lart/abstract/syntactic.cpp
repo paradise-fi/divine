@@ -71,7 +71,8 @@ namespace lart::abstract
         }
     };
 
-    void Syntactic::run( llvm::Module &m ) {
+    void Syntactic::run( llvm::Module &m )
+    {
         PHINodePass pnp;
 
         pnp.init( m );
@@ -82,7 +83,9 @@ namespace lart::abstract
             .freeze();
 
         OperationBuilder builder;
-        for ( auto * inst : abstract ) {
+
+        for ( auto * inst : abstract )
+        {
             // skip abstract constructors
             if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) )
                 if ( call->getCalledFunction() &&
@@ -97,15 +100,15 @@ namespace lart::abstract
             if ( llvm::isa< llvm::CallInst >( inst ) )
                 continue;
 
-            if ( is_faultable( inst ) ) {
+            if ( is_faultable( inst ) )
+            {
                 // replace faultable operations by lifter handler
                 auto op = builder.construct( inst );
                 // annotate lifter as abstract return function to unstash its value
                 meta::abstract::inherit( op.inst, inst );
                 unstash( llvm::cast< llvm::CallInst >( op.inst ) );
-            } else {
+            } else
                 builder.construct( inst );
-            }
         }
 
         pnp.fill( m );
