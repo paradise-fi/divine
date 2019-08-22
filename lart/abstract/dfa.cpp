@@ -98,10 +98,13 @@ namespace lart::abstract {
             if ( meta::abstract::has( &call ) )
                 return;
 
-            auto fn = call.getCalledFunction();
-            ASSERT( fn->hasName() );
-            auto op = std::string( op_prefix ) + fn->getName().str();
-            add_meta( &call, op );
+            /* TODO what happens if there is more than one? */
+            for ( auto fn : resolve_call( &call ) )
+            {
+                ASSERT( fn->hasName() );
+                auto op = std::string( op_prefix ) + fn->getName().str();
+                add_meta( &call, op );
+            }
         }
 
         void visitPHINode( llvm::PHINode &phi )
