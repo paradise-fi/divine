@@ -173,6 +173,17 @@ namespace brq
         template< typename C >
         auto operator<<( const C &c ) noexcept
             -> std::enable_if_t< !std::is_same< typename C::value_type, char >::value,
+                                 decltype( *this << *c ) >
+        {
+            if ( c.has_value() )
+                return *this << "[ " << *c << " ]";
+            else
+                return *this << "<null>";
+        }
+
+        template< typename C >
+        auto operator<<( const C &c ) noexcept
+            -> std::enable_if_t< !std::is_same< typename C::value_type, char >::value,
                                  decltype( *this << *c.begin() << *c.end() ) >
         {
             bool first = true;
