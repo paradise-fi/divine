@@ -184,17 +184,17 @@ namespace brq
         }
 
         template< int i = 0, typename... T >
-        auto operator<<( const std::tuple< T... > &t ) noexcept
+        auto &operator<<( const std::tuple< T... > &t ) noexcept
         {
             if ( i == 0 )
                 *this << "[";
             if constexpr ( i < sizeof...( T ) )
             {
                 *this << ( i > 0 ? ", " : " " ) << std::get< i >( t );
-                this->operator<<< i + 1 >( t );
+                return this->operator<<< i + 1 >( t );
             }
             else
-                *this << ( i == 0 ? "]" : " ]" );
+                return *this << ( i == 0 ? "]" : " ]" );
         }
 
         string_builder &operator<<( decltype( std::hex ) manip ) noexcept
