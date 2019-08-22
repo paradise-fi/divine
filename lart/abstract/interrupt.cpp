@@ -57,18 +57,18 @@ struct RecursiveCalls {
                 .filter( query::notnull )
                 .freeze();
 
-            for ( auto call : calls ) {
-                auto cs = llvm::CallSite( call );
-                ASSERT( !cs.isIndirectCall() );
-                auto called_fn = call->getCalledFunction();
-                if ( called_fn == fn )
-                    return true;
-                if ( !seen.count( called_fn ) ) {
-                    seen.insert( called_fn );
-                    if ( meta::abstract::roots( called_fn ) )
-                        stack.push_back( called_fn );
+            for ( auto call : calls )
+                for ( auto called_fn : resolve_call( call ) )
+                {
+                    if ( called_fn == fn )
+                        return true;
+                    if ( !seen.count( called_fn ) )
+                    {
+                        seen.insert( called_fn );
+                        if ( meta::abstract::roots( called_fn ) )
+                            stack.push_back( called_fn );
+                    }
                 }
-            }
         }
 
         return false;
