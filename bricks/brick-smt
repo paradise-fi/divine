@@ -283,26 +283,22 @@ inline std::string_view name( Op op )
         case Op::BvSGE: return "bvsge";
         case Op::BvSGT: return "bvsgt";
 
-        case Op::FpFalse:
-            UNREACHABLE_F( "Unsupported operation" );
+        case Op::FpFalse: return "fp.false";
+        case Op::FpTrue: return "fp.true";
         case Op::FpOEQ: return "fp.eq";
         case Op::FpOGT: return "fp.gt";
         case Op::FpOGE: return "fp.geq";
         case Op::FpOLT: return "fp.lt";
         case Op::FpOLE: return "fp.leq";
         case Op::FpONE: return "distinct"; // TODO neq
-        case Op::FpORD:
-            UNREACHABLE_F( "Unsupported operation" );
+        case Op::FpORD: return "fp.ord";
         case Op::FpUEQ: return "fp.eq";
         case Op::FpUGT: return "fp.gt";
         case Op::FpUGE: return "fp.geq";
         case Op::FpULT: return "fp.lt";
         case Op::FpULE: return "fp.leq";
         case Op::FpUNE: return "distinct"; // TODO neq
-        case Op::FpUNO:
-            UNREACHABLE_F( "Unsupported operation" );
-        case Op::FpTrue:
-            UNREACHABLE_F( "Unsupported operation" );
+        case Op::FpUNO: return "fp.uno";
 
         case Op::Extract: return "extract";
         default: UNREACHABLE_F( "unknown operation %d", int( op ) );
