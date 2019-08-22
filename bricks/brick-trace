@@ -208,6 +208,12 @@ namespace brq
                 return *this << ( i == 0 ? "]" : " ]" );
         }
 
+        template< typename A, typename B >
+        auto &operator<<( const std::pair< A, B > &p ) noexcept
+        {
+            return *this << "[ " << p.first << ", " << p.second << " ]";
+        }
+
         string_builder &operator<<( decltype( std::hex ) manip ) noexcept
         {
             if ( manip == std::hex )
