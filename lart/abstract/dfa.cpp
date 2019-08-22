@@ -160,7 +160,6 @@ namespace lart::abstract {
                               , llvm::UnaryInstruction
                               , llvm::BinaryOperator
                               , llvm::PHINode >( val );
-
     }
 
     bool DataFlowAnalysis::visited( llvm::Value * val ) const noexcept
@@ -223,7 +222,7 @@ namespace lart::abstract {
         return forward || backward;
     }
 
-    void DataFlowAnalysis::propagate_back( llvm::Argument * arg ) noexcept
+    void DataFlowAnalysis::propagate_back( llvm::Argument *arg ) noexcept
     {
         ASSERT( visited( arg ) );
 
@@ -243,39 +242,42 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
-        auto propagate_back_task = [&] ( llvm::Value * v ) {
-            if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
+        auto propagate_back_task = [&] ( llvm::Value * v )
+        {
+            if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
                 push( [=] { propagate_back( arg ); } );
-            }
         };
 
         llvmcase( val,
-            [&] ( llvm::StoreInst * store ) {
+            [&] ( llvm::StoreInst * store )
+            {
                 auto op = store->getValueOperand();
                 auto ptr = store->getPointerOperand();
                 if ( visited( op ) && propagate( ptr, _intervals[ op ]->cover() ) )
                     propagate_back_task( ptr );
                 // TODO store to abstract value?
             },
-            [&] ( llvm::LoadInst * load ) {
+            [&] ( llvm::LoadInst * load )
+            {
                 auto ptr = load->getPointerOperand();
                 if ( propagate_wrap( load, ptr ) )
                     propagate_back_task( ptr );
             },
-            [&] ( llvm::CastInst * cast ) {
+            [&] ( llvm::CastInst * cast )
+            {
                 auto ptr = cast->getOperand( 0 ); // TODO what if is not a pointer? (core)
                 if ( propagate_identity( cast, ptr ) )
                     propagate_back_task( ptr );
             },
-            [&] ( llvm::PHINode * phi ) {
-                for ( auto & val : phi->incoming_values() ) {
+            [&] ( llvm::PHINode * phi )
+            {
+                for ( auto & val : phi->incoming_values() )
                     if ( propagate_identity( phi, val.get() ) )
                         if ( auto arg = llvm::dyn_cast< llvm::Argument >( val.get() ) )
                             push( [=] { propagate_back( arg ); } );
-
-                }
             },
-            [&] ( llvm::GetElementPtrInst * gep ) {
+            [&] ( llvm::GetElementPtrInst * gep )
+            {
                 auto ptr = gep->getPointerOperand();
                 if ( propagate_wrap( gep, ptr ) )
                     propagate_back_task( ptr );
@@ -310,16 +312,20 @@ namespace lart::abstract {
                             if ( !meta::function::ignore_call( fn ) )
                                 push( [=] { propagate_in( fn, call ); } );
                     },
-                    [&] ( llvm::ReturnInst * ret ) {
+                    [&] ( llvm::ReturnInst * ret )
+                    {
                         push( [=] { propagate_out( ret ); } );
                     },
-                    [&] ( llvm::SelectInst * ) {
+                    [&] ( llvm::SelectInst * )
+                    {
                         UNREACHABLE( "unsupported propagation" );
                     },
-                    [&] ( llvm::SwitchInst * ) {
+                    [&] ( llvm::SwitchInst * )
+                    {
                         UNREACHABLE( "unsupported propagation" );
                     },
-                    [&] ( llvm::Value * ) {
+                    [&] ( llvm::Value * )
+                    {
                         ASSERT( visited( val ) );
                         propagate( u, _intervals[ val ] );
                     }
@@ -398,21 +404,18 @@ namespace lart::abstract {
             return;
 
         AddAbstractMetaVisitor visitor( mval );
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) ) {
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) )
             visitor.visit( inst );
-        }
-        else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
+        else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
+        {
             // TODO set correct domain kind?
-            if ( _intervals[ arg ]->is_core() ) {
+            if ( _intervals[ arg ]->is_core() )
                 meta::argument::set( arg, to_string( DomainKind::scalar ) );
-            }
         }
 
-        for ( auto u : v->users() ) {
-            if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) ) {
+        for ( auto u : v->users() )
+            if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
                 visitor.visit( ret );
-            }
-        }
     }
 
 } // namespace lart::abstract
