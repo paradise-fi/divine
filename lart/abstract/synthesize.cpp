@@ -391,7 +391,10 @@ namespace lart::abstract
         {
             auto fty = llvm::FunctionType::get( i8PTy(), { val->getType() }, false );
             auto name = "lart.abstract.lift_one_" + type_name( val );
-            auto op = llvm_index( module->getFunction( name ) );
+            auto impl = module->getFunction( name );
+            if ( !impl )
+                UNREACHABLE( "missing domain function", name );
+            auto op = llvm_index( impl );
             auto ptr = get_function_from_domain( irb, op, dom );
             auto fn = irb.CreateBitCast( ptr, fty->getPointerTo() );
 
