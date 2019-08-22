@@ -307,6 +307,13 @@ inline std::string_view name( Op op )
     }
 }
 
+    template< typename S >
+    auto operator<<( S &stream, Op op ) -> decltype( stream << name( op ) )
+    {
+        return stream << name( op );
+    }
+
+
 struct Node
 {
     enum class Type {
@@ -547,12 +554,12 @@ struct RPNView
         Node::Type type;
         Bitwidth bitwidth;
 
-        friend std::ostream& operator<<( std::ostream& os, const Variable& var )
+        template< typename stream >
+        friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
         {
-            os << "[var " << std::to_string( var.id )
-               << " : "   << to_string( var.type )
-               << " "     << std::to_string( var.bitwidth ) << "]";
-            return os;
+            return os << "[var " << var.id
+                      << " : "   << to_string( var.type )
+                      << " "     << var.bitwidth << "]";
         }
     };
 
@@ -562,12 +569,12 @@ struct RPNView
         Node::Type type;
         Bitwidth bitwidth;
 
-        friend std::ostream& operator<<( std::ostream& os, const Constant& con )
+        template< typename stream >
+        friend auto operator<<( stream &os, const Constant &con ) -> decltype( os << "" )
         {
-            os << "[const " << std::to_string( con.value )
-               << " : "     <<  to_string( con.type )
-               << " "       << std::to_string( con.bitwidth ) << "]";
-            return os;
+            return os << "[const " << con.value
+                      << " : "     << to_string( con.type )
+                      << " "       << con.bitwidth << "]";
         }
     };
 
@@ -575,10 +582,10 @@ struct RPNView
     {
         Op op;
 
-        friend std::ostream& operator<<( std::ostream& os, const Operation& operation )
+        template< typename stream >
+        friend auto operator<<( stream &os, const Operation &operation ) -> decltype( os << "" )
         {
-            os << name( operation.op );
-            return os;
+            return os << name( operation.op );
         }
     };
 
@@ -587,10 +594,10 @@ struct RPNView
         Op op;
         Bitwidth bitwidth;
 
-        friend std::ostream& operator<<( std::ostream& os, const CastOp& cast )
+        template< typename stream >
+        friend auto operator<<( stream &os, const CastOp &cast ) -> decltype( os << "" )
         {
-            os << "cast " << name( cast.op ) << " to " << std::to_string( cast.bitwidth ) ;
-            return os;
+            return os << "cast " << name( cast.op ) << " to " << std::to_string( cast.bitwidth ) ;
         }
     };
 
