@@ -24,6 +24,9 @@ namespace divine::vm
 {
     using brick::tuple::pass;
 
+    /* A helper struct for manipulating Values.
+     * get() - retrieve a value from a slot, a heap pointer or by index of
+           a slot in an instruction */
     template< typename Ctx, typename _T, typename... Args >
     struct V
     {

@@ -146,13 +146,11 @@ void Eval< Ctx >::each_phi( CodePointer first, F f )
     }
 }
 
-/*
- * Two-phase PHI handler. We do this because all of the PHI nodes must be
+/* Two-phase PHI handler. We do this because all of the PHI nodes must be
  * executed atomically, reading their inputs before any of the results are
  * updated.  Not doing this can cause problems if the PHI nodes depend on
  * other PHI nodes for their inputs.  If the input PHI node is updated
- * before it is read, incorrect results can happen.
- */
+ * before it is read, incorrect results can happen. */
 
 template< typename Ctx >
 void Eval< Ctx >::switchBB( CodePointer target )

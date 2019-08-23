@@ -30,6 +30,8 @@
 namespace divine::vm::value
 {
 
+/* A Value type can be accessed as Raw = raw bits or Cooked = as the given type. */
+
 namespace bitlevel = brick::bitlevel;
 using bitlevel::bitcast;
 
@@ -123,6 +125,8 @@ struct Int : Base
     int objid_offset() { return _meta.pointer; }
     void objid_offset( int v ) { _meta.pointer = v; }
 
+    /* Check that objid stays the same after pointer manipulation,
+     * otherwise the result is not a pointer . */
     void checkptr( Int o, Int &result, int shift = 0 )
     {
         if constexpr ( _width < _VM_PB_Obj )
@@ -345,6 +349,8 @@ struct Int : Base
     }
 };
 
+/* Dynamic Integers, LLVM allows values with other than 2^n bitwidth, e.g. i10.
+ * We need to have a way of dealing with these. */
 template< bool s >
 struct DynInt : Int< 128, s, true >
 {

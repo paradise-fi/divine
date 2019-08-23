@@ -45,6 +45,11 @@ namespace divine::vm
         local_jump( operandCk< PointerV >( 0 ) );
     }
 
+    /* Function call - the `call` and `invoke` instructions. `invoke` transfers
+     * control to a specified function and hence requires two extra operands -
+     * where to continue in case of an exception (to a landing pad) and for normal
+     * program continuation. The `invoke` argument distinguishes between the two
+     * instructions. */
     template< typename Ctx >
     void Eval< Ctx >::implement_call( bool invoke )
     {
