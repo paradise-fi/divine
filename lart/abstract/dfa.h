@@ -37,7 +37,6 @@ struct DataFlowAnalysis
         _tasks.emplace_back( std::move( t ) );
     }
 
-
     struct LatticeValue
     {
 
@@ -72,7 +71,6 @@ struct DataFlowAnalysis
 
         Value value = Bottom{};
     };
-
 
     template< typename Core >
     struct Onion : std::enable_shared_from_this< Onion< Core > >

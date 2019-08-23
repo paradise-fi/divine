@@ -162,11 +162,6 @@ namespace lart::abstract {
                               , llvm::PHINode >( val );
     }
 
-    bool DataFlowAnalysis::visited( llvm::Value * val ) const noexcept
-    {
-        return _intervals.has( val );
-    }
-
     void DataFlowAnalysis::preprocess( llvm::Function * fn ) noexcept
     {
         if ( !tagFunctionWithMetadata( *fn, "lart.abstract.preprocessed" ) )
@@ -181,15 +176,13 @@ namespace lart::abstract {
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const MapValuePtr& from ) noexcept
     {
-        auto task = [=] { propagate( to ); };
-        if ( !visited( to ) ) {
-            _intervals[ to ] = from;
-            push( task );
-            return true; // change
-        } else if ( interval( to )->join( from ) ) {
-            // if join introduces any new information
-            push( task );
-            return true; // change
+        auto old = interval( to );
+
+        if ( interval( to )->join( from ) )
+        {
+            TRACE( "pushing dirty value", *to, "previously", old, "now", interval( to ) );
+            push( [=] { propagate( to ); } );
+            return true;
         }
 
         return false; // no change
@@ -197,28 +190,15 @@ namespace lart::abstract {
 
     bool DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        bool forward = [&] {
-            return visited( rhs ) ? propagate( lhs, _intervals[ rhs ]->peel() ) : false;
-        } ();
-
-        bool backward = [&] {
-            return visited( lhs ) ? propagate( rhs, _intervals[ lhs ]->cover() ) : false;
-        } ();
-
+        bool forward  = propagate( lhs, _intervals[ rhs ]->peel() );
+        bool backward = propagate( rhs, _intervals[ lhs ]->cover() );
         return forward || backward;
-
     }
 
     bool DataFlowAnalysis::propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        bool forward = [&] {
-            return visited( rhs ) ? propagate( lhs, _intervals[ rhs ] ) : false;
-        } ();
-
-        bool backward = [&] {
-            return visited( lhs ) ? propagate( rhs, _intervals[ lhs ] ) : false;
-        } ();
-
+        bool forward  = propagate( lhs, _intervals[ rhs ] );
+        bool backward = propagate( rhs, _intervals[ lhs ] );
         return forward || backward;
     }
 
