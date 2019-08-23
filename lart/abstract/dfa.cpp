@@ -20,27 +20,25 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
 
-namespace lart::abstract {
-
-    using MapValue = DataFlowAnalysis::MapValuePtr;
-
+namespace lart::abstract
+{
     struct AddAbstractMetaVisitor : llvm::InstVisitor< AddAbstractMetaVisitor >
     {
-        AddAbstractMetaVisitor( const MapValue &mval )
-            : _mval( mval )
-        {}
-
+        type_onion _type;
         static constexpr char op_prefix[] = "lart.abstract.op_";
 
-        void add_meta( llvm::Instruction *val, const std::string& operation )
+        AddAbstractMetaVisitor( const type_onion &t )
+            : _type( t )
+        {}
+
+        void add_meta( llvm::Instruction *val, const std::string &operation )
         {
-            // TODO set correct domain kind?
-            meta::abstract::set( val, to_string( DomainKind::scalar ) );
+            meta::abstract::set( val, to_string( DomainKind::scalar ) ); /* FIXME */
 
             auto m = val->getModule();
-            if ( auto op = m->getFunction( operation ) ) {
+            if ( auto op = m->getFunction( operation ) )
+            {
                 auto index = op->getMetadata( meta::tag::operation::index );
-
                 val->setMetadata( meta::tag::operation::index, index );
             }
         }
@@ -111,8 +109,6 @@ namespace lart::abstract {
         {
             meta::set( &phi, meta::tag::operation::phi );
         }
-
-        const MapValue &_mval;
     };
 
     using ValueSet = std::set< llvm::Value * >;
@@ -174,13 +170,14 @@ namespace lart::abstract {
         lsi.get()->runOnFunction( *fn );
     }
 
-    bool DataFlowAnalysis::propagate( llvm::Value * to, const MapValuePtr& from ) noexcept
+    bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept
     {
-        auto old = interval( to );
+        auto old = _types.get( to );
 
-        if ( interval( to )->join( from ) )
+        if ( old != from )
         {
-            TRACE( "pushing dirty value", *to, "previously", old, "now", interval( to ) );
+            _types.set( to, join( old, from ) );
+            TRACE( "pushing dirty value", *to, "previously", old, "now", _types.get( to ) );
             push( [=] { propagate( to ); } );
             return true;
         }
@@ -190,22 +187,20 @@ namespace lart::abstract {
 
     bool DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        bool forward  = propagate( lhs, _intervals[ rhs ]->peel() );
-        bool backward = propagate( rhs, _intervals[ lhs ]->cover() );
+        bool forward  = propagate( lhs, _types.get( rhs ).peel() );
+        bool backward = propagate( rhs, _types.get( lhs ).wrap() );
         return forward || backward;
     }
 
     bool DataFlowAnalysis::propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        bool forward  = propagate( lhs, _intervals[ rhs ] );
-        bool backward = propagate( rhs, _intervals[ lhs ] );
+        bool forward  = propagate( lhs, _types.get( rhs ) );
+        bool backward = propagate( rhs, _types.get( lhs ) );
         return forward || backward;
     }
 
     void DataFlowAnalysis::propagate_back( llvm::Argument *arg ) noexcept
     {
-        ASSERT( visited( arg ) );
-
         auto handle_call = [&]( auto call )
         {
             auto op = call->getOperand( arg->getArgNo() );
@@ -216,7 +211,7 @@ namespace lart::abstract {
             }
         };
 
-        if ( _intervals[ arg ]->is_covered() )
+        if ( _types.get( arg ).maybe_pointer() )
             each_call( arg->getParent(), handle_call );
     }
 
@@ -233,7 +228,7 @@ namespace lart::abstract {
             {
                 auto op = store->getValueOperand();
                 auto ptr = store->getPointerOperand();
-                if ( visited( op ) && propagate( ptr, _intervals[ op ]->cover() ) )
+                if ( propagate( ptr, _types.get( op ).wrap() ) )
                     propagate_back_task( ptr );
                 // TODO store to abstract value?
             },
@@ -306,8 +301,7 @@ namespace lart::abstract {
                     },
                     [&] ( llvm::Value * )
                     {
-                        ASSERT( visited( val ) );
-                        propagate( u, _intervals[ val ] );
+                        propagate( u, _types.get( val ) );
                     }
                 );
             }
@@ -321,11 +315,9 @@ namespace lart::abstract {
         for ( const auto & arg : fn->args() )
         {
             auto oparg = call->getArgOperand( arg.getArgNo() );
-            if ( visited( oparg ) )
-            {
-                auto a = const_cast< llvm::Argument * >( &arg );
-                propagate( a, _intervals[ oparg ] );
-            }
+
+            if ( auto t = _types.get( oparg ); t.maybe_abstract() )
+                propagate( const_cast< llvm::Argument * >( &arg ), t );
         }
     }
 
@@ -338,7 +330,7 @@ namespace lart::abstract {
                 if ( !meta::function::ignore_return( fn ) )
                 {
                     auto val = ret->getReturnValue();
-                    propagate( call, _intervals[ val ] );
+                    propagate( call, _types.get( val ) );
                 }
         };
         each_call( ret->getFunction(), handle_call );
@@ -346,51 +338,49 @@ namespace lart::abstract {
 
     void DataFlowAnalysis::run( llvm::Module &m )
     {
-        for ( auto * val : meta::enumerate( m ) ) {
+        for ( auto * val : meta::enumerate( m ) )
+        {
             preprocess( util::get_function( val ) );
-            interval( val )->to_top();
+            _types.set( val, _types.get( val ).make_abstract() );
             push( [=] { propagate( val ); } );
         }
 
-        while ( !_tasks.empty() ) {
+        while ( !_tasks.empty() )
+        {
             _tasks.front()();
             _tasks.pop_front();
         }
 
-        for ( const auto & [ val, in ] : _intervals ) {
-            // TODO decide what to annotate
-            if ( in->is_core() )
-                add_meta( val, in );
-        }
+        for ( const auto & [ val, t ] : _types )
+            if ( t.maybe_abstract() )
+                add_meta( val, t );
 
         auto stores = query::query( m ).flatten().flatten()
             .map( query::llvmdyncast< llvm::StoreInst > )
             .filter( query::notnull )
             .freeze();
 
-        for ( auto store : stores ) {
+        for ( auto store : stores ) /* TODO redundant? */
+        {
             auto val = store->getValueOperand();
-            if ( _intervals.has( val ) ) {
-                auto& mval =_intervals[ val ];
-                if ( mval->is_core() )
-                    add_meta( store, mval );
-            }
+            if ( auto t = _types.get( val ); t.maybe_abstract() )
+                add_meta( store, t );
         }
     }
 
-    void DataFlowAnalysis::add_meta( llvm::Value * v, const MapValuePtr& mval ) noexcept
+    void DataFlowAnalysis::add_meta( llvm::Value * v, const type_onion &t ) noexcept
     {
         if ( llvm::isa< llvm::Constant >( v ) )
             return;
 
-        AddAbstractMetaVisitor visitor( mval );
+        AddAbstractMetaVisitor visitor( t );
+
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) )
             visitor.visit( inst );
         else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
         {
-            // TODO set correct domain kind?
-            if ( _intervals[ arg ]->is_core() )
-                meta::argument::set( arg, to_string( DomainKind::scalar ) );
+            if ( _types.get( arg ).maybe_abstract() )
+                meta::argument::set( arg, to_string( DomainKind::scalar ) ); /* FIXME */
         }
 
         for ( auto u : v->users() )

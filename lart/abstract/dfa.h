@@ -12,8 +12,151 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-types>
 #include <lart/abstract/domain.h>
 
-namespace lart::abstract {
+namespace lart::abstract
+{
+    struct tristate : brick::types::Eq
+    {
+        enum { no, yes, maybe } value;
+        tristate( bool v ) : value( v ? yes : no ) {}
+        tristate( decltype( value ) v ) : value( v ) {}
+        bool operator==( const tristate &o ) const { return value == o.value; }
+    };
 
+    tristate join( tristate a, tristate b )
+    {
+        if ( a.value == b.value )
+            return a;
+        else
+            return tristate( tristate::maybe );
+    }
+
+    struct type_layer : brick::types::Eq
+    {
+        tristate is_pointer;
+        tristate is_abstract;
+        type_layer( bool p, bool a ) : is_pointer( p ), is_abstract( a ) {}
+        type_layer( tristate p, tristate a ) : is_pointer( p ), is_abstract( a ) {}
+        bool operator==( const type_layer &o ) const
+        {
+            return is_pointer == o.is_pointer && is_abstract == o.is_abstract;
+        }
+    };
+
+    type_layer join( type_layer a, type_layer b )
+    {
+        return { join( a.is_pointer, b.is_pointer ),
+                 join( a.is_abstract, b.is_abstract ) };
+    }
+
+    struct type_onion : brick::types::Eq
+    {
+        std::vector< type_layer > layers;
+
+        type_onion( int ptr_nest )
+            : layers( ptr_nest + 1, type_layer( true, false ) )
+        {
+            layers.front() = type_layer( false, false );
+        }
+
+        type_onion( decltype( layers ) l ) : layers( l ) {}
+        type_onion( std::initializer_list< type_layer > il ) : layers( il ) {}
+
+        bool operator==( const type_onion &o ) const
+        {
+            return layers == o.layers;
+        }
+
+        type_onion make_abstract() const
+        {
+            auto rv = *this;
+            rv.layers.back().is_abstract = true;
+            return rv;
+        }
+
+        bool maybe_abstract() const
+        {
+            tristate r( false );
+            for ( auto a : layers )
+                r = join( r, a.is_abstract );
+            return r.value != tristate::no;
+        }
+
+        bool maybe_pointer() const
+        {
+            tristate r( false );
+            for ( auto a : layers )
+                r = join( r, a.is_pointer );
+            return r.value != tristate::no;
+        }
+
+        type_onion wrap() const
+        {
+            auto rv = *this;
+            rv.layers.emplace_back( true, false );
+            return rv;
+        }
+
+        type_onion peel() const
+        {
+            auto rv = *this;
+            ASSERT_LT( 1, layers.size() );
+            rv.layers.pop_back();
+            return rv;
+        }
+    };
+
+    type_onion join( const type_onion &ao, const type_onion &bo )
+    {
+        auto a = ao.layers;
+        auto b = bo.layers;
+
+        if ( a.size() > b.size() )
+            std::swap( a, b );
+
+        if ( a.size() < b.size() )
+        {
+            for ( size_t i = 0; i < b.size() - a.size(); ++i )
+                a.front() = join( a.front(), b[ i ] );
+            a.front().is_pointer = tristate::maybe;
+        }
+
+        for ( size_t i = 0; i < a.size(); ++i )
+            a[ i ] = join( a[ i ], b[ i + b.size() - a.size() ] );
+
+        return a;
+    }
+
+    struct type_map
+    {
+        int pointer_nesting( llvm::Type *t )
+        {
+            int rv = 0;
+            while ( t->isPointerTy() )
+                ++ rv, t = t->getPointerElementType();
+            return rv;
+        }
+
+        type_onion get( llvm::Value *v )
+        {
+            if ( _map.count( v ) )
+                return _map.at( v );
+            else
+                return type_onion( pointer_nesting( v->getType() ) );
+        }
+
+        void set( llvm::Value *v, type_onion o )
+        {
+            _map.emplace( v, o );
+        }
+
+        decltype(auto) begin() { return _map.begin(); }
+        decltype(auto) begin() const { return _map.begin(); }
+
+        decltype(auto) end() { return _map.end(); }
+        decltype(auto) end() const { return _map.end(); }
+
+        std::map< llvm::Value *, type_onion > _map;
+    };
 
 struct DataFlowAnalysis
 {
@@ -33,165 +176,15 @@ struct DataFlowAnalysis
 
     void propagate_back( llvm::Argument * arg ) noexcept;
 
-    inline void push( Task && t ) noexcept {
+    inline void push( Task && t ) noexcept
+    {
         _tasks.emplace_back( std::move( t ) );
     }
 
-    struct LatticeValue
-    {
+    bool propagate( llvm::Value *to, const type_onion& from ) noexcept;
+    void add_meta( llvm::Value *value, const type_onion& t ) noexcept;
 
-        struct Top { };
-        struct Bottom { };
-
-        using Value = std::variant< Bottom, Top >;
-
-        void to_bottom() noexcept { value = { Bottom{} }; }
-        void to_top() noexcept { value = { Top{} }; }
-
-        static inline bool is_bottom( const Value &v ) noexcept
-        {
-            return std::holds_alternative< Bottom >( v );
-        }
-
-        static inline bool is_top( const Value &v ) noexcept
-        {
-            return std::holds_alternative< Top >( v );
-        }
-
-        bool join( const LatticeValue &other ) noexcept
-        {
-            if ( is_top( value ) )
-                return false;
-            if ( is_top( other.value ) ) {
-                to_top();
-                return true; // change of value
-            }
-            return false;
-        }
-
-        Value value = Bottom{};
-    };
-
-    template< typename Core >
-    struct Onion : std::enable_shared_from_this< Onion< Core > >
-    {
-        using Layer = std::shared_ptr< Onion >;
-        using Ptr = std::shared_ptr< Onion >;
-        using ConstPtr = std::shared_ptr< const Onion >;
-
-        Ptr getptr()
-        {
-            return this->shared_from_this();
-        }
-
-        ConstPtr getptr() const
-        {
-            return this->shared_from_this();
-        }
-
-        bool is_covered() const
-        {
-            return std::holds_alternative< Layer >( layer );
-        }
-
-        bool is_core() const
-        {
-            return std::holds_alternative< Core >( layer );
-        }
-
-        void to_bottom()
-        {
-            ASSERT( is_core() );
-            std::get< Core >( layer ).to_bottom();
-        }
-
-        void to_top()
-        {
-            ASSERT( is_core() );
-            std::get< Core >( layer ).to_top();
-        }
-
-        bool join( const Ptr &other )
-        {
-            // TODO peel to the same level
-            return core().join( other->core() );
-        }
-
-        Ptr peel() const noexcept
-        {
-            ASSERT( is_covered() );
-            return (*std::get< Layer >( layer )).getptr();
-        }
-
-        Ptr cover() noexcept
-        {
-            auto on = std::make_shared< Onion >();
-            on->layer = getptr();
-            return on;
-        }
-
-        Core& core() noexcept
-        {
-            auto ptr = getptr();
-            while ( !ptr->is_core() )
-                ptr = ptr->peel();
-            return std::get< Core >( ptr->layer );
-        }
-
-        const Core& core() const noexcept
-        {
-            auto ptr = getptr();
-            while ( !ptr->is_core() )
-                ptr = ptr->peel();
-            return std::get< Core >( ptr->layer );
-        }
-
-        std::variant< Layer, Core > layer = Core{};
-    };
-
-    template< typename I >
-    struct IntervalMap
-    {
-        using Ptr = std::shared_ptr< I >;
-
-        bool has( llvm::Value * val ) const noexcept
-        {
-            return _intervals.count( val );
-        }
-
-        Ptr& operator[]( llvm::Value * val ) noexcept
-        {
-            if ( !has( val ) ) {
-                _intervals[ val ] = std::make_shared< I >();
-                _intervals[ val ]->to_bottom();
-            }
-            return _intervals[ val ];
-        }
-
-        decltype(auto) begin() { return _intervals.begin(); }
-        decltype(auto) begin() const { return _intervals.begin(); }
-
-        decltype(auto) end() { return _intervals.end(); }
-        decltype(auto) end() const { return _intervals.end(); }
-
-        std::map< llvm::Value *, Ptr > _intervals;
-    };
-
-    inline auto& interval( llvm::Value * val ) noexcept
-    {
-        return _intervals[ val ];
-    }
-
-    using MapValue = Onion< LatticeValue >;
-    using MapValuePtr = IntervalMap< MapValue >::Ptr;
-
-    bool visited( llvm::Value * val ) const noexcept;
-    bool propagate( llvm::Value * to, const MapValuePtr& from ) noexcept;
-
-    IntervalMap< MapValue > _intervals;
-
-    void add_meta( llvm::Value *value, const MapValuePtr& mval ) noexcept;
-
+    type_map _types;
     std::deque< Task > _tasks;
 };
 
