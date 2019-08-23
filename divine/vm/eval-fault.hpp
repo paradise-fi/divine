@@ -17,13 +17,14 @@
  */
 
 #pragma once
-#include <sstream>
+
 #include <divine/vm/types.hpp>
+#include <brick-trace>
 
 namespace divine::vm
 {
     template< typename Context >
-    struct FaultStream : std::stringstream
+    struct FaultStream : brq::string_builder
     {
         Context *_ctx;
         Fault _fault;
@@ -48,7 +49,7 @@ namespace divine::vm
             if ( !_ctx )
                 return;
             if ( _trace )
-                _ctx->trace( TraceFault{ str() } );
+                _ctx->trace( TraceFault{ { buffer(), size() } } );
             if ( _double )
             {
                 if ( _trace )
