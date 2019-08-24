@@ -467,7 +467,7 @@ namespace lart::abstract {
     };
 
 
-    Taint Tainting::dispach( const Operation &op )
+    Taint Tainting::dispatch( const Operation &op )
     {
         using Type = Operation::Type;
 
@@ -497,7 +497,7 @@ namespace lart::abstract {
             // DISPATCH( Memmove )
             // DISPATCH( Memset )
             default:
-                UNREACHABLE( "Unsupported taint type" );
+                UNREACHABLE( "unsupported taint type", int( op.type ) );
         }
         UNREACHABLE( "not implemented" );
 
@@ -516,7 +516,8 @@ namespace lart::abstract {
         });
 
         for ( const auto & op : ops )
-            dispach( op );
+            if ( op.type != Operation::Type::PHI )
+                dispatch( op );
 
         for ( const auto & op : ops ) {
             auto i = op.inst;

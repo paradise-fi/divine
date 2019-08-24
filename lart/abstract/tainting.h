@@ -25,7 +25,7 @@ namespace lart::abstract {
 
     struct Tainting {
         void run( llvm::Module & m );
-        Taint dispach( const Operation & ph );
+        Taint dispatch( const Operation & ph );
 
         Matched matched;
     };
