@@ -47,21 +47,27 @@
 
 #ifdef NDEBUG
 
-#define ASSERT(...)       static_cast< decltype(__VA_ARGS__, void(0)) >(0)
-#define ASSERT_PRED(p, x) static_cast< decltype(p, x, void(0)) >(0)
-#define ASSERT_EQ(x, y)   static_cast< decltype(x, y, void(0)) >(0)
-#define ASSERT_LEQ(x, y)  static_cast< decltype(x, y, void(0)) >(0)
-#define ASSERT_LT(x, y)   static_cast< decltype(x, y, void(0)) >(0)
-#define ASSERT_NEQ(x, y)  static_cast< decltype(x, y, void(0)) >(0)
+#define ASSERT(...)      static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+#define ASSERT_PRED(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+#define ASSERT_EQ(...)   static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+#define ASSERT_LEQ(...)  static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+#define ASSERT_LT(...)   static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+#define ASSERT_NEQ(...)  static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 
 #else
 
-#define ASSERT(...)      BRICK_ASSERT( bool, BRICK_SHARP_FIRST( __VA_ARGS__, ignored ), __VA_ARGS__ )
-#define ASSERT_P(p, x)   BRICK_ASSERT( pred, #p "( " #x " )", x, p( x ) )
-#define ASSERT_EQ(x, y)  BRICK_ASSERT( eq,   #x " == " #y, x, y )
-#define ASSERT_LT(x, y)  BRICK_ASSERT( lt,   #x " < "  #y, x, y )
-#define ASSERT_LEQ(x, y) BRICK_ASSERT( leq,  #x " <= " #y, x, y )
-#define ASSERT_NEQ(x, y) BRICK_ASSERT( neq,  #x " != " #y, x, y )
+#define BRICK_ASSERT_BIN(op, inv, x, ...)                                       \
+    BRICK_ASSERT( bin,                                                          \
+                  #x " "  #op " " BRICK_SHARP_FIRST( __VA_ARGS__, ignored ),    \
+                  []( const auto &a, const auto &b ) { return a op b; },        \
+                  #inv, x, __VA_ARGS__ )
+
+#define ASSERT(...)     BRICK_ASSERT( bool, BRICK_SHARP_FIRST( __VA_ARGS__, ignored ), __VA_ARGS__ )
+#define ASSERT_P(p, x)  BRICK_ASSERT( pred, #p "( " #x " )", x, p( x ) )
+#define ASSERT_EQ(...)  BRICK_ASSERT_BIN( ==, !=, __VA_ARGS__ )
+#define ASSERT_LT(...)  BRICK_ASSERT_BIN(  <, >=, __VA_ARGS__ )
+#define ASSERT_LEQ(...) BRICK_ASSERT_BIN( <=, >,  __VA_ARGS__ )
+#define ASSERT_NEQ(...) BRICK_ASSERT_BIN( !=, ==, __VA_ARGS__ )
 
 #endif
 
@@ -144,39 +150,25 @@ namespace brq
         throw f;
     }
 
-#define ASSERT_FN(name, op, inv)                                                             \
-    __boring static inline                                                                   \
-    void assert_ ## name ## _fn( const trace_location &l, int64_t x, int64_t y )             \
-    {                                                                                        \
-        if ( !( x op y ) )                                                                   \
-        {                                                                                    \
-            assert_failed f( l );                                                            \
-            f << "\n   but got "                                                             \
-              << x << " " #inv " " << y << "\n";                                             \
-            throw f;                                                                         \
-        }                                                                                    \
-        /* trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" ); */            \
-    }                                                                                        \
-    template< typename X, typename Y >                                                       \
-    __boring auto assert_ ## name ## _fn( const trace_location &l, const X &x, const Y &y )  \
-        -> typename std::enable_if<                                                          \
-        !std::is_integral< X >::value ||                                                     \
-        !std::is_integral< Y >::value >::type                                                \
-    {                                                                                        \
-        if ( !( x op y ) )                                                                   \
-        {                                                                                    \
-            assert_failed f( l );                                                            \
-            f << "\n   but got "                                                             \
-              << x << " " #inv " " << y << "\n";                                             \
-            throw f;                                                                         \
-        }                                                                                    \
-        /* trace_fn( l, "assert passed:", l._statement, "[", x, #op, y, "]" ); */            \
+    template< typename Op, typename A, typename B, typename... T >
+    void assert_bin_fn( const trace_location &l, Op op, std::string_view inv,
+                        const A &a, const B &b, const T & ... args )
+    {
+        bool pass;
+        if constexpr ( std::is_integral_v< A > && std::is_integral_v< B > )
+            pass = op( static_cast< std::common_type_t< A, B > >( a ),
+                       static_cast< std::common_type_t< A, B > >( b ) );
+        else
+            pass = !!op( a, b );
+        if ( !pass )
+        {
+            assert_failed f( l );
+            f << "\n   but got " << a << " " << inv << " " << b << "\n";
+            format_args( f, args... );
+            throw f;
+        }
+        /* trace_fn( l, "assert passed:", l._statement, "[", x, op_str, y, "]" ); */
     }
-
-    ASSERT_FN(eq, ==, !=);
-    ASSERT_FN(leq, <=, >);
-    ASSERT_FN(lt, <, >=);
-    ASSERT_FN(neq, !=, ==);
 
     template< typename X >
     __boring void assert_pred_fn( const trace_location &l, X x, bool p )
