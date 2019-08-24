@@ -123,38 +123,28 @@ namespace divine::cc
         // Build an invocation
         auto invocation = std::make_shared< clang::CompilerInvocation >();
         std::vector< std::string > cc1args = { "-cc1",
-                                                "-triple", "x86_64-unknown-none-elf",
-                                                "-emit-obj",
-                                                "-mrelax-all",
-                                                // "-disable-free",
-                                                // "-disable-llvm-verifier",
-                                                // "-main-file-name", "test.c",
-                                                // "-mrelocation-model", "static",
-                                                "-mthread-model", "posix",
-                                                "-mdisable-fp-elim",
-                                                "-fmath-errno",
-                                                "-masm-verbose",
-                                                "-mconstructor-aliases",
-                                                "-munwind-tables",
-                                                "-fuse-init-array",
-                                                "-target-cpu", "x86-64",
-                                                "-dwarf-column-info",
-                                                // "-coverage-file", "/home/xstill/DiVinE/clangbuild/test.c", // ???
-                                                // "-resource-dir", "../lib/clang/3.7.1", // ???
-                                                // "-internal-isystem", "/usr/local/include",
-                                                // "-internal-isystem", "../lib/clang/3.7.1/include",
-                                                // "-internal-externc-isystem", "/include",
-                                                // "-internal-externc-isystem", "/usr/include",
-                                                // "-fdebug-compilation-dir", "/home/xstill/DiVinE/clangbuild", // ???
-                                                "-ferror-limit", "19",
-                                                "-fmessage-length", "212",
-                                                "-mstackrealign",
-                                                "-fobjc-runtime=gcc",
-                                                "-fdiagnostics-show-option",
-                                                "-fcolor-diagnostics",
-                                                // "-o", "test.o",
-                                                "-isystem", "/builtin"
-                                                };
+                                               "-triple", "x86_64-unknown-none-elf",
+                                               "-emit-obj",
+                                               "-mrelax-all",
+                                               // "-disable-free",
+                                               // "-disable-llvm-verifier",
+                                               "-mthread-model", "posix",
+                                               "-mdisable-fp-elim",
+                                               "-fmath-errno",
+                                               "-masm-verbose",
+                                               "-mconstructor-aliases",
+                                               "-munwind-tables",
+                                               "-fuse-init-array",
+                                               "-target-cpu", "x86-64",
+                                               "-dwarf-column-info",
+                                               "-ferror-limit", "19",
+                                               "-fmessage-length", "212",
+                                               "-mstackrealign",
+                                               "-fobjc-runtime=gcc",
+                                               "-fdiagnostics-show-option",
+                                               "-fcolor-diagnostics",
+                                               "-isystem", "/builtin"
+                                             };
         bool exceptions = type == FileType::Cpp || type == FileType::CppPreprocessed;
         bool reloc_model_present = false;
 
