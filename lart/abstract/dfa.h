@@ -66,35 +66,30 @@ namespace lart::abstract
                  join( a.is_abstract, b.is_abstract ) };
     }
 
-    struct type_onion : brick::types::Eq
+    using type_vector = std::vector< type_layer >;
+
+    struct type_onion : type_vector
     {
-        std::vector< type_layer > layers;
-
         type_onion( int ptr_nest )
-            : layers( ptr_nest + 1, type_layer( true, false ) )
+            : type_vector( ptr_nest + 1, type_layer( true, false ) )
         {
-            layers.front() = type_layer( false, false );
+            front() = type_layer( false, false );
         }
 
-        type_onion( decltype( layers ) l ) : layers( l ) {}
-        type_onion( std::initializer_list< type_layer > il ) : layers( il ) {}
-
-        bool operator==( const type_onion &o ) const
-        {
-            return layers == o.layers;
-        }
+        type_onion( const type_vector &l ) : type_vector( l ) {}
+        type_onion( std::initializer_list< type_layer > il ) : type_vector( il ) {}
 
         type_onion make_abstract() const
         {
             auto rv = *this;
-            rv.layers.back().is_abstract = true;
+            rv.back().is_abstract = true;
             return rv;
         }
 
         bool maybe_abstract() const
         {
             tristate r( false );
-            for ( auto a : layers )
+            for ( auto a : *this )
                 r = join( r, a.is_abstract );
             return r.value != tristate::no;
         }
@@ -102,7 +97,7 @@ namespace lart::abstract
         bool maybe_pointer() const
         {
             tristate r( false );
-            for ( auto a : layers )
+            for ( auto a : *this )
                 r = join( r, a.is_pointer );
             return r.value != tristate::no;
         }
@@ -110,24 +105,21 @@ namespace lart::abstract
         type_onion wrap() const
         {
             auto rv = *this;
-            rv.layers.emplace_back( true, false );
+            rv.emplace_back( true, false );
             return rv;
         }
 
         type_onion peel() const
         {
             auto rv = *this;
-            ASSERT_LT( 1, layers.size() );
-            rv.layers.pop_back();
+            ASSERT_LT( 1, size() );
+            rv.pop_back();
             return rv;
         }
     };
 
-    type_onion join( const type_onion &ao, const type_onion &bo )
+    type_onion join( type_onion a, type_onion b )
     {
-        auto a = ao.layers;
-        auto b = bo.layers;
-
         if ( a.size() > b.size() )
             std::swap( a, b );
 
