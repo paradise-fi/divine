@@ -189,7 +189,7 @@ namespace brq
                                  decltype( *this << *c.begin() << *c.end() ) >
         {
             bool first = true;
-            *this << '[';
+            *this << "[";
             for ( const auto &e : c )
                 *this << ( first ? first = false, " " : ", " ) << e;
             *this << ( first ? "]" : " ]" );
