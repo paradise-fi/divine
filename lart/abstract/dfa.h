@@ -20,6 +20,17 @@ namespace lart::abstract
         tristate( bool v ) : value( v ? yes : no ) {}
         tristate( decltype( value ) v ) : value( v ) {}
         bool operator==( const tristate &o ) const { return value == o.value; }
+
+        template< typename stream >
+        friend auto operator<<( stream &s, tristate t ) -> decltype( s << "" )
+        {
+            switch ( t.value )
+            {
+                case no: return s << "no";
+                case yes: return s << "yes";
+                case maybe: return s << "maybe";
+            }
+        }
     };
 
     tristate join( tristate a, tristate b )
@@ -36,9 +47,16 @@ namespace lart::abstract
         tristate is_abstract;
         type_layer( bool p, bool a ) : is_pointer( p ), is_abstract( a ) {}
         type_layer( tristate p, tristate a ) : is_pointer( p ), is_abstract( a ) {}
+
         bool operator==( const type_layer &o ) const
         {
             return is_pointer == o.is_pointer && is_abstract == o.is_abstract;
+        }
+
+        template< typename stream >
+        friend auto operator<<( stream &s, type_layer t ) -> decltype( s << "" )
+        {
+            return s << "ptr:" << t.is_pointer << " abs:" << t.is_abstract;
         }
     };
 
