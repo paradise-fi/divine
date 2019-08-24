@@ -427,14 +427,14 @@ struct Pattern : brq::refcount_base<>
 
         if ( !rest.empty() )
         {
-            auto n = new Pattern( _validator );
+            auto n = brq::make_refcount< Pattern >( _validator );
             if ( n->create( rest, alt ? this : prev_alt ) )
-                _next.reset( n );
+                _next = n;
 
             if ( prev_alt == this && _alt )
             {
                 ASSERT( _type != Empty );
-                Ptr a( new Pattern( *this ) );
+                auto a = brq::make_refcount< Pattern >( *this );
                 *this = Pattern( _validator );
                 _type = Group;
                 while ( a )
