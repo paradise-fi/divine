@@ -147,8 +147,9 @@ namespace lart::abstract
         if ( last != next )
         {
             _types.set( to, next );
-            TRACE( "pushing dirty value", *to, "previously", last, "now", next );
-            push( [=] { propagate( to ); } );
+            _blocked.clear();
+            push( to );
+            TRACE( "type:", last, "→", next );
             return true;
         }
 
@@ -190,7 +191,7 @@ namespace lart::abstract
         auto propagate_back_task = [&] ( llvm::Value * v )
         {
             if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
-                push( [=] { propagate_back( arg ); } );
+                propagate_back( arg );
         };
 
         llvmcase( val,
@@ -219,7 +220,7 @@ namespace lart::abstract
                 for ( auto & val : phi->incoming_values() )
                     if ( propagate_identity( phi, val.get() ) )
                         if ( auto arg = llvm::dyn_cast< llvm::Argument >( val.get() ) )
-                            push( [=] { propagate_back( arg ); } );
+                            propagate_back( arg );
             },
             [&] ( llvm::GetElementPtrInst * gep )
             {
@@ -229,62 +230,34 @@ namespace lart::abstract
             }
         );
 
-        // ssa operations
-        if ( is_propagable( val ) ) {
-            for ( auto u : val->users() ) {
-                llvmcase( u,
-                    [&] ( llvm::LoadInst * load ) {
-                        push( [=] { propagate( load ); } );
-                    },
-                    [&] ( llvm::StoreInst * store ) {
-                        push( [=] { propagate( store ); } );
-                    },
-                    [&] ( llvm::GetElementPtrInst * gep )
-                    {
-                        push( [=] { propagate( gep ); } );
-                    },
-                    [&] ( llvm::CastInst * cast )
-                    {
-                        push( [=] { propagate( cast ); } );
-                    },
-                    [&] ( llvm::PHINode * phi )
-                    {
-                        push( [=] { propagate( phi ); } );
-                    },
-                    [&] ( llvm::CallInst * call )
-                    {
-                        for ( auto &fn : resolve_call( call ) )
+        if ( is_propagable( val ) )
+            for ( auto u : val->users() )
+            {
+                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst, llvm::GetElementPtrInst,
+                                      llvm::CastInst, llvm::PHINode >( u ) )
+                    push( u );
+                else if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( u ) )
+                {
+                        for ( auto &fn : resolve_call( llvm::CallSite( u ) ) )
                             if ( !meta::function::ignore_call( fn ) )
-                                push( [=] { propagate_in( fn, call ); } );
-                    },
-                    [&] ( llvm::ReturnInst * ret )
-                    {
-                        push( [=] { propagate_out( ret ); } );
-                    },
-                    [&] ( llvm::SelectInst * )
-                    {
-                        UNREACHABLE( "unsupported propagation" );
-                    },
-                    [&] ( llvm::SwitchInst * )
-                    {
-                        UNREACHABLE( "unsupported propagation" );
-                    },
-                    [&] ( llvm::Value * )
-                    {
-                        propagate( u, _types.get( val ) );
-                    }
-                );
+                                propagate_in( fn, llvm::CallSite( u ) );
+                }
+                else if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
+                    propagate_out( ret );
+                else if ( util::is_one_of< llvm::SelectInst, llvm::SwitchInst >( u ) )
+                    UNREACHABLE( "unsupported propagation" );
+                else
+                    propagate( u, _types.get( val ) );
             }
-        }
     }
 
-    void DataFlowAnalysis::propagate_in( llvm::Function *fn, llvm::CallInst * call ) noexcept
+    void DataFlowAnalysis::propagate_in( llvm::Function *fn, llvm::CallSite call ) noexcept
     {
         preprocess( fn );
 
         for ( const auto & arg : fn->args() )
         {
-            auto oparg = call->getArgOperand( arg.getArgNo() );
+            auto oparg = call.getArgOperand( arg.getArgNo() );
 
             if ( auto t = _types.get( oparg ); t.maybe_abstract() )
                 propagate( const_cast< llvm::Argument * >( &arg ), t );
@@ -312,13 +285,16 @@ namespace lart::abstract
         {
             preprocess( util::get_function( val ) );
             _types.set( val, _types.get( val ).make_abstract() );
-            push( [=] { propagate( val ); } );
+            push( val );
         }
 
-        while ( !_tasks.empty() )
+        while ( !_todo.empty() )
         {
-            _tasks.front()();
-            _tasks.pop_front();
+            TRACE( "pop" );
+            auto v = _todo.front();
+            _queued.erase( v );
+            _todo.pop_front();
+            propagate( v );
         }
 
         for ( const auto & [ val, t ] : _types )
