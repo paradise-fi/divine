@@ -216,8 +216,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         }
     }
 
-    static const int blockcount = 1 << slab_bits;
-    static const int blocksize  = 4 << chunk_bits;
+    static constexpr int blockcount = 1 << slab_bits;
+    static constexpr int blocksize  = 4 << chunk_bits;
 
     using FreeListPtr = std::atomic< FreeList * >;
 
@@ -684,7 +684,7 @@ template< typename Master_ >
 struct SlavePool : PoolMixin< SlavePool< Master_ >, typename Master_::Pointer >
 {
     using Master = Master_;
-    static const int blockcount = Master::blockcount;
+    static constexpr int blockcount = Master::blockcount;
 
     struct BlockHeader
     {

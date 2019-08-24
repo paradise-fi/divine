@@ -420,7 +420,7 @@ namespace brick::bitlevel
     template< typename T, int width = sizeof( T ) * 8 >
     struct BitField
     {
-        static const int bitwidth = width;
+        static constexpr int bitwidth = width;
         struct Virtual : BitPointer
         {
             T set( T t ) { bitcopy( BitPointer( &t ), *this, bitwidth ); return t; }
@@ -501,7 +501,7 @@ namespace brick::bitlevel
 
     struct BitLock
     {
-        static const int bitwidth = 1;
+        static constexpr int bitwidth = 1;
         struct Virtual : BitPointer {
             using Atomic = std::atomic< uint32_t >;
             Atomic &atomic() { return *reinterpret_cast< Atomic * >( &word() ); }
@@ -526,8 +526,8 @@ namespace brick::bitlevel
     template< int O, typename T, typename... Args >
     struct BitAccess< O, T, Args... >
     {
-        static const int offset = O;
-        static const int width = T::bitwidth;
+        static constexpr int offset = O;
+        static constexpr int width = T::bitwidth;
         typedef typename T::Virtual Head;
         typedef BitAccess< offset + T::bitwidth, Args... > Tail;
         static const int total = width + Tail::total;
@@ -543,7 +543,7 @@ namespace brick::bitlevel
     struct _BitTuple
     {
         using Access = BitAccess< 0, Args... >;
-        static const int bitwidth = Access::total;
+        static constexpr int bitwidth = Access::total;
         template< int I > using AccessAt = _AccessAt< Access, I >;
         template< int I > static int offset() { return AccessAt< I >::T::offset; }
     };
