@@ -39,7 +39,8 @@ z3::expr Z3::constant( Constant con )
 #else
     using ValT = int64_t;
 #endif
-    switch ( con.type ) {
+    switch ( con.type )
+    {
         case BNode::Type::Int:
             return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth );
         case BNode::Type::Float:
@@ -63,7 +64,8 @@ z3::expr Z3::constant( smt::Bitwidth bw, uint64_t value )
 
 z3::expr Z3::variable( Variable var )
 {
-    switch ( var.type ) {
+    switch ( var.type )
+    {
         case BNode::Type::Int:
             return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth );
         case BNode::Type::Float:
@@ -150,6 +152,7 @@ z3::expr Z3::binary( Binary bin, Node a, Node b )
             case Op::BvShl:  return z3::shl( a, b );
             case Op::BvAShr: return z3::ashr( a, b );
             case Op::BvLShr: return z3::lshr( a, b );
+            case Op::And:
             case Op::BvAnd:  return a & b;
             case Op::BvOr:   return a | b;
             case Op::BvXor:  return a ^ b;
@@ -220,6 +223,7 @@ z3::expr Z3::binary( Binary bin, Node a, Node b )
         switch ( bin.op )
         {
             case Op::Xor:
+            case Op::BvXor:
             case Op::BvSub:
                 return a != b;
             case Op::BvAdd:
