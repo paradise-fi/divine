@@ -501,7 +501,7 @@ auto applyInst( llvm::Instruction *i, Yield &&y ) {
 #define HANDLE_INST( opcode, _x, Class ) case opcode: return y( llvm::cast< llvm::Class >( i ) );
 #include <llvm/IR/Instruction.def>
         default:
-            UNREACHABLE_F( "Invalid instruction %d", i->getOpcode() );
+            UNREACHABLE( "Invalid instruction", i->getOpcode() );
     }
 }
 
