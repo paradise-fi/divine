@@ -192,15 +192,11 @@ namespace lart::abstract {
         return operations( m, [] ( const auto & ph ) { return ph.type == T; } );
     }
 
-
     struct Matched
     {
-        void init( llvm::Module & m );
-
-        void match( Operation::Type type, llvm::Value * a, llvm::Value * c );
-
-        void match_idempotent( llvm::Value * v, llvm::Value * dual );
-
+        void init( llvm::Module &m );
+        void match( Operation::Type type, llvm::Value *a, llvm::Value *c );
+        void match_idempotent( llvm::Value *v, llvm::Value *dual );
 
         std::map< llvm::Value *, llvm::Value * > concrete;
         std::map< llvm::Value *, llvm::Value * > abstract;

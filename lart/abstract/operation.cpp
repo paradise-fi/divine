@@ -84,19 +84,22 @@ namespace lart::abstract
 
     void Matched::init( llvm::Module & m )
     {
-        for ( auto call : abstract_calls( m ) ) {
+        for ( auto call : abstract_calls( m ) )
+        {
             auto dual = call->getNextNonDebugInstruction();
             concrete[ dual ] = call;
             abstract[ call ] = dual;
             match_idempotent( call, dual );
         }
 
-        for ( auto op : operations( m ) ) {
+        for ( auto op : operations( m ) )
+        {
             auto concrete = op.inst->getPrevNode();
             match( op.type, op.inst, concrete );
         }
 
-        for ( auto intr : unpacked_arguments( &m ) ) {
+        for ( auto intr : unpacked_arguments( &m ) )
+        {
             auto call = llvm::cast< llvm::CallInst >( intr );
 
             auto c = call->getArgOperand( 0 );

@@ -215,13 +215,13 @@ namespace lart::abstract::meta {
 
         MetaVal get( llvm::Argument * arg ) noexcept {
             auto fn = arg->getParent();
-            if ( auto node = fn->getMetadata( meta::tag::function::arguments ) ) {
+            if ( auto node = fn->getMetadata( meta::tag::function::arguments ) )
                 return meta::value( node, arg->getArgNo() );
-            }
             return std::nullopt;
         }
 
-        bool has( llvm::Argument * arg ) noexcept {
+        bool has( llvm::Argument * arg ) noexcept
+        {
             return argument::get( arg ).has_value();
         }
 

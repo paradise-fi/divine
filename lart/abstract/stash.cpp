@@ -37,7 +37,7 @@ namespace lart::abstract {
 
         using Self::get_function;
 
-        ArgumentsBundle( llvm::Function * fn )
+        ArgumentsBundle( llvm::Function *fn )
             : function( fn ), module( fn->getParent() )
         {}
 
@@ -203,7 +203,8 @@ namespace lart::abstract {
             .filter( query::notnull )
             .freeze();
 
-        for ( auto ret : rets ) {
+        for ( auto ret : rets )
+        {
             auto val = matched.abstract.at( ret->getReturnValue() );
             stash( ret, val );
         }
