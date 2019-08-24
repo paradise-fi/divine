@@ -487,7 +487,7 @@ namespace brick::smt
                 }
             }
 
-            UNREACHABLE_F( "Op %hu is neither constant nor variable", op );
+            UNREACHABLE( op, "is neither constant nor variable" );
         }
 
         static inline constexpr Node::Type type( Op op ) noexcept
@@ -505,7 +505,7 @@ namespace brick::smt
                 case Op::VarDouble:
                     return Node::Type::Float;
                 default:
-                    UNREACHABLE_F( "Unknown variable type: %hu", op );
+                    UNREACHABLE( "unknown variable type", op );
             }
         }
 
@@ -689,7 +689,7 @@ namespace brick::smt
                         case 32: return extract_constant< uint32_t >();
                         case 64: return extract_constant< uint64_t >();
                         default:
-                            UNREACHABLE_F( "unsupported constant bitwidth %d", bw );
+                            UNREACHABLE( "unsupported constant bitwidth", bw );
                     }
                 }
 
@@ -711,7 +711,7 @@ namespace brick::smt
                 if ( is_binary( op ) )
                     return BinaryOp{ op };
 
-                UNREACHABLE_F( "Unknown RPN Token" );
+                UNREACHABLE( "unknown RPN token", op );
             }
 
             bool operator==( const Iterator& other ) const noexcept
@@ -761,7 +761,7 @@ namespace brick::smt
             case RoundingMode::RTP: return "RTP";
             case RoundingMode::RTN: return "RTN";
             case RoundingMode::RTZ: return "RTZ";
-            default: UNREACHABLE_F( "Unknown rounding mode." );
+            default: UNREACHABLE( "unknown rounding mode", mode );
         };
     }
 
