@@ -21,6 +21,7 @@ namespace divine::cc
     ParsedOpts parseOpts( std::vector< std::string > rawCCOpts )
     {
         using FT = FileType;
+        using brick::string::startsWith;
         FT xType = FT::Unknown;
         ParsedOpts po;
 
@@ -37,7 +38,7 @@ namespace divine::cc
                 po.hasVersion = true;
                 return po;
             }
-            if ( brick::string::startsWith( *it, "-I" ) )
+            if ( startsWith( *it, "-I" ) )
             {
                 std::string val;
                 if ( it->size() > 2 )
@@ -47,7 +48,7 @@ namespace divine::cc
                 po.allowedPaths.emplace_back( val );
                 po.opts.emplace_back( "-I" + val );
             }
-            else if ( brick::string::startsWith( *it, isystem ) )
+            else if ( startsWith( *it, isystem ) )
             {
                 std::string val;
                 if ( it->size() > isystem.size() )
@@ -59,7 +60,7 @@ namespace divine::cc
             }
             else if ( *it == "-include" )
                 po.opts.emplace_back( *it ), po.opts.emplace_back( *++it );
-            else if ( brick::string::startsWith( *it, "-x" ) )
+            else if ( startsWith( *it, "-x" ) )
             {
                 std::string val;
                 if ( it->size() > 2 )
@@ -75,18 +76,18 @@ namespace divine::cc
                 }
                 // this option is propagated to CC by xType, not directly
             }
-            else if ( brick::string::startsWith( *it, "-l" ) )
+            else if ( startsWith( *it, "-l" ) )
             {
                 std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
                 po.files.emplace_back( Lib::InPlace(), val );
             }
-            else if ( brick::string::startsWith( *it, "-L" ) )
+            else if ( startsWith( *it, "-L" ) )
             {
                 std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
                 po.allowedPaths.emplace_back( val );
                 po.libSearchPath.emplace_back( std::move( val ) );
             }
-            else if ( brick::string::startsWith( *it, "-o" ))
+            else if ( startsWith( *it, "-o" ))
             {
                 std::string val;
                 if ( it->size() > 2 )
@@ -95,7 +96,7 @@ namespace divine::cc
                     val = *++it;
                 po.outputFile = val;
             }
-            else if ( !brick::string::startsWith( *it, "-" ) )
+            else if ( !startsWith( *it, "-" ) )
                 po.files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? typeFromFile( *it ) : xType );
             else if ( *it == "-c" )
                 po.toObjectOnly = true;
