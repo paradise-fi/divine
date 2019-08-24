@@ -680,9 +680,11 @@ namespace brick::smt
             Token operator*() const noexcept
             {
                 auto op = operand();
-                if ( is_constant( op ) ) {
+                if ( is_constant( op ) )
+                {
                     auto bw = bitwidth();
-                    switch ( bw ) {
+                    switch ( bw )
+                    {
                         case  1: return extract_constant< bool >();
                         case  8: return extract_constant< uint8_t >();
                         case 16: return extract_constant< uint16_t >();
@@ -745,7 +747,8 @@ namespace brick::smt
     }
 
     /* float operations */
-    enum class RoundingMode {
+    enum class RoundingMode
+    {
         RNE,    // round nearest, ties to even
         RNA,    // round nearest, ties to away (from zero)
         RTP,    // round toward positive
@@ -755,7 +758,8 @@ namespace brick::smt
 
     inline std::string to_string( RoundingMode mode )
     {
-        switch ( mode ) {
+        switch ( mode )
+        {
             case RoundingMode::RNE: return "RNE";
             case RoundingMode::RNA: return "RNA";
             case RoundingMode::RTP: return "RTP";
