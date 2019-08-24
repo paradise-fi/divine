@@ -94,6 +94,14 @@ namespace divine::smt
                     auto [arg, bw] = stack.back();
                     stack.pop_back();
 
+                    if ( cast.op == Op::ZFit )
+                    {
+                        if ( cast.bitwidth < bw )
+                            cast.op = Op::Trunc;
+                        else
+                            cast.op = Op::ZExt;
+                    }
+
                     Unary op = { cast.op, cast.bitwidth };
                     stack.push_back( { bld.unary( op, arg ), cast.bitwidth } );
                 },
