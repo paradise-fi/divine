@@ -142,12 +142,12 @@ namespace lart::abstract
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept
     {
-        auto old = _types.get( to );
+        auto last = _types.get( to ), next = join( last, from );
 
-        if ( old != from )
+        if ( last != next )
         {
-            _types.set( to, join( old, from ) );
-            TRACE( "pushing dirty value", *to, "previously", old, "now", _types.get( to ) );
+            _types.set( to, next );
+            TRACE( "pushing dirty value", *to, "previously", last, "now", next );
             push( [=] { propagate( to ); } );
             return true;
         }
