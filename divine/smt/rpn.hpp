@@ -111,8 +111,9 @@ namespace divine::smt
                     else
                         binary( bin.op, bin );
                 },
-                [&]( const auto& ) {
-                    UNREACHABLE_F( "Unsupported term type" );
+                [&]( const auto& )
+                {
+                    UNREACHABLE( "unsupported term type", term );
                 }
             }, term );
         }

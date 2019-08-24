@@ -43,12 +43,12 @@ z3::expr Z3::constant( Constant con )
         case BNode::Type::Int:
             return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth );
         case BNode::Type::Float:
-            UNREACHABLE_F( "Floatigpoint is not yet supported with z3 solver." );
+            UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
         case BNode::Type::Bool:
             return constant( static_cast< bool >( con.value ) );
     }
 
-    UNREACHABLE_F( "unknown type" );
+    UNREACHABLE( "unknown type" );
 }
 
 z3::expr Z3::constant( bool v )
@@ -67,12 +67,12 @@ z3::expr Z3::variable( Variable var )
         case BNode::Type::Int:
             return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth );
         case BNode::Type::Float:
-            UNREACHABLE_F( "Floatigpoint is not yet supported with z3 solver." );
+            UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
         case BNode::Type::Bool:
-            UNREACHABLE_F( "Unsupported boolean variable." );
+            UNREACHABLE( "Unsupported boolean variable." );
     }
 
-    UNREACHABLE_F( "unknown type" );
+    UNREACHABLE( "unknown type" );
 }
 
 z3::expr Z3::unary( Unary un, Node arg )
@@ -130,7 +130,7 @@ z3::expr Z3::unary( Unary un, Node arg )
             ASSERT( arg.is_bv() );
             return arg.extract( un.from, un.to );*/ // TODO
         default:
-            UNREACHABLE_F( "unknown unary operation %d", un.op );
+            UNREACHABLE( "unknown unary operation", un.op );
     }
 }
 
@@ -166,7 +166,7 @@ z3::expr Z3::binary( Binary bin, Node a, Node b )
             case Op::NE:   return a != b;
             case Op::Concat: return z3::concat( a, b );
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE( "unknown binary operation", bin.op );
         }
     }
     /*else if ( a.is_real() && b.is_real() )
@@ -257,7 +257,7 @@ z3::expr Z3::binary( Binary bin, Node a, Node b )
             case Op::NE:
                 return a != b;
             default:
-                UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
+                UNREACHABLE( "unknown boolean binary operation", bin.op );
         }
     }
 }

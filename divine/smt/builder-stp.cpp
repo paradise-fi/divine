@@ -97,7 +97,7 @@ stp::ASTNode STP::unary( Unary un, Node arg )
             ASSERT( is_bv( arg ) );
             return _stp.CreateTerm( stp::BVEXTRACT, bw, arg, constant( un.from ), constant( un.to ) );*/
         default:
-            UNREACHABLE_F( "unknown unary operation %d", un.op );
+            UNREACHABLE( "unknown unary operation", un.op );
     }
 }
 

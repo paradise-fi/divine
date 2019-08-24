@@ -143,7 +143,7 @@ SMTLib2::Node SMTLib2::unary( Unary unary, Node arg )
         //   ASSERT_LT( bw, arg.bw );
         //    return define( _ctx.extract( unary.from, unary.to, arg ) );
         default:
-            UNREACHABLE_F( "unknown unary operation %d", unary.op );
+            UNREACHABLE( "unknown unary operation", unary.op );
     }
 }
 
@@ -195,7 +195,7 @@ SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
                 ASSERT_EQ( bw, a.bw + b.bw );
                 return define( _ctx.binop< Op::Concat >( bw, a, b ) );
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE( "unknown binary operation", bin.op );
         }
     }
     else if ( a.is_float() && b.is_float() )
@@ -234,7 +234,7 @@ SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
             MAP_OP_FCMP( FpTrue );
 #undef MAP_OP_FCMP
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE( "unknown binary operation", bin.op );
         }
     }
     else
