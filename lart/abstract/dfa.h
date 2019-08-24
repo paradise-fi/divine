@@ -112,8 +112,13 @@ namespace lart::abstract
         type_onion peel() const
         {
             auto rv = *this;
-            ASSERT_LT( 1, size() );
-            rv.pop_back();
+            if ( size() == 1 )
+                rv.front().is_pointer = tristate::maybe;
+            else
+            {
+                ASSERT_NEQ( back().is_pointer, tristate( false ) );
+                rv.pop_back();
+            }
             return rv;
         }
     };
