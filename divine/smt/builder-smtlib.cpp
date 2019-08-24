@@ -258,6 +258,7 @@ SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
         {
             case Op::Xor:
             case Op::BvSub:
+            case Op::BvXor:
                 return define( _ctx.binop< Op::Xor >( 1, a, b ) );
             case Op::BvAdd:
                 return define( _ctx.binop< Op::And >( 1, a, b ) );

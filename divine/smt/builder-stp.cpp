@@ -119,6 +119,7 @@ stp::ASTNode STP::binary( Binary bin, Node a, Node b )
             case Op::BvShl:    return _stp.CreateTerm( stp::BVLEFTSHIFT,  bw, a, b );
             case Op::BvAShr:   return _stp.CreateTerm( stp::BVSRSHIFT,    bw, a, b );
             case Op::BvLShr:   return _stp.CreateTerm( stp::BVRIGHTSHIFT, bw, a, b );
+            case Op::And:
             case Op::BvAnd:    return _stp.CreateTerm( stp::BVAND,        bw, a, b );
             case Op::BvOr:     return _stp.CreateTerm( stp::BVOR,         bw, a, b );
             case Op::BvXor:    return _stp.CreateTerm( stp::BVXOR,        bw, a, b );
@@ -156,6 +157,7 @@ stp::ASTNode STP::binary( Binary bin, Node a, Node b )
         switch ( bin.op )
         {
             case Op::Xor:
+            case Op::BvXor:
             case Op::BvSub:
                 return _stp.CreateNode( stp::XOR , a, b );
             case Op::BvAdd:
