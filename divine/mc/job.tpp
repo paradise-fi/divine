@@ -47,7 +47,7 @@ namespace divine::mc
                     cmd = { std::string( solver, 7, std::string::npos ) };
                 return std::make_shared< Job_< Next, mc::SMTLibBuilder > >( bc, next, cmd );
             }
-            UNREACHABLE_F( "Unsupported solver: %s.", solver.c_str() );
+            UNREACHABLE( "unsupported solver", solver );
         }
         return std::make_shared< Job_< Next, mc::ExplicitBuilder > >( bc, next );
     }
