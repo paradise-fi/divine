@@ -343,7 +343,7 @@ namespace lart::abstract {
 
         auto abstract_name( const Operation &op ) const noexcept
         {
-            if constexpr ( Operation::assume( T ) )
+            if ( Operation::assume( T ) || !concrete( op.inst ) )
                 return abstract_name( op.inst );
             else if constexpr ( Operation::call( T ) )
                 return abstract_name( op.inst->getOperand( 0 ) ); // concrete call
