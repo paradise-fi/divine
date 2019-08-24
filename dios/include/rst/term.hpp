@@ -95,6 +95,12 @@ namespace __dios::rst::abstract {
         __lift( double, double )
 
         _LART_INTERFACE
+        static Term lift_one_ptr( void *p ) noexcept
+        {
+            return lift( reinterpret_cast< uintptr_t >( p ) );
+        }
+
+        _LART_INTERFACE
         static Tristate to_tristate( Term ) noexcept
         {
             return { Tristate::Unknown };
