@@ -62,10 +62,10 @@ namespace lart::abstract {
             return bundle;
         }
 
-        auto packed( llvm::CallInst * call, const Matched & matched ) const noexcept
+        auto packed( llvm::CallSite call, const Matched & matched ) const noexcept
             -> llvm::Value *
         {
-            llvm::IRBuilder<> irb( call );
+            llvm::IRBuilder<> irb( call.getInstruction() );
 
             auto ty = type();
             auto addr = irb.CreateAlloca( ty );
@@ -78,7 +78,7 @@ namespace lart::abstract {
 
             uint32_t idx = 0;
             for ( auto arg : arguments() ) {
-                auto op = call->getArgOperand( arg->getArgNo() );
+                auto op = call.getArgOperand( arg->getArgNo() );
                 auto val = is_abstract( op )
                          ? matched.abstract.at( op )
                          : null_ptr( i8PTy() );
@@ -159,9 +159,9 @@ namespace lart::abstract {
         return create_call( ret, fn, Values{ val } );
     }
 
-    auto stash( llvm::CallInst * call, const Matched & matched )
+    llvm::Value *stash( llvm::Function *fn, llvm::CallSite call, const Matched & matched )
     {
-        return ArgumentsBundle( call->getCalledFunction() ).packed( call, matched );
+        return ArgumentsBundle( fn ).packed( call, matched );
     }
 
     auto unpacked_arguments( llvm::Module * m ) -> std::vector< llvm::CallInst * >
@@ -208,19 +208,8 @@ namespace lart::abstract {
             stash( ret, val );
         }
 
-        auto get_calls_of = [] ( auto fn ) {
-            return query::query( fn->users() )
-                .map( query::llvmdyncast< llvm::CallInst > )
-                .filter( query::notnull );
-        };
-
-        auto calls = query::query( fns_with_abstract_args( m ) )
-            .map( get_calls_of )
-            .flatten()
-            .freeze();
-
-        for ( auto call : calls )
-            stash( call, matched );
+        for ( auto fn : fns_with_abstract_args( m ) )
+            each_call( fn, [&]( auto call ) { stash( fn, call, matched ); } );
     }
 
 
