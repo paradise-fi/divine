@@ -179,11 +179,13 @@ namespace lart::abstract::meta {
         }
 
         bool ignore_call( llvm::Function * fn ) noexcept {
-            return meta::has( fn, tag::transform::ignore::arg );
+            return meta::has( fn, tag::transform::ignore::arg ) ||
+                   fn->getName().startswith( "llvm." );
         }
 
         bool ignore_return( llvm::Function * fn ) noexcept {
-            return meta::has( fn, tag::transform::ignore::ret );
+            return meta::has( fn, tag::transform::ignore::ret ) ||
+                   fn->getName().startswith( "llvm." );
         }
 
         bool is_forbidden( llvm::Function * fn ) noexcept {
