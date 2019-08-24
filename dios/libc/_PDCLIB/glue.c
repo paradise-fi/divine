@@ -111,7 +111,7 @@ int nanosleep(const struct timespec *req, struct timespec *rem)
     (void) req;
     (void) rem;
     // I believe we will do nothing wrong if we verify nanosleep as NOOP,
-    // it does not guearantee anything anyway
+    // it does not guarantee anything anyway
     return 0;
 }
 

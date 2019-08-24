@@ -29,7 +29,8 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
-    // Add a section called 'section_name' with data 'section_data' into the object file at 'filepath'
+    // Add a section called 'section_name' with data 'section_data' into the
+    // object file at 'filepath'
     void add_section( std::string filepath, std::string section_name, const std::string &section_data )
     {
         using namespace brick::fs;

@@ -127,7 +127,7 @@ namespace divine::cc
 
         std::unique_ptr< llvm::Module > mod = link_bitcode();
         std::string file_out = _po.outputFile != "" ? _po.outputFile : "a.out";
-	// Ad the .llvmbc section with the serialized bitcode
+	// Add the .llvmbc section with the serialized bitcode
         cc::add_section( file_out, cc::llvm_section_name, _clang.serializeModule( *mod ) );
     }
 
@@ -201,7 +201,7 @@ namespace divine::cc
                     }
                     ofn += ".o";
                 }
-                
+
                 // Input files that are already object files are paired as [<name>, <name>]
                 if ( cc::is_object_type( ifn ) )
                     ofn = ifn;

@@ -278,7 +278,8 @@ namespace divine::cc
                     break;
                 }
             }
-	    linker->linkArchive( archive );
+
+            linker->linkArchive( archive );
     	}
     }
 

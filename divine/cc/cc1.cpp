@@ -209,7 +209,7 @@ namespace divine::cc
         // EmitLLVMOnlyAction emits module in memory, does not write it into a file
         auto emit = cc1< clang::EmitLLVMOnlyAction >( filename, type, args );
         auto mod = emit->takeModule();
-        // We want to emit the va_arg instruction when working with elipsis arguments instead of
+        // We want to emit the va_arg instruction when working with ellipsis arguments instead of
         // Clang's default behaviour of emitting architecture-specific instruction sequence
         lart::divine::VaArgInstr().run( *mod );
         return mod;
