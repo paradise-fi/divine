@@ -1165,6 +1165,8 @@ struct Main
         for ( auto &tc : running )
         {
             if ( !tc ) continue;
+            if ( fatal_signal )
+                tc->kill( fatal_signal );
             if ( tc->finished( msec ) )
                 tc = nullptr, --running_count, ++done_count;
             msec = 0;
@@ -1278,11 +1280,6 @@ struct Main
             if ( die || fatal_signal )
                 break;
         }
-
-        if ( fatal_signal )
-            for ( auto &tc : running )
-                if ( tc )
-                    tc->kill( fatal_signal );
 
         while ( running_count )
             wait();
