@@ -207,9 +207,7 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE
         static Term op_thaw( Term term, uint8_t bw ) noexcept
         {
-            // receives already thawed object
-            // TODO Zext
-            return cast< Op::Trunc >( term, bw );
+            return cast< Op::ZFit >( term, bw ); /* TODO interval-based peek & poke */
         }
 
         #define __bin( name, op ) \
