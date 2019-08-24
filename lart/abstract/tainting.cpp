@@ -398,10 +398,11 @@ namespace lart::abstract {
             if constexpr ( Taint::assume( T ) )
                 return;
 
-            auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
             auto lif = lifter.inst;
 
-            if constexpr ( !Taint::toBool( T ) ) {
+            if constexpr ( !Taint::toBool( T ) )
+            {
+                auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
                 if ( is_faultable( con ) ) {
                     _matched.concrete[ abstract( con ) ] = lif;
                     _matched.abstract[ lif ] = abstract( con );
