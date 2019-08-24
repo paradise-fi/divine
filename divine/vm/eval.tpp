@@ -417,7 +417,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                     return _icmp_signed( []( auto a, auto b ) { return a <= b; } );
                 case ICmpInst::ICMP_SGE:
                     return _icmp_signed( []( auto a, auto b ) { return a >= b; } );
-                default: UNREACHABLE_F( "unexpected icmp op %d", instruction().subcode );
+                default: UNREACHABLE( "unexpected icmp op", instruction().subcode );
             }
         }
 
@@ -490,7 +490,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                 case FCmpInst::FCMP_UGE:
                     return _fcmp( []( auto a, auto b ) { return a >= b; } );
                 default:
-                    UNREACHABLE_F( "unexpected fcmp op %d", instruction().subcode );
+                    UNREACHABLE( "unexpected fcmp op", instruction().subcode );
             }
         }
 
@@ -640,7 +640,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
                     return _atomicrmw( minmax( []( auto v, auto x ) {
                                 return v.make_signed() < x.make_signed(); } ) );
                 case AtomicRMWInst::BAD_BINOP:
-                    UNREACHABLE_F( "bad binop in atomicrmw" );
+                    UNREACHABLE( "bad binop in atomicrmw" );
             }
         }
 
@@ -715,7 +715,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
         case OpCode::Fence: break; /* noop until we have reordering simulation */
 
         default:
-            UNREACHABLE_F( "unknown opcode %d", instruction().opcode );
+            UNREACHABLE( "unknown opcode", instruction().opcode );
     }
 }
 

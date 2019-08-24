@@ -223,7 +223,7 @@ struct Eval
             return heap().size( pp );
         if ( pp.type() == PointerType::Global )
             return ptr2s( pp ).size();
-        UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
+        UNREACHABLE( "a bad pointer in ptr2sz", PointerV( p ) );
     }
 
     FaultStream< Context > fault( Fault f );

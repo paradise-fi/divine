@@ -137,7 +137,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
                 heap.write_shift( ptr, value::Float< long double >( x.convertToDouble() ) );
                 break;
             }
-            default: UNREACHABLE_F( "non-double, non-float FP constant (bits = %d)", v.width() );
+            default: UNREACHABLE( "non-double, non-float FP constant with bits =", v.width() );
         }
     }
     else if ( isa< llvm::ConstantPointerNull >( V ) )

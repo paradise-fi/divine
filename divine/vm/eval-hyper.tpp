@@ -646,7 +646,7 @@ namespace divine::vm
             case lx::HypercallObjClone:
                 return implement_hypercall_clone();
             default:
-                UNREACHABLE_F( "unknown hypercall %d", instruction().subcode );
+                UNREACHABLE( "unknown hypercall", instruction().subcode );
         }
     }
 }

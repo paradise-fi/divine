@@ -51,7 +51,7 @@ struct Types
                 return std::make_pair( int64_t( it.offset ), it.type_id );
             }
             default:
-                UNREACHABLE_F( "attempted to obtain an offset into a scalar, type = %d", id );
+                UNREACHABLE( "attempted to obtain an offset into a scalar, type =", id );
         }
     }
 

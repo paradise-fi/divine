@@ -183,7 +183,7 @@ namespace divine::vm
             default:
                 /* We lowered everything else in buildInfo. */
                 // instruction().op->dump();
-                UNREACHABLE_F( "unexpected intrinsic %d", id );
+                UNREACHABLE( "unexpected intrinsic", id );
         }
     }
 }

@@ -96,7 +96,7 @@ namespace divine::vm
                 return;
             default:
                 // instruction().op->dump();
-                UNREACHABLE_F( "an unexpected dispatch type %d", type );
+                UNREACHABLE( "an unexpected dispatch type", type );
         }
     }
 
@@ -114,7 +114,7 @@ namespace divine::vm
     void Eval< Ctx >::op( NoOp, Args... )
     {
         // instruction().op->dump();
-        UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
+        UNREACHABLE( "invalid operation on", typeid( T ).name() );
     }
 
     template< typename Ctx > template< typename V_ >
