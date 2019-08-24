@@ -113,8 +113,9 @@ bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
 {
     this->reset();
     auto e = this->extract( heap );
+    auto b = this->builder();
     auto query = get_pc( e, ptr );
-    this->add( query );
+    this->add( mk_bin( b, Op::Eq, 1, query, b.constant( 1, 1 ) ) );
     return this->solve() != Result::False;
 }
 
