@@ -18,12 +18,14 @@
  */
 
 #include <divine/cc/cc1.hpp> //CompileError
+#include <divine/cc/driver.hpp>
 #include <divine/cc/native.hpp>
-#include <divine/rt/dios-cc.hpp> // TODO: Needed?
-#include <divine/rt/runtime.hpp> // TODO: Needed?
 #include <divine/ui/version.hpp>
+
+DIVINE_RELAX_WARNINGS
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/ToolChain.h>
+DIVINE_UNRELAX_WARNINGS
 
 /*
  * This is the user-facing tool that forms the frontend for DivCC. It's a
