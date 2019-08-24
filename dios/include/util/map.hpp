@@ -1,34 +1,27 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#ifndef __DIOS_MAP_HPP__
-#define __DIOS_MAP_HPP__
-
+#pragma once
 #include <util/array.hpp>
-#include <brick-data>
+#include <brick-compact>
 
-namespace __dios {
-
-namespace data = brick::data;
-
-template < typename Key, typename Val, int PT = _VM_PT_Heap >
-using ArrayMap = data::ArrayMap< Key, Val, data::InsertSort, Array< std::pair< Key, Val >, PT > >;
-
-template < typename Key, typename Val, int PT = _VM_PT_Heap >
-struct AutoIncMap: public ArrayMap< Key, Val, PT >
+namespace __dios
 {
-    AutoIncMap(): _nextVal( 0 ) {}
+    template < typename Key, typename Val, int PT = _VM_PT_Heap >
+    using ArrayMap = brq::array_map< Key, Val, brq::insert_sort< brq::less_map >,
+                                     Array< std::pair< Key, Val >, PT > >;
 
-    Val push( const Key& k )
+    template < typename Key, typename Val, int PT = _VM_PT_Heap >
+    struct AutoIncMap: public ArrayMap< Key, Val, PT >
     {
-        Val v = _nextVal++;
-        this->emplace( k, v );
-        return v;
-    }
+        AutoIncMap(): _nextVal( 0 ) {}
 
-    Val _nextVal;
-};
+        Val push( const Key& k )
+        {
+            Val v = _nextVal++;
+            this->emplace( k, v );
+            return v;
+        }
 
-
-} // namespace __dios
-
-# endif // __DIOS_MAP_HPP__
+        Val _nextVal;
+    };
+}
