@@ -161,7 +161,10 @@ namespace lart::abstract
 
         void set( llvm::Value *v, type_onion o )
         {
-            _map.emplace( v, o );
+            if ( auto it = _map.find( v ); it != _map.end() )
+                it->second = o;
+            else
+                _map.emplace( v, o );
         }
 
         decltype(auto) begin() { return _map.begin(); }
