@@ -19,7 +19,7 @@ int setjmp( jmp_buf _env )
     env->frame = frame;
     const _VM_CodePointer pc = frame->pc;
     auto *meta = __md_get_pc_meta( frame->pc );
-    auto op = meta->inst_table[ uintptr_t( pc ) - uintptr_t( meta->entry_point ) ].opcode;
+    auto op = meta->inst_table[ uintptr_t( pc ) & _VM_PM_Off ].opcode;
     assert( op == OpCode::Call );
     env->pc = pc;
     env->meta = meta;
