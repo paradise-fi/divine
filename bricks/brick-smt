@@ -77,10 +77,11 @@ enum class Op : uint8_t
     LastUnary = BvNegate,
 
     FirstCast,
-    SExt = FirstCast,
-    ZExt,
-    Trunc,
-    FPExt,
+    SExt = FirstCast, // sign extend
+    ZExt,             // zero extend
+    Trunc,            // truncate
+    ZFit,
+    FPExt,            // floating point extend
     FPTrunc,
     FPToSInt,
     FPToUInt,
@@ -313,7 +314,14 @@ inline std::string_view name( Op op )
     }
 }
 
-struct Node
+    template< typename S >
+    auto operator<<( S &stream, Op op ) -> decltype( stream << name( op ) )
+    {
+        return stream << name( op );
+    }
+
+
+struct Node /* A node in a tree representing a term. */
 {
     enum class Type {
         Bool,
