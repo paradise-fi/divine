@@ -693,7 +693,8 @@ struct TestProcess
     bool interactive;
     int fd;
 
-    void exec() {
+    void exec()
+    {
         assert( fd >= 0 );
         if ( !interactive ) {
             int devnull = ::open( "/dev/null", O_RDONLY );
@@ -794,7 +795,8 @@ struct TestCase
             if ( end - silent_start > options.timeout ) {
                 ::kill( pid, SIGINT );
                 sleep( 5 ); /* wait a bit for a reaction */
-                if ( waitpid( pid, &status, WNOHANG ) == 0 ) {
+                if ( waitpid( pid, &status, WNOHANG ) == 0 )
+                {
                     system( "echo t | tee /proc/sysrq-trigger > /dev/null 2>&1" );
                     killpg( pid, SIGKILL );
                     waitpid( pid, &status, 0 );
@@ -820,7 +822,8 @@ struct TestCase
         return true;
     }
 
-    std::string timefmt( time_t t ) {
+    std::string timefmt( time_t t )
+    {
         std::stringstream ss;
         ss << t / 60 << ":" << std::setw( 2 ) << std::setfill( '0' ) << t % 60;
         return ss.str();
@@ -940,7 +943,8 @@ struct TestCase
         {
             perror("Fork failed.");
             exit(201);
-        } else if (pid == 0) {
+        } else if (pid == 0)
+        {
             io.close();
             chdir( options.workdir.c_str() );
             if ( !options.flavour_envvar.empty() )
@@ -1162,6 +1166,7 @@ struct Main
     void wait()
     {
         int msec = 500;
+
         for ( auto &tc : running )
         {
             if ( !tc ) continue;
@@ -1245,8 +1250,8 @@ struct Main
         start = time( 0 );
         std::cerr << "running " << cases.size() << " tests" << std::endl;
 
-        for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i ) {
-
+        for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i )
+        {
             if ( options.cont && journal.done( i->id() ) )
                 continue;
 
