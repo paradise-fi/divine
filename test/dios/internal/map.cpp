@@ -1,5 +1,5 @@
 /* TAGS: min c++ */
-/* CC_OPTS: -std=c++14 -I$SRC_ROOT/bricks */
+/* CC_OPTS: -std=c++17 -I$SRC_ROOT/bricks */
 #include <dios.h>
 #include <util/map.hpp>
 #include <cassert>
