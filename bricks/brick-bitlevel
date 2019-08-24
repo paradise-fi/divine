@@ -251,7 +251,7 @@ namespace brick::bitlevel
     template< typename number >
     static inline number fill( number x )
     {
-        static const unsigned m = sizeof( number ) * 8;
+        const unsigned m = sizeof( number ) * 8;
         unsigned r = 1;
         if ( !x )
             return 0;
@@ -276,20 +276,23 @@ namespace brick::bitlevel
     }
 
     template<>
-    inline unsigned MSB< unsigned int >( unsigned int x ) {
-        static const unsigned long bits = sizeof( unsigned int ) * 8 - 1;
+    inline unsigned MSB< unsigned int >( unsigned int x )
+    {
+        const unsigned long bits = sizeof( unsigned int ) * 8 - 1;
         return bits - __builtin_clz( x );
     }
 
     template<>
-    inline unsigned MSB< unsigned long >( unsigned long x ) {
-        static const unsigned bits = sizeof( unsigned long ) * 8 - 1;
+    inline unsigned MSB< unsigned long >( unsigned long x )
+    {
+        const unsigned bits = sizeof( unsigned long ) * 8 - 1;
         return bits - __builtin_clzl( x );
     }
 
     template<>
-    inline unsigned MSB< unsigned long long >( unsigned long long x ) {
-        static const unsigned bits = sizeof( unsigned long long ) * 8 - 1;
+    inline unsigned MSB< unsigned long long >( unsigned long long x )
+    {
+        const unsigned bits = sizeof( unsigned long long ) * 8 - 1;
         return bits - __builtin_clzll( x );
     }
 
