@@ -85,6 +85,7 @@ namespace divine::cc
             else
                 args.push_back( file.second );
         }
+        add( args, po.linker_args );
         args.insert( args.begin(), "divcc" );
 
         return args;

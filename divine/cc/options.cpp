@@ -114,6 +114,8 @@ namespace divine::cc
                 po.use_lld = true;
             else if ( *it == "-g" )
                 po.opts.emplace_back( "-debug-info-kind=standalone" );
+            else if ( *it == "-static" || *it == "--static" )
+                po.linker_args.push_back( *it );
             else
                 po.opts.emplace_back( *it );
         }
