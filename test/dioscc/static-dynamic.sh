@@ -5,9 +5,9 @@ cat > a.c <<EOF
 int main(){}
 EOF
 
-for COMPILER in clang clang++ dioscc diosc++ divcc divc++
+for COMPILER in clang dioscc divcc
 do
-	$COMPILER a.c
+    $COMPILER a.c
     file a.out | grep "dynamically linked"
     rm a.out
 
