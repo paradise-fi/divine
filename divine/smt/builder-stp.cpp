@@ -21,9 +21,9 @@
 #include <divine/smt/builder-stp.hpp>
 
 #if OPT_STP
+
 namespace divine::smt::builder
 {
-
 using BNode = brick::smt::Node;
 
 using namespace std::literals;
@@ -122,7 +122,7 @@ stp::ASTNode STP::binary( Binary bin, Node a, Node b )
             case Op::BvAnd:    return _stp.CreateTerm( stp::BVAND,        bw, a, b );
             case Op::BvOr:     return _stp.CreateTerm( stp::BVOR,         bw, a, b );
             case Op::BvXor:    return _stp.CreateTerm( stp::BVXOR,        bw, a, b );
-            case Op::Concat: return _stp.CreateTerm( stp::BVCONCAT, bw, a, b );
+            case Op::Concat:   return _stp.CreateTerm( stp::BVCONCAT,     bw, a, b );
 
             case Op::BvULE:  return _stp.CreateNode( stp::BVLE,  a, b );
             case Op::BvULT:  return _stp.CreateNode( stp::BVLT,  a, b );
@@ -132,11 +132,11 @@ stp::ASTNode STP::binary( Binary bin, Node a, Node b )
             case Op::BvSLT:  return _stp.CreateNode( stp::BVSLT, a, b );
             case Op::BvSGE:  return _stp.CreateNode( stp::BVSGE, a, b );
             case Op::BvSGT:  return _stp.CreateNode( stp::BVSGT, a, b );
-            case Op::Eq:   return _stp.CreateNode( stp::EQ,    a, b );
-            case Op::NE:   return _stp.CreateNode( stp::NOT, _stp.CreateNode( stp::EQ, a, b ) );
+            case Op::Eq:     return _stp.CreateNode( stp::EQ,    a, b );
+            case Op::NE:     return _stp.CreateNode( stp::NOT, _stp.CreateNode( stp::EQ, a, b ) );
 
             default:
-                UNREACHABLE_F( "unknown binary operation %d", bin.op );
+                UNREACHABLE( "unknown binary operation", bin.op );
         }
     }
     else
@@ -193,7 +193,7 @@ stp::ASTNode STP::binary( Binary bin, Node a, Node b )
             case Op::NE:
                 return _stp.CreateNode( stp::NAND, a, b );
             default:
-                UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
+                UNREACHABLE( "unknown boolean binary operation", bin.op );
         }
     }
 }

@@ -89,7 +89,8 @@ namespace divine::smt
                     stack.pop_back();
                     stack.push_back( { bld.unary( { un, bw }, arg ), bw } );
                 },
-                [&]( const CastOp& cast ) {
+                [&]( CastOp cast )
+                {
                     auto [arg, bw] = stack.back();
                     stack.pop_back();
 

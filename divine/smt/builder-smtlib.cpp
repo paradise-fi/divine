@@ -51,7 +51,8 @@ SMTLib2::Node SMTLib2::variable( Variable var )
 
 SMTLib2::Node SMTLib2::constant( Constant con )
 {
-   switch ( con.type ) {
+   switch ( con.type )
+   {
         case Node::Type::Bool:
             ASSERT_EQ( con.bitwidth, 1 );
             return constant( static_cast< bool >( con.value ) );
@@ -61,7 +62,7 @@ SMTLib2::Node SMTLib2::constant( Constant con )
             ASSERT( con.bitwidth > 1 );
             return _ctx.floatv( con.bitwidth, con.value );
     }
-    UNREACHABLE_F( "Unknown constant type: %hu" );
+    UNREACHABLE( "unknown constant type", con.type );
 }
 
 SMTLib2::Node SMTLib2::constant( bool v )
@@ -293,10 +294,10 @@ SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
             case Op::NE:
                 return define( _ctx.unop< Op::Not >( 1, _ctx.binop< Op::And >( 1, a, b ) ) );
             default:
-                UNREACHABLE_F( "unknown boolean binary operation %d", bin.op );
+                UNREACHABLE( "unknown boolean binary operation", bin.op );
         }
     }
-    UNREACHABLE_F( "NOT IMPLEMENTED" );
+    UNREACHABLE( "unexpected operands", a, b, "to", bin.op );
 }
 
 } // namespace divine::smt::builder
