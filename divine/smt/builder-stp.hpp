@@ -23,6 +23,17 @@
 #include <divine/smt/builder-common.hpp>
 #include <stp/STPManager/STPManager.h>
 
+namespace stp
+{
+    template< typename S >
+    auto &operator<<( S &stream, const ASTNode &n )
+    {
+        std::stringstream str;
+        n.nodeprint( str );
+        return stream << str.str();
+    }
+}
+
 namespace divine::smt::builder
 {
 
