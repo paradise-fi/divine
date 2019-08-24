@@ -4,8 +4,8 @@
 #include <lart/support/util.h>
 #include <lart/abstract/operation.h>
 
-namespace lart::abstract {
-
+namespace lart::abstract
+{
     void LowerToBool::run( llvm::Module & m )
     {
         auto match = []( auto br )
@@ -24,14 +24,14 @@ namespace lart::abstract {
         auto index = m.getFunction( "lart.abstract.to_tristate" )->getMetadata( tag );
 
         OperationBuilder builder;
-        for ( auto * br : brs ) {
+        for ( auto * br : brs )
+        {
             auto cond = llvm::cast< llvm::Instruction >( br->getCondition() );
             auto abs = cond->getNextNonDebugInstruction();
             auto op = builder.construct< Operation::Type::ToBool >( abs );
             op.inst->setMetadata( tag, index );
             br->setCondition( op.inst );
-        };
+        }
     }
-
-} // namespace lart::abstract
+}
 
