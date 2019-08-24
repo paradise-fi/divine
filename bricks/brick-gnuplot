@@ -255,7 +255,7 @@ struct Terminal
             return 1;
         if ( u == "mm" )
             return 0.1;
-        UNREACHABLE_F( "unknown unit %s", u.c_str() );
+        UNREACHABLE( "unknown unit", u );
     }
 
     void fromString( std::string s )
