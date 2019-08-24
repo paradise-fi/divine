@@ -50,269 +50,267 @@
 
 namespace brick::smt
 {
+    using Format = std::function< void ( std::ostream & ) >;
+    struct Context;
 
-using Format = std::function< void ( std::ostream & ) >;
-struct Context;
-
-/* Available operations in SMT-LIB.
-   Size of an operation is 1 byte (hence uint8_t). */
-enum class Op : uint8_t
-{
-    Invalid,
-
-    // declare a variable of type
-    VarBool, FirstVar = VarBool,
-    VarI8,
-    VarI16,
-    VarI32,
-    VarI64,
-    VarFloat,
-    VarDouble,
-    LastVar = VarDouble,
-
-    FirstUnary,
-    Not = FirstUnary,
-    BvNot,
-    BvNegate,
-    LastUnary = BvNegate,
-
-    FirstCast,
-    SExt = FirstCast, // sign extend
-    ZExt,             // zero extend
-    Trunc,            // truncate
-    ZFit,
-    FPExt,            // floating point extend
-    FPTrunc,
-    FPToSInt,
-    FPToUInt,
-    SIntToFP,
-    UIntToFP,
-    LastCast = UIntToFP,
-
-    FirstBinary,
-    FirstBvBinary = FirstBinary,
-    And = FirstBvBinary, // TODO why is And the first *bitvector*? (BvAnd?)
-    Or,
-    Xor,
-    Implies,
-
-    Concat,
-
-    BvAnd,
-    BvOr,
-    BvXor,
-    BvAdd,
-    BvSub,
-    BvMul,
-    BvUDiv,
-    BvSDiv,
-    BvURem,
-    BvSRem,
-    BvShl,     // bitvector shift left
-    BvLShr,    // bitvector logical shift right -- prepend zeroes
-    BvAShr,    // bitvector arithmetical shift right -- copy highest bit
-
-    // Icmp
-    FirstICMP,
-    Eq = FirstICMP,
-    NE,
-    BvULE,
-    BvULT,
-    BvUGE,
-    BvUGT,
-    BvSLE,
-    BvSLT,
-    BvSGE,
-    BvSGT,
-    LastICMP = BvSGT,
-    LastBvBinary = LastICMP,
-
-    FirstFpBinary,
-    FpAdd = FirstFpBinary,
-    FpSub,
-    FpMul,
-    FpDiv,
-    FpRem,
-
-    // Fcmp
-    /* Floating point compare, either of the operands can be NaN,
-     * in which case the unordered versions are used. */
-    FirstFCMP,
-    FpFalse = FirstFCMP, // no comparison, always returns false
-    FpOEQ,   // ordered and equal
-    FpOGT,   // ordered and greater than
-    FpOGE,   // ordered and greater than or equal
-    FpOLT,   // ordered and less than
-    FpOLE,   // ordered and less than or equal
-    FpONE,   // ordered and not equal
-    FpORD,   // ordered (no nans)
-    FpUEQ,   // unordered or equal
-    FpUGT,   // unordered or greater than
-    FpUGE,   // unordered or greater than or equal
-    FpULT,   // unordered or less than
-    FpULE,   // unordered or less than or equal
-    FpUNE,   // unordered or not equal
-    FpUNO,   // unordered (either nans)
-    FpTrue,  // no comparison, always returns true
-    LastFCMP = FpTrue,
-    LastFpBinary = LastFCMP,
-
-    Constraint,
-    LastBinary = Constraint,
-
-    Extract,
-};
-
-using Bitwidth = int8_t;
-
-template< Op... Ops >
-static constexpr bool is_one_of( Op op )
-{
-    return ( (Ops == op) || ... );
-}
-
-static inline constexpr bool is_variable( Op op ) noexcept
-{
-    return Op::FirstVar <= op && op <= Op::LastVar;
-}
-
-static inline constexpr bool is_constant( Op op ) noexcept
-{
-    return static_cast< Bitwidth >( op ) < 0; // bitwidths are in negative range
-}
-
-static inline constexpr bool is_unary( Op op ) noexcept
-{
-    return Op::FirstUnary <= op && op <= Op::LastUnary;
-}
-
-static inline constexpr bool is_cast( Op op ) noexcept
-{
-    return Op::FirstCast <= op && op <= Op::LastCast;
-}
-
-static inline constexpr bool is_binary( Op op ) noexcept
-{
-    return Op::FirstBinary <= op && op <= Op::LastBinary;
-}
-
-static inline constexpr bool is_integer_bin( Op op ) noexcept
-{
-    return Op::FirstBvBinary <= op && op <= Op::LastBvBinary;
-}
-
-static inline constexpr bool is_float_bin( Op op ) noexcept
-{
-    return Op::FirstFpBinary <= op && op <= Op::LastFpBinary;
-}
-
-static inline constexpr bool is_icmp( Op op ) noexcept
-{
-    return Op::FirstICMP <= op && op <= Op::LastICMP;
-}
-
-static inline constexpr bool is_fcmp( Op op ) noexcept
-{
-    return Op::FirstFCMP <= op && op <= Op::LastFCMP;
-}
-
-static inline constexpr bool is_cmp( Op op ) noexcept
-{
-    return is_icmp( op ) || is_fcmp( op );
-}
-
-/* SMT-LIB names for the operations, for generating the string
- * to input to SMT-LIB. */
-inline std::string_view name( Op op )
-{
-    switch ( op )
+    /* Available operations in SMT-LIB.
+       Size of an operation is 1 byte (hence uint8_t). */
+    enum class Op : uint8_t
     {
-        case Op::Invalid: return "invalid";
+        Invalid,
 
-        case Op::VarBool: return "bool";
-        case Op::VarI8: return "i8";
-        case Op::VarI16: return "i16";
-        case Op::VarI32: return "i32";
-        case Op::VarI64: return "i64";
-        case Op::VarFloat: return "float";
-        case Op::VarDouble: return "double";
+        // declare a variable of type
+        VarBool, FirstVar = VarBool,
+        VarI8,
+        VarI16,
+        VarI32,
+        VarI64,
+        VarFloat,
+        VarDouble,
+        LastVar = VarDouble,
 
-        case Op::Not: return "not";
-        case Op::BvNot: return "bvnot";
-        case Op::BvNegate: return "bvneg";
+        FirstUnary,
+        Not = FirstUnary,
+        BvNot,
+        BvNegate,
+        LastUnary = BvNegate,
 
-        case Op::Eq: return "=";
-        case Op::NE: return "!=";
-        case Op::And: return "and";
-        case Op::Or: return "or";
-        case Op::Xor: return "xor";
-        case Op::Implies: return "=>";
+        FirstCast,
+        SExt = FirstCast, // sign extend
+        ZExt,             // zero extend
+        Trunc,            // truncate
+        ZFit,
+        FPExt,            // floating point extend
+        FPTrunc,
+        FPToSInt,
+        FPToUInt,
+        SIntToFP,
+        UIntToFP,
+        LastCast = UIntToFP,
 
-        case Op::Concat: return "concat";
+        FirstBinary,
+        FirstBvBinary = FirstBinary,
+        And = FirstBvBinary, // TODO why is And the first *bitvector*? (BvAnd?)
+        Or,
+        Xor,
+        Implies,
 
-        case Op::SExt: return "sext";
-        case Op::ZExt: return "zext";
-        case Op::ZFit: return "zfit";
-        case Op::Trunc: return "trunc";
-        case Op::FPExt: return "fpext";
-        case Op::FPTrunc: return "fptrunc";
-        case Op::FPToSInt: return "fptosint";
-        case Op::FPToUInt: return "fptouint";
-        case Op::SIntToFP: return "sinttofp";
-        case Op::UIntToFP: return "uinttofp";
+        Concat,
 
-        case Op::BvAnd: return "bvand";
-        case Op::BvOr: return "bvor";
-        case Op::BvXor: return "bvxor";
-        case Op::BvAdd: return "bvadd";
-        case Op::BvSub: return "bvsub";
-        case Op::BvMul: return "bvmul";
-        case Op::BvUDiv: return "bvudiv";
-        case Op::BvSDiv: return "bvsdiv";
-        case Op::BvURem: return "bvurem";
-        case Op::BvSRem: return "bvsrem";
-        case Op::BvShl: return "bvshl";
-        case Op::BvAShr: return "bvashr";
-        case Op::BvLShr: return "bvlshr";
+        BvAnd,
+        BvOr,
+        BvXor,
+        BvAdd,
+        BvSub,
+        BvMul,
+        BvUDiv,
+        BvSDiv,
+        BvURem,
+        BvSRem,
+        BvShl,     // bitvector shift left
+        BvLShr,    // bitvector logical shift right -- prepend zeroes
+        BvAShr,    // bitvector arithmetical shift right -- copy highest bit
 
-        case Op::Constraint: return "constraint";
+        // Icmp
+        FirstICMP,
+        Eq = FirstICMP,
+        NE,
+        BvULE,
+        BvULT,
+        BvUGE,
+        BvUGT,
+        BvSLE,
+        BvSLT,
+        BvSGE,
+        BvSGT,
+        LastICMP = BvSGT,
+        LastBvBinary = LastICMP,
 
-        case Op::FpAdd:  return "fp.add";
-        case Op::FpSub:  return "fp.sub";
-        case Op::FpMul:  return "fp.mul";
-        case Op::FpDiv:  return "fp.div";
-        case Op::FpRem:  return "fp.rem";
+        FirstFpBinary,
+        FpAdd = FirstFpBinary,
+        FpSub,
+        FpMul,
+        FpDiv,
+        FpRem,
 
-        case Op::BvULE: return "bvule";
-        case Op::BvULT: return "bvult";
-        case Op::BvUGE: return "bvuge";
-        case Op::BvUGT: return "bvugt";
-        case Op::BvSLE: return "bvsle";
-        case Op::BvSLT: return "bvslt";
-        case Op::BvSGE: return "bvsge";
-        case Op::BvSGT: return "bvsgt";
+        // Fcmp
+        /* Floating point compare, either of the operands can be NaN,
+         * in which case the unordered versions are used. */
+        FirstFCMP,
+        FpFalse = FirstFCMP, // no comparison, always returns false
+        FpOEQ,   // ordered and equal
+        FpOGT,   // ordered and greater than
+        FpOGE,   // ordered and greater than or equal
+        FpOLT,   // ordered and less than
+        FpOLE,   // ordered and less than or equal
+        FpONE,   // ordered and not equal
+        FpORD,   // ordered (no nans)
+        FpUEQ,   // unordered or equal
+        FpUGT,   // unordered or greater than
+        FpUGE,   // unordered or greater than or equal
+        FpULT,   // unordered or less than
+        FpULE,   // unordered or less than or equal
+        FpUNE,   // unordered or not equal
+        FpUNO,   // unordered (either nans)
+        FpTrue,  // no comparison, always returns true
+        LastFCMP = FpTrue,
+        LastFpBinary = LastFCMP,
 
-        case Op::FpFalse: return "fp.false";
-        case Op::FpTrue: return "fp.true";
-        case Op::FpOEQ: return "fp.eq";
-        case Op::FpOGT: return "fp.gt";
-        case Op::FpOGE: return "fp.geq";
-        case Op::FpOLT: return "fp.lt";
-        case Op::FpOLE: return "fp.leq";
-        case Op::FpONE: return "distinct"; // TODO neq
-        case Op::FpORD: return "fp.ord";
-        case Op::FpUEQ: return "fp.eq";
-        case Op::FpUGT: return "fp.gt";
-        case Op::FpUGE: return "fp.geq";
-        case Op::FpULT: return "fp.lt";
-        case Op::FpULE: return "fp.leq";
-        case Op::FpUNE: return "distinct"; // TODO neq
-        case Op::FpUNO: return "fp.uno";
+        Constraint,
+        LastBinary = Constraint,
 
-        case Op::Extract: return "extract";
-        default: UNREACHABLE_F( "unknown operation %d", int( op ) );
+        Extract,
+    };
+
+    using Bitwidth = int8_t;
+
+    template< Op... Ops >
+    static constexpr bool is_one_of( Op op )
+    {
+        return ( (Ops == op) || ... );
     }
-}
+
+    static inline constexpr bool is_variable( Op op ) noexcept
+    {
+        return Op::FirstVar <= op && op <= Op::LastVar;
+    }
+
+    static inline constexpr bool is_constant( Op op ) noexcept
+    {
+        return static_cast< Bitwidth >( op ) < 0; // bitwidths are in negative range
+    }
+
+    static inline constexpr bool is_unary( Op op ) noexcept
+    {
+        return Op::FirstUnary <= op && op <= Op::LastUnary;
+    }
+
+    static inline constexpr bool is_cast( Op op ) noexcept
+    {
+        return Op::FirstCast <= op && op <= Op::LastCast;
+    }
+
+    static inline constexpr bool is_binary( Op op ) noexcept
+    {
+        return Op::FirstBinary <= op && op <= Op::LastBinary;
+    }
+
+    static inline constexpr bool is_integer_bin( Op op ) noexcept
+    {
+        return Op::FirstBvBinary <= op && op <= Op::LastBvBinary;
+    }
+
+    static inline constexpr bool is_float_bin( Op op ) noexcept
+    {
+        return Op::FirstFpBinary <= op && op <= Op::LastFpBinary;
+    }
+
+    static inline constexpr bool is_icmp( Op op ) noexcept
+    {
+        return Op::FirstICMP <= op && op <= Op::LastICMP;
+    }
+
+    static inline constexpr bool is_fcmp( Op op ) noexcept
+    {
+        return Op::FirstFCMP <= op && op <= Op::LastFCMP;
+    }
+
+    static inline constexpr bool is_cmp( Op op ) noexcept
+    {
+        return is_icmp( op ) || is_fcmp( op );
+    }
+
+    /* SMT-LIB names for the operations, for generating the string
+     * to input to SMT-LIB. */
+    inline std::string_view name( Op op )
+    {
+        switch ( op )
+        {
+            case Op::Invalid: return "invalid";
+
+            case Op::VarBool: return "bool";
+            case Op::VarI8: return "i8";
+            case Op::VarI16: return "i16";
+            case Op::VarI32: return "i32";
+            case Op::VarI64: return "i64";
+            case Op::VarFloat: return "float";
+            case Op::VarDouble: return "double";
+
+            case Op::Not: return "not";
+            case Op::BvNot: return "bvnot";
+            case Op::BvNegate: return "bvneg";
+
+            case Op::Eq: return "=";
+            case Op::NE: return "!=";
+            case Op::And: return "and";
+            case Op::Or: return "or";
+            case Op::Xor: return "xor";
+            case Op::Implies: return "=>";
+
+            case Op::Concat: return "concat";
+
+            case Op::SExt: return "sext";
+            case Op::ZExt: return "zext";
+            case Op::ZFit: return "zfit";
+            case Op::Trunc: return "trunc";
+            case Op::FPExt: return "fpext";
+            case Op::FPTrunc: return "fptrunc";
+            case Op::FPToSInt: return "fptosint";
+            case Op::FPToUInt: return "fptouint";
+            case Op::SIntToFP: return "sinttofp";
+            case Op::UIntToFP: return "uinttofp";
+
+            case Op::BvAnd: return "bvand";
+            case Op::BvOr: return "bvor";
+            case Op::BvXor: return "bvxor";
+            case Op::BvAdd: return "bvadd";
+            case Op::BvSub: return "bvsub";
+            case Op::BvMul: return "bvmul";
+            case Op::BvUDiv: return "bvudiv";
+            case Op::BvSDiv: return "bvsdiv";
+            case Op::BvURem: return "bvurem";
+            case Op::BvSRem: return "bvsrem";
+            case Op::BvShl: return "bvshl";
+            case Op::BvAShr: return "bvashr";
+            case Op::BvLShr: return "bvlshr";
+
+            case Op::Constraint: return "constraint";
+
+            case Op::FpAdd:  return "fp.add";
+            case Op::FpSub:  return "fp.sub";
+            case Op::FpMul:  return "fp.mul";
+            case Op::FpDiv:  return "fp.div";
+            case Op::FpRem:  return "fp.rem";
+
+            case Op::BvULE: return "bvule";
+            case Op::BvULT: return "bvult";
+            case Op::BvUGE: return "bvuge";
+            case Op::BvUGT: return "bvugt";
+            case Op::BvSLE: return "bvsle";
+            case Op::BvSLT: return "bvslt";
+            case Op::BvSGE: return "bvsge";
+            case Op::BvSGT: return "bvsgt";
+
+            case Op::FpFalse: return "fp.false";
+            case Op::FpTrue: return "fp.true";
+            case Op::FpOEQ: return "fp.eq";
+            case Op::FpOGT: return "fp.gt";
+            case Op::FpOGE: return "fp.geq";
+            case Op::FpOLT: return "fp.lt";
+            case Op::FpOLE: return "fp.leq";
+            case Op::FpONE: return "distinct"; // TODO neq
+            case Op::FpORD: return "fp.ord";
+            case Op::FpUEQ: return "fp.eq";
+            case Op::FpUGT: return "fp.gt";
+            case Op::FpUGE: return "fp.geq";
+            case Op::FpULT: return "fp.lt";
+            case Op::FpULE: return "fp.leq";
+            case Op::FpUNE: return "distinct"; // TODO neq
+            case Op::FpUNO: return "fp.uno";
+
+            case Op::Extract: return "extract";
+        }
+    }
 
     template< typename S >
     auto operator<<( S &stream, Op op ) -> decltype( stream << name( op ) )
@@ -320,870 +318,864 @@ inline std::string_view name( Op op )
         return stream << name( op );
     }
 
+    struct Node /* A node in a tree representing a term. */
+    {
+        enum class Type {
+            Bool,
+            Int,
+            Float
+        };
 
-struct Node /* A node in a tree representing a term. */
-{
-    enum class Type {
-        Bool,
-        Int,
-        Float
+        Format _fmt;
+        int bw = 0;
+        Type type;
+
+        Node( int bw, Type type, Format &&fmt ) :
+            _fmt( std::move( fmt ) ), bw( bw ), type( type )
+        {}
+
+        Node( int bw, Type type, std::string str ) :
+            _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ), type( type )
+        {}
+
+        constexpr inline bool is_bool() const noexcept { return type == Type::Bool; }
+        constexpr inline bool is_bv() const noexcept { return type == Type::Int; }
+        constexpr inline bool is_float() const noexcept { return type == Type::Float; }
     };
 
-    Format _fmt;
-    int bw = 0;
-    Type type;
-
-    Node( int bw, Type type, Format &&fmt ) :
-        _fmt( std::move( fmt ) ), bw( bw ), type( type )
-    {}
-
-    Node( int bw, Type type, std::string str ) :
-        _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ), type( type )
-    {}
-
-    constexpr inline bool is_bool() const noexcept { return type == Type::Bool; }
-    constexpr inline bool is_bv() const noexcept { return type == Type::Int; }
-    constexpr inline bool is_float() const noexcept { return type == Type::Float; }
-};
-
-static inline std::ostream &operator<<( std::ostream &o, const Node &n )
-{
-    n._fmt( o );
-    return o;
-}
-
-inline std::string to_string( const Node &p )
-{
-    std::stringstream ss;
-    ss << p;
-    return ss.str();
-}
-
-inline std::string to_string( Node::Type type )
-{
-    switch ( type ) {
-        case Node::Type::Bool: return "bool";
-        case Node::Type::Int: return "int";
-        case Node::Type::Float: return "float";
-    }
-}
-
-template< typename T >
-inline uint8_t * bytes_begin( const T & v ) noexcept
-{
-    return reinterpret_cast< uint8_t * >( const_cast< std::remove_cv_t< T * > >( &v ) );
-}
-
-template< typename T >
-inline uint8_t * bytes_end( const T & v ) noexcept
-{
-    return reinterpret_cast< uint8_t * >( const_cast< std::remove_cv_t< T * > >( &v ) ) + sizeof( T );
-}
-
-/* Holds bytecode (a sequence of bytes) in the underlying container
- * to encode operations and their operands in Reverse Polish Notation.
- * The bytecode is parsed by RPNView, RPN only builds/holds it.
- * RPN represents one term.
-
-    Example:
-       term a + 7
-       RPN a 7 +
-       container._data:
-        |    bytes for var a     |   bytes for const 7   |  bytes for op +   |
-        | 2 bytes op | 1 byte id |   bitwidth  |  value  | op  |   bitwidth  |
-    When this is decoded, a helper stack is used and the bytecode is taken
-    left-to-right to evaluate operands before they are used in an operation
-     - decode and push a, decode and push 7, (+) pop 2 operands for
- */
-template< typename Container >
-struct RPN : Container
-{
-    using VarID = uint16_t;
-
-    using size_type = typename Container::size_type;
-    using value_type = typename Container::value_type;
-    using reference = typename Container::reference;
-    using const_reference = typename Container::const_reference;
-    using iterator = typename Container::iterator;
-    using const_iterator = typename Container::const_iterator;
-    using difference_type = typename Container::difference_type;
-
-    template< typename T >
-    struct Constant
+    static inline std::ostream &operator<<( std::ostream &o, const Node &n )
     {
-        Bitwidth bw;
-        T value;
-    } __attribute__(( packed, aligned(1) ));
-
-    static_assert( sizeof( Constant< uint8_t > ) == 2 );
-    static_assert( sizeof( Constant< uint32_t > ) == 5 );
-
-    struct Variable
-    {
-        Op op;
-        VarID id;
-    } __attribute__(( packed, aligned(1) ));
-
-    static_assert( sizeof( Variable ) == 3 );
-
-    static_assert( sizeof( Constant< bool > ) == 2 );
-
-    struct CastOp
-    {
-        Op op;
-        Bitwidth bw;
-    } __attribute__(( packed, aligned(1) ));
-
-    static_assert( sizeof( CastOp ) == 2 );
-
-    template< typename T >
-    static inline constexpr Op ivar() noexcept
-    {
-        if constexpr ( sizeof( T ) == 1 )
-            return Op::VarI8;
-        if constexpr ( sizeof( T ) == 2 )
-            return Op::VarI16;
-        if constexpr ( sizeof( T ) == 4 )
-            return Op::VarI32;
-        if constexpr ( sizeof( T ) == 8 )
-            return Op::VarI64;
+        n._fmt( o );
+        return o;
     }
 
-    template< typename T >
-    static inline constexpr Op fpvar() noexcept
+    inline std::string to_string( const Node &p )
     {
-        if constexpr ( sizeof( T ) == 4 )
-            return Op::VarFloat;
-        if constexpr ( sizeof( T ) == 8 )
-            return Op::VarDouble;
+        std::stringstream ss;
+        ss << p;
+        return ss.str();
     }
 
-    template< typename T >
-    static inline constexpr Op var() noexcept
+    inline std::string to_string( Node::Type type )
     {
-        if constexpr ( std::is_integral_v< T > )
-            return ivar< T >();
-        if constexpr ( std::is_floating_point_v< T > )
-            return fpvar< T >();
-    }
-
-    // TODO operation instead of operand?
-    static inline constexpr Op operand( const_iterator it ) noexcept
-    {
-        return static_cast< Op >( *it );
-    }
-
-    static inline constexpr Bitwidth bitwidth( Op op ) noexcept
-    {
-        if ( is_constant( op ) ) {
-            return -static_cast< Bitwidth >( op );
-        } else if ( is_variable( op ) ) {
-            switch( op ) {
-                case Op::VarBool: return 1;
-                case Op::VarI8: return 8;
-                case Op::VarI16: return 16;
-                case Op::VarI32: return 32;
-                case Op::VarI64: return 64;
-                case Op::VarFloat: return 32;
-                case Op::VarDouble: return 64;
-                default:;
-            }
-        }
-
-        UNREACHABLE_F( "Op %hu is neither constant nor variable", op );
-    }
-
-    static inline constexpr Node::Type type( Op op ) noexcept
-    {
-        ASSERT( is_variable( op ) );
-        switch( op ) {
-            case Op::VarBool:
-                return Node::Type::Bool;
-            case Op::VarI8:
-            case Op::VarI16:
-            case Op::VarI32:
-            case Op::VarI64:
-                return Node::Type::Int;
-            case Op::VarFloat:
-            case Op::VarDouble:
-                return Node::Type::Float;
-            default:
-                UNREACHABLE_F( "Unknown variable type: %hu", op );
+        switch ( type ) {
+            case Node::Type::Bool: return "bool";
+            case Node::Type::Int: return "int";
+            case Node::Type::Float: return "float";
         }
     }
 
     template< typename T >
-    constexpr T extract( size_t from = 0 ) const noexcept
+    inline uint8_t * bytes_begin( const T & v ) noexcept
     {
-        auto it = std::next( this->begin(), from );
-        return *reinterpret_cast< T * >( const_cast< uint8_t * >( it ) );
-    }
-
-    constexpr VarID id() const noexcept
-    {
-        ASSERT( is_variable( operand() ) );
-        constexpr auto offset = 1;
-        return extract< VarID >( offset );
+        return reinterpret_cast< uint8_t * >( const_cast< std::remove_cv_t< T * > >( &v ) );
     }
 
     template< typename T >
-    constexpr T extract_constant() const noexcept
+    inline uint8_t * bytes_end( const T & v ) noexcept
     {
-        assert( is_constant( operand() ) );
-        auto bw = bitwidth( operand() );
-        constexpr auto offset = 1;
-        return extract< T >( offset );
+        return reinterpret_cast< uint8_t * >( const_cast< std::remove_cv_t< T * > >( &v ) ) + sizeof( T );
     }
 
-    /* apply == append an operation to the underlying container */
-    template< Op op >
-    constexpr void apply() noexcept
+    /* Holds bytecode (a sequence of bytes) in the underlying container
+     * to encode operations and their operands in Reverse Polish Notation.
+     * The bytecode is parsed by RPNView, RPN only builds/holds it.
+     * RPN represents one term.
+
+        Example:
+           term a + 7
+           RPN a 7 +
+           container._data:
+            |    bytes for var a     |   bytes for const 7   |  bytes for op +   |
+            | 2 bytes op | 1 byte id |   bitwidth  |  value  | op  |   bitwidth  |
+        When this is decoded, a helper stack is used and the bytecode is taken
+        left-to-right to evaluate operands before they are used in an operation
+         - decode and push a, decode and push 7, (+) pop 2 operands for
+     */
+    template< typename Container >
+    struct RPN : Container
     {
-        this->push_back( static_cast< std::underlying_type_t< Op > >( op ) );
-    }
+        using VarID = uint16_t;
 
-    /* extend == append a container to the underlying container */
-    template< typename Bytes >
-    constexpr void extend( const Bytes& bytes ) noexcept
-    {
-        this->append( sizeof( bytes ), bytes_begin( bytes ), bytes_end( bytes ) );
-    }
+        using size_type = typename Container::size_type;
+        using value_type = typename Container::value_type;
+        using reference = typename Container::reference;
+        using const_reference = typename Container::const_reference;
+        using iterator = typename Container::iterator;
+        using const_iterator = typename Container::const_iterator;
+        using difference_type = typename Container::difference_type;
 
-    constexpr void extend( const RPN& other ) noexcept
-    {
-        // drop domain byte
-        this->append( other.size() - 1, std::next( other.begin() ), other.end() );
-    }
-
-    bool is_constraint() const noexcept
-    {
-        if ( this->size() > 2 ) {
-            if ( operand( std::prev( this->end(), 1 ) ) == Op::Not )
-                return operand( std::prev( this->end(), 2 ) ) == Op::Constraint;
-            return operand( std::prev( this->end(), 1 ) ) == Op::Constraint;
-        }
-        return false;
-    }
-};
-
-/* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
- * representation of the RPN . */
-template< typename RPN >
-struct RPNView
-{
-    using VarID = typename RPN::VarID;
-
-    RPNView( const RPN & rpn ) : _rpn( rpn ) {}
-
-    struct Variable
-    {
-        VarID id;
-        Node::Type type;
-        Bitwidth bitwidth;
-
-        template< typename stream >
-        friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
+        template< typename T >
+        struct Constant
         {
-            return os << "[var " << var.id
-                      << " : "   << to_string( var.type )
-                      << " "     << var.bitwidth << "]";
-        }
-    };
+            Bitwidth bw;
+            T value;
+        } __attribute__(( packed, aligned(1) ));
 
-    struct Constant
-    {
-        uint64_t value;
-        Node::Type type;
-        Bitwidth bitwidth;
+        static_assert( sizeof( Constant< uint8_t > ) == 2 );
+        static_assert( sizeof( Constant< uint32_t > ) == 5 );
 
-        template< typename stream >
-        friend auto operator<<( stream &os, const Constant &con ) -> decltype( os << "" )
+        struct Variable
         {
-            return os << "[const " << con.value
-                      << " : "     << to_string( con.type )
-                      << " "       << con.bitwidth << "]";
-        }
-    };
+            Op op;
+            VarID id;
+        } __attribute__(( packed, aligned(1) ));
 
-    struct Operation
-    {
-        Op op;
+        static_assert( sizeof( Variable ) == 3 );
 
-        template< typename stream >
-        friend auto operator<<( stream &os, const Operation &operation ) -> decltype( os << "" )
+        static_assert( sizeof( Constant< bool > ) == 2 );
+
+        struct CastOp
         {
-            return os << name( operation.op );
-        }
-    };
+            Op op;
+            Bitwidth bw;
+        } __attribute__(( packed, aligned(1) ));
 
-    struct CastOp
-    {
-        Op op;
-        Bitwidth bitwidth;
+        static_assert( sizeof( CastOp ) == 2 );
 
-        template< typename stream >
-        friend auto operator<<( stream &os, const CastOp &cast ) -> decltype( os << "" )
+        template< typename T >
+        static inline constexpr Op ivar() noexcept
         {
-            return os << "cast " << name( cast.op ) << " to " << std::to_string( cast.bitwidth ) ;
-        }
-    };
-
-    struct UnaryOp : Operation {};
-
-    struct BinaryOp : Operation {};
-
-    using Token = std::variant< Variable, Constant, CastOp, UnaryOp, BinaryOp >;
-
-    struct Iterator : brick::types::Eq
-    {
-        // TODO usings
-        using rpn_iterator = typename RPN::const_iterator;
-
-        Iterator( rpn_iterator it ) : _it( it ) {}
-
-        auto operand() const noexcept { return RPN::operand( _it ); }
-
-        auto bitwidth() const noexcept
-        {
-            auto o = operand();
-            if ( is_constant( o ) || is_variable( o ) )
-                return RPN::bitwidth( operand() );
-            UNREACHABLE( "unknown bitwidth" );
+            if constexpr ( sizeof( T ) == 1 )
+                return Op::VarI8;
+            if constexpr ( sizeof( T ) == 2 )
+                return Op::VarI16;
+            if constexpr ( sizeof( T ) == 4 )
+                return Op::VarI32;
+            if constexpr ( sizeof( T ) == 8 )
+                return Op::VarI64;
         }
 
         template< typename T >
-        Constant extract_constant() const noexcept
+        static inline constexpr Op fpvar() noexcept
         {
-            ASSERT( is_constant( operand() ) );
-            auto pos = &(*std::next( _it ));
-            auto val = *reinterpret_cast< T * >( const_cast< uint8_t * >( pos ) );
-            auto ty = Node::Type::Int; // TODO other types
-            auto bw = bitwidth();
-            return Constant{ val, ty, bw };
+            if constexpr ( sizeof( T ) == 4 )
+                return Op::VarFloat;
+            if constexpr ( sizeof( T ) == 8 )
+                return Op::VarDouble;
         }
 
-        Iterator& operator++() noexcept
+        template< typename T >
+        static inline constexpr Op var() noexcept
         {
-            if ( is_constant( operand() ) ) {
-                auto byte = static_cast< Bitwidth >( 8 );
-                auto bw = std::max( byte, RPN::bitwidth( operand() ) );
-                std::advance( _it, 1 + bw / 8 );
-            } else if ( is_variable( operand() ) ) {
-                std::advance( _it, sizeof( typename RPN::Variable ) );
-            } else if ( is_cast( operand() ) ) {
-                std::advance( _it, sizeof( typename RPN::CastOp ) );
-            } else if ( is_unary( operand() ) ) {
-                std::advance( _it, sizeof( Op ) );
-            } else {
-                std::advance( _it, sizeof( Op ) );
-            }
-            return *this;
+            if constexpr ( std::is_integral_v< T > )
+                return ivar< T >();
+            if constexpr ( std::is_floating_point_v< T > )
+                return fpvar< T >();
         }
 
-        Token operator*() const noexcept
+        // TODO operation instead of operand?
+        static inline constexpr Op operand( const_iterator it ) noexcept
         {
-            auto op = operand();
+            return static_cast< Op >( *it );
+        }
+
+        static inline constexpr Bitwidth bitwidth( Op op ) noexcept
+        {
             if ( is_constant( op ) ) {
-                auto bw = bitwidth();
-                switch ( bw ) {
-                    case  1: return extract_constant< bool >();
-                    case  8: return extract_constant< uint8_t >();
-                    case 16: return extract_constant< uint16_t >();
-                    case 32: return extract_constant< uint32_t >();
-                    case 64: return extract_constant< uint64_t >();
-                    default:
-                        UNREACHABLE_F( "unsupported constant bitwidth %d", bw );
+                return -static_cast< Bitwidth >( op );
+            } else if ( is_variable( op ) ) {
+                switch( op ) {
+                    case Op::VarBool: return 1;
+                    case Op::VarI8: return 8;
+                    case Op::VarI16: return 16;
+                    case Op::VarI32: return 32;
+                    case Op::VarI64: return 64;
+                    case Op::VarFloat: return 32;
+                    case Op::VarDouble: return 64;
+                    default:;
                 }
             }
 
-            if ( is_variable( op ) ) {
-                using Var = typename RPN::Variable;
-                auto ptr = reinterpret_cast< const Var * >( &(*_it) );
-                return Variable{ ptr->id, RPN::type( op ), bitwidth() };
-            }
-
-            if ( is_cast( op ) ) {
-                using Cast = typename RPN::CastOp;
-                auto ptr = reinterpret_cast< const Cast * >( &(*_it) );
-                return CastOp{ ptr->op, ptr->bw };
-            }
-
-            if ( is_unary( op ) )
-                return UnaryOp{ op };
-
-            if ( is_binary( op ) )
-                return BinaryOp{ op };
-
-            UNREACHABLE_F( "Unknown RPN Token" );
+            UNREACHABLE_F( "Op %hu is neither constant nor variable", op );
         }
 
-        bool operator==( const Iterator& other ) const noexcept
+        static inline constexpr Node::Type type( Op op ) noexcept
         {
-            return _it == other._it;
+            ASSERT( is_variable( op ) );
+            switch( op ) {
+                case Op::VarBool:
+                    return Node::Type::Bool;
+                case Op::VarI8:
+                case Op::VarI16:
+                case Op::VarI32:
+                case Op::VarI64:
+                    return Node::Type::Int;
+                case Op::VarFloat:
+                case Op::VarDouble:
+                    return Node::Type::Float;
+                default:
+                    UNREACHABLE_F( "Unknown variable type: %hu", op );
+            }
         }
 
-        rpn_iterator _it;
+        template< typename T >
+        constexpr T extract( size_t from = 0 ) const noexcept
+        {
+            auto it = std::next( this->begin(), from );
+            return *reinterpret_cast< T * >( const_cast< uint8_t * >( it ) );
+        }
+
+        constexpr VarID id() const noexcept
+        {
+            ASSERT( is_variable( operand() ) );
+            constexpr auto offset = 1;
+            return extract< VarID >( offset );
+        }
+
+        template< typename T >
+        constexpr T extract_constant() const noexcept
+        {
+            assert( is_constant( operand() ) );
+            auto bw = bitwidth( operand() );
+            constexpr auto offset = 1;
+            return extract< T >( offset );
+        }
+
+        /* apply == append an operation to the underlying container */
+        template< Op op >
+        constexpr void apply() noexcept
+        {
+            this->push_back( static_cast< std::underlying_type_t< Op > >( op ) );
+        }
+
+        /* extend == append a container to the underlying container */
+        template< typename Bytes >
+        constexpr void extend( const Bytes& bytes ) noexcept
+        {
+            this->append( sizeof( bytes ), bytes_begin( bytes ), bytes_end( bytes ) );
+        }
+
+        constexpr void extend( const RPN& other ) noexcept
+        {
+            // drop domain byte
+            this->append( other.size() - 1, std::next( other.begin() ), other.end() );
+        }
+
+        bool is_constraint() const noexcept
+        {
+            if ( this->size() > 2 ) {
+                if ( operand( std::prev( this->end(), 1 ) ) == Op::Not )
+                    return operand( std::prev( this->end(), 2 ) ) == Op::Constraint;
+                return operand( std::prev( this->end(), 1 ) ) == Op::Constraint;
+            }
+            return false;
+        }
     };
 
-    Iterator begin() const noexcept { return Iterator{ std::next( _rpn.begin() ) }; }
-    Iterator end() const noexcept { return Iterator{ _rpn.end() }; }
-
-    friend std::ostream& operator<<( std::ostream& os, const RPNView& view )
+    /* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
+     * representation of the RPN . */
+    template< typename RPN >
+    struct RPNView
     {
-        for ( const auto & term : view ) {
-            std::visit( [&]( const auto& val ) { os << val << " "; }, term );
+        using VarID = typename RPN::VarID;
+
+        RPNView( const RPN & rpn ) : _rpn( rpn ) {}
+
+        struct Variable
+        {
+            VarID id;
+            Node::Type type;
+            Bitwidth bitwidth;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
+            {
+                return os << "[var " << var.id
+                          << " : "   << to_string( var.type )
+                          << " "     << var.bitwidth << "]";
+            }
+        };
+
+        struct Constant
+        {
+            uint64_t value;
+            Node::Type type;
+            Bitwidth bitwidth;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Constant &con ) -> decltype( os << "" )
+            {
+                return os << "[const " << con.value
+                          << " : "     << to_string( con.type )
+                          << " "       << con.bitwidth << "]";
+            }
+        };
+
+        struct Operation
+        {
+            Op op;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Operation &operation ) -> decltype( os << "" )
+            {
+                return os << name( operation.op );
+            }
+        };
+
+        struct CastOp
+        {
+            Op op;
+            Bitwidth bitwidth;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const CastOp &cast ) -> decltype( os << "" )
+            {
+                return os << "cast " << name( cast.op ) << " to " << std::to_string( cast.bitwidth ) ;
+            }
+        };
+
+        struct UnaryOp : Operation {};
+
+        struct BinaryOp : Operation {};
+
+        using Token = std::variant< Variable, Constant, CastOp, UnaryOp, BinaryOp >;
+
+        struct Iterator : brick::types::Eq
+        {
+            // TODO usings
+            using rpn_iterator = typename RPN::const_iterator;
+
+            Iterator( rpn_iterator it ) : _it( it ) {}
+
+            auto operand() const noexcept { return RPN::operand( _it ); }
+
+            auto bitwidth() const noexcept
+            {
+                auto o = operand();
+                if ( is_constant( o ) || is_variable( o ) )
+                    return RPN::bitwidth( operand() );
+                UNREACHABLE( "unknown bitwidth" );
+            }
+
+            template< typename T >
+            Constant extract_constant() const noexcept
+            {
+                ASSERT( is_constant( operand() ) );
+                auto pos = &(*std::next( _it ));
+                auto val = *reinterpret_cast< T * >( const_cast< uint8_t * >( pos ) );
+                auto ty = Node::Type::Int; // TODO other types
+                auto bw = bitwidth();
+                return Constant{ val, ty, bw };
+            }
+
+            Iterator& operator++() noexcept
+            {
+                if ( is_constant( operand() ) ) {
+                    auto byte = static_cast< Bitwidth >( 8 );
+                    auto bw = std::max( byte, RPN::bitwidth( operand() ) );
+                    std::advance( _it, 1 + bw / 8 );
+                } else if ( is_variable( operand() ) ) {
+                    std::advance( _it, sizeof( typename RPN::Variable ) );
+                } else if ( is_cast( operand() ) ) {
+                    std::advance( _it, sizeof( typename RPN::CastOp ) );
+                } else if ( is_unary( operand() ) ) {
+                    std::advance( _it, sizeof( Op ) );
+                } else {
+                    std::advance( _it, sizeof( Op ) );
+                }
+                return *this;
+            }
+
+            Token operator*() const noexcept
+            {
+                auto op = operand();
+                if ( is_constant( op ) ) {
+                    auto bw = bitwidth();
+                    switch ( bw ) {
+                        case  1: return extract_constant< bool >();
+                        case  8: return extract_constant< uint8_t >();
+                        case 16: return extract_constant< uint16_t >();
+                        case 32: return extract_constant< uint32_t >();
+                        case 64: return extract_constant< uint64_t >();
+                        default:
+                            UNREACHABLE_F( "unsupported constant bitwidth %d", bw );
+                    }
+                }
+
+                if ( is_variable( op ) ) {
+                    using Var = typename RPN::Variable;
+                    auto ptr = reinterpret_cast< const Var * >( &(*_it) );
+                    return Variable{ ptr->id, RPN::type( op ), bitwidth() };
+                }
+
+                if ( is_cast( op ) ) {
+                    using Cast = typename RPN::CastOp;
+                    auto ptr = reinterpret_cast< const Cast * >( &(*_it) );
+                    return CastOp{ ptr->op, ptr->bw };
+                }
+
+                if ( is_unary( op ) )
+                    return UnaryOp{ op };
+
+                if ( is_binary( op ) )
+                    return BinaryOp{ op };
+
+                UNREACHABLE_F( "Unknown RPN Token" );
+            }
+
+            bool operator==( const Iterator& other ) const noexcept
+            {
+                return _it == other._it;
+            }
+
+            rpn_iterator _it;
+        };
+
+        Iterator begin() const noexcept { return Iterator{ std::next( _rpn.begin() ) }; }
+        Iterator end() const noexcept { return Iterator{ _rpn.end() }; }
+
+        friend std::ostream& operator<<( std::ostream& os, const RPNView& view )
+        {
+            for ( const auto & term : view ) {
+                std::visit( [&]( const auto& val ) { os << val << " "; }, term );
+            }
+
+            return os;
         }
 
+        const RPN & _rpn;
+    };
+
+    template< typename T >
+    std::ostream& operator<<( std::ostream& os, const RPN< T >& rpn )
+    {
+        os << RPNView{ rpn } << std::endl;
         return os;
     }
 
-    const RPN & _rpn;
-};
-
-template< typename T >
-std::ostream& operator<<( std::ostream& os, const RPN< T >& rpn )
-{
-    os << RPNView{ rpn } << std::endl;
-    return os;
-}
-
-/* float operations */
-enum class RoundingMode {
-    RNE,    // round nearest, ties to even
-    RNA,    // round nearest, ties to away (from zero)
-    RTP,    // round toward positive
-    RTN,    // round toward negative
-    RTZ     // round toward zero
-};
-
-inline std::string to_string( RoundingMode mode )
-{
-    switch ( mode ) {
-        case RoundingMode::RNE: return "RNE";
-        case RoundingMode::RNA: return "RNA";
-        case RoundingMode::RTP: return "RTP";
-        case RoundingMode::RTN: return "RTN";
-        case RoundingMode::RTZ: return "RTZ";
-        default: UNREACHABLE_F( "Unknown rounding mode." );
-    };
-}
-
-static inline std::ostream &operator<<( std::ostream &o, RoundingMode mode )
-{
-    o << to_string( mode );
-    return o;
-}
-
-template< size_t bitwidth >
-std::string to_fp();
-
-// to_fp (bits in exponent) (bits in significand)
-template<>
-inline std::string to_fp< 16 >() { return "(_ to_fp 5 11)"; }
-
-template<>
-inline std::string to_fp< 32 >() { return "(_ to_fp 8 24)"; }
-
-template<>
-inline std::string to_fp< 64 >() { return "(_ to_fp 11 53)"; }
-
-inline std::string to_fp( size_t bw )
-{
-    switch ( bw )
-    {
-        case 16: return to_fp< 16 >();
-        case 32: return to_fp< 32 >();
-        case 64: return to_fp< 64 >();
-        default: UNREACHABLE( "Unsupported bitwidth." );
-    }
-}
-
-struct Context
-{
-    std::unordered_set< std::string > def_set;  // set of definitions
-    std::vector< std::pair< std::string, Node > > defs;  // names of definitions
-    std::unordered_map< std::string, Node > vars;
-
-    void clear() { def_set.clear(); defs.clear(); vars.clear(); }
-
-    // alias a Node with a name
-    Node define( std::string name, Node def )
-    {
-        ASSERT( !name.empty() );
-        ASSERT( !def_set.count( name ) );
-        def_set.insert( name );
-        defs.emplace_back( name, def );
-        return Node( def.bw, def.type, name );
-    }
-
-    Node variable( Node node, std::string name )
-    {
-        if ( vars.count( name ) )
-            ASSERT_EQ( to_string( node ), to_string( vars.find( name )->second ) );
-        else
-            vars.emplace( name, node );
-        return Node( node.bw, node.type, name );
-    }
-
-    Node symbol( int bw, Node::Type type, std::string name ) {
-        return Node( bw, type, name );
-    }
-
-    Node bitvec( int, data::SmallVector< uint64_t > data );
-    Node boolT() { return Node( 1, Node::Type::Bool, "Bool" ); }
-    Node bitvecT( int bitwidth )
-    {
-        ASSERT_LEQ( 0, bitwidth );
-        return Node( bitwidth, Node::Type::Int, "(_ BitVec " + std::to_string( bitwidth ) + ")" );
-    }
-
-    Node floatT( int bitwidth )
-    {
-        ASSERT_LEQ( 0, bitwidth );
-        return Node( bitwidth, Node::Type::Float, "(Float" + std::to_string( bitwidth ) + ")" );
-    }
-
-    Node bitvec( int bw, uint64_t val )
-    {
-        return bitvec( bw, brick::data::SmallVector< uint64_t >{ val } );
-    }
-
-    template< typename Int, typename =
-            std::enable_if_t< std::is_integral< Int >::value && (sizeof( Int ) <= sizeof( uint64_t )) > >
-    Node bitvec( Int i )
-    {
-        return bitvec( sizeof( Int ) * 8, data::SmallVector< uint64_t >{ uint64_t( i ) } );
-    }
-
-    Node floatv( int bw, double val, RoundingMode mode = RoundingMode::RNE );
-
-    void print( std::ostream &o, Node n, bool exq = true )  // exq = Existential Quantifier
-    {
-        auto bind = [&]( std::string type, auto &vec, auto next )
-        {
-            for ( auto s : vec )
-                o << std::endl << "    (" << type << " ((" << s.first << " " << s.second << ")) ";
-            next();
-            for ( unsigned i = 0; i < vec.size(); ++i )
-                o << ")";
-        };
-
-        auto let = [&]{ bind( "let", defs, [&]{ o << n; } ); }; // local variable binder
-        if ( exq )
-            bind( "exists", vars, let );
-        else
-            let();
-    }
-
-    void query( std::ostream &o, Node n )
-    {
-        for ( auto v : vars )
-            o << "(declare-fun " << v.first << " () " << v.second << ")" << std::endl;
-        o << "(assert ";
-        print( o, n, false );
-        o << ")" << std::endl << "(check-sat)";
-    }
-
-    std::string print( Node n, bool exq = true )
-    {
-        std::stringstream s;
-        print( s, n, exq );
-        return s.str();
-    }
-
-    std::string query( Node n )
-    {
-        std::stringstream s;
-        query( s, n );
-        return s.str();
-    }
-
-    using Vector = brick::data::SmallVector< Node, 2 >;
-
-    bool is_cmp( Op op )
-    {
-        return ( op >= Op::FirstICMP && op <= Op::LastICMP ) ||
-               ( op >= Op::FirstFCMP && op <= Op::LastFCMP );
-    }
-
-    bool is_rounding_mode_required( Op op )
-    {
-        return op == Op::FpAdd || op == Op::FpSub || op == Op::FpMul || op == Op::FpDiv;
-    }
-
-    Node expr( int bw, Op op, const Vector &args, std::optional< RoundingMode > mode )
-    {
-        auto fmt = [=]( std::ostream &o )
-        {
-            o << "(" << name( op );
-
-            if ( is_rounding_mode_required( op ) )
-            {
-                ASSERT( mode.has_value() );
-                o << " " << to_string( mode.value() );
-            }
-
-            for ( auto &a : args )
-                o << " " << a;
-            o << ")";
-        };
-        auto type = is_cmp( op ) ? Node::Type::Bool : args[ 0 ].type;
-        return Node( bw, type, fmt );
-    }
-
-    Node expr( int bw, Op op, const Vector &args )
-    {
-        return expr( bw, op, args, std::nullopt );
-    }
-
-
-    template< Op op >
-    Node unop( int bw, Node arg )
-    {
-        static_assert( op >= Op::FirstUnary && op <= Op::LastUnary, "op is not a unary operation" );
-        return expr( bw, op, { arg } );
-    }
-
-    template< Op op >
-    Node binop( int bw, Node a, Node b )
-    {
-        static_assert( is_integer_bin( op ), "op is not a bitvector binary operation" );
-        ASSERT( a.type == b.type );
-        return expr( bw, op, { a, b } );
-    }
-
-    template< Op op >
-    Node fpbinop( int bw, Node a, Node b )
-    {
-        static_assert( is_float_bin( op ), "op is not a floating point binary operation" );
-        ASSERT( a.type == b.type );
-        return expr( bw, op, { a, b }, RoundingMode::RNE );
-    }
-
-    // extract a subrange from a bitvector
-    Node extract( int highest, int lowest, Node arg )
-    {
-        ASSERT_LEQ( lowest, highest );
-        auto f = [=]( std::ostream &o )
-        {
-            o << "((_ extract " << std::dec << highest << " " << lowest << ") " << arg << ")";
-        };
-        return Node( 1 + highest - lowest, Node::Type::Int, f );
+    /* float operations */
+    enum class RoundingMode {
+        RNE,    // round nearest, ties to even
+        RNA,    // round nearest, ties to away (from zero)
+        RTP,    // round toward positive
+        RTN,    // round toward negative
+        RTZ     // round toward zero
     };
 
-    // if - then - else
-    Node ite( Node cond, Node t, Node f )
+    inline std::string to_string( RoundingMode mode )
     {
-        ASSERT_EQ( t.bw, f.bw );
-        ASSERT( t.type == f.type );
-        auto fmt = [=]( std::ostream &o ) { o << "(ite " << cond << " " << t << " " << f << ")"; };
-        return Node( t.bw, t.type, fmt );
+        switch ( mode ) {
+            case RoundingMode::RNE: return "RNE";
+            case RoundingMode::RNA: return "RNA";
+            case RoundingMode::RTP: return "RTP";
+            case RoundingMode::RTN: return "RTN";
+            case RoundingMode::RTZ: return "RTZ";
+            default: UNREACHABLE_F( "Unknown rounding mode." );
+        };
     }
 
-    template< Op op > Node cast( int bw, const Node & arg );
-};
-
-namespace {
-
-inline Node fp_to_fp_cast( int bw, const Node & arg )
-{
-    const RoundingMode mode = RoundingMode::RNE;
-    auto fmt = [=]( std::ostream &o )
+    static inline std::ostream &operator<<( std::ostream &o, RoundingMode mode )
     {
-        o << "(" << to_fp( bw ) << " " << to_string( mode ) << " " << arg << " )";
-    };
-    return Node( bw, Node::Type::Float, fmt );
-}
-
-} // anonymous namespace
-
-template<>
-inline Node Context::cast< Op::FPExt >( int bw, const Node & arg )
-{
-    return fp_to_fp_cast( bw, arg );
-}
-
-template<>
-inline Node Context::cast< Op::FPTrunc >( int bw, const Node & arg )
-{
-    return fp_to_fp_cast( bw, arg );
-}
-
-template<>
-inline Node Context::cast< Op::FPToSInt >( int, const Node & )
-{
-    NOT_IMPLEMENTED();
-}
-
-template<>
-inline Node Context::cast< Op::FPToUInt >( int, const Node & )
-{
-    NOT_IMPLEMENTED();
-}
-
-template<>
-inline Node Context::cast< Op::SIntToFP >( int, const Node & )
-{
-    NOT_IMPLEMENTED();
-}
-
-template<>
-inline Node Context::cast< Op::UIntToFP >( int, const Node & )
-{
-    NOT_IMPLEMENTED();
-}
-
-inline static uint64_t u64mask( int bitwidth )
-{
-    if ( bitwidth >= 64 )
-        return ~uint64_t( 0 );
-    return (uint64_t( 1 ) << bitwidth) - 1;
-}
-
-namespace {
-
-inline std::stringstream to_bitvector( int bitwidth, brick::data::SmallVector< uint64_t > data ) {
-    int bw = bitwidth;
-    int i = 0;
-
-    while ( bw > 0 && i < int( data.size() ) )
-    {
-        data[ i ] &= u64mask( bw );
-        bw -= 64;
-        ++i;
+        o << to_string( mode );
+        return o;
     }
 
-    while ( i < int( data.size() ) )
-        data.pop_back();
-    while ( int( data.size() ) < (bitwidth + 63) / 64 )
-        data.push_back( 0 );
+    template< size_t bitwidth >
+    std::string to_fp();
 
-    std::stringstream o;
+    // to_fp (bits in exponent) (bits in significand)
+    template<>
+    inline std::string to_fp< 16 >() { return "(_ to_fp 5 11)"; }
 
-    if ( bitwidth % 4 == 0 )
+    template<>
+    inline std::string to_fp< 32 >() { return "(_ to_fp 8 24)"; }
+
+    template<>
+    inline std::string to_fp< 64 >() { return "(_ to_fp 11 53)"; }
+
+    inline std::string to_fp( size_t bw )
     {
-        o << "#x" << std::hex;
-        // data are little endian
-        for ( int i = data.size() - 1; i >= 0; --i )
-            o << std::setfill( '0' ) << std::setw( std::min( bitwidth - i * 64, 64 ) / 4 ) << data[i];
-    }
-    else
-    {
-        o << "#b";
-        for ( int i = data.size() - 1; i >= 0; --i ) {
-            for ( int j = std::min( bitwidth - 1 - i * 64, 63 ); j >= 0; --j )
-                if ( data[i] & (uint64_t( 1 ) << j) )
-                    o << '1';
-                else
-                    o << '0';
+        switch ( bw )
+        {
+            case 16: return to_fp< 16 >();
+            case 32: return to_fp< 32 >();
+            case 64: return to_fp< 64 >();
+            default: UNREACHABLE( "Unsupported bitwidth." );
         }
     }
 
-    return o;
-}
+    struct Context
+    {
+        std::unordered_set< std::string > def_set;  // set of definitions
+        std::vector< std::pair< std::string, Node > > defs;  // names of definitions
+        std::unordered_map< std::string, Node > vars;
 
-} // anonymous namespace
+        void clear() { def_set.clear(); defs.clear(); vars.clear(); }
 
-inline Node Context::floatv( int bitwidth, double val, RoundingMode mode )
-{
-    static_assert( sizeof( double ) == sizeof( uint64_t ) );
-    return Node( bitwidth, Node::Type::Float,
-        "(" + to_fp( bitwidth ) + " " + to_string( mode ) + " " + std::to_string( val ) + " )"
-    );
-}
+        // alias a Node with a name
+        Node define( std::string name, Node def )
+        {
+            ASSERT( !name.empty() );
+            ASSERT( !def_set.count( name ) );
+            def_set.insert( name );
+            defs.emplace_back( name, def );
+            return Node( def.bw, def.type, name );
+        }
 
-inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
-{
-    auto o = to_bitvector( bitwidth, data );
-    return Node( bitwidth, Node::Type::Int, o.str() );
-}
+        Node variable( Node node, std::string name )
+        {
+            if ( vars.count( name ) )
+                ASSERT_EQ( to_string( node ), to_string( vars.find( name )->second ) );
+            else
+                vars.emplace( name, node );
+            return Node( node.bw, node.type, name );
+        }
 
+        Node symbol( int bw, Node::Type type, std::string name ) {
+            return Node( bw, type, name );
+        }
+
+        Node bitvec( int, data::SmallVector< uint64_t > data );
+        Node boolT() { return Node( 1, Node::Type::Bool, "Bool" ); }
+        Node bitvecT( int bitwidth )
+        {
+            ASSERT_LEQ( 0, bitwidth );
+            return Node( bitwidth, Node::Type::Int, "(_ BitVec " + std::to_string( bitwidth ) + ")" );
+        }
+
+        Node floatT( int bitwidth )
+        {
+            ASSERT_LEQ( 0, bitwidth );
+            return Node( bitwidth, Node::Type::Float, "(Float" + std::to_string( bitwidth ) + ")" );
+        }
+
+        Node bitvec( int bw, uint64_t val )
+        {
+            return bitvec( bw, brick::data::SmallVector< uint64_t >{ val } );
+        }
+
+        template< typename Int, typename =
+                std::enable_if_t< std::is_integral< Int >::value &&
+                                  ( sizeof( Int ) <= sizeof( uint64_t ) ) > >
+        Node bitvec( Int i )
+        {
+            return bitvec( sizeof( Int ) * 8, data::SmallVector< uint64_t >{ uint64_t( i ) } );
+        }
+
+        Node floatv( int bw, double val, RoundingMode mode = RoundingMode::RNE );
+
+        void print( std::ostream &o, Node n, bool exq = true )  // exq = Existential Quantifier
+        {
+            auto bind = [&]( std::string type, auto &vec, auto next )
+            {
+                for ( auto s : vec )
+                    o << std::endl << "    (" << type << " ((" << s.first << " " << s.second << ")) ";
+                next();
+                for ( unsigned i = 0; i < vec.size(); ++i )
+                    o << ")";
+            };
+
+            auto let = [&]{ bind( "let", defs, [&]{ o << n; } ); }; // local variable binder
+            if ( exq )
+                bind( "exists", vars, let );
+            else
+                let();
+        }
+
+        void query( std::ostream &o, Node n )
+        {
+            for ( auto v : vars )
+                o << "(declare-fun " << v.first << " () " << v.second << ")" << std::endl;
+            o << "(assert ";
+            print( o, n, false );
+            o << ")" << std::endl << "(check-sat)";
+        }
+
+        std::string print( Node n, bool exq = true )
+        {
+            std::stringstream s;
+            print( s, n, exq );
+            return s.str();
+        }
+
+        std::string query( Node n )
+        {
+            std::stringstream s;
+            query( s, n );
+            return s.str();
+        }
+
+        using Vector = brick::data::SmallVector< Node, 2 >;
+
+        bool is_cmp( Op op )
+        {
+            return ( op >= Op::FirstICMP && op <= Op::LastICMP ) ||
+                   ( op >= Op::FirstFCMP && op <= Op::LastFCMP );
+        }
+
+        bool is_rounding_mode_required( Op op )
+        {
+            return op == Op::FpAdd || op == Op::FpSub || op == Op::FpMul || op == Op::FpDiv;
+        }
+
+        Node expr( int bw, Op op, const Vector &args, std::optional< RoundingMode > mode )
+        {
+            auto fmt = [=]( std::ostream &o )
+            {
+                o << "(" << name( op );
+
+                if ( is_rounding_mode_required( op ) )
+                {
+                    ASSERT( mode.has_value() );
+                    o << " " << to_string( mode.value() );
+                }
+
+                for ( auto &a : args )
+                    o << " " << a;
+                o << ")";
+            };
+            auto type = is_cmp( op ) ? Node::Type::Bool : args[ 0 ].type;
+            return Node( bw, type, fmt );
+        }
+
+        Node expr( int bw, Op op, const Vector &args )
+        {
+            return expr( bw, op, args, std::nullopt );
+        }
+
+
+        template< Op op >
+        Node unop( int bw, Node arg )
+        {
+            static_assert( op >= Op::FirstUnary && op <= Op::LastUnary, "op is not a unary operation" );
+            return expr( bw, op, { arg } );
+        }
+
+        template< Op op >
+        Node binop( int bw, Node a, Node b )
+        {
+            static_assert( is_integer_bin( op ), "op is not a bitvector binary operation" );
+            ASSERT( a.type == b.type );
+            return expr( bw, op, { a, b } );
+        }
+
+        template< Op op >
+        Node fpbinop( int bw, Node a, Node b )
+        {
+            static_assert( is_float_bin( op ), "op is not a floating point binary operation" );
+            ASSERT( a.type == b.type );
+            return expr( bw, op, { a, b }, RoundingMode::RNE );
+        }
+
+        // extract a subrange from a bitvector
+        Node extract( int highest, int lowest, Node arg )
+        {
+            ASSERT_LEQ( lowest, highest );
+            auto f = [=]( std::ostream &o )
+            {
+                o << "((_ extract " << std::dec << highest << " " << lowest << ") " << arg << ")";
+            };
+            return Node( 1 + highest - lowest, Node::Type::Int, f );
+        };
+
+        // if - then - else
+        Node ite( Node cond, Node t, Node f )
+        {
+            ASSERT_EQ( t.bw, f.bw );
+            ASSERT( t.type == f.type );
+            auto fmt = [=]( std::ostream &o ) { o << "(ite " << cond << " " << t << " " << f << ")"; };
+            return Node( t.bw, t.type, fmt );
+        }
+
+        template< Op op > Node cast( int bw, const Node & arg );
+    };
+
+    namespace {
+
+    inline Node fp_to_fp_cast( int bw, const Node & arg )
+    {
+        const RoundingMode mode = RoundingMode::RNE;
+        auto fmt = [=]( std::ostream &o )
+        {
+            o << "(" << to_fp( bw ) << " " << to_string( mode ) << " " << arg << " )";
+        };
+        return Node( bw, Node::Type::Float, fmt );
+    }
+
+    } // anonymous namespace
+
+    template<>
+    inline Node Context::cast< Op::FPExt >( int bw, const Node & arg )
+    {
+        return fp_to_fp_cast( bw, arg );
+    }
+
+    template<>
+    inline Node Context::cast< Op::FPTrunc >( int bw, const Node & arg )
+    {
+        return fp_to_fp_cast( bw, arg );
+    }
+
+    template<>
+    inline Node Context::cast< Op::FPToSInt >( int, const Node & )
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    template<>
+    inline Node Context::cast< Op::FPToUInt >( int, const Node & )
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    template<>
+    inline Node Context::cast< Op::SIntToFP >( int, const Node & )
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    template<>
+    inline Node Context::cast< Op::UIntToFP >( int, const Node & )
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    inline static uint64_t u64mask( int bitwidth )
+    {
+        if ( bitwidth >= 64 )
+            return ~uint64_t( 0 );
+        return (uint64_t( 1 ) << bitwidth) - 1;
+    }
+
+    static inline std::stringstream to_bitvector( int bitwidth,
+                                                  brick::data::SmallVector< uint64_t > data )
+    {
+        int bw = bitwidth;
+        int i = 0;
+
+        while ( bw > 0 && i < int( data.size() ) )
+        {
+            data[ i ] &= u64mask( bw );
+            bw -= 64;
+            ++i;
+        }
+
+        while ( i < int( data.size() ) )
+            data.pop_back();
+        while ( int( data.size() ) < (bitwidth + 63) / 64 )
+            data.push_back( 0 );
+
+        std::stringstream o;
+
+        if ( bitwidth % 4 == 0 )
+        {
+            o << "#x" << std::hex;
+            // data are little endian
+            for ( int i = data.size() - 1; i >= 0; --i )
+                o << std::setfill( '0' ) << std::setw( std::min( bitwidth - i * 64, 64 ) / 4 ) << data[i];
+        }
+        else
+        {
+            o << "#b";
+            for ( int i = data.size() - 1; i >= 0; --i ) {
+                for ( int j = std::min( bitwidth - 1 - i * 64, 63 ); j >= 0; --j )
+                    if ( data[i] & (uint64_t( 1 ) << j) )
+                        o << '1';
+                    else
+                        o << '0';
+            }
+        }
+
+        return o;
+    }
+
+    inline Node Context::floatv( int bitwidth, double val, RoundingMode mode )
+    {
+        static_assert( sizeof( double ) == sizeof( uint64_t ) );
+        return Node( bitwidth, Node::Type::Float,
+            "(" + to_fp( bitwidth ) + " " + to_string( mode ) + " " + std::to_string( val ) + " )"
+        );
+    }
+
+    inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
+    {
+        auto o = to_bitvector( bitwidth, data );
+        return Node( bitwidth, Node::Type::Int, o.str() );
+    }
 }
 
 namespace brick::t_smt
 {
+    using namespace brick::smt;
 
-using namespace brick::smt;
-
-struct BVecTest
-{
-    TEST(string)
+    struct BVecTest
     {
-        Context ctx;
+        TEST(string)
+        {
+            Context ctx;
 
-        auto a = ctx.bitvec( 42 );
-        ASSERT_EQ( "#x0000002a", to_string( a ) );
+            auto a = ctx.bitvec( 42 );
+            ASSERT_EQ( "#x0000002a", to_string( a ) );
 
-        auto b = ctx.bitvec( uint64_t( 42 ) );
-        ASSERT_EQ( "#x000000000000002a", to_string( b ) );
+            auto b = ctx.bitvec( uint64_t( 42 ) );
+            ASSERT_EQ( "#x000000000000002a", to_string( b ) );
 
-        auto c = ctx.bitvec( 4, 0xff );
-        ASSERT_EQ( "#xf", to_string( c ) );
+            auto c = ctx.bitvec( 4, 0xff );
+            ASSERT_EQ( "#xf", to_string( c ) );
 
-        brick::data::SmallVector< uint64_t > data = { ~uint64_t( 0 ), ~uint64_t( 0 ) };
-        auto d = ctx.bitvec( 96, data );
-        ASSERT_EQ( "#x" + std::string( 24, 'f' ), to_string( d ) );
+            brick::data::SmallVector< uint64_t > data = { ~uint64_t( 0 ), ~uint64_t( 0 ) };
+            auto d = ctx.bitvec( 96, data );
+            ASSERT_EQ( "#x" + std::string( 24, 'f' ), to_string( d ) );
 
-        auto e = ctx.bitvec( 256, data );
-        ASSERT_EQ( "#x" + std::string( 32, '0' ) + std::string( 32, 'f' ), to_string( e ) );
+            auto e = ctx.bitvec( 256, data );
+            ASSERT_EQ( "#x" + std::string( 32, '0' ) + std::string( 32, 'f' ), to_string( e ) );
 
-        auto f = ctx.bitvec( 96, 42 );
-        ASSERT_EQ( "#x" + std::string( 22, '0' ) + "2a", to_string( f ) );
+            auto f = ctx.bitvec( 96, 42 );
+            ASSERT_EQ( "#x" + std::string( 22, '0' ) + "2a", to_string( f ) );
 
-        auto g = ctx.bitvec( 16, data );
-        ASSERT_EQ( "#xffff", to_string( g ) );
+            auto g = ctx.bitvec( 16, data );
+            ASSERT_EQ( "#xffff", to_string( g ) );
 
-        auto h = ctx.bitvec( 7, data );
-        ASSERT_EQ( "#b1111111", to_string( h ) );
+            auto h = ctx.bitvec( 7, data );
+            ASSERT_EQ( "#b1111111", to_string( h ) );
 
-        auto i = ctx.bitvec( 7, 0x29 );
-        ASSERT_EQ( "#b0101001", to_string( i ) );
+            auto i = ctx.bitvec( 7, 0x29 );
+            ASSERT_EQ( "#b0101001", to_string( i ) );
 
-        auto j = ctx.bitvec( 67, { (uint64_t( 1 ) << 63) | 1, 0x5 } );
-        ASSERT_EQ( "#b1011" + std::string( 62, '0' ) + "1", to_string( j ) );
+            auto j = ctx.bitvec( 67, { (uint64_t( 1 ) << 63) | 1, 0x5 } );
+            ASSERT_EQ( "#b1011" + std::string( 62, '0' ) + "1", to_string( j ) );
 
-        auto k = ctx.bitvec( 67, { (uint64_t( 1 ) << 33) | 1, 0x5 } );
-        ASSERT_EQ( "#b101" + std::string( 30, '0' ) + "1" + std::string( 32, '0' ) + "1",
-                   to_string( k ) );
-    }
-};
+            auto k = ctx.bitvec( 67, { (uint64_t( 1 ) << 33) | 1, 0x5 } );
+            ASSERT_EQ( "#b101" + std::string( 30, '0' ) + "1" + std::string( 32, '0' ) + "1",
+                       to_string( k ) );
+        }
+    };
 
-struct ExtractTest
-{
-    TEST(print)
+    struct ExtractTest
     {
-        Context ctx;
+        TEST(print)
+        {
+            Context ctx;
 
-        ASSERT_EQ( "((_ extract 32 0) #x000000000000002a)",
-                   to_string( ctx.extract( 32, 0, ctx.bitvec( 42ull ) ) ) );
-        ASSERT_EQ( "((_ extract 15 15) (concat #xff #xff))",
-                   to_string( ctx.extract( 15, 15,
-                                           ctx.binop< Op::Concat >( 16,
-                                                                    ctx.bitvec( 8, 0xff ),
-                                                                    ctx.bitvec( 8, 0xff ) ) ) ) );
-    }
-};
+            ASSERT_EQ( "((_ extract 32 0) #x000000000000002a)",
+                       to_string( ctx.extract( 32, 0, ctx.bitvec( 42ull ) ) ) );
+            ASSERT_EQ( "((_ extract 15 15) (concat #xff #xff))",
+                       to_string( ctx.extract( 15, 15,
+                                               ctx.binop< Op::Concat >( 16,
+                                                                        ctx.bitvec( 8, 0xff ),
+                                                                        ctx.bitvec( 8, 0xff ) ) ) ) );
+        }
+    };
 
-struct CombinationTest
-{
-    TEST(simple)
+    struct CombinationTest
     {
-        Context ctx;
+        TEST(simple)
+        {
+            Context ctx;
 
-        ASSERT_EQ( to_string( ctx.binop< Op::BvAdd >( 32, ctx.bitvec( 42 ), ctx.bitvec( 32 ) ) ),
-                   "(bvadd #x0000002a #x00000020)" );
-        ASSERT_EQ( to_string( ctx.binop< Op::BvAnd >( 32, ctx.symbol( 32, Node::Type::Int, "a" )
-                                                                        , ctx.bitvec( 3, 5 ) ) ),
-                   "(bvand a #b101)" );
-        ASSERT_EQ( to_string(
-                       ctx.binop< Op::BvSLE >(
-                           16, ctx.extract( 32, 16, ctx.symbol( 32, Node::Type::Int, "a" ) ),
-                           ctx.unop< Op::BvNegate >( 16, ctx.bitvec( short( 42 ) ) ) ) ),
-                   "(bvsle ((_ extract 32 16) a) (bvneg #x002a))" );
-    }
-
-};
-
+            ASSERT_EQ( to_string( ctx.binop< Op::BvAdd >( 32, ctx.bitvec( 42 ), ctx.bitvec( 32 ) ) ),
+                       "(bvadd #x0000002a #x00000020)" );
+            ASSERT_EQ( to_string( ctx.binop< Op::BvAnd >( 32, ctx.symbol( 32, Node::Type::Int, "a" )
+                                                                            , ctx.bitvec( 3, 5 ) ) ),
+                       "(bvand a #b101)" );
+            ASSERT_EQ( to_string(
+                           ctx.binop< Op::BvSLE >(
+                               16, ctx.extract( 32, 16, ctx.symbol( 32, Node::Type::Int, "a" ) ),
+                               ctx.unop< Op::BvNegate >( 16, ctx.bitvec( short( 42 ) ) ) ) ),
+                       "(bvsle ((_ extract 32 16) a) (bvneg #x002a))" );
+        }
+    };
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
