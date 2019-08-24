@@ -318,31 +318,34 @@ namespace lart::abstract
     using ValueSet = std::set< llvm::Value * >;
 
     template< typename F >
-    void each_call( llvm::Function *fn, F f, llvm::Value *val = nullptr,
-                    std::shared_ptr< ValueSet > seen = std::make_shared< ValueSet >() ) noexcept
+    void each_call( llvm::Function *fn, F f, llvm::Value *val, ValueSet &seen ) noexcept
     {
-        if ( !val )
-            for ( auto u : fn->users() )
+        if ( seen.count( val ) )
+            return;
+        else
+            seen.insert( val );
+
+        if ( util::is_one_of< llvm::Function, llvm::BitCastInst, llvm::PHINode,
+                              llvm::ConstantExpr >( val ) )
+            for ( auto u : val->users() )
                 each_call( fn, f, u, seen );
 
-        if ( val && !seen->count( val ) )
-        {
-            seen->insert( val );
+        else if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( val ) )
+            for ( auto callee : resolve_call( llvm::CallSite( val ) ) )
+                if ( callee == fn )
+                {
+                    if ( auto invoke = llvm::dyn_cast< llvm::InvokeInst >( val ) )
+                        f( invoke );
+                    if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
+                        f( call );
+                }
+    }
 
-            if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val ) )
-                for ( auto u : ce->users() )
-                    each_call( fn, f, u, seen );
-
-            if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( val ) )
-                for ( auto callee : resolve_call( llvm::CallSite( val ) ) )
-                    if ( callee == fn )
-                    {
-                        if ( auto invoke = llvm::dyn_cast< llvm::InvokeInst >( val ) )
-                            f( invoke );
-                        if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
-                            f( call );
-                    }
-        }
+    template< typename F >
+    void each_call( llvm::Function *fn, F f )
+    {
+        ValueSet seen;
+        each_call( fn, f, fn, seen );
     }
 
     template< typename Values >
