@@ -8,14 +8,17 @@ namespace lart::abstract {
 
     void LowerToBool::run( llvm::Module & m )
     {
+        auto match = []( auto br )
+        {
+            return br->isConditional() &&
+                   ( meta::abstract::has( br->getCondition() ) ||
+                     meta::has( br->getCondition(), meta::tag::operation::phi ) );
+        };
+
         auto brs = query::query( m ).flatten().flatten()
             .map( query::llvmdyncast< llvm::BranchInst > )
             .filter( query::notnull )
-            .filter( [] ( auto br ) {
-                if ( br->isConditional() )
-                    return meta::abstract::has( br->getCondition() );
-                return false;
-            } ).freeze();
+            .filter( match ).freeze();
 
         auto tag = meta::tag::operation::index;
         auto index = m.getFunction( "lart.abstract.to_tristate" )->getMetadata( tag );
