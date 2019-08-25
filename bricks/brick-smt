@@ -160,6 +160,9 @@ namespace brick::smt
         LastBinary = Constraint,
 
         Extract,
+
+        // Evaluate a freestanding RPN as one of the operands
+        Call
     };
 
     using Bitwidth = int8_t;
@@ -218,6 +221,11 @@ namespace brick::smt
     static inline constexpr bool is_cmp( Op op ) noexcept
     {
         return is_icmp( op ) || is_fcmp( op );
+    }
+
+    static inline constexpr bool is_call( Op op ) noexcept
+    {
+        return op == Op::Call;
     }
 
     /* SMT-LIB names for the operations, for generating the string
@@ -309,6 +317,7 @@ namespace brick::smt
             case Op::FpUNO: return "fp.uno";
 
             case Op::Extract: return "extract";
+            case Op::Call: return "call";
         }
     }
 
@@ -422,7 +431,6 @@ namespace brick::smt
         } __attribute__(( packed, aligned(1) ));
 
         static_assert( sizeof( Variable ) == 3 );
-
         static_assert( sizeof( Constant< bool > ) == 2 );
 
         struct CastOp
@@ -432,6 +440,24 @@ namespace brick::smt
         } __attribute__(( packed, aligned(1) ));
 
         static_assert( sizeof( CastOp ) == 2 );
+
+        struct Call
+        {
+            Op op;
+            uint32_t objid;
+
+            constexpr Call( uint32_t obj )
+              : op( Op::Call ), objid( obj ){}
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Call &c ) -> decltype( os << "" )
+            {
+                return os << name( c.op ) << " " << c.objid;
+            }
+
+        } __attribute__(( packed, aligned(1) ));
+
+        static_assert( sizeof( Call ) == 5 );
 
         template< typename T >
         static inline constexpr Op ivar() noexcept
@@ -559,6 +585,7 @@ namespace brick::smt
     struct RPNView
     {
         using VarID = typename RPN::VarID;
+        using CallOp = typename RPN::Call;
 
         RPNView( const RPN & rpn ) : _rpn( rpn ) {}
 
@@ -619,7 +646,7 @@ namespace brick::smt
 
         struct BinaryOp : Operation {};
 
-        using Token = std::variant< Variable, Constant, CastOp, UnaryOp, BinaryOp >;
+        using Token = std::variant< Variable, Constant, CastOp, UnaryOp, BinaryOp, CallOp >;
 
         struct Iterator : brick::types::Eq
         {
@@ -660,6 +687,8 @@ namespace brick::smt
                     std::advance( _it, sizeof( typename RPN::Variable ) );
                 } else if ( is_cast( operand() ) ) {
                     std::advance( _it, sizeof( typename RPN::CastOp ) );
+                } else if ( is_call( operand() ) ) {
+                    std::advance( _it, sizeof( CallOp ) );
                 } else if ( is_unary( operand() ) ) {
                     std::advance( _it, sizeof( Op ) );
                 } else {
@@ -703,6 +732,13 @@ namespace brick::smt
 
                 if ( is_binary( op ) )
                     return BinaryOp{ op };
+
+                if ( is_call( op ) )
+                {
+                    auto pos = &(*std::next( _it ));
+                    auto val = *reinterpret_cast< uint32_t * >( const_cast< uint8_t * >( pos ) );
+                    return CallOp{ val };
+                }
 
                 UNREACHABLE( "unknown RPN token", op );
             }
