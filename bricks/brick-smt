@@ -318,6 +318,8 @@ namespace brick::smt
 
             case Op::Extract: return "extract";
             case Op::Call: return "call";
+
+            default: UNREACHABLE( "missing case in name( Op )", int( op ) );
         }
     }
 
