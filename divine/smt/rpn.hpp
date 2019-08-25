@@ -38,15 +38,8 @@ namespace divine::smt
     using UnaryOp = RPNView::UnaryOp;
     using BinaryOp = RPNView::BinaryOp;
 
-    struct Unary : UnaryOp
-    {
-        Bitwidth bw;
-    };
-
-    struct Binary : BinaryOp
-    {
-        Bitwidth bw;
-    };
+    struct Unary  : UnaryOp  { Bitwidth bw; };
+    struct Binary : BinaryOp { Bitwidth bw; };
 
     // TODO move to utils
     template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
@@ -61,7 +54,8 @@ namespace divine::smt
     }
 
     template< typename Builder >
-    auto evaluate( Builder &bld, const RPN &rpn ) -> typename Builder::Node
+    auto evaluate( Builder &bld, const RPN &rpn, bool *is_constraint = nullptr )
+        -> typename Builder::Node
     {
         using Node = typename Builder::Node;
         std::vector< std::pair< Node, Bitwidth > > stack;
@@ -80,64 +74,60 @@ namespace divine::smt
             stack.emplace_back( n, bw );
         };
 
-        TRACE( "evaluate", rpn );
-
-        auto binary = [&] ( Op op, const auto& bin )
+        auto handle_binary = [&] ( BinaryOp bin )
         {
+            if ( bin.op == Op::Constraint )
+            {
+                bin.op = Op::And;
+                if ( is_constraint ) *is_constraint = true;
+            }
+
             auto [ b, bbw ] = pop();
             auto [ a, abw ] = pop();
 
-            auto bw = bitwidth( op, abw, bbw );
-            push( bld.binary( { op, bw }, a, b ), bw );
+            auto bw = bitwidth( bin.op, abw, bbw );
+            push( bld.binary( { bin.op, bw }, a, b ), bw );
         };
+
+        auto handle_unary = [&]( const UnaryOp &un )
+        {
+            auto [ arg, bw ] = pop();
+            push( bld.unary( { un, bw }, arg ), bw );
+        };
+
+        auto handle_cast = [&]( CastOp cast )
+        {
+            auto [ arg, bw ] = pop();
+
+            if ( cast.op == Op::ZFit )
+            {
+                if ( cast.bitwidth < bw )
+                    cast.op = Op::Trunc;
+                else
+                    cast.op = Op::ZExt;
+            }
+
+            Unary op = { cast.op, cast.bitwidth };
+            push( bld.unary( op, arg ), cast.bitwidth );
+        };
+
+        auto handle_term = overload
+        {
+            [&]( const Constant& con ) { push( bld.constant( con ), con.bitwidth ); },
+            [&]( const Variable& var ) { push( bld.variable( var ), var.bitwidth ); },
+            handle_unary, handle_cast, handle_binary,
+            [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
+        };
+
+        TRACE( "evaluate", rpn );
 
         for ( const auto& term : RPNView{ rpn } )
         {
             TRACE( "shift", term );
-            std::visit( overload {
-                [&]( const Constant& con )
-                {
-                    push( bld.constant( con ), con.bitwidth );
-                },
-                [&]( const Variable& var )
-                {
-                    push( bld.variable( var ), var.bitwidth );
-                },
-                [&]( const UnaryOp& un )
-                {
-                    auto [ arg, bw ] = pop();
-                    push( bld.unary( { un, bw }, arg ), bw );
-                },
-                [&]( CastOp cast )
-                {
-                    auto [ arg, bw ] = pop();
-
-                    if ( cast.op == Op::ZFit )
-                    {
-                        if ( cast.bitwidth < bw )
-                            cast.op = Op::Trunc;
-                        else
-                            cast.op = Op::ZExt;
-                    }
-
-                    Unary op = { cast.op, cast.bitwidth };
-                    push( bld.unary( op, arg ), cast.bitwidth );
-                },
-                [&]( const BinaryOp& bin )
-                {
-                    if ( bin.op == Op::Constraint )
-                        binary( Op::And, bin );
-                    else
-                        binary( bin.op, bin );
-                },
-                [&]( const auto& )
-                {
-                    UNREACHABLE( "unsupported term type", term );
-                }
-            }, term );
+            if ( is_constraint ) *is_constraint = false;
+            std::visit( handle_term, term );
         }
 
         return stack.back().first;
     }
-
-} // namespace divine::smt
+}
