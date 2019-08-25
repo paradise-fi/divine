@@ -66,33 +66,51 @@ namespace divine::smt
         using Node = typename Builder::Node;
         std::vector< std::pair< Node, Bitwidth > > stack;
 
-        auto binary = [&] ( Op op, const auto& bin ) {
-            auto [b, bbw] = stack.back();
+        auto pop = [&]()
+        {
+            auto v = stack.back();
+            TRACE( "pop", v );
             stack.pop_back();
-            auto [a, abw] = stack.back();
-            stack.pop_back();
-
-            auto bw = bitwidth( op, abw, bbw );
-            stack.push_back( { bld.binary( { op, bw }, a, b ), bw } );
+            return v;
         };
 
-        for ( const auto& term : RPNView{ rpn } ) {
+        auto push = [&]( Node n, Bitwidth bw )
+        {
+            TRACE( "push", n, "bw", bw );
+            stack.emplace_back( n, bw );
+        };
+
+        TRACE( "evaluate", rpn );
+
+        auto binary = [&] ( Op op, const auto& bin )
+        {
+            auto [ b, bbw ] = pop();
+            auto [ a, abw ] = pop();
+
+            auto bw = bitwidth( op, abw, bbw );
+            push( bld.binary( { op, bw }, a, b ), bw );
+        };
+
+        for ( const auto& term : RPNView{ rpn } )
+        {
+            TRACE( "shift", term );
             std::visit( overload {
-                [&]( const Constant& con ) {
-                    stack.push_back( { bld.constant( con ), con.bitwidth } );
+                [&]( const Constant& con )
+                {
+                    push( bld.constant( con ), con.bitwidth );
                 },
-                [&]( const Variable& var ) {
-                    stack.push_back( { bld.variable( var ), var.bitwidth } );
+                [&]( const Variable& var )
+                {
+                    push( bld.variable( var ), var.bitwidth );
                 },
-                [&]( const UnaryOp& un ) {
-                    auto [arg, bw] = stack.back();
-                    stack.pop_back();
-                    stack.push_back( { bld.unary( { un, bw }, arg ), bw } );
+                [&]( const UnaryOp& un )
+                {
+                    auto [ arg, bw ] = pop();
+                    push( bld.unary( { un, bw }, arg ), bw );
                 },
                 [&]( CastOp cast )
                 {
-                    auto [arg, bw] = stack.back();
-                    stack.pop_back();
+                    auto [ arg, bw ] = pop();
 
                     if ( cast.op == Op::ZFit )
                     {
@@ -103,9 +121,10 @@ namespace divine::smt
                     }
 
                     Unary op = { cast.op, cast.bitwidth };
-                    stack.push_back( { bld.unary( op, arg ), cast.bitwidth } );
+                    push( bld.unary( op, arg ), cast.bitwidth );
                 },
-                [&]( const BinaryOp& bin ) {
+                [&]( const BinaryOp& bin )
+                {
                     if ( bin.op == Op::Constraint )
                         binary( Op::And, bin );
                     else
