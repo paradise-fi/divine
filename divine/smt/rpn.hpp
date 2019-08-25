@@ -20,7 +20,9 @@
 #pragma once
 
 #include <brick-smt>
+#include <divine/vm/pointer.hpp>
 
+#include <list>
 #include <cassert>
 
 namespace divine::smt
@@ -37,6 +39,7 @@ namespace divine::smt
     using CastOp = RPNView::CastOp;
     using UnaryOp = RPNView::UnaryOp;
     using BinaryOp = RPNView::BinaryOp;
+    using CallOp = RPNView::CallOp;
 
     struct Unary  : UnaryOp  { Bitwidth bw; };
     struct Binary : BinaryOp { Bitwidth bw; };
@@ -59,6 +62,7 @@ namespace divine::smt
     {
         using Node = typename Builder::Node;
         std::vector< std::pair< Node, Bitwidth > > stack;
+        std::list< std::pair< RPN, RPNView::Iterator > > control_stack;
 
         auto pop = [&]()
         {
@@ -72,6 +76,12 @@ namespace divine::smt
         {
             TRACE( "push", n, "bw", bw );
             stack.emplace_back( n, bw );
+        };
+
+        auto push_control = [&]( RPN&& rpn )
+        {
+            control_stack.emplace_back( std::move( rpn ), RPNView::Iterator() );
+            control_stack.back().second = RPNView{ control_stack.back().first }.begin();
         };
 
         auto handle_binary = [&] ( BinaryOp bin )
@@ -111,19 +121,35 @@ namespace divine::smt
             push( bld.unary( op, arg ), cast.bitwidth );
         };
 
+        auto handle_call = [&]( CallOp call )
+        {
+            vm::HeapPointer ptr( call.objid );
+            RPN rpn = bld.read( ptr );
+            push_control( RPN( rpn ) );
+        };
+
         auto handle_term = overload
         {
             [&]( const Constant& con ) { push( bld.constant( con ), con.bitwidth ); },
             [&]( const Variable& var ) { push( bld.variable( var ), var.bitwidth ); },
-            handle_unary, handle_cast, handle_binary,
+            handle_unary, handle_cast, handle_binary, handle_call,
             [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
         };
 
         TRACE( "evaluate", rpn );
 
-        for ( const auto& term : RPNView{ rpn } )
+        push_control( RPN( rpn ) );
+
+        while ( !control_stack.empty() )
         {
-            TRACE( "shift", term );
+            auto& cs = control_stack.back();
+            RPNView view{ cs.first };
+            auto term = *cs.second;
+            ++cs.second;
+
+            if ( cs.second == view.end() )
+                control_stack.pop_back();
+
             if ( is_constraint ) *is_constraint = false;
             std::visit( handle_term, term );
         }
