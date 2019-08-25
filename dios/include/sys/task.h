@@ -26,7 +26,7 @@
 struct __dios_tls
 {
     int __errno;
-    uintptr_t __rst_stash;
+    void *__rst_stash;
     char __data[ 0 ];
 };
 
