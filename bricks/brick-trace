@@ -248,10 +248,7 @@ namespace brq
             do {
                 if ( !_make_space( cap ) ) return *this;
                 if constexpr ( std::is_integral< V >::value )
-                {
-                    if ( _hex ) (*this) << "0x";
                     result = std::to_chars( pointer(), buffer_end(), val, _hex ? 16 : 10 );
-                }
                 else
                     result = std::to_chars( pointer(), buffer_end(), val );
                 cap *= 2;
