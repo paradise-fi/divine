@@ -627,6 +627,7 @@ namespace brick::smt
             using rpn_iterator = typename RPN::const_iterator;
 
             Iterator( rpn_iterator it ) : _it( it ) {}
+            Iterator() = default;
 
             auto operand() const noexcept { return RPN::operand( _it ); }
 
