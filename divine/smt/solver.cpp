@@ -44,13 +44,6 @@ Result SMTLib::solve()
     UNREACHABLE( "Invalid SMT reply" );
 }
 
-template< typename Extract >
-auto get_pc( Extract &e, vm::HeapPointer ptr )
-{
-    return evaluate( e, e.read( ptr ) );
-}
-
-
 template< typename Core, typename Node >
 Op equality( const Node& node ) noexcept
 {
@@ -69,28 +62,29 @@ bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &
 
     auto v_eq = b.constant( true );
     auto c_1 = e_1.constant( true ), c_2 = e_2.constant( true );
-    bool constraints_found = false;
+
+    bool constraints_found = false, f_1_constraint = false, f_2_constraint = false;
 
     for ( auto [lhs, rhs] : sym_pairs )
     {
         auto f_1 = e_1.read( lhs );
         auto f_2 = e_2.read( rhs );
 
-        if ( f_1.is_constraint() )
+        auto v_1 = evaluate( e_1, f_1, &f_1_constraint );
+        auto v_2 = evaluate( e_2, f_2, &f_2_constraint );
+
+        if ( f_1_constraint )
         {
             ASSERT( !constraints_found );
-            ASSERT( f_2.is_constraint() );
+            ASSERT( f_2_constraint );
             constraints_found = true;
-            c_1 = get_pc( e_1, lhs );
-            c_2 = get_pc( e_2, rhs );
+            c_1 = v_1;
+            c_2 = v_2;
+            TRACE( "found constraints", c_1, c_2 );
         }
         else
         {
-            auto v_1 = e_1.convert( lhs );
-            auto v_2 = e_2.convert( rhs );
-
             Op op = equality< Core >( v_1 );
-
             auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
             v_eq = mk_bin( b, Op::And, 1, v_eq, pair_eq );
         }
@@ -114,7 +108,7 @@ bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
     this->reset();
     auto e = this->extract( heap );
     auto b = this->builder();
-    auto query = get_pc( e, ptr );
+    auto query = evaluate( e, e.read( ptr ) );
     this->add( mk_bin( b, Op::Eq, 1, query, b.constant( 1, 1 ) ) );
     return this->solve() != Result::False;
 }
