@@ -551,16 +551,6 @@ namespace brick::smt
             // drop domain byte
             this->append( other.size() - 1, std::next( other.begin() ), other.end() );
         }
-
-        bool is_constraint() const noexcept
-        {
-            if ( this->size() > 2 ) {
-                if ( operand( std::prev( this->end(), 1 ) ) == Op::Not )
-                    return operand( std::prev( this->end(), 2 ) ) == Op::Constraint;
-                return operand( std::prev( this->end(), 1 ) ) == Op::Constraint;
-            }
-            return false;
-        }
     };
 
     /* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
