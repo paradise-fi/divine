@@ -12,7 +12,7 @@ extern "C" void use_choice()
 int main() {}
 EOF
 
-sim -std=c++14 -C,-I$SRC_ROOT/bricks file.cpp <<EOF
+sim -std=c++17 -C,-I$SRC_ROOT/bricks file.cpp <<EOF
 + ^# executing __boot at
 > start
 > call use_choice
