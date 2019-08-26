@@ -681,21 +681,21 @@ namespace brick::smt
 
             Iterator& operator++() noexcept
             {
-                if ( is_constant( operand() ) ) {
+                if ( is_constant( operand() ) )
+                {
                     auto byte = static_cast< Bitwidth >( 8 );
                     auto bw = std::max( byte, RPN::bitwidth( operand() ) );
                     std::advance( _it, 1 + bw / 8 );
-                } else if ( is_variable( operand() ) ) {
-                    std::advance( _it, sizeof( typename RPN::Variable ) );
-                } else if ( is_cast( operand() ) ) {
-                    std::advance( _it, sizeof( typename RPN::CastOp ) );
-                } else if ( is_call( operand() ) ) {
-                    std::advance( _it, sizeof( CallOp ) );
-                } else if ( is_unary( operand() ) ) {
-                    std::advance( _it, sizeof( Op ) );
-                } else {
-                    std::advance( _it, sizeof( Op ) );
                 }
+                else if ( is_variable( operand() ) )
+                    std::advance( _it, sizeof( typename RPN::Variable ) );
+                else if ( is_cast( operand() ) )
+                    std::advance( _it, sizeof( typename RPN::CastOp ) );
+                else if ( is_call( operand() ) )
+                    std::advance( _it, sizeof( CallOp ) );
+                else
+                    std::advance( _it, sizeof( Op ) );
+
                 return *this;
             }
 
