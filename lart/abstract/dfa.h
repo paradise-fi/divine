@@ -33,7 +33,7 @@ namespace lart::abstract
         }
     };
 
-    tristate join( tristate a, tristate b )
+    inline tristate join( tristate a, tristate b )
     {
         if ( a.value == b.value )
             return a;
@@ -60,7 +60,7 @@ namespace lart::abstract
         }
     };
 
-    type_layer join( type_layer a, type_layer b )
+    inline type_layer join( type_layer a, type_layer b )
     {
         return { join( a.is_pointer, b.is_pointer ),
                  join( a.is_abstract, b.is_abstract ) };
@@ -123,7 +123,7 @@ namespace lart::abstract
         }
     };
 
-    type_onion join( type_onion a, type_onion b )
+    inline type_onion join( type_onion a, type_onion b )
     {
         if ( a.size() > b.size() )
             std::swap( a, b );
