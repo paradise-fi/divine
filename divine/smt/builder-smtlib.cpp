@@ -37,15 +37,15 @@ SMTLib2::Node SMTLib2::define( Node def )
 SMTLib2::Node SMTLib2::variable( Variable var )
 {
     auto name = "var_" + std::to_string( var.id );
-    switch ( var.type ) {
+    switch ( var.type() ) {
         case Node::Type::Bool:
-            ASSERT_EQ( var.bitwidth, 1 );
+            ASSERT_EQ( var.bitwidth(), 1 );
             return _ctx.variable( _ctx.boolT(), name );
         case Node::Type::Int:
-            return _ctx.variable( _ctx.bitvecT( var.bitwidth ), name );
+            return _ctx.variable( _ctx.bitvecT( var.bitwidth() ), name );
         case Node::Type::Float:
-            ASSERT( var.bitwidth > 1 );
-            return _ctx.variable( _ctx.floatT( var.bitwidth ), name );
+            ASSERT( var.bitwidth() > 1 );
+            return _ctx.variable( _ctx.floatT( var.bitwidth() ), name );
     }
 }
 

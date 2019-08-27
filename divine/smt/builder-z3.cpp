@@ -64,10 +64,10 @@ z3::expr Z3::constant( smt::Bitwidth bw, uint64_t value )
 
 z3::expr Z3::variable( Variable var )
 {
-    switch ( var.type )
+    switch ( var.type() )
     {
         case BNode::Type::Int:
-            return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth );
+            return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth() );
         case BNode::Type::Float:
             UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
         case BNode::Type::Bool:

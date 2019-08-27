@@ -52,8 +52,8 @@ stp::ASTNode STP::constant( bool v )
 
 stp::ASTNode STP::variable( Variable var )
 {
-    ASSERT( var.type != BNode::Type::Float );
-    return _stp.CreateSymbol( ( "var_"s + std::to_string( var.id ) ).c_str(), 0, var.bitwidth );
+    ASSERT( var.type() != BNode::Type::Float );
+    return _stp.CreateSymbol( ( "var_"s + std::to_string( var.id ) ).c_str(), 0, var.bitwidth() );
 }
 
 static bool is_bv( stp::ASTNode n ) { return n.GetType() == stp::BITVECTOR_TYPE; }

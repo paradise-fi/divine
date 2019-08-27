@@ -131,7 +131,7 @@ namespace divine::smt
         auto handle_term = overload
         {
             [&]( const Constant& con ) { push( bld.constant( con ), con.bitwidth ); },
-            [&]( const Variable& var ) { push( bld.variable( var ), var.bitwidth ); },
+            [&]( const Variable& var ) { push( bld.variable( var ), var.bitwidth() ); },
             handle_unary, handle_cast, handle_binary, handle_call,
             [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
         };
