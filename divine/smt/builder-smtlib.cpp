@@ -51,7 +51,7 @@ SMTLib2::Node SMTLib2::variable( Variable var )
 
 SMTLib2::Node SMTLib2::constant( Constant con )
 {
-   switch ( con.type )
+   switch ( con.type() )
    {
         case Node::Type::Bool:
             ASSERT_EQ( con.bitwidth, 1 );
@@ -62,7 +62,7 @@ SMTLib2::Node SMTLib2::constant( Constant con )
             ASSERT( con.bitwidth > 1 );
             return _ctx.floatv( con.bitwidth, con.value );
     }
-    UNREACHABLE( "unknown constant type", con.type );
+    UNREACHABLE( "unknown constant type", con.type() );
 }
 
 SMTLib2::Node SMTLib2::constant( bool v )

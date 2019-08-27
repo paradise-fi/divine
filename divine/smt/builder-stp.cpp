@@ -31,7 +31,7 @@ namespace smt = brick::smt;
 
 stp::ASTNode STP::constant( Constant con )
 {
-    ASSERT( con.type != BNode::Type::Float );
+    ASSERT( con.type() != BNode::Type::Float );
     return constant( con.bitwidth, con.value );
 }
 

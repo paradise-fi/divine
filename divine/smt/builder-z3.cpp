@@ -39,7 +39,7 @@ z3::expr Z3::constant( Constant con )
 #else
     using ValT = int64_t;
 #endif
-    switch ( con.type )
+    switch ( con.type() )
     {
         case BNode::Type::Int:
             return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth );
