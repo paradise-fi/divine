@@ -430,6 +430,17 @@ namespace brick::smt
         {
             Op op;
             VarID id;
+            Bitwidth bitwidth() const { return RPN::bitwidth( op ); }
+            Node::Type type() { return RPN::type( op ); }
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
+            {
+                return os << "[var " << var.id
+                          << " : "   << to_string( var.type() )
+                          << " "     << var.bitwidth() << "]";
+            }
+
         } __attribute__(( packed, aligned(1) ));
 
         static_assert( sizeof( Variable ) == 3 );
@@ -586,25 +597,11 @@ namespace brick::smt
     template< typename RPN >
     struct RPNView
     {
+        using Variable = typename RPN::Variable;
         using VarID = typename RPN::VarID;
         using CallOp = typename RPN::Call;
 
         RPNView( const RPN & rpn ) : _rpn( rpn ) {}
-
-        struct Variable
-        {
-            VarID id;
-            Node::Type type;
-            Bitwidth bitwidth;
-
-            template< typename stream >
-            friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
-            {
-                return os << "[var " << var.id
-                          << " : "   << to_string( var.type )
-                          << " "     << var.bitwidth << "]";
-            }
-        };
 
         struct Constant
         {
@@ -720,7 +717,7 @@ namespace brick::smt
                 if ( is_variable( op ) ) {
                     using Var = typename RPN::Variable;
                     auto ptr = reinterpret_cast< const Var * >( &(*_it) );
-                    return Variable{ ptr->id, RPN::type( op ), bitwidth() };
+                    return Variable{ op, ptr->id };
                 }
 
                 if ( is_cast( op ) ) {
