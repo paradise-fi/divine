@@ -66,31 +66,25 @@ namespace brick::smt
         VarI32,
         VarI64,
         VarFloat,
-        VarDouble,
-        LastVar = VarDouble,
+        VarDouble, LastVar = VarDouble,
 
-        FirstUnary,
-        Not = FirstUnary,
+        Not, FirstUnary = Not,
         BvNot,
-        BvNegate,
-        LastUnary = BvNegate,
+        BvNegate, LastUnary = BvNegate,
 
-        FirstCast,
-        SExt = FirstCast, // sign extend
-        ZExt,             // zero extend
-        Trunc,            // truncate
+        SExt, FirstCast = SExt, // sign extend
+        ZExt,     // zero extend
+        Trunc,    // truncate
         ZFit,
-        FPExt,            // floating point extend
+        FPExt,    // floating point extend
         FPTrunc,
         FPToSInt,
         FPToUInt,
         SIntToFP,
-        UIntToFP,
-        LastCast = UIntToFP,
+        UIntToFP, LastCast = UIntToFP,
 
-        FirstBinary,
-        FirstBvBinary = FirstBinary,
-        And = FirstBvBinary, // TODO why is And the first *bitvector*? (BvAnd?)
+        And, FirstBinary = And,
+        FirstBvBinary = FirstBinary, // TODO why is And the first *bitvector*? (BvAnd?)
         Or,
         Xor,
         Implies,
@@ -112,8 +106,7 @@ namespace brick::smt
         BvAShr,    // bitvector arithmetical shift right -- copy highest bit
 
         // Icmp
-        FirstICMP,
-        Eq = FirstICMP,
+        Eq, FirstICMP = Eq,
         NE,
         BvULE,
         BvULT,
@@ -122,12 +115,10 @@ namespace brick::smt
         BvSLE,
         BvSLT,
         BvSGE,
-        BvSGT,
-        LastICMP = BvSGT,
+        BvSGT, LastICMP = BvSGT,
         LastBvBinary = LastICMP,
 
-        FirstFpBinary,
-        FpAdd = FirstFpBinary,
+        FpAdd, FirstFpBinary = FpAdd,
         FpSub,
         FpMul,
         FpDiv,
@@ -136,8 +127,7 @@ namespace brick::smt
         // Fcmp
         /* Floating point compare, either of the operands can be NaN,
          * in which case the unordered versions are used. */
-        FirstFCMP,
-        FpFalse = FirstFCMP, // no comparison, always returns false
+        FpFalse, FirstFCMP = FpFalse, // no comparison, always returns false
         FpOEQ,   // ordered and equal
         FpOGT,   // ordered and greater than
         FpOGE,   // ordered and greater than or equal
@@ -152,12 +142,10 @@ namespace brick::smt
         FpULE,   // unordered or less than or equal
         FpUNE,   // unordered or not equal
         FpUNO,   // unordered (either nans)
-        FpTrue,  // no comparison, always returns true
-        LastFCMP = FpTrue,
+        FpTrue, LastFCMP = FpTrue,  // no comparison, always returns true
         LastFpBinary = LastFCMP,
 
-        Constraint,
-        LastBinary = Constraint,
+        Constraint, LastBinary = Constraint,
 
         Extract,
 
