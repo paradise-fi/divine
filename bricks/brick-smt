@@ -460,7 +460,14 @@ namespace brick::smt
         struct CastOp
         {
             Op op;
-            Bitwidth bw;
+            Bitwidth bitwidth;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const CastOp &cast ) -> decltype( os << "" )
+            {
+                return os << "cast " << name( cast.op ) << " to " << std::to_string( cast.bitwidth ) ;
+            }
+
         } __attribute__(( packed, aligned(1) ));
 
         static_assert( sizeof( CastOp ) == 2 );
@@ -610,9 +617,8 @@ namespace brick::smt
     {
         using Variable = typename RPN::Variable;
         using Constant = typename RPN::template Constant< uint64_t >;
-
-        using VarID = typename RPN::VarID;
-        using CallOp = typename RPN::Call;
+        using CastOp   = typename RPN::CastOp;
+        using CallOp   = typename RPN::Call;
 
         RPNView( const RPN & rpn ) : _rpn( rpn ) {}
 
@@ -624,18 +630,6 @@ namespace brick::smt
             friend auto operator<<( stream &os, const Operation &operation ) -> decltype( os << "" )
             {
                 return os << name( operation.op );
-            }
-        };
-
-        struct CastOp
-        {
-            Op op;
-            Bitwidth bitwidth;
-
-            template< typename stream >
-            friend auto operator<<( stream &os, const CastOp &cast ) -> decltype( os << "" )
-            {
-                return os << "cast " << name( cast.op ) << " to " << std::to_string( cast.bitwidth ) ;
             }
         };
 
@@ -721,7 +715,7 @@ namespace brick::smt
                 if ( is_cast( op ) ) {
                     using Cast = typename RPN::CastOp;
                     auto ptr = reinterpret_cast< const Cast * >( &(*_it) );
-                    return CastOp{ ptr->op, ptr->bw };
+                    return CastOp{ ptr->op, ptr->bitwidth };
                 }
 
                 if ( is_unary( op ) )
