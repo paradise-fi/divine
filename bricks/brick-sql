@@ -24,8 +24,12 @@
 
 #pragma once
 #include "brick-assert"
+#include "brick-cons"
 
+#include <unordered_map>
 #include <vector>
+#include <typeindex>
+#include <cxxabi.h>
 
 #include <sql.h>
 #include <sqlext.h>
@@ -35,6 +39,111 @@ namespace brq::sql
     struct error : std::runtime_error
     {
         using std::runtime_error::runtime_error;
+    };
+
+    struct date { std::int16_t year, month, day; };
+    struct time { std::int16_t hour, min, sec; };
+    struct timestamp { std::int64_t year, month, day, hour, min, sec, fract; };
+
+    static std::unordered_map< std::type_index, std::string_view > type_map
+    {
+        { typeid( int ),            "integer" },
+        { typeid( long ),           "bigint" },
+        { typeid( std::u32string ), "text" },
+        { typeid( std::string ),    "bytea" },
+        { typeid( date ),           "date" },
+        { typeid( time ),           "time" },
+        { typeid( timestamp ),      "timestamp" },
+    };
+
+    template< typename T >
+    std::string_view get_name( T t )
+    {
+        static std::string name;
+        if ( name.empty() )
+        {
+            int stat;
+            char *dem = abi::__cxa_demangle( typeid( T ).name(), nullptr, nullptr, &stat );
+            name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
+            TRACE( dem, "→", name );
+            std::free( dem );
+        }
+        return name;
+    }
+
+    template< typename T, bool _nullable = false >
+    struct column
+    {
+        template< typename CT >
+        static std::string_view column_name( const CT &ct ) { return get_name( ct ); }
+
+        using type = T;
+        static constexpr bool nullable = _nullable;
+        static constexpr bool primary = false;
+        static constexpr bool foreign = false;
+    };
+
+    template< typename tab, typename col, bool _nullable = false >
+    struct foreign_key : col
+    {
+        using column = col;
+        using table = tab;
+        static constexpr bool nullable = _nullable;
+        static constexpr bool foreign = true;
+    };
+
+    template< typename col >
+    struct primary_key
+    {
+        template< typename CT >
+        static std::string_view column_name( const CT & ) { return get_name( col() ); }
+
+        using type = typename col::type;
+        static constexpr bool nullable = col::nullable;
+        static constexpr bool primary = true;
+        static constexpr bool foreign = false;
+    };
+
+    template< typename... cols >
+    struct table
+    {
+        using columns = brq::cons_list_t< cols... >;
+    };
+
+    template< typename stream, typename table >
+    auto operator<<( stream &s, table ) -> decltype( typename table::columns(), s << "" )
+    {
+        s << "create table " << get_name( table() );
+        bool first = true;
+        auto print_col = [&]( auto col )
+        {
+            using col_t = decltype( col );
+            s << ( first ? "\n  ( " : "\n  , " ) << col.column_name( col );
+            if ( col.primary )
+                s << " serial primary key";
+            else
+                s << " " << brq::sql::type_map[ typeid( typename col_t::type ) ];
+            if constexpr ( col.foreign )
+                s << " references " << get_name( typename col_t::table() )
+                  << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
+            if ( !col.nullable )
+                s << " not null";
+            first = false;
+        };
+        typename table::columns().each( print_col );
+        return s << " )";
+    }
+
+    template< typename... tables >
+    struct schema
+    {
+        template< typename stream >
+        friend auto operator<<( stream &s, schema ) -> decltype( s << "" )
+        {
+            auto l = brq::cons_list( tables()... );
+            l.each( [&]( auto t ) { s << t << "\n"; } );
+            return s;
+        }
     };
 
     struct conn
