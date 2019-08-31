@@ -1,0 +1,103 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * Copyright (C) 2019 Petr Rockai <code@fixp.eu>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+#pragma once
+#include "brick-assert"
+
+#include <vector>
+
+#include <sql.h>
+#include <sqlext.h>
+
+namespace brq::sql
+{
+    struct error : std::runtime_error
+    {
+        using std::runtime_error::runtime_error;
+    };
+
+    struct conn
+    {
+        SQLHENV _henv;
+        SQLHDBC _hconn;
+
+        void throw_error( std::string err, SQLSMALLINT h_type, SQLHENV h )
+        {
+            SQLINTEGER errcode;
+            SQLSMALLINT bytes;
+            SQLCHAR sql_state[6];
+            std::vector< SQLCHAR > message;
+            SQLGetDiagRec( h_type, h, 1, sql_state, &errcode, 0, 0, &bytes );
+            message.resize( bytes );
+            SQLGetDiagRec( h_type, h, 1, sql_state, &errcode, message.data(), message.size(), &bytes );
+            throw error( err + ": " +
+                         std::string( reinterpret_cast< char * >( sql_state ) ) +
+                         std::string( message.begin(), message.end() ) );
+        }
+
+        template< typename... Args >
+        void odbc( std::string what, SQLSMALLINT h_type, SQLHANDLE &h,
+                   RETCODE (*fn)( Args... ), std::decay_t< Args >... args )
+        {
+            RETCODE rc = fn( std::forward< Args >( args )... );
+            if ( rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO )
+                throw_error( what, h_type, h );
+        }
+
+        template< typename... Args >
+        void odbc( std::string what,
+                   RETCODE (*fn)( SQLSMALLINT, SQLHANDLE, Args... ), std::decay_t< Args >... args )
+        {
+            odbc( what, SQL_HANDLE_DBC, _hconn, fn, SQL_HANDLE_DBC, _hconn,
+                  std::forward< Args >( args )... );
+        }
+
+        conn( std::string dsn )
+        {
+            odbc( "allocating environment handle", SQL_HANDLE_ENV, _henv,
+                  SQLAllocHandle, SQL_HANDLE_ENV, SQL_NULL_HANDLE, &_henv );
+            odbc( "setting ODBC version", SQL_HANDLE_ENV, _henv,
+                  SQLSetEnvAttr, _henv, SQL_ATTR_ODBC_VERSION,
+                  reinterpret_cast< SQLPOINTER >( SQL_OV_ODBC3 ), SQL_IS_UINTEGER );
+            odbc( "allocating connection handle", SQL_HANDLE_ENV, _henv,
+                  SQLAllocHandle, SQL_HANDLE_DBC, _henv, &_hconn );
+            std::vector< SQLCHAR > dsn_( dsn.begin(), dsn.end() );
+            odbc( "connecting to " + dsn, SQL_HANDLE_DBC, _hconn,
+                  SQLConnect, _hconn, dsn_.data(), SQL_NTS, 0, SQL_NTS, 0, SQL_NTS );
+        }
+
+        ~conn()
+        {
+            SQLFreeHandle( SQL_HANDLE_DBC, _hconn );
+            SQLFreeHandle( SQL_HANDLE_DBC, _henv );
+        }
+    };
+
+}
+
+namespace brq
+{
+    using sql_connection = sql::conn;
+    using sql_error      = sql::error;
+}
