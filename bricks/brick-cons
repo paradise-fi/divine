@@ -62,6 +62,9 @@ namespace brq
             : car( car ), cdr( cdr )
         {}
 
+        template< typename arg_t, typename... args_t >
+        cons( const arg_t &arg, const args_t&... args ) : car( arg ), cdr( args... ) {}
+
         cons() = default;
     };
 
