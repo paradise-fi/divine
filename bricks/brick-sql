@@ -141,7 +141,7 @@ namespace brq::sql
         friend auto operator<<( stream &s, schema ) -> decltype( s << "" )
         {
             auto l = brq::cons_list( tables()... );
-            l.each( [&]( auto t ) { s << t << "\n"; } );
+            l.each( [&]( auto t ) { s << t << ";\n"; } );
             return s;
         }
     };
