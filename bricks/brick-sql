@@ -345,7 +345,10 @@ namespace brq::sql
         conn &_conn;
         bool _closed = false;
 
-        explicit txn( conn &conn ) : _conn( conn ) {}
+        explicit txn( conn &conn ) : _conn( conn )
+        {
+            exec( "begin transaction" );
+        }
         txn( txn&& rhs ) noexcept;
 
         txn() = delete;
@@ -354,7 +357,7 @@ namespace brq::sql
         txn &commit()
         {
             ASSERT( !_closed );
-            /* TODO */
+            exec( "commit transaction" );
             _closed = true;
             return *this;
         }
@@ -362,7 +365,7 @@ namespace brq::sql
         txn &rollback() noexcept
         {
             ASSERT( !_closed );
-            /* TODO */
+            exec( "rollback transaction" );
             _closed = true;
             return *this;
         }
