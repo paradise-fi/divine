@@ -160,10 +160,10 @@ namespace brq::sql
             SQLCHAR sql_state[6];
             std::vector< SQLCHAR > message;
             SQLGetDiagRec( h_type, h, 1, sql_state, &errcode, 0, 0, &bytes );
-            message.resize( bytes );
+            message.resize( bytes + 1 );
             SQLGetDiagRec( h_type, h, 1, sql_state, &errcode, message.data(), message.size(), &bytes );
             throw error( err + ": " +
-                         std::string( reinterpret_cast< char * >( sql_state ) ) +
+                         std::string( reinterpret_cast< char * >( sql_state ) ) + " " +
                          std::string( message.begin(), message.end() ) );
         }
 
