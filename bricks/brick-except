@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "brick-trace"
 #include <stdexcept>
 #include <string>
 
@@ -35,6 +36,24 @@ namespace brq
             : std::runtime_error( err ), _exit( exit )
         {}
     };
+
+    template< typename exc >
+    struct construct_error : string_builder
+    {
+        ~construct_error() noexcept( false )
+        {
+            if ( std::uncaught_exceptions() )
+                return;
+            else
+                throw exc( buffer() );
+        }
+    };
+
+    template< typename exc >
+    construct_error< exc > raise()
+    {
+        return {};
+    }
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
