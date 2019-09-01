@@ -74,6 +74,9 @@ namespace brq
         return cons< T, decltype( tail ) >( t, tail );
     }
 
+    template< typename... Ts >
+    using cons_list_t = decltype( cons_list( std::declval< Ts >()... ) );
+
     template< typename car_t_, typename cdr_t_ >
     struct ns
     {
