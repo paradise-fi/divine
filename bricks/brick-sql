@@ -170,7 +170,7 @@ namespace brq::sql
         using values_t  = brq::cons_list_t< typename cols::type... >;
         values_t _values;
 
-        // row() = default;
+        row() = default;
         row( typename cols::type... v ): _values( v... ) {}
 
         template< typename col, typename cs_t, typename vs_t >
@@ -187,6 +187,50 @@ namespace brq::sql
     };
 
     template< typename... cols >
+    struct iterator
+    {
+        PGresult *_result;
+        int _row = 0, _col = 0;
+
+        bool operator==( const iterator &o ) const { return o._result == _result && o._row == _row; }
+        bool operator!=( const iterator &o ) const { return !( *this == o ); }
+
+        iterator( PGresult *res, int row ) : _result( res ), _row( row ) {}
+        iterator &operator++() { ++_row; _col = 0; return *this; }
+        iterator operator++( int ) { auto r = *this; ++ (*this); return r; }
+
+        template< typename T >
+        void fetch_raw( T &t )
+        {
+            ASSERT( !PQgetisnull( _result, _row, _col ) );
+            std::memcpy( &t, PQgetvalue( _result, _row, _col ), sizeof( T ) );
+        }
+
+        void fetch_one( int32_t &t ) { fetch_raw( t ); t = ntohl( t ); }
+        void fetch_one( int16_t &t ) { fetch_raw( t ); t = ntohs( t ); }
+
+        void fetch_one( std::u32string &us )
+        {
+            const char *data = PQgetvalue( _result, _row, _col );
+            std::wstring_convert< std::codecvt_utf8< char32_t >, char32_t > conv;
+            us = conv.from_bytes( data, data + PQgetlength( _result, _row, _col ) );
+        }
+
+        void fetch_one( std::string &s )
+        {
+            const char *data = PQgetvalue( _result, _row, _col );
+            s = std::string( data, data + PQgetlength( _result, _row, _col ) );
+        }
+
+        row< cols... > operator*()
+        {
+            row< cols... > r;
+            r._values.each( [&]( auto &v ) { fetch_one( v ); ++ _col; } );
+            return r;
+        }
+    };
+
+    template< typename... cols >
     struct stmt
     {
         using result_t = row< cols... >;
@@ -198,6 +242,10 @@ namespace brq::sql
         std::vector< const char * > _params;
         std::vector< int > _lengths;
         PGresult *_result = nullptr;
+
+        using iterator = sql::iterator< cols... >;
+        iterator begin() { return iterator( _result, 0 ); }
+        iterator end()   { return iterator( _result, PQntuples( _result ) ); }
 
         void bind_mem( const char *data, int size )
         {
