@@ -146,6 +146,8 @@ namespace brq::sql
         }
     };
 
+    struct txn;
+
     struct conn
     {
         SQLHENV _henv;
@@ -165,6 +167,8 @@ namespace brq::sql
                          std::string( message.begin(), message.end() ) );
         }
 
+        SQLHDBC handle() { return _hconn; }
+
         template< typename... Args >
         void odbc( std::string what, SQLSMALLINT h_type, SQLHANDLE &h,
                    RETCODE (*fn)( Args... ), std::decay_t< Args >... args )
@@ -172,6 +176,12 @@ namespace brq::sql
             RETCODE rc = fn( std::forward< Args >( args )... );
             if ( rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO )
                 throw_error( what, h_type, h );
+        }
+
+        template< typename... Args >
+        void odbc( std::string what, RETCODE (*fn)( Args... ), std::decay_t< Args >... args )
+        {
+            odbc( what, SQL_HANDLE_DBC, _hconn, fn, std::forward< Args >( args )... );
         }
 
         template< typename... Args >
@@ -201,7 +211,240 @@ namespace brq::sql
             SQLFreeHandle( SQL_HANDLE_DBC, _hconn );
             SQLFreeHandle( SQL_HANDLE_DBC, _henv );
         }
+
+        txn begin();
     };
+
+    template< typename... cols >
+    struct row
+    {
+        using columns_t = brq::cons_list_t< cols... >;
+        using values_t  = brq::cons_list_t< typename cols::type... >;
+        values_t _values;
+
+        // row() = default;
+        row( typename cols::type... v ): _values( v... ) {}
+
+        template< typename col, typename cs_t, typename vs_t >
+        auto &get( vs_t &vs )
+        {
+            if constexpr ( std::is_same_v< col, typename cs_t::car_t > )
+                             return vs.car;
+            else
+                return get< col, typename cs_t::cdr_t >( vs.cdr );
+        }
+
+        template< typename col >
+        auto &get() { return get< col, columns_t >( _values ); }
+    };
+
+    constexpr int sql_c_tid(  int64_t ) { return SQL_C_SBIGINT; }
+    constexpr int sql_c_tid( uint64_t ) { return SQL_C_UBIGINT; }
+    constexpr int sql_c_tid(  int32_t ) { return SQL_C_SLONG; }
+    constexpr int sql_c_tid( uint32_t ) { return SQL_C_ULONG; }
+    constexpr int sql_c_tid(  int16_t ) { return SQL_C_SSHORT; }
+    constexpr int sql_c_tid( uint16_t ) { return SQL_C_USHORT; }
+    constexpr int sql_c_tid( const std::u32string & ) { return SQL_C_WCHAR; }
+    constexpr int sql_c_tid( const std::vector< uint8_t > & ) { return SQL_C_BINARY; }
+
+    constexpr int sql_tid( int64_t ) { return SQL_BIGINT; }
+    constexpr int sql_tid( int32_t ) { return SQL_INTEGER; }
+    constexpr int sql_tid( int16_t ) { return SQL_SMALLINT; }
+    constexpr int sql_tid( const std::u32string & )         { return SQL_WCHAR; }
+    constexpr int sql_tid( const std::vector< uint8_t > & ) { return SQL_BINARY; }
+
+    template< typename... cols >
+    struct stmt
+    {
+        using result_t = row< cols... >;
+
+        SQLHSTMT _handle;
+        conn &_conn;
+        std::string _txt;
+        std::vector< SQLLEN > _ind;
+        cons_list_t< typename cols::type... > _values;
+
+        stmt &exec()
+        {
+            _conn.odbc( "directly executing a statement:\n" + _txt, SQL_HANDLE_STMT, _handle,
+                        SQLExecDirect, _handle, reinterpret_cast< SQLCHAR * >( _txt.data() ), SQL_NTS );
+            return *this;
+        }
+
+        template< typename T >
+        int get_size( T t ) { return sizeof( t ); }
+        int get_size( const std::u32string &us ) { return 4 * us.size(); }
+        int get_size( const std::string &s ) { return s.size(); }
+
+        template< typename T > void * untyped( T *v ) { return reinterpret_cast< void * >( v ); }
+        void *get_data( std::u32string &u ) { return untyped( u.data() ); }
+        void *get_data( int &v ) { return &v; }
+
+        template< typename... args >
+        stmt &bind( const args &... _v )
+        {
+            _values = cons_list( _v... );
+            int i = 1;
+            _ind.resize( sizeof...( _v ), 0 );
+            auto bind_one = [&]( auto &v )
+            {
+                _ind[ i - 1 ] = get_size( v );
+                _conn.odbc( "bind argument " + std::to_string( i ) + " in " + _txt,
+                            SQL_HANDLE_STMT, _handle,
+                            SQLBindParameter, _handle, i, SQL_PARAM_INPUT, sql_c_tid( v ), sql_tid( v ),
+                            get_size( v ), 0, get_data( v ), 0, &_ind[ i - 1 ] );
+                ++ i;
+            };
+
+            _values.each( bind_one );
+            return *this;
+        }
+
+        stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s )
+        {
+            TRACE( "stmt(", s, ")" );
+            _conn.odbc( "allocating statement handle",
+                        SQLAllocHandle, SQL_HANDLE_STMT, _conn.handle(), &_handle );
+        }
+    };
+
+    template< typename select, typename tab >
+    struct select_join
+    {
+        template< typename stream >
+        friend auto operator<<( stream &s, select_join ) -> decltype( s << "" )
+        {
+            return s << select() << " join " << name( tab() ) << " on " << "? = ?";
+        }
+    };
+
+    template< typename cols, typename tab, typename stmt >
+    struct select_tab
+    {
+        conn &_conn;
+        select_tab( conn &c ) : _conn( c ) {}
+
+        template< typename stream >
+        friend auto operator<<( stream &s, const select_tab &st ) -> decltype( s << "" )
+        {
+            return s << cols( st._conn ) << " from " << get_name( tab() );
+        }
+
+        template< typename table >
+        select_join< select_tab, table > join() { return { _conn }; }
+
+        stmt exec()
+        {
+            string_builder bld;
+            bld << *this;
+            stmt s( _conn, bld.buffer() );
+            s.exec();
+            return s;
+        }
+    };
+
+    template< typename... cols >
+    struct select_cols
+    {
+        conn &_conn;
+        select_cols( conn &c ) : _conn( c ) {}
+
+        template< typename table >
+        select_tab< select_cols< cols... >, table, stmt< cols... > > from() { return { _conn }; }
+
+        template< typename stream >
+        friend auto operator<<( stream &s, select_cols ) -> decltype( s << "" )
+        {
+            s << "select ";
+            bool first = true;
+            cons_list( cols()... ).each( [&]( auto c )
+            {
+                s << ( first ? "" : ", " ) << c.column_name( c ); first = false;
+            } );
+            return s;
+        }
+    };
+
+    template< typename table >
+    struct insert
+    {
+        conn &_conn;
+        insert( conn &c ) : _conn( c ) {}
+
+        template< typename... cols >
+        stmt< cols... > values( const typename cols::type &... v )
+        {
+            string_builder bld;
+            bld << "insert into " << get_name( table() );
+            cons_list_t< cols... > l;
+            bool first = true;
+            l.each( [&]( auto &col )
+            {
+                bld << ( first ? " ( " : ", " ) << col.column_name( col ); first = false;
+            } );
+            bld << " ) values ";
+            first = true;
+            l.each( [&]( auto ) { bld << ( first ? " ( " : ", " ) << "?"; first = false; } );
+            bld << " )";
+            stmt< cols... > s( _conn, bld.buffer() );
+            s.bind( v... );
+            return s;
+        }
+    };
+
+    struct txn
+    {
+        conn &_conn;
+        bool _closed = false;
+
+        explicit txn( conn &conn ) : _conn( conn ) {}
+        txn( txn&& rhs ) noexcept;
+
+        txn() = delete;
+        txn& operator=( const txn &rhs ) = delete;
+
+        txn &commit()
+        {
+            ASSERT( !_closed );
+            _conn.odbc( "committing transaction", SQLEndTran, SQL_COMMIT );
+            _closed = true;
+            return *this;
+        }
+
+        txn &rollback() noexcept
+        {
+            ASSERT( !_closed );
+            _conn.odbc( "rolling back a transaction", SQLEndTran, SQL_ROLLBACK );
+            _closed = true;
+            return *this;
+        }
+
+        txn &exec( std::string q )
+        {
+            stmt<> s( _conn, q );
+            s.exec();
+            return *this;
+        }
+
+        template< typename schema >
+        txn &initdb( const schema &s )
+        {
+            string_builder bld;
+            bld << s;
+            exec( bld.buffer() );
+            return *this;
+        }
+
+        template< typename... args >
+        select_cols< args... > select() { return { _conn }; }
+
+        template< typename table >
+        insert< table> insert_into() { return { _conn }; }
+
+        ~txn() noexcept { if ( !_closed ) rollback(); }
+    };
+
+    txn conn::begin() { return txn( *this ); }
 
 }
 
