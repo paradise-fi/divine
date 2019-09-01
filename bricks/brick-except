@@ -21,24 +21,20 @@
 #include <stdexcept>
 #include <string>
 
-namespace brick {
-namespace except {
-
-/*
- * This is a base class for exceptions which arise from improper use at the
- * user level (as opposed to programmer level). Use this if you expect an
- * exception to be seen by actual users.
- */
-struct Error : std::runtime_error
+namespace brq
 {
-    int _exit;
 
-    Error( std::string err, int exit = 1 )
-        : std::runtime_error( err ), _exit( exit )
-    {}
-};
+    /* This is a base class for exceptions which arise from improper use at the
+    * user level (as opposed to programmer level). Use this if you expect an
+    * exception to be seen by actual users. */
+    struct error : std::runtime_error
+    {
+        int _exit;
 
-}
+        error( std::string err, int exit = 1 )
+            : std::runtime_error( err ), _exit( exit )
+        {}
+    };
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
