@@ -194,35 +194,30 @@ namespace brq::sql
         conn &_conn;
         std::string _txt;
 
-        std::vector< std::string > _memory;
+        std::vector< std::unique_ptr< char[] > > _memory;
         std::vector< const char * > _params;
         std::vector< int > _lengths;
         PGresult *_result = nullptr;
 
-        template< typename T > char* untyped( T *v ) { return reinterpret_cast< char * >( v ); }
+        void bind_mem( const char *data, int size )
+        {
+            _lengths.push_back( size );
+            _memory.emplace_back( new char[ size ] );
+            std::memcpy( _memory.back().get(), data, size );
+            _params.push_back( _memory.back().get() );
+        }
 
         template< typename T >
-        void bind_raw( T &t )
-        {
-            _lengths.push_back( sizeof( t ) );
-            _params.push_back( untyped( &t ) );
-        }
+        void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
 
         void bind_one( int32_t &t ) { t = htonl( t ); bind_raw( t ); }
         void bind_one( int16_t &t ) { t = htons( t ); bind_raw( t ); }
+        void bind_one( const std::string &s ) { bind_mem( s.data(), s.size() ); }
         void bind_one( std::u32string &us )
         {
             std::wstring_convert< std::codecvt_utf8< char32_t >, char32_t > conv;
-            _memory.emplace_back( conv.to_bytes( &*us.begin(), &*us.end() ) );
-            _lengths.push_back( _memory.back().size() );
-            _params.push_back( _memory.back().data() );
-            TRACE( _params.back() );
-        }
-
-        int bind_one( const std::string &s )
-        {
-            _lengths.push_back( s.size() );
-            _params.push_back( s.data() );
+            auto str = conv.to_bytes( &*us.begin(), &*us.end() );
+            bind_mem( str.data(), str.size() );
         }
 
         stmt &exec()
