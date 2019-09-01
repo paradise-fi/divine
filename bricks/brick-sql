@@ -25,14 +25,15 @@
 #pragma once
 #include "brick-assert"
 #include "brick-cons"
+#include "brick-except"
 
 #include <unordered_map>
 #include <vector>
 #include <typeindex>
 #include <cxxabi.h>
+#include <codecvt>
 
-#include <sql.h>
-#include <sqlext.h>
+#include <libpq-fe.h>
 
 namespace brq::sql
 {
@@ -134,82 +135,29 @@ namespace brq::sql
         return s << " )";
     }
 
-    template< typename... tables >
-    struct schema
-    {
-        template< typename stream >
-        friend auto operator<<( stream &s, schema ) -> decltype( s << "" )
-        {
-            auto l = brq::cons_list( tables()... );
-            l.each( [&]( auto t ) { s << t << ";\n"; } );
-            return s;
-        }
-    };
+    template< typename... tables_ >
+    struct schema : cons_list_t< tables_... > {};
 
     struct txn;
 
     struct conn
     {
-        SQLHENV _henv;
-        SQLHDBC _hconn;
+        PGconn *_handle = nullptr;
+        PGconn *handle() { return _handle; }
 
-        void throw_error( std::string err, SQLSMALLINT h_type, SQLHENV h )
+        const char *errmsg() { return PQerrorMessage( _handle ); }
+
+        conn( std::string s )
         {
-            SQLINTEGER errcode;
-            SQLSMALLINT bytes;
-            SQLCHAR sql_state[6];
-            std::vector< SQLCHAR > message;
-            SQLGetDiagRec( h_type, h, 1, sql_state, &errcode, 0, 0, &bytes );
-            message.resize( bytes + 1 );
-            SQLGetDiagRec( h_type, h, 1, sql_state, &errcode, message.data(), message.size(), &bytes );
-            throw error( err + ": " +
-                         std::string( reinterpret_cast< char * >( sql_state ) ) + " " +
-                         std::string( message.begin(), message.end() ) );
-        }
-
-        SQLHDBC handle() { return _hconn; }
-
-        template< typename... Args >
-        void odbc( std::string what, SQLSMALLINT h_type, SQLHANDLE &h,
-                   RETCODE (*fn)( Args... ), std::decay_t< Args >... args )
-        {
-            RETCODE rc = fn( std::forward< Args >( args )... );
-            if ( rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO )
-                throw_error( what, h_type, h );
-        }
-
-        template< typename... Args >
-        void odbc( std::string what, RETCODE (*fn)( Args... ), std::decay_t< Args >... args )
-        {
-            odbc( what, SQL_HANDLE_DBC, _hconn, fn, std::forward< Args >( args )... );
-        }
-
-        template< typename... Args >
-        void odbc( std::string what,
-                   RETCODE (*fn)( SQLSMALLINT, SQLHANDLE, Args... ), std::decay_t< Args >... args )
-        {
-            odbc( what, SQL_HANDLE_DBC, _hconn, fn, SQL_HANDLE_DBC, _hconn,
-                  std::forward< Args >( args )... );
-        }
-
-        conn( std::string dsn )
-        {
-            odbc( "allocating environment handle", SQL_HANDLE_ENV, _henv,
-                  SQLAllocHandle, SQL_HANDLE_ENV, SQL_NULL_HANDLE, &_henv );
-            odbc( "setting ODBC version", SQL_HANDLE_ENV, _henv,
-                  SQLSetEnvAttr, _henv, SQL_ATTR_ODBC_VERSION,
-                  reinterpret_cast< SQLPOINTER >( SQL_OV_ODBC3 ), SQL_IS_UINTEGER );
-            odbc( "allocating connection handle", SQL_HANDLE_ENV, _henv,
-                  SQLAllocHandle, SQL_HANDLE_DBC, _henv, &_hconn );
-            std::vector< SQLCHAR > dsn_( dsn.begin(), dsn.end() );
-            odbc( "connecting to " + dsn, SQL_HANDLE_DBC, _hconn,
-                  SQLConnect, _hconn, dsn_.data(), SQL_NTS, 0, SQL_NTS, 0, SQL_NTS );
+            if ( !( _handle = PQconnectdb( s.c_str() ) ) )
+                throw std::bad_alloc();
+            if ( PQstatus( _handle ) != CONNECTION_OK )
+                raise< error >() << "connecting to " << s << " " << errmsg();
         }
 
         ~conn()
         {
-            SQLFreeHandle( SQL_HANDLE_DBC, _hconn );
-            SQLFreeHandle( SQL_HANDLE_DBC, _henv );
+            PQfinish( _handle );
         }
 
         txn begin();
@@ -238,73 +186,73 @@ namespace brq::sql
         auto &get() { return get< col, columns_t >( _values ); }
     };
 
-    constexpr int sql_c_tid(  int64_t ) { return SQL_C_SBIGINT; }
-    constexpr int sql_c_tid( uint64_t ) { return SQL_C_UBIGINT; }
-    constexpr int sql_c_tid(  int32_t ) { return SQL_C_SLONG; }
-    constexpr int sql_c_tid( uint32_t ) { return SQL_C_ULONG; }
-    constexpr int sql_c_tid(  int16_t ) { return SQL_C_SSHORT; }
-    constexpr int sql_c_tid( uint16_t ) { return SQL_C_USHORT; }
-    constexpr int sql_c_tid( const std::u32string & ) { return SQL_C_WCHAR; }
-    constexpr int sql_c_tid( const std::vector< uint8_t > & ) { return SQL_C_BINARY; }
-
-    constexpr int sql_tid( int64_t ) { return SQL_BIGINT; }
-    constexpr int sql_tid( int32_t ) { return SQL_INTEGER; }
-    constexpr int sql_tid( int16_t ) { return SQL_SMALLINT; }
-    constexpr int sql_tid( const std::u32string & )         { return SQL_WCHAR; }
-    constexpr int sql_tid( const std::vector< uint8_t > & ) { return SQL_BINARY; }
-
     template< typename... cols >
     struct stmt
     {
         using result_t = row< cols... >;
 
-        SQLHSTMT _handle;
         conn &_conn;
         std::string _txt;
-        std::vector< SQLLEN > _ind;
-        cons_list_t< typename cols::type... > _values;
+
+        std::vector< std::string > _memory;
+        std::vector< const char * > _params;
+        std::vector< int > _lengths;
+        PGresult *_result = nullptr;
+
+        template< typename T > char* untyped( T *v ) { return reinterpret_cast< char * >( v ); }
+
+        template< typename T >
+        void bind_raw( T &t )
+        {
+            _lengths.push_back( sizeof( t ) );
+            _params.push_back( untyped( &t ) );
+        }
+
+        void bind_one( int32_t &t ) { t = htonl( t ); bind_raw( t ); }
+        void bind_one( int16_t &t ) { t = htons( t ); bind_raw( t ); }
+        void bind_one( std::u32string &us )
+        {
+            std::wstring_convert< std::codecvt_utf8< char32_t >, char32_t > conv;
+            _memory.emplace_back( conv.to_bytes( &*us.begin(), &*us.end() ) );
+            _lengths.push_back( _memory.back().size() );
+            _params.push_back( _memory.back().data() );
+            TRACE( _params.back() );
+        }
+
+        int bind_one( const std::string &s )
+        {
+            _lengths.push_back( s.size() );
+            _params.push_back( s.data() );
+        }
 
         stmt &exec()
         {
-            _conn.odbc( "directly executing a statement:\n" + _txt, SQL_HANDLE_STMT, _handle,
-                        SQLExecDirect, _handle, reinterpret_cast< SQLCHAR * >( _txt.data() ), SQL_NTS );
+            std::vector< int > formats( _params.size(), 1 );
+
+            _result = PQexecParams( _conn.handle(), _txt.c_str(), _params.size(), nullptr,
+                                    _params.data(), _lengths.data(), formats.data(), 1 );
+
+            auto r = PQresultStatus( _result );
+            if ( r != PGRES_COMMAND_OK && r != PGRES_TUPLES_OK )
+                raise< error >() << "executing " << _txt << ": " << _conn.errmsg();
+
             return *this;
         }
 
-        template< typename T >
-        int get_size( T t ) { return sizeof( t ); }
-        int get_size( const std::u32string &us ) { return 4 * us.size(); }
-        int get_size( const std::string &s ) { return s.size(); }
-
-        template< typename T > void * untyped( T *v ) { return reinterpret_cast< void * >( v ); }
-        void *get_data( std::u32string &u ) { return untyped( u.data() ); }
-        void *get_data( int &v ) { return &v; }
-
         template< typename... args >
-        stmt &bind( const args &... _v )
+        stmt &bind( const args &... vs )
         {
-            _values = cons_list( _v... );
-            int i = 1;
-            _ind.resize( sizeof...( _v ), 0 );
-            auto bind_one = [&]( auto &v )
-            {
-                _ind[ i - 1 ] = get_size( v );
-                _conn.odbc( "bind argument " + std::to_string( i ) + " in " + _txt,
-                            SQL_HANDLE_STMT, _handle,
-                            SQLBindParameter, _handle, i, SQL_PARAM_INPUT, sql_c_tid( v ), sql_tid( v ),
-                            get_size( v ), 0, get_data( v ), 0, &_ind[ i - 1 ] );
-                ++ i;
-            };
+            auto list = cons_list( vs... );
+            _params.reserve( sizeof...( vs ) );
+            _memory.reserve( sizeof...( vs ) );
 
-            _values.each( bind_one );
+            list.each( [&]( auto &v ) { bind_one( v ); } );
             return *this;
         }
 
         stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s )
         {
             TRACE( "stmt(", s, ")" );
-            _conn.odbc( "allocating statement handle",
-                        SQLAllocHandle, SQL_HANDLE_STMT, _conn.handle(), &_handle );
         }
     };
 
@@ -383,8 +331,8 @@ namespace brq::sql
                 bld << ( first ? " ( " : ", " ) << col.column_name( col ); first = false;
             } );
             bld << " ) values ";
-            first = true;
-            l.each( [&]( auto ) { bld << ( first ? " ( " : ", " ) << "?"; first = false; } );
+            int i = 1;
+            l.each( [&]( auto ) { bld << ( i == 1 ? " ( " : ", " ) << "$" << i; i ++; } );
             bld << " )";
             stmt< cols... > s( _conn, bld.buffer() );
             s.bind( v... );
@@ -406,7 +354,7 @@ namespace brq::sql
         txn &commit()
         {
             ASSERT( !_closed );
-            _conn.odbc( "committing transaction", SQLEndTran, SQL_COMMIT );
+            /* TODO */
             _closed = true;
             return *this;
         }
@@ -414,7 +362,7 @@ namespace brq::sql
         txn &rollback() noexcept
         {
             ASSERT( !_closed );
-            _conn.odbc( "rolling back a transaction", SQLEndTran, SQL_ROLLBACK );
+            /* TODO */
             _closed = true;
             return *this;
         }
@@ -427,11 +375,14 @@ namespace brq::sql
         }
 
         template< typename schema >
-        txn &initdb( const schema &s )
+        txn &initdb( schema s )
         {
-            string_builder bld;
-            bld << s;
-            exec( bld.buffer() );
+            s.each( [&]( auto t )
+                    {
+                        string_builder bld;
+                        bld << t;
+                        exec( bld.buffer() );
+                    } );
             return *this;
         }
 
