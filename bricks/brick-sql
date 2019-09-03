@@ -301,6 +301,7 @@ namespace brq::sql
         {
             std::vector< int > formats( _params.size(), 1 );
 
+            TRACE( "exec:", _txt );
             _result = PQexecParams( _conn.handle(), _txt.c_str(), _params.size(), nullptr,
                                     _params.data(), _lengths.data(), formats.data(), 1 );
 
@@ -331,7 +332,6 @@ namespace brq::sql
 
         stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s )
         {
-            TRACE( "stmt(", s, ")" );
         }
     };
 
