@@ -42,14 +42,22 @@ namespace brq::sql
 
     static std::unordered_map< std::type_index, std::string_view > type_map
     {
+        { typeid( short ),          "smallint" },
         { typeid( int ),            "integer" },
         { typeid( long ),           "bigint" },
         { typeid( std::u32string ), "text" },
         { typeid( std::string ),    "bytea" },
+        { typeid( const char * ),   "text" },
         { typeid( date ),           "date" },
         { typeid( time ),           "time" },
         { typeid( timestamp ),      "timestamp" },
     };
+
+    template< typename T >
+    std::string_view sql_type()
+    {
+        return brq::sql::type_map[ typeid( T ) ];
+    }
 
     template< typename T >
     std::string_view get_name( T t )
@@ -143,7 +151,7 @@ namespace brq::sql
                 if constexpr ( col.is_primary )
                     s << " serial primary key";
                 else
-                    s << " " << brq::sql::type_map[ typeid( typename col_t::type ) ];
+                    s << " " << sql_type< typename col_t::type >();
                 if constexpr ( col.is_foreign )
                     s << " references " << get_name( typename col_t::table() )
                     << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
