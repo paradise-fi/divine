@@ -462,14 +462,38 @@ BRICK_SQL_OP( | )
 
 #undef BRICK_SQL_OP
 
+    template< typename query, typename expr, typename stmt >
+    struct where_clause
+    {
+        expr _expr;
+        conn &_conn;
+        where_clause( conn &c, const expr &e ) : _conn( c ), _expr( e ) {}
+
+        template< typename stream >
+        friend auto operator<<( stream &s, const where_clause &wc ) -> decltype( s << "" )
+        {
+            return s << query( wc._conn ) << " where " << wc._expr;
+        }
+
+        stmt exec() { return std::move( stmt( _conn, *this ).bind_list( _expr.values() ).exec() ); }
+    };
+
     template< typename select, typename tab, typename stmt >
     struct select_join
     {
+        conn &_conn;
+        select_join( conn &c ) : _conn( c ) {}
+
         template< typename stream >
         friend auto operator<<( stream &s, select_join ) -> decltype( s << "" )
         {
             return s << select() << " join " << name( tab() ) << " on " << "? = ?";
         }
+
+        template< typename we_t >
+        where_clause< select_join, we_t, stmt > where( const we_t &we ) { return { _conn, we }; }
+
+        stmt exec() { return std::move( stmt( _conn, *this ).exec() ); }
     };
 
     template< typename cols, typename tab, typename stmt >
@@ -485,7 +509,10 @@ BRICK_SQL_OP( | )
         }
 
         template< typename table >
-        select_join< select_tab, table > join() { return { _conn }; }
+        select_join< select_tab, table, stmt > join() { return { _conn }; }
+
+        template< typename we_t >
+        where_clause< select_tab, we_t, stmt > where( const we_t &we ) { return { _conn, we }; }
 
         stmt exec() { return std::move( stmt( _conn, *this ).exec() ); }
     };
