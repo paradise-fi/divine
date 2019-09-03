@@ -303,15 +303,22 @@ namespace brq::sql
             return *this;
         }
 
-        template< typename... args >
-        stmt &bind( const args &... vs )
+        template< typename list_t >
+        stmt &bind_list( list_t list )
         {
-            auto list = cons_list( vs... );
-            _params.reserve( sizeof...( vs ) );
-            _memory.reserve( sizeof...( vs ) );
+            int count = 0;
+            list.each( [&]( auto ) { ++count; } );
+            _params.reserve( count );
+            _memory.reserve( count );
 
             list.each( [&]( auto &v ) { bind_one( v ); } );
             return *this;
+        }
+
+        template< typename... args >
+        stmt &bind( const args &... vs )
+        {
+            return bind_list( cons_list( vs... ) );
         }
 
         stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s )
