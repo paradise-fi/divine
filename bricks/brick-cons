@@ -62,11 +62,29 @@ namespace brq
             : car( car ), cdr( cdr )
         {}
 
+        constexpr auto reverse()
+        {
+            nil rev;
+            return cons_reverse( *this, rev );
+        }
+
         template< typename arg_t, typename... args_t >
         cons( const arg_t &arg, const args_t&... args ) : car( arg ), cdr( args... ) {}
 
         cons() = default;
     };
+
+    template< typename D >
+    constexpr auto cons_reverse( nil, const D &rev )
+    {
+        return rev;
+    }
+
+    template< typename C, typename D >
+    constexpr auto cons_reverse( const C &cell, const D &rev )
+    {
+        return cons_reverse( cell.cdr, cons( cell.car, rev ) );
+    }
 
     static auto cons_list() { return nil(); }
 
