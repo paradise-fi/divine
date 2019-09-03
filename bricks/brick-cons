@@ -35,9 +35,16 @@ namespace brq
 
         template< typename... Fs >
         auto match( Fs... ) { return std::nullopt; }
+
+        template< template< typename > class P >
+        constexpr nil filter() { return nil(); }
     };
 
+    template< typename, typename > struct cons;
     template< typename, typename > struct ns;
+
+    template< typename A, typename B >
+    auto make_cons( const A &a, const B &b ) { return cons< A, B >( a, b ); }
 
     template< typename A, typename B >
     struct cons
@@ -66,6 +73,15 @@ namespace brq
         {
             nil rev;
             return cons_reverse( *this, rev );
+        }
+
+        template< template< typename > class P >
+        constexpr auto filter()
+        {
+            if constexpr ( P< car_t >::value )
+                return make_cons( car, cdr.template filter< P >() );
+            else
+                return cdr.template filter< P >();
         }
 
         template< typename arg_t, typename... args_t >
