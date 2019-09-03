@@ -85,6 +85,9 @@ namespace brq::sql
         static constexpr bool is_primary = false;
         static constexpr bool is_foreign = false;
         static constexpr bool is_constraint = false;
+
+        static constexpr bool is_expr = true;
+        static constexpr bool is_column = true;
     };
 
     template< typename tab, typename col, bool _nullable = false >
@@ -338,12 +341,128 @@ namespace brq::sql
             return bind_list( cons_list( vs... ) );
         }
 
-        stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s )
-        {
-        }
+        stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s ) {}
     };
 
-    template< typename select, typename tab >
+    template< typename T >
+    constexpr std::enable_if_t< T::is_expr, bool > is_expr( T ) { return true; }
+    constexpr bool is_expr( fallback ) { return false; }
+
+    template< typename... args >
+    struct where_expr
+    {
+        static constexpr bool is_expr = true;
+        static constexpr bool is_column = false;
+
+        const char *_op;
+        cons_list_t< args... > _args;
+
+        template< typename... Ts >
+        where_expr( const char *op, Ts && ... ts )
+            : _op( op ), _args( ts... )
+        {}
+
+        where_expr() = default;
+
+        auto values( nil ) const { return nil(); }
+
+        template< typename L >
+        auto values( const L &l ) const
+        {
+            if constexpr ( std::is_convertible_v< typename L::car_t, std::string_view > ||
+                           std::is_convertible_v< typename L::car_t, int > )
+                return make_cons( l.car, values( l.cdr ) );
+            if constexpr ( sql::is_expr( typename L::car_t() ) )
+            {
+                if constexpr ( L::car_t::is_column )
+                    return values( l.cdr );
+                else
+                    return l.car.values().cat( values( l.cdr ) );
+            }
+        }
+
+        auto values() const { return values( _args ); }
+
+        template< typename stream, typename V >
+        void print( stream &s, const V &v, int &id ) const
+        {
+            if constexpr ( std::is_convertible_v< V, std::string_view > ||
+                           std::is_convertible_v< V, int > )
+                s << "$" << id++ << "::" << sql_type< V >();
+            if constexpr ( sql::is_expr( V() ) )
+            {
+                if constexpr ( V::is_column )
+                    s << v.column_name( v );
+                else
+                    v.print( s, id );
+            }
+        }
+
+        template< typename stream >
+        stream &print( stream &s, int &id ) const
+        {
+            switch ( sizeof...( args ) )
+            {
+                case 1:
+                    s << _op << "( ";
+                    print( s, _args.car, id );
+                    return s << " )";
+                case 2:
+                    s << "( ";
+                    print( s, _args.car, id );
+                    s << " " << _op << " ";
+                    print( s, _args.cdr.car, id );
+                    return s << " )";
+            }
+        }
+
+        template< typename stream >
+        friend auto operator<<( stream &s, const where_expr &we ) -> decltype( s << "" )
+        {
+            int id = 1;
+            we.print( s, id );
+            return s;
+        }
+
+    };
+
+    template< typename T >
+    using unarray_t = std::conditional_t< std::is_array_v< T >, std::remove_extent_t< T > *, T >;
+
+#define BRICK_SQL_OP_(op, sql)                                                      \
+    template< typename A, typename B >                                              \
+    auto op( A &&a, B &&b )                                             \
+        -> std::enable_if_t< is_expr( std::decay_t< A >() ) || is_expr( std::decay_t< B >() ), \
+                             where_expr< std::decay_t< A >, std::decay_t< B > > > \
+    {                                                                               \
+        return { sql, a, b };                                                       \
+    }
+
+#define BRICK_SQL_OP(op) BRICK_SQL_OP_(operator op, #op)
+
+BRICK_SQL_OP_( operator ==, "=" )
+BRICK_SQL_OP_( operator %=, "like" )
+BRICK_SQL_OP_( operator &&, "and" )
+BRICK_SQL_OP_( operator ||, "or" )
+BRICK_SQL_OP_( operator ^, "#" )
+BRICK_SQL_OP_( pow, "^" )
+
+BRICK_SQL_OP( < )
+BRICK_SQL_OP( > )
+BRICK_SQL_OP( <= )
+BRICK_SQL_OP( >= )
+BRICK_SQL_OP( != )
+BRICK_SQL_OP( + )
+BRICK_SQL_OP( - )
+BRICK_SQL_OP( * )
+BRICK_SQL_OP( / )
+BRICK_SQL_OP( % )
+BRICK_SQL_OP( & )
+BRICK_SQL_OP( | )
+
+#undef BRICK_SQL_OP
+
+    template< typename select, typename tab, typename stmt >
     struct select_join
     {
         template< typename stream >
