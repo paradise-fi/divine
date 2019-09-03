@@ -277,6 +277,14 @@ namespace brq::sql
         }
 
         template< typename T >
+        stmt( conn &c, const T &t ) : _conn( c )
+        {
+            string_builder bld;
+            bld << t;
+            _txt = bld.buffer();
+        }
+
+        template< typename T >
         void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
 
         void bind_one( int32_t &t ) { t = htonl( t ); bind_raw( t ); }
@@ -352,14 +360,7 @@ namespace brq::sql
         template< typename table >
         select_join< select_tab, table > join() { return { _conn }; }
 
-        stmt exec()
-        {
-            string_builder bld;
-            bld << *this;
-            stmt s( _conn, bld.buffer() );
-            s.exec();
-            return s;
-        }
+        stmt exec() { return std::move( stmt( _conn, *this ).exec() ); }
     };
 
     template< typename... cols >
