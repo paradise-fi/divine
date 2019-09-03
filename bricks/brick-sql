@@ -79,9 +79,10 @@ namespace brq::sql
         static std::string_view column_name( const CT &ct ) { return get_name( ct ); }
 
         using type = T;
-        static constexpr bool nullable = _nullable;
-        static constexpr bool primary = false;
-        static constexpr bool foreign = false;
+        static constexpr bool is_nullable = _nullable;
+        static constexpr bool is_primary = false;
+        static constexpr bool is_foreign = false;
+        static constexpr bool is_constraint = false;
     };
 
     template< typename tab, typename col, bool _nullable = false >
@@ -89,20 +90,17 @@ namespace brq::sql
     {
         using column = col;
         using table = tab;
-        static constexpr bool nullable = _nullable;
-        static constexpr bool foreign = true;
+        static constexpr bool is_nullable = _nullable;
+        static constexpr bool is_foreign = true;
     };
 
     template< typename col >
-    struct primary_key
+    struct primary_key : col
     {
         template< typename CT >
         static std::string_view column_name( const CT & ) { return get_name( col() ); }
 
-        using type = typename col::type;
-        static constexpr bool nullable = col::nullable;
-        static constexpr bool primary = true;
-        static constexpr bool foreign = false;
+        static constexpr bool is_primary = true;
     };
 
     template< typename... cols >
@@ -120,14 +118,14 @@ namespace brq::sql
         {
             using col_t = decltype( col );
             s << ( first ? "\n  ( " : "\n  , " ) << col.column_name( col );
-            if ( col.primary )
+            if ( col.is_primary )
                 s << " serial primary key";
             else
                 s << " " << brq::sql::type_map[ typeid( typename col_t::type ) ];
-            if constexpr ( col.foreign )
+            if constexpr ( col.is_foreign )
                 s << " references " << get_name( typename col_t::table() )
                   << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
-            if ( !col.nullable )
+            if ( !col.is_nullable )
                 s << " not null";
             first = false;
         };
