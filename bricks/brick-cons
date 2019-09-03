@@ -38,6 +38,9 @@ namespace brq
 
         template< template< typename > class P >
         constexpr nil filter() { return nil(); }
+
+        template< typename L >
+        auto cat( const L &l ) { return l; }
     };
 
     template< typename, typename > struct cons;
@@ -82,6 +85,12 @@ namespace brq
                 return make_cons( car, cdr.template filter< P >() );
             else
                 return cdr.template filter< P >();
+        }
+
+        template< typename L >
+        auto cat( const L &l )
+        {
+            return make_cons( car, cdr.cat( l ) );
         }
 
         template< typename arg_t, typename... args_t >
