@@ -421,14 +421,25 @@ namespace brq::sql
         }
 
         template< typename schema >
-        txn &initdb( schema s )
+        txn &initdb( schema s, bool clear = false )
         {
-            s.each( [&]( auto t )
-                    {
-                        string_builder bld;
-                        bld << t;
-                        exec( bld.buffer() );
-                    } );
+            auto drop = [&]( auto t )
+            {
+                string_builder q;
+                q << "drop table if exists " << get_name( t ) << " cascade";
+                exec( q.buffer() );
+            };
+
+            auto create = [&]( auto t )
+            {
+                string_builder q;
+                q << t;
+                exec( q.buffer() );
+            };
+
+            if ( clear )
+                s.reverse().each( drop );
+            s.each( create );
             return *this;
         }
 
@@ -449,4 +460,6 @@ namespace brq
 {
     using sql_connection = sql::conn;
     using sql_error      = sql::error;
+    template< typename... args >
+    using sql_schema     = sql::schema< args... >;
 }
