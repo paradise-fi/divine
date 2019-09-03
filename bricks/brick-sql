@@ -104,32 +104,61 @@ namespace brq::sql
     };
 
     template< typename... cols >
+    struct unique
+    {
+        using columns = cons_list_t< cols... >;
+        static constexpr bool is_constraint = true;
+        static constexpr bool is_table = false;
+    };
+
+    template< typename T >
+    struct not_constraint { static constexpr bool value = !T::is_constraint; };
+
+    template< typename... cols >
     struct table
     {
-        using columns = brq::cons_list_t< cols... >;
+        using all = cons_list_t< cols... >;
+        using columns = decltype( all().template filter< not_constraint >() );
+        static constexpr bool is_table = true;
     };
 
     template< typename stream, typename table >
-    auto operator<<( stream &s, table ) -> decltype( typename table::columns(), s << "" )
+    auto operator<<( stream &s, table ) -> std::enable_if_t< table::is_table, decltype( s << "" ) >
     {
         s << "create table " << get_name( table() );
         bool first = true;
         auto print_col = [&]( auto col )
         {
             using col_t = decltype( col );
-            s << ( first ? "\n  ( " : "\n  , " ) << col.column_name( col );
-            if ( col.is_primary )
-                s << " serial primary key";
+            s << ( first ? "\n  ( " : "\n  , " );
+            if constexpr ( col.is_constraint )
+            {
+                s << "unique ";
+                bool first = true;
+                auto print = [&]( auto ucol )
+                {
+                    s << ( first ? "( " : ", " ) << ucol.column_name( ucol );
+                    first = false;
+                };
+                typename col_t::columns().each( print );
+                s << " )";
+            }
             else
-                s << " " << brq::sql::type_map[ typeid( typename col_t::type ) ];
-            if constexpr ( col.is_foreign )
-                s << " references " << get_name( typename col_t::table() )
-                  << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
-            if ( !col.is_nullable )
-                s << " not null";
+            {
+                s << col.column_name( col );
+                if constexpr ( col.is_primary )
+                    s << " serial primary key";
+                else
+                    s << " " << brq::sql::type_map[ typeid( typename col_t::type ) ];
+                if constexpr ( col.is_foreign )
+                    s << " references " << get_name( typename col_t::table() )
+                    << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
+                if constexpr ( !col.is_nullable )
+                    s << " not null";
+            }
             first = false;
         };
-        typename table::columns().each( print_col );
+        typename table::all().each( print_col );
         return s << " )";
     }
 
