@@ -188,10 +188,15 @@ namespace lart::abstract
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
-        auto propagate_back_task = [&] ( llvm::Value * v )
-        {
+        using Task = std::function< void( llvm::Value* ) >;
+        Task propagate_back_task = [this, &propagate_back_task] ( llvm::Value * v ) {
             if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
                 propagate_back( arg );
+
+            if ( auto phi = llvm::dyn_cast< llvm::PHINode >( v ) )
+                for ( auto & val : phi->incoming_values() )
+                    if ( propagate_identity( phi, val.get() ) )
+                        propagate_back_task( val.get() );
         };
 
         llvmcase( val,
@@ -215,13 +220,6 @@ namespace lart::abstract
                 if ( propagate_identity( cast, ptr ) )
                     propagate_back_task( ptr );
             },
-            [&] ( llvm::PHINode * phi )
-            {
-                for ( auto & val : phi->incoming_values() )
-                    if ( propagate_identity( phi, val.get() ) )
-                        if ( auto arg = llvm::dyn_cast< llvm::Argument >( val.get() ) )
-                            propagate_back( arg );
-            },
             [&] ( llvm::GetElementPtrInst * gep )
             {
                 auto ptr = gep->getPointerOperand();
@@ -233,8 +231,7 @@ namespace lart::abstract
         if ( is_propagable( val ) )
             for ( auto u : val->users() )
             {
-                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst, llvm::GetElementPtrInst,
-                                      llvm::CastInst, llvm::PHINode >( u ) )
+                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst, llvm::GetElementPtrInst, llvm::CastInst >( u ) )
                     push( u );
                 else if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( u ) )
                 {
