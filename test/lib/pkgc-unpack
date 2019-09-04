@@ -10,7 +10,7 @@ my $basename = $2;
 my $file = `cat $fn`;
 
 # copy over any #include files
-my $cc = "$ENV{BINDIR}/../toolchain/clang/bin/clang";
+my $cc = "$ENV{OBJ}toolchain/clang/bin/clang";
 $cc = "$cc++ -std=c++14" if $ext eq "cpp";
 my $cflags = "-isystem $ENV{SRCDIR}/dios/include -isystem $ENV{BINDIR}/dios/include -D__divine__";
 $cflags .= " $2" if ( $file =~ m,^(/\*|//) CC_OPTS: (.*?)(\*/)?$,sm );
