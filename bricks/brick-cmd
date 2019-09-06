@@ -961,7 +961,7 @@ auto make_parser( brq::refcount_ptr< V > v )
 
 namespace {
 
-std::vector< std::string > from_argv( int argc, const char **argv )
+std::vector< std::string > from_argv( int argc, const char * const *argv )
 {
     std::vector< std::string > args;
     std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
