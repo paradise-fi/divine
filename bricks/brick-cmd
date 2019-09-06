@@ -111,7 +111,7 @@ struct Validator< Parse, Ps... >:  ValidatorInterface
     {
         if ( _name != t )
             return _next->parse( edit, t, v );
-        auto fail = []( auto, std::string s ) { throw except::Error( "parsing command line: " + s ); };
+        auto fail = []( auto, std::string s ) { brq::raise() << "parsing command line: " << s; };
         return _parse( v, Push< T >( edit ), fail );
     }
 
@@ -344,7 +344,7 @@ struct Pattern : brq::refcount_base<>
                 for ( int i = 0; i < int( res.size() ); ++i )
                     if ( res[i] == next )
                         alts += "\n matched " + _subs[i]->fmt();
-                throw except::Error( "Ambiguous parse:" + line + alts );
+                brq::raise() << "ambiguous parse:" << line << alts;
             }
         }
 
@@ -664,7 +664,7 @@ struct OptionSet
                     return;
 
                 if ( parsed.count( &o ) && ( o.flags() & OptionFlag::Unique ) )
-                    throw except::Error( "Option " + o.fmt() + " given more than once\n" );
+                    brq::raise() << "option" << o.fmt() << "given more than once";
                 parsed.insert( &o );
                 b = o.parse( validator, t, b, e );
 
@@ -679,7 +679,7 @@ struct OptionSet
             {
                 alternatives << "Ambiguous option " << *b << ":";
                 each_opt( format );
-                throw except::Error( alternatives.buffer() );
+                brq::raise() << alternatives.buffer();
             }
 
             if ( selected.empty() )
@@ -691,8 +691,7 @@ struct OptionSet
         auto check_required = [&]( auto &o )
         {
             if ( ( o.flags() & OptionFlag::Required ) && !parsed.count( &o ) )
-                throw except::Error( "Missing option: " + o.fmt() + ", expected:\n"
-                                     + this->describe() );
+                brq::raise() << "missing option: " << o.fmt() << ", expected:\n" << this->describe();
         };
 
         each_opt( check_required );
@@ -919,7 +918,7 @@ struct Parser : ParserBase
                 for ( std::string str : unexpected )
                     err << "'" << str << "' ";
             }
-            throw except::Error( err.buffer() );
+            brq::raise() << err.buffer();
         }
         return _result;
     }
