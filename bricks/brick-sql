@@ -119,6 +119,8 @@ namespace brq::sql
 
     template< typename T >
     struct not_constraint { static constexpr bool value = !T::is_constraint; };
+    template< typename T >
+    struct is_primary { static constexpr bool value = T::is_primary; };
 
     template< typename... cols >
     struct table
@@ -546,16 +548,25 @@ BRICK_SQL_OP( | )
         }
     };
 
+    template< typename T, typename X = void >
+    struct get_car { using type = X; };
+
+    template< typename T >
+    struct get_car< T, typename T::car_t > { using type = typename T::car_t; };
+
     template< typename table >
     struct insert
     {
         conn &_conn;
         bool _quiet = false;
 
+        using primary_l = decltype( typename table::columns().template filter< is_primary >() );
+        using stmt = std::conditional_t< std::is_same_v< primary_l, brq::nil >, sql::stmt<>,
+                                         sql::stmt< typename get_car< primary_l >::type > >;
         insert( conn &c, bool q ) : _conn( c ), _quiet( q ) {}
 
         template< typename... cols >
-        stmt< cols... > values( const typename cols::type &... v )
+        stmt values( const typename cols::type &... v )
         {
             string_builder bld;
             bld << "insert into " << get_name( table() );
@@ -565,13 +576,18 @@ BRICK_SQL_OP( | )
             {
                 bld << ( first ? " ( " : ", " ) << col.column_name( col ); first = false;
             } );
-            bld << " ) values ";
+            bld << " ) values";
             int i = 1;
             l.each( [&]( auto ) { bld << ( i == 1 ? " ( " : ", " ) << "$" << i; i ++; } );
             bld << " )";
             if ( _quiet )
                 bld << " on conflict do nothing";
-            stmt< cols... > s( _conn, bld.buffer() );
+            if constexpr ( !std::is_same_v< primary_l, brq::nil > )
+            {
+                using primary = typename primary_l::car_t;
+                bld << " returning " << primary().column_name( primary() );
+            }
+            stmt s( _conn, bld.buffer() );
             s.bind( v... );
             return s;
         }
