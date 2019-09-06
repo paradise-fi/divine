@@ -370,11 +370,15 @@ namespace brq::sql
 
         auto values( nil ) const { return nil(); }
 
+        template< typename T >
+        static constexpr bool is_value = std::is_convertible_v< T, std::string_view > ||
+                                         std::is_convertible_v< T, std::u32string_view > ||
+                                         std::is_convertible_v< T, int >;
+
         template< typename L >
         auto values( const L &l ) const
         {
-            if constexpr ( std::is_convertible_v< typename L::car_t, std::string_view > ||
-                           std::is_convertible_v< typename L::car_t, int > )
+            if constexpr ( is_value< typename L::car_t > )
                 return make_cons( l.car, values( l.cdr ) );
             if constexpr ( sql::is_expr< typename L::car_t >() )
             {
@@ -390,8 +394,7 @@ namespace brq::sql
         template< typename stream, typename V >
         void print( stream &s, const V &v, int &id ) const
         {
-            if constexpr ( std::is_convertible_v< V, std::string_view > ||
-                           std::is_convertible_v< V, int > )
+            if constexpr ( is_value< V > )
                 s << "$" << id++ << "::" << sql_type< V >();
             if constexpr ( sql::is_expr< V >() )
             {
