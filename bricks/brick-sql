@@ -26,6 +26,7 @@
 #include <typeindex>
 #include <cxxabi.h>
 #include <codecvt>
+#include <arpa/inet.h> /* ntohl &c. */
 
 #include <libpq-fe.h>
 
