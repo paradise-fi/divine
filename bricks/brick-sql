@@ -345,8 +345,11 @@ namespace brq::sql
     };
 
     template< typename T >
-    constexpr std::enable_if_t< T::is_expr, bool > is_expr( T ) { return true; }
+    constexpr std::enable_if_t< T::is_expr, bool > is_expr( int ) { return true; }
+    template< typename T >
     constexpr bool is_expr( fallback ) { return false; }
+    template< typename T >
+    constexpr bool is_expr() { return is_expr< T >( 0 ); }
 
     template< typename... args >
     struct where_expr
@@ -372,7 +375,7 @@ namespace brq::sql
             if constexpr ( std::is_convertible_v< typename L::car_t, std::string_view > ||
                            std::is_convertible_v< typename L::car_t, int > )
                 return make_cons( l.car, values( l.cdr ) );
-            if constexpr ( sql::is_expr( typename L::car_t() ) )
+            if constexpr ( sql::is_expr< typename L::car_t >() )
             {
                 if constexpr ( L::car_t::is_column )
                     return values( l.cdr );
@@ -389,7 +392,7 @@ namespace brq::sql
             if constexpr ( std::is_convertible_v< V, std::string_view > ||
                            std::is_convertible_v< V, int > )
                 s << "$" << id++ << "::" << sql_type< V >();
-            if constexpr ( sql::is_expr( V() ) )
+            if constexpr ( sql::is_expr< V >() )
             {
                 if constexpr ( V::is_column )
                     s << v.column_name( v );
@@ -432,7 +435,7 @@ namespace brq::sql
 #define BRICK_SQL_OP_(op, sql)                                                      \
     template< typename A, typename B >                                              \
     auto op( A &&a, B &&b )                                             \
-        -> std::enable_if_t< is_expr( std::decay_t< A >() ) || is_expr( std::decay_t< B >() ), \
+        -> std::enable_if_t< is_expr< std::decay_t< A > >() || is_expr< std::decay_t< B > >(), \
                              where_expr< std::decay_t< A >, std::decay_t< B > > > \
     {                                                                               \
         return { sql, a, b };                                                       \
