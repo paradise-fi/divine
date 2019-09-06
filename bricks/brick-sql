@@ -668,8 +668,9 @@ BRICK_SQL_OP( | )
 
 namespace brq
 {
-    using sql_connection = sql::conn;
-    using sql_error      = sql::error;
+    using sql_connection  = sql::conn;
+    using sql_transaction = sql::txn;
+    using sql_error       = sql::error;
     template< typename... args >
-    using sql_schema     = sql::schema< args... >;
+    using sql_schema      = sql::schema< args... >;
 }
