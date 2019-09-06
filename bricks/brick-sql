@@ -39,7 +39,7 @@ namespace brq::sql
 
     struct date { std::int16_t year, month, day; };
     struct time { std::int16_t hour, min, sec; };
-    struct timestamp { std::int64_t year, month, day, hour, min, sec, fract; };
+    struct timestamp { std::int64_t fract; };
 
     static std::unordered_map< std::type_index, std::string_view > type_map
     {
@@ -243,6 +243,7 @@ namespace brq::sql
 
         void fetch_one( int16_t &t ) { fetch_raw( t ); t = be16toh( t ); }
         void fetch_one( int32_t &t ) { fetch_raw( t ); t = be32toh( t ); }
+        void fetch_one( timestamp &t ) { fetch_raw( t.fract ); t.fract = be64toh( t.fract ); }
 
         void fetch_one( std::u32string &us )
         {
