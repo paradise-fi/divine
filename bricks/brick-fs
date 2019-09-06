@@ -181,19 +181,21 @@ struct PosixBuf : std::streambuf
 };
 #endif
 
-struct SystemException : except::Error {
+struct SystemException : brq::error
+{
     // make sure we don't override errno accidentaly when constructing std::string
     explicit SystemException( std::string what ) : SystemException{ errno, what } { }
     explicit SystemException( const char *what ) : SystemException{ errno, what } { }
 
   private:
     explicit SystemException( int _errno, std::string what ) :
-        except::Error( "System error: " + std::string( std::strerror( _errno ) ) + ", when " + what )
+        brq::error( "System error: " + std::string( std::strerror( _errno ) ) + ", when " + what )
     { }
 };
 
-struct Exception : except::Error {
-    using except::Error::Error;
+struct Exception : brq::error
+{
+    using brq::error::error;
 };
 
 #if defined( __unix__ ) || defined( __APPLE__ ) || defined( __divine__ )
