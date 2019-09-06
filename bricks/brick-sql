@@ -635,7 +635,7 @@ BRICK_SQL_OP( | )
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
 
-    txn conn::begin() { return txn( *this ); }
+    inline txn conn::begin() { return txn( *this ); }
 
 }
 
