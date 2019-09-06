@@ -26,7 +26,7 @@
 #include <typeindex>
 #include <cxxabi.h>
 #include <codecvt>
-#include <arpa/inet.h> /* ntohl &c. */
+#include <endian.h> /* beNNtoh / htobeNN */
 
 #include <libpq-fe.h>
 
@@ -241,8 +241,8 @@ namespace brq::sql
             std::memcpy( &t, PQgetvalue( _result, _row, _col ), sizeof( T ) );
         }
 
-        void fetch_one( int32_t &t ) { fetch_raw( t ); t = ntohl( t ); }
-        void fetch_one( int16_t &t ) { fetch_raw( t ); t = ntohs( t ); }
+        void fetch_one( int16_t &t ) { fetch_raw( t ); t = be16toh( t ); }
+        void fetch_one( int32_t &t ) { fetch_raw( t ); t = be32toh( t ); }
 
         void fetch_one( std::u32string &us )
         {
@@ -301,8 +301,9 @@ namespace brq::sql
         template< typename T >
         void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
 
-        void bind_one( int32_t &t ) { t = htonl( t ); bind_raw( t ); }
-        void bind_one( int16_t &t ) { t = htons( t ); bind_raw( t ); }
+        void bind_one( int64_t &t ) { t = htobe64( t ); bind_raw( t ); }
+        void bind_one( int32_t &t ) { t = htobe32( t ); bind_raw( t ); }
+        void bind_one( int16_t &t ) { t = htobe16( t ); bind_raw( t ); }
         void bind_one( const std::string &s ) { bind_mem( s.data(), s.size() ); }
         void bind_one( std::u32string &us )
         {
