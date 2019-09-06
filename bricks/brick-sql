@@ -550,7 +550,9 @@ BRICK_SQL_OP( | )
     struct insert
     {
         conn &_conn;
-        insert( conn &c ) : _conn( c ) {}
+        bool _quiet = false;
+
+        insert( conn &c, bool q ) : _conn( c ), _quiet( q ) {}
 
         template< typename... cols >
         stmt< cols... > values( const typename cols::type &... v )
@@ -567,6 +569,8 @@ BRICK_SQL_OP( | )
             int i = 1;
             l.each( [&]( auto ) { bld << ( i == 1 ? " ( " : ", " ) << "$" << i; i ++; } );
             bld << " )";
+            if ( _quiet )
+                bld << " on conflict do nothing";
             stmt< cols... > s( _conn, bld.buffer() );
             s.bind( v... );
             return s;
@@ -637,7 +641,7 @@ BRICK_SQL_OP( | )
         select_cols< args... > select() { return { _conn }; }
 
         template< typename table >
-        insert< table> insert_into() { return { _conn }; }
+        insert< table > insert_into( bool quiet = false ) { return { _conn, quiet }; }
 
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
