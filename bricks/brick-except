@@ -49,7 +49,7 @@ namespace brq
         }
     };
 
-    template< typename exc >
+    template< typename exc = error >
     construct_error< exc > raise()
     {
         return {};
