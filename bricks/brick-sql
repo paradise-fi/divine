@@ -682,4 +682,6 @@ namespace brq
     using sql_error       = sql::error;
     template< typename... args >
     using sql_schema      = sql::schema< args... >;
+    template< typename... args >
+    using sql_statement   = sql::stmt< args... >;
 }
