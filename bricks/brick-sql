@@ -89,10 +89,11 @@ namespace brq::sql
 
         static constexpr bool is_expr = true;
         static constexpr bool is_column = true;
+        static constexpr bool is_select = false;
     };
 
     template< typename tab, typename col >
-    struct in : col
+    struct in_table : col
     {
         using table = tab;
 
@@ -391,6 +392,7 @@ namespace brq::sql
     {
         static constexpr bool is_expr = true;
         static constexpr bool is_column = false;
+        static constexpr bool is_select = false;
 
         const char *_op;
         cons_list_t< args... > _args;
@@ -416,7 +418,7 @@ namespace brq::sql
                 return make_cons( l.car, values( l.cdr ) );
             if constexpr ( sql::is_expr< typename L::car_t >() )
             {
-                if constexpr ( L::car_t::is_column )
+                if constexpr ( L::car_t::is_column || L::car_t::is_select )
                     return values( l.cdr );
                 else
                     return l.car.values().cat( values( l.cdr ) );
@@ -434,6 +436,8 @@ namespace brq::sql
             {
                 if constexpr ( V::is_column )
                     s << v.column_name( v );
+                else if constexpr ( V::is_select )
+                    s << "( " << v << " )";
                 else
                     v.print( s, id );
             }
@@ -487,6 +491,7 @@ BRICK_SQL_OP_( operator &&, "and" )
 BRICK_SQL_OP_( operator ||, "or" )
 BRICK_SQL_OP_( operator ^, "#" )
 BRICK_SQL_OP_( pow, "^" )
+BRICK_SQL_OP_( in, "in" )
 
 BRICK_SQL_OP( < )
 BRICK_SQL_OP( > )
@@ -503,8 +508,15 @@ BRICK_SQL_OP( | )
 
 #undef BRICK_SQL_OP
 
+    struct query_base
+    {
+        static constexpr bool is_column = false;
+        static constexpr bool is_select = true;
+        static constexpr bool is_expr = true;
+    };
+
     template< typename select, typename stmt, typename... cols >
-    struct group_by
+    struct group_by : query_base
     {
         select _select;
         conn &conn() { return _select.conn(); }
@@ -525,7 +537,7 @@ BRICK_SQL_OP( | )
     };
 
     template< typename query, typename expr, typename stmt >
-    struct where_clause
+    struct where_clause : query_base
     {
         expr _expr;
         query _query;
@@ -546,7 +558,7 @@ BRICK_SQL_OP( | )
     };
 
     template< typename select, typename tab, typename stmt >
-    struct select_join
+    struct select_join : query_base
     {
         using table = tab;
 
@@ -616,7 +628,7 @@ BRICK_SQL_OP( | )
     };
 
     template< typename select, typename tab, typename stmt >
-    struct select_tab
+    struct select_tab : query_base
     {
         using table = tab;
         select _select;
@@ -642,7 +654,7 @@ BRICK_SQL_OP( | )
     };
 
     template< typename... cols >
-    struct select_cols
+    struct select_cols : query_base
     {
         conn &_conn;
         conn &conn() { return _conn; }
