@@ -491,6 +491,27 @@ BRICK_SQL_OP( | )
 
 #undef BRICK_SQL_OP
 
+    template< typename select, typename stmt, typename... cols >
+    struct group_by
+    {
+        select _select;
+        conn &conn() { return _select.conn(); }
+        group_by( select s ) : _select( s ) {}
+        stmt exec() { return std::move( stmt( conn(), *this ).exec() ); }
+
+        template< typename stream >
+        friend auto operator<<( stream &s, const group_by &gp ) -> decltype( s << std::string() )
+        {
+            s << gp._select << " group by ";
+            bool first = true;
+            cons_list( cols()... ).each( [&]( auto c )
+            {
+                s << ( first ? "" : ", " ) << c.column_name( c ); first = false;
+            } );
+            return s;
+        }
+    };
+
     template< typename query, typename expr, typename stmt >
     struct where_clause
     {
@@ -505,6 +526,9 @@ BRICK_SQL_OP( | )
         {
             return s << wc._query << " where " << wc._expr;
         }
+
+        template< typename... group_cols >
+        group_by< where_clause, stmt, group_cols... > group_by() { return { *this }; }
 
         stmt exec() { return std::move( stmt( conn(), *this ).bind_list( _expr.values() ).exec() ); }
     };
@@ -573,6 +597,9 @@ BRICK_SQL_OP( | )
         template< typename table >
         select_join< select_join, table, stmt > join() { return { *this }; }
 
+        template< typename... group_cols >
+        group_by< select_join, stmt, group_cols... > group_by() { return { *this }; }
+
         stmt exec() { return std::move( stmt( conn(), *this ).exec() ); }
     };
 
@@ -592,6 +619,9 @@ BRICK_SQL_OP( | )
 
         template< typename table >
         select_join< select_tab, table, stmt > join() { return { *this }; }
+
+        template< typename... group_cols >
+        group_by< select_tab, stmt, group_cols... > group_by() { return { *this }; }
 
         template< typename we_t >
         where_clause< select_tab, we_t, stmt > where( const we_t &we ) { return { *this, we }; }
