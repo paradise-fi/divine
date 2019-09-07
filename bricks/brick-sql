@@ -131,7 +131,7 @@ namespace brq::sql
     };
 
     template< typename stream, typename table >
-    auto operator<<( stream &s, table ) -> std::enable_if_t< table::is_table, decltype( s << "" ) >
+    auto operator<<( stream &s, table ) -> std::enable_if_t< table::is_table, decltype( s << std::string() ) >
     {
         s << "create table " << get_name( table() );
         bool first = true;
@@ -428,7 +428,7 @@ namespace brq::sql
         }
 
         template< typename stream >
-        friend auto operator<<( stream &s, const where_expr &we ) -> decltype( s << "" )
+        friend auto operator<<( stream &s, const where_expr &we ) -> decltype( s << std::string() )
         {
             int id = 1;
             we.print( s, id );
@@ -481,7 +481,7 @@ BRICK_SQL_OP( | )
         where_clause( conn &c, const expr &e ) : _conn( c ), _expr( e ) {}
 
         template< typename stream >
-        friend auto operator<<( stream &s, const where_clause &wc ) -> decltype( s << "" )
+        friend auto operator<<( stream &s, const where_clause &wc ) -> decltype( s << std::string() )
         {
             return s << query( wc._conn ) << " where " << wc._expr;
         }
@@ -496,7 +496,7 @@ BRICK_SQL_OP( | )
         select_join( conn &c ) : _conn( c ) {}
 
         template< typename stream >
-        friend auto operator<<( stream &s, select_join ) -> decltype( s << "" )
+        friend auto operator<<( stream &s, select_join ) -> decltype( s << std::string() )
         {
             return s << select() << " join " << name( tab() ) << " on " << "? = ?";
         }
@@ -514,7 +514,7 @@ BRICK_SQL_OP( | )
         select_tab( conn &c ) : _conn( c ) {}
 
         template< typename stream >
-        friend auto operator<<( stream &s, const select_tab &st ) -> decltype( s << "" )
+        friend auto operator<<( stream &s, const select_tab &st ) -> decltype( s << std::string() )
         {
             return s << cols( st._conn ) << " from " << get_name( tab() );
         }
@@ -538,7 +538,7 @@ BRICK_SQL_OP( | )
         select_tab< select_cols< cols... >, table, stmt< cols... > > from() { return { _conn }; }
 
         template< typename stream >
-        friend auto operator<<( stream &s, select_cols ) -> decltype( s << "" )
+        friend auto operator<<( stream &s, select_cols ) -> decltype( s << std::string() )
         {
             s << "select ";
             bool first = true;
