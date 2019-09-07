@@ -521,7 +521,50 @@ BRICK_SQL_OP( | )
         template< typename stream >
         friend auto operator<<( stream &s, const select_join &sj ) -> decltype( s << std::string() )
         {
-            return s << select() << " join " << name( tab() ) << " on " << "? = ?";
+            using tab_left = typename select::table;
+            using tab_right = tab;
+
+            std::string foreign_column;
+            std::string primary_column;
+
+            auto find_foreign_left = [&]( auto t )
+            {
+                if constexpr ( t.is_foreign )
+                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_left > )
+                        foreign_column = t.column_name( t );
+            };
+
+            auto find_foreign_right = [&]( auto t )
+            {
+                if constexpr ( t.is_foreign )
+                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_right > )
+                        foreign_column = t.column_name( t );
+            };
+
+            auto find_primary = [&]( auto t )
+            {
+                if ( t.is_primary )
+                    primary_column = t.column_name( t );
+            };
+
+            s << sj._select << " join " << get_name( tab_right() ) << " on ";
+
+            typename tab_right::columns().each( find_foreign_left );
+            typename tab_left::columns().each( find_primary );
+
+            if ( !foreign_column.empty() && !primary_column.empty() )
+            {
+                return s << get_name( tab_right() ) << "." << foreign_column
+                         << " = " << get_name( tab_left() ) << "." << primary_column;
+            }
+            else
+            {
+                typename tab_right::columns().each( find_primary );
+                typename tab_left::columns().each( find_foreign_right );
+
+                return s << get_name( tab_left() ) << "." << foreign_column
+                         << " = " << get_name( tab_right() ) << "." << primary_column;
+            }
         }
 
         template< typename we_t >
