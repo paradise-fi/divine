@@ -106,6 +106,7 @@ namespace brq::sql
         template< typename CT >
         static std::string_view column_name( const CT & ) { return get_name( col() ); }
 
+        using base = col;
         static constexpr bool is_primary = true;
     };
 
@@ -551,10 +552,13 @@ BRICK_SQL_OP( | )
     };
 
     template< typename T, typename X = void >
-    struct get_car { using type = X; };
+    struct get_key { using type = X; };
 
     template< typename T >
-    struct get_car< T, typename T::car_t > { using type = typename T::car_t; };
+    struct get_key< T, decltype( typename T::car_t(), void(0) ) >
+    {
+        using type = typename T::car_t::base;
+    };
 
     template< typename table >
     struct insert
@@ -564,7 +568,7 @@ BRICK_SQL_OP( | )
 
         using primary_l = decltype( typename table::columns().template filter< is_primary >() );
         using stmt = std::conditional_t< std::is_same_v< primary_l, brq::nil >, sql::stmt<>,
-                                         sql::stmt< typename get_car< primary_l >::type > >;
+                                         sql::stmt< typename get_key< primary_l >::type > >;
         insert( conn &c, bool q ) : _conn( c ), _quiet( q ) {}
 
         template< typename... cols >
