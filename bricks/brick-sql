@@ -300,6 +300,9 @@ namespace brq::sql
             _txt = bld.buffer();
         }
 
+        stmt( const stmt & ) = delete;
+        stmt( stmt && ) = default;
+
         template< typename T >
         void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
 
