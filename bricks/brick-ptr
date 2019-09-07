@@ -37,7 +37,10 @@ namespace brq
 
         explicit operator bool() const noexcept { return ptr(); }
         bool operator !() const noexcept { return !ptr(); }
-        bool operator<( const refcount_ptr &o ) const noexcept { return std::less()( ptr(), o.ptr() ); }
+        bool operator<( const refcount_ptr &o ) const noexcept
+        {
+            return std::less< const void * >()( ptr(), o.ptr() );
+        }
 
         template< bool o_atomic >
         refcount_ptr< T, atomic > &operator=( const refcount_ptr< T, o_atomic > &o ) noexcept
