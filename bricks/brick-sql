@@ -570,6 +570,9 @@ BRICK_SQL_OP( | )
         template< typename we_t >
         where_clause< select_join, we_t, stmt > where( const we_t &we ) { return { *this, we }; }
 
+        template< typename table >
+        select_join< select_join, table, stmt > join() { return { *this }; }
+
         stmt exec() { return std::move( stmt( conn(), *this ).exec() ); }
     };
 
