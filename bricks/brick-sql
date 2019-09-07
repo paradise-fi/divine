@@ -91,6 +91,20 @@ namespace brq::sql
         static constexpr bool is_column = true;
     };
 
+    template< typename tab, typename col >
+    struct in : col
+    {
+        using table = tab;
+
+        template< typename CT >
+        static std::string_view column_name( const CT &ct )
+        {
+            static auto name = std::string( get_name( table() ) ) +
+                               "." + std::string( col().column_name( col() ) );
+            return name;
+        }
+    };
+
     template< typename tab, typename col, bool _nullable = false >
     struct foreign_key : col
     {
