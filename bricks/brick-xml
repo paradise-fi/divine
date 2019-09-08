@@ -1,0 +1,116 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * Copyright (C) 2019 Petr Rockai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+#include "brick-trace"
+#include <string_view>
+#include <vector>
+#include <string>
+#include <expat.h>
+
+namespace brq
+{
+    struct xml_parser
+    {
+        XML_Parser _parser;
+        virtual void start( std::string_view, std::vector< std::string_view > ) {}
+        virtual void end( std::string_view ) {}
+        virtual void text( std::string_view ) {}
+
+        xml_parser()
+        {
+            _parser = XML_ParserCreate( nullptr );
+            XML_SetElementHandler( _parser, _start, _end );
+            XML_SetCharacterDataHandler( _parser, _text );
+            XML_SetUserData( _parser, this );
+        }
+
+        void parse( std::string_view data )
+        {
+            XML_Parse( _parser, data.begin(), data.size(), false );
+        }
+
+        void done()
+        {
+            XML_Parse( _parser, nullptr, 0, true );
+        }
+
+        static void _start( void *instance, const char *name, const char **attrs )
+        {
+            xml_parser *i = static_cast< xml_parser * >( instance );
+            std::vector< std::string_view > attr_vec;
+
+            for ( ; *attrs ; ++attrs )
+                attr_vec.emplace_back( *attrs );
+
+            i->start( name, attr_vec );
+        }
+
+        static void _end( void *instance, const char *name )
+        {
+            xml_parser *i = static_cast< xml_parser * >( instance );
+            i->end( name );
+        }
+
+        static void _text( void *instance, const char *data, int len )
+        {
+            xml_parser *i = static_cast< xml_parser * >( instance );
+                    return i->text( std::string_view( data, len ) );
+        }
+    };
+
+    struct xml_stack : xml_parser
+    {
+        std::vector< std::string > _stack;
+        std::vector< std::string > _text;
+
+        virtual std::string event( std::string_view, std::string_view ) { return ""; }
+        virtual void start( std::string_view n, std::vector< std::string_view > attr )
+        {
+            TRACE( "parsing", n, attr );
+            _stack.emplace_back( n );
+            _text.emplace_back();
+        }
+
+        virtual void end( std::string_view n )
+        {
+            TRACE( "end", n );
+            auto replace = event( n, _text.back() );
+            _stack.pop_back();
+            _text.pop_back();
+            _text.back() += replace;
+        }
+
+        virtual void text( std::string_view txt )
+        {
+            _text.back() += txt;
+        }
+
+        template< typename... args >
+        bool in_context( args... ctx )
+        {
+            auto il = { std::string_view( ctx )... };
+            auto i = _stack.rbegin();
+            auto j = std::rbegin( il );
+            while ( i != _stack.rend() && j != std::rend( il ) )
+                if ( *i++ != *j++ )
+                    return false;
+            return j == std::rend( il );
+        }
+    };
+}
