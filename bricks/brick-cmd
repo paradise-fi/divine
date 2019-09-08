@@ -838,7 +838,7 @@ struct Parser : ParserBase
 {
     brq::refcount_ptr< Validator > _validator;
     Cmds _cmds;
-    using Result = typename Cmds::template map< GetT >::co;
+    using Result = typename Cmds::template map_t< GetT >::co;
 
     std::pair< Result, Tokens::iterator > do_parse( Tokens::iterator b, Tokens::iterator e )
     {

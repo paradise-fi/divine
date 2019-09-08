@@ -28,7 +28,7 @@ namespace brq
     struct nil
     {
         using co = nil;
-        template< template< typename > class f > using map = nil;
+        template< template< typename > class f > using map_t = nil;
 
         template< typename F >
         void each( const F & ) {}
@@ -37,7 +37,10 @@ namespace brq
         auto match( Fs... ) { return std::nullopt; }
 
         template< template< typename > class P >
-        constexpr nil filter() { return nil(); }
+        constexpr nil filter() { return {}; }
+
+        template< typename F >
+        nil map( F ) { return {}; }
 
         template< typename L >
         auto cat( const L &l ) { return l; }
@@ -56,7 +59,7 @@ namespace brq
         using cdr_t = B;
         using co = ns< car_t, typename cdr_t::co >;
         template< template< typename > class f >
-        using map = cons< f< car_t >, typename cdr_t::template map< f > >;
+        using map_t = cons< f< car_t >, typename cdr_t::template map_t< f > >;
 
         car_t car;
         cdr_t cdr;
@@ -85,6 +88,12 @@ namespace brq
                 return make_cons( car, cdr.template filter< P >() );
             else
                 return cdr.template filter< P >();
+        }
+
+        template< typename F >
+        auto map( F f )
+        {
+            return make_cons( f( car ), cdr.map( f ) );
         }
 
         template< typename L >
