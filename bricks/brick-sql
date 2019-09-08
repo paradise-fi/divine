@@ -739,6 +739,57 @@ BRICK_SQL_OP( | )
         }
     };
 
+    template< typename update, typename... cols >
+    struct update_set : extend< update >
+    {
+        auto exec() { return this->_exec( this ); }
+        void bind( typename update::stmt &s ) { s.bind_list( _values ); this->_query.bind( s ); }
+
+        cons_list_t< typename cols::type... > _values;
+        update_set( update u, const typename cols::type &... v )
+            : extend< update >( u ), _values( v... )
+        {}
+
+        template< typename stream >
+        friend auto operator<<( stream &s, const update_set &st ) -> decltype( s << std::string() )
+        {
+            s << st._query << " set ";
+            cons_list_t< cols... > list;
+            int i = 1;
+            list.each( [&]( auto &col )
+            {
+                s << ( i == 1 ? "" : ", " ) << col.column_name( col ) << " = $" << i;
+                ++ i;
+            } );
+            return s;
+        }
+
+        template< typename we_t >
+        where_clause< update_set, we_t > where( const we_t &we ) { return { *this, we }; }
+    };
+
+    template< typename table >
+    struct update
+    {
+        using stmt = sql::stmt<>;
+        conn &_conn;
+        conn &conn() { return _conn; }
+        update( sql::conn &c ) : _conn( c ) {}
+        void bind( stmt & ) {}
+
+        template< typename stream >
+        friend auto operator<<( stream &s, const update & ) -> decltype( s << std::string() )
+        {
+            return s << "update " << get_name( table() );
+        }
+
+        template< typename... cols >
+        update_set< update, cols... > set( const typename cols::type &... v )
+        {
+            return { *this, v... };
+        }
+    };
+
     struct txn
     {
         conn &_conn;
@@ -804,6 +855,9 @@ BRICK_SQL_OP( | )
 
         template< typename table >
         insert< table > insert_into( bool quiet = false ) { return { _conn, quiet }; }
+
+        template< typename table >
+        update< table > update() { return { _conn }; }
 
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
