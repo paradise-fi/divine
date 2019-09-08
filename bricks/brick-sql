@@ -89,7 +89,7 @@ namespace brq::sql
 
         static constexpr bool is_expr = true;
         static constexpr bool is_column = true;
-        static constexpr bool is_select = false;
+        static constexpr bool is_query = false;
     };
 
     template< typename tab, typename col >
@@ -392,7 +392,7 @@ namespace brq::sql
     {
         static constexpr bool is_expr = true;
         static constexpr bool is_column = false;
-        static constexpr bool is_select = false;
+        static constexpr bool is_query = false;
 
         const char *_op;
         cons_list_t< args... > _args;
@@ -418,7 +418,7 @@ namespace brq::sql
                 return make_cons( l.car, values( l.cdr ) );
             if constexpr ( sql::is_expr< typename L::car_t >() )
             {
-                if constexpr ( L::car_t::is_column || L::car_t::is_select )
+                if constexpr ( L::car_t::is_column || L::car_t::is_query )
                     return values( l.cdr );
                 else
                     return l.car.values().cat( values( l.cdr ) );
@@ -436,7 +436,7 @@ namespace brq::sql
             {
                 if constexpr ( V::is_column )
                     s << v.column_name( v );
-                else if constexpr ( V::is_select )
+                else if constexpr ( V::is_query )
                     s << "( " << v << " )";
                 else
                     v.print( s, id );
@@ -511,7 +511,7 @@ BRICK_SQL_OP( | )
     struct query_base
     {
         static constexpr bool is_column = false;
-        static constexpr bool is_select = true;
+        static constexpr bool is_query = true;
         static constexpr bool is_expr = true;
     };
 
