@@ -159,7 +159,8 @@ namespace brq::sql
     };
 
     template< typename stream, typename table >
-    auto operator<<( stream &s, table ) -> std::enable_if_t< table::is_table, decltype( s << std::string() ) >
+    auto operator<<( stream &s, table )
+        -> std::enable_if_t< table::is_table, decltype( s << std::string() ) >
     {
         s << "create table " << get_name( table() );
         bool first = true;
@@ -460,15 +461,6 @@ namespace brq::sql
                     return s << " )";
             }
         }
-
-        template< typename stream >
-        friend auto operator<<( stream &s, const where_expr &we ) -> decltype( s << std::string() )
-        {
-            int id = 1;
-            we.print( s, id );
-            return s;
-        }
-
     };
 
     template< typename T >
@@ -535,6 +527,15 @@ BRICK_SQL_OP( | )
         }
     };
 
+    template< typename stream, typename list >
+    void print_list( stream &s, list l,
+                     const char *delim = ", ", const char *start = "", const char *end = "" )
+    {
+        bool first = true;
+        l.each( [&]( const auto &c ) { s << ( first ? start : delim ) << c; first = false; } );
+        s << end;
+    }
+
     template< typename select, typename... cols >
     struct group_by : extend< select >
     {
@@ -542,15 +543,11 @@ BRICK_SQL_OP( | )
         auto exec() { return this->_exec( this ); }
 
         template< typename stream >
-        friend auto operator<<( stream &s, const group_by &gp ) -> decltype( s << std::string() )
+        void print( stream &s, int &id ) const
         {
-            s << gp._query << " group by ";
-            bool first = true;
-            cons_list( cols()... ).each( [&]( auto c )
-            {
-                s << ( first ? "" : ", " ) << c.column_name( c ); first = false;
-            } );
-            return s;
+            this->_query.print( s, id );
+            s << " group by ";
+            print_list( s, cons_list( cols()... ).map( [&]( auto c ) { return c.column_name( c ); } ) );
         }
     };
 
@@ -561,9 +558,11 @@ BRICK_SQL_OP( | )
         where_clause( query q, const expr &e ) : extend< query >( q ), _expr( e ) {}
 
         template< typename stream >
-        friend auto operator<<( stream &s, const where_clause &wc ) -> decltype( s << std::string() )
+        void print( stream &s, int &id ) const
         {
-            return s << wc._query << " where " << wc._expr;
+            this->_query.print( s, id );
+            s << " where ";
+            _expr.print( s, id );
         }
 
         template< typename... group_cols >
@@ -585,7 +584,7 @@ BRICK_SQL_OP( | )
         auto exec() { return this->_exec( this ); }
 
         template< typename stream >
-        friend auto operator<<( stream &s, const select_join &sj ) -> decltype( s << std::string() )
+        void print( stream &s, int &id ) const
         {
             using tab_left = typename select::table;
             using tab_right = tab;
@@ -613,23 +612,24 @@ BRICK_SQL_OP( | )
                     primary_column = t.column_name( t );
             };
 
-            s << sj._query << " join " << get_name( tab_right() ) << " on ";
+            this->_query.print( s, id );
+            s << " join " << get_name( tab_right() ) << " on ";
 
             typename tab_right::columns().each( find_foreign_left );
             typename tab_left::columns().each( find_primary );
 
             if ( !foreign_column.empty() && !primary_column.empty() )
             {
-                return s << get_name( tab_right() ) << "." << foreign_column
-                         << " = " << get_name( tab_left() ) << "." << primary_column;
+                s << get_name( tab_right() ) << "." << foreign_column
+                  << " = " << get_name( tab_left() ) << "." << primary_column;
             }
             else
             {
                 typename tab_right::columns().each( find_primary );
                 typename tab_left::columns().each( find_foreign_right );
 
-                return s << get_name( tab_left() ) << "." << foreign_column
-                         << " = " << get_name( tab_right() ) << "." << primary_column;
+                s << get_name( tab_left() ) << "." << foreign_column
+                  << " = " << get_name( tab_right() ) << "." << primary_column;
             }
         }
 
@@ -651,9 +651,10 @@ BRICK_SQL_OP( | )
         auto exec() { return this->_exec( this ); }
 
         template< typename stream >
-        friend auto operator<<( stream &s, const select_tab &st ) -> decltype( s << std::string() )
+        void print( stream &s, int &id ) const
         {
-            return s << st._query << " from " << get_name( tab() );
+            this->_query.print( s, id );
+            s << " from " << get_name( tab() );
         }
 
         template< typename table >
@@ -679,15 +680,10 @@ BRICK_SQL_OP( | )
         select_tab< select_cols, table > from() { return { *this }; }
 
         template< typename stream >
-        friend auto operator<<( stream &s, select_cols ) -> decltype( s << std::string() )
+        void print( stream &s, int &id ) const
         {
             s << "select ";
-            bool first = true;
-            cons_list( cols()... ).each( [&]( auto c )
-            {
-                s << ( first ? "" : ", " ) << c.column_name( c ); first = false;
-            } );
-            return s;
+            print_list( s, cons_list( cols()... ).map( [&]( auto c ) { return c.column_name( c ); } ) );
         }
     };
 
@@ -751,17 +747,19 @@ BRICK_SQL_OP( | )
         {}
 
         template< typename stream >
-        friend auto operator<<( stream &s, const update_set &st ) -> decltype( s << std::string() )
+        void print( stream &s, int &id ) const
         {
-            s << st._query << " set ";
+            this->_query.print( s, id );
+            s << " set ";
             cons_list_t< cols... > list;
-            int i = 1;
-            list.each( [&]( auto &col )
+            auto fmt_update = [&]( auto col ) -> std::string
             {
-                s << ( i == 1 ? "" : ", " ) << col.column_name( col ) << " = $" << i;
-                ++ i;
-            } );
-            return s;
+                string_builder b;
+                b << col.column_name( col ) << " = $" << id ++
+                  << "::" << sql_type< typename decltype( col )::type >();
+                return b.buffer();
+            };
+            print_list( s, list.map( fmt_update ) );
         }
 
         template< typename we_t >
@@ -778,9 +776,9 @@ BRICK_SQL_OP( | )
         void bind( stmt & ) {}
 
         template< typename stream >
-        friend auto operator<<( stream &s, const update & ) -> decltype( s << std::string() )
+        void print( stream &s, int & ) const
         {
-            return s << "update " << get_name( table() );
+            s << "update " << get_name( table() );
         }
 
         template< typename... cols >
@@ -864,6 +862,14 @@ BRICK_SQL_OP( | )
 
     inline txn conn::begin() { return txn( *this ); }
 
+    template< typename stream, typename query >
+    inline auto operator<<( stream &s, const query &st )
+        -> std::enable_if_t< query::is_query, decltype( s << std::string() ) >
+    {
+        int id = 1;
+        st.print( s, id );
+        return s;
+    }
 }
 
 namespace brq
