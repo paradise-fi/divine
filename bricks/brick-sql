@@ -515,18 +515,36 @@ BRICK_SQL_OP( | )
         static constexpr bool is_expr = true;
     };
 
-    template< typename select, typename stmt, typename... cols >
-    struct group_by : query_base
+    template< typename query >
+    struct extend : query_base
     {
-        select _select;
-        conn &conn() { return _select.conn(); }
-        group_by( select s ) : _select( s ) {}
-        stmt exec() { return std::move( stmt( conn(), *this ).exec() ); }
+        using stmt = typename query::stmt;
+        query _query;
+        conn &conn() { return _query.conn(); }
+        extend( query q ) : _query( q ) {}
+
+        void bind( stmt &s ) { _query.bind( s ); }
+
+        template< typename T >
+        stmt _exec( T *t )
+        {
+            stmt s( t->conn(), *t );
+            t->bind( s );
+            s.exec();
+            return s;
+        }
+    };
+
+    template< typename select, typename... cols >
+    struct group_by : extend< select >
+    {
+        using extend< select >::extend;
+        auto exec() { return this->_exec( this ); }
 
         template< typename stream >
         friend auto operator<<( stream &s, const group_by &gp ) -> decltype( s << std::string() )
         {
-            s << gp._select << " group by ";
+            s << gp._query << " group by ";
             bool first = true;
             cons_list( cols()... ).each( [&]( auto c )
             {
@@ -536,14 +554,11 @@ BRICK_SQL_OP( | )
         }
     };
 
-    template< typename query, typename expr, typename stmt >
-    struct where_clause : query_base
+    template< typename query, typename expr >
+    struct where_clause : extend< query >
     {
         expr _expr;
-        query _query;
-        conn &conn() { return _query.conn(); }
-        where_clause( query q, const expr &e ) : _query( q ), _expr( e ) {}
-        where_clause( const where_clause & ) = default;
+        where_clause( query q, const expr &e ) : extend< query >( q ), _expr( e ) {}
 
         template< typename stream >
         friend auto operator<<( stream &s, const where_clause &wc ) -> decltype( s << std::string() )
@@ -552,19 +567,22 @@ BRICK_SQL_OP( | )
         }
 
         template< typename... group_cols >
-        group_by< where_clause, stmt, group_cols... > group_by() { return { *this }; }
+        group_by< where_clause, group_cols... > group_by() { return { *this }; }
 
-        stmt exec() { return std::move( stmt( conn(), *this ).bind_list( _expr.values() ).exec() ); }
+        auto exec() { return this->_exec( this ); }
+        void bind( typename query::stmt &s )
+        {
+            s.bind_list( _expr.values() );
+            this->_query.bind( s );
+        }
     };
 
-    template< typename select, typename tab, typename stmt >
-    struct select_join : query_base
+    template< typename select, typename tab >
+    struct select_join : extend< select >
     {
         using table = tab;
-
-        select _select;
-        conn &conn() { return _select.conn(); }
-        select_join( select s ) : _select( s ) {}
+        using extend< select >::extend;
+        auto exec() { return this->_exec( this ); }
 
         template< typename stream >
         friend auto operator<<( stream &s, const select_join &sj ) -> decltype( s << std::string() )
@@ -595,7 +613,7 @@ BRICK_SQL_OP( | )
                     primary_column = t.column_name( t );
             };
 
-            s << sj._select << " join " << get_name( tab_right() ) << " on ";
+            s << sj._query << " join " << get_name( tab_right() ) << " on ";
 
             typename tab_right::columns().each( find_foreign_left );
             typename tab_left::columns().each( find_primary );
@@ -616,52 +634,49 @@ BRICK_SQL_OP( | )
         }
 
         template< typename we_t >
-        where_clause< select_join, we_t, stmt > where( const we_t &we ) { return { *this, we }; }
+        where_clause< select_join, we_t > where( const we_t &we ) { return { *this, we }; }
 
         template< typename table >
-        select_join< select_join, table, stmt > join() { return { *this }; }
+        select_join< select_join, table > join() { return { *this }; }
 
         template< typename... group_cols >
-        group_by< select_join, stmt, group_cols... > group_by() { return { *this }; }
-
-        stmt exec() { return std::move( stmt( conn(), *this ).exec() ); }
+        group_by< select_join, group_cols... > group_by() { return { *this }; }
     };
 
-    template< typename select, typename tab, typename stmt >
-    struct select_tab : query_base
+    template< typename select, typename tab >
+    struct select_tab : extend< select >
     {
         using table = tab;
-        select _select;
-        conn &conn() { return _select.conn(); }
-        select_tab( select s ) : _select( s ) {}
+        using extend< select >::extend;
+        auto exec() { return this->_exec( this ); }
 
         template< typename stream >
         friend auto operator<<( stream &s, const select_tab &st ) -> decltype( s << std::string() )
         {
-            return s << st._select << " from " << get_name( tab() );
+            return s << st._query << " from " << get_name( tab() );
         }
 
         template< typename table >
-        select_join< select_tab, table, stmt > join() { return { *this }; }
+        select_join< select_tab, table > join() { return { *this }; }
 
         template< typename... group_cols >
-        group_by< select_tab, stmt, group_cols... > group_by() { return { *this }; }
+        group_by< select_tab, group_cols... > group_by() { return { *this }; }
 
         template< typename we_t >
-        where_clause< select_tab, we_t, stmt > where( const we_t &we ) { return { *this, we }; }
-
-        stmt exec() { return std::move( stmt( conn(), *this ).exec() ); }
+        where_clause< select_tab, we_t > where( const we_t &we ) { return { *this, we }; }
     };
 
     template< typename... cols >
     struct select_cols : query_base
     {
+        using stmt = stmt< cols... >;
         conn &_conn;
         conn &conn() { return _conn; }
         select_cols( sql::conn &c ) : _conn( c ) {}
+        void bind( stmt & ) {}
 
         template< typename table >
-        select_tab< select_cols< cols... >, table, stmt< cols... > > from() { return { *this }; }
+        select_tab< select_cols, table > from() { return { *this }; }
 
         template< typename stream >
         friend auto operator<<( stream &s, select_cols ) -> decltype( s << std::string() )
