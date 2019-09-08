@@ -572,8 +572,8 @@ BRICK_SQL_OP( | )
         auto exec() { return this->_exec( this ); }
         void bind( typename query::stmt &s )
         {
-            s.bind_list( _expr.values() );
             this->_query.bind( s );
+            s.bind_list( _expr.values() );
         }
     };
 
@@ -743,7 +743,7 @@ BRICK_SQL_OP( | )
     struct update_set : extend< update >
     {
         auto exec() { return this->_exec( this ); }
-        void bind( typename update::stmt &s ) { s.bind_list( _values ); this->_query.bind( s ); }
+        void bind( typename update::stmt &s ) { this->_query.bind( s ); s.bind_list( _values ); }
 
         cons_list_t< typename cols::type... > _values;
         update_set( update u, const typename cols::type &... v )
