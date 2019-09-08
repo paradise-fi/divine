@@ -1,0 +1,84 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * Copyright (C) 2019 Petr Rockai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+#include <string_view>
+#include <curl/curl.h>
+
+namespace brq
+{
+    struct curl
+    {
+        CURL *_curl = nullptr;
+        curl_mime *_mime = nullptr;
+        brq::string_builder _data;
+
+        curl()
+        {
+            _curl = curl_easy_init();
+            _mime = curl_mime_init( _curl );
+            curl_easy_setopt( _curl, CURLOPT_WRITEFUNCTION, _data_cb );
+            curl_easy_setopt( _curl, CURLOPT_WRITEDATA, this );
+        }
+
+        ~curl()
+        {
+            curl_easy_cleanup( _curl );
+            curl_mime_free( _mime );
+        }
+
+        std::string_view data() { return _data.data(); }
+
+        static size_t _data_cb( char *ptr, size_t, size_t nmemb, void *instance )
+        {
+            curl *i = static_cast< curl * >( instance );
+            i->_data << std::string_view( ptr, nmemb );
+            return nmemb;
+        }
+
+        curl &add_arg( std::string_view n, std::string_view d )
+        {
+            curl_easy_setopt( _curl, CURLOPT_MIMEPOST, _mime );
+
+            auto part = curl_mime_addpart( _mime );
+            curl_mime_name( part, std::string( n ).c_str() );
+            curl_mime_data( part, d.begin(), d.size() );
+            return *this;
+        }
+
+        curl &set_url( std::string_view url )
+        {
+            curl_easy_setopt( _curl, CURLOPT_URL, std::string( url ).c_str() );
+            return *this;
+        }
+
+        curl &run()
+        {
+            long code;
+
+            if ( auto err = curl_easy_perform( _curl ) )
+                brq::raise() << "curl error: " << curl_easy_strerror( err );
+
+            curl_easy_getinfo( _curl, CURLINFO_RESPONSE_CODE, &code );
+            if ( code != 200 )
+                brq::raise() << "unexpected server response code " << code;
+
+            return *this;
+        }
+    };
+}
