@@ -668,13 +668,19 @@ BRICK_SQL_OP( | )
     };
 
     template< typename... cols >
-    struct select_cols : query_base
+    struct query_head : query_base
     {
         using stmt = stmt< cols... >;
         conn &_conn;
         conn &conn() { return _conn; }
-        select_cols( sql::conn &c ) : _conn( c ) {}
+        query_head( sql::conn &c ) : _conn( c ) {}
         void bind( stmt & ) {}
+    };
+
+    template< typename... cols >
+    struct select_cols : query_head< cols... >
+    {
+        using query_head< cols... >::query_head;
 
         template< typename table >
         select_tab< select_cols, table > from() { return { *this }; }
@@ -767,13 +773,9 @@ BRICK_SQL_OP( | )
     };
 
     template< typename table >
-    struct update
+    struct update : query_head<>
     {
-        using stmt = sql::stmt<>;
-        conn &_conn;
-        conn &conn() { return _conn; }
-        update( sql::conn &c ) : _conn( c ) {}
-        void bind( stmt & ) {}
+        using query_head<>::query_head;
 
         template< typename stream >
         void print( stream &s, int & ) const
@@ -786,6 +788,21 @@ BRICK_SQL_OP( | )
         {
             return { *this, v... };
         }
+    };
+
+    template< typename table >
+    struct delete_from : query_head<>
+    {
+        using query_head<>::query_head;
+
+        template< typename stream >
+        void print( stream &s, int & ) const
+        {
+            s << "delete from " << get_name( table() );
+        }
+
+        template< typename we_t >
+        where_clause< delete_from, we_t > where( const we_t &we ) { return { *this, we }; }
     };
 
     struct txn
@@ -856,6 +873,9 @@ BRICK_SQL_OP( | )
 
         template< typename table >
         update< table > update() { return { _conn }; }
+
+        template< typename table >
+        delete_from< table > delete_from() { return { _conn }; }
 
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
