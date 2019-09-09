@@ -71,6 +71,7 @@ namespace brq::sql
             name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
             TRACE( dem, "→", name );
             std::free( dem );
+            name = "\"" + name + "\"";
         }
         return name;
     }
