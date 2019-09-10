@@ -55,6 +55,7 @@
 #include <brick-assert>
 #include <string>
 #include <iomanip>
+#include <sstream>
 #include <cstring>
 #include <sys/types.h>
 
