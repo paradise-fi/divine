@@ -21,9 +21,8 @@
 #include "brick-cons"
 #include "brick-except"
 
-#include <unordered_map>
+#include <memory>
 #include <vector>
-#include <typeindex>
 #include <cxxabi.h>
 #include <codecvt>
 #include <endian.h> /* beNNtoh / htobeNN */
@@ -41,23 +40,23 @@ namespace brq::sql
     struct time { std::int16_t hour, min, sec; };
     struct timestamp { std::int64_t fract; };
 
-    static std::unordered_map< std::type_index, std::string_view > type_map
+    template< typename T > struct type_map {};
+    template<> struct type_map< short >          { static auto name() { return "smallint"; } };
+    template<> struct type_map< int >            { static auto name() { return "integer"; } };
+    template<> struct type_map< long >           { static auto name() { return "bigint"; } };
+    template<> struct type_map< std::u32string > { static auto name() { return "text"; } };
+    template<> struct type_map< std::string >    { static auto name() { return "bytea"; } };
+    template<> struct type_map< const char * >   { static auto name() { return "bytea"; } };
+    template<> struct type_map< date >           { static auto name() { return "date"; } };
+    template<> struct type_map< time >           { static auto name() { return "time"; } };
+    template<> struct type_map< timestamp >      { static auto name() { return "timestamp"; }; };
     {
-        { typeid( short ),          "smallint" },
-        { typeid( int ),            "integer" },
-        { typeid( long ),           "bigint" },
-        { typeid( std::u32string ), "text" },
-        { typeid( std::string ),    "bytea" },
-        { typeid( const char * ),   "text" },
-        { typeid( date ),           "date" },
-        { typeid( time ),           "time" },
-        { typeid( timestamp ),      "timestamp" },
     };
 
     template< typename T >
     std::string_view sql_type()
     {
-        return brq::sql::type_map[ typeid( T ) ];
+        return brq::sql::type_map< T >::name();
     }
 
     template< typename T >
