@@ -550,6 +550,12 @@ BRICK_SQL_OP( | )
         s << end;
     }
 
+    template< typename stream, typename list >
+    void print_columns( stream &s, list l )
+    {
+        print_list( s, l.map( [&]( auto c ) { return c.column_name( c ); } ) );
+    }
+
     template< typename select, typename... cols >
     struct group_by : extend< select >
     {
@@ -561,7 +567,7 @@ BRICK_SQL_OP( | )
         {
             this->_query.print( s, id );
             s << " group by ";
-            print_list( s, cons_list( cols()... ).map( [&]( auto c ) { return c.column_name( c ); } ) );
+            print_columns( s, cons_list( cols()... ) );
         }
     };
 
@@ -703,7 +709,7 @@ BRICK_SQL_OP( | )
         void print( stream &s, int &id ) const
         {
             s << "select ";
-            print_list( s, cons_list( cols()... ).map( [&]( auto c ) { return c.column_name( c ); } ) );
+            print_columns( s, cons_list( cols()... ) );
         }
     };
 
