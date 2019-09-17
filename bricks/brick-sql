@@ -687,6 +687,25 @@ BRICK_SQL_OP( | )
         where_clause< select_tab, we_t > where( const we_t &we ) { return { *this, we }; }
     };
 
+    template< typename select, typename... cols >
+    struct select_distinct : extend< select >
+    {
+        using extend< select >::extend;
+        auto exec() { return this->_exec( this ); }
+
+        template< typename stream >
+        void print( stream &s, int &id ) const
+        {
+            this->_query.print( s, id );
+            s << " distinct ";
+            if ( sizeof...( cols ) > 0 )
+                s << " on ", print_columns( s, cons_list( cols()... ) );
+        }
+
+        template< typename table >
+        select_tab< select_distinct, table > from() { return { *this }; }
+    };
+
     template< typename... cols >
     struct query_head : query_base
     {
@@ -704,6 +723,9 @@ BRICK_SQL_OP( | )
 
         template< typename table >
         select_tab< select_cols, table > from() { return { *this }; }
+
+        template< typename... distinct_cols >
+        select_distinct< select_cols, distinct_cols... > distinct() { return { *this }; }
 
         template< typename stream >
         void print( stream &s, int &id ) const
