@@ -119,6 +119,19 @@ namespace brq::sql
         }
     };
 
+    template< typename col >
+    struct count : col
+    {
+        template< typename CT >
+        static std::string_view column_name( const CT &ct )
+        {
+            static auto name = std::string( "count( " ) +
+                std::string( col().column_name( col() ) ) + " )";
+            return name;
+        }
+    };
+
+
     template< typename tab, typename col, bool _nullable = false >
     struct foreign_key : col
     {
