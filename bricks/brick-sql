@@ -50,8 +50,12 @@ namespace brq::sql
     template<> struct type_map< date >           { static auto name() { return "date"; } };
     template<> struct type_map< time >           { static auto name() { return "time"; } };
     template<> struct type_map< timestamp >      { static auto name() { return "timestamp"; }; };
+
+    template< int v > struct type_map< std::array< uint8_t, v > >
     {
+        static auto name() { return "bytea( " + std::to_string( v ) + " )"; }
     };
+
 
     template< typename T >
     std::string_view sql_type()
@@ -333,6 +337,11 @@ namespace brq::sql
             _params.push_back( _memory.back().get() );
         }
 
+        void bind_mem( const uint8_t *data, int size )
+        {
+            bind_mem( reinterpret_cast< const char * >( data ), size );
+        }
+
         template< typename T >
         stmt( conn &c, const T &t ) : _conn( c )
         {
@@ -357,6 +366,9 @@ namespace brq::sql
             auto str = conv.to_bytes( &*us.begin(), &*us.end() );
             bind_mem( str.data(), str.size() );
         }
+
+        template< size_t n >
+        void bind_one( const std::array< uint8_t, n > &s ) { bind_mem( s.begin(), s.size() ); }
 
         stmt &exec()
         {
