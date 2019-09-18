@@ -175,47 +175,6 @@ namespace brq::sql
         static constexpr bool is_table = true;
     };
 
-    template< typename stream, typename table >
-    auto operator<<( stream &s, table )
-        -> std::enable_if_t< table::is_table, decltype( s << std::string() ) >
-    {
-        s << "create table " << get_name( table() );
-        bool first = true;
-        auto print_col = [&]( auto col )
-        {
-            using col_t = decltype( col );
-            s << ( first ? "\n  ( " : "\n  , " );
-            if constexpr ( col.is_constraint )
-            {
-                s << "unique ";
-                bool first = true;
-                auto print = [&]( auto ucol )
-                {
-                    s << ( first ? "( " : ", " ) << ucol.column_name( ucol );
-                    first = false;
-                };
-                typename col_t::columns().each( print );
-                s << " )";
-            }
-            else
-            {
-                s << col.column_name( col );
-                if constexpr ( col.is_primary )
-                    s << " serial primary key";
-                else
-                    s << " " << sql_type< typename col_t::type >();
-                if constexpr ( col.is_foreign )
-                    s << " references " << get_name( typename col_t::table() )
-                    << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
-                if constexpr ( !col.is_nullable )
-                    s << " not null";
-            }
-            first = false;
-        };
-        typename table::all().each( print_col );
-        return s << " )";
-    }
-
     template< typename... tables_ >
     struct schema : cons_list_t< tables_... > {};
 
@@ -896,27 +855,7 @@ BRICK_SQL_OP( | )
         }
 
         template< typename schema >
-        txn &initdb( schema s, bool clear = false )
-        {
-            auto drop = [&]( auto t )
-            {
-                string_builder q;
-                q << "drop table if exists " << get_name( t ) << " cascade";
-                exec( q.buffer() );
-            };
-
-            auto create = [&]( auto t )
-            {
-                string_builder q;
-                q << t;
-                exec( q.buffer() );
-            };
-
-            if ( clear )
-                s.reverse().each( drop );
-            s.each( create );
-            return *this;
-        }
+        txn &initdb( schema s, bool clear = false );
 
         template< typename... args >
         select_cols< args... > select() { return { _conn }; }
@@ -932,6 +871,72 @@ BRICK_SQL_OP( | )
 
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
+
+    template< typename table >
+    void drop( txn &t, table )
+    {
+        string_builder q;
+        q << "drop table if exists " << get_name( table() ) << " cascade";
+        t.exec( q.buffer() );
+    };
+
+    template< typename table >
+    std::enable_if_t< table::is_table > create( txn &txn, table )
+    {
+        string_builder s;
+        s << "create table " << get_name( table() );
+        bool first = true;
+        auto print_col = [&]( auto col )
+        {
+            using col_t = decltype( col );
+            s << ( first ? "\n  ( " : "\n  , " );
+            if constexpr ( col.is_constraint )
+            {
+                s << "unique ";
+                bool first = true;
+                auto print = [&]( auto ucol )
+                {
+                    s << ( first ? "( " : ", " ) << ucol.column_name( ucol );
+                    first = false;
+                };
+                typename col_t::columns().each( print );
+                s << " )";
+            }
+            else
+            {
+                s << col.column_name( col );
+                using type = typename col_t::type;
+                if constexpr ( col.is_primary )
+                {
+                    if ( std::is_same_v< type, int > )
+                        s << " serial primary key";
+                    else
+                        s << " " << sql_type< type >() << " primary key";
+                }
+                else
+                    s << " " << sql_type< type >();
+                if constexpr ( col.is_foreign )
+                    s << " references " << get_name( typename col_t::table() )
+                    << "( " << typename col_t::column().column_name( typename col_t::column() ) << " )";
+                if constexpr ( !col.is_nullable )
+                    s << " not null";
+            }
+            first = false;
+        };
+        typename table::all().each( print_col );
+        s << " )";
+
+        txn.exec( s.buffer() );
+    };
+
+    template< typename schema >
+    txn &txn::initdb( schema s, bool clear )
+    {
+        if ( clear )
+            s.reverse().each( [&]( auto t ) { drop( *this, t ); } );
+        s.each( [&]( auto t ) { create( *this, t ); } );
+        return *this;
+    }
 
     inline txn conn::begin() { return txn( *this ); }
 
