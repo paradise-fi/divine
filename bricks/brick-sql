@@ -37,7 +37,7 @@ namespace brq::sql
     };
 
     template< typename T >
-    std::string_view get_name( T t, bool quote = true )
+    std::string_view get_name( T t, char quote = '"' )
     {
         static std::string name;
         if ( name.empty() )
@@ -48,7 +48,7 @@ namespace brq::sql
             TRACE( dem, "→", name );
             std::free( dem );
             if ( quote )
-                name = "\"" + name + "\"";
+                name = quote + name + quote;
         }
         return name;
     }
@@ -56,8 +56,19 @@ namespace brq::sql
     struct date { std::int16_t year, month, day; };
     struct time { std::int16_t hour, min, sec; };
     struct timestamp { std::int64_t fract; };
+    struct enum_value {};
 
-    template< typename T > struct type_map {};
+    template< typename... vals >
+    struct enum_type
+    {
+        using values = cons_list_t< vals... >;
+        typename values::co _value;
+        static constexpr bool is_enum  = true;
+        static constexpr bool is_table = false;
+        static constexpr bool is_view  = false;
+    };
+
+    template< typename T, typename = void > struct type_map {};
     template<> struct type_map< short >          { static auto name() { return "smallint"; } };
     template<> struct type_map< int >            { static auto name() { return "integer"; } };
     template<> struct type_map< long >           { static auto name() { return "bigint"; } };
@@ -71,6 +82,11 @@ namespace brq::sql
     template< int v > struct type_map< std::array< uint8_t, v > >
     {
         static auto name() { return "bytea"; }
+    };
+
+    template< typename T > struct type_map< T, std::enable_if_t< T::is_enum > >
+    {
+        static auto name() { return get_name( T(), 0 ); }
     };
 
 
@@ -911,11 +927,27 @@ BRICK_SQL_OP( | )
         t.exec() << "drop table if exists " << get_name( table() ) << " cascade";
     };
 
+    template< typename enum_t >
+    std::enable_if_t< enum_t::is_enum > drop( txn &t, enum_t )
+    {
+        t.exec() << "drop type if exists " << get_name( enum_t() ) << " cascade";
+    };
+
     template< typename view >
     std::enable_if_t< view::is_view > drop( txn &t, view )
     {
         t.exec() << "drop view if exists " << get_name( view() ) << " cascade";
     };
+
+    template< typename enum_t >
+    std::enable_if_t< enum_t::is_enum > create( txn &txn, enum_t )
+    {
+        string_builder s;
+        s << "create type " << get_name( enum_t() ) << " as enum";
+        print_list( s, typename enum_t::values().map( [&]( auto c ) { return get_name( c, '\'' ); } ),
+                    ", ", "(", ")" );
+        txn.exec( s.buffer() );
+    }
 
     template< typename table >
     std::enable_if_t< table::is_table > create( txn &txn, table )
