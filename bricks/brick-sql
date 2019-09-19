@@ -97,6 +97,17 @@ namespace brq::sql
         static constexpr bool is_query = false;
     };
 
+    template< typename T >
+    struct constant : column< T, false >
+    {
+        template< typename CT >
+        static std::string_view column_name( const CT &ct )
+        {
+            static std::string n = std::string( get_name( ct, false ) ) + "::" + sql_type< T >();
+            return n;
+        }
+    };
+
     template< typename tab, typename col >
     struct in_table : col
     {
