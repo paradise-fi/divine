@@ -130,7 +130,13 @@ namespace brq
     }
 
     template< typename... Ts >
-    using cons_list_t = decltype( cons_list( std::declval< Ts >()... ) );
+    using cons_list_t_ = decltype( cons_list( std::declval< Ts >()... ) );
+
+    template< typename... Ts >
+    struct cons_list_t: cons_list_t_< Ts... >
+    {
+        using cons_list_t_< Ts... >::cons_list_t_;
+    };
 
     template< typename car_t_, typename cdr_t_ >
     struct ns
