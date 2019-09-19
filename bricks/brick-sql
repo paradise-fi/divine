@@ -866,6 +866,15 @@ BRICK_SQL_OP( | )
             return *this;
         }
 
+        struct autoexec : brq::string_builder
+        {
+            txn &_txn;
+            autoexec( txn &t ) : _txn( t ) {}
+            ~autoexec() { _txn.exec( buffer() ); }
+        };
+
+        autoexec exec() { return { *this }; }
+
         template< typename schema >
         txn &initdb( schema s, bool clear = false );
 
