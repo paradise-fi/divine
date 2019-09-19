@@ -70,7 +70,7 @@ namespace brq::sql
 
     template< int v > struct type_map< std::array< uint8_t, v > >
     {
-        static auto name() { return "bytea( " + std::to_string( v ) + " )"; }
+        static auto name() { return "bytea"; }
     };
 
 
