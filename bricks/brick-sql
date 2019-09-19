@@ -36,6 +36,23 @@ namespace brq::sql
         using std::runtime_error::runtime_error;
     };
 
+    template< typename T >
+    std::string_view get_name( T t, bool quote = true )
+    {
+        static std::string name;
+        if ( name.empty() )
+        {
+            int stat;
+            char *dem = abi::__cxa_demangle( typeid( T ).name(), nullptr, nullptr, &stat );
+            name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
+            TRACE( dem, "→", name );
+            std::free( dem );
+            if ( quote )
+                name = "\"" + name + "\"";
+        }
+        return name;
+    }
+
     struct date { std::int16_t year, month, day; };
     struct time { std::int16_t hour, min, sec; };
     struct timestamp { std::int64_t fract; };
@@ -61,22 +78,6 @@ namespace brq::sql
     std::string_view sql_type()
     {
         return brq::sql::type_map< T >::name();
-    }
-
-    template< typename T >
-    std::string_view get_name( T t )
-    {
-        static std::string name;
-        if ( name.empty() )
-        {
-            int stat;
-            char *dem = abi::__cxa_demangle( typeid( T ).name(), nullptr, nullptr, &stat );
-            name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
-            TRACE( dem, "→", name );
-            std::free( dem );
-            name = "\"" + name + "\"";
-        }
-        return name;
     }
 
     template< typename T, bool _nullable = false >
