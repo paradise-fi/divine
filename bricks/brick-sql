@@ -185,6 +185,15 @@ namespace brq::sql
         using all = cons_list_t< cols... >;
         using columns = decltype( all().template filter< not_constraint >() );
         static constexpr bool is_table = true;
+        static constexpr bool is_view  = false;
+    };
+
+    template< typename... cols >
+    struct view
+    {
+        using columns = cons_list_t< cols... >;
+        static constexpr bool is_table = false;
+        static constexpr bool is_view  = true;
     };
 
     template< typename... tables_ >
@@ -881,6 +890,9 @@ BRICK_SQL_OP( | )
         template< typename... args >
         select_cols< args... > select() { return { _conn }; }
 
+        template< typename... args >
+        select_cols< args... > select( cons_list_t< args... > ) { return { _conn }; }
+
         template< typename table >
         insert< table > insert_into( bool quiet = false ) { return { _conn, quiet }; }
 
@@ -894,11 +906,15 @@ BRICK_SQL_OP( | )
     };
 
     template< typename table >
-    void drop( txn &t, table )
+    std::enable_if_t< table::is_table > drop( txn &t, table )
     {
-        string_builder q;
-        q << "drop table if exists " << get_name( table() ) << " cascade";
-        t.exec( q.buffer() );
+        t.exec() << "drop table if exists " << get_name( table() ) << " cascade";
+    };
+
+    template< typename view >
+    std::enable_if_t< view::is_view > drop( txn &t, view )
+    {
+        t.exec() << "drop view if exists " << get_name( view() ) << " cascade";
     };
 
     template< typename table >
@@ -949,6 +965,17 @@ BRICK_SQL_OP( | )
 
         txn.exec( s.buffer() );
     };
+
+    template< typename view >
+    std::enable_if_t< view::is_view > create( txn &txn, view )
+    {
+        string_builder s;
+        int id = 1;
+        s << "create view " << get_name( view() ) << " with ( security_barrier ) as ";
+        auto q = view::construct( txn.select( typename view::columns() ) );
+        q.print( s, id );
+        txn.exec( s.buffer() );
+    }
 
     template< typename schema >
     txn &txn::initdb( schema s, bool clear )
