@@ -35,13 +35,7 @@ namespace lart::abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_chained_pass( AnnotateFunctions(
-                                                "lart.interrupt.skipcfl:_ZNSt3__218uninitialized_copy.*"
-                                           )
-                                           , AnnotateFunctions(
-                                                "lart.interrupt.skipcfl:_ZN6__dios5Array.*"
-                                           )
-                                           , InitAbstractions()
+            auto passes = make_chained_pass( InitAbstractions()
                                            , LowerAnnotations()
                                            , DataFlowAnalysis()
                                            , UnstashPass()
