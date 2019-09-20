@@ -32,7 +32,7 @@ struct CflInterrupt
 {
     CflInterrupt( std::string n ) : _handler_name( n ) {}
 
-    inline static const std::string skipcfl = "lart.interrupt.skipcfl";
+    inline static const std::string skipcfl = "lart.interrupt.local.skipcfl";
 
     void insert( llvm::Value *v, llvm::IRBuilder<> &b ) { b.CreateCall( _hypercall, { v, _handler } ); }
     void insert( llvm::Value *v, llvm::Instruction *where )

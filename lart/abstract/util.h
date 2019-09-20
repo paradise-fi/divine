@@ -320,10 +320,8 @@ namespace lart::abstract
     template< typename F >
     void each_call( llvm::Function *fn, F f, llvm::Value *val, ValueSet &seen ) noexcept
     {
-        if ( seen.count( val ) )
+        if ( auto [it, inserted] = seen.insert( val ); !inserted )
             return;
-        else
-            seen.insert( val );
 
         if ( util::is_one_of< llvm::Function, llvm::BitCastInst, llvm::PHINode,
                               llvm::ConstantExpr >( val ) )

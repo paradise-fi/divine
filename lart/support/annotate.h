@@ -79,7 +79,6 @@ namespace lart
                     "Adds to matched functions attribute named 'annotation'.\n" );
         }
 
-
         void run( llvm::Module &m );
         bool match( const llvm::Function & fn ) const noexcept;
         void annotate( llvm::Function & fn ) const noexcept;
@@ -87,5 +86,39 @@ namespace lart
         std::string _anno;
         std::regex _rgx;
     };
+
+    struct Interrupt
+    {
+        inline static const std::string skipmem = "lart.interrupt.skipmem";
+        inline static const std::string local_skipmem = "lart.interrupt.local.skipmem";
+
+        inline static const std::string skipcfl = "lart.interrupt.skipcfl";
+        inline static const std::string local_skipcfl = "lart.interrupt.local.skipcfl";
+    };
+
+    struct PropagateRecursiveAnnotation
+    {
+        using Root = std::string;
+        using Spread = std::string;
+
+        using Roots = std::vector< std::pair< Root, Spread > >;
+
+        PropagateRecursiveAnnotation()
+            : roots( {
+                { Interrupt::skipmem, Interrupt::local_skipmem },
+                { Interrupt::skipcfl, Interrupt::local_skipcfl }
+            } )
+        {}
+
+        static PassMeta meta() {
+            return passMeta< PropagateRecursiveAnnotation >( "recurse-annotations", "" );
+        }
+
+        void run( llvm::Module &m ) const noexcept;
+
+        Roots roots;
+    };
+
+    PassMeta propagateRecursiveAnnotationPass();
 
 } // namespace lart

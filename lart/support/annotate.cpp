@@ -17,6 +17,7 @@
  */
 
 #include <lart/support/annotate.h>
+#include <lart/support/util.h>
 
 namespace lart {
 
@@ -46,6 +47,64 @@ namespace lart {
     void AnnotateFunctions::annotate( llvm::Function & fn ) const noexcept
     {
         fn.addFnAttr( _anno );
+    }
+
+    using FunctionSet = std::set< llvm::Function * >;
+    using FunctionMap = util::Map< llvm::Function *, llvm::Function * >;
+
+    using AttrSet = std::set< llvm::StringRef >;
+    using Attrs = std::vector< llvm::StringRef >;
+
+    void PropagateRecursiveAnnotation::run( llvm::Module &m ) const noexcept
+    {
+        auto not_vm = []( llvm::Function &fn ) {
+            return !fn.getName().startswith( "__vm_" );
+        };
+
+        auto const_null = []( auto & ) { return nullptr; };
+
+        for ( auto [root, spread] : roots )
+            LowerAnnotations( root ).run( m );
+
+        auto set_attrs = [] ( auto fn, const auto & attrs ) {
+            for ( auto attr : attrs )
+                fn->addFnAttr( attr );
+        };
+
+        // collect attributes
+        std::map< llvm::Function *, Attrs > attr_map;
+        for ( const auto & [attr, spread] : roots )
+            for ( auto fn : util::functions_with_attr( attr, m ) )
+                attr_map[ fn ].push_back( spread );
+
+        std::map< Attrs, FunctionMap > matched;
+
+        auto matched_functions = [&] ( const auto & attrs ) {
+            FunctionMap map;
+            for ( auto [fn, clone] : matched[ attrs ] ) {
+                map[ fn ] = clone;
+                map[ clone ] = clone;
+            }
+            return map;
+        };
+
+        for ( const auto & [root, attrs] : attr_map ) {
+            set_attrs( root, attrs );
+
+            auto map = matched_functions( attrs );
+            cloneCalleesRecursively( root, map, not_vm, const_null );
+
+            for ( auto [fn, clone] : map ) {
+                if ( ( fn != clone ) && !matched[ attrs ].count( fn ) ) {
+                    set_attrs( clone, attrs );
+                    matched[ attrs ][ fn ] = clone;
+                }
+            }
+        }
+    }
+
+    PassMeta propagateRecursiveAnnotationPass() {
+        return PropagateRecursiveAnnotation::meta();
     }
 
 } // namespace lart
