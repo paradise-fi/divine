@@ -32,8 +32,6 @@ struct CflInterrupt
 {
     CflInterrupt( std::string n ) : _handler_name( n ) {}
 
-    inline static const std::string skipcfl = "lart.interrupt.local.skipcfl";
-
     void insert( llvm::Value *v, llvm::IRBuilder<> &b ) { b.CreateCall( _hypercall, { v, _handler } ); }
     void insert( llvm::Value *v, llvm::Instruction *where )
     {
@@ -101,8 +99,8 @@ struct CflInterrupt
         _hypercall->addFnAttr( llvm::Attribute::NoUnwind );
         _handler->addFnAttr( llvm::Attribute::NoUnwind );
 
-        LowerAnnotations( skipcfl ).run( m );
-        auto skip = util::functions_with_attr( skipcfl, m );
+        LowerAnnotations( Interrupt::local_skipcfl ).run( m );
+        auto skip = util::functions_with_attr( Interrupt::local_skipcfl, m );
 
         for ( auto &fn : m )
         {
@@ -119,7 +117,8 @@ struct CflInterrupt
 
 struct MemInterrupt
 {
-    inline static const std::string skipmem = "lart.interrupt.skipmem";
+    inline static const std::string freeze = "__vm_test_taint.lart.abstract.freeze";
+    inline static const std::string thaw = "__vm_test_taint.lart.abstract.thaw";
 
     MemInterrupt( std::string n ) : _handler_name( n ) {}
 
@@ -149,8 +148,18 @@ struct MemInterrupt
                     default: intr_type = _VM_MAT_Both; break;
                 }
                 auto point = std::next( llvm::BasicBlock::iterator( inst ) );
+
+                if ( auto call = llvm::dyn_cast< llvm::CallInst >( point ) ) {
+                    auto fn = call->getCalledFunction();
+                    if ( fn && fn->getName().startswith( freeze ) )
+                        point = std::next( point );
+                    if ( fn && fn->getName().startswith( thaw ) )
+                        point = std::next( point );
+                }
+
                 irb.SetInsertPoint( &*point );
                 irb.CreateCall( _hypercall, { ptr, si, irb.getInt32( intr_type ), _handler } );
+
                 ++_mem;
             }
         }
@@ -183,8 +192,8 @@ struct MemInterrupt
         auto silentID = m.getMDKindID( reduction::silentTag );
         llvm::DataLayout dl( &m );
 
-        LowerAnnotations( skipmem ).run( m );
-        auto skip = util::functions_with_attr( skipmem, m );
+        LowerAnnotations( Interrupt::local_skipmem ).run( m );
+        auto skip = util::functions_with_attr( Interrupt::local_skipmem, m );
 
         for ( auto &fn : m )
         {
