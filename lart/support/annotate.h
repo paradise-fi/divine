@@ -94,6 +94,12 @@ namespace lart
 
         inline static const std::string skipcfl = "lart.interrupt.skipcfl";
         inline static const std::string local_skipcfl = "lart.interrupt.local.skipcfl";
+
+        inline static void make_invisible( llvm::Function * fn ) noexcept
+        {
+            fn->addFnAttr( local_skipmem );
+            fn->addFnAttr( local_skipcfl );
+        }
     };
 
     struct PropagateRecursiveAnnotation

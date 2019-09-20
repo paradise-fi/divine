@@ -159,7 +159,7 @@ namespace lart::abstract {
         return create_call( ret, fn, Values{ val } );
     }
 
-    llvm::Value *stash( llvm::Function *fn, llvm::CallSite call, const Matched & matched )
+    auto stash( llvm::Function *fn, llvm::CallSite call, const Matched & matched ) -> llvm::Value *
     {
         return ArgumentsBundle( fn ).packed( call, matched );
     }

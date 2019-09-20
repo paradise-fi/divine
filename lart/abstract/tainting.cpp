@@ -2,6 +2,7 @@
 #include <lart/abstract/tainting.h>
 
 #include <lart/support/util.h>
+#include <lart/support/annotate.h>
 
 namespace lart::abstract {
 
@@ -170,7 +171,9 @@ namespace lart::abstract {
             }
 
             auto name = abstract_name( op );
-            return get_function( name, return_type( op.inst ), args );
+            auto fn = get_function( name, return_type( op.inst ), args );
+            Interrupt::make_invisible( fn );
+            return fn;
         }
 
         #define ENABLE_IF(name) \

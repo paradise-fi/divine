@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/init.h>
 #include <lart/support/query.h>
+#include <lart/support/annotate.h>
 
 #include <iostream>
 
@@ -38,7 +39,7 @@ namespace lart::abstract {
 
     // constexpr const char * abstraction_namespace = "_ZN6__dios3rst8abstract";
 
-    constexpr const char * base_constructor = "_ZN6__dios3rst8abstract4BaseC2Eh";
+    constexpr const char * base_constructor = "_ZN6__dios3rst8abstract4Base";
 
     auto all_operations( const Domains& doms )
     {
@@ -118,7 +119,7 @@ namespace lart::abstract {
         {
             // enumerate base calls
             auto bases = functions_with_ptrefix( m, base_constructor );
-            for ( auto  base : bases ) {
+            for ( auto base : bases ) {
                 auto base_calls = query::query( base->users() )
                     .map( query::llvmdyncast< llvm::CallInst > )
                     .filter( query::notnull )
@@ -126,7 +127,8 @@ namespace lart::abstract {
 
                 // change base call indices
                 for ( auto call : base_calls ) {
-                    call->setArgOperand( 1, get_domain_index( call->getFunction() ) );
+                    auto fn = call->getFunction();
+                    call->setArgOperand( 1, get_domain_index( fn ) );
                 }
             }
         }
@@ -329,6 +331,10 @@ namespace lart::abstract {
         // 4. generate and allocate domains vtable
         DomainsVTable vtable{ doms };
         vtable.construct( m );
+
+        // TODO make all vtable functions invisible
+
+        // TODO make all constructors invisible
 
         // 5. generate and allocate alfa-gamma table
         // TODO
