@@ -76,7 +76,7 @@ namespace __dios::rst::abstract {
         }
 
         template< typename T >
-        _LART_INTERFACE static Term lift_any( Abstracted< T > ) noexcept;
+        _LART_INLINE static Term lift_any( Abstracted< T > ) noexcept;
 
         /* Lift a constant to a Term. */
         template< typename T >
@@ -89,7 +89,7 @@ namespace __dios::rst::abstract {
         }
 
         #define __lift( name, T ) \
-            _LART_INTERFACE static Term lift_one_ ## name( T value ) noexcept { \
+            _LART_NOINLINE static Term lift_one_ ## name( T value ) noexcept { \
                 return lift( value ); \
             }
 
@@ -210,7 +210,7 @@ namespace __dios::rst::abstract {
             return term.extend( arg ).extend( cast_op< op >( bw ) );
         }
 
-        _LART_INLINE
+        _LART_INTERFACE
         Term constrain( const Term &constraint, bool expect ) const noexcept;
 
         _LART_INTERFACE
@@ -329,7 +329,7 @@ namespace __dios::rst::abstract {
     extern TermState __term_state;
 
     template< typename T >
-    _LART_INLINE RPN::Variable variable() noexcept
+    _LART_INTERFACE RPN::Variable variable() noexcept
     {
         return { RPN::var< T >(), __term_state.counter++ };
     }

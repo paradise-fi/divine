@@ -21,7 +21,7 @@
         _UNREACHABLE_F( __VA_ARGS__ );
 
 #define _LART_INLINE \
-    __attribute__((__always_inline__, __flatten__)) __invisible
+    __attribute__((__always_inline__, __flatten__))
 
 #define _LART_NOINLINE \
     __attribute__((__noinline__))

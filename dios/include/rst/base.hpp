@@ -14,7 +14,7 @@ namespace __dios::rst::abstract {
     struct Base
     {
         // Placeholder constructor for LART to initialize domain index
-        _LART_INTERFACE Base( BaseID id = 0 ) noexcept
+        _LART_NOINLINE Base( BaseID id = 0 ) noexcept
             : _id( id )
         {}
 

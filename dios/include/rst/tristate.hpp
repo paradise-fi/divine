@@ -17,7 +17,7 @@ namespace __dios::rst::abstract {
     struct Tristate { // TODO why does it not inherit from Base?
         enum Value { False = 0, True = 1, Unknown = 2 };
 
-        Tristate( Value val ) noexcept : value( val ) { }
+        constexpr Tristate( Value val ) noexcept : value( val ) { }
 
         bool lower() const noexcept;
 
