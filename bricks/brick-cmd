@@ -880,7 +880,7 @@ struct Parser : ParserBase
         }
         else
             _cmds.each( [&]( auto &cmd ) { if ( cmd.name() == name ) s << cmd.describe(); } );
-        return s.buffer();
+        return s.buffer() ? s.buffer() : "";
     }
 
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
@@ -958,6 +958,27 @@ auto make_parser( brq::refcount_ptr< V > v )
 {
     return Parser< V, brq::nil >( v, brq::nil() );
 }
+
+struct Help
+{
+    std::string _cmd;
+
+    template< typename P >
+    void run( std::string_view argv_0, P cmds )
+    {
+        std::string description = cmds.describe( _cmd );
+        if ( description.empty() && !_cmd.empty() )
+            brq::raise() << "Unknown command '" << _cmd << "'. Available commands are:\n"
+                         << cmds.describe();
+        if ( _cmd.empty() )
+        {
+            std::cerr << "To print details about a specific command, run '"
+                      << argv_0 << " help {command}'.\n\n";
+            std::cerr << cmds.describe() << std::endl;
+        }
+        else std::cerr << description << std::endl;
+    }
+};
 
 namespace {
 
