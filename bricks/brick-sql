@@ -55,7 +55,29 @@ namespace brq::sql
 
     struct date { std::int16_t year, month, day; };
     struct time { std::int16_t hour, min, sec; };
-    struct timestamp { std::int64_t fract; };
+    struct timestamp
+    {
+        std::int64_t fract;
+
+        static timestamp from_unix( time_t t )
+        {
+            return { ( int64_t( t ) - 946684800 ) * 1000000 };
+        }
+
+        time_t to_unix() const
+        {
+            return fract / 1000000 + 946684800;
+        }
+
+        struct tm to_localtime() const
+        {
+            struct tm tm;
+            auto t = to_unix();
+            localtime_r( &t, &tm );
+            return tm;
+        }
+    };
+
     template< typename T >
     struct enum_value
     {
@@ -371,6 +393,7 @@ namespace brq::sql
         template< typename T >
         void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
 
+        void bind_one( timestamp &t ) { t.fract = htobe64( t.fract ); bind_raw( t ); }
         void bind_one( int64_t &t ) { t = htobe64( t ); bind_raw( t ); }
         void bind_one( int32_t &t ) { t = htobe32( t ); bind_raw( t ); }
         void bind_one( int16_t &t ) { t = htobe16( t ); bind_raw( t ); }
@@ -459,6 +482,7 @@ namespace brq::sql
         template< typename T >
         static constexpr bool is_value = std::is_convertible_v< T, std::string_view > ||
                                          std::is_convertible_v< T, std::u32string_view > ||
+                                         std::is_convertible_v< T, timestamp > ||
                                          std::is_convertible_v< T, int >;
 
         template< typename L >
