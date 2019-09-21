@@ -486,7 +486,8 @@ namespace brq::sql
         {
             if constexpr ( is_value< typename L::car_t > )
                 return make_cons( l.car, values( l.cdr ) );
-            else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum )
+            else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum ||
+                                is_list_v< typename L::car_t > )
                 return values( l.cdr );
             else
                 return l.car.values().cat( values( l.cdr ) );
@@ -499,6 +500,8 @@ namespace brq::sql
         {
             if constexpr ( is_value< V > )
                 s << "$" << id++ << "::" << sql_type< V >();
+            else if constexpr ( is_list_v< V > )
+                print_columns( s, v, "(", ")" );
             else if constexpr ( V::is_column )
                 s << v.column_name( v );
             else if constexpr ( V::is_query )
@@ -603,9 +606,9 @@ BRICK_SQL_OP( | )
     }
 
     template< typename stream, typename list >
-    void print_columns( stream &s, list l )
+    void print_columns( stream &s, list l, const char *start = "", const char *end = "" )
     {
-        print_list( s, l.map( [&]( auto c ) { return c.column_name( c ); } ) );
+        print_list( s, l.map( [&]( auto c ) { return c.column_name( c ); } ), ", ", start, end );
     }
 
     template< typename select, typename... cols >
