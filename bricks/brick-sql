@@ -69,6 +69,7 @@ namespace brq::sql
     };
 
     template< typename T, typename = void > struct type_map {};
+    template<> struct type_map< bool >           { static auto name() { return "bool"; } };
     template<> struct type_map< short >          { static auto name() { return "smallint"; } };
     template<> struct type_map< int >            { static auto name() { return "integer"; } };
     template<> struct type_map< long >           { static auto name() { return "bigint"; } };
