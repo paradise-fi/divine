@@ -78,6 +78,16 @@ namespace brq::sql
         }
     };
 
+    struct interval
+    {
+        std::int64_t seconds; std::int32_t days, months;
+        time_t as_seconds()
+        {
+            ASSERT_EQ( months, 0 );
+            return time_t( days ) * 3600 * 24 + seconds / 1000000;
+        }
+    };
+
     template< typename T >
     struct enum_value
     {
@@ -112,6 +122,7 @@ namespace brq::sql
     template<> struct type_map< date >           { static auto name() { return "date"; } };
     template<> struct type_map< time >           { static auto name() { return "time"; } };
     template<> struct type_map< timestamp >      { static auto name() { return "timestamp"; }; };
+    template<> struct type_map< interval >       { static auto name() { return "interval"; }; };
 
     template< int v > struct type_map< std::array< uint8_t, v > >
     {
@@ -328,6 +339,14 @@ namespace brq::sql
         void fetch_one( int32_t &t ) { fetch_raw( t ); t = be32toh( t ); }
         void fetch_one( timestamp &t ) { fetch_raw( t.fract ); t.fract = be64toh( t.fract ); }
 
+        void fetch_one( interval &i )
+        {
+            fetch_raw( i );
+            i.seconds = be64toh( i.seconds );
+            i.days    = be32toh( i.days );
+            i.months  = be32toh( i.months );
+        }
+
         void fetch_one( std::u32string &us )
         {
             const char *data = PQgetvalue( _result, _row, _col );
@@ -393,6 +412,13 @@ namespace brq::sql
         template< typename T >
         void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
 
+        void bind_one( interval &i )
+        {
+            i.seconds = htobe64( i.seconds );
+            i.days = htobe64( i.days );
+            i.months = htobe64( i.months );
+            bind_raw( i );
+        }
         void bind_one( timestamp &t ) { t.fract = htobe64( t.fract ); bind_raw( t ); }
         void bind_one( int64_t &t ) { t = htobe64( t ); bind_raw( t ); }
         void bind_one( int32_t &t ) { t = htobe32( t ); bind_raw( t ); }
