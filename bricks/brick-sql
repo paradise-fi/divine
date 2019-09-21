@@ -136,17 +136,16 @@ namespace brq::sql
 
     template< typename T > struct type_map< T, std::enable_if_t< T::type::is_enum > >
     {
+        static auto name() { return get_name( typename T::type(), 0 ); }
+    };
+
+    template< typename T > auto sql_type()
+    {
         return brq::sql::type_map< T >::name();
     }
 
     template< typename T, bool _nullable = false >
     struct column
-        static auto name() { return get_name( typename T::type(), 0 ); }
-    };
-
-
-    template< typename T > auto sql_type()
-    {
     {
         template< typename CT >
         static std::string_view column_name( const CT &ct ) { return get_name( ct ); }
