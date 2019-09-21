@@ -450,14 +450,10 @@ namespace brq::sql
         stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s ) {}
     };
 
-    template< typename T >
-    constexpr std::enable_if_t< T::is_expr, bool > is_expr( int ) { return true; }
-    template< typename T >
-    constexpr std::enable_if_t< T::is_enum, bool > is_expr( int ) { return true; }
-    template< typename T >
-    constexpr bool is_expr( fallback ) { return false; }
-    template< typename T >
-    constexpr bool is_expr() { return is_expr< T >( 0 ); }
+    template< typename T, typename = void > struct is_expr : std::false_type {};
+    template< typename T > struct is_expr< T, std::enable_if_t< T::is_expr > > : std::true_type {};
+    template< typename T > struct is_expr< T, std::enable_if_t< T::is_enum > > : std::true_type {};
+    template< typename T > constexpr bool is_expr_v = is_expr< T >::value;
 
     template< typename... args >
     struct where_expr
@@ -490,13 +486,10 @@ namespace brq::sql
         {
             if constexpr ( is_value< typename L::car_t > )
                 return make_cons( l.car, values( l.cdr ) );
-            if constexpr ( sql::is_expr< typename L::car_t >() )
-            {
-                if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum )
-                    return values( l.cdr );
-                else
-                    return l.car.values().cat( values( l.cdr ) );
-            }
+            else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum )
+                return values( l.cdr );
+            else
+                return l.car.values().cat( values( l.cdr ) );
         }
 
         auto values() const { return values( _args ); }
@@ -506,17 +499,14 @@ namespace brq::sql
         {
             if constexpr ( is_value< V > )
                 s << "$" << id++ << "::" << sql_type< V >();
-            if constexpr ( sql::is_expr< V >() )
-            {
-                if constexpr ( V::is_column )
-                    s << v.column_name( v );
-                else if constexpr ( V::is_query )
-                    s << "( " << v << " )";
-                else if constexpr ( V::is_enum )
-                    s << get_name( v, '\'' );
-                else
-                    v.print( s, id );
-            }
+            else if constexpr ( V::is_column )
+                s << v.column_name( v );
+            else if constexpr ( V::is_query )
+                s << "( " << v << " )";
+            else if constexpr ( V::is_enum )
+                s << get_name( v, '\'' );
+            else
+                v.print( s, id );
         }
 
         template< typename stream >
@@ -544,7 +534,7 @@ namespace brq::sql
 #define BRICK_SQL_OP_(op, sql)                                                      \
     template< typename A, typename B >                                              \
     auto op( A &&a, B &&b )                                             \
-        -> std::enable_if_t< is_expr< std::decay_t< A > >() || is_expr< std::decay_t< B > >(), \
+        -> std::enable_if_t< is_expr_v< std::decay_t< A > > || is_expr_v< std::decay_t< B > >, \
                              where_expr< std::decay_t< A >, std::decay_t< B > > > \
     {                                                                               \
         return { sql, a, b };                                                       \
