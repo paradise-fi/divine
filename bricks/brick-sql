@@ -158,9 +158,11 @@ namespace brq::sql
         static std::string_view column_name( const CT &ct )
         {
             static auto name = std::string( "count( " ) +
-                std::string( col().column_name( col() ) ) + " )";
+                std::string( col().column_name( col() ) ) + " )::integer";
             return name;
         }
+
+        using type = int32_t;
     };
 
 
