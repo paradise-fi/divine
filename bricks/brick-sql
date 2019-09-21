@@ -717,9 +717,10 @@ BRICK_SQL_OP( | )
     struct query_head : query_base
     {
         using stmt = stmt< cols... >;
-        conn &_conn;
-        conn &conn() { return _conn; }
-        query_head( sql::conn &c ) : _conn( c ) {}
+        txn &_txn;
+        txn &txn() { return _txn; }
+        conn &conn();
+        query_head( sql::txn &t ) : _txn( t ) {}
         void bind( stmt & ) {}
     };
 
@@ -868,6 +869,7 @@ BRICK_SQL_OP( | )
         txn() = delete;
         txn& operator=( const txn &rhs ) = delete;
 
+        conn &conn() { return _conn; }
         txn &commit()
         {
             ASSERT( !_closed );
@@ -904,22 +906,27 @@ BRICK_SQL_OP( | )
         txn &initdb( schema s, bool clear = false );
 
         template< typename... args >
-        select_cols< args... > select() { return { _conn }; }
+        select_cols< args... > select() { return { *this }; }
 
         template< typename... args >
-        select_cols< args... > select( cons_list_t< args... > ) { return { _conn }; }
+        select_cols< args... > select( cons_list_t< args... > ) { return { *this }; }
 
         template< typename table >
         insert< table > insert_into( bool quiet = false ) { return { _conn, quiet }; }
 
         template< typename table >
-        update< table > update() { return { _conn }; }
+        update< table > update() { return { *this }; }
 
         template< typename table >
-        delete_from< table > delete_from() { return { _conn }; }
+        delete_from< table > delete_from() { return { *this }; }
 
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
+
+    inline txn conn::begin() { return txn( *this ); }
+
+    template< typename... Ts >
+    inline conn &query_head< Ts... >::conn() { return _txn.conn(); }
 
     template< typename table >
     std::enable_if_t< table::is_table > drop( txn &t, table )
@@ -1017,8 +1024,6 @@ BRICK_SQL_OP( | )
         s.each( [&]( auto t ) { create( *this, t ); } );
         return *this;
     }
-
-    inline txn conn::begin() { return txn( *this ); }
 
     template< typename stream, typename query >
     inline auto operator<<( stream &s, const query &st )
