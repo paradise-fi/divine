@@ -931,12 +931,19 @@ BRICK_SQL_OP( | )
     struct txn
     {
         conn &_conn;
-        bool _closed = false;
+        bool _closed = true;
 
-        explicit txn( conn &conn ) : _conn( conn )
+        explicit txn( conn &conn ) : _conn( conn ) { open(); }
+
+        void open()
         {
-            exec( "begin transaction" );
+            if ( _closed )
+            {
+                _closed = false;
+                exec( "begin transaction" );
+            }
         }
+
         txn( txn&& rhs ) noexcept;
 
         txn() = delete;
@@ -961,6 +968,7 @@ BRICK_SQL_OP( | )
 
         txn &exec( std::string q )
         {
+            open();
             stmt<> s( _conn, q );
             s.exec();
             return *this;
@@ -979,19 +987,19 @@ BRICK_SQL_OP( | )
         txn &initdb( schema s, bool clear = false );
 
         template< typename... args >
-        select_cols< args... > select() { return { *this }; }
+        select_cols< args... > select() { open(); return { *this }; }
 
         template< typename... args >
-        select_cols< args... > select( cons_list_t< args... > ) { return { *this }; }
+        select_cols< args... > select( cons_list_t< args... > ) { open(); return { *this }; }
 
         template< typename table >
-        insert< table > insert_into( bool quiet = false ) { return { _conn, quiet }; }
+        insert< table > insert_into( bool quiet = false ) { open(); return { _conn, quiet }; }
 
         template< typename table >
-        update< table > update() { return { *this }; }
+        update< table > update() { open(); return { *this }; }
 
         template< typename table >
-        delete_from< table > delete_from() { return { *this }; }
+        delete_from< table > delete_from() { open(); return { *this }; }
 
         ~txn() noexcept { if ( !_closed ) rollback(); }
     };
