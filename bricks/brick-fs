@@ -4,34 +4,25 @@
  * (c) 2007--2011 Petr Rockai <me@mornfall.net>
  * (c) 2007--2011 Enrico Zini <enrico@enricozini.org>
  * (c) 2014 Vladimír Štill <xstill@fi.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-/* Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE. */
 
 #pragma once
 
-#include <brick-assert>
-#include <brick-except>
+#include "brick-assert"
+#include "brick-except"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -55,577 +46,552 @@
 #include <algorithm>
 #include <memory>
 
-namespace brick {
-namespace fs {
+namespace brq
+{
 
-/*
- * Based on code by Enrico Zini.
- */
 #ifdef __unix__
-struct PosixBuf : std::streambuf
-{
-    std::unique_ptr< char > _pbuf, _gbuf;
-    size_t _buf_size;
-    int _fd;
-
-    PosixBuf(const PosixBuf&) = delete;
-    PosixBuf& operator=(const PosixBuf&) = delete;
-
-    PosixBuf() : _pbuf( nullptr ), _gbuf( nullptr ), _buf_size( 0 ), _fd( -1 ) {}
-    PosixBuf( int fd, size_t bufsize = 1024 ) : PosixBuf()
+    struct posix_buf : std::streambuf /* based on code by Enrico Zini */
     {
-        attach( fd, bufsize );
-    }
+        std::unique_ptr< char[] > _pbuf, _gbuf;
+        size_t _buf_size;
+        int _fd;
 
-    ~PosixBuf()
-    {
-        if ( _pbuf )
-            sync();
-        if ( _fd != -1 )
-            ::close( _fd );
-    }
+        posix_buf( const posix_buf & ) = delete;
+        posix_buf &operator=( const posix_buf & ) = delete;
 
-    /**
-     * Attach the stream to a file descriptor, using the given stream size.
-     *
-     * Management of the file descriptor will be taken over by the PosixBuf,
-     * and the file descriptor will be closed with PosixBuf goes out of scope.
-     */
-    void attach( int fd, size_t bufsize = 4096 )
-    {
-        _pbuf.reset( new char[ bufsize ] );
-        _gbuf.reset( new char[ bufsize ] );
-        _fd = fd;
-        _buf_size = bufsize;
-        setp( _pbuf.get(), _pbuf.get() + _buf_size );
-        setg( nullptr, nullptr, nullptr );
-    }
-
-    /**
-     * Sync the PosixBuf and detach it from the file descriptor.  PosixBuf will
-     * not touch the file descriptor anymore, and it is the responsibility of
-     * the caller to close it.
-     *
-     * @returns The file descriptor
-     */
-    int detach()
-    {
-        sync();
-        int res = _fd;
-        _pbuf.reset( nullptr );
-        _gbuf.reset( nullptr );
-        _buf_size = 0;
-        _fd = -1;
-        setp( nullptr, nullptr );
-        setg( nullptr, nullptr, nullptr );
-        return res;
-    }
-
-    /// Access the underlying file descriptor
-    int fd() const { return _fd; }
-
-    int overflow( int c )
-    {
-        sync();
-        if ( c != EOF )
+        posix_buf() : _pbuf( nullptr ), _gbuf( nullptr ), _buf_size( 0 ), _fd( -1 ) {}
+        posix_buf( int fd, size_t bufsize = 1024 ) : posix_buf()
         {
-            *pptr() = c;
-            pbump( 1 );
+            attach( fd, bufsize );
         }
-        return c;
-    }
 
-    int underflow()
-    {
-        int res, err, orig = fcntl( _fd, F_GETFL );
-        fcntl( _fd, F_SETFL, orig | O_NONBLOCK );
-        res = ::read( _fd, _gbuf.get(), _buf_size ), err = errno;
-        fcntl( _fd, F_SETFL, orig & ~O_NONBLOCK );
-        if ( res == -1 && err == EAGAIN ) /* pull in at least one character */
-            res = ::read( _fd, _gbuf.get(), 1 ), err = errno;
-        fcntl( _fd, F_SETFL, orig );
-
-        if ( res > 0 )
-            setg( _gbuf.get(), _gbuf.get(), _gbuf.get() + res );
-        else
+        ~posix_buf()
         {
+            if ( _pbuf )
+                sync();
+            if ( _fd != -1 )
+                ::close( _fd );
+        }
+
+        void attach( int fd, size_t bufsize = 4096 )
+        {
+            _pbuf.reset( new char[ bufsize ] );
+            _gbuf.reset( new char[ bufsize ] );
+            _fd = fd;
+            _buf_size = bufsize;
+            setp( _pbuf.get(), _pbuf.get() + _buf_size );
             setg( nullptr, nullptr, nullptr );
-            if ( res < 0 )
-                throw std::system_error( err, std::system_category(),
-                                         "reading from a file descriptor" );
-            return traits_type::eof();
         }
-        return *gptr();
-    }
 
-    void do_sync( const char *start, int amount )
-    {
-        while ( amount )
+        /* Sync the posix_buf and detach it from the file descriptor.  posix_buf will
+         * not touch the file descriptor anymore, and it is the responsibility of
+         * the caller to close it. */
+
+        int detach()
         {
-            int res = ::write( _fd, start, amount );
-            if ( res < 0 )
-                throw std::system_error( errno, std::system_category(),
-                                         "writing to a file descriptor" );
-            amount -= res;
-            start += res;
+            sync();
+            int res = _fd;
+            _pbuf.reset( nullptr );
+            _gbuf.reset( nullptr );
+            _buf_size = 0;
+            _fd = -1;
+            setp( nullptr, nullptr );
+            setg( nullptr, nullptr, nullptr );
+            return res;
         }
-        setp( _pbuf.get(), _pbuf.get() + _buf_size );
-    }
 
-    int sync()
-    {
-        if ( pptr() > pbase() )
-            do_sync( pbase(), pptr() - pbase() );
-        return 0;
-    }
-};
+        int fd() const { return _fd; }
+
+        int overflow( int c )
+        {
+            sync();
+            if ( c != EOF )
+            {
+                *pptr() = c;
+                pbump( 1 );
+            }
+            return c;
+        }
+
+        int underflow()
+        {
+            int res, err, orig = fcntl( _fd, F_GETFL );
+            fcntl( _fd, F_SETFL, orig | O_NONBLOCK );
+            res = ::read( _fd, _gbuf.get(), _buf_size ), err = errno;
+            fcntl( _fd, F_SETFL, orig & ~O_NONBLOCK );
+            if ( res == -1 && err == EAGAIN ) /* pull in at least one character */
+                res = ::read( _fd, _gbuf.get(), 1 ), err = errno;
+            fcntl( _fd, F_SETFL, orig );
+
+            if ( res > 0 )
+                setg( _gbuf.get(), _gbuf.get(), _gbuf.get() + res );
+            else
+            {
+                setg( nullptr, nullptr, nullptr );
+                if ( res < 0 )
+                    throw std::system_error( err, std::system_category(),
+                                             "reading from a file descriptor" );
+                return traits_type::eof();
+            }
+            return *gptr();
+        }
+
+        void do_sync( const char *start, int amount )
+        {
+            while ( amount )
+            {
+                int res = ::write( _fd, start, amount );
+                if ( res < 0 )
+                    brq::raise< std::system_error >() <<  "writing to a file descriptor";
+                amount -= res;
+                start += res;
+            }
+            setp( _pbuf.get(), _pbuf.get() + _buf_size );
+        }
+
+        int sync()
+        {
+            if ( pptr() > pbase() )
+                do_sync( pbase(), pptr() - pbase() );
+            return 0;
+        }
+    };
 #endif
-
-struct SystemException : brq::error
-{
-    // make sure we don't override errno accidentaly when constructing std::string
-    explicit SystemException( std::string what ) : SystemException{ errno, what } { }
-    explicit SystemException( const char *what ) : SystemException{ errno, what } { }
-
-  private:
-    explicit SystemException( int _errno, std::string what ) :
-        brq::error( "System error: " + std::string( std::strerror( _errno ) ) + ", when " + what )
-    { }
-};
-
-struct Exception : brq::error
-{
-    using brq::error::error;
-};
 
 #if defined( __unix__ ) || defined( __APPLE__ ) || defined( __divine__ )
-const char pathSeparators[] = { '/' };
+    const char path_separators[] = { '/' };
 #elif defined( _WIN32 )
-const char pathSeparators[] = { '\\', '/' };
+    const char path_separators[] = { '\\', '/' };
 #else
-#error please define pathSeparators for this platform
+#error please define path_separators for this platform
 #endif
 
-inline bool isPathSeparator( char c ) {
-    for ( auto sep : pathSeparators )
-        if ( sep == c )
-            return true;
-    return false;
-}
+    inline bool is_path_separator( char c )
+    {
+        for ( auto sep : path_separators )
+            if ( sep == c )
+                return true;
+        return false;
+    }
 
-inline std::pair< std::string, std::string > splitExtension( std::string path ) {
-    auto pos = path.rfind( '.' );
-    if ( pos == std::string::npos )
-        return std::make_pair( path, std::string() );
-    return std::make_pair( path.substr( 0, pos ), path.substr( pos ) );
-}
+    inline std::pair< std::string, std::string > split_extension( std::string path )
+    {
+        auto pos = path.rfind( '.' );
+        if ( pos == std::string::npos )
+            return std::make_pair( path, std::string() );
+        return std::make_pair( path.substr( 0, pos ), path.substr( pos ) );
+    }
 
-inline std::string takeExtension( std::string path ) {
-    return splitExtension( path ).second;
-}
+    inline std::string take_extension( std::string path ) { return split_extension( path ).second; }
+    inline std::string drop_extension( std::string path ) { return split_extension( path ).first; }
 
-inline std::string dropExtension( std::string path ) {
-    return splitExtension( path ).first;
-}
+    inline std::string replace_extension( std::string path, std::string extension )
+    {
+        if ( !extension.empty() && extension[0] == '.' )
+            return drop_extension( path ) + extension;
+        return drop_extension( path ) + "." + extension;
+    }
 
-inline std::string replaceExtension( std::string path, std::string extension ) {
-    if ( !extension.empty() && extension[0] == '.' )
-        return dropExtension( path ) + extension;
-    return dropExtension( path ) + "." + extension;
-}
+    inline std::pair< std::string, std::string > split_filename( std::string path )
+    {
+        auto begin = path.rbegin();
+        while ( is_path_separator( *begin ) )
+            ++begin;
+        auto length = &*begin - &path.front() + 1;
+        auto pos = std::find_if( begin, path.rend(), &is_path_separator );
+        if ( pos == path.rend() )
+            return std::make_pair( std::string(), path.substr( 0, length ) );
+        auto count = &*pos - &path.front();
+        length -= count + 1;
+        return std::make_pair( path.substr( 0, count ), path.substr( count + 1, length ) );
+    }
 
-inline std::pair< std::string, std::string > splitFileName( std::string path ) {
-    auto begin = path.rbegin();
-    while ( isPathSeparator( *begin ) )
-        ++begin;
-    auto length = &*begin - &path.front() + 1;
-    auto pos = std::find_if( begin, path.rend(), &isPathSeparator );
-    if ( pos == path.rend() )
-        return std::make_pair( std::string(), path.substr( 0, length ) );
-    auto count = &*pos - &path.front();
-    length -= count + 1;
-    return std::make_pair( path.substr( 0, count ), path.substr( count + 1, length ) );
-}
-
-inline std::pair< std::string, std::string > absolutePrefix( std::string path ) {
+    inline std::pair< std::string, std::string > absolute_prefix( std::string path )
+    {
 #ifdef _WIN32 /* this must go before general case, because \ is prefix of \\ */
-    if ( path.size() >= 3 && path[ 1 ] == ':' && isPathSeparator( path[ 2 ] ) )
-        return std::make_pair( path.substr( 0, 3 ), path.substr( 3 ) );
-    if ( path.size() >= 2 && isPathSeparator( path[ 0 ] ) && isPathSeparator( path[ 1 ] ) )
-        return std::make_pair( path.substr( 0, 2 ), path.substr( 2 ) );
+        if ( path.size() >= 3 && path[ 1 ] == ':' && is_path_separator( path[ 2 ] ) )
+            return std::make_pair( path.substr( 0, 3 ), path.substr( 3 ) );
+        if ( path.size() >= 2 && is_path_separator( path[ 0 ] ) && is_path_separator( path[ 1 ] ) )
+            return std::make_pair( path.substr( 0, 2 ), path.substr( 2 ) );
 #endif
-    // this is absolute path in both windows and unix
-    if ( path.size() >= 1 && isPathSeparator( path[ 0 ] ) )
-        return std::make_pair( path.substr( 0, 1 ), path.substr( 1 ) );
-    return std::make_pair( std::string(), path );
-}
+        // this is absolute path in both windows and unix
+        if ( path.size() >= 1 && is_path_separator( path[ 0 ] ) )
+            return std::make_pair( path.substr( 0, 1 ), path.substr( 1 ) );
+        return std::make_pair( std::string(), path );
+    }
 
-inline bool isAbsolute( std::string path ) {
-    return absolutePrefix( path ).first.size() != 0;
-}
+    inline bool is_absolute( std::string path ) { return absolute_prefix( path ).first.size() != 0; }
+    inline bool is_relative( std::string path ) { return !is_absolute( path ); }
 
-inline bool isRelative( std::string path ) {
-    return !isAbsolute( path );
-}
-
-template< typename It,
-    // prohibit taking precedence over variadic join
-    typename = typename std::enable_if<
-            !std::is_same< It, std::string >::value &&
-            !(std::is_pointer< It >::value &&
-                std::is_same< typename std::remove_cv<
+    template< typename It,
+              // prohibit taking precedence over variadic join
+              typename = typename std::enable_if<
+                  !std::is_same< It, std::string >::value &&
+                  !(std::is_pointer< It >::value &&
+                    std::is_same< typename std::remove_cv<
                     typename std::remove_pointer< It >::type >::type, char >::value)
-        >::type >
-inline std::string joinPath( It begin, It end ) {
-    std::string out;
+                  >::type >
+    inline std::string join_path( It begin, It end )
+    {
+        std::string out;
 
-    for ( ; begin != end; ++begin ) {
-        if ( out.empty() || isAbsolute( *begin ) )
-            out = *begin;
-        else if ( !out.empty() && isPathSeparator( out.back() ) )
-            out += *begin;
-        else
-            out += pathSeparators[0] + *begin;
-    }
-    return out;
-}
-
-inline std::string joinPath( std::vector< std::string > paths ) {
-    return joinPath( paths.begin(), paths.end() );
-}
-
-template< typename... FilePaths >
-inline std::string joinPath( FilePaths &&...paths ) {
-    return joinPath( std::vector< std::string >{ std::forward< FilePaths >( paths )... } );
-}
-
-inline std::vector< std::string > splitPath( std::string path ) {
-    auto abs = absolutePrefix( path );
-    path = abs.second;
-    std::vector< std::string > out;
-    if ( !abs.first.empty() )
-        out.push_back( abs.first );
-    auto last = path.begin();
-    while ( true ) {
-        auto next = std::find_if( last, path.end(), &isPathSeparator );
-        if ( next == path.end() ) {
-            out.emplace_back( last, next );
-            return out;
+        for ( ; begin != end; ++begin )
+        {
+            if ( out.empty() || is_absolute( *begin ) )
+                out = *begin;
+            else if ( !out.empty() && is_path_separator( out.back() ) )
+                out += *begin;
+            else
+                out += path_separators[0] + *begin;
         }
-        if ( last != next )
-            out.emplace_back( last, next );
-        last = ++next;
+        return out;
     }
-}
 
-inline std::string basename( std::string path ) {
-    return splitPath( path ).back();
-}
-
-inline std::string normalize( std::string path ) {
-    auto abs = absolutePrefix( path );
-    auto split = splitPath( abs.second );
-
-    for ( auto it = split.begin(); it != split.end(); ) {
-        if ( it->empty() || *it == "." )
-            it = split.erase( it );
-        else if ( *it == ".." && it != split.begin() && *std::prev( it ) != ".." )
-            it = split.erase( split.erase( std::prev( it ) ) );
-        else
-            ++it;
+    inline std::string join_path( std::vector< std::string > paths ) {
+        return join_path( paths.begin(), paths.end() );
     }
-    if ( split.empty() && abs.first.empty() )
-        split.push_back( "." );
-    return joinPath( abs.first, joinPath( split ) );
-}
 
-inline std::string distinctPaths( const std::string &prefix, const std::string &path ) {
+    template< typename... FilePaths >
+    inline std::string join_path( FilePaths &&...paths ) {
+        return join_path( std::vector< std::string >{ std::forward< FilePaths >( paths )... } );
+    }
 
-    auto prefI = prefix.begin();
-    auto pathI = path.begin();
-    auto start = pathI;
-    bool wasSlash = false;
+    inline std::vector< std::string > splitPath( std::string path ) {
+        auto abs = absolute_prefix( path );
+        path = abs.second;
+        std::vector< std::string > out;
+        if ( !abs.first.empty() )
+            out.push_back( abs.first );
+        auto last = path.begin();
+        while ( true ) {
+            auto next = std::find_if( last, path.end(), &is_path_separator );
+            if ( next == path.end() ) {
+                out.emplace_back( last, next );
+                return out;
+            }
+            if ( last != next )
+                out.emplace_back( last, next );
+            last = ++next;
+        }
+    }
 
-    for ( ; prefI != prefix.end() && pathI != path.end(); ++prefI, ++pathI ) {
+    inline std::string basename( std::string path ) {
+        return splitPath( path ).back();
+    }
 
-        while ( wasSlash && prefI != prefix.end() && isPathSeparator( *prefI ) )
+    inline std::string normalize( std::string path ) {
+        auto abs = absolute_prefix( path );
+        auto split = splitPath( abs.second );
+
+        for ( auto it = split.begin(); it != split.end(); ) {
+            if ( it->empty() || *it == "." )
+                it = split.erase( it );
+            else if ( *it == ".." && it != split.begin() && *std::prev( it ) != ".." )
+                it = split.erase( split.erase( std::prev( it ) ) );
+            else
+                ++it;
+        }
+        if ( split.empty() && abs.first.empty() )
+            split.push_back( "." );
+        return join_path( abs.first, join_path( split ) );
+    }
+
+    inline std::string distinctPaths( const std::string &prefix, const std::string &path ) {
+
+        auto prefI = prefix.begin();
+        auto pathI = path.begin();
+        auto start = pathI;
+        bool wasSlash = false;
+
+        for ( ; prefI != prefix.end() && pathI != path.end(); ++prefI, ++pathI ) {
+
+            while ( wasSlash && prefI != prefix.end() && is_path_separator( *prefI ) )
+                ++prefI;
+            while ( wasSlash && pathI != path.end() && is_path_separator( *pathI ) )
+                ++pathI;
+
+            if ( wasSlash ) {
+                start = pathI;
+                wasSlash = false;
+            }
+
+            if ( prefI == prefix.end() ) {
+                ++pathI;
+                break;
+            }
+
+            if ( pathI == path.end() ) {
+                ++prefI;
+                break;
+            }
+
+            if ( *pathI != *prefI )
+                break;
+
+            if ( is_path_separator( *prefI ) )
+                wasSlash = true;
+
+        }
+        while ( wasSlash && prefI != prefix.end() && is_path_separator( *prefI ) )
             ++prefI;
-        while ( wasSlash && pathI != path.end() && isPathSeparator( *pathI ) )
+        while ( wasSlash && pathI != path.end() && is_path_separator( *pathI ) )
             ++pathI;
 
-        if ( wasSlash ) {
+        if ( wasSlash )
             start = pathI;
-            wasSlash = false;
-        }
 
         if ( prefI == prefix.end() ) {
-            ++pathI;
-            break;
+            if ( pathI != path.end() && is_path_separator( *pathI ) ) {
+                while ( pathI != path.end() && is_path_separator( *pathI ) )
+                    ++pathI;
+                start = pathI;
+            }
+            else if ( pathI == path.end() )
+                start = pathI;
         }
-
-        if ( pathI == path.end() ) {
-            ++prefI;
-            break;
-        }
-
-        if ( *pathI != *prefI )
-            break;
-
-        if ( isPathSeparator( *prefI ) )
-            wasSlash = true;
-
-    }
-    while ( wasSlash && prefI != prefix.end() && isPathSeparator( *prefI ) )
-        ++prefI;
-    while ( wasSlash && pathI != path.end() && isPathSeparator( *pathI ) )
-        ++pathI;
-
-    if ( wasSlash )
-        start = pathI;
-
-    if ( prefI == prefix.end() ) {
-        if ( pathI != path.end() && isPathSeparator( *pathI ) ) {
-            while ( pathI != path.end() && isPathSeparator( *pathI ) )
-                ++pathI;
+        else if ( prefI != prefix.end() && is_path_separator( *prefI ) && pathI == path.end() ) {
             start = pathI;
         }
-        else if ( pathI == path.end() )
-            start = pathI;
-    }
-    else if ( prefI != prefix.end() && isPathSeparator( *prefI ) && pathI == path.end() ) {
-        start = pathI;
+
+        return std::string( start, path.end() );
     }
 
-    return std::string( start, path.end() );
-}
-
-inline std::string getcwd() {
-    std::string buf;
+    inline std::string getcwd()
+    {
+        std::string buf;
 #ifdef _WIN32
-    char *buffer;
-    if ( ( buffer = _getcwd( NULL, 0 ) ) == NULL )
-        throw SystemException( "getting the current working directory" );
+        char *buffer;
+        if ( ( buffer = _getcwd( NULL, 0 ) ) == NULL )
+            brq::raise< std::system_error >() << "getting the current working directory";
 
-    buf = buffer;
-    free( buffer );
+        buf = buffer;
+        free( buffer );
 #else
-    // seems like pathconf returns INT64_MAX on Apple :-/
-    size_t size = std::max( pathconf( ".", _PC_PATH_MAX ), 65536L );
-    buf.resize( size );
-    if ( ::getcwd( &buf.front(), size ) == nullptr )
-        throw SystemException( "getting the current working directory" );
-    buf.resize( std::strlen( &buf.front() ) );
+        // seems like pathconf returns INT64_MAX on Apple :-/
+        size_t size = std::max( pathconf( ".", _PC_PATH_MAX ), 65536L );
+        buf.resize( size );
+        if ( ::getcwd( &buf.front(), size ) == nullptr )
+            brq::raise< std::system_error >() << "getting the current working directory";
+        buf.resize( std::strlen( &buf.front() ) );
 #endif
-    return buf;
-}
+        return buf;
+    }
 
-inline void chdir( std::string dir ) {
+    inline void chdir( std::string dir ) {
 #ifdef _WIN32
-    if ( ::_chdir( dir.c_str() ) != 0 )
-        throw SystemException( "changing directory" );
+        if ( ::_chdir( dir.c_str() ) != 0 )
+            brq::raise< std::system_error >() << "changing directory";
 #else
-    if ( ::chdir( dir.c_str() ) != 0 )
-        throw SystemException( "changing directory" );
+        if ( ::chdir( dir.c_str() ) != 0 )
+            brq::raise< std::system_error >() << "changing directory";
 #endif
-}
+    }
 
-inline std::string mkdtemp( std::string dirTemplate ) {
+    inline std::string mkdtemp( std::string dirTemplate ) {
 #ifdef _WIN32
-    if ( ::_mktemp( &dirTemplate.front() ) == nullptr )
-        throw SystemException( "creating temporary directory" );
+        if ( ::_mktemp( &dirTemplate.front() ) == nullptr )
+            brq::raise< std::system_error >() << "creating temporary directory";
 #else
-    if ( ::mkdtemp( &dirTemplate.front() ) == nullptr )
-        throw SystemException( "creating temporary directory" );
+        if ( ::mkdtemp( &dirTemplate.front() ) == nullptr )
+            brq::raise< std::system_error >() << "creating temporary directory";
 #endif
-    return dirTemplate;
-}
+        return dirTemplate;
+    }
 
 #ifndef _WIN32
-inline void touch( std::string f ) {
-    if ( ::utime( f.c_str(), nullptr ) != 0 )
-        throw SystemException( "touching " + f );
-}
+    inline void touch( std::string f ) {
+        if ( ::utime( f.c_str(), nullptr ) != 0 )
+            brq::raise< std::system_error >() << "touching " << f;
+    }
 #endif
 
 #ifdef _WIN32
 #define stat _stat64
 #endif
 
-inline std::unique_ptr< struct stat > stat( std::string pathname ) {
+    inline std::unique_ptr< struct stat > stat( std::string pathname )
+    {
 #if _WIN32
-    // from MSDN:
-    // If path contains the location of a directory, it cannot contain
-    // a trailing backslash. If it does, -1 will be returned and errno
-    // will be set to ENOENT.
-    pathname = normalize( pathname );
+        // from MSDN:
+        // If path contains the location of a directory, it cannot contain
+        // a trailing backslash. If it does, -1 will be returned and errno
+        // will be set to ENOENT.
+        pathname = normalize( pathname );
 #endif
-	std::unique_ptr< struct stat > res( new struct stat );
-	if ( ::stat( pathname.c_str(), res.get() ) == -1 ) {
-		if ( errno == ENOENT )
-			return std::unique_ptr< struct stat >();
-		else
-			throw SystemException( "getting file information for " + pathname );
+        std::unique_ptr< struct stat > res( new struct stat );
+        if ( ::stat( pathname.c_str(), res.get() ) == -1 ) {
+            if ( errno == ENOENT )
+                return std::unique_ptr< struct stat >();
+            else
+                brq::raise< std::system_error >() << "getting file information for " << pathname;
+        }
+        return res;
     }
-	return res;
-}
 
 #ifndef _WIN32
-inline std::unique_ptr< struct stat > lstat( std::string pathname ) {
-	std::unique_ptr< struct stat > res( new struct stat );
-	if ( ::lstat( pathname.c_str(), res.get() ) == -1 ) {
-		if ( errno == ENOENT )
-			return std::unique_ptr< struct stat >();
-		else
-			throw SystemException( "getting file information for " + pathname );
-    }
-	return res;
-}
-#endif
-
-#ifdef _WIN32
-inline void mkdirIfMissing( std::string dir, int ) {
-#else
-inline void mkdirIfMissing( std::string dir, mode_t mode ) {
-#endif
-    for ( int i = 0; i < 5; ++i )
+    inline std::unique_ptr< struct stat > lstat( std::string pathname )
     {
-        // If it does not exist, make it
-#ifdef _WIN32
-        if ( ::_mkdir( dir.c_str() ) != -1 )
-#else
-        if ( ::mkdir( dir.c_str(), mode ) != -1 )
-#endif
-            return;
-
-        // throw on all errors except EEXIST. Note that EEXIST "includes the case
-        // where pathname is a symbolic link, dangling or not."
-        if ( errno != EEXIST )
-            throw SystemException( "creating directory " + dir );
-
-        // Ensure that, if dir exists, it is a directory
-        auto st = stat( dir );
-
-        if ( !st ) {
-            // Either dir has just been deleted, or we hit a dangling
-            // symlink.
-            //
-            // Retry creating a directory: the more we keep failing, the more
-            // the likelyhood of a dangling symlink increases.
-            //
-            // We could lstat here, but it would add yet another case for a
-            // race condition if the broken symlink gets deleted between the
-            // stat and the lstat.
-            continue;
+        std::unique_ptr< struct stat > res( new struct stat );
+        if ( ::lstat( pathname.c_str(), res.get() ) == -1 ) {
+            if ( errno == ENOENT )
+                return std::unique_ptr< struct stat >();
+            else
+                brq::raise< std::system_error >() << "getting file information for " << pathname;
         }
-#ifdef _WIN32
-        else if ( ( st->st_mode & _S_IFDIR ) == 0 )
-#else
-        else if ( !S_ISDIR( st->st_mode ) )
+        return res;
+    }
 #endif
-            // If it exists but it is not a directory, complain
-            throw Exception( "ensuring path: " + dir + " exists but it is not a directory" );
-        else
-            // If it exists and it is a directory, we're fine
-            return;
-    }
-    throw Exception( "ensuring path: " + dir + " exists and looks like a dangling symlink" );
-}
 
-inline void mkpath( std::string dir ) {
-    std::pair< std::string, std::string > abs = absolutePrefix( dir );
-    auto split = splitPath( abs.second );
-    std::vector< std::string > toDo;
-    for ( auto &x : split ) {
-        toDo.emplace_back( x );
-        mkdirIfMissing( abs.first + joinPath( toDo ), 0777 );
-    }
-}
+#ifdef _WIN32
+    inline void mkdir_if_missing( std::string dir, int )
+#else
+    inline void mkdir_if_missing( std::string dir, mode_t mode )
+#endif
+    {
+        for ( int i = 0; i < 5; ++i )
+        {
+            // If it does not exist, make it
+#ifdef _WIN32
+            if ( ::_mkdir( dir.c_str() ) != -1 )
+#else
+                if ( ::mkdir( dir.c_str(), mode ) != -1 )
+#endif
+                    return;
 
-inline void mkFilePath( std::string file ) {
-    auto dir = splitFileName( file ).first;
-    if ( !dir.empty() )
-        mkpath( dir );
-}
+            // throw on all errors except EEXIST. Note that EEXIST "includes the case
+            // where pathname is a symbolic link, dangling or not."
+            if ( errno != EEXIST )
+                brq::raise< std::system_error >() << "creating directory " << dir;
+
+            // Ensure that, if dir exists, it is a directory
+            auto st = stat( dir );
+
+            if ( !st ) {
+                // Either dir has just been deleted, or we hit a dangling
+                // symlink.
+                //
+                // Retry creating a directory: the more we keep failing, the more
+                // the likelyhood of a dangling symlink increases.
+                //
+                // We could lstat here, but it would add yet another case for a
+                // race condition if the broken symlink gets deleted between the
+                // stat and the lstat.
+                continue;
+            }
+#ifdef _WIN32
+            else if ( ( st->st_mode & _S_IFDIR ) == 0 )
+#else
+            else if ( !S_ISDIR( st->st_mode ) )
+#endif
+                // If it exists but it is not a directory, complain
+                brq::raise() << "ensuring path: " << dir << " exists but it is not a directory";
+            else
+                // If it exists and it is a directory, we're fine
+                return;
+        }
+        brq::raise() << "ensuring path: " << dir << " exists and looks like a dangling symlink";
+    }
+
+    inline void mkpath( std::string dir ) {
+        std::pair< std::string, std::string > abs = absolute_prefix( dir );
+        auto split = splitPath( abs.second );
+        std::vector< std::string > toDo;
+        for ( auto &x : split ) {
+            toDo.emplace_back( x );
+            mkdir_if_missing( abs.first + join_path( toDo ), 0777 );
+        }
+    }
+
+    inline void mkFilePath( std::string file ) {
+        auto dir = split_filename( file ).first;
+        if ( !dir.empty() )
+            mkpath( dir );
+    }
 
 #if 0
-struct Fd {
-    template< typename... Args >
-    Fd( Args... args ) : _fd( ::open( args... ) ) {
-        if ( _fd < 0 )
-            throw SystemException( "while opening file" );
-    }
-    ~Fd() { close(); }
-
-    void close() {
-        if ( _fd >= 0 ) {
-            ::close( _fd );
-            _fd = -1;
+    struct Fd
+    {
+        template< typename... Args >
+        Fd( Args... args ) : _fd( ::open( args... ) )
+        {
+            if ( _fd < 0 )
+                brq::raise< std::system_error >() << "while opening file";
         }
+
+        ~Fd() { close(); }
+
+        void close()
+        {
+            if ( _fd >= 0 )
+            {
+                ::close( _fd );
+                _fd = -1;
+            }
+        }
+
+        operator int() const { return _fd; }
+        int fd() const { return _fd; }
+
+    private:
+        int _fd;
+    };
+#endif
+
+    inline void write_file( std::string file, std::string data )
+    {
+        std::ofstream out( file.c_str(), std::ios::binary );
+        if ( !out.is_open() )
+            brq::raise< std::system_error >() << "writing file " << file;
+        out << data;
+        if ( !out.good() )
+            brq::raise< std::system_error >() << "writing data to file " << file;
     }
 
-    operator int() const { return _fd; }
-    int fd() const { return _fd; }
+    inline void renameIfExists( std::string src, std::string dst )
+    {
+        int res = ::rename( src.c_str(), dst.c_str() );
+        if ( res < 0 && errno != ENOENT )
+            brq::raise< std::system_error >() << "moving " << src << " to " << dst;
+    }
 
-  private:
-    int _fd;
-};
-#endif
-
-inline void writeFile( std::string file, std::string data ) {
-    std::ofstream out( file.c_str(), std::ios::binary );
-    if ( !out.is_open() )
-        throw SystemException( "writing file " + file );
-    out << data;
-    if ( !out.good() )
-        throw SystemException( "writing data to file " + file );
-}
-
-inline void renameIfExists( std::string src, std::string dst ) {
-    int res = ::rename( src.c_str(), dst.c_str() );
-    if ( res < 0 && errno != ENOENT )
-        throw SystemException( "moving " + src + " to " + dst );
-}
-
-inline void unlink( std::string fname )
-{
+    inline void unlink( std::string fname )
+    {
 #ifdef _WIN32
-    if ( ::_unlink( fname.c_str() ) < 0 )
-        throw SystemException( "cannot delete file" + fname );
+        if ( ::_unlink( fname.c_str() ) < 0 )
+            brq::raise< std::system_error >() << "cannot delete file" << fname;
 #else
-    if ( ::unlink( fname.c_str() ) < 0 )
-        throw SystemException( "cannot delete file" + fname );
+        if ( ::unlink( fname.c_str() ) < 0 )
+            brq::raise< std::system_error >() << "cannot delete file" << fname;
 #endif
-}
+    }
 
-inline void rmdir( std::string dirname ) {
+    inline void rmdir( std::string dirname ) {
 #ifdef _WIN32
-    if ( ::_rmdir( dirname.c_str() ) < 0 )
-        throw SystemException( "cannot delete directory " + dirname );
+        if ( ::_rmdir( dirname.c_str() ) < 0 )
+            brq::raise< std::system_error >() << "cannot delete directory " << dirname;
 #else
-    if ( ::rmdir( dirname.c_str() ) < 0 )
-        throw SystemException( "cannot delete directory " + dirname );
+        if ( ::rmdir( dirname.c_str() ) < 0 )
+            brq::raise< std::system_error >() << "cannot delete directory " << dirname;
 #endif
-}
+    }
 
-inline bool deleteIfExists( std::string file )
-{
+    inline bool deleteIfExists( std::string file )
+    {
 #ifdef _WIN32
-	int r = ::_unlink( file.c_str() );
+        int r = ::_unlink( file.c_str() );
 #else
-	int r = ::unlink( file.c_str() );
+        int r = ::unlink( file.c_str() );
 #endif
-	if ( r != 0 ) {
-		if ( errno != ENOENT )
-            throw SystemException( "cannot delete file" + file );
-        else
+        if ( r != 0 )
+        {
+            if ( errno != ENOENT )
+                brq::raise< std::system_error >() << "cannot delete file" << file;
+
             return false;
-    } else
-        return true;
+        } else
+            return true;
+    }
 }
-
-#ifdef _WIN32
-} // fs
-} // brick
 
 /*
  * Declaration of POSIX directory browsing functions and types for Win32.
@@ -645,274 +611,288 @@ inline bool deleteIfExists( std::string file )
  * But that said, if there are any problems please get in touch.
  */
 
-#ifdef __cplusplus
+#ifdef _WIN32
 extern "C"
 {
-#endif
-struct dirent {
-    char *d_name;
-};
-struct DIR {
-    intptr_t            handle; /* -1 for failed rewind */
-    struct _finddata_t  info;
-    struct dirent       result; /* d_name null iff first time */
-    char                *name;  /* null-terminated char string */
-};
+    struct dirent { char *d_name; };
+    struct DIR
+    {
+        intptr_t            handle; /* -1 for failed rewind */
+        struct _finddata_t  info;
+        struct dirent       result; /* d_name null iff first time */
+        char                *name;  /* null-terminated char string */
+    };
 
-static DIR *opendir( const char *name ) {
-    DIR *dir = 0;
+    static DIR *opendir( const char *name )
+    {
+        DIR *dir = 0;
 
-    if ( name && name[ 0 ] ) {
-        size_t base_length = strlen( name );
-        const char *all = /* search pattern must end with suitable wildcard */
-            strchr( "/\\", name[ base_length - 1 ] ) ? "*" : "/*";
+        if ( name && name[ 0 ] )
+        {
+            size_t base_length = strlen( name );
+            const char *all = /* search pattern must end with suitable wildcard */
+                strchr( "/\\", name[ base_length - 1 ] ) ? "*" : "/*";
 
-        if ( ( dir = (DIR *)malloc( sizeof *dir ) ) != 0 &&
-             ( dir->name = (char *)malloc( base_length + strlen( all ) + 1 ) ) != 0 ) {
-            strcat( strcpy( dir->name, name ), all );
+            if ( ( dir = (DIR *)malloc( sizeof *dir ) ) != 0 &&
+                 ( dir->name = (char *)malloc( base_length + strlen( all ) + 1 ) ) != 0 )
+            {
+                strcat( strcpy( dir->name, name ), all );
 
-            if ( ( dir->handle =
-                (intptr_t)_findfirst( dir->name, &dir->info ) ) != -1 ) {
-                dir->result.d_name = 0;
+                if ( ( dir->handle =
+                       (intptr_t)_findfirst( dir->name, &dir->info ) ) != -1 )
+                {
+                    dir->result.d_name = 0;
+                }
+                else /* rollback */
+                {
+                    free( dir->name );
+                    free( dir );
+                    dir = 0;
+                }
             }
-            else { /* rollback */
-                free( dir->name );
+            else /* rollback */
+            {
                 free( dir );
                 dir = 0;
+                errno = ENOMEM;
             }
         }
-        else { /* rollback */
+        else
+            errno = EINVAL;
+
+        return dir;
+    }
+
+    static int closedir( DIR *dir )
+    {
+        int result = -1;
+
+        if ( dir )
+        {
+            if ( dir->handle != -1 )
+                result = _findclose( dir->handle );
+
+            free( dir->name );
             free( dir );
-            dir = 0;
-            errno = ENOMEM;
-        }
-    }
-    else {
-        errno = EINVAL;
-    }
-
-    return dir;
-}
-
-static int closedir( DIR *dir ) {
-    int result = -1;
-
-    if ( dir ) {
-        if ( dir->handle != -1 ) {
-            result = _findclose( dir->handle );
         }
 
-        free( dir->name );
-        free( dir );
+        if ( result == -1 ) /* map all errors to EBADF */
+            errno = EBADF;
+
+        return result;
     }
 
-    if ( result == -1 ) {/* map all errors to EBADF */
-        errno = EBADF;
-    }
-    return result;
-}
+    static struct dirent *readdir( DIR *dir )
+    {
+        struct dirent *result = 0;
 
-static struct dirent *readdir( DIR *dir ) {
-    struct dirent *result = 0;
-
-    if ( dir && dir->handle != -1 ) {
-        if ( !dir->result.d_name || _findnext( dir->handle, &dir->info ) != -1 ) {
-           result = &dir->result;
-           result->d_name = dir->info.name;
+        if ( dir && dir->handle != -1 ) {
+            if ( !dir->result.d_name || _findnext( dir->handle, &dir->info ) != -1 ) {
+                result = &dir->result;
+                result->d_name = dir->info.name;
+            }
         }
-    }
-    else {
-        errno = EBADF;
-    }
-    return result;
-}
+        else
+            errno = EBADF;
 
-static void rewinddir( DIR *dir ) {
-    if ( dir && dir->handle != -1 ) {
-        _findclose( dir->handle );
-        dir->handle = (intptr_t)_findfirst( dir->name, &dir->info );
-        dir->result.d_name = 0;
+        return result;
     }
-    else {
-        errno = EBADF;
-    }
-}
 
-#ifdef __cplusplus
+    static void rewinddir( DIR *dir )
+    {
+        if ( dir && dir->handle != -1 )
+        {
+            _findclose( dir->handle );
+            dir->handle = (intptr_t)_findfirst( dir->name, &dir->info );
+            dir->result.d_name = 0;
+        }
+        else
+            errno = EBADF;
+    }
+
 }
 #endif
 
-namespace brick {
-namespace fs {
-#endif
+namespace brq
+{
 
-template< typename DirPre, typename DirPost, typename File >
-void traverseDirectoryTree( std::string root, DirPre pre, DirPost post, File file ) {
-    if ( pre( root ) ) {
-        auto dir = std::unique_ptr< DIR, decltype( &::closedir ) >(
-                            ::opendir( root.c_str() ), &::closedir );
-        if ( dir == nullptr )
-            throw SystemException( "opening directory " + root );
+    template< typename DirPre, typename DirPost, typename File >
+    void traverse_dir_tree( std::string root, DirPre pre, DirPost post, File file )
+    {
+        if ( pre( root ) )
+        {
+            auto dir = std::unique_ptr< DIR, decltype( &::closedir ) >(
+                ::opendir( root.c_str() ), &::closedir );
+            if ( dir == nullptr )
+                brq::raise< std::system_error >() << "opening directory " << root;
 
-        for ( auto de = readdir( dir.get() ); de != nullptr; de = readdir( dir.get() ) ) {
-            std::string name = de->d_name;
-            if ( name == "." || name == ".." )
-                continue;
+            for ( auto de = readdir( dir.get() ); de != nullptr; de = readdir( dir.get() ) )
+            {
+                std::string name = de->d_name;
+                if ( name == "." || name == ".." )
+                    continue;
 
-            auto path = joinPath( root, name );
-            auto st = stat( path );
+                auto path = join_path( root, name );
+                auto st = stat( path );
 #ifdef _WIN32
-            if ( st && ( st->st_mode & _S_IFDIR ) )
+                if ( st && ( st->st_mode & _S_IFDIR ) )
 #else
-            if ( st && S_ISDIR( st->st_mode ) )
+                if ( st && S_ISDIR( st->st_mode ) )
 #endif
-                traverseDirectoryTree( path, pre, post, file );
-            else
-                file( path );
+                    traverse_dir_tree( path, pre, post, file );
+                else
+                    file( path );
+            }
+
+            post( root );
         }
-
-        post( root );
     }
-}
 
-template< typename Dir, typename File >
-void traverseDirectory( std::string root, Dir dir, File file ) {
-    traverseDirectoryTree( root, [&]( std::string d ) -> bool {
+    template< typename Dir, typename File >
+    void traverse_dir( std::string root, Dir dir_, File file )
+    {
+        auto dir = [&]( std::string d ) -> bool
+        {
             if ( d == root )
                 return true;
             else
-                dir( d );
+                dir_( d );
             return false;
-        }, []( std::string ) {}, file );
-}
+        };
 
-template< typename File >
-void traverseFiles( std::string dir, File file ) {
-    traverseDirectory( dir, []( std::string ) {}, file );
-}
-
-
-inline void rmtree( std::string dir ) {
-    traverseDirectoryTree( dir, []( std::string ) { return true; },
-            []( std::string dir ) { rmdir( dir ); },
-            []( std::string file ) { unlink( file ); } );
-}
-
-struct ChangeCwd {
-    ChangeCwd( std::string newcwd ) : oldcwd( getcwd() ) {
-        chdir( newcwd );
-    }
-    ~ChangeCwd() {
-        chdir( oldcwd );
+        traverse_dir_tree( root, dir, []( std::string ) {}, file );
     }
 
-    const std::string oldcwd;
-};
+    template< typename File >
+    void traverse_files( std::string dir, File file )
+    {
+        traverse_dir( dir, []( std::string ) {}, file );
+    }
+
+    inline void rmtree( std::string dir )
+    {
+        traverse_dir_tree( dir, []( std::string ) { return true; },
+                                []( std::string dir ) { rmdir( dir ); },
+                                []( std::string file ) { unlink( file ); } );
+    }
+
+    struct change_dir
+    {
+        change_dir( std::string newcwd ) : _oldcwd( getcwd() )
+        {
+            chdir( newcwd );
+        }
+
+        ~change_dir()
+        {
+            chdir( _oldcwd );
+        }
+
+        const std::string _oldcwd;
+    };
+
+    struct with_dir
+    {
+        change_dir _ch;
+        with_dir( std::string dir ) : _ch( ( mkdir_if_missing( dir, 0777 ), dir ) ) {}
+    };
 
 #if defined( __unix__ ) || defined( __divine__ )
-inline std::string tempDir() {
-    auto *tmpdir = std::getenv( "TMPDIR" );
-    if ( tmpdir )
-        return tmpdir;
-    return "/tmp";
-}
+    inline std::string tempDir() {
+        auto *tmpdir = std::getenv( "TMPDIR" );
+        if ( tmpdir )
+            return tmpdir;
+        return "/tmp";
+    }
 #else
-std::string tempDir();
+    std::string tempDir();
 #warning unimplemented brick::fs::tempDir
 #endif
 
-enum class AutoDelete : bool { No = false, Yes = true };
-enum class UseSystemTemp : bool { No = false, Yes = true };
+    enum class AutoDelete : bool { No = false, Yes = true };
+    enum class UseSystemTemp : bool { No = false, Yes = true };
 
-struct TempDir {
-    explicit TempDir( std::string nameTemplate, AutoDelete autoDelete = AutoDelete::Yes,
-                      UseSystemTemp useSystemTemp = UseSystemTemp::No ) :
-        path( mkdtemp( _getPath( nameTemplate, useSystemTemp ) ) ), _autoDelete( autoDelete )
-    { }
-    TempDir( const TempDir & ) = delete;
-    TempDir( TempDir &&o ) : path( std::move( o.path ) ), _autoDelete( o._autoDelete ) {
-        o._autoDelete = AutoDelete::No;
+    struct TempDir {
+        explicit TempDir( std::string nameTemplate, AutoDelete autoDelete = AutoDelete::Yes,
+                          UseSystemTemp useSystemTemp = UseSystemTemp::No ) :
+            path( mkdtemp( _getPath( nameTemplate, useSystemTemp ) ) ), _autoDelete( autoDelete )
+        { }
+        TempDir( const TempDir & ) = delete;
+        TempDir( TempDir &&o ) : path( std::move( o.path ) ), _autoDelete( o._autoDelete ) {
+            o._autoDelete = AutoDelete::No;
+        }
+
+        operator std::string() const { return path; }
+
+        ~TempDir() {
+            if ( _autoDelete == AutoDelete::Yes )
+                rmtree( path );
+        }
+
+        const std::string path;
+    private:
+        AutoDelete _autoDelete;
+
+        static std::string _getPath( std::string nameTemplate, UseSystemTemp useTmp ) {
+            if ( useTmp == UseSystemTemp::No || is_absolute( nameTemplate ) )
+                return nameTemplate;
+            return join_path( tempDir(), nameTemplate );
+        }
+    };
+
+    namespace {
+
+        std::string read_file( std::ifstream &in, size_t length = std::numeric_limits< size_t >::max() )
+        {
+            if ( !in.is_open() )
+                brq::raise() << "reading filestream";
+
+            in.seekg( 0, std::ios::end );
+            length = std::min< size_t >( length, in.tellg() );
+            in.seekg( 0, std::ios::beg );
+
+            std::string buffer;
+            buffer.resize( length );
+
+            in.read( &buffer[ 0 ], length );
+            return buffer;
+        }
+
+        std::string read_file( const std::string &file,
+                               size_t length = std::numeric_limits< size_t >::max() )
+        {
+            std::ifstream in( file.c_str(), std::ios::binary );
+            if ( !in.is_open() )
+                brq::raise() << "reading file " << file;
+            return read_file( in, length );
+        }
+
+        std::string read_file_or( const std::string& file, const std::string& def,
+                                  size_t length = std::numeric_limits< size_t >::max() )
+        {
+            std::ifstream in( file.c_str(), std::ios::binary );
+            if ( !in.is_open() )
+                return def;
+            return read_file( in, length );
+        }
+
+        void write_file( std::ofstream &out, std::string_view s )
+        {
+            if ( !out.is_open() )
+                brq::raise() << "writing filestream";
+            out.write( s.data(), s.size() );
+        }
+
+        void write_file( std::string_view file, std::string_view data )
+        {
+            std::ofstream out( file, std::ios::binary );
+            if ( !out.is_open() )
+                brq::raise< std::system_error >() << "writing file " << file;
+            out << data;
+            if ( !out.good() )
+                brq::raise< std::system_error >() << "writing data to file " << file;
+        }
     }
-
-    operator std::string() const { return path; }
-
-    ~TempDir() {
-        if ( _autoDelete == AutoDelete::Yes )
-            rmtree( path );
-    }
-
-    const std::string path;
-  private:
-    AutoDelete _autoDelete;
-
-    static std::string _getPath( std::string nameTemplate, UseSystemTemp useTmp ) {
-        if ( useTmp == UseSystemTemp::No || isAbsolute( nameTemplate ) )
-            return nameTemplate;
-        return joinPath( tempDir(), nameTemplate );
-    }
-};
-
-namespace {
-
-std::string readFile( std::ifstream &in, size_t length = std::numeric_limits< size_t >::max() )
-{
-    if ( !in.is_open() )
-        throw Exception( "reading filestream" );
-
-    in.seekg( 0, std::ios::end );
-    length = std::min< size_t >( length, in.tellg() );
-    in.seekg( 0, std::ios::beg );
-
-    std::string buffer;
-    buffer.resize( length );
-
-    in.read( &buffer[ 0 ], length );
-    return buffer;
-}
-
-std::string readFile( const std::string &file, size_t length = std::numeric_limits< size_t >::max() )
-{
-    std::ifstream in( file.c_str(), std::ios::binary );
-    if ( !in.is_open() )
-        throw Exception( "reading file " + file );
-    return readFile( in, length );
-}
-
-std::string readFileOr( const std::string& file, const std::string& def,
-    size_t length = std::numeric_limits< size_t >::max() )
-{
-    std::ifstream in( file.c_str(), std::ios::binary );
-    if ( !in.is_open() )
-        return def;
-    return readFile( in, length );
-}
-
-void writeFile( std::ofstream &out, const std::string& s ) {
-    if ( !out.is_open() )
-        throw Exception( "writing filestream" );
-    out.write( s.data(), s.size() );
-}
-
-void writeFile( const std::string& file, const std::string& s ) {
-    std::ofstream out( file.c_str(), std::ios::binary );
-    if ( !out.is_open() )
-        throw Exception( "writing file " + file );
-    writeFile( out, s );
-}
-
-#if __cplusplus >= 201703L
-void writeFile( std::string file, std::string_view data )
-{
-    std::ofstream out( file.c_str(), std::ios::binary );
-    if ( !out.is_open() )
-        throw SystemException( "writing file " + file );
-    out << data;
-    if ( !out.good() )
-        throw SystemException( "writing data to file " + file );
-}
-#endif
-
-}
 
 #ifdef _WIN32
 #define F_OK 0
@@ -922,162 +902,166 @@ void writeFile( std::string file, std::string_view data )
 #endif
 
 
-inline bool access(const std::string &s, int m)
-{
+    inline bool file_access( const std::string &s, int m )
+    {
 #ifdef _WIN32
-    return ::_access(s.c_str(), m) == 0;
+        return ::_access( s.c_str(), m ) == 0;
 #else
-    return ::access(s.c_str(), m) == 0;
+        return ::access( s.c_str(), m ) == 0;
 #endif
+    }
+
+    inline bool file_exists( const std::string &file )
+    {
+        return file_access( file, F_OK );
+    }
+
 }
 
-inline bool exists(const std::string& file)
+namespace brq::t_fs
 {
-    return access(file, F_OK);
-}
+    using vs = std::vector< std::string >;
 
-}
+    struct TestSplit
+    {
+        TEST( path )
+        {
+            ASSERT( (vs{ "a", "b", "c" }) == splitPath( "a/b/c" ) );
+            ASSERT( (vs{ "/", "a", "b", "c" }) == splitPath( "/a/b/c" ) );
+        }
+    };
 
-namespace t_fs {
-using namespace brick::fs;
-using vs = std::vector< std::string >;
+    struct TestNormalize
+    {
+        TEST( basic )
+        {
+            ASSERT_EQ( "a/b/c", normalize( "a/b/c" ) );
+            ASSERT_EQ( "a/b/c", normalize( "a//b/c" ) );
+            ASSERT_EQ( "a/b/c", normalize( "a/b//c" ) );
+            ASSERT_EQ( "a/b/c", normalize( "a//b//c" ) );
+            ASSERT_EQ( "/a/b/c", normalize( "/a/b/c" ) );
+            ASSERT_EQ( "/a/b/c", normalize( "/a//b/c" ) );
+            ASSERT_EQ( "/a/b/c", normalize( "//a/b/c" ) );
+            ASSERT_EQ( "/a/b/c", normalize( "/a/b//c" ) );
+            ASSERT_EQ( "/a/b/c", normalize( "//a/b//c" ) );
+        }
 
-struct TestSplit {
+        TEST( endbackslash ) {
+            ASSERT_EQ( "a/b/c", normalize( "a/b/c/" ) );
+            ASSERT_EQ( "/a/b/c", normalize( "/a/b/c/" ) );
+        }
 
-    TEST( path ) {
-        ASSERT( (vs{ "a", "b", "c" }) == splitPath( "a/b/c" ) );
-        ASSERT( (vs{ "/", "a", "b", "c" }) == splitPath( "/a/b/c" ) );
-    }
-};
+        TEST( dot ) {
+            ASSERT_EQ( "a/b/c", normalize( "a/./b/./c" ) );
+            ASSERT_EQ( "a/b/c", normalize( "a/./b/././c" ) );
+            ASSERT_EQ( "a/b/c", normalize( "./a/./b/././c" ) );
+        }
 
-struct TestNormalize {
+        TEST( dotdot ) {
+            ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/.." ) );
+            ASSERT_EQ( "a/b", normalize( "a/b/c/d/../.." ) );
+            ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/../../c" ) );
+            ASSERT_EQ( "../a", normalize( "../a" ) );
+            ASSERT_EQ( "a/b/c", normalize( "a/b/./../b/c" ) );
+        }
 
-    TEST( basic ) {
-        ASSERT_EQ( "a/b/c", normalize( "a/b/c" ) );
-        ASSERT_EQ( "a/b/c", normalize( "a//b/c" ) );
-        ASSERT_EQ( "a/b/c", normalize( "a/b//c" ) );
-        ASSERT_EQ( "a/b/c", normalize( "a//b//c" ) );
-        ASSERT_EQ( "/a/b/c", normalize( "/a/b/c" ) );
-        ASSERT_EQ( "/a/b/c", normalize( "/a//b/c" ) );
-        ASSERT_EQ( "/a/b/c", normalize( "//a/b/c" ) );
-        ASSERT_EQ( "/a/b/c", normalize( "/a/b//c" ) );
-        ASSERT_EQ( "/a/b/c", normalize( "//a/b//c" ) );
-    }
+        TEST( empty )
+        {
+            ASSERT_EQ( ".", normalize( "./" ) );
+            ASSERT_EQ( ".", normalize( "a/.." ) );
+            ASSERT_EQ( "/", normalize( "/." ) );
+            ASSERT_EQ( "/", normalize( "/a/.." ) );
+        }
 
-    TEST( endbackslash ) {
-        ASSERT_EQ( "a/b/c", normalize( "a/b/c/" ) );
-        ASSERT_EQ( "/a/b/c", normalize( "/a/b/c/" ) );
-    }
+        TEST( negative )
+        {
+            ASSERT_EQ( "..", normalize( ".." ) );
+            ASSERT_EQ( "../..", normalize( "../.." ) );
+            ASSERT_EQ( "../../..", normalize( "../../.." ) );
+            ASSERT_EQ( "../../..", normalize( "../../a/../.." ) );
+        }
+    };
 
-    TEST( dot ) {
-        ASSERT_EQ( "a/b/c", normalize( "a/./b/./c" ) );
-        ASSERT_EQ( "a/b/c", normalize( "a/./b/././c" ) );
-        ASSERT_EQ( "a/b/c", normalize( "./a/./b/././c" ) );
-    }
-
-    TEST( dotdot ) {
-        ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/.." ) );
-        ASSERT_EQ( "a/b", normalize( "a/b/c/d/../.." ) );
-        ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/../../c" ) );
-        ASSERT_EQ( "../a", normalize( "../a" ) );
-        ASSERT_EQ( "a/b/c", normalize( "a/b/./../b/c" ) );
-    }
-
-    TEST( empty ) {
-        ASSERT_EQ( ".", normalize( "./" ) );
-        ASSERT_EQ( ".", normalize( "a/.." ) );
-        ASSERT_EQ( "/", normalize( "/." ) );
-        ASSERT_EQ( "/", normalize( "/a/.." ) );
-    }
-
-    TEST( negative ) {
-        ASSERT_EQ( "..", normalize( ".." ) );
-        ASSERT_EQ( "../..", normalize( "../.." ) );
-        ASSERT_EQ( "../../..", normalize( "../../.." ) );
-        ASSERT_EQ( "../../..", normalize( "../../a/../.." ) );
-    }
-};
-
-struct TextExtension {
-
-    TEST( take ) {
-        ASSERT_EQ( ".b", takeExtension( "a.b" ) );
-        ASSERT_EQ( ".c", takeExtension( "a.b.c" ) );
-    }
-};
+    struct Text_extension
+    {
+        TEST( take )
+        {
+            ASSERT_EQ( ".b", take_extension( "a.b" ) );
+            ASSERT_EQ( ".c", take_extension( "a.b.c" ) );
+        }
+    };
 
 #ifdef __unix__
-struct TestPosixBuf
-{
-    TEST(read)
+    struct Testposix_buf
     {
-        int fd = open( "/dev/zero", O_RDWR );
-        ASSERT( fd != -1 );
+        TEST(read)
+        {
+            int fd = open( "/dev/zero", O_RDWR );
+            ASSERT( fd != -1 );
 
-        PosixBuf buf( fd );
-        std::istream is( &buf );
-        ASSERT( !is.eof() );
+            posix_buf buf( fd );
+            std::istream is( &buf );
+            ASSERT( !is.eof() );
 
-        char c;
-        is >> c;
-        ASSERT( !is.eof() );
-        ASSERT_EQ( c, 0 );
-    }
-
-    TEST(read_rand)
-    {
-        int fd = open( "/dev/random", O_RDONLY );
-        ASSERT( fd != -1 );
-
-        PosixBuf buf( fd );
-        std::istream is( &buf );
-        ASSERT( !is.eof() );
-
-        char c = 0;
-        while ( c == 0 )
+            char c;
             is >> c;
-        ASSERT( c != 0 );
-        ASSERT( !is.eof() );
-    }
+            ASSERT( !is.eof() );
+            ASSERT_EQ( c, 0 );
+        }
 
-    TEST(pipe)
-    {
-        int fds[2];
-        ::pipe( fds );
-        PosixBuf read( fds[0] ), write( fds[1] );
-        std::istream is( &read );
-        std::ostream os( &write );
-        os << "hello world" << std::endl;
-        std::string str;
-        is >> str;
-        ASSERT_EQ( str, "hello" );
-        is >> str;
-        ASSERT_EQ( str, "world" );
-    }
+        TEST(read_rand)
+        {
+            int fd = open( "/dev/random", O_RDONLY );
+            ASSERT( fd != -1 );
 
-    TEST(write)
-    {
-        int fd = open( "/dev/null", O_WRONLY );
-        ASSERT( fd != -1 );
+            posix_buf buf( fd );
+            std::istream is( &buf );
+            ASSERT( !is.eof() );
 
-        PosixBuf buf( fd );
-        std::ostream os( &buf );
+            char c = 0;
+            while ( c == 0 )
+                is >> c;
+            ASSERT( c != 0 );
+            ASSERT( !is.eof() );
+        }
 
-        os << "Foo";
-        os << "Bar";
-        os << std::endl;
-    }
-};
+        TEST(pipe)
+        {
+            int fds[2];
+            ::pipe( fds );
+            posix_buf read( fds[0] ), write( fds[1] );
+            std::istream is( &read );
+            std::ostream os( &write );
+            os << "hello world" << std::endl;
+            std::string str;
+            is >> str;
+            ASSERT_EQ( str, "hello" );
+            is >> str;
+            ASSERT_EQ( str, "world" );
+        }
+
+        TEST(write)
+        {
+            int fd = open( "/dev/null", O_WRONLY );
+            ASSERT( fd != -1 );
+
+            posix_buf buf( fd );
+            std::ostream os( &buf );
+
+            os << "Foo";
+            os << "Bar";
+            os << std::endl;
+        }
+    };
 #endif
 
-}
 }
 
 #if 0
-inline std::pair< std::string, std::string > splitExtension( std::string path ) {
-inline std::string replaceExtension( std::string path, std::string extension ) {
-inline std::pair< std::string, std::string > splitFileName( std::string path ) {
-inline std::pair< std::string, std::string > absolutePrefix( std::string path ) {
+inline std::pair< std::string, std::string > split_extension( std::string path );
+inline std::string replace_extension( std::string path, std::string extension );
+inline std::pair< std::string, std::string > split_filename( std::string path );
+inline std::pair< std::string, std::string > absolute_prefix( std::string path );
 #endif
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
