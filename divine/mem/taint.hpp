@@ -105,7 +105,7 @@ struct TaintLayer : public NextLayer
         NextLayer::read( l, value, exp );
     }
 
-    // merge taints  of source and destination values
+    // merge taints of source and destination values
     template< typename FromH, typename ToH >
     static void copy_byte( FromH &from_h, ToH &to_h, typename FromH::Loc from, const Expanded &exp_src,
                            Loc to, Expanded &exp_dst )

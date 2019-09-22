@@ -25,7 +25,7 @@ namespace divine::mem
 
 namespace bitlevel = brick::bitlevel;
 
-/* PointerException store information for fragmented pointers
+/* PointerException stores information for fragmented pointers
  *
  * For each byte of a word it maintains the objid of original pointer and
  * position of the fragment in the original pointer.
@@ -38,7 +38,7 @@ struct PointerException
     uint8_t index( uint8_t p ) const { return metadata[ p ] & 0x07; }
     void index( uint8_t p, uint8_t i ) { metadata[ p ] &= ~0x07; metadata[ p ] |= i & 0x07; }
 
-    // pointer exception is redundant if a word represent a valid (non-fragmented) pointer
+    // pointer exception is redundant if a word represents a valid (non-fragmented) pointer
     bool redundant() const
     {
         for ( int i = 0; i < 4; ++i)
@@ -113,7 +113,7 @@ inline std::ostream &operator<<( std::ostream &o, const PointerException &e )
  *      pointer : 1
  *      pointer_exception : 1
  *
- * PointerLayer is required shadow layer by DIVINE for reconstruction of
+ * PointerLayer is required in shadow layer by DIVINE for reconstruction of
  * fragmented pointers.
  */
 template< typename NextLayer >
@@ -159,7 +159,7 @@ struct PointerLayer : public NextLayer
     int compare_word( Loc a, Expanded exp_a, Loc b, Expanded exp_b, F ptr_cb ) const
     {
         ASSERT_EQ( exp_a.pointer_exception, exp_b.pointer_exception );
-        // This function correctly assumes that is is called only when there is an exception and the
+        // This function correctly assumes that it is called only when there is an exception and the
         // exception types match. However, it also assumes that the only other type of exception is
         // data exception, so that there is either a pointer exception or data exception (and
         // therefore it cannot be a pointer). This is true at the moment, but should it cease to

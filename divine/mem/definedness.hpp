@@ -75,7 +75,7 @@ inline std::ostream &operator<<( std::ostream &o, const DataException &e )
  * DefinednessLayer stores data exceptions map, to which all accesses are
  * guarded by lock.
  *
- * DefinednessLayer rely upon correct information about pointer in the expanded form.
+ * DefinednessLayer relies upon correct information about pointer in the expanded form.
  * It automatically considers pointers as defined. In addition to pointer exceptions it
  * creates a data exception (even if trivial).
  *

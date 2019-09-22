@@ -107,7 +107,7 @@ struct Base
 };
 
 /*
- * ShadowBase is inheritence stopper for shadow layers. Its operations are
+ * ShadowBase is inheritance stopper for shadow layers. Its operations are
  * called as last of the layered hierarchy.
  *
  * ShadowBase defines interface to shadow layers functionality.

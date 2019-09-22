@@ -38,10 +38,10 @@ union TaggedOffset {
     TaggedOffset & operator=( uint32_t r ) { raw = r; return *this; }
 };
 
-// UserMeta layer enable to store user metadata (integer value) to shadow memory.
+// UserMeta layer enables to store user metadata (integer value) to shadow memory.
 //
-// UserMeta define multiple layers of user metadata. Each layer
-// define its type -- whether it is assigned to pointer, value or unspecified
+// UserMeta defines multiple layers of user metadata. Each layer
+// defines its type -- whether it is assigned to a pointer, value or unspecified
 // memory.
 template< typename Next >
 struct UserMeta : Next

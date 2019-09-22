@@ -53,16 +53,16 @@ namespace divine::mem
      *
      * Each kind of metadata has its own layer. The goal of each layer is to
      * transform information from expanded form metadata to internal metadata
-     * representation in vm::value. Additionally layers store metadata
-     * exceptions related maps and manages their manipulations (copying).
+     * representation in vm::value. Additionally, layers store metadata
+     * exceptions related maps and manage their manipulations (copying).
      *
-     * All layers has unified interface (see ShadowBase) to enable chaining of
+     * All layers have unified interface (see ShadowBase) to enable chaining of
      * operations.
      *
      * It is required by shadow storage to provide interface layer for upper
      * layers (Metadata). DiVM requires presence of the PointerLayer to be
      * able to reconstruct fragmented pointers. Intermediate layers (Taint,
-     * Definedness, Pointer) implements various metadata chunks. ShadowBase is
+     * Definedness, Pointer) implement various metadata chunks. ShadowBase is
      * a trivial metadata storage that defines interface to shadow memory.  At
      * the bottom of configuration layers is a compression layer. It is used to
      * compress and decompress metadata from actual shadow memory.

@@ -31,7 +31,7 @@ union ExpandedMetaPDT // Representation the shadow layers operate on
 {
     struct
     {
-        uint16_t taint : 4, // 15 possible colors for tainting
+        uint16_t taint : 4, // 4 bytes = 1 word
                  _free1_ : 3,
                  pointer : 1, // pointer or just a pointer fragment
                  pointer_exception : 1,
@@ -95,9 +95,9 @@ struct CompressPDT : Next
 
     /* Expands compressed form of metadata.
      *
-     * Expansion (decompresion) of zero is required to be reasonable form of
+     * Expansion (decompression) of zero is required to be a reasonable form of
      * expanded metadata, i.e. it corresponds to newly allocated memory location.
-     * The expanded form represent undefined word without any exceptions or taints.
+     * The expanded form represents an undefined word without any exceptions or taints.
      */
     constexpr static Expanded expand( Compressed c )
     {
@@ -329,8 +329,8 @@ struct Metadata : Next
 
     // Fill internal representation (value) by data from shadow memory (l).
     //
-    // Firstly it expands and decompress metadata and afterwards it let lower
-    // layers to fill value from decompressed metadata.
+    // First it expands and decompresses metadata and afterwards it lets lower
+    // layers fill value from decompressed metadata.
     template< typename V >
     void read( Loc l, V &value ) const
     {
@@ -372,7 +372,7 @@ struct Metadata : Next
     // information about copying progress via above mentioned functions:
     //
     // 'copy_init_src', 'copy_init_dst' initializes copying in lower layers
-    // (e.g. layers with exceptions initializes exception related data if and
+    // (e.g. layers with exceptions initialize exception-related data if an
     // exception is present in copied memory)
     //
     // 'copy_byte' mutates state of current copying
@@ -404,7 +404,7 @@ struct Metadata : Next
 
             for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
             {
-                // If any of metadata contains an exception we need perform copy also in lower layers
+                // If any of metadata contains an exception we need to perform copy also in lower layers
                 if ( ! Next::is_trivial( *i_from ) || ! Next::is_trivial( *i_to ) )
                 {
                     Expanded exp_src = Next::expand( *i_from );
