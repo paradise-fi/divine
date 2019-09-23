@@ -193,8 +193,6 @@ namespace brq
         using cons_list_t_< Ts... >::cons_list_t_;
     };
 
-    static_assert( std::is_same_v< cons_list_t< int, int >::unique_t, cons_list_t_< int > > );
-
     template< typename car_t_, typename cdr_t_ >
     struct ns
     {
