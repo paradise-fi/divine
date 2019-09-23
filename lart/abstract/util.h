@@ -260,18 +260,33 @@ namespace lart::abstract
         return llvm::isa< llvm::CallInst >( inst );
     }
 
+    template< typename Call >
+    auto arguments( Call call ) noexcept
+    {
+        auto cs = llvm::CallSite( call );
+        ASSERT( cs );
+
+        return query::query( cs.args() )
+            .map( [] ( auto & use ) { return use.get(); } )
+            .freeze();
+    }
+
     static inline llvm::Value * lower_constant_expr_call( llvm::Value * val ) {
         auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val );
         if ( !ce )
             return val;
         if ( ce->getNumUses() == 0 )
             return nullptr;
+
         if ( auto orig = llvm::dyn_cast< llvm::CallInst >( *ce->user_begin() ) ) {
             auto fn = ce->getOperand( 0 );
+
             llvm::IRBuilder<> irb( orig );
-            llvm::Value * call = irb.CreateCall( fn );
+            llvm::Value * call = irb.CreateCall( fn, arguments( orig ) );
+
             if ( call->getType() != orig->getType() )
                 call = irb.CreateBitCast( call, orig->getType() );
+
             orig->replaceAllUsesWith( call );
             orig->eraseFromParent();
             return call;
