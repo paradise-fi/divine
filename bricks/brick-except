@@ -20,6 +20,7 @@
 
 #include "brick-trace"
 #include <stdexcept>
+#include <system_error>
 #include <string>
 
 namespace brq
@@ -37,15 +38,30 @@ namespace brq
         {}
     };
 
+    template< typename type, typename... args >
+    void maybe_throw( args && ... as ) noexcept( false )
+    {
+        if ( std::uncaught_exceptions() ) /* terminate instead? */
+            return;
+        else
+            throw type( std::forward< args >( as )... );
+    }
+
     template< typename exc >
     struct construct_error : string_builder
     {
         ~construct_error() noexcept( false )
         {
-            if ( std::uncaught_exceptions() )
-                return;
-            else
-                throw exc( buffer() );
+            maybe_throw< exc >( buffer() );
+        }
+    };
+
+    template<>
+    struct construct_error< std::system_error > : string_builder
+    {
+        ~construct_error() noexcept( false )
+        {
+            maybe_throw< std::system_error >( errno, std::system_category(), buffer() );
         }
     };
 
