@@ -537,16 +537,6 @@ namespace brq
     };
 #endif
 
-    inline void write_file( std::string file, std::string data )
-    {
-        std::ofstream out( file.c_str(), std::ios::binary );
-        if ( !out.is_open() )
-            brq::raise< std::system_error >() << "writing file " << file;
-        out << data;
-        if ( !out.good() )
-            brq::raise< std::system_error >() << "writing data to file " << file;
-    }
-
     inline void renameIfExists( std::string src, std::string dst )
     {
         int res = ::rename( src.c_str(), dst.c_str() );
