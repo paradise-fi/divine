@@ -14,7 +14,7 @@
     if ( f ) *f = __dios_this_frame()->parent;                                                   \
     __vm_suspend();
 
-extern "C" __link_always __trapfn __invisible __weakmem_direct void __dios_reschedule()
+extern "C" __link_always __trapfn __local_invisible __weakmem_direct void __dios_reschedule()
 {
     uint64_t flags = uint64_t( __vm_ctl_get( _VM_CR_Flags ) );
 
@@ -27,7 +27,7 @@ extern "C" __link_always __trapfn __invisible __weakmem_direct void __dios_resch
     INTR
 }
 
-extern "C" __link_always __trapfn __invisible __weakmem_direct void __dios_suspend()
+extern "C" __link_always __trapfn __local_invisible __weakmem_direct void __dios_suspend()
 {
     uint64_t flags = uint64_t( __vm_ctl_get( _VM_CR_Flags ) );
 

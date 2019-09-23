@@ -9,7 +9,7 @@
 
 #ifndef REGTEST
 
-__skipcfl size_t strlen( const char * s )
+__local_skipcfl size_t strlen( const char * s )
 {
     size_t rc = 0;
     while ( s[rc] )

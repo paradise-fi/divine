@@ -47,7 +47,7 @@ _MD_RegInfo __md_get_register_info( _VM_Frame *frame, _VM_CodePointer pc, const 
     return { base + imeta.val_offset, imeta.val_width };
 }
 
-__invisible const _MD_Global *__md_get_global_meta( const char *name ) noexcept
+__local_invisible const _MD_Global *__md_get_global_meta( const char *name ) noexcept
 {
     const auto *b = __md_globals, *e = b + __md_globals_count;
     while ( b < e )

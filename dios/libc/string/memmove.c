@@ -10,7 +10,7 @@
 
 #ifndef REGTEST
 
-__link_always __skipcfl
+__link_always __local_skipcfl
 void * memmove( void * s1, const void * s2, size_t n )
 {
     char *dest = ( char * ) s1;

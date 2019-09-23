@@ -3,7 +3,7 @@
 #include <sys/bitcode.h>
 #include <string.h>
 
-__invisible __weakmem_direct void __dios_stack_free( _VM_Frame *from, _VM_Frame *to ) noexcept
+__local_invisible __weakmem_direct void __dios_stack_free( _VM_Frame *from, _VM_Frame *to ) noexcept
 {
     _VM_Frame *next = nullptr;
 
@@ -25,7 +25,7 @@ __invisible __weakmem_direct void __dios_stack_free( _VM_Frame *from, _VM_Frame 
 
 /* NOTE: any write directly to a stack frame should bypass weakmem as registers
  * and parent pointers are read by the VM */
-__invisible __weakmem_direct void __dios_stack_cut( _VM_Frame *top, _VM_Frame *bottom ) noexcept
+__local_invisible __weakmem_direct void __dios_stack_cut( _VM_Frame *top, _VM_Frame *bottom ) noexcept
 {
     if ( top == bottom )
         return;

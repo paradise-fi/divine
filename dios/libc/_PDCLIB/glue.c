@@ -23,7 +23,7 @@
 uint8_t __dios_simfail_flags;
 
 /* Memory allocation */
-__invisible void *malloc( size_t size )
+__local_invisible void *malloc( size_t size )
 {
     int kernel = ( ( ( uint64_t ) __vm_ctl_get( _VM_CR_Flags ) ) & _VM_CF_KernelMode ) ? 1 : 0;
     int simfail = __dios_sim_fail( _DiOS_SF_Malloc );
@@ -37,7 +37,7 @@ __invisible void *malloc( size_t size )
 
 void __dios_check_free( void * );
 
-__invisible void free( void * p )
+__local_invisible void free( void * p )
 {
     if ( !p )
         return;
@@ -46,13 +46,13 @@ __invisible void free( void * p )
     __vm_obj_free( p );
 }
 
-__invisible void *aligned_alloc( size_t align, size_t size )
+__local_invisible void *aligned_alloc( size_t align, size_t size )
 {
     (void) align;
     return malloc( size ); /* we are always aligned */
 }
 
-__invisible int posix_memalign( void **ptr, size_t align, size_t size )
+__local_invisible int posix_memalign( void **ptr, size_t align, size_t size )
 {
     (void) align;
     /* TODO EINVAL if align is not a power of two >= sizeof( void* ) */

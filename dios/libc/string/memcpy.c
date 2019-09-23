@@ -10,7 +10,7 @@
 
 #ifndef REGTEST
 
-__link_always __skipcfl
+__link_always __local_skipcfl
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n )
 {
     assert( s1 < s2 ? s1 + n <= s2 : s2 + n <= s1 );
