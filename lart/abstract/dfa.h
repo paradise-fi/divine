@@ -176,41 +176,41 @@ namespace lart::abstract
         std::map< llvm::Value *, type_onion > _map;
     };
 
-struct DataFlowAnalysis
-{
-    using Task = std::function< void() >;
-
-    void run( llvm::Module & );
-
-    void preprocess( llvm::Function * fn ) noexcept;
-
-    void propagate( llvm::Value * inst ) noexcept;
-
-    void propagate_in( llvm::Function *fn, llvm::CallSite call ) noexcept;
-    void propagate_out( llvm::ReturnInst * ret ) noexcept;
-
-    bool propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
-    bool propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
-
-    void propagate_back( llvm::Argument * arg ) noexcept;
-
-    inline void push( llvm::Value *v ) noexcept
+    struct DataFlowAnalysis
     {
-        TRACE( "push", _todo.size(), *v );
-        if ( !_queued.count( v ) && !_blocked.count( v ) )
+        using Task = std::function< void() >;
+
+        void run( llvm::Module & );
+
+        void preprocess( llvm::Function * fn ) noexcept;
+
+        void propagate( llvm::Value * inst ) noexcept;
+
+        void propagate_in( llvm::Function *fn, llvm::CallSite call ) noexcept;
+        void propagate_out( llvm::ReturnInst * ret ) noexcept;
+
+        bool propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
+        bool propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept;
+
+        void propagate_back( llvm::Argument * arg ) noexcept;
+
+        inline void push( llvm::Value *v ) noexcept
         {
-            _queued.emplace( v );
-            _blocked.emplace( v );
-            _todo.push_back( v );
+            TRACE( "push", _todo.size(), *v );
+            if ( !_queued.count( v ) && !_blocked.count( v ) )
+            {
+                _queued.emplace( v );
+                _blocked.emplace( v );
+                _todo.push_back( v );
+            }
         }
-    }
 
-    bool propagate( llvm::Value *to, const type_onion& from ) noexcept;
-    void add_meta( llvm::Value *value, const type_onion& t ) noexcept;
+        bool propagate( llvm::Value *to, const type_onion& from ) noexcept;
+        void add_meta( llvm::Value *value, const type_onion& t ) noexcept;
 
-    type_map _types;
-    std::deque< llvm::Value * > _todo;
-    std::set< llvm::Value * > _queued, _blocked;
-};
+        type_map _types;
+        std::deque< llvm::Value * > _todo;
+        std::set< llvm::Value * > _queued, _blocked;
+    };
 
 } // namespace lart::abstract
