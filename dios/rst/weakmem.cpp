@@ -14,7 +14,7 @@
 #define _WM_INLINE __attribute__((__always_inline__, __flatten__))
 #define _WM_NOINLINE __attribute__((__noinline__))
 #define _WM_NOINLINE_WEAK __attribute__((__noinline__, __weak__))
-#define _WM_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) __invisible extern "C"
+#define _WM_INTERFACE __attribute__((__nothrow__, __noinline__, __flatten__)) __local_invisible extern "C"
 
 namespace lart::weakmem {
 
