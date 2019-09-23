@@ -334,6 +334,7 @@ namespace brq::sql
             std::memcpy( &t, PQgetvalue( _result, _row, _col ), sizeof( T ) );
         }
 
+        void fetch_one( bool &t ) { fetch_raw( t ); }
         void fetch_one( int16_t &t ) { fetch_raw( t ); t = be16toh( t ); }
         void fetch_one( int32_t &t ) { fetch_raw( t ); t = be32toh( t ); }
         void fetch_one( timestamp &t ) { fetch_raw( t.fract ); t.fract = be64toh( t.fract ); }
@@ -418,10 +419,12 @@ namespace brq::sql
             i.months = htobe64( i.months );
             bind_raw( i );
         }
+
         void bind_one( timestamp &t ) { t.fract = htobe64( t.fract ); bind_raw( t ); }
         void bind_one( int64_t &t ) { t = htobe64( t ); bind_raw( t ); }
         void bind_one( int32_t &t ) { t = htobe32( t ); bind_raw( t ); }
         void bind_one( int16_t &t ) { t = htobe16( t ); bind_raw( t ); }
+        void bind_one( bool &t )    { bind_raw( t ); }
         void bind_one( const std::string &s ) { bind_mem( s.data(), s.size() ); }
         void bind_one( std::u32string &us )
         {
