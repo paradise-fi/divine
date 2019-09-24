@@ -35,16 +35,16 @@ int main( int argc, const char **argv )
     auto validator = cmd::make_validator()->add( "list", list );
     auto args = cmd::from_argv( argc, argv );
 
-    auto helpopts = cmd::make_option_set< Help >( validator )
+    auto helpopts = cmd::make_option_set( validator )
         .option( "[{string}]", &Help::_cmd, "print man to specified command"s );
 
-    auto opts_db = cmd::make_option_set< Cmd >( validator )
+    auto opts_db = cmd::make_option_set( validator )
         .option( "[-d {string}]", &Cmd::_odbc, "ODBC connection string (default: $DIVBENCH_DB)" );
 
-    auto opts_inst = cmd::make_option_set< GetInstance >( validator )
+    auto opts_inst = cmd::make_option_set( validator )
         .option( "[--config-id {int}]", &GetInstance::_config_id , "numeric config id" );
 
-    auto opts_report_base = cmd::make_option_set< ReportBase >( validator )
+    auto opts_report_base = cmd::make_option_set( validator )
         .option( "[--by-tag]",  &ReportBase::_by_tag, "group results by tags" )
         .option( "[--tag {string}]",  &ReportBase::_tag, "filter results by tag(s)" )
         .option( "[--aggregate {string}]",  &ReportBase::_agg, "run aggregation (default: avg)" )
@@ -54,23 +54,23 @@ int main( int argc, const char **argv )
         .option( "[--result {string}]", &ReportBase::_result,
                  "only include runs with one of given results (default: VE)" );
 
-    auto opts_report = cmd::make_option_set< Report >( validator )
+    auto opts_report = cmd::make_option_set( validator )
         .option( "[--list-instances]",  &Report::_list_instances, "show available instances" );
 
-    auto opts_compare = cmd::make_option_set< Compare >( validator )
+    auto opts_compare = cmd::make_option_set( validator )
         .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" );
 
-    auto opts_job = cmd::make_option_set< WithModel >( validator )
+    auto opts_job = cmd::make_option_set( validator )
         .option( "[--tag {string}]", &WithModel::_tag, "only take models with a given tag" );
 
-    auto opts_setup = cmd::make_option_set< Setup >( validator )
+    auto opts_setup = cmd::make_option_set( validator )
         .option( "[--note {string}]", &Setup::_note, "attach a note to this build" )
         .option( "[--tag {string}]", &Setup::_tag, "attach a tag to this build" );
 
-    auto opts_sched = cmd::make_option_set< Schedule >( validator )
+    auto opts_sched = cmd::make_option_set( validator )
         .option( "[--once]", &Schedule::_once, "only schedule unique jobs" );
 
-    auto opts_run = cmd::make_option_set< Run >( validator )
+    auto opts_run = cmd::make_option_set( validator )
         .option( "[--single]", &Run::_single, "run only single benchmark" );
 
     auto cmds = cmd::make_parser( validator )
@@ -83,8 +83,10 @@ int main( int argc, const char **argv )
         .command< Help >( helpopts );
 
     auto cmd = cmds.parse( args.begin(), args.end() );
+    bool empty = true;
+    cmd.match( [&]( const auto & ) { empty = false; } );
 
-    if ( cmd.empty()  )
+    if ( empty )
     {
         Help().run( cmds );
         return 0;
