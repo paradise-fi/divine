@@ -54,13 +54,13 @@ SMTLib2::Node SMTLib2::constant( Constant con )
    switch ( con.type() )
    {
         case Node::Type::Bool:
-            ASSERT_EQ( con.bitwidth, 1 );
+            ASSERT_EQ( con.bitwidth(), 1 );
             return constant( static_cast< bool >( con.value ) );
         case Node::Type::Int:
-            return _ctx.bitvec( con.bitwidth, con.value );
+            return _ctx.bitvec( con.bitwidth(), con.value );
         case Node::Type::Float:
-            ASSERT( con.bitwidth > 1 );
-            return _ctx.floatv( con.bitwidth, con.value );
+            ASSERT( con.bitwidth() > 1 );
+            return _ctx.floatv( con.bitwidth(), con.value );
     }
     UNREACHABLE( "unknown constant type", con.type() );
 }

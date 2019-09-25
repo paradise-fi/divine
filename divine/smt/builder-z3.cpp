@@ -42,7 +42,7 @@ z3::expr Z3::constant( Constant con )
     switch ( con.type() )
     {
         case BNode::Type::Int:
-            return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth );
+            return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth() );
         case BNode::Type::Float:
             UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
         case BNode::Type::Bool:

@@ -15,8 +15,8 @@ namespace proc = brick::proc;
 
 bool match( const Constant &a, const Constant &b )
 {
-    const auto mask = brick::bitlevel::ones< uint64_t >( a.bitwidth );
-    return a.bitwidth == b.bitwidth && ( a.value & mask ) == ( b.value & mask );
+    const auto mask = brick::bitlevel::ones< uint64_t >( a.bitwidth() );
+    return a.bitwidth() == b.bitwidth() && ( a.value & mask ) == ( b.value & mask );
 }
 
 Result SMTLib::solve()
