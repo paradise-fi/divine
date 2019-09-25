@@ -125,7 +125,7 @@ namespace brq::sql
     template<> struct type_map< timestamp >      { static auto name() { return "timestamp"; }; };
     template<> struct type_map< interval >       { static auto name() { return "interval"; }; };
 
-    template< int v > struct type_map< std::array< uint8_t, v > >
+    template< size_t v > struct type_map< std::array< uint8_t, v > >
     {
         static auto name() { return "bytea"; }
     };
