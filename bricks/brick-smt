@@ -55,7 +55,7 @@ namespace brick::smt
 
     /* Available operations in SMT-LIB.
        Size of an operation is 1 byte (hence uint8_t). */
-    enum class Op : uint8_t
+    enum class Op : int8_t
     {
         Invalid,
 
@@ -407,17 +407,18 @@ namespace brick::smt
         template< typename T >
         struct Constant
         {
+            Op op;
             T value;
-            Bitwidth bitwidth;
 
-            Node::Type type() { return Node::Type::Int; }
+            Node::Type type() const { return Node::Type::Int; }
+            Bitwidth bitwidth() const { return -Bitwidth( op ); }
 
             template< typename stream >
             friend auto operator<<( stream &os, const Constant &con ) -> decltype( os << "" )
             {
                 return os << "[const " << con.value
                           << " : "     << to_string( con.type )
-                          << " "       << con.bitwidth << "]";
+                          << " "       << con.bitwidth() << "]";
             }
 
         } __attribute__(( packed, aligned(1) ));
@@ -572,7 +573,6 @@ namespace brick::smt
         constexpr T extract_constant() const noexcept
         {
             assert( is_constant( operand() ) );
-            auto bw = bitwidth( operand() );
             constexpr auto offset = 1;
             return extract< T >( offset );
         }
@@ -648,11 +648,9 @@ namespace brick::smt
             Constant extract_constant() const noexcept
             {
                 ASSERT( is_constant( operand() ) );
-                auto pos = &(*std::next( _it ));
-                auto val = *reinterpret_cast< T * >( const_cast< uint8_t * >( pos ) );
-                auto ty = Node::Type::Int; // TODO other types
-                auto bw = bitwidth();
-                return Constant{ val, bw };
+                auto pos = &*_it;
+                auto val = *reinterpret_cast< const T * >( pos + 1 );
+                return Constant{ Op( *pos ), val };
             }
 
             Iterator& operator++() noexcept
