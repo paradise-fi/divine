@@ -15,6 +15,8 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/support/divine/*.h
       libunwind/include/* libunwind/include/mach-o/* )
 
+file( GLOB H_BRICKS ../bricks/brick-* )
+
 file( GLOB SRC_dios sys/*.cpp vfs/*.cpp proxy/*.cpp )
 file( GLOB SRC_config config/*.cpp )
 
@@ -49,7 +51,7 @@ macro( mkobjs var flags )
     file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
     list( APPEND BC_${var} bc/${out} )
     add_custom_command(
-        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${HOSTABI} ${VMINC} ${STDATOMIC}
+        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${HOSTABI} ${VMINC} ${STDATOMIC} ${H_BRICKS}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
         COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
