@@ -245,6 +245,12 @@ struct ArchiveReader
             return std::move( _bc );
         }
 
+        ::llvm::Module *borrow()
+        {
+            _load( true );
+            return _bc.get();
+        }
+
         bool operator==( const BitcodeIterator &o ) const { return _it == o._it;  }
 
         BitcodeIterator &operator++()
@@ -401,6 +407,16 @@ struct Linker
 
     using ModuleVector = std::vector< std::unique_ptr< Module > >;
 
+    static std::string modname( Module *const *m )
+    {
+        return (*m)->getName();
+    }
+
+    static std::string modname( ArchiveReader::BitcodeIterator it )
+    {
+        return it.borrow()->getName();
+    }
+
     // A map associating symbol names with modules they are defined in
     template< typename K, typename V >
     struct ModuleMap : std::unordered_map< K, V >
@@ -414,7 +430,10 @@ struct Linker
             {
                 auto it = this->find( u );
                 if ( it != this->end() )
+                {
+                    TRACE( "pulling in", modname( it->second ), "for", u.str() );
                     return _takeModule( it->second );
+                }
             }
             return nullptr;
         }
