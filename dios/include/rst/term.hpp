@@ -72,7 +72,7 @@ namespace __dios::rst::abstract {
         template< typename T >
         _LART_INLINE static RPN::Constant< T > constant( T value ) noexcept
         {
-            return { -bitwidth< T >(), value };
+            return { Op( -bitwidth< T >() ), value };
         }
 
         template< typename T >
