@@ -40,6 +40,11 @@ extern "C" {
     double __unit_lift_float64( double );
 
     char * __mstring_val( char * buff, unsigned buff_len );
+
+    uint8_t __constant_lift_i8( uint8_t c );
+    uint16_t __constant_lift_i16( uint16_t c );
+    uint32_t __constant_lift_i32( uint32_t c );
+    uint64_t __constant_lift_i64( uint64_t c );
 #ifdef __cplusplus
 }
 #endif
