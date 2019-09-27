@@ -707,7 +707,7 @@ namespace brq
 {
 
     template< typename DirPre, typename DirPost, typename File >
-    void traverse_dir_tree( std::string root, DirPre pre, DirPost post, File file )
+    void traverse_dir_tree( std::string root, DirPre pre, DirPost post, File file, bool follow = true )
     {
         if ( pre( root ) )
         {
@@ -723,13 +723,13 @@ namespace brq
                     continue;
 
                 auto path = join_path( root, name );
-                auto st = stat( path );
+                auto st = follow ? stat( path ) : lstat( path );
 #ifdef _WIN32
                 if ( st && ( st->st_mode & _S_IFDIR ) )
 #else
                 if ( st && S_ISDIR( st->st_mode ) )
 #endif
-                    traverse_dir_tree( path, pre, post, file );
+                    traverse_dir_tree( path, pre, post, file, follow );
                 else
                     file( path );
             }
@@ -761,9 +761,7 @@ namespace brq
 
     inline void rmtree( std::string dir )
     {
-        traverse_dir_tree( dir, []( std::string ) { return true; },
-                                []( std::string dir ) { rmdir( dir ); },
-                                []( std::string file ) { unlink( file ); } );
+        traverse_dir_tree( dir, []( std::string ) { return true; }, rmdir, unlink, false );
     }
 
     struct change_dir
