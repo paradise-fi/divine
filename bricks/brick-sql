@@ -386,6 +386,12 @@ namespace brq::sql
         iterator begin() { return iterator( _result, 0 ); }
         iterator end()   { return iterator( _result, PQntuples( _result ) ); }
 
+        row< cols... > result()
+        {
+            ASSERT_EQ( PQntuples( _result ), 1 );
+            return *begin();
+        }
+
         void bind_mem( const char *data, int size )
         {
             _lengths.push_back( size );
