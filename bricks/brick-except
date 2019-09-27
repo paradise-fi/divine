@@ -70,6 +70,15 @@ namespace brq
     {
         return {};
     }
+
+    struct finally
+    {
+        using fun = std::function< void() >;
+        fun _fun;
+        finally( fun f ) : _fun( f ) {}
+        ~finally() { if ( _fun ) _fun(); }
+        void skip() { _fun = fun(); }
+    };
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
