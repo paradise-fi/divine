@@ -761,7 +761,9 @@ namespace brq
 
     inline void rmtree( std::string dir )
     {
-        traverse_dir_tree( dir, []( std::string ) { return true; }, rmdir, unlink, false );
+        traverse_dir_tree( dir, []( std::string ) { return true; },
+                                []( std::string p ) { if ( p != "." ) rmdir( p ); },
+                                unlink, false );
     }
 
     struct change_dir
