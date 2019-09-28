@@ -424,7 +424,18 @@ namespace brq::sql
         }
 
         stmt( const stmt & ) = delete;
-        stmt( stmt && ) = default;
+        stmt( stmt &&o )
+            : _conn( o._conn ), _txt( o._txt ), _memory( std::move( o._memory ) ), _params( o._params ),
+              _lengths( o._lengths ), _result( o._result )
+        {
+            o._result = nullptr;
+        }
+
+        ~stmt()
+        {
+            if ( _result )
+                PQclear( _result );
+        }
 
         template< typename T >
         void bind_raw( const T &t ) { bind_mem( reinterpret_cast< const char * >( &t ), sizeof( T ) ); }
