@@ -544,8 +544,9 @@ namespace brq::sql
                 return make_cons( l.car, values( l.cdr ) );
             else if constexpr ( std::is_same_v< typename L::car_t, where_operator > )
                 return values( l.cdr );
-            else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum ||
-                                is_list_v< typename L::car_t > )
+            else if constexpr ( is_list_v< typename L::car_t > )
+                return values( l.cdr );
+            else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum )
                 return values( l.cdr );
             else
                 return l.car.values().cat( values( l.cdr ) );
