@@ -37,13 +37,13 @@ namespace brq
         auto match( Fs... ) { return std::nullopt; }
 
         template< template< typename > class P >
-        constexpr nil filter() { return {}; }
+        constexpr nil filter() const { return {}; }
 
         template< typename F >
-        nil map( F ) { return {}; }
+        nil map( F ) const { return {}; }
 
         template< typename L >
-        auto cat( const L &l ) { return l; }
+        auto cat( const L &l ) const { return l; }
     };
 
     template< typename, typename > struct cons;
@@ -82,14 +82,14 @@ namespace brq
             : car( car ), cdr( cdr )
         {}
 
-        constexpr auto reverse()
+        constexpr auto reverse() const
         {
             nil rev;
             return cons_reverse( *this, rev );
         }
 
         template< template< typename > class P >
-        constexpr auto filter()
+        constexpr auto filter() const
         {
             if constexpr ( P< car_t >::value )
                 return make_cons( car, cdr.template filter< P >() );
