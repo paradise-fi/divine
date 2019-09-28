@@ -1027,6 +1027,37 @@ BRICK_SQL_OP( | )
 
         autoexec exec() { return { *this }; }
 
+        template< typename t >
+        std::enable_if_t< t::is_table > notify() { exec() << "NOTIFY " << get_name( t() ); }
+
+        template< typename t >
+        std::enable_if_t< t::is_table > listen() { exec() << "LISTEN " << get_name( t() ); }
+
+        bool check_notify()
+        {
+            PQconsumeInput( _conn.handle() );
+            if ( auto notify = PQnotifies( _conn.handle() ) )
+                return PQfreemem( notify ), true;
+            else
+                return false;
+        }
+
+        void wait()
+        {
+            if ( check_notify() )
+                return;
+
+            int sock = PQsocket( _conn.handle() );
+            fd_set fds;
+            FD_ZERO( &fds );
+            FD_SET( sock, &fds );
+
+            if ( ::select( sock + 1, &fds, nullptr, nullptr, nullptr ) < 0 )
+                brq::raise< std::system_error >() << "select on postgres socket";
+
+            while ( check_notify() );
+        }
+
         template< typename schema >
         txn &initdb( schema s, bool clear = false );
 
