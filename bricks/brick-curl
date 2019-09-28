@@ -36,6 +36,8 @@ namespace brq
             curl_easy_setopt( _curl, CURLOPT_WRITEDATA, this );
         }
 
+        curl( curl &&o ) = default;
+
         ~curl()
         {
             curl_easy_cleanup( _curl );
