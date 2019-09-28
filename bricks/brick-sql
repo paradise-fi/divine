@@ -499,6 +499,7 @@ namespace brq::sql
     template< typename T > struct is_expr< T, std::enable_if_t< T::is_expr > > : std::true_type {};
     template< typename T > struct is_expr< T, std::enable_if_t< T::is_enum > > : std::true_type {};
     template< typename T > constexpr bool is_expr_v = is_expr< T >::value;
+    struct where_operator { const char *sql; };
 
     template< typename... args >
     struct where_expr
@@ -508,12 +509,11 @@ namespace brq::sql
         static constexpr bool is_query = false;
         static constexpr bool is_enum = false;
 
-        const char *_op;
         cons_list_t< args... > _args;
 
         template< typename... Ts >
-        where_expr( const char *op, Ts && ... ts )
-            : _op( op ), _args( ts... )
+        where_expr( Ts && ... ts )
+            : _args( ts... )
         {}
 
         where_expr() = default;
@@ -531,6 +531,8 @@ namespace brq::sql
         {
             if constexpr ( is_value< typename L::car_t > )
                 return make_cons( l.car, values( l.cdr ) );
+            else if constexpr ( std::is_same_v< typename L::car_t, where_operator > )
+                return values( l.cdr );
             else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum ||
                                 is_list_v< typename L::car_t > )
                 return values( l.cdr );
@@ -545,6 +547,8 @@ namespace brq::sql
         {
             if constexpr ( is_value< V > )
                 s << "$" << id++ << "::" << sql_type< V >();
+            else if constexpr ( std::is_same_v< V, where_operator > )
+                s << v.sql;
             else if constexpr ( is_list_v< V > )
                 print_columns( s, v, "(", ")" );
             else if constexpr ( V::is_column )
@@ -560,19 +564,9 @@ namespace brq::sql
         template< typename stream >
         stream &print( stream &s, int &id ) const
         {
-            switch ( sizeof...( args ) )
-            {
-                case 1:
-                    s << _op << "( ";
-                    print( s, _args.car, id );
-                    return s << " )";
-                case 2:
-                    s << "( ";
-                    print( s, _args.car, id );
-                    s << " " << _op << " ";
-                    print( s, _args.cdr.car, id );
-                    return s << " )";
-            }
+            s << "( ";
+            _args.each( [&]( auto v ) { print( s, v, id ); s << " "; } );
+            return s << ")";
         }
     };
 
@@ -583,9 +577,9 @@ namespace brq::sql
     template< typename A, typename B >                                              \
     auto op( A &&a, B &&b )                                             \
         -> std::enable_if_t< is_expr_v< std::decay_t< A > > || is_expr_v< std::decay_t< B > >, \
-                             where_expr< std::decay_t< A >, std::decay_t< B > > > \
+                             where_expr< std::decay_t< A >, where_operator, std::decay_t< B > > > \
     {                                                                               \
-        return { sql, a, b };                                                       \
+        return { a, where_operator{ sql }, b };                                       \
     }
 
 #define BRICK_SQL_OP(op) BRICK_SQL_OP_(operator op, #op)
@@ -612,6 +606,13 @@ BRICK_SQL_OP( & )
 BRICK_SQL_OP( | )
 
 #undef BRICK_SQL_OP
+
+    template< typename A >
+    auto is_null( A &&a ) -> std::enable_if_t< is_expr_v< std::decay_t< A > >,
+                                               where_expr< std::decay_t< A >, where_operator > >
+    {
+        return { a, where_operator{ "is null" } };
+    }
 
     struct query_base
     {
