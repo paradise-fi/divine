@@ -79,6 +79,8 @@ namespace brq
         std::vector< std::string > _stack;
         std::vector< std::string > _text;
 
+        xml_stack() { _text.emplace_back(); }
+
         virtual std::string event( std::string_view, std::string_view ) { return ""; }
         virtual void start( std::string_view n, std::vector< std::string_view > attr )
         {
