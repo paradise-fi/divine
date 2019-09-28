@@ -31,7 +31,7 @@ namespace brq
         template< template< typename > class f > using map_t = nil;
 
         template< typename F >
-        void each( const F & ) {}
+        void each( const F & ) const {}
 
         template< typename... Fs >
         auto match( Fs... ) { return std::nullopt; }
@@ -66,6 +66,13 @@ namespace brq
 
         template< typename F >
         void each( const F &f )
+        {
+            f( car );
+            cdr.each( f );
+        }
+
+        template< typename F >
+        void each( const F &f ) const
         {
             f( car );
             cdr.each( f );
