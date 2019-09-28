@@ -59,15 +59,8 @@ namespace brq::sql
     {
         std::int64_t fract;
 
-        static timestamp from_unix( time_t t )
-        {
-            return { ( int64_t( t ) - 946684800 ) * 1000000 };
-        }
-
-        time_t to_unix() const
-        {
-            return fract / 1000000 + 946684800;
-        }
+        static timestamp from_unix( time_t t ) { return { ( int64_t( t ) - 946684800 ) * 1000000 }; }
+        time_t to_unix() const { return fract / 1000000 + 946684800; }
 
         struct tm to_localtime() const
         {
@@ -75,6 +68,14 @@ namespace brq::sql
             auto t = to_unix();
             localtime_r( &t, &tm );
             return tm;
+        }
+
+        std::string to_string() const
+        {
+            char buf[200];
+            auto tm = to_localtime();
+            strftime( buf, 200, "%Y-%m-%d %H:%M %Z", &tm );
+            return buf;
         }
     };
 
