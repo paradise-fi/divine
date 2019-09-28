@@ -311,6 +311,15 @@ namespace brq::sql
                 return get< col, typename cs_t::cdr_t >( vs.cdr );
         }
 
+        template< int i > auto &get() { return get< i >( _values ); }
+        template< int i, typename vs_t > auto &get( vs_t &vs )
+        {
+            if constexpr ( i == 0 )
+                return vs.car;
+            else
+                return get< i - 1, typename vs_t::cdr_t >( vs.cdr );
+        }
+
         template< typename col >
         auto &get() { return get< col, columns_t >( _values ); }
     };
@@ -1135,4 +1144,24 @@ namespace brq
     using sql_schema      = sql::schema< args... >;
     template< typename... args >
     using sql_statement   = sql::stmt< args... >;
+}
+
+
+namespace std
+{
+    template< typename... cols >
+    struct tuple_size< brq::sql::row< cols... > >
+        : std::integral_constant< std::size_t, sizeof...( cols ) >
+    {};
+
+    template< typename col, typename... cols >
+    struct tuple_element< 0, brq::sql::row< col, cols... > >
+    {
+        using type = typename col::type;
+    };
+
+    template< size_t I, typename col, typename... cols >
+    struct tuple_element< I, brq::sql::row< col, cols... > >
+        : tuple_element< I - 1, brq::sql::row< cols... > >
+    {};
 }
