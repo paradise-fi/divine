@@ -625,6 +625,13 @@ BRICK_SQL_OP( | )
         return { a, where_operator{ "is null" } };
     }
 
+    template< typename A >
+    auto operator!( A &&a ) -> std::enable_if_t< is_expr_v< std::decay_t< A > >,
+                                                 where_expr< where_operator, std::decay_t< A > > >
+    {
+        return { where_operator{ "not" }, a };
+    }
+
     struct query_base
     {
         static constexpr bool is_column = false;
