@@ -1007,9 +1007,11 @@ BRICK_SQL_OP( | )
         conn &conn() { return _conn; }
         txn &commit()
         {
-            ASSERT( !_closed );
-            exec( "commit transaction" );
-            _closed = true;
+            if ( !_closed )
+            {
+                exec( "commit transaction" );
+                _closed = true;
+            }
             return *this;
         }
 
