@@ -697,11 +697,14 @@ BRICK_SQL_OP( | )
         }
     };
 
+    enum class join_type { inner, left, right };
+
     template< typename select, typename tab >
     struct select_join : extend< select >
     {
+        join_type _type;
         using table = tab;
-        using extend< select >::extend;
+        select_join( select &s, join_type t = join_type::inner ) : extend< select >( s ), _type( t ) {}
         auto exec() { return this->_exec( this ); }
 
         template< typename stream >
@@ -734,6 +737,14 @@ BRICK_SQL_OP( | )
             };
 
             this->_query.print( s, id );
+
+            switch ( _type )
+            {
+                case join_type::inner: s << " inner"; break;
+                case join_type::left: s << " left"; break;
+                case join_type::right: s << " right"; break;
+            }
+
             s << " join " << get_name( tab_right() ) << " on ";
 
             typename tab_right::columns().each( find_foreign_left );
@@ -760,6 +771,12 @@ BRICK_SQL_OP( | )
         template< typename table >
         select_join< select_join, table > join() { return { *this }; }
 
+        template< typename table >
+        select_join< select_join, table > left_join() { return { *this, join_type::left }; }
+
+        template< typename table >
+        select_join< select_join, table > right_join() { return { *this, join_type::right }; }
+
         template< typename... group_cols >
         group_by< select_join, group_cols... > group_by() { return { *this }; }
     };
@@ -780,6 +797,12 @@ BRICK_SQL_OP( | )
 
         template< typename table >
         select_join< select_tab, table > join() { return { *this }; }
+
+        template< typename table >
+        select_join< select_tab, table > left_join() { return { *this, join_type::left }; }
+
+        template< typename table >
+        select_join< select_tab, table > right_join() { return { *this, join_type::right }; }
 
         template< typename... group_cols >
         group_by< select_tab, group_cols... > group_by() { return { *this }; }
