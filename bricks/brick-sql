@@ -1078,7 +1078,7 @@ BRICK_SQL_OP( | )
             struct timeval tv = { timeout, 0 };
 
             if ( ::select( sock + 1, &fds, nullptr, nullptr, timeout ? &tv : nullptr ) < 0 )
-                brq::raise< std::system_error >() << "select on postgres socket";
+                brq::raise< system_error >() << "select on postgres socket";
 
             if ( !check_notify() )
                 return false;

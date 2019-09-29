@@ -142,7 +142,7 @@ namespace brq
             {
                 int res = ::write( _fd, start, amount );
                 if ( res < 0 )
-                    brq::raise< std::system_error >() <<  "writing to a file descriptor";
+                    brq::raise< system_error >() << "writing to a file descriptor";
                 amount -= res;
                 start += res;
             }
@@ -362,7 +362,7 @@ namespace brq
 #ifdef _WIN32
         char *buffer;
         if ( ( buffer = _getcwd( NULL, 0 ) ) == NULL )
-            brq::raise< std::system_error >() << "getting the current working directory";
+            brq::raise< system_error >() << "getting the current working directory";
 
         buf = buffer;
         free( buffer );
@@ -371,7 +371,7 @@ namespace brq
         size_t size = std::max( pathconf( ".", _PC_PATH_MAX ), 65536L );
         buf.resize( size );
         if ( ::getcwd( &buf.front(), size ) == nullptr )
-            brq::raise< std::system_error >() << "getting the current working directory";
+            brq::raise< system_error >() << "getting the current working directory";
         buf.resize( std::strlen( &buf.front() ) );
 #endif
         return buf;
@@ -380,20 +380,20 @@ namespace brq
     inline void chdir( std::string dir ) {
 #ifdef _WIN32
         if ( ::_chdir( dir.c_str() ) != 0 )
-            brq::raise< std::system_error >() << "changing directory";
+            brq::raise< system_error >() << "changing directory";
 #else
         if ( ::chdir( dir.c_str() ) != 0 )
-            brq::raise< std::system_error >() << "changing directory";
+            brq::raise< system_error >() << "changing directory";
 #endif
     }
 
     inline std::string mkdtemp( std::string dirTemplate ) {
 #ifdef _WIN32
         if ( ::_mktemp( &dirTemplate.front() ) == nullptr )
-            brq::raise< std::system_error >() << "creating temporary directory";
+            brq::raise< system_error >() << "creating temporary directory";
 #else
         if ( ::mkdtemp( &dirTemplate.front() ) == nullptr )
-            brq::raise< std::system_error >() << "creating temporary directory";
+            brq::raise< system_error >() << "creating temporary directory";
 #endif
         return dirTemplate;
     }
@@ -401,7 +401,7 @@ namespace brq
 #ifndef _WIN32
     inline void touch( std::string f ) {
         if ( ::utime( f.c_str(), nullptr ) != 0 )
-            brq::raise< std::system_error >() << "touching " << f;
+            brq::raise< system_error >() << "touching " << f;
     }
 #endif
 
@@ -423,7 +423,7 @@ namespace brq
             if ( errno == ENOENT )
                 return std::unique_ptr< struct stat >();
             else
-                brq::raise< std::system_error >() << "getting file information for " << pathname;
+                brq::raise< system_error >() << "getting file information for " << pathname;
         }
         return res;
     }
@@ -436,7 +436,7 @@ namespace brq
             if ( errno == ENOENT )
                 return std::unique_ptr< struct stat >();
             else
-                brq::raise< std::system_error >() << "getting file information for " << pathname;
+                brq::raise< system_error >() << "getting file information for " << pathname;
         }
         return res;
     }
@@ -461,7 +461,7 @@ namespace brq
             // throw on all errors except EEXIST. Note that EEXIST "includes the case
             // where pathname is a symbolic link, dangling or not."
             if ( errno != EEXIST )
-                brq::raise< std::system_error >() << "creating directory " << dir;
+                brq::raise< system_error >() << "creating directory " << dir;
 
             // Ensure that, if dir exists, it is a directory
             auto st = stat( dir );
@@ -515,7 +515,7 @@ namespace brq
         Fd( Args... args ) : _fd( ::open( args... ) )
         {
             if ( _fd < 0 )
-                brq::raise< std::system_error >() << "while opening file";
+                brq::raise< system_error >() << "while opening file";
         }
 
         ~Fd() { close(); }
@@ -541,17 +541,17 @@ namespace brq
     {
         int res = ::rename( src.c_str(), dst.c_str() );
         if ( res < 0 && errno != ENOENT )
-            brq::raise< std::system_error >() << "moving " << src << " to " << dst;
+            brq::raise< system_error >() << "moving " << src << " to " << dst;
     }
 
     inline void unlink( std::string fname )
     {
 #ifdef _WIN32
         if ( ::_unlink( fname.c_str() ) < 0 )
-            brq::raise< std::system_error >() << "cannot delete file" << fname;
+            brq::raise< system_error >() << "cannot delete file" << fname;
 #else
         if ( ::unlink( fname.c_str() ) < 0 )
-            brq::raise< std::system_error >() << "cannot delete file" << fname;
+            brq::raise< system_error >() << "cannot delete file" << fname;
 #endif
     }
 
@@ -564,10 +564,10 @@ namespace brq
     inline void rmdir( std::string dirname ) {
 #ifdef _WIN32
         if ( ::_rmdir( dirname.c_str() ) < 0 )
-            brq::raise< std::system_error >() << "cannot delete directory " << dirname;
+            brq::raise< system_error >() << "cannot delete directory " << dirname;
 #else
         if ( ::rmdir( dirname.c_str() ) < 0 )
-            brq::raise< std::system_error >() << "cannot delete directory " << dirname;
+            brq::raise< system_error >() << "cannot delete directory " << dirname;
 #endif
     }
 
@@ -581,7 +581,7 @@ namespace brq
         if ( r != 0 )
         {
             if ( errno != ENOENT )
-                brq::raise< std::system_error >() << "cannot delete file" << file;
+                brq::raise< system_error >() << "cannot delete file" << file;
 
             return false;
         } else
@@ -720,7 +720,7 @@ namespace brq
             using closedir_t = int (*)( DIR * );
             auto dir = std::unique_ptr< DIR, closedir_t >( ::opendir( root.c_str() ), &::closedir );
             if ( dir == nullptr )
-                brq::raise< std::system_error >() << "opening directory " << root;
+                brq::raise< system_error >() << "opening directory " << root;
 
             for ( auto de = readdir( dir.get() ); de != nullptr; de = readdir( dir.get() ) )
             {
@@ -883,10 +883,10 @@ namespace brq
         {
             std::ofstream out( std::string( file ), std::ios::binary );
             if ( !out.is_open() )
-                brq::raise< std::system_error >() << "writing file " << file;
+                brq::raise< system_error >() << "writing file " << file;
             out << data;
             if ( !out.good() )
-                brq::raise< std::system_error >() << "writing data to file " << file;
+                brq::raise< system_error >() << "writing data to file " << file;
         }
     }
 
