@@ -1064,20 +1064,26 @@ BRICK_SQL_OP( | )
                 return false;
         }
 
-        void wait()
+        bool wait( int timeout = 0 )
         {
             if ( check_notify() )
-                return;
+                return true;
 
             int sock = PQsocket( _conn.handle() );
             fd_set fds;
             FD_ZERO( &fds );
             FD_SET( sock, &fds );
 
-            if ( ::select( sock + 1, &fds, nullptr, nullptr, nullptr ) < 0 )
+            struct timeval tv = { timeout, 0 };
+
+            if ( ::select( sock + 1, &fds, nullptr, nullptr, timeout ? &tv : nullptr ) < 0 )
                 brq::raise< std::system_error >() << "select on postgres socket";
 
+            if ( !check_notify() )
+                return false;
+
             while ( check_notify() );
+            return true;
         }
 
         template< typename schema >
