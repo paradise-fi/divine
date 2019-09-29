@@ -76,23 +76,32 @@ namespace brq
 
     struct xml_stack : xml_parser
     {
-        std::vector< std::string > _stack;
+        using attrs = std::vector< std::string >;
+        using tag   = std::pair< std::string, attrs >;
+        std::vector< tag > _stack;
         std::vector< std::string > _text;
 
         xml_stack() { _text.emplace_back(); }
 
-        virtual std::string event( std::string_view, std::string_view ) { return ""; }
+        virtual std::string event( std::string_view, std::string_view text, attrs a )
+        {
+            event( text, a );
+            return "";
+        }
+
+        virtual void event( std::string_view text, attrs ) { event( text ); }
+        virtual void event( std::string_view ) {}
+
         virtual void start( std::string_view n, std::vector< std::string_view > attr )
         {
-            TRACE( "parsing", n, attr );
-            _stack.emplace_back( n );
+            TRACE( "open", std::string( _stack.size() * 2, ' ' ), n, attr );
+            _stack.emplace_back( n, attrs( attr.begin(), attr.end() ) );
             _text.emplace_back();
         }
 
         virtual void end( std::string_view n )
         {
-            TRACE( "end", n );
-            auto replace = event( n, _text.back() );
+            auto replace = event( n, _text.back(), _stack.back().second );
             _stack.pop_back();
             _text.pop_back();
             _text.back() += replace;
@@ -110,7 +119,7 @@ namespace brq
             auto i = _stack.rbegin();
             auto j = std::rbegin( il );
             while ( i != _stack.rend() && j != std::rend( il ) )
-                if ( *i++ != *j++ )
+                if ( i++->first != *j++ )
                     return false;
             return j == std::rend( il );
         }
