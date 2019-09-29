@@ -980,6 +980,7 @@ BRICK_SQL_OP( | )
     struct delete_from : query_head<>
     {
         using query_head<>::query_head;
+        stmt exec() { return std::move( stmt( this->conn(), *this ).exec() ); }
 
         template< typename stream >
         void print( stream &s, int & ) const
