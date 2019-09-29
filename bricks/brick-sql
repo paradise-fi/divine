@@ -1066,6 +1066,7 @@ BRICK_SQL_OP( | )
 
         bool wait( int timeout = 0 )
         {
+            ASSERT( _closed ); /* waiting with an open transaction causes a deadlock */
             if ( check_notify() )
                 return true;
 
