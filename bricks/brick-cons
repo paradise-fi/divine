@@ -100,7 +100,9 @@ namespace brq
         template< typename F >
         auto map( F f )
         {
-            return make_cons( f( car ), cdr.map( f ) );
+            auto car_ = f( car );
+            auto cdr_ = cdr.map( f );
+            return make_cons( car_, cdr_ );
         }
 
         template< typename L >
