@@ -80,6 +80,12 @@ namespace brq
             return v;
         }
 
+        struct error : std::runtime_error
+        {
+            int code;
+            error( int c, const char *w ) : std::runtime_error( w ), code( c ) {}
+        };
+
         curl &run()
         {
             TRACE( "request", info< string >( CURLINFO_EFFECTIVE_URL ) );
@@ -92,7 +98,7 @@ namespace brq
                            "took", info< double >( CURLINFO_TOTAL_TIME ), "seconds" );
 
             if ( code != 200 )
-                brq::raise() << "unexpected server response code " << code;
+                brq::raise< error >( code ) << "unexpected server response code " << code;
 
             return *this;
         }
