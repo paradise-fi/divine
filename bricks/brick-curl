@@ -55,6 +55,7 @@ namespace brq
 
         curl &add_arg( std::string_view n, std::string_view d )
         {
+            TRACE( "add_arg", n, d );
             curl_easy_setopt( _curl, CURLOPT_MIMEPOST, _mime );
 
             auto part = curl_mime_addpart( _mime );
@@ -65,18 +66,31 @@ namespace brq
 
         curl &set_url( std::string_view url )
         {
+            TRACE( "set_url", url);
             curl_easy_setopt( _curl, CURLOPT_URL, std::string( url ).c_str() );
             return *this;
         }
 
+        using string = std::string;
+
+        template< typename T > T info( CURLINFO i )
+        {
+            std::conditional_t< std::is_same_v< T, string >, const char *, T > v;
+            curl_easy_getinfo( _curl, i, &v );
+            return v;
+        }
+
         curl &run()
         {
-            long code;
+            TRACE( "request", info< string >( CURLINFO_EFFECTIVE_URL ) );
 
             if ( auto err = curl_easy_perform( _curl ) )
                 brq::raise() << "curl error: " << curl_easy_strerror( err );
 
-            curl_easy_getinfo( _curl, CURLINFO_RESPONSE_CODE, &code );
+            auto code = info< long >( CURLINFO_RESPONSE_CODE );
+            TRACE( "done", code, info< string >( CURLINFO_CONTENT_TYPE ),
+                           "took", info< double >( CURLINFO_TOTAL_TIME ), "seconds" );
+
             if ( code != 200 )
                 brq::raise() << "unexpected server response code " << code;
 
