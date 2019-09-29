@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <string>
+#include <tuple>
 
 namespace brq
 {
@@ -38,37 +39,30 @@ namespace brq
         {}
     };
 
-    template< typename type, typename... args >
-    void maybe_throw( args && ... as ) noexcept( false )
-    {
-        if ( std::uncaught_exceptions() ) /* terminate instead? */
-            return;
-        else
-            throw type( std::forward< args >( as )... );
-    }
-
-    template< typename exc >
+    template< typename exc, typename... args_t >
     struct construct_error : string_builder
     {
+        std::tuple< args_t... > _args;
+        construct_error( args_t... args ) : _args( args... ) {}
+
         ~construct_error() noexcept( false )
         {
-            maybe_throw< exc >( buffer() );
+            if ( std::uncaught_exceptions() )
+                return; /* terminate instead? */
+            auto args = std::tuple_cat( _args, std::make_tuple( buffer() ) );
+            std::apply( []( auto... a ) -> void { throw exc( a... ); }, args );
         }
     };
 
-    template<>
-    struct construct_error< std::system_error > : string_builder
+    struct system_error : std::system_error
     {
-        ~construct_error() noexcept( false )
-        {
-            maybe_throw< std::system_error >( errno, std::system_category(), buffer() );
-        }
+        system_error( const char *w ) : std::system_error( errno, std::system_category(), w ) {}
     };
 
-    template< typename exc = error >
-    construct_error< exc > raise()
+    template< typename exc = error, typename... args_t >
+    construct_error< exc, args_t... > raise( args_t... args )
     {
-        return {};
+        return { args... };
     }
 
     struct finally
