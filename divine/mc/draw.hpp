@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/mc/builder.hpp>
+#include <divine/ss/search.hpp>
 #include <divine/vm/memory.hpp>
 #include <divine/dbg/dot.hpp>
 #include <brick-proc>

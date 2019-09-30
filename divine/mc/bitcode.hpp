@@ -28,7 +28,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/LLVMContext.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <divine/cc/cc1.hpp>
 #include <divine/dbg/info.hpp>
 
 namespace llvm { class Module; }
@@ -110,18 +109,3 @@ private:
 
 }
 
-namespace divine::t_vm
-{
-
-static auto c2bc( std::string s )
-{
-    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
-    divine::cc::CC1 c( ctx );
-    c.mapVirtualFile( "/main.c", s );
-    auto rv = std::make_shared< mc::BitCode >( c.compile( "/main.c" ), ctx );
-    rv->_interrupts = false;
-    rv->init();
-    return rv;
-}
-
-}

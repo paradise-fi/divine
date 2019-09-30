@@ -149,31 +149,3 @@ struct Safety : Job
 };
 
 }
-
-#ifdef BRICK_UNITTEST_REG
-#include <divine/mc/job.tpp>
-#include <divine/mc/builder.hpp>
-
-namespace divine::t_mc
-{
-
-struct TestSafety
-{
-    TEST( simple )
-    {
-        auto bc = prog_int( "4", "*r - 1" );
-        int edgecount = 0, statecount = 0;
-        auto safe = mc::make_job< mc::Safety >(
-            bc, ss::passive_listen(
-                [&]( auto, auto, auto ) { ++edgecount; },
-                [&]( auto ) { ++statecount; } ) );
-        safe->start( 1 );
-        safe->wait();
-        ASSERT_EQ( edgecount, 4 );
-        ASSERT_EQ( statecount, 5 );
-    }
-};
-
-}
-
-#endif

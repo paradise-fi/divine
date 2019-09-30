@@ -22,6 +22,7 @@
 #include <divine/mc/job.hpp>
 #include <divine/mc/builder.hpp>
 #include <divine/mc/trace.hpp>
+#include <brick-query>
 
 namespace divine {
 namespace mc {

@@ -17,6 +17,7 @@
  */
 
 #include <divine/mc/machine.hpp>
+#include <divine/mc/t-common.hpp>
 
 namespace divine::t_mc
 {
@@ -27,7 +28,7 @@ namespace divine::t_mc
     {
         auto prog( std::string p )
         {
-            return t_vm::c2bc(
+            return c2bc(
                 "void *__vm_obj_make( int, int );"s +
                 "void *__vm_ctl_get( int );"s +
                 "void __vm_test_loop( int, void (*)() );"s +
