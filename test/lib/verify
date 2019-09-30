@@ -72,7 +72,7 @@ if test -n "$EXPORT"; then
         echo load $dir/$f $f
         for dep in $deps; do
             if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
-            echo load $dep $(echo $dep | sed -e s,$srcroot/*,,)
+            echo load $dep $(echo $dep | sed -re "s,($srcroot|$dir)/*,,")
         done
     done
     if test -z "$expect"; then
