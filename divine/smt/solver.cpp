@@ -106,7 +106,7 @@ template< typename Core >
 bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
 {
     this->reset();
-    auto e = this->extract( heap );
+    auto e = this->extract( heap, 1 );
     auto b = this->builder();
     auto query = evaluate( e, e.read( ptr ) );
     this->add( mk_bin( b, Op::Eq, 1, query, b.constant( 1, 1 ) ) );
