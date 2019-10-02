@@ -1124,7 +1124,11 @@ BRICK_SQL_OP( | )
         template< typename t >
         std::enable_if_t< t::is_table > listen() { exec() << "LISTEN " << get_name( t() ); }
 
-        void notify( std::string_view sv ) { exec() << "NOTIFY " << sv; }
+        void notify( std::string_view ch, std::string_view p = "" )
+        {
+            exec() << "NOTIFY " << ch << ", '" << p << "'";
+        }
+
         void listen( std::string_view sv ) { exec() << "LISTEN " << sv; }
 
         struct notification
