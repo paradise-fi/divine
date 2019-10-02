@@ -681,31 +681,22 @@ BRICK_SQL_OP( | )
     }
 
     template< typename select, typename... cols >
-    struct group_by : extend< select >
-    {
-        using extend< select >::extend;
-        auto exec() { return this->_exec( this ); }
-
-        template< typename stream >
-        void print( stream &s, int &id ) const
-        {
-            this->_query.print( s, id );
-            s << " group by ";
-            print_columns( s, cons_list( cols()... ) );
-        }
-    };
+    struct group_by;
 
     template< typename query, typename expr >
     struct where_clause : extend< query >
     {
         expr _expr;
-        where_clause( query q, const expr &e ) : extend< query >( q ), _expr( e ) {}
+        const char *_clause;
+        where_clause( query q, const expr &e, const char *c = "where" )
+            : extend< query >( q ), _expr( e ), _clause( c )
+        {}
 
         template< typename stream >
         void print( stream &s, int &id ) const
         {
             this->_query.print( s, id );
-            s << " where ";
+            s << " " << _clause << " ";
             _expr.print( s, id );
         }
 
@@ -720,6 +711,24 @@ BRICK_SQL_OP( | )
             this->_query.bind( s );
             _expr.bind( s );
         }
+    };
+
+    template< typename select, typename... cols >
+    struct group_by : extend< select >
+    {
+        using extend< select >::extend;
+        auto exec() { return this->_exec( this ); }
+
+        template< typename stream >
+        void print( stream &s, int &id ) const
+        {
+            this->_query.print( s, id );
+            s << " group by ";
+            print_columns( s, cons_list( cols()... ) );
+        }
+
+        template< typename we_t >
+        where_clause< group_by, we_t > having( const we_t &we ) { return { *this, we, "having" }; }
     };
 
     enum class join_type { inner, left, right };
