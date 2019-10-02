@@ -1151,7 +1151,7 @@ BRICK_SQL_OP( | )
                 return { "", "", false };
         }
 
-        notification wait( int timeout = 0 )
+        notification wait( std::optional< time_t > deadline = std::nullopt )
         {
             ASSERT( _closed ); /* waiting with an open transaction causes a deadlock */
             if ( auto n = check_notify() )
@@ -1162,9 +1162,11 @@ BRICK_SQL_OP( | )
             FD_ZERO( &fds );
             FD_SET( sock, &fds );
 
-            struct timeval tv = { timeout, 0 };
+            auto now = ::time( nullptr );
+            struct timeval tv = { !deadline || now >= *deadline ? 0 : *deadline - now, 0 };
+            TRACE( "awaiting notifications, timeout =", tv.tv_sec );
 
-            if ( ::select( sock + 1, &fds, nullptr, nullptr, timeout ? &tv : nullptr ) < 0 )
+            if ( ::select( sock + 1, &fds, nullptr, nullptr, deadline ? &tv : nullptr ) < 0 )
                 brq::raise< system_error >() << "select on postgres socket";
 
             return check_notify();
