@@ -97,12 +97,29 @@ create table pool_log( id serial primary key not null,
                        used integer not null,
                        held integer not null );
 
+-- cumulative past pool_log results, as the table grows too fast
+create table pool_stats( execution integer references execution( id ) not null,
+                         stamp_start timestamp not null,
+                         stamp timestamp not null,
+                         pool integer references pool( id ) not null,
+                         items integer not null,
+                         max_used integer not null,
+                         held integer not null,
+                         primary key( execution, pool ) );
+
 create table search_log( id serial primary key not null,
                          seq integer not null,
                          stamp timestamp default current_timestamp not null,
                          execution integer references execution( id ) not null,
                          states integer not null,
                          queued integer not null );
+
+-- cumulative past search_log results, as the table grows too fast
+create table search_stats( execution integer primary key references execution( id ) not null,
+                           stamp_start timestamp not null,
+                           stamp timestamp not null,
+                           max_states integer not null,
+                           queued integer not null );
 
 -- benchmarking job: model + instance → execution
 create table job( id        serial primary key not null,
