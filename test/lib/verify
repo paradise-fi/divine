@@ -24,6 +24,7 @@ opts=$(eval echo $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
 ccopt=$(eval echo $(getopt CC_OPTS $1))
 extrasrc=$(eval echo $(getopt EXTRA_SRCS $1))
+expect=$(eval echo $(getopt EXPECT $1))
 gtest=
 skipcc=$(getopt SKIP_CC $1)
 
@@ -74,8 +75,12 @@ if test -n "$EXPORT"; then
             echo load $dep $(echo $dep | sed -e s,$srcroot/*,,)
         done
     done
-    check=$(readlink -f $(dirname $0)/check)
-    (cd $dir ; $check verify $name)
+    if test -z "$expect"; then
+        check=$(readlink -f $(dirname $0)/check)
+        (cd $dir ; $check verify $name)
+    else
+        echo "expect" "$expect"
+    fi
 else
     name="$1"
 fi
