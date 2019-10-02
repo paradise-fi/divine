@@ -1119,25 +1119,39 @@ BRICK_SQL_OP( | )
         autoexec exec() { return { *this }; }
 
         template< typename t >
-        std::enable_if_t< t::is_table > notify() { exec() << "NOTIFY " << get_name( t() ); }
+        std::enable_if_t< t::is_table > notify() { notify( get_name( t() ) ); }
 
         template< typename t >
         std::enable_if_t< t::is_table > listen() { exec() << "LISTEN " << get_name( t() ); }
 
-        bool check_notify()
+        void notify( std::string_view sv ) { exec() << "NOTIFY " << sv; }
+        void listen( std::string_view sv ) { exec() << "LISTEN " << sv; }
+
+        struct notification
+        {
+            std::string channel, payload;
+            bool valid;
+            explicit operator bool() { return valid; }
+        };
+
+        notification check_notify()
         {
             PQconsumeInput( _conn.handle() );
             if ( auto notify = PQnotifies( _conn.handle() ) )
-                return PQfreemem( notify ), true;
+            {
+                notification rv{ notify->relname, notify->extra, true };
+                PQfreemem( notify );
+                return rv;
+            }
             else
-                return false;
+                return { "", "", false };
         }
 
-        bool wait( int timeout = 0 )
+        notification wait( int timeout = 0 )
         {
             ASSERT( _closed ); /* waiting with an open transaction causes a deadlock */
-            if ( check_notify() )
-                return true;
+            if ( auto n = check_notify() )
+                return n;
 
             int sock = PQsocket( _conn.handle() );
             fd_set fds;
@@ -1149,11 +1163,7 @@ BRICK_SQL_OP( | )
             if ( ::select( sock + 1, &fds, nullptr, nullptr, timeout ? &tv : nullptr ) < 0 )
                 brq::raise< system_error >() << "select on postgres socket";
 
-            if ( !check_notify() )
-                return false;
-
-            while ( check_notify() );
-            return true;
+            return check_notify();
         }
 
         template< typename schema >
