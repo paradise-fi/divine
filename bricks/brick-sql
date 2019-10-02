@@ -155,10 +155,12 @@ namespace brq::sql
         static std::string_view column_name( const CT &ct ) { return get_name( ct ); }
 
         using type = T;
+        using table = void;
         static constexpr bool is_nullable = _nullable;
         static constexpr bool is_primary = false;
         static constexpr bool is_foreign = false;
         static constexpr bool is_constraint = false;
+        static constexpr bool is_qualified = false;
 
         static constexpr bool is_expr = true;
         static constexpr bool is_column = true;
@@ -181,6 +183,8 @@ namespace brq::sql
     struct in_table : col
     {
         using table = tab;
+        using bare = col;
+        static constexpr bool is_qualified = true;
 
         template< typename CT >
         static std::string_view column_name( const CT &ct )
@@ -711,6 +715,11 @@ BRICK_SQL_OP( | )
 
     enum class join_type { inner, left, right };
 
+    template< typename T >
+    using underlying = std::conditional_t< T::is_view && T::columns::car_t::is_qualified &&
+                                           T::columns::car_t::is_primary,
+                                           typename T::columns::car_t::table, T >;
+
     template< typename select, typename tab >
     struct select_join : extend< select >
     {
@@ -725,27 +734,38 @@ BRICK_SQL_OP( | )
             using tab_left = typename select::table;
             using tab_right = tab;
 
+            using tab_left_u  = underlying< tab_left >;
+            using tab_right_u = underlying< tab_right >;
+
             std::string foreign_column;
             std::string primary_column;
 
             auto find_foreign_left = [&]( auto t )
             {
                 if constexpr ( t.is_foreign )
-                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_left > )
+                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_left_u > )
                         foreign_column = t.column_name( t );
             };
 
             auto find_foreign_right = [&]( auto t )
             {
                 if constexpr ( t.is_foreign )
-                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_right > )
+                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_right_u > )
                         foreign_column = t.column_name( t );
             };
 
             auto find_primary = [&]( auto t )
             {
                 if ( t.is_primary )
-                    primary_column = t.column_name( t );
+                {
+                    if constexpr ( t.is_qualified )
+                    {
+                        using bare = typename decltype( t )::bare;
+                        primary_column = bare().column_name( bare() );
+                    }
+                    else
+                        primary_column = t.column_name( t );
+                }
             };
 
             this->_query.print( s, id );
