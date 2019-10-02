@@ -831,6 +831,36 @@ BRICK_SQL_OP( | )
         group_by< select_join, group_cols... > group_by() { return { *this }; }
     };
 
+    template< typename query >
+    struct raw_sql : extend< query >
+    {
+        raw_sql( const query &q, std::string_view sv ) : extend< query >( q ), _sql( sv ) {}
+        std::string _sql;
+        auto exec() { return this->_exec( this ); }
+
+        template< typename stream >
+        void print( stream &s, int &id ) const
+        {
+            this->_query.print( s, id );
+            s << _sql;
+        }
+
+        template< typename table >
+        select_join< raw_sql, table > join() { return { *this }; }
+
+        template< typename table >
+        select_join< raw_sql, table > left_join() { return { *this, join_type::left }; }
+
+        template< typename table >
+        select_join< raw_sql, table > right_join() { return { *this, join_type::right }; }
+
+        template< typename... group_cols >
+        group_by< raw_sql, group_cols... > group_by() { return { *this }; }
+
+        template< typename we_t >
+        where_clause< raw_sql, we_t > where( const we_t &we ) { return { *this, we }; }
+    };
+
     template< typename select, typename tab >
     struct select_tab : extend< select >
     {
@@ -859,6 +889,8 @@ BRICK_SQL_OP( | )
 
         template< typename we_t >
         where_clause< select_tab, we_t > where( const we_t &we ) { return { *this, we }; }
+
+        raw_sql< select_tab > raw_sql( std::string_view sv ) { return { *this, sv }; }
     };
 
     template< typename select, typename... cols >
@@ -910,6 +942,8 @@ BRICK_SQL_OP( | )
             s << "select ";
             print_columns( s, cons_list( cols()... ) );
         }
+
+        raw_sql< select_cols > raw_sql( std::string_view sv ) { return { *this, sv }; }
     };
 
     template< typename T, typename X = void >
