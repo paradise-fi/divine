@@ -1,0 +1,13 @@
+#!/bin/sh
+# -*- sh -*-
+
+# Prepares environment, switches to a temporary work directory
+. lib/testcase
+
+# Generates a script for the divcheck tool
+verify --export $@ > dcscript
+
+# Print the script when error occurs
+cat dcscript | capture
+
+divcheck dcscript

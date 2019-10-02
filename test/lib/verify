@@ -5,6 +5,7 @@ if test "$1" = "--export"; then
     EXPORT=1
     SRC_ROOT=.
     shift
+    set -e
 else
     test -e lib/testcase && SILENT=1 . lib/testcase
     EXPORT= # unset

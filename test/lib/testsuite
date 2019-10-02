@@ -15,8 +15,8 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --expand pkg.c:lib/pkgc-unpack \
     --expand pkg.cpp:lib/pkgc-unpack \
     --expand bt:lib/brick-unpack \
-    --interpreter cpp:lib/verify \
-    --interpreter c:lib/verify \
+    --interpreter cpp:lib/divcheck \
+    --interpreter c:lib/divcheck \
     --interpreter pkg:lib/pkg \
     --interpreter pdc:lib/pdclib-test \
     --interpreter bld:lib/build \

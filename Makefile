@@ -67,6 +67,7 @@ NORMAL = divine unit functional website check llvm-utils clang \
          test-divine test-lart test-bricks shoop
 TARGETS = $(NORMAL) $(SPECIAL)
 
+functional: divcheck
 ${NORMAL}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
 
