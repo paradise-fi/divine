@@ -533,30 +533,23 @@ namespace brq::sql
 
         where_expr() = default;
 
-        auto values( nil ) const { return nil(); }
-
         template< typename T >
         static constexpr bool is_value = std::is_convertible_v< T, std::string_view > ||
                                          std::is_convertible_v< T, std::u32string_view > ||
                                          std::is_convertible_v< T, timestamp > ||
                                          std::is_convertible_v< T, int >;
 
-        template< typename L >
-        auto values( const L &l ) const
+        template< typename stmt, typename V >
+        auto bind( stmt &s, V v ) const
         {
-            if constexpr ( is_value< typename L::car_t > )
-                return make_cons( l.car, values( l.cdr ) );
-            else if constexpr ( std::is_same_v< typename L::car_t, where_operator > )
-                return values( l.cdr );
-            else if constexpr ( is_list_v< typename L::car_t > )
-                return values( l.cdr );
-            else if constexpr ( L::car_t::is_column || L::car_t::is_query || L::car_t::is_enum )
-                return values( l.cdr );
+            if constexpr ( is_value< V > )
+                s.bind( v );
+            else if constexpr ( std::is_same_v< V, where_operator > ) /* nothing */ ;
+            else if constexpr ( is_list_v< V > ) /* nothing */ ;
+            else if constexpr ( V::is_column || V::is_enum ) /* nothing */ ;
             else
-                return l.car.values().cat( values( l.cdr ) );
+                v.bind( s );
         }
-
-        auto values() const { return values( _args ); }
 
         template< typename stream, typename V >
         void print( stream &s, const V &v, int &id ) const
@@ -570,7 +563,7 @@ namespace brq::sql
             else if constexpr ( V::is_column )
                 s << v.column_name( v );
             else if constexpr ( V::is_query )
-                s << "( " << v << " )";
+                s << "( ", v.print( s, id ), s << " )";
             else if constexpr ( V::is_enum )
                 s << get_name( v, '\'' );
             else
@@ -583,6 +576,12 @@ namespace brq::sql
             s << "( ";
             _args.each( [&]( auto v ) { print( s, v, id ); s << " "; } );
             return s << ")";
+        }
+
+        template< typename stmt >
+        void bind( stmt &s ) const
+        {
+            _args.each( [&]( auto &v ) { bind( s, v ); } );
         }
     };
 
@@ -653,6 +652,7 @@ BRICK_SQL_OP( | )
         conn &conn() { return _query.conn(); }
         extend( query q ) : _query( q ) {}
 
+        template< typename stmt >
         void bind( stmt &s ) { _query.bind( s ); }
 
         template< typename T >
@@ -713,10 +713,12 @@ BRICK_SQL_OP( | )
         group_by< where_clause, group_cols... > group_by() { return { *this }; }
 
         auto exec() { return this->_exec( this ); }
-        void bind( typename query::stmt &s )
+
+        template< typename stmt >
+        void bind( stmt &s )
         {
             this->_query.bind( s );
-            s.bind_list( _expr.values() );
+            _expr.bind( s );
         }
     };
 
@@ -877,6 +879,8 @@ BRICK_SQL_OP( | )
         txn &txn() { return _txn; }
         conn &conn();
         query_head( sql::txn &t ) : _txn( t ) {}
+
+        template< typename stmt >
         void bind( stmt & ) {}
     };
 
@@ -951,7 +955,9 @@ BRICK_SQL_OP( | )
     struct update_set : extend< update >
     {
         auto exec() { return this->_exec( this ); }
-        void bind( typename update::stmt &s ) { this->_query.bind( s ); s.bind_list( _values ); }
+
+        template< typename stmt >
+        void bind( stmt &s ) { this->_query.bind( s ); s.bind_list( _values ); }
 
         cons_list_t< typename cols::type... > _values;
         update_set( update u, const typename cols::type &... v )
