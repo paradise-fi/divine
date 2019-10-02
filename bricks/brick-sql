@@ -44,6 +44,8 @@ namespace brq::sql
         {
             int stat;
             char *dem = abi::__cxa_demangle( typeid( T ).name(), nullptr, nullptr, &stat );
+            if ( strchr( dem, '<' ) )
+                *strchr( dem, '<' ) = 0;
             name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
             TRACE( dem, "→", name );
             std::free( dem );
@@ -189,32 +191,23 @@ namespace brq::sql
         }
     };
 
-    template< typename col >
-    struct max : col
+    template< template< typename > class self, typename col >
+    struct function : col
     {
         template< typename CT >
         static std::string_view column_name( const CT &ct )
         {
-            static auto name = std::string( "max( " ) +
-                               std::string( col().column_name( col() ) ) + " )";
+            static auto name = std::string( get_name( self< col >(), 0 ) ) + "( " +
+                               std::string( col().column_name( col() ) ) + " )::" +
+                               sql_type< typename self< col >::type >();
             return name;
         }
     };
 
-    template< typename col >
-    struct count : col
-    {
-        template< typename CT >
-        static std::string_view column_name( const CT &ct )
-        {
-            static auto name = std::string( "count( " ) +
-                std::string( col().column_name( col() ) ) + " )::integer";
-            return name;
-        }
-
-        using type = int32_t;
-    };
-
+    template< typename col > struct count : function< count, col > { using type = int32_t; };
+    template< typename col > struct min   : function< min, col >   { using type = typename col::type; };
+    template< typename col > struct max   : function< max, col >   { using type = typename col::type; };
+    template< typename col > struct every : function< every, col > { using type = typename col::type; };
 
     template< typename tab, typename col, bool _nullable = false >
     struct foreign_key : col
