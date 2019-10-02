@@ -588,13 +588,13 @@ namespace brq::sql
     template< typename T >
     using unarray_t = std::conditional_t< std::is_array_v< T >, std::remove_extent_t< T > *, T >;
 
-#define BRICK_SQL_OP_(op, sql)                                                      \
-    template< typename A, typename B >                                              \
-    auto op( A &&a, B &&b )                                             \
-        -> std::enable_if_t< is_expr_v< std::decay_t< A > > || is_expr_v< std::decay_t< B > >, \
+#define BRICK_SQL_OP_(op, sql)                                                                    \
+    template< typename A, typename B >                                                            \
+    auto op( A &&a, B &&b )                                                                       \
+        -> std::enable_if_t< is_expr_v< std::decay_t< A > > || is_expr_v< std::decay_t< B > >,    \
                              where_expr< std::decay_t< A >, where_operator, std::decay_t< B > > > \
-    {                                                                               \
-        return { a, where_operator{ sql }, b };                                       \
+    {                                                                                             \
+        return { a, where_operator{ sql }, b };                                                   \
     }
 
 #define BRICK_SQL_OP(op) BRICK_SQL_OP_(operator op, #op)
