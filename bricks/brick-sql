@@ -282,6 +282,13 @@ namespace brq::sql
                 raise< error >() << "connecting to " << s << " " << errmsg();
         }
 
+        void exec( std::string sql )
+        {
+            auto result = PQexec( handle(), sql.c_str() );
+            if ( PQresultStatus( result ) != PGRES_COMMAND_OK )
+                raise< error >() << "executing " << sql << ": " << errmsg();
+        }
+
         ~conn()
         {
             PQfinish( _handle );
