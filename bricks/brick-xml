@@ -70,7 +70,7 @@ namespace brq
         static void _text( void *instance, const char *data, int len )
         {
             xml_parser *i = static_cast< xml_parser * >( instance );
-                    return i->text( std::string_view( data, len ) );
+            return i->text( std::string_view( data, len ) );
         }
     };
 
