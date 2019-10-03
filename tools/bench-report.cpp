@@ -22,6 +22,7 @@
 #include <sql.h>
 #include <sqlext.h>
 #include <variant>
+
 namespace benchmark
 {
 
@@ -207,6 +208,28 @@ struct Markdown final : ReportTable
     }
 };
 
+
+struct CSV final : ReportTable
+{
+    void format_header( std::ostream &o ) const noexcept
+    {
+        int i = 0;
+        for ( const auto & f : fields )
+            o << ( i++ ? ", " : "" ) << f.name;
+
+        o << std::endl;
+    }
+
+    void format_row( std::ostream &o, const Record &rec ) const noexcept
+    {
+        int i = 0;
+        for ( const auto & f : fields )
+            o << ( i++ ? ", " : "" ) << column_value( rec, f );
+
+        o << std::endl;
+    }
+};
+
 void ReportFormat::from_sql( nanodbc::result && res )
 {
     while ( res.next() )
@@ -373,6 +396,8 @@ std::unique_ptr< ReportFormat > ReportBase::make_report() const noexcept
 {
     if ( _format == "markdown" )
         return std::make_unique< Markdown >();
+    else if ( _format == "csv" )
+        return std::make_unique< CSV >();
     else
         UNREACHABLE( "unknown report format: " + _format );
 }
