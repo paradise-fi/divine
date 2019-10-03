@@ -64,7 +64,7 @@ void createInit( llvm::Module &module, const std::vector< CtorDtorEntry >& entri
 
 // Replaces iteration over llvm.global_ctors and indirect call to each entry with
 // functions that explicitly call all entries in proper order
-void breakCtors( llvm::Module &module ) {
+void fuseCtors( llvm::Module &module ) {
   auto ctor_arr = module.getGlobalVariable( "llvm.global_ctors" );
 
   auto entries = getCtors( ctor_arr );
@@ -83,17 +83,17 @@ void breakCtors( llvm::Module &module ) {
       "divine_global_dtors_fini" );
 }
 
-struct BreakCtors {
+struct FuseCtors {
 
   void run( llvm::Module &m ) {
-    breakCtors( m );
+    fuseCtors( m );
   }
 
 };
 
-PassMeta breakCtorsPass() {
-  return passMeta< BreakCtors >(
-      "break-ctors", "Replaces indirect calls to llvm.global_ctors with explicit calls" );
+PassMeta fuseCtorsPass() {
+  return passMeta< FuseCtors >(
+      "fuse-ctors", "Replaces indirect calls to llvm.global_ctors with explicit calls" );
 }
 
 } // namespace lart::divine
