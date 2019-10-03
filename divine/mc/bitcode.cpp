@@ -157,6 +157,10 @@ void BitCode::do_lart()
     lart.setup( lart::FixPHI::meta() );
 
     // User defined passes are run first so they don't break instrumentation
+
+    // Libc included in dios expects that fuseCtorsPass inserts some functions
+    lart.setup( lart::divine::fuseCtorsPass() );
+
     for ( auto p : _lart )
         lart.setup( p );
 
