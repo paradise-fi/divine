@@ -9,14 +9,17 @@ char* __progname;
 
 extern char* program_invocation_short_name __attribute__((alias ("__progname")));
 
-extern "C" {
-  extern void divine_global_ctors_init();
-  extern void divine_global_dtors_fini();
+extern "C"
+{
+    extern void __lart_call_global_ctors();
+    extern void __lart_call_global_dtors();
 }
 
-namespace {
+namespace
+{
 
-struct CtorDtorEntry {
+struct CtorDtorEntry
+{
     int32_t prio;
     void (*fn)();
     void *ignored; // should be used only by linker to discard entries
@@ -50,7 +53,8 @@ __invisible static void run_ctors_dtors( const char *name, bool reverse )
 
 void freeMainArgs( char** argv ) noexcept {
     char **orig = argv;
-    while( *argv ) {
+    while( *argv )
+    {
         __vm_obj_free( *argv );
         ++argv;
     }
@@ -59,18 +63,19 @@ void freeMainArgs( char** argv ) noexcept {
 
 } // namespace
 
-extern "C" {
+extern "C"
+{
     __attribute__((noinline,weak)) void __lart_globals_initialize() {}
 }
 
 void __dios_run_ctors()
 {
-    divine_global_ctors_init();
+    __lart_call_global_ctors();
 }
 
 void __dios_run_dtors()
 {
-    divine_global_dtors_fini();
+    __lart_call_global_dtors();
 }
 
 extern "C" void _exit( int rv )
