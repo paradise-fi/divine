@@ -7,6 +7,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart::divine {
 // TODO: With LLVM-8.0 we will need to add CallBr at multiple places
 
+// Copy argument list of called instruction and prepend it with called value
 template< typename CallType >
 std::vector< llvm::Value *> getArgumentList( CallType *inst ) {
   std::vector< llvm::Value *> new_args{ inst->getCalledValue() };
@@ -45,9 +46,8 @@ struct is_iterable< T, std::void_t< decltype( std::begin( std::declval< T >() ) 
 template< typename T >
 constexpr bool is_iterable_v = is_iterable< T >::value;
 
-// Base class
 template< typename ... Next >
-struct CS {
+struct CallTypes {
 
   template< typename Func >
   void apply( Func ) {
@@ -60,16 +60,18 @@ struct CS {
   }
 };
 
-template < typename T, typename... Next >
-struct CS< T, Next... > {
-  std::vector< T * > data;
-  CS< Next... > next;
 
-  using ValueTy = T;
+// Store chosen instructions into their own vector (casted to their type)
+template < typename T, typename... Next >
+struct CallTypes< T, Next... > {
+
+  std::vector< T * > data;
+  CallTypes< Next... > next;
 
   // Idea is that value in data is already casted to correct type
   template< typename Func >
-  void apply( Func f ) {
+  void apply( Func f )
+  {
     for ( auto& d : data ) {
       f( d );
     }
@@ -78,7 +80,8 @@ struct CS< T, Next... > {
 
   // Doest it cast to T? Add it to data, otherwise try next
   template< typename From >
-  std::enable_if_t< !is_iterable_v< From > > insert( From &v ) {
+  std::enable_if_t< !is_iterable_v< From > > insert( From &v )
+  {
     if ( auto casted = llvm::dyn_cast< T >( &v ) ) {
       data.push_back( casted );
       return;
@@ -87,7 +90,8 @@ struct CS< T, Next... > {
   }
 
   template< typename From >
-  std::enable_if_t< is_iterable_v< From > > insert( From &from ) {
+  std::enable_if_t< is_iterable_v< From > > insert( From &from )
+  {
     for ( auto &f : from ) {
       insert( f );
     }
@@ -96,37 +100,38 @@ struct CS< T, Next... > {
 
   template< typename From, typename UnaryPredicate >
   auto filter( From &from, UnaryPredicate pred ) ->
-  std::enable_if_t< !is_iterable_v< From > > {
-
+  std::enable_if_t< !is_iterable_v< From > >
+  {
     if ( pred( from ) )
       insert( from );
   }
 
   template< typename From, typename UnaryPredicate >
   auto filter( From &from, UnaryPredicate pred ) ->
-  std::enable_if_t< is_iterable_v< From > > {
-
+  std::enable_if_t< is_iterable_v< From > >
+  {
     for ( auto &f : from ) {
       filter( f, pred );
     }
   }
 
   template< typename From >
-  CS< T, Next... >( From &from ) {
+  CallTypes< T, Next... >( From &from ) {
     insert( from );
   }
 
   template< typename From, typename UnaryPredicate >
-  CS< T, Next... >( From &from, UnaryPredicate pred ) {
+  CallTypes< T, Next... >( From &from, UnaryPredicate pred ) {
     filter( from, pred );
   }
 
 
-  CS< T, Next... >() = default;
+  CallTypes< T, Next... >() = default;
 
 };
 
- llvm::Function *StubIndirection::_Wrap( llvm::Type *original ) {
+llvm::Function *IndirectCallsStubber::_wrap( llvm::Type *original ) {
+
   auto under =
     llvm::dyn_cast< llvm::FunctionType >( original->getPointerElementType() );
 
@@ -138,34 +143,38 @@ struct CS< T, Next... > {
   auto wrapper = llvm::Function::Create(
       n_f_type, llvm::GlobalValue::LinkageTypes::InternalLinkage,
       wrap_prefix + std::to_string(_counter++), &_module );
+
   wrapper->addFnAttr( llvm::Attribute::NoInline );
 
-  _func2tail.insert( { wrapper, { wrapper, {}, _CreateNewNode( wrapper ) } } );
+  _func2tail.insert( { wrapper, { wrapper, {}, _createNewNode( wrapper ) } } );
   _wrappers.insert( wrapper->getName().str() );
+
   return wrapper;
 }
 
-void StubIndirection::Stub() {
+// Replaces all indirect calls or invoked with empty function that contains only
+// unreachable instruction
+void IndirectCallsStubber::stub() {
 
   auto is_indirect_call = [&]( auto &inst ) {
     auto cs = llvm::CallSite( &inst );
     return ( cs.isCall() || cs.isInvoke() ) && cs.isIndirectCall();
   };
 
-  auto calls = CS< llvm::CallInst, llvm::InvokeInst >( _module, is_indirect_call );
+  auto calls = CallTypes< llvm::CallInst, llvm::InvokeInst >( _module, is_indirect_call );
 
   auto wrap = [&]( auto &c ) {
-    auto wrapper = this->_Wrap( c->getCalledValue()->getType() );
+    auto wrapper = this->_wrap( c->getCalledValue()->getType() );
     createCall( c, wrapper );
   };
 
   calls.apply( wrap );
 }
 
-llvm::BasicBlock *StubIndirection::_CreateCallBB(
+llvm::BasicBlock *IndirectCallsStubber::_createCallBB(
     llvm::Function *where, llvm::Function *target ) {
 
-  auto bb = llvm::BasicBlock::Create( _context, "C." + target->getName(),  where );
+  auto bb = llvm::BasicBlock::Create( _ctx, "C." + target->getName(),  where );
   llvm::IRBuilder<> ir{ bb };
 
   std::vector< llvm::Value *> forward_args;
@@ -193,11 +202,11 @@ llvm::BasicBlock *StubIndirection::_CreateCallBB(
   return bb;
 }
 
-llvm::BasicBlock *StubIndirection::_CreateCase(
+llvm::BasicBlock *IndirectCallsStubber::_createCase(
     llvm::Function *where, llvm::Function *target ) {
 
-  auto next = _CreateNewNode( where );
-  auto succes = _CreateCallBB( where, target );
+  auto next = _createNewNode( where );
+  auto succes = _createCallBB( where, target );
 
   auto current = _func2tail.at( where ).tail;
   ASSERT( llvm::isa< llvm::UnreachableInst > ( current->back() ) );
