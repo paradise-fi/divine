@@ -19,7 +19,8 @@
 #   abidirs   : A list of relative paths to create under an include directory
 #               in the libc++ build directory.
 #
-macro(setup_abi_lib abidefines abilib abifiles abidirs)
+
+macro(setup_abi_lib abidefines abishared abistatic abifiles abidirs)
   list(APPEND LIBCXX_COMPILE_FLAGS ${abidefines})
   set(LIBCXX_CXX_ABI_INCLUDE_PATHS "${LIBCXX_CXX_ABI_INCLUDE_PATHS}"
     CACHE PATH
@@ -99,20 +100,21 @@ if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
 elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxabi")
   if (LIBCXX_CXX_ABI_INTREE)
     # Link against just-built "cxxabi" target.
-    if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY)
-        set(CXXABI_LIBNAME cxxabi_static)
-    else()
-        set(CXXABI_LIBNAME cxxabi_shared)
-    endif()
-    set(LIBCXX_LIBCPPABI_VERSION "2" PARENT_SCOPE)
+    set(CXXABI_SHARED_LIBNAME cxxabi_shared)
+    set(CXXABI_STATIC_LIBNAME cxxabi_static)
   else()
     # Assume c++abi is installed in the system, rely on -lc++abi link flag.
     set(CXXABI_SHARED_LIBNAME "c++abi")
     set(CXXABI_STATIC_LIBNAME "c++abi")
   endif()
-  setup_abi_lib("-DLIBCXX_BUILDING_LIBCXXABI"
-    ${CXXABI_LIBNAME} "cxxabi.h;__cxxabi_config.h" ""
-    )
+  if (LIBCXX_CXX_ABI_SYSTEM)
+    set(HEADERS "")
+  else()
+    set(HEADERS "cxxabi.h;__cxxabi_config.h")
+  endif()
+  setup_abi_lib(
+    "-DLIBCXX_BUILDING_LIBCXXABI"
+    "${CXXABI_SHARED_LIBNAME}" "${CXXABI_STATIC_LIBNAME}" "${HEADERS}" "")
 elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxrt")
   setup_abi_lib(
     "-DLIBCXXRT"
