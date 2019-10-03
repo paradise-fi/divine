@@ -1,5 +1,5 @@
 /* TAGS: min c */
-/* ERRSPEC: pthread_mutex_lock */
+/* EXPECT: --result error --symbol pthread_mutex_lock */
 
 #include "demo.h"
 

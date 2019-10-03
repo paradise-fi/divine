@@ -1,7 +1,7 @@
 /* TAGS: c++ */
 #include <cassert>
 
-/* ERRSPEC: __unexpected */
+/* EXPECT: --result error --symbol __unexpected */
 
 int x = 0, y = 0, z = 0;
 

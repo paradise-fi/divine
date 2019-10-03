@@ -1,5 +1,5 @@
 /* TAGS: min c */
-/* ERRSPEC: test_fun */
+/* EXPECT: --result error --symbol test_fun */
 // NOTE: for some reason LLVM has wrong debug info for IndirectBr (wrong line
 // number), so we can't use /* ERROR */
 #include <stdio.h>

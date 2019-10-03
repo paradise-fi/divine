@@ -1,6 +1,6 @@
 /* TAGS: min sym c */
 /* VERIFY_OPTS: --lart abstrubs --symbolic */
-/* ERRSPEC: error trace: Non-zero exit code: 1 */
+/* EXPECT: --result error --symbol _Exit */
 
 int foo();
 int baz();

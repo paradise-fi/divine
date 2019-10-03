@@ -1,7 +1,7 @@
 /* TAGS: min c++ */
 #include <cassert>
 
-/* ERRSPEC: __terminate */
+/* EXPECT: --result error --symbol __terminate */
 
 void foo() {
     throw 4;

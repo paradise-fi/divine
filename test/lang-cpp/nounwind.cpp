@@ -1,5 +1,5 @@
 /* TAGS: min c++ */
-/* ERRSPEC: _Unwind_RaiseException */
+/* EXPECT: --result error --symbol _Unwind_RaiseException */
 
 __attribute__((noinline)) void bar() { throw 0; }
 
