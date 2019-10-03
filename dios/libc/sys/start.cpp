@@ -22,7 +22,7 @@ struct CtorDtorEntry {
     void *ignored; // should be used only by linker to discard entries
 };
 
-__local_invisible void sort( CtorDtorEntry *begin, CtorDtorEntry *end, bool reverse )
+__invisible void sort( CtorDtorEntry *begin, CtorDtorEntry *end, bool reverse )
 {
     for ( auto item = begin; item != end; ++item ) {
         for ( auto j = item; j != begin; j-- ) {
@@ -36,7 +36,7 @@ __local_invisible void sort( CtorDtorEntry *begin, CtorDtorEntry *end, bool reve
     }
 }
 
-__local_invisible static void run_ctors_dtors( const char *name, bool reverse )
+__invisible static void run_ctors_dtors( const char *name, bool reverse )
 {
     auto *meta = __md_get_global_meta( name );
     if ( !meta )
