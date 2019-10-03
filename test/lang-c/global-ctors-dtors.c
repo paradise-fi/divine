@@ -24,7 +24,7 @@ DTOR(3);
 DTOR(2);
 DTOR(1);
 
-__attribute__((destructor(0))) dt_last() {
+__attribute__((destructor(0))) void dt_last() {
     assert( x == 0 );
     assert( y == 1);
     // check that destructors are called
