@@ -19,149 +19,200 @@
 #include <tools/divbench.hpp>
 #include <divine/ui/util.hpp>
 
+#include <sql.h>
+#include <sqlext.h>
+#include <variant>
 namespace benchmark
 {
 
 using namespace divine::ui;
 
-struct Table
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+struct ReportTable : ReportFormat
 {
-    using Value = brick::types::Union< int, MSecs, std::string >;
-    using Row = std::vector< Value >;
-    std::vector< Row > _rows;
-    std::vector< std::string > _cols;
-    std::set< std::string > _intcols, _timecols;
-    std::vector< int > _width;
-    std::vector< std::function< std::string( Value ) > > _format;
+    using Type = ReportFormat::Field::Type;
 
-    template< typename... Args >
-    void cols( Args... args )
-    {
-        for ( std::string c : { args... } )
-            _cols.push_back( c );
-        _format.resize( _cols.size() );
-    }
-
-    template< typename... Args >
-    void intcols( Args... ic ) { for ( std::string i : { ic... } ) _intcols.insert( i ); }
-
-    template< typename... Args >
-    void timecols( Args... tc ) { for ( std::string t : { tc... } ) _timecols.insert( t ); }
-
-    template< typename F >
-    void set_format( std::string col, F f )
-    {
-        for ( int c = 0; c < int( _cols.size() ); ++ c )
-            if ( _cols[ c ] == col )
-                _format[ c ] = f;
-    }
-
-    void sum()
-    {
-        if ( !_rows.size() )
-            return;
-        Row total = _rows[ 0 ];
-        for ( int r = 1; r < int( _rows.size() ); ++ r )
-            for ( unsigned c = 0; c < _rows[ r ].size(); ++c )
-                _rows[ r ][ c ].match( [&]( std::string ) { total[ c ] = std::string(); },
-                                       [&]( auto v ) { total[ c ].get< decltype( v ) >() += v; } );
-        total[ 0 ] = std::string( "**total**" );
-        _rows.push_back( total );
-    }
-
-    void fromSQL( nanodbc::result res )
-    {
-        ASSERT_EQ( _cols.size(), res.columns() );
-        while ( res.next() )
-        {
-            Row r;
-            for ( unsigned c = 0; c < _cols.size(); ++c )
-            {
-                if ( res.is_null( c ) )
-                    r.emplace_back( "-" );
-                else if ( _intcols.count( _cols[ c ] ) )
-                    r.emplace_back( res.get< int >( c ) );
-                else if (  _timecols.count( _cols[ c ] ) )
-                    r.emplace_back( MSecs( res.get< int >( c ) ) );
-                else
-                    r.emplace_back( res.get< std::string >( c ) );
-            }
-            _rows.push_back( r );
+    struct field_compare {
+        bool operator()( const Field& a, const Field& b) const {
+            return a.name < b.name;
         }
+    };
+
+    std::map< Field, size_t, field_compare > column_width;
+
+    virtual ~ReportTable() = default;
+
+    auto column( std::string name ) const noexcept
+    {
+        return std::find_if( fields.cbegin(), fields.cend(), [&] ( const auto & field ) {
+            return field.name == name;
+        } );
     }
 
-    std::string format( int c, Value v, int w )
+    auto column( std::string name ) noexcept
     {
-        ASSERT_LT( c, _format.size() );
-        if ( _format[ c ] )
-            return _format[ c ]( v );
-        return format( v, w );
+        return std::find_if( fields.begin(), fields.end(), [&] ( const auto & field ) {
+            return field.name == name;
+        } );
     }
 
-    std::string format( Value v, int w )
+    Record::Value record_value( const nanodbc::result & row, int col ) const noexcept
     {
-        std::stringstream str;
-        v.match( [&]( MSecs m ) { str << interval_str( m ); },
-                 [&]( int i )
-                 {
-                     if ( i >= 10000 )
-                     {
-                         int prec = 1;
-                         std::string s = "k";
-                         auto f = double( i ) / 1000;
-                         if ( f >= 10000 ) f /= 1000, s = "M";
-                         else if ( f >= 1000 ) prec = 0;
-                         str << std::fixed << std::setprecision( prec ) << f << " " << s;
-                     }
-                     else
-                         str << i;
-                 },
-                 [&]( std::string s ) { str << s << ( w ? std::string( w - s.size(), ' ' ) : "" ); } );
-        return str.str();
+        auto msec = [] ( int val ) { return std::chrono::milliseconds( val ); };
+
+        if ( auto mem = column( row.column_name( col ) ); mem != fields.end() ) {
+            if ( row.is_null( col ) )
+                return Record::null_value();
+
+            switch ( mem->type ) {
+                case Field::Type::integer:
+                    return row.get< int >( col );
+                case Field::Type::time:
+                    return msec( row.get< int >( col ) );
+                case Field::Type::string:
+                    return row.get< std::string >( col );
+            }
+        }
+
+        return Record::null_value();
     }
 
-    int width( int c )
+    Record record_from_sql( const nanodbc::result & row ) const noexcept final
     {
-        int w = _cols[ c ].size();
-        return w;
+        Record record;
+        for ( int col = 0; col < row.columns(); ++col )
+            record.add_member( row.column_name( col ), record_value( row, col ) );
+        return record;
     }
+
+    std::string format( const Record::Value & value ) const noexcept
+    {
+        std::stringstream ss;
+
+        std::visit( overloaded {
+            [&] ( std::chrono::milliseconds ms ) { ss << interval_str( ms ); },
+            [&] ( int i ) {
+                if ( i >= 10000 )
+                {
+                    int prec = 1;
+                    std::string s = "k";
+                    auto f = double( i ) / 1000;
+                    if ( f >= 10000 ) f /= 1000, s = "M";
+                    else if ( f >= 1000 ) prec = 0;
+                    ss << std::fixed << std::setprecision( prec ) << f << " " << s;
+                }
+                else
+                    ss << i;
+            },
+            [&] ( std::string s ) { ss << s; },
+            [&] ( Record::null_value ) { ss << ""; }
+        }, value );
+
+        return ss.str();
+    }
+
+    void compute_widths() noexcept
+    {
+        for ( auto &field : fields )
+            column_width[ field ] = field.name.size();
+
+        for ( const auto & rec : records )
+            for ( const auto & [name, value] : rec.data )
+                if ( auto field = column( name ); field != fields.end() )
+                    column_width[ *field ] = std::max( column_width[ *field ], format( value ).size() );
+    }
+
+    auto column_align( const Field & field ) const noexcept
+    {
+        if ( field.type == Field::Type::string )
+            return std::left;
+        return std::right;
+    }
+
+    std::string column_value( const Record &rec, const Field & field ) const noexcept
+    {
+        if ( rec.data.count( field.name ) )
+            return format( rec.data.at( field.name ) );
+        return "";
+    };
+
 
     template< typename T >
-    void format_row( std::ostream &o, T r, bool use_fmt = true )
+    T sum_members( const std::string & member ) const noexcept
     {
-        o << "| ";
-        for ( unsigned c = 0; c < _cols.size(); ++c )
-        {
-            auto w = ( _intcols.count( _cols[ c ] ) || _timecols.count( _cols[ c ] ) ) ? 0 : _width[ c ];
-            o << std::setw( _width[ c ] ) << ( use_fmt ? format( c, r[ c ], w ) : format( r[c], w ) );
-            if ( c + 1 != _cols.size() )
-                o << " | ";
+        T sum{};
+        for ( const auto & rec : records ) {
+            if ( rec.data.count( member ) ) {
+                auto val = rec.data.at( member );
+                if ( std::holds_alternative< T >( val ) )
+                    sum += std::get< T >( val );
+            }
         }
-        o << " |" << std::endl;
+        return sum;
     }
 
-    void compute_widths()
+    Record summary() const
     {
-        _width.clear();
-        std::transform( _cols.begin(), _cols.end(), std::back_inserter( _width ),
-                        []( std::string c ) { return c.size(); } );
-        for ( unsigned c = 0; c < _cols.size(); ++c )
-            for ( auto r : _rows )
-                _width[ c ] = std::max( _width[ c ], int( format( c, r[ c ], 0 ).size() ) );
+        if ( !records.size() )
+            return {};
+
+        Record total;
+        total.add_member( fields.begin()->name, "**total**" );
+        for ( const auto & field : fields )
+            if ( field.type == Type::integer )
+                total.add_member( field.name, sum_members< int >( field.name ) );
+            else if ( field.type == Type::time )
+                total.add_member( field.name, sum_members< std::chrono::milliseconds >( field.name ) );
+
+        return total;
     }
 
-    void format( std::ostream &o )
+    void format( std::ostream &os ) noexcept
     {
+        records.emplace_back( summary() );
         compute_widths();
-        format_row( o, _cols, false );
-        o << "|-";
-        for ( unsigned c = 0; c < _cols.size(); ++c )
-            o << std::string( _width[ c ], '-' ) << ( c + 1 == _cols.size() ? "-|" : "-|-" );
+        format_header( os );
+        for ( const auto & rec : records )
+           format_row( os, rec );
+    }
+
+    virtual void format_header( std::ostream &os ) const noexcept = 0;
+    virtual void format_row( std::ostream &os, const Record &val ) const noexcept = 0;
+};
+
+
+struct Markdown final : ReportTable
+{
+    void format_header( std::ostream &o ) const noexcept
+    {
+        o << "|";
+        for ( const auto & field : fields )
+            o << " " << column_align( field ) << std::setw( column_width.at( field ) ) << field.name << " |";
+        o << "\n|";
+        for ( const auto & field : fields )
+            o << '-' << std::string( column_width.at( field ), '-' ) << "-|";
         o << std::endl;
-        for ( auto r : _rows )
-            format_row( o, r );
+    }
+
+    void format_row( std::ostream &o, const Record &rec ) const noexcept
+    {
+        o << "|";
+        for ( const auto & field : fields )
+            o << " " << column_align( field ) << std::setw( column_width.at( field ) )
+              << column_value( rec, field ) << " |";
+        o << std::endl;
+
     }
 };
+
+void ReportFormat::from_sql( nanodbc::result && res )
+{
+    while ( res.next() )
+        records.emplace_back( this->record_from_sql( res ) );
+}
+
 
 void ReportBase::find_instances()
 {
@@ -318,8 +369,18 @@ void Report::list_instances()
         list_build( r );
 }
 
+std::unique_ptr< ReportFormat > ReportBase::make_report() const noexcept
+{
+    if ( _format == "markdown" )
+        return std::make_unique< Markdown >();
+    else
+        UNREACHABLE( "unknown report format: " + _format );
+}
+
 void Report::results()
 {
+    using Type = ReportFormat::Field::Type;
+
     find_instances();
 
     if ( _instance_ids.size() != 1 )
@@ -330,10 +391,12 @@ void Report::results()
         std::cout << char( 27 ) << "[2J" << char( 27 ) << "[;H";
 
     std::stringstream q;
-    q << "select instid, name, "
-      << ( _by_tag ? "count( modid ), " : "coalesce(variant, ''), result, " )
-      << ( _by_tag ? "sum( states )" : "states" ) << ", "
-      << ( _by_tag ? "sum(time_search), sum(time_ce), " : "time_search, time_ce, " )
+    q << "select instid as instance, "
+      << ( _by_tag ? "name as tag, " : "name as model, " )
+      << ( _by_tag ? "count( modid ) as models, " : "coalesce(variant, '') as variant, result, " )
+      << ( _by_tag ? "sum( states ) as states" : "states" ) << ", "
+      << ( _by_tag ? "sum(time_search) as search, sum(time_ce) as ce, "
+                   : "time_search as search, time_ce as ce, " )
       << ( _by_tag ? "(count( modid ) - sum(cast(correct as integer))) as wrong" : "correct" )
       << " from (select instance.id as instid, "
       << ( _by_tag ? "tag.name" : "model.name" ) << " as name, "
@@ -369,18 +432,29 @@ void Report::results()
     for ( unsigned i = 0; i < _tag.size(); ++i )
         find.bind( i, _tag[ i ].c_str() );
 
-    Table res;
+    auto report = make_report();
 
-    if ( _by_tag )
-        res.cols( "instance", "tag", "models", "states", "search", "ce", "wrong" );
-    else
-        res.cols( "instance", "model", "variant", "result", "states", "search", "ce", "correct" );
+    if ( _by_tag ) {
+        report->add_fields( { { "instance", Type::string  }
+                            , { "tag"     , Type::string }
+                            , { "models"  , Type::integer }
+                            , { "states"  , Type::integer }
+                            , { "search"  , Type::time }
+                            , { "ce"      , Type::time }
+                            , { "wrong"   , Type::string } } );
+    } else {
+        report->add_fields( { { "instance", Type::string }
+                            , { "model"   , Type::string }
+                            , { "variant" , Type::string }
+                            , { "result"  , Type::string }
+                            , { "states"  , Type::integer }
+                            , { "search"  , Type::time }
+                            , { "ce"      , Type::time }
+                            , { "correct" , Type::string } } );
+    }
 
-    res.timecols( "search", "ce" );
-    res.intcols( "models", "states" );
-    res.fromSQL( find.execute() );
-    res.sum();
-    res.format( std::cout );
+    report->from_sql( find.execute() );
+    report->format( std::cout );
 
     if ( _watch )
     {
@@ -394,7 +468,7 @@ void Compare::run()
     find_instances();
 
     if ( _fields.empty() )
-        _fields = { "time_search", "states" };
+        _fields = { { "time_search", "search" }, { "states", "states" } };
     if ( _instance_ids.empty() )
         throw brick::except::Error( "At least one --instance must be specified." );
 
@@ -402,20 +476,20 @@ void Compare::run()
     std::string x0 = "x" + std::to_string( _instance_ids[ 0 ] );
 
     if ( _by_tag )
-        q << "select tag.name, count(" << x0 << ".modid) ";
+        q << "select tag.name as tag, count(" << x0 << ".modid) as models";
     else
-        q << "select " << x0 << ".modname, " << x0 << ".modvar ";
+        q << "select " << x0 << ".modname as model, " << x0 << ".modvar as variant";
 
-    for ( auto f : _fields )
+    for ( const auto& [f, as] : _fields )
         for ( auto i : _instance_ids )
-            q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << "." << f << ") ";
+            q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << "." << as << ") as " << as << "_" << i;
     q << " from ";
 
     for ( auto it = _instance_ids.begin(); it != _instance_ids.end(); ++it )
     {
         q << "(select model.id as modid, coalesce(model.variant, '') as modvar, model.name as modname";
-        for ( auto f : _fields )
-            q << ", " << _agg << "(" << f << ") as " << f << " ";
+        for ( const auto& [f, as] : _fields )
+            q << ", " << _agg << "(" << f << ") as " << as << " ";
         q << " from model join job on model.id = job.model"
           << " join execution on job.execution = execution.id "
           << " where job.instance = ? and job.status = 'D' and execution.correct and ( ";
@@ -439,32 +513,37 @@ void Compare::run()
     else
         q << " order by " << x0 << ".modname";
 
-    Table res;
-    if ( _by_tag )
-        res.cols( "tag", "models" ), res.intcols( "models" );
-    else
-        res.cols( "model", "variant" );
-
-    for ( auto f : _fields )
-        for ( auto i : _instance_ids )
-        {
-            auto k = std::to_string( i ) + "/" + f;
-            res.cols( k );
-            if ( brick::string::startsWith( f, "time" ) )
-                res.timecols( k );
-            if ( f == "states" )
-                res.intcols( k );
-        }
-
     nanodbc::statement find( _conn, q.str() );
     for ( int i = 0; i < int( _instance_ids.size() ); ++i )
         find.bind( i, &_instance_ids[ i ] );
     for ( unsigned i = 0; i < _tag.size(); ++i )
         find.bind( _instance_ids.size() + i, _tag[ i ].c_str() );
 
-    res.fromSQL( find.execute() );
-    res.sum();
-    res.format( std::cout );
+    using Field = ReportFormat::Field;
+    using Type = Field::Type;
+
+    auto report = make_report();
+
+    if ( _by_tag ) {
+        report->add_fields( { { "tag", Type::string }
+                            , { "models", Type::integer } } );
+    } else {
+        report->add_fields( { { "model", Type::string }
+                            , { "variant", Type::string } } );
+    }
+
+    for ( const auto & [name, as] : _fields ) {
+        for ( auto i : _instance_ids ) {
+            auto field = as + "_" + std::to_string( i );
+            if ( brick::string::startsWith( name, "time" ) )
+                report->add_field( { field, Type::time } );
+            else
+                report->add_field( { field, Type::integer } );
+        }
+    }
+
+    report->from_sql( find.execute() );
+    report->format( std::cout );
 }
 
 }

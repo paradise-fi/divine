@@ -26,6 +26,8 @@
 #include <brick-except>
 #include <brick-fs>
 
+#include <chrono>
+
 namespace benchmark
 {
 
@@ -117,14 +119,65 @@ struct Schedule : WithModel, virtual GetInstance
     void run() override;
 };
 
+
+struct Record
+{
+    using null_value = std::monostate;
+    using Value = std::variant< null_value, int, std::string, std::chrono::milliseconds >;
+
+    std::map< std::string, Value > data;
+
+    void add_member( std::string name, Value value ) {
+        data.emplace( name, value );
+    }
+};
+
+
+struct ReportFormat
+{
+    struct Field
+    {
+        enum class Type { string, integer, time };
+
+        std::string name;
+        Type type;
+    };
+
+    std::vector< Field > fields;
+    std::vector< Record > records;
+
+    void add_field( Field && f ) noexcept
+    {
+        fields.push_back( std::move( f ) );
+    }
+
+    void add_fields( std::vector< Field > && fs ) noexcept
+    {
+        for ( auto && f : fs )
+            add_field( std::move( f ) );
+    }
+
+    virtual ~ReportFormat() = default;
+
+    virtual void format( std::ostream &os ) noexcept = 0;
+    virtual Record record_from_sql( const nanodbc::result & row ) const noexcept = 0;
+
+    void from_sql( nanodbc::result && res );
+};
+
+
 struct ReportBase : WithModel
 {
     bool _by_tag = false, _watch = false;
     std::vector< std::string > _tag;
     std::string _result = "VE";
     std::string _agg = "avg";
+    std::string _format = "markdown";
     std::vector< std::vector< std::string > > _instances;
     std::vector< int > _instance_ids;
+
+    std::unique_ptr< ReportFormat > make_report() const noexcept;
+
     void find_instances();
     void find_instances( std::vector< std::string > );
 };
@@ -151,7 +204,7 @@ struct Report : ReportBase
 
 struct Compare : ReportBase
 {
-    std::vector< std::string > _fields;
+    std::map< std::string, std::string > _fields;
     void run() override;
 };
 
