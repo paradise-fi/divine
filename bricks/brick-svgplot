@@ -1,0 +1,315 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+#pragma once
+
+#include <vector>
+#include <utility>
+#include <string>
+#include <sstream>
+#include <initializer_list>
+#include <map>
+#include <variant>
+#include <limits>
+#include <cmath>
+#include <brick-assert>
+
+namespace brq
+{
+    namespace brq_impl
+    {
+        constexpr double lerp( double a, double b, double t )
+        {
+            return a + t * ( b - a );
+        }
+
+        constexpr double inverse_lerp( double a, double b, double v )
+        {
+            return ( v - a ) / ( b - a );
+        }
+
+        // Transforms a value in [from_a, from_b] to a value in [to_a, to_b] while keeping the start:v:end ratios
+        constexpr double lerp_transform( double to_a, double to_b, double from_a, double from_b, double v )
+        {
+            return lerp( to_a, to_b, inverse_lerp( from_a, from_b, v ) );
+        }
+
+        template < typename Rounder >
+        constexpr double _siground( double num, int digits, Rounder round )
+        {
+            if ( num == 0.0 )
+                return 0.0;
+
+            const double n = std::ceil( std::log10( num ) ) + 1 - digits;
+            return std::pow( 10, n ) * round( std::abs( num ) / std::pow( 10, n ) );
+        }
+
+        constexpr double sigceil( double num, int digits )
+        {
+            return _siground( num, digits, []( double in ){ return std::ceil( in ); } );
+        }
+
+        constexpr double sigfloor( double num, int digits )
+        {
+            return _siground( num, digits, []( double in ){ return std::floor( in ); } );
+        }
+    }
+
+    struct plotter
+    {
+        struct line
+        {
+            std::string col;
+            std::vector< double > y_vals;
+
+            line() = default;
+            line( std::string c ) : col( std::move( c ) ) {}
+
+            void val( double v )
+            {
+                y_vals.push_back( v );
+            }
+        };
+
+        // The total width and height of the resulting svg
+        int _width;
+        int _height;
+
+        // How many rows will be there?
+        int _rows;
+
+        // How much of the viewport should be padded (for text and other objects)
+        // (in multiples of height and width)
+        const double _pad_top = 0.1;
+        const double _pad_bottom = 0.1;
+        const double _pad_left = 0.1;
+        const double _pad_right = 0.1;
+
+        // Displacement of axis description in pixels
+        const double _x_text_displacement = +10;
+        const double _y_text_displacement = -10;
+
+        // Data rounding
+        const int _significant_digits = 2;
+
+        std::map< std::string, line > _lines;
+        std::vector< std::string > _column_names;
+
+        plotter( int width, int height, std::vector< std::string > cols, int rows ) : _width( width ), _height( height ),
+                _rows( rows ), _column_names( std::move( cols ) )
+        {
+        }
+
+        void add_data_line( std::string description, std::string colour )
+        {
+            _lines[ std::move( description ) ] = line( std::move( colour ) );
+        }
+
+        line& line_by_name( const std::string &desc )
+        {
+            return _lines.at( desc );
+        }
+
+        int points_per_line() const
+        {
+            ASSERT( _lines.size() );
+
+            const int vals = _lines.begin()->second.y_vals.size();
+            for ( const auto &[n, l] : _lines )
+                ASSERT_EQ( l.y_vals.size(), vals );
+        
+            return vals;
+        }
+
+        std::string svg() const
+        {
+            using namespace brq_impl;
+            using svg_val = std::variant< std::string, double >;
+            using svg_attr = std::pair< std::string, svg_val >;
+            using svg_attr_list = std::initializer_list< svg_attr >;
+
+            auto s = std::stringstream();
+
+            auto open = [&]( const std::string& tag, svg_attr_list attrs, bool close )
+            {
+                s << "<" << tag;
+                if ( attrs.size() )
+                    s << " ";
+                for ( const auto &[name, val] : attrs )
+                {
+                    s << name << "=\"";
+                    std::visit( [&]( const auto &v ){ s << v; }, val );
+                    s << "\" ";
+                }
+                if ( close )
+                    s << "/";
+                s << ">\n";
+            };
+
+            auto close = [&]( const std::string& tag )
+            {
+                s << "</" << tag << ">\n";
+            };
+
+            // Prologue
+            open( "svg", {
+                { "width", _width },
+                { "height", _height },
+                { "xmlns", "http://www.w3.org/2000/svg" }
+            }, false );
+            
+            // X axis     
+            const double x_start_x = _width * _pad_left;
+            const double x_end_x = _width * ( 1 - _pad_right );
+            const double x_start_y = _height * ( 1 - _pad_bottom );
+            const double x_end_y = x_start_y;
+
+            open( "line", {
+                { "x1", x_start_x },
+                { "x2", x_end_x },
+                { "y1", x_start_y },
+                { "y2", x_end_y },
+                { "stroke", "black" },
+                { "stroke-width", 2 }
+            }, true );
+            
+            // Y axis
+            const double y_start_x = _width * _pad_left;
+            const double y_end_x = y_start_x;
+            const double y_start_y = _height * ( 1 - _pad_bottom );
+            const double y_end_y = _height * _pad_top;
+
+            open( "line", {
+                { "x1", y_start_x },
+                { "x2", y_end_x },
+                { "y1", y_start_y },
+                { "y2", y_end_y },
+                { "stroke", "black" },
+                { "stroke-width", 2 }
+            }, true );
+
+            // Calculate the x values of data point lines     
+            const int points = points_per_line();
+            ASSERT_EQ( _column_names.size(), points );
+            
+            auto columns = std::vector< std::pair< std::string, double > >();
+            const double data_area_width = x_end_x - x_start_x;
+            const double width_per_segment = data_area_width / points;
+            double current_x = x_start_x + width_per_segment / 2.0;
+            for ( int i = 0; i < points; ++i )
+            {
+                columns.emplace_back( _column_names[i], current_x );
+                current_x += width_per_segment;
+            }
+
+            // Draw the shadow lines
+            /*for ( const auto &[ name, x_pos ] : columns )
+            {
+                open( "line", {
+                    { "x1", x_pos },
+                    { "x2", x_pos },
+                    { "y1", y_start_y },
+                    { "y2", y_end_y },
+                    { "stroke", "gray" },
+                    { "stroke-width", 1 }
+                }, true );
+            }*/
+
+            // Show column names
+            for ( const auto &[ name, x_pos ] : columns )
+            {
+                const double y_pos = y_start_y + _x_text_displacement;
+                open( "text", {
+                    { "x", x_pos },
+                    { "y", y_pos },
+                    { "text-anchor", "middle" },
+                    { "dominant-baseline", "hanging" }
+                }, false );
+
+                s << name;
+
+                close( "text" );
+            }
+
+            // Rows
+            double max_value = -std::numeric_limits< double >::infinity();
+            double min_value = std::numeric_limits< double >::infinity();   
+            for ( const auto &[ _, line ] : _lines )
+            {
+                for ( auto val : line.y_vals )
+                {
+                    if ( val > max_value )
+                        max_value = val;
+                    if ( val < min_value )
+                        min_value = val;
+                }
+            }
+
+            auto rows = std::vector< std::pair< double, double > >();
+            const double data_area_height = y_end_y - y_start_y;
+            const double height_per_row = data_area_height / _rows;
+            const double data_range = sigceil( max_value, _significant_digits )
+                - sigfloor( min_value, _significant_digits );
+            const double step = data_range / _rows;
+            double current_val = sigfloor( min_value, _significant_digits );
+            double current_y = y_start_y;
+            for ( int i = 0; i <= _rows; ++i )
+            {
+                 rows.emplace_back( current_val, current_y );
+                 current_val += step;
+                 current_y += height_per_row;
+            }
+
+            for ( const auto &[desc, y_pos] : rows )
+            {
+                open( "line", {
+                    { "x1", x_start_x },
+                    { "x2", x_end_x },
+                    { "y1", y_pos },
+                    { "y2", y_pos},
+                    { "stroke", "gray" },
+                    { "stroke-width", 1 },
+                    { "stroke-dasharray", "2 1" }
+                }, true );
+
+                open( "text", {
+                    { "x", x_start_x + _y_text_displacement },
+                    { "y", y_pos },
+                    { "text-anchor", "end" },
+                    { "dominant-baseline", "middle" }
+                }, false );
+
+                s << desc;
+
+                close( "text" );
+            }
+
+            // Finally, the plotted data
+            for ( const auto &[ _, line ] : _lines )
+            {
+                auto points_builder = std::stringstream();
+                
+                auto it = columns.cbegin();
+                for ( double val : line.y_vals )
+                {
+                    const double viewbox_x = it->second;
+                    const double viewbox_y = lerp_transform( y_start_y, y_end_y, min_value, max_value, val );
+
+                    points_builder << viewbox_x << "," << viewbox_y << " ";
+                    ++it;
+                }
+
+                open( "polyline", {
+                    { "points", points_builder.str() },
+                    { "fill", "none" },
+                    { "stroke", line.col }
+                }, true );
+            }
+
+            close("svg");
+
+            return s.str();
+        }
+    };
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
