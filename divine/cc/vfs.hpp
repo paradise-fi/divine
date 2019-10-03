@@ -101,7 +101,9 @@ namespace divine::cc
 
         std::error_code setCurrentWorkingDirectory( const llvm::Twine &path ) override
         {
+            auto oldpwd = _cwd;
             _cwd = brick::fs::isAbsolute( path.str() ) ? path.str() : brick::fs::joinPath( _cwd, path.str() );
+            ASSERT_EQ( oldpwd, _cwd );
             return std::error_code();
         }
 
@@ -129,11 +131,9 @@ namespace divine::cc
 
         VFS() : _cwd( brick::fs::getcwd() ) {}
 
-        // Transform a path in 'p' into the canonical form (absolute, no '.' or '..' symbols)
         std::string normal( std::string p )
         {
-            auto abs = brick::fs::isAbsolute( p ) ? p : brick::fs::joinPath( _cwd, p );
-            return brick::fs::normalize( abs );
+            return brick::fs::normalize( p );
         }
 
         auto status( const llvm::Twine &_path ) ->
