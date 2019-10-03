@@ -52,7 +52,7 @@ struct Expect : ui::LogSink
 {
     bool _ok, _found = true, _setup = false, _armed = false;
     mc::Result _result;
-    std::string _cmd, _location;
+    std::string _cmd, _location, _symbol;
 
     void check()
     {
@@ -78,7 +78,8 @@ struct Expect : ui::LogSink
         auto bt = [&]( int ) { active = false; };
         auto chk = [&]( auto dn )
         {
-            if ( dn.attribute( "location" ) == _location )
+            if ( dn.attribute( "location" ) == _location ||
+                    !_symbol.empty() && dn.attribute( "symbol" ) == _symbol )
             {
                 if ( active ) _found = true;
                 if ( !_found && !active )
@@ -141,6 +142,7 @@ void execute( std::string script_txt, F... prepare )
 
         auto o_expect = ui::cmd::make_option_set( cli.validator() )
             .option( "--result {result}", &Expect::_result, "verification result" )
+            .option( "[--symbol {string}]", &Expect::_symbol, "symbol of the expected error" )
             .option( "[--location {string}]", &Expect::_location, "location of the expected error" );
         auto o_load = ui::cmd::make_option_set( cli.validator() )
             .option( "{string}+", &Load::args, "file path, file name" );
