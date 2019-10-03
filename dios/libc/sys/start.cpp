@@ -9,6 +9,11 @@ char* __progname;
 
 extern char* program_invocation_short_name __attribute__((alias ("__progname")));
 
+extern "C" {
+  extern void divine_global_ctors_init();
+  extern void divine_global_dtors_fini();
+}
+
 namespace {
 
 struct CtorDtorEntry {
@@ -60,12 +65,12 @@ extern "C" {
 
 void __dios_run_ctors()
 {
-    run_ctors_dtors( "llvm.global_ctors", false );
+    divine_global_ctors_init();
 }
 
 void __dios_run_dtors()
 {
-    run_ctors_dtors( "llvm.global_dtors", true );
+    divine_global_dtors_fini();
 }
 
 extern "C" void _exit( int rv )
