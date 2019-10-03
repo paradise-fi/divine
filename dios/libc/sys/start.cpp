@@ -25,33 +25,8 @@ struct CtorDtorEntry
     void *ignored; // should be used only by linker to discard entries
 };
 
-__invisible void sort( CtorDtorEntry *begin, CtorDtorEntry *end, bool reverse )
+void freeMainArgs( char** argv ) noexcept
 {
-    for ( auto item = begin; item != end; ++item ) {
-        for ( auto j = item; j != begin; j-- ) {
-            if ( reverse ? j->prio < (j - 1)->prio : (j - 1)->prio < j->prio )
-                break;
-            // Swap
-            auto tmp = *j;
-            *j = *( j - 1 );
-            *( j - 1 ) = tmp;
-        }
-    }
-}
-
-__invisible static void run_ctors_dtors( const char *name, bool reverse )
-{
-    auto *meta = __md_get_global_meta( name );
-    if ( !meta )
-        return;
-    auto *begin = reinterpret_cast< CtorDtorEntry * >( meta->address ),
-         *end = begin + meta->size / sizeof( CtorDtorEntry );
-    sort( begin, end, reverse );
-    for ( ; begin != end; ++begin )
-        begin->fn();
-}
-
-void freeMainArgs( char** argv ) noexcept {
     char **orig = argv;
     while( *argv )
     {
