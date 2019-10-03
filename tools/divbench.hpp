@@ -202,9 +202,23 @@ struct Report : ReportBase
     }
 };
 
-struct Compare : ReportBase
+struct CompareBase : ReportBase
+{
+    std::unique_ptr< ReportFormat > get_comparison_report( const std::map< std::string, std::string > &fields );
+};
+
+struct Compare : CompareBase
 {
     std::map< std::string, std::string > _fields;
+    void run() override;
+};
+
+struct Plot : CompareBase
+{
+    std::string _output_file;
+    std::string _field = "time_search";
+    int _width = 800, _height = 600, _rows = 10;
+
     void run() override;
 };
 

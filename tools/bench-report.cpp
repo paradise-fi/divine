@@ -16,12 +16,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <brick-assert>
+#include <brick-svgplot>
+
 #include <tools/divbench.hpp>
 #include <divine/ui/util.hpp>
 
 #include <sql.h>
 #include <sqlext.h>
 #include <variant>
+#include <algorithm>
 
 namespace benchmark
 {
@@ -487,14 +491,14 @@ void Report::results()
     }
 }
 
-void Compare::run()
+std::unique_ptr< ReportFormat > CompareBase::get_comparison_report( const std::map< std::string, std::string > &fields )
 {
     find_instances();
 
     if ( _fields.empty() )
         _fields = { { "time_search", "search" }, { "states", "states" } };
     if ( _instance_ids.empty() )
-        throw brq::error( "At least one --instance must be specified." );
+        throw brick::except::Error( "At least one --instance must be specified." );
 
     std::stringstream q;
     std::string x0 = "x" + std::to_string( _instance_ids[ 0 ] );
@@ -504,7 +508,7 @@ void Compare::run()
     else
         q << "select " << x0 << ".modname as model, " << x0 << ".modvar as variant";
 
-    for ( const auto& [f, as] : _fields )
+    for ( const auto& [f, as] : fields )
         for ( auto i : _instance_ids )
             q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << "." << as << ") as " << as << "_" << i;
     q << " from ";
@@ -512,7 +516,7 @@ void Compare::run()
     for ( auto it = _instance_ids.begin(); it != _instance_ids.end(); ++it )
     {
         q << "(select model.id as modid, coalesce(model.variant, '') as modvar, model.name as modname";
-        for ( const auto& [f, as] : _fields )
+        for ( const auto& [f, as] : fields )
             q << ", " << _agg << "(" << f << ") as " << as << " ";
         q << " from model join job on model.id = job.model"
           << " join execution on job.execution = execution.id "
@@ -556,7 +560,7 @@ void Compare::run()
                             , { "variant", Type::string } } );
     }
 
-    for ( const auto & [name, as] : _fields ) {
+    for ( const auto & [name, as] : fields ) {
         for ( auto i : _instance_ids ) {
             auto field = as + "_" + std::to_string( i );
             if ( brick::string::startsWith( name, "time" ) )
@@ -567,7 +571,105 @@ void Compare::run()
     }
 
     report->from_sql( find.execute() );
+    return report;
+}
+
+void Compare::run()
+{
+    find_instances();
+
+    if ( _fields.empty() )
+        _fields = { { "time_search", "search" }, { "states", "states" } };
+    if ( _instance_ids.empty() )
+        throw brick::except::Error( "At least one --instance must be specified." );
+
+    auto report = get_comparison_report( _fields );
     report->format( std::cout );
 }
+
+static bool version_compare( const std::string &a, const std::string &b )
+{
+    auto split = []( const std::string &str )
+    {
+        auto parts = std::vector< int >();
+
+        size_t last = 0;
+        size_t next = 0;
+        std::string tok;
+        while ( ( next = str.find( ".", last ) ) != std::string::npos )
+        {
+            tok = str.substr( last, next - last );
+            last = next + 1;
+
+            parts.push_back( std::stoi( tok ) );
+        }
+        tok = str.substr( last );
+        parts.push_back( std::stoi( tok ) );
+
+        return parts;
+    };
+
+    auto a_parts = split( a );
+    auto b_parts = split( b );
+
+    return std::lexicographical_compare( a_parts.cbegin(), a_parts.cend(), b_parts.cbegin(), b_parts.cend() );
+}
+
+void Plot::run()
+{
+    find_instances();
+    if ( _instance_ids.empty() ) 
+        throw brick::except::Error( "At least one --instance must be specified." );
+
+    auto versions = std::map< int, std::string >();
+    for ( auto id : _instance_ids )
+    {
+        auto q = std::stringstream();
+        q << "SELECT build.version FROM build JOIN instance ON instance.build = build.id ";
+        q << "WHERE instance.id = ?";
+
+        auto find = nanodbc::statement( _conn, q.str() );
+        find.bind( 0, &id );
+        auto r = find.execute();
+        
+        r.first();
+        versions[ id ] = r.get< std::string >( 0 );
+    }
+
+    std::sort( _instance_ids.begin(), _instance_ids.end(), [&]( int a, int b )
+    {
+        return version_compare( versions[ a ], versions[ b ] );
+    } );
+
+    auto res = get_comparison_report( { {_field, _field } } );
+
+    auto cols = std::vector< std::string >();
+    for ( const auto &id : _instance_ids )
+        cols.push_back( versions[ id ] );
+
+    auto plotter = brq::plotter( _width, _height, cols, _rows );
+    plotter.add_data_line( _field, "red" ); 
+    auto &line = plotter.line_by_name( _field );
+
+    auto &tab = dynamic_cast< ReportTable& >( *res );
+    tab.records.emplace_back( tab.summary() ); // This is ugly
+
+    auto &sum_record = tab.records.back();
+    for ( size_t i = 2; i < tab.fields.size(); ++i )
+    {
+        std::visit( overloaded {
+            [&]( std::chrono::milliseconds ms ){ line.val( std::chrono::duration_cast< std::chrono::minutes >( ms ).count() ); },
+            [&]( int v ) { line.val( v ); },
+            []( auto ) { UNREACHABLE( "cannot plot non-integral value" ); }
+        }, sum_record.data[ tab.fields[ i ].name ] );
+    }
+
+    if ( _output_file.empty() )
+        std::cout << plotter.svg();
+
+    auto output = std::ofstream( _output_file );
+    output << plotter.svg();
+}
+
 
 }

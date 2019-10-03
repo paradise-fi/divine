@@ -61,6 +61,13 @@ int main( int argc, const char **argv )
     auto opts_compare = cmd::make_option_set( validator )
         .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" );
 
+    auto opts_plot = cmd::make_option_set( validator )
+        .option( "[--field {string}]", &Plot::_field, "plot a specific field's value (default: time_search)" )
+        .option( "[--width {int}]", &Plot::_width, "plot width (default: 800)" )
+        .option( "[--height {int}]", &Plot::_height, "plot height (default: 600)" )
+        .option( "[--rows {int}]", &Plot::_rows, "number of y-line values (default: 10)" )
+        .option( "[--output {string}]", &Plot::_output_file, "specify the desired output file name (default: prints to stdout)" );
+
     auto opts_job = cmd::make_option_set( validator )
         .option( "[--tag {string}]", &WithModel::_tag, "only take models with a given tag" );
 
@@ -80,6 +87,7 @@ int main( int argc, const char **argv )
         .command< Schedule >( opts_db, opts_job, opts_sched, opts_inst )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
+        .command< Plot >( opts_db, opts_report_base, opts_plot )
         .command< Run >( opts_db, opts_run, opts_job, opts_inst )
         .command< Help >( helpopts );
 
