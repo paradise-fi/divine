@@ -110,8 +110,8 @@ void fuse_array( llvm::Module &module, const std::string &arr_name,
 // functions that explicitly call all entries in proper order
 void fuse( llvm::Module &module )
 {
-    fuse_array( module, "llvm.global_ctors", compare_ctor, "divine_global_ctors");
-    fuse_array( module, "llvm.global_dtors", compare_dtor, "divine_global_dtors");
+    fuse_array( module, "llvm.global_ctors", compare_ctor, "__lart_call_global_ctors");
+    fuse_array( module, "llvm.global_dtors", compare_dtor, "__lart_call_global_dtors");
 }
 
 struct FuseCtors
