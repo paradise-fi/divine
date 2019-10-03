@@ -470,7 +470,8 @@ public:
     static const mask punct  = _ISPUNCT;
     static const mask xdigit = _ISXDIGIT;
     static const mask blank  = _ISBLANK;
-#elif defined(_NEWLIB_VERSION)
+    static const mask __regex_word = 0x80;
+#elif defined(_NEWLIB_VERSION) || defined(__OpenBSD__)
     // Same type as Newlib's _ctype_ array in newlib/libc/include/ctype.h.
     typedef char mask;
     static const mask space  = _S;
