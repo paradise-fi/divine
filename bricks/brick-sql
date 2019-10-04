@@ -648,6 +648,7 @@ BRICK_SQL_OP( | )
     struct extend : query_base
     {
         using stmt = typename query::stmt;
+        using order_columns = typename query::order_columns;
         query _query;
         conn &conn() { return _query.conn(); }
         extend( query q ) : _query( q ) {}
@@ -682,6 +683,23 @@ BRICK_SQL_OP( | )
 
     template< typename select, typename... cols >
     struct group_by;
+
+    template< typename query, typename... cols >
+    struct order_by : extend< query >
+    {
+        using extend< query >::extend;
+        auto exec() { return this->_exec( this ); }
+
+        template< typename stream >
+        void print( stream &s, int &id ) const
+        {
+            this->_query.print( s, id );
+            s << " order by ";
+            auto l = typename query::order_columns().cat( brq::cons_list( cols()... ) );
+            auto n = [&]( auto c ) { return std::string( c.column_name( c ) ) + " desc"; };
+            print_list( s, l.map( n ) );
+        }
+    };
 
     template< typename query, typename expr >
     struct where_clause : extend< query >
@@ -729,6 +747,9 @@ BRICK_SQL_OP( | )
 
         template< typename we_t >
         where_clause< group_by, we_t > having( const we_t &we ) { return { *this, we, "having" }; }
+
+        template< typename... order_cols >
+        order_by< group_by, order_cols... > order_by() { return { *this }; }
     };
 
     enum class join_type { inner, left, right };
@@ -829,6 +850,9 @@ BRICK_SQL_OP( | )
 
         template< typename... group_cols >
         group_by< select_join, group_cols... > group_by() { return { *this }; }
+
+        template< typename... cols >
+        order_by< select_join, cols... > order_by() { return { *this }; }
     };
 
     template< typename query >
@@ -859,6 +883,9 @@ BRICK_SQL_OP( | )
 
         template< typename we_t >
         where_clause< raw_sql, we_t > where( const we_t &we ) { return { *this, we }; }
+
+        template< typename... cols >
+        order_by< raw_sql, cols... > order_by() { return { *this }; }
     };
 
     template< typename select, typename tab >
@@ -890,12 +917,16 @@ BRICK_SQL_OP( | )
         template< typename we_t >
         where_clause< select_tab, we_t > where( const we_t &we ) { return { *this, we }; }
 
+        template< typename... cols >
+        order_by< select_tab, cols... > order_by() { return { *this }; }
+
         raw_sql< select_tab > raw_sql( std::string_view sv ) { return { *this, sv }; }
     };
 
     template< typename select, typename... cols >
     struct select_distinct : extend< select >
     {
+        using order_columns = brq::cons_list_t< cols... >;
         using extend< select >::extend;
         auto exec() { return this->_exec( this ); }
 
@@ -915,6 +946,7 @@ BRICK_SQL_OP( | )
     template< typename... cols >
     struct query_head : query_base
     {
+        using order_columns = brq::nil;
         using stmt = stmt< cols... >;
         txn &_txn;
         txn &txn() { return _txn; }
