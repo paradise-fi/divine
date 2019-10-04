@@ -3,7 +3,6 @@
 
 if test "$1" = "--export"; then
     EXPORT=1
-    SRC_ROOT=.
     shift
     set -e
 else
