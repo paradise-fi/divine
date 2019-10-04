@@ -97,7 +97,7 @@ P4   = -1.65339022054652515390e-06, /* 0xBEBBBD41, 0xC5D26BF1 */
 P5   =  4.13813679705723846039e-08; /* 0x3E663769, 0x72BEA4D0 */
 
 
-double
+__link_always double
 exp(double x)	/* default IEEE double exp */
 {
 	double y,hi,lo,c,t;

@@ -38,7 +38,7 @@
 
 static const double one = 1.0, half=0.5, huge = 1.0e300;
 
-double
+__link_always double
 cosh(double x)
 {	
 	double t,w;

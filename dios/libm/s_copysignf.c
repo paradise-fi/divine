@@ -22,7 +22,7 @@
 #include "math.h"
 #include "math_private.h"
 
-float
+__link_always float
 copysignf(float x, float y)
 {
 	u_int32_t ix,iy;

@@ -135,7 +135,7 @@ dec(long double x)
  * if possible.
  */
 
-long double
+__link_always long double
 sqrtl(long double x)
 {
 	union {

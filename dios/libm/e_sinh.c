@@ -35,7 +35,7 @@
 
 static const double one = 1.0, shuge = 1.0e307;
 
-double
+__link_always double
 sinh(double x)
 {	
 	double t,w,h;

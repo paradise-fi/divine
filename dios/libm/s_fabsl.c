@@ -19,7 +19,7 @@
 #include <machine/ieee.h>
 #include <math.h>
 
-long double
+__link_always long double
 fabsl(long double x)
 {
 	struct ieee_ext *p = (struct ieee_ext *)&x;

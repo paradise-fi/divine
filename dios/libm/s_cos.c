@@ -46,7 +46,7 @@
 
 #include "math_private.h"
 
-double
+__link_always double
 cos(double x)
 {
 	double y[2],z=0.0;
