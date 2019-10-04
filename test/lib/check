@@ -167,7 +167,7 @@ warn_table()
 }
 
 verify() {
-    grep table verify.out | sed -re 's@.*\{ used: ([0-9]+), capacity: ([0-9]+) \}@\1 \2@' | \
+    grep -s table verify.out | sed -re 's@.*\{ used: ([0-9]+), capacity: ([0-9]+) \}@\1 \2@' | \
         while read used capacity; do
             case $capacity in
                 256) ;; # nothing
