@@ -902,10 +902,10 @@ BRICK_SQL_OP( | )
         template< typename stream >
         void print( stream &s, int &id ) const
         {
-            this->_query.print( s, id );
-            s << " distinct ";
+            s << "select distinct ";
             if ( sizeof...( cols ) > 0 )
-                s << " on ", print_columns( s, cons_list( cols()... ) );
+                s << " on ", print_columns( s, cons_list( cols()... ), "( ", " )" );
+            this->_query.print( s, id );
         }
 
         template< typename table >
@@ -929,17 +929,24 @@ BRICK_SQL_OP( | )
     struct select_cols : query_head< cols... >
     {
         using query_head< cols... >::query_head;
+        bool _distinct = false;
 
         template< typename table >
         select_tab< select_cols, table > from() { return { *this }; }
 
         template< typename... distinct_cols >
-        select_distinct< select_cols, distinct_cols... > distinct() { return { *this }; }
+        select_distinct< select_cols, distinct_cols... > distinct()
+        {
+            auto s = *this;
+            s._distinct = true;
+            return { s };
+        }
 
         template< typename stream >
         void print( stream &s, int &id ) const
         {
-            s << "select ";
+            if ( !_distinct )
+                s << "select ";
             print_columns( s, cons_list( cols()... ) );
         }
 
