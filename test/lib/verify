@@ -62,16 +62,16 @@ fi
 if test -n "$EXPORT"; then
     dir=$(dirname $1)
     name=$(basename $1)
-    srcroot=$(readlink -f $(dirname $0)/../../)
-    dios=$srcroot/dios
+    dios=$SRCDIR/dios
     incs="-isystem $dios/include -isystem $dios/libcxx/include"
-    incs="$incs -I $srcroot/bricks"
+    incs="$incs -isystem $BINDIR/dios/include" #generated headers: hostabi.h etc.
+    incs="$incs -I $SRCDIR/bricks"
     for f in $name $extrasrc; do
         deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | sed -e 's,^: [^ ]*,,' -e 's,\\$,,')
         echo load $dir/$f $f
         for dep in $deps; do
             if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
-            echo load $dep $(echo $dep | sed -re "s,($srcroot|$dir)/*,,")
+            echo load $dep $(echo $dep | sed -re "s,$dir/*,,")
         done
     done
     if test -z "$expect"; then
