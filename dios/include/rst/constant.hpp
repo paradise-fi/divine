@@ -147,9 +147,9 @@ namespace __dios::rst::abstract {
         //__bin( op_frem )
 
         /* bitwise operations */
-        //__bin( op_shl )
-        //__bin( op_lshr )
-        //__bin( op_ashr )
+        __bin( op_shl, op::shift_left )
+        __bin( op_lshr, op::shift_right )
+        __sbin( op_ashr, op::arithmetic_shift_right )
         __bin( op_and, std::bit_and )
         __bin( op_or, std::bit_or )
         __bin( op_xor, std::bit_xor )
