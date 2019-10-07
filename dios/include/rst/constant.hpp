@@ -194,6 +194,12 @@ namespace __dios::rst::abstract {
         //__cast( op_trunc, Trunc );
         //__cast( op_uitofp, UIntToFP );
         //__cast( op_zext, ZExt );
+
+        static void trace( Ptr ptr, const char * msg = "" ) noexcept
+        {
+            __dios_trace_f( "%s%d", msg, get_constant( ptr ).value );
+        };
+
     } __attribute__((packed));
 
     static_assert( sizeof( Constant ) == 11 );
