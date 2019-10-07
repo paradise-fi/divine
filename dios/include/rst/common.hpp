@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <dios.h>
 
+#include <rst/lart.h>
 #include <util/array.hpp>
 #include <rst/tristate.hpp>
 
@@ -158,6 +159,13 @@ namespace __dios::rst::abstract {
         struct { uint32_t off, obj; } ptr;
         memcpy( &ptr, &obj, sizeof( T * ) );
         __vm_poke( addr, _VM_ML_User, ptr.obj );
+    }
+
+    template< typename T >
+    _LART_IGNORE_ARG
+    _LART_NOINLINE void trace( void * addr, const char * msg = "" ) noexcept
+    {
+        T::trace( msg, peek_object< T >( addr ) );
     }
 
     template< typename T >
