@@ -214,4 +214,76 @@ namespace __dios::rst::abstract {
         __dios_fault( _VM_Fault::_VM_F_Float, "division by zero" );
     }
 
+    namespace op {
+
+        template< typename T = void >
+        struct shift_left;
+
+        template< typename T >
+        struct shift_left
+        {
+          inline constexpr bool operator()( const T& x, const T& y ) const { return x << y; }
+        };
+
+        template<>
+        struct shift_left< void >
+        {
+            template < typename T, typename U >
+            inline constexpr auto operator()( T&& t, U&& u ) const
+                    noexcept( noexcept( std::forward< T >( t ) << std::forward< U >( u ) ) )
+                -> decltype( std::forward< T >( t ) << std::forward< U >( u ) )
+            { return std::forward< T >( t ) << std::forward< U >( u ); }
+
+            typedef void is_transparent;
+        };
+
+
+        template< typename T = void >
+        struct shift_right;
+
+        template< typename T >
+        struct shift_right
+        {
+          inline constexpr bool operator()( const T& x, const T& y ) const { return x >> y; }
+        };
+
+        template<>
+        struct shift_right< void >
+        {
+            template < typename T, typename U >
+            inline constexpr auto operator()( T&& t, U&& u ) const
+                    noexcept( noexcept( std::forward< T >( t ) >> std::forward< U >( u ) ) )
+                -> decltype( std::forward< T >( t ) >> std::forward< U >( u ) )
+            { return std::forward< T >( t ) >> std::forward< U >( u ); }
+
+            typedef void is_transparent;
+        };
+
+
+        template< typename T = void >
+        struct arithmetic_shift_right;
+
+        template< typename T >
+        struct arithmetic_shift_right
+        {
+          inline constexpr bool operator()( const T& x, const T& y ) const
+          {
+              return x >> y;
+          }
+        };
+
+        template<>
+        struct arithmetic_shift_right< void >
+        {
+            template < typename T, typename U >
+            inline constexpr auto operator()( T&& t, U&& u ) const
+                    noexcept( noexcept( std::forward< T >( t ) >> std::forward< U >( u ) ) )
+                -> decltype( std::forward< T >( t ) >> std::forward< U >( u ) )
+            { return std::forward< T >( t ) >> std::forward< U >( u ); }
+
+            typedef void is_transparent;
+        };
+
+    } // namespace op
+
 } // namespace __dios::rst::abstract
