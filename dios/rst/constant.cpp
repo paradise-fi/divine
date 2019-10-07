@@ -10,7 +10,8 @@ namespace __dios::rst::abstract {
     template< typename C >
     _LART_INLINE C make_constant( C c ) noexcept
     {
-        return make_abstract< C, Constant >( c );
+        __lart_stash( static_cast< void * >( Constant::lift( c ) ) );
+        return taint< C >( c );
     }
 
     extern "C" {
