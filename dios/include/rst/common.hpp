@@ -77,7 +77,10 @@ namespace __dios::rst::abstract {
     {
         static_assert( std::is_arithmetic_v< T > || std::is_pointer_v< T >,
                        "Cannot taint a non-arithmetic or non-pointer value." );
-        return static_cast< T >( __tainted );
+        if constexpr ( std::is_arithmetic_v< T > )
+            return static_cast< T >( __tainted );
+        else
+            return reinterpret_cast< T >( __tainted );
     }
 
     template< typename T >
