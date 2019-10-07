@@ -13,25 +13,46 @@ namespace __dios::rst::abstract {
     {
         using Ptr = void *;
         using Value = uint64_t;
-        // TODO union of types + store bitwidth
+        using Bitwidth = uint8_t;
 
+        enum class Type : uint8_t { Integer, Float, Pointer };
+
+        Type type;
+        Bitwidth bw;
         Value value;
 
-        Constant( Value value )
-            : value( value )
-        {}
-
-        _LART_INLINE static Value& get_value( Ptr ptr ) noexcept
+        template< typename T >
+        _LART_INLINE static constexpr Bitwidth bitwidth() noexcept
         {
-            return static_cast< Constant * >( ptr )->value;
+            return std::numeric_limits< T >::digits;
+        }
+
+        _LART_INLINE static Constant& get_constant( Ptr ptr ) noexcept
+        {
+            return *static_cast< Constant * >( ptr );
         }
 
         template< typename T >
-        _LART_INLINE static Ptr lift( T value ) noexcept
+        _LART_INTERFACE static Ptr lift( T value ) noexcept
         {
             static_assert( sizeof( T ) <= sizeof( Value ) );
             auto ptr = __vm_obj_make( sizeof( Constant ), _VM_PT_Heap );
-            new ( ptr ) Constant( value );
+            new ( ptr ) Constant();
+
+            auto con = static_cast< Constant * >( ptr );
+            con->value = value;
+
+            if constexpr ( std::is_integral_v< T > )
+                con->type = Type::Integer;
+            else if constexpr ( std::is_floating_point_v< T > )
+                con->type = Type::Float;
+            else if constexpr ( std::is_pointer_v< T > )
+                con->type = Type::Pointer;
+            else
+                static_assert( "unsupported constant type" );
+
+            con->bw = bitwidth< T >();
+
             return ptr;
         }
 
@@ -51,31 +72,30 @@ namespace __dios::rst::abstract {
         static Ptr lift_any() noexcept
         {
             Base(); // for LART to detect lift_any
-            _UNREACHABLE_F( "Constant domain does not provide lift_any operation" );
+            UNREACHABLE( "Constant domain does not provide lift_any operation" );
         }
+
+        #define PERFORM_LIFT_IF( type ) \
+            if ( bw == bitwidth< type >() ) \
+                return lift( static_cast< type >( val ) );
 
         _LART_INTERFACE
         static Ptr op_thaw( Ptr constant, uint8_t bw ) noexcept
         {
-            auto val = get_value( constant );
-            if ( bw == 1 )
-                return lift( static_cast< bool >( val ) );
-            if ( bw == 8 )
-                return lift( static_cast< uint8_t >( val ) );
-            if ( bw == 16 )
-                return lift( static_cast< uint16_t >( val ) );
-            if ( bw == 32 )
-                return lift( static_cast< uint32_t >( val ) );
-            if ( bw == 64 )
-                return lift( static_cast< uint64_t >( val ) );
+            auto val = get_constant( constant ).value;
+            PERFORM_LIFT_IF( bool )
+            PERFORM_LIFT_IF( uint8_t )
+            PERFORM_LIFT_IF( uint16_t )
+            PERFORM_LIFT_IF( uint32_t )
+            PERFORM_LIFT_IF( uint64_t )
 
-            _UNREACHABLE_F( "Unsupported bitwidth" );
+            UNREACHABLE( "Unsupported bitwidth" );
         }
 
         _LART_INTERFACE
-        static Tristate to_tristate( Ptr constant ) noexcept
+        static Tristate to_tristate( Ptr ptr ) noexcept
         {
-            if ( get_value( constant ) )
+            if ( get_constant( ptr ).value )
                 return { Tristate::True };
             return { Tristate::False };
         }
@@ -86,10 +106,25 @@ namespace __dios::rst::abstract {
             return nullptr;
         }
 
+
+        #define PERFORM_OP_IF( type ) \
+            if ( bw == bitwidth< type >() ) \
+                return lift( op( static_cast< type >( l.value ), static_cast< type >( r.value ) ) );
+
         template< typename Op >
         _LART_INLINE static Ptr binary( Ptr lhs, Ptr rhs, Op op ) noexcept
         {
-            return lift( op( get_value( lhs ), get_value( rhs ) ) );
+            auto l = get_constant( lhs );
+            auto r = get_constant( rhs );
+            auto bw = std::max( l.bw, r.bw );
+
+            PERFORM_OP_IF( bool )
+            PERFORM_OP_IF( uint8_t )
+            PERFORM_OP_IF( uint16_t )
+            PERFORM_OP_IF( uint32_t )
+            PERFORM_OP_IF( uint64_t )
+
+            UNREACHABLE( "unsupported integer constant bitwidth", bw );
         }
 
         #define __bin( name, op ) \
@@ -159,6 +194,8 @@ namespace __dios::rst::abstract {
         //__cast( op_trunc, Trunc );
         //__cast( op_uitofp, UIntToFP );
         //__cast( op_zext, ZExt );
-    };
+    } __attribute__((packed));
+
+    static_assert( sizeof( Constant ) == 11 );
 
 } // namespace __dios::rst::abstract
