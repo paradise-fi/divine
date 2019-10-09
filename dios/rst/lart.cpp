@@ -15,7 +15,7 @@ using namespace __dios::rst::abstract;
  * happen that the stashed values in the candidate states are of different
  * types, leading to a type mismatch in the comparison.
  *
- * TODO The second problem might have to be taclked in the verification
+ * TODO The second problem might have to be tackled in the verification
  * algorithm anyway, since there might be other ways to trigger the same
  * problem. */
 
