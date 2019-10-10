@@ -120,6 +120,13 @@ namespace __dios::rst::abstract {
         return taint< C >();
     }
 
+    template< typename C, typename A, typename ...Args >
+    _LART_INLINE C make_abstract( Args && ...args ) noexcept
+    {
+        __lart_stash( static_cast< void * >( A::lift_any( std::forward< Args >( args )... ) ) );
+        return taint< C >();
+    }
+
     template< typename A, typename C >
     _LART_INLINE auto lift_one( C c ) noexcept
     {
