@@ -74,7 +74,7 @@ namespace lart::abstract
                 meta::set( &load, meta::tag::operation::thaw );
 
                 auto op = std::string( op_prefix ) + "thaw";
-                add_meta( &load, op, kind( &load ) );
+                add_meta( &load, op, DomainKind::scalar );
             }
         }
 
