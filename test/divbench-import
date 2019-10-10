@@ -5,6 +5,7 @@ if test -z "$DIVBENCH_DB"; then
 fi
 
 divbench=$(make show var=OBJ)bench/tools/divbench
+export OBJ=$(make show var=OBJ)
 make divbench
 ./test/runner --export | $divbench import
 
