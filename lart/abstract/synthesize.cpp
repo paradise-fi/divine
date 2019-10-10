@@ -3,6 +3,10 @@
 
 #include <lart/abstract/stash.h>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/Transforms/Utils/Cloning.h>
+DIVINE_UNRELAX_WARNINGS
+
 namespace
 {
     llvm::BasicBlock * basic_block( llvm::Function * fn, std::string name )
@@ -27,6 +31,11 @@ namespace
     {
         return irb.CreateLoad( irb.getInt8Ty(), arg, "domain" );
     }
+
+    auto inline_call = [] ( auto call ) {
+        llvm::InlineFunctionInfo ifi;
+        llvm::InlineFunction( call, ifi );
+    };
 } // anonymous namespace
 
 namespace lart::abstract
@@ -132,7 +141,6 @@ namespace lart::abstract
 
         void construct()
         {
-
             auto entry =  basic_block( function(), "entry" );
             llvm::IRBuilder<> irb( entry );
 
@@ -208,11 +216,29 @@ namespace lart::abstract
 
             if constexpr ( Taint::gep( T ) )
             {
-                UNREACHABLE( "not implemented" );
-                /*auto paired = TaintArgument{ function()->arg_begin() };
-                vals.push_back( paired.abstract.value ); // address
-                auto idx = irb.CreateZExt( args[ 2 ].value, i64() );
-                vals.push_back( idx ); // index*/
+
+                auto paired = paired_arguments();
+                auto ptr = paired[ 0 ];
+                auto off = paired[ 1 ];
+
+                std::vector< llvm::Value * > args;
+
+                args.push_back( ptr.concrete.taint );
+                args.push_back( ptr.concrete.value );
+                args.push_back( ptr.abstract.value );
+
+                args.push_back( off.concrete.taint );
+                args.push_back( irb.CreateSExt( off.concrete.value, i64Ty() ) );
+                args.push_back( off.abstract.value );
+
+                args.push_back( llvm_index( function() ) );
+
+                auto fn = module->getFunction( "__lart_gep_lifter" );
+                auto call = irb.CreateCall( fn, args );
+                irb.CreateRet( call );
+
+                inline_call( call );
+                return;
             }
 
             if constexpr ( Taint::toBool( T ) )
@@ -246,15 +272,38 @@ namespace lart::abstract
 
             if constexpr ( Taint::store( T ) )
             {
-                //vals.push_back( args[ 0 ].value ); // value
-                //vals.push_back( args[ 2 ].value ); // addr
-                UNREACHABLE( "not implemented" );
+                auto paired = paired_arguments();
+                auto value = paired[ 0 ];
+                auto addr = paired[ 1 ];
+
+                std::vector< llvm::Value * > args;
+
+                args.push_back( value.concrete.taint );
+                args.push_back( value.concrete.value );
+                args.push_back( value.abstract.value );
+                args.push_back( addr.concrete.taint );
+                args.push_back( addr.concrete.value );
+                args.push_back( addr.abstract.value );
+                args.push_back( llvm_index( function() ) );
+
+
+                auto type = args[ 1 ]->getType();
+                std::string name = "__lart_store_lifter_" + llvm_name( type );
+                auto fn = module->getFunction( name );
+
+                auto call = irb.CreateCall( fn, args );
+                irb.CreateRet( undef( function()->getReturnType() ) );
+
+                inline_call( call );
+                return;
             }
 
             if constexpr ( Taint::load( T ) )
             {
-                //vals.push_back( args[ 1 ].value ); // addr
-                UNREACHABLE( "not implemented" );
+                auto addr = args[ 1 ].value;
+                vals.push_back( addr ); // addr
+
+                _domain = domain_index( addr, irb );
             }
 
             if constexpr ( Taint::freeze( T ) )

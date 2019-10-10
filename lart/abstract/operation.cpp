@@ -39,14 +39,14 @@ namespace lart::abstract
         }
 
         if ( auto store = llvm::dyn_cast< llvm::StoreInst >( inst ) ) {
-            UNREACHABLE( "not implemented" );
+            return construct< Type::Store >( inst );
         }
 
         if ( auto load = llvm::dyn_cast< llvm::LoadInst >( inst ) ) {
             if ( meta::has( load, meta::tag::operation::thaw ) )
                 return construct< Type::Thaw >( load );
             else
-                UNREACHABLE( "not implemented" );
+                return construct< Type::Load >( load );
         }
 
         if ( auto cmp = llvm::dyn_cast< llvm::CmpInst >( inst ) ) {

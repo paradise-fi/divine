@@ -16,7 +16,7 @@ namespace lart::abstract {
     static const Bimap< DomainKind, std::string > KindTable = {
          { DomainKind::scalar , "scalar"  }
         ,{ DomainKind::pointer, "pointer" }
-        ,{ DomainKind::content, "content"  }
+        ,{ DomainKind::aggregate, "aggregate"  }
     };
 
     std::string to_string( DomainKind kind ) { return KindTable[ kind ]; }

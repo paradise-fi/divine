@@ -18,7 +18,7 @@ namespace lart::abstract {
     enum class DomainKind : uint8_t {
         scalar,
         pointer,
-        content
+        aggregate
     };
 
     std::string to_string( DomainKind kind );

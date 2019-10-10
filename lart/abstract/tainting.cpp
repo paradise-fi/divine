@@ -154,6 +154,9 @@ namespace lart::abstract {
             if constexpr ( Operation::assume( T ) )
                 return null();
 
+            if constexpr ( Operation::store( T ) )
+                return null();
+
             if ( faultable_operation( op ) ) {
                 // call concrete operation instead
                 return concrete_function( ph );
@@ -193,6 +196,8 @@ namespace lart::abstract {
             // FIXME ASSERT( gep->getNumIndices() == 1 );
             llvm::Value * idx = gep->idx_begin()->get();
 
+            auto aidx = abstract( idx );
+
             if ( !idx->getType()->isIntegerTy( 64 ) ) {
                 auto irb = llvm::IRBuilder<>( gep );
                 idx = irb.CreateSExt( idx, i64Ty() );
@@ -204,7 +209,7 @@ namespace lart::abstract {
                 con = irb.CreateBitCast( con, i8PTy() );
             }
 
-            return { con, abs, idx };
+            return { con, abs, idx, aidx };
         }
 
         template< Type T_ = T >
@@ -231,18 +236,16 @@ namespace lart::abstract {
         {
             auto s = llvm::cast< llvm::StoreInst >( concrete( i ) );
             auto val = s->getValueOperand();
-            auto con = s->getPointerOperand();
-            auto abs = abstract( con );
-            return { val, con, abs };
+            auto ptr = s->getPointerOperand();
+            return { val, abstract( val ), ptr, abstract( ptr ) };
         }
 
         template< Type T_ = T >
         auto arguments( llvm::Instruction * i ) -> ENABLE_IF( load )
         {
             auto l = llvm::cast< llvm::LoadInst >( concrete( i ) );
-            auto con = l->getPointerOperand();
-            auto abs = abstract( con );
-            return { con, abs };
+            auto ptr = l->getPointerOperand();
+            return { ptr, abstract( ptr ) };
         }
 
         template< Type T_ = T >
@@ -410,14 +413,16 @@ namespace lart::abstract {
                     _matched.concrete[ abstract( con ) ] = lif;
                     _matched.abstract[ lif ] = abstract( con );
                     _matched.abstract.erase( con );
-                    con->replaceAllUsesWith( lif );
+                    if ( !con->getType()->isVoidTy() )
+                        con->replaceAllUsesWith( lif );
                     con->eraseFromParent();
                 } else {
                     _matched.match( T, lif, con );
                 }
             }
 
-            ph.inst->replaceAllUsesWith( lif );
+            if ( !ph.inst->getType()->isVoidTy() )
+                ph.inst->replaceAllUsesWith( lif );
         }
 
         template< typename Lifter, typename Placeholder >
