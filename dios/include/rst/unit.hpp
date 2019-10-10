@@ -124,4 +124,28 @@ namespace __dios::rst::abstract {
         #undef __bin
     };
 
+
+    struct UnitAggregate : Base
+    {
+        using Ptr = void *;
+
+        template< typename T >
+        _LART_INTERFACE static Ptr lift_any( Abstracted< T > ) noexcept
+        {
+            return __new< UnitAggregate >();
+        }
+
+        _LART_INTERFACE
+        static Ptr op_load( Ptr /* address */ ) noexcept
+        {
+            return __new< Unit< PointerBase > >();
+        }
+
+        _LART_INTERFACE
+        static void op_store( Ptr /* value */, Ptr /* address */ ) noexcept { }
+
+        _LART_INTERFACE
+        static Ptr op_gep( Ptr address, Ptr /* offset */ ) noexcept { return address; }
+    };
+
 } // namespace __dios::rst::abstract

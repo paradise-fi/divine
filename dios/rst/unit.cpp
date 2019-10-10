@@ -9,11 +9,14 @@ namespace __dios::rst::abstract {
 
     template struct Unit< PointerBase >;
 
+    using Ptr = void *;
+
     template< typename C >
     _LART_INLINE C make_unit() noexcept
     {
         return make_abstract< C, Unit< PointerBase > >();
     }
+
     template< typename C >
     _LART_INLINE C make_unit( C c ) noexcept
     {
@@ -25,6 +28,9 @@ namespace __dios::rst::abstract {
         _LART_SCALAR uint16_t __unit_val_i16() { return make_unit< uint16_t >(); }
         _LART_SCALAR uint32_t __unit_val_i32() { return make_unit< uint32_t >(); }
         _LART_SCALAR uint64_t __unit_val_i64() { return make_unit< uint64_t >(); }
+
+        _LART_AGGREGATE Ptr __unit_aggregate() { return make_abstract< Ptr, UnitAggregate >(); }
+
         _LART_SCALAR float __unit_val_float32() { return make_unit< float >(); }
         _LART_SCALAR double __unit_val_float64() { return make_unit< double >(); }
 

@@ -39,6 +39,8 @@ extern "C" {
     float __unit_lift_float32( float );
     double __unit_lift_float64( double );
 
+    void * __unit_aggregate();
+
     char * __mstring_val( char * buff, unsigned buff_len );
 
     uint8_t __constant_lift_i8( uint8_t c );
