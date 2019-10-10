@@ -50,6 +50,8 @@ extern "C"
 using Ptr = void *;
 
 using store_op = void ( Ptr /* val */, Ptr /* ptr */ );
+using gep_op = Ptr ( Ptr /* ptr */, Ptr /* off */ );
+
 
 _LART_INLINE
 uint8_t domain( Ptr addr ) noexcept { return *static_cast< uint8_t * >( addr ); }
@@ -89,6 +91,32 @@ void __lart_store_lifter_impl( Argument< Value > value, Argument< Ptr > addr, si
                                      , op ); \
     }
 
+template< typename Value >
+_LART_INLINE
+Ptr __lart_gep_lifter_impl( Argument< Ptr > ptr, Argument< Value > off, size_t op )
+{
+    if ( !ptr.tainted ) { // offset is tainted
+        __dios_fault( _VM_Fault::_VM_F_Control, "unsupported abstract offset of concrete pointer" );
+        return nullptr;
+    }
+
+    auto gep = get_operation< gep_op >( domain( ptr.abstract ), op );
+    auto offset = off.tainted ? off.abstract : Constant::lift( off.concrete );
+
+    return gep( ptr.abstract, offset );
+}
+
+#define LART_GEP_LIFTER( Off ) \
+    __invisible \
+    Ptr __lart_gep_lifter( bool taint_ptr, Ptr ptr, Ptr abstract_ptr \
+                         , bool taint_off, Off off, Ptr abstract_off \
+                         , size_t op ) \
+    { \
+        return __lart_gep_lifter_impl< uint64_t >( { taint_ptr, ptr, abstract_ptr } \
+                                                 , { taint_off, off, abstract_off } \
+                                                 , op ); \
+    }
+
 extern "C" {
 
     LART_STORE_LIFTER(  i8, uint8_t )
@@ -96,4 +124,5 @@ extern "C" {
     LART_STORE_LIFTER( i32, uint32_t )
     LART_STORE_LIFTER( i64, uint64_t )
 
+    LART_GEP_LIFTER( uint64_t )
 }
