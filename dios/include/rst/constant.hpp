@@ -108,36 +108,78 @@ namespace __dios::rst::abstract {
 
 
         #define PERFORM_OP_IF( type ) \
-            if ( bw == bitwidth< type >() ) \
+            if ( bw  - std::is_signed_v< type > == bitwidth< type >() ) \
                 return lift( op( static_cast< type >( l.value ), static_cast< type >( r.value ) ) );
 
-        template< typename Op >
+        template< bool singed = false, typename Op >
         _LART_INLINE static Ptr binary( Ptr lhs, Ptr rhs, Op op ) noexcept
         {
             auto l = get_constant( lhs );
             auto r = get_constant( rhs );
             auto bw = std::max( l.bw, r.bw );
 
-            PERFORM_OP_IF( bool )
-            PERFORM_OP_IF( uint8_t )
-            PERFORM_OP_IF( uint16_t )
-            PERFORM_OP_IF( uint32_t )
-            PERFORM_OP_IF( uint64_t )
+            if constexpr ( singed ) {
+                PERFORM_OP_IF( int8_t )
+                PERFORM_OP_IF( int16_t )
+                PERFORM_OP_IF( int32_t )
+                PERFORM_OP_IF( int64_t )
+            } else {
+                PERFORM_OP_IF( bool )
+                PERFORM_OP_IF( uint8_t )
+                PERFORM_OP_IF( uint16_t )
+                PERFORM_OP_IF( uint32_t )
+                PERFORM_OP_IF( uint64_t )
+            }
 
             UNREACHABLE( "unsupported integer constant bitwidth", bw );
         }
 
-        template< typename Op >
-        _LART_INLINE static Ptr singed_binary( Ptr lhs, Ptr rhs, Op op ) noexcept
-        {
-            auto l = get_constant( lhs );
-            auto r = get_constant( rhs );
-            auto bw = std::max( l.bw, r.bw ) - 1;
+        #define PERFORM_CAST_IF( type ) \
+            if ( bw - std::is_signed_v< type > == bitwidth< type >() ) \
+                return lift( static_cast< type >( v ) );
 
-            PERFORM_OP_IF( int8_t )
-            PERFORM_OP_IF( int16_t )
-            PERFORM_OP_IF( int32_t )
-            PERFORM_OP_IF( int64_t )
+        #define TRUNC_TO_IF( type ) \
+            if ( con.bw - std::is_signed_v< type > == bitwidth< type >() ) \
+                return static_cast< type >( con.value );
+
+        template< bool singed >
+        _LART_INLINE static auto trunc_to_value( const Constant & con ) noexcept
+            -> std::enable_if_t< singed, int64_t >
+        {
+            TRUNC_TO_IF( int8_t )
+            TRUNC_TO_IF( int16_t )
+            TRUNC_TO_IF( int32_t )
+            TRUNC_TO_IF( int64_t )
+        }
+
+        template< bool singed >
+        _LART_INLINE static auto trunc_to_value( const Constant & con ) noexcept
+            -> std::enable_if_t< !singed, uint64_t >
+        {
+            TRUNC_TO_IF( bool )
+            TRUNC_TO_IF( uint8_t )
+            TRUNC_TO_IF( uint16_t )
+            TRUNC_TO_IF( uint32_t )
+            TRUNC_TO_IF( uint64_t )
+        }
+
+        template< bool singed = false >
+        _LART_INLINE static Ptr cast( Ptr val, Bitwidth bw ) noexcept
+        {
+            auto v = trunc_to_value< singed >( get_constant( val ) );
+
+            if constexpr ( singed ) {
+                PERFORM_CAST_IF( int8_t )
+                PERFORM_CAST_IF( int16_t )
+                PERFORM_CAST_IF( int32_t )
+                PERFORM_CAST_IF( int64_t )
+            } else {
+                PERFORM_CAST_IF( bool )
+                PERFORM_CAST_IF( uint8_t )
+                PERFORM_CAST_IF( uint16_t )
+                PERFORM_CAST_IF( uint32_t )
+                PERFORM_CAST_IF( uint64_t )
+            }
 
             UNREACHABLE( "unsupported integer constant bitwidth", bw );
         }
@@ -149,7 +191,12 @@ namespace __dios::rst::abstract {
 
         #define __sbin( name, op ) \
             _LART_INTERFACE static Ptr name( Ptr lhs, Ptr rhs ) noexcept { \
-                return singed_binary( lhs, rhs, op() ); \
+                return binary< true /* singed */ >( lhs, rhs, op() ); \
+            }
+
+        #define __cast( name, singed ) \
+            _LART_INTERFACE static Ptr name( Ptr val, Bitwidth bw ) noexcept { \
+                return cast< singed >( val, bw ); \
             }
 
         /* arithmetic operations */
@@ -203,17 +250,17 @@ namespace __dios::rst::abstract {
         __sbin( op_sle, std::less_equal );
 
         /* cast operations */
+        __cast( op_sext, true /* singed */ );
+        __cast( op_zext, false /* unsigned */ );
+        __cast( op_trunc, false /* unsigned */ );
         //__cast( op_fpext, FPExt );
         //__cast( op_fptosi, FPToSInt );
         //__cast( op_fptoui, FPToUInt );
         //__cast( op_fptrunc, FPTrunc );
         //__cast( op_inttoptr );
         //__cast( op_ptrtoint );
-        //__cast( op_sext, SExt );
         //__cast( op_sitofp, SIntToFP );
-        //__cast( op_trunc, Trunc );
         //__cast( op_uitofp, UIntToFP );
-        //__cast( op_zext, ZExt );
 
         static void trace( Ptr ptr, const char * msg = "" ) noexcept
         {
