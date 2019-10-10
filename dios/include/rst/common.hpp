@@ -31,6 +31,7 @@
     __attribute__((__used__,__nothrow__, __noinline__, __flatten__)) __invisible
 
 #define _LART_SCALAR __attribute__((__annotate__("lart.abstract.return.scalar")))
+#define _LART_AGGREGATE __attribute__((__annotate__("lart.abstract.return.aggregate")))
 
 extern uint64_t __tainted;
 
