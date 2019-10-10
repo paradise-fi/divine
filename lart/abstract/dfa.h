@@ -10,6 +10,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <deque>
 #include <memory>
 #include <brick-types>
+
+#include <lart/abstract/util.h>
 #include <lart/abstract/domain.h>
 
 namespace lart::abstract
@@ -44,25 +46,36 @@ namespace lart::abstract
     struct type_layer : brick::types::Eq
     {
         tristate is_pointer;
+        tristate is_aggregate;
         tristate is_abstract;
-        type_layer( bool p, bool a ) : is_pointer( p ), is_abstract( a ) {}
-        type_layer( tristate p, tristate a ) : is_pointer( p ), is_abstract( a ) {}
+
+        type_layer( bool p, bool g, bool a )
+            : is_pointer( p ), is_aggregate( g ), is_abstract( a )
+        {}
+
+        type_layer( tristate p, tristate g, tristate a )
+            : is_pointer( p ), is_aggregate( g ), is_abstract( a )
+        {}
 
         bool operator==( const type_layer &o ) const
         {
-            return is_pointer == o.is_pointer && is_abstract == o.is_abstract;
+            return std::tie( is_pointer, is_aggregate, is_abstract )
+                == std::tie( o.is_pointer, o.is_aggregate, o.is_abstract );
         }
 
         template< typename stream >
         friend auto operator<<( stream &s, type_layer t ) -> decltype( s << "" )
         {
-            return s << "ptr:" << t.is_pointer << " abs:" << t.is_abstract;
+            return s << "ptr:" << t.is_pointer
+                    << " agg:" << t.is_aggregate
+                    << " abs:" << t.is_abstract;
         }
     };
 
     inline type_layer join( type_layer a, type_layer b )
     {
         return { join( a.is_pointer, b.is_pointer ),
+                 join( a.is_aggregate, b.is_aggregate ),
                  join( a.is_abstract, b.is_abstract ) };
     }
 
@@ -71,9 +84,9 @@ namespace lart::abstract
     struct type_onion : type_vector
     {
         type_onion( int ptr_nest )
-            : type_vector( ptr_nest + 1, type_layer( true, false ) )
+            : type_vector( ptr_nest + 1, type_layer( true, false, false ) )
         {
-            front() = type_layer( false, false );
+            front() = type_layer( false, false, false );
         }
 
         type_onion( const type_vector &l ) : type_vector( l ) {}
@@ -86,11 +99,26 @@ namespace lart::abstract
             return rv;
         }
 
+        type_onion make_abstract_aggregate() const
+        {
+            auto rv = make_abstract();
+            rv.back().is_aggregate = true;
+            return rv;
+        }
+
         bool maybe_abstract() const
         {
             tristate r( false );
             for ( auto a : *this )
                 r = join( r, a.is_abstract );
+            return r.value != tristate::no;
+        }
+
+        bool maybe_aggregate() const
+        {
+            tristate r( false );
+            for ( auto a : *this )
+                r = join( r, a.is_aggregate );
             return r.value != tristate::no;
         }
 
@@ -102,10 +130,11 @@ namespace lart::abstract
             return r.value != tristate::no;
         }
 
+
         type_onion wrap() const
         {
             auto rv = *this;
-            rv.emplace_back( true, false );
+            rv.emplace_back( true, false, false );
             return rv;
         }
 
@@ -143,7 +172,7 @@ namespace lart::abstract
 
     struct type_map
     {
-        int pointer_nesting( llvm::Type *t )
+        int pointer_nesting( llvm::Type *t ) const noexcept
         {
             int rv = 0;
             while ( t->isPointerTy() )
@@ -151,7 +180,7 @@ namespace lart::abstract
             return rv;
         }
 
-        type_onion get( llvm::Value *v )
+        type_onion get( llvm::Value *v ) const noexcept
         {
             if ( _map.count( v ) )
                 return _map.at( v );
@@ -176,7 +205,43 @@ namespace lart::abstract
         std::map< llvm::Value *, type_onion > _map;
     };
 
-    struct DataFlowAnalysis
+    template< typename Self >
+    struct type_map_query : crtp< Self, type_map_query >
+    {
+        decltype(auto) map() const noexcept { return this->self()._types; }
+
+        type_onion type( llvm::Value * val ) const noexcept
+        {
+            return map().get( val );
+        }
+
+        bool maybe_abstract( llvm::Value * val ) const noexcept
+        {
+            return type( val ).maybe_abstract();
+        }
+
+        bool maybe_aggregate( llvm::Value * val ) const noexcept
+        {
+            return type( val ).maybe_aggregate();
+        }
+
+        bool maybe_pointer( llvm::Value * val ) const noexcept
+        {
+            return type( val ).maybe_pointer();
+        }
+
+        type_onion wrap( llvm::Value * val ) const noexcept
+        {
+            return type( val ).wrap();
+        }
+
+        type_onion peel( llvm::Value * val ) const noexcept
+        {
+            return type( val ).peel();
+        }
+    };
+
+    struct DataFlowAnalysis : type_map_query< DataFlowAnalysis >
     {
         using Task = std::function< void() >;
 
@@ -206,7 +271,7 @@ namespace lart::abstract
         }
 
         bool propagate( llvm::Value *to, const type_onion& from ) noexcept;
-        void add_meta( llvm::Value *value, const type_onion& t ) noexcept;
+        void add_meta( llvm::Value *value ) noexcept;
 
         type_map _types;
         std::deque< llvm::Value * > _todo;

@@ -22,18 +22,30 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract
 {
-    struct AddAbstractMetaVisitor : llvm::InstVisitor< AddAbstractMetaVisitor >
+    struct AddAbstractMetaVisitor
+        : llvm::InstVisitor< AddAbstractMetaVisitor >,
+          type_map_query< AddAbstractMetaVisitor >
     {
-        type_onion _type;
+        const type_map & _types;
         static constexpr char op_prefix[] = "lart.abstract.op_";
 
-        AddAbstractMetaVisitor( const type_onion &t )
-            : _type( t )
+
+        AddAbstractMetaVisitor( const type_map & types  )
+            : _types( types )
         {}
 
-        void add_meta( llvm::Instruction *val, const std::string &operation )
+        DomainKind kind( llvm::Value * value )
         {
-            meta::abstract::set( val, to_string( DomainKind::scalar ) ); /* FIXME */
+            if ( maybe_aggregate( value ) )
+                return DomainKind::aggregate;
+            if ( maybe_pointer( value ) )
+                return DomainKind::pointer;
+            return DomainKind::scalar;
+        }
+
+        void add_meta( llvm::Instruction *val, const std::string &operation, DomainKind kind )
+        {
+            meta::abstract::set( val, to_string( kind ) );
 
             auto m = val->getModule();
             if ( auto op = m->getFunction( operation ) )
@@ -45,27 +57,32 @@ namespace lart::abstract
 
         void visitStoreInst( llvm::StoreInst &store )
         {
-            // TODO if is freeze
-            // if ( store.getValueOperand()->getType()->isIntegerTy() ) // TODO remove
-            meta::set( &store, meta::tag::operation::freeze );
-            // TODO if is store
+            if ( maybe_aggregate( store.getPointerOperand() ) ) {
+                auto op = std::string( op_prefix ) + "store";
+                add_meta( &store, op, DomainKind::aggregate );
+            } else {
+                meta::set( &store, meta::tag::operation::freeze );
+            }
         }
 
         void visitLoadInst( llvm::LoadInst &load )
         {
-            // TODO if is thaw
-            // if ( load.getType()->isIntegerTy() ) // TODO remove
-            meta::set( &load, meta::tag::operation::thaw );
-            auto op = std::string( op_prefix ) + "thaw";
-            add_meta( &load, op );
-            // TODO if is load
+            if ( maybe_aggregate( load.getPointerOperand() ) ) {
+                auto op = std::string( op_prefix ) + "load";
+                add_meta( &load, op, DomainKind::aggregate );
+            } else {
+                meta::set( &load, meta::tag::operation::thaw );
+
+                auto op = std::string( op_prefix ) + "thaw";
+                add_meta( &load, op, kind( &load ) );
+            }
         }
 
         void visitCmpInst( llvm::CmpInst &cmp )
         {
             auto op = std::string( op_prefix )
                     + PredicateTable.at( cmp.getPredicate() );
-            add_meta( &cmp, op );
+            add_meta( &cmp, op, kind( &cmp ) );
         }
 
         void visitBitCastInst( llvm::BitCastInst & ) { /* skip */ }
@@ -76,14 +93,14 @@ namespace lart::abstract
         {
             auto op = std::string( op_prefix )
                     + std::string( cast.getOpcodeName() );
-            add_meta( &cast, op );
+            add_meta( &cast, op, kind( &cast ) );
         }
 
         void visitBinaryOperator( llvm::BinaryOperator &bin )
         {
             auto op = std::string( op_prefix )
                     + std::string( bin.getOpcodeName() );
-            add_meta( &bin, op );
+            add_meta( &bin, op, kind( &bin ) );
         }
 
         void visitReturnInst( llvm::ReturnInst &ret )
@@ -101,13 +118,22 @@ namespace lart::abstract
             {
                 ASSERT( fn->hasName() );
                 auto op = std::string( op_prefix ) + fn->getName().str();
-                add_meta( &call, op );
+                add_meta( &call, op, kind( &call ) );
             }
         }
 
         void visitPHINode( llvm::PHINode &phi )
         {
             meta::set( &phi, meta::tag::operation::phi );
+        }
+
+        void visitGetElementPtrInst( llvm::GetElementPtrInst &gep )
+        {
+            auto ptr = gep.getPointerOperand();
+            if ( maybe_aggregate( ptr ) ) {
+                auto op = std::string( op_prefix ) + "gep";
+                add_meta( &gep, op, DomainKind::aggregate );
+            }
         }
     };
 
@@ -142,7 +168,7 @@ namespace lart::abstract
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept
     {
-        auto last = _types.get( to ), next = join( last, from );
+        auto last = type( to ), next = join( last, from );
 
         if ( last != next )
         {
@@ -158,15 +184,15 @@ namespace lart::abstract
 
     bool DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        bool forward  = propagate( lhs, _types.get( rhs ).peel() );
-        bool backward = propagate( rhs, _types.get( lhs ).wrap() );
+        bool forward  = propagate( lhs, peel( rhs ) );
+        bool backward = propagate( rhs, wrap( lhs ) );
         return forward || backward;
     }
 
     bool DataFlowAnalysis::propagate_identity( llvm::Value * lhs, llvm::Value * rhs ) noexcept
     {
-        bool forward  = propagate( lhs, _types.get( rhs ) );
-        bool backward = propagate( rhs, _types.get( lhs ) );
+        bool forward  = propagate( lhs, type( rhs ) );
+        bool backward = propagate( rhs, type( lhs ) );
         return forward || backward;
     }
 
@@ -182,7 +208,7 @@ namespace lart::abstract
             }
         };
 
-        if ( _types.get( arg ).maybe_pointer() )
+        if ( maybe_pointer( arg ) )
             each_call( arg->getParent(), handle_call );
     }
 
@@ -204,26 +230,30 @@ namespace lart::abstract
             {
                 auto op = store->getValueOperand();
                 auto ptr = store->getPointerOperand();
-                if ( propagate( ptr, _types.get( op ).wrap() ) )
+                if ( !maybe_aggregate( ptr ) && propagate( ptr, wrap( op ) ) )
                     propagate_back_task( ptr );
-                // TODO store to abstract value?
             },
             [&] ( llvm::LoadInst * load )
             {
                 auto ptr = load->getPointerOperand();
-                if ( propagate_wrap( load, ptr ) )
+                if ( maybe_aggregate( ptr ) )
+                    propagate( val, peel( load ).make_abstract() );
+                    // TODO enable store of aggregates to abstract aggregates
+                else if ( propagate_wrap( load, ptr ) )
                     propagate_back_task( ptr );
             },
             [&] ( llvm::CastInst * cast )
             {
-                auto ptr = cast->getOperand( 0 ); // TODO what if is not a pointer? (core)
+                auto ptr = cast->getOperand( 0 );
                 if ( propagate_identity( cast, ptr ) )
                     propagate_back_task( ptr );
             },
             [&] ( llvm::GetElementPtrInst * gep )
             {
                 auto ptr = gep->getPointerOperand();
-                if ( propagate_wrap( gep, ptr ) )
+                if ( maybe_aggregate( ptr ) )
+                    propagate_identity( gep, ptr );
+                else if ( propagate_wrap( gep, ptr ) )
                     propagate_back_task( ptr );
             }
         );
@@ -244,7 +274,7 @@ namespace lart::abstract
                 else if ( util::is_one_of< llvm::SelectInst, llvm::SwitchInst >( u ) )
                     UNREACHABLE( "unsupported propagation" );
                 else
-                    propagate( u, _types.get( val ) );
+                    propagate( u, type( val ) );
             }
     }
 
@@ -256,7 +286,7 @@ namespace lart::abstract
         {
             auto oparg = call.getArgOperand( arg.getArgNo() );
 
-            if ( auto t = _types.get( oparg ); t.maybe_abstract() )
+            if ( auto t = type( oparg ); t.maybe_abstract() )
                 propagate( const_cast< llvm::Argument * >( &arg ), t );
         }
     }
@@ -270,7 +300,7 @@ namespace lart::abstract
                 if ( !meta::function::ignore_return( fn ) )
                 {
                     auto val = ret->getReturnValue();
-                    propagate( call, _types.get( val ) );
+                    propagate( call, type( val ) );
                 }
         };
         each_call( ret->getFunction(), handle_call );
@@ -281,7 +311,20 @@ namespace lart::abstract
         for ( auto * val : meta::enumerate( m ) )
         {
             preprocess( util::get_function( val ) );
-            _types.set( val, _types.get( val ).make_abstract() );
+
+            auto meta = meta::abstract::get( val );
+            ASSERT( meta.has_value() );
+
+            auto kind = meta.value();
+            if ( kind == "scalar" )
+                _types.set( val, type( val ).make_abstract() );
+            else if ( kind == "aggregate" )
+                _types.set( val, type( val ).make_abstract_aggregate() );
+            else if ( kind == "pointer" )
+                UNREACHABLE( "not implemented" );
+            else
+                UNREACHABLE( "unsupported abstract kind" );
+
             push( val );
         }
 
@@ -296,34 +339,44 @@ namespace lart::abstract
 
         for ( const auto & [ val, t ] : _types )
             if ( t.maybe_abstract() )
-                add_meta( val, t );
+                add_meta( val );
 
         auto stores = query::query( m ).flatten().flatten()
             .map( query::llvmdyncast< llvm::StoreInst > )
             .filter( query::notnull )
             .freeze();
 
-        for ( auto store : stores ) /* TODO redundant? */
-        {
-            auto val = store->getValueOperand();
-            if ( auto t = _types.get( val ); t.maybe_abstract() )
-                add_meta( store, t );
+        for ( auto s : stores ) {
+            if ( maybe_abstract( s->getValueOperand() ) )
+                add_meta( s );
+            if ( maybe_aggregate( s->getPointerOperand() ) )
+                add_meta( s );
         }
     }
 
-    void DataFlowAnalysis::add_meta( llvm::Value * v, const type_onion &t ) noexcept
+    void DataFlowAnalysis::add_meta( llvm::Value * v ) noexcept
     {
         if ( llvm::isa< llvm::Constant >( v ) )
             return;
 
-        AddAbstractMetaVisitor visitor( t );
+        AddAbstractMetaVisitor visitor( _types );
 
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( v ) )
             visitor.visit( inst );
-        else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
-        {
-            if ( _types.get( arg ).maybe_abstract() )
-                meta::argument::set( arg, to_string( DomainKind::scalar ) ); /* FIXME */
+        else if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) ) {
+            auto abstract = maybe_abstract( arg );
+            auto ptr = maybe_pointer( arg );
+            auto agg = maybe_aggregate( arg );
+
+            if ( abstract ) {
+                auto kind = [&] {
+                    if ( agg ) return DomainKind::aggregate;
+                    if ( ptr ) return DomainKind::pointer;
+                    return DomainKind::scalar;
+                } ();
+
+                meta::argument::set( arg, to_string( kind ) );
+            }
         }
 
         for ( auto u : v->users() )

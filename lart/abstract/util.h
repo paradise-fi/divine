@@ -256,6 +256,14 @@ namespace lart::abstract
                    op == Inst::FRem;
         }
 
+        auto is_memory_operation = [] ( const auto & tag ) {
+            return ( tag == "aggregate" ) || ( tag == "pointer" );
+        };
+
+        if ( util::is_one_of< llvm::StoreInst, llvm::LoadInst, llvm::GetElementPtrInst >( inst ) )
+            if ( auto tag = meta::abstract::get( inst ) )
+                return is_memory_operation( tag );
+
         // TODO if call is in table
         return llvm::isa< llvm::CallInst >( inst );
     }
