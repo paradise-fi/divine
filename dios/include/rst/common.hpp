@@ -27,6 +27,9 @@
 #define _LART_NOINLINE \
     __attribute__((__noinline__))
 
+#define _LART_NOINLINE_WEAK \
+    __attribute__((__noinline__,__weak__))
+
 #define _LART_INTERFACE \
     __attribute__((__used__,__nothrow__, __noinline__, __flatten__)) __invisible
 
