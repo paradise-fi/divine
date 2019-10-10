@@ -15,9 +15,19 @@ namespace lart::abstract {
 
     constexpr const char * domain_index = "lart.abstract.domain.index";
 
-    struct InitAbstractions {
+    struct InitAbstractions : LLVMUtil< InitAbstractions > {
 
         using Namespace = llvm::StringRef;
+
+        using Util = LLVMUtil< InitAbstractions >;
+
+        using Util::i1Ty;
+        using Util::i8Ty;
+        using Util::i16Ty;
+        using Util::i32Ty;
+        using Util::i64Ty;
+
+        using Util::i8PTy;
 
         struct Domain;
 
@@ -70,7 +80,9 @@ namespace lart::abstract {
 
         Domains domains() const;
 
-        llvm::Module * _m;
+        void generate_get_domain_operation_intrinsic() const;
+
+        llvm::Module * module;
     };
 
 } // namespace lart::abstract

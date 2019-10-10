@@ -44,7 +44,6 @@ namespace lart::abstract {
     auto all_operations( const Domains& doms )
     {
         auto get_ops = [] ( const auto & dom ) { return dom->operations; };
-
         return query::query( doms ).map( get_ops ).flatten().freeze();
     }
 
@@ -175,6 +174,7 @@ namespace lart::abstract {
                 auto fn = llvm::cast< llvm::Function >(
                     m.getOrInsertFunction( name, fty )
                 );
+
                 set_index_metadata( fn, meta::tag::operation::index, i );
             }
 
@@ -185,9 +185,9 @@ namespace lart::abstract {
             }
 
             auto table = as_constant( domains );
-
             auto g = m.getOrInsertGlobal( name, table->getType() );
             auto global = llvm::cast< llvm::GlobalVariable >( g );
+
             global->setConstant( true );
             global->setLinkage( llvm::GlobalValue::InternalLinkage );
             global->setAlignment( 4 );
@@ -237,7 +237,7 @@ namespace lart::abstract {
             return functions;
         }
 
-        const std::vector< D > &doms;
+        const Domains &doms;
     };
 
     llvm::StringRef Operation::name() const
@@ -303,10 +303,10 @@ namespace lart::abstract {
     {
         Domains doms;
 
-        for ( auto ns : abstract_namespaces( _m ) ) {
+        for ( auto ns : abstract_namespaces( module ) ) {
             auto dom = std::make_unique< DomainT >( ns );
 
-            dom->operations = query::query( functions_with_ptrefix( *_m, ns ) )
+            dom->operations = query::query( functions_with_ptrefix( *module, ns ) )
                 .map( [&] ( auto fn ) { return Operation{ fn, dom.get() }; } )
                 .freeze();
             doms.emplace_back( std::move( dom ) );
@@ -315,9 +315,32 @@ namespace lart::abstract {
         return doms;
     }
 
+    void InitAbstractions::generate_get_domain_operation_intrinsic() const
+    {
+        auto fty = llvm::FunctionType::get( i8PTy(), { i32Ty(), i32Ty() }, false );
+        auto fn = llvm::cast< llvm::Function >(
+            module->getOrInsertFunction( "__lart_get_domain_operation", fty )
+        );
+
+        fn->deleteBody();
+
+        auto & ctx = fn->getContext();
+        auto entry = llvm::BasicBlock::Create( ctx, "entry", fn );
+
+        llvm::IRBuilder<> irb( entry );
+
+        auto domain = fn->arg_begin();
+        auto op_index = std::next( fn->arg_begin() );
+        auto table = module->getNamedGlobal( "__lart_domains_vtable" );
+
+        auto ptr = irb.CreateGEP( table, { i64( 0 ), domain, op_index } );
+        auto op = irb.CreateLoad( ptr );
+        irb.CreateRet( op );
+    }
+
     void InitAbstractions::run( llvm::Module &m )
     {
-        _m = &m;
+        module = &m;
         // 1. find all domains in module
         auto doms = domains();
 
@@ -338,6 +361,8 @@ namespace lart::abstract {
 
         // 5. generate and allocate alfa-gamma table
         // TODO
+
+        generate_get_domain_operation_intrinsic();
     }
 
 } // namespace lart::abstract
