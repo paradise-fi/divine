@@ -71,8 +71,8 @@ namespace brq
         };
 
         // The total width and height of the resulting svg
-        int _width;
-        int _height;
+        double _width;
+        double _height;
 
         // How many rows will be there?
         int _rows;
@@ -94,7 +94,7 @@ namespace brq
         std::map< std::string, line > _lines;
         std::vector< std::string > _column_names;
 
-        plotter( int width, int height, std::vector< std::string > cols, int rows ) : _width( width ), _height( height ),
+        plotter( double width, double height, std::vector< std::string > cols, int rows ) : _width( width ), _height( height ),
                 _rows( rows ), _column_names( std::move( cols ) )
         {
         }
@@ -123,7 +123,7 @@ namespace brq
         std::string svg() const
         {
             using namespace brq_impl;
-            using svg_val = std::variant< std::string, double >;
+            using svg_val = std::variant< std::string, double, int >;
             using svg_attr = std::pair< std::string, svg_val >;
             using svg_attr_list = std::initializer_list< svg_attr >;
 
