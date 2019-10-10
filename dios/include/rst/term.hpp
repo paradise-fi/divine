@@ -89,7 +89,7 @@ namespace __dios::rst::abstract {
         }
 
         #define __lift( name, T ) \
-            _LART_NOINLINE static Term lift_one_ ## name( T value ) noexcept { \
+            _LART_INTERFACE static Term lift_one_ ## name( T value ) noexcept { \
                 return lift( value ); \
             }
 
