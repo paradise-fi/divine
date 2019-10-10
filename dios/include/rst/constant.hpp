@@ -127,9 +127,29 @@ namespace __dios::rst::abstract {
             UNREACHABLE( "unsupported integer constant bitwidth", bw );
         }
 
+        template< typename Op >
+        _LART_INLINE static Ptr singed_binary( Ptr lhs, Ptr rhs, Op op ) noexcept
+        {
+            auto l = get_constant( lhs );
+            auto r = get_constant( rhs );
+            auto bw = std::max( l.bw, r.bw ) - 1;
+
+            PERFORM_OP_IF( int8_t )
+            PERFORM_OP_IF( int16_t )
+            PERFORM_OP_IF( int32_t )
+            PERFORM_OP_IF( int64_t )
+
+            UNREACHABLE( "unsupported integer constant bitwidth", bw );
+        }
+
         #define __bin( name, op ) \
             _LART_INTERFACE static Ptr name( Ptr lhs, Ptr rhs ) noexcept { \
                 return binary( lhs, rhs, op() ); \
+            }
+
+        #define __sbin( name, op ) \
+            _LART_INTERFACE static Ptr name( Ptr lhs, Ptr rhs ) noexcept { \
+                return singed_binary( lhs, rhs, op() ); \
             }
 
         /* arithmetic operations */
@@ -140,10 +160,10 @@ namespace __dios::rst::abstract {
         __bin( op_mul, std::multiplies )
         //__bin( op_fmul )
         __bin( op_udiv, std::divides )
-        __bin( op_sdiv, std::divides )
+        __sbin( op_sdiv, std::divides )
         //__bin( op_fdiv )
         __bin( op_urem, std::modulus )
-        __bin( op_srem, std::modulus )
+        __sbin( op_srem, std::modulus )
         //__bin( op_frem )
 
         /* bitwise operations */
@@ -177,10 +197,10 @@ namespace __dios::rst::abstract {
         __bin( op_uge, std::greater_equal );
         __bin( op_ult, std::less );
         __bin( op_ule, std::less_equal );
-        //__bin( op_sgt );
-        //__bin( op_sge );
-        //__bin( op_slt );
-        //__bin( op_sle );
+        __sbin( op_sgt, std::greater );
+        __sbin( op_sge, std::greater_equal );
+        __sbin( op_slt, std::less );
+        __sbin( op_sle, std::less_equal );
 
         /* cast operations */
         //__cast( op_fpext, FPExt );
