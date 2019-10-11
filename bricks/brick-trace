@@ -161,6 +161,46 @@ namespace brq
             return *this;
         }
 
+        string_builder &operator<<( std::u32string_view us ) noexcept
+        {
+            while ( !us.empty() )
+            {
+                if ( !_make_space( 4 ) ) return *this;
+
+                uint32_t wc = us.front();
+
+                if ( ( wc & 0xFFFFF800 ) == 0x00D800 || wc > 0x10FFFF )
+                    continue; /* skip the character */
+
+                if ( wc < 0x000080 )
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( wc ); 
+                }
+                else if ( wc < 0x000800 )
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xC0 | ( wc >> 6 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( wc & 0x03F ) );
+                }
+                else if ( wc < 0x010000 )
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xE0 |   ( wc >> 12 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x0FC0 ) >> 6 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 |   ( wc & 0x003F ) );
+                }
+                else // if (wc < 0x110000)
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xF0 |   ( wc >> 18 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x03F000 ) >> 12 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x000FC0 ) >> 6 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 |   ( wc & 0x00003F ) );
+                }
+
+                us.remove_prefix( 1 );
+            }
+
+            return *this;
+        }
+
         string_builder &operator<<( char c ) noexcept
         {
             *this << int( c );
@@ -191,7 +231,8 @@ namespace brq
 
         template< typename C >
         auto operator<<( const C &c ) noexcept
-            -> std::enable_if_t< !std::is_same< typename C::value_type, char >::value,
+            -> std::enable_if_t< !std::is_convertible_v< C, std::string_view > &&
+                                 !std::is_convertible_v< C, std::u32string_view >,
                                  decltype( *this << *c ) >
         {
             if ( c.has_value() )
@@ -202,7 +243,8 @@ namespace brq
 
         template< typename C >
         auto operator<<( const C &c ) noexcept
-            -> std::enable_if_t< !std::is_same< typename C::value_type, char >::value,
+            -> std::enable_if_t< !std::is_convertible_v< C, std::string_view > &&
+                                 !std::is_convertible_v< C, std::u32string_view >,
                                  decltype( *this << *c.begin() << *c.end() ) >
         {
             bool first = true;
