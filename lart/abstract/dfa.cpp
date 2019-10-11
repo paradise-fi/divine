@@ -214,6 +214,9 @@ namespace lart::abstract
 
     void DataFlowAnalysis::propagate( llvm::Value * val ) noexcept
     {
+        if ( ! llvm::isa< llvm::Constant >( val ) )
+            preprocess( util::get_function( val ) );
+
         using Task = std::function< void( llvm::Value* ) >;
         Task propagate_back_task = [this, &propagate_back_task] ( llvm::Value * v ) {
             if ( auto arg = llvm::dyn_cast< llvm::Argument >( v ) )
@@ -280,8 +283,6 @@ namespace lart::abstract
 
     void DataFlowAnalysis::propagate_in( llvm::Function *fn, llvm::CallSite call ) noexcept
     {
-        preprocess( fn );
-
         for ( const auto & arg : fn->args() )
         {
             auto oparg = call.getArgOperand( arg.getArgNo() );
@@ -295,7 +296,6 @@ namespace lart::abstract
     {
         auto handle_call = [&]( auto call )
         {
-            preprocess( util::get_function( call ) );
             for ( auto fn : resolve_call( call ) )
                 if ( !meta::function::ignore_return( fn ) )
                 {
@@ -310,8 +310,6 @@ namespace lart::abstract
     {
         for ( auto * val : meta::enumerate( m ) )
         {
-            preprocess( util::get_function( val ) );
-
             auto meta = meta::abstract::get( val );
             ASSERT( meta.has_value() );
 
