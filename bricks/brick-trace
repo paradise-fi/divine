@@ -226,7 +226,7 @@ namespace brq
 
         string_builder &operator<<( const char *str ) noexcept
         {
-            return (*this) << std::string_view( str );
+            return (*this) << ( str ? std::string_view( str ) : "<nullptr>" );
         }
 
         template< typename C >
