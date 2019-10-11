@@ -47,7 +47,7 @@ namespace brq::sql
             if ( strchr( dem, '<' ) )
                 *strchr( dem, '<' ) = 0;
             name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
-            TRACE( dem, "→", name );
+            NOISE( dem, "→", name );
             std::free( dem );
             if ( quote )
                 name = quote + name + quote;
@@ -78,6 +78,12 @@ namespace brq::sql
             auto tm = to_localtime();
             strftime( buf, 200, "%Y-%m-%d %H:%M %Z", &tm );
             return buf;
+        }
+
+        template< typename stream >
+        friend auto operator<<( stream &s, timestamp ts ) -> decltype ( s << std::string() )
+        {
+            return s << ts.to_string();
         }
     };
 
@@ -389,7 +395,7 @@ namespace brq::sql
         using result_t = row< cols... >;
 
         conn &_conn;
-        std::string _txt;
+        brq::string_builder _query, _debug;
 
         std::vector< std::unique_ptr< char[] > > _memory;
         std::vector< const char * > _params;
@@ -422,14 +428,14 @@ namespace brq::sql
         template< typename T >
         stmt( conn &c, const T &t ) : _conn( c )
         {
-            string_builder bld;
-            bld << t;
-            _txt = bld.buffer();
+            _query << t;
+            _debug << "where";
         }
 
         stmt( const stmt & ) = delete;
         stmt( stmt &&o )
-            : _conn( o._conn ), _txt( o._txt ), _memory( std::move( o._memory ) ), _params( o._params ),
+            : _conn( o._conn ), _query( std::move( o._query ) ), _debug( std::move( o._debug ) ),
+              _memory( std::move( o._memory ) ), _params( o._params ),
               _lengths( o._lengths ), _result( o._result )
         {
             o._result = nullptr;
@@ -478,13 +484,13 @@ namespace brq::sql
         {
             std::vector< int > formats( _params.size(), 1 );
 
-            TRACE( "exec:", _txt );
-            _result = PQexecParams( _conn.handle(), _txt.c_str(), _params.size(), nullptr,
+            DEBUG( "executing ", _query.buffer(), _params.size() ? _debug.buffer() : "" );
+            _result = PQexecParams( _conn.handle(), _query.buffer(), _params.size(), nullptr,
                                     _params.data(), _lengths.data(), formats.data(), 1 );
 
             auto r = PQresultStatus( _result );
             if ( r != PGRES_COMMAND_OK && r != PGRES_TUPLES_OK )
-                raise< error >() << "executing " << _txt << ": " << _conn.errmsg();
+                raise< error >() << "executing " << _query.buffer() << ": " << _conn.errmsg();
 
             return *this;
         }
@@ -497,7 +503,9 @@ namespace brq::sql
             _params.reserve( count );
             _memory.reserve( count );
 
+            int i = _params.size();
             list.each( [&]( auto &v ) { bind_one( v ); } );
+            list.each( [&]( auto &v ) { _debug << " $" << ++i << " = '" << v << "'"; } );
             return *this;
         }
 
@@ -506,8 +514,6 @@ namespace brq::sql
         {
             return bind_list( cons_list( vs... ) );
         }
-
-        stmt( conn &c, const std::string &s ) : _conn( c ), _txt( s ) {}
     };
 
     template< typename T, typename = void > struct is_expr : std::false_type {};
