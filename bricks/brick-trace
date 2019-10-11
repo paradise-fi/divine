@@ -331,28 +331,28 @@ namespace brq
     };
 
     template< typename stream, typename T >
-    auto format( stream &acc, const T &t ) noexcept
+    auto format_nofail( stream &acc, const T &t ) noexcept
         -> decltype( acc << t, void(0) )
     {
         acc << t;
     }
 
     template< typename stream >
-    void format( stream &acc, fallback ) noexcept
+    void format_nofail( stream &acc, fallback ) noexcept
     {
         acc << "<unknown>";
     }
 
     template< typename stream >
-    void format_args( stream & ) noexcept {}
+    void format_args_nofail( stream & ) noexcept {}
 
     template< typename stream, typename A, typename... Args >
-    void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
+    void format_args_nofail( stream &acc, const A &a, const Args & ... as ) noexcept
     {
-        format( acc, a );
+        format_nofail( acc, a );
         if constexpr ( !std::is_same< A, decltype( std::hex ) >::value )
             acc << " ";
-        format_args( acc, as... );
+        format_args_nofail( acc, as... );
     }
 
     /* In debug builds, decide which traces are active at run-time. This is to
@@ -422,7 +422,7 @@ namespace brq
 #ifndef __divine__
         acc << "[" << pthread_self() << "] ";
 #endif
-        format_args( acc, args... );
+        format_args_nofail( acc, args... );
 
 #ifdef __divine__
         if ( acc.truncated() )
