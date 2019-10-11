@@ -555,6 +555,12 @@ namespace brq
 #endif
     }
 
+    inline void symlink( std::string a, std::string b )
+    {
+        if ( ::symlink( a.c_str(), b.c_str() ) < 0 )
+            brq::raise< system_error >() << "cannot create symlink from " << a << " to " << b;
+    }
+
     inline void rmdir( std::string dirname ) {
 #ifdef _WIN32
         if ( ::_rmdir( dirname.c_str() ) < 0 )
