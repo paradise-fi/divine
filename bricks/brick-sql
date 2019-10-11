@@ -174,13 +174,14 @@ namespace brq::sql
         static constexpr bool is_enum = false;
     };
 
-    template< typename T >
+    template< typename T, bool call = false >
     struct constant : column< T, false >
     {
         template< typename CT >
         static std::string_view column_name( const CT &ct )
         {
-            static std::string n = std::string( get_name( ct, false ) ) + "::" + sql_type< T >();
+            static std::string n = std::string( get_name( ct, false ) ) +
+                ( call ? "()::" : "::" ) + sql_type< T >();
             return n;
         }
     };
