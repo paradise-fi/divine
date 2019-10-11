@@ -41,6 +41,90 @@ namespace lart::abstract
                               , llvm::PHINode >( val );
     }
 
+    llvm::Instruction * lower_constant_expr( llvm::ConstantExpr * ce, llvm::Instruction * loc )
+    {
+        auto i = ce->getAsInstruction();
+        i->insertBefore( loc );
+        return i;
+    }
+
+    llvm::ConstantExpr * has_constexpr( llvm::Value * value, std::set< llvm::Value * > & seen )
+    {
+        if ( auto [it, inserted] = seen.insert( value ); !inserted )
+            return nullptr;
+
+        if ( auto con = llvm::dyn_cast< llvm::Constant >( value ) ) {
+            if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( con ) ) {
+                return ce;
+            } else {
+                // recurse for ConstantStruct, ConstantArray ...
+                for ( auto & op : con->operands() ) {
+                    if ( auto ce = has_constexpr( op.get(), seen ) )
+                        return ce;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    llvm::ConstantExpr * has_constexpr( llvm::Value * value )
+    {
+        std::set< llvm::Value * > seen;
+        return has_constexpr( value, seen );
+    }
+
+    bool lower_constant_expr( llvm::Function & fn )
+    {
+        std::set< llvm::Instruction * > worklist;
+
+        for ( auto & bb : fn ) {
+            for ( auto & i : bb ) {
+                for ( auto & op : i.operands() ) {
+                    if ( has_constexpr( op ) ) {
+                        worklist.insert( &i );
+                        break;
+                    }
+                }
+            }
+        }
+
+        bool change = !worklist.empty();
+
+        while ( !worklist.empty() ) {
+            auto inst = worklist.extract( worklist.begin() ).value();
+            if ( auto phi = llvm::dyn_cast< llvm::PHINode >( inst ) ) {
+                for ( unsigned int i = 0; i < phi->getNumIncomingValues(); ++i ) {
+                    auto loc = phi->getIncomingBlock( i )->getTerminator();
+                    assert( loc );
+
+                    if ( auto ce = has_constexpr( phi->getIncomingValue( i ) ) ) {
+                        auto new_inst = lower_constant_expr( ce, loc );
+                        for ( unsigned int j = i; j < phi->getNumIncomingValues(); ++j ) {
+                            if ( ( phi->getIncomingValue( j ) == phi->getIncomingValue( i ) ) &&
+                                 ( phi->getIncomingBlock( j ) == phi->getIncomingBlock( i ) ) )
+                            {
+                                phi->setIncomingValue( j, new_inst );
+                            }
+                        }
+
+                        worklist.insert( new_inst );
+                    }
+                }
+            } else {
+                for ( auto & op : inst->operands() ) {
+                    if ( auto ce = has_constexpr( op.get() ) ) {
+                        auto new_inst = lower_constant_expr( ce, inst );
+                        inst->replaceUsesOfWith( ce, new_inst );
+                        worklist.insert( new_inst );
+                    }
+                }
+            }
+        }
+
+        return change;
+    }
+
     void DataFlowAnalysis::preprocess( llvm::Function * fn ) noexcept
     {
         if ( !tagFunctionWithMetadata( *fn, "lart.abstract.preprocessed" ) )
@@ -51,6 +135,8 @@ namespace lart::abstract
 
         auto lsi = std::unique_ptr< llvm::FunctionPass >( llvm::createLowerSwitchPass() );
         lsi.get()->runOnFunction( *fn );
+
+        lower_constant_expr( *fn );
     }
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept

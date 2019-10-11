@@ -30,6 +30,9 @@ namespace lart::abstract
         if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( fn ) )
             return resolve_function( ce->stripPointerCasts(), fns );
 
+        if ( auto cast = llvm::dyn_cast< llvm::CastInst >( fn ) )
+            return resolve_function( cast->stripPointerCasts(), fns );
+
         if ( auto ga = llvm::dyn_cast< llvm::GlobalAlias >( fn ) )
             return resolve_function( ga->getBaseObject(), fns );
 
