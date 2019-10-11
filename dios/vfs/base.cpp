@@ -55,7 +55,7 @@ namespace __dios::fs
         if ( !check_key( env, ".content" ) )
             return false;
 
-        if ( name == "/" )
+        if ( name == "/" || name == "." )
         {
             root()->set_stat( st );
             __dios_assert( root()->mode().is_dir() );
