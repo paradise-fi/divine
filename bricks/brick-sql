@@ -728,6 +728,9 @@ BRICK_SQL_OP( | )
         template< typename... group_cols >
         group_by< where_clause, group_cols... > group_by() { return { *this }; }
 
+        template< typename... order_cols >
+        order_by< where_clause, order_cols... > order_by() { return { *this }; }
+
         auto exec() { return this->_exec( this ); }
 
         template< typename stmt >
