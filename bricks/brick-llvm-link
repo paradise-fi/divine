@@ -400,7 +400,7 @@ struct Linker
             _module = std::move( src );
 
         if ( src && linker().linkInModule( std::move( src ) ) )
-            throw except::Error( "ERROR: while linking '" + src->getModuleIdentifier() + "'" );
+            brq::raise() << "ERROR: while linking '" << src->getModuleIdentifier() << "'";
 
         _updateUndefined();
     }

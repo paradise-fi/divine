@@ -54,9 +54,9 @@ extern char **environ;
 namespace brick {
 namespace proc {
 
-struct ProcError : brick::except::Error
+struct ProcError : brq::error
 {
-    using brick::except::Error::Error;
+    using brq::error::error;
 };
 
 enum SpawnOptsEnum : unsigned {
