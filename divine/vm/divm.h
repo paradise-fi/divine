@@ -187,8 +187,8 @@ struct _VM_Operand
 struct _VM_OperandExt
 {
     uint32_t is_instruction:1; /* always 0 */
-    uint32_t width:24;
-    uint32_t unused:7;
+    uint32_t width:27;
+    uint32_t unused:4;
 #if __cplusplus >= 201103L
     _VM_OperandExt() : is_instruction( 0 ), width( 0 ), unused( 0 ) {}
 #endif
