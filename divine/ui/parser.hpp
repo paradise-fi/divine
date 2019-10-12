@@ -26,10 +26,11 @@ namespace divine::ui
 struct CLI : Interface
 {
     bool _batch, _check_files = true;
+    std::string _argv_0;
     std::vector< std::string > _args;
 
     CLI( int argc, const char **argv ) :
-        _batch( true ), _args( cmd::from_argv( argc, argv ) )
+        _batch( true ), _argv_0( argv[ 0 ] ), _args( cmd::from_argv( argc, argv ) )
     { }
 
     CLI( std::vector< std::string > args ) :
@@ -324,13 +325,13 @@ struct CLI : Interface
 
             if ( empty )
             {
-                Help().run( cmds );
+                Help().run( _argv_0, cmds );
                 return 0;
             }
 
             cmd.match( [&]( Help &help )
                        {
-                           help.run( cmds );
+                           help.run( _argv_0, cmds );
                        },
                        [&]( Command &c )
                        {

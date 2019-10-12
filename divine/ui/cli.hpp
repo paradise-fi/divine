@@ -105,24 +105,7 @@ private:
     std::shared_ptr< mc::BitCode > _bc;
 };
 
-struct Help
-{
-    std::string _cmd;
-
-    template< typename P >
-    void run( P cmds )
-    {
-        std::string description = cmds.describe( _cmd );
-        if ( description.empty() && !_cmd.empty() )
-            die( "Unknown command '" + _cmd + "'. Available commands are:\n" + cmds.describe() );
-        if ( _cmd.empty() )
-        {
-            std::cerr << "To print details about a specific command, run 'divine help {command}'.\n\n";
-            std::cerr << cmds.describe() << std::endl;
-        }
-        else std::cerr << description << std::endl;
-    }
-};
+using Help = brick::cmd::Help;
 
 struct Version : Command
 {
