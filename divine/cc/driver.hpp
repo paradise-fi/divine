@@ -122,11 +122,9 @@ namespace divine::cc
         std::string find_object( std::string name );
         ModulePtr load_object( std::string path );
 
-      protected:
         Options opts;
         CC1 compiler;
         std::unique_ptr< brick::llvm::Linker > linker;
-      public:
         std::vector< std::string > commonFlags;
     };
 }
