@@ -95,6 +95,9 @@ CodePointer Program::getCodePointer( llvm::Value *val )
 Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
 {
     auto t = val->getType();
+    if ( xg::width( TD, t ) >= ( 1 << 27 ) )
+        throw std::logic_error(
+            "Program::initSlot(): Cannot accommodate a value larger than 16MiB." );
     Slot result( loc, xg::type( t ), xg::width( TD, t ) );
 
     if ( isCodePointer( val ) )
