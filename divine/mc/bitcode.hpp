@@ -46,7 +46,7 @@ std::string to_string( AutoTraceFlags, bool yaml = false );
 LeakCheckFlags leakcheck_from_string( std::string x );
 AutoTraceFlags autotrace_from_string( std::string x );
 
-struct BCParseError : brick::except::Error { using brick::except::Error::Error; };
+struct BCParseError : brq::error { using brq::error::error; };
 
 struct BitCode
 {
