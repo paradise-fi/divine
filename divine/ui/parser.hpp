@@ -340,7 +340,7 @@ struct CLI : Interface
                        } );
             return 0;
         }
-        catch ( brick::except::Error &e )
+        catch ( brq::error &e )
         {
             std::cerr << "ERROR: " << e.what() << std::endl;
             exception( e );

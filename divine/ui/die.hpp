@@ -3,7 +3,7 @@
 
 namespace divine {
 
-struct DieException : brick::except::Error { using brick::except::Error::Error; };
+struct DieException : brq::error { using brq::error::error; };
 
 inline static void die( std::string msg, int exitcode = 1 )
 {
