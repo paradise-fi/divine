@@ -21,6 +21,10 @@
 #include "brick-trace"
 #include <unistd.h>
 
+#ifdef __divine__
+#include <sys/fault.h>
+#endif
+
 /* This file provides an assortment of assertion macros which provide
  * additional information about the circumstances of assertion failures, for
  * instance ASSERT_EQ will print both the source code statement and the actual
@@ -128,6 +132,16 @@ namespace brq
         const char *what() const noexcept { return str.buffer(); }
     };
 
+    [[noreturn]] static inline void assert_signal( assert_failed &err )
+    {
+#if defined(__divine__)
+        __dios_fault( _VM_F_Assert, err.what() );
+        __builtin_trap();
+#else
+        throw std::move( err );
+#endif
+    }
+
     template< typename X, typename... Y >
     void assert_bool_fn( const trace_location &l, const X &x, const Y & ... y  )
     {
@@ -135,7 +149,7 @@ namespace brq
             return;
         assert_failed f( l );
         format_args( f, y... );
-        throw f;
+        assert_signal( f );
     }
 
     template< typename... T >
@@ -144,7 +158,7 @@ namespace brq
     {
         assert_failed f( l, "unreachable executed:" );
         format_args( f, args... );
-        throw f;
+        assert_signal( f );
     }
 
     template< typename Op, typename A, typename B, typename... T >
@@ -162,7 +176,7 @@ namespace brq
             assert_failed f( l );
             f << "\n   but got " << a << " " << inv << " " << b << "\n";
             format_args( f, args... );
-            throw f;
+            assert_signal( f );
         }
         /* trace_fn( l, "assert passed:", l._statement, "[", x, op_str, y, "]" ); */
     }
@@ -174,7 +188,7 @@ namespace brq
         {
             assert_failed f( l );
             f << "\n   but got x = " << x << "\n";
-            throw f;
+            assert_signal( f );
         }
     }
 }
