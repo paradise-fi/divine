@@ -35,7 +35,7 @@ namespace divine::vm::setup
         auto ipc = ctx.program().bootpoint();
         auto &fun = ctx.program().function( ipc );
         if ( fun.argcount != 1 )
-            throw brick::except::Error( "__boot must take exactly 1 argument" );
+            throw brq::error( "__boot must take exactly 1 argument" );
         make_frame( ctx, ipc, nullPointerV(), value::Pointer( ctx.program().envptr() ) );
         ctx.flags_set( -1, _VM_CF_KernelMode | _VM_CF_Booting | _VM_CF_IgnoreLoop | _VM_CF_IgnoreCrit );
     }

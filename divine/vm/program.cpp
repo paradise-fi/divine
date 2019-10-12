@@ -80,9 +80,7 @@ CodePointer Program::getCodePointer( llvm::Value *val )
         return _addr.code( B->getBasicBlock() );
     } else if ( auto F = dyn_cast< llvm::Function >( val ) ) {
         if ( F->isDeclaration() && xg::hypercall( F ) == lx::NotHypercall )
-            throw brick::except::Error(
-                "Program::insert: " +
-                std::string( "Unresolved symbol (function): " ) + F->getName().str() );
+            brq::raise() << "unresolved symbol (function): " << F->getName().str();
 
         if ( xg::hypercall( F ) )
             return CodePointer();
@@ -246,10 +244,7 @@ Program::Slot Program::insert( int function, llvm::Value *val, bool )
     {
         /* G is a pointer type, G's initializer is of the actual value type  */
         if ( !G->hasInitializer() )
-            throw std::logic_error(
-                "Program::insert: " +
-                std::string( "Unresolved symbol (global variable): " ) +
-                G->getValueName()->getKey().str() );
+            brq::raise() << "unresolved symbol (global variable): " << G->getValueName()->getKey().str();
 
         slot = allocateSlot( slot_i, function, nullptr );
         insert( 0, G->getInitializer() );
@@ -287,15 +282,11 @@ void Program::hypercall( Position p )
     llvm::CallSite CS( &*p.I );
     llvm::Function *F = CS.getCalledFunction();
     if ( insn.opcode != llvm::Instruction::Call )
-        throw std::logic_error(
-            std::string( "Program::hypercall: " ) +
-            "Cannot 'invoke' a hypercall, use 'call' instead: " + F->getName().str() );
+        brq::raise() << "cannot 'invoke' a hypercall, use 'call' instead: " << F->getName().str();
     insn.opcode = lx::OpHypercall;
     insn.subcode = xg::hypercall( F );
     if ( insn.subcode == lx::NotHypercall )
-        throw std::logic_error(
-            std::string( "Program::hypercall: " ) +
-            "Can't call an undefined function: " + F->getName().str() );
+        brq::raise() << "cannot call an undefined function: " << F->getName().str();
 }
 
 template< typename Insn >
@@ -356,7 +347,7 @@ Program::Position Program::insert( Position p )
         if ( F && is_debug.count( F ) )
         {
             if ( dyn_cast< llvm::InvokeInst >( p.I ) )
-                throw std::logic_error( "Cannot turn an 'invoke' into a 'dbg.call'." );
+                brq::raise() << "cannot turn an 'invoke' into a 'dbg.call'";
             insn.opcode = lx::OpDbgCall;
         }
     }
@@ -397,9 +388,8 @@ Program::Position Program::insert( Position p )
         ASSERT_EQ( _addr.code( &*p.I ), p.pc );
 
     if ( !p.pc.instruction() )
-        throw std::logic_error(
-            "Program::insert() in " + p.I->getParent()->getParent()->getName().str() +
-            "\nToo many instructions in a function, capacity exceeded" );
+        brq::raise() << "capacity exceeded, too many instructions in "
+                     << p.I->getFunction()->getName().str();
 
     return p;
 }
