@@ -47,6 +47,11 @@ void panic()
         std::cerr << "E: " << e.what() << std::endl;
         std::abort();
     }
+    catch ( brq::assert_failed &e )
+    {
+        std::cerr << e.what() << std::endl;
+        std::abort();
+    }
 #if OPT_Z3
     catch ( z3::exception &e )
     {
