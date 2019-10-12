@@ -35,9 +35,9 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::cc
 {
-    struct CompileError : brick::except::Error
+    struct CompileError : brq::error
     {
-        using brick::except::Error::Error;
+        using brq::error::error;
     };
 
     void initTargets();
