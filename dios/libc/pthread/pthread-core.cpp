@@ -99,11 +99,6 @@ using namespace __dios;
 int pthread_create( __dios_task *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
     __dios::FencedInterruptMask mask;
 
-    // test input arguments
-    __dios_assert( entry );
-    if ( ptid == NULL || entry == NULL )
-        return EINVAL;
-
     // create new thread and pass arguments to the entry wrapper
     Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ), _VM_PT_Heap ) );
     args->entry = entry;
