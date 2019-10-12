@@ -2,6 +2,7 @@ GENERATOR != if ninja --version > /dev/null 2>&1 || \
                 ninja-build --version > /dev/null 2>&1; then echo Ninja; else echo Unix Makefiles; fi
 # fallback
 GENERATOR ?= Unix Makefiles
+.CURDIR ?= $(CURDIR)
 
 -include /etc/divine.make # for system-wide config
 -include local.make
@@ -14,7 +15,7 @@ PREFIX ?= /opt/divine
 RELEASE_BUILD_TYPE ?= RelWithDebInfo
 
 MAKEFLAGS ?= --no-print-directory
-OBJ ?= $(PWD)/_build.
+OBJ ?= $(.CURDIR)/_build.
 BENCH_NAME ?= $(LOGNAME)
 EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d explain; fi; \
          if test -n "$(JOBS)"; then echo -j $(JOBS); fi
@@ -22,7 +23,7 @@ EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d
 TOOLDIR = $(OBJ)toolchain
 CLANG = $(TOOLDIR)/clang/
 RTBIN = $(TOOLDIR)/dios
-RTSRC = $(PWD)/dios
+RTSRC = $(.CURDIR)/dios
 
 LIBUNWIND_LDIR = $(RTBIN)/libunwind/src
 CXX_LDIR = $(TOOLDIR)/lib
@@ -95,7 +96,7 @@ config:
 	$(CMAKE) -E copy_if_different $(OBJ)$(FLAVOUR)/config.tmp $(OBJ)$(FLAVOUR)/config.vars
 	if ! test -e $(OBJ)$(FLAVOUR)/config.done || test -n "$(FORCE_CMAKE)"; then \
 	  chmod +x test/divine; \
-	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(PWD) $(CMAKE_EXTRA) -G "$(GENERATOR)" && \
+	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(.CURDIR) $(CMAKE_EXTRA) -G "$(GENERATOR)" && \
 	  touch $(OBJ)$(FLAVOUR)/config.done; fi
 
 build: config
