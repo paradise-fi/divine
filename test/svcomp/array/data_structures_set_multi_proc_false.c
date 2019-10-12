@@ -1,7 +1,7 @@
 /* TAGS: c */
-/* VERIFY_OPTS: --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --sequential -o nofail:malloc -o ignore:control */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
-void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: __VERIFIER_error(); /* ERROR */ } }
+void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: __VERIFIER_error(); } }
 
 #define SIZE 100000
 
