@@ -14,6 +14,7 @@ my $prog =<<'EOF';
 #define _BSD_SOURCE 1
 
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 #include <dirent.h>
@@ -28,52 +29,22 @@ my $prog =<<'EOF';
 #include <locale.h>
 #include <pthread.h>
 
-int offset = 0;
-int padding = 0;
-
-#define TIME 1
-#define STR  2
-#define UINT 3
-
-#define PAD() do {                                                      \
-    while ( padding > 3 )                                               \
-    {                                                                   \
-        printf( "    __uint32_t __padding%d;\n", offset - padding );    \
-        padding -= 4;                                                   \
-    }                                                                   \
-    while ( padding > 0 )                                               \
-    {                                                                   \
-        printf( "    __uint8_t __padding%d;\n", offset - padding );     \
-        padding -= 1;                                                   \
-    }                                                                   \
-    assert( padding == 0 ); } while ( 0 )
-
-void output( const char *name, int size, int type )
+void output( const char *name, int offset, int size, const char *type )
 {
-    if ( padding )
-        PAD();
-    switch ( type )
-    {
-        case TIME:
-            printf( "    struct timespec %s;\n", name );
-            break;
-        case STR:
-            printf( "    char %s[%d];\n", name, size );
-            break;
-        case UINT:
-            printf( "    __uint%d_t %s;\n", size * 8, name );
-            break;
-    }
-    offset += size;
-    padding = 0;
+    printf( "        struct { char __pad_%s[%d]; ", name, offset );
+
+    if ( !strcmp( type, "uint" ) )
+        printf( "__uint%d_t %s;", size * 8, name );
+    else if ( !strcmp( type, "int" ) )
+        printf( "__int%d_t %s;", size * 8, name );
+    else if ( !strcmp( type, "buffer" ) )
+        printf( "char %s[%d];", name, size );
+    else
+        printf( "%s %s;", type, name );
+    printf( " };\n" );
 }
 
-#define FIELD(n, t)                              \
-    if ( (char *)&s.n - (char *)&s == offset )   \
-    {                                            \
-        output( #n , sizeof( s.n ), t );         \
-        continue;                                \
-    }
+#define FIELD(n, t) output( #n, (char *)&s.n - (char *)&s, sizeof( s.n ), #t )
 
 int main()
 {
@@ -88,46 +59,37 @@ sub print_struct
     {
         printf("#ifdef _HOST_$name\\n");
         struct $name s;
-        printf("struct _HOST_$name\\n{\\n");
-        padding = offset = 0;
-
-        while ( offset < sizeof( s ) )
-        {
-            $fields
-            padding ++;
-            offset ++;
-        }
-
-        PAD();
-
-        printf( "} __attribute__((packed));\\n" );
-        printf("#endif\\n");
+        printf("struct _HOST_$name\\n{\\n    union\\n    {\\n");
+        printf("        char __pad_struct[%zd];\\n", sizeof( s ) );
+        $fields
+        printf( "    };\\n} __attribute__((packed));\\n" );
+        printf("#endif\\n\\n");
     }
 EOF
 }
 
 print_struct( "stat", <<EOF );
-    FIELD( st_mode,    UINT );
-    FIELD( st_dev,     UINT );
-    FIELD( st_ino,     UINT );
-    FIELD( st_nlink,   UINT );
-    FIELD( st_uid,     UINT );
-    FIELD( st_gid,     UINT );
-    FIELD( st_rdev,    UINT );
-    FIELD( st_atim,    TIME );
-    FIELD( st_mtim,    TIME );
-    FIELD( st_ctim,    TIME );
-    FIELD( st_size ,   UINT );
-    FIELD( st_blocks , UINT );
-    FIELD( st_blksize, UINT );
-    // FIELD( st_flags, UINT );
-    // FIELD( st_gen, UINT );
+    FIELD( st_mode,    uint );
+    FIELD( st_dev,     uint );
+    FIELD( st_ino,     uint );
+    FIELD( st_nlink,   uint );
+    FIELD( st_uid,     uint );
+    FIELD( st_gid,     uint );
+    FIELD( st_rdev,    uint );
+    FIELD( st_atim,    struct timespec );
+    FIELD( st_mtim,    struct timespec );
+    FIELD( st_ctim,    struct timespec );
+    FIELD( st_size ,   uint );
+    FIELD( st_blocks , uint );
+    FIELD( st_blksize, uint );
+    // FIELD( st_flags, uint );
+    // FIELD( st_gen, uint );
     // FIELD( __st_birthtim, TIME );
 EOF
 
 print_struct( "dirent", <<EOF );
-    FIELD( d_ino,  UINT );
-    FIELD( d_name, STR );
+    FIELD( d_ino,  uint );
+    FIELD( d_name, buffer );
 EOF
 
 sub fmt
