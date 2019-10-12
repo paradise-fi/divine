@@ -151,7 +151,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     env.emplace_back( "vfs." + fmt( iCount ) + ".name", bstr( path.begin(), path.end() ) );
     env.emplace_back( "vfs." + fmt( iCount ) + ".stat", pStat );
     env.emplace_back( "vfs." + fmt( iCount ) + ".content", cont );
-    limit( cont.size() );
+    limit( path, cont.size() );
 
     if ( S_ISLNK( stat->st_mode ) )
     {
@@ -308,7 +308,14 @@ void WithBC::setup()
                 [&]( const std::string& s ) { vfsCaptured.insert( s ); },
                 [&]( const std::string& s ) { return visited( vfsCaptured, s ); },
                 [&]( ) { return i++; },
-                [&]( size_t s ) { if ( limit < s ) die( "VFS capture limit reached" ); limit -= s;  },
+                [&]( const std::string &path, size_t s )
+                {
+                    if ( s >= 1 << 24 )
+                        die( path + " is too big. Capturing files over 16MiB is not yet supported." );
+                    if ( limit < s )
+                        die( "VFS capture limit reached" );
+                    limit -= s;
+                },
                 _bc_env,
                 item );
         };
