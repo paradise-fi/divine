@@ -19,7 +19,6 @@
 #pragma once
 
 #include "brick-trace"
-#include <exception>
 #include <unistd.h>
 
 /* This file provides an assortment of assertion macros which provide
@@ -79,7 +78,7 @@
 
 namespace brq
 {
-    struct assert_failed : std::exception
+    struct assert_failed
     {
         string_builder str;
 
