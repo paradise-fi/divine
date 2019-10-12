@@ -9,7 +9,7 @@ void f(int n) {
   if (n<3) return;
   n--;
   f2(n);
-  ERROR: __VERIFIER_error(); /* ERROR */
+  ERROR: __VERIFIER_error();
 }
 
 void f2(int n) {
