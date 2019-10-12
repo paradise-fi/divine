@@ -416,7 +416,7 @@ template< typename Prog, typename Heap >
 void Node< Prog, Heap >::bitcode( std::ostream &out )
 {
     if ( _kind != DNKind::Frame )
-        throw brick::except::Error( "cannot display bitcode, not a stack frame" );
+        throw brq::error( "cannot display bitcode, not a stack frame" );
     DNEval< Heap > eval( _ctx );
     vm::CodePointer iter = pc(), origpc = pc();
     auto &prog = _ctx.program();
@@ -444,12 +444,12 @@ template< typename Prog, typename Heap >
 void Node< Prog, Heap >::source( std::ostream &out, std::function< std::string( std::string ) > pp )
 {
     if ( _kind != DNKind::Frame )
-        throw brick::except::Error( "cannot display source code, not a stack frame" );
+        throw brq::error( "cannot display source code, not a stack frame" );
     if ( !valid() )
-        throw brick::except::Error( "cannot display source code for a null/invalid frame" );
+        throw brq::error( "cannot display source code for a null/invalid frame" );
     auto s = subprogram();
     if ( !s )
-        throw brick::except::Error( "cannot display source code, no debugging information found" );
+        throw brq::error( "cannot display source code, no debugging information found" );
     out << print::source( _ctx.debug(), s, _ctx.program(), active_pc(), pp );
 }
 
