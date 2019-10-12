@@ -132,8 +132,9 @@ void execute( std::string script_txt, F... prepare )
         std::vector< std::string > tok;
         std::copy( split.begin( cmdstr ), split.end(), std::back_inserter( tok ) );
         ui::CLI cli( tok );
+        cli._check_files = false;
 
-        auto check_expect = [=]( auto &cmd )
+        auto check_expect = [=]( ui::Verify &cmd )
         {
             std::vector< ui::SinkPtr > log{ expect, cmd._log };
             cmd._log = ui::make_composite( log );
@@ -153,9 +154,9 @@ void execute( std::string script_txt, F... prepare )
         cmd.match( prepare...,
                    [&]( Load &l ) { files.emplace_back( l.args[1] , brick::fs::readFile( l.args[0] ) ); },
                    [&]( ui::Cc &cc ) { cc._driver.setupFS( files ); },
-                   [&]( ui::Command &c ) { c.setup(); } );
-        cmd.match( [&]( ui::Verify &v ) { check_expect( v ); },
-                   [&]( ui::Check &c )  { check_expect( c ); } );
+                   [&]( ui::WithBC &wbc ) { wbc._cc_driver.setupFS( files ); } );
+        cmd.match( [&]( ui::Command &c ) { c.setup(); } );
+        cmd.match( check_expect );
         cmd.match( [&]( ui::Command &c ) { c.run(); },
                    [&]( Expect &e ) { expect->setup( e ); } );
 
