@@ -120,7 +120,7 @@ __fd_isset(int fd, const fd_set *p)
 #ifndef _KERNEL
 #ifndef _SIGSET_T_DEFINED_
 #define _SIGSET_T_DEFINED_
-typedef unsigned int sigset_t;
+typedef __uint64_t sigset_t;
 #endif
 
 #ifndef _SELECT_DEFINED_
