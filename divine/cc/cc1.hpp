@@ -103,7 +103,7 @@ namespace divine::cc
         std::shared_ptr< llvm::LLVMContext > context() { return ctx; }
 
         bool fileExists( llvm::StringRef file );
-        std::unique_ptr< llvm::MemoryBuffer > getFileBuffer( llvm::StringRef file );
+        std::unique_ptr< llvm::MemoryBuffer > getFileBuffer( llvm::StringRef file, int64_t size = -1 );
 
       private:
         template< typename CodeGenAction >

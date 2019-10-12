@@ -233,9 +233,9 @@ namespace divine::cc
         return stat && stat->exists();
     }
 
-    std::unique_ptr< llvm::MemoryBuffer > CC1::getFileBuffer( llvm::StringRef file )
+    std::unique_ptr< llvm::MemoryBuffer > CC1::getFileBuffer( llvm::StringRef file, int64_t size )
     {
-        auto buf = overlayFS->getBufferForFile( file );
+        auto buf = overlayFS->getBufferForFile( file, size );
         return buf ? std::move( buf.get() ) : nullptr;
     }
 
