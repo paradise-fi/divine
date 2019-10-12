@@ -154,14 +154,13 @@ typedef struct siginfo
     sigval_t si_action;
 } siginfo_t;
 
-struct sigaction
-{
-    void ( *sa_handler )( int );
-    void ( *sa_sigaction )( int, siginfo_t *, void * );
-    sigset_t sa_mask;
-    int sa_flags;
-    void ( *sa_restorer )( void );
-};
+typedef void ( *__sa_handler_t )( int );
+typedef void ( *__sa_sigaction_t )( int, siginfo_t *, void * );
+typedef void ( *__sa_restorer_t )( void );
+
+#define _HOST_sigaction sigaction
+#include <sys/hostabi.h>
+#undef _HOST_sigaction
 
 int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact ) __nothrow;
 int rt_sigaction( int signum, const struct sigaction *act, struct sigaction *oldact,

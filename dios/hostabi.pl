@@ -92,6 +92,14 @@ print_struct( "dirent", <<EOF );
     FIELD( d_name, buffer );
 EOF
 
+print_struct( "sigaction", <<EOF );
+    FIELD( sa_handler,   __sa_handler_t );
+    FIELD( sa_sigaction, __sa_sigaction_t );
+    FIELD( sa_mask,      sigset_t );
+    FIELD( sa_flags,     int );
+    FIELD( sa_restorer,  __sa_restorer_t );
+EOF
+
 sub fmt
 {
     my ( $def, $val, $fmt ) = @_;
