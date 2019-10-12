@@ -131,7 +131,7 @@ void Sim::run()
         {
             interp.command( tok.tokenize( cmd ) );
         }
-        catch ( brick::except::Error &e )
+        catch ( brq::error &e )
         {
             std::cerr << "ERROR: " << e.what() << std::endl;
         }
@@ -152,8 +152,7 @@ void Sim::process_options()
     _file = parsed.get< std::string >( { "input file" } );
 
     if ( !_env.empty() || !_useropts.empty() || !_systemopts.empty() )
-        throw brick::except::Error( "ERROR: --load-report is incompatible with passing "
-                                    "options to the program" );
+        throw brq::error( "--load-report is incompatible with passing options to the program" );
 
     std::vector< std::pair< std::string, std::string > > env;
     std::vector< std::string > leakcheck;
@@ -184,7 +183,7 @@ void Sim::process_options()
         auto choices = parsed.get< Lines >( { "machine trace", "*", "choices" } );
         auto interrupts = parsed.get< Lines >( { "machine trace", "*", "interrupts" } );
         if ( choices.size() != interrupts.size() )
-            throw brick::except::Error( "The machine trace is corrupt." );
+            throw brq::error( "The machine trace is corrupt." );
         for ( unsigned i = 0; i < choices.size(); ++i )
         {
             _trace->steps.emplace_back();

@@ -55,7 +55,7 @@ void CLI::go( command::Break b )
             {
                 auto pc = _bc->program().functionByName( w );
                 if ( pc.null() )
-                    throw brick::except::Error( "Could not find " + w );
+                    brq::raise() << "could not find " << w;
                 _bps.emplace_back( pc );
             }
             else
@@ -65,8 +65,10 @@ void CLI::go( command::Break b )
                 try {
                     line = std::stoi( std::string( w, w.find( ':' ) + 1,
                                         std::string::npos ) );
-                } catch ( std::invalid_argument &e ) {
-                    throw brick::except::Error( "Line number expected after ':'" );
+                }
+                catch ( std::invalid_argument &e )
+                {
+                    throw brq::error( "line number expected after ':'" );
                 }
                 _bps.emplace_back( std::make_pair( file, line ) );
             }
@@ -142,7 +144,7 @@ void CLI::go( command::Show cmd )
 void CLI::go( command::Diff cmd )
 {
     if ( cmd.vars.size() != 2 )
-        throw brick::except::Error( "Diff needs exactly 2 arguments." );
+        throw brq::error( "Diff needs exactly 2 arguments." );
     dbg::diff( std::cerr, get( cmd.vars[0] ), get( cmd.vars[1] ) );
 }
 
@@ -158,7 +160,7 @@ void CLI::go( command::Info inf )
             return dump_functions();
         /* other builtins? */
         if ( !_info_cmd.count( inf.cmd ) )
-            throw brick::except::Error( "No such info sub-command: " + inf.cmd );
+            brq::raise() << "No such info sub-command: " << inf.cmd;
         command_raw( _info_cmd[ inf.cmd ] );
     }
     else
@@ -193,10 +195,10 @@ void CLI::go( command::Call c )
 {
     auto pc = _ctx.program().functionByName( c.function );
     if ( pc.null() )
-        throw brick::except::Error( "the function '" + c.function + "' is not defined" );
+        brq::raise() << "the function '" << c.function << "' is not defined";
     auto &fun = _ctx.program().function( pc );
     if ( fun.argcount )
-        throw brick::except::Error( "the function must not take any arguments" );
+        throw brq::error( "the function must not take any arguments" );
 
     Context ctx( _ctx );
     vm::Eval< Context > eval( ctx );
@@ -214,11 +216,11 @@ void CLI::go( command::Up )
     check_running();
     auto current =  get( "$_" );
     if ( current._kind != dbg::DNKind::Frame )
-        throw brick::except::Error( "$_ not set to a frame, can't go up" );
+        throw brq::error( "$_ not set to a frame, can't go up" );
 
     auto up = frame_up( current );
     if ( !up.valid() )
-        throw brick::except::Error( "outermost frame selected, can't go up" );
+        throw brq::error( "outermost frame selected, can't go up" );
     set( "$_", up );
 }
 
@@ -227,9 +229,9 @@ void CLI::go( command::Down )
     check_running();
     auto frame = get( "$top" ), prev = frame, current = get( "$_" );
     if ( current._kind != dbg::DNKind::Frame )
-        throw brick::except::Error( "$_ not set to a frame, can't go down" );
+        throw brq::error( "$_ not set to a frame, can't go down" );
     if ( frame.address() == current.address() )
-        throw brick::except::Error( "bottom (innermost) frame selected, can't go down" );
+        throw brq::error( "bottom (innermost) frame selected, can't go down" );
 
     frame = frame_up( frame );
     while ( frame.address() != current.address() )
@@ -243,7 +245,7 @@ void CLI::go( command::Down )
 void CLI::go( command::Set s )
 {
     if ( s.options.size() != 2 )
-        throw brick::except::Error( "2 options are required for set, the variable and the value" );
+        throw brq::error( "2 options are required for set, the variable and the value" );
     set( s.options[0], s.options[1] );
 }
 
@@ -256,7 +258,7 @@ void CLI::go( command::Thread thr )
         char c;
         istr >> _sticky_tid.first >> c >> _sticky_tid.second;
         if ( c != ':' )
-            throw brick::except::Error( "expected thread specifier format: <pid>:<tid>" );
+            throw brq::error( "expected thread specifier format: <pid>:<tid>" );
     }
 }
 
@@ -268,7 +270,7 @@ void CLI::go( command::BitCode bc )
         try {
             brick::llvm::writeModule( m, bc.filename );
         } catch ( std::runtime_error &e ) {
-            throw brick::except::Error ( e.what() );
+            throw brq::error ( e.what() );
         }
         return;
     }
@@ -310,7 +312,7 @@ void CLI::go( command::Setup set )
     for ( const std::string& cmd : set.sticky_commands )
         _sticky_commands.push_back( tok.tokenize( cmd ) );
     if ( ( set.debug_everything || !set.debug_components.empty() ) && !set.ignore_components.empty() )
-        throw brick::except::Error( "sorry, cannot mix --ignore and --debug" );
+        throw brq::error( "sorry, cannot mix --ignore and --debug" );
 
     for ( auto c : set.debug_components )
         _ff_components &= ~Components( c );

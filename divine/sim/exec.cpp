@@ -65,7 +65,7 @@ void CLI::reach_user()
     step._instructions = std::make_pair( 1, 1 );
     step._yield_state = []( Snapshot ) -> Snapshot
     {
-        throw brick::except::Error( "could not reach userspace" );
+        throw brq::error( "could not reach userspace" );
     };
     run( step, false ); /* make 0 (user mode) steps */
     set( "$_", frameDN() );

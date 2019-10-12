@@ -42,7 +42,7 @@ DN CLI::get( std::string n, bool silent, std::unique_ptr< DN > start, bool comp 
         if ( i == _dbg.end() && silent )
             return nullDN();
         if ( i == _dbg.end() )
-            throw brick::except::Error( "variable " + head + " is not defined" );
+            brq::raise() << "variable " << head << " is not defined";
 
         auto dn = i->second;
         switch ( head[0] )
@@ -73,7 +73,7 @@ DN CLI::get( std::string n, bool silent, std::unique_ptr< DN > start, bool comp 
     if ( silent && !dn_next )
         return nullDN();
     if ( !dn_next )
-        throw brick::except::Error( "lookup failed at " + head );
+        brq::raise() << "lookup failed at " << head;
 
     if ( split >= n.size() )
         return *dn_next;

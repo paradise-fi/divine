@@ -57,9 +57,9 @@ struct OneLineTokenizer
         tok_reset( _tok );
         int r = tok_str( _tok, s.c_str(), &argc, &argv );
         if ( r == -1 )
-            throw brick::except::Error{ "Uknown tokenizer error" };
+            throw brq::error{ "Uknown tokenizer error" };
         if ( r > 0 )
-            throw brick::except::Error{ "Unmatched quotes" };
+            throw brq::error{ "Unmatched quotes" };
         cmd::Tokens ret;
         std::copy_n( argv, argc, std::back_inserter( ret ) );
         return ret;
@@ -181,7 +181,7 @@ struct CLI
     void check_running()
     {
         if ( _ctx.frame().null() )
-            throw brick::except::Error( "the program has already terminated" );
+            throw brq::error( "the program has already terminated" );
     }
 
     void run( Stepper &step, bool verbose );
