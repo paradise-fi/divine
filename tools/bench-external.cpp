@@ -52,8 +52,8 @@ int External::get_build()
 {
     auto r = proc::spawnAndWait( proc::CaptureStdout | proc::ShowCmd, _driver );
     if ( !r )
-        throw brick::except::Error( "benchmark driver failed: exitcode " + std::to_string( r.exitcode() )
-                                    + ", signal " + std::to_string( r.signal() ) );
+        brq::raise() << "benchmark driver failed: exit code " << r.exitcode()
+                     << ", signal " + r.signal();
     yaml::Parser yinfo( r.out() );
 
     odbc::ExternalBuildInfo info;
@@ -118,8 +118,8 @@ void Run::execute( int job_id )
 
     auto r = proc::spawnAndWait( proc::ShowCmd | proc::CaptureStdout, _driver, "script" );
     if ( !r )
-        throw brick::except::Error( "benchmark driver failed: exitcode " + std::to_string( r.exitcode() )
-                                    + ", signal " + std::to_string( r.signal() ) );
+        brq::raise() << "benchmark driver failed: exit code " << r.exitcode()
+                     << ", signal " << r.signal();
 
     std::cerr << "REPORT: " << std::endl << r.out() << std::endl;
 

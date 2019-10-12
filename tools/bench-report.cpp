@@ -409,8 +409,7 @@ void Report::results()
     find_instances();
 
     if ( _instance_ids.size() != 1 )
-        throw brick::except::Error( "Need exactly one instance, but " +
-                                    brick::string::fmt( _instance_ids.size() ) + " matched" );
+        brq::raise() << "need exactly one instance, but " << _instance_ids.size() << " matched";
 
     if ( _watch )
         std::cout << char( 27 ) << "[2J" << char( 27 ) << "[;H";
@@ -495,7 +494,7 @@ void Compare::run()
     if ( _fields.empty() )
         _fields = { { "time_search", "search" }, { "states", "states" } };
     if ( _instance_ids.empty() )
-        throw brick::except::Error( "At least one --instance must be specified." );
+        throw brq::error( "At least one --instance must be specified." );
 
     std::stringstream q;
     std::string x0 = "x" + std::to_string( _instance_ids[ 0 ] );
