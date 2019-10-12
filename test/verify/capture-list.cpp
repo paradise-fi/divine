@@ -7,6 +7,7 @@
 #include <string_view>
 #include <set>
 #include <cassert>
+#include <sys/trace.h>
 
 using namespace std::literals;
 
@@ -15,6 +16,7 @@ std::set< std::string > paths;
 void list( std::string entry, std::string name, std::string indent )
 {
     assert( paths.count( entry ) == 0 );
+    __dios_trace_f( "found: %s", entry.c_str() );
     paths.insert( entry );
 
     DIR *d = opendir( entry.c_str() );
