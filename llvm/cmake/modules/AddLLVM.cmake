@@ -1682,6 +1682,11 @@ function(find_first_existing_file out_var)
 endfunction()
 
 macro(find_first_existing_vc_file out_var path)
+    # Do not get confused by random git repos in parent directories. This no-op
+    # replaces the original macro below.
+endmacro()
+
+macro(find_first_existing_vc_file_ out_var path)
     find_program(git_executable NAMES git git.exe git.cmd)
     # Run from a subdirectory to force git to print an absolute path.
     execute_process(COMMAND ${git_executable} rev-parse --git-dir
