@@ -330,7 +330,9 @@ void WithBC::setup()
     if ( _dios_config.empty() && _synchronous )
         _dios_config = "sync";
 
-    auto magic_data = brick::fs::readFile( _file, 18 );
+    auto magic_buf = _cc_driver.compiler.getFileBuffer( _file, 18 );
+    auto magic_data = magic_buf ? std::string( magic_buf->getBuffer() )
+                                : brick::fs::readFile( _file, 18 );
     auto magic = llvm::identify_magic( magic_data );
 
     switch ( magic )
@@ -346,9 +348,8 @@ void WithBC::setup()
             if ( cc::typeFromFile( _file ) == cc::FileType::Unknown )
                 throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
             cc::Options ccopt;
-            rt::DiosCC driver( ccopt );
-            driver.build( cc::parseOpts( _ccopts_final ) );
-            _bc = std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
+            _cc_driver.build( cc::parseOpts( _ccopts_final ) );
+            _bc = std::make_shared< mc::BitCode >( _cc_driver.takeLinked(), _cc_driver.context() );
         }
     }
 

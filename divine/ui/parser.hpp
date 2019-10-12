@@ -25,7 +25,7 @@ namespace divine::ui
 
 struct CLI : Interface
 {
-    bool _batch;
+    bool _batch, _check_files = true;
     std::vector< std::string > _args;
 
     CLI( int argc, const char **argv ) :
@@ -38,13 +38,13 @@ struct CLI : Interface
 
     auto validator()
     {
-        auto file = []( std::string s, auto good, auto bad )
+        auto file = [&]( std::string s, auto good, auto bad )
         {
             if ( s[0] == '-' ) /* FIXME! zisit, kde sa to rozbije */
                 return bad( cmd::BadFormat, "file must not start with -" );
-            if ( !brick::fs::access( s, F_OK ) )
+            if ( !brick::fs::access( s, F_OK ) && _check_files )
                 return bad( cmd::BadContent, "file " + s + " does not exist");
-            if ( !brick::fs::access( s, R_OK ) )
+            if ( !brick::fs::access( s, R_OK ) && _check_files )
                 return bad( cmd::BadContent, "file " + s + " is not readable");
             return good( s );
         };

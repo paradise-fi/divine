@@ -84,6 +84,7 @@ struct WithBC : Command
 
     mc::BitCode::Env _bc_env;
     std::vector< std::string > _ccopts_final;
+    rt::DiosCC _cc_driver;
 
     virtual void process_options();
     void report_options();
