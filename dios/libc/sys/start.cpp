@@ -73,14 +73,16 @@ extern "C" void _exit( int rv )
 __attribute__(( __always_inline__ )) int __execute_main( int l, int argc, char **argv, char **envp )
 {
     __lart_globals_initialize();
+
+    environ = envp;
+    __progname = argv? argv[0] : NULL;
+    __argv = argv;
+
     __pthread_initialize(); // must run before constructors, constructors can
                             // use pthreads (such as pthread_once or thread
                             // local storage)
     __dios_run_ctors();
     int res;
-    environ = envp;
-    __progname = argv? argv[0] : NULL;
-    __argv = argv;
     switch (l)
     {
         case 0:
