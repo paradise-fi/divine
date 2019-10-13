@@ -137,8 +137,8 @@ int mlockall( int ) NOT_IMPLEMENTED;
 unsigned alarm( unsigned ) NOT_IMPLEMENTED;
 char *getlogin() NOT_IMPLEMENTED;
 
-int fpathconf( int, int ) NOT_IMPLEMENTED;
-int pathconf( const char *, int ) NOT_IMPLEMENTED;
+long fpathconf( int, int ) NOT_IMPLEMENTED;
+long pathconf( const char *, int ) NOT_IMPLEMENTED;
 
 FILE *popen( const char *command, const char *type ) { __dios_fault( _VM_F_NotImplemented, "popen" ); }
 int pclose( FILE* stream ) { __dios_fault( _VM_F_NotImplemented, "pclose" ); }

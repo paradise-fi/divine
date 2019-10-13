@@ -178,8 +178,8 @@ int getpagesize( void ) __nothrow;
 #define _PC_SYMLINK_MAX          _HOST__PC_SYMLINK_MAX
 #define _PC_SYNC_IO              _HOST__PC_SYNC_IO
 
-int pathconf( const char *, int ) __nothrow;
-int fpathconf( int, int ) __nothrow;
+long pathconf( const char *, int ) __nothrow;
+long fpathconf( int, int ) __nothrow;
 
 #ifdef __cplusplus
 } // extern C
