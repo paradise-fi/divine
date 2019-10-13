@@ -88,10 +88,24 @@ struct TestBase
     }
 };
 
-struct TestFailed : std::exception
+struct propagate_failure : std::exception {};
+
+template< typename exception_t >
+void failed( TestBase *tc, const exception_t & e )
 {
-    const char *what() const noexcept { return "TestFailed"; }
-};
+    if constexpr ( std::is_same_v< exception_t, std::exception > )
+        if ( dynamic_cast< const propagate_failure * >( &e ) )
+            return;
+
+    if ( tc )
+        std::cerr << std::endl << "###### " << tc->describe() << " failed.";
+
+    std::cerr << std::endl << "###### " << e.what() << std::endl;
+    if ( tc )
+        exit( 1 );
+    else
+        abort();
+}
 
 namespace {
 
@@ -99,12 +113,13 @@ namespace {
 
 void panic()
 {
-    try {
+    try
+    {
         std::rethrow_exception( std::current_exception() );
-    } catch ( std::exception &e ) {
-        std::cerr << std::endl << "  fatal error: " << e.what() << std::endl;
-        abort();
     }
+    catch ( brq::assert_failed &e ) { failed( nullptr, e ); }
+    catch ( std::exception &e )     { failed( nullptr, e ); }
+    catch ( ... ) { abort(); }
 }
 
 void fork_test( TestBase *tc, int *fds )
@@ -121,14 +136,14 @@ void fork_test( TestBase *tc, int *fds )
             ::close( fds[1] );
         }
 
-        try {
+        try
+        {
             std::set_terminate( panic );
             tc->run(); // if anything goes wrong, this should throw
-        } catch ( const std::exception &e ) {
-            std::cerr << std::endl << "###### " << tc->describe() << " failed."
-                      << std::endl << "###### " << e.what() << std::endl;
-            exit( 1 );
         }
+        catch ( const brq::assert_failed &e ) { failed( tc, e ); }
+        catch ( const std::exception &e )     { failed( tc, e ); }
+
         exit( 0 );
     }
     if ( pid > 0 ) {
@@ -144,7 +159,7 @@ void fork_test( TestBase *tc, int *fds )
             std::cerr << std::endl << "###### " << tc->describe() << " caught fatal signal "
                       << WTERMSIG( status ) << std::endl;
 
-        throw TestFailed();
+        throw propagate_failure();
     }
 }
 
@@ -324,24 +339,26 @@ int run( int argc, const char **argv )
         }
 
         bool ok = false;
-        try {
+        try
+        {
             ++ all;
             if ( total == 1 )
                 tc->run();
             else
                 fork_test( tc, nullptr );
             ok = true;
-        } catch ( const std::exception &e ) {
-            if ( e.what() != std::string( "TestFailed" ) )
-                std::cerr << std::endl << "###### " << tc->describe() << " failed."
-                          << std::endl << "###### " << e.what() << std::endl;
+        }
+        catch ( const std::exception &e )     { failed( tc, e ); }
+        catch ( const brq::assert_failed &e ) { failed( tc, e ); }
+
+        if ( ok )
+            std::cerr << "." << std::flush;
+        else
+        {
             std::cerr << "[    ] " << tc->group() << " " << std::flush;
             ++ bad;
             ++ total_bad;
         }
-
-        if ( ok )
-            std::cerr << "." << std::flush;
 
         last = tc->group();
     }
@@ -375,7 +392,8 @@ std::string _typeid() {
 template< typename TestGroup, void (TestGroup::*testcase)() >
 struct TestCase : TestBase
 {
-    void run() {
+    void run()
+    {
         TestGroup tg;
         bool passed = false;
         try {
