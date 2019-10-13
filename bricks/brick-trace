@@ -260,6 +260,25 @@ namespace brq
             _buffer[ _offset ] = 0;
             return *this;
         }
+
+        template< typename T >
+        string_builder &pad( int pad, const T &v, char p = ' ' )
+        {
+            int start = _offset;
+            *this << v;
+            int w = _offset - start;
+            pad -= w;
+            if ( pad <= 0 )
+                return *this;
+            _make_space( pad );
+            if ( !_oom )
+            {
+                std::memmove( _buffer + start + pad, _buffer + start, w + 1 );
+                std::memset( _buffer + start, p, pad );
+                _offset += pad;
+            }
+            return *this;
+        }
     };
 
     /* Wrap __FILE__ and __LINE__, optionally together with a stringified
