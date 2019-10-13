@@ -415,10 +415,15 @@ struct TestCase : TestBase
 #undef TEST
 #undef TEST_FAILING
 
-#ifndef BRICK_UNITTEST_REG
+#if !defined( BRICK_UNITTEST_REG ) && !defined( BRICK_UNITTEST_DEF )
 
 #define TEST(n)         template< bool > void n()
 #define TEST_FAILING(n) template< bool > void n()
+
+#elif defined( BRICK_UNITTEST_DEF )
+
+#define TEST(n)         void n()
+#define TEST_FAILING(n) void n()
 
 #else
 
