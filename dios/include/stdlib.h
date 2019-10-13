@@ -374,6 +374,7 @@ size_t wcstombs( char * _PDCLIB_restrict s, const wchar_t * _PDCLIB_restrict pwc
 
 int mkstemp( char *templ );
 int mkostemp( char *templ, int flags );
+char *mkdtemp( char *templ );
 
 #ifdef __divine__
 

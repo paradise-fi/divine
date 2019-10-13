@@ -137,6 +137,10 @@ int mlockall( int ) NOT_IMPLEMENTED;
 unsigned alarm( unsigned ) NOT_IMPLEMENTED;
 char *getlogin() NOT_IMPLEMENTED;
 
+int mkstemp( char * ) NOT_IMPLEMENTED;
+int mkostemp( char *, int ) NOT_IMPLEMENTED;
+char *mkdtemp( char * ) NOT_IMPLEMENTED;
+
 long fpathconf( int, int ) NOT_IMPLEMENTED;
 long pathconf( const char *, int ) NOT_IMPLEMENTED;
 
