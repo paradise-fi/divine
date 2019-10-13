@@ -947,25 +947,24 @@ static inline auto sha2_256( const std::string& s )
     _SHA256_CTX ctx;
     SHA256_Init( &ctx );
     SHA256_Update( &ctx, reinterpret_cast< const uint8_t* >( s.data() ), s.size() );
-    std::string r( SHA256_DIGEST_LENGTH, 0 );
-    SHA256_Final( reinterpret_cast< u_int8_t* >( &r.front() ), &ctx );
+    std::array< uint8_t, 32 > r;
+    SHA256_Final( r.begin(), &ctx );
     return r;
 }
 
-static inline std::string sha2_512( const std::string& s )
+static inline auto sha2_512( const std::string& s )
 {
     using namespace detail;
     _SHA512_CTX ctx;
     SHA512_Init( &ctx );
     SHA512_Update( &ctx, reinterpret_cast< const uint8_t* >( s.data() ), s.size() );
-    std::string r( SHA512_DIGEST_LENGTH, 0 );
-    SHA512_Final( reinterpret_cast< uint8_t* >( &r.front() ), &ctx );
+    std::array< uint8_t, 64 > r;
+    SHA512_Final( r.begin(), &ctx );
     return r;
 }
 
 namespace sha2
 {
-
     template< typename T >
     std::string to_hex( const T &hash )
     {
