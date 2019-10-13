@@ -135,6 +135,8 @@ namespace brq
     [[noreturn]] static inline void assert_signal( assert_failed &err )
     {
 #if defined(__divine__)
+        if ( err.str.truncated() )
+            __vm_cancel();
         __dios_fault( _VM_F_Assert, err.what() );
         __builtin_trap();
 #else

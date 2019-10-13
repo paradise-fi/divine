@@ -411,6 +411,8 @@ namespace brq
         format_args( acc, args... );
 
 #ifdef __divine__
+        if ( acc.truncated() )
+            __vm_cancel();
         __dios_trace_internal( 0, "%s", acc.buffer() );
 #else
         acc << "\n";
