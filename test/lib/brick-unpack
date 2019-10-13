@@ -1,66 +1,70 @@
 #!/usr/bin/perl
 use strict;
 
-my ( $tags_common, $tags, @content, @tests, $vopt, $ccopt );
+my ( $tags_common, $tags, @tests, $vopt, $ccopt, $bt );
 my $testcase = $ARGV[0];
 my $dir = $ARGV[0];
 $dir =~ s,^(.*)/.*?$,$1,;
 $testcase =~ s,^.*/(.*?)[.]bt,$1,;
-my $src = "$ENV{SRC_ROOT}/bricks/$testcase";
-my $helper = "$dir/cxa_demangle.helper.cpp";
+my $src = "$ENV{SRC_ROOT}/bricks/brick-$testcase";
+#my $helper = "$dir/cxa_demangle.helper.cpp";
 
 {
     local $/; # slurp
     open BT, $ARGV[0];
-    open TC, $src;
-    my $bt = <BT>;
-    $tags_common = $1 if $bt =~ /TAGS: (.*)/;
-
-    @content = split /\n/, <TC>;
+    $bt = <BT>;
+    $tags_common = $1 if $bt =~ /^common tags: (.*)$/sm;
     close BT;
-    close TC;
 }
 
-for (@content)
+for ( split /\n/, $bt )
 {
-    push @tests, $1 if /^\s+TEST\((.*?)\)/ && !/TODO/;
-}
+    next unless /\|/;
+    my ( $tags, $arg ) = split /\|/;
+    $tags .= " $tags_common";
+    $ccopt = "-std=c++17";
+    chomp( $tags );
 
-for my $unit (@tests)
-{
-    $unit =~ s,^\s*(.*?)\s*$,$1,;
-    # nofail/simfail, throwing assert/aborting assert
-    for my $variant ("nfta", "nfaa", "sfaa")
+    for my $variant ( "sim_oom", "no_oom" )
     {
-        $tags = $tags_common;
-        $ccopt = "-std=c++17";
-        if ($variant =~ /^nf/) { $vopt = "-o nofail:malloc" } else { $tags .= " big"; }
-        if ($variant =~ /aa$/) { $ccopt .= " -DBRICK_NOTHROW_ASSERTS"; } else { $tags .= " ext"; }
-        if ($variant eq "sfaa") { $ccopt .= " -DIGNORE_TERMINATE $helper"; }
+        if ( $variant eq "no_oom" ) { $vopt = "-o nofail:malloc" } else { $tags .= " ext"; }
+        my $file = $arg;
 
-        open F, ">$unit.$variant.cpp";
-        print F <<EOF
+        $arg =~ /^(.*)::(.*?)$/;
+        my $class = $1;
+        my $func = $2;
+
+        $file =~ s,^.*?::.*?::,,;
+        $file =~ s,::,_,g;
+        $file =~ s!,\s*!_!g;
+        $file =~ s,<\s*,_,g;
+        $file =~ s,\s*>,_,g;
+        $file =~ s![:,/<> ]!_!g;
+        $file =~ tr,A-Z,a-z,;
+
+        open F, ">$file.$variant.cpp";
+        print F <<EOF;
 /* TAGS: $tags */
 /* CC_OPTS: $ccopt -I$ENV{SRC_ROOT}/bricks/ */
 /* VERIFY_OPTS: $vopt */
-/* PROGRAM_OPTS: $unit */
+/* PROGRAM_OPTS: "$arg" */
 
-#define BRICK_UNITTEST_REG
 #define NVALGRIND
-#define BRICK_UNITTEST_MAIN
-#include "brick-unittest"
-#undef BRICK_UNITTEST_MAIN
-#include <stdlib.h>
+#define BRICK_UNITTEST_DEF
+#include <brick-unittest>
+#include <brick-$testcase>
 
-#ifdef IGNORE_TERMINATE
+int main()
+{
+    $class().$func();
+}
+EOF
+        print F <<EOF if ( $variant eq "sim_oom" );
 __attribute__((constructor(0))) static void _test_set_terminate_handler()
 {
     std::set_terminate( [] { exit( 0 ); __builtin_unreachable(); } );
 }
-#endif
-
-#include <$testcase>
 EOF
-        ; close F;
+        close F;
     }
 }

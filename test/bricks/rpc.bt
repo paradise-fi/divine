@@ -1,0 +1,5 @@
+common tags: c++
+          | brick::t_rpc::Bitstream::_bitstream
+          | brick::t_rpc::Bitstream::_bitblock
+          | brick::t_rpc::Bitstream::_bitblock_copy
+          | brick::t_rpc::Bitstream::_bitstream_64

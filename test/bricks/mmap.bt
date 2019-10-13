@@ -1,0 +1,4 @@
+# mmap is not implemented in dios yet
+common tags: c++ todo
+          | brick::t_mmap::MMapTest::read
+          | brick::t_mmap::MMapTest::alloc

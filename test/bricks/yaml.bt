@@ -1,0 +1,13 @@
+# uses LLVM headers and libs
+common tags: c++ todo
+          | brick::t_yaml::TestParse::simple
+          | brick::t_yaml::TestParse::nested
+          | brick::t_yaml::TestParse::list
+          | brick::t_yaml::TestParse::nested_list
+          | brick::t_yaml::TestParse::list_of_maps
+          | brick::t_yaml::TestParse::map_of_maps
+          | brick::t_yaml::TestParse::map_keys
+          | brick::t_yaml::TestParse::list_of_maps_2
+          | brick::t_yaml::TestParse::map_glob
+          | brick::t_yaml::TestParse::binary
+          | brick::t_yaml::TestParse::bad_binary

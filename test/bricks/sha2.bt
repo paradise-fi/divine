@@ -1,0 +1,3 @@
+common tags: c++
+          | brick::t_sha2::Sha2::abc
+          | brick::t_sha2::Sha2::empty

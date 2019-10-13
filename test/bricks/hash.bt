@@ -1,0 +1,9 @@
+common tags: c++
+          | brq_t::hash<false>::bytewise
+          | brq_t::hash<false>::piecewise_unaligned
+          | brq_t::hash<false>::alignment
+big       | brq_t::hash<false>::pieces
+          | brq_t::hash<true>::bytewise
+          | brq_t::hash<true>::piecewise_unaligned
+          | brq_t::hash<true>::alignment
+big       | brq_t::hash<true>::pieces

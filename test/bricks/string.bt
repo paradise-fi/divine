@@ -1,0 +1,8 @@
+common tags: c++
+          | brick::t_string::TestRegexp::splitter
+          | brick::t_string::TestRegexp::splitString
+          | brick::t_string::TestPaths::dirname
+          | brick::t_string::TestPaths::basename
+          | brick::t_string::TestFormat::basic
+          | brick::t_string::TestFormat::tuple
+          | brick::t_string::TestFormat::container

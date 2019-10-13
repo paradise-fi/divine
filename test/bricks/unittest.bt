@@ -1,0 +1,5 @@
+# expected-fail testcases are not supported yet by the harness
+common tags: c++
+          | brick::t_unittest::SelfTest::empty
+todo      | brick::t_unittest::SelfTest::expected
+todo      | brick::t_unittest::SelfTest::_assert_eq

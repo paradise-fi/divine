@@ -1,0 +1,11 @@
+common tags: c++
+          | brick::t_commandline::EngineTest::optsAndArgs
+          | brick::t_commandline::EngineTest::noSwitchesAfterFirstArg
+          | brick::t_commandline::EngineTest::optsOnly
+          | brick::t_commandline::EngineTest::clusteredShortOpts
+          | brick::t_commandline::EngineTest::longOptsWithDashes
+          | brick::t_commandline::EngineTest::longOptsWithArgs
+          | brick::t_commandline::EngineTest::commandWithArg
+          | brick::t_commandline::EngineTest::commandsWithOverlappingArgs
+          | brick::t_commandline::EngineTest::commandsWithoutCommand
+          | brick::t_commandline::EngineTest::creationShortcuts

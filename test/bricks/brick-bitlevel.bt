@@ -1,5 +1,0 @@
-# TAGS: c++
-# There isa  BitTuple test which fails in DIVINE as it assumes that aligned
-# read of size 4 on an adress within allocated object is always valid (which
-# works on x86, but not in DIVINE which can have objects of size which is not
-# divisible by 4)

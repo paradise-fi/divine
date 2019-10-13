@@ -1,0 +1,8 @@
+# uses LLVM headers and libs
+common tags: c++ todo
+          | brick::t_llvm::LinkerTest::undefined_single
+          | brick::t_llvm::LinkerTest::undefined_two
+          | brick::t_llvm::LinkerTest::archive_simple_a_in_ab
+          | brick::t_llvm::LinkerTest::archive_simple_a_in_ba
+          | brick::t_llvm::LinkerTest::archive_simple_both
+          | brick::t_llvm::LinkerTest::ar_archive

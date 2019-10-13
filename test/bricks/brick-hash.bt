@@ -1,4 +1,0 @@
-# TAGS: c++ big
-# This test is very large memory-wise, it should not require anything special,
-# just state space compression and sufficiently efficient handling of large
-# heap objects (hundreds of bytes).

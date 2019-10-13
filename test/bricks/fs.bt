@@ -1,0 +1,14 @@
+# the todo testcases try to open nodes in /dev
+common tags: c++
+          | brick::t_fs::TestSplit::path
+          | brick::t_fs::TestNormalize::basic
+          | brick::t_fs::TestNormalize::endbackslash
+          | brick::t_fs::TestNormalize::dot
+          | brick::t_fs::TestNormalize::dotdot
+          | brick::t_fs::TestNormalize::empty
+          | brick::t_fs::TestNormalize::negative
+          | brick::t_fs::TextExtension::take
+todo      | brick::t_fs::TestPosixBuf::read
+todo      | brick::t_fs::TestPosixBuf::read_rand
+          | brick::t_fs::TestPosixBuf::pipe
+todo      | brick::t_fs::TestPosixBuf::write

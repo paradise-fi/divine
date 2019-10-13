@@ -1,0 +1,14 @@
+common tags: c++
+          | brick::t_bitlevel::BitTupleTest::mask
+          | brick::t_bitlevel::BitTupleTest::bitcopy
+          | brick::t_bitlevel::BitTupleTest::field
+          | brick::t_bitlevel::BitTupleTest::basic
+          | brick::t_bitlevel::BitTupleTest::big
+          | brick::t_bitlevel::BitTupleTest::structure
+          | brick::t_bitlevel::BitTupleTest::nested
+          | brick::t_bitlevel::BitTupleTest::locked
+todo      | brick::t_bitlevel::BitTupleTest::assign
+          | brick::t_bitlevel::BitTupleTest::operators
+          | brick::t_bitlevel::BitTupleTest::ones
+          | brick::t_bitlevel::BitVecTest::bvpair_shiftl
+          | brick::t_bitlevel::BitVecTest::bvpair_shiftr

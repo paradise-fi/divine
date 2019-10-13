@@ -1,0 +1,17 @@
+common tags: c++
+          | brq_t::refcount_ptr<true, true>::simple
+          | brq_t::refcount_ptr<true, true>::dtor
+          | brq_t::refcount_ptr<true, true>::assign
+          | brq_t::refcount_ptr<true, true>::destroy
+          | brq_t::refcount_ptr<false, true>::simple
+          | brq_t::refcount_ptr<false, true>::dtor
+          | brq_t::refcount_ptr<false, true>::assign
+          | brq_t::refcount_ptr<false, true>::destroy
+          | brq_t::refcount_ptr<true, false>::simple
+          | brq_t::refcount_ptr<true, false>::dtor
+          | brq_t::refcount_ptr<true, false>::assign
+          | brq_t::refcount_ptr<true, false>::destroy
+          | brq_t::refcount_ptr<false, false>::simple
+          | brq_t::refcount_ptr<false, false>::dtor
+          | brq_t::refcount_ptr<false, false>::assign
+          | brq_t::refcount_ptr<false, false>::destroy

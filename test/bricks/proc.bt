@@ -1,0 +1,11 @@
+# Dies because of missing <termios.h>.
+common tags: c++ todo
+          | brick::t_proc::TestSpawn::basic_true
+          | brick::t_proc::TestSpawn::basic_false
+          | brick::t_proc::TestSpawn::echo1
+          | brick::t_proc::TestSpawn::echo2
+          | brick::t_proc::TestSpawn::echoSpec
+          | brick::t_proc::TestSpawn::shellEchoStdout
+          | brick::t_proc::TestSpawn::shellEchoStderr
+          | brick::t_proc::TestSpawn::in_basic
+          | brick::t_proc::TestSpawn::in_lined
