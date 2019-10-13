@@ -114,6 +114,8 @@ namespace brq
         std::string_view data() const noexcept { return std::string_view( _buffer, _offset ); }
         int size() noexcept { return _offset; }
         bool truncated() { return _oom; }
+        string_builder &hex( bool h = true ) { _hex = h; return *this; }
+        string_builder &dec() { _hex = false; return *this; }
 
         bool _make_space( int sz ) noexcept
         {
