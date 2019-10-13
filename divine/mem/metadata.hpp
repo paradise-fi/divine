@@ -287,11 +287,7 @@ struct Metadata : Next
     {
         auto s = meta_size( size );
         state.realign();
-        if ( s < 4 )
-            for ( int j = 0; j < s; ++ j )
-                state.update_aligned( _meta.template machinePointer< uint8_t >( i )[ j ] );
-        else
-            state.update_aligned( _meta.template machinePointer< uint8_t >( i ), s );
+        state.template update_aligned< true >( _meta.template machinePointer< uint8_t >( i ), s );
         Next::hash( i, size, state, ptr_cb );
     }
 

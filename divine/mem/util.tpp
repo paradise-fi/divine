@@ -94,7 +94,7 @@ namespace divine::mem
     struct NopState
     {
         template< typename T > void update_aligned( T ) {}
-        void update_aligned( uint8_t *, size_t ) {}
+        template< bool = false > void update_aligned( uint8_t *, size_t ) {}
         void realign() {}
         hash64_t hash() const { return 0; }
     };
