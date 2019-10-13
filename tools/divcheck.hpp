@@ -70,7 +70,7 @@ struct Expect : ui::LogSink
 
     virtual void backtrace( ui::DbgContext &ctx, int )
     {
-        if ( _location.empty() )
+        if ( _location.empty() && _symbol.empty() )
             return;
 
         _found = false;
@@ -78,8 +78,8 @@ struct Expect : ui::LogSink
         auto bt = [&]( int ) { active = false; };
         auto chk = [&]( auto dn )
         {
-            if ( dn.attribute( "location" ) == _location ||
-                    !_symbol.empty() && dn.attribute( "symbol" ) == _symbol )
+            if ( dn.attribute( "location" ) == _location || !_symbol.empty() &&
+                    dn.attribute( "symbol" ).find( _symbol ) != std::string::npos )
             {
                 if ( active ) _found = true;
                 if ( !_found && !active )
