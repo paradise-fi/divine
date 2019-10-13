@@ -30,7 +30,7 @@ else
     EXPORT= # unset
     dcscript=testcase.divcheck
     # some tests call this already inside correct working directory
-    test ! -r lib/testcase || . lib/testcase
+    test ! -r lib/testcase || SILENT=1 . lib/testcase
 
     addcmds()
     {
