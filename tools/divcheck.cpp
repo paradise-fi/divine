@@ -10,11 +10,7 @@ int main( int argc, const char **argv )
 
     auto script = brick::fs::readFile( argv[1] );
     ::chdir( brick::string::dirname( argv[1] ).c_str() );
-    try {
-        divcheck::execute( script );
-    } catch ( divcheck::Wrong &e ) {
-        std::cerr << "### " << e.what() << std::endl;
-        return 1;
-    }
+    divine::ui::setup_death();
+    divcheck::execute( script );
     return 0;
 }
