@@ -40,9 +40,7 @@
 
 #include <memory>
 #include <variant>
-#include <iostream>
 #include <iomanip>
-#include <sstream>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,7 +48,7 @@
 
 namespace brick::smt
 {
-    using Format = std::function< void ( std::ostream & ) >;
+    using Format = std::function< void ( brq::string_builder & ) >;
     struct Context;
 
     /* Available operations in SMT-LIB.
@@ -334,7 +332,7 @@ namespace brick::smt
         {}
 
         Node( int bw, Type type, std::string str ) :
-            _fmt( [=]( std::ostream &o ) { o << str; } ), bw( bw ), type( type )
+            _fmt( [=]( brq::string_builder &o ) { o << str; } ), bw( bw ), type( type )
         {}
 
         constexpr inline bool is_bool() const noexcept { return type == Type::Bool; }
@@ -342,7 +340,7 @@ namespace brick::smt
         constexpr inline bool is_float() const noexcept { return type == Type::Float; }
     };
 
-    static inline std::ostream &operator<<( std::ostream &o, const Node &n )
+    static inline brq::string_builder &operator<<( brq::string_builder &o, const Node &n )
     {
         n._fmt( o );
         return o;
@@ -350,9 +348,12 @@ namespace brick::smt
 
     inline std::string to_string( const Node &p )
     {
-        std::stringstream ss;
+        brq::string_builder ss;
         ss << p;
-        return ss.str();
+        if ( ss.truncated() )
+            throw std::bad_alloc();
+        else
+            return ss.buffer();
     }
 
     inline std::string to_string( Node::Type type )
@@ -417,7 +418,7 @@ namespace brick::smt
             friend auto operator<<( stream &os, const Constant &con ) -> decltype( os << "" )
             {
                 return os << "[const " << con.value
-                          << " : "     << to_string( con.type )
+                          << " : "     << to_string( con.type() )
                           << " "       << con.bitwidth() << "]";
             }
 
@@ -431,7 +432,7 @@ namespace brick::smt
             Op op;
             VarID id;
             Bitwidth bitwidth() const { return RPN::bitwidth( op ); }
-            Node::Type type() { return RPN::type( op ); }
+            Node::Type type() const { return RPN::type( op ); }
 
             template< typename stream >
             friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
@@ -732,7 +733,7 @@ namespace brick::smt
         Iterator begin() const noexcept { return Iterator{ std::next( _rpn.begin() ) }; }
         Iterator end() const noexcept { return Iterator{ _rpn.end() }; }
 
-        friend std::ostream& operator<<( std::ostream& os, const RPNView& view )
+        friend brq::string_builder& operator<<( brq::string_builder& os, const RPNView& view )
         {
             for ( const auto & term : view ) {
                 std::visit( [&]( const auto& val ) { os << val << " "; }, term );
@@ -745,9 +746,9 @@ namespace brick::smt
     };
 
     template< typename T >
-    std::ostream& operator<<( std::ostream& os, const RPN< T >& rpn )
+    brq::string_builder& operator<<( brq::string_builder& os, const RPN< T >& rpn )
     {
-        os << RPNView{ rpn } << std::endl;
+        os << RPNView{ rpn } << "\n";
         return os;
     }
 
@@ -774,7 +775,7 @@ namespace brick::smt
         };
     }
 
-    static inline std::ostream &operator<<( std::ostream &o, RoundingMode mode )
+    static inline brq::string_builder &operator<<( brq::string_builder &o, RoundingMode mode )
     {
         o << to_string( mode );
         return o;
@@ -864,12 +865,12 @@ namespace brick::smt
 
         Node floatv( int bw, double val, RoundingMode mode = RoundingMode::RNE );
 
-        void print( std::ostream &o, Node n, bool exq = true )  // exq = Existential Quantifier
+        void print( brq::string_builder &o, Node n, bool exq = true )  // exq = Existential Quantifier
         {
             auto bind = [&]( std::string type, auto &vec, auto next )
             {
                 for ( auto s : vec )
-                    o << std::endl << "    (" << type << " ((" << s.first << " " << s.second << ")) ";
+                    o << "\n    (" << type << " ((" << s.first << " " << s.second << ")) ";
                 next();
                 for ( unsigned i = 0; i < vec.size(); ++i )
                     o << ")";
@@ -882,27 +883,33 @@ namespace brick::smt
                 let();
         }
 
-        void query( std::ostream &o, Node n )
+        void query( brq::string_builder &o, Node n )
         {
             for ( auto v : vars )
-                o << "(declare-fun " << v.first << " () " << v.second << ")" << std::endl;
+                o << "(declare-fun " << v.first << " () " << v.second << ")\n";
             o << "(assert ";
             print( o, n, false );
-            o << ")" << std::endl << "(check-sat)";
+            o << ")\n(check-sat)";
         }
 
         std::string print( Node n, bool exq = true )
         {
-            std::stringstream s;
+            brq::string_builder s;
             print( s, n, exq );
-            return s.str();
+            if ( s.truncated() )
+                throw std::bad_alloc();
+            else
+                return s.buffer();
         }
 
         std::string query( Node n )
         {
-            std::stringstream s;
+            brq::string_builder s;
             query( s, n );
-            return s.str();
+            if ( s.truncated() )
+                throw std::bad_alloc();
+            else
+                return s.buffer();
         }
 
         using Vector = brick::data::SmallVector< Node, 2 >;
@@ -920,7 +927,7 @@ namespace brick::smt
 
         Node expr( int bw, Op op, const Vector &args, std::optional< RoundingMode > mode )
         {
-            auto fmt = [=]( std::ostream &o )
+            auto fmt = [=]( brq::string_builder &o )
             {
                 o << "(" << name( op );
 
@@ -971,7 +978,7 @@ namespace brick::smt
         Node extract( int highest, int lowest, Node arg )
         {
             ASSERT_LEQ( lowest, highest );
-            auto f = [=]( std::ostream &o )
+            auto f = [=]( brq::string_builder &o )
             {
                 o << "((_ extract " << std::dec << highest << " " << lowest << ") " << arg << ")";
             };
@@ -983,7 +990,10 @@ namespace brick::smt
         {
             ASSERT_EQ( t.bw, f.bw );
             ASSERT( t.type == f.type );
-            auto fmt = [=]( std::ostream &o ) { o << "(ite " << cond << " " << t << " " << f << ")"; };
+            auto fmt = [=]( brq::string_builder &o )
+            {
+                o << "(ite " << cond << " " << t << " " << f << ")";
+            };
             return Node( t.bw, t.type, fmt );
         }
 
@@ -995,7 +1005,7 @@ namespace brick::smt
     inline Node fp_to_fp_cast( int bw, const Node & arg )
     {
         const RoundingMode mode = RoundingMode::RNE;
-        auto fmt = [=]( std::ostream &o )
+        auto fmt = [=]( brq::string_builder &o )
         {
             o << "(" << to_fp( bw ) << " " << to_string( mode ) << " " << arg << " )";
         };
@@ -1047,8 +1057,8 @@ namespace brick::smt
         return (uint64_t( 1 ) << bitwidth) - 1;
     }
 
-    static inline std::stringstream to_bitvector( int bitwidth,
-                                                  brick::data::SmallVector< uint64_t > data )
+    static inline brq::string_builder to_bitvector( int bitwidth,
+                                                    brick::data::SmallVector< uint64_t > data )
     {
         int bw = bitwidth;
         int i = 0;
@@ -1065,14 +1075,17 @@ namespace brick::smt
         while ( int( data.size() ) < (bitwidth + 63) / 64 )
             data.push_back( 0 );
 
-        std::stringstream o;
+        brq::string_builder o;
 
         if ( bitwidth % 4 == 0 )
         {
             o << "#x" << std::hex;
             // data are little endian
             for ( int i = data.size() - 1; i >= 0; --i )
-                o << std::setfill( '0' ) << std::setw( std::min( bitwidth - i * 64, 64 ) / 4 ) << data[i];
+            {
+                int w = std::min( bitwidth - i * 64, 64 ) / 4;
+                o.hex().pad( w, data[ i ], '0' );
+            }
         }
         else
         {
@@ -1080,9 +1093,9 @@ namespace brick::smt
             for ( int i = data.size() - 1; i >= 0; --i ) {
                 for ( int j = std::min( bitwidth - 1 - i * 64, 63 ); j >= 0; --j )
                     if ( data[i] & (uint64_t( 1 ) << j) )
-                        o << '1';
+                        o << "1";
                     else
-                        o << '0';
+                        o << "0";
             }
         }
 
@@ -1100,7 +1113,9 @@ namespace brick::smt
     inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
     {
         auto o = to_bitvector( bitwidth, data );
-        return Node( bitwidth, Node::Type::Int, o.str() );
+        if ( o.truncated() )
+            throw std::bad_alloc();
+        return Node( bitwidth, Node::Type::Int, o.buffer() );
     }
 }
 
