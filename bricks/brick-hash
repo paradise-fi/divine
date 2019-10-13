@@ -52,10 +52,36 @@ namespace brq::impl
         return v ^ rot64( v, 41 );
     }
 
-    static inline uint64_t tail( uint64_t v, unsigned count )
+    template< bool strict >
+    static inline uint64_t tail( const uint64_t *v, unsigned count )
     {
-        const unsigned shift = ((8 - count) & 7) << 3;
-        return v & ( ~uint64_t(0) >> shift );
+        ASSERT( count );
+        if constexpr ( strict )
+        {
+            uint64_t r = 0;
+            auto i = reinterpret_cast< const uint8_t * >( v );
+            switch ( count )
+            {
+#if __BYTE_ORDER == __ORDER_BIG_ENDIAN__
+                default: NOT_IMPLEMENTED();
+#else
+                case 8: return *v;
+                case 7: r += i[ 6 ]; r <<= 8;
+                case 6: r += i[ 5 ]; r <<= 8;
+                case 5: r += i[ 4 ]; r <<= 32;
+                case 4: return r + *reinterpret_cast< const uint32_t * >( v );
+                case 3: r += i[ 2 ]; r <<= 16;
+                case 2: return r + *reinterpret_cast< const uint16_t * >( v );
+                case 1: return r + i[ 0 ];
+                default: __builtin_unreachable();
+#endif
+            }
+        }
+        else
+        {
+            const unsigned shift = ((8 - count) & 7) << 3;
+            return *v & ( ~uint64_t(0) >> shift );
+        }
     }
 }
 
@@ -149,6 +175,7 @@ namespace brq
             counter = counter + 32 - counter % 32;
         }
 
+        template< bool strict = false >
         [[gnu::always_inline]] void update_aligned( const uint8_t *data, int count )
         {
             ASSERT_EQ( counter % 32, 0 );
@@ -174,16 +201,16 @@ namespace brq
                     state[0] ^= *d64++; count -= 8;
                     state[1] ^= *d64++; count -= 8;
                     state[2] ^= *d64++; count -= 8;
-                    state[3] ^= impl::tail( *d64++, count ); break;
+                    state[3] ^= impl::tail< strict >( d64++, count ); break;
                 case 24: case 23: case 22: case 21: case 20: case 19: case 18: case 17:
                     state[0] ^= *d64++; count -= 8;
                     state[1] ^= *d64++; count -= 8;
-                    state[2] ^= impl::tail( *d64++, count ); break;
+                    state[2] ^= impl::tail< strict >( d64++, count ); break;
                 case 16: case 15: case 14: case 13: case 12: case 11: case 10: case  9:
                     state[0] ^= *d64++; count -= 8;
-                    state[1] ^= impl::tail( *d64++, count ); break;
+                    state[1] ^= impl::tail< strict >( d64++, count ); break;
                 case  8: case  7: case  6: case  5: case  4: case  3: case  2: case  1:
-                    state[0] ^= impl::tail( *d64++, count ); break;
+                    state[0] ^= impl::tail< strict >( d64++, count ); break;
                 case 0:
                     ;
             }
@@ -244,6 +271,7 @@ namespace brq
 
 namespace brq_t
 {
+    template< bool strict >
     struct hash
     {
         static constexpr const char * const str =
@@ -254,7 +282,7 @@ namespace brq_t
             for ( unsigned len = 0; len < strlen( str ); ++len )
             {
                 brq::hash_state s1( len ), s2( len );
-                s1.update_aligned( reinterpret_cast< const uint8_t * >( str ), len );
+                s1.update_aligned< strict >( reinterpret_cast< const uint8_t * >( str ), len );
                 for ( unsigned i = 0; i < len; ++i )
                     s2.update( str[i] );
                 ASSERT_EQ( s1.hash(), s2.hash() );
@@ -267,7 +295,7 @@ namespace brq_t
             for ( unsigned len = 0; len < strlen( str ); ++len )
             {
                 brq::hash_state s1( len ), s2( len );
-                s1.update_aligned( reinterpret_cast< const uint8_t * >( str ), len );
+                s1.update_aligned< strict >( reinterpret_cast< const uint8_t * >( str ), len );
 
                 for ( unsigned i = 0; i < len; ++i )
                 {
@@ -322,7 +350,7 @@ namespace brq_t
                 a = brq::hash( buf, i, seed );
 
                 brq::hash_state state( seed );
-                state.update_aligned( buf, i );
+                state.update_aligned< strict >( buf, i );
                 c = state.hash();
 
                 ASSERT_EQ( a, c );
@@ -341,6 +369,8 @@ namespace brq_t
         }
     };
 
+    template struct hash< false >;
+    template struct hash< true >;
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
