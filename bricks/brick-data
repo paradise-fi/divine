@@ -787,7 +787,6 @@ struct InsertSort
 
 }
 
-#ifdef BRICK_UNITTEST_REG
 namespace t_data {
 
 using namespace brick::data;
@@ -1803,7 +1802,6 @@ struct TestSmallVector {
 
 #undef TC
 }
-#endif
 
 }
 

@@ -285,7 +285,6 @@ auto pointwise_zip_void( F &&f, Tup1 &&t1, Tup2 &&t2 ) {
 
 }
 
-#ifdef BRICK_UNITTEST_REG
 #include <sstream>
 
 namespace brick::t_tuple
@@ -498,7 +497,5 @@ struct Print
 };
 
 }
-
-#endif
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
