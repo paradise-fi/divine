@@ -755,7 +755,11 @@ struct FifoTest {
     }
 };
 
+#ifdef __divine__
+namespace { const int peers = 3; }
+#else
 namespace { const int peers = 12; }
+#endif
 
 struct Utils {
 

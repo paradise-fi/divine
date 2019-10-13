@@ -859,20 +859,30 @@ struct Pool
 
         void main()
         {
-            limit = 32*1024;
+            limit = 32 * 1024;
+#ifdef __divine__
+            limit = 16;
+#endif
             int state = 0;
-            for ( int i = 0; i < limit; ++i ) {
+
+            for ( int i = 0; i < limit; ++i )
+            {
                 ASSERT( state >= 0 );
-                if ( decide( i ) || ptrs.empty() ) {
+                if ( decide( i ) || ptrs.empty() )
+                {
                     ++ state;
                     ptrs.push_back( pool().allocate( 32 ) );
-                } else {
+                }
+                else
+                {
                     -- state;
                     pool().free( ptrs.front() );
                     ptrs.pop_front();
                 }
             }
-            while ( !ptrs.empty() ) {
+
+            while ( !ptrs.empty() )
+            {
                 pool().free( ptrs.front() );
                 ptrs.pop_front();
             }
@@ -898,24 +908,28 @@ struct Pool
 
     TEST(materialise)
     {
+        int limit = 100;
+#ifdef __divine__
+        limit = 10;
+#endif
         _Pool a;
         mem::SlavePool< _Pool > b( a );
-        typename _Pool::Pointer p[100];
-        for ( int i = 0; i < 100; ++i )
+        typename _Pool::Pointer p[ limit ];
+        for ( int i = 0; i < limit; ++i )
         {
             p[i] = a.allocate( 8 );
             *a.template machinePointer< int >( p[i] ) = i;
             b.materialise( p[i], 4 );
             *b.template machinePointer< int >( p[i] ) = i;
         }
-        for ( int i = 0; i < 100; ++i )
+        for ( int i = 0; i < limit; ++i )
         {
             ASSERT_EQ( *a.template machinePointer< int >( p[i] ), i );
             ASSERT_EQ( *b.template machinePointer< int >( p[i] ), i ) ;
         }
     }
 
-    TEST(refcnt)
+    TEST( refcnt )
     {
         using RP = mem::RefPool< _Pool >;
 
@@ -936,13 +950,19 @@ struct Pool
         ASSERT_EQ( pool.stats().total.bytes.used, 0 );
     }
 
-    TEST(parallel)
+    TEST( parallel )
     {
         shmem::ThreadSet< Checker > c;
         Checker x;
-        for ( int i = 0; i < 3; ++i )
+#ifdef __divine__
+        int tc = 2, repeat = 2;
+#else
+        int tc = 3, repeat = 5;
+#endif
+
+        for ( int i = 0; i < tc; ++i )
             c.emplace_back( x );
-        for ( int j = 0; j < 5; ++j )
+        for ( int j = 0; j < repeat; ++j )
         {
             c.start();
             c.join();

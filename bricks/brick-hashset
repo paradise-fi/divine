@@ -803,8 +803,10 @@ namespace brq_t
 
 #ifdef __divine__
     static constexpr int size = 4;
+    static constexpr int threads = 2;
 #else
     static constexpr int size = 32 * 1024;
+    static constexpr int threads = 10;
 #endif
 
     struct big
@@ -981,7 +983,7 @@ namespace brq_t
 
         TEST(multi)
         {
-            auto set = _multi( 10, 1, size );
+            auto set = _multi( threads, 1, size );
 
             for  ( int i = 1; i < size; ++i )
                 ASSERT( set.count( i ) );
