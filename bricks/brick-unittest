@@ -383,9 +383,14 @@ std::string _typeid() {
     int stat;
     char *dem = abi::__cxa_demangle( typeid( T ).name(),
                                 nullptr, nullptr, &stat );
-    std::string strdem( dem );
-    std::free( dem );
-    return strdem;
+    if ( dem )
+    {
+        std::string strdem( dem );
+        std::free( dem );
+        return strdem;
+    }
+    else
+        throw std::bad_alloc();
 #endif
 }
 
