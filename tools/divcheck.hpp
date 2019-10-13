@@ -48,25 +48,31 @@ struct Unmatched : Wrong
     Unmatched( std::string s ) { _err = "the expected error does not match: " + s; }
 };
 
-struct Expect : ui::LogSink
+struct FoundInactive : Wrong
 {
-    bool _ok, _found = true, _setup = false, _armed = false;
+    FoundInactive( std::string s ) { _err = "error location found, but on an inactive stack: " + s; }
+};
+
+struct Expectation : ui::LogSink
+{
+    virtual void check() = 0;
+};
+
+struct Expect : Expectation
+{
+    bool _ok = false, _found = true, _on_inactive = false;
     mc::Result _result;
     std::string _cmd, _location, _symbol;
 
-    void check()
+    void check() override
     {
-        if ( !_armed || !_setup ) return;
-
-        _setup = _armed = false;
         if ( !_ok )
             throw Unexpected( _cmd );
         if ( _result == mc::Result::Error && !_found )
             throw Unmatched( _cmd );
+        if ( _on_inactive )
+            throw FoundInactive( _cmd );
     }
-
-    void arm( std::string cmd ) { _ok = false; _armed = true; _cmd = cmd; }
-    void setup( const Expect &src ) { *this = src; _setup = true; }
 
     virtual void backtrace( ui::DbgContext &ctx, int )
     {
@@ -81,9 +87,9 @@ struct Expect : ui::LogSink
             if ( dn.attribute( "location" ) == _location || !_symbol.empty() &&
                     dn.attribute( "symbol" ).find( _symbol ) != std::string::npos )
             {
-                if ( active ) _found = true;
-                if ( !_found && !active )
-                    std::cerr << "W: error location found, but in an inactive stack" << std::endl;
+                if ( !active && !_found )
+                    _on_inactive = true;
+                _found = true;
             }
         };
         mc::backtrace( bt, chk, ctx, ctx.snapshot(), 10000 );
@@ -91,7 +97,6 @@ struct Expect : ui::LogSink
 
     virtual void result( mc::Result r, const mc::Trace & )
     {
-        ASSERT( _armed );
         _ok = r == _result;
     }
 };
@@ -124,7 +129,7 @@ void execute( std::string script_txt, F... prepare )
     auto script = parse( script_txt );
     brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
 
-    std::shared_ptr< Expect > expect( new Expect );
+    std::vector< std::shared_ptr< Expectation > > expectations;
     std::vector< std::pair< std::string, std::string > > files;
 
     for ( auto cmdstr : script )
@@ -134,11 +139,11 @@ void execute( std::string script_txt, F... prepare )
         ui::CLI cli( tok );
         cli._check_files = false;
 
-        auto check_expect = [=]( ui::Verify &cmd )
+        auto check_expect = [&]( ui::Verify &cmd )
         {
-            std::vector< ui::SinkPtr > log{ expect, cmd._log };
+            std::vector< ui::SinkPtr > log( expectations.begin(), expectations.end() );
+            log.push_back( cmd._log );
             cmd._log = ui::make_composite( log );
-            expect->arm( cmdstr );
         };
 
         auto o_expect = ui::cmd::make_option_set( cli.validator() )
@@ -155,13 +160,18 @@ void execute( std::string script_txt, F... prepare )
                    [&]( Load &l ) { files.emplace_back( l.args[1] , brick::fs::readFile( l.args[0] ) ); },
                    [&]( ui::Cc &cc ) { cc._driver.setupFS( files ); },
                    [&]( ui::WithBC &wbc ) { wbc._cc_driver.setupFS( files ); } );
-        cmd.match( [&]( ui::Command &c ) { c.setup(); } );
+        cmd.match( [&]( ui::Command &c ) { c.setup(); },
+                   [&]( Expect e )
+                   {
+                       e._cmd = cmdstr;
+                       expectations.emplace_back( std::make_shared< Expect >( std::move( e ) ) );
+                   } );
         cmd.match( check_expect );
-        cmd.match( [&]( ui::Command &c ) { c.run(); },
-                   [&]( Expect &e ) { expect->setup( e ); } );
-
-        expect->check();
+        cmd.match( [&]( ui::Command &c ) { c.run(); } );
     }
+
+    for ( auto & expect : expectations )
+        expect->check();
 }
 
 }
