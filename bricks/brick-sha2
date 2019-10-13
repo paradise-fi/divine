@@ -968,11 +968,13 @@ namespace sha2
     template< typename T >
     std::string to_hex( const T &hash )
     {
-        std::ostringstream s;
-        s << std::hex;
+        brq::string_builder s;
+        s.hex();
         for ( char x : hash )
-            s << std::setw( 2 ) << std::setfill( '0' ) << static_cast< unsigned int >( x & 0xff );
-        return s.str();
+            s.pad( 2, static_cast< unsigned int >( x & 0xff ), '0' );
+        if ( s.truncated() )
+            throw std::bad_alloc();
+        return s.buffer();
     }
 }
 
