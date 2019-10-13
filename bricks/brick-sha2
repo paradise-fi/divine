@@ -80,14 +80,14 @@ static const constexpr int SHA512_DIGEST_STRING_LENGTH = (SHA512_DIGEST_LENGTH *
 
 /*** SHA-256/384/512 Context Structures *******************************/
 typedef struct _SHA256_CTX {
-	u_int32_t	state[8];
-	u_int64_t	bitcount;
-	u_int8_t	buffer[SHA256_BLOCK_LENGTH];
+	uint32_t	state[8];
+	uint64_t	bitcount;
+	uint8_t	buffer[SHA256_BLOCK_LENGTH];
 } SHA256_CTX;
 typedef struct _SHA512_CTX {
-	u_int64_t	state[8];
-	u_int64_t	bitcount[2];
-	u_int8_t	buffer[SHA512_BLOCK_LENGTH];
+	uint64_t	state[8];
+	uint64_t	bitcount[2];
+	uint8_t	buffer[SHA512_BLOCK_LENGTH];
 } SHA512_CTX;
 
 typedef SHA512_CTX SHA384_CTX;
@@ -234,7 +234,7 @@ static inline uint64_t sigma1_512( uint64_t x ) { return S64(19, (x)) ^ S64(61, 
 
 /*** SHA-XYZ INITIAL HASH VALUES AND CONSTANTS ************************/
 /* Hash constant words K for SHA-256: */
-const static u_int32_t K256[64] = {
+const static uint32_t K256[64] = {
 	0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL,
 	0x3956c25bUL, 0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL,
 	0xd807aa98UL, 0x12835b01UL, 0x243185beUL, 0x550c7dc3UL,
@@ -254,7 +254,7 @@ const static u_int32_t K256[64] = {
 };
 
 /* Initial hash value H for SHA-256: */
-const static u_int32_t sha256_initial_hash_value[8] = {
+const static uint32_t sha256_initial_hash_value[8] = {
 	0x6a09e667UL,
 	0xbb67ae85UL,
 	0x3c6ef372UL,
@@ -266,7 +266,7 @@ const static u_int32_t sha256_initial_hash_value[8] = {
 };
 
 /* Hash constant words K for SHA-384 and SHA-512: */
-const static u_int64_t K512[80] = {
+const static uint64_t K512[80] = {
 	0x428a2f98d728ae22ULL, 0x7137449123ef65cdULL,
 	0xb5c0fbcfec4d3b2fULL, 0xe9b5dba58189dbbcULL,
 	0x3956c25bf348b538ULL, 0x59f111f1b605d019ULL,
@@ -310,7 +310,7 @@ const static u_int64_t K512[80] = {
 };
 
 /* Initial hash value H for SHA-384 */
-const static u_int64_t sha384_initial_hash_value[8] = {
+const static uint64_t sha384_initial_hash_value[8] = {
 	0xcbbb9d5dc1059ed8ULL,
 	0x629a292a367cd507ULL,
 	0x9159015a3070dd17ULL,
@@ -322,7 +322,7 @@ const static u_int64_t sha384_initial_hash_value[8] = {
 };
 
 /* Initial hash value H for SHA-512 */
-const static u_int64_t sha512_initial_hash_value[8] = {
+const static uint64_t sha512_initial_hash_value[8] = {
 	0x6a09e667f3bcc908ULL,
 	0xbb67ae8584caa73bULL,
 	0x3c6ef372fe94f82bULL,
@@ -372,10 +372,10 @@ SHA256_Init(SHA256_CTX *context)
 } while(0)
 
 void
-SHA256_Transform(u_int32_t state[8], const u_int8_t data[SHA256_BLOCK_LENGTH])
+SHA256_Transform(uint32_t state[8], const uint8_t data[SHA256_BLOCK_LENGTH])
 {
-	u_int32_t	a, b, c, d, e, f, g, h, s0, s1;
-	u_int32_t	T1, W256[16];
+	uint32_t	a, b, c, d, e, f, g, h, s0, s1;
+	uint32_t	T1, W256[16];
 	int		j;
 
 	/* Initialize registers with the prev. intermediate value */
@@ -430,10 +430,10 @@ SHA256_Transform(u_int32_t state[8], const u_int8_t data[SHA256_BLOCK_LENGTH])
 #else /* SHA2_UNROLL_TRANSFORM */
 
 void
-SHA256_Transform(u_int32_t state[8], const u_int8_t data[SHA256_BLOCK_LENGTH])
+SHA256_Transform(uint32_t state[8], const uint8_t data[SHA256_BLOCK_LENGTH])
 {
-	u_int32_t	a, b, c, d, e, f, g, h, s0, s1;
-	u_int32_t	T1, T2, W256[16];
+	uint32_t	a, b, c, d, e, f, g, h, s0, s1;
+	uint32_t	T1, T2, W256[16];
 	int		j;
 
 	/* Initialize registers with the prev. intermediate value */
@@ -505,7 +505,7 @@ SHA256_Transform(u_int32_t state[8], const u_int8_t data[SHA256_BLOCK_LENGTH])
 #endif /* SHA2_UNROLL_TRANSFORM */
 
 void
-SHA256_Update(SHA256_CTX *context, const u_int8_t *data, size_t len)
+SHA256_Update(SHA256_CTX *context, const uint8_t *data, size_t len)
 {
 	size_t	freespace, usedspace;
 
@@ -594,7 +594,7 @@ SHA256_Pad(SHA256_CTX *context)
 }
 
 void
-SHA256_Final(u_int8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX *context)
+SHA256_Final(uint8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX *context)
 {
 	SHA256_Pad(context);
 
@@ -653,10 +653,10 @@ SHA512_Init(SHA512_CTX *context)
 } while(0)
 
 void
-SHA512_Transform(u_int64_t state[8], const u_int8_t data[SHA512_BLOCK_LENGTH])
+SHA512_Transform(uint64_t state[8], const uint8_t data[SHA512_BLOCK_LENGTH])
 {
-	u_int64_t	a, b, c, d, e, f, g, h, s0, s1;
-	u_int64_t	T1, W512[16];
+	uint64_t	a, b, c, d, e, f, g, h, s0, s1;
+	uint64_t	T1, W512[16];
 	int		j;
 
 	/* Initialize registers with the prev. intermediate value */
@@ -711,10 +711,10 @@ SHA512_Transform(u_int64_t state[8], const u_int8_t data[SHA512_BLOCK_LENGTH])
 #else /* SHA2_UNROLL_TRANSFORM */
 
 void
-SHA512_Transform(u_int64_t state[8], const u_int8_t data[SHA512_BLOCK_LENGTH])
+SHA512_Transform(uint64_t state[8], const uint8_t data[SHA512_BLOCK_LENGTH])
 {
-	u_int64_t	a, b, c, d, e, f, g, h, s0, s1;
-	u_int64_t	T1, T2, W512[16];
+	uint64_t	a, b, c, d, e, f, g, h, s0, s1;
+	uint64_t	T1, T2, W512[16];
 	int		j;
 
 	/* Initialize registers with the prev. intermediate value */
@@ -786,7 +786,7 @@ SHA512_Transform(u_int64_t state[8], const u_int8_t data[SHA512_BLOCK_LENGTH])
 #endif /* SHA2_UNROLL_TRANSFORM */
 
 void
-SHA512_Update(SHA512_CTX *context, const u_int8_t *data, size_t len)
+SHA512_Update(SHA512_CTX *context, const uint8_t *data, size_t len)
 {
 	size_t	freespace, usedspace;
 
@@ -875,7 +875,7 @@ SHA512_Pad(SHA512_CTX *context)
 }
 
 void
-SHA512_Final(u_int8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX *context)
+SHA512_Final(uint8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX *context)
 {
 	SHA512_Pad(context);
 
@@ -913,7 +913,7 @@ __weak_alias(SHA384_Update, SHA512_Update);
 __weak_alias(SHA384_Pad, SHA512_Pad);
 
 void
-SHA384_Final(u_int8_t digest[SHA384_DIGEST_LENGTH], SHA384_CTX *context)
+SHA384_Final(uint8_t digest[SHA384_DIGEST_LENGTH], SHA384_CTX *context)
 {
 	SHA384_Pad(context);
 
@@ -946,9 +946,9 @@ static inline auto sha2_256( const std::string& s )
     using namespace detail;
     _SHA256_CTX ctx;
     SHA256_Init( &ctx );
-    SHA256_Update( &ctx, reinterpret_cast< const u_int8_t* >( s.data() ), s.size() );
-    std::array< uint8_t, 32 > r;
-    SHA256_Final( r.begin(), &ctx );
+    SHA256_Update( &ctx, reinterpret_cast< const uint8_t* >( s.data() ), s.size() );
+    std::string r( SHA256_DIGEST_LENGTH, 0 );
+    SHA256_Final( reinterpret_cast< u_int8_t* >( &r.front() ), &ctx );
     return r;
 }
 
@@ -957,9 +957,9 @@ static inline std::string sha2_512( const std::string& s )
     using namespace detail;
     _SHA512_CTX ctx;
     SHA512_Init( &ctx );
-    SHA512_Update( &ctx, reinterpret_cast< const u_int8_t* >( s.data() ), s.size() );
+    SHA512_Update( &ctx, reinterpret_cast< const uint8_t* >( s.data() ), s.size() );
     std::string r( SHA512_DIGEST_LENGTH, 0 );
-    SHA512_Final( reinterpret_cast< u_int8_t* >( &r.front() ), &ctx );
+    SHA512_Final( reinterpret_cast< uint8_t* >( &r.front() ), &ctx );
     return r;
 }
 
