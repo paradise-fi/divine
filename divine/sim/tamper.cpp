@@ -72,12 +72,12 @@ llvm::Function* getAbstractConstructor( llvm::Module *m, DN & dn,
 {
     int width = dn.size() * 8;
     if ( width != 32 && width != 64 && width != 8 && width != 16 )
-        throw brick::except::Error( "unsupported width: " + std::to_string( width ) );
+        throw brq::error( "unsupported width: " + std::to_string( width ) );
 
     std::string && name = "__" + domain + "_" + method + "_i" + std::to_string( width );
     auto fn = m->getFunction( name );
     if ( !fn )
-        throw brick::except::Error( "function \"" + name + "\" not found." );
+        throw brq::error( "function \"" + name + "\" not found." );
     return fn;
 }
 } /* anonymous namespace */
