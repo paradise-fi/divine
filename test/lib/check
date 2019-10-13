@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if test -z "$EXPORT"; then
+if test -z "$DIVCHECK_MODE"; then
     set -e
     . util
 fi
@@ -167,7 +167,8 @@ warn_table()
 }
 
 verify() {
-    grep -s table verify.out | sed -re 's@.*\{ used: ([0-9]+), capacity: ([0-9]+) \}@\1 \2@' | \
+    test -n "$DIVCHECK_MODE" ||
+        grep table verify.out | sed -re 's@.*\{ used: ([0-9]+), capacity: ([0-9]+) \}@\1 \2@' | \
         while read used capacity; do
             case $capacity in
                 256) ;; # nothing
@@ -179,7 +180,7 @@ verify() {
         done
     if fgrep -q '/* ERRSPEC:' "$1"; then
         spec=$(fgrep '/* ERRSPEC:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
-        if test -n "$EXPORT"; then exit 1; fi
+        if test -n "$DIVCHECK_MODE"; then exit 1; fi
         echo spec: $spec
         if ! perl $TESTS/lib/check-errspec "$spec" verify.out; then
             echo "# expected error to be found in $spec, but it was not"
@@ -187,7 +188,7 @@ verify() {
         fi
     elif fgrep -q '/* ERROR' "$1"; then
         location=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f1-2`
-        if test -n "$EXPORT"; then
+        if test -n "$DIVCHECK_MODE"; then
             echo "expect --result error --location $location";
             exit 0
         fi
@@ -219,14 +220,14 @@ verify() {
             exit 1
         fi
     elif fgrep -q '/* BOOT ERROR */' "$1"; then
-        if test -n "$EXPORT"; then echo "expect --result boot-error"; exit 0; fi
+        if test -n "$DIVCHECK_MODE"; then echo "expect --result boot-error"; exit 0; fi
         if ! grep -q "error found: boot" verify.out; then
             nl -ba "$1"
             echo "# boot error was expected but was not found"
             exit 1
         fi
     else
-        if test -n "$EXPORT"; then echo "expect --result valid"; exit 0; fi
+        if test -n "$DIVCHECK_MODE"; then echo "expect --result valid"; exit 0; fi
         if ! grep -q "error found: no" verify.out; then
             nl -ba "$1"
             grep '^    location' verify.out || true

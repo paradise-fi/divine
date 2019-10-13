@@ -1,20 +1,47 @@
-#!/bin/sh
+#!/bin/bash
 # -*- sh -*-
 
+# When running manually:
+#   export mode (--export): cwd in source root, no variables should be needed
+#   test mode (no flag): cwd in {build directory}/test, set the following variables:
+#       OBJ, SRCDIR, BINDIR and optionally TEST_FLAVOUR.
+set -e
+
 if test "$1" = "--export"; then
+    # Only export the divcheck-readable script (this is used by divbench-import)
     EXPORT=1
     shift
-    set -e
-else
-    test -e lib/testcase && SILENT=1 . lib/testcase
-    EXPORT= # unset
-fi
-export EXPORT
 
-run()
-{
-    if test -n "$EXPORT"; then echo "$@"; else echo "+ divine $@"; divine "$@"; fi
-}
+    test -n "$OBJ" || export OBJ=$(make show var=OBJ)
+    test -n "$SRCDIR" || export SRCDIR="$PWD"
+    test -n "$BINDIR" || export BINDIR="${OBJ}debug" #TODO: default flavour
+
+    addcmds()
+    {
+        cat
+    }
+
+    addcmd()
+    {
+        echo "$@"
+    }
+
+else
+    EXPORT= # unset
+    dcscript=testcase.divcheck
+    # some tests call this already inside correct working directory
+    test ! -r lib/testcase || . lib/testcase
+
+    addcmds()
+    {
+        cat >> $dcscript
+    }
+    addcmd()
+    {
+        echo "$@" >> $dcscript
+    }
+
+fi
 
 getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
 
@@ -48,61 +75,83 @@ fi
 if test -z "$EXPORT"; then
     if echo "$opts" | grep -q "symbolic"; then
         solver=$TEST_FLAVOUR
-        if test $solver = z3 && test $OPT_Z3 = OFF; then skip; fi
-        if test $solver = stp && test $OPT_STP = OFF; then skip; fi
-        if test $solver = smtlib; then solver=$solver:z3; z3 --version > /dev/null || skip; fi
-        if test $solver = vanilla; then solver=none; fi
-        extra="$extra --solver $solver"
+        if test "$solver" = z3 && test $OPT_Z3 = OFF; then skip; fi
+        if test "$solver" = stp && test $OPT_STP = OFF; then skip; fi
+        if test "$solver" = smtlib; then solver=$solver:z3; z3 --version > /dev/null || skip; fi
+        if test "$solver" = vanilla; then solver=none; fi
+        if test -n "$solver" ; then
+            extra="$extra --solver $solver";
+        fi
     elif ! echo "$opts" | egrep -q "leakcheck|relaxed"; then
         # --symbolic currently leaks memory
         extra="$extra --leakcheck exit"
     fi
 fi
 
-if test -n "$EXPORT"; then
-    dir=$(dirname $1)
-    name=$(basename $1)
-    dios=$SRCDIR/dios
-    incs="-isystem $dios/include -isystem $dios/libcxx/include"
-    incs="$incs -isystem $BINDIR/dios/include" #generated headers: hostabi.h etc.
-    incs="$incs -I $SRCDIR/bricks"
-    for f in $name $extrasrc; do
-        deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | sed -e 's,^: [^ ]*,,' -e 's,\\$,,')
-        echo load $dir/$f $f
-        for dep in $deps; do
-            if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
-            echo load $dep $(echo $dep | sed -re "s,$dir/*,,")
-        done
+# Generate 'load' commands
+dir=$(dirname $1)
+name=$(basename $1)
+dios=$SRCDIR/dios
+incs="-isystem $dios/include -isystem $dios/libcxx/include"
+incs="$incs -isystem $BINDIR/dios/include" #generated headers: hostabi.h etc.
+incs="$incs -I $SRCDIR/bricks"
+for f in $name $extrasrc; do
+    deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | \
+        sed -e 's,^: [^ ]*,,' -e 's,\\$,,') || true
+    addcmd load $dir/$f $f
+    for dep in $deps; do
+        if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
+        addcmd load $dep $(echo $dep | sed -re "s,$dir/*,,")
     done
-    if test -z "$expect"; then
-        check=$(readlink -f $(dirname $0)/check)
-        (cd $dir ; $check verify $name)
-    else
-        echo "expect" "$expect"
-    fi
+done
+
+# Generate 'expect' commands (see also test/lib/check verify)
+if test -z "$expect"; then
+    check=$(readlink -f $(dirname $0)/check)
+    chmod +x "$check"
+    export DIVCHECK_MODE=1
+    (cd $dir ; $check verify $name) | addcmds
 else
-    name="$1"
+    addcmd "expect" "$expect"
 fi
 
+# Generate 'cc' command
 if test "$skipcc" = 1; then
     run=$name
     opts="$std $opts"
 else
-    run cc -o testcase.bc $std $ccopt "$name" $gtest
+    addcmd cc -o testcase.bc $std $ccopt "$name" $gtest
     run=testcase.bc
 fi
 
-run verify $resources $extra $opts $run $args
+# Generate 'verify' command
+addcmd verify $resources $extra $opts $run $args
 
 if test -n "$EXPORT"; then exit 0; fi
+
+cat $dcscript | sed -e 's,^,  | ,'
+
+# Run divcheck with the script
+divcheck $dcscript
 
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
     echo "+ divine sim --batch --skip-init --load-report verify.out"
     echo "backtrace" | \
-        divine sim --batch --skip-init --load-report verify.out > sim.out 2>&1
+        divine sim --batch --skip-init --load-report verify.out 2>&1 | tee sim.out
+
+    getarg() { perl -ne "print \$1 if m/--$1 +(\\S*)/" $2; }
+    location=`getarg location $dcscript`
+    symbol=`getarg symbol $dcscript`
+    if test -n "$location" && ! grep -q "^  [{}a-zA-Z_].* at $location" sim.out; then
+            echo "# expected error to be found in divine sim at $location, but it was not"
+            exit 1
+    elif test -n "$symbol" && ! grep -qP "^  \\S*$symbol.* at .*" sim.out; then
+            echo "# expected error to be found in divine sim in $symbol, but it was not"
+            exit 1
+    fi
 fi
 
-check verify "$name"
+exit 0;
 
 # vim: syntax=sh

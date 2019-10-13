@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . ./environment
-chmod +x $TESTS/lib/*-unpack $TESTS/lib/divcheck-wrap
+chmod +x $TESTS/lib/*-unpack $TESTS/lib/verify
 
 todo=,todo
 for arg in "$@"; do
@@ -15,8 +15,8 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --expand pkg.c:lib/pkgc-unpack \
     --expand pkg.cpp:lib/pkgc-unpack \
     --expand bt:lib/brick-unpack \
-    --interpreter cpp:lib/divcheck-wrap \
-    --interpreter c:lib/divcheck-wrap \
+    --interpreter cpp:lib/verify \
+    --interpreter c:lib/verify \
     --interpreter pkg:lib/pkg \
     --interpreter pdc:lib/pdclib-test \
     --interpreter bld:lib/build \
