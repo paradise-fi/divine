@@ -51,7 +51,8 @@ namespace unittest {
 
 struct TestBase
 {
-    std::string name;
+    std::string name, file;
+
     bool expect_failure;
     virtual void run() = 0;
     virtual std::string group() = 0;
@@ -60,14 +61,18 @@ struct TestBase
     static std::vector< TestBase * > *testcases;
     static std::set< std::string > *registered;
 
-    TestBase( std::string name )
-        : name( name ) {}
+    TestBase( std::string name, std::string file )
+        : name( name ), file( file ) {}
 
     virtual std::string describe()
     {
         return group() + "::" + name;
     }
-    virtual std::string describe_long() { return describe(); }
+
+    virtual std::string describe_long()
+    {
+        return describe() + " " + file;
+    }
 
     void _register()
     {
@@ -260,7 +265,7 @@ int list( int argc, const char **argv )
         std::string d = tc->describe_long();
         if ( !flt.matches( d ) )
             continue;
-        std::cerr << tc->describe() << std::endl;
+        std::cout << tc->describe_long() << std::endl;
     }
     return 0;
 }
@@ -295,7 +300,7 @@ int run( int argc, const char **argv )
     }
 
     for ( auto tc : *TestBase::testcases )
-        if ( flt.matches( tc->describe() ) )
+        if ( flt.matches( tc->describe_long() ) )
         {
              ++ counts[ tc->group() ];
              ++ total;
@@ -389,7 +394,7 @@ struct TestCase : TestBase
         return _typeid< TestGroup >();
     }
 
-    TestCase( std::string n ) : TestBase( n ) {}
+    TestCase( std::string n, std::string file ) : TestBase( n, file ) {}
 };
 
 /* Declares a test and makes sure it is registered in a global constructor of
@@ -406,7 +411,7 @@ struct TestCase : TestBase
     template< typename SELF >                                           \
     static void  __attribute__((constructor)) __reg2_ ## n()            \
     {                                                                   \
-        static ::brick::T< SELF, &SELF::n > tc ( #n ); \
+        static ::brick::T< SELF, &SELF::n > tc ( #n, __FILE__ );        \
         INIT                                                            \
         tc._register();                                                 \
     }                                                                   \

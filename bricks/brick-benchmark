@@ -188,7 +188,7 @@ struct BenchmarkBase : unittest::TestBase
     virtual std::string group() { return ""; }
     int64_t p, q;
 
-    BenchmarkBase( std::string n ) : TestBase( n ) {}
+    BenchmarkBase( std::string n ) : TestBase( n, "" ) {}
 };
 
 struct Group
