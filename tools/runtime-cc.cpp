@@ -32,7 +32,7 @@ int main( int argc, const char **argv )
         auto prec = clang.preprocess( argv[3], opts );
         std::string fpFilename = std::string( argv[ 4 ] ) + ".fp";
         std::string oldFp = fs::readFileOr( fpFilename, {} );
-        std::string newFp = VERSION ":" + sha2_512( prec );
+        std::string newFp = VERSION ":" + sha2::to_hex( sha2_512( prec ) );
         if ( oldFp == newFp && fs::exists( argv[ 4 ] ) ) {
             fs::touch( argv[ 4 ] );
             return 0;
