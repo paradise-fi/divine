@@ -491,15 +491,8 @@ void Report::results()
     }
 }
 
-std::unique_ptr< ReportFormat > CompareBase::get_comparison_report( const std::map< std::string, std::string > &fields )
+std::unique_ptr< ReportFormat > CompareBase::get_comparison_report( const field_map &fields )
 {
-    find_instances();
-
-    if ( _fields.empty() )
-        _fields = { { "time_search", "search" }, { "states", "states" } };
-    if ( _instance_ids.empty() )
-        throw brick::except::Error( "At least one --instance must be specified." );
-
     std::stringstream q;
     std::string x0 = "x" + std::to_string( _instance_ids[ 0 ] );
 
@@ -581,7 +574,7 @@ void Compare::run()
     if ( _fields.empty() )
         _fields = { { "time_search", "search" }, { "states", "states" } };
     if ( _instance_ids.empty() )
-        throw brick::except::Error( "At least one --instance must be specified." );
+        throw brq::error( "At least one --instance must be specified." );
 
     auto report = get_comparison_report( _fields );
     report->format( std::cout );
@@ -612,14 +605,15 @@ static bool version_compare( const std::string &a, const std::string &b )
     auto a_parts = split( a );
     auto b_parts = split( b );
 
-    return std::lexicographical_compare( a_parts.cbegin(), a_parts.cend(), b_parts.cbegin(), b_parts.cend() );
+    return std::lexicographical_compare( a_parts.cbegin(), a_parts.cend(),
+                                         b_parts.cbegin(), b_parts.cend() );
 }
 
 void Plot::run()
 {
     find_instances();
-    if ( _instance_ids.empty() ) 
-        throw brick::except::Error( "At least one --instance must be specified." );
+    if ( _instance_ids.empty() )
+        throw brq::error( "At least one --instance must be specified." );
 
     auto versions = std::map< int, std::string >();
     for ( auto id : _instance_ids )
@@ -657,8 +651,9 @@ void Plot::run()
     auto &sum_record = tab.records.back();
     for ( size_t i = 2; i < tab.fields.size(); ++i )
     {
+        using namespace std::chrono;
         std::visit( overloaded {
-            [&]( std::chrono::milliseconds ms ){ line.val( std::chrono::duration_cast< std::chrono::minutes >( ms ).count() ); },
+            [&]( milliseconds ms ){ line.val( duration_cast< minutes >( ms ).count() ); },
             [&]( int v ) { line.val( v ); },
             []( auto ) { UNREACHABLE( "cannot plot non-integral value" ); }
         }, sum_record.data[ tab.fields[ i ].name ] );

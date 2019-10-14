@@ -204,7 +204,8 @@ struct Report : ReportBase
 
 struct CompareBase : ReportBase
 {
-    std::unique_ptr< ReportFormat > get_comparison_report( const std::map< std::string, std::string > &fields );
+    using field_map = std::map< std::string, std::string >;
+    std::unique_ptr< ReportFormat > get_comparison_report( const field_map &fields );
 };
 
 struct Compare : CompareBase
