@@ -20,9 +20,11 @@
 #pragma once
 
 #include <brick-smt>
+#include <divine/smt/union-find.hpp>
 #include <divine/vm/pointer.hpp>
 
 #include <list>
+#include <map>
 #include <cassert>
 #include <optional>
 
@@ -61,147 +63,51 @@ namespace divine::smt
     // decompose the input RPN into smaller RPNs
     // which have dependent variables, for later caching
     // TODO: output iterator
-    static std::vector< RPN > decompose( const RPN &rpn )
+    static union_find< RPN::VarID > decompose( const RPN &rpn )
     {
         using VarID = RPN::VarID;
 
         std::map< VarID, RPN > decomp;
-        std::vector< RPN > constant_RPNs;
-
-        std::optional< VarID > current_var;
-        RPN active_RPN;
-        bool is_constraint = false;
-
-        std::list< std::pair< RPN, RPNView::Iterator > > control_stack;
-
         union_find< VarID > uf;
-        std::vector< union_find< VarID >::Node* > shadow;
+        std::vector< std::optional< VarID > > stack;
 
-        auto pop = [&]( auto& s )
+        auto pop = [&]()
         {
-            auto v = s.back();
-            s.pop_back();
+            auto v = stack.back();
+            stack.pop_back();
             return v;
-        };
-
-        auto push_control = [&]( RPN&& rpn )
-        {
-            control_stack.emplace_back( std::move( rpn ), RPNView::Iterator() );
-            control_stack.back().second = RPNView{ control_stack.back().first }.begin();
-        };
-
-        auto append_rpn = [&]( VarID var, RPN& rpn )
-        {
-            auto it = decomp.find( var );
-            if( it != decomp.end() )
-            {
-                auto& r = (*it).second;
-                r.insert( r.end(), rpn.begin(), rpn.end() );
-                (*it).second.apply< Op::And >();
-            }
-            decomp.emplace( var, rpn );
         };
 
         auto handle_binary = [&] ( BinaryOp bin )
         {
             if ( bin.op == Op::Constraint )
             {
-                bin.op = Op::And;
-                shadow.pop_back();
-                shadow.pop_back();
-                is_constraint = true;
+                pop();
+                pop();
             }
             else 
             {
-                auto n1 = pop( shadow );
-                auto n2 = pop( shadow );
-                shadow.emplace_back( uf.union_( n1, n2 ) );
+                auto n1 = pop();
+                auto n2 = pop();
+                stack.emplace_back( uf.union_( n1, n2 ) );
             }
         };
 
-        auto handle_unary = [&]( const UnaryOp &un ){};
-        auto handle_cast = [&]( CastOp cast ){};
-
-        auto handle_call = [&]( CallOp call )
-        {
-            // we only need to go in if we haven't met a variable
-            /*
-            vm::HeapPointer ptr( call.objid );
-            RPN rpn = bld.read( ptr );
-            push_control( RPN( rpn ) );
-            */
-        };
+        auto handle_unary = [&]( const UnaryOp & ){};
+        auto handle_cast = [&]( CastOp ){};
 
         auto handle_term = overload
         {
-            [&]( const Constant& con )
-            { shadow.emplace_back( nullptr ); },
-            [&]( const Variable& var )
-            {
-                if ( !current_var )
-                    current_var = var.id;
-                shadow.emplace_back( uf.make_set( var.id ) );
-            },
-            handle_unary, handle_cast, handle_binary, handle_call,
+            [&]( const Constant& ) { stack.emplace_back( std::nullopt ); },
+            [&]( const Variable& var ) { stack.emplace_back( uf.make_set( var.id ) ); },
+            handle_unary, handle_cast, handle_binary,
             [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
         };
 
-        push_control( RPN( rpn ) );
-
-        while ( !control_stack.empty() )
-        {
-            auto& cs = control_stack.back();
-            RPNView view{ cs.first };
-
-            RPNView v{ rpn };
-            // we have the first Constraint, so the rpn begins with a "true"?? FIXME
-            if ( cs.second == v.begin() )
-                ++cs.second;
-
-            auto term = *cs.second;            
-
+        for( auto term : RPNView( rpn ) )
             std::visit( handle_term, term );
 
-            if( is_constraint )
-            {
-                if( !current_var ) // only constants
-                    constant_RPNs.push_back( active_RPN );
-                else
-                    append_rpn( *current_var, active_RPN );
-
-                active_RPN.clear();
-                current_var.reset();
-            }
-            else
-                std::visit( [&]( auto t ) { active_RPN.insert( active_RPN.end(), bytes_begin(t), bytes_end(t) ); }, term );
-
-            ++cs.second;
-
-            if ( cs.second == view.end() )
-                control_stack.pop_back();
-        }
-
-        //re-assign based on union-find variable decomposition
-        for( auto it = decomp.begin(); it != decomp.end(); )
-        {
-            auto& [var, rpn] = *it;
-            auto repr = uf.get_representant( var );
-            ASSERT( repr.has_value() );
-            if ( var != *repr )
-            {
-                append_rpn( *repr, rpn );
-                decomp.erase( it++ );
-            }
-            else
-                ++it;
-        }
-
-        // add RPNs composed of constants-only
-        std::vector< RPN > ret = constant_RPNs;
-        for( auto [var,rpn] : decomp )
-            ret.push_back( rpn );
-
-        return ret;
+        return uf;
     }
 
     template< typename Builder >
@@ -209,6 +115,7 @@ namespace divine::smt
         -> typename Builder::Node
     {
         using Node = typename Builder::Node;
+
         std::vector< std::pair< Node, Bitwidth > > stack;
         std::list< std::pair< RPN, RPNView::Iterator > > control_stack;
 
