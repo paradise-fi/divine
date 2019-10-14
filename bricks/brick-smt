@@ -421,7 +421,7 @@ namespace brick::smt
             {
                 return os << "[const " << con.value
                           << " : "     << to_string( con.type() )
-                          << " "       << con.bitwidth() << "]";
+                          << " "       << int( con.bitwidth() ) << "]";
             }
 
         } __attribute__(( packed, aligned(1) ));
@@ -441,7 +441,7 @@ namespace brick::smt
             {
                 return os << "[var " << var.id
                           << " : "   << to_string( var.type() )
-                          << " "     << var.bitwidth() << "]";
+                          << " "     << int( var.bitwidth() ) << "]";
             }
 
             friend bool operator==( const Variable& v1, const Variable& v2 )
