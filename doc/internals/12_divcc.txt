@@ -29,7 +29,7 @@ integration of LLVM-based analysis and verification into an ordinary build
 process. In the case of DIVINE, its main usefulness stems from the ability to
 link all compilation units into a binary file that also includes a special
 section .llvmbc. This section contains a serialized LLVM bitcode of the whole
-system, which is then availible for verification.
+system, which is then available for verification.
 
 ### The journey of CLI arguments
 
@@ -38,7 +38,7 @@ DivCC, that is `tools/divcc.cpp`. This is, however, only a thin wrapper over
 `struct Native`, which is given the CLI arguments and immediately hands them
 over to a parsing code located in `divine/cc/options.*`.
 
-Now that the internal representation of the parsed CLI arguments is availible,
+Now that the internal representation of the parsed CLI arguments is available,
 we can further inspect `Native` in `divine/cc/native.*`. It is here where the
 main high-level logic of DivCC resides - this structure is responsible for
 acting on provided arguments, deferring to lower levels (mainly the driver and
@@ -89,6 +89,6 @@ used for determining file types based on their suffixes or CLI arguments,
 The compiler provided headers at
 `divine/cc/{stdarg,stddef,stdbool,float,limits}.h` are, for the most part,
 relatively uninteresting. The exception being `stdarg.h`, which provides some
-plumbing used for translating elipsis function parameters into its own LLVM
+plumbing used for translating ellipsis function parameters into its own LLVM
 instruction `va_arg` - a functionality not provided by standard Clang which
 is, however, useful for verification.
