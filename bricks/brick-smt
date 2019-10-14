@@ -707,10 +707,10 @@ namespace brick::smt
                 }
 
                 if ( is_unary( op ) )
-                    return UnaryOp{ op };
+                    return UnaryOp{ { op } };
 
                 if ( is_binary( op ) )
-                    return BinaryOp{ op };
+                    return BinaryOp{ { op } };
 
                 if ( is_call( op ) )
                 {
@@ -730,6 +730,7 @@ namespace brick::smt
             rpn_iterator _it;
         };
 
+        // skipping the first byte that identifies the abstract domain type
         Iterator begin() const noexcept { return Iterator{ std::next( _rpn.begin() ) }; }
         Iterator end() const noexcept { return Iterator{ _rpn.end() }; }
 
