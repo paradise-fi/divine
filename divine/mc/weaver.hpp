@@ -151,10 +151,10 @@ namespace divine::mc
             return Weaver< TQ, ExMachines..., Machines... >( std::tuple_cat( ext, _machines ) );
         }
 
-        template< typename R >
-        auto extend_ref( R &ref )
+        template< typename... R >
+        auto extend_ref( R & ... ref )
         {
-            return extend( Ref< R >( ref ) );
+            return extend( Ref< R >( ref )... );
         }
 
         template< typename... F >
