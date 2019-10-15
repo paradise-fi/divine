@@ -28,22 +28,27 @@ namespace brq
     struct nil
     {
         using co = nil;
+        using unique_t = nil;
+        static constexpr bool empty = true;
+
         template< template< typename > class f > using map_t = nil;
+        template< typename L >                   using cat_t = L;
 
-        template< typename F >
-        void each( const F & ) const {}
-
-        template< typename... Fs >
-        auto match( Fs... ) { return std::nullopt; }
+        template< typename F >     void each( const F & ) const {}
+        template< typename F >     nil map( F ) const { return {}; }
+        template< typename... Fs > auto match( Fs... ) { return std::nullopt; }
+        template< typename L >     auto cat( const L &l ) const { return l; }
+        template< typename T >     static constexpr bool has = false;
 
         template< template< typename > class P >
         constexpr nil filter() const { return {}; }
 
-        template< typename F >
-        nil map( F ) const { return {}; }
+        template< typename F, typename... args_t >
+        auto apply( const F &f, args_t && ... args ) const
+        {
+            return f( args... );
+        }
 
-        template< typename L >
-        auto cat( const L &l ) const { return l; }
     };
 
     template< typename, typename > struct cons;
@@ -53,66 +58,68 @@ namespace brq
     auto make_cons( const A &a, const B &b ) { return cons< A, B >( a, b ); }
 
     template< typename A, typename B >
-    struct cons
+    struct cons : B
     {
         using car_t = A;
         using cdr_t = B;
         using co = ns< car_t, typename cdr_t::co >;
+
+        car_t _car;
+
+        car_t       &car()       { return _car; }
+        const car_t &car() const { return _car; }
+        cdr_t       &cdr()       { return *this; }
+        const cdr_t &cdr() const { return *this; }
+
+        template< typename F > void each( const F &f )       { f( car() ); cdr().each( f ); }
+        template< typename F > void each( const F &f ) const { f( car() ); cdr().each( f ); }
+        template< typename L > auto cat( const L &l ) const { return make_cons( car(), cdr().cat( l ) ); }
+        constexpr auto reverse() const { nil rev; return cons_reverse( *this, rev ); }
+
+        static constexpr bool empty = false;
+        template< typename T > static constexpr bool has =
+            std::is_same_v< T, car_t > || cdr_t::template has< T >;
+
         template< template< typename > class f >
         using map_t = cons< f< car_t >, typename cdr_t::template map_t< f > >;
+        using unique_t = std::conditional_t< cdr_t::unique_t::template has< car_t >, cdr_t, cons >;
+        template< typename L > using cat_t = cons< car_t, typename cdr_t::template cat_t< L > >;
 
-        car_t car;
-        cdr_t cdr;
-
-        template< typename F >
-        void each( const F &f )
+        template< typename F, typename... args_t >
+        auto apply( const F &f, args_t &&... args ) const
         {
-            f( car );
-            cdr.each( f );
+            return cdr().apply( f, car(), std::forward< args_t >( args ) ... );
         }
 
-        template< typename F >
-        void each( const F &f ) const
+        template< typename F, typename... args_t >
+        auto apply( const F &f, args_t &&... args )
         {
-            f( car );
-            cdr.each( f );
-        }
-
-        cons( const car_t &car, const cdr_t &cdr )
-            : car( car ), cdr( cdr )
-        {}
-
-        constexpr auto reverse() const
-        {
-            nil rev;
-            return cons_reverse( *this, rev );
+            return cdr().apply( f, car(), std::forward< args_t >( args ) ... );
         }
 
         template< template< typename > class P >
         constexpr auto filter() const
         {
             if constexpr ( P< car_t >::value )
-                return make_cons( car, cdr.template filter< P >() );
+                return make_cons( car(), cdr().template filter< P >() );
             else
-                return cdr.template filter< P >();
+                return cdr().template filter< P >();
         }
 
         template< typename F >
         auto map( F f )
         {
-            auto car_ = f( car );
-            auto cdr_ = cdr.map( f );
+            auto car_ = f( car() );
+            auto cdr_ = cdr().map( f );
             return make_cons( car_, cdr_ );
         }
 
-        template< typename L >
-        auto cat( const L &l )
-        {
-            return make_cons( car, cdr.cat( l ) );
-        }
+        cons( const car_t &car, const cdr_t &cdr )
+            : cdr_t( cdr ), _car( car )
+        {}
 
         template< typename arg_t, typename... args_t >
-        cons( const arg_t &arg, const args_t&... args ) : car( arg ), cdr( args... ) {}
+        cons( const arg_t &arg, const args_t&... args ) : cdr_t( args... ), _car( arg ) {}
 
         cons() = default;
     };
@@ -146,6 +153,8 @@ namespace brq
     {
         using cons_list_t_< Ts... >::cons_list_t_;
     };
+
+    static_assert( std::is_same_v< cons_list_t< int, int >::unique_t, cons_list_t_< int > > );
 
     template< typename car_t_, typename cdr_t_ >
     struct ns

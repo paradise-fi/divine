@@ -936,7 +936,7 @@ struct Parser : ParserBase
     auto command( Tokens (U::*extra), Args... args )
     {
         auto cmd = command< T >( args... );
-        cmd._cmds.car._extra = extra;
+        cmd._cmds.car()._extra = extra;
         return cmd;
     }
 
@@ -944,7 +944,7 @@ struct Parser : ParserBase
     auto command( std::string dsc, Args... args )
     {
         auto cmd = command< T >( args... );
-        cmd._cmds.car._description = dsc;
+        cmd._cmds.car()._description = dsc;
         return cmd;
     }
 
@@ -1106,7 +1106,7 @@ struct TestCmd
             .command< Foo >( common, uncommon )
             .command< Bar >( common );
 
-        ASSERT_EQ( p._cmds.car.name(), "bar" );
+        ASSERT_EQ( p._cmds.car().name(), "bar" );
 
         cmd::Tokens in = { "foo", "32" };
         bool is_foo = false;
