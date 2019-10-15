@@ -94,6 +94,15 @@ namespace divine::mc::task
 {
     using boot = start;
 
+    template< typename ctx_t >
+    struct boot_sync : base
+    {
+        using pool = vm::CowHeap::Pool;
+        pool snap_pool, state_pool;
+        ctx_t ctx;
+        boot_sync( pool a, pool b, ctx_t c ) : state_pool( a ), snap_pool( b ), ctx( c ) {}
+    };
+
     struct origin
     {
         Snapshot snap;
@@ -172,6 +181,13 @@ namespace divine::mc::machine
 
         void boot( tq & ) {}
 
+        template< typename ctx_t >
+        void run( tq &, const task::boot_sync< ctx_t > &bs )
+        {
+            this->_snap_pool = bs.snap_pool;
+            this->_state_pool = bs.state_pool;
+        }
+
         void queue_edge( tq &q, const origin &from, State to, Label lbl, bool isnew )
         {
             push< task_edge >( q, State( from.snap ), to, lbl, isnew );
@@ -230,6 +246,15 @@ namespace divine::mc::machine
         ctx _ctx;
         ctx &context() { return _ctx; }
         auto &heap() { return context().heap(); }
+
+        using next::run;
+
+        template< typename ctx_t >
+        void run( typename next::tq &q, const task::boot_sync< ctx_t > &bs )
+        {
+            this->_ctx = bs.ctx;
+            next::run( q, bs );
+        }
 
         void update_instructions()
         {
@@ -337,7 +362,13 @@ namespace divine::mc::machine
             next::boot( q );
 
             if ( vm::setup::postboot_check( this->context() ) )
-                return q.template add< typename next::task_schedule >( this->store().first ), true;
+            {
+                auto snap = this->store().first;
+                push< task::boot_sync< typename next::context_t > >
+                    ( q, this->_state_pool, this->_snap_pool, this->_ctx );
+                push< typename next::task_schedule >( q, snap );
+                return true;
+            }
             else
                 return false;
         }
