@@ -92,7 +92,7 @@ namespace divine::mc
 
 namespace divine::mc::task
 {
-    using Boot     = start;
+    using boot = start;
 
     struct origin
     {
@@ -101,23 +101,23 @@ namespace divine::mc::task
         explicit origin( Snapshot s ) : snap( s ) {}
     };
 
-    struct Compute : base
+    struct compute : base
     {
         Snapshot snap;
         task::origin origin;
         vm::State state;
-        Compute( Snapshot snap, task::origin orig, vm::State state )
+        compute( Snapshot snap, task::origin orig, vm::State state )
             : snap( snap ), origin( orig ), state( state )
         {}
     };
 
-    struct Choose : Compute
+    struct choose : compute
     {
         int choice, total;
         void cancel() { total = 0; }
         bool valid() { return total; }
-        Choose( Snapshot snap, task::origin orig, vm::State state, int c, int t )
-            : Compute( snap, orig, state ), choice( c ), total( t )
+        choose( Snapshot snap, task::origin orig, vm::State state, int c, int t )
+            : compute( snap, orig, state ), choice( c ), total( t )
         {}
     };
 }
@@ -165,7 +165,7 @@ namespace divine::mc::machine
     struct base_ : with_pools, with_counters, with_bc, with_solver< solver >, next
     {
         using origin        = task::origin;
-        using task_choose   = task::Choose;
+        using task_choose   = task::choose;
         using task_schedule = task::Expand< State >;
         using task_edge     = task::Edge< State, Label >;
         using tq            = task_queue< task_choose, task::start, task_schedule, task_edge >;
@@ -452,7 +452,11 @@ namespace divine::mc::machine
         using typename next::tq;
         using next::run;
 
-        void run( tq &q, task::Boot ) { next::boot( q ); }
+        void run( tq &q, task::boot )
+        {
+            next::boot( q );
+        }
+
         void run( tq &q, typename next::task_choose c ) { next::choose( q, c ); }
 
         void run( tq &q, typename next::task_schedule e )
