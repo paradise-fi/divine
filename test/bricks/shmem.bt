@@ -3,5 +3,5 @@ common tags: c++
           | brick::t_shmem::ThreadTest::thread
           | brick::t_shmem::FifoTest::stress
           | brick::t_shmem::Utils::startDetectorSimple
-          | brick::t_shmem::Utils::startDetectorReentrant
-          | brick::t_shmem::Utils::approximateCounter
+big       | brick::t_shmem::Utils::startDetectorReentrant
+big       | brick::t_shmem::Utils::approximateCounter
