@@ -172,7 +172,7 @@ namespace divine::smt
                     cast.op = Op::ZExt;
             }
 
-            Unary op = { cast.op, cast.bitwidth };
+            Unary op = { {{ cast.op }}, cast.bitwidth };
             push( bld.unary( op, arg ), cast.bitwidth );
         };
 
