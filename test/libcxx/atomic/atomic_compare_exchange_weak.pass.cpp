@@ -1,11 +1,11 @@
-/* TAGS: c++ */
+/* TAGS: c++ fin */
+/* CC_OPTS: -std=c++2a */
 /* VERIFY_OPTS: -o nofail:malloc */
 //===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -17,7 +17,7 @@
 // template <class T>
 //     bool
 //     atomic_compare_exchange_weak(volatile atomic<T>* obj, T* expc, T desr);
-// 
+//
 // template <class T>
 //     bool
 //     atomic_compare_exchange_weak(atomic<T>* obj, T* expc, T desr);
@@ -27,11 +27,12 @@
 #include <cassert>
 
 #include "cmpxchg_loop.h"
+#include "test_macros.h"
+#include "atomic_helpers.h"
 
 template <class T>
-void
-test()
-{
+struct TestFn {
+  void operator()() const {
     {
         typedef std::atomic<T> A;
         A a;
@@ -56,37 +57,12 @@ test()
         assert(a == T(2));
         assert(t == T(2));
     }
-}
-
-struct A
-{
-    int i;
-
-    explicit A(int d = 0) noexcept {i=d;}
-
-    friend bool operator==(const A& x, const A& y)
-        {return x.i == y.i;}
+  }
 };
 
-int main()
+int main(int, char**)
 {
-    test<A>();
-    test<char>();
-    test<signed char>();
-    test<unsigned char>();
-    test<short>();
-    test<unsigned short>();
-    test<int>();
-    test<unsigned int>();
-    test<long>();
-    test<unsigned long>();
-    test<long long>();
-    test<unsigned long long>();
-    test<wchar_t>();
-#ifndef _LIBCPP_HAS_NO_UNICODE_CHARS
-    test<char16_t>();
-    test<char32_t>();
-#endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
-    test<int*>();
-    test<const int*>();
+    TestEachAtomicType<TestFn>()();
+
+  return 0;
 }

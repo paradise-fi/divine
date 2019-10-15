@@ -10,26 +10,21 @@
 //===----------------------------------------------------------------------===//
 //
 // UNSUPPORTED: libcpp-has-no-threads
-//  ... assertion fails line 38
+//  ... assertion fails line 34
 
 // <atomic>
 
 // template <class T>
 //     bool
-//     atomic_compare_exchange_weak_explicit(volatile atomic<T>* obj, T* expc,
-//                                           T desr,
-//                                           memory_order s, memory_order f);
+//     atomic_compare_exchange_strong(volatile atomic<T>* obj, T* expc, T desr);
 //
 // template <class T>
 //     bool
-//     atomic_compare_exchange_weak_explicit(atomic<T>* obj, T* expc, T desr,
-//                                           memory_order s, memory_order f);
+//     atomic_compare_exchange_strong(atomic<T>* obj, T* expc, T desr);
 
 #include <atomic>
 #include <type_traits>
 #include <cassert>
-
-#include "cmpxchg_loop.h"
 
 #include "test_macros.h"
 #include "atomic_helpers.h"
@@ -42,12 +37,10 @@ struct TestFn {
         A a;
         T t(T(1));
         std::atomic_init(&a, t);
-        assert(c_cmpxchg_weak_loop(&a, &t, T(2),
-               std::memory_order_seq_cst, std::memory_order_seq_cst) == true);
+        assert(std::atomic_compare_exchange_strong(&a, &t, T(2)) == true);
         assert(a == T(2));
         assert(t == T(1));
-        assert(std::atomic_compare_exchange_weak_explicit(&a, &t, T(3),
-               std::memory_order_seq_cst, std::memory_order_seq_cst) == false);
+        assert(std::atomic_compare_exchange_strong(&a, &t, T(3)) == false);
         assert(a == T(2));
         assert(t == T(2));
     }
@@ -56,12 +49,10 @@ struct TestFn {
         volatile A a;
         T t(T(1));
         std::atomic_init(&a, t);
-        assert(c_cmpxchg_weak_loop(&a, &t, T(2),
-               std::memory_order_seq_cst, std::memory_order_seq_cst) == true);
+        assert(std::atomic_compare_exchange_strong(&a, &t, T(2)) == true);
         assert(a == T(2));
         assert(t == T(1));
-        assert(std::atomic_compare_exchange_weak_explicit(&a, &t, T(3),
-               std::memory_order_seq_cst, std::memory_order_seq_cst) == false);
+        assert(std::atomic_compare_exchange_strong(&a, &t, T(3)) == false);
         assert(a == T(2));
         assert(t == T(2));
     }

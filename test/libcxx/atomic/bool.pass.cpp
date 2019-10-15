@@ -1,11 +1,11 @@
-/* TAGS: c++ */
+/* TAGS: c++ fin */
+/* CC_OPTS: -std=c++2a */
 /* VERIFY_OPTS: -o nofail:malloc */
 //===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -41,7 +41,7 @@
 //                                 memory_order m = memory_order_seq_cst) volatile;
 //     bool compare_exchange_strong(T& expc, T desr,
 //                                  memory_order m = memory_order_seq_cst);
-// 
+//
 //     atomic() = default;
 //     constexpr atomic(T desr);
 //     atomic(const atomic&) = delete;
@@ -57,12 +57,13 @@
 #include <new>
 #include <cassert>
 
-#include "cmpxchg_loop.old.h"
+#include "cmpxchg_loop.h"
 
-int main()
+#include "test_macros.h"
+
+int main(int, char**)
 {
     {
-        volatile std::atomic<bool> _;
         volatile std::atomic<bool> obj(true);
         assert(obj == true);
         std::atomic_init(&obj, false);
@@ -118,7 +119,6 @@ int main()
         assert(obj == true);
     }
     {
-        std::atomic<bool> _;
         std::atomic<bool> obj(true);
         assert(obj == true);
         std::atomic_init(&obj, false);
@@ -174,7 +174,6 @@ int main()
         assert(obj == true);
     }
     {
-        std::atomic_bool _;
         std::atomic_bool obj(true);
         assert(obj == true);
         std::atomic_init(&obj, false);
@@ -231,9 +230,11 @@ int main()
     }
     {
         typedef std::atomic<bool> A;
-        _ALIGNAS_TYPE(A) char storage[sizeof(A)] = {1};
-        A& zero = *new (storage) A();    
+        TEST_ALIGNAS_TYPE(A) char storage[sizeof(A)] = {1};
+        A& zero = *new (storage) A();
         assert(zero == false);
         zero.~A();
     }
+
+  return 0;
 }

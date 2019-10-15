@@ -1,11 +1,11 @@
-/* TAGS: c++ */
+/* TAGS: c++ fin */
+/* CC_OPTS: -std=c++2a */
 /* VERIFY_OPTS: -o nofail:malloc */
 //===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -43,7 +43,7 @@
 //                                 memory_order m = memory_order_seq_cst) volatile;
 //     bool compare_exchange_strong(integral& expc, integral desr,
 //                                  memory_order m = memory_order_seq_cst);
-// 
+//
 //     integral
 //         fetch_add(integral op, memory_order m = memory_order_seq_cst) volatile;
 //     integral fetch_add(integral op, memory_order m = memory_order_seq_cst);
@@ -59,7 +59,7 @@
 //     integral
 //         fetch_xor(integral op, memory_order m = memory_order_seq_cst) volatile;
 //     integral fetch_xor(integral op, memory_order m = memory_order_seq_cst);
-// 
+//
 //     atomic() = default;
 //     constexpr atomic(integral desr);
 //     atomic(const atomic&) = delete;
@@ -67,7 +67,7 @@
 //     atomic& operator=(const atomic&) volatile = delete;
 //     integral operator=(integral desr) volatile;
 //     integral operator=(integral desr);
-// 
+//
 //     integral operator++(int) volatile;
 //     integral operator++(int);
 //     integral operator--(int) volatile;
@@ -94,6 +94,8 @@
 
 #include "cmpxchg_loop.h"
 
+#include "test_macros.h"
+
 template <class A, class T>
 void
 do_test()
@@ -105,6 +107,7 @@ do_test()
     std::atomic_init(&obj, T(2));
     assert(obj == T(2));
     bool b0 = obj.is_lock_free();
+    ((void)b0); // mark as unused
     obj.store(T(0));
     assert(obj == T(0));
     obj.store(T(1), std::memory_order_release);
@@ -152,8 +155,8 @@ do_test()
     assert(obj == T(8));
 
     {
-        _ALIGNAS_TYPE(A) char storage[sizeof(A)] = {23};
-        A& zero = *new (storage) A();    
+        TEST_ALIGNAS_TYPE(A) char storage[sizeof(A)] = {23};
+        A& zero = *new (storage) A();
         assert(zero == 0);
         zero.~A();
     }
@@ -167,7 +170,7 @@ void test()
 }
 
 
-int main()
+int main(int, char**)
 {
     test<std::atomic_char, char>();
     test<std::atomic_schar, signed char>();
@@ -186,6 +189,15 @@ int main()
 #endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
     test<std::atomic_wchar_t, wchar_t>();
 
+    test<std::atomic_int8_t,    int8_t>();
+    test<std::atomic_uint8_t,  uint8_t>();
+    test<std::atomic_int16_t,   int16_t>();
+    test<std::atomic_uint16_t, uint16_t>();
+    test<std::atomic_int32_t,   int32_t>();
+    test<std::atomic_uint32_t, uint32_t>();
+    test<std::atomic_int64_t,   int64_t>();
+    test<std::atomic_uint64_t, uint64_t>();
+
     test<volatile std::atomic_char, char>();
     test<volatile std::atomic_schar, signed char>();
     test<volatile std::atomic_uchar, unsigned char>();
@@ -202,4 +214,15 @@ int main()
     test<volatile std::atomic_char32_t, char32_t>();
 #endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
     test<volatile std::atomic_wchar_t, wchar_t>();
+
+    test<volatile std::atomic_int8_t,    int8_t>();
+    test<volatile std::atomic_uint8_t,  uint8_t>();
+    test<volatile std::atomic_int16_t,   int16_t>();
+    test<volatile std::atomic_uint16_t, uint16_t>();
+    test<volatile std::atomic_int32_t,   int32_t>();
+    test<volatile std::atomic_uint32_t, uint32_t>();
+    test<volatile std::atomic_int64_t,   int64_t>();
+    test<volatile std::atomic_uint64_t, uint64_t>();
+
+  return 0;
 }
