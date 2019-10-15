@@ -47,7 +47,7 @@ namespace divine::mc
 
         std::stack< task_choose > _stack;
 
-        bool feasible( tq &q ) override
+        bool feasible( tq q ) override
         {
             if ( next::feasible( q ) )
                 return true;
@@ -60,7 +60,7 @@ namespace divine::mc
             return false;
         }
 
-        void choose( tq &q, task_choose &c )
+        void choose( tq q, task_choose &c )
         {
             c.total = -c.total;
             if ( c.total < 0 )

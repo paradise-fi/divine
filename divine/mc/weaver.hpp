@@ -29,18 +29,15 @@ namespace divine::mc::task
 namespace divine::mc
 {
     template< typename T >
-    using deque = std::deque< T >;
+    using deque = std::deque< T > &;
 
     template< typename... tasks >
     using task_queue = typename brq::cons_list_t< tasks... >::unique_t::template map_t< deque >;
 
-    template< typename task_t, typename tq, typename... args_t >
-    void push( tq &q, args_t && ... args )
+    template< typename task_t, typename... args_t >
+    void push( deque< task_t > q, args_t && ... args )
     {
-        if constexpr ( std::is_convertible_v< task_t, typename tq::car_t::value_type > )
-            q.car().emplace_back( std::forward< args_t >( args )... );
-        else
-            push< task_t >( q.cdr(), std::forward< args_t >( args )... );
+        q.emplace_back( std::forward< args_t >( args )... );
     }
 
     template< typename tq, typename yield_t >
@@ -53,7 +50,11 @@ namespace divine::mc
             if ( q.car().empty() )
                 return pop( q.cdr(), yield );
             else
-                return yield( q.car().front() ), q.car().pop_front(), true;
+            {
+                yield( q.car().front() );
+                q.car().pop_front();
+                return true;
+            }
         }
     }
 
@@ -69,25 +70,26 @@ namespace divine::mc
         F f;
         Observer( F f ) : f( f ) {}
 
-        template< typename TQ, typename T >
-        auto run( TQ &, T t )
+        template< typename T >
+        auto run( T t )
         {
-            if constexpr ( std::is_invocable_v< F, T > )
+            if constexpr ( std::is_invocable_v< F, T & > )
                 return f( t );
         }
     };
 
-    template< typename F >
+    template< typename TQ, typename F >
     struct Lambda
     {
+        using tq = TQ;
+
         F f;
         Lambda( F f ) : f( f ) {}
 
-        template< typename TQ, typename T >
-        auto run( TQ &tq, T &t )
+        template< typename T >
+        auto run( TQ tq, T &t ) -> decltype( f( tq, t ) )
         {
-            if constexpr ( std::is_invocable_v< F, TQ &, T & > )
-                return f( tq, t );
+            return f( tq, t );
         }
     };
 
@@ -95,9 +97,10 @@ namespace divine::mc
     struct Ref : std::reference_wrapper< M >
     {
         using std::reference_wrapper< M >::reference_wrapper;
+        using tq = typename M::tq;
 
         template< typename TQ, typename T >
-        auto run( TQ &tq, const T &t ) -> decltype( this->get().run( tq, t ) )
+        auto run( TQ tq, const T &t ) -> decltype( this->get().run( tq, t ) )
         {
             return this->get().run( tq, t );
         }
@@ -108,7 +111,7 @@ namespace divine::mc
     {
         using MachineT = std::tuple< Machines... >;
         MachineT _machines;
-        TQ _queue;
+        typename TQ::template map_t< std::remove_reference_t > _queue;
 
         template< typename... ExMachines >
         using Extend = Weaver< TQ, Machines..., ExMachines... >;
@@ -148,13 +151,13 @@ namespace divine::mc
         template< typename... F >
         auto extend_f( F... fs )
         {
-            return extend( Lambda< F >( fs ) ... );
+            return extend( Lambda< TQ, F >( fs ) ... );
         }
 
         template< typename... F >
         auto prepend_f( F... fs )
         {
-            return prepend( Lambda< F >( fs ) ... );
+            return prepend( Lambda< TQ, F >( fs ) ... );
         }
 
         Weaver( MachineT mt ) : _machines( mt ) {}
@@ -167,12 +170,21 @@ namespace divine::mc
         }
 
         template< typename M, typename T >
-        auto run_on( M &m, T &t ) -> decltype( m.run( _queue, t ) )
+        auto run_on( M &m, T &t ) -> decltype( m.run( _queue.template view< typename M::tq >(), t ) )
         {
-            return m.run( _queue, t );
+            return m.run( _queue.template view< typename M::tq >(), t );
         }
 
-        void run_on( brq::fallback, brq::fallback ) {}
+        template< typename M, typename T >
+        auto run_on( M &m, T &t ) -> decltype( m.run( t ) )
+        {
+            return m.run( t );
+        }
+
+        template< typename M >
+        auto run_on( M &, brq::fallback )
+            -> decltype( _queue.template view< typename M::tq >(), void( 0 ) )
+        {}
 
         template< int i = 0, typename T >
         void process_task( T &t )

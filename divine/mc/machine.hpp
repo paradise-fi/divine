@@ -179,21 +179,24 @@ namespace divine::mc::machine
         using task_edge     = task::Edge< State, Label >;
         using tq            = task_queue< task_choose, task::start, task_schedule, task_edge >;
 
-        void boot( tq & ) {}
+        void boot( tq ) {}
+
+        template< typename t >
+        void run( tq, t ) {}
 
         template< typename ctx_t >
-        void run( tq &, const task::boot_sync< ctx_t > &bs )
+        void run( tq, const task::boot_sync< ctx_t > &bs )
         {
             this->_snap_pool = bs.snap_pool;
             this->_state_pool = bs.state_pool;
         }
 
-        void queue_edge( tq &q, const origin &from, State to, Label lbl, bool isnew )
+        void queue_edge( tq q, const origin &from, State to, Label lbl, bool isnew )
         {
             push< task_edge >( q, State( from.snap ), to, lbl, isnew );
         }
 
-        void queue_choice( tq &q, const origin &o, Snapshot snap, vm::State state, int i, int t )
+        void queue_choice( tq q, const origin &o, Snapshot snap, vm::State state, int i, int t )
         {
             push< task_choose >( q, snap, o, state, i, t );
         }
@@ -205,7 +208,7 @@ namespace divine::mc::machine
         using typename next::origin;
         using typename next::tq;
 
-        void queue_choices( tq &q, origin o, Snapshot snap, vm::State state, int take, int total )
+        void queue_choices( tq q, origin o, Snapshot snap, vm::State state, int take, int total )
         {
             for ( int i = 0; i < total; ++i )
                 if ( i != take )
@@ -215,7 +218,7 @@ namespace divine::mc::machine
                 }
         }
 
-        int select_choice( tq &q, origin o, Snapshot snap, vm::State state, int count )
+        int select_choice( tq q, origin o, Snapshot snap, vm::State state, int count )
         {
             queue_choices( q, o, snap, state, 0, count );
             return 0;
@@ -229,7 +232,7 @@ namespace divine::mc::machine
         using typename next::tq;
         std::mt19937 rand;
 
-        int select_choice( tq &q, origin o, Snapshot snap, vm::State state, int count )
+        int select_choice( tq q, origin o, Snapshot snap, vm::State state, int count )
         {
             using dist = std::uniform_int_distribution< int >;
             int c = dist( 0, count - 1 )( rand );
@@ -250,7 +253,7 @@ namespace divine::mc::machine
         using next::run;
 
         template< typename ctx_t >
-        void run( typename next::tq &q, const task::boot_sync< ctx_t > &bs )
+        void run( typename next::tq q, const task::boot_sync< ctx_t > &bs )
         {
             this->_ctx = bs.ctx;
             next::run( q, bs );
@@ -275,7 +278,7 @@ namespace divine::mc::machine
         using typename next::tq;
         using Eval = vm::Eval< typename next::context_t >;
 
-        void eval_choice( tq &q, origin o )
+        void eval_choice( tq q, origin o )
         {
             auto snap = this->context().snapshot( this->_snap_pool );
             auto state = this->context()._state;
@@ -292,7 +295,7 @@ namespace divine::mc::machine
             compute( q, o, snap );
         }
 
-        void eval_interrupt( tq &q, origin o, Snapshot cont_from )
+        void eval_interrupt( tq q, origin o, Snapshot cont_from )
         {
             if ( this->context().frame().null() )
             {
@@ -310,7 +313,7 @@ namespace divine::mc::machine
                 return compute( q, o, cont_from );
         }
 
-        virtual bool feasible( tq & )
+        virtual bool feasible( tq  )
         {
             if ( this->context().flags_any( _VM_CF_Cancel ) )
                 return false;
@@ -332,7 +335,7 @@ namespace divine::mc::machine
             this->_snap_refcnt.put( s, destroy );
         }
 
-        void compute( tq &q, origin o, Snapshot cont_from = Snapshot() )
+        void compute( tq q, origin o, Snapshot cont_from = Snapshot() )
         {
             auto cleanup = [&]
             {
@@ -353,7 +356,7 @@ namespace divine::mc::machine
                 eval_interrupt( q, o, cont_from );
         }
 
-        bool boot( tq &q )
+        bool boot( tq q )
         {
             this->context().program( this->program() );
             Eval eval( this->context() );
@@ -373,14 +376,14 @@ namespace divine::mc::machine
                 return false;
         }
 
-        void schedule( tq &q, typename next::origin o )
+        void schedule( tq q, typename next::origin o )
         {
             this->context().load( this->_state_pool, o.snap );
             vm::setup::scheduler( this->context() );
             compute( q, o );
         }
 
-        void choose( tq &q, typename next::task_choose c )
+        void choose( tq q, typename next::task_choose c )
         {
             this->context().load( this->_snap_pool, c.snap );
             this->context()._state = c.state;
@@ -471,7 +474,7 @@ namespace divine::mc::machine
             return !isnew;
         }
 
-        void boot( typename next::tq &q )
+        void boot( typename next::tq q )
         {
             next::boot( q );
             hasher()._root = this->context().state_ptr();
@@ -484,14 +487,14 @@ namespace divine::mc::machine
         using typename next::tq;
         using next::run;
 
-        void run( tq &q, task::boot )
+        void run( tq q, task::boot )
         {
             next::boot( q );
         }
 
-        void run( tq &q, typename next::task_choose c ) { next::choose( q, c ); }
+        void run( tq q, typename next::task_choose c ) { next::choose( q, c ); }
 
-        void run( tq &q, typename next::task_schedule e )
+        void run( tq q, typename next::task_schedule e )
         {
             next::schedule( q, task::origin( e.from.snap ) );
         }

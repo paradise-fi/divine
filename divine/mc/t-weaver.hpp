@@ -34,37 +34,40 @@ namespace divine::t_mc
         task2( int j ) : j( j ) {}
     };
 
-    using tq = mc::task_queue< task1, task2 >;
-
-    struct machine1
+    struct base
     {
-        void run( tq &q, task1 t )
+        using tq = mc::task_queue< task1, task2 >;
+    };
+
+    struct machine1 : base
+    {
+        void run( tq q, task1 t )
         {
             if ( t.i < 10 )
                 mc::push< task2 >( q, t.i + 1 );
         }
     };
 
-    struct machine2
+    struct machine2 : base
     {
-        void run( tq &q, task2 t )
+        void run( tq q, task2 t )
         {
             mc::push< task1 >( q, t.j + 1 );
         }
     };
 
-    struct counter
+    struct counter : base
     {
         int t1 = 0, t2 = 0;
-        void run( tq &, task1 ) { ++t1; }
-        void run( tq &, task2 ) { ++t2; }
+        void run( tq, task1 ) { ++t1; }
+        void run( tq, task2 ) { ++t2; }
     };
 
     struct Weave
     {
         TEST( basic )
         {
-            mc::Weaver< tq, machine1, machine2, counter > weaver;
+            mc::Weaver< base::tq, machine1, machine2, counter > weaver;
             weaver.add< task1 >( 3 );
             weaver.run();
             auto &ctr = weaver.machine< counter >();

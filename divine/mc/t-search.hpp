@@ -34,9 +34,10 @@ namespace divine::t_mc
 
     struct Base
     {
+        using tq = TQ;
         brq::concurrent_hash_set< int > _states;
 
-        void run( TQ &tq, mc::task::start )
+        void run( TQ tq, mc::task::start )
         {
             _states.insert( 1 );
             mc::push< Expand >( tq, 1 );
@@ -61,7 +62,7 @@ namespace divine::t_mc
 
         using Base::run;
 
-        void run( TQ &tq, Expand expand )
+        void run( TQ tq, Expand expand )
         {
             for ( auto e : _edges )
                 if ( e.first == expand.from )
@@ -110,7 +111,7 @@ namespace divine::t_mc
 
         using Base::run;
 
-        void run( TQ &tq, Expand e )
+        void run( TQ tq, Expand e )
         {
             for ( auto t : _succs[ e.from ] )
             {
@@ -197,7 +198,7 @@ namespace divine::t_mc
             int found = 0;
 
             auto count = [&]( Expand ) { ++found; };
-            auto steer = [&]( TQ &tq, Edge e )
+            auto steer = [&]( TQ tq, Edge e )
             {
                 if ( e.from > 1000 )
                     return mc::push< Expand >( tq, e.to );

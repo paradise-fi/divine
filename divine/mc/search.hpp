@@ -48,14 +48,14 @@ namespace divine::mc
     template< typename State, typename Label >
     struct Search
     {
-        using TQ     = GraphTQ< State, Label >;
+        using tq     = GraphTQ< State, Label >;
         using Edge   = task::Edge< State, Label >;
         using Expand = task::Expand< State >;
 
-        void run( TQ &tq, Edge e )
+        void run( tq q, Edge e )
         {
             if ( e.isnew )
-                mc::push< Expand >( tq, e.to );
+                mc::push< Expand >( q, e.to );
         }
     };
 }
