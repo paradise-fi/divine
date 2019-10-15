@@ -44,6 +44,36 @@ extern "C" bool __vm_test_taint_byte( bool (*tainted) ( bool, char val ), bool, 
 
 namespace __dios::rst::abstract {
 
+    namespace detail {
+        template < class Default, class AlwaysVoid,
+                   template< class... > class Op, class... Args >
+        struct detector {
+            using value_t = std::false_type;
+            using type = Default;
+        };
+
+        template < class Default, template< class... > class Op, class... Args >
+        struct detector< Default, std::void_t< Op< Args... > >, Op, Args... > {
+            using value_t = std::true_type;
+            using type = Op< Args... >;
+        };
+    } // namespace detail
+
+    struct Nonesuch {
+        ~Nonesuch() = delete;
+        Nonesuch( Nonesuch const& ) = delete;
+        void operator=( Nonesuch const& ) = delete;
+    };
+
+    template < template< class... > class Op, class... Args >
+    using is_detected = typename detail::detector< Nonesuch, void, Op, Args... >::value_t;
+
+    template< template< class... > class Op, class... Args >
+    inline constexpr bool is_detected_v = is_detected< Op, Args... >::value;
+
+    template < template< class... > class Op, class... Args >
+    using detected_t = typename detail::detector< Nonesuch, void, Op, Args... >::type;
+
     template < typename T, int PT = _VM_PT_Heap >
     using Array = __dios::Array< T, PT >;
 
