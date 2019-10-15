@@ -40,6 +40,7 @@
 #include <brick-shmem>
 #include <brick-mmap>
 #include <brick-bitlevel>
+#include "brick-ptr"
 
 namespace brick {
 
@@ -228,7 +229,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         VHandle() : handle( -1 ), allocated( false ) {}
     };
 
-    struct Shared
+    struct Shared : brq::refcount_base< uint16_t, true >
     {
         BlockHeader *block[ blockcount ];
         std::atomic< int > usedblocks;
@@ -341,6 +342,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         void valgrind_fini() {}
         void valgrind_init() {}
 #endif
+
+        ~Shared() { finalize( this ); }
     };
 
     struct Local
@@ -352,7 +355,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 //        int ephemeral_offset;
     } _l;
 
-    std::shared_ptr< Shared > _s;
+    brq::refcount_ptr< Shared > _s;
 
 #ifdef NVALGRIND
 
@@ -425,7 +428,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
      * Extensions, which tend to contain Pointers, are no longer zeroed, but
      * constructed instead (as they should)
      */
-    Pool() : _s( new Shared(), finalize )
+    Pool() : _s( new Shared() )
     {
         _s->usedblocks = 8;
         for ( int i = 0; i < 4096; ++i )
@@ -597,7 +600,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         _s->valgrind_alloc( p, dereference( p ), size );
         if ( clear )
             ::memset( dereference( p ), 0, size );
-        TRACE( _s.get(), "allocated", p, "size =", size, "clear =", clear );
+        TRACE( _s, "allocated", p, "size =", size, "clear =", clear );
         return p;
     }
 
@@ -606,7 +609,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         if ( !valid( p ) )
             return;
 
-        TRACE( _s.get(), "free", p );
+        TRACE( _s, "free", p );
         ASSERT( header( p ).total > 0 && "trying to free ephemeral block" );
 
         _s->valgrind_dealloc( p, dereference( p ), size( p ) );
@@ -692,13 +695,13 @@ struct SlavePool : PoolMixin< SlavePool< Master_ >, typename Master_::Pointer >
         char data[0];
     };
 
-    struct Shared
+    struct Shared : brq::refcount_base< uint16_t, true >
     {
         BlockHeader *block[ blockcount ];
     };
 
-    std::shared_ptr< Shared > _s;
-    std::shared_ptr< typename Master::Shared > _m;
+    brq::refcount_ptr< Shared > _s;
+    brq::refcount_ptr< typename Master::Shared > _m;
 
     using Pointer = typename Master::Pointer;
 
@@ -773,7 +776,7 @@ struct RefPool : SlavePool< Master >
 
         if ( !rc ) /* TODO refactor */
         {
-            TRACE( this->_m.get(), "refcount for", p, "dropped to 0" );
+            TRACE( this->_m, "refcount for", p, "dropped to 0" );
             typename Master::FreeList fl;
             fl.count = 1;
             fl.head = p;
