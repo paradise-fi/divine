@@ -115,9 +115,9 @@ namespace divine::mc
         using std::reference_wrapper< M >::reference_wrapper;
 
         template< typename TQ, typename T >
-        void run( TQ &tq, const T &t )
+        auto run( TQ &tq, const T &t ) -> decltype( this->get().run( tq, t ) )
         {
-            this->get().run( tq, t );
+            return this->get().run( tq, t );
         }
     };
 
@@ -184,13 +184,21 @@ namespace divine::mc
             return std::get< T >( _machines );
         }
 
+        template< typename M, typename T >
+        auto run_on( M &m, T &t ) -> decltype( m.run( _queue, t ) )
+        {
+            return m.run( _queue, t );
+        }
+
+        void run_on( brq::fallback, brq::fallback ) {}
+
         template< int i = 0, typename T >
         void process_task( T &t )
         {
             if constexpr ( i < std::tuple_size_v< MachineT > )
                 if ( t.valid() )
                 {
-                    std::get< i >( _machines ).run( _queue, t );
+                    run_on( std::get< i >( _machines ), t );
                     return process_task< i + 1 >( t );
                 }
         }

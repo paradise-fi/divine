@@ -170,7 +170,6 @@ namespace divine::mc::machine
         using task_edge     = task::Edge< State, Label >;
         using tq            = task_queue< task_choose, task::start, task_schedule, task_edge >;
 
-        template< typename T > void run( tq &, T ) {}
         void boot( tq & ) {}
 
         void queue_edge( tq &q, const origin &from, State to, Label lbl, bool isnew )
