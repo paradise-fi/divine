@@ -84,6 +84,7 @@ namespace divine::smt
             {
                 pop();
                 pop();
+                stack.emplace_back( std::nullopt ); // TODO: insert a 'true'
             }
             else 
             {
