@@ -48,7 +48,6 @@ namespace brq
         {
             return f( args... );
         }
-
     };
 
     template< typename, typename > struct cons;
@@ -65,6 +64,9 @@ namespace brq
         using co = ns< car_t, typename cdr_t::co >;
 
         car_t _car;
+
+        operator       car_t&()       { return _car; }
+        operator const car_t&() const { return _car; }
 
         car_t       &car()       { return _car; }
         const car_t &car() const { return _car; }
