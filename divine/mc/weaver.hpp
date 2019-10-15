@@ -46,6 +46,15 @@ namespace divine::mc
         template< typename... ex >
         using extend = task_queue< ex..., task, tasks... >;
 
+        template< typename... ts >
+        static auto join_( task_queue< ts... > )
+        {
+            return task_queue< task, tasks..., ts... >();
+        };
+
+        template< typename tq >
+        using join = decltype( join_( tq() ) );
+
         template< typename T, typename... Args >
         void add( Args... args )
         {
