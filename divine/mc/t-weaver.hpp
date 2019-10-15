@@ -36,10 +36,8 @@ namespace divine::t_mc
 
     using tq = mc::task_queue< task1, task2 >;
 
-    struct machine1 : tq::skeleton
+    struct machine1
     {
-        using tq::skeleton::run;
-
         void run( tq &q, task1 t )
         {
             if ( t.i < 10 )
@@ -47,10 +45,8 @@ namespace divine::t_mc
         }
     };
 
-    struct machine2 : tq::skeleton
+    struct machine2
     {
-        using tq::skeleton::run;
-
         void run( tq &q, task2 t )
         {
             q.add< task1 >( t.j + 1 );

@@ -32,11 +32,9 @@ namespace divine::t_mc
     using Expand = mc::task::Expand< int >;
 
 
-    struct Base : TQ::skeleton
+    struct Base
     {
         brq::concurrent_hash_set< int > _states;
-
-        using TQ::skeleton::run;
 
         void run( TQ &tq, mc::task::start )
         {

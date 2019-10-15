@@ -46,13 +46,11 @@ namespace divine::mc
     using GraphTQ = task_queue< task::start, task::Expand< State >, task::Edge< State, Label > >;
 
     template< typename State, typename Label >
-    struct Search : GraphTQ< State, Label >::skeleton
+    struct Search
     {
         using TQ     = GraphTQ< State, Label >;
         using Edge   = task::Edge< State, Label >;
         using Expand = task::Expand< State >;
-
-        using TQ::skeleton::run;
 
         void run( TQ &tq, Edge e )
         {

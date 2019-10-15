@@ -82,12 +82,6 @@ namespace divine::mc
                 return true;
             }
         }
-
-        struct skeleton
-        {
-            template< typename T >
-            void run( tq &, const T & ) {}
-        };
     };
 
     template< typename F >
