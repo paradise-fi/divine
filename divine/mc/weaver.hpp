@@ -18,6 +18,7 @@
 
 #pragma once
 #include <deque>
+#include <brick-cons>
 
 namespace divine::mc::task
 {
@@ -27,62 +28,40 @@ namespace divine::mc::task
 
 namespace divine::mc
 {
-    template< typename... > struct task_queue;
+    template< typename T >
+    using deque = std::deque< T >;
 
-    template<>
-    struct task_queue<>
+    template< typename... tasks >
+    using task_queue = typename brq::cons_list_t< tasks... >::unique_t::template map_t< deque >;
+
+    template< typename task_t, typename tq, typename... args_t >
+    void push( tq &q, args_t && ... args )
     {
-        void clear();
-        template< typename P > bool process_next( P ) { return false; }
-    };
+        if constexpr ( std::is_convertible_v< task_t, typename tq::car_t::value_type > )
+            q.car().emplace_back( std::forward< args_t >( args )... );
+        else
+            push< task_t >( q.cdr(), std::forward< args_t >( args )... );
+    }
 
-    template< typename task, typename... tasks >
-    struct task_queue< task, tasks... > : task_queue< tasks... >
+    template< typename tq, typename yield_t >
+    bool pop( tq &q, yield_t yield )
     {
-        using next = task_queue< tasks... >;
-        using tq   = task_queue< task, tasks... >;
-        std::deque< task > _queue;
-
-        template< typename... ex >
-        using extend = task_queue< ex..., task, tasks... >;
-
-        template< typename... ts >
-        static auto join_( task_queue< ts... > )
+        if constexpr ( tq::empty )
+            return false;
+        else
         {
-            return task_queue< task, tasks..., ts... >();
-        };
-
-        template< typename tq >
-        using join = decltype( join_( tq() ) );
-
-        template< typename T, typename... Args >
-        void add( Args... args )
-        {
-            if constexpr ( std::is_convertible_v< T, task > )
-                _queue.emplace_back( args... );
+            if ( q.car().empty() )
+                return pop( q.cdr(), yield );
             else
-                next::template add< T >( args... );
+                return yield( q.car().front() ), q.car().pop_front(), true;
         }
+    }
 
-        void clear()
-        {
-            _queue.clear();
-            next::clear();
-        }
+    template< typename tq, typename... tasks >
+    using task_queue_extend = typename task_queue< tasks... >::template cat_t< tq >::unique_t;
 
-        template< typename P >
-        bool process_next( P process )
-        {
-            if ( _queue.empty() )
-                return next::process_next( process );
-            else
-            {
-                process( _queue.front() );
-                _queue.pop_front();
-                return true;
-            }
-        }
-    };
+    template< typename tq1, typename tq2 >
+    using task_queue_join = typename tq1::template cat_t< tq2 >::unique_t;
 
     template< typename F >
     struct Observer
@@ -209,13 +188,13 @@ namespace divine::mc
         template< typename T, typename... Args >
         void add( Args... args )
         {
-            return _queue.template add< T >( args... );
+            return push< T >( _queue, args... );
         }
 
         void run() /* TODO parallel */
         {
             auto process = [&]( auto t ) { process_task< 0 >( t ); };
-            while ( _queue.process_next( process ) );
+            while ( pop( _queue, process ) );
         }
 
         void start()

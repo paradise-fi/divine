@@ -55,7 +55,7 @@ namespace divine::mc
         void run( TQ &tq, Edge e )
         {
             if ( e.isnew )
-                tq.template add< Expand >( e.to );
+                mc::push< Expand >( tq, e.to );
         }
     };
 }

@@ -41,7 +41,7 @@ namespace divine::t_mc
         void run( tq &q, task1 t )
         {
             if ( t.i < 10 )
-                q.add< task2 >( t.i + 1 );
+                mc::push< task2 >( q, t.i + 1 );
         }
     };
 
@@ -49,7 +49,7 @@ namespace divine::t_mc
     {
         void run( tq &q, task2 t )
         {
-            q.add< task1 >( t.j + 1 );
+            mc::push< task1 >( q, t.j + 1 );
         }
     };
 

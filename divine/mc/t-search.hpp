@@ -39,7 +39,7 @@ namespace divine::t_mc
         void run( TQ &tq, mc::task::start )
         {
             _states.insert( 1 );
-            tq.add< Expand >( 1 );
+            mc::push< Expand >( tq, 1 );
         }
     };
 
@@ -67,7 +67,7 @@ namespace divine::t_mc
                 if ( e.first == expand.from )
                 {
                     auto r = _states.insert( e.second );
-                    tq.add< Edge >( expand.from, e.second, Black, r.isnew() );
+                    mc::push< Edge >( tq, expand.from, e.second, Black, r.isnew() );
                 }
         }
     };
@@ -115,7 +115,7 @@ namespace divine::t_mc
             for ( auto t : _succs[ e.from ] )
             {
                 auto r = _states.insert( t );
-                tq.add< Edge >( e.from, t, Black, r.isnew() );
+                mc::push< Edge >( tq, e.from, t, Black, r.isnew() );
             }
         }
     };
@@ -200,9 +200,9 @@ namespace divine::t_mc
             auto steer = [&]( TQ &tq, Edge e )
             {
                 if ( e.from > 1000 )
-                    return tq.add< Expand >( e.to );
+                    return mc::push< Expand >( tq, e.to );
                 if ( ( e.from % 2 == 1 && e.to > 1000 ) || ( e.from % 2 == 0 && e.to < 1000 ) )
-                    return tq.add< Expand >( e.to );
+                    return mc::push< Expand >( tq, e.to );
             };
 
             mc::Weaver< TQ >().extend( builder ).extend_f( steer ).observe( count ).start();

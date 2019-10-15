@@ -174,12 +174,12 @@ namespace divine::mc::machine
 
         void queue_edge( tq &q, const origin &from, State to, Label lbl, bool isnew )
         {
-            q.template add< task_edge >( State( from.snap ), to, lbl, isnew );
+            push< task_edge >( q, State( from.snap ), to, lbl, isnew );
         }
 
         void queue_choice( tq &q, const origin &o, Snapshot snap, vm::State state, int i, int t )
         {
-            q.template add< task_choose >( snap, o, state, i, t );
+            push< task_choose >( q, snap, o, state, i, t );
         }
     };
 
@@ -225,6 +225,7 @@ namespace divine::mc::machine
     template< typename ctx, typename next >
     struct with_context_ : next
     {
+        using tq = task_queue_extend< typename next::tq, task::boot_sync< ctx > >;
         using context_t = ctx;
         ctx _ctx;
         ctx &context() { return _ctx; }
@@ -510,7 +511,7 @@ namespace divine::mc
     template< typename M, typename... Ms >
     struct MW< M, Ms... > : MW< Ms... >
     {
-        struct TQ : MW< Ms... >::TQ::template join< typename M::tq > {};
+        struct TQ : task_queue_join< typename MW< Ms... >::TQ, typename M::tq > {};
         struct W : Weaver< TQ > {};
     };
 
