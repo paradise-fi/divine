@@ -76,6 +76,27 @@ namespace brq
         template< typename L > auto cat( const L &l ) const { return make_cons( car(), cdr().cat( l ) ); }
         constexpr auto reverse() const { nil rev; return cons_reverse( *this, rev ); }
 
+        template< typename T > auto &get()
+        {
+            if constexpr ( std::is_same_v< std::remove_reference_t< T >, car_t > )
+                return car();
+            else
+                return cdr().template get< T >();
+        }
+
+        template< typename L >
+        auto view()
+        {
+            if constexpr ( std::is_same_v< L, nil > )
+                return nil();
+            else
+            {
+                static_assert( has< std::remove_reference_t< typename L::car_t > > );
+                auto tail = view< typename L::cdr_t >();
+                return cons< typename L::car_t &, decltype( tail ) >( get< typename L::car_t >(), tail );
+            }
+        }
+
         static constexpr bool empty = false;
         template< typename T > static constexpr bool has =
             std::is_same_v< T, car_t > || cdr_t::template has< T >;
@@ -118,8 +139,8 @@ namespace brq
             : cdr_t( cdr ), _car( car )
         {}
 
-        template< typename arg_t, typename... args_t >
-        cons( const arg_t &arg, const args_t&... args ) : cdr_t( args... ), _car( arg ) {}
+        template< typename T, typename U, typename... Us >
+        cons( const T &t, const U &u, const Us &... us ) : cdr_t( u, us... ), _car( t ) {}
 
         cons() = default;
     };
