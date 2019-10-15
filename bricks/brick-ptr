@@ -37,6 +37,17 @@ namespace brq
 
         explicit operator bool() const noexcept { return ptr(); }
         bool operator !() const noexcept { return !ptr(); }
+
+        bool operator==( const refcount_ptr &o ) const noexcept
+        {
+            return !( *this < o ) && !( o < *this );
+        }
+
+        bool operator!=( const refcount_ptr &o ) const noexcept
+        {
+            return *this < o || o < *this;
+        }
+
         bool operator<( const refcount_ptr &o ) const noexcept
         {
             return std::less< const void * >()( ptr(), o.ptr() );
