@@ -81,7 +81,7 @@ namespace divine::mc
 
     struct backtrack : brq::module< backtrack_ > {};
 
-    struct mach_exec : brq::compose_stack< machine::graph_dispatch, backtrack,
+    struct mach_exec : brq::compose_stack< machine::search_dispatch, backtrack,
                                            machine::compute,
                                            machine::tree_search,
                                            machine::choose_random, machine::choose,

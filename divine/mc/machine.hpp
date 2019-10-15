@@ -447,7 +447,7 @@ namespace divine::mc::machine
     };
 
     template< typename next >
-    struct graph_dispatch_ : next
+    struct search_dispatch_ : next
     {
         using typename next::tq;
         using next::run;
@@ -481,10 +481,10 @@ namespace divine::mc::machine
     using graph_search = brq::module< graph_search_ >;
 
     using compute = brq::module< compute_ >;
-    using graph_dispatch = brq::module< graph_dispatch_ >;
+    using search_dispatch = brq::module< search_dispatch_ >;
 
-    using tree_compute  = brq::compose< graph_dispatch, compute,  tree_search, choose >;
-    using graph_compute = brq::compose< graph_dispatch, compute, graph_search, choose >;
+    using tree_compute  = brq::compose< search_dispatch, compute,  tree_search, choose >;
+    using graph_compute = brq::compose< search_dispatch, compute, graph_search, choose >;
 
     template< typename solver >
     using tree = brq::compose_stack< tree_compute, common< solver > >;
