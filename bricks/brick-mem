@@ -713,6 +713,15 @@ struct SlavePool : PoolMixin< SlavePool< Master_ >, typename Master_::Pointer >
 
     SlavePool() = default;
 
+    void attach( const Master &m )
+    {
+        if ( _m != m._s )
+        {
+            _s.reset( new Shared() );
+            _m = m._s;
+        }
+    }
+
     void materialise( Pointer p, int size, bool clear = true )
     {
         int b = p.slab();
