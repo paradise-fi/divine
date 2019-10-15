@@ -17,7 +17,9 @@
  */
 
 #include <divine/mc/machine.hpp>
+#include <divine/mc/ce.hpp>
 #include <divine/mc/t-common.hpp>
+#include <brick-cons>
 
 namespace divine::t_mc
 {
@@ -61,23 +63,35 @@ namespace divine::t_mc
               << "    {"
               << "        *r = next( *r );"
               << "        if ( *r < 0 ) __vm_ctl_flag( 0, " << _VM_CF_Cancel << " );"
+              << "        if ( error( *r ) ) __vm_ctl_flag( 0, " << _VM_CF_Error << " );"
               << "        __vm_test_loop( 0, stop );"
               << "    } while ( loop( *r ) );"
               << "    __vm_ctl_set( " << _VM_CR_Frame << ", 0 );"
               << "}" << std::endl;
         }
 
-        auto prog_int( int first, std::string next, std::string loop = "0" )
+        auto prog_int( int first, std::string next, std::string loop = "0", std::string error = "0" )
         {
             std::stringstream p;
             p << "int next( int x ) { return " << next << "; }" << std::endl
               << "int loop( int x ) { return " << loop << "; }" << std::endl
+              << "int error( int x ) { return " << error << "; }" << std::endl
               << "int init() { return " << first << "; }" << std::endl;
 
             sub_sched( p );
             sub_boot( p );
 
             return prog( p.str() );
+        }
+
+        auto prog_err( int first, std::string next, std::string error = "0" )
+        {
+            return prog_int( first, next, "0", error );
+        }
+
+        auto prog_loop( int first, std::string next, std::string loop = "0" )
+        {
+            return prog_int( first, next, loop, "0" );
         }
     }
 
@@ -159,16 +173,20 @@ namespace divine::t_mc
             ASSERT_LEQ( 2, snaps.size() );
         }
 
-        template< typename M >
-        void _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
+        template< typename... M >
+        auto _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
         {
-            M machine;
-            machine.bc( bc );
+            brq::cons_list_t< M... > machines;
             int edgecount = 0, statecount = 0;
             auto edge = [&]( Edge ) { ++edgecount; };
             auto state = [&]( Expand ) { ++statecount; };
+            auto observe = [&]( auto & ... m )
+            {
+                mc::weave( m... ).extend( Search() ).observe( edge, state ).start();
+            };
 
-            mc::weave( machine ).extend( Search() ).observe( edge, state ).start();
+            machines.each( [&]( auto &m ) { m.bc( bc ); } );
+            machines.apply( observe );
 
             ASSERT_EQ( statecount, sc );
             ASSERT_EQ( edgecount, ec );
@@ -176,6 +194,7 @@ namespace divine::t_mc
 
         using TM = mc::TMachine;
         using GM = mc::GMachine;
+        using CM = mc::CMachine;
 
         TEST( cf_loop ) { _search< GM >( prog_int( 0, "x < 2 ? x + 1 : 2" , "x == 2" ), 2, 1 ); }
 
@@ -189,6 +208,11 @@ namespace divine::t_mc
         TEST( branching4 ){ _search< GM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 5, 7 ); }
         TEST( branching5 ){ _search< GM >( prog_int( 0, "( x + __vm_choose( 2 ) ) % 5" ), 5, 10 ); }
         TEST( branching6 ){ _search< GM >( prog_int( 0, "( x + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 ); }
+
+        TEST( ce1 )
+        {
+            _search< CM, TM >( prog_err( 4, "x - 1", "x == 1" ), 5, 4 );
+        }
     };
 
 }
