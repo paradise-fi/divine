@@ -22,23 +22,52 @@
 
 namespace divine::mc::task
 {
-    struct base { bool valid() { return true; } };
+    struct base
+    {
+        uint32_t msg_id = 0;
+        int16_t  msg_from = 0;
+        int16_t  msg_to; /* -1 = any, -2 = all, >= 0 specific machine */
+
+        base( int to = -1 ) : msg_to( to ) {}
+        bool valid() { return msg_to >= -2; }
+        void cancel() { msg_to = -3; }
+    };
+
     struct start : base {};
 }
 
 namespace divine::mc
 {
     template< typename T >
-    using deque = std::deque< T > &;
+    using qref = std::deque< T > &;
 
     template< typename... tasks >
-    using task_queue = typename brq::cons_list_t< tasks... >::unique_t::template map_t< deque >;
+    using task_queue = typename brq::cons_list_t< tasks... >::unique_t::template map_t< qref >;
 
-    template< typename task_t, typename... args_t >
-    void push( deque< task_t > q, args_t && ... args )
+    struct machine_base
     {
-        q.emplace_back( std::forward< args_t >( args )... );
-    }
+        int16_t _machine_id = -1;
+
+        int machine_id()
+        {
+            ASSERT_NEQ( _machine_id, -1 );
+            return _machine_id;
+        }
+
+        void machine_id( int i )
+        {
+            // ASSERT_EQ( _machine_id, -1 );
+            ASSERT_LEQ( 0, i );
+            _machine_id = i;
+        }
+
+        template< typename task_t >
+        void push( qref< std::remove_reference_t< task_t > > q, task_t &&t )
+        {
+            t.msg_from = machine_id();
+            q.push_back( t );
+        }
+    };
 
     template< typename tq, typename yield_t >
     bool pop( tq &q, yield_t yield )
@@ -65,7 +94,7 @@ namespace divine::mc
     using task_queue_join = typename tq1::template cat_t< tq2 >::unique_t;
 
     template< typename F >
-    struct Observer
+    struct Observer : machine_base
     {
         F f;
         Observer( F f ) : f( f ) {}
@@ -79,7 +108,7 @@ namespace divine::mc
     };
 
     template< typename TQ, typename F >
-    struct Lambda
+    struct Lambda : machine_base
     {
         using tq = TQ;
 
@@ -87,9 +116,9 @@ namespace divine::mc
         Lambda( F f ) : f( f ) {}
 
         template< typename T >
-        auto run( TQ tq, T &t ) -> decltype( f( tq, t ) )
+        auto run( TQ tq, T &t ) -> decltype( f( *this, tq, t ) )
         {
-            return f( tq, t );
+            return f( *this, tq, t );
         }
     };
 
@@ -98,6 +127,9 @@ namespace divine::mc
     {
         using std::reference_wrapper< M >::reference_wrapper;
         using tq = typename M::tq;
+
+        void machine_id( int i ) { this->get().machine_id( i ); }
+        int machine_id() { return this->get().machine_id(); }
 
         template< typename TQ, typename T >
         auto run( TQ tq, const T &t ) -> decltype( this->get().run( tq, t ) )
@@ -109,7 +141,7 @@ namespace divine::mc
     template< typename TQ, typename... Machines >
     struct Weaver
     {
-        using MachineT = std::tuple< Machines... >;
+        using MachineT = brq::cons_list_t_< Machines... >;
         MachineT _machines;
         typename TQ::template map_t< std::remove_reference_t > _queue;
 
@@ -125,15 +157,7 @@ namespace divine::mc
         template< typename... ExMachines >
         auto extend( ExMachines... exm )
         {
-            std::tuple< ExMachines... > ext( exm... );
-            return Extend< ExMachines... >( std::tuple_cat( _machines, ext ) );
-        }
-
-        template< typename... ExMachines >
-        auto prepend( ExMachines... exm )
-        {
-            std::tuple< ExMachines... > ext( exm... );
-            return Weaver< TQ, ExMachines..., Machines... >( std::tuple_cat( ext, _machines ) );
+            return Extend< ExMachines... >( _machines.cat( brq::cons_list( exm... ) ) );
         }
 
         template< typename... R >
@@ -154,58 +178,72 @@ namespace divine::mc
             return extend( Lambda< TQ, F >( fs ) ... );
         }
 
-        template< typename... F >
-        auto prepend_f( F... fs )
+        void init_ids()
         {
-            return prepend( Lambda< TQ, F >( fs ) ... );
+            int i = 0;
+            _machines.each( [&]( auto &m ) { m.machine_id( i++ ); } );
         }
 
-        Weaver( MachineT mt ) : _machines( mt ) {}
-        Weaver() = default;
+        Weaver( MachineT mt ) : _machines( mt ) { init_ids(); }
+        Weaver() { init_ids(); }
 
-        template< typename T >
-        T &machine()
+        template< typename T > T &machine()
         {
-            return std::get< T >( _machines );
-        }
-
-        template< typename M, typename T >
-        auto run_on( M &m, T &t ) -> decltype( m.run( _queue.template view< typename M::tq >(), t ) )
-        {
-            return m.run( _queue.template view< typename M::tq >(), t );
+            return _machines.template get< T >();
         }
 
         template< typename M, typename T >
-        auto run_on( M &m, T &t ) -> decltype( m.run( t ) )
+        auto run_on( M &m, T &t )
+            -> decltype( m.run( _queue.template view< typename M::tq >(), t ), true )
         {
-            return m.run( t );
+            m.run( _queue.template view< typename M::tq >(), t );
+            return true;
+        }
+
+        template< typename M, typename T >
+        auto run_on( M &m, T &t ) -> decltype( m.run( t ), true )
+        {
+            m.run( t );
+            return true;
         }
 
         template< typename M >
         auto run_on( M &, brq::fallback )
-            -> decltype( _queue.template view< typename M::tq >(), void( 0 ) )
-        {}
-
-        template< int i = 0, typename T >
-        void process_task( T &t )
+            -> decltype( _queue.template view< typename M::tq >(), false )
         {
-            if constexpr ( i < std::tuple_size_v< MachineT > )
-                if ( t.valid() )
-                {
-                    run_on( std::get< i >( _machines ), t );
-                    return process_task< i + 1 >( t );
-                }
+            return false;
         }
 
         template< typename T, typename... Args >
         void add( Args... args )
         {
-            return push< T >( _queue, args... );
+            qref< T > q = _queue;
+            q.emplace_back( args... );
         }
 
         void run() /* TODO parallel */
         {
-            auto process = [&]( auto t ) { process_task< 0 >( t ); };
+            auto process = [&]( auto t )
+            {
+                int i = 0;
+
+                auto one = [&]( auto &m )
+                {
+                    TRACE( "trying machine", i, "to =", t.msg_to, "valid =", t.valid() );
+                    if ( t.valid() )
+                        if ( t.msg_to == i || t.msg_to < 0 )
+                            if ( run_on( m, t ) ) /* accepted */
+                            {
+                                TRACE( "task", t, "accepted by", &m );
+                                if ( t.msg_to == -1 ) /* was targeted to anyone */
+                                    t.msg_to = -3;
+                            }
+                    i ++;
+                };
+
+                _machines.each( one );
+            };
+
             while ( pop( _queue, process ) );
         }
 

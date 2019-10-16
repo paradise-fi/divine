@@ -171,7 +171,7 @@ namespace divine::mc::machine
     };
 
     template< typename solver, typename next >
-    struct base_ : with_pools, with_counters, with_bc, with_solver< solver >, next
+    struct base_ : machine_base, with_pools, with_counters, with_bc, with_solver< solver >, next
     {
         using origin        = task::origin;
         using task_choose   = task::choose;
@@ -193,12 +193,14 @@ namespace divine::mc::machine
 
         void queue_edge( tq q, const origin &from, State to, Label lbl, bool isnew )
         {
-            push< task_edge >( q, State( from.snap ), to, lbl, isnew );
+            task_edge e( State( from.snap ), to, lbl, isnew );
+            push( q, e );
         }
 
         void queue_choice( tq q, const origin &o, Snapshot snap, vm::State state, int i, int t )
         {
-            push< task_choose >( q, snap, o, state, i, t );
+            task_choose ch( snap, o, state, i, t );
+            push( q, ch );
         }
     };
 
@@ -367,9 +369,12 @@ namespace divine::mc::machine
             if ( vm::setup::postboot_check( this->context() ) )
             {
                 auto snap = this->store().first;
-                push< task::boot_sync< typename next::context_t > >
-                    ( q, this->_state_pool, this->_snap_pool, this->_ctx );
-                push< typename next::task_schedule >( q, snap );
+                task::boot_sync< typename next::context_t > sync
+                    ( this->_state_pool, this->_snap_pool, this->_ctx );
+                typename next::task_schedule sched( snap );
+                sync.msg_to = -2;
+                this->push( q, sync );
+                this->push( q, sched );
                 return true;
             }
             else

@@ -31,8 +31,7 @@ namespace divine::t_mc
     using Edge   = mc::task::Edge< int, Label >;
     using Expand = mc::task::Expand< int >;
 
-
-    struct Base
+    struct Base : mc::machine_base
     {
         using tq = TQ;
         brq::concurrent_hash_set< int > _states;
@@ -40,7 +39,7 @@ namespace divine::t_mc
         void run( TQ tq, mc::task::start )
         {
             _states.insert( 1 );
-            mc::push< Expand >( tq, 1 );
+            push( tq, Expand( 1 ) );
         }
     };
 
@@ -68,7 +67,7 @@ namespace divine::t_mc
                 if ( e.first == expand.from )
                 {
                     auto r = _states.insert( e.second );
-                    mc::push< Edge >( tq, expand.from, e.second, Black, r.isnew() );
+                    push( tq, Edge( expand.from, e.second, Black, r.isnew() ) );
                 }
         }
     };
@@ -116,7 +115,7 @@ namespace divine::t_mc
             for ( auto t : _succs[ e.from ] )
             {
                 auto r = _states.insert( t );
-                mc::push< Edge >( tq, e.from, t, Black, r.isnew() );
+                push( tq, Edge( e.from, t, Black, r.isnew() ) );
             }
         }
     };
@@ -198,12 +197,12 @@ namespace divine::t_mc
             int found = 0;
 
             auto count = [&]( Expand ) { ++found; };
-            auto steer = [&]( TQ tq, Edge e )
+            auto steer = [&]( auto &m, TQ tq, Edge e )
             {
                 if ( e.from > 1000 )
-                    return mc::push< Expand >( tq, e.to );
+                    return m.push( tq, Expand( e.to ) );
                 if ( ( e.from % 2 == 1 && e.to > 1000 ) || ( e.from % 2 == 0 && e.to < 1000 ) )
-                    return mc::push< Expand >( tq, e.to );
+                    return m.push( tq, Expand( e.to ) );
             };
 
             mc::Weaver< TQ >().extend( builder ).extend_f( steer ).observe( count ).start();

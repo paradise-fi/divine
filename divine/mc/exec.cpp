@@ -54,7 +54,8 @@ namespace divine::mc
             if ( !this->context().flags_any( _VM_CF_Stop ) && !_stack.empty() )
             {
                 TRACE( "encountered an infeasible path, backtracking", _stack.top() );
-                push< task_choose >( q, _stack.top() );
+                task_choose ch( _stack.top() );
+                this->push( q, _stack.top() );
                 _stack.pop();
             }
             return false;

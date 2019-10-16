@@ -28,7 +28,7 @@ namespace divine::mc::task
         Label label;
         bool isnew;
         Edge( State f, State t, Label l, bool n )
-            : from( f ), to( t ), label( l ), isnew( n )
+            : base( -2 ), from( f ), to( t ), label( l ), isnew( n )
         {}
     };
 
@@ -36,7 +36,7 @@ namespace divine::mc::task
     struct Expand : base
     {
         State from;
-        Expand( State s ) : from( s ) {}
+        Expand( State s ) : base( -2 ), from( s ) {}
     };
 }
 
@@ -46,7 +46,7 @@ namespace divine::mc
     using GraphTQ = task_queue< task::start, task::Expand< State >, task::Edge< State, Label > >;
 
     template< typename State, typename Label >
-    struct Search
+    struct Search : machine_base
     {
         using tq     = GraphTQ< State, Label >;
         using Edge   = task::Edge< State, Label >;
@@ -55,7 +55,7 @@ namespace divine::mc
         void run( tq q, Edge e )
         {
             if ( e.isnew )
-                mc::push< Expand >( q, e.to );
+                push( q, Expand( e.to ) );
         }
     };
 }

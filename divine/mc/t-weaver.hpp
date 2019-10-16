@@ -25,16 +25,18 @@ namespace divine::t_mc
     struct task1 : mc::task::base
     {
         int i;
-        task1( int i ) : i( i ) {}
+        task1() : base( -2 ) {}
+        task1( int i ) : base( -2 ), i( i ) {}
     };
 
     struct task2 : mc::task::base
     {
         int j;
-        task2( int j ) : j( j ) {}
+        task2() : base( -2 ) {}
+        task2( int j ) : base( -2 ), j( j ) {}
     };
 
-    struct base
+    struct base : mc::machine_base
     {
         using tq = mc::task_queue< task1, task2 >;
     };
@@ -44,7 +46,7 @@ namespace divine::t_mc
         void run( tq q, task1 t )
         {
             if ( t.i < 10 )
-                mc::push< task2 >( q, t.i + 1 );
+                push( q, task2( t.i + 1 ) );
         }
     };
 
@@ -52,7 +54,7 @@ namespace divine::t_mc
     {
         void run( tq q, task2 t )
         {
-            mc::push< task1 >( q, t.j + 1 );
+            push( q, task1( t.j + 1 ) );
         }
     };
 

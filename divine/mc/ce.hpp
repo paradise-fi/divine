@@ -86,13 +86,15 @@ namespace divine::mc::machine
         {
             TRACE( "ce_base queue_edge", meta( o.snap ).parent, o.snap, o.choices );
             meta( o.snap ).visited = true;
-            push< task::ce_step >( q, meta( o.snap ).parent, o.snap );
+            task::ce_step step( meta( o.snap ).parent, o.snap );
+            this->push( q, step );
         }
 
         void queue_choice( tq q, origin o, Snapshot snap, vm::State state, int i, int t )
         {
             o.choices.push_back( i );
-            push< task::ce_choose >( q, snap, o, state, i, t );
+            task::ce_choose choose( snap, o, state, i, t );
+            this->push( q, choose );
         }
     };
 
@@ -128,7 +130,7 @@ namespace divine::mc::machine
             }
 
             if ( e.label.error )
-                push< task::ce_step >( q, e.from.snap, e.to.snap );
+                this->push( q, task::ce_step( e.from.snap, e.to.snap ) );
         }
 
         void run( tq q, task::ce_step s )
