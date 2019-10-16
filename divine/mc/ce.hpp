@@ -64,6 +64,7 @@ namespace divine::mc::machine
         {
             Snapshot parent;
             pool::Pointer children;
+            bool visited;
         };
 
         meta_t &meta( Snapshot s )
@@ -84,6 +85,7 @@ namespace divine::mc::machine
         void queue_edge( tq q, const origin &o, State, Label, bool )
         {
             TRACE( "ce_base queue_edge", meta( o.snap ).parent, o.snap, o.choices );
+            meta( o.snap ).visited = true;
             push< task::ce_step >( q, meta( o.snap ).parent, o.snap );
         }
 
@@ -132,7 +134,7 @@ namespace divine::mc::machine
         void run( tq q, task::ce_step s )
         {
             TRACE( "ce_step from", s.from, "to", s.to );
-            if ( s.from )
+            if ( s.from && !this->meta( s.to ).visited )
                 next::schedule( q, origin( s.from ) );
         }
 
