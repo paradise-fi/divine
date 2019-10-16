@@ -442,6 +442,11 @@ namespace brick::smt
                           << " "     << var.bitwidth() << "]";
             }
 
+            friend bool operator==( const Variable& v1, const Variable& v2 )
+            {
+                return v1.op == v2.op && v1.id == v2.id;
+            }
+
         } __attribute__(( packed, aligned(1) ));
 
         static_assert( sizeof( Variable ) == 3 );
