@@ -1,6 +1,6 @@
-/* TAGS: c++ fin */
+/* TAGS: c++ fin big */
 /* CC_OPTS: -std=c++2a */
-/* VERIFY_OPTS: -o nofail:malloc */
+/* VERIFY_OPTS: -o nofail:malloc --ignore:leakcheck */
 //===----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
