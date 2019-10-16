@@ -385,13 +385,18 @@ namespace divine::mc::machine
 
         void choose( tq q, typename next::task_choose c )
         {
-            this->context().load( this->_snap_pool, c.snap );
-            this->context()._state = c.state;
-            this->context()._choice_take = c.choice;
-            this->context()._choice_count = c.total;
+            return choose( q, c.origin, c.snap, c.state, c.choice, c.total );
+        }
+
+        void choose( tq q, origin o, Snapshot snap, vm::State state, int c, int t )
+        {
+            this->context().load( this->_snap_pool, snap );
+            this->context()._state = state;
+            this->context()._choice_take = c;
+            this->context()._choice_count = t;
             this->context().flush_ptr2i();
             this->context().load_pc();
-            compute( q, c.origin, c.snap );
+            compute( q, o, snap );
         }
     };
 

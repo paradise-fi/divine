@@ -30,9 +30,21 @@ namespace divine::mc::task
         {}
     };
 
-    struct ce_choose : choose
+    struct ce_origin : origin
     {
-        using choose::choose;
+        using origin::origin;
+        ce_origin( const origin &o ) : origin( o ) {}
+        std::vector< int > choices;
+    };
+
+    struct ce_choose : compute
+    {
+        int choice, total;
+        std::vector< int > choices;
+
+        ce_choose( Snapshot snap, ce_origin orig, vm::State state, int c, int t )
+            : compute( snap, orig, state ), choice( c ), total( t ), choices( orig.choices )
+        {}
     };
 }
 
@@ -43,6 +55,7 @@ namespace divine::mc::machine
     {
         using tq = task_queue_extend< typename next::tq, task::ce_step, task::ce_choose >;
         using pool = vm::CowHeap::Pool;
+        using origin = task::ce_origin;
 
         pool _succ_pool;
         brick::mem::SlavePool< pool > _meta;
@@ -68,15 +81,30 @@ namespace divine::mc::machine
             TRACE( "ce_base boot_sync", this, this->_state_pool._s, _meta._m );
         }
 
-        void queue_edge( tq q, const task::origin &o, State, Label, bool )
+        void queue_edge( tq q, const origin &o, State, Label, bool )
         {
-            TRACE( "ce_base queue_edge", meta( o.snap ).parent, o.snap );
+            TRACE( "ce_base queue_edge", meta( o.snap ).parent, o.snap, o.choices );
             push< task::ce_step >( q, meta( o.snap ).parent, o.snap );
         }
 
-        void queue_choice( tq q, const task::origin &o, Snapshot snap, vm::State state, int i, int t )
+        void queue_choice( tq q, origin o, Snapshot snap, vm::State state, int i, int t )
         {
+            o.choices.push_back( i );
             push< task::ce_choose >( q, snap, o, state, i, t );
+        }
+    };
+
+    template< typename next >
+    struct ce_choose_ : next
+    {
+        using typename next::origin;
+        using typename next::tq;
+
+        int select_choice( tq q, origin &o, Snapshot snap, vm::State state, int count )
+        {
+            this->queue_choices( q, o, snap, state, 0, count );
+            o.choices.push_back( 0 );
+            return 0;
         }
     };
 
@@ -85,6 +113,7 @@ namespace divine::mc::machine
     {
         using next::run;
         using typename next::tq;
+        using typename next::origin;
         using next::_meta;
 
         void run( tq q, typename next::task_edge e )
@@ -104,13 +133,21 @@ namespace divine::mc::machine
         {
             TRACE( "ce_step from", s.from, "to", s.to );
             if ( s.from )
-                next::schedule( q, task::origin( s.from ) );
+                next::schedule( q, origin( s.from ) );
+        }
+
+        void run( tq q, task::ce_choose s )
+        {
+            task::ce_origin o( s.origin );
+            o.choices = s.choices;
+            next::choose( q, o, s.snap, s.state, s.choice, s.total );
         }
     };
 
     using ce_base     = brq::module< ce_base_ >;
+    using ce_choose   = brq::module< ce_choose_ >;
     using ce_dispatch = brq::module< ce_dispatch_ >;
-    using ce_compute  = brq::compose< ce_dispatch, compute, tree_search, choose >;
+    using ce_compute  = brq::compose< ce_dispatch, compute, graph_search, ce_choose, choose >;
 
     template< typename solver >
     using ce = brq::compose_stack< ce_compute, ce_base, common< solver > >;
