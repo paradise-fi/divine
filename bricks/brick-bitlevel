@@ -127,6 +127,24 @@ namespace brick::bitlevel
      * bits), with basic bitwise and shift operators. See the bitvec template
      * below. */
 
+    template< typename T >
+    static constexpr T shift_left( T v, size_t bits )
+    {
+        if ( bits >= sizeof( T ) * 8 )
+            return T();
+        else
+            return v << bits;
+    }
+
+    template< typename T >
+    static constexpr T shift_right( T v, size_t bits )
+    {
+        if ( bits >= sizeof( T ) * 8 )
+            return T();
+        else
+            return v >> bits;
+    }
+
     template< typename L, typename H >
     struct bvpair
     {
@@ -156,8 +174,8 @@ namespace brick::bitlevel
             int rem = 8 * sizeof( low ) - s;
             int unshift = std::max( rem, 0 );
             int shift = rem < 0 ? -rem : 0;
-            H carry = ( low & ~ones< L >( unshift ) ) >> unshift;
-            return bvpair( low << s, ( high << s ) | ( carry << shift ) );
+            H carry = shift_right( low & ~ones< L >( unshift ), unshift );
+            return bvpair( shift_left( low, s ), shift_left( high, s ) | shift_left( carry, shift ) );
         }
 
         constexpr bvpair operator>>( int s ) const
