@@ -141,8 +141,8 @@ void fork_test( TestBase *tc, int *fds )
             std::set_terminate( panic );
             tc->run(); // if anything goes wrong, this should throw
         }
-        catch ( const brq::assert_failed &e ) { failed( tc, e ); }
-        catch ( const std::exception &e )     { failed( tc, e ); }
+        catch ( brq::assert_failed &e ) { failed( tc, e ); }
+        catch ( std::exception &e )     { failed( tc, e ); }
 
         exit( 0 );
     }
@@ -348,8 +348,8 @@ int run( int argc, const char **argv )
                 fork_test( tc, nullptr );
             ok = true;
         }
-        catch ( const std::exception &e )     { failed( tc, e ); }
-        catch ( const brq::assert_failed &e ) { failed( tc, e ); }
+        catch ( std::exception &e )     { failed( tc, e ); }
+        catch ( brq::assert_failed &e ) { failed( tc, e ); }
 
         if ( ok )
             std::cerr << "." << std::flush;
