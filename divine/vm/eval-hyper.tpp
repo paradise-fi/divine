@@ -519,7 +519,7 @@ namespace divine::vm
             {
                 int options = operandCk< IntV >( 0 ).cooked();
                 std::vector< int > p;
-                for ( int i = 1; i < int( instruction().argcount() ) - 1; ++i )
+                for ( int i = 1; i < int( instruction().argcount() ); ++i )
                     p.push_back( operandCk< IntV >( i ).cooked() );
                 if ( !p.empty() && int( p.size() ) != options )
                     fault( _VM_F_Hypercall );
