@@ -798,7 +798,7 @@ namespace brq
 
 }
 
-namespace brq_t
+namespace t_brq
 {
 
 #ifdef __divine__

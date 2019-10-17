@@ -248,10 +248,10 @@ namespace brq
 
 }
 
-namespace brq_t
+namespace t_brq
 {
     template< template< typename > class sort_ >
-    struct test_array_map
+    struct array_map
     {
         using sort = sort_< brq::less_map >;
 
@@ -323,6 +323,6 @@ namespace brq_t
         }
     };
 
-    template struct test_array_map< brq::std_sort >;
-    template struct test_array_map< brq::insert_sort >;
+    template struct array_map< brq::std_sort >;
+    template struct array_map< brq::insert_sort >;
 }

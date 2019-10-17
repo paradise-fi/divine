@@ -59,7 +59,7 @@ namespace brq
     using module = module_< mod, x... >;
 }
 
-namespace brq_t
+namespace t_brq
 {
     template< typename next >
     struct m0_ : next

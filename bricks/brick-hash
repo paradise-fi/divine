@@ -269,7 +269,7 @@ namespace brq
 
 }
 
-namespace brq_t
+namespace t_brq
 {
     template< bool strict >
     struct hash
