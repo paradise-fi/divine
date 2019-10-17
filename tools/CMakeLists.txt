@@ -77,7 +77,7 @@ else( WIN32 )
   set( INSTALL_BIN_DEST bin )
 endif( WIN32 )
 
-install( TARGETS divine
+install( TARGETS divine dioscc divcc lart
          DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
 
 # NB. Must be here (and not in the toplevel cmakelists) to ensure correct
