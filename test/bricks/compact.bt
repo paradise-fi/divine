@@ -1,7 +1,7 @@
 common tags: c++
-          | brq_t::test_array_map<brq::std_sort>::simple
-          | brq_t::test_array_map<brq::std_sort>::out_of_range
-          | brq_t::test_array_map<brq::std_sort>::comparison
-          | brq_t::test_array_map<brq::insert_sort>::simple
-          | brq_t::test_array_map<brq::insert_sort>::out_of_range
-          | brq_t::test_array_map<brq::insert_sort>::comparison
+          | t_brq::array_map<brq::std_sort>::simple
+          | t_brq::array_map<brq::std_sort>::out_of_range
+          | t_brq::array_map<brq::std_sort>::comparison
+          | t_brq::array_map<brq::insert_sort>::simple
+          | t_brq::array_map<brq::insert_sort>::out_of_range
+          | t_brq::array_map<brq::insert_sort>::comparison
