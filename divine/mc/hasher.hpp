@@ -44,6 +44,16 @@ namespace divine::mc::impl
         vm::HeapPointer _root;
         bool overwrite = false;
 
+        void attach( const vm::CowHeap &heap )
+        {
+            _h1 = heap;
+            _h2 = heap;
+        }
+
+        Hasher( Pool &pool, Solver &solver )
+            : _pool( pool ), _solver( solver )
+        {}
+
         Hasher( Pool &pool, const vm::CowHeap &heap, Solver &solver )
             : _pool( pool ), _solver( solver ), _h1( heap ), _h2( heap )
         {}
