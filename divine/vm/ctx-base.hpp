@@ -159,9 +159,9 @@ namespace divine::vm::ctx
         PtrRegister constants() { return _state.ptr[ _VM_CR_Constants ]; }
         IntRegister &objid_shuffle() { return _state.objid_shuffle; }
 
-        PtrRegister fault_handler() { return _fault_handler; }
-        PtrRegister state_ptr() { return _state_ptr; }
-        PtrRegister scheduler() { return _scheduler; }
+        PtrRegister fault_handler() const { return _fault_handler; }
+        PtrRegister state_ptr() const { return _state_ptr; }
+        PtrRegister scheduler() const { return _scheduler; }
 
         bool in_kernel() { return _state.flags & _VM_CF_KernelMode; }
 
