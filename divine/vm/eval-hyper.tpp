@@ -360,7 +360,8 @@ namespace divine::vm
         {
             if ( !assert_flag( _VM_CF_KernelMode, "the error flag can be only changed in kernel mode" ) )
                 return;
-            context().trace( "FAULT: " + context().fault_str() );
+            if ( context().fault_str().size() )
+                context().trace( "FAULT: " + context().fault_str() );
             context().fault_clear();
         }
 
