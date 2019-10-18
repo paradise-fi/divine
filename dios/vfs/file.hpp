@@ -131,6 +131,7 @@ struct VmBuffTraceFile : INode
     {
         auto &buf = get_debug().trace_buf[ __dios_this_task() ];
         buf.append( length, data, data + length );
+        void *mem = buf.begin();
         auto nl = std::find( buf.rbegin(), buf.rend(), '\n' );
         if ( nl != buf.rend() )
         {
@@ -139,6 +140,7 @@ struct VmBuffTraceFile : INode
         }
         get_debug().persist();
         get_debug().persist_buffers();
+        __vm_trace( _VM_T_DebugPersist, mem );
     }
 
     __debugfn void do_flush() noexcept
