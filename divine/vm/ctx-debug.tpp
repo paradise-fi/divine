@@ -51,8 +51,9 @@ namespace divine::vm::ctx
             this->heap().restore( _debug_pool, _debug_snap );
             for ( auto ptr : _debug_persist )
             {
-                if ( !from.valid( ptr ) ) continue;
+                TRACE( "restoring persisted pointer", ptr );
                 this->heap().free( ptr );
+                if ( !from.valid( ptr ) ) continue;
                 auto res = this->heap().make( from.size( ptr ), ptr.object(), true ).cooked();
                 ASSERT_EQ( res.object(), ptr.object() );
                 this->heap().copy( from, ptr, ptr, from.size( ptr ) );
