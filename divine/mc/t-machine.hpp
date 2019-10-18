@@ -99,41 +99,40 @@ namespace divine::t_mc
     {
         TEST( instance )
         {
-            auto bc = prog( "void __boot( void *e ) { __vm_ctl_flag( 0, 0b10000 ); }" );
-            mc::TMachine m;
-            m.bc( bc );
+            mc::tmachine tm;
+            mc::gmachine gm;
+            mc::computer cm;
         }
 
-        using Search = mc::Search< mc::State, mc::Label >;
-        using Expand = mc::task::Expand< mc::State >;
-        using Edge   = mc::task::Edge< mc::State, mc::Label >;
-
-        auto tmachine( mc::BC bc ) { mc::TMachine tm; tm.bc( bc ); return tm; }
-        auto gmachine( mc::BC bc ) { mc::GMachine tm; tm.bc( bc ); return tm; }
+        auto computer( mc::BC bc ) { mc::computer m; m.bc( bc ); return m; }
 
         TEST( simple )
         {
             bool found = false;
-            auto state = [&]( Expand ) { found = true; };
-            auto machine = tmachine( prog_int( 4, "x - 1" ) );
-            mc::weave( machine ).observe( state ).start();
+            auto match = [&]( mc::event::edge ) { found = true; };
+            auto c = computer( prog_int( 4, "x - 1" ) );
+            mc::tmachine tree;
+            mc::weave( c, tree ).observe( match ).start();
             ASSERT( found );
         }
 
         TEST( hasher )
         {
             bool ran = false;
-            auto machine = gmachine( prog_int( 4, "x - 1" ) );
-            auto check = [&]( Expand s )
+            auto c = computer( prog_int( 4, "x - 1" ) );
+            mc::gmachine graph;
+            auto check = [&]( mc::event::edge s )
             {
-                ASSERT( machine.hasher()._pool.size( s.from.snap ) );
+                TRACE( "check edge", s.from, s.to );
+                ASSERT( graph.hasher()._pool.size( s.from ) );
                 ran = true;
             };
 
-            mc::weave( machine ).observe( check ).start();
+            mc::weave( graph, c ).observe( check ).start();
             ASSERT( ran );
         }
 
+#if 0
         TEST( start_twice )
         {
             auto machine = tmachine( prog_int( 4, "x - 1" ) );
@@ -172,47 +171,42 @@ namespace divine::t_mc
             mc::weave( machine ).extend( Search() ).observe( state ).start();
             ASSERT_LEQ( 2, snaps.size() );
         }
+#endif
 
         template< typename... M >
-        auto _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
+        void _search( std::shared_ptr< mc::BitCode > bc, int sc, int ec )
         {
-            brq::cons_list_t< M... > machines;
+            brq::cons_list_t< mc::computer, M... > machines;
             int edgecount = 0, statecount = 0;
-            auto edge = [&]( Edge ) { ++edgecount; };
-            auto state = [&]( Expand ) { ++statecount; };
+            auto edge = [&]( mc::event::edge e ) { ++edgecount; if ( e.is_new ) ++ statecount; };
             auto observe = [&]( auto & ... m )
             {
-                mc::weave( m... ).extend( Search() ).observe( edge, state ).start();
+                mc::weave( m... ).observe( edge ).start();
             };
 
-            machines.each( [&]( auto &m ) { m.bc( bc ); } );
+            machines.car().bc( bc );
             machines.apply( observe );
 
             ASSERT_EQ( statecount, sc );
             ASSERT_EQ( edgecount, ec );
         }
 
-        using TM = mc::TMachine;
-        using GM = mc::GMachine;
-        using CM = mc::CMachine;
+        using TM = mc::tmachine;
+        using GM = mc::gmachine;
+        using CM = mc::cmachine;
 
-        TEST( cf_loop ) { _search< GM >( prog_int( 0, "x < 2 ? x + 1 : 2" , "x == 2" ), 2, 1 ); }
+        TEST( cf_loop ) { _search< GM >( prog_int( 0, "x < 2 ? x + 1 : 2" , "x == 2" ), 1, 1 ); }
 
-        TEST( search1 ) { _search< TM >( prog_int( 4, "x - 1" ), 5, 4 ); }
-        TEST( search2 ) { _search< GM >( prog_int( 4, "x - 1" ), 5, 4 ); }
-        TEST( search3 ) { _search< GM >( prog_int( 0, "( x + 1 ) % 5" ), 5, 5 ); }
+        TEST( search1 ) { _search< TM >( prog_int( 4, "x - 1" ), 5, 5 ); }
+        TEST( search2 ) { _search< GM >( prog_int( 4, "x - 1" ), 4, 4 ); }
+        TEST( search3 ) { _search< GM >( prog_int( 0, "( x + 1 ) % 5" ), 4, 5 ); }
 
-        TEST( branching1 ){ _search< GM >( prog_int( 4, "x - __vm_choose( 2 )" ), 5, 9 ); }
-        TEST( branching2 ){ _search< GM >( prog_int( 2, "x - 1 - __vm_choose( 2 )" ), 3, 3 ); }
-        TEST( branching3 ){ _search< TM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 12, 11 ); }
-        TEST( branching4 ){ _search< GM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 5, 7 ); }
-        TEST( branching5 ){ _search< GM >( prog_int( 0, "( x + __vm_choose( 2 ) ) % 5" ), 5, 10 ); }
-        TEST( branching6 ){ _search< GM >( prog_int( 0, "( x + 1 + __vm_choose( 2 ) ) % 5" ), 5, 10 ); }
-
-        TEST( ce1 )
-        {
-            _search< CM, TM >( prog_err( 4, "x - 1", "x == 1" ), 5, 4 );
-        }
+        TEST( branching1 ){ _search< GM >( prog_int( 4, "x - __vm_choose( 2 )" ), 4, 9 ); }
+        TEST( branching2 ){ _search< GM >( prog_int( 2, "x - 1 - __vm_choose( 2 )" ), 2, 3 ); }
+        TEST( branching3 ){ _search< TM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 12, 12 ); }
+        TEST( branching4 ){ _search< GM >( prog_int( 4, "x - 1 - __vm_choose( 2 )" ), 4, 7 ); }
+        TEST( branching5 ){ _search< GM >( prog_int( 0, "( x + __vm_choose( 2 ) ) % 5" ), 4, 10 ); }
+        TEST( branching6 ){ _search< GM >( prog_int( 0, "( x + 1 + __vm_choose( 2 ) ) % 5" ), 4, 10 ); }
     };
 
 }
