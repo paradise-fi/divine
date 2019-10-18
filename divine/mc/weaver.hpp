@@ -46,7 +46,9 @@ namespace divine::mc
 
     struct machine_base
     {
-        int16_t _machine_id = -1;
+        int16_t  _machine_id = -1;
+        int16_t  _last_msg_from = -1;
+        uint32_t _last_msg_id;
 
         int machine_id()
         {
@@ -61,11 +63,26 @@ namespace divine::mc
             _machine_id = i;
         }
 
+        void prepare( const task::base &t )
+        {
+            _last_msg_from = t.msg_from;
+            _last_msg_id = t.msg_id;
+        }
+
         template< typename task_t >
         void push( qref< std::remove_reference_t< task_t > > q, task_t &&t )
         {
             t.msg_from = machine_id();
             q.push_back( t );
+        }
+
+        template< typename task_t >
+        void reply( qref< std::remove_reference_t< task_t > > q, task_t &&t )
+        {
+            ASSERT_LEQ( 0, _last_msg_from );
+            t.msg_to = _last_msg_from;
+            t.msg_id = _last_msg_id;
+            push( q, t );
         }
     };
 
@@ -130,6 +147,12 @@ namespace divine::mc
 
         void machine_id( int i ) { this->get().machine_id( i ); }
         int machine_id() { return this->get().machine_id(); }
+
+        template< typename task_t >
+        void prepare( const task_t &t )
+        {
+            this->get().prepare( t );
+        }
 
         template< typename TQ, typename T >
         auto run( TQ tq, const T &t ) -> decltype( this->get().run( tq, t ) )
@@ -196,6 +219,7 @@ namespace divine::mc
         auto run_on( M &m, T &t )
             -> decltype( m.run( _queue.template view< typename M::tq >(), t ), true )
         {
+            m.prepare( t );
             m.run( _queue.template view< typename M::tq >(), t );
             return true;
         }
