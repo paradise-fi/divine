@@ -61,7 +61,7 @@ struct Expectation : ui::LogSink
 struct Expect : Expectation
 {
     bool _ok = false, _found = true, _on_inactive = false;
-    mc::Result _result;
+    mc::Result _result = mc::Result::None;
     std::string _cmd, _location, _symbol;
 
     void check() override
@@ -97,7 +97,8 @@ struct Expect : Expectation
 
     virtual void result( mc::Result r, const mc::Trace & )
     {
-        _ok = r == _result;
+        if ( _result != mc::Result::None )
+            _ok = r == _result;
     }
 };
 
@@ -147,7 +148,7 @@ void execute( std::string script_txt, F... prepare )
         };
 
         auto o_expect = ui::cmd::make_option_set( cli.validator() )
-            .option( "--result {result}", &Expect::_result, "verification result" )
+            .option( "[--result {result}]", &Expect::_result, "verification result" )
             .option( "[--symbol {string}]", &Expect::_symbol, "symbol of the expected error" )
             .option( "[--location {string}]", &Expect::_location, "location of the expected error" );
         auto o_load = ui::cmd::make_option_set( cli.validator() )
