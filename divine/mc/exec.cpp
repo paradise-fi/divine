@@ -39,64 +39,72 @@ namespace divine::mc
                                           ctx::with_debug, ctx::with_tracking,
                                           ctx::common< vm::Program, vm::CowHeap > > {};
 
-    template< typename next >
-    struct backtrack_ : next
+    namespace event
     {
-        using typename next::tq;
-        using typename next::task_choose;
+        struct infeasible : base {};
+    }
 
-        std::stack< task_choose > _stack;
-
-        bool feasible( tq q ) override
+    template< typename next >
+    struct infeasible_notify_ : next
+    {
+        bool feasible( typename next::tq q ) override
         {
             if ( next::feasible( q ) )
                 return true;
-            if ( !this->context().flags_any( _VM_CF_Stop ) && !_stack.empty() )
+            if ( !this->context().flags_any( _VM_CF_Stop ) )
             {
-                TRACE( "encountered an infeasible path, backtracking", _stack.top() );
-                task_choose ch( _stack.top() );
-                this->push( q, _stack.top() );
-                _stack.pop();
+                TRACE( "encountered an infeasible path, backtracking" );
+                this->push( q, event::infeasible() );
             }
             return false;
         }
+    };
 
-        void choose( tq q, task_choose &c )
+    struct backtrack : machine::tree_search
+    {
+        std::stack< task::choose > _stack;
+        using machine::tree_search::run;
+
+        void run( tq q, event::infeasible )
         {
-            c.total = -c.total;
-            if ( c.total < 0 )
+            if ( !_stack.empty() )
             {
-                _stack.push( c );
-                c.cancel();
+                reply( q, _stack.top() );
+                _stack.pop();
             }
-            else
-                next::choose( q, c );
-        };
+        }
 
-        ~backtrack_()
+        void run( tq q, task::choose c )
         {
+            if ( c.choice )
+                _stack.push( c );
+            else
+                reply( q, c );
+        }
+
+        ~backtrack()
+        {
+            /* FIXME
             while ( !_stack.empty() )
                 this->snap_put( _stack.top().snap ), _stack.pop();
+            */
         }
     };
 
-    struct backtrack : brq::module< backtrack_ > {};
+    using infeasible_notify = brq::module< infeasible_notify_ >;
+    using queue_exec = task_queue< event::infeasible >;
 
-    struct mach_exec : brq::compose_stack< machine::search_dispatch, backtrack,
-                                           machine::compute,
-                                           machine::tree_search,
-                                           machine::choose_random, machine::choose,
+    struct mach_exec : brq::compose_stack< infeasible_notify, machine::compute,
                                            machine::with_context< ctx_exec >,
-                                           machine::base< smt::NoSolver > > {};
-
-    struct search : mc::Search< mc::State, mc::Label > {};
+                                           machine::base< smt::NoSolver, queue_exec > > {};
 
     void Exec::run()
     {
-        mach_exec m;
-        m.bc( _bc );
-        m.context().enable_debug();
-        weave( m ).extend( search() ).start();
+        backtrack b;
+        mach_exec c;
+        c.bc( _bc );
+        c.context().enable_debug();
+        weave( c, b ).start();
     }
 }
 
