@@ -94,17 +94,27 @@ namespace divine::mc
     using infeasible_notify = brq::module< infeasible_notify_ >;
     using queue_exec = task_queue< event::infeasible >;
 
+    template< typename solver_t >
     struct mach_exec : brq::compose_stack< infeasible_notify, machine::compute,
                                            machine::with_context< ctx_exec >,
-                                           machine::base< smt::NoSolver, queue_exec > > {};
+                                           machine::base< solver_t, queue_exec > > {};
 
-    void Exec::run()
+    template< typename solver_t >
+    void Exec::do_run()
     {
         backtrack b;
-        mach_exec c;
+        mach_exec< solver_t > c;
         c.bc( _bc );
         c.context().enable_debug();
         weave( c, b ).start();
+    }
+
+    void Exec::run()
+    {
+        if ( _bc->is_symbolic() )
+            do_run< smt::STPSolver >();
+        else
+            do_run< smt::NoSolver >();
     }
 }
 

@@ -77,6 +77,10 @@ struct Exec
     using Env = std::vector< std::string >;
     BC _bc;
     Exec( BC bc ) : _bc( bc ) {}
+
+    template< typename solver >
+    void do_run();
+
     void run();
     void trace();
 };
