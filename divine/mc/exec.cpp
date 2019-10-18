@@ -51,11 +51,10 @@ namespace divine::mc
         {
             if ( next::feasible( q ) )
                 return true;
-            if ( !this->context().flags_any( _VM_CF_Stop ) )
-            {
-                TRACE( "encountered an infeasible path, backtracking" );
+
+            if ( this->context().flags_any( _VM_CF_Cancel ) )
                 this->push( q, event::infeasible() );
-            }
+
             return false;
         }
     };
@@ -69,6 +68,7 @@ namespace divine::mc
         {
             if ( !_stack.empty() )
             {
+                TRACE( "encountered an infeasible path, backtracking at", _stack.top() );
                 reply( q, _stack.top() );
                 _stack.pop();
             }

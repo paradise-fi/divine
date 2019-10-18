@@ -283,14 +283,17 @@ namespace divine::mc::machine
             }
         }
 
-        virtual bool feasible( tq  )
+        virtual bool feasible( tq )
         {
             if ( this->context().flags_any( _VM_CF_Cancel ) )
                 return false;
             if ( this->context()._assume.null() )
                 return true;
 
-            return this->_solver.feasible( this->context().heap(), this->context()._assume );
+            if ( this->_solver.feasible( this->context().heap(), this->context()._assume ) )
+                return true;
+            else
+                return this->context().flags_set( 0, _VM_CF_Cancel ), false;
         }
 
         void snap_put( Snapshot s )
