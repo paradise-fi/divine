@@ -60,57 +60,6 @@ namespace divine::smt
         return abw;
     }
 
-    // decompose the input RPN into smaller RPNs
-    // which have dependent variables, for later caching
-    // TODO: output iterator
-    static union_find< RPN::VarID > decompose( const RPN &rpn )
-    {
-        using VarID = RPN::VarID;
-
-        std::map< VarID, RPN > decomp;
-        union_find< VarID > uf;
-        std::vector< std::optional< VarID > > stack;
-
-        auto pop = [&]()
-        {
-            auto v = stack.back();
-            stack.pop_back();
-            return v;
-        };
-
-        auto handle_binary = [&] ( BinaryOp bin )
-        {
-            if ( bin.op == Op::Constraint )
-            {
-                pop();
-                pop();
-                stack.emplace_back( std::nullopt ); // TODO: insert a 'true'
-            }
-            else 
-            {
-                auto n1 = pop();
-                auto n2 = pop();
-                stack.emplace_back( uf.union_( n1, n2 ) );
-            }
-        };
-
-        auto handle_unary = [&]( const UnaryOp & ){};
-        auto handle_cast = [&]( CastOp ){};
-
-        auto handle_term = overload
-        {
-            [&]( const Constant& ) { stack.emplace_back( std::nullopt ); },
-            [&]( const Variable& var ) { stack.emplace_back( uf.make_set( var.id ) ); },
-            handle_unary, handle_cast, handle_binary,
-            [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
-        };
-
-        for( auto term : RPNView( rpn ) )
-            std::visit( handle_term, term );
-
-        return uf;
-    }
-
     template< typename Builder >
     auto evaluate( Builder &bld, const RPN &rpn, bool *is_constraint = nullptr )
         -> typename Builder::Node
