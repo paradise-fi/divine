@@ -25,7 +25,7 @@ namespace divine::mc::task
     struct base
     {
         uint32_t msg_id = 0;
-        int16_t  msg_from = 0;
+        int16_t  msg_from = -1;
         int16_t  msg_to; /* -1 = any, -2 = all, >= 0 specific machine */
 
         base( int to = -1 ) : msg_to( to ) {}
@@ -408,7 +408,7 @@ namespace divine::mc
                 {
                     TRACE( "trying machine", i, "to =", t.msg_to, "valid =", t.valid() );
                     if ( t.valid() )
-                        if ( t.msg_to == i || t.msg_to < 0 )
+                        if ( ( t.msg_to == i || t.msg_to < 0 ) && t.msg_from != i )
                             if ( run_on( m, t ) ) /* accepted */
                             {
                                 TRACE( "task", t, "accepted by", &m );
