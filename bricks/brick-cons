@@ -95,7 +95,7 @@ namespace brq
             {
                 static_assert( has< std::remove_reference_t< typename L::car_t > > );
                 auto tail = view< typename L::cdr_t >();
-                return cons< typename L::car_t &, decltype( tail ) >( get< typename L::car_t >(), tail );
+                return cons< typename L::car_t, decltype( tail ) >( get< typename L::car_t >(), tail );
             }
         }
 
@@ -254,7 +254,35 @@ namespace brq
             }
         }
     };
+}
 
+namespace t_brq
+{
+    struct cons
+    {
+        TEST( view_ref )
+        {
+            auto x = brq::cons_list( 3.0, 7, static_cast< const char * >( "bla " ) );
+            using v = brq::cons_list_t< int & >;
+            static_assert( std::is_same_v< v::car_t, int & > );
+            auto y = x.view< v >();
+            ASSERT_EQ( y.car(), 7 );
+            y.car() ++;
+            ASSERT_EQ( y.car(), 8 );
+            ASSERT_EQ( x.cdr().car(), 8 );
+        }
+
+        TEST( view_val )
+        {
+            auto x = brq::cons_list( 3.0, 7, static_cast< const char * >( "bla " ) );
+            using v = brq::cons_list_t< int >;
+            auto y = x.view< v >();
+            ASSERT_EQ( y.car(), 7 );
+            y.car() ++;
+            ASSERT_EQ( y.car(), 8 );
+            ASSERT_EQ( x.cdr().car(), 7 );
+        }
+    };
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
