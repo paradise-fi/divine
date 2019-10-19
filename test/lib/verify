@@ -16,31 +16,14 @@ if test "$1" = "--export"; then
     test -n "$SRCDIR" || export SRCDIR="$PWD"
     test -n "$BINDIR" || export BINDIR="${OBJ}debug" #TODO: default flavour
 
-    addcmds()
-    {
-        cat
-    }
-
-    addcmd()
-    {
-        echo "$@"
-    }
-
+    addcmd() { echo "$@" ; }
 else
     EXPORT= # unset
     dcscript=testcase.divcheck
     # some tests call this already inside correct working directory
     test ! -r lib/testcase || SILENT=1 . lib/testcase
 
-    addcmds()
-    {
-        cat >> $dcscript
-    }
-    addcmd()
-    {
-        echo "$@" >> $dcscript
-    }
-
+    addcmd() { echo "$@" >> $dcscript ; }
 fi
 
 getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
@@ -105,14 +88,20 @@ for f in $name $extrasrc; do
     done
 done
 
-# Generate 'expect' commands (see also test/lib/check verify)
-if test -z "$expect"; then
-    check=$(readlink -f $(dirname $0)/check)
-    chmod +x "$check"
-    export DIVCHECK_MODE=1
-    (cd $dir ; $check verify $name) | addcmds
+# Generate 'expect' commands
+
+if test -n "$expect"; then
+    addcmd expect "$expect"
+elif fgrep -q '/* ERROR' "$1"; then
+    line=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f2`
+    addcmd expect --result error --location $name:$line
+    if ! echo "$opts" | fgrep -q -- --liveness; then
+        addcmd expect --trace FAULT: --trace-count 1
+    fi
+elif fgrep -q '/* BOOT ERROR */' "$1"; then
+    addcmd expect --result boot-error
 else
-    addcmd "expect" "$expect"
+    addcmd expect --result valid
 fi
 
 # Generate 'cc' command
