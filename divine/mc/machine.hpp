@@ -111,30 +111,31 @@ namespace divine::mc::task
         explicit origin( Snapshot s ) : snap( s ) {}
     };
 
-    struct schedule : base
-    {
-        Snapshot snap;
-        schedule( Snapshot s ) : snap( s ) {}
-    };
-
     struct with_snap : base
     {
-        task::origin origin;
         Snapshot snap;
-        with_snap( task::origin o, Snapshot s ) : origin( o ), snap( s ) {}
+        with_snap( Snapshot s ) : snap( s ) {}
     };
 
-    struct with_state : with_snap
+    struct with_origin : with_snap
+    {
+        task::origin origin;
+        with_origin( task::origin o, Snapshot s ) : with_snap( s ), origin( o ) {}
+    };
+
+    struct with_state : with_origin
     {
         vm::State state;
         with_state( task::origin o, Snapshot snap, vm::State state )
-            : with_snap( o, snap ), state( state )
+            : with_origin( o, snap ), state( state )
         {}
     };
 
-    struct store_state : with_snap  { using with_snap::with_snap; };
-    struct check_loop  : with_state { using with_state::with_state; };
-    struct compute     : with_state { using with_state::with_state; };
+    struct store_state : with_origin { using with_origin::with_origin; };
+    struct dedup_state : with_snap   { using with_snap::with_snap; };
+    struct check_loop  : with_state  { using with_state::with_state; };
+    struct schedule    : with_snap   { using with_snap::with_snap; };
+    struct compute     : with_state  { using with_state::with_state; };
 
     struct choose : with_state
     {
@@ -367,7 +368,8 @@ namespace divine::mc::machine
 
     struct tree_search : machine_base
     {
-        using tq = task_queue< task::compute, task::schedule, task::boot, task::choose, event::edge >;
+        using tq = task_queue< task::compute, task::schedule, task::boot, task::choose,
+                               task::dedup_state, event::edge >;
 
         void run( tq q, task::check_loop t )  { push( q, task::compute( t.origin, t.snap, t.state ) ); }
         void run( tq q, task::start )         { push( q, task::boot() ); }
@@ -380,9 +382,8 @@ namespace divine::mc::machine
     };
 
     template< typename solver_t >
-    struct graph_search : machine_base
+    struct graph_search : tree_search
     {
-        using tq = task_queue< task::compute, event::edge, task::schedule, task::boot, task::choose >;
         using hasher_t = mc::Hasher< solver_t >;
 
         solver_t _solver;
@@ -391,10 +392,7 @@ namespace divine::mc::machine
         vm::CowHeap::Pool _pool;
         vm::CowHeap _heap;
 
-        void run( tq q, task::start )
-        {
-            push( q, task::boot() );
-        }
+        using tree_search::run;
 
         template< typename ctx_t >
         void run( tq, const task::boot_sync< ctx_t > &bs )
@@ -422,6 +420,13 @@ namespace divine::mc::machine
             return { *r, r.isnew() };
         }
 
+        void run( tq q, task::dedup_state t )
+        {
+            auto [ ns, isnew ] = store( t.snap, _ht_sched );
+            ASSERT( !isnew );
+            this->reply( q, task::dedup_state( ns ) );
+        }
+
         void run( tq q, task::store_state t )
         {
             auto [ ns, isnew ] = store( t.snap, _ht_sched );
@@ -439,8 +444,6 @@ namespace divine::mc::machine
             else
                 TRACE( "loop closed at", ns );
         }
-
-        void run( tq q, task::choose t ) { reply( q, t ); } /* bounce right back */
     };
 
     template< typename solver, typename tq = task_queue<> >
