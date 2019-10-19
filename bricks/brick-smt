@@ -836,7 +836,7 @@ namespace brick::smt
     // decompose the input RPN into smaller RPNs
     // which have dependent variables, for later caching
     // TODO: output iterator
-    static union_find< RPN< Vec_u8 >::VarID > decompose( const RPN< Vec_u8 > &rpn )
+    static void decompose( const RPN< Vec_u8 > &rpn, union_find< RPN< Vec_u8 >::VarID >& uf )
     {
         using RPN = brick::smt::RPN< std::vector< uint8_t > >;
         using RPNView = brick::smt::RPNView< RPN >;
@@ -849,7 +849,6 @@ namespace brick::smt
         using CallOp = RPNView::CallOp;
 
         std::map< VarID, RPN > decomp;
-        union_find< VarID > uf;
         std::vector< std::optional< VarID > > stack;
 
         auto pop = [&]()
@@ -888,8 +887,6 @@ namespace brick::smt
 
         for( auto term : RPNView( rpn ) )
             std::visit( handle_term, term );
-
-        return uf;
     }
 
     template< typename T >
