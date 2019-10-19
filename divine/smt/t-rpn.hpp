@@ -96,7 +96,8 @@ namespace divine::t_rpn
         {
             Variable v{ Op::VarI32, 1 };   // x
             append( v );
-            auto uf = decompose( rpn );
+            union_find< RPN::VarID > uf;
+            decompose( rpn, uf );
             ASSERT_EQ( v.id, *uf.find( v.id ) );
         }
 
@@ -107,7 +108,8 @@ namespace divine::t_rpn
             Constant c{ Op( -64 ), 3 };
             append( c );
             append( Op::Eq );
-            auto uf = decompose( rpn );
+            union_find< RPN::VarID > uf;
+            decompose( rpn, uf );
             ASSERT_EQ( x.id, *uf.find( x.id ) );
 
             Variable y{ Op::VarI32, 2 };
@@ -116,9 +118,9 @@ namespace divine::t_rpn
             append( c2 );
             append( Op::Eq );
             append( Op::And );
-            auto uf2 = decompose( rpn );
+            decompose( rpn, uf );
             ASSERT_NEQ( x.id, y.id );
-            ASSERT_EQ( *uf2.find( x.id ), *uf2.find( y.id ) );
+            ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
         }
 
         // &&C = constraint
@@ -145,7 +147,8 @@ namespace divine::t_rpn
             append( Op::Constraint );
 
             // expecting partitions {x,y}{z}
-            auto uf = decompose( rpn );
+            union_find< RPN::VarID > uf;
+            decompose( rpn, uf );
             ASSERT_NEQ( x.id, y.id );
             ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
             ASSERT_NEQ( z.id, x.id );
@@ -195,7 +198,8 @@ namespace divine::t_rpn
             append( Op::Constraint );
 
             // expecting partitions {x,y}{z,d}{e}
-            auto uf = decompose( rpn );
+            union_find< RPN::VarID > uf;
+            decompose( rpn, uf );
             ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
             ASSERT_EQ( *uf.find( z.id ), *uf.find( d.id ) );
             ASSERT_EQ( e.id, *uf.find( e.id ) );
