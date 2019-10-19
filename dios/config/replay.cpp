@@ -3,7 +3,7 @@
 
 namespace __dios
 {
-    using Context = Upcall< Fault< Scheduler < fs::Replay < Base > > > >;
+    struct Context : Upcall< Fault< Scheduler < fs::Replay < Base > > > > {};
 }
 
 #include <dios/config/common.hpp>

@@ -2,7 +2,7 @@
 
 namespace __dios
 {
-    using Context = Upcall< WithProc< FairScheduler< Base > > >;
+    struct Context : Upcall< WithProc< FairScheduler< Base > > > {};
 }
 
 #include <dios/config/common.hpp>

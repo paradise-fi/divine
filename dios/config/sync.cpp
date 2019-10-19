@@ -2,7 +2,7 @@
 
 namespace __dios
 {
-    using Context = Upcall< fs::VFS< Fault< SyncScheduler< Base > > > >;
+    struct Context : Upcall< fs::VFS< Fault< SyncScheduler< Base > > > > {};
 }
 
 #include <dios/config/common.hpp>
