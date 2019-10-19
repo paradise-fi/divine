@@ -39,7 +39,7 @@ namespace divine::t_mc
         void run( TQ tq, mc::task::start )
         {
             _states.insert( 1 );
-            push( tq, Expand( 1 ) );
+            push( tq, Edge( 0, 1, Black, true ) );
         }
     };
 
@@ -152,7 +152,7 @@ namespace divine::t_mc
             auto state = [&] ( Expand ) { ++ statecount; };
             weave( builder ).observe( state, edge ).start();
 
-            ASSERT_EQ( edgecount, 4 );
+            ASSERT_EQ( edgecount, 5 );
             ASSERT_EQ( statecount, 4 );
         }
 
@@ -167,7 +167,7 @@ namespace divine::t_mc
                 weave( builder ).observe( state, edge ).start();
 
                 ASSERT_EQ( statecount.load(), 50 );
-                ASSERT_EQ( edgecount.load(), 120 );
+                ASSERT_EQ( edgecount.load(), 121 );
             }
         }
 
