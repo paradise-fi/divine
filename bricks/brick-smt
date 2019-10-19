@@ -846,7 +846,6 @@ namespace brick::smt
         using Constant = RPNView::Constant;
         using Variable = RPNView::Variable;
         using CastOp = RPNView::CastOp;
-        using CallOp = RPNView::CallOp;
 
         std::map< VarID, RPN > decomp;
         std::vector< std::optional< VarID > > stack;
