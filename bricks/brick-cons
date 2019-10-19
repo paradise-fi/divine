@@ -168,6 +168,14 @@ namespace brq
     }
 
     static auto cons_list() { return nil(); }
+    static auto cons_list_ref() { return nil(); }
+
+    template< typename T, typename... Ts >
+    auto cons_list_ref( T &&t, Ts &&... ts )
+    {
+        auto tail = cons_list_ref( std::forward< Ts >( ts )... );
+        return cons< T, decltype( tail ) >( std::forward< T >( t ), tail );
+    }
 
     template< typename T, typename... Ts >
     auto cons_list( const T &t, const Ts &... ts )
@@ -177,7 +185,7 @@ namespace brq
     }
 
     template< typename... Ts >
-    using cons_list_t_ = decltype( cons_list( std::declval< Ts >()... ) );
+    using cons_list_t_ = decltype( cons_list_ref( std::declval< Ts >()... ) );
 
     template< typename... Ts >
     struct cons_list_t: cons_list_t_< Ts... >
@@ -289,6 +297,15 @@ namespace t_brq
             y.car() ++;
             ASSERT_EQ( y.car(), 8 );
             ASSERT_EQ( x.cdr().car(), 7 );
+        }
+
+        TEST( val_ctor )
+        {
+            int x;
+            auto y = brq::cons_list( x );
+            auto z = brq::cons_list_ref( x );
+            static_assert( std::is_same_v< decltype( y ), brq::cons_list_t_< int > > );
+            static_assert( std::is_same_v< decltype( z ), brq::cons_list_t_< int & > > );
         }
     };
 }
