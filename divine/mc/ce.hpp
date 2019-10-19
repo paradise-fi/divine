@@ -20,50 +20,31 @@
 
 #include <divine/mc/machine.hpp>
 
-namespace divine::mc::task
-{
-    struct ce_step : base
-    {
-        Snapshot from, to;
-        ce_step( Snapshot from, Snapshot to )
-            : from( from ), to( to )
-        {}
-    };
-
-    struct ce_origin : origin
-    {
-        using origin::origin;
-        ce_origin( const origin &o ) : origin( o ) {}
-        std::vector< int > choices;
-    };
-
-    struct ce_choose : compute
-    {
-        int choice, total;
-        std::vector< int > choices;
-
-        ce_choose( Snapshot snap, ce_origin orig, vm::State state, int c, int t )
-            : compute( snap, orig, state ), choice( c ), total( t ), choices( orig.choices )
-        {}
-    };
-}
-
 namespace divine::mc::machine
 {
-    template< typename next >
-    struct ce_base_ : next /* overlays the standard base */
+    struct graph_ce : tree_search
     {
-        using tq = task_queue_extend< typename next::tq, task::ce_step, task::ce_choose >;
         using pool = vm::CowHeap::Pool;
-        using origin = task::ce_origin;
 
         pool _succ_pool;
         brick::mem::SlavePool< pool > _meta;
 
+        struct path_info : brq::refcount_base<>
+        {
+            using ptr = brq::refcount_ptr< path_info >;
+            ptr parent;
+            int choice, total;
+            path_info( ptr p, int c, int t ) : parent( p ), choice( c ), total( t ) {}
+        };
+
+        int _path_id = 0;
+        std::map< int, path_info::ptr > _path;
+        std::vector< Snapshot > _errors;
+
         struct meta_t
         {
             Snapshot parent;
-            pool::Pointer children;
+            path_info::ptr path;
             bool visited;
         };
 
@@ -72,92 +53,89 @@ namespace divine::mc::machine
             return *_meta.template machinePointer< meta_t >( s );
         }
 
-        using next::run;
+        using tree_search::run;
+        void run( tq, task::start ) {}
 
         template< typename ctx_t >
         void run( tq q, const task::boot_sync< ctx_t > &bs )
         {
-            next::run( q, bs );
-            _meta.attach( this->_state_pool );
-            TRACE( "ce_base boot_sync", this, this->_state_pool._s, _meta._m );
+            _meta.attach( bs.state_pool );
         }
 
-        void queue_edge( tq q, const origin &o, State, Label, bool )
+        void run( tq q, event::edge e )
         {
-            TRACE( "ce_base queue_edge", meta( o.snap ).parent, o.snap, o.choices );
-            meta( o.snap ).visited = true;
-            task::ce_step step( meta( o.snap ).parent, o.snap );
-            this->push( q, step );
-        }
-
-        void queue_choice( tq q, origin o, Snapshot snap, vm::State state, int i, int t )
-        {
-            o.choices.push_back( i );
-            task::ce_choose choose( snap, o, state, i, t );
-            this->push( q, choose );
-        }
-    };
-
-    template< typename next >
-    struct ce_choose_ : next
-    {
-        using typename next::origin;
-        using typename next::tq;
-
-        int select_choice( tq q, origin &o, Snapshot snap, vm::State state, int count )
-        {
-            this->queue_choices( q, o, snap, state, 0, count );
-            o.choices.push_back( 0 );
-            return 0;
-        }
-    };
-
-    template< typename next >
-    struct ce_dispatch_ : next /* replaces search_dispatch */
-    {
-        using next::run;
-        using typename next::tq;
-        using typename next::origin;
-        using next::_meta;
-
-        void run( tq q, typename next::task_edge e )
-        {
-            if ( e.isnew )
+            if ( e.is_new )
             {
-                TRACE( "ce_dispatch task_edge", this, e.to.snap, e.from.snap );
-                _meta.materialise( e.to.snap, sizeof( typename next::meta_t ) );
-                this->meta( e.to.snap ).parent = e.from.snap;
+                _meta.materialise( e.to, sizeof( meta_t ) );
+                meta( e.to ).parent = e.from;
             }
-
-            if ( e.label.error )
-                this->push( q, task::ce_step( e.from.snap, e.to.snap ) );
         }
 
-        void run( tq q, task::ce_step s )
+        void run( tq q, event::error t )
         {
-            TRACE( "ce_step from", s.from, "to", s.to );
-            if ( s.from && !this->meta( s.to ).visited )
-                next::schedule( q, origin( s.from ) );
+            if ( !t.from || t.msg_to >= 0 )
+                return;
+
+            auto &m = meta( t.to );
+            TRACE( "ce error", t.from, "→", t.to, "visited =", m.visited );
+            if ( !m.visited && m.parent )
+            {
+                _errors.push_back( t.to );
+                task::schedule t( m.parent );
+                t.msg_id = _path_id ++;
+                this->push( q, t );
+            }
+            m.visited = true;
         }
 
-        void run( tq q, task::ce_choose s )
+        void run( tq q, task::choose t )
         {
-            task::ce_origin o( s.origin );
-            o.choices = s.choices;
-            next::choose( q, o, s.snap, s.state, s.choice, s.total );
+            int parent_id = t.msg_id;
+            t.msg_id = _path_id ++;
+            _path[ t.msg_id ] = brq::make_refcount< path_info >( _path[ parent_id ], t.choice, t.total );
+            TRACE( "ce choose", t.origin.snap, "msg_id =", t.msg_id, "path =", _path[ t.msg_id ] );
+            this->reply( q, t, false );
+        }
+
+        void run( tq q, task::dedup_state t )
+        {
+            auto &m = meta( t.snap );
+            TRACE( "ce dedup", t.snap, "msg_id =", t.msg_id, "path =", _path[ t.msg_id ],
+                   "visited =", m.visited );
+            if ( m.visited )
+                m.path = _path[ t.msg_id ];
+            _path.erase( t.msg_id );
+        }
+
+        void run( tq q, task::store_state s )
+        {
+            task::dedup_state t( s.snap );
+            t.msg_id = s.msg_id;
+            this->push( q, t );
+
+            TRACE( "ce step", s.origin.snap, "→", s.snap, "msg_id =", s.msg_id );
+            auto &m = meta( s.origin.snap );
+            if ( !m.visited && m.parent )
+            {
+                task::schedule t( m.parent );
+                t.msg_id = _path_id ++;
+                this->push( q, t );
+            }
+            m.visited = true;
+        }
+
+        void dump()
+        {
+            TRACE( "error count", _errors.size() );
+            for ( auto e : _errors )
+            {
+                for ( ; e; e = meta( e ).parent )
+                {
+                    TRACE( "state trace", e );
+                    for ( auto pi = meta( e ).path; pi != nullptr; pi = pi->parent )
+                        TRACE( "choice", pi->choice, "/", pi->total );
+                }
+            }
         }
     };
-
-    using ce_base     = brq::module< ce_base_ >;
-    using ce_choose   = brq::module< ce_choose_ >;
-    using ce_dispatch = brq::module< ce_dispatch_ >;
-    using ce_compute  = brq::compose< ce_dispatch, compute, graph_search, ce_choose, choose >;
-
-    template< typename solver >
-    using ce = brq::compose_stack< ce_compute, ce_base, common< solver > >;
-}
-
-namespace divine::mc
-{
-    struct CMachine : machine::ce< smt::NoSolver > {};
 }
