@@ -32,6 +32,7 @@ namespace brq
         static constexpr bool empty = true;
         static constexpr size_t size = 0;
 
+        template< int idx > using type_at = void;
         template< template< typename > class f > using map_t = nil;
         template< typename L >                   using cat_t = L;
 
@@ -102,6 +103,10 @@ namespace brq
 
         static constexpr bool empty = false;
         static constexpr size_t size = 1 + cdr_t::size;
+
+        template< int idx >
+        using type_at = std::conditional_t< idx == 0, car_t,
+                                            typename cdr_t::template type_at< idx - 1 > >;
 
         template< typename T > static constexpr bool has =
             std::is_same_v< T, car_t > || cdr_t::template has< T >;
