@@ -15,10 +15,11 @@
 
 #include <_PDCLIB/cdefs.h>
 
-void __assert_fail( const char *__assertion, const char *__file, unsigned int __line, const char *__function )
+void __assert_fail( const char *stmt, const char *file, unsigned line, const char *fun )
 {
-    __dios_trace_f( "Assertion failed: %s, file %s, line %u.", __assertion, __file, __line );
-    __dios_fault( _VM_F_Assert, NULL );
+    char buffer[ 200 ];
+    snprintf( buffer, 200, "%s:%u: %s: assertion '%s' failed", file, line, fun, stmt );
+    __dios_fault( _VM_F_Assert, buffer );
 }
 
 #endif
