@@ -34,6 +34,7 @@ using namespace divine;
 
 struct Wrong : std::exception
 {
+    Wrong( std::string s = "" ) : _err( s ) {}
     std::string _err;
     const char *what() const noexcept { return _err.c_str(); }
 };
@@ -53,6 +54,14 @@ struct FoundInactive : Wrong
     FoundInactive( std::string s ) { _err = "error location found, but on an inactive stack: " + s; }
 };
 
+struct NoTrace : Wrong
+{
+    NoTrace( std::string t, int c )
+        : Wrong( "'" + t + "' not found in the trace" +
+                 ( c ? " exactly " + std::to_string( c ) + " time(s)" : "" ) )
+    {}
+};
+
 struct Expectation : ui::LogSink
 {
     virtual void check() = 0;
@@ -62,7 +71,8 @@ struct Expect : Expectation
 {
     bool _ok = false, _found = true, _on_inactive = false;
     mc::Result _result = mc::Result::None;
-    std::string _cmd, _location, _symbol;
+    std::string _cmd, _location, _symbol, _trace;
+    int _trace_count = 0, _trace_matches = 0;
 
     void check() override
     {
@@ -72,6 +82,9 @@ struct Expect : Expectation
             throw Unmatched( _cmd );
         if ( _on_inactive )
             throw FoundInactive( _cmd );
+        if ( !_trace.empty() )
+            if ( !_trace_matches || ( _trace_count && _trace_count != _trace_matches ) )
+                throw NoTrace( _trace, _trace_count );
     }
 
     virtual void backtrace( ui::DbgContext &ctx, int )
@@ -84,8 +97,8 @@ struct Expect : Expectation
         auto bt = [&]( int ) { active = false; };
         auto chk = [&]( auto dn )
         {
-            if ( dn.attribute( "location" ) == _location || !_symbol.empty() &&
-                    dn.attribute( "symbol" ).find( _symbol ) != std::string::npos )
+            if ( dn.attribute( "location" ) == _location ||
+                 !_symbol.empty() && dn.attribute( "symbol" ).find( _symbol ) != std::string::npos )
             {
                 if ( !active && !_found )
                     _on_inactive = true;
@@ -95,10 +108,13 @@ struct Expect : Expectation
         mc::backtrace( bt, chk, ctx, ctx.snapshot(), 10000 );
     }
 
-    virtual void result( mc::Result r, const mc::Trace & )
+    virtual void result( mc::Result r, const mc::Trace &trace )
     {
-        if ( _result != mc::Result::None )
-            _ok = r == _result;
+        _ok = _result == mc::Result::None || r == _result;
+        if ( !_trace.empty() )
+            for ( auto l : trace.labels )
+                if ( l.find( _trace ) != l.npos )
+                    ++ _trace_matches;
     }
 };
 
@@ -150,7 +166,9 @@ void execute( std::string script_txt, F... prepare )
         auto o_expect = ui::cmd::make_option_set( cli.validator() )
             .option( "[--result {result}]", &Expect::_result, "verification result" )
             .option( "[--symbol {string}]", &Expect::_symbol, "symbol of the expected error" )
-            .option( "[--location {string}]", &Expect::_location, "location of the expected error" );
+            .option( "[--location {string}]", &Expect::_location, "location of the expected error" )
+            .option( "[--trace-count {int}]", &Expect::_trace_count, "number of trace matches" )
+            .option( "[--trace {string}]", &Expect::_trace, "substring match against the trace" );
         auto o_load = ui::cmd::make_option_set( cli.validator() )
             .option( "{string}+", &Load::args, "file path, file name" );
 
