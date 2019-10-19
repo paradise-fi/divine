@@ -20,7 +20,6 @@
 #pragma once
 
 #include <brick-smt>
-#include <divine/smt/union-find.hpp>
 #include <divine/vm/pointer.hpp>
 
 #include <list>
