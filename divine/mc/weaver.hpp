@@ -33,7 +33,10 @@ namespace divine::mc::task
         void cancel() { msg_to = -3; }
     };
 
-    struct start : base {};
+    struct start : base
+    {
+        start() : base( -2 ) {}
+    };
 }
 
 namespace divine::mc
