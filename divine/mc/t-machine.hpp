@@ -193,7 +193,7 @@ namespace divine::t_mc
 
         using TM = mc::tmachine;
         using GM = mc::gmachine;
-        using CM = mc::cmachine;
+        using CM = mc::machine::graph_ce;
 
         TEST( cf_loop ) { _search< GM >( prog_int( 0, "x < 2 ? x + 1 : 2" , "x == 2" ), 1, 1 ); }
 
