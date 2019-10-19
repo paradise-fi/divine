@@ -101,7 +101,9 @@ struct Array : brick::types::Ord {
 
     bool empty() const { return !_data; }
     size_type size() const  { return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T ); }
-    void clear() {
+
+    void clear()
+    {
         if ( empty() )
             return;
         _clear();
@@ -123,22 +125,26 @@ struct Array : brick::types::Ord {
     }
 
     template < typename... Args >
-    T& emplace_back( Args&&... args ) {
+    T& emplace_back( Args&&... args )
+    {
         _resize( size() + 1 );
         new ( &back() ) T( std::forward< Args >( args )... );
         return back();
     }
 
-    void pop_back() {
+    void pop_back()
+    {
         back().~T();
         _resize( size() - 1 );
     }
 
-    iterator erase( iterator it ) {
+    iterator erase( iterator it )
+    {
         return erase( it, std::next( it ) );
     }
 
-    iterator erase( iterator first, iterator last ) {
+    iterator erase( iterator first, iterator last )
+    {
         if ( empty() )
             return;
         int origSize = size();
@@ -171,8 +177,10 @@ struct Array : brick::types::Ord {
             std::uninitialized_fill( begin() + old, end(), val );
     }
 
-    void _resize( size_type n ) {
-        if ( n == 0 ) {
+    void _resize( size_type n )
+    {
+        if ( n == 0 )
+        {
             if ( _data )
                 __vm_obj_free( _data );
             _data = nullptr;
