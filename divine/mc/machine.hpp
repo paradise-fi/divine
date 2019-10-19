@@ -160,6 +160,12 @@ namespace divine::mc::event
         bool is_new;
         edge( Snapshot f, Snapshot t, bool n ) : from( f ), to( t ), is_new( n ) {}
     };
+
+    struct error : base
+    {
+        Snapshot from, to;
+        error( Snapshot f, Snapshot t ) : from( f ), to( t ) {}
+    };
 }
 
 namespace divine::mc::machine
@@ -248,7 +254,7 @@ namespace divine::mc::machine
     {
         using typename next::context_t;
         using tq = task_queue_extend< typename next::tq, task::boot_sync< context_t >,
-                                      task::store_state, task::check_loop, task::choose >;
+                                      task::store_state, task::check_loop, task::choose, event::error >;
         using Eval = vm::Eval< context_t >;
         using next::context;
 
@@ -276,6 +282,8 @@ namespace divine::mc::machine
             {
                 auto snap = this->context().snapshot( this->_state_pool );
                 this->reply( q, task::store_state( o, snap ) );
+                if ( this->context().flags_any( _VM_CF_Error ) )
+                    this->reply( q, event::error( o.snap, snap ) );
             }
             else
             {
@@ -369,11 +377,12 @@ namespace divine::mc::machine
     struct tree_search : machine_base
     {
         using tq = task_queue< task::compute, task::schedule, task::boot, task::choose,
-                               task::dedup_state, event::edge >;
+                               task::dedup_state, event::error, event::edge >;
 
         void run( tq q, task::check_loop t )  { push( q, task::compute( t.origin, t.snap, t.state ) ); }
         void run( tq q, task::start )         { push( q, task::boot() ); }
         void run( tq q, task::choose t )      { reply( q, t ); } /* bounce right back */
+        void run( tq q, event::error t )      { t.msg_to = -2; push( q, t ); } /* broadcast */
         void run( tq q, task::store_state t )
         {
             push( q, task::schedule( t.snap ) );
@@ -418,6 +427,12 @@ namespace divine::mc::machine
             }
 
             return { *r, r.isnew() };
+        }
+
+        void run( tq q, event::error t )
+        {
+            auto [ sn, isnew ] = store( t.to, _ht_sched );
+            this->push( q, event::error( t.from, sn ) );
         }
 
         void run( tq q, task::dedup_state t )
