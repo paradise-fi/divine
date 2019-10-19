@@ -620,6 +620,9 @@ namespace brick::smt
 
         struct UnaryOp : Operation {};
         struct BinaryOp : Operation {};
+
+        struct Unary  : UnaryOp  { Bitwidth bw; };
+        struct Binary : BinaryOp { Bitwidth bw; };
     }
 
     /* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
