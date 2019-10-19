@@ -59,7 +59,7 @@ template< bool l, typename A, typename B > using Choose = typename _choose< l, A
 template< typename T > struct Float;
 
 template< typename T >
-constexpr T full() { return bitlevel::compiletime::ones< T >( 8 * sizeof( T ) ); }
+constexpr T full = bitlevel::compiletime::ones< T >( 8 * sizeof( T ) );
 
 struct Void : Base
 {
@@ -227,7 +227,7 @@ struct Int : Base
     uint8_t taints() { return _meta.taints; }
 
     Int() : _raw( 0 ), _m( 0 ) {}
-    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( value::full< Raw >() ) {}
+    explicit Int( Cooked i ) : _raw( bitcast< Raw >( i ) ), _m( value::full< Raw > ) {}
     Int( Raw r, Raw m, bool ptr = false ) : _raw( r ), _m( m )
     {
         if ( ptr ) _meta.pointer = _isptr;
@@ -274,7 +274,7 @@ struct Int : Base
     }
 
     template< typename T > Int( Float< T > f )
-        : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ), _m( f.defined() ? value::full< Raw >() : 0 )
+        : _raw( bitcast< Raw >( Cooked( f.cooked() ) ) ), _m( f.defined() ? value::full< Raw > : 0 )
     {
         taints( f.taints() );
         using FC = typename Float< T >::Cooked;
@@ -413,8 +413,8 @@ struct Float : Base
     void read( Raw *r ) { _raw = *r; }
     void write( Raw *r ) { *r = _raw; }
 
-    Raw defbits() { return _defined ? full< Raw >() : 0; }
-    void defbits( Raw r ) { _defined = ( r == full< Raw >() ); }
+    Raw defbits() { return _defined ? full< Raw > : 0; }
+    void defbits( Raw r ) { _defined = ( r == full< Raw > ); }
     Raw raw() { return _raw; }
     void raw( Raw r ) { _raw = r; }
 
@@ -518,8 +518,8 @@ struct Pointer : Base
         return r;
     }
 
-    Raw defbits() { return defined() ? full< Raw >() : 0; } /* FIXME */
-    void defbits( Raw r ) { _obj_defined = _off_defined = ( r == full< Raw >() ); }
+    Raw defbits() { return defined() ? full< Raw > : 0; } /* FIXME */
+    void defbits( Raw r ) { _obj_defined = _off_defined = ( r == full< Raw > ); }
 
     Raw raw() { return bitcast< Raw >( _cooked ); }
     void raw( Raw r ) { bitcast( r, _cooked ); }
