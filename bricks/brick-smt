@@ -605,18 +605,8 @@ namespace brick::smt
         }
     };
 
-    /* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
-     * representation of the RPN . */
-    template< typename RPN >
-    struct RPNView
+    namespace token
     {
-        using Variable = typename RPN::Variable;
-        using Constant = typename RPN::template Constant< uint64_t >;
-        using CastOp   = typename RPN::CastOp;
-        using CallOp   = typename RPN::Call;
-
-        RPNView( const RPN & rpn ) : _rpn( rpn ) {}
-
         struct Operation
         {
             Op op;
@@ -630,6 +620,21 @@ namespace brick::smt
 
         struct UnaryOp : Operation {};
         struct BinaryOp : Operation {};
+    }
+
+    /* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
+     * representation of the RPN . */
+    template< typename RPN >
+    struct RPNView
+    {
+        using Variable = typename RPN::Variable;
+        using Constant = typename RPN::template Constant< uint64_t >;
+        using CastOp   = typename RPN::CastOp;
+        using CallOp   = typename RPN::Call;
+        using UnaryOp  = token::UnaryOp;
+        using BinaryOp = token::BinaryOp;
+
+        RPNView( const RPN & rpn ) : _rpn( rpn ) {}
 
         using Token = std::variant< Variable, Constant, CastOp, UnaryOp, BinaryOp, CallOp >;
 
@@ -766,13 +771,11 @@ namespace brick::smt
         using RPN = brick::smt::RPN< std::vector< uint8_t > >;
         using RPNView = brick::smt::RPNView< RPN >;
         using VarID = RPN::VarID;
-        using namespace Token;
+        using namespace token;
 
         using Constant = RPNView::Constant;
         using Variable = RPNView::Variable;
         using CastOp = RPNView::CastOp;
-        //using UnaryOp = View::UnaryOp;
-        //using BinaryOp = View::BinaryOp;
         using CallOp = RPNView::CallOp;
 
         std::map< VarID, RPN > decomp;
