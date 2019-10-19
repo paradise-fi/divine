@@ -38,11 +38,156 @@ namespace divine::mc::task
 
 namespace divine::mc
 {
+    struct mq_block
+    {
+        std::atomic< mq_block * > next;
+        int16_t ptr, ctr;
+        static const size_t byte_size = 4096 - 2 * sizeof( ptr ) - sizeof( next );
+        static const size_t last_idx = byte_size - 1;
+        uint8_t data[ byte_size ];
+
+        mq_block() : next( nullptr ), ptr( 0 ), ctr( 0 )
+        {
+            data[ last_idx ] = 255;
+        }
+
+        template< typename T >
+        uint8_t *aligned()
+        {
+            void *alloc = data + ptr;
+            size_t space = byte_size - ptr - ctr - 1;
+            return reinterpret_cast< uint8_t * >( std::align( alignof( T ), sizeof( T ), alloc, space ) );
+        }
+
+        template< typename T >
+        bool push( const T &v, int tid )
+        {
+            static_assert( sizeof( T ) <= byte_size - 1 );
+            ASSERT( tid < 255 );
+
+            uint8_t *alloc = aligned< T >();
+            if ( !alloc )
+                return false;
+
+            data[ last_idx - ctr ] = tid;
+            std::uninitialized_copy( &v, &v + 1, reinterpret_cast< T * >( alloc ) );
+            ptr = alloc + sizeof( T ) - data;
+            ctr ++;
+            data[ last_idx - ctr ] = 255;
+            return true;
+        }
+
+        bool empty()
+        {
+            return data[ last_idx - ctr ] == 255;
+        }
+
+        template< typename TL, typename F, int idx = 0 >
+        bool pop( F f )
+        {
+            if constexpr ( idx == 0 )
+                if ( empty() )
+                    return false;
+
+            if constexpr ( idx >= TL::size )
+                UNREACHABLE( "type match failure" );
+            else if ( data[ last_idx - ctr ] == idx )
+            {
+                using T = typename TL::template type_at< idx >;
+                uint8_t *fetch = aligned< T >();
+                ASSERT( fetch );
+                T *v = reinterpret_cast< T * >( fetch );
+                f( *v );
+                ++ ctr;
+                ptr = fetch + sizeof( T ) - data;
+                return true;
+            }
+            else
+                return pop< TL, F, idx + 1 >( f );
+        }
+    };
+
+    template< typename TL >
+    struct mq_reader /* threads: at most one reader per queue */
+    {
+        mq_block *to_read;
+        mq_reader() : to_read( new mq_block ) {}
+
+        template< typename F >
+        bool pop( F f )
+        {
+            if ( to_read->empty() && !to_read->next )
+                return false;
+            if ( to_read->empty() )
+                to_read = to_read->next;
+
+            ASSERT( !to_read->empty() );
+            return to_read->pop< TL >( f );
+        }
+    };
+
+    struct mq_sink /* threads: multiple writers should be safe */
+    {
+        std::atomic< mq_block * > sent;
+
+        template< typename TL >
+        mq_sink( mq_reader< TL > &r ) : sent( r.to_read ) {}
+
+        void append( mq_block *node )
+        {
+            mq_block *last = sent.load();
+            while ( !sent.compare_exchange_weak( last, node ) );
+            last->next.store( node );
+        }
+    };
+
+    struct mq_buffer /* instance per sending thread */
+    {
+        mq_block *open;
+        mq_sink &sink;
+
+        mq_buffer( mq_sink &sink ) : open( new mq_block ), sink( sink ) {}
+        ~mq_buffer()
+        {
+            flush( false );
+            delete open; /* in case an empty block was left behind the flush */
+        }
+
+        bool flush( bool alloc = true )
+        {
+            if ( !open->ctr )
+                return false;
+
+            open->ptr = open->ctr = 0;
+            sink.append( open );
+
+            if ( alloc )
+                open = new mq_block;
+            else
+                open = nullptr;
+            return true;
+        }
+    };
+
     template< typename T >
-    using qref = std::deque< T > &;
+    struct mq_writer
+    {
+        using type = T;
+        mq_buffer *buffer;
+        int tid;
+
+        void push( const T &t )
+        {
+            while ( !buffer->open->push( t, tid ) )
+                buffer->flush();
+        }
+    };
+
+    template< typename T >
+    using mq_type = typename T::type;
 
     template< typename... tasks >
-    using task_queue = typename brq::cons_list_t< tasks... >::unique_t::template map_t< qref >;
+    using task_queue = typename brq::cons_list_t< tasks... >::unique_t::template map_t< mq_writer >;
 
     struct machine_base
     {
@@ -70,14 +215,14 @@ namespace divine::mc
         }
 
         template< typename task_t >
-        void push( qref< std::remove_reference_t< task_t > > q, task_t &&t )
+        void push( mq_writer< std::remove_reference_t< task_t > > q, task_t &&t )
         {
             t.msg_from = machine_id();
-            q.push_back( t );
+            q.push( t );
         }
 
         template< typename task_t >
-        void reply( qref< std::remove_reference_t< task_t > > q, task_t &&t )
+        void reply( mq_writer< std::remove_reference_t< task_t > > q, task_t &&t )
         {
             ASSERT_LEQ( 0, _last_msg_from );
             t.msg_to = _last_msg_from;
@@ -166,7 +311,12 @@ namespace divine::mc
     {
         using MachineT = brq::cons_list_t_< Machines... >;
         MachineT _machines;
-        typename TQ::template map_t< std::remove_reference_t > _queue;
+        using task_types = typename TQ::template map_t< mq_type >;
+
+        typename task_types::template map_t< mq_writer > _writers;
+        mq_reader< task_types > _reader;
+        mq_sink _sink;
+        mq_buffer _buffer;
 
         template< typename... ExMachines >
         using Extend = Weaver< TQ, Machines..., ExMachines... >;
@@ -205,10 +355,12 @@ namespace divine::mc
         {
             int i = 0;
             _machines.each( [&]( auto &m ) { m.machine_id( i++ ); } );
+            i = 0;
+            _writers.each( [&]( auto &w ) { w.tid = i++; w.buffer = &_buffer; } );
         }
 
-        Weaver( MachineT mt ) : _machines( mt ) { init_ids(); }
-        Weaver() { init_ids(); }
+        Weaver( MachineT mt ) : _machines( mt ), _sink( _reader ), _buffer( _sink ) { init_ids(); }
+        Weaver() : _sink( _reader ), _buffer( _sink ) { init_ids(); }
 
         template< typename T > T &machine()
         {
@@ -217,10 +369,10 @@ namespace divine::mc
 
         template< typename M, typename T >
         auto run_on( M &m, T &t )
-            -> decltype( m.run( _queue.template view< typename M::tq >(), t ), true )
+            -> decltype( m.run( std::declval< typename M::tq >(), t ), true )
         {
             m.prepare( t );
-            m.run( _queue.template view< typename M::tq >(), t );
+            m.run( _writers.template view< typename M::tq >(), t );
             return true;
         }
 
@@ -233,7 +385,7 @@ namespace divine::mc
 
         template< typename M >
         auto run_on( M &, brq::fallback )
-            -> decltype( _queue.template view< typename M::tq >(), false )
+            -> decltype( _writers.template view< typename M::tq >(), false )
         {
             return false;
         }
@@ -241,8 +393,8 @@ namespace divine::mc
         template< typename T, typename... Args >
         void add( Args... args )
         {
-            qref< T > q = _queue;
-            q.emplace_back( args... );
+            mq_writer< T > q = _writers;
+            q.push( T( args... ) );
         }
 
         void run() /* TODO parallel */
@@ -268,7 +420,8 @@ namespace divine::mc
                 _machines.each( one );
             };
 
-            while ( pop( _queue, process ) );
+            while ( _buffer.flush() )
+                while ( _reader.pop( process ) );
         }
 
         void start()
