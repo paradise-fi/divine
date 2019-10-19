@@ -33,6 +33,7 @@ namespace divine::smt
     //using RPN = brick::smt::RPN< Array< uint8_t > >;
     using RPN = brick::smt::RPN< std::vector< uint8_t > >; // no append ! RPN::extend
     using RPNView = brick::smt::RPNView< RPN >;
+    using namespace brick::smt::token;
 
     using Op = brick::smt::Op;
 
@@ -41,12 +42,7 @@ namespace divine::smt
     using Constant = RPNView::Constant;
     using Variable = RPNView::Variable;
     using CastOp = RPNView::CastOp;
-    using UnaryOp = RPNView::UnaryOp;
-    using BinaryOp = RPNView::BinaryOp;
     using CallOp = RPNView::CallOp;
-
-    struct Unary  : UnaryOp  { Bitwidth bw; };
-    struct Binary : BinaryOp { Bitwidth bw; };
 
     // TODO move to utils
     template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
