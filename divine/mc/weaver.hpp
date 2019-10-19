@@ -222,11 +222,12 @@ namespace divine::mc
         }
 
         template< typename task_t >
-        void reply( mq_writer< std::remove_reference_t< task_t > > q, task_t &&t )
+        void reply( mq_writer< std::remove_reference_t< task_t > > q, task_t &&t, bool update_id = true )
         {
             ASSERT_LEQ( 0, _last_msg_from );
             t.msg_to = _last_msg_from;
-            t.msg_id = _last_msg_id;
+            if ( update_id )
+                t.msg_id = _last_msg_id;
             push( q, t );
         }
     };
