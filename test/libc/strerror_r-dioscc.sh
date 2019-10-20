@@ -21,7 +21,8 @@ fi
 
 ./gnu
 
-divine check gnu
+{ echo "expect --result valid" ; echo "check gnu" ; } > script
+divcheck script
 divine exec --virtual gnu | grep "No such process"
 
 
@@ -46,5 +47,6 @@ fi
 
 ./nognu
 
-divine check nognu
+{ echo "expect --result valid" ; echo "check nognu" ; } > script
+divcheck script
 divine exec --virtual nognu | grep "No such process"

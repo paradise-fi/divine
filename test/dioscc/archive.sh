@@ -41,5 +41,5 @@ if ! [ -s a.out ] || ! objdump -h a.out | grep .llvmbc;  # spawns executable w/ 
     then false;
 fi
 
-divine verify a.out | tee verify.out
-check verify prog.c
+{ echo expect --result error --location prog.c:6 ; echo verify a.out ; } > script
+divcheck script
