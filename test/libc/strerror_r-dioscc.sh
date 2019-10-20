@@ -9,7 +9,8 @@ int main()
 {
     char buf[25];
     char * ret = strerror_r( 3, buf, 25 );
-    assert( strcmp( ret, "No such process" ) == 0 );
+    printf( "%s\n", ret );
+    assert( strstr( ret, "o such process" ) != 0 );
 }
 EOF
 
@@ -23,8 +24,7 @@ fi
 
 { echo "expect --result valid" ; echo "check gnu" ; } > script
 divcheck script
-divine exec --virtual gnu | grep "No such process"
-
+divine exec --virtual gnu | fgrep "o such process"
 
 cat > strerr_nognu.c <<EOF
 #include <string.h>
@@ -34,8 +34,9 @@ int main()
 {
     char buf[25];
     int ret = strerror_r( 3, buf, 25 );
+    printf( "%s\n", buf );
     assert( ret == 0 );
-    assert( strcmp( buf, "No such process" ) == 0 );
+    assert( strstr( buf, "o such process" ) != 0 );
 }
 EOF
 
@@ -49,4 +50,4 @@ fi
 
 { echo "expect --result valid" ; echo "check nognu" ; } > script
 divcheck script
-divine exec --virtual nognu | grep "No such process"
+divine exec --virtual nognu | fgrep "o such process"
