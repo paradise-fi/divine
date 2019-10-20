@@ -60,8 +60,8 @@ bool Info::in_component( vm::CodePointer pc, Components comp )
 
     if ( comp & Component::LibC )
     {
-        if ( startsWith( file, "/dios/src/libc/" ) ||
-             startsWith( file, "/dios/src/arch/" ) ||
+        if ( startsWith( file, "/dios/libc/" ) ||
+             startsWith( file, "/dios/arch/" ) ||
              startsWith( file, "/dios/include/sys/" ) )
             return true;
         if ( startsWith( file, "/dios/include/" ) && file.substr( 14 ).find( '/' ) == std::string::npos )
@@ -69,18 +69,16 @@ bool Info::in_component( vm::CodePointer pc, Components comp )
     }
 
     if ( comp & Component::LibCxx )
-        if ( startsWith( file, "/dios/src/libcxx" ) ||
-             startsWith( file, "/dios/include/libcxx" ) )
+        if ( startsWith( file, "/dios/libcxx" ) )
             return true;
 
     if ( comp & Component::LibRst )
-        if ( startsWith( file, "/dios/src/rst/" ) ||
+        if ( startsWith( file, "/dios/rst/" ) ||
              startsWith( file, "/dios/include/rst/" ) )
             return true;
 
     if ( comp & Component::DiOS )
-        if ( startsWith( file, "/dios/src/dios/" ) ||
-             startsWith( file, "/dios/include/dios/" ) )
+        if ( startsWith( file, "/dios/sys/" ) || startsWith( file, "/dios/vfs/" ) )
             return true;
 
     if ( comp & Component::Program && !startsWith( file, "/dios/" ) )
