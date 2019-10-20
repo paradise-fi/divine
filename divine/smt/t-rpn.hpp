@@ -39,6 +39,7 @@ namespace divine::t_rpn
 
     struct RPN_decomposition
     {
+        using VarID = token::VarID;
         RPN rpn;
 
         // dummy first byte, identifying the abstract domain type
@@ -53,7 +54,7 @@ namespace divine::t_rpn
             rpn.insert( rpn.end(), bytes_begin( t ), bytes_end( t ) );
         }
 
-        Variable add_var( RPN::VarID id )
+        Variable add_var( VarID id )
         {
             Variable v{ Op::VarI32, id };
             append( v );
@@ -96,7 +97,7 @@ namespace divine::t_rpn
         {
             Variable v{ Op::VarI32, 1 };   // x
             append( v );
-            union_find< RPN::VarID > uf;
+            union_find< VarID > uf;
             decompose( rpn, uf );
             ASSERT_EQ( v.id, *uf.find( v.id ) );
         }
@@ -108,7 +109,7 @@ namespace divine::t_rpn
             Constant c{ Op( -64 ), 3 };
             append( c );
             append( Op::Eq );
-            union_find< RPN::VarID > uf;
+            union_find< VarID > uf;
             decompose( rpn, uf );
             ASSERT_EQ( x.id, *uf.find( x.id ) );
 
@@ -147,7 +148,7 @@ namespace divine::t_rpn
             append( Op::Constraint );
 
             // expecting partitions {x,y}{z}
-            union_find< RPN::VarID > uf;
+            union_find< VarID > uf;
             decompose( rpn, uf );
             ASSERT_NEQ( x.id, y.id );
             ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
@@ -198,7 +199,7 @@ namespace divine::t_rpn
             append( Op::Constraint );
 
             // expecting partitions {x,y}{z,d}{e}
-            union_find< RPN::VarID > uf;
+            union_find< VarID > uf;
             decompose( rpn, uf );
             ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
             ASSERT_EQ( *uf.find( z.id ), *uf.find( d.id ) );
