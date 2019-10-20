@@ -1,4 +1,4 @@
-/* TAGS: c++ fin ext */
+/* TAGS: c++ fin big */
 /* CC_OPTS: -std=c++2a */
 /* VERIFY_OPTS: -o nofail:malloc */
 //===----------------------------------------------------------------------===//
