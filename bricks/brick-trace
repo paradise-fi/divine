@@ -261,7 +261,7 @@ namespace brq
         }
 
         template< typename T >
-        string_builder &pad( int pad, const T &v, char p = ' ' )
+        string_builder &pad( int pad, const T &v, char p = ' ', bool left = true )
         {
             int start = _offset;
             *this << v;
@@ -272,12 +272,20 @@ namespace brq
             _make_space( pad );
             if ( !_oom )
             {
-                std::memmove( _buffer + start + pad, _buffer + start, w + 1 );
-                std::memset( _buffer + start, p, pad );
+                if ( left )
+                    std::memmove( _buffer + start + pad, _buffer + start, w + 1 );
+                else
+                    _buffer[ _offset + pad ] = 0;
+                std::memset( _buffer + ( left ? start : _offset ), p, pad );
                 _offset += pad;
             }
             return *this;
         }
+
+        template< typename T >
+        string_builder &lpad( int n, const T &v, char p = ' ' ) { return pad( n, v, p, true ); }
+        template< typename T >
+        string_builder &rpad( int n, const T &v, char p = ' ' ) { return pad( n, v, p, false ); }
     };
 
     /* Wrap __FILE__ and __LINE__, optionally together with a stringified
