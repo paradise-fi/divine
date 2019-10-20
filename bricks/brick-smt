@@ -843,10 +843,9 @@ namespace brick::smt
         using VarID = token::VarID;
         using namespace token;
 
-        using Constant = RPNView::Constant;
-        using Variable = RPNView::Variable;
-        using CastOp = RPNView::CastOp;
-        using CallOp = RPNView::CallOp;
+        using Constant = typename RPNView::Constant;
+        using Variable = typename RPNView::Variable;
+        using CastOp = typename RPNView::CastOp;
 
         std::map< VarID, RPN > decomp;
         std::vector< std::optional< VarID > > stack;
