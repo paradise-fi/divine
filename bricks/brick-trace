@@ -91,9 +91,8 @@ namespace brq
     struct string_builder
     {
         char *_buffer = nullptr;
-        int _capacity = 0, _offset = 0;
-        bool _hex:1;
-        bool _oom:1;
+        int32_t _capacity:30, _offset:30;
+        bool _hex:1, _oom:1;
 
         string_builder( const string_builder & ) = delete;
         string_builder( string_builder &&o )
@@ -105,7 +104,7 @@ namespace brq
             o._offset = 0;
         }
 
-        string_builder() noexcept : _hex( false ), _oom( false ) {}
+        string_builder() noexcept : _capacity( 0 ), _offset( 0 ), _hex( false ), _oom( false ) {}
         ~string_builder() noexcept { free( _buffer ); }
 
         char *pointer() noexcept { return _buffer + _offset; }
