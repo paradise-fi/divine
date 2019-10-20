@@ -40,6 +40,7 @@ int main( int argc, const char **argv )
         }
         auto mod = clang.compile( argv[3], opts );
 
+        TRACE( "bindir =", binDir, "srcdir =", srcDir );
         lart::divine::rewriteDebugPaths( *mod, [=]( auto p )
         {
             auto n = p;
