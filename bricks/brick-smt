@@ -1228,7 +1228,7 @@ namespace brick::smt
             for ( int i = data.size() - 1; i >= 0; --i )
             {
                 int w = std::min( bitwidth - i * 64, 64 ) / 4;
-                o.hex().pad( w, data[ i ], '0' );
+                o << std::hex << brq::left_pad( data[ i ], w, '0' );
             }
         }
         else

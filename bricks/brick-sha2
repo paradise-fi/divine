@@ -971,7 +971,7 @@ namespace sha2
         brq::string_builder s;
         s.hex();
         for ( char x : hash )
-            s.pad( 2, static_cast< unsigned int >( x & 0xff ), '0' );
+            s << brq::left_pad( static_cast< unsigned int >( x & 0xff ), 2, '0' );
         if ( s.truncated() )
             throw std::bad_alloc();
         return s.buffer();

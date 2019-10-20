@@ -88,6 +88,22 @@ namespace brq
      * Besides accepting values to format, string_builder also understands
      * std::dec and std::hex IO manipulators. */
 
+    template< typename T >
+    struct left_pad
+    {
+        const T &value;
+        int16_t width;
+        char letter;
+        bool left = true;
+        left_pad( const T &v, int w, char c = ' ' ) : value( v ), width( w ), letter( c ) {}
+    };
+
+    template< typename T >
+    struct right_pad : left_pad< T >
+    {
+        right_pad( const T &t, int w, char c ) : left_pad< T >( t, w, c ) { this->left = false; }
+    };
+
     struct string_builder
     {
         char *_buffer = nullptr;
@@ -261,31 +277,22 @@ namespace brq
         }
 
         template< typename T >
-        string_builder &pad( int pad, const T &v, char p = ' ', bool left = true )
+        string_builder &operator<<( const left_pad< T > &p )
         {
             int start = _offset;
-            *this << v;
+            *this << p.value;
             int w = _offset - start;
-            pad -= w;
-            if ( pad <= 0 )
-                return *this;
-            _make_space( pad );
-            if ( !_oom )
+            if ( int pad = p.width - w; pad > 0 && _make_space( pad ) )
             {
-                if ( left )
+                if ( p.left )
                     std::memmove( _buffer + start + pad, _buffer + start, w + 1 );
                 else
                     _buffer[ _offset + pad ] = 0;
-                std::memset( _buffer + ( left ? start : _offset ), p, pad );
+                std::memset( _buffer + ( p.left ? start : _offset ), p.letter, pad );
                 _offset += pad;
             }
             return *this;
         }
-
-        template< typename T >
-        string_builder &lpad( int n, const T &v, char p = ' ' ) { return pad( n, v, p, true ); }
-        template< typename T >
-        string_builder &rpad( int n, const T &v, char p = ' ' ) { return pad( n, v, p, false ); }
     };
 
     /* Wrap __FILE__ and __LINE__, optionally together with a stringified
