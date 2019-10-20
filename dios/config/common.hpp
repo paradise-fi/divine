@@ -1,6 +1,6 @@
 namespace __dios
 {
-    #include <dios/macro/no_memory_tags>
+    #include <sys/no_memory_tags.def>
 
     #define SYSCALL( name, schedule, ret, arg )                                   \
                                                                                   \
@@ -14,7 +14,7 @@ namespace __dios
     #include <sys/syscall.def>
 
     #undef SYSCALL
-    #include <dios/macro/no_memory_tags.cleanup>
+    #include <sys/no_memory_tags.undef>
 
 }
 

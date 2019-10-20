@@ -151,7 +151,7 @@ namespace fs {
         }
 
 
-    #include <dios/macro/tags_to_class>
+    #include <dios/proxy/tags_to_class.def>
 
     #define SYSCALL_DIOS(...)
     #define SYSCALL( name, schedule, ret, arg ) \
@@ -178,7 +178,7 @@ namespace fs {
     #undef SYSCALL_DIOS
     #undef SYSCALL
 
-    #include <dios/macro/tags_to_class.cleanup>
+    #include <dios/proxy/tags_to_class.undef>
 
         int open( const char *pathname, OFlags flags, mode_t mode )
         {

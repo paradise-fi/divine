@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #include <sys/utsname.h>
 
-#include <dios/macro/no_memory_tags>
+#include <sys/no_memory_tags.def>
 
 
 #define SYSCALL_DIOS(...)

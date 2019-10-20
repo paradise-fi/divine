@@ -15,7 +15,7 @@
 
 #include <brick-tuple>
 #include <brick-hlist>
-#include <dios/macro/no_memory_tags>
+#include <sys/no_memory_tags.def>
 
 namespace __dios
 {
@@ -67,7 +67,7 @@ namespace __dios
         }
     }
 
-#include <dios/macro/no_memory_tags.cleanup>
+#include <sys/no_memory_tags.undef>
 #undef SYSCALL
 
 }

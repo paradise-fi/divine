@@ -201,7 +201,7 @@ struct Replay : public Next {
     }
 
                 //TODO : line 205 + 199 - co urobit ak zle!
-    #include <dios/macro/tags_to_class>
+    #include <dios/proxy/tags_to_class.def>
     #define SYSCALL_DIOS(...)
 
     #define SYSCALL( name, schedule, ret, arg ) \
@@ -227,7 +227,7 @@ struct Replay : public Next {
     #undef SYSCALL_DIOS
     #undef SYSCALL
 
-    #include <dios/macro/tags_to_class.cleanup>
+    #include <dios/proxy/tags_to_class.undef>
 
 
         /*

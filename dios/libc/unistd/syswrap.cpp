@@ -13,7 +13,7 @@
 #include <signal.h>
 #include <dios.h>
 
-#include <dios/macro/no_memory_tags>
+#include <sys/no_memory_tags.def>
 
 namespace __dios
 {

@@ -131,13 +131,13 @@ struct BaseContext : KObject
     /* Instantiate a method for each system call known to us. Implementations
      * in `syscall.cpp`. */
 
-    #include <dios/macro/no_memory_tags>
+    #include <sys/no_memory_tags.def>
     #define SYSCALL( name, schedule, ret, arg ) ret name arg;
 
     #include <sys/syscall.def>
 
     #undef SYSCALL
-    #include <dios/macro/no_memory_tags.cleanup>
+    #include <sys/no_memory_tags.undef>
 };
 
 }

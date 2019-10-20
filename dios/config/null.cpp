@@ -1,6 +1,6 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
-#include <dios/macro/no_memory_tags>
+#include <sys/no_memory_tags.def>
 
 #define SYSCALL( name, schedule, ret, arg ) ret SysProxy::name arg noexcept { __builtin_trap(); }
 
@@ -10,7 +10,7 @@ namespace __dios
 }
 
 #undef SYSCALL
-#include <dios/macro/no_memory_tags.cleanup>
+#include <sys/no_memory_tags.undef>
 
 extern "C" void __dios_boot( const _VM_Env *env );
 

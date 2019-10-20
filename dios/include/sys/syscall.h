@@ -41,9 +41,9 @@ namespace __dios
     struct SysProxy
     {
         #define SYSCALL( name, schedule, ret, arg ) static ret name arg noexcept;
-        #include <dios/macro/no_memory_tags>
+        #include <sys/no_memory_tags.def>
         #include <sys/syscall.def>
-        #include <dios/macro/no_memory_tags.cleanup>
+        #include <sys/no_memory_tags.undef>
         #undef SYSCALL
     };
 }
@@ -57,9 +57,9 @@ long syscall( int number, ... ) __nothrow;
 
 #define SYSCALL(...)
 #define SYSCALL_DIOS( name, sched, ret, args ) ret __dios_ ## name args __nothrow;
-#include <dios/macro/no_memory_tags>
+#include <sys/no_memory_tags.def>
 #include <sys/syscall.def>
-#include <dios/macro/no_memory_tags.cleanup>
+#include <sys/no_memory_tags.undef>
 #undef SYSCALL
 #undef SYSCALL_DIOS
 

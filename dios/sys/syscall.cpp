@@ -8,7 +8,7 @@
 namespace __dios
 {
 
-#include <dios/macro/no_memory_tags>
+#include <sys/no_memory_tags.def>
 #define SYSCALL( name, schedule, ret, arg ) \
     ret BaseContext:: name arg { \
         __dios_trace( 0, "Syscall " #name " not implemented in this configuration" ); \
@@ -16,7 +16,7 @@ namespace __dios
         __builtin_unreachable(); \
     }
 #include <sys/syscall.def>
-#include <dios/macro/no_memory_tags.cleanup>
+#include <sys/no_memory_tags.undef>
 #undef SYSCALL
 
 } // namespace _dios
