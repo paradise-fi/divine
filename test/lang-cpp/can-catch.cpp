@@ -1,4 +1,5 @@
 /* TAGS: min c++ */
+/* CC_OPTS: -I/dios */
 #include <libcxxabi/src/private_typeinfo.h>
 #include <memory>
 #include <exception>
