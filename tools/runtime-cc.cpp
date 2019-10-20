@@ -15,7 +15,7 @@ DIVINE_UNRELAX_WARNINGS
 using namespace divine;
 using namespace brick;
 
-#define VERSION "3" /* bump this to force rebuilds despite .fp matches */
+#define VERSION "4" /* bump this to force rebuilds despite .fp matches */
 
 /* usage: runtime-cc srcdir bindir source.c output.bc [flags] */
 int main( int argc, const char **argv )
@@ -33,7 +33,8 @@ int main( int argc, const char **argv )
         std::string fpFilename = std::string( argv[ 4 ] ) + ".fp";
         std::string oldFp = fs::readFileOr( fpFilename, {} );
         std::string newFp = VERSION ":" + sha2::to_hex( sha2_512( prec ) );
-        if ( oldFp == newFp && fs::exists( argv[ 4 ] ) ) {
+        if ( oldFp == newFp && fs::exists( argv[ 4 ] ) )
+        {
             fs::touch( argv[ 4 ] );
             return 0;
         }
@@ -41,22 +42,13 @@ int main( int argc, const char **argv )
 
         lart::divine::rewriteDebugPaths( *mod, [=]( auto p )
         {
-            std::string relpath;
+            auto n = p;
             if ( string::startsWith( p, srcDir ) )
-                relpath = p.substr( srcDir.size() );
+                n = p.substr( srcDir.size() );
             else if ( string::startsWith( p, binDir ) )
-                relpath = p.substr( binDir.size() );
-            if ( string::startsWith( relpath, "/dios" ) )
-                relpath = relpath.substr( 5 );
-            if ( !relpath.empty() )
-            {
-                while ( fs::isPathSeparator( relpath[0] ) )
-                    relpath.erase( relpath.begin() );
-                auto result = fs::joinPath( rt::directory( relpath ), relpath );
-                TRACE( "rewrite", p, "to", result );
-                return result;
-            }
-            return p;
+                n = p.substr( binDir.size() );
+            TRACE( "rewrite", p, "to", n );
+            return n;
         } );
 
         brick::llvm::writeModule( mod.get(), argv[4] );
