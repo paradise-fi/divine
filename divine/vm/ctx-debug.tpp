@@ -76,7 +76,7 @@ namespace divine::vm::ctx
             if ( !flagged )
                 this->fault( _VM_F_Leak, this->frame(), this->pc() );
             flagged = true;
-            trace( "LEAK: " + brick::string::fmt( ptr ) );
+            this->_fault += "object " + brick::string::fmt( ptr ) + " leaked";
         };
 
         if ( this->debug_mode() )
