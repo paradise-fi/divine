@@ -45,7 +45,7 @@ int main( int argc, const char **argv )
             auto n = p;
             if ( string::startsWith( p, srcDir ) )
                 n = p.substr( srcDir.size() );
-            else if ( string::startsWith( p, binDir ) )
+            if ( string::startsWith( p, binDir ) )
                 n = p.substr( binDir.size() );
             TRACE( "rewrite", p, "to", n );
             return n;
