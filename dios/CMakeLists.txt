@@ -55,8 +55,8 @@ macro( mkobjs var flags )
         DEPENDS runtime-cc ${f} ${H_RUNTIME} ${HOSTABI} ${VMINC} ${STDATOMIC} ${H_BRICKS}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
-        COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
-                           ${f} bc/${out} ${flags} )
+        COMMAND runtime-cc ${divine_SOURCE_DIR} ${divine_BINARY_DIR} ${f} bc/${out} ${flags} )
+
     stringify( "dios" "." ${f} )
   endforeach()
 endmacro()
