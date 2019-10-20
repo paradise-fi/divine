@@ -5,6 +5,12 @@
 
 volatile int glob;
 
+void flag( const char *msg )
+{
+    __vm_trace( _VM_T_Fault, msg );
+    __vm_ctl_flag( 0, _VM_CF_Error );
+}
+
 bool isZero() { return glob == 0; }
 
 struct DummyMon : public __dios::Monitor
@@ -14,9 +20,10 @@ struct DummyMon : public __dios::Monitor
 
 struct GlobMon : public __dios::Monitor
 {
-    void step()  {
+    void step()
+    {
         if ( !isZero() )
-            __vm_ctl_flag( 0, _VM_CF_Error ); /* ERROR */
+            flag( "glob is not zero" ); /* ERROR */
     }
 };
 
