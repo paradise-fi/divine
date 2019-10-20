@@ -30,15 +30,23 @@ namespace divine::rt
 
     static std::string fixname( std::string n )
     {
-        if ( n == "libcxx.a" ) return "libc++.a";
-        if ( n == "libcxxabi.a" ) return "libc++abi.a";
-        return n;
+        using brick::string::endsWith;
+
+        if ( n == "libcxx.a" ) n = "libc++.a";
+        if ( n == "libcxxabi.a" ) n = "libc++abi.a";
+        if ( endsWith( n, ".bc" ) || endsWith( n, ".a" ) )
+            return "/dios/lib/" + n;
+        else
+            return "/dios/" + n;
     }
 
     void each( std::function< void( std::string, std::string_view ) > yield )
     {
         for ( auto src = str::dios_list; !src->n.empty(); ++src )
-            yield( brick::fs::joinPath( rt::directory( src->n ), fixname( src->n ) ), src->c );
+        {
+            TRACE( "yielding", fixname( src->n ) );
+            yield( fixname( src->n ), src->c );
+        }
     }
 
     std::string_view dios_host()

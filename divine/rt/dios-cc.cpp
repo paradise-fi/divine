@@ -30,10 +30,10 @@ void add_dios_header_paths( std::vector< std::string >& paths )
     using namespace brick::fs;
 
     paths.insert( paths.end(),
-                 { "-isystem", joinPath( includeDir, "libcxx/include" )
-                 , "-isystem", joinPath( includeDir, "libcxxabi/include" )
-                 , "-isystem", joinPath( includeDir, "libunwind/include" )
-                 , "-isystem", includeDir } );
+                 { "-isystem", "/dios/libcxx/include"
+                 , "-isystem", "/dios/libcxxabi/include"
+                 , "-isystem", "/dios/libunwind/include"
+                 , "-isystem", "/dios/include" } );
 }
 
 void add_dios_defines( std::vector< std::string >& flags )
