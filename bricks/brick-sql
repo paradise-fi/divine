@@ -501,8 +501,8 @@ namespace brq::sql
         {
             int count = 0;
             list.each( [&]( auto ) { ++count; } );
-            _params.reserve( count );
-            _memory.reserve( count );
+            _params.reserve( _params.size() + count );
+            _memory.reserve( _memory.size() + count );
 
             int i = _params.size();
             list.each( [&]( auto &v ) { bind_one( v ); } );
