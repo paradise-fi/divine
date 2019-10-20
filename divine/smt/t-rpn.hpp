@@ -54,6 +54,12 @@ namespace divine::t_rpn
             rpn.insert( rpn.end(), bytes_begin( t ), bytes_end( t ) );
         }
 
+        void clear()
+        {
+            rpn.clear();
+            append( char( 0 ) );
+        }
+
         Variable add_var( VarID id )
         {
             Variable v{ Op::VarI32, id };
@@ -112,44 +118,46 @@ namespace divine::t_rpn
             union_find< VarID > uf;
             decompose( rpn, uf );
             ASSERT_EQ( x.id, *uf.find( x.id ) );
+            clear();
 
             Variable y{ Op::VarI32, 2 };
             append( y );
             Constant c2{ Op( -64 ), 4 };
             append( c2 );
             append( Op::Eq );
-            append( Op::And );
             decompose( rpn, uf );
             ASSERT_NEQ( x.id, y.id );
-            ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
+            ASSERT_NEQ( *uf.find( x.id ), *uf.find( y.id ) );
         }
 
         // &&C = constraint
         TEST( x_y_z )
         {
+            union_find< VarID > uf;
+
             Variable b{ Op::VarBool, 1 };
             append( b );
             Variable z{ Op::VarI32, 2 };       //  ( z=z ) &&C TRUE
             append( z );
             append( z );
             append( Op::Eq );
-            append( Op::Constraint );
+            decompose( rpn, uf );
+            clear();
 
             Variable x{ Op::VarI32, 3 };       //  &&C ( x=x ) 
             append( x );
             append( x );
             append( Op::Eq );
-            append( Op::Constraint );
+            decompose( rpn, uf );
+            clear();
 
             Variable y{ Op::VarI32, 4 };
             append( x );
             append( y );                       //  &&C ( y=x )
             append( Op::Eq );
-            append( Op::Constraint );
+            decompose( rpn, uf );
 
             // expecting partitions {x,y}{z}
-            union_find< VarID > uf;
-            decompose( rpn, uf );
             ASSERT_NEQ( x.id, y.id );
             ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
             ASSERT_NEQ( z.id, x.id );
@@ -159,6 +167,7 @@ namespace divine::t_rpn
 
         TEST( match_variables )
         {
+            union_find< VarID > uf;
             Variable b{ Op::VarBool, 1 };
             Variable x{ Op::VarI32, 2 };
             Variable y{ Op::VarI32, 3 };
@@ -172,34 +181,36 @@ namespace divine::t_rpn
             append( x );
             append( x );
             append( Op::Eq );
-            append( Op::Constraint );
+            decompose( rpn, uf );
+            clear();
 
             // (z = z)
             append( z );
             append( z );
             append( Op::Eq );
-            append( Op::Constraint );
+            decompose( rpn, uf );
+            clear();
 
             // (x = y)
             append( x );
             append( y );
             append( Op::Eq );
-            append( Op::Constraint );
+            decompose( rpn, uf );
+            clear();
 
             // (z < d)
             append( z );
             append( d );
             append( Op::BvULT );
-            append( Op::Constraint );
+            decompose( rpn, uf );
+            clear();
 
             // (e = 3)
             append( e );
             append( c );
             append( Op::Eq );
-            append( Op::Constraint );
 
             // expecting partitions {x,y}{z,d}{e}
-            union_find< VarID > uf;
             decompose( rpn, uf );
             ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
             ASSERT_EQ( *uf.find( z.id ), *uf.find( d.id ) );
