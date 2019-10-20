@@ -835,9 +835,10 @@ namespace brick::smt
 
     // decompose the input RPN into smaller RPNs
     // which have dependent variables, for later caching
+    // returns the VarID of the last representant after union
     // TODO: output iterator
     template< typename RPN >
-    void decompose( const RPN &rpn, union_find< token::VarID >& uf )
+    std::optional< token::VarID > decompose( const RPN &rpn, union_find< token::VarID >& uf )
     {
         using RPNView = brick::smt::RPNView< RPN >;
         using VarID = token::VarID;
@@ -849,6 +850,7 @@ namespace brick::smt
 
         std::map< VarID, RPN > decomp;
         std::vector< std::optional< VarID > > stack;
+        std::optional< VarID > repr = std::nullopt;
 
         auto pop = [&]()
         {
@@ -860,16 +862,13 @@ namespace brick::smt
         auto handle_binary = [&] ( BinaryOp bin )
         {
             if ( bin.op == Op::Constraint )
-            {
-                pop();
-                pop();
-                stack.emplace_back( std::nullopt ); // TODO: insert a 'true'
-            }
+                UNREACHABLE( "Op::Constraint in decompose()" );
             else
             {
                 auto n1 = pop();
                 auto n2 = pop();
-                stack.emplace_back( uf.union_( n1, n2 ) );
+                repr = uf.union_( n1, n2 );
+                stack.emplace_back( repr );
             }
         };
 
@@ -886,6 +885,8 @@ namespace brick::smt
 
         for( auto term : RPNView( rpn ) )
             std::visit( handle_term, term );
+
+        return repr;
     }
 
     template< typename T >
