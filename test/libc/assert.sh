@@ -11,6 +11,6 @@ int main()
 }
 EOF
 
-if ! divine verify prog.c | grep "Assertion failed: 1 != 1, file prog.c, line 5."
+if ! divine verify prog.c | fgrep "prog.c:5: int main(): assertion '1 != 1' failed"
     then false;
 fi
