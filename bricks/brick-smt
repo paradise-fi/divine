@@ -761,8 +761,6 @@ namespace brick::smt
         const RPN & _rpn;
     };
 
-    using Vec_u8 = std::vector< uint8_t >;
-
     // TODO keeps getting copied about
     template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
     template<class... Ts> overload(Ts...) -> overload<Ts...>;
@@ -836,16 +834,17 @@ namespace brick::smt
     // decompose the input RPN into smaller RPNs
     // which have dependent variables, for later caching
     // TODO: output iterator
-    static void decompose( const RPN< Vec_u8 > &rpn, union_find< RPN< Vec_u8 >::VarID >& uf )
+    template< typename RPN >
+    void decompose( const RPN &rpn, union_find< typename RPN::VarID >& uf )
     {
-        using RPN = brick::smt::RPN< std::vector< uint8_t > >;
         using RPNView = brick::smt::RPNView< RPN >;
-        using VarID = RPN::VarID;
+        using VarID = typename RPN::VarID;
         using namespace token;
 
         using Constant = RPNView::Constant;
         using Variable = RPNView::Variable;
         using CastOp = RPNView::CastOp;
+        using CallOp = RPNView::CallOp;
 
         std::map< VarID, RPN > decomp;
         std::vector< std::optional< VarID > > stack;
