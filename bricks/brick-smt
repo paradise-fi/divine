@@ -379,6 +379,28 @@ namespace brick::smt
         return reinterpret_cast< uint8_t * >( const_cast< std::remove_cv_t< T * > >( &v ) ) + sizeof( T );
     }
 
+    namespace token
+    {
+        using VarID = uint16_t;
+
+        struct Operation
+        {
+            Op op;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Operation &operation ) -> decltype( os << "" )
+            {
+                return os << name( operation.op );
+            }
+        };
+
+        struct UnaryOp : Operation {};
+        struct BinaryOp : Operation {};
+
+        struct Unary  : UnaryOp  { Bitwidth bw; };
+        struct Binary : BinaryOp { Bitwidth bw; };
+    }
+
     /* Holds bytecode (a sequence of bytes) in the underlying container
      * to encode operations and their operands in Reverse Polish Notation.
      * The bytecode is parsed by RPNView, RPN only builds/holds it.
@@ -397,7 +419,7 @@ namespace brick::smt
     template< typename Container >
     struct RPN : Container
     {
-        using VarID = uint16_t;
+        using VarID = token::VarID;
 
         using size_type = typename Container::size_type;
         using value_type = typename Container::value_type;
@@ -605,26 +627,6 @@ namespace brick::smt
             this->append( other.size() - 1, std::next( other.begin() ), other.end() );
         }
     };
-
-    namespace token
-    {
-        struct Operation
-        {
-            Op op;
-
-            template< typename stream >
-            friend auto operator<<( stream &os, const Operation &operation ) -> decltype( os << "" )
-            {
-                return os << name( operation.op );
-            }
-        };
-
-        struct UnaryOp : Operation {};
-        struct BinaryOp : Operation {};
-
-        struct Unary  : UnaryOp  { Bitwidth bw; };
-        struct Binary : BinaryOp { Bitwidth bw; };
-    }
 
     /* Decoder of RPN bytecode, produces the SMT-LIB-specific textual
      * representation of the RPN . */
@@ -835,10 +837,10 @@ namespace brick::smt
     // which have dependent variables, for later caching
     // TODO: output iterator
     template< typename RPN >
-    void decompose( const RPN &rpn, union_find< typename RPN::VarID >& uf )
+    void decompose( const RPN &rpn, union_find< token::VarID >& uf )
     {
         using RPNView = brick::smt::RPNView< RPN >;
-        using VarID = typename RPN::VarID;
+        using VarID = token::VarID;
         using namespace token;
 
         using Constant = RPNView::Constant;
