@@ -15,7 +15,7 @@ void routine( void * x )
     while( !start );
     int *tls = getTls( __dios_this_task() );
     *tls = 42;
-    __dios_suicide();
+    while ( 1 );
 }
 
 
