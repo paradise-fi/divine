@@ -17,9 +17,11 @@
 
 void __assert_fail( const char *stmt, const char *file, unsigned line, const char *fun )
 {
+    int masked = __dios_mask( 1 );
     char buffer[ 200 ];
     snprintf( buffer, 200, "%s:%u: %s: assertion '%s' failed", file, line, fun, stmt );
     __dios_fault( _VM_F_Assert, buffer );
+    __dios_mask( masked );
 }
 
 #endif
