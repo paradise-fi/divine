@@ -145,9 +145,8 @@ namespace brq
             return make_cons( car_, cdr_ );
         }
 
-        cons( const car_t &car, const cdr_t &cdr )
-            : cdr_t( cdr ), _car( car )
-        {}
+        cons( const car_t &car, const cdr_t &cdr ) : cdr_t( cdr ), _car( car ) {}
+        cons( const car_t &car ) : _car( car ) {}
 
         template< typename T, typename U, typename... Us >
         cons( const T &t, const U &u, const Us &... us ) : cdr_t( u, us... ), _car( t ) {}
@@ -164,7 +163,7 @@ namespace brq
     template< typename C, typename D >
     constexpr auto cons_reverse( const C &cell, const D &rev )
     {
-        return cons_reverse( cell.cdr, cons( cell.car, rev ) );
+        return cons_reverse( cell.cdr(), cons< typename C::car_t, D >( cell.car(), rev ) );
     }
 
     static auto cons_list() { return nil(); }
