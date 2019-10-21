@@ -42,7 +42,7 @@ failed()
     if test -e $list; then
         echo "Some tests failed:"
         echo
-        egrep 'failed|timeout' $list | perl -pe 's,([a-z0-9]+):(.*) (.*),    $3: [$1] $2,'
+        egrep '(failed|timeout)$' $list | perl -pe 's,([a-z0-9]+):(.*) (.*),    $3: [$1] $2,'
         echo
         if egrep -q 'warnings|skipped' $list; then warnings; fi
         echo "Remaining $(grep -c passed $list) tests passed. Stopping here."
@@ -107,7 +107,7 @@ fi
 (echo "# Test Results"; echo) >> report.txt
 
 rm -f $list
-if ! make ${buildtype}-check JOBS=6 || egrep -q 'failed|timeout|unknown' $list; then
+if ! make ${buildtype}-check JOBS=6 || egrep -q '(failed|timeout|unknown)$' $list; then
     test -e $list && cp report.txt doc/website/
     failed >> report.txt
     finished 1
