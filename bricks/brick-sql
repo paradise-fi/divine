@@ -37,7 +37,7 @@ namespace brq::sql
     };
 
     template< typename T >
-    std::string_view get_name( T t, char quote = '"' )
+    std::string_view get_name( T, char quote = '"' )
     {
         static std::string name;
         if ( name.empty() )
@@ -194,7 +194,7 @@ namespace brq::sql
         static constexpr bool is_qualified = true;
 
         template< typename CT >
-        static std::string_view column_name( const CT &ct )
+        static std::string_view column_name( const CT & )
         {
             static auto name = std::string( get_name( table() ) ) +
                                "." + std::string( col().column_name( col() ) );
@@ -206,7 +206,7 @@ namespace brq::sql
     struct function : col
     {
         template< typename CT >
-        static std::string_view column_name( const CT &ct )
+        static std::string_view column_name( const CT & )
         {
             static auto name = std::string( get_name( self< col >(), 0 ) ) + "( " +
                                std::string( col().column_name( col() ) ) + " )::" +
@@ -985,7 +985,7 @@ BRICK_SQL_OP( | )
         }
 
         template< typename stream >
-        void print( stream &s, int &id ) const
+        void print( stream &s, int & ) const
         {
             if ( !_distinct )
                 s << "select ";
