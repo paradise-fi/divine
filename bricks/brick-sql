@@ -506,8 +506,8 @@ namespace brq::sql
             _memory.reserve( _memory.size() + count );
 
             int i = _params.size();
-            list.each( [&]( auto &v ) { bind_one( v ); } );
             list.each( [&]( auto &v ) { _debug << " $" << ++i << " = '" << v << "'"; } );
+            list.each( [&]( auto &v ) { bind_one( v ); } );
             return *this;
         }
 
