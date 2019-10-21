@@ -91,22 +91,6 @@ namespace brq
      * Besides accepting values to format, string_builder also understands
      * std::dec and std::hex IO manipulators. */
 
-    template< typename T >
-    struct left_pad
-    {
-        const T &value;
-        int16_t width;
-        char letter;
-        bool left = true;
-        left_pad( const T &v, int w, char c = ' ' ) : value( v ), width( w ), letter( c ) {}
-    };
-
-    template< typename T >
-    struct right_pad : left_pad< T >
-    {
-        right_pad( const T &t, int w, char c ) : left_pad< T >( t, w, c ) { this->left = false; }
-    };
-
     struct string_builder
     {
         char *_buffer = nullptr;
@@ -318,25 +302,57 @@ namespace brq
             _buffer[ _offset ] = 0;
             return *this;
         }
+    };
 
-        template< typename T >
-        string_builder &operator<<( const left_pad< T > &p )
+    struct mark_t
+    {
+        string_builder *b = nullptr;
+        int32_t mark;
+
+        mark_t() = default;
+        mark_t( string_builder &b ) : b( &b ), mark( b._offset ) {}
+        template< typename T > mark_t operator<<( const T &v ) { *b << v; return *this; }
+    };
+
+    struct pad
+    {
+        mark_t mark;
+        int width;
+        char ch;
+        pad( int w, char ch = ' ' ) : width( w ), ch( ch ) {}
+        pad( string_builder &b, pad p ) : mark( b ), width( p.width ), ch( p.ch ) {}
+
+        template< typename T > pad operator<<( const T &v ) { mark << v; return *this; }
+        static string_builder &write( string_builder &b, int width, int from, char ch, bool left )
         {
-            int start = _offset;
-            *this << p.value;
-            int w = _offset - start;
-            if ( int pad = p.width - w; pad > 0 && _make_space( pad ) )
+            int output_width = b._offset - from;
+            if ( int pad = width - output_width; pad > 0 && b._make_space( pad ) )
             {
-                if ( p.left )
-                    std::memmove( _buffer + start + pad, _buffer + start, w + 1 );
+                if ( left )
+                    std::memmove( b._buffer + from + pad, b._buffer + from, output_width + 1 );
                 else
-                    _buffer[ _offset + pad ] = 0;
-                std::memset( _buffer + ( p.left ? start : _offset ), p.letter, pad );
-                _offset += pad;
+                    b._buffer[ b._offset + pad ] = 0;
+                std::memset( b._buffer + ( left ? from : b._offset ), ch, pad );
+                b._offset += pad;
             }
-            return *this;
+            return b;
         }
     };
+
+    static mark_t mark;
+
+    static mark_t operator<<( string_builder &bld, mark_t ) { return mark_t( bld ); }
+    static pad operator<<( string_builder &bld, pad p ) { return pad( bld, p ); }
+
+    static string_builder &operator<<( mark_t m, pad p )
+    {
+        return pad::write( *m.b, p.width, m.mark, p.ch, false );
+    }
+
+    static string_builder &operator<<( pad p, mark_t )
+    {
+        return pad::write( *p.mark.b, p.width, p.mark.mark, p.ch, true );
+    }
 
     /* Wrap __FILE__ and __LINE__, optionally together with a stringified
      * assertion statement. Needs to be cheap to construct and pass around,
