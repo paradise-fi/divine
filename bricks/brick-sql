@@ -128,6 +128,7 @@ namespace brq::sql
     template<> struct type_map< std::u32string > { static auto name() { return "text"; } };
     template<> struct type_map< std::u32string_view > { static auto name() { return "text"; } };
     template<> struct type_map< std::string >    { static auto name() { return "bytea"; } };
+    template<> struct type_map< std::string_view > { static auto name() { return "bytea"; } };
     template<> struct type_map< const char * >   { static auto name() { return "bytea"; } };
     template<> struct type_map< date >           { static auto name() { return "date"; } };
     template<> struct type_map< time >           { static auto name() { return "time"; } };
@@ -464,7 +465,7 @@ namespace brq::sql
         void bind_one( int32_t &t ) { t = htobe32( t ); bind_raw( t ); }
         void bind_one( int16_t &t ) { t = htobe16( t ); bind_raw( t ); }
         void bind_one( bool &t )    { bind_raw( t ); }
-        void bind_one( const std::string &s ) { bind_mem( s.data(), s.size() ); }
+        void bind_one( std::string_view s ) { bind_mem( s.data(), s.size() ); }
         void bind_one( std::u32string_view us )
         {
             std::wstring_convert< std::codecvt_utf8< char32_t >, char32_t > conv;
