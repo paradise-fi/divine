@@ -318,18 +318,18 @@ namespace brq::sql
         auto &get( vs_t &vs )
         {
             if constexpr ( std::is_same_v< col, typename cs_t::car_t > )
-                return vs.car;
+                return vs.car();
             else
-                return get< col, typename cs_t::cdr_t >( vs.cdr );
+                return get< col, typename cs_t::cdr_t >( vs.cdr() );
         }
 
         template< int i > auto &get() { return get< i >( _values ); }
         template< int i, typename vs_t > auto &get( vs_t &vs )
         {
             if constexpr ( i == 0 )
-                return vs.car;
+                return vs.car();
             else
-                return get< i - 1, typename vs_t::cdr_t >( vs.cdr );
+                return get< i - 1, typename vs_t::cdr_t >( vs.cdr() );
         }
 
         template< typename col >
