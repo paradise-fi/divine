@@ -3,6 +3,7 @@
 
 #include <rst/common.hpp>
 #include <rst/base.hpp>
+#include <util/map.hpp>
 
 #include <brick-smt>
 #include <type_traits>
@@ -322,8 +323,13 @@ namespace __dios::rst::abstract {
     /* `counter` is for unique variable names */
     struct TermState
     {
+        using VarID = smt::token::VarID;
+
         uint16_t counter = 0;  // TODO: why is this thing not atomic
-        Term constraints;
+        Term constraints;  // TODO: remove
+
+        smt::union_find< VarID > uf;
+        ArrayMap< VarID, Term > decomp; // union-find representant to relevant RPNs
     };
 
     extern TermState __term_state;

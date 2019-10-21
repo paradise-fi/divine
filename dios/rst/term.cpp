@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
 #include <rst/term.hpp>
+#include <util/array.hpp>
+#include <util/map.hpp>
 
 #include <cassert>
 
@@ -44,12 +46,39 @@ namespace __dios::rst::abstract {
         if ( !__term_state.constraints.pointer )
             pc = Term::lift_one_i1( true );
 
-        pc.extend( constraint );
-        if ( !expect )
-            pc.apply< Op::Not >();
-        pc.apply< Op::Constraint >();
+        auto append_term = [&]( TermState::VarID var, const Term& term )
+        {
+            auto it = __term_state.decomp.find( var );
+            if( it != __term_state.decomp.end() )
+            {
+                auto& t = (*it).second;
+                t.extend( term );
+                if ( !expect )
+                    t.apply< Op::Not >();
+                t.apply< Op::Constraint >();
+            }
+            else
+            {
+                __term_state.decomp.emplace( var, term );
+                if ( !expect )
+                {
+                    (*__term_state.decomp.find( var )).second.apply< Op::Not >();
+                }
+            }
+        };
 
-        __vm_trace( _VM_T_Assume, pc.pointer );
+        auto id = decompose( constraint.as_rpn(), __term_state.uf );
+        if ( !id )
+        {
+            TRACE( "Only constants present in Term" );
+            //__vm_trace( _VM_T_Assume, constraint.pointer );
+        }
+        else  // append to relevant decomp
+        {
+            append_term( *id, constraint );
+            __vm_trace( _VM_T_Assume, ((*__term_state.decomp.find( *id )).second).pointer );
+        }
+
         return *this;
     }
 
