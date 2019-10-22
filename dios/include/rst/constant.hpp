@@ -74,6 +74,12 @@ namespace __dios::rst::abstract {
             if ( bw == bitwidth< type >() ) \
                 return lift( static_cast< type >( val ) );
 
+        template< typename T >
+        _LART_INLINE T lower() const noexcept
+        {
+            return static_cast< T >( value );
+        }
+
         _LART_INTERFACE
         static Ptr op_thaw( Ptr constant, uint8_t bw ) noexcept
         {
