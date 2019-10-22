@@ -328,7 +328,7 @@ namespace __dios::rst::abstract {
         uint16_t counter = 0;  // TODO: why is this thing not atomic
         Term constraints;  // TODO: remove
 
-        smt::union_find< VarID > uf;
+        smt::union_find< ArrayMap< VarID, VarID > > uf;
         ArrayMap< VarID, Term > decomp; // union-find representant to relevant RPNs
     };
 
