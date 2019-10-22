@@ -328,8 +328,8 @@ namespace __dios::rst::abstract {
         uint16_t counter = 0;  // TODO: why is this thing not atomic
         Term constraints;  // TODO: remove
 
-        smt::union_find< ArrayMap< VarID, VarID > > uf;
-        ArrayMap< VarID, Term > decomp; // union-find representant to relevant RPNs
+        smt::union_find< ArrayMap< VarID, VarID, _VM_PT_Weak > > uf;
+        ArrayMap< VarID, Term, _VM_PT_Weak > decomp; // union-find representant to relevant RPNs
     };
 
     extern TermState __term_state;
