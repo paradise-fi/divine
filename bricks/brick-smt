@@ -773,6 +773,7 @@ namespace brick::smt
         using MaybeT = std::optional< T >;
 
         std::map< T, T > grouping;
+        bool updated = false; // was anything glued together at last union?
 
         T make_set( T x )
         {
@@ -797,6 +798,7 @@ namespace brick::smt
 
         MaybeT union_( MaybeT x, MaybeT y )
         {
+            updated = false;
             if ( !x ) return y;
             if ( !y ) return x;
 
@@ -810,6 +812,7 @@ namespace brick::smt
                 return y_root;
 
             grouping.find( *x_root )->second = *y_root;
+            updated = true;
             return y_root;
         }
 
@@ -837,8 +840,9 @@ namespace brick::smt
     // which have dependent variables, for later caching
     // returns the VarID of the last representant after union
     // TODO: output iterator
-    template< typename RPN >
-    std::optional< token::VarID > decompose( const RPN &rpn, union_find< token::VarID >& uf )
+    template< typename RPN, typename F = std::function< void ( smt::token::VarID ) > >
+    std::optional< token::VarID > decompose( const RPN &rpn, union_find< token::VarID >& uf,
+                                             F f = []( token::VarID ){} )
     {
         using RPNView = brick::smt::RPNView< RPN >;
         using VarID = token::VarID;
@@ -867,7 +871,16 @@ namespace brick::smt
             {
                 auto n1 = pop();
                 auto n2 = pop();
+
+                auto var1 = n1 ? uf.find( *n1 ) : std::nullopt;
+                auto var2 = n2 ? uf.find( *n2 ) : std::nullopt;
+
                 repr = uf.union_( n1, n2 );
+                if ( uf.updated )
+                {
+                    if ( var1 ) f( *var1 );
+                    if ( var2 ) f( *var2 );
+                }
                 stack.emplace_back( repr );
             }
         };
