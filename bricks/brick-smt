@@ -767,12 +767,14 @@ namespace brick::smt
     template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
     template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
-    template < typename T >
+    template < typename Container >
     struct union_find
     {
+        using T = typename Container::key_type;
+        static_assert( std::is_same_v< T, typename Container::mapped_type > );
         using MaybeT = std::optional< T >;
 
-        std::map< T, T > grouping;
+        Container grouping;
         bool updated = false; // was anything glued together at last union?
 
         T make_set( T x )
@@ -840,8 +842,8 @@ namespace brick::smt
     // which have dependent variables, for later caching
     // returns the VarID of the last representant after union
     // TODO: output iterator
-    template< typename RPN, typename F = std::function< void ( smt::token::VarID ) > >
-    std::optional< token::VarID > decompose( const RPN &rpn, union_find< token::VarID >& uf,
+    template< typename RPN, typename M, typename F = std::function< void ( smt::token::VarID ) > >
+    std::optional< token::VarID > decompose( const RPN &rpn, union_find< M >& uf,
                                              F f = []( token::VarID ){} )
     {
         using RPNView = brick::smt::RPNView< RPN >;
@@ -1364,7 +1366,7 @@ namespace brick::t_smt
         {
             using namespace brick::smt;
 
-            union_find< int > uf;
+            union_find< std::map< int, int > > uf;
             int even = uf.make_set( 0 ), odd = uf.make_set( 1 );
             for( int i : { 2, 4, 5, 7, 9, 6, 1, 0, -2, -9 } )
             {
