@@ -107,9 +107,10 @@ Ptr __lart_gep_lifter_impl( Argument< Ptr > ptr, Argument< Value > off, size_t o
     }
 
     auto gep = get_operation< gep_op >( domain( ptr.abstract ), op );
-    auto offset = off.tainted ? off.abstract : Constant::lift( off.concrete );
+    auto offset = off.tainted ? off.abstract : lift_constant( off.concrete );
 
-    return gep( ptr.abstract, offset );
+    __lart_stash( gep( ptr.abstract, offset ) );
+    return taint< Ptr >();
 }
 
 #define LART_GEP_LIFTER( Off ) \
