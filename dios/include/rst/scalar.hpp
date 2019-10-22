@@ -40,6 +40,15 @@ namespace __dios::rst::abstract {
         operator Domain() { return Domain{ _value }; }
         operator Domain() const { return Domain{ _value }; }
 
+        operator bool() {
+            if ( is_constant( domain( _value ) ) )
+                return Constant::to_tristate( _value );
+
+            auto res = Domain::to_tristate( *this );
+            Domain::assume( *this, *this, res );
+            return res;
+        }
+
         template< template< typename, typename > class operation >
         _LART_INLINE static Scalar binary_op( Scalar l, Scalar r ) noexcept
         {
