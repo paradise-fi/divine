@@ -68,6 +68,13 @@ namespace __dios::rst::abstract {
             }
         }
 
+        template< typename T >
+        _LART_INLINE T lower() const noexcept
+        {
+            assert( is_constant( domain( _value ) ) );
+            return static_cast< Constant * >( _value )->template lower< T >();
+        }
+
         template< template< typename > class operation >
         inline static constexpr bool is_in_domain = is_detected_v< operation, Domain >;
 
