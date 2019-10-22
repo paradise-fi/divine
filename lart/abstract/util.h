@@ -213,6 +213,10 @@ namespace lart::abstract
         }
     };
 
+    using Types = std::vector< llvm::Type * >;
+    using Values = std::vector< llvm::Value * >;
+    using Functions = std::vector< llvm::Function * >;
+
     template< typename IP, typename Callable, typename ArgPack >
     auto create_call( IP point, Callable callable, ArgPack args ) noexcept
     {
@@ -239,6 +243,8 @@ namespace lart::abstract
     {
         return create_call_after( point, callable, llvm::None );
     }
+
+    static inline Functions resolve_call( const llvm::CallSite &call );
 
     static bool is_faultable( llvm::Instruction * inst ) noexcept
     {
@@ -269,8 +275,7 @@ namespace lart::abstract
             if ( auto tag = meta::abstract::get( inst ) )
                 return is_memory_operation( tag );
 
-        // TODO if call is in table
-        return llvm::isa< llvm::CallInst >( inst );
+        return ( llvm::CallSite( inst ) && inst->getMetadata( meta::tag::operation::index ) );
     }
 
     template< typename Call >
@@ -324,10 +329,6 @@ namespace lart::abstract
     {
         return calls_with_tag< meta::tag::abstract >( m );
     }
-
-    using Types = std::vector< llvm::Type * >;
-    using Values = std::vector< llvm::Value * >;
-    using Functions = std::vector< llvm::Function * >;
 
     Functions resolve_function( llvm::Module *m, llvm::Value *fn );
 

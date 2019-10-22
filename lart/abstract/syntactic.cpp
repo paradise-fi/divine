@@ -96,10 +96,6 @@ namespace lart::abstract
             if ( llvm::isa< llvm::ReturnInst >( inst ) )
                 continue;
 
-            // TODO fix call lifting
-            if ( llvm::isa< llvm::CallInst >( inst ) )
-                continue;
-
             if ( is_faultable( inst ) )
             {
                 // replace faultable operations by lifter handler
@@ -107,8 +103,11 @@ namespace lart::abstract
                 // annotate lifter as abstract return function to unstash its value
                 meta::abstract::inherit( op.inst, inst );
                 unstash( llvm::cast< llvm::CallInst >( op.inst ) );
-            } else
+            } else {
+                if ( llvm::isa< llvm::CallInst >( inst ) )
+                    continue;
                 builder.construct( inst );
+            }
         }
 
         pnp.fill( m );
