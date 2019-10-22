@@ -75,22 +75,17 @@ namespace __dios::rst::abstract {
         auto append_term = [&]( TermState::VarID var, const Term& term )
         {
             auto it = __term_state.decomp.find( var );
-            if( it != __term_state.decomp.end() )
-            {
-                auto& t = (*it).second;
-                t.extend( term );
-                if ( !expect )
-                    t.apply< Op::Not >();
-                t.apply< Op::Constraint >();
-            }
-            else
-            {
-                __term_state.decomp.emplace( var, term );
-                if ( !expect )
-                {
-                    (*__term_state.decomp.find( var )).second.apply< Op::Not >();
-                }
-            }
+            auto true_term = Term::lift_one_i1( true );
+
+            bool found = it != __term_state.decomp.end();
+            auto& t = found ? it->second : true_term;
+
+            t.extend( term );
+            if ( !expect )
+                t.apply< Op::Not >();
+            t.apply< Op::Constraint >();
+            if ( !found )
+                __term_state.decomp.emplace( var, t );
         };
 
         auto id = decompose( constraint.as_rpn(), __term_state.uf, update_rpns );
