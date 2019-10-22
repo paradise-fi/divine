@@ -222,6 +222,7 @@ namespace lart::abstract {
         auto abstract = query::query( meta::enumerate( m ) )
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
+            .filter( [] ( auto call ) { return !is_faultable( call ); } )
             .freeze();
 
         for ( auto * call : abstract )
