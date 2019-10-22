@@ -36,6 +36,32 @@ namespace __dios::rst::abstract {
         _LART_SCALAR double __sym_lift_float64( double c ) { return make_term< double >( c ); }
     }
 
+    auto update_rpns( smt::token::VarID id )
+    {
+        auto& dcmp = __term_state.decomp;
+        auto it = dcmp.find( id );
+        if( it != dcmp.end() )
+        {
+            auto repr = *__term_state.uf.find( id );
+            if( repr != id )
+            {
+                auto repr_it = dcmp.find( repr );
+                if( repr_it != dcmp.end() )
+                {
+                    repr_it->second.extend( it->second );
+                    repr_it->second.apply< smt::Op::Constraint >();
+                    __vm_trace( _VM_T_Assume, repr_it->second.pointer );
+                }
+                else
+                {
+                    dcmp.emplace( repr, it->second );
+                    __vm_trace( _VM_T_Assume, ( dcmp.find( repr )->second ).pointer );
+                }
+                dcmp.erase( id );
+            }
+        }
+    }
+
     /* Add a constraint to the term. A constraint is again a Term, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
@@ -67,7 +93,7 @@ namespace __dios::rst::abstract {
             }
         };
 
-        auto id = decompose( constraint.as_rpn(), __term_state.uf );
+        auto id = decompose( constraint.as_rpn(), __term_state.uf, update_rpns );
         if ( !id )
         {
             TRACE( "Only constants present in Term" );
