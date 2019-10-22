@@ -82,8 +82,7 @@ void __lart_store_lifter_impl( Argument< Value > value, Argument< Ptr > addr, si
     }
 
     auto store = get_operation< store_op >( domain( addr.abstract ), op );
-    auto val = value.tainted ? value.abstract : Constant::lift( value.concrete );
-
+    auto val = value.tainted ? value.abstract : lift_constant( value.concrete );
     store( val, addr.abstract );
 }
 

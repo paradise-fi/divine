@@ -94,6 +94,9 @@ namespace __dios::rst::abstract {
         #define unsigned_operation( name ) \
             !_signed && is_in_domain< op_ ## name ## _t >
 
+        #define unsigned_icmp_operation( name ) \
+            !_signed && is_in_domain< op_u ## name ## _t >
+
         #define signed_operation( name ) \
             _signed && is_in_domain< op_s ## name ## _t >
 
@@ -104,7 +107,7 @@ namespace __dios::rst::abstract {
             return binary_op< name ## _op >( l, r );
 
         #define perform_unsigned_operation( name ) \
-            perform_operation( name )
+            perform_operation( u ## name )
 
         #define perform_signed_operation( name ) \
             perform_operation( s ## name )
@@ -131,7 +134,7 @@ namespace __dios::rst::abstract {
             friend Scalar operator op ( Scalar l, Scalar r ) noexcept \
             { \
                 if constexpr ( unsigned_operation( name ) ) \
-                    perform_unsigned_operation( name ) \
+                    perform_operation( name ) \
                 else if constexpr ( signed_operation( name ) ) \
                     perform_signed_operation( name ) \
                 else if constexpr ( floating_operation( name ) ) \
@@ -168,6 +171,26 @@ namespace __dios::rst::abstract {
         general_operation( xor, ^ )
 
         /* comparison operations */
+        general_operation( eq, == )
+        general_operation( ne, != )
+
+        #define icmp_operation( name, op ) \
+            op_traits( u ## name ) \
+            op_traits( s ## name ) \
+            \
+            friend Scalar operator op ( Scalar l, Scalar r ) noexcept \
+            { \
+                if constexpr ( unsigned_icmp_operation( name ) ) \
+                    perform_unsigned_operation( name ) \
+                else if constexpr ( signed_operation( name ) ) \
+                    perform_signed_operation( name ) \
+                else \
+                    UNREACHABLE( "unsupported operation " # name ); \
+            }
+
+        icmp_operation( ge, >= )
+        icmp_operation( lt, < )
+        icmp_operation( le, <= )
 
         /* cast operations */
     };

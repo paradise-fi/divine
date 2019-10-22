@@ -274,4 +274,8 @@ namespace __dios::rst::abstract {
 
     static_assert( sizeof( Constant ) == 11 );
 
+    template< typename T >
+    _LART_INLINE
+    auto lift_constant( T val ) noexcept { return Constant::lift( val ); }
+
 } // namespace __dios::rst::abstract
