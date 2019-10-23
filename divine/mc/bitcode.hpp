@@ -20,6 +20,8 @@
 #include <brick-types>
 #include <brick-except>
 
+#include <brick-yaml>
+
 #include <memory>
 #include <vector>
 #include <optional>
@@ -48,6 +50,29 @@ AutoTraceFlags autotrace_from_string( std::string x );
 
 struct BCParseError : brq::error { using brq::error::error; };
 
+struct BCOptions
+{
+    using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
+
+    std::string input_file;
+    std::vector< std::string > ccopts;
+
+    bool disable_static_reduction = false;
+    bool symbolic = false;
+    bool sequential = false;
+    bool synchronous = false; // !interrupts
+    bool svcomp = false;
+
+    Env bc_env;
+    std::vector< std::string > lart_passes;
+    std::string dios_config;
+    mc::AutoTraceFlags autotrace;
+    mc::LeakCheckFlags leakcheck;
+    std::string relaxed;
+
+    static BCOptions from_report( brick::yaml::Parser &parsed );
+};
+
 struct BitCode
 {
     std::shared_ptr< llvm::LLVMContext > _ctx; // the order of these members is important as
@@ -57,20 +82,10 @@ struct BitCode
     std::unique_ptr< llvm::Module > _pure_module; // pre-LART version
     std::unique_ptr< dbg::Info > _dbg;
 
-    using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
-
-    AutoTraceFlags _autotrace;
-    LeakCheckFlags _leakcheck;
-
-    bool _reduce = false, _sequential = false, _symbolic = false, _interrupts = true,
-         _svcomp = false;
-    Env _env;
-    std::vector< std::string > _lart;
-    std::string _relaxed;
     std::string _solver;
-    std::string _dios_config;
+    BCOptions _opts;
 
-    bool is_symbolic() const { return _symbolic; }
+    bool is_symbolic() const { return _opts.symbolic; }
     std::string solver() const { ASSERT( is_symbolic() ); return _solver; }
 
     vm::Program &program() { ASSERT( _program.get() ); return *_program.get(); }
@@ -80,18 +95,8 @@ struct BitCode
     BitCode( std::unique_ptr< llvm::Module > m,
              std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
 
-    void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
-    void leakcheck( LeakCheckFlags fl ) { _leakcheck = fl; }
-    void reduce( bool r ) { _reduce = r; }
-    void sequential( bool s ) { _sequential = s; }
-    void interrupts( bool s ) { _interrupts = s; }
-    void environment( Env env ) { _env = env; }
-    void lart( std::vector< std::string > passes ) { _lart = passes; }
-    void relaxed( std::string r ) { _relaxed = r; }
-    void symbolic( bool s ) { _symbolic = s; }
-    void svcomp( bool s ) { _svcomp = s; }
+    void set_options( const BCOptions& opts ) { _opts = opts; }
     void solver( std::string s ) { _solver = s; }
-    void dios_config( std::string s ) { _dios_config = s; }
 
     void do_lart();
     void do_dios();
@@ -100,7 +105,10 @@ struct BitCode
 
     void init();
 
+    // TODO: Disables move synthesis, probably should be removed
     ~BitCode();
+
+    static std::shared_ptr< BitCode > with_options( const BCOptions &opts );
 
 private:
     void lazy_link_dios();
@@ -109,3 +117,18 @@ private:
 
 }
 
+namespace divine::t_vm
+{
+
+static auto c2bc( std::string s )
+{
+    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
+    divine::cc::CC1 c( ctx );
+    c.mapVirtualFile( "/main.c", s );
+    auto rv = std::make_shared< mc::BitCode >( c.compile( "/main.c" ), ctx );
+    rv->_interrupts = false;
+    rv->init();
+    return rv;
+}
+
+}

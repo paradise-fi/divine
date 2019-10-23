@@ -33,6 +33,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-llvm>
 
+#include <utility>
+
 namespace divine::mc
 {
 
@@ -112,7 +114,7 @@ void BitCode::lazy_link_dios()
     drv.link( std::move( _module ) );
 
     if ( !has_boot )
-        drv.link_dios_config( _dios_config );
+        drv.link_dios_config( _opts.dios_config );
     _module = drv.takeLinked();
 }
 
@@ -157,49 +159,45 @@ void BitCode::do_lart()
     lart.setup( lart::FixPHI::meta() );
 
     // User defined passes are run first so they don't break instrumentation
-
-    // Libc included in dios expects that fuseCtorsPass inserts some functions
-    lart.setup( lart::divine::fuseCtorsPass() );
-
     for ( auto p : _lart )
         lart.setup( p );
 
-    if ( _leakcheck )
-        lart.setup( lart::divine::leakCheck(), to_string( _leakcheck ) );
+    if ( _opts.leakcheck )
+        lart.setup( lart::divine::leakCheck(), to_string( _opts.leakcheck ) );
 
     // reduce before any instrumentation to avoid unnecessary instrumentation
     // and mark silent operations
-    if ( _reduce )
+    if ( !_opts.disable_static_reduction )
     {
         lart.setup( lart::reduction::paroptPass() );
         lart.setup( lart::reduction::staticTauMemPass() );
     }
 
-    if ( _svcomp )
+    if ( _opts.svcomp )
         lart.setup( lart::svcomp::svcompPass() );
 
-    if ( _symbolic )
+    if ( _opts.symbolic )
         lart.setup( lart::abstract::passes() );
 
-    if ( _interrupts )
+    if ( !_opts.synchronous )
     {
         lart.setup( lart::propagateRecursiveAnnotationPass() );
         // note: weakmem also puts memory interrupts in
         lart.setup( lart::divine::cflInterruptPass(), "__dios_suspend" );
-        if ( !_sequential && _relaxed.empty() )
+        if ( !_opts.sequential && _opts.relaxed.empty() )
             lart.setup( lart::divine::memInterruptPass(), "__dios_reschedule" );
     }
 
-    if ( _autotrace )
-        lart.setup( lart::divine::autotracePass(), to_string( _autotrace ) );
+    if ( _opts.autotrace )
+        lart.setup( lart::divine::autotracePass(), to_string( _opts.autotrace ) );
 
-    if ( !_relaxed.empty() )
-        lart.setup( "weakmem:" + _relaxed, false );
+    if ( !_opts.relaxed.empty() )
+        lart.setup( "weakmem:" + _opts.relaxed, false );
 
     lart.setup( lart::divine::lowering() );
     // reduce again before metadata are added to possibly tweak some generated
     // code + perform static tau
-    if ( _reduce )
+    if ( !_opts.disable_static_reduction )
         lart.setup( lart::reduction::paroptPass() );
 
     lart.setup( lart::divine::lsda() );
@@ -207,7 +205,7 @@ void BitCode::do_lart()
     if ( mod->getGlobalVariable( "__md_functions" ) || mod->getGlobalVariable( "__md_globals" ) )
         lart.setup( lart::divine::functionMetaPass() );
     if ( mod->getGlobalVariable( "__sys_env" ) )
-        lart::util::replaceGlobalArray( *mod, "__sys_env", _env );
+        lart::util::replaceGlobalArray( *mod, "__sys_env", _opts.bc_env );
     lart.process( mod );
 
     // TODO brick::llvm::verifyModule( mod );
@@ -241,5 +239,69 @@ void BitCode::init()
 }
 
 BitCode::~BitCode() { }
+
+std::shared_ptr< BitCode > BitCode::with_options( const BCOptions &opts )
+{
+    auto magic_data = brick::fs::readFile( opts.input_file, 18 );
+    auto magic = llvm::identify_magic( magic_data );
+    auto bc = [&]
+    {
+        switch ( magic )
+        {
+            case llvm::file_magic::bitcode:
+            case llvm::file_magic::elf_relocatable:
+            case llvm::file_magic::elf_executable:
+                return std::make_shared< mc::BitCode >( opts.input_file );
+
+            default:
+            {
+                if ( cc::typeFromFile( opts.input_file ) == cc::FileType::Unknown )
+                    throw std::runtime_error( "cannot create BitCode out of file " + opts.input_file
+                                            + " (unknown type)" );
+                cc::Options ccopt;
+                rt::DiosCC driver( ccopt );
+                driver.build( cc::parseOpts( opts.ccopts ) );
+                return std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
+            }
+        }
+    }();
+
+    bc->set_options( opts );
+
+    return bc;
+}
+
+BCOptions BCOptions::from_report( brick::yaml::Parser &parsed )
+{
+    auto opts = BCOptions();
+
+    auto env = std::vector< std::pair< std::string, std::string > >();
+    parsed.get( { "input options", "*" }, env );
+    for ( auto [fst, snd] : env )
+        opts.bc_env.emplace_back( fst, std::vector< uint8_t >( snd.begin(), snd.end() ) );
+
+    opts.ccopts = parsed.getOr( { "compile options", "*" }, opts.ccopts );
+    opts.lart_passes = parsed.getOr( { "lart passes", "*" }, opts.lart_passes );
+    opts.relaxed = parsed.getOr( { "relaxed memory" }, opts.relaxed );
+    opts.symbolic = parsed.getOr( { "symbolic" }, opts.symbolic );
+    opts.svcomp = parsed.getOr( { "svcomp" }, opts.svcomp );
+    opts.sequential = parsed.getOr( { "sequential" }, opts.sequential );
+    opts.synchronous = parsed.getOr( { "synchronous" }, opts.synchronous );
+    opts.disable_static_reduction = parsed.getOr( { "disable static reduction" },
+                                                opts.disable_static_reduction );
+    opts.dios_config = "default";
+    opts.dios_config = parsed.getOr( { "dios config" }, opts.dios_config );
+
+    auto lf_flags = LeakCheckFlags();
+    auto leakcheck = std::vector< std::string >();
+    leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );
+    for ( auto s : leakcheck )
+        lf_flags |= mc::leakcheck_from_string( s );
+    opts.leakcheck = lf_flags;
+
+    opts.input_file = parsed.get< std::string >( { "input file" } );
+
+    return opts;
+}
 
 }
