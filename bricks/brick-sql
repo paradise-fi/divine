@@ -535,7 +535,7 @@ namespace brq::sql
         cons_list_t< args... > _args;
 
         template< typename... Ts >
-        where_expr( Ts && ... ts )
+        where_expr( Ts... ts )
             : _args( ts... )
         {}
 
