@@ -64,7 +64,22 @@ struct NoTrace : Wrong
 
 struct Expectation : ui::LogSink
 {
-    virtual void check() = 0;
+    bool _warn = false;
+
+    // Throw or print warning, if expectation has not been met
+    virtual void do_check() = 0;
+
+    bool check()
+    {
+        if ( _warn )
+        {
+            try {
+                check();
+            } catch ( Wrong &e ) {
+                std::cerr << "W: " << e.what();
+            }
+        }
+    }
 };
 
 struct expect : brq::cmd_base, Expectation
@@ -74,7 +89,7 @@ struct expect : brq::cmd_base, Expectation
     std::string _cmd, _location, _symbol, _trace;
     int _trace_count = 0, _trace_matches = 0;
 
-    void check() override
+    void do_check() override
     {
         if ( !_ok )
             throw Unexpected( _cmd );
@@ -180,18 +195,24 @@ void execute( std::string script_txt, F... prepare )
             cmd._log = ui::make_composite( log );
         };
 
-        auto cmd = cli.parse< expect, load >();
-        auto load_file = [&]( load &l )
-        {
-            files.emplace_back( l.to.name, brq::read_file( l.from.name ) );
-            brq::create_file( l.to.name ); /* FIXME trick the CLI parser */
-        };
+        auto o_expect = ui::cmd::make_option_set( cli.validator() )
+            .option( "[--result {result}]", &Expect::_result, "verification result" )
+            .option( "[--symbol {string}]", &Expect::_symbol, "symbol of the expected error" )
+            .option( "[--location {string}]", &Expect::_location, "location of the expected error" )
+            .option( "[--trace-count {int}]", &Expect::_trace_count, "number of trace matches" )
+            .option( "[--trace {string}]", &Expect::_trace, "substring match against the trace" );
+        auto o_load = ui::cmd::make_option_set( cli.validator() )
+            .option( "{string}+", &Load::args, "file path, file name" );
 
-        cmd.match( prepare..., load_file,
-                   [&]( ui::cc &cc ) { cc._driver.setupFS( files ); },
-                   [&]( ui::with_bc &wbc ) { wbc._cc_driver.setupFS( files ); } );
-        cmd.match( [&]( ui::command &c ) { c.setup(); },
-                   [&]( expect e )
+        auto parser = cli.commands().command< Expect >( o_expect ).command< Load >( o_load );
+        auto cmd = cli.parse( parser );
+
+        cmd.match( prepare...,
+                   [&]( Load &l ) { files.emplace_back( l.args[1] , brq::read_file( l.args[0] ) ); },
+                   [&]( ui::Cc &cc ) { cc._driver.setupFS( files ); },
+                   [&]( ui::WithBC &wbc ) { wbc._cc_driver.setupFS( files ); } );
+        cmd.match( [&]( ui::Command &c ) { c.setup(); },
+                   [&]( Expect e )
                    {
                        e._cmd = cmdstr;
                        expectations.emplace_back( std::make_shared< expect >( std::move( e ) ) );
