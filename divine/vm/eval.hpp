@@ -91,7 +91,8 @@ struct Eval
 
     using OpCode = llvm::Instruction;
 
-    Instruction *_instruction;
+    // Not set by the constructor. Use refresh()/advance() before the first call to instruction()
+    Instruction *_instruction = nullptr;
     Instruction &instruction() { return *_instruction; }
 
     using PointerV = value::Pointer;
