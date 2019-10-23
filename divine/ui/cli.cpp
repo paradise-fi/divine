@@ -335,42 +335,13 @@ void WithBC::setup()
         _bc_opts.bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    if ( _dios_config.empty() && _synchronous )
-        _dios_config = "sync";
+    if ( _bc_opts.dios_config.empty() && _bc_opts.synchronous )
+        _bc_opts.dios_config = "sync";
+    
+    if ( _bc_opts.dios_config.empty() )
+        _bc_opts.dios_config = "default";
 
-    auto magic_data = brick::fs::readFile( _file, 18 );
-    auto magic = llvm::identify_magic( magic_data );
-
-    switch ( magic )
-    {
-        case llvm::file_magic::bitcode:
-        case llvm::file_magic::elf_relocatable:
-        case llvm::file_magic::elf_executable:
-            _bc = std::make_shared< mc::BitCode >( _file );
-            break;
-
-        default:
-        {
-            if ( cc::typeFromFile( _file ) == cc::FileType::Unknown )
-                throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
-            cc::Options ccopt;
-            rt::DiosCC driver( ccopt );
-            driver.build( cc::parseOpts( _ccopts_final ) );
-            _bc = std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
-        }
-    }
-
-    _bc->environment( _bc_env );
-    _bc->autotrace( _autotrace );
-    _bc->leakcheck( _leakcheck );
-    _bc->reduce( !_disableStaticReduction );
-    _bc->sequential( _sequential );
-    _bc->interrupts( !_synchronous );
-    _bc->symbolic( _symbolic );
-    _bc->svcomp( _svcomp );
-    _bc->lart( _lartPasses );
-    _bc->dios_config( _dios_config.empty() ? "default" : _dios_config );
-    _bc->relaxed( _relaxed );
+    _bc = mc::BitCode::with_options( _bc_opts, _cc_driver );
 }
 
 void WithBC::init()

@@ -79,10 +79,7 @@ struct WithBC : Command
     bool _init_done = false;
     SinkPtr _log = nullsink();
     std::string _dump_bc;
-    std::string _dios_config;
-
-    mc::BitCode::Env _bc_env;
-    std::vector< std::string > _ccopts_final;
+    rt::DiosCC _cc_driver;
 
     virtual void process_options();
     void report_options();
