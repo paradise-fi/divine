@@ -147,34 +147,15 @@ void Sim::process_options()
     if ( !_load_report )
         return WithBC::process_options();
 
-    std::string yaml = brick::fs::readFile( _file );
-    brick::yaml::Parser parsed( yaml );
-    _file = parsed.get< std::string >( { "input file" } );
+    auto yaml = brick::fs::readFile( _bc_opts.input_file );
+    auto parsed = brick::yaml::Parser( yaml );
 
     if ( !_env.empty() || !_useropts.empty() || !_systemopts.empty() )
         throw brq::error( "--load-report is incompatible with passing options to the program" );
 
-    std::vector< std::pair< std::string, std::string > > env;
-    std::vector< std::string > leakcheck;
+    _bc_opts = mc::BCOptions::from_report( parsed );
 
-    parsed.get( { "input options", "*" }, env );
-    for ( auto p : env )
-        _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
-
-    _ccopts_final = parsed.getOr( { "compile options", "*" }, _ccopts_final );
-    _lartPasses = parsed.getOr( { "lart passes", "*" }, _lartPasses );
-    leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );
-    _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
-    _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
-    _dios_config = parsed.getOr( { "dios config" }, _dios_config );
-    _svcomp = parsed.getOr( { "svcomp" }, _svcomp );
-    _sequential = parsed.getOr( { "sequential" }, _sequential );
-    _synchronous = parsed.getOr( { "synchronous" }, _synchronous );
-    _disableStaticReduction = parsed.getOr( { "disable static reduction" }, _disableStaticReduction );
-
-    for ( auto s : leakcheck )
-        _leakcheck |= mc::leakcheck_from_string( s );
-
+    // TODO: Refactor this out (together with annotate), consider changing the format?
     if ( parsed.get< std::string >( { "error found" } ) == "yes" )
     {
         _trace.reset( new sim::Trace );
