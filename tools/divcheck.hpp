@@ -68,17 +68,21 @@ struct Expectation : ui::LogSink
 
     // Throw or print warning, if expectation has not been met
     virtual void do_check() = 0;
+    // Revert inner state so that the same expectation can be checked for a new command
+    virtual void setup() {};
 
-    bool check()
+    void check()
     {
         if ( _warn )
         {
             try {
-                check();
+                do_check();
             } catch ( Wrong &e ) {
                 std::cerr << "W: " << e.what();
             }
         }
+        else
+            do_check();
     }
 };
 
@@ -88,6 +92,15 @@ struct expect : brq::cmd_base, Expectation
     mc::Result _result = mc::Result::None;
     std::string _cmd, _location, _symbol, _trace;
     int _trace_count = 0, _trace_matches = 0;
+
+    void setup() override
+    {
+        _ok = false;
+        _found = true;
+        _on_inactive = false;
+        _trace_count = 0;
+        _trace_matches = 0;
+    }
 
     void do_check() override
     {
@@ -188,11 +201,18 @@ void execute( std::string script_txt, F... prepare )
         ui::CLI cli( "divine", tok );
         cli._check_files = false;
 
-        auto check_expect = [&]( ui::verify &cmd )
+        auto check_expect = [&]( ui::Verify &cmd )
         {
             std::vector< ui::SinkPtr > log( expectations.begin(), expectations.end() );
             log.push_back( cmd._log );
             cmd._log = ui::make_composite( log );
+            for ( auto & expect : expectations )
+                expect->setup();
+        };
+        auto check_expects = [&]()
+        {
+            for ( auto & expect : expectations )
+                expect->check();
         };
 
         auto o_expect = ui::cmd::make_option_set( cli.validator() )
@@ -217,12 +237,10 @@ void execute( std::string script_txt, F... prepare )
                        e._cmd = cmdstr;
                        expectations.emplace_back( std::make_shared< expect >( std::move( e ) ) );
                    } );
-        cmd.match( check_expect );
-        cmd.match( [&]( ui::command &c ) { c.run(); } );
+        cmd.match( [&]( ui::Verify &cmd ) { prepare_expects( cmd ); },
+                   [&]( ui::Exec &cmd ) { prepare_expects( cmd ); } );
+        cmd.match( [&]( ui::Command &c ) { c.run(); } );
     }
-
-    for ( auto & expect : expectations )
-        expect->check();
 }
 
 }
