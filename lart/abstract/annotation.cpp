@@ -6,6 +6,8 @@
 #include <lart/abstract/util.h>
 #include <lart/abstract/meta.h>
 
+#include <queue>
+
 namespace lart::abstract {
 
     template< typename Value >
@@ -31,14 +33,29 @@ namespace lart::abstract {
         annotation_to_domain_metadata< llvm::Function >( meta::tag::abstract, m );
         annotation_to_transform_metadata< llvm::Function >( meta::tag::transform::prefix, m );
 
-        for ( auto & fn : m ) {
-            if ( auto meta = meta::get( &fn, meta::tag::abstract ) ) {
-                for ( auto user : fn.users() ) {
-                    if ( auto val = lower_constant_expr_call( user ) )
-                        if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) )
-                            meta::set( call, meta::tag::abstract, meta.value() );
-                }
+        using MetaTag = std::string;
+
+        std::queue< std::pair< llvm::Value *, MetaTag > > worklist;
+
+        for ( auto & fn : m )
+            if ( auto meta = meta::get( &fn, meta::tag::abstract ) )
+                for ( auto user : fn.users() )
+                    worklist.emplace( user, meta.value() );
+
+        while ( !worklist.empty() ) {
+            const auto &[val, ann] = worklist.front();
+
+            if ( auto cst = llvm::dyn_cast< llvm::BitCastInst >( val ) ) {
+                for ( auto u : cst->users() )
+                    worklist.emplace( u, ann );
+            } else if ( auto call = llvm::dyn_cast< llvm::CallInst >( val ) ) {
+                meta::set( call, meta::tag::abstract, ann );
+            } else if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val ) ) {
+                for ( auto u : ce->users() )
+                    worklist.emplace( u, ann );
             }
+
+            worklist.pop();
         }
     }
 
