@@ -31,6 +31,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/dbg/info.hpp>
+#include <divine/rt/dios-cc.hpp>
 
 namespace llvm { class Module; }
 namespace divine::vm { struct Program; }
@@ -108,27 +109,11 @@ struct BitCode
     // TODO: Disables move synthesis, probably should be removed
     ~BitCode();
 
-    static std::shared_ptr< BitCode > with_options( const BCOptions &opts );
+    static std::shared_ptr< BitCode > with_options( const BCOptions &opts, rt::DiosCC &cc_driver );
 
 private:
     void lazy_link_dios();
     void _save_original_module();
 };
-
-}
-
-namespace divine::t_vm
-{
-
-static auto c2bc( std::string s )
-{
-    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
-    divine::cc::CC1 c( ctx );
-    c.mapVirtualFile( "/main.c", s );
-    auto rv = std::make_shared< mc::BitCode >( c.compile( "/main.c" ), ctx );
-    rv->_interrupts = false;
-    rv->init();
-    return rv;
-}
 
 }

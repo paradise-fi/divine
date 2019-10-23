@@ -159,7 +159,11 @@ void BitCode::do_lart()
     lart.setup( lart::FixPHI::meta() );
 
     // User defined passes are run first so they don't break instrumentation
-    for ( auto p : _lart )
+
+    // Libc included in dios expects that fuseCtorsPass inserts some functions
+    lart.setup( lart::divine::fuseCtorsPass() );
+
+    for ( auto p : _opts.lart_passes )
         lart.setup( p );
 
     if ( _opts.leakcheck )
@@ -240,10 +244,13 @@ void BitCode::init()
 
 BitCode::~BitCode() { }
 
-std::shared_ptr< BitCode > BitCode::with_options( const BCOptions &opts )
+std::shared_ptr< BitCode > BitCode::with_options( const BCOptions &opts, rt::DiosCC &cc_driver )
 {
-    auto magic_data = brick::fs::readFile( opts.input_file, 18 );
+    auto magic_buf = cc_driver.compiler.getFileBuffer( opts.input_file, 18 );
+    auto magic_data = magic_buf ? std::string( magic_buf->getBuffer() )
+                                : brick::fs::readFile( opts.input_file, 18 );
     auto magic = llvm::identify_magic( magic_data );
+
     auto bc = [&]
     {
         switch ( magic )
@@ -256,12 +263,10 @@ std::shared_ptr< BitCode > BitCode::with_options( const BCOptions &opts )
             default:
             {
                 if ( cc::typeFromFile( opts.input_file ) == cc::FileType::Unknown )
-                    throw std::runtime_error( "cannot create BitCode out of file " + opts.input_file
+                    throw std::runtime_error( "don't know how to verify file " + opts.input_file
                                             + " (unknown type)" );
-                cc::Options ccopt;
-                rt::DiosCC driver( ccopt );
-                driver.build( cc::parseOpts( opts.ccopts ) );
-                return std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
+                cc_driver.build( cc::parseOpts( opts.ccopts ) );
+                return std::make_shared< mc::BitCode >( cc_driver.takeLinked(), cc_driver.context() );
             }
         }
     }();
