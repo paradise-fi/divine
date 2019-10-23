@@ -63,28 +63,26 @@ struct WithBC : Command
         bool followSymlink;
     };
 
-    std::string _file, _std, _stdin;
+    mc::BCOptions _bc_opts;
+
+    std::string _std;
+    std::string _stdin;
+
+    // Used to build the final compiler options in _bc_opts.ccopts
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
-    std::vector< std::string > _lartPasses;
     std::vector< std::string > _linkLibs;
     std::vector< std::vector< std::string > > _ccOpts;
     std::vector< VfsDir > _vfs;
     size_t _vfsSizeLimit;
-    mc::AutoTraceFlags _autotrace;
-    mc::LeakCheckFlags _leakcheck;
-    bool _disableStaticReduction = false;
-    bool _symbolic = false, _sequential = false, _synchronous = false, _svcomp = false;
     bool _init_done = false;
     SinkPtr _log = nullsink();
-    std::string _relaxed;
     std::string _dump_bc;
     std::string _dios_config;
 
     mc::BitCode::Env _bc_env;
     std::vector< std::string > _ccopts_final;
-    rt::DiosCC _cc_driver;
 
     virtual void process_options();
     void report_options();

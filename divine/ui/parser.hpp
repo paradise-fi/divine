@@ -209,16 +209,21 @@ struct CLI : Interface
         auto bcopts = cmd::make_option_set( v )
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
             .option( "[-C,{commasep}]", &WithBC::_ccOpts, "pass additional options to the compiler"s )
-            .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
-            .option( "[--leakcheck {leakpoints}]", &WithBC::_leakcheck, "insert leak checks"s )
-            .option( "[--sequential]", &WithBC::_sequential, "disable support for threading"s )
-            .option( "[--synchronous]", &WithBC::_synchronous, "enable synchronous mode"s )
+            .option( "[--autotrace {tracepoints}]", &WithBC::_bc_opts, &mc::BCOptions::autotrace,
+                     "insert trace calls"s )
+            .option( "[--leakcheck {leakpoints}]", &WithBC::_bc_opts, &mc::BCOptions::leakcheck,
+                     "insert leak checks"s )
+            .option( "[--sequential]", &WithBC::_bc_opts, &mc::BCOptions::sequential,
+                     "disable support for threading"s )
+            .option( "[--synchronous]", &WithBC::_bc_opts, &mc::BCOptions::synchronous,
+                     "enable synchronous mode"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
-            .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
+            .option( "[--disable-static-reduction]", &WithBC::_bc_opts,
+                     &mc::BCOptions::disable_static_reduction,
                      "disable static (transformation based) state space reductions"s )
-            .option( "[--relaxed-memory {string}]", &WithBC::_relaxed,
+            .option( "[--relaxed-memory {string}]", &WithBC::_bc_opts, &mc::BCOptions::relaxed,
                      "enable relaxed memory semantics (tso|pso[:N]) where N is size of buffers"s )
-            .option( "[--lart {string}]", &WithBC::_lartPasses,
+            .option( "[--lart {string}]", &WithBC::_bc_opts, &mc::BCOptions::lart_passes,
                      "run an additional LART pass in the loader" )
             .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
             .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit,
@@ -227,17 +232,17 @@ struct CLI : Interface
                      "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
             .option( "[--stdin {file}]", &WithBC::_stdin,
                      "capture file and pass it to OS as stdin for verified program" )
-            .option( "[--symbolic]", &WithBC::_symbolic,
+            .option( "[--symbolic]", &WithBC::_bc_opts, &mc::BCOptions::symbolic,
                      "use semi-symbolic data representation"s )
-            .option( "[--svcomp]", &WithBC::_svcomp,
+            .option( "[--svcomp]", &WithBC::_bc_opts, &mc::BCOptions::svcomp,
                      "run SV-COMP specific program transformations"s )
             .option( "[--dump-bc {string}]", &WithBC::_dump_bc,
                      "dump the final pre-processed bitcode"s )
-            .option( "[--dios-config {string}]", &WithBC::_dios_config,
+            .option( "[--dios-config {string}]", &WithBC::_bc_opts, &mc::BCOptions::dios_config,
                      "which DiOS configuration to use"s )
             .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
                      "link in a library, e.g. -lm for libm"s )
-            .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
+            .option( "{file}", &WithBC::_bc_opts, &mc::BCOptions::input_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
         auto ltlcopts = cmd::make_option_set( v )

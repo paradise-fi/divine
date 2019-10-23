@@ -21,17 +21,16 @@
 
 namespace divine::ui
 {
-
     void Exec::setup()
     {
-        if ( _symbolic && !_virtual )
+        if ( _bc_opts.symbolic && !_virtual )
         {
             _virtual = true;
             std::cerr << "W: --symbolic implies --virtual" << std::endl;
         }
 
-        if ( _dios_config.empty() )
-            _dios_config = _virtual ? "default" : "proxy";
+        if ( _bc_opts.dios_config.empty() )
+            _bc_opts.dios_config = _virtual ? "default" : "proxy";
 
         WithBC::setup();
     }

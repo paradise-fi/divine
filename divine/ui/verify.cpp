@@ -31,7 +31,7 @@ namespace ui {
 void Verify::setup_report_file()
 {
     if ( _report_filename.empty() )
-        _report_filename = outputName( _file, "report" );
+        _report_filename = outputName( _bc_opts.input_file, "report" );
 
     if ( !_report_unique )
         return;
@@ -74,12 +74,12 @@ void Verify::setup()
         _log = make_composite( log );
     }
 
-    if ( _dios_config.empty() && _liveness )
-        _dios_config = "fair";
+    if ( _bc_opts.dios_config.empty() && _liveness )
+        _bc_opts.dios_config = "fair";
 
     WithBC::setup();
 
-    if ( _symbolic )
+    if ( _bc_opts.symbolic )
         bitcode()->solver( _solver );
 }
 

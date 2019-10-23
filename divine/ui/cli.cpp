@@ -120,7 +120,7 @@ std::string no_prefix_change( const std::string& s )
 
 template < typename MountPath, typename See, typename Seen, typename Count, typename Limit >
 bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
-              Limit limit, mc::BitCode::Env& env, const std::string& oPath )
+              Limit limit, mc::BCOptions::Env& env, const std::string& oPath )
 {
     auto stat = brick::fs::lstat( oPath );
 
@@ -192,26 +192,27 @@ void WithBC::process_options()
     int i = 0;
 
     for ( auto s : _env )
-        _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
+        _bc_opts.bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
     i = 0;
     for ( auto o : _useropts )
-        _bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc_opts.bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
     for ( auto o : _systemopts )
-        _bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc_opts.bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
 
-    _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
+    _bc_opts.bc_env.emplace_back( "divine.bcname", bstr( _bc_opts.input_file.begin(),
+                                  _bc_opts.input_file.end() ) );
 
-    if ( cc::typeFromFile( _file ) != cc::FileType::Unknown )
+    if ( cc::typeFromFile( _bc_opts.input_file ) != cc::FileType::Unknown )
     {
         if ( !_std.empty() )
-            _ccopts_final.push_back( { "-std=" + _std } );
-        _ccopts_final.push_back( _file );
+            _bc_opts.ccopts.push_back( { "-std=" + _std } );
+        _bc_opts.ccopts.push_back( _bc_opts.input_file );
         for ( auto &o : _ccOpts )
-            std::copy( o.begin(), o.end(), std::back_inserter( _ccopts_final ) );
+            std::copy( o.begin(), o.end(), std::back_inserter( _bc_opts.ccopts ) );
         for ( auto &l : _linkLibs )
-            _ccopts_final.push_back( "-l" + l );
+            _bc_opts.ccopts.push_back( "-l" + l );
     }
 }
 
@@ -231,18 +232,18 @@ void quote( I b, I e, O out )
 
 void WithBC::report_options()
 {
-    _log->info( "input file: " + _file + "\n", true );
+    _log->info( "input file: " + _bc_opts.input_file + "\n", true );
 
-    if ( !_ccopts_final.empty() )
+    if ( !_bc_opts.ccopts.empty() )
     {
         _log->info( "compile options:\n", true );
-        for ( auto o : _ccopts_final )
+        for ( auto o : _bc_opts.ccopts )
             _log->info( "  - " + o + "\n", true );
     }
 
-    _log->info( "input options:\n", true ); /* never empty */
+    _log->info( "input options:\n", true ); // never empty
 
-    for ( auto e : _bc_env )
+    for ( auto e : _bc_opts.bc_env )
     {
         auto &k = std::get< 0 >( e );
         auto &t = std::get< 1 >( e );
@@ -259,41 +260,41 @@ void WithBC::report_options()
         _log->info( "  " + k + ": " + out + "\n", true );
     }
 
-    if ( !_lartPasses.empty() )
+    if ( !_bc_opts.lart_passes.empty() )
     {
         _log->info( "lart passes:\n", true );
-        for ( auto p : _lartPasses )
+        for ( auto p : _bc_opts.lart_passes )
             _log->info( "  - " + p + "\n", true );
     }
 
-    _log->info( "dios config: " + _dios_config + "\n", true );
+    _log->info( "dios config: " + _bc_opts.dios_config + "\n", true );
 
-    if ( _symbolic )
+    if ( _bc_opts.symbolic )
         _log->info( "symbolic: 1\n" );
-    if ( _leakcheck )
-        _log->info( "leak check: [ " + to_string( _leakcheck, true ) + " ]\n", true );
+    if ( _bc_opts.leakcheck )
+        _log->info( "leak check: [ " + to_string( _bc_opts.leakcheck, true ) + " ]\n", true );
 
-    if ( _svcomp )
+    if ( _bc_opts.svcomp )
         _log->info( "svcomp: 1\n" );
 
-    if ( _sequential )
+    if ( _bc_opts.sequential )
         _log->info( "sequential: 1\n", true );
-    if ( _synchronous )
+    if ( _bc_opts.synchronous )
         _log->info( "synchronous: 1\n", true );
-    if ( _disableStaticReduction )
+    if ( _bc_opts.disable_static_reduction )
         _log->info( "disable static reduction: 1\n", true );
-    if ( !_relaxed.empty() )
-        _log->info( "relaxed memory: " + _relaxed + "\n" );
+    if ( !_bc_opts.relaxed.empty() )
+        _log->info( "relaxed memory: " + _bc_opts.relaxed + "\n" );
 }
 
 void WithBC::setup()
 {
     using namespace brick::string;
     using bstr = std::vector< uint8_t >;
-    int i = 0;
 
     process_options();
 
+    int i = 0;
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;
     for ( auto vfs : _vfs )
@@ -316,7 +317,7 @@ void WithBC::setup()
                         die( "VFS capture limit reached" );
                     limit -= s;
                 },
-                _bc_env,
+                _bc_opts.bc_env,
                 item );
         };
 
@@ -331,15 +332,13 @@ void WithBC::setup()
         std::ifstream f( _stdin, std::ios::binary );
         bstr content{ std::istreambuf_iterator< char >( f ),
                       std::istreambuf_iterator< char >() };
-        _bc_env.emplace_back( "vfs.stdin", content );
+        _bc_opts.bc_env.emplace_back( "vfs.stdin", content );
     }
 
     if ( _dios_config.empty() && _synchronous )
         _dios_config = "sync";
 
-    auto magic_buf = _cc_driver.compiler.getFileBuffer( _file, 18 );
-    auto magic_data = magic_buf ? std::string( magic_buf->getBuffer() )
-                                : brick::fs::readFile( _file, 18 );
+    auto magic_data = brick::fs::readFile( _file, 18 );
     auto magic = llvm::identify_magic( magic_data );
 
     switch ( magic )
@@ -355,8 +354,9 @@ void WithBC::setup()
             if ( cc::typeFromFile( _file ) == cc::FileType::Unknown )
                 throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
             cc::Options ccopt;
-            _cc_driver.build( cc::parseOpts( _ccopts_final ) );
-            _bc = std::make_shared< mc::BitCode >( _cc_driver.takeLinked(), _cc_driver.context() );
+            rt::DiosCC driver( ccopt );
+            driver.build( cc::parseOpts( _ccopts_final ) );
+            _bc = std::make_shared< mc::BitCode >( driver.takeLinked(), driver.context() );
         }
     }
 
@@ -439,7 +439,7 @@ void Info::run()
     WithBC::bitcode(); // dump all WithBC messages before our output
     std::cerr << std::endl
               << "DIVINE " << version() << std::endl << std::endl
-              << "Available options for " << _file << " are:" << std::endl;
+              << "Available options for " << _bc_opts.input_file << " are:" << std::endl;
     Exec::run();
     std::cerr << "use -o {option}:{value} to pass these options to the program" << std::endl;
 }
@@ -448,6 +448,5 @@ std::shared_ptr< Interface > make_cli( std::vector< std::string > args )
 {
     return std::make_shared< CLI >( args );
 }
-
 
 }
