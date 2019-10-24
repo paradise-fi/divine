@@ -26,7 +26,7 @@ namespace divine::t_mc
         divine::cc::CC1 c( ctx );
         c.mapVirtualFile( "/main.c", s );
         auto rv = std::make_shared< mc::BitCode >( c.compile( "/main.c" ), ctx );
-        rv->_interrupts = false;
+        rv->_opts.synchronous = true;
         rv->init();
         return rv;
     }
