@@ -44,20 +44,26 @@ namespace divine::mc
         struct infeasible : base {};
     }
 
-    template< typename next >
-    struct infeasible_notify_ : next
+    template< uint64_t flag, typename next >
+    struct infeasible_notify_with_flag_ : next
     {
         bool feasible( typename next::tq q ) override
         {
             if ( next::feasible( q ) )
                 return true;
 
-            if ( this->context().flags_any( _VM_CF_Cancel ) )
+            if ( this->context().flags_any( flag ) )
                 this->push( q, event::infeasible() );
 
             return false;
         }
     };
+
+    template< typename next >
+    using infeasible_notify_ = infeasible_notify_with_flag_< _VM_CF_Cancel, next >;
+
+    template< typename next >
+    using on_exit_notify_ = infeasible_notify_with_flag_< _VM_CF_Stop, next >;
 
     struct backtrack : machine::tree_search
     {
@@ -92,6 +98,7 @@ namespace divine::mc
     };
 
     using infeasible_notify = brq::module< infeasible_notify_ >;
+    using on_exit_notify = brq::module< on_exit_notify_ >;
     using queue_exec = task_queue< event::infeasible >;
 
     template< typename solver_t >
