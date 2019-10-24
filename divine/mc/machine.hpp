@@ -105,8 +105,17 @@ namespace divine::mc::task
 
     struct origin
     {
+        struct choice_t : brq::refcount_base< uint16_t, true >
+        {
+            using ptr = brq::refcount_ptr< choice_t >;
+            ptr parent;
+            int16_t choice, total;
+            choice_t( ptr p, int ch, int t ) : parent( p ), choice( ch ), total( t ) {}
+        };
+
         Snapshot snap;
         HT ht_loop;
+        choice_t::ptr choice;
         origin() = default;
         explicit origin( Snapshot s ) : snap( s ) {}
     };
@@ -364,12 +373,21 @@ namespace divine::mc::machine
 
         void run( tq q, task::choose c )
         {
+            auto tail = [&]( auto &s )
+            {
+                s << "tail:";
+                for ( auto x = c.origin.choice; x; x = x->parent )
+                    s << " " << x->choice << "/" << x->total;
+            };
+            TRACE( "compute choose", c.origin.snap, "msg_id =", c.msg_id, tail );
             this->context().load( this->_snap_pool, c.snap );
             this->context()._state = c.state;
             this->context()._choice_take = c.choice;
             this->context()._choice_count = c.total;
             this->context().flush_ptr2i();
             this->context().load_pc();
+            c.origin.choice =
+                brq::make_refcount< task::origin::choice_t >( c.origin.choice, c.choice, c.total );
             compute( q, c.origin, c.snap );
         }
     };
