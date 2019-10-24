@@ -21,11 +21,13 @@ namespace lart {
         PassMeta abstractStubsPass();
         PassMeta leakCheck();
         PassMeta fuseCtorsPass();
+        PassMeta coverage();
 
         inline std::vector< PassMeta > passes() {
             return { fuseCtorsPass(), cflInterruptPass(), memInterruptPass(),
               functionMetaPass(), autotracePass(),  makeNativePass(), vaArgPass(),
-              lowering(), stubsPass(), abstractStubsPass(), lsda(), leakCheck() };
+              lowering(), stubsPass(), abstractStubsPass(), lsda(), leakCheck(),
+              coverage() };
         }
     }
 }
