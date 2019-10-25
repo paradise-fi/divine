@@ -64,10 +64,12 @@
 #define TRACE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 #define NOISE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 #else
-#define TRACE(...) ::brq::trace_fn< true >( 2, BRICK_LOCATION( "" ), __VA_ARGS__ )
-#define NOISE(...) ::brq::trace_fn< true >( 3, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define TRACE(...) ::brq::trace_fn< true >( 3, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define NOISE(...) ::brq::trace_fn< true >( 4, BRICK_LOCATION( "" ), __VA_ARGS__ )
 #endif
-#define DEBUG(...) ::brq::trace_fn< false >( 1, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define DEBUG(...) ::brq::trace_fn< false >( 2, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define INFO(...)  ::brq::trace_fn< false >( 1, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define ERROR(...) ::brq::trace_fn< false >( 0, BRICK_LOCATION( "" ), __VA_ARGS__ )
 
 namespace brq
 {
@@ -138,28 +140,19 @@ namespace brq
                 add_rule( "+", 0, 0 ); /* print info-level messages by default */
         }
 
-        int level( std::string_view name )
+        static constexpr std::array< const char *, 5 > levels =
+            { "error", "info", "debug", "trace", "noise" };
+
+        static std::string_view level( int i ) { return levels[ i ]; }
+        static int level( std::string_view name )
         {
-            if ( name == "off" ) return -1;
-            if ( name == "info" ) return 0;
-            if ( name == "debug" ) return 1;
-            if ( name == "trace" ) return 2;
-            if ( name == "noise" ) return 3;
-            return 2; /* default to 'trace' */
+            for ( int i = 0; i < levels.size(); ++i )
+                if ( levels[ i ] == name )
+                    return i;
+            return -1;
         }
 
-        std::string_view level( int i )
-        {
-            switch ( i )
-            {
-                case 0: return "info";
-                case 1: return "debug";
-                case 2: return "trace";
-                case 3: return "noise";
-                default: __builtin_trap();
-            }
-        }
-
+        void add_rule( std::string_view s, std::string_view l ) { add_rule( s, level( l ) ); }
         void add_rule( std::string_view suffix, int level, int line = 0 )
         {
             _rules.push_back( rule_t{ suffix, line, level } );
