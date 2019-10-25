@@ -410,8 +410,16 @@ namespace lart::abstract
                 auto crty = function()->getReturnType();
                 auto t = module->getNamedGlobal( "__tainted" );
                 auto load = irb.CreateLoad( t );
-                auto trunc = irb.CreateTruncOrBitCast( load, crty );
-                auto ret = irb.CreateRet( trunc );
+
+                auto casted = [&] {
+                    if ( crty->isIntegerTy() )
+                        return irb.CreateTruncOrBitCast( load, crty );
+                    if ( crty->isFloatingPointTy() )
+                        return irb.CreateUIToFP( load, crty );
+                    UNREACHABLE( "unsupported lifter return type" );
+                } ();
+
+                auto ret = irb.CreateRet( casted );
                 stash( ret, call );
             } else {
                 irb.CreateRet( call );
