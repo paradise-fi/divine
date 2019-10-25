@@ -486,7 +486,7 @@ namespace brq::sql
         {
             std::vector< int > formats( _params.size(), 1 );
 
-            DEBUG( "executing ", _query.buffer(), _params.size() ? _debug.buffer() : "" );
+            DEBUG( _query.buffer(), _params.size() ? _debug.buffer() : "" );
             _result = PQexecParams( _conn.handle(), _query.buffer(), _params.size(), nullptr,
                                     _params.data(), _lengths.data(), formats.data(), 1 );
 
@@ -1194,14 +1194,14 @@ BRICK_SQL_OP( | )
         std::enable_if_t< t::is_table > notify() { notify( get_name( t() ) ); }
 
         template< typename t >
-        std::enable_if_t< t::is_table > listen() { exec() << "LISTEN " << get_name( t() ); }
+        std::enable_if_t< t::is_table > listen() { exec() << "listen " << get_name( t() ); }
 
         void notify( std::string_view ch, std::string_view p = "" )
         {
-            exec() << "NOTIFY " << ch << ", '" << p << "'";
+            exec() << "notify " << ch << ", '" << p << "'";
         }
 
-        void listen( std::string_view sv ) { exec() << "LISTEN " << sv; }
+        void listen( std::string_view sv ) { exec() << "listen " << sv; }
 
         struct notification
         {
