@@ -490,6 +490,18 @@ namespace brq
             return 2; /* default to 'trace' */
         }
 
+        std::string_view level( int i )
+        {
+            switch ( i )
+            {
+                case 0: return "info";
+                case 1: return "debug";
+                case 2: return "trace";
+                case 3: return "noise";
+                default: __builtin_trap();
+            }
+        }
+
         void add_rule( std::string_view suffix, int level, int line = 0 )
         {
             _rules.push_back( rule_t{ suffix, line, level } );
@@ -538,6 +550,7 @@ namespace brq
             if ( !enabled( level, location ) )
                 return false;
 
+            b << "[" << this->level( level ) << "] ";
             if ( _print_location )
                 b << location.filename() << ":" << location.line << ": ";
             if ( _print_tid )
