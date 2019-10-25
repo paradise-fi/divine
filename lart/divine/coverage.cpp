@@ -11,27 +11,33 @@ namespace lart::divine
     void Coverage::run( llvm::Module &m )
     {
         _choose = m.getFunction( "__vm_choose" );
+
+        if ( !_choose )
+            return;
+
         for ( auto cs : _choose->users() )
             _chooses.emplace_back( cs );
 
-        IndicesBuilder ib( &m );
-        assign_indices( ib );
+        assign_indices();
     }
 
-    void Coverage::assign_indices( IndicesBuilder &indices )
+    void Coverage::assign_indices()
     {
+        auto i32Ty = llvm::Type::getInt32Ty( _choose->getContext() );
+
         int index = 0;
         for ( auto & ch : _chooses ) {
             auto call = ch.getInstruction();
             llvm::IRBuilder<> irb( call );
 
-            ASSERT( llvm::isa< llvm::ConstantInt >( ch.getArgument( 0 ) ) );
-            auto total = llvm::cast< llvm::ConstantInt >( ch.getArgument( 0 ) )
-                ->getValue().getLimitedValue();
-
             ASSERT( ch.getNumArgOperands() == 1 );
 
-            auto args = indices.create( total, index++ );
+            std::vector< llvm::Value * > args;
+            args.push_back( ch.getArgument( 0 ) );
+            args.push_back( llvm::ConstantInt::get( i32Ty, index ) );
+
+            index += 65536; // 2^16 is upper bound on number of choices
+
             auto indexed = irb.CreateCall( _choose, args );
             indexed->copyMetadata( *call );
             call->replaceAllUsesWith( indexed );
