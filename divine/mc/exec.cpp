@@ -97,6 +97,55 @@ namespace divine::mc
         }
     };
 
+    struct coverage_heuristic
+    {
+        using choice_id = int;
+        using task_pool_t = std::queue< task::choose >;
+
+        std::unordered_map< choice_id, task_pool_t > _pools;
+        std::unordered_map< choice_id, int > _counters;
+
+        int top_id() noexcept
+        {
+            return std::min_element( _counters.begin(), _counters.end(),
+                [] ( const auto& lhs, const auto& rhs ) {
+                    return lhs.second < rhs.second;
+                } )->first;
+        }
+
+        task::choose top() noexcept { return _pools[ top_id() ].front(); }
+
+        void push( task::choose && c ) noexcept
+        {
+            auto id = c.weight + c.choice;
+
+            if ( !_counters.count( id ) )
+                _counters[ id ] = 0;
+            _pools[ id ].push( std::move( c ) );
+        }
+
+        task::choose pop_task( task_pool_t & pool ) noexcept
+        {
+            auto top = pool.front();
+            pool.pop();
+            return top;
+        }
+
+        task::choose pop() noexcept
+        {
+            auto id = top_id();
+            _counters[ id ]++;
+
+            auto & pool = _pools[ id ];
+            auto task = pop_task( pool );
+            if ( pool.empty() )
+                _pools.erase( id );
+            return task;
+        }
+
+        bool empty() const noexcept { return _pools.empty(); }
+    };
+
     template< typename heuristic_t >
     struct heuristic_search : machine::tree_search
     {
