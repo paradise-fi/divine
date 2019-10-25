@@ -97,6 +97,34 @@ namespace divine::mc
         }
     };
 
+    template< typename heuristic_t >
+    struct heuristic_search : machine::tree_search
+    {
+        heuristic_t _queue;
+
+        using machine::tree_search::run;
+
+        void run( tq q, event::infeasible )
+        {
+            if ( !_queue.empty() )
+            {
+                TRACE( "encountered an infeasible path, backtracking at", _queue.top() );
+                reply( q, _queue.pop() );
+            }
+        }
+
+        void run( tq q, task::choose c )
+        {
+            bool last_choice = c.choice == c.total - 1;
+            _queue.push( std::move( c ) );
+
+            if ( last_choice ) {
+                TRACE( "heuristic choose continue at", _queue.top() );
+                reply( q, _queue.pop() );
+            }
+        }
+    };
+
     using infeasible_notify = brq::module< infeasible_notify_ >;
     using on_exit_notify = brq::module< on_exit_notify_ >;
     using queue_exec = task_queue< event::infeasible >;
