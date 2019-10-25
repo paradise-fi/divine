@@ -53,6 +53,9 @@ namespace lart::abstract
         if ( auto [it, inserted] = seen.insert( value ); !inserted )
             return nullptr;
 
+        if ( llvm::isa< llvm::GlobalValue >( value ) )
+            return nullptr;
+
         if ( auto con = llvm::dyn_cast< llvm::Constant >( value ) ) {
             if ( auto ce = llvm::dyn_cast< llvm::ConstantExpr >( con ) ) {
                 return ce;
