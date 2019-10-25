@@ -744,7 +744,7 @@ struct Command : OptionSet< Opts >
     Match matches( std::string s )
     {
         for ( std::string name : names< T >( types::Preferred() ) )
-            if ( string::startsWith( name, s ) )
+            if ( brq::starts_with( name, s ) )
             {
                 if ( name.size() == s.size() )
                     return Match::Full;

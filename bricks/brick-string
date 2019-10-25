@@ -1,614 +1,384 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * String utilities.
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-/*
- * (c) 2007 Enrico Zini <enrico@enricozini.org>
- * (c) 2014 Petr Ročkai <me@mornfall.net>
- */
-
-/* Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE. */
 
 #pragma once
 
-#include <string>
-#include <sstream>
-#include <cctype>
-#include <cstring>
-#include <cstdarg>
-#include <cstdlib>
-#include <cstddef>
-
-#include <deque>
-#include <vector>
-#include <set>
-#include <stdexcept>
-#include <regex>
-#include <utility>
-#include <tuple>
-
-#include <brick-assert>
-
-#if __cplusplus > 201402L
 #include <string_view>
+#include <charconv>
+#include <tuple>
+#include <variant>
+#include <iomanip>
 
-#ifdef BRICKS_HAVE_LLVM
-namespace llvm { class raw_ostream; }
-#endif // BRICKS_HAVE_LLVM
-#endif // C++17
-
-namespace brick {
-
-// defined in brick-llvm
-// A bit of hacking around template instatiation goes around in using this to
-// make sure compiler errors are emitted properly if definition of formatter
-// is missing.
-namespace llvm { struct Format; }
-
-namespace string {
-
-#if _WIN32 || __xlC__
-namespace {
-
-int vasprintf (char **result, const char *format, va_list args)
+namespace brq
 {
-  const char *p = format;
-  /* Add one to make sure that it is never zero, which might cause malloc
-     to return NULL.  */
-  int total_width = strlen (format) + 1;
-  va_list ap;
+    /* A simple string builder, similar to std::stringstream but much lighter.
+     * Only works with 8-bit characters (i.e. no wchar_t or char32_t). Provides
+     * a basic selection of formatting operators. To provide formatting
+     * operators for custom types, the following idiom may be useful to use the
+     * same definition for std::ostream and for string_builder (also works for
+     * friend-style definitions):
+     *
+     * template< typename stream >
+     * auto operator<<( stream &o, my_type t ) -> decltype( o << "" )
+     * {
+     *     // ...
+     * }
+     *
+     * Besides accepting values to format, string_builder also understands
+     * std::dec and std::hex IO manipulators. */
 
-  memcpy (static_cast< void * >( &ap ), static_cast< void * >( &args ), sizeof (va_list));
-
-  while (*p != '\0')
+    struct string_builder
     {
-      if (*p++ == '%')
-	{
-	  while (strchr ("-+ #0", *p))
-	    ++p;
-	  if (*p == '*')
-	    {
-	      ++p;
-	      total_width += abs (va_arg (ap, int));
-	    }
-	  else
-	    total_width += strtoul (p, const_cast< char ** >( &p ), 10);
-	  if (*p == '.')
-	    {
-	      ++p;
-	      if (*p == '*')
-		{
-		  ++p;
-		  total_width += abs (va_arg (ap, int));
-		}
-	      else
-	      total_width += strtoul (p, const_cast< char ** >( &p ), 10);
-	    }
-	  while (strchr ("hlL", *p))
-	    ++p;
-	  /* Should be big enough for any format specifier except %s and floats.  */
-	  total_width += 30;
-	  switch (*p)
-	    {
-	    case 'd':
-	    case 'i':
-	    case 'o':
-	    case 'u':
-	    case 'x':
-	    case 'X':
-	    case 'c':
-	      (void) va_arg (ap, int);
-	      break;
-	    case 'f':
-	    case 'e':
-	    case 'E':
-	    case 'g':
-	    case 'G':
-	      (void) va_arg (ap, double);
-	      /* Since an ieee double can have an exponent of 307, we'll
-		 make the buffer wide enough to cover the gross case. */
-	      total_width += 307;
-	      break;
-	    case 's':
-	      total_width += strlen (va_arg (ap, char *));
-	      break;
-	    case 'p':
-	    case 'n':
-	      (void) va_arg (ap, char *);
-	      break;
-	    }
-	  p++;
-	}
-    }
-  *result = static_cast< char * >( malloc (total_width) );
-  if (*result != NULL) {
-    return vsprintf (*result, format, args);}
-  else {
-    return 0;
-  }
-}
+        char *_buffer = nullptr;
+        int32_t _capacity:30, _offset:30;
+        bool _hex:1, _oom:1;
 
-}
-#endif
-
-namespace {
-
-std::string fmtf( const char* f, ... ) {
-    char *c;
-    va_list ap;
-    va_start( ap, f );
-    vasprintf( &c, f, ap );
-    std::string ret( c );
-    free( c );
-    return ret;
-}
-
-/// Format any value into a string using a std::stringstream
-template< typename T >
-inline std::string fmt(const T& val)
-{
-    std::stringstream str;
-    str << val;
-    return str.str();
-}
-
-inline std::string fmt( __uint128_t v )
-{
-    return v > std::numeric_limits< uint64_t >::max() ? "<big uint128>" : fmt( uint64_t( v ) );
-}
-
-// show chars as numbers
-inline std::string fmt( int8_t c ) { return fmt( int( c ) ); }
-inline std::string fmt( uint8_t c ) { return fmt( int( c ) ); }
-
-template< typename C >
-inline std::string fmt_container( const C &c, std::string f, std::string l, std::string sep = ", " )
-{
-    std::string s;
-    s += f;
-    if ( c.empty() )
-        return s + l;
-
-    s += ' ';
-    for ( typename C::const_iterator i = c.begin(); i != c.end(); ++i ) {
-        s += fmt( *i );
-        if ( i != c.end() && std::next( i ) != c.end() )
-            s += sep;
-    }
-    s += ' ';
-    s += l;
-    return s;
-}
-
-template< typename X >
-inline std::string fmt(const std::set< X >& val) {
-    return fmt_container( val, "{", "}" );
-}
-
-template< typename X >
-inline std::string fmt(const std::vector< X > &val) {
-    return fmt_container( val, "[", "]" );
-}
-
-template< typename X >
-inline std::string fmt(const std::deque< X > &val) {
-    return fmt_container( val, "[", "]" );
-}
-
-inline bool startsWith(const std::string& str, const std::string& part)
-{
-    if (str.size() < part.size())
-        return false;
-    return str.substr(0, part.size()) == part;
-}
-
-inline bool endsWith(const std::string& str, const std::string& part)
-{
-    if (str.size() < part.size())
-        return false;
-    return str.substr(str.size() - part.size()) == part;
-}
-
-}
-
-/**
- * Simple string wrapper.
- *
- * wibble::text::Wrap takes a string and splits it in lines of the give length
- * with proper word wrapping.
- *
- * Example:
- * \code
- * WordWrap ww("The quick brown fox jumps over the lazy dog");
- * ww.get(5);  // Returns "The"
- * ww.get(14); // Returns "quick brown"
- * ww.get(3);  // Returns "fox"
- * // A line always gets some text, to avoid looping indefinitely in case of
- * // words that are too long.  Words that are too long are split crudely.
- * ww.get(2);  // Returns "ju"
- * ww.get(90); // Returns "mps over the lazy dog"
- * \endcode
- */
-class WordWrap
-{
-    std::string s;
-    size_t cursor;
-
-public:
-    /**
-     * Creates a new word wrapper that takes data from the given string
-     */
-WordWrap(const std::string& s) : s(s), cursor(0) {}
-
-    /**
-     * Rewind the word wrapper, restarting the output from the beginning of the
-     * string
-     */
-    void restart() { cursor = 0; }
-
-    /**
-     * Returns true if there is still data to be read in the string
-     */
-    bool hasData() const { return cursor < s.size(); }
-
-    /**
-     * Get a line of text from the string, wrapped to a maximum of \c width
-     * characters
-     */
-    std::string get(unsigned int width) {
-
-	if (cursor >= s.size())
-            return "";
-
-	// Find the last work break before `width'
-	unsigned int brk = cursor;
-	for (unsigned int j = cursor; j < s.size() && j < cursor + width; j++)
-	{
-            if (s[j] == '\n')
-            {
-                brk = j;
-                break;
-            } else if (!isspace(s[j]) && (j + 1 == s.size() || isspace(s[j + 1])))
-                brk = j + 1;
-	}
-	if (brk == cursor)
-            brk = cursor + width;
-
-	std::string res;
-	if (brk >= s.size())
-	{
-            res = std::string(s, cursor, std::string::npos);
-            cursor = s.size();
-	} else {
-            res = std::string(s, cursor, brk - cursor);
-            cursor = brk;
-            while (cursor < s.size() && isspace(s[cursor]))
-                cursor++;
-	}
-	return res;
-    }
-};
-
-/// Given a pathname, return the file name without its path
-inline std::string basename(const std::string& pathname)
-{
-    size_t pos = pathname.rfind("/");
-    if (pos == std::string::npos)
-        return pathname;
-    else
-        return pathname.substr(pos+1);
-}
-
-inline std::string dirname(const std::string& pathname)
-{
-    size_t pos = pathname.rfind( "/" );
-    if ( pos == std::string::npos )
-        return ".";
-    else if ( !pos && pathname[0] == '/' )
-        return "/";
-    else
-        return std::string( pathname, 0, pos );
-}
-
-struct SplitRange {
-
-    using const_iterator = std::sregex_token_iterator;
-
-    SplitRange( std::string str, std::regex re ) :
-        re( std::move( re ) ), str( std::move( str ) )
-    { }
-
-    std::sregex_token_iterator begin() const {
-        return std::sregex_token_iterator( str.begin(), str.end(), re, -1 );
-    }
-
-    std::sregex_token_iterator end() { return { }; }
-
-  private:
-    std::regex re;
-    std::string str;
-};
-
-inline SplitRange splitStringBy( const std::string &str, const std::regex &re ) {
-    return SplitRange( str, re );
-}
-
-inline SplitRange splitStringBy( const std::string &str, const std::string &re,
-                          std::regex::flag_type flags = std::regex::basic )
-{
-    return SplitRange( str, std::regex( re, flags ) );
-}
-
-/**
- * Split a string using a regular expression to match the token separators.
- *
- * This does a similar work to the split functions of perl, python and ruby.
- *
- * Example code:
- * \code
- *   utils::Splitter splitter( "[ \t]*,[ \t]*", std::regex::extended );
- *   vector<string> split;
- *   std::copy(splitter.begin(myString), splitter.end(), back_inserter(split));
- * \endcode
- *
- */
-struct Splitter {
-
-    struct const_iterator : private std::string, public std::sregex_token_iterator {
-        const_iterator() = default;
-        const_iterator( std::string str, const std::regex &re ) :
-            std::string( str ),
-            std::sregex_token_iterator( std::string::begin(), std::string::end(),
-                    re, -1 )
-        { }
-    };
-
-    /**
-     * Create a splitter that uses the given regular expression to find tokens.
-     */
-    Splitter( const std::string &re, std::regex::flag_type flags )
-        : re( re, flags )
-    { }
-
-    explicit Splitter( std::regex &re ) : re( re ) { }
-
-    const_iterator begin( const std::string &str ) const {
-        return const_iterator( str, re );
-    }
-
-    const_iterator end() { return { }; }
-
-  private:
-    std::regex re;
-};
-
-#if __cplusplus > 201402L
-namespace detail
-{
-    struct NotPreferred { };
-    struct Preferred : NotPreferred { };
-
-    template< typename R, typename ... Args >
-    using Eat = R;
-
-    template< typename T >
-    constexpr auto is_container( Preferred ) noexcept
-        -> Eat< bool, decltype( begin( std::declval< T & >() ) ),
-                      decltype( end( std::declval< T & >() ) ) >
-    { return true; }
-
-    template< typename T >
-    constexpr bool is_container( NotPreferred ) noexcept
-    { return false; }
-
-    template< typename T >
-    constexpr auto container_bracket( char, char set, Preferred ) noexcept
-        -> Eat< char, typename T::key_type >
-    { return set; }
-
-    template< typename T >
-    constexpr char container_bracket( char seq, char, NotPreferred ) noexcept
-    { return seq; }
-
-    template< typename T >
-    struct IsContainer {
-        static constexpr bool is_container =
-                detail::is_container< T >( detail::Preferred() );
-        static constexpr char left_bracket =
-                detail::container_bracket< T >( '[', '{', detail::Preferred() );
-        static constexpr char right_bracket =
-                detail::container_bracket< T >( ']', '}', detail::Preferred() );
-    };
-} // namespace detail
-
-struct Formatter
-{
-    std::string str() const { return ss.str(); }
-
-    template< typename T >
-    auto format( T &&v ) -> std::void_t< decltype( std::declval< std::stringstream & >() << v ) >
-    {
-        ss << v;
-    }
-
-    template< typename T1, typename T2 >
-    void format( const std::pair< T1, T2 > &pair )
-    {
-        ss << "(";
-        format( pair.first );
-        ss << ", ";
-        format( pair.second );
-        ss << ")";
-    }
-
-    template< typename... Ts >
-    void format( const std::tuple< Ts... > &tuple )
-    {
-        ss << "(";
-        auto fmtsep = [this, sep = ""]( auto &&arg ) mutable {
-            ss << sep;
-            format( arg );
-            sep = ", ";
-        };
-        std::apply( [&]( auto &&... args ) { (fmtsep( args ), ...); }, tuple );
-        ss << ")";
-    }
-
-    // since string is also container, we have to make sure this overload
-    // is not used for string-like thinks
-    template< typename T, typename Trait = detail::IsContainer< T > >
-    auto format( const T &container )
-        -> std::enable_if_t< Trait::is_container && !std::is_convertible< T, std::string_view >::value >
-    {
-        ss << Trait::left_bracket;
-        const char* sep = "";
-        for ( const auto &x : container ) {
-            ss << sep;
-            format( x );
-            sep = ", ";
-        }
-        ss << Trait::right_bracket;
-    }
-
-  private:
-    std::stringstream ss;
-};
-
-// format arguments, space separating them
-template< typename... Args >
-std::string format( Args &&...args ) {
-    Formatter fmt;
-    auto fmtsep = [&fmt, sep = ""]( auto &&arg ) mutable {
-        fmt.format( sep );
-        fmt.format( arg );
-        sep = " ";
-    };
-    (fmtsep( args ), ...);
-    return fmt.str();
-}
-#endif // C++17
-
-}
-
-namespace _assert {
-
-template< typename... Args >
-std::string fmt( Args &&... args )
-{
-    return string::format( std::forward< Args >( args )... );
-}
-
-}
-
-namespace t_string
-{
-
-using namespace brick::string;
-
-struct TestRegexp {
-
-    TEST(splitter)
-    {
-        Splitter splitter("[ \t]+or[ \t]+", std::regex::extended | std::regex::icase );
-        Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
-        ASSERT_EQ(i->str(), "a");
-        ASSERT_EQ(i->length(), 1u);
-        ++i;
-        ASSERT_EQ(i->str(), "b");
-        ASSERT_EQ(i->length(), 1u);
-        ++i;
-        ASSERT_EQ(i->str(), "c");
-        ASSERT_EQ(i->length(), 1u);
-        ++i;
-        ASSERT_EQ(i->str(), "dadada");
-        ASSERT_EQ(i->length(), 6u);
-        ++i;
-        ASSERT(i == splitter.end());
-    }
-
-    TEST(splitString)
-    {
-        std::vector< std::string > matches = { "a", "b", "c", "dadada" };
-        auto i = matches.begin();
-
-        for ( const auto &m : splitStringBy( "a or b OR c   or     dadada", "[ \t]+or[ \t]+",
-                                std::regex::extended | std::regex::icase ) )
+        string_builder( const string_builder & ) = delete;
+        string_builder( string_builder &&o )
+            : _buffer( o._buffer ), _capacity( o._capacity ), _offset( o._offset ),
+              _hex( o._hex ), _oom( o._oom )
         {
-            ASSERT( i != matches.end() );
-            ASSERT_EQ( m.length(), i->size() );
-            ASSERT_EQ( m.str(), *i );
-            ++i;
+            o._buffer = nullptr;
+            o._capacity = 0;
+            o._offset = 0;
         }
-        ASSERT( i == matches.end() );
-    }
-};
 
-struct TestPaths
-{
-    TEST(dirname)
+        string_builder() noexcept : _capacity( 0 ), _offset( 0 ), _hex( false ), _oom( false ) {}
+        ~string_builder() noexcept { free( _buffer ); }
+
+        char *pointer() noexcept { return _buffer + _offset; }
+        char *buffer_end() noexcept { return _buffer + _capacity - 1; }
+        const char *buffer() const noexcept { return _buffer ? _buffer : ""; }
+        std::string_view data() const noexcept { return std::string_view( _buffer, _offset ); }
+        int size() noexcept { return _offset; }
+        bool truncated() { return _oom; }
+
+        string_builder &hex( bool h = true ) { _hex = h; return *this; }
+        string_builder &dec() { _hex = false; return *this; }
+
+        void clear()
+        {
+            free( _buffer );
+            _buffer = nullptr;
+            _capacity = _offset = 0;
+            _hex = _oom = false;
+        }
+
+        bool _make_space( int sz ) noexcept
+        {
+            if ( _oom )
+                return false;
+            if ( _offset + sz < _capacity )
+                return true;
+
+            int new_capacity = _capacity + std::max( _capacity / 2, sz + 1 );
+            void *mem = realloc( _buffer, new_capacity );
+            if ( mem )
+            {
+                _buffer = static_cast< char * >( mem );
+                _capacity = new_capacity;
+            }
+            else
+                _oom = true;
+
+            return !_oom;
+        }
+
+        string_builder &operator<<( std::string_view str ) noexcept
+        {
+            if ( !_make_space( str.size() ) ) return *this;
+            std::copy( str.begin(), str.end(), pointer() );
+            _offset += str.size();
+            _buffer[ _offset ] = 0;
+            return *this;
+        }
+
+        string_builder &operator<<( std::u32string_view us ) noexcept
+        {
+            while ( !us.empty() )
+            {
+                if ( !_make_space( 4 ) ) return *this;
+
+                uint32_t wc = us.front();
+
+                if ( ( wc & 0xFFFFF800 ) == 0x00D800 || wc > 0x10FFFF )
+                    continue; /* skip the character */
+
+                if ( wc < 0x000080 )
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( wc ); 
+                }
+                else if ( wc < 0x000800 )
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xC0 | ( wc >> 6 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( wc & 0x03F ) );
+                }
+                else if ( wc < 0x010000 )
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xE0 |   ( wc >> 12 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x0FC0 ) >> 6 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 |   ( wc & 0x003F ) );
+                }
+                else // if (wc < 0x110000)
+                {
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xF0 |   ( wc >> 18 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x03F000 ) >> 12 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x000FC0 ) >> 6 ) );
+                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 |   ( wc & 0x00003F ) );
+                }
+
+                us.remove_prefix( 1 );
+            }
+
+            return *this;
+        }
+
+        string_builder &operator<<( char c ) noexcept
+        {
+            *this << int( c );
+            if ( std::isprint( c ) )
+            {
+                if ( !_make_space( 3 ) ) return *this;
+                _buffer[ _offset++ ] = '\'';
+                _buffer[ _offset++ ] = c;
+                _buffer[ _offset++ ] = '\'';
+                _buffer[ _offset ] = 0;
+            }
+            return *this;
+        }
+
+        string_builder &operator<<( const void *ptr ) noexcept
+        {
+            auto was_hex = _hex;
+            _hex = true;
+            (*this) << uintptr_t( ptr );
+            _hex = was_hex;
+            return *this;
+        }
+
+        string_builder &operator<<( const char *str ) noexcept
+        {
+            return (*this) << ( str ? std::string_view( str ) : "<nullptr>" );
+        }
+
+        template< typename C >
+        auto operator<<( const C &c ) noexcept
+            -> std::enable_if_t< !std::is_convertible_v< C, std::string_view > &&
+                                 !std::is_convertible_v< C, std::u32string_view >,
+                                 decltype( *this << *c ) >
+        {
+            if ( c.has_value() )
+                return *this << "[ " << *c << " ]";
+            else
+                return *this << "<null>";
+        }
+
+        template< typename C >
+        auto operator<<( const C &c ) noexcept
+            -> std::enable_if_t< !std::is_convertible_v< C, std::string_view > &&
+                                 !std::is_convertible_v< C, std::u32string_view >,
+                                 decltype( *this << *c.begin() << *c.end() ) >
+        {
+            bool first = true;
+            *this << "[";
+            for ( const auto &e : c )
+                *this << ( first ? first = false, " " : ", " ) << e;
+            *this << ( first ? "]" : " ]" );
+            return *this;
+        }
+
+        template< int i = 0, typename... T >
+        auto &operator<<( const std::tuple< T... > &t ) noexcept
+        {
+            if ( i == 0 )
+                *this << "[";
+            if constexpr ( i < sizeof...( T ) )
+            {
+                *this << ( i > 0 ? ", " : " " ) << std::get< i >( t );
+                return this->operator<<< i + 1 >( t );
+            }
+            else
+                return *this << ( i == 0 ? "]" : " ]" );
+        }
+
+        template< typename... T >
+        auto &operator<<( const std::variant< T... > &v ) noexcept
+        {
+            return std::visit( [&]( const auto &val ) -> auto & { return *this << val; }, v );
+        }
+
+        template< typename A, typename B >
+        auto operator<<( const std::pair< A, B > &p ) noexcept
+            -> decltype( *this << p.first << p.second )
+        {
+            return *this << "[ " << p.first << ", " << p.second << " ]";
+        }
+
+        string_builder &operator<<( decltype( std::hex ) manip ) noexcept
+        {
+            if ( manip == std::hex )
+                _hex = true;
+            if ( manip == std::dec )
+                _hex = false;
+            return *this;
+        }
+
+        template< typename F >
+        auto operator<<( const F &f ) noexcept
+            -> decltype( f( *this ), *this )
+        {
+            return f( *this ), *this;
+        }
+
+        template< typename V >
+        auto operator<<( const V &val ) noexcept
+            -> decltype( std::to_chars( _buffer, _buffer, val ), *this )
+        {
+            int cap = 16;
+            std::to_chars_result result;
+            do {
+                if ( !_make_space( cap ) ) return *this;
+                if constexpr ( std::is_integral< V >::value )
+                    result = std::to_chars( pointer(), buffer_end(), val, _hex ? 16 : 10 );
+                else
+                    result = std::to_chars( pointer(), buffer_end(), val );
+                cap *= 2;
+            } while ( result.ec == std::errc::value_too_large );
+
+            _offset = result.ptr - _buffer;
+            _buffer[ _offset ] = 0;
+            return *this;
+        }
+    };
+
+    struct mark_t
     {
-        ASSERT_EQ( string::dirname( "foo" ), "." );
-        ASSERT_EQ( string::dirname( "/foo" ), "/" );
-        ASSERT_EQ( string::dirname( "/foo/foo" ), "/foo" );
-        ASSERT_EQ( string::dirname( "foo/bar" ), "foo" );
-    }
+        string_builder *b = nullptr;
+        int32_t mark;
 
-    TEST(basename)
+        mark_t() = default;
+        mark_t( string_builder &b ) : b( &b ), mark( b._offset ) {}
+        template< typename T > mark_t operator<<( const T &v ) { *b << v; return *this; }
+    };
+
+    struct pad
     {
-        ASSERT_EQ( string::basename( "foo" ), "foo" );
-        ASSERT_EQ( string::basename( "/foo" ), "foo" );
-        ASSERT_EQ( string::basename( "/foo/foo" ), "foo" );
-        ASSERT_EQ( string::basename( "foo/bar" ), "bar" );
-    }
-};
+        mark_t mark;
+        int width;
+        char ch;
+        pad( int w, char ch = ' ' ) : width( w ), ch( ch ) {}
+        pad( string_builder &b, pad p ) : mark( b ), width( p.width ), ch( p.ch ) {}
 
-#if __cplusplus > 201402L
-struct TestFormat
-{
-    TEST(basic) {
-        ASSERT_EQ( string::format( "hello" ), "hello" );
-        ASSERT_EQ( string::format( "hello", "world" ), "hello world" );
-        ASSERT_EQ( string::format( "hello", 42 ), "hello 42" );
-        ASSERT_EQ( string::format( '?', '*' ), "? *" );
+        template< typename T > pad operator<<( const T &v ) { mark << v; return *this; }
+        static string_builder &write( string_builder &b, int width, int from, char ch, bool left )
+        {
+            int output_width = b._offset - from;
+            if ( int pad = width - output_width; pad > 0 && b._make_space( pad ) )
+            {
+                if ( left )
+                    std::memmove( b._buffer + from + pad, b._buffer + from, output_width + 1 );
+                else
+                    b._buffer[ b._offset + pad ] = 0;
+                std::memset( b._buffer + ( left ? from : b._offset ), ch, pad );
+                b._offset += pad;
+            }
+            return b;
+        }
+    };
+
+    static mark_t mark;
+
+    static mark_t operator<<( string_builder &bld, mark_t ) { return mark_t( bld ); }
+    static pad operator<<( string_builder &bld, pad p ) { return pad( bld, p ); }
+
+    static string_builder &operator<<( mark_t m, pad p )
+    {
+        return pad::write( *m.b, p.width, m.mark, p.ch, false );
     }
 
-    TEST(tuple) {
-        ASSERT_EQ( string::format( std::make_pair( "hello", 42 ) ), "(hello, 42)" );
-        ASSERT_EQ( string::format( std::make_tuple( "hello", 42, '!' ) ), "(hello, 42, !)" );
+    static string_builder &operator<<( pad p, mark_t )
+    {
+        return pad::write( *p.mark.b, p.width, p.mark.mark, p.ch, true );
     }
 
-    TEST(container) {
-        ASSERT_EQ( string::format( std::vector< int >{ 1, 2, 3 } ), "[1, 2, 3]" );
-        ASSERT_EQ( string::format( std::set< int >{ 1, 2, 3 } ), "{1, 2, 3}" );
-        ASSERT_EQ( string::format( std::vector< std::pair< int, std::string > >{ { 1, "hello" }, { 2, "world" } }, 3 ),
-                   "[(1, hello), (2, world)] 3" );
-    }
-};
-#endif // C++17
+    struct fallback
+    {
+        template< typename T >
+        constexpr fallback( const T & ) {}
+    };
 
+    static inline bool starts_with( std::string_view s, std::string_view t )
+    {
+        return s.size() >= t.size() && s.compare( 0, t.size(), t ) == 0;
+    }
+
+    static inline bool ends_with( std::string_view s, std::string_view t )
+    {
+        return s.size() >= t.size() && s.compare( s.size() - t.size(), s.npos, t ) == 0;
+    }
+
+    /* Format a bunch of values into a stream, separated by spaces. Values that
+     * don't have a string_builder formatting operator are printed as
+     * <unknown>, because TRACE statements can include values whose types
+     * depend on template parameters and we don't want TRACE uses to cause
+     * unexpected instantiation failures (especially for cases where the user
+     * doesn't care about the trace output). */
+
+    template< typename stream, typename T >
+    auto format_nofail( stream &acc, const T &t ) noexcept
+        -> decltype( acc << t, void(0) )
+    {
+        acc << t;
+    }
+
+    template< typename stream >
+    void format_nofail( stream &acc, fallback ) noexcept
+    {
+        acc << "<unknown>";
+    }
+
+    template< typename stream >
+    void format_args_nofail( stream & ) noexcept {}
+
+    template< typename stream, typename A, typename... Args >
+    void format_args_nofail( stream &acc, const A &a, const Args & ... as ) noexcept
+    {
+        format_nofail( acc, a );
+        if constexpr ( !std::is_same< A, decltype( std::hex ) >::value )
+            acc << " ";
+        format_args_nofail( acc, as... );
+    }
+
+    using split_view = std::pair< std::string_view, std::string_view >;
+
+    static inline split_view split( std::string_view p, char d, bool reverse = false )
+    {
+        auto s = reverse ? p.rfind( d ) : p.find( d );
+        if ( s == p.npos )
+            return reverse ? split_view{ "", p } : split_view{ p, "" };
+        return { p.substr( 0, s ), p.substr( s + 1, p.npos ) };
+    }
 }
+
+#include "brick-assert"
+
+namespace t_brq
+{
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
