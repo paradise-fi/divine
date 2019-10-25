@@ -71,14 +71,21 @@ namespace divine::mc
     template< typename next >
     struct ctx_choice_ : next
     {
-        int _choice_take, _choice_count;
+        int _choice_take, _choice_count, _choice_weight = 0;
 
-        template< typename I >
-        int choose( int count, I, I )
+        template< typename weights_iterator >
+        int choose( int count, weights_iterator begin, weights_iterator end )
         {
             if ( _choice_count )
                 ASSERT_LT( _choice_take, _choice_count );
             _choice_count = count;
+
+            if ( begin != end )
+                if ( std::distance( begin, end ) > _choice_take )
+                    _choice_weight = *std::next( begin, _choice_take );
+                else
+                    _choice_weight = *begin; // use first weight on all choices
+
             return _choice_take;
         }
     };
@@ -148,10 +155,10 @@ namespace divine::mc::task
 
     struct choose : with_state
     {
-        int choice, total;
+        int choice, total, weight;
 
-        choose( task::origin o, Snapshot snap, vm::State state, int c, int t )
-            : with_state( o, snap, state ), choice( c ), total( t )
+        choose( task::origin o, Snapshot snap, vm::State state, int c, int t, int w )
+            : with_state( o, snap, state ), choice( c ), total( t ), weight( w )
         {}
     };
 }
@@ -277,11 +284,12 @@ namespace divine::mc::machine
             eval.refresh();
             eval.dispatch();
             int total = this->context()._choice_count;
+            int weight = this->context()._choice_weight;
 
             for ( int i = 0; i < total; ++i )
             {
                 this->_snap_refcnt.get( snap );
-                this->reply( q, task::choose( o, snap, state, i, total ) );
+                this->reply( q, task::choose( o, snap, state, i, total, weight ) );
             }
         }
 
