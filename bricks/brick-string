@@ -340,8 +340,7 @@ namespace brq
      * doesn't care about the trace output). */
 
     template< typename stream, typename T >
-    auto format_nofail( stream &acc, const T &t ) noexcept
-        -> decltype( acc << t, void(0) )
+    auto format_nofail( stream &acc, const T &t ) noexcept -> decltype( acc << t, void(0) )
     {
         acc << t;
     }
@@ -352,16 +351,20 @@ namespace brq
         acc << "<unknown>";
     }
 
-    template< typename stream >
-    void format_args_nofail( stream & ) noexcept {}
+    template< bool nofail, typename stream >
+    void format_args( stream & ) noexcept {}
 
-    template< typename stream, typename A, typename... Args >
-    void format_args_nofail( stream &acc, const A &a, const Args & ... as ) noexcept
+    template< bool nofail = false, typename stream, typename A, typename... Args >
+    void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
     {
-        format_nofail( acc, a );
+        if constexpr ( nofail )
+            format_nofail( acc, a );
+        else
+            acc << a;
+
         if constexpr ( !std::is_same< A, decltype( std::hex ) >::value )
             acc << " ";
-        format_args_nofail( acc, as... );
+        format_args< nofail >( acc, as... );
     }
 
     using split_view = std::pair< std::string_view, std::string_view >;

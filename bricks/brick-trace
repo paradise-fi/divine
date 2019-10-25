@@ -64,10 +64,10 @@
 #define TRACE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 #define NOISE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 #else
-#define TRACE(...) ::brq::trace_fn( 2, BRICK_LOCATION( "" ), __VA_ARGS__ )
-#define NOISE(...) ::brq::trace_fn( 3, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define TRACE(...) ::brq::trace_fn< true >( 2, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define NOISE(...) ::brq::trace_fn< true >( 3, BRICK_LOCATION( "" ), __VA_ARGS__ )
 #endif
-#define DEBUG(...) ::brq::trace_fn( 1, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define DEBUG(...) ::brq::trace_fn< false >( 1, BRICK_LOCATION( "" ), __VA_ARGS__ )
 
 namespace brq
 {
@@ -241,13 +241,13 @@ namespace brq
 
     static inline struct trace &trace() { return singleton< struct trace >(); }
 
-    template< typename... Args >
+    template< bool nofail, typename... Args >
     __debugfn void trace_fn( int level, trace_location location, const Args &... args ) noexcept
     {
         string_builder builder;
         if ( trace().prepare( builder, level, location ) )
         {
-            format_args_nofail( builder, args... );
+            format_args< nofail >( builder, args... );
             trace().print( builder, level );
         }
     }
