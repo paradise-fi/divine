@@ -40,6 +40,7 @@
 
 #ifdef __unix__
 #include <unistd.h>
+#include <syslog.h>
 #else
 #include <cstdio>
 #endif
@@ -567,11 +568,14 @@ namespace brq
             __dios_trace_internal( 0, "%s", b.buffer() );
         }
 #else
-        void print( string_builder &b )
+        void print( string_builder &b, int level )
         {
             b << "\n";
 #ifdef __unix__
-            ::write( 2, b.buffer(), b.size() );
+            if ( _use_syslog )
+                ::syslog( level > 0 ? LOG_DEBUG : LOG_INFO, "%s", b.buffer() );
+            else
+                ::write( 2, b.buffer(), b.size() );
 #else
             std::fwrite( b.buffer(), 1, b.size(), stderr );
             std::fflush( stderr );
@@ -589,7 +593,7 @@ namespace brq
         if ( trace().prepare( builder, level, location ) )
         {
             format_args_nofail( builder, args... );
-            trace().print( builder );
+            trace().print( builder, level );
         }
     }
 }
