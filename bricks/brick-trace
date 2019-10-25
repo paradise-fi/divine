@@ -67,10 +67,10 @@
 #define TRACE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 #define NOISE(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
 #else
-#define TRACE(...) ::brq::trace_fn( 1, BRICK_LOCATION( "" ), __VA_ARGS__ )
-#define NOISE(...) ::brq::trace_fn( 2, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define TRACE(...) ::brq::trace_fn( 2, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define NOISE(...) ::brq::trace_fn( 3, BRICK_LOCATION( "" ), __VA_ARGS__ )
 #endif
-#define DEBUG(...) ::brq::trace_fn( 0, BRICK_LOCATION( "" ), __VA_ARGS__ )
+#define DEBUG(...) ::brq::trace_fn( 1, BRICK_LOCATION( "" ), __VA_ARGS__ )
 
 namespace brq
 {
@@ -116,6 +116,7 @@ namespace brq
         std::string_view data() const noexcept { return std::string_view( _buffer, _offset ); }
         int size() noexcept { return _offset; }
         bool truncated() { return _oom; }
+
         string_builder &hex( bool h = true ) { _hex = h; return *this; }
         string_builder &dec() { _hex = false; return *this; }
 
@@ -444,11 +445,18 @@ namespace brq
      * might be using. For short programs (e.g. unit tests), it might be okay
      * to just say `env BRICK_TRACE=all program`. */
 
-    namespace trace_impl
+    template< typename T >
+    [[gnu::constructor]] T &singleton() noexcept
     {
-#ifdef __divine__
-        static bool enabled( const trace_location & ) { return true; }
-#else
+        static char memory[ sizeof( T ) ];
+        static T *value = nullptr;
+        if ( !value )
+            value = new ( memory ) T;
+        return *value;
+    }
+
+    struct trace
+    {
         struct rule_t
         {
             std::string_view suffix;
@@ -456,20 +464,39 @@ namespace brq
         };
 
         using rules_t = std::vector< rule_t >;
+        rules_t _rules;
+        bool _print_tid = false, _print_location = false, _use_syslog = false;
 
-        static inline int level( std::string_view name )
+        void use_syslog( bool s = true ) { _use_syslog = s; }
+
+        trace()
         {
-            if ( name == "off" ) return -1;
-            if ( name == "debug" ) return 0;
-            if ( name == "trace" ) return 1;
-            if ( name == "noise" ) return 2;
-            return 1; /* default to 'trace' */
+            if ( auto env = getenv( "TRACE" ) )
+            {
+                add_rules( env );
+                _print_location = true;
+            }
+            else
+                add_rule( "+", 0, 0 ); /* print info-level messages by default */
         }
 
-        static inline rules_t init( std::string_view str )
+        int level( std::string_view name )
         {
-            rules_t rv;
+            if ( name == "off" ) return -1;
+            if ( name == "info" ) return 0;
+            if ( name == "debug" ) return 1;
+            if ( name == "trace" ) return 2;
+            if ( name == "noise" ) return 3;
+            return 2; /* default to 'trace' */
+        }
 
+        void add_rule( std::string_view suffix, int level, int line = 0 )
+        {
+            _rules.push_back( rule_t{ suffix, line, level } );
+        }
+
+        void add_rules( std::string_view str )
+        {
             while ( !str.empty() )
             {
                 auto [ first, rest ] = split( str, ',' );
@@ -480,20 +507,17 @@ namespace brq
                 if ( line_s.size() )
                     line = strtol( line_s.begin(), nullptr, 10 );
 
-                rv.push_back( rule_t{ filename, line, lvl } );
+                add_rule( filename, lvl, line );
                 str = rest;
             }
-
-            return rv;
         }
 
-        static bool enabled( int level, const trace_location &l )
+        bool enabled( int level, const trace_location &l )
         {
             bool print = false;
-            static rules_t rules = init( getenv( "TRACE" ) ?: "" );
 
             auto f = l.file();
-            for ( auto r : rules )
+            for ( auto r : _rules )
             {
                 auto s = r.suffix;
                 if ( s == "+" || s == "*" || 
@@ -508,34 +532,52 @@ namespace brq
 
             return print;
         }
-#endif
-    }
 
-    template< typename... Args >
-    __debugfn void trace_fn( int level, trace_location l, const Args &... args ) noexcept
-    {
-        if ( !trace_impl::enabled( level, l ) )
-            return;
-        string_builder acc;
-        acc << l.filename() << ":" << l.line << ": ";
-#ifndef __divine__
-        acc << "[" << pthread_self() << "] ";
-#endif
-        format_args_nofail( acc, args... );
+        bool prepare( string_builder &b, int level, trace_location location )
+        {
+            if ( !enabled( level, location ) )
+                return false;
+
+            if ( _print_location )
+                b << location.filename() << ":" << location.line << ": ";
+            if ( _print_tid )
+                b << "[" << pthread_self() << "] ";
+
+            return true;
+        }
 
 #ifdef __divine__
-        if ( acc.truncated() )
-            __vm_cancel();
-        __dios_trace_internal( 0, "%s", acc.buffer() );
+        void print( string_builder &b )
+        {
+            if ( b.truncated() )
+                __vm_cancel();
+            __dios_trace_internal( 0, "%s", b.buffer() );
+        }
 #else
-        acc << "\n";
+        void print( string_builder &b )
+        {
+            b << "\n";
 #ifdef __unix__
-        ::write( 2, acc.buffer(), acc.size() );
+            ::write( 2, b.buffer(), b.size() );
 #else
-        std::fwrite( acc.buffer(), 1, acc.size(), stderr );
-        std::fflush( stderr );
+            std::fwrite( b.buffer(), 1, b.size(), stderr );
+            std::fflush( stderr );
 #endif
+        }
 #endif
+    };
+
+    static inline struct trace &trace() { return singleton< struct trace >(); }
+
+    template< typename... Args >
+    __debugfn void trace_fn( int level, trace_location location, const Args &... args ) noexcept
+    {
+        string_builder builder;
+        if ( trace().prepare( builder, level, location ) )
+        {
+            format_args_nofail( builder, args... );
+            trace().print( builder );
+        }
     }
 }
 
