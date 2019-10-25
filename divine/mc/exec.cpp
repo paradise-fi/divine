@@ -220,6 +220,14 @@ namespace divine::mc
                                            machine::base< solver_t, queue_exec > > {};
 
     template< typename solver_t >
+    struct exhaustive_exec : brq::compose_stack< on_exit_notify, mach_exec< solver_t > > {};
+
+    using coverage_search = heuristic_search< coverage_heuristic >;
+
+    using weighted = weight_comparator< task::choose >;
+    using closest_fault_search = heuristic_search< distance_heuristic< weighted > >;
+
+    template< typename solver_t >
     void Exec::do_run()
     {
         backtrack b;
