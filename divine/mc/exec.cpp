@@ -24,6 +24,8 @@
 #include <divine/mc/weaver.hpp>
 #include <divine/vm/eval.tpp>
 
+#include <queue>
+
 namespace divine::mc
 {
     template< typename next >
@@ -95,6 +97,40 @@ namespace divine::mc
                 this->snap_put( _stack.top().snap ), _stack.pop();
             */
         }
+    };
+
+    template< typename value_t, typename heuristic_t >
+    using priority_queue = std::priority_queue< value_t, std::vector< value_t >, heuristic_t >;
+
+    template< typename T >
+    struct weight_comparator
+    {
+        bool operator()( const T& lhs, const T& rhs ) const noexcept
+        {
+            return lhs.weight < rhs.weight;
+        }
+    };
+
+    template< typename comparator_t >
+    struct distance_heuristic
+    {
+        priority_queue< task::choose, comparator_t > _queue;
+
+        const task::choose & top() noexcept { return _queue.top(); }
+
+        void push( task::choose && c ) noexcept
+        {
+            _queue.push( std::move( c ) );
+        }
+
+        task::choose pop() noexcept
+        {
+            auto top = _queue.top();
+            _queue.pop();
+            return top;
+        }
+
+        bool empty() const noexcept { return _queue.empty(); }
     };
 
     struct coverage_heuristic
