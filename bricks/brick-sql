@@ -97,6 +97,30 @@ namespace brq::sql
         }
     };
 
+    template< int scale, typename base_t = int64_t >
+    struct fixnum
+    {
+        base_t value;
+        fixnum( base_t v = 0 ) : value( v * scale ) {}
+        fixnum( base_t v, int s ) : value( v ) { ASSERT_EQ( s, scale ); }
+        bool operator==( fixnum o ) const { return value == o.value; }
+        explicit operator bool() const { return value; }
+
+        friend string_builder &operator<<( string_builder &s, fixnum n )
+        {
+            s << n.value / scale;
+            auto fract = n.value % scale;
+            int f_count = scale;
+            while ( fract && fract % 10 == 0 )
+                f_count --, fract /= 10;
+            if ( fract )
+                s << "." << pad( f_count, '0' ) << fract << mark;
+            return s;
+        }
+
+        friend fixnum abs( fixnum n ) { return fixnum( abs( n.value ), scale ); }
+    };
+
     template< typename T >
     struct enum_value
     {
@@ -124,7 +148,7 @@ namespace brq::sql
     template<> struct type_map< bool >           { static auto name() { return "bool"; } };
     template<> struct type_map< short >          { static auto name() { return "smallint"; } };
     template<> struct type_map< int >            { static auto name() { return "integer"; } };
-    template<> struct type_map< long >           { static auto name() { return "bigint"; } };
+    template<> struct type_map< int64_t >        { static auto name() { return "bigint"; } };
     template<> struct type_map< std::u32string > { static auto name() { return "text"; } };
     template<> struct type_map< std::u32string_view > { static auto name() { return "text"; } };
     template<> struct type_map< std::string >    { static auto name() { return "bytea"; } };
@@ -134,6 +158,11 @@ namespace brq::sql
     template<> struct type_map< time >           { static auto name() { return "time"; } };
     template<> struct type_map< timestamp >      { static auto name() { return "timestamp"; }; };
     template<> struct type_map< interval >       { static auto name() { return "interval"; }; };
+
+    template< typename T, int v > struct type_map< fixnum< v, T > >
+    {
+        static auto name() { return type_map< T >::name(); }
+    };
 
     template< size_t v > struct type_map< std::array< uint8_t, v > >
     {
@@ -360,7 +389,9 @@ namespace brq::sql
         void fetch_one( bool &t ) { fetch_raw( t ); }
         void fetch_one( int16_t &t ) { fetch_raw( t ); t = be16toh( t ); }
         void fetch_one( int32_t &t ) { fetch_raw( t ); t = be32toh( t ); }
+        void fetch_one( int64_t &t ) { fetch_raw( t ); t = be64toh( t ); }
         void fetch_one( timestamp &t ) { fetch_raw( t.fract ); t.fract = be64toh( t.fract ); }
+        template< typename T, int s > void fetch_one( fixnum< s, T > &n ) { fetch_one( n.value ); }
 
         void fetch_one( interval &i )
         {
@@ -472,6 +503,8 @@ namespace brq::sql
             auto str = conv.to_bytes( &*us.begin(), &*us.end() );
             bind_mem( str.data(), str.size() );
         }
+
+        template< typename T, int s > void bind_one( fixnum< s, T > &f ) { bind_one( f.value ); }
 
         template< size_t n >
         void bind_one( const std::array< uint8_t, n > &s ) { bind_mem( s.begin(), s.size() ); }
