@@ -157,6 +157,18 @@ auto make_validator()
 {
     return brq::make_refcount< Validator<> >()->
         add( "string", []( std::string s, auto good, auto ) { return good( s ); } ) ->
+        add( "float", []( std::string s, auto good, auto bad )
+             {
+                 double r = 0;
+                 try {
+                     r = std::stod( s );
+                 } catch ( std::invalid_argument &e ) {
+                     return bad( BadFormat, e.what() );
+                 } catch ( std::out_of_range &e ) {
+                     return bad( BadFormat, e.what() );
+                 }
+                 return good( r );
+             } ) ->
         add( "int", []( std::string s, auto good, auto bad )
              {
                 int r = 0;
