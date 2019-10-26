@@ -250,6 +250,7 @@ namespace brq::sql
     template< typename col > struct min   : function< min, col >   { using type = typename col::type; };
     template< typename col > struct max   : function< max, col >   { using type = typename col::type; };
     template< typename col > struct every : function< every, col > { using type = typename col::type; };
+    template< typename col, typename T > struct cast : col { using type = T; };
 
     template< typename tab, typename col, bool _nullable = false >
     struct foreign_key : col
