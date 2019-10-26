@@ -63,6 +63,7 @@ namespace brq::sql
 
         static timestamp from_unix( time_t t ) { return { ( int64_t( t ) - 946684800 ) * 1000000 }; }
         time_t to_unix() const { return fract / 1000000 + 946684800; }
+        bool operator<( timestamp o ) const { return fract < o.fract; }
 
         struct tm to_localtime() const
         {
