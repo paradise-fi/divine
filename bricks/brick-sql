@@ -103,6 +103,7 @@ namespace brq::sql
     {
         base_t value;
         fixnum( base_t v = 0 ) : value( v * scale ) {}
+        explicit fixnum( double v ) : value( v * scale ) {}
         fixnum( base_t v, int s ) : value( v ) { ASSERT_EQ( s, scale ); }
         bool operator==( fixnum o ) const { return value == o.value; }
         explicit operator bool() const { return value; }
