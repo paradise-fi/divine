@@ -55,7 +55,15 @@ namespace brq::sql
         return name;
     }
 
-    struct date { std::int16_t year, month, day; };
+    struct date
+    {
+        std::int16_t year, month, day;
+        friend string_builder &operator<<( string_builder &s, date d )
+        {
+            return s << d.year << "-" << pad( 2, '0' ) << d.month << mark
+                     << "-" << pad( 2, '0' ) << d.day << mark;
+        }
+    };
     struct time { std::int16_t hour, min, sec; };
     struct timestamp
     {
@@ -492,6 +500,14 @@ namespace brq::sql
             i.days = htobe64( i.days );
             i.months = htobe64( i.months );
             bind_raw( i );
+        }
+
+        void bind_one( date &d )
+        {
+            d.year = htobe16( d.year );
+            d.month = htobe16( d.month );
+            d.day = htobe16( d.day );
+            bind_raw( d );
         }
 
         void bind_one( timestamp &t ) { t.fract = htobe64( t.fract ); bind_raw( t ); }
