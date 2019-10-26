@@ -97,7 +97,7 @@ void *calloc( size_t n, size_t size )
     int masked = __dios_mask( 1 );
     void *r;
     int ok = __dios_sim_fail( _DiOS_SF_Malloc ) ? __vm_choose( 2 ) : 1;
-    if ( ok ) {
+    if ( ok && n * size ) {
         void *mem = __vm_obj_make( n * size, _VM_PT_Heap ); // success
         memset( mem, 0, n * size );
         r = mem;
