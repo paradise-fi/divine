@@ -57,11 +57,41 @@ namespace brq::sql
 
     struct date
     {
-        std::int16_t year, month, day;
-        friend string_builder &operator<<( string_builder &s, date d )
+        unsigned julian;
+
+        date( int y, int m, int d )
         {
-            return s << d.year << "-" << pad( 2, '0' ) << d.month << mark
-                     << "-" << pad( 2, '0' ) << d.day << mark;
+            if ( m > 2 )
+                m += 1, y += 4800;
+            else
+                m += 13, y += 4799;
+
+            julian = y * 365 - 32167;
+            julian += y / 4 - y / 100 + y / 400;
+            julian += 7834 * m / 256 + d;
+        }
+
+        std::tuple< int, int, int > decompose()
+        {
+            unsigned j = julian + 32044;
+            unsigned quad = j / 146097;
+            unsigned extra = (j - quad * 146097) * 4 + 3;
+
+            j += 60 + quad * 3 + extra / 146097;
+            quad = j / 1461;
+            j -= quad * 1461;
+            int y = j * 4 / 1461;
+            j = ((y != 0) ? ((j + 305) % 365) : ((j + 306) % 366)) + 123;
+            y += quad * 4;
+            quad = j * 2141 / 65536;
+
+            return { y - 4800, (quad + 10) % 12 + 1, j - 7834 * quad / 256 };
+        }
+
+        friend string_builder &operator<<( string_builder &s, date v )
+        {
+            auto [ y, m, d ] = v.decompose();
+            return s << y << "-" << pad( 2, '0' ) << m << mark << "-" << pad( 2, '0' ) << d << mark;
         }
     };
     struct time { std::int16_t hour, min, sec; };
@@ -502,15 +532,8 @@ namespace brq::sql
             bind_raw( i );
         }
 
-        void bind_one( date &d )
-        {
-            d.year = htobe16( d.year );
-            d.month = htobe16( d.month );
-            d.day = htobe16( d.day );
-            bind_raw( d );
-        }
-
         void bind_one( timestamp &t ) { t.fract = htobe64( t.fract ); bind_raw( t ); }
+        void bind_one( date &d ) { d.julian -= 2451545; d.julian = htobe32( d.julian ); bind_raw( d ); }
         void bind_one( int64_t &t ) { t = htobe64( t ); bind_raw( t ); }
         void bind_one( int32_t &t ) { t = htobe32( t ); bind_raw( t ); }
         void bind_one( int16_t &t ) { t = htobe16( t ); bind_raw( t ); }
