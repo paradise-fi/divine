@@ -64,58 +64,56 @@ struct NoTrace : Wrong
 
 struct Expectation : ui::LogSink
 {
-    bool _warn = false;
-
-    // Throw or print warning, if expectation has not been met
-    virtual void do_check() = 0;
+    // Throw if expectation has not been met
+    virtual void check( const std::string & ) = 0;
     // Revert inner state so that the same expectation can be checked for a new command
     virtual void setup() {};
-
-    void check()
-    {
-        if ( _warn )
-        {
-            try {
-                do_check();
-            } catch ( Wrong &e ) {
-                std::cerr << "W: " << e.what();
-            }
-        }
-        else
-            do_check();
-    }
 };
 
-struct expect : brq::cmd_base, Expectation
+struct Expect : Expectation
 {
-    bool _ok = false, _found = true, _on_inactive = false;
+    bool _ok;
     mc::Result _result = mc::Result::None;
-    std::string _cmd, _location, _symbol, _trace;
-    int _trace_count = 0, _trace_matches = 0;
 
     void setup() override
     {
         _ok = false;
-        _found = true;
-        _on_inactive = false;
-        _trace_count = 0;
-        _trace_matches = 0;
     }
 
-    void do_check() override
+    void check( const std::string & cmd ) override
     {
         if ( !_ok )
-            throw Unexpected( _cmd );
-        if ( _result == mc::Result::Error && !_found )
-            throw Unmatched( _cmd );
-        if ( _on_inactive )
-            throw FoundInactive( _cmd );
-        if ( !_trace.empty() )
-            if ( !_trace_matches || ( _trace_count && _trace_count != _trace_matches ) )
-                throw NoTrace( _trace, _trace_count );
+            throw Unexpected( cmd );
     }
 
-    virtual void backtrace( ui::DbgContext &ctx, int )
+    void result( mc::Result r, const mc::Trace & ) override
+    {
+        _ok = _result == mc::Result::None || r == _result;
+    }
+};
+
+struct BacktraceExpectation : Expectation
+{
+    bool _found, _on_inactive;
+    std::string _location, _symbol;
+
+    void setup() override
+    {
+        _found = true;
+        _on_inactive = false;
+    }
+
+    void check( const std::string & cmd ) override
+    {
+        if ( _location.empty() || _symbol.empty() )
+            return;
+        if ( !_found )
+            throw Unmatched( cmd );
+        if ( _on_inactive )
+            throw FoundInactive( cmd );
+    }
+
+    void backtrace( ui::DbgContext &ctx, int ) override
     {
         if ( _location.empty() && _symbol.empty() )
             return;
@@ -135,10 +133,27 @@ struct expect : brq::cmd_base, Expectation
         };
         mc::backtrace( bt, chk, ctx, ctx.snapshot(), 10000 );
     }
+};
 
-    virtual void result( mc::Result r, const mc::Trace &trace )
+struct TraceExpectation : Expectation
+{
+    int _trace_count = 0, _trace_matches;
+    std::string _trace;
+
+    void setup() override
     {
-        _ok = _result == mc::Result::None || r == _result;
+        _trace_matches = 0;
+    }
+
+    void check( const std::string & ) override
+    {
+        if ( !_trace.empty() )
+            if ( !_trace_matches || ( _trace_count && _trace_count != _trace_matches ) )
+                throw NoTrace( _trace, _trace_count );
+    }
+
+    void result( mc::Result, const mc::Trace &trace ) override
+    {
         if ( !_trace.empty() )
             for ( auto l : trace.labels )
                 if ( l.find( _trace ) != l.npos )
@@ -156,7 +171,7 @@ struct expect : brq::cmd_base, Expectation
     }
 };
 
-struct load : brq::cmd_base
+struct Load
 {
     brq::cmd_file from;
     brq::cmd_path to;
@@ -190,7 +205,7 @@ void execute( std::string script_txt, F... prepare )
 {
     auto script = parse( script_txt );
 
-    std::vector< std::shared_ptr< Expectation > > expectations;
+    std::vector< std::shared_ptr< Expect > > expects;
     std::vector< std::pair< std::string, std::string > > files;
 
     for ( auto cmdstr : script )
@@ -203,15 +218,15 @@ void execute( std::string script_txt, F... prepare )
 
         auto check_expect = [&]( ui::Verify &cmd )
         {
-            std::vector< ui::SinkPtr > log( expectations.begin(), expectations.end() );
+            std::vector< ui::SinkPtr > log( expects.begin(), expects.end() );
             log.push_back( cmd._log );
             cmd._log = ui::make_composite( log );
-            for ( auto & expect : expectations )
+            for ( auto & expect : expects )
                 expect->setup();
         };
         auto check_expects = [&]()
         {
-            for ( auto & expect : expectations )
+            for ( auto & expect : expects )
                 expect->check();
         };
 
@@ -235,10 +250,9 @@ void execute( std::string script_txt, F... prepare )
                    [&]( Expect e )
                    {
                        e._cmd = cmdstr;
-                       expectations.emplace_back( std::make_shared< expect >( std::move( e ) ) );
+                       expectations.emplace_back( std::make_shared< Expect >( std::move( e ) ) );
                    } );
-        cmd.match( [&]( ui::Verify &cmd ) { prepare_expects( cmd ); },
-                   [&]( ui::Exec &cmd ) { prepare_expects( cmd ); } );
+        cmd.match( [&]( ui::WithBC &cmd ) { prepare_expects( cmd ); } );
         cmd.match( [&]( ui::Command &c ) { c.run(); } );
     }
 }
