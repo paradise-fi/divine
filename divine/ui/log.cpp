@@ -27,7 +27,7 @@ using namespace std::literals;
 namespace divine::ui
 {
 
-struct CompositeSink : LogSink
+struct CompositeSink : CompositeMixin< CompositeSink >
 {
     std::vector< SinkPtr > _slaves;
 
@@ -37,27 +37,6 @@ struct CompositeSink : LogSink
         for ( auto sink: _slaves )
             l( sink );
     }
-
-    void progress( std::pair< int64_t, int64_t > x, int y, bool l ) override
-    { each( [&]( auto s ) { s->progress( x, y, l ); } ); }
-
-    void memory( const mc::PoolStats &st, const mc::HashStats &hs, bool l ) override
-    { each( [&]( auto s ) { s->memory( st, hs, l ); } ); }
-
-    void backtrace( DbgContext &c, int lim ) override
-    { each( [&]( auto s ) { s->backtrace( c, lim ); } ); }
-
-    void info( std::string i, bool detail ) override
-    { each( [&]( auto s ) { s->info( i, detail ); } ); }
-
-    void loader( Phase p ) override
-    { each( [&]( auto s ) { s->loader( p ); } ); }
-
-    void result( mc::Result res, const mc::Trace &tr ) override
-    { each( [&]( auto s ) { s->result( res, tr ); } ); }
-
-    void start() override
-    { each( [&]( auto s ) { s->start(); } ); }
 };
 
 

@@ -51,6 +51,33 @@ SinkPtr make_interactive();
 SinkPtr make_yaml( std::ostream &output, bool detailed );
 SinkPtr make_composite( std::vector< SinkPtr > );
 
+template< typename Self >
+struct CompositeMixin : LogSink
+{
+    Self & self() { return static_cast< Self & >( *this ); }
+
+    void progress( std::pair< int64_t, int64_t > x, int y, bool l ) override
+    { self().each( [&]( auto s ) { s->progress( x, y, l ); } ); }
+
+    void memory( const mc::PoolStats &st, const mc::HashStats &hs, bool l ) override
+    { self().each( [&]( auto s ) { s->memory( st, hs, l ); } ); }
+
+    void backtrace( DbgContext &c, int lim ) override
+    { self().each( [&]( auto s ) { s->backtrace( c, lim ); } ); }
+
+    void info( std::string i, bool detail ) override
+    { self().each( [&]( auto s ) { s->info( i, detail ); } ); }
+
+    void loader( Phase p ) override
+    { self().each( [&]( auto s ) { s->loader( p ); } ); }
+
+    void result( mc::Result res, const mc::Trace &tr ) override
+    { self().each( [&]( auto s ) { s->result( res, tr ); } ); }
+
+    void start() override
+    { self().each( [&]( auto s ) { s->start(); } ); }
+};
+
 struct TimedSink : LogSink
 {
     Clock::time_point _start;
