@@ -388,6 +388,7 @@ namespace lart::abstract {
             auto name = Taint::prefix + "." + abstract_name( op );
 
             auto fn = get_function( name, rty, tys );
+            fn->addFnAttr( llvm::Attribute::NoUnwind );
 
             auto call = llvm::IRBuilder<>( placeholder ).CreateCall( fn, args );
             auto mat = Taint( call, T, true );
