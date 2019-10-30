@@ -92,7 +92,7 @@ namespace lart {
             set_attrs( root, attrs );
 
             auto map = matched_functions( attrs );
-            cloneCalleesRecursively( root, map, not_vm, const_null );
+            cloneCalleesRecursively( root, map, not_vm, const_null, true );
 
             for ( auto [fn, clone] : map ) {
                 if ( ( fn != clone ) && !matched[ attrs ].count( fn ) ) {
