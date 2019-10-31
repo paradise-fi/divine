@@ -212,7 +212,7 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INTERFACE
-        Term constrain( const Term &constraint, bool expect ) const noexcept;
+        Term constrain( Term &constraint, bool expect ) const noexcept;
 
         _LART_INTERFACE
         static Term assume( Term value, Term constraint, bool expect ) noexcept

@@ -67,7 +67,7 @@ namespace __dios::rst::abstract {
     /* Add a constraint to the term. A constraint is again a Term, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
-    Term Term::constrain( const Term &constraint, bool expect ) const noexcept
+    Term Term::constrain( Term &constraint, bool expect ) const noexcept
     {
         auto & pc = __term_state.constraints;
 
