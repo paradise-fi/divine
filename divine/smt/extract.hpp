@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/vm/memory.hpp>
+#include <divine/vm/memory.tpp>
 #include <divine/smt/builder.hpp>
 #include <divine/smt/rpn.hpp>
 
@@ -40,6 +41,35 @@ struct Extract : Builder
         auto term = *reinterpret_cast< vm::HeapPointer * >( _heap.unsafe_bytes( ptr ).begin() );
         auto data = _heap.unsafe_bytes( ptr );
         return RPN{ { data.begin(), data.end() } };
+    }
+
+    RPN read_constraints( vm::HeapPointer ptr )
+    {
+        vm::PointerV map( ptr ), clause;
+        RPN rpn;
+        rpn.push_back( 0 ); /* FIXME domain identification byte */
+
+        if ( !_heap.valid( ptr ) )
+            return rpn;
+
+        bool first = true;
+        for ( int i = 0; i < _heap.size( ptr ); i += vm::PointerBytes )
+        {
+            _heap.read_shift( map, clause );
+            if ( clause.pointer() && _heap.valid( clause.cooked() ) )
+            {
+                ASSERT_EQ( clause.cooked().type(), vm::PointerType::Marked );
+                auto b = _heap.unsafe_bytes( clause.cooked() );
+                std::copy( b.begin() + 1, b.end(), std::back_inserter( rpn ) );
+                if ( first )
+                    first = false;
+                else
+                    rpn.push_back( static_cast< uint8_t >( brick::smt::Op::And ) );
+            }
+        }
+
+        TRACE( "constraints:", rpn );
+        return rpn;
     }
 
     Node build( vm::HeapPointer p );
