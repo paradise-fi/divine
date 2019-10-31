@@ -120,7 +120,7 @@ struct Eval
      * different ranges. */
     static uint32_t squash( uint32_t v, uint32_t l, uint32_t h )
     {
-        return l + ( uint64_t( v ) * ( h - l ) ) / UINT32_MAX;
+        return l + ( uint64_t( v ) * ( h - l - 1 ) ) / UINT32_MAX;
     }
 
     /* Create an object on the heap, identified by an objid (top half of pointer value).
@@ -140,7 +140,7 @@ struct Eval
         const auto &limits = __vm_pointer_limits[ int( t ) ];
         hint = squash( hint, limits.low, limits.high );
         auto p = heap().make( size, hint );
-        ASSERT_EQ( p.cooked().type(), t );
+        ASSERT_EQ( p.cooked().type(), t, p.cooked() );
         return p;
     }
 
