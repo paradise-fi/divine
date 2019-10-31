@@ -41,7 +41,7 @@ namespace divine::mc::impl
         Pool &_pool;
         Solver &_solver;
         mutable vm::CowHeap _h1, _h2;
-        vm::HeapPointer _root;
+        vm::HeapPointer _root, _path;
         bool overwrite = false;
 
         void attach( const vm::CowHeap &heap )
@@ -62,6 +62,7 @@ namespace divine::mc::impl
             : Hasher( p, o._h1, s )
         {
             _root = o._root;
+            _path = o._path;
             overwrite = o.overwrite;
         }
 
@@ -99,7 +100,7 @@ namespace divine::mc::impl
             if ( extract.pairs.empty() )
                 return true;
 
-            return _solver.equal( extract.pairs, _h1, _h2 );
+            return _solver.equal( this->_path, extract.pairs, _h1, _h2 );
         }
 
         auto hash( Snapshot s ) const
@@ -156,7 +157,7 @@ namespace divine::mc
                 if ( mem::compare( this->_h1, this->_h2, this->_root, this->_root, extract ) != 0 )
                     return nullptr;
 
-                if ( this->_solver.equal( extract.pairs, this->_h1, this->_h2 ) )
+                if ( this->_solver.equal( this->_path, extract.pairs, this->_h1, this->_h2 ) )
                 {
                     if ( this->overwrite )
                     {

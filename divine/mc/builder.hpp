@@ -156,6 +156,7 @@ struct Builder
         context().track_memory( false );
         eval.run();
         hasher()._root = context().state_ptr();
+        hasher()._path = context().constraint_ptr();
 
         auto s = context().snapshot( pool() );
         if ( vm::setup::postboot_check( context() ) )
@@ -173,6 +174,7 @@ struct Builder
         hasher()._h1 = ctx.heap();
         hasher()._h2 = ctx.heap();
         hasher()._root = context().state_ptr();
+        hasher()._path = context().constraint_ptr();
 
         if ( context().heap().valid( hasher()._root ) )
             std::tie( _d.initial.snap, std::ignore ) = store( snap );
