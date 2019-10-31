@@ -47,6 +47,8 @@ namespace divine::t_rpn
 
         using Constant = RPN::Constant< uint64_t >;   // RPNView::Constant's value is always uint64_t
         using Variable = RPN::Variable;
+        using UF = union_find< std::map< VarID, VarID > >;
+
 
         template < typename T >
         void append( T t )
@@ -103,7 +105,7 @@ namespace divine::t_rpn
         {
             Variable v{ Op::VarI32, 1 };   // x
             append( v );
-            union_find< VarID > uf;
+            UF uf;
             decompose( rpn, uf );
             ASSERT_EQ( v.id, *uf.find( v.id ) );
         }
@@ -115,7 +117,7 @@ namespace divine::t_rpn
             Constant c{ Op( -64 ), 3 };
             append( c );
             append( Op::Eq );
-            union_find< VarID > uf;
+            UF uf;
             decompose( rpn, uf );
             ASSERT_EQ( x.id, *uf.find( x.id ) );
             clear();
@@ -133,7 +135,7 @@ namespace divine::t_rpn
         // &&C = constraint
         TEST( x_y_z )
         {
-            union_find< VarID > uf;
+            UF uf;
 
             Variable b{ Op::VarBool, 1 };
             append( b );
@@ -167,7 +169,7 @@ namespace divine::t_rpn
 
         TEST( match_variables )
         {
-            union_find< VarID > uf;
+            UF uf;
             Variable b{ Op::VarBool, 1 };
             Variable x{ Op::VarI32, 2 };
             Variable y{ Op::VarI32, 3 };
