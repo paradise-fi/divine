@@ -88,7 +88,7 @@ namespace divine::mem
             unsigned sz = size( ptr );
             do {
                 if ( ptr.offset() >= sz )
-                    return "<out of bounds>";
+                    return str + "<out of bounds>";
                 read_shift( ptr, c );
                 if ( c.cooked() )
                     str += c.cooked();
