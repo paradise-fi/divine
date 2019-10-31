@@ -33,7 +33,7 @@ namespace divine::mc
         std::string _info;
         std::vector< vm::Choice > _stack;
         std::deque< vm::Choice > _lock;
-        vm::HeapPointer _assume;
+        std::vector< vm::HeapPointer > _assume;
         vm::GenericPointer _tid;
         MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
         std::unordered_map< vm::GenericPointer, Critical > _critical;
@@ -84,7 +84,7 @@ namespace divine::mc
         void trace( vm::TraceDebugPersist t ) { Super::trace( t ); }
         void trace( vm::TraceAssume ta )
         {
-            _assume = ta.ptr;
+            _assume.push_back( ta.ptr );
             if ( debug_allowed() )
             {
                 brick::smt::Context ctx;
@@ -151,7 +151,7 @@ namespace divine::mc
             _level = 0;
             _tid = vm::GenericPointer();
             _trace.clear();
-            _assume = vm::HeapPointer();
+            _assume.clear();
             while ( !_stack.empty() && _stack.back().taken + 1 == _stack.back().total )
                 _stack.pop_back();
             return _stack.empty();

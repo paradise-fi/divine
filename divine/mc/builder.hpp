@@ -201,9 +201,10 @@ struct Builder
     {
         if ( context().flags_any( _VM_CF_Cancel ) )
             return false;
-        if ( context()._assume.null() )
-            return true;
-        return _d.solver.feasible( context().heap(), context()._assume );
+        for ( auto a : context()._assume )
+            if ( context().heap().valid( a ) && !_d.solver.feasible( context().heap(), a ) )
+                return false;
+        return true;
     }
 
     template< typename Y >
@@ -214,6 +215,7 @@ struct Builder
         ASSERT( context()._stack.empty() );
         ASSERT( context()._trace.empty() );
         ASSERT( context()._lock.empty() );
+        ASSERT( context()._assume.empty() );
         context()._critical.clear();
 
         struct Check
@@ -253,6 +255,7 @@ struct Builder
             context().load( pool(), from.snap );
             vm::setup::scheduler( context() );
             ASSERT_EQ( context()._level, 0 );
+            ASSERT( context()._assume.empty() );
 
             to_check.emplace_back();
             auto &tc = to_check.back();
