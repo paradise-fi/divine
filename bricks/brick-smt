@@ -842,7 +842,8 @@ namespace brick::smt
     // which have dependent variables, for later caching
     // returns the VarID of the last representant after union
     // TODO: output iterator
-    template< typename RPN, typename M, typename F = std::function< void ( smt::token::VarID ) > >
+    template< template< typename > class stack_t, typename RPN, typename M,
+              typename F = std::function< void ( smt::token::VarID ) > >
     std::optional< token::VarID > decompose( const RPN &rpn, union_find< M >& uf,
                                              F f = []( token::VarID ){} )
     {
@@ -854,8 +855,7 @@ namespace brick::smt
         using Variable = typename RPNView::Variable;
         using CastOp = typename RPNView::CastOp;
 
-        std::map< VarID, RPN > decomp;
-        std::vector< std::optional< VarID > > stack;
+        stack_t< std::optional< VarID > > stack;
         std::optional< VarID > repr = std::nullopt;
 
         auto pop = [&]()
