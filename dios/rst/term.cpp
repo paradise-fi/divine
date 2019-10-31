@@ -92,10 +92,7 @@ namespace __dios::rst::abstract {
 
         auto id = brick::smt::decompose< stack_t >( constraint.as_rpn(), __term_state.uf, update_rpns );
         if ( !id )
-        {
-            TRACE( "Only constants present in Term" );
-            //__vm_trace( _VM_T_Assume, constraint.pointer );
-        }
+            __vm_trace( _VM_T_Assume, constraint.pointer );
         else  // append to relevant decomp
         {
             append_term( *id, constraint );
