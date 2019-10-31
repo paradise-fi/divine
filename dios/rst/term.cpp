@@ -101,5 +101,13 @@ namespace __dios::rst::abstract {
 
         return *this;
     }
+}
 
-} // namespace __dios::rst::abstract
+void *__dios_term_init()
+{
+    auto true_term = __dios::rst::abstract::Term::lift_one_i1( true );
+    __dios::rst::abstract::__term_state.uf.make_set( 0 );
+    auto &decomp = __dios::rst::abstract::__term_state.decomp;
+    decomp[ 0 ] = true_term;
+    return decomp._container._data;
+}

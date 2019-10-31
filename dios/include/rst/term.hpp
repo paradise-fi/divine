@@ -350,5 +350,6 @@ namespace __dios::rst::abstract {
     }
 
     static_assert( sizeof( Term ) == 8 );
+}
 
-} // namespace abstract
+extern "C" void *__dios_term_init();

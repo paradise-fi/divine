@@ -35,9 +35,10 @@
  * than call __dios::boot with the correct template parameter. Most of this
  * file is concerned with parsing the environment passed down by the platform. */
 
+extern "C" void *__dios_term_init();
+
 namespace __dios
 {
-
     void trace_option( int i, std::string_view opt, std::string_view desc,
                        const Array< std::string_view >& args )
     {
@@ -143,6 +144,8 @@ namespace __dios
         Setup< Configuration > s = SetupBase{ .pool = &deterministic_memory,
                                               .env = env, .opts = opt };
 
+        __vm_trace( _VM_T_Constraints, __dios_term_init() );
+
         /* The first process is special and is created during boot. Other
          * processes can only be created using `fork`. Components that maintain
          * per-process data should initialize their fields in proc1. The
@@ -151,5 +154,4 @@ namespace __dios
         s.proc1 = new typename Configuration::Process();
         context->setup( s );
     }
-
 }
