@@ -54,40 +54,30 @@ Op equality( const Node& node ) noexcept
 }
 
 template< typename Core >
-bool Simple< Core >::equal( SymPairs &sym_pairs, vm::CowHeap &h_1, vm::CowHeap &h_2 )
+bool Simple< Core >::equal( vm::HeapPointer path, SymPairs &sym_pairs,
+                            vm::CowHeap &h_1, vm::CowHeap &h_2 )
 {
     this->reset();
     auto e_1 = this->extract( h_1, 1 ), e_2 = this->extract( h_2, 2 );
     auto b = this->builder();
 
     auto v_eq = b.constant( true );
-    auto c_1 = e_1.constant( true ), c_2 = e_2.constant( true );
-
-    bool constraints_found = false, f_1_constraint = false, f_2_constraint = false;
+    auto c_1_rpn = e_1.read_constraints( path ),
+         c_2_rpn = e_2.read_constraints( path );
+    auto c_1 = c_1_rpn.size() == 1 ? b.constant( true ) : evaluate( e_1, c_1_rpn ),
+         c_2 = c_2_rpn.size() == 1 ? b.constant( true ) : evaluate( e_2, c_2_rpn );
 
     for ( auto [lhs, rhs] : sym_pairs )
     {
         auto f_1 = e_1.read( lhs );
         auto f_2 = e_2.read( rhs );
 
-        auto v_1 = evaluate( e_1, f_1, &f_1_constraint );
-        auto v_2 = evaluate( e_2, f_2, &f_2_constraint );
+        auto v_1 = evaluate( e_1, f_1 );
+        auto v_2 = evaluate( e_2, f_2 );
 
-        if ( f_1_constraint )
-        {
-            ASSERT( !constraints_found );
-            ASSERT( f_2_constraint );
-            constraints_found = true;
-            c_1 = v_1;
-            c_2 = v_2;
-            TRACE( "found constraints", c_1, c_2 );
-        }
-        else
-        {
-            Op op = equality< Core >( v_1 );
-            auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
-            v_eq = mk_bin( b, Op::And, 1, v_eq, pair_eq );
-        }
+        Op op = equality< Core >( v_1 );
+        auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
+        v_eq = mk_bin( b, Op::And, 1, v_eq, pair_eq );
     }
 
     /* we already know that both constraint sets are sat */

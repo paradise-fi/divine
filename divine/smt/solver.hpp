@@ -44,7 +44,7 @@ enum class Result { False, True, Unknown };
 
 struct None
 {
-    bool equal( SymPairs &, vm::CowHeap &, vm::CowHeap & ) { return true; }
+    bool equal( vm::HeapPointer, SymPairs &, vm::CowHeap &, vm::CowHeap & ) { return true; }
     bool feasible( vm::CowHeap &, vm::HeapPointer ) { return true; }
     void reset() {}
 };
@@ -53,7 +53,7 @@ template< typename Core >
 struct Simple : Core
 {
     using Core::Core;
-    bool equal( SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
+    bool equal( vm::HeapPointer path, SymPairs &sym_pairs, vm::CowHeap &h1, vm::CowHeap &h2 );
     bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
 };
 
