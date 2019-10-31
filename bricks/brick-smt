@@ -419,6 +419,7 @@ namespace brick::smt
     template< typename Container >
     struct RPN : Container
     {
+        using Container::Container;
         using VarID = token::VarID;
 
         using size_type = typename Container::size_type;
