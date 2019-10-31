@@ -62,6 +62,8 @@ namespace __dios::rst::abstract {
         }
     }
 
+    template< typename T > using stack_t = Array< T >;
+
     /* Add a constraint to the term. A constraint is again a Term, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
@@ -88,7 +90,7 @@ namespace __dios::rst::abstract {
                 __term_state.decomp.emplace( var, t );
         };
 
-        auto id = decompose( constraint.as_rpn(), __term_state.uf, update_rpns );
+        auto id = brick::smt::decompose< stack_t >( constraint.as_rpn(), __term_state.uf, update_rpns );
         if ( !id )
         {
             TRACE( "Only constants present in Term" );
