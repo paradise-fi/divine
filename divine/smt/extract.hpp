@@ -38,7 +38,6 @@ struct Extract : Builder
 
     RPN read( vm::HeapPointer ptr )
     {
-        auto term = *reinterpret_cast< vm::HeapPointer * >( _heap.unsafe_bytes( ptr ).begin() );
         auto data = _heap.unsafe_bytes( ptr );
         return RPN{ data.begin(), data.end() };
     }
