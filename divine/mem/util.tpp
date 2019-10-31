@@ -71,7 +71,7 @@ namespace divine::mem
             if ( int d = int( p1.type() ) - int( p2.type() ) )
                 return cb.pointer( p1, p2 ), d;
 
-            if ( p1.type() == Pointer::Type::Marked )
+            if ( p1.type() == Pointer::Type::Marked && h1.valid( p1 ) && h2.valid( p2 ) )
                 cb.marked( p1, p2 );
 
             if ( p1.type() == Pointer::Type::Heap || p1.type() == Pointer::Type::Alloca )
