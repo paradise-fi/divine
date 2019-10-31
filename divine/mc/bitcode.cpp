@@ -185,6 +185,7 @@ void BitCode::do_lart()
 
     if ( !_opts.synchronous )
     {
+        lart.setup( lart::divine::lowering() );
         lart.setup( lart::propagateRecursiveAnnotationPass() );
         // note: weakmem also puts memory interrupts in
         lart.setup( lart::divine::cflInterruptPass(), "__dios_suspend" );
