@@ -887,19 +887,15 @@ namespace brick::smt
             }
         };
 
-        auto handle_unary = [&]( const UnaryOp & ){};
-        auto handle_cast = [&]( CastOp ){};
-
-        auto handle_term = overload
-        {
-            [&]( const Constant& ) { stack.emplace_back( std::nullopt ); },
-            [&]( const Variable& var ) { stack.emplace_back( uf.make_set( var.id ) ); },
-            handle_unary, handle_cast, handle_binary,
-            [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
-        };
-
         for( auto term : RPNView( rpn ) )
-            std::visit( handle_term, term );
+        {
+            if ( std::holds_alternative< Constant >( term ) )
+                stack.emplace_back( std::nullopt );
+            else if ( std::holds_alternative< Variable >( term ) )
+                stack.emplace_back( uf.make_set( std::get< Variable >( term ).id ) );
+            else if ( std::holds_alternative< BinaryOp >( term ) )
+                handle_binary( std::get< BinaryOp >( term ) );
+        }
 
         return repr;
     }
