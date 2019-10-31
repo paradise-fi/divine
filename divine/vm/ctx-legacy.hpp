@@ -47,7 +47,6 @@ namespace divine::vm::ctx
 
         vm::HeapPointer constraint_ptr() const
         {
-            ASSERT( !_constraints.null() );
             return _constraints;
         }
 
