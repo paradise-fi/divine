@@ -243,6 +243,7 @@ namespace divine::vm::ctx
         virtual void trace( TraceTypeAlias ) {}
         virtual void trace( TraceInfo ) {}
         virtual void trace( TraceAssume ) {}
+        virtual void trace( TraceConstraints ) {}
         virtual void trace( TraceLeakCheck ) {}
         virtual void trace( std::string ) {}
         virtual ~ctx_trace() {}

@@ -581,6 +581,9 @@ namespace divine::vm
                     case _VM_T_Assume:
                         context().trace( TraceAssume{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                         return;
+                    case _VM_T_Constraints:
+                        context().trace( TraceConstraints{ ptr2h( operandCk< PointerV >( 1 ) ) } );
+                        return;
                     case _VM_T_LeakCheck:
                         context().trace( TraceLeakCheck() );
                         return;

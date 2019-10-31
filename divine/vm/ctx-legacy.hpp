@@ -34,10 +34,22 @@ namespace divine::vm::ctx
 
         static constexpr const bool uses_ptr2i = true;
 
+        vm::HeapPointer _constraints;
+        bool _track_mem = false;
+
         using next::trace;
         virtual void trace( TraceLeakCheck ) override;
 
-        bool _track_mem = false;
+        void trace( vm::TraceConstraints ta )
+        {
+            _constraints = ta.ptr;
+        }
+
+        vm::HeapPointer constraint_ptr() const
+        {
+            ASSERT( !_constraints.null() );
+            return _constraints;
+        }
 
         using MemMap = brick::data::IntervalSet< GenericPointer >;
 
@@ -57,6 +69,7 @@ namespace divine::vm::ctx
             }
             ASSERT( !this->debug_mode() );
             this->_heap = ctx.heap();
+            _constraints = ctx.constraint_ptr();
         }
 
         virtual void clear()
