@@ -50,6 +50,7 @@ namespace __dios::rst::abstract {
                 {
                     repr_it->second.extend( it->second );
                     repr_it->second.apply< smt::Op::Constraint >();
+                    __vm_obj_free( it->second.pointer );
                     __vm_trace( _VM_T_Assume, repr_it->second.pointer );
                 }
                 else
@@ -69,25 +70,20 @@ namespace __dios::rst::abstract {
      * condition had to be false. */
     Term Term::constrain( Term &constraint, bool expect ) const noexcept
     {
-        auto & pc = __term_state.constraints;
+        if ( !expect )
+            constraint.apply< Op::Not >();
 
-        if ( !__term_state.constraints.pointer )
-            pc = Term::lift_one_i1( true );
-
-        auto append_term = [&]( TermState::VarID var, const Term& term )
+        auto append_term = [&]( TermState::VarID var )
         {
             auto it = __term_state.decomp.find( var );
-            auto true_term = Term::lift_one_i1( true );
-
-            bool found = it != __term_state.decomp.end();
-            auto& t = found ? it->second : true_term;
-
-            t.extend( term );
-            if ( !expect )
-                t.apply< Op::Not >();
-            t.apply< Op::Constraint >();
-            if ( !found )
-                __term_state.decomp.emplace( var, t );
+            if ( it == __term_state.decomp.end() )
+                __term_state.decomp.emplace( var, constraint );
+            else
+            {
+                it->second.extend( constraint );
+                __vm_obj_free( constraint.pointer );
+                it->second.apply< Op::And >();
+            }
         };
 
         auto id = brick::smt::decompose< stack_t >( constraint.as_rpn(), __term_state.uf, update_rpns );
@@ -95,7 +91,7 @@ namespace __dios::rst::abstract {
             __vm_trace( _VM_T_Assume, constraint.pointer );
         else  // append to relevant decomp
         {
-            append_term( *id, constraint );
+            append_term( *id );
             __vm_trace( _VM_T_Assume, ((*__term_state.decomp.find( *id )).second).pointer );
         }
 
