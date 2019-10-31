@@ -8,9 +8,9 @@
 #include <brick-smt>
 #include <type_traits>
 
-namespace __dios::rst::abstract {
+namespace __dios::rst::abstract
+{
     namespace smt = brick::smt;
-
     using RPN = smt::RPN< Array< uint8_t, _VM_PT_Marked > >;
 
     template< typename T >

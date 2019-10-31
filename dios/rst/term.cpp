@@ -5,8 +5,8 @@
 
 #include <cassert>
 
-namespace __dios::rst::abstract {
-
+namespace __dios::rst::abstract
+{
     TermState __term_state;
 
     template< typename C >
@@ -14,6 +14,7 @@ namespace __dios::rst::abstract {
     {
         return make_abstract< C, Term >();
     }
+
     template< typename C >
     _LART_INLINE C make_term( C c ) noexcept
     {
