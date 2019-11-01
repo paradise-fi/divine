@@ -26,28 +26,71 @@
 namespace divine::mem
 {
 
-template< typename K, typename V, typename Pool >
-struct SnapshottedMap
+template< typename T, typename Pool >
+struct SlavePoolSnapshotter
 {
-    using Map = std::map< K, V >;
+    using Internal = typename Pool::Pointer;
     using MasterPool = Pool;
     using SlavePool = brick::mem::SlavePool< Pool >;
-    using Internal = typename Pool::Pointer;
+    using SnapPool = MasterPool;
+    using SnapPointer = typename SnapPool::Pointer;
+    using value_type = T;
+
+    mutable SlavePool _snap_pointers;
+    mutable SnapPool _snapshots;
+
+    SlavePoolSnapshotter( MasterPool & mp ) : _snap_pointers( mp ) {}
+
+    SnapPointer _snap( Internal obj ) const
+    {
+        return *( _snap_pointers.template machinePointer< SnapPointer >( obj ) );
+    }
+
+    std::pair< value_type *, value_type * > snap_range( Internal obj ) const
+    {
+        auto snap = _snap( obj );
+        if ( !snap )
+            return std::make_pair( nullptr, nullptr );
+        auto begin = _snapshots.template machinePointer< value_type >( snap );
+        auto end = begin + _snapshots.size( snap ) / sizeof( value_type );
+        return std::make_pair( begin, end );
+    }
+
+    bool snapped( Internal obj ) const { return !!_snap( obj ); }
+
+    value_type * make_snap( Internal obj, unsigned size ) const
+    {
+        auto snap = _snapshots.allocate( size );
+        ASSERT_EQ( *_snap_pointers.template machinePointer< SnapPointer >( obj ), SnapPointer() );
+        *_snap_pointers.template machinePointer< SnapPointer >( obj ) = snap;
+        return _snapshots.template machinePointer< value_type >( snap );
+    }
+
+    void materialise( Internal obj )
+    {
+        _snap_pointers.materialise( obj, sizeof( SnapPointer ) );
+    }
+};
+
+template< typename Internal, typename K, typename V,
+          template< typename, typename... > typename SnapshotterT, typename ... SnapOpts >
+struct SnapshottedMap : SnapshotterT< typename std::map<K, V>::value_type, SnapOpts... >
+{
+    using Map = std::map< K, V >;
     using key_type = typename Map::key_type;
     using value_type = typename Map::value_type;
     using mapped_type = typename Map::mapped_type;
     using key_compare = typename Map::key_compare;
-    using SnapPool = MasterPool; //TODO: customise?
-    using SnapPointer = typename SnapPool::Pointer;
+    using Snapshotter = SnapshotterT< value_type, SnapOpts... >;
 
     mutable struct Local {
         std::map< Internal, Map > _maps;
     } _l;
 
-    mutable SlavePool _snap_pointers;
-    mutable SnapPool _snapshots;
-
-    SnapshottedMap( MasterPool & mp ) : _snap_pointers( mp ) {}
+    using Snapshotter::Snapshotter;
+    using Snapshotter::make_snap;
+    using Snapshotter::snap_range;
+    using Snapshotter::snapped;
 
     Map & operator[]( Internal obj ) { return _l._maps[ obj ]; }
     std::map< Internal, Map > & maps() { return _l._maps; }
@@ -62,7 +105,7 @@ struct SnapshottedMap
             return ( it == i_map->second.end() ) ? nullptr : &*it;
         }
 
-        auto [ begin, end ] = _snap_range( obj );
+        auto [ begin, end ] = snap_range( obj );
         auto p = std::lower_bound( begin, end, key, []( auto & l, auto k )
                 {
                 return key_compare()( l.first, k );
@@ -103,11 +146,7 @@ struct SnapshottedMap
             if ( snap_size == 0 )
                 continue;
 
-            auto snap = _snapshots.allocate( snap_size );
-            ASSERT_EQ( *_snap_pointers.template machinePointer< SnapPointer >( obj ), SnapPointer() );
-            *_snap_pointers.template machinePointer< SnapPointer >( obj ) = snap;
-
-            auto begin = _snapshots.template machinePointer< value_type >( snap );
+            auto begin = make_snap( obj, snap_size );
             auto dst = begin;
             for ( const auto & p : map )
             {
@@ -122,13 +161,13 @@ struct SnapshottedMap
 
     void materialise( Internal obj )
     {
-        _snap_pointers.materialise( obj, sizeof( SnapPointer ) );
-        ASSERT( !_snap( obj ) );
+        Snapshotter::materialise( obj );
+        ASSERT( !snapped( obj ) );
     }
 
     void free( Internal obj )
     {
-        ASSERT( !_snap( obj ) );
+        ASSERT( !snapped( obj ) );
         _l._maps.erase( obj );
     }
 
@@ -141,7 +180,7 @@ struct SnapshottedMap
             return _cmp( map_a.begin(), map_a.end(), b, cb );
         }
 
-        auto [ begin_a, end_a ] = _snap_range( a );
+        auto [ begin_a, end_a ] = snap_range( a );
         return _cmp( begin_a, end_a, b, cb );
     }
 
@@ -155,7 +194,7 @@ struct SnapshottedMap
             return _cmp( begin_a, end_a, map_b.begin(), map_b.end(), cb );
         }
 
-        auto [ begin_b, end_b ] = _snap_range( b );
+        auto [ begin_b, end_b ] = snap_range( b );
         return _cmp( begin_a, end_a, begin_b, end_b, cb );
     }
 
@@ -186,7 +225,7 @@ struct SnapshottedMap
             for ( const auto &[ key, val ] : map->second )
                 kv_cb( key, val );
 
-        auto [ b, e ] = _snap_range( i );
+        auto [ b, e ] = snap_range( i );
         while ( b != e )
             kv_cb( b->first, b->second ), b++;
     }
@@ -224,26 +263,12 @@ struct SnapshottedMap
         }
         else
         {
-            auto [ f_begin, f_end ] = from_m._snap_range( from_object );
+            auto [ f_begin, f_end ] = from_m.snap_range( from_object );
             auto compare_pk = []( auto &p, auto &k ) { return key_compare()( p.first, k ); };
             auto lb = std::lower_bound( f_begin, f_end, from_offset, compare_pk );
             auto ub = std::lower_bound( lb, f_end, from_offset + sz, compare_pk );
             std::for_each( lb, ub, translate_and_insert );
         }
-    }
-
-    std::pair< value_type *, value_type * > _snap_range( Internal obj ) const
-    {
-        auto snap = _snap( obj );
-        if ( !snap )
-            return std::make_pair( nullptr, nullptr );
-        auto begin = _snapshots.template machinePointer< value_type >( snap );
-        auto end = begin + _snapshots.size( snap ) / sizeof( value_type );
-        return std::make_pair( begin, end );
-    }
-    SnapPointer _snap( Internal obj ) const
-    {
-        return *( _snap_pointers.template machinePointer< SnapPointer >( obj ) );
     }
 
     struct const_iterator : std::iterator< std::bidirectional_iterator_tag, value_type >
@@ -284,7 +309,7 @@ struct SnapshottedMap
         if ( i_map != _l._maps.end() )
             return i_map->second.begin();
 
-        auto [ begin, end ] = _snap_range( obj );
+        auto [ begin, end ] = snap_range( obj );
         return begin;
     }
 
@@ -295,7 +320,7 @@ struct SnapshottedMap
         if ( i_map != _l._maps.end() )
             return i_map->second.end();
 
-        auto [ begin, end ] = _snap_range( obj );
+        auto [ begin, end ] = snap_range( obj );
         return end;
     }
 
@@ -308,7 +333,7 @@ struct SnapshottedMap
             return const_iterator( it );
         }
 
-        auto [ begin, end ] = _snap_range( obj );
+        auto [ begin, end ] = snap_range( obj );
         auto p = std::upper_bound( begin, end, key, []( auto k, auto & l )
                 {
                 return key_compare()( k, l.first );
@@ -350,10 +375,10 @@ struct IntervalMetadataMap
 {
     using key_type = Interval< K >;
     using scalar_type = K;
-    using map = SnapshottedMap< key_type, T, Pool >;
+    using Internal = typename Pool::Pointer;
+    using map = SnapshottedMap< Internal, key_type, T, SlavePoolSnapshotter, Pool >;
     using value_type = typename map::value_type;
     using const_iterator = typename map::const_iterator;
-    using Internal = typename Pool::Pointer;
 
     map _storage;
 

@@ -887,8 +887,8 @@ struct IntervalMetadataMap
         map.insert( obj, 0, 16, 0xAD );
         map._storage.snapshot();
 
-        ASSERT( map._storage._snap(obj) );
-        ASSERT( map._storage._snap_range(obj).first );
+        ASSERT( map._storage.snapped(obj) );
+        ASSERT( map._storage.snap_range(obj).first );
         ASSERT( map.at(obj, 0) != nullptr );
         ASSERT_EQ( map.at(obj, 0)->second, 0xAD );
         ASSERT_EQ( map.at(obj, 0)->first.from, 0 );
