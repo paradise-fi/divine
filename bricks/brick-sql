@@ -150,11 +150,14 @@ namespace brq::sql
         {
             s << n.value / scale;
             auto fract = n.value % scale;
-            int f_count = scale;
+            int f_scale = scale;
             while ( fract && fract % 10 == 0 )
-                f_count --, fract /= 10;
+                f_scale /= 10, fract /= 10;
+            int pad_count = 0;
+            while ( f_scale > 1 )
+                pad_count += 1, f_scale /= 10;
             if ( fract )
-                s << "." << pad( f_count, '0' ) << fract << mark;
+                s << "." << pad( pad_count, '0' ) << fract << mark;
             return s;
         }
 
