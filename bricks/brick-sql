@@ -234,6 +234,7 @@ namespace brq::sql
         static std::string_view column_name( const CT &ct ) { return get_name( ct ); }
 
         using type = T;
+        using bare = void;
         using table = void;
         static constexpr bool is_nullable = _nullable;
         static constexpr bool is_primary = false;
@@ -278,6 +279,9 @@ namespace brq::sql
     template< template< typename > class self, typename col >
     struct function : col
     {
+        static constexpr bool is_qualified = true;
+        using bare = col;
+
         template< typename CT >
         static std::string_view column_name( const CT & )
         {
@@ -1454,14 +1458,18 @@ BRICK_SQL_OP( | )
         txn.exec( s.buffer() );
     };
 
+    template< typename C >
+    using get_bare = std::conditional_t< C::is_qualified, typename C::bare, C >;
+
     template< typename view >
     std::enable_if_t< view::is_view > create( txn &txn, view )
     {
         string_builder s;
         int id = 1;
-        s << "create view " << get_name( view() ) << " with ( security_barrier ) as ";
-        auto q = view::construct( txn.select( typename view::columns() ) );
-        q.print( s, id );
+        s << "create view " << get_name( view() );
+        print_columns( s, typename view::columns::template map_t< get_bare >(), "( ", " )" );
+        s << " with ( security_barrier ) as ";
+        view::construct( txn.select( typename view::columns() ) ).print( s, id );
         txn.exec( s.buffer() );
     }
 
