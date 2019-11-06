@@ -602,6 +602,41 @@ namespace brq::sql
     template< typename T > constexpr bool is_expr_v = is_expr< T >::value;
     struct where_operator { const char *sql; };
 
+    template< typename T >
+    static constexpr bool is_value = std::is_convertible_v< T, std::string_view > ||
+                                     std::is_convertible_v< T, std::u32string_view > ||
+                                     std::is_convertible_v< T, timestamp > ||
+                                     std::is_convertible_v< T, int >;
+
+    template< typename stream, typename V >
+    static void print( stream &s, const V &v, int &id )
+    {
+        if constexpr ( is_value< V > )
+            s << "$" << id++ << "::" << sql_type< V >();
+        else if constexpr ( std::is_same_v< V, where_operator > )
+            s << v.sql;
+        else if constexpr ( brq::is_list_v< V > )
+        {
+            bool first = true;
+            auto item = [&]( const auto &i )
+            {
+                s << ( first ? "" : ", " );
+                print( s, i, id );
+                first = false;
+            };
+            v.each( item );
+            s << " ";
+        }
+        else if constexpr ( V::is_column )
+            s << v.column_name( v );
+        else if constexpr ( V::is_query )
+            s << "( ", v.print( s, id ), s << " )";
+        else if constexpr ( V::is_enum )
+            s << get_name( v, '\'' );
+        else
+            v.print( s, id );
+    }
+
     template< typename... args >
     struct where_expr
     {
@@ -619,12 +654,6 @@ namespace brq::sql
 
         where_expr() = default;
 
-        template< typename T >
-        static constexpr bool is_value = std::is_convertible_v< T, std::string_view > ||
-                                         std::is_convertible_v< T, std::u32string_view > ||
-                                         std::is_convertible_v< T, timestamp > ||
-                                         std::is_convertible_v< T, int >;
-
         template< typename stmt, typename V >
         auto bind( stmt &s, V v ) const
         {
@@ -637,30 +666,11 @@ namespace brq::sql
                 v.bind( s );
         }
 
-        template< typename stream, typename V >
-        void print( stream &s, const V &v, int &id ) const
-        {
-            if constexpr ( is_value< V > )
-                s << "$" << id++ << "::" << sql_type< V >();
-            else if constexpr ( std::is_same_v< V, where_operator > )
-                s << v.sql;
-            else if constexpr ( is_list_v< V > )
-                print_columns( s, v, "(", ")" );
-            else if constexpr ( V::is_column )
-                s << v.column_name( v );
-            else if constexpr ( V::is_query )
-                s << "( ", v.print( s, id ), s << " )";
-            else if constexpr ( V::is_enum )
-                s << get_name( v, '\'' );
-            else
-                v.print( s, id );
-        }
-
         template< typename stream >
         stream &print( stream &s, int &id ) const
         {
             s << "( ";
-            _args.each( [&]( auto v ) { print( s, v, id ); s << " "; } );
+            _args.each( [&]( auto v ) { sql::print( s, v, id ); s << " "; } );
             return s << ")";
         }
 
@@ -682,6 +692,25 @@ namespace brq::sql
     {                                                                                             \
         return { a, where_operator{ sql }, b };                                                   \
     }
+
+    template< typename... cols >
+    struct tuple
+    {
+        static constexpr bool is_column = false;
+        static constexpr bool is_enum = false;
+        static constexpr bool is_query = false;
+
+        brq::cons_list_t< cols... > _cols;
+        tuple( cols... c ) : _cols( c... ) {}
+
+        template< typename stream >
+        void print( stream &s, int &id ) const
+        {
+            s << "( "; sql::print( s, _cols, id ); s << " )";
+        }
+
+        template< typename stmt > void bind( stmt & ) {}
+    };
 
 #define BRICK_SQL_OP(op) BRICK_SQL_OP_(operator op, #op)
 
