@@ -1111,8 +1111,11 @@ BRICK_SQL_OP( | )
     template< typename... cols >
     struct select_cols : query_head< cols... >
     {
-        using query_head< cols... >::query_head;
+        brq::cons_list_t< cols... > _cols;
         bool _distinct = false;
+
+        template< typename... et >
+        select_cols( sql::txn &t, et... e ) : query_head< cols... >( t ), _cols( e... ) {}
 
         template< typename table >
         select_tab< select_cols, table > from() { return { *this }; }
@@ -1126,11 +1129,11 @@ BRICK_SQL_OP( | )
         }
 
         template< typename stream >
-        void print( stream &s, int & ) const
+        void print( stream &s, int &id ) const
         {
             if ( !_distinct )
                 s << "select ";
-            print_columns( s, cons_list( cols()... ) );
+            sql::print( s, _cols, id );
         }
 
         raw_sql< select_cols > raw_sql( std::string_view sv ) { return { *this, sv }; }
@@ -1365,8 +1368,8 @@ BRICK_SQL_OP( | )
         template< typename schema >
         txn &initdb( schema s, bool clear = false );
 
-        template< typename... args >
-        select_cols< args... > select() { open(); return { *this }; }
+        template< typename... ct, typename... et >
+        select_cols< ct..., et... > select( et... e ) { open(); return { *this, ct()..., e... }; }
 
         template< typename... args >
         select_cols< args... > select( cons_list_t< args... > ) { open(); return { *this }; }
