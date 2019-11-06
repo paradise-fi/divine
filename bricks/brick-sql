@@ -604,7 +604,7 @@ namespace brq::sql
     template< typename T > struct is_expr< T, std::enable_if_t< T::is_expr > > : std::true_type {};
     template< typename T > struct is_expr< T, std::enable_if_t< T::is_enum > > : std::true_type {};
     template< typename T > constexpr bool is_expr_v = is_expr< T >::value;
-    struct where_operator { const char *sql; };
+    struct where_operator { const char *sql; where_operator( const char *s = "" ) : sql( s ) {} };
 
     template< typename T >
     static constexpr bool is_value = std::is_convertible_v< T, std::string_view > ||
@@ -753,6 +753,13 @@ BRICK_SQL_OP( | )
                                                  where_expr< where_operator, std::decay_t< A > > >
     {
         return { where_operator{ "not" }, a };
+    }
+
+    template< typename C, typename T, typename E >
+    where_expr< where_operator, C, where_operator, T, where_operator, E, where_operator >
+    when( C c, T t, E e )
+    {
+        return { "case", c, "when true then", t, "else", e, "end" };
     }
 
     struct query_base
