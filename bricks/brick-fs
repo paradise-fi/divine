@@ -790,7 +790,7 @@ namespace brq
     struct with_dir
     {
         change_dir _ch;
-        with_dir( std::string dir ) : _ch( ( mkdir_if_missing( dir, 0777 ), dir ) ) {}
+        with_dir( std::string dir ) : _ch( ( mkpath( dir ), dir ) ) {}
     };
 
 #if defined( __unix__ ) || defined( __divine__ )
