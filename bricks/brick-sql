@@ -236,6 +236,8 @@ namespace brq::sql
         using type = T;
         using bare = void;
         using table = void;
+        using qualifier = void;
+
         static constexpr bool is_nullable = _nullable;
         static constexpr bool is_primary = false;
         static constexpr bool is_foreign = false;
@@ -263,18 +265,21 @@ namespace brq::sql
     template< typename tab, typename col >
     struct in_table : col
     {
-        using table = tab;
         using bare = col;
+        using qualifier = tab;
         static constexpr bool is_qualified = true;
 
         template< typename CT >
         static std::string_view column_name( const CT & )
         {
-            static auto name = std::string( get_name( table() ) ) +
+            static auto name = std::string( get_name( tab() ) ) +
                                "." + std::string( col().column_name( col() ) );
             return name;
         }
     };
+
+    template< typename T >
+    using unqualify = std::conditional_t< T::is_qualified, typename T::bare, T >;
 
     template< template< typename > class self, typename col >
     struct function : col
@@ -312,7 +317,7 @@ namespace brq::sql
     struct primary_key : col
     {
         template< typename CT >
-        static std::string_view column_name( const CT & ) { return get_name( col() ); }
+        static std::string_view column_name( const CT & ) { return col().column_name( col() ); }
 
         using base = col;
         static constexpr bool is_primary = true;
@@ -909,7 +914,7 @@ BRICK_SQL_OP( | )
     template< typename T >
     using underlying = std::conditional_t< T::is_view && T::columns::car_t::is_qualified &&
                                            T::columns::car_t::is_primary,
-                                           typename T::columns::car_t::table, T >;
+                                           typename T::columns::car_t::qualifier, T >;
 
     template< typename select, typename tab >
     struct select_join : extend< select >
@@ -933,16 +938,18 @@ BRICK_SQL_OP( | )
 
             auto find_foreign_left = [&]( auto t )
             {
+                using col = unqualify< decltype( t ) >;
                 if constexpr ( t.is_foreign )
-                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_left_u > )
-                        foreign_column = t.column_name( t );
+                    if constexpr ( std::is_same_v< typename col::table, tab_left_u > )
+                        foreign_column = col().column_name( col() );
             };
 
             auto find_foreign_right = [&]( auto t )
             {
+                using col = unqualify< decltype( t ) >;
                 if constexpr ( t.is_foreign )
-                    if constexpr ( std::is_same_v< typename decltype( t )::table, tab_right_u > )
-                        foreign_column = t.column_name( t );
+                    if constexpr ( std::is_same_v< typename col::table, tab_right_u > )
+                        foreign_column = col().column_name( col() );
             };
 
             auto find_primary = [&]( auto t )
@@ -1179,7 +1186,7 @@ BRICK_SQL_OP( | )
                 bld << " on conflict do nothing";
             if constexpr ( !std::is_same_v< primary_l, brq::nil > )
             {
-                using primary = typename primary_l::car_t;
+                using primary = unqualify< typename primary_l::car_t >;
                 bld << " returning " << primary().column_name( primary() );
             }
             stmt s( _conn, bld.buffer() );
