@@ -322,6 +322,72 @@ namespace brq
         constexpr fallback( const T & ) {}
     };
 
+    struct primary {};
+
+    template< typename transform_t, typename stream_t >
+    struct string_transform
+    {
+        using self_t = string_transform< transform_t, stream_t >;
+        transform_t _transform;
+        stream_t &_stream;
+        int _mark;
+
+        string_transform( transform_t t, stream_t &s )
+            : _transform( t ), _stream( s ), _mark( _stream.size() )
+        {}
+
+        int size() { return _stream.size(); }
+
+        template< typename T > auto process( const T &v, primary )
+            -> decltype( _transform.process( *this, v ) )
+        {
+            return _transform.process( _stream, v );
+        }
+
+        template< typename T > auto process( const T &v, fallback )
+        {
+            int start = _stream.size();
+            _stream << v;
+            size_t count = _stream.size() - start;
+            _stream.size() = start;
+            char buf[ count ];
+            std::memcpy( buf, _stream.buffer() + start, count );
+            _transform.process( _stream, std::string_view( buf, count ) );
+        }
+
+        template< typename T > self_t &operator<<( const T &v )
+        {
+            if ( _mark != _stream.size() )
+                _transform.reset();
+            _mark = _stream.size();
+            process( v, primary() );
+            return *this;
+        }
+    };
+
+    struct string_window
+    {
+        const char *_start;
+        int _split, _end;
+
+        template< typename T >
+        string_window( const T &sv )
+            : _start( sv.data() ), _split( 0 ), _end( sv.end() - sv.begin() )
+        {}
+
+        std::string_view flush()
+        {
+            std::string_view rv( _start, _split );
+            _start += _split; _end -= _split; _split = 0;
+            return rv;
+        }
+
+        char shift()   { return _start[ _split++ ]; }
+        char peek()    { return _start[ _split ]; }
+        bool empty()   { return _split == _end; }
+        bool pending() { return _split > 0; }
+    };
+
     static inline bool starts_with( std::string_view s, std::string_view t )
     {
         return s.size() >= t.size() && s.compare( 0, t.size(), t ) == 0;
@@ -376,6 +442,7 @@ namespace brq
             return reverse ? split_view{ "", p } : split_view{ p, "" };
         return { p.substr( 0, s ), p.substr( s + 1, p.npos ) };
     }
+
 }
 
 #include "brick-assert"
