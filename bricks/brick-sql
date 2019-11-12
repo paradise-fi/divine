@@ -873,14 +873,18 @@ BRICK_SQL_OP( | )
         {
             this->_query.print( s, id );
             s << " " << _clause << " ";
-            _expr.print( s, id );
+            if constexpr ( is_value< expr > )
+                s << ( _expr ? "true" : "false" );
+            else
+                _expr.print( s, id );
         }
 
         template< typename stmt >
         void bind( stmt &s )
         {
             this->_query.bind( s );
-            _expr.bind( s );
+            if constexpr ( !is_value< expr > )
+                _expr.bind( s );
         }
 
         template< typename... group_cols >
