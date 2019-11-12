@@ -13,12 +13,6 @@ namespace __dios::rst::abstract
     namespace smt = brick::smt;
     using RPN = smt::RPN< Array< uint8_t, _VM_PT_Marked > >;
 
-    template< typename T >
-    _LART_INLINE constexpr std::size_t bitwidth() noexcept
-    {
-        return std::numeric_limits< T >::digits;
-    }
-
     /* Values in the Term abstract domain are built out of Constants, Variables and
      * operations defined on them. Integers are represented as bitvectors of fixed
      * bitwidth, operations similarly have a bitwidth specified (of the arguments they

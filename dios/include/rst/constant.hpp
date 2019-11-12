@@ -22,12 +22,6 @@ namespace __dios::rst::abstract {
         Bitwidth bw;
         Value value;
 
-        template< typename T >
-        _LART_INLINE static constexpr Bitwidth bitwidth() noexcept
-        {
-            return std::numeric_limits< T >::digits;
-        }
-
         _LART_INLINE static Constant& get_constant( Ptr ptr ) noexcept
         {
             return *static_cast< Constant * >( ptr );

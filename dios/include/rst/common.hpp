@@ -225,6 +225,12 @@ namespace __dios::rst::abstract {
         __dios_fault( _VM_Fault::_VM_F_Float, "division by zero" );
     }
 
+    template< typename T >
+    _LART_INLINE static constexpr Bitwidth bitwidth() noexcept
+    {
+        return std::numeric_limits< T >::digits + std::numeric_limits< T >::is_signed;
+    }
+
     namespace op {
 
         template< typename T = void >
