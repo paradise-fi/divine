@@ -479,6 +479,7 @@ namespace brq::sql
     template< typename... cols >
     struct stmt
     {
+        using columns = brq::cons_list_t< cols... >;
         using result_t = row< cols... >;
 
         conn &_conn;
@@ -775,6 +776,9 @@ BRICK_SQL_OP( | )
         static constexpr bool is_expr = true;
         static constexpr bool is_enum = false;
     };
+
+    template< typename q, typename col >
+    constexpr bool has_column = q::stmt::columns::template has< col >;
 
     template< typename query >
     struct extend : query_base
