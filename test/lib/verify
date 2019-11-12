@@ -37,6 +37,7 @@ expect=$(eval echo $(getopt EXPECT $1))
 gtest=
 skipcc=$(getopt SKIP_CC $1)
 
+decompiled=
 std=
 echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++14"
 
@@ -68,6 +69,11 @@ if test -z "$EXPORT"; then
     elif ! echo "$opts" | egrep -q "leakcheck|relaxed"; then
         # --symbolic currently leaks memory
         extra="$extra --leakcheck exit"
+    fi
+
+    if test "$TEST_FLAVOUR" = mcsema; then
+        bash $SRCDIR/test/lib/lift.sh
+        decompiled=1;
     fi
 fi
 
@@ -107,6 +113,9 @@ fi
 # Generate 'cc' command
 if test "$skipcc" = 1; then
     run=$name
+    opts="$std $opts"
+elif test "$decompiled" = 1; then
+    run=testcase.bc
     opts="$std $opts"
 else
     addcmd cc -o testcase.bc $std $ccopt "$name" $gtest
