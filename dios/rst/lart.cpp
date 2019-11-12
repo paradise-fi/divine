@@ -59,6 +59,9 @@ using Ptr = void *;
 using store_op = void ( Ptr /* val */, Ptr /* ptr */ );
 using gep_op = Ptr ( Ptr /* ptr */, Ptr /* off */ );
 
+using int_to_fp_op = Ptr ( Ptr /* ptr */, Ptr /* bw */ );
+using fp_to_int_op = Ptr ( Ptr /* ptr */, Ptr /* bw */ );
+
 
 _LART_INLINE
 uint8_t domain( Ptr addr ) noexcept { return *static_cast< uint8_t * >( addr ); }
@@ -124,6 +127,38 @@ Ptr __lart_gep_lifter_impl( Argument< Ptr > ptr, Argument< Value > off, size_t o
                                                  , op ); \
     }
 
+template< typename Type >
+_LART_INLINE
+Ptr __lart_int_to_fp_impl( Ptr _int, size_t op )
+{
+    auto to_fp = get_operation< int_to_fp_op >( domain( _int ), op );
+    auto bw = Constant::lift( bitwidth< Type >() );
+    return to_fp( _int, bw );
+}
+
+#define LART_INT_TO_FP( name, Fp ) \
+    __invisible \
+    Ptr __lart_int_to_ ## name( Ptr _int, size_t op ) \
+    { \
+        return __lart_int_to_fp_impl< Fp >( _int, op ); \
+    }
+
+template< typename Type >
+_LART_INLINE
+Ptr __lart_fp_to_int_impl( Ptr fp, size_t op )
+{
+    auto to_int = get_operation< fp_to_int_op >( domain( fp ), op );
+    auto bw = Constant::lift( bitwidth< Type >() );
+    return to_int( fp, bw );
+}
+
+#define LART_FP_TO_INT( name, Int ) \
+    __invisible \
+    Ptr __lart_fp_to_ ## name( Ptr fp, size_t op ) \
+    { \
+        return __lart_fp_to_int_impl< Int >(  fp, op ); \
+    }
+
 extern "C" {
 
     LART_STORE_LIFTER(  i8, uint8_t )
@@ -132,4 +167,12 @@ extern "C" {
     LART_STORE_LIFTER( i64, uint64_t )
 
     LART_GEP_LIFTER( uint64_t )
+
+    LART_FP_TO_INT( i8, uint8_t )
+    LART_FP_TO_INT( i16, uint16_t )
+    LART_FP_TO_INT( i32, uint32_t )
+    LART_FP_TO_INT( i64, uint64_t )
+
+    LART_INT_TO_FP( float, float )
+    LART_INT_TO_FP( double, double )
 }
