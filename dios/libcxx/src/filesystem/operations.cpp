@@ -25,7 +25,7 @@
 #include <time.h>
 #include <fcntl.h> /* values for fchmodat */
 
-#if defined(__linux__)
+#if defined(__linux__) && __has_include(<linux/version.h>)
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
 #include <sys/sendfile.h>
