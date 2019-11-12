@@ -25,7 +25,12 @@ namespace __dios::rst::abstract
      * take). See `bricks/brick-smt` for details on the types and operations.
      *
      * A Term is stored/encoded as bytecode in the `pointer` data member, which
-     * is a pointer to an RPN structure (RPN is also defined in `brick-smt`). */
+     * is a pointer to an RPN structure (RPN is also defined in `brick-smt`).
+     *
+     * If method name is in form `op_X` then `X` should correspond to the llvm
+     * instruction names. These methods are used in lart and their lookup is name-based
+     * therefore it is mandatory to satisfy this requirement.
+     * Otherwise there are no requirements. */
     struct Term
     {
         void * pointer = nullptr;     // RPN * ?
@@ -128,6 +133,28 @@ namespace __dios::rst::abstract
                             , Op::FpRem >( op );
         }
 
+        template< Op op, typename ...T >
+        _LART_INLINE static Term impl_nary( T ...terms )
+        {
+            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            new ( ptr ) Base();
+            Term term{ ptr };
+
+            return apply_impl< op >( term, terms...);
+        }
+
+        template< Op op, typename H, typename ...T >
+        _LART_INLINE static Term apply_impl( Term term, H h, T ...terms )
+        {
+            return apply_impl< op, T...>( term.extend( h ), terms... );
+        }
+
+        template< Op op >
+        _LART_INLINE static Term apply_impl( Term term )
+        {
+            return term.apply< op >();
+        }
+
         template< Op op >
         _LART_INLINE static Term impl_binary( Term lhs, Term rhs ) noexcept
         {
@@ -209,6 +236,28 @@ namespace __dios::rst::abstract
             Term term{ ptr };
 
             return term.extend( arg ).extend( cast_op< op >( bw ) );
+        }
+
+        _LART_INLINE static Term op_insertvalue( Term arg, Term value, Term offset )
+        {
+            auto lhs = impl_nary< Op::Extract >(
+                    arg,
+                    constant( 0 ),
+                    impl_binary< Op::BvSub >( offset, lift( 1 ) ) );
+            auto rhs = impl_nary< Op::Extract >(
+                    arg,
+                    impl_binary< Op::BvAdd >( offset, lift( 1 ) ) );
+            return impl_nary< Op::Concat >(
+                    impl_nary< Op::Concat >( lhs, value ),
+                    rhs );
+        }
+
+        _LART_INLINE static Term op_extractvalue( Term arg, Term value, Term offset )
+        {
+            return impl_nary< Op::Extract >(
+                    arg,
+                    offset,
+                    impl_binary< Op::BvAdd >( offset, lift( 1 ) ) );
         }
 
         _LART_INTERFACE
