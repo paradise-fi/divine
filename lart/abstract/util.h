@@ -134,7 +134,7 @@ namespace lart::abstract
         constexpr auto bitwidth() const noexcept
         {
             static_assert( std::is_integral_v< T > );
-            return std::numeric_limits< T >::digits;
+            return std::numeric_limits< T >::digits + std::numeric_limits< T >::is_signed;
         }
 
         template< typename T >
