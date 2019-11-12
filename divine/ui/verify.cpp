@@ -28,10 +28,10 @@
 namespace divine {
 namespace ui {
 
-void verify::setup_report_file()
+void Verify::setup_report_file()
 {
-    if ( _report_filename.name.empty() )
-        _report_filename.name = outputName( _bc_opts.input_file.name, "report" );
+    if ( _report_filename.empty() )
+        _report_filename = outputName( _bc_opts.input_file, "report" );
 
     if ( !_report_unique )
         return;
@@ -42,17 +42,17 @@ void verify::setup_report_file()
     int fd;
 
     do {
-        fn = _report_filename.name + ".";
+        fn = _report_filename + ".";
         for ( int i = 0; i < 6; ++i )
             fn += dist( rd );
         fd = open( fn.c_str(), O_CREAT | O_EXCL, 0666 );
     } while ( fd < 0 );
 
-    _report_filename.name = fn;
+    _report_filename = fn;
     close( fd );
 }
 
-void verify::setup()
+void Verify::setup()
 {
     if ( _log == nullsink() )
     {
@@ -184,10 +184,10 @@ void verify::safety()
     print_ce( *safety );
 }
 
-void verify::cleanup()
+void Verify::cleanup()
 {
-    if ( !_report_filename.name.empty() )
-        std::cerr << "a report was written to " << _report_filename.name << std::endl;
+    if ( !_report_filename.empty() )
+        std::cerr << "a report was written to " << _report_filename << std::endl;
 }
 
 void verify::liveness()

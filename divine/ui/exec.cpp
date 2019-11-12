@@ -23,6 +23,21 @@ namespace divine::ui
 {
     void exec::setup()
     {
+        if ( _report != Report::Yaml )
+        {
+            _report = Report::Yaml;
+            std::cerr << "W: exec doesn't print log to the stdout" << std::endl;
+        }
+
+        if ( _log == nullsink() && !_no_report_file )
+        {
+            setup_report_file();
+            _report_file.reset( new std::ofstream( _report_filename ) );
+
+             // TODO: We don't want interactive, but we want booting messages?
+            _log = make_composite( { make_interactive(), make_yaml( *_report_file.get(), true ) } );
+        }
+
         if ( _bc_opts.symbolic && !_virtual )
         {
             _virtual = true;
@@ -32,16 +47,35 @@ namespace divine::ui
         if ( _bc_opts.dios_config.empty() )
             _bc_opts.dios_config = _virtual ? "default" : "proxy";
 
-        with_bc::setup();
+        WithBC::setup();
     }
 
     void exec::run()
     {
+        const auto tactic = [&]
+        {
+            if ( _tactic == "coverage" )
+                return mc::Exec::Tactic::CoverageSearch;
+            else if ( _tactic == "closest-fault" )
+                return mc::Exec::Tactic::ClosestFaultSearch;
+
+            return mc::Exec::Tactic::Backtrack;
+        }();
+
         mc::Exec exec( bitcode() );
+
+        _log->start();
+
         if ( _trace )
             exec.trace();
         else
-            exec.run();
-    }
+            exec.run( _exhaustive, tactic ); // TODO: What about trace?
 
+        _log->progress( { 0, 0 }, 0, true );
+        _log->memory( exec.poolstats(), mc::HashStats(), true ); // TODO: What about HashStats?
+
+        report_options();
+
+        _log->result( mc::Result::None, mc::Trace() );
+    }
 }

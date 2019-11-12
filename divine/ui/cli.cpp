@@ -417,7 +417,7 @@ void info::run()
     std::cerr << "use -o {option}:{value} to pass these options to the program" << std::endl;
 }
 
-std::shared_ptr< Interface > make_cli( int argc, const char **argv )
+std::shared_ptr< Interface > make_cli( std::vector< std::string > args )
 {
     return std::make_shared< CLI >( argc, argv );
 }
