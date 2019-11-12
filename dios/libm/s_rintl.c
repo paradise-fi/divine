@@ -50,7 +50,7 @@ shift[2] = {
 };
 static const float zero[2] = { 0.0, -0.0 };
 
-long double
+__link_always long double
 rintl(long double x)
 {
 	union {

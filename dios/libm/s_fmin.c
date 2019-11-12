@@ -28,7 +28,7 @@
 #include <float.h>
 #include <math.h>
 
-double
+__link_always double
 fmin(double x, double y)
 {
 	/* Check for NaNs to avoid raising spurious exceptions. */

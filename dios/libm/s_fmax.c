@@ -28,7 +28,7 @@
 #include <float.h>
 #include <math.h>
 
-double
+__link_always double
 fmax(double x, double y)
 {
 	/* Check for NaNs to avoid raising spurious exceptions. */

@@ -18,7 +18,7 @@
 
 static const float one = 1.0;
 
-float
+__link_always float
 modff(float x, float *iptr)
 {
 	int32_t i0,jj0;

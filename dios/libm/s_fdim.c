@@ -29,7 +29,7 @@
 #include <math.h>
 
 #define	DECL(type, fn)			\
-type					\
+__link_always type					\
 fn(type x, type y)			\
 {					\
 					\

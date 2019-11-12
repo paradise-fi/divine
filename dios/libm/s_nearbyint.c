@@ -19,7 +19,7 @@
 #include <fenv.h>
 #include <math.h>
 
-double
+__link_always double
 nearbyint(double x)
 {
 	fenv_t fenv;

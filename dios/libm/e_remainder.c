@@ -27,7 +27,7 @@
 static const double zero = 0.0;
 
 
-double
+__link_always double
 remainder(double x, double p)
 {
 	int32_t hx,hp;

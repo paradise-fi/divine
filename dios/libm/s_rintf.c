@@ -22,7 +22,7 @@ TWO23[2]={
  -8.3886080000e+06, /* 0xcb000000 */
 };
 
-float
+__link_always float
 rintf(float x)
 {
 	int32_t i0,jj0,sx;

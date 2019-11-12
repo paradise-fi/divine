@@ -23,7 +23,7 @@
 
 static const double one = 1.0, Zero[] = {0.0, -0.0,};
 
-double
+__link_always double
 fmod(double x, double y)
 {
 	int32_t n,hx,hy,hz,ix,iy,sx,i;

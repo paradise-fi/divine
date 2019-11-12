@@ -24,7 +24,7 @@
 
 static const float one = 1.0, Zero[] = {0.0, -0.0,};
 
-float
+__link_always float
 fmodf(float x, float y)
 {
 	int32_t n,hx,hy,hz,ix,iy,sx,i;

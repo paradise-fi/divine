@@ -21,7 +21,7 @@
 
 #include "math_private.h"
 
-double
+__link_always double
 copysign(double x, double y)
 {
 	u_int32_t hx,hy;
