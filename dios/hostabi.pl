@@ -277,4 +277,4 @@ print STDERR "|$cc -x c -o printabi -\n";
 open CC, "|$cc -x c -o printabi -";
 print CC $prog;
 close CC or fail( "compile error" );
-system("./printabi");
+system("./printabi") == 0 or die "error running printabi";
