@@ -164,7 +164,7 @@ namespace brq
             return _refcount < max && --_refcount;
         }
 
-        ~refcount_base() { TRACE( this, "destroyed" ); }
+        ~refcount_base() { NOISE( this, "destroyed" ); }
         refcount_base() = default;
         refcount_base( const refcount_base & ) : _refcount( 0 ) {}
         refcount_base( refcount_base && ) : _refcount( 0 ) {}
