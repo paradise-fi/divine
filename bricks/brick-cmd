@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2015-2016 Petr Ročkai <code@fixp.eu>
+ * Copyright (C) 2019 Petr Rockai <code@fixp.eu>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,1279 +17,407 @@
  */
 
 #pragma once
+#include "brick-string"
+#include "brick-cons"
+#include "brick-except"
 
-#include <vector>
-#include <array>
-#include <deque>
-#include <stack>
-#include <unordered_map>
+#include <string>
+#include <iostream>
+#include <cxxabi.h>
 
-#include <brick-unittest> // _typeid
-#include <brick-cons>
-#include <brick-types>
-#include <brick-except>
-#include <brick-string>
-#include <brick-ptr>
-
-namespace brick {
-namespace cmd {
-
-using Tokens = std::vector< std::string >;
-enum ErrorType { BadContent, BadFormat };
-
-struct Error
+namespace brq
 {
-    std::string _description;
-    ErrorType _type;
-};
+    /* The `cmd_flag` class represents an 'implicit' boolean flag. The value is
+     * set based on the presence of the flag alone. It is possible to set up a
+     * negated version of the flag by using neg() on an instance (the presence
+     * of the corresponding command line option will set the flag to false). In
+     * contrast, `bool` values lead to flags of the form `--flag {bool}`, i.e.
+     * the user will need to explicitly say `--flag yes` or `--flag no`. */
 
-template< typename T >
-using ErrorOr = types::Union< Error, T >;
-
-struct ValidatorInterface : brq::refcount_base<>
-{
-    virtual bool validate( std::string t, std::string v ) = 0;
-    virtual ~ValidatorInterface() {}
-};
-
-template< typename... > struct Validator;
-
-    struct prefer {};
-
-    template< typename Edit >
-    struct Push
+    struct cmd_flag
     {
-        Edit &edit;
-        Push( Edit &e ) : edit( e ) {}
-
-        template< typename X >
-        void operator()( const X &x ) const { push( edit, x, prefer() ); }
-
-        template< typename E, typename X >
-        auto push( E &edit, const X &x, prefer ) const -> decltype( edit.push_back( x ) )
+        struct neg_t
         {
-            return edit.push_back( x );
-        }
-
-        template< typename E, typename X >
-        auto push( E &edit, const X &x, brq::fallback ) const
-            -> decltype( edit = static_cast< Edit >( x ) )
-        {
-            return edit = static_cast< Edit >( x );
-        }
-
-        auto push( Edit &, brq::fallback, brq::fallback ) const
-        {
-            UNREACHABLE( "capture type mismatch" );
-        }
-    };
-
-template< typename Parse, typename... Ps >
-struct Validator< Parse, Ps... >:  ValidatorInterface
-{
-    using Next = brq::refcount_ptr< Validator< Ps... > >;
-
-    std::string _name;
-    Parse _parse;
-    Next _next;
-
-
-    bool validate( std::string t, std::string v ) override
-    {
-        if ( t != _name && _next )
-            return _next->validate( t, v );
-
-        /* TODO */
-        bool result = true;
-        _parse( v, [&]( auto ) { result = true; },
-                [&]( ErrorType e, auto ) { result = e != BadFormat; } );
-        return result;
-    }
-
-    template< typename T >
-    void parse( T &edit, std::string t, std::string v )
-    {
-        if ( _name != t )
-            return _next->parse( edit, t, v );
-        auto fail = []( auto, std::string s ) { brq::raise() << "parsing command line: " << s; };
-        return _parse( v, Push< T >( edit ), fail );
-    }
-
-    Validator( std::string t, Parse parse, Next next )
-        : _name( t ), _parse( parse ), _next( next )
-    {}
-
-    virtual ~Validator() {}
-
-    template< typename P >
-    auto add( std::string t, P parse )
-    {
-        return brq::make_refcount< Validator< P, Parse, Ps... > >( t, parse, this );
-    }
-};
-
-template<>
-struct Validator<> : ValidatorInterface
-{
-    bool validate( std::string t, std::string ) override
-    {
-        throw std::logic_error( "Unknown capture type " + t );
-    }
-
-    template< typename S >
-    void parse( S, std::string t, std::string )
-    {
-        throw std::logic_error( "Unknown or mismatched capture of type " + t );
-    }
-
-    template< typename P >
-    auto add( std::string t, P parse )
-    {
-        return brq::make_refcount< Validator< P > >( t, parse, this );
-    }
-};
-
-using ValidatorPtr = brq::refcount_ptr< ValidatorInterface >;
-
-namespace {
-
-auto make_validator()
-{
-    return brq::make_refcount< Validator<> >()->
-        add( "string", []( std::string s, auto good, auto ) { return good( s ); } ) ->
-        add( "float", []( std::string s, auto good, auto bad )
-             {
-                 double r = 0;
-                 try {
-                     r = std::stod( s );
-                 } catch ( std::invalid_argument &e ) {
-                     return bad( BadFormat, e.what() );
-                 } catch ( std::out_of_range &e ) {
-                     return bad( BadFormat, e.what() );
-                 }
-                 return good( r );
-             } ) ->
-        add( "int", []( std::string s, auto good, auto bad )
-             {
-                int r = 0;
-                try {
-                     r = std::stoi( s );
-                } catch ( std::invalid_argument &e ) {
-                    return bad( BadFormat, e.what() );
-                } catch ( std::out_of_range &e ) {
-                    return bad( BadFormat, e.what() );
-                }
-                return good( r );
-             } );
-}
-
-std::pair< std::string, std::string > next_token( std::string s )
-{
-    ASSERT( !s.empty() );
-    std::stack< char > stack;
-
-    int skip = 0;
-    int i = 0; /* index */
-
-    for ( ; skip < int( s.size() ); ++skip )
-        if ( !std::isblank( s[skip] ) )
-            break;
-
-    for ( i = skip; i < int( s.size() ); ++i )
-    {
-        if ( stack.empty() )
-            if ( ( i > skip && s[i] == '|' ) || std::isblank( s[i] ) )
-                break;
-        if ( s[i] == '[' || s[i] == '(' )
-            stack.push( s[i] );
-        if ( s[i] == ']' || s[i] == ')' )
-        {
-            if ( stack.empty() )
-                break;
-            if ( ( stack.top() == '(' && s[i] != ')' ) ||
-                 ( stack.top() == '[' && s[i] != ']' ) )
-                throw std::logic_error( "Mismatched () or [] in a pattern: " + s );
-            stack.pop();
-            if ( stack.empty() )
-            {
-                ++ i;
-                break;
-            }
-        }
-    }
-
-    int j = i;
-    while ( std::isblank( s[j] ) && j < int( s.size() ) )
-        ++ j;
-
-    return std::make_pair( std::string( s, skip, i ),
-                           std::string( s, j, std::string::npos ) );
-}
-
-}
-
-struct SetterInterface
-{
-    virtual void operator()( int, bool, std::string, std::string ) = 0;
-};
-
-struct NullSetter : SetterInterface
-{
-    void operator()( int, bool, std::string, std::string ) override {}
-};
-
-/*
- * Patterns (represented as format strings):
- * - tokens are whitespace-separated
- * - [x|y] matches either x or y
- * - {x} matches (and captures) a value of type x [bool, int, string, ...]
- * - [,{int}]+ matches zero or more times
- * - constant (no quantifier) {...} captures produce tuples
- * - variable (with the + quantifier) capture produces vectors
- * - all captures in a quantified fmt string must be of the same type
- * - to capture a list of tuples, register a new type
- *
- * - the (regular) language for a set of patterns is obtained as [x|y|...]+ for
- *   all components x, y, ... intersected with .*X.*, .*Y.*, etc. for all X, Y
- *   non-optional
- */
-
-struct Pattern : brq::refcount_base<>
-{
-    /*
-     * Match: prefix match
-     * Mixed: full-string match with (possibly multiple) captures
-     */
-    enum { Match, Capture, Group, Mixed, Empty } _type;
-    std::string _text;
-    std::string _capture;
-    int _capture_id;
-    ValidatorPtr _validator;
-    bool _required, _many;
-    using Ptr = brq::refcount_ptr< Pattern >;
-
-    Ptr _next;
-    Ptr _alt;
-
-    std::vector< Ptr > _subs;
-
-    std::string fmt()
-    {
-        std::string str;
-
-        if ( _type == Group )
-            for ( auto a : _subs )
-            {
-                if ( a->_type == Group && a->_required )
-                    str += "(" + a->fmt() + ")|";
-                else
-                    str += a->fmt() + "|";
-            }
-
-        str = std::string( str, 0, str.length() - 1 );
-
-        if ( _type == Capture )
-            str = "{" + _capture + "}";
-        if ( _type == Match )
-            str = _text;
-        if ( _type == Mixed )
-            str = _text + "{" + _capture + "}";
-        if ( !_required )
-            str = "[" + str + "]";
-        else if ( _next && _type == Group )
-            str = "(" + str + ")";
-        if ( _next )
-            str += " " + _next->fmt();
-        return str;
-    }
-
-    Tokens::iterator match( Tokens::iterator begin, Tokens::iterator end )
-    {
-        NullSetter ignore;
-        return match( ignore, begin, end );
-    }
-
-    Tokens::iterator match( SetterInterface &capture, Tokens::iterator begin, Tokens::iterator end )
-    {
-        _capture_id = 0;
-        return match( capture, begin, end, begin );
-    }
-
-    Tokens::iterator match( SetterInterface &capture, Tokens::iterator begin, Tokens::iterator end,
-                            Tokens::iterator fail )
-    {
-        Tokens::iterator next = begin;
-        if ( _type == Match && *begin == _text )
-            next = begin + 1;
-        while ( _type == Capture && next != end && _validator->validate( _capture, *next ) )
-        {
-            capture( _capture_id++, _many, _capture, *next );
-            next = next + 1;
-            if ( !_many )
-                break;
-        }
-        if ( _type == Mixed && begin->find( _text ) == 0 && begin->size() > _text.size() )
-        {
-            std::string rest = begin->substr( _text.length() );
-            if ( _validator->validate( _capture, rest ) )
-            {
-                capture( _capture_id++, false, _capture, rest );
-            }
-            next = begin + 1;
-        }
-        if ( _type == Group )
-        {
-            std::vector< Tokens::iterator > res;
-            for ( auto a : _subs )
-                res.push_back( a->match( capture, begin, end ) );
-            int count = 0;
-            for ( auto r : res )
-                if ( r > next )
-                    next = r, count = 0;
-                else if ( r == next && next > begin )
-                    ++ count;
-            if ( count )
-            {
-                std::string line, alts;
-                for ( auto i = begin; i != next; ++i )
-                    line += " " + *i;
-                for ( int i = 0; i < int( res.size() ); ++i )
-                    if ( res[i] == next )
-                        alts += "\n matched " + _subs[i]->fmt();
-                brq::raise() << "ambiguous parse:" << line << alts;
-            }
-        }
-
-        if ( _required && next == begin )
-            return fail;
-        if ( _next )
-            next = _next->match( capture, next, end, fail );
-        return next;
-    }
-
-    Pattern( ValidatorPtr v )
-        : _type( Empty ), _validator( v ), _required( true ), _many( false )
-    {}
-
-    Pattern( ValidatorPtr v, std::string s )
-        : Pattern( v )
-    {
-        create( s, this );
-    }
-
-    void simplify()
-    {
-        bool r = _required;
-        if ( _type == Group && _subs.size() == 1 && _subs[0]->_type == Group )
-        {
-            auto a = _subs[0];
-            *this = *a;
-            _required = _required && r;
-        }
-    }
-
-    bool create( std::string s, Pattern *prev_alt )
-    {
-        std::string me, rest;
-        bool alt = false;
-        std::tie( me, rest ) = next_token( s );
-        ASSERT( !me.empty() );
-
-        if ( me[0] == '|' )
-        {
-            alt = true;
-            me = std::string( me, 1, me.size() - 1 );
-        }
-
-        if ( me[0] == '[' || me[0] == '(' )
-        {
-            _subs.emplace_back( new Pattern( _validator, std::string( me, 1, me.size() - 2 ) ) );
-            _type = Group;
-            if ( me[0] == '[' )
-                _required = false;
-            simplify();
-        }
-
-        else if ( me[0] == '{' )
-        {
-            _type = Capture;
-            _capture = std::string( me, 1, me.size() - 2 );
-            if ( me.back() == '+' )
-            {
-                _capture = std::string( _capture, 0, _capture.size() - 1 );
-                _many = true;
-            }
-        }
-
-        else
-        {
-            auto capture = me.find( "{" );
-            if ( capture != std::string::npos )
-            {
-                _text = std::string( me, 0, capture );
-                _capture = std::string( me, capture + 1, me.size() - capture - 2 );
-                _type = Mixed;
-            }
-            else
-            {
-                _type = Match;
-                _text = me;
-            }
-        }
-
-        if ( !rest.empty() )
-        {
-            auto n = brq::make_refcount< Pattern >( _validator );
-            if ( n->create( rest, alt ? this : prev_alt ) )
-                _next = n;
-
-            if ( prev_alt == this && _alt )
-            {
-                ASSERT( _type != Empty );
-                auto a = brq::make_refcount< Pattern >( *this );
-                *this = Pattern( _validator );
-                _type = Group;
-                while ( a )
-                {
-                    _subs.emplace_back( a );
-                    a = a->_alt;
-                    _subs.back()->_alt.reset();
-                }
-            }
-        }
-
-        if ( alt )
-        {
-            ASSERT( !prev_alt->_alt );
-            prev_alt->_alt.reset( this );
-            return false;
+            cmd_flag &f;
+            void operator=( bool b ) { f._value = !b; }
         };
 
+        bool _value = false;
+        operator bool()   const { return  _value; }
+        bool operator !() const { return !_value; }
+        cmd_flag &operator=( bool b ) { _value = b; return *this; }
+        neg_t neg() { return { *this }; }
+    };
+
+    /* The from_string machinery extracts values from strings. The parsing might
+     * fail, in which case they are expected to return 'false'. An existing
+     * value must be passed to `from_string` as a reference -- the original
+     * content may or may not be discarded, depending on the type. If parsing
+     * fails, the content of the value should be left untouched. The easiest way
+     * to provide from_string is by adding a static `from_string` method to your
+     * class. ADL also works, if need be. We provide some sane default
+     * from_string implementations for standard types. */
+
+    template< typename arg_t >
+    static auto from_string( std::string_view s, arg_t &a ) -> decltype( arg_t::from_string( s, a ) )
+    {
+        return arg_t::from_string( s, a );
+    }
+
+    template< typename arg_t >
+    static std::enable_if< std::is_integral_v< arg_t > || std::is_floating_point_v< arg_t >, bool >
+    from_string( std::string_view s, arg_t &a )
+    {
+        auto begin = s.data(), end = begin + s.size();
+        return std::from_chars( begin, end, a ).ptr == end;
+    }
+
+    static bool from_string( std::string_view s, bool &f )
+    {
+        if ( s == "yes" || s == "true" || s == "1" )
+            return f = true, true;
+
+        if ( s == "no" || s == "false" || s == "0" )
+            return f = false, true;
+
+        return false;
+    }
+
+    static bool from_string( std::string_view s, std::string &v )
+    {
+        v = s;
         return true;
     }
-};
 
-enum class OptionFlag { Unique = 1, Final = 2, Required = 4 };
-using OptionFlags = brick::types::StrongEnumFlags< OptionFlag >;
+    /* The `cmd_option_matcher` class takes care of matching up fragments of a
+     * single option or flag. A single option can span several tokens (where
+     * each token corresponds to a single command-line argument as passed to the
+     * program by the shell). Options are created by the `cmd_options` class
+     * defined below. The option definition consists of a number of fragments,
+     * where a fragment may or may not consume an entire token. Each fragment is
+     * either a literal (which is compared to the input token for a match) or a
+     * binding, which uses `from_string` to convert the token (or a token
+     * fragment) into a value. */
 
-template< typename VPtr, typename Edit >
-struct Setter : SetterInterface
-{
-    bool captured = false;
-    VPtr validator;
-    Edit &edit;
-
-    Setter( VPtr v, Edit &e ) : validator( v ), edit( e ) {}
-
-    /* interface for Pattern::match() */
-    void operator()( int, bool, std::string type, std::string val )
+    struct cmd_option_matcher
     {
-        validator->parse( edit, type, val );
-        captured = true;
-    };
-};
+        std::vector< std::string > _tokens;
 
-struct OptionBase
-{
-    static constexpr const bool is_set = false;
-    Pattern _pattern;
-    std::string _descr;
-    OptionFlags _flags;
+        template< typename T > static constexpr bool is_binding =
+            ( std::is_lvalue_reference_v< T > && !std::is_const_v< std::remove_reference_t< T > > ) ||
+            std::is_same_v< T, cmd_flag::neg_t >;
 
-    void set_true( bool &edit )
-    {
-        edit = true;
-    }
-
-    template< typename E >
-    void set_true( E & )
-    {
-        UNREACHABLE( "cannot set true to not bool" );
-    }
-
-    Tokens::iterator match( Tokens::iterator b, Tokens::iterator e )
-    {
-        return _pattern.match( b, e );
-    }
-
-    OptionFlags flags()
-    {
-        if ( _pattern._required )
-            return _flags | OptionFlag::Required;
-        return _flags;
-    }
-
-    std::string fmt() { return _pattern.fmt(); };
-    std::string describe( int max_width = 0 )
-    {
-        brq::string_builder str;
-        auto f = fmt();
-        if ( max_width )
+        template< typename arg_t >
+        std::pair< bool, int > bind( std::string token, arg_t &arg, int idx )
         {
-            ASSERT_LEQ( f.size(), max_width );
-            str << std::string( max_width - f.size(), ' ' );
-        }
-        str << f << "   " << _descr;
-        return str.buffer();
-    };
-
-    int priority( Pattern &p )
-    {
-        int r = 0;
-        switch ( p._type )
-        {
-            case Pattern::Capture: return 0;
-            case Pattern::Mixed: return 1;
-            case Pattern::Match : return 2;
-            case Pattern::Group:
-                for ( size_t i = 0; i < p._subs.size(); ++i )
-                    r = std::max( r, priority( *p._subs[i] ) );
-                return r;
-            default: UNREACHABLE( "impossible pattern type" );
-        }
-    }
-
-    int priority() { return priority( _pattern ); }
-
-    OptionBase( ValidatorPtr v, std::string fmt, std::string descr, OptionFlags flags )
-        : _pattern( v, fmt ), _descr( descr ), _flags( flags )
-    {}
-};
-
-template< typename T, typename V >
-struct Option : OptionBase
-{
-    using Get = std::function< V &( T & ) >;
-    Get _get;
-
-    template< typename VPtr >
-    Tokens::iterator parse( const VPtr &validator, T &edit, Tokens::iterator b, Tokens::iterator e )
-    {
-        Setter< VPtr, V > setter( validator, _get( edit ) );
-        auto result = _pattern.match( setter, b, e );
-        if ( !setter.captured )
-            set_true( _get( edit ) );
-        return result;
-    }
-
-    Option( ValidatorPtr v, std::string fmt, Get get, std::string descr, OptionFlags flags )
-        : OptionBase( v, fmt, descr, flags ), _get( get )
-    {}
-};
-
-template< typename T, typename Value >
-auto make_option( ValidatorPtr validator, std::string pattern,
-                  Value T::*member, std::string descr = "",
-                  OptionFlags flags = OptionFlags() )
-{
-    auto get = [member]( auto &x ) -> auto &{ return x.*member; };
-    return Option< T, Value >( validator, pattern, get, descr, flags );
-}
-
-template< typename T, typename Value, typename I >
-auto make_option( ValidatorPtr validator, std::string pattern,
-                  I T::*intermediate, Value I::*member, std::string descr = "",
-                  OptionFlags flags = OptionFlags() )
-{
-    auto get = [intermediate, member]( auto &x ) -> auto & { return (x.*intermediate).*member; };
-    return Option< T, Value >( validator, pattern, get, descr, flags );
-}
-
-template< typename Opts >
-struct OptionSet
-{
-    static constexpr const bool is_set = true;
-    ValidatorPtr _validator;
-    Opts _opts;
-
-    OptionSet( ValidatorPtr v, const Opts &o )
-        : _validator( v ), _opts( o )
-    {}
-
-    template< typename... Args >
-    auto option( Args... args )
-    {
-        auto no = make_option( _validator, args... );
-        using Cat = brq::cons< decltype( no ), Opts >;
-        return OptionSet< Cat >( _validator, Cat( no, _opts ) );
-    };
-
-    std::string describe()
-    {
-        return fmt();
-    }
-
-    template< typename F, int i = 0 >
-    void each_opt( const F &f )
-    {
-        _opts.each( [&]( auto &opt )
-        {
-            if constexpr ( std::remove_reference_t< decltype( opt ) >::is_set )
-                opt.each_opt( f );
+            if constexpr ( std::is_same_v< arg_t, cmd_flag > ||
+                           std::is_same_v< arg_t, cmd_flag::neg_t > )
+            {
+                arg = true;
+                return { true, idx };
+            }
             else
-                f( opt );
-        } );
-    }
-
-    std::string fmt()
-    {
-        brq::string_builder s;
-        size_t mw = 0;
-        each_opt( [&]( auto &o ) { mw = std::max( mw, o.fmt().size() ); } );
-        each_opt( [&]( auto &o ) { s << "  " << o.describe( mw + 1 ) << "\n"; } );
-        return s.buffer();
-    }
-
-    template< typename VPtr, typename T >
-    Tokens::iterator parse( const VPtr &validator, T &t, Tokens::iterator b, Tokens::iterator e )
-    {
-        std::set< OptionBase * > parsed;
-        bool done = false;
-
-        while ( b != e && !done )
-        {
-            brq::string_builder alternatives;
-            std::set< OptionBase * > matched, selected;
-            int prio = 0;
-
-            auto match = [&]( auto &o )
-            {
-                if ( o.match( b, e ) != b )
-                    matched.insert( &o ), prio = std::max( prio, o.priority() );
-            };
-
-            auto select = [&]( auto &o )
-            {
-                if ( matched.count( &o ) && o.priority() == prio )
-                    selected.emplace( &o );
-            };
-
-            auto format = [&]( auto &o )
-            {
-                if ( selected.count( &o ) )
-                    alternatives << "\n" << o.fmt();
-            };
-
-            auto do_parse = [&]( auto &o )
-            {
-                if ( !selected.count( &o ) )
-                    return;
-
-                if ( parsed.count( &o ) && ( o.flags() & OptionFlag::Unique ) )
-                    brq::raise() << "option" << o.fmt() << "given more than once";
-                parsed.insert( &o );
-                b = o.parse( validator, t, b, e );
-
-                if ( o.flags() & OptionFlag::Final )
-                    done = true;
-            };
-
-            each_opt( match );
-            each_opt( select );
-
-            if ( selected.size() > 1 )
-            {
-                alternatives << "Ambiguous option " << *b << ":";
-                each_opt( format );
-                brq::raise() << alternatives.buffer();
-            }
-
-            if ( selected.empty() )
-                break;
-
-            each_opt( do_parse );
+                return { from_string( token, arg ), idx + 1 };
         }
 
-        auto check_required = [&]( auto &o )
+        std::tuple< bool, int, int > compare( std::string token, std::string pattern, int idx, int off )
         {
-            if ( ( o.flags() & OptionFlag::Required ) && !parsed.count( &o ) )
-                brq::raise() << "missing option: " << o.fmt() << ", expected:\n" << this->describe();
-        };
-
-        each_opt( check_required );
-        return b;
-    }
-};
-
-static auto make_option_set( ValidatorPtr v )
-{
-    return OptionSet< brq::nil >( v, brq::nil() );
-}
-
-template< typename T >
-auto names( types::Preferred ) -> decltype ( T::names() )
-{
-    return T::names();
-}
-
-/* not foolproof, but good enough? will misfire on types nested inside
- * templates */
-template < typename T >
-std::array< std::string, 1 > names( types::NotPreferred )
-{
-    auto s = brick::unittest::_typeid< T >();
-    size_t p = s.find( "<" );
-    if ( p != std::string::npos )
-        s = std::string( s, 0, p );
-    p = s.rfind( "::" );
-    if ( p != std::string::npos )
-        s = std::string( s, p + 2, std::string::npos );
-    for ( size_t i = 0; i < s.size(); ++i )
-        s[i] = std::tolower( s[i] );
-    return { { s } };
-}
-
-enum class Match { None, Partial, Full };
-
-template< typename T, typename Opts >
-struct Command : OptionSet< Opts >
-{
-    using Type = T;
-    std::vector< std::string > T::*_extra;
-    std::string _description;
-
-    std::string name()
-    {
-        return names< T >( types::Preferred() )[ 0 ];
-    }
-
-    Match matches( std::string s )
-    {
-        for ( std::string name : names< T >( types::Preferred() ) )
-            if ( brq::starts_with( name, s ) )
-            {
-                if ( name.size() == s.size() )
-                    return Match::Full;
-                else
-                    return Match::Partial;
-            }
-        return Match::None;
-    }
-
-    std::string describe_header( int setw = 0 )
-    {
-        brq::string_builder s;
-        auto fmt = [&]( auto &o )
-        {
-            if ( o.flags() & OptionFlag::Required )
-                s << o.fmt() << " ";
-        };
-
-        if ( setw )
-        {
-            ASSERT_LEQ( name().size(), setw );
-            s << std::string( setw - name().size(), ' ' );
+            if ( std::isalpha( pattern.back() ) || std::isblank( pattern.back() ) )
+                return { brq::starts_with( pattern, token ), idx + 1, 0 };
+            else
+                return { brq::starts_with( token, pattern ), idx, off + pattern.size() };
         }
-        s << name() <<  " [options] ";
-        this->each_opt( fmt );
-        s << " " << _description;
-        return s.buffer();
-    }
 
-    std::string describe()
-    {
-        return describe_header() + "\n" + this->fmt();
-    }
+        /* Process all the fragments (recursively). If there is a full match,
+         * return the index of the first unconsumed token, otherwise return 0.
+         * FIXME Partial matches (which ultimately fail) currently overwrite
+         * binding fragments in the matching prefix. This is undesirable. */
 
-    bool extra( T &t, std::string e )
-    {
-        if ( _extra )
-            (t.*_extra).push_back( e );
-        return _extra;
-    }
+        int match( int idx, int off ) { return off == 0 ? idx : 0; }
 
-    template< typename V >
-    std::pair< T, Tokens::iterator > parse( const V &v, Tokens::iterator b, Tokens::iterator e )
-    {
-        T t;
-        auto x = OptionSet< Opts >::parse( v, t, b, e );
-        return { std::move( t ), x };
-    }
-
-    Command( ValidatorPtr v, Opts opts )
-        : OptionSet< Opts >( v, opts ), _extra( nullptr )
-    {}
-};
-
-struct ParserBase
-{
-    Match _match;
-    bool _failed;
-
-    void check_match( Match latest )
-    {
-        switch ( _match )
+        template< typename arg_t, typename... args_t >
+        int match( int idx, int off, arg_t &&a, args_t && ... args )
         {
-            case Match::Full:
-                if ( latest == Match::Full )
-                    _failed = true;
-                break;
+            std::string token( _tokens[ idx ], off, std::string::npos );
+            bool matched = false;
 
-            case Match::Partial:
-                if ( latest == Match::Full )
+            if constexpr ( is_binding< arg_t > ) /* binding-type fragments */
+                std::tie( matched, idx ) = bind( token, a, idx );
+            else /* literal-type fragment, match it against the input token */
+                std::tie( matched, idx, off ) = compare( token, a, idx, off );
+
+            if ( matched )
+                return match( idx, off, std::forward< args_t >( args )... );
+            else
+                return 0;
+        }
+    };
+
+    struct cmd_option_help : cmd_option_matcher /* format help for single options */
+    {
+        brq::string_builder _help;
+
+        template< typename arg_t >
+        static std::array< std::string, 1 > names( brq::fallback )
+        {
+            static std::string name;
+            if ( name.empty() )
+            {
+                int stat;
+                char *dem = abi::__cxa_demangle( typeid( arg_t ).name(), nullptr, nullptr, &stat );
+                if ( strchr( dem, '<' ) )
+                    *strchr( dem, '<' ) = 0;
+                name = strchr( dem, ':' ) ? strrchr( dem, ':' ) + 1 : dem;
+                if ( name == "basic_string" )
+                    name = "string";
+            }
+            return { name };
+        }
+
+        template< typename arg_t >
+        static auto names( brq::primary_t ) -> decltype( arg_t::names() ) { return arg_t::names(); }
+
+        void opt_help() { _help << "\t"; }
+
+        template< typename arg_t, typename... args_t >
+        void opt_help( arg_t &&arg, args_t && ... args )
+        {
+            if constexpr ( std::is_same_v< arg_t, cmd_flag & > );
+            else if constexpr ( is_binding< arg_t > )
+                _help << "{" << names< arg_t >( brq::primary )[ 0 ] << "} ";
+            else
+            {
+                _help << arg;
+                if ( std::isalpha( std::string_view( arg ).back() ) )
+                    _help << " ";
+            }
+            opt_help( std::forward< args_t >( args )... );
+        }
+    };
+
+    /* This class implements the interface that the client uses to describe
+     * their CLI. Each user class which represents a command should have an
+     * `options` method that takes a reference to `cmd_options` as an argument,
+     * and calls its various methods to describe command-line options and flags.
+     * See `cmd_help` below for a rudimentary example, or the unit tests at the
+     * end of the file for a more involved one. */
+
+    struct cmd_options : protected cmd_option_help
+    {
+        enum { mode_help, mode_parse } _mode;
+        bool _print_help = false;
+        int _matches = 0;
+        int _index = 0, _next = 0;
+
+        void _opt_matched( int n = 1 )
+        {
+            ++ _matches;
+            _next = _index + n;
+        }
+
+        void help( std::string pattern )
+        {
+            if ( _mode == mode_parse && _tokens[ _index ] == pattern )
+                _opt_matched(), _print_help = true;
+        }
+
+        void collect( std::string &s )
+        {
+            if ( _mode == mode_parse && !_matches )
+                _opt_matched(), s = _tokens[ _index ];
+        }
+
+        template< typename... args_t >
+        brq::string_builder &opt( args_t && ... args )
+        {
+            if ( _mode == mode_help )
+            {
+                _help << "\n  ";
+                opt_help( std::forward< args_t >( args )... );
+            }
+
+            if ( _mode == mode_parse )
+                if ( int m = match( _index, 0, std::forward< args_t >( args )... ) )
+                    _opt_matched( m - _index );
+
+            return _help;
+        }
+
+        brq::string_builder &flag( const std::string &name, cmd_flag &f )
+        {
+            if ( _mode == mode_help )
+                opt( "--[no-]" + name.substr( 2 ), f );
+            else
+            {
+                opt( name, f );
+                opt( "--no-" + name.substr( 2 ), f.neg() );
+            }
+
+            return _help;
+        }
+
+        void section( std::string n )
+        {
+            if ( _mode == mode_help )
+                _help << "\n  " << n << ":";
+        }
+    };
+
+    struct cmd_base
+    {
+        virtual void run() = 0;
+        virtual void prepare() {}
+        virtual void options( cmd_options &o ) { o.help( "--help" ); }
+        virtual ~cmd_base() {}
+    };
+
+    struct cmd_help : cmd_base
+    {
+        cmd_flag _long;
+        std::string _cmd;
+        std::string _help;
+        void run() override { std::cerr << _help; }
+
+        void options( cmd_options &o ) override
+        {
+            o.opt( "--long", _long );
+            o.collect( _cmd );
+        }
+
+        static std::array< std::string, 1 > names() { return { "help" }; }
+        cmd_help( std::string_view s = "" ) : _help( s ) {}
+    };
+
+    struct cmd_option_parser : protected cmd_options
+    {
+        template< typename cmd_t >
+        std::conditional_t< std::is_same_v< cmd_t, cmd_help >, cmd_help,
+                            typename brq::cons_list_t< cmd_t, cmd_help >::co > opt_parse()
+        {
+            cmd_t cmd;
+            _mode = mode_parse;
+            _print_help = false;
+            _help._oom = true; /* turn << into noops */
+
+            while ( _index < _tokens.size() )
+            {
+                _matches = 0;
+                cmd.options( *this );
+                if ( _matches == 0 )
+                    brq::raise() << "error parsing option '" << _tokens[ _index ] << "'";
+                if ( _matches > 1 )
+                    brq::raise() << "ambiguous option: " << _tokens[ _index];
+                _index = _next;
+            }
+
+            if ( _print_help )
+            {
+                _mode = mode_help;
+                _help.clear();
+                cmd.options( *this );
+                return cmd_help{ _help.data() };
+            }
+
+            return cmd;
+        }
+
+        cmd_option_parser( int argc, const char * const *argv )
+        {
+            std::copy( argv + 1, argv + argc, std::back_inserter( _tokens ) );
+        }
+
+        cmd_option_parser( const std::vector< std::string > &v )
+        {
+            _tokens = v;
+        }
+    };
+
+    struct cmd_parser : protected cmd_option_parser
+    {
+        template< int = 0 >
+        brq::nil cmd_match()
+        {
+            if ( _matches == 0 )
+                brq::raise() << "no match for command '" << _tokens.front() << "'";
+            if ( _matches > 1 )
+                brq::raise() << "ambiguous command '" << _tokens.front() << "'";
+            return {};
+        }
+
+        template< typename cmd_t, typename... cmds_t >
+        typename brq::cons_list_t< cmd_t, cmds_t... >::co cmd_match()
+        {
+            bool match = false;
+            for ( auto n : names< cmd_t >( brq::primary ) )
+                if ( brq::starts_with( n, _tokens.front() ) )
+                    match = true;
+
+            if ( match )
+                ++ _matches;
+
+            TRACE( "tried", typeid( cmd_t ).name(), "matched", match );
+            auto rv = cmd_match< cmds_t... >();
+
+            if ( match )
+                return opt_parse< cmd_t >();
+            else
+                return rv;
+        }
+
+        template< typename... cmds_t >
+        cmd_help help_commands( cmd_help h = cmd_help() )
+        {
+            if ( !h._help.empty() )
+                return h;
+
+            cons_list_t< cmds_t... > cmds;
+            _help.clear();
+            _mode = mode_help;
+            if ( h._cmd.empty() )
+                _help << "available commands:";
+
+            auto print = [&]( auto c )
+            {
+                auto name = names< decltype( c ) >( brq::primary )[ 0 ];
+                if ( h._cmd.empty() || brq::starts_with( name, h._cmd ) )
                 {
-                    _failed = false;
-                    _match = latest;
+                    _help << "\n  " << name;
+                    if ( h._long || !h._cmd.empty() )
+                        c.options( *this );
                 }
-                else if ( latest == Match::Partial )
-                    _failed = true;
-                break;
-
-            case Match::None:
-                _match = latest;
-                break;
-        }
-    }
-};
-
-template< typename C >
-using GetT = typename C::Type;
-
-template< typename Validator, typename Cmds >
-struct Parser : ParserBase
-{
-    brq::refcount_ptr< Validator > _validator;
-    Cmds _cmds;
-    using Result = typename Cmds::template map_t< GetT >::co;
-
-    std::pair< Result, Tokens::iterator > do_parse( Tokens::iterator b, Tokens::iterator e )
-    {
-        _match = Match::None;
-        _failed = false;
-        Result res;
-
-        if ( b == e )
-            return { std::move( res ), b };
-
-        auto match = [&]( auto &cmd ) { check_match( cmd.matches( *b ) ); };
-        auto do_do_parse = [&]( auto &cmd )
-        {
-            if ( b != e && !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
-                 cmd.matches( *b ) == _match )
-            {
-                auto [ t, x ] = cmd.parse( _validator, b + 1, e );
-                while ( x != e && cmd.extra( t, *x ) )
-                    ++ x;
-                res = std::move( t );
-                b = x;
-            }
-        };
-
-        _cmds.each( match );
-        _cmds.each( do_do_parse );
-
-        return { std::move( res ), b };
-    }
-
-    std::string describe( std::string name = "" )
-    {
-        brq::string_builder s;
-        if ( name.empty() )
-        {
-            size_t mw = 0;
-            _cmds.each( [&]( auto &cmd ) { mw = std::max( mw, cmd.name().size() ); } );
-            _cmds.each( [&]( auto &cmd ) { s << cmd.describe_header( mw + 1 ) << "\n"; } );
-        }
-        else
-            _cmds.each( [&]( auto &cmd ) { if ( cmd.name() == name ) s << cmd.describe(); } );
-        return s.buffer() ? s.buffer() : "";
-    }
-
-    auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
-    {
-        auto [ r, x ] = do_parse( b, e );
-        while ( x != e )
-            unexpected.push_back( *x++ );
-        return std::move( r );
-    };
-
-    auto parse( Tokens::iterator b, Tokens::iterator e )
-    {
-        std::vector< std::string > unexpected;
-        auto _result = parse( b, e, unexpected );
-        if ( !unexpected.empty() )
-        {
-            brq::string_builder err;
-
-            auto amb = [&]( auto &cmd )
-            {
-                if ( cmd.matches( *b ) == Match::Partial )
-                    err << "\n" << cmd.describe_header( 10 );
             };
 
-            if ( this->_match == Match::None )
-                err << "Unknown command '" << *b << "'. Available commands:\n" << describe();
-            else if ( this->_failed )
-            {
-                err << "Ambiguous command. Matches:";
-                _cmds.each( amb );
-            }
+            cmds.each( print );
+            return cmd_help( _help.data() );
+        }
+
+        template< typename... cmds_t >
+        typename brq::cons_list_t< cmds_t..., cmd_help >::co parse()
+        {
+            if ( _tokens.empty() )
+                return help_commands< cmds_t... >();
             else
             {
-                err << "unexpected options: ";
-                for ( std::string str : unexpected )
-                    err << "'" << str << "' ";
+                _index = 1;
+                auto rv = cmd_match< cmds_t..., cmd_help >();
+                rv.match( [&]( cmd_help c ) { rv = help_commands< cmds_t... >( c ); } );
+                return rv;
             }
-            brq::raise() << err.buffer();
         }
-        return _result;
-    }
 
-    template< typename T, typename... Args >
-    auto command( Args... args )
-    {
-        auto opts = brq::cons_list( args... );
-        Command< T, decltype( opts ) > cmd( _validator, opts );
-        using Cat = brq::cons< decltype( cmd ), Cmds >;
-        return Parser< Validator, Cat >( _validator, Cat( cmd, _cmds ) );
-    }
-
-    template< typename T, typename U, typename... Args >
-    auto command( Tokens (U::*extra), Args... args )
-    {
-        auto cmd = command< T >( args... );
-        cmd._cmds.car()._extra = extra;
-        return cmd;
-    }
-
-    template< typename T, typename... Args >
-    auto command( std::string dsc, Args... args )
-    {
-        auto cmd = command< T >( args... );
-        cmd._cmds.car()._description = dsc;
-        return cmd;
-    }
-
-    Parser( brq::refcount_ptr< Validator > v, Cmds cmds )
-        : _validator( v ), _cmds( cmds )
-    {}
-};
-
-template< typename V >
-auto make_parser( brq::refcount_ptr< V > v )
-{
-    return Parser< V, brq::nil >( v, brq::nil() );
-}
-
-struct Help
-{
-    std::string _cmd;
-
-    template< typename P >
-    void run( std::string_view argv_0, P cmds )
-    {
-        std::string description = cmds.describe( _cmd );
-        if ( description.empty() && !_cmd.empty() )
-            brq::raise() << "Unknown command '" << _cmd << "'. Available commands are:\n"
-                         << cmds.describe();
-        if ( _cmd.empty() )
+        template< typename... cmds_t >
+        std::unique_ptr< cmd_base > get()
         {
-            std::cerr << "To print details about a specific command, run '"
-                      << argv_0 << " help {command}'.\n\n";
-            std::cerr << cmds.describe() << std::endl;
+            std::unique_ptr< cmd_base > rv;
+            auto copy = [&]( const auto &c )
+            {
+                using type = std::remove_const_t< std::remove_reference_t< decltype( c ) > >;
+                rv.reset( new type( c ) );
+            };
+            parse< cmds_t... >().match( copy );
+            return rv;
         }
-        else std::cerr << description << std::endl;
-    }
-};
 
-namespace {
-
-std::vector< std::string > from_argv( int argc, const char * const *argv )
-{
-    std::vector< std::string > args;
-    std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
-    return args;
+        using cmd_option_parser::cmd_option_parser;
+    };
 }
-
-}
-
-}
-
-namespace t_cmd {
-
-struct Common
-{
-    int a, b;
-    bool x,y;
-    int range;
-    std::vector< std::string > cflags;
-    std::vector< bool > cbool;
-};
-
-struct Foo : Common
-{
-    bool bar;
-    int value;
-};
-
-struct Bar : Common {};
-struct Nocopy
-{
-    Nocopy( Nocopy && ) = default;
-    Nocopy() = default;
-};
-
-struct TestCmd
-{
-    auto validator()
-    {
-        return cmd::make_validator();
-    }
-
-    TEST(pattern_fmt)
-    {
-        auto v = validator();
-
-        cmd::Pattern p( v );
-        cmd::Pattern l( v );
-        cmd::Pattern r( v );
-        p._type = cmd::Pattern::Group;
-        l._type = cmd::Pattern::Match;
-        l._text = "foo";
-        r._type = cmd::Pattern::Match;
-        r._text = "for";
-        p._subs.emplace_back( new cmd::Pattern( l ) );
-        p._subs.emplace_back( new cmd::Pattern( r ) );
-        ASSERT_EQ( p.fmt(), "foo|for" );
-        p._next.reset( new cmd::Pattern( v, "bar" ) );
-        ASSERT_EQ( p.fmt(), "(foo|for) bar" );
-        p._next.reset();
-        p._subs[0]->_next.reset( new cmd::Pattern( v, "bar" ) );
-        p._subs[1]->_next.reset( new cmd::Pattern( v, "baz" ) );
-        ASSERT_EQ( p.fmt(), "foo bar|for baz" );
-        p._required = false;
-        ASSERT_EQ( p.fmt(), "[foo bar|for baz]" );
-        p._subs.emplace_back( new cmd::Pattern( v, "x" ) );
-        ASSERT_EQ( p.fmt(), "[foo bar|for baz|x]" );
-    }
-
-    TEST(pattern_match)
-    {
-        auto v = validator();
-        cmd::Pattern p( v, "foo|for" );
-
-        cmd::Tokens in = { "foo" };
-        ASSERT( p.match( in.begin(), in.end() ) == in.end() );
-
-        in = { "foo", "foo" };
-        ASSERT( p.match( in.begin(), in.end() ) == in.begin() + 1 );
-
-        cmd::Pattern q( v, "(foo|for) foo" );
-        in = { "foo", "foo" };
-        ASSERT( q.match( in.begin(), in.end() ) == in.end() );
-    }
-
-    void check_parse( std::string s )
-    {
-        auto v = validator();
-        cmd::Pattern p( v, s );
-        ASSERT_EQ( p.fmt(), s );
-    }
-
-    TEST(pattern_parse)
-    {
-        check_parse( "[a|b]" );
-        check_parse( "a|b" );
-        check_parse( "a x|b x" );
-        check_parse( "[a x|b x]" );
-        check_parse( "a [x]|b x" );
-        check_parse( "(a|b) c" );
-        check_parse( "(a|b)|c" );
-        check_parse( "a|b|c" );
-        check_parse( "[a|b|c]" );
-        check_parse( "a|(b|c)" );
-        check_parse( "a b|[b c]" );
-        check_parse( "[a b]|b c" );
-    }
-
-    TEST(cmd_parse)
-    {
-        auto v = validator();
-
-        auto common = cmd::make_option_set( v )
-            .option( "[-r {int}|--range {int}]", &Common::range )
-            .option( "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
-
-        auto uncommon = cmd::make_option_set( v )
-            .option( "[--bar|--no-bar]", &Foo::bar )
-            .option( "{int}", &Foo::value );
-
-        auto p = cmd::make_parser( v )
-            .command< Foo >( common, uncommon )
-            .command< Bar >( common );
-
-        ASSERT_EQ( p._cmds.car().name(), "bar" );
-
-        cmd::Tokens in = { "foo", "32" };
-        bool is_foo = false;
-
-        auto r = p.parse( in.begin(), in.end() );
-        r.match( [&]( Foo f ) { is_foo = true; ASSERT_EQ( f.value, 32 ); },
-                 [&]( Bar ) { is_foo = false; } );
-
-        ASSERT( is_foo );
-    }
-
-    TEST(option)
-    {
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[-a {int}]", &Common::a )
-                    .option( "[-b {int}]", &Common::b );
-        Common c;
-
-        cmd::Tokens in = { "-a", "10" };
-        opts.parse( v, c, in.begin(), in.end() );
-        ASSERT_EQ( c.a, 10 );
-    }
-
-    TEST(option_bool)
-    {
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[-x]", &Common::x )
-                    .option( "[-y]", &Common::y );
-
-        Common c;
-        c.x = false;
-        c.y = false;
-
-        cmd::Tokens in = { "-x" };
-        opts.parse( v, c, in.begin(), in.end() );
-        ASSERT( c.x );
-        ASSERT( !c.y );
-    }
-
-    TEST(option_bool_match)
-    {
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[-x]", &Common::x )
-                    .option( "[-y]", &Common::y )
-                    .option( "[(-a {int}|-b {int})]", &Common::a );
-
-        Common c;
-        c.x = false;
-        c.y = false;
-
-        cmd::Tokens in = { "-x", "-b", "10", "-y" };
-        opts.parse( v, c, in.begin(), in.end() );
-        ASSERT_EQ( c.a, 10 );
-        ASSERT( c.x );
-        ASSERT( c.y );
-    }
-
-    TEST(option_match_alt)
-    {
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[(-a|-b) {int}]", &Common::a );
-
-        Common c;
-
-        cmd::Tokens in = { "-b", "10" };
-        opts.parse( v, c, in.begin(), in.end() );
-        ASSERT_EQ( c.a, 10 );
-    }
-
-    TEST(nonoption_int)
-    {
-        struct X { int a, b; };
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[-a {int}]", &X::a )
-                    .option( "{int}", &X::b );
-        X x;
-
-        cmd::Tokens in = { "10" };
-        opts.parse( v, x, in.begin(), in.end() );
-        ASSERT_EQ( x.b, 10 );
-
-        in = { "-a", "15", "20" };
-        opts.parse( v, x, in.begin(), in.end() );
-        ASSERT_EQ( x.a, 15 );
-        ASSERT_EQ( x.b, 20 );
-    }
-
-    TEST(nonoption_string)
-    {
-        struct X { std::string a, b; };
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[-a {string}]", &X::a )
-                    .option( "{string}", &X::b );
-        X x;
-
-        cmd::Tokens in = { "10" };
-        opts.parse( v, x, in.begin(), in.end() );
-        ASSERT_EQ( x.b, "10" );
-
-        in = { "-a", "15", "20" };
-        opts.parse( v, x, in.begin(), in.end() );
-        ASSERT_EQ( x.a, "15" );
-        ASSERT_EQ( x.b, "20" );
-    }
-
-    TEST(multi)
-    {
-        struct X { std::vector< std::string > a; };
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "{string}+", &X::a );
-        X x;
-
-        cmd::Tokens in = { "10", "20" };
-        opts.parse( v, x, in.begin(), in.end() );
-        ASSERT_EQ( x.a.size(), 2u );
-        ASSERT_EQ( x.a[ 0 ], "10" );
-        ASSERT_EQ( x.a[ 1 ], "20" );
-    }
-
-    TEST(cmd_multi)
-    {
-        struct X { std::vector< std::string > a; int x; };
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "[-y {int}]", &X::x )
-                    .option( "{string}", &X::a );
-        auto p = cmd::make_parser( v ).command< X >( opts );
-
-        cmd::Tokens in = { "x", "10", "20" };
-        auto r = p.parse( in.begin(), in.end() );
-        bool matched = false;
-        r.match( [&]( X x )
-                 {
-                     matched = true;
-                     ASSERT_EQ( x.a.size(), 2 );
-                 } );
-        ASSERT( matched );
-    }
-
-    TEST(multi_capture)
-    {
-        struct X { std::vector< int > a; };
-        auto v = validator();
-        auto opts = cmd::make_option_set( v )
-                    .option( "-y {int}+", &X::a );
-        X x;
-
-        cmd::Tokens in = { "-y", "10", "20" };
-        opts.parse( v, x, in.begin(), in.end() );
-        ASSERT_EQ( x.a.size(), 2u );
-        ASSERT_EQ( x.a[ 0 ], 10 );
-        ASSERT_EQ( x.a[ 1 ], 20 );
-    }
-
-    TEST( move_only_cmd )
-    {
-        auto v = validator();
-        auto p = cmd::make_parser( v ).command< Nocopy >();
-        cmd::Tokens in;
-        p.parse( in.begin(), in.end() );
-    }
-};
-
-}
-}
-
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
