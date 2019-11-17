@@ -322,7 +322,8 @@ namespace brq
         constexpr fallback( const T & ) {}
     };
 
-    struct primary {};
+    struct primary_t {};
+    static primary_t primary;
 
     template< typename transform_t, typename stream_t >
     struct string_transform
@@ -338,7 +339,7 @@ namespace brq
 
         int size() { return _stream.size(); }
 
-        template< typename T > auto process( const T &v, primary )
+        template< typename T > auto process( const T &v, primary_t )
             -> decltype( _transform.process( *this, v ) )
         {
             return _transform.process( _stream, v );
@@ -360,7 +361,7 @@ namespace brq
             if ( _mark != _stream.size() )
                 _transform.reset();
             _mark = _stream.size();
-            process( v, primary() );
+            process( v, primary );
             return *this;
         }
     };
@@ -442,7 +443,6 @@ namespace brq
             return reverse ? split_view{ "", p } : split_view{ p, "" };
         return { p.substr( 0, s ), p.substr( s + 1, p.npos ) };
     }
-
 }
 
 #include "brick-assert"
