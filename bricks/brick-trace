@@ -149,7 +149,7 @@ namespace brq
             for ( int i = 0; i < levels.size(); ++i )
                 if ( levels[ i ] == name )
                     return i;
-            return -1;
+            return 3;
         }
 
         void add_rule( std::string_view s, std::string_view l ) { add_rule( s, level( l ) ); }
