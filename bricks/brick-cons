@@ -262,6 +262,20 @@ namespace brq
         template< typename X >
         ns( X &&cdr ) : _is_car( false ), cdr( std::move( cdr ) ) {}
 
+        template< typename arg_t >
+        std::optional< std::reference_wrapper< arg_t > > get()
+        {
+            if constexpr ( std::is_same_v< arg_t, car_t > )
+            {
+                if ( _is_car )
+                    return car;
+                else
+                    return std::nullopt;
+            }
+            else
+                return cdr.template get< arg_t >();
+        }
+
         auto match() { return std::nullopt; }
 
         template< typename F, typename... Fs >
