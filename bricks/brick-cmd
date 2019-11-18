@@ -89,6 +89,13 @@ namespace brq
         return true;
     }
 
+    template< typename container >
+    auto from_string( std::string_view s, container &c ) -> decltype( from_string( s, c.back() ) )
+    {
+        c.emplace_back();
+        return from_string( s, c.back() );
+    }
+
     /* The `cmd_option_matcher` class takes care of matching up fragments of a
      * single option or flag. A single option can span several tokens (where
      * each token corresponds to a single command-line argument as passed to the
