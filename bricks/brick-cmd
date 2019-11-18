@@ -298,7 +298,7 @@ namespace brq
     struct cmd_option_parser : protected cmd_options
     {
         template< typename cmd_t >
-        std::conditional_t< std::is_same_v< cmd_t, cmd_help >, cmd_help,
+        std::conditional_t< std::is_same_v< cmd_t, cmd_help >, brq::ns< cmd_help, brq::nil >,
                             typename brq::cons_list_t< cmd_t, cmd_help >::co > opt_parse()
         {
             cmd_t cmd;
@@ -366,7 +366,13 @@ namespace brq
             auto rv = cmd_match< cmds_t... >();
 
             if ( match )
-                return opt_parse< cmd_t >();
+            {
+                auto v = opt_parse< cmd_t >();
+                if ( auto c = v.template get< cmd_t >() )
+                    return std::move( c->get() );
+                else
+                    return v.template get< cmd_help >()->get();
+            }
             else
                 return rv;
         }
@@ -383,9 +389,10 @@ namespace brq
             if ( h._cmd.empty() )
                 _help << "available commands:";
 
-            auto print = [&]( auto c )
+            auto print = [&]( auto &c )
             {
-                auto name = names< decltype( c ) >( brq::primary )[ 0 ];
+                using type = std::remove_reference_t< decltype( c ) >;
+                auto name = names< type >( brq::primary )[ 0 ];
                 if ( h._cmd.empty() || brq::starts_with( name, h._cmd ) )
                 {
                     _help << "\n  " << name;
@@ -406,7 +413,7 @@ namespace brq
             else
             {
                 _index = 1;
-                auto rv = cmd_match< cmds_t..., cmd_help >();
+                auto rv = std::move( cmd_match< cmds_t..., cmd_help >() );
                 rv.match( [&]( cmd_help c ) { rv = help_commands< cmds_t... >( c ); } );
                 return rv;
             }
@@ -416,12 +423,12 @@ namespace brq
         std::unique_ptr< cmd_base > get()
         {
             std::unique_ptr< cmd_base > rv;
-            auto copy = [&]( const auto &c )
+            auto move = [&]( auto &&c )
             {
                 using type = std::remove_const_t< std::remove_reference_t< decltype( c ) > >;
-                rv.reset( new type( c ) );
+                rv.reset( new type( std::move( c ) ) );
             };
-            parse< cmds_t... >().match( copy );
+            parse< cmds_t... >().match( move );
             return rv;
         }
 
