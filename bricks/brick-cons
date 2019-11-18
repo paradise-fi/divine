@@ -183,8 +183,21 @@ namespace brq
         return cons< T, decltype( tail ) >( t, tail );
     }
 
+    template< typename... Ts > struct cons_list_t__;
+
+    template< typename T, typename... Ts >
+    struct cons_list_t__< T, Ts... >
+    {
+        using type = cons< T, typename cons_list_t__< Ts... >::type >;
+    };
+
+    template<> struct cons_list_t__<>
+    {
+        using type = nil;
+    };
+
     template< typename... Ts >
-    using cons_list_t_ = decltype( cons_list_ref( std::declval< Ts >()... ) );
+    using cons_list_t_ = typename cons_list_t__< Ts... >::type;
 
     template< typename... Ts >
     struct cons_list_t: cons_list_t_< Ts... >
