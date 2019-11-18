@@ -65,7 +65,7 @@ namespace brq
     }
 
     template< typename arg_t >
-    static std::enable_if< std::is_integral_v< arg_t > || std::is_floating_point_v< arg_t >, bool >
+    static std::enable_if_t< std::is_integral_v< arg_t > || std::is_floating_point_v< arg_t >, bool >
     from_string( std::string_view s, arg_t &a )
     {
         auto begin = s.data(), end = begin + s.size();
