@@ -158,9 +158,8 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
 
     /* bitfield initializers can be only used as such, that is, initializers,
      * *not* as a right-hand side of an assignment to uninitialised memory */
-    memset( mutex, 0, sizeof( pthread_mutex_t ) );
-    pthread_mutex_t init = PTHREAD_MUTEX_INITIALIZER;
-    *mutex = init;
+    mutex->__owner = NULL;
+    mutex->__bitflags = 1;
 
     if ( attr )
         mutex->__type = attr->__type;
