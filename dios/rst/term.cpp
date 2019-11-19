@@ -7,7 +7,7 @@
 
 namespace __dios::rst::abstract
 {
-    TermState __term_state;
+    TermState *__term_state;
 
     template< typename C >
     _LART_INLINE C make_term() noexcept
@@ -39,11 +39,11 @@ namespace __dios::rst::abstract
 
     auto update_rpns( smt::token::VarID id )
     {
-        auto& dcmp = __term_state.decomp;
+        auto& dcmp = __term_state->decomp;
         auto it = dcmp.find( id );
         if( it != dcmp.end() )
         {
-            auto repr = *__term_state.uf.find( id );
+            auto repr = *__term_state->uf.find( id );
             if( repr != id )
             {
                 auto repr_it = dcmp.find( repr );
@@ -76,9 +76,9 @@ namespace __dios::rst::abstract
 
         auto append_term = [&]( TermState::VarID var )
         {
-            auto it = __term_state.decomp.find( var );
-            if ( it == __term_state.decomp.end() )
-                __term_state.decomp.emplace( var, constraint );
+            auto it = __term_state->decomp.find( var );
+            if ( it == __term_state->decomp.end() )
+                __term_state->decomp.emplace( var, constraint );
             else
             {
                 it->second.extend( constraint );
@@ -87,30 +87,37 @@ namespace __dios::rst::abstract
             }
         };
 
-        auto id = brick::smt::decompose< stack_t >( constraint.as_rpn(), __term_state.uf, update_rpns );
+        auto id = brick::smt::decompose< stack_t >( constraint.as_rpn(), __term_state->uf, update_rpns );
         if ( !id )
             __vm_trace( _VM_T_Assume, constraint.pointer );
         else  // append to relevant decomp
         {
             append_term( *id );
-            __vm_trace( _VM_T_Assume, ((*__term_state.decomp.find( *id )).second).pointer );
+            __vm_trace( _VM_T_Assume, ((*__term_state->decomp.find( *id )).second).pointer );
         }
 
         return *this;
     }
 
-    TermState::~TermState()
-    {
-        for ( auto [ key, term ] : decomp )
-            __vm_obj_free( term.pointer );
-    }
 }
 
 void *__dios_term_init()
 {
-    auto true_term = __dios::rst::abstract::Term::lift_one_i1( true );
-    __dios::rst::abstract::__term_state.uf.make_set( 0 );
-    auto &decomp = __dios::rst::abstract::__term_state.decomp;
-    decomp[ 0 ] = true_term;
-    return decomp._container._data;
+    using namespace __dios::rst::abstract;
+    auto true_term = Term::lift_one_i1( true );
+    __term_state = static_cast< TermState * >( __vm_obj_make( sizeof( TermState ), _VM_PT_Heap ) );
+    new ( __term_state ) TermState;
+    __term_state->uf.make_set( 0 );
+    __term_state->decomp[ 0 ] = true_term;
+    return __term_state->decomp._container._data;
+}
+
+extern "C" __invisible void __dios_term_fini()
+{
+    using namespace __dios::rst::abstract;
+    for ( auto [ key, term ] : __term_state->decomp )
+        __vm_obj_free( term.pointer );
+    __term_state->decomp.clear();
+    __term_state->uf.clear();
+    __vm_obj_free( __term_state );
 }

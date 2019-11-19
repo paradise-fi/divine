@@ -330,15 +330,14 @@ namespace __dios::rst::abstract
 
         smt::union_find< ArrayMap< VarID, VarID, _VM_PT_Weak > > uf;
         ArrayMap< VarID, Term, _VM_PT_Weak > decomp; // union-find representant to relevant RPNs
-        ~TermState();
     };
 
-    extern TermState __term_state;
+    extern TermState *__term_state;
 
     template< typename T >
     _LART_INTERFACE RPN::Variable variable() noexcept
     {
-        return { RPN::var< T >(), __term_state.counter++ };
+        return { RPN::var< T >(), __term_state->counter++ };
     }
 
     template< typename T >
