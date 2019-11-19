@@ -889,12 +889,12 @@ namespace brick::smt
 
         for( auto term : RPNView( rpn ) )
         {
-            if ( std::holds_alternative< Constant >( term ) )
+            if ( std::get_if< Constant >( &term ) )
                 stack.emplace_back( std::nullopt );
-            else if ( std::holds_alternative< Variable >( term ) )
-                stack.emplace_back( uf.make_set( std::get< Variable >( term ).id ) );
-            else if ( std::holds_alternative< BinaryOp >( term ) )
-                handle_binary( std::get< BinaryOp >( term ) );
+            else if ( auto var = std::get_if< Variable >( &term ) )
+                stack.emplace_back( uf.make_set( var->id ) );
+            else if ( auto binop = std::get_if< BinaryOp >( &term ) )
+                handle_binary( *binop );
         }
 
         return repr;
