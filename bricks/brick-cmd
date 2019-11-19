@@ -341,40 +341,43 @@ namespace brq
 
     struct cmd_parser : protected cmd_option_parser
     {
-        template< int = 0 >
-        brq::nil cmd_match()
+        template< typename rv_t, typename cmds_t >
+        rv_t cmd_match()
         {
-            if ( _matches == 0 )
-                brq::raise() << "no match for command '" << _tokens.front() << "'";
-            if ( _matches > 1 )
-                brq::raise() << "ambiguous command '" << _tokens.front() << "'";
-            return {};
-        }
-
-        template< typename cmd_t, typename... cmds_t >
-        typename brq::cons_list_t< cmd_t, cmds_t... >::co cmd_match()
-        {
-            bool match = false;
-            for ( auto n : names< cmd_t >( brq::primary ) )
-                if ( brq::starts_with( n, _tokens.front() ) )
-                    match = true;
-
-            if ( match )
-                ++ _matches;
-
-            TRACE( "tried", typeid( cmd_t ).name(), "matched", match );
-            auto rv = cmd_match< cmds_t... >();
-
-            if ( match )
+            if constexpr ( cmds_t::empty )
             {
-                auto v = opt_parse< cmd_t >();
-                if ( auto c = v.template get< cmd_t >() )
-                    return std::move( c->get() );
-                else
-                    return v.template get< cmd_help >()->get();
+                if ( _matches == 0 )
+                    brq::raise() << "no match for command '" << _tokens.front() << "'";
+                if ( _matches > 1 )
+                    brq::raise() << "ambiguous command '" << _tokens.front() << "'";
+                return brq::nil();
             }
             else
-                return rv;
+            {
+                using cmd_t = typename cmds_t::car_t;
+
+                bool match = false;
+                for ( auto n : names< cmd_t >( brq::primary ) )
+                    if ( brq::starts_with( n, _tokens.front() ) )
+                        match = true;
+
+                if ( match )
+                    ++ _matches;
+
+                TRACE( "tried", typeid( cmd_t ).name(), "matched", match );
+                auto rv = cmd_match< rv_t, typename cmds_t::cdr_t >();
+
+                if ( match )
+                {
+                    auto v = opt_parse< cmd_t >();
+                    if ( auto c = v.template get< cmd_t >() )
+                        return std::move( c->get() );
+                    else
+                        return v.template get< cmd_help >()->get();
+                }
+                else
+                    return rv;
+            }
         }
 
         template< typename... cmds_t >
@@ -408,12 +411,15 @@ namespace brq
         template< typename... cmds_t >
         typename brq::cons_list_t< cmds_t..., cmd_help >::co parse()
         {
+            using list_t = typename brq::cons_list_t< cmds_t... , cmd_help >;
+            using rv_t = typename list_t::co;
+
             if ( _tokens.empty() )
                 return help_commands< cmds_t... >();
             else
             {
                 _index = 1;
-                auto rv = std::move( cmd_match< cmds_t..., cmd_help >() );
+                auto rv = std::move( cmd_match< rv_t, list_t >() );
                 rv.match( [&]( cmd_help c ) { rv = help_commands< cmds_t... >( c ); } );
                 return rv;
             }
