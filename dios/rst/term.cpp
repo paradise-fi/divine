@@ -98,6 +98,12 @@ namespace __dios::rst::abstract
 
         return *this;
     }
+
+    TermState::~TermState()
+    {
+        for ( auto [ key, term ] : decomp )
+            __vm_obj_free( term.pointer );
+    }
 }
 
 void *__dios_term_init()
