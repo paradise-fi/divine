@@ -808,8 +808,7 @@ namespace brick::smt
             auto x_root = find( *x );
             auto y_root = find( *y );
 
-            if ( !x_root || !y_root )
-                throw std::runtime_error( "representant not found in union" );
+            ASSERT( x_root && y_root );
 
             if ( x_root == y_root )
                 return y_root;
