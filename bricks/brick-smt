@@ -777,6 +777,7 @@ namespace brick::smt
 
         Container grouping;
         bool updated = false; // was anything glued together at last union?
+        void clear() { grouping.clear(); }
 
         T make_set( T x )
         {
