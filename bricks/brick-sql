@@ -146,6 +146,21 @@ namespace brq::sql
         bool operator==( fixnum o ) const { return value == o.value; }
         explicit operator bool() const { return value; }
 
+        static bool from_string( std::string_view s, fixnum &n ) try
+        {
+            base_t integral = std::stoi( std::string( s ) ) * scale;
+            base_t fract = 0, f_scale = scale;
+            if ( size_t off = s.find( '.' ); off != s.npos )
+            {
+                off ++;
+                while ( off < s.size() && std::isdigit( s[ off ] ) && f_scale > 1 )
+                    fract *= 10, f_scale /= 10, fract += s[ off ] - '0', off ++;
+            }
+            n.value = integral + fract;
+            return true;
+        }
+        catch ( ... ) { return false; }
+
         friend string_builder &operator<<( string_builder &s, fixnum n )
         {
             s << n.value / scale;
