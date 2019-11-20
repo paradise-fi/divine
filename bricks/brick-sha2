@@ -335,7 +335,7 @@ const static uint64_t sha512_initial_hash_value[8] = {
 
 
 /*** SHA-256: *********************************************************/
-void
+static void
 SHA256_Init(SHA256_CTX *context)
 {
 	if (context == NULL)
@@ -429,7 +429,7 @@ SHA256_Transform(uint32_t state[8], const uint8_t data[SHA256_BLOCK_LENGTH])
 
 #else /* SHA2_UNROLL_TRANSFORM */
 
-void
+static void
 SHA256_Transform(uint32_t state[8], const uint8_t data[SHA256_BLOCK_LENGTH])
 {
 	uint32_t	a, b, c, d, e, f, g, h, s0, s1;
@@ -504,7 +504,7 @@ SHA256_Transform(uint32_t state[8], const uint8_t data[SHA256_BLOCK_LENGTH])
 
 #endif /* SHA2_UNROLL_TRANSFORM */
 
-void
+static void
 SHA256_Update(SHA256_CTX *context, const uint8_t *data, size_t len)
 {
 	size_t	freespace, usedspace;
@@ -550,7 +550,7 @@ SHA256_Update(SHA256_CTX *context, const uint8_t *data, size_t len)
 	usedspace = freespace = 0;
 }
 
-void
+static void
 SHA256_Pad(SHA256_CTX *context)
 {
 	unsigned int	usedspace;
@@ -593,7 +593,7 @@ SHA256_Pad(SHA256_CTX *context)
 	usedspace = 0;
 }
 
-void
+static void
 SHA256_Final(uint8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX *context)
 {
 	SHA256_Pad(context);
@@ -615,7 +615,7 @@ SHA256_Final(uint8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX *context)
 
 
 /*** SHA-512: *********************************************************/
-void
+static void
 SHA512_Init(SHA512_CTX *context)
 {
 	if (context == NULL)
@@ -710,7 +710,7 @@ SHA512_Transform(uint64_t state[8], const uint8_t data[SHA512_BLOCK_LENGTH])
 
 #else /* SHA2_UNROLL_TRANSFORM */
 
-void
+static void
 SHA512_Transform(uint64_t state[8], const uint8_t data[SHA512_BLOCK_LENGTH])
 {
 	uint64_t	a, b, c, d, e, f, g, h, s0, s1;
@@ -785,7 +785,7 @@ SHA512_Transform(uint64_t state[8], const uint8_t data[SHA512_BLOCK_LENGTH])
 
 #endif /* SHA2_UNROLL_TRANSFORM */
 
-void
+static void
 SHA512_Update(SHA512_CTX *context, const uint8_t *data, size_t len)
 {
 	size_t	freespace, usedspace;
@@ -831,7 +831,7 @@ SHA512_Update(SHA512_CTX *context, const uint8_t *data, size_t len)
 	usedspace = freespace = 0;
 }
 
-void
+static void
 SHA512_Pad(SHA512_CTX *context)
 {
 	unsigned int	usedspace;
@@ -874,7 +874,7 @@ SHA512_Pad(SHA512_CTX *context)
 	usedspace = 0;
 }
 
-void
+static void
 SHA512_Final(uint8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX *context)
 {
 	SHA512_Pad(context);
