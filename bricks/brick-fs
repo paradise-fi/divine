@@ -717,8 +717,8 @@ namespace brq
     {
         if ( pre( root ) )
         {
-            auto dir = std::unique_ptr< DIR, decltype( &::closedir ) >(
-                ::opendir( root.c_str() ), &::closedir );
+            using closedir_t = int (*)( DIR * );
+            auto dir = std::unique_ptr< DIR, closedir_t >( ::opendir( root.c_str() ), &::closedir );
             if ( dir == nullptr )
                 brq::raise< std::system_error >() << "opening directory " << root;
 
@@ -881,7 +881,7 @@ namespace brq
 
         void write_file( std::string_view file, std::string_view data )
         {
-            std::ofstream out( file, std::ios::binary );
+            std::ofstream out( std::string( file ), std::ios::binary );
             if ( !out.is_open() )
                 brq::raise< std::system_error >() << "writing file " << file;
             out << data;
