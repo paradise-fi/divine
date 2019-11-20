@@ -1047,7 +1047,7 @@ BRICK_SQL_OP( | )
         template< typename... ct, typename... et >
         order_by< select_join, ct..., et... > order_by( et... ex ) { return { *this, ex... }; }
 
-        raw_sql< select_join > raw_sql( std::string_view sv ) { return { *this, sv }; }
+        sql::raw_sql< select_join > raw_sql( std::string_view sv ) { return { *this, sv }; }
     };
 
     template< typename query >
