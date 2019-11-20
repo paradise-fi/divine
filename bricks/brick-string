@@ -18,10 +18,12 @@
 
 #pragma once
 
+#include <cstring>
 #include <string_view>
 #include <charconv>
 #include <tuple>
 #include <variant>
+#include <functional>
 #include <iomanip>
 
 namespace brq
