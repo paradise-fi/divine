@@ -801,7 +801,7 @@ BRICK_SQL_OP( | )
         using stmt = typename query::stmt;
         using order_columns = typename query::order_columns;
         query _query;
-        conn &conn() { return _query.conn(); }
+        sql::conn &conn() { return _query.conn(); }
         extend( query q ) : _query( q ) {}
 
         template< typename stmt >
@@ -1107,7 +1107,7 @@ BRICK_SQL_OP( | )
         select_join< select_tab, table > right_join() { return { *this, join_type::right }; }
 
         template< typename... group_cols >
-        group_by< select_tab, group_cols... > group_by() { return { *this }; }
+        sql::group_by< select_tab, group_cols... > group_by() { return { *this }; }
 
         template< typename we_t >
         where_clause< select_tab, we_t > where( const we_t &we ) { return { *this, we }; }
@@ -1115,7 +1115,7 @@ BRICK_SQL_OP( | )
         template< typename... ct, typename... et >
         order_by< select_tab, ct..., et... > order_by( et... ex ) { return { *this, ex... }; }
 
-        raw_sql< select_tab > raw_sql( std::string_view sv ) { return { *this, sv }; }
+        sql::raw_sql< select_tab > raw_sql( std::string_view sv ) { return { *this, sv }; }
     };
 
     template< typename select, typename... cols >
@@ -1142,10 +1142,10 @@ BRICK_SQL_OP( | )
     struct query_head : query_base
     {
         using order_columns = brq::nil;
-        using stmt = stmt< cols... >;
-        txn &_txn;
-        txn &txn() { return _txn; }
-        conn &conn();
+        using stmt = sql::stmt< cols... >;
+        sql::txn &_txn;
+        sql::txn &txn() { return _txn; }
+        sql::conn &conn();
         query_head( sql::txn &t ) : _txn( t ) {}
 
         template< typename stmt >
@@ -1180,7 +1180,7 @@ BRICK_SQL_OP( | )
             sql::print( s, _cols, id );
         }
 
-        raw_sql< select_cols > raw_sql( std::string_view sv ) { return { *this, sv }; }
+        sql::raw_sql< select_cols > raw_sql( std::string_view sv ) { return { *this, sv }; }
     };
 
     template< typename T, typename X = void >
@@ -1300,10 +1300,10 @@ BRICK_SQL_OP( | )
 
     struct txn
     {
-        conn &_conn;
+        sql::conn &_conn;
         bool _closed = true;
 
-        explicit txn( conn &conn ) : _conn( conn ) { open(); }
+        explicit txn( sql::conn &conn ) : _conn( conn ) { open(); }
 
         void open()
         {
@@ -1319,7 +1319,7 @@ BRICK_SQL_OP( | )
         txn() = delete;
         txn& operator=( const txn &rhs ) = delete;
 
-        conn &conn() { return _conn; }
+        sql::conn &conn() { return _conn; }
         txn &commit()
         {
             if ( !_closed )
