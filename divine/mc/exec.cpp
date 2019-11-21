@@ -235,6 +235,9 @@ namespace divine::mc
         c.bc( _bc );
         c.context().enable_debug();
         weave( c, b ).start();
+
+        _ps[ "snapshot memory" ] = c._state_pool.stats();
+        _ps[ "fragment memory" ] = c.context().heap().mem_stats();
     }
 
     void Exec::run()

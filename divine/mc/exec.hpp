@@ -76,6 +76,8 @@ struct Exec
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
     BC _bc;
+    PoolStats _ps;
+
     Exec( BC bc ) : _bc( bc ) {}
 
     template< typename solver >
@@ -83,6 +85,8 @@ struct Exec
 
     void run();
     void trace();
+
+    PoolStats poolstats() { return _ps; }
 };
 
 }
