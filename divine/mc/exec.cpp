@@ -227,11 +227,11 @@ namespace divine::mc
     using weighted = weight_comparator< task::choose >;
     using closest_fault_search = heuristic_search< distance_heuristic< weighted > >;
 
-    template< typename solver_t >
+    template< typename solver_t, template< typename > typename exec_t, typename tactic_t >
     void Exec::do_run()
     {
-        backtrack b;
-        mach_exec< solver_t > c;
+        tactic_t b;
+        exec_t< solver_t > c;
         c.bc( _bc );
         c.context().enable_debug();
         weave( c, b ).start();
@@ -240,12 +240,51 @@ namespace divine::mc
         _ps[ "fragment memory" ] = c.context().heap().mem_stats();
     }
 
-    void Exec::run()
+    // This is ugly and we don't want it here...
+    void Exec::run( bool exhaustive, Tactic tactic )
     {
         if ( _bc->is_symbolic() )
-            do_run< smt::STPSolver >();
+        {
+            if ( exhaustive )
+            {
+                switch ( tactic )
+                {
+                    case Tactic::Backtrack: return do_run< smt::STPSolver, exhaustive_exec, backtrack >();
+                    case Tactic::CoverageSearch: return do_run< smt::STPSolver, exhaustive_exec, coverage_search >();
+                    case Tactic::ClosestFaultSearch: return do_run< smt::STPSolver, exhaustive_exec, closest_fault_search >();
+                }
+            }
+            else
+            {
+                switch ( tactic )
+                {
+                    case Tactic::Backtrack: return do_run< smt::STPSolver, mach_exec, backtrack >();
+                    case Tactic::CoverageSearch: return do_run< smt::STPSolver, mach_exec, coverage_search >();
+                    case Tactic::ClosestFaultSearch: return do_run< smt::STPSolver,mach_exec, closest_fault_search >();
+                }
+            }
+        }
         else
-            do_run< smt::NoSolver >();
+        {
+            if ( exhaustive )
+            {
+                switch ( tactic )
+                {
+                    case Tactic::Backtrack: return do_run< smt::NoSolver, exhaustive_exec, backtrack >();
+                    case Tactic::CoverageSearch: return do_run< smt::NoSolver, exhaustive_exec, coverage_search >();
+                    case Tactic::ClosestFaultSearch: return do_run< smt::NoSolver, exhaustive_exec, closest_fault_search >();
+                }
+            }
+            else
+            {
+                switch ( tactic )
+                {
+                    case Tactic::Backtrack: return do_run< smt::NoSolver, mach_exec, backtrack >();
+                    case Tactic::CoverageSearch: return do_run< smt::NoSolver, mach_exec, coverage_search >();
+                    case Tactic::ClosestFaultSearch: return do_run< smt::NoSolver, mach_exec, closest_fault_search >();
+                }
+            }
+        }
     }
 }
 

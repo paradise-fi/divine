@@ -23,6 +23,7 @@
 #include <divine/dbg/context.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/memory.hpp>
+#include <divine/mc/types.hpp>
 
 namespace divine::mc
 {
@@ -75,15 +76,23 @@ struct Exec
 {
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
+
+    enum class Tactic
+    {
+        Backtrack,
+        CoverageSearch,
+        ClosestFaultSearch
+    };
+
     BC _bc;
     PoolStats _ps;
 
     Exec( BC bc ) : _bc( bc ) {}
 
-    template< typename solver >
+    template< typename solver_t, template< typename > typename exec_t, typename tactic_t >
     void do_run();
+    void run( bool exhaustive, Tactic tactic );
 
-    void run();
     void trace();
 
     PoolStats poolstats() { return _ps; }
