@@ -202,6 +202,11 @@ namespace lart::abstract
             return llvm::Type::getInt64PtrTy( ctx() );
         }
 
+        llvm::PointerType * ptr( llvm::Type *type ) const noexcept
+        {
+            return llvm::PointerType::getUnqual( type );
+        }
+
         llvm::ConstantPointerNull * null_ptr( llvm::PointerType * type ) const noexcept
         {
             return llvm::ConstantPointerNull::get( type );
