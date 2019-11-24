@@ -1,0 +1,255 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * Copyright (C) 2015, 2019 Petr Rockai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+
+#include <vector>
+#include <deque>
+#include <unordered_map>
+#include "brick-assert"
+
+namespace brq::diff_impl
+{
+    template< typename I, typename LM, typename A >
+    void unique( I begin, I end, LM &u, A a )
+    {
+        const std::pair< int, int > repeated = { -1, -1 };
+        int i = 0;
+
+        while ( begin != end )
+        {
+            auto match = u.find( *begin );
+            if ( match == u.end() )
+                match = u.emplace( *begin, std::make_pair( -2, -2 ) ).first;
+
+            if ( a( match->second ) != -2 )
+                match->second = repeated;
+            else
+                a( match->second ) = i;
+            ++ i;
+            ++ begin;
+        }
+    }
+
+    template< typename C >
+    int backref( const C &piles, int i )
+    {
+        if ( i == 0 )
+            return 0;
+        return piles[ i - 1 ].size() - 1;
+    }
+
+    template< typename I, typename K, typename Out >
+    void patience_seq( I begin, I end, K k, Out out )
+    {
+        using pile_t = std::vector< std::pair< typename I::value_type, int > >;
+        using piles_t = std::vector< pile_t >;
+        piles_t piles;
+
+        for ( ; begin != end ; ++begin )
+        {
+            int i = 0;
+
+            /* TODO find the pile more efficiently? */
+            for ( ; i < piles.size(); ++i )
+                if ( k( piles[ i ].back().first ) > k( *begin ) )
+                {
+                    piles[ i ].emplace_back( *begin, backref( piles, i ) );
+                    continue;
+                }
+
+            /* no suitable pile, make a new one */
+            piles.emplace_back();
+            piles.back().emplace_back( *begin, backref( piles, i ) );
+        }
+
+        int card = piles.back().size() - 1;
+
+        for ( int i = piles.size(); i > 0; --i )
+        {
+            auto c = piles[ i - 1 ][ card ];
+            *out++ = c.first;
+            card = c.second;
+        }
+    }
+
+    struct matrix
+    {
+        int w;
+        int *data;
+
+        struct proxy
+        {
+            int *data, w, x;
+            int &operator[]( int y ) { return data[ w * y + x ]; }
+        };
+
+        proxy operator[]( int x ) { return { data, w, x }; }
+        matrix( int w, int h ) : w( w ), data( new int[ w * h ] ) {}
+        ~matrix() { delete[] data; }
+    };
+
+    template< typename I, typename O >
+    void read( matrix &matrix, I a, I b, O out, int i, int j )
+    {
+        if ( i == 0 || j == 0 )
+            return;
+
+        if ( *(a + i - 1) == *(b + j - 1) ) {
+            read( matrix, a, b, out, i - 1, j - 1 );
+            *out++ = *(a + i - 1);
+            return;
+        }
+
+        if ( matrix[i][j - 1] > matrix[i - 1][j] )
+            read( matrix, a, b, out, i, j - 1 );
+        else
+            read( matrix, a, b, out, i - 1, j );
+    }
+
+    template< typename I, typename O >
+    void lcs_dynamic( I a_begin, I a_end, I b_begin, I b_end, O out )
+    {
+        int m = a_end - a_begin, n = b_end - b_begin;
+        matrix mat( m + 1, n + 1 );
+
+        for ( int i = 0; i < m + 1; ++i )
+            mat[ i ][ 0 ] = 0;
+        for ( int j = 0; j < n + 1; ++j )
+            mat[ 0 ][ j ] = 0;
+
+        for ( int i = 1; i <= m; ++i )
+            for ( int j = 1; j <= n; ++j )
+                if ( *( a_begin + i - 1 ) == *( b_begin + j - 1 ) )
+                    mat[ i ][ j ] = mat[ i - 1 ][ j - 1 ] + 1;
+                else
+                    mat[ i ][ j ] = std::max( mat[ i ][ j - 1 ], mat[ i - 1 ][ j ] );
+
+        read( mat, a_begin, b_begin, out, m, n );
+    }
+}
+
+namespace brq
+{
+    template< typename I, typename O >
+    void lcs( I a_begin, I a_end, I b_begin, I b_end, O out )
+    {
+        while ( a_begin > a_end && b_begin > b_end && *a_begin == *b_begin )
+        {
+            *out++ = *a_begin;
+            ++ a_begin;
+            ++ b_begin;
+        }
+
+        I comm_begin = a_end, comm_end = a_end;
+
+        while ( a_end > a_begin && b_end > b_begin && *( a_end - 1 ) == *( b_end - 1 ) )
+        {
+            -- comm_begin;
+            -- a_end;
+            -- b_end;
+        }
+
+        if ( a_end > a_begin && b_end > b_begin )
+            diff_impl::lcs_dynamic( a_begin, a_end, b_begin, b_end, out );
+
+        while ( comm_begin < comm_end )
+            *out++ = *comm_begin++;
+    }
+
+    template< typename type >
+    struct diff_hunk
+    {
+        enum what_t { keep, add, remove } what;
+        type value;
+        diff_hunk( what_t w, type v ) : what( w ), value( v ) {}
+    };
+
+    template< typename I, typename O >
+    O patience_diff( I a_begin, I a_end, I b_begin, I b_end, O out )
+    {
+        std::unordered_map< typename I::value_type, std::pair< int, int > > uniq;
+        std::vector< std::pair< int, int > > matches, common;
+        using hunk = diff_hunk< typename I::value_type >;
+        auto sort = []( auto a, auto b ) { return a.second < b.second; };
+
+        /* find lines which are unique in both texts and remember their indices */
+        diff_impl::unique( a_begin, a_end, uniq, []( auto &x ) -> auto& { return x.first; } );
+        diff_impl::unique( b_begin, b_end, uniq, []( auto &x ) -> auto& { return x.second; } );
+
+        for ( auto &x : uniq )
+            if ( x.second.first >= 0 && x.second.second >= 0 )
+                common.push_back( x.second );
+
+        if ( !common.empty() ) /* patience & recurse */
+        {
+            std::sort( common.begin(), common.end(), sort );
+            diff_impl::patience_seq( common.begin(), common.end(),
+                                     []( auto a ) { return a.first; },
+                                     std::back_inserter( matches ) );
+            std::reverse( matches.begin(), matches.end() );
+
+            I a_1 = a_begin, b_1 = b_begin;
+            for ( auto m : matches )
+            {
+                I a_2 = a_begin + m.first;
+                I b_2 = b_begin + m.second;
+                if ( a_2 > a_1 || b_2 > b_1 )
+                    out = patience_diff( a_1, a_2, b_1, b_2, out );
+                *out++ = hunk( hunk::keep, *a_2 );
+                a_1 = a_2 + 1;
+                b_1 = b_2 + 1;
+            }
+
+            if ( a_end > a_1 || b_end > b_1 )
+                patience_diff( a_1, a_end, b_1, b_end, out );
+
+        }
+
+        else /* LCS diff */
+        {
+            std::deque< typename I::value_type > lcs;
+            brq::lcs( a_begin, a_end, b_begin, b_end, std::back_inserter( lcs ) );
+
+            while ( a_begin < a_end && b_begin < b_end && !lcs.empty() )
+            {
+                if ( *a_begin == *b_begin )
+                {
+                    *out++ = hunk( hunk::keep, *a_begin );
+                    ASSERT_EQ( *a_begin, lcs.front() );
+                    lcs.pop_front();
+                    ++ a_begin;
+                    ++ b_begin;
+                }
+                else if ( *b_begin != lcs.front() )
+                    *out++ = hunk( hunk::add, *b_begin++ );
+                else if ( *a_begin != lcs.front() )
+                    *out++ = hunk( hunk::remove, *a_begin++ );
+                else
+                    UNREACHABLE( "impossible case" );
+            }
+
+            while ( a_begin < a_end )
+                *out++ = hunk( hunk::remove, *a_begin++ );
+            while ( b_begin < b_end )
+                *out++ = hunk( hunk::add, *b_begin++ );
+        }
+
+        return out;
+    }
+}
