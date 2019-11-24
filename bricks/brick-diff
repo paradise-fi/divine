@@ -175,8 +175,11 @@ namespace brq
     template< typename type >
     struct diff_hunk
     {
-        enum what_t { keep, add, remove } what;
+        enum what_t { w_keep, w_add, w_del } what;
         type value;
+        bool keep() const { return what == w_keep; }
+        bool add() const  { return what == w_add; }
+        bool del() const  { return what == w_del; }
         diff_hunk( what_t w, type v ) : what( w ), value( v ) {}
     };
 
@@ -211,7 +214,7 @@ namespace brq
                 I b_2 = b_begin + m.second;
                 if ( a_2 > a_1 || b_2 > b_1 )
                     out = patience_diff( a_1, a_2, b_1, b_2, out );
-                *out++ = hunk( hunk::keep, *a_2 );
+                *out++ = hunk( hunk::w_keep, *a_2 );
                 a_1 = a_2 + 1;
                 b_1 = b_2 + 1;
             }
@@ -230,24 +233,24 @@ namespace brq
             {
                 if ( *a_begin == *b_begin )
                 {
-                    *out++ = hunk( hunk::keep, *a_begin );
+                    *out++ = hunk( hunk::w_keep, *a_begin );
                     ASSERT_EQ( *a_begin, lcs.front() );
                     lcs.pop_front();
                     ++ a_begin;
                     ++ b_begin;
                 }
                 else if ( *b_begin != lcs.front() )
-                    *out++ = hunk( hunk::add, *b_begin++ );
+                    *out++ = hunk( hunk::w_add, *b_begin++ );
                 else if ( *a_begin != lcs.front() )
-                    *out++ = hunk( hunk::remove, *a_begin++ );
+                    *out++ = hunk( hunk::w_del, *a_begin++ );
                 else
                     UNREACHABLE( "impossible case" );
             }
 
             while ( a_begin < a_end )
-                *out++ = hunk( hunk::remove, *a_begin++ );
+                *out++ = hunk( hunk::w_del, *a_begin++ );
             while ( b_begin < b_end )
-                *out++ = hunk( hunk::add, *b_begin++ );
+                *out++ = hunk( hunk::w_add, *b_begin++ );
         }
 
         return out;
