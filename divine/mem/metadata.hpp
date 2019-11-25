@@ -475,6 +475,39 @@ struct Metadata : Next
         Next::copy( from_h, from, to_h, to, sz, internal );
     }
 
+    bool tainted( Loc l, unsigned sz )
+    {
+        const int words = ( sz + 3 ) / 4;
+        auto i_meta = compressed( l, words ).begin();
+        int off = 0;
+
+        // Aligned prefix
+        if ( sz >= 4 )
+        {
+            ASSERT_EQ( l.offset % 4, 0 );
+
+            for ( ; off < bitlevel::downalign( sz, 4 ); off += 4 )
+            {
+                if ( Next::expand( *i_meta ).taint )
+                    return true;
+                ++i_meta;
+            }
+        }
+
+        // Unaligned + suffix
+        if ( off < sz )
+        {
+            ASSERT_LT( sz - off, 4 );
+            auto exp = Next::expand( *i_meta );
+            uint8_t offset_in_word = ( l.offset + off ) % 4;
+            auto mask = bitlevel::ones< uint8_t >( sz - off ) << offset_in_word;
+            if ( exp.taint & mask )
+                return true;
+        }
+
+        return false;
+    }
+
     struct PointerC
     {
         using c_proxy = typename CompressedC::proxy;

@@ -218,6 +218,8 @@ namespace divine::mem
         auto compressed( Loc l, unsigned w ) const { return n.compressed( l, w ); }
         static bool is_pointer( typename Next::Compressed c ) { return Next::is_pointer( c ); }
 
+        bool tainted( Pointer p, unsigned sz ) { return n.tainted( loc( p ), sz ); }
+
         template< typename FromH >
         bool copy( FromH &from_h, Pointer from, Pointer to, int bytes )
         {
