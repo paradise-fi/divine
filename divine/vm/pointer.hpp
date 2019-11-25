@@ -95,7 +95,7 @@ struct GenericPointer : brick::types::Comparable
     }
 
     bool heap() const { return object() >= _VM_PL_Code; }
-    GenericPointer operator+( int o ) { return GenericPointer( object(), offset() + o ); }
+    GenericPointer operator+( int o ) const { return GenericPointer( object(), offset() + o ); }
     int operator-( GenericPointer o ) const
     {
         ASSERT_EQ( o.object(), object() );

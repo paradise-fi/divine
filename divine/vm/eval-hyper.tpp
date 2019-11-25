@@ -423,7 +423,11 @@ namespace divine::vm
 
         uint8_t taints = 0;
         for ( int i = 2; i < instruction().argcount(); ++i )
-            op< Any >( i + 1, [&]( auto v ) { taints |= v.arg( i ).taints(); } );
+        {
+            auto sl = instruction().value( i + 1 );
+            auto ptr = s2ptr( sl );
+            taints |= heap().tainted( ptr, sl.size() );
+        }
 
         context().sync_pc();
         auto oldframe = frame();
@@ -442,18 +446,28 @@ namespace divine::vm
 
         auto newframe = frame();
 
+        auto argptr = [newframe, &mkframe]( int idx ){
+            return newframe + mkframe._fun->instructions[ idx ].result().offset;
+        };
+
         for ( int i = 2; i < instruction().argcount(); ++i )
-            op< Any >( i + 1, [&]( auto v )
+        {
+            context().set( _VM_CR_Frame, oldframe );
+            auto sl_from = instruction().value( i + 1 );
+            auto ptr_from = s2ptr( sl_from );
+            context().set( _VM_CR_Frame, newframe );
+            int j = ( i - 2 ) * ( taints ? 2 : 1 );
+            if ( taints )
             {
-                context().set( _VM_CR_Frame, oldframe );
-                auto arg = v.arg( i );
-                context().set( _VM_CR_Frame, newframe );
-                auto taint_v = value::Int< 8 >( arg.taints() );
-                if ( taints )
-                    mkframe.push( (i - 2) * 2, frame(), taint_v, arg );
-                else
-                    mkframe.push( (i - 2), frame(), arg );
-            } );
+                bool t = heap().tainted( ptr_from, sl_from.size() );
+                auto taint_v = value::Int< 8 >( t );
+                mkframe.push( j, newframe, taint_v );
+                ++j;
+            }
+            auto ptr_to = argptr( j );
+            heap().copy( ptr_from, ptr_to, sl_from.size() );
+
+        }
     }
 
     template< typename Ctx >
