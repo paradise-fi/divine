@@ -160,6 +160,7 @@ struct TestHeap : Next
 
     auto pointers( Ptr p, int sz ) { return Next::pointers( loc( p, 0 ), sz ); }
     auto pointers( Ptr p, int from, int sz ) { return Next::pointers( loc( p, from ), sz ); }
+    bool tainted( Ptr p, int from, int sz ) { return Next::tainted( loc( p, from ), sz ); }
     Loc loc( Ptr p, int off ) { return Loc( p, 0, off ); }
 
     Ptr make( int sz )
@@ -600,6 +601,19 @@ struct CompoundShadow
             heap.read( obj, 6 + i, i2 );
             ASSERT_EQ( i2.taints(), 0x1 );
         }
+    }
+
+    TEST( taint_range )
+    {
+        vm::value::Int< 8 > i1( 42, 0xFF, false );
+        i1.taints( 0x1 );
+
+        heap.write( obj, 6, i1 );
+        for ( int from = 0; from < 8; ++from )
+            for ( int sz = 1; sz < ( (from % 4) ? (4 - from % 4) : 12 ); ++sz )
+                ASSERT_EQ( heap.tainted( obj, from, sz ),
+                           from <= 6 && from + sz > 6,
+                           " [", from, ",", from + sz, ")" );
     }
 
 #if 0
