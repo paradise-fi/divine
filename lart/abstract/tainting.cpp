@@ -75,6 +75,13 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( insertvalue )
+        {
+            auto inst = llvm::cast< llvm::Instruction >( val );
+            return result() + "." + llvm_name( inst->getOperand( 1 )->getType() );
+        }
+
+        template< Type T_ = T >
         static auto suffix( llvm::Value * val ) noexcept
             -> typename std::enable_if_t<
                 Taint::toBool( T_ ) ||
@@ -82,6 +89,7 @@ namespace lart::abstract {
                 Taint::thaw( T_ )  ||
                 Taint::store( T_ )  ||
                 Taint::load( T_ )   ||
+                Taint::extractvalue( T_ ) ||
                 Taint::gep( T_ )
             ,std::string >
         {
@@ -210,6 +218,34 @@ namespace lart::abstract {
             }
 
             return { con, abs, idx, aidx };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( extractvalue )
+        {
+            auto ev = llvm::cast< llvm::ExtractValueInst >( i->getOperand( 0 ) );
+            auto agg = ev->getAggregateOperand();
+            auto aagg = abstract( agg );
+            // FIXME
+            ASSERT( ev->getNumIndices() == 1 );
+            auto idx = i64( *ev->idx_begin() );
+
+            return { agg, aagg, idx };
+        }
+
+        template< Type T_ = T >
+        auto arguments( llvm::Instruction * i ) -> ENABLE_IF( insertvalue )
+        {
+            auto iv = llvm::cast< llvm::InsertValueInst >( i->getOperand( 0 ) );
+            auto val = iv->getInsertedValueOperand();
+            auto aval = abstract( val );
+            auto agg = iv->getAggregateOperand();
+            auto aagg = abstract( agg );
+            // FIXME
+            ASSERT( iv->getNumIndices() == 1 );
+            auto idx = i64( *iv->idx_begin() );
+
+            return { agg, aagg, val, aval, idx };
         }
 
         template< Type T_ = T >
@@ -502,6 +538,8 @@ namespace lart::abstract {
             // DISPATCH( Lift )
             // DISPATCH( Lower )
             // DISPATCH( Call )
+            DISPATCH( ExtractValue )
+            DISPATCH( InsertValue )
             // DISPATCH( Memcpy )
             // DISPATCH( Memmove )
             // DISPATCH( Memset )

@@ -147,7 +147,7 @@ namespace lart::abstract
             std::vector< llvm::Value * > vals = {};
             auto args = arguments();
 
-            if constexpr ( Taint::binary( T ) )
+            if constexpr ( Taint::binary( T ) || Taint::insertvalue( T ) )
             {
                 auto fn = function();
                 auto dbb = basic_block( fn,  "load.domain" );
@@ -157,9 +157,9 @@ namespace lart::abstract
                 auto exit = basic_block( fn, "exit" );
 
                 /* entry */
-                auto args = paired_arguments();
-                const auto &lhs = args[ 0 ];
-                const auto &rhs = args[ 1 ];
+                auto paired = paired_arguments( 2 );
+                const auto &lhs = paired[ 0 ];
+                const auto &rhs = paired[ 1 ];
 
                 auto abs = irb.CreateAnd( lhs.concrete.taint, rhs.concrete.taint );
                 irb.CreateCondBr( abs, dbb, cbb );
@@ -182,7 +182,14 @@ namespace lart::abstract
                 /* lift 1. argument */
                 irb.SetInsertPoint( l1bb );
                 dom[ l1bb ] = domain_index( rhs.abstract.value, irb );
-                val1[ l1bb ] = lift( lhs.concrete.value, dom[ l1bb ], irb );
+                if constexpr ( Taint::insertvalue( T ) )
+                {
+                    auto ptr_concrete = irb.CreateAlloca( lhs.concrete.value->getType() );
+                    irb.CreateStore( lhs.concrete.value, ptr_concrete );
+                    val1[ l1bb ] = lift_aggr( ptr_concrete, dom[ l1bb ], irb );
+                }
+                else
+                    val1[ l1bb ] = lift( lhs.concrete.value, dom[ l1bb ], irb );
                 val2[ l1bb ] = rhs.abstract.value;
                 irb.CreateBr( exit );
 
@@ -212,6 +219,25 @@ namespace lart::abstract
 
                 vals.push_back( merge( val1 ) );
                 vals.push_back( merge( val2 ) );
+
+                if constexpr ( Taint::insertvalue( T ) )
+                {
+                    ASSERT_EQ( args.size(), 5 );
+                    const auto &idx = args[ 4 ];
+                    vals.push_back( idx.value );
+                }
+
+            }
+
+            if constexpr ( Taint::extractvalue( T ) )
+            {
+                auto agg = paired_arguments( 1 ).front();
+                ASSERT_EQ( args.size(), 3 );
+                const auto &idx = args[ 2 ];
+                vals.push_back( agg.concrete.value );
+                vals.push_back( idx.value );
+
+                _domain = domain_index( agg.abstract.value, irb );
             }
 
             if constexpr ( Taint::gep( T ) )
@@ -406,13 +432,19 @@ namespace lart::abstract
             return args;
         }
 
-        std::vector< TaintArgument > paired_arguments() const
+        std::vector< TaintArgument > paired_arguments( unsigned pairs = 0 ) const
         {
             std::vector< TaintArgument > args;
             auto fn = function();
 
-            ASSERT( fn->arg_size() % 4 == 0 );
-            for ( auto it = fn->arg_begin(); it != fn->arg_end(); std::advance( it, 4 ) ) {
+            if ( pairs )
+                ASSERT( fn->arg_size() >= 4 * pairs );
+            else
+                ASSERT( fn->arg_size() % 4 == 0 );
+
+            auto begin = fn->arg_begin();
+            auto end = pairs ? std::next( begin, pairs * 4 ) : fn->arg_end();
+            for ( auto it = begin; it != end; std::advance( it, 4 ) ) {
                 args.push_back( TaintArgument{ it } );
             }
 
@@ -427,6 +459,8 @@ namespace lart::abstract
                 return "ptr";
             if ( ty->isIntegerTy() || ty->isFloatingPointTy() )
                 return llvm_name( ty );
+            if ( ty->isStructTy() )
+                return "aggr";
             UNREACHABLE( "unsupported type" );
         }
 
@@ -436,18 +470,33 @@ namespace lart::abstract
         }
 
         template< typename V, typename I, typename IRB >
+        llvm::CallInst * lift_aggr( V val, I dom, IRB &irb ) const
+        {
+            auto fty = llvm::FunctionType::get( i8PTy(), { i8PTy(), i64Ty() }, false );
+            auto fn = lift( dom, irb, fty, "aggr" );
+            auto size = module->getDataLayout().getTypeAllocSize( val->getType() );
+            auto i8ptr = irb.CreateBitCast( val, i8PTy() );
+            return irb.CreateCall( fn, { i8ptr, i64( size ) } );
+        }
+
+        template< typename V, typename I, typename IRB >
         llvm::CallInst * lift( V val, I dom, IRB &irb ) const
         {
             auto fty = llvm::FunctionType::get( i8PTy(), { val->getType() }, false );
-            auto name = "lart.abstract.lift_one_" + type_name( val );
+            auto fn = lift( dom, irb, fty, type_name( val ) );
+            return irb.CreateCall( fn, { val } );
+        }
+
+        template< typename I, typename IRB >
+        llvm::Value * lift( I dom, IRB &irb, llvm::FunctionType *fty, const std::string & tname ) const
+        {
+            auto name = "lart.abstract.lift_one_" + tname;
             auto impl = module->getFunction( name );
             if ( !impl )
                 UNREACHABLE( "missing domain function", name );
             auto op = llvm_index( impl );
             auto ptr = get_function_from_domain( irb, op, dom );
-            auto fn = irb.CreateBitCast( ptr, fty->getPointerTo() );
-
-            return irb.CreateCall( fn, { val } );
+            return irb.CreateBitCast( ptr, fty->getPointerTo() );
         }
 
         llvm::Value * _domain = nullptr;
@@ -491,6 +540,8 @@ namespace lart::abstract
             DISPATCH( Lift )
             DISPATCH( Lower )
             DISPATCH( Call )
+            DISPATCH( ExtractValue )
+            DISPATCH( InsertValue )
             DISPATCH( Memcpy )
             DISPATCH( Memmove )
             DISPATCH( Memset )

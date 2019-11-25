@@ -23,6 +23,8 @@ namespace lart::abstract
         ,{ Operation::Type::Lift   , "lift"    }
         ,{ Operation::Type::Lower  , "lower"   }
         ,{ Operation::Type::Call   , "call"    }
+        ,{ Operation::Type::ExtractValue, "extractvalue" }
+        ,{ Operation::Type::InsertValue, "insertvalue" }
         ,{ Operation::Type::Memcpy , "memcpy"  }
         ,{ Operation::Type::Memmove, "memmove" }
         ,{ Operation::Type::Memset , "memset"  }
@@ -62,6 +64,14 @@ namespace lart::abstract
                 return construct< Type::BinaryFaultable >( bin );
             else
                 return construct< Type::Binary >( bin );
+        }
+
+        if ( auto ev = llvm::dyn_cast< llvm::ExtractValueInst >( inst ) ) {
+            return construct< Type::ExtractValue >( ev );
+        }
+
+        if ( auto iv = llvm::dyn_cast< llvm::InsertValueInst >( inst ) ) {
+            return construct< Type::InsertValue >( iv );
         }
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {

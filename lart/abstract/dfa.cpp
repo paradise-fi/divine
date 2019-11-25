@@ -135,6 +135,26 @@ namespace lart::abstract
                 add_meta( &gep, op, DomainKind::aggregate );
             }
         }
+
+        void visitExtractValueInst( llvm::ExtractValueInst &ev )
+        {
+            if ( maybe_aggregate( ev.getAggregateOperand() ) ) {
+                NOT_IMPLEMENTED();
+            } else {
+                auto op = std::string( op_prefix ) + "extractvalue";
+                add_meta( &ev, op, DomainKind::aggregate );
+            }
+        }
+
+        void visitInsertValueInst( llvm::InsertValueInst &iv )
+        {
+            if ( maybe_aggregate( iv.getAggregateOperand() ) ) {
+                NOT_IMPLEMENTED();
+            } else {
+                auto op = std::string( op_prefix ) + "insertvalue";
+                add_meta( &iv, op, DomainKind::aggregate );
+            }
+        }
     };
 
     bool is_propagable( llvm::Value *val ) noexcept

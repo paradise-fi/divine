@@ -34,6 +34,8 @@ namespace lart::abstract {
             Lift,
             Lower,
             Call,
+            ExtractValue,
+            InsertValue,
             Memcpy,
             Memmove,
             Memset
@@ -116,6 +118,8 @@ namespace lart::abstract {
         static constexpr bool call( Operation::Type type ) { return Type::Call == type; }
         static constexpr bool lift( Operation::Type type ) { return Type::Lift == type; }
         static constexpr bool lower( Operation::Type type ) { return Type::Lower == type; }
+        static constexpr bool insertvalue( Operation::Type type ) { return Type::InsertValue == type; }
+        static constexpr bool extractvalue( Operation::Type type ) { return Type::ExtractValue == type; }
 
         static constexpr bool mem( Operation::Type type )
         {

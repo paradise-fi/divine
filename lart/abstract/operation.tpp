@@ -98,7 +98,8 @@ namespace lart::abstract
         //    return suffix + "." + llvm_name( dst->getPointerElementType() );
         //
         } else {
-            if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() ) ) {
+            if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() );
+                    aggr && aggr->hasName() ) {
                 return suffix + "." + aggr->getName().str();
             } else {
                 return suffix + "." + llvm_name( val->getType() );
