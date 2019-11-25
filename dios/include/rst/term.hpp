@@ -238,26 +238,26 @@ namespace __dios::rst::abstract
             return term.extend( arg ).extend( cast_op< op >( bw ) );
         }
 
-        _LART_INLINE static Term op_insertvalue( Term arg, Term value, Term offset )
+        _LART_INTERFACE static Term op_insertvalue( Term arg, Term value, uint64_t offset )
         {
             auto lhs = impl_nary< Op::Extract >(
                     arg,
                     constant( 0 ),
-                    impl_binary< Op::BvSub >( offset, lift( 1 ) ) );
+                    impl_binary< Op::BvSub >( lift( offset ), lift( 1 ) ) );
             auto rhs = impl_nary< Op::Extract >(
                     arg,
-                    impl_binary< Op::BvAdd >( offset, lift( 1 ) ) );
+                    impl_binary< Op::BvAdd >( lift( offset ), lift( 1 ) ) );
             return impl_nary< Op::Concat >(
                     impl_nary< Op::Concat >( lhs, value ),
                     rhs );
         }
 
-        _LART_INLINE static Term op_extractvalue( Term arg, Term value, Term offset )
+        _LART_INTERFACE static Term op_extractvalue( Term arg, uint64_t offset )
         {
             return impl_nary< Op::Extract >(
                     arg,
                     offset,
-                    impl_binary< Op::BvAdd >( offset, lift( 1 ) ) );
+                    impl_binary< Op::BvAdd >( lift( offset ), lift( 1 ) ) );
         }
 
         _LART_INTERFACE
