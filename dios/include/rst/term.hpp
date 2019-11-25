@@ -110,6 +110,11 @@ namespace __dios::rst::abstract
         __lift( double, double )
 
         _LART_INTERFACE
+        static Term lift_any_aggr( unsigned size ) noexcept { return {}; }
+        _LART_INTERFACE
+        static Term lift_one_aggr( void * aggr, unsigned size ) noexcept { return {}; }
+
+        _LART_INTERFACE
         static Term lift_one_ptr( void *p ) noexcept
         {
             return lift( reinterpret_cast< uintptr_t >( p ) );
