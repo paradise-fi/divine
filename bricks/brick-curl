@@ -88,14 +88,14 @@ namespace brq
 
         curl &run()
         {
-            TRACE( "request", info< string >( CURLINFO_EFFECTIVE_URL ) );
+            DEBUG( "request", info< string >( CURLINFO_EFFECTIVE_URL ) );
 
             if ( auto err = curl_easy_perform( _curl ) )
                 brq::raise() << "curl error: " << curl_easy_strerror( err );
 
             auto code = info< long >( CURLINFO_RESPONSE_CODE );
-            TRACE( "done", code, info< string >( CURLINFO_CONTENT_TYPE ),
-                           "took", info< double >( CURLINFO_TOTAL_TIME ), "seconds" );
+            DEBUG( "done", code, info< string >( CURLINFO_CONTENT_TYPE ),
+                   "took", info< double >( CURLINFO_TOTAL_TIME ), "seconds" );
 
             if ( code != 200 )
                 brq::raise< error >( code ) << "unexpected server response code " << code;
