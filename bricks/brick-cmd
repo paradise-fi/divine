@@ -212,6 +212,7 @@ namespace brq
     struct cmd_options : protected cmd_option_help
     {
         enum { mode_help, mode_parse } _mode;
+        bool _saw_section = false;
         bool _print_help = false;
         int _matches = 0;
         int _index = 0, _next = 0;
@@ -239,6 +240,10 @@ namespace brq
         {
             if ( _mode == mode_help )
             {
+                if ( !_saw_section )
+                    _help << "\n\nOPTIONS\n";
+
+                _saw_section = true;
                 _help << "\n  ";
                 opt_help( std::forward< args_t >( args )... );
             }
@@ -266,7 +271,8 @@ namespace brq
         void section( std::string n )
         {
             if ( _mode == mode_help )
-                _help << "\n  " << n << ":";
+                _help << "\n\n" << n << "\n";
+            _saw_section = true;
         }
     };
 
@@ -275,19 +281,18 @@ namespace brq
         virtual void run() = 0;
         virtual void prepare() {}
         virtual void options( cmd_options &o ) { o.help( "--help" ); }
+        virtual std::string_view help() { return ""; }
         virtual ~cmd_base() {}
     };
 
     struct cmd_help : cmd_base
     {
-        cmd_flag _long;
         std::string _cmd;
         std::string _help;
-        void run() override { std::cerr << _help; }
+        void run() override { std::cerr << tabulate( _help ); }
 
         void options( cmd_options &o ) override
         {
-            o.opt( "--long", _long );
             o.collect( _cmd );
         }
 
@@ -297,6 +302,9 @@ namespace brq
 
     struct cmd_option_parser : protected cmd_options
     {
+        std::string _argv_0;
+        std::string_view _cmd_help;
+
         template< typename cmd_t >
         std::conditional_t< std::is_same_v< cmd_t, cmd_help >, brq::ns< cmd_help, brq::nil >,
                             typename brq::cons_list_t< cmd_t, cmd_help >::co > opt_parse()
@@ -328,7 +336,8 @@ namespace brq
             return cmd;
         }
 
-        cmd_option_parser( int argc, const char * const *argv )
+        cmd_option_parser( int argc, const char * const *argv, std::string_view help = "" )
+            : _argv_0( argv[ 0 ] ), _cmd_help( help )
         {
             std::copy( argv + 1, argv + argc, std::back_inserter( _tokens ) );
         }
@@ -389,22 +398,47 @@ namespace brq
             cons_list_t< cmds_t... > cmds;
             _help.clear();
             _mode = mode_help;
+
             if ( h._cmd.empty() )
-                _help << "available commands:";
+                _help << "\nSYNOPSIS\n\n";
 
             auto print = [&]( auto &c )
             {
                 using type = std::remove_reference_t< decltype( c ) >;
                 auto name = names< type >( brq::primary )[ 0 ];
-                if ( h._cmd.empty() || brq::starts_with( name, h._cmd ) )
+
+                if ( h._cmd.empty() )
                 {
-                    _help << "\n  " << name;
-                    if ( h._long || !h._cmd.empty() )
-                        c.options( *this );
+                    _help << "  $ " << _argv_0 << " " << name << "\n";
+                    return;
                 }
+
+                if ( !h._cmd.empty() && !brq::starts_with( name, h._cmd ) )
+                    return;
+
+                _help << "\nSYNOPSIS\n\n";
+                _help << "  $ " << _argv_0 << " " << name << " [options]";
+
+                if ( c.help().size() )
+                {
+                    _help << "\n\nDESCRIPTION\n\n";
+                    brq::string_transform{ quote( "  " ), _help } << c.help();
+                }
+
+                _saw_section = false;
+                c.options( *this );
+                _help << "\n\n";
             };
 
             cmds.each( print );
+
+            if ( h._cmd.empty() && !_cmd_help.empty() )
+            {
+                _help << "\nDESCRIPTION\n\n";
+                brq::string_transform{ quote( "  " ), _help } << _cmd_help;
+                _help << "\n\n";
+            }
+
             return cmd_help( _help.data() );
         }
 
