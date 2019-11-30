@@ -241,6 +241,33 @@ namespace brq
 
         return out;
     }
+
+    struct quote
+    {
+        std::string _prefix;
+        bool _delim = true;
+
+        void reset() { _delim = true; }
+        quote( std::string p ) : _prefix( p ) {}
+
+        std::string delim( bool next )
+        {
+            auto rv = _delim ? _prefix : "";
+            _delim = next;
+            return rv;
+        }
+
+        template< typename stream >
+        void process( stream &out, brq::string_window data )
+        {
+            while ( !data.empty() )
+                if ( data.shift() == '\n' )
+                    out << delim( true ) << data.flush();
+
+            if ( data.pending() )
+                out << delim( false ) << data.flush();
+        }
+    };
 }
 
 namespace t_brq
