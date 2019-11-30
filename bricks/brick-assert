@@ -63,7 +63,7 @@
     BRICK_ASSERT( bin,                                                          \
                   #x " "  #op " " BRICK_SHARP_FIRST( __VA_ARGS__, ignored ),    \
                   []( const auto &a, const auto &b ) { return a op b; },        \
-                  #inv, x, __VA_ARGS__ )
+                  #op, #inv, x, __VA_ARGS__ )
 
 #define ASSERT(...)     BRICK_ASSERT( bool, BRICK_SHARP_FIRST( __VA_ARGS__, ignored ), __VA_ARGS__ )
 #define ASSERT_P(p, x)  BRICK_ASSERT( pred, #p "( " #x " )", x, p( x ) )
@@ -150,6 +150,7 @@ namespace brq
         assert_failed f( l );
         format_args< true >( f, y... );
         assert_signal( f );
+        trace_fn< true >( 4, l, "assert:", l._statement, y... );
     }
 
     template< typename... T >
@@ -162,7 +163,7 @@ namespace brq
     }
 
     template< typename Op, typename A, typename B, typename... T >
-    void assert_bin_fn( const trace_location &l, Op op, std::string_view inv,
+    void assert_bin_fn( const trace_location &l, Op op, std::string_view op_str, std::string_view inv,
                         const A &a, const B &b, const T & ... args )
     {
         bool pass;
@@ -180,7 +181,8 @@ namespace brq
             format_args< true >( f, args... );
             assert_signal( f );
         }
-        /* trace_fn( l, "assert passed:", l._statement, "[", x, op_str, y, "]" ); */
+
+        trace_fn< true >( 4, l, "assert:", l._statement, "[", a, op_str, b, "]", args... );
     }
 
     template< typename X >
