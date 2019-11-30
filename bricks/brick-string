@@ -18,10 +18,50 @@
 
 #pragma once
 #include "brick-assert"
+#include <tuple>
+#include <variant>
+#include <functional>
+#include <iomanip>
 #include <vector>
 
 namespace brq
 {
+    template< int i = 0, typename... T >
+    auto &operator<<( string_builder &b, const std::tuple< T... > &t ) noexcept
+    {
+        if ( i == 0 )
+            b << "[";
+        if constexpr ( i < sizeof...( T ) )
+        {
+            b << ( i > 0 ? ", " : " " ) << std::get< i >( t );
+            return operator<<< i + 1 >( b, t );
+        }
+        else
+            return b << ( i == 0 ? "]" : " ]" );
+    }
+
+    template< typename... T >
+    auto &operator<<( string_builder &b, const std::variant< T... > &v ) noexcept
+    {
+        return std::visit( [&]( const auto &val ) -> auto & { return b << val; }, v );
+    }
+
+    template< typename A, typename B >
+    auto operator<<( string_builder &b, const std::pair< A, B > &p ) noexcept
+        -> decltype( b << p.first << p.second )
+    {
+        return b << "[ " << p.first << ", " << p.second << " ]";
+    }
+
+    static string_builder &operator<<( string_builder &b, decltype( std::hex ) manip ) noexcept
+    {
+        if ( manip == std::hex )
+            b._hex = true;
+        if ( manip == std::dec )
+            b._hex = false;
+        return b;
+    }
+
     struct mark_t
     {
         string_builder *b = nullptr;

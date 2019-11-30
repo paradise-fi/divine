@@ -22,7 +22,8 @@
 
 #pragma once
 
-#include "brick-string"
+#include "brick-min"
+#include <array>
 
 #ifdef __divine__
 #include <sys/cdefs.h>
@@ -30,6 +31,7 @@
 #else
 #include <vector>
 #include <cstring>
+#include <pthread.h>
 #define __debugfn
 #define __boring
 #endif

@@ -19,12 +19,9 @@
 #pragma once
 
 #include <cstring>
+#include <cctype>
 #include <string_view>
 #include <charconv>
-#include <tuple>
-#include <variant>
-#include <functional>
-#include <iomanip>
 
 namespace brq
 {
@@ -204,42 +201,6 @@ namespace brq
             return *this;
         }
 
-        template< int i = 0, typename... T >
-        auto &operator<<( const std::tuple< T... > &t ) noexcept
-        {
-            if ( i == 0 )
-                *this << "[";
-            if constexpr ( i < sizeof...( T ) )
-            {
-                *this << ( i > 0 ? ", " : " " ) << std::get< i >( t );
-                return this->operator<<< i + 1 >( t );
-            }
-            else
-                return *this << ( i == 0 ? "]" : " ]" );
-        }
-
-        template< typename... T >
-        auto &operator<<( const std::variant< T... > &v ) noexcept
-        {
-            return std::visit( [&]( const auto &val ) -> auto & { return *this << val; }, v );
-        }
-
-        template< typename A, typename B >
-        auto operator<<( const std::pair< A, B > &p ) noexcept
-            -> decltype( *this << p.first << p.second )
-        {
-            return *this << "[ " << p.first << ", " << p.second << " ]";
-        }
-
-        string_builder &operator<<( decltype( std::hex ) manip ) noexcept
-        {
-            if ( manip == std::hex )
-                _hex = true;
-            if ( manip == std::dec )
-                _hex = false;
-            return *this;
-        }
-
         template< typename F >
         auto operator<<( const F &f ) noexcept
             -> decltype( f( *this ), *this )
@@ -302,12 +263,13 @@ namespace brq
     template< bool nofail = false, typename stream, typename A, typename... Args >
     void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
     {
+        int mark = acc.size();
         if constexpr ( nofail )
             format_nofail( acc, a );
         else
             acc << a;
 
-        if constexpr ( !std::is_same< A, decltype( std::hex ) >::value )
+        if ( mark != acc.size() )
             acc << " ";
         format_args< nofail >( acc, as... );
     }

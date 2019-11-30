@@ -82,10 +82,8 @@
 
 namespace brq
 {
-    struct assert_failed
+    struct assert_failed : string_builder
     {
-        string_builder str;
-
         struct fail_ref
         {
             assert_failed &ref;
@@ -96,7 +94,7 @@ namespace brq
         friend inline auto operator<<( fail_ref f, const X &x )
             -> decltype( std::declval< string_builder & >() << x, f.ref )
         {
-            f.ref.str << x;
+            f.ref << x;
             return f.ref;
         }
 
@@ -124,18 +122,18 @@ namespace brq
 #ifdef BRICKS_NOTHROW_ASSERTS
         assert_failed( assert_failed &&o )
         {
-            ::write( 2, o.str.buffer(), o.str._offset );
+            ::write( 2, o.buffer(), o._offset );
             abort();
         }
 #endif
 
-        const char *what() const noexcept { return str.buffer(); }
+        const char *what() const noexcept { return buffer(); }
     };
 
     [[noreturn]] static inline void assert_signal( assert_failed &err )
     {
 #if defined(__divine__)
-        if ( err.str.truncated() )
+        if ( err.truncated() )
             __vm_cancel();
         __dios_fault( _VM_F_Assert, err.what() );
         __builtin_trap();
@@ -168,11 +166,13 @@ namespace brq
                         const A &a, const B &b, const T & ... args )
     {
         bool pass;
+
         if constexpr ( std::is_integral_v< A > && std::is_integral_v< B > )
             pass = op( static_cast< std::common_type_t< A, B > >( a ),
                        static_cast< std::common_type_t< A, B > >( b ) );
         else
             pass = !!op( a, b );
+
         if ( !pass )
         {
             assert_failed f( l );
