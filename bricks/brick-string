@@ -17,257 +17,11 @@
  */
 
 #pragma once
-
-#include <cstring>
-#include <string_view>
-#include <charconv>
-#include <tuple>
-#include <variant>
-#include <functional>
-#include <iomanip>
+#include "brick-assert"
+#include <vector>
 
 namespace brq
 {
-    /* A simple string builder, similar to std::stringstream but much lighter.
-     * Only works with 8-bit characters (i.e. no wchar_t or char32_t). Provides
-     * a basic selection of formatting operators. To provide formatting
-     * operators for custom types, the following idiom may be useful to use the
-     * same definition for std::ostream and for string_builder (also works for
-     * friend-style definitions):
-     *
-     * template< typename stream >
-     * auto operator<<( stream &o, my_type t ) -> decltype( o << "" )
-     * {
-     *     // ...
-     * }
-     *
-     * Besides accepting values to format, string_builder also understands
-     * std::dec and std::hex IO manipulators. */
-
-    struct string_builder
-    {
-        char *_buffer = nullptr;
-        int32_t _capacity:30, _offset:30;
-        bool _hex:1, _oom:1;
-
-        string_builder( const string_builder & ) = delete;
-        string_builder( string_builder &&o )
-            : _buffer( o._buffer ), _capacity( o._capacity ), _offset( o._offset ),
-              _hex( o._hex ), _oom( o._oom )
-        {
-            o._buffer = nullptr;
-            o._capacity = 0;
-            o._offset = 0;
-        }
-
-        string_builder() noexcept : _capacity( 0 ), _offset( 0 ), _hex( false ), _oom( false ) {}
-        ~string_builder() noexcept { free( _buffer ); }
-
-        char *pointer() noexcept { return _buffer + _offset; }
-        char *buffer_end() noexcept { return _buffer + _capacity - 1; }
-        const char *buffer() const noexcept { return _buffer ? _buffer : ""; }
-        std::string_view data() const noexcept { return std::string_view( _buffer, _offset ); }
-        int size() const noexcept { return _offset; }
-        bool truncated() const noexcept { return _oom; }
-
-        string_builder &hex( bool h = true ) { _hex = h; return *this; }
-        string_builder &dec() { _hex = false; return *this; }
-
-        void clear()
-        {
-            free( _buffer );
-            _buffer = nullptr;
-            _capacity = _offset = 0;
-            _hex = _oom = false;
-        }
-
-        bool _make_space( int sz ) noexcept
-        {
-            if ( _oom )
-                return false;
-            if ( _offset + sz < _capacity )
-                return true;
-
-            int new_capacity = _capacity + std::max( _capacity / 2, sz + 1 );
-            void *mem = realloc( _buffer, new_capacity );
-            if ( mem )
-            {
-                _buffer = static_cast< char * >( mem );
-                _capacity = new_capacity;
-            }
-            else
-                _oom = true;
-
-            return !_oom;
-        }
-
-        string_builder &operator<<( std::string_view str ) noexcept
-        {
-            if ( !_make_space( str.size() ) ) return *this;
-            std::copy( str.begin(), str.end(), pointer() );
-            _offset += str.size();
-            _buffer[ _offset ] = 0;
-            return *this;
-        }
-
-        string_builder &operator<<( std::u32string_view us ) noexcept
-        {
-            while ( !us.empty() )
-            {
-                if ( !_make_space( 4 ) ) return *this;
-
-                uint32_t wc = us.front();
-
-                if ( ( wc & 0xFFFFF800 ) == 0x00D800 || wc > 0x10FFFF )
-                    continue; /* skip the character */
-
-                if ( wc < 0x000080 )
-                {
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( wc ); 
-                }
-                else if ( wc < 0x000800 )
-                {
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xC0 | ( wc >> 6 ) );
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( wc & 0x03F ) );
-                }
-                else if ( wc < 0x010000 )
-                {
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xE0 |   ( wc >> 12 ) );
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x0FC0 ) >> 6 ) );
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 |   ( wc & 0x003F ) );
-                }
-                else // if (wc < 0x110000)
-                {
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0xF0 |   ( wc >> 18 ) );
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x03F000 ) >> 12 ) );
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 | ( ( wc & 0x000FC0 ) >> 6 ) );
-                    _buffer[ _offset++ ] = static_cast< uint8_t >( 0x80 |   ( wc & 0x00003F ) );
-                }
-
-                us.remove_prefix( 1 );
-            }
-
-            return *this;
-        }
-
-        string_builder &operator<<( char c ) noexcept
-        {
-            *this << int( c );
-            if ( std::isprint( c ) )
-            {
-                if ( !_make_space( 3 ) ) return *this;
-                _buffer[ _offset++ ] = '\'';
-                _buffer[ _offset++ ] = c;
-                _buffer[ _offset++ ] = '\'';
-                _buffer[ _offset ] = 0;
-            }
-            return *this;
-        }
-
-        string_builder &operator<<( const void *ptr ) noexcept
-        {
-            auto was_hex = _hex;
-            _hex = true;
-            (*this) << uintptr_t( ptr );
-            _hex = was_hex;
-            return *this;
-        }
-
-        string_builder &operator<<( const char *str ) noexcept
-        {
-            return (*this) << ( str ? std::string_view( str ) : "<nullptr>" );
-        }
-
-        template< typename C >
-        auto operator<<( const C &c ) noexcept
-            -> std::enable_if_t< !std::is_convertible_v< C, std::string_view > &&
-                                 !std::is_convertible_v< C, std::u32string_view >,
-                                 decltype( *this << *c ) >
-        {
-            if ( c.has_value() )
-                return *this << "[ " << *c << " ]";
-            else
-                return *this << "<null>";
-        }
-
-        template< typename C >
-        auto operator<<( const C &c ) noexcept
-            -> std::enable_if_t< !std::is_convertible_v< C, std::string_view > &&
-                                 !std::is_convertible_v< C, std::u32string_view >,
-                                 decltype( *this << *c.begin() << *c.end() ) >
-        {
-            bool first = true;
-            *this << "[";
-            for ( const auto &e : c )
-                *this << ( first ? first = false, " " : ", " ) << e;
-            *this << ( first ? "]" : " ]" );
-            return *this;
-        }
-
-        template< int i = 0, typename... T >
-        auto &operator<<( const std::tuple< T... > &t ) noexcept
-        {
-            if ( i == 0 )
-                *this << "[";
-            if constexpr ( i < sizeof...( T ) )
-            {
-                *this << ( i > 0 ? ", " : " " ) << std::get< i >( t );
-                return this->operator<<< i + 1 >( t );
-            }
-            else
-                return *this << ( i == 0 ? "]" : " ]" );
-        }
-
-        template< typename... T >
-        auto &operator<<( const std::variant< T... > &v ) noexcept
-        {
-            return std::visit( [&]( const auto &val ) -> auto & { return *this << val; }, v );
-        }
-
-        template< typename A, typename B >
-        auto operator<<( const std::pair< A, B > &p ) noexcept
-            -> decltype( *this << p.first << p.second )
-        {
-            return *this << "[ " << p.first << ", " << p.second << " ]";
-        }
-
-        string_builder &operator<<( decltype( std::hex ) manip ) noexcept
-        {
-            if ( manip == std::hex )
-                _hex = true;
-            if ( manip == std::dec )
-                _hex = false;
-            return *this;
-        }
-
-        template< typename F >
-        auto operator<<( const F &f ) noexcept
-            -> decltype( f( *this ), *this )
-        {
-            return f( *this ), *this;
-        }
-
-        template< typename V >
-        auto operator<<( const V &val ) noexcept
-            -> decltype( std::to_chars( _buffer, _buffer, val ), *this )
-        {
-            int cap = 16;
-            std::to_chars_result result;
-            do {
-                if ( !_make_space( cap ) ) return *this;
-                if constexpr ( std::is_integral< V >::value )
-                    result = std::to_chars( pointer(), buffer_end(), val, _hex ? 16 : 10 );
-                else
-                    result = std::to_chars( pointer(), buffer_end(), val );
-                cap *= 2;
-            } while ( result.ec == std::errc::value_too_large );
-
-            _offset = result.ptr - _buffer;
-            _buffer[ _offset ] = 0;
-            return *this;
-        }
-    };
-
     struct mark_t
     {
         string_builder *b = nullptr;
@@ -317,15 +71,6 @@ namespace brq
     {
         return pad::write( *p.mark.b, p.width, p.mark.mark, p.ch, true );
     }
-
-    struct fallback
-    {
-        template< typename T >
-        constexpr fallback( const T & ) {}
-    };
-
-    struct primary_t {};
-    static primary_t primary;
 
     template< typename transform_t, typename stream_t >
     struct string_transform
@@ -390,67 +135,28 @@ namespace brq
         bool empty()   { return _split == _end; }
         bool pending() { return _split > 0; }
     };
-
-    static inline bool starts_with( std::string_view s, std::string_view t )
-    {
-        return s.size() >= t.size() && s.compare( 0, t.size(), t ) == 0;
-    }
-
-    static inline bool ends_with( std::string_view s, std::string_view t )
-    {
-        return s.size() >= t.size() && s.compare( s.size() - t.size(), s.npos, t ) == 0;
-    }
-
-    /* Format a bunch of values into a stream, separated by spaces. Values that
-     * don't have a string_builder formatting operator are printed as
-     * <unknown>, because TRACE statements can include values whose types
-     * depend on template parameters and we don't want TRACE uses to cause
-     * unexpected instantiation failures (especially for cases where the user
-     * doesn't care about the trace output). */
-
-    template< typename stream, typename T >
-    auto format_nofail( stream &acc, const T &t ) noexcept -> decltype( acc << t, void(0) )
-    {
-        acc << t;
-    }
-
-    template< typename stream >
-    void format_nofail( stream &acc, fallback ) noexcept
-    {
-        acc << "<unknown>";
-    }
-
-    template< bool nofail, typename stream >
-    void format_args( stream & ) noexcept {}
-
-    template< bool nofail = false, typename stream, typename A, typename... Args >
-    void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
-    {
-        if constexpr ( nofail )
-            format_nofail( acc, a );
-        else
-            acc << a;
-
-        if constexpr ( !std::is_same< A, decltype( std::hex ) >::value )
-            acc << " ";
-        format_args< nofail >( acc, as... );
-    }
-
-    using split_view = std::pair< std::string_view, std::string_view >;
-
-    static inline split_view split( std::string_view p, char d, bool reverse = false )
-    {
-        auto s = reverse ? p.rfind( d ) : p.find( d );
-        if ( s == p.npos )
-            return reverse ? split_view{ "", p } : split_view{ p, "" };
-        return { p.substr( 0, s ), p.substr( s + 1, p.npos ) };
-    }
 }
-
-#include "brick-assert"
 
 namespace t_brq
 {
+    struct tabulate
+    {
+        TEST( sanity )
+        {
+            std::string_view in = "hello\tworld\nsad\tworld\n";
+            auto o = brq::tabulate( in );
+            ASSERT_EQ( o, "hello world\n"
+                          "sad   world\n" );
+        }
+
+        TEST( three )
+        {
+            std::string_view in = "hello\twar\tagain\nsad\tworld\tprevails\n";
+            auto o = brq::tabulate( in );
+            ASSERT_EQ( o, "hello war   again\n"
+                          "sad   world prevails\n" );
+        }
+    };
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
