@@ -135,6 +135,72 @@ namespace brq
         bool empty()   { return _split == _end; }
         bool pending() { return _split > 0; }
     };
+
+    template< typename gen_t, typename state_t > struct generator
+    {
+        using value_type = std::tuple_element_t< 0, std::result_of_t< gen_t( state_t ) > >;
+        gen_t _gen;
+        state_t _initial;
+
+        struct iterator
+        {
+            gen_t _gen;
+            state_t _state;
+
+            iterator( gen_t g, state_t s ) : _gen( g ), _state( s ) {}
+            iterator &operator++() { _state = std::get< 1 >( _gen( _state ) ); return *this; }
+            value_type operator*() { return std::get< 0 >( _gen( _state ) ); }
+            bool operator==( const iterator &o ) const { return _state == o._state; }
+            bool operator!=( const iterator &o ) const { return _state != o._state; }
+        };
+
+        auto begin() const { return iterator( _gen, _initial ); }
+        auto end()   const { return iterator( _gen, state_t() ); }
+
+        generator( gen_t gen, state_t init ) : _gen( gen ), _initial( init ) {}
+    };
+
+    static auto splitter( std::string_view s, char d, bool reverse = false )
+    {
+        return generator( [=]( auto s ) { return split( s, d, reverse ); }, s );
+    }
+
+    static std::string tabulate( std::string_view s )
+    {
+        std::vector< int > cols;
+        std::string out;
+
+        auto stop = [&]( int t, int c )
+        {
+            if ( t >= cols.size() )
+                cols.push_back( c );
+            else
+                cols[ t ] = std::max( c, cols[ t ] );
+
+            return cols[ t ];
+        };
+
+        for ( auto line : splitter( s, '\n' ) )
+            for ( int i = 0, c = 0, t = 0; i < line.size(); ++ i, ++ c )
+                if ( line[ i ] == '\t' )
+                    c = stop( t ++, c + 1 );
+
+        for ( auto line : splitter( s, '\n' ) )
+        {
+            for ( int i = 0, c = 0, t = 0; i < line.size(); ++ i, ++ c )
+                if ( line[ i ] == '\t' )
+                {
+                    for ( ; c < cols[ t ]; ++ c )
+                        out += ' ';
+                    ++ t;
+                }
+                else
+                    out += line[ i ];
+            out += '\n';
+        }
+
+        return out;
+    }
 }
 
 namespace t_brq
