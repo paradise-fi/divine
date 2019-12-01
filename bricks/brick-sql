@@ -112,11 +112,11 @@ namespace brq::sql
             return tm;
         }
 
-        std::string to_string() const
+        std::string to_string( const char *fmt = "%Y-%m-%d %H:%M %Z" ) const
         {
             char buf[200];
             auto tm = to_localtime();
-            strftime( buf, 200, "%Y-%m-%d %H:%M %Z", &tm );
+            strftime( buf, 200, fmt, &tm );
             return buf;
         }
 
