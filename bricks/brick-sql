@@ -673,6 +673,7 @@ namespace brq::sql
         static constexpr bool is_enum = false;
 
         cons_list_t< args... > _args;
+        bool _parens = false;
 
         template< typename... Ts >
         where_expr( Ts... ts )
@@ -696,9 +697,9 @@ namespace brq::sql
         template< typename stream >
         stream &print( stream &s, int &id ) const
         {
-            s << "( ";
+            s << ( _parens ? "( " : "" );
             _args.each( [&]( auto v ) { sql::print( s, v, id ); s << " "; } );
-            return s << ")";
+            return s << ( _parens ? ")" : "" );
         }
 
         template< typename stmt >
@@ -711,12 +712,22 @@ namespace brq::sql
     template< typename T >
     using unarray_t = std::conditional_t< std::is_array_v< T >, std::remove_extent_t< T > *, T >;
 
+    template< typename T >
+    auto set_nested( T &t, brq::primary_t ) -> decltype( t._parens )
+    {
+        return t._parens = true;
+    }
+
+    template< typename T >
+    void set_nested( T &, brq::fallback ) {}
+
 #define BRICK_SQL_OP_(op, sql)                                                                    \
     template< typename A, typename B >                                                            \
     auto op( A &&a, B &&b )                                                                       \
         -> std::enable_if_t< is_expr_v< std::decay_t< A > > || is_expr_v< std::decay_t< B > >,    \
                              where_expr< std::decay_t< A >, where_operator, std::decay_t< B > > > \
     {                                                                                             \
+        set_nested( a, primary ); set_nested( b, primary );                                       \
         return { a, where_operator{ sql }, b };                                                   \
     }
 
@@ -726,6 +737,7 @@ namespace brq::sql
         static constexpr bool is_column = false;
         static constexpr bool is_enum = false;
         static constexpr bool is_query = false;
+        static constexpr bool is_expr = true;
 
         brq::cons_list_t< cols... > _cols;
         tuple( cols... c ) : _cols( c... ) {}
@@ -769,6 +781,13 @@ BRICK_SQL_OP( | )
                                                where_expr< std::decay_t< A >, where_operator > >
     {
         return { a, where_operator{ "is null" } };
+    }
+
+    template< typename A >
+    auto desc( A &&a ) -> std::enable_if_t< is_expr_v< std::decay_t< A > >,
+                                            where_expr< std::decay_t< A >, where_operator > >
+    {
+        return { a, where_operator{ "desc" } };
     }
 
     template< typename A >
