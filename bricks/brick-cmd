@@ -306,6 +306,31 @@ namespace brq
         std::string_view _cmd_help;
 
         template< typename cmd_t >
+        std::string cmd_name( cmd_t & ) { return names< cmd_t >( brq::primary )[ 0 ]; }
+
+        template< typename cmd_t >
+        string_builder &format_help( cmd_t &c, bool synopsis_only )
+        {
+            if ( synopsis_only )
+                return _help << "  $ " << _argv_0 << " " << cmd_name( c ) << "\n";
+
+            _help << "\nSYNOPSIS\n\n";
+            _help << "  $ " << _argv_0 << " " << cmd_name( c ) << " [options]";
+
+            if ( c.help().size() )
+            {
+                _help << "\n\nDESCRIPTION\n\n";
+                brq::string_transform{ quote( "  " ), _help } << c.help();
+            }
+
+            _mode = mode_help;
+            _saw_section = false;
+            c.options( *this );
+            _help << "\n\n";
+            return _help;
+        }
+
+        template< typename cmd_t >
         std::conditional_t< std::is_same_v< cmd_t, cmd_help >, brq::ns< cmd_help, brq::nil >,
                             typename brq::cons_list_t< cmd_t, cmd_help >::co > opt_parse()
         {
@@ -325,13 +350,10 @@ namespace brq
                 _index = _next;
             }
 
+            _help.clear();
+
             if ( _print_help )
-            {
-                _mode = mode_help;
-                _help.clear();
-                cmd.options( *this );
-                return cmd_help{ _help.data() };
-            }
+                return cmd_help{ format_help( cmd, false ).data() };
 
             return cmd;
         }
@@ -404,30 +426,8 @@ namespace brq
 
             auto print = [&]( auto &c )
             {
-                using type = std::remove_reference_t< decltype( c ) >;
-                auto name = names< type >( brq::primary )[ 0 ];
-
-                if ( h._cmd.empty() )
-                {
-                    _help << "  $ " << _argv_0 << " " << name << "\n";
-                    return;
-                }
-
-                if ( !h._cmd.empty() && !brq::starts_with( name, h._cmd ) )
-                    return;
-
-                _help << "\nSYNOPSIS\n\n";
-                _help << "  $ " << _argv_0 << " " << name << " [options]";
-
-                if ( c.help().size() )
-                {
-                    _help << "\n\nDESCRIPTION\n\n";
-                    brq::string_transform{ quote( "  " ), _help } << c.help();
-                }
-
-                _saw_section = false;
-                c.options( *this );
-                _help << "\n\n";
+                if ( h._cmd.empty() || brq::starts_with( cmd_name( c ), h._cmd ) )
+                    format_help( c, h._cmd.empty() );
             };
 
             cmds.each( print );
@@ -447,16 +447,22 @@ namespace brq
         {
             using list_t = typename brq::cons_list_t< cmds_t... , cmd_help >;
             using rv_t = typename list_t::co;
+            rv_t rv = cmd_help();
 
-            if ( _tokens.empty() )
-                return help_commands< cmds_t... >();
-            else
+            auto update_help = [&]( cmd_help c )
+            {
+                if ( c._help.empty() )
+                    rv = help_commands< cmds_t... >( c );
+            };
+
+            if ( !_tokens.empty() )
             {
                 _index = 1;
-                auto rv = std::move( cmd_match< rv_t, list_t >() );
-                rv.match( [&]( cmd_help c ) { rv = help_commands< cmds_t... >( c ); } );
-                return rv;
+                rv = std::move( cmd_match< rv_t, list_t >() );
             }
+
+            rv.match( update_help );
+            return rv;
         }
 
         template< typename... cmds_t >
