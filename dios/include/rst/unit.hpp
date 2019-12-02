@@ -6,28 +6,31 @@
 
 namespace __dios::rst::abstract {
 
-    /* Unit/Star domain contains a single value, everything is abstracted to a Star. */
-    struct Unit : tagged_abstract_domain_t
+    struct unit_t;
+
+    extern unit_t unit_base_id;
+
+    /* unit_t/Star domain contains a single value, everything is abstracted to a Star. */
+    struct unit_t : tagged_abstract_domain_t
     {
-        using Return = std::conditional_t< pointer_based, Unit *, Unit >;
-        using Argument = std::conditional_t< pointer_based, const Unit *, const Unit& >;
+        using unit_value_t = unit_t *;
+
+        _LART_INLINE
+        static unit_value_t unit_value() noexcept { return &unit_base_id; }
 
         #define __op( name, ... ) \
-            _LART_INTERFACE static Return name(__VA_ARGS__) noexcept { \
-                if constexpr ( pointer_based ) { \
-                    void *ptr = __vm_obj_make( sizeof( Unit ), _VM_PT_Heap ); \
-                    new ( ptr ) Unit(); \
-                    return static_cast< Return >( ptr ); \
-                } else { \
-                    return Unit{}; \
-                } \
+            _LART_INTERFACE static unit_value_t name(__VA_ARGS__) noexcept { \
+                return unit_value(); \
             }
 
-        #define __un( name ) __op( name, Argument )
+        #define __un( name ) __op( name, unit_value_t )
 
-        #define __bin( name ) __op( name, Argument, Argument )
+        #define __bin( name ) __op( name, unit_value_t, unit_value_t )
 
-        #define __cast( name ) __op( name, Argument, Bitwidth )
+        #define __cast( name ) __op( name, unit_value_t, Bitwidth )
+
+        _LART_INTERFACE
+        static unit_t lift_any() noexcept { return unit_t(); }
 
         // TODO lift bool
         /* abstraction operations */
@@ -42,15 +45,25 @@ namespace __dios::rst::abstract {
         template< typename T >
         __op( lift_any, Abstracted< T > )
 
-        __op( op_thaw, Argument, uint8_t /* bw */ )
+        __op( op_thaw, unit_value_t /* addr */, uint8_t /* bw */ )
+
+        __op( op_load, unit_value_t /* addr */ )
 
         _LART_INTERFACE
-        static Tristate to_tristate( Argument ) noexcept
+        static void op_store( unit_value_t /* val */, unit_value_t /* addr */ ) noexcept { }
+
+        __op( op_insertvalue, unit_value_t /* agg */, unit_value_t /* val */, uint64_t /* off */ )
+        __op( op_extractvalue, unit_value_t /* agg */, uint64_t /* off */ )
+
+        __op( op_gep, unit_value_t /* addr */, unit_value_t /* off */ )
+
+        _LART_INTERFACE
+        static Tristate to_tristate( unit_value_t ) noexcept
         {
             return { Tristate::Unknown };
         }
 
-        __op( assume, Argument, Argument, bool );
+        __op( assume, unit_value_t, unit_value_t, bool );
 
         /* arithmetic operations */
         __bin( op_add )
@@ -121,30 +134,6 @@ namespace __dios::rst::abstract {
         #undef __op
         #undef __un
         #undef __bin
-    };
-
-
-    struct UnitAggregate : Base
-    {
-        using Ptr = void *;
-
-        template< typename T >
-        _LART_INTERFACE static Ptr lift_any( Abstracted< T > ) noexcept
-        {
-            return __new< UnitAggregate >();
-        }
-
-        _LART_INTERFACE
-        static Ptr op_load( Ptr /* address */ ) noexcept
-        {
-            return __new< Unit< PointerBase > >();
-        }
-
-        _LART_INTERFACE
-        static void op_store( Ptr /* value */, Ptr /* address */ ) noexcept { }
-
-        _LART_INTERFACE
-        static Ptr op_gep( Ptr address, Ptr /* offset */ ) noexcept { return address; }
     };
 
 } // namespace __dios::rst::abstract
