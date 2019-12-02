@@ -207,10 +207,13 @@ namespace brq
 
     static_assert( std::is_same_v< cons_list_t< int, int >::unique_t, cons_list_t_< int > > );
 
+    template< typename... > using discard_t = void;
     template< typename T, typename = void > struct is_list : std::false_type {};
+
     template<> struct is_list< nil > : std::true_type {};
-    template< typename T > struct is_list< T, decltype( typename T::car_t(), typename T::cdr_t(),
-                                                        void( 0 ) ) > : std::true_type {};
+    template< typename T >
+    struct is_list< T, discard_t< typename T::car_t, typename T::cdr_t > > : std::true_type {};
+
     template< typename T > constexpr bool is_list_v = is_list< T >::value;
 
     template< typename car_t_, typename cdr_t_ >
