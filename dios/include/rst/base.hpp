@@ -21,4 +21,8 @@ namespace __dios::rst::abstract {
         BaseID _id;
     };
 
+    struct abstract_domain_t {
+        _LART_NOINLINE abstract_domain_t() noexcept {}
+    };
+
 } // namespace __dios::rst::abstract
