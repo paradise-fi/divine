@@ -162,8 +162,14 @@ namespace lart::abstract
             {
                 auto agg = extract->getAggregateOperand();
                 if ( maybe_abstract( agg ) ) {
-                    ASSERT( extract->getType()->isIntegerTy() );
-                    _types.set( extract, type( extract ).make_abstract() );
+                    auto ty = extract->getType();
+                    // FIXME maybe pointer from int
+                    if ( ty->isIntegerTy() )
+                        _types.set( extract, type( extract ).make_abstract() );
+                    else if ( ty->isPointerTy() )
+                        _types.set( extract, type( extract ).make_abstract_pointer() );
+                    else
+                        UNREACHABLE( "unsupported type" );
                 }
             }
         );
