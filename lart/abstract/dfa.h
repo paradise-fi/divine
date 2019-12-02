@@ -111,6 +111,13 @@ namespace lart::abstract
             return rv;
         }
 
+        type_onion make_abstract_pointer() const
+        {
+            auto rv = make_abstract();
+            rv.back().is_pointer = true;
+            return rv;
+        }
+
         bool maybe_abstract() const
         {
             tristate r( false );
@@ -223,7 +230,7 @@ namespace lart::abstract
             else if ( kind == "aggregate" )
                 set( val, get( val ).make_abstract_aggregate() );
             else if ( kind == "pointer" )
-                UNREACHABLE( "not implemented" );
+                set( val, get( val ).make_abstract_pointer() );
             else
                 UNREACHABLE( "unsupported abstract kind" );
         }
