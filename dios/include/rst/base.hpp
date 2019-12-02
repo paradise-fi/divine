@@ -11,10 +11,10 @@ namespace __dios::rst::abstract {
 
     // Each abstract domain needs to inherit from Base
     // to maintain domain index
-    struct Base
+    struct tagged_abstract_domain_t
     {
         // Placeholder constructor for LART to initialize domain index
-        _LART_NOINLINE Base( BaseID id = 0 ) noexcept
+        _LART_NOINLINE tagged_abstract_domain_t( BaseID id = 0 ) noexcept
             : _id( id )
         {}
 

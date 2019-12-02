@@ -7,8 +7,7 @@
 namespace __dios::rst::abstract {
 
     /* Unit/Star domain contains a single value, everything is abstracted to a Star. */
-    template< bool pointer_based >
-    struct Unit : Base
+    struct Unit : tagged_abstract_domain_t
     {
         using Return = std::conditional_t< pointer_based, Unit *, Unit >;
         using Argument = std::conditional_t< pointer_based, const Unit *, const Unit& >;

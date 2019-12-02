@@ -10,7 +10,7 @@
 namespace __dios::rst::abstract {
 
     /* Unit/Star domain contains a single value, everything is abstracted to a Star. */
-    struct Constant : Base
+    struct Constant : tagged_abstract_domain_t
     {
         using Ptr = void *;
         using Value = uint64_t;
@@ -72,7 +72,7 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE
         static Ptr lift_any() noexcept
         {
-            Base(); // for LART to detect lift_any
+            tagged_abstract_domain_t(); // for LART to detect lift_any
             UNREACHABLE( "Constant domain does not provide lift_any operation" );
         }
 

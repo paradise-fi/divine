@@ -89,7 +89,7 @@ namespace __dios::rst::abstract
         _LART_INLINE static Term lift( T value ) noexcept
         {
             auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
-            new ( ptr ) Base();
+            new ( ptr ) tagged_abstract_domain_t();
             Term term{ ptr };
             return term.extend( constant( value ) );
         }
@@ -137,7 +137,7 @@ namespace __dios::rst::abstract
         _LART_INLINE static Term impl_nary( T ...terms )
         {
             auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
-            new ( ptr ) Base();
+            new ( ptr ) tagged_abstract_domain_t();
             Term term{ ptr };
 
             return apply_impl< op >( term, terms...);
@@ -161,7 +161,7 @@ namespace __dios::rst::abstract
             // resulting rpn: [ lhs | rhs | op ]
 
             auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
-            new ( ptr ) Base();
+            new ( ptr ) tagged_abstract_domain_t();
             Term term{ ptr };
 
             return term.extend( lhs ).extend( rhs ).apply< op >();
@@ -232,7 +232,7 @@ namespace __dios::rst::abstract
         {
             // resulting rpn: [ arg | bw | op ]
             auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
-            new ( ptr ) Base();
+            new ( ptr ) tagged_abstract_domain_t();
             Term term{ ptr };
 
             return term.extend( arg ).extend( cast_op< op >( bw ) );
@@ -393,7 +393,7 @@ namespace __dios::rst::abstract
     _LART_INTERFACE Term Term::lift_any( Abstracted< T > ) noexcept
     {
         auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
-        new ( ptr ) Base();
+        new ( ptr ) tagged_abstract_domain_t();
         Term term{ ptr };
         return term.extend( variable< T >() );
     }
