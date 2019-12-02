@@ -37,9 +37,8 @@ namespace lart::abstract {
     using Domains = InitAbstractions::Domains;
     using Operation = InitAbstractions::Operation;
 
-    // constexpr const char * abstraction_namespace = "_ZN6__dios3rst8abstract";
-
-    constexpr const char * base_constructor = "_ZN6__dios3rst8abstract4Base";
+    constexpr const char * abstract_namespace = "_ZN6__dios3rst8abstract";
+    constexpr const char * domain_constructor = "abstract_domain_t";
 
     auto all_operations( const Domains& doms )
     {
@@ -72,15 +71,16 @@ namespace lart::abstract {
         fn->setMetadata( meta, node );
     }
 
-    auto functions_with_ptrefix( llvm::Module &m, llvm::StringRef prefix )
+    auto functions( llvm::Module &m, llvm::StringRef prefix, llvm::StringRef infix = "" )
     {
         auto has_prefix = [&] ( auto f ) { return f->getName().startswith( prefix ); };
-        return query::query( m ).map( query::refToPtr ).filter( has_prefix ).freeze();
+        auto has_infix = [&] ( auto f ) { return f->getName().contains( infix ); };
+        return query::query( m ).map( query::refToPtr ).filter( has_prefix ).filter( has_infix ).freeze();
     }
 
     std::vector< Namespace > abstract_namespaces( llvm::Module * m )
     {
-        auto bases = functions_with_ptrefix( *m, base_constructor );
+        auto bases = functions( *m, abstract_namespace, domain_constructor );
 
         if ( bases.empty() )
             brq::raise() << "Missing abstract domain base constructor.";
@@ -117,7 +117,7 @@ namespace lart::abstract {
         void run( llvm::Module & m )
         {
             // enumerate base calls
-            auto bases = functions_with_ptrefix( m, base_constructor );
+            auto bases = functions( m, abstract_namespace, domain_constructor );
             for ( auto base : bases ) {
                 auto base_calls = query::query( base->users() )
                     .map( query::llvmdyncast< llvm::CallInst > )
@@ -306,7 +306,7 @@ namespace lart::abstract {
         for ( auto ns : abstract_namespaces( module ) ) {
             auto dom = std::make_unique< DomainT >( ns );
 
-            dom->operations = query::query( functions_with_ptrefix( *module, ns ) )
+            dom->operations = query::query( functions( *module, ns ) )
                 .map( [&] ( auto fn ) { return Operation{ fn, dom.get() }; } )
                 .freeze();
             doms.emplace_back( std::move( dom ) );
