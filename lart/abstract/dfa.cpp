@@ -143,7 +143,7 @@ namespace lart::abstract
                 auto ptr = gep->getPointerOperand();
                 if ( maybe_aggregate( ptr ) )
                     propagate_identity( gep, ptr );
-                else if ( propagate_wrap( gep, ptr ) )
+                else if ( propagate_identity( gep, ptr ) )
                     propagate_back_task( ptr );
             },
             [&] ( llvm::InsertValueInst * insert )
