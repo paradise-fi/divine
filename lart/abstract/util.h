@@ -257,7 +257,15 @@ namespace lart::abstract
             return ( tag == "aggregate" ) || ( tag == "pointer" );
         };
 
-        if ( util::is_one_of< llvm::StoreInst, llvm::LoadInst, llvm::GetElementPtrInst >( inst ) )
+        auto is_memory_access_operation = [] ( auto inst )
+        {
+            return util::is_one_of< llvm::StoreInst
+                                  , llvm::LoadInst
+                                  , llvm::GetElementPtrInst
+                                  >( inst );
+        };
+
+        if ( is_memory_access_operation( inst ) )
             if ( auto tag = meta::abstract::get( inst ) )
                 return is_memory_operation( tag );
 

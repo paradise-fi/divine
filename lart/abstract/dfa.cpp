@@ -36,6 +36,8 @@ namespace lart::abstract
                               , llvm::CmpInst
                               , llvm::UnaryInstruction
                               , llvm::BinaryOperator
+                              , llvm::InsertValueInst
+                              , llvm::ExtractValueInst
                               , llvm::PHINode >( val );
     }
 
@@ -143,13 +145,35 @@ namespace lart::abstract
                     propagate_identity( gep, ptr );
                 else if ( propagate_wrap( gep, ptr ) )
                     propagate_back_task( ptr );
+            },
+            [&] ( llvm::InsertValueInst * insert )
+            {
+                auto agg = insert->getAggregateOperand();
+                auto ival = insert->getInsertedValueOperand();
+                if ( maybe_abstract( ival ) && !maybe_abstract( agg ) )
+                    _types.set( insert, type( agg ).make_abstract_aggregate() );
+                if ( maybe_abstract( agg ) )
+                    propagate_identity( insert, agg );
+            },
+            [&] ( llvm::ExtractValueInst * extract )
+            {
+                auto agg = extract->getAggregateOperand();
+                if ( maybe_abstract( agg ) ) {
+                    ASSERT( extract->getType()->isIntegerTy() );
+                    _types.set( extract, type( extract ).make_abstract() );
+                }
             }
         );
 
         if ( is_propagable( val ) )
             for ( auto u : val->users() )
             {
-                if ( util::is_one_of< llvm::LoadInst, llvm::StoreInst, llvm::GetElementPtrInst, llvm::CastInst >( u ) )
+                if ( util::is_one_of< llvm::LoadInst
+                                    , llvm::StoreInst
+                                    , llvm::GetElementPtrInst
+                                    , llvm::CastInst
+                                    , llvm::InsertValueInst
+                                    , llvm::ExtractValueInst >( u ) )
                     push( u );
                 else if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( u ) )
                 {
