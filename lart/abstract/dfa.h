@@ -23,6 +23,11 @@ namespace lart::abstract
         tristate( decltype( value ) v ) : value( v ) {}
         bool operator==( const tristate &o ) const { return value == o.value; }
 
+        operator bool() const
+        {
+            return !( value == no );
+        }
+
         template< typename stream >
         friend auto operator<<( stream &s, tristate t ) -> decltype( s << "" )
         {
@@ -180,9 +185,14 @@ namespace lart::abstract
             return rv;
         }
 
+        bool has( llvm::Value *v ) const noexcept
+        {
+            return _map.count( v );
+        }
+
         type_onion get( llvm::Value *v ) const noexcept
         {
-            if ( _map.count( v ) )
+            if ( has( v ) )
                 return _map.at( v );
             else
                 return type_onion( pointer_nesting( v->getType() ) );
@@ -239,6 +249,11 @@ namespace lart::abstract
             return map().get( val );
         }
 
+        bool has_type( llvm::Value * val ) const noexcept
+        {
+            return map().has( val );
+        }
+
         bool maybe_abstract( llvm::Value * val ) const noexcept
         {
             return type( val ).maybe_abstract();
@@ -289,7 +304,6 @@ namespace lart::abstract
         void add_meta( llvm::Instruction *val, const std::string &operation, DomainKind kind )
         {
             meta::abstract::set( val, to_string( kind ) );
-
             auto m = val->getModule();
             if ( auto op = m->getFunction( operation ) )
             {

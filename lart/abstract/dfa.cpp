@@ -55,18 +55,21 @@ namespace lart::abstract
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept
     {
-        auto last = type( to ), next = join( last, from );
+        bool visited = has_type( to );
 
-        if ( last != next )
-        {
-            _types.set( to, next );
-            _blocked.clear();
-            push( to );
-            TRACE( "type:", last, "→", next );
-            return true;
-        }
+        auto change = [&] ( auto last, auto next ) {
+            if ( !visited || last != next ) {
+                _types.set( to, next );
+                _blocked.clear();
+                push( to );
+                return true;
+            }
+            return false; // no change
+        };
 
-        return false; // no change
+        auto last = visited ? type( to ) : from;
+        auto next = visited ? join( last, from ) : from;
+        return change( last, next );
     }
 
     bool DataFlowAnalysis::propagate_wrap( llvm::Value * lhs, llvm::Value * rhs ) noexcept
