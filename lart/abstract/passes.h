@@ -19,6 +19,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/stash.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
+#include <lart/abstract/undef.h>
 #include <lart/abstract/tainting.h>
 #include <lart/abstract/synthesize.h>
 #include <lart/abstract/interrupt.h>
@@ -38,6 +39,7 @@ namespace lart::abstract {
             auto passes = make_chained_pass( InitAbstractions()
                                            , LowerAnnotations()
                                            , DataFlowAnalysis()
+                                           , UndefLifting()
                                            , UnstashPass()
                                            , Syntactic()
                                            , StashPass()
