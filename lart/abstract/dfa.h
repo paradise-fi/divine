@@ -202,6 +202,30 @@ namespace lart::abstract
         decltype(auto) end() { return _map.end(); }
         decltype(auto) end() const { return _map.end(); }
 
+        void add( llvm::Value * val )
+        {
+            auto meta = meta::abstract::get( val );
+            ASSERT( meta.has_value() );
+
+            auto kind = meta.value();
+            if ( kind == "scalar" )
+                set( val, get( val ).make_abstract() );
+            else if ( kind == "aggregate" )
+                set( val, get( val ).make_abstract_aggregate() );
+            else if ( kind == "pointer" )
+                UNREACHABLE( "not implemented" );
+            else
+                UNREACHABLE( "unsupported abstract kind" );
+        }
+
+        static inline type_map get( llvm::Module & m )
+        {
+            type_map types;
+            for ( auto * val : meta::enumerate( m ) )
+                types.add( val );
+            return types;
+        }
+
         std::map< llvm::Value *, type_onion > _map;
     };
 

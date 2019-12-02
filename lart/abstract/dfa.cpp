@@ -328,23 +328,9 @@ namespace lart::abstract
 
     void DataFlowAnalysis::run( llvm::Module &m )
     {
+        _types = type_map::get( m );
         for ( auto * val : meta::enumerate( m ) )
-        {
-            auto meta = meta::abstract::get( val );
-            ASSERT( meta.has_value() );
-
-            auto kind = meta.value();
-            if ( kind == "scalar" )
-                _types.set( val, type( val ).make_abstract() );
-            else if ( kind == "aggregate" )
-                _types.set( val, type( val ).make_abstract_aggregate() );
-            else if ( kind == "pointer" )
-                UNREACHABLE( "not implemented" );
-            else
-                UNREACHABLE( "unsupported abstract kind" );
-
             push( val );
-        }
 
         while ( !_todo.empty() )
         {
