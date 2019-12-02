@@ -337,7 +337,7 @@ namespace brq
             cmd_t cmd;
             _mode = mode_parse;
             _print_help = false;
-            _help._oom = true; /* turn << into noops */
+            _help.kill(); /* turn << into noops */
 
             while ( _index < _tokens.size() )
             {
