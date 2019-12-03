@@ -208,6 +208,12 @@ namespace lart::abstract
         };
 
         llvmcase( val,
+            [&] ( llvm::AllocaInst * alloca )
+            {
+                auto size = alloca->getArraySize();
+                if ( maybe_abstract( size ) )
+                    UNREACHABLE( "unsupported allocation of abstract size" );
+            },
             [&] ( llvm::StoreInst * store )
             {
                 auto op = store->getValueOperand();
