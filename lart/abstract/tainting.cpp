@@ -77,8 +77,17 @@ namespace lart::abstract {
         template< Type T_ = T >
         static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( insertvalue )
         {
-            auto inst = llvm::cast< llvm::Instruction >( val );
-            return result() + "." + llvm_name( inst->getOperand( 1 )->getType() );
+            auto inst = llvm::cast< llvm::InsertValueInst >( val );
+            return result() + "." + llvm_name( inst->getAggregateOperand()->getType() )
+                            + "." + llvm_name( inst->getInsertedValueOperand()->getType() );
+        }
+
+        template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( extractvalue )
+        {
+            auto inst = llvm::cast< llvm::ExtractValueInst >( val );
+            return result() + "." + llvm_name( inst->getAggregateOperand()->getType() )
+                            + "." + llvm_name( inst->getType() );
         }
 
         template< Type T_ = T >
@@ -89,7 +98,6 @@ namespace lart::abstract {
                 Taint::thaw( T_ )  ||
                 Taint::store( T_ )  ||
                 Taint::load( T_ )   ||
-                Taint::extractvalue( T_ ) ||
                 Taint::gep( T_ )
             ,std::string >
         {
