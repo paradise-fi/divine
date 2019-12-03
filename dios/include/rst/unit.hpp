@@ -45,6 +45,9 @@ namespace __dios::rst::abstract {
         template< typename T >
         __op( lift_any, Abstracted< T > )
 
+        __op( lift_any_aggr, unsigned size )
+        __op( lift_one_aggr, void * addr, unsigned size )
+
         __op( op_thaw, unit_value_t /* addr */, uint8_t /* bw */ )
 
         __op( op_load, unit_value_t /* addr */ )
