@@ -62,10 +62,6 @@ using gep_op = Ptr ( Ptr /* ptr */, Ptr /* off */ );
 using int_to_fp_op = Ptr ( Ptr /* ptr */, Ptr /* bw */ );
 using fp_to_int_op = Ptr ( Ptr /* ptr */, Ptr /* bw */ );
 
-
-_LART_INLINE
-uint8_t domain( Ptr addr ) noexcept { return *static_cast< uint8_t * >( addr ); }
-
 template< typename Op >
 auto get_operation( uint8_t domain, uint32_t op_index ) noexcept
 {

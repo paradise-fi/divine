@@ -21,8 +21,21 @@ namespace __dios::rst::abstract {
         BaseID _id;
     };
 
-    struct abstract_domain_t {
+    struct abstract_domain_t
+    {
         _LART_NOINLINE abstract_domain_t() noexcept {}
     };
+
+    _LART_INLINE
+    static BaseID domain( void * addr ) noexcept
+    {
+        return static_cast< tagged_abstract_domain_t * >( addr )->_id;
+    }
+
+    template< typename Domain >
+    static bool is_domain( BaseID domain ) noexcept
+    {
+        return Domain()._id == domain;
+    }
 
 } // namespace __dios::rst::abstract
