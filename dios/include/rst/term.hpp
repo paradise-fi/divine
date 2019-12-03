@@ -76,11 +76,11 @@ namespace __dios::rst::abstract
         }
 
         template< typename T >
-        _LART_INLINE static Term lift_any( Abstracted< T > ) noexcept;
+        _LART_NOINLINE static Term lift_any( Abstracted< T > ) noexcept;
 
         /* Lift a constant to a Term. */
         template< typename T >
-        _LART_INLINE static Term lift( T value ) noexcept
+        _LART_NOINLINE static Term lift( T value ) noexcept
         {
             auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
             new ( ptr ) tagged_abstract_domain_t();
