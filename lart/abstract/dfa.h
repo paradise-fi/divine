@@ -310,6 +310,10 @@ namespace lart::abstract
 
         void add_meta( llvm::Instruction *val, const std::string &operation, DomainKind kind )
         {
+            auto type = _types.get( val );
+            if ( kind == DomainKind::pointer && !type.back().is_abstract )
+                return;
+
             meta::abstract::set( val, to_string( kind ) );
             auto m = val->getModule();
             if ( auto op = m->getFunction( operation ) )
