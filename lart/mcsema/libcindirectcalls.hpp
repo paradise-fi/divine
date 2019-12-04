@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2019 Lukáš Korenčik <xkorenc1@fi.muni.cz>
+
 #pragma once
 
 #include <iostream>
@@ -21,9 +23,16 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart::mcsema
 {
 
-struct libcindirectcalls : abstract::LLVMUtil< libcindirectcalls >
+/* McSema generates entrypoints into lifted code in form of function
+ * with fixed number of i64 arguments. Therefore we need to transform
+ * callsites that do call these entrypoints indirectly to bitcast
+ * callee to matching arity.
+ */
+struct libc_indirect_calls : abstract::LLVMUtil< libc_indirect_calls >
 {
     llvm::Module *module;
+
+    static constexpr const int explicit_args_count = 8;
 
     void run( llvm::Module &m )
     {
@@ -34,10 +43,12 @@ struct libcindirectcalls : abstract::LLVMUtil< libcindirectcalls >
         // therefore there is not much left for us to do
         if ( !f )
             return;
-        fill( *f, 8 );
+        fill_arguments( *f, explicit_args_count );
     }
 
-    void fill( llvm::Function &f, uint64_t args_size )
+    // Finds indirect call in the functions and adds i64 undef arguments to it
+    // up to args_size
+    void fill_arguments( llvm::Function &f, uint64_t args_size )
     {
         auto indirect_calls =
             query::query( f )
