@@ -41,7 +41,8 @@ extern "C" {
 
     void * __unit_aggregate();
 
-    char * __mstring_val( char * buff, unsigned buff_len );
+    char * __mstring_from_string( const char * buff );
+    char * __mstring_val( unsigned len );
 
     uint8_t __constant_lift_i8( uint8_t c );
     uint16_t __constant_lift_i16( uint16_t c );
