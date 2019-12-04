@@ -38,7 +38,7 @@ namespace lart::abstract {
     using Operation = InitAbstractions::Operation;
 
     constexpr const char * abstract_namespace = "_ZN6__dios3rst8abstract";
-    constexpr const char * domain_constructor = "abstract_domain_t";
+    constexpr const char * domain_constructor = "abstract_domain_tC2Eh";
 
     auto all_operations( const Domains& doms )
     {
