@@ -39,4 +39,6 @@ namespace __dios::rst::abstract {
         return Domain()._id == domain;
     }
 
+    using abstract_value_t = tagged_abstract_domain_t *;
+
 } // namespace __dios::rst::abstract
