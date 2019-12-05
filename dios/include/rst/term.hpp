@@ -13,19 +13,19 @@ namespace __dios::rst::abstract
     namespace smt = brick::smt;
     using RPN = smt::RPN< Array< uint8_t, _VM_PT_Marked > >;
 
-    /* Values in the Term abstract domain are built out of Constants, Variables and
+    /* Values in the term_t abstract domain are built out of Constants, Variables and
      * operations defined on them. Integers are represented as bitvectors of fixed
      * bitwidth, operations similarly have a bitwidth specified (of the arguments they
      * take). See `bricks/brick-smt` for details on the types and operations.
      *
-     * A Term is stored/encoded as bytecode in the `pointer` data member, which
+     * A term_t is stored/encoded as bytecode in the `pointer` data member, which
      * is a pointer to an RPN structure (RPN is also defined in `brick-smt`).
      *
      * If method name is in form `op_X` then `X` should correspond to the llvm
      * instruction names. These methods are used in lart and their lookup is name-based
      * therefore it is mandatory to satisfy this requirement.
      * Otherwise there are no requirements. */
-    struct Term
+    struct term_t
     {
         void * pointer = nullptr;     // RPN * ?
 
@@ -42,26 +42,26 @@ namespace __dios::rst::abstract
         }
 
         template< typename T >
-        _LART_INLINE constexpr Term extend( const T& value ) noexcept
+        _LART_INLINE constexpr term_t extend( const T& value ) noexcept
         {
             this->as_rpn().extend( value );
             return *this;
         }
 
-        _LART_INLINE constexpr Term extend( const Term& other ) noexcept
+        _LART_INLINE constexpr term_t extend( const term_t& other ) noexcept
         {
             return extend( other.as_rpn() );
         }
 
         template< Op op >
-        _LART_INLINE constexpr Term apply() noexcept
+        _LART_INLINE constexpr term_t apply() noexcept
         {
             this->as_rpn().apply< op >();
             return *this;
         }
 
         template< Op op >
-        _LART_INLINE constexpr Term apply_in_place( const Term& other ) noexcept
+        _LART_INLINE constexpr term_t apply_in_place( const term_t& other ) noexcept
         {
             return this->extend( other ).apply< op >();
         }
@@ -76,20 +76,20 @@ namespace __dios::rst::abstract
         }
 
         template< typename T >
-        _LART_NOINLINE static Term lift_any( Abstracted< T > ) noexcept;
+        _LART_NOINLINE static term_t lift_any( Abstracted< T > ) noexcept;
 
-        /* Lift a constant to a Term. */
+        /* Lift a constant to a term_t. */
         template< typename T >
-        _LART_NOINLINE static Term lift( T value ) noexcept
+        _LART_NOINLINE static term_t lift( T value ) noexcept
         {
-            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
             new ( ptr ) tagged_abstract_domain_t();
-            Term term{ ptr };
+            term_t term{ ptr };
             return term.extend( constant( value ) );
         }
 
         #define __lift( name, T ) \
-            _LART_INTERFACE static Term lift_one_ ## name( T value ) noexcept { \
+            _LART_INTERFACE static term_t lift_one_ ## name( T value ) noexcept { \
                 return lift( value ); \
             }
 
@@ -104,20 +104,20 @@ namespace __dios::rst::abstract
         __lift( double, double )
 
         _LART_INTERFACE
-        static Term lift_any_aggr( unsigned size ) noexcept { return {}; }
+        static term_t lift_any_aggr( unsigned size ) noexcept { return {}; }
         _LART_INTERFACE
-        static Term lift_one_aggr( void * aggr, unsigned size ) noexcept { return {}; }
+        static term_t lift_one_aggr( void * aggr, unsigned size ) noexcept { return {}; }
 
         _LART_INTERFACE
-        static Term lift_one_ptr( void *p ) noexcept
+        static term_t lift_one_ptr( void *p ) noexcept
         {
             return lift( reinterpret_cast< uintptr_t >( p ) );
         }
 
         _LART_INTERFACE
-        static Tristate to_tristate( Term ) noexcept
+        static tristate_t to_tristate( term_t ) noexcept
         {
-            return { Tristate::Unknown };
+            return { tristate_t::Unknown };
         }
 
         _LART_INLINE
@@ -133,41 +133,41 @@ namespace __dios::rst::abstract
         }
 
         template< Op op, typename ...T >
-        _LART_INLINE static Term impl_nary( T ...terms )
+        _LART_INLINE static term_t impl_nary( T ...terms )
         {
-            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
             new ( ptr ) tagged_abstract_domain_t();
-            Term term{ ptr };
+            term_t term{ ptr };
 
             return apply_impl< op >( term, terms...);
         }
 
         template< Op op, typename H, typename ...T >
-        _LART_INLINE static Term apply_impl( Term term, H h, T ...terms )
+        _LART_INLINE static term_t apply_impl( term_t term, H h, T ...terms )
         {
             return apply_impl< op, T...>( term.extend( h ), terms... );
         }
 
         template< Op op >
-        _LART_INLINE static Term apply_impl( Term term )
+        _LART_INLINE static term_t apply_impl( term_t term )
         {
             return term.apply< op >();
         }
 
         template< Op op >
-        _LART_INLINE static Term impl_binary( Term lhs, Term rhs ) noexcept
+        _LART_INLINE static term_t impl_binary( term_t lhs, term_t rhs ) noexcept
         {
             // resulting rpn: [ lhs | rhs | op ]
 
-            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
             new ( ptr ) tagged_abstract_domain_t();
-            Term term{ ptr };
+            term_t term{ ptr };
 
             return term.extend( lhs ).extend( rhs ).apply< op >();
         }
 
         template< Op op >
-        _LART_INLINE static Term fault_i_bin( Term lhs, Term rhs ) noexcept
+        _LART_INLINE static term_t fault_i_bin( term_t lhs, term_t rhs ) noexcept
         {
             auto eq = op_eq( op_zext( rhs, 64 ), lift_one_i64( 0 ) );
             if ( to_tristate( eq ) ) {
@@ -182,13 +182,13 @@ namespace __dios::rst::abstract
 
 
         template< Op op >
-        _LART_INLINE static Term fault_f_bin( Term lhs, Term rhs ) noexcept
+        _LART_INLINE static term_t fault_f_bin( term_t lhs, term_t rhs ) noexcept
         {
             assert( false ); // not implemented
         }
 
         template< Op op >
-        _LART_INLINE static Term binary( Term lhs, Term rhs ) noexcept
+        _LART_INLINE static term_t binary( term_t lhs, term_t rhs ) noexcept
         {
             using namespace brick::smt;
 
@@ -208,36 +208,36 @@ namespace __dios::rst::abstract
         }
 
         template< Op op >
-        _LART_INLINE static Term unary( Term arg ) noexcept
+        _LART_INLINE static term_t unary( term_t arg ) noexcept
         {
             // resulting rpn: [ arg | op ]
             assert( false );
         }
 
         template< Op op >
-        _LART_INLINE static Term cmp( Term lhs, Term rhs ) noexcept
+        _LART_INLINE static term_t cmp( term_t lhs, term_t rhs ) noexcept
         {
-            return Term::binary< op >( lhs, rhs );
+            return term_t::binary< op >( lhs, rhs );
         }
 
         template< Op op >
-        _LART_INLINE static RPN::CastOp cast_op( Bitwidth bw ) noexcept
+        _LART_INLINE static RPN::CastOp cast_op( bitwidth_t bw ) noexcept
         {
             return { op, bw };
         }
 
         template< Op op >
-        _LART_INLINE static Term cast( Term arg, Bitwidth bw ) noexcept
+        _LART_INLINE static term_t cast( term_t arg, bitwidth_t bw ) noexcept
         {
             // resulting rpn: [ arg | bw | op ]
-            auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
             new ( ptr ) tagged_abstract_domain_t();
-            Term term{ ptr };
+            term_t term{ ptr };
 
             return term.extend( arg ).extend( cast_op< op >( bw ) );
         }
 
-        _LART_INTERFACE static Term op_insertvalue( Term arg, Term value, uint64_t offset )
+        _LART_INTERFACE static term_t op_insertvalue( term_t arg, term_t value, uint64_t offset )
         {
             auto lhs = impl_nary< Op::Extract >(
                     arg,
@@ -251,7 +251,7 @@ namespace __dios::rst::abstract
                     rhs );
         }
 
-        _LART_INTERFACE static Term op_extractvalue( Term arg, uint64_t offset )
+        _LART_INTERFACE static term_t op_extractvalue( term_t arg, uint64_t offset )
         {
             return impl_nary< Op::Extract >(
                     arg,
@@ -260,37 +260,37 @@ namespace __dios::rst::abstract
         }
 
         _LART_INTERFACE
-        Term constrain( Term &constraint, bool expect ) const noexcept;
+        term_t constrain( term_t &constraint, bool expect ) const noexcept;
 
         _LART_INTERFACE
-        static Term assume( Term value, Term constraint, bool expect ) noexcept
+        static term_t assume( term_t value, term_t constraint, bool expect ) noexcept
         {
             return value.constrain( constraint, expect );
         }
 
         _LART_INTERFACE
-        static Term op_thaw( Term term, uint8_t bw ) noexcept
+        static term_t op_thaw( term_t term, uint8_t bw ) noexcept
         {
             return cast< Op::ZFit >( term, bw ); /* TODO interval-based peek & poke */
         }
 
         #define __bin( name, op ) \
-            _LART_INTERFACE static Term name( Term lhs, Term rhs ) noexcept { \
+            _LART_INTERFACE static term_t name( term_t lhs, term_t rhs ) noexcept { \
                 return binary< Op::op >( lhs, rhs ); \
             }
 
         #define __un( name, op ) \
-            _LART_INTERFACE static Term name( Term arg ) noexcept { \
+            _LART_INTERFACE static term_t name( term_t arg ) noexcept { \
                 return unary< Op::op >( arg ); \
             }
 
         #define __cmp( name, op ) \
-            _LART_INTERFACE static Term name( Term lhs, Term rhs ) noexcept { \
+            _LART_INTERFACE static term_t name( term_t lhs, term_t rhs ) noexcept { \
                 return cmp< Op::op >( lhs, rhs ); \
             }
 
         #define __cast( name, op ) \
-            _LART_INTERFACE static Term name( Term arg, Bitwidth bw ) noexcept { \
+            _LART_INTERFACE static term_t name( term_t arg, bitwidth_t bw ) noexcept { \
                 return cast< Op::op >( arg, bw ); \
             }
 
@@ -369,18 +369,18 @@ namespace __dios::rst::abstract
     };
 
     /* `counter` is for unique variable names */
-    struct TermState
+    struct term_state_t
     {
-        using VarID = smt::token::VarID;
+        using var_id_t = smt::token::VarID;
 
-        uint16_t counter = 0;  // TODO: why is this thing not atomic
-        Term constraints;  // TODO: remove
+        uint16_t counter = 0;
+        term_t constraints; // TODO: remove
 
-        smt::union_find< ArrayMap< VarID, VarID, _VM_PT_Weak > > uf;
-        ArrayMap< VarID, Term, _VM_PT_Weak > decomp; // union-find representant to relevant RPNs
+        smt::union_find< ArrayMap< var_id_t, var_id_t, _VM_PT_Weak > > uf;
+        ArrayMap< var_id_t, term_t, _VM_PT_Weak > decomp; // union-find representant to relevant RPNs
     };
 
-    extern TermState *__term_state;
+    extern term_state_t *__term_state;
 
     template< typename T >
     _LART_INTERFACE RPN::Variable variable() noexcept
@@ -389,15 +389,15 @@ namespace __dios::rst::abstract
     }
 
     template< typename T >
-    _LART_INTERFACE Term Term::lift_any( Abstracted< T > ) noexcept
+    _LART_INTERFACE term_t term_t::lift_any( Abstracted< T > ) noexcept
     {
-        auto ptr = __vm_obj_make( sizeof( BaseID ), _VM_PT_Marked );
+        auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
         new ( ptr ) tagged_abstract_domain_t();
-        Term term{ ptr };
+        term_t term{ ptr };
         return term.extend( variable< T >() );
     }
 
-    static_assert( sizeof( Term ) == 8 );
+    static_assert( sizeof( term_t ) == 8 );
 }
 
 extern "C" void *__dios_term_init();

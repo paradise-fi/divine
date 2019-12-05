@@ -7,18 +7,18 @@
 
 namespace __dios::rst::abstract
 {
-    TermState *__term_state;
+    term_state_t * __term_state;
 
-    template< typename C >
-    _LART_INLINE C make_term() noexcept
+    template< typename concrete_t >
+    _LART_INLINE concrete_t make_term() noexcept
     {
-        return make_abstract< C, Term >();
+        return make_abstract< concrete_t, term_t >();
     }
 
-    template< typename C >
-    _LART_INLINE C make_term( C c ) noexcept
+    template< typename concrete_t >
+    _LART_INLINE concrete_t make_term( concrete_t c ) noexcept
     {
-        return make_abstract< C, Term >( c );
+        return make_abstract< concrete_t, term_t >( c );
     }
 
     extern "C" {
@@ -66,15 +66,15 @@ namespace __dios::rst::abstract
 
     template< typename T > using stack_t = Array< T >;
 
-    /* Add a constraint to the term. A constraint is again a Term, e.g. a > 7.
+    /* Add a constraint to the term. A constraint is again a term_t, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
-    Term Term::constrain( Term &constraint, bool expect ) const noexcept
+    term_t term_t::constrain( term_t &constraint, bool expect ) const noexcept
     {
         if ( !expect )
             constraint.apply< Op::Not >();
 
-        auto append_term = [&]( TermState::VarID var )
+        auto append_term = [&]( term_state_t::var_id_t var )
         {
             auto it = __term_state->decomp.find( var );
             if ( it == __term_state->decomp.end() )
@@ -104,9 +104,9 @@ namespace __dios::rst::abstract
 void *__dios_term_init()
 {
     using namespace __dios::rst::abstract;
-    auto true_term = Term::lift_one_i1( true );
-    __term_state = static_cast< TermState * >( __vm_obj_make( sizeof( TermState ), _VM_PT_Heap ) );
-    new ( __term_state ) TermState;
+    auto true_term = term_t::lift_one_i1( true );
+    __term_state = static_cast< term_state_t * >( __vm_obj_make( sizeof( term_state_t ), _VM_PT_Heap ) );
+    new ( __term_state ) term_state_t;
     __term_state->uf.make_set( 0 );
     __term_state->decomp[ 0 ] = true_term;
     return __term_state->decomp._container._data;

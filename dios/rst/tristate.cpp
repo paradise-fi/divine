@@ -1,7 +1,7 @@
 #include <rst/tristate.hpp>
 #include <rst/common.hpp>
 
-using __tristate = __dios::rst::abstract::Tristate;
+using __tristate = __dios::rst::abstract::tristate_t;
 
 extern "C" {
     _LART_INTERFACE
@@ -10,7 +10,7 @@ extern "C" {
 
 namespace __dios::rst::abstract {
 
-    bool Tristate::lower() const noexcept {
+    bool tristate_t::lower() const noexcept {
         return static_cast< bool >( *this );
     }
 

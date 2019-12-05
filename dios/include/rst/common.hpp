@@ -33,6 +33,9 @@
 #define _LART_INTERFACE \
     __attribute__((__used__,__nothrow__, __noinline__, __flatten__)) __invisible
 
+#define _LART_OPTNONE \
+    __attribute__((optnone))
+
 #define _LART_SCALAR __attribute__((__annotate__("lart.abstract.return.scalar")))
 #define _LART_AGGREGATE __attribute__((__annotate__("lart.abstract.return.aggregate")))
 
@@ -104,7 +107,7 @@ namespace __dios::rst::abstract {
 
     static constexpr bool PointerBase = true;
 
-    using Bitwidth = int8_t;
+    using bitwidth_t = int8_t;
 
     template< typename T >
     _LART_INLINE T taint() noexcept
@@ -146,44 +149,49 @@ namespace __dios::rst::abstract {
         return static_cast< T * >( ptr );
     }
 
-    template< typename C, typename A >
-    _LART_INLINE C make_abstract() noexcept
+    template< typename concrete_t, typename abstract_t >
+    _LART_INLINE concrete_t stash_abstract_value( abstract_t value )
     {
-        __lart_stash( static_cast< void * >( A::lift_any( Abstracted< C >{} ) ) );
-        return taint< C >();
+        using abstract_value_t = void *;
+        __lart_stash( static_cast< abstract_value_t >( value ) );
+        return taint< concrete_t >();
     }
 
-    template< typename C, typename A, typename ...Args >
-    _LART_INLINE C make_abstract( Args && ...args ) noexcept
+    template< typename concrete_t, typename abstract_t >
+    _LART_INLINE auto make_abstract() noexcept
     {
-        __lart_stash( static_cast< void * >( A::lift_any( std::forward< Args >( args )... ) ) );
-        return taint< C >();
+        return stash_abstract_value< concrete_t >( abstract_t::lift_any( Abstracted< concrete_t >{} ) );
     }
 
-    template< typename A, typename C >
-    _LART_INLINE auto lift_one( C c ) noexcept
+    template< typename concrete_t, typename abstract_t, typename ...args_t >
+    _LART_INLINE auto make_abstract( args_t && ...args ) noexcept
     {
-        static_assert( std::is_integral_v< C > || std::is_pointer_v< C >,
+        return stash_abstract_value< concrete_t >( abstract_t::lift_any( std::forward< args_t >( args )... ) );
+    }
+
+    template< typename abstract_t, typename concrete_t >
+    _LART_INLINE auto lift_one( concrete_t c ) noexcept
+    {
+        static_assert( std::is_integral_v< concrete_t > || std::is_pointer_v< concrete_t >,
                        "Cannot lift a non-arithmetic or non-pointer value." );
-        if constexpr ( sizeof( C ) == 8 )
-            return A::lift_one_i64( c );
-        if constexpr ( sizeof( C ) == 4 )
-            return A::lift_one_i32( c );
-        if constexpr ( sizeof( C ) == 2 )
-            return A::lift_one_i16( c );
-        if constexpr ( sizeof( C ) == 1 )
-            return A::lift_one_i8( c );
+        if constexpr ( sizeof( concrete_t ) == 8 )
+            return abstract_t::lift_one_i64( c );
+        if constexpr ( sizeof( concrete_t ) == 4 )
+            return abstract_t::lift_one_i32( c );
+        if constexpr ( sizeof( concrete_t ) == 2 )
+            return abstract_t::lift_one_i16( c );
+        if constexpr ( sizeof( concrete_t ) == 1 )
+            return abstract_t::lift_one_i8( c );
     }
-    template< typename A >
-    _LART_INLINE auto lift_one( float c ) noexcept { return A::lift_one_float( c ); }
-    template< typename A >
-    _LART_INLINE auto lift_one( double c ) noexcept { return A::lift_one_double( c ); }
+    template< typename abstract_t >
+    _LART_INLINE auto lift_one( float c ) noexcept { return abstract_t::lift_one_float( c ); }
+    template< typename abstract_t >
+    _LART_INLINE auto lift_one( double c ) noexcept { return abstract_t::lift_one_double( c ); }
 
-    template< typename C, typename A >
-    _LART_INLINE C make_abstract( C c ) noexcept
+    template< typename concrete_t, typename abstract_t >
+    _LART_INLINE concrete_t make_abstract( concrete_t c ) noexcept
     {
-        __lart_stash( static_cast< void * >( lift_one< A >( c ) ) );
-        return taint< C >( c );
+        return stash_abstract_value< concrete_t >( lift_one< abstract_t >( c ) );
     }
 
     template< typename T >
@@ -205,24 +213,71 @@ namespace __dios::rst::abstract {
         __vm_poke( addr, _VM_ML_User, ptr.obj );
     }
 
-    template< typename T >
-    _LART_IGNORE_ARG
-    _LART_NOINLINE void trace( void * addr, const char * msg = "" ) noexcept
+    struct object_t
     {
-        T::trace( msg, peek_object< T >( addr ) );
-    }
+        using ptr_t = void *;
 
-    template< typename T >
+        uint32_t off = 0;
+        uint32_t obj = 0;
+
+        ptr_t pointer() const noexcept
+        {
+            ptr_t ptr;
+            memcpy( &ptr, this, sizeof( ptr_t ) );
+            return ptr;
+        }
+    };
+
+    template< typename T  = void >
     _LART_INLINE T * object( T * ptr ) noexcept
     {
         return reinterpret_cast< T * >( reinterpret_cast< uintptr_t >( ptr ) & _VM_PM_Obj );
     }
 
+    _LART_INLINE
+    static void * object_pointer( uint32_t objid ) noexcept
+    {
+        object_t object;
+        object.obj = objid;
+        return object.pointer();
+    }
+
+    _LART_INLINE
+    static uint32_t objid( void * ptr ) noexcept
+    {
+        object_t res;
+        memcpy( &res, &ptr, sizeof( void * ) );
+        return res.obj;
+    }
+
     template< typename T >
     _LART_INLINE uint32_t offset( T * ptr ) noexcept
     {
-        return static_cast< uint32_t >( reinterpret_cast< uintptr_t >( ptr ) & _VM_PM_Off );
+        object_t res;
+        memcpy( &res, &ptr, sizeof( void * ) );
+        return res.off;
     }
+
+    template< typename Object, typename Offset >
+    struct abstract_object : object_t
+    {
+        operator ptr_t() noexcept
+        {
+            ptr_t ptr;
+            memcpy( &ptr, this, sizeof( ptr_t ) );
+            return ptr;
+        }
+
+        Offset offset() const noexcept
+        {
+            return static_cast< Offset >( object_pointer( this->off ) );
+        }
+
+        Object objid() const noexcept
+        {
+            return static_cast< Object >( object_pointer( this->obj ) );
+        }
+    };
 
     _LART_INLINE static uint64_t ignore_fault() noexcept
     {
@@ -256,7 +311,7 @@ namespace __dios::rst::abstract {
     }
 
     template< typename T >
-    _LART_INLINE static constexpr Bitwidth bitwidth() noexcept
+    _LART_INLINE static constexpr bitwidth_t bitwidth() noexcept
     {
         return std::numeric_limits< T >::digits + std::numeric_limits< T >::is_signed;
     }

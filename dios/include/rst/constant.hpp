@@ -9,49 +9,47 @@
 namespace __dios::rst::abstract {
 
     /* Unit/Star domain contains a single value, everything is abstracted to a Star. */
-    struct Constant : tagged_abstract_domain_t
+    struct constant_t : tagged_abstract_domain_t
     {
-        using Ptr = void *;
-        using Value = uint64_t;
-        using Bitwidth = uint8_t;
+        using value_t = uint64_t;
 
-        enum class Type : uint8_t { Integer, Float, Pointer };
+        enum class type_t : uint8_t { Integer, Float, Pointer };
 
-        Type type;
-        Bitwidth bw;
-        Value value;
+        type_t type;
+        bitwidth_t bw;
+        value_t value;
 
-        _LART_INLINE static Constant& get_constant( Ptr ptr ) noexcept
+        _LART_INLINE static constant_t& get_constant( abstract_value_t ptr ) noexcept
         {
-            return *static_cast< Constant * >( ptr );
+            return *static_cast< constant_t * >( ptr );
         }
 
-        template< typename T >
-        _LART_INTERFACE static Ptr lift( T value ) noexcept
+        template< typename concrete_t >
+        _LART_NOINLINE static abstract_value_t lift( concrete_t value ) noexcept
         {
-            static_assert( sizeof( T ) <= sizeof( Value ) );
-            auto ptr = __vm_obj_make( sizeof( Constant ), _VM_PT_Heap );
-            new ( ptr ) Constant();
+            static_assert( sizeof( concrete_t ) <= sizeof( value_t ) );
+            auto ptr = __vm_obj_make( sizeof( constant_t ), _VM_PT_Heap );
+            new ( ptr ) constant_t();
 
-            auto con = static_cast< Constant * >( ptr );
+            auto con = static_cast< constant_t * >( ptr );
             con->value = value;
 
-            if constexpr ( std::is_integral_v< T > )
-                con->type = Type::Integer;
-            else if constexpr ( std::is_floating_point_v< T > )
-                con->type = Type::Float;
-            else if constexpr ( std::is_pointer_v< T > )
-                con->type = Type::Pointer;
+            if constexpr ( std::is_integral_v< concrete_t > )
+                con->type = type_t::Integer;
+            else if constexpr ( std::is_floating_point_v< concrete_t > )
+                con->type = type_t::Float;
+            else if constexpr ( std::is_pointer_v< concrete_t > )
+                con->type = type_t::Pointer;
             else
                 static_assert( "unsupported constant type" );
 
-            con->bw = bitwidth< T >();
-
-            return ptr;
+            con->bw = bitwidth< concrete_t >();
+            return static_cast< abstract_value_t >( ptr );
         }
 
-        #define __lift( name, T ) \
-            _LART_INTERFACE static Ptr lift_one_ ## name( T value ) noexcept { \
+        #define __lift( name, concrete_t ) \
+            _LART_INTERFACE static abstract_value_t lift_one_ ## name( concrete_t value ) noexcept \
+            { \
                 return lift( value ); \
             }
 
@@ -63,7 +61,7 @@ namespace __dios::rst::abstract {
         __lift( i64, uint64_t )
 
         _LART_INTERFACE
-        static Ptr lift_any() noexcept
+        static abstract_value_t lift_any() noexcept
         {
             tagged_abstract_domain_t(); // for LART to detect lift_any
             UNREACHABLE( "Constant domain does not provide lift_any operation" );
@@ -73,14 +71,14 @@ namespace __dios::rst::abstract {
             if ( bw == bitwidth< type >() ) \
                 return lift( static_cast< type >( val ) );
 
-        template< typename T >
-        _LART_INLINE T lower() const noexcept
+        template< typename concrete_t >
+        _LART_INLINE concrete_t lower() const noexcept
         {
-            return static_cast< T >( value );
+            return static_cast< concrete_t >( value );
         }
 
         _LART_INTERFACE
-        static Ptr op_thaw( Ptr constant, uint8_t bw ) noexcept
+        static abstract_value_t op_thaw( abstract_value_t constant, uint8_t bw ) noexcept
         {
             auto val = get_constant( constant ).value;
             PERFORM_LIFT_IF( bool )
@@ -93,25 +91,31 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INTERFACE
-        static Tristate to_tristate( Ptr ptr ) noexcept
+        static tristate_t to_tristate( abstract_value_t ptr ) noexcept
         {
             if ( get_constant( ptr ).value )
-                return { Tristate::True };
-            return { Tristate::False };
+                return { tristate_t::True };
+            return { tristate_t::False };
         }
 
         _LART_INTERFACE
-        static Ptr assume( Ptr /*value*/, Ptr /*constraint*/, bool /*expect*/ ) noexcept
+        static abstract_value_t assume( abstract_value_t value
+                                      , abstract_value_t constraint
+                                      , bool expect ) noexcept
         {
-            return nullptr;
+            if ( get_constant( constraint ).lower< bool >() != expect )
+                __vm_cancel();
+            return value;
         }
 
         #define PERFORM_OP_IF( type ) \
             if ( bw == bitwidth< type >() ) \
                 return lift( op( static_cast< type >( l.value ), static_cast< type >( r.value ) ) );
 
-        template< bool _signed = false, typename Op >
-        _LART_INLINE static Ptr binary( Ptr lhs, Ptr rhs, Op op ) noexcept
+        template< bool _signed = false, typename op_t >
+        _LART_INLINE static abstract_value_t binary( abstract_value_t lhs
+                                                   , abstract_value_t rhs
+                                                   , op_t op ) noexcept
         {
             auto l = get_constant( lhs );
             auto r = get_constant( rhs );
@@ -142,7 +146,7 @@ namespace __dios::rst::abstract {
                 return static_cast< type >( con.value );
 
         template< bool _signed >
-        _LART_INLINE static auto trunc_to_value( const Constant & con ) noexcept
+        _LART_INLINE static auto trunc_to_value( const constant_t & con ) noexcept
             -> std::enable_if_t< _signed , int64_t >
         {
             TRUNC_TO_IF( int8_t )
@@ -152,7 +156,7 @@ namespace __dios::rst::abstract {
         }
 
         template< bool _signed >
-        _LART_INLINE static auto trunc_to_value( const Constant & con ) noexcept
+        _LART_INLINE static auto trunc_to_value( const constant_t & con ) noexcept
             -> std::enable_if_t< !_signed, uint64_t >
         {
             TRUNC_TO_IF( bool )
@@ -163,7 +167,7 @@ namespace __dios::rst::abstract {
         }
 
         template< bool _signed = false >
-        _LART_INLINE static Ptr cast( Ptr val, Bitwidth bw ) noexcept
+        _LART_INLINE static abstract_value_t cast( abstract_value_t val, bitwidth_t bw ) noexcept
         {
             auto v = trunc_to_value< _signed >( get_constant( val ) );
 
@@ -184,19 +188,19 @@ namespace __dios::rst::abstract {
         }
 
         #define __bin( name, op ) \
-            _LART_INTERFACE static Ptr name( Ptr lhs, Ptr rhs ) noexcept \
+            _LART_INTERFACE static abstract_value_t name( abstract_value_t lhs, abstract_value_t rhs ) noexcept \
             { \
                 return binary( lhs, rhs, op() ); \
             }
 
         #define __sbin( name, op ) \
-            _LART_INTERFACE static Ptr name( Ptr lhs, Ptr rhs ) noexcept \
+            _LART_INTERFACE static abstract_value_t name( abstract_value_t lhs, abstract_value_t rhs ) noexcept \
             { \
                 return binary< true /* signed */ >( lhs, rhs, op() ); \
             }
 
         #define __cast( name, _signed ) \
-            _LART_INTERFACE static Ptr name( Ptr val, Bitwidth bw ) noexcept \
+            _LART_INTERFACE static abstract_value_t name( abstract_value_t val, bitwidth_t bw ) noexcept \
             { \
                 return cast< _signed >( val, bw ); \
             }
@@ -264,17 +268,13 @@ namespace __dios::rst::abstract {
         //__cast( op_sitofp, SIntToFP );
         //__cast( op_uitofp, UIntToFP );
 
-        static void trace( Ptr ptr, const char * msg = "" ) noexcept
+        static void trace( abstract_value_t ptr, const char * msg = "" ) noexcept
         {
             __dios_trace_f( "%s%d", msg, get_constant( ptr ).value );
         };
 
     } __attribute__((packed));
 
-    static_assert( sizeof( Constant ) == 11 );
-
-    template< typename T >
-    _LART_INLINE
-    auto lift_constant( T val ) noexcept { return Constant::lift( val ); }
+    static_assert( sizeof( constant_t ) == 11 );
 
 } // namespace __dios::rst::abstract

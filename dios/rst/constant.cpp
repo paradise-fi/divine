@@ -7,11 +7,10 @@
 
 namespace __dios::rst::abstract {
 
-    template< typename C >
-    _LART_INLINE C make_constant( C c ) noexcept
+    template< typename concrete_t >
+    _LART_INLINE concrete_t make_constant( concrete_t c ) noexcept
     {
-        __lart_stash( static_cast< void * >( Constant::lift( c ) ) );
-        return taint< C >( c );
+        return stash_abstract_value< concrete_t >( constant_t::lift( c ) );
     }
 
     extern "C" {

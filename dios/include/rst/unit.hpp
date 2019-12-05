@@ -27,7 +27,7 @@ namespace __dios::rst::abstract {
 
         #define __bin( name ) __op( name, unit_value_t, unit_value_t )
 
-        #define __cast( name ) __op( name, unit_value_t, Bitwidth )
+        #define __cast( name ) __op( name, unit_value_t, bitwidth_t )
 
         _LART_INTERFACE
         static unit_t lift_any() noexcept { return unit_t(); }
@@ -64,9 +64,9 @@ namespace __dios::rst::abstract {
         __op( op_gep, unit_value_t /* addr */, unit_value_t /* off */ )
 
         _LART_INTERFACE
-        static Tristate to_tristate( unit_value_t ) noexcept
+        static tristate_t to_tristate( unit_value_t ) noexcept
         {
-            return { Tristate::Unknown };
+            return { tristate_t::Unknown };
         }
 
         __op( assume, unit_value_t, unit_value_t, bool );

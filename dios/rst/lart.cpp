@@ -54,26 +54,29 @@ extern "C"
 
 /* lifter templates */
 
-using Ptr = void *;
+using store_op = void ( abstract_value_t /* val */, abstract_value_t /* ptr */ );
+using gep_op = abstract_value_t ( abstract_value_t /* ptr */, abstract_value_t /* off */ );
 
-using store_op = void ( Ptr /* val */, Ptr /* ptr */ );
-using gep_op = Ptr ( Ptr /* ptr */, Ptr /* off */ );
+using int_to_fp_op = abstract_value_t ( abstract_value_t /* ptr */, abstract_value_t /* bw */ );
+using fp_to_int_op = abstract_value_t ( abstract_value_t /* ptr */, abstract_value_t /* bw */ );
 
-using int_to_fp_op = Ptr ( Ptr /* ptr */, Ptr /* bw */ );
-using fp_to_int_op = Ptr ( Ptr /* ptr */, Ptr /* bw */ );
-
-template< typename Op >
+template< typename op_t >
 auto get_operation( uint8_t domain, uint32_t op_index ) noexcept
 {
-    return reinterpret_cast< Op * >( __lart_get_domain_operation( domain, op_index ) );
+    return reinterpret_cast< op_t * >( __lart_get_domain_operation( domain, op_index ) );
 }
 
-template< typename T >
-struct Argument { bool tainted; T concrete; void * abstract; };
+template< typename concrete_t >
+struct argument_t { bool tainted; concrete_t concrete; abstract_value_t abstract; };
 
-template< typename Value >
+template< typename concrete_t >
+argument_t( bool b, concrete_t c, abstract_value_t a ) -> argument_t< concrete_t >;
+
+template< typename value_t >
 _LART_INLINE
-void __lart_store_lifter_impl( Argument< Value > value, Argument< Ptr > addr, size_t op )
+void __lart_store_lifter_impl( argument_t< value_t > value
+                             , argument_t< void * > addr
+                             , size_t op )
 {
     if ( !addr.tainted ) { // therefore value is abstract
         __lart_freeze( value.abstract, addr.concrete );
@@ -81,24 +84,26 @@ void __lart_store_lifter_impl( Argument< Value > value, Argument< Ptr > addr, si
     }
 
     auto store = get_operation< store_op >( domain( addr.abstract ), op );
-    auto val = value.tainted ? value.abstract : lift_constant( value.concrete );
+    abstract_value_t val = value.tainted ? value.abstract : constant_t::lift( value.concrete );
     store( val, addr.abstract );
 }
 
 #define LART_STORE_LIFTER( name, T ) \
     __invisible \
-    void __lart_store_lifter_ ##name( bool taint_value, T value, void * abstract_value \
-                                   , bool taint_addr, void * addr, void * abstract_addr \
-                                   , size_t op ) \
+    void __lart_store_lifter_ ##name( bool taint_value, T value, abstract_value_t a_value \
+                                    , bool taint_addr, void * addr, abstract_value_t a_addr \
+                                    , size_t op ) \
     { \
-        __lart_store_lifter_impl< T >( { taint_value, value, abstract_value } \
-                                     , { taint_addr, addr, abstract_addr } \
+        __lart_store_lifter_impl< T >( { taint_value, value, a_value } \
+                                     , { taint_addr, addr, a_addr } \
                                      , op ); \
     }
 
-template< typename Value >
+template< typename value_t >
 _LART_INLINE
-Ptr __lart_gep_lifter_impl( Argument< Ptr > ptr, Argument< Value > off, size_t op )
+abstract_value_t __lart_gep_lifter_impl( argument_t< abstract_value_t > ptr
+                                       , argument_t< value_t > off
+                                       , size_t op )
 {
     if ( !ptr.tainted ) { // offset is tainted
         __dios_fault( _VM_Fault::_VM_F_Control, "unsupported abstract offset of concrete pointer" );
@@ -106,53 +111,53 @@ Ptr __lart_gep_lifter_impl( Argument< Ptr > ptr, Argument< Value > off, size_t o
     }
 
     auto gep = get_operation< gep_op >( domain( ptr.abstract ), op );
-    auto offset = off.tainted ? off.abstract : lift_constant( off.concrete );
+    auto offset = off.tainted ? off.abstract : constant_t::lift( off.concrete );
 
     __lart_stash( gep( ptr.abstract, offset ) );
-    return taint< Ptr >();
+    return taint< abstract_value_t >();
 }
 
 #define LART_GEP_LIFTER( Off ) \
     __invisible \
-    Ptr __lart_gep_lifter( bool taint_ptr, Ptr ptr, Ptr abstract_ptr \
-                         , bool taint_off, Off off, Ptr abstract_off \
-                         , size_t op ) \
+    abstract_value_t __lart_gep_lifter( bool taint_ptr, abstract_value_t ptr, abstract_value_t a_ptr \
+                                      , bool taint_off, Off off, abstract_value_t a_off \
+                                      , size_t op ) \
     { \
-        return __lart_gep_lifter_impl< uint64_t >( { taint_ptr, ptr, abstract_ptr } \
-                                                 , { taint_off, off, abstract_off } \
+        return __lart_gep_lifter_impl< uint64_t >( { taint_ptr, ptr, a_ptr } \
+                                                 , { taint_off, off, a_off } \
                                                  , op ); \
     }
 
-template< typename Type >
+template< typename int_t >
 _LART_INLINE
-Ptr __lart_int_to_fp_impl( Ptr _int, size_t op )
+abstract_value_t __lart_int_to_fp_impl( abstract_value_t a_int, size_t op )
 {
-    auto to_fp = get_operation< int_to_fp_op >( domain( _int ), op );
-    auto bw = Constant::lift( bitwidth< Type >() );
-    return to_fp( _int, bw );
+    auto to_fp = get_operation< int_to_fp_op >( domain( a_int ), op );
+    auto bw = constant_t::lift( bitwidth< int_t >() );
+    return to_fp( a_int, bw );
 }
 
-#define LART_INT_TO_FP( name, Fp ) \
+#define LART_INT_TO_FP( name, float_t ) \
     __invisible \
-    Ptr __lart_int_to_ ## name( Ptr _int, size_t op ) \
+    abstract_value_t __lart_int_to_ ## name( abstract_value_t a_int, size_t op ) \
     { \
-        return __lart_int_to_fp_impl< Fp >( _int, op ); \
+        return __lart_int_to_fp_impl< float_t >( a_int, op ); \
     }
 
-template< typename Type >
+template< typename int_t >
 _LART_INLINE
-Ptr __lart_fp_to_int_impl( Ptr fp, size_t op )
+abstract_value_t __lart_fp_to_int_impl( abstract_value_t fp, size_t op )
 {
     auto to_int = get_operation< fp_to_int_op >( domain( fp ), op );
-    auto bw = Constant::lift( bitwidth< Type >() );
+    auto bw = constant_t::lift( bitwidth< int_t >() );
     return to_int( fp, bw );
 }
 
-#define LART_FP_TO_INT( name, Int ) \
+#define LART_FP_TO_INT( name, int_t ) \
     __invisible \
-    Ptr __lart_fp_to_ ## name( Ptr fp, size_t op ) \
+    abstract_value_t __lart_fp_to_ ## name( abstract_value_t fp, size_t op ) \
     { \
-        return __lart_fp_to_int_impl< Int >(  fp, op ); \
+        return __lart_fp_to_int_impl< int_t >( fp, op ); \
     }
 
 extern "C" {
