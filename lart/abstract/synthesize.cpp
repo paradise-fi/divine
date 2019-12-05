@@ -43,6 +43,8 @@ namespace lart::abstract
     template< Operation::Type T >
     struct Lifter : LLVMUtil< Lifter< T > >
     {
+        using lifter_op_t = Operation::Type;
+
         using Self = Lifter< T >;
         using Util = LLVMUtil< Self >;
 
@@ -109,9 +111,9 @@ namespace lart::abstract
                 else if constexpr ( Taint::assume( T ) )
                     return llvm_index( module->getFunction( "lart.abstract.assume" ) );
                 else
-                    return llvm_index( function() );
+                    return llvm_index( lifter_function() );
             } ();
-            return get_function_from_domain( irb, index, _domain );
+            return get_function_from_domain( irb, index, domain );
         }
 
         template< typename IRB >
@@ -139,311 +141,335 @@ namespace lart::abstract
             return irb.CreateCall( freezeFn, { v, a } );
         }
 
-        void construct()
+        #define ENABLE_IF( name ) \
+            typename std::enable_if_t< Taint::name( op ), void >
+
+        void synthesize()
         {
-            auto entry =  basic_block( function(), "entry" );
-            llvm::IRBuilder<> irb( entry );
+            entry = basic_block( lifter_function(), "entry" );
+            inargs = arguments();
 
-            std::vector< llvm::Value * > vals = {};
-            auto args = arguments();
+            auto irb = llvm::IRBuilder<>( entry );
+            construct( irb );
+        }
 
-            if constexpr ( Taint::binary( T ) || Taint::insertvalue( T ) )
+        template< typename builder_t >
+        auto construct_binary_lifter( builder_t &irb )
+        {
+            auto fn = lifter_function();
+            auto dbb = basic_block( fn,  "load.domain" );
+            auto cbb = basic_block( fn,  "check.abstract" );
+            auto l1bb = basic_block( fn, "arg.1.lift" );
+            auto l2bb = basic_block( fn, "arg.2.lift" );
+            auto exit = basic_block( fn, "exit" );
+
+            /* entry */
+            auto paired = paired_arguments( 2 );
+            const auto &lhs = paired[ 0 ];
+            const auto &rhs = paired[ 1 ];
+
+            auto abs = irb.CreateAnd( lhs.concrete.taint, rhs.concrete.taint );
+            irb.CreateCondBr( abs, dbb, cbb );
+
+            std::map< llvm::BasicBlock *, llvm::Value * > dom;
+            std::map< llvm::BasicBlock *, llvm::Value * > val1;
+            std::map< llvm::BasicBlock *, llvm::Value * > val2;
+
+            /* domain block */
+            irb.SetInsertPoint( dbb );
+            dom[ dbb ] = domain_index( lhs.abstract.value, irb );
+            val1[ dbb ] = lhs.abstract.value;
+            val2[ dbb ] = rhs.abstract.value;
+            irb.CreateBr( exit );
+
+            /* find out which argument to lift */
+            irb.SetInsertPoint( cbb );
+            irb.CreateCondBr( lhs.concrete.taint, l2bb, l1bb );
+
+            /* lift 1. argument */
+            irb.SetInsertPoint( l1bb );
+            dom[ l1bb ] = domain_index( rhs.abstract.value, irb );
+
+            if constexpr ( Taint::insertvalue( T ) )
             {
-                auto fn = function();
-                auto dbb = basic_block( fn,  "load.domain" );
-                auto cbb = basic_block( fn,  "check.abstract" );
-                auto l1bb = basic_block( fn, "arg.1.lift" );
-                auto l2bb = basic_block( fn, "arg.2.lift" );
-                auto exit = basic_block( fn, "exit" );
+                auto ptr_concrete = irb.CreateAlloca( lhs.concrete.value->getType() );
+                irb.CreateStore( lhs.concrete.value, ptr_concrete );
+                val1[ l1bb ] = lift_aggr( ptr_concrete, dom[ l1bb ], irb );
+            }
+            else
+                val1[ l1bb ] = lift( lhs.concrete.value, dom[ l1bb ], irb );
 
-                /* entry */
-                auto paired = paired_arguments( 2 );
-                const auto &lhs = paired[ 0 ];
-                const auto &rhs = paired[ 1 ];
+            val2[ l1bb ] = rhs.abstract.value;
+            irb.CreateBr( exit );
 
-                auto abs = irb.CreateAnd( lhs.concrete.taint, rhs.concrete.taint );
-                irb.CreateCondBr( abs, dbb, cbb );
+            /* lift 2. argument */
+            irb.SetInsertPoint( l2bb );
+            dom[ l2bb ] = domain_index( lhs.abstract.value, irb );
+            val1[ l2bb ] = lhs.abstract.value;
+            val2[ l2bb ] = lift( rhs.concrete.value, dom[ l2bb ], irb );
+            irb.CreateBr( exit );
 
-                std::map< llvm::BasicBlock *, llvm::Value * > dom;
-                std::map< llvm::BasicBlock *, llvm::Value * > val1;
-                std::map< llvm::BasicBlock *, llvm::Value * > val2;
+            /* pick correct arguments */
+            irb.SetInsertPoint( exit );
 
-                /* domain block */
-                irb.SetInsertPoint( dbb );
-                dom[ dbb ] = domain_index( lhs.abstract.value, irb );
-                val1[ dbb ] = lhs.abstract.value;
-                val2[ dbb ] = rhs.abstract.value;
-                irb.CreateBr( exit );
-
-                /* find out which argument to lift */
-                irb.SetInsertPoint( cbb );
-                irb.CreateCondBr( lhs.concrete.taint, l2bb, l1bb );
-
-                /* lift 1. argument */
-                irb.SetInsertPoint( l1bb );
-                dom[ l1bb ] = domain_index( rhs.abstract.value, irb );
-                if constexpr ( Taint::insertvalue( T ) )
-                {
-                    auto ptr_concrete = irb.CreateAlloca( lhs.concrete.value->getType() );
-                    irb.CreateStore( lhs.concrete.value, ptr_concrete );
-                    val1[ l1bb ] = lift_aggr( ptr_concrete, dom[ l1bb ], irb );
-                }
-                else
-                    val1[ l1bb ] = lift( lhs.concrete.value, dom[ l1bb ], irb );
-                val2[ l1bb ] = rhs.abstract.value;
-                irb.CreateBr( exit );
-
-                /* lift 2. argument */
-                irb.SetInsertPoint( l2bb );
-                dom[ l2bb ] = domain_index( lhs.abstract.value, irb );
-                val1[ l2bb ] = lhs.abstract.value;
-                val2[ l2bb ] = lift( rhs.concrete.value, dom[ l2bb ], irb );
-                irb.CreateBr( exit );
-
-                /* pick correct arguments */
-                irb.SetInsertPoint( exit );
-
-                auto merge = [&] ( auto args ) {
-                    auto arg = irb.CreatePHI( i8PTy(), 3 );
-                    auto phi = llvm::cast< llvm::PHINode >( arg );
-                    for ( const auto &[bb, d] : args )
-                        phi->addIncoming( d, bb );
-                    return phi;
-                };
-
-                _domain = irb.CreatePHI( i8Ty(), 3 );
-
-                auto phi = llvm::cast< llvm::PHINode >( _domain );
-                for ( const auto &[bb, d] : dom )
+            auto merge = [&] ( auto args ) {
+                auto arg = irb.CreatePHI( i8PTy(), 3 );
+                auto phi = llvm::cast< llvm::PHINode >( arg );
+                for ( const auto &[bb, d] : args )
                     phi->addIncoming( d, bb );
+                return phi;
+            };
 
-                vals.push_back( merge( val1 ) );
-                vals.push_back( merge( val2 ) );
+            domain = irb.CreatePHI( i8Ty(), 3 );
 
-                if constexpr ( Taint::insertvalue( T ) )
-                {
-                    ASSERT_EQ( args.size(), 5 );
-                    const auto &idx = args[ 4 ];
-                    vals.push_back( idx.value );
-                }
+            auto phi = llvm::cast< llvm::PHINode >( domain );
+            for ( const auto &[bb, d] : dom )
+                phi->addIncoming( d, bb );
 
-            }
+            args.push_back( merge( val1 ) );
+            args.push_back( merge( val2 ) );
+        }
 
-            if constexpr ( Taint::extractvalue( T ) )
-            {
-                auto agg = paired_arguments( 1 ).front();
-                ASSERT_EQ( args.size(), 3 );
-                const auto &idx = args[ 2 ];
-                vals.push_back( agg.concrete.value );
-                vals.push_back( idx.value );
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( binary )
+        {
+            construct_binary_lifter( irb );
 
-                _domain = domain_index( agg.abstract.value, irb );
-            }
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
 
-            if constexpr ( Taint::gep( T ) )
-            {
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( insertvalue )
+        {
+            construct_binary_lifter( irb );
 
-                auto paired = paired_arguments();
-                auto ptr = paired[ 0 ];
-                auto off = paired[ 1 ];
+            ASSERT_EQ( inargs.size(), 5 );
+            const auto &idx = inargs[ 4 ];
+            args.push_back( idx.value );
 
-                std::vector< llvm::Value * > args;
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
 
-                args.push_back( ptr.concrete.taint );
-                args.push_back( ptr.concrete.value );
-                args.push_back( ptr.abstract.value );
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( extractvalue )
+        {
+            auto agg = paired_arguments( 1 ).front();
+            ASSERT_EQ( args.size(), 3 );
+            const auto &idx = inargs[ 2 ];
+            args.push_back( agg.concrete.value );
+            args.push_back( idx.value );
 
-                args.push_back( off.concrete.taint );
-                args.push_back( irb.CreateSExt( off.concrete.value, i64Ty() ) );
-                args.push_back( off.abstract.value );
+            domain = domain_index( agg.abstract.value, irb );
 
-                args.push_back( llvm_index( function() ) );
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
 
-                auto fn = module->getFunction( "__lart_gep_lifter" );
-                auto call = irb.CreateCall( fn, args );
-                irb.CreateRet( call );
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( gep )
+        {
+            auto paired = paired_arguments();
+            auto ptr = paired[ 0 ];
+            auto off = paired[ 1 ];
 
-                inline_call( call );
-                return;
-            }
+            args.push_back( ptr.concrete.taint );
+            args.push_back( ptr.concrete.value );
+            args.push_back( ptr.abstract.value );
 
-            if constexpr ( Taint::toBool( T ) )
-            {
-                auto arg = TaintArgument{ function()->arg_begin() };
-                auto val = arg.abstract.value;
-                auto lower = function()->getParent()->getFunction( "__lower_tristate" );
+            args.push_back( off.concrete.taint );
+            args.push_back( irb.CreateSExt( off.concrete.value, i64Ty() ) );
+            args.push_back( off.abstract.value );
 
-                _domain = domain_index( val, irb );
+            args.push_back( llvm_index( lifter_function() ) );
 
-                auto ptr = get_function_from_domain( irb );
-                auto trty = lower->getFunctionType()->getParamType( 0 );
-                auto fty = llvm::FunctionType::get( trty, { val->getType() }, false );
-                auto to_tristate = irb.CreateBitCast( ptr, fty->getPointerTo() );
+            auto lifter_template = module->getFunction( "__lart_gep_lifter" );
+            auto call = irb.CreateCall( lifter_template, args );
+            irb.CreateRet( call );
+            inline_call( call );
+        }
 
-                auto tristate = irb.CreateCall( to_tristate, { val } );
-                auto _bool = irb.CreateCall( lower, { tristate } );
-                irb.CreateRet( _bool );
-                return;
-            }
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( toBool )
+        {
+            auto arg = TaintArgument{ lifter_function()->arg_begin() };
+            auto val = arg.abstract.value;
+            auto lower = lifter_function()->getParent()->getFunction( "__lower_tristate" );
 
-            if constexpr ( Taint::assume( T ) )
-            {
-                auto constrained = TaintArgument{ function()->arg_begin() };
-                vals.push_back( constrained.abstract.value ); // constrained abstract value
-                vals.push_back( args[ 3 ].value ); // constraint condition
-                vals.push_back( args[ 4 ].value ); // assumed constraint value
-
-                _domain = domain_index( constrained.abstract.value, irb );
-            }
-
-            if constexpr ( Taint::store( T ) )
-            {
-                auto paired = paired_arguments();
-                auto value = paired[ 0 ];
-                auto addr = paired[ 1 ];
-
-                std::vector< llvm::Value * > args;
-
-                args.push_back( value.concrete.taint );
-                args.push_back( value.concrete.value );
-                args.push_back( value.abstract.value );
-                args.push_back( addr.concrete.taint );
-                args.push_back( addr.concrete.value );
-                args.push_back( addr.abstract.value );
-                args.push_back( llvm_index( function() ) );
-
-
-                auto type = args[ 1 ]->getType();
-                std::string name = "__lart_store_lifter_" + llvm_name( type );
-                auto fn = module->getFunction( name );
-
-                auto call = irb.CreateCall( fn, args );
-                irb.CreateRet( undef( function()->getReturnType() ) );
-
-                inline_call( call );
-                return;
-            }
-
-            if constexpr ( Taint::load( T ) )
-            {
-                auto addr = args[ 1 ].value;
-                vals.push_back( addr ); // addr
-
-                _domain = domain_index( addr, irb );
-            }
-
-            if constexpr ( Taint::freeze( T ) )
-            {
-                auto val = args[ 1 ].value;
-                auto addr = args[ 2 ].value;
-                freeze( irb, val, addr );
-                irb.CreateRet( undef( function()->getReturnType() ) );
-                return;
-            }
-
-            if constexpr ( Taint::thaw( T ) )
-            {
-                auto thawed = thaw( irb, args[ 1 ].value );
-                vals.push_back( thawed ); // thawed address
-
-                // TODO if scalar
-                auto bw = args[ 0 ].value->getType()->getPrimitiveSizeInBits();
-                vals.push_back( i8( bw ) ); // bitwidth of thawed value
-
-                _domain = domain_index( thawed, irb );
-            }
-
-            if constexpr ( Taint::cast( T ) )
-            {
-                auto paired = paired_arguments().front();
-                vals.push_back( paired.abstract.value );
-
-                auto cast = llvm::cast< llvm::CastInst >( taint.inst->getPrevNode() );
-                auto bw = cast->getDestTy()->getPrimitiveSizeInBits();
-                vals.push_back( i8( bw ) );
-
-                _domain = domain_index( paired.abstract.value, irb );
-            }
-
-            if constexpr ( Taint::call( T ) || Taint::mem( T ) )
-            {
-                /*auto argument = [&] ( const auto & arg, unsigned & idx ) {
-                    auto abstract = [] ( unsigned i ) { return i + 1; };
-
-                    llvm::Value * res = nullptr;
-                    if ( meta::has_dual( arg ) ) {
-                        res = args[ abstract( idx ) ].value;
-                        idx += 2;
-                    } else {
-                        FIXME ASSERT( is_concrete( arg ) );
-                        res = args[ idx ].value;
-                        idx += 1;
-                    }
-
-                    return res;
-                };
-
-                auto call = llvm::cast< llvm::CallInst >( meta::get_dual( taint.inst ) );
-                // TODO lifting
-
-                unsigned bound = call->getNumArgOperands();
-                if constexpr ( Taint::mem( T ) ) {
-                    bound = 3; // do not consider volatilnes argument
-                }
-
-                unsigned idx = 0;
-                for ( unsigned i = 0; i < bound; ++i ) {
-                    vals.push_back( argument( call->getArgOperand( i ), idx ) );
-                }*/
-                UNREACHABLE( "not implemented" );
-            }
+            domain = domain_index( val, irb );
 
             auto ptr = get_function_from_domain( irb );
-            auto rty = Taint::faultable( T ) ? i8PTy() : function()->getReturnType();
-            auto fty = llvm::FunctionType::get( rty, types_of( vals ), false );
-            auto op = irb.CreateBitCast( ptr, fty->getPointerTo() );
-            auto call = irb.CreateCall( op, vals );
+            auto trty = lower->getFunctionType()->getParamType( 0 );
+            auto fty = llvm::FunctionType::get( trty, { val->getType() }, false );
+            auto to_tristate = irb.CreateBitCast( ptr, fty->getPointerTo() );
 
-            if constexpr ( Taint::freeze( T ) || Taint::store( T ) ) {
-                irb.CreateRet( undef( function()->getReturnType() ) );
-            } else if constexpr ( Taint::faultable( T ) ) {
-                auto crty = function()->getReturnType();
-                auto t = module->getNamedGlobal( "__tainted" );
-                auto load = irb.CreateLoad( t );
-
-                auto casted = [&] {
-                    if ( crty->isIntegerTy() )
-                        return irb.CreateTruncOrBitCast( load, crty );
-                    if ( crty->isFloatingPointTy() )
-                        return irb.CreateUIToFP( load, crty );
-                    UNREACHABLE( "unsupported lifter return type" );
-                } ();
-
-                auto ret = irb.CreateRet( casted );
-                stash( ret, call );
-            } else {
-                irb.CreateRet( call );
-            }
+            auto tristate = irb.CreateCall( to_tristate, { val } );
+            auto _bool = irb.CreateCall( lower, { tristate } );
+            irb.CreateRet( _bool );
         }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( assume )
+        {
+            auto constrained = TaintArgument{ lifter_function()->arg_begin() };
+            args.push_back( constrained.abstract.value ); // constrained abstract value
+            args.push_back( inargs[ 3 ].value ); // constraint condition
+            args.push_back( inargs[ 4 ].value ); // assumed constraint value
+
+            domain = domain_index( constrained.abstract.value, irb );
+
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( store )
+        {
+            auto paired = paired_arguments();
+            auto value = paired[ 0 ];
+            auto addr = paired[ 1 ];
+
+            args.push_back( value.concrete.taint );
+            args.push_back( value.concrete.value );
+            args.push_back( value.abstract.value );
+            args.push_back( addr.concrete.taint );
+            args.push_back( addr.concrete.value );
+            args.push_back( addr.abstract.value );
+            args.push_back( llvm_index( lifter_function() ) );
+
+            auto type = args[ 1 ]->getType();
+            std::string name = "__lart_store_lifter_" + llvm_name( type );
+            auto fn = module->getFunction( name );
+
+            auto call = irb.CreateCall( fn, args );
+            irb.CreateRet( undef( lifter_function()->getReturnType() ) );
+            inline_call( call );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( load )
+        {
+            auto addr = inargs[ 1 ].value;
+            args.push_back( addr ); // addr
+
+            domain = domain_index( addr, irb );
+
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( freeze )
+        {
+            auto val = inargs[ 1 ].value;
+            auto addr = inargs[ 2 ].value;
+            freeze( irb, val, addr );
+            irb.CreateRet( undef( lifter_function()->getReturnType() ) );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( thaw )
+        {
+            auto thawed = thaw( irb, inargs[ 1 ].value );
+            args.push_back( thawed ); // thawed address
+
+            // TODO if scalar
+            auto bw = inargs[ 0 ].value->getType()->getPrimitiveSizeInBits();
+            args.push_back( i8( bw ) ); // bitwidth of thawed value
+
+            domain = domain_index( thawed, irb );
+
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &irb ) -> ENABLE_IF( cast )
+        {
+            auto paired = paired_arguments().front();
+            args.push_back( paired.abstract.value );
+
+            auto cast = llvm::cast< llvm::CastInst >( taint.inst->getPrevNode() );
+            auto bw = cast->getDestTy()->getPrimitiveSizeInBits();
+            args.push_back( i8( bw ) );
+
+            domain = domain_index( paired.abstract.value, irb );
+
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &/* irb */ ) -> ENABLE_IF( call )
+        {
+            UNREACHABLE( "not implemented" );
+        }
+
+        template< typename builder_t, lifter_op_t op = T >
+        auto construct( builder_t &/* irb */ ) -> ENABLE_IF( mem )
+        {
+            UNREACHABLE( "not implemented" );
+        }
+
+        template< typename builder_t >
+        auto call_lifter( builder_t &irb )
+        {
+            auto ptr = get_function_from_domain( irb );
+            auto rty = Taint::faultable( T ) ? i8PTy() : lifter_function()->getReturnType();
+            auto fty = llvm::FunctionType::get( rty, types_of( args ), false );
+            auto op = irb.CreateBitCast( ptr, fty->getPointerTo() );
+            return irb.CreateCall( op, args );
+        }
+
+        template< typename builder_t, typename lifter_t, lifter_op_t op >
+        auto return_from_lifter( builder_t &irb, lifter_t call ) -> ENABLE_IF( faultable )
+        {
+            auto crty = lifter_function()->getReturnType();
+            auto t = module->getNamedGlobal( "__tainted" );
+            auto load = irb.CreateLoad( t );
+
+            auto casted = [&] {
+                if ( crty->isIntegerTy() )
+                    return irb.CreateTruncOrBitCast( load, crty );
+                if ( crty->isFloatingPointTy() )
+                    return irb.CreateUIToFP( load, crty );
+                UNREACHABLE( "unsupported lifter return type" );
+            } ();
+
+            auto ret = irb.CreateRet( casted );
+            stash( ret, call );
+        }
+
+        template< typename builder_t, typename lifter_t >
+        auto return_from_lifter( builder_t &irb, lifter_t call )
+        {
+            irb.CreateRet( call );
+        }
+
+        // synthesization state
+        std::vector< Argument > inargs;
+        std::vector< llvm::Value * > args;
+        llvm::BasicBlock * entry;
+        llvm::Value * domain = nullptr;
 
         auto arguments() const
         {
-            std::vector< Argument > args;
+            std::vector< Argument > pargs;
 
-            auto begin = function()->arg_begin();
-            auto end = function()->arg_end();
+            auto begin = lifter_function()->arg_begin();
+            auto end = lifter_function()->arg_end();
 
-            for ( auto it = begin; it != end; std::advance( it, 2 ) ) {
-                args.push_back( Argument{ it } );
-            }
+            for ( auto it = begin; it != end; std::advance( it, 2 ) )
+               pargs.push_back( Argument{ it } );
 
-            return args;
+            return pargs;
         }
 
         std::vector< TaintArgument > paired_arguments( unsigned pairs = 0 ) const
         {
             std::vector< TaintArgument > args;
-            auto fn = function();
+            auto fn = lifter_function();
 
             if ( pairs )
                 ASSERT( fn->arg_size() >= 4 * pairs );
@@ -459,7 +485,7 @@ namespace lart::abstract
             return args;
         }
 
-        llvm::Function * function() const { return taint.function(); }
+        llvm::Function * lifter_function() const { return taint.function(); }
 
         std::string type_name( llvm::Type * ty ) const noexcept
         {
@@ -507,8 +533,6 @@ namespace lart::abstract
             return irb.CreateBitCast( ptr, fty->getPointerTo() );
         }
 
-        llvm::Value * _domain = nullptr;
-
         Taint taint;
         llvm::Module * module;
     };
@@ -529,11 +553,11 @@ namespace lart::abstract
 
         #define DISPATCH( type ) \
             case Type::type: \
-                Lifter< Type::type >( taint ).construct(); break;
+                Lifter< Type::type >( taint ).synthesize(); break;
 
         switch ( taint.type )
         {
-            DISPATCH( PHI )
+            // DISPATCH( PHI )
             DISPATCH( GEP )
             DISPATCH( ToBool )
             DISPATCH( Assume )
@@ -545,14 +569,14 @@ namespace lart::abstract
             DISPATCH( Cast )
             DISPATCH( Binary )
             DISPATCH( BinaryFaultable )
-            DISPATCH( Lift )
-            DISPATCH( Lower )
+            // DISPATCH( Lift )
+            // DISPATCH( Lower )
             DISPATCH( Call )
             DISPATCH( ExtractValue )
             DISPATCH( InsertValue )
-            DISPATCH( Memcpy )
-            DISPATCH( Memmove )
-            DISPATCH( Memset )
+            // DISPATCH( Memcpy )
+            // DISPATCH( Memmove )
+            // DISPATCH( Memset )
             default:
                 UNREACHABLE( "unsupported taint type" );
         }
