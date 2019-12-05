@@ -25,17 +25,48 @@ namespace __dios::rst::abstract {
         {
             values_t values;
             bounds_t bounds;
+            abstract_value_t size; // either< index_t, constant_t >
         };
 
         using data_ptr = brq::refcount_ptr< data_t >;
 
-        using mstring_ptr = abstract_object< data_ptr, index_t >;
+        struct mstring_ptr
+        {
+            mstring_ptr( mstring_t * p ) : ptr( p ) {}
 
-        volatile uint32_t size_objid;  // index_t
-        volatile uint32_t array_objid; // data_ptr
+            auto& bounds() noexcept { return ptr->data->bounds; }
+            auto& values() noexcept { return ptr->data->values; }
 
-        index_t size() noexcept { return object_pointer( size_objid ); }
-        data_ptr array() noexcept { return object_pointer( array_objid ); }
+            operator abstract_value_t()
+            {
+                return static_cast< abstract_value_t >( ptr );
+            }
+
+            void push_bound( abstract_value_t bound )
+            {
+                bounds().push_back( bound );
+            }
+
+            void push_bound( unsigned bound ) noexcept
+            {
+                push_bound( constant_t::lift( bound ) );
+            }
+
+            void push_char( abstract_value_t ch )
+            {
+                values().push_back( ch );
+            }
+
+            void push_char( char ch ) noexcept
+            {
+                push_bound( constant_t::lift( ch ) );
+            }
+
+            mstring_t * ptr;
+        };
+
+        abstract_value_t offset;
+        data_ptr data;
 
         _LART_INTERFACE _LART_OPTNONE
         static mstring_ptr lift_any( index_t size ) noexcept
