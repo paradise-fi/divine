@@ -68,22 +68,58 @@ namespace __dios::rst::abstract {
         abstract_value_t offset;
         data_ptr data;
 
+        _LART_INLINE
+        static mstring_ptr make_mstring( abstract_value_t size )
+        {
+            auto data = brq::make_refcount< data_t >();
+            data->size = size;
+
+            auto ptr = __new< mstring_t >();
+            ptr->offset = constant_t::lift( 0 );
+            ptr->data = data;
+            return ptr;
+        }
+
+        _LART_INLINE
+        static mstring_ptr make_mstring( unsigned size )
+        {
+            return make_mstring( constant_t::lift( size ) );
+        }
+
         _LART_INTERFACE _LART_OPTNONE
         static mstring_ptr lift_any( index_t size ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            return make_mstring( size );
         }
 
         _LART_INTERFACE _LART_OPTNONE
         static mstring_ptr lift_any( unsigned size ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            return make_mstring( size );
         }
 
-        _LART_INTERFACE _LART_OPTNONE
+        _LART_INTERFACE
         static mstring_ptr lift_one( const char * str, unsigned size ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            auto mstr = make_mstring( size );
+            mstr.push_bound( unsigned( 0 ) );
+
+            if ( size == 0 )
+                return mstr;
+
+            char prev = str[ 0 ];
+            for ( int i = 1; i < size; ++i ) {
+                if ( prev != str[ i ] ) {
+                    mstr.push_char( prev );
+                    mstr.push_bound( i );
+                    prev = str[ i ];
+                }
+            }
+
+            mstr.push_char( prev );
+            mstr.push_bound( size );
+
+            return mstr;
         }
 
         _LART_INTERFACE _LART_OPTNONE
