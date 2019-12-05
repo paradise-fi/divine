@@ -55,11 +55,11 @@ namespace __dios::rst::abstract {
             }
         }
 
-        template< typename T >
-        _LART_INLINE T lower() const noexcept
+        template< typename concrete_t >
+        _LART_INLINE concrete_t lower() const noexcept
         {
             assert( is_constant( domain_t( _value ) ) );
-            return static_cast< constant_t * >( _value )->template lower< T >();
+            return static_cast< constant_t * >( _value )->template lower< concrete_t >();
         }
 
         template< template< typename > class operation >
