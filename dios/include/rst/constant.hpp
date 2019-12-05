@@ -5,7 +5,6 @@
 #include <rst/base.hpp>
 
 #include <variant>
-#include <brick-assert>
 
 namespace __dios::rst::abstract {
 
@@ -108,7 +107,7 @@ namespace __dios::rst::abstract {
         }
 
         #define PERFORM_OP_IF( type ) \
-            if ( bw  - std::is_signed_v< type > == bitwidth< type >() ) \
+            if ( bw == bitwidth< type >() ) \
                 return lift( op( static_cast< type >( l.value ), static_cast< type >( r.value ) ) );
 
         template< bool _signed = false, typename Op >
@@ -135,11 +134,11 @@ namespace __dios::rst::abstract {
         }
 
         #define PERFORM_CAST_IF( type ) \
-            if ( bw - std::is_signed_v< type > == bitwidth< type >() ) \
+            if ( bw == bitwidth< type >() ) \
                 return lift( static_cast< type >( v ) );
 
         #define TRUNC_TO_IF( type ) \
-            if ( con.bw - std::is_signed_v< type > == bitwidth< type >() ) \
+            if ( con.bw == bitwidth< type >() ) \
                 return static_cast< type >( con.value );
 
         template< bool _signed >
