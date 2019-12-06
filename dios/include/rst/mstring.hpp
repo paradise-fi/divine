@@ -42,7 +42,7 @@ namespace __dios::rst::abstract {
                 return static_cast< abstract_value_t >( ptr );
             }
 
-            void push_bound( abstract_value_t bound )
+            void push_bound( abstract_value_t bound ) noexcept
             {
                 bounds().push_back( bound );
             }
@@ -52,7 +52,7 @@ namespace __dios::rst::abstract {
                 push_bound( constant_t::lift( bound ) );
             }
 
-            void push_char( abstract_value_t ch )
+            void push_char( abstract_value_t ch ) noexcept
             {
                 values().push_back( ch );
             }

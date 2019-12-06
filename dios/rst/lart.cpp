@@ -57,7 +57,7 @@ extern "C"
 using abstract_t = void *;
 
 using store_op = void ( abstract_t /* val */, abstract_t /* ptr */ );
-using gep_op = abstract_t ( abstract_t /* ptr */, abstract_t /* off */ );
+using gep_op = abstract_t ( size_t base, abstract_t /* ptr */, abstract_t /* off */ );
 
 using int_to_fp_op = abstract_t ( abstract_t /* ptr */, abstract_t /* bw */ );
 using fp_to_int_op = abstract_t ( abstract_t /* ptr */, abstract_t /* bw */ );
@@ -105,7 +105,7 @@ template< typename value_t >
 _LART_INLINE
 abstract_t __lart_gep_lifter_impl( argument_t< void * > ptr
                                  , argument_t< value_t > off
-                                 , size_t op )
+                                 , size_t base, size_t op )
 {
     if ( !ptr.tainted ) { // offset is tainted
         __dios_fault( _VM_Fault::_VM_F_Control, "unsupported abstract offset of concrete pointer" );
@@ -115,7 +115,8 @@ abstract_t __lart_gep_lifter_impl( argument_t< void * > ptr
     auto gep = get_operation< gep_op >( domain( ptr.abstract ), op );
     auto offset = off.tainted ? off.abstract : constant_t::lift( off.concrete );
 
-    __lart_stash( gep( ptr.abstract, offset ) );
+    // TODO: correct bytewise index
+    __lart_stash( gep( base, ptr.abstract, offset ) );
     return taint< abstract_t >();
 }
 
@@ -123,11 +124,11 @@ abstract_t __lart_gep_lifter_impl( argument_t< void * > ptr
     __invisible \
     abstract_t __lart_gep_lifter( bool taint_ptr, void * ptr, abstract_t a_ptr \
                                 , bool taint_off, off_t off, abstract_t a_off \
-                                , size_t op ) \
+                                , size_t base, size_t op ) \
     { \
         return __lart_gep_lifter_impl< uint64_t >( { taint_ptr, ptr, a_ptr } \
                                                  , { taint_off, off, a_off } \
-                                                 , op ); \
+                                                 , base, op ); \
     }
 
 template< typename int_t >
