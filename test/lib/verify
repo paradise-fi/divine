@@ -72,7 +72,6 @@ if test -z "$EXPORT"; then
     fi
 
     if test "$TEST_FLAVOUR" = mcsema; then
-        bash $SRCDIR/test/lib/lift.sh
         decompiled=1;
     fi
 fi
@@ -115,6 +114,10 @@ if test "$skipcc" = 1; then
     run=$name
     opts="$std $opts"
 elif test "$decompiled" = 1; then
+
+    # FIXME: For now MCSEMA_META_DIR is env variable, but we want it to be configurable
+    #        by the caller of this script.
+    $SRCDIR/test/lib/decompile cc "$1" $MCSEMA_META_DIR $ccopt
     run=testcase.bc
     opts="$std $opts"
 else
