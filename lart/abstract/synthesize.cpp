@@ -351,11 +351,15 @@ namespace lart::abstract
         {
             auto addr = inargs[ 1 ].value;
             args.push_back( addr ); // addr
+            args.push_back( llvm_index( lifter_function() ) );
 
-            domain = domain_index( addr, irb );
+            auto rty = lifter_function()->getReturnType();
+            std::string name = "__lart_load_lifter_" + llvm_name( rty );
+            auto lifter_template = module->getFunction( name );
 
-            auto call = call_lifter( irb );
-            return_from_lifter( irb, call );
+            auto call = irb.CreateCall( lifter_template, args );
+            irb.CreateRet( call );
+            inline_call( call );
         }
 
         template< typename builder_t, lifter_op_t op = T >
