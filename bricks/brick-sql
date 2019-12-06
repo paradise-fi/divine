@@ -155,7 +155,7 @@ namespace brq::sql
             {
                 off ++;
                 while ( off < s.size() && std::isdigit( s[ off ] ) && f_scale > 1 )
-                    fract *= 10, f_scale /= 10, fract += s[ off ] - '0', off ++;
+                    fract += s[ off ] - '0', fract *= 10, f_scale /= 10, off ++;
             }
             n.value = integral + fract;
             return true;
