@@ -270,21 +270,20 @@ namespace lart::abstract
         template< typename builder_t, lifter_op_t op = T >
         auto construct( builder_t &irb ) -> ENABLE_IF( gep )
         {
-            auto paired = paired_arguments();
-            auto ptr = paired[ 0 ];
-            auto off = paired[ 1 ];
+            args.push_back( inargs[ 0 ].taint ); // ptr taint
+            args.push_back( inargs[ 0 ].value ); // concrete ptr
+            args.push_back( inargs[ 1 ].value ); // abstract ptr
 
-            args.push_back( ptr.concrete.taint );
-            args.push_back( ptr.concrete.value );
-            args.push_back( ptr.abstract.value );
+            args.push_back( inargs[ 2 ].taint ); // offset taint
+            args.push_back( irb.CreateSExt( inargs[ 2 ].value, i64Ty() ) ); // concrete offset
+            args.push_back( inargs[ 3 ].value ); // abstract offset
 
-            args.push_back( off.concrete.taint );
-            args.push_back( irb.CreateSExt( off.concrete.value, i64Ty() ) );
-            args.push_back( off.abstract.value );
+            args.push_back( inargs[ 4 ].value ); // base bitwidth
 
             args.push_back( llvm_index( lifter_function() ) );
 
             auto lifter_template = module->getFunction( "__lart_gep_lifter" );
+
             auto call = irb.CreateCall( lifter_template, args );
             irb.CreateRet( call );
             inline_call( call );

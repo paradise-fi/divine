@@ -225,7 +225,8 @@ namespace lart::abstract {
                 con = irb.CreateBitCast( con, i8PTy() );
             }
 
-            return { con, abs, idx, aidx };
+            auto base = gep->getSourceElementType()->getScalarSizeInBits();
+            return { con, abs, idx, aidx, i64( base ) };
         }
 
         template< Type T_ = T >
@@ -375,8 +376,18 @@ namespace lart::abstract {
                 irb.CreateRet( clone );
 
                 for ( size_t i = 0; i < fn->arg_size(); i += 2 ) {
+                    unsigned pos = i / 2;
+                    if ( pos >= clone->getNumOperands() )
+                        // skip additional abstraction arguments
+                        break;
                     // pass every second argument to concrete call
-                    clone->setOperand( i / 2, argument( fn, i ) );
+                    llvm::Value * arg = argument( fn, i );
+                    auto ty = clone->getOperand( pos )->getType();
+                    if ( arg->getType() != ty ) {
+                        auto irb = llvm::IRBuilder<>( clone );
+                        arg = irb.CreateBitCast( arg, ty );
+                    }
+                    clone->setOperand( pos, arg );
                 }
             }
 
