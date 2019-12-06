@@ -56,11 +56,12 @@ extern "C"
 
 using abstract_t = void *;
 
-using store_op = void ( abstract_t /* val */, abstract_t /* ptr */ );
-using gep_op = abstract_t ( size_t base, abstract_t /* ptr */, abstract_t /* off */ );
+using load_op = abstract_t ( abstract_t val, size_t bitwidth );
+using store_op = void ( abstract_t val, abstract_t addr, size_t bitwidth );
+using gep_op = abstract_t ( size_t base, abstract_t addr, abstract_t off );
 
-using int_to_fp_op = abstract_t ( abstract_t /* ptr */, abstract_t /* bw */ );
-using fp_to_int_op = abstract_t ( abstract_t /* ptr */, abstract_t /* bw */ );
+using int_to_fp_op = abstract_t ( abstract_t ptr, abstract_t bitwidth );
+using fp_to_int_op = abstract_t ( abstract_t ptr, abstract_t bitwidth );
 
 template< typename op_t >
 auto get_operation( uint8_t domain, uint32_t op_index ) noexcept
@@ -73,6 +74,22 @@ struct argument_t { bool tainted; concrete_t concrete; abstract_t abstract; };
 
 template< typename concrete_t >
 argument_t( bool b, concrete_t c, abstract_t a ) -> argument_t< concrete_t >;
+
+template< typename value_t >
+_LART_INLINE
+value_t __lart_load_lifter_impl( abstract_t addr, size_t op )
+{
+    auto load = get_operation< load_op >( domain( object( addr ) ), op );
+    __lart_stash( load( addr, bitwidth< value_t >() ) );
+    return taint< value_t >();
+}
+
+#define LART_LOAD_LIFTER( name, value_t ) \
+    _LART_INTERFACE \
+    value_t __lart_load_lifter_ ##name( abstract_t a_addr, size_t op ) \
+    { \
+        return __lart_load_lifter_impl< value_t >( a_addr, op ); \
+    }
 
 template< typename value_t >
 _LART_INLINE
@@ -169,6 +186,11 @@ extern "C" {
     LART_STORE_LIFTER( i16, uint16_t )
     LART_STORE_LIFTER( i32, uint32_t )
     LART_STORE_LIFTER( i64, uint64_t )
+
+    LART_LOAD_LIFTER(  i8, uint8_t )
+    LART_LOAD_LIFTER( i16, uint16_t )
+    LART_LOAD_LIFTER( i32, uint32_t )
+    LART_LOAD_LIFTER( i64, uint64_t )
 
     LART_GEP_LIFTER( uint64_t )
 
