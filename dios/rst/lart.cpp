@@ -56,6 +56,7 @@ extern "C"
 
 using abstract_t = void *;
 
+using alloca_op = abstract_t ( abstract_t size , size_t bitwidth );
 using load_op = abstract_t ( abstract_t val, size_t bitwidth );
 using store_op = void ( abstract_t val, abstract_t addr, size_t bitwidth );
 using gep_op = abstract_t ( size_t base, abstract_t addr, abstract_t off );
@@ -181,6 +182,14 @@ abstract_t __lart_fp_to_int_impl( abstract_t fp, size_t op )
     }
 
 extern "C" {
+
+    _LART_INTERFACE
+    void *__lart_alloca_lifter( abstract_t a_size, size_t bw, size_t op )
+    {
+        auto alloca = get_operation< alloca_op >( domain( object( a_size ) ), op );
+        __lart_stash( alloca( a_size, bw ) );
+        return taint< void * >( nullptr );
+    }
 
     LART_STORE_LIFTER(  i8, uint8_t )
     LART_STORE_LIFTER( i16, uint16_t )
