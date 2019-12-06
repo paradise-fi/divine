@@ -104,7 +104,7 @@ void __lart_store_lifter_impl( argument_t< value_t > value
 
     auto store = get_operation< store_op >( domain( addr.abstract ), op );
     abstract_t val = value.tainted ? value.abstract : constant_t::lift( value.concrete );
-    store( val, addr.abstract );
+    store( val, addr.abstract, bitwidth< value_t >() );
 }
 
 #define LART_STORE_LIFTER( name, T ) \
