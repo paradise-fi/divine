@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Expects there are executables in `PATH`
+#    `mcsema-lift`
+#    `mcsema-dyninst-disass`
+# First argument is a compiler to use.
+# Second argument is a source file to be lifted.
+# Third argument is a directory that contains files needed by mcsema to lift files:
+#   `linux.txt` old-style definitions used by `mcsema-dyninst-disass`
+#   `libc/` directory that contains bitcode prototypes
+# Rest are forwarded CC_OPTS
+
+cc=$1; shift
+src=$1; shift
+mcsema_dir=$1; shift
+
+binary=testcase
+cfg=testcase.cfg
+out=testcase.bc
+
+libc=""
+for x in $mcsema_dir/libc/*.bc; do
+    libc="$libc$x,"
+done
+
+$cc $src "$@" -g -o $binary -lpthread -lm
+
+dissas_args="--output $cfg --binary $binary --std_defs $mcsema_dir/linux.txt"
+
+if file $binary | grep -e "LSB shared object" -e "LSB pie executable" -q; then
+    disass_args="$disass_args --pie_mode true"
+fi
+
+mcsema-dyninst-disass $dissas_args
+
+mcsema-lift --explicit_args --arch amd64 --os linux --cfg $cfg --abi_libraries $libc --output $out
