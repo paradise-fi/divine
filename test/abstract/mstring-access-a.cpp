@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym todo */
+/* TAGS: mstring min sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -8,8 +8,8 @@
 #include <string.h>
 
 int main() {
-    char str[8] = "aabbbcc";
-    char * a = __mstring_val( str, 8 );
+    char str[] = "aabbbcc";
+    char * a = __mstring_from_string( str );
     a[ 1 ] = 'b';
 
     assert( a[1] == 'b' );
