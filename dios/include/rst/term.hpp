@@ -31,6 +31,8 @@ namespace __dios::rst::abstract
 
         using Op = smt::Op;
 
+        operator abstract_value_t() { return static_cast< abstract_value_t >( pointer ); }
+
         _LART_INLINE RPN& as_rpn() noexcept
         {
             return *reinterpret_cast< RPN * >( &pointer );
