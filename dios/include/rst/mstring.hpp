@@ -205,7 +205,12 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE _LART_SCALAR
         static index_t fn_strlen( mstring_ptr str ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            auto seg = str->segment_at_current_offset();
+            auto zero = character_t::lift( 0 );
+            while ( seg.begin_it() != str.bounds().end() && seg.value() != zero )
+                ++seg;
+            if ( seg.begin_it() == str.bounds().end() )
+            return seg.begin() - str.offset();
         }
 
         _LART_INTERFACE _LART_SCALAR
@@ -293,12 +298,6 @@ namespace __dios::rst::abstract {
         static mstring_ptr gep( mstring_ptr array, index_t idx ) noexcept
         {
             return make_mstring( array.data(), array.offset() + idx );
-        }
-
-        _LART_INLINE
-        static index_t strlen( mstring_ptr str ) noexcept
-        {
-            UNREACHABLE( "not implemented" );
         }
 
         _LART_INLINE
