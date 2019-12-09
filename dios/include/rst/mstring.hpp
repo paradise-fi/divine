@@ -21,6 +21,17 @@ namespace __dios::rst::abstract {
         using bounds_t = Array< index_t >;
         using bounds_iterator = typename bounds_t::iterator;
 
+        template< _VM_Fault fault_v = _VM_Fault::_VM_F_Assert >
+        static void fault( const char * msg ) noexcept
+        {
+            __dios_fault( fault_v, msg );
+        }
+
+        static void out_of_bounds_fault() noexcept
+        {
+            fault< _VM_Fault::_VM_F_Memory >( "Access out of bounds." );
+        }
+
         struct data_t : brq::refcount_base< uint16_t, false /* atomic */ >
         {
             values_t values;
@@ -46,9 +57,16 @@ namespace __dios::rst::abstract {
             mstring_t &operator*() const noexcept { return *ptr; }
 
             auto data() noexcept { return ptr->data; }
-            index_t offset() noexcept { return ptr->offset; }
-
             index_t size() const noexcept { return ptr->size(); }
+            index_t offset() noexcept { return ptr->offset; }
+            index_t checked_offset() noexcept
+            {
+                auto off = offset();
+                if ( static_cast< bool >( off >= size() ) )
+                    out_of_bounds_fault();
+                return off;
+            }
+
             auto& bounds() noexcept { return ptr->bounds(); }
             const auto& bounds() const noexcept { return ptr->bounds(); }
             auto& values() noexcept { return ptr->values(); }
@@ -158,7 +176,7 @@ namespace __dios::rst::abstract {
         static character_t op_load( mstring_ptr array, bitwidth_t bw ) noexcept
         {
             if ( bw != 8 )
-                __dios_fault( _VM_Fault::_VM_F_Assert, "unexpected store bitwidth" );
+                fault( "unexpected store bitwidth" );
 
             // TODO assert array is mstring
             return load( array );
@@ -168,7 +186,7 @@ namespace __dios::rst::abstract {
         static void op_store( abstract_value_t value, abstract_value_t array, bitwidth_t bw ) noexcept
         {
             if ( bw != 8 )
-                __dios_fault( _VM_Fault::_VM_F_Assert, "unexpected store bitwidth" );
+                fault( "unexpected store bitwidth" );
 
             // TODO assert array is mstring
             return store( value, array );
@@ -178,7 +196,7 @@ namespace __dios::rst::abstract {
         static mstring_ptr op_gep( size_t bw, abstract_value_t array, abstract_value_t idx ) noexcept
         {
             if ( bw != 8 )
-                __dios_fault( _VM_Fault::_VM_F_Assert, "unexpected gep bitwidth" );
+                fault( "unexpected gep bitwidth" );
 
             // TODO assert array is mstring
             return gep( array, idx );
@@ -219,19 +237,13 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE
         static character_t load( mstring_ptr array ) noexcept
         {
-            if ( static_cast< bool >( array.offset() >= array.size() ) )
-                __dios_fault( _VM_Fault::_VM_F_Memory, "Access out of bounds." );
-
             return array->segment_at_current_offset().value();
         }
 
         _LART_INLINE
         static void store( character_t ch, mstring_ptr array ) noexcept
         {
-            auto offset = array.offset();
-            if ( static_cast< bool >( offset >= array.size() ) )
-                __dios_fault( _VM_Fault::_VM_F_Memory, "Access out of bounds." );
-
+            auto offset = array.checked_offset();
             auto one = index_t::lift( 1 );
 
             auto& bounds = array.bounds();
@@ -239,7 +251,7 @@ namespace __dios::rst::abstract {
 
             auto seg = array->segment_at_current_offset();
             if ( seg.value() == ch ) {
-                __dios_trace_f( "do nothing" );
+                // do nothing
             } else if ( seg.singleton() ) {
                 // rewrite single character segment
                 seg.set_char( ch );
@@ -387,6 +399,9 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         segment_t segment_at_index( index_t idx ) noexcept
         {
+            if ( static_cast< bool >( idx >= size() ) )
+                out_of_bounds_fault();
+
             auto it = bounds().begin();
 
             for ( auto it = bounds().begin(); std::next( it ) != bounds().end(); ++it )
