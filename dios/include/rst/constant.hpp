@@ -32,7 +32,11 @@ namespace __dios::rst::abstract {
             new ( ptr ) constant_t();
 
             auto con = static_cast< constant_t * >( ptr );
-            con->value = value;
+            if constexpr ( std::is_pointer_v< concrete_t > ) {
+                con->value = reinterpret_cast< uintptr_t >( value );
+            } else {
+                con->value = value;
+            }
 
             if constexpr ( std::is_integral_v< concrete_t > )
                 con->type = type_t::Integer;
