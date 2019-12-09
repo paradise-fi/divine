@@ -14,21 +14,23 @@ namespace __dios::rst::abstract {
     {
         static_assert( !(floating && !_signed) && "unsigned floats are not permitted" );
 
-        using value_type = void *;
+        abstract_value_t _value;
 
-        value_type _value;
+        _LART_INLINE
+        scalar_t( void * ptr ) : _value( static_cast< abstract_value_t >( ptr ) ) {}
 
-        scalar_t( void * ptr ) : _value( ptr ) {}
-        scalar_t( domain_t val ) : _value( static_cast< value_type >( val ) ) {}
+        _LART_INLINE
+        scalar_t( domain_t val ) : _value( static_cast< abstract_value_t >( val ) ) {}
 
-        operator value_type() { return _value; }
-        operator value_type() const { return _value; }
-
+        _LART_INLINE
         operator domain_t() { return domain_t{ _value }; }
+
+        _LART_INLINE
         operator domain_t() const { return domain_t{ _value }; }
 
+        _LART_INLINE
         operator bool() {
-            if ( is_constant( domain_t( _value ) ) )
+            if ( is_constant( domain( _value ) ) )
                 return constant_t::to_tristate( _value );
 
             auto res = domain_t::to_tristate( *this );
@@ -36,13 +38,18 @@ namespace __dios::rst::abstract {
             return res;
         }
 
+        operator abstract_value_t() noexcept
+        {
+            return static_cast< abstract_value_t >( _value );
+        }
+
         template< template< typename, typename > class operation >
         _LART_INLINE static scalar_t binary_op( scalar_t l, scalar_t r ) noexcept
         {
             using Op = operation< constant_t, domain_t >;
 
-            auto ldom = domain_t( l );
-            auto rdom = domain_t( r );
+            auto ldom = domain( l );
+            auto rdom = domain( r );
 
             if ( is_constant( ldom ) ) {
                 if ( is_constant( rdom ) )
@@ -58,8 +65,14 @@ namespace __dios::rst::abstract {
         template< typename concrete_t >
         _LART_INLINE concrete_t lower() const noexcept
         {
-            assert( is_constant( domain_t( _value ) ) );
+            assert( is_constant( domain( _value ) ) );
             return static_cast< constant_t * >( _value )->template lower< concrete_t >();
+        }
+
+        template< typename concrete_t >
+        _LART_INLINE static scalar_t lift( concrete_t val ) noexcept
+        {
+            return domain_t::lift( val );
         }
 
         template< template< typename > class operation >
@@ -105,6 +118,7 @@ namespace __dios::rst::abstract {
         #define general_operation( name, op ) \
             op_traits( name ) \
             \
+            _LART_INLINE \
             friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
             { \
                 if constexpr ( is_in_domain< op_ ## name ## _t > ) \
@@ -118,6 +132,7 @@ namespace __dios::rst::abstract {
             op_traits( s ## name ) \
             op_traits( f ## name ) \
             \
+            _LART_INLINE \
             friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
             { \
                 if constexpr ( unsigned_operation( name ) ) \
@@ -143,6 +158,7 @@ namespace __dios::rst::abstract {
         op_traits( lshr )
         op_traits( ashr )
 
+        _LART_INLINE
         friend scalar_t operator>>( scalar_t l, scalar_t r ) noexcept
         {
             if constexpr ( !_signed && is_detected_v< op_lshr_t, domain_t > ) \
@@ -165,6 +181,7 @@ namespace __dios::rst::abstract {
             op_traits( u ## name ) \
             op_traits( s ## name ) \
             \
+            _LART_INLINE \
             friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
             { \
                 if constexpr ( unsigned_icmp_operation( name ) ) \
@@ -180,6 +197,7 @@ namespace __dios::rst::abstract {
         icmp_operation( le, <= )
 
         /* cast operations */
+
     };
 
 } // namespace __dios::rst::abstract
