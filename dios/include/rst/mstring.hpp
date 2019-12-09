@@ -79,6 +79,9 @@ namespace __dios::rst::abstract {
                 push_char( constant_t::lift( ch ) );
             }
 
+            _LART_INLINE
+            friend void trace( const mstring_ptr &mstr ) noexcept { trace( *mstr ); }
+
             mstring_t * ptr;
         };
 
@@ -172,10 +175,13 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INTERFACE _LART_OPTNONE
-        static mstring_ptr op_gep( size_t /*base*/, abstract_value_t /*array*/
-                                                  , abstract_value_t /*idx*/ ) noexcept
+        static mstring_ptr op_gep( size_t bw, abstract_value_t array, abstract_value_t idx ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            if ( bw != 8 )
+                __dios_fault( _VM_Fault::_VM_F_Assert, "unexpected gep bitwidth" );
+
+            // TODO assert array is mstring
+            return gep( array, idx );
         }
 
         _LART_INTERFACE _LART_SCALAR
@@ -272,9 +278,9 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INLINE
-        static mstring_ptr gep( size_t /*base*/, mstring_ptr /*array*/, index_t /*idx*/ ) noexcept
+        static mstring_ptr gep( mstring_ptr array, index_t idx ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            return make_mstring( array.data(), array.offset() + idx );
         }
 
         _LART_INLINE
