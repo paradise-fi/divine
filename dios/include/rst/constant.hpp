@@ -91,9 +91,9 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INTERFACE
-        static tristate_t to_tristate( abstract_value_t ptr ) noexcept
+        static tristate_t to_tristate( abstract_value_t val ) noexcept
         {
-            if ( get_constant( ptr ).value )
+            if ( get_constant( val ).value )
                 return { tristate_t::True };
             return { tristate_t::False };
         }
@@ -120,7 +120,6 @@ namespace __dios::rst::abstract {
             auto l = get_constant( lhs );
             auto r = get_constant( rhs );
             auto bw = std::max( l.bw, r.bw );
-
             if constexpr ( _signed ) {
                 PERFORM_OP_IF( int8_t )
                 PERFORM_OP_IF( int16_t )
@@ -276,5 +275,11 @@ namespace __dios::rst::abstract {
     } __attribute__((packed));
 
     static_assert( sizeof( constant_t ) == 11 );
+
+    _LART_INLINE
+    static bool is_constant( uint8_t domain ) noexcept
+    {
+        return is_domain< constant_t >( domain );
+    }
 
 } // namespace __dios::rst::abstract

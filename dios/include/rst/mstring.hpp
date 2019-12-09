@@ -25,17 +25,34 @@ namespace __dios::rst::abstract {
         {
             values_t values;
             bounds_t bounds;
-            abstract_value_t size; // either< index_t, constant_t >
+            abstract_value_t size; // index_t
         };
+
+        index_t size() const noexcept { return data->size; }
+        auto& bounds() noexcept { return data->bounds; }
+        const auto& bounds() const noexcept { return data->bounds; }
+        auto& values() noexcept { return data->values; }
+        const auto& values() const noexcept { return data->values; }
 
         using data_ptr = brq::refcount_ptr< data_t >;
 
         struct mstring_ptr
         {
             mstring_ptr( mstring_t * p ) : ptr( p ) {}
+            mstring_ptr( abstract_value_t a )
+                : mstring_ptr( static_cast< mstring_t * >( a ) ) {}
 
-            auto& bounds() noexcept { return ptr->data->bounds; }
-            auto& values() noexcept { return ptr->data->values; }
+            mstring_t *operator->() const noexcept { return ptr; }
+            mstring_t &operator*() const noexcept { return *ptr; }
+
+            auto data() noexcept { return ptr->data; }
+            index_t offset() noexcept { return ptr->offset; }
+
+            index_t size() const noexcept { return ptr->size(); }
+            auto& bounds() noexcept { return ptr->bounds(); }
+            const auto& bounds() const noexcept { return ptr->bounds(); }
+            auto& values() noexcept { return ptr->values(); }
+            const auto& values() const noexcept { return ptr->values(); }
 
             operator abstract_value_t()
             {
@@ -59,7 +76,7 @@ namespace __dios::rst::abstract {
 
             void push_char( char ch ) noexcept
             {
-                push_bound( constant_t::lift( ch ) );
+                push_char( constant_t::lift( ch ) );
             }
 
             mstring_t * ptr;
@@ -69,19 +86,25 @@ namespace __dios::rst::abstract {
         data_ptr data;
 
         _LART_INLINE
-        static mstring_ptr make_mstring( abstract_value_t size )
+        static mstring_ptr make_mstring( data_ptr data, abstract_value_t offset ) noexcept
         {
-            auto data = brq::make_refcount< data_t >();
-            data->size = size;
-
             auto ptr = __new< mstring_t >();
-            ptr->offset = constant_t::lift( 0 );
+            ptr->offset = offset;
             ptr->data = data;
             return ptr;
         }
 
         _LART_INLINE
-        static mstring_ptr make_mstring( unsigned size )
+        static mstring_ptr make_mstring( abstract_value_t size ) noexcept
+        {
+            auto data = brq::make_refcount< data_t >();
+            data->size = size;
+
+            return make_mstring( data, constant_t::lift( 0 ) );
+        }
+
+        _LART_INLINE
+        static mstring_ptr make_mstring( unsigned size ) noexcept
         {
             return make_mstring( constant_t::lift( size ) );
         }
@@ -129,9 +152,13 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INTERFACE _LART_OPTNONE
-        static character_t op_load( mstring_ptr /* ptr */, bitwidth_t /* bw */ ) noexcept
+        static character_t op_load( mstring_ptr array, bitwidth_t bw ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            if ( bw != 8 )
+                __dios_fault( _VM_Fault::_VM_F_Assert, "unexpected store bitwidth" );
+
+            // TODO assert array is mstring
+            return load( array );
         }
 
         _LART_INTERFACE _LART_OPTNONE
@@ -179,6 +206,15 @@ namespace __dios::rst::abstract {
 
         /* implementation of abstraction interface */
 
+        _LART_INTERFACE
+        static character_t load( mstring_ptr array ) noexcept
+        {
+            if ( static_cast< bool >( array.offset() >= array.size() ) )
+                __dios_fault( _VM_Fault::_VM_F_Memory, "Access out of bounds." );
+
+            return array->segment_at_current_offset().value();
+        }
+
         _LART_INLINE
         static void store( character_t /*value*/, mstring_ptr /*array*/, bitwidth_t /*bw*/ ) noexcept
         {
@@ -219,6 +255,97 @@ namespace __dios::rst::abstract {
         static mstring_ptr strhr( mstring_ptr str, character_t ch ) noexcept
         {
             UNREACHABLE( "not implemented" );
+        }
+
+        _LART_INLINE
+        size_t concrete_offset() const noexcept
+        {
+            return static_cast< index_t >( offset ).template lower< size_t >();
+        }
+
+        _LART_INLINE
+        size_t concrete_size() const noexcept
+        {
+            return static_cast< index_t >( size() ).template lower< size_t >();
+        }
+
+        _LART_INLINE
+        friend void trace( mstring_t &mstr ) noexcept
+        {
+           __dios_trace_f( "mstring offset %lu size %lu:", mstr.concrete_offset(), mstr.concrete_size() );
+           auto seg = mstr.segment_at_current_offset();
+           while ( seg.end_it() != mstr.bounds().end() ) {
+               trace( seg );
+               ++seg;
+           }
+        }
+
+        /* detail */
+
+        struct segment_t
+        {
+            bounds_iterator _begin;
+            values_iterator _value;
+
+            auto begin_it() noexcept { return _begin; }
+            auto begin_it() const noexcept { return _begin; }
+            auto end_it() noexcept { return std::next( _begin ); }
+            auto end_it() const noexcept { return std::next( _begin ); }
+            auto val_it() noexcept { return _value; }
+            auto val_it() const noexcept { return _value; }
+
+            index_t& begin() const noexcept { return *begin_it(); }
+            index_t& end() const noexcept { return *end_it(); }
+            character_t& value() const noexcept { return *_value; }
+
+            void set_char( character_t ch ) noexcept { *_value = ch; }
+
+            segment_t& operator++() noexcept
+            {
+                ++_begin;
+                ++_value;
+                return *this;
+            }
+
+            segment_t& operator--() noexcept
+            {
+                --_begin; --_value;
+                return *this;
+            }
+
+            bool empty() const noexcept { return begin() == end(); }
+
+            bool singleton() const noexcept
+            {
+                return begin() + index_t::lift( 1 ) == end();
+            }
+
+            friend void trace( const segment_t &seg ) noexcept
+            {
+                __dios_trace_f( "seg [%lu, %lu]: %c", seg.begin().template lower< size_t >()
+                                                    , seg.end().template lower< size_t >()
+                                                    , seg.value().template lower< char >() );
+            }
+        };
+
+        _LART_INLINE
+        segment_t segment_at_index( index_t idx ) noexcept
+        {
+            auto it = bounds().begin();
+
+            for ( auto it = bounds().begin(); std::next( it ) != bounds().end(); ++it )
+                if ( idx >= *it && idx < *std::next( it ) ) {
+                    auto nth = std::distance( bounds().begin(), it );
+                    return segment_t{ it, std::next( values().begin(), nth ) };
+                }
+
+            UNREACHABLE( "MSTRIG ERROR: index out of bounds" );
+        }
+
+        _LART_INLINE
+        segment_t segment_at_current_offset() noexcept
+        {
+            return segment_at_index( offset );
         }
     };
 
