@@ -51,17 +51,17 @@ namespace __dios::rst::abstract {
         __op( lift_any_aggr, unsigned size )
         __op( lift_one_aggr, void * addr, unsigned size )
 
-        __op( op_thaw, unit_value_t /* addr */, uint8_t /* bw */ )
+        __op( op_thaw, unit_value_t addr, uint8_t bw )
 
-        __op( op_load, unit_value_t /* addr */ )
+        __op( op_load, unit_value_t addr, uint8_t bw )
 
         _LART_INTERFACE
-        static void op_store( unit_value_t /* val */, unit_value_t /* addr */ ) noexcept { }
+        static void op_store( unit_value_t val, unit_value_t addri, bitwidth_t bw ) noexcept { }
 
-        __op( op_insertvalue, unit_value_t /* agg */, unit_value_t /* val */, uint64_t /* off */ )
-        __op( op_extractvalue, unit_value_t /* agg */, uint64_t /* off */ )
+        __op( op_insertvalue, unit_value_t agg, unit_value_t val, uint64_t off )
+        __op( op_extractvalue, unit_value_t agg, uint64_t off )
 
-        __op( op_gep, unit_value_t /* addr */, unit_value_t /* off */ )
+        __op( op_gep, size_t bw, unit_value_t addr, unit_value_t off )
 
         _LART_INTERFACE
         static tristate_t to_tristate( unit_value_t ) noexcept
