@@ -162,9 +162,13 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INTERFACE _LART_OPTNONE
-        static void op_store( abstract_value_t /*value*/, abstract_value_t /*array*/, bitwidth_t /*bw*/ ) noexcept
+        static void op_store( abstract_value_t value, abstract_value_t array, bitwidth_t bw ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            if ( bw != 8 )
+                __dios_fault( _VM_Fault::_VM_F_Assert, "unexpected store bitwidth" );
+
+            // TODO assert array is mstring
+            return store( value, array );
         }
 
         _LART_INTERFACE _LART_OPTNONE
@@ -216,9 +220,55 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INLINE
-        static void store( character_t /*value*/, mstring_ptr /*array*/, bitwidth_t /*bw*/ ) noexcept
+        static void store( character_t ch, mstring_ptr array ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            auto offset = array.offset();
+            if ( static_cast< bool >( offset >= array.size() ) )
+                __dios_fault( _VM_Fault::_VM_F_Memory, "Access out of bounds." );
+
+            auto one = index_t::lift( 1 );
+
+            auto& bounds = array.bounds();
+            auto& values = array.values();
+
+            auto seg = array->segment_at_current_offset();
+            if ( seg.value() == ch ) {
+                __dios_trace_f( "do nothing" );
+            } else if ( seg.singleton() ) {
+                // rewrite single character segment
+                seg.set_char( ch );
+            } else if ( seg.begin() == offset ) {
+                // rewrite first character of segment
+                if ( seg.begin() != bounds.begin() ) {
+                    auto prev = --seg;
+                    if ( prev.value() == ch ) {
+                        // merge with left neighbour
+                        seg.begin() = seg.begin() + one;
+                        return;
+                    }
+                }
+
+                bounds.insert( seg.end_it(), offset + one );
+                values.insert( seg.val_it(), ch );
+            } else if ( seg.end() == offset ) {
+                // rewrite last character of segment
+                if ( seg.end() != std::prev( bounds.end() ) ) {
+                    auto next = ++seg;
+                    if ( next.value() == ch ) {
+                        // merge with left neighbour
+                        seg.end() = seg.end() - one;
+                        return;
+                    }
+                }
+                bounds.insert( seg.end_it(), offset );
+                values.insert( std::next( seg.val_it() ), ch );
+            } else {
+                // rewrite segment in the middle (split segment)
+                auto vit = values.insert( seg.val_it(), seg.value() );
+                values.insert( std::next( vit ), ch );
+                auto bit = bounds.insert( seg.end_it(), offset );
+                bounds.insert( std::next( bit ), offset + one );
+            }
         }
 
         _LART_INLINE
