@@ -483,22 +483,27 @@ namespace lart::abstract
             return irb.CreateCall( op, args );
         }
 
+        template< typename builder_t >
+        llvm::Value * tainted_value( llvm::Type * type, builder_t &irb )
+        {
+            auto tainted = irb.CreateLoad( module->getNamedGlobal( "__tainted" ) );
+
+            if ( type->isIntegerTy() )
+                return irb.CreateZExtOrTrunc( tainted, type );
+            if ( type->isFloatingPointTy() )
+                return irb.CreateUIToFP( tainted, type );
+            if ( type->isPointerTy() )
+                return irb.CreateIntToPtr( tainted, type );
+
+            UNREACHABLE( "unsupported taint type" );
+        }
+
         template< typename builder_t, typename lifter_t, lifter_op_t op = T >
         auto return_from_lifter( builder_t &irb, lifter_t call ) -> ENABLE_IF( faultable )
         {
             auto crty = lifter_function()->getReturnType();
-            auto t = module->getNamedGlobal( "__tainted" );
-            auto load = irb.CreateLoad( t );
-
-            auto casted = [&] {
-                if ( crty->isIntegerTy() )
-                    return irb.CreateTruncOrBitCast( load, crty );
-                if ( crty->isFloatingPointTy() )
-                    return irb.CreateUIToFP( load, crty );
-                UNREACHABLE( "unsupported lifter return type" );
-            } ();
-
-            auto ret = irb.CreateRet( casted );
+            auto tainted = tainted_value( crty, irb );
+            auto ret = irb.CreateRet( tainted );
             stash( ret, call );
         }
 
