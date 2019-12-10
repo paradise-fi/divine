@@ -118,13 +118,30 @@ namespace __dios::rst::abstract {
         #define general_operation( name, op ) \
             op_traits( name ) \
             \
+            \
+            template< typename first_t, typename second_t > \
             _LART_INLINE \
-            friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
+            static scalar_t name ## _impl( first_t l, second_t r ) noexcept \
             { \
                 if constexpr ( is_in_domain< op_ ## name ## _t > ) \
                     return binary_op< name ## _op >( l, r ); \
                 else \
                     UNREACHABLE( "unsupported operation " # name ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( abstract_value_t l, scalar_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( scalar_t l, abstract_value_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
             }
 
         #define operation( name, op ) \
@@ -132,8 +149,9 @@ namespace __dios::rst::abstract {
             op_traits( s ## name ) \
             op_traits( f ## name ) \
             \
+            template< typename first_t, typename second_t > \
             _LART_INLINE \
-            friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
+            static auto name ## _impl( first_t l, second_t r ) noexcept \
             { \
                 if constexpr ( unsigned_operation( name ) ) \
                     perform_operation( name ) \
@@ -143,6 +161,21 @@ namespace __dios::rst::abstract {
                     perform_floating_operation( name ) \
                 else \
                     UNREACHABLE( "unsupported operation " # name ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( abstract_value_t l, scalar_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( scalar_t l, abstract_value_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
             }
 
         /* arithmetic operations */
@@ -181,8 +214,9 @@ namespace __dios::rst::abstract {
             op_traits( u ## name ) \
             op_traits( s ## name ) \
             \
+            template< typename first_t, typename second_t > \
             _LART_INLINE \
-            friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
+            static scalar_t name ## _impl ( first_t l, second_t r ) noexcept \
             { \
                 if constexpr ( unsigned_icmp_operation( name ) ) \
                     perform_unsigned_operation( name ) \
@@ -190,6 +224,21 @@ namespace __dios::rst::abstract {
                     perform_signed_operation( name ) \
                 else \
                     UNREACHABLE( "unsupported operation " # name ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( scalar_t l, scalar_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( abstract_value_t l, scalar_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
+            } \
+            _LART_INLINE \
+            friend scalar_t operator op ( scalar_t l, abstract_value_t r ) noexcept \
+            { \
+                return name ## _impl( l, r ); \
             }
 
         icmp_operation( ge, >= )
