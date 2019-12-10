@@ -281,9 +281,17 @@ namespace lart::abstract
                     push( u );
                 else if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( u ) )
                 {
-                    for ( auto &fn : resolve_call( llvm::CallSite( u ) ) )
-                        if ( !meta::function::ignore_call( fn ) )
-                            propagate_in( fn, llvm::CallSite( u ) );
+                    for ( auto &fn : resolve_call( llvm::CallSite( u ) ) ) {
+                        if ( is_abstractable( fn ) ) {
+                            // TODO transform function for domains
+                            auto meta = meta::abstract::get( val );
+                            if ( ( meta.has_value() ) )
+                                propagate( u, type_from_meta( u, meta.value() ) );
+                        } else {
+                            if ( !meta::function::ignore_call( fn ) )
+                                propagate_in( fn, llvm::CallSite( u ) );
+                        }
+                    }
                 }
                 else if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
                     propagate_out( ret );

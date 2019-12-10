@@ -176,6 +176,9 @@ namespace lart::abstract {
                 );
 
                 set_index_metadata( fn, meta::tag::operation::index, i );
+
+                if ( op.is_fn() && meta::abstract::has( op.impl ) )
+                    meta::abstract::inherit( fn, op.impl );
             }
 
             std::vector< llvm::Constant * > domains;

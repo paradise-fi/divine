@@ -285,7 +285,35 @@ namespace lart::abstract
         {
             return type( val ).peel();
         }
+
+        template< typename meta_t >
+        type_onion type_from_meta( llvm::Value * val, const meta_t &kind ) const noexcept
+        {
+            if ( kind == "scalar" )
+                return type( val ).make_abstract();
+            if ( kind == "aggregate" )
+                return type( val ).make_abstract_aggregate();
+            if ( kind == "pointer" )
+                return type( val ).make_abstract_pointer();
+
+            UNREACHABLE( "unsupported abstract type" );
+        }
+
+        type_onion type_from_meta( llvm::Value * val ) const noexcept
+        {
+            auto meta = meta::abstract::get( val );
+            ASSERT( meta.has_value() );
+            return type_from_meta( val, meta.value() );
+        }
     };
+
+    static inline bool is_abstractable( llvm::Function * fn )
+    {
+        if ( !fn->hasName() )
+            return false; // TODO deal with anonymous functions
+        auto name = "lart.abstract.fn_" + fn->getName().str();
+        return fn->getParent()->getFunction( name );
+    }
 
     struct AddAbstractMetaVisitor
         : llvm::InstVisitor< AddAbstractMetaVisitor >,
@@ -293,6 +321,7 @@ namespace lart::abstract
     {
         const type_map & _types;
         static constexpr char op_prefix[] = "lart.abstract.op_";
+        static constexpr char fn_prefix[] = "lart.abstract.fn_";
 
 
         AddAbstractMetaVisitor( const type_map & types  )
@@ -378,14 +407,16 @@ namespace lart::abstract
 
         void visitCallInst( llvm::CallInst &call )
         {
-            if ( meta::abstract::has( &call ) )
-                return;
-
             /* TODO what happens if there is more than one? */
             for ( auto fn : resolve_call( &call ) )
             {
+                if ( !is_abstractable( fn ) && meta::abstract::has( &call ) )
+                    continue;
+
+                auto prefix = is_abstractable( fn ) ? fn_prefix : op_prefix;
+
                 ASSERT( fn->hasName() );
-                auto op = std::string( op_prefix ) + fn->getName().str();
+                auto op = prefix + fn->getName().str();
                 add_meta( &call, op, kind( &call ) );
             }
         }

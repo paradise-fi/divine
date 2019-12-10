@@ -144,6 +144,9 @@ namespace lart::abstract
         #define ENABLE_IF( name ) \
             typename std::enable_if_t< Taint::name( op ), void >
 
+        #define ENABLE_IF_NOT( name ) \
+            typename std::enable_if_t< !Taint::name( op ), void >
+
         void synthesize()
         {
             entry = basic_block( lifter_function(), "entry" );
@@ -404,9 +407,64 @@ namespace lart::abstract
         }
 
         template< typename builder_t, lifter_op_t op = T >
-        auto construct( builder_t &/* irb */ ) -> ENABLE_IF( call )
+        auto construct( builder_t &irb ) -> ENABLE_IF( call )
         {
-            UNREACHABLE( "not implemented" );
+            auto paired = paired_arguments();
+            domain = domain_index( paired.front().abstract.value, irb );
+
+            std::map< llvm::BasicBlock *, llvm::Value * > lifted;
+
+            auto merge = [&] ( auto cbb, auto lbb ) {
+                auto arg = irb.CreatePHI( i8PTy(), 2 );
+                auto phi = llvm::cast< llvm::PHINode >( arg );
+                phi->addIncoming( lifted[ cbb ], cbb ); // concrete path
+                phi->addIncoming( lifted[ lbb ], lbb ); // lifted (abstract) path
+                return phi;
+            };
+
+            auto lifter = lifter_function();
+
+            auto lift_arg = [&] ( auto arg )
+                -> std::tuple< llvm::BasicBlock *, llvm::BasicBlock * > // (start, end)
+            {
+                auto fork = basic_block( lifter, "fork" );
+                auto concrete_path = basic_block( lifter, "concrete" );
+                auto join = basic_block( lifter, "join" );
+
+                irb.SetInsertPoint( fork );
+                irb.CreateCondBr( arg.concrete.taint, join, concrete_path );
+
+                lifted[ fork ] = arg.abstract.value;
+
+                irb.SetInsertPoint( concrete_path );
+                lifted[ concrete_path ] = lift_constant( arg.concrete.value, irb );
+                irb.CreateBr( join );
+
+                irb.SetInsertPoint( join );
+                args.push_back( merge( fork, concrete_path ) );
+                return { fork, join };
+            };
+
+            if ( paired.size() > 1 ) {
+                auto last = &lifter->getEntryBlock();
+                auto exit = basic_block( lifter, "exit" );
+                for ( const auto &arg : paired ) {
+                    auto [brbb, mbb] = lift_arg( arg );
+                    irb.SetInsertPoint( last );
+                    irb.CreateBr( brbb );
+                    last = mbb;
+                }
+
+                exit->moveAfter( last );
+                irb.SetInsertPoint( last );
+                irb.CreateBr( exit );
+                irb.SetInsertPoint( exit );
+            } else {
+                args.push_back( paired.front().abstract.value );
+            }
+
+            auto call = call_lifter( irb );
+            return_from_lifter( irb, call );
         }
 
         template< typename builder_t, lifter_op_t op = T >
@@ -425,7 +483,7 @@ namespace lart::abstract
             return irb.CreateCall( op, args );
         }
 
-        template< typename builder_t, typename lifter_t, lifter_op_t op >
+        template< typename builder_t, typename lifter_t, lifter_op_t op = T >
         auto return_from_lifter( builder_t &irb, lifter_t call ) -> ENABLE_IF( faultable )
         {
             auto crty = lifter_function()->getReturnType();
@@ -444,8 +502,8 @@ namespace lart::abstract
             stash( ret, call );
         }
 
-        template< typename builder_t, typename lifter_t >
-        auto return_from_lifter( builder_t &irb, lifter_t call )
+        template< typename builder_t, typename lifter_t, lifter_op_t op = T >
+        auto return_from_lifter( builder_t &irb, lifter_t call ) -> ENABLE_IF_NOT( faultable )
         {
             irb.CreateRet( call );
         }
@@ -534,6 +592,16 @@ namespace lart::abstract
             auto op = llvm_index( impl );
             auto ptr = get_function_from_domain( irb, op, dom );
             return irb.CreateBitCast( ptr, fty->getPointerTo() );
+        }
+
+        template< typename IRB >
+        llvm::CallInst * lift_constant( llvm::Value * con, IRB &irb ) const
+        {
+            auto name = "__lart_lift_constant_" + type_name( con );
+            auto const_lift = module->getFunction( name );
+            ASSERT( const_lift );
+
+            return irb.CreateCall( const_lift, { con } );
         }
 
         Taint taint;

@@ -556,7 +556,7 @@ namespace lart::abstract {
             DISPATCH( BinaryFaultable )
             // DISPATCH( Lift )
             // DISPATCH( Lower )
-            // DISPATCH( Call )
+            DISPATCH( Call )
             DISPATCH( ExtractValue )
             DISPATCH( InsertValue )
             // DISPATCH( Memcpy )
