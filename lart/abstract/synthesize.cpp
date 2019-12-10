@@ -248,7 +248,7 @@ namespace lart::abstract
         auto construct( builder_t &irb ) -> ENABLE_IF( extractvalue )
         {
             auto agg = paired_arguments( 1 ).front();
-            ASSERT_EQ( args.size(), 3 );
+            ASSERT_EQ( inargs.size(), 3 );
             const auto &idx = inargs[ 2 ];
             args.push_back( agg.concrete.value );
             args.push_back( idx.value );
