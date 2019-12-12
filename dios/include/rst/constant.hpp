@@ -64,6 +64,7 @@ namespace __dios::rst::abstract {
         __lift( i16, uint16_t )
         __lift( i32, uint32_t )
         __lift( i64, uint64_t )
+        __lift( ptr, void * )
 
         _LART_INTERFACE
         static abstract_value_t lift_any() noexcept
