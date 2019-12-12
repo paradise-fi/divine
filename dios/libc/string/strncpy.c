@@ -5,25 +5,37 @@
 */
 
 #include <string.h>
+#include <assert.h>
 
 #ifndef REGTEST
 
-char * strncpy( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2, size_t n )
+char *strncpy( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2, size_t n )
 {
-    char * rc = s1;
-    while ( ( n > 0 ) && ( *s1++ = *s2++ ) )
+    char *rc = s1;
+    const char *old = s2;
+    int less = s1 < s2;
+
+    while ( n > 0 )
     {
-        /* Cannot do "n--" in the conditional as size_t is unsigned and we have
-           to check it again for >0 in the next loop below, so we must not risk
-           underflow.
-        */
         --n;
+
+        if ( ( *s1 = *s2 ) && n > 0 )
+            s1 ++, s2 ++;
+        else
+            break;
     }
-    /* Checking against 1 as we missed the last --n in the loop above. */
-    while ( n-- > 1 )
+
+    while ( n > 0 )
     {
-        *s1++ = '\0';
+        *++s1 = '\0';
+        n --;
     }
+
+    if ( less )
+        assert( s1 < old );
+    else
+        assert( s2 < rc );
+
     return rc;
 }
 
