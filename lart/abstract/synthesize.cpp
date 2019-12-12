@@ -250,7 +250,7 @@ namespace lart::abstract
             auto agg = paired_arguments( 1 ).front();
             ASSERT_EQ( inargs.size(), 3 );
             const auto &idx = inargs[ 2 ];
-            args.push_back( agg.concrete.value );
+            args.push_back( agg.abstract.value );
             args.push_back( idx.value );
 
             domain = domain_index( agg.abstract.value, irb );
