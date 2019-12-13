@@ -27,11 +27,7 @@ struct Array : brick::types::Ord {
     using const_reference = T const&;
 
     Array() = default;
-
-    ~Array()
-    {
-        erase( begin(), end() );
-    }
+    ~Array() { clear(); }
 
     Array( const Array& other )
         : Array( other.size(), other.begin(), other.end() )
