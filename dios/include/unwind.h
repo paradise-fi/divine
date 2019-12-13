@@ -45,66 +45,6 @@ typedef enum {
 
 typedef struct _Unwind_Context _Unwind_Context;   // opaque
 
-#if _LIBUNWIND_ARM_EHABI
-typedef uint32_t _Unwind_State;
-
-static const _Unwind_State _US_VIRTUAL_UNWIND_FRAME   = 0;
-static const _Unwind_State _US_UNWIND_FRAME_STARTING  = 1;
-static const _Unwind_State _US_UNWIND_FRAME_RESUME    = 2;
-/* Undocumented flag for force unwinding. */
-static const _Unwind_State _US_FORCE_UNWIND           = 8;
-
-typedef uint32_t _Unwind_EHT_Header;
-
-struct _Unwind_Control_Block;
-typedef struct _Unwind_Control_Block _Unwind_Control_Block;
-typedef struct _Unwind_Control_Block _Unwind_Exception; /* Alias */
-
-struct _Unwind_Control_Block {
-  uint64_t exception_class;
-  void (*exception_cleanup)(_Unwind_Reason_Code, _Unwind_Control_Block*);
-
-  /* Unwinder cache, private fields for the unwinder's use */
-  struct {
-    uint32_t reserved1; /* init reserved1 to 0, then don't touch */
-    uint32_t reserved2;
-    uint32_t reserved3;
-    uint32_t reserved4;
-    uint32_t reserved5;
-  } unwinder_cache;
-
-  /* Propagation barrier cache (valid after phase 1): */
-  struct {
-    uint32_t sp;
-    uint32_t bitpattern[5];
-  } barrier_cache;
-
-  /* Cleanup cache (preserved over cleanup): */
-  struct {
-    uint32_t bitpattern[4];
-  } cleanup_cache;
-
-  /* Pr cache (for pr's benefit): */
-  struct {
-    uint32_t fnstart; /* function start address */
-    _Unwind_EHT_Header* ehtp; /* pointer to EHT entry header word */
-    uint32_t additional;
-    uint32_t reserved1;
-  } pr_cache;
-
-  long long int :0; /* Enforce the 8-byte alignment */
-};
-
-typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
-      (_Unwind_State state,
-       _Unwind_Exception* exceptionObject,
-       struct _Unwind_Context* context);
-
-typedef _Unwind_Reason_Code (*__personality_routine)
-      (_Unwind_State state,
-       _Unwind_Exception* exceptionObject,
-       struct _Unwind_Context* context);
-#else
 struct _Unwind_Context;   // opaque
 struct _Unwind_Exception; // forward declaration
 typedef struct _Unwind_Exception _Unwind_Exception;
@@ -131,7 +71,6 @@ typedef _Unwind_Reason_Code (*__personality_routine)
        uint64_t exceptionClass,
        _Unwind_Exception* exceptionObject,
        struct _Unwind_Context* context);
-#endif
 
 #ifdef __cplusplus
 extern "C" {
