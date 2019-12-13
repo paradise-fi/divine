@@ -10,11 +10,11 @@
 
 #ifndef REGTEST
 
-__local_skipcfl char *strcpy( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2 )
+__local_skipcfl char *strcpy( char * restrict s1, const char * restrict s2 )
 {
     int less = s1 < s2;
-    char * rc = s1;
-    char * old = s2;
+    char *rc = s1;
+    const char *old = s2;
 
     while ( ( *s1++ = *s2++ ) );
 
