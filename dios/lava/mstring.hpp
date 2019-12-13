@@ -220,25 +220,37 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE _LART_SCALAR
         static character_t fn_strcmp( abstract_value_t lhs, abstract_value_t rhs ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            return strcmp( lhs, rhs );
         }
 
         _LART_INTERFACE _LART_AGGREGATE
-        static mstring_ptr fn_strcat( abstract_value_t lhs, abstract_value_t rhs ) noexcept
+        static mstring_ptr fn_strcat( abstract_value_t dst, abstract_value_t src ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            // TODO lift strings
+            return strcat( dst, src );
         }
 
         _LART_INTERFACE _LART_AGGREGATE
-        static mstring_ptr fn_strcpy( abstract_value_t lhs, abstract_value_t rhs ) noexcept
+        static mstring_ptr fn_strcpy( abstract_value_t dst, abstract_value_t src ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            // TODO lift strings
+            return strcpy( dst, src );
         }
 
         _LART_INTERFACE _LART_AGGREGATE
         static mstring_ptr fn_strchr( abstract_value_t str, abstract_value_t ch ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            // TODO lift strings
+            return strchr( str, ch );
+        }
+
+        _LART_INTERFACE _LART_AGGREGATE
+        static mstring_ptr fn_memcpy( abstract_value_t dst
+                                    , abstract_value_t src
+                                    , abstract_value_t size ) noexcept
+        {
+            // TODO lift strings
+            return memcpy( dst, src, size );
         }
 
         /* implementation of abstraction interface */
@@ -376,51 +388,46 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INLINE
-        static void store( character_t ch, mstring_ptr array ) noexcept
+        void store( character_t ch, index_t idx ) noexcept
         {
-            auto offset = array.checked_offset();
             auto one = index_t::lift( 1 );
-
-            auto& bounds = array.bounds();
-            auto& values = array.values();
-
-            auto seg = array->segment_at_current_offset();
+            auto seg = segment_at_index( idx );
             if ( seg.value() == ch ) {
                 // do nothing
             } else if ( seg.singleton() ) {
                 // rewrite single character segment
                 seg.set_char( ch );
-            } else if ( seg.begin() == offset ) {
+            } else if ( seg.from() == idx ) {
                 // rewrite first character of segment
-                if ( seg.begin() != bounds.begin() ) {
-                    auto prev = --seg;
+                if ( seg.begin() != bounds().begin() ) {
+                    auto prev = seg; --prev;
                     if ( prev.value() == ch ) {
                         // merge with left neighbour
-                        seg.begin() = seg.begin() + one;
+                        seg.from() = seg.from() + one;
                         return;
                     }
                 }
 
-                bounds.insert( seg.end_it(), offset + one );
-                values.insert( seg.val_it(), ch );
-            } else if ( seg.end() == offset ) {
+                bounds().insert( seg.end(), idx + one );
+                values().insert( seg.val_it(), ch );
+            } else if ( seg.to() - one == idx ) {
                 // rewrite last character of segment
-                if ( seg.end() != std::prev( bounds.end() ) ) {
-                    auto next = ++seg;
+                if ( seg.end() != std::prev( bounds().end() ) ) {
+                    auto next = seg; ++next;
                     if ( next.value() == ch ) {
                         // merge with left neighbour
-                        seg.end() = seg.end() - one;
+                        seg.to() = seg.to() - one;
                         return;
                     }
                 }
-                bounds.insert( seg.end_it(), offset );
-                values.insert( std::next( seg.val_it() ), ch );
+                bounds().insert( seg.end(), idx );
+                values().insert( std::next( seg.val_it() ), ch );
             } else {
                 // rewrite segment in the middle (split segment)
-                auto vit = values.insert( seg.val_it(), seg.value() );
-                values.insert( std::next( vit ), ch );
-                auto bit = bounds.insert( seg.end_it(), offset );
-                bounds.insert( std::next( bit ), offset + one );
+                auto vit = values().insert( seg.val_it(), seg.value() );
+                values().insert( std::next( vit ), ch );
+                auto bit = bounds().insert( seg.end(), idx );
+                bounds().insert( std::next( bit ), idx + one );
             }
         }
 
@@ -431,33 +438,135 @@ namespace __dios::rst::abstract {
         }
 
         _LART_INLINE
+        static index_t strlen( mstring_ptr str ) noexcept
+        {
+            return str.terminator() - str.offset();
+        }
+
+        _LART_INLINE
         static character_t strcmp( mstring_ptr lhs, mstring_ptr rhs ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            auto lin = lhs->interest();
+            auto rin = rhs->interest();
+
+            auto lseg = lin.begin();
+            auto rseg = rin.begin();
+
+            while ( lseg.begin() != lin.bounds.end() && rseg.begin() != rin.bounds.end() ) {
+                if ( lseg.value() != rseg.value() ) {
+                    return lseg.value() - rseg.value();
+                } else {
+                    index_t left = lseg.to() - lhs.offset();
+                    index_t right = rseg.to() - rhs.offset();
+                    if ( static_cast< bool >( left > right ) ) {
+                        return lseg.value() - rin.next_segment( lseg ).value();
+                    } else if ( static_cast< bool >( left < right ) ) {
+                        return lin.next_segment( lseg ).value() - rseg.value();
+                    }
+                }
+
+                lseg = lin.next_segment( lseg );
+                rseg = rin.next_segment( rseg );
+            }
+
+            return index_t::lift( 0 );
         }
 
         _LART_INLINE
-        static mstring_ptr strcat( mstring_ptr lhs, mstring_ptr rhs ) noexcept
+        static mstring_ptr strcat( mstring_ptr dst, mstring_ptr src ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            // TODO optimize
+            auto off = dst.offset();
+            auto size = src.terminator() - src.offset() - index_t::lift( 1 );
+            dst->_offset = dst.terminator();
+            auto ret = memcpy( dst, src, size );
+            ret->_offset = off;
+            return ret;
         }
 
         _LART_INLINE
-        static mstring_ptr strcpy( mstring_ptr lhs, mstring_ptr rhs ) noexcept
+        static mstring_ptr strcpy( mstring_ptr dst, mstring_ptr src ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            // TODO optimize
+            return memcpy( dst, src, strlen( src ) );
         }
 
         _LART_INLINE
-        static mstring_ptr strhr( mstring_ptr str, character_t ch ) noexcept
+        static mstring_ptr strchr( mstring_ptr str, character_t ch ) noexcept
         {
-            UNREACHABLE( "not implemented" );
+            auto in = str->interest();
+            auto seg = in.begin();
+            while ( seg.begin() != in.values.end() ) {
+                if ( !seg.empty() && seg.value() == ch ) {
+                    auto off = seg.from();
+                    if ( seg.begin() == in.values.begin() )
+                        return str;
+                    return make_mstring( str.data(), off );
+                }
+                ++seg;
+            }
+
+            return static_cast< mstring_t * >( nullptr );
+        }
+
+        _LART_INLINE
+        static mstring_ptr memcpy( mstring_ptr dst, mstring_ptr src, index_t size ) noexcept
+        {
+            if ( size > dst.size() - dst.offset() )
+                fault( "copying to a smaller string" );
+
+            if ( size == index_t::lift( 0 ) )
+                return dst;
+
+            auto dseg = dst->segment_at_current_offset();
+            auto sseg = src->segment_at_current_offset();
+
+            bounds_t bounds;
+            values_t values;
+
+            std::copy( dst.bounds().begin(), dseg.begin(), std::back_inserter( bounds ) );
+            std::copy( dst.values().begin(), dseg.val_it(), std::back_inserter( values ) );
+
+            if ( dseg.from() == dst.offset() ) {
+                if ( dseg.begin() != dst.bounds().begin() ) {
+                    if ( *std::prev( dseg.val_it() ) != sseg.value() )
+                        bounds.push_back( dseg.from() );
+                } else {
+                    bounds.push_back( dseg.from() );
+                }
+            } else {
+                bounds.push_back( dseg.from() );
+                if ( dseg.value() != sseg.value() ) {
+                    values.push_back( dseg.value() );
+                    bounds.push_back( dst.offset() );
+                }
+            }
+
+            while ( ( sseg.from() - src.offset() ) <= size ) {
+                bounds.push_back( dst.offset() + ( sseg.to() - src.offset() ) );
+                values.push_back( sseg.value() );
+                ++sseg;
+            }
+
+            dseg = dst->segment_at_index( dst.offset() + size );
+            if ( dseg.value() == values.back() ) {
+                //we will take the value from dst suffix
+                bounds.pop_back();
+                values.pop_back();
+            }
+
+            std::copy( dseg.end(), dst.bounds().end(), std::back_inserter( bounds ) );
+            std::copy( dseg.val_it(), dst.values().end(), std::back_inserter( values ) );
+
+            dst.data()->bounds = bounds;
+            dst.data()->values = values;
+            return dst;
         }
 
         _LART_INLINE
         size_t concrete_offset() const noexcept
         {
-            return static_cast< index_t >( offset ).template lower< size_t >();
+            return static_cast< index_t >( _offset ).template lower< size_t >();
         }
 
         _LART_INLINE
@@ -466,12 +575,31 @@ namespace __dios::rst::abstract {
             return static_cast< index_t >( size() ).template lower< size_t >();
         }
 
+        // returns first segment containing '\0' after offset
+        _LART_INLINE
+        segment_t terminal_segment() noexcept
+        {
+            auto seg = segment_at_current_offset();
+            auto zero = character_t::lift( 0 );
+            while ( seg.begin() != bounds().end() && seg.value() != zero && !seg.empty() )
+                ++seg;
+            if ( seg.begin() == bounds().end() )
+                out_of_bounds_fault();
+            return seg;
+        }
+
+        index_t terminator() noexcept
+        {
+            // begining of the segment of the first occurence of '\0' after offset
+            return terminal_segment().from();
+        }
+
         _LART_INLINE
         friend void trace( mstring_t &mstr ) noexcept
         {
            __dios_trace_f( "mstring offset %lu size %lu:", mstr.concrete_offset(), mstr.concrete_size() );
            auto seg = mstr.segment_at_current_offset();
-           while ( seg.end_it() != mstr.bounds().end() ) {
+           while ( seg.end() != mstr.bounds().end() ) {
                trace( seg );
                ++seg;
            }
@@ -479,51 +607,57 @@ namespace __dios::rst::abstract {
 
         /* detail */
 
-        struct segment_t
+        _LART_INLINE
+        void drop( index_t size ) noexcept
         {
-            bounds_iterator _begin;
-            values_iterator _value;
+            auto to_drop = range( offset, size + offset );
 
-            auto begin_it() noexcept { return _begin; }
-            auto begin_it() const noexcept { return _begin; }
-            auto end_it() noexcept { return std::next( _begin ); }
-            auto end_it() const noexcept { return std::next( _begin ); }
-            auto val_it() noexcept { return _value; }
-            auto val_it() const noexcept { return _value; }
-
-            index_t& begin() const noexcept { return *begin_it(); }
-            index_t& end() const noexcept { return *end_it(); }
-            character_t& value() const noexcept { return *_value; }
-
-            void set_char( character_t ch ) noexcept { *_value = ch; }
-
-            segment_t& operator++() noexcept
-            {
-                ++_begin;
-                ++_value;
-                return *this;
+            if ( !to_drop.single_segment() ) {
+                if ( *to_drop.bounds.from != offset ) {
+                    // keep prefix
+                    ++to_drop.bounds.from;
+                    ++to_drop.values.from;
+                }
+                if ( *to_drop.bounds.to != size + offset ) {
+                    // keep suffix
+                    --to_drop.bounds.to;
+                    --to_drop.values.to;
+                }
             }
 
-            segment_t& operator--() noexcept
-            {
-                --_begin; --_value;
-                return *this;
+            bounds().erase( to_drop.bounds.from, to_drop.bounds.to );
+            values().erase( to_drop.values.from, to_drop.values.to );
+        }
+
+        _LART_INLINE
+        void insert( mstring_ptr src, index_t size ) noexcept
+        {
+            auto from_bounds = bounds().begin();
+            auto from_values = values().begin();
+            while ( from_bounds != bounds().end() && *from_bounds < offset ) {
+                ++from_bounds; ++from_values;
             }
 
-            bool empty() const noexcept { return begin() == end(); }
+            auto in = src->range( src.offset(), size );
+            // insert bounds from src
+            bounds_t tmp_bounds;
+            std::move( from_bounds, bounds().end(), std::back_inserter( tmp_bounds ) );
+            bounds().erase( from_bounds, bounds().end() );
 
-            bool singleton() const noexcept
-            {
-                return begin() + index_t::lift( 1 ) == end();
-            }
+            for ( const auto& bound : in.bounds )
+                bounds().push_back( offset + ( bound - src.offset() ) );
+            bounds().push_back( offset + size );
+            bounds().append( tmp_bounds.size(), tmp_bounds.begin(), tmp_bounds.end() );
 
-            friend void trace( const segment_t &seg ) noexcept
-            {
-                __dios_trace_f( "seg [%lu, %lu]: %c", seg.begin().template lower< size_t >()
-                                                    , seg.end().template lower< size_t >()
-                                                    , seg.value().template lower< char >() );
-            }
-        };
+            // insert values from src
+            values_t tmp_values;
+            std::move( from_values, values().end(), std::back_inserter( tmp_values ) );
+            values().erase( from_values, values().end() );
+
+            for ( const auto& value : in.values )
+                values().push_back( value );
+            values().append( tmp_values.size(), tmp_values.begin(), tmp_values.end() );
+        }
 
         _LART_INLINE
         segment_t segment_at_index( index_t idx ) noexcept
@@ -532,20 +666,21 @@ namespace __dios::rst::abstract {
                 out_of_bounds_fault();
 
             auto it = bounds().begin();
-
             for ( auto it = bounds().begin(); std::next( it ) != bounds().end(); ++it )
+            {
                 if ( idx >= *it && idx < *std::next( it ) ) {
                     auto nth = std::distance( bounds().begin(), it );
                     return segment_t{ it, std::next( values().begin(), nth ) };
                 }
+            }
 
-            UNREACHABLE( "MSTRIG ERROR: index out of bounds" );
+            UNREACHABLE( "MSTRING ERROR: index out of bounds" );
         }
 
         _LART_INLINE
         segment_t segment_at_current_offset() noexcept
         {
-            return segment_at_index( offset );
+            return segment_at_index( _offset );
         }
     };
 

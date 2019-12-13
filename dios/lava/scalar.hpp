@@ -247,6 +247,7 @@ namespace __dios::rst::abstract
                 return name ## _impl( l, r ); \
             }
 
+        icmp_operation( gt, > )
         icmp_operation( ge, >= )
         icmp_operation( lt, < )
         icmp_operation( le, <= )
