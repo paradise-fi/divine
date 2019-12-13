@@ -42,11 +42,11 @@ namespace __dios::rst::abstract {
             abstract_value_t size; // index_t
         };
 
-        index_t size() const noexcept { return data->size; }
-        auto& bounds() noexcept { return data->bounds; }
-        const auto& bounds() const noexcept { return data->bounds; }
-        auto& values() noexcept { return data->values; }
-        const auto& values() const noexcept { return data->values; }
+        index_t size() const noexcept { return _data->size; }
+        auto& bounds() noexcept { return _data->bounds; }
+        const auto& bounds() const noexcept { return _data->bounds; }
+        auto& values() noexcept { return _data->values; }
+        const auto& values() const noexcept { return _data->values; }
 
         using data_ptr = brq::refcount_ptr< data_t >;
 
@@ -59,9 +59,9 @@ namespace __dios::rst::abstract {
             mstring_t *operator->() const noexcept { return ptr; }
             mstring_t &operator*() const noexcept { return *ptr; }
 
-            auto data() noexcept { return ptr->data; }
+            auto& data() noexcept { return ptr->_data; }
             index_t size() const noexcept { return ptr->size(); }
-            index_t offset() noexcept { return ptr->offset; }
+            index_t offset() noexcept { return ptr->_offset; }
             index_t checked_offset() noexcept
             {
                 auto off = offset();
@@ -100,21 +100,26 @@ namespace __dios::rst::abstract {
                 push_char( constant_t::lift( ch ) );
             }
 
+            index_t terminator() noexcept
+            {
+                return ptr->terminator();
+            }
+
             _LART_INLINE
             friend void trace( const mstring_ptr &mstr ) noexcept { trace( *mstr ); }
 
             mstring_t * ptr;
         };
 
-        abstract_value_t offset;
-        data_ptr data;
+        abstract_value_t _offset;
+        data_ptr _data;
 
         _LART_INLINE
         static mstring_ptr make_mstring( data_ptr data, abstract_value_t offset ) noexcept
         {
             auto ptr = __new< mstring_t >();
-            ptr->offset = offset;
-            ptr->data = data;
+            ptr->_offset = offset;
+            ptr->_data = data;
             return ptr;
         }
 
@@ -192,7 +197,8 @@ namespace __dios::rst::abstract {
                 fault( "unexpected store bitwidth" );
 
             // TODO assert array is mstring
-            return store( value, array );
+            auto str = static_cast< mstring_ptr >( array );
+            str->store( value, str.checked_offset() );
         }
 
         _LART_INTERFACE _LART_OPTNONE
@@ -208,12 +214,7 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE _LART_SCALAR
         static index_t fn_strlen( mstring_ptr str ) noexcept
         {
-            auto seg = str->segment_at_current_offset();
-            auto zero = character_t::lift( 0 );
-            while ( seg.begin_it() != str.bounds().end() && seg.value() != zero )
-                ++seg;
-            if ( seg.begin_it() == str.bounds().end() )
-            return seg.begin() - str.offset();
+            return strlen( str );
         }
 
         _LART_INTERFACE _LART_SCALAR
@@ -241,6 +242,132 @@ namespace __dios::rst::abstract {
         }
 
         /* implementation of abstraction interface */
+
+        struct segment_t
+        {
+            bounds_iterator _begin;
+            values_iterator _value;
+
+            auto begin() noexcept { return _begin; }
+            auto begin() const noexcept { return _begin; }
+            auto end() noexcept { return std::next( _begin ); }
+            auto end() const noexcept { return std::next( _begin ); }
+            auto val_it() noexcept { return _value; }
+            auto val_it() const noexcept { return _value; }
+
+            index_t& from() const noexcept { return *begin(); }
+            index_t& to() const noexcept { return *end(); }
+            character_t& value() const noexcept { return *_value; }
+
+            void set_char( character_t ch ) noexcept { *_value = ch; }
+
+            character_t& operator*() & { return *_value; }
+            character_t& operator*() && = delete;
+            character_t* operator->() const noexcept { return _value; }
+
+            inline segment_t& operator+=( const int& rhs )
+            {
+                _begin += rhs;
+                _value += rhs;
+                return *this;
+            }
+
+            inline segment_t& operator-=( const int& rhs )
+            {
+                _begin -= rhs;
+                _value -= rhs;
+                return *this;
+            }
+
+            segment_t& operator++() noexcept
+            {
+                ++_begin;
+                ++_value;
+                return *this;
+            }
+
+            segment_t operator++(int) noexcept
+            {
+                segment_t tmp(*this);
+                operator++();
+                return tmp;
+            }
+
+            segment_t& operator--() noexcept
+            {
+                --_begin; --_value;
+                return *this;
+            }
+
+            segment_t operator--(int) noexcept
+            {
+                segment_t tmp(*this);
+                operator++();
+                return tmp;
+            }
+
+            bool empty() const noexcept { return from() == to(); }
+
+            bool singleton() const noexcept
+            {
+                return from() + index_t::lift( 1 ) == to();
+            }
+
+            friend void trace( const segment_t &seg ) noexcept
+            {
+                __dios_trace_f( "seg [%lu, %lu]: %c", seg.from().template lower< size_t >()
+                                                    , seg.to().template lower< size_t >()
+                                                    , seg.value().template lower< char >() );
+            }
+        };
+
+        struct segments_range
+        {
+            template< typename iterator_t >
+            struct range_t
+            {
+                iterator_t from;
+                iterator_t to;
+
+                auto begin() { return from; }
+                auto end() { return to; }
+            };
+
+            bool single_segment() noexcept { return bounds.to == std::next( bounds.from ); }
+
+            segment_t begin() { return { bounds.begin(), values.begin() }; }
+            segment_t end() { return { bounds.end(), values.end() }; }
+
+            _LART_INLINE
+            segment_t next_segment( segment_t seg ) noexcept
+            {
+                do { ++seg; } while ( seg.begin() != bounds.end() && seg.empty() );
+                return seg;
+            }
+
+            range_t< bounds_iterator > bounds;
+            range_t< values_iterator > values;
+        };
+
+        _LART_INLINE
+        segments_range range( segment_t f, segment_t t ) noexcept
+        {
+            return { { f.begin(), t.end() }, { f.val_it(), t.val_it() } };
+        }
+
+        _LART_INLINE
+        segments_range range( index_t from, index_t to ) noexcept
+        {
+            auto f = segment_at_index( from );
+            auto t = segment_at_index( to );
+            return range( f, t );
+        }
+
+        _LART_INLINE
+        segments_range interest() noexcept
+        {
+            return range( segment_at_current_offset(), terminal_segment() );
+        }
 
         _LART_INTERFACE
         static character_t load( mstring_ptr array ) noexcept
