@@ -87,7 +87,7 @@ namespace brq
         struct fail_ref
         {
             assert_failed &ref;
-            fail_ref( assert_failed &f ) : ref( f ) {}
+            explicit fail_ref( assert_failed &f ) : ref( f ) {}
         };
 
         template< typename X >
