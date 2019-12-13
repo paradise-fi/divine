@@ -41,13 +41,13 @@ int link_bc( int argc, const char **argv )
     for ( int i = 2; i < argc; ++i )
     {
         auto input = std::move( llvm::MemoryBuffer::getFile( argv[i] ).get() );
-        if ( brick::string::endsWith( argv[i], ".bc" ) )
+        if ( brq::ends_with( argv[i], ".bc" ) )
         {
             auto bc = std::move( llvm::parseBitcodeFile( input->getMemBufferRef(), *ctx ).get() );
             linker.link( std::move( bc ) );
         }
 
-        if ( brick::string::endsWith( argv[i], ".a" ) )
+        if ( brq::ends_with( argv[i], ".a" ) )
         {
             auto archive = brick::llvm::ArchiveReader( std::move( input ), ctx );
             for ( auto &m : archive.modules() )
@@ -67,10 +67,10 @@ int main( int argc, const char **argv )
 {
     std::string out = argv[1];
 
-    if ( brick::string::endsWith( out, ".bc" ) )
+    if ( brq::ends_with( out, ".bc" ) )
         return link_bc( argc, argv );
 
-    if ( brick::string::endsWith( out, ".a" ) )
+    if ( brq::ends_with( out, ".a" ) )
         return link_a( argc, argv );
 
     return 1;

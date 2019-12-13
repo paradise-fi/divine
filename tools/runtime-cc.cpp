@@ -31,11 +31,11 @@ int main( int argc, const char **argv )
         /* Compile only if SHA-2 hash of preprocessed file differs */
         auto prec = clang.preprocess( argv[3], opts );
         std::string fpFilename = std::string( argv[ 4 ] ) + ".fp";
-        std::string oldFp = fs::readFileOr( fpFilename, {} );
+        std::string oldFp = brq::read_file_or( fpFilename, {} );
         std::string newFp = VERSION ":" + sha2::to_hex( sha2_512( prec ) );
-        if ( oldFp == newFp && fs::exists( argv[ 4 ] ) )
+        if ( oldFp == newFp && brq::file_exists( argv[ 4 ] ) )
         {
-            fs::touch( argv[ 4 ] );
+            brq::touch( argv[ 4 ] );
             return 0;
         }
         auto mod = clang.compile( argv[3], opts );
@@ -44,16 +44,16 @@ int main( int argc, const char **argv )
         lart::divine::rewriteDebugPaths( *mod, [=]( auto p )
         {
             auto n = p;
-            if ( string::startsWith( p, srcDir ) )
+            if ( brq::starts_with( p, srcDir ) )
                 n = p.substr( srcDir.size() );
-            if ( string::startsWith( p, binDir ) )
+            if ( brq::starts_with( p, binDir ) )
                 n = p.substr( binDir.size() );
             TRACE( "rewrite", p, "to", n );
             return n;
         } );
 
         brick::llvm::writeModule( mod.get(), argv[4] );
-        fs::writeFile( fpFilename, newFp );
+        brq::write_file( fpFilename, newFp );
 
         return 0;
     } catch ( cc::CompileError &err ) {
