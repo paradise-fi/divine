@@ -128,6 +128,12 @@ namespace brq
 
         void clear() noexcept { _container.clear(); }
 
+        array_set() = default;
+        array_set( std::initializer_list< value_type > il ) : _container( il )
+        {
+            sort::sort( begin(), end() );
+        }
+
         std::pair< iterator, bool > insert( const_reference value )
         {
             auto it = find( value.first );
