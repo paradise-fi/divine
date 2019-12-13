@@ -237,6 +237,23 @@ verify() {
     fi
 }
 
+klee() {
+    if fgrep -q '/* ERROR' "$1"; then
+        location=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f1-2`
+        if ! grep -q " at $location" klee.out || test $2 == 0; then
+            nl -ba "$1"
+            echo "# expected error to be found at $location, but it was not"
+            exit 1
+        fi
+    else
+        if ! grep -q "KLEE: done" klee.out || test $2 != 0; then
+            nl -ba "$1"
+            echo "# no errors were expected but one was found anyway"
+            exit 1
+        fi
+    fi
+}
+
 sim()
 {
     cat > expected

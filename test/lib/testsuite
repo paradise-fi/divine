@@ -10,6 +10,16 @@ for arg in "$@"; do
 done
 test -n "$TODO" && todo= && extra="--tags todo"
 
+klee=klee
+klee=$klee:lang-c,!threads,!setjmp,!const,!lifetime
+klee=$klee:libcxx,!threads,!exception
+klee=$klee:fs,!threads,!c++,!capture
+klee=$klee:sock,!threads
+klee=$klee:libc,!divcc
+
+native=native
+native=$native:lang-c,!threads,!lifetime
+
 ./runner "$@" \
     --total-timeout 28800 --timeout 600  \
     --expand pkg.c:lib/pkgc-unpack \
@@ -24,6 +34,8 @@ test -n "$TODO" && todo= && extra="--tags todo"
     --flavour stp:sym,!float \
     --flavour smtlib:sym,min \
     --flavour vanilla:!sym \
+    --flavour $klee \
+    --flavour $native \
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
     --workdir . --outdir results \
