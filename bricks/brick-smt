@@ -854,7 +854,6 @@ namespace brick::smt
 
         using Constant = typename RPNView::Constant;
         using Variable = typename RPNView::Variable;
-        using CastOp = typename RPNView::CastOp;
 
         stack_t< std::optional< VarID > > stack;
         std::optional< VarID > repr = std::nullopt;
