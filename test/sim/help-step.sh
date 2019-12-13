@@ -1,16 +1,16 @@
 # TAGS: min
 . lib/testcase
 
-SRC=$TESTS/lang-c/ptr-arith.c
+cp $TESTS/lang-c/ptr-arith.c .
 
-sim $SRC <<EOF
+sim ptr-arith.c <<EOF
 + ^# executing __boot
 > help
 + start
 > start
 + ^# executing main
 > step --over
-+ ^# executing main at $SRC:8
++ ^# executing main at ptr-arith.c:8
 > step --over
-+ ^# executing main at $SRC:9
++ ^# executing main at ptr-arith.c:9
 EOF
