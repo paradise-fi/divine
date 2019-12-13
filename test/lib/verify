@@ -84,7 +84,7 @@ for f in $name $extrasrc; do
     addcmd load $dir/$f $f
     for dep in $deps; do
         if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
-        addcmd load $dep $(echo $dep | sed -re "s,$dir/*,,")
+        addcmd load $dep $(echo $dep | perl -spe 's,\Q$dir\E/*,,' -- "-dir=$dir")
     done
 done
 
