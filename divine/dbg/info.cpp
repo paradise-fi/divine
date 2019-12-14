@@ -49,39 +49,38 @@ std::string location( const llvm::Instruction &insn )
 std::string location( std::pair< llvm::StringRef, int > fl )
 {
     if ( fl.second )
-        return fl.first.str() + ":" + brick::string::fmt( fl.second );
+        return fl.first.str() + ":" + brq::format( fl.second ).buffer();
     return "(unknown location)";
 }
 
 bool Info::in_component( vm::CodePointer pc, Components comp )
 {
-    auto file = fileline( pc ).first;
-    using brick::string::startsWith;
+    auto file = fileline( pc ).first.str();
 
     if ( comp & Component::LibC )
     {
-        if ( startsWith( file, "/dios/libc/" ) ||
-             startsWith( file, "/dios/arch/" ) ||
-             startsWith( file, "/dios/include/sys/" ) )
+        if ( brq::starts_with( file, "/dios/libc/" ) ||
+             brq::starts_with( file, "/dios/arch/" ) ||
+             brq::starts_with( file, "/dios/include/sys/" ) )
             return true;
-        if ( startsWith( file, "/dios/include/" ) && file.substr( 14 ).find( '/' ) == std::string::npos )
+        if ( brq::starts_with( file, "/dios/include/" ) && file.substr( 14 ).find( '/' ) == file.npos )
             return true;
     }
 
     if ( comp & Component::LibCxx )
-        if ( startsWith( file, "/dios/libcxx" ) )
+        if ( brq::starts_with( file, "/dios/libcxx" ) )
             return true;
 
     if ( comp & Component::LibRst )
-        if ( startsWith( file, "/dios/rst/" ) ||
-             startsWith( file, "/dios/include/rst/" ) )
+        if ( brq::starts_with( file, "/dios/rst/" ) ||
+             brq::starts_with( file, "/dios/include/rst/" ) )
             return true;
 
     if ( comp & Component::DiOS )
-        if ( startsWith( file, "/dios/sys/" ) || startsWith( file, "/dios/vfs/" ) )
+        if ( brq::starts_with( file, "/dios/sys/" ) || brq::starts_with( file, "/dios/vfs/" ) )
             return true;
 
-    if ( comp & Component::Program && !startsWith( file, "/dios/" ) )
+    if ( comp & Component::Program && !brq::starts_with( file, "/dios/" ) )
         return true;
 
     return false;
