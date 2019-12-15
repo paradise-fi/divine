@@ -67,9 +67,7 @@ struct ResourceLimit : std::runtime_error
 struct TimeLimit : ResourceLimit
 {
     TimeLimit( int took, int max )
-        : ResourceLimit( "time limit ("
-                         + brick::string::fmt( took ) + "s / "
-                         + brick::string::fmt( max ) + "s)" )
+        : ResourceLimit( "time limit (" + std::to_string( took ) + "s / " + std::to_string( max ) + "s)" )
     {}
 };
 

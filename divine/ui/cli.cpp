@@ -34,7 +34,6 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::ui
 {
 
-using namespace brick::string;
 using bstr = std::vector< uint8_t >;
 using seenType = std::set< std::string >;
 
@@ -104,13 +103,13 @@ bool visited( const seenType& s, const std::string& path )
 std::string change_path_prefix( const std::string& path, const std::string& oldPref,
                                 const std::string& newPref )
 {
-    auto p = brick::fs::splitPath( path );
-    auto o = brick::fs::splitPath( oldPref );
+    auto p = brq::split_path( path );
+    auto o = brq::split_path( oldPref );
     if ( !o.empty() && o.back().empty() )
         o.pop_back();
     std::vector< std::string > result{ newPref };
     std::copy( p.begin() + o.size(), p.end(), std::back_inserter( result ) );
-    return brick::fs::normalize( brick::fs::joinPath( result ) );
+    return brq::normalize_path( brq::join_path( result ) );
 }
 
 std::string no_prefix_change( const std::string& s )
@@ -122,7 +121,7 @@ template < typename MountPath, typename See, typename Seen, typename Count, type
 bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
               Limit limit, mc::BCOptions::Env& env, const std::string& oPath )
 {
-    auto stat = brick::fs::lstat( oPath );
+    auto stat = brq::lstat( oPath );
 
     if ( !stat )
         die( "Failed to stat " + oPath + " during filesystem capture." );
@@ -135,7 +134,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     if ( seen( path ) )
         return false;
 
-    auto path_comp = brick::fs::splitPath( path );
+    auto path_comp = brq::split_path( path );
     for ( const auto &c : path_comp )
         if ( c == ".." )
         {
@@ -148,29 +147,29 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
     see( path );
 
-    env.emplace_back( "vfs." + fmt( iCount ) + ".name", bstr( path.begin(), path.end() ) );
-    env.emplace_back( "vfs." + fmt( iCount ) + ".stat", pStat );
-    env.emplace_back( "vfs." + fmt( iCount ) + ".content", cont );
+    env.emplace_back( "vfs." + std::to_string( iCount ) + ".name", bstr( path.begin(), path.end() ) );
+    env.emplace_back( "vfs." + std::to_string( iCount ) + ".stat", pStat );
+    env.emplace_back( "vfs." + std::to_string( iCount ) + ".content", cont );
     limit( path, cont.size() );
 
     if ( S_ISLNK( stat->st_mode ) )
     {
         std::string symPath ( cont.begin(), cont.end() );
-        bool absolute = brick::fs::isAbsolute( symPath );
+        bool absolute = brq::is_absolute( symPath );
         if ( absolute )
         {
-            auto sym_split = brick::fs::splitPath( symPath );
+            auto sym_split = brq::split_path( symPath );
             for ( size_t i = 2; i < sym_split.size(); ++i )
                 explore( follow, no_prefix_change, see, seen, count, limit, env,
-                         brick::fs::joinPath( sym_split.begin(), sym_split.begin() + i ) );
+                         brq::join_path( sym_split.begin(), sym_split.begin() + i ) );
         }
         else
         {
-            auto split = brick::fs::splitPath( oPath );
+            auto split = brq::split_path( oPath );
             split.pop_back();
-            symPath = brick::fs::joinPath( brick::fs::joinPath( split ), symPath );
+            symPath = brq::join_path( brq::join_path( split ), symPath );
         }
-        if ( follow && !seen( symPath ) && brick::fs::lstat( symPath ) )
+        if ( follow && !seen( symPath ) && brq::lstat( symPath ) )
         {
             auto ex = [&]( const std::string& item )
             {
@@ -179,7 +178,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
                 else
                     return explore( follow, mountPath, see, seen, count, limit, env, item );
             };
-            brick::fs::traverseDirectoryTree( symPath, ex, []( std::string ){}, ex );
+            brq::traverse_dir_tree( symPath, ex, []( std::string ){}, ex );
         }
         return false;
     }
@@ -192,13 +191,13 @@ void WithBC::process_options()
     int i = 0;
 
     for ( auto s : _env )
-        _bc_opts.bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
+        _bc_opts.bc_env.emplace_back( "env." + std::to_string( i++ ), bstr( s.begin(), s.end() ) );
     i = 0;
     for ( auto o : _useropts )
-        _bc_opts.bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc_opts.bc_env.emplace_back( "arg." + std::to_string( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
     for ( auto o : _systemopts )
-        _bc_opts.bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc_opts.bc_env.emplace_back( "sys." + std::to_string( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
 
     _bc_opts.bc_env.emplace_back( "divine.bcname", bstr( _bc_opts.input_file.begin(),
@@ -248,7 +247,7 @@ void WithBC::report_options()
         auto &k = std::get< 0 >( e );
         auto &t = std::get< 1 >( e );
         std::string out;
-        if ( brick::string::startsWith( k, "vfs.") )
+        if ( brq::starts_with( k, "vfs.") )
         {
             out = "!!binary ";
             brick::base64::encode( t.begin(), t.end(), std::back_inserter( out ) );
@@ -289,7 +288,6 @@ void WithBC::report_options()
 
 void WithBC::setup()
 {
-    using namespace brick::string;
     using bstr = std::vector< uint8_t >;
 
     process_options();
@@ -324,7 +322,7 @@ void WithBC::setup()
         if ( vfs.capture == vfs.mount )
             vfsCaptured.insert( vfs.capture );
 
-        brick::fs::traverseDirectoryTree( vfs.capture, ex, []( std::string ){ }, ex );
+        brq::traverse_dir_tree( vfs.capture, ex, []( std::string ){ }, ex );
     }
 
     if ( !_stdin.empty() )
