@@ -112,7 +112,7 @@ inline void writeArchive( It begin, It end, std::string out )
 
     for ( auto &mod : ::llvm::iterator_range< It >( begin, end ) )
     {
-        auto &bc = data.emplace_back( "", fs::basename( mod->getModuleIdentifier() ) );
+        auto &bc = data.emplace_back( "", brq::basename( mod->getModuleIdentifier() ) );
 
         // Error if we already saw this module
         if ( !names.emplace( bc.second ).second )
@@ -129,7 +129,7 @@ inline void writeArchive( It begin, It end, std::string out )
     }
 
     // Write into 'out'
-    fs::mkFilePath( out );
+    brq::create_file( out );
     auto res = ::llvm::writeArchive( out, members, true, object::Archive::K_GNU, true, false );
     if ( res )
         _throwLLVMError( res );
@@ -693,7 +693,8 @@ struct LinkerTest {
                         checkALinked );
     }
 
-    TEST(archive_simple_both) {
+    TEST(archive_simple_both)
+    {
         archive_simple( [this]( auto &link, auto ma, auto mb, auto mmain ) {
                 declareFun( *mmain, "baz" );
                 link.linkArchive( { ma, mb } );
@@ -711,15 +712,15 @@ struct LinkerTest {
             } );
     }
 
-    TEST(ar_archive) {
-
-        fs::TempDir dir( ".brick-llvm-test-XXXXXX", fs::AutoDelete::Yes, fs::UseSystemTemp::Yes );
+    TEST(ar_archive)
+    {
+        brq::TempDir dir( ".brick-llvm-test-XXXXXX", brq::AutoDelete::Yes, brq::UseSystemTemp::Yes );
         auto ma = std::make_unique< Module >( "a", *ctx );
         auto mb = std::make_unique< Module >( "b", *ctx );
         declareFun( *ma, "foo" );
         declareFun( *mb, "bar" );
 
-        auto name = fs::joinPath( dir, "test.a" );
+        auto name = brq::join_path( dir, "test.a" );
         auto il = { std::move( ma ), std::move( mb ) };
         writeArchive( il.begin(), il.end(), name );
 

@@ -116,12 +116,12 @@ struct Annotation : brick::types::Eq {
 
     std::string name() const { return _parts.back(); }
     Annotation ns() const { return Annotation( _parts.begin(), _parts.end() - 1); }
-    std::string toString() const {
-        std::stringstream ss;
+    std::string toString() const
+    {
+        brq::string_builder ss;
         for ( auto &n : _parts )
             ss << n << ".";
-        auto str = ss.str();
-        return str.substr( 0, str.size() - 1 );
+        return std::string( ss.data(), 0, ss.data().size() - 1 );
     }
 
     bool inNamespace( Annotation ns ) const {
@@ -237,7 +237,7 @@ static void _throwLLVMError( ::llvm::Error &&e )
 inline void writeModule( ::llvm::Module *m, std::string out ) {
     verifyModule( *m );
     std::error_code serr;
-    brick::fs::mkFilePath( out );
+    brq::create_file( out );
     ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
     if ( serr )
         _throwLLVMError( serr );
