@@ -22,6 +22,7 @@
 #include <brick-llvm>
 #include <brick-string>
 #include <divine/vm/divm.h>
+#include <string>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
