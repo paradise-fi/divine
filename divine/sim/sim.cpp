@@ -57,14 +57,15 @@ void sigint_handler( int raised )
 namespace divine::ui
 {
 
+    namespace sim_ns = divine::sim;
     namespace sim_cmd = divine::sim::command;
 
-void Sim::run()
+void sim::run()
 {
     auto el = el_init( "divine", stdin, stdout, stderr );
     auto hist = history_init();
     HistEvent hist_ev;
-    sim::CLI interp( bitcode() );
+    sim_ns::CLI interp( bitcode() );
     interp._batch = _batch;
 
     std::string hist_path, init_path, dotfiles;
@@ -81,17 +82,17 @@ void Sim::run()
     history( hist, &hist_ev, H_SETSIZE, 1000 );
     history( hist, &hist_ev, H_LOAD, hist_path.c_str() );
     el_set( el, EL_HIST, history, hist );
-    el_set( el, EL_PROMPT, sim::prompt );
+    el_set( el, EL_PROMPT, sim_ns::prompt );
     el_set( el, EL_CLIENTDATA, &interp );
     el_set( el, EL_EDITOR, "emacs" );
     el_source( el, nullptr );
-    signal( SIGINT, sim::sigint_handler );
+    signal( SIGINT, sim_ns::sigint_handler );
 
     std::cerr << logo << std::endl;
     std::cerr << "Welcome to 'divine sim', an interactive debugger. Type 'help' to get started."
               << std::endl;
 
-    sim::OneLineTokenizer tok;
+    sim_ns::OneLineTokenizer tok;
 
     if ( !init_path.empty() && !_skip_init )
     {
@@ -143,10 +144,10 @@ void Sim::run()
     el_end( el );
 }
 
-void Sim::process_options()
+void sim::process_options()
 {
     if ( !_load_report )
-        return WithBC::process_options();
+        return with_bc::process_options();
 
     auto yaml = brq::read_file( _bc_opts.input_file.name );
     auto parsed = brick::yaml::Parser( yaml );
@@ -159,8 +160,8 @@ void Sim::process_options()
     // TODO: Refactor this out (together with annotate), consider changing the format?
     if ( parsed.get< std::string >( { "error found" } ) == "yes" )
     {
-        _trace.reset( new sim::Trace );
-        sim::OneLineTokenizer tok;
+        _trace.reset( new sim_ns::Trace );
+        sim_ns::OneLineTokenizer tok;
         using Lines = std::vector< std::string >;
         auto choices = parsed.get< Lines >( { "machine trace", "*", "choices" } );
         auto interrupts = parsed.get< Lines >( { "machine trace", "*", "interrupts" } );
@@ -171,9 +172,9 @@ void Sim::process_options()
             _trace->steps.emplace_back();
             auto &step = _trace->steps.back();
             for ( auto c : tok.tokenize( choices[ i ] ) )
-                step.choices.push_back( sim::parse_choice( c ) );
+                step.choices.push_back( sim_ns::parse_choice( c ) );
             for ( auto i : tok.tokenize( interrupts[ i ] ) )
-                step.interrupts.push_back( sim::parse_interrupt( i ) );
+                step.interrupts.push_back( sim_ns::parse_interrupt( i ) );
         }
     }
     else
