@@ -19,8 +19,8 @@
 #pragma once
 #include <brick-types>
 #include <brick-except>
-#include <brick-yaml>
 #include <brick-cmd>
+#include <brick-yaml>
 
 #include <memory>
 #include <vector>
