@@ -73,7 +73,7 @@ int main( int argc, char **argv )
         // the tool was called by. 'divcc' for C, 'divc++' for C++
 
         cc::Native nativeCC( { argv + 1, argv + argc } );
-        nativeCC.set_cxx( brick::string::endsWith( argv[0], "divc++" ) );
+        nativeCC.set_cxx( brq::ends_with( argv[ 0 ], "divc++" ) );
         auto& po = nativeCC._po; // Parsed command line options
 
         if( nativeCC._cxx )

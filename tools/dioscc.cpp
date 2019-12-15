@@ -31,7 +31,7 @@ int main( int argc, char **argv )
 {
     try {
         rt::NativeDiosCC nativeCC( { argv + 1, argv + argc } );
-        nativeCC.set_cxx( brick::string::endsWith( argv[0], "diosc++" ) );
+        nativeCC.set_cxx( brq::ends_with( argv[ 0 ], "diosc++" ) );
         auto& po = nativeCC._po;
 
         if ( po.hasHelp || po.hasVersion )
