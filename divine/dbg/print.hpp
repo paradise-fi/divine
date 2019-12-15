@@ -31,6 +31,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <cxxabi.h>
 #include <brick-fs>
+#include <regex>
 
 namespace divine::dbg::print
 {
@@ -87,12 +88,13 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
 {
     brq::string_builder out;
 
-    brick::string::Splitter split( "\n", std::regex::extended );
     std::string src( rt::source( di->getFilename() ) );
     if ( src.empty() )
         src = brq::read_file( di->getFilename() );
 
-    auto line = split.begin( src );
+    auto split = brq::splitter( src, '\n' );
+
+    auto line = split.begin();
     unsigned lineno = 1, active = 0;
     while ( lineno < di->getLine() )
         ++ line, ++ lineno;
@@ -125,20 +127,20 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     if ( line != split.end() )
     {
         std::regex endbrace( "^[ \t]*}", std::regex::extended );
-        if ( std::regex_search( line->str(), endbrace ) )
+        if ( std::regex_search( std::string( *line ), endbrace ) )
             ++lineno, raw << *line++ << "\n";
     }
 
     std::string txt = postproc( raw.buffer() );
 
-    line = split.begin( txt );
+    auto line2 = split.begin();
     endline = lineno;
     lineno = startline;
 
-    while ( line != split.end() && lineno <= endline )
+    while ( line2 != split.end() && lineno <= endline )
     {
         out << (lineno == active ? ">>" : "  ");
-        out << brq::pad( 5 ) << lineno++ << brq::mark << " " << *line++ << "\n";
+        out << brq::pad( 5 ) << lineno++ << brq::mark << " " << *line2++ << "\n";
     }
 
     return std::string( out.data() );
