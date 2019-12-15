@@ -290,8 +290,9 @@ namespace lart::abstract
                 {
                     for ( auto &fn : resolve_call( llvm::CallSite( u ) ) ) {
                         if ( is_abstractable( fn ) ) {
-                            // TODO transform function for domains
-                            auto meta = meta::abstract::get( val );
+                            auto name = "lart.abstract.fn_" + fn->getName().str();
+                            auto meta_fn = fn->getParent()->getFunction( name );
+                            auto meta = meta::abstract::get( meta_fn );
                             if ( ( meta.has_value() ) )
                                 propagate( u, type_from_meta( u, meta.value() ) );
                         } else {
