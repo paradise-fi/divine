@@ -71,6 +71,7 @@ namespace brq
         char *buffer_end() noexcept { return _buffer + _capacity - 1; }
         const char *buffer() const noexcept { return _buffer ? _buffer : ""; }
         std::string_view data() const noexcept { return std::string_view( _buffer, _offset ); }
+        operator std::string_view() const noexcept { return data(); }
         int size() const noexcept { return _offset; }
         bool truncated() const noexcept { return _oom; }
         void kill() { clear(); _oom = true; }
