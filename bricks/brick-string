@@ -268,6 +268,82 @@ namespace brq
                 out << delim( false ) << data.flush();
         }
     };
+
+    struct parse_result
+    {
+        std::string _err_str;
+        bool _err = false;
+        explicit operator bool() const { return !_err; }
+        parse_result &operator=( bool b ) { _err = !b; _err_str.clear(); return *this; }
+        std::string_view error() const { ASSERT( _err ); return _err_str; }
+    };
+
+    template< typename... args_t >
+    parse_result no_parse( args_t... args )
+    {
+        string_builder b;
+        parse_result r;
+        format_args( " ", b, args... );
+        r._err = true;
+        r._err_str = b.data();
+        return r;
+    }
+
+    /* The from_string machinery extracts values from strings. The parsing might
+     * fail, in which case they are expected to return 'false'. An existing
+     * value must be passed to `from_string` as a reference -- the original
+     * content may or may not be discarded, depending on the type. If parsing
+     * fails, the content of the value should be left untouched. The easiest way
+     * to provide from_string is by adding a static `from_string` method to your
+     * class. ADL also works, if need be. We provide some sane default
+     * from_string implementations for standard types. */
+
+    template< typename arg_t >
+    static auto from_string( std::string_view s, arg_t &a ) -> decltype( arg_t::from_string( s, a ) )
+    {
+        return arg_t::from_string( s, a );
+    }
+
+    template< typename arg_t >
+    static std::enable_if_t< std::is_integral_v< arg_t > || std::is_floating_point_v< arg_t >,
+                             parse_result >
+    from_string( std::string_view s, arg_t &a )
+    {
+        auto begin = s.data(), end = begin + s.size();
+        auto parse_end = std::from_chars( begin, end, a ).ptr;
+        return parse_end == end ? parse_result() : no_parse( "error parsing", s, "as a number" );
+    }
+
+    static parse_result from_string( std::string_view s, bool &f )
+    {
+        if ( s == "yes" || s == "true" || s == "1" )
+        {
+            f = true;
+            return {};
+        }
+
+        if ( s == "no" || s == "false" || s == "0" )
+        {
+            f = false;
+            return {};
+        }
+
+        return no_parse( "expected boolean but got", s );
+    }
+
+    static parse_result from_string( std::string_view s, std::string &v )
+    {
+        v = s;
+        return {};
+    }
+
+    template< typename container >
+    auto from_string( std::string_view s, container &c ) -> decltype( from_string( s, c.back() ) )
+    {
+        c.emplace_back();
+        return from_string( s, c.back() );
+    }
+
 }
 
 namespace t_brq

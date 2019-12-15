@@ -49,51 +49,9 @@ namespace brq
         neg_t neg() { return { *this }; }
     };
 
-    /* The from_string machinery extracts values from strings. The parsing might
-     * fail, in which case they are expected to return 'false'. An existing
-     * value must be passed to `from_string` as a reference -- the original
-     * content may or may not be discarded, depending on the type. If parsing
-     * fails, the content of the value should be left untouched. The easiest way
-     * to provide from_string is by adding a static `from_string` method to your
-     * class. ADL also works, if need be. We provide some sane default
-     * from_string implementations for standard types. */
-
-    template< typename arg_t >
-    static auto from_string( std::string_view s, arg_t &a ) -> decltype( arg_t::from_string( s, a ) )
+    static parse_result from_string( std::string_view s, cmd_flag &f )
     {
-        return arg_t::from_string( s, a );
-    }
-
-    template< typename arg_t >
-    static std::enable_if_t< std::is_integral_v< arg_t > || std::is_floating_point_v< arg_t >, bool >
-    from_string( std::string_view s, arg_t &a )
-    {
-        auto begin = s.data(), end = begin + s.size();
-        return std::from_chars( begin, end, a ).ptr == end;
-    }
-
-    static bool from_string( std::string_view s, bool &f )
-    {
-        if ( s == "yes" || s == "true" || s == "1" )
-            return f = true, true;
-
-        if ( s == "no" || s == "false" || s == "0" )
-            return f = false, true;
-
-        return false;
-    }
-
-    static bool from_string( std::string_view s, std::string &v )
-    {
-        v = s;
-        return true;
-    }
-
-    template< typename container >
-    auto from_string( std::string_view s, container &c ) -> decltype( from_string( s, c.back() ) )
-    {
-        c.emplace_back();
-        return from_string( s, c.back() );
+        return from_string( s, f._value );
     }
 
     /* The `cmd_option_matcher` class takes care of matching up fragments of a
@@ -115,13 +73,13 @@ namespace brq
             std::is_same_v< T, cmd_flag::neg_t >;
 
         template< typename arg_t >
-        std::pair< bool, int > bind( std::string token, arg_t &arg, int idx )
+        std::pair< parse_result, int > bind( std::string token, arg_t &arg, int idx )
         {
             if constexpr ( std::is_same_v< arg_t, cmd_flag > ||
                            std::is_same_v< arg_t, cmd_flag::neg_t > )
             {
                 arg = true;
-                return { true, idx };
+                return { parse_result(), idx };
             }
             else
                 return { from_string( token, arg ), idx + 1 };
@@ -140,13 +98,15 @@ namespace brq
          * FIXME Partial matches (which ultimately fail) currently overwrite
          * binding fragments in the matching prefix. This is undesirable. */
 
-        int match( int idx, int off ) { return off == 0 ? idx : 0; }
+        using match_result = std::pair< parse_result, int >;
+
+        match_result match( int idx, int off ) { return { parse_result(), off == 0 ? idx : 0 }; }
 
         template< typename arg_t, typename... args_t >
-        int match( int idx, int off, arg_t &&a, args_t && ... args )
+        match_result match( int idx, int off, arg_t &&a, args_t && ... args )
         {
             std::string token( _tokens[ idx ], off, std::string::npos );
-            bool matched = false;
+            parse_result matched = no_parse();
 
             if constexpr ( is_binding< arg_t > ) /* binding-type fragments */
                 std::tie( matched, idx ) = bind( token, a, idx );
@@ -156,7 +116,7 @@ namespace brq
             if ( matched )
                 return match( idx, off, std::forward< args_t >( args )... );
             else
-                return 0;
+                return { std::move( matched ), 0 };
         }
     };
 
@@ -216,6 +176,7 @@ namespace brq
         bool _print_help = false;
         int _matches = 0;
         int _index = 0, _next = 0;
+        std::vector< std::string > _errors;
 
         void _opt_matched( int n = 1 )
         {
@@ -249,8 +210,13 @@ namespace brq
             }
 
             if ( _mode == mode_parse )
-                if ( int m = match( _index, 0, std::forward< args_t >( args )... ) )
+            {
+                auto [ pr, m ] = match( _index, 0, std::forward< args_t >( args )... );
+                if ( m )
                     _opt_matched( m - _index );
+                else if ( !pr.error().empty() )
+                    _errors.emplace_back( pr.error() );
+            }
 
             return _help;
         }
@@ -342,11 +308,12 @@ namespace brq
             while ( _index < _tokens.size() )
             {
                 _matches = 0;
+                _errors.clear();
                 cmd.options( *this );
                 if ( _matches == 0 )
-                    brq::raise() << "error parsing option '" << _tokens[ _index ] << "'";
+                    brq::raise() << "error parsing option '" << _tokens[ _index ] << "'" << _errors;
                 if ( _matches > 1 )
-                    brq::raise() << "ambiguous option: " << _tokens[ _index];
+                    brq::raise() << "ambiguous option: " << _tokens[ _index ];
                 _index = _next;
             }
 
