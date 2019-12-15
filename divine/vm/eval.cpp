@@ -71,10 +71,7 @@ long syscall_helper( int id, std::vector< long > args, std::vector< bool > argty
     else if ( argtypes == A{0, 1, 1, 0, 1, 0} )
         return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], int(args[5]) );
     else
-    {
-        std::cerr << brick::string::fmt(argtypes) << std::endl;
-        NOT_IMPLEMENTED();
-    }
+        UNREACHABLE( "not implemented", argtypes );
 }
 
 template struct Eval< Context< Program, CowHeap > >;

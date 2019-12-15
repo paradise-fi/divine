@@ -344,8 +344,7 @@ struct Int : Base
         if ( v.pointer() ) def << "p";
         if ( v.taints() ) def << "t";
 
-        return o << "[i" << v.width() << " " << brick::string::fmt( v.cooked() )
-                 << " " << def.str() << "]";
+        return o << "[i" << v.width() << " " << v.cooked() << " " << def.data() << "]";
     }
 };
 

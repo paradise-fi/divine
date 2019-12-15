@@ -316,8 +316,8 @@ namespace divine::vm
             case _VM_CR_State:
             case _VM_CR_Scheduler:
             case _VM_CR_ObjIdShuffle:
-                if ( !assert_flag( _VM_CF_KernelMode, "register " + brick::string::fmt( reg ) +
-                                " only readable in kernel mode" ) )
+                if ( !assert_flag( _VM_CF_KernelMode,
+                                   brq::format( "register ", reg, " only readable in kernel mode" ) ) )
                     return;
                 else break;
             default: break;

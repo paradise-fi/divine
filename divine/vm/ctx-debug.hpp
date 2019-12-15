@@ -104,11 +104,10 @@ namespace divine::vm::ctx
             if ( t.ptr.type() == PointerType::Weak )
                 _debug_persist.push_back( t.ptr );
             else
-                {
-                    this->trace( "FAULT: cannot persist a non-weak object " +
-                                 brick::string::fmt( t.ptr ) );
-                    this->fault( _VM_F_Memory, this->frame(), this->pc() );
-                }
+            {
+                this->trace( brq::format( "FAULT: cannot persist a non-weak object ", t.ptr ).buffer() );
+                this->fault( _VM_F_Memory, this->frame(), this->pc() );
+            }
         }
     };
 

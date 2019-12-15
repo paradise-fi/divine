@@ -437,7 +437,7 @@ public:
     bool run_seq( bool continued );
     void dispatch(); /* evaluate a single instruction */
 
-    bool assert_flag( uint64_t flag, std::string str )
+    bool assert_flag( uint64_t flag, std::string_view str )
     {
         if ( context().flags_all( flag ) )
             return true;
