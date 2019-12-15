@@ -15,10 +15,10 @@ namespace __dios::rst::abstract {
         using index_t = scalar_t< Index >;
         using character_t = scalar_t< Char >;
 
-        using values_t = Array< character_t >;
+        using values_t = Array< character_t, _VM_PT_Weak >;
         using values_iterator = typename values_t::iterator;
 
-        using bounds_t = Array< index_t >;
+        using bounds_t = Array< index_t, _VM_PT_Weak >;
         using bounds_iterator = typename bounds_t::iterator;
 
         template< _VM_Fault fault_v = _VM_Fault::_VM_F_Assert >
@@ -62,6 +62,8 @@ namespace __dios::rst::abstract {
             auto& data() noexcept { return ptr->_data; }
             index_t size() const noexcept { return ptr->size(); }
             index_t offset() noexcept { return ptr->_offset; }
+
+            _LART_NOINLINE
             index_t checked_offset() noexcept
             {
                 auto off = offset();
@@ -117,7 +119,7 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         static mstring_ptr make_mstring( data_ptr data, abstract_value_t offset ) noexcept
         {
-            auto ptr = __new< mstring_t >();
+            auto ptr = __new< mstring_t, _VM_PT_Weak >();
             ptr->_offset = offset;
             ptr->_data = data;
             return ptr;
@@ -196,6 +198,10 @@ namespace __dios::rst::abstract {
             if ( bw != 8 )
                 fault( "unexpected store bitwidth" );
 
+            if ( is_constant( value ) )
+                value = character_t::lift(
+                    constant_t::get_constant( value ).lower< char >()
+                );
             // TODO assert array is mstring
             auto str = static_cast< mstring_ptr >( array );
             str->store( value, str.checked_offset() );
@@ -207,11 +213,21 @@ namespace __dios::rst::abstract {
             if ( bw != 8 )
                 fault( "unexpected gep bitwidth" );
 
+            if ( is_constant( idx ) )
+                idx = index_t::lift(
+                    constant_t::get_constant( idx ).lower< uint64_t >()
+                );
             // TODO assert array is mstring
             return gep( array, idx );
         }
 
-        _LART_INTERFACE _LART_SCALAR
+        _LART_INTERFACE
+        static mstring_ptr op_thaw( mstring_ptr str, uint8_t bw ) noexcept
+        {
+            return str;
+        }
+
+        _LART_INTERFACE _LART_SCALAR _LART_OPTNONE
         static index_t fn_strlen( mstring_ptr str ) noexcept
         {
             return strlen( str );
@@ -241,6 +257,10 @@ namespace __dios::rst::abstract {
         static mstring_ptr fn_strchr( abstract_value_t str, abstract_value_t ch ) noexcept
         {
             // TODO lift strings
+            if ( is_constant( ch ) )
+                ch = character_t::lift(
+                    constant_t::get_constant( ch ).lower< char >()
+                );
             return strchr( str, ch );
         }
 
@@ -250,6 +270,10 @@ namespace __dios::rst::abstract {
                                     , abstract_value_t size ) noexcept
         {
             // TODO lift strings
+            if ( is_constant( size ) )
+                size = index_t::lift(
+                    constant_t::get_constant( size ).lower< size_t >()
+                );
             return memcpy( dst, src, size );
         }
 
