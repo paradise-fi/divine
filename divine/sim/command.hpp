@@ -19,126 +19,265 @@
 #pragma once
 #include <divine/sim/trace.hpp>
 #include <divine/dbg/info.hpp>
+#include <brick-cmd>
 #include <string>
+
+namespace divine::sim::argument
+{
+    struct function
+    {
+        std::string n;
+
+        static brq::parse_result from_string( std::string_view s, function &f )
+        {
+            if ( !std::isalpha( s[ 0 ] ) && s[ 0 ] != '_' )
+                return brq::no_parse( "function names must start with a letter or '_'" );
+            f.n = s;
+            return {};
+        }
+    };
+
+    struct breakpoint
+    {
+        brick::types::Union< std::string, int > id;
+
+        static brq::parse_result from_string( std::string_view s, breakpoint &bp )
+        {
+            int id;
+            if ( brq::from_string( s, id ) )
+                bp.id = id;
+            else
+                bp.id = std::string( s );
+            return {};
+        }
+    };
+}
 
 namespace divine::sim::command
 {
 
-struct CastIron {}; // finalize with sticky commands
-struct Teflon       // finalize without sticky commands
-{
-    std::string output_to;
-    bool clear_screen = false;
-};
-
-struct WithVar
-{
-    std::string var;
-    WithVar( std::string v = "$_" ) : var( v ) {}
-};
-
-struct WithFrame : WithVar
-{
-    WithFrame() : WithVar( "$frame" ) {}
-};
-
-struct Set : CastIron { std::vector< std::string > options; };
-struct WithSteps : WithFrame
-{
-    bool over, out, quiet, verbose; int count;
-    WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
-};
-
-struct Start : CastIron
-{
-    bool verbose = false;
-    bool noboot = false;
-};
-
-struct Break : Teflon
-{
-    std::vector< std::string > where;
-    bool list;
-    brick::types::Union< std::string, int > del;
-    Break() : list( false ) {}
-};
-
-struct StepI : WithSteps, CastIron {};
-struct StepA : WithSteps, CastIron {};
-struct Step : WithSteps, CastIron {};
-struct Rewind : WithVar, CastIron
-{
-    Rewind() : WithVar( "#last" ) {}
-};
-
-struct Show : WithVar, Teflon
-{
-    bool raw;
-    int depth, deref;
-    Show() : raw( false ), depth( 10 ), deref( 0 ) {}
-};
-
-struct Diff : WithVar, Teflon
-{
-    std::vector< std::string > vars;
-};
-
-struct Dot : WithVar, Teflon
-{
-    std::string type = "none";
-    std::string output_file;
-};
-
-struct Draw : Dot
-{
-    Draw() { type = "x11"; }
-};
-
-struct Inspect : Show {};
-struct BitCode : WithFrame, Teflon
-{
-    std::string filename;
-};
-
-struct Source : WithFrame, Teflon {};
-struct Call : Teflon
-{
-    std::string function;
-};
-
-struct Info : Teflon
-{
-    std::string cmd;
-    std::string setup;
-};
-
-struct Thread : CastIron  { std::string spec; bool random; };
-
-struct BackTrace : WithVar, Teflon
-{
-    BackTrace() : WithVar( "$top" ) {}
-};
-
-struct Setup : Teflon
-{
-    bool clear_sticky, pygmentize = false, debug_everything = false;
-    std::string xterm;
-    std::vector< std::string > sticky_commands;
-    std::vector< dbg::Component > debug_components, ignore_components;
-    Setup() : clear_sticky( false ) {}
-};
-
-struct Down : CastIron {};
-struct Up : CastIron {};
-
-struct Exit : Teflon
-{
-    static std::array< std::string, 2 > names()
+    struct cast_iron {}; // finalize with sticky commands
+    struct teflon       // finalize without sticky commands
     {
-        return { { std::string( "exit" ), std::string( "quit" ) } };
+        std::string output_to;
+        bool clear_screen = false;
     };
-};
 
-struct Help : Teflon { std::string _cmd; };
+    struct base : brq::cmd_base
+    {
+        void run() override {}
+    };
 
+    struct with_var : base
+    {
+        std::string var;
+        with_var( std::string v = "$_" ) : var( v ) {}
+
+        void options( brq::cmd_options &o ) override
+        {
+            o.pos( var );
+        }
+    };
+
+    struct with_frame : with_var
+    {
+        with_frame() : with_var( "$frame" ) {}
+    };
+
+    struct set : cast_iron, base
+    {
+        std::vector< std::string > opt;
+        void options( brq::cmd_options &c ) override
+        {
+            base::options( c );
+            c.pos( opt );
+        }
+    };
+
+    struct with_steps : with_frame
+    {
+        brq::cmd_flag over, out, quiet, verbose;
+        int count = 1;
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.section( "Stepping Options" );
+            c.opt( "--over",    over )    << "execute calls as a single step";
+            c.opt( "--quiet",   quiet )   << "suppress output";
+            c.opt( "--verbose", verbose ) << "print individual instructions";
+            c.opt( "--out",     out )     << "execute until the current function returns";
+            c.opt( "--count",   count )   << "execute the given number of steps (default 1)";
+            with_frame::options( c );
+        }
+    };
+
+    struct start : base, cast_iron
+    {
+        brq::cmd_flag verbose, noboot;
+
+        void options( brq::cmd_options &c ) override
+        {
+            base::options( c );
+            c.section( "Start Options" );
+            c.opt( "--no-boot", noboot ) << "stop before booting";
+            c.opt( "--verbose", verbose ) << "print each instruction as it is executed";
+        }
+    };
+
+    struct breakpoint : teflon, base
+    {
+        brq::cmd_flag list;
+        std::vector< std::string > where;
+        argument::breakpoint del;
+
+        void options( brq::cmd_options &c ) override
+        {
+            base::options( c );
+            c.section( "Breakpoint Options" );
+            c.opt( "--list", list ) << "print currently active breakpoints";
+            c.opt( "--delete", del ) << "delete the designated breakpoint(s)";
+            c.pos( where );
+        }
+    };
+
+    struct stepi : with_steps, cast_iron {};
+    struct stepa : with_steps, cast_iron {};
+    struct step  : with_steps, cast_iron {};
+
+    struct rewind : with_var,  cast_iron
+    {
+        rewind() : with_var( "#last" ) {}
+    };
+
+    struct show : with_var, teflon
+    {
+        brq::cmd_flag raw;
+        int depth = 10, deref = 0;
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.section( "Display Options" );
+            c.opt( "--raw",   raw )   << "dump raw data";
+            c.opt( "--depth", depth ) << "maximal component unfolding (default 10)";
+            c.opt( "--deref", deref ) << "maximal pointer dereference unfolding (default 0)";
+            with_var::options( c );
+        }
+    };
+
+    struct inspect : show {};
+
+    struct diff : base, teflon
+    {
+        std::vector< std::string > vars;
+
+        void options( brq::cmd_options &c ) override
+        {
+            base::options( c );
+            c.pos( vars );
+        }
+    };
+
+    struct dot : with_var, teflon
+    {
+        std::string type = "none", output_file;
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.section( "Dot Options" );
+            c.opt( "-T", type ) << "type of output (none, ps, svg, png, ...)";
+            c.opt( "-o", output_file ) << "file to write the output to";
+            with_var::options( c );
+        }
+    };
+
+    struct draw : dot
+    {
+        draw() { type = "x11"; }
+    };
+
+    struct bitcode : with_frame, teflon
+    {
+        std::string filename;
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.opt( "--dump", filename ) << "save current bitcode into a file";
+            with_frame::options( c );
+        }
+    };
+
+    struct source : with_frame, teflon {};
+    struct call : base, teflon
+    {
+        std::string function;
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.pos( function );
+        }
+    };
+
+    struct info : base, teflon
+    {
+        std::string cmd, setup;
+
+        void options( brq::cmd_options &c ) override
+        {
+            base::options( c );
+            c.opt( "--setup", setup ) << "set up a new source";
+            c.pos( cmd );
+        }
+    };
+
+    struct thread : base, cast_iron
+    {
+        std::string spec;
+        brq::cmd_flag random;
+
+        void options( brq::cmd_options &c ) override
+        {
+            base::options( c );
+            c.section( "Scheduling Options" );
+            c.opt( "--random", random ) << "pick the thread to run randomly";
+            c.pos( spec );
+        }
+    };
+
+    struct backtrace : with_var, teflon
+    {
+        backtrace() : with_var( "$top" ) {}
+    };
+
+    struct setup : base, teflon
+    {
+        brq::cmd_flag clear_sticky, pygmentize, debug_everything;
+        std::string xterm;
+        std::vector< std::string > sticky_commands;
+        std::vector< dbg::component > debug_components, ignore_components;
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.section( "Component Options" );
+            c.opt( "--debug", debug_components );
+            c.opt( "--ignore", ignore_components );
+            c.opt( "--debug-everything", debug_everything );
+
+            c.section( "Output Options" );
+            c.opt( "--xterm", xterm );
+            c.opt( "--pygmentize", pygmentize );
+            c.opt( "--clear-sticky", clear_sticky );
+            c.opt( "--sticky", sticky_commands );
+        }
+    };
+
+    struct down : base, cast_iron {};
+    struct up   : base, cast_iron {};
+
+    struct exit : base, teflon
+    {
+        static std::array< std::string, 2 > names()
+        {
+            return { { std::string( "exit" ), std::string( "quit" ) } };
+        }
+    };
 }

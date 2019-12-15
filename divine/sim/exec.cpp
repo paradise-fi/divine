@@ -48,7 +48,7 @@ Stepper CLI::stepper()
     return step;
 }
 
-Stepper CLI::stepper( command::WithSteps s, bool jmp )
+Stepper CLI::stepper( command::with_steps s, bool jmp )
 {
     auto step = stepper();
     check_running();
@@ -81,7 +81,7 @@ void CLI::reach_error()
     update();
 }
 
-void CLI::bplist( command::Break b )
+void CLI::bplist( command::breakpoint b )
 {
     std::deque< decltype( _bps )::iterator > remove;
     int id = 1;
@@ -90,14 +90,14 @@ void CLI::bplist( command::Break b )
     for ( auto bp : _bps )
     {
         out() << std::setw( 2 ) << id << ": ";
-        bool del_this = !b.del.empty() && id == b.del;
+        bool del_this = !b.del.id.empty() && id == b.del.id;
         bp.match(
             [&]( vm::CodePointer pc )
             {
                 auto fun = _bc->debug().function( pc )->getName().str();
                 out() << fun << " +" << pc.instruction()
                         << " (at " << dbg::location( location( pc ) ) << ")";
-                if ( !b.del.empty() && !pc.instruction() && b.del == fun )
+                if ( !b.del.id.empty() && !pc.instruction() && b.del.id == fun )
                     del_this = true;
             },
             [&]( Location loc )

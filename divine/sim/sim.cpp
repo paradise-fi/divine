@@ -34,7 +34,6 @@ namespace divine::sim
 {
 
 using namespace std::literals;
-namespace cmd = brick::cmd;
 
 bool *CLI::_sigint = nullptr;
 
@@ -57,6 +56,8 @@ void sigint_handler( int raised )
 
 namespace divine::ui
 {
+
+    namespace sim_cmd = divine::sim::command;
 
 void Sim::run()
 {
@@ -104,7 +105,7 @@ void Sim::run()
     if ( _trace )
         interp.trace( *_trace, true, [&]{ interp.reach_error(); } );
 
-    interp.finalize( sim::command::CastIron() );
+    interp.finalize( sim_cmd::cast_iron() );
 
     while ( !interp._exit )
     {

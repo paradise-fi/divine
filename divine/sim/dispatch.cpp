@@ -24,12 +24,12 @@
 namespace divine::sim
 {
 
-void CLI::go( command::Exit )
+void CLI::go( command::exit )
 {
     _exit = true;
 }
 
-void CLI::go( command::Start s )
+void CLI::go( command::start s )
 {
     vm::setup::boot( _ctx );
     if ( s.noboot )
@@ -45,9 +45,9 @@ void CLI::go( command::Start s )
     set( "$_", frameDN() );
 }
 
-void CLI::go( command::Break b )
+void CLI::go( command::breakpoint b )
 {
-    if ( b.list || !b.del.empty() )
+    if ( b.list || !b.del.id.empty() )
         bplist( b );
     else
         for ( auto w : b.where )
@@ -74,7 +74,7 @@ void CLI::go( command::Break b )
             }
 }
 
-void CLI::go( command::Step s )
+void CLI::go( command::step s )
 {
     auto step = stepper( s, false );
     if ( !s.out )
@@ -83,7 +83,7 @@ void CLI::go( command::Step s )
     set( "$_", frameDN() );
 }
 
-void CLI::go( command::StepI s )
+void CLI::go( command::stepi s )
 {
     auto step = stepper( s, false );
     step.instructions( s.count );
@@ -91,7 +91,7 @@ void CLI::go( command::StepI s )
     set( "$_", frameDN() );
 }
 
-void CLI::go( command::StepA s )
+void CLI::go( command::stepa s )
 {
     auto step = stepper( s, false );
     step.states( s.count );
@@ -99,7 +99,7 @@ void CLI::go( command::StepA s )
     set( "$_", frameDN() );
 }
 
-void CLI::go( command::Rewind re )
+void CLI::go( command::rewind re )
 {
     auto tgt = get( re.var );
     _ctx.load( tgt.snapshot() );
@@ -110,7 +110,7 @@ void CLI::go( command::Rewind re )
     set( "$_", re.var );
 }
 
-void CLI::go( command::BackTrace backtrace )
+void CLI::go( command::backtrace backtrace )
 {
     dbg::DNSet visited;
 
@@ -132,7 +132,7 @@ void CLI::go( command::BackTrace backtrace )
     dbg::backtrace( bt, fmt, get( backtrace.var ), visited, stacks, 100 );
 }
 
-void CLI::go( command::Show cmd )
+void CLI::go( command::show cmd )
 {
     auto dn = get( cmd.var );
     if ( cmd.raw )
@@ -141,14 +141,14 @@ void CLI::go( command::Show cmd )
         dn.format( out(), cmd.depth, cmd.deref );
 }
 
-void CLI::go( command::Diff cmd )
+void CLI::go( command::diff cmd )
 {
     if ( cmd.vars.size() != 2 )
         throw brq::error( "Diff needs exactly 2 arguments." );
     dbg::diff( std::cerr, get( cmd.vars[0] ), get( cmd.vars[1] ) );
 }
 
-void CLI::go( command::Info inf )
+void CLI::go( command::info inf )
 {
     OneLineTokenizer tok;
 
@@ -167,7 +167,7 @@ void CLI::go( command::Info inf )
         _info_cmd[ inf.cmd ] = tok.tokenize( inf.setup );
 }
 
-void CLI::go( command::Dot cmd )
+void CLI::go( command::dot cmd )
 {
     std::string dot = dotDN( get( cmd.var ), true ), print;
     if ( cmd.type == "none" )
@@ -185,13 +185,13 @@ void CLI::go( command::Dot cmd )
         out() << print << std::endl;
 }
 
-void CLI::go( command::Inspect i )
+void CLI::go( command::inspect i )
 {
-    go( command::Show( i ) );
+    go( command::show( i ) );
     set( "$_", i.var );
 }
 
-void CLI::go( command::Call c )
+void CLI::go( command::call c )
 {
     auto pc = _ctx.program().functionByName( c.function );
     if ( pc.null() )
@@ -211,7 +211,7 @@ void CLI::go( command::Call c )
         out() << "  " << t << std::endl;
 }
 
-void CLI::go( command::Up )
+void CLI::go( command::up )
 {
     check_running();
     auto current =  get( "$_" );
@@ -224,7 +224,7 @@ void CLI::go( command::Up )
     set( "$_", up );
 }
 
-void CLI::go( command::Down )
+void CLI::go( command::down )
 {
     check_running();
     auto frame = get( "$top" ), prev = frame, current = get( "$_" );
@@ -242,14 +242,14 @@ void CLI::go( command::Down )
     set( "$_", prev );
 }
 
-void CLI::go( command::Set s )
+void CLI::go( command::set s )
 {
-    if ( s.options.size() != 2 )
+    if ( s.opt.size() != 2 )
         throw brq::error( "2 options are required for set, the variable and the value" );
-    set( s.options[0], s.options[1] );
+    set( s.opt[0], s.opt[1] );
 }
 
-void CLI::go( command::Thread thr )
+void CLI::go( command::thread thr )
 {
     _sched_random = thr.random;
     if ( !thr.spec.empty() )
@@ -262,7 +262,7 @@ void CLI::go( command::Thread thr )
     }
 }
 
-void CLI::go( command::BitCode bc )
+void CLI::go( command::bitcode bc )
 {
     if ( !bc.filename.empty() )
     {
@@ -277,7 +277,7 @@ void CLI::go( command::BitCode bc )
     get( bc.var ).bitcode( out() ); out() << std::flush;
 }
 
-void CLI::go( command::Source src )
+void CLI::go( command::source src )
 {
     get( src.var ).source( out(), [this]( std::string txt )
                             {
@@ -296,7 +296,7 @@ void CLI::go( command::Source src )
     out() << std::flush;
 }
 
-void CLI::go( command::Setup set )
+void CLI::go( command::setup set )
 {
     OneLineTokenizer tok;
     if ( set.pygmentize )
