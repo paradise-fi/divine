@@ -24,7 +24,7 @@ namespace ui {
 
 namespace proc = brick::proc;
 
-void Draw::run()
+void draw::run()
 {
     auto dot = mc::draw( bitcode(), _distance, false );
     auto out = proc::shellSpawnAndWait( proc::StdinString( dot ) | proc::CaptureStdout, _render );

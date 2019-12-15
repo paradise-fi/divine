@@ -26,290 +26,20 @@ namespace divine::ui
 struct CLI : Interface
 {
     bool _batch, _check_files = true;
-    std::string _argv_0;
-    std::vector< std::string > _args;
+    int _argc;
+    const char **_argv;
 
     CLI( int argc, const char **argv ) :
-        _batch( true ), _argv_0( argv[ 0 ] ), _args( cmd::from_argv( argc, argv ) )
-    { }
+        _batch( true ), _argc( argc ), _argv( argv )
+    {}
 
-    CLI( std::vector< std::string > args ) :
-        _batch( true ), _args( args )
-    { }
-
-    auto validator()
+    auto parse()
     {
-        auto file = [&]( std::string s, auto good, auto bad )
-        {
-            if ( s[0] == '-' ) /* FIXME! zisit, kde sa to rozbije */
-                return bad( cmd::BadFormat, "file must not start with -" );
-            if ( !brick::fs::access( s, F_OK ) && _check_files )
-                return bad( cmd::BadContent, "file " + s + " does not exist");
-            if ( !brick::fs::access( s, R_OK ) && _check_files )
-                return bad( cmd::BadContent, "file " + s + " is not readable");
-            return good( s );
-        };
+        if ( _argc > 1 && ( _argv[ 1 ] == "--help" || _argv[ 1 ] == "--version" ) )
+            _argv[ 1 ] += 2;
 
-        auto vfsdir = []( std::string s, auto good, auto bad )
-        {
-            WithBC::VfsDir dir;
-            dir.followSymlink = true;
-            std::regex sep(":");
-            std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
-            int i;
-            for ( i = 0; it != std::sregex_token_iterator(); it++, i++ )
-                switch ( i ) {
-                case 0:
-                    dir.capture = *it;
-                    dir.mount = *it;
-                    break;
-                case 1:
-                    if ( *it == "follow" )
-                        dir.followSymlink = true;
-                    else if ( *it == "nofollow" )
-                        dir.followSymlink = false;
-                    else
-                        return bad( cmd::BadContent, "invalid option for follow links" );
-                    break;
-                case 2:
-                    dir.mount = *it;
-                    break;
-                default:
-                    return bad( cmd::BadContent, " unexpected attribute "
-                        + std::string( *it ) + " in vfsdir" );
-            }
-
-            if ( i < 1 )
-                return bad( cmd::BadContent, "missing a directory to capture" );
-            if ( !brick::fs::access( dir.capture, F_OK ) )
-                return bad( cmd::BadContent, "file or directory " + dir.capture + " does not exist" );
-            if ( !brick::fs::access( dir.capture, R_OK ) )
-                return bad( cmd::BadContent, "file or directory " + dir.capture + " is not readable" );
-            return good( dir );
-        };
-
-        auto mem = []( std::string s, auto good, auto bad )
-        {
-            try {
-                size_t size = memFromString( s );
-                return good( size );
-            }
-            catch ( const std::invalid_argument& e ) {
-                return bad( cmd::BadContent, std::string("cannot read size: ")
-                    + e.what() );
-            }
-            catch ( const std::out_of_range& e ) {
-                return bad( cmd::BadContent, "size overflow" );
-            }
-        };
-
-        auto repfmt = []( std::string s, auto good, auto bad )
-        {
-            if ( s.compare("none") == 0 )
-                return good( Report::None );
-            if ( s.compare("yaml-long") == 0 )
-                return good( Report::YamlLong );
-            if ( s.compare("yaml") == 0 )
-                return good( Report::Yaml );
-            return bad( cmd::BadContent, s + " is not a valid report format" );
-        };
-
-        auto label = []( std::string s, auto good, auto bad )
-        {
-            if ( s.compare("none") == 0 )
-                return good( Draw::None );
-            if ( s.compare("all") == 0 )
-                return good( Draw::All );
-            if ( s.compare("trace") == 0 )
-                return good( Draw::Trace );
-            return bad( cmd::BadContent, s + " is not a valid label type" );
-        };
-
-        auto tracepoints = []( std::string s, auto good, auto bad )
-        {
-            mc::AutoTraceFlags flags = mc::AutoTrace::Nothing;
-
-            if ( s == "none" )
-                return good( mc::AutoTrace::Nothing );
-
-            for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
-            {
-                if ( auto v = mc::autotrace_from_string( x ) )
-                    flags |= v;
-                else
-                    return bad( cmd::BadContent, x.str() + " is not a valid tracepoint" );
-            }
-
-            return good( flags );
-        };
-
-        auto leakpoints = []( std::string s, auto good, auto bad )
-        {
-            mc::LeakCheckFlags flags = mc::LeakCheck::Nothing;
-
-            if ( s == "none" )
-                return good( flags );
-
-            for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
-            {
-                if ( auto v = mc::leakcheck_from_string( x ) )
-                    flags |= v;
-                else
-                    return bad( cmd::BadContent, x.str() + " is not a valid leakpoint" );
-            }
-
-            return good( flags );
-        };
-
-        auto paths = []( std::string s, auto good, auto )
-        {
-            std::vector< std::string > out;
-            std::regex sep(":");
-            std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
-            std::copy( it, std::sregex_token_iterator(), std::back_inserter( out ) );
-            return good( out );
-        };
-
-        auto commasep = []( std::string s, auto good, auto )
-        {
-            std::vector< std::string > out;
-            for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
-                out.emplace_back( x );
-            return good( out );
-        };
-
-        auto result = []( std::string s, auto good, auto bad )
-        {
-            if ( s == "valid" ) return good( mc::Result::Valid );
-            if ( s == "error" ) return good( mc::Result::Error );
-            if ( s == "boot-error" ) return good( mc::Result::BootError );
-            return bad( ui::cmd::BadContent, s + " is not a valid result specification" );
-        };
-
-        return cmd::make_validator()->
-            add( "file", file )->
-            add( "vfsdir", vfsdir )->
-            add( "mem", mem )->
-            add( "repfmt", repfmt )->
-            add( "label", label )->
-            add( "tracepoints", tracepoints )->
-            add( "leakpoints", leakpoints )->
-            add( "paths", paths )->
-            add( "result", result )->
-            add( "commasep", commasep );
-    }
-
-    auto commands()
-    {
-        auto v = validator();
-
-        auto helpopts = cmd::make_option_set( v )
-            .option( "[{string}]", &Help::_cmd, "print man to specified command"s );
-
-        auto bcopts = cmd::make_option_set( v )
-            .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
-            .option( "[-C,{commasep}]", &WithBC::_ccOpts, "pass additional options to the compiler"s )
-            .option( "[--autotrace {tracepoints}]", &WithBC::_bc_opts, &mc::BCOptions::autotrace,
-                     "insert trace calls"s )
-            .option( "[--leakcheck {leakpoints}]", &WithBC::_bc_opts, &mc::BCOptions::leakcheck,
-                     "insert leak checks"s )
-            .option( "[--sequential]", &WithBC::_bc_opts, &mc::BCOptions::sequential,
-                     "disable support for threading"s )
-            .option( "[--synchronous]", &WithBC::_bc_opts, &mc::BCOptions::synchronous,
-                     "enable synchronous mode"s )
-            .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
-            .option( "[--disable-static-reduction]", &WithBC::_bc_opts,
-                     &mc::BCOptions::disable_static_reduction,
-                     "disable static (transformation based) state space reductions"s )
-            .option( "[--relaxed-memory {string}]", &WithBC::_bc_opts, &mc::BCOptions::relaxed,
-                     "enable relaxed memory semantics (tso|pso[:N]) where N is size of buffers"s )
-            .option( "[--lart {string}]", &WithBC::_bc_opts, &mc::BCOptions::lart_passes,
-                     "run an additional LART pass in the loader" )
-            .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
-            .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit,
-                     "filesystem snapshot size limit (default 16 MiB)"s )
-            .option( "[--capture {vfsdir}]", &WithBC::_vfs,
-                     "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
-            .option( "[--stdin {file}]", &WithBC::_stdin,
-                     "capture file and pass it to OS as stdin for verified program" )
-            .option( "[--symbolic]", &WithBC::_bc_opts, &mc::BCOptions::symbolic,
-                     "use semi-symbolic data representation"s )
-            .option( "[--svcomp]", &WithBC::_bc_opts, &mc::BCOptions::svcomp,
-                     "run SV-COMP specific program transformations"s )
-            .option( "[--dump-bc {string}]", &WithBC::_dump_bc,
-                     "dump the final pre-processed bitcode"s )
-            .option( "[--dios-config {string}]", &WithBC::_bc_opts, &mc::BCOptions::dios_config,
-                     "which DiOS configuration to use"s )
-            .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
-                     "link in a library, e.g. -lm for libm"s )
-            .option( "{file}", &WithBC::_bc_opts, &mc::BCOptions::input_file, "the bitcode file to load"s,
-                  cmd::OptionFlag::Required | cmd::OptionFlag::Final );
-
-        auto ltlcopts = cmd::make_option_set( v )
-            .option( "[--automaton {string}|-a {string}]", &Ltlc::_automaton, "text file containing TGBA in HOA format"s )
-            .option( "[--formula {string}|-f {string}]", &Ltlc::_formula, "LTL formula"s )
-            .option( "[--negate]", &Ltlc::_negate, "compute automaton of negation of given formula"s )
-            .option( "[--output {string}|-o {string}]", &Ltlc::_output, "name of the file"s )
-            .option( "[--system {string}|-s {string}]", &Ltlc::_system, "system to be verified"s );
-
-        auto ccopts = cmd::make_option_set( v )
-            .option( "[-c|--dont-link]", &Cc::_opts, &cc::Options::dont_link, "do not link"s )
-            .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
-            .option( "[-C,{commasep}]", &Cc::_passThroughFlags,
-                     "pass additional options to the compiler"s )
-            .option( "[{string}]", &Cc::_flags,
-                     "any clang options or input files (C, C++, object, bitcode)"s );
-
-        auto vrfyopts = cmd::make_option_set( v )
-            .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
-            .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
-            .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
-            .option( "[--liveness]", &Verify::_liveness, "enables verification of liveness properties"s )
-            .option( "[--solver {string}]", &Verify::_solver, "the solver backend to use"s )
-            .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report,
-                     "print a report (yaml, yaml-long or none)"s )
-            .option( "[--no-report-file]", &Verify::_no_report_file, "skip creation of a report file"s )
-            .option( "[--report-filename {string}]", &Verify::_report_filename,
-                     "write the report into a given file"s )
-            .option( "[--report-unique]", &Verify::_report_unique,
-                     "ensure the report filename is unique"s )
-            .option( "[--num-callers {int}]"s, &Verify::_num_callers,
-                     "the number of frames to print in a backtrace [default = 10]" );
-
-        auto drawopts = cmd::make_option_set( v )
-            .option( "[--distance {int}|-d {int}]", &Draw::_distance, "maximum node distance"s )
-            .option( "[--render {string}]", &Draw::_render, "the command to process the dot source"s );
-
-        auto runopts = cmd::make_option_set( v )
-            .option( "[--virtual]", &Exec::_virtual, "simulate system calls instead of executing them"s)
-            .option( "[--trace]", &Exec::_trace, "trace instructions"s);
-
-        auto simopts = cmd::make_option_set( v )
-            .option( "[--batch]", &Sim::_batch, "execute in batch mode"s )
-            .option( "[--load-report]", &Sim::_load_report, "load a verify report"s )
-            .option( "[--skip-init]", &Sim::_skip_init, "do not load ~/.divine/sim.init"s );
-
-        auto parser = cmd::make_parser( v )
-            .command< Verify >( &WithBC::_useropts, vrfyopts, bcopts )
-            .command< Check >( &WithBC::_useropts, vrfyopts, bcopts )
-            .command< Exec >( &WithBC::_useropts, bcopts, runopts )
-            .command< Sim >( &WithBC::_useropts, bcopts, simopts )
-            .command< Draw >( drawopts, bcopts )
-            .command< Info >( bcopts )
-            .command< Cc >( ccopts )
-            .command< Version >()
-            .command< Help >( helpopts )
-            .command< Ltlc >( ltlcopts );
-        return parser;
-    }
-
-    template< typename P >
-    auto parse( P p )
-    {
-        if ( _args.size() >= 1 )
-            if ( _args[0] == "--help" || _args[0] == "--version" )
-                _args[0] = _args[0].substr( 2 );
-        return p.parse( _args.begin(), _args.end() );
+        brq::cmd_parser p( _argc, _argv );
+        return p.parse< verify, check, exec, sim, draw, info, cc, version, ltlc >();
     }
 
     std::shared_ptr< Interface > resolve() override
@@ -320,38 +50,27 @@ struct CLI : Interface
             return std::make_shared< ui::Curses >( /* ... */ );
     }
 
-    virtual int main() override
+    virtual int main() override try
     {
-        try {
-            auto cmds = commands();
-            auto cmd = parse( cmds );
-            bool empty = true;
-            cmd.match( [&]( const auto & ) { empty = false; } );
+        auto cmd = parse();
 
-            if ( empty )
-            {
-                Help().run( _argv_0, cmds );
-                return 0;
-            }
-
-            cmd.match( [&]( Help &help )
-                       {
-                           help.run( _argv_0, cmds );
-                       },
-                       [&]( Command &c )
-                       {
-                           c.setup();
-                           c.run();
-                           c.cleanup();
-                       } );
-            return 0;
-        }
-        catch ( brq::error &e )
-        {
-            std::cerr << "ERROR: " << e.what() << std::endl;
-            exception( e );
-            return e._exit;
-        }
+        cmd.match( [&]( brq::cmd_help &help )
+                   {
+                       help.run();
+                   },
+                   [&]( command &c )
+                   {
+                       c.setup();
+                       c.run();
+                       c.cleanup();
+                   } );
+        return 0;
+    }
+    catch ( brq::error &e )
+    {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        exception( e );
+        return e._exit;
     }
 };
 

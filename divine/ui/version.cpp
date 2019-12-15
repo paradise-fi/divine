@@ -34,7 +34,8 @@ using namespace std::literals;
 namespace divine {
 namespace ui {
 
-std::string version() {
+std::string version()
+{
     std::string composite = DIVINE_SOURCE_SHA + " "s + DIVINE_RUNTIME_SHA;
     if ( DIVINE_RELEASE_SHA == composite )
         return DIVINE_VERSION;
@@ -48,12 +49,13 @@ std::string version() {
     }
 }
 
-void Version::run() {
+void version::run()
+{
     std::cerr << logo << std::endl
-              << "DIVINE 4, version " << version() << std::endl << std::endl;
+              << "DIVINE 4, version " << ui::version() << std::endl << std::endl;
 
     using P = std::pair< std::string, std::string >;
-    for ( auto p : { P{ "version", version() },
+    for ( auto p : { P{ "version", ui::version() },
                      P{ "source sha", DIVINE_SOURCE_SHA },
                      P{ "runtime sha", DIVINE_RUNTIME_SHA },
                      P{ "build date", DIVINE_BUILD_DATE },

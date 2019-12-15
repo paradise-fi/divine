@@ -19,6 +19,7 @@
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/parser.hpp>
+#include <divine/ui/version.hpp>
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/exec.hpp>
 #include <divine/vm/vmutil.h>
@@ -185,7 +186,9 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     return S_ISDIR( stat->st_mode );
 }
 
-void WithBC::process_options()
+namespace cc_ns = divine::cc;
+
+void with_bc::process_options()
 {
     using bstr = std::vector< uint8_t >;
     int i = 0;
@@ -200,16 +203,16 @@ void WithBC::process_options()
         _bc_opts.bc_env.emplace_back( "sys." + std::to_string( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
 
-    _bc_opts.bc_env.emplace_back( "divine.bcname", bstr( _bc_opts.input_file.begin(),
-                                  _bc_opts.input_file.end() ) );
+    _bc_opts.bc_env.emplace_back( "divine.bcname", bstr( _bc_opts.input_file.name.begin(),
+                                  _bc_opts.input_file.name.end() ) );
 
-    if ( cc::typeFromFile( _bc_opts.input_file ) != cc::FileType::Unknown )
+    if ( cc_ns::typeFromFile( _bc_opts.input_file.name ) != cc_ns::FileType::Unknown )
     {
         if ( !_std.empty() )
             _bc_opts.ccopts.push_back( { "-std=" + _std } );
-        _bc_opts.ccopts.push_back( _bc_opts.input_file );
+        _bc_opts.ccopts.push_back( _bc_opts.input_file.name );
         for ( auto &o : _ccOpts )
-            std::copy( o.begin(), o.end(), std::back_inserter( _bc_opts.ccopts ) );
+            std::copy( o.vec.begin(), o.vec.end(), std::back_inserter( _bc_opts.ccopts ) );
         for ( auto &l : _linkLibs )
             _bc_opts.ccopts.push_back( "-l" + l );
     }
@@ -229,9 +232,9 @@ void quote( I b, I e, O out )
     *out++ = '"';
 }
 
-void WithBC::report_options()
+void with_bc::report_options()
 {
-    _log->info( "input file: " + _bc_opts.input_file + "\n", true );
+    _log->info( "input file: " + _bc_opts.input_file.name + "\n", true );
 
     if ( !_bc_opts.ccopts.empty() )
     {
@@ -280,13 +283,13 @@ void WithBC::report_options()
         _log->info( "sequential: 1\n", true );
     if ( _bc_opts.synchronous )
         _log->info( "synchronous: 1\n", true );
-    if ( _bc_opts.disable_static_reduction )
-        _log->info( "disable static reduction: 1\n", true );
+    if ( _bc_opts.static_reduction )
+        _log->info( "static reduction: 1\n", true );
     if ( !_bc_opts.relaxed.empty() )
         _log->info( "relaxed memory: " + _bc_opts.relaxed + "\n" );
 }
 
-void WithBC::setup()
+void with_bc::setup()
 {
     using bstr = std::vector< uint8_t >;
 
@@ -294,7 +297,7 @@ void WithBC::setup()
 
     int i = 0;
     std::set< std::string > vfsCaptured;
-    size_t limit = _vfsSizeLimit;
+    size_t limit = _vfs_limit.size;
     for ( auto vfs : _vfs )
     {
         auto ex = [&]( const std::string& item )
@@ -325,9 +328,9 @@ void WithBC::setup()
         brq::traverse_dir_tree( vfs.capture, ex, []( std::string ){ }, ex );
     }
 
-    if ( !_stdin.empty() )
+    if ( !_stdin.name.empty() )
     {
-        std::ifstream f( _stdin, std::ios::binary );
+        std::ifstream f( _stdin.name, std::ios::binary );
         bstr content{ std::istreambuf_iterator< char >( f ),
                       std::istreambuf_iterator< char >() };
         _bc_opts.bc_env.emplace_back( "vfs.stdin", content );
@@ -342,7 +345,7 @@ void WithBC::setup()
     _bc = mc::BitCode::with_options( _bc_opts, _cc_driver );
 }
 
-void WithBC::init()
+void with_bc::init()
 {
     ASSERT( !_init_done );
 
@@ -362,19 +365,20 @@ void WithBC::init()
     _log->loader( Phase::Done );
 }
 
-void Cc::run()
+void cc::run()
 {
     using namespace cc;
     _driver.setup( _opts );
 
     for ( auto &x : _passThroughFlags )
-        std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
+        std::copy( x.vec.begin(), x.vec.end(), std::back_inserter( _flags ) );
 
     ParsedOpts po = parseOpts( _flags );
     if ( !po.files.empty() )
     {
-        if ( po.files[0].is< cc::File >() )
-            po.outputFile  = _output.empty() ? outputName( (po.files[0]).get< cc::File >().name, ".bc" ) : _output;
+        if ( po.files[0].is< cc_ns::File >() )
+            po.outputFile  = _output.empty() ?
+                outputName( po.files[0].get< cc_ns::File >().name, ".bc" ) : _output;
     } else
         die( "CC: You must specify at least one source file." );
 
@@ -389,9 +393,9 @@ void Cc::run()
 
         for( auto file : po.files )
         {
-            if ( !file.is< cc::File >() )
+            if ( !file.is< cc_ns::File >() )
                 continue;
-            auto f = file.get< cc::File >();
+            auto f = file.get< cc_ns::File >();
             auto m = _driver.compile( f.name, f.type, po.opts );
             _driver.writeToFile( outputName( f.name, "bc" ), m.get() );
         }
@@ -403,19 +407,19 @@ void Cc::run()
     }
 }
 
-void Info::run()
+void info::run()
 {
-    WithBC::bitcode(); // dump all WithBC messages before our output
+    with_bc::bitcode(); // dump all with_bc messages before our output
     std::cerr << std::endl
               << "DIVINE " << version() << std::endl << std::endl
-              << "Available options for " << _bc_opts.input_file << " are:" << std::endl;
-    Exec::run();
+              << "Available options for " << _bc_opts.input_file.name << " are:" << std::endl;
+    exec::run();
     std::cerr << "use -o {option}:{value} to pass these options to the program" << std::endl;
 }
 
-std::shared_ptr< Interface > make_cli( std::vector< std::string > args )
+std::shared_ptr< Interface > make_cli( int argc, const char **argv )
 {
-    return std::make_shared< CLI >( args );
+    return std::make_shared< CLI >( argc, argv );
 }
 
 }

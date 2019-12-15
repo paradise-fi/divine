@@ -32,7 +32,7 @@ namespace ui {
     using namespace ltl;
     using LTLPtr = std::shared_ptr< LTL >;
 
-    void Ltlc::run()
+    void ltlc::run()
     {
         TGBA2 tgba2;
         if( !_automaton.empty() )

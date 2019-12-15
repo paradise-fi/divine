@@ -28,10 +28,10 @@
 namespace divine {
 namespace ui {
 
-void Verify::setup_report_file()
+void verify::setup_report_file()
 {
-    if ( _report_filename.empty() )
-        _report_filename = outputName( _bc_opts.input_file, "report" );
+    if ( _report_filename.name.empty() )
+        _report_filename.name = outputName( _bc_opts.input_file.name, "report" );
 
     if ( !_report_unique )
         return;
@@ -42,17 +42,17 @@ void Verify::setup_report_file()
     int fd;
 
     do {
-        fn = _report_filename + ".";
+        fn = _report_filename.name + ".";
         for ( int i = 0; i < 6; ++i )
             fn += dist( rd );
         fd = open( fn.c_str(), O_CREAT | O_EXCL, 0666 );
     } while ( fd < 0 );
 
-    _report_filename = fn;
+    _report_filename.name = fn;
     close( fd );
 }
 
-void Verify::setup()
+void verify::setup()
 {
     if ( _log == nullsink() )
     {
@@ -61,13 +61,13 @@ void Verify::setup()
         if ( _interactive )
             log.push_back( make_interactive() );
 
-        if ( _report != Report::None )
-            log.push_back( make_yaml( std::cout, _report == Report::YamlLong ) );
+        if ( _report != arg::report::none )
+            log.push_back( make_yaml( std::cout, _report == arg::report::yaml_long ) );
 
-        if ( !_no_report_file )
+        if ( _do_report_file )
         {
             setup_report_file();
-            _report_file.reset( new std::ofstream( _report_filename ) );
+            _report_file.reset( new std::ofstream( _report_filename.name ) );
             log.push_back( make_yaml( *_report_file.get(), true ) );
         }
 
@@ -77,19 +77,19 @@ void Verify::setup()
     if ( _bc_opts.dios_config.empty() && _liveness )
         _bc_opts.dios_config = "fair";
 
-    WithBC::setup();
+    with_bc::setup();
 
     if ( _bc_opts.symbolic )
         bitcode()->solver( _solver );
 }
 
-void Check::setup()
+void check::setup()
 {
     _systemopts.push_back( "nofail:malloc" );
-    Verify::setup();
+    verify::setup();
 }
 
-void Verify::run()
+void verify::run()
 {
     if ( _liveness )
         liveness();
@@ -97,7 +97,7 @@ void Verify::run()
         safety();
 }
 
-void Verify::print_ce( mc::Job &job ) try
+void verify::print_ce( mc::Job &job ) try
 {
     dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
 
@@ -124,7 +124,7 @@ void Verify::print_ce( mc::Job &job ) try
         Stepper step;
         step._stop_on_error = true;
         step._stop_on_accept = true;
-        step._ff_components = dbg::Component::Kernel;
+        step._ff_components = dbg::component::kernel;
         step.run( dbg, Stepper::Quiet );
         _log->backtrace( dbg, _num_callers );
     }
@@ -149,7 +149,7 @@ catch ( mc::BadTrace &bt )
     _log->backtrace( dbg, _num_callers );
 }
 
-void Verify::safety()
+void verify::safety()
 {
     mc::builder::State error;
 
@@ -159,7 +159,7 @@ void Verify::safety()
     auto safety = mc::make_job< mc::Safety >( bitcode(), ss::passive_listen() );
 
     SysInfo sysinfo;
-    sysinfo.setMemoryLimitInBytes( _max_mem );
+    sysinfo.setMemoryLimitInBytes( _max_mem.size );
 
     _log->start();
     int ps_ctr = 0;
@@ -184,13 +184,13 @@ void Verify::safety()
     print_ce( *safety );
 }
 
-void Verify::cleanup()
+void verify::cleanup()
 {
-    if ( !_report_filename.empty() )
-        std::cerr << "a report was written to " << _report_filename << std::endl;
+    if ( !_report_filename.name.empty() )
+        std::cerr << "a report was written to " << _report_filename.name << std::endl;
 }
 
-void Verify::liveness()
+void verify::liveness()
 {
     auto liveness = mc::make_job< mc::Liveness >( bitcode(), ss::passive_listen() );
 

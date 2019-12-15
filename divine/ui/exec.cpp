@@ -21,7 +21,7 @@
 
 namespace divine::ui
 {
-    void Exec::setup()
+    void exec::setup()
     {
         if ( _bc_opts.symbolic && !_virtual )
         {
@@ -32,10 +32,10 @@ namespace divine::ui
         if ( _bc_opts.dios_config.empty() )
             _bc_opts.dios_config = _virtual ? "default" : "proxy";
 
-        WithBC::setup();
+        with_bc::setup();
     }
 
-    void Exec::run()
+    void exec::run()
     {
         mc::Exec exec( bitcode() );
         if ( _trace )
