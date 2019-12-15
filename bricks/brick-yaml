@@ -34,6 +34,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <type_traits>
 
 #include <brick-base64>
+#include <brick-string>
 
 namespace brick {
 namespace yaml {
@@ -168,20 +169,18 @@ struct Parser
     }
 
     template< typename T, typename Fail >
-    auto extractValue( T &num, lyaml::Node *node, Fail fail )
-        -> std::enable_if_t< std::is_arithmetic< T >::value, void >
+    auto extractValue( T &val, lyaml::Node *node, Fail fail )
+        -> decltype( brq::from_string( "", val ), void( 0 ) )
     {
         auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
         if ( !scalar )
-            return fail( num, "YAML error: expected scalar", KeyList{}, KeyList{} );
+            return fail( val, "YAML error: expected scalar", KeyList{}, KeyList{} );
 
         ::llvm::SmallVector< char, 128 > storage;
         auto ref = scalar->getValue( storage );
 
-        std::stringstream ss( ref.str() );
-        ss >> num;
-        if ( ss.fail() )
-            return fail( num, "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
+        if ( !brq::from_string( ref.str(), val ) )
+            return fail( val, "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
     }
 
     using StringPair = std::pair< std::string, std::string >;
