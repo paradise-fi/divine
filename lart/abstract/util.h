@@ -17,9 +17,6 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart::abstract
 {
-    #define ERROR( msg ) \
-        throw std::runtime_error( msg );
-
     template< typename T >
     using module_t = decltype( T::module );
 

@@ -83,7 +83,7 @@ namespace lart::abstract {
         auto bases = functions_with_ptrefix( *m, base_constructor );
 
         if ( bases.empty() )
-            ERROR( "Missing abstract domain base constructor." )
+            brq::raise() << "Missing abstract domain base constructor.";
 
         std::set< Namespace > lifts;
         for ( auto base : bases ) {
@@ -137,11 +137,11 @@ namespace lart::abstract {
             auto is_op = [&] ( const auto &op ) { return op.impl == fn; };
 
             auto ops = all_operations( doms );
-            if ( auto op = query::query( ops ).find( is_op ); op.found ) {
+            if ( auto op = query::query( ops ).find( is_op ); op.found )
                 return op.get().domain->llvm_index();
-            } else {
-                ERROR( "Using base domain class outside of abstract domain." )
-            }
+            else
+                brq::raise() << "Using base domain class outside of abstract domain.";
+            return nullptr;
         }
 
     private:
@@ -266,7 +266,7 @@ namespace lart::abstract {
     {
         auto op = get_operation( "lift_any" );
         if ( !op.has_value() )
-            ERROR( "Domain requires lift_any operation" )
+            brq::raise() << "Domain requires lift_any operation";
         return op.value();
     }
 
@@ -274,7 +274,7 @@ namespace lart::abstract {
     {
         auto i = lift().impl->getMetadata( domain_index );
         if ( !i )
-            ERROR( "Missing domain index metadata." )
+            brq::raise() << "Missing domain index metadata.";
         auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
         return llvm::cast< llvm::ConstantInt >( c->getValue() );
     }
@@ -284,7 +284,7 @@ namespace lart::abstract {
         auto max = std::numeric_limits< index_t >::max();
         auto idx = llvm_index()->getLimitedValue( max );
         if ( idx == max )
-            ERROR( "Ill-formed domain index." )
+            brq::raise() << "Ill-formed domain index.";
         return idx;
     }
 
@@ -293,7 +293,7 @@ namespace lart::abstract {
         using index_t = DomainT::index_t;
 
         if ( domains.size() >= std::numeric_limits< index_t >::max() )
-            ERROR( "Too many domains found" );
+            brq::raise() << "Too many domains found";
 
         for ( index_t i = 0; i < domains.size(); ++i )
             domains[ i ]->annotate( i );

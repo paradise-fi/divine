@@ -21,7 +21,7 @@ namespace
 
         auto i = fn->getMetadata( meta::tag::operation::index );
         if ( !i )
-            ERROR( "Missing domain index metadata." )
+            brq::raise() << "Missing domain index metadata.";
         auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
         return llvm::cast< llvm::ConstantInt >( c->getValue() );
     }
