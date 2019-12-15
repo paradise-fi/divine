@@ -38,7 +38,7 @@ void backtrace( BT bt, Fmt fmt, DN dn, DNSet &visited, int &stacks, int maxdepth
         fmt( dn );
 
     auto follow =
-        [&]( std::string k, auto rel )
+        [&]( std::string_view k, auto rel )
         {
             if ( rel.kind() == DNKind::Frame && k != "caller" &&
                  rel.address().type() == vm::PointerType::Heap && rel.valid() &&

@@ -61,20 +61,20 @@ int dotDN( std::ostream &o, DN dn, DNMap &visited, int &seq, std::string prefix 
     visited.emplace( dn.sortkey(), hid );
 
     auto related =
-        [&]( std::string k, auto rel )
+        [&]( std::string_view k, auto rel )
         {
             if ( int t = dotDN( o, rel, visited, seq, prefix ) )
                 o << prefix << hid << " -> "  << prefix << t
                   << " [ label=\"" << k << "\" ]" << std::endl;
         };
 
-    std::function< void( std::string, DN ) > component =
-        [&]( std::string ck, auto comp )
+    std::function< void( std::string_view, DN ) > component =
+        [&]( std::string_view ck, auto comp )
         {
-            comp.related( [&]( std::string rk, auto rel )
-                          { related( ck + ":" + rk, rel ); }, false );
-            comp.components( [&]( std::string sk, auto scomp )
-                             { component( ck + "." + sk, scomp ); } );
+            comp.related( [&]( std::string_view rk, auto rel )
+                          { related( brq::format( ck, ":", rk ), rel ); }, false );
+            comp.components( [&]( std::string_view sk, auto scomp )
+                             { component( brq::format( ck, ".", sk ), scomp ); } );
         };
 
     brq::string_builder str;

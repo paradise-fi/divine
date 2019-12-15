@@ -64,7 +64,7 @@ struct Node
     std::set< vm::GenericPointer > _related_ptrs;
 
     using YieldAttr = std::function< void( std::string_view, std::string_view ) >;
-    using YieldDN   = std::function< void( std::string, Node< Program, Heap > ) >;
+    using YieldDN   = std::function< void( std::string_view, Node< Program, Heap > ) >;
 
     /* applies only to Objects */
     llvm::Type *_type;

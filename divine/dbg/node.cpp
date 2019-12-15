@@ -183,14 +183,14 @@ void Node< Prog, Heap >::value( YieldAttr yield )
                 using V = decltype( raw );
                 if ( bitoffset() || width() != size() * 8 )
                 {
-                    yield( "raw_value", brick::string::fmt( raw ) );
+                    yield( "raw_value", brq::format( raw ) );
                     auto val = raw >> vm::value::Int< 32 >( bitoffset() );
                     val = val & V( brick::bitlevel::ones< typename V::Cooked >( width() ) );
                     ASSERT_LEQ( bitoffset() + width(), size() * 8 );
-                    yield( "value", brick::string::fmt( val ) );
+                    yield( "value", brq::format( val ) );
                 }
                 else
-                    yield( "value", brick::string::fmt( raw ) );
+                    yield( "value", brq::format( raw ) );
             } );
 
     if ( _type->isFloatingPointTy() )
@@ -198,7 +198,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
             xg::type( _type ),
             [&]( auto v )
             {
-                yield( "value", brick::string::fmt( v.get( loc ) ) );
+                yield( "value", brq::format( v.get( loc ) ) );
             } );
 
     if ( _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
@@ -214,7 +214,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
     if ( _type->isPointerTy() )
         eval.template type_dispatch< vm::Any >(
             xg::type( _type ),
-            [&]( auto v ) { yield( "value", brick::string::fmt( v.get( loc ) ) ); } );
+            [&]( auto v ) { yield( "value", brq::format( v.get( loc ) ) ); } );
 }
 
 template< typename Prog, typename Heap >
@@ -349,8 +349,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
     Prog &program = _ctx.program();
     Info &dbgInfo = _ctx.debug();
 
-    yield( "address", brick::string::fmt( _address ) + "+" +
-           brick::string::fmt( _offset ) );
+    yield( "address", brq::format( _address, "+", _offset ) );
 
     if ( _di_type )
         yield( "type", dbgInfo.makePretty( di_name() ) );
@@ -359,13 +358,13 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
         return;
 
     auto hloc = heap_address();
-    yield( "size", brick::string::fmt( size() ) );
+    yield( "size", brq::format( size() ) );
     value( yield );
 
     yield( "raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
 
     if ( _address.type() == vm::PointerType::Global )
-        yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
+        yield( "slot", brq::format( eval.ptr2s( _address ) ) );
 
 
     std::stringstream formulas;
@@ -393,7 +392,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _kind == DNKind::Frame )
     {
-        yield( "pc", brick::string::fmt( pc() ) );
+        yield( "pc", brq::format( pc() ) );
         if ( pc().null() || pc().type() != vm::PointerType::Code )
             return;
         auto *insn = &program.instruction( pc() );
@@ -536,7 +535,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
         pp.offset( 0 );
         Node deref( _ctx, _snapshot );
         deref.address( DNKind::Object, pp );
-        yield( brick::string::fmt( ptroff->offset() ), deref );
+        yield( brq::format( ptroff->offset() ), deref );
     }
 }
 
@@ -816,7 +815,7 @@ void Node< Prog, Heap >::format( brq::string_builder &out, int depth, int derefs
 
     std::stringstream rels;
     auto addrel =
-        [&]( std::string n )
+        [&]( std::string_view n )
         {
             if ( relrow > 3 )
                 return;
@@ -841,7 +840,7 @@ void Node< Prog, Heap >::format( brq::string_builder &out, int depth, int derefs
         };
 
     components(
-        [&]( std::string n, auto sub )
+        [&]( std::string_view n, auto sub )
         {
             brq::string_builder str;
             if ( depth )
@@ -853,7 +852,7 @@ void Node< Prog, Heap >::format( brq::string_builder &out, int depth, int derefs
         } );
 
     related(
-        [&]( std::string n, auto rel )
+        [&]( std::string_view n, auto rel )
         {
             if ( derefs > 0 && n == "deref" )
             {

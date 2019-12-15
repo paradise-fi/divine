@@ -73,10 +73,13 @@ namespace divine::dbg
 
         std::map< std::string, std::pair< std::optional< DNode >, std::optional< DNode > > > subs;
 
-        a.components( [&]( std::string k, auto n ) { subs[ "." + k ].first = n; } );
-        b.components( [&]( std::string k, auto n ) { subs[ "." + k ].second = n; } );
-        a.related( [&]( std::string k, auto n ) { subs[ ":" + k ].first = n; } );
-        b.related( [&]( std::string k, auto n ) { subs[ ":" + k ].second = n; } );
+        auto comp = [&]( auto k ) -> auto& { return subs[ "." + std::string( k ) ]; };
+        auto rel = [&]( auto k ) -> auto&  { return subs[ ":" + std::string( k ) ]; };
+
+        a.components( [&]( auto k, auto n ) { comp( k ).first = n; } );
+        b.components( [&]( auto k, auto n ) { comp( k ).second = n; } );
+        a.related( [&]( auto k, auto n ) { rel( k ).first = n; } );
+        b.related( [&]( auto k, auto n ) { rel( k ).second = n; } );
 
         for ( auto i : subs )
         {
