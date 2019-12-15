@@ -349,7 +349,7 @@ ResultLog::Value repeat( BenchmarkBase *tc )
 {
 #ifdef __unix
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
-    fs::PosixBuf buf( tc->fds[ 0 ] );
+    brq::posix_buf buf( tc->fds[ 0 ] );
     std::istream istream( &buf );
 #endif
     SampleStats stats;
