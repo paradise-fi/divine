@@ -261,9 +261,8 @@ struct IndexFunctions {
         if ( mdGlobals )
             for ( auto &g : mod.globals() )
             {
-                using brick::string::startsWith;
-                if ( g.hasName() && ( startsWith( g.getName().str(), "llvm." ) ||
-                                      startsWith( g.getName().str(), "__dios_" ) ) )
+                if ( g.hasName() && ( brq::starts_with( g.getName().str(), "llvm." ) ||
+                                      brq::starts_with( g.getName().str(), "__dios_" ) ) )
                 {
                     auto r = gloMetaMap.emplace( g.getName(), GlobalMeta( g, *this ) );
                     if ( !r.second )

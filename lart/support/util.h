@@ -848,9 +848,11 @@ inline llvm::Function * changeReturnType( llvm::Function *fn, llvm::Type *rty )
 }
 
 namespace detail {
-inline llvm::Function *throwOnUnknown( llvm::CallSite &cs ) {
-    throw std::runtime_error( brick::string::format( "could not clone function: calling unknown value:",
-                                                     cs.getCalledValue() ) );
+inline llvm::Function *throwOnUnknown( llvm::CallSite &cs )
+{
+    brq::raise< std::runtime_error >() << "could not clone function: calling unknown value:"
+                                       << cs.getCalledValue();
+    return nullptr;
 }
 
 inline bool cloneAll( llvm::Function & ) {  return true; }
