@@ -4,8 +4,7 @@
 
 int main( int argc, const char **argv )
 {
-    auto args = brick::cmd::from_argv( argc, argv );
-    auto ui = divine::ui::make_cli( args )->resolve();
+    auto ui = divine::ui::make_cli( argc, argv )->resolve();
     divine::ui::setup_death( ui );
     return ui->main();
 }
