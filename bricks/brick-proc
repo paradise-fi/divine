@@ -315,12 +315,12 @@ struct XTerm
         int masterfd, slavefd;
 
         std::unique_ptr< std::iostream > stream;
-        std::unique_ptr< brick::fs::PosixBuf > buf;
+        std::unique_ptr< brq::posix_buf > buf;
     } _d;
 
-    struct SBuf : fs::PosixBuf
+    struct SBuf : brq::posix_buf
     {
-        using fs::PosixBuf::PosixBuf;
+        using brq::posix_buf::posix_buf;
 
         int sync()
         {
@@ -357,7 +357,7 @@ struct XTerm
                                      "Could not open slave PTS." );
 
         std::string slave = std::string( "-S" ) +
-                            slavepts + "/" + brick::string::fmt( _d.slavefd );
+                            slavepts + "/" + std::to_string( _d.slavefd );
         const char *argv[] = { "xterm", slave.c_str(), nullptr };
 
         posix_spawnattr_t sp;
