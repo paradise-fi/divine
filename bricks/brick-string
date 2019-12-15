@@ -69,7 +69,7 @@ namespace brq
 
         mark_t() = default;
         mark_t( string_builder &b ) : b( &b ), mark( b._offset ) {}
-        template< typename T > mark_t operator<<( const T &v ) { *b << v; return *this; }
+        template< typename T > mark_t operator<<( T &&v ) { *b << std::forward< T >( v ); return *this; }
     };
 
     struct pad
@@ -80,7 +80,7 @@ namespace brq
         pad( int w, char ch = ' ' ) : width( w ), ch( ch ) {}
         pad( string_builder &b, pad p ) : mark( b ), width( p.width ), ch( p.ch ) {}
 
-        template< typename T > pad operator<<( const T &v ) { mark << v; return *this; }
+        template< typename T > pad operator<<( T &&v ) { mark << std::forward< T >( v ); return *this; }
         static string_builder &write( string_builder &b, int width, int from, char ch, bool left )
         {
             int output_width = b._offset - from;
