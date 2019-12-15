@@ -53,6 +53,7 @@
 #pragma once
 
 #include <brick-assert>
+#include <brick-string>
 #include <string>
 #include <iomanip>
 #include <sstream>
