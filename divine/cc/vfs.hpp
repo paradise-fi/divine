@@ -102,7 +102,7 @@ namespace divine::cc
         std::error_code setCurrentWorkingDirectory( const llvm::Twine &path ) override
         {
             auto oldpwd = _cwd;
-            _cwd = brick::fs::isAbsolute( path.str() ) ? path.str() : brick::fs::joinPath( _cwd, path.str() );
+            _cwd = brq::is_absolute( path.str() ) ? path.str() : brq::join_path( _cwd, path.str() );
             ASSERT_EQ( oldpwd, _cwd );
             return std::error_code();
         }
@@ -129,11 +129,11 @@ namespace divine::cc
 
       public:
 
-        VFS() : _cwd( brick::fs::getcwd() ) {}
+        VFS() : _cwd( brq::getcwd() ) {}
 
         std::string normal( std::string p )
         {
-            return brick::fs::normalize( p );
+            return brq::normalize_path( p );
         }
 
         auto status( const llvm::Twine &_path ) ->
@@ -172,7 +172,7 @@ namespace divine::cc
         {
             path = normal( path );
             allowedPrefixes.insert( path );
-            auto parts = brick::fs::splitPath( path );
+            auto parts = brq::split_path( path );
             addDir( parts.begin(), parts.end() );
         }
 
@@ -193,7 +193,7 @@ namespace divine::cc
                             llvm::sys::TimePoint<>(), 0, 0, contents.size(),
                             llvm::sys::fs::file_type::regular_file,
                             llvm::sys::fs::perms::all_all );
-            auto parts = brick::fs::splitPath( path );
+            auto parts = brq::split_path( path );
             if ( !parts.empty() )
                 addDir( parts.begin(), parts.end() - 1 );
         }
@@ -203,7 +203,7 @@ namespace divine::cc
         {
             for ( auto it = begin; it < end; ++it )
             {
-                auto path = brick::fs::joinPath( begin, std::next( it ) );
+                auto path = brq::join_path( begin, std::next( it ) );
                 filemap[ path ] = { "", clang::vfs::Status( *it,
                         clang::vfs::getNextVirtualUniqueID(),
                         llvm::sys::TimePoint<>(), 0, 0, 0,
@@ -214,15 +214,18 @@ namespace divine::cc
 
         std::vector< std::string > filesMappedUnder( std::string path )
         {
-            auto prefix = brick::fs::splitPath( path );
+            auto prefix = brq::split_path( path );
+            auto is_prefix = [&]( auto p )
+            {
+                auto split = brq::split_path( p );
+                return split.size() >= prefix.size()
+                       && std::equal( prefix.begin(), prefix.end(), split.begin() );
+            };
+
             return brick::query::query( filemap )
                 .filter( []( auto &pair ) { return !pair.second.second.isDirectory(); } )
                 .map( []( auto &pair ) { return pair.first; } )
-                .filter( [&]( auto p ) {
-                        auto split = brick::fs::splitPath( p );
-                        return split.size() >= prefix.size()
-                               && std::equal( prefix.begin(), prefix.end(), split.begin() );
-                    } )
+                .filter( is_prefix )
                 .freeze();
         }
 
@@ -230,12 +233,12 @@ namespace divine::cc
 
         bool allowed( std::string path )
         {
-            if ( path.empty() || brick::fs::isRelative( path ) )
+            if ( path.empty() || brq::is_relative( path ) )
                 return true; // relative or .
 
-            auto parts = brick::fs::splitPath( path );
+            auto parts = brq::split_path( path );
             for ( auto it = std::next( parts.begin() ); it < parts.end(); ++it )
-                if ( allowedPrefixes.count( brick::fs::joinPath( parts.begin(), it ) ) )
+                if ( allowedPrefixes.count( brq::join_path( parts.begin(), it ) ) )
                     return true;
             return false;
         }

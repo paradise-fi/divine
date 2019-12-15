@@ -33,13 +33,11 @@ namespace divine::cc
     // object file at 'filepath'
     void add_section( std::string filepath, std::string section_name, const std::string &section_data )
     {
-        using namespace brick::fs;
-
-        TempDir workdir( ".divine.addSection.XXXXXX", AutoDelete::Yes,
-                        UseSystemTemp::Yes );
+        brq::TempDir workdir( ".divine.addSection.XXXXXX", brq::AutoDelete::Yes,
+                              brq::UseSystemTemp::Yes );
 
         // Dump the section data into a temporary file, so that objcopy can load them
-        auto secpath = joinPath( workdir, "sec" );
+        auto secpath = brq::join_path( workdir, "sec" );
         std::ofstream secf( secpath, std::ios_base::out | std::ios_base::binary );
         secf << section_data;
         secf.close();
@@ -50,8 +48,8 @@ namespace divine::cc
                                     "--set-section-flags", section_name + "=noload,readonly",
                                     filepath );
         if ( !r )
-            throw cc::CompileError( "could not add section " + section_name + " to " + filepath
-                            + ", objcopy exited with " + to_string( r ) );
+            brq::raise< cc::CompileError >() << "could not add section " << section_name << " to "
+                                             << filepath << ", objcopy exited with " << to_string( r );
     }
 
     // Build CLI arguments for a linker invocation

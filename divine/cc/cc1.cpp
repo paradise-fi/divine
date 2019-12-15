@@ -85,7 +85,7 @@ namespace divine::cc
             ctx.reset( new llvm::LLVMContext );
 
         for ( auto src = str::cc_list; !src->n.empty(); ++src )
-            mapVirtualFile( brick::fs::joinPath( "/builtin/", src->n ), src->c );
+            mapVirtualFile( brq::join_path( "/builtin/", src->n ), src->c );
     }
 
     CC1::~CC1() { }

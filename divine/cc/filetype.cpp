@@ -27,7 +27,7 @@ namespace divine::cc
     {
         using llvm::file_magic;
 
-        auto ext = brick::fs::takeExtension( name );
+        auto ext = brq::take_extension( name );
         if ( ext == ".c" )
             return FileType::C;
         for ( auto &x : { ".cpp", ".cc", ".C", ".CPP", ".c++", ".cp", ".cxx" } )

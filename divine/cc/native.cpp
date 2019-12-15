@@ -120,7 +120,7 @@ namespace divine::cc
         _po.libSearchPath.clear();
         for ( auto it = ld_job.args.begin(); it != ld_job.args.end(); ++it )
         {
-            if ( brick::string::startsWith( *it, "-L"  ) )
+            if ( brq::starts_with( *it, "-L"  ) )
                 _po.libSearchPath.push_back( it->length() > 2 ?
                                              it->substr( 2 ) : *std::next( it ) );
         }
@@ -181,15 +181,13 @@ namespace divine::cc
     // For every file given, construct the name of its output
     void Native::construct_paired_files()
     {
-        using namespace brick::fs;
-
         for ( auto srcFile : _po.files )
         {
             if ( srcFile.is< cc::File >() )
             {
                 std::string ifn = srcFile.get< cc::File >().name;
-                std::string ofn = dropExtension( ifn );
-                ofn = splitFileName( ofn ).second;
+                std::string ofn = brq::drop_extension( ifn );
+                ofn = brq::split_filename( ofn ).second;
                 if ( _po.outputFile != "" && _po.toObjectOnly )
                     ofn = _po.outputFile;
                 else

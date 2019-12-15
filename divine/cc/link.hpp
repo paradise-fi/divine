@@ -35,6 +35,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-string>
+#include <string>
 using namespace llvm;
 
 namespace divine::cc
@@ -45,20 +46,19 @@ namespace divine::cc
     {
         bool whitelisted( llvm::Function &f )
         {
-            using brick::string::startsWith;
             using vm::xg::hypercall;
 
-            auto n = f.getName();
+            std::string n = f.getName().str();
             return hypercall( &f ) != vm::lx::NotHypercall ||
-                   startsWith( n, "__dios_" ) ||
-                   startsWith( n, "_ZN6__dios" ) ||
-                   startsWith( n, "_Unwind_" ) ||
+                   brq::starts_with( n, "__dios_" ) ||
+                   brq::starts_with( n, "_ZN6__dios" ) ||
+                   brq::starts_with( n, "_Unwind_" ) ||
                    n == "setjmp" || n == "longjmp";
         }
 
         bool whitelisted( llvm::GlobalVariable &gv )
         {
-            return brick::string::startsWith( gv.getName(), "__md_" );
+            return brq::starts_with( gv.getName().str(), "__md_" );
         }
     }
 

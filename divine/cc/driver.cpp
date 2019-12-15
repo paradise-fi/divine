@@ -25,7 +25,6 @@
 
 namespace divine::cc
 {
-    using brick::fs::joinPath;
     using namespace std::literals;
 
     // TODO: Unused
@@ -105,7 +104,6 @@ namespace divine::cc
                                         FileType type, std::vector< std::string > flags )
     {
         using FT = FileType;
-        using brick::string::dirname;
 
         if ( type == FT::Unknown )
             throw std::runtime_error( "cannot detect file format for file '"
@@ -118,7 +116,7 @@ namespace divine::cc
             std::cerr << "compiling " << path << std::endl;
 
         compiler.allowIncludePath( "." ); /* clang 4.0 requires that cwd is always accessible */
-        compiler.allowIncludePath( dirname( path ) );
+        compiler.allowIncludePath( brq::dirname( path ) );
         auto mod = compiler.compile( path, type, allFlags );
 
         return mod;
@@ -133,11 +131,13 @@ namespace divine::cc
         for ( auto &f : po.files )
         {
             f.match(
-                [&]( const File &f ) {
-                    if( auto m = compile( f.name, f.type, po.opts ) )
-                    	linker->link( std::move( m ) );
+                [&]( const File &f )
+                {
+                    if ( auto m = compile( f.name, f.type, po.opts ) )
+                        linker->link( std::move( m ) );
                 },
-                [&]( const Lib &l ) {
+                [&]( const Lib &l )
+                {
                     linkLib( l.name, po.libSearchPath );
                 } );
         }
@@ -208,17 +208,15 @@ namespace divine::cc
 
     std::string Driver::find_library( std::string lib, string_vec suffixes, string_vec dirs )
     {
-        using namespace brick::fs;
-
         compiler.allowIncludePath( "." );  // TODO: necessary?
-        compiler.allowIncludePath( brick::string::dirname( lib ) );
+        compiler.allowIncludePath( brq::dirname( lib ) );
 
         dirs.insert( dirs.begin(), "/dios/lib" );
         for ( auto p : dirs )
             for ( auto suf : suffixes )
                 for ( auto pref : { "lib", "" } )
                 {
-                    auto n = joinPath( p, pref + lib + suf );
+                    auto n = brq::join_path( p, pref + lib + suf );
                     if ( compiler.fileExists( n ) )
                         return n;
                 }
@@ -227,7 +225,7 @@ namespace divine::cc
 
     std::string Driver::find_object( std::string name )
     {
-        return joinPath( "/dios/lib", name + ".bc"s );
+        return brq::join_path( "/dios/lib", name + ".bc"s );
     }
 
     Driver::ModulePtr Driver::load_object( std::string path )
@@ -235,7 +233,7 @@ namespace divine::cc
         using IRO = llvm::object::IRObjectFile;
 
         compiler.allowIncludePath( "." ); // TODO: necessary?
-        compiler.allowIncludePath( brick::string::dirname( path ) );
+        compiler.allowIncludePath( brq::dirname( path ) );
 
         if ( !compiler.fileExists( path ) )
             throw std::runtime_error( "object not found: " + path );
