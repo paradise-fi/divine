@@ -29,7 +29,8 @@
 
 #pragma once
 
-#include <brick-assert>
+#include "brick-assert"
+#include "brick-string"
 
 #include <memory>
 #include <cstring>
@@ -352,6 +353,22 @@ struct StrongEnumFlags {
   private:
     UnderlyingType store;
 };
+
+template< typename T >
+brq::parse_result from_string( std::string_view s, brick::types::StrongEnumFlags< T > &f )
+{
+    T val;
+
+    for ( auto c : brq::splitter( s, ',' ) )
+    {
+        if ( auto r = from_string( c, val ) ; !r )
+            return r;
+        else
+            f |= val;
+    }
+
+    return {};
+}
 
 /* implementation of Union */
 
