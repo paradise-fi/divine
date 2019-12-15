@@ -149,17 +149,17 @@ namespace brq
         {
             _container.emplace_back( std::forward< Args >( args )... );
             auto it = sort::lower_bound( begin(), end() - 1, _container.back() );
-            if ( it == end() - 1 || it->first != _container.back().first )
+            if ( it == end() - 1 || !eq( *it, _container.back() ) )
             {
-                auto key = _container.back().first;
+                auto item = _container.back();
                 sort::sort( begin(), end() );
-                return { find( key ), true };
+                return { find( item ), true };
             }
             else
             {
-                auto key = it->first;
+                auto item = *it;
                 _container.pop_back();
-                return { find( key ), false };
+                return { find( item ), false };
             }
         }
 
