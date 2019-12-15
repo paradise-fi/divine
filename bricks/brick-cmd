@@ -182,10 +182,16 @@ namespace brq
         int _matches = 0;
         int _index = 0, _next = 0;
         int _pos = 0, _pos_matched = 0;
-        std::vector< std::string > _errors;
+        brq::string_builder _error;
 
-        void _opt_matched( int n = 1 )
+        template< typename... args_t >
+        void _opt_matched( int n, args_t && ... args )
         {
+            _error << "\nmatched:\t";
+            for ( int i = _index; i < _index + n; ++i )
+                _error << ( i == _index ? "" : " " ) << _tokens[ i ];
+            _error << "\tas ";
+            opt_help( _error, std::forward< args_t >( args )... );
             ++ _matches;
             _next = _index + n;
         }
@@ -193,7 +199,7 @@ namespace brq
         void help( std::string pattern )
         {
             if ( _mode == mode_opt_parse && _tokens[ _index ] == pattern )
-                _opt_matched(), _print_help = true;
+                _opt_matched( 1, pattern ), _print_help = true;
         }
 
         /* Declare a positional argument. Those are matched in the order in
@@ -215,7 +221,7 @@ namespace brq
                 if ( auto pr = from_string( _tokens[ _index ], s ) )
                     _opt_matched( 1, s ), ++ _pos_matched;
                 else if ( !pr.error().empty() )
-                    _errors.emplace_back( pr.error() );
+                    _error << "\n" << pr.error();
             }
         }
 
@@ -236,9 +242,9 @@ namespace brq
             {
                 auto [ pr, m ] = match( _index, 0, std::forward< args_t >( args )... );
                 if ( m )
-                    _opt_matched( m - _index );
+                    _opt_matched( m - _index, args... );
                 else if ( !pr.error().empty() )
-                    _errors.emplace_back( pr.error() );
+                    _error << "\n" << pr.error();
             }
 
             return _help;
@@ -321,7 +327,6 @@ namespace brq
             _mode = mode_opt_help;
             _saw_section = false;
             c.options( *this );
-            _help << "\n\n";
             return _help;
         }
 
@@ -330,7 +335,14 @@ namespace brq
                             typename brq::cons_list_t< cmd_t, cmd_help >::co > opt_parse()
         {
             cmd_t cmd;
-            _mode = mode_parse;
+
+            _error.clear();
+            _error << "\nsynopsis:\t" << format_help( cmd, true ).data();
+            _error << "\ncommand:\t" << _argv_0;
+
+            for ( auto t : _tokens )
+                _error << " " << t;
+
             _print_help = false;
             _help.kill(); /* turn << into noops */
             _pos_help.kill();
@@ -339,9 +351,9 @@ namespace brq
             while ( _index < _tokens.size() )
             {
                 _matches = 0;
-                _errors.clear();
                 _mode = mode_opt_parse;
                 cmd.options( *this );
+
                 if ( _matches == 0 )
                 {
                     _mode = mode_pos_parse;
@@ -350,9 +362,13 @@ namespace brq
                 }
 
                 if ( _matches == 0 )
-                    brq::raise() << "error parsing option '" << _tokens[ _index ] << "'" << _errors;
+                    _error << "\nfailed to match '" << _tokens[ _index ] << "'";
                 if ( _matches > 1 )
-                    brq::raise() << "ambiguous option: " << _tokens[ _index ];
+                    _error << "\nambiguous option";
+
+                if ( _matches != 1 )
+                    brq::raise() << "could not parse command" << tabulate( _error.data() );
+
                 _index = _next;
             }
 
