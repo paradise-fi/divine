@@ -7,15 +7,16 @@
 #include <sys/divm.h>
 #include <iterator>
 #include <cstring>
-#include <brick-types>
+#include <brick-order>
 #include <initializer_list>
 #include <memory>
+#include <algorithm>
 
 namespace __dios {
 
 template < typename T, int PT = _VM_PT_Heap >
-struct Array : brick::types::Ord {
-
+struct Array : brq::derive_order, brq::derive_eq
+{
     using size_type = int;
     using value_type = T;
     using iterator = T *;
@@ -194,11 +195,13 @@ struct Array : brick::types::Ord {
             i->~T();
     }
 
-    bool operator==( const Array &o ) const {
+    bool operator==( const Array &o ) const
+    {
         return size() == o.size() && std::equal( begin(), end(), o.begin() );
     }
 
-    bool operator<( const Array &o ) const {
+    bool operator<( const Array &o ) const
+    {
         return std::lexicographical_compare( begin(), end(), o.begin(), o.end() );
     }
 
