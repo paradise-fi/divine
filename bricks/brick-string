@@ -285,7 +285,7 @@ namespace brq
     string_builder format( const args_t &... t )
     {
         string_builder rv;
-        format_args( " ", rv, t... );
+        format_args( "", rv, t... );
         return rv;
     }
 
@@ -329,7 +329,7 @@ namespace brq
     {
         auto begin = s.data(), end = begin + s.size();
         auto parse_end = std::from_chars( begin, end, a ).ptr;
-        return parse_end == end ? parse_result() : no_parse( "error parsing", s, "as a number" );
+        return parse_end == end ? parse_result() : no_parse( "error parsing ", s, " as a number" );
     }
 
     static parse_result from_string( std::string_view s, bool &f )
@@ -346,7 +346,7 @@ namespace brq
             return {};
         }
 
-        return no_parse( "expected boolean but got", s );
+        return no_parse( "expected boolean but got '", s, "'" );
     }
 
     static parse_result from_string( std::string_view s, std::string &v )

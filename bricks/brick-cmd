@@ -60,9 +60,9 @@ namespace brq
         static parse_result from_string( std::string_view s, cmd_file &f )
         {
             if ( !file_exists( s ) )
-                return no_parse( "file", s, "does not exist" );
+                return no_parse( "file ", s, " does not exist" );
             if ( !file_access( s, R_OK ) )
-                return no_parse( "file", s, "is not readable" );
+                return no_parse( "file ", s, " is not readable" );
             f.name = s;
             return {};
         }
