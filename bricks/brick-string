@@ -248,6 +248,9 @@ namespace brq
             out += '\n';
         }
 
+        if ( s.back() != '\n' )
+            out.pop_back();
+
         return out;
     }
 
