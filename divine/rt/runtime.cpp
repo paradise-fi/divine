@@ -30,11 +30,9 @@ namespace divine::rt
 
     static std::string fixname( std::string n )
     {
-        using brick::string::endsWith;
-
         if ( n == "libcxx.a" ) n = "libc++.a";
         if ( n == "libcxxabi.a" ) n = "libc++abi.a";
-        if ( endsWith( n, ".bc" ) || endsWith( n, ".a" ) )
+        if ( brq::ends_with( n, ".bc" ) || brq::ends_with( n, ".a" ) )
             return "/dios/lib/" + n;
         else
             return "/dios/" + n;

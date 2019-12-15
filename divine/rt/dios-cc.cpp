@@ -27,8 +27,6 @@ void DiosCC::link_dios_config( std::string n )
 
 void add_dios_header_paths( std::vector< std::string >& paths )
 {
-    using namespace brick::fs;
-
     paths.insert( paths.end(),
                  { "-isystem", "/dios/libcxx/include"
                  , "-isystem", "/dios/libcxxabi/include"
@@ -52,9 +50,7 @@ void add_dios_defines( std::vector< std::string >& flags )
 DiosCC::DiosCC( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     Driver( opts, ctx )
 {
-    using brick::fs::joinPath;
     setupFS( rt::each );
-
     add_dios_header_paths( commonFlags );
     add_dios_defines( commonFlags );
 }
@@ -78,8 +74,7 @@ NativeDiosCC::NativeDiosCC( const std::vector< std::string >& opts )
 
 auto NativeDiosCC::link_dios_native( bool cxx )
 {
-    using namespace brick::fs;
-    TempDir tmpdir( ".divcc.XXXXXX", AutoDelete::Yes, UseSystemTemp::Yes );
+    brq::TempDir tmpdir( ".divcc.XXXXXX", brq::AutoDelete::Yes, brq::UseSystemTemp::Yes );
     auto hostlib = tmpdir.path + "/libdios-host.a",
          cxxlib  = tmpdir.path + "/libc++.a",
          cxxabi  = tmpdir.path + "/libc++abi.a";
@@ -88,11 +83,11 @@ auto NativeDiosCC::link_dios_native( bool cxx )
     {
         _ld_args.push_back( "-stdlib=libc++" );
         _ld_args.push_back( "-L" + tmpdir.path );
-        writeFile( cxxlib, rt::libcxx() );
-        writeFile( cxxabi, rt::libcxxabi() );
+        brq::write_file( cxxlib, rt::libcxx() );
+        brq::write_file( cxxabi, rt::libcxxabi() );
     }
 
-    writeFile( hostlib, rt::dios_host() );
+    brq::write_file( hostlib, rt::dios_host() );
     _ld_args.push_back( hostlib );
 
     return tmpdir;
