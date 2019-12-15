@@ -42,7 +42,9 @@ namespace brq
             void operator=( bool b ) { f._value = !b; }
         };
 
-        bool _value = false;
+        bool _value;
+
+        cmd_flag( bool v = false ) : _value( v ) {}
         operator bool()   const { return  _value; }
         bool operator !() const { return !_value; }
         cmd_flag &operator=( bool b ) { _value = b; return *this; }
