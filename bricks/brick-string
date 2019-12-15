@@ -278,6 +278,14 @@ namespace brq
         }
     };
 
+    template< typename... args_t >
+    string_builder format( const args_t &... t )
+    {
+        string_builder rv;
+        format_args( " ", rv, t... );
+        return rv;
+    }
+
     struct parse_result
     {
         std::string _err_str;
@@ -290,11 +298,9 @@ namespace brq
     template< typename... args_t >
     parse_result no_parse( args_t... args )
     {
-        string_builder b;
         parse_result r;
-        format_args( " ", b, args... );
         r._err = true;
-        r._err_str = b.data();
+        r._err_str = format( args... ).data();
         return r;
     }
 
