@@ -171,7 +171,7 @@ void BitCode::do_lart()
 
     // reduce before any instrumentation to avoid unnecessary instrumentation
     // and mark silent operations
-    if ( !_opts.disable_static_reduction )
+    if ( _opts.static_reduction )
     {
         lart.setup( lart::reduction::paroptPass() );
         lart.setup( lart::reduction::staticTauMemPass() );
@@ -202,7 +202,7 @@ void BitCode::do_lart()
     lart.setup( lart::divine::lowering() );
     // reduce again before metadata are added to possibly tweak some generated
     // code + perform static tau
-    if ( !_opts.disable_static_reduction )
+    if ( _opts.static_reduction )
         lart.setup( lart::reduction::paroptPass() );
 
     lart.setup( lart::divine::lsda() );
@@ -247,9 +247,9 @@ BitCode::~BitCode() { }
 
 std::shared_ptr< BitCode > BitCode::with_options( const BCOptions &opts, rt::DiosCC &cc_driver )
 {
-    auto magic_buf = cc_driver.compiler.getFileBuffer( opts.input_file, 18 );
+    auto magic_buf = cc_driver.compiler.getFileBuffer( opts.input_file.name, 18 );
     auto magic_data = magic_buf ? std::string( magic_buf->getBuffer() )
-                                : brick::fs::readFile( opts.input_file, 18 );
+                                : brq::read_file( opts.input_file.name, 18 );
     auto magic = llvm::identify_magic( magic_data );
 
     auto bc = [&]
@@ -259,12 +259,12 @@ std::shared_ptr< BitCode > BitCode::with_options( const BCOptions &opts, rt::Dio
             case llvm::file_magic::bitcode:
             case llvm::file_magic::elf_relocatable:
             case llvm::file_magic::elf_executable:
-                return std::make_shared< mc::BitCode >( opts.input_file );
+                return std::make_shared< mc::BitCode >( opts.input_file.name );
 
             default:
             {
-                if ( cc::typeFromFile( opts.input_file ) == cc::FileType::Unknown )
-                    throw std::runtime_error( "don't know how to verify file " + opts.input_file
+                if ( cc::typeFromFile( opts.input_file.name ) == cc::FileType::Unknown )
+                    throw std::runtime_error( "don't know how to verify file " + opts.input_file.name
                                             + " (unknown type)" );
                 cc_driver.build( cc::parseOpts( opts.ccopts ) );
                 return std::make_shared< mc::BitCode >( cc_driver.takeLinked(), cc_driver.context() );
@@ -293,8 +293,7 @@ BCOptions BCOptions::from_report( brick::yaml::Parser &parsed )
     opts.svcomp = parsed.getOr( { "svcomp" }, opts.svcomp );
     opts.sequential = parsed.getOr( { "sequential" }, opts.sequential );
     opts.synchronous = parsed.getOr( { "synchronous" }, opts.synchronous );
-    opts.disable_static_reduction = parsed.getOr( { "disable static reduction" },
-                                                opts.disable_static_reduction );
+    opts.static_reduction = parsed.getOr( { "static reduction" }, opts.static_reduction );
     opts.dios_config = "default";
     opts.dios_config = parsed.getOr( { "dios config" }, opts.dios_config );
 
@@ -305,7 +304,7 @@ BCOptions BCOptions::from_report( brick::yaml::Parser &parsed )
         lf_flags |= mc::leakcheck_from_string( s );
     opts.leakcheck = lf_flags;
 
-    opts.input_file = parsed.get< std::string >( { "input file" } );
+    opts.input_file = parsed.get< brq::cmd_file >( { "input file" } );
 
     return opts;
 }

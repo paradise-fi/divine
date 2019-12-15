@@ -19,8 +19,8 @@
 #pragma once
 #include <brick-types>
 #include <brick-except>
-
 #include <brick-yaml>
+#include <brick-cmd>
 
 #include <memory>
 #include <vector>
@@ -46,8 +46,8 @@ using LeakCheckFlags = brick::types::StrongEnumFlags< LeakCheck >;
 
 std::string to_string( LeakCheckFlags, bool yaml = false );
 std::string to_string( AutoTraceFlags, bool yaml = false );
-LeakCheckFlags leakcheck_from_string( std::string x );
-AutoTraceFlags autotrace_from_string( std::string x );
+brq::parse_result from_string( std::string_view s, LeakCheck &f );
+brq::parse_result from_string( std::string_view s, AutoTrace &f );
 
 struct BCParseError : brq::error { using brq::error::error; };
 
@@ -55,14 +55,10 @@ struct BCOptions
 {
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
-    std::string input_file;
+    brq::cmd_file input_file;
     std::vector< std::string > ccopts;
 
-    bool disable_static_reduction = false;
-    bool symbolic = false;
-    bool sequential = false;
-    bool synchronous = false; // !interrupts
-    bool svcomp = false;
+    brq::cmd_flag static_reduction = true, symbolic, sequential, synchronous, svcomp;
 
     Env bc_env;
     std::vector< std::string > lart_passes;
