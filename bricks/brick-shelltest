@@ -1146,7 +1146,7 @@ struct Main
                 base += "/_expand/";
                 std::string cmd = options.testdir + "/" + expand + " " + options.testdir + "/" + *i;
                 try { brq::rmtree( dir ); } catch (...) {};
-                brq::mkpath( dir.c_str() );
+                brq::create_dir( dir.c_str() );
                 ::chdir( dir.c_str() ); /* eww */
                 ::system( cmd.c_str() );
                 ::chdir( cwd );
