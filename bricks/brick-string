@@ -212,7 +212,7 @@ namespace brq
 
         auto stop = [&]( int t, int c )
         {
-            if ( t >= cols.size() )
+            if ( t >= int( cols.size() ) )
                 cols.push_back( c );
             else
                 cols[ t ] = std::max( c, cols[ t ] );
@@ -221,13 +221,13 @@ namespace brq
         };
 
         for ( auto line : splitter( s, '\n' ) )
-            for ( int i = 0, c = 0, t = 0; i < line.size(); ++ i, ++ c )
+            for ( int i = 0, c = 0, t = 0; i < int( line.size() ); ++ i, ++ c )
                 if ( line[ i ] == '\t' )
                     c = stop( t ++, c + 1 );
 
         for ( auto line : splitter( s, '\n' ) )
         {
-            for ( int i = 0, c = 0, t = 0; i < line.size(); ++ i, ++ c )
+            for ( int i = 0, c = 0, t = 0; i < int( line.size() ); ++ i, ++ c )
                 if ( line[ i ] == '\t' )
                 {
                     for ( ; c < cols[ t ]; ++ c )
