@@ -148,7 +148,7 @@ void Sim::process_options()
     if ( !_load_report )
         return WithBC::process_options();
 
-    auto yaml = brick::fs::readFile( _bc_opts.input_file );
+    auto yaml = brq::read_file( _bc_opts.input_file.name );
     auto parsed = brick::yaml::Parser( yaml );
 
     if ( !_env.empty() || !_useropts.empty() || !_systemopts.empty() )

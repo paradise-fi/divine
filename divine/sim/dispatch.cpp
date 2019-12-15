@@ -180,7 +180,7 @@ void CLI::go( command::dot cmd )
         print = r.out();
     }
     if ( !cmd.output_file.empty() )
-        brick::fs::writeFile( cmd.output_file, print );
+        brq::write_file( cmd.output_file, print );
     else
         out() << print << std::endl;
 }

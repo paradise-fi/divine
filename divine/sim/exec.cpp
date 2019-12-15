@@ -136,7 +136,7 @@ Snapshot CLI::newstate( Snapshot snap, bool update_choices, bool terse )
     else
     {
         isnew = true;
-        name = _state_names[ snap ] = "#" + brick::string::fmt( ++_state_count );
+        name = _state_names[ snap ] = "#" + std::to_string( ++_state_count );
         _state_refs[ snap ] = Context::RefCnt( _ctx._refcnt, snap );
         DN state( _ctx, snap );
         state.address( dbg::DNKind::Object, _ctx.state_ptr() );
@@ -242,7 +242,7 @@ bool CLI::check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
         auto current = location( pc );
         if ( rl.second != current.second )
             return false;
-        if ( !brick::string::endsWith( current.first, l.first ) )
+        if ( !brq::ends_with( current.first.str(), l.first ) )
             return false;
         out() << "# stopped at breakpoint " << l.first << ":" << l.second << std::endl;
         return true;
