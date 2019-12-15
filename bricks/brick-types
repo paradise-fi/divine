@@ -439,14 +439,6 @@ template< typename F > struct ApplyResult< F > {};
 
 }
 
-struct UnionException : std::exception {
-    UnionException( std::string msg ) : msg( msg ) { }
-
-    virtual const char *what() const noexcept override { return msg.c_str(); }
-
-    std::string msg;
-};
-
 template< typename T >
 struct InPlace { };
 
