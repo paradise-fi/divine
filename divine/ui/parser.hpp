@@ -38,7 +38,20 @@ struct CLI : Interface
         if ( _argc > 1 && ( _argv[ 1 ] == "--help" || _argv[ 1 ] == "--version" ) )
             _argv[ 1 ] += 2;
 
-        brq::cmd_parser p( _argc, _argv );
+        auto h = "DIVINE is an LLVM-based model checker. This means it can directly work with\n"
+                 "your C and C++ software. For small programs (those that fit in a single source\n"
+                 "file), you can use 'check' or 'verify' directly, without any intermediate steps.\n"
+                 "For larger projects, it is recommended that you use `dioscc` to build the project\n"
+                 "first: the resulting binaries can then be loaded into DIVINE, like this:\n\n"
+                 "    $ ./configure CC=dioscc\n"
+                 "    $ make # builds ./widget\n"
+                 "    $ divine check ./widget\n\n"
+                 "If `check` or `verify` find a problem in your program, they will print basic info\n"
+                 "about the error and a more detailed report into a file. You can use the `sim`\n"
+                 "command to analyse the detailed report, like this:\n\n"
+                 "    $ divine sim --load-report widget.report";
+
+        brq::cmd_parser p( _argc, _argv, h );
         return p.parse< verify, check, exec, sim, draw, info, cc, version, ltlc >();
     }
 
