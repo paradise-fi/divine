@@ -573,15 +573,17 @@ namespace __dios::rst::abstract {
                 ++sseg;
             }
 
-            dseg = dst->segment_at_index( dst.offset() + size );
-            if ( dseg.value() == values.back() ) {
-                //we will take the value from dst suffix
-                bounds.pop_back();
-                values.pop_back();
-            }
+            if ( dst.size() > dst.offset() + size ) {
+                auto seg = dst->segment_at_index( dst.offset() + size );
+                if ( dseg.value() == values.back() ) {
+                    //we will take the value from dst suffix
+                    bounds.pop_back();
+                    values.pop_back();
+                }
 
-            std::copy( dseg.end(), dst.bounds().end(), std::back_inserter( bounds ) );
-            std::copy( dseg.val_it(), dst.values().end(), std::back_inserter( values ) );
+                std::copy( dseg.end(), dst.bounds().end(), std::back_inserter( bounds ) );
+                std::copy( dseg.val_it(), dst.values().end(), std::back_inserter( values ) );
+            }
 
             dst.data()->bounds = bounds;
             dst.data()->values = values;
