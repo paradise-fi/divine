@@ -202,11 +202,13 @@ namespace brick::bitlevel
 
         constexpr bvpair operator+() const { return *this; }
         constexpr bvpair operator~() const { return bvpair( ~low, ~high ); }
-        friend std::ostream &operator<<( std::ostream &o, bvpair p )
-        {
-            return o << p.high << "_" << p.low;
-        }
     } __attribute__((packed));
+
+    template< typename stream, typename a, typename b >
+    auto operator<<( stream &o, const bvpair< a, b > &p ) -> decltype( o << p.high )
+    {
+        return o << p.high << "_" << p.low;
+    }
 
     /* Types which can store bit vectors of a given bit size. Might be bigger than
      * required. Currently supports at most 128 bits (256b would be possible with
