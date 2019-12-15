@@ -28,6 +28,7 @@
 #ifdef __divine__
 #include <sys/cdefs.h>
 #include <sys/trace.h>
+#include <util/array.hpp>
 #else
 #include <vector>
 #include <cstring>
@@ -125,7 +126,11 @@ namespace brq
             int line, level;
         };
 
+#ifdef __divine__
+        using rules_t = __dios::Array< rule_t >;
+#else
         using rules_t = std::vector< rule_t >;
+#endif
         rules_t _rules;
         bool _print_tid = false, _print_location = false, _use_syslog = false;
 
@@ -211,7 +216,7 @@ namespace brq
         }
 
 #ifdef __divine__
-        void print( string_builder &b )
+        void print( string_builder &b, int )
         {
             if ( b.truncated() )
                 __vm_cancel();
