@@ -32,15 +32,15 @@ static std::string interval_str( MSecs i, bool subsec = false )
     auto m = duration_cast< std::chrono::minutes >( i - h );
     auto s = duration_cast< std::chrono::seconds >( i - h - m );
     auto ms = i - h - m -s;
-    std::stringstream t;
-    t << std::setfill( '0' );
+    brq::string_builder t;
     if ( h.count() )
-        t << h.count() << ":" << std::setw( 2 ) << m.count() << ":" << std::setw( 2 ) << s.count();
+        t << h.count() << ":" << brq::pad( 2, '0' ) << m.count() << brq::mark
+                       << ":" << brq::pad( 2, '0' ) << s.count() << brq::mark;
     else
-        t << m.count() << ":" << std::setw( 2 ) << s.count();
+        t << m.count() << ":" << brq::pad( 2, '0' ) << s.count() << brq::mark;
     if ( subsec )
-        t << "." << std::setw( 4 ) << ms.count();
-    return t.str();
+        t << "." << brq::pad( 4, '0' ) << ms.count() << brq::mark;
+    return t.buffer();
 }
 
 }
