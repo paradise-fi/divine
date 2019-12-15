@@ -48,10 +48,11 @@ namespace divine::vm
         {}
     };
 
-    static inline std::ostream &operator<<( std::ostream &o, Interrupt i )
+    template< typename stream >
+    static inline auto operator<<( stream &o, Interrupt i ) -> decltype( o << "" )
     {
         return o << ( i.type == Interrupt::Mem ? 'M' : 'C' ) << "/" << i.ictr
-                << "/" << i.pc.function() << ":" << i.pc.instruction();
+                 << "/" << i.pc.function() << ":" << i.pc.instruction();
     }
 
     struct Choice : brick::types::Ord
@@ -70,7 +71,8 @@ namespace divine::vm
 
     struct Program;
 
-    static inline std::ostream &operator<<( std::ostream &o, Choice i )
+    template< typename stream >
+    auto operator<<( stream &o, Choice i ) -> decltype( o << "" )
     {
         return o << i.taken << "/" << i.total;
     }

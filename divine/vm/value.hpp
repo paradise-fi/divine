@@ -332,15 +332,14 @@ struct Int : Base
     template< typename stream >
     friend auto operator<<( stream &o, Int v ) -> decltype( o << "" )
     {
-        std::stringstream def;
+        brq::string_builder def;
         auto aw = brick::bitlevel::align( _width, 8 );
         if ( v._m == bitlevel::ones< Raw >( aw ) )
             def << "d";
         else if ( v._m == 0 )
             def << "u";
         else
-            def << std::hex << std::setw( aw / 4 ) << std::setfill( '0' )
-                << +( v._m & bitlevel::ones< Raw >( aw ) );
+            def << std::hex << brq::pad( aw / 4, '0' ) << +( v._m & bitlevel::ones< Raw >( aw ) );
         if ( v.pointer() ) def << "p";
         if ( v.taints() ) def << "t";
 

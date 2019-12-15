@@ -110,7 +110,8 @@ struct Program
         Instruction( const Instruction & ) = delete;
         Instruction( Instruction && ) noexcept = default;
 
-        friend std::ostream &operator<<( std::ostream &o, const Program::Instruction &i )
+        template< typename stream >
+        friend auto operator<<( stream &o, const Program::Instruction &i ) -> decltype( o << "" )
         {
             for ( auto v : i.values )
                 o << v << " ";

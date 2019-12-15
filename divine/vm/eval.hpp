@@ -214,7 +214,7 @@ struct Eval
 
     bool boundcheck_nop( PointerV p, int sz, bool write )
     {
-        return boundcheck( [this]( auto ) { return std::stringstream(); }, p, sz, write, "" );
+        return boundcheck( [this]( auto ) { return brq::string_builder(); }, p, sz, write, "" );
     }
 
     int ptr2sz( PointerV p )
