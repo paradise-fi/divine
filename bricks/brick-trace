@@ -242,7 +242,7 @@ namespace brq
         string_builder builder;
         if ( trace().prepare( builder, level, location ) )
         {
-            format_args< nofail >( builder, args... );
+            format_args< nofail >( " ", builder, args... );
             trace().print( builder, level );
         }
     }

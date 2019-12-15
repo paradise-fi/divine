@@ -267,11 +267,11 @@ namespace brq
         acc << "<unknown>";
     }
 
-    template< bool nofail, typename stream >
-    void format_args( stream & ) noexcept {}
+    template< bool nofail = false, typename stream >
+    void format_args( const char *, stream & ) noexcept {}
 
     template< bool nofail = false, typename stream, typename A, typename... Args >
-    void format_args( stream &acc, const A &a, const Args & ... as ) noexcept
+    void format_args( const char *sep, stream &acc, const A &a, const Args & ... as ) noexcept
     {
         int mark = acc.size();
         if constexpr ( nofail )
@@ -280,8 +280,8 @@ namespace brq
             acc << a;
 
         if ( mark != acc.size() )
-            acc << " ";
-        format_args< nofail >( acc, as... );
+            acc << sep;
+        format_args< nofail >( sep, acc, as... );
     }
 
     using split_view = std::pair< std::string_view, std::string_view >;
