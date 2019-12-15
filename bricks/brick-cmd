@@ -126,7 +126,7 @@ namespace brq
 
     struct cmd_option_help : cmd_option_matcher /* format help for single options */
     {
-        brq::string_builder _help;
+        brq::string_builder _help, _pos_help;
 
         template< typename arg_t >
         static std::array< std::string, 1 > names( brq::fallback )
@@ -148,21 +148,21 @@ namespace brq
         template< typename arg_t >
         static auto names( brq::primary_t ) -> decltype( arg_t::names() ) { return arg_t::names(); }
 
-        void opt_help() { _help << "\t"; }
+        static void opt_help( brq::string_builder &b ) { b << "\t"; }
 
         template< typename arg_t, typename... args_t >
-        void opt_help( arg_t &&arg, args_t && ... args )
+        static void opt_help( brq::string_builder &b, arg_t &&arg, args_t && ... args )
         {
             if constexpr ( std::is_same_v< arg_t, cmd_flag & > );
             else if constexpr ( is_binding< arg_t > )
-                _help << "{" << names< arg_t >( brq::primary )[ 0 ] << "} ";
+                b << "{" << names< arg_t >( brq::primary )[ 0 ] << "} ";
             else
             {
-                _help << arg;
+                b << arg;
                 if ( std::isalpha( std::string_view( arg ).back() ) )
-                    _help << " ";
+                    b << " ";
             }
-            opt_help( std::forward< args_t >( args )... );
+            opt_help( b, std::forward< args_t >( args )... );
         }
     };
 
@@ -175,11 +175,13 @@ namespace brq
 
     struct cmd_options : protected cmd_option_help
     {
-        enum { mode_help, mode_parse } _mode;
+        enum { mode_opt_help, mode_pos_help, mode_opt_parse, mode_pos_parse } _mode;
+        bool _verbose = false;
         bool _saw_section = false;
         bool _print_help = false;
         int _matches = 0;
         int _index = 0, _next = 0;
+        int _pos = 0, _pos_matched = 0;
         std::vector< std::string > _errors;
 
         void _opt_matched( int n = 1 )
@@ -190,30 +192,47 @@ namespace brq
 
         void help( std::string pattern )
         {
-            if ( _mode == mode_parse && _tokens[ _index ] == pattern )
+            if ( _mode == mode_opt_parse && _tokens[ _index ] == pattern )
                 _opt_matched(), _print_help = true;
         }
 
-        void collect( std::string &s )
+        /* Declare a positional argument. Those are matched in the order in
+         * which pos() is called and are only tried if no opt() or flag() match
+         * the given argument. Passing `--` as an argument will force the
+         * remainder to be treated as positional arguments. */
+
+        template< typename type >
+        void pos( type &s )
         {
-            if ( _mode == mode_parse && !_matches )
-                _opt_matched(), s = _tokens[ _index ];
+            if ( _pos++ < _pos_matched )
+                return;
+
+            if ( _mode == mode_pos_help )
+                _pos_help << " {" << names< type >( brq::primary )[ 0 ] << "} ";
+
+            if ( _mode == mode_pos_parse )
+            {
+                if ( auto pr = from_string( _tokens[ _index ], s ) )
+                    _opt_matched( 1, s ), ++ _pos_matched;
+                else if ( !pr.error().empty() )
+                    _errors.emplace_back( pr.error() );
+            }
         }
 
         template< typename... args_t >
         brq::string_builder &opt( args_t && ... args )
         {
-            if ( _mode == mode_help )
+            if ( _mode == mode_opt_help )
             {
                 if ( !_saw_section )
                     _help << "\n\nOPTIONS\n";
 
                 _saw_section = true;
                 _help << "\n  ";
-                opt_help( std::forward< args_t >( args )... );
+                opt_help( _help, std::forward< args_t >( args )... );
             }
 
-            if ( _mode == mode_parse )
+            if ( _mode == mode_opt_parse )
             {
                 auto [ pr, m ] = match( _index, 0, std::forward< args_t >( args )... );
                 if ( m )
@@ -227,9 +246,10 @@ namespace brq
 
         brq::string_builder &flag( const std::string &name, cmd_flag &f )
         {
-            if ( _mode == mode_help )
+            if ( _mode == mode_opt_help )
                 opt( "--[no-]" + name.substr( 2 ), f );
-            else
+
+            if ( _mode == mode_opt_parse )
             {
                 opt( name, f );
                 opt( "--no-" + name.substr( 2 ), f.neg() );
@@ -240,7 +260,7 @@ namespace brq
 
         void section( std::string n )
         {
-            if ( _mode == mode_help )
+            if ( _mode == mode_opt_help )
                 _help << "\n\n" << n << "\n";
             _saw_section = true;
         }
@@ -263,7 +283,7 @@ namespace brq
 
         void options( cmd_options &o ) override
         {
-            o.collect( _cmd );
+            o.pos( _cmd );
         }
 
         static std::array< std::string, 1 > names() { return { "help" }; }
@@ -281,11 +301,16 @@ namespace brq
         template< typename cmd_t >
         string_builder &format_help( cmd_t &c, bool synopsis_only )
         {
+            _mode = mode_pos_help;
+            _help.kill();
+            c.options( *this );
+            _help.clear();
+
             if ( synopsis_only )
-                return _help << "  $ " << _argv_0 << " " << cmd_name( c ) << "\n";
+                return _help << _argv_0 << " " << cmd_name( c ) << " [options]" << _pos_help.data();
 
             _help << "\nSYNOPSIS\n\n";
-            _help << "  $ " << _argv_0 << " " << cmd_name( c ) << " [options]";
+            _help << "  $ " << _argv_0 << " " << cmd_name( c ) << " [options]" << _pos_help.data();
 
             if ( c.help().size() )
             {
@@ -293,7 +318,7 @@ namespace brq
                 brq::string_transform{ quote( "  " ), _help } << c.help();
             }
 
-            _mode = mode_help;
+            _mode = mode_opt_help;
             _saw_section = false;
             c.options( *this );
             _help << "\n\n";
@@ -308,12 +333,22 @@ namespace brq
             _mode = mode_parse;
             _print_help = false;
             _help.kill(); /* turn << into noops */
+            _pos_help.kill();
+            _pos_matched = 0;
 
             while ( _index < _tokens.size() )
             {
                 _matches = 0;
                 _errors.clear();
+                _mode = mode_opt_parse;
                 cmd.options( *this );
+                if ( _matches == 0 )
+                {
+                    _mode = mode_pos_parse;
+                    _pos = 0;
+                    cmd.options( *this );
+                }
+
                 if ( _matches == 0 )
                     brq::raise() << "error parsing option '" << _tokens[ _index ] << "'" << _errors;
                 if ( _matches > 1 )
@@ -322,6 +357,7 @@ namespace brq
             }
 
             _help.clear();
+            _pos_help.clear();
 
             if ( _print_help )
                 return cmd_help{ format_help( cmd, false ).data() };
@@ -390,7 +426,7 @@ namespace brq
 
             cons_list_t< cmds_t... > cmds;
             _help.clear();
-            _mode = mode_help;
+            _mode = mode_opt_help;
 
             if ( h._cmd.empty() )
                 _help << "\nSYNOPSIS\n\n";
