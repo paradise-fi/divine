@@ -28,7 +28,7 @@ namespace divine::mc
     {
         using Stepper = dbg::Stepper< mc::TraceContext >;
         Stepper step;
-        step._ff_components = dbg::Component::Kernel;
+        step._ff_components = dbg::component::kernel;
         step._booting = true;
 
         mc::TraceContext ctx( _bc->program(), _bc->debug() );

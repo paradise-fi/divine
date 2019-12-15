@@ -36,7 +36,7 @@ namespace divine::mc
             if ( solver == "stp" )
                 return std::make_shared< Job_< Next, mc::STPBuilder > >( bc, next );
 #endif
-            if ( brick::string::startsWith( solver, "smtlib" ) )
+            if ( brq::starts_with( solver, "smtlib" ) )
             {
                 std::vector< std::string > cmd;
                 if ( solver == "smtlib" || solver == "smtlib:z3" )

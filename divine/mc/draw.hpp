@@ -95,7 +95,7 @@ std::string draw_impl( Builder &bld, std::shared_ptr< BitCode > bc, int distance
                 if ( heap )
                 {
                     str << ext( st ).seq << " -> " << ext( st ).seq << ".1 [ label=root ]" << std::endl;
-                    str << dotDN( dn, false, brick::string::fmt( ext( st ).seq ) + "." );
+                    str << dotDN( dn, false, std::to_string( ext( st ).seq ) + "." );
                 }
                 return ss::Listen::Process;
             } ) );
