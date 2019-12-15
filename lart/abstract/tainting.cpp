@@ -54,6 +54,13 @@ namespace lart::abstract {
         }
 
         template< Type T_ = T >
+        static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( store )
+        {
+            auto store = llvm::cast< llvm::StoreInst >( val );
+            return result() + "." + llvm_name( store->getValueOperand()->getType() );
+        }
+
+        template< Type T_ = T >
         static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( arith )
         {
             std::string op = llvm::cast< llvm::Instruction >( val )->getOpcodeName();
@@ -97,7 +104,6 @@ namespace lart::abstract {
                 Taint::toBool( T_ ) ||
                 Taint::assume( T_ ) ||
                 Taint::thaw( T_ )  ||
-                Taint::store( T_ )  ||
                 Taint::load( T_ )   ||
                 Taint::gep( T_ )
             ,std::string >
@@ -387,7 +393,7 @@ namespace lart::abstract {
                     auto ty = clone->getOperand( pos )->getType();
                     if ( arg->getType() != ty ) {
                         auto irb = llvm::IRBuilder<>( clone );
-                        arg = irb.CreateBitCast( arg, ty );
+                        arg = irb.CreateTruncOrBitCast( arg, ty );
                     }
                     clone->setOperand( pos, arg );
                 }
@@ -520,10 +526,6 @@ namespace lart::abstract {
 
         auto return_type( llvm::Instruction * inst ) const -> llvm::Type *
         {
-            if constexpr ( Operation::mem( T ) ) {
-                UNREACHABLE( " not implemented" );
-            }
-
             if constexpr ( Operation::freeze( T ) || Operation::store( T ) ) {
                 return i8PTy();
             }
@@ -564,9 +566,6 @@ namespace lart::abstract {
             DISPATCH( Call )
             DISPATCH( ExtractValue )
             DISPATCH( InsertValue )
-            // DISPATCH( Memcpy )
-            // DISPATCH( Memmove )
-            // DISPATCH( Memset )
             default:
                 UNREACHABLE( "unsupported taint type", int( op.type ) );
         }

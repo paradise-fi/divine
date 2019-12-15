@@ -459,12 +459,6 @@ namespace lart::abstract
             return_from_lifter( irb, call );
         }
 
-        template< typename builder_t, lifter_op_t op = T >
-        auto construct( builder_t &/* irb */ ) -> ENABLE_IF( mem )
-        {
-            UNREACHABLE( "not implemented" );
-        }
-
         template< typename builder_t >
         auto call_lifter( builder_t &irb )
         {
@@ -642,9 +636,6 @@ namespace lart::abstract
             DISPATCH( Call )
             DISPATCH( ExtractValue )
             DISPATCH( InsertValue )
-            // DISPATCH( Memcpy )
-            // DISPATCH( Memmove )
-            // DISPATCH( Memset )
             default:
                 UNREACHABLE( "unsupported taint type" );
         }

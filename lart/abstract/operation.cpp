@@ -25,9 +25,6 @@ namespace lart::abstract
         ,{ Operation::Type::Call   , "call"    }
         ,{ Operation::Type::ExtractValue, "extractvalue" }
         ,{ Operation::Type::InsertValue, "insertvalue" }
-        ,{ Operation::Type::Memcpy , "memcpy"  }
-        ,{ Operation::Type::Memmove, "memmove" }
-        ,{ Operation::Type::Memset , "memset"  }
     };
 
     Operation OperationBuilder::construct( llvm::Instruction * inst )
@@ -75,12 +72,6 @@ namespace lart::abstract
         }
 
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
-            if ( llvm::isa< llvm::MemSetInst >( call ) )
-                return construct< Type::Memset >( call );
-            if ( llvm::isa< llvm::MemCpyInst >( call ) )
-                return construct< Type::Memcpy >( call );
-            if ( llvm::isa< llvm::MemMoveInst >( call ) )
-                return construct< Type::Memmove >( call );
             return construct< Type::Call >( call );
         }
 

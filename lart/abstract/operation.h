@@ -36,9 +36,6 @@ namespace lart::abstract {
             Call,
             ExtractValue,
             InsertValue,
-            Memcpy,
-            Memmove,
-            Memset
         };
 
         static const Bimap< Type, std::string > TypeTable;
@@ -121,14 +118,8 @@ namespace lart::abstract {
         static constexpr bool insertvalue( Operation::Type type ) { return Type::InsertValue == type; }
         static constexpr bool extractvalue( Operation::Type type ) { return Type::ExtractValue == type; }
 
-        static constexpr bool mem( Operation::Type type )
-        {
-            return is_one_of< Type::Memcpy, Type::Memmove, Type::Memset >( type );
-        }
-
         static constexpr bool faultable( Operation::Type type )
         {
-            // TODO memory operations
             return is_one_of< Type::Store, Type::Load, Type::BinaryFaultable, Type::Call >( type );
         }
 

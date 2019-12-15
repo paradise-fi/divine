@@ -65,14 +65,6 @@ namespace lart::abstract
             return { l->getPointerOperand() };
         }
 
-        /*if constexpr ( is_mem_intrinsic( T ) ) {
-            auto mem = llvm::cast< llvm::MemIntrinsic >( val );
-            auto dst = mem->getArgOperand( 0 );
-            auto val = mem->getArgOperand( 1 );
-            auto len = mem->getArgOperand( 2 );
-            return { dst, val, len };
-        }*/
-
         return { val };
     }
 
@@ -92,11 +84,6 @@ namespace lart::abstract
         if constexpr ( T == Type::Store || T == Type::Freeze ) {
             auto s = llvm::cast< llvm::StoreInst >( val );
             return suffix + "." + llvm_name( s->getValueOperand()->getType() );
-        // } else if constexpr ( is_mem_intrinsic( T ) ) {
-        //    auto intr = llvm::cast< llvm::MemIntrinsic >( val );
-        //    auto dst = intr->getRawDest()->getType();
-        //    return suffix + "." + llvm_name( dst->getPointerElementType() );
-        //
         } else {
             if ( auto aggr = llvm::dyn_cast< llvm::StructType >( val->getType() );
                     aggr && aggr->hasName() ) {
