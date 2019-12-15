@@ -138,7 +138,11 @@ void CLI::go( command::show cmd )
     if ( cmd.raw )
         out() << dn.attribute( "raw" ) << std::endl;
     else
-        dn.format( out(), cmd.depth, cmd.deref );
+    {
+        brq::string_builder str;
+        dn.format( str, cmd.depth, cmd.deref );
+        out() << str.data();
+    }
 }
 
 void CLI::go( command::diff cmd )
