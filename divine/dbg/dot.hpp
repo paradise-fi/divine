@@ -77,9 +77,9 @@ int dotDN( std::ostream &o, DN dn, DNMap &visited, int &seq, std::string prefix 
                              { component( ck + "." + sk, scomp ); } );
         };
 
-    std::stringstream str;
+    brq::string_builder str;
     dn.format( str, 10 );
-    o << prefix << hid << " [ shape=rectangle label=\"" << text2dot( str.str() )
+    o << prefix << hid << " [ shape=rectangle label=\"" << text2dot( str.data() )
       << "\" ]" << std::endl;
 
     dn.related( related, false );

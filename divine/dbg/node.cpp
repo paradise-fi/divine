@@ -795,13 +795,13 @@ static std::string rightpad( std::string s, int i )
 }
 
 template< typename Prog, typename Heap >
-void Node< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
+void Node< Prog, Heap >::format( brq::string_builder &out, int depth, int derefs, int indent )
 {
     std::string ind_attr( indent + 4, ' ' ), ind( indent, ' ' );
     std::set< std::string > ck{ "value", "type", "location", "symbol", "scope", "formula" };
 
     if ( !indent )
-        out << ind << "attributes:" << std::endl;
+        out << ind << "attributes:\n";
 
     attributes(
         [&]( std::string k, auto v )
@@ -809,7 +809,7 @@ void Node< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int i
             if ( k == "raw" || ( indent && ck.count( k ) == 0 ) )
                 return;
             auto i = indent ? ind : ind_attr;
-            out << i << rightpad( k + ": ", 13 - i.size() ) << v << std::endl;
+            out << i << brq::mark << k << ": " << brq::pad( 13 - i.size() ) << v << "\n";
         } );
 
     int col = 0, relrow = 0, relcnt = 0;
@@ -843,11 +843,11 @@ void Node< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int i
     components(
         [&]( std::string n, auto sub )
         {
-            std::stringstream str;
+            brq::string_builder str;
             if ( depth )
             {
                 sub.format( str, depth - 1, derefs, indent + 4 );
-                out << ind << "." << n << ":" << std::endl << str.str();
+                out << ind << "." << n << ":\n" << str.data();
             }
             else addrel( n );
         } );
@@ -857,16 +857,16 @@ void Node< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int i
         {
             if ( derefs > 0 && n == "deref" )
             {
-                std::stringstream str;
+                brq::string_builder str;
                 rel.format( str, depth, derefs - 1, indent + 4 );
-                out << ind << n << ":" << std::endl << str.str();
+                out << ind << n << ":\n" << str.data();
                 return;
             }
             else addrel( n );
         } );
 
     if ( relcnt )
-        out << ind << rightpad( "related:", 13 - indent ) << rels.str() << " ]" << std::endl;
+        out << ind << brq::mark << "related:" << brq::pad( 13 - indent ) << rels.str() << " ]\n";
 }
 
 template< typename Prog, typename Heap >
