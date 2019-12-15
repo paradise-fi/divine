@@ -14,13 +14,31 @@ namespace __dios::rst::abstract
     {
         static_assert( !(floating && !_signed) && "unsigned floats are not permitted" );
 
-        domain_t _value;
+        abstract_value_t _value;
 
-        scalar( domain_t val ) : _value( val ) {}
-        operator domain_t() { return _value; }
-        operator domain_t() const { return _value; }
+        _LART_INLINE
+        scalar_t( void * ptr ) : _value( static_cast< abstract_value_t >( ptr ) ) {}
 
-        operator bool()
+        _LART_INLINE
+        scalar_t( domain_t val ) : _value( static_cast< abstract_value_t >( val ) ) {}
+
+        _LART_INLINE
+        operator domain_t() { return domain_t{ _value }; }
+
+        _LART_INLINE
+        operator domain_t() const { return domain_t{ _value }; }
+
+        _LART_INLINE
+        operator bool() {
+            if ( is_constant( domain( _value ) ) )
+                return constant_t::to_tristate( _value );
+
+            auto res = domain_t::to_tristate( *this );
+            domain_t::assume( *this, *this, res );
+            return res;
+        }
+
+        operator abstract_value_t() noexcept
         {
             switch ( domain_t::to_tristate( *this ) )
             {

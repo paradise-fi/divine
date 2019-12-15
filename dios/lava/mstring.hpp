@@ -85,9 +85,9 @@ namespace __dios::rst::abstract {
                 bounds().push_back( bound );
             }
 
-            void push_bound( unsigned bound ) noexcept
+            void push_bound( uint64_t bound ) noexcept
             {
-                push_bound( constant_t::lift( bound ) );
+                push_bound( static_cast< abstract_value_t >( index_t::lift( bound ) ) );
             }
 
             void push_char( abstract_value_t ch ) noexcept
@@ -97,7 +97,7 @@ namespace __dios::rst::abstract {
 
             void push_char( char ch ) noexcept
             {
-                push_char( constant_t::lift( ch ) );
+                push_char( static_cast< abstract_value_t >( character_t::lift( ch ) ) );
             }
 
             index_t terminator() noexcept
@@ -129,38 +129,38 @@ namespace __dios::rst::abstract {
             auto data = brq::make_refcount< data_t >();
             data->size = size;
 
-            return make_mstring( data, constant_t::lift( 0 ) );
+            return make_mstring( data, static_cast< abstract_value_t >( index_t::lift( uint64_t( 0 ) ) ) );
         }
 
         _LART_INLINE
-        static mstring_ptr make_mstring( unsigned size ) noexcept
+        static mstring_ptr make_mstring( uint64_t size ) noexcept
         {
-            return make_mstring( constant_t::lift( size ) );
+            return make_mstring( static_cast< abstract_value_t >( index_t::lift( size ) ) );
         }
 
-        _LART_INTERFACE _LART_OPTNONE
+        _LART_INTERFACE
         static mstring_ptr lift_any( index_t size ) noexcept
         {
             return make_mstring( size );
         }
 
-        _LART_INTERFACE _LART_OPTNONE
-        static mstring_ptr lift_any( unsigned size ) noexcept
+        _LART_INTERFACE
+        static mstring_ptr lift_any( uint64_t size ) noexcept
         {
             return make_mstring( size );
         }
 
         _LART_INTERFACE
-        static mstring_ptr lift_one( const char * str, unsigned size ) noexcept
+        static mstring_ptr lift_one( const char * str, uint64_t size ) noexcept
         {
             auto mstr = make_mstring( size );
-            mstr.push_bound( unsigned( 0 ) );
+            mstr.push_bound( uint64_t( 0 ) );
 
             if ( size == 0 )
                 return mstr;
 
             char prev = str[ 0 ];
-            for ( int i = 1; i < size; ++i ) {
+            for ( uint64_t i = 1; i < size; ++i ) {
                 if ( prev != str[ i ] ) {
                     mstr.push_char( prev );
                     mstr.push_bound( i );
@@ -174,13 +174,13 @@ namespace __dios::rst::abstract {
             return mstr;
         }
 
-        _LART_INTERFACE _LART_OPTNONE
+        _LART_INTERFACE
         static mstring_ptr lift_one( const char * str ) noexcept
         {
-            return lift_one( str, __vm_obj_size( str ) );
+            return lift_one( str, (uint64_t)__vm_obj_size( str ) );
         }
 
-        _LART_INTERFACE _LART_OPTNONE
+        _LART_INTERFACE
         static character_t op_load( mstring_ptr array, bitwidth_t bw ) noexcept
         {
             if ( bw != 8 )
@@ -190,7 +190,7 @@ namespace __dios::rst::abstract {
             return load( array );
         }
 
-        _LART_INTERFACE _LART_OPTNONE
+        _LART_INTERFACE
         static void op_store( abstract_value_t value, abstract_value_t array, bitwidth_t bw ) noexcept
         {
             if ( bw != 8 )
@@ -201,7 +201,7 @@ namespace __dios::rst::abstract {
             str->store( value, str.checked_offset() );
         }
 
-        _LART_INTERFACE _LART_OPTNONE
+        _LART_INTERFACE
         static mstring_ptr op_gep( size_t bw, abstract_value_t array, abstract_value_t idx ) noexcept
         {
             if ( bw != 8 )
@@ -220,7 +220,7 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE _LART_SCALAR
         static character_t fn_strcmp( abstract_value_t lhs, abstract_value_t rhs ) noexcept
         {
-            return strcmp( lhs, rhs );
+            return character_t::template zfit< 32 >( strcmp( lhs, rhs ) );
         }
 
         _LART_INTERFACE _LART_AGGREGATE
@@ -322,7 +322,7 @@ namespace __dios::rst::abstract {
 
             bool singleton() const noexcept
             {
-                return from() + index_t::lift( 1 ) == to();
+                return from() + index_t::lift( uint64_t( 1 ) ) == to();
             }
 
             friend void trace( const segment_t &seg ) noexcept
@@ -390,7 +390,7 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         void store( character_t ch, index_t idx ) noexcept
         {
-            auto one = index_t::lift( 1 );
+            auto one = index_t::lift( uint64_t( 1 ) );
             auto seg = segment_at_index( idx );
             if ( seg.value() == ch ) {
                 // do nothing
@@ -440,7 +440,8 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         static index_t strlen( mstring_ptr str ) noexcept
         {
-            return str.terminator() - str.offset();
+            auto res = (str.terminator() - str.offset());
+            return index_t::template zfit< 64 >( res );
         }
 
         _LART_INLINE
@@ -469,7 +470,7 @@ namespace __dios::rst::abstract {
                 rseg = rin.next_segment( rseg );
             }
 
-            return index_t::lift( 0 );
+            return character_t::lift( '\0' );
         }
 
         _LART_INLINE
@@ -477,7 +478,7 @@ namespace __dios::rst::abstract {
         {
             // TODO optimize
             auto off = dst.offset();
-            auto size = src.terminator() - src.offset() - index_t::lift( 1 );
+            auto size = src.terminator() - src.offset();
             dst->_offset = dst.terminator();
             auto ret = memcpy( dst, src, size );
             ret->_offset = off;
@@ -488,7 +489,7 @@ namespace __dios::rst::abstract {
         static mstring_ptr strcpy( mstring_ptr dst, mstring_ptr src ) noexcept
         {
             // TODO optimize
-            return memcpy( dst, src, strlen( src ) );
+            return memcpy( dst, src, strlen( src ) + index_t::lift( size_t( 1 ) ) );
         }
 
         _LART_INLINE
@@ -496,10 +497,10 @@ namespace __dios::rst::abstract {
         {
             auto in = str->interest();
             auto seg = in.begin();
-            while ( seg.begin() != in.values.end() ) {
+            while ( seg.begin() != in.bounds.end() ) {
                 if ( !seg.empty() && seg.value() == ch ) {
                     auto off = seg.from();
-                    if ( seg.begin() == in.values.begin() )
+                    if ( seg.begin() == in.bounds.begin() )
                         return str;
                     return make_mstring( str.data(), off );
                 }
@@ -509,13 +510,13 @@ namespace __dios::rst::abstract {
             return static_cast< mstring_t * >( nullptr );
         }
 
-        _LART_INLINE
+        _LART_NOINLINE
         static mstring_ptr memcpy( mstring_ptr dst, mstring_ptr src, index_t size ) noexcept
         {
             if ( size > dst.size() - dst.offset() )
                 fault( "copying to a smaller string" );
 
-            if ( size == index_t::lift( 0 ) )
+            if ( size == index_t::lift( uint64_t( 0 ) ) )
                 return dst;
 
             auto dseg = dst->segment_at_current_offset();
@@ -542,7 +543,7 @@ namespace __dios::rst::abstract {
                 }
             }
 
-            while ( ( sseg.from() - src.offset() ) <= size ) {
+            while ( ( sseg.from() - src.offset() ) < size ) {
                 bounds.push_back( dst.offset() + ( sseg.to() - src.offset() ) );
                 values.push_back( sseg.value() );
                 ++sseg;
@@ -575,12 +576,12 @@ namespace __dios::rst::abstract {
             return static_cast< index_t >( size() ).template lower< size_t >();
         }
 
-        // returns first segment containing '\0' after offset
+        // returns first nonepmty segment containing '\0' after offset
         _LART_INLINE
         segment_t terminal_segment() noexcept
         {
             auto seg = segment_at_current_offset();
-            auto zero = character_t::lift( 0 );
+            auto zero = character_t::lift( '\0' );
             while ( seg.begin() != bounds().end() && seg.value() != zero && !seg.empty() )
                 ++seg;
             if ( seg.begin() == bounds().end() )
