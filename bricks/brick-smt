@@ -39,6 +39,7 @@
 #include <brick-data>
 
 #include <map>
+#include <set>
 #include <memory>
 #include <variant>
 #include <iomanip>

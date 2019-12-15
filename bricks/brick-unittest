@@ -27,6 +27,7 @@
  */
 
 #pragma once
+#include "brick-assert"
 
 #include <algorithm>
 #include <iostream>
@@ -38,8 +39,6 @@
 #include <set>
 #include <map>
 #include <stdexcept>
-
-#include <brick-assert>
 
 #ifdef __unix__
 #include <unistd.h>

@@ -66,6 +66,7 @@
 #pragma once
 
 #include <tuple>
+#include <iostream>
 #include <array>
 #include <numeric>
 #include <functional>
