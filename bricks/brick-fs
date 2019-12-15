@@ -256,16 +256,20 @@ namespace brq
         return join_path( std::vector< std::string >{ std::forward< FilePaths >( paths )... } );
     }
 
-    inline std::vector< std::string > splitPath( std::string path ) {
+    inline std::vector< std::string > split_path( std::string path )
+    {
         auto abs = absolute_prefix( path );
         path = abs.second;
         std::vector< std::string > out;
         if ( !abs.first.empty() )
             out.push_back( abs.first );
         auto last = path.begin();
-        while ( true ) {
+
+        while ( true )
+        {
             auto next = std::find_if( last, path.end(), &is_path_separator );
-            if ( next == path.end() ) {
+            if ( next == path.end() )
+            {
                 out.emplace_back( last, next );
                 return out;
             }
@@ -275,13 +279,22 @@ namespace brq
         }
     }
 
-    inline std::string basename( std::string path ) {
-        return splitPath( path ).back();
+    inline std::string dirname( std::string path )
+    {
+        auto p = split_path( path );
+        p.pop_back();
+        return join_path( p );
     }
 
-    inline std::string normalize( std::string path ) {
+    inline std::string basename( std::string path )
+    {
+        return split_path( path ).back();
+    }
+
+    inline std::string normalize_path( std::string path )
+    {
         auto abs = absolute_prefix( path );
-        auto split = splitPath( abs.second );
+        auto split = split_path( abs.second );
 
         for ( auto it = split.begin(); it != split.end(); ) {
             if ( it->empty() || *it == "." )
@@ -296,8 +309,8 @@ namespace brq
         return join_path( abs.first, join_path( split ) );
     }
 
-    inline std::string distinctPaths( const std::string &prefix, const std::string &path ) {
-
+    inline std::string distinctPaths( const std::string &prefix, const std::string &path )
+    {
         auto prefI = prefix.begin();
         auto pathI = path.begin();
         auto start = pathI;
@@ -377,7 +390,8 @@ namespace brq
         return buf;
     }
 
-    inline void chdir( std::string dir ) {
+    inline void chdir( std::string dir )
+    {
 #ifdef _WIN32
         if ( ::_chdir( dir.c_str() ) != 0 )
             brq::raise< system_error >() << "changing directory";
@@ -387,7 +401,8 @@ namespace brq
 #endif
     }
 
-    inline std::string mkdtemp( std::string dirTemplate ) {
+    inline std::string mkdtemp( std::string dirTemplate )
+    {
 #ifdef _WIN32
         if ( ::_mktemp( &dirTemplate.front() ) == nullptr )
             brq::raise< system_error >() << "creating temporary directory";
@@ -399,7 +414,8 @@ namespace brq
     }
 
 #ifndef _WIN32
-    inline void touch( std::string f ) {
+    inline void touch( std::string f )
+    {
         if ( ::utime( f.c_str(), nullptr ) != 0 )
             brq::raise< system_error >() << "touching " << f;
     }
@@ -416,7 +432,7 @@ namespace brq
         // If path contains the location of a directory, it cannot contain
         // a trailing backslash. If it does, -1 will be returned and errno
         // will be set to ENOENT.
-        pathname = normalize( pathname );
+        pathname = normalize_path( pathname );
 #endif
         std::unique_ptr< struct stat > res( new struct stat );
         if ( ::stat( pathname.c_str(), res.get() ) == -1 ) {
@@ -492,20 +508,23 @@ namespace brq
         brq::raise() << "ensuring path: " << dir << " exists and looks like a dangling symlink";
     }
 
-    inline void mkpath( std::string dir ) {
+    inline void create_dir( std::string dir )
+    {
         std::pair< std::string, std::string > abs = absolute_prefix( dir );
-        auto split = splitPath( abs.second );
-        std::vector< std::string > toDo;
-        for ( auto &x : split ) {
-            toDo.emplace_back( x );
-            mkdir_if_missing( abs.first + join_path( toDo ), 0777 );
+        auto split = split_path( abs.second );
+        std::vector< std::string > todo;
+        for ( auto &x : split )
+        {
+            todo.emplace_back( x );
+            mkdir_if_missing( abs.first + join_path( todo ), 0777 );
         }
     }
 
-    inline void mkFilePath( std::string file ) {
+    inline void create_file( std::string file )
+    {
         auto dir = split_filename( file ).first;
         if ( !dir.empty() )
-            mkpath( dir );
+            create_dir( dir );
     }
 
 #if 0
@@ -790,7 +809,7 @@ namespace brq
     struct with_dir
     {
         change_dir _ch;
-        with_dir( std::string dir ) : _ch( ( mkpath( dir ), dir ) ) {}
+        with_dir( std::string dir ) : _ch( ( create_dir( dir ), dir ) ) {}
     };
 
 #if defined( __unix__ ) || defined( __divine__ )
@@ -898,8 +917,9 @@ namespace brq
 #endif
 
 
-    inline bool file_access( const std::string &s, int m )
+    inline bool file_access( std::string_view sv, int m )
     {
+        std::string s( sv );
 #ifdef _WIN32
         return ::_access( s.c_str(), m ) == 0;
 #else
@@ -907,7 +927,7 @@ namespace brq
 #endif
     }
 
-    inline bool file_exists( const std::string &file )
+    inline bool file_exists( std::string_view file )
     {
         return file_access( file, F_OK );
     }
@@ -922,8 +942,8 @@ namespace brq::t_fs
     {
         TEST( path )
         {
-            ASSERT( (vs{ "a", "b", "c" }) == splitPath( "a/b/c" ) );
-            ASSERT( (vs{ "/", "a", "b", "c" }) == splitPath( "/a/b/c" ) );
+            ASSERT( (vs{ "a", "b", "c" }) == split_path( "a/b/c" ) );
+            ASSERT( (vs{ "/", "a", "b", "c" }) == split_path( "/a/b/c" ) );
         }
     };
 
@@ -931,50 +951,50 @@ namespace brq::t_fs
     {
         TEST( basic )
         {
-            ASSERT_EQ( "a/b/c", normalize( "a/b/c" ) );
-            ASSERT_EQ( "a/b/c", normalize( "a//b/c" ) );
-            ASSERT_EQ( "a/b/c", normalize( "a/b//c" ) );
-            ASSERT_EQ( "a/b/c", normalize( "a//b//c" ) );
-            ASSERT_EQ( "/a/b/c", normalize( "/a/b/c" ) );
-            ASSERT_EQ( "/a/b/c", normalize( "/a//b/c" ) );
-            ASSERT_EQ( "/a/b/c", normalize( "//a/b/c" ) );
-            ASSERT_EQ( "/a/b/c", normalize( "/a/b//c" ) );
-            ASSERT_EQ( "/a/b/c", normalize( "//a/b//c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/b/c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a//b/c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/b//c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a//b//c" ) );
+            ASSERT_EQ( "/a/b/c", normalize_path( "/a/b/c" ) );
+            ASSERT_EQ( "/a/b/c", normalize_path( "/a//b/c" ) );
+            ASSERT_EQ( "/a/b/c", normalize_path( "//a/b/c" ) );
+            ASSERT_EQ( "/a/b/c", normalize_path( "/a/b//c" ) );
+            ASSERT_EQ( "/a/b/c", normalize_path( "//a/b//c" ) );
         }
 
         TEST( endbackslash ) {
-            ASSERT_EQ( "a/b/c", normalize( "a/b/c/" ) );
-            ASSERT_EQ( "/a/b/c", normalize( "/a/b/c/" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/b/c/" ) );
+            ASSERT_EQ( "/a/b/c", normalize_path( "/a/b/c/" ) );
         }
 
         TEST( dot ) {
-            ASSERT_EQ( "a/b/c", normalize( "a/./b/./c" ) );
-            ASSERT_EQ( "a/b/c", normalize( "a/./b/././c" ) );
-            ASSERT_EQ( "a/b/c", normalize( "./a/./b/././c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/./b/./c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/./b/././c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "./a/./b/././c" ) );
         }
 
         TEST( dotdot ) {
-            ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/.." ) );
-            ASSERT_EQ( "a/b", normalize( "a/b/c/d/../.." ) );
-            ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/../../c" ) );
-            ASSERT_EQ( "../a", normalize( "../a" ) );
-            ASSERT_EQ( "a/b/c", normalize( "a/b/./../b/c" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/b/c/d/.." ) );
+            ASSERT_EQ( "a/b", normalize_path( "a/b/c/d/../.." ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/b/c/d/../../c" ) );
+            ASSERT_EQ( "../a", normalize_path( "../a" ) );
+            ASSERT_EQ( "a/b/c", normalize_path( "a/b/./../b/c" ) );
         }
 
         TEST( empty )
         {
-            ASSERT_EQ( ".", normalize( "./" ) );
-            ASSERT_EQ( ".", normalize( "a/.." ) );
-            ASSERT_EQ( "/", normalize( "/." ) );
-            ASSERT_EQ( "/", normalize( "/a/.." ) );
+            ASSERT_EQ( ".", normalize_path( "./" ) );
+            ASSERT_EQ( ".", normalize_path( "a/.." ) );
+            ASSERT_EQ( "/", normalize_path( "/." ) );
+            ASSERT_EQ( "/", normalize_path( "/a/.." ) );
         }
 
         TEST( negative )
         {
-            ASSERT_EQ( "..", normalize( ".." ) );
-            ASSERT_EQ( "../..", normalize( "../.." ) );
-            ASSERT_EQ( "../../..", normalize( "../../.." ) );
-            ASSERT_EQ( "../../..", normalize( "../../a/../.." ) );
+            ASSERT_EQ( "..", normalize_path( ".." ) );
+            ASSERT_EQ( "../..", normalize_path( "../.." ) );
+            ASSERT_EQ( "../../..", normalize_path( "../../.." ) );
+            ASSERT_EQ( "../../..", normalize_path( "../../a/../.." ) );
         }
     };
 
