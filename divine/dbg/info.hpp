@@ -31,17 +31,29 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::dbg
 {
 
-enum class Component
+enum class component
 {
-    Kernel      = 0b000001,
-    DiOS        = 0b000010, /* non-kernel dios components */
-    LibC        = 0b000100,
-    LibCxx      = 0b001000,
-    LibRst      = 0b010000,
-    Program     = 0b100000
+    kernel      = 0b000001,
+    dios        = 0b000010, /* non-kernel dios components */
+    libc        = 0b000100,
+    libcxx      = 0b001000,
+    librst      = 0b010000,
+    program     = 0b100000
 };
 
-using Components = brick::types::StrongEnumFlags< Component >;
+    static brq::parse_result from_string( std::string_view s, component &c )
+    {
+        if      ( s == "kernel" ) c = component::kernel;
+        else if ( s == "dios" )   c = component::dios;
+        else if ( s == "libc" )   c = component::libc;
+        else if ( s == "libcxx" ) c = component::libcxx;
+        else if ( s == "librst" ) c = component::librst;
+        else return brq::no_parse( "invalid component name", s );
+
+        return {};
+    }
+
+using Components = brick::types::StrongEnumFlags< component >;
 
 std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn );
 std::string location( const llvm::Instruction &insn );

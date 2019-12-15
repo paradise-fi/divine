@@ -57,7 +57,7 @@ bool Info::in_component( vm::CodePointer pc, Components comp )
 {
     auto file = fileline( pc ).first.str();
 
-    if ( comp & Component::LibC )
+    if ( comp & component::libc )
     {
         if ( brq::starts_with( file, "/dios/libc/" ) ||
              brq::starts_with( file, "/dios/arch/" ) ||
@@ -67,20 +67,20 @@ bool Info::in_component( vm::CodePointer pc, Components comp )
             return true;
     }
 
-    if ( comp & Component::LibCxx )
+    if ( comp & component::libcxx )
         if ( brq::starts_with( file, "/dios/libcxx" ) )
             return true;
 
-    if ( comp & Component::LibRst )
+    if ( comp & component::librst )
         if ( brq::starts_with( file, "/dios/rst/" ) ||
              brq::starts_with( file, "/dios/include/rst/" ) )
             return true;
 
-    if ( comp & Component::DiOS )
+    if ( comp & component::dios )
         if ( brq::starts_with( file, "/dios/sys/" ) || brq::starts_with( file, "/dios/vfs/" ) )
             return true;
 
-    if ( comp & Component::Program && !brq::starts_with( file, "/dios/" ) )
+    if ( comp & component::program && !brq::starts_with( file, "/dios/" ) )
         return true;
 
     return false;

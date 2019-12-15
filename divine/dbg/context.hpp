@@ -285,7 +285,7 @@ struct Context : DNContext< Heap >
 
     bool in_component( Components comp ) /* true if any match */
     {
-        if ( ( comp & Component::Kernel ) && this->in_kernel() )
+        if ( ( comp & component::kernel ) && this->in_kernel() )
             return true;
         return this->debug().in_component( this->pc(), comp );
     }
