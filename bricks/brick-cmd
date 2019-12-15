@@ -246,7 +246,7 @@ namespace brq
                 return;
 
             if ( _mode == mode_pos_help )
-                _pos_help << " {" << names< type >( brq::primary )[ 0 ] << "} ";
+                _pos_help << " {" << names< type >( brq::primary )[ 0 ] << "}";
 
             if ( _mode == mode_pos_parse )
             {
@@ -340,9 +340,10 @@ namespace brq
         string_builder &format_help( cmd_t &c, bool synopsis_only )
         {
             _mode = mode_pos_help;
-            _help.kill();
+            _pos_help.clear();
+            _help._oom = true;
             c.options( *this );
-            _help.clear();
+            _help._oom = false;
 
             if ( synopsis_only )
                 return _help << _argv_0 << " " << cmd_name( c ) << " [options]" << _pos_help.data();
@@ -359,6 +360,7 @@ namespace brq
             _mode = mode_opt_help;
             _saw_section = false;
             c.options( *this );
+            _help << "\n\n";
             return _help;
         }
 
@@ -487,8 +489,10 @@ namespace brq
 
             auto print = [&]( auto &c )
             {
-                if ( h._cmd.empty() || brq::starts_with( cmd_name( c ), h._cmd ) )
-                    format_help( c, h._cmd.empty() );
+                if ( h._cmd.empty() )
+                    _help << "  $ ", format_help( c, true ) << "\n";
+                else if ( brq::starts_with( cmd_name( c ), h._cmd ) )
+                    format_help( c, false );
             };
 
             cmds.each( print );
@@ -497,8 +501,11 @@ namespace brq
             {
                 _help << "\nDESCRIPTION\n\n";
                 brq::string_transform{ quote( "  " ), _help } << _cmd_help;
-                _help << "\n\n";
+                _help << "\n";
             }
+
+            if ( h._cmd.empty() )
+                _help << "\n";
 
             return cmd_help( _help.data() );
         }
