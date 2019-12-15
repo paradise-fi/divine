@@ -21,6 +21,7 @@
 #include <divine/mc/types.hpp>
 #include <divine/ui/util.hpp>
 #include <brick-string>
+#include <sstream>
 
 namespace divine::dbg { template< typename > struct Context; }
 
