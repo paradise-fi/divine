@@ -89,6 +89,8 @@ namespace brq
 
         std::tuple< bool, int, int > compare( std::string token, std::string pattern, int idx, int off )
         {
+            if ( pattern.size() <= 2 && token.size() > pattern.size() ) // -o
+                return { brq::starts_with( token, pattern ), idx, off + pattern.size() };
             if ( std::isalpha( pattern.back() ) || std::isblank( pattern.back() ) )
                 return { brq::starts_with( pattern, token ), idx + 1, 0 };
             else
