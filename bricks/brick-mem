@@ -292,8 +292,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             VALGRIND_DISCARD( h[ p.chunk() ].handle );
             h[ p.chunk() ].handle =
                 VALGRIND_CREATE_BLOCK( mem, size,
-                                       brick::string::fmtf( "blob %llu:%llu @ %p",
-                                                            p.slab(), p.chunk(), mem ).c_str() );
+                                       brq::format( "blob ", p.slab(), p.chunk(), " @ ", mem ).buffer() );
             h[ p.chunk() ].allocated = true;
         }
 
@@ -308,8 +307,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             VALGRIND_DISCARD( vhandles[ p.slab() ][ p.chunk() ].handle );
             vhandles[ p.slab() ][ p.chunk() ].handle =
                 VALGRIND_CREATE_BLOCK( mem, size,
-                                       brick::string::fmtf( "blob %llu:%llu @ %p [DELETED]",
-                                                            p.slab(), p.chunk(), mem ).c_str() );
+                                       brq::format( "blob ", p.slab(), p.chunk(), " @ ", mem ).buffer() );
             vhandles[ p.slab() ][ p.chunk() ].allocated = false;
         }
 
