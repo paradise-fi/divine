@@ -175,7 +175,10 @@ namespace brq
         }
 
         template< typename arg_t >
-        static auto names( brq::primary_t ) -> decltype( arg_t::names() ) { return arg_t::names(); }
+        static auto names( brq::primary_t ) -> decltype( std::remove_reference_t< arg_t >::names() )
+        {
+            return std::remove_reference_t< arg_t >::names();
+        }
 
         static void opt_help( brq::string_builder &b ) { b << "\t"; }
 
