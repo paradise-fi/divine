@@ -10,6 +10,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
 #include <llvm/Transforms/Utils.h>
+#include <llvm/CodeGen/IntrinsicLowering.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/lowerselect.h>
@@ -270,6 +271,12 @@ namespace lart::abstract
         );
 
         if ( is_propagable( val ) )
+            for ( auto u : val->users() ) {
+                if ( auto intr = llvm::dyn_cast< llvm::MemCpyInst >( u ) ) {
+                    auto m = intr->getModule();
+                    llvm::IntrinsicLowering( m->getDataLayout() ).LowerIntrinsicCall( intr );
+                }
+            }
             for ( auto u : val->users() )
             {
                 if ( util::is_one_of< llvm::LoadInst
