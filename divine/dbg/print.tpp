@@ -61,7 +61,7 @@ std::string Print< Ctx >::value( llvm::Value *val, DisplayVal disp )
         else
             eval.template type_dispatch<>(
                 slot.type,
-                [&]( auto v ) { name = brick::string::fmt( v.get( slot ) ); }, slot );
+                [&]( auto v ) { name = brq::format( v.get( slot ) ).data(); }, slot );
     }
 
     return name;

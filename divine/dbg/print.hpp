@@ -90,7 +90,7 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     brick::string::Splitter split( "\n", std::regex::extended );
     std::string src( rt::source( di->getFilename() ) );
     if ( src.empty() )
-        src = brick::fs::readFile( di->getFilename() );
+        src = brq::read_file( di->getFilename() );
 
     auto line = split.begin( src );
     unsigned lineno = 1, active = 0;
