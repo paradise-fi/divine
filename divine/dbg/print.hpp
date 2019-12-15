@@ -52,16 +52,6 @@ void hexbyte( std::ostream &o, int &col, int index, B byte )
         ++col, o << " ";
 }
 
-template< typename B >
-void ascbyte( std::ostream &o, int &col, B byte )
-{
-    std::stringstream os;
-    os << byte;
-    char b = os.str()[ 0 ];
-    o << ( std::isprint( b ) ? b : '~' );
-    ++ col;
-}
-
 enum class DisplayVal { Name, Value, PreferName };
 
 template< typename Ctx >
@@ -95,7 +85,7 @@ template< typename Program, typename PP >
 static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &program, vm::CodePointer pc,
                            PP postproc )
 {
-    std::stringstream out;
+    brq::string_builder out;
 
     brick::string::Splitter split( "\n", std::regex::extended );
     std::string src( rt::source( di->getFilename() ) );
@@ -126,20 +116,21 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     }
 
     unsigned startline = lineno;
-    std::stringstream raw;
+    brq::string_builder raw;
 
     /* print it */
     while ( line != split.end() && lineno++ <= endline )
-        raw << *line++ << std::endl;
+        raw << *line++ << "\n";
 
     if ( line != split.end() )
     {
         std::regex endbrace( "^[ \t]*}", std::regex::extended );
         if ( std::regex_search( line->str(), endbrace ) )
-            ++lineno, raw << *line++ << std::endl;
+            ++lineno, raw << *line++ << "\n";
     }
 
-    std::string txt = postproc( raw.str() );
+    std::string txt = postproc( raw.buffer() );
+
     line = split.begin( txt );
     endline = lineno;
     lineno = startline;
@@ -147,10 +138,10 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     while ( line != split.end() && lineno <= endline )
     {
         out << (lineno == active ? ">>" : "  ");
-        out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+        out << brq::pad( 5 ) << lineno++ << brq::mark << " " << *line++ << "\n";
     }
 
-    return out.str();
+    return std::string( out.data() );
 }
 
 }

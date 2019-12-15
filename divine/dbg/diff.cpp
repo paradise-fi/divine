@@ -46,10 +46,10 @@ namespace divine::dbg
         if ( visited.count( a.sortkey() ) ) return;
         visited.insert( a.sortkey() );
 
-        std::map< std::string, std::pair< std::string, std::string > > attrs;
+        std::map< std::string_view, std::pair< std::string_view, std::string_view > > attrs;
 
-        a.attributes( [&]( std::string k, std::string v ) { attrs[ k ].first = v; } );
-        b.attributes( [&]( std::string k, std::string v ) { attrs[ k ].second = v; } );
+        a.attributes( [&]( auto k, auto v ) { attrs[ k ].first = v; } );
+        b.attributes( [&]( auto k, auto v ) { attrs[ k ].second = v; } );
 
         bool announced = false;
         auto ann = [&]

@@ -798,13 +798,13 @@ template< typename Prog, typename Heap >
 void Node< Prog, Heap >::format( brq::string_builder &out, int depth, int derefs, int indent )
 {
     std::string ind_attr( indent + 4, ' ' ), ind( indent, ' ' );
-    std::set< std::string > ck{ "value", "type", "location", "symbol", "scope", "formula" };
+    std::set< std::string_view > ck{ "value", "type", "location", "symbol", "scope", "formula", "size" };
 
     if ( !indent )
         out << ind << "attributes:\n";
 
     attributes(
-        [&]( std::string k, auto v )
+        [&]( std::string_view k, auto v )
         {
             if ( k == "raw" || ( indent && ck.count( k ) == 0 ) )
                 return;

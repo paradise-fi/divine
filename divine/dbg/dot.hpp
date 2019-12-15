@@ -26,7 +26,7 @@ namespace divine {
 
 namespace {
 
-std::string text2dot( std::string s )
+std::string text2dot( std::string_view s )
 {
     std::string buf;
     buf.resize( s.length() * 2 );

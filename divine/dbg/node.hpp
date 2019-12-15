@@ -63,7 +63,7 @@ struct Node
     std::map< std::string, int > _related_count;
     std::set< vm::GenericPointer > _related_ptrs;
 
-    using YieldAttr = std::function< void( std::string, std::string ) >;
+    using YieldAttr = std::function< void( std::string_view, std::string_view ) >;
     using YieldDN   = std::function< void( std::string, Node< Program, Heap > ) >;
 
     /* applies only to Objects */
