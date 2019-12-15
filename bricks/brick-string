@@ -182,14 +182,23 @@ namespace brq
         gen_t _gen;
         state_t _initial;
 
+        struct proxy
+        {
+            value_type v;
+            value_type *operator->() { return &v; }
+        };
+
         struct iterator
         {
             gen_t _gen;
             state_t _state;
 
             iterator( gen_t g, state_t s ) : _gen( g ), _state( s ) {}
+            iterator &operator=( const iterator & ) = default;
             iterator &operator++() { _state = std::get< 1 >( _gen( _state ) ); return *this; }
+            iterator operator++( int ) { auto x = *this; ++*this; return x; }
             value_type operator*() { return std::get< 0 >( _gen( _state ) ); }
+            proxy operator->() { return { **this }; }
             bool operator==( const iterator &o ) const { return _state == o._state; }
             bool operator!=( const iterator &o ) const { return _state != o._state; }
         };
