@@ -19,6 +19,7 @@
 #pragma once
 #include "brick-string"
 #include "brick-cons"
+#include "brick-fs"
 #include "brick-except"
 
 #include <string>
@@ -49,6 +50,34 @@ namespace brq
         bool operator !() const { return !_value; }
         cmd_flag &operator=( bool b ) { _value = b; return *this; }
         neg_t neg() { return { *this }; }
+    };
+
+    /* A file or directory that must already exist and be readable. */
+    struct cmd_file
+    {
+        std::string name;
+        static std::array< std::string, 1 > names() { return { "file" }; }
+        static parse_result from_string( std::string_view s, cmd_file &f )
+        {
+            if ( !file_exists( s ) )
+                return no_parse( "file", s, "does not exist" );
+            if ( !file_access( s, R_OK ) )
+                return no_parse( "file", s, "is not readable" );
+            f.name = s;
+            return {};
+        }
+    };
+
+    /* A file or directory path which may or may not exist. */
+    struct cmd_path
+    {
+        std::string name;
+        static std::array< std::string, 1 > names() { return { "path" }; }
+        static parse_result from_string( std::string_view s, cmd_path &f )
+        {
+            f.name = s;
+            return {};
+        }
     };
 
     static parse_result from_string( std::string_view s, cmd_flag &f )
