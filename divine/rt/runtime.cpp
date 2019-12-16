@@ -42,7 +42,7 @@ namespace divine::rt
     {
         for ( auto src = str::dios_list; !src->n.empty(); ++src )
         {
-            TRACE( "yielding", fixname( src->n ) );
+            NOISE( "yielding", fixname( src->n ) );
             yield( fixname( src->n ), src->c );
         }
     }
