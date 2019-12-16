@@ -26,33 +26,32 @@ namespace divine::ui
 struct CLI : Interface
 {
     bool _batch, _check_files = true;
-    int _argc;
-    const char **_argv;
+    brq::cmd_parser _parser;
 
-    CLI( int argc, const char **argv ) :
-        _batch( true ), _argc( argc ), _argv( argv )
-    {}
+    template< typename args_t >
+    CLI( std::string_view argv_0, const args_t &args ) : _parser( argv_0, args, help() ) {}
+    CLI( int argc, const char **argv ) : _batch( true ), _parser( argc, argv, help() ) {}
 
+    std::string_view help()
+    {
+        return "DIVINE is an LLVM-based model checker. This means it can directly work with\n"
+               "your C and C++ software. For small programs (those that fit in a single source\n"
+               "file), you can use 'check' or 'verify' directly, without any intermediate steps.\n"
+               "For larger projects, it is recommended that you use `dioscc` to build the project\n"
+               "first: the resulting binaries can then be loaded into DIVINE, like this:\n\n"
+               "    $ ./configure CC=dioscc\n"
+               "    $ make # builds ./widget\n"
+               "    $ divine check ./widget\n\n"
+               "If `check` or `verify` find a problem in your program, they will print basic info\n"
+               "about the error and a more detailed report into a file. You can use the `sim`\n"
+               "command to analyse the detailed report, like this:\n\n"
+               "    $ divine sim --load-report widget.report";
+    }
+
+    template< typename... extra_cmds >
     auto parse()
     {
-        if ( _argc > 1 && ( _argv[ 1 ] == "--help" || _argv[ 1 ] == "--version" ) )
-            _argv[ 1 ] += 2;
-
-        auto h = "DIVINE is an LLVM-based model checker. This means it can directly work with\n"
-                 "your C and C++ software. For small programs (those that fit in a single source\n"
-                 "file), you can use 'check' or 'verify' directly, without any intermediate steps.\n"
-                 "For larger projects, it is recommended that you use `dioscc` to build the project\n"
-                 "first: the resulting binaries can then be loaded into DIVINE, like this:\n\n"
-                 "    $ ./configure CC=dioscc\n"
-                 "    $ make # builds ./widget\n"
-                 "    $ divine check ./widget\n\n"
-                 "If `check` or `verify` find a problem in your program, they will print basic info\n"
-                 "about the error and a more detailed report into a file. You can use the `sim`\n"
-                 "command to analyse the detailed report, like this:\n\n"
-                 "    $ divine sim --load-report widget.report";
-
-        brq::cmd_parser p( _argc, _argv, h );
-        return p.parse< verify, check, exec, sim, draw, info, cc, version, ltlc >();
+        return _parser.parse< verify, check, exec, sim, draw, info, cc, version, ltlc, extra_cmds... >();
     }
 
     std::shared_ptr< Interface > resolve() override
