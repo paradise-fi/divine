@@ -8,8 +8,8 @@ int main( int argc, const char **argv )
         return 1;
     }
 
-    auto script = brick::fs::readFile( argv[1] );
-    ::chdir( brick::string::dirname( argv[1] ).c_str() );
+    auto script = brq::read_file( argv[ 1 ] );
+    brq::change_dir wd( brq::dirname( argv[ 1 ] ) );
     divine::ui::setup_death();
     divcheck::execute( script );
     return 0;

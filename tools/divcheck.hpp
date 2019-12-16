@@ -126,16 +126,15 @@ struct Load
 std::vector< std::string > parse( std::string txt )
 {
     std::vector< std::string > script;
-    brick::string::Splitter split( "\n", std::regex::extended );
-    for( auto it = split.begin( txt ); it != split.end(); ++ it )
+
+    for ( auto line : brq::splitter( txt, '\n' ) )
     {
-        auto line = it->str();
         if ( line.empty() || line.at( 0 ) == '#' )
             continue;
         if ( line.at( 0 ) == ' ' && !script.empty() )
             script.back() += line;
         else
-            script.push_back( line );
+            script.emplace_back( line );
     }
     return script;
 }
@@ -144,15 +143,15 @@ template< typename... F >
 void execute( std::string script_txt, F... prepare )
 {
     auto script = parse( script_txt );
-    brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
 
     std::vector< std::shared_ptr< Expectation > > expectations;
     std::vector< std::pair< std::string, std::string > > files;
 
     for ( auto cmdstr : script )
     {
-        std::vector< std::string > tok;
-        std::copy( split.begin( cmdstr ), split.end(), std::back_inserter( tok ) );
+        auto split = brq::splitter( cmdstr, ' ' ); /* FIXME */
+        std::vector< std::string_view > tok;
+        std::copy( split.begin(), split.end(), std::back_inserter( tok ) );
         ui::CLI cli( tok );
         cli._check_files = false;
 
@@ -176,7 +175,7 @@ void execute( std::string script_txt, F... prepare )
         auto cmd = cli.parse( parser );
 
         cmd.match( prepare...,
-                   [&]( Load &l ) { files.emplace_back( l.args[1] , brick::fs::readFile( l.args[0] ) ); },
+                   [&]( Load &l ) { files.emplace_back( l.args[1] , brq::read_file( l.args[0] ) ); },
                    [&]( ui::Cc &cc ) { cc._driver.setupFS( files ); },
                    [&]( ui::WithBC &wbc ) { wbc._cc_driver.setupFS( files ); } );
         cmd.match( [&]( ui::Command &c ) { c.setup(); },
