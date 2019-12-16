@@ -105,20 +105,31 @@ namespace brq
             std::is_same_v< T, cmd_flag::neg_t >;
 
         template< typename arg_t >
-        std::pair< parse_result, int > bind( std::string token, arg_t &arg, int idx )
+        std::tuple< parse_result, int, int > bind( arg_t &arg, int idx, int off )
         {
             if constexpr ( std::is_same_v< arg_t, cmd_flag > ||
                            std::is_same_v< arg_t, cmd_flag::neg_t > )
             {
                 arg = true;
-                return { parse_result(), idx };
+                return { parse_result(), idx, 0 };
             }
             else
-                return { from_string( token, arg ), idx + 1 };
+            {
+                if ( idx >= int( _tokens.size() ) )
+                    return { no_parse( "ran out of arguments" ), 0, 0 };
+
+                std::string token( _tokens[ idx ], off, std::string::npos );
+                return { from_string( token, arg ), idx + 1, 0 };
+            }
         }
 
-        std::tuple< bool, int, int > compare( std::string token, std::string pattern, int idx, int off )
+        std::tuple< bool, int, int > compare( std::string pattern, int idx, int off )
         {
+            if ( idx >= int( _tokens.size() ) )
+                return { false, 0, 0 };
+
+            std::string token( _tokens[ idx ], off, std::string::npos );
+
             if ( _exact && pattern != token )
                 return { false, 0, 0 };
             if ( pattern.size() <= 2 && token.size() > pattern.size() ) // -o
@@ -141,13 +152,12 @@ namespace brq
         template< typename arg_t, typename... args_t >
         match_result match( int idx, int off, arg_t &&a, args_t && ... args )
         {
-            std::string token( _tokens[ idx ], off, std::string::npos );
             parse_result matched = no_parse();
 
             if constexpr ( is_binding< arg_t > ) /* binding-type fragments */
-                std::tie( matched, idx ) = bind( token, a, idx );
+                std::tie( matched, idx, off ) = bind( a, idx, off );
             else /* literal-type fragment, match it against the input token */
-                std::tie( matched, idx, off ) = compare( token, a, idx, off );
+                std::tie( matched, idx, off ) = compare( a, idx, off );
 
             if ( matched )
                 return match( idx, off, std::forward< args_t >( args )... );
