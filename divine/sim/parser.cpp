@@ -24,7 +24,7 @@ namespace divine::sim
 {
     auto parse( cmd_tokens tok )
     {
-        brq::cmd_parser p( tok );
+        brq::cmd_parser p( "", tok );
         using namespace command;
         return p.parse< exit, start, breakpoint, step, stepi, stepa, rewind, backtrace,
                         show, diff, dot, inspect, call, info,
