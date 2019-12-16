@@ -23,6 +23,7 @@
 
 #include <brick-shmem>
 #include <brick-string>
+#include <brick-except>
 
 #ifndef DIVINE_SYSINFO_H
 #define DIVINE_SYSINFO_H
@@ -59,9 +60,9 @@ struct SysInfo {
     std::unique_ptr< Data > _data;
 };
 
-struct ResourceLimit : std::runtime_error
+struct ResourceLimit : brq::error
 {
-    ResourceLimit( std::string x ) : std::runtime_error( "resource exhausted: " + x ) {}
+    ResourceLimit( std::string x ) : brq::error( "resource exhausted: " + x ) {}
 };
 
 struct TimeLimit : ResourceLimit
