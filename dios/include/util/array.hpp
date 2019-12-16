@@ -15,7 +15,7 @@
 namespace __dios {
 
 template < typename T, int PT = _VM_PT_Heap >
-struct Array : brq::derive_order, brq::derive_eq
+struct Array : brq::derive_ord, brq::derive_eq
 {
     using size_type = int;
     using value_type = T;
