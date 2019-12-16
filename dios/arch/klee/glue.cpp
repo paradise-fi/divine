@@ -24,7 +24,7 @@ extern "C" /* platform glue */
 {
     void *__vm_obj_make( int sz, int )
     {
-        uint8_t *mem = klee_malloc( 4100 );
+        uint8_t *mem = klee_malloc( 8196 );
         reinterpret_cast< int * >( mem )[0] = sz;
         return mem + sizeof( int );
     }
@@ -33,7 +33,7 @@ extern "C" /* platform glue */
     void __vm_obj_resize( void *optr, int nsz )
     {
         static_cast< int * >( optr )[ -1 ] = nsz;
-        klee_assume( nsz <= 4096 );
+        klee_assume( nsz <= 8192 );
     }
 
     int __vm_obj_size( const void *ptr )
