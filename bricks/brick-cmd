@@ -273,10 +273,11 @@ namespace brq
         template< typename type >
         void collect( type &s )
         {
-            if ( _pos != _pos_matched )
-                return;
             if ( _mode == mode_pos_help )
                 _pos_help << " {" << names< type >( brq::primary )[ 0 ] << "}*";
+
+            if ( _pos != _pos_matched )
+                return;
 
             if ( _mode == mode_pos_parse )
             {
