@@ -67,11 +67,13 @@ struct SysInfo::Data {
 
 using MaybeStr = std::optional< std::string >;
 
-static MaybeStr matchLine( std::string file, std::regex &r, int matchIndex ) {
+static MaybeStr matchLine( std::string_view file, std::regex &r, int matchIndex )
+{
     std::string line;
     std::smatch match;
-    std::ifstream f( file.c_str() );
-    while ( !f.eof() ) {
+    std::ifstream f( file );
+    while ( !f.eof() )
+    {
         std::getline( f, line );
         if ( std::regex_match( line, match, r ) )
             return match[ matchIndex ].str();
@@ -80,11 +82,10 @@ static MaybeStr matchLine( std::string file, std::regex &r, int matchIndex ) {
 }
 
 #ifdef __linux
-long long procStatusLine( std::string key ) {
-    std::stringstream file;
-    file << "/proc/" << uint64_t( getpid() ) << "/status";
+long long procStatusLine( std::string key )
+{
     std::regex r( key + ":[\t ]*([0-9]+) .*", std::regex::extended );
-    auto m = matchLine( file.str(), r, 1 );
+    auto m = matchLine( brq::format( "/proc/", getpid(), "/status" ), r, 1 );
     if ( m.has_value() )
         return std::atol( m.value().c_str() );
     return 0;
