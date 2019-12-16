@@ -249,7 +249,7 @@ struct CLI
     void prepare( brq::cmd_help ) {}
     void finalize( command::teflon ) { update(); }
     void finalize( command::cast_iron );
-    void finalize( brq::cmd_help );
+    void finalize( brq::cmd_help ) {}
 };
 
 }
