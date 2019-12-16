@@ -446,9 +446,12 @@ namespace brq
             std::copy( argv + 1, argv + argc, std::back_inserter( _tokens ) );
         }
 
-        cmd_option_parser( const std::vector< std::string > &v )
+        template< typename args_t >
+        cmd_option_parser( std::string_view argv_0, const args_t &args, std::string_view help = "" )
+            : _argv_0( argv_0 ), _cmd_help( help )
         {
-            _tokens = v;
+            for ( auto it = args.begin(); it != args.end(); ++it )
+                _tokens.emplace_back( *it );
         }
     };
 
