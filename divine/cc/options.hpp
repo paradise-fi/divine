@@ -15,6 +15,7 @@
  */
 
 #include <divine/cc/filetype.hpp>
+#include <brick-cmd>
 
 namespace divine::cc
 {
@@ -22,7 +23,7 @@ namespace divine::cc
     // Driver options
     struct Options
     {
-        bool dont_link;
+        brq::cmd_flag dont_link;
         bool verbose;
         Options() : Options( false, true ) {}
         Options( bool dont_link, bool verbose ) : dont_link( dont_link ), verbose( verbose ) {}
