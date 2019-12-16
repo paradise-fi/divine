@@ -281,6 +281,23 @@ namespace divine::ui
         void liveness();
         void print_ce( mc::Job &job );
 
+        std::string_view help() override
+        {
+            return "This command is the main work-horse of DIVINE. It takes a program as input, in\n"
+                   "any of the following formats: a C/C++ source file, an LLVM bitcode file (.bc),\n"
+                   "a hybrid ELF binary produced by `dioscc`.\n\n"
+                   "The program is executed in a virtual machine which performs strict checks on\n"
+                   "each executed instruction, thus catching many types of program errors. Just\n"
+                   "as importantly, DIVINE checks *all possible behaviours* of the program (under\n"
+                   "given constraints), facilitating detection of subtle corner cases and hard-to-\n"
+                   "-reproduce concurrency bugs.\n\n"
+                   "When DIVINE finds an error in your program, it will generate a *counterexample*,\n"
+                   "a step-by-step recipe for reproducing the problem, and stores it in a report.\n"
+                   "The report can then be loaded into the interactive simulator (available via\n"
+                   "`divine sim`) for further analysis. A short summary of the problem is also\n"
+                   "printed to the terminal.";
+        }
+
         void options( brq::cmd_options &c ) override
         {
             with_bc::options( c );
@@ -304,6 +321,18 @@ namespace divine::ui
     struct check : verify
     {
         void setup() override;
+
+        std::string_view help() override
+        {
+            return "This is a lightweight version of the 'verify' command, the only difference being\n"
+                   "that 'check' skips exploring certain less-interesting program behaviours. This\n"
+                   "means that it can detect important problems faster, but it provides weaker\n"
+                   "guarantees about program correctness.\n\n"
+                   "Program behaviours which 'check' does not cover are:\n\n"
+                   " - memory allocation failures\n"
+                   " - (the list may be extended in future versions)\n\n"
+                   "Please see 'divine help verify' for additional information.";
+        }
     };
 
     struct exec : with_bc
