@@ -445,7 +445,7 @@ namespace brq
                 _index = _next;
             }
 
-            if ( _pos_matched != _pos )
+            if ( _pos_matched != _pos && !_print_help )
             {
                 _error << "\nsome positional arguments are missing";
                 brq::raise() << "could not parse command" << tabulate( _error.data() );
