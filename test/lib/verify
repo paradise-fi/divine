@@ -117,14 +117,14 @@ if test "$TEST_FLAVOUR" = klee; then
     if test "$skipcc" = 1; then exit 200; fi
     if test -n "$opts" && test "$opts" != "-o nofail:malloc"; then exit 200; fi
     opts=$(echo $opts | sed -e "s,-o ,s:,g")
-    divine cc -o klee-pre.bc "$name" /dios/lib/config/seq.bc -C,-ldios,-lc++abi,-lc,-ldios_klee 
+    divine cc -o klee-pre.bc "$dir/$name" /dios/lib/config/seq.bc -C,-ldios,-lc++abi,-lc,-ldios_klee
     lart klee-pre.bc klee.bc functionmeta
     if klee -entry-point=klee_boot -exit-on-error -output-dir=_klee_out -check-overshift=false \
         klee.bc $opts 2>&1 | tee klee.out;
     then
-        check klee "$name" 0
+        check klee "$dir/$name" 0
     else
-        check klee "$name" 1
+        check klee "$dir/$name" 1
     fi
     exit 0
 fi
