@@ -228,7 +228,7 @@ namespace divine::ui
             c.opt( "--symbolic", _bc_opts.symbolic ) << "enable semi-symbolic data representation";
             c.opt( "--svcomp", _bc_opts.svcomp ) << "work around SV-COMP quirks";
             c.opt( "--dump-bc", _dump_bc ) << "dump the transformed bitcode into a file";
-            c.pos( _bc_opts.input_file );
+            c.pos( _bc_opts.input_file, true );
             c.collect( _useropts );
         }
 
