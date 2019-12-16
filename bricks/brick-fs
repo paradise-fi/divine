@@ -800,7 +800,8 @@ namespace brq
     {
         change_dir( std::string newcwd ) : _oldcwd( getcwd() )
         {
-            chdir( newcwd );
+            if ( !newcwd.empty() )
+                chdir( newcwd );
         }
 
         ~change_dir()
