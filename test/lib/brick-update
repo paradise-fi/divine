@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+system( "make debug-test-bricks" );
+my $dir = `make show var=OBJ`;
+chomp( $dir );
+open LST, "${dir}debug/test-bricks --list|";
+
+my %f;
+
+while ( <LST> )
+{
+    /(.*) [^ ]*brick-(.*)$/;
+    my $src = "test/bricks/$2.bt";
+    my $match = `fgrep "| $1\$" $src 2> /dev/null`;
+    chomp( $match );
+
+    if ( $match )
+    {
+        $f{$2} .= $match;
+    }
+    else
+    {
+        $f{$2} .= "          | $1\n";
+    }
+}
+
+for my $k ( keys %f )
+{
+    my $tags = `fgrep '^common tags:' test/bricks/$k.bt 2> /dev/null`;
+    $tags .= "c++" unless $tags =~ /c\+\+/;
+    $f{$k} = "common tags: $tags\n" . $f{$k};
+}
+
+while ( my ( $k, $v ) = each ( %f ) )
+{
+    print "generating $k\n";
+    open OUT, ">test/bricks/$k.bt";
+    print OUT $v;
+    close OUT;
+}
