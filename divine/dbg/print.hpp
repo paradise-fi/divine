@@ -92,9 +92,8 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     if ( src.empty() )
         src = brq::read_file( di->getFilename() );
 
-    auto split = brq::splitter( src, '\n' );
-
-    auto line = split.begin();
+    auto split_src = brq::splitter( src, '\n' );
+    auto line = split_src.begin();
     unsigned lineno = 1, active = 0;
     while ( lineno < di->getLine() )
         ++ line, ++ lineno;
@@ -121,10 +120,10 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     brq::string_builder raw;
 
     /* print it */
-    while ( line != split.end() && lineno++ <= endline )
+    while ( line != split_src.end() && lineno++ <= endline )
         raw << *line++ << "\n";
 
-    if ( line != split.end() )
+    if ( line != split_src.end() )
     {
         std::regex endbrace( "^[ \t]*}", std::regex::extended );
         if ( std::regex_search( std::string( *line ), endbrace ) )
@@ -132,15 +131,15 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     }
 
     std::string txt = postproc( raw.buffer() );
-
-    auto line2 = split.begin();
+    auto split_fun = brq::splitter( txt, '\n' );
+    auto line_fun = split_fun.begin();
     endline = lineno;
     lineno = startline;
 
-    while ( line2 != split.end() && lineno <= endline )
+    while ( line_fun != split_fun.end() && lineno <= endline )
     {
         out << (lineno == active ? ">>" : "  ");
-        out << brq::pad( 5 ) << lineno++ << brq::mark << " " << *line2++ << "\n";
+        out << brq::pad( 5 ) << lineno++ << brq::mark << " " << *line_fun++ << "\n";
     }
 
     return std::string( out.data() );
