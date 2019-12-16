@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstring>
+#include <cstdlib>
 #include <cctype>
 #include <string_view>
 #include <charconv>
@@ -65,7 +66,7 @@ namespace brq
         }
 
         string_builder() noexcept : _capacity( 0 ), _offset( 0 ), _hex( false ), _oom( false ) {}
-        ~string_builder() noexcept { free( _buffer ); }
+        ~string_builder() noexcept { std::free( _buffer ); }
 
         char *pointer() noexcept { return _buffer + _offset; }
         char *buffer_end() noexcept { return _buffer + _capacity - 1; }
@@ -81,7 +82,7 @@ namespace brq
 
         void clear()
         {
-            free( _buffer );
+            std::free( _buffer );
             _buffer = nullptr;
             _capacity = _offset = 0;
             _hex = _oom = false;
@@ -95,7 +96,7 @@ namespace brq
                 return true;
 
             int new_capacity = _capacity + std::max( _capacity / 2, sz + 1 );
-            void *mem = realloc( _buffer, new_capacity );
+            void *mem = std::realloc( _buffer, new_capacity );
             if ( mem )
             {
                 _buffer = static_cast< char * >( mem );
