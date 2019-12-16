@@ -12,7 +12,7 @@ test -n "$TODO" && todo= && extra="--tags todo"
 
 klee=klee
 klee=$klee:lang-c,!threads,!setjmp,!const,!lifetime
-klee=$klee:libcxx,!threads,!exception
+klee=$klee:libcxx,!threads,!exception,!sigaction
 klee=$klee:fs,!threads,!c++,!capture
 klee=$klee:sock,!threads
 klee=$klee:libc,!divcc
