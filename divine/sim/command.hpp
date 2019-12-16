@@ -75,7 +75,7 @@ namespace divine::sim::command
 
         void options( brq::cmd_options &o ) override
         {
-            o.pos( var );
+            o.collect( var );
         }
     };
 
@@ -90,7 +90,7 @@ namespace divine::sim::command
         void options( brq::cmd_options &c ) override
         {
             base::options( c );
-            c.pos( opt );
+            c.collect( opt );
         }
     };
 
@@ -136,7 +136,7 @@ namespace divine::sim::command
             c.section( "Breakpoint Options" );
             c.opt( "--list", list ) << "print currently active breakpoints";
             c.opt( "--delete", del ) << "delete the designated breakpoint(s)";
-            c.pos( where );
+            c.collect( where );
         }
     };
 
@@ -173,7 +173,7 @@ namespace divine::sim::command
         void options( brq::cmd_options &c ) override
         {
             base::options( c );
-            c.pos( vars );
+            c.collect( vars );
         }
     };
 
@@ -239,7 +239,7 @@ namespace divine::sim::command
             base::options( c );
             c.section( "Scheduling Options" );
             c.opt( "--random", random ) << "pick the thread to run randomly";
-            c.pos( spec );
+            c.collect( spec );
         }
     };
 
