@@ -24,7 +24,6 @@
 using namespace divine::ui;
 using namespace divine::ui::odbc;
 
-using brick::string::fmt_container;
 using brick::types::Union;
 
 extern const char *DIVINE_VERSION;
@@ -50,10 +49,19 @@ void bind_vals( statement &stmt, Vals &vals )
 statement insert( connection conn, std::string table, Keys keys, Vals &vals )
 {
     std::stringstream q;
-    q << "insert into " << table << " "
-      << fmt_container( keys, "(", ")" )
-      << " values "
-      << fmt_container( Keys( keys.size(), "?" ), "(", ")" );
+    q << "insert into " << table << " ";
+    int i = 0;
+
+    for ( auto k : keys )
+        q << ( i++ ? ", " : "( " ) << k;
+
+    q << " ) values ";
+    i = 0;
+
+    for ( auto k : keys )
+        q << ( i++ ? ", " : "( " ) << "?";
+    q << " )";
+
     statement s( conn, q.str() );
     bind_vals( s, vals );
     return s;
@@ -62,12 +70,14 @@ statement insert( connection conn, std::string table, Keys keys, Vals &vals )
 statement select_id( connection conn, std::string table, Keys keys, Vals &vals )
 {
     std::stringstream q;
+    int i = 0;
 
     for ( auto &key : keys )
         key += " = ?";
 
-    q << "select min( id ) from " << table << " where "
-      << fmt_container( keys, "", "", " AND " );
+    q << "select min( id ) from " << table << " where ";
+    for ( auto k : keys )
+        q << ( i++ ? " AND " : "" ) << k;
 
     statement s( conn, q.str() );
     bind_vals( s, vals );
