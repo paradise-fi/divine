@@ -430,7 +430,7 @@ namespace brq
                     _mode = mode_pos_parse;
                     _pos = 0;
                     cmd.options( *this );
-                    if ( _matches )
+                    if ( _matches && _pos_matched < _pos )
                         _pos_matched ++;
                 }
 
