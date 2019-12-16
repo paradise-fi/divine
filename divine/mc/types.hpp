@@ -21,6 +21,7 @@
 #include <divine/vm/types.hpp>
 #include <brick-mem>
 #include <brick-hashset>
+#include <brick-string>
 #include <optional>
 
 namespace divine::mc
@@ -38,6 +39,16 @@ namespace divine::mc
             case Result::Error: return o << "error found: yes";
             case Result::BootError: return o << "error found: boot";
         }
+    }
+
+    static brq::parse_result from_string( std::string_view s, Result &r )
+    {
+        if      ( s == "valid" ) r = Result::Valid;
+        else if ( s == "error" ) r = Result::Error;
+        else if ( s == "boot-error" ) r = Result::BootError;
+        else return brq::no_parse( "expected 'valid', 'error' or 'boot-error'" );
+
+        return {};
     }
 
     struct Trace
