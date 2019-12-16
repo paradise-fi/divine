@@ -98,6 +98,7 @@ namespace brq
     struct cmd_option_matcher
     {
         std::vector< std::string > _tokens;
+        bool _exact;
 
         template< typename T > static constexpr bool is_binding =
             ( std::is_lvalue_reference_v< T > && !std::is_const_v< std::remove_reference_t< T > > ) ||
@@ -118,6 +119,8 @@ namespace brq
 
         std::tuple< bool, int, int > compare( std::string token, std::string pattern, int idx, int off )
         {
+            if ( _exact && pattern != token )
+                return { false, 0, 0 };
             if ( pattern.size() <= 2 && token.size() > pattern.size() ) // -o
                 return { brq::starts_with( token, pattern ), idx, off + pattern.size() };
             if ( std::isalpha( pattern.back() ) || std::isblank( pattern.back() ) )
@@ -403,9 +406,16 @@ namespace brq
             {
                 _matches = 0;
                 _mode = mode_opt_parse;
+                _exact = true;
                 cmd.options( *this );
 
-                if ( _matches == 0 )
+                if ( _matches == 0 ) /* try partial matches */
+                {
+                    _exact = false;
+                    cmd.options( *this );
+                }
+
+                if ( _matches == 0 ) /* nope; try positional arguments */
                 {
                     _mode = mode_pos_parse;
                     _pos = 0;
@@ -462,7 +472,7 @@ namespace brq
         {
             if constexpr ( cmds_t::empty )
             {
-                if ( _matches == 0 )
+                if ( _matches == 0 && !_exact )
                     brq::raise() << "no match for command '" << _tokens.front() << "'";
                 if ( _matches > 1 )
                     brq::raise() << "ambiguous command '" << _tokens.front() << "'";
@@ -474,8 +484,12 @@ namespace brq
 
                 bool match = false;
                 for ( auto n : names< cmd_t >( brq::primary ) )
-                    if ( brq::starts_with( n, _tokens.front() ) )
+                {
+                    if ( _exact && n == _tokens.front() )
                         match = true;
+                    if ( !_exact && brq::starts_with( n, _tokens.front() ) )
+                        match = true;
+                }
 
                 if ( match )
                     ++ _matches;
@@ -548,7 +562,14 @@ namespace brq
             if ( !_tokens.empty() )
             {
                 _index = 1;
+                _matches = 0;
+                _exact = true;
                 rv = std::move( cmd_match< rv_t, list_t >() );
+                if ( !_matches )
+                {
+                    _exact = false;
+                    rv = std::move( cmd_match< rv_t, list_t >() );
+                }
             }
 
             rv.match( update_help );
