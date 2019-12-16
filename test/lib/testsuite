@@ -35,7 +35,6 @@ native=$native:lang-c,!threads,!lifetime
     --flavour smtlib:sym,min \
     --flavour vanilla:!sym \
     --flavour $klee \
-    --flavour $native \
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
     --workdir . --outdir results \
