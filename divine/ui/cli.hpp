@@ -219,6 +219,7 @@ namespace divine::ui
             c.flag( "--static-reduction", _bc_opts.static_reduction )
                  << "transform for smaller state space [default: yes]";
             c.opt( "--autotrace",      _bc_opts.autotrace );
+            c.opt( "--leakcheck",      _bc_opts.leakcheck );
             c.opt( "--sequential",     _bc_opts.sequential );
             c.opt( "--synchronous",    _bc_opts.synchronous );
             c.opt( "--relaxed-memory", _bc_opts.relaxed );
