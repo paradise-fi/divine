@@ -3,7 +3,9 @@
 #include <dios.h>
 #include <assert.h>
 
-int main() {
+int main()
+{
+    errno = 0;
     assert( errno == 0 );
     errno = 42;
     assert( errno == 42 );
