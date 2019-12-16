@@ -85,12 +85,15 @@ void create_explicit_calls(
     auto func =
         llvm::dyn_cast< llvm::Function >( module.getOrInsertFunction( name, f_type ) );
 
-    auto entry = llvm::BasicBlock::Create( ctx, "entry", func );
-    llvm::IRBuilder<> irb{ entry };
+    auto block = llvm::BasicBlock::Create( ctx, "entry", func );
+    llvm::IRBuilder<> irb{ block };
 
     for ( auto& entry : entries )
     {
-        irb.CreateCall( entry.func );
+        std::vector< llvm::Value * > args;
+        for ( auto &a : entry.func->args() )
+            args.push_back( llvm::UndefValue::get( a.getType() ) );
+        irb.CreateCall( entry.func, args );
     }
     irb.CreateRetVoid();
 }
