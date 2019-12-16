@@ -162,7 +162,7 @@ namespace brq
             if ( matched )
                 return match( idx, off, std::forward< args_t >( args )... );
             else
-                return { std::move( matched ), 0 };
+                return { is_binding< arg_t > ? matched : parse_result(), 0 };
         }
     };
 
@@ -265,7 +265,7 @@ namespace brq
             {
                 if ( auto pr = from_string( _tokens[ _index ], s ) )
                     _opt_matched( 1, s );
-                else if ( !pr.error().empty() )
+                else
                     _error << "\n" << pr.error();
             }
         }
@@ -282,7 +282,7 @@ namespace brq
             {
                 if ( auto pr = from_string( _tokens[ _index ], s ) )
                     _opt_matched( 1, s );
-                else if ( !pr.error().empty() )
+                else
                     _error << "\n" << pr.error();
             }
         }
@@ -305,7 +305,7 @@ namespace brq
                 auto [ pr, m ] = match( _index, 0, std::forward< args_t >( args )... );
                 if ( m )
                     _opt_matched( m - _index, args... );
-                else if ( !pr.error().empty() )
+                else if ( !pr )
                     _error << "\n" << pr.error();
             }
 
