@@ -203,9 +203,9 @@ namespace divine::ui
         {
             command::options( c );
             c.section( "Compiler Options" );
-            c.opt( "-C,", _ccOpts );
-            c.opt( "-std=", _std );
-            c.opt( "-l", _linkLibs );
+            c.opt( "-C,", _ccOpts ) << "pass additional options to the compiler";
+            c.opt( "-std=", _std ) << "set the C/C++ standard to use";
+            c.opt( "-l", _linkLibs ) << "link additional libraries, e.g. -lm for libm";
 
             c.section( "Execution Environment" );
             c.opt( "-D", _env ) << "set an environment variable";
@@ -218,14 +218,15 @@ namespace divine::ui
             c.section( "Bitcode Transforms" );
             c.flag( "--static-reduction", _bc_opts.static_reduction )
                  << "transform for smaller state space [default: yes]";
-            c.opt( "--autotrace",      _bc_opts.autotrace );
-            c.opt( "--leakcheck",      _bc_opts.leakcheck );
-            c.opt( "--sequential",     _bc_opts.sequential );
-            c.opt( "--synchronous",    _bc_opts.synchronous );
-            c.opt( "--relaxed-memory", _bc_opts.relaxed );
-            c.opt( "--lart",           _bc_opts.lart_passes );
-            c.opt( "--symbolic",       _bc_opts.symbolic );
-            c.opt( "--svcomp",         _bc_opts.svcomp );
+            c.opt( "--autotrace",      _bc_opts.autotrace ) << "trace function calls";
+            c.opt( "--leakcheck",      _bc_opts.leakcheck ) << "insert memory leak checks";
+            c.opt( "--sequential",     _bc_opts.sequential ) << "disable support for threading";
+            c.opt( "--synchronous",    _bc_opts.synchronous ) << "enable synchronous mode";
+            c.opt( "--relaxed-memory", _bc_opts.relaxed )
+                << "allow memory operation reordering (x86[:depth] or tso[:depth])";
+            c.opt( "--lart", _bc_opts.lart_passes ) << "run additional LART passes";
+            c.opt( "--symbolic", _bc_opts.symbolic ) << "enable semi-symbolic data representation";
+            c.opt( "--svcomp", _bc_opts.svcomp ) << "work around SV-COMP quirks";
             c.opt( "--dump-bc", _dump_bc ) << "dump the transformed bitcode into a file";
             c.pos( _bc_opts.input_file );
             c.collect( _useropts );
@@ -284,19 +285,19 @@ namespace divine::ui
         {
             with_bc::options( c );
             c.section( "Verification Options" );
-            c.opt( "--threads", _threads );
-            c.opt( "--max-memory", _max_mem );
-            c.opt( "--max-time", _max_time );
-            c.opt( "--liveness", _liveness );
-            c.opt( "--solver", _solver );
+            c.opt( "--threads", _threads ) << "number of worker threads to use";
+            c.opt( "--max-memory", _max_mem ) << "set a memory limit";
+            c.opt( "--max-time", _max_time ) << "set a time limit (in seconds)";
+            c.opt( "--liveness", _liveness ) << "enable verification of liveness properties";
+            c.opt( "--solver", _solver ) << "select a constraint solver to use in --symbolic mode";
 
             c.section( "Reporting" );
-            c.opt( "--report", _report );
-            c.flag( "--report-file", _do_report_file );
-            c.flag( "--counterexample", _counterexample );
-            c.opt( "--report-unique", _report_unique );
-            c.opt( "--report-filename", _report_filename );
-            c.opt( "--num-callers", _num_callers );
+            c.opt( "--report", _report ) << "type of report to print";
+            c.flag( "--report-file", _do_report_file ) << "write the report into a file [yes]";
+            c.flag( "--counterexample", _counterexample ) << "generate a counterexample [yes]";
+            c.opt( "--report-unique", _report_unique ) << "generate a unique name for the report [no]";
+            c.opt( "--report-filename", _report_filename ) << "use the specified file name";
+            c.opt( "--num-callers", _num_callers ) << "number of frames to print in backtraces [10]";
         }
     };
 
@@ -316,8 +317,8 @@ namespace divine::ui
         {
             with_bc::options( c );
             c.section( "Exec Options" );
-            c.opt( "--virtual", _virtual );
-            c.opt( "--trace", _trace );
+            c.opt( "--virtual", _virtual ) << "simulate system calls instead of executing them";
+            c.opt( "--trace", _trace ) << "print instructions as they are executed";
         }
     };
 
@@ -330,9 +331,9 @@ namespace divine::ui
         {
             with_bc::options( c );
             c.section( "Sim Options" );
-            c.opt( "--batch", _batch );
-            c.opt( "--load-report", _load_report );
-            c.opt( "--skip-init", _skip_init );
+            c.opt( "--batch", _batch ) << "disable interactive features";
+            c.opt( "--load-report", _load_report ) << "load a counterexample from a report";
+            c.opt( "--skip-init", _skip_init ) << "do not load ~/.divine/sim.init";
         }
 
 #if OPT_SIM
@@ -362,8 +363,8 @@ namespace divine::ui
         {
             with_bc::options( c );
             c.section( "Draw Options" );
-            c.opt( "--distance", _distance );
-            c.opt( "--render", _render );
+            c.opt( "--distance", _distance ) << "maximum distance from the initial state [32]";
+            c.opt( "--render", _render ) << "command to pipe the 'dot' output into [dot -Tx11]";
         }
     };
 
@@ -384,10 +385,10 @@ namespace divine::ui
         void options( brq::cmd_options &c ) override
         {
             command::options( c );
-            c.opt( "-c", _opts.dont_link );
-            c.opt( "--dont-link", _opts.dont_link );
-            c.opt( "-o", _output );
-            c.opt( "-C,", _passThroughFlags );
+            c.opt( "-c", _opts.dont_link ) << "compile but do not link";
+            c.opt( "--dont-link", _opts.dont_link ) << "alias for the above";
+            c.opt( "-o", _output ) << "write the output into a given file";
+            c.opt( "-C,", _passThroughFlags ) << "pass additional options to the compiler";
             c.collect( _flags );
         }
     };
