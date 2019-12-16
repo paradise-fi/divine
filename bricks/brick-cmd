@@ -370,6 +370,7 @@ namespace brq
         string_builder &format_help( cmd_t &c, bool synopsis_only )
         {
             _mode = mode_pos_help;
+            _pos = 0;
             _pos_help.clear();
             _help._oom = true;
             c.options( *this );
