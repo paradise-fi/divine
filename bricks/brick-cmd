@@ -227,6 +227,7 @@ namespace brq
         int _matches = 0;
         int _index = 0, _next = 0;
         int _pos = 0, _pos_matched = 0;
+        bool _pos_only = false;
         brq::string_builder _error;
 
         template< typename... args_t >
@@ -243,17 +244,23 @@ namespace brq
 
         void help( std::string pattern )
         {
-            if ( _mode == mode_opt_parse && _tokens[ _index ] == pattern )
+            if ( _mode == mode_opt_parse && _tokens[ _index ] == pattern && !_pos_only )
                 _opt_matched( 1, pattern ), _print_help = true;
+        }
+
+        void final( std::string pattern )
+        {
+            if ( _mode == mode_opt_parse && _tokens[ _index ] == pattern && !_pos_only )
+                _opt_matched( 1, pattern ), _pos_only = true;
         }
 
         /* Declare a positional argument. Those are matched in the order in
          * which pos() is called and are only tried if no opt() or flag() match
-         * the given argument. Passing `--` as an argument will force the
-         * remainder to be treated as positional arguments. */
+         * the given argument. After a 'final' positional agrument is matched,
+         * everything that remains will be treated as positional arguments. */
 
         template< typename type >
-        void pos( type &s )
+        void pos( type &s, bool final = false )
         {
             if ( _pos++ != _pos_matched )
                 return;
@@ -264,7 +271,7 @@ namespace brq
             if ( _mode == mode_pos_parse )
             {
                 if ( auto pr = from_string( _tokens[ _index ], s ) )
-                    _opt_matched( 1, s );
+                    _opt_matched( 1, s ), _pos_only = _pos_only || final;
                 else
                     _error << "\n" << pr.error();
             }
@@ -301,7 +308,7 @@ namespace brq
                 opt_help( _help, std::forward< args_t >( args )... );
             }
 
-            if ( _mode == mode_opt_parse )
+            if ( _mode == mode_opt_parse && !_pos_only )
             {
                 auto [ pr, m ] = match( _index, 0, std::forward< args_t >( args )... );
                 if ( m )
@@ -420,6 +427,7 @@ namespace brq
             _help.kill(); /* turn << into noops */
             _pos_help.kill();
             _pos_matched = 0;
+            _pos_only = false;
 
             while ( _index < int( _tokens.size() ) )
             {
