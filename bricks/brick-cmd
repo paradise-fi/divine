@@ -347,7 +347,14 @@ namespace brq
     {
         std::string _cmd;
         std::string _help;
-        void run() override { std::cerr << tabulate( _help ); }
+        std::string _error;
+
+        void run() override
+        {
+            std::cerr << tabulate( _help );
+            if ( !_error.empty() )
+                raise() << _error;
+        }
 
         void options( cmd_options &o ) override
         {
@@ -355,7 +362,7 @@ namespace brq
         }
 
         static std::array< std::string, 1 > names() { return { "help" }; }
-        cmd_help( std::string_view s = "" ) : _help( s ) {}
+        cmd_help( std::string_view s = "", std::string_view err = "" ) : _help( s ), _error( err ) {}
     };
 
     struct cmd_option_parser : protected cmd_options
@@ -530,6 +537,7 @@ namespace brq
             cons_list_t< cmds_t... > cmds;
             _help.clear();
             _mode = mode_opt_help;
+            int matches = 0;
 
             if ( h._cmd.empty() )
                 _help << "\nSYNOPSIS\n\n";
@@ -539,7 +547,7 @@ namespace brq
                 if ( h._cmd.empty() )
                     _help << "  $ ", format_help( c, true ) << "\n";
                 else if ( brq::starts_with( cmd_name( c ), h._cmd ) )
-                    format_help( c, false );
+                    format_help( c, false ), ++ matches;
             };
 
             cmds.each( print );
@@ -553,6 +561,12 @@ namespace brq
 
             if ( h._cmd.empty() )
                 _help << "\n";
+
+            if ( !h._cmd.empty() && !matches )
+            {
+                help_commands< cmds_t... >();
+                return cmd_help( _help.data(), format( "unknown command ", h._cmd ) );
+            }
 
             return cmd_help( _help.data() );
         }
