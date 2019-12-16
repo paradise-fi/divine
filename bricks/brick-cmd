@@ -412,7 +412,7 @@ namespace brq
             _pos_help.kill();
             _pos_matched = 0;
 
-            while ( _index < _tokens.size() )
+            while ( _index < int( _tokens.size() ) )
             {
                 _matches = 0;
                 _mode = mode_opt_parse;
