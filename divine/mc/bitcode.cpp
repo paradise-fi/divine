@@ -84,26 +84,23 @@ std::string to_string( AutoTraceFlags lf, bool yaml )
         return out;
 }
 
-LeakCheckFlags leakcheck_from_string( std::string x )
+brq::parse_result from_string( std::string_view x, mc::LeakCheck &lc )
 {
-    if ( x == "return" )
-        return mc::LeakCheck::Return;
-    if ( x == "state" )
-        return mc::LeakCheck::State;
-    if ( x == "exit" )
-        return mc::LeakCheck::Exit;
+    if      ( x == "return" ) lc = LeakCheck::Return;
+    else if ( x == "state" )  lc = LeakCheck::State;
+    else if ( x == "exit" )   lc = LeakCheck::Exit;
+    else return brq::no_parse( "expected 'return', 'state' or 'exit'" );
 
-    return mc::LeakCheck::Nothing;
+    return {};
 }
 
-AutoTraceFlags autotrace_from_string( std::string x )
+brq::parse_result from_string( std::string_view x, AutoTrace &fl  )
 {
-    if ( x == "calls" )
-        return mc::AutoTrace::Calls;
-    if ( x == "allocs" )
-        return mc::AutoTrace::Allocs;
+    if      ( x == "calls" )  fl = AutoTrace::Calls;
+    else if ( x == "allocs" ) fl = AutoTrace::Allocs;
+    else return brq::no_parse( "expected 'calls' or 'allocs'" );
 
-    return mc::AutoTrace::Nothing;
+    return {};
 }
 
 void BitCode::lazy_link_dios()
@@ -297,12 +294,10 @@ BCOptions BCOptions::from_report( brick::yaml::Parser &parsed )
     opts.dios_config = "default";
     opts.dios_config = parsed.getOr( { "dios config" }, opts.dios_config );
 
-    auto lf_flags = LeakCheckFlags();
     auto leakcheck = std::vector< std::string >();
     leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );
     for ( auto s : leakcheck )
-        lf_flags |= mc::leakcheck_from_string( s );
-    opts.leakcheck = lf_flags;
+        from_string( s, opts.leakcheck );
 
     opts.input_file = parsed.get< brq::cmd_file >( { "input file" } );
 
