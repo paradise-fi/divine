@@ -89,4 +89,11 @@ extern "C" /* platform glue */
         return rv;
     }
 
+    uint32_t __vm_peek( void *, int )
+    {
+        return 0;
+    }
+
+    void __vm_poke( void *, int, uint32_t ) {}
+
 }
