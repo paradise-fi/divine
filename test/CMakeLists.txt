@@ -37,4 +37,4 @@ add_custom_target( functional
 )
 
 add_executable( runner lib/runner.cpp )
-add_dependencies( functional divine llvm-utils divcc dioscc divcheck )
+add_dependencies( functional divine llvm-utils divcc dioscc divcheck lart )
