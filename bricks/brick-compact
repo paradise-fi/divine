@@ -24,7 +24,7 @@
 #include <functional>
 
 #include "brick-assert"
-#include "brick-types"
+#include "brick-order"
 
 namespace brq
 {
@@ -102,7 +102,7 @@ namespace brq
     };
 
     template< typename key_t, typename sort = std_sort<>, typename container = std::vector< key_t > >
-    struct array_set : brick::types::Ord
+    struct array_set : derive_eq, derive_ord
     {
         using cmp = typename sort::cmp;
         using key_type = key_t;
