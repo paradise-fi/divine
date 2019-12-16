@@ -10,6 +10,7 @@
 #include <sys/cdefs.h>
 #include <dios/sys/kernel.hpp> // get_debug
 #include <rst/common.hpp>
+#include <brick-types>
 
 #define _WM_INLINE __attribute__((__always_inline__, __flatten__))
 #define _WM_NOINLINE __attribute__((__noinline__))
