@@ -1,4 +1,4 @@
-/* TAGS: c++ fin */
+/* TAGS: c++ fin sigaction */
 /* CC_OPTS: -std=c++2a */
 /* VERIFY_OPTS: -o nofail:malloc */
 //===----------------------------------------------------------------------===//
