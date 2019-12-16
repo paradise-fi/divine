@@ -242,7 +242,7 @@ namespace brq
         template< typename type >
         void pos( type &s )
         {
-            if ( _pos++ < _pos_matched )
+            if ( _pos++ != _pos_matched )
                 return;
 
             if ( _mode == mode_pos_help )
@@ -251,7 +251,7 @@ namespace brq
             if ( _mode == mode_pos_parse )
             {
                 if ( auto pr = from_string( _tokens[ _index ], s ) )
-                    _opt_matched( 1, s ), ++ _pos_matched;
+                    _opt_matched( 1, s );
                 else if ( !pr.error().empty() )
                     _error << "\n" << pr.error();
             }
@@ -260,7 +260,7 @@ namespace brq
         template< typename type >
         void collect( type &s )
         {
-            if ( _pos < _pos_matched )
+            if ( _pos != _pos_matched )
                 return;
             if ( _mode == mode_pos_help )
                 _pos_help << " {" << names< type >( brq::primary )[ 0 ] << "}*";
@@ -410,6 +410,8 @@ namespace brq
                     _mode = mode_pos_parse;
                     _pos = 0;
                     cmd.options( *this );
+                    if ( _matches )
+                        _pos_matched ++;
                 }
 
                 if ( _matches == 0 )
