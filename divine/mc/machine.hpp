@@ -313,13 +313,14 @@ namespace divine::mc::machine
         {
             if ( this->context().flags_any( _VM_CF_Cancel ) )
                 return false;
-            if ( this->context()._assume.null() )
-                return true;
 
-            if ( this->_solver.feasible( this->context().heap(), this->context()._assume ) )
-                return true;
-            else
-                return this->context().flags_set( 0, _VM_CF_Cancel ), false;
+            auto vec = std::move( this->context()._assume );
+
+            for ( auto a : vec )
+                if ( !this->_solver.feasible( this->context().heap(), a ) )
+                    return this->context().flags_set( 0, _VM_CF_Cancel ), false;
+
+            return true;
         }
 
         void snap_put( Snapshot s )

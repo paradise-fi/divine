@@ -27,12 +27,12 @@ namespace divine::mc
     template< typename next >
     struct ctx_assume_ : next
     {
-        vm::HeapPointer _assume;
+        std::vector< vm::HeapPointer > _assume;
 
         using next::trace;
         void trace( vm::TraceAssume ta )
         {
-            _assume = ta.ptr;
+            _assume.push_back( ta.ptr );
             if ( this->debug_allowed() )
             {
                 brick::smt::Context ctx;
