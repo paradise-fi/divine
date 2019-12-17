@@ -88,6 +88,8 @@ struct Types
     HeapPointer emit( Heap &h )
     {
         int sz = _types.size() * sizeof( _VM_TypeTable );
+        if ( !sz )
+            sz = 1;
         auto rv = h.make( sz );
         auto w = rv.cooked();
         CharV nil( 0 );
