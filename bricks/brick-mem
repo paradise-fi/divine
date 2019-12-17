@@ -276,6 +276,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         void valgrind_alloc( Pointer p, const char *mem, int size )
         {
             VALGRIND_MALLOCLIKE_BLOCK( mem, size, 0, 1 );
+            ASSERT_LT( p.slab(), blockcount );
+            ASSERT_LT( p.chunk(), block[ p.slab() ]->total );
 
             VHandle *h = vhandles[ p.slab() ], *alloc;
             if ( !h )
@@ -558,6 +560,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
     Pointer allocate( int size )
     {
+        ASSERT( size );
         Pointer p;
         bool clear = false;
 
