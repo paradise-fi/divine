@@ -294,7 +294,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             VALGRIND_DISCARD( h[ p.chunk() ].handle );
             h[ p.chunk() ].handle =
                 VALGRIND_CREATE_BLOCK( mem, size,
-                                       brq::format( "blob ", p.slab(), p.chunk(), " @ ", mem ).buffer() );
+                                       brq::format( "blob ", p.slab(), p.chunk(), " @ ",
+                                       static_cast< const void * >( mem ) ).buffer() );
             h[ p.chunk() ].allocated = true;
         }
 
@@ -309,7 +310,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             VALGRIND_DISCARD( vhandles[ p.slab() ][ p.chunk() ].handle );
             vhandles[ p.slab() ][ p.chunk() ].handle =
                 VALGRIND_CREATE_BLOCK( mem, size,
-                                       brq::format( "blob ", p.slab(), p.chunk(), " @ ", mem ).buffer() );
+                                       brq::format( "blob ", p.slab(), p.chunk(), " @ ",
+                                       static_cast< const void * >( mem ) ).buffer() );
             vhandles[ p.slab() ][ p.chunk() ].allocated = false;
         }
 
