@@ -32,7 +32,10 @@ __local_invisible void *malloc( size_t size )
     if ( ok && size > 0 )
         return __vm_obj_make( size, _VM_PT_Heap ); // success
     else
+    {
+        errno = ENOMEM;
         return NULL; // failure
+    }
 }
 
 void __dios_check_free( void * );
@@ -81,8 +84,10 @@ void *realloc( void *orig, size_t size )
             __vm_obj_free( orig );
         }
         r = n;
-    } else
+    } else {
+        errno = ENOMEM;
         r = NULL; // failure
+    }
     __dios_mask( masked );
     return r;
 }
