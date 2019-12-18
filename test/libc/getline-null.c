@@ -1,3 +1,4 @@
+/* TAGS: c */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <assert.h>
