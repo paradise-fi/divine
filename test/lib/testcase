@@ -29,7 +29,7 @@ chmod +x lib/check lib/run lib/sim lib/ordgrep lib/verify
 
 draw() { divine draw --render cat "$@"; }
 
-PATH="$PWD/lib:$TOOLS:$TOOLS/../llvm/bin:$PATH"
+PATH="$PWD/lib:$TOOLS:$TOOLS/../llvm/bin:$TOOLS/../clang/bin:$PATH"
 extracheck=:
 export cesmiext=.so
 test "$WIN32" = 1 && cesmiext=.dll
