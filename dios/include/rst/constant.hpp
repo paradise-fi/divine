@@ -5,6 +5,7 @@
 #include <rst/base.hpp>
 
 #include <variant>
+#include <brick-assert>
 
 namespace __dios::rst::abstract {
 
