@@ -33,7 +33,9 @@ native=$native:lang-c,!threads,!lifetime
     --flavour z3:sym,!float,!z3skip \
     --flavour stp:sym,!float \
     --flavour smtlib:sym,min \
-    --flavour vanilla:!sym \
+    --flavour vanilla:!sym,!compile \
+    --flavour $klee \
+    --flavour mcsema:compile \
     --skip "[.]pkg/,[.]helper[.]" \
     --exclude-tags attic$todo \
     --workdir . --outdir results \
