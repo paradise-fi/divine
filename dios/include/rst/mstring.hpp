@@ -5,7 +5,7 @@
 #include <rst/scalar.hpp>
 
 #include <util/array.hpp>
-#include <bricks/brick-ptr>
+#include <brick-ptr>
 
 namespace __dios::rst::abstract {
 
@@ -34,6 +34,9 @@ namespace __dios::rst::abstract {
 
         struct data_t : brq::refcount_base< uint16_t, false /* atomic */ >
         {
+            static void* operator new( size_t s ) noexcept { return __vm_obj_make( s, _VM_PT_Heap ); }
+            static void operator delete( void *p ) noexcept { return __vm_obj_free( p ); }
+
             values_t values;
             bounds_t bounds;
             abstract_value_t size; // index_t
