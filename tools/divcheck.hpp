@@ -160,18 +160,9 @@ struct TraceExpectation : Expectation
                     ++ _trace_matches;
     }
 
-    void run() override {}
-    void options( brq::cmd_options &c ) override
-    {
-        c.opt( "--result", _result );
-        c.opt( "--symbol", _symbol );
-        c.opt( "--location", _location );
-        c.opt( "--trace-count", _trace_count );
-        c.opt( "--trace", _trace );
-    }
 };
 
-struct expect : ui::CompositeMixin< Expect >, brq::cmd_base
+struct expect : ui::CompositeMixin< expect >, brq::cmd_base
 {
     std::string _cmd;
     ResultExpectation _result;
@@ -212,6 +203,16 @@ struct expect : ui::CompositeMixin< Expect >, brq::cmd_base
         for ( auto e: expectations() )
             l( e );
     }
+
+    void run() override {}
+    void options( brq::cmd_options &c ) override
+    {
+        c.opt( "--result", _result._result );
+        c.opt( "--symbol", _backtrace._symbol );
+        c.opt( "--location", _backtrace._location );
+        c.opt( "--trace-count", _trace._trace_count );
+        c.opt( "--trace", _trace._trace );
+    }
 };
 
 struct load : brq::cmd_base
@@ -248,7 +249,7 @@ void execute( std::string script_txt, F... prepare )
 {
     auto script = parse( script_txt );
 
-    std::vector< std::shared_ptr< Expect > > expects;
+    std::vector< std::shared_ptr< expect > > expects;
     std::vector< std::pair< std::string, std::string > > files;
 
     for ( auto cmdstr : script )
@@ -290,7 +291,7 @@ void execute( std::string script_txt, F... prepare )
                        e._cmd = cmdstr;
                        expects.emplace_back( std::make_shared< expect >( std::move( e ) ) );
                    } );
-        cmd.match( [&]( ui::WithBC &cmd ) { prepare_expects( cmd ); } );
+        cmd.match( [&]( ui::with_bc &cmd ) { prepare_expects( cmd ); } );
         cmd.match( [&]( ui::command &c ) { c.run(); } );
         cmd.match( [&]( ui::with_bc &cmd ) { check_expects(); } );
     }
