@@ -145,7 +145,27 @@ void CLI::go( command::show cmd )
     }
 }
 
-void CLI::go( command::Diff cmd )
+void CLI::go( command::tamper cmd )
+{
+    auto dn = get( cmd.var );
+    out() << "Tamper with " << cmd.var << ":\n";
+    dn.format( out() );
+
+    llvm::Value *v = find_tamperee( dn );
+    if ( !v )
+        throw brq::error( "failed to find the variable in the original bitcode" );
+
+    if ( auto *a = llvm::dyn_cast< llvm::AllocaInst >(v) )
+        tamper( cmd, dn, a );
+    else if ( auto *a = llvm::dyn_cast< llvm::Argument >(v) )
+        tamper( cmd, dn, a );
+    else if ( auto *dbgval = llvm::dyn_cast< llvm::DbgValueInst >(v) )
+        tamper( cmd, dn, dbgval );
+    else
+        out() << "Unsupported kind of local variable.", NOT_IMPLEMENTED();
+}
+
+void CLI::go( command::diff cmd )
 {
     if ( cmd.vars.size() != 2 )
         throw brq::error( "Diff needs exactly 2 arguments." );

@@ -55,117 +55,8 @@ namespace divine::sim::argument
 
 namespace divine::sim::command
 {
-
-struct CastIron {}; // finalize with sticky commands
-struct Teflon       // finalize without sticky commands
-{
-    std::string output_to;
-    bool clear_screen = false;
-};
-
-struct WithVar
-{
-    std::string var;
-    WithVar( std::string v = "$_" ) : var( v ) {}
-};
-
-struct WithFrame : WithVar
-{
-    WithFrame() : WithVar( "$frame" ) {}
-};
-
-struct Set : CastIron { std::vector< std::string > options; };
-struct WithSteps : WithFrame
-{
-    bool over, out, quiet, verbose; int count;
-    WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
-};
-
-struct Start : CastIron
-{
-    bool verbose = false;
-    bool noboot = false;
-};
-
-struct Break : Teflon
-{
-    std::vector< std::string > where;
-    bool list;
-    brick::types::Union< std::string, int > del;
-    Break() : list( false ) {}
-};
-
-struct StepI : WithSteps, CastIron {};
-struct StepA : WithSteps, CastIron {};
-struct Step : WithSteps, CastIron {};
-struct Rewind : WithVar, CastIron
-{
-    Rewind() : WithVar( "#last" ) {}
-};
-
-struct Show : WithVar, Teflon
-{
-    bool raw;
-    int depth, deref;
-    Show() : raw( false ), depth( 10 ), deref( 0 ) {}
-};
-
-struct Diff : WithVar, Teflon
-{
-    std::vector< std::string > vars;
-};
-
-struct Dot : WithVar, Teflon
-{
-    std::string type = "none";
-    std::string output_file;
-};
-
-struct Draw : Dot
-{
-    Draw() { type = "x11"; }
-};
-
-struct Inspect : Show {};
-struct BitCode : WithFrame, Teflon
-{
-    std::string filename;
-};
-
-struct Source : WithFrame, Teflon {};
-struct Call : Teflon
-{
-    std::string function;
-};
-
-struct Info : Teflon
-{
-    std::string cmd;
-    std::string setup;
-};
-
-struct Thread : CastIron  { std::string spec; bool random; };
-
-struct BackTrace : WithVar, Teflon
-{
-    BackTrace() : WithVar( "$top" ) {}
-};
-
-struct Setup : Teflon
-{
-    bool clear_sticky, pygmentize = false, debug_everything = false;
-    std::string xterm;
-    std::vector< std::string > sticky_commands;
-    std::vector< dbg::Component > debug_components, ignore_components;
-    Setup() : clear_sticky( false ) {}
-};
-
-struct Down : CastIron {};
-struct Up : CastIron {};
-
-struct Exit : Teflon
-{
-    static std::array< std::string, 2 > names()
+    struct cast_iron {}; // finalize with sticky commands
+    struct teflon       // finalize without sticky commands
     {
         std::string output_to;
         bool clear_screen = false;
@@ -273,6 +164,20 @@ struct Exit : Teflon
     };
 
     struct inspect : show {};
+
+    struct tamper : with_var, teflon
+    {
+        brq::cmd_flag lift;
+        std::string domain = "unit";
+
+        void options( brq::cmd_options &c ) override
+        {
+            c.section( "Tamper Options" );
+            c.opt( "--domain", domain ) << "the domain to abstract the variable into";
+            c.opt( "--lift", lift ) << "lift the original value instead of creating a nondet";
+            with_var::options( c );
+        }
+    };
 
     struct diff : base, teflon
     {
