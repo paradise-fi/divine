@@ -104,7 +104,7 @@ llvm::Value* CLI::mkCallLift( IRBuilder & irb, DN & dn, const std::string & doma
 }
 
 /* Tamper with a function argument -- replace all uses with nondet or lifted value */
-void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::Argument *arg )
+void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::Argument *arg )
 {
     auto argname = arg->getName().str();
 
@@ -123,7 +123,7 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::Argument *arg )
 }
 
 /* Tamper with an alloca'd variable -- replace first stores into it with nondet or lifted value */
-void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::AllocaInst *origin_alloca )
+void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::AllocaInst *origin_alloca )
 {
     auto varname = origin_alloca->getName().str();
 
@@ -204,7 +204,7 @@ void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
 
 /* Tamper with a variable given by an llvm.dbg.value intrinsic -- replace all uses of the register
  * (or constant) until next llvm.dbg.value with nondet or lifted value */
-void CLI::tamper( const command::Tamper &cmd, DN &dn, llvm::DbgValueInst *dvi )
+void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::DbgValueInst *dvi )
 {
     auto varname = dvi->getVariableLocation()->getName().str();
 

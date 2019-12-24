@@ -149,7 +149,9 @@ void CLI::go( command::tamper cmd )
 {
     auto dn = get( cmd.var );
     out() << "Tamper with " << cmd.var << ":\n";
-    dn.format( out() );
+    brq::string_builder str;
+    dn.format( str );
+    out() << str.data();
 
     llvm::Value *v = find_tamperee( dn );
     if ( !v )
