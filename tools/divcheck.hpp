@@ -70,7 +70,7 @@ struct Expectation : ui::LogSink
     virtual void setup() {};
 };
 
-struct Expect : Expectation
+struct ResultExpectation : Expectation
 {
     bool _ok;
     mc::Result _result = mc::Result::None;
@@ -171,7 +171,50 @@ struct TraceExpectation : Expectation
     }
 };
 
-struct Load
+struct expect : ui::CompositeMixin< Expect >, brq::cmd_base
+{
+    std::string _cmd;
+    ResultExpectation _result;
+    BacktraceExpectation _backtrace;
+    TraceExpectation _trace;
+    bool _warn = false;
+
+    std::array< Expectation *, 3 > expectations()
+    {
+        return { &_result, &_backtrace, &_trace };
+    }
+
+    void setup()
+    {
+        for ( auto e : expectations() )
+            e->setup();
+    }
+
+    void check()
+    {
+        try
+        {
+            for ( auto e : expectations() )
+                e->check( _cmd );
+        }
+        catch ( Wrong &e )
+        {
+            if ( _warn )
+                std::cerr << "W: " << e.what();
+            else
+                throw;
+        }
+    }
+
+    template< typename L >
+    void each( L l )
+    {
+        for ( auto e: expectations() )
+            l( e );
+    }
+};
+
+struct load : brq::cmd_base
 {
     brq::cmd_file from;
     brq::cmd_path to;
@@ -216,7 +259,7 @@ void execute( std::string script_txt, F... prepare )
         ui::CLI cli( "divine", tok );
         cli._check_files = false;
 
-        auto check_expect = [&]( ui::Verify &cmd )
+        auto prepare_expects = [&]( ui::with_bc &cmd )
         {
             std::vector< ui::SinkPtr > log( expects.begin(), expects.end() );
             log.push_back( cmd._log );
@@ -224,36 +267,32 @@ void execute( std::string script_txt, F... prepare )
             for ( auto & expect : expects )
                 expect->setup();
         };
+
         auto check_expects = [&]()
         {
             for ( auto & expect : expects )
                 expect->check();
         };
 
-        auto o_expect = ui::cmd::make_option_set( cli.validator() )
-            .option( "[--result {result}]", &Expect::_result, "verification result" )
-            .option( "[--symbol {string}]", &Expect::_symbol, "symbol of the expected error" )
-            .option( "[--location {string}]", &Expect::_location, "location of the expected error" )
-            .option( "[--trace-count {int}]", &Expect::_trace_count, "number of trace matches" )
-            .option( "[--trace {string}]", &Expect::_trace, "substring match against the trace" );
-        auto o_load = ui::cmd::make_option_set( cli.validator() )
-            .option( "{string}+", &Load::args, "file path, file name" );
+        auto cmd = cli.parse< expect, load >();
+        auto load_file = [&]( load &l )
+        {
+            files.emplace_back( l.to.name, brq::read_file( l.from.name ) );
+            brq::create_file( l.to.name ); /* FIXME trick the CLI parser */
+        };
 
-        auto parser = cli.commands().command< Expect >( o_expect ).command< Load >( o_load );
-        auto cmd = cli.parse( parser );
-
-        cmd.match( prepare...,
-                   [&]( Load &l ) { files.emplace_back( l.args[1] , brq::read_file( l.args[0] ) ); },
-                   [&]( ui::Cc &cc ) { cc._driver.setupFS( files ); },
-                   [&]( ui::WithBC &wbc ) { wbc._cc_driver.setupFS( files ); } );
-        cmd.match( [&]( ui::Command &c ) { c.setup(); },
-                   [&]( Expect e )
+        cmd.match( prepare..., load_file,
+                   [&]( ui::cc &cc ) { cc._driver.setupFS( files ); },
+                   [&]( ui::with_bc &wbc ) { wbc._cc_driver.setupFS( files ); } );
+        cmd.match( [&]( ui::command &c ) { c.setup(); },
+                   [&]( expect e )
                    {
                        e._cmd = cmdstr;
-                       expectations.emplace_back( std::make_shared< Expect >( std::move( e ) ) );
+                       expects.emplace_back( std::make_shared< expect >( std::move( e ) ) );
                    } );
         cmd.match( [&]( ui::WithBC &cmd ) { prepare_expects( cmd ); } );
-        cmd.match( [&]( ui::Command &c ) { c.run(); } );
+        cmd.match( [&]( ui::command &c ) { c.run(); } );
+        cmd.match( [&]( ui::with_bc &cmd ) { check_expects(); } );
     }
 }
 
