@@ -37,9 +37,12 @@ void peel( R* root, C* current, OpCode op, Args ...args)
 }
 
 /* McSema for reasons sometimes generates constant expressions in form:
- * inttoptr( and ( add ( ptrtoint %global_segment ) ) )
+ *
+ * inttoptr( and ( add ( ptrtoint %[global_segment, function] ) ) )
+ * and ( add ( ptrtoint %global_segment ) )
+ *
  * These are typically not desired (and divine cannot handle them at the moment),
- * therefore this pass transforms them to equivalent for of
+ * therefore this pass transforms them to equivalent form of
  * inttoptr( add ( ptrtoint %global_segment ) )
  */
 
@@ -49,7 +52,7 @@ struct segment_masks
 
     void run( llvm::Module & m  )
     {
-        // Remove `and` in between `add` and `inttoptr`
+        // Remove everything between root and end
         auto build_bridge = []( auto root, auto end )
         {
             auto bridged = end->getWithOperandReplaced( 0, root );
@@ -64,11 +67,35 @@ struct segment_masks
                   build_bridge );
         };
 
+        // Remove everything between current and root
+        auto remove = [&]( auto root, auto current )
+        {
+            current->replaceAllUsesWith( root );
+        };
+
+        auto peel_outside = [&]( auto root, auto current )
+        {
+            peel( current, current,
+                  llvm::Instruction::Add, llvm::Instruction::And,
+                  remove);
+        };
+
         for ( auto &global : m.globals() )
-           peel( &global, &global,
+        {
+            peel( &global, &global,
                  llvm::Instruction::PtrToInt,
                  llvm::Instruction::Add,
                  begin_found );
+
+            peel( &global, &global,
+                  llvm::Instruction::PtrToInt,
+                  peel_outside );
+        }
+
+        for ( auto &func : m )
+            peel( &func, &func,
+                  llvm::Instruction::PtrToInt,
+                  begin_found );
     }
 };
 
