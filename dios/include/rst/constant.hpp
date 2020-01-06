@@ -9,7 +9,6 @@
 
 namespace __dios::rst::abstract {
 
-    /* Unit/Star domain contains a single value, everything is abstracted to a Star. */
     struct constant_t : tagged_abstract_domain_t
     {
         using value_t = uint64_t;
