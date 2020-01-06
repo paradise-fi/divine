@@ -11,10 +11,10 @@ void foo( int val ) {
     assert( val < 0 );
 }
 
-extern void bar( int val );
+extern void vbari( int val );
 
 int main() {
     int val = __sym_val_i32();
-    auto fn = val < 0 ? &foo : &bar;
+    auto fn = val < 0 ? &foo : &vbari;
     fn( val ); /* ERROR */
 }

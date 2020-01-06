@@ -11,12 +11,12 @@ int foo( int val ) {
     return val;
 }
 
-extern int bar( int val );
+extern int ibari( int val );
 
 int main() {
     int val = __sym_val_i32();
     if ( val < 0 ) {
-        auto fn = val < 0 ? &foo : &bar;
+        auto fn = val < 0 ? &foo : &ibari;
         int ret = fn( val );
         assert( val < 0 );
     }
