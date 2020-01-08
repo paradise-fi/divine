@@ -70,7 +70,7 @@ namespace lart::abstract {
             if ( llvm::isa< llvm::PtrToIntInst >( val ) )
                 return op + "." + dest;
             if ( llvm::isa< llvm::IntToPtrInst >( val ) )
-                return op + "." + src;
+                return op + "." + src + "." + dest;
             return op + "." + src + "." + dest;
         }
 
@@ -78,7 +78,8 @@ namespace lart::abstract {
         static auto suffix( llvm::Value * val ) noexcept -> ENABLE_IF( insertvalue )
         {
             auto inst = llvm::cast< llvm::InsertValueInst >( val );
-            return result() + "." + llvm_name( inst->getAggregateOperand()->getType() )
+            return result() + "." + llvm_name( inst->getType() )
+                            + "." + llvm_name( inst->getAggregateOperand()->getType() )
                             + "." + llvm_name( inst->getInsertedValueOperand()->getType() );
         }
 
