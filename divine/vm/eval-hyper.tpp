@@ -404,7 +404,7 @@ namespace divine::vm
 
         auto at = operandCk< IntV >( 2 ).cooked();
 
-        if ( !context().test_crit( pc(), ptr.cooked(), size, at ) )
+        if ( !context().test_crit( pc(), ptr2h( ptr ), size, at ) )
             return;
 
         context().sync_pc();
