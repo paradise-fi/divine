@@ -38,7 +38,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::mc
 {
 
-std::string to_string( LeakCheckFlags lf, bool yaml )
+std::string to_string( checkpoint lf, bool yaml )
 {
     std::string out;
     auto append = [&]( auto str )
@@ -49,11 +49,11 @@ std::string to_string( LeakCheckFlags lf, bool yaml )
         if ( yaml ) out += '"';
     };
 
-    if ( lf & LeakCheck::Return )
+    if ( lf & leakcheck::ret )
         append( "return" );
-    if ( lf & LeakCheck::Exit )
+    if ( lf & leakcheck::exit )
         append( "exit" );
-    if ( lf & LeakCheck::State )
+    if ( lf & leakcheck::state )
         append( "state" );
 
     if ( out.empty() )
@@ -62,7 +62,7 @@ std::string to_string( LeakCheckFlags lf, bool yaml )
         return out;
 }
 
-std::string to_string( AutoTraceFlags lf, bool yaml )
+std::string to_string( tracepoint lf, bool yaml )
 {
     std::string out;
     auto append = [&]( auto str )
@@ -73,9 +73,9 @@ std::string to_string( AutoTraceFlags lf, bool yaml )
         if ( yaml ) out += '"';
     };
 
-    if ( lf & AutoTrace::Calls )
+    if ( lf & autotrace::calls )
         append( "calls" );
-    if ( lf & AutoTrace::Allocs )
+    if ( lf & autotrace::allocs )
         append( "allocs" );
 
     if ( out.empty() )
@@ -84,20 +84,22 @@ std::string to_string( AutoTraceFlags lf, bool yaml )
         return out;
 }
 
-brq::parse_result from_string( std::string_view x, mc::LeakCheck &lc )
+brq::parse_result from_string( std::string_view x, leakcheck &lc )
 {
-    if      ( x == "return" ) lc = LeakCheck::Return;
-    else if ( x == "state" )  lc = LeakCheck::State;
-    else if ( x == "exit" )   lc = LeakCheck::Exit;
+    if      ( x == "return" ) lc = leakcheck::ret;
+    else if ( x == "state" )  lc = leakcheck::state;
+    else if ( x == "exit" )   lc = leakcheck::exit;
+    else if ( x == "none" )   lc = leakcheck::nothing;
     else return brq::no_parse( "expected 'return', 'state' or 'exit'" );
 
     return {};
 }
 
-brq::parse_result from_string( std::string_view x, AutoTrace &fl  )
+brq::parse_result from_string( std::string_view x, autotrace &fl )
 {
-    if      ( x == "calls" )  fl = AutoTrace::Calls;
-    else if ( x == "allocs" ) fl = AutoTrace::Allocs;
+    if      ( x == "calls" )  fl = autotrace::calls;
+    else if ( x == "allocs" ) fl = autotrace::allocs;
+    else if ( x == "none" )   fl = autotrace::nothing;
     else return brq::no_parse( "expected 'calls' or 'allocs'" );
 
     return {};

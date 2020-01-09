@@ -38,16 +38,16 @@ namespace divine::vm { struct Program; }
 
 namespace divine::mc
 {
+    enum class autotrace { nothing, calls = 1, allocs = 2 };
+    enum class leakcheck { nothing, exit = 0x1 , ret = 0x2 , state = 0x4 };
 
-enum class AutoTrace { Nothing, Calls = 1, Allocs = 2 };
-enum class LeakCheck { Nothing, Exit = 0x1 , Return = 0x2 , State = 0x4 };
-using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
-using LeakCheckFlags = brick::types::StrongEnumFlags< LeakCheck >;
+    struct tracepoint : brick::types::StrongEnumFlags< autotrace > {};
+    struct checkpoint : brick::types::StrongEnumFlags< leakcheck > {};
 
-std::string to_string( LeakCheckFlags, bool yaml = false );
-std::string to_string( AutoTraceFlags, bool yaml = false );
-brq::parse_result from_string( std::string_view s, LeakCheck &f );
-brq::parse_result from_string( std::string_view s, AutoTrace &f );
+    std::string to_string( checkpoint, bool yaml = false );
+    std::string to_string( tracepoint, bool yaml = false );
+    brq::parse_result from_string( std::string_view s, leakcheck &f );
+    brq::parse_result from_string( std::string_view s, autotrace &f );
 
 struct BCParseError : brq::error { using brq::error::error; };
 
@@ -63,8 +63,8 @@ struct BCOptions
     Env bc_env;
     std::vector< std::string > lart_passes;
     std::string dios_config;
-    mc::AutoTraceFlags autotrace;
-    mc::LeakCheckFlags leakcheck;
+    tracepoint autotrace;
+    checkpoint leakcheck;
     std::string relaxed;
 
     static BCOptions from_report( brick::yaml::Parser &parsed );
