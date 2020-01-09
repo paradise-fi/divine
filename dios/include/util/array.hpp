@@ -188,7 +188,7 @@ struct Array : brq::derive_ord, brq::derive_eq
             __vm_obj_resize( _data, n * sizeof( T ) );
     }
 
-    void _clear()
+    __local_skipcfl void _clear()
     {
         auto s = size();
         for ( auto i = begin(); i != end(); ++i )
