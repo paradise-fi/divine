@@ -241,49 +241,37 @@ namespace divine::mc
     }
 
     // This is ugly and we don't want it here...
-    void Exec::run( bool exhaustive, Tactic tactic )
+    void Exec::run( bool exhaustive, std::string_view tactic )
     {
         if ( _bc->is_symbolic() )
         {
-            if ( exhaustive )
-            {
-                switch ( tactic )
-                {
-                    case Tactic::Backtrack: return do_run< smt::STPSolver, exhaustive_exec, backtrack >();
-                    case Tactic::CoverageSearch: return do_run< smt::STPSolver, exhaustive_exec, coverage_search >();
-                    case Tactic::ClosestFaultSearch: return do_run< smt::STPSolver, exhaustive_exec, closest_fault_search >();
-                }
-            }
-            else
-            {
-                switch ( tactic )
-                {
-                    case Tactic::Backtrack: return do_run< smt::STPSolver, mach_exec, backtrack >();
-                    case Tactic::CoverageSearch: return do_run< smt::STPSolver, mach_exec, coverage_search >();
-                    case Tactic::ClosestFaultSearch: return do_run< smt::STPSolver,mach_exec, closest_fault_search >();
-                }
-            }
+            if ( exhaustive && tactic == "none" )
+                return do_run< smt::STPSolver, exhaustive_exec, backtrack >();
+            if ( exhaustive && tactic == "coverage" )
+                return do_run< smt::STPSolver, exhaustive_exec, coverage_search >();
+            if ( exhaustive && tactic == "fault" )
+                return do_run< smt::STPSolver, exhaustive_exec, closest_fault_search >();
+            if ( !exhaustive && tactic == "none" )
+                return do_run< smt::STPSolver, mach_exec, backtrack >();
+            if ( !exhaustive && tactic == "coverage" )
+                return do_run< smt::STPSolver, mach_exec, coverage_search >();
+            if ( !exhaustive && tactic == "fault" )
+                return do_run< smt::STPSolver, mach_exec, closest_fault_search >();
         }
         else
         {
-            if ( exhaustive )
-            {
-                switch ( tactic )
-                {
-                    case Tactic::Backtrack: return do_run< smt::NoSolver, exhaustive_exec, backtrack >();
-                    case Tactic::CoverageSearch: return do_run< smt::NoSolver, exhaustive_exec, coverage_search >();
-                    case Tactic::ClosestFaultSearch: return do_run< smt::NoSolver, exhaustive_exec, closest_fault_search >();
-                }
-            }
-            else
-            {
-                switch ( tactic )
-                {
-                    case Tactic::Backtrack: return do_run< smt::NoSolver, mach_exec, backtrack >();
-                    case Tactic::CoverageSearch: return do_run< smt::NoSolver, mach_exec, coverage_search >();
-                    case Tactic::ClosestFaultSearch: return do_run< smt::NoSolver, mach_exec, closest_fault_search >();
-                }
-            }
+            if ( exhaustive && tactic == "none" )
+                return do_run< smt::NoSolver, exhaustive_exec, backtrack >();
+            if ( exhaustive && tactic == "coverage" )
+                return do_run< smt::NoSolver, exhaustive_exec, coverage_search >();
+            if ( exhaustive && tactic == "fault" )
+                return do_run< smt::NoSolver, exhaustive_exec, closest_fault_search >();
+            if ( !exhaustive && tactic == "none" )
+                return do_run< smt::NoSolver, mach_exec, backtrack >();
+            if ( !exhaustive && tactic == "coverage" )
+                return do_run< smt::NoSolver, mach_exec, coverage_search >();
+            if ( !exhaustive && tactic == "fault" )
+                return do_run< smt::NoSolver, mach_exec, closest_fault_search >();
         }
     }
 }

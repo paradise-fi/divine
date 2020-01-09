@@ -77,13 +77,6 @@ struct Exec
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
 
-    enum class Tactic
-    {
-        Backtrack,
-        CoverageSearch,
-        ClosestFaultSearch
-    };
-
     BC _bc;
     PoolStats _ps;
 
@@ -91,7 +84,7 @@ struct Exec
 
     template< typename solver_t, template< typename > typename exec_t, typename tactic_t >
     void do_run();
-    void run( bool exhaustive, Tactic tactic );
+    void run( bool exhaustive, std::string_view tactic = "none" );
 
     void trace();
 
