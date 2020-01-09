@@ -23,6 +23,7 @@
 #include "brick-except"
 
 #include <string>
+#include <map>
 #include <iostream>
 #include <cxxabi.h>
 
@@ -215,6 +216,31 @@ namespace brq
             }
             opt_help( b, std::forward< args_t >( args )... );
         }
+
+        template< typename arg_t >
+        static auto type_description( primary_t ) -> decltype( arg_t::help() )
+        {
+            return arg_t::help();
+        }
+
+        template< typename >
+        static std::string_view type_description( fallback ) { return ""; }
+
+        static void type_help( std::map< std::string, std::string > & ) {}
+
+        template< typename arg_t, typename... args_t >
+        static void type_help( std::map< std::string, std::string > &b, arg_t &&, args_t && ... args )
+        {
+            if constexpr ( is_binding< arg_t > && !std::is_same_v< arg_t, cmd_flag & > )
+            {
+                using type = std::remove_reference_t< arg_t >;
+                auto name = names< arg_t >( primary, "{", "}" )[ 0 ];
+                auto desc = type_description< type >( primary );
+                if ( desc != "" )
+                    b[ name ] = desc;
+            }
+            type_help( b, std::forward< args_t >( args )... );
+        }
     };
 
     /* This class implements the interface that the client uses to describe
@@ -234,6 +260,7 @@ namespace brq
         int _index = 0, _next = 0;
         int _pos = 0, _pos_matched = 0;
         bool _pos_only = false;
+        std::map< std::string, std::string > _type_help;
         brq::string_builder _error, _help, _pos_help;
 
         template< typename... args_t >
@@ -312,6 +339,7 @@ namespace brq
                 _saw_section = true;
                 _help << "\n  ";
                 opt_help( _help, std::forward< args_t >( args )... );
+                type_help( _type_help, std::forward< args_t >( args )... );
             }
 
             if ( _mode == mode_opt_parse && !_pos_only )
@@ -413,6 +441,10 @@ namespace brq
             _saw_section = false;
             c.options( *this );
             _help << "\n\n";
+            if ( !_type_help.empty() )
+                _help << "Argument Types\n\n";
+            for ( auto [ k, v ] : _type_help )
+                _help << "  {" << k << "}\t" << v << "\n";
             return _help;
         }
 
