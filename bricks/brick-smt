@@ -182,6 +182,11 @@ namespace brick::smt
         return Op::FirstCast <= op && op <= Op::LastCast;
     }
 
+    static inline constexpr bool is_extract( Op op ) noexcept
+    {
+        return op == Op::Extract;
+    }
+
     static inline constexpr bool is_binary( Op op ) noexcept
     {
         return Op::FirstBinary <= op && op <= Op::LastBinary;
@@ -398,7 +403,13 @@ namespace brick::smt
         struct UnaryOp : Operation {};
         struct BinaryOp : Operation {};
 
-        struct Unary  : UnaryOp  { Bitwidth bw; };
+        struct Unary : UnaryOp
+        {
+            Bitwidth bw;
+            Bitwidth from = 0;
+            Bitwidth to = 0;
+        };
+
         struct Binary : BinaryOp { Bitwidth bw; };
     }
 
@@ -504,13 +515,27 @@ namespace brick::smt
 
         static_assert( sizeof( CastOp ) == 2 );
 
-        struct Call
+        struct ExtractOp : Token<>
         {
-            Op op;
+            Bitwidth highest;
+            Bitwidth lowest;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const ExtractOp &extract ) -> decltype( os << "" )
+            {
+                return os << "extract from " << std::to_string( extract.lowest )
+                          << " to " << std::to_string( extract.highest );
+            }
+
+        } __attribute__(( packed, aligned(1) ));
+
+        static_assert( sizeof( ExtractOp ) == 3 );
+
+        struct Call : Token< Op::Call >
+        {
             uint32_t objid;
 
-            constexpr Call( uint32_t obj )
-              : op( Op::Call ), objid( obj ){}
+            constexpr Call( uint32_t obj ) : objid( obj ) {}
 
             template< typename stream >
             friend auto operator<<( stream &os, const Call &c ) -> decltype( os << "" )
@@ -658,7 +683,7 @@ namespace brick::smt
 
         RPNView( const RPN & rpn ) : _rpn( rpn ) {}
 
-        using Token = std::variant< Variable, Constant, CastOp, UnaryOp, BinaryOp, CallOp >;
+        using Token = std::variant< Variable, Constant, ExtractOp, CastOp, UnaryOp, BinaryOp, CallOp >;
 
         struct Iterator : brick::types::Eq
         {
@@ -698,7 +723,9 @@ namespace brick::smt
                 else if ( is_variable( operand() ) )
                     std::advance( _it, sizeof( Variable ) );
                 else if ( is_cast( operand() ) )
-                    std::advance( _it, sizeof( typename RPN::CastOp ) );
+                    std::advance( _it, sizeof( CastOp ) );
+                else if ( is_extract( operand() ) )
+                    std::advance( _it, sizeof( ExtractOp ) );
                 else if ( is_call( operand() ) )
                     std::advance( _it, sizeof( CallOp ) );
                 else
@@ -738,6 +765,12 @@ namespace brick::smt
                 {
                     auto ptr = reinterpret< CastOp >();
                     return CastOp{ ptr->op, ptr->bitwidth };
+                }
+
+                if ( is_extract( op ) )
+                {
+                    auto ptr = reinterpret< ExtractOp >();
+                    return ExtractOp{ ptr->op, ptr->highest, ptr->lowest };
                 }
 
                 if ( is_unary( op ) )
