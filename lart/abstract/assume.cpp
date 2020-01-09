@@ -65,7 +65,7 @@ namespace {
 
             auto op = builder.construct< Operation::Type::Assume >( cond, irb );
 
-            auto abs = cond->getModule()->getFunction( "lart.abstract.assume" );
+            auto abs = cond->getModule()->getFunction( "__lart_abstract_assume" );
             auto tag = meta::tag::operation::index;
             op.inst->setMetadata( tag, abs->getMetadata( tag ) );
 

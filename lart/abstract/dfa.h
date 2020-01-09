@@ -311,7 +311,7 @@ namespace lart::abstract
     {
         if ( !fn->hasName() )
             return false; // TODO deal with anonymous functions
-        auto name = "lart.abstract.fn_" + fn->getName().str();
+        auto name = "__lart_abstract_fn_" + fn->getName().str();
         return fn->getParent()->getFunction( name );
     }
 
@@ -320,8 +320,8 @@ namespace lart::abstract
           type_map_query< AddAbstractMetaVisitor >
     {
         const type_map & _types;
-        static constexpr char op_prefix[] = "lart.abstract.op_";
-        static constexpr char fn_prefix[] = "lart.abstract.fn_";
+        static constexpr char op_prefix[] = "__lart_abstract_op_";
+        static constexpr char fn_prefix[] = "__lart_abstract_fn_";
 
 
         AddAbstractMetaVisitor( const type_map & types  )

@@ -11,8 +11,8 @@ namespace lart::abstract {
     {
         using Type = Operation::Type;
 
-        inline static const std::string c_prefix = "lart.concrete";
-        inline static const std::string a_prefix = "lart.abstract";
+        inline static const std::string c_prefix = "__lart_concrete";
+        inline static const std::string a_prefix = "__lart_abstract";
 
         static auto concrete_name( llvm::Value *val ) noexcept -> std::string
         {

@@ -107,9 +107,9 @@ namespace lart::abstract
         {
             auto index = [&] {
                 if constexpr ( Taint::toBool( T ) )
-                    return llvm_index( module->getFunction( "lart.abstract.to_tristate" ) );
+                    return llvm_index( module->getFunction( "__lart_abstract_to_tristate" ) );
                 else if constexpr ( Taint::assume( T ) )
-                    return llvm_index( module->getFunction( "lart.abstract.assume" ) );
+                    return llvm_index( module->getFunction( "__lart_abstract_assume" ) );
                 else
                     return llvm_index( lifter_function() );
             } ();
@@ -590,7 +590,7 @@ namespace lart::abstract
         template< typename I, typename IRB >
         llvm::Value * lift( I dom, IRB &irb, llvm::FunctionType *fty, const std::string & tname ) const
         {
-            auto name = "lart.abstract.lift_one_" + tname;
+            auto name = "__lart_abstract_lift_one_" + tname;
             auto impl = module->getFunction( name );
             if ( !impl )
                 UNREACHABLE( "missing domain function", name );

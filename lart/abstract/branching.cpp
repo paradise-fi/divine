@@ -21,7 +21,7 @@ namespace lart::abstract
             .filter( match ).freeze();
 
         auto tag = meta::tag::operation::index;
-        auto index = m.getFunction( "lart.abstract.to_tristate" )->getMetadata( tag );
+        auto index = m.getFunction( "__lart_abstract_to_tristate" )->getMetadata( tag );
 
         OperationBuilder builder;
         for ( auto * br : brs )
