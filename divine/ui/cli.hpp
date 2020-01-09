@@ -159,64 +159,225 @@ namespace divine::ui::arg
 
 namespace divine::ui
 {
-    void run() override;
-};
+    struct command : brq::cmd_base
+    {
+        virtual void setup() {}
+        virtual void cleanup() {}
+        virtual ~command() {}
+    };
 
-enum class Report { None, Yaml, YamlLong };
+    struct with_bc : command
+    {
+        mc::BCOptions _bc_opts;
 
-struct Ltlc : Command
-{
-    std::string _automaton, _formula, _output, _system;
-    bool _negate = false;
-    void run() override;
-};
+        std::string _std;
+        brq::cmd_file _stdin;
 
-struct Verify : WithBC
-{
-    int64_t _max_mem = 0; // bytes
-    int _max_time = 0;  // seconds
-    int _threads = 0;
-    int _num_callers = 10;
-    int _poolstat_period = 0;
-    bool _no_counterexample = false;
-    bool _interactive = true;
-    bool _liveness = false;
-    bool _no_report_file = false;
-    bool _report_unique = false;
-    Report _report = Report::Yaml;
-    std::string _solver = "stp";
+        // Used to build the final compiler options in _bc_opts.ccopts
+        std::vector< std::string > _env;
+        std::vector< std::string > _useropts;
+        std::vector< std::string > _systemopts;
+        std::vector< std::string > _linkLibs;
+        std::vector< arg::commasep< std::string > > _ccOpts;
+        std::vector< arg::mount > _vfs;
+        arg::mem _vfs_limit = 16 * 1024 * 1024;
+        bool _init_done = false;
+        SinkPtr _log = nullsink();
+        std::string _dump_bc;
+        rt::DiosCC _cc_driver;
 
-    std::shared_ptr< std::ostream > _report_file;
-    std::string _report_filename;
-    void setup_report_file();
+        virtual void process_options();
+        void report_options();
+        void setup();
+        void init();
 
-    void setup() override;
-    void run() override;
-    void cleanup() override;
+        std::shared_ptr< mc::BitCode > bitcode()
+        {
+            if ( !_init_done )
+                init();
+            _init_done = true;
+            return _bc;
+        }
 
-    void safety();
-    void liveness();
-    void print_ce( mc::Job &job );
-};
+        void options( brq::cmd_options &c ) override
+        {
+            command::options( c );
+            c.section( "Compiler Options" );
+            c.opt( "-C,", _ccOpts ) << "pass additional options to the compiler";
+            c.opt( "-std=", _std ) << "set the C/C++ standard to use";
+            c.opt( "-l", _linkLibs ) << "link additional libraries, e.g. -lm for libm";
 
-struct Check : Verify
-{
-    void setup() override;
-};
+            c.section( "Execution Environment" );
+            c.opt( "-D", _env ) << "set an environment variable";
+            c.opt( "-o", _systemopts ) << "pass options to dios";
+            c.opt( "--vfs-limit", _vfs_limit ) << "maximal filesystem snapshot size [16MiB]";
+            c.opt( "--capture", _vfs ) << "capture parts of the filesystem";
+            c.opt( "--stdin", _stdin ) << "capture a file for use as standard input";
+            c.opt( "--dios-config", _bc_opts.dios_config ) << "select a dios config manually";
 
-struct Exec : WithBC
-{
-    bool _trace = false;
-    bool _virtual = false;
+            c.section( "Bitcode Transforms" );
+            c.flag( "--static-reduction", _bc_opts.static_reduction )
+                 << "transform for smaller state space [default: yes]";
+            c.opt( "--autotrace",      _bc_opts.autotrace ) << "trace function calls";
+            c.opt( "--leakcheck",      _bc_opts.leakcheck ) << "insert memory leak checks";
+            c.opt( "--sequential",     _bc_opts.sequential ) << "disable support for threading";
+            c.opt( "--synchronous",    _bc_opts.synchronous ) << "enable synchronous mode";
+            c.opt( "--relaxed-memory", _bc_opts.relaxed )
+                << "allow memory operation reordering (x86[:depth] or tso[:depth])";
+            c.opt( "--lart", _bc_opts.lart_passes ) << "run additional LART passes";
+            c.opt( "--symbolic", _bc_opts.symbolic ) << "enable semi-symbolic data representation";
+            c.opt( "--svcomp", _bc_opts.svcomp ) << "work around SV-COMP quirks";
+            c.opt( "--dump-bc", _dump_bc ) << "dump the transformed bitcode into a file";
+            c.pos( _bc_opts.input_file, true );
+            c.collect( _useropts );
+        }
 
-    void setup();
-    void run();
-};
+    private:
+        std::shared_ptr< mc::BitCode > _bc;
+    };
 
-struct Sim : WithBC
-{
-    bool _batch = false, _skip_init = false, _load_report = false;
-    std::shared_ptr< sim::Trace > _trace;
+    struct version : command
+    {
+        void run() override;
+    };
+
+    struct ltlc : command
+    {
+        std::string _automaton, _formula, _output, _system;
+        brq::cmd_flag _negate;
+        void run() override;
+
+        void options( brq::cmd_options &c ) override
+        {
+            command::options( c );
+            c.opt( "--formula", _formula );
+            c.opt( "--negate", _negate );
+            c.opt( "--output", _output );
+            c.opt( "--system", _system );
+        }
+    };
+
+    struct with_report : with_bc
+    {
+        brq::cmd_flag _counterexample = true, _do_report_file = true, _report_unique;
+        arg::report _report = arg::report::yaml;
+
+        brq::cmd_path _report_filename;
+        std::shared_ptr< std::ostream > _report_file;
+        int _num_callers = 10;
+
+        void setup_report_file();
+        void cleanup() override;
+
+        void options( brq::cmd_options &c ) override
+        {
+            with_bc::options( c );
+            c.section( "Reporting" );
+            c.opt( "--report", _report ) << "type of report to print";
+            c.flag( "--report-file", _do_report_file ) << "write the report into a file [yes]";
+            c.flag( "--counterexample", _counterexample ) << "generate a counterexample [yes]";
+            c.opt( "--report-unique", _report_unique ) << "generate a unique name for the report [no]";
+            c.opt( "--report-filename", _report_filename ) << "use the specified file name";
+            c.opt( "--num-callers", _num_callers ) << "number of frames to print in backtraces [10]";
+        }
+    };
+
+    struct verify : with_report
+    {
+        arg::mem _max_mem = 0; // bytes
+        int _max_time = 0;  // seconds
+        int _threads = 0;
+        int _poolstat_period = 0;
+        brq::cmd_flag _liveness;
+        bool _interactive = true;
+        std::string _solver = "stp";
+
+        void setup() override;
+        void run() override;
+
+        void safety();
+        void liveness();
+        void print_ce( mc::Job &job );
+
+        std::string_view help() override
+        {
+            return "This command is the main work-horse of DIVINE. It takes a program as input, in\n"
+                   "any of the following formats: a C/C++ source file, an LLVM bitcode file (.bc),\n"
+                   "a hybrid ELF binary produced by `dioscc`.\n\n"
+                   "The program is executed in a virtual machine which performs strict checks on\n"
+                   "each executed instruction, thus catching many types of program errors. Just\n"
+                   "as importantly, DIVINE checks *all possible behaviours* of the program (under\n"
+                   "given constraints), facilitating detection of subtle corner cases and hard-to-\n"
+                   "-reproduce concurrency bugs.\n\n"
+                   "When DIVINE finds an error in your program, it will generate a *counterexample*,\n"
+                   "a step-by-step recipe for reproducing the problem, and stores it in a report.\n"
+                   "The report can then be loaded into the interactive simulator (available via\n"
+                   "`divine sim`) for further analysis. A short summary of the problem is also\n"
+                   "printed to the terminal.";
+        }
+
+        void options( brq::cmd_options &c ) override
+        {
+            with_report::options( c );
+            c.section( "Verification Options" );
+            c.opt( "--threads", _threads ) << "number of worker threads to use";
+            c.opt( "--max-memory", _max_mem ) << "set a memory limit";
+            c.opt( "--max-time", _max_time ) << "set a time limit (in seconds)";
+            c.opt( "--liveness", _liveness ) << "enable verification of liveness properties";
+            c.opt( "--solver", _solver ) << "select a constraint solver to use in --symbolic mode";
+
+        }
+    };
+
+    struct check : verify
+    {
+        void setup() override;
+
+        std::string_view help() override
+        {
+            return "This is a lightweight version of the 'verify' command, the only difference being\n"
+                   "that 'check' skips exploring certain less-interesting program behaviours. This\n"
+                   "means that it can detect important problems faster, but it provides weaker\n"
+                   "guarantees about program correctness.\n\n"
+                   "Program behaviours which 'check' does not cover are:\n\n"
+                   " - memory allocation failures\n"
+                   " - (the list may be extended in future versions)\n\n"
+                   "Please see 'divine help verify' for additional information.";
+        }
+    };
+
+    struct exec : with_report
+    {
+        brq::cmd_flag _trace, _virtual, _exhaustive;
+        std::string _tactic;
+
+        void setup();
+        void run();
+
+        void options( brq::cmd_options &c ) override
+        {
+            with_report::options( c );
+            c.section( "Exec Options" );
+            c.opt( "--virtual", _virtual ) << "simulate system calls instead of executing them";
+            c.opt( "--trace", _trace ) << "print instructions as they are executed";
+            c.opt( "--tactic", _tactic );
+            c.opt( "--exhaustive", _exhaustive );
+        }
+    };
+
+    struct sim : with_bc
+    {
+        brq::cmd_flag _batch, _skip_init, _load_report;
+        std::shared_ptr< divine::sim::Trace > _trace;
+
+        void options( brq::cmd_options &c ) override
+        {
+            with_bc::options( c );
+            c.section( "Sim Options" );
+            c.opt( "--batch", _batch ) << "disable interactive features";
+            c.opt( "--load-report", _load_report ) << "load a counterexample from a report";
+            c.opt( "--skip-init", _skip_init ) << "do not load ~/.divine/sim.init";
+        }
 
 #if OPT_SIM
         void process_options() override;

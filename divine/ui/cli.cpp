@@ -417,7 +417,37 @@ void info::run()
     std::cerr << "use -o {option}:{value} to pass these options to the program" << std::endl;
 }
 
-std::shared_ptr< Interface > make_cli( std::vector< std::string > args )
+void with_report::setup_report_file()
+{
+    if ( _report_filename.name.empty() )
+        _report_filename.name = outputName( _bc_opts.input_file.name, "report" );
+
+    if ( !_report_unique )
+        return;
+
+    std::random_device rd;
+    std::uniform_int_distribution< char > dist( 'a', 'z' );
+    std::string fn;
+    int fd;
+
+    do {
+        fn = _report_filename.name + ".";
+        for ( int i = 0; i < 6; ++i )
+            fn += dist( rd );
+        fd = open( fn.c_str(), O_CREAT | O_EXCL, 0666 );
+    } while ( fd < 0 );
+
+    _report_filename.name = fn;
+    close( fd );
+}
+
+void with_report::cleanup()
+{
+    if ( !_report_filename.name.empty() )
+        std::cerr << "a report was written to " << _report_filename.name << std::endl;
+}
+
+std::shared_ptr< Interface > make_cli( int argc, const char **argv )
 {
     return std::make_shared< CLI >( argc, argv );
 }

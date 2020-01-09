@@ -28,31 +28,7 @@
 namespace divine {
 namespace ui {
 
-void Verify::setup_report_file()
-{
-    if ( _report_filename.empty() )
-        _report_filename = outputName( _bc_opts.input_file, "report" );
-
-    if ( !_report_unique )
-        return;
-
-    std::random_device rd;
-    std::uniform_int_distribution< char > dist( 'a', 'z' );
-    std::string fn;
-    int fd;
-
-    do {
-        fn = _report_filename + ".";
-        for ( int i = 0; i < 6; ++i )
-            fn += dist( rd );
-        fd = open( fn.c_str(), O_CREAT | O_EXCL, 0666 );
-    } while ( fd < 0 );
-
-    _report_filename = fn;
-    close( fd );
-}
-
-void Verify::setup()
+void verify::setup()
 {
     if ( _log == nullsink() )
     {
@@ -182,12 +158,6 @@ void verify::safety()
         return _log->result( safety->result(), mc::Trace() );
 
     print_ce( *safety );
-}
-
-void Verify::cleanup()
-{
-    if ( !_report_filename.empty() )
-        std::cerr << "a report was written to " << _report_filename << std::endl;
 }
 
 void verify::liveness()

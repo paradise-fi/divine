@@ -23,16 +23,16 @@ namespace divine::ui
 {
     void exec::setup()
     {
-        if ( _report != Report::Yaml )
+        if ( _report != arg::report::yaml )
         {
-            _report = Report::Yaml;
+            _report = arg::report::yaml;
             std::cerr << "W: exec doesn't print log to the stdout" << std::endl;
         }
 
-        if ( _log == nullsink() && !_no_report_file )
+        if ( _log == nullsink() && _do_report_file )
         {
             setup_report_file();
-            _report_file.reset( new std::ofstream( _report_filename ) );
+            _report_file.reset( new std::ofstream( _report_filename.name ) );
 
              // TODO: We don't want interactive, but we want booting messages?
             _log = make_composite( { make_interactive(), make_yaml( *_report_file.get(), true ) } );
