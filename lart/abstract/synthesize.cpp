@@ -15,17 +15,6 @@ namespace
         return llvm::BasicBlock::Create( ctx, name, fn );
     }
 
-    llvm::ConstantInt * llvm_index( llvm::Function * fn )
-    {
-        using namespace lart::abstract;
-
-        auto i = fn->getMetadata( meta::tag::operation::index );
-        if ( !i )
-            brq::raise() << "Missing domain index metadata.";
-        auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
-        return llvm::cast< llvm::ConstantInt >( c->getValue() );
-    }
-
     template< typename Arg, typename IRB >
     llvm::Instruction * domain_index( const Arg& arg, IRB &irb )
     {
@@ -107,11 +96,11 @@ namespace lart::abstract
         {
             auto index = [&] {
                 if constexpr ( Taint::toBool( T ) )
-                    return llvm_index( module->getFunction( "__lart_abstract_to_tristate" ) );
+                    return meta::operation_index( module->getFunction( "__lart_abstract_to_tristate" ) );
                 else if constexpr ( Taint::assume( T ) )
-                    return llvm_index( module->getFunction( "__lart_abstract_assume" ) );
+                    return meta::operation_index( module->getFunction( "__lart_abstract_assume" ) );
                 else
-                    return llvm_index( lifter_function() );
+                    return meta::operation_index( lifter_function() );
             } ();
             return get_function_from_domain( irb, index, domain );
         }
@@ -283,8 +272,6 @@ namespace lart::abstract
 
             args.push_back( inargs[ 4 ].value ); // base bitwidth
 
-            args.push_back( llvm_index( lifter_function() ) );
-
             auto lifter_template = module->getFunction( "__lart_gep_lifter" );
 
             auto call = irb.CreateCall( lifter_template, args );
@@ -338,7 +325,6 @@ namespace lart::abstract
             args.push_back( addr.concrete.taint );
             args.push_back( addr.concrete.value );
             args.push_back( addr.abstract.value );
-            args.push_back( llvm_index( lifter_function() ) );
 
             auto type = args[ 1 ]->getType();
             std::string name = "__lart_store_lifter_" + llvm_name( type );
@@ -354,7 +340,6 @@ namespace lart::abstract
         {
             auto addr = inargs[ 1 ].value;
             args.push_back( addr ); // addr
-            args.push_back( llvm_index( lifter_function() ) );
 
             auto rty = lifter_function()->getReturnType();
             std::string name = "__lart_load_lifter_" + llvm_name( rty );
@@ -593,8 +578,8 @@ namespace lart::abstract
             auto name = "__lart_abstract_lift_one_" + tname;
             auto impl = module->getFunction( name );
             if ( !impl )
-                UNREACHABLE( "missing domain function", name );
-            auto op = llvm_index( impl );
+                brq::raise() << "Missing domain function " << name;
+            auto op = meta::operation_index( impl );
             auto ptr = get_function_from_domain( irb, op, dom );
             return irb.CreateBitCast( ptr, fty->getPointerTo() );
         }

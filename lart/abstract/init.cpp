@@ -168,6 +168,14 @@ namespace lart::abstract {
             auto irb = llvm::IRBuilder<>( ctx );
 
             auto generate = [&] ( auto fn, auto index ) {
+                if ( !fn->empty() ) {
+                    std::vector< llvm::BasicBlock * > bbs;
+                    for ( auto & bb : *fn )
+                        bbs.push_back( &bb );
+                    for ( auto bb : bbs )
+                        bb->eraseFromParent();
+                }
+
                 auto bb = llvm::BasicBlock::Create( ctx, "entry", fn );
                 irb.SetInsertPoint( bb );
                 irb.CreateRet( irb.getInt8( index ) );
@@ -183,7 +191,6 @@ namespace lart::abstract {
 
                 set_index_metadata( fn, meta::tag::operation::index, i );
 
-                ASSERT( fn->empty() );
                 generate( fn, i );
 
                 if ( op.is_fn() && meta::abstract::has( op.impl ) )
@@ -284,11 +291,7 @@ namespace lart::abstract {
 
     llvm::ConstantInt * DomainT::llvm_index() const
     {
-        auto i = lift().impl->getMetadata( domain_index );
-        if ( !i )
-            brq::raise() << "Missing domain index metadata.";
-        auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
-        return llvm::cast< llvm::ConstantInt >( c->getValue() );
+        return meta::llvm_index( lift().impl, domain_index );
     }
 
     DomainT::index_t DomainT::index() const

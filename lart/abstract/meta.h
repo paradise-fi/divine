@@ -7,6 +7,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <brick-except>
+
 #include <optional>
 #include <lart/support/query.h>
 
@@ -178,6 +180,24 @@ namespace lart::abstract::meta {
         return query::query( enumerate( llvm, tag ) )
             .map( query::llvmdyncast< I > )
             .freeze();
+    }
+
+    template< typename Tag >
+    inline llvm::ConstantInt * llvm_index( llvm::Function * fn, const Tag & tag )
+    {
+        using namespace lart::abstract;
+
+        auto i = fn->getMetadata( tag );
+        if ( !i )
+            brq::raise() << "Missing index metadata. " << tag;
+        auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
+        return llvm::cast< llvm::ConstantInt >( c->getValue() );
+    }
+
+    inline llvm::ConstantInt * operation_index( llvm::Function * fn )
+    {
+        using namespace lart::abstract;
+        return llvm_index( fn, meta::tag::operation::index );
     }
 
 } // namespace lart::abstract::meta
