@@ -47,7 +47,17 @@ namespace divine::ui
         if ( _bc_opts.dios_config.empty() )
             _bc_opts.dios_config = _virtual ? "default" : "proxy";
 
-        WithBC::setup();
+        if ( _tactic == "coverage" )
+            _bc_opts.lart_passes.push_back( "coverage" );
+        else if ( _tactic == "closest-fault" )
+            ; // TODO
+        else if ( _tactic != "backtrack" )
+        {
+            _tactic = "backtrack";
+            std::cerr << "W: --tactic received unknown option; using backtrack";
+        }
+
+        with_bc::setup();
     }
 
     void exec::run()
