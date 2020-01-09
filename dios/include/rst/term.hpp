@@ -384,6 +384,8 @@ namespace __dios::rst::abstract
         __cast( op_uitofp, UIntToFP );
         __cast( op_zext, ZExt );
 
+        __bin( op_concat, Concat )
+
         #undef __un
         #undef __bin
         #undef __cmp
