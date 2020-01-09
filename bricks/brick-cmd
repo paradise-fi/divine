@@ -168,8 +168,6 @@ namespace brq
 
     struct cmd_option_help : cmd_option_matcher /* format help for single options */
     {
-        brq::string_builder _help, _pos_help;
-
         template< typename arg_t >
         static std::array< std::string, 1 > names( brq::fallback )
         {
@@ -228,7 +226,7 @@ namespace brq
         int _index = 0, _next = 0;
         int _pos = 0, _pos_matched = 0;
         bool _pos_only = false;
-        brq::string_builder _error;
+        brq::string_builder _error, _help, _pos_help;
 
         template< typename... args_t >
         void _opt_matched( int n, args_t && ... args )
