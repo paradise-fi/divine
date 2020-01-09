@@ -153,7 +153,6 @@ SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
     auto bw = bin.bw;
     if ( a.is_bv() && b.is_bv() )
     {
-        ASSERT_EQ( a.bw, b.bw );
         switch ( bin.op )
         {
 #define MAP_OP_ARITH( OP ) case Op::Bv ## OP:                          \

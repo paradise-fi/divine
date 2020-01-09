@@ -49,6 +49,8 @@ namespace divine::smt
 
     constexpr Bitwidth bitwidth( Op op, Bitwidth abw, Bitwidth bbw ) noexcept
     {
+        if ( brick::smt::is_concat( op ) )
+            return abw + bbw;
         ASSERT_EQ( abw, bbw );
         if ( brick::smt::is_cmp( op ) )
             return 1;
