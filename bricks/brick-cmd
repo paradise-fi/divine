@@ -169,7 +169,7 @@ namespace brq
     struct cmd_option_help : cmd_option_matcher /* format help for single options */
     {
         template< typename arg_t >
-        static std::array< std::string, 1 > names( brq::fallback )
+        static std::array< std::string, 1 > names( brq::fallback, const char *b = "", const char *e = "" )
         {
             static std::string name;
             if ( name.empty() )
@@ -182,11 +182,19 @@ namespace brq
                 if ( name == "basic_string" )
                     name = "string";
             }
-            return { name };
+            return { b + name + e };
         }
 
         template< typename arg_t >
-        static auto names( brq::primary_t ) -> decltype( std::remove_reference_t< arg_t >::names() )
+        static auto names( primary_t, const char * = "", const char * = "" )
+            -> std::array< decltype( std::remove_reference_t< arg_t >::name() ), 1 >
+        {
+            return { std::remove_reference_t< arg_t >::name() };
+        }
+
+        template< typename arg_t >
+        static auto names( primary_t, const char * = "", const char * = "" )
+            -> decltype( std::remove_reference_t< arg_t >::names() )
         {
             return std::remove_reference_t< arg_t >::names();
         }
@@ -198,7 +206,7 @@ namespace brq
         {
             if constexpr ( std::is_same_v< arg_t, cmd_flag & > );
             else if constexpr ( is_binding< arg_t > )
-                b << "{" << names< arg_t >( brq::primary )[ 0 ] << "} ";
+                b << names< arg_t >( brq::primary, "{", "}" )[ 0 ] << " ";
             else
             {
                 b << arg;
