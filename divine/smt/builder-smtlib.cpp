@@ -138,7 +138,8 @@ SMTLib2::Node SMTLib2::unary( Unary unary, Node arg )
         case Op::Not:
             ASSERT_EQ( arg.bw, bw );
             ASSERT_EQ( bw, 1 );
-            return define( _ctx.unop< Op::Not >( 1, arg ) );
+            return define( arg.is_bool() ? _ctx.unop< Op::Not >( 1, arg )
+                                         : _ctx.unop< Op::BvNot >( 1, arg ) );
         //case Op::Extract:
         //   ASSERT_LT( bw, arg.bw );
         //    return define( _ctx.extract( unary.from, unary.to, arg ) );
