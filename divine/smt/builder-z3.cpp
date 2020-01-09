@@ -127,10 +127,10 @@ z3::expr Z3::unary( Unary un, Node arg )
             ASSERT_EQ( childbw, bw );
             ASSERT_EQ( bw, 1 );
             return arg.is_bv() ? ~arg : !arg;
-        /*case Op::Extract:
+        case Op::Extract:
             ASSERT_LT( bw, childbw );
             ASSERT( arg.is_bv() );
-            return arg.extract( un.from, un.to );*/ // TODO
+            return arg.extract( un.from, un.to );
         default:
             UNREACHABLE( "unknown unary operation", un.op );
     }

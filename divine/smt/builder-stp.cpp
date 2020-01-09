@@ -92,10 +92,10 @@ stp::ASTNode STP::unary( Unary un, Node arg )
             ASSERT_EQ( bw, 1 );
             return is_bv( arg ) ? _stp.CreateTerm( stp::BVNOT, childbw, arg )
                                 : _stp.CreateNode( stp::NOT, arg );
-        /*case Op::Extract:
+        case Op::Extract:
             ASSERT_LT( bw, childbw );
             ASSERT( is_bv( arg ) );
-            return _stp.CreateTerm( stp::BVEXTRACT, bw, arg, constant( un.from ), constant( un.to ) );*/
+            return _stp.CreateTerm( stp::BVEXTRACT, bw, arg, constant( un.from ), constant( un.to ) );
         default:
             UNREACHABLE( "unknown unary operation", un.op );
     }
