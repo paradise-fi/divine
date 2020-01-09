@@ -41,6 +41,7 @@ namespace divine::smt
     using Constant = RPNView::Constant;
     using Variable = RPNView::Variable;
     using CastOp = RPNView::CastOp;
+    using ExtractOp = RPNView::ExtractOp;
     using CallOp = RPNView::CallOp;
 
     // TODO move to utils
@@ -107,6 +108,14 @@ namespace divine::smt
             push( bld.unary( { un, bw }, arg ), bw );
         };
 
+        auto handle_extract = [&]( const ExtractOp &extract )
+        {
+            auto [arg, bw] = pop();
+            auto extracted_bw = extract.highest - extract.lowest + 1;
+            Unary op = { { Op::Extract }, extracted_bw, extract.highest, extract.lowest };
+            push( bld.unary( op, arg ), extracted_bw );
+        };
+
         auto handle_cast = [&]( CastOp cast )
         {
             auto [ arg, bw ] = pop();
@@ -134,7 +143,7 @@ namespace divine::smt
         {
             [&]( const Constant& con ) { push( bld.constant( con ), con.bitwidth() ); },
             [&]( const Variable& var ) { push( bld.variable( var ), var.bitwidth() ); },
-            handle_unary, handle_cast, handle_binary, handle_call,
+            handle_unary, handle_cast, handle_extract, handle_binary, handle_call,
             [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
         };
 
