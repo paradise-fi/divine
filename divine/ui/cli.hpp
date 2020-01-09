@@ -349,7 +349,7 @@ namespace divine::ui
     struct exec : with_report
     {
         brq::cmd_flag _trace, _virtual, _exhaustive;
-        std::string _tactic;
+        std::string _tactic = "none";
 
         void setup();
         void run();
@@ -360,7 +360,7 @@ namespace divine::ui
             c.section( "Exec Options" );
             c.opt( "--virtual", _virtual ) << "simulate system calls instead of executing them";
             c.opt( "--trace", _trace ) << "print instructions as they are executed";
-            c.opt( "--tactic", _tactic );
+            c.opt( "--tactic", _tactic ) << "choose search objective (coverage, fault) [none]";
             c.opt( "--exhaustive", _exhaustive );
         }
     };

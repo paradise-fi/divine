@@ -62,16 +62,6 @@ namespace divine::ui
 
     void exec::run()
     {
-        const auto tactic = [&]
-        {
-            if ( _tactic == "coverage" )
-                return mc::Exec::Tactic::CoverageSearch;
-            else if ( _tactic == "closest-fault" )
-                return mc::Exec::Tactic::ClosestFaultSearch;
-
-            return mc::Exec::Tactic::Backtrack;
-        }();
-
         mc::Exec exec( bitcode() );
 
         _log->start();
@@ -79,7 +69,7 @@ namespace divine::ui
         if ( _trace )
             exec.trace();
         else
-            exec.run( _exhaustive, tactic ); // TODO: What about trace?
+            exec.run( _exhaustive, _tactic ); // TODO: What about trace?
 
         _log->progress( { 0, 0 }, 0, true );
         _log->memory( exec.poolstats(), mc::HashStats(), true ); // TODO: What about HashStats?
