@@ -25,6 +25,15 @@ done
 
 $cc $src "$@" -g -o $binary -lpthread -lm
 
+readelf --debug-dump=decodedline $binary | tr -s ' ' | tail -n +5 > dbg_info.dbg
+base=`basename "$src"`
+dir_path=`dirname "$src"`
+sed dbg_info.dbg -i -e "1 i\Directory $base $dir_path"
+sed dbg_info.dbg -i -e '/^$/d'
+sed dbg_info.dbg -i -e '/^\/var\/obj.*/d'
+sed dbg_info.dbg -i -e '/^\.\//d'
+sed dbg_info.dbg -i -e '/^\//d'
+
 dissas_args="--output $cfg --binary $binary --std_defs $mcsema_dir/linux.txt"
 
 if file $binary | grep -e "LSB shared object" -e "LSB pie executable" -q; then
@@ -33,4 +42,4 @@ fi
 
 mcsema-dyninst-disass $dissas_args
 
-mcsema-lift --explicit_args --arch amd64 --os linux --cfg $cfg --abi_libraries $libc --output $out
+mcsema-lift --dbg_info dbg_info.dbg --explicit_args --arch amd64 --os linux --cfg $cfg --abi_libraries $libc --output $out 2> /dev/null
