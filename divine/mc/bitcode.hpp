@@ -41,8 +41,15 @@ namespace divine::mc
     enum class autotrace { nothing, calls = 1, allocs = 2 };
     enum class leakcheck { nothing, exit = 0x1 , ret = 0x2 , state = 0x4 };
 
-    struct tracepoint : brick::types::StrongEnumFlags< autotrace > {};
-    struct checkpoint : brick::types::StrongEnumFlags< leakcheck > {};
+    struct tracepoint : brick::types::StrongEnumFlags< autotrace >
+    {
+        static auto help() { return "a comma-separated list of: nothing, calls or allocs"; }
+    };
+
+    struct checkpoint : brick::types::StrongEnumFlags< leakcheck >
+    {
+        static auto help() { return "a comma-separated list of: exit, ret or state"; }
+    };
 
     std::string to_string( checkpoint, bool yaml = false );
     std::string to_string( tracepoint, bool yaml = false );
