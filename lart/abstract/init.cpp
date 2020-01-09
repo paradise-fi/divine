@@ -165,17 +165,26 @@ namespace lart::abstract {
             auto &ctx = m.getContext();
             auto ops = operations(); // operation indices
 
-            auto void_t = llvm::Type::getVoidTy( m.getContext() );
+            auto irb = llvm::IRBuilder<>( ctx );
+
+            auto generate = [&] ( auto fn, auto index ) {
+                auto bb = llvm::BasicBlock::Create( ctx, "entry", fn );
+                irb.SetInsertPoint( bb );
+                irb.CreateRet( irb.getInt8( index ) );
+            };
 
             for ( size_t i = 0; i < ops.size(); ++i ) {
                 auto &op = ops[ i ];
-                std::string name = "lart.abstract."s + op.name().str();
-                auto fty = llvm::FunctionType::get( void_t, {}, false );
+                std::string name = "__lart_abstract_"s + op.name().str();
+                auto fty = llvm::FunctionType::get( irb.getInt8Ty(), {}, false );
                 auto fn = llvm::cast< llvm::Function >(
                     m.getOrInsertFunction( name, fty )
                 );
 
                 set_index_metadata( fn, meta::tag::operation::index, i );
+
+                ASSERT( fn->empty() );
+                generate( fn, i );
 
                 if ( op.is_fn() && meta::abstract::has( op.impl ) )
                     meta::abstract::inherit( fn, op.impl );
