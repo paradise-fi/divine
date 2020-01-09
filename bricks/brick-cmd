@@ -211,7 +211,8 @@ namespace brq
             else
             {
                 b << arg;
-                if ( std::isalpha( std::string_view( arg ).back() ) )
+                if ( std::isalpha( std::string_view( arg ).back() ) &&
+                     std::string_view( arg ).size() > 2 )
                     b << " ";
             }
             opt_help( b, std::forward< args_t >( args )... );
