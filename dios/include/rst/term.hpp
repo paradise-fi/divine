@@ -294,7 +294,7 @@ namespace __dios::rst::abstract
         _LART_INTERFACE
         static term_t op_extract( term_t term, uint8_t from, uint8_t to ) noexcept
         {
-            return make_term( term ).apply< Op::Extract >().extend( from ).extend( to );
+            return make_term( term ).apply< Op::Extract >().extend( to ).extend( from );
         }
 
         #define __bin( name, op ) \
