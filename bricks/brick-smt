@@ -222,6 +222,11 @@ namespace brick::smt
         return op == Op::Call;
     }
 
+    static inline constexpr bool is_concat( Op op ) noexcept
+    {
+        return op == Op::Concat;
+    }
+
     /* SMT-LIB names for the operations, for generating the string
      * to input to SMT-LIB. */
     inline std::string_view name( Op op )
