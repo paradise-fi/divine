@@ -33,6 +33,21 @@ namespace __dios::rst::abstract
 
         operator abstract_value_t() { return static_cast< abstract_value_t >( pointer ); }
 
+        _LART_INLINE static term_t make_term() noexcept
+        {
+            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
+            new ( ptr ) tagged_abstract_domain_t();
+            return term_t{ ptr };
+        }
+
+        template< typename ...Terms >
+        _LART_INLINE static term_t make_term( Terms ...args ) noexcept
+        {
+            auto term = make_term();
+            ( term.extend( args ), ... );
+            return term;
+        }
+
         _LART_INLINE RPN& as_rpn() noexcept
         {
             return *reinterpret_cast< RPN * >( &pointer );
@@ -274,6 +289,12 @@ namespace __dios::rst::abstract
         static term_t op_thaw( term_t term, uint8_t bw ) noexcept
         {
             return cast< Op::ZFit >( term, bw ); /* TODO interval-based peek & poke */
+        }
+
+        _LART_INTERFACE
+        static term_t op_extract( term_t term, uint8_t from, uint8_t to ) noexcept
+        {
+            return make_term( term ).apply< Op::Extract >().extend( from ).extend( to );
         }
 
         #define __bin( name, op ) \
