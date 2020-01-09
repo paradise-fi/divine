@@ -431,14 +431,26 @@ namespace brick::smt
         using const_iterator = typename Container::const_iterator;
         using difference_type = typename Container::difference_type;
 
-        template< typename T >
-        struct Constant
+        template< Op o = Op::Invalid >
+        struct Token
         {
-            Op op;
+            Op op = o;
+
+            template< typename stream >
+            friend auto operator<<( stream &os, const Token &operation ) -> decltype( os << "" )
+            {
+                return os << name( operation.op );
+            }
+
+        } __attribute__(( packed, alinged(1) ));
+
+        template< typename T >
+        struct Constant : Token<>
+        {
             T value;
 
             Node::Type type() const { return Node::Type::Int; }
-            Bitwidth bitwidth() const { return -Bitwidth( op ); }
+            Bitwidth bitwidth() const { return -Bitwidth( this->op ); }
 
             template< typename stream >
             friend auto operator<<( stream &os, const Constant &con ) -> decltype( os << "" )
@@ -450,15 +462,16 @@ namespace brick::smt
 
         } __attribute__(( packed, aligned(1) ));
 
+        static_assert( sizeof( Constant< bool > ) == 2 );
         static_assert( sizeof( Constant< uint8_t > ) == 2 );
         static_assert( sizeof( Constant< uint32_t > ) == 5 );
 
-        struct Variable
+        struct Variable : Token<>
         {
-            Op op;
             VarID id;
-            Bitwidth bitwidth() const { return RPN::bitwidth( op ); }
-            Node::Type type() const { return RPN::type( op ); }
+
+            Bitwidth bitwidth() const { return RPN::bitwidth( this->op ); }
+            Node::Type type() const { return RPN::type( this->op ); }
 
             template< typename stream >
             friend auto operator<<( stream &os, const Variable &var ) -> decltype( os << "" )
@@ -476,11 +489,9 @@ namespace brick::smt
         } __attribute__(( packed, aligned(1) ));
 
         static_assert( sizeof( Variable ) == 3 );
-        static_assert( sizeof( Constant< bool > ) == 2 );
 
-        struct CastOp
+        struct CastOp : Token<>
         {
-            Op op;
             Bitwidth bitwidth;
 
             template< typename stream >
@@ -637,12 +648,13 @@ namespace brick::smt
     template< typename RPN >
     struct RPNView
     {
-        using Variable = typename RPN::Variable;
-        using Constant = typename RPN::template Constant< uint64_t >;
-        using CastOp   = typename RPN::CastOp;
-        using CallOp   = typename RPN::Call;
-        using UnaryOp  = token::UnaryOp;
-        using BinaryOp = token::BinaryOp;
+        using Variable  = typename RPN::Variable;
+        using Constant  = typename RPN::template Constant< uint64_t >;
+        using CastOp    = typename RPN::CastOp;
+        using CallOp    = typename RPN::Call;
+        using ExtractOp = typename RPN::ExtractOp;
+        using UnaryOp   = token::UnaryOp;
+        using BinaryOp  = token::BinaryOp;
 
         RPNView( const RPN & rpn ) : _rpn( rpn ) {}
 
@@ -684,7 +696,7 @@ namespace brick::smt
                     std::advance( _it, 1 + bw / 8 );
                 }
                 else if ( is_variable( operand() ) )
-                    std::advance( _it, sizeof( typename RPN::Variable ) );
+                    std::advance( _it, sizeof( Variable ) );
                 else if ( is_cast( operand() ) )
                     std::advance( _it, sizeof( typename RPN::CastOp ) );
                 else if ( is_call( operand() ) )
@@ -694,6 +706,9 @@ namespace brick::smt
 
                 return *this;
             }
+
+            template< typename T >
+            const T* reinterpret() const noexcept { return reinterpret_cast< const T * >( &(*_it) ); }
 
             Token operator*() const noexcept
             {
@@ -715,15 +730,13 @@ namespace brick::smt
 
                 if ( is_variable( op ) )
                 {
-                    using Var = typename RPN::Variable;
-                    auto ptr = reinterpret_cast< const Var * >( &(*_it) );
+                    auto ptr = reinterpret< Variable >();
                     return Variable{ op, ptr->id };
                 }
 
                 if ( is_cast( op ) )
                 {
-                    using Cast = typename RPN::CastOp;
-                    auto ptr = reinterpret_cast< const Cast * >( &(*_it) );
+                    auto ptr = reinterpret< CastOp >();
                     return CastOp{ ptr->op, ptr->bitwidth };
                 }
 
