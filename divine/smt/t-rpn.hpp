@@ -66,14 +66,14 @@ namespace divine::t_rpn
 
         Variable add_var( VarID id )
         {
-            Variable v{ Op::VarI32, id };
+            Variable v{ { Op::VarI32 }, id };
             append( v );
             return v;
         }
 
         Constant add_con( uint64_t val )
         {
-            Constant c{ Op( -64 ), val };
+            Constant c{ { Op( -64 ) }, val };
             append( c );
             return c;
         }
@@ -106,7 +106,7 @@ namespace divine::t_rpn
 
         TEST( trivial_decomp )
         {
-            Variable v{ Op::VarI32, 1 };   // x
+            Variable v{ { Op::VarI32 }, 1 };   // x
             append( v );
             UF uf;
             decompose( rpn, uf );
@@ -115,9 +115,9 @@ namespace divine::t_rpn
 
         TEST( x_y )
         {
-            Variable x{ Op::VarI32, 1 };
+            Variable x{ { Op::VarI32 }, 1 };
             append( x );
-            Constant c{ Op( -64 ), 3 };
+            Constant c{ { Op( -64 ) }, 3 };
             append( c );
             append( Op::Eq );
             UF uf;
@@ -125,9 +125,9 @@ namespace divine::t_rpn
             ASSERT_EQ( x.id, *uf.find( x.id ) );
             clear();
 
-            Variable y{ Op::VarI32, 2 };
+            Variable y{ { Op::VarI32 }, 2 };
             append( y );
-            Constant c2{ Op( -64 ), 4 };
+            Constant c2{ { Op( -64 ) }, 4 };
             append( c2 );
             append( Op::Eq );
             decompose( rpn, uf );
@@ -140,23 +140,23 @@ namespace divine::t_rpn
         {
             UF uf;
 
-            Variable b{ Op::VarBool, 1 };
+            Variable b{ { Op::VarBool }, 1 };
             append( b );
-            Variable z{ Op::VarI32, 2 };       //  ( z=z ) &&C TRUE
+            Variable z{ { Op::VarI32 }, 2 };       //  ( z=z ) &&C TRUE
             append( z );
             append( z );
             append( Op::Eq );
             decompose( rpn, uf );
             clear();
 
-            Variable x{ Op::VarI32, 3 };       //  &&C ( x=x ) 
+            Variable x{ { Op::VarI32 }, 3 };       //  &&C ( x=x )
             append( x );
             append( x );
             append( Op::Eq );
             decompose( rpn, uf );
             clear();
 
-            Variable y{ Op::VarI32, 4 };
+            Variable y{ { Op::VarI32 }, 4 };
             append( x );
             append( y );                       //  &&C ( y=x )
             append( Op::Eq );
@@ -173,13 +173,13 @@ namespace divine::t_rpn
         TEST( match_variables )
         {
             UF uf;
-            Variable b{ Op::VarBool, 1 };
-            Variable x{ Op::VarI32, 2 };
-            Variable y{ Op::VarI32, 3 };
-            Variable z{ Op::VarI32, 4 };
-            Variable d{ Op::VarI32, 5 };
-            Variable e{ Op::VarI32, 6 };
-            Constant c{ Op( -64 ), 3 };
+            Variable b{ { Op::VarBool }, 1 };
+            Variable x{ { Op::VarI32 }, 2 };
+            Variable y{ { Op::VarI32 }, 3 };
+            Variable z{ { Op::VarI32 }, 4 };
+            Variable d{ { Op::VarI32 }, 5 };
+            Variable e{ { Op::VarI32 }, 6 };
+            Constant c{ { Op( -64 ) }, 3 };
 
             append( b );
             // (x = x)
