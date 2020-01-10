@@ -107,7 +107,7 @@ fi
 (echo "# Test Results"; echo) >> report.txt
 
 rm -f $list
-if ! make ${buildtype}-check JOBS=6 || egrep -q '(failed|timeout|unknown)$' $list; then
+if ! make ${buildtype}-check || egrep -q '(failed|timeout|unknown)$' $list; then
     test -e $list && cp report.txt doc/website/
     failed >> report.txt
     finished 1
