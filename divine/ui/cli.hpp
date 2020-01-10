@@ -58,6 +58,13 @@ namespace divine::ui::arg
     struct commasep
     {
         std::vector< type > vec;
+        auto begin() { return vec.begin(); }
+        auto end() { return vec.end(); }
+    };
+
+    struct flags: commasep< std::string >
+    {
+        static auto help () { return "a comma-separated list of flags"; }
     };
 
     enum class report { none, yaml, yaml_long };
@@ -178,7 +185,7 @@ namespace divine::ui
         std::vector< std::string > _useropts;
         std::vector< std::string > _systemopts;
         std::vector< std::string > _linkLibs;
-        std::vector< arg::commasep< std::string > > _ccOpts;
+        arg::flags _cc_opts;
         std::vector< arg::mount > _vfs;
         arg::mem _vfs_limit = 16 * 1024 * 1024;
         bool _init_done = false;
@@ -203,7 +210,7 @@ namespace divine::ui
         {
             command::options( c );
             c.section( "Compiler Options" );
-            c.opt( "-C,", _ccOpts ) << "pass additional options to the compiler";
+            c.opt( "-C,", _cc_opts ) << "pass additional options to the compiler";
             c.opt( "-std=", _std ) << "set the C/C++ standard to use";
             c.opt( "-l", _linkLibs ) << "link additional libraries, e.g. -lm for libm";
 
@@ -419,7 +426,7 @@ namespace divine::ui
 
         divine::cc::Options _opts;
         std::vector< std::string > _flags;
-        std::vector< arg::commasep< std::string > > _passThroughFlags;
+        arg::flags _passthrough;
         std::string _output;
         rt::DiosCC _driver;
 
@@ -431,7 +438,7 @@ namespace divine::ui
             c.opt( "-c", _opts.dont_link ) << "compile but do not link";
             c.opt( "--dont-link", _opts.dont_link ) << "alias for the above";
             c.opt( "-o", _output ) << "write the output into a given file";
-            c.opt( "-C,", _passThroughFlags ) << "pass additional options to the compiler";
+            c.opt( "-C,", _passthrough ) << "pass additional options to the compiler";
             c.collect( _flags );
         }
     };

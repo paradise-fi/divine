@@ -211,8 +211,7 @@ void with_bc::process_options()
         if ( !_std.empty() )
             _bc_opts.ccopts.push_back( { "-std=" + _std } );
         _bc_opts.ccopts.push_back( _bc_opts.input_file.name );
-        for ( auto &o : _ccOpts )
-            std::copy( o.vec.begin(), o.vec.end(), std::back_inserter( _bc_opts.ccopts ) );
+        std::copy( _cc_opts.begin(), _cc_opts.end(), std::back_inserter( _bc_opts.ccopts ) );
         for ( auto &l : _linkLibs )
             _bc_opts.ccopts.push_back( "-l" + l );
     }
@@ -370,8 +369,7 @@ void cc::run()
     using namespace cc;
     _driver.setup( _opts );
 
-    for ( auto &x : _passThroughFlags )
-        std::copy( x.vec.begin(), x.vec.end(), std::back_inserter( _flags ) );
+    std::copy( _passthrough.begin(), _passthrough.end(), std::back_inserter( _flags ) );
 
     ParsedOpts po = parseOpts( _flags );
     if ( !po.files.empty() )
