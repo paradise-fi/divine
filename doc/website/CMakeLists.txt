@@ -24,7 +24,8 @@ endmacro()
 macro( pages sourcedir )
   foreach( source ${ARGN} )
     string( REPLACE ".md" ".html" target "${source}" )
-    page( ${target} ${sourcedir} "" ${source} )
+    string( REPLACE ".md" "" title "${source}" )
+    page( ${target} ${sourcedir} "-Mtitle:${title}" ${source} )
   endforeach()
 endmacro()
 
@@ -59,9 +60,9 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy ${INSTALL_VM_SH} install-vm.sh
   VERBATIM )
 
-page( whatsnew.html .. "--toc --toc-depth=1" NEWS )
-page( roadmap.html .. "" ROADMAP )
-page( manual.html ../manual "${MANUAL_OPT}" ${MANUAL_SRC} )
+page( whatsnew.html .. "--toc --toc-depth=1 -Mtitle:news" NEWS )
+page( roadmap.html .. "-Mtitle:roadmap" ROADMAP )
+page( manual.html ../manual "${MANUAL_OPT} -Mtitle:manual" ${MANUAL_SRC} )
 pages( . download.md index.md status.md previously.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html install.sh install-vm.sh )
