@@ -3,6 +3,7 @@ set( SRCDIR ${CMAKE_CURRENT_SOURCE_DIR} )
 macro( page to srcdir opts )
   set( sources "" )
   set( out "${CMAKE_CURRENT_BINARY_DIR}/${to}" )
+  separate_arguments( opt_sep UNIX_COMMAND ${opts} )
   list( APPEND pages ${out} )
 
   foreach( source ${ARGN} )
@@ -13,7 +14,7 @@ macro( page to srcdir opts )
     OUTPUT ${out}
     DEPENDS ${sources} template.html ${SRCDIR}/../panmd.pl
     WORKING_DIRECTORY ${SRCDIR}
-    COMMAND perl ${SRCDIR}/../panmd.pl --to=html ${opts} ${PANDOC_SMART_OPT}
+    COMMAND perl ${SRCDIR}/../panmd.pl --to=html ${opt_sep} ${PANDOC_SMART_OPT}
             version=${DIVINE_VERSION} major=${DIVINE_MAJOR} ${sources}
             | sed -e "s,:DIVINE:,<span class=\"divine\">DIVINE</span>,g" > ${out}
     VERBATIM
@@ -58,7 +59,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy ${INSTALL_VM_SH} install-vm.sh
   VERBATIM )
 
-page( whatsnew.html .. "--toc --toc-depth 1" NEWS )
+page( whatsnew.html .. "--toc --toc-depth=1" NEWS )
 page( roadmap.html .. "" ROADMAP )
 page( manual.html ../manual "${MANUAL_OPT}" ${MANUAL_SRC} )
 pages( . download.md index.md status.md previously.md )
