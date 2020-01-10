@@ -24,14 +24,13 @@
 
 namespace divine::smt::builder
 {
-using BNode = brick::smt::Node;
 
 using namespace std::literals;
 namespace smt = brick::smt;
 
 stp::ASTNode STP::constant( Constant con )
 {
-    ASSERT( con.type() != BNode::Type::Float );
+    ASSERT( con.type() != smt::Type::Float );
     return constant( con.bitwidth(), con.value );
 }
 
@@ -52,7 +51,7 @@ stp::ASTNode STP::constant( bool v )
 
 stp::ASTNode STP::variable( Variable var )
 {
-    ASSERT( var.type() != BNode::Type::Float );
+    ASSERT( var.type() != smt::Type::Float );
     return _stp.CreateSymbol( ( "var_"s + std::to_string( var.id ) ).c_str(), 0, var.bitwidth() );
 }
 

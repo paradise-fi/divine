@@ -23,8 +23,6 @@
 namespace divine::smt::builder
 {
 
-using BNode = brick::smt::Node;
-
 using namespace std::literals;
 namespace smt = brick::smt;
 
@@ -41,11 +39,11 @@ z3::expr Z3::constant( Constant con )
 #endif
     switch ( con.type() )
     {
-        case BNode::Type::Int:
+        case smt::Type::Int:
             return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth() );
-        case BNode::Type::Float:
+        case smt::Type::Float:
             UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
-        case BNode::Type::Bool:
+        case smt::Type::Bool:
             return constant( static_cast< bool >( con.value ) );
     }
 
@@ -66,11 +64,11 @@ z3::expr Z3::variable( Variable var )
 {
     switch ( var.type() )
     {
-        case BNode::Type::Int:
+        case smt::Type::Int:
             return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth() );
-        case BNode::Type::Float:
+        case smt::Type::Float:
             UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
-        case BNode::Type::Bool:
+        case smt::Type::Bool:
             UNREACHABLE( "Unsupported boolean variable." );
     }
 

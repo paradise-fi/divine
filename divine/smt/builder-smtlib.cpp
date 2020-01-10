@@ -38,12 +38,12 @@ SMTLib2::Node SMTLib2::variable( Variable var )
 {
     auto name = "var_" + std::to_string( var.id );
     switch ( var.type() ) {
-        case Node::Type::Bool:
+        case smt::Type::Bool:
             ASSERT_EQ( var.bitwidth(), 1 );
             return _ctx.variable( _ctx.boolT(), name );
-        case Node::Type::Int:
+        case smt::Type::Int:
             return _ctx.variable( _ctx.bitvecT( var.bitwidth() ), name );
-        case Node::Type::Float:
+        case smt::Type::Float:
             ASSERT( var.bitwidth() > 1 );
             return _ctx.variable( _ctx.floatT( var.bitwidth() ), name );
     }
@@ -53,12 +53,12 @@ SMTLib2::Node SMTLib2::constant( Constant con )
 {
    switch ( con.type() )
    {
-        case Node::Type::Bool:
+        case smt::Type::Bool:
             ASSERT_EQ( con.bitwidth(), 1 );
             return constant( static_cast< bool >( con.value ) );
-        case Node::Type::Int:
+        case smt::Type::Int:
             return _ctx.bitvec( con.bitwidth(), con.value );
-        case Node::Type::Float:
+        case smt::Type::Float:
             ASSERT( con.bitwidth() > 1 );
             return _ctx.floatv( con.bitwidth(), con.value );
     }
@@ -67,7 +67,7 @@ SMTLib2::Node SMTLib2::constant( Constant con )
 
 SMTLib2::Node SMTLib2::constant( bool v )
 {
-    return v ? _ctx.symbol( 1, Node::Type::Bool, "true" ) : _ctx.symbol( 1, Node::Type::Bool, "false" );
+    return v ? _ctx.symbol( 1, smt::Type::Bool, "true" ) : _ctx.symbol( 1, smt::Type::Bool, "false" );
 }
 
 SMTLib2::Node SMTLib2::constant( smt::Bitwidth bw, uint64_t value )

@@ -20,6 +20,7 @@
 #pragma once
 
 #include <divine/smt/builder-common.hpp>
+#include <brick-smtlib>
 
 namespace divine::smt::builder
 {
