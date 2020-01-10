@@ -3,12 +3,12 @@
 #pragma once
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/support/meta.h>
 #include <lart/abstract/util.h>
+#include <lart/support/meta.h>
 
 namespace lart::mcsema
 {
@@ -50,53 +50,78 @@ struct segment_masks
 {
     llvm::Module *module;
 
-    void run( llvm::Module & m  )
+    // Change first operand of `end` to `root`. This effectively removes anything
+    // between them.
+    static auto build_bridge()
     {
-        // Remove everything between root and end
-        auto build_bridge = []( auto root, auto end )
+        return []( auto root, auto end )
         {
             auto bridged = end->getWithOperandReplaced( 0, root );
             end->replaceAllUsesWith( bridged );
         };
+    }
 
-        // Find `inttoptr` that is right after `and`
-        auto begin_found = [&]( auto root, auto current )
+    // Remove layers between `root` and `end`
+    static auto remove()
+    {
+        return []( auto root, auto end )
         {
-            peel( current, current,
-                  llvm::Instruction::And, llvm::Instruction::IntToPtr,
-                  build_bridge );
+            end->replaceAllUsesWith( root );
         };
+    }
 
-        // Remove everything between current and root
-        auto remove = [&]( auto root, auto current )
+    // Move in expression by `args`
+    template< typename Yield, typename ...Args >
+    static auto peel_some( Yield yield, Args ...args )
+    {
+        return [=]( auto root, auto current )
         {
-            current->replaceAllUsesWith( root );
+            peel( current, current, args..., yield );
         };
+    }
 
-        auto peel_outside = [&]( auto root, auto current )
-        {
-            peel( current, current,
-                  llvm::Instruction::Add, llvm::Instruction::And,
-                  remove);
-        };
+    void functions( llvm::Module &m )
+    {
+        auto find_bridge_begin = peel_some( build_bridge(),
+                                            llvm::Instruction::And,
+                                            llvm::Instruction::IntToPtr );
+
+        for ( auto &func : m )
+            peel( &func, &func,
+                  llvm::Instruction::PtrToInt,
+                  find_bridge_begin );
+
+    }
+
+    void globals( llvm::Module &m )
+    {
+        auto find_bridge_begin = peel_some( build_bridge(),
+                                            llvm::Instruction::And,
+                                            llvm::Instruction::IntToPtr );
+
+        auto peel_outside = peel_some( remove(),
+                                       llvm::Instruction::Add,
+                                       llvm::Instruction::And );
 
         for ( auto &global : m.globals() )
         {
             peel( &global, &global,
-                 llvm::Instruction::PtrToInt,
-                 llvm::Instruction::Add,
-                 begin_found );
+                  llvm::Instruction::PtrToInt,
+                  llvm::Instruction::Add,
+                  find_bridge_begin );
 
             peel( &global, &global,
                   llvm::Instruction::PtrToInt,
                   peel_outside );
         }
+    }
 
-        for ( auto &func : m )
-            peel( &func, &func,
-                  llvm::Instruction::PtrToInt,
-                  begin_found );
+
+    void run( llvm::Module &m  )
+    {
+        functions( m );
+        globals( m );
     }
 };
 
-}// namespace lart::mcsema
+} // namespace lart::mcsema
