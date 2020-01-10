@@ -65,7 +65,8 @@ struct BCOptions
     brq::cmd_file input_file;
     std::vector< std::string > ccopts;
 
-    brq::cmd_flag static_reduction = true, symbolic, sequential, synchronous, svcomp;
+    brq::cmd_flag static_reduction = true, symbolic, sequential, synchronous,
+                                     svcomp, mcsema;
 
     Env bc_env;
     std::vector< std::string > lart_passes;
