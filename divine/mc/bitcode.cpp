@@ -21,6 +21,8 @@
 #include <divine/vm/memory.tpp>
 #include <divine/vm/program.hpp>
 #include <lart/driver.h>
+#include <lart/mcsema/libcindirectcalls.hpp>
+#include <lart/mcsema/segmentmasks.hpp>
 #include <lart/support/util.h>
 
 DIVINE_RELAX_WARNINGS
@@ -152,6 +154,13 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
 void BitCode::do_lart()
 {
     _save_original_module();
+
+    // TODO: Unify with lart::Driver once it is rewritten
+    if ( _opts.mcsema )
+    {
+        lart::mcsema::segment_masks().run( *_module.get() );
+        lart::mcsema::libc_indirect_calls().run( *_module.get() );
+    }
 
     lart::Driver lart;
 
