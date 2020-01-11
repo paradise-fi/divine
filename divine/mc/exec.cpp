@@ -51,11 +51,11 @@ namespace divine::mc
     {
         bool feasible( typename next::tq q ) override
         {
-            if ( next::feasible( q ) )
-                return true;
-
             if ( this->context().flags_any( flag ) )
                 this->push( q, event::infeasible() );
+
+            if ( next::feasible( q ) )
+                return true;
 
             return false;
         }
