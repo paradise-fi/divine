@@ -150,8 +150,7 @@ if test -n "$EXPORT"; then exit 0; fi
 
 cat $dcscript | sed -e 's,^,  | ,'
 
-# Run divcheck with the script
-divcheck $dcscript
+if ! divcheck $dcscript; then exit $?; fi
 
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
