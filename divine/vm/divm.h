@@ -263,6 +263,7 @@ enum _VM_Fault
     _VM_F_Locking,
     _VM_F_Hypercall,
     _VM_F_Access, /* access violation */
+    _VM_F_PtrCompare,
     _VM_F_NotImplemented,
     _VM_F_Last
 };

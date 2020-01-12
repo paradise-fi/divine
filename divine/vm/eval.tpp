@@ -286,14 +286,45 @@ void Eval< Ctx >::update_shuffle()
 template< typename Ctx >
 void Eval< Ctx >::dispatch() /* evaluate a single instruction */
 {
-    /* operation templates */
-
-    auto _icmp = [this] ( auto impl ) -> void
+    auto _icmp_impl = [&]( auto check, auto cmp ) -> void
     {
-        op< IntegerComparable >( 1, [&]( auto v ) { result( impl( v.get( 1 ), v.get( 2 ) ) ); } );
+        auto impl = [&]( auto v )
+        {
+            auto a = v.get( 1 ), b = v.get( 2 );
+            result( cmp( a, b ) );
+            check( a, b );
+        };
+        op< IntegerComparable >( 1, impl );
     };
 
-    auto _icmp_signed = [this] ( auto impl ) -> void
+    auto has_objid = []( auto p ) { return p.objid() && p.pointer(); };
+    auto is_null = []( auto p ) { return p.objid() == 0; };
+
+    auto _icmp_chk_eq = [&]( auto a, auto b )
+    {
+        if ( a.pointer() || b.pointer() )
+        {
+            GenericPointer pa( a.objid() ), pb( b.objid() );
+            if ( !pa.heap() || !pb.heap() || ( heap().valid( pa ) && heap().valid( pb ) ) )
+                return;
+            if ( a.objid() || b.objid() )
+                fault( _VM_F_PtrCompare ) << "pointer-dependent equality comparison of "
+                                          << a << " and " << b;
+        }
+    };
+
+    auto _icmp_chk = [&]( auto a, auto b )
+    {
+        if ( a.pointer() && b.pointer() && a.objid() == b.objid() )
+            return; /* ok */
+        if ( a.pointer() || b.pointer() )
+            fault( _VM_F_PtrCompare ) << "pointer-dependent inequality comparison of "
+                                      << a << " and " << b;
+    };
+
+    auto _icmp_eq     = [&]( auto impl ) { _icmp_impl( _icmp_chk_eq, impl ); };
+    auto _icmp        = [&]( auto impl ) { _icmp_impl( _icmp_chk, impl ); };
+    auto _icmp_signed = [&]( auto impl ) -> void
     {
         op< IsIntegral >( 1, [&]( auto v ) {
                 this->result( impl( v.get( 1 ).make_signed(),
@@ -395,9 +426,9 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
             switch ( instruction().subcode )
             {
                 case ICmpInst::ICMP_EQ:
-                    return _icmp( []( auto a, auto b ) { return a == b; } );
+                    return _icmp_eq( []( auto a, auto b ) { return a == b; } );
                 case ICmpInst::ICMP_NE:
-                    return _icmp( []( auto a, auto b ) { return a != b; } );
+                    return _icmp_eq( []( auto a, auto b ) { return a != b; } );
                 case ICmpInst::ICMP_ULT:
                     return _icmp( []( auto a, auto b ) { return a < b; } );
                 case ICmpInst::ICMP_UGE:
