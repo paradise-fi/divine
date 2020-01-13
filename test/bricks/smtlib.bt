@@ -1,0 +1,4 @@
+common tags: c++
+          | brick::t_smtlib::BVecTest::string
+          | brick::t_smtlib::ExtractTest::print
+          | brick::t_smtlib::CombinationTest::simple
