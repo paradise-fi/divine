@@ -20,3 +20,8 @@ catch ( divine::ui::ResourceLimit &e )
     std::cerr << "E: " << e.what() << std::endl;
     return 202; /* indicate resource exhausted */
 }
+catch ( divcheck::Wrong &w )
+{
+    std::cerr << "E: " << w.what() << std::endl;
+    return 1;
+}
