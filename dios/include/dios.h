@@ -49,7 +49,7 @@ void __dios_yield() NOTHROW;
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
                 __FILE__, __LINE__, msg ); \
-            __dios_fault( (_VM_Fault) _DiOS_F_Assert, "DiOS assert failed" ); \
+            __dios_fault( (enum _VM_Fault) _DiOS_F_Assert, "DiOS assert failed" ); \
         } \
     } while (0)
 
@@ -57,7 +57,7 @@ void __dios_yield() NOTHROW;
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d", \
                 __FILE__, __LINE__ ); \
-            __dios_fault( (_VM_Fault) _DiOS_F_Assert, "DiOS assert failed" ); \
+            __dios_fault( (enum _VM_Fault) _DiOS_F_Assert, "DiOS assert failed" ); \
         } \
     } while (0)
 
