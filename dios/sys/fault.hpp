@@ -56,6 +56,7 @@ namespace __dios
         ProcessFaultInfo()
         {
             std::fill_n( faultConfig, _DiOS_SF_Last, FaultFlag::Enabled | FaultFlag::AllowOverride );
+            faultConfig[ _VM_F_PtrCompare ] = FaultFlag::Continue | FaultFlag::AllowOverride;
         }
 
         uint8_t faultConfig[ _DiOS_SF_Last ];

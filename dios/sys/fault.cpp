@@ -74,6 +74,8 @@ namespace __dios
             return _VM_F_Float;
         if ( fault == "memory" )
             return _VM_F_Memory;
+        if ( fault == "ptrcmp" )
+            return _VM_F_PtrCompare;
         if ( fault == "leak" )
             return _VM_F_Leak;
         if ( fault == "control" )
@@ -103,6 +105,7 @@ namespace __dios
             case _VM_F_Integer: return ext ? "integer arithmetic error" : "integer";
             case _VM_F_Float: return ext ? "floating-point arithmetic error" : "float";
             case _VM_F_Memory: return ext ? "memory error" : "memory";
+            case _VM_F_PtrCompare: return ext ? "pointer comparison" : "ptrcmp";
             case _VM_F_Leak: return ext ? "memory leak" : "leak";
             case _VM_F_Control: return ext ? "control error" : "control";
             case _VM_F_Locking: return ext ? "locking error" : "locking";
