@@ -90,12 +90,12 @@ OF = $(OBJ)$(FLAVOUR)/
 DIRENV_PATH = $(OF)/tools:$(OF)/llvm/bin:$(OBJ)bench/tools:$(OF)/divine:$(OF)/lart:$(OF)
 
 config:
+	chmod +x test/lib/*-unpack test/lib/verify test/lib/testopt test/divine
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
 	mkdir -p $(OBJ)$(FLAVOUR)
 	echo "$($(FLAVOUR)_FLAGS)" > $(OBJ)$(FLAVOUR)/config.tmp
 	$(CMAKE) -E copy_if_different $(OBJ)$(FLAVOUR)/config.tmp $(OBJ)$(FLAVOUR)/config.vars
 	if ! test -e $(OBJ)$(FLAVOUR)/config.done || test -n "$(FORCE_CMAKE)"; then \
-	  chmod +x test/divine; \
 	  cd $(OBJ)$(FLAVOUR) && $(CMAKE) $(.CURDIR) $(CMAKE_EXTRA) -G "$(GENERATOR)" && \
 	  touch $(OBJ)$(FLAVOUR)/config.done; fi
 
