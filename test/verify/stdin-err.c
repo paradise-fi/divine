@@ -1,5 +1,5 @@
 /* TAGS: min */
-/* VERIFY_OPTS: --stdin `dirname $1`/stdin.bin -o nofail:malloc */
+/* VERIFY_OPTS: --stdin $SRC_DIR/stdin.bin -o nofail:malloc */
 #include <assert.h>
 #include <unistd.h>
 

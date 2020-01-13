@@ -1,5 +1,5 @@
 /* TAGS: min c++ todo */
-// VERIFY_OPTS: --capture `dirname $1`/medium:follow:/t -o nofail:malloc
+// VERIFY_OPTS: --capture $SRC_DIR/medium:follow:/t -o nofail:malloc
 
 /* TODO: the symlink is not actually in the repository/tarballs/... and we need
  * to figure a way to create it for testing purposes */

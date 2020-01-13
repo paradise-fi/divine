@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . ./environment
-chmod +x $TESTS/lib/*-unpack $TESTS/lib/verify
+chmod +x $TESTS/lib/*-unpack $TESTS/lib/verify $TESTS/lib/testopt
 
 todo=,todo
 for arg in "$@"; do

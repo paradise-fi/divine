@@ -1,5 +1,5 @@
 /* TAGS: posix c++ */
-/* VERIFY_OPTS: --capture $(dirname $1)/subdir:follow:/ -o nofail:malloc */
+/* VERIFY_OPTS: --capture $SRC_DIR/subdir:follow:/ -o nofail:malloc */
 #include <dirent.h>
 #include <unistd.h>
 #include <iostream>

@@ -1,5 +1,5 @@
 /* TAGS: min c */
-/* VERIFY_OPTS: -C,-D"RETURN(x)=(x-2)" */
+/* VERIFY_OPTS: -DRETURN(x)=(x-2) */
 /* SKIP_CC: 1 */
 
 int main() {

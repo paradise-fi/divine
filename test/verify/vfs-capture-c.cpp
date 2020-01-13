@@ -1,5 +1,5 @@
 /* TAGS: min c++ */
-// VERIFY_OPTS: --capture `dirname $1`/small/:follow:/ -o nofail:malloc
+// VERIFY_OPTS: --capture $SRC_DIR/small/:follow:/ -o nofail:malloc
 
 #include <dios.h>
 #include <cstring>

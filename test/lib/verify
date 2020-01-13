@@ -26,19 +26,19 @@ else
     addcmd() { echo "$@" >> $dcscript ; }
 fi
 
-getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
+export SRC_DIR=$(dirname $1)
+tags=$(testopt TAGS $1)
+opts=$(testopt VERIFY_OPTS $1)
+args=$(testopt PROGRAM_OPTS $1)
+ccopt=$(testopt CC_OPTS $1)
+extrasrc=$(testopt EXTRA_SRCS $1)
+expect=$(testopt EXPECT $1)
+skipcc=$(testopt SKIP_CC $1)
 
-tags=$(eval echo $(getopt TAGS $1))
-opts=$(eval echo $(getopt VERIFY_OPTS $1))
-args=$(eval echo $(getopt PROGRAM_OPTS $1))
-ccopt=$(eval echo $(getopt CC_OPTS $1))
-extrasrc=$(eval echo $(getopt EXTRA_SRCS $1))
-expect=$(eval echo $(getopt EXPECT $1))
 gtest=
-skipcc=$(getopt SKIP_CC $1)
-
 decompiled=
 std=
+
 echo "$1" | grep -q '.cpp$' && { echo $ccopts | grep -qv -- '-std'; } && std="-std=c++14"
 
 if test -z "$EXPORT"; then
@@ -52,7 +52,7 @@ if test -z "$EXPORT"; then
     extra="--report-filename verify.out"
 fi
 
-if test "$(eval echo $(getopt USE_GTEST $1))" = 1; then
+if test "$(eval echo $(testopt USE_GTEST $1))" = 1; then
     gtest="$TESTS/lib/gtest/src/gtest-all.cc $TESTS/lib/gtest/src/gtest_main.cc -I$TESTS/lib/gtest -lm"
 fi
 

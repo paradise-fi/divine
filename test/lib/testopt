@@ -1,0 +1,10 @@
+#!/usr/bin/perl
+my $var = shift @ARGV;
+while (<>)
+{
+    next unless ( m,/\* $var: (.*?) \*/, or m,// $var: (.*?)\n, );
+    my $match = $1;
+    $match =~ s,\$(\w+),$ENV{$1},g;
+    print $match;
+    exit 0;
+}

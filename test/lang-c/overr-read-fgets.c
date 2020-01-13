@@ -1,5 +1,5 @@
 /* TAGS: c */
-/* VERIFY_OPTS: --stdin `dirname $1`/stdin.txt -o nofail:malloc */
+/* VERIFY_OPTS: --stdin $SRC_DIR/stdin.txt -o nofail:malloc */
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
