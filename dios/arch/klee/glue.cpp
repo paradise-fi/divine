@@ -24,16 +24,21 @@ extern "C" /* platform glue */
 {
     void *__vm_obj_make( int sz, int )
     {
-        uint8_t *mem = klee_malloc( 8196 );
-        reinterpret_cast< int * >( mem )[0] = sz;
-        return mem + sizeof( int );
+        int alloc = sz >= 4096 ? 2 * sz + 2 * sizeof( int ) : 4096 + 2 * sizeof( int );
+        uint8_t *mem = klee_malloc( alloc );
+        int *meta = reinterpret_cast< int * >( mem );
+        meta[ 0 ] = alloc;
+        meta[ 1 ] = sz;
+        return mem + 2 * sizeof( int );
     }
 
-    void __vm_obj_free( void *ptr ) { klee_free( static_cast< uint8_t * >( ptr ) - 4 ); }
+    void __vm_obj_free( void *ptr ) { klee_free( static_cast< uint8_t * >( ptr ) - 2 * sizeof( int ) ); }
     void __vm_obj_resize( void *optr, int nsz )
     {
-        static_cast< int * >( optr )[ -1 ] = nsz;
-        klee_assume( nsz <= 8192 );
+        int *meta = static_cast< int * >( optr );
+        meta[ -1 ] = nsz;
+        if ( meta[ -1 ] > meta[ -2 ] )
+            klee_abort();
     }
 
     int __vm_obj_size( const void *ptr )
