@@ -27,6 +27,8 @@
 
 #define DIOS_DBG( ... ) __dios_trace_f( __VA_ARGS__ )
 
+extern "C" void __dios_assert_debug() noexcept;
+
 /* Data that is not part of the execution of the system, but instead only
  * serves to generate human-readable outputs during counterexample generation.
  * None of this is instantiated during standard execution, since the code that
@@ -67,7 +69,7 @@ namespace __dios
             __vm_trace( _VM_T_Text, "have_debug() failed in debug mode" );
             __vm_ctl_set( _VM_CR_Flags, 0 ); /* fault & force abandonment of the debug call */
         }
-        __dios_assert( have_debug() );
+        __dios_assert_debug();
         void *dbg = __vm_ctl_get( _VM_CR_User3 );
         return *static_cast< Debug * >( dbg );
     }

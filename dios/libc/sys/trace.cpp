@@ -89,7 +89,7 @@ __inline static void traceInternalV( int shift, const char *fmt, va_list ap ) no
 
 void __dios_trace_internal( int indent, const char *fmt, ... ) noexcept
 {
-    __dios_assert( __dios::have_debug() );
+    __dios_assert_debug();
     va_list ap;
     va_start( ap, fmt );
     __dios::traceInternalV( indent, fmt, ap );
