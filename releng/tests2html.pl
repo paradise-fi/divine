@@ -12,7 +12,8 @@ while ( <> )
     m,^([^\s]*)\s+(.*)$,m;
     my ( $test, $status, $link, $schar ) = ( $1, $2, "$1.txt", $codemap{$2} );
 
-    my $cat = (split( m,[:/],, $test ))[1];
+    my $cat = ( split( m,/,, $test ) )[ 0 ];
+    $cat =~ s,vanilla:,,;
     $link =~ s,/,_,g;
     ++ $rescount{$status};
 
