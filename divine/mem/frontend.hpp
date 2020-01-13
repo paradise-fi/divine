@@ -96,7 +96,8 @@ namespace divine::mem
             return str;
         }
 
-        bool valid( Pointer p ) const { return n.valid( p ); }
+        bool valid( uint32_t p ) const { return n.valid( p ); }
+        bool valid( Pointer p ) const  { return n.valid( p ); }
         bool valid( Internal i ) const { return n.valid( i ); }
         auto hash_data( Internal i ) const { return n.hash_data( i ); }
 

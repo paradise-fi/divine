@@ -149,6 +149,7 @@ namespace divine::mem
             return ptr2i( p ).slab();
         }
 
+        bool valid( uint32_t o ) const { return valid( ptr2i( o ) ); }
         bool valid( Internal i ) const { return objects().valid( i ); }
         int size( Internal i ) const { return objects().size( i ); }
         void free( Internal i ) const { objects().free( i ); Next::free( i ); }
