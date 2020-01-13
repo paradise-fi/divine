@@ -171,6 +171,7 @@ namespace divine::cc
             if ( a != "-fno-exceptions" )
                 cc1a.push_back( a.c_str() );
 
+        TRACE( "cc1", cc1a );
         Diagnostics diag;
         bool succ = clang::CompilerInvocation::CreateFromArgs(
                             *invocation, &cc1a[ 0 ], &*cc1a.end(), diag.engine );
