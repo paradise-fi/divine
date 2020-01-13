@@ -1,5 +1,5 @@
 /* TAGS: min c */
-// VERIFY_OPTS: -D a=b -Dc=d
+// VERIFY_OPTS: -E a=b -Ec=d
 // PROGRAM_OPTS: test
 // SKIP_CC: 1
 

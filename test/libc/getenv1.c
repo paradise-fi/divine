@@ -1,5 +1,5 @@
 /* TAGS: min c */
-// VERIFY_OPTS: -Dnotpass -D TEST=passed
+// VERIFY_OPTS: -Enotpass -E TEST=passed
 #include <stdlib.h>
 #include <assert.h>
 

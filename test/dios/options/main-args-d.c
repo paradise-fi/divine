@@ -1,12 +1,13 @@
 /* TAGS: min c */
-// VERIFY_OPTS: -D a=b -Dc=d -Dfootball
+// VERIFY_OPTS: -E a=b -Ec=d -Efootball
 // SKIP_CC: 1
 
 #include <dios.h>
 #include <assert.h>
 #include <string.h>
 
-int main( int argc, char **argv, char **envp ) {
+int main( int argc, char **argv, char **envp )
+{
     assert( argc == 1 );
     const char* test_name = "main-args-d.c";
     int tl = strlen( test_name );

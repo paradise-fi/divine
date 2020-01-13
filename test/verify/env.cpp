@@ -1,5 +1,5 @@
 /* TAGS: min c++ */
-/* VERIFY_OPTS: -DFOO=blabla -DBAR=0 */
+/* VERIFY_OPTS: -EFOO=blabla -EBAR=0 */
 
 #include <cstdlib>
 #include <string>
