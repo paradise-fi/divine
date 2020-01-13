@@ -181,7 +181,7 @@ namespace divine::ui
         brq::cmd_file _stdin;
 
         // Used to build the final compiler options in _bc_opts.ccopts
-        std::vector< std::string > _env;
+        std::vector< std::string > _env, _defs;
         std::vector< std::string > _useropts;
         std::vector< std::string > _systemopts;
         std::vector< std::string > _linkLibs;
@@ -215,7 +215,8 @@ namespace divine::ui
             c.opt( "-l", _linkLibs ) << "link additional libraries, e.g. -lm for libm";
 
             c.section( "Execution Environment" );
-            c.opt( "-D", _env ) << "set an environment variable";
+            c.opt( "-D", _defs ) << "set a compiler macro (#define)";
+            c.opt( "-E", _env ) << "set an environment variable";
             c.opt( "-o", _systemopts ) << "pass options to dios";
             c.opt( "--vfs-limit", _vfs_limit ) << "maximal filesystem snapshot size [16MiB]";
             c.opt( "--capture", _vfs ) << "capture parts of the filesystem";

@@ -212,6 +212,8 @@ void with_bc::process_options()
             _bc_opts.ccopts.push_back( { "-std=" + _std } );
         _bc_opts.ccopts.push_back( _bc_opts.input_file.name );
         std::copy( _cc_opts.begin(), _cc_opts.end(), std::back_inserter( _bc_opts.ccopts ) );
+        for ( auto d : _defs )
+            _bc_opts.ccopts.push_back( "-D" + d );
         for ( auto &l : _linkLibs )
             _bc_opts.ccopts.push_back( "-l" + l );
     }
