@@ -88,17 +88,18 @@
 #define __nothrow __attribute__((__nothrow__))
 #endif
 
-#define __inline       __attribute__(( __always_inline__ ))
-#define __noinline     __attribute__(( __noinline__ ))
-#define __debugfn      __attribute__(( __annotate__( "divine.debugfn" ), __noinline__ ))
-#define __link_always  __attribute__((__annotate__("divine.link.always")))
-#define __trapfn       __attribute__(( __annotate__( "divine.trapfn" ), __noinline__ ))
-#define __skipcfl      __attribute__(( __annotate__( "lart.interrupt.skipcfl" ) )) __noinline
-#define __local_skipcfl      __attribute__(( __annotate__( "lart.interrupt.local.skipcfl" ) )) __noinline
-#define __invisible    __attribute__(( __annotate__( "lart.interrupt.skipmem" ) )) __skipcfl
-#define __local_invisible    __attribute__(( __annotate__( "lart.interrupt.local.skipmem" ) )) __local_skipcfl
-#define __boring       __attribute__(( __annotate__( "lart.boring" ) ))
-#define __weakmem_direct __attribute__(( __annotate__( "lart.weakmem.direct" ), __noinline__ ))
+#define __annotate( x )   __attribute__(( __annotate__( #x ) ))
+#define __inline          __attribute__(( __always_inline__ ))
+#define __noinline        __attribute__(( __noinline__ ))
+#define __debugfn         __noinline __annotate( divine.debugfn )
+#define __link_always     __annotate( divine.link.always )
+#define __trapfn          __noinline __annotate( divine.trapfn )
+#define __skipcfl         __noinline __annotate( lart.interrupt.skipcfl )
+#define __local_skipcfl   __noinline __annotate( lart.interrupt.local.skipcfl )
+#define __invisible       __skipcfl __annotate( lart.interrupt.skipmem )
+#define __local_invisible __local_skipcfl __annotate( lart.interrupt.local.skipmem )
+#define __boring          __annotate( lart.boring )
+#define __weakmem_direct  __noinline __annotate( lart.weakmem.direct )
 
 /*
  * GCC1 and some versions of GCC2 declare dead (non-returning) and
