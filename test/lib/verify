@@ -87,6 +87,7 @@ for f in $name $extrasrc; do
     deps=$(cd $dir && clang -I. $incs $std -MM -MT "" $f | \
         sed -e 's,^: [^ ]*,,' -e 's,\\$,,') || true
     addcmd load $dir/$f $f
+    if test "$skipcc" = 1; then cp $dir/$f $f; fi
     for dep in $deps; do
         if ! echo $dep | grep -q '^/'; then dep=$dir/$dep; fi
         addcmd load $dep $(echo $dep | perl -spe 's,\Q$dir\E/*,,' -- "-dir=$dir")
