@@ -8,9 +8,10 @@ int main()
     int *a = malloc( 4 );
     if ( a )
     {
-        __vm_poke( a, _VM_ML_User, 20 );
+        __vm_pointer_t ptr = __vm_pointer_split( a );
+        __vm_poke( _VM_ML_User, ptr.obj, ptr.off, 1, 20 );
         free( a );
-        __vm_peek( a, _VM_ML_User ); /* ERROR */
+        __vm_peek( _VM_ML_User, ptr.obj, ptr.off, 1 ); /* ERROR */
     }
     return 0;
 }

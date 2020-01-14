@@ -7,6 +7,7 @@ int main()
 {
     int *a = malloc( 4 );
     free( a );
-    __vm_peek( a, _VM_ML_User ); /* ERROR */
+    __vm_pointer_t ptr = __vm_pointer_split( a );
+    __vm_peek( _VM_ML_User, ptr.obj, ptr.off, 1 ); /* ERROR */
     return 0;
 }
