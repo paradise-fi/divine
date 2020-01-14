@@ -194,14 +194,13 @@ struct Eval
         else UNREACHABLE( "bad pointer in ptr2s" );
     }
 
-    HeapPointer ptr2h( PointerV p )
+    HeapPointer ptr2h( PointerV p ) { return ptr2h( p.cooked() ); }
+    HeapPointer ptr2h( GenericPointer p )
     {
-        auto pp = p.cooked();
+        if ( p.heap() || p.null() )
+            return p;
 
-        if ( pp.heap() || pp.null() )
-            return pp;
-
-        return s2ptr( ptr2s( pp ), pp.offset() );
+        return s2ptr( ptr2s( p ), p.offset() );
     }
 
     template< typename MkF >
