@@ -204,14 +204,11 @@ namespace divine::mem
             return l.object;
         }
 
-        typename Next::UIntV peek( Pointer p, int key ) { return n.peek( n.loc( p ), key ); }
-        typename Next::UIntV peek( Loc p, int key ) { return n.peek( p, key ); }
-
-        template< typename T >
-        auto poke( Loc l, int key, T v )
+        auto peek( Loc p, int len, int key ) { return n.peek( p, len, key ); }
+        auto poke( Loc l, int len, int key, typename Next::UIntV v )
         {
             l.object = n.detach( l );
-            n.poke( l, key, v );
+            n.poke( l, len, key, v );
             return l.object;
         }
 

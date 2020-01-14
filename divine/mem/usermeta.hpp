@@ -87,23 +87,24 @@ struct UserMeta : Next
         Next::free( p );
     }
 
-    // Returns user metadata from 'layer' assigned to location 'l'
-    Value peek( Loc l, int layer )
+    std::tuple< int, int, Value > peek( Loc l, int len, int layer )
     {
-        if ( auto *p = _maps.at( l.object, { l.offset, layer } ) )
-           return Value( p->second , -1, layer_type( layer ) == MetaType::Pointers );
-
-        return Value( 0, 0, layer_type( layer ) == MetaType::Pointers );
+        if ( auto *p = _maps.intersect( l.object, { l.offset, layer }, len ) )
+        {
+            Value rv( p->second , -1, layer_type( layer ) == MetaType::Pointers );
+            return { p->first.from, p->first.to - p->first.from, rv };
+        }
+        else
+            return { 0, 0, Value( 0 ) };
     }
 
-    // Assigns value 'v' to user meta layer at location 'l'
-    void poke( Loc l, int layer, Value v )
+    void poke( Loc l, int len, int layer, Value v )
     {
         if ( layer_type( layer ) == MetaType::Unknown )
             layer_type( layer, v.pointer() ? MetaType::Pointers : MetaType::Scalars );
 
         ASSERT_EQ( layer_type( layer ) == MetaType::Pointers, v.pointer() );
-        _maps.insert( l.object, { l.offset, layer }, { l.offset + 1, layer }, v.cooked() );
+        _maps.insert( l.object, { l.offset, layer }, { l.offset + len, layer }, v.cooked() );
     }
 
     template< typename FromH, typename ToH >
