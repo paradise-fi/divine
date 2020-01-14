@@ -455,14 +455,40 @@ struct IntervalMetadataMap
         return it;
     }
 
-    const value_type * at( Internal obj, scalar_type val ) const
+    const_iterator begin( Internal obj ) const { return _storage.begin( obj ); }
+    const_iterator end( Internal obj ) const { return _storage.end( obj ); }
+
+    const_iterator before( Internal obj, scalar_type val ) const
     {
         auto it = _storage.upper_bound( obj, key_type( val ) );
         if ( it == nullptr || it == _storage.begin( obj ) )
+            return end( obj );
+        return std::prev( it );
+    }
+
+    const value_type *at( Internal obj, scalar_type val ) const
+    {
+        auto match = before( obj, val );
+        if ( match != end( obj ) && _inside( val, match->first ) )
+            return &*match;
+        else
             return nullptr;
-        --it;
-        if ( _inside( val, it->first ) )
-            return &*it;
+    }
+
+    const value_type *intersect( Internal obj, scalar_type val, int len ) const
+    {
+        key_type query( val, val + len );
+        auto match = before( obj, val );
+
+        if ( match == end( obj ) )
+            return nullptr;
+
+        if ( _intersect( query, match->first ) )
+            return &*match;
+        match ++;
+        if ( match != end( obj ) && _intersect( query, match->first ) )
+            return &*match;
+
         return nullptr;
     }
 
@@ -508,9 +534,21 @@ struct IntervalMetadataMap
                        to_object, key_type( to_offset ), sz );
     }
 
-    static bool _inside( const scalar_type &p, const key_type &i ) {
+    static bool _inside( const scalar_type &p, const key_type &i )
+    {
         bool b = i.from <= p && p < i.to;
         return b;
+    }
+
+    static bool _intersect( key_type a, key_type b )
+    {
+        TRACE( "intersect a =", a.from, a.to, "b =", b.from, b.to );
+        if ( a.from == b.from )
+            return true;
+        if ( a.from < b.from )
+            return a.to > b.from;
+        else
+            return b.to > a.from;
     }
 };
 
