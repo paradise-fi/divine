@@ -28,7 +28,7 @@ namespace brq
 {
     template< typename B, typename T, typename = void > struct is_printable : std::false_type {};
     template< typename B, typename T >
-    struct is_printable< B, T, decltype( B() << std::declval< const T & >(),
+    struct is_printable< B, T, decltype( std::declval< B & >() << std::declval< const T & >(),
                                          void( 0 ) ) > : std::true_type {};
     template< typename B, typename T >
     constexpr bool is_printable_v = is_printable< B, T >::value;
