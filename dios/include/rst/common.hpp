@@ -195,22 +195,19 @@ namespace __dios::rst::abstract {
     }
 
     template< typename T >
-    _LART_INLINE T * peek_object( void * addr ) noexcept
+    _LART_INLINE T * peek_object( void * addr_ ) noexcept
     {
-        struct { uint32_t off = 0, obj; } ptr;
-        ptr.obj = __vm_peek( addr, _VM_ML_User );
-
-        T * obj;
-        memcpy( &obj, &ptr, sizeof( T * ) );
-        return obj;
+        __vm_pointer_t addr = __vm_pointer_split( addr_ );
+        auto m = __vm_peek( _VM_ML_User, addr.obj, addr.off, 1 );
+        return static_cast< T * >( __vm_pointer_make( m.value, 0 ) );
     }
 
     template< typename T >
-    _LART_INLINE void poke_object( T obj, void * addr ) noexcept
+    _LART_INLINE void poke_object( T obj, void * addr_ ) noexcept
     {
-        struct { uint32_t off, obj; } ptr;
-        memcpy( &ptr, &obj, sizeof( T * ) );
-        __vm_poke( addr, _VM_ML_User, ptr.obj );
+        __vm_pointer_t addr = __vm_pointer_split( addr_ ),
+                       ptr  = __vm_pointer_split( static_cast< void * >( obj ) );
+        __vm_poke( _VM_ML_User, addr.obj, addr.off, 1, ptr.obj );
     }
 
     struct object_t
