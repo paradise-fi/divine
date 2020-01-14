@@ -77,6 +77,7 @@ struct Eval
     using Context = Context_;
     Context &_context;
 
+    using Heap = typename Context::Heap;
     using Slot = typename Program::Slot;
     using Instruction = typename Program::Instruction;
 
@@ -99,6 +100,7 @@ struct Eval
     using BoolV = value::Bool;
     /* TODO should be sizeof( int ) of the *bitcode*, not ours! */
     using IntV = value::Int< 8 * sizeof( int ), true >;
+    using UIntV = value::Int< 8 * sizeof( int ), false >;
     using CharV = value::Int< 8, true >;
     using PtrIntV = vm::value::Int< _VM_PB_Full >;
 
@@ -417,6 +419,7 @@ public:
     void implement_test_crit();
     void implement_test_taint();
 
+    std::tuple< int, int, typename Heap::Loc > memory_range();
     void implement_peek();
     void implement_poke();
 

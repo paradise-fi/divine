@@ -454,8 +454,9 @@ void *__vm_obj_clone( const void *root, const void **block ) NOTHROW;
  * VM (see _VM_MemLayer above). User-specified metadata (i.e. attached to
  * _VM_ML_User and higher-valued keys) does not propagate automatically. */
 
-uint32_t __vm_peek( void *addr, int key ) NOTHROW;
-void     __vm_poke( void *addr, int key, uint32_t value ) NOTHROW;
+typedef struct { uint32_t offset, length, value; } __vm_meta_t;
+__vm_meta_t __vm_peek( int key, uint32_t objid, int offset, int len ) NOTHROW;
+void        __vm_poke( int key, uint32_t objid, int offset, int len, uint32_t val ) NOTHROW;
 
 /* Pass a syscall through the VM to the host system. The parameters must
  * describe the parameters of the actual operating system on the outside,

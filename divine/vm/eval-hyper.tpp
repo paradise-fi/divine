@@ -471,57 +471,74 @@ namespace divine::vm
     }
 
     template< typename Ctx >
+    auto Eval< Ctx >::memory_range() -> std::tuple< int, int, typename Heap::Loc >
+    {
+        auto key = operandCk< IntV >( 0 );
+        auto obj = operandCk< UIntV >( 1 );
+        auto off = operandCk< IntV >( 2 ),
+             len = operandCk< IntV >( 3 );
+
+        TRACE( "memory_range: key =", key, "obj =", obj, "off =", off, "len =", len );
+        GenericPointer ptr( obj.cooked(), off.cooked() );
+
+        if ( !key.defined() || !obj.defined() || !off.defined() || !len.defined()||
+             !boundcheck( PointerV( ptr ), len.cooked(), false ) )
+            return { -1, 0, {} };
+
+        auto hptr = ptr2h( ptr );
+        typename Heap::Loc loc( heap().ptr2i( hptr.object() ), hptr.object(), hptr.offset() );
+        return { key.cooked(), len.cooked(), loc };
+    }
+
+    template< typename Ctx >
     void Eval< Ctx >::implement_peek()
     {
-        auto ptr = operandCk< PointerV >( 0 );
-        if ( !ptr.defined() || !boundcheck( ptr, 1, false ) )
-            return;
-        int key = operandCk< IntV >( 1 ).cooked();
-        auto loc = heap().loc( ptr2h( ptr ) );
-        switch ( key )
-        {
-            case _VM_ML_Pointers:
-            {
-                auto ptrs = heap().pointers( loc, 1 );
-                GenericPointer::ObjT obj = 0;
+        auto [ key, len, loc ] = memory_range();
+        TRACE( "peek at", key, len, loc );
 
-                for ( auto p : ptrs ) /* there's at most 1 */
-                    switch ( p.size() )
-                    {
-                        case 1: obj = p.fragment(); break;
-                        default: NOT_IMPLEMENTED();
-                    }
-                return result( IntV( obj ) );
-            }
-            default:
-                result( heap().peek( loc, key - _VM_ML_User ) );
+        if ( key < 0 )
+            return;
+
+        if ( key < _VM_ML_User )
+            NOT_IMPLEMENTED();
+        else
+        {
+            auto [ off, nlen, val ] = heap().peek( loc, len, key - _VM_ML_User );
+            auto out = s2ptr( result() );
+            heap().write( out, IntV( off ) );  out = out + 4;
+            heap().write( out, IntV( nlen ) ); out = out + 4;
+            heap().write( out, val );
         }
     }
 
     template< typename Ctx >
     void Eval< Ctx >::implement_poke()
     {
-        auto ptr = operandCk< PointerV >( 0 );
-        if ( !ptr.defined() || !boundcheck( ptr, 1, true ) )
-            return;
-        HeapPointer where = ptr2h( ptr );
-        int layer = operandCk< IntV >( 1 ).cooked();
-        auto value = operandCk< value::Int< 32, false > >( 2 );
-        auto loc = heap().loc( where );
+        auto [ key, len, loc ] = memory_range();
+        auto val = operandCk< UIntV >( 4 );
+        TRACE( "poke", val, "at", key, len, loc );
 
-        switch ( layer )
+        if ( key < 0 )
+            return;
+
+        switch ( key )
         {
             case _VM_ML_Taints:
             {
+                if ( len != 4 )
+                    NOT_IMPLEMENTED();
                 IntV data;
-                heap().read( where, data );
-                data.taints( value.cooked() );
-                heap().write( where, data );
+                heap().read( loc, data );
+                data.taints( val.cooked() );
+                TRACE( "poke writing back", data );
+                heap().write( loc, data );
                 break;
             }
             default:
-                ASSERT( layer >= _VM_ML_User );
-                heap().poke( loc, layer - _VM_ML_User, value );
+            {
+                ASSERT( key >= _VM_ML_User );
+                heap().poke( loc, len, key - _VM_ML_User, val );
+            }
         }
     }
 
