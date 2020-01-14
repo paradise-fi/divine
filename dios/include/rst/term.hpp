@@ -33,7 +33,7 @@ namespace __dios::rst::abstract
 
         operator abstract_value_t() { return static_cast< abstract_value_t >( pointer ); }
 
-        _LART_INLINE static term_t make_term() noexcept
+        static term_t make_term() noexcept
         {
             auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
             new ( ptr ) tagged_abstract_domain_t();
@@ -41,7 +41,7 @@ namespace __dios::rst::abstract
         }
 
         template< typename ...Terms >
-        _LART_INLINE static term_t make_term( Terms ...args ) noexcept
+        static term_t make_term( Terms ...args ) noexcept
         {
             auto term = make_term();
             ( term.extend( args ), ... );
