@@ -44,6 +44,7 @@ struct Base
         Internal object;
         uint32_t offset;
 
+        LocMixin() = default;
         LocMixin( Internal o, int off )
             : object( o ), offset( off )
         {}
@@ -83,6 +84,8 @@ struct Base
         Loc( Internal o, int objid, int off )
             : LocMixin< Loc >( o, off ), objid( objid )
         {}
+
+        Loc() = default;
     };
 
     Loc loc( Pointer p, Internal i ) const
