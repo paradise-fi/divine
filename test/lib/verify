@@ -151,7 +151,7 @@ if test -n "$EXPORT"; then exit 0; fi
 
 cat $dcscript | sed -e 's,^,  | ,'
 
-if ! divcheck $dcscript; then err=$?; if test $err = 0; then exit 1; else exit $err; fi; fi
+if divcheck $dcscript; then : ; else exit $?; fi
 
 err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
 if [ "$err" = yes ]; then
