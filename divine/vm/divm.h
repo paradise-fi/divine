@@ -502,6 +502,24 @@ _VMUTIL_INLINE void __vm_cancel( void ) NOTHROW
     __vm_ctl_set( _VM_CR_Frame, 0 );
 }
 
+typedef struct { uint32_t off, obj; } __vm_pointer_t;
+void *memcpy( void *dest, const void * src, unsigned long n ) NOTHROW;
+
+_VMUTIL_INLINE __vm_pointer_t __vm_pointer_split( void *ptr )
+{
+    __vm_pointer_t rv;
+    memcpy( &rv, &ptr, sizeof( rv ) );
+    return rv;
+}
+
+_VMUTIL_INLINE void *__vm_pointer_make( uint32_t obj, uint32_t off )
+{
+    __vm_pointer_t ptr = { off, obj };
+    void *rv;
+    memcpy( &rv, &ptr, sizeof( rv ) );
+    return rv;
+}
+
 EXTERN_END
 
 #endif // __divine__
