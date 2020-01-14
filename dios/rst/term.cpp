@@ -72,7 +72,10 @@ namespace __dios::rst::abstract
     term_t term_t::constrain( term_t &constraint, bool expect ) const noexcept
     {
         if ( !expect )
+        {
+            constraint = constraint.make_term( constraint );
             constraint.apply< Op::Not >();
+        }
 
         auto append_term = [&]( term_state_t::var_id_t var )
         {
