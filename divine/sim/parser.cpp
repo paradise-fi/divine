@@ -37,7 +37,13 @@ namespace divine::sim
         for ( auto t : _sticky_commands )
         {
             auto cmd = parse( t );
-            cmd.match( [&] ( auto opt ){ prepare( opt ); go( opt ); } );
+            try {
+                cmd.match( [&] ( auto opt ){ prepare( opt ); go( opt ); } );
+            }
+            catch ( brq::error &e )
+            {
+                *_stream << "sticky command failed: " << e.what() << std::endl;
+            }
             _stream = &std::cerr;
         }
     }
