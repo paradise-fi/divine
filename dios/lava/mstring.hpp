@@ -503,6 +503,8 @@ namespace __dios::rst::abstract {
             auto rin = rhs->interest();
 
             auto lseg = lin.begin();
+            if ( lseg.empty() )
+                lseg = lin.next_segment( lseg );
             auto rseg = rin.begin();
             if ( rseg.empty() )
                 rseg = rin.next_segment( rseg );
@@ -514,7 +516,7 @@ namespace __dios::rst::abstract {
                     index_t left = lseg.to() - lhs.offset();
                     index_t right = rseg.to() - rhs.offset();
                     if ( static_cast< bool >( left > right ) ) {
-                        return lseg.value() - rin.next_segment( lseg ).value();
+                        return lseg.value() - rin.next_segment( rseg ).value();
                     } else if ( static_cast< bool >( left < right ) ) {
                         return lin.next_segment( lseg ).value() - rseg.value();
                     }
@@ -524,7 +526,7 @@ namespace __dios::rst::abstract {
                 rseg = rin.next_segment( rseg );
             }
 
-            return character_t::lift( '\0' );
+            return lseg.value() - rseg.value();
         }
 
         _LART_INLINE
