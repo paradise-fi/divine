@@ -143,7 +143,7 @@ namespace __dios::rst::abstract {
         _LART_INTERFACE
         static mstring_ptr lift_any( index_t size ) noexcept
         {
-            return make_mstring( size );
+            return make_mstring( static_cast< abstract_value_t >( size ) );
         }
 
         _LART_INTERFACE
@@ -350,11 +350,25 @@ namespace __dios::rst::abstract {
                 return tmp;
             }
 
-            bool empty() const noexcept { return from() == to(); }
+            bool empty() const noexcept {
+                return static_cast< bool >( from() == to() );
+            }
+
+            bool has_value( char ch ) const noexcept
+            {
+                return has_value( character_t::lift( ch ) );
+            }
+
+            bool has_value( character_t ch ) const noexcept
+            {
+                if ( empty() )
+                    return false;
+                return static_cast< bool >( value() == ch );
+            }
 
             bool singleton() const noexcept
             {
-                return from() + index_t::lift( uint64_t( 1 ) ) == to();
+                return static_cast< bool >( from() + index_t::lift( uint64_t( 1 ) ) == to() );
             }
 
             friend void trace( const segment_t &seg ) noexcept
@@ -429,16 +443,17 @@ namespace __dios::rst::abstract {
         {
             auto one = index_t::lift( uint64_t( 1 ) );
             auto seg = segment_at_index( idx );
-            if ( seg.value() == ch ) {
+
+            if ( static_cast< bool >( seg.value() == ch ) ) {
                 // do nothing
             } else if ( seg.singleton() ) {
                 // rewrite single character segment
                 seg.set_char( ch );
-            } else if ( seg.from() == idx ) {
+            } else if ( static_cast< bool >( seg.from() == idx ) ) {
                 // rewrite first character of segment
                 if ( seg.begin() != bounds().begin() ) {
                     auto prev = seg; --prev;
-                    if ( prev.value() == ch ) {
+                    if ( static_cast< bool >( prev.value() == ch ) ) {
                         // merge with left neighbour
                         seg.from() = seg.from() + one;
                         return;
@@ -451,7 +466,7 @@ namespace __dios::rst::abstract {
                 // rewrite last character of segment
                 if ( seg.end() != bounds().end() ) {
                     auto next = seg; ++next;
-                    if ( next.value() == ch ) {
+                    if ( static_cast< bool >( next.value() == ch ) ) {
                         // merge with left neighbour
                         seg.to() = seg.to() - one;
                         return;
@@ -489,9 +504,11 @@ namespace __dios::rst::abstract {
 
             auto lseg = lin.begin();
             auto rseg = rin.begin();
+            if ( rseg.empty() )
+                rseg = rin.next_segment( rseg );
 
-            while ( lseg.begin() != lin.bounds.end() && rseg.begin() != rin.bounds.end() ) {
-                if ( lseg.value() != rseg.value() ) {
+            while ( lseg != lin.terminal() && rseg != rin.terminal() ) {
+                if ( static_cast< bool >( lseg.value() != rseg.value() ) ) {
                     return lseg.value() - rseg.value();
                 } else {
                     index_t left = lseg.to() - lhs.offset();
@@ -549,10 +566,10 @@ namespace __dios::rst::abstract {
         _LART_NOINLINE
         static mstring_ptr memcpy( mstring_ptr dst, mstring_ptr src, index_t size ) noexcept
         {
-            if ( size > dst.size() - dst.offset() )
+            if ( static_cast< bool >( size > dst.size() - dst.offset() ) )
                 fault( "copying to a smaller string" );
 
-            if ( size == index_t::lift( uint64_t( 0 ) ) )
+            if ( static_cast< bool >( size == index_t::lift( uint64_t( 0 ) ) ) )
                 return dst;
 
             auto dseg = dst->segment_at_current_offset();
@@ -568,21 +585,26 @@ namespace __dios::rst::abstract {
                 bounds.push_back( dseg.from() );
             } else {
                 bounds.push_back( dseg.from() );
-                if ( dseg.value() != sseg.value() ) {
+                if ( static_cast< bool >( dseg.value() != sseg.value() ) ) {
                     values.push_back( dseg.value() );
                     bounds.push_back( dst.offset() );
                 }
             }
 
-            while ( ( sseg.from() - src.offset() ) < size ) {
+            if ( values.size() > 0 && static_cast< bool >( values.back() == sseg.value() ) ) {
+                values.pop_back();
+                bounds.pop_back();
+            }
+
+            while ( static_cast< bool >( ( sseg.from() - src.offset() ) < size ) ) {
                 bounds.push_back( dst.offset() + ( sseg.to() - src.offset() ) );
                 values.push_back( sseg.value() );
                 ++sseg;
             }
 
-            if ( dst.size() > dst.offset() + size ) {
+            if ( static_cast< bool >( dst.size() > dst.offset() + size ) ) {
                 auto seg = dst->segment_at_index( dst.offset() + size );
-                if ( dseg.value() == values.back() ) {
+                if ( static_cast< bool >( dseg.value() == values.back() ) ) {
                     //we will take the value from dst suffix
                     bounds.pop_back();
                     values.pop_back();
@@ -655,7 +677,7 @@ namespace __dios::rst::abstract {
             auto it = bounds().begin();
             for ( auto it = bounds().begin(); std::next( it ) != bounds().end(); ++it )
             {
-                if ( idx >= *it && idx < *std::next( it ) ) {
+                if ( static_cast< bool >( idx >= *it && idx < *std::next( it ) ) ) {
                     auto nth = std::distance( bounds().begin(), it );
                     return segment_t{ it, std::next( values().begin(), nth ) };
                 }
