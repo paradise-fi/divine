@@ -84,7 +84,7 @@ namespace __dios::rst::abstract {
 
             void push_bound( abstract_value_t bound ) noexcept
             {
-                bounds().push_back( bound );
+                bounds().push_back( index_t::template zfit< 64 >( bound ) );
             }
 
             void push_bound( uint64_t bound ) noexcept
