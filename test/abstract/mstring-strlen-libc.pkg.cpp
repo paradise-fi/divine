@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym c++ todo */
+/* TAGS: mstring min sym c++ */
 /* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
 /* CC_OPTS: */
 

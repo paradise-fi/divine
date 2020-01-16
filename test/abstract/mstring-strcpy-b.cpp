@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym todo */
+/* TAGS: mstring min sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -19,9 +19,9 @@ void my_strcpy( char * dest, const char * src ) {
 
 int main() {
     char buff1[7] = "string";
-    const char * src = __mstring_val( buff1, 7 );
+    const char * src = __mstring_from_string( buff1);
     char buff2[7] = "";
-    char * dst = __mstring_val( buff2, 7 );
+    char * dst = __mstring_from_string( buff2 );
 
     my_strcpy( dst, src );
 

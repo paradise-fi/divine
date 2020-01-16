@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym todo */
+/* TAGS: mstring min sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -10,15 +10,15 @@
 
 int main() {
     char buff1[5] = "aabb";
-    char * src = __mstring_val( buff1, 5 );
+    char * src = __mstring_from_string( buff1 );
 
     char buff2[5] = {};
-    char * dst = __mstring_val( buff2, 5 );
+    char * dst = __mstring_from_string( buff2 );
 
     memcpy( dst, src, 5 );
 
     char buff3[5] = "aabb";
-    char * expected = __mstring_val( buff3, 5 );
+    char * expected = __mstring_from_string( buff3 );
 
     int  i = 0;
     while ( expected[ i ] != '\0' ) {

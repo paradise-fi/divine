@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym todo */
+/* TAGS: mstring min sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -8,18 +8,18 @@
 #include <string.h>
 
 char * concat_bbb( char * str ) {
-    char buffb[7] = "bbb";
-    char * bbb = __mstring_val( buffb, 4 );
+    char buffb[] = "bbb";
+    char * bbb = __mstring_from_string( buffb );
     strcat( str, bbb );
     return str;
 }
 
 int main() {
-    char buffe[7] = "aaabbb";
-    char * expected = __mstring_val( buffe, 7 );
+    char buffe[] = "aaabbb";
+    char * expected = __mstring_from_string( buffe );
 
     char buffa[7] = "aaa";
-    char * aaa = __mstring_val( buffa, 7 );
+    char * aaa = __mstring_from_string( buffa );
 
     concat_bbb( aaa );
     assert( strcmp( aaa, expected ) == 0 );

@@ -10,11 +10,11 @@
 
 int main() {
     char buff1[5] = "aabb";
-    char * str = __mstring_val( buff1, 5 );
+    char * str = __mstring_from_string( buff1 );
     char * extended = (char *)realloc( str, 10 * sizeof( char ) );
 
     char buff2[5] = "aabb";
-    char * expected = __mstring_val( buff2, 5 );
+    char * expected = __mstring_from_string( buff2 );
 
     int  i = 0;
     while ( expected[ i ] != '\0' ) {

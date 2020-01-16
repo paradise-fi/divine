@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym todo */
+/* TAGS: mstring min sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -9,7 +9,7 @@
 
 int main() {
     char buff[7] = "string";
-    const char * str = __mstring_val( buff, 7 );
+    const char * str = __mstring_from_string( buff );
     int len = strlen( str );
     assert( len == 6 );
 }

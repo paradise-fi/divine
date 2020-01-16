@@ -8,7 +8,7 @@ namespace libc
     static size_t strlen( const char * str )
     {
         const char * a = str;
-        for (; *str; str++);
+        for (; *str; str++) {}
         return str - a;
     }
 

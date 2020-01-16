@@ -1,4 +1,4 @@
-/* TAGS: mstring min sym todo */
+/* TAGS: mstring min sym */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc */
 
 #include <rst/domains.h>
@@ -9,8 +9,9 @@
 
 int main() {
     char stra[8] = "abc\0abc";
-    const char * a = __mstring_val( stra, 8 );
+    const char * a = __mstring_from_string( stra );
     char strb[8] = "abc\0cba";
-    const char * b = __mstring_val( strb, 8 );
-    assert( strcmp( a, b ) == 0 );
+    const char * b = __mstring_from_string( strb );
+    auto cmp = strcmp( a, b );
+    assert( cmp == 0 );
 }

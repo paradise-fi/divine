@@ -5,36 +5,25 @@
 
 namespace sym {
 
-static inline char * buffer( int size ) {
-    return __mstring_sym_val( 1, '\0', size, size + 1 );
+static inline char * buffer( uint32_t size ) {
+    return __mstring_from_segments( 0, size );
 }
 
 #ifdef WORD
-static inline char * string( int size ) {
-    return __mstring_sym_val( 4,
-        'a', 1, size,
-        'b', 1, size,
-        'c', 1, size,
-        '\0', size + 1, size + 2 );
+static inline char * string( uint32_t size ) {
+    return __mstring_from_segments( 4, size );
 }
 #endif
 
 #ifdef SEQUENCE
-static inline char * string( int size ) {
-    return __mstring_sym_val( 2,
-        'a', 1, size,
-        '\0', size + 1, size + 2 );
+static inline char * string( uint32_t size ) {
+    return __mstring_from_segments( 1, size );
 }
 #endif
 
 #ifdef ALTERNATION
-static inline char * string( int size ) {
-    return __mstring_sym_val( 5,
-        'a', 1, size,
-        'b', 1, size,
-        'a', 1, size,
-        'b', 1, size,
-        '\0', size + 1, size + 2 );
+static inline char * string( uint32_t size ) {
+    return __mstring_from_segments( 2, size );
 }
 #endif
 
