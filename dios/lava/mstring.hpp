@@ -227,6 +227,12 @@ namespace __dios::rst::abstract {
             return str;
         }
 
+        _LART_INTERFACE
+        static index_t op_sub( abstract_value_t lhs, abstract_value_t rhs ) noexcept
+        {
+            return sub( lhs, rhs );
+        }
+
         _LART_INTERFACE _LART_SCALAR _LART_OPTNONE
         static index_t fn_strlen( mstring_ptr str ) noexcept
         {
@@ -487,6 +493,14 @@ namespace __dios::rst::abstract {
         static mstring_ptr gep( mstring_ptr array, index_t idx ) noexcept
         {
             return make_mstring( array.data(), array.offset() + idx );
+        }
+
+        _LART_INLINE
+        static index_t sub( mstring_ptr lhs, mstring_ptr rhs ) noexcept
+        {
+            if ( lhs.data() != rhs.data() )
+                fault( "copairing pointers of different objects" );
+            return lhs.offset() - rhs.offset();
         }
 
         _LART_INLINE
