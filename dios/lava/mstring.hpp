@@ -281,18 +281,16 @@ namespace __dios::rst::abstract {
 
         struct segment_t
         {
-            bounds_iterator _begin;
+            bounds_iterator _from;
             values_iterator _value;
 
-            auto begin() noexcept { return _begin; }
-            auto begin() const noexcept { return _begin; }
-            auto end() noexcept { return std::next( _begin ); }
-            auto end() const noexcept { return std::next( _begin ); }
-            auto val_it() noexcept { return _value; }
-            auto val_it() const noexcept { return _value; }
+            bounds_iterator begin() { return _from; }
+            bounds_iterator begin() const { return _from; }
+            bounds_iterator end() { return std::next( begin(), 2 ); }
+            bounds_iterator end() const { return std::next( begin(), 2 ); }
 
             index_t& from() const noexcept { return *begin(); }
-            index_t& to() const noexcept { return *end(); }
+            index_t& to() const noexcept { return *std::next( begin() ); }
             character_t& value() const noexcept { return *_value; }
 
             void set_char( character_t ch ) noexcept { *_value = ch; }
@@ -301,23 +299,33 @@ namespace __dios::rst::abstract {
             character_t& operator*() && = delete;
             character_t* operator->() const noexcept { return _value; }
 
+            friend bool operator==( const segment_t &lhs, const segment_t &rhs )
+            {
+                return std::tie( lhs._from, lhs._value ) == std::tie( rhs._from, rhs._value );
+            }
+
+            friend bool operator!=( const segment_t &lhs, const segment_t &rhs )
+            {
+                return !(lhs == rhs );
+            }
+
             inline segment_t& operator+=( const int& rhs )
             {
-                _begin += rhs;
+                _from += rhs;
                 _value += rhs;
                 return *this;
             }
 
             inline segment_t& operator-=( const int& rhs )
             {
-                _begin -= rhs;
+                _from -= rhs;
                 _value -= rhs;
                 return *this;
             }
 
             segment_t& operator++() noexcept
             {
-                ++_begin;
+                ++_from;
                 ++_value;
                 return *this;
             }
@@ -331,7 +339,7 @@ namespace __dios::rst::abstract {
 
             segment_t& operator--() noexcept
             {
-                --_begin; --_value;
+                --_from; --_value;
                 return *this;
             }
 
@@ -362,14 +370,14 @@ namespace __dios::rst::abstract {
             template< typename iterator_t >
             struct range_t
             {
-                iterator_t from;
-                iterator_t to;
+                iterator_t _begin;
+                iterator_t _end;
 
-                auto begin() { return from; }
-                auto end() { return to; }
+                auto begin() { return _begin; }
+                auto begin() const { return _begin; }
+                auto end() { return _end; }
+                auto end() const { return _end; }
             };
-
-            bool single_segment() noexcept { return bounds.to == std::next( bounds.from ); }
 
             segment_t begin() { return { bounds.begin(), values.begin() }; }
             segment_t end() { return { bounds.end(), values.end() }; }
@@ -381,6 +389,11 @@ namespace __dios::rst::abstract {
                 return seg;
             }
 
+            segment_t terminal() const noexcept
+            {
+                return { std::prev( bounds.end() ), std::prev( values.end() ) };
+            }
+
             range_t< bounds_iterator > bounds;
             range_t< values_iterator > values;
         };
@@ -388,7 +401,7 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         segments_range range( segment_t f, segment_t t ) noexcept
         {
-            return { { f.begin(), t.end() }, { f.val_it(), t.val_it() } };
+            return { { f.begin(), std::next( t.begin() ) }, { f._value, std::next( t._value ) } };
         }
 
         _LART_INLINE
@@ -432,11 +445,11 @@ namespace __dios::rst::abstract {
                     }
                 }
 
-                bounds().insert( seg.end(), idx + one );
-                values().insert( seg.val_it(), ch );
-            } else if ( seg.to() - one == idx ) {
+                bounds().insert( std::next( seg.begin() ), idx + one );
+                values().insert( &seg.value(), ch );
+            } else if ( static_cast< bool >( seg.to() - one == idx ) ) {
                 // rewrite last character of segment
-                if ( seg.end() != std::prev( bounds().end() ) ) {
+                if ( seg.end() != bounds().end() ) {
                     auto next = seg; ++next;
                     if ( next.value() == ch ) {
                         // merge with left neighbour
@@ -444,13 +457,13 @@ namespace __dios::rst::abstract {
                         return;
                     }
                 }
-                bounds().insert( seg.end(), idx );
-                values().insert( std::next( seg.val_it() ), ch );
+                bounds().insert( std::next( seg.begin() ), idx );
+                values().insert( std::next( &seg.value() ), ch );
             } else {
                 // rewrite segment in the middle (split segment)
-                auto vit = values().insert( seg.val_it(), seg.value() );
+                auto vit = values().insert( &seg.value(), seg.value() );
                 values().insert( std::next( vit ), ch );
-                auto bit = bounds().insert( seg.end(), idx );
+                auto bit = bounds().insert( std::next( seg.begin() ), idx );
                 bounds().insert( std::next( bit ), idx + one );
             }
         }
@@ -464,7 +477,7 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         static index_t strlen( mstring_ptr str ) noexcept
         {
-            auto res = (str.terminator() - str.offset());
+            auto res = ( str.terminator() - str.offset() );
             return index_t::template zfit< 64 >( res );
         }
 
@@ -519,12 +532,11 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         static mstring_ptr strchr( mstring_ptr str, character_t ch ) noexcept
         {
-            auto in = str->interest();
-            auto seg = in.begin();
-            while ( seg.begin() != in.bounds.end() ) {
-                if ( !seg.empty() && seg.value() == ch ) {
+            auto seg = str->segment_at_current_offset();
+            while ( !str->is_beyond_last_segment( seg ) ) {
+                if ( seg.has_value( ch ) ) {
                     auto off = seg.from();
-                    if ( seg.begin() == in.bounds.begin() )
+                    if ( seg.begin() == str.bounds().begin() )
                         return str;
                     return make_mstring( str.data(), off );
                 }
@@ -550,15 +562,10 @@ namespace __dios::rst::abstract {
             values_t values;
 
             std::copy( dst.bounds().begin(), dseg.begin(), std::back_inserter( bounds ) );
-            std::copy( dst.values().begin(), dseg.val_it(), std::back_inserter( values ) );
+            std::copy( dst.values().begin(), &dseg.value(), std::back_inserter( values ) );
 
-            if ( dseg.from() == dst.offset() ) {
-                if ( dseg.begin() != dst.bounds().begin() ) {
-                    if ( *std::prev( dseg.val_it() ) != sseg.value() )
-                        bounds.push_back( dseg.from() );
-                } else {
-                    bounds.push_back( dseg.from() );
-                }
+            if ( static_cast< bool >( dseg.from() == dst.offset() ) ) {
+                bounds.push_back( dseg.from() );
             } else {
                 bounds.push_back( dseg.from() );
                 if ( dseg.value() != sseg.value() ) {
@@ -581,8 +588,8 @@ namespace __dios::rst::abstract {
                     values.pop_back();
                 }
 
-                std::copy( dseg.end(), dst.bounds().end(), std::back_inserter( bounds ) );
-                std::copy( dseg.val_it(), dst.values().end(), std::back_inserter( values ) );
+                std::copy( std::next( dseg.begin() ), dst.bounds().end(), std::back_inserter( bounds ) );
+                std::copy( &dseg.value(), dst.values().end(), std::back_inserter( values ) );
             }
 
             dst.data()->bounds = bounds;
@@ -607,10 +614,10 @@ namespace __dios::rst::abstract {
         segment_t terminal_segment() noexcept
         {
             auto seg = segment_at_current_offset();
-            auto zero = character_t::lift( '\0' );
-            while ( seg.begin() != bounds().end() && seg.value() != zero && !seg.empty() )
+            while ( !is_beyond_last_segment( seg ) && !seg.has_value( '\0' ) ) {
                 ++seg;
-            if ( seg.begin() == bounds().end() )
+            }
+            if ( is_beyond_last_segment( seg ) )
                 out_of_bounds_fault();
             return seg;
         }
@@ -626,7 +633,7 @@ namespace __dios::rst::abstract {
         {
            __dios_trace_f( "mstring offset %lu size %lu:", mstr.concrete_offset(), mstr.concrete_size() );
            auto seg = mstr.segment_at_current_offset();
-           while ( seg.end() != mstr.bounds().end() ) {
+           while ( !mstr.is_beyond_last_segment( seg ) ) {
                trace( seg );
                ++seg;
            }
@@ -634,56 +641,9 @@ namespace __dios::rst::abstract {
 
         /* detail */
 
-        _LART_INLINE
-        void drop( index_t size ) noexcept
+        bool is_beyond_last_segment( const segment_t& seg ) const noexcept
         {
-            auto to_drop = range( offset, size + offset );
-
-            if ( !to_drop.single_segment() ) {
-                if ( *to_drop.bounds.from != offset ) {
-                    // keep prefix
-                    ++to_drop.bounds.from;
-                    ++to_drop.values.from;
-                }
-                if ( *to_drop.bounds.to != size + offset ) {
-                    // keep suffix
-                    --to_drop.bounds.to;
-                    --to_drop.values.to;
-                }
-            }
-
-            bounds().erase( to_drop.bounds.from, to_drop.bounds.to );
-            values().erase( to_drop.values.from, to_drop.values.to );
-        }
-
-        _LART_INLINE
-        void insert( mstring_ptr src, index_t size ) noexcept
-        {
-            auto from_bounds = bounds().begin();
-            auto from_values = values().begin();
-            while ( from_bounds != bounds().end() && *from_bounds < offset ) {
-                ++from_bounds; ++from_values;
-            }
-
-            auto in = src->range( src.offset(), size );
-            // insert bounds from src
-            bounds_t tmp_bounds;
-            std::move( from_bounds, bounds().end(), std::back_inserter( tmp_bounds ) );
-            bounds().erase( from_bounds, bounds().end() );
-
-            for ( const auto& bound : in.bounds )
-                bounds().push_back( offset + ( bound - src.offset() ) );
-            bounds().push_back( offset + size );
-            bounds().append( tmp_bounds.size(), tmp_bounds.begin(), tmp_bounds.end() );
-
-            // insert values from src
-            values_t tmp_values;
-            std::move( from_values, values().end(), std::back_inserter( tmp_values ) );
-            values().erase( from_values, values().end() );
-
-            for ( const auto& value : in.values )
-                values().push_back( value );
-            values().append( tmp_values.size(), tmp_values.begin(), tmp_values.end() );
+            return seg.begin() == std::prev( bounds().end() );
         }
 
         _LART_INLINE
