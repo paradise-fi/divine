@@ -141,6 +141,16 @@ namespace lart::abstract
         lsi.get()->runOnFunction( *fn );
 
         lower_constant_expr( *fn );
+
+        auto intrs = query::query( *fn ).flatten()
+            .map( query::refToPtr )
+            .map( query::llvmdyncast< llvm::MemCpyInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        auto m = fn->getParent();
+        for ( auto intr : intrs )
+            llvm::IntrinsicLowering( m->getDataLayout() ).LowerIntrinsicCall( intr );
     }
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept
@@ -271,12 +281,6 @@ namespace lart::abstract
         );
 
         if ( is_propagable( val ) )
-            for ( auto u : val->users() ) {
-                if ( auto intr = llvm::dyn_cast< llvm::MemCpyInst >( u ) ) {
-                    auto m = intr->getModule();
-                    llvm::IntrinsicLowering( m->getDataLayout() ).LowerIntrinsicCall( intr );
-                }
-            }
             for ( auto u : val->users() )
             {
                 if ( util::is_one_of< llvm::LoadInst
