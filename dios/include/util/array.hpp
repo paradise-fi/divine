@@ -27,79 +27,87 @@ struct Array : brq::derive_ord, brq::derive_eq
     using reference = T&;
     using const_reference = T const&;
 
-    Array() = default;
-    ~Array() { clear(); }
+    static constexpr bool nothrow_dtor = std::is_nothrow_destructible_v< T >;
+    static constexpr bool nothrow_copy = std::is_nothrow_copy_constructible_v< T >;
+    static constexpr bool nothrow_move = std::is_nothrow_move_constructible_v< T >;
+    static constexpr bool is_trivial   = std::is_trivial_v< T >;
 
-    Array( const Array& other )
+    Array() noexcept = default;
+    ~Array() noexcept( nothrow_dtor ) { clear(); }
+
+    Array( const Array& other ) noexcept ( nothrow_copy )
         : Array( other.size(), other.begin(), other.end() )
     { }
 
-    Array( Array&& other )  { swap( other ); };
+    Array( Array&& other ) noexcept { swap( other ); };
 
-    Array( std::initializer_list< T > ilist ) :
+    Array( std::initializer_list< T > ilist ) noexcept ( nothrow_copy ) :
         Array( ilist.size(), ilist.begin(), ilist.end() )
     { }
 
-    Array( size_type size, const T &val = T() )
+    Array( size_type size, const T &val = T() ) noexcept( nothrow_copy )
     {
         _resize( size );
-        std::uninitialized_fill( begin(), end(), val );
+        uninit_fill( begin(), end(), val );
     }
 
     template< typename It >
-    Array( size_type size, It b, It e )
+    Array( size_type size, It b, It e ) noexcept ( nothrow_copy )
     {
         append( size, b, e );
     }
 
-    Array& operator=( Array other ) {
+    Array& operator=( Array other ) noexcept ( nothrow_copy )
+    {
         swap( other );
         return *this;
     };
 
     template< typename It >
-    void assign( size_type size, It b, It e )
+    void assign( size_type size, It b, It e ) noexcept ( nothrow_copy )
     {
         _clear();
         _resize( size );
-        std::uninitialized_copy( b, e, begin() );
+        uninit_copy( b, e, begin() );
     }
 
-    void swap( Array& other ) {
+    void swap( Array& other ) noexcept
+    {
         using std::swap;
         swap( _data, other._data );
     }
 
-    struct _Item {
+    struct _Item
+    {
         T _items[ 0 ];
-        T *get() { return _items; }
+        T *get() noexcept { return _items; }
     };
 
-    iterator begin() { return _data ?_data->get() : nullptr; }
-    const_iterator begin() const { return _data ?_data->get() : nullptr; }
-    const_iterator cbegin() const { return _data ?_data->get() : nullptr; }
+    iterator begin() noexcept { return _data ?_data->get() : nullptr; }
+    const_iterator begin() const noexcept { return _data ?_data->get() : nullptr; }
+    const_iterator cbegin() const noexcept { return _data ?_data->get() : nullptr; }
 
-    iterator end() { return _data ? _data->get() + size() : nullptr; }
-    const_iterator end() const { return _data ? _data->get() + size() : nullptr; }
-    const_iterator cend() const { return _data ? _data->get() + size() : nullptr; }
+    iterator end() noexcept { return _data ? _data->get() + size() : nullptr; }
+    const_iterator end() const noexcept { return _data ? _data->get() + size() : nullptr; }
+    const_iterator cend() const noexcept { return _data ? _data->get() + size() : nullptr; }
 
-    reverse_iterator rbegin() { return reverse_iterator( end() ); }
-    const_reverse_iterator rbegin() const { return reverse_iterator( end() ); }
-    const_reverse_iterator crbegin() const { return reverse_iterator( end() ); }
+    reverse_iterator rbegin() noexcept { return reverse_iterator( end() ); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator( end() ); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator( end() ); }
 
-    reverse_iterator rend() { return reverse_iterator( begin() ); }
-    const_reverse_iterator rend() const { return const_reverse_iterator( begin() ); }
-    const_reverse_iterator crend() const { return const_reverse_iterator( begin() ); }
+    reverse_iterator rend() noexcept { return reverse_iterator( begin() ); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator( begin() ); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator( begin() ); }
 
-    T& back() { return *( end() - 1 ); }
-    const T& back() const { return *( end() - 1 ); }
-    T& front() { return *begin(); }
-    const T& front() const { return *begin(); }
+    T& back() noexcept { return *( end() - 1 ); }
+    const T& back() const noexcept { return *( end() - 1 ); }
+    T& front() noexcept { return *begin(); }
+    const T& front() const noexcept { return *begin(); }
 
-    bool empty() const { return !_data; }
-    size_type size() const  { return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T ); }
+    bool empty() const noexcept { return !_data; }
+    size_type size() const noexcept { return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T ); }
 
-    void clear()
+    void clear() noexcept ( nothrow_dtor )
     {
         if ( empty() )
             return;
@@ -108,17 +116,18 @@ struct Array : brq::derive_ord, brq::derive_eq
         _data = nullptr;
     }
 
-    void push_back( const T& t ) {
+    void push_back( const T& t ) noexcept ( nothrow_copy )
+    {
         _resize( size() + 1 );
         new ( &back() ) T( t );
     }
 
     template< typename It >
-    void append( size_type count, It b, It e )
+    void append( size_type count, It b, It e ) noexcept ( is_trivial )
     {
         size_type oldsz = size();
         _resize( oldsz + count );
-        std::uninitialized_copy( b, e, begin() + oldsz );
+        uninit_copy( b, e, begin() + oldsz );
     }
 
     template < typename... Args >
@@ -129,18 +138,18 @@ struct Array : brq::derive_ord, brq::derive_eq
         return back();
     }
 
-    void pop_back()
+    void pop_back() noexcept ( nothrow_dtor )
     {
         back().~T();
         _resize( size() - 1 );
     }
 
-    iterator erase( iterator it )
+    iterator erase( iterator it ) noexcept ( nothrow_dtor )
     {
         return erase( it, std::next( it ) );
     }
 
-    iterator erase( iterator first, iterator last )
+    iterator erase( iterator first, iterator last ) noexcept ( nothrow_dtor )
     {
         if ( empty() )
             return;
@@ -153,7 +162,7 @@ struct Array : brq::derive_ord, brq::derive_eq
         return last;
     }
 
-    iterator insert( iterator where, const T &val )
+    iterator insert( iterator where, const T &val ) noexcept ( nothrow_copy && nothrow_move )
     {
         _resize( size() + 1 );
         for ( iterator i = end() - 1; i > where; --i )
@@ -163,18 +172,38 @@ struct Array : brq::derive_ord, brq::derive_eq
     }
 
 
-    T& operator[]( size_type idx ) { return _data->get()[ idx ]; }
-    const T& operator[]( size_type idx ) const { return _data->get()[ idx ]; }
+    T& operator[]( size_type idx ) noexcept { return _data->get()[ idx ]; }
+    const T& operator[]( size_type idx ) const noexcept { return _data->get()[ idx ]; }
 
-    void resize( size_type n, const T &val = T() )
+    void uninit_fill( iterator b, iterator e, const T &val ) noexcept ( nothrow_copy )
+    {
+        if constexpr ( nothrow_copy )
+            for ( auto i = b; i != e; ++i )
+                new ( i ) T( val );
+        else
+            std::uninitialized_fill( b, e, val );
+    }
+
+    template< typename from_t >
+    void uninit_copy( from_t b, from_t e, iterator to ) noexcept ( nothrow_copy )
+    {
+        if constexpr ( nothrow_copy )
+            for ( auto i = b; i != e; ++i )
+                new ( to++ ) T( *i );
+        else
+            std::uninitialized_copy( b, e, to );
+    }
+
+    void resize( size_type n, const T &val = T() ) noexcept( nothrow_copy )
     {
         size_type old = size();
         _resize( n );
+
         if ( n > old )
-            std::uninitialized_fill( begin() + old, end(), val );
+            uninit_fill( begin() + old, end(), val );
     }
 
-    void _resize( size_type n )
+    void _resize( size_type n ) noexcept
     {
         if ( n == 0 )
         {
@@ -188,19 +217,19 @@ struct Array : brq::derive_ord, brq::derive_eq
             __vm_obj_resize( _data, n * sizeof( T ) );
     }
 
-    __local_skipcfl void _clear()
+    __local_skipcfl void _clear() noexcept ( nothrow_dtor )
     {
         auto s = size();
         for ( auto i = begin(); i != end(); ++i )
             i->~T();
     }
 
-    bool operator==( const Array &o ) const
+    bool operator==( const Array &o ) const noexcept
     {
         return size() == o.size() && std::equal( begin(), end(), o.begin() );
     }
 
-    bool operator<( const Array &o ) const
+    bool operator<( const Array &o ) const noexcept
     {
         return std::lexicographical_compare( begin(), end(), o.begin(), o.end() );
     }
