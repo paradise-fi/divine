@@ -1,4 +1,3 @@
-#include <rst/domains.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -6,11 +5,15 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wuninitialized"
 
-#define _SVC_NONDET(t,n,bw) t __VERIFIER_nondet_ ## n() { \
-    return __sym_val_i ## bw();                           \
-}
+#define _SVC_NONDET(t,n,bw) t __VERIFIER_nondet_ ## n() { return __lamp_any_i ## bw(); }
 
 extern "C" {
+
+    uint8_t  __lamp_any_i1();
+    uint8_t  __lamp_any_i8();
+    uint16_t __lamp_any_i16();
+    uint32_t __lamp_any_i32();
+    uint64_t __lamp_any_i64();
 
     _SVC_NONDET(bool, bool, 8)
     _SVC_NONDET(char, char, 8)
