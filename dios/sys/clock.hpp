@@ -18,7 +18,6 @@
 
 #pragma once
 #include <dios/sys/syscall.hpp>
-#include <rst/domains.h>
 
 namespace __dios
 {
