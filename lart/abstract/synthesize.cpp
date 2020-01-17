@@ -18,7 +18,10 @@ namespace
     template< typename Arg, typename IRB >
     llvm::Instruction * domain_index( const Arg& arg, IRB &irb )
     {
-        return irb.CreateLoad( irb.getInt8Ty(), arg, "domain" );
+        auto fn = irb.GetInsertBlock()->getModule()->getFunction( "__lart_read_domain_id" );
+        if ( !fn )
+            brq::raise() << "function __lart_read_domain_id is required but missing";
+        return irb.CreateCall( fn, { arg } );
     }
 
     auto inline_call = [] ( auto call ) {
