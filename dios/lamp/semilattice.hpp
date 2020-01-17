@@ -1,7 +1,7 @@
 #include <brick-cons>
 #include <dios/lava/base.hpp>
 
-namespace __lame
+namespace __lamp
 {
     template< typename... domains >
     struct domain_list : brq::cons_list_t< domains... >

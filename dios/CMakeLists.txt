@@ -4,6 +4,7 @@ include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
       sys/*.hpp config/*.hpp vfs/*.h vfs/*.hpp macro/*
+      lava/*.hpp lamp/*.hpp
       include/*.h include/_PDCLIB/*.h include/util/*.hpp
       include/rst/*.h include/rst/*.def include/rst/*.hpp
       include/sys/*.h include/sys/*.def include/sys/*.undef include/bits/*.h include/machine/*.h
@@ -20,6 +21,7 @@ file( GLOB H_BRICKS ../bricks/brick-* )
 
 file( GLOB SRC_dios sys/*.cpp vfs/*.cpp proxy/*.cpp )
 file( GLOB SRC_config config/*.cpp )
+file( GLOB SRC_lamp lamp/*.cpp )
 
 file( GLOB SRC_dios_divm arch/divm/*.cpp arch/divm/*.c )
 file( GLOB SRC_dios_klee arch/klee/*.cpp arch/klee/*.c )

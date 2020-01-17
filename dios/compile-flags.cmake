@@ -37,6 +37,7 @@ set( flags "${flags};${WARN}" )
 mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
 mkobjs( config "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
 mkobjs( librst "${flags};${NOEXCEPT};-std=c++17" )
+mkobjs( lamp "${flags};${NOEXCEPT};-std=c++17" )
 
 foreach( arch divm klee native )
     mkobjs( dios_${arch} "${flags};${NOEXCEPT}" )
@@ -57,6 +58,11 @@ endforeach()
 
 foreach( f ${SRC_config} )
   string( REGEX REPLACE ".*/\([a-z]*)\\.[a-z]+" "config/\\1.bc" mod ${f} )
+  stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${mod}" )
+endforeach()
+
+foreach( f ${SRC_lamp} )
+  string( REGEX REPLACE ".*/\([a-z]*)\\.[a-z]+" "lamp/\\1.bc" mod ${f} )
   stringify( "dios" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${mod}" )
 endforeach()
 
