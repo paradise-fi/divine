@@ -285,7 +285,7 @@ namespace lart::abstract {
     {
         auto op = get_operation( "lift_any" );
         if ( !op.has_value() )
-            brq::raise() << "Domain requires lift_any operation";
+            brq::raise() << "Domain requires lift_any operation: " << ns.str();
         return op.value();
     }
 

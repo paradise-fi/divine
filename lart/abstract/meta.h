@@ -189,7 +189,7 @@ namespace lart::abstract::meta {
 
         auto i = fn->getMetadata( tag );
         if ( !i )
-            brq::raise() << "Missing index metadata. " << tag;
+            brq::raise() << "Missing index metadata. " << tag << " " << fn->getName().str();
         auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
         return llvm::cast< llvm::ConstantInt >( c->getValue() );
     }
