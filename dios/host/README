@@ -5,7 +5,7 @@ based on gnulib, which is covered by GPLv3.
 
 The headers are private and are never used outside of building libdios-host.a
 itself. The compiled code is automatically linked into binaries when they are
-linked using `divcc`. For now, the host library covers the stdio_ext.h
+linked using `dioscc`. For now, the host library covers the stdio_ext.h
 subfamily of functions available on MUSL (and stubbed in DiOS) but not
 available in glibc. Additionally, it contains an `fflush` wrapper that
 corrects various platform problems related to input streams.
