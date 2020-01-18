@@ -1,17 +1,35 @@
-// -*- C++ -*- (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2019, 2020 Petr Ročkai <code@fixp.eu>
+ * (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #pragma once
 
-#include <rst/common.hpp>
-#include <rst/base.hpp>
+#include "base.hpp"
+#include "tristate.hpp"
 #include <util/map.hpp>
 
 #include <brick-smt>
 #include <type_traits>
 
-namespace __dios::rst::abstract
+namespace __lava
 {
-    namespace smt = brick::smt;
-    using RPN = smt::RPN< Array< uint8_t, _VM_PT_Marked > >;
+    template< typename >
+    using tagged_array_adaptor = tagged_array< _VM_PT_Marked >;
 
     /* Values in the term_t abstract domain are built out of Constants, Variables and
      * operations defined on them. Integers are represented as bitvectors of fixed
@@ -25,404 +43,165 @@ namespace __dios::rst::abstract
      * instruction names. These methods are used in lart and their lookup is name-based
      * therefore it is mandatory to satisfy this requirement.
      * Otherwise there are no requirements. */
-    struct term_t
+
+    struct term : brq::smt_expr< tagged_array_adaptor >, domain_mixin< term >
     {
-        void * pointer = nullptr;     // RPN * ?
+        static constexpr struct {} tag;
+        using base = brq::smt_expr< tagged_array_adaptor >;
 
-        using Op = smt::Op;
-
-        operator abstract_value_t() { return static_cast< abstract_value_t >( pointer ); }
-
-        static term_t make_term() noexcept
+        template< typename... args_t >
+        term( const args_t & ... args )
+            : brq::smt_expr< tagged_array_adaptor >()
         {
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            return term_t{ ptr };
+            apply( args... );
         }
 
-        template< typename ...Terms >
-        static term_t make_term( Terms ...args ) noexcept
+        static int counter()
         {
-            auto term = make_term();
-            ( term.extend( args ), ... );
-            return term;
-        }
-
-        _LART_INLINE RPN& as_rpn() noexcept
-        {
-            return *reinterpret_cast< RPN * >( &pointer );
-        }
-
-        _LART_INLINE const RPN& as_rpn() const noexcept
-        {
-            return *reinterpret_cast< const RPN * >( &pointer );
+            static int v = 0;
+            return ++v;
         }
 
         template< typename T >
-        _LART_INLINE constexpr term_t extend( const T& value ) noexcept
+        static term any()
         {
-            this->as_rpn().extend( value );
-            return *this;
-        }
-
-        _LART_INLINE constexpr term_t extend( const term_t& other ) noexcept
-        {
-            return extend( other.as_rpn() );
-        }
-
-        template< Op op >
-        _LART_INLINE constexpr term_t apply() noexcept
-        {
-            this->as_rpn().apply< op >();
-            return *this;
-        }
-
-        template< Op op >
-        _LART_INLINE constexpr term_t apply_in_place( const term_t& other ) noexcept
-        {
-            return this->extend( other ).apply< op >();
-        }
-
-        explicit operator void*() const { return pointer; }
-
-        /* Constants are identified by having negative bitwidth. */
-        template< typename T >
-        _LART_INLINE static RPN::Constant< T > constant( T value ) noexcept
-        {
-            return { Op( -bitwidth< T >() ), value };
+            constexpr auto op = brq::smt_match_op< brq::smt_op_var, sizeof( T ) * 8 >;
+            return { brq::smt_atom_t< T >( op, counter() ) };
         }
 
         template< typename T >
-        _LART_NOINLINE static term_t lift_any( Abstracted< T > ) noexcept;
-
-        /* Lift a constant to a term_t. */
-        template< typename T >
-        _LART_NOINLINE static term_t lift( T value ) noexcept
+        static term lift( T value )
         {
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            term_t term{ ptr };
-            return term.extend( constant( value ) );
+            constexpr auto op = brq::smt_match_op< brq::smt_op_const, sizeof( T ) * 8 >;
+            return { brq::smt_atom_t< T >( op, value ) };
         }
 
-        #define __lift( name, T ) \
-            _LART_INTERFACE static term_t lift_one_ ## name( T value ) noexcept { \
-                return lift( value ); \
+        static tristate to_tristate( term ) { return { tristate::maybe }; }
+
+        static term div( term a, term b, brq::smt_op o )
+        {
+            auto fault = _VM_Fault::_VM_F_Integer;
+            auto divisor = b;
+
+            if ( o == op::fp_div || o == op::fp_rem )
+            {
+                divisor = op_fptosi( b, 64 );
+                fault = _VM_Fault::_VM_F_Float;
             }
 
-        /* abstraction operations */
-        __lift( i1, bool )
-        __lift( i8, uint8_t )
-        __lift( i16, uint16_t )
-        __lift( i32, uint32_t )
-        __lift( i64, uint64_t )
+            auto eq = op_eq( op_zext( divisor, 64 ), lift( 0ul ) );
 
-        __lift( float, float )
-        __lift( double, double )
-
-        _LART_INTERFACE
-        static term_t lift_any_aggr( unsigned size ) noexcept { return {}; }
-        _LART_INTERFACE
-        static term_t lift_one_aggr( void * aggr, unsigned size ) noexcept { return {}; }
-
-        _LART_INTERFACE
-        static term_t lift_one_ptr( void *p ) noexcept
-        {
-            return lift( reinterpret_cast< uintptr_t >( p ) );
-        }
-
-        _LART_INTERFACE
-        static tristate_t to_tristate( term_t ) noexcept
-        {
-            return { tristate_t::Unknown };
-        }
-
-        _LART_INLINE
-        static constexpr bool faultable( Op op ) noexcept
-        {
-            using namespace brick::smt;
-            return is_one_of< Op::BvUDiv
-                            , Op::BvSDiv
-                            , Op::BvURem
-                            , Op::BvSRem
-                            , Op::FpDiv
-                            , Op::FpRem >( op );
-        }
-
-        template< Op op, typename ...T >
-        _LART_INLINE static term_t impl_nary( T ...terms )
-        {
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            term_t term{ ptr };
-
-            return apply_impl< op >( term, terms...);
-        }
-
-        template< Op op, typename H, typename ...T >
-        _LART_INLINE static term_t apply_impl( term_t term, H h, T ...terms )
-        {
-            return apply_impl< op, T...>( term.extend( h ), terms... );
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t apply_impl( term_t term )
-        {
-            return term.apply< op >();
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t impl_binary( term_t lhs, term_t rhs ) noexcept
-        {
-            // resulting rpn: [ lhs | rhs | op ]
-
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            term_t term{ ptr };
-
-            return term.extend( lhs ).extend( rhs ).apply< op >();
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t fault_i_bin( term_t lhs, term_t rhs ) noexcept
-        {
-            auto eq = op_eq( op_zext( rhs, 64 ), lift_one_i64( 0 ) );
-            if ( to_tristate( eq ) ) {
+            if ( to_tristate( eq ) )
+            {
                 assume( eq, eq, true );
-                fault_idiv_by_zero();
-                return rhs; // return zero
+                __dios_fault( fault, "division by zero" );
+                return b;
             }
-
-            assume( eq, eq, false );
-            return impl_binary< op >( lhs, rhs );
-        }
-
-
-        template< Op op >
-        _LART_INLINE static term_t fault_f_bin( term_t lhs, term_t rhs ) noexcept
-        {
-            assert( false ); // not implemented
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t binary( term_t lhs, term_t rhs ) noexcept
-        {
-            using namespace brick::smt;
-
-            // resulting rpn: [ lhs | rhs | op ]
-
-            if constexpr ( faultable( op ) ) {
-                static_assert( is_float_bin( op ) || is_integer_bin( op ) );
-                if constexpr ( is_integer_bin( op ) ) {
-                    return fault_i_bin< op >( lhs, rhs );
-                }
-                if constexpr ( is_float_bin( op ) ) {
-                    return fault_f_bin< op >( lhs, rhs );
-                }
-            } else {
-                return impl_binary< op >( lhs, rhs );
+            else
+            {
+                assume( eq, eq, false );
+                return { a, b, o };
             }
         }
 
-        template< Op op >
-        _LART_INLINE static term_t unary( term_t arg ) noexcept
+        using op = brq::smt_op;
+        using tt = term;
+        using bw = uint8_t;
+
+        static term cast( term arg, bitwidth_t bw, op o )
         {
-            // resulting rpn: [ arg | op ]
-            assert( false );
+            brq::smt_atom_t< uint8_t > atom( o, bw );
+            return { arg, atom };
         }
 
-        template< Op op >
-        _LART_INLINE static term_t cmp( term_t lhs, term_t rhs ) noexcept
+        static tt assume( tt value, tt constraint, bool expect );
+        static tt op_thaw( tt term, uint8_t bw )
         {
-            return term_t::binary< op >( lhs, rhs );
+            /* TODO interval-based peek & poke */
+            return cast( term, bw, op::bv_zfit );
         }
 
-        template< Op op >
-        _LART_INLINE static RPN::CastOp cast_op( bitwidth_t bw ) noexcept
+        static term op_extract( term t, uint8_t from, uint8_t to )
         {
-            return { op, bw };
+            std::pair arg{ from, to };
+            brq::smt_atom_t< std::pair< uint8_t, uint8_t > > atom( op::bv_extract, arg );
+            return { t, atom };
         }
 
-        template< Op op >
-        _LART_INLINE static term_t cast( term_t arg, bitwidth_t bw ) noexcept
-        {
-            // resulting rpn: [ arg | bw | op ]
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            term_t term{ ptr };
+        static tt op_add ( tt a, tt b ) { return { a, b, op::bv_add  }; }
+        static tt op_sub ( tt a, tt b ) { return { a, b, op::bv_sub  }; }
+        static tt op_mul ( tt a, tt b ) { return { a, b, op::bv_mul  }; }
+        static tt op_sdiv( tt a, tt b ) { return div( a, b, op::bv_sdiv ); }
+        static tt op_udiv( tt a, tt b ) { return div( a, b, op::bv_udiv ); }
+        static tt op_srem( tt a, tt b ) { return div( a, b, op::bv_srem ); }
+        static tt op_urem( tt a, tt b ) { return div( a, b, op::bv_urem ); }
 
-            return term.extend( arg ).extend( cast_op< op >( bw ) );
-        }
+        static tt op_fadd( tt a, tt b ) { return { a, b, op::fp_add }; }
+        static tt op_fsub( tt a, tt b ) { return { a, b, op::fp_sub }; }
+        static tt op_fmul( tt a, tt b ) { return { a, b, op::fp_mul }; }
+        static tt op_fdiv( tt a, tt b ) { return div( a, b, op::fp_div ); }
+        static tt op_frem( tt a, tt b ) { return div( a, b, op::fp_rem ); }
 
-        _LART_INTERFACE static term_t op_insertvalue( term_t arg, term_t value, uint64_t offset )
-        {
-            auto lhs = impl_nary< Op::Extract >(
-                    arg,
-                    constant( 0 ),
-                    impl_binary< Op::BvSub >( lift( offset ), lift( 1 ) ) );
-            auto rhs = impl_nary< Op::Extract >(
-                    arg,
-                    impl_binary< Op::BvAdd >( lift( offset ), lift( 1 ) ) );
-            return impl_nary< Op::Concat >(
-                    impl_nary< Op::Concat >( lhs, value ),
-                    rhs );
-        }
+        static tt op_shl ( tt a, tt b ) { return { a, b, op::bv_shl  }; }
+        static tt op_ashr( tt a, tt b ) { return { a, b, op::bv_ashr }; }
+        static tt op_lshr( tt a, tt b ) { return { a, b, op::bv_lshr }; }
+        static tt op_and ( tt a, tt b ) { return { a, b, op::bv_and  }; }
+        static tt op_or  ( tt a, tt b ) { return { a, b, op::bv_or   }; }
+        static tt op_xor ( tt a, tt b ) { return { a, b, op::bv_xor  }; }
 
-        _LART_INTERFACE static term_t op_extractvalue( term_t arg, uint64_t offset )
-        {
-            return impl_nary< Op::Extract >(
-                    arg,
-                    offset,
-                    impl_binary< Op::BvAdd >( lift( offset ), lift( 1 ) ) );
-        }
+        static tt op_eq ( tt a, tt b ) { return { a, b, op::eq }; };
+        static tt op_neq( tt a, tt b ) { return { a, b, op::neq }; };
+        static tt op_ugt( tt a, tt b ) { return { a, b, op::bv_ugt }; };
+        static tt op_uge( tt a, tt b ) { return { a, b, op::bv_uge }; };
+        static tt op_ult( tt a, tt b ) { return { a, b, op::bv_ult }; };
+        static tt op_ule( tt a, tt b ) { return { a, b, op::bv_ule }; };
+        static tt op_sgt( tt a, tt b ) { return { a, b, op::bv_sgt }; };
+        static tt op_sge( tt a, tt b ) { return { a, b, op::bv_sge }; };
+        static tt op_slt( tt a, tt b ) { return { a, b, op::bv_slt }; };
+        static tt op_sle( tt a, tt b ) { return { a, b, op::bv_sle }; };
 
-        _LART_INTERFACE
-        term_t constrain( term_t &constraint, bool expect ) const noexcept;
+        static tt op_foeq( tt a, tt b ) { return { a, b, op::fp_oeq }; }
+        static tt op_fogt( tt a, tt b ) { return { a, b, op::fp_ogt }; }
+        static tt op_foge( tt a, tt b ) { return { a, b, op::fp_oge }; }
+        static tt op_folt( tt a, tt b ) { return { a, b, op::fp_olt }; }
+        static tt op_fole( tt a, tt b ) { return { a, b, op::fp_ole }; }
+        static tt op_ford( tt a, tt b ) { return { a, b, op::fp_ord }; }
+        static tt op_funo( tt a, tt b ) { return { a, b, op::fp_uno }; }
+        static tt op_fueq( tt a, tt b ) { return { a, b, op::fp_ueq }; }
+        static tt op_fugt( tt a, tt b ) { return { a, b, op::fp_ugt }; }
+        static tt op_fuge( tt a, tt b ) { return { a, b, op::fp_uge }; }
+        static tt op_fult( tt a, tt b ) { return { a, b, op::fp_ult }; }
+        static tt op_fule( tt a, tt b ) { return { a, b, op::fp_ule }; }
 
-        _LART_INTERFACE
-        static term_t assume( term_t value, term_t constraint, bool expect ) noexcept
-        {
-            return value.constrain( constraint, expect );
-        }
+        static tt op_ffalse( tt a, tt b ) { return { a, b, op::fp_false }; }
+        static tt op_ftrue( tt a, tt b ) { return { a, b, op::fp_true }; }
 
-        _LART_INTERFACE
-        static term_t op_thaw( term_t term, uint8_t bw ) noexcept
-        {
-            return cast< Op::ZFit >( term, bw ); /* TODO interval-based peek & poke */
-        }
+        static tt op_trunc  ( tt a, bw w ) { return cast( a, w, op::bv_trunc ); }
+        static tt op_fptrunc( tt a, bw w ) { return cast( a, w, op::fp_trunc ); }
+        static tt op_sitofp ( tt a, bw w ) { return cast( a, w, op::bv_stofp ); }
+        static tt op_uitofp ( tt a, bw w ) { return cast( a, w, op::bv_utofp ); }
+        static tt op_zext   ( tt a, bw w ) { return cast( a, w, op::bv_zext ); }
+        static tt op_sext   ( tt a, bw w ) { return cast( a, w, op::bv_sext ); }
+        static tt op_fpext  ( tt a, bw w ) { return cast( a, w, op::fp_ext ); }
+        static tt op_fptosi ( tt a, bw w ) { return cast( a, w, op::fp_tosbv ); }
+        static tt op_fptoui ( tt a, bw w ) { return cast( a, w, op::fp_toubv ); }
 
-        _LART_INTERFACE
-        static term_t op_extract( term_t term, uint8_t from, uint8_t to ) noexcept
-        {
-            return make_term( term ).apply< Op::Extract >().extend( to ).extend( from );
-        }
+        static tt op_concat ( tt a, tt b ) { return { a, b, op::bv_concat }; }
 
-        #define __bin( name, op ) \
-            _LART_INTERFACE static term_t name( term_t lhs, term_t rhs ) noexcept { \
-                return binary< Op::op >( lhs, rhs ); \
-            }
-
-        #define __un( name, op ) \
-            _LART_INTERFACE static term_t name( term_t arg ) noexcept { \
-                return unary< Op::op >( arg ); \
-            }
-
-        #define __cmp( name, op ) \
-            _LART_INTERFACE static term_t name( term_t lhs, term_t rhs ) noexcept { \
-                return cmp< Op::op >( lhs, rhs ); \
-            }
-
-        #define __cast( name, op ) \
-            _LART_INTERFACE static term_t name( term_t arg, bitwidth_t bw ) noexcept { \
-                return cast< Op::op >( arg, bw ); \
-            }
-
-        /* arithmetic operations */
-        __bin( op_add, BvAdd )
-        __bin( op_fadd, FpAdd )
-        __bin( op_sub, BvSub )
-        __bin( op_fsub, FpSub )
-        __bin( op_mul, BvMul )
-        __bin( op_fmul, FpMul )
-        __bin( op_udiv, BvUDiv )
-        __bin( op_sdiv, BvSDiv )
-        __bin( op_fdiv, FpDiv )
-        __bin( op_urem, BvURem )
-        __bin( op_srem, BvSRem )
-        __bin( op_frem, FpRem )
-
-        /* logic operations */
-        // TODO __un( op_fneg )
-
-        /* bitwise operations */
-        __bin( op_shl, BvShl )
-        __bin( op_lshr, BvLShr )
-        __bin( op_ashr, BvAShr )
-        __bin( op_and, BvAnd )
-        __bin( op_or, BvOr )
-        __bin( op_xor, BvXor )
-
-        /* comparison operations */
-        __cmp( op_ffalse, FpFalse )
-        __cmp( op_foeq, FpOEQ )
-        __cmp( op_fogt, FpOGT )
-        __cmp( op_foge, FpOGE )
-        __cmp( op_folt, FpOLT )
-        __cmp( op_fole, FpOLE )
-        __cmp( op_fone, FpONE )
-        __cmp( op_ford, FpORD )
-        __cmp( op_funo, FpUNO )
-        __cmp( op_fueq, FpUEQ )
-        __cmp( op_fugt, FpUGT )
-        __cmp( op_fuge, FpUGE )
-        __cmp( op_fult, FpULT )
-        __cmp( op_fule, FpULE )
-        __cmp( op_fune, FpUNE )
-        __cmp( op_ftrue, FpTrue )
-        __cmp( op_eq, Eq );
-        __cmp( op_ne, NE );
-        __cmp( op_ugt, BvUGT );
-        __cmp( op_uge, BvUGE );
-        __cmp( op_ult, BvULT );
-        __cmp( op_ule, BvULE );
-        __cmp( op_sgt, BvSGT );
-        __cmp( op_sge, BvSGE );
-        __cmp( op_slt, BvSLT );
-        __cmp( op_sle, BvSLE );
-
-
-        /* cast operations */
-        __cast( op_fpext, FPExt );
-        __cast( op_fptosi, FPToSInt );
-        __cast( op_fptoui, FPToUInt );
-        __cast( op_fptrunc, FPTrunc );
-        //__cast( op_inttoptr );
-        //__cast( op_ptrtoint );
-        __cast( op_sext, SExt );
-        __cast( op_sitofp, SIntToFP );
-        __cast( op_trunc, Trunc );
-        __cast( op_uitofp, UIntToFP );
-        __cast( op_zext, ZExt );
-
-        __bin( op_concat, Concat )
-
-        #undef __un
-        #undef __bin
-        #undef __cmp
-        #undef __cast
-        #undef __lift
+        // op_inttoptr
+        // op_ptrtoint
     };
 
-    /* `counter` is for unique variable names */
     struct term_state_t
     {
-        using var_id_t = smt::token::VarID;
-
-        uint16_t counter = 0;
-        term_t constraints; // TODO: remove
-
-        smt::union_find< ArrayMap< var_id_t, var_id_t, _VM_PT_Weak > > uf;
-        ArrayMap< var_id_t, term_t, _VM_PT_Weak > decomp; // union-find representant to relevant RPNs
+        template< typename val >
+        using dense_map = brq::dense_map< brq::smt_varid_t, val, __dios::Array< val, _VM_PT_Weak > >;
+        brq::union_find< dense_map< brq::smt_varid_t > > uf;
+        dense_map< term > decomp; /* maps representants to terms */
     };
 
     extern term_state_t *__term_state;
-
-    template< typename T >
-    _LART_INTERFACE RPN::Variable variable() noexcept
-    {
-        return { RPN::var< T >(), __term_state->counter++ };
-    }
-
-    template< typename T >
-    _LART_INTERFACE term_t term_t::lift_any( Abstracted< T > ) noexcept
-    {
-        auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-        new ( ptr ) tagged_abstract_domain_t();
-        term_t term{ ptr };
-        return term.extend( variable< T >() );
-    }
-
-    static_assert( sizeof( term_t ) == 8 );
+    static_assert( sizeof( term ) == 8 );
 }
 
 extern "C" void *__dios_term_init();
