@@ -19,23 +19,25 @@
 
 #pragma once
 
-#include <rst/common.hpp>
+#include <sys/cdefs.h>
+#include <sys/fault.h>
+#include <util/array.hpp>
 #include <cstdint>
 
-namespace __dios::rst::abstract
+namespace __lava
 {
+    using bitwidth_t = uint8_t;
     using tag_t = uint8_t;
 
-    struct tagged_abstract_domain_t
-    {
-        uint8_t id;
-        __noinline tagged_abstract_domain_t( uint8_t id = 0 ) noexcept : id( id ) {}
-    };
+    using pointer_type = _VM_PointerType;
 
-    template< _VM_PointerType PT = _VM_PT_Heap >
-    struct tagged_array : Array< uint8_t, PT >
+    template< pointer_type PT = _VM_PT_Heap >
+    using array = __dios::Array< uint8_t, PT >;
+
+    template< pointer_type PT = _VM_PT_Heap >
+    struct tagged_array : array< PT >
     {
-        using base = Array< uint8_t, PT >;
+        using base = array< PT >;
         using typename base::iterator;
 
         template< typename F >
@@ -47,9 +49,6 @@ namespace __dios::rst::abstract
         }
 
         using base::base;
-
-        tagged_array( const tagged_abstract_domain_t &id = tagged_abstract_domain_t() )
-            : base( { id.id } ) {}
 
         tagged_array( const tagged_array &o, typename base::construct_shared_t s ) : base( o, s ) {}
 
@@ -85,12 +84,12 @@ namespace __dios::rst::abstract
     template< typename type >
     struct tagged_storage : tagged_array<>
     {
-        tagged_storage( const type &v = type(),
-                        const tagged_abstract_domain_t &id = tagged_abstract_domain_t() )
-            : tagged_array( id )
+        using tagged_array<>::tagged_array;
+
+        tagged_storage( const type &v = type() )
         {
             resize( sizeof( type ) );
-            std::uninitialized_fill( &**this, &**this + 1, v );
+            new ( &**this ) type( v );
         }
 
         const type &operator*() const { return *reinterpret_cast< const type * >( begin() ); }
@@ -116,15 +115,15 @@ namespace __dios::rst::abstract
         using st = self_t;
         using bw = bitwidth_t;
 
-        __lartop static st lift_one_i1( i1 v )   noexcept { return st::lift( v ); }
-        __lartop static st lift_one_i8( i8 v )   noexcept { return st::lift( v ); }
-        __lartop static st lift_one_i16( i16 v ) noexcept { return st::lift( v ); }
-        __lartop static st lift_one_i32( i32 v ) noexcept { return st::lift( v ); }
-        __lartop static st lift_one_i64( i64 v ) noexcept { return st::lift( v ); }
-        __lartop static st lift_one_f32( f32 v ) noexcept { return st::lift( v ); }
-        __lartop static st lift_one_f64( f64 v ) noexcept { return st::lift( v ); }
+        static st lift_i1( i1 v )   { return st::lift( v ); }
+        static st lift_i8( i8 v )   { return st::lift( v ); }
+        static st lift_i16( i16 v ) { return st::lift( v ); }
+        static st lift_i32( i32 v ) { return st::lift( v ); }
+        static st lift_i64( i64 v ) { return st::lift( v ); }
+        static st lift_f32( f32 v ) { return st::lift( v ); }
+        static st lift_f64( f64 v ) { return st::lift( v ); }
 
-        __lartop static st lift_one_ptr( void *v ) noexcept
+        static st lift_ptr( void *v )
         {
             return st::lift( reinterpret_cast< uintptr_t >( v ) );
         }
@@ -132,67 +131,69 @@ namespace __dios::rst::abstract
         static st fail()
         {
             __dios_fault( _VM_F_NotImplemented, "unsupported abstract operation" );
-            return st::lift_any();
+            __builtin_trap();
+            // return st::any();
         }
 
-        __lartop static st op_add ( st, st ) noexcept { return fail(); }
-        __lartop static st op_sub ( st, st ) noexcept { return fail(); }
-        __lartop static st op_mul ( st, st ) noexcept { return fail(); }
-        __lartop static st op_sdiv( st, st ) noexcept { return fail(); }
-        __lartop static st op_udiv( st, st ) noexcept { return fail(); }
-        __lartop static st op_srem( st, st ) noexcept { return fail(); }
-        __lartop static st op_urem( st, st ) noexcept { return fail(); }
+        static st op_add ( st, st ) { return fail(); }
+        static st op_sub ( st, st ) { return fail(); }
+        static st op_mul ( st, st ) { return fail(); }
+        static st op_sdiv( st, st ) { return fail(); }
+        static st op_udiv( st, st ) { return fail(); }
+        static st op_srem( st, st ) { return fail(); }
+        static st op_urem( st, st ) { return fail(); }
 
-        __lartop static st op_fadd( st, st ) noexcept { return fail(); }
-        __lartop static st op_fsub( st, st ) noexcept { return fail(); }
-        __lartop static st op_fmul( st, st ) noexcept { return fail(); }
-        __lartop static st op_fdiv( st, st ) noexcept { return fail(); }
-        __lartop static st op_frem( st, st ) noexcept { return fail(); }
+        static st op_fadd( st, st ) { return fail(); }
+        static st op_fsub( st, st ) { return fail(); }
+        static st op_fmul( st, st ) { return fail(); }
+        static st op_fdiv( st, st ) { return fail(); }
+        static st op_frem( st, st ) { return fail(); }
 
-        __lartop static st op_shl ( st, st ) noexcept { return fail(); }
-        __lartop static st op_ashr( st, st ) noexcept { return fail(); }
-        __lartop static st op_lshr( st, st ) noexcept { return fail(); }
-        __lartop static st op_and ( st, st ) noexcept { return fail(); }
-        __lartop static st op_or  ( st, st ) noexcept { return fail(); }
-        __lartop static st op_xor ( st, st ) noexcept { return fail(); }
+        static st op_shl ( st, st ) { return fail(); }
+        static st op_ashr( st, st ) { return fail(); }
+        static st op_lshr( st, st ) { return fail(); }
+        static st op_and ( st, st ) { return fail(); }
+        static st op_or  ( st, st ) { return fail(); }
+        static st op_xor ( st, st ) { return fail(); }
 
-        __lartop static st op_eq ( st, st ) noexcept { return fail(); }
-        __lartop static st op_neq( st, st ) noexcept { return fail(); }
-        __lartop static st op_ugt( st, st ) noexcept { return fail(); }
-        __lartop static st op_uge( st, st ) noexcept { return fail(); }
-        __lartop static st op_ult( st, st ) noexcept { return fail(); }
-        __lartop static st op_ule( st, st ) noexcept { return fail(); }
-        __lartop static st op_sgt( st, st ) noexcept { return fail(); }
-        __lartop static st op_sge( st, st ) noexcept { return fail(); }
-        __lartop static st op_slt( st, st ) noexcept { return fail(); }
-        __lartop static st op_sle( st, st ) noexcept { return fail(); }
+        static st op_eq ( st, st ) { return fail(); }
+        static st op_neq( st, st ) { return fail(); }
+        static st op_ugt( st, st ) { return fail(); }
+        static st op_uge( st, st ) { return fail(); }
+        static st op_ult( st, st ) { return fail(); }
+        static st op_ule( st, st ) { return fail(); }
+        static st op_sgt( st, st ) { return fail(); }
+        static st op_sge( st, st ) { return fail(); }
+        static st op_slt( st, st ) { return fail(); }
+        static st op_sle( st, st ) { return fail(); }
 
-        __lartop static st op_foeq( st, st ) noexcept { return fail(); }
-        __lartop static st op_fogt( st, st ) noexcept { return fail(); }
-        __lartop static st op_foge( st, st ) noexcept { return fail(); }
-        __lartop static st op_folt( st, st ) noexcept { return fail(); }
-        __lartop static st op_fole( st, st ) noexcept { return fail(); }
-        __lartop static st op_ford( st, st ) noexcept { return fail(); }
-        __lartop static st op_funo( st, st ) noexcept { return fail(); }
-        __lartop static st op_fueq( st, st ) noexcept { return fail(); }
-        __lartop static st op_fugt( st, st ) noexcept { return fail(); }
-        __lartop static st op_fuge( st, st ) noexcept { return fail(); }
-        __lartop static st op_fult( st, st ) noexcept { return fail(); }
-        __lartop static st op_fule( st, st ) noexcept { return fail(); }
+        static st op_foeq( st, st ) { return fail(); }
+        static st op_fogt( st, st ) { return fail(); }
+        static st op_foge( st, st ) { return fail(); }
+        static st op_folt( st, st ) { return fail(); }
+        static st op_fole( st, st ) { return fail(); }
+        static st op_ford( st, st ) { return fail(); }
+        static st op_funo( st, st ) { return fail(); }
+        static st op_fueq( st, st ) { return fail(); }
+        static st op_fugt( st, st ) { return fail(); }
+        static st op_fuge( st, st ) { return fail(); }
+        static st op_fult( st, st ) { return fail(); }
+        static st op_fule( st, st ) { return fail(); }
 
-        __lartop static st op_ffalse( st, st ) noexcept { return fail(); }
-        __lartop static st op_ftrue ( st, st ) noexcept { return fail(); }
+        static st op_ffalse( st, st ) { return fail(); }
+        static st op_ftrue ( st, st ) { return fail(); }
 
-        __lartop static st op_trunc  ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_fptrunc( st, bw ) noexcept { return fail(); }
-        __lartop static st op_sitofp ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_uitofp ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_zext   ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_sext   ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_fpext  ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_fptosi ( st, bw ) noexcept { return fail(); }
-        __lartop static st op_fptoui ( st, bw ) noexcept { return fail(); }
+        static st op_trunc  ( st, bw ) { return fail(); }
+        static st op_fptrunc( st, bw ) { return fail(); }
+        static st op_sitofp ( st, bw ) { return fail(); }
+        static st op_uitofp ( st, bw ) { return fail(); }
+        static st op_zext   ( st, bw ) { return fail(); }
+        static st op_sext   ( st, bw ) { return fail(); }
+        static st op_fpext  ( st, bw ) { return fail(); }
+        static st op_fptosi ( st, bw ) { return fail(); }
+        static st op_fptoui ( st, bw ) { return fail(); }
 
-        __lartop static st op_concat ( st, st ) noexcept { return fail(); }
+        static st op_concat ( st, st ) { return fail(); }
+        static st op_extract( st, bw, bw ) { return fail(); }
     };
 }
