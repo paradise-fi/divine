@@ -83,6 +83,7 @@ struct CLI
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
     bool _sched_random, _pygmentize = false;
+    bool _state_is_new = false;
     using comp = dbg::component;
     using Components = dbg::Components;
     Components _ff_components = ~Components( comp::program );

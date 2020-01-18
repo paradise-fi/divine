@@ -119,24 +119,24 @@ void CLI::bplist( command::breakpoint b )
         _bps.erase( r );
 }
 
-Snapshot CLI::newstate( Snapshot snap, bool update_choices, bool terse )
+Snapshot CLI::newstate( Snapshot snap, bool update_choices, bool )
 {
     snap = _explore.start( _ctx, snap );
     _explore.pool().sync();
     _ctx.load( snap );
 
-    bool isnew = false;
     std::string name;
 
     if ( _state_names.count( snap ) )
     {
+        _state_is_new = false;
         name = _state_names[ snap ];
         if ( update_choices )
             update_lock( snap );
     }
     else
     {
-        isnew = true;
+        _state_is_new = true;
         name = _state_names[ snap ] = "#" + std::to_string( ++_state_count );
         _state_refs[ snap ] = Context::RefCnt( _ctx._refcnt, snap );
         DN state( _ctx, snap );
@@ -147,17 +147,6 @@ Snapshot CLI::newstate( Snapshot snap, bool update_choices, bool terse )
     }
 
     set( "#last", name );
-
-    if ( terse )
-        out() << " " << name << std::flush;
-    else if ( isnew )
-        out() << "# a new program state was stored as " << name << std::endl;
-    else if ( _trace.count( snap ) )
-        out() << "# program follows the trace at " << name
-                << " (the scheduler is locked)"<< std::endl;
-    else
-        out() << "# program entered state " << name << " (already seen)" << std::endl;
-
     return snap;
 }
 
@@ -193,7 +182,18 @@ void CLI::sched_policy()
         choices.push_back( choice );
     }
 
-    out() << "# active threads:";
+    auto snap = get( "#last" ).snapshot();
+    out() << "▶ state " << std::setw( 5 ) << _state_names[ snap ];
+
+    if ( _state_is_new )
+        out() << " [new]";
+    else if ( _trace.count( snap ) )
+        out() << " [cex]";
+    else
+        out() << " [old]";
+
+    out() << " -- active threads:";
+
     for ( auto pi : proc )
     {
         bool active = pi.second == choices.front().taken;
@@ -202,7 +202,7 @@ void CLI::sched_policy()
                     << ( active ? "]" : "" );
     }
     proc.clear();
-    out() << std::endl;
+    out() << " --" << std::endl;
 }
 
 bool CLI::update_lock( Snapshot snap )
